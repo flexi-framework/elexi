@@ -69,8 +69,8 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SigmaModel...'
 ! Read the variables used for LES model
 ! SigmaModel model
 CS     = GETREAL('CS')
-! Do Van Driest style damping or not
-VanDriest = GETLOGICAL('VanDriest','.FALSE.')
+
+ALLOCATE(CSdeltaS2(nElems))
 
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
 DO iElem=1,nElems
@@ -83,6 +83,7 @@ DO iElem=1,nElems
     END DO
   END DO
   DeltaS(iElem) = ( CellVol)**(1./3.)  / (REAL(PP_N)+1.)
+  CSdeltaS2(iElem) = (CS * deltaS(iElem))**2 
 END DO
 
 SigmaModelInitIsDone=.TRUE.
@@ -93,15 +94,14 @@ END SUBROUTINE InitSigmaModel
 !===================================================================================================================================
 !> Compute SigmaModel Eddy-Visosity
 !===================================================================================================================================
-SUBROUTINE SigmaModel_Point(gradUx,gradUy,gradUz,dens,deltaS,muSGS)
+SUBROUTINE SigmaModel_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
 ! MODULES
-USE MOD_EddyVisc_Vars,     ONLY:CS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !> Gradients in x,y,z directions
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx, gradUy, gradUz
-REAL                       ,INTENT(IN)  :: dens, deltaS
+REAL                       ,INTENT(IN)  :: dens, CSdeltaS2
 REAL                       ,INTENT(OUT) :: muSGS
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! External procedures defined in LAPACK
@@ -130,10 +130,11 @@ IF(info .NE. 0) THEN
   d_model = 0.
 ELSE
   sigma = SQRT(MAX(0.,lambda)) ! ensure were not negative
-  d_model = (sigma(3)*(sigma(1)-sigma(2))*(sigma(2)-sigma(3)))/(sigma(1)**2)
+  ! Sigma is in ascending order unlike in the paper by Nicoud 2011
+  d_model = (sigma(1)*(sigma(3)-sigma(2))*(sigma(2)-sigma(1)))/(sigma(3)**2)
 END IF
 ! SigmaModel model
-muSGS = (CS*deltaS)**2. * d_model * dens
+muSGS = CSdeltaS2 * d_model * dens
 END SUBROUTINE SigmaModel_Point
 
 !===================================================================================================================================
@@ -143,7 +144,7 @@ SUBROUTINE SigmaModel_Volume()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,         ONLY: nElems
-USE MOD_EddyVisc_Vars,     ONLY: muSGS, deltaS
+USE MOD_EddyVisc_Vars,     ONLY: muSGS, CSdeltaS2
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
 IMPLICIT NONE
@@ -156,7 +157,7 @@ INTEGER             :: i,j,k,iElem
 DO iElem = 1,nElems
   DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
     CALL SigmaModel_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                                 U(1,i,j,k,iElem),        deltaS(iElem),  muSGS(1,i,j,k,iElem))
+                                 U(1,i,j,k,iElem),   CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE SigmaModel_Volume

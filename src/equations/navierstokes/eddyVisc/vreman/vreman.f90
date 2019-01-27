@@ -70,8 +70,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT Vreman...'
 ! Vreman model, paper CS: 0.28
 CS        = GETREAL('CS')
 
-ALLOCATE(damp(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-damp = 1.
+ALLOCATE(CSdeltaS2(nElems))
 
 ! Vreman: (CS*deltaS)**2 * SQRT(B/A) * dens !According to Nicoud 2011 simga model
 ! Precompute first term and store in damp
@@ -82,10 +81,7 @@ DO iElem=1,nElems
     CellVol = CellVol +wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
   DeltaS(iElem) = ( CellVol)**(1./3.)  / (REAL(PP_N)+1.)
-
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    damp(1,i,j,k,iElem) = (damp(1,i,j,k,iElem) * CS * deltaS(iElem))**2
-  END DO; END DO; END DO
+  CSdeltaS2(iElem) = (CS * deltaS(iElem))**2 
 END DO
 
 VremanInitIsDone=.TRUE.
@@ -96,14 +92,14 @@ END SUBROUTINE InitVreman
 !===================================================================================================================================
 !> Compute Vreman Eddy-Visosity
 !===================================================================================================================================
-PPURE SUBROUTINE Vreman_Point(gradUx,gradUy,gradUz,dens,damp,muSGS)
+PPURE SUBROUTINE Vreman_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
 ! MODULES
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !> Gradients in x,y,z directions
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx, gradUy, gradUz
-REAL                       ,INTENT(IN)  :: dens, damp
+REAL                       ,INTENT(IN)  :: dens, CSdeltaS2
 REAL                       ,INTENT(OUT) :: muSGS
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -111,21 +107,25 @@ INTEGER                                 :: i,j,k
 REAL                                    :: beta(3,3),B,alpha(3,3),A 
 !===================================================================================================================================
 ! Vreman model
-alpha(:,1)=gradUx(2:4)
-alpha(:,2)=gradUy(2:4)
-alpha(:,3)=gradUz(2:4)
-DO k=1,3; DO j=1,3; DO i=1,3
-  beta(i,j)=alpha(k,i)*alpha(k,j)
+alpha(1,:)=gradUx(2:4)
+alpha(2,:)=gradUy(2:4)
+alpha(3,:)=gradUz(2:4)
+beta=0.
+DO j=1,3; DO i=1,3; DO k=1,3
+  beta(i,j)=beta(i,j)+alpha(k,i)*alpha(k,j)
 END DO; END DO; END DO! i,j,k=1,3
-B=beta(1,1)*beta(2,2)-beta(1,2)**2+Beta(1,1)*beta(3,3)-beta(1,3)**2+beta(2,2)*beta(3,3)-beta(2,3)**2
+B=beta(1,1)*beta(2,2)-beta(1,2)**2+beta(1,1)*beta(3,3)-beta(1,3)**2+beta(2,2)*beta(3,3)-beta(2,3)**2
 A=0
 DO j=1,3; DO i=1,3
   A=A+alpha(i,j)*alpha(i,j)
 END DO; END DO! i,j=1,3
 
 ! Vreman: (CS * deltaS)**2 * SQRT(B/A) * rho
-! we store the first constant term in damp
-muSGS = damp * SQRT(B/A) * dens
+IF (B .LT. 1d-12 .OR. A .LT. 1d-5) THEN
+  muSGS = 0.
+ELSE
+  muSGS = CSdeltaS2 * SQRT(B/A) * dens
+END IF
 END SUBROUTINE Vreman_Point
 
 !===================================================================================================================================
@@ -135,7 +135,7 @@ SUBROUTINE Vreman_Volume()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,         ONLY: nElems
-USE MOD_EddyVisc_Vars,     ONLY: damp, muSGS
+USE MOD_EddyVisc_Vars,     ONLY: CSdeltaS2, muSGS
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
 IMPLICIT NONE
@@ -148,7 +148,7 @@ INTEGER             :: i,j,k,iElem
 DO iElem = 1,nElems
   DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
     CALL Vreman_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                                 U(1,i,j,k,iElem),   damp(1,i,j,k,iElem),  muSGS(1,i,j,k,iElem))
+                                 U(1,i,j,k,iElem),   CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE Vreman_Volume

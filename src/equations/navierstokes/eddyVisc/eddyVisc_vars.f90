@@ -44,6 +44,7 @@ PROCEDURE(FinalizeEddyViscosityInt),POINTER  :: FinalizeEddyViscosity !< pointer
 !Smagosinsky Standard
 REAL,ALLOCATABLE  :: Damp(:,:,:,:,:)       !< damping factor
 REAL,ALLOCATABLE  :: DeltaS(:)             !< filter width, used by Smagorinsky modell
+REAL,ALLOCATABLE  :: CSdeltaS2(:)          !< precomputed (model constant*filter width)**2 => Vreman,Sigma model 
 REAL,ALLOCATABLE  :: muSGS(:,:,:,:,:)      !< Viscosity for the sub-grid
 REAL,ALLOCATABLE  :: muSGS_master(:,:,:,:) !< Viscosity for the sub-grid on master sides
 REAL,ALLOCATABLE  :: muSGS_slave (:,:,:,:) !< Viscosity for the sub-grid on slave sides

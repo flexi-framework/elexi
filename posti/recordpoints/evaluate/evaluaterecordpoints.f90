@@ -29,7 +29,7 @@ USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars,FinalizeMPI
 #endif
-USE MOD_IO_HDF5,           ONLY:DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_IO_HDF5,           ONLY:DefineParametersIO_HDF5,InitIOHDF5,InitMPIInfo
 USE MOD_Output,            ONLY:DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Mesh,              ONLY:DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,         ONLY:nElems,nGlobalElems
@@ -56,6 +56,7 @@ LOGICAL                            :: isValid,userblockFound
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
+CALL InitMPIInfo()
 CALL ParseCommandlineArguments()
 SWRITE(UNIT_stdOut,'(A)') " ||=============================||"
 SWRITE(UNIT_stdOut,'(A)') " || Recordpoints Evaluation Tool||"
@@ -179,7 +180,7 @@ CALL FinalizeOutput()
 CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
 
-#ifdef MPI
+#if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &
   CALL abort(__STAMP__,'MPI finalize error',iError)

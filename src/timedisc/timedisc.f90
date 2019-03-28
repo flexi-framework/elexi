@@ -271,11 +271,11 @@ SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 CalcTimeStart=FLEXITIME()
 DO
   CurrentStage=1
-  CALL DGTimeDerivative_weakForm(t)
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif
+  CALL DGTimeDerivative_weakForm(t)
   IF(nCalcTimestep.LT.1)THEN
     dt_Min=CALCTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
@@ -362,12 +362,12 @@ DO
       ! Write state file
       ! NOTE: this should be last in the series, so we know all previous data
       ! has been written correctly when the state file is present
+      tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
       CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                             FutureTime=tWriteData,isErrorFile=.FALSE.)
       ! Visualize data
       CALL Visualize(t,U)
       writeCounter=0
-      tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
     END IF
 
     ! do analysis

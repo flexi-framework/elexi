@@ -133,7 +133,7 @@ END DO
 velAbs_Avg  = velAbs_Avg /(RPTime(nSamples_out)-RPTime(1))
 density_Avg = density_Avg/(RPTime(nSamples_out)-RPTime(1))
 
-!calculate wavenumber for each RP, using mean tranposrt velocity as wavespeed
+!calculate wavenumber for each RP, using mean transport velocity as wavespeed
 DO iSample=1,nSamples_Spec
   kk(:,iSample) = 2*PI*RPData_freq(iSample)/velAbs_avg
 END DO

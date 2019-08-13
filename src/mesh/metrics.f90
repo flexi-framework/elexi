@@ -168,10 +168,15 @@ END SUBROUTINE BuildCoords
 !==================================================================================================================================
 !> This routine computes the geometries volume metric terms.
 !==================================================================================================================================
+#if USE_PARTICLES
+SUBROUTINE CalcMetrics(XCL_NGeo_Out,dXCL_NGeo_out)
+#else
 SUBROUTINE CalcMetrics()
+#endif
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_ReadInTools        ,ONLY: GETLOGICAL
 USE MOD_Mesh_Vars          ,ONLY: NGeo,NgeoRef,nElems,offsetElem
 #if PP_dim == 3
 USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
@@ -184,6 +189,18 @@ USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE,firstMPISide_YOUR,lastMPISide_YOUR,nSides
 USE MOD_Interpolation_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
+#if USE_PARTICLES
+USE MOD_Particle_Mesh_Vars ,ONLY: xiCL_NGeo,wBaryCL_NGeo,MortarSlave2MasterInfo,NGeoElevated
+USE MOD_Particle_Surfaces  ,ONLY: GetBezierControlPoints3D
+USE MOD_Particle_Surfaces  ,ONLY: GetSideSlabNormalsAndIntervals
+USE MOD_Mesh_Vars          ,ONLY: SideToElem
+USE MOD_Particle_Surfaces_Vars
+#if USE_MPI
+USE MOD_Mesh_Vars          ,ONLY:nSides
+#else
+USE MOD_Mesh_Vars          ,ONLY: nBCSides,nMortarInnerSides,nInnerSides
+#endif
+#endif /*PARTICLES*/
 #if (PP_dim == 3)
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D_XYZ
 #else
@@ -199,6 +216,10 @@ USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+#if USE_PARTICLES
+REAL,INTENT(INOUT),OPTIONAL  :: XCL_Ngeo_Out(1:3,0:Ngeo,0:Ngeo,0:Ngeo,nElems)      ! mapping X(xi) P\in Ngeo
+REAL ,INTENT(INOUT),OPTIONAL :: dXCL_Ngeo_Out(1:3,1:3,0:Ngeo,0:Ngeo,0:Ngeo,nElems)   ! jacobi matrix on CL Ngeo
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,j,k,iElem
@@ -238,6 +259,9 @@ REAL    :: Vdm_CLN_N(         0:PP_N   ,0:PP_N)
 ! 3D Vandermonde matrices and lengths,nodes,weights
 REAL,DIMENSION(0:NgeoRef,0:NgeoRef) :: Vdm_xi_Ref,Vdm_eta_Ref
 REAL,DIMENSION(0:PP_N   ,0:PP_N)    :: Vdm_xi_N  ,Vdm_eta_N
+#if USE_PARTICLES
+REAL,DIMENSION(0:NGeo   ,0:NGeo)    :: Vdm_xi_NGeo  ,Vdm_eta_NGeo  ,Vdm_zeta_NGeo
+#endif
 #if PP_dim == 3
 REAL,DIMENSION(0:NgeoRef,0:NgeoRef) :: Vdm_zeta_Ref
 REAL,DIMENSION(0:PP_N   ,0:PP_N)    :: Vdm_zeta_N
@@ -249,12 +273,22 @@ REAL    :: xi0(3),dxi(3),length(3)
 #if USE_MPI
 INTEGER           :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
+#endif 
+
+#if USE_PARTICLES
+INTEGER            :: iSide,lowerLimit,ElemID,SideID,NBElemID
+!REAL               :: StartT2,BezierTime
 #endif
+
+LOGICAL            :: meshCheckRef
 !==================================================================================================================================
 ! Prerequisites
 Metrics_fTilde=0.
 Metrics_gTilde=0.
 Metrics_hTilde=0.
+
+! Check Jacobians in Ref already (no good if we only go on because N doesn't catch misbehaving points)
+meshCheckRef=GETLOGICAL('meshCheckRef','.TRUE.')
 
 ! Initialize Vandermonde and D matrices
 ! Only use modal Vandermonde for terms that need to be conserved as Jacobian if N_out>N_in
@@ -348,6 +382,19 @@ DO iElem=1,nElems
                            tmp(:,:,:,0),DetJac_Ref(:,:,:,0,iElem))
 #endif
   END IF
+
+  ! Check Jacobians in Ref already (no good if we only go on because N doesn't catch misbehaving points)
+  IF (meshCheckRef) THEN
+    scaledJac(2)=MINVAL(detJac_ref(1,:,:,:,iElem))/MAXVAL(detJac_ref(1,:,:,:,iElem))
+    IF(scaledJac(2).LT.0.01) THEN
+      WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac
+      WRITE(Unit_StdOut,*) 'Coords near:', Elem_xGP(:,INT(PP_N/2),INT(PP_N/2),INT(PP_NZ/2),iElem)
+      WRITE(Unit_StdOut,*) 'This check is optional. You can disable it by setting meshCheckRef = F'
+      CALL abort(__STAMP__,&
+        'Scaled Jacobian in reference system lower then tolerance in global element:',iElem+offsetElem)
+    END IF
+  END IF
+  
   ! interpolate detJac_ref to the solution points
   CALL ChangeBasisVolume(1,NgeoRef,PP_N,Vdm_NgeoRef_N,DetJac_Ref(:,:,:,:,iElem),DetJac_N)
 
@@ -365,6 +412,7 @@ DO iElem=1,nElems
   scaledJac(2)=MINVAL(detJac_N(1,:,:,:))/MAXVAL(detJac_N(1,:,:,:))
   IF(scaledJac(2).LT.0.01) THEN
     WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac
+    WRITE(Unit_StdOut,*) 'Coords near:', Elem_xGP(:,INT(PP_N/2),INT(PP_N/2),INT(PP_NZ/2),iElem)
     CALL abort(__STAMP__,&
       'Scaled Jacobian lower then tolerance in global element:',iElem+offsetElem)
   END IF
@@ -470,6 +518,40 @@ DO iElem=1,nElems
       CALL LagrangeInterpolationPolys(xi0(3) + dxi(3),PP_N,xiCL_N,wBaryCL_N,Vdm_zeta_N(i,:))
 #endif
     END DO
+  ENDIF
+    
+#if USE_PARTICLES
+    IF(interpolateFromTree)THEN
+        IF((PRESENT(XCL_Ngeo_Out)).OR.(PRESENT(dXCL_NGeo_Out)))THEN
+          ! interpolate Metrics from Cheb-Lobatto N on tree level onto GaussPoints N on quad level
+          DO i=0,NGeo
+            dxi=0.5*(xiCL_NGeo(i)+1.)*length
+            CALL LagrangeInterpolationPolys(xi0(1) + dxi(1),NGeo,xiCL_NGeo,wBaryCL_NGeo,Vdm_xi_NGeo(  i,:))
+            CALL LagrangeInterpolationPolys(xi0(2) + dxi(2),NGeo,xiCL_NGeo,wBaryCL_NGeo,Vdm_eta_NGeo( i,:))
+            CALL LagrangeInterpolationPolys(xi0(3) + dxi(3),NGeo,xiCL_NGeo,wBaryCL_NGeo,Vdm_zeta_NGeo(i,:))
+          END DO
+          IF(PRESENT(XCL_Ngeo_Out))THEN
+            CALL ChangeBasis3D_XYZ(3,NGeo,NGeo,Vdm_xi_NGeo,Vdm_eta_NGeo,Vdm_zeta_NGeo, XCL_NGeo    (1:3,0:NGeo,0:NGeo,0:NGeo) &
+                                                                                     , XCL_NGeo_Out(1:3,0:NGeo,0:NGeo,0:NGeo,iElem))
+          END IF
+          IF(PRESENT(dXCL_nGeo_out))THEN
+            CALL ChangeBasis3D_XYZ(3,NGeo,NGeo,Vdm_xi_NGeo,Vdm_eta_NGeo,Vdm_zeta_NGeo,dXCL_NGeo    (1,1:3,0:NGeo,0:NGeo,0:NGeo) &
+                                                                                     ,dXCL_NGeo_Out(1,1:3,0:NGeo,0:NGeo,0:NGeo,iElem))
+            CALL ChangeBasis3D_XYZ(3,NGeo,NGeo,Vdm_xi_NGeo,Vdm_eta_NGeo,Vdm_zeta_NGeo,dXCL_NGeo    (2,1:3,0:NGeo,0:NGeo,0:NGeo) &
+                                                                                     ,dXCL_NGeo_Out(2,1:3,0:NGeo,0:NGeo,0:NGeo,iElem))
+            CALL ChangeBasis3D_XYZ(3,NGeo,NGeo,Vdm_xi_NGeo,Vdm_eta_NGeo,Vdm_zeta_NGeo,dXCL_NGeo    (3,1:3,0:NGeo,0:NGeo,0:NGeo) &
+                                                                                     ,dXCL_NGeo_Out(3,1:3,0:NGeo,0:NGeo,0:NGeo,iElem))
+          END IF
+        END IF
+        CALL GetBezierControlPoints3D(XCL_NGeo_Out(:,:,:,:,iElem),iElem)
+    ELSE
+        IF(PRESENT(XCL_Ngeo_Out))   XCL_Ngeo_Out(1:3,0:Ngeo,0:Ngeo,0:Ngeo,iElem)= XCL_Ngeo(1:3,0:Ngeo,0:Ngeo,0:Ngeo)
+        IF(PRESENT(dXCL_ngeo_out)) dXCL_Ngeo_Out(1:3,1:3,0:Ngeo,0:Ngeo,0:Ngeo,iElem)=dXCL_Ngeo(1:3,1:3,0:Ngeo,0:Ngeo,0:Ngeo)
+        CALL GetBezierControlPoints3D(XCL_NGeo(:,:,:,:),iElem)
+    END IF
+#endif    
+    
+    IF(interpolateFromTree)THEN
 #if (PP_dim == 3)
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(2,:,:,:,:),Metrics_gTilde(:,:,:,:,iElem,0))
@@ -543,6 +625,46 @@ TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,:,first
 TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(8:10,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 DEALLOCATE(Geo)
 #endif /*MPI*/
+
+#if USE_PARTICLES
+#if USE_MPI
+lowerLimit=nSides ! all incl. my mortar sides
+#else
+lowerLimit=nBCSides+nMortarInnerSides+nInnerSides
+#endif /*MPI*/
+! Next, build the BezierControlPoints,SideSlabNormals,SideSlabIntervals and BoundingBoxIsEmpty for 
+! nBCSides, nInnerMortarSides, nInnerSides, nMPISides_MINE and MINE mortar sides
+! this requires check for flip and MortarSlave2Master
+DO iSide=1,lowerLimit
+  ! check flip or mortar sideid
+  ElemID  =SideToElem(S2E_ELEM_ID,iSide)
+  NBElemID=SideToElem(S2E_NB_ELEM_ID,iSide)
+  SideID=MortarSlave2MasterInfo(iSide)
+  IF(ElemID.EQ.NBElemID)THEN
+    IF(ElemID.EQ.-1) BezierControlPoints3D(:,:,:,iSide)=BezierControlPoints3D(:,:,:,SideID)
+  END IF
+  ! elevation occurs within this routine
+  IF((ElemID.EQ.-1).AND.(SideID.EQ.-1)) CYCLE
+  CALL GetSideSlabNormalsAndIntervals(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)                         &
+                                     ,BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated,iSide) &
+                                     ,SideSlabNormals(1:3,1:3,iSide)                                         &
+                                     ,SideSlabInterVals(1:6,iSide)                                           &
+                                     ,BoundingBoxIsEmpty(iSide)                                              )
+END DO
+
+! here, check the BC-control-points
+DO iSide=1,lowerLimit
+  ElemID=SideToElem(S2E_ELEM_ID,iSide)
+  SideID=MortarSlave2MasterInfo(iSide)
+  ! elevation occurs within this routine
+  IF((ElemID.EQ.-1).AND.(SideID.EQ.-1)) CYCLE
+  IF(SUM(ABS(BezierControlPoints3D(:,:,:,iSide))).LT.1e-10)THEN
+    IPWRITE(UNIT_stdOut,'(I6,A,I6)') ' Warning, BezierControlPoint is zero! SideID:', iSide
+    IPWRITE(UNIT_stdOut,'(I6,A,I6)') ' Elem and NBElemID:', ElemID,SideToElem(S2E_NB_ELEM_ID,iSide)
+    IPWRITE(UNIT_stdOut,*) 'Points',BezierControlPoints3D(:,:,:,iSide)
+  END IF
+END DO
+#endif /*PARTICLES*/
 
 END SUBROUTINE CalcMetrics
 

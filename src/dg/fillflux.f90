@@ -45,7 +45,7 @@ CONTAINS
 
 !==================================================================================================================================
 !> Computes the fluxes for inner sides, MPI sides where the local proc is "master"  and boundary conditions.
-!> The flux computation is performed seperately for advection and diffusion fluxes in case
+!> The flux computation is performed separately for advection and diffusion fluxes in case
 !> parabolic terms are considered.
 !==================================================================================================================================
 SUBROUTINE FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides)
@@ -136,7 +136,7 @@ DO SideID=firstSideID_wo_BC,lastSideID
 
 #if PARABOLIC
   ! 1.2) Fill viscous flux for non-BC sides
-  CALL ViscousFlux(PP_N,FluxV_loc, UPrim_master(:,:,:,SideID), UPrim_slave  (:,:,:,SideID), &
+  CALL ViscousFlux(PP_N,FluxV_loc, UPrim_master(:,:,:,SideID), UPrim_slave  (:,:,:,SideID),&
       gradUx_master(:,:,:,SideID),gradUy_master(:,:,:,SideID), gradUz_master(:,:,:,SideID),&
       gradUx_slave (:,:,:,SideID),gradUy_slave (:,:,:,SideID), gradUz_slave (:,:,:,SideID),&
       NormVec(:,:,:,FV_Elems_Max(SideID),SideID)&

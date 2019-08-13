@@ -32,6 +32,11 @@ LOGICAL            :: InterpolateSolution = .FALSE.   !< flag whether restart so
 CHARACTER(LEN=300) :: RestartFile =""                 !< name of restart file
 CHARACTER(LEN=255) :: NodeType_Restart                !< node type of restart file
 REAL               :: RestartTime                     !< time at which computation is resumed
+
+#if EQNSYSNR == 3
+REAL               :: MuTilda
+#endif
+LOGICAL            :: RestartMean
 #if FV_ENABLED
 INTEGER            :: NFVRestartSuper                 !< Polynomial degree for equidistant supersampling of FV subcells
 #endif

@@ -574,8 +574,7 @@ ELSE
     CALL ViscousFlux(Nloc,Fd_Face_loc,UPrim_master,UPrim_boundary,&
          gradUx_master,gradUy_master,gradUz_master,&
          gradUx_master,gradUy_master,gradUz_master,&
-         NormVec&
-    )
+         NormVec)
     Flux = Flux + Fd_Face_loc
 #endif /*PARABOLIC*/
 

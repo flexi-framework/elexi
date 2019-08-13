@@ -302,9 +302,11 @@ INTEGER                              :: hdferr
 !==================================================================================================================================
 CALL h5eset_auto_f(0, hdferr)
 ! Open the dataset with default properties.
-IF(PRESENT(attrib).AND.attrib)THEN
-  CALL H5AOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
-  CALL H5ACLOSE_F(DSet_ID, iError)
+IF(PRESENT(attrib))THEN
+  IF(attrib) THEN
+    CALL H5AOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
+    CALL H5ACLOSE_F(DSet_ID, iError)
+  END IF
 ELSE
   CALL H5DOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
   CALL H5DCLOSE_F(DSet_ID, iError)
@@ -320,7 +322,7 @@ END SUBROUTINE DatasetExists
 !==================================================================================================================================
 !> Subroutine to determine HDF5 dataset properties in Flexi terminology
 !==================================================================================================================================
-SUBROUTINE GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
+SUBROUTINE GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5,ArrayName_opt)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
@@ -330,8 +332,10 @@ INTEGER,INTENT(OUT)                     :: nVar_HDF5     !< number of variables
 INTEGER,INTENT(OUT)                     :: N_HDF5        !< polynomial degree
 INTEGER,INTENT(OUT)                     :: nElems_HDF5   !< inumber of elements
 CHARACTER(LEN=255),OPTIONAL,INTENT(OUT) :: NodeType_HDF5 !< nodetype string
+CHARACTER(LEN=*),  OPTIONAL,INTENT(IN)  :: ArrayName_opt !< array name to use in state file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+CHARACTER(LEN=255)                      :: ArrayName
 INTEGER                                 :: Rank
 INTEGER(HID_T)                          :: Dset_ID,FileSpace
 INTEGER(HSIZE_T), DIMENSION(7)          :: Dims,DimsMax
@@ -339,9 +343,13 @@ INTEGER(HSIZE_T), DIMENSION(7)          :: Dims,DimsMax
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,A)')' GET SIZE OF DATA IN HDF5 FILE... '
 
+IF(.NOT.PRESENT(ArrayName_opt)) THEN
+    ArrayName = 'DG_Solution'
+END IF
+
 ! Read in attributes
-! Open the dataset with default properties.
-CALL H5DOPEN_F(File_ID, 'DG_Solution', Dset_ID, iError)
+CALL H5DOPEN_F(File_ID, ArrayName, Dset_ID, iError)
+
 ! Get the data space of the dataset.
 CALL H5DGET_SPACE_F(Dset_ID, FileSpace, iError)
 ! Get number of dimensions of data space

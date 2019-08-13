@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !==================================================================================================================================
-!> Soubroutines providing exactly evaluated functions used in initialization or boundary conditions.
+!> Subroutines providing exactly evaluated functions used in initialization or boundary conditions.
 !==================================================================================================================================
 MODULE MOD_Exactfunc
 ! MODULES
@@ -75,6 +75,7 @@ CALL addStrListEntry('IniExactFunc','sinevel'  ,4)
 CALL addStrListEntry('IniExactFunc','sinevelx' ,41)
 CALL addStrListEntry('IniExactFunc','sinevely' ,42)
 CALL addStrListEntry('IniExactFunc','sinevelz' ,43)
+CALL addStrListEntry('IniExactFunc','sinevelnorho' ,44)
 CALL addStrListEntry('IniExactFunc','roundjet' ,5)
 CALL addStrListEntry('IniExactFunc','cylinder' ,6)
 CALL addStrListEntry('IniExactFunc','shuvortex',7)
@@ -87,6 +88,7 @@ CALL addStrListEntry('IniExactFunc','dmr'      ,13)
 CALL addStrListEntry('IniExactFunc','blasius'  ,1338)
 #endif
 CALL prms%CreateRealArrayOption(    'AdvVel',       "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
+CALL prms%CreateRealArrayOption(    'AdvArray',     "Advection velocity array for linear setup.")
 CALL prms%CreateRealOption(         'MachShock',    "Parameter required for CASE(10)", '1.5')
 CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE(10)", '1.0')
 CALL prms%CreateRealArrayOption(    'IniCenter',    "Shu Vortex CASE(7) (x,y,z)")
@@ -125,8 +127,10 @@ IniExactFunc = GETINTFROMSTR('IniExactFunc')
 IniRefState  = GETINT('IniRefState', "-1")
 ! Read in boundary parameters
 SELECT CASE (IniExactFunc)
-CASE(2,21,3,4,41,42,43) ! synthetic test cases
+CASE(2,21,3,4,41,42,43,44) ! synthetic test cases
   AdvVel       = GETREALARRAY('AdvVel',3)
+CASE(31)
+  AdvArray     = GETREALARRAY('AdvArray',9)
 CASE(7) ! Shu Vortex
   IniCenter    = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
   IniAxis      = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
@@ -174,7 +178,7 @@ USE MOD_Preproc        ,ONLY: PP_PI
 USE MOD_Globals        ,ONLY: Abort
 USE MOD_Mathtools      ,ONLY: CROSS
 USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
-USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniAxis,AdvVel
+USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniAxis,AdvVel,AdvArray
 USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens
 USE MOD_Exactfunc_Vars ,ONLY: P_Parameter,U_Parameter
 USE MOD_Equation_Vars  ,ONLY: IniRefState,RefStateCons,RefStatePrim
@@ -211,7 +215,7 @@ REAL                            :: pi_loc,phi,radius       ! needed for cylinder
 REAL                            :: h,sRT,pexit,pentry   ! needed for Couette-Poiseuille
 #if PARABOLIC
 ! needed for blasius BL
-INTEGER                         :: nSteps,i
+INTEGER                         :: nSteps,i,j
 REAL                            :: eta,deta,deta2,f,fp,fpp,fppp,fbar,fpbar,fppbar,fpppbar
 REAL                            :: x_eff(3),x_offset(3)
 #endif
@@ -307,6 +311,26 @@ CASE(3) ! linear in rho
     Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
     Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
   END IF
+  
+CASE(31) ! linear in xyz
+  prim(1)   = RefStatePrim(1,RefState)
+  prim(2:4) = 0.
+  prim(5)   = 1
+  
+  DO j=0,2
+    DO i=1,3
+      IF (AdvArray(j*3+i).NE.0) THEN
+        prim(j+2)=prim(j+2) + x(i)/AdvArray(j*3+i)
+      ELSE
+        prim(j+2)=prim(j+2)
+      END IF
+    END DO
+  END DO
+  
+  Resu(1)  =prim(1) ! rho
+  Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
+  Resu(5)  =4.4642857 !prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e 
+  
 CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
   Frequency=1.
   Amplitude=0.1
@@ -395,6 +419,32 @@ CASE(43) ! SINUS in z
     Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
   END IF
 #endif
+CASE(44) ! ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D), only velocity
+  Frequency=1.
+  Amplitude=0.1
+  Omega=PP_Pi*Frequency
+  a=AdvVel(1)*2.*PP_Pi
+
+  ! g(t)
+  Resu(1)          = 2.
+  Resu(2:PP_dim+1) = 2.+ Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+#if (PP_dim == 2)
+  Resu(4)          = 0.
+#endif
+  Resu(5)          = Resu(1)*Resu(1)
+  IF(fullBoundaryOrder) THEN
+    ! g'(t)
+    Resu_t(1:PP_dim+1) = (-a)*Amplitude*cos(Omega*SUM(x(1:PP_dim)) - a*tEval)
+    Resu_t(5)      = 2.*Resu(1)*Resu_t(1)
+    ! g''(t)
+    Resu_tt(1:PP_dim+1) = -a*a*Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+    Resu_tt(5)     = 2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
+#if (PP_dim == 2)
+    Resu_t(4)      = 0.
+    Resu_tt(4)     = 0.
+#endif
+  END IF
+  
 CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   prim(1)  =1.
   prim(2:4)=0.

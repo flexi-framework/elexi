@@ -123,7 +123,7 @@ SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build Metrics ...'
 ! |       |       |       |       |              computed as FV_dx_XI_R(i-1) + FV_dx_XI_L(i)
 ! ---------------------------------
 ! |       |       |       |       |    DG_dx_master/slave: distance from DG interface to first Gauss point
-! |<->.   |   .   |   .   |   .<->|    FV_dx_master/slave: distance from DG interface to first center of FV subell
+! |<->.   |   .   |   .   |   .<->|    FV_dx_master/slave: distance from DG interface to first center of FV subcell
 ! |       |       |       |       |                        stored in Face-based coordinates
 ! ---------------------------------
 ! |       |       |       |       |

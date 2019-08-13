@@ -60,6 +60,8 @@ CALL prms%CreateRealOption(    'meshScale',           "Scale the mesh by this fa
                                                       '1.0')
 CALL prms%CreateLogicalOption( 'meshdeform',          "Apply simple sine-shaped deformation on cartesion mesh (for testing).",&
                                                       '.FALSE.')
+CALL prms%CreateLogicalOption( 'meshCheckRef',        "Flag if the mesh Jacobians should be checked in the reference system in "//&
+                                                      "addition to the computational system.",'.TRUE.')
 #if (PP_dim == 3)
 CALL prms%CreateLogicalOption( 'crossProductMetrics', "Compute mesh metrics using cross product form. Caution: in this case "//&
                                                       "free-stream preservation is only guaranteed for N=3*NGeo.",&
@@ -111,6 +113,20 @@ USE MOD_FV_Metrics,         ONLY:InitFV_Metrics
 USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 #if (PP_dim == 2)
 USE MOD_2D
+#endif
+#if USE_PARTICLES
+USE MOD_Particle_Mesh!,          ONLY:InitParticleMesh,InitElemVolumes,InitTriaParticleGeometry
+USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Mappings,      ONLY:Particle_InitMappings
+USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
+USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3D,SideSlabNormals,SideSlabIntervals
+USE MOD_Particle_Surfaces_Vars, ONLY:BoundingBoxIsEmpty,ElemSlabNormals,ElemSlabIntervals
+USE MOD_Interpolation_Vars,     ONLY:xGP
+!USE MOD_Particle_Erosion,       ONLY:InitParticleErosionMesh
+!USE MOD_Particle_Erosion_Vars,  ONLY:PartTrackErosion
+#if CODE_ANALYZE
+USE MOD_Particle_Surfaces_Vars, ONLY: SideBoundingBoxVolume
+#endif /*CODE_ANALYZE*/
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -237,14 +253,18 @@ ELSE
 ENDIF
 
 ! Return if no connectivity and metrics are required (e.g. for visualization mode)
-IF (meshMode.GT.0) THEN
+#if USE_PARTICLES
 
-  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING setLocalSideIDs..."
+#else
+IF (meshMode.GT.0) THEN
+#endif
+
+  SWRITE(UNIT_stdOut,'(A)') " NOW CALLING setLocalSideIDs..."
   CALL setLocalSideIDs()
 
 #if USE_MPI
   ! for MPI, we need to exchange flips, so that MINE MPISides have flip>0, YOUR MpiSides flip=0
-  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING exchangeFlip..."
+  SWRITE(UNIT_stdOut,'(A)') " NOW CALLING exchangeFlip..."
   CALL exchangeFlip()
 #endif
 
@@ -297,7 +317,12 @@ IF (meshMode.GT.0) THEN
   ! fill ElemToSide, SideToElem,BC
   ALLOCATE(ElemToSide(2,6,nElems))
   ALLOCATE(SideToElem(5,nSides))
+!  Particles need BC allocated for ALL sides, not just BC sides
+#if USE_PARTICLES
+  ALLOCATE(BC(1:nSides))
+#else
   ALLOCATE(BC(1:nBCSides))
+#endif
   ALLOCATE(AnalyzeSide(1:nSides))
   ElemToSide  = 0
   SideToElem  = -1   !mapping side to elem, sorted by side ID (for surfint)
@@ -307,15 +332,31 @@ IF (meshMode.GT.0) THEN
   !NOTE: nMortarSides=nMortarInnerSides+nMortarMPISides
   ALLOCATE(MortarType(2,1:nSides))              ! 1: Type, 2: Index in MortarInfo
   ALLOCATE(MortarInfo(MI_FLIP,4,nMortarSides)) ! [1]: 1: Neighbour sides, 2: Flip, [2]: small sides
+
+#if USE_PARTICLES
+  ALLOCATE(MortarSlave2MasterInfo(1:nSides))
+! Particles need this changed to -1 to follow boltzplatz assumptions
+  MortarType=-1
+#else
   MortarType=0
+#endif
   MortarInfo=-1
 
-  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING fillMeshInfo..."
+  SWRITE(UNIT_stdOut,'(A)') " NOW CALLING fillMeshInfo..."
   CALL fillMeshInfo()
+  
+!#if USE_PARTICLES
+!  CALL InitParticleMeshBasis(NGeo,PP_N,xGP)
+!#endif
+  
 
-  ! dealloacte pointers
-  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING deleteMeshPointer..."
+#if USE_PARTICLES
+! keep pointers for particle mesh
+#else
+  ! deallocate pointers
+  SWRITE(UNIT_stdOut,'(A)') " NOW CALLING deleteMeshPointer..."
   CALL deleteMeshPointer()
+#endif
 
 #if (PP_dim ==2)
   ! In 2D, there is only one flip for the slave sides (1)
@@ -328,7 +369,17 @@ IF (meshMode.GT.0) THEN
 
   ! Build necessary mappings
   CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M,dim=PP_dim)
+  
+#if USE_PARTICLES
+  CALL Particle_InitMappings(PP_N, VolToSideA, VolToSideIJKA, VolToSide2A, CGNS_VolToSideA, &
+        SideToVolA, SideToVol2A, CGNS_SideToVol2A, FS2M)
+#endif
+  
+#if USE_PARTICLES
+        
+#else
 END IF
+#endif
 
 IF (meshMode.GT.1) THEN
 
@@ -355,13 +406,53 @@ IF (meshMode.GT.1) THEN
   ! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
   ! assign 1/detJ (sJ)
   ! assign normal and tangential vectors and surfElems on faces
+  
+#if USE_PARTICLES
+ALLOCATE(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,1:nSides) ) 
+BezierControlPoints3D=0.
+
+ALLOCATE(SideSlabNormals(1:3,1:3,1:nSides),SideSlabIntervals(1:6,nSides),BoundingBoxIsEmpty(1:nSides) )
+SideSlabNormals=0.
+SideSlabIntervals=0.
+BoundingBoxIsEmpty=.TRUE.
+ALLOCATE(ElemSlabNormals(1:3,0:3,1:nElems),ElemSlabIntervals(1:6,nElems) )
+ElemSlabNormals=0.
+ElemSlabIntervals=0.
+#if CODE_ANALYZE
+ALLOCATE(SideBoundingBoxVolume(1:nSides))
+SideBoundingBoxVolume=0.
+#endif /*CODE_ANALYZE*/
+
+! compute elem bary and elem radius
+CALL InitParticleMesh()
+IF (TriaTracking) THEN
+  CALL InitParticleGeometry()
+END IF
+#endif
 
 #if (PP_dim == 3)
   ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
   crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')
 #endif
-  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING calcMetrics..."
+  SWRITE(UNIT_stdOut,'(A)') " NOW CALLING calcMetrics..."
+#if USE_PARTICLES
+  CALL InitParticleMeshBasis(NGeo,PP_N,xGP)
+#endif
+  
+#if USE_PARTICLES
+ALLOCATE(XCL_NGeo(1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
+XCL_NGeo = 0.
+ALLOCATE(dXCL_NGeo(1:3,1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
+dXCL_NGeo = 0.
+CALL CalcMetrics(XCL_NGeo_Out=XCL_NGeo,dXCL_NGeo_Out=dXCL_NGeo)
+
+ALLOCATE(ElemBaryNGeo(1:3, 1:nElems))
+CALL BuildElementOrigin()
+            
+#else
   CALL CalcMetrics()     ! DG metrics
+#endif
+  
 #if FV_ENABLED
   CALL InitFV_Metrics()  ! FV metrics
 #endif
@@ -383,6 +474,11 @@ IF (meshMode.GT.0) THEN
     END DO
   END DO ! iElem
 END IF
+  
+#if USE_PARTICLES
+! init element volume
+CALL InitElemVolumes()
+#endif
 
 SDEALLOCATE(NodeCoords)
 SDEALLOCATE(dXCL_N)
@@ -392,6 +488,15 @@ SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
 
 CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
+
+#if USE_PARTICLES
+ALLOCATE(ElemGlobalID(1:nElems))
+DO iElem=1,nElems
+  ElemGlobalID(iElem)=OffsetElem+iElem
+END DO ! iElem=1,nElems
+CALL AddToElemData(ElementOut,'ElemID',IntArray=ElemGlobalID)
+#endif /*PARTICLES*/
+
 
 MeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
@@ -417,6 +522,7 @@ SDEALLOCATE(SideToElem)
 SDEALLOCATE(BC)
 SDEALLOCATE(AnalyzeSide)
 
+! mortars
 SDEALLOCATE(MortarType)
 SDEALLOCATE(MortarInfo)
 

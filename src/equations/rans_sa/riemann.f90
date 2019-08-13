@@ -47,6 +47,7 @@ INTEGER,PARAMETER      :: PRM_RIEMANN_HLL           = 4
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLE          = 5
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLEM         = 6
 #ifdef SPLIT_DG
+INTEGER,PARAMETER      :: PRM_RIEMANN_CH            = 7
 INTEGER,PARAMETER      :: PRM_RIEMANN_Average       = 0
 #endif
 
@@ -105,6 +106,7 @@ CALL addStrListEntry('Riemann','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('Riemann','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('Riemann','hllem',        PRM_RIEMANN_HLLEM)
 #ifdef SPLIT_DG
+CALL addStrListEntry('Riemann','ch',           PRM_RIEMANN_CH)
 CALL addStrListEntry('Riemann','avg',          PRM_RIEMANN_Average)
 #endif
 CALL prms%CreateIntFromStringOption('RiemannBC', "Riemann solver used for boundary conditions: Same, LF, Roe, RoeEntropyFix, "//&
@@ -119,6 +121,7 @@ CALL addStrListEntry('RiemannBC','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('RiemannBC','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('RiemannBC','hllem',        PRM_RIEMANN_HLLEM)
 #ifdef SPLIT_DG
+CALL addStrListEntry('RiemannBC','ch',           PRM_RIEMANN_CH)
 CALL addStrListEntry('RiemannBC','avg',          PRM_RIEMANN_Average)
 #endif
 CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
@@ -198,6 +201,8 @@ CASE(PRM_RIEMANN_ROEENTROPYFIX)
   Riemann_pointer => Riemann_RoeEntropyFix
 CASE(PRM_RIEMANN_ROEL2)
   Riemann_pointer => Riemann_RoeL2
+CASE(PRM_RIEMANN_CH)
+  Riemann_pointer => Riemann_CH
 CASE(PRM_RIEMANN_Average)
   Riemann_pointer => Riemann_FluxAverage
 CASE DEFAULT
@@ -217,6 +222,8 @@ CASE(PRM_RIEMANN_ROEENTROPYFIX)
   RiemannBC_pointer => Riemann_RoeEntropyFix
 CASE(PRM_RIEMANN_ROEL2)
   RiemannBC_pointer => Riemann_RoeL2
+CASE(PRM_RIEMANN_CH)
+  Riemann_pointer => Riemann_CH
 CASE(PRM_RIEMANN_Average)
   RiemannBC_pointer => Riemann_FluxAverage
 CASE DEFAULT
@@ -260,7 +267,7 @@ ELSE
   Riemann_loc => Riemann_pointer
 END IF
 
-! Momentum has to be rotatet using the normal system individual for each
+! Momentum has to be rotated using the normal system individual for each
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
   ! left state: U_L
   U_LL(DENS)=U_L(DENS,i,j)
@@ -758,7 +765,7 @@ END SUBROUTINE Riemann_RoeL2
 !=================================================================================================================================
 !> Standard Harten-Lax-Van-Leer Riemann solver without contact discontinuity
 !=================================================================================================================================
-PURE SUBROUTINE Riemann_HLL(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_HLL(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars, ONLY: KappaM1
 IMPLICIT NONE

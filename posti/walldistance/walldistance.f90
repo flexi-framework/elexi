@@ -119,6 +119,7 @@ USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
 USE MOD_Interpolation_Vars, ONLY: NodeType,NodeTypeVisu
 USE MOD_Interpolation,      ONLY: GetVandermonde
 USE MOD_Basis,              ONLY: LagrangeInterpolationPolys
+USE MOD_ReadInTools,        ONLY: prms,GETREAL,FinalizeParameters
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -145,7 +146,15 @@ REAL,PARAMETER                :: beta   = 0.1
 REAL                          :: eta
 REAL                          :: LagXi(0:PP_N),LagEta(0:PP_N)
 INTEGER                       :: nearestSide,qTrip,pTrip
+REAL                          :: meshScale
 !===================================================================================================================================
+! We need to get the meshScale again. Finalize all parameters, then define meshScale and pray we didn't loose anything on the way
+CALL FinalizeParameters()
+CALL prms%CreateRealOption(    'meshScale',           "Scale the mesh by this factor (shrink/enlarge).",&
+                                                      '1.0')
+meshScale=GETREAL('meshScale','1.0')
+
+
 ! First step: Coarse search using the supersampled points
 DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -259,7 +268,22 @@ WRITE(UNIT_stdOut,'(A)') 'FINE SEARCH DONE!'
 IF (includeTrip) THEN
   WRITE(UNIT_stdOut,'(A)') 'INCLUDE TRIP POINT PROJECTION'
   ! First step: Coarse search using the supersampled points, identify nearest side
+#if PP_dim == 3
+  XVol = 0.
+  xVol(1:PP_dim-1) = TripX(1:PP_dim-1)
+! Correct for meshScale
+  IF (meshScale.NE.1) THEN
+    XVol = XVol*meshScale
+    WRITE(UNIT_stdOut,*) 'CORRECT TRIP POINT WITH MESHSCALE. NEW LOCATION:',XVol
+  END IF
+#else
   xVol = TripX(1:PP_dim)
+  ! Correct for meshScale
+  IF (meshScale.NE.1) THEN
+    XVol = XVol*meshScale
+    WRITE(UNIT_stdOut,*) 'CORRECT TRIP POINT WITH MESHSCALE. NEW LOCATION:',XVol
+  END IF
+#endif
   best = HUGE(1.)
   DO iSide = 1, nBCSides
     IF ((BoundaryType(BC(iSide),BC_TYPE).NE.3).AND.(BoundaryType(BC(iSide),BC_TYPE).NE.4)) CYCLE

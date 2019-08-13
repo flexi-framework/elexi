@@ -264,7 +264,7 @@ DO iVar=1,nVarDep
   END DO
 END DO
 
-! print the dependecy table
+! print the dependency table
 SWRITE(*,*) "Dependencies: ", withDGOperator
 WRITE(format,'(I2)') SIZE(DepTable,2)
 DO iVar=1,nVarDep

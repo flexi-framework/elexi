@@ -167,6 +167,9 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#ifdef NFS
+CHARACTER(len=255) :: NFS_test
+#endif
 !==================================================================================================================================
 
 #if USE_MPI
@@ -186,6 +189,26 @@ CALL MPI_Info_set(MPIInfo, "romio_ds_write","disable",iError)
 ! Enable ROMIO's collective buffering
 CALL MPI_Info_set(MPIInfo, "romio_cb_read", "enable", iError)
 CALL MPI_Info_set(MPIInfo, "romio_cb_write","enable", iError)
+#endif
+#ifdef NFS
+CALL MPI_Info_Create(MPIInfo, iError)
+! For NFS file system:
+! Set ROMIO's data-sieving to automatic
+CALL MPI_Info_set(MPIInfo, "romio_ds_read", "automatic",iError)
+CALL MPI_Info_set(MPIInfo, "romio_ds_write","automatic",iError)
+!! Enable ROMIO's collective buffering
+CALL MPI_Info_set(MPIInfo, "romio_cb_read", "enable", iError)
+CALL MPI_Info_set(MPIInfo, "romio_cb_write","enable", iError)
+! Work around MPI-IO issue 4446
+!IF (SETENV('OMPI_MCA_fs_ufs_lock_algorithm'//ACHAR(0),'1'//ACHAR(0),1).EQ.1) THEN
+!    SWRITE(*,*) 'CHANGED NFS LOCK POLICY SUCCESSFULLY'
+!ELSE
+!    SWRITE(*,*) 'FAILED CHANGING NFS LOCK POLICY'
+!END IF
+! Abort on ILA NFS if we would get absurdly high IO times
+CALL get_environment_variable("OMPI_MCA_fs_ufs_lock_algorithm", NFS_test)
+IF (NFS_test.NE.'1') CALL CollectiveStop(__STAMP__, &
+                     'OMPI_MCA_fs_ufs_lock_algorithm != 1 on ILA NFS. Aborting to avoid high IO wait. Please load the FLEXI module')
 #endif
 #endif /*USE_MPI*/
 END SUBROUTINE InitMPIInfo
@@ -429,6 +452,7 @@ END SUBROUTINE AddToFieldData
 !> Takes a group and reads the names of the datasets
 !==================================================================================================================================
 SUBROUTINE GetDatasetNamesInGroup(group,names)
+! MODULES
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*)               :: group    !< name of group
@@ -444,5 +468,28 @@ DO i=1,nMembers
   IF (type.NE.H5G_DATASET_F) names(i) = ''
 END DO
 END SUBROUTINE GetDatasetNamesInGroup
+
+
+!==================================================================================================================================
+!> Sets an environment variable for the currently running program using C bindings
+!> ATTENTION: Name string must be terminated with 'MY_ENV_VAR'//ACHAR(0)
+!> https://software.intel.com/zh-cn/comment/1842053
+!==================================================================================================================================
+!FUNCTION SETENV(name,value,overwrite) BIND(C,name='setenv')
+!! MODULES
+!USE ISO_C_BINDING
+!!----------------------------------------------------------------------------------------------------------------------------------!
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! COMBINE INPUT AND VARIABLE SETTING
+!!==================================================================================================================================
+!    INTEGER(C_INT) setenv
+!    CHARACTER(KIND=C_CHAR), INTENT(in) :: name(*)
+!    CHARACTER(KIND=C_CHAR), INTENT(in) :: value(*)
+!    INTEGER(C_INT), VALUE :: overwrite
+!
+!END FUNCTION SETENV
+
 
 END MODULE MOD_IO_HDF5

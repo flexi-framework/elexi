@@ -52,6 +52,7 @@ INTEGER,PARAMETER      :: PRM_SPLITDG_MO          = 1
 INTEGER,PARAMETER      :: PRM_SPLITDG_DU          = 2
 INTEGER,PARAMETER      :: PRM_SPLITDG_KG          = 3
 INTEGER,PARAMETER      :: PRM_SPLITDG_PI          = 4
+INTEGER,PARAMETER      :: PRM_SPLITDG_CH          = 5
 
 INTERFACE InitSplitDG
   MODULE PROCEDURE InitSplitDG
@@ -59,6 +60,7 @@ END INTERFACE
 
 PUBLIC::InitSplitDG,DefineParametersSplitDG
 PUBLIC::SplitDGSurface_pointer,SplitDGVolume_pointer
+PUBLIC::GetLogMean
 !==================================================================================================================================
 
 CONTAINS
@@ -84,6 +86,7 @@ CALL addStrListEntry('SplitDG','mo',           PRM_SPLITDG_MO)
 CALL addStrListEntry('SplitDG','du',           PRM_SPLITDG_DU)
 CALL addStrListEntry('SplitDG','kg',           PRM_SPLITDG_KG)
 CALL addStrListEntry('SplitDG','pi',           PRM_SPLITDG_PI)
+CALL addStrListEntry('SplitDG','ch',           PRM_SPLITDG_CH)
 
 END SUBROUTINE DefineParametersSplitDG
 
@@ -124,6 +127,9 @@ CASE(PRM_SPLITDG_KG)
 CASE(PRM_SPLITDG_PI)
   SplitDGVolume_pointer  => SplitVolumeFluxPI
   SplitDGSurface_pointer => SplitSurfaceFluxPI
+CASE(PRM_SPLITDG_CH)
+  SplitDGVolume_pointer  => SplitVolumeFluxCH
+  SplitDGSurface_pointer => SplitSurfaceFluxCH
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'SplitDG formulation not defined!')
@@ -644,5 +650,167 @@ F(4)= 0.
 F(5)= 0.125*(U_LL(DENS)+U_RR(DENS))*(e_LL+e_RR)*(U_LL(VEL1)+U_RR(VEL1))                      ! {rho}*{h}*{u}
 
 END SUBROUTINE SplitSurfaceFluxPI
+
+!==================================================================================================================================
+!> Computes the Split-Flux retaining the entropy conserving formulation of Chandrashekar
+!==================================================================================================================================
+PPURE SUBROUTINE SplitVolumeFluxCH(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+! MODULES
+USE MOD_PreProc
+USE MOD_EOS_Vars, ONLY:sKappaM1
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef     !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U        !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim    !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef     !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M        !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux     !< flux in reverence space
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                    :: beta,betaRef            ! auxiliary variables for the inverse Temperature
+REAL                                    :: pMean,hMean             ! auxiliary variable for the mean pressure and enthalpy
+REAL                                    :: uMean,vMean,wMean       ! auxiliary variable for the average velocities
+REAL                                    :: rhoLogMean,betaLogMean  ! auxiliary variable for the logarithmic means
+REAL,DIMENSION(PP_nVar)                 :: fTilde,gTilde           ! flux in physical space
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVar)                 :: hTilde                  ! flux in physical space
+#endif
+!==================================================================================================================================
+! average velocities
+uMean = 0.5*(UPrimRef(2) + UPrim(2))
+vMean = 0.5*(UPrimRef(3) + UPrim(3))
+wMean = 0.5*(UPrimRef(4) + UPrim(4))
+
+! inverse temperature
+betaRef  = 0.5*URef(1)/UPrimRef(5)
+beta     = 0.5*U(1)/UPrim(5)
+
+! Density and inverse temperature logarithmic average
+CALL GetLogMean(URef(1),U(1),rhoLogMean)
+CALL GetLogMean(betaRef,beta,betaLogMean)
+! Average of pressure and enthalpy
+pMean = 0.5*(URef(1)+U(1))/(betaRef+beta)
+hMean = 0.5*sKappaM1/betaLogMean + pMean/rhoLogMean + &
+        0.5*(UPrimRef(2)*UPrim(2) + UPrimRef(3)*UPrim(3) + UPrimRef(4)*UPrim(4))
+
+! local Euler fluxes x-direction
+fTilde(1) = rhoLogMean*uMean                                                       ! {rho}_log*{u}
+fTilde(2) = rhoLogMean*uMean**2 + pMean                                            ! {rho}_log*{u}²+{p}
+fTilde(3) = rhoLogMean*uMean*vMean                                                 ! {rho}_log*{u}*{v}
+#if PP_dim == 3
+fTilde(4) = rhoLogMean*uMean*wMean                                                 ! {rho}_log*{u}*{w}
+#else
+fTilde(4) = 0.
+#endif
+fTilde(5) = rhoLogMean*hMean*uMean                                                 ! {rho}_log*{h}*{u}
+! local Euler fluxes y-direction
+gTilde(1) = rhoLogMean*vMean                                                       ! {rho}_log*{v}
+gTilde(2) = rhoLogMean*vMean*uMean                                                 ! {rho}_log*{v}*{u}
+gTilde(3) = rhoLogMean*vMean**2 +pMean                                             ! {rho}_log*{v}²+{p}
+#if PP_dim == 3
+gTilde(4) = rhoLogMean*vMean*wMean                                                 ! {rho}_log*{v}*{w}
+#else
+gTilde(4) = 0.
+#endif
+gTilde(5) = rhoLogMean*hMean*vMean                                                 ! {rho}_log*{h}*{v}
+#if PP_dim == 3
+! local Euler fluxes z-direction
+hTilde(1) = rhoLogMean*wMean                                                       ! {rho}_log*{w}
+hTilde(2) = rhoLogMean*wMean*uMean                                                 ! {rho}_log*{w}*{u}
+hTilde(3) = rhoLogMean*wMean*vMean                                                 ! {rho}_log*{w}*{v}
+hTilde(4) = rhoLogMean*wMean**2 + pMean                                            ! {rho}_log*{w}²+{p}
+hTilde(5) = rhoLogMean*hMean*wMean                                                 ! {rho}_log*{h}*{w}
+#endif
+
+! transform into reference space
+Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
+#if PP_dim == 3
+          0.5*(MRef(3)+M(3))*hTilde(:) + &
+#endif
+          0.5*(MRef(2)+M(2))*gTilde(:)
+
+! Acount for factor of 1/2 in D matrix
+Flux = Flux*2.
+
+END SUBROUTINE SplitVolumeFluxCH
+
+!==================================================================================================================================
+!> Computes the surface flux for the entropy conserving formulation of Chandrashekar
+!==================================================================================================================================
+PPURE SUBROUTINE SplitSurfaceFluxCH(U_LL,U_RR,F)
+! MODULES
+USE MOD_PreProc
+USE MOD_EOS_Vars, ONLY:sKappaM1
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR !< variables at the right surfaces
+REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F    !< resulting flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                :: beta_LL,beta_RR        ! auxiliary variables for the inverse Temperature
+REAL                                :: pMean,hMean            ! auxiliary variable for the mean pressure and enthalpy
+REAL                                :: uMean,vMean,wMean      ! auxiliary variable for the average velocities
+REAL                                :: rhoLogMean,betaLogMean ! auxiliary variable for the logarithmic mean
+!==================================================================================================================================
+! average velocities
+uMean = 0.5*(U_LL(VEL1) + U_RR(VEL1))
+vMean = 0.5*(U_LL(VEL2) + U_RR(VEL2))
+wMean = 0.5*(U_LL(VEL3) + U_RR(VEL3))
+
+! inverse temperature
+beta_LL = 0.5*U_LL(DENS)/U_LL(PRES)
+beta_RR = 0.5*U_RR(DENS)/U_RR(PRES)
+
+! average pressure, enthalpy, density and inverse temperature
+! logarithmic mean
+CALL GetLogMean(U_LL(DENS),U_RR(DENS),rhoLogMean)
+CALL GetLogMean(beta_LL,beta_RR,betaLogMean)
+! "standard" average
+pMean = 0.5*(U_LL(DENS)+U_RR(DENS))/(beta_LL+beta_RR)
+hMean = 0.5*sKappaM1/betaLogMean + pMean/rhoLogMean + &
+       0.5*(U_LL(VEL1)*U_RR(VEL1) + U_LL(VEL2)*U_RR(VEL2) + U_LL(VEL3)*U_RR(VEL3))
+
+!compute flux
+F(1) = rhoLogMean*uMean
+F(2) = F(1)*uMean + pMean
+F(3) = F(1)*vMean
+F(4) = F(1)*wMean
+F(5) = F(1)*hMean
+
+END SUBROUTINE SplitSurfaceFluxCH
+
+!==================================================================================================================================
+!> auxilary function for calculating the logarithmic mean numerically stable according to Ismail and Roe
+!==================================================================================================================================
+ELEMENTAL SUBROUTINE GetLogMean(U_L,U_R,UMean)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(IN)  :: U_L   !< variables at the left surfaces
+REAL,INTENT(IN)  :: U_R   !< variables at the right surfaces
+REAL,INTENT(OUT) :: UMean !< resulting flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,PARAMETER   :: epsilon = 0.01
+REAL             :: chi,f,u,N ! auxiliary variables
+!==================================================================================================================================
+chi = U_L/U_R
+f = (chi-1)/(chi+1)
+u = f*f
+
+IF (u .LT. epsilon) THEN
+  N = 1.0+u/3.0+u*u/5.0+u*u*u/7.0
+ELSE
+  N = log(chi)/(2.*f)
+ENDIF
+
+UMean = (U_L+U_R)/(2.*N)
+END SUBROUTINE getLogMean
 
 END MODULE MOD_SplitFlux

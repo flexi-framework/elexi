@@ -420,7 +420,7 @@ DO iLegendre=2,N_in
   Lder_Nm1=Lder
 END DO ! iLegendre
 q=REAL(2*N_in+1)/REAL(N_in+1)*(x*L -L_Nm2) !L_{N_in+1}-L_{N_in-1} !L_Nm2 is L_Nm1, L_Nm1 was overwritten!
-qder= REAL(2*N_in+1)*L             !Lder_{N_in+1}-Lder_{N_in-1}
+qder= REAL(2*N_in+1)*L                  !Lder_{N_in+1}-Lder_{N_in-1}
 END SUBROUTINE qAndLEvaluation
 
 

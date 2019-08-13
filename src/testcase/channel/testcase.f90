@@ -96,6 +96,12 @@ CALL prms%CreateRealOption('ChannelMach', "Bulk mach number used in the channel 
 CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
                                               "(Note: always called at global analyze level)", '1000')
+#if USE_PARTICLES
+CALL prms%CreateLogicalOption(  'Part-CustomChannel', "Allow channel dimensions other than Moser")    
+CALL prms%CreateRealOption(     'Part-ChannelReTau',  "Custom channel Re_tau")
+CALL prms%CreateRealOption(     'Part-ChannelUBulk',  "Custom channel bulk velocity")
+CALL prms%CreateRealOption(     'Part-ChannelDelta',  "Custom channel half height")
+#endif
 END SUBROUTINE DefineParametersTestcase
 
 !==================================================================================================================================
@@ -108,7 +114,12 @@ USE MOD_Globals
 USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState,RefStateCons
-USE MOD_EOS_Vars,           ONLY: kappa,mu0,R
+USE MOD_EOS_Vars,           ONLY: kappa,mu0
+#if USE_PARTICLES
+USE MOD_ReadInTools
+#else
+USE MOD_ReadInTools,        ONLY: GETINT
+#endif
 USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Eos,                ONLY: PrimToCons
 IMPLICIT NONE
@@ -118,6 +129,9 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
+#if USE_PARTICLES
+REAL                     :: rho
+#endif
 REAL                     :: bulkMach,pressure
 CHARACTER(LEN=7)         :: varnames(2)
 REAL                     :: UE(PP_2Var)
@@ -154,7 +168,45 @@ IF(MPIRoot) THEN
   WRITE(*,*) 'Associated Pressure for Mach = ',bulkMach,' is', pressure
 END IF
 
-dpdx = -1. ! Re_tau^2*rho*nu^2/delta^3
+#if USE_PARTICLES
+customChannel = GETLOGICAL('Part-CustomChannel','.FALSE.')
+IF (customChannel .EQV. .TRUE.) THEN
+    rho      = RefStatePrim(1,IniRefState)
+    
+    Re_tau   = GETREAL('Part-ChannelReTau','0.')
+    uBulk    = GETREAL('Part-ChannelUBulk','0.')
+    delta    = GETREAL('Part-ChannelDelta','0.')
+    
+    dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho   
+    
+    ! Tell the user the calculated variables to check
+    IF(MPIRoot) THEN
+      WRITE(*,*) 'Bulk velocity given. uBulk =',uBulk
+      WRITE(*,*) 'Associated pressure gradient. -dp/dx=:', dpdx, 'Pa s'
+    END IF
+ELSE
+#endif
+    Re_tau       = 1/mu0
+    c1 = 2.4390244
+    uBulk=c1*exp(-Re_tau/3.)*((Re_tau+c1)*exp(Re_tau/3.)*log(Re_tau+c1)+1.3064019*(Re_tau*exp(Re_tau/3)&
+          +29.627395*exp(8./33.*Re_tau)+0.66762137*(Re_tau+3)))  -97.4857927165 
+    uBulk=uBulk/Re_tau
+
+    !prevent wrong pressure in channel testcase
+    IF(MPIRoot) THEN
+      WRITE(*,*) 'Bulk velocity based on initial velocity Profile =',uBulk
+      WRITE(*,*) 'Associated Pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
+      IF (ABS(RefStatePrim(5,IniRefState)- (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa)/(uBulk/0.1)**2&
+        *RefStatePrim(1,IniRefState)/kappa .GT. 0.01) THEN
+        CALL abort(__STAMP__,'RefState incorrect, correct pressure in parameter file')
+      END IF
+    END IF
+
+    dpdx = -1. ! Re_tau^2*rho*nu^2/delta^3
+
+#if USE_PARTICLES
+ENDIF
+#endif
 
 IF(.NOT.MPIRoot) RETURN
 
@@ -187,38 +239,83 @@ REAL,INTENT(OUT)                :: Resu(PP_nVar),Resu_t(PP_nVar),Resu_tt(PP_nVar
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: yplus,prim(PP_nVarPrim),amplitude
+#if USE_PARTICLES
+REAL                            :: x_int(3)
+#endif
 !==================================================================================================================================
 !Channel Testcase: set mu0 = 1/Re_tau, rho=1, pressure adapted, Mach=0.1 according to Moser!!
 !and hence: u_tau=tau=-dp/dx=1, and t=t+=u_tau*t/delta
 Prim(:) = RefStatePrim(:,IniRefState) ! prim=(/1.,0.3,0.,0.,0.71428571/)
+#if USE_PARTICLES
+IF (customChannel .EQV. .TRUE.) THEN
+    IF(x(2).LE.0) THEN
+        yPlus = (x(2)+delta)*(Re_tau/delta)
+    ELSE
+        yPlus = (delta-x(2))*(Re_tau/delta)
+    END IF
+ELSE
+#endif
 IF(x(2).LE.0) THEN
   yPlus = (x(2)+1.)*Re_tau ! Re_tau=590
 ELSE
   yPlus = (1.-x(2))*Re_tau ! Re_tau=590
 END IF
+#if USE_PARTICLES
+ENDIF
+#endif
 !Prim(2)=uPlus
 Prim(2) = uBulkScale*(1./0.41*log(1+0.41*yPlus)+7.8*(1-exp(-yPlus/11.)-yPlus/11.*exp(-yPlus/3.)))
 !Prim(5)=(uBulk*sqrt(kappa*Prim(5)/Prim(1)))**2*Prim(1)/kappa ! Pressure such that Ma=1/sqrt(kappa*p/rho)
 Amplitude = 0.1*Prim(2)
 #if EQNSYSNR == 2
-Prim(2)=Prim(2)+sin(20.0*PP_PI*(x(2)/(2.0)))*sin(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(2)=Prim(2)+sin(30.0*PP_PI*(x(2)/(2.0)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(2)=Prim(2)+sin(35.0*PP_PI*(x(2)/(2.0)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(2)=Prim(2)+sin(40.0*PP_PI*(x(2)/(2.0)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(2)=Prim(2)+sin(45.0*PP_PI*(x(2)/(2.0)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(2)=Prim(2)+sin(50.0*PP_PI*(x(2)/(2.0)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
 
-Prim(3)=Prim(3)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(3)=Prim(3)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(3)=Prim(3)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(3)=Prim(3)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(3)=Prim(3)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+#if USE_PARTICLES
+IF (customChannel .EQV. .TRUE.) THEN
+    x_int(1) = x(1)/delta
+    x_int(2) = x(2)/delta
+    x_int(3) = x(3)/delta
 
-Prim(4)=Prim(4)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(4)=Prim(4)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(4)=Prim(4)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(4)=Prim(4)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(4)=Prim(4)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
+    Prim(2)=Prim(2)+sin(20.0*PP_PI*(x_int(2)/(2.0)))*sin(20.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+    Prim(2)=Prim(2)+sin(30.0*PP_PI*(x_int(2)/(2.0)))*sin(30.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+    Prim(2)=Prim(2)+sin(35.0*PP_PI*(x_int(2)/(2.0)))*sin(35.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+    Prim(2)=Prim(2)+sin(40.0*PP_PI*(x_int(2)/(2.0)))*sin(40.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+    Prim(2)=Prim(2)+sin(45.0*PP_PI*(x_int(2)/(2.0)))*sin(45.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+    Prim(2)=Prim(2)+sin(50.0*PP_PI*(x_int(2)/(2.0)))*sin(50.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+
+    Prim(3)=Prim(3)+sin(30.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+    Prim(3)=Prim(3)+sin(35.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+    Prim(3)=Prim(3)+sin(40.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+    Prim(3)=Prim(3)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+    Prim(3)=Prim(3)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+
+    Prim(4)=Prim(4)+sin(30.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+    Prim(4)=Prim(4)+sin(35.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+    Prim(4)=Prim(4)+sin(40.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+    Prim(4)=Prim(4)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+    Prim(4)=Prim(4)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+ELSE
+#endif
+    Prim(2)=Prim(2)+sin(20.0*PP_PI*(x(2)/(2.0)))*sin(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+    Prim(2)=Prim(2)+sin(30.0*PP_PI*(x(2)/(2.0)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+    Prim(2)=Prim(2)+sin(35.0*PP_PI*(x(2)/(2.0)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+    Prim(2)=Prim(2)+sin(40.0*PP_PI*(x(2)/(2.0)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+    Prim(2)=Prim(2)+sin(45.0*PP_PI*(x(2)/(2.0)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+    Prim(2)=Prim(2)+sin(50.0*PP_PI*(x(2)/(2.0)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+
+    Prim(3)=Prim(3)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+    Prim(3)=Prim(3)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+    Prim(3)=Prim(3)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+    Prim(3)=Prim(3)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+    Prim(3)=Prim(3)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+
+    Prim(4)=Prim(4)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(2)/(2.0)))*Amplitude
+    Prim(4)=Prim(4)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(2)/(2.0)))*Amplitude
+    Prim(4)=Prim(4)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
+    Prim(4)=Prim(4)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
+    Prim(4)=Prim(4)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
+#endif
+#if USE_PARTICLES
+ENDIF
 #endif
 
 Prim(6) = 0. ! T does not matter for prim to cons

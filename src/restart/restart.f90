@@ -37,11 +37,11 @@ INTERFACE FinalizeRestart
   MODULE PROCEDURE FinalizeRestart
 END INTERFACE
 
+PUBLIC :: DefineParametersRestart
 PUBLIC :: InitRestart,FinalizeRestart
 PUBLIC :: Restart
 !==================================================================================================================================
 
-PUBLIC::DefineParametersRestart
 CONTAINS
 
 !==================================================================================================================================
@@ -53,7 +53,11 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Restart")
-CALL prms%CreateLogicalOption('ResetTime', "Override solution time to t=0 on restart.", '.FALSE.')
+CALL prms%CreateLogicalOption('ResetTime',      "Override solution time to t=0 on restart.", '.FALSE.')
+CALL prms%CreateLogicalOption('RestartMean',    "Flag to denote restart from time-averaged file.", '.FALSE.')
+#if EQNSYSNR == 3
+CALL prms%CreateRealOption(   'RestartMuTilda', "Constant mu_tilda to be applied throughout the domain.", '0.')
+#endif
 #if FV_ENABLED
 CALL prms%CreateIntOption(    'NFVRestartSuper', "Polynomial degree for equidistant supersampling of FV subcells when restarting&
                                                   &on a different polynomial degree. Default 2*MAX(N,NRestart).")
@@ -86,7 +90,7 @@ USE MOD_ReadInTools,        ONLY: GETINT
 USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE
 USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
-USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREALARRAY
+USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL,GETREALARRAY
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -116,19 +120,40 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   DoRestart = .TRUE.
   ! Read in parameters of restart solution
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-  CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart)
+  ! Read this here because we need to change array names in case of a mean file
+  RestartMean=GETLOGICAL('RestartMean','.FALSE.')
+  ! Read in attributes
+  IF (.NOT.RestartMean) THEN
+    CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart)
+  ELSE
+    CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart,'Mean')
+  END IF
   ! Read in time from restart file
   CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
   ! Option to set the calculation time to 0 even tho performing a restart
   ResetTime=GETLOGICAL('ResetTime','.FALSE.')
+#if EQNSYSNR == 3
+  MuTilda  =GETREAL   ('RestartMuTilda','0.')
+#endif
   IF(ResetTime) RestartTime=0.
   CALL CloseDataFile()
 
   IF (nElems_Restart.NE.nGlobalElems) THEN
     CALL CollectiveStop(__STAMP__, "Restart File has different number of elements!")
   END IF
-  IF (nVar_Restart.NE.PP_nVar) THEN
-    SWRITE(UNIT_StdOut,'(A)') ' Restart file has more variables than current equation system, will be truncated!'
+  IF (nVar_Restart.GT.PP_nVar) THEN
+    IF (RestartMean) THEN
+#if EQNSYSNR == 3
+      SWRITE(UNIT_StdOut,'(A)') ' Restart from mean file. Parameter for mu_tilda required!'
+#endif
+    ELSE
+      SWRITE(UNIT_StdOut,'(A)') ' Restart file has more variables than current equation system, will be truncated!'
+    END IF
+  END IF
+  IF (nVar_Restart.LT.PP_nVar) THEN
+#if EQNSYSNR == 3
+    SWRITE(UNIT_StdOut,'(A)') ' Restart file has less variables than current equation system. Parameter for mu_tilda required!'
+#endif
   END IF
 ELSE
   ! No restart
@@ -158,7 +183,7 @@ END SUBROUTINE InitRestart
 !> \brief This routine performs the actual restart. It is called from the FLEXI main program just before the TimeDisc routine.
 !>
 !> For the restart there are 2 cases, depending on the flag InterpolateSolution set by InitRestart:
-!> - No interpolation is necesary. Then simply read in the DG_Solution array from the restart file and store it in the solution
+!> - No interpolation is necessary. Then simply read in the DG_Solution array from the restart file and store it in the solution
 !>   array U.
 !> - We need to interpolate the restart solution. If the polynomial degree of our computation is lower than in the restart file,
 !>   a simple change basis is used to get the current solution U. If the polynomial degree is higher than in the restart file,
@@ -196,6 +221,9 @@ USE MOD_2D,                 ONLY: to2D_rank5
 #endif
 USE MOD_IO_HDF5
 USE MOD_HDF5_Input,         ONLY: GetDataSize
+#if USE_PARTICLES
+USE MOD_Particle_Restart
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -214,8 +242,8 @@ REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
 LOGICAL            :: doFlushFiles_loc
 #if FV_ENABLED
-INTEGER             :: nVal(15),iVar
-REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
+INTEGER            :: nVal(15),iVar
+REAL,ALLOCATABLE   :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
 #endif
 !==================================================================================================================================
@@ -226,6 +254,9 @@ ELSE
 END IF
 
 IF(DoRestart)THEN
+  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(A)') ' PERFORMING RESTART...'
+    
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 #if FV_ENABLED
   ! Read FV element distribution and indicator values from elem data array if possible
@@ -247,20 +278,70 @@ IF(DoRestart)THEN
   CALL FV_ProlongFVElemsToFace()
 #endif
 
-
-  CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+  ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
+  IF (RestartMean) THEN
+    SWRITE(UNIT_stdOut,'(A)') 'Trying to restart from a mean file ...'
+    SWRITE(UNIT_StdOut,'(A)') 'WARNING: Make absolutely sure the mean file has ALL conservative variables available!'
+    SWRITE(UNIT_StdOut,'(132("-"))')
+    CALL GetDataSize(File_ID,'Mean',nDims,HSize)
+  ELSE
+    CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+  END IF
 ! Sanity check
-  IF ((HSize(1).LT.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
+!  IF ((HSize(1).LT.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
+!    CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
+!  END IF
+  IF ((HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
     CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
+  END IF
+! Allow restart from LES to RANS solution
+  IF ((HSize(1).LT.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
+#if EQNSYSNR == 3
+    IF (MuTilda.NE.0) THEN
+        SWRITE(UNIT_StdOut,'(A)')'Dimensions of restart file do not match! Proceeding because I assume you want a RANS restart.'
+    ELSE
+        CALL Abort(__STAMP__,"Dimensions of restart file do not match! If RANS restart wanted, provide RestartMuTilda.")
+    END IF
+#endif
+  END IF
+  IF ((HSize(1).GT.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
+    IF (RestartMean) THEN
+        SWRITE(UNIT_StdOut,'(A)')'Dimensions of restart file do not match! Proceeding because you signaled a steadyState restart.'
+    ELSE
+#if EQNSYSNR == 3
+        CALL Abort(__STAMP__,"Dimensions of restart file do not match! If RANS restart wanted, provide RestartMuTilda.")
+#endif
+    END IF
   END IF
   HSize_proc = INT(HSize)
   HSize_proc(5) = nElems
   ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
-  CALL ReadArray('DG_Solution',5,HSize_proc,OffsetElem,5,RealArray=U_local)
-  ! Truncate the solution if we read a restart file from a different equation system
-  IF (PP_nVar.NE.nVar_Restart) THEN
+  
+  ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
+  IF (RestartMean) THEN
+    CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
+  ELSE
+    CALL ReadArray('DG_Solution',5,HSize_proc,OffsetElem,5,RealArray=U_local)
+  END IF
+  
+  ! Truncate the solution if we read a restart file from a different equation system or from a time-averaged file
+  IF ((PP_nVar.LT.nVar_Restart).OR.RestartMean) THEN
     ALLOCATE(U_localNVar(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
     U_localNVar(1:PP_nVar,:,:,:,:) = U_local(1:PP_nVar,:,:,:,:)
+    DEALLOCATE(U_local)
+    ALLOCATE(U_local(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+    U_local = U_localNVar
+    DEALLOCATE(U_localNVar)
+  END IF
+  
+  ! Expand the solution if we read a restart file from a different equation system (RANS --> Navier-Stokes)
+  IF (PP_nVar.GT.nVar_Restart) THEN
+    ALLOCATE(U_localNVar(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+    U_localNVar(1:nVar_Restart,:,:,:,:) = U_local(1:nVar_Restart,:,:,:,:)
+#if EQNSYSNR == 3
+    ! Plugging in the constant mu_tilda
+    U_localNVar(PP_nVar,:,:,:,:)   = MuTilda
+#endif
     DEALLOCATE(U_local)
     ALLOCATE(U_local(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
     U_local = U_localNVar
@@ -352,11 +433,24 @@ IF(DoRestart)THEN
     SWRITE(UNIT_stdOut,*)'DONE!'
   END IF
   CALL CloseDataFile()
-  ! Delete all files that will be rewritten
+  
+  IF (RestartMean) THEN
+    SWRITE(UNIT_stdOut,'(A)') 'Restart from mean file successful.'
+  END IF
+  
+#if USE_PARTICLES
+  
+#else
+  ! Delete all files that will be rewritten --> moved to particle_restart.f90 since we need it there
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
+#endif
 ELSE
-  ! Delete all files since we are doing a fresh start
+#if USE_PARTICLES
+    
+#else
+  ! Delete all files since we are doing a fresh start --> moved to particle_restart.f90 since we need it there
   IF (doFlushFiles_loc) CALL FlushFiles()
+#endif
 END IF
 END SUBROUTINE Restart
 

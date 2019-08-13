@@ -59,6 +59,14 @@ CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretic
 CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory)")
 CALL prms%CreateIntOption(   'maxIter',        "Stop simulation when specified number of timesteps has been performed.", value='-1')
 CALL prms%CreateIntOption(   'NCalcTimeStepMax',"Compute dt at least after every Nth timestep.", value='1')
+
+#if USE_PARTICLES
+CALL prms%CreateStringOption('ParticleTimeDiscMethod', "Specifies the type of particle time-discretization to be used."//&
+                                                       "Possible values:\n:"//&
+                                                       "* Runge-Kutta: Use the standard Runge-Kutta from the DG solver\n"//&
+                                                       "* Euler: Use the low order Euler scheme.")
+#endif
+
 END SUBROUTINE DefineParametersTimeDisc
 
 !==================================================================================================================================
@@ -75,6 +83,11 @@ USE MOD_Overintegration_Vars,ONLY:NUnder
 USE MOD_Filter_Vars         ,ONLY:NFilter,FilterType
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
+#if USE_PARTICLES
+USE MOD_ReadInTools         ,ONLY:GETLOGICAL
+USE MOD_Particle_TimeDisc
+USE MOD_Particle_TimeDisc_Vars,ONLY:ParticleTimeDiscMethod,PartSteadyState,Part_dt_min
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -84,6 +97,11 @@ CHARACTER(LEN=255):: TimeDiscMethod
 INTEGER           :: NEff
 !==================================================================================================================================
 TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
+
+#if USE_PARTICLES
+ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
+#endif
+
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
 
@@ -124,9 +142,19 @@ dtElem=0.
 
 CALL AddToElemData(ElementOut,'dt',dtElem)
 
+#if USE_PARTICLES
+! Check if we are running a steady state tracking
+SWRITE(UNIT_StdOut,'(66("-"))')
+PartSteadyState   = GETLOGICAL('Part-SteadyState',   'F')
+Part_dt_Min       = GETREAL   ('Part-SteadyTimeStep','0.')
+  
+CALL Particle_InitTimeDisc()
+#endif
+
 TimediscInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT TIMEDISC DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
+
 END SUBROUTINE InitTimeDisc
 
 
@@ -139,6 +167,7 @@ SUBROUTINE TimeDisc()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
+USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
@@ -162,19 +191,38 @@ USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
 USE MOD_FV
-#endif
+#endif /*FV_ENABLED*/
+#if USE_PARTICLES
+USE MOD_DSMC_Vars           ,ONLY: Iter_macvalout,Iter_macsurfvalout
+USE MOD_Particle_Globals    ,ONLY: ALMOSTZERO
+USE MOD_Particle_Analyze    ,ONLY: TrackingParticlePosition
+USE MOD_Particle_Analyze_Vars,ONLY: TrackParticlePosition
+USE MOD_Particle_TimeDisc
+USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod,PartSteadyState,Part_dt_min
+USE MOD_Particle_Vars
+USE MOD_TimeDisc_Vars       ,ONLY: RKb,RKc
+#if USE_LOADBALANCE
+USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
+USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,LoadBalanceSample
+#endif /*LOADBALANCE*/
+#endif /*PARTICLES*/
 use MOD_IO_HDF5
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                         :: dt_Min,dt_MinOld,dtAnalyze,dtEnd,tStart
+REAL                         :: dt_Min = 0.
+REAL                         :: dt_MinOld,dtAnalyze,dtEnd,tStart
 INTEGER(KIND=8)              :: iter,iter_loc
 REAL                         :: CalcTimeStart,CalcTimeEnd
 INTEGER                      :: TimeArray(8)              !< Array for system time
 INTEGER                      :: errType,nCalcTimestep,writeCounter
 LOGICAL                      :: doAnalyze,doFinalize
+#if USE_PARTICLES
+REAL                         :: tStage,b_dt(1:nRKStages)
+INTEGER                      :: iStage
+#endif /*PARTICLES*/
 !==================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -241,8 +289,22 @@ iter_loc=0
 writeCounter=0
 doAnalyze=.FALSE.
 doFinalize=.FALSE.
+
 ! compute initial timestep
-dt=CALCTIMESTEP(errType)
+#if USE_PARTICLES
+! Check if we are running in SteadyState mode
+IF (PartSteadyState) THEN
+  dt_min = Part_dt_min
+  dt     = Part_dt_min
+  
+  IF (dt_Min.EQ.0) THEN
+#endif
+    dt=CALCTIMESTEP(errType)
+#if USE_PARTICLES
+  END IF
+END IF
+#endif
+
 nCalcTimestep=0
 dt_MinOld=-999.
 IF(errType.NE.0) CALL abort(__STAMP__,&
@@ -250,6 +312,13 @@ IF(errType.NE.0) CALL abort(__STAMP__,&
   'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
 #else
   'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
+#endif
+  
+#if USE_PARTICLES
+  iter_macvalout=0
+  iter_macsurfvalout=0
+  IF (WriteMacroVolumeValues .OR. WriteMacroSurfaceValues) MacroValSampTime = t
+  CALL Particle_TimeDisc(iter)
 #endif
 
 ! Run initial analyze
@@ -269,11 +338,20 @@ END IF
 #if FV_ENABLED
 CALL FV_Info(1_8)
 #endif
+
+#if USE_PARTICLES
+! Outputs the particle position and velocity at every time step. Use only for debugging purposes
+  IF (TrackParticlePosition) THEN
+    CALL TrackingParticlePosition(t) 
+  END IF
+#endif
+
 SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 
 
 ! Run computation
 CalcTimeStart=FLEXITIME()
+
 DO
   CurrentStage=1
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
@@ -282,14 +360,26 @@ DO
 #endif
   CALL DGTimeDerivative_weakForm(t)
   IF(nCalcTimestep.LT.1)THEN
-    dt_Min=CALCTIMESTEP(errType)
+    
+#if USE_PARTICLES
+    ! Only calculate time step if not set manually
+    IF(.NOT.PartSteadyState.OR.(ALMOSTZERO(dt_Min))) THEN
+#endif
+      dt_Min=CALCTIMESTEP(errType)
+#if USE_PARTICLES
+    ENDIF
+#endif
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
     dt_MinOld=dt_Min
     IF(errType.NE.0)THEN
       CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                             FutureTime=tWriteData,isErrorFile=.TRUE.)
       CALL abort(__STAMP__,&
-     'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
+#if EQNSYSNR == 3
+  'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
+#else
+  'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
+#endif
     END IF
   END IF
   nCalcTimestep=nCalcTimestep-1
@@ -310,12 +400,62 @@ DO
   IF(doCalcTimeAverage) CALL CalcTimeAverage(.FALSE.,dt,t)
   IF(doTCSource) CALL CalcForcing(t,dt)
 
+  ! Check if less or equal LoadBalanceSample number of iteration left until analyze step
+#if USE_LOADBALANCE
+  IF ((dtAnalyze.LE.LoadBalanceSample*dt                                       & ! all iterations in LoadbalanceSample interval
+       .OR. (ALMOSTEQUALRELATIVE(dtAnalyze,LoadBalanceSample*dt,1e-5)))        & ! make sure to get the first iteration in interval
+       .AND. DoLoadBalance)                                                    & ! make sure Loadbalancing is enabled
+    ! If yes, add the current ElemLoad to the statistics
+    CALL ComputeElemLoad()
+#endif /*LOADBALANCE*/
 
   CALL PrintStatusLine(t,dt,tStart,tEnd)
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! Perform Timestep using a global time stepping routine, attention: only RK3 has time dependent BC
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#if USE_PARTICLES
+! Outputs the particle position and velocity at every time step. Use only for debugging purposes
+  IF (TrackParticlePosition) THEN
+    CALL TrackingParticlePosition(t) 
+  END IF
+  
+! Only run particle tracking if steady state is requested
+IF(.NOT.PartSteadyState) THEN
+#endif
   CALL TimeStep(t)
+#if USE_PARTICLES
+ELSE
+! We have to call particle tracking manually because we are not entering TimeStep()
+   
+  SELECT CASE (TRIM(ParticleTimeDiscMethod))
+    CASE('Runge-Kutta')
+    
+    ! Premultiply with dt
+    b_dt=RKb*dt
+    
+    CurrentStage=1
+    tStage=t
+    
+    CALL Particle_TimeStepByLSERK(CurrentStage,b_dt)
+    
+    DO iStage=2,nRKStages
+        CurrentStage=iStage
+        tStage=t+dt*RKc(iStage)
+        IF(doCalcIndicator) CALL CalcIndicator(U,t)
+        
+        CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
+    END DO
+    
+    CASE('Euler')
+    CALL Particle_TimeStepByEuler(dt)
+        
+    CASE DEFAULT
+    CALL CollectiveStop(__STAMP__,&
+                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
+  END SELECT
+  
+END IF
+#endif
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! Perform Timestep using a global time stepping routine, attention: only RK3 has time dependent BC
@@ -340,7 +480,6 @@ DO
   IF(doAnalyze) THEN
     CalcTimeEnd=FLEXITIME()
 
-
     IF(MPIroot)THEN
       ! Get calculation time per DOF
       CalcTimeEnd=(CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_loc))/nRKStages
@@ -348,11 +487,12 @@ DO
       WRITE(UNIT_StdOut,'(132("-"))')
       WRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
         ' Sys date   :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
-      WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF: [',CalcTimeEnd,' sec ]'
-      WRITE(UNIT_StdOut,'(A,ES16.7)')' Timestep   : ',dt_Min
+      WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF: [',CalcTimeEnd            ,' sec ]'
+      WRITE(UNIT_StdOut,'(A,ES16.7)')   ' Timestep   : ',dt_Min
       IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
-      WRITE(UNIT_stdOut,'(A,ES16.7)')'#Timesteps  : ',REAL(iter)
+      WRITE(UNIT_stdOut,'(A,ES16.7)')   '#Timesteps  : ',REAL(iter)
     END IF !MPIroot
+    
 #if FV_ENABLED
     CALL FV_Info(iter_loc)
 #endif
@@ -375,16 +515,29 @@ DO
       writeCounter=0
     END IF
 
+    ! do loadbalance output
+#if USE_LOADBALANCE
+    IF(DoLoadBalance) CALL AnalyzeLoadBalance()
+#endif
+    
     ! do analysis
     CALL Analyze(t,iter)
     iter_loc=0
     CalcTimeStart=FLEXITIME()
     tAnalyze=  MIN(tAnalyze+Analyze_dt,  tEnd)
     doAnalyze=.FALSE.
-  END IF
+    
+  END IF !ANALYZE
 
   IF(doFinalize) EXIT
 END DO
+
+#if USE_PARTICLES
+! Outputs the particle position and velocity at every time step. Use only for debugging purposes
+  IF (TrackParticlePosition) THEN
+    CALL TrackingParticlePosition(t) 
+  END IF
+#endif
 
 END SUBROUTINE TimeDisc
 
@@ -410,6 +563,11 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif
+#if USE_PARTICLES
+USE MOD_Globals      ,ONLY: CollectiveStop
+USE MOD_Particle_TimeDisc
+USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -420,6 +578,7 @@ REAL     :: Ut_temp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) ! temporal variabl
 REAL     :: tStage,b_dt(1:nRKStages)
 INTEGER  :: iStage
 !===================================================================================================================================
+
 ! Premultiply with dt
 b_dt=RKb*dt
 
@@ -432,6 +591,17 @@ tStage=t
 CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 
+#if USE_PARTICLES
+  SELECT CASE (TRIM(ParticleTimeDiscMethod))
+    CASE('Runge-Kutta')
+      CALL Particle_TimeStepByLSERK(CurrentStage,b_dt)
+    CASE('Euler')
+      CALL Particle_TimeStepByEuler(dt)
+    CASE DEFAULT
+      CALL CollectiveStop(__STAMP__,&
+                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
+  END SELECT
+#endif
 
 ! Following steps
 DO iStage=2,nRKStages
@@ -441,9 +611,23 @@ DO iStage=2,nRKStages
 #if FV_ENABLED
   CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
 #endif
-  CALL DGTimeDerivative_weakForm(tStage)
+  CALL DGTimeDerivative_weakForm(tStage) 
   CALL VAXPBY(nTotalU,Ut_temp,Ut,ConstOut=-RKA(iStage)) !Ut_temp = Ut - Ut_temp*RKA(iStage)
   CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
+
+#if USE_PARTICLES
+  SELECT CASE (TRIM(ParticleTimeDiscMethod))
+    CASE('Runge-Kutta')
+      CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
+    CASE('Euler')
+      ! Do nothing
+    CASE DEFAULT
+      CALL CollectiveStop(__STAMP__,&
+                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
+  END SELECT
+  
+#endif
+  
 END DO
 CurrentStage=1
 
@@ -470,7 +654,10 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
 USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
-#endif
+#endif /*FV_ENABLED*/
+#if USE_PARTICLES
+USE MOD_Particle_TimeDisc
+#endif /*USE_PARTICLES*/
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -483,7 +670,6 @@ REAL     :: tStage,b_dt(1:nRKStages)
 INTEGER  :: iStage
 !===================================================================================================================================
 IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
-
 
 ! Premultiply with dt
 b_dt=RKb*dt
@@ -498,6 +684,10 @@ CALL VCopy(nTotalU,S2,U)                       !S2=U
 !CALL DGTimeDerivative_weakForm(t)             ! allready called in timedisc
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
 
+#if USE_PARTICLES
+  CALL Particle_TimeStepByLSERK(CurrentStage,b_dt)
+#endif
+
 DO iStage=2,nRKStages
   CurrentStage=iStage
   tStage=t+dt*RKc(iStage)
@@ -510,6 +700,10 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U = RKg1(iStage)*U + RKg2(iStage)*S2
   CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                !U = U + RKg3(ek)*Uprev
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                   !U = U + Ut*b_dt(iStage)
+
+#if USE_PARTICLES
+  CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
+#endif
 END DO
 CurrentStage=1
 

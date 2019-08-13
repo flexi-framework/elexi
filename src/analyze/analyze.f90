@@ -27,6 +27,10 @@ INTERFACE InitAnalyze
   MODULE PROCEDURE InitAnalyze
 END INTERFACE
 
+INTERFACE InitAnalyzeBasis
+  MODULE PROCEDURE InitAnalyzeBasis
+END INTERFACE
+
 INTERFACE Analyze
   MODULE PROCEDURE Analyze
 END INTERFACE
@@ -36,7 +40,7 @@ INTERFACE FinalizeAnalyze
 END INTERFACE
 
 
-PUBLIC:: Analyze, InitAnalyze, FinalizeAnalyze
+PUBLIC:: Analyze, InitAnalyze, FinalizeAnalyze, InitAnalyzeBasis
 !==================================================================================================================================
 
 PUBLIC::DefineParametersAnalyze
@@ -172,14 +176,15 @@ DO iSide=1,nSides
     Surf(iSurf)=Surf(iSurf)+wGPSurf(i,j)*SurfElem(i,j,0,iSide)
   END DO; END DO
 END DO
+#if USE_MPI
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,           1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,           nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,hasAnalyzeSides,nBCs,MPI_LOGICAL         ,MPI_LOR,MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
 ! Prevent division by 0 if a BC has no sides associated with it (e.g. periodic)
 DO iSurf=1,nBCs
   IF (.NOT.hasAnalyzeSides(iSurf)) Surf(iSurf) = HUGE(1.)
 END DO
-#if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-#endif /*USE_MPI*/
 
 ! Initialize eval routines
 CALL InitAnalyzeBasis(PP_N,NAnalyze,xGP,wBary)
@@ -268,6 +273,17 @@ USE MOD_Output,             ONLY: OutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_Benchmarking,       ONLY: Benchmarking
+#if USE_PARTICLES
+USE MOD_DSMC_Vars
+USE MOD_Particle_Vars
+USE MOD_Particle_Boundary_Vars
+USE MOD_Particle_Erosion_Analyze,ONLY: CalcSurfaceValues
+USE MOD_ErosionPoints,      ONLY: WriteEP
+USE MOD_ErosionPoints_Vars, ONLY: EP_inUse
+#if USE_LOADBALANCE
+USE MOD_LoadDistribution,   ONLY: WriteElemTimeStatistics
+#endif /*LOADBALANCE*/
+#endif /*PARTICLES*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -298,6 +314,38 @@ IF(doCalcErrorNorms)THEN
     END IF
   END IF !MPIroot
 END IF  ! ErrorNorms
+
+! Write particle erosion data
+#if USE_PARTICLES
+IF (WriteMacroSurfaceValues)THEN
+  IF (iter.GT.0) iter_macsurfvalout = iter_macsurfvalout + 1
+  IF (MacroValSamplIterNum.LE.iter_macsurfvalout) THEN
+    CALL CalcSurfaceValues
+!    DO iSide=1,SurfMesh%nTotalSides 
+!      SampWall(iSide)%State(4:6,:,:)=0.
+!    END DO
+    IF (CalcSurfCollis%AnalyzeSurfCollis) THEN
+      AnalyzeSurfCollis%Data=0.
+      AnalyzeSurfCollis%Spec=0
+      AnalyzeSurfCollis%BCid=0
+      AnalyzeSurfCollis%Number=0
+      !AnalyzeSurfCollis%Rate=0.
+    END IF
+    iter_macsurfvalout = 0
+  END IF
+END IF
+
+! Individual impact tracking
+!#if USE_MPI
+!CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+!#endif /*MPI*/
+IF(EP_inUse) CALL WriteEP(OutputTime=Time,resetCounters=.TRUE.)
+
+#if USE_LOADBALANCE
+! Create .csv file for performance analysis and load balance: write header line
+CALL WriteElemTimeStatistics(WriteHeader=.TRUE.,iter=iter)
+#endif /*LOADBALANCE*/
+#endif /*PARTICLES*/
 
 CALL AnalyzeEquation(Time)
 CALL Benchmarking()
@@ -380,7 +428,7 @@ DO iElem=1,nElems
 #endif
    ! Interpolate the physical position Elem_xGP to the analyze position, needed for exact function
    CALL ChangeBasisVolume(3,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,Elem_xGP(1:3,:,:,:,iElem),Coords_NAnalyze(1:3,:,:,:))
-   ! Interpolate the Jacobian to the analyze grid: be carefull we interpolate the inverse of the inverse of the jacobian ;-)
+   ! Interpolate the Jacobian to the analyze grid: be careful we interpolate the inverse of the inverse of the Jacobian ;-)
    J_N(1,0:PP_N,0:PP_N,0:PP_NZ)=1./sJ(:,:,:,iElem,0)
    CALL ChangeBasisVolume(1,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,J_N,J_NAnalyze)
    ! Interpolate the solution to the analyze grid

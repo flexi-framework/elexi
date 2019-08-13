@@ -306,7 +306,7 @@ INTEGER             :: i,j
 !==================================================================================================================================
 DO j=0,ZDIM(Nloc); DO i=0,PP_N
   CALL EvalDiffFlux3D_Point(Uprim(:,i,j),gradUx(:,i,j),gradUy(:,i,j),gradUz(:,i,j), &
-                                               f(:,i,j),     g(:,i,j),     h(:,i,j)  &
+                                               f(:,i,j),     g(:,i,j),     h(:,i,j) &
 #if EDDYVISCOSITY
                             ,muSGS(1,i,j) &
 #endif

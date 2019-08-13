@@ -38,5 +38,9 @@ REAL,ALLOCATABLE   :: writeBuf(:,:) !< buffer to store log testcase data
 INTEGER :: ioCounter   =0           !< current number of buffer items
 INTEGER :: nWriteStats =-999        !< Write testcase statistics to file at every n-th AnalyzeTestcase step
 CHARACTER(LEN=255) :: Filename      !< filename to store testcase log data
+#if USE_PARTICLES
+LOGICAL :: customChannel            !< Flag to use input values rather than calculated ones
+REAL    :: delta                    !< Channel half height
+#endif
 !==================================================================================================================================
 END MODULE MOD_TestCase_Vars

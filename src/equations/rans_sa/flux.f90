@@ -43,6 +43,7 @@ END INTERFACE
 INTERFACE EvalEulerFlux1D
   MODULE PROCEDURE EvalEulerFlux1D
 END INTERFACE
+
 INTERFACE EvalEulerFlux1D_fast
   MODULE PROCEDURE EvalEulerFlux1D_fast
 END INTERFACE
@@ -53,7 +54,6 @@ INTERFACE EvalDiffFlux3D
   MODULE PROCEDURE EvalDiffFlux3D_Surface
   MODULE PROCEDURE EvalDiffFlux3D_Volume
 END INTERFACE
-
 #endif /*PARABOLIC*/
 
 PUBLIC::EvalFlux3D,EvalEulerFlux1D,EvalEulerFlux1D_fast
@@ -89,40 +89,40 @@ f(1) = U(2)                       ! rho*u
 f(2) = U(2) * UPrim(2) + UPrim(5) ! rho*u²+p
 f(3) = U(2) * UPrim(3)            ! rho*u*v
 f(4) = U(2) * UPrim(4)            ! rho*u*w
-f(5) = Ep * UPrim(2)              ! (rho*e+p)*u
+f(5) = Ep   * UPrim(2)            ! (rho*e+p)*u
 f(6) = U(6) * UPrim(2)            ! muTilde*u
 ! Euler fluxes y-direction
 g(1) = U(3)                       ! rho*v
 g(2) = f(3)                       ! rho*u*v
 g(3) = U(3) * UPrim(3) + UPrim(5) ! rho*v²+p
 g(4) = U(3) * UPrim(4)            ! rho*v*w
-g(5) = Ep * UPrim(3)              ! (rho*e+p)*v
+g(5) = Ep   * UPrim(3)            ! (rho*e+p)*v
 g(6) = U(6) * UPrim(3)            ! muTilde*v
 ! Euler fluxes z-direction
 h(1) = U(4)                       ! rho*v
 h(2) = f(4)                       ! rho*u*w
 h(3) = g(4)                       ! rho*v*w
 h(4) = U(4) * UPrim(4) + UPrim(5) ! rho*v²+p
-h(5) = Ep * UPrim(4)              ! (rho*e+p)*w
+h(5) = Ep   * UPrim(4)            ! (rho*e+p)*w
 h(6) = U(6) * UPrim(4)            ! muTilde*w
 #else
 
 ! Euler part
 ! Euler fluxes x-direction
 f(1) = U(2)                       ! rho*u
-f(2) = U(2)*UPrim(2)+UPrim(5)     ! rho*u²+p
-f(3) = U(2)*UPrim(3)              ! rho*u*v
+f(2) = U(2) * UPrim(2) + UPrim(5) ! rho*u²+p
+f(3) = U(2) * UPrim(3)            ! rho*u*v
 f(4) = 0.
-f(5) = Ep*UPrim(2)                ! (rho*e+p)*u
+f(5) = Ep   * UPrim(2)            ! (rho*e+p)*u
 f(6) = U(6) * UPrim(2)            ! muTilde*u
-! Euler fluxes y-direction
-g(1)= U(3)                        ! rho*v
-g(2)= f(3)                        ! rho*u*v
-g(3)= U(3)*UPrim(3)+UPrim(5)      ! rho*v²+p
-g(4)= 0.
-g(5)= Ep*UPrim(3)                 ! (rho*e+p)*v
-g(6) = U(6) * UPrim(3)            ! muTilde*v
-! Euler fluxes z-direction
+  ! Euler fluxes y-direction
+g(1) = U(3)                        ! rho*v
+g(2) = f(3)                        ! rho*u*v
+g(3) = U(3) * UPrim(3) + UPrim(5)  ! rho*v²+p
+g(4) = 0.
+g(5) = Ep   *UPrim(3)              ! (rho*e+p)*v
+g(6) = U(6) *UPrim(3)              ! muTilde*v
+  ! Euler fluxes z-direction
 h   = 0.
 #endif
 END SUBROUTINE EvalFlux3D_Point
@@ -177,22 +177,22 @@ REAL                :: tau_zz,tau_xz,tau_yz
 #endif
 REAL                :: chi,muTurb,muTilde,SAfn,muEff
 !==================================================================================================================================
-! Viscous part
-! ideal gas law
-muS=VISCOSITY_PRIM(prim)
-lambda=THERMAL_CONDUCTIVITY_H(muS)
-! Add turbulent viscosity
-muTilde = UPrim(7)*UPrim(1)
-chi = muTilde/muS
-muTurb = muTilde*fv1(chi)
-muEff = MAX(muS,muS+muTurb)  ! Ignore muTurb < 0
-lambda = MAX(lambda,lambda+muTurb*cp/PrTurb)
-! Set negative modification if necessary
-IF (muTilde.LT.0.) THEN
-  SAfn = fn(chi)
-ELSE
-  SAfn = 1.
-END IF
+  ! Viscous part
+  ! ideal gas law
+muS    = VISCOSITY_PRIM(Prim)
+lambda = THERMAL_CONDUCTIVITY_H(muS)
+  ! Add turbulent viscosity
+  muTilde = UPrim(7)*UPrim(1)
+  chi     = muTilde/muS
+  muTurb  = muTilde*fv1(chi)
+  muEff   = MAX(muS,muS+muTurb)  ! Ignore muTurb < 0
+  lambda  = MAX(lambda,lambda+muTurb*cp/PrTurb)
+  ! Set negative modification if necessary
+  IF (muTilde.LT.0.) THEN
+    SAfn = fn(chi)
+  ELSE
+    SAfn = 1.
+  END IF
 
 ASSOCIATE( v1     => UPrim(2),  v2     => UPrim(3),  v3     => UPrim(4), &
            gradT1 => GradUx(6), gradT2 => GradUy(6), gradT3 => GradUz(6) )
@@ -246,7 +246,7 @@ g(1) = 0.
 g(2) = -tau_xy                                       ! F_euler-mu*(u_y+v_x)
 g(3) = -tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
 g(4) = 0.
-g(5) = -tau_xy*v1-tau_yy*v2-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
+g(5) = -tau_xy*v1-tau_yy*v2-lambda*gradT2            ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
 g(6) = -1./sigma*(muS+muTilde*SAfn)*gradUy(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
 ! viscous fluxes in z-direction
 h    = 0.
@@ -307,7 +307,7 @@ INTEGER             :: i,j
 !==================================================================================================================================
 DO j=0,ZDIM(Nloc); DO i=0,PP_N
   CALL EvalDiffFlux3D_Point(Uprim(:,i,j),gradUx(:,i,j),gradUy(:,i,j),gradUz(:,i,j), &
-                                               f(:,i,j),     g(:,i,j),     h(:,i,j)  &
+                                              f(:,i,j),     g(:,i,j),     h(:,i,j)  &
 #if EDDYVISCOSITY
                             ,muSGS(1,i,j) &
 #endif

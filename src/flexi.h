@@ -107,6 +107,15 @@
 #define RECV 2
 
 !#define DEBUGMESH
+        
+! Boundaries for Particles
+#if USE_PARTICLES
+#define PLANAR_RECT    0
+#define PLANAR_NONRECT 1
+#define BILINEAR       2
+#define PLANAR_CURVED  3
+#define CURVED         4
+#endif
 
 #if !(FV_ENABLED)
 #define FV_Elems(x) 0
@@ -137,4 +146,16 @@
 #define ZDIM(a) a
 #define PP_NZ   PP_N
 #define DIMV    1:3
+#endif
+
+! entries for PartHaloToProc
+#if USE_PARTICLES
+#define NATIVE_ELEM_ID  1
+#define NATIVE_PROC_ID  2
+#define LOCAL_PROC_ID   3
+!#define NATIVE_SIDE_ID  1
+#define LOCAL_SEND_ID   4
+        
+! format
+#define OUTPUTFORMAT '(E25.14E3)'
 #endif

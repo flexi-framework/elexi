@@ -71,6 +71,10 @@ CALL prms%CreateLogicalOption('WriteMeanFlux'    , "Set true to write mean flux 
 CALL prms%CreateLogicalOption('WriteWallVelocity', "Set true to write wall velolcities file"          , '.TRUE.')
 CALL prms%CreateLogicalOption('WriteTotalStates' , "Set true to write total states to file"           , '.TRUE.')
 CALL prms%CreateLogicalOption('WriteResiduals '  , "Set true to write residuals to file"              , '.TRUE.')
+#if USE_PARTICLES
+CALL prms%CreateLogicalOption('CalcWallParticles' , "Set true to compute particle properties at walls", '.FALSE.')
+CALL prms%CreateLogicalOption('WriteWallParticles', "Set true to write particle properties at walls"  , '.FALSE.')
+#endif
 CALL prms%CreateStringOption( 'VarNameAvg'       , "Names of variables to be time-averaged"           , multiple=.TRUE.)
 CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged&
                                                    & square of the variable) should be computed.&
@@ -93,6 +97,11 @@ USE MOD_Mesh_Vars,          ONLY: nBCs,BoundaryType,BoundaryName
 USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_TimeAverage,        ONLY: InitCalcTimeAverage
+#if USE_PARTICLES
+USE MOD_Particle_Vars,      ONLY: WriteMacroSurfaceValues
+USE MOD_CalcWallParticles
+USE MOD_CalcWallParticles_Vars
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -112,6 +121,11 @@ doWriteWallVelocity =GETLOGICAL('WriteWallVelocity','.TRUE.')
 doWriteTotalStates  =GETLOGICAL('WriteTotalStates' ,'.TRUE.')
 doWriteResiduals    =GETLOGICAL('WriteResiduals'   ,'.TRUE.')
 doCalcTimeAverage   =GETLOGICAL('CalcTimeAverage'  ,'.FALSE.')
+#if USE_PARTICLES
+doCalcWallParticles =GETLOGICAL('CalcWallParticles' ,'.FALSE.')
+doWriteWallParticles=GETLOGICAL('WriteWallParticles','.TRUE.')
+IF (doCalcWallParticles) WriteMacroSurfaceValues = .TRUE.
+#endif
 
 ! Generate wallmap
 ALLOCATE(isWall(nBCs))
@@ -175,6 +189,19 @@ IF(MPIRoot)THEN
     FileName_Residuals = TRIM(ProjectName)//'_Residuals'
     CALL InitOutputToFile(FileName_Residuals,'Residuals',PP_nVar,StrVarNames)
   END IF
+  
+#if USE_PARTICLES
+  IF(doCalcWallParticles.AND.doWriteWallParticles)THEN
+    ALLOCATE(Filename_WallPart(nBCs))
+    DO i=1,nBCs
+      IF(.NOT.isWall(i)) CYCLE
+      FileName_WallPart(i) = TRIM(ProjectName)//'_WallPart_'//TRIM(BoundaryName(i))
+      CALL InitOutputToFile(FileName_WallPart(i),TRIM(BoundaryName(i)),6,&
+           [CHARACTER(9) :: "AlphaMean","AlphaVar","EkinMean","EkinVar","PartForce","MaxForce"])! gfortran hates mixed length arrays
+    END DO
+  END IF
+#endif
+
 END IF
 
 IF(doCalcTimeAverage)  CALL InitCalcTimeAverage()
@@ -195,6 +222,10 @@ USE MOD_AnalyzeEquation_Vars
 USE MOD_Mesh_Vars,          ONLY: BoundaryName,nBCs,BoundaryType
 USE MOD_CalcBodyForces,     ONLY: CalcBodyForces
 USE MOD_Output,             ONLY: OutputToFile
+#if USE_PARTICLES
+USE MOD_CalcWallParticles
+USE MOD_CalcWallParticles_Vars
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -209,6 +240,9 @@ REAL,DIMENSION(nBCs)            :: meanV,maxV,minV
 REAL                            :: BulkPrim(PP_nVarPrim),BulkCons(PP_nVar)
 REAL                            :: Residuals(PP_nVar)
 INTEGER                         :: i
+#if USE_PARTICLES
+REAL,DIMENSION(nBCs)            :: AlphaMean,AlphaVar,EkinMean,EkinVar,PartForce,MaxForce
+#endif
 !==================================================================================================================================
 ! Calculate derived quantities
 IF(doCalcBodyforces)   CALL CalcBodyforces(Bodyforce,Fp,Fv)
@@ -217,6 +251,9 @@ IF(doCalcMeanFlux)     CALL CalcMeanFlux(MeanFlux)
 IF(doCalcBulkState)    CALL CalcBulkState(bulkPrim,bulkCons)
 IF(doCalcTotalStates)  CALL CalcKessel(meanTotals)
 IF(doCalcResiduals)    CALL CalcResiduals(Residuals)
+#if USE_PARTICLES
+IF(doCalcWallParticles) CALL CalcWallParticles(AlphaMean,AlphaVar,EkinMean,EkinVar,partForce,maxForce)
+#endif
 
 
 IF(MPIRoot.AND.doCalcBodyforces)THEN
@@ -277,6 +314,20 @@ IF(MPIRoot.AND.doCalcResiduals)THEN
   WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVar,'ES18.9)'
   WRITE(UNIT_StdOut,formatStr)' Residuals Cons  : ',Residuals
 END IF
+
+#if USE_PARTICLES
+IF(MPIRoot.AND.doCalcWallParticles)THEN
+  WRITE(UNIT_StdOut,*)'Wall Particles (AlphaMean/AlphaVar/EkinMean/EkinVar/PartForce/MaxForce)  : '
+  WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',6ES18.9)'
+  DO i=1,nBCs
+    IF(.NOT.isWall(i)) CYCLE
+    IF (doWriteWallParticles) &
+      CALL OutputToFile(FileName_WallPart(i),(/Time/),(/6,1/),(/AlphaMean(i),AlphaVar(i),EkinMean(i),EkinVar(i),&
+                                                               PartForce(i),MaxForce(i)/))
+    WRITE(UNIT_StdOut,formatStr) ' '//TRIM(BoundaryName(i)),AlphaMean(i),AlphaVar(i),EkinMean(i),EkinVar(i),PartForce(i),MaxForce(i)
+  END DO
+END IF
+#endif
 
 END SUBROUTINE AnalyzeEquation
 

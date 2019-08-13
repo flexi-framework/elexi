@@ -26,7 +26,7 @@
 !> Similar to the BR1 scheme, both, conservative and non-conservative volume integrals are available.
 !>
 !> NB: The lifting procedure is only necessary for a DG solution. If the element contains a FV solution, the lifting procedure is
-!> skipped and instead central gradients are calculated for the comuptation of viscous fluxes
+!> skipped and instead central gradients are calculated for the computation of viscous fluxes
 !==================================================================================================================================
 MODULE MOD_Lifting
 ! MODULES

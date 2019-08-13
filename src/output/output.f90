@@ -216,6 +216,9 @@ USE MOD_Mesh_Vars   , ONLY: nGlobalElems
 USE MOD_FV_Vars     , ONLY: FV_Elems
 USE MOD_Analyze_Vars, ONLY: totalFV_nElems
 #endif
+#if USE_PARTICLES
+USE MOD_Particle_Vars, ONLY: PDM
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -232,6 +235,9 @@ INTEGER :: FVcounter
 REAL    :: FV_percent
 #endif
 REAL    :: percent,time_remaining,mins,secs,hours
+#if USE_PARTICLES
+INTEGER :: nParticleInDomain
+#endif
 !==================================================================================================================================
 #if FV_ENABLED
 FVcounter = SUM(FV_Elems)
@@ -242,6 +248,15 @@ IF(.NOT.doPrintStatusLine) RETURN
 
 #if FV_ENABLED && USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+#endif
+
+#if USE_PARTICLES
+#if USE_MPI
+! Gather number of particles on ALL procs
+CALL MPI_REDUCE(PDM%ParticleVecLength,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+#else
+nParticleInDomain = PDM%ParticleVecLength
+#endif
 #endif
 
 IF(MPIroot)THEN
@@ -261,8 +276,18 @@ IF(MPIroot)THEN
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV '
 #endif
+#if USE_PARTICLES
+  IF (nParticleInDomain.GT.0) THEN
+  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A,I8,A1)',ADVANCE='NO') 'Time = ', t, &
+      ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(hours),':',INT(mins),':',INT(secs), &
+      ', # of Particles:', nParticleInDomain, ACHAR(13)
+  ELSE
+#endif
   WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1)',ADVANCE='NO') 'Time = ', t, &
       ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(hours),':',INT(mins),':',INT(secs), ACHAR(13)
+#if USE_PARTICLES
+  END IF
+#endif
 #ifdef INTEL
   CLOSE(UNIT_stdOut)
 #endif

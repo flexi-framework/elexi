@@ -98,8 +98,9 @@ USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeTyp
 USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
 USE MOD_ReadInTools       ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
 USE MOD_Interpolation     ,ONLY:GetVandermonde
-USE MOD_IO_HDF5           ,ONLY:AddToElemData,ElementOut
+USE MOD_IO_HDF5           ,ONLY:AddToElemData
 #if EQNSYSNR==2
+USE MOD_IO_HDF5           ,ONLY:ElementOut
 USE MOD_Interpolation_Vars,ONLY:wGP
 USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
 #endif
@@ -209,7 +210,7 @@ END SUBROUTINE InitFilter
 
 
 !==================================================================================================================================
-!> Builds filter matrix for modal filter function. Could be used to controll aliasing instabilities.
+!> Builds filter matrix for modal filter function. Could be used to control aliasing instabilities.
 !> For details see NODALBOOK. The magnitude of the modal DOF are reduced, where DOF belonging to higher order are reduced more.
 !> The first DOF (=mean value) is NOT reduced to keep conservation. It is also possible to combine the Filter with a modal-based
 !> indicator (Resolution/Persson indicator), to keep accuracy in resolved regions.

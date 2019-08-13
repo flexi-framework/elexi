@@ -50,7 +50,7 @@ PUBLIC:: FinalizeVisu
 CONTAINS
 
 !===================================================================================================================================
-!> Create a list of available variables for ParaView. This list contains the conservative, primitve and derived quantities
+!> Create a list of available variables for ParaView. This list contains the conservative, primitive and derived quantities
 !> that are available in the current equation system as well as the additional variables read from the state file.
 !> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
 !> Also a list of all available boundary names is created for surface visualization.
@@ -399,7 +399,7 @@ LOGICAL                          :: changedPrmFile
 !**********************************************************************************************
 ! General workflow / principles of the visu ParaView-plugin
 !
-! * all arrays are SDEALLOCATEd just before they are allocated. This is done to keep there
+! * all arrays are SDEALLOCATEd just before they are allocated. This is done to keep their
 !   content during successive calls of the visu during a ParaView session. They are only
 !   deallocated and reallocated, if there content should change. For example the coords of the
 !   mesh file only change if the mesh, NVisu or the distribution of DG/FV elements changes.

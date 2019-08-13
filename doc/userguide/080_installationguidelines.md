@@ -6,7 +6,7 @@ This chapter contains guidelines to install the code from Github on specific sys
 
 ## Cloning and compiling on machines at the HLRS \label{sec:cloninghlrs}
 
-Unfortunately, the GitHub server is not available on machines at the HLRS, such as the Hazelhen, due to restricted internet access. The workaround is to use ssh tunnels to access the GitHub repositories. Note that the reomte repositories hosted at teh GitLab at the Institute of Aerodynamics and Gasdynamics (IAG), no ssh tunnel is required and cloning works straight forwardly.
+Unfortunately, the GitHub server is not available on machines at the HLRS, such as the Hazelhen, due to restricted internet access. The workaround is to use ssh tunnels to access the GitHub repositories. Note that the remote repositories hosted at the GitLab at the Institute of Aerodynamics and Gasdynamics (IAG), no ssh tunnel is required and cloning works straight forwardly.
 
 The following instructions to access the GitHub repositories on HLRS machines is taken from the HLRS wickie page, see [https://wickie.hlrs.de/platforms/index.php/Secure_Shell_ssh#Git](https://wickie.hlrs.de/platforms/index.php/Secure_Shell_ssh#Git).
 

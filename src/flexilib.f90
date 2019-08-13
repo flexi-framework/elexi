@@ -62,6 +62,24 @@ USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
 #endif
+#if USE_PARTICLES
+USE MOD_Particle_Analyze,  ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
+USE MOD_Particle_Erosion,  ONLY:DefineParametersParticleErosion,InitParticleErosion
+USE MOD_ErosionPoints,     ONLY:DefineParametersErosionPoints,InitErosionPoints
+USE MOD_Particle_Surfaces, ONLY:InitParticleSurfaces
+USE MOD_Particle_Mesh,     ONLY:DefineparametersParticleMesh,InitParticleMesh, InitElemBoundingBox
+USE MOD_Particle_Boundary_Sampling,ONLY:RestartParticleBoundarySampling
+USE MOD_ParticleInit,      ONLY:InitParticles,DefineParametersParticles
+USE MOD_PICInit,           ONLY:DefineParametersPIC
+USE MOD_Particle_Restart
+#if USE_MPI
+USE MOD_Particle_MPI,      ONLY:InitParticleMPI
+USE MOD_LoadBalance,       ONLY:DefineParametersLoadBalance,InitLoadBalance
+#endif /*MPI*/
+#if USE_LOADBALANCE
+USE MOD_Restart_Vars,      ONLY:DoRestart
+#endif /*LOADBALANCE*/
+#endif /*PARTICLES*/
 USE MOD_Sponge,            ONLY:DefineParametersSponge,InitSponge
 #if FV_ENABLED
 USE MOD_FV,                ONLY:DefineParametersFV,InitFV
@@ -101,7 +119,11 @@ IF (nArgs.GT.2) THEN
 END IF
 ParameterFile = Args(1)
 IF (nArgs.GT.1) THEN
-  RestartFile = Args(2)
+  RestartFile = Args(2) 
+#if USE_LOADBALANCE
+  ! LoadBalance needs the information that we are performing a restart
+  DoRestart = .TRUE.
+#endif
 ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
   ParameterFile = ".flexi.ini"
   CALL ExtractParameterFile(Args(1), ParameterFile, userblockFound)
@@ -109,6 +131,10 @@ ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
     CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(Args(1))//"'")
   END IF
   RestartFile = Args(1)
+#if USE_LOADBALANCE
+  ! LoadBalance needs the information that we are performing a restart
+  DoRestart = .TRUE.
+#endif
 END IF
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
@@ -133,6 +159,18 @@ CALL DefineParametersSponge()
 CALL DefineParametersTimedisc()
 CALL DefineParametersAnalyze()
 CALL DefineParametersRecordPoints()
+! Particles
+#if USE_PARTICLES
+CALL DefineParametersParticles()
+CALL DefineParametersParticleMesh()
+CALL DefineParametersPIC()
+CALL DefineParametersParticleAnalyze()
+CALL DefineParametersParticleErosion()
+CALL DefineParametersErosionPoints
+#if USE_MPI
+CALL DefineParametersLoadBalance()
+#endif
+#endif /*PARTICLES*/
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
@@ -181,6 +219,12 @@ CALL InitFV_Basis()
 #endif
 CALL InitMortar()
 CALL InitOutput()
+#if USE_PARTICLES
+CALL InitParticleErosion
+#endif
+#if USE_LOADBALANCE
+CALL InitLoadBalance()
+#endif
 CALL InitMesh(meshMode=2)
 CALL InitRestart()
 CALL InitFilter()
@@ -189,6 +233,14 @@ CALL InitIndicator()
 #if USE_MPI
 CALL InitMPIvars()
 #endif
+#if USE_PARTICLES
+#if USE_MPI
+CALL InitParticleMPI
+#endif
+CALL InitElemBoundingBox()
+CALL InitParticleSurfaces
+CALL InitParticleAnalyze
+#endif /*PARTICLES*/
 CALL InitEquation()
 CALL InitDG()
 #if FV_ENABLED
@@ -201,8 +253,14 @@ CALL InitSponge()
 CALL InitTimeDisc()
 CALL InitAnalyze()
 CALL InitRecordpoints()
-CALL IgnoredParameters()
 CALL Restart()
+#if USE_PARTICLES
+CALL InitParticles()
+CALL InitErosionPoints()
+CALL RestartParticleBoundarySampling()
+CALL ParticleRestart()
+#endif /*PARTICLES*/
+CALL IgnoredParameters()
 
 ! Measure init duration
 Time=FLEXITIME()
@@ -243,6 +301,16 @@ USE MOD_FV_Basis,          ONLY:FinalizeFV_Basis
 #endif
 USE MOD_Indicator,         ONLY:FinalizeIndicator
 USE MOD_ReadInTools,       ONLY:FinalizeParameters
+#if USE_PARTICLES
+USE MOD_Particle_Analyze,  ONLY:FinalizeParticleAnalyze
+USE MOD_Particle_Erosion,  ONLY:FinalizeParticleErosion
+USE MOD_ErosionPoints,     ONLY:FinalizeErosionPoints
+USE MOD_Particle_Boundary_Sampling,ONLY:FinalizeParticleBoundarySampling
+USE MOD_ParticleInit,      ONLY:FinalizeParticles
+#if USE_MPI
+USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
+#endif
+#endif /*PARTICLES*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -257,6 +325,13 @@ CALL FinalizeLifting()
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 CALL FinalizeFV()
+#endif
+#if USE_PARTICLES
+CALL FinalizeParticleAnalyze
+CALL FinalizeParticleErosion
+CALL FinalizeErosionPoints()
+CALL FinalizeParticles
+CALL FinalizeParticleBoundarySampling
 #endif
 CALL FinalizeDG()
 CALL FinalizeEquation()
@@ -279,7 +354,10 @@ CALL FinalizeCommandlineArguments()
 #if USE_MPI
 ! For flexilib MPI init/finalize is controlled by main program
 CALL FinalizeMPI()
-#endif
+#if USE_PARTICLES
+CALL FinalizeLoadBalance()
+#endif /*PARTICLES*/
+#endif /*MPI*/
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' FLEXI FINISHED! [',Time-StartTime,' sec ]'
 SWRITE(UNIT_stdOut,'(132("="))')

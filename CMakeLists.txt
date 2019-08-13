@@ -55,6 +55,20 @@ IF (ONHORNET GREATER -1)
   MESSAGE(STATUS "Compiling on Hazelhen")
   ADD_DEFINITIONS(-DLUSTRE)
 ENDIF()
+# Detect machines mounting storage via NFS and work around MPI-IO issue 4446
+#> https://github.com/open-mpi/ompi/issues/4446
+STRING(FIND "${CMAKE_HOSTNAME}" "ilahead" ONILA)
+IF (ONILA GREATER -1)
+  MESSAGE(STATUS "Compiling on ILA cluster")
+  ADD_DEFINITIONS(-DNFS)
+ENDIF()
+# ILA student cluster mounting storage via NFS as well
+#> https://github.com/open-mpi/ompi/issues/4446
+STRING(FIND "${CMAKE_HOSTNAME}" "xenon"   ONXENON)
+IF (ONXENON GREATER -1)
+  MESSAGE(STATUS "Compiling on ILA student cluster")
+  ADD_DEFINITIONS(-DNFS)
+ENDIF()
 
 # =========================================================================
 # Project definitions and output paths
@@ -100,7 +114,12 @@ SUBDIRLIST(TESTCASES  ${CMAKE_CURRENT_SOURCE_DIR}/src/testcase/)
 SUBDIRLIST(EQNSYSTEMS ${CMAKE_CURRENT_SOURCE_DIR}/src/equations/)
 SUBDIRLIST(LIFTINGS   ${CMAKE_CURRENT_SOURCE_DIR}/src/dg/)
 
-OPTION(FLEXI_BUILDPOSTI "Build POSTI toolset" ON)
+# Disable posti on ILA cluster by default since we are cross compiling
+IF (ONILA GREATER -1)
+  OPTION(FLEXI_BUILDPOSTI "Build POSTI toolset" OFF)
+ELSE()
+  OPTION(FLEXI_BUILDPOSTI "Build POSTI toolset" ON)
+ENDIF()
 OPTION(FLEXI_MPI "Compile SINGLE or MPI version" ON)
 OPTION(FLEXI_PARABOLIC "Enable parabolic terms of equation-system" ON)
 CMAKE_DEPENDENT_OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF
@@ -109,6 +128,12 @@ OPTION(FLEXI_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
 OPTION(FLEXI_PAPI "Use PAPI library to perform performance measurements (e.g. flop counts)." OFF)
 OPTION(FLEXI_FV "Enable Finite Volume subcell shock capturing" OFF)
 OPTION(FLEXI_2D "Enable two dimensional computation" OFF)
+OPTION(FLEXI_PARTICLES "Enable particle tracking" OFF)
+# code development
+CMAKE_DEPENDENT_OPTION(FLEXI_PARTICLES_CODE_ANALYZE "Code Analyze" OFF
+                                                    "FLEXI_PARTICLES" ON)
+CMAKE_DEPENDENT_OPTION(FLEXI_PARTICLES_LOADBALANCE "Use LoadBalance timemeasurement" OFF 
+                                                   "FLEXI_PARTICLES;FLEXI_MPI" OFF)
 CMAKE_DEPENDENT_OPTION(FLEXI_FV_RECONSTRUCTION "Enable 2nd order reconstruction for FV" ON
                                                "FLEXI_FV" OFF)
 SET(   FLEXI_BUILD_HDF5 ON  CACHE BOOL "Compile and build hdf5 library")
@@ -164,6 +189,9 @@ ELSEIF(FLEXI_EQNSYSNAME STREQUAL "linearscalaradvection")
 ELSEIF(FLEXI_EQNSYSNAME STREQUAL "rans_sa")
   ADD_DEFINITIONS(-DPP_nVar=6 -DPP_nVarPrim=7 -DEQNSYSNR=3)
   SET(WITHEOS 1)
+  IF(FLEXI_NODETYPE STREQUAL "GAUSS-LOBATTO")
+    MESSAGE(SEND_ERROR "FLEXI_RANS_SA only works on FLEXI_NODETYPE==GAUSS points.")
+  ENDIF()
 ELSE()
   MESSAGE(SEND_ERROR "Unknown equation system.")
 ENDIF()
@@ -316,14 +344,28 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   #environment specific variables
   IF(ONHORNET GREATER -1)
     SET(FLEXI_INSTRUCTION "-march=core-avx2")
+  ELSEIF(ONILA GREATER -1)
+    # Optimize for AVX2 if possible. Executables will be unable to run on head node
+    IF(NOT FLEXI_BUILDPOSTI)
+      SET(FLEXI_INSTRUCTION "-march=core-avx2")
+    ELSE()
+      MESSAGE (WARNING "POSTI enabled on ILA cluster. Omitting AVX2 instruction set. This may degrade performance.")
+      SET(FLEXI_INSTRUCTION "-march=core-avx-i")
+    ENDIF()
   ELSE()
     SET(FLEXI_INSTRUCTION "-march=native")
   ENDIF()
   # set Flags (disable lto type warnings due to false positives with MATMUL, which is a known bug)
   SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -Wno-lto-type-mismatch -DGNU")
-  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
-  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
-  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
+  # ILA TORQUE cluster does not accept all local arrays with unknown size on the stack
+  IF(ONILA GREATER -1)
+    SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions")
+    SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions")
+  ELSE()
+    SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
+    SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
+  ENDIF()
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -finit-real=snan -fbacktrace  -Wall")
   # add flags only for compiling not linking!
   SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
 
@@ -489,6 +531,39 @@ ELSE()
   ADD_DEFINITIONS(-DUSE_MPI=0)
 ENDIF()
 
+# =========================================================================
+# PARTICLES
+# =========================================================================
+IF(FLEXI_PARTICLES)
+  ADD_DEFINITIONS(-DUSE_PARTICLES=1)
+ELSE()
+  ADD_DEFINITIONS(-DUSE_PARTICLES=0)
+ENDIF()
+
+# ========================================================================
+# LOADBALANCE
+# =========================================================================
+IF(FLEXI_PARTICLES)
+  IF(FLEXI_PARTICLES_LOADBALANCE)
+    MESSAGE(STATUS "Building Flexi with LoadBalance")
+    ADD_DEFINITIONS(-DUSE_LOADBALANCE=1)
+  ELSE()
+    ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
+  ENDIF()
+ELSE()
+  ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
+ENDIF()
+
+# =========================================================================
+# CODE_ANALYZE
+# =========================================================================
+
+IF(FLEXI_PARTICLES_CODE_ANALYZE)
+  ADD_DEFINITIONS(-DCODE_ANALYZE=1)
+ELSE()
+  ADD_DEFINITIONS(-DCODE_ANALYZE=0)
+ENDIF(FLEXI_PARTICLES_CODE_ANALYZE)
+
 # ========================================================================= 
 # PAPI library 
 # ========================================================================= 
@@ -585,6 +660,13 @@ LIST(APPEND flexiF90 ${dgF90})
 IF (FLEXI_FV)
   FILE(GLOB fvF90 ./src/fv/*.f90)
   LIST(APPEND flexiF90 ${fvF90})
+ENDIF()
+
+# collect F90 files of 'particle' directory (recursive) in new list 'particlesF90'
+IF (FLEXI_PARTICLES)
+    FILE(GLOB_RECURSE particlesF90 ./src/particles/*.f90)
+# append 'particlesF90'-list to 'flexiF90'-list
+    LIST(APPEND flexiF90 ${particlesF90})
 ENDIF()
 
 # define libs
@@ -697,6 +779,10 @@ ENDIF(CTAGS_PATH)
 
 # Deactivate tests on hornet since no programs are allowed to run on frontend
 IF(ONHORNET GREATER -1)
+  SET(FLEXI_UNITTESTS OFF CACHE BOOL "Enable unit tests after build" FORCE)
+ENDIF()
+# Deactivate tests on ILA cluster since our frontend does not support AVX2
+IF(ONILA    GREATER -1)
   SET(FLEXI_UNITTESTS OFF CACHE BOOL "Enable unit tests after build" FORCE)
 ENDIF()
 IF(FLEXI_UNITTESTS)

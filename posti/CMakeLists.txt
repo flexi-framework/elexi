@@ -11,6 +11,8 @@ CMAKE_DEPENDENT_OPTION(POSTI_BUILD_EVALUATERECORDPOINTS  "Build the Record Point
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_SWAPMESH              "Build the Swapmesh tool"                            OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_CHANNEL_FFT           "Build the channel FFT tool"                         OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_WALLDISTANCE          "Build the walldistance tool"                        OFF "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_WALLPARTICLES         "Build the wallparticles tool"                       OFF "FLEXI_BUILDPOSTI;FLEXI_PARTICLES" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_TURBULENCE            "Build the turbulence tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_TO3D                  "Build the 3D extrusion tool"                        OFF "FLEXI_BUILDPOSTI" OFF)
 OPTION(ENABLE_OPENMP "Enable OpenMP" OFF)
 IF(ENABLE_OPENMP)
@@ -107,6 +109,14 @@ ENDIF()
 
 IF(POSTI_BUILD_WALLDISTANCE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/walldistance/CMakeLists.txt)
+ENDIF()
+
+IF(POSTI_BUILD_WALLPARTICLES)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/calcwallparticles/CMakeLists.txt)
+ENDIF()
+
+IF(POSTI_BUILD_TURBULENCE)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/calcturb/CMakeLists.txt)
 ENDIF()
 
 IF(POSTI_BUILD_TO3D)

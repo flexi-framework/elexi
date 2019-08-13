@@ -95,6 +95,9 @@ USE MOD_Equation_Vars     ,ONLY: StrVarNames
 #if PP_dim == 2
 USE MOD_2D                ,ONLY: ExpandArrayTo3D
 #endif
+#if USE_PARTICLES
+USE MOD_Particle_HDF5_output
+#endif /*PARTICLES*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -195,6 +198,14 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
 
 ! Deallocate UOut only if we did not point to U
 IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
+
+#if USE_PARTICLES
+! output of last source term
+!#if USE_MPI
+!CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+!#endif /*MPI*/
+CALL WriteParticleToHDF5(FileName)
+#endif /*Particles*/
 
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
@@ -851,7 +862,7 @@ CHARACTER(LEN=255)       :: FileName,InputFile,NextFile
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
 
-WRITE(UNIT_stdOut,'(a)')' DELETING OLD HDF5 FILES...'
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' DELETING OLD HDF5 FILES...'
 IF (.NOT.PRESENT(FlushTime_In)) THEN
   FlushTime=0.0
 ELSE

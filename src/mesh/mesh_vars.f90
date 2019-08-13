@@ -171,11 +171,20 @@ TYPE tElemPtr
   TYPE(tElem),POINTER          :: ep              !< Local element pointer
 END TYPE tElemPtr
 
+#if USE_PARTICLES
+TYPE tNodePtr
+  TYPE(tNode),POINTER          :: np                     !< node pointer
+END TYPE tNodePtr
+#endif
+
 !> Element data type, containing element mesh information (mesh readin only)
 TYPE tElem
   INTEGER                      :: ind             !< global element index
   INTEGER                      :: Type            !< element type (linear/bilinear/curved)
   INTEGER                      :: Zone            !< zone of elements (unused)
+#if USE_PARTICLES
+  TYPE(tNodePtr),POINTER       :: Node(:)
+#endif
   TYPE(tSidePtr),POINTER       :: Side(:)         !< sides connected to element
 END TYPE tElem
 
@@ -187,15 +196,31 @@ TYPE tSide
   INTEGER                      :: NbProc          !< neighbor processor (if applicable)
   INTEGER                      :: BCindex         !< index in BoundaryType array!
   INTEGER                      :: flip            !< flip of side (0 if master, 1-4 if slave)
+#if USE_PARTICLES
+  INTEGER                      :: BC_Alpha        !< inital value for periodic displacement before mapping in pos. bc-index range
+#endif /*PARTICLES*/
   INTEGER                      :: nMortars        !< number of slave mortar sides associated with master mortar
   INTEGER                      :: MortarType      !< type of mortar: Type1 : 1-4 , Type 2: 1-2 in eta, Type 2: 1-2 in xi
   TYPE(tSidePtr),POINTER       :: MortarSide(:)   !< array of side pointers to slave mortar sides
+#if USE_PARTICLES
+  TYPE(tNodePtr),POINTER       :: Node(:)
+#endif
   TYPE(tElem),POINTER          :: Elem            !< pointer to connected element
   TYPE(tSide),POINTER          :: connection      !< pointer to connected neighbour side
 END TYPE tSide
 
+#if USE_PARTICLES
+TYPE tNode
+  INTEGER                      :: NodeID=0        !< local proc specific node index
+  INTEGER                      :: ind=0           !< global unique node index
+  REAL                         :: x(3)=0.
+END TYPE tNode
+#endif /*PARTICLES*/
 !----------------------------------------------------------------------------------------------------------------------------------
 TYPE(tElemPtr),POINTER         :: Elems(:)        !< array of mesh elements with geometry and connectivity (only for readin)
+#if USE_PARTICLES
+TYPE(tNodePtr),POINTER         :: Nodes(:)
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL          :: MeshInitIsDone =.FALSE.       !< marks whether the mesh init routines are finished
 !==================================================================================================================================
@@ -225,8 +250,17 @@ IMPLICIT NONE
 TYPE(tSide),POINTER :: getNewSide !< pointer to new side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#if USE_PARTICLES
+INTEGER             :: iNode
+#endif
 !==================================================================================================================================
 ALLOCATE(getNewSide)
+#if USE_PARTICLES
+ALLOCATE(getNewSide%Node(4))
+DO iNode=1,4
+  NULLIFY(getNewSide%Node(iNode)%np)
+END DO
+#endif
 NULLIFY(getNewSide%Elem)
 NULLIFY(getNewSide%MortarSide)
 NULLIFY(getNewSide%connection)
@@ -252,8 +286,17 @@ TYPE(tElem),POINTER :: getNewElem !< pointer to new element
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iLocSide
+#if USE_PARTICLES
+INTEGER             :: iNode
+#endif
 !==================================================================================================================================
 ALLOCATE(getNewElem)
+#if USE_PARTICLES
+ALLOCATE(getNewElem%Node(8))
+DO iNode=1,8
+  NULLIFY(getNewElem%Node(iNode)%np)
+END DO
+#endif
 ALLOCATE(getNewElem%Side(6))
 DO iLocSide=1,6
   getNewElem%Side(iLocSide)%sp=>getNewSide()
@@ -262,6 +305,56 @@ getNewElem%ind=0
 getNewElem%Zone=0
 getNewElem%Type=0
 END FUNCTION GETNEWELEM
+
+
+#if USE_PARTICLES
+SUBROUTINE createSides(Elem)
+!===================================================================================================================================
+! if element nodes already assigned, create Sides using CGNS standard
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+TYPE(tElem),POINTER :: Elem
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+!side 1
+Elem%Side(1)%sp%Node(1)%np=>Elem%Node(1)%np
+Elem%Side(1)%sp%Node(2)%np=>Elem%Node(4)%np
+Elem%Side(1)%sp%Node(3)%np=>Elem%Node(3)%np
+Elem%Side(1)%sp%Node(4)%np=>Elem%Node(2)%np
+!side 2                                    
+Elem%Side(2)%sp%Node(1)%np=>Elem%Node(1)%np
+Elem%Side(2)%sp%Node(2)%np=>Elem%Node(2)%np
+Elem%Side(2)%sp%Node(3)%np=>Elem%Node(6)%np
+Elem%Side(2)%sp%Node(4)%np=>Elem%Node(5)%np
+!side 3                                    
+Elem%Side(3)%sp%Node(1)%np=>Elem%Node(2)%np
+Elem%Side(3)%sp%Node(2)%np=>Elem%Node(3)%np
+Elem%Side(3)%sp%Node(3)%np=>Elem%Node(7)%np
+Elem%Side(3)%sp%Node(4)%np=>Elem%Node(6)%np
+!side 4                                    
+Elem%Side(4)%sp%Node(1)%np=>Elem%Node(3)%np
+Elem%Side(4)%sp%Node(2)%np=>Elem%Node(4)%np
+Elem%Side(4)%sp%Node(3)%np=>Elem%Node(8)%np
+Elem%Side(4)%sp%Node(4)%np=>Elem%Node(7)%np
+!side 5                                    
+Elem%Side(5)%sp%Node(1)%np=>Elem%Node(1)%np
+Elem%Side(5)%sp%Node(2)%np=>Elem%Node(5)%np
+Elem%Side(5)%sp%Node(3)%np=>Elem%Node(8)%np
+Elem%Side(5)%sp%Node(4)%np=>Elem%Node(4)%np
+!side 6                                                
+Elem%Side(6)%sp%Node(1)%np=>Elem%Node(5)%np
+Elem%Side(6)%sp%Node(2)%np=>Elem%Node(6)%np
+Elem%Side(6)%sp%Node(3)%np=>Elem%Node(7)%np
+Elem%Side(6)%sp%Node(4)%np=>Elem%Node(8)%np
+END SUBROUTINE createSides
+#endif
 
 
 
@@ -278,6 +371,9 @@ IMPLICIT NONE
 INTEGER       :: FirstElemInd,LastElemInd
 INTEGER       :: iElem,iLocSide
 INTEGER       :: iMortar
+#if USE_PARTICLES
+INTEGER       :: iNode
+#endif
 TYPE(tElem),POINTER :: aElem
 TYPE(tSide),POINTER :: aSide
 !==================================================================================================================================
@@ -285,6 +381,12 @@ FirstElemInd = offsetElem+1
 LastElemInd  = offsetElem+nElems
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
+#if USE_PARTICLES
+  DO iNode=1,8
+    NULLIFY(aElem%Node(iNode)%np)
+  END DO
+  DEALLOCATE(aElem%Node)
+#endif
   DO iLocSide=1,6
     aSide=>aElem%Side(iLocSide)%sp
     DO iMortar=1,aSide%nMortars

@@ -296,12 +296,13 @@ doFinalize=.FALSE.
 IF (PartSteadyState) THEN
   dt_min = Part_dt_min
   dt     = Part_dt_min
-  
-  IF (dt_Min.EQ.0) THEN
+END IF
+
+! Get time step if needed
+IF ((PartSteadyState.AND.(dt_Min.EQ.0)).OR.(.NOT.PartSteadyState)) THEN
 #endif
-    dt=CALCTIMESTEP(errType)
+  dt=CALCTIMESTEP(errType)
 #if USE_PARTICLES
-  END IF
 END IF
 #endif
 

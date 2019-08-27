@@ -345,6 +345,8 @@ SWRITE(UNIT_stdOut,'(A,A)')' GET SIZE OF DATA IN HDF5 FILE... '
 
 IF(.NOT.PRESENT(ArrayName_opt)) THEN
     ArrayName = 'DG_Solution'
+ELSE
+    ArrayName = ArrayName_opt
 END IF
 
 ! Read in attributes

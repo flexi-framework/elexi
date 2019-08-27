@@ -38,9 +38,17 @@ INTERFACE Particle_TimeStepByLSERK
   MODULE PROCEDURE Particle_TimeStepByLSERK
 END INTERFACE Particle_TimeStepByLSERK
 
+INTERFACE Particle_TimeStepByLSERK_RHS
+  MODULE PROCEDURE Particle_TimeStepByLSERK_RHS
+END INTERFACE Particle_TimeStepByLSERK_RHS
+
 INTERFACE Particle_TimeStepByLSERK_RK
   MODULE PROCEDURE Particle_TimeStepByLSERK_RK
 END INTERFACE Particle_TimeStepByLSERK_RK
+
+INTERFACE Particle_TimeStepByLSERK_RK_RHS
+  MODULE PROCEDURE Particle_TimeStepByLSERK_RK_RHS
+END INTERFACE Particle_TimeStepByLSERK_RK_RHS
 
 !INTERFACE Particle_FinalizeTimeDisc
 !  MODULE PROCEDURE Particle_FinalizeTimeDisc
@@ -50,7 +58,9 @@ PUBLIC::Particle_InitTimeDisc
 PUBLIC::Particle_Timedisc
 PUBLIC::Particle_TimeStepByEuler
 PUBLIC::Particle_TimeStepByLSERK
+PUBLIC::Particle_TimeStepByLSERK_RHS
 PUBLIC::Particle_TimeStepByLSERK_RK
+PUBLIC::Particle_TimeStepByLSERK_RK_RHS
 
 !===================================================================================================================================
 
@@ -149,10 +159,10 @@ USE MOD_Particle_HDF5_output,ONLY: WriteParticleToHDF5
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+INTEGER(KIND=8),INTENT(IN)   :: iter
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                         :: dt_Min
-INTEGER(KIND=8),INTENT(IN)   :: iter
 INTEGER                      :: iPart
 LOGICAL                      :: NoPartInside
 INTEGER                      :: nLostPartsTot
@@ -369,6 +379,93 @@ END SUBROUTINE Particle_TimeStepByEuler
 
 !===================================================================================================================================
 !> Low-Storage Runge-Kutta integration: 2 register version
+!> Calculate the right hand side before updating the field solution. Can be used to hide sending of number of particles.
+!===================================================================================================================================
+SUBROUTINE Particle_TimeStepByLSERK_RHS(iStage,b_dt)
+! MODULES
+USE MOD_Globals
+USE MOD_TimeDisc_Vars
+#if USE_MPI
+USE MOD_Particle_MPI_Vars,       ONLY: DoExternalParts
+USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
+USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
+USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
+USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartMPF,ExtPartToFIBGM
+#endif /*MPI*/
+USE MOD_PICInterpolation
+USE MOD_PICDepo
+USE MOD_Part_RHS,                ONLY: CalcPartRHS
+#if EQNSYSNR == 4
+USE MOD_Particle_RandomWalk,     ONLY: Particle_RandomWalk
+#endif
+USE MOD_Particle_Vars,           ONLY: DelayTime
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(INOUT)         :: iStage
+REAL,INTENT(IN)               :: b_dt(1:nRKStages)
+!-----------------------------------------------------------------------------------------------------------------------------------
+#if USE_MPI
+CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of LB
+#endif /*MPI*/
+
+IF (t.GE.DelayTime) THEN
+  ! communicate shape function particles
+#if USE_MPI
+  PartMPIExchange%nMPIParticles=0
+  IF(DoExternalParts)THEN
+    ! as we do not have the shape function here, we have to deallocate something
+    SDEALLOCATE(ExtPartState)
+    SDEALLOCATE(ExtPartSpecies)
+    SDEALLOCATE(ExtPartToFIBGM)
+    SDEALLOCATE(ExtPartMPF)
+    ! open receive buffer for number of particles
+    CALL IRecvNbofParticles()
+    ! send number of particles
+    CALL SendNbOfParticles()
+  END IF
+#endif /*MPI*/
+
+  ! forces on particle
+  ! can be used to hide sending of number of particles
+  CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)
+  CALL CalcPartRHS()
+#if EQNSYSNR == 4
+  CALL Particle_RandomWalk()
+#endif
+!END IF
+  
+!IF ((t.GE.DelayTime).OR.(iter.EQ.0)) THEN
+#if USE_MPI
+  PartMPIExchange%nMPIParticles=0
+  IF(DoExternalParts)THEN
+    ! finish communication of number of particles and send particles
+    CALL MPIParticleRecv()
+  END IF
+#endif /*MPI*/
+  
+  ! because of emmission and UpdateParticlePosition
+  CALL Deposition(doInnerParts=.TRUE.) 
+
+#if USE_MPI
+  IF(DoExternalParts)THEN
+    ! finish communication
+    CALL MPIParticleRecv()
+  END IF
+  ! here: finish deposition with delta kernal
+  !       maps source terms in physical space
+  ! ALWAYS require
+  PartMPIExchange%nMPIParticles=0
+#endif
+  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
+END IF
+
+END SUBROUTINE Particle_TimeStepByLSERK_RHS
+
+    
+!===================================================================================================================================
+!> Low-Storage Runge-Kutta integration: 2 register version
 !> This procedure takes the current time t, the time step dt and the solution at
 !> the current time U(t) and returns the solution at the next time level.
 !> RKA/b/c coefficients are low-storage coefficients, NOT the ones from butcher table.
@@ -389,17 +486,17 @@ USE MOD_FV,                      ONLY: FV_Switch
 USE MOD_FV_Vars,                 ONLY: FV_toDGinRK
 #endif
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,       ONLY: DoExternalParts
-USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
+!USE MOD_Particle_MPI_Vars,       ONLY: DoExternalParts
+!USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
-USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartMPF,ExtPartToFIBGM
+!USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
+!USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartMPF,ExtPartToFIBGM
 #endif /*MPI*/
 USE MOD_part_emission,           ONLY: ParticleInserting
-USE MOD_part_RHS,                ONLY: CalcPartRHS
-USE MOD_PICInterpolation
-USE MOD_PICDepo
-USE MOD_part_tools,              ONLY: UpdateNextFreePosition
+!USE MOD_part_RHS,                ONLY: CalcPartRHS
+!USE MOD_PICInterpolation
+!USE MOD_PICDepo
+USE MOD_Part_tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
 USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, LastPartPos, DelayTime, PEM, PDM, Species,PartSpecies
@@ -429,55 +526,60 @@ DO iStage_loc=1,nRKStages
   END IF
 END DO
 
-#if USE_MPI
-CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of LB
-#endif /*MPI*/
-
+!#if USE_MPI
+!CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of LB
+!#endif /*MPI*/
+!
 IF (t.GE.DelayTime) THEN
-  ! communicate shape function particles
-#if USE_MPI
-  PartMPIExchange%nMPIParticles=0
-  IF(DoExternalParts)THEN
-    ! as we do not have the shape function here, we have to deallocate something
-    SDEALLOCATE(ExtPartState)
-    SDEALLOCATE(ExtPartSpecies)
-    SDEALLOCATE(ExtPartToFIBGM)
-    SDEALLOCATE(ExtPartMPF)
-    ! open receive buffer for number of particles
-    CALL IRecvNbofParticles()
-    ! send number of particles
-    CALL SendNbOfParticles()
-  END IF
-#endif /*MPI*/
-CALL Deposition(doInnerParts=.TRUE.) ! because of emmision and UpdateParticlePosition
-#if USE_MPI
-  IF(DoExternalParts)THEN
-    ! finish communication
-    CALL MPIParticleRecv()
-  END IF
-  ! here: finish deposition with delta kernal
-  !       maps source terms in physical space
-  ! ALWAYS require
-  PartMPIExchange%nMPIParticles=0
-#endif /*MPI*/
-  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
-END IF
-
-! set last data already here, since surfaceflux moved before interpolation
-LastPartPos(1:PDM%ParticleVecLength,1)=PartState(1:PDM%ParticleVecLength,1)
-LastPartPos(1:PDM%ParticleVecLength,2)=PartState(1:PDM%ParticleVecLength,2)
-LastPartPos(1:PDM%ParticleVecLength,3)=PartState(1:PDM%ParticleVecLength,3)
-PEM%lastElement(1:PDM%ParticleVecLength)=PEM%Element(1:PDM%ParticleVecLength)
-
-! LSERK step
-IF (t.GE.DelayTime) THEN
-  CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)   ! forces on particles
-  CALL CalcPartRHS()
-#if EQNSYSNR == 4
-  CALL Particle_RandomWalk()
-#endif
+!  ! communicate shape function particles
+!#if USE_MPI
+!  PartMPIExchange%nMPIParticles=0
+!  IF(DoExternalParts)THEN
+!    ! as we do not have the shape function here, we have to deallocate something
+!    SDEALLOCATE(ExtPartState)
+!    SDEALLOCATE(ExtPartSpecies)
+!    SDEALLOCATE(ExtPartToFIBGM)
+!    SDEALLOCATE(ExtPartMPF)
+!    ! open receive buffer for number of particles
+!    CALL IRecvNbofParticles()
+!    ! send number of particles
+!    CALL SendNbOfParticles()
+!  END IF
+!#endif /*MPI*/
+!CALL Deposition(doInnerParts=.TRUE.) ! because of emmision and UpdateParticlePosition
+!#if USE_MPI
+!  IF(DoExternalParts)THEN
+!    ! finish communication
+!    CALL MPIParticleRecv()
+!  END IF
+!  ! here: finish deposition with delta kernel
+!  !       maps source terms in physical space
+!  ! ALWAYS require
+!  PartMPIExchange%nMPIParticles=0
+!#endif /*MPI*/
+!  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
+!END IF
+!
+!! set last data already here, since surfaceflux moved before interpolation
+!LastPartPos(1:PDM%ParticleVecLength,1)=PartState(1:PDM%ParticleVecLength,1)
+!LastPartPos(1:PDM%ParticleVecLength,2)=PartState(1:PDM%ParticleVecLength,2)
+!LastPartPos(1:PDM%ParticleVecLength,3)=PartState(1:PDM%ParticleVecLength,3)
+!PEM%lastElement(1:PDM%ParticleVecLength)=PEM%Element(1:PDM%ParticleVecLength)
+!
+!! LSERK step
+!IF (t.GE.DelayTime) THEN
+!  CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)   ! forces on particles
+!  CALL CalcPartRHS()
+!#if EQNSYSNR == 4
+!  CALL Particle_RandomWalk()
+!#endif
   ! Error state for max velocity
   part_err = .FALSE.
+  
+  LastPartPos(1:PDM%ParticleVecLength,1)=PartState(1:PDM%ParticleVecLength,1)
+  LastPartPos(1:PDM%ParticleVecLength,2)=PartState(1:PDM%ParticleVecLength,2)
+  LastPartPos(1:PDM%ParticleVecLength,3)=PartState(1:PDM%ParticleVecLength,3)
+  PEM%lastElement(1:PDM%ParticleVecLength)=PEM%Element(1:PDM%ParticleVecLength)
   
   ! particle step
   DO iPart=1,PDM%ParticleVecLength
@@ -597,6 +699,68 @@ END IF
 END SUBROUTINE Particle_TimeStepByLSERK
 
 !===================================================================================================================================
+!> Low-Storage Runge-Kutta integration: 2 register version
+!> Calculate the right hand side before updating the field solution. Can be used to hide sending of number of particles.
+!===================================================================================================================================
+SUBROUTINE Particle_TimeStepByLSERK_RK_RHS(t,iStage,b_dt)
+! MODULES
+USE MOD_Globals
+USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
+#if USE_MPI
+!USE MOD_Particle_MPI_Vars,       ONLY: DoExternalParts
+USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
+USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
+USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
+!USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartMPF,ExtPartToFIBGM
+#endif /*MPI*/
+USE MOD_PICInterpolation
+USE MOD_PICDepo
+USE MOD_Part_RHS,                ONLY: CalcPartRHS
+#if EQNSYSNR == 4
+USE MOD_Particle_RandomWalk,     ONLY: Particle_RandomWalk
+#endif
+USE MOD_Particle_Vars,           ONLY: DelayTime
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)               :: t
+INTEGER,INTENT(INOUT)         :: iStage
+REAL,INTENT(IN)               :: b_dt(1:nRKStages)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+IF (t.GE.DelayTime) THEN
+#if USE_MPI
+  CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)
+  CALL MPIParticleSend()
+#endif
+
+  ! deposition
+  CALL Deposition(doInnerParts=.TRUE.) ! because of emmision and UpdateParticlePosition
+
+#if USE_MPI
+  CALL MPIParticleRecv()
+#endif
+  CALL InterpolateFieldToParticle(doInnerParts=.FALSE.)
+  CALL CalcPartRHS()
+#if EQNSYSNR == 4
+  CALL Particle_RandomWalk()
+#endif
+  CALL Deposition(doInnerParts=.FALSE.)
+  
+#if USE_MPI
+  ! null here, careful
+  PartMPIExchange%nMPIParticles=0
+#endif
+END IF
+
+CALL CountPartsPerElem(ResetNumberOfParticles=.FALSE.) !for scaling of tParts of LB
+
+END SUBROUTINE Particle_TimeStepByLSERK_RK_RHS
+
+!===================================================================================================================================
 !> Low-Storage Runge-Kutta integration: 2 register version. Inner RK iteration
 !> This procedure takes the current time t, the time step dt and the solution at
 !> the current time U(t) and returns the solution at the next time level.
@@ -671,22 +835,22 @@ IF (t.GE.DelayTime) THEN
     CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
 END IF
 
-  ! set last data already here, since surfaceflux moved before interpolation
-  LastPartPos(1:PDM%ParticleVecLength,1)=PartState(1:PDM%ParticleVecLength,1)
-  LastPartPos(1:PDM%ParticleVecLength,2)=PartState(1:PDM%ParticleVecLength,2)
-  LastPartPos(1:PDM%ParticleVecLength,3)=PartState(1:PDM%ParticleVecLength,3)
-  PEM%lastElement(1:PDM%ParticleVecLength)=PEM%Element(1:PDM%ParticleVecLength)
   IF (t.GE.DelayTime) THEN
-    ! Forces on particle
-    CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)   ! forces on particles
-    CALL CalcPartRHS()
-#if EQNSYSNR == 4
-    CALL Particle_RandomWalk()
-#endif
+!    ! Forces on particle
+!    CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)   ! forces on particles
+!    CALL CalcPartRHS()
+!#if EQNSYSNR == 4
+!    CALL Particle_RandomWalk()
+!#endif
     
     ! Error state for max velocity
     part_err = .FALSE.
 
+    LastPartPos(1:PDM%ParticleVecLength,1)=PartState(1:PDM%ParticleVecLength,1)
+    LastPartPos(1:PDM%ParticleVecLength,2)=PartState(1:PDM%ParticleVecLength,2)
+    LastPartPos(1:PDM%ParticleVecLength,3)=PartState(1:PDM%ParticleVecLength,3)
+    PEM%lastElement(1:PDM%ParticleVecLength)=PEM%Element(1:PDM%ParticleVecLength)
+    
     ! particle step
     DO iPart=1,PDM%ParticleVecLength
       IF (PDM%ParticleInside(iPart)) THEN

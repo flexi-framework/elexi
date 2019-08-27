@@ -271,8 +271,8 @@ SUBROUTINE SendNbOfParticles(doParticle_In)
 !===================================================================================================================================
 ! this routine sends the number of send particles. Following steps are performed
 ! 1) Compute number of Send Particles
-! 2) Performe MPI_ISEND with number of particles
-! Rest is perforemd in SendParticles
+! 2) Perform MPI_ISEND with number of particles
+! Rest is performed in SendParticles
 ! 3) Build Message 
 ! 4) MPI_WAIT for number of received particles
 ! 5) Open Receive-Buffer for particle message -> MPI_IRECV

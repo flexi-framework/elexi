@@ -437,6 +437,7 @@ ELSE
     CurrentStage=1
     tStage=t
     
+    CALL Particle_TimeStepByLSERK_RHS(CurrentStage,b_dt)
     CALL Particle_TimeStepByLSERK(CurrentStage,b_dt)
     
     DO iStage=2,nRKStages
@@ -444,6 +445,7 @@ ELSE
         tStage=t+dt*RKc(iStage)
         IF(doCalcIndicator) CALL CalcIndicator(U,t)
         
+        CALL Particle_TimeStepByLSERK_RK_RHS(t,CurrentStage,b_dt)
         CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
     END DO
     
@@ -680,18 +682,28 @@ b_dt=RKb*dt
 
 CurrentStage=1
 tStage=t
+
+#if USE_PARTICLES
+CALL Particle_TimeStepByLSERK_RHS(CurrentStage,b_dt)
+#endif
+
 CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
 CALL VCopy(nTotalU,S2,U)                       !S2=U
 !CALL DGTimeDerivative_weakForm(t)             ! allready called in timedisc
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
 
 #if USE_PARTICLES
-  CALL Particle_TimeStepByLSERK(CurrentStage,b_dt)
+CALL Particle_TimeStepByLSERK(CurrentStage,b_dt)
 #endif
 
 DO iStage=2,nRKStages
   CurrentStage=iStage
   tStage=t+dt*RKc(iStage)
+  
+#if USE_PARTICLES
+  CALL Particle_TimeStepByLSERK_RK_RHS(t,CurrentStage,b_dt)
+#endif
+  
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,Uprev,S2,AllowToDG=FV_toDGinRK)

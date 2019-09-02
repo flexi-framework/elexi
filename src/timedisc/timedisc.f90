@@ -437,8 +437,8 @@ ELSE
     CurrentStage=1
     tStage=t
     
-    CALL Particle_TimeStepByLSERK_RHS(CurrentStage,b_dt)
-    CALL Particle_TimeStepByLSERK(CurrentStage,b_dt)
+    CALL Particle_TimeStepByLSERK_RHS(t,CurrentStage,b_dt)
+    CALL Particle_TimeStepByLSERK(t,CurrentStage,b_dt)
     
     DO iStage=2,nRKStages
         CurrentStage=iStage
@@ -590,6 +590,19 @@ IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 ! First evaluation of DG operator already done in timedisc
 CurrentStage=1
 tStage=t
+
+#if USE_PARTICLES
+SELECT CASE (TRIM(ParticleTimeDiscMethod))
+  CASE('Runge-Kutta')
+    CALL Particle_TimeStepByLSERK_RHS(t,CurrentStage,b_dt)
+  CASE('Euler')
+    CALL Particle_TimeStepByEuler(dt)
+  CASE DEFAULT
+    CALL CollectiveStop(__STAMP__,&
+                    'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
+END SELECT
+#endif
+
 !CALL DGTimeDerivative_weakForm(tStage)      !allready called in timedisc
 CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
@@ -597,9 +610,9 @@ CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK(CurrentStage,b_dt)
+      CALL Particle_TimeStepByLSERK(t,CurrentStage,b_dt)
     CASE('Euler')
-      CALL Particle_TimeStepByEuler(dt)
+      ! Do nothing
     CASE DEFAULT
       CALL CollectiveStop(__STAMP__,&
                       'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
@@ -610,6 +623,18 @@ CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 DO iStage=2,nRKStages
   CurrentStage=iStage
   tStage=t+dt*RKc(iStage)
+#if USE_PARTICLES
+  SELECT CASE (TRIM(ParticleTimeDiscMethod))
+    CASE('Runge-Kutta')
+      CALL Particle_TimeStepByLSERK_RK_RHS(t,CurrentStage,b_dt)
+    CASE('Euler')
+      ! Do nothing
+    CASE DEFAULT
+      CALL CollectiveStop(__STAMP__,&
+                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
+  END SELECT
+#endif
+  
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
@@ -628,7 +653,6 @@ DO iStage=2,nRKStages
       CALL CollectiveStop(__STAMP__,&
                       'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
   END SELECT
-  
 #endif
   
 END DO
@@ -684,7 +708,7 @@ CurrentStage=1
 tStage=t
 
 #if USE_PARTICLES
-CALL Particle_TimeStepByLSERK_RHS(CurrentStage,b_dt)
+CALL Particle_TimeStepByLSERK_RHS(t,CurrentStage,b_dt)
 #endif
 
 CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
@@ -693,7 +717,7 @@ CALL VCopy(nTotalU,S2,U)                       !S2=U
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
 
 #if USE_PARTICLES
-CALL Particle_TimeStepByLSERK(CurrentStage,b_dt)
+CALL Particle_TimeStepByLSERK(t,CurrentStage,b_dt)
 #endif
 
 DO iStage=2,nRKStages

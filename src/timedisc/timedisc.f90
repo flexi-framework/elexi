@@ -303,6 +303,8 @@ IF ((PartSteadyState.AND.(dt_Min.EQ.0)).OR.(.NOT.PartSteadyState)) THEN
 #endif
   dt=CALCTIMESTEP(errType)
 #if USE_PARTICLES
+ELSE
+  errType = 0
 END IF
 #endif
 

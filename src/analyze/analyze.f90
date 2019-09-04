@@ -177,14 +177,18 @@ DO iSide=1,nSides
   END DO; END DO
 END DO
 #if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,           1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,           nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,hasAnalyzeSides,nBCs,MPI_LOGICAL         ,MPI_LOR,MPI_COMM_FLEXI,iError)
+! Communicate whether any processor has a surface at the respective boundary
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,hasAnalyzeSides,nBCs,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
+
 ! Prevent division by 0 if a BC has no sides associated with it (e.g. periodic)
 DO iSurf=1,nBCs
   IF (.NOT.hasAnalyzeSides(iSurf)) Surf(iSurf) = HUGE(1.)
 END DO
+#if USE_MPI
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
 
 ! Initialize eval routines
 CALL InitAnalyzeBasis(PP_N,NAnalyze,xGP,wBary)

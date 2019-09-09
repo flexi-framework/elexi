@@ -239,7 +239,7 @@ USE MOD_Particle_MPI_Vars,       ONLY: DoExternalParts
 USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartMPF,ExtPartToFIBGM
+USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartToFIBGM
 #endif /*MPI*/
 USE MOD_part_emission,           ONLY: ParticleInserting
 USE MOD_part_RHS,                ONLY: CalcPartRHS
@@ -274,7 +274,6 @@ IF (t.GE.DelayTime) THEN
     SDEALLOCATE(ExtPartState)
     SDEALLOCATE(ExtPartSpecies)
     SDEALLOCATE(ExtPartToFIBGM)
-    SDEALLOCATE(ExtPartMPF)
     ! open receive buffer for number of particles
     CALL IRecvNbofParticles()
     ! send number of particles
@@ -390,7 +389,7 @@ USE MOD_Particle_MPI_Vars,       ONLY: DoExternalParts
 USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartMPF,ExtPartToFIBGM
+USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartToFIBGM
 #endif /*MPI*/
 USE MOD_PICInterpolation
 USE MOD_PICDepo
@@ -420,7 +419,6 @@ IF (t.GE.DelayTime) THEN
     SDEALLOCATE(ExtPartState)
     SDEALLOCATE(ExtPartSpecies)
     SDEALLOCATE(ExtPartToFIBGM)
-    SDEALLOCATE(ExtPartMPF)
     ! open receive buffer for number of particles
     CALL IRecvNbofParticles()
     ! send number of particles
@@ -488,16 +486,9 @@ USE MOD_FV,                      ONLY: FV_Switch
 USE MOD_FV_Vars,                 ONLY: FV_toDGinRK
 #endif
 #if USE_MPI
-!USE MOD_Particle_MPI_Vars,       ONLY: DoExternalParts
-!USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
-!USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-!USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartMPF,ExtPartToFIBGM
 #endif /*MPI*/
 USE MOD_part_emission,           ONLY: ParticleInserting
-!USE MOD_part_RHS,                ONLY: CalcPartRHS
-!USE MOD_PICInterpolation
-!USE MOD_PICDepo
 USE MOD_Part_tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
@@ -529,54 +520,7 @@ DO iStage_loc=1,nRKStages
   END IF
 END DO
 
-!#if USE_MPI
-!CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of LB
-!#endif /*MPI*/
-!
 IF (t.GE.DelayTime) THEN
-!  ! communicate shape function particles
-!#if USE_MPI
-!  PartMPIExchange%nMPIParticles=0
-!  IF(DoExternalParts)THEN
-!    ! as we do not have the shape function here, we have to deallocate something
-!    SDEALLOCATE(ExtPartState)
-!    SDEALLOCATE(ExtPartSpecies)
-!    SDEALLOCATE(ExtPartToFIBGM)
-!    SDEALLOCATE(ExtPartMPF)
-!    ! open receive buffer for number of particles
-!    CALL IRecvNbofParticles()
-!    ! send number of particles
-!    CALL SendNbOfParticles()
-!  END IF
-!#endif /*MPI*/
-!CALL Deposition(doInnerParts=.TRUE.) ! because of emmision and UpdateParticlePosition
-!#if USE_MPI
-!  IF(DoExternalParts)THEN
-!    ! finish communication
-!    CALL MPIParticleRecv()
-!  END IF
-!  ! here: finish deposition with delta kernel
-!  !       maps source terms in physical space
-!  ! ALWAYS require
-!  PartMPIExchange%nMPIParticles=0
-!#endif /*MPI*/
-!  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
-!END IF
-!
-!! set last data already here, since surfaceflux moved before interpolation
-!LastPartPos(1:PDM%ParticleVecLength,1)=PartState(1:PDM%ParticleVecLength,1)
-!LastPartPos(1:PDM%ParticleVecLength,2)=PartState(1:PDM%ParticleVecLength,2)
-!LastPartPos(1:PDM%ParticleVecLength,3)=PartState(1:PDM%ParticleVecLength,3)
-!PEM%lastElement(1:PDM%ParticleVecLength)=PEM%Element(1:PDM%ParticleVecLength)
-!
-!! LSERK step
-!IF (t.GE.DelayTime) THEN
-!  CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)   ! forces on particles
-!  CALL CalcPartRHS()
-!#if EQNSYSNR == 4
-!  CALL Particle_RandomWalk()
-!#endif
-  ! Error state for max velocity
   part_err = .FALSE.
   
   ! particle step
@@ -706,7 +650,6 @@ USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
 USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-!USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartMPF,ExtPartToFIBGM
 #endif /*MPI*/
 USE MOD_PICInterpolation
 USE MOD_PICDepo
@@ -819,20 +762,7 @@ DO iStage_loc=1,nRKStages
 END DO
 
 IF (t.GE.DelayTime) THEN
-!    ! Forces on particle
-!    CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)   ! forces on particles
-!    CALL CalcPartRHS()
-!#if EQNSYSNR == 4
-!    CALL Particle_RandomWalk()
-!#endif
-
-  ! Error state for max velocity
   part_err = .FALSE.
-
-!  LastPartPos(1:PDM%ParticleVecLength,1)=PartState(1:PDM%ParticleVecLength,1)
-!  LastPartPos(1:PDM%ParticleVecLength,2)=PartState(1:PDM%ParticleVecLength,2)
-!  LastPartPos(1:PDM%ParticleVecLength,3)=PartState(1:PDM%ParticleVecLength,3)
-!  PEM%lastElement(1:PDM%ParticleVecLength)=PEM%Element(1:PDM%ParticleVecLength)
 
   ! particle step
   DO iPart=1,PDM%ParticleVecLength

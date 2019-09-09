@@ -1072,7 +1072,6 @@ SDEALLOCATE(GEO%PeriodicVectors)
 SDEALLOCATE(GEO%FIBGM)
 SDEALLOCATE(GEO%Volume)
 SDEALLOCATE(GEO%CharLength)
-SDEALLOCATE(GEO%DeltaEvMPF)
 SDEALLOCATE(GEO%ElemToFIBGM)
 SDEALLOCATE(GEO%TFIBGM)
 
@@ -3106,7 +3105,6 @@ USE MOD_Globals
 USE MOD_Mesh_Vars,          ONLY:nElems,sJ
 USE MOD_Particle_Mesh_Vars, ONLY:GEO
 USE MOD_Interpolation_Vars, ONLY:wGP
-USE MOD_Particle_Vars,      ONLY:usevMPF
 USE MOD_ReadInTools
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -3135,16 +3133,7 @@ IF (ALLOCSTAT.NE.0) THEN
       __STAMP__&
       ,'ERROR in InitParticleGeometry: Cannot allocate GEO%CharLength!')
 END IF
-usevMPF = GETLOGICAL('Part-vMPF','.FALSE.')
-IF(usevMPF) THEN
-  ALLOCATE(GEO%DeltaEvMPF(nElems),STAT=ALLOCSTAT)
-  IF (ALLOCSTAT.NE.0) THEN
-    CALL abort(&
-__STAMP__&
-,'ERROR in InitParticleGeometry: Cannot allocate GEO%DeltaEvMPF!')
-  END IF
-  GEO%DeltaEvMPF(:) = 0.0
-END IF
+
 DO iElem=1,nElems
   !--- Calculate and save volume of element iElem
   J_N(1,0:PP_N,0:PP_N,0:PP_N)=1./sJ(:,:,:,iElem,0)

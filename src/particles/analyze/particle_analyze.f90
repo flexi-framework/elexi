@@ -254,7 +254,6 @@ END SUBROUTINE CalcKineticEnergy
 !SUBROUTINE CalcNumPartsOfSpec(NumSpec,SimNumSpec) 
 !!===================================================================================================================================
 !! computes the number of simulated particles AND number of real particles within the domain
-!! CAUTION: SimNumSpec equals NumSpec only for constant MPF, not vMPF
 !! Last section of the routine contains the MPI-communication
 !!===================================================================================================================================
 !! MODULES                                                                                                                          !

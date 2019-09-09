@@ -1148,7 +1148,7 @@ USE MOD_Particle_Basis,         ONLY:BernSteinPolynomial
 USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping
 USE MOD_Particle_Mesh_Vars,     ONLY:GEO,casematrix, NbrOfCases
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,      ONLY:ExtPartState,ExtPartSpecies,ExtPartMPF,ExtPartToFIBGM,NbrOfExtParticles
+USE MOD_Particle_MPI_Vars,      ONLY:ExtPartState,ExtPartSpecies,ExtPartToFIBGM,NbrOfExtParticles
 USE MOD_Particle_MPI_Vars,      ONLY:PartMPIExchange
 USE MOD_LoadBalance_Vars,       ONLY:nDeposPerElem
 #endif  /*MPI*/
@@ -1533,7 +1533,6 @@ CASE('shape_function','shape_function_simple')
     SDEALLOCATE(ExtPartState)
     SDEALLOCATE(ExtPartSpecies)
     SDEALLOCATE(ExtPartToFIBGM)
-    SDEALLOCATE(ExtPartMPF)
     NbrOfExtParticles=0
 #endif /*MPI*/
   END IF !.NOT.DoInnerParts
@@ -1666,11 +1665,7 @@ CASE('shape_function_1d')
     END IF
     
     DO iPart=1,NbrOfextParticles  !external Particles
-!      IF (usevMPF) THEN
-!        Fac(4)= Species(ExtPartSpecies(iPart))%ChargeIC * ExtPartMPF(iPart)*w_sf
-!      ELSE
-        Fac(4)= Species(ExtPartSpecies(iPart))%ChargeIC * Species(ExtPartSpecies(iPart))%MacroParticleFactor*w_sf
-!      END IF ! usevMPF
+      Fac(4)= Species(ExtPartSpecies(iPart))%ChargeIC * Species(ExtPartSpecies(iPart))%MacroParticleFactor*w_sf
       Fac(1:3) = ExtPartState(iPart,4:6)*Fac(4)
       chargedone(:) = .FALSE.
       !-- determine which background mesh cells (and interpolation points within) need to be considered
@@ -1753,7 +1748,6 @@ CASE('shape_function_1d')
     SDEALLOCATE(ExtPartState)
     SDEALLOCATE(ExtPartSpecies)
     SDEALLOCATE(ExtPartToFIBGM)
-    SDEALLOCATE(ExtPartMPF)
     NbrOfExtParticles=0
   END IF
 #endif /*MPI*/
@@ -1955,7 +1949,6 @@ CASE('shape_function_cylindrical','shape_function_spherical')
     SDEALLOCATE(ExtPartState)
     SDEALLOCATE(ExtPartSpecies)
     SDEALLOCATE(ExtPartToFIBGM)
-    SDEALLOCATE(ExtPartMPF)
     NbrOfExtParticles=0
   END IF
 #endif /*MPI*/

@@ -41,7 +41,7 @@ SUBROUTINE CalcMacCellLDValues()
   USE MOD_Globals
   USE MOD_LD_Vars
   USE MOD_Mesh_Vars,              ONLY : nElems
-  USE MOD_Particle_Vars,          ONLY : PEM, usevMPF, PartMPF, BoltzmannConst, Species, PartSpecies
+  USE MOD_Particle_Vars,          ONLY : PEM, BoltzmannConst, Species, PartSpecies
   USE MOD_Particle_Mesh_Vars,     ONLY : GEO
   USE MOD_Mesh_Vars,              ONLY : ElemToSide, SideToElem
 !--------------------------------------------------------------------------------------------------!
@@ -76,11 +76,7 @@ DO iElem = 1, nElems ! element=cell main loop
     
     iPartIndx = PEM%pStart(iElem)
     DO ipart = 1, nPart
-      IF (usevMPF) THEN
-         WeightFak = PartMPF(iPartIndx)
-      ELSE
-         WeightFak = Species(PartSpecies(iPartIndx))%MacroParticleFactor
-      END IF
+      WeightFak = Species(PartSpecies(iPartIndx))%MacroParticleFactor
       BulkValues(iElem)%CellV(1)        = BulkValues(iElem)%CellV(1) + PartStateBulkValues(iPartIndx,1) &
                                         * WeightFak * Species(PartSpecies(iPartIndx))%MassIC
       BulkValues(iElem)%CellV(2)        = BulkValues(iElem)%CellV(2) + PartStateBulkValues(iPartIndx,2) &

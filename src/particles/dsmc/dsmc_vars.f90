@@ -40,8 +40,6 @@ INTEGER                       :: SelectionProc              ! Mode of Selection 
                                                             !    1: Laux Default
                                                             !    2: Gimmelsheim
 
-INTEGER                       :: PairE_vMPF(2)              ! 1: Pair chosen for energy redistribution
-                                                            ! 2: partical with minimal MPF of this Pair
 LOGICAL                       :: useDSMC
 REAL    , ALLOCATABLE         :: PartStateIntEn(:,:)        ! (npartmax,1:3) with 2nd index: Evib, Erot, Eel
 

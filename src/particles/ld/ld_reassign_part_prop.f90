@@ -190,7 +190,7 @@ SUBROUTINE CalcCellTemp_PartDens(iElem, CellTemp, CellPartDens)
 !===================================================================================================================================
 ! MODULES
   USE MOD_LD_Vars
-  USE MOD_Particle_Vars,      ONLY: Species, PartSpecies, BoltzmannConst, usevMPF, PartMPF, PEM
+  USE MOD_Particle_Vars,      ONLY: Species, PartSpecies, BoltzmannConst, PEM
   USE MOD_Particle_Mesh_Vars, ONLY: GEO
 !--------------------------------------------------------------------------------------------------!
 ! calculation of LD-cell temperatur
@@ -213,11 +213,7 @@ SUBROUTINE CalcCellTemp_PartDens(iElem, CellTemp, CellPartDens)
   CellMass  = 0.0
   MPFSum    = 0.0
   DO ipart = 1, nPart
-    IF (usevMPF) THEN
-       WeightFak = PartMPF(iPartIndx)
-    ELSE
-       WeightFak = Species(PartSpecies(iPartIndx))%MacroParticleFactor
-    END IF
+    WeightFak = Species(PartSpecies(iPartIndx))%MacroParticleFactor
     CellMass  = CellMass + WeightFak * Species(PartSpecies(iPartIndx))%MassIC
     MPFSum    = MPFSum + WeightFak
     iPartIndx = PEM%pNext(iPartIndx)

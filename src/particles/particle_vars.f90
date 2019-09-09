@@ -44,7 +44,6 @@ INTEGER , ALLOCATABLE :: PartReflCount(:)                                    ! C
 REAL    , ALLOCATABLE :: Pt_temp(:,:)                                        ! LSERK4 additional derivative of PartState                                                          ! (1:NParts,1:6) with 2nd index: x,y,z,vx,vy,vz
 REAL    , ALLOCATABLE :: LastPartPos(:,:)                                    ! (1:NParts,1:3) with 2nd index: x,y,z
 INTEGER , ALLOCATABLE :: PartSpecies(:)                                      ! (1:NParts) 
-REAL    , ALLOCATABLE :: PartMPF(:)                                          ! (1:NParts) MacroParticleFactor by variable MPF
 INTEGER               :: PartRHSMethod
 REAL                  :: PartGravity(3)
 INTEGER               :: nrSeeds                                             ! Number of Seeds for Random Number Generator

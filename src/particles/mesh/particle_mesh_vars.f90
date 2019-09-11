@@ -174,7 +174,6 @@ TYPE tGeometry
   REAL, ALLOCATABLE                      :: CharLength(:)                     ! Characteristic length for each cell: L=V^(1/3)
   REAL                                   :: MeshVolume                        ! Total Volume of mesh
   REAL                                   :: LocalVolume                       ! Volume of proc 
-  REAL, ALLOCATABLE                      :: DeltaEvMPF(:)                     ! Energy difference due to particle merge
   INTEGER, ALLOCATABLE                   :: ElemToRegion(:)                   ! ElemToRegion(1:nElems)
 
   LOGICAL                                :: SelfPeriodic                      ! does process have periodic bounds with itself?

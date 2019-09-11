@@ -288,7 +288,7 @@ USE MOD_Particle_Globals
 USE MOD_Preproc
 USE MOD_Restart                ,ONLY: Restart
 USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,nLoadBalanceSteps,NewImbalance,MinWeight,MaxWeight
-USE MOD_PICDepo_Vars           ,ONLY: DepositionType
+!USE MOD_PICDepo_Vars           ,ONLY: DepositionType
 USE MOD_Particle_MPI           ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance,MaxWeight,MinWeight
 USE MOD_LoadBalance_Vars       ,ONLY: Currentimbalance,PerformLoadBalance,nLoadBalance
@@ -341,17 +341,17 @@ SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' NewImbalance: ', NewImbalance
 SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MaxWeight:    ', MaxWeight
 SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MinWeight:    ', MinWeight
 
-! e.g. 'shape_function', 'shape_function_1d', 'shape_function_cylindrical'
-IF(TRIM(DepositionType(1:MIN(14,LEN(TRIM(ADJUSTL(DepositionType)))))).EQ.'shape_function')THEN
-  ! open receive buffer for number of particles
-  CALL IRecvNbofParticles()
-  ! send number of particles
-  CALL SendNbOfParticles()
-  ! finish communication of number of particles and send particles
-  CALL MPIParticleSend()
-  ! finish communication
-  CALL MPIParticleRecv()
-END IF
+!! e.g. 'shape_function', 'shape_function_1d', 'shape_function_cylindrical'
+!IF(TRIM(DepositionType(1:MIN(14,LEN(TRIM(ADJUSTL(DepositionType)))))).EQ.'shape_function')THEN
+!  ! open receive buffer for number of particles
+!  CALL IRecvNbofParticles()
+!  ! send number of particles
+!  CALL SendNbOfParticles()
+!  ! finish communication of number of particles and send particles
+!  CALL MPIParticleSend()
+!  ! finish communication
+!  CALL MPIParticleRecv()
+!END IF
 
 ! Calculate time spent for load balance restart
 LB_Time=FLEXITIME()

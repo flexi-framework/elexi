@@ -76,7 +76,6 @@ CALL prms%CreateIntOption('Part-NumberOfRandomSeeds',       'Number of random se
 CALL prms%CreateIntOption('Particles-NumberOfRandomVectors','Number of random vectors',                     '0')
 
 CALL prms%CreateLogicalOption('OutputSurfaceFluxLinked',    'Flag to print the SurfaceFlux-linked Info' ,   '.FALSE.')
-CALL prms%CreateLogicalOption('Part-vMPF',                  'Flag to use variable Macro Particle Factor.',  '.FALSE.')
 CALL prms%CreateLogicalOption('Part-SteadyState',           'Only update particle position while keeping fluid state frozen',      &
                                                             '.FALSE.')
 CALL prms%CreateLogicalOption('Part-TrackPosition',         'Track particle position',                      '.FALSE.')
@@ -93,9 +92,9 @@ CALL prms%CreateLogicalOption('Part-WriteMacroSurfaceValues','Similar to Part-Wr
                                                                                                             '.FALSE.')
 CALL prms%CreateLogicalOption('Part-WriteFieldsToVTK',      'Not in Code anymore, but read-in has to be deleted'                 //&
                                                             ' in particle_init.f90',                        '.FALSE.')
-CALL prms%CreateLogicalOption('PIC-SFResampleAnalyzeSurfCollis', '',                                        '.FALSE.')
+!CALL prms%CreateLogicalOption('PIC-SFResampleAnalyzeSurfCollis', '',                                        '.FALSE.')
 CALL prms%CreateLogicalOption('printRandomSeeds',           'Flag defining if random seeds are written.',   '.FALSE.')
-CALL prms%CreateLogicalOption('PrintSFDepoWarnings',        'Print the shapefunction warnings',             '.FALSE.')
+!CALL prms%CreateLogicalOption('PrintSFDepoWarnings',        'Print the shapefunction warnings',             '.FALSE.')
 CALL prms%CreateLogicalOption('Particles-OutputVpiWarnings','Flag for warnings for rejected'                                     //&
                                                             ' v if VPI+PartDensity',                        '.FALSE.')
 CALL prms%CreateLogicalOption('Part-AllowLoosing',          'Flag if a lost particle should abort the programm','.FALSE.')
@@ -156,7 +155,7 @@ CALL prms%CreateRealOption(     'Part-Species[$]-InflowRiseTime' &
 CALL prms%CreateRealOption(     'Part-Species[$]-PartDensity' &
                                 , 'Define particle density for species [$]. PartDensity (real particles per m^3).\n'//&
                                   'Used for DSMC with (vpi_)cuboid/cylinder and cell_local initial inserting.\n'// &
-                                  'Also for LD_insert or (vpi_)cub./cyl. / cell_local as alternative to Part.Emis. in Type1', '0.'&
+                                  'Also for (vpi_)cub./cyl. / cell_local as alternative to Part.Emis. in Type1', '0.'&
                                 , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-ParticleEmission' &
                                 , 'Emission rate in part/s or part/iteration.', '0.', numberedmulti=.TRUE.)
@@ -310,7 +309,6 @@ USE MOD_ReadInTools
 USE MOD_IO_HDF5,                    ONLY: AddToElemData
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
 USE MOD_Part_Emission,              ONLY: InitializeParticleEmission, InitializeParticleSurfaceflux
-USE MOD_LD_Init,                    ONLY: InitLD
 USE MOD_DSMC_Vars,                  ONLY: DSMC
 USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Erosion_Vars
@@ -784,14 +782,14 @@ __STAMP__&
     !--- stuff for calculating ParticleEmission/InitialParticleNumber from PartDensity when this value is not used for LD-stuff
     !                                                                                  (additional not-LD checks might be necassary)
     PartDens_OnlyInit=.FALSE.
-    IF ((Species(iSpec)%Init(iInit)%PartDensity.GT.0.).AND.(TRIM(Species(iSpec)%Init(iInit)%SpaceIC).NE.'LD_insert')) THEN
+    IF ((Species(iSpec)%Init(iInit)%PartDensity.GT.0.)) THEN
       IF (Species(iSpec)%Init(iInit)%ParticleEmissionType.NE.1) THEN
         IF ( (Species(iSpec)%Init(iInit)%ParticleEmissionType.EQ.2) .AND. (Species(iSpec)%Init(iInit)%UseForInit) ) THEN
           PartDens_OnlyInit=.TRUE.
         ELSE
           CALL abort(&
 __STAMP__&
-            , 'PartDensity without LD is only supported for EmiType1 or initial ParticleInserting with EmiType1/2!')
+            , 'PartDensity is only supported for EmiType1 or initial ParticleInserting with EmiType1/2!')
         END IF
       END IF
       IF ((TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cuboid').OR.(TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cylinder')) THEN
@@ -826,7 +824,7 @@ __STAMP__&
               ELSE
                 CALL abort(&
 __STAMP__&
-                  ,'PartDensity without LD is only supported for CalcHeightFromDt, vpi, or initial ParticleInserting!')
+                  ,'PartDensity is only supported for CalcHeightFromDt, vpi, or initial ParticleInserting!')
               END IF
             END IF
             IF ( TRIM(Species(iSpec)%Init(iInit)%SpaceIC) .EQ. 'cylinder' ) THEN
@@ -875,7 +873,7 @@ __STAMP__&
       ELSE
         CALL abort(&
 __STAMP__&
-        ,'PartDensity without LD is only supported for the SpaceIC cuboid(_vpi) or cylinder(_vpi)!')
+        ,'PartDensity is only supported for the SpaceIC cuboid(_vpi) or cylinder(_vpi)!')
       END IF
     END IF
     !--- determine StartnumberOfInits (start loop index, e.g., for emission loops)

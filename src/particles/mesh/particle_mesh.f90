@@ -168,10 +168,12 @@ CALL prms%CreateLogicalOption( 'Write-TriaSurfaceFlux-DebugMesh'&
 
 CALL prms%CreateLogicalOption( 'CountNbOfLostParts'&
   , 'Count number of lost particles during tracking that can not be found with fallbacks.','.FALSE.')
+#if CODE_ANALYZE
 CALL prms%CreateIntOption(     'PartOut'&
   , 'If compiled with CODE_ANALYZE flag: For This particle number every tracking information is written as STDOUT.','0')
 CALL prms%CreateIntOption(     'MPIRankOut'&
   , 'If compiled with CODE_ANALYZE flag: This MPI-Proc writes the tracking information for the defined PartOut.','0')
+#endif /*CODE_ANALYZE*/
 CALL prms%CreateLogicalOption( 'MeasureTrackTime'&
   , 'If .TRUE. then the time how long the tracking routines are called are sampled and written for each MPI-Proc.','.FALSE.')
 CALL prms%CreateLogicalOption( 'CartesianPeriodic'&
@@ -1949,7 +1951,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_CalcTimeStep,                       ONLY:CalcTimeStep
 USE MOD_ChangeBasis,                        ONLY:ChangeBasis2D
-USE MOD_PICDepo,                            ONLY:InitializeDeposition
+!USE MOD_PICDepo,                            ONLY:InitializeDeposition
 USE MOD_Particle_Globals
 USE MOD_Particle_Periodic_BC,               ONLY:InitPeriodicBC
 USE MOD_Particle_Mesh_Vars,                 ONLY:GEO
@@ -1958,7 +1960,7 @@ USE MOD_Particle_Vars,                      ONLY:ManualTimeStep,Species,nSpecies
 #if USE_MPI
 USE MOD_Particle_MPI,                       ONLY:InitHALOMesh
 USE MOD_Particle_Mesh_Vars,                 ONLY:FIBGMCellPadding
-USE MOD_PICDepo_Vars,                       ONLY:DepositionType, r_sf
+!USE MOD_PICDepo_Vars,                       ONLY:DepositionType, r_sf
 USE MOD_Particle_MPI_Vars,                  ONLY:PartMPI
 USE MOD_Particle_Mesh_Vars,                 ONLY:NbrOfCases,casematrix
 #endif /*MPI*/
@@ -2022,7 +2024,7 @@ kk=0
   ! reduce beziercontrolpoints to boundary sides
   !IF(DoRefMapping) CALL ReshapeBezierSides()
   !CALL InitializeInterpolation() ! not any more required ! has to be called earliear
-  CALL InitializeDeposition()     ! has to remain here, because domain can have changed
+!  CALL InitializeDeposition()     ! has to remain here, because domain can have changed
   !CALL InitPIC()                 ! does not depend on domain
 
 ! deallocate stuff // required for dynamic load balance
@@ -2057,7 +2059,12 @@ BGMjmax = INT((GEO%ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))+1
 BGMjmin = INT((GEO%ymin-GEO%yminglob)/GEO%FIBGMdeltas(2))-1
 BGMkmax = INT((GEO%zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))+1
 BGMkmin = INT((GEO%zmin-GEO%zminglob)/GEO%FIBGMdeltas(3))-1
+<<<<<<< Updated upstream
 
+=======
+!WRITE(*,*) 'xmax', GEO%xmax, GEO%xmaxglob
+!WRITE(*,*) 'xmin', GEO%xmin, GEO%xmaxglob
+>>>>>>> Stashed changes
 !--- JN: For MPI communication, information also about the neighboring FIBGM cells is needed
 !--- AS: shouldn't we add up here the nPaddingCells? 
 !--- TS: What we need to do is increase the BGM area for shape_function ONLY
@@ -2115,21 +2122,21 @@ halo_eps2=halo_eps*halo_eps
 SWRITE(UNIT_stdOut,'(A46,E24.12)')   ' |                            halo distance | ',halo_eps 
 
 
-#if USE_MPI
-IF ((DepositionType.EQ.'shape_function')             &
-.OR.(DepositionType.EQ.'shape_function_cylindrical') &
-.OR.(DepositionType.EQ.'shape_function_spherical')   &
-.OR.(DepositionType.EQ.'shape_function_simple')      &
-.OR.(DepositionType.EQ.'shape_function_1d')          )THEN
-  ! and changed, tooo
-  BGMimax = INT((MIN(GEO%xmax+halo_eps,GEO%xmaxglob)-GEO%xminglob)/GEO%FIBGMdeltas(1))+1
-  BGMimin = INT((MAX(GEO%xmin-halo_eps,GEO%xminglob)-GEO%xminglob)/GEO%FIBGMdeltas(1))-1
-  BGMjmax = INT((MIN(GEO%ymax+halo_eps,GEO%ymaxglob)-GEO%yminglob)/GEO%FIBGMdeltas(2))+1
-  BGMjmin = INT((MAX(GEO%ymin-halo_eps,GEO%yminglob)-GEO%yminglob)/GEO%FIBGMdeltas(2))-1
-  BGMkmax = INT((MIN(GEO%zmax+halo_eps,GEO%zmaxglob)-GEO%zminglob)/GEO%FIBGMdeltas(3))+1
-  BGMkmin = INT((MAX(GEO%zmin-halo_eps,GEO%zminglob)-GEO%zminglob)/GEO%FIBGMdeltas(3))-1
-END IF
-#endif
+!#if USE_MPI
+!IF ((DepositionType.EQ.'shape_function')             &
+!.OR.(DepositionType.EQ.'shape_function_cylindrical') &
+!.OR.(DepositionType.EQ.'shape_function_spherical')   &
+!.OR.(DepositionType.EQ.'shape_function_simple')      &
+!.OR.(DepositionType.EQ.'shape_function_1d')          )THEN
+!  ! and changed, tooo
+!  BGMimax = INT((MIN(GEO%xmax+halo_eps,GEO%xmaxglob)-GEO%xminglob)/GEO%FIBGMdeltas(1))+1
+!  BGMimin = INT((MAX(GEO%xmin-halo_eps,GEO%xminglob)-GEO%xminglob)/GEO%FIBGMdeltas(1))-1
+!  BGMjmax = INT((MIN(GEO%ymax+halo_eps,GEO%ymaxglob)-GEO%yminglob)/GEO%FIBGMdeltas(2))+1
+!  BGMjmin = INT((MAX(GEO%ymin-halo_eps,GEO%yminglob)-GEO%yminglob)/GEO%FIBGMdeltas(2))-1
+!  BGMkmax = INT((MIN(GEO%zmax+halo_eps,GEO%zmaxglob)-GEO%zminglob)/GEO%FIBGMdeltas(3))+1
+!  BGMkmin = INT((MAX(GEO%zmin-halo_eps,GEO%zminglob)-GEO%zminglob)/GEO%FIBGMdeltas(3))-1
+!END IF
+!#endif
 
 GEO%FIBGMimax=BGMimax
 GEO%FIBGMimin=BGMimin
@@ -2209,11 +2216,19 @@ DO iElem=1,PP_nElems
       DO iBGM = BGMCellXmin,BGMCellXmax
         GEO%FIBGM(iBGM,jBGM,kBGM)%nElem = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem + 1    
         GEO%FIBGM(iBGM,jBGM,kBGM)%Element(GEO%FIBGM(iBGM,jBGM,kBGM)%nElem) = iElem
+<<<<<<< Updated upstream
+=======
+!        WRITE(*,*) iBGM, jBGM, kBGM, GEO%FIBGM(iBGM,jBGM,kBGM)%nElem, GEO%FIBGM(iBGM,jBGM,kBGM)%Element(GEO%FIBGM(iBGM,jBGM,kBGM)%nElem) 
+>>>>>>> Stashed changes
       END DO ! kBGM
     END DO ! jBGM
   END DO ! iBGM
 END DO ! iElem
+<<<<<<< Updated upstream
 
+=======
+!WRITE(*,*) 'ElemToBGM', ElemToBGM
+>>>>>>> Stashed changes
 
 !IF(mode.EQ.2) RETURN
 #if USE_MPI
@@ -2222,6 +2237,11 @@ SWRITE(UNIT_stdOut,'(A)')' Building MPI-FIBGM ...'
 BGMCells=0 
 ALLOCATE(BGMCellsArray(1:(BGMimax-BGMimin+1)*(BGMjmax-BGMjmin+1)*(BGMkmax-BGMkmin+1)*3))
 !Count BGMCells with Elements inside and save their indices in BGMCellsArray
+<<<<<<< Updated upstream
+=======
+!WRITE(*,*) 'BGMimin, BGMimax', BGMimin, BGMimax
+!WRITE(*,*)  'BGMjmin, BGMjmax', BGMjmin, BGMjmax
+>>>>>>> Stashed changes
 DO kBGM=BGMkmin, BGMkmax
   DO jBGM=BGMjmin, BGMjmax
     DO iBGM=BGMimin, BGMimax  
@@ -2234,7 +2254,11 @@ DO kBGM=BGMkmin, BGMkmax
     END DO ! kBGM
   END DO ! jBGM
 END DO ! iBGM
+<<<<<<< Updated upstream
 
+=======
+!WRITE(*,*) 'BGMCellsArray', BGMCellsArray , 'PartMPI%MyRank', PartMPI%MyRank
+>>>>>>> Stashed changes
 !Communicate number of BGMCells
 CALL MPI_ALLGATHER(BGMCells, 1, MPI_INTEGER, NbrOfBGMCells(0:PartMPI%nProcs-1), 1, MPI_INTEGER, PartMPI%COMM, IERROR) 
 ALLOCATE(GlobalBGMCellsArray(1:SUM(NbrOfBGMCells)*3))
@@ -2242,6 +2266,11 @@ Displacement(1)=0
 DO i=2, PartMPI%nProcs
   Displacement(i) = SUM(NbrOfBGMCells(0:i-2))*3
 END DO
+<<<<<<< Updated upstream
+=======
+!WRITE(*,*) 'NbrOfBGMCells', NbrOfBGMCells
+!WRITE(*,*) 'Displacement', Displacement
+>>>>>>> Stashed changes
 !Gather indices of every Procs' Cells
 CALL MPI_ALLGATHERV(BGMCellsArray(1:BGMCells*3), BGMCells*3, MPI_INTEGER, GlobalBGMCellsArray, &    
                    & NbrOfBGMCells(0:PartMPI%nProcs-1)*3, Displacement, MPI_INTEGER, PartMPI%COMM, IERROR)
@@ -2249,7 +2278,13 @@ CALL MPI_ALLGATHERV(BGMCellsArray(1:BGMCells*3), BGMCells*3, MPI_INTEGER, Global
 !--- JN: first: count required array size for ReducedBGMArray
 !--- TS: Define padding stencil (max of halo and shape padding)
 !        Reason: This padding is used to build the ReducedBGM, so any information 
+<<<<<<< Updated upstream
 !                outside this region is lost 
+=======
+!                outside this region is lost
+!WRITE(*,*) 'GEO%nPeriodicVectors', GEO%nPeriodicVectors
+!WRITE(*,*) 'GEO%directions',GEO%directions
+>>>>>>> Stashed changes
 IF (GEO%nPeriodicVectors.GT.0) THEN  !Periodic (can't be done below because ReducedBGMArray is sorted by proc)
   FIBGMCellPadding(1:3)=1
   IF(.NOT.GEO%directions(1)) FIBGMCellPadding(1) = INT(halo_eps/GEO%FIBGMdeltas(1))+1
@@ -2258,11 +2293,16 @@ IF (GEO%nPeriodicVectors.GT.0) THEN  !Periodic (can't be done below because Redu
 ELSE
   FIBGMCellPadding(1:3) = INT(halo_eps/GEO%FIBGMdeltas(1:3))+1
 END IF
+<<<<<<< Updated upstream
+=======
+!WRITE(*,*) 'halo_eps', halo_eps, 'Padding', FIBGMCellPadding
+>>>>>>> Stashed changes
 ! halo region already included in BGM
 !FIBGMCellPadding(1:3) = 0
 nShapePaddingX = 0
 nShapePaddingY = 0
 nShapePaddingZ = 0
+<<<<<<< Updated upstream
 IF ((DepositionType.EQ.'shape_function')             &
 .OR.(DepositionType.EQ.'shape_function_cylindrical') &
 .OR.(DepositionType.EQ.'shape_function_simple')      &
@@ -2285,6 +2325,31 @@ IF ((DepositionType.EQ.'shape_function')             &
 ! 0.999999 in order to prevent stencil to get too big in case of r_sf==c_int*deltas
 !  -> worst case: last 0.000001 gets cut off -> insignificant
 END IF
+=======
+!WRITE(*,*) 'r_sf', r_sf
+!IF ((DepositionType.EQ.'shape_function')             &
+!.OR.(DepositionType.EQ.'shape_function_cylindrical') &
+!.OR.(DepositionType.EQ.'shape_function_simple')      &
+!.OR.(DepositionType.EQ.'shape_function_spherical')   &
+!.OR.(DepositionType.EQ.'shape_function_1d')          )THEN
+!  nShapePaddingX = INT(r_sf/GEO%FIBGMdeltas(1)+0.9999999)
+!  nShapePaddingY = INT(r_sf/GEO%FIBGMdeltas(2)+0.9999999)
+!  nShapePaddingZ = INT(r_sf/GEO%FIBGMdeltas(3)+0.9999999)
+!  !IPWRITE(*,*) 'nShapePaddingX',nShapePaddingX
+!  !IPWRITE(*,*) 'nShapePaddingY',nShapePaddingY
+!  !IPWRITE(*,*) 'nShapePaddingZ',nShapePaddingZ
+! ! IF(mode.EQ.2) THEN
+! !   IF((nShapePaddingX.EQ.0)    &
+! !     .OR.(nShapePaddingY.EQ.0) &
+! !     .OR.(nShapePaddingZ.EQ.0))THEN 
+! !       CALL abort(__STAMP__&
+! !         'Error in stencil calculation for FIBGM and shape function')
+! !   END IF
+! ! END IF
+!! 0.999999 in order to prevent stencil to get too big in case of r_sf==c_int*deltas
+!!  -> worst case: last 0.000001 gets cut off -> insignificant
+!END IF
+>>>>>>> Stashed changes
 nPaddingCellsX = MAX(nShapePaddingX,FIBGMCellPadding(1))
 nPaddingCellsY = MAX(nShapePaddingY,FIBGMCellPadding(2))
 nPaddingCellsZ = MAX(nShapePaddingZ,FIBGMCellPadding(3))
@@ -2308,6 +2373,10 @@ END DO !i
 Vec1(1:3) = 0
 Vec2(1:3) = 0
 Vec3(1:3) = 0
+<<<<<<< Updated upstream
+=======
+!WRITE(*,*) 'GEO%PeriodicVectors', GEO%PeriodicVectors
+>>>>>>> Stashed changes
 IF (GEO%nPeriodicVectors.GT.0) THEN
   ! build case matrix
   IF (GEO%nPeriodicVectors.EQ.1) THEN
@@ -2386,6 +2455,10 @@ IF (GEO%nPeriodicVectors.GT.0) THEN  !Periodic (can't be done below because Redu
     END DO ! iCase
   END DO !i
 ELSE ! non periodic case
+<<<<<<< Updated upstream
+=======
+!  WRITE(*,*) BGMimin, BGMimax, nPaddingCellsX 
+>>>>>>> Stashed changes
   j=1
   CurrentProc=0
   ReducedBGMArray=0
@@ -2406,8 +2479,12 @@ ELSE ! non periodic case
     END IF
   END DO !i
 END IF !periodic
+<<<<<<< Updated upstream
 
 
+=======
+!WRITE(*,*) 'ReducedBGMArray', ReducedBGMArray, 'PartMPI%MyRank', PartMPI%MyRank
+>>>>>>> Stashed changes
 !--- JN: Determine required size of CellProcList array (hope this works, everytime I try to again understand this
 !        shape function parallelization stuff, I get confused...)
 !--- JN: But therefore we first have to refill BGMCellsArray to not only contain
@@ -2474,12 +2551,20 @@ DO CurrentProc = 0,PartMPI%nProcs-1
              CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) + 1
           CellProcList(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2), &
              CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2))) = CurrentProc
+<<<<<<< Updated upstream
+=======
+!          WRITE(*,*) CurrentProc, j, ReducedBGMArray(j), CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2))
+>>>>>>> Stashed changes
         END IF
       END IF
     END IF
   END DO
   j_offset = j_offset + ReducedNbrOfBGMCells(CurrentProc)*3
 END DO
+<<<<<<< Updated upstream
+=======
+!WRITE(*,*) CellProcList, 'PartMPI%MyRank', PartMPI%MyRank
+>>>>>>> Stashed changes
 ! fill real array
 DO Cell=0, BGMCells-1
   TempProcList=0
@@ -3518,7 +3603,7 @@ USE MOD_Particle_Mesh_Vars,       ONLY:ElemBaryNgeo
 USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 USE MOD_Particle_Mesh_Vars,       ONLY:nTotalElems,PartElemToSide
 USE MOD_Basis,                    ONLY:LagrangeInterpolationPolys
-USE MOD_PICDepo_Vars,             ONLY:DepositionType,r_sf,ElemRadius2_sf
+!USE MOD_PICDepo_Vars,             ONLY:DepositionType,r_sf,ElemRadius2_sf
 USE MOD_Eval_xyz,                 ONLY:EvaluateFieldAtRefPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -3687,15 +3772,15 @@ DO iElem=1,nTotalElems
   END IF
 END DO ! iElem
 
-IF (TRIM(DepositionType).EQ.'shape_function_simple')THEN
-  ALLOCATE(ElemRadius2_sf(1:PP_nElems),STAT=ALLOCSTAT)
-  IF (ALLOCSTAT.NE.0) CALL abort(&
-__STAMP__ &
-,' Cannot allocate ElemRadius2_sf!')
-  DO iElem=1,PP_nElems
-    ElemRadius2_sf(iElem)=(ElemRadiusNGeo(iElem)+r_sf)*(ElemRadiusNGeo(iElem)+r_sf)
-  END DO ! iElem=1,PP_nElems
-END IF
+!IF (TRIM(DepositionType).EQ.'shape_function_simple')THEN
+!  ALLOCATE(ElemRadius2_sf(1:PP_nElems),STAT=ALLOCSTAT)
+!  IF (ALLOCSTAT.NE.0) CALL abort(&
+!__STAMP__ &
+!,' Cannot allocate ElemRadius2_sf!')
+!  DO iElem=1,PP_nElems
+!    ElemRadius2_sf(iElem)=(ElemRadiusNGeo(iElem)+r_sf)*(ElemRadiusNGeo(iElem)+r_sf)
+!  END DO ! iElem=1,PP_nElems
+!END IF
 
 
 END SUBROUTINE BuildElementBasis

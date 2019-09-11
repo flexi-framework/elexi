@@ -148,7 +148,7 @@ SWRITE(UNIT_StdOut,'(66("-"))')
 PartSteadyState   = GETLOGICAL('Part-SteadyState',   'F')
 Part_dt_Min       = GETREAL   ('Part-SteadyTimeStep','0.')
   
-CALL Particle_InitTimeDisc()
+!CALL Particle_InitTimeDisc()
 #endif
 
 TimediscInitIsDone = .TRUE.
@@ -193,7 +193,6 @@ USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_FV
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
-USE MOD_DSMC_Vars           ,ONLY: Iter_macvalout,Iter_macsurfvalout
 USE MOD_Particle_Globals    ,ONLY: ALMOSTZERO
 USE MOD_Particle_Analyze    ,ONLY: TrackingParticlePosition
 USE MOD_Particle_Analyze_Vars,ONLY: TrackParticlePosition
@@ -318,8 +317,6 @@ IF(errType.NE.0) CALL abort(__STAMP__,&
 #endif
   
 #if USE_PARTICLES
-  iter_macvalout=0
-  iter_macsurfvalout=0
   IF (WriteMacroVolumeValues .OR. WriteMacroSurfaceValues) MacroValSampTime = t
   CALL Particle_TimeDisc(iter)
 #endif

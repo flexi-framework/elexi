@@ -111,8 +111,8 @@ TYPE tInit                                                                   ! P
   REAL                                   :: MWTemperatureIC                  ! Temperature for Maxwell Distribution
   REAL                                   :: ConstantPressure                 ! Pressure for an Area with a Constant Pressure
   REAL                                   :: ConstPressureRelaxFac            ! RelaxFac. for ConstPressureSamp
-  REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3) for LD_insert or
-                                                                             ! (vpi_)cub./cyl. as alternative to Part.Emis. in Type1
+  REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3) for (vpi_)cub./
+                                                                             ! cyl. as alternative to Part.Emis. in Type1
   INTEGER                                :: ParticleEmissionType             ! Emission Type 1 = emission rate in 1/s,
                                                                              !               2 = emission rate 1/iteration
                                                                              !               3 = user def. emission rate
@@ -263,8 +263,7 @@ LOGICAL                                  :: WriteMacroVolumeValues =.FALSE.   ! 
 LOGICAL                                  :: WriteMacroSurfaceValues=.FALSE.   ! Output of macroscopic values on surface
 INTEGER                                  :: MacroValSamplIterNum              ! Number of iterations for sampling   
                                                                               ! macroscopic values
-REAL                                     :: MacroValSampTime                  ! Sampling time for WriteMacroVal. (e.g., for td201)
-LOGICAL                                  :: usevMPF                           ! use the vMPF per particle             
+REAL                                     :: MacroValSampTime                  ! Sampling time for WriteMacroVal. (e.g., for td201)         
 INTEGER                                  :: NumRanVec                         ! Number of predefined random vectors
 REAL, ALLOCATABLE                        :: RandomVec(:,:)                    ! Random Vectos (NumRanVec, direction)               
 LOGICAL                                  :: OutputVpiWarnings                 ! Flag for warnings for rejected v if VPI+PartDensity

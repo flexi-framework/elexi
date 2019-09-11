@@ -22,9 +22,9 @@ MODULE MOD_Particle_TimeDisc
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE Particle_InitTimeDisc
-  MODULE PROCEDURE Particle_InitTimeDisc
-END INTERFACE
+!INTERFACE Particle_InitTimeDisc
+!  MODULE PROCEDURE Particle_InitTimeDisc
+!END INTERFACE
 
 INTERFACE Particle_TimeDisc
   MODULE PROCEDURE Particle_TimeDisc
@@ -54,7 +54,7 @@ END INTERFACE Particle_TimeStepByLSERK_RK_RHS
 !  MODULE PROCEDURE Particle_FinalizeTimeDisc
 !END INTERFACE
 
-PUBLIC::Particle_InitTimeDisc
+!PUBLIC::Particle_InitTimeDisc
 PUBLIC::Particle_Timedisc
 PUBLIC::Particle_TimeStepByEuler
 PUBLIC::Particle_TimeStepByLSERK
@@ -66,62 +66,62 @@ PUBLIC::Particle_TimeStepByLSERK_RK_RHS
 
 CONTAINS
 
-SUBROUTINE Particle_InitTimeDisc()
-!===================================================================================================================================
-! Get information for end time and max time steps from ini file
-!===================================================================================================================================
-! MODULES
-USE MOD_PreProc
-USE MOD_Globals
-USE MOD_TimeDisc_Vars
-USE MOD_ReadInTools         ,ONLY:GETREAL,GETINT,GETSTR
-USE MOD_StringTools         ,ONLY:LowCase,StripSpaces
-USE MOD_Particle_Vars
-#if USE_MPI
-USE MOD_PICDepo_Vars        ,ONLY: DepositionType
-USE MOD_Particle_MPI        ,ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
-#endif
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-
-! compute ratio of dt for particle surface flux emission (example a). Additionally, the ratio of RK_inflow(iStage)/RK_c(iStage) 
-! gives the ! maximum distance, the Surface Flux particles can during the initial implicit step (example b).
-! example a)
-!   particle number for stage 4: dt*RK_inflow(4) 
-! or: generate all particles for dt, but only particles with random number R < RK_c(iStage) participate in current stage.
-! This results in dt*RK_inflow(iStage) particles in the current stage, hence, we can decide if we generate all particles or
-! only the particles per stage. Currently, all particles are generated prior to the RK stages.
-! example b)
-! ESDIRKO4 from kennedy and carpenter without an acting force. Assume again stage 4. The initial particles during stage 2 are 
-! moved in stage 3 without tracking (because it could be dropped out of the domain and the negative increment of the time level. 
-! The new particles in this  stage could travel a distance up to RK_c(4)=SUM(ESDIRKA(4,:)). Now, the new particles are pushed 
-! further into the domain than the particles of the second stage has moved. This would create a non-uniform particle distribution.
-! this is prevented by reducing their maximum emission/initial distance by RK_inflow(4)/RK_c(4).
-! Note: A small overlap is possible, but this is required. See the charts in the docu folder.
-
-! init
-#if USE_MPI
-IF ((TRIM(DepositionType).EQ."shape_function")             &
-.OR.(TRIM(DepositionType).EQ."shape_function_1d")          &
-.OR.(TRIM(DepositionType).EQ."shape_function_spherical")   &
-.OR.(TRIM(DepositionType).EQ."shape_function_simple")      &
-.OR.(TRIM(DepositionType).EQ."shape_function_cylindrical"))THEN
-  ! open receive buffer for number of particles
-  CALL IRecvNbofParticles()
-  ! send number of particles
-  CALL SendNbOfParticles()
-  ! finish communication of number of particles and send particles
-  CALL MPIParticleSend()
-  ! finish communication
-  CALL MPIParticleRecv()
-END IF
-#endif /*MPI PARTICLES*/
-
-END SUBROUTINE Particle_InitTimeDisc
+!SUBROUTINE Particle_InitTimeDisc()
+!!===================================================================================================================================
+!! Get information for end time and max time steps from ini file
+!!===================================================================================================================================
+!! MODULES
+!USE MOD_PreProc
+!USE MOD_Globals
+!USE MOD_TimeDisc_Vars
+!USE MOD_ReadInTools         ,ONLY:GETREAL,GETINT,GETSTR
+!USE MOD_StringTools         ,ONLY:LowCase,StripSpaces
+!USE MOD_Particle_Vars
+!#if USE_MPI
+!!USE MOD_PICDepo_Vars        ,ONLY: DepositionType
+!USE MOD_Particle_MPI        ,ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
+!#endif
+!IMPLICIT NONE
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT/OUTPUT VARIABLES
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!!----------------------------------------------------------------------------------------------------------------------------------
+!
+!! compute ratio of dt for particle surface flux emission (example a). Additionally, the ratio of RK_inflow(iStage)/RK_c(iStage) 
+!! gives the ! maximum distance, the Surface Flux particles can during the initial implicit step (example b).
+!! example a)
+!!   particle number for stage 4: dt*RK_inflow(4) 
+!! or: generate all particles for dt, but only particles with random number R < RK_c(iStage) participate in current stage.
+!! This results in dt*RK_inflow(iStage) particles in the current stage, hence, we can decide if we generate all particles or
+!! only the particles per stage. Currently, all particles are generated prior to the RK stages.
+!! example b)
+!! ESDIRKO4 from kennedy and carpenter without an acting force. Assume again stage 4. The initial particles during stage 2 are 
+!! moved in stage 3 without tracking (because it could be dropped out of the domain and the negative increment of the time level. 
+!! The new particles in this  stage could travel a distance up to RK_c(4)=SUM(ESDIRKA(4,:)). Now, the new particles are pushed 
+!! further into the domain than the particles of the second stage has moved. This would create a non-uniform particle distribution.
+!! this is prevented by reducing their maximum emission/initial distance by RK_inflow(4)/RK_c(4).
+!! Note: A small overlap is possible, but this is required. See the charts in the docu folder.
+!
+!! init
+!#if USE_MPI
+!IF ((TRIM(DepositionType).EQ."shape_function")             &
+!.OR.(TRIM(DepositionType).EQ."shape_function_1d")          &
+!.OR.(TRIM(DepositionType).EQ."shape_function_spherical")   &
+!.OR.(TRIM(DepositionType).EQ."shape_function_simple")      &
+!.OR.(TRIM(DepositionType).EQ."shape_function_cylindrical"))THEN
+!  ! open receive buffer for number of particles
+!  CALL IRecvNbofParticles()
+!  ! send number of particles
+!  CALL SendNbOfParticles()
+!  ! finish communication of number of particles and send particles
+!  CALL MPIParticleSend()
+!  ! finish communication
+!  CALL MPIParticleRecv()
+!END IF
+!#endif /*MPI PARTICLES*/
+!
+!END SUBROUTINE Particle_InitTimeDisc
 
 !===================================================================================================================================
 ! GTS Temporal discretization 
@@ -244,7 +244,7 @@ USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartToFIBG
 USE MOD_part_emission,           ONLY: ParticleInserting
 USE MOD_part_RHS,                ONLY: CalcPartRHS
 USE MOD_PICInterpolation
-USE MOD_PICDepo
+!USE MOD_PICDepo
 USE MOD_Part_tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
@@ -280,7 +280,7 @@ IF (t.GE.DelayTime) THEN
     CALL SendNbOfParticles()
   END IF
 #endif /*MPI*/
-CALL Deposition(doInnerParts=.TRUE.) ! because of emmision and UpdateParticlePosition
+!CALL Deposition(doInnerParts=.TRUE.) ! because of emmision and UpdateParticlePosition
 #if USE_MPI
   IF(DoExternalParts)THEN
     ! finish communication
@@ -291,7 +291,7 @@ CALL Deposition(doInnerParts=.TRUE.) ! because of emmision and UpdateParticlePos
   ! ALWAYS require
   PartMPIExchange%nMPIParticles=0
 #endif /*MPI*/
-  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
+!  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
 END IF
 !#endif /*PARTICLES*/
 
@@ -392,7 +392,7 @@ USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
 USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartToFIBGM
 #endif /*MPI*/
 USE MOD_PICInterpolation
-USE MOD_PICDepo
+!USE MOD_PICDepo
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 #if EQNSYSNR == 4
 USE MOD_Particle_RandomWalk,     ONLY: Particle_RandomWalk
@@ -429,7 +429,7 @@ IF (t.GE.DelayTime) THEN
 #endif /*MPI*/
 
   ! because of emmission and UpdateParticlePosition
-  CALL Deposition(doInnerParts=.TRUE.) 
+!  CALL Deposition(doInnerParts=.TRUE.) 
 
 #if USE_MPI
   IF(DoExternalParts)THEN
@@ -442,7 +442,7 @@ IF (t.GE.DelayTime) THEN
   PartMPIExchange%nMPIParticles=0
 #endif /*USE_MPI*/
 
-  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
+!  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
 END IF
   
   ! set last data already here, since surfaceflux moved before interpolation
@@ -492,7 +492,7 @@ USE MOD_part_emission,           ONLY: ParticleInserting
 USE MOD_Part_tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
-USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, LastPartPos, DelayTime, PEM, PDM, Species,PartSpecies
+USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PEM, PDM, Species,PartSpecies
 #if EQNSYSNR == 4
 USE MOD_Particle_RandomWalk,     ONLY: Particle_RandomWalk
 #endif
@@ -644,15 +644,14 @@ END SUBROUTINE Particle_TimeStepByLSERK
 SUBROUTINE Particle_TimeStepByLSERK_RK_RHS(t,iStage,b_dt)
 ! MODULES
 USE MOD_Globals
-USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
+USE MOD_TimeDisc_Vars,           ONLY: nRKStages
 #if USE_MPI
-!USE MOD_Particle_MPI_Vars,       ONLY: DoExternalParts
 USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
 #endif /*MPI*/
 USE MOD_PICInterpolation
-USE MOD_PICDepo
+!USE MOD_PICDepo
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 #if EQNSYSNR == 4
 USE MOD_Particle_RandomWalk,     ONLY: Particle_RandomWalk
@@ -675,14 +674,14 @@ CALL CountPartsPerElem(ResetNumberOfParticles=.FALSE.) !for scaling of tParts of
   
 ! deposition
 IF (t.GE.DelayTime) THEN
-  CALL Deposition(doInnerParts=.TRUE.) ! because of emission and UpdateParticlePosition
+!  CALL Deposition(doInnerParts=.TRUE.) ! because of emission and UpdateParticlePosition
 #if USE_MPI
   ! here: finish deposition with delta kernel
   !       maps source terms in physical space
   ! ALWAYS require
   PartMPIExchange%nMPIParticles=0
 #endif /*USE_MPI*/
-  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
+!  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
 END IF
 
 LastPartPos(1:PDM%ParticleVecLength,1)=PartState(1:PDM%ParticleVecLength,1)
@@ -722,9 +721,9 @@ USE MOD_FV,                      ONLY: FV_Switch
 USE MOD_FV_Vars,                 ONLY: FV_toDGinRK
 #endif
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
-USE MOD_PICDepo,                 ONLY: Deposition
+!USE MOD_PICDepo,                 ONLY: Deposition
 USE MOD_PICInterpolation,        ONLY: InterpolateFieldToParticle
-USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, LastPartPos, DelayTime, PEM, PDM, Species,PartSpecies
+USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PEM, PDM, Species,PartSpecies
 USE MOD_part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_part_emission,           ONLY: ParticleInserting
@@ -732,7 +731,6 @@ USE MOD_part_tools,              ONLY: UpdateNextFreePosition
 #if USE_MPI
 USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
-USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
 #endif /*MPI*/
 #if EQNSYSNR == 4
 USE MOD_Particle_RandomWalk,     ONLY: Particle_RandomWalk

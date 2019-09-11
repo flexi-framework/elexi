@@ -62,19 +62,19 @@ CALL prms%CreateLogicalOption(  'Particles-CalcSurfaceVal',         'Set [T] to 
 
 CALL prms%CreateIntOption(      'Particles-nSurfSample',            'Define polynomial degree of particle BC sampling. Default:'//& 
                                                                     ' NGeo', '1')
-CALL prms%CreateIntOption(      'Particles-maxSurfCollisNumber',    'Max. number of collided/swaped particles during Sampling', '0')
-CALL prms%CreateIntOption(      'Particles-CalcSurfCollis_NbrOfSpecies','Count of Species for wall  collisions (0: all)', '0')
-CALL prms%CreateIntOption(      'Particles-maxSurfCollisNumber',    'Max. number of collided/swaped particles during Sampling', '0')
-CALL prms%CreateIntOption(      'Particles-NumberOfBCs',            'Count of BC to be analyzed', '1')
-CALL prms%CreateIntOption(      'Particles-SurfCollisBC',           'BCs to be analyzed (0 = all)','0')
+!CALL prms%CreateIntOption(      'Particles-maxSurfCollisNumber',    'Max. number of collided/swaped particles during Sampling', '0')
+!CALL prms%CreateIntOption(      'Particles-CalcSurfCollis_NbrOfSpecies','Count of Species for wall  collisions (0: all)', '0')
+!CALL prms%CreateIntOption(      'Particles-maxSurfCollisNumber',    'Max. number of collided/swaped particles during Sampling', '0')
+!CALL prms%CreateIntOption(      'Particles-NumberOfBCs',            'Count of BC to be analyzed', '1')
+!CALL prms%CreateIntOption(      'Particles-SurfCollisBC',           'BCs to be analyzed (0 = all)','0')
 
 CALL prms%CreateRealOption(     'Part-TimeFracForSampling',       'Set value greater 0.0 to enable TIME DEPENDANT sampling. The'//&
                                                                   ' given simulation time fraction will be sampled. Sampling'//&
                                                                   ' starts after TEnd*(1-Part-TimefracForSampling).\n'//&
                                                                   'Can not be enabled together with Part-WriteMacroValues.' , '0.0')
 
-CALL prms%CreateIntArrayOption( 'Particles-SurfCollisBC',           'BCs to be analyzed (def.: 0 = all)?')
-CALL prms%CreateIntArrayOption( 'Particles-CalcSurfCollis_Species', 'Help array for reading surface stuff')
+!CALL prms%CreateIntArrayOption( 'Particles-SurfCollisBC',           'BCs to be analyzed (def.: 0 = all)?')
+!CALL prms%CreateIntArrayOption( 'Particles-CalcSurfCollis_Species', 'Help array for reading surface stuff')
 
 
 END SUBROUTINE DefineParametersParticleErosion

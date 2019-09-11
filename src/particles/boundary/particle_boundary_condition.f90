@@ -1455,36 +1455,36 @@ END IF
 ! ANALYZE SURF COLLIS
 ! LEGACY CODE: IGNORE FOR NOW
 !===================================================================================================================================
-IF (CalcSurfCollis%AnalyzeSurfCollis .AND. (ANY(AnalyzeSurfCollis%BCs.EQ.0) .OR. ANY(AnalyzeSurfCollis%BCs.EQ.locBCID))) THEN
-        AnalyzeSurfCollis%Number(PartSpecies(PartID)) = AnalyzeSurfCollis%Number(PartSpecies(PartID)) + 1
-        AnalyzeSurfCollis%Number(nSpecies+1)          = AnalyzeSurfCollis%Number(nSpecies+1) + 1
-        
-! Stop if our array is full
-    IF (AnalyzeSurfCollis%Number(nSpecies+1) .GT. AnalyzeSurfCollis%maxPartNumber) THEN
-        CALL Abort(&
-        __STAMP__&
-        ,'maxSurfCollisNumber reached!')
-    END IF
-    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),1:3) &
-      = LastPartPos(PartID,1:3) + alpha * PartTrajectory(1:3)
-    !-- caution: for consistency with diffuse refl. v_old is used!
-    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),4) &
-      = v_old(1)
-    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),5) &
-      = v_old(2)
-    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),6) &
-      = v_old(3)
-    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),7) &
-      = LastPartPos(PartID,1)
-    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),8) &
-      = LastPartPos(PartID,2)
-    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),9) &
-      = LastPartPos(PartID,3)
-    AnalyzeSurfCollis%Spec(AnalyzeSurfCollis%Number(nSpecies+1)) &
-      = PartSpecies(PartID)
-    AnalyzeSurfCollis%BCid(AnalyzeSurfCollis%Number(nSpecies+1)) &
-      = locBCID
-END IF
+!IF (CalcSurfCollis%AnalyzeSurfCollis .AND. (ANY(AnalyzeSurfCollis%BCs.EQ.0) .OR. ANY(AnalyzeSurfCollis%BCs.EQ.locBCID))) THEN
+!        AnalyzeSurfCollis%Number(PartSpecies(PartID)) = AnalyzeSurfCollis%Number(PartSpecies(PartID)) + 1
+!        AnalyzeSurfCollis%Number(nSpecies+1)          = AnalyzeSurfCollis%Number(nSpecies+1) + 1
+!        
+!! Stop if our array is full
+!    IF (AnalyzeSurfCollis%Number(nSpecies+1) .GT. AnalyzeSurfCollis%maxPartNumber) THEN
+!        CALL Abort(&
+!        __STAMP__&
+!        ,'maxSurfCollisNumber reached!')
+!    END IF
+!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),1:3) &
+!      = LastPartPos(PartID,1:3) + alpha * PartTrajectory(1:3)
+!    !-- caution: for consistency with diffuse refl. v_old is used!
+!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),4) &
+!      = v_old(1)
+!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),5) &
+!      = v_old(2)
+!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),6) &
+!      = v_old(3)
+!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),7) &
+!      = LastPartPos(PartID,1)
+!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),8) &
+!      = LastPartPos(PartID,2)
+!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),9) &
+!      = LastPartPos(PartID,3)
+!    AnalyzeSurfCollis%Spec(AnalyzeSurfCollis%Number(nSpecies+1)) &
+!      = PartSpecies(PartID)
+!    AnalyzeSurfCollis%BCid(AnalyzeSurfCollis%Number(nSpecies+1)) &
+!      = locBCID
+!END IF
     
 END SUBROUTINE RecordParticleBoundarySampling
 

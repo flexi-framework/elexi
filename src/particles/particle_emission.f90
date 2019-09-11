@@ -216,18 +216,17 @@ SUBROUTINE ParticleInserting()
 !===================================================================================================================================
 ! Modules
 #if USE_MPI
-USE MOD_Particle_MPI_Vars     , ONLY : PartMPI
+USE MOD_Particle_MPI_Vars     , ONLY: PartMPI
 #endif /* MPI*/
 USE MOD_Globals
 USE MOD_Restart_Vars          , ONLY:RestartTime
 USE MOD_Particle_Restart_Vars
 USE MOD_Particle_Globals
-USE MOD_Timedisc_Vars         , ONLY : dt,t,RKc,nRKStages,currentStage
-USE MOD_Particle_Timedisc_Vars, ONLY : RKdtFrac,RKdtFracTotal
+USE MOD_Timedisc_Vars         , ONLY: dt,t,RKc,nRKStages,currentStage
+USE MOD_Particle_Timedisc_Vars, ONLY: RKdtFrac,RKdtFracTotal
 USE MOD_Particle_Vars
 USE MOD_PIC_Vars
-USE MOD_Part_tools             ,ONLY : UpdateNextFreePosition  
-USE MOD_LD_Vars
+USE MOD_Part_tools             ,ONLY: UpdateNextFreePosition  
 USE MOD_Particle_Analyze_Vars
 USE MOD_Particle_Analyze       ,ONLY: CalcEkinPart
 IMPLICIT NONE
@@ -502,7 +501,6 @@ USE MOD_Particle_TimeDisc_Vars,ONLY: RKdtFrac
 USE MOD_Particle_Mesh,         ONLY: SingleParticleToExactElement,SingleParticleToExactElementNoMap
 USE MOD_Particle_Tracking_Vars,ONLY: DoRefMapping, TriaTracking
 USE MOD_PICInterpolation,      ONLY: InterpolateVariableExternalField
-USE MOD_LD,                    ONLY: LD_SetParticlePosition
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -728,8 +726,7 @@ IF(( (nbrOfParticle.GT.PartMPI%InitGroup(InitGroup)%nProcs*10                   
      (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).NE.'circle_equidistant'                 ) .AND.  &
      (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).NE.'sin_deviation'                      ) .AND.  &
      (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).NE.'cuboid_with_equidistant_distribution').AND.  &
-     (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).NE.'line_with_equidistant_distribution' )).OR.   &
-     (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'LD_insert'                          ) )THEN
+     (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).NE.'line_with_equidistant_distribution' )))THEN
    nChunks = PartMPI%InitGroup(InitGroup)%nProcs
 ELSE
    nChunks = 1
@@ -1240,24 +1237,6 @@ __STAMP__&
         i=i+1
         chunkSize2=chunkSize2+1
       END DO
-    !------------------SpaceIC-case: LD_insert--------------------------------------------------------------------------------------
-    CASE('LD_insert')
-      CALL LD_SetParticlePosition(chunkSize2,particle_positions_Temp,FractNbr,iInit)
-      DEALLOCATE( particle_positions, STAT=allocStat )
-      IF (allocStat .NE. 0) THEN
-        CALL abort(&
-__STAMP__&
-,'ERROR in ParticleEmission_parallel: cannot deallocate particle_positions!')
-      END IF
-      NbrOfParticle=chunkSize2
-      ALLOCATE(particle_positions(3*chunkSize2))
-      particle_positions(1:3*chunkSize2) = particle_positions_Temp(1:3*chunkSize2)
-      DEALLOCATE( particle_positions_Temp, STAT=allocStat )
-      IF (allocStat .NE. 0) THEN
-        CALL abort(&
-__STAMP__&
-,'ERROR in ParticleEmission_parallel: cannot deallocate particle_positions!')
-      END IF
     !------------------SpaceIC-case: cuboid_equal-----------------------------------------------------------------------------------
     CASE('cuboid_equal')
 #if USE_MPI

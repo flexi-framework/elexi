@@ -82,27 +82,27 @@ CALL prms%CreateRealArrayOption('PIC-FactorBGM'      , 'Denominator of PIC-BGMde
 
 CALL prms%SetSection("PIC Deposition")
 
-CALL prms%CreateLogicalOption(  'PIC-DoDeposition'         , 'Switch deposition on/off', '.TRUE.')
-CALL prms%CreateStringOption(   'PIC-Deposition-Type'      , '(HALOWIKI:)\n'                                                     //&
-                                                                    'If Deposition-Type=shape_function\n'                        //&
-                                                             'Define:\n'                                                         //&
-                                                             'PIC-shapefunction-radius\n'                                        //&
-                                                             'PIC-shapefunction-alpha.\n'                                        //&
-                                                             'If Deposition-Type =(cartmesh_volumeweighting/ cartmesh_splines)\n'//&
-                                                             'Define:\n'                                                         //&
-                                                             'PIC-BGMdeltas\n'                                                   //&
-                                                             'PIC-FactorBGM', 'nearest-blurrycenter')
-CALL prms%CreateStringOption(   'PIC-TimeAverageFile'      , 'TODO-DEFINE-PARAMETER', 'none')
-
-CALL prms%CreateRealOption(     'PIC-epanechnikov-radius'  , 'TODO-DEFINE-PARAMETER', '1.')
-CALL prms%CreateRealOption(     'PIC-shapefunction-radius' , 'Radius of shape function', '1.')
-CALL prms%CreateIntOption(      'PIC-shapefunction-alpha'  , 'Exponent of shape function', '2')
-CALL prms%CreateLogicalOption(  'PIC-shapefunction-equi'   , 'Use equidistant points for shapefunction', '.FALSE.')
-CALL prms%CreateIntOption(      'PIC-shapefunction1d-direction'  , 'Direction of 1D shape function', '1')
-CALL prms%CreateRealOption(     'PIC-shapefunction-radius0', 'Minimal shape function radius', '1.')
-CALL prms%CreateRealOption(     'PIC-shapefunction-scale'  , 'Scaling factor of shape function radius', '0.')
-CALL prms%CreateIntOption(      'PIC-NbrOfSFdepoFixes'     , 'Number of fixes for shape func depo at planar BCs', '0')
-CALL prms%CreateIntOption(      'PIC-NbrOfSFdepoLayers'  ,    'Number of const. source layer for sf-depo at planar BCs', '0')
+!CALL prms%CreateLogicalOption(  'PIC-DoDeposition'         , 'Switch deposition on/off', '.TRUE.')
+!CALL prms%CreateStringOption(   'PIC-Deposition-Type'      , '(HALOWIKI:)\n'                                                     //&
+!                                                                    'If Deposition-Type=shape_function\n'                        //&
+!                                                             'Define:\n'                                                         //&
+!                                                             'PIC-shapefunction-radius\n'                                        //&
+!                                                             'PIC-shapefunction-alpha.\n'                                        //&
+!                                                             'If Deposition-Type =(cartmesh_volumeweighting/ cartmesh_splines)\n'//&
+!                                                             'Define:\n'                                                         //&
+!                                                             'PIC-BGMdeltas\n'                                                   //&
+!                                                             'PIC-FactorBGM', 'nearest-blurrycenter')
+!CALL prms%CreateStringOption(   'PIC-TimeAverageFile'      , 'TODO-DEFINE-PARAMETER', 'none')
+!
+!CALL prms%CreateRealOption(     'PIC-epanechnikov-radius'  , 'TODO-DEFINE-PARAMETER', '1.')
+!CALL prms%CreateRealOption(     'PIC-shapefunction-radius' , 'Radius of shape function', '1.')
+!CALL prms%CreateIntOption(      'PIC-shapefunction-alpha'  , 'Exponent of shape function', '2')
+!CALL prms%CreateLogicalOption(  'PIC-shapefunction-equi'   , 'Use equidistant points for shapefunction', '.FALSE.')
+!CALL prms%CreateIntOption(      'PIC-shapefunction1d-direction'  , 'Direction of 1D shape function', '1')
+!CALL prms%CreateRealOption(     'PIC-shapefunction-radius0', 'Minimal shape function radius', '1.')
+!CALL prms%CreateRealOption(     'PIC-shapefunction-scale'  , 'Scaling factor of shape function radius', '0.')
+!CALL prms%CreateIntOption(      'PIC-NbrOfSFdepoFixes'     , 'Number of fixes for shape func depo at planar BCs', '0')
+!CALL prms%CreateIntOption(      'PIC-NbrOfSFdepoLayers'  ,    'Number of const. source layer for sf-depo at planar BCs', '0')
 
 END SUBROUTINE DefineParametersPIC
 

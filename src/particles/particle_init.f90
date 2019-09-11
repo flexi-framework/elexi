@@ -423,13 +423,14 @@ __STAMP__&
 END IF
 Pt_temp=0.
 
-IF(DoRefMapping)THEN
+!IF(DoRefMapping)THEN
+! We got rid of pic_depo, so we need to allocate it here
   ALLOCATE(PartPosRef(1:3,PDM%MaxParticleNumber), STAT=ALLOCSTAT)
   IF (ALLOCSTAT.NE.0) CALL abort(&
   __STAMP__&
   ,' Cannot allocate partposref!')
   PartPosRef=-888.
-END IF
+!END IF
 
 ! predefine random vectors
 NumRanVec = GETINT('Particles-NumberOfRandomVectors','100000')

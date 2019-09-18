@@ -104,15 +104,15 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   CALL DatasetExists(File_ID,'PartData',PartDataExists)
   IF(PartDataExists)THEN
     ! get PartInt
-    ALLOCATE(PartInt(FirstElemInd:LastElemInd,PartIntSize))
-    CALL ReadArray('PartInt',2,(/PP_nElems,PartIntSize/),offsetElem,1,IntArray=PartInt)
+    ALLOCATE(PartInt(PartIntSize,FirstElemInd:LastElemInd))
+    CALL ReadArray('PartInt',2,(/PartIntSize,PP_nElems/),offsetElem,2,IntArray=PartInt)
     ! read local Particle Data from HDF5
-    locnPart=PartInt(LastElemInd,ELEM_LastPartInd)-PartInt(FirstElemInd,ELEM_FirstPartInd)
-    offsetnPart=PartInt(FirstElemInd,ELEM_FirstPartInd)
+    locnPart=PartInt(ELEM_LastPartInd,LastElemInd)-PartInt(ELEM_FirstPartInd,FirstElemInd)
+    offsetnPart=PartInt(ELEM_FirstPartInd,FirstElemInd)
     ! get size of PartData
     CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
-    CHECKSAFEINT(HSize(1),4)
-    PartDataSize = INT(HSize(2))
+    CHECKSAFEINT(HSize(2),4)
+    PartDataSize = INT(HSize(1))
     SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Number of particle variables',' | ',PartDataSize
     ! Do not start counting reflections mid-simulation
     IF (PartDataSize.EQ.7) THEN
@@ -120,26 +120,26 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Reflections not tracked previously. Disabling reflection counter',' | ',PartDataSize
     END IF
     ! get PartData
-    ALLOCATE(PartData(offsetnPart+1:offsetnPart+locnPart,PartDataSize))
-    CALL ReadArray('PartData',2,(/locnPart,PartDataSize/),offsetnPart,1,RealArray=PartData)!,&
+    ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
+    CALL ReadArray('PartData',2,(/PartDataSize,locnPart/),offsetnPart,2,RealArray=PartData)!,&
                            !xfer_mode_independent=.TRUE.)
     IF (locnPart.GT.0) THEN
-      PartState(1:locnPart,1)   = PartData(offsetnPart+1:offsetnPart+locnPart,1)
-      PartState(1:locnPart,2)   = PartData(offsetnPart+1:offsetnPart+locnPart,2)
-      PartState(1:locnPart,3)   = PartData(offsetnPart+1:offsetnPart+locnPart,3)
-      PartState(1:locnPart,4)   = PartData(offsetnPart+1:offsetnPart+locnPart,4)
-      PartState(1:locnPart,5)   = PartData(offsetnPart+1:offsetnPart+locnPart,5)
-      PartState(1:locnPart,6)   = PartData(offsetnPart+1:offsetnPart+locnPart,6)
-      PartSpecies(1:locnPart)   = INT(PartData(offsetnPart+1:offsetnPart+locnPart,7))
+      PartState(1:locnPart,1)   = PartData(1,offsetnPart+1:offsetnPart+locnPart)
+      PartState(1:locnPart,2)   = PartData(2,offsetnPart+1:offsetnPart+locnPart)
+      PartState(1:locnPart,3)   = PartData(3,offsetnPart+1:offsetnPart+locnPart)
+      PartState(1:locnPart,4)   = PartData(4,offsetnPart+1:offsetnPart+locnPart)
+      PartState(1:locnPart,5)   = PartData(5,offsetnPart+1:offsetnPart+locnPart)
+      PartState(1:locnPart,6)   = PartData(6,offsetnPart+1:offsetnPart+locnPart)
+      PartSpecies(1:locnPart)   = INT(PartData(7,offsetnPart+1:offsetnPart+locnPart))
       IF (PartDataSize.EQ.8) THEN
-          PartReflCount(1:locnPart) = INT(PartData(offsetnPart+1:offsetnPart+locnPart,8))
+          PartReflCount(1:locnPart) = INT(PartData(8,offsetnPart+1:offsetnPart+locnPart))
       END IF
       DO iElem=FirstElemInd,LastElemInd
-        IF (PartInt(iElem,ELEM_LastPartInd).GT.PartInt(iElem,ELEM_FirstPartInd)) THEN
-          PEM%Element(PartInt(iElem,ELEM_FirstPartInd)-offsetnPart+1 : &
-                                 PartInt(iElem,ELEM_LastPartInd) -offsetnPart)  = iElem-offsetElem
-          PEM%LastElement(PartInt(iElem,ELEM_FirstPartInd)-offsetnPart+1 : &
-                                 PartInt(iElem,ELEM_LastPartInd) -offsetnPart)  = iElem-offsetElem
+        IF (PartInt(ELEM_LastPartInd,iElem).GT.PartInt(ELEM_FirstPartInd,iElem)) THEN
+          PEM%Element(PartInt(ELEM_FirstPartInd,iElem)-offsetnPart+1 : &
+                                 PartInt(ELEM_LastPartInd,iElem) -offsetnPart)  = iElem-offsetElem
+          PEM%LastElement(PartInt(ELEM_FirstPartInd,iElem)-offsetnPart+1 : &
+                                 PartInt(ELEM_LastPartInd,iElem) -offsetnPart)  = iElem-offsetElem
         END IF
       END DO
       PDM%ParticleInside(1:locnPart) = .TRUE.

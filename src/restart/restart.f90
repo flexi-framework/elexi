@@ -59,8 +59,8 @@ CALL prms%CreateLogicalOption('RestartMean',    "Flag to denote restart from tim
 CALL prms%CreateRealOption(   'RestartMuTilda', "Constant mu_tilda to be applied throughout the domain.", '0.')
 #endif
 #if FV_ENABLED
-CALL prms%CreateIntOption(    'NFVRestartSuper', "Polynomial degree for equidistant supersampling of FV subcells when restarting&
-                                                  &on a different polynomial degree. Default 2*MAX(N,NRestart).")
+CALL prms%CreateIntOption(    'NFVRestartSuper',"Polynomial degree for equidistant supersampling of FV subcells when restarting&
+                                                 &on a different polynomial degree. Default 2*MAX(N,NRestart).")
 #endif
 END SUBROUTINE DefineParametersRestart
 
@@ -221,9 +221,6 @@ USE MOD_2D,                 ONLY: to2D_rank5
 #endif
 USE MOD_IO_HDF5
 USE MOD_HDF5_Input,         ONLY: GetDataSize
-#if USE_PARTICLES
-USE MOD_Particle_Restart
-#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -232,7 +229,7 @@ LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles !< flag to delete old state files
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
 REAL,ALLOCATABLE   :: U_localNVar(:,:,:,:,:)
-#if PP_dim == 3 
+#if PP_dim == 3
 REAL,ALLOCATABLE   :: U_local2(:,:,:,:,:)
 #endif
 INTEGER            :: iElem,i,j,k
@@ -256,7 +253,7 @@ END IF
 IF(DoRestart)THEN
   SWRITE(UNIT_StdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A)') ' PERFORMING RESTART...'
-    
+
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 #if FV_ENABLED
   ! Read FV element distribution and indicator values from elem data array if possible
@@ -316,14 +313,14 @@ IF(DoRestart)THEN
   HSize_proc = INT(HSize)
   HSize_proc(5) = nElems
   ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
-  
+
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
   IF (RestartMean) THEN
     CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
   ELSE
     CALL ReadArray('DG_Solution',5,HSize_proc,OffsetElem,5,RealArray=U_local)
   END IF
-  
+
   ! Truncate the solution if we read a restart file from a different equation system or from a time-averaged file
   IF ((PP_nVar.LT.nVar_Restart).OR.RestartMean) THEN
     ALLOCATE(U_localNVar(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
@@ -333,7 +330,7 @@ IF(DoRestart)THEN
     U_local = U_localNVar
     DEALLOCATE(U_localNVar)
   END IF
-  
+
   ! Expand the solution if we read a restart file from a different equation system (RANS --> Navier-Stokes)
   IF (PP_nVar.GT.nVar_Restart) THEN
     ALLOCATE(U_localNVar(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
@@ -433,20 +430,20 @@ IF(DoRestart)THEN
     SWRITE(UNIT_stdOut,*)'DONE!'
   END IF
   CALL CloseDataFile()
-  
+
   IF (RestartMean) THEN
     SWRITE(UNIT_stdOut,'(A)') 'Restart from mean file successful.'
   END IF
-  
+
 #if USE_PARTICLES
-  
+
 #else
   ! Delete all files that will be rewritten --> moved to particle_restart.f90 since we need it there
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
 #endif
 ELSE
 #if USE_PARTICLES
-    
+
 #else
   ! Delete all files since we are doing a fresh start --> moved to particle_restart.f90 since we need it there
   IF (doFlushFiles_loc) CALL FlushFiles()
@@ -481,7 +478,7 @@ REAL                :: U_mean(PP_nVar)
 INTEGER             :: iOld,jOld,kOld,iSuper,jSuper,kSuper
 INTEGER             :: i,j,k
 !==================================================================================================================================
-! Supersample the old FV solution (with (NSuper+1)**dim superampling points in each new 
+! Supersample the old FV solution (with (NSuper+1)**dim superampling points in each new
 ! sub cell), then take the mean value
 deltaXiOld = 2.0/(REAL(NOld)+1.)       ! Length (in reference space) of a FV element in the old element
 deltaXi          = 2.0/(REAL(NNew)+1.)       ! Length (in reference space) of a FV element in the new element

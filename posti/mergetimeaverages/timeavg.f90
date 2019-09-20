@@ -290,7 +290,8 @@ END SUBROUTINE
 !===================================================================================================================================
 SUBROUTINE WriteTimeAverageByCopy(filename_in,filename_out,filetype_out,f,uavg,avgTime)
 ! MODULES
-USE MOD_HDF5_Output,ONLY:WriteArray,WriteAttribute
+USE MOD_HDF5_Output,ONLY:WriteAttribute
+USE MOD_HDF5_WriteArray,ONLY:WriteArray
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

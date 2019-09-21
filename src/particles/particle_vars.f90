@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -22,13 +22,13 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL, PARAMETER       :: BoltzmannConst=1.380648813E-23                      ! Boltzmann constant [J/K] SI-Unit! in m^2/(s^2*K)
 REAL                  :: ManualTimeStep                                      ! Manual TimeStep
 LOGICAL               :: useManualTimeStep                                   ! Logical Flag for manual timestep. For consistency
                                                                              ! with IAG programming style
-LOGICAL               :: AllowLoosing                                    ! Flag if a lost particle should abort the program
+LOGICAL               :: AllowLoosing                                        ! Flag if a lost particle should abort the program
 LOGICAL               :: KeepWallParticles                                   ! Flag for tracking of adsorbed Particles
 LOGICAL               :: printRandomSeeds                                    ! print random seeds or not
 REAL                  :: dt_max_particles                                    ! Maximum timestep for particles (for static fields!)
@@ -36,6 +36,9 @@ REAL                  :: dt_max_particles                                    ! M
                                                                               ! into themselves)
 
 REAL    , ALLOCATABLE :: PartState(:,:)                                      ! (1:NParts,1:6) with 2nd index: x,y,z,vx,vy,vz
+#if USE_RW
+REAL    , ALLOCATABLE :: PartTurbState(:,:)                                  ! (1:NParts,1:4) with 2nd index vx',vy',vz',t_remaining
+#endif
 REAL    , ALLOCATABLE :: PartPosRef(:,:)                                     ! (1:3,1:NParts) particles pos mapped to -1|1 space
 INTEGER , ALLOCATABLE :: PartPosGauss(:,:)                                   ! (1:NParts,1:3) Gauss point localization of particles
 REAL    , ALLOCATABLE :: Pt(:,:)                                             ! Derivative of PartState (vx,xy,vz) only
@@ -43,7 +46,7 @@ INTEGER , ALLOCATABLE :: PartReflCount(:)                                    ! C
 
 REAL    , ALLOCATABLE :: Pt_temp(:,:)                                        ! LSERK4 additional derivative of PartState                                                          ! (1:NParts,1:6) with 2nd index: x,y,z,vx,vy,vz
 REAL    , ALLOCATABLE :: LastPartPos(:,:)                                    ! (1:NParts,1:3) with 2nd index: x,y,z
-INTEGER , ALLOCATABLE :: PartSpecies(:)                                      ! (1:NParts) 
+INTEGER , ALLOCATABLE :: PartSpecies(:)                                      ! (1:NParts)
 INTEGER               :: PartRHSMethod
 REAL                  :: PartGravity(3)
 INTEGER               :: nrSeeds                                             ! Number of Seeds for Random Number Generator
@@ -78,7 +81,7 @@ TYPE tInit                                                                   ! P
   REAL                                   :: RadiusICGyro                     ! Radius for Gyrotron gyro radius
   INTEGER                                :: Rotation                         ! direction of rotation, similar to TE-mode
   INTEGER                                :: VelocitySpreadMethod             ! method to compute the velocity spread
-  REAL                                   :: InflowRiseTime                   ! time to ramp the number of inflow particles 
+  REAL                                   :: InflowRiseTime                   ! time to ramp the number of inflow particles
                                                                              ! linearly from zero to unity
   REAL                                   :: VelocitySpread                   ! velocity spread in percent
   REAL                                   :: NormalIC(3)                      ! Normal / Orientation of circle
@@ -243,7 +246,7 @@ TYPE tParticleDataManagement
                                                                             ! List of free Positon
   LOGICAL ,ALLOCATABLE                   :: ParticleInside(:)    ! =>NULL() ! Particle_inside(1:Particle_Number)
   LOGICAL , ALLOCATABLE                  :: ParticleAtWall(:)               ! Particle_adsorbed_on_to_wall(1:Particle_number)
-  INTEGER , ALLOCATABLE                  :: PartAdsorbSideIndx(:,:)         ! Surface index on which Particle i adsorbed 
+  INTEGER , ALLOCATABLE                  :: PartAdsorbSideIndx(:,:)         ! Surface index on which Particle i adsorbed
                                                                             ! (1:3,1:PDM%maxParticleNumber)
                                                                             ! 1: surface index ElemToSide(i,localsideID,ElementID)
                                                                             ! 2: p
@@ -261,11 +264,11 @@ LOGICAL                                  :: ParticlesInitIsDone=.FALSE.
 LOGICAL                                  :: WRITEMacroValues = .FALSE.
 LOGICAL                                  :: WriteMacroVolumeValues =.FALSE.   ! Output of macroscopic values in volume
 LOGICAL                                  :: WriteMacroSurfaceValues=.FALSE.   ! Output of macroscopic values on surface
-INTEGER                                  :: MacroValSamplIterNum              ! Number of iterations for sampling   
+INTEGER                                  :: MacroValSamplIterNum              ! Number of iterations for sampling
                                                                               ! macroscopic values
-REAL                                     :: MacroValSampTime                  ! Sampling time for WriteMacroVal. (e.g., for td201)         
+REAL                                     :: MacroValSampTime                  ! Sampling time for WriteMacroVal. (e.g., for td201)
 INTEGER                                  :: NumRanVec                         ! Number of predefined random vectors
-REAL, ALLOCATABLE                        :: RandomVec(:,:)                    ! Random Vectos (NumRanVec, direction)               
+REAL, ALLOCATABLE                        :: RandomVec(:,:)                    ! Random Vectos (NumRanVec, direction)
 LOGICAL                                  :: OutputVpiWarnings                 ! Flag for warnings for rejected v if VPI+PartDensity
 LOGICAL                                  :: DoSurfaceFlux                     ! Flag for emitting by SurfaceFluxBCs
 LOGICAL                                  :: DoPoissonRounding                 ! Perform Poisson sampling instead of random rounding

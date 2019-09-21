@@ -31,6 +31,12 @@ REAL,ALLOCATABLE  :: RefStatePrim(:,:) !< refstates in primitive variables (as r
 REAL,ALLOCATABLE  :: RefStateCons(:,:) !< refstates in conservative variables
 CHARACTER(LEN=255):: BCStateFile       !< file containing the reference solution on the boundary to be used as BC
 
+#if USE_RW
+! Turbulent quantities
+INTEGER           :: nVarTurb = 2      !< number of turbulent quanitites
+REAL, PARAMETER   :: betaStar = 9./100.
+#endif
+
 ! Boundary condition arrays
 REAL,ALLOCATABLE     :: BCData(:,:,:,:) !< array with precomputed BC values (conservative)
 REAL,ALLOCATABLE     :: BCDataPrim(:,:,:,:) !< array with precomputed BC values (primitive)

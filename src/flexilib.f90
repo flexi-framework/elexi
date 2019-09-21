@@ -119,7 +119,7 @@ IF (nArgs.GT.2) THEN
 END IF
 ParameterFile = Args(1)
 IF (nArgs.GT.1) THEN
-  RestartFile = Args(2) 
+  RestartFile = Args(2)
 #if USE_LOADBALANCE
   ! LoadBalance needs the information that we are performing a restart
   DoRestart = .TRUE.

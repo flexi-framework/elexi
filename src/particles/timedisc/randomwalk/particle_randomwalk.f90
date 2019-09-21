@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -11,11 +11,12 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#if USE_RW
 #include "flexi.h"
 
 !==================================================================================================================================
 !> Module for different Random Walk models of the particle discretization
-!>  
+!>
 !> * Random Walk models require knowledge of turbulent kinetic energy and a turbulent length/time scale. Hide everything concerning
 !>   RW models if these quantities are not available in FLEXI.
 !>
@@ -26,30 +27,29 @@ MODULE MOD_Particle_RandomWalk
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-#if EQNSYSNR == 4
-INTERFACE Particle_InitRandomWalk
-  MODULE PROCEDURE Particle_InitRandomWalk
+INTERFACE ParticleInitRandomWalk
+  MODULE PROCEDURE ParticleInitRandomWalk
 END INTERFACE
 
-INTERFACE Particle_RandomWalk
-  MODULE PROCEDURE Particle_RandomWalk
+INTERFACE ParticleRandomWalk
+  MODULE PROCEDURE ParticleRandomWalk
 END INTERFACE
 
-INTERFACE Particle_FinalizeRandomWalk
-  MODULE PROCEDURE Particle_FinalizeRandomWalk
+INTERFACE ParticleFinalizeRandomWalk
+  MODULE PROCEDURE ParticleFinalizeRandomWalk
 END INTERFACE
 
-PUBLIC::Particle_InitRandomWalk
-PUBLIC::Particle_RandomWalk
-PUBLIC::Particle_FinalizeRandomWalk
+PUBLIC::ParticleInitRandomWalk
+PUBLIC::ParticleRandomWalk
+PUBLIC::ParticleFinalizeRandomWalk
 
 !===================================================================================================================================
 
 CONTAINS
 
-SUBROUTINE Particle_InitRandomWalk()
+SUBROUTINE ParticleInitRandomWalk()
 !===================================================================================================================================
-! 
+!
 !===================================================================================================================================
 ! MODULES
 
@@ -61,22 +61,24 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 
-END SUBROUTINE Particle_InitRandomWalk
+END SUBROUTINE ParticleInitRandomWalk
 
 !===================================================================================================================================
 ! Wrapper for Random Walk Models
 !===================================================================================================================================
-SUBROUTINE Particle_RandomWalk()
+SUBROUTINE ParticleRandomWalk(t)
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars,          ONLY : PDM, Pt
 USE MOD_PICInterpolation_Vars,  ONLY : FieldAtParticle
+USE MOD_Particle_Vars,          ONLY : TurbPartState
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)                  :: t               !> Current simulation time)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                          :: iPart
@@ -84,23 +86,24 @@ INTEGER                          :: iPart
 
 ! Iterate over all particles and add random walk to mean push
 DO iPart = 1,PDM%ParticleVecLength
-  IF (PDM%ParticleInside(iPart)) THEN
-    Pt(iPart,1:3) = Pt(iPart,1:3) + Particle_RandomWalkPush(iPart,FieldAtParticle(iPart,1:PP_nVar))
+  IF (PDM%ParticleInside(iPart).AND.(t.GT.TurbPartState(iPart,4))) THEN
+    CALL ParticleRandomWalkPush(iPart,FieldAtParticle(iPart,1:PP_nVar))
   END IF
 END DO
 
-END SUBROUTINE Particle_RandomWalk
+END SUBROUTINE ParticleRandomWalk
 
 !===================================================================================================================================
 ! Random Walk Push
 !===================================================================================================================================
-FUNCTION Particle_RandomWalkPush(PartID,FieldAtParticle)
+SUBROUTINE ParticleRandomWalkPush(PartID,FieldAtParticle)
 ! MODULES
 USE MOD_Particle_Globals
-USE MOD_Particle_Vars,     ONLY : Species, PartSpecies!, PartGravity
-!USE MOD_Particle_Vars,     ONLY : PartState, RepWarn
-!USE MOD_EOS_Vars,          ONLY : mu0
-USE MOD_Equation_Vars,     ONLY : betaStar
+USE MOD_EOS_Vars,          ONLY:mu0
+USE MOD_Equation_Vars,     ONLY: betaStar
+USE MOD_Particle_Vars,     ONLY: Species, PartSpecies, PartState, TurbPartState
+USE MOD_PICInterpolation_Vars,ONLY: TurbFieldAtParticle
+USE MOD_Timedisc_Vars,     ONLY: t
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -109,15 +112,19 @@ INTEGER,INTENT(IN)  :: PartID
 REAL,INTENT(IN)     :: FieldAtParticle(1:PP_nVar)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL                :: Particle_RandomWalkPush(1:3)             ! The stamp
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: tke,omega,epsturb,C_mu
-REAL                :: L_e,tau_e
+REAL                :: l_e,t_e,t_r,t_int,tau_e,tau
 REAL                :: udash,vdash,wdash
 REAL,PARAMETER      :: C_L = 0.3                                ! Debhi (2008)
+REAL                :: ReP
+REAL                :: Cd
 REAL                :: random
 REAL                :: lambda(3)
+REAL                :: rho_p,Vol,r
+REAL                :: udiff,vdiff,wdiff
+REAL                :: nu
 !===================================================================================================================================
 
 SELECT CASE(TRIM(Species(PartSpecies(PartID))%RWModel))
@@ -127,24 +134,46 @@ SELECT CASE(TRIM(Species(PartSpecies(PartID))%RWModel))
 !===================================================================================================================================
 CASE('none')
     ! Do nothing
-    
+
 CASE('Gosman')
-    tke     = FieldAtParticle(6)
-    omega   = FieldAtParticle(7)
-    epsturb = omega*tke*betaStar
-    
+    tke     = TurbFieldAtParticle(PartID,1)
+    epsturb = TurbFieldAtParticle(PartID,2)
+
     ! SST renamed C_mu, change back for clarity
     C_mu    = betaStar
-    
+
     ! Eddy length and lifetime
-    L_e     = C_mu**(3./4.)*tke**(3./2.) / epsturb
+    l_e     = C_mu**(3./4.)*tke**(3./2.) / epsturb
     tau_e   = C_L * tke / epsturb
-    
+
+    ! Assume spherical particles for now
+    Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
+    r       = (3.*Vol/4./pi)**(1./3.)
+    rho_p   = Species(PartSpecies(PartID))%DensityIC
+
+    ! Droplet relaxation time
+    udiff   = PartState(PartID,4) - (FieldAtParticle(2)/FieldAtParticle(1))
+    vdiff   = PartState(PartID,5) - (FieldAtParticle(3)/FieldAtParticle(1))
+    wdiff   = PartState(PartID,6) - (FieldAtParticle(4)/FieldAtParticle(1))
+
+    ! Get nu to stay in same equation format
+    nu      = mu0/FieldAtParticle(1)
+
+    Rep     = 2.*r*SQRT(udiff**2. + vdiff**2. + wdiff**2.)/nu
+    ! Empirical relation of nonlinear drag from Clift et al. (1978)
+!    IF (Rep .LT. 1) THEN
+!      Cd  = 1.
+!    ELSE
+      Cd  = 1. + 0.15*Rep**0.687
+!    ENDIF
+
+    tau     = (4./3.)*FieldAtParticle(1)*(2.*r)/(rho_p*Cd*sqrt(udiff**2. + vdiff**2. + wdiff**2.))
+
     ! Turbulent velocity fluctuation
     udash   = (2.*tke/3.)**0.5
     vdash   = udash
     wdash   = udash
-    
+
     ! Get random number and rescale to [-1,1]
     CALL RANDOM_NUMBER(random)
     lambda(1) = 2.*random - 1.
@@ -152,24 +181,36 @@ CASE('Gosman')
     lambda(2) = 2.*random - 1.
     CALL RANDOM_NUMBER(random)
     lambda(3) = 2.*random - 1.
-    
+
+    ! Estimate interaction time
+    t_e     = l_e/SQRT(udash**2. + vdash**2. + wdash**2.)
+    IF (tau.LT.1) THEN
+      t_r   = -tau*LOG(1.-l_e/tau*SQRT(udiff**2. + vdiff*2. + wdiff**2.))
+      t_int = MIN(t_e,t_r)
+    ELSE ! Particle captured by eddy
+      t_int = t_e
+    END IF
+
     ! Calculate random walk push. We are isentropic, so use vectors
-    Particle_RandomWalkPush(:) = lambda(:)*udash
-    
+    TurbPartState(PartID,1:3) = lambda(1:3)*udash
+
+    ! Save time when eddy expires
+    TurbPartState(PartID,4)   = t + t_int
+
 CASE DEFAULT
     CALL abort(__STAMP__, ' No particle random walk model given. This should not happen.')
-    
+
 END SELECT
 
 
-END FUNCTION Particle_RandomWalkPush
+END SUBROUTINE ParticleRandomWalkPush
 
 !===================================================================================================================================
 !> Euler particle time integration:
 !> This procedure takes the current time t, the time step dt and the solution at
 !> the current time U(t) and returns the solution at the next time level.
 !===================================================================================================================================
-SUBROUTINE Particle_FinalizeRandomWalk()
+SUBROUTINE ParticleFinalizeRandomWalk()
 ! MODULES
 
 ! IMPLICIT VARIABLE HANDLING
@@ -180,7 +221,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-END SUBROUTINE Particle_FinalizeRandomWalk
-#endif
+END SUBROUTINE ParticleFinalizeRandomWalk
 
 END MODULE MOD_Particle_RandomWalk
+#endif /*USE_RM*/

@@ -36,7 +36,8 @@ REAL               :: RestartTime                     !< time at which computati
 #if EQNSYSNR == 3
 REAL               :: MuTilda
 #endif
-LOGICAL            :: RestartMean
+LOGICAL            :: RestartMean         = .FALSE.
+LOGICAL            :: RestartTurb         = .FALSE.
 #if FV_ENABLED
 INTEGER            :: NFVRestartSuper                 !< Polynomial degree for equidistant supersampling of FV subcells
 #endif

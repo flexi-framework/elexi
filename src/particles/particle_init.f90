@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -110,7 +110,7 @@ CALL prms%CreateRealOption('Particles-ManualTimeStep',      'Manual time step ro
 CALL prms%CreateRealArrayOption('Part-Gravity',             'Gravitational acceleration as vector',         '0. , 0. , 0.')
 
 !===================================================================================================================================
-! > Species              
+! > Species
 ! >>> Values in this section appear multiple times
 !===================================================================================================================================
 CALL prms%SetSection("Particle Species")
@@ -143,7 +143,7 @@ CALL prms%CreateStringOption(   'Part-Species[$]-velocityDistribution'  &
                                   '   constant: all particles have the same defined velocity.(VeloIC, VeloVec)\n'//&
                                   '   fluid:    particles have local fluid velocity\n'&
                                   , 'constant', numberedmulti=.TRUE.)
-                                
+
 CALL prms%CreateRealOption(     'Part-Species[$]-CuboidHeightIC'  &
                                 , 'Height of cuboid if SpaceIC=cuboid', '1.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-CylinderHeightIC'  &
@@ -159,7 +159,7 @@ CALL prms%CreateRealOption(     'Part-Species[$]-PartDensity' &
                                 , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-ParticleEmission' &
                                 , 'Emission rate in part/s or part/iteration.', '0.', numberedmulti=.TRUE.)
-    
+
 CALL prms%CreateRealOption(     'Part-Species[$]-ChargeIC'  &
                                 , 'Particle Charge (without MPF) of species[$] dim' &
                                 , '0.', numberedmulti=.TRUE.)
@@ -169,7 +169,7 @@ CALL prms%CreateRealOption(     'Part-Species[$]-MacroParticleFactor' &
 CALL prms%CreateRealOption(     'Part-Species[$]-MassIC'  &
                                 , 'Particle Mass (without MPF) of species [$] [kg]', '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-DensityIC'  &
-                                , 'Particle density (without MPF) of species [$] [kg/m^3]', '0.', numberedmulti=.TRUE.)    
+                                , 'Particle density (without MPF) of species [$] [kg/m^3]', '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-RadiusIC'  &
                                 , 'Radius for IC circle', '1.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-VeloIC'  &
@@ -178,11 +178,11 @@ CALL prms%CreateRealOption(     'Part-Species[$]-VeloTurbIC'  &
                                 , 'Turbulent fluctuation of initial velocity. (ensemble velocity) ', '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-LowVeloThreshold' &
                                 , 'Threshold velocity of particles after reflection. Slower particles are deleted [$] [m/s]' &
-                                , '0.', numberedmulti=.TRUE.)    
+                                , '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-HighVeloThreshold' &
                                 , 'Threshold velocity of particles in the entire field. Faster particles are deleted [$] [m/s]' &
-                                , '0.', numberedmulti=.TRUE.)    
-    
+                                , '0.', numberedmulti=.TRUE.)
+
 CALL prms%CreateIntOption(      'Part-Species[$]-initialParticleNumber'  &
                                 , 'TODO-DEFINE-PARAMETER\n'//&
                                   'Initial particle number', '0', numberedmulti=.TRUE.)
@@ -195,7 +195,7 @@ CALL prms%CreateIntOption(      'Part-Species[$]-ParticleEmissionType'  &
                                   '1 = emission rate in part/s,\n'//&
                                   '2 = emission rate part/iteration\n'//&
                                   '3 = user def. emission rate\n', '2', numberedmulti=.TRUE.)
-    
+
 CALL prms%CreateRealArrayOption('Part-Species[$]-BasePointIC'  &
                                 , 'TODO-DEFINE-PARAMETER\n'//&
                                   'Base point for IC cuboid and IC sphere', '0. , 0. , 0.'&
@@ -209,15 +209,15 @@ CALL prms%CreateRealArrayOption('Part-Species[$]-NormalIC'  &
                                 , 'Normal orientation of circle.', '0. , 0. , 1.', numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption('Part-Species[$]-VeloVecIC '  &
                                 , 'Normalized velocity vector for given VeloIC', '0. , 0. , 0.', numberedmulti=.TRUE.)
-                                
+
 CALL prms%SetSection("Particle Species Ninits")
 CALL prms%CreateLogicalOption(  'Part-Species[$]-UseForEmission' &
                                 , 'Flag to use Init/Emission for emission', '.FALSE.', numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(  'Part-Species[$]-UseForInit' &
                                 , 'Flag to use Init/Emission for init', '.TRUE.', numberedmulti=.TRUE.)
-                                
+
 ! Bons particle rebound model
-CALL prms%SetSection("Particle Rebound Model")                                
+CALL prms%SetSection("Particle Rebound Model")
 CALL prms%CreateRealOption(     'Part-Species[$]-YoungIC'       &
                                 , "Young's modulus defining stiffness of particle material",'0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-PoissonIC'     &
@@ -228,9 +228,9 @@ CALL prms%CreateRealOption(     'Part-Boundary[$]-Young'  &
                                 , "Young's modulus defining stiffness of wall material", '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Boundary[$]-Poisson'  &
                                 , "Poisson ratio defining relation of transverse to axial strain", '0.', numberedmulti=.TRUE.)
-                                
+
 !===================================================================================================================================
-! > Random Walk (Subgroup of Part-Species)  
+! > Random Walk (Subgroup of Part-Species)
 ! >>> Values in this section only apply for turbulence models providing turbulent kinetic energy and a turbulent length/time scale
 !===================================================================================================================================
 #if EQNSYSNR == 4
@@ -241,13 +241,13 @@ CALL prms%CreateStringOption(   'Part-Species[$]-RWModel' &
                                 ' - Langevin \n'&
                                 , 'none' , numberedmulti=.TRUE.)
 #endif
-                                
+
 !===================================================================================================================================
-! > Boundaries       
+! > Boundaries
 ! >>> Values in this section appear multiple times
 !===================================================================================================================================
 CALL prms%SetSection("Particle Boundaries")
-                                
+
 CALL prms%CreateStringOption(   'Part-Boundary[$]-Condition'  &
                                 , 'Used boundary condition for boundary[$].\n'//&
                                   '- open\n'//&
@@ -262,11 +262,11 @@ CALL prms%CreateStringOption(   'Part-Boundary[$]-Condition'  &
 CALL prms%CreateStringOption(   'Part-Boundary[$]-SourceName'  &
                                 , 'No Default. Source Name of Boundary[i]. Has to be selected for all'//&
                                   'nBounds. Has to be same name as defined in preproc tool', numberedmulti=.TRUE.)
-                                  
+
 CALL prms%CreateRealArrayOption('Part-PeriodicVector[$]'      , 'TODO-DEFINE-PARAMETER\nVector for periodic boundaries.'//&
                                                                    'Has to be the same as defined in preproc.ini in their'//&
                                                                    ' respective order. ', '1. , 0. , 0.', numberedmulti=.TRUE.)
-                                  
+
 ! Wall model =======================================================================================================================
 CALL prms%CreateStringOption(   'Part-Boundary[$]-WallModel' &
                                 , 'Wall model to be used. Options:.\n'//&
@@ -275,31 +275,31 @@ CALL prms%CreateStringOption(   'Part-Boundary[$]-WallModel' &
 CALL prms%CreateStringOption('Part-Boundary[$]-WallCoeffModel' &
                                 , 'Coefficients to be used. Options:.\n'//&
                                   'Tabakoff1981','Tabakoff1981', numberedmulti=.TRUE.)
-                                  
+
 ! Ambient condition=================================================================================================================
 CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientCondition'  &
                                 , 'Use ambient condition (condition "behind" boundary).', '.FALSE.'&
                                 , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientConditionFix'  &
                                 , 'TODO-DEFINE-PARAMETER', '.TRUE.', numberedmulti=.TRUE.)
-    
+
 CALL prms%CreateRealArrayOption('Part-Boundary[$]-AmbientVelo'  &
                                 , 'Ambient velocity', '0. , 0. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption('Part-Boundary[$]-WallVelo'  &
                                 , 'Velocity (global x,y,z in [m/s]) of reflective particle boundary [$].' &
                                 , '0. , 0. , 0.', numberedmulti=.TRUE.)
-    
+
 CALL prms%CreateRealOption(     'Part-Boundary[$]-AmbientDens'  &
                                 , 'Ambient density', '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Boundary[$]-AmbientDynamicVisc'  &
                                 , 'Ambient dynamic viscosity', '1.72326582572253E-5', numberedmulti=.TRUE.)
-    
+
 CALL prms%CreateIntOption(      'Particles-RandomSeed[$]'     , 'Seed [$] for Random Number Generator', '1', numberedmulti=.TRUE.)
 
 END SUBROUTINE DefineParametersParticles
 
 !===================================================================================================================================
-! Glue Subroutine for particle initialization 
+! Glue Subroutine for particle initialization
 !===================================================================================================================================
 SUBROUTINE InitParticles(ManualTimeStep_opt)
 ! MODULES
@@ -350,7 +350,7 @@ IF (WriteMacroSurfaceValues.OR.DSMC%CalcSurfaceVal) THEN
 END IF
 
 #if USE_MPI
-! has to be called AFTER InitializeVariables and InitDSMC 
+! has to be called AFTER InitializeVariables and InitDSMC
 CALL InitParticleCommSize()
 #endif
 
@@ -360,7 +360,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticles
 
 !===================================================================================================================================
-! Initialize the variables first 
+! Initialize the variables first
 !===================================================================================================================================
 SUBROUTINE InitializeVariables(ManualTimeStep_opt)
 ! MODULES
@@ -415,7 +415,7 @@ printRandomSeeds = GETLOGICAL('printRandomSeeds','.FALSE.')
 ! Read basic particle parameter
 PDM%maxParticleNumber = GETINT('Part-maxParticleNumber','1')
 PartGravity           = GETREALARRAY('Part-Gravity',3,'0. , 0. , 0.')
-ALLOCATE(Pt_temp(1:PDM%maxParticleNumber,1:6), STAT=ALLOCSTAT)  
+ALLOCATE(Pt_temp(1:PDM%maxParticleNumber,1:6), STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) THEN
   CALL abort(&
 __STAMP__&
@@ -436,7 +436,10 @@ Pt_temp=0.
 NumRanVec = GETINT('Particles-NumberOfRandomVectors','100000')
 
 ALLOCATE(PartState(1:PDM%maxParticleNumber,1:6)       , &
-         PartReflCount(1:PDM%maxParticleNumber)      , &
+#if USE_RW
+         TurbPartState(1:PDM%maxParticleNumber,1:4)   , &
+#endif
+         PartReflCount(1:PDM%maxParticleNumber)       , &
          LastPartPos(1:PDM%maxParticleNumber,1:3)     , &
          Pt(1:PDM%maxParticleNumber,1:3)              , &
          PartSpecies(1:PDM%maxParticleNumber)         , &
@@ -481,7 +484,7 @@ Pt                                           = 0.
 PartSpecies                                  = 0
 PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
 
-! Initialize of adsorbed particle tracking 
+! Initialize of adsorbed particle tracking
 KeepWallParticles = .FALSE.
 
 nSpecies = GETINT('Part-nSpecies','1')
@@ -505,12 +508,12 @@ ALLOCATE(Species(1:nSpecies))
 
 DO iSpec = 1, nSpecies
   WRITE(UNIT=hilf,FMT='(I2)') iSpec
-  
+
   ! Define GETINT
   CALL prms%CreateIntOption('Part-Species'//TRIM(ADJUSTL(hilf))//'-nInits',"")
-  
+
   Species(iSpec)%NumberOfInits         = GETINT('Part-Species'//TRIM(ADJUSTL(hilf))//'-nInits','0')
-  ALLOCATE(Species(iSpec)%Init(0:Species(iSpec)%NumberOfInits)) 
+  ALLOCATE(Species(iSpec)%Init(0:Species(iSpec)%NumberOfInits))
   DO iInit = 0, Species(iSpec)%NumberOfInits
     ! set help characters
     IF(iInit.EQ.0)THEN
@@ -529,12 +532,12 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%MacroParticleFactor   = GETREAL('Part-Species'//TRIM(hilf2)//'-MacroParticleFactor','1.')
     Species(iSpec)%LowVeloThreshold      = GETREAL('Part-Species'//TRIM(hilf2)//'-LowVeloThreshold','0.')
     Species(iSpec)%HighVeloThreshold     = GETREAL('Part-Species'//TRIM(hilf2)//'-HighVeloThreshold','0.')
-    
+
     ! Bons particle rebound model
     Species(iSpec)%YoungIC               = GETREAL('Part-Species'//TRIM(hilf2)//'-YoungIC')
     Species(iSpec)%PoissonIC             = GETREAL('Part-Species'//TRIM(hilf2)//'-PoissonIC')
     Species(iSpec)%YieldCoeff            = GETREAL('Part-Species'//TRIM(hilf2)//'-YieldCoeff')
-    
+
     ! Random Walk model
 #if EQNSYSNR == 4
     Species(iSpec)%RWModel               = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(hilf2))//'-RWModel',''))
@@ -564,7 +567,7 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%NumberOfExcludeRegions= GETINT('Part-Species'//TRIM(hilf2)//'-NumberOfExcludeRegions','0')
     Species(iSpec)%Init(iInit)%InsertedParticle      = 0
     Species(iSpec)%Init(iInit)%InsertedParticleSurplus = 0
-    
+
     !----------- various checks/calculations after read-in of Species(i)%Init(iInit)%-data ----------------------------------!
     !--- Check if Initial ParticleInserting is really used
     IF ( ((Species(iSpec)%Init(iInit)%ParticleEmissionType.EQ.1).OR.(Species(iSpec)%Init(iInit)%ParticleEmissionType.EQ.2)) &
@@ -579,13 +582,13 @@ DO iSpec = 1, nSpecies
     !--- cuboid-/cylinder-height calculation from v and dt
     IF (.NOT.Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
       IF (TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cuboid') THEN
-        IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CuboidHeightIC,-1.)) THEN ! flag is initialized with -1, compatibility issue 
-          Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.                 
+        IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CuboidHeightIC,-1.)) THEN ! flag is initialized with -1, compatibility issue
+          Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
           SWRITE(*,*) "WARNING: Cuboid height will be calculated from v and dt!"
         END IF
       ELSE IF (TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cylinder') THEN
-        IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CylinderHeightIC,-1.)) THEN !flag is initialized with -1, compatibility issue 
-          Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.                   
+        IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CylinderHeightIC,-1.)) THEN !flag is initialized with -1, compatibility issue
+          Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
           SWRITE(*,*) "WARNING: Cylinder height will be calculated from v and dt!"
         END IF
       END IF
@@ -692,7 +695,7 @@ __STAMP__&
     END IF
     !--- read stuff for ExcludeRegions and normalize/calculate corresponding vectors
     IF (Species(iSpec)%Init(iInit)%NumberOfExcludeRegions.GT.0) THEN
-      ALLOCATE(Species(iSpec)%Init(iInit)%ExcludeRegion(1:Species(iSpec)%Init(iInit)%NumberOfExcludeRegions)) 
+      ALLOCATE(Species(iSpec)%Init(iInit)%ExcludeRegion(1:Species(iSpec)%Init(iInit)%NumberOfExcludeRegions))
       IF (((TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cuboid') &
        .OR.(TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cylinder')) &
       .OR.((TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cuboid_vpi') &
@@ -884,7 +887,7 @@ __STAMP__&
         .AND.(Species(iSpec)%Init(iInit)%ParticleEmission.EQ.0.) )  &
         .AND.(Species(iSpec)%Init(iInit)%PartDensity.EQ.0.) )       &
         .AND.(Species(iSpec)%Init(iInit)%ConstantPressure.EQ.0.)    &
-        .AND.(Species(iSpec)%NumberOfInits.GT.0))       THEN 
+        .AND.(Species(iSpec)%NumberOfInits.GT.0))       THEN
         Species(iSpec)%StartnumberOfInits = 1 ! only new style paramaters defined (Part-Species(i)-Init(iInit)-***)
       ELSE
         Species(iSpec)%StartnumberOfInits = 0 ! old style parameters has been defined for inits/emissions (Part-Species(i)-***)
@@ -893,7 +896,7 @@ __STAMP__&
     END IF ! iInit .EQ.0
 
   END DO ! iInit
-END DO ! iSpec 
+END DO ! iSpec
 
 ! Read in boundary parameters
 ! Leave out this check in FLEXI even though we should probably do it
@@ -1010,7 +1013,7 @@ __STAMP__&
   END IF
 END DO
 
-ALLOCATE(PEM%Element(1:PDM%maxParticleNumber), PEM%lastElement(1:PDM%maxParticleNumber), STAT=ALLOCSTAT) 
+ALLOCATE(PEM%Element(1:PDM%maxParticleNumber), PEM%lastElement(1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) THEN
  CALL abort(&
 __STAMP__&
@@ -1100,14 +1103,13 @@ LowVeloRemove     = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 
 !! init interpolation
 CALL InitializeInterpolation() ! not any more required ! has to be called earliear
-CALL InitPIC()
-! always, because you have to construct a halo_eps region around each bc element
+CALL InitPIC()                 ! always, because you have to construct a halo_eps region around each bc element
 
 #if USE_MPI
 CALL MPI_BARRIER(PartMPI%COMM,IERROR)
 #endif /*MPI*/
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT FIBGM...' 
+SWRITE(UNIT_stdOut,'(A)')' INIT FIBGM...'
 SafetyFactor  =GETREAL('Part-SafetyFactor','1.0')
 halo_eps_velo =GETREAL('Particles-HaloEpsVelo','0')
 
@@ -1373,15 +1375,16 @@ END SUBROUTINE InitializeVariables
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! finalize particle variables
 !----------------------------------------------------------------------------------------------------------------------------------!
-SUBROUTINE FinalizeParticles() 
+SUBROUTINE FinalizeParticles()
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars
+USE MOD_PICInterpolation_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1391,6 +1394,9 @@ IMPLICIT NONE
 SDEALLOCATE(PartPosRef)
 SDEALLOCATE(RandomVec)
 SDEALLOCATE(PartState)
+#if USE_RW
+SDEALLOCATE(TurbPartState)
+#endif
 SDEALLOCATE(LastPartPos)
 SDEALLOCATE(PartSpecies)
 SDEALLOCATE(Pt)
@@ -1416,6 +1422,11 @@ SDEALLOCATE(PEM%pStart)
 SDEALLOCATE(PEM%pNumber)
 SDEALLOCATE(PEM%pEnd)
 SDEALLOCATE(PEM%pNext)
+SDEALLOCATE(FieldAtParticle)
+#if USE_RW
+SDEALLOCATE(TurbFieldAtParticle)
+#endif
+
 END SUBROUTINE FinalizeParticles
 
 
@@ -1423,7 +1434,7 @@ SUBROUTINE rotx(mat,a)
 ! MODULES                                                                                                                          !
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1441,7 +1452,7 @@ SUBROUTINE roty(mat,a)
 ! MODULES                                                                                                                          !
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1459,7 +1470,7 @@ SUBROUTINE ident(mat)
 ! MODULES                                                                                                                          !
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -22,9 +22,12 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL,ALLOCATABLE                      :: FieldAtParticle(:,:) ! (PIC%maxParticleNumber,6) 2nd index: Ex,Ey,Ez,Bx,By,Bz
+REAL,ALLOCATABLE                      :: FieldAtParticle(:,:) ! (PIC%maxParticleNumber,5) 2nd index: rho,u_x,u_y,u_z,e
+#if USE_RW
+REAL,ALLOCATABLE                      :: turbFieldAtParticle(:,:) ! (PIC%maxParticleNumber,2) 2nd index: k,epsilon
+#endif
 CHARACTER(LEN=256)                    :: InterpolationType    ! Type of Interpolation-Method
 LOGICAL                               :: InterpolationElemLoop! Interpolate with outer iElem-loop (not for many Elems per proc!)
 REAL                                  :: externalField(PP_nVar)! ext field is added to the maxwell-solver-field

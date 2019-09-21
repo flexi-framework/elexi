@@ -132,7 +132,9 @@ OPTION(FLEXI_PARTICLES "Enable particle tracking" OFF)
 # code development
 CMAKE_DEPENDENT_OPTION(FLEXI_PARTICLES_CODE_ANALYZE "Code Analyze" OFF
                                                     "FLEXI_PARTICLES" ON)
-CMAKE_DEPENDENT_OPTION(FLEXI_PARTICLES_LOADBALANCE "Use LoadBalance timemeasurement" OFF 
+CMAKE_DEPENDENT_OPTION(FLEXI_PARTICLES_LOADBALANCE "Use LoadBalance timemeasurement" OFF
+                                                   "FLEXI_PARTICLES;FLEXI_MPI" OFF)
+CMAKE_DEPENDENT_OPTION(FLEXI_PARTICLES_RW "Use random walk model for particles" OFF
                                                    "FLEXI_PARTICLES;FLEXI_MPI" OFF)
 CMAKE_DEPENDENT_OPTION(FLEXI_FV_RECONSTRUCTION "Enable 2nd order reconstruction for FV" ON
                                                "FLEXI_FV" OFF)
@@ -288,7 +290,7 @@ FILE(WRITE ${configuration} "")
 GETLISTOFVARSSTARTINGWITH("FLEXI_" flexiVars)
 FOREACH (_var IN LISTS flexiVars)
   GET_PROPERTY(currentHelpString CACHE "${_var}" PROPERTY HELPSTRING)
-  SET(boolian (${${_var}} STREQUAL "ON" OR ${${_var}} STREQUAL "OFF")) 
+  SET(boolian (${${_var}} STREQUAL "ON" OR ${${_var}} STREQUAL "OFF"))
   IF(${boolian})
     FILE(APPEND ${configuration} "OPTION(${_var} \"${currentHelpString}\" ${${_var}})\n")
   ELSE()
@@ -541,6 +543,19 @@ ELSE()
 ENDIF()
 
 # ========================================================================
+# RANDOM WALK
+# =========================================================================
+IF(FLEXI_PARTICLES)
+	IF(FLEXI_PARTICLES_RW)
+		ADD_DEFINITIONS(-DUSE_RW=1)
+  ELSE()
+		ADD_DEFINITIONS(-DUSE_RW=0)
+  ENDIF()
+ELSE()
+	ADD_DEFINITIONS(-DUSE_RW=0)
+ENDIF()
+
+# ========================================================================
 # LOADBALANCE
 # =========================================================================
 IF(FLEXI_PARTICLES)
@@ -564,15 +579,15 @@ ELSE()
   ADD_DEFINITIONS(-DCODE_ANALYZE=0)
 ENDIF(FLEXI_PARTICLES_CODE_ANALYZE)
 
-# ========================================================================= 
-# PAPI library 
-# ========================================================================= 
+# =========================================================================
+# PAPI library
+# =========================================================================
 IF(FLEXI_PAPI)
   FIND_PACKAGE(PAPI REQUIRED)
-  ADD_DEFINITIONS(-DPAPI) 
+  ADD_DEFINITIONS(-DPAPI)
   LIST(APPEND linkedlibs ${PAPI_LIBRARIES})
   INCLUDE_DIRECTORIES(${PAPI_INCLUDE_DIRS})
-  MESSAGE(STATUS "Building Flexi with PAPI benchmark support.") 
+  MESSAGE(STATUS "Building Flexi with PAPI benchmark support.")
 ENDIF()
 
 # =========================================================================
@@ -600,8 +615,8 @@ FUNCTION(add_lib target)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
 ENDFUNCTION()
 
-# include flexi.h 
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src) 
+# include flexi.h
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # collect all F90 files needed for flexilib, except the extra files below
 FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
@@ -623,7 +638,7 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/flexilib.f90
                            ./unitTests/unittest.f90
                            ./unitTests/unittest_vars.f90)
-# 
+#
 # The following files/directories where excluded from the above global recursive search,
 # since some of the subdirectories should only be included if the respective feature is enabled.
 
@@ -633,7 +648,7 @@ FILE(GLOB eqnsysF90        ./src/equations/${FLEXI_EQNSYSNAME}/*.f90)
 IF (WITHEOS GREATER 0)
   FILE(GLOB eosF90         ./src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/*.f90)
   LIST(APPEND eqnsysF90 ${eosF90})
-  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/) 
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/)
 ENDIF()
 # append F90 files of the eddy viscosity to 'eqnsysF90'-list
 IF (FLEXI_EDDYVISCOSITY)
@@ -656,7 +671,7 @@ ENDIF()
 # append 'dgF90'-list to 'flexiF90'-list
 LIST(APPEND flexiF90 ${dgF90})
 
-# collect F90 files of 'fv' directory (non-recursive) and append to 'flexiF90' list 
+# collect F90 files of 'fv' directory (non-recursive) and append to 'flexiF90' list
 IF (FLEXI_FV)
   FILE(GLOB fvF90 ./src/fv/*.f90)
   LIST(APPEND flexiF90 ${fvF90})
@@ -671,7 +686,7 @@ ENDIF()
 
 # define libs
 ADD_LIBRARY(libflexistaticF90 OBJECT ${flexiF90})
-SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
+SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
 ADD_LIBRARY(libflexistatic STATIC $<TARGET_OBJECTS:libflexistaticF90>)
 SET_TARGET_PROPERTIES(libflexistatic PROPERTIES PREFIX ""
                                      OUTPUT_NAME "libflexif90")
@@ -724,11 +739,11 @@ ENDIF()
 # =========================================================================
 # RegressionCheck tool && Examples
 # =========================================================================
-#add_exec(regressioncheck ./regressioncheck/regressioncheck.f90 
-                         #./regressioncheck/regressioncheck_vars.f90 
-                         #./regressioncheck/regressioncheck_build.f90 
-                         #./regressioncheck/regressioncheck_compare.f90 
-                         #./regressioncheck/regressioncheck_run.f90 
+#add_exec(regressioncheck ./regressioncheck/regressioncheck.f90
+                         #./regressioncheck/regressioncheck_vars.f90
+                         #./regressioncheck/regressioncheck_build.f90
+                         #./regressioncheck/regressioncheck_compare.f90
+                         #./regressioncheck/regressioncheck_run.f90
                          #./regressioncheck/regressioncheck_tools.f90 )
 #ADD_DEFINITIONS(-DH5DIFF="${HDF5_DIFF_EXECUTABLE}")
 #SET(FLEXI_REGRESSIONCHECK_EXAMPLES "${CMAKE_CURRENT_SOURCE_DIR}/regressioncheck/examples")
@@ -736,7 +751,7 @@ ENDIF()
 # =========================================================================
 # Userblock
 # =========================================================================
-ADD_CUSTOM_COMMAND(TARGET libflexistatic PRE_BUILD COMMAND 
+ADD_CUSTOM_COMMAND(TARGET libflexistatic PRE_BUILD COMMAND
    sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}")
 
 # =========================================================================

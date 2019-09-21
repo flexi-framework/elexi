@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -14,13 +14,13 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-! Subroutine to compute the particle right hand side, therefore the acceleration due to the Lorentz-force with 
+! Subroutine to compute the particle right hand side, therefore the acceleration due to the Lorentz-force with
 ! respect to the Lorentz factor
 !===================================================================================================================================
-MODULE MOD_part_RHS                                                                                
+MODULE MOD_part_RHS
 ! MODULES
-IMPLICIT NONE                                                                                    
-PRIVATE                                                                                          
+IMPLICIT NONE
+PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -37,13 +37,13 @@ INTERFACE NON_RELATIVISTIC_PUSH
 END INTERFACE
 
 !----------------------------------------------------------------------------------------------------------------------------------
-PUBLIC            :: CalcPartRHS                                                                 
+PUBLIC            :: CalcPartRHS
 PUBLIC            :: NON_RELATIVISTIC_PUSH
 !----------------------------------------------------------------------------------------------------------------------------------
-                                                                                                   
-CONTAINS                                                                                           
-                                                                                                   
-SUBROUTINE CalcPartRHS()                                                                           
+
+CONTAINS
+
+SUBROUTINE CalcPartRHS()
 !===================================================================================================================================
 ! Computes the acceleration from the Lorentz force with respect to the species data and velocity
 !===================================================================================================================================
@@ -51,12 +51,12 @@ SUBROUTINE CalcPartRHS()
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars,          ONLY : PDM, Pt
-USE MOD_PICInterpolation_Vars,  ONLY : FieldAtParticle                                           
+USE MOD_PICInterpolation_Vars,  ONLY : FieldAtParticle
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE                                                                                    
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLE 
+! LOCAL VARIABLE
 INTEGER                          :: iPart
 !===================================================================================================================================
 
@@ -73,7 +73,7 @@ END SUBROUTINE CalcPartRHS
 
 FUNCTION NON_RELATIVISTIC_PUSH(PartID,FieldAtParticle)
 !===================================================================================================================================
-! NON relativistic push 
+! NON relativistic push
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Globals
@@ -107,7 +107,7 @@ REAL                :: nu
 !===================================================================================================================================
 
 SELECT CASE(TRIM(Species(PartSpecies(PartID))%RHSMethod))
-    
+
 CASE('None')
 !===================================================================================================================================
 ! Debug RHS method for purely inertial particle movement
@@ -161,7 +161,7 @@ CASE('Vinkovic')
 IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
   __STAMP__&
   ,'Particle tracking with Vinkovic [2006] requires mu0 to be set!')
-    
+
 ! Assume spherical particles for now
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
 r       = (3.*Vol/4./pi)**(1./3.)
@@ -169,12 +169,18 @@ r       = (3.*Vol/4./pi)**(1./3.)
 ! Get nu to stay in same equation format
 nu      = mu0/FieldAtParticle(1)
 
+#if USE_RM
+udiff   = PartState(PartID,4) - ((FieldAtParticle(2)/FieldAtParticle(1)) + TurbPartState(1))
+vdiff   = PartState(PartID,5) - ((FieldAtParticle(3)/FieldAtParticle(1)) + TurbPartState(2))
+wdiff   = PartState(PartID,6) - ((FieldAtParticle(4)/FieldAtParticle(1)) + TurbPartState(3))
+#else
 udiff   = PartState(PartID,4) - (FieldAtParticle(2)/FieldAtParticle(1))
 vdiff   = PartState(PartID,5) - (FieldAtParticle(3)/FieldAtParticle(1))
 wdiff   = PartState(PartID,6) - (FieldAtParticle(4)/FieldAtParticle(1))
+#endif
 Rep     = 2.*r*SQRT(udiff**2. + vdiff**2. + wdiff**2.)/nu
 
-! Empirical relation of nonlinear drag from Clift et al. (1978) 
+! Empirical relation of nonlinear drag from Clift et al. (1978)
 IF (Rep .LT. 1) THEN
     Cd  = 1.
 ELSE
@@ -197,14 +203,20 @@ CASE('Jacobs')
 IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
   __STAMP__&
   ,'Particle tracking with Jacobs [2003] requires mu0 to be set!')
-    
+
 ! Assume spherical particles for now
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
 r       = (3.*Vol/4./pi)**(1./3.)
 
+#if USE_RM
+udiff   = PartState(PartID,4) - ((FieldAtParticle(2)/FieldAtParticle(1)) + TurbPartState(1))
+vdiff   = PartState(PartID,5) - ((FieldAtParticle(3)/FieldAtParticle(1)) + TurbPartState(2))
+wdiff   = PartState(PartID,6) - ((FieldAtParticle(4)/FieldAtParticle(1)) + TurbPartState(3))
+#else
 udiff   = PartState(PartID,4) - (FieldAtParticle(2)/FieldAtParticle(1))
 vdiff   = PartState(PartID,5) - (FieldAtParticle(3)/FieldAtParticle(1))
 wdiff   = PartState(PartID,6) - (FieldAtParticle(4)/FieldAtParticle(1))
+#endif
 Rep     = 2.*FieldAtParticle(1)*r*SQRT(udiff**2. + vdiff**2. + wdiff**2.)
 Cd      = 1. + (Rep**2./3.)/6.
 
@@ -212,7 +224,7 @@ IF(Rep.LT.1) THEN
     Fstokes = 6.*pi*mu0*r*((FieldAtParticle(2:4)/FieldAtParticle(1)) - PartState(PartID,4:6))
 ELSE
     Fstokes = 6.*Cd*pi*mu0*r*((FieldAtParticle(2:4)/FieldAtParticle(1)) - PartState(PartID,4:6))
-    
+
     IF(Rep.GT.1000) THEN
       IF (RepWarn.EQV..FALSE.) THEN
         SWRITE(UNIT_StdOut,*) 'WARNING: Red',Rep,'> 1000, Jacobs method may not be accurate. Please use Jacobs-highRe tracking.'
@@ -229,7 +241,7 @@ ELSE
 ENDIF
 
 Pt      = Fd/Species(PartSpecies(PartID))%MassIC
-          
+
 CASE('Jacobs-highRe')
 !===================================================================================================================================
 ! Calculation according to Jacobs [2003]
@@ -237,14 +249,20 @@ CASE('Jacobs-highRe')
 IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
   __STAMP__&
   ,'Particle tracking with Jacobs [2003] requires mu0 to be set!')
-    
+
 ! Assume spherical particles for now
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
 r       = (3.*Vol/4./pi)**(1./3.)
 
+#if USE_RM
+udiff   = PartState(PartID,4) - ((FieldAtParticle(2)/FieldAtParticle(1)) + TurbPartState(1))
+vdiff   = PartState(PartID,5) - ((FieldAtParticle(3)/FieldAtParticle(1)) + TurbPartState(2))
+wdiff   = PartState(PartID,6) - ((FieldAtParticle(4)/FieldAtParticle(1)) + TurbPartState(3))
+#else
 udiff   = PartState(PartID,4) - (FieldAtParticle(2)/FieldAtParticle(1))
 vdiff   = PartState(PartID,5) - (FieldAtParticle(3)/FieldAtParticle(1))
 wdiff   = PartState(PartID,6) - (FieldAtParticle(4)/FieldAtParticle(1))
+#endif
 Rep     = 2.*FieldAtParticle(1)*r*SQRT(udiff**2. + vdiff**2. + wdiff**2.)
 Cd      = 1. + (Rep**2./3.)/6.
 
@@ -258,12 +276,12 @@ ELSE
 ENDIF
 
 Pt      = Fd/Species(PartSpecies(PartID))%MassIC
-    
+
 CASE DEFAULT
   CALL abort(&
   __STAMP__&
   ,'No valid RHS method given.')
-  
+
 END SELECT
 
 NON_RELATIVISTIC_PUSH = Pt

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -22,7 +22,7 @@ MODULE MOD_Eval_xyz
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 
@@ -69,11 +69,11 @@ USE MOD_Particle_Mesh_Vars,      ONLY:dXCL_NGeo,XCL_NGeo,wBaryCL_NGeo,XiCL_NGeo
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)  :: NVar                                  !< 6 (Ex, Ey, Ez, Bx, By, Bz) 
+INTEGER,INTENT(IN)  :: NVar                                  !< 6 (Ex, Ey, Ez, Bx, By, Bz)
 INTEGER,INTENT(IN)  :: N_In                                  !< usually PP_N
 INTEGER,INTENT(IN)  :: ElemID                                !< elem index
 REAL,INTENT(IN)     :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)     !< elem state
-REAL,INTENT(IN)     :: x_in(3)                               !< physical position of particle 
+REAL,INTENT(IN)     :: x_in(3)                               !< physical position of particle
 INTEGER,INTENT(IN),OPTIONAL :: PartID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -143,7 +143,7 @@ IF(useBGField)THEN
   CALL LagrangeInterpolationPolys(xi(1),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(1,:))
   CALL LagrangeInterpolationPolys(xi(2),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(2,:))
   CALL LagrangeInterpolationPolys(xi(3),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(3,:))
-  
+
   U_BGField(:)=0
   DO k=0,NBG
     DO j=0,NBG
@@ -192,7 +192,7 @@ INTEGER,INTENT(IN),OPTIONAL :: PartID
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)          :: xi(1:3)                       !< position in reference element
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                    :: iMode
 REAL                       :: XCL_NGeo1(1:3,0:1,0:1,0:1)
 REAL                       :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
@@ -259,7 +259,7 @@ REAL,INTENT(OUT)          :: U_Out(1:NVar)                   !< Interpolated sta
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: i,j,k
-REAL,DIMENSION(3,0:N_in)  :: L_xi        
+REAL,DIMENSION(3,0:N_in)  :: L_xi
 REAL                      :: L_eta_zeta
 !===================================================================================================================================
 CALL LagrangeInterpolationPolys(xi_in(1),N_in,xGP_in,wBary_In,L_xi(1,:))
@@ -278,7 +278,11 @@ END DO ! k=0,N_In
 END SUBROUTINE EvaluateFieldAtRefPos
 
 
+#if USE_RW
+SUBROUTINE EvaluateFieldAtPhysPos(xi_in,NVar,N_in,U_In,U_Out,ElemID,UTurb_In_opt,Uturb_Out_opt)
+#else
 SUBROUTINE EvaluateFieldAtPhysPos(xi_in,NVar,N_in,U_In,U_Out,ElemID)
+#endif
 !===================================================================================================================================
 !> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
 !> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
@@ -286,19 +290,28 @@ SUBROUTINE EvaluateFieldAtPhysPos(xi_in,NVar,N_in,U_In,U_Out,ElemID)
 ! MODULES
 USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
 USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
-USE MOD_PICInterpolation_Vars, ONLY:NBG,BGField,useBGField,BGDataSize,BGField_xGP,BGField_wBary,BGType
+USE MOD_PICInterpolation_Vars, ONLY: NBG,BGField,useBGField,BGDataSize,BGField_xGP,BGField_wBary,BGType
+#if USE_RW
+USE MOD_Equation_Vars,         ONLY: nVarTurb
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)        :: NVar                            !< 6 (Ex, Ey, Ez, Bx, By, Bz)
+INTEGER,INTENT(IN)        :: NVar                            !< 5 (rho,u_x,u_y,u_z,e)
 INTEGER,INTENT(IN)        :: N_In                            !< usually PP_N
 INTEGER,INTENT(IN)        :: ElemID                          !< Element index
 REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In) !< State in Element
 REAL,INTENT(IN)           :: xi_in(3)                        !< position in reference element
-!-----------------------------------------------------------------------------------------------------------------------------------
+#if USE_RW
+REAL,INTENT(IN),OPTIONAL  :: Uturb_In_opt(1:nVarTurb,0:N_In,0:N_in,0:N_In) !< Turbulent quantities in Element
+#endif
+!----------------------------------------------------------------------------------------------------------------------------------- ! -----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)          :: U_Out(1:NVar)                   !< Interpolated state at reference position xi_in
+#if USE_RW
+REAL,INTENT(OUT),OPTIONAL :: UTurb_Out_opt(1:nVarTurb)       !< Interpolated turbulent quantities at reference position xi_in
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k
@@ -315,7 +328,6 @@ CALL LagrangeInterpolationPolys(xi_in(1),N_in,xGP,wBary,L_xi(1,:))
 CALL LagrangeInterpolationPolys(xi_in(2),N_in,xGP,wBary,L_xi(2,:))
 CALL LagrangeInterpolationPolys(xi_in(3),N_in,xGP,wBary,L_xi(3,:))
 
-
 ! "more efficient" - Quote Thomas B.
 U_out(:)=0
 DO k=0,N_in
@@ -326,6 +338,20 @@ DO k=0,N_in
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In
+
+#if USE_RW
+IF (PRESENT(UTurb_In_opt)) THEN
+  UTurb_Out_opt = 0.
+  DO k=0,N_in
+    DO j=0,N_in
+      L_eta_zeta=L_xi(2,j)*L_xi(3,k)
+      DO i=0,N_in
+        UTurb_Out_opt = Uturb_Out_opt + UTurb_In_opt(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      END DO ! i=0,N_In
+    END DO ! j=0,N_In
+  END DO ! k=0,N_In
+END IF
+#endif
 
 !! 2.2) do the tensor product thing
 !X3D_buf1=0.
@@ -360,7 +386,7 @@ IF(useBGField)THEN
   CALL LagrangeInterpolationPolys(xi_in(1),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(1,:))
   CALL LagrangeInterpolationPolys(xi_in(2),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(2,:))
   CALL LagrangeInterpolationPolys(xi_in(3),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(3,:))
-  
+
   U_BGField(:)=0
   DO k=0,NBG
     DO j=0,NBG
@@ -486,7 +512,7 @@ DO WHILE((deltaXi2.GT.RefMappingEps).AND.(NewtonIter.LT.100))
       END DO !i=0,N_In
     END DO !j=0,N_In
   END DO !k=0,N_In
-  
+
   ! Compute inverse of Jacobian
   sdetJac=getDet(Jac)
   IF(sdetJac.GT.0.) THEN
@@ -522,7 +548,7 @@ __STAMP__&
   DO WHILE(Norm_F.GT.Norm_F_old*(1.-0.0001*lambda) .AND.iArmijo.LE.8)
 
     Xi = Xi_Old - lambda*deltaXI!MATMUL(sJac,F)
-  
+
     ! Compute function value
     CALL LagrangeInterpolationPolys(Xi(1),N_In,XiCL_N_in,wBaryCL_N_in,Lag(1,:))
     CALL LagrangeInterpolationPolys(Xi(2),N_In,XiCL_N_in,wBaryCL_N_in,Lag(2,:))
@@ -555,13 +581,13 @@ __STAMP__&
                                            PartState(PartID,6)**2)
         IPWRITE(UNIT_stdOut,*) ' ElemID', ElemID+offSetElem
         IF(PRESENT(PartID)) IPWRITE(UNIT_stdOut,*) ' PartID', PartID
-        
+
         ! In loose mode, remove the invalid particle and write to log
         IF (AllowLoosing) THEN
             PDM%ParticleInside(PartID) = .FALSE.
             IPWRITE(UNIT_stdOut,*) ' Lost particle removed from domain. Continuing simulation ...'
         END IF
-        
+
       END IF
       ! In strict mode, abort program
       IF (.NOT.AllowLoosing) THEN
@@ -686,10 +712,10 @@ CASE(1)
   ! compute guess as average value
   DO iDir=1,3
     Xi(iDir)=0.5*(XiLinear(iDir)-XiLinear(iDir+3))
-  END DO 
+  END DO
   ! limit xi to [-1,1]
   IF(MAXVAL(ABS(Xi)).GT.epsOne) Xi=MAX(MIN(1.0d0,Xi),-1.0d0)
-CASE(2) 
+CASE(2)
   ! compute distance on Gauss Points
   Winner_Dist=SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP(:,0,0,0,ElemID)),(x_in(:)-Elem_xGP(:,0,0,0,ElemID))))
   Xi(:)=(/xGP(0),xGP(0),xGP(0)/) ! start value

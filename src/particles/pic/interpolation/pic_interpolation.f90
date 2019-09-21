@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -51,8 +51,11 @@ SUBROUTINE InitializeInterpolation
 USE MOD_Globals
 USE MOD_Particle_Globals,       ONLY:PP_nElems
 USE MOD_ReadInTools
-USE MOD_Particle_Vars,          ONLY : PDM
+USE MOD_Particle_Vars,          ONLY:PDM
 USE MOD_PICInterpolation_Vars
+#if USE_RW
+USE MOD_Equation_Vars,          ONLY:nVarTurb
+#endif
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -73,8 +76,6 @@ IF (InterpolationElemLoop) THEN !If user-defined F: F for all procs
 END IF
 #if EQNSYSNR == 3   /*Spalart-Allmaras*/
 externalField(1:PP_nVar)= GETREALARRAY('PIC-externalField',PP_nVar,'0.,0.,0.,0.,0.,0.')
-#elif EQNSYSNR == 4 /*Menter Shear-Stress-Transport*/
-externalField(1:PP_nVar)= GETREALARRAY('PIC-externalField',PP_nVar,'0.,0.,0.,0.,0.,0.,0.')
 #else               /*Navier-Stokes*/
 externalField(1:PP_nVar)= GETREALARRAY('PIC-externalField',PP_nVar,'0.,0.,0.,0.,0.')
 #endif
@@ -84,7 +85,7 @@ externalField=externalField*ScaleExternalField
 DoInterpolation   = GETLOGICAL('PIC-DoInterpolation','.TRUE.')
 useBGField        = GETLOGICAL('PIC-BG-Field','.FALSE.')
 
-! Variable external field 
+! Variable external field
 useVariableExternalField = .FALSE.
 FileNameVariableExternalField=GETSTR('PIC-curvedexternalField','none')
 IF (FileNameVariableExternalField.EQ.'none') THEN
@@ -98,11 +99,11 @@ END IF
 !--- Allocate arrays for interpolation of fields to particles
 SDEALLOCATE(FieldAtParticle)
 ! Allocate array for rho,momentum,energy,(tke,omega)
-!#if EQNSYSNR == 4
 ALLOCATE(FieldAtParticle(1:PDM%maxParticleNumber,1:PP_nVar), STAT=ALLOCSTAT)
-!#else
-!ALLOCATE(FieldAtParticle(1:PDM%maxParticleNumber,1:6), STAT=ALLOCSTAT)
-!#endif
+#if USE_RW
+SDEALLOCATE(TurbFieldAtParticle)
+ALLOCATE(TurbFieldAtParticle(1:PDM%maxParticleNumber,1:nVarTurb), STAT=ALLOCSTAT)
+#endif
 IF (ALLOCSTAT.NE.0) THEN
   CALL abort(&
   __STAMP__ &
@@ -139,10 +140,15 @@ USE MOD_PIC_Vars
 USE MOD_PICInterpolation_Vars,   ONLY:FieldAtParticle,externalField,DoInterpolation,InterpolationType
 USE MOD_PICInterpolation_Vars,   ONLY:InterpolationElemLoop
 USE MOD_Eval_xyz,                ONLY:TensorProductInterpolation,GetPositionInRefElem,EvaluateFieldAtPhysPos
+#if USE_RW
+USE MOD_DG_Vars,                 ONLY:UTurb
+USE MOD_Restart_Vars,            ONLY:RestartTurb
+USE MOD_Equation_Vars,           ONLY:nVarTurb
+#endif
 #if USE_MPI
 ! only required for shape function??
 USE MOD_Particle_MPI_Vars,       ONLY:PartMPIExchange
-#endif 
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -152,13 +158,19 @@ LOGICAL                          :: doInnerParts
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES                                                                    
-INTEGER                          :: firstPart,lastPart                                        
-REAL                             :: field(PP_nVar)                                                    
+! LOCAL VARIABLES
+INTEGER                          :: firstPart,lastPart
+REAL                             :: field(PP_nVar)
 INTEGER                          :: iPart,iElem
+#if USE_RW
+REAL                             :: turbField(nVarTurb)
+#endif
 !===================================================================================================================================
 ! null field vector
 field=0.
+#if USE_RW
+turbField=0.
+#endif
 
 IF(doInnerParts)THEN
   firstPart=1
@@ -203,15 +215,16 @@ IF (DoInterpolation) THEN                 ! skip if no self fields are calculate
             CALL TensorProductInterpolation(PartState(iPart,1:3),PartPosRef(1:3,iPart),iElem,ForceMode=.TRUE.,PartID=iPart)
           END IF
           !--- evaluate at Particle position
-!#if EQNSYSNR == 4
-          !> We need rho,momentum,energy and omega in RANS RW mode
-          CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,iPart),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,iElem),field(1:PP_nVar),iElem)
+#if USE_RW
+          IF (RestartTurb) THEN
+            CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,iPart),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,iElem),field(1:PP_nVar),iElem,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb))
+          ELSE
+#endif
+            CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,iPart),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,iElem),field(1:PP_nVar),iElem)
+#if USE_RW
+          END IF
+#endif
           FieldAtParticle(iPart,1:PP_nVar) = FieldAtParticle(iPart,1:PP_nVar) + field(1:PP_nVar)
-!#else
-!          !> For LES/DNS mode, rho,momentum and energy are sufficient
-!          CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,iPart),5,PP_N,U(1:5,:,:,:,iElem),field(1:5),iElem)
-!          FieldAtParticle(iPart,1:5) = FieldAtParticle(iPart,1:5) + field(1:5)
-!#endif
         END IF ! Element(iPart).EQ.iElem
       END DO ! iPart
     END DO ! iElem=1,PP_N
@@ -233,7 +246,7 @@ __STAMP__&
        , 'ERROR: Unknown InterpolationType!')
   END SELECT
 END IF
-    
+
 RETURN
 END SUBROUTINE InterpolateFieldToParticle
 
@@ -248,7 +261,7 @@ USE MOD_PreProc
 USE MOD_Particle_Vars,           ONLY:PartPosRef,PartState,PEM
 USE MOD_DG_Vars,                 ONLY:U
 USE MOD_Particle_Tracking_Vars,  ONLY:DoRefMapping
-USE MOD_PIC_Vars!,      ONLY: 
+USE MOD_PIC_Vars!,      ONLY:
 USE MOD_PICInterpolation_Vars,   ONLY:externalField,DoInterpolation,InterpolationType
 USE MOD_Eval_xyz,                ONLY:TensorProductInterpolation,GetPositionInRefElem,EvaluateFieldAtPhysPos
 #if USE_MPI
@@ -264,7 +277,7 @@ INTEGER,INTENT(IN)            :: PartID
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)             :: FieldAtParticle(1:PP_nVar)
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES                                                                    
+! LOCAL VARIABLES
 REAL                         :: Field(1:PP_nVar) !,Pos(3)
 INTEGER                      :: ElemID
 !===================================================================================================================================
@@ -288,15 +301,8 @@ IF (DoInterpolation) THEN                 ! skip if no self fields are calculate
         CALL TensorProductInterpolation(PartState(PartID,1:3),PartPosRef(1:3,PartID),ElemID,ForceMode=.TRUE.,PartID=PartID)
       END IF
       !--- evaluate at Particle position
-!#if EQNSYSNR == 4
-      !> We need rho,momentum,energy and omega in RANS RW mode
       CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,PartID),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,ElemID),field(1:PP_nVar),ElemID)
       FieldAtParticle(1:PP_nVar) = FieldAtParticle(1:PP_nVar) + field(1:PP_nVar)
-!#else
-!      !> For LES/DNS mode, rho, momentum and energy are sufficient
-!      CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,PartID),5,PP_N,U(1:5,:,:,:,ElemID),field(1:5),ElemID)
-!      FieldAtParticle(1:5) = FieldAtParticle(1:5) + field(1:5)
-!#endif
   CASE DEFAULT
     CALL abort(&
 __STAMP__&
@@ -338,9 +344,9 @@ DO WHILE (err.EQ.0)
   READ(ioUnit,*,IOSTAT = err) dummy
   IF (err.EQ.-1) THEN
     EXIT
-  END IF 
+  END IF
   ERR = 0
-  ncounts = ncounts + 1 
+  ncounts = ncounts + 1
 END DO
 REWIND(ioUnit)
 nIntPoints = ncounts
@@ -352,14 +358,14 @@ DO ii = 1, ncounts
     diff_comp  = VariableExternalField(1,2)  - VariableExternalField(1,1)
     diff_check = VariableExternalField(1,ii) - VariableExternalField(1,ii-1)
     IF( (.NOT.ALMOSTEQUALRELATIVE(diff_comp,diff_check,1E-5)) .AND. ((diff_comp.GT.0.0).AND.(diff_check.GT.0.0)) )THEN
-      SWRITE(UNIT_stdOut,'(A)') "ReadVariableExternalField: Non-equidistant OR non-increasing points for variable external field." 
+      SWRITE(UNIT_stdOut,'(A)') "ReadVariableExternalField: Non-equidistant OR non-increasing points for variable external field."
       ! partns
 !      SWRITE(UNIT_stdOut,OUTPUTFORMAT) diff_comp
 !      SWRITE(UNIT_stdOut,OUTPUTFORMAT) diff_check
       CALL abort(&
 __STAMP__&
         ,' Error in dataset!')
-    END IF  
+    END IF
   END IF
 END DO
 CLOSE (ioUnit)
@@ -376,7 +382,7 @@ IF(ncounts.GT.1) THEN
   IF(DeltaExternalField.LE.0) THEN
     SWRITE(*,'(A)') ' ERROR: wrong sign in external field delta-x'
   END IF
-ELSE 
+ELSE
   CALL abort(&
 __STAMP__&
 , &
@@ -404,7 +410,7 @@ REAL,INTENT(IN)          :: Pos ! partilce z position
 ! OUTPUT VARIABLES
 REAL                     :: InterpolateVariableExternalField  ! Bz
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                  :: iPos
 !===================================================================================================================================
 iPos = INT((Pos-VariableExternalField(1,1))/DeltaExternalField) + 1
@@ -417,6 +423,6 @@ ELSE ! Linear Interpolation between iPos and iPos+1 B point
                                    / (VariableExternalField(1,iPos+1) - VariableExternalField(1,iPos)) & ! /dx
                              * (Pos - VariableExternalField(1,iPos) ) + VariableExternalField(2,iPos)    ! *(z - z_i) + z_i
 END IF
-END FUNCTION InterpolateVariableExternalField 
+END FUNCTION InterpolateVariableExternalField
 
 END MODULE MOD_PICInterpolation

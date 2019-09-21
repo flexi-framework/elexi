@@ -55,6 +55,7 @@ IMPLICIT NONE
 CALL prms%SetSection("Restart")
 CALL prms%CreateLogicalOption('ResetTime',      "Override solution time to t=0 on restart.", '.FALSE.')
 CALL prms%CreateLogicalOption('RestartMean',    "Flag to denote restart from time-averaged file.", '.FALSE.')
+CALL prms%CreateLogicalOption('RestartTurb',    "Flag to denote restart from time-averaged filecontaining turbulent quantities.", '.FALSE.')
 #if EQNSYSNR == 3
 CALL prms%CreateRealOption(   'RestartMuTilda', "Constant mu_tilda to be applied throughout the domain.", '0.')
 #endif
@@ -121,7 +122,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   ! Read in parameters of restart solution
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   ! Read this here because we need to change array names in case of a mean file
-  RestartMean=GETLOGICAL('RestartMean','.FALSE.')
+  RestartTurb=GETLOGICAL('RestartTurb','.FALSE.')
+  IF (.NOT.RestartTurb) RestartMean=GETLOGICAL('RestartMean','.FALSE.')
   ! Read in attributes
   IF (.NOT.RestartMean) THEN
     CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart)
@@ -146,6 +148,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 #if EQNSYSNR == 3
       SWRITE(UNIT_StdOut,'(A)') ' Restart from mean file. Parameter for mu_tilda required!'
 #endif
+    ELSEIF(RestartTurb.AND.(nVar_Restart.NE.PP_nVar+2)) THEN
+      CALL CollectiveStop(__STAMP__, "Restart File has wrong number of variables for restart with turbulent quantities!")
     ELSE
       SWRITE(UNIT_StdOut,'(A)') ' Restart file has more variables than current equation system, will be truncated!'
     END IF
@@ -221,6 +225,10 @@ USE MOD_2D,                 ONLY: to2D_rank5
 #endif
 USE MOD_IO_HDF5
 USE MOD_HDF5_Input,         ONLY: GetDataSize
+#if USE_RW
+USE MOD_DG_Vars,            ONLY: Uturb
+USE MOD_Equation_Vars,      ONLY: nVarTurb
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -242,6 +250,14 @@ LOGICAL            :: doFlushFiles_loc
 INTEGER            :: nVal(15),iVar
 REAL,ALLOCATABLE   :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
+#endif
+#if GCL
+REAL,ALLOCATABLE   :: Jac_local(:,:,:,:,:)
+#if PP_dim == 3
+REAL,ALLOCATABLE   :: Jac_local2(:,:,:,:,:)
+#endif
+LOGICAL            :: foundJac
+INTEGER            :: HSize_procJac(5)
 #endif
 !==================================================================================================================================
 IF (PRESENT(doFlushFiles)) THEN
@@ -301,19 +317,10 @@ IF(DoRestart)THEN
     END IF
 #endif
   END IF
-  IF ((HSize(1).GT.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
-    IF (RestartMean) THEN
-        SWRITE(UNIT_StdOut,'(A)')'Dimensions of restart file do not match! Proceeding because you signaled a steadyState restart.'
-    ELSE
-#if EQNSYSNR == 3
-        CALL Abort(__STAMP__,"Dimensions of restart file do not match! If RANS restart wanted, provide RestartMuTilda.")
-#endif
-    END IF
-  END IF
   HSize_proc = INT(HSize)
   HSize_proc(5) = nElems
+  ! Allocate larger array for restart with turbulent quantitites
   ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
-
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
   IF (RestartMean) THEN
     CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
@@ -322,9 +329,15 @@ IF(DoRestart)THEN
   END IF
 
   ! Truncate the solution if we read a restart file from a different equation system or from a time-averaged file
-  IF ((PP_nVar.LT.nVar_Restart).OR.RestartMean) THEN
+  IF (PP_nVar.LT.nVar_Restart) THEN
     ALLOCATE(U_localNVar(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
     U_localNVar(1:PP_nVar,:,:,:,:) = U_local(1:PP_nVar,:,:,:,:)
+#if USE_RW
+    IF (RestartTurb) THEN
+      ALLOCATE(Uturb(nVarTurb,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+      Uturb(1:nVarTurb,:,:,:,:) = U_local(PP_nVar+1:PP_nVar+nVarTurb,:,:,:,:)
+    END IF
+#endif
     DEALLOCATE(U_local)
     ALLOCATE(U_local(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
     U_local = U_localNVar
@@ -366,7 +379,30 @@ IF(DoRestart)THEN
       U = U_local
     END IF
 #endif
+#if GCL
+#if PP_dim == 3
+    IF (HSize_procJac(4).EQ.1) THEN
+      ! FLEXI compiled 3D, but data is 2D => expand third space dimension
+      IF (foundJac) CALL ExpandArrayTo3D(5,(/1,PP_N+1,PP_N+1,1,nElems/),4,PP_N+1,Jac_local,Jac)
+    ELSE
+      ! FLEXI compiled 3D + data 3D
+      IF (foundJac) Jac = Jac_local
+    END IF
+#else
+    IF (HSize_procJac(4).EQ.1) THEN
+      ! FLEXI compiled 2D + data 2D
+      IF (foundJac) Jac = Jac_local
+    ELSE
+      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
+      IF (foundJac) THEN
+        CALL to2D_rank5((/1,0,0,0,1/),(/1,PP_N,PP_N,PP_N,nElems/),4,Jac_local)
+        Jac = Jac_local
+      END IF
+    END IF
+#endif /*PP_dim == 3*/
+#endif /*GCL*/
   ELSE ! InterpolateSolution
+    IF (RestartTurb) CALL CollectiveStop(__STAMP__,'Interpolation not supported for turbulent quantities. Non-linear operation!')
     ! We need to interpolate the solution to the new computational grid
     SWRITE(UNIT_stdOut,*)'Interpolating solution from restart grid with N=',N_restart,' to computational grid with N=',PP_N
 
@@ -392,6 +428,23 @@ IF(DoRestart)THEN
       ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
       CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,N_Restart,N_Restart,N_Restart,nElems/),4,U_local)
     END IF
+#if GCL
+    IF (HSize_procJac(4).NE.1) THEN
+      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
+      IF (foundJac) THEN
+        CALL to2D_rank5((/1,0,0,0,1/),(/1,N_Restart,N_Restart,N_Restart,nElems/),4,Jac_local)
+      END IF
+    END IF
+#endif /*GCL*/
+#endif /*PP_dim == 3*/
+
+#if GCL
+    ! Transform Jacobian
+    DO iElem=1,nElems
+      CALL ChangeBasisVolume(1,N_Restart,PP_N,Vdm_NRestart_N,Jac_local(:,:,:,:,iElem),Jac(:,:,:,:,iElem))
+    END DO
+    ! Set inverse of Jacobian
+    sJ(:,:,:,:,0) = 1./Jac(1,:,:,:,:)
 #endif
     ! Transform solution to refspace and project solution to N
     ! For conservativity deg of detJac should be identical to EFFECTIVE polynomial deg of solution
@@ -435,17 +488,13 @@ IF(DoRestart)THEN
     SWRITE(UNIT_stdOut,'(A)') 'Restart from mean file successful.'
   END IF
 
-#if USE_PARTICLES
-
-#else
+#if !(USE_PARTICLES)
   ! Delete all files that will be rewritten --> moved to particle_restart.f90 since we need it there
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
 #endif
 ELSE
-#if USE_PARTICLES
-
-#else
-  ! Delete all files since we are doing a fresh start --> moved to particle_restart.f90 since we need it there
+#if !(USE_PARTICLES)
+  ! Delete all files since we are doing a fresh start --> moved to particle_restart.f90 since we need it there ! Delete all files since we are doing a fresh start --> moved to particle_restart.f90 since we need it there
   IF (doFlushFiles_loc) CALL FlushFiles()
 #endif
 END IF
@@ -511,8 +560,15 @@ END SUBROUTINE SupersampleFVCell
 SUBROUTINE FinalizeRestart()
 ! MODULES
 USE MOD_Restart_Vars
+#if USE_RW
+USE MOD_DG_Vars,     ONLY:Uturb
+#endif
 IMPLICIT NONE
 !==================================================================================================================================
+#if USE_RW
+SDEALLOCATE(Uturb)
+#endif
+
 RestartInitIsDone = .FALSE.
 END SUBROUTINE FinalizeRestart
 

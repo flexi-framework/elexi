@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -46,11 +46,11 @@ INTEGER,ALLOCATABLE :: SidePeriodicType(:)                                      
                                                                                           ! 0 - normal or BC side
                                                                                           ! >0 type of periodic displacement
 REAL,ALLOCATABLE    :: SidePeriodicDisplacement(:,:)                                      ! displacement vector
-                                                                                          
+
 INTEGER,ALLOCATABLE :: PartElemToSide(:,:,:)                                              ! extended list: 1:2,1:6,1:nTotalElems
                                                                                           ! ElemToSide: my geometry + halo
                                                                                           ! geometry + halo information
-                                                                                          
+
 
 INTEGER,ALLOCATABLE :: PartSideToElem(:,:)                                                ! extended list: 1:5,1:6,1:nTotalSides
                                                                                           ! SideToElem: my geometry + halo
@@ -64,7 +64,7 @@ INTEGER(KIND=4),ALLOCATABLE :: PartElemToElemAndSide(:,:,:)                     
                                                                                           ! [1]1:4 - MortarNeighborElemID
                                                                                           ! [1]5:8 -       Neighbor locSideID
                                                                                           ! [2]1:6 - locSideID
-                                                                                          ! [3]    - nTotalElems 
+                                                                                          ! [3]    - nTotalElems
                                                                                           ! now in global-elem-ids !!!
 INTEGER             :: nPartSides                                                         ! nPartSides - nSides+nPartPeriodicSides
 INTEGER             :: nTotalSides                                                        ! total nb. of sides (my+halo)
@@ -72,10 +72,10 @@ INTEGER             :: nPartPeriodicSides                                       
 INTEGER             :: nTotalElems                                                        ! total nb. of elems (my+halo)
 INTEGER             :: nTotalNodes                                                        ! total nb. of nodes (my+halo)
 
-INTEGER,ALLOCATABLE :: TracingBCInnerSides(:)                                             ! number of local element boundary faces 
+INTEGER,ALLOCATABLE :: TracingBCInnerSides(:)                                             ! number of local element boundary faces
                                                                                           ! used for tracing (connected to element)
-INTEGER,ALLOCATABLE :: TracingBCTotalSides(:)                                             ! total number of element boundary faces 
-                                                                                          ! used for tracing (loc faces + other 
+INTEGER,ALLOCATABLE :: TracingBCTotalSides(:)                                             ! total number of element boundary faces
+                                                                                          ! used for tracing (loc faces + other
                                                                                           ! element faces that are possibly reached)
 LOGICAL,ALLOCATABLE :: IsTracingBCElem(:)                                                 ! is an elem with BC sides for tracing
                                                                                           ! or BC in halo-eps distance to BC
@@ -87,7 +87,7 @@ INTEGER,ALLOCATABLE :: PartBCSideList(:)                                        
 
 REAL,ALLOCATABLE,DIMENSION(:,:,:)       :: XiEtaZetaBasis                                 ! element local basis vector (linear elem)
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: slenXiEtaZetaBasis                             ! inverse of length of basis vector
-REAL,ALLOCATABLE,DIMENSION(:)           :: ElemRadiusNGeo                                 ! radius of element 
+REAL,ALLOCATABLE,DIMENSION(:)           :: ElemRadiusNGeo                                 ! radius of element
 REAL,ALLOCATABLE,DIMENSION(:)           :: ElemRadius2NGeo                                ! radius of element + 2% tolerance
 INTEGER                                 :: RefMappingGuess                                ! select guess for mapping into reference
                                                                                           ! element
@@ -96,9 +96,9 @@ INTEGER                                 :: RefMappingGuess                      
                                                                                           ! 3 - closest XCL-point
                                                                                           ! 4 - trivial guess - element origin
 REAL                                    :: RefMappingEps                                  ! tolerance for Netwton to get xi from X
-REAL                                    :: epsInCell                                      ! tolerance for eps for particle 
+REAL                                    :: epsInCell                                      ! tolerance for eps for particle
                                                                                           ! inside of ref element
-REAL,ALLOCATABLE                        :: epsOneCell(:)                                  ! tolerance for particle in 
+REAL,ALLOCATABLE                        :: epsOneCell(:)                                  ! tolerance for particle in
                                                                                           ! inside ref element 1+epsinCell
 
 !LOGICAL                                 :: DoRefMapping                  ! tracking by mapping particle into reference element
@@ -110,15 +110,15 @@ REAL,ALLOCATABLE                        :: epsOneCell(:)                        
 TYPE tFastInitBGM
   INTEGER                                :: nElem                             ! Number of elements in background mesh cell
   INTEGER, ALLOCATABLE                   :: Element(:)                        ! List of elements/physical cells in BGM cell
-#if USE_MPI     
-  INTEGER, ALLOCATABLE                   :: ShapeProcs(:)                     ! first Entry: Number of Shapeprocs, 
+#if USE_MPI
+  INTEGER, ALLOCATABLE                   :: ShapeProcs(:)                     ! first Entry: Number of Shapeprocs,
                                                                               ! following: ShapeProcs
-  INTEGER, ALLOCATABLE                   :: PaddingProcs(:)                   ! first Entry: Number of Paddingprocs, 
+  INTEGER, ALLOCATABLE                   :: PaddingProcs(:)                   ! first Entry: Number of Paddingprocs,
                                                                               ! following: PaddingProcs
-  INTEGER, ALLOCATABLE                   :: SharedProcs(:)                    ! first Entry: Number of Sharedprocs, 
+  INTEGER, ALLOCATABLE                   :: SharedProcs(:)                    ! first Entry: Number of Sharedprocs,
                                                                               ! following: SharedProcs
   !INTEGER                                :: nBCSides                          ! number BC sides in BGM cell
-#endif                     
+#endif
 END TYPE
 
 INTEGER                                  :: FIBGMCellPadding(1:3)
@@ -173,12 +173,11 @@ TYPE tGeometry
   REAL, ALLOCATABLE                      :: Volume(:)                         ! Volume(nElems) for nearest_blurrycenter
   REAL, ALLOCATABLE                      :: CharLength(:)                     ! Characteristic length for each cell: L=V^(1/3)
   REAL                                   :: MeshVolume                        ! Total Volume of mesh
-  REAL                                   :: LocalVolume                       ! Volume of proc 
+  REAL                                   :: LocalVolume                       ! Volume of proc
   INTEGER, ALLOCATABLE                   :: ElemToRegion(:)                   ! ElemToRegion(1:nElems)
 
   LOGICAL                                :: SelfPeriodic                      ! does process have periodic bounds with itself?
   INTEGER, ALLOCATABLE                   :: ElemToNodeID(:,:)                 ! ElemToNodeID(1:nElemNodes,1:nElems)
-  !INTEGER, ALLOCATABLE                   :: ElemToNodeIDGlobal(:,:)           ! ElemToNodeID(1:nElemNodes,1:nElems)
   INTEGER, ALLOCATABLE                   :: ElemSideNodeID(:,:,:)             ! ElemSideNodeID(1:nSideNodes,1:nLocSides,1:nElems)
                                                                               ! From element sides to node IDs
   INTEGER, ALLOCATABLE                   :: ElemsOnNode(:)                    ! ElemSideNodeID(1:nSideNodes,1:nLocSides,1:nElems)
@@ -225,7 +224,7 @@ REAL,ALLOCATABLE    :: dXCL_NGeo(:,:,:,:,:,:) !jacobi matrix of the mapping P\in
 !REAL,ALLOCATABLE    :: dXCL_N(:,:,:,:,:,:) !jacobi matrix of the mapping P\in NGeo
 REAL,ALLOCATABLE    :: wBaryCL_NGeo(:)
 REAL,ALLOCATABLE    :: wBaryCL_NGeo1(:)
-REAL,ALLOCATABLE    :: DCL_NGeo(:,:)  
+REAL,ALLOCATABLE    :: DCL_NGeo(:,:)
 REAL,ALLOCATABLE    :: DCL_N(:,:)
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE :: Xi_NGeo(:)                  !< 1D equidistant point positions for curved elements (during readin)
@@ -234,10 +233,10 @@ REAL             :: DeltaXi_NGeo
 REAL,ALLOCATABLE,DIMENSION(:,:):: ElemBaryNGeo   !< element local basis: origin
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE :: Vdm_CLNGeo_CLN(:,:)
-REAL,ALLOCATABLE :: Vdm_CLNGeo_GaussN(:,:)  
+REAL,ALLOCATABLE :: Vdm_CLNGeo_GaussN(:,:)
 REAL,ALLOCATABLE :: Vdm_CLN_GaussN(:,:)
 REAL,ALLOCATABLE :: Vdm_CLNGeo1_CLNGeo(:,:)
-REAL,ALLOCATABLE :: Vdm_NGeo_CLNGeo(:,:)  
+REAL,ALLOCATABLE :: Vdm_NGeo_CLNGeo(:,:)
 INTEGER,ALLOCATABLE :: MortarSlave2MasterInfo(:) !< 1:nSides: map of slave mortar sides to belonging master mortar sides
 LOGICAL,ALLOCATABLE :: CurvedElem(:)
 !----------------------------------------------------------------------------------------------------------------------------------

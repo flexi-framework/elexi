@@ -488,7 +488,7 @@ END DO !iElem
 !                              NODES
 !----------------------------------------------------------------------------------------------------------------------------
 #if USE_PARTICLES
-!read local Node Info from data file 
+!read local Node Info from data file
 offsetNodeID=ElemInfo(ELEM_FirstNodeInd,FirstElemInd) ! hdf5 array starts at 0-> -1
 nNodeIDs=ElemInfo(ELEM_LastNodeInd,LastElemInd)-ElemInfo(ELEM_FirstNodeInd,FirstElemind)
 FirstNodeInd=offsetNodeID+1
@@ -815,7 +815,7 @@ USE MOD_LoadMesh,     ONLY:LoadElemTime
 #endif /*PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_LoadMesh,     ONLY:LoadPartition
-USE MOD_Restart_Vars, ONLY:DoRestart 
+USE MOD_Restart_Vars, ONLY:DoRestart
 #endif /*LOADBALANCE*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -855,7 +855,7 @@ IF (DoRestart.AND.(nProcessors.GT.1)) THEN
     CALL LoadPartition(FileString)
 ELSE
 #endif /*LOADBALANCE*/
-  
+
 ! If we do not use load balancing, distribute elems equally on proc(s)
 nElems = nGlobalElems/nProcessors
 iElem  = nGlobalElems-nElems*nProcessors
@@ -956,7 +956,7 @@ END SUBROUTINE ReadIJKSorting
 #if USE_PARTICLES
 SUBROUTINE GetNodeMap()
 !===================================================================================================================================
-! take NodeInfo array, sort it, eliminate mulitple IDs and return the Mapping 1->NodeID1, 2->NodeID2, ... 
+! take NodeInfo array, sort it, eliminate mulitple IDs and return the Mapping 1->NodeID1, 2->NodeID2, ...
 ! this is useful if the NodeID list of the mesh are not contiguous, essentially occuring when using domain decomposition (MPI)
 !===================================================================================================================================
 ! MODULES
@@ -996,7 +996,7 @@ END SUBROUTINE GetNodeMap
 
 FUNCTION INVMAP(ID,nIDs,ArrID)
 !===================================================================================================================================
-! find the inverse Mapping p.e. NodeID-> entry in NodeMap (a sorted array of unique NodeIDs), using bisection 
+! find the inverse Mapping p.e. NodeID-> entry in NodeMap (a sorted array of unique NodeIDs), using bisection
 ! if Index is not in the range, -1 will be returned, if it is in the range, but is not found, 0 will be returned!!
 !===================================================================================================================================
 ! MODULES
@@ -1022,7 +1022,7 @@ IF((ID.LT.ArrID(low)).OR.(ID.GT.ArrID(up))) THEN
   !WRITE(*,*)'WARNING, Node Index Not in local range -> set to -1'
   INVMAP=-1  ! not in the range!
   RETURN
-END IF 
+END IF
 IF(ID.EQ.ArrID(low))THEN
   INVMAP=low
 ELSEIF(ID.EQ.ArrID(up))THEN

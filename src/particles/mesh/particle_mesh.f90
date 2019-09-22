@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -73,10 +73,6 @@ INTERFACE MapRegionToElem
   MODULE PROCEDURE MapRegionToElem
 END INTERFACE
 
-INTERFACE PointToExactElement
-  MODULE PROCEDURE PointToExactElement
-END INTERFACE
-
 INTERFACE BuildElementBasis
   MODULE PROCEDURE BuildElementBasis
 END INTERFACE
@@ -125,7 +121,7 @@ PUBLIC::exchangeElemID
 #endif
 PUBLIC::CountPartsPerElem
 PUBLIC::BuildElementBasis,CheckIfCurvedElem
-PUBLIC::InitElemVolumes,MapRegionToElem,PointToExactElement
+PUBLIC::InitElemVolumes,MapRegionToElem
 PUBLIC::InitParticleMesh,FinalizeParticleMesh, InitFIBGM, SingleParticleToExactElement, SingleParticleToExactElementNoMap
 PUBLIC::InsideElemBoundingBox
 PUBLIC::PartInElemCheck
@@ -226,7 +222,7 @@ CALL prms%CreateLogicalOption( 'Part-PeriodicStrict'&
 CALL prms%CreateRealOption('Part-PeriodicVecTol'&
     ,   'Tolerance angle when looking for periodic vectors ' &
     ,'0')
-    
+
 ! Wall models
 !CALL prms%CreateStringOption('Part-WallModel'&
 !  , ' Wall model to be used for particle tracking Available options:.\n'//&
@@ -234,8 +230,8 @@ CALL prms%CreateRealOption('Part-PeriodicVecTol'&
 !    'coeffRes - Coefficient of restitution')
 !CALL prms%CreateRealOption('Part-WallCoeff-Tang'        , 'Coefficient of restituation in tangential direction', '1.0')
 !CALL prms%CreateRealOption('Part-WallCoeff-Norm'        , 'Coefficient of restituation in tangential direction', '1.0')
-    
-CALL prms%CreateRealOption(    'BezierNewtonAngle'      , ' BoundingBox intersection angle for switching between '//& 
+
+CALL prms%CreateRealOption(    'BezierNewtonAngle'      , ' BoundingBox intersection angle for switching between '//&
 'Bezierclipping and BezierNewton.' , '1.570796326')
 CALL prms%CreateRealOption(    'BezierClipTolerance'    , ' Tolerance for BezierClipping' , '1e-8')
 CALL prms%CreateRealOption(    'BezierNewtonTolerance'  , ' Tolerance for BezierNewton' , '1e-4')
@@ -256,7 +252,7 @@ END SUBROUTINE DefineParametersParticleMesh
 
 SUBROUTINE InitParticleMeshBasis(NGeo_in,N_in,xGP)
 !===================================================================================================================================
-! Read Parameter from inputfile 
+! Read Parameter from inputfile
 !===================================================================================================================================
 ! MODULES
 USE MOD_Mesh_Vars
@@ -292,7 +288,7 @@ CALL PolynomialDerivativeMatrix(N_in,XiCL_N,DCL_N)
 CALL InitializeVandermonde(N_in,N_in,wBaryCL_N,XiCL_N,xGP,Vdm_CLN_GaussN)
 !equidistant-Lobatto NGeo
 DO i=0,NGeo_in
-  Xi_NGeo(i) = 2./REAL(NGeo_in) * REAL(i) - 1. 
+  Xi_NGeo(i) = 2./REAL(NGeo_in) * REAL(i) - 1.
 END DO
 DeltaXi_NGeo=2./NGeo_in
 CALL BarycentricWeights(NGeo_in,Xi_NGeo,wBary_NGeo)
@@ -316,7 +312,7 @@ CALL InitializeVandermonde(1, NGeo_in,wBaryCL_NGeo1,XiCL_NGeo1,XiCL_NGeo ,Vdm_CL
 ALLOCATE(Vdm_Bezier(0:NGeo_in,0:NGeo_in),sVdm_Bezier(0:NGeo_in,0:NGeo_in))
 ! initialize vandermonde for super-sampled surfaces (particle tracking with curved elements)
 !DO i=0,NGeo_in
-!  XiEquiPartCurved(i) = 2./REAL(NGeo_in) * REAL(i) - 1. 
+!  XiEquiPartCurved(i) = 2./REAL(NGeo_in) * REAL(i) - 1.
 !END DO
 ! initialize vandermonde for bezier basis surface representation (particle tracking with curved elements)
 CALL BuildBezierVdm(NGeo_in,XiCL_NGeo,Vdm_Bezier,sVdm_Bezier) !CHANGETAG
@@ -417,7 +413,7 @@ ELSE
   WriteTriaDebugMesh = .FALSE.
 END IF
 CountNbOfLostParts = GETLOGICAL('CountNbOfLostParts',".FALSE.")
-nLostParts         = 0 
+nLostParts         = 0
 
 PeriodicCheck      = GETLOGICAL('Part-PeriodicCheck',".TRUE.")
 
@@ -470,11 +466,6 @@ IF((RefMappingGuess.LT.1).OR.(RefMappingGuess.GT.4))THEN
 __STAMP__ &
 ,'Wrong guessing method for mapping from physical space in reference space.',RefMappingGuess,999.)
 END IF
-!IF(DoRefMapping .AND. RefMappingGuess.EQ.2) THEN
-!   CALL abort(&
-!__STAMP__ &
-!,' No-Elem_xGP allocated for Halo-Cells! Select other mapping guess',RefMappingGuess)
-!END IF
 
 BezierEpsilonBilinear = GETREAL('BezierEpsilonBilinear','1e-6')
 
@@ -496,27 +487,27 @@ IF (TriaSurfaceFlux) THEN
   SurfFluxSideSize=(/1,2/)
   WriteTriaSurfaceFluxDebugMesh = GETLOGICAL('Write-TriaSurfaceFlux-DebugMesh','.FALSE.')
 ELSE
-WRITE(hilf,'(I2.2)') NGeo
-BezierSampleN = GETINT('BezierSampleN',hilf)
+  WRITE(hilf,'(I2.2)') NGeo
+  BezierSampleN = GETINT('BezierSampleN',hilf)
   WriteTriaSurfaceFluxDebugMesh=.FALSE.
   SurfFluxSideSize=BezierSampleN
-ALLOCATE(BezierSampleXi(0:BezierSampleN))!,STAT=ALLOCSTAT)
-DO iSample=0,BezierSampleN
-  BezierSampleXi(iSample)=-1.+2.0/BezierSampleN*iSample
-END DO
+  ALLOCATE(BezierSampleXi(0:BezierSampleN))!,STAT=ALLOCSTAT)
+  DO iSample=0,BezierSampleN
+    BezierSampleXi(iSample)=-1.+2.0/BezierSampleN*iSample
+  END DO
 END IF
 
 ! copy
 DO iElem=1,PP_nElems
   DO iLocSide=1,6
     PartElemToSide(:,iLocSide,iElem)=ElemToSide(:,iLocSide,iElem)
-  END DO 
+  END DO
   ElemIDGlob=OffSetElem+iElem
   PartElemToElemGlob(1:4,1:6,iElem)=ElemToElemGlob(1:4,1:6,ElemIDGlob)
 END DO
 DO iSide=1,nSides
   PartSideToElem(:,iSide)=SideToElem(:,iSide)
-END DO 
+END DO
 
 
 ParticleMeshInitIsDone=.TRUE.
@@ -572,18 +563,21 @@ IF (ALLOCSTAT.NE.0) THEN
  ,'ERROR in InitParticleGeometry: Cannot allocate GEO%... stuff!')
 END IF
 
-!ALLOCATE(GEO%ElemToNodeIDGlobal(1:8,1:nElems))
-
 GEO%ElemToNodeID(:,:)=0
 GEO%ElemSideNodeID(:,:,:)=0
 GEO%NodeCoords(:,:)=0.
 GEO%ConcaveElemSide(:,:)=.FALSE.
 iNode=0
+
+!-- Build mapping from elemID to nodeID for each local elem
+!-> First nullify all NodeIDs
 DO iElem=1,nElems
   DO jNode=1,8
     Elems(iElem+offsetElem)%ep%node(jNode)%np%NodeID=0
   END DO
 END DO
+
+!-> Now loop over all elems and for each elem over all sides and iterate the NodeID. Save the NodeCoords of the corresponding NodeID.
 DO iElem=1,nElems
   !--- Save corners of sides
   DO jNode=1,8
@@ -593,10 +587,10 @@ DO iElem=1,nElems
       GEO%NodeCoords(1:3,iNode)=Elems(iElem+offsetElem)%ep%node(jNode)%np%x(1:3)
     END IF
     GEO%ElemToNodeID(jNode,iElem)=Elems(iElem+offsetElem)%ep%node(jNode)%np%NodeID
-    !GEO%ElemToNodeIDGlobal(jNode,iElem) = Elems(iElem+offsetElem)%ep%node(jNode)%np%ind
   END DO
 END DO
 
+!-> Write the NodeID for each 4 corner of an ElemSide
 DO iElem=1,nElems
   DO iLocSide=1,6
     nStart=MAX(0,ElemToSide(E2S_FLIP,iLocSide,iElem)-1)
@@ -644,6 +638,7 @@ SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GEOMETRY INFORMATION DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticleGeometry
 
+
 SUBROUTINE buildGlobConnection()
 !===================================================================================================================================
 ! This subroutine builds global connection of elements to elements
@@ -666,16 +661,26 @@ INTEGER             :: iElem,SideID
 INTEGER             :: iMortar
 INTEGER             :: FirstElemID,LastElemID,ilocSide,locMortarSide,NBElemID,SideID2,NBlocSideID
 !===================================================================================================================================
-FirstElemID=offsetElem+1
-LastElemID=offsetElem+nElems
+FirstElemID = offsetElem+1
+LastElemID  = offsetElem+nElems
+
+!--- Build a mapping from each local side to the corresponding global mapping
 ALLOCATE(ElemToElemGlob(1:4,1:6,FirstElemID:LastElemID))
-ElemToElemGlob=-1
+ElemToElemGlob = -1
+
+!--> Loop over all elems and all sides
 DO iElem=1,nElems
   DO ilocSide=1,6
     SideID=ElemToSide(E2S_SIDE_ID,ilocSide,iElem)
+
+    !--> We hid a boundary side, set neighborID to zero
     IF(SideID.LE.nBCSides) ElemToElemGlob(1,ilocSide,offSetElem+iElem)=0
+
+    !--> Check if we are on a mortar side
     locMortarSide=MortarType(2,SideID)
-    IF(locMortarSide.EQ.-1)THEN ! normal side or small mortar side
+
+    !--> Normal side or small mortar side
+    IF(locMortarSide.EQ.-1)THEN
       NBElemID=SideToElem(S2E_NB_ELEM_ID,SideID)
       IF(NBElemID.GT.0)THEN
         IF(NBElemID.NE.iElem) ElemToElemGlob(1,ilocSide,offSetElem+iElem)=offSetElem+NBElemID
@@ -684,7 +689,8 @@ DO iElem=1,nElems
       IF(NBElemID.GT.0)THEN
         IF(NBElemID.NE.iElem) ElemToElemGlob(1,ilocSide,offSetElem+iElem)=offSetElem+NBElemID
       END IF
-    ELSE ! mortar side
+    !--> Mortar side
+    ELSE
       DO iMortar=1,4
         SideID2=MortarInfo(MI_SIDEID,iMortar,locMortarSide)
         IF(SideID2.GT.0)THEN
@@ -698,17 +704,23 @@ DO iElem=1,nElems
         END IF
       END DO ! iMortar=1,4
     END IF ! locMortarSide
+
     ! self connectivity in MPI case
+    !--> Any side still left must be connected to the same element
     IF(ElemToElemGlob(1,ilocSide,offSetElem+iElem).EQ.-1) ElemToElemGlob(1,ilocSide,offSetElem+iElem) = offSetElem+iElem
   END DO ! ilocSide=1,6
 END DO ! iElem=1,PP_nElems
 
 END SUBROUTINE buildGlobConnection
 
+
 #if USE_MPI
 SUBROUTINE exchangeElemID()
 !===================================================================================================================================
 !> This routine communicates the global-elemid between MPI interfaces
+!>
+!> Start by filling ElemID_MINE with the elemID connected to each side on my proc. The communicate the connection info to each
+!> neighbor processor. Once the communication is finishes, build the side to globalElemID mapping in for all neighbor elements.
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -735,7 +747,8 @@ INTEGER             :: SendRequest(nNbProcs),RecRequest(nNbProcs)
 !===================================================================================================================================
 IF(nProcessors.EQ.1) RETURN
 
-!fill MINE ElemID info
+!--- fill MINE ElemID info
+!--> Get any SideID that is on my proc and below the offsetMPISides of my neighbor procs
 ElemID_MINE=-1
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
@@ -756,8 +769,8 @@ END DO ! iElem
 DO iNbProc=1,nNbProcs
   ! Start send flip from MINE
   nSendVal    =nMPISides_send(iNBProc,2)
-  SideID_start=OffsetMPISides_send(iNbProc-1,2)+1  
-  SideID_end  =OffsetMPISides_send(iNbProc,2)    
+  SideID_start=OffsetMPISides_send(iNbProc-1,2)+1
+  SideID_end  =OffsetMPISides_send(iNbProc,2)
   IF(nSendVal.GT.0)THEN
     CALL MPI_ISEND(ElemID_MINE(SideID_start:SideID_end),nSendVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_WORLD,SendRequest(iNbProc),iError)
@@ -771,6 +784,8 @@ DO iNbProc=1,nNbProcs
                     nbProc(iNbProc),0,MPI_COMM_WORLD,RecRequest(iNbProc),iError)
   END IF
 END DO !iProc=1,nNBProcs
+
+! Wait for each processor to finish communication and check for errors
 DO iNbProc=1,nNbProcs
   nRecVal     =nMPISides_rec(iNbProc,2)
   IF(nRecVal.GT.0)CALL MPI_WAIT(RecRequest(iNbProc) ,MPIStatus,iError)
@@ -784,12 +799,12 @@ DO iNbProc=1,nNbProcs
   ,' MPI-Error during ElemID-exchange. iError', iERROR)
 END DO !iProc=1,nNBProcs
 
-! second communication: Master to Slave 
+! second communication: Master to Slave
 DO iNbProc=1,nNbProcs
   ! Start send flip from MINE
   nSendVal    =nMPISides_send(iNBProc,1)
-  SideID_start=OffsetMPISides_send(iNbProc-1,1)+1  
-  SideID_end  =OffsetMPISides_send(iNbProc,1)    
+  SideID_start=OffsetMPISides_send(iNbProc-1,1)+1
+  SideID_end  =OffsetMPISides_send(iNbProc,1)
   IF(nSendVal.GT.0)THEN
     CALL MPI_ISEND(ElemID_MINE(SideID_start:SideID_end),nSendVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_WORLD,SendRequest(iNbProc),iError)
@@ -803,6 +818,8 @@ DO iNbProc=1,nNbProcs
                     nbProc(iNbProc),0,MPI_COMM_WORLD,RecRequest(iNbProc),iError)
   END IF
 END DO !iProc=1,nNBProcs
+
+! Wait for each processor to finish communication and check for errors
 DO iNbProc=1,nNbProcs
   nRecVal     =nMPISides_rec(iNbProc,1)
   IF(nRecVal.GT.0)CALL MPI_WAIT(RecRequest(iNbProc) ,MPIStatus,iError)
@@ -816,6 +833,8 @@ DO iNbProc=1,nNbProcs
   ,' MPI-Error during ElemID-exchange. iError', iERROR)
 END DO !iProc=1,nNBProcs
 
+! Loop over all elems and all sides. Find sides that are not on my proc, but on the neighbor proc. Assign the global elemID to each
+! side.
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
   DO LocSideID=1,6
@@ -834,9 +853,10 @@ DO iElem=1,nElems
     END DO ! iMortar
   END DO ! LocSideID
 END DO ! iElem
- 
+
 END SUBROUTINE exchangeElemID
 #endif
+
 
 SUBROUTINE BuildElementOrigin()
 !================================================================================================================================
@@ -881,6 +901,7 @@ END DO ! iElem
 
 END SUBROUTINE BuildElementOrigin
 
+
 SUBROUTINE WriteTriaDataToVTK(nSides,nElems,Coord,FileString)
 !===================================================================================================================================
 !> Routine writing data to VTK Triangles (cell type = 5)
@@ -890,7 +911,7 @@ SUBROUTINE WriteTriaDataToVTK(nSides,nElems,Coord,FileString)
 USE MOD_Globals
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)          :: nSides               !< Number of sides per element
 INTEGER,INTENT(IN)          :: nElems               !< Number of elements
 REAL   ,INTENT(IN)          :: Coord(1:3,1:4,1:nSides,1:nElems)
@@ -929,36 +950,16 @@ WRITE(TempStr1,'(I16)')nVTKElems
 WRITE(TempStr2,'(I16)')nVTKCells
 Buffer='    <Piece NumberOfPoints="'//TRIM(ADJUSTL(TempStr1))//&
 '" NumberOfCells="'//TRIM(ADJUSTL(TempStr2))//'">'//lf;WRITE(ivtk) TRIM(Buffer)
+
 ! Specify point data
 Buffer='      <PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
 Offset=0
 WRITE(StrOffset,'(I16)')Offset
-!IF (nVal .GT.0)THEN
-!  DO iVar=1,nVal
-!    IF (VarNamePartCombine(iVar).EQ.0) THEN
-!      Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNamePartVisu(iVar))//&
-!      '" NumberOfComponents="1" format="appended" offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
-!      Offset=Offset+SIZEOF(INT)+nVTKElems*SIZEOF(FLOAT)
-!      WRITE(StrOffset,'(I16)')Offset
-!    ELSE IF (VarNamePartCombine(iVar).EQ.1) THEN
-!      str_len = LEN_TRIM(VarNamePartVisu(iVar))
-!      write(components_string,'(I1)') VarNamePartCombineLen(iVar)
-!      !IF(FileType.EQ.'DSMCHOState')THEN
-!      !  VarNameString = VarNamePartVisu(iVar)(1:str_len-4)//VarNamePartVisu(iVar)(str_len-2:str_len)
-!      !ELSE
-!        VarNameString = VarNamePartVisu(iVar)(1:str_len-1)
-!      !END IF
-!      Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNameString)//&
-!      '" NumberOfComponents="'//components_string//'" format="appended" offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf
-!      WRITE(ivtk) TRIM(Buffer)
-!      Offset=Offset+SIZEOF(INT)+nVTKElems*SIZEOF(FLOAT)*VarNamePartCombineLen(iVar)
-!      WRITE(StrOffset,'(I16)')Offset
-!    END IF
-!  END DO
-!END IF
 Buffer='      </PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
+
 ! Specify cell data
 Buffer='      <CellData> </CellData>'//lf;WRITE(ivtk) TRIM(Buffer)
+
 ! Specify coordinate data
 Buffer='      <Points>'//lf;WRITE(ivtk) TRIM(Buffer)
 Buffer='        <DataArray type="Float32" Name="Coordinates" NumberOfComponents="3" format="appended"'// &
@@ -966,43 +967,44 @@ Buffer='        <DataArray type="Float32" Name="Coordinates" NumberOfComponents=
 Offset=Offset+SIZEOF(INT)+3*nVTKElems*SIZEOF(FLOAT)
 WRITE(StrOffset,'(I16)')Offset
 Buffer='      </Points>'//lf;WRITE(ivtk) TRIM(Buffer)
+
 ! Specify necessary cell data
 Buffer='      <Cells>'//lf;WRITE(ivtk) TRIM(Buffer)
+
 ! Connectivity
 Buffer='        <DataArray type="Int32" Name="connectivity" format="appended"'// &
        ' offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
 Offset=Offset+SIZEOF(INT)+nVTKCells*3*SIZEOF(INT)
 WRITE(StrOffset,'(I16)')Offset
+
 ! Offsets
 Buffer='        <DataArray type="Int32" Name="offsets" format="appended"'// &
        ' offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
 Offset=Offset+SIZEOF(INT)+nVTKCells*SIZEOF(INT)
 WRITE(StrOffset,'(I16)')Offset
+
 ! Elem types
 Buffer='        <DataArray type="Int32" Name="types" format="appended"'// &
        ' offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
 Buffer='      </Cells>'//lf;WRITE(ivtk) TRIM(Buffer)
 Buffer='    </Piece>'//lf;WRITE(ivtk) TRIM(Buffer)
 Buffer='  </UnstructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
+
 ! Prepare append section
 Buffer='  <AppendedData encoding="raw">'//lf;WRITE(ivtk) TRIM(Buffer)
+
 ! Write leading data underscore
 Buffer='_';WRITE(ivtk) TRIM(Buffer)
 
 ! Write binary raw data into append section
 ! Point data
 nBytes = nVTKElems*SIZEOF(FLOAT)
-!DO iVal=1,nVal
-!  IF (VarNamePartCombine(iVal).EQ.0) THEN
-!    WRITE(ivtk) nBytes,REAL(Value(1:nParts,iVal),4)
-!  ELSEIF(VarNamePartCombine(iVal).EQ.1) THEN
-!    WRITE(ivtk) nBytes*VarNamePartCombineLen(iVal),REAL(Value(1:nParts,iVal:iVal+VarNamePartCombineLen(iVal)-1),4)
-!  ENDIF
-!END DO
+
 ! Points
 nBytes = nBytes * 3
 WRITE(ivtk) nBytes
 WRITE(ivtk) REAL(Coord,4)
+
 ! Connectivity
 NodeID = -1
 CellID = 1
@@ -1019,19 +1021,23 @@ END DO
 nBytes = 3*nVTKCells*SIZEOF(INT)
 WRITE(ivtk) nBytes
 WRITE(ivtk) Vertex(:,:)
+
 ! Offset
 nBytes = nVTKCells*SIZEOF(INT)
 WRITE(ivtk) nBytes
 WRITE(ivtk) (Offset,Offset=3,3*nVTKCells,3)
+
 ! Cell type
-CellType = 5  ! VTK_TRIANGLE 
-!CellType = 6  ! VTK_TRIANGLE_STRIP
+CellType = 5  ! VTK_TRIANGLE
 WRITE(ivtk) nBytes
 WRITE(ivtk) (CellType,iElem=1,nVTKCells)
+
 ! Write footer
 Buffer=lf//'  </AppendedData>'//lf;WRITE(ivtk) TRIM(Buffer)
 Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(Buffer)
+
 CLOSE(ivtk)
+
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 
 END SUBROUTINE WriteTriaDataToVTK
@@ -1079,7 +1085,6 @@ SDEALLOCATE(GEO%TFIBGM)
 
 SDEALLOCATE(GEO%ElemToNodeID)
 SDEALLOCATE(GEO%ElemSideNodeID)
-!SDEALLOCATE(GEO%ElemToNodeIDGlobal)
 SDEALLOCATE(GEO%NodeCoords)
 SDEALLOCATE(GEO%ConcaveElemSide)
 SDEALLOCATE(GEO%ElemsOnNode)
@@ -1139,7 +1144,7 @@ USE MOD_Particle_MPI_Vars,           ONLY:PartHaloElemToProc
 #endif
 USE MOD_Particle_Mesh_Vars,          ONLY:ElemBaryNGeo
 ! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE                                                                                   
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1152,9 +1157,9 @@ LOGICAL,INTENT(IN)                :: doRelocate
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                           :: iBGMElem,nBGMElems, ElemID, CellX,CellY,CellZ
+INTEGER                           :: iBGMElem,nBGMElems,ElemID,CellX,CellY,CellZ
 !-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL                           :: InElementCheck,ParticleFound                                
+LOGICAL                           :: InElementCheck,ParticleFound
 REAL                              :: xi(1:3),Distance2,Det(6,2)
 #if USE_MPI
 INTEGER                           :: XiDir,locSideID,flip,SideID
@@ -1163,14 +1168,17 @@ INTEGER                           :: Moved(2)
 #endif /*MPI*/
 !===================================================================================================================================
 ParticleFound = .FALSE.
+
+! --- if the particle is at a wall, leave it in the last element
 IF (KeepWallParticles) THEN
   IF (PDM%ParticleAtWall(iPart)) THEN
     PEM%Element(iPart) = PEM%lastElement(iPart)
     ParticleFound = .TRUE.
-    RETURN 
+    RETURN
   END IF
 END IF
 
+! --- check if the particle is inside our bounding box (including/excluding the halo region)
 IF(DoHALO)THEN
   IF ( (PartState(iPart,1).LT.GEO%xminglob).OR.(PartState(iPart,1).GT.GEO%xmaxglob).OR. &
        (PartState(iPart,2).LT.GEO%yminglob).OR.(PartState(iPart,2).GT.GEO%ymaxglob).OR. &
@@ -1187,17 +1195,8 @@ ELSE
   END IF
 END IF
 
-!IF (.NOT.DoRelocate) THEN
-  !IF ( (PartState(iPart,1).LT.GEO%xmin).OR.(PartState(iPart,1).GT.GEO%xmax).OR. &
-       !(PartState(iPart,2).LT.GEO%ymin).OR.(PartState(iPart,2).GT.GEO%ymax).OR. &
-       !(PartState(iPart,3).LT.GEO%zmin).OR.(PartState(iPart,3).GT.GEO%zmax)) THEN
-     !PDM%ParticleInside(iPart) = .FALSE.
-     !RETURN
-!END IF
-!END IF
-
 ! --- get background mesh cell of particle
-CellX = CEILING((PartState(iPart,1)-GEO%xminglob)/GEO%FIBGMdeltas(1)) 
+CellX = CEILING((PartState(iPart,1)-GEO%xminglob)/GEO%FIBGMdeltas(1))
 CellX = MAX(MIN(GEO%TFIBGMimax,CellX),GEO%TFIBGMimin)
 CellY = CEILING((PartState(iPart,2)-GEO%yminglob)/GEO%FIBGMdeltas(2))
 CellY = MAX(MIN(GEO%TFIBGMjmax,CellY),GEO%TFIBGMjmin)
@@ -1225,14 +1224,14 @@ END IF
 !--- check all cells associated with this background mesh cell
 nBGMElems=GEO%TFIBGM(CellX,CellY,CellZ)%nElem
 
-! get closest element barycenter
+! get distance to background cell barycenter
 Distance=-1.
 ListDistance=0
 DO iBGMElem = 1, nBGMElems
   ElemID = GEO%TFIBGM(CellX,CellY,CellZ)%Element(iBGMElem)
   Distance2=(PartState(iPart,1)-ElemBaryNGeo(1,ElemID))*(PartState(iPart,1)-ElemBaryNGeo(1,ElemID)) &
            +(PartState(iPart,2)-ElemBaryNGeo(2,ElemID))*(PartState(iPart,2)-ElemBaryNGeo(2,ElemID)) &
-           +(PartState(iPart,3)-ElemBaryNGeo(3,ElemID))*(PartState(iPart,3)-ElemBaryNGeo(3,ElemID)) 
+           +(PartState(iPart,3)-ElemBaryNGeo(3,ElemID))*(PartState(iPart,3)-ElemBaryNGeo(3,ElemID))
   IF(Distance2.GT.ElemRadius2NGeo(ElemID))THEN
     Distance(iBGMElem)=-1.
   ELSE
@@ -1241,6 +1240,9 @@ DO iBGMElem = 1, nBGMElems
   ListDistance(iBGMElem)=ElemID
 END DO ! nBGMElems
 
+! no candidate in background mesh for our particle position. Can't determine if the current position is valid because we're missing
+! the BC information as well. Abort and inform the user to increase the size of the halo mesh.
+!>> WARNING: If we did an invalid push, we might abort here as well.
 IF(ALMOSTEQUAL(MAXVAL(Distance),-1.))THEN
   PDM%ParticleInside(iPart) = .FALSE.
   IF(DoRelocate) CALL abort(&
@@ -1250,32 +1252,41 @@ __STAMP__&
   RETURN
 END IF
 
-!CALL BubbleSortID(Distance,ListDistance,nBGMElems)
+!  multiple cells associated with this background mesh cell. Sort according to distance to the cell barycenter
 IF(nBGMElems.GT.1) CALL InsertionSort(Distance(1:nBGMElems),ListDistance(1:nBGMElems),nBGMElems)
 
-! loop through sorted list and start by closest element  
+! loop through sorted list and start by closest element
 DO iBGMElem=1,nBGMElems
   IF(ALMOSTEQUAL(Distance(iBGMElem),-1.))CYCLE
   ElemID=ListDistance(iBGMElem)
+
+  ! exclude elements not within our local mesh (without the halo region)
   IF(.NOT.DoHALO)THEN
     IF(ElemID.GT.PP_nElems) CYCLE
   END IF
+
   IF(IsTracingBCElem(ElemID))THEN
     CALL PartInElemCheck(PartState(iPart,1:3),iPart,ElemID,InElementCheck)
     IF(.NOT.InElementCheck) CYCLE
   END IF
 
+  ! get position in reference element for element ElemID
   CALL TensorProductInterpolation(PartState(iPart,1:3),xi,ElemID)
-  IF(MAXVAL(ABS(Xi)).LT.epsOneCell(ElemID))THEN ! particle outside
-    IF(.NOT.InitFix)THEN
+
+  ! check if we are within tolerance for our chosen element
+  IF(MAXVAL(ABS(Xi)).LT.epsOneCell(ElemID)) THEN
+    IF(.NOT.InitFix) THEN
       InElementCheck=.TRUE.
     ELSE
+     ! take extra care in the MPI case. We might encounter xi larger than unity but smaller then epsOneCell [1,epsOneCell], than the
+     ! particle is found at least twice.
      InElementCheck=.TRUE.
-     ! inelementcheck can only be set to false in the following part
+     ! InElementCheck can only be set to false in the following part
 #if USE_MPI
-!     ! check if xi is larger than unity, than the
-!     ! particle is found at least twice
-     IF(MAXVAL(ABS(Xi)).GT.0.99999999)THEN ! particle possible outside
+     ! check if xi is larger than unity, than the  particle is found at least twice
+     ! particle close to the cell border and possible outside
+     IF(MAXVAL(ABS(Xi)).GT.0.99999999) THEN
+       ! find the direction closest to the neighbor side
        XiDir = MAXLOC(ABS(Xi),1)
        ! now, get neighbor-side id
        SELECT CASE(XiDir)
@@ -1338,8 +1349,7 @@ __STAMP__&
        IF(BC(SideID).GT.0)THEN
          InElementCheck=.FALSE.
        ELSE
-!         ! check if neighbor element is an mpi-element and if yes,
-!         ! only take the particle if I am the lower rank
+        ! check if neighbor element is an mpi-element and if yes, only take the particle if I am the lower rank
          Moved = PARTSWITCHELEMENT(locxi,loceta,locSideID,SideID,ElemID)
          IF(Moved(1).GT.PP_nElems)THEN
            IF(PartHaloElemToProc(NATIVE_PROC_ID,Moved(1)).LT.MyRank)THEN
@@ -1348,12 +1358,15 @@ __STAMP__&
          END IF
        END IF
      END IF
-#endif /*MPI*/      
+#endif /*MPI*/
     END IF
-  ELSE ! particle at face,edge or node, check most possible point
+  ! particle at face,edge or node, check most possible point
+  ELSE
     InElementCheck=.FALSE.
   END IF
-  IF (InElementCheck) THEN 
+
+  ! found the particle on the current proc, set the corresponding ElemID (and save the position in reference space, if required)
+  IF (InElementCheck) THEN
     PEM%Element(iPart) = ElemID
     IF(DoRefMapping) PartPosRef(1:3,iPart) = Xi
     ParticleFound = .TRUE.
@@ -1363,6 +1376,7 @@ END DO ! iBGMElem
 
 ! particle not found
 IF (.NOT.ParticleFound) THEN
+  ! abort if we are required to find it on the current proc, otherwise just remove it from the list of particles
   IF(DoRelocate) CALL abort(&
 __STAMP__&
   , ' halo mesh too small. increase halo distance by increasing the safety factor. Currently Part-SafetyFactor = ',&
@@ -1391,7 +1405,7 @@ USE MOD_Particle_Tracking_Vars, ONLY:Distance,ListDistance
 USE MOD_Particle_Mesh_Vars,     ONLY:ElemBaryNGeo
 USE MOD_Particle_MPI_Vars,      ONLY:SafetyFactor
 ! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE                                                                                   
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1410,6 +1424,8 @@ REAL                              :: Distance2
 !===================================================================================================================================
 
 ParticleFound = .FALSE.
+
+! --- check if the particle is inside our bounding box (including/excluding the halo region)
 IF(DoHALO)THEN
   IF ( (PartState(iPart,1).LT.GEO%xminglob).OR.(PartState(iPart,1).GT.GEO%xmaxglob).OR. &
        (PartState(iPart,2).LT.GEO%yminglob).OR.(PartState(iPart,2).GT.GEO%ymaxglob).OR. &
@@ -1427,7 +1443,7 @@ ELSE
 END IF
 
 ! --- get background mesh cell of particle
-CellX = CEILING((PartState(iPart,1)-GEO%xminglob)/GEO%FIBGMdeltas(1)) 
+CellX = CEILING((PartState(iPart,1)-GEO%xminglob)/GEO%FIBGMdeltas(1))
 CellX = MAX(MIN(GEO%TFIBGMimax,CellX),GEO%TFIBGMimin)
 CellY = CEILING((PartState(iPart,2)-GEO%yminglob)/GEO%FIBGMdeltas(2))
 CellY = MAX(MIN(GEO%TFIBGMjmax,CellY),GEO%TFIBGMjmin)
@@ -1435,13 +1451,10 @@ CellZ = CEILING((PartState(iPart,3)-GEO%zminglob)/GEO%FIBGMdeltas(3))
 CellZ = MAX(MIN(GEO%TFIBGMkmax,CellZ),GEO%TFIBGMkmin)
 
 !--- check all cells associated with this background mesh cell
-
 nBGMElems=GEO%TFIBGM(CellX,CellY,CellZ)%nElem
 
-
-! get closest element barycenter
+! get distance to background cell barycenter
 Distance=-1.
-
 ListDistance=0
 DO iBGMElem = 1, nBGMElems
   ElemID = GEO%TFIBGM(CellX,CellY,CellZ)%Element(iBGMElem)
@@ -1450,7 +1463,7 @@ DO iBGMElem = 1, nBGMElems
   END IF
   Distance2=(PartState(iPart,1)-ElemBaryNGeo(1,ElemID))*(PartState(iPart,1)-ElemBaryNGeo(1,ElemID)) &
            +(PartState(iPart,2)-ElemBaryNGeo(2,ElemID))*(PartState(iPart,2)-ElemBaryNGeo(2,ElemID)) &
-           +(PartState(iPart,3)-ElemBaryNGeo(3,ElemID))*(PartState(iPart,3)-ElemBaryNGeo(3,ElemID)) 
+           +(PartState(iPart,3)-ElemBaryNGeo(3,ElemID))*(PartState(iPart,3)-ElemBaryNGeo(3,ElemID))
   IF(Distance2.GT.ElemRadius2NGeo(ElemID))THEN
     Distance(iBGMElem)=-1.
   ELSE
@@ -1459,6 +1472,9 @@ DO iBGMElem = 1, nBGMElems
   ListDistance(iBGMElem)=ElemID
 END DO ! nBGMElems
 
+! no candidate in background mesh for our particle position. Can't determine if the current position is valid because we're missing
+! the BC information as well. Abort and inform the user to increase the size of the halo mesh.
+!>> WARNING: If we did an invalid push, we might abort here as well.
 IF(ALMOSTEQUAL(MAXVAL(Distance),-1.))THEN
   PDM%ParticleInside(iPart) = .FALSE.
   IF(DoRelocate)THEN
@@ -1471,20 +1487,23 @@ IF(ALMOSTEQUAL(MAXVAL(Distance),-1.))THEN
   RETURN
 END IF
 
-!CALL BubbleSortID(Distance,ListDistance,nBGMElems)
+!  multiple cells associated with this background mesh cell. Sort according to distance to the cell barycenter
 IF(nBGMElems.GT.1) CALL InsertionSort(Distance(1:nBGMElems),ListDistance(1:nBGMElems),nBGMElems)
-! loop through sorted list and start by closest element  
 
+! loop through sorted list and start by closest element
 DO iBGMElem=1,nBGMElems
   IF(ALMOSTEQUAL(Distance(iBGMElem),-1.))CYCLE
   ElemID=ListDistance(iBGMElem)
+
+  ! exclude elements not within our local mesh (without the halo region)
   IF(.NOT.DoHALO)THEN
     IF(ElemID.GT.PP_nElems) CYCLE
   END IF
+
   CALL PartInElemCheck(PartState(iPart,1:3),iPart,ElemID,InElementCheck)
 
+  ! no intersection found and particle is in final element
   IF(InElementCheck)THEN
-    ! no intersection found and particle is in final element
     PEM%Element(iPart) = ElemID
     ParticleFound=.TRUE.
     EXIT
@@ -1493,10 +1512,10 @@ END DO ! iBGMElem
 
 ! particle not found
 IF (.NOT.ParticleFound) THEN
-!  IF(DoRelocate) CALL abort(&
-!  __STAMP__&
-!  , ' halo mesh too small. increase halo distance by increasing the safety factor. Currently Part-SafetyFactor = ',&
-!  RealInfo=SafetyFactor)
+  IF(DoRelocate) CALL abort(&
+  __STAMP__&
+  , ' halo mesh too small. increase halo distance by increasing the safety factor. Currently Part-SafetyFactor = ',&
+  RealInfo=SafetyFactor)
   PDM%ParticleInside(iPart) = .FALSE.
 END IF
 END SUBROUTINE SingleParticleToExactElementNoMap
@@ -1505,9 +1524,7 @@ END SUBROUTINE SingleParticleToExactElementNoMap
 SUBROUTINE PartInElemCheck(PartPos_In,PartID,ElemID,FoundInElem,IntersectPoint_Opt&
 #if CODE_ANALYZE
         ,Sanity_Opt&
-#endif
-        ,Tol_Opt& 
-#if CODE_ANALYZE
+        ,Tol_Opt&
         ,CodeAnalyze_Opt)
 #else
         )
@@ -1550,7 +1567,9 @@ LOGICAL,INTENT(IN),OPTIONAL              :: Sanity_Opt
 ! OUTPUT VARIABLES
 LOGICAL,INTENT(OUT)                      :: FoundInElem
 REAL,INTENT(OUT),OPTIONAL                :: IntersectPoint_Opt(1:3)
+#if CODE_ANALYZE
 REAL,INTENT(OUT),OPTIONAL                :: Tol_Opt
+#endif /*CODE_ANALYZE*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if CODE_ANALYZE
@@ -1563,18 +1582,22 @@ LOGICAL                                  :: isHit
 REAL                                     :: alpha,eta,xi,IntersectPoint(1:3)
 !===================================================================================================================================
 
+#if CODE_ANALYZE
 IF(PRESENT(tol_Opt)) tol_Opt=-1.
+#endif
+
 ! virtual move to element barycenter
-LastPosTmp(1:3) =LastPartPos(PartID,1:3)
-LastPartPos(PartID,1:3) =ElemBaryNGeo(1:3,ElemID)
-PartPos(1:3) =PartPos_In(1:3)
+LastPosTmp(1:3)         = LastPartPos(PartID,1:3)
+LastPartPos(PartID,1:3) = ElemBaryNGeo(1:3,ElemID)
+PartPos(1:3)            = PartPos_In(1:3)
 
-PartTrajectory=PartPos - LastPartPos(PartID,1:3)
-lengthPartTrajectory=SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                         +PartTrajectory(2)*PartTrajectory(2) &
-                         +PartTrajectory(3)*PartTrajectory(3) )
+! get trajectory from element barycenter to current position
+PartTrajectory          = PartPos - LastPartPos(PartID,1:3)
+lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1) &
+                             + PartTrajectory(2)*PartTrajectory(2) &
+                             + PartTrajectory(3)*PartTrajectory(3))
 
-
+! output the part trajectory
 #if CODE_ANALYZE
   IF(PARTOUT.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
@@ -1585,20 +1608,24 @@ lengthPartTrajectory=SQRT(PartTrajectory(1)*PartTrajectory(1) &
   END IF
 #endif /*CODE_ANALYZE*/
 
+! we found the particle on the element barycenter
 IF(ALMOSTZERO(lengthPartTrajectory))THEN
   FoundInElem =.TRUE.
-  LastPartPos(PartID,1:3) = LastPosTmp(1:3) 
-  ! bugfix by Tilman
+  LastPartPos(PartID,1:3) = LastPosTmp(1:3)
   RETURN
 END IF
-PartTrajectory=PartTrajectory/lengthPartTrajectory
-isHit=.FALSE.
-alpha=-1.
-DO ilocSide=1,6
 
-  !SideID=ElemToSide(E2S_SIDE_ID,ilocSide,ElemID) 
-  SideID=PartElemToSide(E2S_SIDE_ID,ilocSide,ElemID) 
-  flip  = PartElemToSide(E2S_FLIP,ilocSide,ElemID)
+! normalize the part trajectory vector
+PartTrajectory=PartTrajectory/lengthPartTrajectory
+
+! reset intersection counter and alpha
+isHit = .FALSE.
+alpha = -1.
+
+! check for intersections with each side
+DO ilocSide=1,6
+  SideID = PartElemToSide(E2S_SIDE_ID,ilocSide,ElemID)
+  flip   = PartElemToSide(E2S_FLIP,ilocSide,ElemID)
   IF(DoRefMapping)THEN
     IF(SideID.LT.1) CYCLE
     BCSideID=SideID
@@ -1647,7 +1674,7 @@ DO ilocSide=1,6
       END IF
     END IF
   END IF
-  ! Dirty fix for PartInElemCheck if Lastpartpos is almost on side (tolerance issues) 
+  ! Dirty fix for PartInElemCheck if Lastpartpos is almost on side (tolerance issues)
   IF(PRESENT(CodeAnalyze_Opt))THEN
     IF(CodeAnalyze_Opt)THEN
       IF((alpha)/LengthPartTrajectory.GT.0.9)THEN
@@ -1656,6 +1683,9 @@ DO ilocSide=1,6
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
+
+  ! found an intersection with a side, but we might be moving into this element from the boundary. Get side normal vector and
+  ! intersection point to check.
   IF(alpha.GT.-1)THEN
     SELECT CASE(SideType(SideID))
     CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
@@ -1664,7 +1694,7 @@ DO ilocSide=1,6
       CALL CalcNormAndTangBilinear(nVec=NormVec,xi=xi,eta=eta,SideID=SideID)
     CASE(CURVED)
       CALL CalcNormAndTangBezier(nVec=NormVec,xi=xi,eta=eta,SideID=SideID)
-    END SELECT 
+    END SELECT
     IF(flip.NE.0) NormVec=-NormVec
     IntersectPoint=LastPartPos(PartID,1:3)+alpha*PartTrajectory
 
@@ -1682,24 +1712,26 @@ DO ilocSide=1,6
   END IF
 #endif /*CODE_ANALYZE*/
 
+    ! check if we are moving into this element from the cell boundary. If yes, reset alpha for this side.
     IF(DOT_PRODUCT(NormVec,PartTrajectory).LT.0.)THEN
       alpha=-1.0
     ELSE
       EXIT
     END IF
-    ! PO: should now be obsolete
-    !IF(DoRefMapping)THEN
-    !  IF(DOT_PRODUCT(NormVec,PartState(PartID,4:6)).LT.0.) alpha=-1.0
-    !END IF ! DoRefMapping
+
   END IF
 END DO ! ilocSide
+
+! write final decision. We are inside if we did not find an intersection or are moving into this element from the cell boundary
 FoundInElem=.TRUE.
 IF(PRESENT(IntersectPoint_Opt)) IntersectPoint_Opt=0.
 IF(alpha.GT.-1) THEN
   FoundInElem=.FALSE.
   IF(PRESENT(IntersectPoint_Opt)) IntersectPoint_Opt=IntersectPoint
 END IF
-LastPartPos(PartID,1:3) = LastPosTmp(1:3) 
+
+! reset the LastParPos to its original value
+LastPartPos(PartID,1:3) = LastPosTmp(1:3)
 
 END SUBROUTINE PartInElemCheck
 
@@ -1727,49 +1759,55 @@ INTEGER                       :: ilocSide, NodeNum
 LOGICAL                       :: PosCheck, NegCheck
 REAL                          :: A(1:3,1:4), cross(3)
 !===================================================================================================================================
-  InElementCheck = .TRUE.
-  DO iLocSide = 1,6                 ! for all 6 sides of the element
-     !--- initialize flags for side checks
-     PosCheck = .FALSE.
-     NegCheck = .FALSE.
-     !--- A = vector from particle to node coords
-     DO NodeNum = 1,4
-       A(:,NodeNum) = GEO%NodeCoords(:,GEO%ElemSideNodeID(NodeNum,iLocSide,ElemID)) - PartStateLoc(1:3)
-     END DO
+InElementCheck = .TRUE.
 
-     !--- compute cross product for vector 1 and 3
-     cross(1) = A(2,1) * A(3,3) - A(3,1) * A(2,3)
-     cross(2) = A(3,1) * A(1,3) - A(1,1) * A(3,3)
-     cross(3) = A(1,1) * A(2,3) - A(2,1) * A(1,3)
+! for all 6 sides of the element
+DO iLocSide = 1,6
+   !--- initialize flags for side checks
+   PosCheck = .FALSE.
+   NegCheck = .FALSE.
 
-     !--- negative determinant of triangle 1 (points 1,3,2):
-     Det(iLocSide,1) = cross(1) * A(1,2) + &
-                       cross(2) * A(2,2) + &
-                       cross(3) * A(3,2)
-     Det(iLocSide,1) = -det(iLocSide,1)
-     !--- determinant of triangle 2 (points 1,3,4):
-     Det(iLocSide,2) = cross(1) * A(1,4) + &
-                       cross(2) * A(2,4) + &
-                       cross(3) * A(3,4)
-     IF (Det(iLocSide,1).LT.0) THEN
-       NegCheck = .TRUE.
-     ELSE
-       PosCheck = .TRUE.
-     END IF
-     IF (Det(iLocSide,2).LT.0) THEN
-       NegCheck = .TRUE.
-     ELSE
-       PosCheck = .TRUE.
-     END IF
+   !--- A = vector from particle to node coords
+   DO NodeNum = 1,4
+     A(:,NodeNum) = GEO%NodeCoords(:,GEO%ElemSideNodeID(NodeNum,iLocSide,ElemID)) - PartStateLoc(1:3)
+   END DO
 
-     !--- final determination whether particle is in element
-     IF (GEO%ConcaveElemSide(iLocSide,ElemID)) THEN
-       IF (.NOT.PosCheck) InElementCheck = .FALSE.
-     ELSE
-       IF (NegCheck) InElementCheck = .FALSE.
-     END IF
-  END DO
- RETURN
+   !--- compute cross product for vector 1 and 3
+   cross(1) = A(2,1) * A(3,3) - A(3,1) * A(2,3)
+   cross(2) = A(3,1) * A(1,3) - A(1,1) * A(3,3)
+   cross(3) = A(1,1) * A(2,3) - A(2,1) * A(1,3)
+
+   !--- negative determinant of triangle 1 (points 1,3,2):
+   Det(iLocSide,1) = cross(1) * A(1,2) + &
+                     cross(2) * A(2,2) + &
+                     cross(3) * A(3,2)
+   Det(iLocSide,1) = -det(iLocSide,1)
+
+   !--- determinant of triangle 2 (points 1,3,4):
+   Det(iLocSide,2) = cross(1) * A(1,4) + &
+                     cross(2) * A(2,4) + &
+                     cross(3) * A(3,4)
+
+   IF (Det(iLocSide,1).LT.0) THEN
+     NegCheck = .TRUE.
+   ELSE
+     PosCheck = .TRUE.
+   END IF
+
+   IF (Det(iLocSide,2).LT.0) THEN
+     NegCheck = .TRUE.
+   ELSE
+     PosCheck = .TRUE.
+   END IF
+
+   !--- final determination whether particle is in element
+   IF (GEO%ConcaveElemSide(iLocSide,ElemID)) THEN
+     IF (.NOT.PosCheck) InElementCheck = .FALSE.
+   ELSE
+     IF (NegCheck)      InElementCheck = .FALSE.
+   END IF
+END DO
+
 END SUBROUTINE ParticleInsideQuad3D
 
 
@@ -1800,46 +1838,42 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!REAL                     :: StartT,EndT
 INTEGER                  :: iElem,ElemToBGM(1:6,1:PP_nElems)
 INTEGER,ALLOCATABLE      :: HaloElemToBGM(:,:)
-REAL,ALLOCATABLE         :: SideOrigin(:,:), SideRadius(:) 
+REAL,ALLOCATABLE         :: SideOrigin(:,:), SideRadius(:)
 !=================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(66("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT ELEMENT BASIS...' 
+SWRITE(UNIT_stdOut,'(A)')' INIT ELEMENT BASIS...'
+
 !! Read parameter for FastInitBackgroundMesh (FIBGM)
 GEO%FIBGMdeltas(1:3) = GETREALARRAY('Part-FIBGMdeltas',3,'1. , 1. , 1.')
 GEO%FactorFIBGM(1:3) = GETREALARRAY('Part-FactorFIBGM',3,'1. , 1. , 1.')
 GEO%FIBGMdeltas(1:3) = 1./GEO%FactorFIBGM(1:3) * GEO%FIBGMdeltas(1:3)
 
-!StartT=BOLTZPLATZTIME()
 ALLOCATE(XiEtaZetaBasis(1:3,1:6,1:nTotalElems) &
         ,slenXiEtaZetaBasis(1:6,1:nTotalElems) &
         ,ElemRadiusNGeo(1:nTotalElems)         &
         ,ElemRadius2NGeo(1:nTotalElems)        )
-CALL BuildElementBasis()
-!EndT=BOLTZPLATZTIME()
-!IF(PartMPI%MPIROOT)THEN
-!  WRITE(UNIT_stdOut,'(A,F12.3,A)',ADVANCE='YES')' INIT ELEMENT-BASIS TOOK          [',EndT-StartT,'s]'
-!END IF
 
+! build the element local coordinate system
+CALL BuildElementBasis()
 SWRITE(UNIT_StdOut,'(66("-"))')
-!StartT=BOLTZPLATZTIME()
-! get new min max
-SWRITE(UNIT_stdOut,'(A)')' Getting FIBGM-minmax ...' 
+
+! get new min, max of the background mesh bounding box
+SWRITE(UNIT_stdOut,'(A)')' Getting FIBGM-minmax ...'
 CALL GetFIBGMminmax()
-! sort elem in bgm cells
-SWRITE(UNIT_stdOut,'(A)')' Getting element range in FIBGM ...' 
+
+! sort elem in bgm cells, get the corresponding background mesh cell for each element corner. Loop over all elements on the current
+! proc
+SWRITE(UNIT_stdOut,'(A)')' Getting element range in FIBGM ...'
 DO iElem=1,PP_nElems
-  CALL BGMIndexOfElement(iElem,ElemToBGM(1:6,iElem)) 
-END DO ! iElem = nElems+1,nTotalElems
-SWRITE(UNIT_stdOut,'(A)')' Building FIBGM ...' 
+  CALL BGMIndexOfElement(iElem,ElemToBGM(1:6,iElem))
+END DO
+
+
+SWRITE(UNIT_stdOut,'(A)')' Building FIBGM ...'
 CALL GetFIBGM(ElemToBGM)
-!EndT=BOLTZPLATZTIME()
-!IF(PartMPI%MPIROOT)THEN
-!  WRITE(UNIT_stdOut,'(A,F12.3,A)',ADVANCE='YES')' Init FIBGM took                  [',EndT-StartT,'s]'
-!END IF
 SWRITE(UNIT_StdOut,'(66("-"))')
 
 CALL DuplicateSlavePeriodicSides()
@@ -1848,10 +1882,8 @@ CALL MarkAllBCSides()
 ! get elem and side types
 CALL GetElemAndSideType()
 
-!StartT=BOLTZPLATZTIME()
 #if USE_MPI
-SWRITE(UNIT_stdOut,'(A)')' INIT HALO REGION...' 
-!CALL Initialize()  ! Initialize parallel environment for particle exchange between MPI domains
+SWRITE(UNIT_stdOut,'(A)')' INIT HALO REGION...'
 printMPINeighborWarnings = GETLOGICAL('printMPINeighborWarnings','.FALSE.')
 printBezierControlPointsWarnings = GETLOGICAL('printBezierControlPointsWarnings','.FALSE.')
 CALL InitHaloMesh()
@@ -1862,18 +1894,13 @@ CALL InitHaloMesh()
 IF(nTotalElems.GT.PP_nElems)THEN
   ALLOCATE(HaloElemToBGM(1:6,PP_nElems+1:nTotalElems))
   DO iElem=PP_nElems+1,nTotalElems
-    CALL BGMIndexOfElement(iElem,HaloElemToBGM(1:6,iElem)) 
+    CALL BGMIndexOfElement(iElem,HaloElemToBGM(1:6,iElem))
   END DO ! iElem = nElems+1,nTotalElems
   CALL AddHALOCellsToFIBGM(ElemToBGM,HaloElemToBGM)
   DEALLOCATE(HaloElemToBGM)
 ELSE
   CALL AddHALOCellsToFIBGM(ElemToBGM)
 END IF
-
-!EndT=BOLTZPLATZTIME()
-!IF(PartMPI%MPIROOT)THEN
-!   WRITE(UNIT_stdOut,'(A,F8.3,A)',ADVANCE='YES')' Construction of halo region took [',EndT-StartT,'s]'
-!END IF
 
 IF(DoRefMapping)THEN
   IF(PartMPI%MPIROOT)THEN
@@ -1934,7 +1961,7 @@ IF(DoRefMapping) THEN
   CALL GetElemToSideDistance(nTotalBCSides,SideOrigin,SideRadius)
   DEALLOCATE( SideOrigin, SideRadius)
 END IF
-SWRITE(UNIT_stdOut,'(A)')' ... DONE!' 
+SWRITE(UNIT_stdOut,'(A)')' ... DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitFIBGM
@@ -1951,7 +1978,6 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_CalcTimeStep,                       ONLY:CalcTimeStep
 USE MOD_ChangeBasis,                        ONLY:ChangeBasis2D
-!USE MOD_PICDepo,                            ONLY:InitializeDeposition
 USE MOD_Particle_Globals
 USE MOD_Particle_Periodic_BC,               ONLY:InitPeriodicBC
 USE MOD_Particle_Mesh_Vars,                 ONLY:GEO
@@ -1960,7 +1986,6 @@ USE MOD_Particle_Vars,                      ONLY:ManualTimeStep,Species,nSpecies
 #if USE_MPI
 USE MOD_Particle_MPI,                       ONLY:InitHALOMesh
 USE MOD_Particle_Mesh_Vars,                 ONLY:FIBGMCellPadding
-!USE MOD_PICDepo_Vars,                       ONLY:DepositionType, r_sf
 USE MOD_Particle_MPI_Vars,                  ONLY:PartMPI
 USE MOD_Particle_Mesh_Vars,                 ONLY:NbrOfCases,casematrix
 #endif /*MPI*/
@@ -2004,28 +2029,20 @@ INTEGER                          :: dummy_errtype
 REAL                             :: c
 !===================================================================================================================================
 
-! zeros
 #if USE_MPI
+! zeros
 ii=0
 jj=0
 kk=0
-#endif /*MPI*/
 
+! allocate and initialize MPINeighbor
+ALLOCATE(PartMPI%isMPINeighbor(0:PartMPI%nProcs-1))
+PartMPI%isMPINeighbor(:) = .FALSE.
+PartMPI%nMPINeighbors=0
+#endif
 
-#if USE_MPI
-  ! allocate and initialize MPINeighbor
-  ALLOCATE(PartMPI%isMPINeighbor(0:PartMPI%nProcs-1))
-  PartMPI%isMPINeighbor(:) = .FALSE.
-  PartMPI%nMPINeighbors=0
-#endif   
-
-
-  CALL InitPeriodicBC()
-  ! reduce beziercontrolpoints to boundary sides
-  !IF(DoRefMapping) CALL ReshapeBezierSides()
-  !CALL InitializeInterpolation() ! not any more required ! has to be called earliear
-!  CALL InitializeDeposition()     ! has to remain here, because domain can have changed
-  !CALL InitPIC()                 ! does not depend on domain
+! get periodic BCs because they need to be observed when building the halo region
+CALL InitPeriodicBC()
 
 ! deallocate stuff // required for dynamic load balance
 #if USE_MPI
@@ -2036,7 +2053,6 @@ IF (ALLOCATED(GEO%FIBGM)) THEN
         SDEALLOCATE(GEO%FIBGM(iBGM,jBGM,kBGM)%Element)
         SDEALLOCATE(GEO%FIBGM(iBGM,jBGM,kBGM)%ShapeProcs)
         SDEALLOCATE(GEO%FIBGM(iBGM,jBGM,kBGM)%PaddingProcs)
-!           SDEALLOCATE(GEO%FIBGM(i,k,l)%SharedProcs)
       END DO
     END DO
   END DO
@@ -2061,20 +2077,22 @@ BGMkmax = INT((GEO%zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))+1
 BGMkmin = INT((GEO%zmin-GEO%zminglob)/GEO%FIBGMdeltas(3))-1
 
 !--- JN: For MPI communication, information also about the neighboring FIBGM cells is needed
-!--- AS: shouldn't we add up here the nPaddingCells? 
+!--- AS: shouldn't we add up here the nPaddingCells?
 !--- TS: What we need to do is increase the BGM area for shape_function ONLY
 !        Reason: if a particle moves outside the domain, there still needs to be a
 !                BGM with an associated ShapeProc at the particle position
 !        Particle may only move c*dt*Safetyfactor.
 !--- PO: modified for curved and shape-function influence
 !        c*dt*SafetyFactor+r_cutoff
+
+! determine the time step, needed to estimate size of halo region
 IF (ManualTimeStep.EQ.0.0) THEN
   deltaT=CALCTIMESTEP(dummy_errtype)
 ELSE
   deltaT=ManualTimeStep
 END IF
 
-! Calculate an approximate speed for determination of halo region
+! Calculate an approximate speed for determination of halo region by looping over all particle species BCs
 c = 0.
 DO i=1,nSpecies
     DO j=1,Species(i)%NumberOfInits
@@ -2082,64 +2100,54 @@ DO i=1,nSpecies
             c = Species(i)%Init(j)%VeloIC
         END IF
     END DO
-END DO  
-            
-IF (halo_eps_velo.EQ.0) halo_eps_velo = 343 !(Speed of sound) !c
-halo_eps = halo_eps_velo*deltaT*SafetyFactor ! for RK too large
+END DO
 
-globalDiag = SQRT( (GEO%xmaxglob-GEO%xminglob)**2 & 
-                 + (GEO%ymaxglob-GEO%yminglob)**2 & 
-                 + (GEO%zmaxglob-GEO%zminglob)**2 ) 
+! if the user supplied a velocity guess for the halo eps region, use it. Otherwise pick the speed of sound as guess for the upper
+! limit
+IF (halo_eps_velo.EQ.0) halo_eps_velo = 343
 
-! Make sure to catch all boundaries in periodic case
-IF (GEO%nPeriodicVectors.GT.0) THEN
-  ! Do not need the global diagonal, only make sure the periodic sides are inside the halo region (5% tolerance, might be changed)
+! determine size of the halo region. deltaT actually too large for RK, we only have to make sure we don't leave the halo region
+! within one RK stage
+halo_eps = halo_eps_velo*deltaT*SafetyFactor
+
+! find global diagonal of the mesh
+globalDiag = SQRT( (GEO%xmaxglob-GEO%xminglob)**2 &
+                 + (GEO%ymaxglob-GEO%yminglob)**2 &
+                 + (GEO%zmaxglob-GEO%zminglob)**2 )
+
+! We are allowed to miss a periodic vector initially if we include the cells on the other side of the periodic BC in our halo
+! region. Obviously, this is still a bad solution to an even worse case. We do not need the global diagonal, we only have to make
+! sure the periodic sides are inside. Use the periodic vectors with an arbitrary 5% tolerance
+!IF (GEO%nPeriodicVectors.GT.0) THEN
 !  halo_eps=globalDiag
 !  DO i=1,GEO%nPeriodicVectors
 !    IF (1.05*NORM2(GEO%PeriodicVectors(1:3,i)).GT.halo_eps) THEN
 !      halo_eps = 1.05*NORM2(GEO%PeriodicVectors(1:3,i))
 !    END IF
 !  END DO
-
-  ! Inform the user about our decision
+!
+!! Inform the user about our decision to increase the halo distance
 !  SWRITE(UNIT_stdOut,'(A39)')        ' |   periodic case                      | '
 !  SWRITE(UNIT_stdOut,'(A39)')        ' |   raising halo distance              | '
-END IF
-                 
-! Limit halo_eps to diagonal of bounding box                
+!END IF
+
+! Limit halo_eps to diagonal of bounding box
 IF(halo_eps.GT.globalDiag)THEN
-  SWRITE(UNIT_stdOut,'(A46,E24.12)') ' |                  unlimited halo distance | ',halo_eps 
+  SWRITE(UNIT_stdOut,'(A46,E24.12)') ' |                  unlimited halo distance | ',halo_eps
   SWRITE(UNIT_stdOut,'(A46)')        ' |              limitation of halo distance | '
   halo_eps=globalDiag
 END IF
 
 halo_eps2=halo_eps*halo_eps
-SWRITE(UNIT_stdOut,'(A46,E24.12)')   ' |                            halo distance | ',halo_eps 
+SWRITE(UNIT_stdOut,'(A46,E24.12)')   ' |                            halo distance | ',halo_eps
 
-
-!#if USE_MPI
-!IF ((DepositionType.EQ.'shape_function')             &
-!.OR.(DepositionType.EQ.'shape_function_cylindrical') &
-!.OR.(DepositionType.EQ.'shape_function_spherical')   &
-!.OR.(DepositionType.EQ.'shape_function_simple')      &
-!.OR.(DepositionType.EQ.'shape_function_1d')          )THEN
-!  ! and changed, tooo
-!  BGMimax = INT((MIN(GEO%xmax+halo_eps,GEO%xmaxglob)-GEO%xminglob)/GEO%FIBGMdeltas(1))+1
-!  BGMimin = INT((MAX(GEO%xmin-halo_eps,GEO%xminglob)-GEO%xminglob)/GEO%FIBGMdeltas(1))-1
-!  BGMjmax = INT((MIN(GEO%ymax+halo_eps,GEO%ymaxglob)-GEO%yminglob)/GEO%FIBGMdeltas(2))+1
-!  BGMjmin = INT((MAX(GEO%ymin-halo_eps,GEO%yminglob)-GEO%yminglob)/GEO%FIBGMdeltas(2))-1
-!  BGMkmax = INT((MIN(GEO%zmax+halo_eps,GEO%zmaxglob)-GEO%zminglob)/GEO%FIBGMdeltas(3))+1
-!  BGMkmin = INT((MAX(GEO%zmin-halo_eps,GEO%zminglob)-GEO%zminglob)/GEO%FIBGMdeltas(3))-1
-!END IF
-!#endif
-
+! save the min, max of the background mesh
 GEO%FIBGMimax=BGMimax
 GEO%FIBGMimin=BGMimin
 GEO%FIBGMjmax=BGMjmax
 GEO%FIBGMjmin=BGMjmin
 GEO%FIBGMkmax=BGMkmax
 GEO%FIBGMkmin=BGMkmin
-
 
 ! allocate space for BGM
 ALLOCATE(GEO%FIBGM(BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax), STAT=ALLOCSTAT)
@@ -2153,8 +2161,8 @@ IF (ALLOCSTAT.NE.0) THEN
   iProc=0
 #endif /*MPI*/
   CALL abort(&
-__STAMP__&
-, 'Problem allocating GEO%FIBGM!' )
+  __STAMP__&
+  , 'Problem allocating GEO%FIBGM!' )
 END IF
 
 ! null number of element per BGM cell
@@ -2167,6 +2175,7 @@ DO kBGM = BGMkmin,BGMkmax
 END DO
 
 !--- compute number of elements in each background cell
+!--> Move over all BGM cells the elem is inside and add it to each background mesh cell
 DO iElem=1,PP_nElems
   ! here fancy stuff, because element could be wide out of element range
   BGMCellXmin = ElemToBGM(1,iElem)
@@ -2175,7 +2184,7 @@ DO iElem=1,PP_nElems
   BGMCellYmax = ElemToBGM(4,iElem)
   BGMCellZmin = ElemToBGM(5,iElem)
   BGMCellZmax = ElemToBGM(6,iElem)
-  ! add ecurrent element to number of BGM-elems
+  ! add the current element to number of BGM-elems
   DO iBGM = BGMCellXmin,BGMCellXmax
     DO jBGM = BGMCellYmin,BGMCellYmax
       DO kBGM = BGMCellZmin,BGMCellZmax
@@ -2205,11 +2214,11 @@ DO iElem=1,PP_nElems
   BGMCellYmax = ElemToBGM(4,iElem)
   BGMCellZmin = ElemToBGM(5,iElem)
   BGMCellZmax = ElemToBGM(6,iElem)
-  ! add current Element to BGM-Elem
+  ! add the current Element to BGM-Elem
   DO kBGM = BGMCellZmin,BGMCellZmax
     DO jBGM = BGMCellYmin,BGMCellYmax
       DO iBGM = BGMCellXmin,BGMCellXmax
-        GEO%FIBGM(iBGM,jBGM,kBGM)%nElem = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem + 1    
+        GEO%FIBGM(iBGM,jBGM,kBGM)%nElem = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem + 1
         GEO%FIBGM(iBGM,jBGM,kBGM)%Element(GEO%FIBGM(iBGM,jBGM,kBGM)%nElem) = iElem
       END DO ! kBGM
     END DO ! jBGM
@@ -2217,16 +2226,16 @@ DO iElem=1,PP_nElems
 END DO ! iElem
 
 
-!IF(mode.EQ.2) RETURN
 #if USE_MPI
-SWRITE(UNIT_stdOut,'(A)')' Building MPI-FIBGM ...' 
+SWRITE(UNIT_stdOut,'(A)')' Building MPI-FIBGM ...'
 !--- MPI stuff for background mesh (FastinitBGM)
-BGMCells=0 
-ALLOCATE(BGMCellsArray(1:(BGMimax-BGMimin+1)*(BGMjmax-BGMjmin+1)*(BGMkmax-BGMkmin+1)*3))
+BGMCells=0
+
 !Count BGMCells with Elements inside and save their indices in BGMCellsArray
+ALLOCATE(BGMCellsArray(1:(BGMimax-BGMimin+1)*(BGMjmax-BGMjmin+1)*(BGMkmax-BGMkmin+1)*3))
 DO kBGM=BGMkmin, BGMkmax
   DO jBGM=BGMjmin, BGMjmax
-    DO iBGM=BGMimin, BGMimax  
+    DO iBGM=BGMimin, BGMimax
       IF (GEO%FIBGM(iBGM,jBGM,kBGM)%nElem .GT. 0) THEN
         BGMCellsArray(BGMCells*3+1)= iBGM
         BGMCellsArray(BGMCells*3+2)= jBGM
@@ -2237,21 +2246,26 @@ DO kBGM=BGMkmin, BGMkmax
   END DO ! jBGM
 END DO ! iBGM
 
-!Communicate number of BGMCells
-CALL MPI_ALLGATHER(BGMCells, 1, MPI_INTEGER, NbrOfBGMCells(0:PartMPI%nProcs-1), 1, MPI_INTEGER, PartMPI%COMM, IERROR) 
+!Communicate number of BGMCells with all procs. NbrOfBGMCells holds the number of used BGM cells for each proc
+CALL MPI_ALLGATHER(BGMCells, 1, MPI_INTEGER, NbrOfBGMCells(0:PartMPI%nProcs-1), 1, MPI_INTEGER, PartMPI%COMM, IERROR)
+
+!Allocate a global array to gather indices from all procs. Size is 3*NbrOfBGMCells because the indices are counted in each Cartesian
+!direction seperatately.
 ALLOCATE(GlobalBGMCellsArray(1:SUM(NbrOfBGMCells)*3))
 Displacement(1)=0
+!Displacement is the sum of all BGM cells previous to the considered proc
 DO i=2, PartMPI%nProcs
   Displacement(i) = SUM(NbrOfBGMCells(0:i-2))*3
 END DO
+
 !Gather indices of every Procs' Cells
-CALL MPI_ALLGATHERV(BGMCellsArray(1:BGMCells*3), BGMCells*3, MPI_INTEGER, GlobalBGMCellsArray, &    
+CALL MPI_ALLGATHERV(BGMCellsArray(1:BGMCells*3), BGMCells*3, MPI_INTEGER, GlobalBGMCellsArray, &
                    & NbrOfBGMCells(0:PartMPI%nProcs-1)*3, Displacement, MPI_INTEGER, PartMPI%COMM, IERROR)
 
 !--- JN: first: count required array size for ReducedBGMArray
 !--- TS: Define padding stencil (max of halo and shape padding)
-!        Reason: This padding is used to build the ReducedBGM, so any information 
-!                outside this region is lost 
+!        Reason: This padding is used to build the ReducedBGM, so any information
+!                outside this region is lost
 IF (GEO%nPeriodicVectors.GT.0) THEN  !Periodic (can't be done below because ReducedBGMArray is sorted by proc)
   FIBGMCellPadding(1:3)=1
   IF(.NOT.GEO%directions(1)) FIBGMCellPadding(1) = INT(halo_eps/GEO%FIBGMdeltas(1))+1
@@ -2260,40 +2274,20 @@ IF (GEO%nPeriodicVectors.GT.0) THEN  !Periodic (can't be done below because Redu
 ELSE
   FIBGMCellPadding(1:3) = INT(halo_eps/GEO%FIBGMdeltas(1:3))+1
 END IF
+
 ! halo region already included in BGM
-!FIBGMCellPadding(1:3) = 0
+!--> Reminder to re-add nShapePadding if we want to move back to 2-way coupling. Otherwise, remove nShapePadding altogether
 nShapePaddingX = 0
 nShapePaddingY = 0
 nShapePaddingZ = 0
-
-!WRITE(*,*) 'r_sf', r_sf
-!IF ((DepositionType.EQ.'shape_function')             &
-!.OR.(DepositionType.EQ.'shape_function_cylindrical') &
-!.OR.(DepositionType.EQ.'shape_function_simple')      &
-!.OR.(DepositionType.EQ.'shape_function_spherical')   &
-!.OR.(DepositionType.EQ.'shape_function_1d')          )THEN
-!  nShapePaddingX = INT(r_sf/GEO%FIBGMdeltas(1)+0.9999999)
-!  nShapePaddingY = INT(r_sf/GEO%FIBGMdeltas(2)+0.9999999)
-!  nShapePaddingZ = INT(r_sf/GEO%FIBGMdeltas(3)+0.9999999)
-!  !IPWRITE(*,*) 'nShapePaddingX',nShapePaddingX
-!  !IPWRITE(*,*) 'nShapePaddingY',nShapePaddingY
-!  !IPWRITE(*,*) 'nShapePaddingZ',nShapePaddingZ
-! ! IF(mode.EQ.2) THEN
-! !   IF((nShapePaddingX.EQ.0)    &
-! !     .OR.(nShapePaddingY.EQ.0) &
-! !     .OR.(nShapePaddingZ.EQ.0))THEN 
-! !       CALL abort(__STAMP__&
-! !         'Error in stencil calculation for FIBGM and shape function')
-! !   END IF
-! ! END IF
-!! 0.999999 in order to prevent stencil to get too big in case of r_sf==c_int*deltas
-!!  -> worst case: last 0.000001 gets cut off -> insignificant
-!END IF
 
 nPaddingCellsX = MAX(nShapePaddingX,FIBGMCellPadding(1))
 nPaddingCellsY = MAX(nShapePaddingY,FIBGMCellPadding(2))
 nPaddingCellsZ = MAX(nShapePaddingZ,FIBGMCellPadding(3))
 
+! find the number of cells in the global BGM that are within the BGM bounding box of my proc. They must be added to the
+! ReducedBGMArray on the current proc and communicated to the neighbor procs. Still counting in communication notation, so size is
+! cells*3.
 j=0
 CurrentProc=0
 DO i=1, SUM(NbrOfBGMCells)*3, 3
@@ -2309,7 +2303,7 @@ DO i=1, SUM(NbrOfBGMCells)*3, 3
 END DO !i
 
 ! Periodic: ReducedBGMArray needs to include cells on the other side of periodic vectors
-! --- PO: CAUTION: changes throuogh curved
+! --- PO: CAUTION: changes through curved
 Vec1(1:3) = 0
 Vec2(1:3) = 0
 Vec3(1:3) = 0
@@ -2418,10 +2412,10 @@ END IF !periodic
 !--- JN: But therefore we first have to refill BGMCellsArray to not only contain
 !        cells with PIC%FastInitBGM%nElem.GT.0 but also those adjacent to them!
 !--- TS: Actually, not the adjacent cell needs to be considered but a shape_proc stencil
-!        Usually, the shape function radius is chosen to be the size of one BGM, but this 
+!        Usually, the shape function radius is chosen to be the size of one BGM, but this
 !        is not necessarily always true. Hence new shape_proc padding:
 
-BGMCells=0 
+BGMCells=0
 DO iBGM=BGMimin, BGMimax  !Count BGMCells with Elements inside or adjacent and save their indices in BGMCellsArray
   DO jBGM=BGMjmin, BGMjmax
     DO kBGM=BGMkmin, BGMkmax
@@ -2439,7 +2433,7 @@ DO iBGM=BGMimin, BGMimax  !Count BGMCells with Elements inside or adjacent and s
   END DO !jBGM
 END DO !kBGM
 
-! now create a temporary array in which for all BGM Cells + ShapePadding the processes are saved 
+! now create a temporary array in which for all BGM Cells + ShapePadding the processes are saved
 ! reason: this way, the ReducedBGM List only needs to be searched once and not once for each BGM Cell+Stencil
 
 ! first count the maximum number of procs that exist within each BGM cell (inkl. Shape Padding region)
@@ -2459,6 +2453,7 @@ DO j=1, SUM(ReducedNbrOfBGMCells)*3-2, 3
     END IF
   END IF
 END DO
+
 ! allocate the temporary array
 ALLOCATE(CellProcList(BGMimin-nShapePaddingX:BGMimax+nShapePaddingX, &
                       BGMjmin-nShapePaddingY:BGMjmax+nShapePaddingY, &
@@ -2467,7 +2462,6 @@ ALLOCATE(CellProcList(BGMimin-nShapePaddingX:BGMimax+nShapePaddingX, &
 CellProcList = -1
 
 ! fill array with proc numbers
-
 CellProcNum = 0
 j_offset = 0
 DO CurrentProc = 0,PartMPI%nProcs-1
@@ -2485,6 +2479,7 @@ DO CurrentProc = 0,PartMPI%nProcs-1
   END DO
   j_offset = j_offset + ReducedNbrOfBGMCells(CurrentProc)*3
 END DO
+
 ! fill real array
 DO Cell=0, BGMCells-1
   TempProcList=0
@@ -2500,6 +2495,7 @@ DO Cell=0, BGMCells-1
     END DO !jBGM
     ii = iBGM
   END DO !iBGM
+
   Procs=SUM(TempProcList)
   IF (Procs.NE.0) THEN
     ALLOCATE(GEO%FIBGM(ii-nShapePaddingX,jj-nShapePaddingY,kk-nShapePaddingZ)%ShapeProcs(1:Procs+1))
@@ -2508,11 +2504,6 @@ DO Cell=0, BGMCells-1
     DO m=0,PartMPI%nProcs-1
       IF (TempProcList(m) .EQ. 1) THEN
         IF(.NOT.PartMPI%isMPINeighbor(m))THEN
-          !IF(mode.EQ.2)THEN
-          !  IPWRITE(UNIT_stdOut,*) ' Warning, something wrong with halo region'
-          !  CALL abort(__STAMP__&
-          !      , ' Something wrong with Halo region' )
-          !END IF
           PartMPI%isMPINeighbor(m) = .true.
           PartMPI%nMPINeighbors=PartMPI%nMPINeighbors+1
         END IF
@@ -2522,49 +2513,6 @@ DO Cell=0, BGMCells-1
     END DO !m
   END IF
 END DO !Cell
-
-   !Compare own BGMCells and their Neighbors with ReducedBGMArray and save other Processes in BGM-Cells
-   !--- JN: ReducedBGMArray contains data only from other MPI procs!
-   !--- JN: BGMCellsArray contains in index triplets (i,k,l) all BGM cells containing elements from the local MPI proc
-   !        plus the index triplets of BGM cells adjacent to cells containing elements from the local MPI proc
-
-!   !--- JN: First identify only procs that share the exact same BGM cell as I (SharedProcs)
-!   Procs = 0
-!   CellProcList=-1
-!   DO Cell=0, BGMCells-1
-!     TempProcList=0
-!     i = BGMCellsArray(Cell*3+1)
-!     k = BGMCellsArray(Cell*3+2)
-!     l = BGMCellsArray(Cell*3+3)
-!     IF (GEO%FIBGM(i,k,l)%nElem.EQ.0) CYCLE
-!     CurrentProc=0
-!     m=2
-!     DO j=1, SUM(ReducedNbrOfBGMCells)*3-2, 3
-!       !--- JN: Slide CurrentProc to the MPI Proc that the currently checked BGMCell belongs to
-!       DO WHILE (j .GT. SUM(ReducedNbrOfBGMCells(0: CurrentProc))*3 .AND. CurrentProc .LT. PMPIVAR%nProcs-1)
-!         CurrentProc=CurrentProc+1
-!       END DO
-!       IF (i .EQ. ReducedBGMArray(j) .AND. k .EQ. ReducedBGMArray(j+1) .AND. l .EQ. ReducedBGMArray(j+2)) THEN
-!         IF (m .GT. MaxShapeProcs) THEN
-!           CALL abort(__STAMP__&
-!                                'ERROR in Boundary_PIC.f90: Cellproclist can contain only MaxShapeProcs=',MaxShapeProcs,999.)
-!         END IF
-!         CellProcList(i,k,l,m)=CurrentProc
-!         m=m+1
-!         TempProcList(CurrentProc)=1
-!       END IF
-!     END DO !j
-!     Procs=SUM(TempProcList)
-!     ALLOCATE(GEO%FIBGM(i,k,l)%SharedProcs(1:Procs+1)) 
-!     GEO%FIBGM(i,k,l)%SharedProcs(1) = Procs
-!     j=2
-!     DO m=0,PMPIVAR%nProcs-1
-!       IF (TempProcList(m) .EQ. 1) THEN
-!         GEO%FIBGM(i,k,l)%SharedProcs(j)=m
-!         j=j+1
-!       END IF
-!     END DO !m
-!   END DO !Cell
 
 
 ! ----------------------------------------------------------------!
@@ -2592,7 +2540,7 @@ DO iBGM=BGMimin, BGMimax  !Count BGMCells with Elements inside or adjacent and s
   END DO !jBGM
 END DO !kBGM
 
-! now create a temporary array in which for all BGM Cells + ShapePadding the processes are saved 
+! now create a temporary array in which for all BGM Cells + ShapePadding the processes are saved
 ! reason: this way, the ReducedBGM List only needs to be searched once and not once for each BGM Cell+Stencil
 
 ! first count the maximum number of procs that exist within each BGM cell (inkl. Shape Padding region)
@@ -2612,6 +2560,7 @@ DO j=1, SUM(ReducedNbrOfBGMCells)*3-2, 3
      END IF
    END IF
 END DO
+
 ! allocate the temporary array
 ALLOCATE(CellProcList(BGMimin-nPaddingCellsX:BGMimax+nPaddingCellsX, &
                       BGMjmin-nPaddingCellsY:BGMjmax+nPaddingCellsY, &
@@ -2620,9 +2569,9 @@ ALLOCATE(CellProcList(BGMimin-nPaddingCellsX:BGMimax+nPaddingCellsX, &
 CellProcList = -1
 
 ! fill array with proc numbers
-
 CellProcNum = 0
 j_offset = 0
+
 DO CurrentProc = 0,PartMPI%nProcs-1
   DO j = 1+j_offset, j_offset+ReducedNbrOfBGMCells(CurrentProc)*3-2,3
     CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) = &
@@ -2648,6 +2597,7 @@ DO Cell=0, BGMCells-1
     END DO !k
     ii = iBGM
   END DO !i
+
   Procs=SUM(TempProcList)
   IF (Procs.NE.0) THEN
     ALLOCATE(GEO%FIBGM(ii-nPaddingCellsX,jj-nPaddingCellsY,kk-nPaddingCellsZ)%PaddingProcs(1:Procs+1))
@@ -2661,7 +2611,9 @@ DO Cell=0, BGMCells-1
     END DO !m
   END IF
 END DO !Cell
+
 DEALLOCATE(ReducedBGMArray, BGMCellsArray, CellProcList, GlobalBGMCellsArray, CellProcNum)
+
 #endif /*MPI*/
 
 END SUBROUTINE GetFIBGM
@@ -2846,7 +2798,7 @@ DO iElem=1,PP_nElems
   DO iBGM = BGMCellXmin,BGMCellXmax
     DO jBGM = BGMCellYmin,BGMCellYmax
       DO kBGM = BGMCellZmin,BGMCellZmax
-        GEO%TFIBGM(iBGM,jBGM,kBGM)%nElem = GEO%TFIBGM(iBGM,jBGM,kBGM)%nElem + 1    
+        GEO%TFIBGM(iBGM,jBGM,kBGM)%nElem = GEO%TFIBGM(iBGM,jBGM,kBGM)%nElem + 1
         GEO%TFIBGM(iBGM,jBGM,kBGM)%Element(GEO%TFIBGM(iBGM,jBGM,kBGM)%nElem) = iElem
       END DO ! kBGM
     END DO ! jBGM
@@ -2866,7 +2818,7 @@ DO iElem=PP_nElems+1,nTotalElems
   DO iBGM = BGMCellXmin,BGMCellXmax
     DO jBGM = BGMCellYmin,BGMCellYmax
       DO kBGM = BGMCellZmin,BGMCellZmax
-        GEO%TFIBGM(iBGM,jBGM,kBGM)%nElem = GEO%TFIBGM(iBGM,jBGM,kBGM)%nElem + 1    
+        GEO%TFIBGM(iBGM,jBGM,kBGM)%nElem = GEO%TFIBGM(iBGM,jBGM,kBGM)%nElem + 1
         GEO%TFIBGM(iBGM,jBGM,kBGM)%Element(GEO%TFIBGM(iBGM,jBGM,kBGM)%nElem) = iElem
       END DO ! kBGM
     END DO ! jBGM
@@ -2960,11 +2912,11 @@ SUBROUTINE WeirdElementCheck()
 !===================================================================================================================================
 ! Calculate whether element edges intersect other sides
 ! If this is the case it means that part of the element is turned inside-out
-! which results in a warning so the user can decide whether it is a problem that 
-! necessitates a new mesh. 
+! which results in a warning so the user can decide whether it is a problem that
+! necessitates a new mesh.
 ! Fixing the problem would involve defining the bilinear edge between nodes 2 and 4
 ! (instead of 1 and 3). This information would need to be stored and used throughout
-! the particle treatment. Additionally, since the edge would need to be changed 
+! the particle treatment. Additionally, since the edge would need to be changed
 ! for both neighboring elements, it is possible that both element might have the problem
 ! hence no solution exists.
 ! tl;dr: Hard/maybe impossible to fix, hence only a warning is given so the user can decide
@@ -3034,13 +2986,13 @@ DO iElem = 1, nElems ! go through all elements
             END DO
             IF (.not.TRICHECK) THEN
               det(1) = ((Node(2,1) * Node(3,2) - Node(3,1) * Node(2,2)) * vec(1)  + &
-                        (Node(3,1) * Node(1,2) - Node(1,1) * Node(3,2)) * vec(2)  + & 
+                        (Node(3,1) * Node(1,2) - Node(1,1) * Node(3,2)) * vec(2)  + &
                         (Node(1,1) * Node(2,2) - Node(2,1) * Node(1,2)) * vec(3))
               det(2) = ((Node(2,2) * Node(3,3) - Node(3,2) * Node(2,3)) * vec(1)  + &
-                        (Node(3,2) * Node(1,3) - Node(1,2) * Node(3,3)) * vec(2)  + & 
+                        (Node(3,2) * Node(1,3) - Node(1,2) * Node(3,3)) * vec(2)  + &
                         (Node(1,2) * Node(2,3) - Node(2,2) * Node(1,3)) * vec(3))
               det(3) = ((Node(2,3) * Node(3,1) - Node(3,3) * Node(2,1)) * vec(1)  + &
-                        (Node(3,3) * Node(1,1) - Node(1,3) * Node(3,1)) * vec(2)  + & 
+                        (Node(3,3) * Node(1,1) - Node(1,3) * Node(3,1)) * vec(2)  + &
                         (Node(1,3) * Node(2,1) - Node(2,3) * Node(1,1)) * vec(3))
               IF ((det(1).LT.0).AND.(det(2).LT.0).AND.(det(3).LT.0)) WEIRD = .TRUE.
               IF ((det(1).GT.0).AND.(det(2).GT.0).AND.(det(3).GT.0)) WEIRD = .TRUE.
@@ -3058,13 +3010,13 @@ DO iElem = 1, nElems ! go through all elements
               IF (SUM(abs(det(:))).EQ.0) TRICHECK = .TRUE.
               IF (.not.TRICHECK) THEN
                 det(1) = ((Node(2,1) * Node(3,3) - Node(3,1) * Node(2,3)) * vec(1)  + &
-                          (Node(3,1) * Node(1,3) - Node(1,1) * Node(3,3)) * vec(2)  + & 
+                          (Node(3,1) * Node(1,3) - Node(1,1) * Node(3,3)) * vec(2)  + &
                           (Node(1,1) * Node(2,3) - Node(2,1) * Node(1,3)) * vec(3))
                 det(2) = ((Node(2,3) * Node(3,4) - Node(3,3) * Node(2,4)) * vec(1)  + &
-                          (Node(3,3) * Node(1,4) - Node(1,3) * Node(3,4)) * vec(2)  + & 
+                          (Node(3,3) * Node(1,4) - Node(1,3) * Node(3,4)) * vec(2)  + &
                           (Node(1,3) * Node(2,4) - Node(2,3) * Node(1,4)) * vec(3))
                 det(3) = ((Node(2,4) * Node(3,1) - Node(3,4) * Node(2,1)) * vec(1)  + &
-                          (Node(3,4) * Node(1,1) - Node(1,4) * Node(3,1)) * vec(2)  + & 
+                          (Node(3,4) * Node(1,1) - Node(1,4) * Node(3,1)) * vec(2)  + &
                           (Node(1,4) * Node(2,1) - Node(2,4) * Node(1,1)) * vec(3))
                 IF ((det(1).LT.0).AND.(det(2).LT.0).AND.(det(3).LT.0)) WEIRD = .TRUE.
                 IF ((det(1).GT.0).AND.(det(2).GT.0).AND.(det(3).GT.0)) WEIRD = .TRUE.
@@ -3075,27 +3027,23 @@ DO iElem = 1, nElems ! go through all elements
       END IF
     END IF
   END DO
-  IF (WEIRD) THEN 
+  IF (WEIRD) THEN
     WeirdElems = WeirdElems + 1
     WeirdElemNbrs(WeirdElems) = iElem
   END IF
 END DO
-              
+
 SWRITE(UNIT_stdOut,'(A)')' CHECKING FOR WEIRD ELEMENTS DONE!'
 IF(WeirdElems.GT.0) THEN
   IPWRITE(UNIT_stdOut,*)' FOUND', WeirdElems, 'ELEMENTS!'
   IPWRITE(UNIT_stdOut,*)' WEIRD ELEM NUMBERS:'
   DO iElem = 1,WeirdElems
     IPWRITE(UNIT_stdOut,*) WeirdElemNbrs(iElem)
-  !  DO iLocSide = 1,6
-  !    DO iNode = 1,4
-  !      SWRITE(UNIT_stdOut,*) GEO%NodeCoords(:,GEO%ElemSideNodeID(iNode,iLocSide,WeirdElemNbrs(iElem)))
-  !    END DO
-  !  END DO
-  !  STOP
   END DO
 END IF
+
 SWRITE(UNIT_StdOut,'(132("-"))')
+
 END SUBROUTINE WeirdElementCheck
 
 
@@ -3171,7 +3119,7 @@ SUBROUTINE ReShapeBezierSides()
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Preproc
-USE MOD_Particle_Mesh_Vars,     ONLY:nTotalBCSides,PartBCSideList,nTotalSides,nPartPeriodicSides!,PartSideToElem
+USE MOD_Particle_Mesh_Vars,     ONLY:nTotalBCSides,PartBCSideList,nTotalSides,nPartPeriodicSides
 USE MOD_Mesh_Vars,              ONLY:nSides,nBCSides,NGeo,BC
 USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3D,SideType,SideDistance,SideNormVec
 USE MOD_Particle_Surfaces_Vars, ONLY:SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
@@ -3187,9 +3135,9 @@ IMPLICIT NONE
 INTEGER           :: ALLOCSTAT
 INTEGER           :: iSide,nOldBCSides,newBCSideID,BCInc,nPeriodicSidesTmp
 REAL,ALLOCATABLE,DIMENSION(:,:,:)  :: DummySideSlabNormals                  ! normal vectors of bounding slab box
-REAL,ALLOCATABLE,DIMENSION(:,:)    :: DummySideSlabIntervals               ! intervalls beta1, beta2, beta3
+REAL,ALLOCATABLE,DIMENSION(:,:)    :: DummySideSlabIntervals                ! intervalls beta1, beta2, beta3
 LOGICAL,ALLOCATABLE,DIMENSION(:)   :: DummyBoundingBoxIsEmpty
-REAL,ALLOCATABLE                   :: DummyBezierControlPoints3D(:,:,:,:)                                
+REAL,ALLOCATABLE                   :: DummyBezierControlPoints3D(:,:,:,:)
 INTEGER,ALLOCATABLE                :: DummySideType(:)
 REAL,ALLOCATABLE                   :: DummySideDistance(:)
 REAL,ALLOCATABLE                   :: DummySideNormVec(:,:)
@@ -3203,137 +3151,137 @@ DO iSide=nBCSides+1,nSides+nPartPeriodicSides
   END IF
 END DO
 
-! now, shrink partbcsidelist
+! now, shrink PartBCSideList
 nOldBCSides  =nTotalBCSides
 nTotalBCSides=nTotalSides-nPartPeriodicSides-nSides+nBCSides+nPeriodicSidesTmp
 
+! return if no BC sides are left
 IF(nTotalBCSides.EQ.0) RETURN
 
-! allocate & fill dummy
-! BezierControlPoints3D
+! allocate & fill dummy aray with size nTotalSides, then expand aray to nTotalBCSides
+!--> BezierControlPoints3D
 ALLOCATE(DummyBezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:nTotalSides))
-IF (.NOT.ALLOCATED(DummyBezierControlPoints3d)) CALL abort(&
-__STAMP__& !wunderschoen!!!
-,'Could not allocate DummyBezierControlPoints3D in ReshapeBezierSides')
-IF (SIZE(DummyBezierControlPoints3D).NE.SIZE(BezierControlPoints3D)) CALL abort(&
-__STAMP__&
-,'size of DummyBezierControlPoionts3D and BezierControlPoints3D not equal!')
-DummyBezierControlPoints3d=BezierControlPoints3d
+IF (.NOT.ALLOCATED(DummyBezierControlPoints3d)) &
+  CALL abort(__STAMP__,'Could not allocate DummyBezierControlPoints3D in ReshapeBezierSides')
+IF (SIZE(DummyBezierControlPoints3D).NE.SIZE(BezierControlPoints3D)) &
+  CALL abort(__STAMP__,'size of DummyBezierControlPoionts3D and BezierControlPoints3D not equal!')
+!--> save BezierControlPoints3D in dummy area and allocate it again using nTotalBCSides
+DummyBezierControlPoints3d = BezierControlPoints3d
 DEALLOCATE(BezierControlPoints3D)
-ALLOCATE(BezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:nTotalBCSides),STAT=ALLOCSTAT)
-BezierControlPoints3d=0.
-IF (ALLOCSTAT.NE.0) CALL abort(&
-__STAMP__& !wunderschoen!!!
-,'Could not allocate BezierControlPoints3D in ReshapeBezierSides')
+ALLOCATE(  BezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:nTotalBCSides),STAT=ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) &
+  CALL abort(__STAMP__,'Could not allocate BezierControlPoints3D in ReshapeBezierSides')
+BezierControlPoints3d = 0.
+
 ! SideSlabNormals
 ALLOCATE(DummySideSlabNormals(1:3,1:3,1:nTotalSides))
-IF (.NOT.ALLOCATED(DummySideSlabNormals)) CALL abort(&
-__STAMP__& !wunderschoen!!!
-,'Could not allocate DummySideSlabNormals in ReshapeBezierSides')
-DummySideSlabNormals=SideSlabNormals
+IF (.NOT.ALLOCATED(DummySideSlabNormals)) &
+  CALL abort(__STAMP__,'Could not allocate DummySideSlabNormals in ReshapeBezierSides')
+!--> save SideSlabNormals in dummy area and allocate it again using nTotalBCSides
+DummySideSlabNormals = SideSlabNormals
 DEALLOCATE(SideSlabNormals)
-ALLOCATE(SideSlabNormals(1:3,1:3,1:nTotalBCSides),STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) CALL abort(&
-__STAMP__& !wunderschoen!!!
-,'Could not allocate SideSlabNormals in ReshapeBezierSides')
-SideSlabNormals=0.
+ALLOCATE(  SideSlabNormals(1:3,1:3,1:nTotalBCSides),STAT=ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) &
+  CALL abort(__STAMP__,'Could not allocate SideSlabNormals in ReshapeBezierSides')
+SideSlabNormals = 0.
+
 ! SideSlabIntervals
 ALLOCATE(DummySideSlabIntervals(1:6,1:nTotalSides))
-IF (.NOT.ALLOCATED(DummySideSlabIntervals)) CALL abort(&
-__STAMP__& !wunderschoen!!!
-,'Could not allocate DummySideSlabIntervals in ReshapeBezierSides')
-DummySideSlabIntervals=SideSlabIntervals
+IF (.NOT.ALLOCATED(DummySideSlabIntervals)) &
+  CALL abort(__STAMP__,'Could not allocate DummySideSlabIntervals in ReshapeBezierSides')
+!--> save SideSlabIntervals in dummy area and allocate it again using nTotalBCSides
+DummySideSlabIntervals = SideSlabIntervals
 DEALLOCATE(SideSlabIntervals)
-ALLOCATE(SideSlabIntervals(1:6,1:nTotalBCSides),STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) CALL abort(&
-__STAMP__& !wunderschoen!!!
-,'Could not allocate ElemIndex in ReshapeBezierSides')
-SideSlabIntervals=0.
+ALLOCATE(  SideSlabIntervals(1:6,1:nTotalBCSides),STAT=ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) &
+  CALL abort(__STAMP__,'Could not allocate ElemIndex in ReshapeBezierSides')
+SideSlabIntervals = 0.
+
 ! BoundingBoxIsEmpty
 ALLOCATE(DummyBoundingBoxIsEmpty(1:nTotalSides))
-IF (.NOT.ALLOCATED(DummyBoundingBoxIsEmpty)) CALL abort(&
-__STAMP__& !wunderschoen!!!
-,'Could not allocate DummyBoundingBoxIsEmpty in ReshapeBezierSides')
-DummyBoundingBoxIsEmpty=BoundingBoxIsEmpty
+IF (.NOT.ALLOCATED(DummyBoundingBoxIsEmpty)) &
+  CALL abort(__STAMP__,'Could not allocate DummyBoundingBoxIsEmpty in ReshapeBezierSides')
+!--> save BoundingBoxIsEmpty in dummy area and allocate it again using nTotalBCSides
+DummyBoundingBoxIsEmpty = BoundingBoxIsEmpty
 DEALLOCATE(BoundingBoxIsEmpty)
-ALLOCATE(BoundingBoxIsEmpty(1:nTotalBCSides),STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) CALL abort(&
-__STAMP__& !wunderschoen!!!
-,'Could not allocate BoundingBoxIsEmpty in ReshapeBezierSides')
-BoundingBoxIsEmpty=.FALSE.
+ALLOCATE(  BoundingBoxIsEmpty(1:nTotalBCSides),STAT=ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) &
+  CALL abort(__STAMP__,'Could not allocate BoundingBoxIsEmpty in ReshapeBezierSides')
+BoundingBoxIsEmpty = .FALSE.
+
 ! side type
 ALLOCATE(DummySideType(1:nOldBCSides))
-IF (.NOT.ALLOCATED(DummySideType)) CALL abort(&
-    __STAMP__&
- ,'Could not allocate DummySideType in ReshapeBezierSides')
-DummySideType=SideType
+IF (.NOT.ALLOCATED(DummySideType)) &
+  CALL abort(__STAMP__,'Could not allocate DummySideType in ReshapeBezierSides')
+!--> save SideType in dummy area and allocate it again using nTotalBCSides
+DummySideType = SideType
 DEALLOCATE(SideType)
-ALLOCATE(SideType(1:nTotalBCSides),STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) CALL abort(&
-    __STAMP__&
- ,'Could not reallocate SideType in ReshapeBezierSides')
+ALLOCATE(  SideType(1:nTotalBCSides),STAT=ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) &
+  CALL abort(__STAMP__,'Could not reallocate SideType in ReshapeBezierSides')
 SideType=-1
 
+! side distance
 ALLOCATE(DummySideDistance(1:nOldBCSides))
-IF (.NOT.ALLOCATED(DummySideDistance)) CALL abort(&
-    __STAMP__&
- ,'Could not allocate DummySideDistance in ReshapeBezierSides')
-DummySideDistance=SideDistance
+IF (.NOT.ALLOCATED(DummySideDistance)) &
+  CALL abort(__STAMP__,'Could not allocate DummySideDistance in ReshapeBezierSides')
+!--> save SideType in dummy area and allocate it again using nTotalBCSides
+DummySideDistance = SideDistance
 DEALLOCATE(SideDistance)
-ALLOCATE(SideDistance(1:nTotalBCSides),STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) CALL abort(&
-    __STAMP__&
- ,'Could not reallocate SideDistance in ReshapeBezierSides')
-SideDistance=0.
+ALLOCATE(  SideDistance(1:nTotalBCSides),STAT=ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) &
+  CALL abort(__STAMP__,'Could not reallocate SideDistance in ReshapeBezierSides')
+SideDistance = 0.
 
+! side norm vec
 ALLOCATE(DummySideNormVec(1:3,1:nOldBCSides))
-IF (.NOT.ALLOCATED(DummySideNormVec)) CALL abort(&
-    __STAMP__&
- ,'Could not allocate DummySideNormVec in ReshapeBezierSides')
-DummySideNormVec=SideNormVec
+IF (.NOT.ALLOCATED(DummySideNormVec)) &
+  CALL abort(__STAMP__,'Could not allocate DummySideNormVec in ReshapeBezierSides')
+!--> save SideNormVec in dummy area and allocate it again using nTotalBCSides
+DummySideNormVec = SideNormVec
 DEALLOCATE(SideNormVec)
-ALLOCATE(SideNormVec(1:3,1:nTotalBCSides),STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) CALL abort(&
-    __STAMP__&
- ,'Could not reallocate SideNormVec in ReshapeBezierSides')
-SideNormVec=0.
+ALLOCATE(  SideNormVec(1:3,1:nTotalBCSides),STAT=ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) &
+  CALL abort(__STAMP__,'Could not reallocate SideNormVec in ReshapeBezierSides')
+SideNormVec = 0.
 
 
 BCInc=0
-!DO iSide=1,nSides
 newBCSideID=0
+
+! fill the new arrays by looping over all new sides list
 DO iSide=1,nBCSides
-  newBCSideID=newBCSideID+1
-  BezierControlPoints3d(1:3,0:NGeo,0:NGeo,newBCSideID) =DummyBezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)
-  SideSlabNormals          (1:3,1:3,          newBCSideID) =DummySideSlabNormals         (1:3,1:3,           iSide)
-  SideSlabIntervals       (1:6,              newBCSideID) =DummySideSlabIntervals      (1:6,               iSide)
-  BoundingBoxIsEmpty   (                  newBCSideID) =DummyBoundingBoxIsEmpty  (                   iSide)
-  SideType(newBCSideID) = DummySideType(newBCSideID)
-  SideDistance(newBCSideID) = DummySideDistance(newBCSideID)
-  SideNormVec(1:3,newBCSideID) = DummySideNormVec(1:3,newBCSideID)
+  newBCSideID = newBCSideID+1
+  BezierControlPoints3d(1:3,0:NGeo,0:NGeo,newBCSideID) = DummyBezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)
+  SideSlabNormals      (1:3,1:3,          newBCSideID) = DummySideSlabNormals      (1:3,1:3,          iSide)
+  SideSlabIntervals    (1:6,              newBCSideID) = DummySideSlabIntervals    (1:6,              iSide)
+  BoundingBoxIsEmpty   (                  newBCSideID) = DummyBoundingBoxIsEmpty   (                  iSide)
+  SideType(newBCSideID)                                = DummySideType(newBCSideID)
+  SideDistance(newBCSideID)                            = DummySideDistance(newBCSideID)
+  SideNormVec(1:3,newBCSideID)                         = DummySideNormVec(1:3,newBCSideID)
 END DO ! iSide
 
 DO iSide=nBCSides+1,nSides+nPartPeriodicSides
   IF(BC(iSide).EQ.0) CYCLE
-  newBCSideID=newBCSideID+1
-  BezierControlPoints3d(1:3,0:NGeo,0:NGeo,newBCSideID) =DummyBezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)
-  SideSlabNormals          (1:3,1:3,          newBCSideID) =DummySideSlabNormals         (1:3,1:3,           iSide)
-  SideSlabIntervals       (1:6,              newBCSideID) =DummySideSlabIntervals      (1:6,               iSide)
-  BoundingBoxIsEmpty   (                  newBCSideID) =DummyBoundingBoxIsEmpty  (                   iSide)
-  SideType(newBCSideID) = DummySideType(newBCSideID)
-  SideDistance(newBCSideID) = DummySideDistance(newBCSideID)
-  SideNormVec(1:3,newBCSideID) = DummySideNormVec(1:3,newBCSideID)
+  newBCSideID = newBCSideID+1
+  BezierControlPoints3d(1:3,0:NGeo,0:NGeo,newBCSideID) = DummyBezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)
+  SideSlabNormals      (1:3,1:3,          newBCSideID) = DummySideSlabNormals      (1:3,1:3,          iSide)
+  SideSlabIntervals    (1:6,              newBCSideID) = DummySideSlabIntervals    (1:6,              iSide)
+  BoundingBoxIsEmpty   (                  newBCSideID) = DummyBoundingBoxIsEmpty   (                  iSide)
+  SideType(newBCSideID)                                = DummySideType(newBCSideID)
+  SideDistance(newBCSideID)                            = DummySideDistance(newBCSideID)
+  SideNormVec(1:3,newBCSideID)                         = DummySideNormVec(1:3,newBCSideID)
 END DO ! iSide
 
 DO iSide=nSides+nPartPeriodicSides+1,nTotalSides
-  newBCSideID=newBCSideID+1
-  BezierControlPoints3d(1:3,0:NGeo,0:NGeo,newBCSideID) =DummyBezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)
-  SideSlabNormals          (1:3,1:3,          newBCSideID) =DummySideSlabNormals         (1:3,1:3,           iSide)
-  SideSlabIntervals       (1:6,              newBCSideID) =DummySideSlabIntervals      (1:6,               iSide)
-  BoundingBoxIsEmpty   (                  newBCSideID) =DummyBoundingBoxIsEmpty  (                   iSide)
-  SideType(newBCSideID) = DummySideType(newBCSideID)
-  SideDistance(newBCSideID) = DummySideDistance(newBCSideID)
-  SideNormVec(1:3,newBCSideID) = DummySideNormVec(1:3,newBCSideID)
+  newBCSideID = newBCSideID+1
+  BezierControlPoints3d(1:3,0:NGeo,0:NGeo,newBCSideID) = DummyBezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)
+  SideSlabNormals      (1:3,1:3,          newBCSideID) = DummySideSlabNormals      (1:3,1:3,          iSide)
+  SideSlabIntervals    (1:6,              newBCSideID) = DummySideSlabIntervals    (1:6,              iSide)
+  BoundingBoxIsEmpty   (                  newBCSideID) = DummyBoundingBoxIsEmpty   (                  iSide)
+  SideType(newBCSideID)                                = DummySideType(newBCSideID)
+  SideDistance(newBCSideID)                            = DummySideDistance(newBCSideID)
+  SideNormVec(1:3,newBCSideID)                         = DummySideNormVec(1:3,newBCSideID)
 END DO ! iSide
 
 ! create new mapping
@@ -3371,7 +3319,7 @@ DEALLOCATE(DummySideNormVec)
 END SUBROUTINE ReShapeBezierSides
 
 
-SUBROUTINE MapRegionToElem() 
+SUBROUTINE MapRegionToElem()
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! map a particle region to element
 ! check only element barycenter, nothing else
@@ -3385,7 +3333,7 @@ USE MOD_Particle_Mesh_Vars,     ONLY:NbrOfRegions, RegionBounds,GEO
 USE MOD_Particle_Mesh_Vars,     ONLY:ElemBaryNGeo
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -3393,7 +3341,7 @@ IMPLICIT NONE
  INTEGER                :: iElem, iRegions
 !===================================================================================================================================
 SDEALLOCATE(GEO%ElemToRegion)
-ALLOCATE(GEO%ElemToRegion(1:PP_nElems)) 
+ALLOCATE(GEO%ElemToRegion(1:PP_nElems))
 GEO%ElemToRegion=0
 
 DO iElem=1,PP_nElems
@@ -3405,8 +3353,8 @@ DO iElem=1,PP_nElems
       GEO%ElemToRegion(iElem)=iRegions
     ELSE
       CALL abort(&
-__STAMP__&
-,'Defined regions are overlapping')
+      __STAMP__&
+      ,'Defined regions are overlapping')
     END IF
   END DO ! iRegions=1,NbrOfRegions
 END DO ! iElem=1,PP_nElems
@@ -3415,99 +3363,9 @@ END DO ! iElem=1,PP_nElems
 END SUBROUTINE MapRegionToElem
 
 
-SUBROUTINE PointToExactElement(X_In,Element,isInSide,doHalo)                                                         
-!===================================================================================================================================
-! this subroutine maps each particle to an element
-! currently, a background mesh is used to find possible elements. if multiple elements are possible, the element with the smallest
-! distance is picked as an initial guess
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_Preproc
-USE MOD_Particle_Mesh_Vars,     ONLY:Geo
-USE MOD_Particle_Mesh_Vars,     ONLY:epsOneCell
-USE MOD_Particle_Tracking_Vars, ONLY:ListDistance,Distance
-USE MOD_Eval_xyz,               ONLY:TensorProductInterpolation
-USE MOD_Particle_Utils,         ONLY:InsertionSort !BubbleSortID
-USE MOD_Particle_Mesh_Vars,     ONLY:ElemBaryNGeo
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE                                                                                   
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-REAL,INTENT(IN)                   :: X_in(3)
-LOGICAL,INTENT(IN)                :: doHalo
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL,INTENT(OUT)                :: isInside
-INTEGER,INTENT(OUT)                :: Element
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER                           :: iBGMElem,nBGMElems, ElemID, CellX,CellY,CellZ
-!-----------------------------------------------------------------------------------------------------------------------------------
-REAL                              :: xi(1:3)
-!REAL,PARAMETER                    :: eps=1e-8 ! same value as in eval_xyz_elem
-!REAL,PARAMETER                    :: eps2=1e-3
-!REAL                              :: epsOne,OneMeps
-!===================================================================================================================================
-
-!epsOne=1.0+epsInCell
-!OneMeps=1.0-eps
-isInside = .FALSE.
-IF ( (X_in(1).LT.GEO%xmin).OR.(X_in(1).GT.GEO%xmax).OR. &
-     (X_in(2).LT.GEO%ymin).OR.(X_in(2).GT.GEO%ymax).OR. &
-     (X_in(3).LT.GEO%zmin).OR.(X_in(3).GT.GEO%zmax)) THEN
-   RETURN
-END IF
-
-! --- get background mesh cell of particle
-CellX = CEILING((X_in(1)-GEO%xminglob)/GEO%FIBGMdeltas(1)) 
-CellX = MIN(GEO%FIBGMimax,CellX)                             
-CellY = CEILING((X_in(2)-GEO%yminglob)/GEO%FIBGMdeltas(2))
-CellY = MIN(GEO%FIBGMjmax,CellY) 
-CellZ = CEILING((X_in(3)-GEO%zminglob)/GEO%FIBGMdeltas(3))
-CellZ = MIN(GEO%FIBGMkmax,CellZ)
-
-!--- check all cells associated with this beckground mesh cell
-nBGMElems=GEO%FIBGM(CellX,CellY,CellZ)%nElem
-
-! get closest element barycenter
-Distance=-1.
-ListDistance=0
-DO iBGMElem = 1, nBGMElems
-  ElemID = GEO%FIBGM(CellX,CellY,CellZ)%Element(iBGMElem)
-  Distance(iBGMElem)=(X_in(1)-ElemBaryNGeo(1,ElemID))*(X_in(1)-ElemBaryNGeo(1,ElemID)) &
-                    +(X_in(2)-ElemBaryNGeo(2,ElemID))*(X_in(2)-ElemBaryNGeo(2,ElemID)) &
-                    +(X_in(3)-ElemBaryNGeo(3,ElemID))*(X_in(3)-ElemBaryNGeo(3,ElemID)) 
-  Distance(iBGMElem)=SQRT(Distance(iBGMElem))
-  ListDistance(iBGMElem)=ElemID
-END DO ! nBGMElems
-
-IF(nBGMElems.GT.1) CALL InsertionSort(Distance(1:nBGMElems),ListDistance(1:nBGMElems),nBGMElems)
-
-! loop through sorted list and start by closest element  
-Element=-1
-DO iBGMElem=1,nBGMElems
-  ElemID=ListDistance(iBGMElem)
-  IF(.NOT.DoHALO)THEN
-    IF(ElemID.GT.PP_nElems) CYCLE
-  END IF
-  CALL TensorProductInterpolation(X_in(1:3),xi,ElemID)
-  IF(ALL(ABS(Xi).LE.epsOneCell(ElemID))) THEN ! particle inside
-    isInSide=.TRUE.
-    Element=ElemID
-    EXIT
-  END IF
-END DO ! iBGMElem
-
-END SUBROUTINE PointToExactElement
-
-
 SUBROUTINE BuildElementBasis()
 !================================================================================================================================
-! build the element local basis system 
+! build the element local basis system
 ! origin is located at xi=(0,0,0)^T
 ! each local coord system is pointing to an element side
 !================================================================================================================================
@@ -3523,7 +3381,6 @@ USE MOD_Particle_Mesh_Vars,       ONLY:ElemBaryNgeo
 USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 USE MOD_Particle_Mesh_Vars,       ONLY:nTotalElems,PartElemToSide
 USE MOD_Basis,                    ONLY:LagrangeInterpolationPolys
-!USE MOD_PICDepo_Vars,             ONLY:DepositionType,r_sf,ElemRadius2_sf
 USE MOD_Eval_xyz,                 ONLY:EvaluateFieldAtRefPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -3533,7 +3390,7 @@ IMPLICIT NONE
 !OUTPUT VARIABLES
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                 :: iElem,SideID,i,j,k,ilocSide, ALLOCSTAT
+INTEGER                 :: iElem,SideID,i,j,k,ilocSide
 REAL                    :: Xi(3),XPos(3),Radius
 REAL                    :: Lag(1:3,0:NGeo)
 !================================================================================================================================
@@ -3541,7 +3398,7 @@ REAL                    :: Lag(1:3,0:NGeo)
 ElemRadiusNGeo=0.
 ElemRadius2NGeo=0.
 DO iElem=1,nTotalElems
-  ! get point on each side 
+  ! get point on each side
   IF((iElem.LE.PP_nElems).OR.(DoRefMapping))THEN
     ! xi plus
     Xi=(/1.0,0.0,0.0/)
@@ -3642,6 +3499,7 @@ DO iElem=1,nTotalElems
     SideID = PartElemToSide(1,ZETA_MINUS,iElem)
     CALL DeCasteljauInterpolation(NGeo,Xi(1:2),SideID,XiEtaZetaBasis(1:3,6,iElem))
   END IF ! no ref mapping
+
   ! compute vector from each barycenter to sidecenter
   XiEtaZetaBasis(:,1,iElem)=XiEtaZetaBasis(:,1,iElem)-ElemBaryNGeo(:,iElem)
   XiEtaZetaBasis(:,2,iElem)=XiEtaZetaBasis(:,2,iElem)-ElemBaryNGeo(:,iElem)
@@ -3649,6 +3507,7 @@ DO iElem=1,nTotalElems
   XiEtaZetaBasis(:,4,iElem)=XiEtaZetaBasis(:,4,iElem)-ElemBaryNGeo(:,iElem)
   XiEtaZetaBasis(:,5,iElem)=XiEtaZetaBasis(:,5,iElem)-ElemBaryNGeo(:,iElem)
   XiEtaZetaBasis(:,6,iElem)=XiEtaZetaBasis(:,6,iElem)-ElemBaryNGeo(:,iElem)
+
   ! compute length
   slenXiEtaZetaBasis(1,iElem)=1.0/DOT_PRODUCT(XiEtaZetaBasis(:,1,iElem),XiEtaZetaBasis(:,1,iElem))
   slenXiEtaZetaBasis(2,iElem)=1.0/DOT_PRODUCT(XiEtaZetaBasis(:,2,iElem),XiEtaZetaBasis(:,2,iElem))
@@ -3658,55 +3517,41 @@ DO iElem=1,nTotalElems
   slenXiEtaZetaBasis(6,iElem)=1.0/DOT_PRODUCT(XiEtaZetaBasis(:,6,iElem),XiEtaZetaBasis(:,6,iElem))
 
   Radius=0.
-  IF(DoRefMapping)THEN ! thats not the bounding box, caution, this box is to small!
+  IF(DoRefMapping) THEN ! Caution, the radius calculated here is not the bounding box,this box is too small!
     DO k=0,NGeo
       DO j=0,NGeo
         DO i=0,NGeo
           xPos=XCL_NGeo(:,i,j,k,iElem)-ElemBaryNGeo(:,iElem)
-          Radius=MAX(Radius,SQRT(DOT_PRODUCT(xPos,xPos)))      
+          Radius=MAX(Radius,SQRT(DOT_PRODUCT(xPos,xPos)))
         END DO !i=0,NGeo
       END DO !j=0,NGeo
     END DO !k=0,NGeo
-  ELSE
-    ! required :(
-   ! IF(iElem.GT.PP_nElems) CYCLE
+  ELSE                  ! This is the correct radius for the bounding box.
     DO ilocSide=1,6
       SideID=PartElemToSide(E2S_SIDE_ID,ilocSide,iElem)
       IF(SideID.EQ.-1) CYCLE
       DO j=0,NGeo
         DO i=0,NGeo
           xPos=BezierControlPoints3D(:,i,j,SideID)-ElemBaryNGeo(:,iElem)
-          Radius=MAX(Radius,SQRT(DOT_PRODUCT(xPos,xPos)))      
+          Radius=MAX(Radius,SQRT(DOT_PRODUCT(xPos,xPos)))
         END DO !i=0,NGeo
       END DO !j=0,NGeo
     END DO ! ilocSide
   END IF
-  !ElemRadiusNGeo(iElem)=Radius
-  ! elem radius containts 10% tolerance because we are not using the beziercontrolpoints
+
+  ! elem radius containts 2% tolerance because we are not using the BezierControlPoints
   ElemRadiusNGeo(iElem)=Radius
   IF(DoRefMapping)THEN
-    !ElemRadius2NGeo(iElem)=(Radius*1.10)*(Radius*1.10)
     ElemRadius2NGeo(iElem)=(Radius*1.02)*(Radius*1.02)
   ELSE
     ElemRadius2NGeo(iElem)=Radius*Radius
   END IF
 END DO ! iElem
 
-!IF (TRIM(DepositionType).EQ.'shape_function_simple')THEN
-!  ALLOCATE(ElemRadius2_sf(1:PP_nElems),STAT=ALLOCSTAT)
-!  IF (ALLOCSTAT.NE.0) CALL abort(&
-!__STAMP__ &
-!,' Cannot allocate ElemRadius2_sf!')
-!  DO iElem=1,PP_nElems
-!    ElemRadius2_sf(iElem)=(ElemRadiusNGeo(iElem)+r_sf)*(ElemRadiusNGeo(iElem)+r_sf)
-!  END DO ! iElem=1,PP_nElems
-!END IF
-
-
 END SUBROUTINE BuildElementBasis
 
 
-SUBROUTINE MapElemToFIBGM() 
+SUBROUTINE MapElemToFIBGM()
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! here, the FIBGM range for each element is stored
 ! short list for intersection tracking, longer list for ref mapping tracking
@@ -3722,7 +3567,7 @@ USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -3780,7 +3625,7 @@ DO iElem=1,LastElem
     BGMCellZmax = CEILING((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))
     BGMCellZmax = MIN(BGMCellZmax,BGMkmax)
     BGMCellZmin = CEILING((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3))
-    BGMCellZmin = MAX(BGMCellZmin,BGMkmin)      
+    BGMCellZmin = MAX(BGMCellZmin,BGMkmin)
   ELSE
     ! here fancy stuff, because element could be wide out of element range
     BGMCellXmax = CEILING((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))
@@ -3796,13 +3641,13 @@ DO iElem=1,LastElem
     BGMCellZmin = CEILING((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3))
     BGMCellZmin = MIN(MAX(BGMCellZmin,BGMkmin),BGMkmax)
   END IF
-  GEO%ElemToFIBGM(1,iElem)=BGMCellXmin  
-  GEO%ElemToFIBGM(3,iElem)=BGMCellYmin  
-  GEO%ElemToFIBGM(5,iElem)=BGMCellZmin  
+  GEO%ElemToFIBGM(1,iElem)=BGMCellXmin
+  GEO%ElemToFIBGM(3,iElem)=BGMCellYmin
+  GEO%ElemToFIBGM(5,iElem)=BGMCellZmin
 
-  GEO%ElemToFIBGM(2,iElem)=BGMCellXmax  
-  GEO%ElemToFIBGM(4,iElem)=BGMCellYmax  
-  GEO%ElemToFIBGM(6,iElem)=BGMCellZmax  
+  GEO%ElemToFIBGM(2,iElem)=BGMCellXmax
+  GEO%ElemToFIBGM(4,iElem)=BGMCellYmax
+  GEO%ElemToFIBGM(6,iElem)=BGMCellZmax
 END DO ! iElem=1,nTotalElems
 
 END SUBROUTINE MapElemToFIBGM
@@ -3857,7 +3702,7 @@ USE MOD_ChangeBasis,           ONLY:changeBasis3D
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 REAL,INTENT(IN)      :: XCL_NGeo(1:3,0:NGeo,0:NGeo,0:NGeo)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -3894,14 +3739,14 @@ END IF
 END SUBROUTINE CheckIfCurvedElem
 
 
-SUBROUTINE PointsEqual(N,Points1,Points2,IsNotEqual) 
+SUBROUTINE PointsEqual(N,Points1,Points2,IsNotEqual)
 !===================================================================================================================================
 ! compute the distance between two data sets
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 INTEGER,INTENT(IN)        :: N
 REAL,INTENT(IN)           :: Points1(1:3,1:N)
 REAL,INTENT(IN)           :: Points2(1:3,1:N)
@@ -3916,8 +3761,8 @@ INTEGER                   :: i
 IsNotEqual=.FALSE.
 
 DO i=1,N
-  IF( ABS(Points1(1,i)-Points2(1,i)).GT.1e-14 .OR. & 
-      ABS(Points1(2,i)-Points2(2,i)).GT.1e-14 .OR. & 
+  IF( ABS(Points1(1,i)-Points2(1,i)).GT.1e-14 .OR. &
+      ABS(Points1(2,i)-Points2(2,i)).GT.1e-14 .OR. &
       ABS(Points1(3,i)-Points2(3,i)).GT.1e-14 ) THEN
     IsNotEqual=.TRUE.
     RETURN
@@ -3926,7 +3771,7 @@ END DO ! i=0,N
 
 END SUBROUTINE PointsEqual
 
-SUBROUTINE InitElemBoundingBox() 
+SUBROUTINE InitElemBoundingBox()
 !===================================================================================================================================
 ! init of tight elem bounding box, constructed via beziercontrolpoints
 !===================================================================================================================================
@@ -3934,14 +3779,13 @@ SUBROUTINE InitElemBoundingBox()
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Particle_Globals
-!USE MOD_Particle_Surfaces,       ONLY:GetElemSlabNormalsAndIntervals
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY:ExchangeBezierControlPoints3d
 #endif /*MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -3976,28 +3820,31 @@ LOGICAL,INTENT(OUT)                  :: Inside
 ! LOCAL VARIABLES
 REAL                                 :: x,y,z,P(3)
 !================================================================================================================================
+
 P=ParticlePosition-ElemSlabNormals(1:3,0,ElemID)
+
 ! y is perpendicular to xi & eta directions --> check first, smallest intervall
 y=DOT_PRODUCT(P,ElemSlabNormals(:,2,ElemID))
-!IF((y.LT.ElemSlabIntervals(3,ElemID)-epsilontol).OR.(y.GT.ElemSlabIntervals(4,ElemID)+epsilontol))THEN
+
 IF((y.LT.ElemSlabIntervals(3,ElemID)).OR.(y.GT.ElemSlabIntervals(4,ElemID)))THEN
   Inside=.FALSE.
   RETURN
 END IF
+
 ! than xi
 x=DOT_PRODUCT(P,ElemSlabNormals(:,1,ElemID))
-!IF((x.LT.ElemSlabIntervals(1,ElemID)-epsilontol).OR.(x.GT.ElemSlabIntervals(2,ElemID)+epsilontol))THEN
 IF((x.LT.ElemSlabIntervals(1,ElemID)).OR.(x.GT.ElemSlabIntervals(2,ElemID)))THEN
   Inside=.FALSE.
   RETURN
 END IF
+
 ! than eta
 z=DOT_PRODUCT(P,ElemSlabNormals(:,3,ElemID))
-!IF((z.LT.ElemSlabIntervals(5,ElemID)-epsilontol).OR.(z.GT.ElemSlabIntervals(6,ElemID)+epsilontol))THEN
 IF((z.LT.ElemSlabIntervals(5,ElemID)).OR.(z.GT.ElemSlabIntervals(6,ElemID)))THEN
   Inside=.FALSE.
   RETURN
 END IF
+
 Inside=.TRUE.
 END SUBROUTINE InsideElemBoundingBox
 
@@ -4025,7 +3872,7 @@ USE MOD_Particle_MPI_Vars,                  ONLY:PartMPI
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -4080,7 +3927,7 @@ NGeo2=(NGeo+1)*(NGeo+1)
 NGeo3=NGeo2*(NGeo+1)
 
 ! decide if element is (bi-)linear or curved
-! decide if sides are planar-rect, planar-nonrect, planar-curved, bilinear or curved 
+! decide if sides are planar-rect, planar-nonrect, planar-curved, bilinear or curved
 DO iElem=1,nTotalElems
   ! 1) check if elem is curved
   !   a) get the coordinates of the eight nodes of the hexahedral
@@ -4121,7 +3968,7 @@ DO iElem=1,nTotalElems
       IF(BoundingBoxIsEmpty(SideID))THEN
         v1=(-BezierControlPoints3D(:,0,0   ,    SideID)+BezierControlPoints3D(:,NGeo,0   ,    SideID)   &
             -BezierControlPoints3D(:,0,NGeo,    SideID)+BezierControlPoints3D(:,NGeo,NGeo,    SideID) )
-        
+
         v2=(-BezierControlPoints3D(:,0,0   ,    SideID)-BezierControlPoints3D(:,NGeo,0   ,    SideID)   &
             +BezierControlPoints3D(:,0,NGeo,    SideID)+BezierControlPoints3D(:,NGeo,NGeo,    SideID) )
         SideNormVec(:,TrueSideID) = CROSSNORM(v1,v2)
@@ -4132,9 +3979,9 @@ DO iElem=1,nTotalElems
         ! check if normal vector points outwards
         v2=v1-ElemBaryNGeo(:,iElem)
         IF(flip.EQ.0)THEN
-          IF(DOT_PRODUCT(v2,SideNormVec(:,TrueSideID)).LT.0) SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID) 
+          IF(DOT_PRODUCT(v2,SideNormVec(:,TrueSideID)).LT.0) SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID)
         ELSE IF(flip.EQ.-1)THEN
-          SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID) 
+          SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID)
           PartElemToSide(E2S_FLIP,ilocSide,iElem) = 0
         ELSE
           IF(DOT_PRODUCT(v2,SideNormVec(:,TrueSideID)).GT.0) SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID)
@@ -4193,7 +4040,7 @@ DO iElem=1,nTotalElems
           SideType(TrueSideID)=PLANAR_CURVED
           v1=(-BezierControlPoints3D(:,0,0   ,SideID)+BezierControlPoints3D(:,NGeo,0   ,SideID)   &
               -BezierControlPoints3D(:,0,NGeo,SideID)+BezierControlPoints3D(:,NGeo,NGeo,SideID) )
-          
+
           v2=(-BezierControlPoints3D(:,0,0   ,SideID)-BezierControlPoints3D(:,NGeo,0   ,SideID)   &
               +BezierControlPoints3D(:,0,NGeo,SideID)+BezierControlPoints3D(:,NGeo,NGeo,SideID) )
           SideNormVec(:,TrueSideID) = CROSSNORM(v1,v2)
@@ -4204,9 +4051,9 @@ DO iElem=1,nTotalElems
           ! check if normal vector points outwards
           v2=v1-ElemBaryNGeo(:,iElem)
           IF(flip.EQ.0)THEN
-            IF(DOT_PRODUCT(v2,SideNormVec(:,TrueSideID)).LT.0) SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID) 
+            IF(DOT_PRODUCT(v2,SideNormVec(:,TrueSideID)).LT.0) SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID)
           ELSE IF(flip.EQ.-1)THEN
-            SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID) 
+            SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID)
             PartElemToSide(E2S_FLIP,ilocSide,iElem) = 0
           ELSE
             IF(DOT_PRODUCT(v2,SideNormVec(:,TrueSideID)).GT.0) SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID)
@@ -4219,7 +4066,7 @@ DO iElem=1,nTotalElems
         IF(BoundingBoxIsEmpty(SideID))THEN
           v1=(-BezierControlPoints3D(:,0,0   ,SideID)+BezierControlPoints3D(:,NGeo,0   ,SideID)   &
               -BezierControlPoints3D(:,0,NGeo,SideID)+BezierControlPoints3D(:,NGeo,NGeo,SideID) )
-          
+
           v2=(-BezierControlPoints3D(:,0,0   ,SideID)-BezierControlPoints3D(:,NGeo,0   ,SideID)   &
               +BezierControlPoints3D(:,0,NGeo,SideID)+BezierControlPoints3D(:,NGeo,NGeo,SideID) )
           SideNormVec(:,TrueSideID) = CROSSNORM(v1,v2)
@@ -4230,9 +4077,9 @@ DO iElem=1,nTotalElems
           ! check if normal vector points outwards
           v2=v1-ElemBaryNGeo(:,iElem)
           IF(flip.EQ.0)THEN
-            IF(DOT_PRODUCT(v2,SideNormVec(:,TrueSideID)).LT.0) SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID) 
+            IF(DOT_PRODUCT(v2,SideNormVec(:,TrueSideID)).LT.0) SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID)
           ELSE IF(flip.EQ.-1)THEN
-            SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID) 
+            SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID)
             PartElemToSide(E2S_FLIP,ilocSide,iElem) = 0
           ELSE
             IF(DOT_PRODUCT(v2,SideNormVec(:,TrueSideID)).GT.0) SideNormVec(:,TrueSideID)=-SideNormVec(:,TrueSideID)
@@ -4270,7 +4117,7 @@ DO iElem=1,nTotalElems
 END DO ! iElem=1,nTotalElems
 
 ! sanity check for side periodic type
-SWRITE(UNIT_StdOut,'(A)') ' Sanity Check Particle Periodic Vectors ...'  
+SWRITE(UNIT_StdOut,'(A)') ' Sanity Check Particle Periodic Vectors ...'
 PeriodicReorder = GETLOGICAL('Part-PeriodicReorder','.FALSE.')
 ! Get all required variables
 IF (PeriodicReorder) THEN
@@ -4297,19 +4144,19 @@ DO iSide=1,nPartSides
   END IF
   PVID=SidePeriodicType(iSide)
   IF(PVID.EQ.0) CYCLE
-  
+
   FoundPeriod = FoundPeriod + 1
-  
+
   Vec1=SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
   IF(DOT_PRODUCT(SideNormVec(1:3,BCSideID),Vec1).GT.0) SidePeriodicType(iSide)=-SidePeriodicType(iSide)
 END DO ! iSide=1,nPartSides
-  
+
 ! We are allowed to reorder periodic vectors if needed
 IF (PeriodicReorder) THEN
   DO iSide=1,nPartSides
 
   VecFound = .FALSE.
-  
+
   ! Reload the vectors we just found
   IF(DoRefmapping)THEN
     BCSideID  =PartBCSideList(iSide)
@@ -4319,15 +4166,15 @@ IF (PeriodicReorder) THEN
   END IF
   PVID=SidePeriodicType(iSide)
   IF(PVID.EQ.0) CYCLE
-  
+
   Vec1=SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
   VecLength = NORM2(GEO%PeriodicVectors(1:3,ABS(PVID)))
-                 
+
   ! Check if the vector is already correct
   IF (ALMOSTEQUAL(DOT_PRODUCT(SideNormVec(1:3,BCSideID),Vec1)/VecLength,-1.)) THEN
     VecFound = .TRUE.
     FoundImmid = FoundImmid + 1
-  
+
   ! Check if we can match the side to another periodic vector
   ELSE
     ! Loop over all possible alphas
@@ -4337,28 +4184,28 @@ IF (PeriodicReorder) THEN
         ! Get periodic direction and length
         Vec1      = SIGN(GEO%PeriodicVectors(1:3,ABS(ilocSide)),REAL(ilocSide))
         VecLength = NORM2(GEO%PeriodicVectors(1:3,ABS(ilocSide)))
-        
+
         ! We found a matching periodic vector
         IF (ALMOSTEQUAL(DOT_PRODUCT(SideNormVec(1:3,BCSideID),Vec1)/VecLength,-1.)) THEN
             SidePeriodicType(iSide) = ilocSide
             VecFound = .TRUE.
             FoundLater = FoundLater + 1
             CYCLE
-            
+
         ! Look for vectors within the tolerance angle
         ELSEIF ((DOT_PRODUCT(SideNormVec(1:3,BCSideID),Vec1)/VecLength).LT.-(1.-SIN(PeriodicVecTol/180.*PI))) THEN
             SidePeriodicType(iSide) = ilocSide
             VecFound = .TRUE.
             FoundTol = FoundTol + 1
             CYCLE
-            
+
         END IF
     END DO
   END IF
-  
+
   ! Did not find periodic vector
   IF (.NOT.VecFound) THEN
-  !      
+  !
     IPWRITE(*,*) 'No periodic vector for periodic side found.', BCSideID
     IF (PeriodicStrict) THEN
       CALL abort(__STAMP__,&
@@ -4367,7 +4214,7 @@ IF (PeriodicReorder) THEN
         IPWRITE(*,*) 'Periodic vectors might exist outside tolerance angle! Leaving side as it was.'
     END IF
   END IF
-  
+
   END DO ! iSide=1,nPartSides
 
 ! Check the final result to be sure
@@ -4382,7 +4229,7 @@ IF (PeriodicReorder) THEN
     IF(PVID.EQ.0) CYCLE
     Vec1=SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
     VecLength = NORM2(GEO%PeriodicVectors(1:3,ABS(PVID)))
-    
+
     ! Only check within tolerance angle now
     IF ((DOT_PRODUCT(SideNormVec(1:3,BCSideID),Vec1)/VecLength).GT.-(1.-SIN(PeriodicVecTol/180.*PI))) THEN
       IF (PeriodicStrict) THEN
@@ -4391,7 +4238,7 @@ IF (PeriodicReorder) THEN
       END IF
     END IF
   END DO ! iSide=1,nPartSides
-  
+
   ! Get found faces
 #if USE_MPI
   IF(PartMPI%MPIROOT)THEN
@@ -4406,7 +4253,7 @@ IF (PeriodicReorder) THEN
     CALL MPI_REDUCE(FoundTol           ,0    ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
 END IF
 #endif
-  
+
   SWRITE(UNIT_StdOut,'(A,I8)') ' Number of found periodic         faces: ', FoundPeriod
   SWRITE(UNIT_StdOut,'(A,I8)') ' Number of already correct        faces: ', FoundImmid
   SWRITE(UNIT_StdOut,'(A,I8)') ' Number of reassigned (noTol)     faces: ', FoundLater
@@ -4472,7 +4319,7 @@ USE MOD_Mesh_Vars,                          ONLY:BC
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -4496,7 +4343,7 @@ IF(DoRefMapping)THEN
   TracingBCTotalSides=0
 END IF
 
-! decide if element:  
+! decide if element:
 ! DoRefMapping=T
 ! a) HAS own bc faces
 ! b) HAS bc-face in halo_eps distance
@@ -4526,7 +4373,7 @@ IF(DoRefMapping)THEN
   Distance=DOT_PRODUCT(V1,V1)
   fullMesh=.FALSE.
   ! build list with elements in halo-eps vicinity around bc-elements
-  IF(Distance.LE.halo_eps2) fullMesh=.TRUE.  
+  IF(Distance.LE.halo_eps2) fullMesh=.TRUE.
   ! allocate the types for the element to bc-side mapping
   ALLOCATE( BCElem(1:nTotalElems) )
   ALLOCATE( SideIndex(1:nTotalSides) )
@@ -4792,7 +4639,7 @@ USE MOD_Particle_MPI_HALO,                  ONLY:WriteParticlePartitionInformati
 #endif /*MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -4954,7 +4801,7 @@ USE MOD_Particle_Surfaces_Vars,        ONLY:BaseVectors0,BaseVectors1,BaseVector
 USE MOD_Particle_Mesh_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -4966,33 +4813,14 @@ REAL                                  :: crossVec(3)
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' GET LINEAR SIDE BASEVECTORS...'
 IF(.NOT.DoRefMapping)THEN
-!   ALLOCATE(SideID2PlanarSideID(1:nTotalSides))
-!   SideID2PlanarSideID(:) = 0
-!   iSide_temp = 0
-!   DO iSide=1,nTotalSides
-!     IF (SideType(iSide).EQ.PLANAR_RECT) THEN
-!       iSide_temp = iSide_temp + 1
-!       SideID2PlanarSideID(iSide) = iSide_temp
-!     END IF
-!   END DO
-  
   ALLOCATE( BaseVectors0(1:3,1:nTotalSides),&
             BaseVectors1(1:3,1:nTotalSides),&
             BaseVectors2(1:3,1:nTotalSides),&
             BaseVectors3(1:3,1:nTotalSides),&
             BaseVectorsScale(1:nTotalSides))
-  !IF (GEO%nPeriodicVectors.GT.0) THEN
-  !  ALLOCATE( BaseVectors0flip(1:3,1:nTotalSides),&
-  !            BaseVectors1flip(1:3,1:nTotalSides),&
-  !            BaseVectors2flip(1:3,1:nTotalSides),&
-  !            BaseVectors3flip(1:3,1:nTotalSides))
-  !END IF
-   
+
   DO iSide=1,nTotalSides
     ! extension for periodic sides
-!     IF ((SideType(iSide).EQ.PLANAR_RECT) &
-!        .OR. (SideType(iSide).EQ.PLANAR_NONRECT) .OR. (SideType(iSide).EQ.BILINEAR)))THEN
-!       iSide_temp = SideID2PlanarSideID(iSide)
     BaseVectors0(:,iSide) = (+BezierControlPoints3D(:,0,0,iSide)+BezierControlPoints3D(:,NGeo,0,iSide)   &
                               +BezierControlPoints3D(:,0,NGeo,iSide)+BezierControlPoints3D(:,NGeo,NGeo,iSide) )
     BaseVectors1(:,iSide) = (-BezierControlPoints3D(:,0,0,iSide)+BezierControlPoints3D(:,NGeo,0,iSide)   &
@@ -5032,7 +4860,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE GetLinearSideBaseVectors
 
 
-SUBROUTINE ElemConnectivity() 
+SUBROUTINE ElemConnectivity()
 !===================================================================================================================================
 ! computes the element connectivity between different elements, inclusive the halo region
 ! and mortar interfaces
@@ -5052,13 +4880,13 @@ USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping
 #if USE_MPI
 USE MOD_MPI_Vars,            ONLY:OffSetElemMPI
 USE MOD_Particle_MPI_Vars,   ONLY:PartHaloElemToProc
-#endif /*MPI*/  
+#endif /*MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -5081,7 +4909,7 @@ ALLOCATE(PartElemToElemAndSide(1:8,1:6,1:nTotalElems))
                       ! [1]1:4 - MortarNeighborElemID
                       ! [1]5:8 -       Neighbor locSideID
                       ! [2]1:6 - locSideID
-                      ! [3]    - nTotalElems 
+                      ! [3]    - nTotalElems
                       ! if the connections points to an element which is not in MY region (MY elems + halo elems)
                       ! then this connection points to -1
 ALLOCATE(ElemToGlobalElemID(1:nTotalElems))
@@ -5128,7 +4956,7 @@ END DO ! iElem=1,PP_nElems
 ! which local side of neighbor element is connected to MY element
 DO iElem=1,nTotalElems
   DO ilocSide=1,6
-    SideID=PartElemToSide(E2S_SIDE_ID,ilocSide,iElem)    
+    SideID=PartElemToSide(E2S_SIDE_ID,ilocSide,iElem)
     ! check for ref-mapping or tracing
     IF(DoRefMapping)THEN
       IF(SideID.GT.0)THEN
@@ -5140,7 +4968,7 @@ DO iElem=1,nTotalElems
       BCSideID=SideID
     END IF
     ! disable BCSideID, if it is NOT a periodic side
-    IF(BCSideID.GT.0)THEN ! only BC faces 
+    IF(BCSideID.GT.0)THEN ! only BC faces
       IF(SidePeriodicType(SideID).NE.0)THEN ! only periodic sides
         Vec1=SideNormVec(1:3,BCSideID)
         IF(ALMOSTZERO(DOT_PRODUCT(Vec1,Vec1))) CALL abort(&
@@ -5163,7 +4991,7 @@ __STAMP__&
             IF(ElemID.LE.0) CYCLE
             IF(ElemID.EQ.iElem) THEN
               ! check if periodic side
-              SideID=PartElemToSide(E2S_SIDE_ID,ilocSide2,NBElemID)    
+              SideID=PartElemToSide(E2S_SIDE_ID,ilocSide2,NBElemID)
               ! check for ref-mapping or tracing
               IF(DoRefMapping)THEN
                 IF(SideID.GT.0)THEN
@@ -5174,7 +5002,7 @@ __STAMP__&
               ELSE
                 BCSideID=SideID
               END IF
-              IF(BCSideID.GT.0)THEN ! only BC faces 
+              IF(BCSideID.GT.0)THEN ! only BC faces
                 IF(SidePeriodicType(SideID).NE.0)THEN ! only periodic sides
                   IF (ALMOSTEQUAL(ABS(DOT_PRODUCT(Vec1,SideNormVec(1:3,BCSideID))),1.0) .OR. .NOT.(PeriodicCheck) ) THEN
                     ! finally, found matching local sides
@@ -5207,7 +5035,7 @@ __STAMP__&
             IF(ElemID.LE.0) CYCLE
             IF(ElemID.EQ.iElem) THEN
               ! check if periodic side
-              SideID=PartElemToSide(E2S_SIDE_ID,ilocSide2,NBElemID)    
+              SideID=PartElemToSide(E2S_SIDE_ID,ilocSide2,NBElemID)
               ! check for ref-mapping or tracing
               IF(DoRefMapping)THEN
                 IF(SideID.GT.0)THEN
@@ -5270,7 +5098,7 @@ END DO
 ! check is working on CONFORM mesh!!!
 DO iElem=1,nTotalElems
   DO ilocSide=1,6
-    SideID=PartElemToSide(E2S_SIDE_ID,ilocSide,iElem)    
+    SideID=PartElemToSide(E2S_SIDE_ID,ilocSide,iElem)
     IF(DoRefMapping)THEN
       IF(SideID.LT.1) CYCLE
     ELSE
@@ -5369,7 +5197,7 @@ END DO
 DO jNode=1,nNodes
   ALLOCATE(NodeToElem(jNode)%ElemID(GEO%ElemsOnNode(jNode)))
 END DO
-! connect local elements using local node indeces 
+! connect local elements using local node indeces
 ! (mpi indeces are doubled indeces and not connected therefore done different)
 TempNumNodes(:)=0
 DO iElem=1,nElems
@@ -5425,7 +5253,7 @@ DO iElem=1,PP_nElems
 END DO
 
 #if USE_MPI
-! find all real neighbour elements for elements with halo neighbours 
+! find all real neighbour elements for elements with halo neighbours
 ! recurively checking connected halo area
 IF (nTotalElems.GT.PP_nElems) THEN
   DO iElem =1, PP_nElems
@@ -5544,19 +5372,19 @@ END DO
 END SUBROUTINE RecurseCheckNeighElems
 
 
-SUBROUTINE DuplicateSlavePeriodicSides() 
+SUBROUTINE DuplicateSlavePeriodicSides()
 !===================================================================================================================================
 ! duplicate periodic sides from old nPartSides=nSides to nPartSidesNew=nSides+nDuplicatePeriodicSides
-! without MPI 
+! without MPI
 ! 1) loop over all sides and detect periodic sides
 ! 2) increase BezierControlPoints and SideXXX from old nSides to nSides+nDuplicatePeriodicSides
-! 3) loop over the OLD sides and copy the corresponding SideXXX. The missing BezierControlPoints (periodic shifted values) 
+! 3) loop over the OLD sides and copy the corresponding SideXXX. The missing BezierControlPoints (periodic shifted values)
 !    are build from the other element. Now two BezierControlPoints existes which are shifted by the sideperiodicvector
 ! 4) shift and map sideperiodicvector and displacement to match new sides
 ! with MPI
 ! 1) loop over all sides and detect periodic sides
 ! 2) increase BezierControlPoints and SideXXX from old nSides to nSides+nDuplicatePeriodicSides
-! 3) loop over the OLD sides and copy the corresponding SideXXX. The missing BezierControlPoints (periodic shifted values) 
+! 3) loop over the OLD sides and copy the corresponding SideXXX. The missing BezierControlPoints (periodic shifted values)
 !    are build from the other element. Now two BezierControlPoints existes which are shifted by the sideperiodicvector
 ! 3b) newSideId depends on localSideID and yourMPISide
 !     a) both periodic sides are on proc:
@@ -5590,15 +5418,15 @@ USE MOD_Particle_MPI_Vars,       ONLY: printBezierControlPointsWarnings
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: iSide,NBElemID,tmpnSides,NBlocSideID,ElemID,newSideID,locSideID,PVID
 INTEGER                              :: BCID,iBC,flip,ilocSide,iElem,SideID,idir
-REAL,ALLOCATABLE                     :: DummyBezierControlPoints3D(:,:,:,:)                                
-REAL,ALLOCATABLE                     :: DummyBezierControlPoints3DElevated(:,:,:,:)                                
+REAL,ALLOCATABLE                     :: DummyBezierControlPoints3D(:,:,:,:)
+REAL,ALLOCATABLE                     :: DummyBezierControlPoints3DElevated(:,:,:,:)
 REAL,ALLOCATABLE,DIMENSION(:,:,:)    :: DummySideSlabNormals                  ! normal vectors of bounding slab box
 REAL,ALLOCATABLE,DIMENSION(:,:)      :: DummySideSlabIntervals               ! intervalls beta1, beta2, beta3
 !REAL,ALLOCATABLE,DIMENSION(:,:)      :: DummySidePeriodicDisplacement        ! intervalls beta1, beta2, beta3
@@ -5662,7 +5490,7 @@ IF(MapPeriodicSides)THEN
   ALLOCATE(DummyPartSideToElem(1:5,1:nTotalSides))
   ALLOCATE(DummySidePeriodicType(1:nTotalSides))
   ALLOCATE(DummyMortarSlave2MasterInfo(1:nTotalSides))
-  
+
   ! copy data to backup
   DummyBezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:nTotalSides) = BezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:nTotalSides)
   DummyBezierControlPoints3dElevated(1:3,0:NGeoElevated,0:NGeoElevated,1:nTotalSides) &
@@ -5689,7 +5517,7 @@ IF(MapPeriodicSides)THEN
   DEALLOCATE(PartSideToElem)
   DEALLOCATE(SidePeriodicType)
 
-  tmpnSides  =nTotalSides 
+  tmpnSides  =nTotalSides
   nTotalSides=nTotalSides+nPartPeriodicSides
   ALLOCATE(BezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:nTotalSides))
   BezierControlPoints3d=-1.
@@ -5726,7 +5554,7 @@ IF(MapPeriodicSides)THEN
   PartSideToElem(1:5,1:tmpnSides)                      = DummyPartSideTOElem(1:5,1:tmpnSides)
   SidePeriodicType(1:tmpnSides)                        = DummySidePeriodicType(1:tmpnSides)
 
-  ! 3) loop over the OLD sides and copy the corresponding SideXXX. The missing BezierControlPoints (periodic shifted values) 
+  ! 3) loop over the OLD sides and copy the corresponding SideXXX. The missing BezierControlPoints (periodic shifted values)
   !    are build from the other element. Now two BezierControlPoints existes which are shifted by the sideperiodicvector
   nPartPeriodicSides=0
   DO iSide=1,tmpnSides
@@ -5749,11 +5577,11 @@ IF(MapPeriodicSides)THEN
         newSideID=tmpnSides+nPartPeriodicSides
         ! bc
         BCID = BC(iSide)
-        PVID = BoundaryType(BCID,BC_ALPHA) 
+        PVID = BoundaryType(BCID,BC_ALPHA)
         ! loop over bc to get the NEW BC type
         DO iBC = 1,nBCs
           IF(BoundaryType(iBC,BC_ALPHA).EQ.-PVID) THEn
-            BC(newSideID)=iBC 
+            BC(newSideID)=iBC
             EXIT
           END IF
         END DO
@@ -5783,7 +5611,7 @@ IF(MapPeriodicSides)THEN
       ! rebuild BezierControlPoints3D (simplified version, all BezierControlPoints3D are rebuild)
       CALL GetBezierControlPoints3D(XCL_NGeo(1:3,0:NGeo,0:NGeo,0:NGeo,NBElemID),NBElemID,ilocSide_In=NBlocSideID,SideID_In=NewSideID)
       ! remains equal because of MOVEMENT and MIRRORING of periodic side
-      ! periodic displacement 
+      ! periodic displacement
       !DO q=0,NGeo
       !  DO p=0,NGeo
       !    BezierControlPoints3d(1:3,p,q,newSideID)  = DummyBezierControlPoints3d(1:3,p,q,iSide) &
@@ -5849,7 +5677,7 @@ IF(MapPeriodicSides)THEN
       IF(xTest(3)-1e-8.GT.MinMaxGlob(6)) SidePeriodicType(newSideID)=-SidePeriodicType(newSideID)
     END IF
   END DO ! iSide=1,tmpnSides
-  ! deallocate dummy  
+  ! deallocate dummy
   DEALLOCATE(DummyBezierControlPoints3D)
   DEALLOCATE(DummySideSlabNormals)
   DEALLOCATE(DummySideSlabIntervals)
@@ -5886,7 +5714,7 @@ SWRITE(UNIT_StdOut,'(A)') ' Sanity check of duplication successful!'
 END SUBROUTINE DuplicateSlavePeriodicSides
 
 
-SUBROUTINE MarkAllBCSides() 
+SUBROUTINE MarkAllBCSides()
 !===================================================================================================================================
 ! CAUTION: nTotalBCSides is reset from old value to new current,process-local BCSides
 ! The PartBCSideList contains a mapping from the global side list to a local, pure BC side list
@@ -5899,17 +5727,17 @@ SUBROUTINE MarkAllBCSides()
 ! 1:nBCSides - nInnerSides - nSomePeriodicSides - nMortarSides - nMPISides - nMissingPeriodicSides
 ! As RefMapping requires only the BC sides, a shorter list is generated over all
 ! nTotalBCSides which is NOW smaller than nPartSides or nTotalSides
-! CAUTION and BRAIN-FUCK: 
+! CAUTION and BRAIN-FUCK:
 ! This smaller list is used to build: from 1:nTotalBCSides < nTotalSides and is used for
 ! SideNormVec,SideTypes,SideDistance
-! BUT: 1:nTotalSides is STILL used for 
+! BUT: 1:nTotalSides is STILL used for
 ! BezierControlPoints3D, SideSlabInterVals,SideSlabNormals,BoundingBoxIsEmpty
 ! and are NOT reshaped yet, hence, the length of the array remains nTotalSides
-! BRAIN-FUCK CONTINUOUS: 
-! During building of the HALO region, the BezierControlPoints variables are further increased with nTotalSides while the 
+! BRAIN-FUCK CONTINUOUS:
+! During building of the HALO region, the BezierControlPoints variables are further increased with nTotalSides while the
 ! already small arrays increases with nTotalBCSides
 ! After building the HALO region, the actual arrays are reshaped and a stored in shorter arrays
-! 
+!
 ! AND no rule without a break:
 ! SidePeriodicType is still on nTotalSides and NOT reshaped
 !===================================================================================================================================
@@ -5925,7 +5753,7 @@ USE MOD_Globals
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -5938,27 +5766,27 @@ IF(.NOT.DoRefMapping) RETURN
 
 DEALLOCATE(PartBCSideList)
 ALLOCATE(PartBCSideList(1:nTotalSides))
-! BC Sides 
+! BC Sides
 PartBCSideList=-1
 nTotalBCSides=0
 DO iSide=1,nBCSides
   nTotalBCSides=nTotalBCSides+1
   PartBCSideList(iSide)=nTotalBCSides
 END DO
-  
+
 DO iSide=nBCSides+1,nSides+nPartPeriodicSides
   IF(BC(iSide).EQ.0) CYCLE
   nTotalBCSides=nTotalBCSides+1
   PartBCSideList(iSide)=nTotalBCSides
 END DO ! iSide
 
-! nPartsides 
+! nPartsides
 nPartSides   =nPartPeriodicSides+nSides
 
 END SUBROUTINE MarkAllBCSides
 
 
-SUBROUTINE BGMIndexOfElement(ElemID,ElemToBGM) 
+SUBROUTINE BGMIndexOfElement(ElemID,ElemToBGM)
 !===================================================================================================================================
 ! computes the element indices of an given element in the BGM-mesh
 !===================================================================================================================================
@@ -5975,7 +5803,7 @@ USE MOD_Particle_Mesh_Vars,                 ONLY:PartElemToSide
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 INTEGER,INTENT(IN)        :: ElemID
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -6044,6 +5872,7 @@ DO iLocSide = 1,6
   zmax=MAX(zmax,MAXVAL(BezierControlPoints3D_tmp(3,:,:)))
 END DO ! ilocSide
 
+! return the corresponding background mesh cell for each element corner
 ElemToBGM(1) = CEILING((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1))
 ElemToBGM(2) = CEILING((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))
 ElemToBGM(3) = CEILING((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2))
@@ -6051,11 +5880,10 @@ ElemToBGM(4) = CEILING((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))
 ElemToBGM(5) = CEILING((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3))
 ElemToBGM(6) = CEILING((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))
 
-
 END SUBROUTINE BGMIndexOfElement
 
 
-SUBROUTINE GetFIBGMMinMax() 
+SUBROUTINE GetFIBGMMinMax()
 !===================================================================================================================================
 ! computes the minimum and maximum value of the FIBGM mesh
 !===================================================================================================================================
@@ -6072,7 +5900,7 @@ USE MOD_Particle_MPI_Vars,                  ONLY:PartMPI
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -6085,6 +5913,7 @@ REAL            :: xmin, xmax, ymin, ymax, zmin, zmax
 !   !--- If this MPI process does not contain particles, step out
 !   IF (PMPIVAR%GROUP.EQ.MPI_GROUP_EMPTY) RETURN
 !#endif
+
 !--- calc min and max coordinates for mesh
 xmin = HUGE(1.0)
 xmax =-HUGE(1.0)
@@ -6093,7 +5922,7 @@ ymax =-HUGE(1.0)
 zmin = HUGE(1.0)
 zmax =-HUGE(1.0)
 
-! serch for min,max of BezierControlPoints, e.g. the convec hull of the domain
+! search for min,max of BezierControlPoints, e.g. the convec hull of the domain
 ! more accurate, XCL_NGeo
 !DO iElem=1,nTotalElems
 !  xmin=MIN(xmin,MINVAL(XCL_NGeo(1,:,:,:,iElem)))
@@ -6104,9 +5933,11 @@ zmax =-HUGE(1.0)
 !  zmax=MAX(zmax,MAXVAL(XCL_NGeo(3,:,:,:,iElem)))
 !END DO ! iElem
 
-! bounding box!!
+! determine the bounding box using the BezierControlPoints
 DO iSide=1,nTotalSides
+  ! current side is slave side of a mortar element
   IF(MortarSlave2MasterInfo(iSide).NE.-1) CYCLE
+
   xmin=MIN(xmin,MINVAL(BezierControlPoints3D(1,:,:,iSide)))
   xmax=MAX(xmax,MAXVAL(BezierControlPoints3D(1,:,:,iSide)))
   ymin=MIN(ymin,MINVAL(BezierControlPoints3D(2,:,:,iSide)))
@@ -6115,6 +5946,7 @@ DO iSide=1,nTotalSides
   zmax=MAX(zmax,MAXVAL(BezierControlPoints3D(3,:,:,iSide)))
 END DO ! iSide
 
+! save the bounding box for the local proc
 GEO%xmin=xmin
 GEO%xmax=xmax
 GEO%ymin=ymin
@@ -6123,21 +5955,22 @@ GEO%zmin=zmin
 GEO%zmax=zmax
 
 #if USE_MPI
-! get global min, max
-  CALL MPI_ALLREDUCE(GEO%xmin, GEO%xminglob, 1, MPI_DOUBLE_PRECISION, MPI_MIN, PartMPI%COMM, IERROR)
-  CALL MPI_ALLREDUCE(GEO%ymin, GEO%yminglob, 1, MPI_DOUBLE_PRECISION, MPI_MIN, PartMPI%COMM, IERROR)
-  CALL MPI_ALLREDUCE(GEO%zmin, GEO%zminglob, 1, MPI_DOUBLE_PRECISION, MPI_MIN, PartMPI%COMM, IERROR)
-  CALL MPI_ALLREDUCE(GEO%xmax, GEO%xmaxglob, 1, MPI_DOUBLE_PRECISION, MPI_MAX, PartMPI%COMM, IERROR)
-  CALL MPI_ALLREDUCE(GEO%ymax, GEO%ymaxglob, 1, MPI_DOUBLE_PRECISION, MPI_MAX, PartMPI%COMM, IERROR)
-  CALL MPI_ALLREDUCE(GEO%zmax, GEO%zmaxglob, 1, MPI_DOUBLE_PRECISION, MPI_MAX, PartMPI%COMM, IERROR)
+! get global min, max for the bounding box
+CALL MPI_ALLREDUCE(GEO%xmin, GEO%xminglob, 1, MPI_DOUBLE_PRECISION, MPI_MIN, PartMPI%COMM, IERROR)
+CALL MPI_ALLREDUCE(GEO%ymin, GEO%yminglob, 1, MPI_DOUBLE_PRECISION, MPI_MIN, PartMPI%COMM, IERROR)
+CALL MPI_ALLREDUCE(GEO%zmin, GEO%zminglob, 1, MPI_DOUBLE_PRECISION, MPI_MIN, PartMPI%COMM, IERROR)
+CALL MPI_ALLREDUCE(GEO%xmax, GEO%xmaxglob, 1, MPI_DOUBLE_PRECISION, MPI_MAX, PartMPI%COMM, IERROR)
+CALL MPI_ALLREDUCE(GEO%ymax, GEO%ymaxglob, 1, MPI_DOUBLE_PRECISION, MPI_MAX, PartMPI%COMM, IERROR)
+CALL MPI_ALLREDUCE(GEO%zmax, GEO%zmaxglob, 1, MPI_DOUBLE_PRECISION, MPI_MAX, PartMPI%COMM, IERROR)
 #else
-  GEO%xminglob=GEO%xmin
-  GEO%yminglob=GEO%ymin
-  GEO%zminglob=GEO%zmin
-  GEO%xmaxglob=GEO%xmax
-  GEO%ymaxglob=GEO%ymax
-  GEO%zmaxglob=GEO%zmax
-#endif   
+! compiling without MPI support, global and local boxes are identical
+GEO%xminglob=GEO%xmin
+GEO%yminglob=GEO%ymin
+GEO%zminglob=GEO%zmin
+GEO%xmaxglob=GEO%xmax
+GEO%ymaxglob=GEO%ymax
+GEO%zmaxglob=GEO%zmax
+#endif
 
 END SUBROUTINE GetFIBGMMinMax
 
@@ -6156,7 +5989,7 @@ USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3d
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 INTEGER,INTENT(IN)       :: nTotalBCSides
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -6205,7 +6038,7 @@ USE MOD_Particle_Utils,         ONLY:InsertionSort
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 INTEGER,INTENT(IN)       :: nTotalBCSides
 REAL,INTENT(IN)          :: SideOrigin(1:3,1:nTotalBCSides),SideRadius(1:nTotalBCSides)
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -6297,7 +6130,7 @@ DO iAuxBC=1,nAuxBCs
               ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
               EXIT
             END IF
-          END DO         
+          END DO
         END IF
       ELSE IF ((fmin.LT.0 .AND. fmax.LT.0).OR.(fmin.GT.0 .AND. fmax.GT.0)) THEN !plane does not intersect the box!
         ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
@@ -6418,7 +6251,7 @@ USE MOD_Particle_Mesh_Vars,                 ONLY:PartElemToSide
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 INTEGER,INTENT(IN)        :: ElemID
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -6491,7 +6324,7 @@ Bounds(:,2)=(/ymin,ymax/)
 Bounds(:,3)=(/zmin,zmax/)
 
 END SUBROUTINE BoundsOfElement
-    
+
 
 SUBROUTINE CheckBoundsWithCartRadius(Bounds,dir,origin,radius,positiontype)
 !===================================================================================================================================

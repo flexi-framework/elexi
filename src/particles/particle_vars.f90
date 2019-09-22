@@ -37,7 +37,7 @@ REAL                  :: dt_max_particles                                    ! M
 
 REAL    , ALLOCATABLE :: PartState(:,:)                                      ! (1:NParts,1:6) with 2nd index: x,y,z,vx,vy,vz
 #if USE_RW
-REAL    , ALLOCATABLE :: PartTurbState(:,:)                                  ! (1:NParts,1:4) with 2nd index vx',vy',vz',t_remaining
+REAL    , ALLOCATABLE :: TurbPartState(:,:)                                  ! (1:NParts,1:4) with 2nd index vx',vy',vz',t_remaining
 #endif
 REAL    , ALLOCATABLE :: PartPosRef(:,:)                                     ! (1:3,1:NParts) particles pos mapped to -1|1 space
 INTEGER , ALLOCATABLE :: PartPosGauss(:,:)                                   ! (1:NParts,1:3) Gauss point localization of particles
@@ -126,15 +126,6 @@ TYPE tInit                                                                   ! P
   INTEGER(KIND=8)                        :: InsertedParticle                 ! Number of all already inserted Particles
   INTEGER(KIND=8)                        :: InsertedParticleSurplus          ! accumulated "negative" number of inserted Particles
   INTEGER(KIND=4)                        :: InsertedParticleMisMatch=0       ! error in number of inserted particles of last step
-  REAL                                   :: Nsigma                           ! sigma multiple of maxwell for virtual insert length
-  LOGICAL                                :: VirtPreInsert                    ! virtual Pre-Inserting region (adapted SetPos/Velo)?
-  CHARACTER(40)                          :: vpiDomainType                    ! specifying Keyword for virtual Pre-Inserting region
-                                                                             ! implemented: - perpendicular_extrusion (default)
-                                                                             !              - freestream
-                                                                             !              - orifice
-                                                                             !              - ...more following...
-  LOGICAL                                :: vpiBVBuffer(4)                   ! incl. buffer region in -BV1/+BV1/-BV2/+BV2 direction?
-  !TYPE(tConstPressure)                   :: ConstPress!(:)           =>NULL() !
   INTEGER                                :: NumberOfExcludeRegions           ! Number of different regions to be excluded
   TYPE(tExcludeRegion), ALLOCATABLE      :: ExcludeRegion(:)
 #if USE_MPI

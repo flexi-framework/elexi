@@ -70,7 +70,7 @@ SUBROUTINE ParticleRandomWalk(t)
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Particle_Vars,          ONLY : PDM, Pt
+USE MOD_Particle_Vars,          ONLY : PDM
 USE MOD_PICInterpolation_Vars,  ONLY : FieldAtParticle
 USE MOD_Particle_Vars,          ONLY : TurbPartState
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ REAL,INTENT(IN)     :: FieldAtParticle(1:PP_nVar)
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                :: tke,omega,epsturb,C_mu
+REAL                :: tke,epsturb,C_mu
 REAL                :: l_e,t_e,t_r,t_int,tau_e,tau
 REAL                :: udash,vdash,wdash
 REAL,PARAMETER      :: C_L = 0.3                                ! Debhi (2008)

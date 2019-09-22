@@ -130,32 +130,11 @@ SUBROUTINE Particle_TimeDisc(iter)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Particle_Mesh_Vars
 USE MOD_TimeDisc_Vars       ,ONLY: dt,maxIter
-USE MOD_Analyze             ,ONLY: Analyze
-USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
-USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_Output              ,ONLY: Visualize,PrintStatusLine
-USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
-USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
-USE MOD_Overintegration     ,ONLY: Overintegration
-USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
-USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
-#if FV_ENABLED
-USE MOD_FV
-#endif
-use MOD_IO_HDF5
 USE MOD_Particle_Mesh       ,ONLY: CountPartsPerElem
-USE MOD_Particle_Mesh_Vars
-#if USE_MPI
-USE MOD_Particle_MPI        ,ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
-#endif /*MPI*/
-USE MOD_Particle_Output     ,ONLY: Visualize_Particles
-USE MOD_Particle_Tracking_vars
-USE MOD_Particle_Vars
-USE MOD_ReadInTools
-USE MOD_Particle_HDF5_output,ONLY: WriteParticleToHDF5
-
+USE MOD_Particle_Tracking_Vars,ONLY: nLostParts,countNbOfLostParts
+USE MOD_Particle_Vars       ,ONLY: PDM,Pt,PartState,dt_max_particles
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -170,7 +149,7 @@ REAL                         :: vMax,vMaxx,vMaxy,vMaxz
 !===================================================================================================================================
 
 IF (iter.LE.maxIter) THEN
-    dt_max_particles = dt ! initial evolution of field with maxwellts
+    dt_max_particles = dt ! initial evolution of field
 ELSE
   NoPartInside=.TRUE.
   DO
@@ -235,16 +214,13 @@ USE MOD_Vector
 USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
 USE MOD_TimeDisc_Vars,           ONLY: t
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,       ONLY: DoExternalParts
 USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartToFIBGM
 #endif /*MPI*/
 USE MOD_part_emission,           ONLY: ParticleInserting
 USE MOD_part_RHS,                ONLY: CalcPartRHS
 USE MOD_PICInterpolation
-!USE MOD_PICDepo
 USE MOD_Part_tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
@@ -266,34 +242,10 @@ CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of 
 #endif /*MPI*/
 
 IF (t.GE.DelayTime) THEN
-  ! communicate shape function particles
 #if USE_MPI
   PartMPIExchange%nMPIParticles=0
-  IF(DoExternalParts)THEN
-    ! as we do not have the shape function here, we have to deallocate something
-    SDEALLOCATE(ExtPartState)
-    SDEALLOCATE(ExtPartSpecies)
-    SDEALLOCATE(ExtPartToFIBGM)
-    ! open receive buffer for number of particles
-    CALL IRecvNbofParticles()
-    ! send number of particles
-    CALL SendNbOfParticles()
-  END IF
 #endif /*MPI*/
-!CALL Deposition(doInnerParts=.TRUE.) ! because of emmision and UpdateParticlePosition
-#if USE_MPI
-  IF(DoExternalParts)THEN
-    ! finish communication
-    CALL MPIParticleRecv()
-  END IF
-  ! here: finish deposition with delta kernal
-  !       maps source terms in physical space
-  ! ALWAYS require
-  PartMPIExchange%nMPIParticles=0
-#endif /*MPI*/
-!  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
 END IF
-!#endif /*PARTICLES*/
 
 ! set last data already here, since surfaceflux moved before interpolation
 LastPartPos(1:PDM%ParticleVecLength,1)=PartState(1:PDM%ParticleVecLength,1)
@@ -385,11 +337,9 @@ SUBROUTINE Particle_TimeStepByLSERK_RHS(t,iStage,b_dt)
 USE MOD_Globals
 USE MOD_TimeDisc_Vars,           ONLY: nRKStages
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,       ONLY: DoExternalParts
 USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-USE MOD_Particle_MPI_Vars,       ONLY: ExtPartState,ExtPartSpecies,ExtPartToFIBGM
 #endif /*MPI*/
 USE MOD_PICInterpolation
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
@@ -410,38 +360,9 @@ CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of 
 #endif /*MPI*/
 
 IF (t.GE.DelayTime) THEN
-  ! communicate shape function particles
 #if USE_MPI
-  PartMPIExchange%nMPIParticles=0
-  IF(DoExternalParts)THEN
-    ! as we do not have the shape function here, we have to deallocate something
-    SDEALLOCATE(ExtPartState)
-    SDEALLOCATE(ExtPartSpecies)
-    SDEALLOCATE(ExtPartToFIBGM)
-    ! open receive buffer for number of particles
-    CALL IRecvNbofParticles()
-    ! send number of particles
-    CALL SendNbOfParticles()
-    ! finish communication of number of particles and send particles
-    CALL MPIParticleSend()
-  END IF
-#endif /*MPI*/
-
-  ! because of emmission and UpdateParticlePosition
-!  CALL Deposition(doInnerParts=.TRUE.)
-
-#if USE_MPI
-  IF(DoExternalParts)THEN
-    ! finish communication
-    CALL MPIParticleRecv()
-  END IF
-  ! here: finish deposition with delta kernel
-  !       maps source terms in physical space
-  ! ALWAYS require
   PartMPIExchange%nMPIParticles=0
 #endif /*USE_MPI*/
-
-!  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
 END IF
 
   ! set last data already here, since surfaceflux moved before interpolation
@@ -491,7 +412,7 @@ USE MOD_part_emission,           ONLY: ParticleInserting
 USE MOD_Part_tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
-USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PEM, PDM, Species,PartSpecies
+USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM, Species,PartSpecies
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
@@ -631,7 +552,6 @@ IF (t.GE.DelayTime) THEN
   CALL MPIParticleSend()   ! finish communication of number of particles and send particles
   CALL MPIParticleRecv()   ! finish communication
 #endif
-!  CALL ParticleCollectCharges()
 END IF
 
 END SUBROUTINE Particle_TimeStepByLSERK
@@ -670,16 +590,10 @@ REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 CALL CountPartsPerElem(ResetNumberOfParticles=.FALSE.) !for scaling of tParts of LB
 #endif
 
-! deposition
 IF (t.GE.DelayTime) THEN
-!  CALL Deposition(doInnerParts=.TRUE.) ! because of emission and UpdateParticlePosition
 #if USE_MPI
-  ! here: finish deposition with delta kernel
-  !       maps source terms in physical space
-  ! ALWAYS require
   PartMPIExchange%nMPIParticles=0
 #endif /*USE_MPI*/
-!  CALL Deposition(doInnerParts=.FALSE.) ! needed for closing communication
 END IF
 
 LastPartPos(1:PDM%ParticleVecLength,1)=PartState(1:PDM%ParticleVecLength,1)
@@ -711,17 +625,11 @@ USE MOD_PreProc
 USE MOD_Vector
 USE MOD_Mesh_Vars,               ONLY: MeshFile
 USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
-USE MOD_PruettDamping,           ONLY: TempFilterTimeDeriv
 USE MOD_Analyze_Vars,            ONLY: tWriteData
 USE MOD_HDF5_Output,             ONLY: WriteState
-#if FV_ENABLED
-USE MOD_FV,                      ONLY: FV_Switch
-USE MOD_FV_Vars,                 ONLY: FV_toDGinRK
-#endif
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
-!USE MOD_PICDepo,                 ONLY: Deposition
 USE MOD_PICInterpolation,        ONLY: InterpolateFieldToParticle
-USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PEM, PDM, Species,PartSpecies
+USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM, Species,PartSpecies
 USE MOD_part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_part_emission,           ONLY: ParticleInserting
@@ -881,9 +789,6 @@ END IF
 ! <<<<<
 ! AB HIEER vielleicht nur 1x am Ende der RK stage
 IF (iStage.EQ.nRKStages) THEN
-!#if USE_MPI
-!  PartMPIExchange%nMPIParticles=0 ! and set number of received particles to zero for deposition
-!#endif
   IF ((t.GE.DelayTime).OR.(t.EQ.0)) THEN
     CALL UpdateNextFreePosition()
   END IF

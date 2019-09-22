@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -31,7 +31,7 @@ CONTAINS
 
 SUBROUTINE InitPeriodicBC()
 !===================================================================================================================================
-! Computes the periodic-displacement vector 
+! Computes the periodic-displacement vector
 ! Both periodic sides have to be planer and parallel!
 !===================================================================================================================================
 ! MODULES
@@ -52,23 +52,30 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                :: iVec, ind, ind2,iBC
 CHARACTER(32)          :: hilf
 LOGICAL                :: hasPeriodic
 !===================================================================================================================================
 
 GEO%nPeriodicVectors       = GETINT('Part-nPeriodicVectors','0')
-! sanity check with DG
+
+! sanity check with DG boundary conditions
 hasPeriodic=.FALSE.
+
+! loop over all DG BCs and check for a periodic BC
 DO iBC=1,nBCs
-  IF(BoundaryType(iBC,BC_TYPE).EQ.1) hasPeriodic=.TRUE.  
+  IF(BoundaryType(iBC,BC_TYPE).EQ.1) hasPeriodic=.TRUE.
 END DO ! iBC=1,nBCs
+
+! found periodic DG BC but no periodic particle BC
 IF(hasPeriodic .AND. GEO%nPeriodicVectors.EQ.0)THEN
   CALL abort(&
 __STAMP__&
   ,' Periodic-field-BCs require to set the periodic-vectors for the particles!')
 END IF
+
+! found no periodic DG BC but periodic particle BC
 IF(.NOT.hasPeriodic .AND. GEO%nPeriodicVectors.GT.0)THEN
   CALL abort(&
 __STAMP__&
@@ -77,9 +84,9 @@ END IF
 
 DO iVec = 1, SIZE(PartBound%TargetBoundCond)
   IF((PartBound%TargetBoundCond(iVec).EQ.PartBound%PeriodicBC).AND.(GEO%nPeriodicVectors.EQ.0))THEN
-CALL abort(&
-__STAMP__&
-,'Part-PeriodicVectors need to be assigned in the ini file')
+    CALL abort(&
+    __STAMP__&
+    ,'Part-PeriodicVectors need to be assigned in the ini file')
   END IF
 END DO
 
@@ -147,7 +154,7 @@ SUBROUTINE GetPeriodicVectors()
 ! 2) Mesh has to fit into the FIBGM, therefore, the displacement is a multiple of the FIBGM-delta
 ! 3) Additionally for PIC with Volume or BSpline weighting/deposition
 !    Periodic displacement has to be multiple of BGMdeltas of deposition method
-! 
+!
 ! NEW: Cartesian mesh is required for shape-function deposition
 !      All other cases: non-Cartesian periodic vectors are possible but not allowed!
 !===================================================================================================================================
@@ -163,7 +170,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !LOGICAL                :: directions(1:3)
 INTEGER                :: iPV
 REAL                   :: eps(1:3)!,dummy
@@ -274,7 +281,7 @@ __STAMP__&
 ABS(SUM(GEO%PeriodicVectors(3,:))-NINT(SUM(GEO%PeriodicVectors(3,:))/GEO%FIBGMDeltas(3))*GEO%FIBGMDeltas(3)))
 END IF
 
-! check if periodic vector is multiple of BGM-Delta. This BGM is for the deposition with volume or spline weighting 
+! check if periodic vector is multiple of BGM-Delta. This BGM is for the deposition with volume or spline weighting
 ! functions
 !IF((DepositionType.EQ.'cartmesh_volumeweighting').OR.(DepositionType.EQ.'cartmesh_splines'))THEN
 !  IF (ABS(SUM(GEO%PeriodicVectors(1,:))-NINT(SUM(GEO%PeriodicVectors(1,:))/BGMDeltas(1))*BGMDeltas(1)) &

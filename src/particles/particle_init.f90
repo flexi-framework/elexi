@@ -377,7 +377,6 @@ USE MOD_DSMC_Vars,             ONLY:DSMC
 USE MOD_PICInterpolation,      ONLY:InitializeInterpolation
 USE MOD_PICInit,               ONLY:InitPIC
 USE MOD_Particle_Mesh,         ONLY:InitFIBGM,MapRegionToElem,MarkAuxBCElems
-USE MOD_Particle_Tracking_Vars,ONLY:DoRefMapping
 USE MOD_Particle_MPI_Vars,     ONLY:SafetyFactor,halo_eps_velo!,PartMPI
 #if USE_MPI
 USE MOD_Particle_MPI,          ONLY:InitEmissionComm
@@ -608,66 +607,6 @@ __STAMP__&
 __STAMP__&
           ,' Calculating height from v and dt is not supported for initial ParticleInserting!')
     END IF
-    !--- virtual pre-insertion (vpi) checks and calculations
-    IF ((TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cuboid_vpi') &
-      .OR.(TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cylinder_vpi')) THEN
-      IF ( (Species(iSpec)%Init(iInit)%ParticleEmissionType.NE.1) .AND. (Species(iSpec)%Init(iInit)%ParticleEmissionType.NE.2) ) &
-        CALL abort(&
-__STAMP__&
-        ,' Wrong emission-type for virtual Pre-Inserting region!')
-      IF (TRIM(Species(iSpec)%Init(iInit)%velocityDistribution).NE.'maxwell_lpn') &
-        CALL abort(&
-__STAMP__&
-        ,' Only maxwell_lpn is implemened as velocity-distribution for virtual Pre-Inserting region!')
-      IF (Species(iSpec)%Init(iInit)%UseForInit) &
-        CALL abort(&
-__STAMP__&
-          ,' virtual Pre-Inserting is not supported for initial ParticleInserting. Use additional Init!')
-      !-- Virtual Pre-Inserting is used correctly !
-      Species(iSpec)%Init(iInit)%VirtPreInsert = .TRUE.
-      SWRITE(*,*) "Virtual Pre-Inserting is used for Species, Init ", iSpec, iInit
-      IF (Species(iSpec)%Init(iInit)%PartDensity .EQ. 0.) THEN
-        SWRITE(*,*) "WARNING: If VPI-BC is open, a backflow might not be compensated"
-        SWRITE(*,*) "         (use PartDensity instead of ParticleEmission)!"
-      END IF
-      Species(iSpec)%Init(iInit)%vpiDomainType = TRIM(GETSTR('Part-Species'//TRIM(hilf2)//'-vpiDomainType','perpendicular_extrusion'))
-      SELECT CASE ( TRIM(Species(iSpec)%Init(iInit)%vpiDomainType) )
-      CASE ( 'freestream' )
-        IF ( TRIM(Species(iSpec)%Init(iInit)%SpaceIC) .NE. 'cuboid_vpi' ) THEN
-          CALL abort(&
-__STAMP__&
-            ,' Only cuboid_vpi is supported for a freestream vpiDomainType! (Use default vpiDomainType for cylinder.)')
-        ELSE
-          Species(iSpec)%Init(iInit)%vpiBVBuffer(1) = GETLOGICAL('Part-Species'//TRIM(hilf2)//'-vpiBV1BufferNeg','.TRUE.')
-          Species(iSpec)%Init(iInit)%vpiBVBuffer(2) = GETLOGICAL('Part-Species'//TRIM(hilf2)//'-vpiBV1BufferPos','.TRUE.')
-          Species(iSpec)%Init(iInit)%vpiBVBuffer(3) = GETLOGICAL('Part-Species'//TRIM(hilf2)//'-vpiBV2BufferNeg','.TRUE.')
-          Species(iSpec)%Init(iInit)%vpiBVBuffer(4) = GETLOGICAL('Part-Species'//TRIM(hilf2)//'-vpiBV2BufferPos','.TRUE.')
-        END IF
-      CASE ( 'orifice' )
-        Species(iSpec)%Init(iInit)%vpiBVBuffer = .TRUE.
-        IF ( ABS(Species(iSpec)%Init(iInit)%Radius2IC) .GT. 0. ) THEN
-          CALL abort(&
-__STAMP__&
-            ,' Annular orifice is not implemented yet!')
-        END IF
-      CASE ( 'perpendicular_extrusion' )
-        Species(iSpec)%Init(iInit)%vpiBVBuffer = .TRUE. !dummy
-      CASE DEFAULT
-        CALL abort(&
-__STAMP__&
-,'vpiDomainType is not implemented!')
-      END SELECT
-      !--
-    ELSE
-      Species(iSpec)%Init(iInit)%VirtPreInsert = .FALSE.
-    END IF
-    !--- integer check for ParticleEmissionType 2
-    IF((Species(iSpec)%Init(iInit)%ParticleEmissionType.EQ.2).AND. &
-         ((Species(iSpec)%Init(iInit)%ParticleEmission-INT(Species(iSpec)%Init(iInit)%ParticleEmission)).NE.0)) THEN
-       CALL abort(&
-__STAMP__&
-       ,' If ParticleEmissionType = 2 (parts per iteration), ParticleEmission has to be an integer number')
-    END IF
     !--- flag for cell-based constant-pressure-EmiTypes
     !--- normalize VeloVecIC and NormalIC (and BaseVector 1 & 2 IC for cylinder) for Inits
     IF (.NOT. ALL(Species(iSpec)%Init(iInit)%VeloVecIC(:).eq.0.)) THEN
@@ -865,14 +804,6 @@ __STAMP__&
           CALL abort(&
 __STAMP__&
           ,'Only const. or maxwell(_lpn) is supported as velocityDistr. for PartDensity without LD!')
-        END IF
-      ELSE IF (Species(iSpec)%Init(iInit)%VirtPreInsert) THEN
-        IF (Species(iSpec)%Init(iInit)%ParticleEmission .GT. 0.) THEN
-               CALL abort(&
-__STAMP__&
-          ,'Either ParticleEmission or PartDensity can be defined for selected emission parameters, not both!')
-        ELSE
-          SWRITE(*,*) "PartDensity is used for VPI of Species, Init ", iSpec, iInit !Value is calculated inside SetParticlePostion!
         END IF
       ELSE
         CALL abort(&

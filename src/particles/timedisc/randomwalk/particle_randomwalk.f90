@@ -11,7 +11,6 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-#if USE_RW
 #include "flexi.h"
 
 !==================================================================================================================================
@@ -27,6 +26,8 @@ MODULE MOD_Particle_RandomWalk
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
+
+#if USE_RW
 INTERFACE ParticleInitRandomWalk
   MODULE PROCEDURE ParticleInitRandomWalk
 END INTERFACE
@@ -223,5 +224,5 @@ IMPLICIT NONE
 
 END SUBROUTINE ParticleFinalizeRandomWalk
 
-END MODULE MOD_Particle_RandomWalk
 #endif /*USE_RM*/
+END MODULE MOD_Particle_RandomWalk

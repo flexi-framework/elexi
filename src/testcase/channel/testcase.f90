@@ -135,32 +135,28 @@ CALL CollectiveStop(__STAMP__, &
   'The testcase has not been implemented for FV yet!')
 #endif
 
-nWriteStats  = GETINT('nWriteStats','100')
+nWriteStats   = GETINT('nWriteStats','100')
 nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
-uBulkScale=1.
-Re_tau       = 1/mu0
-c1 = 2.4390244
+uBulkScale    = 1.
+Re_tau        = 1/mu0
+c1            = 2.4390244
 customChannel = GETLOGICAL('Part-CustomChannel','.FALSE.')
 IF (customChannel .EQV. .TRUE.) THEN
-  uBulk    = GETREAL('Part-ChannelUBulk','0.')
+  uBulk       = GETREAL('Part-ChannelUBulk','0.')
 ELSE
-  uBulk=c1 * ((Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))) &
-        - 97.4857927165
-  uBulk=uBulk/Re_tau
+  uBulk       = c1 * ((Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3) &
+              * EXP(-Re_tau/3.))) - 97.4857927165
+  uBulk       = uBulk/Re_tau
 ENDIF
 
 ! Set the background pressure according to choosen bulk Mach number
 bulkMach = GETREAL('ChannelMach','0.1')
 pressure = (uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa
-SWRITE(*,*) 'ubulk',ubulk,'umach',bulkmach,'kappa',kappa,'rho',refstateprim(1,inirefstate)
 RefStatePrim(5,IniRefState) = pressure
 ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
 UE(SRHO) = 1./RefStatePrim(1,IniRefState)
 UE(PRES) = RefStatePrim(5,IniRefState)
 RefStatePrim(6,IniRefState) = TEMPERATURE_HE(UE)
-SWRITE(*,*) 'rho',1/UE(SRHO)
-SWRITE(*,*) 'pressure',UE(PRES)
-SWRITE(*,*) 'temperature', RefStatePrim(6,IniRefState)
 CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 
 IF(MPIRoot) THEN

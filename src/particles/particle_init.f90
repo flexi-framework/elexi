@@ -75,7 +75,6 @@ CALL prms%CreateIntOption('Part-maxParticleNumber',         'Max number of parti
 CALL prms%CreateIntOption('Part-NumberOfRandomSeeds',       'Number of random seeds for particle random number generator','0')
 CALL prms%CreateIntOption('Particles-NumberOfRandomVectors','Number of random vectors',                     '0')
 
-CALL prms%CreateLogicalOption('OutputSurfaceFluxLinked',    'Flag to print the SurfaceFlux-linked Info' ,   '.FALSE.')
 CALL prms%CreateLogicalOption('Part-SteadyState',           'Only update particle position while keeping fluid state frozen',      &
                                                             '.FALSE.')
 CALL prms%CreateLogicalOption('Part-TrackPosition',         'Track particle position',                      '.FALSE.')
@@ -188,8 +187,6 @@ CALL prms%CreateIntOption(      'Part-Species[$]-initialParticleNumber'  &
                                   'Initial particle number', '0', numberedmulti=.TRUE.)
 CALL prms%CreateIntOption(      'Part-Species[$]-NumberOfExcludeRegions'  &
                                 , 'Number of different regions to be excluded', '0', numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(      'Part-Species[$]-nSurfacefluxBCs'&
-                                , 'Number of SF emissions', '0', numberedmulti=.TRUE.)
 CALL prms%CreateIntOption(      'Part-Species[$]-ParticleEmissionType'  &
                                 , 'Define Emission Type for particles (volume emission)\n'//&
                                   '1 = emission rate in part/s,\n'//&
@@ -308,7 +305,7 @@ USE Mod_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_IO_HDF5,                    ONLY: AddToElemData
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
-USE MOD_Part_Emission,              ONLY: InitializeParticleEmission, InitializeParticleSurfaceflux
+USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
 USE MOD_DSMC_Vars,                  ONLY: DSMC
 USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Erosion_Vars
@@ -342,7 +339,6 @@ Call InitParticleGlobals
 
 CALL InitializeVariables(ManualTimeStep_opt)
 CALL InitializeParticleEmission()
-CALL InitializeParticleSurfaceflux()
 
 ! Initialize surface sampling
 IF (WriteMacroSurfaceValues.OR.DSMC%CalcSurfaceVal) THEN

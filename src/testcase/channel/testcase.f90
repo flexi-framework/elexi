@@ -228,14 +228,11 @@ REAL,INTENT(OUT)                :: Resu(PP_nVar),Resu_t(PP_nVar),Resu_tt(PP_nVar
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: yplus,prim(PP_nVarPrim),amplitude
-#if USE_PARTICLES
 REAL                            :: x_int(3)
-#endif
 !==================================================================================================================================
 !Channel Testcase: set mu0 = 1/Re_tau, rho=1, pressure adapted, Mach=0.1 according to Moser!!
 !and hence: u_tau=tau=-dp/dx=1, and t=t+=u_tau*t/delta
 Prim(:) = RefStatePrim(:,IniRefState) ! prim=(/1.,0.3,0.,0.,0.71428571/)
-#if USE_PARTICLES
 IF (customChannel .EQV. .TRUE.) THEN
     IF(x(2).LE.0) THEN
         yPlus = (x(2)+delta)*(Re_tau/delta)
@@ -243,22 +240,18 @@ IF (customChannel .EQV. .TRUE.) THEN
         yPlus = (delta-x(2))*(Re_tau/delta)
     END IF
 ELSE
-#endif
 IF(x(2).LE.0) THEN
   yPlus = (x(2)+1.)*Re_tau ! Re_tau=590
 ELSE
   yPlus = (1.-x(2))*Re_tau ! Re_tau=590
 END IF
-#if USE_PARTICLES
 ENDIF
-#endif
 !Prim(2)=uPlus
 Prim(2) = uBulkScale*(1./0.41*log(1+0.41*yPlus)+7.8*(1-exp(-yPlus/11.)-yPlus/11.*exp(-yPlus/3.)))
 !Prim(5)=(uBulk*sqrt(kappa*Prim(5)/Prim(1)))**2*Prim(1)/kappa ! Pressure such that Ma=1/sqrt(kappa*p/rho)
 Amplitude = 0.1*Prim(2)
-#if EQNSYSNR == 2
 
-#if USE_PARTICLES
+#if EQNSYSNR == 2
 IF (customChannel .EQV. .TRUE.) THEN
     x_int(1) = x(1)/delta
     x_int(2) = x(2)/delta
@@ -283,7 +276,6 @@ IF (customChannel .EQV. .TRUE.) THEN
     Prim(4)=Prim(4)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
     Prim(4)=Prim(4)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
 ELSE
-#endif
     Prim(2)=Prim(2)+sin(20.0*PP_PI*(x(2)/(2.0)))*sin(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
     Prim(2)=Prim(2)+sin(30.0*PP_PI*(x(2)/(2.0)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
     Prim(2)=Prim(2)+sin(35.0*PP_PI*(x(2)/(2.0)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
@@ -302,8 +294,6 @@ ELSE
     Prim(4)=Prim(4)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
     Prim(4)=Prim(4)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
     Prim(4)=Prim(4)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
-#endif
-#if USE_PARTICLES
 ENDIF
 #endif
 

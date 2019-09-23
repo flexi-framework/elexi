@@ -97,7 +97,7 @@ CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at e
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
                                               "(Note: always called at global analyze level)", '1000')
 #if USE_PARTICLES
-CALL prms%CreateLogicalOption(  'Part-CustomChannel', "Allow channel dimensions other than Moser")    
+CALL prms%CreateLogicalOption(  'Part-CustomChannel', "Allow channel dimensions other than Moser")
 CALL prms%CreateRealOption(     'Part-ChannelReTau',  "Custom channel Re_tau")
 CALL prms%CreateRealOption(     'Part-ChannelUBulk',  "Custom channel bulk velocity")
 CALL prms%CreateRealOption(     'Part-ChannelDelta',  "Custom channel half height")
@@ -172,13 +172,13 @@ END IF
 customChannel = GETLOGICAL('Part-CustomChannel','.FALSE.')
 IF (customChannel .EQV. .TRUE.) THEN
     rho      = RefStatePrim(1,IniRefState)
-    
+
     Re_tau   = GETREAL('Part-ChannelReTau','0.')
     uBulk    = GETREAL('Part-ChannelUBulk','0.')
     delta    = GETREAL('Part-ChannelDelta','0.')
-    
-    dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho   
-    
+
+    dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho
+
     ! Tell the user the calculated variables to check
     IF(MPIRoot) THEN
       WRITE(*,*) 'Bulk velocity given. uBulk =',uBulk
@@ -189,7 +189,7 @@ ELSE
     Re_tau       = 1/mu0
     c1 = 2.4390244
     uBulk=c1*exp(-Re_tau/3.)*((Re_tau+c1)*exp(Re_tau/3.)*log(Re_tau+c1)+1.3064019*(Re_tau*exp(Re_tau/3)&
-          +29.627395*exp(8./33.*Re_tau)+0.66762137*(Re_tau+3)))  -97.4857927165 
+          +29.627395*exp(8./33.*Re_tau)+0.66762137*(Re_tau+3)))  -97.4857927165
     uBulk=uBulk/Re_tau
 
     !prevent wrong pressure in channel testcase

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -54,7 +54,7 @@ PUBLIC::RecordErosionPoint,RestartErosionPoint,WriteEP
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersErosionPoints()
 ! MODULES
@@ -110,7 +110,7 @@ IF(SurfMesh%nSides.NE.0) THEN
   nEP_Procs        = 1
 END IF
 
-ALLOCATE(EP_Data(EP_MaxBufferSize,EPDataSize))
+ALLOCATE(EP_Data(EPDataSize,EP_MaxBufferSize))
 
 #if USE_MPI
 CALL InitEPCommunicator()
@@ -201,7 +201,7 @@ USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT VARIABLES 
+! INPUT VARIABLES
 REAL,INTENT(IN)                   :: PartFaceAngle, v_old(1:3)
 REAL,INTENT(IN)                   :: PartFaceAngle_old
 INTEGER,INTENT(IN)                :: BCSideID,PartID,PartReflCount
@@ -229,16 +229,16 @@ e_kin_new         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_new**2.
 ! Record individual impact
 EP_Impacts = EP_Impacts + 1
 
-EP_Data(EP_Impacts,1:3) = LastPartPos(PartID,1:3)
-EP_Data(EP_Impacts,4:6) = v_old(1:3)
-EP_Data(EP_Impacts,7)   = REAL(PartSpecies(PartID))
-EP_Data(EP_Impacts,8)   = REAL(BCSideID)
-EP_Data(EP_Impacts,9)   = t
-EP_Data(EP_Impacts,10)  = REAL(PartReflCount)
-EP_Data(EP_Impacts,11)  = e_kin_old
-EP_Data(EP_Impacts,12)  = e_kin_new
-EP_Data(EP_Impacts,13)  = PartFaceAngle_old
-EP_Data(EP_Impacts,14)  = PartFaceAngle
+EP_Data(1:3,EP_Impacts) = LastPartPos(PartID,1:3)
+EP_Data(4:6,EP_Impacts) = v_old(1:3)
+EP_Data(7,EP_Impacts)   = REAL(PartSpecies(PartID))
+EP_Data(8,EP_Impacts)   = REAL(BCSideID)
+EP_Data(9,EP_Impacts)   = t
+EP_Data(10,EP_Impacts)  = REAL(PartReflCount)
+EP_Data(11,EP_Impacts)  = e_kin_old
+EP_Data(12,EP_Impacts)  = e_kin_new
+EP_Data(13,EP_Impacts)  = PartFaceAngle_old
+EP_Data(14,EP_Impacts)  = PartFaceAngle
 
 END SUBROUTINE RecordErosionPoint
 
@@ -287,10 +287,10 @@ IF(ErosionDataExists) THEN
     SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Number of impacts',' | ',EP_glob
     ! We lost the impact <-> proc association, so fill the entire array
     CALL ReadArray(ArrayName='ErosionData', rank=2,&
-                     nVal=      (/EP_glob  ,EPDataSize/),&
+                     nVal=      (/EPDataSize,EP_glob/),&
                      offset_in  = 0,&
-                     offset_dim = 1,&
-                     RealArray  = EP_Data(1:EP_glob,1:EPDataSize))
+                     offset_dim = 2,&
+                     RealArray  = EP_Data(1:EPDataSize,1:EP_glob))
     ! Pretend all impacts happened on MPI_ROOT, so we can write out
     IF(MPIroot) THEN
         EP_Impacts = EP_glob
@@ -367,30 +367,30 @@ END IF
   offsetEP   = 0
   EP_glob    = locEP
 #endif
-  
+
   EP_Buffersize = EP_glob
- 
+
   ! Array for erosion point vars
   ALLOCATE(StrVarNames(EPDataSize))
-  StrVarNames(1)='ParticlePositionX'
-  StrVarNames(2)='ParticlePositionY'
-  StrVarNames(3)='ParticlePositionZ'
-  StrVarNames(4)='VelocityX'
-  StrVarNames(5)='VelocityY'
-  StrVarNames(6)='VelocityZ'
-  StrVarNames(7)='Species'
-  StrVarNames(8)='BoundaryNumber'
+  StrVarNames(1) ='ParticlePositionX'
+  StrVarNames(2) ='ParticlePositionY'
+  StrVarNames(3) ='ParticlePositionZ'
+  StrVarNames(4) ='VelocityX'
+  StrVarNames(5) ='VelocityY'
+  StrVarNames(6) ='VelocityZ'
+  StrVarNames(7) ='Species'
+  StrVarNames(8) ='BoundaryNumber'
   StrVarNames(9) ='ImpactTime'
   StrVarNames(10)='ReflectionCount'
   StrVarNames(11)='E_kin_impact'
   StrVarNames(12)='E_kin_reflected'
   StrVarNames(13)='Alpha_impact'
   StrVarNames(14)='Alpha_reflected'
-  
+
 !IF(myEPrank.EQ.0)THEN
 !  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,' impacts local / ',EP_Buffersize,' impacts global.'
 !END IF
-  
+
   ! Get dedicated filled write array
 !  ALLOCATE(EP_write(offsetEP+1:offsetEP+locEP,EPDataSize))
 !  DO iEP=offsetEP+1,offsetEP+locEP
@@ -400,7 +400,7 @@ END IF
   ! Regenerate state file skeleton
   FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',OutputTime))
   FileString=TRIM(FileName)//'.h5'
-  
+
   IF(MPIRoot)THEN
 #if USE_MPI
     CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
@@ -414,24 +414,24 @@ END IF
 #if USE_MPI
  CALL DistributedWriteArray(FileString                             ,&
                             DataSetName='ErosionData',rank=2       ,&
-                            nValGlobal=(/EP_glob    ,EPDataSize/)  ,&
-                            nVal=      (/locEP      ,EPDataSize/)  ,&
-                            offset=    (/offsetEP   ,0/)           ,&
-                            collective=.FALSE.      ,offSetDim=1   ,&
-                            communicator=MPI_COMM_WORLD,RealArray=EP_Data(1:locEP,1:EPDataSize))
+                            nValGlobal=(/EPDataSize  ,EP_glob  /)  ,&
+                            nVal=      (/EPDataSize  ,locEP    /)  ,&
+                            offset=    (/0           ,offsetEP /)  ,&
+                            collective=.FALSE.       ,offSetDim=2   ,&
+                            communicator=MPI_COMM_WORLD,RealArray=EP_Data(1:EPDataSize,1:locEP))
 #else
-  CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)   
-  CALL WriteArrayToHDF5(DataSetName='ErosionData'   ,rank=2         ,&
-                        nValGlobal=(/EP_glob        ,EPDataSize/)   ,&
-                        nVal=      (/locEP          ,EPDataSize  /) ,&
-                        offset=    (/offsetEP       ,0  /)          ,&
-                        collective=.TRUE., RealArray=EP_Data(1:locEP,1:EPDataSize))
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteArrayToHDF5(DataSetName='ErosionData'   ,rank=2        ,&
+                        nValGlobal=(/EPDataSize     ,EP_glob  /)   ,&
+                        nVal=      (/EPDataSize     ,locEP    /)   ,&
+                        offset=    (/0              ,offsetEP /)   ,&
+                        collective=.TRUE., RealArray=EP_Data(1:EPDataSize,1:locEP))
   CALL CloseDataFile()
-#endif /*MPI*/  
-  
+#endif /*MPI*/
+
   ! Deallocate everything
   DEALLOCATE(StrVarNames)
-  
+
   ! Erase record variables
   IF (resetCounters) THEN
     EP_Impacts = 0

@@ -282,8 +282,8 @@ CALL DatasetExists(File_ID,'ErosionData',ErosionDataExists)
 
 IF(ErosionDataExists) THEN
     CALL GetDataSize(File_ID,'ErosionData',ErosionDim,HSize)
-    CHECKSAFEINT(HSize(1),4)
-    EP_glob    = INT(HSize(1))
+    CHECKSAFEINT(HSize(2),4)
+    EP_glob    = INT(HSize(2))
     SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Number of impacts',' | ',EP_glob
     ! We lost the impact <-> proc association, so fill the entire array
     CALL ReadArray(ArrayName='ErosionData', rank=2,&

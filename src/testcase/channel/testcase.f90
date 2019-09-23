@@ -96,12 +96,10 @@ CALL prms%CreateRealOption('ChannelMach', "Bulk mach number used in the channel 
 CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
                                               "(Note: always called at global analyze level)", '1000')
-#if USE_PARTICLES
 CALL prms%CreateLogicalOption(  'Part-CustomChannel', "Allow channel dimensions other than Moser")
 CALL prms%CreateRealOption(     'Part-ChannelReTau',  "Custom channel Re_tau")
 CALL prms%CreateRealOption(     'Part-ChannelUBulk',  "Custom channel bulk velocity")
 CALL prms%CreateRealOption(     'Part-ChannelDelta',  "Custom channel half height")
-#endif
 END SUBROUTINE DefineParametersTestcase
 
 !==================================================================================================================================
@@ -111,15 +109,10 @@ SUBROUTINE InitTestcase()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
+USE MOD_ReadInTools,        ONLY: GETINT,GETREAL,GETLOGICAL
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState,RefStateCons
-USE MOD_EOS_Vars,           ONLY: kappa,mu0
-#if USE_PARTICLES
-USE MOD_ReadInTools
-#else
-USE MOD_ReadInTools,        ONLY: GETINT
-#endif
+USE MOD_EOS_Vars,           ONLY: kappa,mu0,R
 USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Eos,                ONLY: PrimToCons
 IMPLICIT NONE
@@ -129,9 +122,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
-#if USE_PARTICLES
 REAL                     :: rho
-#endif
 REAL                     :: bulkMach,pressure
 CHARACTER(LEN=7)         :: varnames(2)
 REAL                     :: UE(PP_2Var)
@@ -149,18 +140,27 @@ nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
 uBulkScale=1.
 Re_tau       = 1/mu0
 c1 = 2.4390244
-uBulk=c1 * ((Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))) &
-      - 97.4857927165
-uBulk=uBulk/Re_tau
+customChannel = GETLOGICAL('Part-CustomChannel','.FALSE.')
+IF (customChannel .EQV. .TRUE.) THEN
+  uBulk    = GETREAL('Part-ChannelUBulk','0.')
+ELSE
+  uBulk=c1 * ((Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))) &
+        - 97.4857927165
+  uBulk=uBulk/Re_tau
+ENDIF
 
 ! Set the background pressure according to choosen bulk Mach number
 bulkMach = GETREAL('ChannelMach','0.1')
 pressure = (uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa
+SWRITE(*,*) 'ubulk',ubulk,'umach',bulkmach,'kappa',kappa,'rho',refstateprim(1,inirefstate)
 RefStatePrim(5,IniRefState) = pressure
 ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
 UE(SRHO) = 1./RefStatePrim(1,IniRefState)
 UE(PRES) = RefStatePrim(5,IniRefState)
 RefStatePrim(6,IniRefState) = TEMPERATURE_HE(UE)
+SWRITE(*,*) 'rho',1/UE(SRHO)
+SWRITE(*,*) 'pressure',UE(PRES)
+SWRITE(*,*) 'temperature', RefStatePrim(6,IniRefState)
 CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 
 IF(MPIRoot) THEN
@@ -168,13 +168,10 @@ IF(MPIRoot) THEN
   WRITE(*,*) 'Associated Pressure for Mach = ',bulkMach,' is', pressure
 END IF
 
-#if USE_PARTICLES
-customChannel = GETLOGICAL('Part-CustomChannel','.FALSE.')
 IF (customChannel .EQV. .TRUE.) THEN
     rho      = RefStatePrim(1,IniRefState)
 
     Re_tau   = GETREAL('Part-ChannelReTau','0.')
-    uBulk    = GETREAL('Part-ChannelUBulk','0.')
     delta    = GETREAL('Part-ChannelDelta','0.')
 
     dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho
@@ -185,7 +182,6 @@ IF (customChannel .EQV. .TRUE.) THEN
       WRITE(*,*) 'Associated pressure gradient. -dp/dx=:', dpdx, 'Pa s'
     END IF
 ELSE
-#endif
     Re_tau       = 1/mu0
     c1 = 2.4390244
     uBulk=c1*exp(-Re_tau/3.)*((Re_tau+c1)*exp(Re_tau/3.)*log(Re_tau+c1)+1.3064019*(Re_tau*exp(Re_tau/3)&
@@ -203,10 +199,7 @@ ELSE
     END IF
 
     dpdx = -1. ! Re_tau^2*rho*nu^2/delta^3
-
-#if USE_PARTICLES
 ENDIF
-#endif
 
 IF(.NOT.MPIRoot) RETURN
 

@@ -520,7 +520,7 @@ DO iSpec = 1, nSpecies
     ! get species values // only once
 
     ! General Species Values
-    Species(iSpec)%RHSMethod             = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(hilf2))//'-RHSMethod',''))
+    Species(iSpec)%RHSMethod             = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(hilf2))//'-RHSMethod','none'))
     Species(iSpec)%ChargeIC              = GETREAL('Part-Species'//TRIM(hilf2)//'-ChargeIC','0.')
     Species(iSpec)%MassIC                = GETREAL('Part-Species'//TRIM(hilf2)//'-MassIC','0.')
     Species(iSpec)%DensityIC             = GETREAL('Part-Species'//TRIM(hilf2)//'-DensityIC','0.')

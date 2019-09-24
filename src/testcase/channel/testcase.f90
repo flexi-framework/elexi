@@ -135,15 +135,20 @@ CALL CollectiveStop(__STAMP__, &
   'The testcase has not been implemented for FV yet!')
 #endif
 
-nWriteStats   = GETINT('nWriteStats','100')
+nWriteStats      = GETINT('nWriteStats','100')
 nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
-uBulkScale    = 1.
-Re_tau        = 1/mu0
-c1            = 2.4390244
-customChannel = GETLOGICAL('Part-CustomChannel','.FALSE.')
-IF (customChannel .EQV. .TRUE.) THEN
+customChannel    = GETLOGICAL('Part-CustomChannel','.FALSE.')
+
+! Channel dimensions and BCs other than Moser
+IF (customChannel) THEN
   uBulk       = GETREAL('Part-ChannelUBulk','0.')
+  uBulkScale  = 1./uBulk
+  Re_tau      = GETREAL('Part-ChannelReTau','0.')
+! Non-dimensional case with given Re_tau according to Moser
 ELSE
+  uBulkScale  = 1.
+  Re_tau      = 1/mu0
+  c1          = 2.4390244
   uBulk       = c1 * ((Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3) &
               * EXP(-Re_tau/3.))) - 97.4857927165
   uBulk       = uBulk/Re_tau
@@ -164,12 +169,11 @@ IF(MPIRoot) THEN
   WRITE(*,*) 'Associated Pressure for Mach = ',bulkMach,' is', pressure
 END IF
 
-IF (customChannel .EQV. .TRUE.) THEN
+IF (customChannel) THEN
     rho      = RefStatePrim(1,IniRefState)
-
-    Re_tau   = GETREAL('Part-ChannelReTau','0.')
     delta    = GETREAL('Part-ChannelDelta','0.')
 
+    ! Calculate new forcing pressure
     dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho
 
     ! Tell the user the calculated variables to check
@@ -233,18 +237,18 @@ REAL                            :: x_int(3)
 !Channel Testcase: set mu0 = 1/Re_tau, rho=1, pressure adapted, Mach=0.1 according to Moser!!
 !and hence: u_tau=tau=-dp/dx=1, and t=t+=u_tau*t/delta
 Prim(:) = RefStatePrim(:,IniRefState) ! prim=(/1.,0.3,0.,0.,0.71428571/)
-IF (customChannel .EQV. .TRUE.) THEN
-    IF(x(2).LE.0) THEN
-        yPlus = (x(2)+delta)*(Re_tau/delta)
-    ELSE
-        yPlus = (delta-x(2))*(Re_tau/delta)
-    END IF
+IF (customChannel) THEN
+  IF(x(2).LE.0) THEN
+      yPlus = (x(2)+delta)*(Re_tau/delta)
+  ELSE
+      yPlus = (delta-x(2))*(Re_tau/delta)
+  END IF
 ELSE
-IF(x(2).LE.0) THEN
-  yPlus = (x(2)+1.)*Re_tau ! Re_tau=590
-ELSE
-  yPlus = (1.-x(2))*Re_tau ! Re_tau=590
-END IF
+  IF(x(2).LE.0) THEN
+    yPlus = (x(2)+1.)*Re_tau ! Re_tau=590
+  ELSE
+    yPlus = (1.-x(2))*Re_tau ! Re_tau=590
+  END IF
 ENDIF
 !Prim(2)=uPlus
 Prim(2) = uBulkScale*(1./0.41*log(1+0.41*yPlus)+7.8*(1-exp(-yPlus/11.)-yPlus/11.*exp(-yPlus/3.)))
@@ -252,7 +256,7 @@ Prim(2) = uBulkScale*(1./0.41*log(1+0.41*yPlus)+7.8*(1-exp(-yPlus/11.)-yPlus/11.
 Amplitude = 0.1*Prim(2)
 
 #if EQNSYSNR == 2
-IF (customChannel .EQV. .TRUE.) THEN
+IF (customChannel) THEN
     x_int(1) = x(1)/delta
     x_int(2) = x(2)/delta
     x_int(3) = x(3)/delta

@@ -5,7 +5,7 @@ SET(TOOL_NAME "visu")
 SET(TOOL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/posti/visu")
 
 MESSAGE(STATUS "Posti: building ${TOOL_NAME} tool.")
-INCLUDE_DIRECTORIES( ${TOOL_DIR}) 
+INCLUDE_DIRECTORIES( ${TOOL_DIR})
 
 FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d.f90
                           ${TOOL_DIR}/calc.f90
@@ -24,7 +24,7 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d.f90
 
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
-SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
+SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
 ADD_LIBRARY(${TOOL_NAME}lib STATIC $<TARGET_OBJECTS:${TOOL_NAME}libF90>)
 ADD_DEPENDENCIES(${TOOL_NAME}libF90 libflexishared)
 
@@ -39,16 +39,19 @@ IF (POSTI_USE_PARAVIEW)
   FIND_PACKAGE(ParaView)
 ENDIF()
 IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
-# Needed for Paraview compiled with Ospray
+   # Needed for Paraview compiled with Ospray
    FIND_PACKAGE(TBB REQUIRED tbb)
    IF (TBB_FOUND)
       FIND_LIBRARY(TBB_LIBRARY tbb)
-# Gives warning but fixes itself, so supress it for the time being
+			# Gives warning but fixes itself, so supress it for the time being
       SET(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON CACHE BOOL
       "Suppress Warnings that are meant for the author of the CMakeLists.txt files"
       FORCE)
-      FIND_PACKAGE(ospray)
    ENDIF()
+	 # Find ospray::ospray
+	 FIND_PACKAGE(ospray REQUIRED)
+	 target_link_libraries(${client_target} ospray::ospray)
+	 # Finally compiles against ParaView 5.6.2 on Arch Linux
    SET(POSTI_PV_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
    IF(POSTI_PV_SUFFIX STREQUAL "")
      SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader)
@@ -67,7 +70,7 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
      SERVER_MANAGER_XML     ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.xml
      SERVER_MANAGER_SOURCES ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.cxx
      REQUIRED_ON_SERVER
-     DEPENDS                "${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.h" 
+     DEPENDS                "${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.h"
      )
 
    IF(NOT POSTI_PV_SUFFIX STREQUAL "")

@@ -61,7 +61,7 @@ USE MOD_FFT_Vars
 USE MOD_Commandline_Arguments
 USE MOD_Interpolation,           ONLY: GetVandermonde
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
-USE MOD_ReadInTools,             ONLY: GETREAL,GETINT
+USE MOD_ReadInTools,             ONLY: GETREAL,GETINT,GETLOGICAL
 USE MOD_Mesh_Vars,               ONLY: nElems_IJK,nElems
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Interpolation_Vars ,     ONLY: NodeType,NodeTypeVISUInner
@@ -78,6 +78,10 @@ IMPLICIT NONE
 OutputFormat = GETINT('OutputFormat','0')
 NCalc  = GETINT('NCalc')         ! Polynomial degree to perfrom DFFT on
 Re_tau = GETREAL('Re_tau')       ! Reynolds number bases on friction velocity and channel half height
+customChannel = GETLOGICAL('customChannel','.FALSE.')
+IF (customChannel) THEN
+  delta = GETREAL('delta')
+END IF
 
 ! Allocate solution array in DG vars, used to store state
 ALLOCATE(U(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
@@ -316,6 +320,7 @@ USE MOD_FFT_Vars
 USE MOD_Commandline_Arguments
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output
+USE MOD_HDF5_WriteArray,            ONLY: WriteArray
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -396,8 +401,13 @@ SELECT CASE(OutputFormat)
     WRITE(FileUnit_EK,'(a)')' DATAPACKING=POINT'
     WRITE(FileUnit_EK,'(a)')' DT=(DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE)'
     DO j=N_FFT(2)/2+1,N_FFT(2)
-      WRITE(FileUnit_EK,'(10(E20.12,X))')(1-(X_FFT(2,1,j,1)))*Re_tau,MS_PSD(j,1),MS_PSD(j,2),MS_PSD(j,3),MS_t(j,1),MS_t(j,2),&
-                                                                                       MS_t(j,3),M_t(j,1),M_t(j,2),M_t(j,3)
+      IF (customChannel) THEN
+        WRITE(FileUnit_EK,'(10(E20.12,X))')(delta-(X_FFT(2,1,j,1)))*(Re_tau/delta),MS_PSD(j,1),MS_PSD(j,2),MS_PSD(j,3),MS_t(j,1),MS_t(j,2),&
+                                                                                                  MS_t(j,3),M_t(j,1),M_t(j,2),M_t(j,3)
+      ELSE
+        WRITE(FileUnit_EK,'(10(E20.12,X))')(1-(X_FFT(2,1,j,1)))*Re_tau,MS_PSD(j,1),MS_PSD(j,2),MS_PSD(j,3),MS_t(j,1),MS_t(j,2),&
+                                                                                          MS_t(j,3),M_t(j,1),M_t(j,2),M_t(j,3)
+      END IF
     END DO
     CLOSE(FILEUnit_EK)
     !-------------------------------------------------
@@ -412,7 +422,11 @@ SELECT CASE(OutputFormat)
     WRITE(FileUnit_EK,'(a)')'"E_ww_x"'
     WRITE(FileUnit_EK,'(a)')'"E_pp_x"'
     DO j=N_FFT(2)/2+1,N_FFT(2)
-      WRITE(FileUnit_EK,'(A8,A,A7,I4,A1)')'ZONE T="',TRIM(ProjectName),',yPlus=',INT((1-ABS(X_FFT(2,1,j,1)))*Re_tau),'"'
+      IF (customChannel) THEN
+        WRITE(FileUnit_EK,'(A8,A,A7,I4,A1)')'ZONE T="',TRIM(ProjectName),',yPlus=',INT((delta-ABS(X_FFT(2,1,j,1)))*(Re_tau/delta)),'"'
+      ELSE
+        WRITE(FileUnit_EK,'(A8,A,A7,I4,A1)')'ZONE T="',TRIM(ProjectName),',yPlus=',INT((1-ABS(X_FFT(2,1,j,1)))*Re_tau),'"'
+      END IF
       WRITE(FileUnit_EK,'(a)')' STRANDID=0, SOLUTIONTIME=0'
       WRITE(FileUnit_EK,*)' I=',nSamples_specI,', J=1, K=1, ZONETYPE=Ordered'
       WRITE(FileUnit_EK,'(a)')' DATAPACKING=POINT'
@@ -434,7 +448,11 @@ SELECT CASE(OutputFormat)
     WRITE(FileUnit_EK,'(a)')'"E_ww_z"'
     WRITE(FileUnit_EK,'(a)')'"E_pp_z"'
     DO j=N_FFT(2)/2+1,N_FFT(2)
-      WRITE(FileUnit_EK,'(A8,A,A7,I4,A1)')'ZONE T="',TRIM(ProjectName),',yPlus=',INT((1-ABS(X_FFT(2,1,j,1)))*Re_tau),'"'
+      IF (customChannel) THEN
+        WRITE(FileUnit_EK,'(A8,A,A7,I4,A1)')'ZONE T="',TRIM(ProjectName),',yPlus=',INT((delta-ABS(X_FFT(2,1,j,1)))*(Re_tau/delta)),'"'
+      ELSE
+        WRITE(FileUnit_EK,'(A8,A,A7,I4,A1)')'ZONE T="',TRIM(ProjectName),',yPlus=',INT((1-ABS(X_FFT(2,1,j,1)))*Re_tau),'"'
+      END IF
       WRITE(FileUnit_EK,'(a)')' STRANDID=0, SOLUTIONTIME=0'
       WRITE(FileUnit_EK,*)' I=',nSamples_specK,', J=1, K=1, ZONETYPE=Ordered'
       WRITE(FileUnit_EK,'(a)')' DATAPACKING=POINT'
@@ -466,7 +484,11 @@ SELECT CASE(OutputFormat)
     DO j=N_FFT(2)/2+1,N_FFT(2)
       k=N_FFT(2)-i
       i=i+1
+      IF (customChannel) THEN
+        PointData(1,i)    = (X_FFT(2,1,i,1)+delta)*(Re_tau/delta)
+      ELSE
       PointData(1,i)    = (X_FFT(2,1,i,1)+1)*Re_tau
+      END IF
       PointData(2:4,i)  = MS_PSD(k,1:3)
       PointData(5:7,i)  = MS_t(k,1:3)
       PointData(8:10,i) = M_t(k,1:3)
@@ -517,7 +539,11 @@ SELECT CASE(OutputFormat)
       END DO
       ! Write dataset attributes
       offsetVar=0
-      WRITE(ZoneTitle,'(A,I4)')'yPlus=',INT((1-ABS(X_FFT(2,1,j,1)))*Re_tau)
+      IF (customChannel) THEN
+        WRITE(ZoneTitle,'(A,I4)')'yPlus=',INT((delta-ABS(X_FFT(2,1,j,1)))*(Re_tau/delta))
+      ELSE
+        WRITE(ZoneTitle,'(A,I4)')'yPlus=',INT((1-ABS(X_FFT(2,1,j,1)))*Re_tau)
+      END IF
       DO iVar=1,nVal
         CALL WriteArray(TRIM(ZoneTitle),2,(/nVal,nSamples/),(/1,nSamples/),(/offsetVar,0/),&
                         .FALSE.,RealArray=PointData(iVar,:))
@@ -556,7 +582,11 @@ SELECT CASE(OutputFormat)
       END DO
       ! Write dataset attributes
       offsetVar=0
-      WRITE(ZoneTitle,'(A,I4)')'yPlus=',INT((1-ABS(X_FFT(2,1,j,1)))*Re_tau)
+      IF (customChannel) THEN
+        WRITE(ZoneTitle,'(A,I4)')'yPlus=',INT((delta-ABS(X_FFT(2,1,j,1)))*(Re_tau/delta))
+      ELSE
+        WRITE(ZoneTitle,'(A,I4)')'yPlus=',INT((1-ABS(X_FFT(2,1,j,1)))*Re_tau)
+      END IF
       DO iVar=1,nVal
         CALL WriteArray(TRIM(ZoneTitle),2,(/nVal,nSamples/),(/1,nSamples/),(/offsetVar,0/),&
                         .FALSE.,RealArray=PointData(iVar,:))

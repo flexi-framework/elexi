@@ -45,7 +45,7 @@ USE MOD_MPI                   ,ONLY: InitMPI
 USE MOD_PreProc
 USE MOD_ReadInTools           ,ONLY: GetReal
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension,set_formatting,clear_formatting
-USE MOD_Mesh_Vars             ,ONLY: Elem_xGP
+!USE MOD_Mesh_Vars             ,ONLY: Elem_xGP
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -381,10 +381,10 @@ DO iArg=1+skipArgs,nArgs
                 USolution(6  ,:,:,:,:)     = TKE  (  :,:,:,:)
 
                 ! Exact Solution eps1
-                DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
-                    USolution(6  ,i,j,k,iElem) = (9.*PP_Pi**2.*cos(PP_Pi*(Elem_xGP(1,i,j,k,iElem) + Elem_xGP(2,i,j,k,iElem) + &
-                                                                         Elem_xGP(3,i,j,k,iElem)))**2.)/400
-                END DO; END DO; END DO; END DO
+!                DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
+!                    USolution(6  ,i,j,k,iElem) = (9.*PP_Pi**2.*cos(PP_Pi*(Elem_xGP(1,i,j,k,iElem) + Elem_xGP(2,i,j,k,iElem) + &
+!                                                                         Elem_xGP(3,i,j,k,iElem)))**2.)/400
+!                END DO; END DO; END DO; END DO
 
                 USolution(7  ,:,:,:,:)     = EpsilonFin
 

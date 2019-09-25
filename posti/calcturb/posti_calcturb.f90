@@ -45,7 +45,7 @@ USE MOD_MPI                   ,ONLY: InitMPI
 USE MOD_PreProc
 USE MOD_ReadInTools           ,ONLY: GetReal
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension,set_formatting,clear_formatting
-!USE MOD_Mesh_Vars             ,ONLY: Elem_xGP
+USE MOD_Mesh_Vars             ,ONLY: Elem_xGP
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -366,13 +366,14 @@ DO iArg=1+skipArgs,nArgs
                 ! Allocate output arrays
                 ALLOCATE(USolution(nVarTurb,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
 
-                ! > We might have areas with laminar flow. Set epsilon to zero in the absence of TKE
+                !--- We might have areas with laminar flow. Set epsilon to zero in the absence of TKE
+                !--> stricly only required for omega, so leave epsilon alone
                 DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
-                    IF(ALMOSTZERO(TKE(i,j,k,iElem))) THEN
-                        EpsilonFin(i,j,k,iElem) = 0.
-                    ELSE
+!                    IF(ALMOSTZERO(TKE(i,j,k,iElem))) THEN
+!                        EpsilonFin(i,j,k,iElem) = 0.
+!                    ELSE
                         EpsilonFin(i,j,k,iElem) = EpsilonSum(i,j,k,iElem)
-                    END IF
+!                    END IF
                 END DO; END DO; END DO; END DO
 
                 ! Fill the output array
@@ -380,10 +381,10 @@ DO iArg=1+skipArgs,nArgs
                 USolution(6  ,:,:,:,:)     = TKE  (  :,:,:,:)
 
                 ! Exact Solution eps1
-!                DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
-!                    USolution(6  ,i,j,k,iElem) = (9.*PP_Pi**2.*cos(PP_Pi*(Elem_xGP(1,i,j,k,iElem) + Elem_xGP(2,i,j,k,iElem) + &
-!                                                                         Elem_xGP(3,i,j,k,iElem)))**2.)/400
-!                END DO; END DO; END DO; END DO
+                DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
+                    USolution(6  ,i,j,k,iElem) = (9.*PP_Pi**2.*cos(PP_Pi*(Elem_xGP(1,i,j,k,iElem) + Elem_xGP(2,i,j,k,iElem) + &
+                                                                         Elem_xGP(3,i,j,k,iElem)))**2.)/400
+                END DO; END DO; END DO; END DO
 
                 USolution(7  ,:,:,:,:)     = EpsilonFin
 
@@ -525,13 +526,14 @@ DO iArg=1+skipArgs,nArgs
                 ! Allocate output arrays
                 ALLOCATE(USolution(nVarTurb,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
 
-                ! > We might have areas with laminar flow. Set epsilon to zero in the absence of TKE
+                !--- We might have areas with laminar flow. Set epsilon to zero in the absence of TKE
+                !--> stricly only required for omega, so leave epsilon alone
                 DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
-                    IF(ALMOSTZERO(TKE(i,j,k,iElem))) THEN
-                        EpsilonFin(i,j,k,iElem) = 0.
-                    ELSE
+!                    IF(ALMOSTZERO(TKE(i,j,k,iElem))) THEN
+!                        EpsilonFin(i,j,k,iElem) = 0.
+!                    ELSE
                         EpsilonFin(i,j,k,iElem) = EpsilonSum(i,j,k,iElem)
-                    END IF
+!                    END IF
                 END DO; END DO; END DO; END DO
 
                 ! Fill the output array

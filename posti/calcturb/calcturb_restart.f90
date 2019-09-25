@@ -46,13 +46,14 @@ CONTAINS
 !> Initialize all necessary information to perform the restart.
 !>
 !> The routine also checks if the node type and polynomial degree of the restart file is the same than in the current simulation.
-!> If not, a flag InterpolateSolution is set. This will be used by the actual Restart routine.
+!> For TurbMode 1 & 2, a flag InterpolateSolution is set. This will be used by the actual Restart routine.
+!> For TurbMode 3 & 4, interpolation results in artefacts and the tool will abort here.
 !==================================================================================================================================
 SUBROUTINE InitRestart(RestartFile_in,ArrayName_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_CalcTurb_Vars,      ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5
+USE MOD_CalcTurb_Vars,      ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5,TurbMode
 USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadAttribute,File_ID
 USE MOD_Interpolation_Vars, ONLY: NodeType
@@ -82,7 +83,7 @@ RestartFile = RestartFile_in
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RESTART...'
 SWRITE(UNIT_StdOut,'(A,A,A)')' | Restarting from file "',TRIM(RestartFile),'":'
-  
+
 ! Check if restart file is a valid state
 validHDF5 = ISVALIDHDF5FILE(RestartFile)
 IF(.NOT.validHDF5) CALL CollectiveStop(__STAMP__,'ERROR - Restart file not a valid state file.')
@@ -104,10 +105,15 @@ CALL CloseDataFile()
 IF (nElems_HDF5.NE.nGlobalElems) THEN
   CALL CollectiveStop(__STAMP__, "Restart File has different number of elements!")
 END IF
-  
+
 ! Check if we need to interpolate the restart file to our current polynomial degree and node type
 IF ((N_HDF5.NE.PP_N) .OR. (TRIM(NodeType_HDF5).NE.TRIM(NodeType))) THEN
+  ! Interpolation possible, set flag
+  IF (TurbMode .LE. 2) THEN
     InterpolateSolution=.TRUE.
+  ELSE
+    CALL ABORT(__STAMP__,'Interpolation not supported for TurbMode=',TurbMode)
+  END IF
 END IF
 
 RestartInitIsDone = .TRUE.
@@ -198,7 +204,7 @@ SELECT CASE(ArrayName_in)
             U_local = U_localNVar
             DEALLOCATE(U_localNVar)
         END IF
-        
+
     CASE('Mean')
         ! Truncate the array after the mean DG solution
         IF (PP_nVar.NE.nVar_HDF5) THEN
@@ -209,7 +215,7 @@ SELECT CASE(ArrayName_in)
             U_local = U_localNVar
             DEALLOCATE(U_localNVar)
         END IF
-        
+
 !    CASE('Fluc')
 !        ! Find out which names we have available
 !        CALL GetArrayAndName('Fluc'      ,'VarNames_Fluc'      ,nVal          ,tmp         ,VarNamesFluc)
@@ -226,7 +232,7 @@ SELECT CASE(ArrayName_in)
 !                U_localNVar(2,:,:,:,:) = SQRT(U_local(iFluc,:,:,:,:))
 !                FoundFluc(  1)         = .TRUE.
 !            END IF
-!            IF(STRICMP(TRIM(VarNamesFluc(iFluc)),'MomentumY')) THEN 
+!            IF(STRICMP(TRIM(VarNamesFluc(iFluc)),'MomentumY')) THEN
 !                U_localNVar(3,:,:,:,:) = SQRT(U_local(iFluc,:,:,:,:))
 !                FoundFluc(  2)         = .TRUE.
 !            END IF
@@ -251,7 +257,7 @@ SELECT CASE(ArrayName_in)
         ELSE
             CALL CollectiveStop(__STAMP__,'Missing conservative variable(s) in timeavg file. Aborting ...')
         END IF
-               
+
         ! Now get TKE from the Fluc array
         ! >Read in attributes
         CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5,'Fluc')
@@ -262,7 +268,7 @@ SELECT CASE(ArrayName_in)
         ALLOCATE(U_localTKE(nVar_HDF5,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
         CALL GetArrayAndName('Fluc','VarNames_Fluc',nVal,tmp,VarNamesFluc)
         CALL ReadArray      ('Fluc',5,HSize_proc,OffsetElem,5,RealArray=U_localTKE)
-        
+
         FoundFluc = .FALSE.
         DO iFluc=1,nVal(1)
             ! TKE variables in conservative form. Keep the square since we are really looking for TKE
@@ -277,9 +283,9 @@ SELECT CASE(ArrayName_in)
         ALLOCATE(U_local(1,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
         U_local = U_localNVar
         DEALLOCATE(U_localNVar)
-        
+
 END SELECT
-        
+
 ! Read in state
 IF(.NOT.InterpolateSolution) THEN
     ! No interpolation needed, read solution directly from file
@@ -336,7 +342,7 @@ ELSE
             TKE   = U(5,:,:,:,:)
         END IF
     END IF
-    
+
     DEALLOCATE(U_local)
     SWRITE(UNIT_stdOut,*)'DONE!'
 END IF

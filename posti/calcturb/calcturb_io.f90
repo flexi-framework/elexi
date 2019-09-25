@@ -82,20 +82,18 @@ CHARACTER(LEN=*),INTENT(IN)   :: ArrayName
 ! LOCAL VARIABLES
 !===================================================================================================================================
 ! finalize everything to make sure all arrays are empty
+CALL FinalizeOutput()
+CALL FinalizeLifting()
+CALL FinalizeDG()
+CALL FinalizeEquation()
 CALL FinalizeInterpolation()
-CALL FinalizeMortar()
 CALL FinalizeRestart()
+CALL FinalizeOverintegration()
+CALL FinalizeFilter()
 #if USE_MPI
 ! We might only need this on the first run
     CALL FinalizeMPI()
 #endif
-CALL FinalizeIndicator()
-CALL FinalizeEquation()
-CALL FinalizeDG()
-CALL FinalizeOverintegration()
-CALL FinalizeFilter()
-CALL FinalizeLifting()
-CALL FinalizeOutput()
 
 ! read options from parameter file
 CALL FinalizeParameters()
@@ -117,7 +115,6 @@ CALL prms%read_options(ParameterFile)
 ! Initialization of I/O routines
 CALL InitIOHDF5()
 CALL InitInterpolation(NCalc)
-CALL InitMortar()
 CALL InitOutput()
 ! We might only need this on the first run
     CALL FinalizeMesh()
@@ -125,7 +122,6 @@ CALL InitOutput()
 CALL InitRestart(StateFile,ArrayName)
 CALL InitFilter()
 CALL InitOverintegration()
-CALL InitIndicator()
 #if USE_MPI
 ! We might only need this on the first run
     CALL InitMPIvars()

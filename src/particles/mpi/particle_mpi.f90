@@ -994,14 +994,10 @@ INTEGER                         :: nInitRegions
 LOGICAL                         :: RegionOnProc
 REAL                            :: xCoords(3,8),lineVector(3),radius,height
 REAL                            :: xlen,ylen,zlen
-REAL                            :: dt
 INTEGER                         :: color,iProc
 INTEGER                         :: noInitRank,InitRank
 !INTEGER,ALLOCATABLE             :: DummyRank(:)
 LOGICAL                         :: hasRegion
-
-! partns
-INTEGER                         :: dummy_errtype
 !===================================================================================================================================
 
 ! get number of total init regions
@@ -1064,30 +1060,6 @@ DO iSpec=1,nSpecies
       xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,+zlen/)
       xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,+zlen/)
       xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
-      RegionOnProc=BoxInProc(xCoords(1:3,1:8),8)
-    CASE('gyrotron_circle')
-      Radius=Species(iSpec)%Init(iInit)%RadiusIC+Species(iSpec)%Init(iInit)%RadiusICGyro
-      xlen=Radius
-      ylen=Radius
-      zlen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(3)*Species(iSpec)%Init(iInit)%NormalIC(3))
-      IF(Species(iSpec)%Init(iInit)%initialParticleNumber.NE.0)THEN
-        lineVector(1:3)=(/0.,0.,Species(iSpec)%Init(iInit)%CuboidHeightIC/)
-      ELSE
-!#ifndef PP_HDG
-        dt = CALCTIMESTEP(dummy_errtype)
-!#endif /*PP_HDG*/
-        lineVector(1:3)= dt* Species(iSpec)%Init(iInit)%VeloIC/Species(iSpec)%Init(iInit)%alpha
-        zlen=0.
-      END IF
-      xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
-      xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
-      xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)
-      xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,-zlen/)
-      xCoords(1:3,5) = Species(iSpec)%Init(iInit)%BasePointIC+lineVector+(/-xlen,-ylen,+zlen/)
-      xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+lineVector+(/+xlen,-ylen,+zlen/)
-      xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+lineVector+(/-xlen,+ylen,+zlen/)
-      xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+lineVector+(/+xlen,+ylen,+zlen/)
       RegionOnProc=BoxInProc(xCoords(1:3,1:8),8)
     CASE('circle_equidistant')
       xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
@@ -1170,69 +1142,6 @@ DO iSpec=1,nSpecies
         xCoords(1:3,iNode+4)=xCoords(1:3,iNode)+lineVector*height
       END DO ! iNode
       RegionOnProc=BoxInProc(xCoords,8)
-    CASE('cuboid_vpi')
-
-      lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(3) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(2)
-      lineVector(2) = Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(1) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(3)
-      lineVector(3) = Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(2) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
-      IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
-         CALL abort(&
-         __STAMP__&
-         ,'BaseVectors are parallel!')
-      ELSE
-        lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + &
-          lineVector(3) * lineVector(3))
-      END IF
-      xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
-      xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC
-      xCoords(1:3,3)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector2IC
-      xCoords(1:3,4)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC&
-                                                           +Species(iSpec)%Init(iInit)%BaseVector2IC
-
-      height = halo_eps
-      DO iNode=1,4
-        xCoords(1:3,iNode+4)=xCoords(1:3,iNode)+lineVector*height
-      END DO ! iNode
-      RegionOnProc=BoxInProc(xCoords,8)
-    CASE('cylinder_vpi')
-      lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(3) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(2)
-      lineVector(2) = Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(1) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(3)
-      lineVector(3) = Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(2) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
-      IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
-         CALL abort(&
-         __STAMP__&
-         ,'BaseVectors are parallel!')
-      ELSE
-        lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + &
-          lineVector(3) * lineVector(3))
-      END IF
-      radius = Species(iSpec)%Init(iInit)%RadiusIC
-
-      xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC-radius*Species(iSpec)%Init(iInit)%BaseVector1IC &
-                                                           -radius*Species(iSpec)%Init(iInit)%BaseVector2IC
-
-      xCoords(1:3,2)=xCoords(1:3,1)+2.0*radius*Species(iSpec)%Init(iInit)%BaseVector1IC
-      xCoords(1:3,3)=xCoords(1:3,1)+2.0*radius*Species(iSpec)%Init(iInit)%BaseVector2IC
-      xCoords(1:3,4)=xCoords(1:3,1)+2.0*radius*Species(iSpec)%Init(iInit)%BaseVector1IC&
-                                   +2.0*radius*Species(iSpec)%Init(iInit)%BaseVector2IC
-
-      height = halo_eps
-      DO iNode=1,4
-        xCoords(1:3,iNode+4)=xCoords(1:3,iNode)+lineVector*height
-      END DO ! iNode
-      RegionOnProc=BoxInProc(xCoords,8)
-
-
-    CASE('LD_insert')
-      RegionOnProc=.TRUE.
-    CASE('cell_local')
-      RegionOnProc=.TRUE.
     CASE('cuboid_equal')
        xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &
             + Species(iSpec)%Init(iInit)%BaseVector1IC(2)**2 &
@@ -1314,8 +1223,6 @@ DO iSpec=1,nSpecies
        xCoords(1:3,7) = xCoords(1:3,5) + (/0.,ylen,0./)
        xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
        RegionOnProc=BoxInProc(xCoords,8)
-    CASE ('IMD')
-       RegionOnProc=.TRUE.
     CASE DEFAULT
       CALL abort(&
       __STAMP__&

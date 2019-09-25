@@ -91,11 +91,7 @@ CALL prms%CreateLogicalOption('Part-WriteMacroSurfaceValues','Similar to Part-Wr
                                                                                                             '.FALSE.')
 CALL prms%CreateLogicalOption('Part-WriteFieldsToVTK',      'Not in Code anymore, but read-in has to be deleted'                 //&
                                                             ' in particle_init.f90',                        '.FALSE.')
-!CALL prms%CreateLogicalOption('PIC-SFResampleAnalyzeSurfCollis', '',                                        '.FALSE.')
 CALL prms%CreateLogicalOption('printRandomSeeds',           'Flag defining if random seeds are written.',   '.FALSE.')
-!CALL prms%CreateLogicalOption('PrintSFDepoWarnings',        'Print the shapefunction warnings',             '.FALSE.')
-CALL prms%CreateLogicalOption('Particles-OutputVpiWarnings','Flag for warnings for rejected'                                     //&
-                                                            ' v if VPI+PartDensity',                        '.FALSE.')
 CALL prms%CreateLogicalOption('Part-AllowLoosing',          'Flag if a lost particle should abort the programm','.FALSE.')
 CALL prms%CreateLogicalOption('Part-LowVeloRemove',         'Flag if low velocity particles should be removed', '.FALSE.')
 
@@ -158,11 +154,6 @@ CALL prms%CreateRealOption(     'Part-Species[$]-PartDensity' &
                                 , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-ParticleEmission' &
                                 , 'Emission rate in part/s or part/iteration.', '0.', numberedmulti=.TRUE.)
-
-CALL prms%CreateRealOption(     'Part-Species[$]-ChargeIC'  &
-                                , 'Particle Charge (without MPF) of species[$] dim' &
-                                , '0.', numberedmulti=.TRUE.)
-
 CALL prms%CreateRealOption(     'Part-Species[$]-MacroParticleFactor' &
                                 , 'Number of Microparticle per Macroparticle for species [$]', '1.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-MassIC'  &
@@ -190,8 +181,8 @@ CALL prms%CreateIntOption(      'Part-Species[$]-NumberOfExcludeRegions'  &
 CALL prms%CreateIntOption(      'Part-Species[$]-ParticleEmissionType'  &
                                 , 'Define Emission Type for particles (volume emission)\n'//&
                                   '1 = emission rate in part/s,\n'//&
-                                  '2 = emission rate part/iteration\n'//&
-                                  '3 = user def. emission rate\n', '2', numberedmulti=.TRUE.)
+                                  '2 = emission rate part/iteration\n'&
+                                  ,'2', numberedmulti=.TRUE.)
 
 CALL prms%CreateRealArrayOption('Part-Species[$]-BasePointIC'  &
                                 , 'TODO-DEFINE-PARAMETER\n'//&
@@ -401,8 +392,6 @@ INTEGER               :: MaxNbrOfSpeciesSwaps
 REAL, DIMENSION(3,1)  :: n,n1,n2
 REAL, DIMENSION(3,3)  :: rot1, rot2
 REAL                  :: alpha1, alpha2
-LOGICAL,ALLOCATABLE   :: MacroRestartFileUsed(:)
-INTEGER               :: FileID
 !===================================================================================================================================
 ! Read print flags
 printRandomSeeds = GETLOGICAL('printRandomSeeds','.FALSE.')
@@ -521,10 +510,8 @@ DO iSpec = 1, nSpecies
 
     ! General Species Values
     Species(iSpec)%RHSMethod             = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(hilf2))//'-RHSMethod','none'))
-    Species(iSpec)%ChargeIC              = GETREAL('Part-Species'//TRIM(hilf2)//'-ChargeIC','0.')
     Species(iSpec)%MassIC                = GETREAL('Part-Species'//TRIM(hilf2)//'-MassIC','0.')
     Species(iSpec)%DensityIC             = GETREAL('Part-Species'//TRIM(hilf2)//'-DensityIC','0.')
-    Species(iSpec)%MacroParticleFactor   = GETREAL('Part-Species'//TRIM(hilf2)//'-MacroParticleFactor','1.')
     Species(iSpec)%LowVeloThreshold      = GETREAL('Part-Species'//TRIM(hilf2)//'-LowVeloThreshold','0.')
     Species(iSpec)%HighVeloThreshold     = GETREAL('Part-Species'//TRIM(hilf2)//'-HighVeloThreshold','0.')
 
@@ -904,17 +891,6 @@ __STAMP__&
 !  SWRITE(*,*)"PartBound",iPartBound,"is used for the Q-Criterion"
 END DO
 
-IF (nMacroRestartFiles.GT.0) THEN
-  IF (ALL(.NOT.MacroRestartFileUsed(:))) CALL abort(&
-__STAMP__&
-,'None of defined Macro-Restart-Files used for any init!')
-  DO FileID = 1,nMacroRestartFiles
-    IF (.NOT.MacroRestartFileUsed(FileID)) THEN
-      SWRITE(*,*) "WARNING: MacroRestartFile: ",FileID," not used for any Init"
-    END IF
-  END DO
-END IF
-
 ! Set mapping from field boundary to particle boundary index
 ALLOCATE(PartBound%MapToPartBC(1:nBCs))
 PartBound%MapToPartBC(:)=-10
@@ -1018,9 +994,6 @@ END IF
 DEALLOCATE(iseeds)
 
 DelayTime = GETREAL('Part-DelayTime','0.')
-
-!-- Read Flag if warnings to be displayed for rejected velocities when virtual Pre-Inserting region (vpi) is used with PartDensity
-OutputVpiWarnings = GETLOGICAL('Particles-OutputVpiWarnings','.FALSE.')
 
 !-- Read Flag if a lost particle should abort the program
 AllowLoosing      = GETLOGICAL('Part-AllowLoosing','.FALSE.')
@@ -1295,7 +1268,6 @@ DO iPartBound=1,nPartBound
   BCdata_auxSF(iPartBound)%GlobalArea=0.
   BCdata_auxSF(iPartBound)%LocalArea=0.
 END DO
-nDataBC_CollectCharges=0
 
 END SUBROUTINE InitializeVariables
 

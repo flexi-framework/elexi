@@ -17,13 +17,13 @@
 !> This tool will take a TimeAvg (and multiple state) file and calculate turbulence quantities from Mean and MeanSquare values
 !===================================================================================================================================
 !
-! There are quantities that require the computation of gradients. In this case the DG operator 'DGTimeDerivative_weakForm' is 
-! called once to fill the gradients and the reconstruction of the FV subcell method. This requires the initialization of several 
-! modules of FLEXI. U is read via a call of 'Restart'. In the DGTimeDerivative_weakForm the primitive quantities U_Prim and 
+! There are quantities that require the computation of gradients. In this case the DG operator 'DGTimeDerivative_weakForm' is
+! called once to fill the gradients and the reconstruction of the FV subcell method. This requires the initialization of several
+! modules of FLEXI. U is read via a call of 'Restart'. In the DGTimeDerivative_weakForm the primitive quantities U_Prim and
 ! gradUx/y/z as well as gradUxi/eta/zeta are filled. These are used to calculate the remaining quantities.
 !
-! * The calculation of derived quantities is performed on a arbitrary polynomial degree NCalc and afterwards interpolated to NVisu. 
-!   Default is PP_N. These require to reconstruct the solution first to the visu grid and afterwards can calculate the derived 
+! * The calculation of derived quantities is performed on a arbitrary polynomial degree NCalc and afterwards interpolated to NVisu.
+!   Default is PP_N. These require to reconstruct the solution first to the visu grid and afterwards can calculate the derived
 !   quantities on the NVisu_FV grid.
 !
 !===================================================================================================================================
@@ -52,7 +52,7 @@ END INTERFACE
 INTERFACE ALMOSTZERO
   MODULE PROCEDURE ALMOSTZERO
 END INTERFACE ALMOSTZERO
-  
+
 PUBLIC :: DefineCalcTurb
 PUBLIC :: InitCalcTurb
 PUBLIC :: FinalizeCalcTurb
@@ -91,12 +91,8 @@ CALL prms%CreateLogicalOption("doConservativeDissipation", "Calculate turbulent 
                                                  " of using the filtered velocity gradients.")
 CALL prms%CreateIntFromStringOption('OutputFormat',"File format for visualization: None, Tecplot, TecplotASCII, ParaView. "//&
                                                  " Note: Tecplot output is currently unavailable due to licensing issues.", 'None')
-#if EQNSYSNR == 4
-! Already defined in MOD_Restart
-#else
-CALL prms%CreateRealOption(   'Restartomega',   "Constant omega to be applied throughout the domain.", '0.')
-#endif
-CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
+CALL prms%CreateRealOption(   'Restartepsilon'  ,"Constant epsilon to be applied throughout the domain.", '0.')
+CALL prms%CreateStringOption( 'NodeTypeVisu'    ,"NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL addStrListEntry(         'OutputFormat'    ,'none',        OUTPUTFORMAT_NONE)
 CALL addStrListEntry(         'OutputFormat'    ,'tecplot',     OUTPUTFORMAT_TECPLOT)
 CALL addStrListEntry(         'OutputFormat'    ,'tecplotascii',OUTPUTFORMAT_TECPLOTASCII)
@@ -104,7 +100,7 @@ CALL addStrListEntry(         'OutputFormat'    ,'paraview',    OUTPUTFORMAT_PAR
 END SUBROUTINE DefineCalcTurb
 
 !===================================================================================================================================
-!> This routine is used to get everything ready for the first read of the data file. 
+!> This routine is used to get everything ready for the first read of the data file.
 !> - Find the mesh file
 !> - Read the desired polynomial degree
 !===================================================================================================================================
@@ -190,7 +186,7 @@ CALL FinalizeDG()
 #if USE_MPI
 CALL FinalizeMPI()
 #endif
-    
+
 END SUBROUTINE FinalizeCalcTurb
 
 
@@ -222,13 +218,13 @@ END FUNCTION ALMOSTEQUAL
 ! Performe an almost zero check. But ...
 ! Bruce Dawson quote:
 ! "There is no silver bullet. You have to choose wisely."
-!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless. 
-!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs 
+!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless.
+!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs
 !      to your calculation. Maybe."
-!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want. 
-!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs. 
+!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
+!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs.
 !      An absolute epsilon could be used if you knew exactly what number you were comparing against."
-!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink. 
+!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
 !      Good luck and God speed."
 !===================================================================================================================================
 FUNCTION ALMOSTZERO(Num)

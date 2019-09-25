@@ -17,13 +17,13 @@
 !> This tool will take a TimeAvg (and multiple state) file and calculate turbulence quantities from Mean and MeanSquare values
 !===================================================================================================================================
 !
-! There are quantities that require the computation of gradients. In this case the DG operator 'DGTimeDerivative_weakForm' is 
-! called once to fill the gradients and the reconstruction of the FV subcell method. This requires the initialization of several 
-! modules of FLEXI. U is read via a call of 'Restart'. In the DGTimeDerivative_weakForm the primitive quantities U_Prim and 
+! There are quantities that require the computation of gradients. In this case the DG operator 'DGTimeDerivative_weakForm' is
+! called once to fill the gradients and the reconstruction of the FV subcell method. This requires the initialization of several
+! modules of FLEXI. U is read via a call of 'Restart'. In the DGTimeDerivative_weakForm the primitive quantities U_Prim and
 ! gradUx/y/z as well as gradUxi/eta/zeta are filled. These are used to calculate the remaining quantities.
 !
-! * The calculation of derived quantities is performed on a arbitrary polynomial degree NCalc and afterwards interpolated to NVisu. 
-!   Default is PP_N. These require to reconstruct the solution first to the visu grid and afterwards can calculate the derived 
+! * The calculation of derived quantities is performed on a arbitrary polynomial degree NCalc and afterwards interpolated to NVisu.
+!   Default is PP_N. These require to reconstruct the solution first to the visu grid and afterwards can calculate the derived
 !   quantities on the NVisu_FV grid.
 !
 !===================================================================================================================================
@@ -74,13 +74,13 @@ CALL SetStackSizeUnlimited()
 CALL InitMPI()
 
 ! Abort on currently unsupported options
-#if EQNSYSNR != 2 
+#if EQNSYSNR != 2
 CALL CollectiveStop(__STAMP__, 'Currently only Navier-Stokes equation system supported. Please recompile with eqn=navierstokes')
 #endif
 #if FV_ENABLED
 CALL CollectiveStop(__STAMP__, 'FV mode not yet implemented. Please disable FV in CMake and recompile.')
 #endif
-    
+
 ! Check and pass all command line arguments
 CALL ParseCommandlineArguments()
 ! Parameter file
@@ -91,7 +91,7 @@ ELSE IF(STRICMP(GetFileExtension(Args(1)),'h5')) THEN
     skipArgs      = 0           ! Do not skip a argument. First argument is a .h5 file
 ELSE
     CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: calcturb [prm-file] statefile [statefiles]')
-END IF             
+END IF
 
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)')
@@ -108,7 +108,7 @@ SWRITE(UNIT_stdOut,'(A)') &
 SWRITE(UNIT_stdOut,'(A)') &
 "    |__|      \______/  | _| `._____||______/   \______/  |_______||_______||__| \__|  \______||_______|"
 SWRITE(UNIT_stdOut,'(A)')
-SWRITE(UNIT_stdOut,'(132("="))')                                                                                         
+SWRITE(UNIT_stdOut,'(132("="))')
 
 ! Measure init duration
 StartTime=FLEXITIME()
@@ -129,39 +129,39 @@ varnames_gen(5) = 'EnergyStagnationDensity'
 ! Loop over all state files
 DO iArg=1+skipArgs,nArgs
     CALL set_formatting("green")
-    SWRITE(UNIT_stdOut,"(A,I0,A,I0,A)") "Processing File ", iArg-1, " of ", nArgs-1, "..." 
+    SWRITE(UNIT_stdOut,"(A,I0,A,I0,A)") "Processing File ", iArg-1, " of ", nArgs-1, "..."
     CALL clear_formatting()
     SWRITE(UNIT_stdOut,'(132("-"))')
-  
+
     StateFile=Args(iArg)
 
     SELECT CASE(TurbMode)
 !> =================================================================================================================================
-!> Simple conversion mode to combine LES timeavg to restart to RANS. Sets epsilon to RestartOmega
+!> Simple conversion mode to combine LES timeavg to restart to RANS. Sets epsilon to RestartEpsilon
 !> =================================================================================================================================
         CASE (1)
             ! Conservative variables plus mu_tilda
             nVarTurb = 6
-            
+
             ! Read state file
             IF (iArg.EQ.(1+skipArgs)) THEN
-                ! Get omega desired for restart
-                RestartOmega=GETREAL('mutilda'  ,'0.')
+                ! Get epsilon desired for restart
+                RestartEpsilon=GETREAL('RestartEpsilon'  ,'0.')
                 ! Get mean values
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING MEAN VALUES...'
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='Mean')
             END IF
-            
+
             ! Set remaining varname
             ALLOCATE(varNames_loc(nVarTurb))
             varnames_loc(1:5) = varnames_gen(1:5)
             varnames_loc(6)   = 'mutilda'
-            
-            ! Fill restart omega
+
+            ! Fill restart epsilon
             ALLOCATE(USolution(nVarTurb,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
             USolution(1:5,:,:,:,:) = U(:,:,:,:,:)
-            USolution(6  ,:,:,:,:) = RestartOmega
-            
+            USolution(6  ,:,:,:,:) = RestartEpsilon
+
             ! Output the state file
             SWRITE(UNIT_stdOut,'(A)') ' CALLING OUTPUT...'
             CALL WriteStateFile(MeshFileName=TRIM(MeshFile),SolutionArray=USolution,ArrayName='DG_Solution')
@@ -172,15 +172,15 @@ DO iArg=1+skipArgs,nArgs
 !> FLEXI "should" already operate on mass-averaged fluctuations for compressible flows. CHECK THIS!
 !> =================================================================================================================================
         CASE(2)
-            ! Conservative variables plus k and omega
+            ! Conservative variables plus k and epsilon
             nVarTurb = 7
-            
+
             ! We expect one timeAvg file and several time-accurate files. Start by filling the mean array ONCE
             IF (iArg.EQ.(1+skipArgs)) THEN
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING MEAN VALUES...'
                 ! Get TKE so we can overwrite with mean values later
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='TKE')
-                
+
                 ! Get mean values
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='Mean')
 
@@ -189,50 +189,50 @@ DO iArg=1+skipArgs,nArgs
                 ALLOCATE(GradUMeany (PP_nVar,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(GradUMeanz (PP_nVar,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 GradUMeanx = GradUx; GradUMeany = GradUy; GradUMeanz = GradUz;
-                        
-                ! Allocate more arrays ONCE to hold omega
+
+                ! Allocate more arrays ONCE to hold epsilon
                 ALLOCATE(EpsilonFluc(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(EpsilonTmp (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(EpsilonSum (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 EpsilonSum = 0.
-                ALLOCATE(Omega      (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
-                Omega      = 0.
+                ALLOCATE(EpsilonFin   (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
+                epsilonFin   = 0.
 
                 ! Allocate arrays to hold the dilatation and the vorticity
                 ALLOCATE(dFluc(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(Vorticity(1:3,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
-                
+
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING MEAN VALUES DONE'
                 SWRITE(UNIT_stdOut,'(132("-"))')
             ELSE
                 ! Now get the time-accurate values from the remaining state files
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING STATE VALUES...'
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='DG_Solution')
-                
+
                 ! Nullify EpsilonFluc
                 EpsilonFluc = 0.
-                
+
                 ! Get fluctuation of gradients. Linear operation, so we can operate on gradients
                 DO iElem=1,nElems; DO k=0,ZDIM(NCalc); DO j=0,NCalc; DO i=0,NCalc
                     ! Work on velocity DIFFERENCES due to turbulence
                     GradVel(:,1) = GradUx(2:4,i,j,k,iElem) - gradUMeanx(2:4,i,j,k,iElem)
                     GradVel(:,2) = GradUy(2:4,i,j,k,iElem) - gradUMeany(2:4,i,j,k,iElem)
                     GradVel(:,3) = GradUz(2:4,i,j,k,iElem) - gradUMeanz(2:4,i,j,k,iElem)
-                    
+
                     dFluc(i,j,k,iElem) = GradVel(1,1) + GradVel(2,2) + GradVel(3,3)
-                    
+
                     ! compute vorticity
                     Vorticity(1,i,j,k,iElem)=GradVel(3,2) - GradVel(2,3)
                     Vorticity(2,i,j,k,iElem)=GradVel(1,3) - GradVel(3,1)
                     Vorticity(3,i,j,k,iElem)=GradVel(2,1) - GradVel(1,2)
                 END DO; END DO; END DO; END DO
-                
-                ! Epsilon 
+
+                ! Epsilon
                 !< epsilon = epsilon_s      + epsilon_d
                 !<         = nu*<vort*vort> + 4/3*nu*d^2
                 !<         = nu*(<vort*vort>+ 4/3*d^2)
                 !> Calculate rho*epsilon first and then divide by rho to ease save loops
-                DO iElem=1,nElems; DO k=0,ZDIM(NCalc);  DO j=0,NCalc; DO i=0,NCalc; 
+                DO iElem=1,nElems; DO k=0,ZDIM(NCalc);  DO j=0,NCalc; DO i=0,NCalc;
                     ! Add epsilon_s contribution
                     DO, a=1,3
                         EpsilonFluc(i,j,k,iElem) = EpsilonFluc(i,j,k,iElem) + mu0*(Vorticity(a,i,j,k,iElem) * &
@@ -244,100 +244,97 @@ DO iArg=1+skipArgs,nArgs
                     ! Divide by rho to get epsilon
                         EpsilonFluc(i,j,k,iElem) = EpsilonFluc(i,j,k,iElem) / UMean(1,i,j,k,iElem)
                 END DO; END DO; END DO; END DO
-                
+
                 ! Average epsilon
                 !<<< Welford's algorithm for variance
                 !    (count, mean, M2) = existingAggregate
-                !    count = count + 1 
+                !    count = count + 1
                 !    delta = newValue - mean
                 !    mean = mean + delta / count
                 !    delta2 = newValue - mean
                 !    M2 = M2 + delta * delta2
                 EpsilonTmp = EpsilonFluc - EpsilonSum
                 EpsilonSum = EpsilonSum  + EpsilonTmp / (iArg-2)            ! prm-file, timeAvg-file, state-file(s)
-                
+
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING STATE VALUES DONE'
                 SWRITE(UNIT_stdOut,'(132("-"))')
             END IF !/TimeAvg or. State-File
-            
+
             ! Postpone output until we are done with all state files
             IF (iArg.EQ.nArgs) THEN
                 SWRITE(UNIT_stdOut,'(A)') ' CALLING OUTPUT...'
                 ! Allocate output arrays
                 ALLOCATE(USolution(nVarTurb,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
-                
+
                 ! Set remaining varname
                 ALLOCATE(varNames_loc(nVarTurb))
                 varnames_loc(1:5) = varnames_gen(1:5)
                 varnames_loc(6)   = 'TKE'
-                varnames_loc(7)   = 'omega'
-                
-                ! Transform epsilon to omega
-                Omega                  = EpsilonSum/(TKE*betaStar)
-                
+                varnames_loc(7)   = 'epsilon'
+
                 ! Fill the output array
                 USolution(1:5,:,:,:,:) = UMean(:,:,:,:,:)
                 USolution(6  ,:,:,:,:) = TKE
-                USolution(7  ,:,:,:,:) = Omega
-                
+                USolution(7  ,:,:,:,:) = EpsilonFin
+
                 ! Call output routine
                 CALL WriteStateFile(MeshFileName=TRIM(MeshFile),SolutionArray=USolution,ArrayName='DG_Solution')
-                
+
                 SWRITE(UNIT_stdOut,'(A)') ' CALLING OUTPUT DONE'
             END IF
-            
+
 !> =================================================================================================================================
 !> Dissipation calculation according to Pope (2015)
 !> - Comparable to incompressible turbulent dissipation (eps1) according to Hillewaert (2013)
 !> =================================================================================================================================
         CASE(3)
-            ! Conservative variables plus k and omega
+            ! Conservative variables plus k and epsilon
             nVarTurb = 7
-            
+
             ! We expect one timeAvg file and several time-accurate files. Start by filling the mean array ONCE
             IF (iArg.EQ.(1+skipArgs)) THEN
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING MEAN VALUES...'
                 ! Get TKE so we can overwrite with mean values later
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='TKE')
-                
+
                 ! Get mean values
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='Mean')
-                
+
                 ! Can't have dissipation without viscosity
                 IF (ALMOSTEQUAL(mu0,0.)) &
                     CALL CollectiveStop(__STAMP__, 'No viscosity given. Please set mu0 in your parameter file.')
-                    
+
                 ! Allocate and fill array to the mean gradients
                 ALLOCATE(GradUMeanx (PP_nVar,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(GradUMeany (PP_nVar,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(GradUMeanz (PP_nVar,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 GradUMeanx = GradUx; GradUMeany = GradUy; GradUMeanz = GradUz;
-                
-                ! Allocate arrays ONCE to hold omega
+
+                ! Allocate arrays ONCE to hold epsilon
                 ALLOCATE(EpsilonFluc(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(EpsilonTmp (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(EpsilonSum (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(EpsilonMean(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 EpsilonSum = 0.
-                ALLOCATE(Omega      (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
-                Omega      = 0.
-                
+                ALLOCATE(EpsilonFin   (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
+                EpsilonFin   = 0.
+
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING MEAN VALUES DONE'
                 SWRITE(UNIT_stdOut,'(132("-"))')
             ELSE
                 ! Now get the time-accurate values from the remaining state files
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING STATE VALUES...'
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='DG_Solution')
-                
+
                 DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
                     ! Get fluctuation of gradients. Linear operation, so we can operate on gradients
                     GradVel(1:3,1) = GradUx(2:4,i,j,k,iElem) - gradUMeanx(2:4,i,j,k,iElem)
                     GradVel(1:3,2) = GradUy(2:4,i,j,k,iElem) - gradUMeany(2:4,i,j,k,iElem)
                     GradVel(1:3,3) = GradUz(2:4,i,j,k,iElem) - gradUMeanz(2:4,i,j,k,iElem)
-                    
+
                     ! compute tensor of velocity gradients
                     S              = 0.5*(Gradvel+TRANSPOSE(GradVel))
-                    
+
                     !< epsilon = 2*nu*<s_ij s_ij>
                     eps1        = 0.
                     DO p = 1,3; DO q = 1,3
@@ -347,117 +344,116 @@ DO iArg=1+skipArgs,nArgs
                     EpsilonFluc(i,j,k,iElem) = eps1
 
                 END DO; END DO; END DO; END DO
-                
+
                 ! Average epsilon
                 !<<< Welford's algorithm for variance
                 !    (count, mean, M2) = existingAggregate
-                !    count = count + 1 
+                !    count = count + 1
                 !    delta = newValue - mean
                 !    mean = mean + delta / count
                 !    delta2 = newValue - mean
                 !    M2 = M2 + delta * delta2
                 EpsilonTmp = EpsilonFluc - EpsilonSum
                 EpsilonSum = EpsilonSum  + EpsilonTmp / (iArg-2)            ! prm-file, timeAvg-file, state-file(s)
-                
+
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING STATE VALUES DONE'
                 SWRITE(UNIT_stdOut,'(132("-"))')
             END IF
-            
+
             ! Postpone output until we are done with all state files
             IF (iArg.EQ.nArgs) THEN
                 SWRITE(UNIT_stdOut,'(A)') ' CALLING OUTPUT...'
                 ! Allocate output arrays
                 ALLOCATE(USolution(nVarTurb,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
-                
-                ! Transform epsilon to omega
-                ! > We might have areas with laminar flow. Set Omega to zero in the absence of TKE
+
+                ! > We might have areas with laminar flow. Set epsilon to zero in the absence of TKE
                 DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
                     IF(ALMOSTZERO(TKE(i,j,k,iElem))) THEN
-                        Omega(i,j,k,iElem) = 0.
+                        EpsilonFin(i,j,k,iElem) = 0.
                     ELSE
-                        Omega(i,j,k,iElem) = EpsilonSum(i,j,k,iElem)/(TKE(i,j,k,iElem)*betaStar)
+                        EpsilonFin(i,j,k,iElem) = EpsilonSum(i,j,k,iElem)
                     END IF
                 END DO; END DO; END DO; END DO
-                
+
                 ! Fill the output array
                 USolution(1:5,:,:,:,:)     = UMean(:,:,:,:,:)
                 USolution(6  ,:,:,:,:)     = TKE  (  :,:,:,:)
-                
+
                 ! Exact Solution eps1
 !                DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
 !                    USolution(6  ,i,j,k,iElem) = (9.*PP_Pi**2.*cos(PP_Pi*(Elem_xGP(1,i,j,k,iElem) + Elem_xGP(2,i,j,k,iElem) + &
 !                                                                         Elem_xGP(3,i,j,k,iElem)))**2.)/400
 !                END DO; END DO; END DO; END DO
-                
-                USolution(7  ,:,:,:,:)     = Omega
-                
+
+                USolution(7  ,:,:,:,:)     = EpsilonFin
+
                 ! Set remaining varname
                 ALLOCATE(varNames_loc(nVarTurb))
                 varnames_loc(1:5) = varnames_gen(1:5)
                 varnames_loc(6)   = 'TKE'
-                varnames_loc(7)   = 'omega'
-                
+                varnames_loc(7)   = 'epsilon'
+
                 ! Call output routine
                 CALL WriteStateFile(MeshFileName=TRIM(MeshFile),SolutionArray=USolution,ArrayName='DG_Solution')
-                
+
                 SWRITE(UNIT_stdOut,'(A)') ' CALLING OUTPUT DONE'
             END IF
-            
+
 !> =================================================================================================================================
 !> Dissipation calculation according to Hillewaert (2013)
 !> =================================================================================================================================
         CASE(4)
-            ! Conservative variables plus k and omega
+            ! Conservative variables plus k and epsilon
             nVarTurb = 7
-            
+
             ! We expect one timeAvg file and several time-accurate files. Start by filling the mean array ONCE
             IF (iArg.EQ.(1+skipArgs)) THEN
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING MEAN VALUES...'
                 ! Get TKE so we can overwrite with mean values later
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='TKE')
-                
+
                 ! Get mean values
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='Mean')
-                
+
                 ! Can't have dissipation without viscosity
                 IF (ALMOSTEQUAL(mu0,0.)) &
                     CALL CollectiveStop(__STAMP__, 'No viscosity given. Please set mu0 in your parameter file.')
-                
+
                 ! Allocate and fill array to the mean gradients
                 ALLOCATE(GradUMeanx (PP_nVar,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(GradUMeany (PP_nVar,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(GradUMeanz (PP_nVar,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 GradUMeanx = GradUx; GradUMeany = GradUy; GradUMeanz = GradUz;
-                
-                ! Allocate arrays ONCE to hold omega
+
+                ! Allocate arrays ONCE to hold epsilon
                 ALLOCATE(EpsilonFluc(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(EpsilonTmp (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(EpsilonSum (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 ALLOCATE(EpsilonMean(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 EpsilonSum = 0.
-                ALLOCATE(Omega      (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
-                Omega      = 0.
-                
+                ALLOCATE(EpsilonFin   (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
+                EpsilonFin   = 0.
+
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING MEAN VALUES DONE'
                 SWRITE(UNIT_stdOut,'(132("-"))')
             ELSE
                 ! Now get the time-accurate values from the remaining state files
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING STATE VALUES...'
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='DG_Solution')
-                
+
                 ! Follow procedure for Taylor-Green-Vortex
                 DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
                     ! Density
                     rho         = U(1,i,j,k,iElem)
-                    
+
                     ! Compute primitive values (of u,v,w) at each GP
                     Vel(1:3)    = U(2:4,i,j,k,iElem)/U(1,i,j,k,iElem)
-                    
+
                     ! Get fluctuation of gradients. Linear operation, so we can operate on gradients
                     GradVel(1:3,1) = GradUx(2:4,i,j,k,iElem) - gradUMeanx(2:4,i,j,k,iElem)
                     GradVel(1:3,2) = GradUy(2:4,i,j,k,iElem) - gradUMeany(2:4,i,j,k,iElem)
                     GradVel(1:3,3) = GradUz(2:4,i,j,k,iElem) - gradUMeanz(2:4,i,j,k,iElem)
-                    
+
                     ! Pressure (WITH MEAN VELOCITY?)
                     Pressure    = KappaM1*(U(5,i,j,k,iElem)-0.5*SUM(U(2:4,i,j,k,iElem)*Vel(1:3)))
 
@@ -466,20 +462,20 @@ DO iArg=1+skipArgs,nArgs
 
                     ! compute tensor of velocity gradients
                     S           = 0.5*(Gradvel+TRANSPOSE(GradVel))
-                    
+
                     ! deviatoric part of strain tensor
                     Sd=S
                     DO p=1,3
                         Sd(p,p) = Sd(p,p)-1./3.*divU
                     END DO
-                    
+
                     ! compute integrand for epsilon2, viscous distribution to dissipation
 !                    eps2        = divU*divU
-                    
+
                     ! Matrix : Matrix product for velocity gradient tensor, S:S and Sd:Sd
                     u_tens = 0.; s_tens = 0.; sd_tens = 0.
                     eps1   = 0.; eps2   = 0.; eps3    = 0.
-                    
+
                     ! compute integrand for epsilon3, pressure contribution to dissipation (compressibility effect)
                     eps3        = Pressure*divU
 
@@ -503,46 +499,45 @@ DO iArg=1+skipArgs,nArgs
 !                    eps2        = muv/rho*eps2
                     eps3        = -1./rho   * eps3
 
-                    ! Epsilon 
+                    ! Epsilon
                     !> epsilon = eps1 + eps2 + eps3
                     EpsilonFluc(i,j,k,iElem) = eps1 + eps2 + eps3
                 END DO; END DO; END DO; END DO
-                
+
                 ! Average epsilon
                 !<<< Welford's algorithm for variance
                 !    (count, mean, M2) = existingAggregate
-                !    count = count + 1 
+                !    count = count + 1
                 !    delta = newValue - mean
                 !    mean = mean + delta / count
                 !    delta2 = newValue - mean
                 !    M2 = M2 + delta * delta2
                 EpsilonTmp = EpsilonFluc - EpsilonSum
                 EpsilonSum = EpsilonSum  + EpsilonTmp / (iArg-2)            ! prm-file, timeAvg-file, state-file(s)
-                
+
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING STATE VALUES DONE'
                 SWRITE(UNIT_stdOut,'(132("-"))')
             END IF
-            
+
             ! Postpone output until we are done with all state files
             IF (iArg.EQ.nArgs) THEN
                 SWRITE(UNIT_stdOut,'(A)') ' CALLING OUTPUT...'
                 ! Allocate output arrays
                 ALLOCATE(USolution(nVarTurb,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
-                
-                ! Transform epsilon to omega
-                ! > We might have areas with laminar flow. Set Omega to zero in the absence of TKE
+
+                ! > We might have areas with laminar flow. Set epsilon to zero in the absence of TKE
                 DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
                     IF(ALMOSTZERO(TKE(i,j,k,iElem))) THEN
-                        Omega(i,j,k,iElem) = 0.
+                        EpsilonFin(i,j,k,iElem) = 0.
                     ELSE
-                        Omega(i,j,k,iElem) = EpsilonSum(i,j,k,iElem)/(TKE(i,j,k,iElem)*betaStar)
+                        EpsilonFin(i,j,k,iElem) = EpsilonSum(i,j,k,iElem)
                     END IF
                 END DO; END DO; END DO; END DO
-                
+
                 ! Fill the output array
                 USolution(1:5,:,:,:,:)     = UMean(:,:,:,:,:)
                 USolution(6  ,:,:,:,:)     = TKE  (  :,:,:,:)
-                
+
                 ! Exact Solution eps1
 !                DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
 !                    USolution(6  ,i,j,k,iElem) = (9.*PP_Pi**2.*cos(PP_Pi*(Elem_xGP(1,i,j,k,iElem) + Elem_xGP(2,i,j,k,iElem) + &
@@ -554,23 +549,23 @@ DO iArg=1+skipArgs,nArgs
 !                                                ((3.*     (sin(PP_Pi*SUM(Elem_xGP(1:3,i,j,k,iElem)))/10. + 2.)*&
 !                                                          (sin(PP_Pi*SUM(Elem_xGP(1:3,i,j,k,iElem)))/20. + 1.))/5. - 8./5.))/40.
 !                END DO; END DO; END DO; END DO
-                
-                USolution(7  ,:,:,:,:) = Omega
-                
+
+                USolution(7  ,:,:,:,:) = EpsilonFin
+
                 ! Set remaining varname
                 ALLOCATE(varNames_loc(nVarTurb))
                 varnames_loc(1:5) = varnames_gen(1:5)
                 varnames_loc(6)   = 'TKE'
-                varnames_loc(7)   = 'omega'
-                
+                varnames_loc(7)   = 'epsilon'
+
                 ! Call output routine
                 CALL WriteStateFile(MeshFileName=TRIM(MeshFile),SolutionArray=USolution,ArrayName='DG_Solution')
-                
+
                 SWRITE(UNIT_stdOut,'(A)') ' CALLING OUTPUT DONE'
             END IF
-            
+
     END SELECT
-    
+
 END DO !iArg
 
 ! Measure tool duration
@@ -590,5 +585,5 @@ CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
 
-    
+
 END PROGRAM Posti_CalcTurb

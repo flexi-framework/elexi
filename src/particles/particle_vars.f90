@@ -28,7 +28,7 @@ REAL                  :: ManualTimeStep                                      ! M
 LOGICAL               :: useManualTimeStep                                   ! Logical Flag for manual timestep. For consistency
                                                                              ! with IAG programming style
 LOGICAL               :: AllowLoosing                                        ! Flag if a lost particle should abort the program
-LOGICAL               :: KeepWallParticles                                   ! Flag for tracking of adsorbed Particles
+LOGICAL               :: KeepWallParticles                                   ! Flag for tracking of particles trapped by fouling
 LOGICAL               :: printRandomSeeds                                    ! print random seeds or not
 REAL                  :: dt_max_particles                                    ! Maximum timestep for particles (for static fields!)
 !INTEGER               :: WeirdElems                                          ! Number of Weird Elements (=Elements which are folded
@@ -65,7 +65,7 @@ TYPE tExcludeRegion
   REAL                                   :: CylinderHeightIC                 ! third measure of cylinder
                                                                              ! (set 0 for flat circle),
                                                                              ! negative value = opposite direction
-  REAL                                   :: ExcludeBV_lenghts(2)                    ! lenghts of BV1/2 (to be calculated)
+  REAL                                   :: ExcludeBV_lenghts(2)             ! lenghts of BV1/2 (to be calculated)
 END TYPE
 
 TYPE tInit                                                                   ! Particle Data for each init emission for each species
@@ -102,8 +102,6 @@ TYPE tInit                                                                   ! P
   REAL                                   :: MJyRatio                         ! y direction portion of velocity for Maxwell-Juettner
   REAL                                   :: MJzRatio                         ! z direction portion of velocity for Maxwell-Juettner
   REAL                                   :: Alpha                            ! WaveNumber for sin-deviation initiation.
-  REAL                                   :: ConstantPressure                 ! Pressure for an Area with a Constant Pressure
-  REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3) for (vpi_)cub./
                                                                              ! cyl. as alternative to Part.Emis. in Type1
   INTEGER                                :: ParticleEmissionType             ! Emission Type 1 = emission rate in 1/s,
                                                                              !               2 = emission rate 1/iteration
@@ -122,10 +120,8 @@ TYPE tSpecies                                                                ! P
   !General Species Values
   TYPE(tInit), ALLOCATABLE               :: Init(:)  !     =>NULL()          ! Particle Data for each Initialisation
   CHARACTER(40)                          :: RHSMethod                        ! specifying Keyword for RHS method
-  REAL                                   :: ChargeIC                         ! Particle Charge (without MPF)
   REAL                                   :: MassIC                           ! Particle Mass (without MPF)
   REAL                                   :: DensityIC                        ! Particle Density (without MPF)
-  REAL                                   :: MacroParticleFactor              ! Number of Microparticle per Macroparticle
   INTEGER                                :: NumberOfInits                    ! Number of different initial particle placements
   INTEGER                                :: StartnumberOfInits               ! 0 if old emit defined (array is copied into 0. entry)
   REAL                                   :: LowVeloThreshold                 ! Threshold value for removal of low velocity particles
@@ -189,14 +185,8 @@ REAL                                     :: DelayTime
 
 LOGICAL                                  :: ParticlesInitIsDone=.FALSE.
 
-LOGICAL                                  :: WRITEMacroValues = .FALSE.
-LOGICAL                                  :: WriteMacroVolumeValues =.FALSE.   ! Output of macroscopic values in volume
 LOGICAL                                  :: WriteMacroSurfaceValues=.FALSE.   ! Output of macroscopic values on surface
-INTEGER                                  :: MacroValSamplIterNum              ! Number of iterations for sampling
-                                                                              ! macroscopic values
-REAL                                     :: MacroValSampTime                  ! Sampling time for WriteMacroVal. (e.g., for td201)
-INTEGER                                  :: NumRanVec                         ! Number of predefined random vectors
-REAL, ALLOCATABLE                        :: RandomVec(:,:)                    ! Random Vectos (NumRanVec, direction)
+REAL                                     :: MacroValSampTime                  ! Sampling time for WriteMacroVal
 LOGICAL                                  :: DoPoissonRounding                 ! Perform Poisson sampling instead of random rounding
 LOGICAL                                  :: DoTimeDepInflow                   ! Insertion and SurfaceFlux w simple random rounding
 LOGICAL                                  :: FindNeighbourElems=.FALSE.

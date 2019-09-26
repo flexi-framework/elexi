@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -21,7 +21,7 @@ MODULE MOD_Particle_Analyze
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
@@ -66,21 +66,14 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Particle Analyze")
 
-CALL prms%CreateIntOption(      'Part-AnalyzeStep'   , 'Analyze is performed each Nth time step','1') 
+CALL prms%CreateIntOption(      'Part-AnalyzeStep'   , 'Analyze is performed each Nth time step','1')
 CALL prms%CreateLogicalOption(  'CalcKineticEnergy'  , 'Calculate Kinetic Energy. ','.FALSE.')
 CALL prms%CreateLogicalOption(  'CalcPartBalance'    , 'Calculate the Particle Power Balance'//&
                                                        '- input and outflow energy of all particles','.FALSE.')
-CALL prms%CreateLogicalOption(  'CalcVelos'          , 'Calculate thermal and flow velocities.'//&
-                                                       'if CalcVelos = T VelocityDirections = (/[int],[int],[int],[int]/)  '//&
-                                                       'Switching dimensions for CalcVelos on (1) or off (0)\n'//&
-                                                       '(/v_x,v_y,v_z,|v|/) ','.FALSE.')
-CALL prms%CreateIntArrayOption( 'VelocityDirections' , 'x,y,z,abs -> 0/1 = T/F. (please note: CalcVelos)'&
-                                                     ,'1 , 1 , 1 , 1')
 CALL prms%CreateLogicalOption(  'Part-TrackPosition' , 'Track particle position','.FALSE.')
 CALL prms%CreateLogicalOption(  'printDiff'          , '.FALSE.')
 CALL prms%CreateRealOption(     'PrintDiffTime'      , '12')
 CALL prms%CreateRealArrayOption('printDiffVec'       , '0. , 0. , 0. , 0. , 0. , 0.')
-CALL prms%CreateLogicalOption(  'IsRestart'          , 'Flag, if the current calculation is a restart. ','.FALSE.')
 
 END SUBROUTINE DefineParametersParticleAnalyze
 
@@ -91,7 +84,7 @@ SUBROUTINE InitParticleAnalyze()
 ! MODULES
   USE MOD_Globals
   USE MOD_Preproc
-  USE MOD_Particle_Analyze_Vars 
+  USE MOD_Particle_Analyze_Vars
   USE MOD_ReadInTools             ,ONLY: GETLOGICAL, GETINT, GETSTR, GETINTARRAY, GETREALARRAY, GETREAL
   USE MOD_Particle_Vars           ,ONLY: nSpecies
 ! IMPLICIT VARIABLE HANDLING
@@ -102,94 +95,71 @@ SUBROUTINE InitParticleAnalyze()
 ! LOCAL VARIABLES
   INTEGER   :: dir, VeloDirs_hilf(4)
 !===================================================================================================================================
-  IF (ParticleAnalyzeInitIsDone) THEN
-CALL abort(__STAMP__,&
-'InitParticleAnalyse already called.',999,999.)
-    RETURN
-  END IF
-  SWRITE(UNIT_StdOut,'(132("-"))')
-  SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE ANALYZE...'
+IF (ParticleAnalyzeInitIsDone) THEN
+  CALL abort(__STAMP__,'InitParticleAnalyse already called.',999,999.)
+  RETURN
+END IF
 
-  PartAnalyzeStep = GETINT('Part-AnalyzeStep','1')
-IF (PartAnalyzeStep.EQ.0) PartAnalyzeStep = 123456789
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE ANALYZE...'
 
-  DoAnalyze = .FALSE.
+DoAnalyze = .FALSE.
   CalcEkin = GETLOGICAL('CalcKineticEnergy','.FALSE.')
   IF(CalcEkin) DoAnalyze = .TRUE.
-  IF(nSpecies.GT.1) THEN
-    nSpecAnalyze = nSpecies + 1
-  ELSE
-    nSpecAnalyze = 1
-  END IF
-  CalcPartBalance = GETLOGICAL('CalcPartBalance','.FALSE.')
-  IF (CalcPartBalance) THEN
-    DoAnalyze = .TRUE.
-    SDEALLOCATE(nPartIn)
-    SDEALLOCATE(nPartOut)
-    SDEALLOCATE(PartEkinIn)
-    SDEALLOCATE(PartEkinOut)
-    ALLOCATE( nPartIn(nSpecies)     &
-            , nPartOut(nSpecies)     &
-            , PartEkinOut(nSpecies) &
-            , PartEkinIn(nSpecies)  )
-    nPartIn=0
-    nPartOut=0
-    PartEkinOut=0.
-    PartEkinIn=0.
 
-    SDEALLOCATE( nPartInTmp)
-    SDEALLOCATE( PartEkinInTmp)
-    ALLOCATE( nPartInTmp(nSpecies)     &
-            , PartEkinInTmp(nSpecies)  )
-    PartEkinInTmp=0.
-    nPartInTmp=0
+IF(nSpecies.GT.1) THEN
+  nSpecAnalyze = nSpecies + 1
+ELSE
+  nSpecAnalyze = 1
+END IF
 
-  END IF
+! Calculate number and kinetic energy of particles entering / leaving the domain
+CalcPartBalance = GETLOGICAL('CalcPartBalance','.FALSE.')
+IF (CalcPartBalance) THEN
+  DoAnalyze = .TRUE.
+  SDEALLOCATE(nPartIn)
+  SDEALLOCATE(nPartOut)
+  SDEALLOCATE(PartEkinIn)
+  SDEALLOCATE(PartEkinOut)
+  ALLOCATE( nPartIn(nSpecies)     &
+          , nPartOut(nSpecies)     &
+          , PartEkinOut(nSpecies) &
+          , PartEkinIn(nSpecies)  )
+  nPartIn=0
+  nPartOut=0
+  PartEkinOut=0.
+  PartEkinIn=0.
+
+  SDEALLOCATE( nPartInTmp)
+  SDEALLOCATE( PartEkinInTmp)
+  ALLOCATE( nPartInTmp(nSpecies)     &
+          , PartEkinInTmp(nSpecies)  )
+  PartEkinInTmp=0.
+  nPartInTmp=0
+END IF
+
+! Track and write position of each particle. Primarily intended for debug purposes
 TrackParticlePosition = GETLOGICAL('Part-TrackPosition','.FALSE.')
+
 IF(TrackParticlePosition)THEN
   printDiff=GETLOGICAL('printDiff','.FALSE.')
   IF(printDiff)THEN
-    printDiffTime=GETREAL('printDiffTime','12.')
-    printDiffVec=GETREALARRAY('printDiffVec',6,'0.,0.,0.,0.,0.,0.')
+    printDiffTime = GETREAL(     'printDiffTime','12.')
+    printDiffVec  = GETREALARRAY('printDiffVec',6,'0.,0.,0.,0.,0.,0.')
   END IF
 END IF
 
-  CalcVelos = GETLOGICAL('CalcVelos','.FALSE')
-  IF (CalcVelos) THEN
-    DoAnalyze=.TRUE.
-    VeloDirs_hilf = GetIntArray('VelocityDirections',4,'1,1,1,1') ! x,y,z,abs -> 0/1 = T/F
-    VeloDirs(:) = .FALSE.
-  IF(.NOT.CalcNumSpec)THEN
-    SWRITE(UNIT_stdOut,'(A)') ' Velocity computation requires NumSpec and SimNumSpec. Setting CalcNumSpec=.TRUE.'
-    CalcNumSpec = .TRUE.
-  END IF
-    DO dir = 1,4
-      IF (VeloDirs_hilf(dir) .EQ. 1) THEN
-        VeloDirs(dir) = .TRUE.
-      END IF
-    END DO
-    IF ((.NOT. VeloDirs(1)) .AND. (.NOT. VeloDirs(2)) .AND. &
-        (.NOT. VeloDirs(3)) .AND. (.NOT. VeloDirs(4))) THEN
-      CALL abort(&
-        __STAMP__&
-        ,'No VelocityDirections set in CalcVelos!')
-    END IF
-  END IF
+ParticleAnalyzeInitIsDone=.TRUE.
 
-  IsRestart = GETLOGICAL('IsRestart','.FALSE.')
-
-  ParticleAnalyzeInitIsDone=.TRUE.
-
-  SWRITE(UNIT_stdOut,'(A)')' INIT PARTCILE ANALYZE DONE!'
-  SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTCILE ANALYZE DONE!'
+SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleAnalyze
 
 
-SUBROUTINE CalcKineticEnergy(Ekin) 
+SUBROUTINE CalcKineticEnergy(Ekin)
 !===================================================================================================================================
 ! compute the kinetic energy of particles
-! for velocity <1e3 non-relativistic formula is used, for larger velocities the relativistic kinetic energy is computed
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -205,7 +175,7 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: Ekin(nSpecAnalyze) 
+REAL,INTENT(OUT)                :: Ekin(nSpecAnalyze)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: i
@@ -222,20 +192,18 @@ IF (nSpecAnalyze.GT.1) THEN
       partV2 = PartState(i,4) * PartState(i,4) &
               + PartState(i,5) * PartState(i,5) &
               + PartState(i,6) * PartState(i,6)
-          Ekin(nSpecAnalyze) = Ekin(nSpecAnalyze) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2 &
-                                            *  Species(PartSpecies(i))%MacroParticleFactor
-          Ekin(PartSpecies(i)) = Ekin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2 &
-                                            *  Species(PartSpecies(i))%MacroParticleFactor
+          Ekin(nSpecAnalyze)   = Ekin(nSpecAnalyze)   + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
+          Ekin(PartSpecies(i)) = Ekin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
     END IF ! (PDM%ParticleInside(i))
   END DO ! i=1,PDM%ParticleVecLength
+
 ELSE ! nSpecAnalyze = 1 : only 1 species
   DO i=1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(i)) THEN
       partV2 = PartState(i,4) * PartState(i,4) &
              + PartState(i,5) * PartState(i,5) &
              + PartState(i,6) * PartState(i,6)
-          Ekin(PartSpecies(i)) = Ekin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2 &
-                                            *  Species(PartSpecies(i))%MacroParticleFactor
+          Ekin(PartSpecies(i)) = Ekin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
     END IF ! particle inside
   END DO ! particleveclength
 END IF
@@ -251,65 +219,7 @@ END IF
 END SUBROUTINE CalcKineticEnergy
 
 
-!SUBROUTINE CalcNumPartsOfSpec(NumSpec,SimNumSpec) 
-!!===================================================================================================================================
-!! computes the number of simulated particles AND number of real particles within the domain
-!! Last section of the routine contains the MPI-communication
-!!===================================================================================================================================
-!! MODULES                                                                                                                          !
-!USE MOD_Globals
-!USE MOD_Particle_Vars,          ONLY: PDM,PartSpecies
-!USE MOD_Particle_Analyze_Vars,  ONLY: nSpecAnalyze
-!USE MOD_Particle_Vars,          ONLY: nSpecies
-!#if USE_MPI
-!USE MOD_Particle_MPI_Vars,      ONLY: PartMPI
-!USE MOD_Particle_Analyze_Vars,  ONLY: CalcNumSpec
-!#endif /*MPI*/
-!!----------------------------------------------------------------------------------------------------------------------------------!
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!! INPUT VARIABLES 
-!!----------------------------------------------------------------------------------------------------------------------------------!
-!! OUTPUT VARIABLES
-!REAL,INTENT(OUT)                   :: NumSpec(nSpecAnalyze)
-!INTEGER(KIND=8),INTENT(OUT)        :: SimNumSpec(nSpecAnalyze)
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!INTEGER                            :: iPart
-!#if USE_MPI
-!REAL                               :: RD(nSpecAnalyze)
-!INTEGER(KIND=8)                    :: ID(nSpecAnalyze)
-!#endif /*MPI*/
-!!===================================================================================================================================
-!
-!  SimNumSpec = 0
-!  DO iPart=1,PDM%ParticleVecLength
-!    IF (PDM%ParticleInside(iPart)) THEN
-!      SimNumSpec(PartSpecies(iPart)) = SimNumSpec(PartSpecies(iPart)) + 1                      ! NumSpec =  particle number
-!    END IF
-!  END DO
-!  NumSpec = REAL(SimNumSpec)
-!  IF(nSpecAnalyze.GT.1)THEN
-!    SimNumSpec(nSpecAnalyze) = SUM(SimNumSpec(1:nSpecies))
-!    NumSpec(nSpecAnalyze) = SUM(NumSpec(1:nSpecies))
-!  END IF
-!!END IF
-!
-!#if USE_MPI
-!IF (PartMPI%MPIRoot) THEN
-!  CALL MPI_REDUCE(MPI_IN_PLACE,NumSpec    ,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM,IERROR)
-!  IF(CalcNumSpec) & 
-!  CALL MPI_REDUCE(MPI_IN_PLACE,SimNumSpec ,nSpecAnalyze,MPI_LONG            ,MPI_SUM,0,PartMPI%COMM,IERROR)
-!ELSE
-!  CALL MPI_REDUCE(NumSpec     ,RD         ,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM,IERROR)
-!  IF(CalcNumSpec) & 
-!  CALL MPI_REDUCE(SimNumSpec  ,ID         ,nSpecAnalyze,MPI_LONG            ,MPI_SUM,0,PartMPI%COMM,IERROR)
-!END IF
-!#endif /*MPI*/
-!
-!END SUBROUTINE CalcNumPartsOfSpec
-
-Function CalcEkinPart(iPart) 
+Function CalcEkinPart(iPart)
 !===================================================================================================================================
 ! computes the kinetic energy of one particle
 !===================================================================================================================================
@@ -333,14 +243,14 @@ REAL                               :: partV2, Ekin !,gamma1
   partV2 = PartState(iPart,4) * PartState(iPart,4) &
          + PartState(iPart,5) * PartState(iPart,5) &
          + PartState(iPart,6) * PartState(iPart,6)
-         
-  Ekin= 0.5*Species(PartSpecies(iPart))%MassIC*partV2* Species(PartSpecies(iPart))%MacroParticleFactor
+
+  Ekin= 0.5*Species(PartSpecies(iPart))%MassIC*partV2
   CalcEkinPart=Ekin
-  
+
 END FUNCTION CalcEkinPart
 
 
-SUBROUTINE TrackingParticlePosition(time) 
+SUBROUTINE TrackingParticlePosition(time)
 !===================================================================================================================================
 ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
 !===================================================================================================================================
@@ -372,7 +282,7 @@ iunit=GETFREEUNIT()
 TrackingFilename = ('ParticlePosition.csv')
 
 INQUIRE(FILE = TrackingFilename, EXIST=fexist)
-IF(.NOT.fexist) THEN 
+IF(.NOT.fexist) THEN
 #if USE_MPI
  IF(PartMPI%MPIRoot)THEN
 #endif

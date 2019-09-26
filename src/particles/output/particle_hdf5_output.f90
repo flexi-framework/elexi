@@ -36,18 +36,9 @@ INTERFACE WriteHDF5Header
   MODULE PROCEDURE WriteHDF5Header
 END INTERFACE
 
-!#if USE_MPI
-!INTERFACE DistributedWriteArray
-!  MODULE PROCEDURE DistributedWriteArray
-!END INTERFACE
-!#endif
-
 PUBLIC :: WriteParticleToHDF5
 PUBLIC :: WriteAttributeToHDF5
 PUBLIC :: WriteHDF5Header
-#if USE_MPI
-PUBLIC :: DistributedWriteArray
-#endif
 !==================================================================================================================================
 
 CONTAINS

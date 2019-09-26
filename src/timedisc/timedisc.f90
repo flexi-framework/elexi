@@ -147,7 +147,7 @@ CALL AddToElemData(ElementOut,'dt',dtElem)
 SWRITE(UNIT_StdOut,'(66("-"))')
 PartSteadyState   = GETLOGICAL('Part-SteadyState',   'F')
 Part_dt_Min       = GETREAL   ('Part-SteadyTimeStep','0.')
-  
+
 !CALL Particle_InitTimeDisc()
 #endif
 
@@ -315,9 +315,9 @@ IF(errType.NE.0) CALL abort(__STAMP__,&
 #else
   'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
 #endif
-  
+
 #if USE_PARTICLES
-  IF (WriteMacroVolumeValues .OR. WriteMacroSurfaceValues) MacroValSampTime = t
+  IF(WriteMacroSurfaceValues) MacroValSampTime = t
   CALL Particle_TimeDisc(iter)
 #endif
 
@@ -342,7 +342,7 @@ CALL FV_Info(1_8)
 #if USE_PARTICLES
 ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
   IF (TrackParticlePosition) THEN
-    CALL TrackingParticlePosition(t) 
+    CALL TrackingParticlePosition(t)
   END IF
 #endif
 
@@ -360,7 +360,7 @@ DO
 #endif
   CALL DGTimeDerivative_weakForm(t)
   IF(nCalcTimestep.LT.1)THEN
-    
+
 #if USE_PARTICLES
     ! Only calculate time step if not set manually
     IF(.NOT.PartSteadyState.OR.(ALMOSTZERO(dt_Min))) THEN
@@ -416,9 +416,9 @@ DO
 #if USE_PARTICLES
 ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
   IF (TrackParticlePosition) THEN
-    CALL TrackingParticlePosition(t) 
+    CALL TrackingParticlePosition(t)
   END IF
-  
+
 ! Only run particle tracking if steady state is requested
 IF(.NOT.PartSteadyState) THEN
 #endif
@@ -426,36 +426,36 @@ IF(.NOT.PartSteadyState) THEN
 #if USE_PARTICLES
 ELSE
 ! We have to call particle tracking manually because we are not entering TimeStep()
-   
+
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
-    
+
     ! Premultiply with dt
     b_dt=RKb*dt
-    
+
     CurrentStage=1
     tStage=t
-    
+
     CALL Particle_TimeStepByLSERK_RHS(t,CurrentStage,b_dt)
     CALL Particle_TimeStepByLSERK(t,CurrentStage,b_dt)
-    
+
     DO iStage=2,nRKStages
         CurrentStage=iStage
         tStage=t+dt*RKc(iStage)
         IF(doCalcIndicator) CALL CalcIndicator(U,t)
-        
+
         CALL Particle_TimeStepByLSERK_RK_RHS(t,CurrentStage,b_dt)
         CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
     END DO
-    
+
     CASE('Euler')
     CALL Particle_TimeStepByEuler(dt)
-        
+
     CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
                       'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
   END SELECT
-  
+
 END IF
 #endif
 
@@ -494,7 +494,7 @@ END IF
       IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
       WRITE(UNIT_stdOut,'(A,ES16.7)')   '#Timesteps  : ',REAL(iter)
     END IF !MPIroot
-    
+
 #if FV_ENABLED
     CALL FV_Info(iter_loc)
 #endif
@@ -521,14 +521,14 @@ END IF
 #if USE_LOADBALANCE
     IF(DoLoadBalance) CALL AnalyzeLoadBalance()
 #endif
-    
+
     ! do analysis
     CALL Analyze(t,iter)
     iter_loc=0
     CalcTimeStart=FLEXITIME()
     tAnalyze=  MIN(tAnalyze+Analyze_dt,  tEnd)
     doAnalyze=.FALSE.
-    
+
   END IF !ANALYZE
 
   IF(doFinalize) EXIT
@@ -537,7 +537,7 @@ END DO
 #if USE_PARTICLES
 ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
   IF (TrackParticlePosition) THEN
-    CALL TrackingParticlePosition(t) 
+    CALL TrackingParticlePosition(t)
   END IF
 #endif
 
@@ -633,12 +633,12 @@ DO iStage=2,nRKStages
                       'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
   END SELECT
 #endif
-  
+
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
 #endif
-  CALL DGTimeDerivative_weakForm(tStage) 
+  CALL DGTimeDerivative_weakForm(tStage)
   CALL VAXPBY(nTotalU,Ut_temp,Ut,ConstOut=-RKA(iStage)) !Ut_temp = Ut - Ut_temp*RKA(iStage)
   CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
 
@@ -653,7 +653,7 @@ DO iStage=2,nRKStages
                       'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
   END SELECT
 #endif
-  
+
 END DO
 CurrentStage=1
 
@@ -722,11 +722,11 @@ CALL Particle_TimeStepByLSERK(t,CurrentStage,b_dt)
 DO iStage=2,nRKStages
   CurrentStage=iStage
   tStage=t+dt*RKc(iStage)
-  
+
 #if USE_PARTICLES
   CALL Particle_TimeStepByLSERK_RK_RHS(t,CurrentStage,b_dt)
 #endif
-  
+
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,Uprev,S2,AllowToDG=FV_toDGinRK)

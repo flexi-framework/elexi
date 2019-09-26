@@ -18,7 +18,6 @@
 !===================================================================================================================================
 MODULE MOD_Part_Emission
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -160,13 +159,14 @@ USE MOD_Particle_MPI_Vars     , ONLY: PartMPI
 #endif /* MPI*/
 USE MOD_Globals
 USE MOD_Restart_Vars          , ONLY: RestartTime
-USE MOD_Particle_Restart_Vars , ONLY: PartDataExists
-USE MOD_Particle_Globals      , ONLY: ALMOSTEQUAL
-USE MOD_Timedisc_Vars         , ONLY: dt,t,RKc,nRKStages,currentStage
-USE MOD_Particle_Timedisc_Vars, ONLY: RKdtFrac,RKdtFracTotal
-USE MOD_Particle_Vars         , ONLY: Species,nSpecies,PDM,DelayTime,DoPoissonRounding,DoTimeDepInflow
 USE MOD_Part_Tools             ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze       ,ONLY: CalcEkinPart
+USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
+USE MOD_Particle_Globals      , ONLY: ALMOSTEQUAL
+USE MOD_Particle_Restart_Vars , ONLY: PartDataExists
+USE MOD_Particle_Timedisc_Vars, ONLY: RKdtFrac,RKdtFracTotal
+USE MOD_Particle_Vars         , ONLY: Species,nSpecies,PartSpecies,PDM,DelayTime,DoPoissonRounding,DoTimeDepInflow
+USE MOD_Timedisc_Vars         , ONLY: dt,t,RKc,nRKStages,currentStage
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -175,7 +175,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 ! Local variable declaration
-INTEGER                          :: i,iInit,IntSample
+INTEGER                          :: i,iInit,iPart,IntSample,PositionNbr
 INTEGER                , SAVE    :: NbrOfParticle=0
 INTEGER(KIND=8)                  :: inserted_Particle_iter,inserted_Particle_time
 INTEGER(KIND=8)                  :: inserted_Particle_diff
@@ -342,12 +342,26 @@ DO i=1,nSpecies
         CALL SetParticleVelocity(i,iInit,NbrOfParticle)
         CALL SetParticleMass(i,NbrOfParticle)
 
-       ! instead of UpdateNextfreePosition we update the particleVecLength only and doing it later, after CalcPartBalance
-       PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
-       PDM%ParticleVecLength       = PDM%ParticleVecLength       + NbrOfParticle
-       !CALL UpdateNextFreePosition()
-#if USE_MPI
-#endif
+        ! instead of UpdateNextfreePosition we update the particleVecLength only and doing it later, after CalcPartBalance
+        PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
+        PDM%ParticleVecLength       = PDM%ParticleVecLength       + NbrOfParticle
+        !CALL UpdateNextFreePosition()
+
+        ! Compute number of input particles and energy
+        IF(CalcPartBalance) THEN
+          ! Alter history, dirty hack for balance calculation
+          PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition - NbrOfParticle
+          IF(NbrOfParticle.GT.0) THEN
+            nPartIn(i)=nPartIn(i) + NBrofParticle
+            DO iPart=1,NbrOfparticle
+                PositionNbr = PDM%nextFreePosition(iPart+PDM%CurrentNextFreePosition)
+                IF (PositionNbr .NE. 0) PartEkinIn(PartSpecies(PositionNbr)) = PartEkinIn(PartSpecies(PositionNbr)) +      &
+                                                                               CalcEkinPart(PositionNbr)
+            END DO ! iPart
+        END IF
+        ! alter history, dirty hack for balance calculation
+        PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
+      END IF ! CalcPartBalance
     END IF ! UseForEmission
   END DO
 END DO
@@ -431,8 +445,7 @@ Particle_pos = 0.
 DimSend      = 3            !save (and send) only positions
 
 ! Return if no particle is to be positioned
-IF ( (NbrOfParticle .LE. 0).AND.(PartIns .LE. 0.).AND. (ABS(Species(FractNbr)%Init(iInit)%PartDensity).LE.0.) ) &
-  RETURN
+IF ( (NbrOfParticle .LE. 0).AND.(PartIns .LE. 0.)) RETURN
 
 ! Standard: Non-MPI
 ! Emitted all particles (chunkSize) on local proc (nChunks)

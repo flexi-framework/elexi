@@ -31,6 +31,7 @@ LOGICAL                       :: CalcPartBalance                       ! Particl
 LOGICAL                       :: CalcEkin                              ! Compute the kinetic energy of each species
 LOGICAL                       :: TrackParticlePosition                 ! track the particle movement
                                                                        ! stored in .csv format, debug only, no MPI
+LOGICAL                       :: TrackParticleConvergence              ! track the final particle position, stored in .csv format
 INTEGER                       :: nSpecAnalyze                          ! number of analyzed species 1 or nSpecies+1
 INTEGER,ALLOCATABLE           :: nPartIn(:)                            ! Number of entry and leaving particles
 INTEGER,ALLOCATABLE           :: nPartOut(:)                           ! Number of entry and leaving particles

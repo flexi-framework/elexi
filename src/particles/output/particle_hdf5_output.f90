@@ -138,8 +138,8 @@ INTEGER                        :: minnParts
 #endif /* HDF5_F90 */
 #endif
   
-  ALLOCATE(PartInt(offsetElem+1:offsetElem+PP_nElems,PartIntSize))
-  ALLOCATE(PartData(offsetnPart+1:offsetnPart+locnPart,PartDataSize))
+  ALLOCATE(PartInt(PartIntSize,offsetElem+1:offsetElem+PP_nElems))
+  ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
   
 !!! Kleiner Hack von JN (Teil 1/2):
   
@@ -154,39 +154,39 @@ INTEGER                        :: minnParts
   iPart=offsetnPart
   DO iElem_loc=1,PP_nElems
     iElem_glob = iElem_loc + offsetElem
-    PartInt(iElem_glob,1)=iPart
+    PartInt(1,iElem_glob)=iPart
     IF (ALLOCATED(PEM%pNumber)) THEN      
-      PartInt(iElem_glob,2) = PartInt(iElem_glob,1) + PEM%pNumber(iElem_loc)
+      PartInt(2,iElem_glob) = PartInt(1,iElem_glob) + PEM%pNumber(iElem_loc)
       pcount = PEM%pStart(iElem_loc)
-      DO iPart=PartInt(iElem_glob,1)+1,PartInt(iElem_glob,2)
-        PartData(iPart,1)=PartState(pcount,1)
-        PartData(iPart,2)=PartState(pcount,2)
-        PartData(iPart,3)=PartState(pcount,3)
-        PartData(iPart,4)=PartState(pcount,4)
-        PartData(iPart,5)=PartState(pcount,5)
-        PartData(iPart,6)=PartState(pcount,6)
-        PartData(iPart,7)=REAL(PartSpecies(pcount))
+      DO iPart=PartInt(1,iElem_glob)+1,PartInt(2,iElem_glob)
+        PartData(1,iPart)=PartState(pcount,1)
+        PartData(2,iPart)=PartState(pcount,2)
+        PartData(3,iPart)=PartState(pcount,3)
+        PartData(4,iPart)=PartState(pcount,4)
+        PartData(5,iPart)=PartState(pcount,5)
+        PartData(6,iPart)=PartState(pcount,6)
+        PartData(7,iPart)=REAL(PartSpecies(pcount))
         IF (PartTrackReflection) THEN
-            PartData(iPart,8)=REAL(PartReflCount(pcount))
+            PartData(8,iPart)=REAL(PartReflCount(pcount))
         END IF
         
 #if CODE_ANALYZE
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
           IF(pcount.EQ.PARTOUT)THEN
-            PartData(iPart,7)=-PartData(iPart,7)
+            PartData(7,iPart)=-PartData(7,iPart)
           END IF
         END IF
 #endif /*CODE_ANALYZE*/
 
         pcount = PEM%pNext(pcount)
       END DO
-      iPart = PartInt(iElem_glob,2)
+      iPart = PartInt(2,iElem_glob)
     ELSE
       CALL abort(&
       __STAMP__&
       , " Particle HDF5-Output method not supported! PEM%pNumber not associated")
     END IF
-    PartInt(iElem_glob,2)=iPart
+    PartInt(2,iElem_glob)=iPart
   END DO 
 
   nVar=2
@@ -214,9 +214,9 @@ INTEGER                        :: minnParts
 
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
                           DataSetName='PartInt', rank=2,&
-                          nValGlobal=(/nGlobalElems,nVar/),&
-                          nVal=      (/PP_nElems,nVar/),&
-                          offset=    (/offsetElem,0/),&
+                          nValGlobal=(/nVar,nGlobalElems/),&
+                          nVal=      (/nVar,PP_nElems/),&
+                          offset=    (/0,offsetElem/),&
                           collective=.TRUE.,IntArray=PartInt)
                           
   DEALLOCATE(StrVarNames)
@@ -246,17 +246,17 @@ INTEGER                        :: minnParts
 #if USE_MPI
  CALL DistributedWriteArray(FileName,&
                             DataSetName='PartData', rank=2         ,&
-                            nValGlobal=(/nPart_glob,PartDataSize/) ,&
-                            nVal=      (/locnPart,PartDataSize/)   ,&
-                            offset=    (/offsetnPart,0/)           ,&
+                            nValGlobal=(/PartDataSize,nPart_glob/) ,&
+                            nVal=      (/PartDataSize,locnPart/)   ,&
+                            offset=    (/0,offsetnPart/)           ,&
                             collective=.FALSE.,offSetDim=1         ,&
                             communicator=PartMPI%COMM,RealArray=PartData)
 #else
   CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)   
   CALL WriteArrayToHDF5(DataSetName='PartData', rank=2,&
-                        nValGlobal=(/nPart_glob,PartDataSize/),&
-                        nVal=      (/locnPart,PartDataSize  /),&
-                        offset=    (/offsetnPart , 0  /),&
+                        nValGlobal=(/PartDataSizen,Part_glob/),&
+                        nVal=      (/PartDataSize,locnPart/),&
+                        offset=    (/0,offsetnPart/),&
                         collective=.TRUE., RealArray=PartData)
   CALL CloseDataFile()
 #endif /*MPI*/                          

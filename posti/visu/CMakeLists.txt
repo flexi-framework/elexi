@@ -20,7 +20,8 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d.f90
                           ${TOOL_DIR}/visu_Cwrapper.f90
                           ${TOOL_DIR}/visu.f90
                           ${TOOL_DIR}/visumesh.f90
-                          ${TOOL_DIR}/visu_vars.f90)
+                          ${TOOL_DIR}/visu_vars.f90
+													${TOOL_DIR}/visu_part.f90)
 
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})

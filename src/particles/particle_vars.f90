@@ -226,7 +226,7 @@ END TYPE
 
 TYPE(tParticleElementMapping)            :: PEM
 
-TYPE tParticleDataManagement
+TYPE tParticleDataManagement  
   INTEGER                                :: CurrentNextFreePosition         ! Index of nextfree index in nextFreePosition-Array
   INTEGER                                :: maxParticleNumber               ! Maximum Number of all Particles
   INTEGER                                :: ParticleVecLength               ! Vector Length for Particle Push Calculation

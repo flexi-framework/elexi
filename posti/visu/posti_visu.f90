@@ -35,6 +35,9 @@ USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
 #if USE_MPI
 USE MOD_MPI                   ,ONLY:FinalizeMPI
 #endif
+#if USE_PARTICLES
+USE MOD_VTK                   ,ONLY: WriteDataToVTKPart
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -49,6 +52,9 @@ CHARACTER(LEN=255)             :: FileString_SurfDG
 CHARACTER(LEN=255)             :: FileString_FV
 CHARACTER(LEN=255)             :: FileString_SurfFV
 CHARACTER(LEN=255)             :: FileString_multiblock
+#endif
+#if USE_PARTICLES
+CHARACTER(LEN=255)             :: FileString_Part
 #endif
 #if !USE_MPI
 INTEGER                        :: MPI_COMM_WORLD = 0
@@ -179,6 +185,14 @@ DO iArg=1+skipArgs,nArgs
 #endif
     END IF
 
+#if USE_PARTICLES
+    IF(VisuPart)THEN
+      FileString_Part=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuPart',OutputTime))//'.vtu'
+      
+      CALL WriteDataToVTKPart(nPart_Visu,nPartVar_HDF5,PartData_HDF5(1:3,:),PartData_HDF5(4:,:),FileString_Part,&
+        VarNamePartVisu,VarNamePartCombine,VarNamePartCombineLen)
+    END IF
+#endif
 !ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line
 
   !IF (nProcessors.GT.1) &

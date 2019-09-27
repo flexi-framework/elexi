@@ -96,6 +96,10 @@ INTEGER                                  :: PartCommSize                     ! N
 INTEGER                                  :: PartCommSize0                    ! Number of REAL entries for particle communication
                                                                              ! should think about own MPI-Data-Typ
 
+LOGICAL                                  :: PartitionPartIsDone
+INTEGER,ALLOCATABLE                      :: offsetPartMPI(:)
+INTEGER,ALLOCATABLE                      :: nPartsMPI(:)
+
 TYPE tMPIMessage
   REAL,ALLOCATABLE                      :: content(:)                        ! message buffer real
   LOGICAL,ALLOCATABLE                   :: content_log(:)                    ! message buffer logical for BGM

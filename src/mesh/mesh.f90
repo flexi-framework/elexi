@@ -253,9 +253,7 @@ ELSE
 ENDIF
 
 ! Return if no connectivity and metrics are required (e.g. for visualization mode)
-#if USE_PARTICLES
-
-#else
+#if !USE_PARTICLES
 IF (meshMode.GT.0) THEN
 #endif
 
@@ -350,9 +348,8 @@ IF (meshMode.GT.0) THEN
 !#endif
   
 
-#if USE_PARTICLES
+#if !USE_PARTICLES
 ! keep pointers for particle mesh
-#else
   ! deallocate pointers
   SWRITE(UNIT_stdOut,'(A)') " NOW CALLING deleteMeshPointer..."
   CALL deleteMeshPointer()
@@ -375,9 +372,7 @@ IF (meshMode.GT.0) THEN
         SideToVolA, SideToVol2A, CGNS_SideToVol2A, FS2M)
 #endif
   
-#if USE_PARTICLES
-        
-#else
+#if !USE_PARTICLES
 END IF
 #endif
 
@@ -408,26 +403,26 @@ IF (meshMode.GT.1) THEN
   ! assign normal and tangential vectors and surfElems on faces
   
 #if USE_PARTICLES
-ALLOCATE(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,1:nSides) ) 
-BezierControlPoints3D=0.
-
-ALLOCATE(SideSlabNormals(1:3,1:3,1:nSides),SideSlabIntervals(1:6,nSides),BoundingBoxIsEmpty(1:nSides) )
-SideSlabNormals=0.
-SideSlabIntervals=0.
-BoundingBoxIsEmpty=.TRUE.
-ALLOCATE(ElemSlabNormals(1:3,0:3,1:nElems),ElemSlabIntervals(1:6,nElems) )
-ElemSlabNormals=0.
-ElemSlabIntervals=0.
+  ALLOCATE(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,1:nSides) ) 
+  BezierControlPoints3D=0.
+  
+  ALLOCATE(SideSlabNormals(1:3,1:3,1:nSides),SideSlabIntervals(1:6,nSides),BoundingBoxIsEmpty(1:nSides) )
+  SideSlabNormals=0.
+  SideSlabIntervals=0.
+  BoundingBoxIsEmpty=.TRUE.
+  ALLOCATE(ElemSlabNormals(1:3,0:3,1:nElems),ElemSlabIntervals(1:6,nElems) )
+  ElemSlabNormals=0.
+  ElemSlabIntervals=0.
 #if CODE_ANALYZE
-ALLOCATE(SideBoundingBoxVolume(1:nSides))
-SideBoundingBoxVolume=0.
+  ALLOCATE(SideBoundingBoxVolume(1:nSides))
+  SideBoundingBoxVolume=0.
 #endif /*CODE_ANALYZE*/
 
-! compute elem bary and elem radius
-CALL InitParticleMesh()
-IF (TriaTracking) THEN
-  CALL InitParticleGeometry()
-END IF
+  ! compute elem bary and elem radius
+  CALL InitParticleMesh()
+  IF (TriaTracking) THEN
+    CALL InitParticleGeometry()
+  END IF
 #endif
 
 #if (PP_dim == 3)
@@ -440,14 +435,14 @@ END IF
 #endif
   
 #if USE_PARTICLES
-ALLOCATE(XCL_NGeo(1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
-XCL_NGeo = 0.
-ALLOCATE(dXCL_NGeo(1:3,1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
-dXCL_NGeo = 0.
-CALL CalcMetrics(XCL_NGeo_Out=XCL_NGeo,dXCL_NGeo_Out=dXCL_NGeo)
-
-ALLOCATE(ElemBaryNGeo(1:3, 1:nElems))
-CALL BuildElementOrigin()
+  ALLOCATE(XCL_NGeo(1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
+  XCL_NGeo = 0.
+  ALLOCATE(dXCL_NGeo(1:3,1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
+  dXCL_NGeo = 0.
+  CALL CalcMetrics(XCL_NGeo_Out=XCL_NGeo,dXCL_NGeo_Out=dXCL_NGeo)
+  
+  ALLOCATE(ElemBaryNGeo(1:3, 1:nElems))
+  CALL BuildElementOrigin()
             
 #else
   CALL CalcMetrics()     ! DG metrics
@@ -477,7 +472,7 @@ END IF
   
 #if USE_PARTICLES
 ! init element volume
-CALL InitElemVolumes()
+IF(meshMode.GT.0) CALL InitElemVolumes()
 #endif
 
 SDEALLOCATE(NodeCoords)

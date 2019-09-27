@@ -220,6 +220,9 @@ USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
 USE MOD_StringTools        ,ONLY: INTTOSTR
+#if USE_PARTICLES
+USE MOD_Posti_Part_Tools   ,ONLY: InitPartState
+#endif
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
@@ -227,6 +230,10 @@ CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 ! LOCAL
 INTEGER                          :: nElems_State
 CHARACTER(LEN=255)               :: NodeType_State, cwd
+#if USE_PARTICLES
+CHARACTER(LEN=255)               :: DataArray 
+LOGICAL                          :: readIni
+#endif
 !===================================================================================================================================
 IF (STRICMP(fileType,'Mesh')) THEN
     CALL CollectiveStop(__STAMP__, &
@@ -244,6 +251,7 @@ CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
 ! read options from posti parameter file
 CALL prms%read_options(postifile)
 NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
+VisuPart          = GETLOGICAL("VisuPart")
 
 ! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
 Meshfile          =  GETSTR("MeshFile",MeshFile_state)
@@ -494,6 +502,7 @@ CALL prms%CreateLogicalOption("Avg2DHDF5Output" , "Write averaged solution to HD
 CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL prms%CreateLogicalOption("DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
 CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateLogicalOption('VisuPart'        , "Visualize particles",".FALSE.")
 
 IF (doPrintHelp.GT.0) THEN
   CALL PrintDefaultParameterFile(doPrintHelp.EQ.2,statefile) !statefile string conatains --help etc!
@@ -698,6 +707,19 @@ SDEALLOCATE(CoordsVisu_FV)
 SDEALLOCATE(UVisu_FV)
 SDEALLOCATE(U)
 SDEALLOCATE(Elem_xGP)
+
+#if USE_PARTICLES
+SDEALLOCATE(PD%VarNamePartVisu)
+SDEALLOCATE(PD%VarNamePartCombine)
+SDEALLOCATE(PD%VarNamePartCombineLen)
+SDEALLOCATE(PD%PartData_HDF5)
+SDEALLOCATE(PD%VisualizePart)
+SDEALLOCATE(PDE%VarNamePartVisu)
+SDEALLOCATE(PDE%VarNamePartCombine)
+SDEALLOCATE(PDE%VarNamePartCombineLen)
+SDEALLOCATE(PDE%PartData_HDF5)
+SDEALLOCATE(PDE%VisualizePart)
+#endif
 END SUBROUTINE FinalizeVisu
 
 END MODULE MOD_Visu

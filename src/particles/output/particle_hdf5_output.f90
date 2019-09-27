@@ -216,7 +216,6 @@ ASSOCIATE (&
                           nVal=      (/nVar    ,PP_nElems   /),&
                           offset=    (/0       ,offsetElem  /),&
                           collective=.TRUE.    ,IntArray=PartInt)
-
   DEALLOCATE(StrVarNames)
 
   ALLOCATE(StrVarNames(PartDataSize))

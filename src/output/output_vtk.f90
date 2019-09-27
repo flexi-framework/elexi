@@ -51,11 +51,20 @@ INTERFACE WriteVarnamesToVTK_array
   MODULE PROCEDURE WriteVarnamesToVTK_array
 END INTERFACE
 
+#if USE_PARTICLES
+INTERFACE WriteDataToVTKPart
+  MODULE PROCEDURE WriteDataToVTKPart
+END INTERFACE
+#endif
+
 PUBLIC::WriteDataToVTK
 PUBLIC::WriteVTKMultiBlockDataSet
 PUBLIC::WriteCoordsToVTK_array
 PUBLIC::WriteDataToVTK_array
 PUBLIC::WriteVarnamesToVTK_array
+#if USE_PARTICLES
+PUBLIC::WriteDataToVTKPart
+#endif
 PUBLIC::CARRAY
 !===================================================================================================================================
 
@@ -549,5 +558,154 @@ IF (nVarVisu.GT.0) THEN
 END IF
 
 END SUBROUTINE WriteVarnamesToVTK_array
+
+#if USE_PARTICLES
+SUBROUTINE WriteDataToVTKPart(nParts,nVal,Coord,Value,FileString,VarNamePartVisu,VarNamePartCombine,VarNamePartCombineLen)
+!===================================================================================================================================
+! Subroutine to write unstructured 3D point data to VTK format
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)            :: nVal                    ! Number of nodal output variables
+INTEGER,INTENT(IN)            :: nParts                  ! Number of output Particle
+REAL,INTENT(IN)               :: Coord(3,nParts)         ! CoordsVector 
+REAL,INTENT(IN)               :: Value(nParts,nVal)      ! Statevector 
+CHARACTER(LEN=*),INTENT(IN)   :: FileString              ! Output file name
+CHARACTER(LEN=255),INTENT(IN) :: VarNamePartVisu(:)
+INTEGER,INTENT(IN)            :: VarNamePartCombine(:)
+INTEGER,INTENT(IN)            :: VarNamePartCombineLen(:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j,k,iVal,iPart,Offset,nBytes,nVTKElems,nVTKCells,ivtk=44,iVar,str_len
+INTEGER            :: INT
+INTEGER            :: Vertex(nParts)
+INTEGER            :: ElemType
+CHARACTER(LEN=35)  :: StrOffset,TempStr1,TempStr2
+CHARACTER(LEN=200) :: Buffer
+CHARACTER(LEN=1)   :: lf,components_string
+CHARACTER(LEN=255) :: VarNameString
+REAL(KIND=4)       :: Float
+!===================================================================================================================================
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PART DATA TO VTX XML BINARY (VTU) FILE..."
+IF(nParts.LT.1)THEN
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
+  RETURN
+END IF
+ 
+! Line feed character
+lf = char(10)
+ 
+! Write file
+OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+! Write header
+Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
+Buffer='<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
+nVTKElems=nParts
+nVTKCells=nParts
+ 
+Buffer='  <UnstructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
+WRITE(TempStr1,'(I16)')nVTKElems
+WRITE(TempStr2,'(I16)')nVTKCells
+Buffer='    <Piece NumberOfPoints="'//TRIM(ADJUSTL(TempStr1))//&
+'" NumberOfCells="'//TRIM(ADJUSTL(TempStr2))//'">'//lf;WRITE(ivtk) TRIM(Buffer)
+! Specify point data
+Buffer='      <PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
+Offset=0
+WRITE(StrOffset,'(I16)')Offset
+IF (nVal .GT.0)THEN
+  DO iVar=1,nVal
+    IF (VarNamePartCombine(iVar).EQ.0) THEN
+      Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNamePartVisu(iVar))//&
+      '" NumberOfComponents="1" format="appended" offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+      Offset=Offset+SIZEOF(INT)+nVTKElems*SIZEOF(FLOAT)
+      WRITE(StrOffset,'(I16)')Offset
+    ELSE IF (VarNamePartCombine(iVar).EQ.1) THEN
+      str_len = LEN_TRIM(VarNamePartVisu(iVar))
+      WRITE(components_string,'(I1)') VarNamePartCombineLen(iVar)
+      VarNameString = VarNamePartVisu(iVar)(1:str_len-1)
+      Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNameString)//&
+      '" NumberOfComponents="'//components_string//'" format="appended" offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf
+      WRITE(ivtk) TRIM(Buffer)
+      Offset=Offset+SIZEOF(INT)+nVTKElems*SIZEOF(FLOAT)*VarNamePartCombineLen(iVar)
+      WRITE(StrOffset,'(I16)')Offset
+    END IF
+  END DO
+END IF
+Buffer='      </PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
+! Specify cell data
+Buffer='      <CellData> </CellData>'//lf;WRITE(ivtk) TRIM(Buffer)
+! Specify coordinate data
+Buffer='      <Points>'//lf;WRITE(ivtk) TRIM(Buffer)
+Buffer='        <DataArray type="Float32" Name="Coordinates" NumberOfComponents="3" format="appended"'// &
+       ' offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+Offset=Offset+SIZEOF(INT)+3*nVTKElems*SIZEOF(FLOAT)
+WRITE(StrOffset,'(I16)')Offset
+Buffer='      </Points>'//lf;WRITE(ivtk) TRIM(Buffer)
+! Specify necessary cell data
+Buffer='      <Cells>'//lf;WRITE(ivtk) TRIM(Buffer)
+! Connectivity
+Buffer='        <DataArray type="Int32" Name="connectivity" format="appended"'// &
+       ' offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+Offset=Offset+SIZEOF(INT)+nParts*SIZEOF(INT)
+WRITE(StrOffset,'(I16)')Offset
+! Offsets
+Buffer='        <DataArray type="Int32" Name="offsets" format="appended"'// &
+       ' offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+Offset=Offset+SIZEOF(INT)+nVTKElems*SIZEOF(INT)
+WRITE(StrOffset,'(I16)')Offset
+! Elem types
+Buffer='        <DataArray type="Int32" Name="types" format="appended"'// &
+       ' offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+Buffer='      </Cells>'//lf;WRITE(ivtk) TRIM(Buffer)
+Buffer='    </Piece>'//lf;WRITE(ivtk) TRIM(Buffer)
+Buffer='  </UnstructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
+! Prepare append section
+Buffer='  <AppendedData encoding="raw">'//lf;WRITE(ivtk) TRIM(Buffer)
+! Write leading data underscore
+Buffer='_';WRITE(ivtk) TRIM(Buffer)
+ 
+! Write binary raw data into append section
+! Point data
+nBytes = nVTKElems*SIZEOF(FLOAT)
+DO iVal=1,nVal
+  IF (VarNamePartCombine(iVal).EQ.0) THEN
+    WRITE(ivtk) nBytes,REAL(Value(1:nParts,iVal),4)
+  ELSEIF(VarNamePartCombine(iVal).EQ.1) THEN
+    WRITE(ivtk) nBytes*VarNamePartCombineLen(iVal),REAL(Value(1:nParts,iVal:iVal+VarNamePartCombineLen(iVal)-1),4)
+  ENDIF
+END DO
+! Points
+nBytes = nBytes * 3
+WRITE(ivtk) nBytes
+WRITE(ivtk) REAL(Coord(1:3,1:nParts),4)
+! Connectivity
+DO iPart=1,nParts
+  Vertex(iPart)=iPart-1
+END DO
+nBytes = nVTKElems*SIZEOF(INT)
+WRITE(ivtk) nBytes
+WRITE(ivtk) Vertex(:)
+! Offset
+nBytes = nVTKElems*SIZEOF(INT)
+WRITE(ivtk) nBytes
+WRITE(ivtk) (Offset,Offset=1,nVTKElems,1)
+! Elem type
+ElemType = 2  ! VTK_VERTEX (POINT)
+!ElemType = 12 ! VTK_HEXAHEDRON
+WRITE(ivtk) nBytes
+WRITE(ivtk) (ElemType,iPart=1,nVTKElems)
+! Write footer
+Buffer=lf//'  </AppendedData>'//lf;WRITE(ivtk) TRIM(Buffer)
+Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(Buffer)
+CLOSE(ivtk)
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
+END SUBROUTINE WriteDataToVTKPart
+#endif
 
 END MODULE MOD_VTK

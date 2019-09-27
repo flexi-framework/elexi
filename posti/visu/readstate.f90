@@ -92,32 +92,35 @@ SUBROUTINE ReadStateAndGradients(prmfile,statefile)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
-USE MOD_MPI           ,ONLY: DefineParametersMPI
+USE MOD_MPI                 ,ONLY: DefineParametersMPI
 #if USE_MPI
-USE MOD_MPI           ,ONLY: InitMPIvars,FinalizeMPI
+USE MOD_MPI                 ,ONLY: InitMPIvars,FinalizeMPI
 #endif
-USE MOD_IO_HDF5       ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
-USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_Restart       ,ONLY: DefineParametersRestart,InitRestart,Restart,FinalizeRestart
-USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_Indicator     ,ONLY: DefineParametersIndicator,InitIndicator,FinalizeIndicator
+USE MOD_IO_HDF5             ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+USE MOD_Restart             ,ONLY: DefineParametersRestart,InitRestart,Restart,FinalizeRestart
+USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
+USE MOD_Indicator           ,ONLY: DefineParametersIndicator,InitIndicator,FinalizeIndicator
 #if FV_ENABLED
-USE MOD_FV            ,ONLY: DefineParametersFV,InitFV,FinalizeFV
-USE MOD_FV_Basis      ,ONLY: InitFV_Basis,FinalizeFV_Basis
+USE MOD_FV                  ,ONLY: DefineParametersFV,InitFV,FinalizeFV
+USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
 #endif
-USE MOD_DG            ,ONLY: InitDG,DGTimeDerivative_weakForm,FinalizeDG
-USE MOD_Mortar        ,ONLY: InitMortar,FinalizeMortar
-USE MOD_EOS           ,ONLY: DefineParametersEos
-USE MOD_Equation      ,ONLY: DefineParametersEquation,InitEquation,FinalizeEquation
-USE MOD_Exactfunc     ,ONLY: DefineParametersExactFunc
+USE MOD_DG                  ,ONLY: InitDG,DGTimeDerivative_weakForm,FinalizeDG
+USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
+USE MOD_EOS                 ,ONLY: DefineParametersEos
+USE MOD_Equation            ,ONLY: DefineParametersEquation,InitEquation,FinalizeEquation
+USE MOD_Exactfunc           ,ONLY: DefineParametersExactFunc
 #if PARABOLIC
-USE MOD_Lifting       ,ONLY: DefineParametersLifting,InitLifting,FinalizeLifting
+USE MOD_Lifting             ,ONLY: DefineParametersLifting,InitLifting,FinalizeLifting
 #endif
-USE MOD_Filter,         ONLY:DefineParametersFilter,InitFilter,FinalizeFilter
-USE MOD_Overintegration,ONLY:DefineParametersOverintegration,InitOverintegration,FinalizeOverintegration
-USE MOD_ReadInTools   ,ONLY: prms
-USE MOD_ReadInTools   ,ONLY: FinalizeParameters
-USE MOD_Restart_Vars  ,ONLY: RestartTime
+USE MOD_Filter              ,ONLY:DefineParametersFilter,InitFilter,FinalizeFilter
+USE MOD_Overintegration     ,ONLY:DefineParametersOverintegration,InitOverintegration,FinalizeOverintegration
+USE MOD_ReadInTools         ,ONLY: prms
+USE MOD_ReadInTools         ,ONLY: FinalizeParameters
+USE MOD_Restart_Vars        ,ONLY: RestartTime
+#if USE_PARTICLES
+USE MOD_Posti_Part_Tools    ,ONLY: InitPartState, ReadPartStateFile, InitParticle
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -125,6 +128,9 @@ CHARACTER(LEN=255),INTENT(IN):: prmfile       !< FLEXI parameter file, used if D
 CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#if USE_PARTICLES
+CHARACTER(LEN=255):: DataArray
+#endif
 !===================================================================================================================================
 CALL FinalizeInterpolation()
 #if FV_ENABLED
@@ -185,6 +191,15 @@ IF (changedMeshFile.OR.changedWithDGOperator) THEN
   CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 END IF
 
+#if USE_PARTICLES
+IF (VisuPart) THEN
+  DataArray='PartData'
+  CALL InitPartState(statefile,DataArray,PD)
+  CALL InitParticle(PD) 
+  CALL ReadPartStateFile(statefile,DataArray,PD) 
+END IF
+#endif
+
 CALL InitFilter()
 CALL InitOverintegration()
 CALL InitIndicator()
@@ -236,6 +251,9 @@ USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolati
 USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 #endif
+#if USE_PARTICLES
+USE MOD_Posti_Part_Tools    ,ONLY: InitPartState, ReadPartStateFile, InitParticle
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -246,6 +264,9 @@ INTEGER,INTENT(IN),OPTIONAL  :: Nin           !< Polynomial degree used in InitI
 ! LOCAL VARIABLES
 INTEGER           :: meshMode_loc
 LOGICAL           :: changedMeshMode
+#if USE_PARTICLES
+CHARACTER(LEN=255):: DataArray
+#endif
 !===================================================================================================================================
 CALL FinalizeInterpolation()
 
@@ -304,6 +325,16 @@ IF ((changedMeshFile).OR.(changedMeshMode)) THEN
   CALL FinalizeMesh()
   CALL InitMesh(meshMode=meshMode_loc,MeshFile_IN=MeshFile)
 END IF
+
+#if USE_PARTICLES
+IF (VisuPart) THEN
+  ! Visualize particle data'
+  DataArray='PartData'
+  CALL InitPartState(statefile,DataArray,PD)
+  CALL InitParticle(PD) 
+  CALL ReadPartStateFile(statefile,DataArray,PD) 
+END IF
+#endif
 
 ! Initialize EOS since some quantities need gas properties like R and kappa
 CALL InitEOS()

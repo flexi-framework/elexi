@@ -291,6 +291,8 @@ doFinalize=.FALSE.
 
 ! compute initial timestep
 #if USE_PARTICLES
+IF(WriteMacroSurfaceValues) MacroValSampTime = t
+
 ! Check if we are running in SteadyState mode
 IF (PartSteadyState) THEN
   dt_min = Part_dt_min
@@ -314,11 +316,6 @@ IF(errType.NE.0) CALL abort(__STAMP__,&
   'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
 #else
   'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
-#endif
-
-#if USE_PARTICLES
-  IF(WriteMacroSurfaceValues) MacroValSampTime = t
-  CALL Particle_TimeDisc(iter)
 #endif
 
 ! Run initial analyze

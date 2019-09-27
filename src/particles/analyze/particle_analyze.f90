@@ -262,7 +262,7 @@ USE MOD_Particle_Vars,          ONLY:PartState, PDM, PEM
 USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
 #endif
 USE MOD_Particle_Analyze_Vars,  ONLY:printDiff,printDiffVec,printDiffTime
-USE MOD_Particle_Globals,       ONLY: GETFREEUNIT
+USE MOD_Particle_Globals,       ONLY:GETFREEUNIT
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

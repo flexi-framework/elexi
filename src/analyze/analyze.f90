@@ -278,8 +278,10 @@ USE MOD_DSMC_Vars
 USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Erosion_Analyze,ONLY: CalcSurfaceValues
+USE MOD_Particle_Tracking_Vars,ONLY:CountNbOfLostParts
 USE MOD_ErosionPoints,      ONLY: WriteEP
 USE MOD_ErosionPoints_Vars, ONLY: EP_inUse
+USE MOD_Particle_Output,    ONLY: WriteInfoStdOut
 #if USE_LOADBALANCE
 USE MOD_LoadDistribution,   ONLY: WriteElemTimeStatistics
 #endif /*LOADBALANCE*/
@@ -324,6 +326,11 @@ END IF
 ! Write individual particle surface impact data
 IF(EP_inUse) THEN
   CALL WriteEP(OutputTime=Time,resetCounters=.TRUE.)
+END IF
+
+! Write information to console output
+IF (CountNbOfLostParts) THEN
+  CALL WriteInfoStdOut()
 END IF
 
 #if USE_LOADBALANCE

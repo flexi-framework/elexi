@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -20,7 +20,7 @@ MODULE MOD_Particle_Output
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
@@ -29,11 +29,15 @@ INTERFACE InitParticleOutput
   MODULE PROCEDURE InitParticleOutput
 END INTERFACE
 
+INTERFACE WriteInfoStdOut
+  MODULE PROCEDURE WriteInfoStdOut
+END INTERFACE
+
 INTERFACE Visualize_Particles
   MODULE PROCEDURE Visualize_Particles
 END INTERFACE
 
-PUBLIC:: InitParticleOutput,Visualize_Particles
+PUBLIC:: InitParticleOutput,WriteInfoStdOut,Visualize_Particles
 !===================================================================================================================================
 
 CONTAINS
@@ -67,6 +71,38 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticleOutput
 
 
+SUBROUTINE WriteInfoStdOut()
+!===================================================================================================================================
+! Writes particle information to standard output
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Tracking_Vars,ONLY: nLostParts,countNbOfLostParts
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                      :: nLostPartsTot
+!===================================================================================================================================
+#if USE_MPI
+IF(MPIRoot) THEN
+  CALL MPI_REDUCE(nLostParts,nLostPartsTot,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,IERROR)
+ELSE ! no Root
+  CALL MPI_REDUCE(nLostParts,nLostPartsTot,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,IERROR)
+END IF
+#else
+nLostPartsTot = nLostParts
+#endif /*MPI*/
+
+IF(CountNbOfLostParts)THEN
+    WRITE(UNIT_stdOut,'(A,I12)')' NbOfLostParticle : ',nLostPartsTot
+END IF
+
+END SUBROUTINE
 
 
 SUBROUTINE Visualize_Particles(OutputTime)
@@ -85,7 +121,7 @@ IMPLICIT NONE
 REAL,INTENT(IN)               :: OutputTime
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                       :: nParts, i, index_unit 
+INTEGER                       :: nParts, i, index_unit
 CHARACTER(LEN=255)            :: FileString
 !===================================================================================================================================
 

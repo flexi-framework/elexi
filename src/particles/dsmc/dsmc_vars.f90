@@ -30,6 +30,5 @@ SAVE
 LOGICAL                       :: useDSMC                            ! flag to trigger leftover DSMC calls
 REAL,ALLOCATABLE              :: MacroSurfaceVal(:,:,:,:)           ! variables,p,q,sides
 REAL,ALLOCATABLE              :: MacroSurfaceSpecVal(:,:,:,:,:)     ! Macrovalues for Species specific surface output
-INTEGER(KIND=8)               :: iter_macsurfvalout
 !===================================================================================================================================
 END MODULE MOD_DSMC_Vars

@@ -189,8 +189,8 @@ DO iArg=1+skipArgs,nArgs
     IF(VisuPart)THEN
       FileString_Part=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuPart',OutputTime))//'.vtu'
       
-      CALL WriteDataToVTKPart(nPart_Visu,nPartVar_HDF5,PartData_HDF5(1:3,:),PartData_HDF5(4:,:),FileString_Part,&
-        VarNamePartVisu,VarNamePartCombine,VarNamePartCombineLen)
+      CALL WriteDataToVTKPart(PD%nPart_Visu,PD%nPartVar_HDF5,PD%PartData_HDF5(1:3,:),PD%PartData_HDF5(4:,:),FileString_Part,&
+        PD%VarNamePartVisu,PD%VarNamePartCombine,PD%VarNamePartCombineLen)
     END IF
 #endif
 !ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line

@@ -194,9 +194,9 @@ END IF
 #if USE_PARTICLES
 IF (VisuPart) THEN
   DataArray='PartData'
-  CALL InitPartState(statefile,DataArray)
-  CALL InitParticle() 
-  CALL ReadPartStateFile(statefile,DataArray) 
+  CALL InitPartState(statefile,DataArray,PD)
+  CALL InitParticle(PD) 
+  CALL ReadPartStateFile(statefile,DataArray,PD) 
 END IF
 #endif
 
@@ -328,10 +328,11 @@ END IF
 
 #if USE_PARTICLES
 IF (VisuPart) THEN
+  ! Visualize particle data'
   DataArray='PartData'
-  CALL InitPartState(statefile,DataArray)
-  CALL InitParticle() 
-  CALL ReadPartStateFile(statefile,DataArray) 
+  CALL InitPartState(statefile,DataArray,PD)
+  CALL InitParticle(PD) 
+  CALL ReadPartStateFile(statefile,DataArray,PD) 
 END IF
 #endif
 

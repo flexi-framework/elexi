@@ -393,9 +393,6 @@ USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
 USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
 USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
-#if USE_PARTICLES
-USE MOD_Particle_Tracking_vars, ONLY: DoRefMapping
-#endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN
@@ -712,11 +709,16 @@ SDEALLOCATE(U)
 SDEALLOCATE(Elem_xGP)
 
 #if USE_PARTICLES
-SDEALLOCATE(VarNamePartVisu)
-SDEALLOCATE(VarNamePartCombine)
-SDEALLOCATE(VarNamePartCombineLen)
-SDEALLOCATE(PartData_HDF5)
-SDEALLOCATE(VisualizePart)
+SDEALLOCATE(PD%VarNamePartVisu)
+SDEALLOCATE(PD%VarNamePartCombine)
+SDEALLOCATE(PD%VarNamePartCombineLen)
+SDEALLOCATE(PD%PartData_HDF5)
+SDEALLOCATE(PD%VisualizePart)
+SDEALLOCATE(PDE%VarNamePartVisu)
+SDEALLOCATE(PDE%VarNamePartCombine)
+SDEALLOCATE(PDE%VarNamePartCombineLen)
+SDEALLOCATE(PDE%PartData_HDF5)
+SDEALLOCATE(PDE%VisualizePart)
 #endif
 END SUBROUTINE FinalizeVisu
 

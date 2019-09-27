@@ -53,20 +53,20 @@ PUBLIC :: InitParticle,PartitionPartMPI
 
 CONTAINS
 
-SUBROUTINE InitParticle(notRequestInformation)
+SUBROUTINE InitParticle(ListIn,notRequestInformation)
 !===================================================================================================================================
 ! Initialize the visualization and map the variable names to classify these in conservative and derived quantities.
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools
-USE MOD_Visu_Vars             ,ONLY:nPartVar_HDf5,VarNamesPart_HDF5,nPartVar_visu,nPartVar_HDF5,VarNamePartVisu,VarNamePartCombine,&
-                                    VarNamePartCombineLen
+USE MOD_Visu_Vars                     ,ONLY: tVisuParticle
 USE MOD_Particle_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+TYPE(tVisuParticle),INTENT(INOUT)     :: ListIn
 LOGICAL,INTENT(IN),OPTIONAL           :: notRequestInformation
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -85,32 +85,32 @@ SWRITE(UNIT_StdOut,*) '         cannot calculate any derived quantities.'
 SWRITE(UNIT_StdOut,*) '         Visualizing State File Variables instead!'
 
 ! visualize all state file variables
-nPartVar_visu   = nPartVar_HDF5
-SDEALLOCATE(VarNamePartVisu)
-ALLOCATE(VarNamePartVisu(nPartVar_visu))
+ListIn%nPartVar_visu   = ListIn%nPartVar_HDF5
+SDEALLOCATE(ListIn%VarNamePartVisu)
+ALLOCATE(ListIn%VarNamePartVisu(ListIn%nPartVar_visu))
 
 ! Create state variables
-VarNamePartVisu(1:nPartVar_HDF5) = VarNamesPart_HDF5
+ListIn%VarNamePartVisu(1:ListIn%nPartVar_HDF5) = ListIn%VarNamesPart_HDF5
 
-SDEALLOCATE(VarNamePartCombine)
-ALLOCATE (VarNamePartCombine(nPartVar_visu))
-SDEALLOCATE(VarNamePartCombineLen)
-ALLOCATE (VarNamePartCombineLen(nPartVar_visu))
-VarNamePartCombine = 0
-DO iVar=2,nPartVar_visu
-  i = LEN(TRIM(VarNamePartVisu(iVar)))
-  tmp = VarNamePartVisu(iVar)
-  tmp2 = VarNamePartVisu(iVar-1)
+SDEALLOCATE(ListIn%VarNamePartCombine)
+ALLOCATE (ListIn%VarNamePartCombine(ListIn%nPartVar_visu))
+SDEALLOCATE(ListIn%VarNamePartCombineLen)
+ALLOCATE (ListIn%VarNamePartCombineLen(ListIn%nPartVar_visu))
+ListIn%VarNamePartCombine = 0
+DO iVar=2,ListIn%nPartVar_visu
+  i = LEN(TRIM(ListIn%VarNamePartVisu(iVar)))
+  tmp = ListIn%VarNamePartVisu(iVar)
+  tmp2 = ListIn%VarNamePartVisu(iVar-1)
   IF (TRIM(tmp(:i-1)) .EQ. TRIM(tmp2(:i-1))) THEN
-    IF (VarNamePartCombine(iVar-1) .EQ. 0) VarNamePartCombine(iVar-1) = 1
-    VarNamePartCombine(iVar) = VarNamePartCombine(iVar-1) + 1
+    IF (ListIn%VarNamePartCombine(iVar-1) .EQ. 0) ListIn%VarNamePartCombine(iVar-1) = 1
+    ListIn%VarNamePartCombine(iVar) = ListIn%VarNamePartCombine(iVar-1) + 1
   END IF
 END DO
-VarNamePartCombineLen = 0
-VarNamePartCombineLen(nPartVar_visu) = VarNamePartCombine(nPartVar_visu)
-DO iVar=nPartVar_visu-1,1,-1
-  IF (VarNamePartCombine(iVar).GT.0) THEN
-    VarNamePartCombineLen(iVar) = MAX(VarNamePartCombine(iVar), VarNamePartCombineLen(iVar+1)) 
+ListIn%VarNamePartCombineLen = 0
+ListIn%VarNamePartCombineLen(ListIn%nPartVar_visu) = ListIn%VarNamePartCombine(ListIn%nPartVar_visu)
+DO iVar=ListIn%nPartVar_visu-1,1,-1
+  IF (ListIn%VarNamePartCombine(iVar).GT.0) THEN
+    ListIn%VarNamePartCombineLen(iVar) = MAX(ListIn%VarNamePartCombine(iVar), ListIn%VarNamePartCombineLen(iVar+1)) 
   END IF
 END DO
 
@@ -119,13 +119,13 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticle
 
 
-SUBROUTINE InitPartState(InputFile,DataArrayIn)
+SUBROUTINE InitPartState(InputFile,DataArrayIn,ListIn)
 !===================================================================================================================================
 ! Read in main attributes from given HDF5 state file
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Visu_Vars              ,ONLY: nLocalParts, nGlobalParts, nTotalParts_HDF5, nPartVar_HDF5, offsetPart, varNamesPart_HDF5
+USE MOD_Visu_Vars              ,ONLY: tVisuParticle
 USE MOD_IO_HDF5                ,ONLY: File_ID
 USE MOD_HDF5_Input             ,ONLY: DatasetExists, GetDataSize, OpenDataFile, CloseDataFile, HSize, ReadAttribute
 ! IMPLICIT VARIABLE HANDLING
@@ -135,6 +135,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=255),INTENT(IN)           :: InputFile
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL  :: DataArrayIn
+TYPE(tVisuParticle),INTENT(INOUT)       :: ListIn
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -158,42 +159,42 @@ CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,DataArray,PartDataFound)
 IF(PartDataFound)THEN
   CALL GetDataSize(File_ID,DataArray,dims,HSize) 
-  nPartVar_HDF5=HSize(1)-3 ! remove position x,y,z 
-  nTotalParts_HDF5=HSize(2) 
-  ALLOCATE(VarNamesPart_HDF5(nPartVar_HDF5))
-  ALLOCATE(tmpArray(nPartVar_HDF5+3))
+  ListIn%nPartVar_HDF5=HSize(1)-3 ! remove position x,y,z 
+  ListIn%nTotalParts_HDF5=HSize(2) 
+  ALLOCATE(ListIn%VarNamesPart_HDF5(ListIn%nPartVar_HDF5))
+  ALLOCATE(tmpArray(ListIn%nPartVar_HDF5+3))
    
   ! Read erosion names here
   SELECT CASE(DataArray)
       CASE('ErosionData')
-          CALL ReadAttribute(File_ID,'VarNamesErosion',nPartVar_HDF5+3,TRIM(DataSet),StrArray=tmpArray)
+          CALL ReadAttribute(File_ID,'VarNamesErosion',ListIn%nPartVar_HDF5+3,TRIM(DataSet),StrArray=tmpArray)
       CASE DEFAULT
-          CALL ReadAttribute(File_ID,'VarNamesParticles',nPartVar_HDF5+3,TRIM(DataSet),StrArray=tmpArray)
+          CALL ReadAttribute(File_ID,'VarNamesParticles',ListIn%nPartVar_HDF5+3,TRIM(DataSet),StrArray=tmpArray)
   END SELECT
 
-  VarNamesPart_HDF5(1:nPartVar_HDF5)=tmpArray(4:nPartVar_HDF5+3)
+  ListIn%VarNamesPart_HDF5(1:ListIn%nPartVar_HDF5)=tmpArray(4:ListIn%nPartVar_HDF5+3)
   DEALLOCATE(tmpArray)
 ELSE
-  nTotalParts_HDF5=0
-  nGlobalParts=0
-  nPartVar_HDF5=0
+  ListIn%nTotalParts_HDF5=0
+  ListIn%nGlobalParts=0
+  ListIn%nPartVar_HDF5=0
 END IF
-
-nGlobalParts=nTotalParts_HDF5
-CALL PartitionPartMPI()
+WRITE(*,*) ListIn%VarNamesPart_HDF5
+ListIn%nGlobalParts=ListIn%nTotalParts_HDF5
+CALL PartitionPartMPI(ListIn)
 
 CALL CloseDataFile()
 
 END SUBROUTINE InitPartState
 
 
-SUBROUTINE ReadPartStateFile(InputFile, DataArrayIn)
+SUBROUTINE ReadPartStateFile(InputFile, DataArrayIn, ListIn)
 !===================================================================================================================================
 ! Read in particle state from given HDF5 state file
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Visu_Vars              ,ONLY: nLocalParts, offsetPart, nPartVar_HDF5, VisualizePart, nPart_visu, PartData_HDF5
+USE MOD_Visu_Vars              ,ONLY: tVisuParticle
 USE MOD_IO_HDF5                ,ONLY: File_ID
 USE MOD_HDF5_Input             ,ONLY: DatasetExists, ReadArray, OpenDataFile, CloseDataFile, HSize
 USE MOD_Particle_Vars          ,ONLY: PDM
@@ -204,6 +205,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=255),INTENT(IN)           :: InputFile
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL  :: DataArrayIn
+TYPE(tVisuParticle),INTENT(INOUT)       :: ListIn
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -225,23 +227,23 @@ END IF
 CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,DataArray,PartDataFound)
 IF(.NOT.PartDataFound)THEN
-  nPart_Visu=0
+  ListIn%nPart_Visu=0
   RETURN
 END IF
-ALLOCATE(PartData_HDF5(1:nPartVar_HDF5+3,1:nLocalParts))
-CALL ReadArray(DataArrayIn,2,(/nPartVar_HDF5, nLocalParts/),offsetPart,2,RealArray=PartData_HDF5)
-ParticleDataDimension=SHAPE(PartData_HDF5)
+ALLOCATE(ListIn%PartData_HDF5(1:ListIn%nPartVar_HDF5+3,1:ListIn%nLocalParts))
+CALL ReadArray(DataArrayIn,2,(/ListIn%nPartVar_HDF5, ListIn%nLocalParts/),ListIn%offsetPart,2,RealArray=ListIn%PartData_HDF5)
+ParticleDataDimension=SHAPE(ListIn%PartData_HDF5)
 !PDM%PartDataSize=ParticleDataDimension(1)
 !PDM%maxParticleNumber=ParticleDataDimension(2)
 !PDM%ParticleVecLength=ParticleDataDimension(2)
 
-ALLOCATE(VisualizePart(1:nLocalParts))
-VisualizePart=.FALSE.
-nPart_Visu=0
+ALLOCATE(ListIn%VisualizePart(1:ListIn%nLocalParts))
+ListIn%VisualizePart=.FALSE.
+ListIn%nPart_Visu=0
 
-DO iPart=1,nLocalParts
-  nPart_Visu=nPart_Visu+1
-  VisualizePart(iPart)=.TRUE.
+DO iPart=1,ListIn%nLocalParts
+  ListIn%nPart_Visu=ListIn%nPart_Visu+1
+  ListIn%VisualizePart(iPart)=.TRUE.
 END DO
 
 CALL CloseDataFile()
@@ -254,7 +256,7 @@ SUBROUTINE FinalizeReadPartStateFile()
 ! Deallocates solution vector and reset main attributes
 !==================================================================================================================================
 ! MODULES
-USE MOD_Visu_Vars
+USE MOD_Visu_Vars,                       ONLY: PD, PDE
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -264,10 +266,12 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SDEALLOCATE(PartData)
-SDEALLOCATE(VarNamesPart_HDF5)
-SDEALLOCATE(PartData_HDF5)
-SDEALLOCATE(VisualizePart)
+SDEALLOCATE(PD%VarNamesPart_HDF5)
+SDEALLOCATE(PD%PartData_HDF5)
+SDEALLOCATE(PD%VisualizePart)
+SDEALLOCATE(PDE%VarNamesPart_HDF5)
+SDEALLOCATE(PDE%PartData_HDF5)
+SDEALLOCATE(PDE%VisualizePart)
 END SUBROUTINE FinalizeReadPartStateFile
 
 !SUBROUTINE CalcPartEquation()
@@ -294,24 +298,25 @@ END SUBROUTINE FinalizeReadPartStateFile
 !END SUBROUTINE CalcPartEquation
 
 
-SUBROUTINE PartitionPartMPI()
+SUBROUTINE PartitionPartMPI(ListIn)
 !==================================================================================================================================
 ! Basic MPI initialization for visualization of particles
 !==================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Visu_Vars                ,ONLY: nGlobalParts, nLocalParts, offsetPart
+USE MOD_Visu_Vars                ,ONLY: tVisuParticle 
 USE MOD_Particle_MPI_Vars        ,ONLY: PartitionPartIsDone, nPartsMPI, offsetPartMPI
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+TYPE(tVisuParticle),INTENT(INOUT)       :: ListIn
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
-INTEGER                           :: iProc, iPart
+INTEGER                                 :: iProc, iPart
 #endif /* MPI */
 !==================================================================================================================================
 #if USE_MPI
@@ -319,18 +324,18 @@ INTEGER                           :: iProc, iPart
 !SDEALLOCATE(nPartsMPI)
 ALLOCATE(offsetPartMPI(0:nProcessors),nPartsMPI(0:nProcessors-1))
 offsetPartMPI=0
-nLocalParts=nGlobalParts/nProcessors
-iPart=nGlobalParts-nLocalParts*nProcessors
+ListIn%nLocalParts=ListIn%nGlobalParts/nProcessors
+iPart=ListIn%nGlobalParts-ListIn%nLocalParts*nProcessors
 DO iProc=0,nProcessors-1  
-  offsetPartMPI(iProc)=nLocalParts*iProc+MIN(iProc,iPart)
+  offsetPartMPI(iProc)=ListIn%nLocalParts*iProc+MIN(iProc,iPart)
 END DO
-offsetPartMPI(nProcessors)=nGlobalParts
+offsetPartMPI(nProcessors)=ListIn%nGlobalParts
 nPartsMPI(0:nProcessors-1)=offsetPartMPI(1:nProcessors)-offsetPartMPI(0:nProcessors-1)
-nLocalParts=nPartsMPI(myRank)
-offsetPart=offsetPartMPI(myRank)
+ListIn%nLocalParts=nPartsMPI(myRank)
+ListIn%offsetPart=offsetPartMPI(myRank)
 #else /* MPI */
-nLocalParts=nGlobalParts
-offsetPart=0
+ListIn%nLocalParts=ListIn%nGlobalParts
+ListIn%offsetPart=0
 #endif /* MPI */
 PartitionPartIsDone=.TRUE.
 SDEALLOCATE(offsetPartMPI)

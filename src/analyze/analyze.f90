@@ -315,31 +315,16 @@ IF(doCalcErrorNorms)THEN
   END IF !MPIroot
 END IF  ! ErrorNorms
 
-! Write particle erosion data
 #if USE_PARTICLES
-IF (WriteMacroSurfaceValues)THEN
-  IF (iter.GT.0) iter_macsurfvalout = iter_macsurfvalout + 1
-  IF (MacroValSamplIterNum.LE.iter_macsurfvalout) THEN
-    CALL CalcSurfaceValues
-!    DO iSide=1,SurfMesh%nTotalSides 
-!      SampWall(iSide)%State(4:6,:,:)=0.
-!    END DO
-    IF (CalcSurfCollis%AnalyzeSurfCollis) THEN
-      AnalyzeSurfCollis%Data=0.
-      AnalyzeSurfCollis%Spec=0
-      AnalyzeSurfCollis%BCid=0
-      AnalyzeSurfCollis%Number=0
-      !AnalyzeSurfCollis%Rate=0.
-    END IF
-    iter_macsurfvalout = 0
-  END IF
+! Calculate particle surface erosion data
+IF (WriteMacroSurfaceValues) THEN
+  CALL CalcSurfaceValues
 END IF
 
-! Individual impact tracking
-!#if USE_MPI
-!CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
-!#endif /*MPI*/
-IF(EP_inUse) CALL WriteEP(OutputTime=Time,resetCounters=.TRUE.)
+! Write individual particle surface impact data
+IF(EP_inUse) THEN
+  CALL WriteEP(OutputTime=Time,resetCounters=.TRUE.)
+END IF
 
 #if USE_LOADBALANCE
 ! Create .csv file for performance analysis and load balance: write header line

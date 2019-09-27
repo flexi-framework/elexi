@@ -64,6 +64,10 @@ REAL                         :: KappasPr_max
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 
+! Normally deallocated in FinalizeCalctimestep, currently problems in release mode, working fine in debug. Deallocate if needed?
+SDEALLOCATE(MetricsAdv)
+SDEALLOCATE(MetricsVisc)
+
 ALLOCATE(MetricsAdv(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
 DO FVE=0,FV_ENABLED
   DO iElem=1,nElems

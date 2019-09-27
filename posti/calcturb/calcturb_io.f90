@@ -82,20 +82,18 @@ CHARACTER(LEN=*),INTENT(IN)   :: ArrayName
 ! LOCAL VARIABLES
 !===================================================================================================================================
 ! finalize everything to make sure all arrays are empty
+CALL FinalizeOutput()
+CALL FinalizeLifting()
+CALL FinalizeDG()
+CALL FinalizeEquation()
 CALL FinalizeInterpolation()
-CALL FinalizeMortar()
 CALL FinalizeRestart()
+CALL FinalizeOverintegration()
+CALL FinalizeFilter()
 #if USE_MPI
 ! We might only need this on the first run
     CALL FinalizeMPI()
 #endif
-CALL FinalizeIndicator()
-CALL FinalizeEquation()
-CALL FinalizeDG()
-CALL FinalizeOverintegration()
-CALL FinalizeFilter()
-CALL FinalizeLifting()
-CALL FinalizeOutput()
 
 ! read options from parameter file
 CALL FinalizeParameters()
@@ -117,7 +115,6 @@ CALL prms%read_options(ParameterFile)
 ! Initialization of I/O routines
 CALL InitIOHDF5()
 CALL InitInterpolation(NCalc)
-CALL InitMortar()
 CALL InitOutput()
 ! We might only need this on the first run
     CALL FinalizeMesh()
@@ -125,7 +122,6 @@ CALL InitOutput()
 CALL InitRestart(StateFile,ArrayName)
 CALL InitFilter()
 CALL InitOverintegration()
-CALL InitIndicator()
 #if USE_MPI
 ! We might only need this on the first run
     CALL InitMPIvars()
@@ -158,7 +154,8 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_CalcTurb_Vars
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
-USE MOD_HDF5_Output       ,ONLY: GatheredWriteArray,MarkWriteSuccessfull
+USE MOD_HDF5_Output       ,ONLY: MarkWriteSuccessfull
+USE MOD_HDF5_WriteArray   ,ONLY: GatheredWriteArray
 USE MOD_Mesh_Vars         ,ONLY: offsetElem,nGlobalElems,sJ,nElems
 USE MOD_Output_Vars       ,ONLY: ProjectName,NOut,Vdm_N_NOut
 ! IMPLICIT VARIABLE HANDLING
@@ -207,7 +204,7 @@ IF(NOut.NE.NCalc) THEN
             UOut(:,i,j,k,iElem)=UOut(:,i,j,k,iElem)/JOut(1,i,j,k)
         END DO; END DO; END DO
     END DO !iElem
-    
+
 ELSE
     ! write state on same polynomial degree as the solution
     UOut => SolutionArray
@@ -223,7 +220,7 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         nVal=nVal                                              ,&
                         offset=    (/0,      0,     0,     0,     offsetElem/),&
                         collective=.TRUE.,RealArray=UOut)
-    
+
 ! Deallocate UOut only if we did not point to U
 IF(NOut.NE.NCalc) DEALLOCATE(UOut)
 

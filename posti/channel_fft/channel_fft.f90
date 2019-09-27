@@ -66,6 +66,8 @@ CALL prms%SetSection("channelFFT")
 CALL prms%CreateIntOption( "OutputFormat",  "Choose the main format for output. 0: Tecplot, 2: HDF5")
 CALL prms%CreateIntOption( "NCalc",  "Polynomial degree to perform DFFT on.")
 CALL prms%CreateRealOption("Re_tau", "Reynolds number based on friction velocity and channel half height.")
+CALL prms%CreateLogicalOption("customChannel", "Other channel dimensions and BC than Moser.")
+CALL prms%CreateRealOption("delta",  "Channel half-width.")
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN

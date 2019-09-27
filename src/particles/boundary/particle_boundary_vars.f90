@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -25,14 +25,14 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! required variables
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER                                 :: NSurfSample                   ! polynomial degree of particle BC sampling   
+INTEGER                                 :: NSurfSample                   ! polynomial degree of particle BC sampling
 REAL,ALLOCATABLE                        :: XiEQ_SurfSample(:)            ! position of XiEQ_SurfSample
 REAL                                    :: dXiEQ_SurfSample              ! deltaXi in [-1,1]
 INTEGER                                 :: OffSetSurfSide                ! offset of local surf side
 INTEGER                                 :: nSurfBC                       ! number of surface side BCs
 CHARACTER(LEN=255),ALLOCATABLE          :: SurfBCName(:)                 ! names of belonging surface BC
 #if USE_MPI
-INTEGER,ALLOCATABLE                     :: OffSetSurfSideMPI(:)          ! integer offset for particle boundary sampling            
+INTEGER,ALLOCATABLE                     :: OffSetSurfSideMPI(:)          ! integer offset for particle boundary sampling
 #endif /*MPI*/
 
 #if USE_MPI
@@ -40,12 +40,12 @@ TYPE tSurfaceSendList
   INTEGER                               :: NativeProcID
   INTEGER,ALLOCATABLE                   :: SendList(:)                   ! list containing surfsideid of sides to send to proc
   INTEGER,ALLOCATABLE                   :: RecvList(:)                   ! list containing surfsideid of sides to recv from proc
-  
+
   INTEGER,ALLOCATABLE                   :: SurfDistSendList(:)           ! list containing surfsideid of sides to send to proc
   INTEGER,ALLOCATABLE                   :: SurfDistRecvList(:)           ! list containing surfsideid of sides to recv from proc
   INTEGER,ALLOCATABLE                   :: CoverageSendList(:)           ! list containing surfsideid of sides to send to proc
   INTEGER,ALLOCATABLE                   :: CoverageRecvList(:)           ! list containing surfsideid of sides to recv from proc
-  
+
 END TYPE
 #endif /*MPI*/
 
@@ -72,13 +72,13 @@ TYPE tSurfaceMesh
   INTEGER                               :: nTotalSides                   ! Number of Sides on Surface incl. HALO sides
   INTEGER                               :: nGlobalSides                  ! Global number of Sides on Surfaces (reflective)
   INTEGER,ALLOCATABLE                   :: SideIDToSurfID(:)             ! Mapping form the SideID to shorter side list
-  REAL, ALLOCATABLE                     :: SurfaceArea(:,:,:)            ! Area of Surface 
+  REAL, ALLOCATABLE                     :: SurfaceArea(:,:,:)            ! Area of Surface
   INTEGER,ALLOCATABLE                   :: SurfSideToGlobSideMap(:)      ! map of surfside ID to global Side ID
 END TYPE
 
 TYPE (tSurfaceMesh)                     :: SurfMesh
 
-TYPE tSampWall             ! DSMC sample for Wall                                             
+TYPE tSampWall             ! DSMC sample for Wall
   ! easier to communicate
   ! Data structure is repeated for every species + average
   REAL,ALLOCATABLE                      :: State(:,:,:)                ! 1     Impact Counter
@@ -93,31 +93,6 @@ TYPE tSampWall             ! DSMC sample for Wall
 END TYPE
 TYPE(tSampWall), ALLOCATABLE            :: SampWall(:)             ! Wall sample array (number of BC-Sides)
 
-TYPE tSurfColl
-  INTEGER                               :: NbrOfSpecies           ! Nbr. of Species to be counted for wall collisions (def. 0: all)
-  LOGICAL,ALLOCATABLE                   :: SpeciesFlags(:)        ! Species counted for wall collisions (def.: all species=T)
-  LOGICAL                               :: OnlySwaps              ! count only wall collisions being SpeciesSwaps (def. F)
-  LOGICAL                               :: Only0Swaps             ! count only wall collisions being delete-SpeciesSwaps (def. F)
-  LOGICAL                               :: Output                 ! Print sums of all counted wall collisions (def. F)
-  LOGICAL                               :: AnalyzeSurfCollis      ! Output of collided/swaped particles 
-                                                                  ! during Sampling period? (def. F)
-END TYPE
-TYPE (tSurfColl)                        :: CalcSurfCollis
-  
-TYPE tAnalyzeSurfCollis 
-  INTEGER                               :: maxPartNumber          ! max. number of collided/swaped particles during Sampling
-  REAL, ALLOCATABLE                     :: Data(:,:)              ! Output of collided/swaped particles during Sampling period
-                                                                  ! (Species,Particles,Data(x,y,z,u,v,w)
-  INTEGER, ALLOCATABLE                  :: Spec(:)                ! Species of Particle in Data-array
-  INTEGER, ALLOCATABLE                  :: BCid(:)                ! ID of PartBC from crossing of Particle in Data-array
-  INTEGER, ALLOCATABLE                  :: Number(:)              ! collided/swaped particles per Species during Sampling period
-  !REAL, ALLOCATABLE                     :: Rate(:)                ! collided/swaped particles/s per Species during Sampling period
-  INTEGER                               :: NumberOfBCs            ! Nbr of BC to be analyzed (def.: 1)
-  INTEGER, ALLOCATABLE                  :: BCs(:)                 ! BCs to be analyzed (def.: 0 = all)
-
-END TYPE tAnalyzeSurfCollis
-TYPE(tAnalyzeSurfCollis)                :: AnalyzeSurfCollis
-
 TYPE tPartBoundary
   INTEGER                                :: OpenBC                  = 1      ! = 1 (s.u.) Boundary Condition Integer Definition
   INTEGER                                :: ReflectiveBC            = 2      ! = 2 (s.u.) Boundary Condition Integer Definition
@@ -126,15 +101,10 @@ TYPE tPartBoundary
 !  INTEGER                                :: AnalyzeBC               = 100    ! = 100 (s.u.) Boundary Condition Integer Definition
   CHARACTER(LEN=200)   , ALLOCATABLE     :: SourceBoundName(:)    ! Link part 1 for mapping Boltzplatz BCs to Particle BC
   INTEGER              , ALLOCATABLE     :: TargetBoundCond(:)    ! Link part 2 for mapping Boltzplatz BCs to Particle BC
-!  INTEGER              , ALLOCATABLE     :: Map(:)               ! Map from Boltzplatz BCindex to Particle BC
-  INTEGER              , ALLOCATABLE     :: MapToPartBC(:)        ! Map from Boltzplatz BCindex to Particle BC (NOT TO TYPE!)
-  REAL    , ALLOCATABLE                  :: MomentumACC(:)      
-  REAL    , ALLOCATABLE                  :: WallTemp(:)     
-  REAL    , ALLOCATABLE                  :: WallVelo(:,:) 
-  LOGICAL , ALLOCATABLE                  :: SolidState(:)         ! flag defining if reflective BC is solid or liquid
-  INTEGER , ALLOCATABLE                  :: SolidSpec(:)
-  REAL    , ALLOCATABLE                  :: SolidPartDens(:)
-  INTEGER , ALLOCATABLE                  :: LiquidSpec(:)         ! Species of Liquid Boundary
+  INTEGER              , ALLOCATABLE     :: MapToPartBC(:)        ! Map from FLEXI BCindex to Particle BC (NOT TO TYPE!)
+  REAL    , ALLOCATABLE                  :: MomentumACC(:)
+  REAL    , ALLOCATABLE                  :: WallTemp(:)
+  REAL    , ALLOCATABLE                  :: WallVelo(:,:)
   LOGICAL , ALLOCATABLE                  :: AmbientCondition(:)
   LOGICAL , ALLOCATABLE                  :: AmbientConditionFix(:)
   REAL    , ALLOCATABLE                  :: AmbientTemp(:)
@@ -143,13 +113,6 @@ TYPE tPartBoundary
   REAL    , ALLOCATABLE                  :: AmbientVelo(:,:)
   REAL    , ALLOCATABLE                  :: AmbientDens(:)
   REAL    , ALLOCATABLE                  :: AmbientDynamicVisc(:) ! dynamic viscousity
-  LOGICAL , ALLOCATABLE                  :: Adaptive(:)
-  INTEGER , ALLOCATABLE                  :: AdaptiveType(:)
-  INTEGER , ALLOCATABLE                  :: AdaptiveMacroRestartFileID(:)
-  REAL    , ALLOCATABLE                  :: AdaptivePressure(:)
-  REAL    , ALLOCATABLE                  :: AdaptiveTemp(:)
-!  LOGICAL , ALLOCATABLE                  :: UseForQCrit(:)       ! Use Boundary for Q-Criterion ?
-  LOGICAL , ALLOCATABLE                  :: Resample(:)           ! Resample Equilibirum Distribution with reflection
   CHARACTER(LEN=255),ALLOCATABLE         :: WallModel(:)
   CHARACTER(LEN=255),ALLOCATABLE         :: WallCoeffModel(:)
   ! Bons particle rebound model
@@ -158,7 +121,6 @@ TYPE tPartBoundary
 END TYPE
 
 INTEGER                                  :: nPartBound            ! number of particle boundaries
-INTEGER                                  :: nAdaptiveBC
 TYPE(tPartBoundary)                      :: PartBound             ! Boundary Data for Particles
 
 INTEGER                                  :: nAuxBCs               ! number of aux. BCs that are checked during tracing
@@ -212,13 +174,9 @@ TYPE tPartAuxBC
   INTEGER                                :: OpenBC                  = 1      ! = 1 (s.u.) Boundary Condition Integer Definition
   INTEGER                                :: ReflectiveBC            = 2      ! = 2 (s.u.) Boundary Condition Integer Definition
   INTEGER              , ALLOCATABLE     :: TargetBoundCond(:)
-  REAL    , ALLOCATABLE                  :: MomentumACC(:)      
-  REAL    , ALLOCATABLE                  :: WallTemp(:)     
-  REAL    , ALLOCATABLE                  :: WallVelo(:,:) 
-  INTEGER , ALLOCATABLE                  :: NbrOfSpeciesSwaps(:)          !Number of Species to be changed at wall
-  REAL    , ALLOCATABLE                  :: ProbOfSpeciesSwaps(:)         !Probability of SpeciesSwaps at wall
-  INTEGER , ALLOCATABLE                  :: SpeciesSwaps(:,:,:)           !Species to be changed at wall (in, out), out=0: delete
-  LOGICAL , ALLOCATABLE                  :: Resample(:)                      !Resample Equilibirum Distribution with reflection
+  REAL    , ALLOCATABLE                  :: MomentumACC(:)
+  REAL    , ALLOCATABLE                  :: WallTemp(:)
+  REAL    , ALLOCATABLE                  :: WallVelo(:,:)
 END TYPE
 TYPE(tPartAuxBC)                         :: PartAuxBC                         ! auxBC Data for Particles
 

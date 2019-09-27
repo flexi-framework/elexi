@@ -420,7 +420,8 @@ USE MOD_PreProc
 USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5           ,ONLY: File_ID,OpenDataFile,CloseDataFile
-USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessfull
+USE MOD_HDF5_Output       ,ONLY: WriteAttribute,MarkWriteSuccessfull
+USE MOD_HDF5_WriteArray   ,ONLY: WriteArray
 USE MOD_Output_Vars       ,ONLY: ProjectName
 USE MOD_Mesh_Vars         ,ONLY: MeshFile
 #if USE_MPI

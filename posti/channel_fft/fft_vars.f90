@@ -25,6 +25,8 @@ SAVE
 INTEGER                 :: OutputFormat      !< Choose the main format for output. 0: Tecplot, 2: HDF5
 INTEGER                 :: NCalc             !< Polynomial degree to perform DFFT on
 REAL                    :: Re_tau            !< Reynolds number based on friction velocity and channel half height
+LOGICAL                 :: customChannel     !< Other channel dimensions and BC than Moser
+REAL                    :: delta             !< Channel half-width
 
 REAL,ALLOCATABLE        :: VdmGaussEqui(:,:) !< Vandermonde from state to FFT grid
 

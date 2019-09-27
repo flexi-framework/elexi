@@ -212,6 +212,7 @@ REAL, ALLOCATABLE                        :: RegionBounds(:,:) ! RegionBounds ((x
 LOGICAL,ALLOCATABLE                      :: isTracingTrouble(:)
 REAL,ALLOCATABLE                         :: ElemTolerance(:)
 INTEGER, ALLOCATABLE                     :: ElemToGlobalElemID(:)  ! mapping form local-elemid to global-id
+
 !===================================================================================================================================
 INTEGER          :: NGeoElevated                !< polynomial degree of elevated geometric transformation
 !-----------------------------------------------------------------------------------------------------------------------------------

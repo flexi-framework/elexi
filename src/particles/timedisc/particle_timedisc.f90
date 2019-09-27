@@ -303,6 +303,9 @@ IF (t.GE.DelayTime) THEN
   ! particle push for first RK stage
   DO iPart=1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(iPart)) THEN
+      ! Pt is always known at this position, change isNewPart to false
+      PDM%IsNewPart(iPart)=.FALSE.
+
       !-- Particle Push
       ! Sanity Check Particle Pusher / WARNING: Might Cause Slowdowns
       !IF (ANY(ISNAN(Pt(iPart,:)))) THEN
@@ -339,6 +342,7 @@ IF (t.GE.DelayTime) THEN
       !  IPWRITE(UNIT_stdout,*) ' Velocity:', PartState(iPart,4:6)
       !  PDM%ParticleInside(iPart) = .FALSE.
       !END IF
+
     END IF
   END DO
 
@@ -492,6 +496,7 @@ IF (t.GE.DelayTime) THEN
   ! particle push for nth RK stage
   DO iPart=1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(iPart)) THEN
+        ! "normal" particles are pushed with whole timestep
       IF (.NOT.PDM%IsNewPart(iPart)) THEN
         Pt_temp(iPart,1) = PartState(iPart,4) - RKA(iStage) * Pt_temp(iPart,1)
         Pt_temp(iPart,2) = PartState(iPart,5) - RKA(iStage) * Pt_temp(iPart,2)
@@ -519,9 +524,8 @@ IF (t.GE.DelayTime) THEN
         !  IPWRITE(UNIT_stdOut,*) 'Found invalid particle, removing. PartID:', iPart
         !ENDIF
 
-      !IsNewPart: no Pt_temp history available. Either because of emissionType=1 or because of reflection with almost zero wallVelo
+      !IsNewPart: no Pt_temp history available. Either because of emissionType = 1 or because of reflection with almost zero wallVelo
       ELSE
-        ! "normal" particles are push with whole timestep
         RandVal         = 1.
         Pa_rebuilt(:,:) = 0.
         DO iStage_loc=1,iStage
@@ -553,6 +557,7 @@ IF (t.GE.DelayTime) THEN
         PartState(iPart,4) = PartState(iPart,4) + Pt_temp(iPart,4)*b_dt(iStage)*RandVal
         PartState(iPart,5) = PartState(iPart,5) + Pt_temp(iPart,5)*b_dt(iStage)*RandVal
         PartState(iPart,6) = PartState(iPart,6) + Pt_temp(iPart,6)*b_dt(iStage)*RandVal
+
         PDM%IsNewPart(iPart) = .FALSE. !change to false: Pt_temp is now rebuilt...
 
         ! Sanity Check Particle / WARNING: Might Cause Slowdowns
@@ -609,7 +614,7 @@ END IF
 
 ! This >MIGHT< be only needed at the last RK stage ...
 !IF (iStage.EQ.nRKStages) THEN
-  CALL UpdateNextFreePosition()
+CALL UpdateNextFreePosition()
 !END IF
 
 END SUBROUTINE Particle_TimeStepByLSERK_RK

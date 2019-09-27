@@ -1157,7 +1157,6 @@ ELSE
        ! Mark part as new for RK reconstruction
        IF (PDM%ParticleInside(ParticleIndexNbr)) THEN
          PDM%IsNewPart(ParticleIndexNbr)  = .TRUE.
-         PDM%dtFracPush(ParticleIndexNbr) = .FALSE.
        END IF
     ELSE
       CALL abort(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')

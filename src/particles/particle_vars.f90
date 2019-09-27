@@ -160,7 +160,7 @@ END TYPE
 
 TYPE(tParticleElementMapping)            :: PEM
 
-TYPE tParticleDataManagement  
+TYPE tParticleDataManagement
   INTEGER                                :: CurrentNextFreePosition         ! Index of nextfree index in nextFreePosition-Array
   INTEGER                                :: maxParticleNumber               ! Maximum Number of all Particles
   INTEGER                                :: ParticleVecLength               ! Vector Length for Particle Push Calculation
@@ -175,7 +175,6 @@ TYPE tParticleDataManagement
                                                                             ! 1: surface index ElemToSide(i,localsideID,ElementID)
                                                                             ! 2: p
                                                                             ! 3: q
-  LOGICAL ,ALLOCATABLE                   :: dtFracPush(:)                   ! Push random fraction only
   LOGICAL ,ALLOCATABLE                   :: IsNewPart(:)                    ! Reconstruct RK-scheme in next stage
 END TYPE
 

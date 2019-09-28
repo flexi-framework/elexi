@@ -199,7 +199,7 @@ REAL,INTENT(OUT)                :: Resu(PP_nVar)          !< state in conservati
 INTEGER,INTENT(IN),OPTIONAL     :: RefStateOpt            !< refstate to be used for exact func
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: RefState
+INTEGER                         :: RefState,p,q
 REAL                            :: tEval
 REAL                            :: Resu_t(PP_nVar),Resu_tt(PP_nVar),ov ! state in conservative variables
 REAL                            :: Frequency,Amplitude
@@ -213,10 +213,9 @@ REAL                            :: random
 REAL                            :: du, dTemp, RT, r2       ! aux var for SHU VORTEX,isentropic vortex case 12
 REAL                            :: pi_loc,phi,radius       ! needed for cylinder potential flow
 REAL                            :: h,sRT,pexit,pentry      ! needed for Couette-Poiseuille
-REAL                            :: i,j                     ! needed for linear
 #if PARABOLIC
 ! needed for blasius BL
-INTEGER                         :: nSteps
+INTEGER                         :: nSteps,i,j
 REAL                            :: eta,deta,deta2,f,fp,fpp,fppp,fbar,fpbar,fppbar,fpppbar
 REAL                            :: x_eff(3),x_offset(3)
 #endif
@@ -318,12 +317,12 @@ CASE(31) ! linear in xyz
   prim(2:4) = 0.
   prim(5)   = 1
 
-  DO j=0,2
-    DO i=1,3
-      IF (AdvArray(j*3+i).NE.0) THEN
-        prim(j+2)=prim(j+2) + x(i)/AdvArray(j*3+i)
+  DO q=0,2
+    DO p=1,3
+      IF (AdvArray(q*3+p).NE.0) THEN
+        prim(q+2)=prim(q+2) + x(p)/AdvArray(q*3+p)
       ELSE
-        prim(j+2)=prim(j+2)
+        prim(q+2)=prim(q+2)
       END IF
     END DO
   END DO

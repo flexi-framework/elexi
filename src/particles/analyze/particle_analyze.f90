@@ -307,6 +307,8 @@ IF(.NOT.fexist) THEN
     WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartVelY', ' '
     WRITE(iunit,'(A1)',ADVANCE='NO') ','
     WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartVelZ', ' '
+    WRITE(iunit,'(A1)',ADVANCE='NO') ','
+    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartElem', ' '
     CLOSE(iunit)
 #if USE_MPI
   END IF
@@ -316,7 +318,6 @@ END IF
 iunit=GETFREEUNIT()
 OPEN(unit=iunit,FILE=TrackingFileName,FORM='Formatted',POSITION='APPEND',STATUS='old')
 !CALL FLUSH (iunit)
-WRITE(*,*) PDM%ParticleVecLength
 DO i=1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(i)) THEN
     WRITE(iunit,104,ADVANCE='NO') TIME

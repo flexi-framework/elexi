@@ -55,6 +55,7 @@ CHARACTER(LEN=255)             :: FileString_multiblock
 #endif
 #if USE_PARTICLES
 CHARACTER(LEN=255)             :: FileString_Part
+CHARACTER(LEN=255)             :: FileString_Erosion
 #endif
 #if !USE_MPI
 INTEGER                        :: MPI_COMM_WORLD = 0
@@ -187,10 +188,16 @@ DO iArg=1+skipArgs,nArgs
 
 #if USE_PARTICLES
     IF(VisuPart)THEN
-      FileString_Part=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuPart',OutputTime))//'.vtu'
-      
-      CALL WriteDataToVTKPart(PD%nPart_Visu,PD%nPartVar_HDF5,PD%PartData_HDF5(1:3,:),PD%PartData_HDF5(4:,:),FileString_Part,&
+      IF(PD%nPart_Visu.GT.0)THEN
+        FileString_Part=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuPart',OutputTime))//'.vtu'
+        CALL WriteDataToVTKPart(PD%nPart_Visu,PD%nPartVar_HDF5,PD%PartData_HDF5(1:3,:),PD%PartData_HDF5(4:,:),FileString_Part,&
         PD%VarNamePartVisu,PD%VarNamePartCombine,PD%VarNamePartCombineLen)
+      END IF
+      IF(PDE%nPart_Visu.GT.0)THEN
+        FileString_Erosion=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuErosion',OutputTime))//'.vtu'
+        CALL WriteDataToVTKPart(PDE%nPart_Visu,PDE%nPartVar_HDF5,PDE%PartData_HDF5(1:3,:),PDE%PartData_HDF5(4:,:),FileString_Erosion,&
+        PDE%VarNamePartVisu,PDE%VarNamePartCombine,PDE%VarNamePartCombineLen)
+      END IF
     END IF
 #endif
 !ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line

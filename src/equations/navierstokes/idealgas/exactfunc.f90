@@ -199,7 +199,7 @@ REAL,INTENT(OUT)                :: Resu(PP_nVar)          !< state in conservati
 INTEGER,INTENT(IN),OPTIONAL     :: RefStateOpt            !< refstate to be used for exact func
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: RefState
+INTEGER                         :: RefState,p,q
 REAL                            :: tEval
 REAL                            :: Resu_t(PP_nVar),Resu_tt(PP_nVar),ov ! state in conservative variables
 REAL                            :: Frequency,Amplitude
@@ -212,7 +212,7 @@ REAL                            :: Resul(PP_nVar),Resur(PP_nVar)
 REAL                            :: random
 REAL                            :: du, dTemp, RT, r2       ! aux var for SHU VORTEX,isentropic vortex case 12
 REAL                            :: pi_loc,phi,radius       ! needed for cylinder potential flow
-REAL                            :: h,sRT,pexit,pentry   ! needed for Couette-Poiseuille
+REAL                            :: h,sRT,pexit,pentry      ! needed for Couette-Poiseuille
 #if PARABOLIC
 ! needed for blasius BL
 INTEGER                         :: nSteps,i,j
@@ -311,26 +311,26 @@ CASE(3) ! linear in rho
     Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
     Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
   END IF
-  
+
 CASE(31) ! linear in xyz
   prim(1)   = RefStatePrim(1,RefState)
   prim(2:4) = 0.
   prim(5)   = 1
-  
-  DO j=0,2
-    DO i=1,3
-      IF (AdvArray(j*3+i).NE.0) THEN
-        prim(j+2)=prim(j+2) + x(i)/AdvArray(j*3+i)
+
+  DO q=0,2
+    DO p=1,3
+      IF (AdvArray(q*3+p).NE.0) THEN
+        prim(q+2)=prim(q+2) + x(p)/AdvArray(q*3+p)
       ELSE
-        prim(j+2)=prim(j+2)
+        prim(q+2)=prim(q+2)
       END IF
     END DO
   END DO
-  
+
   Resu(1)  =prim(1) ! rho
   Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
-  Resu(5)  =4.4642857 !prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e 
-  
+  Resu(5)  =4.4642857 !prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e
+
 CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
   Frequency=1.
   Amplitude=0.1
@@ -444,7 +444,7 @@ CASE(44) ! ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D), o
     Resu_tt(4)     = 0.
 #endif
   END IF
-  
+
 CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   prim(1)  =1.
   prim(2:4)=0.

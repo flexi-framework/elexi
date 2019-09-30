@@ -66,14 +66,15 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Particle Analyze")
 
-CALL prms%CreateIntOption(      'Part-AnalyzeStep'   , 'Analyze is performed each Nth time step','1')
-CALL prms%CreateLogicalOption(  'CalcKineticEnergy'  , 'Calculate Kinetic Energy. ','.FALSE.')
-CALL prms%CreateLogicalOption(  'CalcPartBalance'    , 'Calculate the Particle Power Balance'//&
-                                                       '- input and outflow energy of all particles','.FALSE.')
-CALL prms%CreateLogicalOption(  'Part-TrackPosition' , 'Track particle position','.FALSE.')
-CALL prms%CreateLogicalOption(  'printDiff'          , '.FALSE.')
-CALL prms%CreateRealOption(     'PrintDiffTime'      , '12')
-CALL prms%CreateRealArrayOption('printDiffVec'       , '0. , 0. , 0. , 0. , 0. , 0.')
+CALL prms%CreateIntOption(      'Part-AnalyzeStep'      , 'Analyze is performed each Nth time step','1')
+CALL prms%CreateLogicalOption(  'CalcKineticEnergy'     , 'Calculate Kinetic Energy. ','.FALSE.')
+CALL prms%CreateLogicalOption(  'CalcPartBalance'       , 'Calculate the Particle Power Balance'//&
+                                                          '- input and outflow energy of all particles','.FALSE.')
+CALL prms%CreateLogicalOption(  'Part-TrackPosition'    , 'Track particle position','.FALSE.')
+CALL prms%CreateLogicalOption(  'Part-TrackConvergence' , 'Track particle convergence (i.e. final position)','.FALSE.')
+CALL prms%CreateLogicalOption(  'printDiff'             , '.FALSE.')
+CALL prms%CreateRealOption(     'PrintDiffTime'         , '12')
+CALL prms%CreateRealArrayOption('printDiffVec'          , '0. , 0. , 0. , 0. , 0. , 0.')
 
 END SUBROUTINE DefineParametersParticleAnalyze
 
@@ -139,7 +140,8 @@ IF (CalcPartBalance) THEN
 END IF
 
 ! Track and write position of each particle. Primarily intended for debug purposes
-TrackParticlePosition = GETLOGICAL('Part-TrackPosition','.FALSE.')
+TrackParticlePosition    = GETLOGICAL('Part-TrackPosition',   '.FALSE.')
+TrackParticleConvergence = GETLOGICAL('Part-TrackConvergence','.FALSE.')
 
 IF(TrackParticlePosition)THEN
   printDiff=GETLOGICAL('printDiff','.FALSE.')
@@ -305,30 +307,33 @@ IF(.NOT.fexist) THEN
     WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartVelY', ' '
     WRITE(iunit,'(A1)',ADVANCE='NO') ','
     WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartVelZ', ' '
+    WRITE(iunit,'(A1)',ADVANCE='NO') ','
+    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartElem', ' '
     CLOSE(iunit)
 #if USE_MPI
   END IF
 #endif
-ELSE
-  iunit=GETFREEUNIT()
-  OPEN(unit=iunit,FILE=TrackingFileName,FORM='Formatted',POSITION='APPEND',STATUS='old')
-  !CALL FLUSH (iunit)
-  DO i=1,PDM%ParticleVecLength
-    IF (PDM%ParticleInside(i)) THEN
-      WRITE(iunit,104,ADVANCE='NO') TIME
-      WRITE(iunit,'(A1)',ADVANCE='NO') ','
-      WRITE(iunit,'(I12)',ADVANCE='NO') i
-      DO iPartState=1,6
-        WRITE(iunit,'(A1)',ADVANCE='NO') ','
-        WRITE(iunit,104,ADVANCE='NO') PartState(i,iPartState)
-      END DO
-      WRITE(iunit,'(A1)',ADVANCE='NO') ','
-      WRITE(iunit,'(I12)',ADVANCE='NO') PEM%Element(i)
-      WRITE(iunit,'(A)') ' '
-     END IF
-  END DO
-  CLOSE(iunit)
 END IF
+
+iunit=GETFREEUNIT()
+OPEN(unit=iunit,FILE=TrackingFileName,FORM='Formatted',POSITION='APPEND',STATUS='old')
+!CALL FLUSH (iunit)
+DO i=1,PDM%ParticleVecLength
+  IF (PDM%ParticleInside(i)) THEN
+    WRITE(iunit,104,ADVANCE='NO') TIME
+    WRITE(iunit,'(A1)',ADVANCE='NO') ','
+    WRITE(iunit,'(I12)',ADVANCE='NO') i
+    DO iPartState=1,6
+      WRITE(iunit,'(A1)',ADVANCE='NO') ','
+      WRITE(iunit,104,ADVANCE='NO') PartState(i,iPartState)
+    END DO
+    WRITE(iunit,'(A1)',ADVANCE='NO') ','
+    WRITE(iunit,'(I12)',ADVANCE='NO') PEM%Element(i)
+    WRITE(iunit,'(A)') ' '
+   END IF
+END DO
+CLOSE(iunit)
+
 IF (printDiff) THEN
   diffPos=0.
   diffVelo=0.

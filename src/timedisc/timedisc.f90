@@ -195,7 +195,7 @@ USE MOD_FV
 #if USE_PARTICLES
 USE MOD_Particle_Globals    ,ONLY: ALMOSTZERO
 USE MOD_Particle_Analyze    ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars,ONLY: TrackParticlePosition
+USE MOD_Particle_Analyze_Vars,ONLY: TrackParticlePosition,TrackParticleConvergence
 USE MOD_Particle_TimeDisc
 USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod,PartSteadyState,Part_dt_min
 USE MOD_Particle_Vars
@@ -533,7 +533,7 @@ END DO
 
 #if USE_PARTICLES
 ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (TrackParticlePosition) THEN
+  IF (TrackParticlePosition .OR. TrackParticleConvergence) THEN
     CALL TrackingParticlePosition(t)
   END IF
 #endif

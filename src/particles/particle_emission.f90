@@ -1137,7 +1137,12 @@ ELSE
 
        ! Match particle to exact element
        IF(DoRefMapping.OR.TriaTracking)THEN
-         CALL SingleParticleToExactElement(ParticleIndexNbr,doHALO=.FALSE.,InitFix=.TRUE.,doRelocate=.FALSE.)
+         ! Only one proc emitting, we don't need to worry about double particles
+         IF (PartMPI%InitGroup(InitGroup)%nProcs.EQ.1) THEN
+           CALL SingleParticleToExactElement(ParticleIndexNbr,doHALO=.FALSE.,InitFix=.FALSE.,doRelocate=.FALSE.)
+         ELSE
+           CALL SingleParticleToExactElement(ParticleIndexNbr,doHALO=.FALSE.,InitFix=.TRUE.,doRelocate=.FALSE.)
+         END IF
        ELSE
          CALL SingleParticleToExactElementNoMap(ParticleIndexNbr,doHALO=.FALSE.,doRelocate=.FALSE.)
        END IF

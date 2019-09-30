@@ -14,87 +14,85 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Subroutines necessary for calculating SigmaModel Eddy-Viscosity
+!> Subroutines necessary for calculating Vreman's Eddy-Viscosity
 !===================================================================================================================================
-MODULE MOD_SigmaModel
+MODULE MOD_Vreman
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 
-INTERFACE InitSigmaModel
-   MODULE PROCEDURE InitSigmaModel
+INTERFACE InitVreman
+   MODULE PROCEDURE InitVreman
 END INTERFACE
 
-INTERFACE SigmaModel
-   MODULE PROCEDURE SigmaModel_Point
-   MODULE PROCEDURE SigmaModel_Volume
+INTERFACE Vreman
+   MODULE PROCEDURE Vreman_Point
+   MODULE PROCEDURE Vreman_Volume
 END INTERFACE
 
-INTERFACE FinalizeSigmaModel
-   MODULE PROCEDURE FinalizeSigmaModel
+INTERFACE FinalizeVreman
+   MODULE PROCEDURE FinalizeVreman
 END INTERFACE
 
-PUBLIC::InitSigmaModel,SigmaModel_Volume,FinalizeSigmaModel
+PUBLIC::InitVreman, Vreman_Volume, FinalizeVreman
 !===================================================================================================================================
 
 CONTAINS
 
 !===================================================================================================================================
-!> Get some parameters needed by SigmaModel modules and initialize SigmaModel
+!> Get some parameters needed by Vreman modules and initialize Vreman
 !===================================================================================================================================
-SUBROUTINE InitSigmaModel()
+SUBROUTINE InitVreman()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
-USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
-USE MOD_Testcase_Vars      ,ONLY: testcase
+USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ,Elem_xGP
+USE MOD_EOS_Vars           ,ONLY: mu0
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,iElem,j,k
-REAL    :: CellVol
+REAL    :: CellVol, yPlus
 !===================================================================================================================================
-IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.SigmaModelInitIsDone)THEN
+IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.VremanInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
-    "InitSigmaModel not ready to be called or already called.")
+    "InitVreman not ready to be called or already called.")
 END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT SigmaModel...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT Vreman...'
 
 ! Read the variables used for LES model
-! SigmaModel model
-CS     = GETREAL('CS')
+! Vreman model, paper CS: 0.28
+CS        = GETREAL('CS')
 
 ALLOCATE(CSdeltaS2(nElems))
 
+! Vreman: (CS*deltaS)**2 * SQRT(B/A) * dens !According to Nicoud 2011 simga model
+! Precompute first term and store in damp
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
 DO iElem=1,nElems
   CellVol = 0.
-  DO i=0,PP_N
-    DO j=0,PP_N
-      DO k=0,PP_N
-        CellVol = CellVol +wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
-      END DO
-    END DO
-  END DO
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    CellVol = CellVol +wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
+  END DO; END DO; END DO
   DeltaS(iElem) = ( CellVol)**(1./3.)  / (REAL(PP_N)+1.)
   CSdeltaS2(iElem) = (CS * deltaS(iElem))**2 
 END DO
 
-SigmaModelInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT SigmaModel DONE!'
+VremanInitIsDone=.TRUE.
+SWRITE(UNIT_stdOut,'(A)')' INIT Vreman DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
-END SUBROUTINE InitSigmaModel
+END SUBROUTINE InitVreman
 
 !===================================================================================================================================
-!> Compute SigmaModel Eddy-Visosity
+!> Compute Vreman Eddy-Visosity
 !===================================================================================================================================
-SUBROUTINE SigmaModel_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
+PPURE SUBROUTINE Vreman_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
 ! MODULES
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -104,47 +102,40 @@ REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx, gradUy, gradUz
 REAL                       ,INTENT(IN)  :: dens, CSdeltaS2
 REAL                       ,INTENT(OUT) :: muSGS
 !-----------------------------------------------------------------------------------------------------------------------------------
-! External procedures defined in LAPACK
-EXTERNAL DSYEV
 ! LOCAL VARIABLES
-REAL               :: sigma(3), lambda(3)
-REAL               :: G_mat(3,3)
-REAL               :: work(9)  !lapack work array
-INTEGER            :: info
-REAL               :: d_model
+INTEGER                                 :: i,j,k
+REAL                                    :: beta(3,3),B,alpha(3,3),A 
 !===================================================================================================================================
-G_Mat(1,1) = gradUx(2)*gradUx(2) + gradUx(3)*gradUx(3) + gradUx(4)*gradUx(4)
-G_Mat(1,2) = gradUx(2)*gradUy(2) + gradUx(3)*gradUy(3) + gradUx(4)*gradUy(4)
-G_Mat(1,3) = gradUx(2)*gradUz(2) + gradUx(3)*gradUz(3) + gradUx(4)*gradUz(4)
-G_Mat(2,1) = G_Mat(1,2)
-G_Mat(2,2) = gradUy(2)*gradUy(2) + gradUy(3)*gradUy(3) + gradUy(4)*gradUy(4)
-G_Mat(2,3) = gradUy(2)*gradUz(2) + gradUy(3)*gradUz(3) + gradUy(4)*gradUz(4)
-G_Mat(3,1) = G_Mat(1,3)
-G_Mat(3,2) = G_Mat(2,3)
-G_Mat(3,3) = gradUz(2)*gradUz(2) + gradUz(3)*gradUz(3) + gradUz(4)*gradUz(4)
+! Vreman model
+alpha(1,:)=gradUx(2:4)
+alpha(2,:)=gradUy(2:4)
+alpha(3,:)=gradUz(2:4)
+beta=0.
+DO j=1,3; DO i=1,3; DO k=1,3
+  beta(i,j)=beta(i,j)+alpha(k,i)*alpha(k,j)
+END DO; END DO; END DO! i,j,k=1,3
+B=beta(1,1)*beta(2,2)-beta(1,2)**2+beta(1,1)*beta(3,3)-beta(1,3)**2+beta(2,2)*beta(3,3)-beta(2,3)**2
+A=0
+DO j=1,3; DO i=1,3
+  A=A+alpha(i,j)*alpha(i,j)
+END DO; END DO! i,j=1,3
 
-! LAPACK
-CALL DSYEV('N','U',3,G_Mat,3,lambda,work,9,info)
-IF(info .NE. 0) THEN
-  WRITE(*,*)'Eigenvalue Computation failed 3D',info
-  d_model = 0.
+! Vreman: (CS * deltaS)**2 * SQRT(B/A) * rho
+IF (B .LT. 1d-12 .OR. A .LT. 1d-5) THEN
+  muSGS = 0.
 ELSE
-  sigma = SQRT(MAX(0.,lambda)) ! ensure were not negative
-  ! Sigma is in ascending order unlike in the paper by Nicoud 2011
-  d_model = (sigma(1)*(sigma(3)-sigma(2))*(sigma(2)-sigma(1)))/(sigma(3)**2)
+  muSGS = CSdeltaS2 * SQRT(B/A) * dens
 END IF
-! SigmaModel model
-muSGS = CSdeltaS2 * d_model * dens
-END SUBROUTINE SigmaModel_Point
+END SUBROUTINE Vreman_Point
 
 !===================================================================================================================================
-!> Compute SigmaModel Eddy-Visosity for the volume
+!> Compute Vreman Eddy-Visosity for the volume
 !===================================================================================================================================
-SUBROUTINE SigmaModel_Volume()
+SUBROUTINE Vreman_Volume()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,         ONLY: nElems
-USE MOD_EddyVisc_Vars,     ONLY: muSGS, CSdeltaS2
+USE MOD_EddyVisc_Vars,     ONLY: CSdeltaS2, muSGS
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
 IMPLICIT NONE
@@ -156,21 +147,21 @@ INTEGER             :: i,j,k,iElem
 !===================================================================================================================================
 DO iElem = 1,nElems
   DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
-    CALL SigmaModel_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
+    CALL Vreman_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
                                  U(1,i,j,k,iElem),   CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
-END SUBROUTINE SigmaModel_Volume
+END SUBROUTINE Vreman_Volume
 
 !===============================================================================================================================
-!> Deallocate arrays and finalize variables used by SigmaModel SGS model
+!> Deallocate arrays and finalize variables used by Vreman SGS model
 !===============================================================================================================================
-SUBROUTINE FinalizeSigmaModel()
+SUBROUTINE FinalizeVreman()
 ! MODULES
 USE MOD_EddyVisc_Vars
 IMPLICIT NONE
 !===============================================================================================================================
-SigmaModelInitIsDone = .FALSE.
-END SUBROUTINE FinalizeSigmaModel
+VremanInitIsDone = .FALSE.
+END SUBROUTINE FinalizeVreman
 
-END MODULE MOD_SigmaModel
+END MODULE MOD_Vreman

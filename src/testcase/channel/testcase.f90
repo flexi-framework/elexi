@@ -98,6 +98,7 @@ CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis r
                                               "(Note: always called at global analyze level)", '1000')
 CALL prms%CreateLogicalOption(  'Part-CustomChannel', "Allow channel dimensions other than Moser")
 CALL prms%CreateRealOption(     'Part-ChannelReTau',  "Custom channel Re_tau")
+CALL prms%CreateRealOption(     'Part-ChannelUTau',   "Custom channel U_tau")
 CALL prms%CreateRealOption(     'Part-ChannelUBulk',  "Custom channel bulk velocity")
 CALL prms%CreateRealOption(     'Part-ChannelDelta',  "Custom channel half height")
 END SUBROUTINE DefineParametersTestcase
@@ -112,9 +113,10 @@ USE MOD_Globals
 USE MOD_ReadInTools,        ONLY: GETINT,GETREAL,GETLOGICAL
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState,RefStateCons
+USE MOD_EOS,                ONLY: PrimToCons
 USE MOD_EOS_Vars,           ONLY: kappa,mu0,R
 USE MOD_Output,             ONLY: InitOutputToFile
-USE MOD_Eos,                ONLY: PrimToCons
+USE MOD_Testcase_Vars,      ONLY: utau
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -122,7 +124,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
-REAL                     :: rho
+!REAL                     :: rho
 REAL                     :: bulkMach,pressure
 CHARACTER(LEN=7)         :: varnames(2)
 REAL                     :: UE(PP_2Var)
@@ -142,7 +144,8 @@ customChannel    = GETLOGICAL('Part-CustomChannel','.FALSE.')
 ! Channel dimensions and BCs other than Moser
 IF (customChannel) THEN
   uBulk       = GETREAL('Part-ChannelUBulk','0.')
-  uBulkScale  = 1./uBulk
+  uTau        = GETREAL('Part-ChannelUtau', '0.')
+!  uBulkScale  = 1./uBulk
   Re_tau      = GETREAL('Part-ChannelReTau','0.')
 ! Non-dimensional case with given Re_tau according to Moser
 ELSE
@@ -172,6 +175,7 @@ END IF
 IF (customChannel) THEN
     rho      = RefStatePrim(1,IniRefState)
     delta    = GETREAL('Part-ChannelDelta','0.')
+    uBulkScale  = 1./(uBulk*rho)
 
     ! Calculate new forcing pressure
     dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho
@@ -224,6 +228,8 @@ USE MOD_Preproc,      ONLY: PP_Pi
 USE MOD_Globals,      ONLY: Abort
 USE MOD_Equation_Vars,ONLY: RefStatePrim,IniRefState
 USE MOD_EOS,          ONLY: PrimToCons
+USE MOD_EOS_Vars,     ONLY: mu0
+USE MOD_Testcase_Vars,ONLY: utau
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -239,9 +245,9 @@ REAL                            :: x_int(3)
 Prim(:) = RefStatePrim(:,IniRefState) ! prim=(/1.,0.3,0.,0.,0.71428571/)
 IF (customChannel) THEN
   IF(x(2).LE.0) THEN
-      yPlus = (x(2)+delta)*(Re_tau/delta)
+      yPlus = (x(2)+delta)*(rho*utau/mu0)
   ELSE
-      yPlus = (delta-x(2))*(Re_tau/delta)
+      yPlus = (delta-x(2))*(rho*utau/mu0)
   END IF
 ELSE
   IF(x(2).LE.0) THEN

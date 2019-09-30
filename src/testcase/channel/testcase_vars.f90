@@ -32,6 +32,8 @@ CHARACTER(LEN=255) :: testcase = "channel"  !< name of testcase
 REAL    :: bulkVel     =0.          !< bulk velocity in domain
 REAL    :: dpdx        =0.          !< imposed pressure gradient
 REAL    :: Re_tau                   !< target friction Reynolds number
+REAL    :: rho                      !< fluid density
+REAL    :: utau                     !< fluid friction velocity
 REAL    :: uBulk                    !< bulk velocity in domain
 REAL    :: uBulkScale               !< scaling factor for bulk velocity
 REAL,ALLOCATABLE   :: writeBuf(:,:) !< buffer to store log testcase data

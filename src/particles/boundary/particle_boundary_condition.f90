@@ -567,6 +567,19 @@ END IF !IsAuxBC
 v_old = PartState(PartID,4:6)
 PartState(PartID,4:6)=PartState(PartID,4:6)-2.*DOT_PRODUCT(PartState(PartID,4:6),n_loc)*n_loc + WallVelo
 
+! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
+IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
+    DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
+    PartFaceAngle=ABS(0.5*PI - ACOS(1.))
+ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
+    DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
+    PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
+ELSE
+PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+ENDIF
+! End ugly hack
+
+!PartFaceAngle=0.
 ! Wall sampling Macrovalues
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
     ! Find correct boundary on SurfMesh

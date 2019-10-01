@@ -193,10 +193,19 @@ END IF
 
 #if USE_PARTICLES
 IF (VisuPart) THEN
+  ! Visualize particle data'
   DataArray='PartData'
   CALL InitPartState(statefile,DataArray,PD)
-  CALL InitParticle(PD) 
-  CALL ReadPartStateFile(statefile,DataArray,PD) 
+  IF(PD%nLocalParts.GT.0)THEN
+    CALL InitParticle(PD) 
+    CALL ReadPartStateFile(statefile,DataArray,PD) 
+  END IF
+  DataArray='ErosionData'
+  CALL InitPartState(statefile,DataArray,PDE)
+  IF(PDE%nLocalParts.GT.0)THEN
+    CALL InitParticle(PDE) 
+    CALL ReadPartStateFile(statefile,DataArray,PDE) 
+  END IF
 END IF
 #endif
 

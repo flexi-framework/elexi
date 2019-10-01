@@ -119,13 +119,13 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticle
 
 
-SUBROUTINE InitPartState(InputFile,DataArrayIn,ListIn)
+SUBROUTINE InitPartState(InputFile,DataArrayIn,PartDataFound,ListIn)
 !===================================================================================================================================
 ! Read in main attributes from given HDF5 state file
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Visu_Vars              ,ONLY: tVisuParticle, SpeciesID
+USE MOD_Visu_Vars              ,ONLY: tVisuParticle
 USE MOD_IO_HDF5                ,ONLY: File_ID
 USE MOD_HDF5_Input             ,ONLY: DatasetExists, GetDataSize, OpenDataFile, CloseDataFile, HSize, ReadAttribute
 ! IMPLICIT VARIABLE HANDLING
@@ -135,6 +135,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=255),INTENT(IN)           :: InputFile
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL  :: DataArrayIn
+LOGICAL,INTENT(OUT)                     :: PartDataFound
 TYPE(tVisuParticle),INTENT(INOUT)       :: ListIn
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -142,7 +143,6 @@ TYPE(tVisuParticle),INTENT(INOUT)       :: ListIn
 ! LOCAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                                 :: dims
-LOGICAL                                 :: PartDataFound
 CHARACTER(LEN=255)                      :: DataArray, Dataset
 CHARACTER(LEN=255),ALLOCATABLE          :: tmpArray(:)
 !===================================================================================================================================
@@ -154,6 +154,7 @@ ELSE
 END IF
 
 Dataset=''
+PartDataFound=.FALSE.
 
 ! Get number and names of variables
 CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -198,7 +199,6 @@ USE MOD_Globals
 USE MOD_Visu_Vars              ,ONLY: tVisuParticle
 USE MOD_IO_HDF5                ,ONLY: File_ID
 USE MOD_HDF5_Input             ,ONLY: DatasetExists, ReadArray, OpenDataFile, CloseDataFile, HSize
-USE MOD_Particle_Vars          ,ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

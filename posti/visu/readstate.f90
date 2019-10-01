@@ -129,7 +129,8 @@ CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_PARTICLES
-CHARACTER(LEN=255):: DataArray
+CHARACTER(LEN=255)           :: DataArray
+LOGICAL                      :: PartDataFound
 #endif
 !===================================================================================================================================
 CALL FinalizeInterpolation()
@@ -195,14 +196,14 @@ END IF
 IF (VisuPart) THEN
   ! Visualize particle data'
   DataArray='PartData'
-  CALL InitPartState(statefile,DataArray,PD)
-  IF(PD%nLocalParts.GT.0)THEN
+  CALL InitPartState(statefile,DataArray,PartDataFound,PD)
+  IF(PartDataFound)THEN
     CALL InitParticle(PD) 
     CALL ReadPartStateFile(statefile,DataArray,PD) 
   END IF
   DataArray='ErosionData'
-  CALL InitPartState(statefile,DataArray,PDE)
-  IF(PDE%nLocalParts.GT.0)THEN
+  CALL InitPartState(statefile,DataArray,PartDataFound,PDE)
+  IF(PartDataFound)THEN
     CALL InitParticle(PDE) 
     CALL ReadPartStateFile(statefile,DataArray,PDE) 
   END IF
@@ -275,6 +276,7 @@ INTEGER           :: meshMode_loc
 LOGICAL           :: changedMeshMode
 #if USE_PARTICLES
 CHARACTER(LEN=255):: DataArray
+LOGICAL           :: PartDataFound
 #endif
 !===================================================================================================================================
 CALL FinalizeInterpolation()
@@ -339,14 +341,14 @@ END IF
 IF (VisuPart) THEN
   ! Visualize particle data'
   DataArray='PartData'
-  CALL InitPartState(statefile,DataArray,PD)
-  IF(PD%nLocalParts.GT.0)THEN
+  CALL InitPartState(statefile,DataArray,PartDataFound,PD)
+  IF(PartDataFound)THEN
     CALL InitParticle(PD) 
     CALL ReadPartStateFile(statefile,DataArray,PD) 
   END IF
   DataArray='ErosionData'
-  CALL InitPartState(statefile,DataArray,PDE)
-  IF(PDE%nLocalParts.GT.0)THEN
+  CALL InitPartState(statefile,DataArray,PartDataFound,PDE)
+  IF(PartDataFound)THEN
     CALL InitParticle(PDE) 
     CALL ReadPartStateFile(statefile,DataArray,PDE) 
   END IF

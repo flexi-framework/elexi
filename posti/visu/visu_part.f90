@@ -125,7 +125,7 @@ SUBROUTINE InitPartState(InputFile,DataArrayIn,ListIn)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Visu_Vars              ,ONLY: tVisuParticle
+USE MOD_Visu_Vars              ,ONLY: tVisuParticle, SpeciesID
 USE MOD_IO_HDF5                ,ONLY: File_ID
 USE MOD_HDF5_Input             ,ONLY: DatasetExists, GetDataSize, OpenDataFile, CloseDataFile, HSize, ReadAttribute
 ! IMPLICIT VARIABLE HANDLING
@@ -155,6 +155,7 @@ END IF
 
 Dataset=''
 
+! Get number and names of variables
 CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,DataArray,PartDataFound)
 IF(PartDataFound)THEN
@@ -213,8 +214,7 @@ TYPE(tVisuParticle),INTENT(INOUT)       :: ListIn
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                                 :: PartDataFound
 CHARACTER(LEN=255)                      :: DataArray
-INTEGER                                 :: ParticleDataDimension(2)
-INTEGER                                 :: iPart
+INTEGER                                 :: iPart,iVar
 !===================================================================================================================================
 CALL FinalizeReadPartStateFile(ListIn)
 
@@ -230,12 +230,9 @@ IF(.NOT.PartDataFound)THEN
   ListIn%nPart_Visu=0
   RETURN
 END IF
-ALLOCATE(ListIn%PartData_HDF5(1:ListIn%nPartVar_HDF5,1:ListIn%nLocalParts))
-CALL ReadArray(DataArrayIn,2,(/ListIn%nPartVar_HDF5, ListIn%nLocalParts/),ListIn%offsetPart,2,RealArray=ListIn%PartData_HDF5)
-ParticleDataDimension=SHAPE(ListIn%PartData_HDF5)
-!PDM%PartDataSize=ParticleDataDimension(1)
-!PDM%maxParticleNumber=ParticleDataDimension(2)
-!PDM%ParticleVecLength=ParticleDataDimension(2)
+
+ALLOCATE(ListIn%PartData_HDF5(1:ListIn%nPartVar_HDF5+3,1:ListIn%nLocalParts))
+CALL ReadArray(DataArray,2,(/ListIn%nPartVar_HDF5+3, ListIn%nLocalParts/),ListIn%offsetPart,2,RealArray=ListIn%PartData_HDF5)
 
 ALLOCATE(ListIn%VisualizePart(1:ListIn%nLocalParts))
 ListIn%VisualizePart=.FALSE.

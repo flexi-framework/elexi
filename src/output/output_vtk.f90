@@ -573,7 +573,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)            :: nVal                    ! Number of nodal output variables
 INTEGER,INTENT(IN)            :: nParts                  ! Number of output Particle
 REAL,INTENT(IN)               :: Coord(3,nParts)         ! CoordsVector 
-REAL,INTENT(IN)               :: Value(nParts,nVal)      ! Statevector 
+REAL,INTENT(IN)               :: Value(nVal,nParts)      ! Statevector 
 CHARACTER(LEN=*),INTENT(IN)   :: FileString              ! Output file name
 CHARACTER(LEN=255),INTENT(IN) :: VarNamePartVisu(:)
 INTEGER,INTENT(IN)            :: VarNamePartCombine(:)
@@ -592,7 +592,7 @@ CHARACTER(LEN=1)   :: lf,components_string
 CHARACTER(LEN=255) :: VarNameString
 REAL(KIND=4)       :: Float
 !===================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PART DATA TO VTX XML BINARY (VTU) FILE..."
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PART/EROSION DATA TO VTX XML BINARY (VTU) FILE..."
 IF(nParts.LT.1)THEN
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
   RETURN
@@ -675,9 +675,9 @@ Buffer='_';WRITE(ivtk) TRIM(Buffer)
 nBytes = nVTKElems*SIZEOF(FLOAT)
 DO iVal=1,nVal
   IF (VarNamePartCombine(iVal).EQ.0) THEN
-    WRITE(ivtk) nBytes,REAL(Value(1:nParts,iVal),4)
+    WRITE(ivtk) nBytes,REAL(Value(iVal,1:nParts),4)
   ELSEIF(VarNamePartCombine(iVal).EQ.1) THEN
-    WRITE(ivtk) nBytes*VarNamePartCombineLen(iVal),REAL(Value(1:nParts,iVal:iVal+VarNamePartCombineLen(iVal)-1),4)
+    WRITE(ivtk) nBytes*VarNamePartCombineLen(iVal),REAL(Value(iVal:iVal+VarNamePartCombineLen(iVal)-1,1:nParts),4)
   ENDIF
 END DO
 ! Points

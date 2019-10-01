@@ -171,6 +171,7 @@ REAL,ALLOCATABLE                  :: Vdm_FVToVisu(:,:)
 ! Particles
 ! ==============================================================================================================================
 LOGICAL                           :: VisuPart                    !< Flag indicating if the simulation was run with particles
+INTEGER                           :: SpeciesID
 TYPE tVisuParticle
   INTEGER                         :: nGlobalParts
   INTEGER                         :: nLocalParts

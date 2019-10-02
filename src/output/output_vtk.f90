@@ -598,11 +598,15 @@ INTEGER            :: nParts_glob(1:nProcessors), nParts_proc
 INTEGER            :: iProc, nMaxParts
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PART/EROSION DATA TO VTX XML BINARY (VTU) FILE..."
+
+! collect number of particles on each proc
+CALL MPI_ALLGATHER(nParts,1,MPI_INTEGER,nParts_glob(:),1,MPI_INTEGER,MPI_COMM_FLEXI,iError)
+
 IF(nParts.LT.1)THEN
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
   RETURN
 END IF
- 
+
 nVTKElems=nGlobalParts
 nVTKCells=nGlobalParts
 
@@ -678,9 +682,6 @@ IF(MPIRoot)THEN
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 END IF
  
-! collect number of particles on each proc
-CALL MPI_ALLGATHER(nParts,1,MPI_INTEGER,nParts_glob(:),1,MPI_INTEGER,MPI_COMM_FLEXI,iError)
-
 #if USE_MPI
 IF(MPIroot)THEN
   !ALLOCATE buffer for Root

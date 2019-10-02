@@ -191,12 +191,12 @@ DO iArg=1+skipArgs,nArgs
       IF(PD%nPart_Visu.GT.0)THEN
         FileString_Part=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuPart',OutputTime))//'.vtu'
         CALL WriteDataToVTKPart(PD%nPart_Visu,PD%nPartVar_HDF5,PD%PartData_HDF5(1:3,:),PD%PartData_HDF5(4:,:),FileString_Part,&
-        PD%VarNamePartVisu,PD%VarNamePartCombine,PD%VarNamePartCombineLen)
+        PD%VarNamePartVisu,PD%VarNamePartCombine,PD%VarNamePartCombineLen,PD%nGlobalParts)
       END IF
       IF(PDE%nPart_Visu.GT.0)THEN
         FileString_Erosion=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuErosion',OutputTime))//'.vtu'
         CALL WriteDataToVTKPart(PDE%nPart_Visu,PDE%nPartVar_HDF5,PDE%PartData_HDF5(1:3,:),PDE%PartData_HDF5(4:,:),FileString_Erosion,&
-        PDE%VarNamePartVisu,PDE%VarNamePartCombine,PDE%VarNamePartCombineLen)
+        PDE%VarNamePartVisu,PDE%VarNamePartCombine,PDE%VarNamePartCombineLen,PDE%nGlobalParts)
       END IF
     END IF
 #endif

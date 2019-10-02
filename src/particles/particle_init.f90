@@ -244,7 +244,9 @@ CALL prms%CreateStringOption(   'Part-Boundary[$]-WallModel' &
                                   'coeffRes - Coefficient of restitution','perfRef', numberedmulti=.TRUE.)
 CALL prms%CreateStringOption('Part-Boundary[$]-WallCoeffModel' &
                                 , 'Coefficients to be used. Options:.\n'//&
-                                  'Tabakoff1981','Tabakoff1981', numberedmulti=.TRUE.)
+                                  'Tabakoff1981 \n'//&
+                                  'Bons2017 \n'    //&
+                                  'Fong2019','Tabakoff1981', numberedmulti=.TRUE.)
 
 ! Ambient condition=================================================================================================================
 CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientCondition'  &

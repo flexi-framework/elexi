@@ -897,10 +897,10 @@ SELECT CASE(WallCoeffModel)
 
     ! Normal coefficient of restitution
     IF (w .LT. w_crit) THEN
-      eps_n = 1/SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *(sigma_y**2. / (Species(PartSpecies(PartID))%DensityIC &
-                                                                         *  Species(PartSpecies(PartID))%YoungIC   ))**0.5
+      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *(sigma_y**2. / (Species(PartSpecies(PartID))%DensityIC &
+                                                                          *  Species(PartSpecies(PartID))%YoungIC   ))**0.5
     ELSE
-      eps_n = 1;
+      eps_n = 1.;
     END IF
 
     !> Do not account for adhesion for now <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -909,8 +909,15 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    eps_t   = 1 - FieldAtParticle(PartID,1) / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * (eps_n * &
-                                              SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))) * (1/(eps_n)+1)*COS(PartFaceAngle)**2.
+    eps_t   = 1. - FieldAtParticle(PartID,1) / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * (eps_n * &
+                                               SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))) * (1/(eps_n)+1)*COS(PartFaceAngle)**2.
+
+  ! Fong, W.; Amili, O.; Coletti, F.: Velocity and spatial distribution of intertial particles in a turbulent channel flow
+  ! / J. FluidMech 872, 2019
+  CASE('Fong2019')
+    ! Reuse YieldCoeff to modify the normal velocity, keep tangential velocity
+    eps_t   = 1.
+    eps_n   = Species(PartSpecies(PartID))%YieldCoeff
 
   CASE DEFAULT
       CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')

@@ -433,15 +433,15 @@ ELSE
     CurrentStage=1
     tStage=t
 
-    CALL Particle_TimeStepByLSERK_RHS(t,CurrentStage,b_dt)
-    CALL Particle_TimeStepByLSERK(t,CurrentStage,b_dt)
+    CALL Particle_TimeStepByLSERK_RHS(t)
+    CALL Particle_TimeStepByLSERK(t,b_dt)
 
     DO iStage=2,nRKStages
         CurrentStage=iStage
         tStage=t+dt*RKc(iStage)
         IF(doCalcIndicator) CALL CalcIndicator(U,t)
 
-        CALL Particle_TimeStepByLSERK_RK_RHS(t,CurrentStage,b_dt)
+        CALL Particle_TimeStepByLSERK_RK_RHS(t)
         CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
     END DO
 
@@ -590,7 +590,7 @@ tStage=t
 #if USE_PARTICLES
 SELECT CASE (TRIM(ParticleTimeDiscMethod))
   CASE('Runge-Kutta')
-    CALL Particle_TimeStepByLSERK_RHS(t,CurrentStage,b_dt)
+    CALL Particle_TimeStepByLSERK_RHS(t)
   CASE('Euler')
     CALL Particle_TimeStepByEuler(dt)
   CASE DEFAULT
@@ -606,7 +606,7 @@ CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK(t,CurrentStage,b_dt)
+      CALL Particle_TimeStepByLSERK(t,b_dt)
     CASE('Euler')
       ! Do nothing
     CASE DEFAULT
@@ -622,7 +622,7 @@ DO iStage=2,nRKStages
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK_RK_RHS(t,CurrentStage,b_dt)
+      CALL Particle_TimeStepByLSERK_RK_RHS(t)
     CASE('Euler')
       ! Do nothing
     CASE DEFAULT
@@ -704,7 +704,7 @@ CurrentStage=1
 tStage=t
 
 #if USE_PARTICLES
-CALL Particle_TimeStepByLSERK_RHS(t,CurrentStage,b_dt)
+CALL Particle_TimeStepByLSERK_RHS(t)
 #endif
 
 CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
@@ -713,7 +713,7 @@ CALL VCopy(nTotalU,S2,U)                       !S2=U
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
 
 #if USE_PARTICLES
-CALL Particle_TimeStepByLSERK(t,CurrentStage,b_dt)
+CALL Particle_TimeStepByLSERK(t,b_dt)
 #endif
 
 DO iStage=2,nRKStages
@@ -721,7 +721,7 @@ DO iStage=2,nRKStages
   tStage=t+dt*RKc(iStage)
 
 #if USE_PARTICLES
-  CALL Particle_TimeStepByLSERK_RK_RHS(t,CurrentStage,b_dt)
+  CALL Particle_TimeStepByLSERK_RK_RHS(t)
 #endif
 
   IF(doCalcIndicator) CALL CalcIndicator(U,t)

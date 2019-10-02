@@ -75,7 +75,7 @@ USE MOD_PICInterpolation
 USE MOD_Part_tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
-USE MOD_Particle_Vars,           ONLY: Species, PartSpecies, PartState, Pt, Pt_temp, LastPartPos, DelayTime, PEM, PDM
+USE MOD_Particle_Vars,           ONLY: Species, PartSpecies, PartState, Pt, LastPartPos, DelayTime, PEM, PDM
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
@@ -187,10 +187,9 @@ END SUBROUTINE Particle_TimeStepByEuler
 !> Low-Storage Runge-Kutta integration: 2 register version
 !> Calculate the right hand side before updating the field solution. Can be used to hide sending of number of particles.
 !===================================================================================================================================
-SUBROUTINE Particle_TimeStepByLSERK_RHS(t,iStage,b_dt)
+SUBROUTINE Particle_TimeStepByLSERK_RHS(t)
 ! MODULES
 USE MOD_Globals
-USE MOD_TimeDisc_Vars,           ONLY: nRKStages
 #if USE_MPI
 USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
@@ -207,8 +206,6 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
-INTEGER,INTENT(INOUT)         :: iStage
-REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if USE_MPI
 ! Needed for scaling parts and load balance
@@ -247,16 +244,14 @@ END SUBROUTINE Particle_TimeStepByLSERK_RHS
 !> the current time U(t) and returns the solution at the next time level.
 !> RKA/b/c coefficients are low-storage coefficients, NOT the ones from butcher table.
 !===================================================================================================================================
-SUBROUTINE Particle_TimeStepByLSERK(t,iStage,b_dt)
+SUBROUTINE Particle_TimeStepByLSERK(t,b_dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_TimeDisc_Vars,           ONLY: RKa,nRKStages
-USE MOD_Mesh_Vars,               ONLY: MeshFile
+USE MOD_TimeDisc_Vars,           ONLY: nRKStages
 USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
 USE MOD_PruettDamping,           ONLY: TempFilterTimeDeriv
-USE MOD_Analyze_Vars,            ONLY: tWriteData
 USE MOD_HDF5_Output,             ONLY: WriteState
 #if FV_ENABLED
 USE MOD_FV,                      ONLY: FV_Switch
@@ -269,7 +264,7 @@ USE MOD_part_emission,           ONLY: ParticleInserting
 USE MOD_Part_tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
-USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM, Species,PartSpecies
+USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
@@ -278,24 +273,13 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
-INTEGER,INTENT(INOUT)         :: iStage
 REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                       :: part_err
-INTEGER                       :: iPart, iStage_loc
-REAL                          :: RandVal,v_magnitude
-REAL                          :: Pa_rebuilt_coeff(1:nRKStages),Pa_rebuilt(1:3,1:nRKStages),Pv_rebuilt(1:3,1:nRKStages),v_rebuilt(1:3,0:nRKStages-1)
+INTEGER                       :: iPart
+!REAL                          :: v_magnitude
 !===================================================================================================================================
-
-! Rebuild Pt_tmp-coefficients assuming F=const. (value at wall) in previous stages
-DO iStage_loc=1,nRKStages
-  IF (iStage_loc.EQ.1) THEN
-    Pa_rebuilt_coeff(iStage_loc) = 1.
-  ELSE
-    Pa_rebuilt_coeff(iStage_loc) = 1. - RKA(iStage_loc)*Pa_rebuilt_coeff(iStage_loc-1)
-  END IF
-END DO
 
 IF (t.GE.DelayTime) THEN
   part_err = .FALSE.
@@ -382,10 +366,9 @@ END SUBROUTINE Particle_TimeStepByLSERK
 !> Low-Storage Runge-Kutta integration: 2 register version
 !> Calculate the right hand side before updating the field solution. Can be used to hide sending of number of particles.
 !===================================================================================================================================
-SUBROUTINE Particle_TimeStepByLSERK_RK_RHS(t,iStage,b_dt)
+SUBROUTINE Particle_TimeStepByLSERK_RK_RHS(t)
 ! MODULES
 USE MOD_Globals
-USE MOD_TimeDisc_Vars,           ONLY: nRKStages
 #if USE_MPI
 USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
@@ -402,8 +385,6 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
-INTEGER,INTENT(INOUT)         :: iStage
-REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -448,13 +429,11 @@ SUBROUTINE Particle_TimeStepByLSERK_RK(t,iStage,b_dt)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_Mesh_Vars,               ONLY: MeshFile
 USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
-USE MOD_Analyze_Vars,            ONLY: tWriteData
 USE MOD_HDF5_Output,             ONLY: WriteState
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
 USE MOD_PICInterpolation,        ONLY: InterpolateFieldToParticle
-USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM, Species,PartSpecies
+USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM
 USE MOD_part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_part_emission,           ONLY: ParticleInserting
@@ -477,7 +456,7 @@ REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 ! LOCAL VARIABLES
 LOGICAL                       :: part_err
 INTEGER                       :: iPart, iStage_loc
-REAL                          :: RandVal,v_magnitude
+REAL                          :: RandVal!,v_magnitude
 REAL                          :: Pa_rebuilt_coeff(1:nRKStages),Pa_rebuilt(1:3,1:nRKStages),Pv_rebuilt(1:3,1:nRKStages),v_rebuilt(1:3,0:nRKStages-1)
 !===================================================================================================================================
 

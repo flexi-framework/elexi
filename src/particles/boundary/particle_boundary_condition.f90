@@ -48,8 +48,7 @@ PUBLIC::GetBoundaryInteraction,GetBoundaryInteractionRef,GetBoundaryInteractionA
 
 CONTAINS
 
-SUBROUTINE GetBoundaryInteraction(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,ElemID,crossedBC&
-                                  ,TriNum)
+SUBROUTINE GetBoundaryInteraction(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,ElemID,crossedBC,TriNum)
 !===================================================================================================================================
 ! Computes the post boundary state of a particle that interacts with a boundary condition
 !  OpenBC                  = 1
@@ -85,118 +84,109 @@ REAL,INTENT(INOUT)                   :: alpha,PartTrajectory(1:3),lengthPartTraj
 LOGICAL,INTENT(OUT)                  :: crossedBC
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                 :: n_loc(1:3)!,RanNum
-INTEGER                              :: WallModeltype
-CHARACTER(20)                        :: hilfBC
+REAL                                 :: n_loc(1:3)
+CHARACTER(20)                        :: BCStringTmp
 !===================================================================================================================================
 
-IF (.NOT. ALLOCATED(PartBound%MapToPartBC)) THEN
-CALL abort(&
-__STAMP__&
-,' ERROR: PartBound not allocated!.',999,999.)
-END IF
+IF (.NOT. ALLOCATED(PartBound%MapToPartBC)) &
+  CALL abort(__STAMP__,' ERROR: PartBound not allocated!.',999,999.)
+
+! Reset flag
 crossedBC    =.FALSE.
+
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(PartBound%TargetBoundCond(PartBound%MapToPartBC(BC(SideID))))
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(1) !PartBound%OpenBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
-  IF(alpha/lengthPartTrajectory.LE.epsilontol)THEN !if particle is close to BC, it encounters the BC only if it leaves element/grid
-    IF (.NOT.TriaTracking) THEN
+  ! If the particle is close to BC, it encounters the BC only if it leaves element/grid
+  IF (.NOT.TriaTracking) THEN
+    ! Calculate the side normal vector
+    IF(alpha/lengthPartTrajectory.LE.epsilontol) THEN
       SELECT CASE(SideType(SideID))
-      CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
-        n_loc=SideNormVec(1:3,SideID)
-      CASE(BILINEAR)
-        CALL CalcNormAndTangBilinear(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
-      CASE(CURVED)
-        CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
+        CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
+          n_loc=SideNormVec(1:3,SideID)
+        CASE(BILINEAR)
+          CALL CalcNormAndTangBilinear(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
+        CASE(CURVED)
+          CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
       END SELECT
+      ! Flip side orientation if not on the master side
       IF(flip.NE.0) n_loc=-n_loc
+      ! Return if particle is not leaving the element
       IF(DOT_PRODUCT(n_loc,PartTrajectory).LE.0.) RETURN
     END IF
   END IF
 
-!  Sample on outlet if requested
+  ! Sample on outlet if requested
+  !--> TODO: Move this to an AuxBC
   IF (PDM%ParticleInside(iPart)) THEN
-!    BCSideID=PartBCSideList(SideID)
     IF (WriteMacroSurfaceValues .AND. ErosionOutlet) THEN
-      CALL LowCase(TRIM(BoundaryName(BC(SideID))),hilfBC)
-
-      IF (hilfBC.EQ.'outlet') THEN
+      ! Match boundary name with 'outlet'
+      CALL LowCase(TRIM(BoundaryName(BC(SideID))),BCStringTmp)
+      IF (BCStringTmp.EQ.'outlet') THEN
         CALL SideErosion(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,TriNum=TriNum)
       END IF
     END IF
   END IF
 
+  ! Calculate balance of particle count and kinetic energy
   IF(CalcPartBalance) THEN
-      nPartOut(PartSpecies(iPart))=nPartOut(PartSpecies(iPart)) + 1
-      PartEkinOut(PartSpecies(iPart))=PartEkinOut(PartSpecies(iPart))+CalcEkinPart(iPart)
-  END IF ! CalcPartBalance
+      nPartOut(   PartSpecies(iPart)) = nPartOut(   PartSpecies(iPart)) + 1
+      PartEkinOut(PartSpecies(iPart)) = PartEkinOut(PartSpecies(iPart)) + CalcEkinPart(iPart)
+  END IF
+
+  ! Particle has left the element over an open BC
   PDM%ParticleInside(iPart) = .FALSE.
-  alpha=-1.
+  crossedBC = .TRUE.
+  alpha     = -1.
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(2) !PartBound%ReflectiveBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
-  IF (PDM%ParticleInside(iPart)) THEN ! particle did not Swap to species 0 !deleted particle -> particle swaped to species 0
-        WallModeltype = 0
-        IF ((WallModeltype.EQ.0)) THEN
-      ! simple reflection (previously used wall interaction model, maxwellian scattering)
-!        CALL RANDOM_NUMBER(RanNum)
-!        IF(RanNum.GE.PartBound%MomentumACC(PartBound%MapToPartBC(BC(SideID)))) THEN
-         SELECT CASE(PartBound%WallModel(PartBound%MapToPartBC(BC(SideID))))
-             ! perfectly reflecting, specular re-emission
-             CASE('perfRef')
-                CALL  PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip, &
-                  opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,TriNum=TriNum)
-             CASE('coeffRes')
-                CALL  DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip, &
-                  opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,TriNum=TriNum,                               &
-                  WallCoeffModel=PartBound%WallCoeffModel(PartBound%MapToPartBC(BC(SideID))))
-             CASE DEFAULT
-                 CALL abort(&
-                 __STAMP__&
-                , ' No or invalid particle wall model given. Fix your Part-Boundary[$]-WallModel.')
-         END SELECT
-            IF(CalcPartBalance) THEN
-              nPartOut(PartSpecies(iPart))=nPartOut(PartSpecies(iPart)) + 1
-              PartEkinOut(PartSpecies(iPart))=PartEkinOut(PartSpecies(iPart))+CalcEkinPart(iPart)
-            END IF ! CalcPartBalance
-!            PDM%ParticleInside(iPart) = .FALSE.
-      END IF
+  IF (PDM%ParticleInside(iPart)) THEN
+    ! simple reflection
+    SELECT CASE(PartBound%WallModel(PartBound%MapToPartBC(BC(SideID))))
+      ! perfectly reflecting, specular re-emission
+      CASE('perfRef')
+         CALL  PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip, &
+           opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,TriNum=TriNum)
+      ! reflection using coefficient of restitution (CoR)
+      CASE('coeffRes')
+         CALL  DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip, &
+           opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,TriNum=TriNum,                               &
+           WallCoeffModel=PartBound%WallCoeffModel(PartBound%MapToPartBC(BC(SideID))))
+      CASE DEFAULT
+          CALL abort(__STAMP__, ' No or invalid particle wall model given. Please update Part-Boundary[$]-WallModel.')
+    END SELECT
   END IF
+
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(3) !PartBound%PeriodicBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
   CALL PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID &
-                        ,ElemID,opt_perimoved=crossedBC,TriNum=TriNum) ! opt_reflected is peri-moved
+                        ,ElemID,opt_perimoved=crossedBC,TriNum=TriNum)
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(6) !PartBound%MPINeighborhoodBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
-CALL abort(&
-__STAMP__&
-,' ERROR: PartBound not associated!. (PartBound%MPINeighborhoodBC)',999,999.)
+CALL abort(__STAMP__,' ERROR: PartBound not associated!. (PartBound%MPINeighborhoodBC)',999,999.)
+
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(10) !PartBound%SymmetryBC
 !-----------------------------------------------------------------------------------------------------------------------------------
+  ! For particles, symmetry equals perfect reflection, also flip forces direction
   CALL  PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip, &
-                          opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,TriNum=TriNum)
+                          opt_Symmetry=.TRUE.,opt_Reflected=crossedBC,TriNum=TriNum)
+
 !CASE(100) !PartBound%AnalyzeBC
 !!-----------------------------------------------------------------------------------------------------------------------------------
 !  CALL  SideAnalysis(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,ElemID &
 !                    ,opt_crossed=crossedBC)
 
 CASE DEFAULT
-CALL abort(&
-__STAMP__&
-,' ERROR: PartBound not associated!. (unknown case)',999,999.)
-END SELECT !PartBound%MapToPartBC(BC(SideID)
-
-! compiler warnings
-IF(1.EQ.2)THEN
-  WRITE(*,*) 'ElemID', ElemID
-END IF
+  CALL abort(__STAMP__,' ERROR: PartBound not associated!. (unknown case)',999,999.)
+END SELECT
 
 END SUBROUTINE GetBoundaryInteraction
 
@@ -237,102 +227,101 @@ LOGICAL,INTENT(OUT)                  :: crossedBC
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                 :: n_loc(1:3)
-INTEGER                              :: BCSideID, WallModeltype
-CHARACTER(20)                        :: hilfBC
+INTEGER                              :: BCSideID
+CHARACTER(20)                        :: BCStringTmp
 !===================================================================================================================================
 
-IF (.NOT. ALLOCATED(PartBound%MapToPartBC)) THEN
-CALL abort(&
-__STAMP__&
-,' ERROR: PartBound not allocated!.',999,999.)
-END IF
+IF (.NOT. ALLOCATED(PartBound%MapToPartBC)) &
+  CALL abort(__STAMP__,' ERROR: PartBound not allocated!.',999,999.)
+
+! Reset flag
 crossedBC    =.FALSE.
+
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(PartBound%TargetBoundCond(PartBound%MapToPartBC(BC(SideID))))
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(1) !PartBound%OpenBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
-  IF(alpha/lengthPartTrajectory.LE.epsilontol)THEN !if particle is close to BC, it encounters the BC only if it leaves element/grid
+  ! If the particle is close to BC, it encounters the BC only if it leaves element/grid
+  IF(alpha/lengthPartTrajectory.LE.epsilontol) THEN
+    ! Calculate the side normal vector
     BCSideID=PartBCSideList(SideID)
     SELECT CASE(SideType(BCSideID))
-    CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
-      n_loc=SideNormVec(1:3,BCSideID)
-    CASE(BILINEAR)
-      CALL CalcNormAndTangBilinear(nVec=n_loc,xi=xi,eta=eta,SideID=BCSideID)
-    CASE(CURVED)
-      CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=BCSideID)
+      CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
+        n_loc=SideNormVec(1:3,BCSideID)
+      CASE(BILINEAR)
+        CALL CalcNormAndTangBilinear(nVec=n_loc,xi=xi,eta=eta,SideID=BCSideID)
+      CASE(CURVED)
+        CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=BCSideID)
     END SELECT
+    ! Flip side orientation if not on the master side
     IF(flip.NE.0) n_loc=-n_loc
+      ! Return if particle is not leaving the element
     IF(DOT_PRODUCT(n_loc,PartTrajectory).LE.0.) RETURN
   END IF
 
-!  Sample on outlet if requested
+  ! Sample on outlet if requested
+  !--> TODO: Move this to an AuxBC
   IF (PDM%ParticleInside(iPart)) THEN
-!    BCSideID=PartBCSideList(SideID)
     IF (WriteMacroSurfaceValues .AND. ErosionOutlet) THEN
-      CALL LowCase(TRIM(BoundaryName(BC(SideID))),hilfBC)
-
-      IF (hilfBC.EQ.'outlet') THEN
+      ! Match boundary name with 'outlet'
+      CALL LowCase(TRIM(BoundaryName(BC(SideID))),BCStringTmp)
+      IF (BCStringTmp.EQ.'outlet') THEN
         CALL SideErosion(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip)
       END IF
     END IF
   END IF
 
+  ! Calculate balance of particle count and kinetic energy
   IF(CalcPartBalance) THEN
-      nPartOut(PartSpecies(iPart))=nPartOut(PartSpecies(iPart)) + 1
-      PartEkinOut(PartSpecies(iPart))=PartEkinOut(PartSpecies(iPart))+CalcEkinPart(iPart)
-  END IF ! CalcPartBalance
+      nPartOut(PartSpecies(   iPart)) = nPartOut(PartSpecies(   iPart)) + 1
+      PartEkinOut(PartSpecies(iPart)) = PartEkinOut(PartSpecies(iPart)) + CalcEkinPart(iPart)
+  END IF
+
+  ! Particle has left the element over an open BC
   PDM%ParticleInside(iPart) = .FALSE.
-  alpha=-1.
+  crossedBC = .TRUE.
+  alpha     = -1.
+
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(2) !PartBound%ReflectiveBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
-!---- swap species?
   BCSideID=PartBCSideList(SideID)
-  IF (PDM%ParticleInside(iPart)) THEN ! particle did not Swap to species 0 !deleted particle -> particle swaped to species 0
-        WallModeltype = 0
-      BCSideID=PartBCSideList(SideID)
-      IF ((WallModeltype.EQ.0) ) THEN
-      ! simple reflection (previously used wall interaction model, maxwellian scattering)
-!        CALL RANDOM_NUMBER(RanNum)
-!        IF(RanNum.GE.PartBound%MomentumACC(PartBound%MapToPartBC(BC(SideID)))) THEN
-            SELECT CASE(PartBound%WallModel(PartBound%MapToPartBC(BC(SideID))))
-            ! perfectly reflecting, specular re-emission
-             CASE('perfRef')
-                CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,               &
-                                       opt_BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC)
-             CASE('coeffRes')
-                CALL  DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,              &
-                                        opt_BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,              &
-                                        WallCoeffModel=PartBound%WallCoeffModel(PartBound%MapToPartBC(BC(SideID))))
-             CASE DEFAULT
-                 CALL abort(&
-                 __STAMP__&
-                , ' No particle wall model given. This should not happen.')
-         END SELECT
-      END IF
+  ! simple reflection
+  IF (PDM%ParticleInside(iPart)) THEN
+    SELECT CASE(PartBound%WallModel(PartBound%MapToPartBC(BC(SideID))))
+      ! perfectly reflecting, specular re-emission
+      CASE('perfRef')
+        CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,               &
+                               opt_BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC)
+      CASE('coeffRes')
+        CALL  DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,              &
+                                opt_BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,              &
+                                WallCoeffModel=PartBound%WallCoeffModel(PartBound%MapToPartBC(BC(SideID))))
+      CASE DEFAULT
+          CALL abort(__STAMP__, ' No or invalid particle wall model given. Please update Part-Boundary[$]-WallModel.')
+      END SELECT
   ELSE
     ! not inside any-more, removed in last step
     crossedBC=.TRUE.
   END IF
+
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(3) !PartBound%PeriodicBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
   ! sanity check
-  IF(CartesianPeriodic) CALL abort(&
-__STAMP__&
-,' No periodic BCs for CartesianPeriodic!')
+  IF (CartesianPeriodic) CALL abort(__STAMP__,' No periodic BCs for CartesianPeriodic!')
+
   ! move particle periodic distance
   BCSideID=PartBCSideList(SideID)
-  CALL PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,ElemID &
-                        ,BCSideID=BCSideID,opt_perimoved=crossedBC) ! opt_reflected is peri-moved
+  CALL PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,ElemID,BCSideID=BCSideID,       &
+                  opt_perimoved=crossedBC)
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(6) !PartBound%MPINeighborhoodBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
-CALL abort(&
-__STAMP__&
-,' ERROR: PartBound not associated!. (PartBound%MPINeighborhoodBC)',999,999.)
+CALL abort(__STAMP__,' ERROR: PartBound not associated!. (PartBound%MPINeighborhoodBC)',999,999.)
+
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(10) !PartBound%SymmetryBC
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -341,10 +330,8 @@ CASE(10) !PartBound%SymmetryBC
                          opt_BCSideID=BCSideID,opt_Symmetry=.TRUE.,opt_reflected=crossedBC)
 
 CASE DEFAULT
-CALL abort(&
-__STAMP__&
-,' ERROR: PartBound not associated!. BC(SideID)',BC(SideID),REAL(SideID/nSides))
-END SELECT !PartBound%MapToPartBC(BC(SideID)
+  CALL abort(__STAMP__,' ERROR: PartBound not associated!. BC(SideID)',BC(SideID),REAL(SideID/nSides))
+END SELECT
 
 END SUBROUTINE GetBoundaryInteractionRef
 
@@ -361,10 +348,8 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars,          ONLY:PDM,PartSpecies
 USE MOD_Particle_Boundary_Vars, ONLY:PartAuxBC
-!USE MOD_Particle_Surfaces_vars, ONLY:epsilontol
 USE MOD_Particle_Analyze,       ONLY:CalcEkinPart
 USE MOD_Particle_Analyze_Vars,  ONLY:CalcPartBalance,nPartOut,PartEkinOut
-!USE MOD_Particle_Vars,          ONLY:PartState,LastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -376,51 +361,41 @@ REAL,INTENT(INOUT)                   :: alpha,PartTrajectory(1:3),lengthPartTraj
 LOGICAL,INTENT(OUT)                  :: crossedBC
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                 :: RanNum
 !===================================================================================================================================
 
+! Reset flag
 crossedBC    =.FALSE.
+
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(PartAuxBC%TargetBoundCond(AuxBCIdx))
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(1) !PartAuxBC%OpenBC
 !-----------------------------------------------------------------------------------------------------------------------------------
+  ! Calculate balance of particle count and kinetic energy
   IF(CalcPartBalance) THEN
-      nPartOut(PartSpecies(iPart))=nPartOut(PartSpecies(iPart)) + 1
-      PartEkinOut(PartSpecies(iPart))=PartEkinOut(PartSpecies(iPart))+CalcEkinPart(iPart)
-  END IF ! CalcPartBalance
+      nPartOut(PartSpecies(   iPart)) = nPartOut(PartSpecies(   iPart)) + 1
+      PartEkinOut(PartSpecies(iPart)) = PartEkinOut(PartSpecies(iPart)) + CalcEkinPart(iPart)
+  END IF
+
+  ! Particle has left the element over an open BC
   PDM%ParticleInside(iPart) = .FALSE.
-  alpha=-1.
+  crossedBC = .TRUE.
+  alpha     = -1.
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(2) !PartAuxBC%ReflectiveBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
-  IF (PDM%ParticleInside(iPart)) THEN ! particle did not Swap to species 0 !deleted particle -> particle swaped to species 0
-      ! simple reflection (previously used wall interaction model, maxwellian scattering)
-        CALL RANDOM_NUMBER(RanNum)
-!        IF(RanNum.GE.PartAuxBC%MomentumACC(AuxBCIdx)) THEN
-          ! perfectly reflecting, specular re-emission
-          ! call symmetry to get correct field rotation
-!          CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi=-1.,eta=-1.,PartID=iPart,SideID=-1,flip=-1, &
-!            opt_Reflected=crossedBC,AuxBCIdx=AuxBCIdx)
-           CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi=-1.,eta=-1.,PartID=iPart,SideID=-1,flip=-1, &
+  IF (PDM%ParticleInside(iPart)) THEN
+    ! simple reflection, auxBC can not have diffuse reflection
+    ! perfectly reflecting, specular re-emission
+      CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi=-1.,eta=-1.,PartID=iPart,SideID=-1,flip=-1, &
              opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,AuxBCIdx=AuxBCIdx)
-!        ELSE
-!          CALL DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi=-1.,eta=-1.,PartID=iPart,SideID=-1,flip=-1, &
-!            opt_Reflected=crossedBC,AuxBCIdx=AuxBCIdx)
-!        END IF
   END IF
+
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE DEFAULT
-CALL abort(&
-__STAMP__&
-,' ERROR: AuxBC bound not associated!. (unknown case)',999,999.)
+  CALL abort(__STAMP__,' ERROR: AuxBC bound not associated!. (unknown case)',999,999.)
 END SELECT
-
-! compiler warnings
-IF(1.EQ.2)THEN
-  WRITE(*,*) 'AuxBCIdx', AuxBCIdx
-END IF
 
 END SUBROUTINE GetBoundaryInteractionAuxBC
 
@@ -472,60 +447,68 @@ REAL                              :: PartTrajectory_old(3)
 REAL                              :: v_magnitude
 !===================================================================================================================================
 
+! Check if reflected on AuxBC
 IF (PRESENT(AuxBCIdx)) THEN
   IsAuxBC=.TRUE.
 ELSE
   IsAuxBC=.FALSE.
 END IF
+
+! Reflected on AuxBC
 IF (IsAuxBC) THEN
+  ! Get type of AuxBC and the corresponding normal vector
   SELECT CASE (TRIM(AuxBCType(AuxBCIdx)))
-  CASE ('plane')
-    n_loc = AuxBC_plane(AuxBCMap(AuxBCIdx))%n_vec
-  CASE ('cylinder')
-    intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
-    r_vec = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%r_vec
-    axis  = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%axis
-    n_loc = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis) ) )
-    IF (.NOT.AuxBC_cylinder(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
-  CASE ('cone')
-    intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
-    r_vec = AuxBC_cone(AuxBCMap(AuxBCIdx))%r_vec
-    axis  = AuxBC_cone(AuxBCMap(AuxBCIdx))%axis
-    cos2inv = 1./COS(AuxBC_cone(AuxBCMap(AuxBCIdx))%halfangle)**2
-    n_loc = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis)*cos2inv ) )
-    IF (.NOT.AuxBC_cone(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
-  CASE ('parabol')
-    intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
-    r_vec = AuxBC_parabol(AuxBCMap(AuxBCIdx))%r_vec
-    axis  = AuxBC_parabol(AuxBCMap(AuxBCIdx))%axis
-    n_loc = UNITVECTOR( intersec - ( r_vec + axis*(DOT_PRODUCT(intersec-r_vec,axis)+0.5*AuxBC_parabol(AuxBCMap(AuxBCIdx))%zfac) ) )
-    IF (.NOT.AuxBC_parabol(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
-  CASE DEFAULT
-    CALL abort(&
-      __STAMP__&
-      ,'AuxBC does not exist')
+    CASE ('plane')
+      n_loc    = AuxBC_plane(AuxBCMap(AuxBCIdx))%n_vec
+
+    CASE ('cylinder')
+      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      r_vec    = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%r_vec
+      axis     = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%axis
+      n_loc    = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis) ) )
+      IF (.NOT.AuxBC_cylinder(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
+
+    CASE ('cone')
+      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      r_vec    = AuxBC_cone(AuxBCMap(AuxBCIdx))%r_vec
+      axis     = AuxBC_cone(AuxBCMap(AuxBCIdx))%axis
+      cos2inv  = 1./COS(AuxBC_cone(AuxBCMap(AuxBCIdx))%halfangle)**2
+      n_loc    = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis)*cos2inv ) )
+      IF (.NOT.AuxBC_cone(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
+
+    CASE ('parabol')
+      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      r_vec    = AuxBC_parabol(AuxBCMap(AuxBCIdx))%r_vec
+      axis     = AuxBC_parabol(AuxBCMap(AuxBCIdx))%axis
+      n_loc    = UNITVECTOR( intersec - ( r_vec + axis*(DOT_PRODUCT(intersec-r_vec,axis)+0.5*AuxBC_parabol(AuxBCMap(AuxBCIdx))%zfac) ) )
+      IF (.NOT.AuxBC_parabol(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
+
+    CASE DEFAULT
+      CALL abort(__STAMP__,'AuxBC does not exist')
   END SELECT
+
+  ! Check if particle is entering the domain through AuxBC
   IF(DOT_PRODUCT(n_loc,PartTrajectory).LT.0.)  THEN
-    IF(PRESENT(opt_Reflected)) opt_Reflected=.FALSE.
-    !RETURN
-    CALL abort(&
-      __STAMP__&
-      ,'Error in PerfectReflection: Particle coming from outside!')
+    IF(PRESENT(opt_Reflected)) opt_Reflected = .FALSE.
+    CALL abort(__STAMP__,'Error in PerfectReflection: Particle coming from outside!')
+  ! Particle is leaving the domain through AuxBC
   ELSE IF(DOT_PRODUCT(n_loc,PartTrajectory).GT.0.)  THEN
-    IF(PRESENT(opt_Reflected)) opt_Reflected=.TRUE.
+    IF(PRESENT(opt_Reflected)) opt_Reflected = .TRUE.
   ELSE
-    CALL abort(&
-      __STAMP__&
-      ,'Error in PerfectReflection: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
+    CALL abort(__STAMP__,'Error in PerfectReflection: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
   END IF
   WallVelo=PartAuxBC%WallVelo(1:3,AuxBCIdx)
-ELSE
-  !OneMinus=1.0-MAX(epsInCell,epsilontol)
-  epsLength=MAX(epsInCell,epsilontol)*lengthPartTrajectory
-  WallVelo=PartBound%WallVelo(1:3,PartBound%MapToPartBC(BC(SideID)))
-  locBCID=PartBound%MapToPartBC(BC(SideID))
 
-  IF(PRESENT(opt_BCSideID))THEN ! == DoRefMapping=T
+! Normal BC
+ELSE
+  ! Get eps tolerance, wall velo and BCID
+  epsLength = MAX(epsInCell,epsilontol)*lengthPartTrajectory
+  WallVelo  = PartBound%WallVelo(1:3,PartBound%MapToPartBC(BC(SideID)))
+  locBCID   = PartBound%MapToPartBC(BC(SideID))
+
+  ! Instead of checking DoRefMapping, we pass opt_BCSideID if true
+  IF(PRESENT(opt_BCSideID)) THEN
+    ! Get side normal vector
     BCSideID=opt_BCSideID
     SELECT CASE(SideType(BCSideID))
     CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
@@ -535,7 +518,9 @@ ELSE
     CASE(CURVED)
       CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=BCSideID)
     END SELECT
+  ! not reference mapping
   ELSE
+    ! Get side normal vector
     IF (TriaTracking) THEN
       CALL CalcNormAndTangTriangle(nVec=n_loc,TriNum=TriNum,SideID=SideID)
     ELSE
@@ -547,122 +532,132 @@ ELSE
       CASE(CURVED)
         CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
       END SELECT
+      ! Flip side orientation if not on the master side
       IF(flip.NE.0) n_loc=-n_loc
     END IF
   END IF
+
   IF(PRESENT(opt_Symmetry)) THEN
     Symmetry = opt_Symmetry
   ELSE
     Symmetry = .FALSE.
   END IF
+
+  ! Check if particle is encountering the boundary
   IF(DOT_PRODUCT(PartTrajectory,n_loc).LE.0.) THEN
+    ! Particle does not encounter the boundary, return
     IF(PRESENT(opt_Reflected)) opt_Reflected=.FALSE.
     RETURN
   ELSE
     IF(PRESENT(opt_Reflected)) opt_Reflected=.TRUE.
   END IF
+
 END IF !IsAuxBC
 
-! Make sure we have to old velocity safe
-v_old = PartState(PartID,4:6)
-PartState(PartID,4:6)=PartState(PartID,4:6)-2.*DOT_PRODUCT(PartState(PartID,4:6),n_loc)*n_loc + WallVelo
+! Make sure we have to old velocity safe, then update particle velocity
+v_old                = PartState(PartID,4:6)
+PartState(PartID,4:6)= PartState(PartID,4:6)-2.*DOT_PRODUCT(PartState(PartID,4:6),n_loc)*n_loc + WallVelo
 
 ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
 IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
-    DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
-    PartFaceAngle=ABS(0.5*PI - ACOS(1.))
+  DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
+  PartFaceAngle=ABS(0.5*PI - ACOS(1.))
 ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
-    DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
-    PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
+  DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
+  PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
 ELSE
-PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+  PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 ENDIF
 ! End ugly hack
 
-!PartFaceAngle=0.
-! Wall sampling Macrovalues
+! Sample macrovalues on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
-    ! Find correct boundary on SurfMesh
-    SurfSideID=SurfMesh%SideIDToSurfID(SideID)
-    ! compute p and q
-    ! correction of xi and eta, can only be applied if xi & eta are not used later!
-    IF (TriaTracking) THEN
-      p=1 ; q=1
-    ELSE
-      Xitild =MIN(MAX(-1.,xi ),0.99)
-      Etatild=MIN(MAX(-1.,eta),0.99)
-      p=INT((Xitild +1.0)/dXiEQ_SurfSample)+1
-      q=INT((Etatild+1.0)/dXiEQ_SurfSample)+1
-    END IF
+  ! Find correct boundary on SurfMesh
+  SurfSideID=SurfMesh%SideIDToSurfID(SideID)
+  ! compute p and q for supersampling
+  ! correction of xi and eta, can only be applied if xi & eta are not used later!
+  IF (TriaTracking) THEN
+    p=1 ; q=1
+  ELSE
+    Xitild =MIN(MAX(-1.,xi ),0.99)
+    Etatild=MIN(MAX(-1.,eta),0.99)
+    p=INT((Xitild +1.0)/dXiEQ_SurfSample)+1
+    q=INT((Etatild+1.0)/dXiEQ_SurfSample)+1
+  END IF
 
-    ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-    IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
-        DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
-        PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-    ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
-        DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
-        PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
-    ELSE
-    PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-    ENDIF
-    ! End ugly hack
+!  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
+!  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.              &
+!    DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
+!    PartFaceAngle = ABS(0.5*PI - ACOS(1.))
+!  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.         &
+!    DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
+!    PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
+!  ELSE
+!    PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+!  ENDIF
+!  ! End ugly hack
 
-    CALL RecordParticleBoundarySampling(PartID,SurfSideID,locBCID,p,q,v_old,PartTrajectory,PartFaceAngle,alpha)
-
+  ! Record particle impact
+  CALL RecordParticleBoundarySampling(PartID,SurfSideID,locBCID,p,q,v_old,PartTrajectory,PartFaceAngle,alpha)
 END IF !.NOT.IsAuxBC
 
 ! Make sure we have the old values safe
 IF (EP_inUse) THEN
-    PartTrajectory_old = PartTrajectory
-    PartFaceAngle_old  = PartFaceAngle
+  PartTrajectory_old = PartTrajectory
+  PartFaceAngle_old  = PartFaceAngle
 END IF
 
 ! set particle position on face
+!--> first move the particle to the boundary
 LastPartPos(PartID,1:3) = LastPartPos(PartID,1:3) + PartTrajectory(1:3)*alpha
-
-PartTrajectory(1:3)=PartTrajectory(1:3)-2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
+!--> flip trajectory and move the remainder of the particle push
+PartTrajectory(1:3)     = PartTrajectory(1:3)-2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
 PartState(PartID,1:3)   = LastPartPos(PartID,1:3) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
 
 ! compute moved particle || rest of movement
-PartTrajectory=PartState(PartID,1:3) - LastPartPos(PartID,1:3)
-lengthPartTrajectory=SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                         +PartTrajectory(2)*PartTrajectory(2) &
-                         +PartTrajectory(3)*PartTrajectory(3) )
-PartTrajectory=PartTrajectory/lengthPartTrajectory
+PartTrajectory          = PartState(PartID,1:3) - LastPartPos(PartID,1:3)
+lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)          &
+                          +    PartTrajectory(2)*PartTrajectory(2)          &
+                          +    PartTrajectory(3)*PartTrajectory(3) )
+PartTrajectory          = PartTrajectory/lengthPartTrajectory
 
+! Recording of individual particle impacts
 IF (EP_inUse) THEN
-    ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-    IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
-        DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
-        PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-    ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
-        DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
-        PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
-    ELSE
-    PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-    ENDIF
-    ! End ugly hack
+!  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
+!  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.            &
+!    DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
+!    PartFaceAngle = ABS(0.5*PI - ACOS(1.))
+!  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.       &
+!    DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
+!    PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
+!  ELSE
+!    PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+!  ENDIF
+!  ! End ugly hack
 
-    CALL RecordErosionPoint(BCSideID        = BC(SideID),       &
-                            PartID          = PartID,           &
-                            PartFaceAngle   = PartFaceAngle,    &
-                            v_old           = v_old,            &
-                            PartFaceAngle_old =PartFaceAngle_old, &
-                            PartReflCount  = PartReflCount(PartID))
+  CALL RecordErosionPoint(BCSideID        = BC(SideID),                   &
+                          PartID          = PartID,                       &
+                          PartFaceAngle   = PartFaceAngle,                &
+                          v_old           = v_old,                        &
+                          PartFaceAngle_old =PartFaceAngle_old,           &
+                          PartReflCount  = PartReflCount(PartID))
 END IF
 
-! increase reflection counter
+! Increase reflection counter
 IF (PartTrackReflection) PartReflCount(PartID) = PartReflCount(PartID) + 1
 
-!-------------------------
+! Correction for Runge-Kutta. Reflect or delete force history / acceleration
 IF (.NOT.ALMOSTZERO(DOT_PRODUCT(WallVelo,WallVelo))) THEN
-  PDM%IsNewPart(PartID)=.TRUE. !reconstruction in timedisc during push
+  ! Reconstruction in timedisc during push
+  PDM%IsNewPart(PartID) = .TRUE.
 ELSE
-  Pt_temp(PartID,1:3)=Pt_temp(PartID,1:3)-2.*DOT_PRODUCT(Pt_temp(PartID,1:3),n_loc)*n_loc
-  IF (Symmetry) THEN !reflect also force history for symmetry
-    Pt_temp(PartID,4:6)=Pt_temp(PartID,4:6)-2.*DOT_PRODUCT(Pt_temp(PartID,4:6),n_loc)*n_loc
+  Pt_temp(PartID,1:3) = Pt_temp(PartID,1:3)-2.*DOT_PRODUCT(Pt_temp(PartID,1:3),n_loc)*n_loc
+  ! Reflect also force history for symmetry
+  IF (Symmetry) THEN
+    Pt_temp(PartID,4:6) = Pt_temp(PartID,4:6)-2.*DOT_PRODUCT(Pt_temp(PartID,4:6),n_loc)*n_loc
+  ! Produces best result compared to analytical solution in place capacitor ...
   ELSE
-    Pt_temp(PartID,4:6)=0. !produces best result compared to analytical solution in plate capacitor...
+    Pt_temp(PartID,4:6) = 0.
   END IF
 END IF
 
@@ -683,7 +678,8 @@ END SUBROUTINE PerfectReflection
 SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,flip,opt_BCSideID, &
   opt_Symmetry,opt_Reflected,TriNum,AuxBCIdx,WallCoeffModel)
 !----------------------------------------------------------------------------------------------------------------------------------!
-! Computes the perfect reflection in 3D
+! Computes the diffuse reflection in 3D
+! only implemented for DoRefMapping tracking
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -736,60 +732,68 @@ REAL                              :: E_eff
 REAL                              :: Vol,r,w,w_crit,sigma_y
 !===================================================================================================================================
 
+! Check if reflected on AuxBC
 IF (PRESENT(AuxBCIdx)) THEN
   IsAuxBC=.TRUE.
 ELSE
   IsAuxBC=.FALSE.
 END IF
+
+! Reflected on AuxBC
 IF (IsAuxBC) THEN
+  ! Get type of AuxBC and the corresponding normal vector
   SELECT CASE (TRIM(AuxBCType(AuxBCIdx)))
-  CASE ('plane')
-    n_loc = AuxBC_plane(AuxBCMap(AuxBCIdx))%n_vec
-  CASE ('cylinder')
-    intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
-    r_vec = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%r_vec
-    axis  = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%axis
-    n_loc = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis) ) )
-    IF (.NOT.AuxBC_cylinder(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
-  CASE ('cone')
-    intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
-    r_vec = AuxBC_cone(AuxBCMap(AuxBCIdx))%r_vec
-    axis  = AuxBC_cone(AuxBCMap(AuxBCIdx))%axis
-    cos2inv = 1./COS(AuxBC_cone(AuxBCMap(AuxBCIdx))%halfangle)**2
-    n_loc = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis)*cos2inv ) )
-    IF (.NOT.AuxBC_cone(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
-  CASE ('parabol')
-    intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
-    r_vec = AuxBC_parabol(AuxBCMap(AuxBCIdx))%r_vec
-    axis  = AuxBC_parabol(AuxBCMap(AuxBCIdx))%axis
-    n_loc = UNITVECTOR( intersec - ( r_vec + axis*(DOT_PRODUCT(intersec-r_vec,axis)+0.5*AuxBC_parabol(AuxBCMap(AuxBCIdx))%zfac) ) )
-    IF (.NOT.AuxBC_parabol(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
-  CASE DEFAULT
-    CALL abort(&
-      __STAMP__&
-      ,'AuxBC does not exist')
+    CASE ('plane')
+      n_loc    = AuxBC_plane(AuxBCMap(AuxBCIdx))%n_vec
+
+    CASE ('cylinder')
+      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      r_vec    = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%r_vec
+      axis     = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%axis
+      n_loc    = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis) ) )
+      IF (.NOT.AuxBC_cylinder(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
+
+    CASE ('cone')
+      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      r_vec    = AuxBC_cone(AuxBCMap(AuxBCIdx))%r_vec
+      axis     = AuxBC_cone(AuxBCMap(AuxBCIdx))%axis
+      cos2inv  = 1./COS(AuxBC_cone(AuxBCMap(AuxBCIdx))%halfangle)**2
+      n_loc    = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis)*cos2inv ) )
+      IF (.NOT.AuxBC_cone(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
+
+    CASE ('parabol')
+      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      r_vec    = AuxBC_parabol(AuxBCMap(AuxBCIdx))%r_vec
+      axis     = AuxBC_parabol(AuxBCMap(AuxBCIdx))%axis
+      n_loc    = UNITVECTOR( intersec - ( r_vec + axis*(DOT_PRODUCT(intersec-r_vec,axis)+0.5*AuxBC_parabol(AuxBCMap(AuxBCIdx))%zfac) ) )
+      IF (.NOT.AuxBC_parabol(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
+
+    CASE DEFAULT
+      CALL abort(__STAMP__,'AuxBC does not exist')
   END SELECT
+
+  ! Check if particle is entering the domain through AuxBC
   IF(DOT_PRODUCT(n_loc,PartTrajectory).LT.0.)  THEN
     IF(PRESENT(opt_Reflected)) opt_Reflected=.FALSE.
-    !RETURN
-    CALL abort(&
-      __STAMP__&
-      ,'Error in DiffuseReflection: Particle coming from outside!')
+    CALL abort(__STAMP__,'Error in DiffuseReflection: Particle coming from outside!')
+  ! Particle is leaving the domain through AuxBC
   ELSE IF(DOT_PRODUCT(n_loc,PartTrajectory).GT.0.)  THEN
-    IF(PRESENT(opt_Reflected)) opt_Reflected=.TRUE.
+    IF(PRESENT(opt_Reflected)) opt_Reflected = .TRUE.
   ELSE
-    CALL abort(&
-      __STAMP__&
-      ,'Error in DiffuseReflection: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
+    CALL abort(__STAMP__,'Error in DiffuseReflection: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
   END IF
   WallVelo=PartAuxBC%WallVelo(1:3,AuxBCIdx)
-ELSE
-  !OneMinus=1.0-MAX(epsInCell,epsilontol)
-  epsLength=MAX(epsInCell,epsilontol)*lengthPartTrajectory
-  WallVelo=PartBound%WallVelo(1:3,PartBound%MapToPartBC(BC(SideID)))
-  locBCID=PartBound%MapToPartBC(BC(SideID))
 
+! Normal BC
+ELSE
+  ! Get eps tolerance, wall velo and BCID
+  epsLength = MAX(epsInCell,epsilontol)*lengthPartTrajectory
+  WallVelo  = PartBound%WallVelo(1:3,PartBound%MapToPartBC(BC(SideID)))
+  locBCID   = PartBound%MapToPartBC(BC(SideID))
+
+  ! Instead of checking DoRefMapping, we pass opt_BCSideID if true
   IF(PRESENT(opt_BCSideID))THEN
+    ! Get side normal vector
     BCSideID=opt_BCSideID
     SELECT CASE(SideType(BCSideID))
     CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
@@ -799,7 +803,9 @@ ELSE
     CASE(CURVED)
       CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=BCSideID)
     END SELECT
+  ! not reference mapping
   ELSE
+    ! Get side normal vector
     IF (TriaTracking) THEN
       CALL CalcNormAndTangTriangle(nVec=n_loc,TriNum=TriNum,SideID=SideID)
     ELSE
@@ -811,126 +817,135 @@ ELSE
       CASE(CURVED)
         CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
       END SELECT
+      ! Flip side orientation if not on the master side
       IF(flip.NE.0) n_loc=-n_loc
     END IF
   END IF
+
   IF(PRESENT(opt_Symmetry)) THEN
     Symmetry = opt_Symmetry
   ELSE
     Symmetry = .FALSE.
   END IF
+
   IF(DOT_PRODUCT(PartTrajectory,n_loc).LE.0.) THEN
     IF(PRESENT(opt_Reflected)) opt_Reflected=.FALSE.
     RETURN
   ELSE
     IF(PRESENT(opt_Reflected)) opt_Reflected=.TRUE.
   END IF
+
+  ! Check if particle is encountering the boundary
+  IF(DOT_PRODUCT(PartTrajectory,n_loc).LE.0.) THEN
+    ! Particle does not encounter the boundary, return
+    IF(PRESENT(opt_Reflected)) opt_Reflected=.FALSE.
+    RETURN
+  ELSE
+    IF(PRESENT(opt_Reflected)) opt_Reflected=.TRUE.
+  END IF
+
 END IF !IsAuxBC
 
 ! Make sure we have the old velocity safe
-v_old = PartState(PartID,4:6)
+v_old   = PartState(PartID,4:6)
 
 ! Respect coefficient of restitution
 v_norm  = DOT_PRODUCT(PartState(PartID,4:6),n_loc)*n_loc
 v_tang  = PartState(PartID,4:6) - v_norm
-!PartState(PartID,4:6) = PartState(PartID,4:6)-2.*DOT_PRODUCT(PartState(PartID,4:6),n_loc)*n_loc + WallVelo
-!PartState(PartID,4:6) = WallCoeffTang*v_tang  - WallCoeffNorm*v_norm  + WallVelo
 
 ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
-    DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
-    PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
-    DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
-    PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
+IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                    &
+  DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
+  PartFaceAngle = ABS(0.5*PI - ACOS(1.))
+ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.               &
+  DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
+  PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
 ELSE
-PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+  PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 ENDIF
 ! End ugly hack
 
 SELECT CASE(WallCoeffModel)
-    ! Tabaoff, W.; Wakeman, T.: Basic Erosion Investigation in Small Turbomachinery. / Cincinnati Univ. OH, 1981
-    ! >> Ignored variance (random fluctuations in reflection values) and ONLY took mean values!
-    CASE('Tabakoff1981')
-        ! Transfer from radians to degree
-        PartFaceAngleDeg = PartFaceAngle * 180/PI
+  ! Tabaoff, W.; Wakeman, T.: Basic Erosion Investigation in Small Turbomachinery. / Cincinnati Univ. OH, 1981
+  ! >> Ignored variance (random fluctuations in reflection values) and ONLY took mean values!
+  CASE('Tabakoff1981')
+    ! Transfer from radians to degree
+    PartFaceAngleDeg = PartFaceAngle * 180/PI
 
-        ! Compute cubic polynomials for coefficient of restitution
-        eps_n = 1.    - 0.0211 * PartFaceAngleDeg  + 0.000228 * PartFaceAngleDeg**2. - 0.000000876 * PartFaceAngleDeg**3.
-        eps_t = 0.953                              - 0.00446  * PartFaceAngleDeg**2. + 0.000000648 * PartFaceAngleDeg**3.
+    ! Compute cubic polynomials for coefficient of restitution
+    eps_n = 1.    - 0.0211 * PartFaceAngleDeg  + 0.000228 * PartFaceAngleDeg**2. - 0.000000876 * PartFaceAngleDeg**3.
+    eps_t = 0.953                              - 0.00446  * PartFaceAngleDeg**2. + 0.000000648 * PartFaceAngleDeg**3.
 
-    ! Bons, J., Prenter, R., Whitaker, S.: A Simple Physics-Based Model for Particle Rebound and Deposition in Turbomachinery
-    ! / J. Turbomach 139(8), 2017
-    CASE('Bons2017')
-        ! Assume spherical particles for now
-        Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
-        r       = (3.*Vol/4./PI)**(1./3.)
+  ! Bons, J., Prenter, R., Whitaker, S.: A Simple Physics-Based Model for Particle Rebound and Deposition in Turbomachinery
+  ! / J. Turbomach 139(8), 2017
+  CASE('Bons2017')
+    ! Assume spherical particles for now
+    Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
+    r       = (3.*Vol/4./PI)**(1./3.)
 
-        ! Calculate deformation of cylindrical model particle
-        w       = 4./3. * r * SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (Species(PartSpecies(PartID))%DensityIC &
-                                                                           /Species(PartSpecies(PartID))%YoungIC   )**0.5;
+    ! Calculate deformation of cylindrical model particle
+    w       = 4./3. * r * SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (Species(PartSpecies(PartID))%DensityIC &
+                                                                       /Species(PartSpecies(PartID))%YoungIC   )**0.5;
 
-        ! Find composite elastic modulus
-        E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
-                   (1. - PartBound%Poisson(locBCID)            **2.)/PartBound%Young(locBCID)               )**(-1.)
+    ! Find composite elastic modulus
+    E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
+               (1. - PartBound%Poisson(locBCID)            **2.)/PartBound%Young(locBCID)               )**(-1.)
 
-        ! Find critical deformation
-        sigma_y = Species(PartSpecies(PartID))%YieldCoeff*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
-        w_crit  = sigma_y * 4./3. * r / E_eff
+    ! Find critical deformation
+    sigma_y = Species(PartSpecies(PartID))%YieldCoeff*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
+    w_crit  = sigma_y * 4./3. * r / E_eff
 
-        ! Normal coefficient of restitution
-        IF (w .LT. w_crit) THEN
-            eps_n = 1/SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *(sigma_y**2. / (Species(PartSpecies(PartID))%DensityIC &
-                                                                                * Species(PartSpecies(PartID))%YoungIC   ))**0.5
-        ELSE
-            eps_n = 1;
-        END IF
+    ! Normal coefficient of restitution
+    IF (w .LT. w_crit) THEN
+      eps_n = 1/SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *(sigma_y**2. / (Species(PartSpecies(PartID))%DensityIC &
+                                                                         *  Species(PartSpecies(PartID))%YoungIC   ))**0.5
+    ELSE
+      eps_n = 1;
+    END IF
 
-        !> Do not account for adhesion for now <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-        ! Tangential coefficient of restitution
+    !> Do not account for adhesion for now <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    ! Tangential coefficient of restitution
 
-        !> Assume change in density from last particle position to wall position to be negligible
-        ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
-        !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-        eps_t   = 1 - FieldAtParticle(PartID,1) / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3))) * (eps_n * &
-                                                  SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))) * (1/(eps_n)+1)*COS(PartFaceAngle)**2.
+    !> Assume change in density from last particle position to wall position to be negligible
+    ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
+    !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
+    eps_t   = 1 - FieldAtParticle(PartID,1) / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * (eps_n * &
+                                              SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))) * (1/(eps_n)+1)*COS(PartFaceAngle)**2.
 
-    CASE DEFAULT
-        CALL abort(&
-             __STAMP__&
-             , ' No particle wall coefficients given. This should not happen.')
+  CASE DEFAULT
+      CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')
 
 END SELECT
 
-! Wall sampling Macrovalues
+! Sample macrovalues on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
-    ! Find correct boundary on SurfMesh
-    SurfSideID=SurfMesh%SideIDToSurfID(SideID)
-    ! compute p and q
-    ! correction of xi and eta, can only be applied if xi & eta are not used later!
-    IF (TriaTracking) THEN
-      p=1 ; q=1
-    ELSE
-      Xitild =MIN(MAX(-1.,xi ),0.99)
-      Etatild=MIN(MAX(-1.,eta),0.99)
-      p=INT((Xitild +1.0)/dXiEQ_SurfSample)+1
-      q=INT((Etatild+1.0)/dXiEQ_SurfSample)+1
-    END IF
+  ! Find correct boundary on SurfMesh
+  SurfSideID=SurfMesh%SideIDToSurfID(SideID)
+  ! compute p and q for supersampling
+  ! correction of xi and eta, can only be applied if xi & eta are not used later!
+  IF (TriaTracking) THEN
+    p=1 ; q=1
+  ELSE
+    Xitild =MIN(MAX(-1.,xi ),0.99)
+    Etatild=MIN(MAX(-1.,eta),0.99)
+    p=INT((Xitild +1.0)/dXiEQ_SurfSample)+1
+    q=INT((Etatild+1.0)/dXiEQ_SurfSample)+1
+  END IF
 
-    ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-    IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
-        DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
-        PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-    ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
-        DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
-        PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
-    ELSE
-    PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-    ENDIF
-    ! End ugly hack
+  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
+  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                          &
+      DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
+      PartFaceAngle=ABS(0.5*PI - ACOS(1.))
+  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                     &
+      DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
+      PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
+  ELSE
+  PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+  ENDIF
+  ! End ugly hack
 
-    CALL RecordParticleBoundarySampling(PartID,SurfSideID,locBCID,p,q,v_old,PartTrajectory,PartFaceAngle,alpha)
-
+  ! Record particle impact
+  CALL RecordParticleBoundarySampling(PartID,SurfSideID,locBCID,p,q,v_old,PartTrajectory,PartFaceAngle,alpha)
 END IF !.NOT.IsAuxBC
 
 ! Make sure we have the old values safe
@@ -940,74 +955,74 @@ IF (EP_inUse) THEN
 END IF
 
 ! set particle position on face
+!--> first move the particle to the boundary
 LastPartPos(PartID,1:3) = LastPartPos(PartID,1:3) + PartTrajectory(1:3)*alpha
-
-! push particle away from face
-!PartTrajectory(1:3)     = PartTrajectory(1:3)-2.  * DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
-
+!--> flip trajectory and move the remainder of the particle push
 !===================================================================================================================================
 ! > modified with coefficients of restitution
 ! > WARNING: this only works with LSERK. Check and abort if not fulfilled
-IF (.NOT.(TimeDiscType.EQ.'LSERKW2').AND..NOT.(TimeDiscType.EQ.'LSWERKW3')) THEN
-    CALL ABORT(__STAMP__,&
+IF (.NOT.(TimeDiscType.EQ.'LSERKW2').AND..NOT.(TimeDiscType.EQ.'LSWERKW3'))               &
+    CALL ABORT(__STAMP__,                                                                 &
     'Time discretization '//TRIM(TimeDiscType)//' is incompatible with current implementation of coefficients of restitution.')
-END IF
+
 PartTrajectoryTang(1:3) = eps_t*(PartTrajectory(1:3) - DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
 PartTrajectoryNorm(1:3) = eps_n*(DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
 PartTrajectory(1:3)     = PartTrajectoryTang(1:3) - PartTrajectoryNorm(1:3)
 
-! Safe the old lengthPartTrajectory and rescale to new. We can't compute a complete new lengthPartTrajectory as we do not have the
+! Save the old lengthPartTrajectory and rescale to new. We can't compute a complete new lengthPartTrajectory as we do not have the
 ! current LSERK time step here
 lengthPartTrajectory_old= lengthPartTrajectory
 lengthPartTrajectory    = lengthPartTrajectory * SQRT(PartTrajectory(1)*PartTrajectory(1) &
                                                +      PartTrajectory(2)*PartTrajectory(2) &
                                                +      PartTrajectory(3)*PartTrajectory(3) )
-
 PartState(PartID,1:3)   = LastPartPos(PartID,1:3) + (1-alpha/lengthPartTrajectory_old) * PartTrajectory(1:3) * lengthPartTrajectory
 
 ! compute moved particle || rest of movement
 PartTrajectory          = PartState(PartID,1:3) - LastPartPos(PartID,1:3)
-lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                         +PartTrajectory(2)*PartTrajectory(2) &
-                         +PartTrajectory(3)*PartTrajectory(3) )
-PartTrajectory=PartTrajectory/lengthPartTrajectory
+lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)                        &
+                          +    PartTrajectory(2)*PartTrajectory(2)                        &
+                          +    PartTrajectory(3)*PartTrajectory(3) )
+PartTrajectory          = PartTrajectory/lengthPartTrajectory
 
-!PartState(PartID,4:6)=PartState(PartID,4:6)-2.*DOT_PRODUCT(PartState(PartID,4:6),n_loc)*n_loc + WallVelo
+! compute new particle velocity, modified with coefficents of restitution
 PartState(PartID,4:6)= eps_t * v_tang - eps_n * v_norm + WallVelo
 
 IF (EP_inUse) THEN
-    ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-    IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
-        DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
-        PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-    ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
-        DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
-        PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
-    ELSE
-    PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-    ENDIF
-    ! End ugly hack
+  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
+  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                            &
+    DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
+    PartFaceAngle = ABS(0.5*PI - ACOS(1.))
+  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                       &
+    DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
+    PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
+  ELSE
+    PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+  ENDIF
+  ! End ugly hack
 
-    CALL RecordErosionPoint(BCSideID        = BC(SideID),       &
-                            PartID          = PartID,           &
-                            PartFaceAngle   = PartFaceAngle,    &
-                            v_old           = v_old,            &
-                            PartFaceAngle_old =PartFaceAngle_old, &
-                            PartReflCount  = PartReflCount(PartID))
+  CALL RecordErosionPoint(BCSideID        = BC(SideID),                                   &
+                          PartID          = PartID,                                       &
+                          PartFaceAngle   = PartFaceAngle,                                &
+                          v_old           = v_old,                                        &
+                          PartFaceAngle_old =PartFaceAngle_old,                           &
+                          PartReflCount  = PartReflCount(PartID))
 END IF
 
 ! increase reflection counter
 IF (PartTrackReflection) PartReflCount(PartID) = PartReflCount(PartID) + 1
 
-!-------------------------
+! Correction for Runge-Kutta. Reflect or delete force history / acceleration
 IF (.NOT.ALMOSTZERO(DOT_PRODUCT(WallVelo,WallVelo))) THEN
-  PDM%IsNewPart(PartID)=.TRUE. !reconstruction in timedisc during push
+  ! Reconstruction in timedisc during push
+  PDM%IsNewPart(PartID)=.TRUE.
 ELSE
   Pt_temp(PartID,1:3)=Pt_temp(PartID,1:3)-2.*DOT_PRODUCT(Pt_temp(PartID,1:3),n_loc)*n_loc
-  IF (Symmetry) THEN !reflect also force history for symmetry
+  ! Reflect also force history for symmetry
+  IF (Symmetry) THEN
     Pt_temp(PartID,4:6)=Pt_temp(PartID,4:6)-2.*DOT_PRODUCT(Pt_temp(PartID,4:6),n_loc)*n_loc
+  ! Produces best result compared to analytical solution in place capacitor ...
   ELSE
-    Pt_temp(PartID,4:6)=0. !produces best result compared to analytical solution in plate capacitor...
+    Pt_temp(PartID,4:6)=0.
   END IF
 END IF
 
@@ -1027,7 +1042,7 @@ END SUBROUTINE DiffuseReflection
 
 SUBROUTINE PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,ElemID,BCSideID,opt_perimoved,TriNum)
 !----------------------------------------------------------------------------------------------------------------------------------!
-! Computes the perfect reflection in 3D
+! Computes the periodic shift in 3D
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1061,10 +1076,12 @@ REAL                              :: epsLength
 INTEGER                           :: PVID,moved(2),locSideID
 !===================================================================================================================================
 
-!OneMinus=1.0-MAX(epsInCell,epsilontol)
+! Get eps tolerance
 epsLength=MAX(epsInCell,epsilontol)*lengthPartTrajectory
 
+! Instead of checking DoRefMapping, we pass opt_BCSideID if true
 IF(PRESENT(BCSideID))THEN
+  ! Get side normal vector
   SELECT CASE(SideType(BCSideID))
   CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
     n_loc=SideNormVec(1:3,BCSideID)
@@ -1073,7 +1090,9 @@ IF(PRESENT(BCSideID))THEN
   CASE(CURVED)
     CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=BCSideID)
   END SELECT
+! not reference mapping
 ELSE
+  ! Get side normal vector
   IF (TriaTracking) THEN
     CALL CalcNormAndTangTriangle(nVec=n_loc,TriNum=TriNum,SideID=SideID)
   ELSE
@@ -1088,13 +1107,16 @@ ELSE
   END IF
 END IF
 
+! Check if particle is encountering the boundary
 IF(DOT_PRODUCT(PartTrajectory,n_loc).LE.0.) THEN
+  ! Particle does not encounter the boundary, return
   IF(PRESENT(opt_perimoved)) opt_perimoved=.FALSE.
   RETURN
 ELSE
   IF(PRESENT(opt_perimoved)) opt_perimoved=.TRUE.
 END IF
 
+! Get periodic vector ID
 PVID = SidePeriodicType(SideID)
 
 #if CODE_ANALYZE
@@ -1112,9 +1134,8 @@ LastPartPos(PartID,1:3) = LastPartPos(PartID,1:3) + PartTrajectory(1:3)*alpha
 ! perform the periodic movement
 LastPartPos(PartID,1:3) = LastPartPos(PartID,1:3) + SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
 ! update particle positon after periodic BC
-!PartState(PartID,1:3)   = PartState(PartID,1:3) + SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
-PartState(PartID,1:3) = LastPartPos(PartID,1:3) + (lengthPartTrajectory-alpha)*PartTrajectory
-lengthPartTrajectory  = lengthPartTrajectory - alpha
+PartState(PartID,1:3)   = LastPartPos(PartID,1:3) + (lengthPartTrajectory-alpha)*PartTrajectory
+lengthPartTrajectory    = lengthPartTrajectory - alpha
 
 #if CODE_ANALYZE
 IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
@@ -1126,31 +1147,20 @@ IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
 END IF
 #endif /*CODE_ANALYZE*/
 
-! recompute ne trajectory and length of remaining vector
-! PartTrajectory=PartState(PartID,1:3) - LastPartPos(PartID,1:3)
-! lengthPartTrajectory=SQRT(PartTrajectory(1)*PartTrajectory(1) &
-!                          +PartTrajectory(2)*PartTrajectory(2) &
-!                          +PartTrajectory(3)*PartTrajectory(3) )
-! PartTrajectory=PartTrajectory/lengthPartTrajectory
-
 ! refmapping and tracing
 ! move particle from old element to new element
 locSideID = PartSideToElem(S2E_LOC_SIDE_ID,SideID)
 Moved     = PARTSWITCHELEMENT(xi,eta,locSideID,SideID,ElemID)
 ElemID    = Moved(1)
-#if USE_MPI
-IF(ElemID.EQ.-1)THEN
-  CALL abort(&
-__STAMP__&
-,' Halo region to small. Neighbor element is missing!')
-END IF
-#endif /*MPI*/
-!ElemID   =PEM%Element(PartID)
-IF (DoRefMapping) PEM%LastElement(PartID) = 0
 
-IF(1.EQ.2)THEN
-  alpha=0.2
-END IF
+#if USE_MPI
+! New element is neither on proc nor in halo region, abort
+IF(ElemID.EQ.-1) &
+  CALL abort(__STAMP__,' Halo region to small. Neighbor element is missing!')
+#endif /*MPI*/
+
+! Remove history for last element
+IF (DoRefMapping) PEM%LastElement(PartID) = 0
 
 END SUBROUTINE PeriodicBC
 
@@ -1189,10 +1199,13 @@ REAL                              :: Xitild,EtaTild
 INTEGER                           :: p,q,SurfSideID,locBCID
 REAL                              :: PartFaceAngle
 !===================================================================================================================================
-epsLength=MAX(epsInCell,epsilontol)*lengthPartTrajectory
-locBCID=PartBound%MapToPartBC(BC(SideID))
+  ! Get eps tolerance and BCID
+epsLength = MAX(epsInCell,epsilontol)*lengthPartTrajectory
+locBCID   = PartBound%MapToPartBC(BC(SideID))
 
+! Instead of checking DoRefMapping, we pass opt_BCSideID if true
 IF(PRESENT(BCSideID))THEN
+  ! Get side normal vector
   SELECT CASE(SideType(BCSideID))
   CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
     n_loc=SideNormVec(1:3,BCSideID)
@@ -1201,7 +1214,9 @@ IF(PRESENT(BCSideID))THEN
   CASE(CURVED)
     CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=BCSideID)
   END SELECT
+! not reference mapping
 ELSE
+  ! Get side normal vector
   IF (TriaTracking) THEN
     CALL CalcNormAndTangTriangle(nVec=n_loc,TriNum=TriNum,SideID=SideID)
   ELSE
@@ -1220,9 +1235,11 @@ END IF
 ! Wall sampling Macrovalues
 ! Find correct boundary on SurfMesh
 SurfSideID=SurfMesh%SideIDToSurfID(SideID)
+
 ! Make sure we have to old velocity safe
 v_old = PartState(PartID,4:6)
-! compute p and q
+
+! compute p and q for supersampling
 ! correction of xi and eta, can only be applied if xi & eta are not used later!
 IF (TriaTracking) THEN
   p=1 ; q=1
@@ -1234,10 +1251,10 @@ ELSE
 END IF
 
 ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
+IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                              &
     DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
     PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
+ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                         &
     DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
     PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
 ELSE
@@ -1247,14 +1264,15 @@ ENDIF
 
 CALL RecordParticleBoundarySampling(PartID,SurfSideID,locBCID,p,q,v_old,PartTrajectory,PartFaceAngle,alpha)
 
-IF (EP_inUse) CALL RecordErosionPoint(BCSideID        = BC(SideID),       &
-                                      PartID          = PartID,           &
-                                      PartFaceAngle   = PartFaceAngle,    &
-                                      v_old           = v_old,            &
-                                      PartFaceAngle_old =PartFaceAngle,   &
+IF (EP_inUse) CALL RecordErosionPoint(BCSideID        = BC(SideID),                       &
+                                      PartID          = PartID,                           &
+                                      PartFaceAngle   = PartFaceAngle,                    &
+                                      v_old           = v_old,                            &
+                                      PartFaceAngle_old =PartFaceAngle,                   &
                                       PartReflCount  = PartReflCount(PartID))
 
 END SUBROUTINE SideErosion
+
 
 SUBROUTINE RecordParticleBoundarySampling(PartID,SurfSideID,locBCID,p,q,v_old,PartTrajectory,PartFaceAngle,alpha)
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1266,7 +1284,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Erosion_Vars
-USE MOD_Particle_Vars,          ONLY:Species,PartSpecies,LastPartPos,nSpecies
+USE MOD_Particle_Vars,          ONLY:Species,PartSpecies,nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1316,10 +1334,10 @@ END IF
         SampWall(SurfSideID)%State(3,p,q)                   = e_kin
         SampWall(SurfSideID)%State(4,p,q)                   = e_kin
     END IF
-!   All subsequent impacts
 
+!   All subsequent impacts
     delta                                                   = e_kin - SampWall(SurfSideID)%State(2,p,q)
-!    Update mean
+!   Update mean
     SampWall(SurfSideID)%State(2,p,q)                       = SampWall(SurfSideID)%State(2,p,q) + delta /                          &
                                                               SampWall(SurfSideID)%State(1,p,q)
 !    Find min/max of distribution
@@ -1329,12 +1347,12 @@ END IF
     IF (e_kin.GT.SampWall(SurfSideID)%State(4,p,q)) THEN
         SampWall(SurfSideID)%State(4,p,q)               = e_kin
     END IF
-!    delta2 = newValue - mean
+!   delta2 = newValue - mean
     delta2                                                  = e_kin - SampWall(SurfSideID)%State(2,p,q)
-!    M2 = M2 + delta * delta2
+!   M2 = M2 + delta * delta2
     SampWall(SurfSideID)%State(5,p,q)                       = SampWall(SurfSideID)%State(5,p,q) + delta * delta2
-!    Update sample variance here so we can check values at runtime because I am lazy, variance       = M2/count
-!                                                                                     sampleVariance = M2/(count - 1)
+!   Update sample variance here so we can check values at runtime, variance       = M2/count
+!                                                                  sampleVariance = M2/(count - 1)
     SampWall(SurfSideID)%State(6,p,q)                       = SampWall(SurfSideID)%State(5,p,q)/SampWall(SurfSideID)%State(1,p,q)
 !<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 IF (nSpecies.GT.1) THEN
@@ -1345,25 +1363,25 @@ IF (nSpecies.GT.1) THEN
         SampWall(SurfSideID)%State(3+nShift,p,q)            = e_kin
         SampWall(SurfSideID)%State(4+nShift,p,q)            = e_kin
     END IF
-!   All subsequent impacts
 
+!   All subsequent impacts
     delta                                                   = e_kin - SampWall(SurfSideID)%State(2+nShift,p,q)
-!    Update mean
+!   Update mean
     SampWall(SurfSideID)%State(2+nShift,p,q)                = SampWall(SurfSideID)%State(2+nShift,p,q) + delta /                   &
                                                               SampWall(SurfSideID)%State(1+nShift,p,q)
-!    Find min/max of distribution
+!   Find min/max of distribution
     IF (e_kin.LT.SampWall(SurfSideID)%State(3+nShift,p,q)) THEN
         SampWall(SurfSideID)%State(3+nShift,p,q)        = e_kin
     END IF
     IF (e_kin.GT.SampWall(SurfSideID)%State(4+nShift,p,q)) THEN
         SampWall(SurfSideID)%State(4+nShift,p,q)        = e_kin
     END IF
-!    delta2 = newValue - mean
+!   delta2 = newValue - mean
     delta2                                                  = e_kin - SampWall(SurfSideID)%State(2+nShift,p,q)
-!    M2 = M2 + delta * delta2
+!   M2 = M2 + delta * delta2
     SampWall(SurfSideID)%State(5+nShift,p,q)                = SampWall(SurfSideID)%State(5+nShift,p,q) + delta * delta2
-!    Update sample variance here so we can check values at runtime because I am lazy, variance       = M2/count
-!                                                                                     sampleVariance = M2/(count - 1)
+!   Update sample variance here so we can check values at runtime, variance       = M2/count
+!                                                                  sampleVariance = M2/(count - 1)
     SampWall(SurfSideID)%State(6+nShift,p,q)                = SampWall(SurfSideID)%State(5+nShift,p,q) /                           &
                                                               SampWall(SurfSideID)%State(1+nShift,p,q)
 END IF
@@ -1376,10 +1394,10 @@ END IF
         SampWall(SurfSideID)%State(8,p,q)                   = PartFaceAngle
         SampWall(SurfSideID)%State(9,p,q)                   = PartFaceAngle
     END IF
-!   All subsequent impacts
 
+!   All subsequent impacts
     delta                                                   = PartFaceAngle - SampWall(SurfSideID)%State(7,p,q)
-!    Update mean
+!   Update mean
     SampWall(SurfSideID)%State(7,p,q)                       = SampWall(SurfSideID)%State(7,p,q) + delta /                          &
                                                               SampWall(SurfSideID)%State(1,p,q)
 !    Find min/max of distribution
@@ -1389,12 +1407,12 @@ END IF
     IF (PartFaceAngle.GT.SampWall(SurfSideID)%State(9,p,q)) THEN
         SampWall(SurfSideID)%State(9,p,q)                = PartFaceAngle
     END IF
-!    delta2 = newValue - mean
+!   delta2 = newValue - mean
     delta2                                                  = PartFaceAngle - SampWall(SurfSideID)%State(7,p,q)
-!    M2 = M2 + delta * delta2
+!   M2 = M2 + delta * delta2
     SampWall(SurfSideID)%State(10,p,q)                      = SampWall(SurfSideID)%State(10,p,q) + delta * delta2
-!    Update sample variance here so we can check values at runtime because I am lazy, variance       = M2/count
-!                                                                                     sampleVariance = M2/(count - 1)
+!   Update sample variance here so we can check values at runtime, variance       = M2/count
+!                                                                  sampleVariance = M2/(count - 1)
     SampWall(SurfSideID)%State(11,p,q)                      = SampWall(SurfSideID)%State(10,p,q)/SampWall(SurfSideID)%State(1,p,q)
 !<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 IF (nSpecies.GT.1) THEN
@@ -1405,25 +1423,25 @@ IF (nSpecies.GT.1) THEN
         SampWall(SurfSideID)%State(8+nShift,p,q)            = PartFaceAngle
         SampWall(SurfSideID)%State(9+nShift,p,q)            = PartFaceAngle
     END IF
-!   All subsequent impacts
 
+!   All subsequent impacts
     delta                                                   = PartFaceAngle - SampWall(SurfSideID)%State(7+nShift,p,q)
-!    Update mean
+!   Update mean
     SampWall(SurfSideID)%State(7+nShift,p,q)                = SampWall(SurfSideID)%State(7+nShift,p,q) + delta /                   &
                                                               SampWall(SurfSideID)%State(1+nShift,p,q)
-!    Find min/max of distribution
+!   Find min/max of distribution
     IF (PartFaceAngle.LT.SampWall(SurfSideID)%State(8+nShift,p,q)) THEN
         SampWall(SurfSideID)%State(8+nShift,p,q)        = PartFaceAngle
     END IF
     IF (PartFaceAngle.GT.SampWall(SurfSideID)%State(9+nShift,p,q)) THEN
         SampWall(SurfSideID)%State(9+nShift,p,q)        = PartFaceAngle
     END IF
-!    delta2 = newValue - mean
+!   delta2 = newValue - mean
     delta2                                                  = PartFaceAngle - SampWall(SurfSideID)%State(7+nShift,p,q)
-!    M2 = M2 + delta * delta2
+!   M2 = M2 + delta * delta2
     SampWall(SurfSideID)%State(10+nShift,p,q)               = SampWall(SurfSideID)%State(10+nShift,p,q) + delta * delta2
-!    Update sample variance here so we can check values at runtime because I am lazy, variance       = M2/count
-!                                                                                     sampleVariance = M2/(count - 1)
+!   Update sample variance here so we can check values at runtime, variance       = M2/count
+!                                                                  sampleVariance = M2/(count - 1)
     SampWall(SurfSideID)%State(11+nShift,p,q)               = SampWall(SurfSideID)%State(10+nShift,p,q) /                          &
                                                               SampWall(SurfSideID)%State(1+nShift,p,q)
 END IF
@@ -1464,42 +1482,8 @@ IF (nSpecies.GT.1) THEN
                                         * (v_old(3))
 END IF
 
-!===================================================================================================================================
-! ANALYZE SURF COLLIS
-! LEGACY CODE: IGNORE FOR NOW
-!===================================================================================================================================
-!IF (CalcSurfCollis%AnalyzeSurfCollis .AND. (ANY(AnalyzeSurfCollis%BCs.EQ.0) .OR. ANY(AnalyzeSurfCollis%BCs.EQ.locBCID))) THEN
-!        AnalyzeSurfCollis%Number(PartSpecies(PartID)) = AnalyzeSurfCollis%Number(PartSpecies(PartID)) + 1
-!        AnalyzeSurfCollis%Number(nSpecies+1)          = AnalyzeSurfCollis%Number(nSpecies+1) + 1
-!
-!! Stop if our array is full
-!    IF (AnalyzeSurfCollis%Number(nSpecies+1) .GT. AnalyzeSurfCollis%maxPartNumber) THEN
-!        CALL Abort(&
-!        __STAMP__&
-!        ,'maxSurfCollisNumber reached!')
-!    END IF
-!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),1:3) &
-!      = LastPartPos(PartID,1:3) + alpha * PartTrajectory(1:3)
-!    !-- caution: for consistency with diffuse refl. v_old is used!
-!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),4) &
-!      = v_old(1)
-!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),5) &
-!      = v_old(2)
-!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),6) &
-!      = v_old(3)
-!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),7) &
-!      = LastPartPos(PartID,1)
-!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),8) &
-!      = LastPartPos(PartID,2)
-!    AnalyzeSurfCollis%Data(AnalyzeSurfCollis%Number(nSpecies+1),9) &
-!      = LastPartPos(PartID,3)
-!    AnalyzeSurfCollis%Spec(AnalyzeSurfCollis%Number(nSpecies+1)) &
-!      = PartSpecies(PartID)
-!    AnalyzeSurfCollis%BCid(AnalyzeSurfCollis%Number(nSpecies+1)) &
-!      = locBCID
-!END IF
-
 END SUBROUTINE RecordParticleBoundarySampling
+
 
 FUNCTION PARTSWITCHELEMENT(xi,eta,locSideID,SideID,ElemID)
 !===================================================================================================================================

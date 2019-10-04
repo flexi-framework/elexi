@@ -283,10 +283,11 @@ USE MOD_Globals
 USE Mod_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_IO_HDF5,                    ONLY: AddToElemData
-USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
 USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
 USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Restart,           ONLY: ParticleRestart
+USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
 #endif
@@ -315,6 +316,10 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES ...'
 
 Call InitParticleGlobals
 CALL InitializeVariables(ManualTimeStep_opt)
+
+! Restart particles here, otherwise we can not know if we need to have an initial emission
+CALL ParticleRestart()
+! Initialize emission. If no particles are present, assume restart from pure fluid and perform initial inserting
 CALL InitializeParticleEmission()
 
 ! Initialize surface sampling
@@ -323,7 +328,7 @@ IF (WriteMacroSurfaceValues) THEN
 END IF
 
 #if USE_MPI
-! has to be called AFTER InitializeVariables
+! has to be called AFTER InitializeVariables because we need to read the parameter file to know the CommSize
 CALL InitParticleCommSize()
 #endif
 

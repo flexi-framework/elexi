@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -15,7 +15,7 @@
 
 !==================================================================================================================================
 !> \brief Routines that handle restart capabilities.
-!> 
+!>
 !> With this feature a simulation can be resumed from a state file that has been created during a previous
 !> simulation (restart file). The restart file is passed to FLEXI as a second command line argument.
 !> The restart can also be performed from a file with a different polynomial degree or node type than the current simulation.
@@ -41,7 +41,7 @@ SUBROUTINE ParticleRestart(doFlushFiles)
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Particle_Restart_Vars   
+USE MOD_Particle_Restart_Vars
 USE MOD_PreProc
 USE MOD_HDF5_Input
 USE MOD_HDF5_Output,             ONLY:FlushFiles
@@ -94,8 +94,8 @@ LOGICAL                  :: doFlushFiles_loc
 doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
 
 IF (LEN_TRIM(RestartFile).GT.0) THEN
-  SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' Reading Particles from Restartfile...' 
-  
+  SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' Reading Particles from Restartfile...'
+
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   !read local ElemInfo from HDF5
   FirstElemInd=offsetElem+1
@@ -147,23 +147,23 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     DEALLOCATE(PartInt,PartData)
     PDM%ParticleVecLength = PDM%ParticleVecLength + locnPart
     CALL UpdateNextFreePosition()
-    
-    SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' Reading Particles from Restartfile... DONE!' 
+
+    SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' Reading Particles from Restartfile... DONE!'
     SWRITE(UNIT_StdOut,'(132("-"))')
-    
+
     DO i=1,nSpecies
       DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
         Species(i)%Init(iInit)%InsertedParticle = INT(Species(i)%Init(iInit)%ParticleEmission * RestartTime,8)
       END DO
     END DO
-    
+
     ! if ParticleVecLength GT maxParticleNumber: Stop
     IF (PDM%ParticleVecLength.GT.PDM%maxParticleNumber) THEN
       CALL abort(&
   __STAMP__&
   ,' Number of Particles in Restart higher than MaxParticleNumber!')
     END IF
-    
+
     ! Since the elementside-local node number are NOT persistant and dependent on the location
     ! of the MPI borders, all particle-element mappings need to be checked after a restart
     ! Step 1: Identify particles that are not in the element in which they were before the restart
@@ -211,7 +211,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         END IF
       END DO
     END IF
-    
+
 #if USE_MPI
     ! Step 2: All particles that are not found withing MyProc need to be communicated to the others and located there
     ! Combine number of lost particles of all processes and allocate variables
@@ -272,6 +272,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL UpdateNextFreePosition()
   ELSE
       SWRITE(UNIT_stdOut,*)'PartData does not exists in restart file'
+      SWRITE(UNIT_stdOut,'(132("-"))')
   END IF ! PartDataExists
 CALL CloseDataFile()
 

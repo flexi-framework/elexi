@@ -95,6 +95,11 @@ USE MOD_2D                ,ONLY: ExpandArrayTo3D
 #if USE_PARTICLES
 USE MOD_Particle_HDF5_output, ONLY: WriteParticleToHDF5
 #endif /*PARTICLES*/
+#if USE_RW
+USE MOD_DG_Vars           ,ONLY: UTurb
+USE MOD_Equation_Vars     ,ONLY: nVarTurb
+USE MOD_Restart_Vars      ,ONLY: RestartTurb
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -124,8 +129,17 @@ END IF
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 FileType=MERGE('ERROR_State','State      ',isErrorFile)
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),OutputTime))//'.h5'
-IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar,NOut,StrVarNames,&
-                                      MeshFileName,OutputTime,FutureTime,withUserblock=.TRUE.)
+#if USE_RW
+IF (RestartTurb) THEN
+  IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar+nVarTurb,NOut,StrVarNames,&
+                                        MeshFileName,OutputTime,FutureTime,withUserblock=.TRUE.)
+ELSE
+#endif /* USE_RW */
+  IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar,NOut,StrVarNames(1:PP_nVar),&
+                                        MeshFileName,OutputTime,FutureTime,withUserblock=.TRUE.)
+#if USE_RW
+END IF
+#endif /* USE_RW */
 
 ! Set size of output
 nVal=(/PP_nVar,NOut+1,NOut+1,ZDIM(NOut)+1,nElems/)
@@ -167,7 +181,20 @@ IF(NOut.NE.PP_N)THEN
 ELSE ! write state on same polynomial degree as the solution
 
 #if PP_dim == 3
-  UOut => U
+! Add UTurb to output for RW
+#if USE_RW
+  IF (RestartTurb) THEN
+    ALLOCATE(UOut(1:PP_nVar+nVarTurb,0:NOut,0:NOut,0:ZDIM(NOut),nElems))
+    Uout(1:PP_nVar,:,:,:,:)                  = U    (1:PP_nVar ,:,:,:,:)
+    Uout(PP_nVar+1:PP_nVar+nVarTurb,:,:,:,:) = UTurb(1:nVarTurb,:,:,:,:)
+    ! Correct size of the output array
+    nVal=(/PP_nVar+nVarTurb,NOut+1,NOut+1,NOut+1,nElems/)
+  ELSE
+#endif /* USE_RW */
+    UOut => U
+#if USE_RW
+  END IF
+#endif /* USE_RW */
 #else
   IF (.NOT.output2D) THEN
     ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution

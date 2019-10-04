@@ -917,7 +917,7 @@ SELECT CASE(WallCoeffModel)
   CASE('Fong2019')
     ! Reuse YieldCoeff to modify the normal velocity, keep tangential velocity
     eps_t   = 1.
-    eps_n   = Species(PartSpecies(PartID))%YieldCoeff
+    eps_n   = PartBound%CoR(locBCID)
 
   CASE DEFAULT
       CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')

@@ -118,6 +118,8 @@ TYPE tPartBoundary
   ! Bons particle rebound model
   REAL    , ALLOCATABLE                  :: Young(:)              ! Young's modulus
   REAL    , ALLOCATABLE                  :: Poisson(:)            ! Poisson's ration for transverse strain under axial compression
+  ! Fong coefficient of restitution
+  REAL    , ALLOCATABLE                  :: CoR(:)                ! Coefficient of restitution for normal velocity component
 END TYPE
 
 INTEGER                                  :: nPartBound            ! number of particle boundaries

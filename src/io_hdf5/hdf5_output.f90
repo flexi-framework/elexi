@@ -181,9 +181,9 @@ IF(NOut.NE.PP_N)THEN
 ELSE ! write state on same polynomial degree as the solution
 
 #if PP_dim == 3
-! Add UTurb to output for RW
 #if USE_RW
   IF (RestartTurb) THEN
+    ! Add UTurb to output for RW, we need to expand the solution
     ALLOCATE(UOut(1:PP_nVar+nVarTurb,0:NOut,0:NOut,0:ZDIM(NOut),nElems))
     Uout(1:PP_nVar,:,:,:,:)                  = U    (1:PP_nVar ,:,:,:,:)
     Uout(PP_nVar+1:PP_nVar+nVarTurb,:,:,:,:) = UTurb(1:nVarTurb,:,:,:,:)
@@ -221,6 +221,9 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         collective=.TRUE.,RealArray=UOut)
 
 ! Deallocate UOut only if we did not point to U
+#if USE_RW
+IF (RestartTurb)                                              DEALLOCATE(UOut)
+#endif
 IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
 
 #if USE_PARTICLES

@@ -982,6 +982,13 @@ lengthPartTrajectory_old= lengthPartTrajectory
 lengthPartTrajectory    = lengthPartTrajectory * SQRT(PartTrajectory(1)*PartTrajectory(1) &
                                                +      PartTrajectory(2)*PartTrajectory(2) &
                                                +      PartTrajectory(3)*PartTrajectory(3) )
+
+! Rescale the PartTrajectory to uniform length, otherwise we apply the coefficients twice
+PartTrajectory          = PartTrajectory / SQRT(PartTrajectory(1)*PartTrajectory(1) &
+                                         +      PartTrajectory(2)*PartTrajectory(2) &
+                                         +      PartTrajectory(3)*PartTrajectory(3) )
+
+! lengthPartTrajectory is coupled to alpha, so use the old value to non-dimensionalize it
 PartState(PartID,1:3)   = LastPartPos(PartID,1:3) + (1-alpha/lengthPartTrajectory_old) * PartTrajectory(1:3) * lengthPartTrajectory
 
 ! compute moved particle || rest of movement
@@ -990,6 +997,7 @@ lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)              
                           +    PartTrajectory(2)*PartTrajectory(2)                        &
                           +    PartTrajectory(3)*PartTrajectory(3) )
 PartTrajectory          = PartTrajectory/lengthPartTrajectory
+
 
 ! compute new particle velocity, modified with coefficents of restitution
 PartState(PartID,4:6)= eps_t * v_tang - eps_n * v_norm + WallVelo

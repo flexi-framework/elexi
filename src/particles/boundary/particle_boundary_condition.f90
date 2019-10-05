@@ -726,6 +726,7 @@ REAL                              :: PartFaceAngle,PartFaceAngleDeg,PartFaceAngl
 REAL                              :: v_magnitude,v_norm(3),v_tang(3)
 REAL                              :: PartTrajectory_old(3)
 REAL                              :: PartTrajectoryTang(3),PartTrajectoryNorm(3)
+REAL                              :: PartTrajectory_rescale
 REAL                              :: eps_n, eps_t, lengthPartTrajectory_old
 ! Bons particle rebound model
 REAL                              :: E_eff
@@ -979,14 +980,13 @@ PartTrajectory(1:3)     = PartTrajectoryTang(1:3) - PartTrajectoryNorm(1:3)
 ! Save the old lengthPartTrajectory and rescale to new. We can't compute a complete new lengthPartTrajectory as we do not have the
 ! current LSERK time step here
 lengthPartTrajectory_old= lengthPartTrajectory
-lengthPartTrajectory    = lengthPartTrajectory * SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                                               +      PartTrajectory(2)*PartTrajectory(2) &
-                                               +      PartTrajectory(3)*PartTrajectory(3) )
+PartTrajectory_rescale  = SQRT(PartTrajectory(1)*PartTrajectory(1) &
+                          +    PartTrajectory(2)*PartTrajectory(2) &
+                          +    PartTrajectory(3)*PartTrajectory(3) )
+lengthPartTrajectory    = lengthPartTrajectory  *PartTrajectory_rescale
 
 ! Rescale the PartTrajectory to uniform length, otherwise we apply the coefficients twice
-PartTrajectory          = PartTrajectory / SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                                         +      PartTrajectory(2)*PartTrajectory(2) &
-                                         +      PartTrajectory(3)*PartTrajectory(3) )
+PartTrajectory          = PartTrajectory        /PartTrajectory_rescale
 
 ! lengthPartTrajectory is coupled to alpha, so use the old value to non-dimensionalize it
 PartState(PartID,1:3)   = LastPartPos(PartID,1:3) + (1-alpha/lengthPartTrajectory_old) * PartTrajectory(1:3) * lengthPartTrajectory

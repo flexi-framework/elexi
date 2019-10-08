@@ -209,6 +209,10 @@ mapAllVarsToVisuVars = 0
 mapAllVarsToSurfVisuVars = 0
 nVarVisu = 0
 nVarSurfVisuAll = 0
+#if USE_PARTICLES
+PD%nPartVar_Visu = 0
+PDE%nPartVar_Visu = 0
+#endif
 ! Get number of variables to be visualized
 nVarIni=CountOption("VarName")
 ! If no variable names are given in prm file, take the variables given in the HDF5 "VarNames" attribute (if present) or all found
@@ -245,6 +249,36 @@ DO iVar=1,nVarIni
       mapAllVarsToVisuVars(iVar2) = nVarVisu
     END IF
   END DO
+#if USE_PARTICLES
+  DO iVar2=1,PD%nPartVar_HDF5
+    IF (STRICMP(VarName, PD%VarNamesPart_HDF5(iVar2)))THEN
+      PD%nPartVar_Visu = PD%nPartVar_Visu + 1
+      PD%VarNamePartDummy(PD%nPartVar_Visu)=PD%VarNamesPart_HDF5(iVar2)
+    END IF
+  END DO 
+  IF(iVar.EQ.nVarIni)THEN
+    SDEALLOCATE(PD%VarNamePartVisu)
+    ALLOCATE(PD%VarNamePartVisu(1:PD%nPartVar_Visu))
+    DO iVar2=1,PD%nPartVar_Visu
+      PD%VarNamePartVisu(iVar2)=PD%VarNamePartDummy(iVar2)
+    END DO
+    SDEALLOCATE(PD%VarNamePartDummy)
+  END IF
+  DO iVar2=1,PDE%nPartVar_HDF5
+    IF (STRICMP(VarName, PDE%VarNamesPart_HDF5(iVar2)))THEN
+      PDE%nPartVar_visu = PDE%nPartVar_visu + 1
+      PDE%VarNamePartDummy(PDE%nPartVar_visu)=PDE%VarNamesPart_HDF5(iVar2)
+    END IF
+  END DO 
+  IF(iVar.EQ.nVarIni)THEN
+    SDEALLOCATE(PDE%VarNamePartVisu)
+    ALLOCATE(PDE%VarNamePartVisu(1:PDE%nPartVar_Visu))
+    DO iVar2=1,PDE%nPartVar_Visu
+      PDE%VarNamePartVisu(iVar2)=PDE%VarNamePartDummy(iVar2)
+    END DO
+    SDEALLOCATE(PDE%VarNamePartDummy)
+  END IF
+#endif
 END DO
 
 ! check whether gradients are needed for any quantity

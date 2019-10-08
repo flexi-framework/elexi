@@ -75,12 +75,12 @@ END FUNCTION cstrToChar255
 !===================================================================================================================================
 !> Wrapper to visu_InitFile for Paraview plugin, returns the available variable names and boundary names.
 !===================================================================================================================================
-SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, strlen_mesh, meshfile_IN, varnames, bcnames)
+SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, strlen_mesh, meshfile_IN, varnames, bcnames, partnames)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI        ,ONLY: InitMPI
-USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll
+USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll,PartNamesAll
 USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
 USE MOD_VTK        ,ONLY: CARRAY
 USE MOD_IO_HDF5    ,ONLY: InitMPIInfo
@@ -94,12 +94,14 @@ INTEGER,INTENT(IN)                    :: strlen_mesh
 TYPE(C_PTR),TARGET,INTENT(IN)         :: meshfile_IN
 TYPE (CARRAY), INTENT(INOUT)          :: varnames
 TYPE (CARRAY), INTENT(INOUT)          :: bcnames
+TYPE (CARRAY), INTENT(INOUT)          :: partnames
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
 CHARACTER(LEN=255)                    :: statefile
 CHARACTER(LEN=255)                    :: meshfile
 CHARACTER(LEN=255),POINTER            :: varnames_pointer(:)
 CHARACTER(LEN=255),POINTER            :: bcnames_pointer(:)
+CHARACTER(LEN=255),POINTER            :: partnames_pointer(:)
 !===================================================================================================================================
 statefile = cstrToChar255(statefile_IN, strlen_state)
 meshfile  = cstrToChar255(meshfile_IN , strlen_mesh)
@@ -123,6 +125,14 @@ ELSE
   bcnames%len  = 0
   bcnames%data = C_NULL_PTR
 END IF
+IF (ALLOCATED(PartNamesAll)) THEN
+  partnames_pointer => PartNamesAll
+  partnames%len  = SIZE(partnames_pointer)*255
+  partnames%data = C_LOC(partnames_pointer(1))
+ELSE
+  partnames%len  = 0
+  partnames%data = C_NULL_PTR
+END IF
 END SUBROUTINE visu_requestInformation
 
 !===================================================================================================================================
@@ -135,37 +145,46 @@ SUBROUTINE visu_CWrapper(mpi_comm_IN, &
     coordsDG_out,valuesDG_out,nodeidsDG_out, &
     coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out, &
     coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out, &
-    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,varnamesSurf_out)
+    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,varnamesSurf_out,coordsPart_out,&
+    valuesPart_out,nodeidsPart_out,varnamesPart_out,componentsPart_out)
 ! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_Visu_Vars
 USE MOD_Visu        ,ONLY: visu
 USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array,CARRAY
+#if USE_PARTICLES
+USE MOD_VTK         ,ONLY: WritePartDataToVTK_array
+#endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)            :: mpi_comm_IN
-INTEGER,INTENT(IN)            :: strlen_prm
-INTEGER,INTENT(IN)            :: strlen_posti
-INTEGER,INTENT(IN)            :: strlen_state
-TYPE(C_PTR),TARGET,INTENT(IN) :: prmfile_IN
-TYPE(C_PTR),TARGET,INTENT(IN) :: postifile_IN
-TYPE(C_PTR),TARGET,INTENT(IN) :: statefile_IN
-TYPE (CARRAY), INTENT(INOUT)  :: coordsDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: valuesDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: nodeidsDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: coordsFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: valuesFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: nodeidsFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: varnames_out
-TYPE (CARRAY), INTENT(INOUT)  :: coordsSurfDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: valuesSurfDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: nodeidsSurfDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: coordsSurfFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: valuesSurfFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: nodeidsSurfFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: varnamesSurf_out
+INTEGER,INTENT(IN)                      :: mpi_comm_IN
+INTEGER,INTENT(IN)                      :: strlen_prm
+INTEGER,INTENT(IN)                      :: strlen_posti
+INTEGER,INTENT(IN)                      :: strlen_state
+TYPE(C_PTR),TARGET,INTENT(IN)           :: prmfile_IN
+TYPE(C_PTR),TARGET,INTENT(IN)           :: postifile_IN
+TYPE(C_PTR),TARGET,INTENT(IN)           :: statefile_IN
+TYPE (CARRAY), INTENT(INOUT)            :: coordsDG_out
+TYPE (CARRAY), INTENT(INOUT)            :: valuesDG_out
+TYPE (CARRAY), INTENT(INOUT)            :: nodeidsDG_out
+TYPE (CARRAY), INTENT(INOUT)            :: coordsFV_out
+TYPE (CARRAY), INTENT(INOUT)            :: valuesFV_out
+TYPE (CARRAY), INTENT(INOUT)            :: nodeidsFV_out
+TYPE (CARRAY), INTENT(INOUT)            :: varnames_out
+TYPE (CARRAY), INTENT(INOUT)            :: coordsSurfDG_out
+TYPE (CARRAY), INTENT(INOUT)            :: valuesSurfDG_out
+TYPE (CARRAY), INTENT(INOUT)            :: nodeidsSurfDG_out
+TYPE (CARRAY), INTENT(INOUT)            :: coordsSurfFV_out
+TYPE (CARRAY), INTENT(INOUT)            :: valuesSurfFV_out
+TYPE (CARRAY), INTENT(INOUT)            :: nodeidsSurfFV_out
+TYPE (CARRAY), INTENT(INOUT)            :: varnamesSurf_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: coordsPart_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: valuesPart_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: nodeidsPart_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: varnamesPart_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: componentsPart_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)            :: prmfile
@@ -198,6 +217,12 @@ IF (MeshFileMode) THEN
   valuesSurfFV_out%len  = 0
   nodeidsSurfFV_out%len = 0
   varnamesSurf_out%len  = 0
+  coordsPart_out%len    = 0  
+  coordsPart_out%dim    = 0
+  valuesPart_out%len    = 0
+  nodeidsPart_out%len   = 0
+  varnamesPart_out%len  = 0
+  componentsPart_out%len  = 0
 
   RETURN
 END IF
@@ -215,6 +240,17 @@ ELSE
   CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0)
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=PP_dim,DGFV=1)
 END IF
+
+#if USE_PARTICLES
+ALLOCATE(PD%PartIds_Visu(1:PD%nPart_visu))
+ALLOCATE(PD%Part_Pos_visu(1:3,1:PD%nPart_Visu))
+PD%Part_Pos_visu=PD%PartData_HDF5(1:3,:)
+ALLOCATE(PD%Part_visu(1:PD%nPartVar_visu,1:PD%nPart_visu))
+PD%Part_visu=PD%PartData_HDF5(4:PD%nPartVar_Visu+3,:)
+CALL WritePartDataToVTK_array(PD%nPart_visu,PD%nPartVar_visu,coordsPart_out,valuesPart_out,nodeidsPart_out,PD%Part_Pos_visu,&
+                              PD%Part_visu,PD%PartIds_Visu)
+CALL WriteVarnamesToVTK_array(PD%nPartVar_HDF5,PD%mapAllVarsToVisuVars,varnamesPart_out,PD%VarNamesPart_HDF5,PD%nPartVar_visu)
+#endif
 
 CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
 
@@ -244,6 +280,11 @@ IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(nodeids_DG)
 SDEALLOCATE(nodeids_FV)
+#if USE_PARTICLES
+DEALLOCATE(PD%Part_Visu)
+DEALLOCATE(PD%Part_Pos_Visu)
+DEALLOCATE(PD%PartIDs_Visu)
+#endif
 END SUBROUTINE visu_dealloc_nodeids
 
 END MODULE MOD_Visu_Cwrapper

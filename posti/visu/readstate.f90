@@ -118,9 +118,6 @@ USE MOD_Overintegration     ,ONLY:DefineParametersOverintegration,InitOverintegr
 USE MOD_ReadInTools         ,ONLY: prms
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters
 USE MOD_Restart_Vars        ,ONLY: RestartTime
-#if USE_PARTICLES
-USE MOD_Posti_Part_Tools    ,ONLY: InitPartState, ReadPartStateFile, InitParticle
-#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -128,10 +125,6 @@ CHARACTER(LEN=255),INTENT(IN):: prmfile       !< FLEXI parameter file, used if D
 CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if USE_PARTICLES
-CHARACTER(LEN=255)           :: DataArray
-LOGICAL                      :: PartDataFound
-#endif
 !===================================================================================================================================
 CALL FinalizeInterpolation()
 #if FV_ENABLED
@@ -192,24 +185,6 @@ IF (changedMeshFile.OR.changedWithDGOperator) THEN
   CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 END IF
 
-#if USE_PARTICLES
-IF (VisuPart) THEN
-  ! Visualize particle data'
-  DataArray='PartData'
-  CALL InitPartState(statefile,DataArray,PartDataFound,PD)
-  IF(PartDataFound)THEN
-    CALL InitParticle(PD) 
-    CALL ReadPartStateFile(statefile,DataArray,PD) 
-  END IF
-  DataArray='ErosionData'
-  CALL InitPartState(statefile,DataArray,PartDataFound,PDE)
-  IF(PartDataFound)THEN
-    CALL InitParticle(PDE) 
-    CALL ReadPartStateFile(statefile,DataArray,PDE) 
-  END IF
-END IF
-#endif
-
 CALL InitFilter()
 CALL InitOverintegration()
 CALL InitIndicator()
@@ -261,9 +236,6 @@ USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolati
 USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 #endif
-#if USE_PARTICLES
-USE MOD_Posti_Part_Tools    ,ONLY: InitPartState, ReadPartStateFile, InitParticle
-#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -274,10 +246,6 @@ INTEGER,INTENT(IN),OPTIONAL  :: Nin           !< Polynomial degree used in InitI
 ! LOCAL VARIABLES
 INTEGER           :: meshMode_loc
 LOGICAL           :: changedMeshMode
-#if USE_PARTICLES
-CHARACTER(LEN=255):: DataArray
-LOGICAL           :: PartDataFound
-#endif
 !===================================================================================================================================
 CALL FinalizeInterpolation()
 
@@ -336,24 +304,6 @@ IF ((changedMeshFile).OR.(changedMeshMode)) THEN
   CALL FinalizeMesh()
   CALL InitMesh(meshMode=meshMode_loc,MeshFile_IN=MeshFile)
 END IF
-
-#if USE_PARTICLES
-IF (VisuPart) THEN
-  ! Visualize particle data'
-  DataArray='PartData'
-  CALL InitPartState(statefile,DataArray,PartDataFound,PD)
-  IF(PartDataFound)THEN
-    CALL InitParticle(PD) 
-    CALL ReadPartStateFile(statefile,DataArray,PD) 
-  END IF
-  DataArray='ErosionData'
-  CALL InitPartState(statefile,DataArray,PartDataFound,PDE)
-  IF(PartDataFound)THEN
-    CALL InitParticle(PDE) 
-    CALL ReadPartStateFile(statefile,DataArray,PDE) 
-  END IF
-END IF
-#endif
 
 ! Initialize EOS since some quantities need gas properties like R and kappa
 CALL InitEOS()

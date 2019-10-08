@@ -163,8 +163,32 @@
             </Documentation>
          </StringVectorProperty>
       <!-- ================================================================== -->
+         <StringVectorProperty name="PartArrayInfo"
+            information_only="1">
+            <ArraySelectionInformationHelper attribute_name="VarParticle" />
+         </StringVectorProperty>
+         <StringVectorProperty name="PartArrayStatus"
+            command="SetVarParticleArrayStatus"
+            number_of_elements="0"
+            repeat_command="1"
+            number_of_elements_per_command="2"
+            element_types="2 0"
+            information_property="PartArrayInfo"
+            label="Particles"
+            >
+            <ArraySelectionDomain name="array_list">
+               <RequiredProperties>
+                  <Property name="PartArrayInfo" function="ArrayList" />
+               </RequiredProperties>
+            </ArraySelectionDomain>
+            <Documentation>
+               This property contains a list of the PartData visualization.
+            </Documentation>
+         </StringVectorProperty>
+      <!-- ================================================================== -->
          <OutputPort name="Volume" index="0"/>
          <OutputPort name="Surface" index="1"/>
+         <OutputPort name="Particles" index="2"/>
          <Hints>
             <ReaderFactory extensions="h5"
                file_description="2 Posti Visu" />

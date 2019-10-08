@@ -60,7 +60,7 @@ visuReader::visuReader()
    this->ParameterFileOverwrite = NULL;
    this->MeshFileOverwrite = NULL;
    this->SetNumberOfInputPorts(0);
-   this->SetNumberOfOutputPorts(2);
+   this->SetNumberOfOutputPorts(3);
 
    // Setup the selection callback to modify this object when an array
    // selection is changed.
@@ -73,9 +73,11 @@ visuReader::visuReader()
    // create array for state,primitive and derived quantities
    this->VarDataArraySelection = vtkDataArraySelection::New();
    this->BCDataArraySelection = vtkDataArraySelection::New();
+   this->VarParticleDataArraySelection = vtkDataArraySelection::New();
    // add an observer 
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
    this->BCDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
+   this->VarParticleDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
 
 }
 
@@ -106,14 +108,15 @@ int visuReader::RequestInformation(vtkInformation *,
    if (communicator) {
       mpiComm = *(communicator->GetMPIComm()->GetHandle());
    }
-
    // get the info object of the output ports 
    vtkSmartPointer<vtkInformation> outInfoVolume = outputVector->GetInformationObject(0);
    vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
+   vtkSmartPointer<vtkInformation> outInfoPart = outputVector->GetInformationObject(2);
 
    // sets the number of pieces to the number of processsors
    outInfoVolume->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
    outInfoSurface->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+   outInfoPart->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 
    // RequestInformation may be called before AddFileName, thus the arrays with timesteps and
    // file names may be empty.  In this case, simply leave the function. It will be called again
@@ -128,8 +131,8 @@ int visuReader::RequestInformation(vtkInformation *,
    double timeRange[2] = {Timesteps[0], Timesteps[Timesteps.size()-1]};
    outInfoVolume->Set (vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
    outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
+   outInfoPart->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
    outInfoVolume->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
-   outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
    char* dir = strdup(FileNames[0].c_str());
@@ -147,6 +150,7 @@ int visuReader::RequestInformation(vtkInformation *,
 
    struct CharARRAY varnames;
    struct CharARRAY bcnames;
+   struct CharARRAY partnames;
    // Call Posti-function requestInformation:
    // This function returns the varnames of state, primitive and derived quantities
    int strlen_state = strlen(FileNames[0].c_str());
@@ -156,7 +160,7 @@ int visuReader::RequestInformation(vtkInformation *,
    } else {
       strlen_mesh = strlen(MeshFileOverwrite);
    }
-   __mod_visu_cwrapper_MOD_visu_requestinformation(&fcomm, &strlen_state, FileNames[0].c_str(), &strlen_mesh, MeshFileOverwrite, &varnames, &bcnames);
+   __mod_visu_cwrapper_MOD_visu_requestinformation(&fcomm, &strlen_state, FileNames[0].c_str(), &strlen_mesh, MeshFileOverwrite, &varnames, &bcnames, &partnames);
 
    MPI_Barrier(mpiComm);
 
@@ -190,6 +194,17 @@ int visuReader::RequestInformation(vtkInformation *,
       if (!this->BCDataArraySelection->ArrayExists(bcname.c_str())) {
          // function DisableArray deselects the bcname in the gui and if not existend inserts the bcname         
          this->BCDataArraySelection->DisableArray(bcname.c_str());
+      }
+   }
+	 for (int iVar=0; iVar<partnames.len/255; iVar++) {
+      char tmps[255];
+      strncpy(tmps, partnames.data+iVar*255, 255);
+      std::string partname(tmps);
+      partname = partname.substr(0,partname.find(" "));
+
+      if (!this->VarParticleDataArraySelection->ArrayExists(partname.c_str())) {
+         // function DisableArray deselects the partname in the gui and if not existend inserts the partname         
+         this->VarParticleDataArraySelection->DisableArray(partname.c_str());
       }
    }
    return 1; 
@@ -271,6 +286,7 @@ int visuReader::RequestData(
    std::string FileToLoad;
    vtkSmartPointer<vtkInformation> outInfoVolume = outputVector->GetInformationObject(0);
    vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
+   vtkSmartPointer<vtkInformation> outInfoPart = outputVector->GetInformationObject(2);
    if (outInfoVolume->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoVolume->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
@@ -281,6 +297,10 @@ int visuReader::RequestData(
    if (outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoSurface->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+   }
+	 if (outInfoPart->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
+      // get the requested time
+      double requestedTimeValue = outInfoPart->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
    }
 
 
@@ -304,6 +324,14 @@ int visuReader::RequestData(
    {
       const char* name = BCDataArraySelection->GetArrayName(i);
       BCNames_selected[i] = BCDataArraySelection->ArrayIsEnabled(name);
+   }
+
+	 int nParts = VarParticleDataArraySelection->GetNumberOfArrays();
+   PartNames_selected.resize(nParts);
+   for (int i = 0; i< nBCs; ++i)
+   {
+      const char* name = VarParticleDataArraySelection->GetArrayName(i);
+      PartNames_selected[i] = VarParticleDataArraySelection->ArrayIsEnabled(name);
    }
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
@@ -346,13 +374,20 @@ int visuReader::RequestData(
       }
    }
    if (noVisuVars) {
-      dprintf(posti_unit, "noVisuVars = T") ;
+      dprintf(posti_unit, "noVisuVars = T\n") ;
    }
    for (int i = 0; i< nBCs; ++i)
    {
       if (BCNames_selected[i]) {
          const char* name = BCDataArraySelection->GetArrayName(i);
          dprintf(posti_unit, "BoundaryName = %s\n", name) ;
+      }
+   }
+	 for (int i = 0; i< nParts; ++i)
+   {
+      if (PartNames_selected[i]) {
+         const char* name = VarParticleDataArraySelection->GetArrayName(i);
+         dprintf(posti_unit, "VarName = %s\n", name) ;
       }
    }
    close(posti_unit);
@@ -372,7 +407,8 @@ int visuReader::RequestData(
          &coords_DG,&values_DG,&nodeids_DG,
          &coords_FV,&values_FV,&nodeids_FV,&varnames,
          &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
-         &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf);
+         &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf,
+				 &coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part);
 
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 
@@ -410,7 +446,7 @@ int visuReader::RequestData(
    }
 
    // adjust the number of Blocks in the MultiBlockDataset to 4 (DG and FV)
-   SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
+   SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks())
    if (mb->GetNumberOfBlocks() < 2) {
       SWRITE("Create new DG and FV output Blocks");
       mb->SetBlock(0, vtkUnstructuredGrid::New());
@@ -425,6 +461,20 @@ int visuReader::RequestData(
 
     // Insert Surface FV data into output
    InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
+
+	 // get the BlockDataset 
+	 if  (nodeids_Part.len > 0) {
+      this->Blocks.resize(this->Blocks.size()+1);
+      vtkSmartPointer<vtkUnstructuredGrid> output_Part = this->Blocks[this->Blocks.size()-1];
+      if (!output_Part)
+      {
+         output_Part = vtkUnstructuredGrid::New();
+         this->Blocks[this->Blocks.size()-1] = output_Part;
+         output_Part->Delete();
+      }
+      // Insert data into output
+      InsertPartData(output_Part, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
+   }
 
    __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
 
@@ -516,6 +566,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
 
    // assign the actual data, loaded by the Posti tool, to the output
    unsigned int nVar = varnames->len/255;
+
    if (nVar > 0) {
       unsigned int sizePerVar = values->len/nVar;
       int dataPos = 0;
@@ -543,6 +594,93 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
          // insert array of variable into the output
          output->GetPointData()->AddArray(vdata);
       }
+   }
+}
+
+/*
+ * This function inserts the data, loaded by the Posti tool, into a ouput
+ */
+void visuReader::InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, struct DoubleARRAY* coords,
+    struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) {
+
+   std::cout << "insert part data \n";
+   // create points(array)
+   vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+
+   vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
+   pdata->SetNumberOfComponents(3); // 3D
+
+   // assign the coords-data (loaded by the Posti tool) to the general pdata array 
+   // (no copy of data!!! pdata uses the coords-data array)
+   pdata->SetArray(coords->data, coords->len, 1);
+   // now we use this vtkDouble Array and assign it to the points-array
+   // (again no copy of data!!!)
+   points->SetData(pdata);
+   points->SetNumberOfPoints(coords->len/3);
+   // set the points array to be used for the output
+   output->SetPoints(points);
+
+   //// Use the nodeids to build
+   //vtkSmartPointer<vtkCellArray>  vertices   = vtkSmartPointer<vtkCellArray>::New();
+   //vtkSmartPointer<vtkVertex> vert    = vtkSmartPointer<vtkVertex>::New();
+   ////for (auto iPart=0; iPart<fmd.nParts; ++iPart){
+   //for (auto iPart=0u; iPart<coords->len/3; ++iPart){
+   //  vert->GetPointIds()->SetId(0,iPart);
+   //  //vert->GetPointId(iPart);
+   //  vertices->InsertNextCell(vert);
+   //}
+
+    // second possibiliby for mesh
+    vtkSmartPointer<vtkCellArray> vertices = vtkSmartPointer<vtkCellArray>::New();
+    vtkIdType *vert = vertices->WritePointer(nodeids->len, 2*(nodeids->len));
+    for (vtkIdType i=0; i<nodeids->len; ++i)
+    {
+      vert[2*i] = 1;
+      vert[2*i+1] = i;
+      //vertices->InsertNextCell(vert);
+    }
+    output->SetCells({VTK_VERTEX}, vertices);
+
+   //for (unsigned int iPart=0; iPart<nodeids->len; ++iPart){
+   //  //vert->GetPointIds()->SetId(0,iPart);
+   //  vert->GetPointIds()->SetId(0,nodeids->data[iPart]);
+   //  vertices->InsertNextCell(vert);
+   //}
+   //output->SetCells({VTK_VERTEX}, vertices);
+
+   // assign the actual data, loaded by the Posti tool, to the output
+   std::vector<vtkSmartPointer<vtkDoubleArray> > dataArrays;
+   unsigned int nVarCombine = varnames->len/255;
+   unsigned int nVar = 1;
+   for (unsigned int iVar=0;iVar<nVarCombine;iVar++) {
+     nVar += components->data[iVar];
+   }
+   
+   SWRITE("nVar : " << nVar);
+	 if (nVar > 0) {
+	   unsigned int sizePerVar = values->len/nVar;
+	
+	   int dataPos = 0;
+	   // loop over all loaded variables
+	   for (unsigned int iVar = 0; iVar < nVarCombine; iVar++) {
+	      // For each variable, create a new array and set the number of components to 1
+	      // Each variable is loaded separately. 
+	      dataArrays.push_back( vtkSmartPointer<vtkDoubleArray>::New() );
+	      dataArrays.at(iVar)->SetNumberOfComponents(components->data[iVar]);
+	      // Assign data of the variable to the array.
+	      // (no copy of data!!!)
+	      dataArrays.at(iVar)->SetArray(values->data+dataPos, sizePerVar*components->data[iVar], 1);
+	      dataPos += sizePerVar * components->data[iVar];
+	      // set name of variable
+	      char tmps[255];
+	      strncpy(tmps, varnames->data+iVar*255, 255);
+	      std::string varname(tmps);
+	      varname = varname.substr(0,varname.find(" "));
+	      std::cout << "Varname " << varname << "\n";
+	      dataArrays.at(iVar)->SetName(varname.c_str());
+	      // insert array of variable into the output
+	      output->GetPointData()->AddArray(dataArrays.at(iVar));
+		 }
    }
 }
 
@@ -652,6 +790,47 @@ int visuReader::FillOutputPortInformation(
 {
    info->Set(vtkDataObject::DATA_TYPE_NAME(), "vtkMultiBlockDataSet");
    return 1;
+}
+
+void visuReader::DisableAllVarParticleArrays()
+{
+   this->VarParticleDataArraySelection->DisableAllArrays();
+}
+void visuReader::EnableAllVarParticleArrays()
+{
+   this->VarParticleDataArraySelection->EnableAllArrays();
+}
+int visuReader::GetNumberOfVarParticleArrays()
+{
+   return this->VarParticleDataArraySelection->GetNumberOfArrays();
+}
+
+const char* visuReader::GetVarParticleArrayName(int index)
+{
+   if (index >= ( int ) this->GetNumberOfVarParticleArrays() || index < 0)
+   {
+      return NULL;
+   }
+   else
+   {
+      return this->VarParticleDataArraySelection->GetArrayName(index);
+   }
+}
+int visuReader::GetVarParticleArrayStatus(const char* name)
+{
+   return this->VarParticleDataArraySelection->ArrayIsEnabled(name);
+}
+
+void visuReader::SetVarParticleArrayStatus(const char* name, int status)
+{
+   if (status)
+   {
+      this->VarParticleDataArraySelection->EnableArray(name);
+   }
+   else
+   {
+      this->VarParticleDataArraySelection->DisableArray(name);
+   }
 }
 
 

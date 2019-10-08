@@ -52,6 +52,10 @@ INTERFACE WriteVarnamesToVTK_array
 END INTERFACE
 
 #if USE_PARTICLES
+INTERFACE WritePartDataToVTK_array
+  MODULE PROCEDURE WritePartDataToVTK_array
+END INTERFACE
+
 INTERFACE WriteDataToVTKPart
   MODULE PROCEDURE WriteDataToVTKPart
 END INTERFACE
@@ -64,6 +68,7 @@ PUBLIC::WriteDataToVTK_array
 PUBLIC::WriteVarnamesToVTK_array
 #if USE_PARTICLES
 PUBLIC::WriteDataToVTKPart
+PUBLIC::WritePartDataToVTK_array
 #endif
 PUBLIC::CARRAY
 !===================================================================================================================================
@@ -549,6 +554,7 @@ IF (nVarVisu.GT.0) THEN
   varnames_out%data = C_LOC(VarNames_loc(1,1))
 
   DO iVar=1,nVarTotal
+    WRITE(*,*) iVar, mapVisu(iVar)
     IF (mapVisu(iVar).GT.0) THEN
       DO i=1,255
         VarNames_loc(i,mapVisu(iVar)) = VarNamesTotal(iVar)(i:i)
@@ -560,6 +566,65 @@ END IF
 END SUBROUTINE WriteVarnamesToVTK_array
 
 #if USE_PARTICLES
+SUBROUTINE WritePartDataToVTK_array(nParts_out,nVar_out,coords_out,values_out,nodeids_out,&
+                                      coords, values,nodeids) 
+USE ISO_C_BINDING
+!===================================================================================================================================
+! Subroutine to write 3D point data to VTK format
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                :: nParts_out                    ! Number of nodal output variables
+INTEGER,INTENT(IN)                :: nVar_out
+REAL(C_DOUBLE),POINTER,INTENT(IN) :: coords(:,:)
+REAL(C_DOUBLE),POINTER,INTENT(IN) :: values(:,:)
+INTEGER(C_INT),POINTER,INTENT(IN) :: nodeids(:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+TYPE (CARRAY), INTENT(INOUT)      :: coords_out
+TYPE (CARRAY), INTENT(INOUT)      :: values_out
+TYPE (CARRAY), INTENT(INOUT)      :: nodeids_out
+
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                           :: iPart 
+INTEGER                           :: NodeID
+!===================================================================================================================================
+IF(nVar_out.EQ.0)THEN
+  coords_out%len=0
+  RETURN
+END IF
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PARTICEL DATA TO VTX XML BINARY (VTU) ARRAY..."
+
+! values and coords are already in the correct structure of VTK/Paraview 
+
+! set the sizes of the arrays
+coords_out%len = 3*nParts_Out
+values_out%len = nVar_out*nParts_out
+nodeids_out%len = nParts_Out
+
+! assign data to the arrays (no copy!!!)
+
+coords_out%data = C_LOC(Coords(1,1))
+values_out%data = C_LOC(values(1,1))
+nodeids_out%data = C_LOC(nodeids(1))
+
+! components_out%len = nPartVarCombine
+
+! create connectivity
+NodeID = 0
+DO iPart=1,nParts_out
+  NodeID=NodeID+1
+  nodeids(NodeID)=NodeID
+END DO ! iPart=1,nParts_out
+
+SWRITE(UNIT_stdOut,'(A)')" Done!"
+END SUBROUTINE WritePartDataToVTK_array
+
 SUBROUTINE WriteDataToVTKPart(nParts,nVal,Coord,Value,FileString,VarNamePartVisu,VarNamePartCombine,VarNamePartCombineLen,&
     nGlobalParts)
 !===================================================================================================================================
@@ -681,7 +746,7 @@ IF(MPIRoot)THEN
   ! Write leading data underscore
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 END IF
- 
+
 #if USE_MPI
 IF(MPIroot)THEN
   !ALLOCATE buffer for Root

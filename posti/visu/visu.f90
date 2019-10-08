@@ -57,12 +57,15 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE visu_getVarNamesAndFileType(statefile,meshfile,varnames_loc, bcnames_loc)
 USE MOD_Globals
-USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
-USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
-USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
-USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID
-USE MOD_StringTools    ,ONLY: STRICMP
-USE MOD_EOS_Posti_Vars ,ONLY: DepNames,nVarDepEOS
+USE MOD_Visu_Vars         ,ONLY: FileType,VarNamesHDF5,nBCNamesAll, PD, PDE
+USE MOD_HDF5_Input        ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
+USE MOD_HDF5_Input        ,ONLY: DatasetExists,HSize,nDims,ReadArray
+USE MOD_IO_HDF5           ,ONLY: GetDatasetNamesInGroup,File_ID
+USE MOD_StringTools       ,ONLY: STRICMP
+USE MOD_EOS_Posti_Vars    ,ONLY: DepNames,nVarDepEOS
+#if USE_PARTICLES
+USE MOD_Posti_Part_Tools  ,ONLY: InitPartState
+#endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
@@ -136,6 +139,14 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
         CALL GetVarNames("VarNamesAdd",varnames_tmp,VarNamesExist)
       ELSE IF(STRICMP(datasetNames(i), "FieldData")) THEN
         CALL GetVarNames("VarNamesAddField",varnames_tmp,VarNamesExist)
+#if USE_PARTICLES
+      ELSE IF(STRICMP(datasetNames(i), "PartData")) THEN
+        CALL InitPartState(datasetNames(i),PD)
+        CYCLE
+      ELSE IF(STRICMP(datasetNames(i), "ErosionData")) THEN
+        CALL InitPartState(datasetNames(i),PDE)
+        CYCLE
+#endif
       ELSE
         CALL GetDataSize(File_ID,TRIM(datasetNames(i)),dims,HSize)
         IF ((dims.NE.5).AND.(dims.NE.2)) CYCLE ! Do not add datasets to the list that can not contain elementwise or field data
@@ -220,9 +231,6 @@ USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
 USE MOD_StringTools        ,ONLY: INTTOSTR
-#if USE_PARTICLES
-USE MOD_Posti_Part_Tools   ,ONLY: InitPartState
-#endif
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
@@ -230,10 +238,6 @@ CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 ! LOCAL
 INTEGER                          :: nElems_State
 CHARACTER(LEN=255)               :: NodeType_State, cwd
-#if USE_PARTICLES
-CHARACTER(LEN=255)               :: DataArray 
-LOGICAL                          :: readIni
-#endif
 !===================================================================================================================================
 IF (STRICMP(fileType,'Mesh')) THEN
     CALL CollectiveStop(__STAMP__, &
@@ -251,7 +255,9 @@ CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
 ! read options from posti parameter file
 CALL prms%read_options(postifile)
 NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
+#if USE_PARTICLES
 VisuPart          = GETLOGICAL("VisuPart")
+#endif
 
 ! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
 Meshfile          =  GETSTR("MeshFile",MeshFile_state)
@@ -393,6 +399,9 @@ USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
 USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
 USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
+#if USE_PARTICLES
+USE MOD_Posti_Part_Tools    ,ONLY: ReadPartStateFile
+#endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN
@@ -402,6 +411,11 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
+#if USE_PARTICLES
+CHARACTER(LEN=255)               :: DataArray
+LOGICAL                          :: datapartFound=.FALSE.
+LOGICAL                          :: dataerosionFound=.FALSE.
+#endif
 !===================================================================================================================================
 
 !**********************************************************************************************
@@ -502,7 +516,9 @@ CALL prms%CreateLogicalOption("Avg2DHDF5Output" , "Write averaged solution to HD
 CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL prms%CreateLogicalOption("DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
 CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
+#if USE_PARTICLES
 CALL prms%CreateLogicalOption('VisuPart'        , "Visualize particles",".FALSE.")
+#endif
 
 IF (doPrintHelp.GT.0) THEN
   CALL PrintDefaultParameterFile(doPrintHelp.EQ.2,statefile) !statefile string conatains --help etc!
@@ -605,6 +621,18 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   ! convert generic data to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     CALL ConvertToVisu_GenericData(statefile)
+#if USE_PARTICLES
+    DataArray='PartData'
+    CALL ReadPartStateFile(statefile,DataArray,PD,datapartFound)
+    DataArray='ErosionData'
+    CALL ReadPartStateFile(statefile,DataArray,PDE,dataerosionFound)
+    IF(dataerosionFound.AND.dataerosionFound)THEN
+      SDEALLOCATE(PartNamesAll)
+      ALLOCATE(PartnamesAll(1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5))
+      PartnamesAll(1:PD%nPartVar_HDF5)=PD%VarNamesPart_HDF5
+      PartnamesAll(PD%nPartVar_HDF5+1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5)=PDE%VarNamesPart_HDF5
+    END IF
+#endif
   END IF
 
   IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
@@ -660,7 +688,10 @@ SUBROUTINE FinalizeVisu()
 USE MOD_Globals
 USE MOD_Visu_Vars
 USE MOD_DG_Vars
-USE MOD_Mesh_Vars, ONLY: Elem_xGP
+USE MOD_Mesh_Vars          ,ONLY: Elem_xGP
+#if USE_PARTICLES
+USE MOD_Posti_Part_Tools   ,ONLY: FinalizeReadPartStateFile
+#endif
 IMPLICIT NONE
 !===================================================================================================================================
 SWRITE (*,*) "VISU FINALIZE"
@@ -709,18 +740,9 @@ SDEALLOCATE(U)
 SDEALLOCATE(Elem_xGP)
 
 #if USE_PARTICLES
-SDEALLOCATE(PD%VarNamePartVisu)
-SDEALLOCATE(PD%VarNamePartCombine)
-SDEALLOCATE(PD%VarNamePartCombineLen)
-SDEALLOCATE(PD%VarNamesPart_HDF5)
-SDEALLOCATE(PD%PartData_HDF5)
-SDEALLOCATE(PD%VisualizePart)
-SDEALLOCATE(PDE%VarNamePartVisu)
-SDEALLOCATE(PDE%VarNamePartCombine)
-SDEALLOCATE(PDE%VarNamePartCombineLen)
-SDEALLOCATE(PDE%VarNamesPart_HDF5)
-SDEALLOCATE(PDE%PartData_HDF5)
-SDEALLOCATE(PDE%VisualizePart)
+CALL FinalizeReadPartStateFile(PD)
+CALL FinalizeReadPartStateFile(PDE)
+SDEALLOCATE(PartNamesAll)
 #endif
 END SUBROUTINE FinalizeVisu
 

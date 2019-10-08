@@ -50,8 +50,8 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
       FORCE)
    ENDIF()
 	 # Find ospray::ospray
-	 FIND_PACKAGE(ospray REQUIRED)
-	 target_link_libraries(${client_target} ospray::ospray)
+	 #FIND_PACKAGE(ospray REQUIRED)
+	 #target_link_libraries(${client_target} ospray::ospray)
 	 # Finally compiles against ParaView 5.6.2 on Arch Linux
    SET(POSTI_PV_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
    IF(POSTI_PV_SUFFIX STREQUAL "")

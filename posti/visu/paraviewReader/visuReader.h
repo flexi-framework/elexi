@@ -81,6 +81,15 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       void DisableAllBCArrays();
       void EnableAllBCArrays();
 
+//#ifdef PARTICLE
+      int GetNumberOfVarParticleArrays();
+      const char* GetVarParticleArrayName(int index);
+      int GetVarParticleArrayStatus(const char* name);
+      void SetVarParticleArrayStatus(const char* name, int status);
+      void DisableAllVarParticleArrays();
+      void EnableAllVarParticleArrays();
+//#endif
+
       // MPI
       void SetController(vtkMultiProcessController *);
       vtkGetObjectMacro(Controller, vtkMultiProcessController);
@@ -103,15 +112,26 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       struct DoubleARRAY valuesSurf_FV;
       struct IntARRAY  nodeidsSurf_FV;
       struct CharARRAY varnamesSurf;
+//#ifdef PARTICLE
+      // struct to exchange particle arrays between fortran and c
+      struct DoubleARRAY coords_Part;
+      struct DoubleARRAY values_Part;
+      struct IntARRAY  nodeids_Part;
+      struct CharARRAY varnames_Part;
+      struct IntARRAY components_Part;
+//#endif
 
       int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
       int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
 
       void InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
             struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames);
+			virtual void InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, struct DoubleARRAY* coords,
+            struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components);
 
       vtkDataArraySelection* VarDataArraySelection;
       vtkDataArraySelection* BCDataArraySelection;
+      vtkDataArraySelection* VarParticleDataArraySelection;
 
       // The observer to modify this object when the array selections are modified.
       vtkCallbackCommand* SelectionObserver;
@@ -131,6 +151,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       char* MeshFileOverwrite;
       std::vector<bool> VarNames_selected;
       std::vector<bool> BCNames_selected;
+      std::vector<bool> PartNames_selected;
       int NumProcesses;
       int ProcessId;
 
@@ -148,6 +169,9 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       ~visuReader();
 
       virtual int FillOutputPortInformation(int port, vtkInformation* info);
+			
+			std::vector<vtkSmartPointer<vtkUnstructuredGrid> > Blocks;
+
    private:
       // MPI
       vtkMultiProcessController *Controller;

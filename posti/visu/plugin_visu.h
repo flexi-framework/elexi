@@ -21,7 +21,8 @@
 
 extern "C" {
   extern void __mod_visu_cwrapper_MOD_visu_requestinformation(int* mpi_comm_IN, 
-        int* str_len, const char* state_file, int* str_len_mesh, const char* mesh_file,  struct CharARRAY* varnames, struct CharARRAY* bcnames);
+        int* str_len, const char* state_file, int* str_len_mesh, const char* mesh_file,  struct CharARRAY* varnames, struct CharARRAY* bcnames,
+				struct CharARRAY* partnames);
 }
 
 extern "C" {
@@ -36,7 +37,9 @@ extern "C" {
         struct DoubleARRAY* coordsSurf_out,  struct DoubleARRAY* valuesSurf_out, 
         struct IntARRAY* nodeidsSurf_out,    struct DoubleARRAY* coordsSurfFV_out,
         struct DoubleARRAY* valuesSurfFV_out,struct IntARRAY* nodeidsSurfFV_out,
-        struct CharARRAY* varnamesSurf_out);
+        struct CharARRAY* varnamesSurf_out, struct DoubleARRAY* coordsPart_out,
+				struct DoubleARRAY* valuesPart_out, struct IntARRAY* nodeidsPart_out,
+				struct CharARRAY* varnamesPart_out, struct IntARRAY* componentsPart_out);
 }
 
 extern "C" {

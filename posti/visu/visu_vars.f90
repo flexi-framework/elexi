@@ -171,21 +171,25 @@ REAL,ALLOCATABLE                  :: Vdm_FVToVisu(:,:)
 ! Particles
 ! ==============================================================================================================================
 LOGICAL                           :: VisuPart                    !< Flag indicating if the simulation was run with particles
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: PartnamesAll(:)          !< all available varnames (state file + dependent vars + generic)
 TYPE tVisuParticle
   INTEGER                         :: nGlobalParts
-  INTEGER                         :: nLocalParts
+  INTEGER                         :: nLocalParts=-1
   INTEGER(KIND=4)                 :: nTotalParts_HDF5
   INTEGER                         :: nPartVar_HDF5
   INTEGER                         :: nPartVar_Visu
   CHARACTER(LEN=255),ALLOCATABLE  :: VarNamesPart_HDF5(:)
   INTEGER                         :: offsetPart
   REAL,ALLOCATABLE                :: PartData_HDF5(:,:)
-  LOGICAL,ALLOCATABLE             :: VisualizePart(:)
-  INTEGER                         :: nPart_Visu
+  INTEGER                         :: nPart_Visu=0
+  CHARACTER(LEN=255),ALLOCATABLE  :: VarNamePartDummy(:)
   CHARACTER(LEN=255),ALLOCATABLE  :: VarNamePartVisu(:)
   INTEGER,ALLOCATABLE             :: VarNamePartCombine(:)
   INTEGER,ALLOCATABLE             :: VarNamePartCombineLen(:)
-!  INTEGER                         :: SpeciesID
+  INTEGER,ALLOCATABLE             :: mapAllVarsToVisuVars(:)
+  REAL(C_DOUBLE),POINTER          :: Part_visu(:,:)
+  REAL(C_DOUBLE),POINTER          :: Part_Pos_visu(:,:)
+  INTEGER(C_INT),POINTER          :: PartIDs_visu(:)
 END TYPE tVisuParticle
 
 TYPE(tVisuParticle)               :: PD

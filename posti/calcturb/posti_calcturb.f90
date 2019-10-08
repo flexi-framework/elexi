@@ -319,6 +319,30 @@ DO iArg=1+skipArgs,nArgs
                 ALLOCATE(EpsilonFin   (0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
                 EpsilonFin   = 0.
 
+                ! Calculate dissipation of mean flow
+                DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
+                    ! Density
+                    rho            = Umean(1,i,j,k,iElem)
+
+                    ! Get gradients
+                    ! Get fluctuation of gradients. Linear operation, so we can operate on gradients
+                    GradVel(1:3,1) = gradUMeanx(2:4,i,j,k,iElem)
+                    GradVel(1:3,2) = gradUMeany(2:4,i,j,k,iElem)
+                    GradVel(1:3,3) = gradUMeanz(2:4,i,j,k,iElem)
+
+                    ! compute tensor of velocity gradients
+                    S              = 0.5*(Gradvel+TRANSPOSE(GradVel))
+
+                    !< epsilon = 2*nu*<s_ij s_ij>
+                    eps1        = 0.
+                    DO p = 1,3; DO q = 1,3
+                        eps1   = eps1 + 2*mu0/rho * S(p,q)*S(p,q)
+                    END DO; END DO
+
+                    EpsilonMean(i,j,k,iElem) = eps1
+
+                END DO; END DO; END DO; END DO
+
                 SWRITE(UNIT_stdOut,'(A)') ' PROCESSING MEAN VALUES DONE'
                 SWRITE(UNIT_stdOut,'(132("-"))')
             ELSE
@@ -327,10 +351,14 @@ DO iArg=1+skipArgs,nArgs
                 CALL ReadStateFile(Parameterfile,Statefile,ArrayName='DG_Solution')
 
                 DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
+                    ! Density
+                    rho            = U(1,i,j,k,iElem)
+
                     ! Get fluctuation of gradients. Linear operation, so we can operate on gradients
-                    GradVel(1:3,1) = GradUx(2:4,i,j,k,iElem) - gradUMeanx(2:4,i,j,k,iElem)
-                    GradVel(1:3,2) = GradUy(2:4,i,j,k,iElem) - gradUMeany(2:4,i,j,k,iElem)
-                    GradVel(1:3,3) = GradUz(2:4,i,j,k,iElem) - gradUMeanz(2:4,i,j,k,iElem)
+                    !--> Use Eps0 = EpsMean + EpsFluc instead
+                    GradVel(1:3,1) = GradUx(2:4,i,j,k,iElem) !- gradUMeanx(2:4,i,j,k,iElem)
+                    GradVel(1:3,2) = GradUy(2:4,i,j,k,iElem) !- gradUMeany(2:4,i,j,k,iElem)
+                    GradVel(1:3,3) = GradUz(2:4,i,j,k,iElem) !- gradUMeanz(2:4,i,j,k,iElem)
 
                     ! compute tensor of velocity gradients
                     S              = 0.5*(Gradvel+TRANSPOSE(GradVel))
@@ -338,7 +366,7 @@ DO iArg=1+skipArgs,nArgs
                     !< epsilon = 2*nu*<s_ij s_ij>
                     eps1        = 0.
                     DO p = 1,3; DO q = 1,3
-                        eps1   = eps1  +S(p,q)*S(p,q)
+                        eps1   = eps1 + 2*mu0/rho * S(p,q)*S(p,q)
                     END DO; END DO
 
                     EpsilonFluc(i,j,k,iElem) = eps1
@@ -372,7 +400,7 @@ DO iArg=1+skipArgs,nArgs
 !                    IF(ALMOSTZERO(TKE(i,j,k,iElem))) THEN
 !                        EpsilonFin(i,j,k,iElem) = 0.
 !                    ELSE
-                        EpsilonFin(i,j,k,iElem) = EpsilonSum(i,j,k,iElem)
+                        EpsilonFin(i,j,k,iElem) = EpsilonSum(i,j,k,iElem) - EpsilonMean(i,j,k,iElem)
 !                    END IF
                 END DO; END DO; END DO; END DO
 
@@ -380,10 +408,10 @@ DO iArg=1+skipArgs,nArgs
                 USolution(1:5,:,:,:,:)     = UMean(:,:,:,:,:)
                 USolution(6  ,:,:,:,:)     = TKE  (  :,:,:,:)
 
-                ! Exact Solution eps1
+                ! Exact Solution eps1, mu0 = 0.03, rho =  2
 !                DO iElem=1,nElems; DO k=0,ZDIM(nCalc);  DO j=0,nCalc; DO i=0,nCalc
-!                    USolution(6  ,i,j,k,iElem) = (9.*PP_Pi**2.*cos(PP_Pi*(Elem_xGP(1,i,j,k,iElem) + Elem_xGP(2,i,j,k,iElem) + &
-!                                                                         Elem_xGP(3,i,j,k,iElem)))**2.)/400
+!                    USolution(6  ,i,j,k,iElem) = (27.*PP_Pi**2.*cos(PP_Pi*(Elem_xGP(1,i,j,k,iElem) + Elem_xGP(2,i,j,k,iElem) + &
+!                                                                         Elem_xGP(3,i,j,k,iElem)))**2.)/40000
 !                END DO; END DO; END DO; END DO
 
                 USolution(7  ,:,:,:,:)     = EpsilonFin

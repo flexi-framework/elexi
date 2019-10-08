@@ -68,13 +68,15 @@ IMPLICIT NONE
 INTEGER               :: i,NbrOfParticle,iInit,insertParticles
 !===================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(A)') ' Initial particle inserting... '
+SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING... '
 
 ! Update next free position in particle array to get insertion position
 CALL UpdateNextFreePosition()
 
-! FLEXI gained restart capability from pure fluid solution
-IF (.NOT.DoRestart) THEN
+! FLEXI gained restart capability from pure fluid solution. Do initial particle inserting only if we are not restarting or if there
+! are no particles present in the current file
+IF (.NOT.DoRestart .OR. (PDM%ParticleVecLength.EQ.0)) THEN
   ! for the case of particle insertion per time, the inserted particle number for the current time must
   ! be updated. Otherwise, at the first timestep after restart, these particles will be inserted again
   ! Do insanity check of max. particle number compared to the number that is to be inserted for certain insertion types
@@ -108,11 +110,8 @@ IF (.NOT.DoRestart) THEN
   DO i = 1,nSpecies
     DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
       ! special emission type: constant density in cell, + to be used for init
-      IF (((Species(i)%Init(iInit)%ParticleEmissionType .EQ. 4).OR.(Species(i)%Init(iInit)%ParticleEmissionType .EQ. 6)) .AND. &
-           (Species(i)%Init(iInit)%UseForInit)) THEN
-        CALL abort(__STAMP__,' particle pressure not moved to picasso!')
       ! no special emissiontype to be used
-      ELSE IF (Species(i)%Init(iInit)%UseForInit) THEN
+      IF (Species(i)%Init(iInit)%UseForInit) THEN
         ! initial particle number too large to handle
         IF(Species(i)%Init(iInit)%initialParticleNumber.GT.HUGE(1)) &
           CALL abort(__STAMP__,' Integer for initialParticleNumber too large!')
@@ -129,7 +128,7 @@ IF (.NOT.DoRestart) THEN
         SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle velocities for species ',i,' ... '
         CALL SetParticleVelocity(i,iInit,NbrOfParticle)
         ! give the particles their correct (species) mass
-        SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle and mass for species ',i,' ... '
+        SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle mass for species ',i,' ... '
         CALL SetParticleMass(i,NbrOfParticle)
         ! update number of particles on proc and find next free position in particle array
         PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfParticle
@@ -144,7 +143,8 @@ DO i = 1,PDM%ParticleVecLength
     PEM%lastElement(i) = PEM%Element(i)
 END DO
 
-SWRITE(UNIT_stdOut,'(A)') ' ...DONE '
+SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING DONE '
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitializeParticleEmission
 
@@ -432,7 +432,7 @@ INTEGER,ALLOCATABLE                      :: PartFoundInProc(:,:) ! 1 proc id, 2 
 
 ! emission group communicator for the current iInit
 #if USE_MPI
-InitGroup=Species(FractNbr)%Init(iInit)%InitCOMM
+InitGroup = Species(FractNbr)%Init(iInit)%InitCOMM
 IF(PartMPI%InitGroup(InitGroup)%COMM.EQ.MPI_COMM_NULL) THEN
   NbrofParticle=0
   RETURN
@@ -467,7 +467,7 @@ ELSE
 END IF
 
 ! communication
-IF(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'circle') nChunks=1
+IF(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'circle') nChunks = 1
 
 ! Sending / Positioning mode. Get number of particles to be positioned on current proc. Only do more if MPIRoot or all procs in
 ! InitGroup can position

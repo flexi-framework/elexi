@@ -250,9 +250,9 @@ END SUBROUTINE CreateOption
 !> Create a new integer option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 #if USE_PARTICLES
-SUBROUTINE CreateIntOption(this, name, description, value, multiple, numberedmulti) 
+SUBROUTINE CreateIntOption(this, name, description, value, multiple, numberedmulti)
 #else
-SUBROUTINE CreateIntOption(this, name, description, value, multiple) 
+SUBROUTINE CreateIntOption(this, name, description, value, multiple)
 #endif
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
@@ -279,9 +279,9 @@ END SUBROUTINE CreateIntOption
 !> Create a new integer option with a optional string representation. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 #if USE_PARTICLES
-SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple, numberedmulti) 
+SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple, numberedmulti)
 #else
-SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple) 
+SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple)
 #endif
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
@@ -308,9 +308,9 @@ END SUBROUTINE CreateIntFromStringOption
 !> Create a new logical option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 #if USE_PARTICLES
-SUBROUTINE CreateLogicalOption(this, name, description, value, multiple, numberedmulti) 
+SUBROUTINE CreateLogicalOption(this, name, description, value, multiple, numberedmulti)
 #else
-SUBROUTINE CreateLogicalOption(this, name, description, value, multiple) 
+SUBROUTINE CreateLogicalOption(this, name, description, value, multiple)
 #endif
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
@@ -337,9 +337,9 @@ END SUBROUTINE CreateLogicalOption
 !> Create a new real option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 #if USE_PARTICLES
-SUBROUTINE CreateRealOption(this, name, description, value, multiple, numberedmulti) 
+SUBROUTINE CreateRealOption(this, name, description, value, multiple, numberedmulti)
 #else
-SUBROUTINE CreateRealOption(this, name, description, value, multiple) 
+SUBROUTINE CreateRealOption(this, name, description, value, multiple)
 #endif
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
@@ -368,7 +368,7 @@ END SUBROUTINE CreateRealOption
 #if USE_PARTICLES
 SUBROUTINE CreateStringOption(this, name, description, value, multiple, numberedmulti)
 #else
-SUBROUTINE CreateStringOption(this, name, description, value, multiple) 
+SUBROUTINE CreateStringOption(this, name, description, value, multiple)
 #endif
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
@@ -397,7 +397,7 @@ END SUBROUTINE CreateStringOption
 #if USE_PARTICLES
 SUBROUTINE CreateIntArrayOption(this, name, description, value, multiple, numberedmulti)
 #else
-SUBROUTINE CreateIntArrayOption(this, name, description, value, multiple) 
+SUBROUTINE CreateIntArrayOption(this, name, description, value, multiple)
 #endif
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
@@ -424,9 +424,9 @@ END SUBROUTINE CreateIntArrayOption
 !> Create a new logical array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 #if USE_PARTICLES
-SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple, numberedmulti) 
+SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple, numberedmulti)
 #else
-SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple) 
+SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple)
 #endif
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
@@ -455,7 +455,7 @@ END SUBROUTINE CreateLogicalArrayOption
 #if USE_PARTICLES
 SUBROUTINE CreateRealArrayOption(this, name, description, value, multiple, numberedmulti)
 #else
-SUBROUTINE CreateRealArrayOption(this, name, description, value, multiple) 
+SUBROUTINE CreateRealArrayOption(this, name, description, value, multiple)
 #endif
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
@@ -815,6 +815,13 @@ SWRITE(UNIT_StdOut,'(100("!"))')
 SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
 DO WHILE (associated(current))
   IF (.NOT.current%opt%isRemoved) THEN
+#if USE_PARTICLES
+    ! Do not output the dummy string for numberedmulti
+    IF (current%opt%numberedmulti) THEN
+      current => current%next
+      CYCLE
+    END IF
+#endif
     SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
   END IF
   current => current%next

@@ -219,9 +219,6 @@ CALL InitFV_Basis()
 #endif
 CALL InitMortar()
 CALL InitOutput()
-#if USE_PARTICLES
-CALL InitParticleErosion
-#endif
 #if USE_LOADBALANCE
 CALL InitLoadBalance()
 #endif
@@ -253,12 +250,15 @@ CALL InitSponge()
 CALL InitTimeDisc()
 CALL InitAnalyze()
 CALL InitRecordpoints()
+#if USE_PARTICLES
+CALL InitErosionPoints()
+#endif
 CALL Restart()
 #if USE_PARTICLES
+CALL InitParticleErosion
 CALL InitParticles()
-CALL InitErosionPoints()
 CALL RestartParticleBoundarySampling()
-CALL ParticleRestart()
+!CALL ParticleRestart()
 #endif /*PARTICLES*/
 CALL IgnoredParameters()
 

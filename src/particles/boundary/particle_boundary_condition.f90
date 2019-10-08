@@ -726,6 +726,7 @@ REAL                              :: PartFaceAngle,PartFaceAngleDeg,PartFaceAngl
 REAL                              :: v_magnitude,v_norm(3),v_tang(3)
 REAL                              :: PartTrajectory_old(3)
 REAL                              :: PartTrajectoryTang(3),PartTrajectoryNorm(3)
+REAL                              :: PartTrajectory_rescale
 REAL                              :: eps_n, eps_t, lengthPartTrajectory_old
 ! Bons particle rebound model
 REAL                              :: E_eff
@@ -897,10 +898,10 @@ SELECT CASE(WallCoeffModel)
 
     ! Normal coefficient of restitution
     IF (w .LT. w_crit) THEN
-      eps_n = 1/SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *(sigma_y**2. / (Species(PartSpecies(PartID))%DensityIC &
-                                                                         *  Species(PartSpecies(PartID))%YoungIC   ))**0.5
+      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *(sigma_y**2. / (Species(PartSpecies(PartID))%DensityIC &
+                                                                          *  Species(PartSpecies(PartID))%YoungIC   ))**0.5
     ELSE
-      eps_n = 1;
+      eps_n = 1.;
     END IF
 
     !> Do not account for adhesion for now <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -909,8 +910,15 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    eps_t   = 1 - FieldAtParticle(PartID,1) / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * (eps_n * &
-                                              SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))) * (1/(eps_n)+1)*COS(PartFaceAngle)**2.
+    eps_t   = 1. - FieldAtParticle(PartID,1) / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * (eps_n * &
+                                               SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))) * (1/(eps_n)+1)*COS(PartFaceAngle)**2.
+
+  ! Fong, W.; Amili, O.; Coletti, F.: Velocity and spatial distribution of intertial particles in a turbulent channel flow
+  ! / J. FluidMech 872, 2019
+  CASE('Fong2019')
+    ! Reuse YieldCoeff to modify the normal velocity, keep tangential velocity
+    eps_t   = 1.
+    eps_n   = PartBound%CoR(locBCID)
 
   CASE DEFAULT
       CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')
@@ -972,9 +980,15 @@ PartTrajectory(1:3)     = PartTrajectoryTang(1:3) - PartTrajectoryNorm(1:3)
 ! Save the old lengthPartTrajectory and rescale to new. We can't compute a complete new lengthPartTrajectory as we do not have the
 ! current LSERK time step here
 lengthPartTrajectory_old= lengthPartTrajectory
-lengthPartTrajectory    = lengthPartTrajectory * SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                                               +      PartTrajectory(2)*PartTrajectory(2) &
-                                               +      PartTrajectory(3)*PartTrajectory(3) )
+PartTrajectory_rescale  = SQRT(PartTrajectory(1)*PartTrajectory(1) &
+                          +    PartTrajectory(2)*PartTrajectory(2) &
+                          +    PartTrajectory(3)*PartTrajectory(3) )
+lengthPartTrajectory    = lengthPartTrajectory  *PartTrajectory_rescale
+
+! Rescale the PartTrajectory to uniform length, otherwise we apply the coefficients twice
+PartTrajectory          = PartTrajectory        /PartTrajectory_rescale
+
+! lengthPartTrajectory is coupled to alpha, so use the old value to non-dimensionalize it
 PartState(PartID,1:3)   = LastPartPos(PartID,1:3) + (1-alpha/lengthPartTrajectory_old) * PartTrajectory(1:3) * lengthPartTrajectory
 
 ! compute moved particle || rest of movement
@@ -983,6 +997,7 @@ lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)              
                           +    PartTrajectory(2)*PartTrajectory(2)                        &
                           +    PartTrajectory(3)*PartTrajectory(3) )
 PartTrajectory          = PartTrajectory/lengthPartTrajectory
+
 
 ! compute new particle velocity, modified with coefficents of restitution
 PartState(PartID,4:6)= eps_t * v_tang - eps_n * v_norm + WallVelo

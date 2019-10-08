@@ -1,2 +1,2 @@
-    TIME     , PartNum     ,PartPosX     ,PartPosY     ,PartPosZ     ,PartVelX     ,PartVelY     ,PartVelZ     
+    TIME     , PartNum     ,PartPosX     ,PartPosY     ,PartPosZ     ,PartVelX     ,PartVelY     ,PartVelZ     ,PartElem     
      0.79999999999993E+00,           1,     0.22733551794114E+00,     0.10399999999902E+01,     0.50000000000000E+00,     0.44466448205587E+00,    -0.23999999999990E+01,     0.00000000000000E+00,           4 

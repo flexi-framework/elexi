@@ -201,6 +201,10 @@ CALL prms%CreateRealOption(     'Part-Boundary[$]-Young'  &
 CALL prms%CreateRealOption(     'Part-Boundary[$]-Poisson'  &
                                 , "Poisson ratio defining relation of transverse to axial strain", '0.', numberedmulti=.TRUE.)
 
+
+! Fong coefficient of restitution
+CALL prms%CreateRealOption(     'Part-Boundary[$]-CoR'  &
+                                , "Coefficent of restitution for normal velocity component", '0.', numberedmulti=.TRUE.)
 !===================================================================================================================================
 ! > Random Walk (Subgroup of Part-Species)
 ! >>> Values in this section only apply for turbulence models providing turbulent kinetic energy and a turbulent length/time scale
@@ -244,7 +248,9 @@ CALL prms%CreateStringOption(   'Part-Boundary[$]-WallModel' &
                                   'coeffRes - Coefficient of restitution','perfRef', numberedmulti=.TRUE.)
 CALL prms%CreateStringOption('Part-Boundary[$]-WallCoeffModel' &
                                 , 'Coefficients to be used. Options:.\n'//&
-                                  'Tabakoff1981','Tabakoff1981', numberedmulti=.TRUE.)
+                                  'Tabakoff1981 \n'//&
+                                  'Bons2017 \n'    //&
+                                  'Fong2019','Tabakoff1981', numberedmulti=.TRUE.)
 
 ! Ambient condition=================================================================================================================
 CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientCondition'  &
@@ -277,10 +283,11 @@ USE MOD_Globals
 USE Mod_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_IO_HDF5,                    ONLY: AddToElemData
-USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
 USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
 USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Restart,           ONLY: ParticleRestart
+USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
 #endif
@@ -309,6 +316,10 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES ...'
 
 Call InitParticleGlobals
 CALL InitializeVariables(ManualTimeStep_opt)
+
+! Restart particles here, otherwise we can not know if we need to have an initial emission
+CALL ParticleRestart()
+! Initialize emission. If no particles are present, assume restart from pure fluid and perform initial inserting
 CALL InitializeParticleEmission()
 
 ! Initialize surface sampling
@@ -317,7 +328,7 @@ IF (WriteMacroSurfaceValues) THEN
 END IF
 
 #if USE_MPI
-! has to be called AFTER InitializeVariables
+! has to be called AFTER InitializeVariables because we need to read the parameter file to know the CommSize
 CALL InitParticleCommSize()
 #endif
 
@@ -460,9 +471,9 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%HighVeloThreshold     = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-HighVeloThreshold','0.')
 
     !--> Bons particle rebound model
-    Species(iSpec)%YoungIC               = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-YoungIC')
-    Species(iSpec)%PoissonIC             = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-PoissonIC')
-    Species(iSpec)%YieldCoeff            = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-YieldCoeff')
+    Species(iSpec)%YoungIC               = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-YoungIC','0.')
+    Species(iSpec)%PoissonIC             = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-PoissonIC','0.')
+    Species(iSpec)%YieldCoeff            = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-YieldCoeff','0.')
 
     !--> Random Walk model
     Species(iSpec)%RWModel               = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-RWModel','none'))
@@ -664,6 +675,9 @@ ALLOCATE(PartBound%AmbientDens        (1:nPartBound))
 ALLOCATE(PartBound%Young              (1:nPartBound))
 ALLOCATE(PartBound%Poisson            (1:nPartBound))
 
+! Fong coefficent of restitution
+ALLOCATE(PartBound%CoR                (1:nPartBound))
+
 ! Loop over all particle boundaries and get information
 DO iPartBound=1,nPartBound
   WRITE(UNIT=tmpStr,FMT='(I0)') iPartBound
@@ -697,6 +711,8 @@ DO iPartBound=1,nPartBound
          IF (PartBound%WallCoeffModel(iPartBound).EQ.'Bons2017') THEN
              PartBound%Young(iPartBound)        = GETREAL(     'Part-Boundary'//TRIM(ADJUSTL(tmpStr))//'-Young')
              PartBound%Poisson(iPartBound)      = GETREAL(     'Part-Boundary'//TRIM(ADJUSTL(tmpStr))//'-Poisson')
+        ELSEIF (PartBound%WallCoeffModel(iPartBound).EQ.'Fong2019') THEN
+             PartBound%CoR(iPartBound)          = GETREAL(     'Part-Boundary'//TRIM(ADJUSTL(tmpStr))//'-CoR','1.')
          END IF
      END IF
 
@@ -1116,6 +1132,11 @@ SDEALLOCATE(PartBound%AmbientConditionFix)
 SDEALLOCATE(PartBound%AmbientTemp)
 SDEALLOCATE(PartBound%AmbientVelo)
 SDEALLOCATE(PartBound%AmbientDens)
+SDEALLOCATE(PartBound%WallModel)
+SDEALLOCATE(PartBound%WallCoeffModel)
+SDEALLOCATE(PartBound%Young)
+SDEALLOCATE(PartBound%Poisson)
+SDEALLOCATE(PartBound%CoR)
 SDEALLOCATE(PEM%Element)
 SDEALLOCATE(PEM%lastElement)
 SDEALLOCATE(PEM%pStart)

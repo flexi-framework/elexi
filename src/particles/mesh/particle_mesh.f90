@@ -1953,7 +1953,7 @@ IF(DoRefMapping) THEN
   CALL GetElemToSideDistance(nTotalBCSides,SideOrigin,SideRadius)
   DEALLOCATE( SideOrigin, SideRadius)
 END IF
-SWRITE(UNIT_stdOut,'(A)')' ... DONE!'
+SWRITE(UNIT_stdOut,'(A)')' BUILD ElementBasis DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitFIBGM

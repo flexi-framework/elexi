@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -22,7 +22,7 @@ MODULE MOD_PICInit
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
@@ -74,14 +74,14 @@ CALL prms%CreateRealOption(     'PIC-BGFieldScaling'          , 'Space scaling o
 CALL prms%CreateStringOption(   'PIC-curvedexternalField'     , 'File to curved external field data.','none')
 CALL prms%CreateStringOption(   'PIC-variableexternalField'   , 'File containing the external field CSV table', 'none')
 
-CALL prms%CreateRealArrayOption('PIC-NormVecOfWall'  , 'Normal vector for pushTimeStep', '1. , 0. , 0.')
-CALL prms%CreateIntOption(      'PIC-DeltaType'      , 'Flag ', '1')
-CALL prms%CreateIntOption(      'PIC-DeltaType-N'    , 'Polynomial degree of delta distribution', '1')
-CALL prms%CreateRealArrayOption('PIC-BGMdeltas'      , 'Dimensions of PIC background mesh', '0. , 0. , 0.')
-CALL prms%CreateRealArrayOption('PIC-FactorBGM'      , 'Denominator of PIC-BGMdeltas', '1. , 1. , 1.')
-
-CALL prms%SetSection("PIC Deposition")
-
+!CALL prms%CreateRealArrayOption('PIC-NormVecOfWall'  , 'Normal vector for pushTimeStep', '1. , 0. , 0.')
+!CALL prms%CreateIntOption(      'PIC-DeltaType'      , 'Flag ', '1')
+!CALL prms%CreateIntOption(      'PIC-DeltaType-N'    , 'Polynomial degree of delta distribution', '1')
+!CALL prms%CreateRealArrayOption('PIC-BGMdeltas'      , 'Dimensions of PIC background mesh', '0. , 0. , 0.')
+!CALL prms%CreateRealArrayOption('PIC-FactorBGM'      , 'Denominator of PIC-BGMdeltas', '1. , 1. , 1.')
+!
+!CALL prms%SetSection("PIC Deposition")
+!
 !CALL prms%CreateLogicalOption(  'PIC-DoDeposition'         , 'Switch deposition on/off', '.TRUE.')
 !CALL prms%CreateStringOption(   'PIC-Deposition-Type'      , '(HALOWIKI:)\n'                                                     //&
 !                                                                    'If Deposition-Type=shape_function\n'                        //&

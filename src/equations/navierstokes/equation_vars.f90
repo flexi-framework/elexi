@@ -46,8 +46,13 @@ INTEGER,ALLOCATABLE  :: BCSideID(:,:)  !< array storing side IDs of sides with d
 REAL                 :: s43            !< precomputed 4./3.
 REAL                 :: s23            !< precomputed 2./3.
 
+#if USE_RW
+CHARACTER(LEN=255),DIMENSION(7),PARAMETER :: StrVarNames =&
+  (/ CHARACTER(LEN=255) :: 'Density','MomentumX','MomentumY','MomentumZ','EnergyStagnationDensity','TKE','epsilon'/) !< conservative variable names
+#else
 CHARACTER(LEN=255),DIMENSION(5),PARAMETER :: StrVarNames =&
   (/ CHARACTER(LEN=255) :: 'Density','MomentumX','MomentumY','MomentumZ','EnergyStagnationDensity'/) !< conservative variable names
+#endif
 CHARACTER(LEN=255),DIMENSION(6),PARAMETER :: StrVarNamesPrim=&
   (/ CHARACTER(LEN=255) :: 'Density','VelocityX','VelocityY','VelocityZ','Pressure','Temperature'/) !< primitive variable names
 

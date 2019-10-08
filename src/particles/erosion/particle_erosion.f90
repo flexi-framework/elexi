@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -21,7 +21,7 @@ MODULE MOD_Particle_Erosion
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
@@ -57,10 +57,10 @@ CALL prms%CreateLogicalOption(  'Particles-AnalyzeSurfCollis',      'Output of c
 CALL prms%CreateLogicalOption(  'Particles-ErosionOutlet',          'Flag, if erosion should be tracked on outlet.\n'//&
                                                                     'WARNING: Only takes BC named <outlet> into account.')
 CALL prms%CreateLogicalOption(  'Particles-CalcSurfaceVal',         'Set [T] to activate sampling, analyze and h5 output for'//&
-                                                                    ' surfaces. Therefore either time fraction or iteration'//& 
+                                                                    ' surfaces. Therefore either time fraction or iteration'//&
                                                                     'sampling have to be enabled as well.', '.FALSE.')
 
-CALL prms%CreateIntOption(      'Particles-nSurfSample',            'Define polynomial degree of particle BC sampling. Default:'//& 
+CALL prms%CreateIntOption(      'Particles-nSurfSample',            'Define polynomial degree of particle BC sampling. Default:'//&
                                                                     ' NGeo', '1')
 !CALL prms%CreateIntOption(      'Particles-maxSurfCollisNumber',    'Max. number of collided/swaped particles during Sampling', '0')
 !CALL prms%CreateIntOption(      'Particles-CalcSurfCollis_NbrOfSpecies','Count of Species for wall  collisions (0: all)', '0')
@@ -105,12 +105,12 @@ END IF
 
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE EROSION...'
-  
+
 PartTrackErosion = GETLOGICAL('DoErosion','F')
-  
+
 ! Switch surface macro values flag to .TRUE. for erosion tracking
 IF (PartTrackErosion) WriteMacroSurfaceValues = .TRUE.
-         
+
 ParticleErosionInitIsDone=.TRUE.
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE EROSION DONE!'

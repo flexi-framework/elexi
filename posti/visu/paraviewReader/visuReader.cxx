@@ -491,7 +491,6 @@ int visuReader::RequestData(
 
    __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
 
- 	 if(ProcessId == 0) std::cout << "minusBlock " << minusBlock << " " << std::endl;
 	 int firstBlock=0; 
 	 mb->SetNumberOfBlocks(this->Blocks.size()-minusBlock); // missing -1
 	 for(unsigned int i=0; i<this->Blocks.size()-minusBlock; i++) // missing -1
@@ -501,7 +500,6 @@ int visuReader::RequestData(
 	    mb->SetBlock(i, nthOutput);
 	 }
 
-   std::cout << "firstblock " << firstBlock << " " << std::endl;
    int PartOut=0; 
    mb_Part->SetNumberOfBlocks(this->Blocks.size()-firstBlock);
    for(unsigned int i=firstBlock; i<this->Blocks.size(); i++)
@@ -636,33 +634,22 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
 void visuReader::InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, struct DoubleARRAY* coords,
     struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) {
 
-   std::cout << "insert part data \n";
+   SWRITE("Insert particle data \n");
    // create points(array)
-   vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-
    vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
-   pdata->SetNumberOfComponents(3); // 3D
+	 pdata->SetNumberOfComponents(3); // 3D
+   pdata->SetNumberOfTuples(coords->len/3);
+   // copy coordinates 
+   double* ptr = pdata->GetPointer(0);
+   for (long i = 0; i < coords->len; ++i)
+   {
+      *ptr++ = coords->data[i];
+   }
 
-   // assign the coords-data (loaded by the Posti tool) to the general pdata array 
-   // (no copy of data!!! pdata uses the coords-data array)
-   pdata->SetArray(coords->data, coords->len, 1);
-   // now we use this vtkDouble Array and assign it to the points-array
-   // (again no copy of data!!!)
+	 // create points array to be used for the output
+   vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
    points->SetData(pdata);
-   points->SetNumberOfPoints(coords->len/3);
-   // set the points array to be used for the output
    output->SetPoints(points);
-
-    // second possibiliby for mesh
-    vtkSmartPointer<vtkCellArray> vertices = vtkSmartPointer<vtkCellArray>::New();
-    vtkIdType *vert = vertices->WritePointer(nodeids->len, 2*(nodeids->len));
-    for (vtkIdType i=0; i<nodeids->len; ++i)
-    {
-      vert[2*i] = 1;
-      vert[2*i+1] = i;
-      //vertices->InsertNextCell(vert);
-    }
-    output->SetCells({VTK_VERTEX}, vertices);
 
    // assign the actual data, loaded by the Posti tool, to the output
    std::vector<vtkSmartPointer<vtkDoubleArray> > dataArrays;
@@ -679,24 +666,30 @@ void visuReader::InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, st
 	   int dataPos = 0;
 	   // loop over all loaded variables
 	   for (unsigned int iVar = 0; iVar < nVarCombine; iVar++) {
-	      // For each variable, create a new array and set the number of components to 1
-	      // Each variable is loaded separately. 
-	      dataArrays.push_back( vtkSmartPointer<vtkDoubleArray>::New() );
-	      dataArrays.at(iVar)->SetNumberOfComponents(components->data[iVar]);
-	      // Assign data of the variable to the array.
-	      // (no copy of data!!!)
-	      dataArrays.at(iVar)->SetArray(values->data+dataPos, sizePerVar*components->data[iVar], 1);
-	      dataPos += sizePerVar * components->data[iVar];
-	      // set name of variable
-	      char tmps[255];
-	      strncpy(tmps, varnames->data+iVar*255, 255);
-	      std::string varname(tmps);
-	      varname = varname.substr(0,varname.find(" "));
-	      std::cout << "Varname " << varname << "\n";
-	      dataArrays.at(iVar)->SetName(varname.c_str());
-	      // insert array of variable into the output
-	      output->GetPointData()->AddArray(dataArrays.at(iVar));
-		 }
+		 		vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
+        vdata->SetNumberOfComponents(components->data[iVar]);
+        vdata->SetNumberOfTuples(sizePerVar);
+        // copy coordinates 
+        double* ptr = vdata->GetPointer(0);
+				for (long j = 0; j < sizePerVar; ++j)
+				{
+        	for (long i = 0; i < components->data[iVar]; ++i)
+        	{
+        	   *ptr++ = values->data[dataPos+i+j*nVar];
+//	      			std::cout << "Data " << values->data[dataPos+i+j*nVar] << "\n";
+        	}
+	 			}
+        dataPos += components->data[iVar];
+        // set name of variable
+        char tmps[255];
+        strncpy(tmps, varnames->data+iVar*255, 255);
+        std::string varname(tmps);
+        varname = varname.substr(0,varname.find(" "));
+//	      std::cout << "Varname " << varname << "\n";
+        vdata->SetName(varname.c_str());
+        // insert array of variable into the output
+        output->GetPointData()->AddArray(vdata);
+    }
    }
 }
 

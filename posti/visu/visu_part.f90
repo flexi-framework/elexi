@@ -105,7 +105,7 @@ SUBROUTINE InitPartState(datasetNames,ListIn)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Visu_Vars              ,ONLY: tVisuParticle, PartnamesAll
+USE MOD_Visu_Vars              ,ONLY: tVisuParticle
 USE MOD_IO_HDF5                ,ONLY: File_ID
 USE MOD_HDF5_Input             ,ONLY: HSize,ReadArray,GetVarNames,GetDataSize
 ! IMPLICIT VARIABLE HANDLING
@@ -127,7 +127,6 @@ CHARACTER(LEN=255),ALLOCATABLE          :: varnames(:)
 SDEALLOCATE(ListIn%VarNamesPart_HDF5)
 SDEALLOCATE(ListIn%VarNamePartDummy)
 SDEALLOCATE(ListIn%mapAllVarsToVisuVars)
-SDEALLOCATE(PartNamesAll)
 
 IF(datasetNames.EQ.'PartData')THEN
   CALL GetVarNames("VarNamesParticles",varnames,VarNamesExist)
@@ -153,13 +152,10 @@ END IF
 
 SDEALLOCATE(varnames)
 
-ALLOCATE(PartnamesAll(1:ListIn%nPartVar_HDF5))
-PartnamesAll=ListIn%VarNamesPart_HDF5
-
 END SUBROUTINE InitPartState
 
 
-SUBROUTINE ReadPartStateFile(InputFile, DataArrayIn, ListIn, datasetFound)
+SUBROUTINE ReadPartStateFile(InputFile, DataArrayIn, ListIn)
 !===================================================================================================================================
 ! Read in particle state from given HDF5 state file
 !===================================================================================================================================
@@ -177,7 +173,6 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)           :: InputFile
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL  :: DataArrayIn
 TYPE(tVisuParticle),INTENT(INOUT)       :: ListIn
-LOGICAL,INTENT(OUT)                     :: datasetFound
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -187,6 +182,7 @@ CHARACTER(LEN=255)                      :: DataArray
 INTEGER                                 :: iPart,iVar,iVar2, i
 REAL,ALLOCATABLE                        :: PartData(:,:)
 CHARACTER(LEN=255)                      :: tmp, tmp2
+LOGICAL                                 :: datasetFound
 !===================================================================================================================================
 SDEALLOCATE(ListIn%PartData_HDF5)
 

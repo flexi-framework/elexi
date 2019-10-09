@@ -411,7 +411,8 @@ int visuReader::RequestData(
          &coords_FV,&values_FV,&nodeids_FV,&varnames,
          &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
          &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf,
-				 &coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part);
+				 &coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,
+				 &coords_Erosion,&values_Erosion,&nodeids_Erosion,&varnames_Erosion,&components_Erosion);
 
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 

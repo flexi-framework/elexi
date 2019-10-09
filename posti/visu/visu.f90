@@ -57,7 +57,7 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE visu_getVarNamesAndFileType(statefile,meshfile,varnames_loc, bcnames_loc)
 USE MOD_Globals
-USE MOD_Visu_Vars         ,ONLY: FileType,VarNamesHDF5,nBCNamesAll, PD, PDE
+USE MOD_Visu_Vars         ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
 USE MOD_HDF5_Input        ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
 USE MOD_HDF5_Input        ,ONLY: DatasetExists,HSize,nDims,ReadArray
 USE MOD_IO_HDF5           ,ONLY: GetDatasetNamesInGroup,File_ID
@@ -65,6 +65,7 @@ USE MOD_StringTools       ,ONLY: STRICMP
 USE MOD_EOS_Posti_Vars    ,ONLY: DepNames,nVarDepEOS
 #if USE_PARTICLES
 USE MOD_Posti_Part_Tools  ,ONLY: InitPartState
+USE MOD_Visu_Vars         ,ONLY: PD,PDE,PartNamesAll
 #endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -200,6 +201,13 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   END IF
 
   SDEALLOCATE(datasetNames)
+
+#if USE_PARTICLES
+  SDEALLOCATE(PartNamesAll)
+  ALLOCATE(PartnamesAll(1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5))
+  PartnamesAll(1:PD%nPartVar_HDF5)=PD%VarNamesPart_HDF5
+  PartnamesAll(PD%nPartVar_HDF5+1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5)=PDE%VarNamesPart_HDF5
+#endif
 END IF
 END SUBROUTINE visu_getVarNamesAndFileType
 
@@ -413,8 +421,6 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 LOGICAL                          :: changedPrmFile
 #if USE_PARTICLES
 CHARACTER(LEN=255)               :: DataArray
-LOGICAL                          :: datapartFound=.FALSE.
-LOGICAL                          :: dataerosionFound=.FALSE.
 #endif
 !===================================================================================================================================
 
@@ -623,15 +629,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL ConvertToVisu_GenericData(statefile)
 #if USE_PARTICLES
     DataArray='PartData'
-    CALL ReadPartStateFile(statefile,DataArray,PD,datapartFound)
+    CALL ReadPartStateFile(statefile,DataArray,PD)
     DataArray='ErosionData'
-    CALL ReadPartStateFile(statefile,DataArray,PDE,dataerosionFound)
-    IF(dataerosionFound.AND.dataerosionFound)THEN
-      SDEALLOCATE(PartNamesAll)
-      ALLOCATE(PartnamesAll(1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5))
-      PartnamesAll(1:PD%nPartVar_HDF5)=PD%VarNamesPart_HDF5
-      PartnamesAll(PD%nPartVar_HDF5+1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5)=PDE%VarNamesPart_HDF5
-    END IF
+    CALL ReadPartStateFile(statefile,DataArray,PDE)
 #endif
   END IF
 

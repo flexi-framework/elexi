@@ -145,8 +145,9 @@ SUBROUTINE visu_CWrapper(mpi_comm_IN, &
     coordsDG_out,valuesDG_out,nodeidsDG_out, &
     coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out, &
     coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out, &
-    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,varnamesSurf_out,coordsPart_out,&
-    valuesPart_out,nodeidsPart_out,varnamesPart_out,componentsPart_out)
+    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,varnamesSurf_out,&
+    coordsPart_out,valuesPart_out,nodeidsPart_out,varnamesPart_out,componentsPart_out,&
+    coordsErosion_out,valuesErosion_out,nodeidsErosion_out,varnamesErosion_out,componentsErosion_out)
 ! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
@@ -185,11 +186,16 @@ TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: valuesPart_out
 TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: nodeidsPart_out
 TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: varnamesPart_out
 TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: componentsPart_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: coordsErosion_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: valuesErosion_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: nodeidsErosion_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: varnamesErosion_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: componentsErosion_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255)            :: prmfile
-CHARACTER(LEN=255)            :: postifile
-CHARACTER(LEN=255)            :: statefile
+CHARACTER(LEN=255)                      :: prmfile
+CHARACTER(LEN=255)                      :: postifile
+CHARACTER(LEN=255)                      :: statefile
 !===================================================================================================================================
 prmfile   = cstrToChar255(prmfile_IN,   strlen_prm)
 postifile = cstrToChar255(postifile_IN, strlen_posti)
@@ -249,7 +255,17 @@ PD%Part_Pos_visu=PD%PartData_HDF5(1:3,:)
 PD%Part_visu=PD%PartData_HDF5(4:,:)
 CALL WritePartDataToVTK_array(PD%nPart_visu,PD%nPartVar_visu,coordsPart_out,valuesPart_out,nodeidsPart_out,varnamesPart_out,&
                               componentsPart_out,PD%Part_Pos_visu,PD%Part_visu,PD%PartIds_Visu,PD%VarNamePartCombine,&
-                              PD%VarNamePartCombineLen,PD%VarNamePartVisu)
+                              PD%VarNamePartCombineLen,PD%VarNamePartVisu,PD%PartCPointers_allocated)
+
+ALLOCATE(PDE%PartIds_Visu(1:PDE%nPart_visu))
+ALLOCATE(PDE%Part_Pos_visu(1:3,1:PDE%nPart_Visu))
+ALLOCATE(PDE%Part_visu(1:PDE%nPartVar_visu,1:PDE%nPart_visu))
+PDE%Part_Pos_visu=PDE%PartData_HDF5(1:3,:)
+PDE%Part_visu=PDE%PartData_HDF5(4:,:)
+CALL WritePartDataToVTK_array(PDE%nPart_visu,PDE%nPartVar_visu,coordsErosion_out,valuesErosion_out,&
+                                 nodeidsErosion_out,varnamesErosion_out,componentsErosion_out,PDE%Part_Pos_visu,&
+                                 PDE%Part_visu,PDE%PartIds_Visu,PDE%VarNamePartCombine,&
+                                 PDE%VarNamePartCombineLen,PDE%VarNamePartVisu,PDE%PartCPointers_allocated)
 #endif
 
 CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
@@ -281,9 +297,18 @@ IMPLICIT NONE
 SDEALLOCATE(nodeids_DG)
 SDEALLOCATE(nodeids_FV)
 #if USE_PARTICLES
-DEALLOCATE(PD%Part_Visu)
-DEALLOCATE(PD%Part_Pos_Visu)
-DEALLOCATE(PD%PartIDs_Visu)
+IF (PD%PartCPointers_allocated) THEN
+  DEALLOCATE(PD%Part_visu)
+  DEALLOCATE(PD%Part_Pos_visu)
+  DEALLOCATE(PD%PartIDs_visu)
+  PD%PartCPointers_allocated=.FALSE.
+END IF
+IF (PDE%PartCPointers_allocated) THEN
+  DEALLOCATE(PDE%Part_visu)
+  DEALLOCATE(PDE%Part_Pos_visu)
+  DEALLOCATE(PDE%PartIDs_visu)
+  PDE%PartCPointers_allocated=.FALSE.
+END IF
 #endif
 END SUBROUTINE visu_dealloc_nodeids
 

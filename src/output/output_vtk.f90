@@ -568,7 +568,7 @@ END SUBROUTINE WriteVarnamesToVTK_array
 #if USE_PARTICLES
 SUBROUTINE WritePartDataToVTK_array(nParts_out,nVar_out,coords_out,values_out,nodeids_out,&
                                       varnamespart_out, componentspart_out, coords, values,nodeids,&
-                                      VarNamePartCombine,VarNamePartCombineLen,VarNamePartVisu) 
+                                      VarNamePartCombine,VarNamePartCombineLen,VarNamePartVisu,PartCPointers_allocated) 
 USE ISO_C_BINDING
 !===================================================================================================================================
 ! Subroutine to write 3D point data to VTK format
@@ -594,6 +594,7 @@ TYPE (CARRAY), INTENT(INOUT)      :: values_out
 TYPE (CARRAY), INTENT(INOUT)      :: nodeids_out
 TYPE (CARRAY), INTENT(INOUT)      :: varnamespart_out
 TYPE (CARRAY), INTENT(INOUT)      :: componentspart_out
+LOGICAL,INTENT(INOUT)             :: PartCPointers_allocated 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                           :: iPart, nPartVarCombine, iVar, iVar2
@@ -607,6 +608,7 @@ IF(nVar_out.EQ.0)THEN
 END IF
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PARTICEL DATA TO VTX XML BINARY (VTU) ARRAY..."
 
+PartCPointers_allocated=.TRUE.
 ! values and coords are already in the correct structure of VTK/Paraview 
 ! set the sizes of the arrays
 coords_out%len = 3*nParts_Out

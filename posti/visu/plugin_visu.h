@@ -39,7 +39,10 @@ extern "C" {
         struct DoubleARRAY* valuesSurfFV_out,struct IntARRAY* nodeidsSurfFV_out,
         struct CharARRAY* varnamesSurf_out, struct DoubleARRAY* coordsPart_out,
 				struct DoubleARRAY* valuesPart_out, struct IntARRAY* nodeidsPart_out,
-				struct CharARRAY* varnamesPart_out, struct IntARRAY* componentsPart_out);
+				struct CharARRAY* varnamesPart_out, struct IntARRAY* componentsPart_out,
+				struct DoubleARRAY* coordsErosion_out,	struct DoubleARRAY* valuesErosion_out, 
+				struct IntARRAY* nodeidsErosion_out,struct CharARRAY* varnamesErosion_out, 
+				struct IntARRAY* componentsErosion_out);
 }
 
 extern "C" {

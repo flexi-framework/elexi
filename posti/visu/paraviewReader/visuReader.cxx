@@ -475,7 +475,7 @@ int visuReader::RequestData(
       return 0;
    }
 
-	 // get the BlockDataset 
+	 // write PartData
 	 if  (nodeids_Part.len > 0) {
       this->Blocks.resize(this->Blocks.size()+1);
       vtkSmartPointer<vtkUnstructuredGrid> output_Part = this->Blocks[this->Blocks.size()-1];
@@ -489,6 +489,19 @@ int visuReader::RequestData(
       InsertPartData(output_Part, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
 			minusBlock =minusBlock+1;
    }
+//	 if  (nodeids_Erosion.len > 0) {
+//      this->Blocks.resize(this->Blocks.size()+1);
+//      vtkSmartPointer<vtkUnstructuredGrid> output_Erosion = this->Blocks[this->Blocks.size()-1];
+//      if (!output_Erosion)
+//      {
+//         output_Erosion = vtkUnstructuredGrid::New();
+//         this->Blocks[this->Blocks.size()-1] = output_Erosion;
+//         output_Erosion->Delete();
+//      }
+//      // Insert data into output
+//      InsertPartData(output_Erosion, &coords_Erosion, &values_Erosion, &nodeids_Erosion, &varnames_Erosion, &components_Erosion);
+//			minusBlock =minusBlock+1;
+//   }
 
    __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
 

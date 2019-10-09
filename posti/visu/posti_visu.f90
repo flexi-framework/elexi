@@ -37,7 +37,6 @@ USE MOD_MPI                   ,ONLY:FinalizeMPI
 #endif
 #if USE_PARTICLES
 USE MOD_VTK                   ,ONLY: WriteDataToVTKPart
-USE MOD_Posti_Part_Tools      ,ONLY: InitParticleOutput
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -189,13 +188,11 @@ DO iArg=1+skipArgs,nArgs
 
 #if USE_PARTICLES
     IF(PD%nPartVar_Visu.GT.0)THEN
-      CALL InitParticleOutput(PD)
       FileString_Part=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuPart',OutputTime))//'.vtu'
       CALL WriteDataToVTKPart(PD%nPart_Visu,PD%nPartVar_Visu,PD%PartData_HDF5(1:3,:),PD%PartData_HDF5(4:,:),FileString_Part,&
         PD%VarNamePartVisu,PD%VarNamePartCombine,PD%VarNamePartCombineLen,PD%nGlobalParts)
     END IF
     IF(PDE%nPartVar_Visu.GT.0)THEN
-      CALL InitParticleOutput(PDE)
       FileString_Erosion=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuErosion',OutputTime))//'.vtu'
       CALL WriteDataToVTKPart(PDE%nPart_Visu,PDE%nPartVar_Visu,PDE%PartData_HDF5(1:3,:),PDE%PartData_HDF5(4:,:),FileString_Erosion,&
         PDE%VarNamePartVisu,PDE%VarNamePartCombine,PDE%VarNamePartCombineLen,PDE%nGlobalParts)

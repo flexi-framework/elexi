@@ -400,7 +400,7 @@ USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
 USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
 #if USE_PARTICLES
-USE MOD_Posti_Part_Tools    ,ONLY: ReadPartStateFile
+USE MOD_Posti_Part_Tools    ,ONLY: ReadPartStateFile, InitParticleOutput
 #endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES

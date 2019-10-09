@@ -163,22 +163,22 @@
             </Documentation>
          </StringVectorProperty>
       <!-- ================================================================== -->
-         <StringVectorProperty name="PartArrayInfo"
+         <StringVectorProperty name="VarParticleArrayInfo"
             information_only="1">
             <ArraySelectionInformationHelper attribute_name="VarParticle" />
          </StringVectorProperty>
-         <StringVectorProperty name="PartArrayStatus"
+         <StringVectorProperty name="VarParticleArrayStatus"
             command="SetVarParticleArrayStatus"
             number_of_elements="0"
             repeat_command="1"
             number_of_elements_per_command="2"
             element_types="2 0"
-            information_property="PartArrayInfo"
+            information_property="VarParticleArrayInfo"
             label="Particles"
             >
             <ArraySelectionDomain name="array_list">
                <RequiredProperties>
-                  <Property name="PartArrayInfo" function="ArrayList" />
+                  <Property name="VarParticleArrayInfo" function="ArrayList" />
                </RequiredProperties>
             </ArraySelectionDomain>
             <Documentation>

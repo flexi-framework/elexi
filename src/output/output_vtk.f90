@@ -567,7 +567,8 @@ END SUBROUTINE WriteVarnamesToVTK_array
 
 #if USE_PARTICLES
 SUBROUTINE WritePartDataToVTK_array(nParts_out,nVar_out,coords_out,values_out,nodeids_out,&
-                                      coords, values,nodeids) 
+                                      varnamespart_out, componentspart_out, coords, values,nodeids,&
+                                      VarNamePartCombine,VarNamePartCombineLen,VarNamePartVisu) 
 USE ISO_C_BINDING
 !===================================================================================================================================
 ! Subroutine to write 3D point data to VTK format
@@ -583,16 +584,22 @@ INTEGER,INTENT(IN)                :: nVar_out
 REAL(C_DOUBLE),POINTER,INTENT(IN) :: coords(:,:)
 REAL(C_DOUBLE),POINTER,INTENT(IN) :: values(:,:)
 INTEGER(C_INT),POINTER,INTENT(IN) :: nodeids(:)
+INTEGER,INTENT(IN)                :: VarNamePartCombine(:)
+CHARACTER(LEN=255),INTENT(IN)     :: VarNamePartVisu(:)
+INTEGER,INTENT(IN)                :: VarNamePartCombineLen(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 TYPE (CARRAY), INTENT(INOUT)      :: coords_out
 TYPE (CARRAY), INTENT(INOUT)      :: values_out
 TYPE (CARRAY), INTENT(INOUT)      :: nodeids_out
-
+TYPE (CARRAY), INTENT(INOUT)      :: varnamespart_out
+TYPE (CARRAY), INTENT(INOUT)      :: componentspart_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                           :: iPart 
-INTEGER                           :: NodeID
+INTEGER                           :: iPart, nPartVarCombine, iVar, iVar2
+INTEGER                           :: NodeID, str_len, i
+CHARACTER(C_CHAR),POINTER         :: VarNamesPart_loc(:,:)
+INTEGER(C_INT),POINTER            :: componentspart_loc(:)
 !===================================================================================================================================
 IF(nVar_out.EQ.0)THEN
   coords_out%len=0
@@ -601,19 +608,50 @@ END IF
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PARTICEL DATA TO VTX XML BINARY (VTU) ARRAY..."
 
 ! values and coords are already in the correct structure of VTK/Paraview 
-
 ! set the sizes of the arrays
 coords_out%len = 3*nParts_Out
 values_out%len = nVar_out*nParts_out
 nodeids_out%len = nParts_Out
 
 ! assign data to the arrays (no copy!!!)
-
 coords_out%data = C_LOC(Coords(1,1))
 values_out%data = C_LOC(values(1,1))
 nodeids_out%data = C_LOC(nodeids(1))
 
-! components_out%len = nPartVarCombine
+! copy varnames
+nPartVarCombine = 0
+DO iVar=1,nVar_out
+  IF (VarNamePartCombine(iVar).LE.1) THEN
+    nPartVarCombine = nPartVarCombine + 1
+  END IF
+END DO
+
+ALLOCATE(VarNamesPart_loc(255,nPartVarCombine))
+varnamespart_out%len = nPartVarCombine*255
+varnamespart_out%data = C_LOC(VarNamesPart_loc(1,1))
+
+ALLOCATE(componentspart_loc(nPartVarCombine))
+componentspart_out%len = nPartVarCombine
+componentspart_out%data = C_LOC(componentspart_loc(1))
+
+iVar2 = 1
+DO iVar=1,nVar_out
+  IF (VarNamePartCombine(iVar).EQ.0) THEN
+    DO i=1,255
+      VarNamesPart_loc(i,iVar2) = VarNamePartVisu(iVar)(i:i)
+    END DO
+    componentspart_loc(iVar2) = 1
+    iVar2 = iVar2 + 1
+  ELSE IF (VarNamePartCombine(iVar).EQ.1) THEN
+    str_len = LEN_TRIM(VarNamePartVisu(iVar))
+    DO i=1,255
+      VarNamesPart_loc(i,iVar2) = VarNamePartVisu(iVar)(i:i)
+    END DO
+    VarNamesPart_loc(str_len,iVar2) =  ' '
+    componentspart_loc(iVar2) = VarNamePartCombineLen(iVar)
+    iVar2 = iVar2 + 1
+  END IF
+END DO
 
 ! create connectivity
 NodeID = 0

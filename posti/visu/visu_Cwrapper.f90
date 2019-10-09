@@ -244,12 +244,12 @@ END IF
 #if USE_PARTICLES
 ALLOCATE(PD%PartIds_Visu(1:PD%nPart_visu))
 ALLOCATE(PD%Part_Pos_visu(1:3,1:PD%nPart_Visu))
-PD%Part_Pos_visu=PD%PartData_HDF5(1:3,:)
 ALLOCATE(PD%Part_visu(1:PD%nPartVar_visu,1:PD%nPart_visu))
-PD%Part_visu=PD%PartData_HDF5(4:PD%nPartVar_Visu+3,:)
-CALL WritePartDataToVTK_array(PD%nPart_visu,PD%nPartVar_visu,coordsPart_out,valuesPart_out,nodeidsPart_out,PD%Part_Pos_visu,&
-                              PD%Part_visu,PD%PartIds_Visu)
-CALL WriteVarnamesToVTK_array(PD%nPartVar_HDF5,PD%mapAllVarsToVisuVars,varnamesPart_out,PD%VarNamesPart_HDF5,PD%nPartVar_visu)
+PD%Part_Pos_visu=PD%PartData_HDF5(1:3,:)
+PD%Part_visu=PD%PartData_HDF5(4:,:)
+CALL WritePartDataToVTK_array(PD%nPart_visu,PD%nPartVar_visu,coordsPart_out,valuesPart_out,nodeidsPart_out,varnamesPart_out,&
+                              componentsPart_out,PD%Part_Pos_visu,PD%Part_visu,PD%PartIds_Visu,PD%VarNamePartCombine,&
+                              PD%VarNamePartCombineLen,PD%VarNamePartVisu)
 #endif
 
 CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)

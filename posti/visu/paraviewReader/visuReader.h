@@ -81,14 +81,12 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       void DisableAllBCArrays();
       void EnableAllBCArrays();
 
-//#ifdef PARTICLE
       int GetNumberOfVarParticleArrays();
       const char* GetVarParticleArrayName(int index);
       int GetVarParticleArrayStatus(const char* name);
       void SetVarParticleArrayStatus(const char* name, int status);
       void DisableAllVarParticleArrays();
       void EnableAllVarParticleArrays();
-//#endif
 
       // MPI
       void SetController(vtkMultiProcessController *);
@@ -112,14 +110,11 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       struct DoubleARRAY valuesSurf_FV;
       struct IntARRAY  nodeidsSurf_FV;
       struct CharARRAY varnamesSurf;
-//#ifdef PARTICLE
-      // struct to exchange particle arrays between fortran and c
       struct DoubleARRAY coords_Part;
       struct DoubleARRAY values_Part;
       struct IntARRAY  nodeids_Part;
       struct CharARRAY varnames_Part;
       struct IntARRAY components_Part;
-//#endif
 
       int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
       int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);

@@ -301,6 +301,7 @@ int visuReader::RequestData(
 	 if (outInfoPart->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoPart->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+			timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
 
 
@@ -391,6 +392,8 @@ int visuReader::RequestData(
       }
    }
    close(posti_unit);
+   
+	 int minusBlock = 0;
 
    MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
 
@@ -462,6 +465,15 @@ int visuReader::RequestData(
     // Insert Surface FV data into output
    InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
 
+	 vtkDataObject* doOutput_Part = outInfoPart->Get(vtkDataObject::DATA_OBJECT());
+   //vtkMultiBlockDataSet* firstBlock = vtkMultiBlockDataSet::SafeDownCast(doOutput_Part);
+   vtkMultiBlockDataSet* mb_Part = vtkMultiBlockDataSet::SafeDownCast(doOutput_Part);
+   if (!mb_Part)
+   {
+      std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
+      return 0;
+   }
+
 	 // get the BlockDataset 
 	 if  (nodeids_Part.len > 0) {
       this->Blocks.resize(this->Blocks.size()+1);
@@ -474,9 +486,30 @@ int visuReader::RequestData(
       }
       // Insert data into output
       InsertPartData(output_Part, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
+			minusBlock =minusBlock+1;
    }
 
    __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
+
+ 	 if(ProcessId == 0) std::cout << "minusBlock " << minusBlock << " " << std::endl;
+	 int firstBlock=0; 
+	 mb->SetNumberOfBlocks(this->Blocks.size()-minusBlock); // missing -1
+	 for(unsigned int i=0; i<this->Blocks.size()-minusBlock; i++) // missing -1
+	 {
+	    vtkUnstructuredGrid* nthOutput = this->Blocks[i];
+	    firstBlock=firstBlock+1;
+	    mb->SetBlock(i, nthOutput);
+	 }
+
+   std::cout << "firstblock " << firstBlock << " " << std::endl;
+   int PartOut=0; 
+   mb_Part->SetNumberOfBlocks(this->Blocks.size()-firstBlock);
+   for(unsigned int i=firstBlock; i<this->Blocks.size(); i++)
+   {
+      vtkUnstructuredGrid* nthOutput = this->Blocks[i];
+      mb_Part->SetBlock(PartOut, nthOutput);
+      PartOut=PartOut+1;
+   }
 
    // tell paraview to render data
    this -> Modified(); 
@@ -620,16 +653,6 @@ void visuReader::InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, st
    // set the points array to be used for the output
    output->SetPoints(points);
 
-   //// Use the nodeids to build
-   //vtkSmartPointer<vtkCellArray>  vertices   = vtkSmartPointer<vtkCellArray>::New();
-   //vtkSmartPointer<vtkVertex> vert    = vtkSmartPointer<vtkVertex>::New();
-   ////for (auto iPart=0; iPart<fmd.nParts; ++iPart){
-   //for (auto iPart=0u; iPart<coords->len/3; ++iPart){
-   //  vert->GetPointIds()->SetId(0,iPart);
-   //  //vert->GetPointId(iPart);
-   //  vertices->InsertNextCell(vert);
-   //}
-
     // second possibiliby for mesh
     vtkSmartPointer<vtkCellArray> vertices = vtkSmartPointer<vtkCellArray>::New();
     vtkIdType *vert = vertices->WritePointer(nodeids->len, 2*(nodeids->len));
@@ -641,22 +664,15 @@ void visuReader::InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, st
     }
     output->SetCells({VTK_VERTEX}, vertices);
 
-   //for (unsigned int iPart=0; iPart<nodeids->len; ++iPart){
-   //  //vert->GetPointIds()->SetId(0,iPart);
-   //  vert->GetPointIds()->SetId(0,nodeids->data[iPart]);
-   //  vertices->InsertNextCell(vert);
-   //}
-   //output->SetCells({VTK_VERTEX}, vertices);
-
    // assign the actual data, loaded by the Posti tool, to the output
    std::vector<vtkSmartPointer<vtkDoubleArray> > dataArrays;
    unsigned int nVarCombine = varnames->len/255;
-   unsigned int nVar = 1;
+   unsigned int nVar = 0;
    for (unsigned int iVar=0;iVar<nVarCombine;iVar++) {
      nVar += components->data[iVar];
    }
    
-   SWRITE("nVar : " << nVar);
+
 	 if (nVar > 0) {
 	   unsigned int sizePerVar = values->len/nVar;
 	

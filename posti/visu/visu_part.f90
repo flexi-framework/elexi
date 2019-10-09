@@ -70,30 +70,31 @@ TYPE(tVisuParticle),INTENT(INOUT)     :: ListIn
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                               :: i, iVar
-character(len=255)                    :: tmp
-character(len=255)                    :: tmp2
+CHARACTER(LEN=255)                    :: tmp, tmp2
 !===================================================================================================================================
-SDEALLOCATE(ListIn%VarNamePartCombine)
-ALLOCATE (ListIn%VarNamePartCombine(ListIn%nPartVar_Visu))
-SDEALLOCATE(ListIn%VarNamePartCombineLen)
-ALLOCATE (ListIn%VarNamePartCombineLen(ListIn%nPartVar_Visu))
-ListIn%VarNamePartCombine = 0
-DO iVar=2,ListIn%nPartVar_Visu
-  i = LEN(TRIM(ListIn%VarNamePartVisu(iVar)))
-  tmp = ListIn%VarNamePartVisu(iVar)
-  tmp2 = ListIn%VarNamePartVisu(iVar-1)
-  IF (TRIM(tmp(:i-1)) .EQ. TRIM(tmp2(:i-1))) THEN
-    IF (ListIn%VarNamePartCombine(iVar-1) .EQ. 0) ListIn%VarNamePartCombine(iVar-1) = 1
-    ListIn%VarNamePartCombine(iVar) = ListIn%VarNamePartCombine(iVar-1) + 1
-  END IF
-END DO
-ListIn%VarNamePartCombineLen = 0
-ListIn%VarNamePartCombineLen(ListIn%nPartVar_visu) = ListIn%VarNamePartCombine(ListIn%nPartVar_visu)
-DO iVar=ListIn%nPartVar_visu-1,1,-1
-  IF (ListIn%VarNamePartCombine(iVar).GT.0) THEN
-    ListIn%VarNamePartCombineLen(iVar) = MAX(ListIn%VarNamePartCombine(iVar), ListIn%VarNamePartCombineLen(iVar+1)) 
-  END IF
-END DO
+IF(ListIn%nPartVar_Visu.GT.0)THEN
+  SDEALLOCATE(ListIn%VarNamePartCombine)
+  ALLOCATE (ListIn%VarNamePartCombine(ListIn%nPartVar_Visu))
+  SDEALLOCATE(ListIn%VarNamePartCombineLen)
+  ALLOCATE (ListIn%VarNamePartCombineLen(ListIn%nPartVar_Visu))
+  ListIn%VarNamePartCombine = 0
+  DO iVar=2,ListIn%nPartVar_Visu
+    i = LEN(TRIM(ListIn%VarNamePartVisu(iVar)))
+    tmp = ListIn%VarNamePartVisu(iVar)
+    tmp2 = ListIn%VarNamePartVisu(iVar-1)
+    IF (TRIM(tmp(:i-1)) .EQ. TRIM(tmp2(:i-1))) THEN
+      IF (ListIn%VarNamePartCombine(iVar-1) .EQ. 0) ListIn%VarNamePartCombine(iVar-1) = 1
+      ListIn%VarNamePartCombine(iVar) = ListIn%VarNamePartCombine(iVar-1) + 1
+    END IF
+  END DO
+  ListIn%VarNamePartCombineLen = 0
+  ListIn%VarNamePartCombineLen(ListIn%nPartVar_visu) = ListIn%VarNamePartCombine(ListIn%nPartVar_visu)
+  DO iVar=ListIn%nPartVar_visu-1,1,-1
+    IF (ListIn%VarNamePartCombine(iVar).GT.0) THEN
+      ListIn%VarNamePartCombineLen(iVar) = MAX(ListIn%VarNamePartCombine(iVar), ListIn%VarNamePartCombineLen(iVar+1)) 
+    END IF
+  END DO
+END IF
 
 END SUBROUTINE InitParticleOutput
 
@@ -183,8 +184,9 @@ LOGICAL,INTENT(OUT)                     :: datasetFound
 ! LOCAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=255)                      :: DataArray
-INTEGER                                 :: iPart,iVar,iVar2
+INTEGER                                 :: iPart,iVar,iVar2, i
 REAL,ALLOCATABLE                        :: PartData(:,:)
+CHARACTER(LEN=255)                      :: tmp, tmp2
 !===================================================================================================================================
 SDEALLOCATE(ListIn%PartData_HDF5)
 
@@ -223,7 +225,7 @@ ELSE
   DO iVar=1,ListIn%nPartVar_Visu
     DO iVar2=1,ListIn%nPartVar_HDF5
       IF(STRICMP(ListIn%VarNamePartVisu(iVar),ListIn%VarNamesPart_HDF5(iVar2)))THEN
-        ListIn%PartData_HDF5(iVar+3,:)=PartData(iVar2,:)
+        ListIn%PartData_HDF5(iVar+3,:)=PartData(iVar2+3,:)
         ListIn%mapAllVarsToVisuVars(iVar2)=1
       END IF
     END DO
@@ -232,6 +234,31 @@ END IF
 
 SDEALLOCATE(PartData)
 CALL CloseDataFile()
+
+! Needed for output
+IF(ListIn%nPartVar_Visu.GT.0)THEN
+  SDEALLOCATE(ListIn%VarNamePartCombine)
+  ALLOCATE (ListIn%VarNamePartCombine(ListIn%nPartVar_Visu))
+  SDEALLOCATE(ListIn%VarNamePartCombineLen)
+  ALLOCATE (ListIn%VarNamePartCombineLen(ListIn%nPartVar_Visu))
+  ListIn%VarNamePartCombine = 0
+  DO iVar=2,ListIn%nPartVar_Visu
+    i = LEN(TRIM(ListIn%VarNamePartVisu(iVar)))
+    tmp = ListIn%VarNamePartVisu(iVar)
+    tmp2 = ListIn%VarNamePartVisu(iVar-1)
+    IF (TRIM(tmp(:i-1)) .EQ. TRIM(tmp2(:i-1))) THEN
+      IF (ListIn%VarNamePartCombine(iVar-1) .EQ. 0) ListIn%VarNamePartCombine(iVar-1) = 1
+      ListIn%VarNamePartCombine(iVar) = ListIn%VarNamePartCombine(iVar-1) + 1
+    END IF
+  END DO
+  ListIn%VarNamePartCombineLen = 0
+  ListIn%VarNamePartCombineLen(ListIn%nPartVar_visu) = ListIn%VarNamePartCombine(ListIn%nPartVar_visu)
+  DO iVar=ListIn%nPartVar_visu-1,1,-1
+    IF (ListIn%VarNamePartCombine(iVar).GT.0) THEN
+      ListIn%VarNamePartCombineLen(iVar) = MAX(ListIn%VarNamePartCombine(iVar), ListIn%VarNamePartCombineLen(iVar+1)) 
+    END IF
+  END DO
+END IF
 
 END SUBROUTINE ReadPartStateFile
 

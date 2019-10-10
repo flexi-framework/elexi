@@ -772,7 +772,7 @@ ReduceData(11)=nNodeIDs
 CALL MPI_REDUCE(ReduceData,ReduceData_glob,11,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
 #else
 CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
-#endif
+#endif /*USE_PARTICLES*/
 ReduceData=ReduceData_glob
 #endif /*USE_MPI*/
 

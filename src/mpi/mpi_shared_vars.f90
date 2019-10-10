@@ -1,3 +1,4 @@
+
 !=================================================================================================================================
 ! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
@@ -11,20 +12,30 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-
 !===================================================================================================================================
-! Contains the Particles' variables (general for all modules: PIC, DSMC, FP)
+!> Contains variables to exchange data using MPI-3 shared memory
 !===================================================================================================================================
-MODULE MOD_Particle_Restart_Vars
+MODULE MOD_MPI_Shared_Vars
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
+#if USE_MPI_SHARED
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL::                   PartDataExists                              ! Flag if restart file has saved part data
+INTEGER            :: myRank_Shared
+INTEGER            :: nProcessors_Shared
+INTEGER            :: MPI_COMM_SHARED
+!CHARACTER(LEN=255) :: myNode_Shared
+LOGICAL            :: MPISharedInitIsDone=.FALSE.
 
-!===================================================================================================================================
-END MODULE MOD_Particle_Restart_Vars
+! Mesh
+INTEGER            :: nElems_Shared                   !> Number of elems on current node
+INTEGER            :: nElems_Shared_Win               !> Pointer to shared memory window
+INTEGER            :: OffsetElem_Shared_Root          !> offsetElem of root on current node
+REAL,POINTER       :: Elem_xGP_Shared(:,:,:,:,:)      !> Gauss points on current node
+
+#endif /* MPI_SHARED */
+END MODULE

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -60,7 +60,7 @@ PUBLIC::DefineParametersLoadBalance
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersLoadBalance()
 ! MODULES
@@ -89,7 +89,7 @@ CALL prms%CreateIntOption(     'WeightDistributionMethod'     ,  "Method for dis
                                                                  " 3: TODO DEFINE\n"//&
                                                                  " 4: TODO DEFINE\n"//&
                                                                  " 5/6: iterative smoothing of loads towards last proc\n")
-  
+
 CALL prms%SetSection("Restart")
 CALL prms%CreateLogicalOption( 'DoInitialAutoRestart',           "Set Flag for doing automatic initial restart with"             //&
                                                                  " loadbalancing routines after first 'InitialAutoRestartSample'"//&
@@ -139,10 +139,10 @@ IF (ParticleMPIWeight.LT.0.0) CALL abort(__STAMP__,' ERROR: Particle weight cann
 #if USE_LOADBALANCE
 IF(nProcessors.EQ.1)THEN
   ! deactivate load balance for single core computations
-  DoLoadBalance     = .FALSE. 
+  DoLoadBalance     = .FALSE.
   SWRITE(UNIT_stdOut,'(A)') 'No LoadBalance (nProcessors=1): DoLoadBalance=', DoLoadBalance
   DeviationThreshold= HUGE(1.0)
-ELSE 
+ELSE
   DoLoadBalance     = GETLOGICAL('DoLoadBalance'          ,'F')
   LoadBalanceSample = GETINT    ('LoadBalanceSample'      ,'1')
   DeviationThreshold= GETREAL   ('Load-DeviationThreshold','0.10')
@@ -184,7 +184,7 @@ USE MOD_Particle_Tracking_vars ,ONLY: DoRefMapping
 USE MOD_TimeDisc_Vars          ,ONLY: t
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -242,7 +242,7 @@ END DO ! iElem=1,PP_nElems
 IF(LoadBalanceSample.GT.1) THEN
     !<<< Welford's algorithm
     !    (count, mean, M2) = existingAggregate
-    !    count = count + 1 
+    !    count = count + 1
     !    delta = newValue - mean
     !    mean = mean + delta / count
     delta    = ElemTime_current - ElemTime
@@ -381,7 +381,7 @@ USE MOD_LoadBalance_Vars,    ONLY:ElemTime
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT/OUTPUT VARIABLES 
+! INPUT/OUTPUT VARIABLES
 LOGICAL,INTENT(IN),OPTIONAL  :: output_opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

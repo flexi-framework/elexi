@@ -107,6 +107,10 @@ USE MOD_Mappings,           ONLY:buildMappings
 #if USE_MPI
 USE MOD_Prepare_Mesh,       ONLY:exchangeFlip
 #endif
+#if USE_MPI_SHARED
+USE MOD_MPI_Shared,         ONLY:Allocate_Shared
+USE MOD_MPI_Shared_Vars
+#endif
 #if FV_ENABLED
 USE MOD_FV_Metrics,         ONLY:InitFV_Metrics
 #endif
@@ -122,8 +126,6 @@ USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
 USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3D,SideSlabNormals,SideSlabIntervals
 USE MOD_Particle_Surfaces_Vars, ONLY:BoundingBoxIsEmpty,ElemSlabNormals,ElemSlabIntervals
 USE MOD_Interpolation_Vars,     ONLY:xGP
-!USE MOD_Particle_Erosion,       ONLY:InitParticleErosionMesh
-!USE MOD_Particle_Erosion_Vars,  ONLY:PartTrackErosion
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars, ONLY: SideBoundingBoxVolume
 #endif /*CODE_ANALYZE*/
@@ -146,6 +148,10 @@ INTEGER           :: firstSlaveSide      ! lower side ID of array U_slave/gradUx
 INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx_slave...
 INTEGER           :: iSide,LocSideID,SideID
 INTEGER           :: NGeoOverride
+#if USE_MPI_SHARED
+INTEGER           :: MPISharedSize
+INTEGER           :: FirstElemShared,LastElemShared
+#endif
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
@@ -252,6 +258,31 @@ ELSE
   CALL BuildCoords(NodeCoords,NodeType,PP_N,Elem_xGP)
 ENDIF
 
+! Save Elem_xGP on MPI-3 shared memory
+#if USE_MPI_SHARED
+!> First communicate total number of elemens on the node
+CALL MPI_ALLREDUCE(nElems,nElems_Shared,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IERROR)
+
+!> Send offsetElem of node root to all other procs on node
+IF (myRank_shared.EQ.0) offsetElem_shared_root = offsetElem
+CALL MPI_BCAST(offsetElem_shared_root,1,MPI_INTEGER,0,MPI_COMM_SHARED,IERROR)
+
+!> DataSizeLength for Elem_xGP on all procs on the node
+MPISharedSize = INT(3*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*nElems_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/3,PP_N+1,PP_N+1,PP_NZ+1,nElems_Shared/),nElems_Shared_Win,Elem_xGP_Shared)
+
+!> Elem_xGP from each proc
+!>>> Caution: PP starts from 0 in Elem_xGP, but from 1 in Elem_xGP_Shared
+CALL MPI_WIN_LOCK_ALL(0,nElems_Shared_Win,IERROR)
+
+FirstElemShared = offsetElem-offsetElem_shared_root+1
+LastElemShared  = offsetElem-offsetElem_shared_root+nElems
+Elem_xGP_Shared(:,1:PP_N+1,1:PP_N+1,1:PP_NZ+1,FirstElemShared:LastElemShared) = Elem_xGP(:,:,:,:,:)
+
+CALL MPI_WIN_SYNC(nElems_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+#endif
+
 ! Return if no connectivity and metrics are required (e.g. for visualization mode)
 #if !USE_PARTICLES
 IF (meshMode.GT.0) THEN
@@ -342,11 +373,11 @@ IF (meshMode.GT.0) THEN
 
   SWRITE(UNIT_stdOut,'(A)') " NOW CALLING fillMeshInfo..."
   CALL fillMeshInfo()
-  
+
 !#if USE_PARTICLES
 !  CALL InitParticleMeshBasis(NGeo,PP_N,xGP)
 !#endif
-  
+
 
 #if !USE_PARTICLES
 ! keep pointers for particle mesh
@@ -366,12 +397,12 @@ IF (meshMode.GT.0) THEN
 
   ! Build necessary mappings
   CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M,dim=PP_dim)
-  
+
 #if USE_PARTICLES
   CALL Particle_InitMappings(PP_N, VolToSideA, VolToSideIJKA, VolToSide2A, CGNS_VolToSideA, &
         SideToVolA, SideToVol2A, CGNS_SideToVol2A, FS2M)
 #endif
-  
+
 #if !USE_PARTICLES
 END IF
 #endif
@@ -401,11 +432,11 @@ IF (meshMode.GT.1) THEN
   ! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
   ! assign 1/detJ (sJ)
   ! assign normal and tangential vectors and surfElems on faces
-  
+
 #if USE_PARTICLES
-  ALLOCATE(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,1:nSides) ) 
+  ALLOCATE(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,1:nSides) )
   BezierControlPoints3D=0.
-  
+
   ALLOCATE(SideSlabNormals(1:3,1:3,1:nSides),SideSlabIntervals(1:6,nSides),BoundingBoxIsEmpty(1:nSides) )
   SideSlabNormals=0.
   SideSlabIntervals=0.
@@ -433,21 +464,21 @@ IF (meshMode.GT.1) THEN
 #if USE_PARTICLES
   CALL InitParticleMeshBasis(NGeo,PP_N,xGP)
 #endif
-  
+
 #if USE_PARTICLES
   ALLOCATE(XCL_NGeo(1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
   XCL_NGeo = 0.
   ALLOCATE(dXCL_NGeo(1:3,1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
   dXCL_NGeo = 0.
   CALL CalcMetrics(XCL_NGeo_Out=XCL_NGeo,dXCL_NGeo_Out=dXCL_NGeo)
-  
+
   ALLOCATE(ElemBaryNGeo(1:3, 1:nElems))
   CALL BuildElementOrigin()
-            
+
 #else
   CALL CalcMetrics()     ! DG metrics
 #endif
-  
+
 #if FV_ENABLED
   CALL InitFV_Metrics()  ! FV metrics
 #endif
@@ -469,7 +500,7 @@ IF (meshMode.GT.0) THEN
     END DO
   END DO ! iElem
 END IF
-  
+
 #if USE_PARTICLES
 ! init element volume
 IF(meshMode.GT.0) CALL InitElemVolumes()

@@ -132,6 +132,8 @@ OPTION(FLEXI_PARTICLES "Enable particle tracking" OFF)
 # code development
 CMAKE_DEPENDENT_OPTION(FLEXI_PARTICLES_CODE_ANALYZE "Code Analyze" OFF
                                                     "FLEXI_PARTICLES" ON)
+CMAKE_DEPENDENT_OPTION(FLEXI_MPI_SHARED "Use MPI-3 shared memory for particles" OFF
+                                                   "FLEXI_MPI" OFF)
 CMAKE_DEPENDENT_OPTION(FLEXI_PARTICLES_LOADBALANCE "Use LoadBalance timemeasurement" OFF
                                                    "FLEXI_PARTICLES;FLEXI_MPI" OFF)
 CMAKE_DEPENDENT_OPTION(FLEXI_PARTICLES_RW "Use random walk model for particles" OFF
@@ -529,7 +531,14 @@ IF(FLEXI_MPI)
   MESSAGE(STATUS "Building Flexi with MPI")
   MESSAGE(STATUS "MPI Compiler: " ${MPI_Fortran_COMPILER})
   ADD_DEFINITIONS(-DUSE_MPI=1)
+	IF(FLEXI_MPI_SHARED)
+		MESSAGE(STATUS "Building Flexi with MPI-3 shared memory")
+		ADD_DEFINITIONS(-DUSE_MPI_SHARED=1)
+  ELSE()
+		ADD_DEFINITIONS(-DUSE_MPI_SHARED=0)
+  ENDIF()
 ELSE()
+	ADD_DEFINITIONS(-DUSE_MPI_SHARED=0)
   ADD_DEFINITIONS(-DUSE_MPI=0)
 ENDIF()
 

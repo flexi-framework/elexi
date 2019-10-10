@@ -61,6 +61,9 @@ USE MOD_TimeDisc,          ONLY:DefineParametersTimedisc,InitTimeDisc,TimeDisc
 USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
+#if USE_MPI_SHARED
+USE MOD_MPI_Shared,        ONLY:DefineParametersMPIShared,InitMPIShared
+#endif
 #endif
 #if USE_PARTICLES
 USE MOD_Particle_Analyze,  ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
@@ -106,6 +109,9 @@ IF(PRESENT(mpi_comm_loc))THEN
 ELSE
   CALL InitMPI()
 END IF
+#if USE_MPI_SHARED
+CALL InitMPIShared()
+#endif
 IF(nArgs_In.EQ.0)THEN
   CALL ParseCommandlineArguments()
 ELSE
@@ -137,6 +143,9 @@ ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
 #endif
 END IF
 CALL DefineParametersMPI()
+#if USE_MPI_SHARED
+CALL DefineParametersMPIShared()
+#endif
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()
 CALL DefineParametersRestart()
@@ -293,6 +302,9 @@ USE MOD_RecordPoints,      ONLY:FinalizeRecordPoints
 USE MOD_TimeDisc,          ONLY:FinalizeTimeDisc
 #if USE_MPI
 USE MOD_MPI,               ONLY:FinalizeMPI
+#if USE_MPI_SHARED
+USE MOD_MPI_Shared,        ONLY:FinalizeMPIShared
+#endif
 #endif
 USE MOD_Sponge,            ONLY:FinalizeSponge
 #if FV_ENABLED
@@ -352,6 +364,9 @@ Time=FLEXITIME()
 CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
 #if USE_MPI
+#if USE_MPI_SHARED
+CALL FinalizeMPIShared()
+#endif
 ! For flexilib MPI init/finalize is controlled by main program
 CALL FinalizeMPI()
 #if USE_PARTICLES

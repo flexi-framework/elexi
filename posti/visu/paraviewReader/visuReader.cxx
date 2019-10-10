@@ -329,7 +329,7 @@ int visuReader::RequestData(
 
 	 int nParts = VarParticleDataArraySelection->GetNumberOfArrays();
    PartNames_selected.resize(nParts);
-   for (int i = 0; i< nBCs; ++i)
+   for (int i = 0; i< nParts; ++i)
    {
       const char* name = VarParticleDataArraySelection->GetArrayName(i);
       PartNames_selected[i] = VarParticleDataArraySelection->ArrayIsEnabled(name);
@@ -476,7 +476,7 @@ int visuReader::RequestData(
    }
 
 	 // write PartData
-	 if  (nodeids_Part.len > 0) {
+	 if  (coords_Part.len > 0) {
       this->Blocks.resize(this->Blocks.size()+1);
       vtkSmartPointer<vtkUnstructuredGrid> output_Part = this->Blocks[this->Blocks.size()-1];
       if (!output_Part)
@@ -489,19 +489,20 @@ int visuReader::RequestData(
       InsertPartData(output_Part, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
 			minusBlock =minusBlock+1;
    }
-//	 if  (nodeids_Erosion.len > 0) {
-//      this->Blocks.resize(this->Blocks.size()+1);
-//      vtkSmartPointer<vtkUnstructuredGrid> output_Erosion = this->Blocks[this->Blocks.size()-1];
-//      if (!output_Erosion)
-//      {
-//         output_Erosion = vtkUnstructuredGrid::New();
-//         this->Blocks[this->Blocks.size()-1] = output_Erosion;
-//         output_Erosion->Delete();
-//      }
-//      // Insert data into output
-//      InsertPartData(output_Erosion, &coords_Erosion, &values_Erosion, &nodeids_Erosion, &varnames_Erosion, &components_Erosion);
-//			minusBlock =minusBlock+1;
-//   }
+	 
+	 if  (coords_Erosion.len > 0) {
+      this->Blocks.resize(this->Blocks.size()+1);
+      vtkSmartPointer<vtkUnstructuredGrid> output_Erosion = this->Blocks[this->Blocks.size()-1];
+      if (!output_Erosion)
+      {
+         output_Erosion = vtkUnstructuredGrid::New();
+         this->Blocks[this->Blocks.size()-1] = output_Erosion;
+         output_Erosion->Delete();
+      }
+      // Insert data into output
+      InsertPartData(output_Erosion, &coords_Erosion, &values_Erosion, &nodeids_Erosion, &varnames_Erosion, &components_Erosion);
+			minusBlock =minusBlock+1;
+   }
 
    __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
 
@@ -522,7 +523,7 @@ int visuReader::RequestData(
       mb_Part->SetBlock(PartOut, nthOutput);
       PartOut=PartOut+1;
    }
-
+	 
    // tell paraview to render data
    this -> Modified(); 
 
@@ -690,7 +691,7 @@ void visuReader::InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, st
         	for (long i = 0; i < components->data[iVar]; ++i)
         	{
         	   *ptr++ = values->data[dataPos+i+j*nVar];
-//	      			std::cout << "Data " << values->data[dataPos+i+j*nVar] << "\n";
+	//      			std::cout << "Data " << values->data[dataPos+i+j*nVar] << "\n";
         	}
 	 			}
         dataPos += components->data[iVar];

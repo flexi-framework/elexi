@@ -229,6 +229,12 @@ IF (MeshFileMode) THEN
   nodeidsPart_out%len   = 0
   varnamesPart_out%len  = 0
   componentsPart_out%len  = 0
+  coordsErosion_out%len    = 0  
+  coordsErosion_out%dim    = 0
+  valuesErosion_out%len    = 0
+  nodeidsErosion_out%len   = 0
+  varnamesErosion_out%len  = 0
+  componentsErosion_out%len  = 0
 
   RETURN
 END IF

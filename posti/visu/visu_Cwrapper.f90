@@ -125,6 +125,7 @@ ELSE
   bcnames%len  = 0
   bcnames%data = C_NULL_PTR
 END IF
+#if USE_PARTICLES
 IF (ALLOCATED(PartNamesAll)) THEN
   partnames_pointer => PartNamesAll
   partnames%len  = SIZE(partnames_pointer)*255
@@ -133,6 +134,7 @@ ELSE
   partnames%len  = 0
   partnames%data = C_NULL_PTR
 END IF
+#endif
 END SUBROUTINE visu_requestInformation
 
 !===================================================================================================================================

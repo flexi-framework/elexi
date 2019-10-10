@@ -60,7 +60,11 @@ visuReader::visuReader()
    this->ParameterFileOverwrite = NULL;
    this->MeshFileOverwrite = NULL;
    this->SetNumberOfInputPorts(0);
+#if USE_PARTICLES
    this->SetNumberOfOutputPorts(3);
+#else
+	 this->SetNumberOfOutputPorts(2);
+#endif
 
    // Setup the selection callback to modify this object when an array
    // selection is changed.
@@ -111,12 +115,16 @@ int visuReader::RequestInformation(vtkInformation *,
    // get the info object of the output ports 
    vtkSmartPointer<vtkInformation> outInfoVolume = outputVector->GetInformationObject(0);
    vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
+#if USE_PARTICLES
    vtkSmartPointer<vtkInformation> outInfoPart = outputVector->GetInformationObject(2);
+#endif
 
    // sets the number of pieces to the number of processsors
    outInfoVolume->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
    outInfoSurface->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+#if USE_PARTICLES
    outInfoPart->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+#endif
 
    // RequestInformation may be called before AddFileName, thus the arrays with timesteps and
    // file names may be empty.  In this case, simply leave the function. It will be called again
@@ -131,7 +139,9 @@ int visuReader::RequestInformation(vtkInformation *,
    double timeRange[2] = {Timesteps[0], Timesteps[Timesteps.size()-1]};
    outInfoVolume->Set (vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
    outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
+#if USE_PARTICLES
    outInfoPart->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
+#endif
    outInfoVolume->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
@@ -196,6 +206,7 @@ int visuReader::RequestInformation(vtkInformation *,
          this->BCDataArraySelection->DisableArray(bcname.c_str());
       }
    }
+#if USE_PARTICLES
 	 for (int iVar=0; iVar<partnames.len/255; iVar++) {
       char tmps[255];
       strncpy(tmps, partnames.data+iVar*255, 255);
@@ -207,6 +218,7 @@ int visuReader::RequestInformation(vtkInformation *,
          this->VarParticleDataArraySelection->DisableArray(partname.c_str());
       }
    }
+#endif
    return 1; 
 }
 
@@ -286,7 +298,9 @@ int visuReader::RequestData(
    std::string FileToLoad;
    vtkSmartPointer<vtkInformation> outInfoVolume = outputVector->GetInformationObject(0);
    vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
+#if USE_PARTICLES
    vtkSmartPointer<vtkInformation> outInfoPart = outputVector->GetInformationObject(2);
+#endif
    if (outInfoVolume->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoVolume->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
@@ -298,11 +312,13 @@ int visuReader::RequestData(
       // get the requested time
       double requestedTimeValue = outInfoSurface->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
    }
+#if USE_PARTICLES
 	 if (outInfoPart->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoPart->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
 			timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
+#endif
 
 
    // convert the MPI communicator to a fortran communicator
@@ -327,6 +343,7 @@ int visuReader::RequestData(
       BCNames_selected[i] = BCDataArraySelection->ArrayIsEnabled(name);
    }
 
+#if USE_PARTICLES
 	 int nParts = VarParticleDataArraySelection->GetNumberOfArrays();
    PartNames_selected.resize(nParts);
    for (int i = 0; i< nParts; ++i)
@@ -334,6 +351,7 @@ int visuReader::RequestData(
       const char* name = VarParticleDataArraySelection->GetArrayName(i);
       PartNames_selected[i] = VarParticleDataArraySelection->ArrayIsEnabled(name);
    }
+#endif
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
    char* dir = strdup(FileToLoad.c_str());
@@ -384,6 +402,7 @@ int visuReader::RequestData(
          dprintf(posti_unit, "BoundaryName = %s\n", name) ;
       }
    }
+#if USE_PARTICLES
 	 for (int i = 0; i< nParts; ++i)
    {
       if (PartNames_selected[i]) {
@@ -391,10 +410,9 @@ int visuReader::RequestData(
          dprintf(posti_unit, "VarName = %s\n", name) ;
       }
    }
+#endif
    close(posti_unit);
    
-	 int minusBlock = 0;
-
    MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
 
    // call Posti tool (Fortran code)
@@ -466,65 +484,33 @@ int visuReader::RequestData(
     // Insert Surface FV data into output
    InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
 
-	 vtkDataObject* doOutput_Part = outInfoPart->Get(vtkDataObject::DATA_OBJECT());
-   //vtkMultiBlockDataSet* firstBlock = vtkMultiBlockDataSet::SafeDownCast(doOutput_Part);
-   vtkMultiBlockDataSet* mb_Part = vtkMultiBlockDataSet::SafeDownCast(doOutput_Part);
-   if (!mb_Part)
-   {
+
+#if USE_PARTICLES
+	 // write PartData
+	 vtkMultiBlockDataSet* mb_part = vtkMultiBlockDataSet::SafeDownCast(outInfoPart->Get(vtkDataObject::DATA_OBJECT()));
+   if (!mb_part) {
       std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
       return 0;
    }
 
-	 // write PartData
-	 if  (coords_Part.len > 0) {
-      this->Blocks.resize(this->Blocks.size()+1);
-      vtkSmartPointer<vtkUnstructuredGrid> output_Part = this->Blocks[this->Blocks.size()-1];
-      if (!output_Part)
-      {
-         output_Part = vtkUnstructuredGrid::New();
-         this->Blocks[this->Blocks.size()-1] = output_Part;
-         output_Part->Delete();
-      }
-      // Insert data into output
-      InsertPartData(output_Part, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
-			minusBlock =minusBlock+1;
-   }
-	 
-	 // write ErosionData
-	 if  (coords_Erosion.len > 0) {
-      this->Blocks.resize(this->Blocks.size()+1);
-      vtkSmartPointer<vtkUnstructuredGrid> output_Erosion = this->Blocks[this->Blocks.size()-1];
-      if (!output_Erosion)
-      {
-         output_Erosion = vtkUnstructuredGrid::New();
-         this->Blocks[this->Blocks.size()-1] = output_Erosion;
-         output_Erosion->Delete();
-      }
-      // Insert data into output
-      InsertPartData(output_Erosion, &coords_Erosion, &values_Erosion, &nodeids_Erosion, &varnames_Erosion, &components_Erosion);
-			minusBlock =minusBlock+1;
+   SWRITE("Number of Blocks in MultiBlockDataset : " << mb_part->GetNumberOfBlocks())
+	 if (mb_part->GetNumberOfBlocks() < 2) {
+   	SWRITE("Create new part and erosion output Blocks");
+   	mb_part->SetBlock(0, vtkUnstructuredGrid::New());
+   	mb_part->SetBlock(1, vtkUnstructuredGrid::New());
    }
 
+   // Insert data into output
+	 if  (coords_Part.len > 0) {
+   		InsertPartData(mb_part,0, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
+	 }
+	 if  (coords_Erosion.len > 0) {
+   		InsertPartData(mb_part,1, &coords_Erosion, &values_Erosion, &nodeids_Erosion, &varnames_Erosion, &components_Erosion);
+	 }
+#endif
+	 
    __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
 
-	 int firstBlock=0; 
-	 mb->SetNumberOfBlocks(this->Blocks.size()-minusBlock); // missing -1
-	 for(unsigned int i=0; i<this->Blocks.size()-minusBlock; i++) // missing -1
-	 {
-	    vtkUnstructuredGrid* nthOutput = this->Blocks[i];
-	    firstBlock=firstBlock+1;
-	    mb->SetBlock(i, nthOutput);
-	 }
-
-   int PartOut=0; 
-   mb_Part->SetNumberOfBlocks(this->Blocks.size()-firstBlock);
-   for(unsigned int i=firstBlock; i<this->Blocks.size(); i++)
-   {
-      vtkUnstructuredGrid* nthOutput = this->Blocks[i];
-      mb_Part->SetBlock(PartOut, nthOutput);
-      PartOut=PartOut+1;
-   }
-	 
    // tell paraview to render data
    this -> Modified(); 
 
@@ -644,13 +630,15 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
    }
 }
 
+#if USE_PARTICLES
 /*
  * This function inserts the data, loaded by the Posti tool, into a ouput
  */
-void visuReader::InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, struct DoubleARRAY* coords,
+void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , struct DoubleARRAY* coords,
     struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) {
-
    SWRITE("Insert particle data \n");
+	 vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb_part->GetBlock(blockno));
+
    // create points(array)
    vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
 	 pdata->SetNumberOfComponents(3); // 3D
@@ -675,7 +663,6 @@ void visuReader::InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, st
      nVar += components->data[iVar];
    }
    
-
 	 if (nVar > 0) {
 	   unsigned int sizePerVar = values->len/nVar;
 	
@@ -708,6 +695,7 @@ void visuReader::InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, st
     }
    }
 }
+#endif
 
 visuReader::~visuReader(){
    SWRITE("~visuReader");

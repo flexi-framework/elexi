@@ -36,23 +36,26 @@ ADD_DEPENDENCIES(     posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared)
 
 # Posti visu plugin for Paraview
 CMAKE_DEPENDENT_OPTION(POSTI_USE_PARAVIEW "Build the Paraview visualization plugin for Posti." OFF "POSTI_BUILD_VISU" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_USE_OSPRAY   "Build the Paraview plugin with Ospray support." OFF "POSTI_USE_PARAVIEW" OFF)
 IF (POSTI_USE_PARAVIEW)
   FIND_PACKAGE(ParaView)
 ENDIF()
 IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
    # Needed for Paraview compiled with Ospray
-   FIND_PACKAGE(TBB REQUIRED tbb)
-   IF (TBB_FOUND)
-      FIND_LIBRARY(TBB_LIBRARY tbb)
-			# Gives warning but fixes itself, so supress it for the time being
-      SET(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON CACHE BOOL
-      "Suppress Warnings that are meant for the author of the CMakeLists.txt files"
-      FORCE)
-   ENDIF()
-	 # Find ospray::ospray
-	 #FIND_PACKAGE(ospray REQUIRED)
-	 #target_link_libraries(${client_target} ospray::ospray)
-	 # Finally compiles against ParaView 5.6.2 on Arch Linux
+	 IF(POSTI_USE_OSPRAY)
+	   FIND_PACKAGE(TBB REQUIRED tbb)
+     IF (TBB_FOUND)
+       FIND_LIBRARY(TBB_LIBRARY tbb)
+       # Gives warning but fixes itself, so supress it for the time being
+       SET(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON CACHE BOOL
+       "Suppress Warnings that are meant for the author of the CMakeLists.txt files"
+       FORCE)
+     ENDIF()
+	   # Find ospray::ospray
+	   FIND_PACKAGE(ospray REQUIRED)
+	   target_link_libraries(${client_target} ospray::ospray)
+	   # Finally compiles against ParaView 5.6.2 on Arch Linux
+	 ENDIF()
    SET(POSTI_PV_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
    IF(POSTI_PV_SUFFIX STREQUAL "")
      SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader)

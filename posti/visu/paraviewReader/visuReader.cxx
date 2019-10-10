@@ -490,6 +490,7 @@ int visuReader::RequestData(
 			minusBlock =minusBlock+1;
    }
 	 
+	 // write ErosionData
 	 if  (coords_Erosion.len > 0) {
       this->Blocks.resize(this->Blocks.size()+1);
       vtkSmartPointer<vtkUnstructuredGrid> output_Erosion = this->Blocks[this->Blocks.size()-1];

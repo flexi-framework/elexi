@@ -205,8 +205,8 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
 #if USE_PARTICLES
   SDEALLOCATE(PartNamesAll)
   ALLOCATE(PartnamesAll(1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5))
-  PartnamesAll(1:PD%nPartVar_HDF5)=PD%VarNamesPart_HDF5
-  PartnamesAll(PD%nPartVar_HDF5+1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5)=PDE%VarNamesPart_HDF5
+  IF(ALLOCATED(PD%VarNamesPart_HDF5)) PartnamesAll(1:PD%nPartVar_HDF5)=PD%VarNamesPart_HDF5
+  IF(ALLOCATED(PDE%VarNamesPart_HDF5)) PartnamesAll(PD%nPartVar_HDF5+1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5)=PDE%VarNamesPart_HDF5
 #endif
 END IF
 END SUBROUTINE visu_getVarNamesAndFileType
@@ -561,17 +561,21 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   ELSE
     changedPrmFile = (prmfile .NE. prmfile_old)
   END IF
-  SWRITE (*,*) "changedStateFile     ", changedStateFile
-  SWRITE (*,*) "changedMeshFile      ", changedMeshFile
-  SWRITE (*,*) "changedNVisu         ", changedNVisu
-  SWRITE (*,*) "changedNCalc         ", changedNCalc
-  SWRITE (*,*) "changedVarNames      ", changedVarNames
-  SWRITE (*,*) "changedFV_Elems      ", changedFV_Elems
-  SWRITE (*,*) "changedWithDGOperator", changedWithDGOperator
-  SWRITE (*,*) "changedDGonly        ", changedDGonly
-  SWRITE (*,*) "changedAvg2D         ", changedAvg2D
-  SWRITE (*,*) "changedPrmFile       ", changedPrmFile, TRIM(prmfile_old), " -> ", TRIM(prmfile)
-  SWRITE (*,*) "changedBCnames       ", changedBCnames
+  SWRITE (*,*) "changedStateFile        ", changedStateFile
+  SWRITE (*,*) "changedMeshFile         ", changedMeshFile
+  SWRITE (*,*) "changedNVisu            ", changedNVisu
+  SWRITE (*,*) "changedNCalc            ", changedNCalc
+  SWRITE (*,*) "changedVarNames         ", changedVarNames
+  SWRITE (*,*) "changedFV_Elems         ", changedFV_Elems
+  SWRITE (*,*) "changedWithDGOperator   ", changedWithDGOperator
+  SWRITE (*,*) "changedDGonly           ", changedDGonly
+  SWRITE (*,*) "changedAvg2D            ", changedAvg2D
+  SWRITE (*,*) "changedPrmFile          ", changedPrmFile, TRIM(prmfile_old), " -> ", TRIM(prmfile)
+  SWRITE (*,*) "changedBCnames          ", changedBCnames
+#if USE_PARTICLES
+  SWRITE (*,*) "changedPartVarnames     ", PD%changedPartVarnames
+  SWRITE (*,*) "changedErosionVarnames  ", PDE%changedPartVarnames
+#endif
   IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
       CALL ReadState(prmfile,statefile)
   END IF
@@ -627,13 +631,19 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   ! convert generic data to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     CALL ConvertToVisu_GenericData(statefile)
-#if USE_PARTICLES
+  END IF
+  
+  ! convert part/erosion data to visu grid
+#if USE_PARTICLES 
+  IF (changedStateFile.OR.PD%changedPartVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     DataArray='PartData'
     CALL ReadPartStateFile(statefile,DataArray,PD)
+  END IF
+  IF (changedStateFile.OR.PDE%changedPartVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     DataArray='ErosionData'
     CALL ReadPartStateFile(statefile,DataArray,PDE)
-#endif
   END IF
+#endif
 
   IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
 

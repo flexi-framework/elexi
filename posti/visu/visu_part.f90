@@ -222,7 +222,6 @@ ELSE
     DO iVar2=1,ListIn%nPartVar_HDF5
       IF(STRICMP(ListIn%VarNamePartVisu(iVar),ListIn%VarNamesPart_HDF5(iVar2)))THEN
         ListIn%PartData_HDF5(iVar+3,:)=PartData(iVar2+3,:)
-        ListIn%mapAllVarsToVisuVars(iVar2)=1
       END IF
     END DO
   END DO

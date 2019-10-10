@@ -188,7 +188,8 @@
       <!-- ================================================================== -->
          <OutputPort name="Volume" index="0"/>
          <OutputPort name="Surface" index="1"/>
-         <OutputPort name="Particles" index="2"/>
+         <OutputPort name="Particles:PartData" index="2"/>
+         <OutputPort name="Particles:ErosionData" index="3"/>
          <Hints>
             <ReaderFactory extensions="h5"
                file_description="2 Posti Visu" />

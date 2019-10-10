@@ -61,7 +61,7 @@ visuReader::visuReader()
    this->MeshFileOverwrite = NULL;
    this->SetNumberOfInputPorts(0);
 #if USE_PARTICLES
-   this->SetNumberOfOutputPorts(3);
+   this->SetNumberOfOutputPorts(4);
 #else
 	 this->SetNumberOfOutputPorts(2);
 #endif
@@ -117,6 +117,7 @@ int visuReader::RequestInformation(vtkInformation *,
    vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
 #if USE_PARTICLES
    vtkSmartPointer<vtkInformation> outInfoPart = outputVector->GetInformationObject(2);
+   vtkSmartPointer<vtkInformation> outInfoErosion = outputVector->GetInformationObject(3);
 #endif
 
    // sets the number of pieces to the number of processsors
@@ -124,6 +125,7 @@ int visuReader::RequestInformation(vtkInformation *,
    outInfoSurface->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 #if USE_PARTICLES
    outInfoPart->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+   outInfoErosion->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 #endif
 
    // RequestInformation may be called before AddFileName, thus the arrays with timesteps and
@@ -141,6 +143,7 @@ int visuReader::RequestInformation(vtkInformation *,
    outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
 #if USE_PARTICLES
    outInfoPart->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
+   outInfoErosion->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
 #endif
    outInfoVolume->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
 
@@ -300,6 +303,7 @@ int visuReader::RequestData(
    vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
 #if USE_PARTICLES
    vtkSmartPointer<vtkInformation> outInfoPart = outputVector->GetInformationObject(2);
+   vtkSmartPointer<vtkInformation> outInfoErosion = outputVector->GetInformationObject(3);
 #endif
    if (outInfoVolume->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
@@ -316,6 +320,11 @@ int visuReader::RequestData(
 	 if (outInfoPart->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoPart->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+			timestepToLoad = FindClosestTimeStep(requestedTimeValue);
+   }
+	 if (outInfoErosion->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
+      // get the requested time
+      double requestedTimeValue = outInfoErosion->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
 			timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
 #endif
@@ -487,25 +496,35 @@ int visuReader::RequestData(
 
 #if USE_PARTICLES
 	 // write PartData
-	 vtkMultiBlockDataSet* mb_part = vtkMultiBlockDataSet::SafeDownCast(outInfoPart->Get(vtkDataObject::DATA_OBJECT()));
-   if (!mb_part) {
-      std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
-      return 0;
-   }
-
-   SWRITE("Number of Blocks in MultiBlockDataset : " << mb_part->GetNumberOfBlocks())
-	 if (mb_part->GetNumberOfBlocks() < 2) {
-   	SWRITE("Create new part and erosion output Blocks");
-   	mb_part->SetBlock(0, vtkUnstructuredGrid::New());
-   	mb_part->SetBlock(1, vtkUnstructuredGrid::New());
-   }
-
-   // Insert data into output
 	 if  (coords_Part.len > 0) {
+	 		vtkMultiBlockDataSet* mb_part = vtkMultiBlockDataSet::SafeDownCast(outInfoPart->Get(vtkDataObject::DATA_OBJECT()));
+   		if (!mb_part) {
+   		   std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
+   		   return 0;
+   		}
+
+   		SWRITE("Number of Blocks in MultiBlockDataset : " << mb_part->GetNumberOfBlocks())
+	 		if (mb_part->GetNumberOfBlocks() < 2) {
+   			SWRITE("Create new part output Block");
+   			mb_part->SetBlock(0, vtkUnstructuredGrid::New());
+   		}
+
    		InsertPartData(mb_part,0, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
 	 }
 	 if  (coords_Erosion.len > 0) {
-   		InsertPartData(mb_part,1, &coords_Erosion, &values_Erosion, &nodeids_Erosion, &varnames_Erosion, &components_Erosion);
+	 		vtkMultiBlockDataSet* mb_erosion = vtkMultiBlockDataSet::SafeDownCast(outInfoErosion->Get(vtkDataObject::DATA_OBJECT()));
+   		if (!mb_erosion) {
+   		   std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
+   		   return 0;
+   		}
+
+   		SWRITE("Number of Blocks in MultiBlockDataset : " << mb_erosion->GetNumberOfBlocks())
+	 		if (mb_erosion->GetNumberOfBlocks() < 2) {
+   			SWRITE("Create new erosion output Block");
+   			mb_erosion->SetBlock(0, vtkUnstructuredGrid::New());
+   		}
+
+   		InsertPartData(mb_erosion,0, &coords_Erosion, &values_Erosion, &nodeids_Erosion, &varnames_Erosion, &components_Erosion);
 	 }
 #endif
 	 
@@ -630,7 +649,6 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
    }
 }
 
-#if USE_PARTICLES
 /*
  * This function inserts the data, loaded by the Posti tool, into a ouput
  */
@@ -656,7 +674,6 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
    output->SetPoints(points);
 
    // assign the actual data, loaded by the Posti tool, to the output
-   std::vector<vtkSmartPointer<vtkDoubleArray> > dataArrays;
    unsigned int nVarCombine = varnames->len/255;
    unsigned int nVar = 0;
    for (unsigned int iVar=0;iVar<nVarCombine;iVar++) {
@@ -665,7 +682,6 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
    
 	 if (nVar > 0) {
 	   unsigned int sizePerVar = values->len/nVar;
-	
 	   int dataPos = 0;
 	   // loop over all loaded variables
 	   for (unsigned int iVar = 0; iVar < nVarCombine; iVar++) {
@@ -695,12 +711,12 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
     }
    }
 }
-#endif
 
 visuReader::~visuReader(){
    SWRITE("~visuReader");
    delete [] FileName;
    this->VarDataArraySelection->Delete();
+   this->VarParticleDataArraySelection->Delete();
 }
 
 /*

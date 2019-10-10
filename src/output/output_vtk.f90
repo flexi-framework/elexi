@@ -554,7 +554,6 @@ IF (nVarVisu.GT.0) THEN
   varnames_out%data = C_LOC(VarNames_loc(1,1))
 
   DO iVar=1,nVarTotal
-    WRITE(*,*) iVar, mapVisu(iVar)
     IF (mapVisu(iVar).GT.0) THEN
       DO i=1,255
         VarNames_loc(i,mapVisu(iVar)) = VarNamesTotal(iVar)(i:i)

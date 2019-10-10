@@ -126,8 +126,10 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
 
       void InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
             struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames);
-			virtual void InsertPartData(vtkSmartPointer<vtkUnstructuredGrid> &output, struct DoubleARRAY* coords,
+#if USE_PARTICLES
+			virtual void InsertPartData(vtkMultiBlockDataSet* mb_part, int blockno, struct DoubleARRAY* coords,
             struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components);
+#endif
 
       vtkDataArraySelection* VarDataArraySelection;
       vtkDataArraySelection* BCDataArraySelection;
@@ -170,8 +172,6 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
 
       virtual int FillOutputPortInformation(int port, vtkInformation* info);
 			
-			std::vector<vtkSmartPointer<vtkUnstructuredGrid> > Blocks;
-
    private:
       // MPI
       vtkMultiProcessController *Controller;

@@ -250,10 +250,12 @@ DO iVar=1,nVarIni
     END IF
   END DO
 #if USE_PARTICLES
+  ! PartData
   DO iVar2=1,PD%nPartVar_HDF5
     IF (STRICMP(VarName, PD%VarNamesPart_HDF5(iVar2)))THEN
       PD%nPartVar_Visu = PD%nPartVar_Visu + 1
       PD%VarNamePartDummy(PD%nPartVar_Visu)=PD%VarNamesPart_HDF5(iVar2)
+      PD%mapAllVarsToVisuVars(iVar2)=1
     END IF
   END DO 
   IF(iVar.EQ.nVarIni)THEN
@@ -264,10 +266,12 @@ DO iVar=1,nVarIni
     END DO
     SDEALLOCATE(PD%VarNamePartDummy)
   END IF
+  ! PartErosion
   DO iVar2=1,PDE%nPartVar_HDF5
     IF (STRICMP(VarName, PDE%VarNamesPart_HDF5(iVar2)))THEN
       PDE%nPartVar_visu = PDE%nPartVar_visu + 1
       PDE%VarNamePartDummy(PDE%nPartVar_visu)=PDE%VarNamesPart_HDF5(iVar2)
+      PDE%mapAllVarsToVisuVars(iVar2)=1
     END IF
   END DO 
   IF(iVar.EQ.nVarIni)THEN
@@ -334,6 +338,29 @@ SDEALLOCATE(mapAllVarsToSurfVisuVars_old)
 ALLOCATE(mapAllVarsToSurfVisuVars_old(1:nVarAll))
 mapAllVarsToSurfVisuVars_old = mapAllVarsToSurfVisuVars
 
+#if USE_PARTICLES
+! check if any varnames changed
+IF(ALLOCATED(PD%mapAllVarsToVisuVars))THEN
+  PD%changedPartVarNames = .TRUE.
+  IF (ALLOCATED(PD%mapAllVarsToVisuVars_old).AND.(SIZE(PD%mapAllVarsToVisuVars).EQ.SIZE(PD%mapAllVarsToVisuVars_old))) THEN
+    PD%changedPartVarNames = .NOT.ALL(PD%mapAllVarsToVisuVars.EQ.PD%mapAllVarsToVisuVars_old)
+  END IF
+  SDEALLOCATE(PD%mapAllVarsToVisuVars_old)
+  ALLOCATE(PD%mapAllVarsToVisuVars_old(1:PD%nPartVar_HDF5))
+  PD%mapAllVarsToVisuVars_old = PD%mapAllVarsToVisuVars
+END IF
+
+IF(ALLOCATED(PDE%mapAllVarsToVisuVars))THEN
+  PD%changedPartVarNames = .TRUE.
+  PDE%changedPartVarNames = .TRUE.
+  IF (ALLOCATED(PDE%mapAllVarsToVisuVars_old).AND.(SIZE(PDE%mapAllVarsToVisuVars).EQ.SIZE(PDE%mapAllVarsToVisuVars_old))) THEN
+    PDE%changedPartVarNames = .NOT.ALL(PDE%mapAllVarsToVisuVars.EQ.PDE%mapAllVarsToVisuVars_old)
+  END IF
+  SDEALLOCATE(PDE%mapAllVarsToVisuVars_old)
+  ALLOCATE(PDE%mapAllVarsToVisuVars_old(1:PDE%nPartVar_HDF5))
+  PDE%mapAllVarsToVisuVars_old = PDE%mapAllVarsToVisuVars
+END IF
+#endif
 
 SDEALLOCATE(mapDepToCalc_FV)
 ALLOCATE(mapDepToCalc_FV(1:nVarDep))

@@ -125,6 +125,7 @@ ELSE
   bcnames%len  = 0
   bcnames%data = C_NULL_PTR
 END IF
+#if USE_PARTICLES
 IF (ALLOCATED(PartNamesAll)) THEN
   partnames_pointer => PartNamesAll
   partnames%len  = SIZE(partnames_pointer)*255
@@ -133,6 +134,7 @@ ELSE
   partnames%len  = 0
   partnames%data = C_NULL_PTR
 END IF
+#endif
 END SUBROUTINE visu_requestInformation
 
 !===================================================================================================================================
@@ -229,6 +231,12 @@ IF (MeshFileMode) THEN
   nodeidsPart_out%len   = 0
   varnamesPart_out%len  = 0
   componentsPart_out%len  = 0
+  coordsErosion_out%len    = 0  
+  coordsErosion_out%dim    = 0
+  valuesErosion_out%len    = 0
+  nodeidsErosion_out%len   = 0
+  varnamesErosion_out%len  = 0
+  componentsErosion_out%len  = 0
 
   RETURN
 END IF
@@ -251,8 +259,10 @@ END IF
 ALLOCATE(PD%PartIds_Visu(1:PD%nPart_visu))
 ALLOCATE(PD%Part_Pos_visu(1:3,1:PD%nPart_Visu))
 ALLOCATE(PD%Part_visu(1:PD%nPartVar_visu,1:PD%nPart_visu))
-PD%Part_Pos_visu=PD%PartData_HDF5(1:3,:)
-PD%Part_visu=PD%PartData_HDF5(4:,:)
+IF(ALLOCATED(PD%PartData_HDF5))THEN
+  PD%Part_Pos_visu=PD%PartData_HDF5(1:3,:)
+  PD%Part_visu=PD%PartData_HDF5(4:,:)
+END IF
 CALL WritePartDataToVTK_array(PD%nPart_visu,PD%nPartVar_visu,coordsPart_out,valuesPart_out,nodeidsPart_out,varnamesPart_out,&
                               componentsPart_out,PD%Part_Pos_visu,PD%Part_visu,PD%PartIds_Visu,PD%VarNamePartCombine,&
                               PD%VarNamePartCombineLen,PD%VarNamePartVisu,PD%PartCPointers_allocated)
@@ -260,8 +270,10 @@ CALL WritePartDataToVTK_array(PD%nPart_visu,PD%nPartVar_visu,coordsPart_out,valu
 ALLOCATE(PDE%PartIds_Visu(1:PDE%nPart_visu))
 ALLOCATE(PDE%Part_Pos_visu(1:3,1:PDE%nPart_Visu))
 ALLOCATE(PDE%Part_visu(1:PDE%nPartVar_visu,1:PDE%nPart_visu))
-PDE%Part_Pos_visu=PDE%PartData_HDF5(1:3,:)
-PDE%Part_visu=PDE%PartData_HDF5(4:,:)
+IF(ALLOCATED(PDE%PartData_HDF5))THEN
+  PDE%Part_Pos_visu=PDE%PartData_HDF5(1:3,:)
+  PDE%Part_visu=PDE%PartData_HDF5(4:,:)
+END IF
 CALL WritePartDataToVTK_array(PDE%nPart_visu,PDE%nPartVar_visu,coordsErosion_out,valuesErosion_out,&
                                  nodeidsErosion_out,varnamesErosion_out,componentsErosion_out,PDE%Part_Pos_visu,&
                                  PDE%Part_visu,PDE%PartIds_Visu,PDE%VarNamePartCombine,&

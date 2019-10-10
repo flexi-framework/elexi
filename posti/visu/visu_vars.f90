@@ -171,7 +171,7 @@ REAL,ALLOCATABLE                  :: Vdm_FVToVisu(:,:)
 ! Particles
 ! ==============================================================================================================================
 LOGICAL                           :: VisuPart                    !< Flag indicating if the simulation was run with particles
-CHARACTER(LEN=255),ALLOCATABLE,TARGET :: PartnamesAll(:)          !< all available varnames (state file + dependent vars + generic)
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: PartnamesAll(:)         !< all available varnames (state file + dependent vars + generic)
 
 TYPE tVisuParticle
   INTEGER                         :: nGlobalParts
@@ -188,10 +188,12 @@ TYPE tVisuParticle
   INTEGER,ALLOCATABLE             :: VarNamePartCombine(:)
   INTEGER,ALLOCATABLE             :: VarNamePartCombineLen(:)
   INTEGER,ALLOCATABLE             :: mapAllVarsToVisuVars(:)
+  INTEGER,ALLOCATABLE             :: mapAllVarsToVisuVars_old(:)
   REAL(C_DOUBLE),POINTER          :: Part_visu(:,:)
   REAL(C_DOUBLE),POINTER          :: Part_Pos_visu(:,:)
   INTEGER(C_INT),POINTER          :: PartIDs_visu(:)
   LOGICAL                         :: PartCPointers_allocated=.FALSE.
+  LOGICAL                         :: changedPartVarNames         !< variables selected for visualization changed (ParaView plugin)
 END TYPE tVisuParticle
 
 TYPE(tVisuParticle)               :: PD

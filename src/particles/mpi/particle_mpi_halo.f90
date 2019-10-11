@@ -14,14 +14,12 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-! Contains global variables provided by the particle surfaces routines
+! Contains routines to build the halo region
 !===================================================================================================================================
 MODULE MOD_Particle_MPI_Halo
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-PUBLIC
-SAVE
+PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! required variables
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -124,16 +122,21 @@ ELSE IF (PartMPI%MyRank.GT.iProc) THEN
   CALL MPI_SEND(SendMsg%MinMaxXYZ,6,MPI_DOUBLE_PRECISION,iProc,1002,PartMPI%COMM,IERROR)
 END IF
 
+! mark all MPISides to be searched, ignore inner side
 SideisDone=.FALSE.
 SideisDone(1:firstMPISide_MINE-1)=.TRUE.
+
+! loop over all elems and within each elem over all sides. Identify MPI sides within halo_eps on MY proc
 DO iElem=1,PP_nElems
   DO ilocSide=1,6
+    ! Map each element side to the SideID
     SideID=PartElemToSide(E2S_SIDE_ID,ilocSide,iElem)
-    ! if not SideID exists, ignore
-    IF(SideID.LT.1) CYCLE
-    IF(SideID.GT.nPartSides) CYCLE ! only MY sides are checked, no HALO sides of other processes
-    IF(SideID.LT.firstMPISide_MINE)THEN ! for my-inner-sides, we have to check the periodic sides
-      IF(BC(SideID).LE.0) CYCLE ! no boundary side, cycle
+
+    ! Exclude sides with no potential for halo sides
+    IF(SideID.LT.1)          CYCLE        ! no SideID, skip this side
+    IF(SideID.GT.nPartSides) CYCLE        ! only MY sides are checked, no HALO sides of other processes
+    IF(SideID.LT.firstMPISide_MINE)THEN   ! for my-inner-sides, we have to check the periodic sides
+      IF(BC(SideID).LE.0)     CYCLE       ! no boundary side, cycle
       IF(BoundaryType(BC(SideID),BC_TYPE).NE.1) CYCLE  ! not a periodic BC, cycle
     END IF
     ! side is already checked
@@ -141,19 +144,23 @@ DO iElem=1,PP_nElems
     ! mortar side
     IF(MortarSlave2MasterInfo(SideID).NE.-1) CYCLE
     IF(SideIndex(SideID).EQ.0)THEN
+      ! Check if side is a periodic side, then both periodic sides must be considered
       PVID=SidePeriodicType(SideID)
       Vec1=0.
+      ! Side is periodic, get periodic vector
       IF(PVID.NE.0) Vec1= SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
-      ! check if an overlap is possible
-      DO iDir=1,3 ! x,y,z
-        ! check for SideInSide at the beginning of the loop
+      ! Loop over all cartesion directions
+      DO iDir = 1,3
+        ! Reset the flag
         SideInside=.FALSE.
+        ! Get side bounding box
         MinMax(1)=MINVAL(BezierControlPoints3D(iDir,0:NGeo,0:NGeo,SideID))
         MinMax(2)=MAXVAL(BezierControlPoints3D(iDir,0:NGeo,0:NGeo,SideID))
+        ! If the side bounding box is inside the halo_eps bounding box, the complete side is inside
         IF(MinMax(1).LE.RecvMsg%MinMaxXYZ(iDir+3).AND.MinMax(2).GE.RecvMsg%MinMaxXYZ(iDir))THEN
           SideInside=.TRUE.
         END IF
-        ! periodic sides
+        ! For periodic sides, also the shifted coordinates must be considered
         IF(Vec1(iDir).NE.0)THEN
           MinMax(1)=MinMax(1)+Vec1(iDir)
           MinMax(2)=MinMax(2)+Vec1(iDir)
@@ -161,15 +168,20 @@ DO iElem=1,PP_nElems
             SideInside=.TRUE.
           END IF
         END IF
-        IF(.NOT.SideInside) EXIT ! Side outside of required range, can be skipped
-      END DO ! directions
-      ! if Side is marked, it has to be communicated
+        ! It is enough if the side is outside of the required range in one Cartesian direction
+        ! Side can be skipped without checking the other directions
+        IF(.NOT.SideInside) EXIT
+      END DO
+
+      ! Side is a MPI halo side, so it has to be communicated
       IF(SideInside)THEN
         SendMsg%nMPISides=SendMsg%nMPISides+1
         SideIndex(SideID)=SendMsg%nMPISides
       END IF
+
+      ! Mark side as done
       SideisDone(SideID)=.TRUE.
-    END IF
+    END IF ! SideIndex
   END DO ! ilocSide
 END DO ! iElem=1,PP_nElems
 

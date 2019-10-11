@@ -107,10 +107,6 @@ USE MOD_Mappings,           ONLY:buildMappings
 #if USE_MPI
 USE MOD_Prepare_Mesh,       ONLY:exchangeFlip
 #endif
-#if USE_MPI_SHARED
-USE MOD_MPI_Shared,         ONLY:Allocate_Shared
-USE MOD_MPI_Shared_Vars
-#endif
 #if FV_ENABLED
 USE MOD_FV_Metrics,         ONLY:InitFV_Metrics
 #endif
@@ -149,8 +145,6 @@ INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx
 INTEGER           :: iSide,LocSideID,SideID
 INTEGER           :: NGeoOverride
 #if USE_MPI_SHARED
-INTEGER           :: MPISharedSize
-INTEGER           :: FirstElemShared,LastElemShared
 #endif
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
@@ -257,31 +251,6 @@ IF(interpolateFromTree)THEN
 ELSE
   CALL BuildCoords(NodeCoords,NodeType,PP_N,Elem_xGP)
 ENDIF
-
-! Save Elem_xGP on MPI-3 shared memory
-#if USE_MPI_SHARED
-!> First communicate total number of elemens on the node
-CALL MPI_ALLREDUCE(nElems,nElems_Shared,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IERROR)
-
-!> Send offsetElem of node root to all other procs on node
-IF (myRank_shared.EQ.0) offsetElem_shared_root = offsetElem
-CALL MPI_BCAST(offsetElem_shared_root,1,MPI_INTEGER,0,MPI_COMM_SHARED,IERROR)
-
-!> DataSizeLength for Elem_xGP on all procs on the node
-MPISharedSize = INT(3*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*nElems_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/3,PP_N+1,PP_N+1,PP_NZ+1,nElems_Shared/),nElems_Shared_Win,Elem_xGP_Shared)
-
-!> Elem_xGP from each proc
-!>>> Caution: PP starts from 0 in Elem_xGP, but from 1 in Elem_xGP_Shared
-CALL MPI_WIN_LOCK_ALL(0,nElems_Shared_Win,IERROR)
-
-FirstElemShared = offsetElem-offsetElem_shared_root+1
-LastElemShared  = offsetElem-offsetElem_shared_root+nElems
-Elem_xGP_Shared(:,1:PP_N+1,1:PP_N+1,1:PP_NZ+1,FirstElemShared:LastElemShared) = Elem_xGP(:,:,:,:,:)
-
-CALL MPI_WIN_SYNC(nElems_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
-#endif
 
 ! Return if no connectivity and metrics are required (e.g. for visualization mode)
 #if !USE_PARTICLES
@@ -506,7 +475,9 @@ END IF
 IF(meshMode.GT.0) CALL InitElemVolumes()
 #endif
 
+#if !USE_MPI_SHARED
 SDEALLOCATE(NodeCoords)
+#endif
 SDEALLOCATE(dXCL_N)
 SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)

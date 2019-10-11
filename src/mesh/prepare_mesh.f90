@@ -156,12 +156,12 @@ DO iElem=FirstElemInd,LastElemInd
       aSide%sideID=-1
       ! periodic master and slave side have different BCs (i.e. different BCindex).
       ! => overwrite BCindex of the slave side by the BCindex of the master side.
-      
+
 #if USE_PARTICLES
       IF(aSide%BCIndex.GE.1)THEN
         IF(BoundaryType(aSide%BCIndex,BC_TYPE).EQ.1)THEN
           ! additionally, the flip of the side has to be taken into account
-          ! the alpha value is only correct for slave sides, for master sides, the 
+          ! the alpha value is only correct for slave sides, for master sides, the
           ! value has to be turned
           IF(aSide%BC_Alpha.GT.0)THEN
             aSide%BC_Alpha=BoundaryType(aSide%BCIndex,BC_ALPHA)
@@ -176,7 +176,7 @@ DO iElem=FirstElemInd,LastElemInd
         aSide%BC_Alpha=0
       END IF
 #endif
-      
+
       IF(aSide%BCIndex.GE.1)THEN ! side is at BC
         IF(PeriodicBCMap(aSide%BCIndex).NE.-1)& ! side is slave side of a periodic side => store BC index of master side
           aSide%BCIndex=PeriodicBCMap(aSide%BCIndex)
@@ -218,8 +218,8 @@ DO iElem=FirstElemInd,LastElemInd
 END DO
 IF((nMortarInnerSides+nMortarMPISides).NE.nMortarSides) &
    CALL abort(__STAMP__,'nInner+nMPI mortars <> nMortars.')
-   
-   
+
+
 #if USE_PARTICLES
 ALLOCATE(SidePeriodicType(1:nSides))
 SidePeriodicType = 0
@@ -964,7 +964,7 @@ END DO ! iElem
 LOGWRITE(*,*)'============================= END SIDE CHECKER ==================='
 
 #if USE_PARTICLES
-CALL buildGlobConnection()  
+CALL buildGlobConnection()
 #if USE_MPI
 CALL exchangeElemID()
 #endif

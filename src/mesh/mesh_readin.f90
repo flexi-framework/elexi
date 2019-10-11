@@ -489,10 +489,10 @@ END DO !iElem
 !----------------------------------------------------------------------------------------------------------------------------
 #if USE_PARTICLES
 !read local Node Info from data file
-offsetNodeID=ElemInfo(ELEM_FirstNodeInd,FirstElemInd) ! hdf5 array starts at 0-> -1
-nNodeIDs=ElemInfo(ELEM_LastNodeInd,LastElemInd)-ElemInfo(ELEM_FirstNodeInd,FirstElemind)
-FirstNodeInd=offsetNodeID+1
-LastNodeInd=offsetNodeID+nNodeIDs
+offsetNodeID = ElemInfo(ELEM_FirstNodeInd,FirstElemInd) ! hdf5 array starts at 0-> -1
+nNodeIDs     = ElemInfo(ELEM_LastNodeInd,LastElemInd)-ElemInfo(ELEM_FirstNodeInd,FirstElemind)
+FirstNodeInd = offsetNodeID+1
+LastNodeInd  = offsetNodeID+nNodeIDs
 ALLOCATE(NodeInfo(FirstNodeInd:LastNodeInd))
 CALL ReadArray('GlobalNodeIDs',1,(/nNodeIDs/),offsetNodeID,1,IntArray=NodeInfo)
 ALLOCATE(NodeCoords_indx(3,nNodeIDs))

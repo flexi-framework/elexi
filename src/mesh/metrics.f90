@@ -273,7 +273,7 @@ REAL    :: xi0(3),dxi(3),length(3)
 #if USE_MPI
 INTEGER           :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
-#endif 
+#endif
 
 #if USE_PARTICLES
 INTEGER            :: iSide,lowerLimit,ElemID,SideID,NBElemID
@@ -394,7 +394,7 @@ DO iElem=1,nElems
         'Scaled Jacobian in reference system lower then tolerance in global element:',iElem+offsetElem)
     END IF
   END IF
-  
+
   ! interpolate detJac_ref to the solution points
   CALL ChangeBasisVolume(1,NgeoRef,PP_N,Vdm_NgeoRef_N,DetJac_Ref(:,:,:,:,iElem),DetJac_N)
 
@@ -519,7 +519,7 @@ DO iElem=1,nElems
 #endif
     END DO
   ENDIF
-    
+
 #if USE_PARTICLES
     IF(interpolateFromTree)THEN
         IF((PRESENT(XCL_Ngeo_Out)).OR.(PRESENT(dXCL_NGeo_Out)))THEN
@@ -549,8 +549,8 @@ DO iElem=1,nElems
         IF(PRESENT(dXCL_ngeo_out)) dXCL_Ngeo_Out(1:3,1:3,0:Ngeo,0:Ngeo,0:Ngeo,iElem)=dXCL_Ngeo(1:3,1:3,0:Ngeo,0:Ngeo,0:Ngeo)
         CALL GetBezierControlPoints3D(XCL_NGeo(:,:,:,:),iElem)
     END IF
-#endif    
-    
+#endif
+
     IF(interpolateFromTree)THEN
 #if (PP_dim == 3)
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
@@ -632,7 +632,7 @@ lowerLimit=nSides ! all incl. my mortar sides
 #else
 lowerLimit=nBCSides+nMortarInnerSides+nInnerSides
 #endif /*MPI*/
-! Next, build the BezierControlPoints,SideSlabNormals,SideSlabIntervals and BoundingBoxIsEmpty for 
+! Next, build the BezierControlPoints,SideSlabNormals,SideSlabIntervals and BoundingBoxIsEmpty for
 ! nBCSides, nInnerMortarSides, nInnerSides, nMPISides_MINE and MINE mortar sides
 ! this requires check for flip and MortarSlave2Master
 DO iSide=1,lowerLimit

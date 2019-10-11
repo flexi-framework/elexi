@@ -61,9 +61,6 @@ USE MOD_TimeDisc,          ONLY:DefineParametersTimedisc,InitTimeDisc,TimeDisc
 USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
-#if USE_MPI_SHARED
-USE MOD_MPI_Shared,        ONLY:DefineParametersMPIShared,InitMPIShared
-#endif
 #endif
 #if USE_PARTICLES
 USE MOD_Particle_Analyze,  ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
@@ -79,6 +76,10 @@ USE MOD_Particle_Restart
 USE MOD_Particle_MPI,      ONLY:InitParticleMPI
 USE MOD_LoadBalance,       ONLY:DefineParametersLoadBalance,InitLoadBalance
 #endif /*MPI*/
+#if USE_MPI_SHARED
+USE MOD_MPI_Shared,        ONLY:DefineParametersMPIShared,InitMPIShared
+USE MOD_Particle_MPI_Shared,ONLY: InitMeshShared
+#endif
 #if USE_LOADBALANCE
 USE MOD_Restart_Vars,      ONLY:DoRestart
 #endif /*LOADBALANCE*/
@@ -109,9 +110,6 @@ IF(PRESENT(mpi_comm_loc))THEN
 ELSE
   CALL InitMPI()
 END IF
-#if USE_MPI_SHARED
-CALL InitMPIShared()
-#endif
 IF(nArgs_In.EQ.0)THEN
   CALL ParseCommandlineArguments()
 ELSE
@@ -143,9 +141,6 @@ ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
 #endif
 END IF
 CALL DefineParametersMPI()
-#if USE_MPI_SHARED
-CALL DefineParametersMPIShared()
-#endif
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()
 CALL DefineParametersRestart()
@@ -178,6 +173,9 @@ CALL DefineParametersParticleErosion()
 CALL DefineParametersErosionPoints
 #if USE_MPI
 CALL DefineParametersLoadBalance()
+#endif
+#if USE_MPI_SHARED
+CALL DefineParametersMPIShared()
 #endif
 #endif /*PARTICLES*/
 
@@ -240,6 +238,10 @@ CALL InitIndicator()
 CALL InitMPIvars()
 #endif
 #if USE_PARTICLES
+#if USE_MPI_SHARED
+CALL InitMPIShared()
+CALL InitMeshShared()
+#endif
 #if USE_MPI
 CALL InitParticleMPI
 #endif

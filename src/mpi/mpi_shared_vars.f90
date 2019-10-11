@@ -1,4 +1,3 @@
-
 !=================================================================================================================================
 ! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
@@ -25,17 +24,29 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER            :: myRank_Shared
-INTEGER            :: nProcessors_Shared
-INTEGER            :: MPI_COMM_SHARED
-!CHARACTER(LEN=255) :: myNode_Shared
 LOGICAL            :: MPISharedInitIsDone=.FALSE.
+
+! Communication
+INTEGER            :: myRank_Shared                   !> Rank of current proc on current node
+INTEGER,ALLOCATABLE:: MPIRankGlobal(:)                !> Array of size nProcessors holding the global rank of each proc
+INTEGER,ALLOCATABLE:: MPIRankShared(:)                !> Array of size nProcessors holding the shared rank of each proc
+INTEGER            :: nProcessors_Shared              !> Number of procs on current node
+INTEGER            :: nProcessors_Global              !> Number of total procs
+INTEGER            :: MPI_COMM_SHARED                 !> Communicator on current node
 
 ! Mesh
 INTEGER            :: nElems_Shared                   !> Number of elems on current node
-INTEGER            :: nElems_Shared_Win               !> Pointer to shared memory window
+INTEGER            :: nSides_Shared                   !> Number of sides on current node
 INTEGER            :: OffsetElem_Shared_Root          !> offsetElem of root on current node
+INTEGER            :: OffsetSide_Shared_Root          !> offsetSide of root on current node
 REAL,POINTER       :: Elem_xGP_Shared(:,:,:,:,:)      !> Gauss points on current node
+INTEGER            :: Elem_xGP_Shared_Win             !> Pointer to shared memory window
+INTEGER,POINTER    :: ElemToSide_Shared(:,:,:)        !> ElemToSide mapping on current node
+INTEGER            :: ElemToSide_Shared_Win           !> Pointer to shared memory window
+INTEGER,POINTER    :: SideToElem_Shared(:,:)          !> SideToElem mapping on current node
+INTEGER            :: SideToElem_Shared_Win           !> Pointer to shared memory window
+REAL,POINTER       :: NodeCoords_Shared(:,:,:,:,:)    !> NodeCoords on current node
+INTEGER            :: NodeCoords_Shared_Win           !> Pointer to shared memory window
 
 #endif /* MPI_SHARED */
 END MODULE

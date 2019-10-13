@@ -204,7 +204,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
 
 #if USE_PARTICLES
   SDEALLOCATE(PartNamesAll)
-  ALLOCATE(PartnamesAll(1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5))
+  IF(ALLOCATED(PD%VarNamesPart_HDF5).OR.ALLOCATED(PDE%VarNamesPart_HDF5)) ALLOCATE(PartnamesAll(1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5))
   IF(ALLOCATED(PD%VarNamesPart_HDF5)) PartnamesAll(1:PD%nPartVar_HDF5)=PD%VarNamesPart_HDF5
   IF(ALLOCATED(PDE%VarNamesPart_HDF5)) PartnamesAll(PD%nPartVar_HDF5+1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5)=PDE%VarNamesPart_HDF5
 #endif
@@ -632,9 +632,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     CALL ConvertToVisu_GenericData(statefile)
   END IF
-  
+
   ! convert part/erosion data to visu grid
-#if USE_PARTICLES 
+#if USE_PARTICLES
   IF (changedStateFile.OR.PD%changedPartVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     DataArray='PartData'
     CALL ReadPartStateFile(statefile,DataArray,PD)

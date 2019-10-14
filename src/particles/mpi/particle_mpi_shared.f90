@@ -64,6 +64,7 @@ INTEGER(KIND=MPI_ADDRESS_KIND)  :: MPISharedSize
 INTEGER                         :: nElems_Shared_Glob
 INTEGER                         :: FirstElemShared,LastElemShared
 INTEGER                         :: FirstSideShared,LastSideShared
+INTEGER                         :: iElem,iSide,ilocSide
 !=================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT SHARED MESH...'
@@ -132,7 +133,14 @@ CALL Allocate_Shared(MPISharedSize,(/2,6,nElems_Shared/),ElemToSide_Shared_Win,E
 
 !> ElemToSide from each proc
 CALL MPI_WIN_LOCK_ALL(0,ElemToSide_Shared_Win,IERROR)
-ElemToSide_Shared(:,:,FirstElemShared:LastElemShared) = ElemToSide(:,:,:)
+
+!> Shift shared sides by FirstSideShared
+DO iElem = 1,nElems
+  DO ilocSide = 1,6
+    ElemToSide_Shared(E2S_SIDE_ID,ilocSide,iElem+FirstElemShared-1) = ElemToSide(E2S_SIDE_ID,ilocSide,iElem) + FirstSideShared - 1
+    ElemToSide_Shared(E2S_FLIP   ,ilocSide,iElem+FirstElemShared-1) = ElemToSide(E2S_FLIP   ,ilocSide,iElem)
+  END DO
+END DO
 
 !==== SideToElem ================================================================================================================
 !> DataSizeLength for ElemToSide
@@ -141,7 +149,15 @@ CALL Allocate_Shared(MPISharedSize,(/5,nSides_Shared/),SideToElem_Shared_Win,Sid
 
 !> ElemToSide from each proc
 CALL MPI_WIN_LOCK_ALL(0,SideToElem_Shared_Win,IERROR)
-SideToElem_Shared(:,FirstSideShared:LastSideShared) = SideToElem(:,1:nSides-nMPISides_YOUR)
+
+!> Shift shared sides by FirstSideShared
+DO iSide = 1,nSides-nMPISides_YOUR
+  SideToElem_Shared(S2E_ELEM_ID       ,iSide+FirstSideShared-1) = SideToElem(S2E_ELEM_ID       ,iSide) + FirstElemShared - 1
+  SideToElem_Shared(S2E_NB_ELEM_ID    ,iSide+FirstSideShared-1) = SideToElem(S2E_NB_ELEM_ID    ,iSide) + FirstElemShared - 1
+  SideToElem_Shared(S2E_LOC_SIDE_ID   ,iSide+FirstSideShared-1) = SideToElem(S2E_LOC_SIDE_ID   ,iSide) + FirstSideShared - 1
+  SideToElem_Shared(S2E_NB_LOC_SIDE_ID,iSide+FirstSideShared-1) = SideToElem(S2E_NB_LOC_SIDE_ID,iSide) + FirstSideShared - 1
+  SideToElem_Shared(S2E_FLIP          ,iSide+FirstSideShared-1) = SideToElem(S2E_FLIP          ,iSide)
+END DO
 
 ! Synchronize all RMA communication
 CALL MPI_WIN_SYNC(Elem_xGP_Shared_Win,  IERROR)
@@ -149,7 +165,6 @@ CALL MPI_WIN_SYNC(NodeCoords_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(ElemToSide_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(SideToElem_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
-
 
 SWRITE(UNIT_stdOut,'(A)')' INIT SHARED MESH DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')

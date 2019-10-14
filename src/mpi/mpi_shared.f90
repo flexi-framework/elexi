@@ -40,6 +40,7 @@ END INTERFACE
 INTERFACE Allocate_Shared
   MODULE PROCEDURE Allocate_Shared_Int_2
   MODULE PROCEDURE Allocate_Shared_Int_3
+  MODULE PROCEDURE Allocate_Shared_Real_4
   MODULE PROCEDURE Allocate_Shared_Real_5
 END INTERFACE
 
@@ -210,6 +211,51 @@ END SUBROUTINE ALLOCATE_SHARED_INT_3
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
+SUBROUTINE Allocate_Shared_Real_4(Datasize_Byte,nVal,SM_WIN,DataPointer)
+! MODULES
+USE,INTRINSIC :: ISO_C_BINDING
+USE MOD_Globals
+USE MOD_MPI_Vars
+USE MOD_MPI_Shared_Vars
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
+INTEGER,INTENT(IN)                        :: nVal(4)                  !> Local number of variables in each rank
+INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:)     !> Pointer to the RMA window
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
+INTEGER                                   :: DISP_UNIT                !> Displacement unit
+INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+!==================================================================================================================================
+
+! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
+IF (myRank_Shared.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
+DISP_UNIT = 1
+
+! Allocate MPI-3 remote memory access (RMA) type memory window
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_NULL, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+
+! Node MPI root already knows the location in virtual memory, all other find it here
+IF (myRank_Shared.NE.0) THEN
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+END IF
+
+! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
+CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+
+END SUBROUTINE ALLOCATE_SHARED_REAL_4
+
+
+!==================================================================================================================================
+!> Allocate data with MPI-3 shared memory option
+!==================================================================================================================================
 SUBROUTINE Allocate_Shared_Real_5(Datasize_Byte,nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
@@ -251,6 +297,7 @@ CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
 
 END SUBROUTINE ALLOCATE_SHARED_REAL_5
 
+
 !==================================================================================================================================
 !> Finalize for MPI-3 shared memory
 !==================================================================================================================================
@@ -265,6 +312,12 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
+
+! Free arrays
+SDEALLOCATE(MPIRankGlobal)
+SDEALLOCATE(MPIRankShared)
+
+! Free the shared communicator
 CALL MPI_COMM_FREE(MPI_COMM_SHARED, IERROR)
 MPISharedInitIsDone=.FALSE.
 

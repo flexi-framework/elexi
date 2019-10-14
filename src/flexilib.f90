@@ -78,7 +78,7 @@ USE MOD_LoadBalance,       ONLY:DefineParametersLoadBalance,InitLoadBalance
 #endif /*MPI*/
 #if USE_MPI_SHARED
 USE MOD_MPI_Shared,        ONLY:DefineParametersMPIShared,InitMPIShared
-USE MOD_Particle_MPI_Shared,ONLY: InitMeshShared
+USE MOD_Particle_MPI_Shared,ONLY: InitMeshShared,InitParticleMeshShared
 #endif
 #if USE_LOADBALANCE
 USE MOD_Restart_Vars,      ONLY:DoRestart
@@ -248,6 +248,9 @@ CALL InitParticleMPI
 CALL InitElemBoundingBox()
 CALL InitParticleSurfaces
 CALL InitParticleAnalyze
+#if USE_MPI_SHARED
+CALL InitParticleMeshShared()
+#endif
 #endif /*PARTICLES*/
 CALL InitEquation()
 CALL InitDG()
@@ -306,6 +309,7 @@ USE MOD_TimeDisc,          ONLY:FinalizeTimeDisc
 USE MOD_MPI,               ONLY:FinalizeMPI
 #if USE_MPI_SHARED
 USE MOD_MPI_Shared,        ONLY:FinalizeMPIShared
+USE MOD_Particle_MPI_Shared,ONLY:FinalizeMeshShared,FinalizeParticleMeshShared
 #endif
 #endif
 USE MOD_Sponge,            ONLY:FinalizeSponge
@@ -367,6 +371,8 @@ CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
 #if USE_MPI
 #if USE_MPI_SHARED
+CALL FinalizeMeshShared()
+CALL FinalizeParticleMeshShared()
 CALL FinalizeMPIShared()
 #endif
 ! For flexilib MPI init/finalize is controlled by main program

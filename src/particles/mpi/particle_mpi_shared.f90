@@ -33,8 +33,18 @@ INTERFACE InitParticleMeshShared
   MODULE PROCEDURE InitParticleMeshShared
 END INTERFACE
 
+INTERFACE FinalizeMeshShared
+  MODULE PROCEDURE FinalizeMeshShared
+END INTERFACE
+
+INTERFACE FinalizeParticleMeshShared
+  MODULE PROCEDURE FinalizeParticleMeshShared
+END INTERFACE
+
 PUBLIC:: InitMeshShared
 PUBLIC:: InitParticleMeshShared
+PUBLIC:: FinalizeMeshShared
+PUBLIC:: FinalizeParticleMeshShared
 !===================================================================================================================================
 
 CONTAINS
@@ -177,28 +187,103 @@ SUBROUTINE InitParticleMeshShared
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc,            ONLY:N
-USE MOD_Mesh_Vars,          ONLY:nGeo,nElems,offsetElem
+USE MOD_Mesh_Vars,          ONLY:nGeo,nElems,nSides,nMPISides_YOUR,offsetElem
+USE MOD_Mesh_Vars,          ONLY:useCurveds
 USE MOD_MPI_Shared,         ONLY:Allocate_Shared
+USE MOD_MPI_Shared_Vars
+USE MOD_Particle_Mesh_Vars, ONLY:offsetSide
+USE MOD_Particle_MPI_Shared_Vars
+USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3D
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER(KIND=MPI_ADDRESS_KIND)  :: MPISharedSize
+INTEGER                         :: FirstElemShared,LastElemShared
+INTEGER                         :: FirstSideShared,LastSideShared
+!=================================================================================================================================
+
+!> Calculate the local offset relative to the node MPI root
+FirstElemShared = offsetElem-offsetElem_shared_root+1
+LastElemShared  = offsetElem-offsetElem_shared_root+nElems
+
+!> Calculate the local offset relative to the node MPI root. MPI sides on neighbor processors are ignored
+FirstSideShared = offsetSide-offsetSide_shared_root+1
+LastSideShared  = offsetSide-offsetSide_shared_root+nSides-nMPISides_YOUR
+
+!==== BezierControlPoint3D ======================================================================================================
+!> DataSizeLength for BezierControlPoint3D
+IF (useCurveds) THEN
+  MPISharedSize = INT(3*(NGeo+1)*(NGeo+1)*nSides_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+  CALL Allocate_Shared(MPISharedSize,(/3,NGeo+1,NGeo+1,nSides_Shared/),BezierControlPoints3D_Shared_Win,BezierControlPoints3D_Shared)
+ELSE
+  MPISharedSize = INT(3*(1   +1)*(1   +1)*nSides_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+  CALL Allocate_Shared(MPISharedSize,(/3,   1+1,   1+1,nSides_Shared/),BezierControlPoints3D_Shared_Win,BezierControlPoints3D_Shared)
+END IF
+
+!> BezierControlPoints3D from each proc
+!>>> Caution: NGeo starts from 0 in BezierControlPoints3D, but from 1 in BezierControlPoints3D_Shared
+CALL MPI_WIN_LOCK_ALL(0,BezierControlPoints3D_Shared_Win,IERROR)
+IF (useCurveds) THEN
+  BezierControlPoints3D_Shared(:,1:NGeo+1,1:Ngeo+1,FirstSideShared:LastSideShared) = &
+         BezierControlPoints3D(:,:,:,1:nSides-nMPISides_YOUR)
+ELSE
+  BezierControlPoints3D_Shared(:,1:1   +1,1:1   +1,FirstSideShared:LastSideShared) = &
+         BezierControlPoints3D(:,:,:,1:nSides-nMPISides_YOUR)
+END IF
+
+! Synchronize all RMA communication
+CALL MPI_WIN_SYNC(BezierControlPoints3D_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+
+END SUBROUTINE InitParticleMeshShared
+
+
+SUBROUTINE FinalizeMeshShared
+!===================================================================================================================================
+! Finalizes the mesh on the current node into a MPI-3 shared memory window
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
 USE MOD_MPI_Shared_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! LOCAL VARIABLES
+!=================================================================================================================================
+
+! Free RMA windows
+CALL MPI_WIN_FREE(Elem_xGP_Shared_Win,  IERROR)
+CALL MPI_WIN_FREE(NodeCoords_Shared_Win,IERROR)
+CALL MPI_WIN_FREE(ElemToSide_Shared_Win,IERROR)
+CALL MPI_WIN_FREE(SideToElem_Shared_Win,IERROR)
+
+END SUBROUTINE FinalizeMeshShared
+
+
+SUBROUTINE FinalizeParticleMeshShared
+!===================================================================================================================================
+! Finalizes the particle mesh on the current node into a MPI-3 shared memory window
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_MPI_Shared_Vars
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND)  :: MPISharedSize
-INTEGER                         :: FirstElemShared,LastElemShared
 !=================================================================================================================================
-!> Calculate the local offset relative to the node MPI root
-FirstElemShared = offsetElem-offsetElem_shared_root+1
-LastElemShared  = offsetElem-offsetElem_shared_root+nElems
 
+! Free RMA windows
+CALL MPI_WIN_FREE(BezierControlPoints3D_Shared_Win,IERROR)
 
-END SUBROUTINE InitParticleMeshShared
-
+END SUBROUTINE FinalizeParticleMeshShared
 
 #endif
 

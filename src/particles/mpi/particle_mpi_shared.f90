@@ -191,7 +191,7 @@ USE MOD_Mesh_Vars,          ONLY:nGeo,nElems,nSides,nMPISides_YOUR,offsetElem
 USE MOD_Mesh_Vars,          ONLY:useCurveds
 USE MOD_MPI_Shared,         ONLY:Allocate_Shared
 USE MOD_MPI_Shared_Vars
-USE MOD_Particle_Mesh_Vars, ONLY:offsetSide
+USE MOD_Particle_Mesh_Vars, ONLY:offsetSide,XiEtaZetaBasis,slenXiEtaZetaBasis
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3D
 ! IMPLICIT VARIABLE HANDLING
@@ -234,8 +234,29 @@ ELSE
          BezierControlPoints3D(:,:,:,1:nSides-nMPISides_YOUR)
 END IF
 
+! !==== XiEtaZetaBasis ============================================================================================================
+! !> DataSizeLength for XiEtaZetaBasis
+! MPISharedSize = INT(3*6*nElems_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+! CALL Allocate_Shared(MPISharedSize,(/3,6,nElems_Shared/),XiEtaZetaBasis_Shared_Win,XiEtaZetaBasis_Shared)
+!
+! !> XiEtaZetaBasis each proc
+! CALL MPI_WIN_LOCK_ALL(0,XiEtaZetaBasis_Shared_Win,IERROR)
+! XiEtaZetaBasis_Shared(:,:,FirstElemShared:LastElemShared) = XiEtaZetaBasis(:,:,:)
+!
+! !==== slenXiEtaZetaBasis ========================================================================================================
+! !> DataSizeLength for slenXiEtaZetaBasis
+! MPISharedSize = INT(6*nElems_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+! CALL Allocate_Shared(MPISharedSize,(/6,nElems_Shared/),slenXiEtaZetaBasis_Shared_Win,slenXiEtaZetaBasis_Shared)
+!
+! !> slenXiEtaZetaBasis each proc
+! CALL MPI_WIN_LOCK_ALL(0,slenXiEtaZetaBasis_Shared_Win,IERROR)
+! slenXiEtaZetaBasis_Shared(:,FirstElemShared:LastElemShared) = slenXiEtaZetaBasis(:,:)
+
+
 ! Synchronize all RMA communication
 CALL MPI_WIN_SYNC(BezierControlPoints3D_Shared_Win,IERROR)
+! CALL MPI_WIN_SYNC(XiEtaZetaBasis_Shared_Win       ,IERROR)
+! CALL MPI_WIN_SYNC(slenXiEtaZetaBasis_Shared_Win   ,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 END SUBROUTINE InitParticleMeshShared
@@ -282,6 +303,8 @@ IMPLICIT NONE
 
 ! Free RMA windows
 CALL MPI_WIN_FREE(BezierControlPoints3D_Shared_Win,IERROR)
+! CALL MPI_WIN_FREE(XiEtaZetaBasis_Shared_Win       ,IERROR)
+! CALL MPI_WIN_FREE(slenXiEtaZetaBasis_Shared_Win   ,IERROR)
 
 END SUBROUTINE FinalizeParticleMeshShared
 

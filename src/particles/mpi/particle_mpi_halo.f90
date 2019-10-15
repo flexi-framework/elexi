@@ -271,9 +271,9 @@ END IF
 
 
 ! PO
-! For each side, identifz the FIBGM cell(s) in which the side resides and
+! For each side, identify the FIBGM cell(s) in which the side resides and
 ! search the surrounding nPaddingCells for neighboring elements
-! For idiots: iProc and tells me which sides are on his MPI bound,
+! For idiots: iProc tells me which sides are on his MPI bound
 !             and I check which sides are within eps range
 
 SideIndex(:)=0

@@ -100,9 +100,9 @@ CALL MPI_COMM_SIZE(MPI_COMM_SHARED, nProcessors_Shared,IERROR)
 SWRITE(UNIT_stdOUt,'(A,I3,A)') ' | Starting shared communication with ',nProcessors_Shared,' procs per node'
 
 ! Map global rank number into shared rank number. Returns MPI_UNDEFINED if not on the same node
-ALLOCATE(MPIRankGlobal(1:nProcessors))
-ALLOCATE(MPIRankShared(1:nProcessors))
-DO i=1,nProcessors
+ALLOCATE(MPIRankGlobal(0:nProcessors-1))
+ALLOCATE(MPIRankShared(0:nProcessors-1))
+DO i=0,nProcessors-1
   MPIRankGlobal(i) = i
 END DO
 

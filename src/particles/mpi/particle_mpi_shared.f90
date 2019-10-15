@@ -57,7 +57,7 @@ SUBROUTINE InitMeshShared()
 USE MOD_Globals
 USE MOD_PreProc,            ONLY:N
 USE MOD_Mesh_Vars,          ONLY:nGeo,nElems,nSides,nMPISides_YOUR,offsetElem
-USE MOD_Mesh_Vars,          ONLY:Elem_xGP,ElemToSide,SideToElem,NodeCoords
+USE MOD_Mesh_Vars,          ONLY:Elem_xGP,NodeCoords
 USE MOD_Mesh_Vars,          ONLY:useCurveds
 USE MOD_MPI_Shared,         ONLY:Allocate_Shared
 USE MOD_MPI_Shared_Vars
@@ -74,7 +74,6 @@ INTEGER(KIND=MPI_ADDRESS_KIND)  :: MPISharedSize
 INTEGER                         :: nElems_Shared_Glob
 INTEGER                         :: FirstElemShared,LastElemShared
 INTEGER                         :: FirstSideShared,LastSideShared
-INTEGER                         :: iElem,iSide,ilocSide
 !=================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT SHARED MESH...'
@@ -136,44 +135,9 @@ CALL Allocate_Shared(MPISharedSize,(/3,PP_N+1,PP_N+1,PP_NZ+1,nElems_Shared/),Ele
 CALL MPI_WIN_LOCK_ALL(0,Elem_xGP_Shared_Win,IERROR)
 Elem_xGP_Shared(:,1:PP_N+1,1:PP_N+1,1:PP_NZ+1,FirstElemShared:LastElemShared) = Elem_xGP(:,:,:,:,:)
 
-!==== ElemToSide ================================================================================================================
-!> DataSizeLength for ElemToSide
-MPISharedSize = INT(5*nElems_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/2,6,nElems_Shared/),ElemToSide_Shared_Win,ElemToSide_Shared)
-
-!> ElemToSide from each proc
-CALL MPI_WIN_LOCK_ALL(0,ElemToSide_Shared_Win,IERROR)
-
-!> Shift shared sides by FirstSideShared
-DO iElem = 1,nElems
-  DO ilocSide = 1,6
-    ElemToSide_Shared(E2S_SIDE_ID,ilocSide,iElem+FirstElemShared-1) = ElemToSide(E2S_SIDE_ID,ilocSide,iElem) + FirstSideShared - 1
-    ElemToSide_Shared(E2S_FLIP   ,ilocSide,iElem+FirstElemShared-1) = ElemToSide(E2S_FLIP   ,ilocSide,iElem)
-  END DO
-END DO
-
-!==== SideToElem ================================================================================================================
-!> DataSizeLength for ElemToSide
-MPISharedSize = INT(5*nSides_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/5,nSides_Shared/),SideToElem_Shared_Win,SideToElem_Shared)
-
-!> ElemToSide from each proc
-CALL MPI_WIN_LOCK_ALL(0,SideToElem_Shared_Win,IERROR)
-
-!> Shift shared sides by FirstSideShared
-DO iSide = 1,nSides-nMPISides_YOUR
-  SideToElem_Shared(S2E_ELEM_ID       ,iSide+FirstSideShared-1) = SideToElem(S2E_ELEM_ID       ,iSide) + FirstElemShared - 1
-  SideToElem_Shared(S2E_NB_ELEM_ID    ,iSide+FirstSideShared-1) = SideToElem(S2E_NB_ELEM_ID    ,iSide) + FirstElemShared - 1
-  SideToElem_Shared(S2E_LOC_SIDE_ID   ,iSide+FirstSideShared-1) = SideToElem(S2E_LOC_SIDE_ID   ,iSide) + FirstSideShared - 1
-  SideToElem_Shared(S2E_NB_LOC_SIDE_ID,iSide+FirstSideShared-1) = SideToElem(S2E_NB_LOC_SIDE_ID,iSide) + FirstSideShared - 1
-  SideToElem_Shared(S2E_FLIP          ,iSide+FirstSideShared-1) = SideToElem(S2E_FLIP          ,iSide)
-END DO
-
 ! Synchronize all RMA communication
 CALL MPI_WIN_SYNC(Elem_xGP_Shared_Win,  IERROR)
 CALL MPI_WIN_SYNC(NodeCoords_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(ElemToSide_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(SideToElem_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT SHARED MESH DONE!'
@@ -189,8 +153,10 @@ SUBROUTINE InitParticleMeshShared
 USE MOD_Globals
 USE MOD_Mesh_Vars,          ONLY:nGeo,nElems,nSides,nMPISides_YOUR,offsetElem
 USE MOD_Mesh_Vars,          ONLY:useCurveds
+USE MOD_Mesh_Vars,          ONLY:ElemToSide,SideToElem
 USE MOD_MPI_Shared,         ONLY:Allocate_Shared
 USE MOD_MPI_Shared_Vars
+USE MOD_Particle_Mesh_Vars, ONLY:nTotalElems,nTotalSides
 USE MOD_Particle_Mesh_Vars, ONLY:offsetSide,XiEtaZetaBasis,slenXiEtaZetaBasis
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3D
@@ -203,6 +169,9 @@ IMPLICIT NONE
 INTEGER(KIND=MPI_ADDRESS_KIND)  :: MPISharedSize
 INTEGER                         :: FirstElemShared,LastElemShared
 INTEGER                         :: FirstSideShared,LastSideShared
+INTEGER                         :: FirstElemHaloShared,LastElemHaloShared
+INTEGER                         :: FirstSideHaloShared,LastSideHaloShared
+INTEGER                         :: iElem,iSide,ilocSide
 !=================================================================================================================================
 
 !> Calculate the local offset relative to the node MPI root
@@ -212,6 +181,74 @@ LastElemShared  = offsetElem-offsetElem_shared_root+nElems
 !> Calculate the local offset relative to the node MPI root. MPI sides on neighbor processors are ignored
 FirstSideShared = offsetSide-offsetSide_shared_root+1
 LastSideShared  = offsetSide-offsetSide_shared_root+nSides-nMPISides_YOUR
+
+!> Calculate the offset caused by the halo region. Shared arrays are expanded to account for the halo region, so we must know the offset
+!> relative to nElems_Shared. offsetElemHalo_Shared of the node MPI root is zero by definition.
+CALL MPI_EXSCAN(nTotalElems-nElems,offsetElemHalo_Shared,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,iError)
+CALL MPI_EXSCAN(nTotalSides-nSides,offsetSideHalo_Shared,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,iError)
+!> Last proc on the node knows the total number (including halo region)
+nElemsHalo_Shared = offsetElemHalo_Shared+nTotalElems-nElems
+nSidesHalo_Shared = offsetSideHalo_Shared+nTotalSides-nSides
+CALL MPI_BCAST(nElemsHalo_Shared,1,MPI_INTEGER,nProcessors_Shared-1,MPI_COMM_SHARED,iError)
+CALL MPI_BCAST(nSidesHalo_Shared,1,MPI_INTEGER,nProcessors_Shared-1,MPI_COMM_SHARED,iError)
+
+!> Calculate the total number of shared cells (including halo region)
+nTotalElems_Shared = nElems_Shared + nElemsHalo_Shared
+nTotalSides_Shared = nSides_Shared + nSidesHalo_Shared
+
+!> Calculate the local halo offset. MPI sides on neighbor processors are ignored
+FirstElemHaloShared = nElems_Shared + offsetElemHalo_Shared+1
+LastElemHaloShared  = nElems_Shared + offsetElemHalo_Shared+nTotalElems - nElems
+FirstSideHaloShared = nSides_Shared + offsetSideHalo_Shared+1
+LastSideHaloShared  = nSides_Shared + offsetSideHalo_shared+nTotalSides - nSides
+
+!==== ElemToSide ================================================================================================================
+!> DataSizeLength for ElemToSide
+MPISharedSize = INT(5*nTotalElems_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/2,6,nTotalElems_Shared/),ElemToSide_Shared_Win,ElemToSide_Shared)
+
+!> ElemToSide from each proc
+CALL MPI_WIN_LOCK_ALL(0,ElemToSide_Shared_Win,IERROR)
+
+!> Shift shared sides by FirstSideShared
+DO iElem = 1,nElems
+  DO ilocSide = 1,6
+    ElemToSide_Shared(E2S_SIDE_ID,ilocSide,iElem+FirstElemShared-1) = ElemToSide(E2S_SIDE_ID,ilocSide,iElem) + FirstSideShared - 1
+    ElemToSide_Shared(E2S_FLIP   ,ilocSide,iElem+FirstElemShared-1) = ElemToSide(E2S_FLIP   ,ilocSide,iElem)
+  END DO
+END DO
+!> Now add the halo region
+DO iElem = nElems+1,nTotalElems
+  DO ilocSide = 1,6
+    ElemToSide_Shared(E2S_SIDE_ID,ilocSide,iElem+FirstElemHaloShared-1) = ElemToSide(E2S_SIDE_ID,ilocSide,iElem) + FirstSideHaloShared - 1
+    ElemToSide_Shared(E2S_FLIP   ,ilocSide,iElem+FirstElemHaloShared-1) = ElemToSide(E2S_FLIP   ,ilocSide,iElem)
+  END DO
+END DO
+
+!==== SideToElem ================================================================================================================
+!> DataSizeLength for ElemToSide
+MPISharedSize = INT(5*nTotalSides_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/5,nTotalSides_Shared/),SideToElem_Shared_Win,SideToElem_Shared)
+
+!> ElemToSide from each proc
+CALL MPI_WIN_LOCK_ALL(0,SideToElem_Shared_Win,IERROR)
+
+!> Shift shared sides by FirstSideShared
+DO iSide = 1,nSides-nMPISides_YOUR
+  SideToElem_Shared(S2E_ELEM_ID       ,iSide+FirstSideShared-1) = SideToElem(S2E_ELEM_ID       ,iSide) + FirstElemShared - 1
+  SideToElem_Shared(S2E_NB_ELEM_ID    ,iSide+FirstSideShared-1) = SideToElem(S2E_NB_ELEM_ID    ,iSide) + FirstElemShared - 1
+  SideToElem_Shared(S2E_LOC_SIDE_ID   ,iSide+FirstSideShared-1) = SideToElem(S2E_LOC_SIDE_ID   ,iSide) + FirstSideShared - 1
+  SideToElem_Shared(S2E_NB_LOC_SIDE_ID,iSide+FirstSideShared-1) = SideToElem(S2E_NB_LOC_SIDE_ID,iSide) + FirstSideShared - 1
+  SideToElem_Shared(S2E_FLIP          ,iSide+FirstSideShared-1) = SideToElem(S2E_FLIP          ,iSide)
+END DO
+!> Now add the halo region
+DO iSide = nSides+1,nTotalSides-nMPISides_YOUR
+  SideToElem_Shared(S2E_ELEM_ID       ,iSide+FirstSideShared-1) = SideToElem(S2E_ELEM_ID       ,iSide) + FirstElemHaloShared - 1
+  SideToElem_Shared(S2E_NB_ELEM_ID    ,iSide+FirstSideShared-1) = SideToElem(S2E_NB_ELEM_ID    ,iSide) + FirstElemHaloShared - 1
+  SideToElem_Shared(S2E_LOC_SIDE_ID   ,iSide+FirstSideShared-1) = SideToElem(S2E_LOC_SIDE_ID   ,iSide) + FirstSideHaloShared - 1
+  SideToElem_Shared(S2E_NB_LOC_SIDE_ID,iSide+FirstSideShared-1) = SideToElem(S2E_NB_LOC_SIDE_ID,iSide) + FirstSideHaloShared - 1
+  SideToElem_Shared(S2E_FLIP          ,iSide+FirstSideShared-1) = SideToElem(S2E_FLIP          ,iSide)
+END DO
 
 !==== BezierControlPoint3D ======================================================================================================
 !> DataSizeLength for BezierControlPoint3D
@@ -254,6 +291,8 @@ END IF
 
 
 ! Synchronize all RMA communication
+CALL MPI_WIN_SYNC(ElemToSide_Shared_Win,IERROR)
+CALL MPI_WIN_SYNC(SideToElem_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(BezierControlPoints3D_Shared_Win,IERROR)
 ! CALL MPI_WIN_SYNC(XiEtaZetaBasis_Shared_Win       ,IERROR)
 ! CALL MPI_WIN_SYNC(slenXiEtaZetaBasis_Shared_Win   ,IERROR)

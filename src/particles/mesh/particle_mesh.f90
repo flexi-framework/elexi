@@ -1981,6 +1981,9 @@ USE MOD_Particle_Mesh_Vars,                 ONLY:FIBGMCellPadding
 USE MOD_Particle_MPI_Vars,                  ONLY:PartMPI
 USE MOD_Particle_Mesh_Vars,                 ONLY:NbrOfCases,casematrix
 #endif /*MPI*/
+#if USE_MPI_SHARED
+USE MOD_MPI_Shared_Vars,                    ONLY:MPIRankShared
+#endif
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -2030,7 +2033,14 @@ kk=0
 ! allocate and initialize MPINeighbor
 ALLOCATE(PartMPI%isMPINeighbor(0:PartMPI%nProcs-1))
 PartMPI%isMPINeighbor(:) = .FALSE.
-PartMPI%nMPINeighbors=0
+PartMPI%nMPINeighbors    = 0
+#endif
+
+! allocate and initialize SharedNeighbor
+#if USE_MPI_SHARED
+ALLOCATE(PartMPI%isSharedNeighbor(0:PartMPI%nProcs-1))
+PartMPI%isSharedNeighbor(:) = .FALSE.
+PartMPI%nSharedNeighbors    = 0
 #endif
 
 ! get periodic BCs because they need to be observed when building the halo region
@@ -2493,9 +2503,19 @@ DO Cell=0, BGMCells-1
     ALLOCATE(GEO%FIBGM(ii-nShapePaddingX,jj-nShapePaddingY,kk-nShapePaddingZ)%ShapeProcs(1:Procs+1))
     GEO%FIBGM(ii-nShapePaddingX,jj-nShapePaddingY,kk-nShapePaddingZ)%ShapeProcs(1) = Procs
     j=2
+
     DO m=0,PartMPI%nProcs-1
       IF (TempProcList(m) .EQ. 1) THEN
         IF(.NOT.PartMPI%isMPINeighbor(m))THEN
+#if USE_MPI_SHARED
+          IF(MPIRankShared(m).NE.MPI_UNDEFINED) THEN
+            IF(.NOT.PartMPI%isSharedNeighbor(m)) THEN
+              PartMPI%isSharedNeighbor(m) = .TRUE.
+              PartMPI%nSharedNeighbors    = PartMPI%nSharedNeighbors+1
+            END IF
+            CYCLE
+          END IF
+#endif /*MPI_SHARED*/
           PartMPI%isMPINeighbor(m) = .true.
           PartMPI%nMPINeighbors=PartMPI%nMPINeighbors+1
         END IF

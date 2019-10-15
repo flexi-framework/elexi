@@ -37,8 +37,14 @@ INTEGER            :: MPI_COMM_SHARED                 !> Communicator on current
 ! Mesh
 INTEGER            :: nElems_Shared                   !> Number of elems on current node
 INTEGER            :: nSides_Shared                   !> Number of sides on current node
+INTEGER            :: nTotalElems_Shared              !> Number of elems on current node (including halo region)
+INTEGER            :: nTotalSides_Shared              !> Number of sides on current node (including halo region)
+INTEGER            :: nElemsHalo_Shared               !> Number of elems on current node (only halo region)
+INTEGER            :: nSidesHalo_Shared               !> Number of sides on current node (only halo region)
 INTEGER            :: OffsetElem_Shared_Root          !> offsetElem of root on current node
 INTEGER            :: OffsetSide_Shared_Root          !> offsetSide of root on current node
+INTEGER            :: OffsetElemHalo_Shared           !> offsetElem on current node (only halo region)
+INTEGER            :: OffsetSideHalo_Shared           !> offsetSide on current node (only halo region)
 REAL,POINTER       :: Elem_xGP_Shared(:,:,:,:,:)      !> Gauss points on current node
 INTEGER            :: Elem_xGP_Shared_Win             !> Pointer to shared memory window
 INTEGER,POINTER    :: ElemToSide_Shared(:,:,:)        !> ElemToSide mapping on current node

@@ -70,9 +70,6 @@ END TYPE
 
 
 TYPE tPartMPIVAR
-#if USE_MPI
-  TYPE(tPartMPIConnect)        , ALLOCATABLE :: DepoBGMConnect(:)            ! MPI connect for each process
-#endif /*MPI*/
   TYPE(tPartMPIGROUP),ALLOCATABLE        :: InitGroup(:)                     ! small communicator for initialization
   INTEGER                                :: COMM                             ! MPI communicator for PIC GTS region
   INTEGER                                :: nProcs                           ! number of MPI processes for particles
@@ -82,6 +79,11 @@ TYPE tPartMPIVAR
   LOGICAL,ALLOCATABLE                    :: isMPINeighbor(:)                 ! list of possible neighbors
   INTEGER,ALLOCATABLE                    :: MPINeighbor(:)                   ! list containing the rank of MPI-neighbors
   INTEGER,ALLOCATABLE                    :: GlobalToLocal(:)                 ! map from global proc id to local
+#if USE_MPI_SHARED
+  INTEGER                                :: nSharedNeighbors                 ! number of MPI-Neighbors within node
+  LOGICAL,ALLOCATABLE                    :: isSharedNeighbor(:)              ! list of possible neighbors within node
+!  INTEGER,ALLOCATABLE                    :: SharedNeighbor(:)                ! list containing the rank of MPI-neighbors within node
+#endif
 END TYPE
 
 TYPE (tPartMPIVAR)                       :: PartMPI

@@ -858,6 +858,9 @@ USE MOD_Particle_Mesh_Vars,         ONLY:nTotalElems,nPartSides
 USE MOD_Particle_Tracking_vars,     ONLY:DoRefMapping
 USE MOD_Particle_Mesh_Vars,         ONLY:nTotalSides,nTotalBCSides
 #endif
+#if USE_MPI_SHARED
+USE MOD_MPI_Shared_Vars,            ONLY:MPIRankShared
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -888,6 +891,9 @@ ElemIndex=0
 ! check epsilondistance
 DO iProc=0,PartMPI%nProcs-1
   IF(iProc.EQ.PartMPI%MyRank) CYCLE
+#if USE_MPI_SHARED
+  IF(MPIRankShared(iProc).NE.MPI_UNDEFINED) CYCLE
+#endif
   LOGWRITE(*,*)'  - Identify non-immediate MPI-Neighborhood...'
   !--- AS: identifies which of my node have to be sent to iProc w.r.t. to
   !        eps vicinity region.
@@ -914,6 +920,9 @@ IF(DoRefMapping) CALL CheckArrays(nTotalSides,nTotalElems,nTotalBCSides)
 ! Make sure PMPIVAR%MPINeighbor is consistent
 DO iProc=0,PartMPI%nProcs-1
   IF (PartMPI%MyRank.EQ.iProc) CYCLE
+#if USE_MPI_SHARED
+  IF(MPIRankShared(iProc).NE.MPI_UNDEFINED) CYCLE
+#endif
   IF (PartMPI%MyRank.LT.iProc) THEN
     CALL MPI_SEND(PartMPI%isMPINeighbor(iProc),1,MPI_LOGICAL,iProc,1101,PartMPI%COMM,IERROR)
     CALL MPI_RECV(TmpNeigh,1,MPI_LOGICAL,iProc,1101,PartMPI%COMM,MPISTATUS,IERROR)
@@ -921,7 +930,7 @@ DO iProc=0,PartMPI%nProcs-1
     CALL MPI_RECV(TmpNeigh,1,MPI_LOGICAL,iProc,1101,PartMPI%COMM,MPISTATUS,IERROR)
     CALL MPI_SEND(PartMPI%isMPINeighbor(iProc),1,MPI_LOGICAL,iProc,1101,PartMPI%COMM,IERROR)
   END IF
-  !IPWRITE(UNIT_stdOut,*) 'check',tmpneigh,PartMPI%isMPINeighbor(iProc)
+
   IF (TmpNeigh.NEQV.PartMPI%isMPINeighbor(iProc)) THEN
     IF(printMPINeighborWarnings)THEN
       WRITE(*,*) 'WARNING: MPINeighbor set to TRUE',PartMPI%MyRank,iProc

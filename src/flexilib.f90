@@ -309,7 +309,7 @@ USE MOD_TimeDisc,          ONLY:FinalizeTimeDisc
 USE MOD_MPI,               ONLY:FinalizeMPI
 #if USE_MPI_SHARED
 USE MOD_MPI_Shared,        ONLY:FinalizeMPIShared
-USE MOD_Particle_MPI_Shared,ONLY:FinalizeMeshShared,FinalizeParticleMeshShared
+USE MOD_Particle_MPI_Shared,ONLY:FinalizeMeshShared
 #endif
 #endif
 USE MOD_Sponge,            ONLY:FinalizeSponge
@@ -327,6 +327,9 @@ USE MOD_Particle_Boundary_Sampling,ONLY:FinalizeParticleBoundarySampling
 USE MOD_ParticleInit,      ONLY:FinalizeParticles
 #if USE_MPI
 USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
+#endif
+#if USE_MPI_SHARED
+USE MOD_Particle_MPI_Shared,ONLY:FinalizeParticleMeshShared
 #endif
 #endif /*PARTICLES*/
 IMPLICIT NONE

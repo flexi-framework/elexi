@@ -35,6 +35,7 @@ INTEGER            :: nProcessors_Global              !> Number of total procs
 INTEGER            :: MPI_COMM_SHARED                 !> Communicator on current node
 
 ! Mesh
+!> Counters
 INTEGER            :: nElems_Shared                   !> Number of elems on current node
 INTEGER            :: nSides_Shared                   !> Number of sides on current node
 INTEGER            :: nTotalElems_Shared              !> Number of elems on current node (including halo region)
@@ -45,6 +46,8 @@ INTEGER            :: OffsetElem_Shared_Root          !> offsetElem of root on c
 INTEGER            :: OffsetSide_Shared_Root          !> offsetSide of root on current node
 INTEGER            :: OffsetElemHalo_Shared           !> offsetElem on current node (only halo region)
 INTEGER            :: OffsetSideHalo_Shared           !> offsetSide on current node (only halo region)
+
+!> Coordinates and relationships
 REAL,POINTER       :: Elem_xGP_Shared(:,:,:,:,:)      !> Gauss points on current node
 INTEGER            :: Elem_xGP_Shared_Win             !> Pointer to shared memory window
 INTEGER,POINTER    :: ElemToSide_Shared(:,:,:)        !> ElemToSide mapping on current node
@@ -53,6 +56,11 @@ INTEGER,POINTER    :: SideToElem_Shared(:,:)          !> SideToElem mapping on c
 INTEGER            :: SideToElem_Shared_Win           !> Pointer to shared memory window
 REAL,POINTER       :: NodeCoords_Shared(:,:,:,:,:)    !> NodeCoords on current node
 INTEGER            :: NodeCoords_Shared_Win           !> Pointer to shared memory window
+
+!> Solution
+REAL,POINTER       :: U_Shared(:,:,:,:,:)             !> DG solution on current node
+INTEGER            :: U_Shared_Win                    !> Pointer to shared memory window
+
 
 #endif /* MPI_SHARED */
 END MODULE

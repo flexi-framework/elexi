@@ -204,6 +204,9 @@ USE MOD_TimeDisc_Vars       ,ONLY: RKb,RKc
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
 USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,LoadBalanceSample
 #endif /*LOADBALANCE*/
+#if USE_MPI_SHARED
+USE MOD_Particle_MPI_Shared ,ONLY: UpdateDGShared
+#endif
 #endif /*PARTICLES*/
 use MOD_IO_HDF5
 IMPLICIT NONE
@@ -338,9 +341,14 @@ CALL FV_Info(1_8)
 
 #if USE_PARTICLES
 ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (TrackParticlePosition) THEN
-    CALL TrackingParticlePosition(t)
-  END IF
+IF (TrackParticlePosition) THEN
+  CALL TrackingParticlePosition(t)
+END IF
+
+! Update the initial solution in the MPI-3 shared memory array
+#if USE_MPI_SHARED
+CALL UpdateDGShared(U)
+#endif /*MPI_SHARED*/
 #endif
 
 SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
@@ -566,6 +574,9 @@ USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 USE MOD_Globals      ,ONLY: CollectiveStop
 USE MOD_Particle_TimeDisc
 USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
+#if USE_MPI_SHARED
+USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
+#endif
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -606,6 +617,9 @@ CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
+#if USE_MPI_SHARED
+      CALL UpdateDGShared(U)
+#endif /*MPI_SHARED*/
       CALL Particle_TimeStepByLSERK(t,b_dt)
     CASE('Euler')
       ! Do nothing
@@ -642,6 +656,9 @@ DO iStage=2,nRKStages
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
+#if USE_MPI_SHARED
+      CALL UpdateDGShared(U)
+#endif /*MPI_SHARED*/
       CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
     CASE('Euler')
       ! Do nothing
@@ -680,6 +697,9 @@ USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_Particle_TimeDisc
+#if USE_MPI_SHARED
+USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
+#endif
 #endif /*USE_PARTICLES*/
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -735,6 +755,9 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                   !U = U + Ut*b_dt(iStage)
 
 #if USE_PARTICLES
+#if USE_MPI_SHARED
+  CALL UpdateDGShared(U)
+#endif /*MPI_SHARED*/
   CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
 #endif
 END DO

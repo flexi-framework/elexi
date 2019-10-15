@@ -41,10 +41,15 @@ INTERFACE FinalizeParticleMeshShared
   MODULE PROCEDURE FinalizeParticleMeshShared
 END INTERFACE
 
+INTERFACE UpdateDGShared
+  MODULE PROCEDURE UpdateDGShared
+END INTERFACE
+
 PUBLIC:: InitMeshShared
 PUBLIC:: InitParticleMeshShared
 PUBLIC:: FinalizeMeshShared
 PUBLIC:: FinalizeParticleMeshShared
+PUBLIC:: UpdateDGShared
 !===================================================================================================================================
 
 CONTAINS
@@ -135,9 +140,21 @@ CALL Allocate_Shared(MPISharedSize,(/3,PP_N+1,PP_N+1,PP_NZ+1,nElems_Shared/),Ele
 CALL MPI_WIN_LOCK_ALL(0,Elem_xGP_Shared_Win,IERROR)
 Elem_xGP_Shared(:,1:PP_N+1,1:PP_N+1,1:PP_NZ+1,FirstElemShared:LastElemShared) = Elem_xGP(:,:,:,:,:)
 
+!==== U =========================================================================================================================
+!> DataSizeLength for U
+MPISharedSize = INT(PP_nVar*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*nElems_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems_Shared/),U_Shared_Win,U_Shared)
+
+!> Elem_xGP from each proc
+!>>> Caution: PP starts from 0 in Elem_xGP, but from 1 in Elem_xGP_Shared
+CALL MPI_WIN_LOCK_ALL(0,U_Shared_Win,IERROR)
+!> U gets updated at each time step, only nullify it here
+U_Shared = 0.
+
 ! Synchronize all RMA communication
 CALL MPI_WIN_SYNC(Elem_xGP_Shared_Win,  IERROR)
 CALL MPI_WIN_SYNC(NodeCoords_Shared_Win,IERROR)
+CALL MPI_WIN_SYNC(U_Shared_Win,         IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT SHARED MESH DONE!'
@@ -299,6 +316,40 @@ CALL MPI_WIN_SYNC(BezierControlPoints3D_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 END SUBROUTINE InitParticleMeshShared
+
+
+SUBROUTINE UpdateDGShared(U)
+!===================================================================================================================================
+! Updates the DG solution in the MPI-3 shared memory window in the current node
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals,            ONLY: iError
+USE MOD_Preproc,            ONLY: N
+USE MOD_Mesh_Vars,          ONLY: nElems,offsetElem
+USE MOD_MPI_Shared_Vars
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+REAL,INTENT(IN)                 :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                         :: FirstElemShared,LastElemShared
+!=================================================================================================================================
+
+!> Calculate the local offset relative to the node MPI root
+FirstElemShared = offsetElem-offsetElem_shared_root+1
+LastElemShared  = offsetElem-offsetElem_shared_root+nElems
+
+!> Update the DG solution in the RMA window
+U_Shared(:,:,:,:,FirstElemShared:LastElemShared) = U(:,:,:,:,:)
+
+! Synchronize all RMA communication
+CALL MPI_WIN_SYNC(U_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+
+END SUBROUTINE UpdateDGShared
 
 
 SUBROUTINE FinalizeMeshShared

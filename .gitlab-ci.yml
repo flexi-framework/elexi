@@ -7,6 +7,7 @@ before_script:
   - export LD_LIBRARY_PATH=/opt/hdf5/1.10.5/lib/:$LD_LIBRARY_PATH
   - export CMAKE_PREFIX_PATH=/opt/hdf5/1.10.5/:$CMAKE_PREFIX_PATH
   - export CMAKE_LIBRARY_PATH=/opt/hdf5/1.10.5/lib:$CMAKE_LIBRARY_PATH
+  - export FFTW_DIR=/opt/fftw/
 
 stages:
   - build
@@ -90,13 +91,13 @@ gnu_convtest:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/convtest -j 6; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/convtest -j 6; fi
 
 gnu_parabolic:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/parabolic -j 6; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/parabolic -j 6; fi
 
 gnu_riemann:
   <<: *defaults_gnu
@@ -123,23 +124,23 @@ gnu_fv:
   <<: *defaults_gnu
   stage: reggie_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6; fi 
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6; fi
 
 gnu_channelRANS:
   <<: *defaults_gnu
   stage: reggie_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/channelRANS ; fi 
-    
+    - if [ -n "${DO_WEEKLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/channelRANS ; fi
+
 gnu_particle:
   <<: *defaults_gnu
   stage: reggie_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle ; fi 
- 
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle ; fi
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf
-#                 2. Copies the doxygen documentation and userguide *.pdf to the homepage server & copies the repository to github 
+#                 2. Copies the doxygen documentation and userguide *.pdf to the homepage server & copies the repository to github
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 documentation:
   stage: deploy

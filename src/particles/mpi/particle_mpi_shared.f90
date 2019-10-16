@@ -174,8 +174,8 @@ USE MOD_Mesh_Vars,          ONLY:ElemToSide,SideToElem
 USE MOD_MPI_Shared,         ONLY:Allocate_Shared
 USE MOD_MPI_Shared_Vars
 USE MOD_Particle_Mesh_Vars, ONLY:nTotalElems,nTotalSides
-USE MOD_Particle_Mesh_Vars, ONLY:offsetSide,XiEtaZetaBasis,slenXiEtaZetaBasis
-USE MOD_Particle_MPI_Vars,  ONLY:PartMPI,PartHaloElemToProc
+USE MOD_Particle_Mesh_Vars, ONLY:offsetSide!,XiEtaZetaBasis,slenXiEtaZetaBasis
+USE MOD_Particle_MPI_Vars,  ONLY:PartHaloElemToProc!,PartMPI
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3D
 ! IMPLICIT VARIABLE HANDLING

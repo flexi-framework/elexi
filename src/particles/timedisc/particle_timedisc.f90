@@ -65,7 +65,6 @@ USE MOD_Vector
 USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
 USE MOD_TimeDisc_Vars,           ONLY: t
 #if USE_MPI
-USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
 #endif /*MPI*/
@@ -79,6 +78,9 @@ USE MOD_Particle_Vars,           ONLY: Species, PartSpecies, PartState, Pt, Last
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
+#if USE_LOADBALANCE
+USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -89,8 +91,10 @@ REAL,INTENT(IN)               :: dt
 INTEGER                       :: iPart
 !===================================================================================================================================
 #if USE_MPI
+#if USE_LOADBALANCE
 ! Needed for scaling parts and load balance
 CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.)
+#endif
 
 IF (t.GE.DelayTime) THEN
   PartMPIExchange%nMPIParticles=0
@@ -191,16 +195,18 @@ SUBROUTINE Particle_TimeStepByLSERK_RHS(t)
 ! MODULES
 USE MOD_Globals
 #if USE_MPI
-USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
+USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 #endif /*MPI*/
 USE MOD_PICInterpolation
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
-USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
+#if USE_LOADBALANCE
+USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -208,8 +214,10 @@ IMPLICIT NONE
 REAL,INTENT(IN)               :: t
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if USE_MPI
+#if USE_LOADBALANCE
 ! Needed for scaling parts and load balance
 CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.)
+#endif
 
 IF (t.GE.DelayTime) THEN
   PartMPIExchange%nMPIParticles=0
@@ -370,16 +378,18 @@ SUBROUTINE Particle_TimeStepByLSERK_RK_RHS(t)
 ! MODULES
 USE MOD_Globals
 #if USE_MPI
-USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
+USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 #endif /*MPI*/
 USE MOD_PICInterpolation
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
-USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
+#if USE_LOADBALANCE
+USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -390,7 +400,10 @@ REAL,INTENT(IN)               :: t
 !===================================================================================================================================
 
 #if USE_MPI
-CALL CountPartsPerElem(ResetNumberOfParticles=.FALSE.) !for scaling of tParts of LB
+#if USE_LOADBALANCE
+! Needed for scaling parts and load balance
+CALL CountPartsPerElem(ResetNumberOfParticles=.FALSE.)
+#endif
 
 IF (t.GE.DelayTime) THEN
   PartMPIExchange%nMPIParticles=0
@@ -439,7 +452,6 @@ USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,Parti
 USE MOD_part_emission,           ONLY: ParticleInserting
 USE MOD_part_tools,              ONLY: UpdateNextFreePosition
 #if USE_MPI
-USE MOD_Particle_Mesh,           ONLY: CountPartsPerElem
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/
 #if USE_RW

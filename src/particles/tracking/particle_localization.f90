@@ -41,10 +41,15 @@ INTERFACE ParticleInsideQuad3D
   MODULE PROCEDURE ParticleInsideQuad3D
 END INTERFACE
 
+INTERFACE CountPartsPerElem
+  MODULE PROCEDURE CountPartsPerElem
+END INTERFACE
+
 PUBLIC::SingleParticleToExactElement
 PUBLIC::SingleParticleToExactElementNoMap
 PUBLIC::PartInElemCheck
 PUBLIC::ParticleInsideQuad3D
+PUBLIC::CountPartsPerElem
 !===================================================================================================================================
 
 CONTAINS
@@ -741,5 +746,43 @@ DO iLocSide = 1,6
 END DO
 
 END SUBROUTINE ParticleInsideQuad3D
+
+
+SUBROUTINE CountPartsPerElem(ResetNumberOfParticles)
+!===================================================================================================================================
+! count number of particles in element
+!===================================================================================================================================
+! MODULES
+USE MOD_Preproc
+USE MOD_Particle_Globals
+USE MOD_LoadBalance_Vars,        ONLY: nPartsPerElem
+USE MOD_Particle_Vars,           ONLY: PDM,PEM
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+LOGICAL,INTENT(IN) :: ResetNumberOfParticles
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: iPart, ElemID
+!===================================================================================================================================
+! DO NOT NULL this here, if e.g. this routine is called in between RK-stages in which particles are created
+IF(ResetNumberOfParticles)THEN
+  nPartsPerElem=0
+END IF
+! loop over all particles and add them up
+DO iPart=1,PDM%ParticleVecLength
+  IF(PDM%ParticleInside(iPart))THEN
+    ElemID = PEM%Element(iPart)
+    IF(ElemID.LE.PP_nElems)THEN
+      nPartsPerElem(ElemID)=nPartsPerElem(ElemID)+1
+    END IF
+  END IF
+END DO ! iPart=1,PDM%ParticleVecLength
+
+END SUBROUTINE CountPartsPerElem
+
 
 END MODULE MOD_Particle_Localization

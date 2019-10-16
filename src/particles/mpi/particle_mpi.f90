@@ -20,8 +20,7 @@ MODULE MOD_Particle_MPI
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-PUBLIC
-SAVE
+PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! required variables
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -64,22 +63,23 @@ INTERFACE InitEmissionComm
   MODULE PROCEDURE InitEmissionComm
 END INTERFACE
 
-INTERFACE BoxInProc
-  MODULE PROCEDURE BoxInProc
-END INTERFACE
-
 INTERFACE ExchangeBezierControlPoints3D
   MODULE PROCEDURE ExchangeBezierControlPoints3D
 END INTERFACE
 
-PUBLIC :: InitParticleMPI,FinalizeParticleMPI,InitHaloMesh, InitParticleCommSize, IRecvNbOfParticles, MPIParticleSend
-PUBLIC :: MPIParticleRecv
-PUBLIC :: InitEmissionComm
-PUBLIC :: ExchangeBezierControlPoints3D
+PUBLIC::InitParticleMPI
+PUBLIC::InitHaloMesh
+PUBLIC::InitParticleCommSize
+PUBLIC::InitEmissionComm
+PUBLIC::FinalizeParticleMPI
+PUBLIC::ExchangeBezierControlPoints3D
+PUBLIC::IRecvNbOfParticles
+PUBLIC::SendNbofParticles
+PUBLIC::MPIParticleSend
+PUBLIC::MPIParticleRecv
 #else
-PUBLIC :: InitParticleMPI
+PUBLIC::InitParticleMPI
 #endif /*MPI*/
-
 !===================================================================================================================================
 
 CONTAINS
@@ -97,14 +97,10 @@ USE MOD_MPI_Vars,               ONLY: nNbProcs
 USE MOD_Particle_MPI_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!REAL                            :: myRealTestValue
 #if USE_MPI
 INTEGER                         :: color
 #endif
@@ -168,11 +164,8 @@ USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping
 USE MOD_Particle_Erosion_Vars,  ONLY:PartTrackReflection
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER         :: ALLOCSTAT
@@ -231,11 +224,8 @@ USE MOD_Preproc
 USE MOD_Particle_MPI_Vars,      ONLY:PartMPI,PartMPIExchange
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER               :: iProc
@@ -360,9 +350,7 @@ USE MOD_Particle_Erosion_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iPart,ElemID,iPos,iProc,jPos
@@ -558,11 +546,8 @@ USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Erosion_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iProc, iPos, nRecv, PartID,jPos
@@ -691,11 +676,7 @@ USE MOD_Particle_Vars,            ONLY:Species,nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: nInitRegions,iInitRegions,iSpec
@@ -753,13 +734,10 @@ USE MOD_Particle_Mesh_Vars,         ONLY:NGeoElevated,MortarSlave2MasterInfo
 USE MOD_Particle_Surfaces,          ONLY:GetSideSlabNormalsAndIntervals
 USE MOD_Particle_Surfaces_vars,     ONLY:BezierControlPoints3D,SideSlabIntervals,BezierControlPoints3DElevated &
                                         ,SideSlabIntervals,SideSlabNormals,BoundingBoxIsEmpty
-
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 ::BezierSideSize,SendID, iSide,SideID,ElemID
@@ -864,11 +842,7 @@ USE MOD_MPI_Shared_Vars,            ONLY:MPIRankShared
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 ::iElem
@@ -988,14 +962,10 @@ USE MOD_Particle_Mesh_Vars,     ONLY:GEO
 USE MOD_CalcTimeStep,           ONLY:CalcTimeStep
 #endif /*PP_HDG*/
 USE MOD_Particle_MPI_Vars,      ONLY:halo_eps
-!USE MOD_Particle_Mesh,          ONLY:BoxInProc
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: iSpec,iInit,iNode,iRank
@@ -1392,6 +1362,7 @@ IF(    ((xmin.LE.GEO%FIBGMimax).AND.(xmax.GE.GEO%FIBGMimin)) &
 END FUNCTION PointInProc
 
 
+#if CODE_ANALYZE
 SUBROUTINE CheckArrays(nTotalSides,nTotalElems,nTotalBCSides)
 !===================================================================================================================================
 ! check if any entry of the checked arrays exists and if the entry is not NAN
@@ -1516,6 +1487,7 @@ END DO ! iSide=1,nTotalSides
 
 
 END SUBROUTINE CheckArrays
+#endif /*CODE_ANALYZE*/
 #endif /*MPI*/
 
 END MODULE MOD_Particle_MPI

@@ -91,10 +91,9 @@ SUBROUTINE InitParticleAnalyze()
 ! IMPLICIT VARIABLE HANDLING
   IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-  INTEGER   :: dir, VeloDirs_hilf(4)
 !===================================================================================================================================
 IF (ParticleAnalyzeInitIsDone) THEN
   CALL abort(__STAMP__,'InitParticleAnalyse already called.',999,999.)

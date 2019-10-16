@@ -63,34 +63,15 @@ INTERFACE exchangeElemID
 END INTERFACE
 #endif
 
-INTERFACE BuildElementBasis
-  MODULE PROCEDURE BuildElementBasis
-END INTERFACE
-
 INTERFACE BuildElementOrigin
   MODULE PROCEDURE BuildElementOrigin
-END INTERFACE
-
-INTERFACE CountPartsPerElem
-  MODULE PROCEDURE CountPartsPerElem
-END INTERFACE
-
-INTERFACE InsideElemBoundingBox
-  MODULE PROCEDURE InsideElemBoundingBox
-END INTERFACE
-
-INTERFACE GetElemAndSideType
-  MODULE PROCEDURE GetElemAndSideType
 END INTERFACE
 
 INTERFACE MarkAuxBCElems
   MODULE PROCEDURE MarkAuxBCElems
 END INTERFACE
 
-INTERFACE BoundsOfElement
-  MODULE PROCEDURE BoundsOfElement
-END INTERFACE
-
+PUBLIC::DefineParametersParticleMesh
 PUBLIC::InitParticleMeshBasis
 PUBLIC::InitParticleGeometry
 PUBLIC::InitElemVolumes
@@ -102,14 +83,8 @@ PUBLIC::buildGlobConnection
 #if USE_MPI
 PUBLIC::exchangeElemID
 #endif
-PUBLIC::CountPartsPerElem
-PUBLIC::BuildElementBasis
 PUBLIC::BuildElementOrigin
-PUBLIC::CheckIfCurvedElem
-PUBLIC::InsideElemBoundingBox
 PUBLIC::MarkAuxBCElems
-PUBLIC::BoundsOfElement
-PUBLIC::DefineParametersParticleMesh
 !===================================================================================================================================
 
 CONTAINS
@@ -231,6 +206,7 @@ CALL prms%CreateIntOption(     'BezierClipMaxIntersec'  , ' Max. number of multi
 
 END SUBROUTINE DefineParametersParticleMesh
 
+
 SUBROUTINE InitParticleMeshBasis(NGeo_in,N_in,xGP)
 !===================================================================================================================================
 ! Read Parameter from inputfile
@@ -301,6 +277,7 @@ ALLOCATE(D_Bezier(0:NGeo_in,0:NGeo_in))
 CALL BuildBezierDMat(NGeo_in,Xi_NGeo,D_Bezier)
 
 END SUBROUTINE InitParticleMeshBasis
+
 
 SUBROUTINE InitParticleMesh()
 !===================================================================================================================================
@@ -496,6 +473,7 @@ SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MESH DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleMesh
+
 
 SUBROUTINE InitParticleGeometry()
 !===================================================================================================================================
@@ -1928,7 +1906,6 @@ DEALLOCATE(ReducedBGMArray, BGMCellsArray, CellProcList, GlobalBGMCellsArray, Ce
 END SUBROUTINE GetFIBGM
 
 
-
 SUBROUTINE AddHALOCellsToFIBGM(ElemToBGM,HaloElemToBGM)
 !===================================================================================================================================
 ! remap all elements including halo-elements into FIBGM
@@ -2624,7 +2601,6 @@ DEALLOCATE(DummySideType)
 DEALLOCATE(DummySideDistance)
 DEALLOCATE(DummySideNormVec)
 
-
 END SUBROUTINE ReShapeBezierSides
 
 
@@ -2816,92 +2792,6 @@ END DO ! iElem
 END SUBROUTINE BuildElementBasis
 
 
-SUBROUTINE CountPartsPerElem(ResetNumberOfParticles)
-!===================================================================================================================================
-! count number of particles in element
-!===================================================================================================================================
-! MODULES
-USE MOD_Preproc
-USE MOD_Particle_Globals
-USE MOD_LoadBalance_Vars,        ONLY: nPartsPerElem
-USE MOD_Particle_Vars,           ONLY: PDM,PEM
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-LOGICAL,INTENT(IN) :: ResetNumberOfParticles
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER           :: iPart, ElemID
-!===================================================================================================================================
-! DO NOT NULL this here, if e.g. this routine is called in between RK-stages in which particles are created
-IF(ResetNumberOfParticles)THEN
-  nPartsPerElem=0
-END IF
-! loop over all particles and add them up
-DO iPart=1,PDM%ParticleVecLength
-  IF(PDM%ParticleInside(iPart))THEN
-    ElemID = PEM%Element(iPart)
-    IF(ElemID.LE.PP_nElems)THEN
-      nPartsPerElem(ElemID)=nPartsPerElem(ElemID)+1
-    END IF
-  END IF
-END DO ! iPart=1,PDM%ParticleVecLength
-
-END SUBROUTINE CountPartsPerElem
-
-
-SUBROUTINE CheckIfCurvedElem(IsCurved,XCL_NGeo)
-!===================================================================================================================================
-! check if element is curved
-!===================================================================================================================================
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_Mesh_Vars,             ONLY:NGeo
-USE MOD_Particle_Mesh_Vars,    ONLY:Vdm_CLNGeo1_CLNGeo
-USE MOD_ChangeBasis,           ONLY:changeBasis3D
-!----------------------------------------------------------------------------------------------------------------------------------!
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-! INPUT VARIABLES
-REAL,INTENT(IN)      :: XCL_NGeo(1:3,0:NGeo,0:NGeo,0:NGeo)
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-LOGICAL,INTENT(OUT)  :: IsCurved
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL                 :: XCL_NGeo1(1:3,0:1,0:1,0:1)
-REAL                 :: XCL_NGeoNew(1:3,0:NGeo,0:NGeo,0:NGeo)
-INTEGER              :: NGeo3
-!===================================================================================================================================
-
-IsCurved=.FALSE.
-
-! fill dummy
-XCL_NGeo1(1:3,0,0,0) = XCL_NGeo(1:3, 0  , 0  , 0  )
-XCL_NGeo1(1:3,1,0,0) = XCL_NGeo(1:3,NGeo, 0  , 0  )
-XCL_NGeo1(1:3,0,1,0) = XCL_NGeo(1:3, 0  ,NGeo, 0  )
-XCL_NGeo1(1:3,1,1,0) = XCL_NGeo(1:3,NGeo,NGeo, 0  )
-XCL_NGeo1(1:3,0,0,1) = XCL_NGeo(1:3, 0  , 0  ,NGeo)
-XCL_NGeo1(1:3,1,0,1) = XCL_NGeo(1:3,NGeo, 0  ,NGeo)
-XCL_NGeo1(1:3,0,1,1) = XCL_NGeo(1:3, 0  ,NGeo,NGeo)
-XCL_NGeo1(1:3,1,1,1) = XCL_NGeo(1:3,NGeo,NGeo,NGeo)
-
-CALL ChangeBasis3D(3,1,NGeo,Vdm_CLNGeo1_CLNGeo,XCL_NGeo1,XCL_NGeoNew)
-NGeo3=(NGeo+1)*(NGeo+1)*(NGeo+1)
-
-! check 3D points
-CALL PointsEqual(NGeo3,XCL_NGeoNew,XCL_NGeo,IsCurved)
-
-IF(.NOT.IsCurved)THEN
-  ! set all elem sides to blabla
-END IF
-
-END SUBROUTINE CheckIfCurvedElem
-
-
 SUBROUTINE PointsEqual(N,Points1,Points2,IsNotEqual)
 !===================================================================================================================================
 ! compute the distance between two data sets
@@ -2962,55 +2852,6 @@ CALL ExchangeBezierControlPoints3D()
 #endif /*MPI*/
 
 END SUBROUTINE InitElemBoundingBox
-
-
-SUBROUTINE InsideElemBoundingBox(ParticlePosition,ElemID,InSide)
-!================================================================================================================================
-! check if the particles is inside the bounding box, return TRUE/FALSE
-!================================================================================================================================
-USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_Particle_Surfaces_Vars,  ONLY:ElemSlabNormals,ElemSlabIntervals
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!--------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,DIMENSION(3),INTENT(IN)         :: ParticlePosition
-INTEGER,INTENT(IN)                   :: ElemID
-!--------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-LOGICAL,INTENT(OUT)                  :: Inside
-!--------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL                                 :: x,y,z,P(3)
-!================================================================================================================================
-
-P=ParticlePosition-ElemSlabNormals(1:3,0,ElemID)
-
-! y is perpendicular to xi & eta directions --> check first, smallest intervall
-y=DOT_PRODUCT(P,ElemSlabNormals(:,2,ElemID))
-
-IF((y.LT.ElemSlabIntervals(3,ElemID)).OR.(y.GT.ElemSlabIntervals(4,ElemID)))THEN
-  Inside=.FALSE.
-  RETURN
-END IF
-
-! than xi
-x=DOT_PRODUCT(P,ElemSlabNormals(:,1,ElemID))
-IF((x.LT.ElemSlabIntervals(1,ElemID)).OR.(x.GT.ElemSlabIntervals(2,ElemID)))THEN
-  Inside=.FALSE.
-  RETURN
-END IF
-
-! than eta
-z=DOT_PRODUCT(P,ElemSlabNormals(:,3,ElemID))
-IF((z.LT.ElemSlabIntervals(5,ElemID)).OR.(z.GT.ElemSlabIntervals(6,ElemID)))THEN
-  Inside=.FALSE.
-  RETURN
-END IF
-
-Inside=.TRUE.
-END SUBROUTINE InsideElemBoundingBox
 
 
 SUBROUTINE GetElemAndSideType()
@@ -3945,7 +3786,6 @@ CALL WriteParticlePartitionInformation(nPlanarRectangular+nPlanarNonRectangular,
                                        nPlanarRectangularHalo+nPlanarNonRectangularHalo,nBilinearHalo,nCurvedHalo+nPlanarCurvedHalo &
                                       ,nBCElems,nLinearElems,nCurvedElems,nBCElemsHalo,nLinearElemsHalo,nCurvedElemsHalo)
 #endif
-
 END SUBROUTINE CalcElemAndSideNum
 
 

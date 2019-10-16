@@ -93,12 +93,12 @@ REAL                                     :: halo_eps_velo                    ! h
 REAL                                     :: halo_eps                         ! length of halo-region
 REAL                                     :: halo_eps2                        ! length of halo-region^2
 
+LOGICAL                                  :: PartitionPartIsDone
 #if USE_MPI
 INTEGER                                  :: PartCommSize                     ! Number of REAL entries for particle communication
 INTEGER                                  :: PartCommSize0                    ! Number of REAL entries for particle communication
                                                                              ! should think about own MPI-Data-Typ
 
-LOGICAL                                  :: PartitionPartIsDone
 INTEGER,ALLOCATABLE                      :: offsetPartMPI(:)
 INTEGER,ALLOCATABLE                      :: nPartsMPI(:)
 

@@ -43,7 +43,7 @@ INTERFACE FinalizeReadPartStateFile
 END INTERFACE
 
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ IF(ListIn%nPartVar_Visu.GT.0)THEN
   ListIn%VarNamePartCombineLen(ListIn%nPartVar_visu) = ListIn%VarNamePartCombine(ListIn%nPartVar_visu)
   DO iVar=ListIn%nPartVar_visu-1,1,-1
     IF (ListIn%VarNamePartCombine(iVar).GT.0) THEN
-      ListIn%VarNamePartCombineLen(iVar) = MAX(ListIn%VarNamePartCombine(iVar), ListIn%VarNamePartCombineLen(iVar+1)) 
+      ListIn%VarNamePartCombineLen(iVar) = MAX(ListIn%VarNamePartCombine(iVar), ListIn%VarNamePartCombineLen(iVar+1))
     END IF
   END DO
 END IF
@@ -250,7 +250,7 @@ IF(ListIn%nPartVar_Visu.GT.0)THEN
   ListIn%VarNamePartCombineLen(ListIn%nPartVar_visu) = ListIn%VarNamePartCombine(ListIn%nPartVar_visu)
   DO iVar=ListIn%nPartVar_visu-1,1,-1
     IF (ListIn%VarNamePartCombine(iVar).GT.0) THEN
-      ListIn%VarNamePartCombineLen(iVar) = MAX(ListIn%VarNamePartCombine(iVar), ListIn%VarNamePartCombineLen(iVar+1)) 
+      ListIn%VarNamePartCombineLen(iVar) = MAX(ListIn%VarNamePartCombine(iVar), ListIn%VarNamePartCombineLen(iVar+1))
     END IF
   END DO
 END IF
@@ -291,7 +291,7 @@ SUBROUTINE PartitionPartMPI(ListIn)
 !==================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Visu_Vars                ,ONLY: tVisuParticle 
+USE MOD_Visu_Vars                ,ONLY: tVisuParticle
 USE MOD_Particle_MPI_Vars        ,ONLY: PartitionPartIsDone, nPartsMPI, offsetPartMPI
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -311,7 +311,7 @@ ALLOCATE(offsetPartMPI(0:nProcessors),nPartsMPI(0:nProcessors-1))
 offsetPartMPI=0
 ListIn%nLocalParts=ListIn%nGlobalParts/nProcessors
 iPart=ListIn%nGlobalParts-ListIn%nLocalParts*nProcessors
-DO iProc=0,nProcessors-1  
+DO iProc=0,nProcessors-1
   offsetPartMPI(iProc)=ListIn%nLocalParts*iProc+MIN(iProc,iPart)
 END DO
 offsetPartMPI(nProcessors)=ListIn%nGlobalParts
@@ -326,7 +326,7 @@ PartitionPartIsDone=.TRUE.
 SDEALLOCATE(offsetPartMPI)
 SDEALLOCATE(nPartsMPI)
 END SUBROUTINE PartitionPartMPI
-#endif
+#endif /*PARTICLES*/
 
 END MODULE MOD_Posti_Part_Tools
 

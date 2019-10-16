@@ -526,7 +526,7 @@ END IF
 IF(file_exists)THEN
   ! If we have a restart we need to find the position from where to move on.
   ! Read the values from the previous analyse interval, get the CPUtime
-  WRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileName_loc)
+  WRITE(UNIT_stdOut,*)'Opening file '//TRIM(FileName_loc)
   WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Searching for time stamp...'
 
   REWIND(ioUnit)

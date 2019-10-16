@@ -175,6 +175,7 @@ USE MOD_MPI_Shared,         ONLY:Allocate_Shared
 USE MOD_MPI_Shared_Vars
 USE MOD_Particle_Mesh_Vars, ONLY:nTotalElems,nTotalSides
 USE MOD_Particle_Mesh_Vars, ONLY:offsetSide,XiEtaZetaBasis,slenXiEtaZetaBasis
+USE MOD_Particle_MPI_Vars,  ONLY:PartMPI,PartHaloElemToProc
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3D
 ! IMPLICIT VARIABLE HANDLING
@@ -286,6 +287,22 @@ IF (useCurveds) THEN
 ELSE
   BezierControlPoints3D_Shared(:,1:1   +1,1:1   +1,FirstSideShared:LastSideShared) = &
          BezierControlPoints3D(:,:,:,1:nSides-nMPISides_YOUR)
+END IF
+
+!==== PartHaloElemToProc ========================================================================================================
+!> Only required if the computation has a NODE-based halo region
+IF (nTotalElems_Shared.NE.nElems_Shared) THEN
+  !> DataSizeLength for PartHaloElemToProc
+  MPISharedSize = INT(3*(nTotalElems_Shared-nElems_Shared),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+  CALL Allocate_Shared(MPISharedSize,(/3,(nTotalElems_Shared-nElems_Shared)/),PartHaloElemToProc_Shared_Win,PartHaloElemToProc_Shared)
+
+  !> ElemToSide from each proc
+  CALL MPI_WIN_LOCK_ALL(0,PartHaloElemToProc_Shared_Win,IERROR)
+
+  !> Now add the halo region
+  PartHaloElemToProc_Shared(NATIVE_ELEM_ID,FirstElemHaloShared:LastElemHaloShared) = PartHaloElemToProc(NATIVE_ELEM_ID,:)
+  PartHaloElemToProc_Shared(NATIVE_PROC_ID,FirstElemHaloShared:LastElemHaloShared) = PartHaloElemToProc(NATIVE_PROC_ID,:)
+  PartHaloElemToProc_Shared(LOCAL_PROC_ID ,FirstElemHaloShared:LastElemHaloShared) = -1
 END IF
 
 ! !==== XiEtaZetaBasis ============================================================================================================

@@ -326,7 +326,7 @@ SUBROUTINE UpdateDGShared(U)
 USE MOD_Globals,            ONLY: iError
 USE MOD_Preproc,            ONLY: N
 USE MOD_Mesh_Vars,          ONLY: nElems,offsetElem
-USE MOD_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars,    ONLY: MPI_COMM_SHARED,U_Shared,U_Shared_Win,offsetElem_shared_root
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

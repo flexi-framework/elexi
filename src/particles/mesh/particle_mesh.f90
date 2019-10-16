@@ -20,8 +20,7 @@ MODULE MOD_Particle_Mesh
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-PUBLIC
-SAVE
+PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! required variables
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -39,6 +38,22 @@ INTERFACE InitParticleGeometry
   MODULE PROCEDURE InitParticleGeometry
 END INTERFACE
 
+INTERFACE InitFIBGM
+  MODULE PROCEDURE InitFIBGM
+END INTERFACE
+
+INTERFACE InitElemBoundingBox
+  MODULE PROCEDURE InitElemBoundingBox
+END INTERFACE
+
+INTERFACE InitElemVolumes
+  MODULE PROCEDURE InitElemVolumes
+END INTERFACE
+
+INTERFACE FinalizeParticleMesh
+  MODULE PROCEDURE FinalizeParticleMesh
+END INTERFACE
+
 INTERFACE buildGlobConnection
     MODULE PROCEDURE buildGlobConnection
 END INTERFACE
@@ -49,14 +64,6 @@ INTERFACE exchangeElemID
 END INTERFACE
 #endif
 
-INTERFACE FinalizeParticleMesh
-  MODULE PROCEDURE FinalizeParticleMesh
-END INTERFACE
-
-INTERFACE InitFIBGM
-  MODULE PROCEDURE InitFIBGM
-END INTERFACE
-
 INTERFACE SingleParticleToExactElement
   MODULE PROCEDURE SingleParticleToExactElement
 END INTERFACE
@@ -65,20 +72,16 @@ INTERFACE SingleParticleToExactElementNoMap
   MODULE PROCEDURE SingleParticleToExactElementNoMap
 END INTERFACE
 
-INTERFACE InitElemVolumes
-  MODULE PROCEDURE InitElemVolumes
-END INTERFACE
-
 INTERFACE BuildElementBasis
   MODULE PROCEDURE BuildElementBasis
 END INTERFACE
 
-INTERFACE CountPartsPerElem
-  MODULE PROCEDURE CountPartsPerElem
+INTERFACE BuildElementOrigin
+  MODULE PROCEDURE BuildElementOrigin
 END INTERFACE
 
-INTERFACE InitElemBoundingBox
-  MODULE PROCEDURE InitElemBoundingBox
+INTERFACE CountPartsPerElem
+  MODULE PROCEDURE CountPartsPerElem
 END INTERFACE
 
 INTERFACE InsideElemBoundingBox
@@ -107,14 +110,20 @@ END INTERFACE
 
 PUBLIC::InitParticleMeshBasis
 PUBLIC::InitParticleGeometry
+PUBLIC::InitElemVolumes
+PUBLIC::InitParticleMesh
+PUBLIC::InitFIBGM
+PUBLIC::InitElemBoundingBox
+PUBLIC::FinalizeParticleMesh
 PUBLIC::buildGlobConnection
 #if USE_MPI
 PUBLIC::exchangeElemID
 #endif
 PUBLIC::CountPartsPerElem
-PUBLIC::BuildElementBasis,CheckIfCurvedElem
-PUBLIC::InitElemVolumes
-PUBLIC::InitParticleMesh,FinalizeParticleMesh, InitFIBGM, SingleParticleToExactElement, SingleParticleToExactElementNoMap
+PUBLIC::BuildElementBasis
+PUBLIC::BuildElementOrigin
+PUBLIC::CheckIfCurvedElem
+PUBLIC::SingleParticleToExactElement,SingleParticleToExactElementNoMap
 PUBLIC::InsideElemBoundingBox
 PUBLIC::PartInElemCheck
 PUBLIC::ParticleInsideQuad3D
@@ -3517,108 +3526,6 @@ DO iElem=1,nTotalElems
 END DO ! iElem
 
 END SUBROUTINE BuildElementBasis
-
-
-SUBROUTINE MapElemToFIBGM()
-!----------------------------------------------------------------------------------------------------------------------------------!
-! here, the FIBGM range for each element is stored
-! short list for intersection tracking, longer list for ref mapping tracking
-!----------------------------------------------------------------------------------------------------------------------------------!
-! MODULES                                                                                                                          !
-USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_Preproc
-USE MOD_Particle_Mesh_Vars,     ONLY:GEO,nTotalElems
-USE MOD_Particle_Mesh_Vars,     ONLY:XCL_NGeo
-USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping
-!----------------------------------------------------------------------------------------------------------------------------------!
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER           :: ALLOCSTAT,iElem,lastElem
-REAL              :: xmin,ymin,zmin,xmax,ymax,zmax
-INTEGER           :: BGMimax,BGMimin,BGMjmax,BGMjmin,BGMkmax,BGMkmin
-INTEGER           :: BGMCellXmax,BGMCellXmin,BGMCellYmax,BGMCellYmin,BGMCellZmax,BGMCellZmin
-!===================================================================================================================================
-
-!IF(.NOT.DoRefMapping) RETURN
-
-IF(DoRefMapping) THEN
-  LastElem=nTotalElems
-ELSE
-  LastElem=PP_nElems
-END IF
-
-ALLOCATE(GEO%ElemToFIBGM(1:6,1:LastElem),STAT=ALLOCSTAT )
-IF (ALLOCSTAT.NE.0) CALL abort(&
-__STAMP__&
-,'  Cannot allocate GEO%ElemToFIBGM!')
-
-! because I copy and past
-BGMimax=GEO%FIBGMimax
-BGMimin=GEO%FIBGMimin
-BGMjmax=GEO%FIBGMjmax
-BGMjmin=GEO%FIBGMjmin
-BGMkmax=GEO%FIBGMkmax
-BGMkmin=GEO%FIBGMkmin
-
-DO iElem=1,LastElem
-  xmin=HUGE(1.)
-  ymin=HUGE(1.)
-  zmin=HUGE(1.)
-  xmax=-HUGE(1.)
-  ymax=-HUGE(1.)
-  zmax=-HUGE(1.)
-  xmin=MIN(xmin,MINVAL(XCL_NGeo(1,:,:,:,iElem)))
-  xmax=MAX(xmax,MAXVAL(XCL_NGeo(1,:,:,:,iElem)))
-  ymin=MIN(ymin,MINVAL(XCL_NGeo(2,:,:,:,iElem)))
-  ymax=MAX(ymax,MAXVAL(XCL_NGeo(2,:,:,:,iElem)))
-  zmin=MIN(zmin,MINVAL(XCL_NGeo(3,:,:,:,iElem)))
-  zmax=MAX(zmax,MAXVAL(XCL_NGeo(3,:,:,:,iElem)))
-  !--- find minimum and maximum BGM cell for current element
-  IF(GEO%nPeriodicVectors.EQ.0)THEN
-    BGMCellXmax = CEILING((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))
-    BGMCellXmax = MIN(BGMCellXmax,BGMimax)
-    BGMCellXmin = CEILING((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1))
-    BGMCellXmin = MAX(BGMCellXmin,BGMimin)
-    BGMCellYmax = CEILING((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))
-    BGMCellYmax = MIN(BGMCellYmax,BGMjmax)
-    BGMCellYmin = CEILING((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2))
-    BGMCellYmin = MAX(BGMCellYmin,BGMjmin)
-    BGMCellZmax = CEILING((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))
-    BGMCellZmax = MIN(BGMCellZmax,BGMkmax)
-    BGMCellZmin = CEILING((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3))
-    BGMCellZmin = MAX(BGMCellZmin,BGMkmin)
-  ELSE
-    ! here fancy stuff, because element could be wide out of element range
-    BGMCellXmax = CEILING((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))
-    BGMCellXmax = MAX(MIN(BGMCellXmax,BGMimax),BGMimin)
-    BGMCellXmin = CEILING((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1))
-    BGMCellXmin = MIN(MAX(BGMCellXmin,BGMimin),BGMimax)
-    BGMCellYmax = CEILING((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))
-    BGMCellYmax = MAX(MIN(BGMCellYmax,BGMjmax),BGMjmin)
-    BGMCellYmin = CEILING((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2))
-    BGMCellYmin = MIN(MAX(BGMCellYmin,BGMjmin),BGMjmax)
-    BGMCellZmax = CEILING((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))
-    BGMCellZmax = MAX(MIN(BGMCellZmax,BGMkmax),BGMkmin)
-    BGMCellZmin = CEILING((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3))
-    BGMCellZmin = MIN(MAX(BGMCellZmin,BGMkmin),BGMkmax)
-  END IF
-  GEO%ElemToFIBGM(1,iElem)=BGMCellXmin
-  GEO%ElemToFIBGM(3,iElem)=BGMCellYmin
-  GEO%ElemToFIBGM(5,iElem)=BGMCellZmin
-
-  GEO%ElemToFIBGM(2,iElem)=BGMCellXmax
-  GEO%ElemToFIBGM(4,iElem)=BGMCellYmax
-  GEO%ElemToFIBGM(6,iElem)=BGMCellZmax
-END DO ! iElem=1,nTotalElems
-
-END SUBROUTINE MapElemToFIBGM
 
 
 SUBROUTINE CountPartsPerElem(ResetNumberOfParticles)

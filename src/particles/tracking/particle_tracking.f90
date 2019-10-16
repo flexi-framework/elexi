@@ -55,7 +55,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars,               ONLY:PEM,PDM
 USE MOD_Particle_Vars,               ONLY:PartState,LastPartPos
-USE MOD_Particle_Mesh,               ONLY:SingleParticleToExactElement,ParticleInsideQuad3D
+USE MOD_Particle_Localization,       ONLY:SingleParticleToExactElement,ParticleInsideQuad3D
 USE MOD_Particle_Surfaces_Vars,      ONLY:SideType
 USE MOD_Particle_Mesh_Vars,          ONLY:PartElemToSide, PartSideToElem
 USE MOD_Particle_Tracking_vars,      ONLY:ntracks,MeasureTrackTime,CountNbOfLostParts,nLostParts,TrackInfo
@@ -287,7 +287,7 @@ USE MOD_Particle_Boundary_Vars,      ONLY:nAuxBCs,UseAuxBCs
 USE MOD_Particle_Boundary_Condition, ONLY:GetBoundaryInteractionAuxBC
 USE MOD_Particle_Utils,              ONLY:InsertionSort
 USE MOD_Particle_Tracking_vars,      ONLY:ntracks,MeasureTrackTime, CountNbOfLostParts , nLostParts
-USE MOD_Particle_Mesh,               ONLY:SingleParticleToExactElementNoMap,PartInElemCheck
+USE MOD_Particle_Localization,       ONLY:SingleParticleToExactElementNoMap,PartInElemCheck
 USE MOD_Particle_Intersection,       ONLY:ComputeCurvedIntersection
 USE MOD_Particle_Intersection,       ONLY:ComputePlanarRectInterSection
 USE MOD_Particle_Intersection,       ONLY:ComputePlanarCurvedIntersection
@@ -952,7 +952,7 @@ USE MOD_Particle_Mesh_Vars,      ONLY:Geo,IsTracingBCElem,BCElem,epsOneCell
 USE MOD_Particle_Utils,          ONLY:BubbleSortID,InsertionSort
 USE MOD_Particle_Mesh_Vars,      ONLY:ElemRadius2NGeo
 USE MOD_Particle_MPI_Vars,       ONLY:halo_eps2
-USE MOD_Particle_Mesh,           ONLY:SingleParticleToExactElement,PartInElemCheck
+USE MOD_Particle_Localization,   ONLY:SingleParticleToExactElement,PartInElemCheck
 USE MOD_Eval_xyz,                ONLY:EvaluateFieldAtRefPos
 #if USE_MPI
 USE MOD_MPI_Vars,                ONLY:offsetElemMPI
@@ -2224,7 +2224,7 @@ USE MOD_Particle_Vars,          ONLY:PEM,PDM,LastPartPos,PartState
 USE MOD_Particle_Mesh_Vars,     ONLY:GEO
 USE MOD_TimeDisc_Vars,          ONLY:currentStage
 USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping
-USE MOD_Particle_Mesh,          ONLY:PartInElemCheck
+USE MOD_Particle_Localization,  ONLY:PartInElemCheck
 USE MOD_Particle_MPI_Vars,      ONLY:PartHaloElemToProc
 #if USE_MPI
 USE MOD_MPI_Vars,               ONLY:offsetElemMPI

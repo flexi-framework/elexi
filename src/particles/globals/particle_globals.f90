@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -26,30 +26,25 @@ USE MPI
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL                                  :: PI
-REAL                                  :: epsMach=epsilon(0.)
-REAL                                  :: TwoEpsMach=2.d0 * epsilon(0.)
+REAL                                  :: epsMach    = epsilon(0.)
+REAL                                  :: TwoEpsMach = 2.d0 * epsilon(0.)
 
 ! Keep nElems and PP_nElems separate for now
 INTEGER                               :: PP_nElems
 
 !- LOADBALANCE ---------------------------------------------------------------------------------------------------------------------
-REAL                         :: WallTime                              !> Wall time needed by a simulation (is not reset by 
+REAL                         :: WallTime                              !> Wall time needed by a simulation (is not reset by
                                                                       !> performing a load balance step, only by user restart)
 REAL                         :: InitializationWallTime                !> Wall time needed to initialize a simulation (or
-                                                                      !> re-initialize a simulation by performing a load balance 
+                                                                      !> re-initialize a simulation by performing a load balance
                                                                       !>  step)
-REAL                         :: SimulationEfficiency                  !> relates the simulated time to the used CPUh (SIMULATION 
+REAL                         :: SimulationEfficiency                  !> relates the simulated time to the used CPUh (SIMULATION
                                                                       !> TIME PER CALCULATION in [s]/[CPUh])
 REAL                         :: PID                                   !> Performance index: (CalcTimeEnd-CalcTimeStart)*nProcessors/
                                                                       !> (nGlobalElems*(PP_N+1)**3*iter_loc)
-
-!#if USE_MPI
-!!#include "mpif.h"
-!INTEGER           :: MPIStatus(MPI_STATUS_SIZE)
-!#endif
 
 !=================================================================================================================================
 !==================================================================================================================================
@@ -82,20 +77,6 @@ INTERFACE GETFREEUNIT
   MODULE PROCEDURE GETFREEUNIT
 END INTERFACE GETFREEUNIT
 
-!INTERFACE CNTSTR
-!  MODULE PROCEDURE CNTSTR
-!END INTERFACE
-!
-!!= Keep procedure from boltzplatz even though not strictly necessary here ==========================================================
-!TYPE tString
-!  TYPE(Varying_String)::Str
-!  TYPE(tString),POINTER::NextStr,PrevStr
-!END TYPE tString
-!
-!LOGICAL,PUBLIC::ReadInDone=.FALSE.
-!TYPE(tString),POINTER,PUBLIC::FirstString
-!TYPE(tString),POINTER,PUBLIC::parameters
-
 INTERFACE RandNormal
   MODULE PROCEDURE RandNormal
 END INTERFACE
@@ -107,9 +88,8 @@ PUBLIC :: AlmostZero
 PUBLIC :: AlmostEqual
 PUBLIC :: UnitVector
 PUBLIC :: InitParticleGlobals
-!PUBLIC :: CNTSTR
 PUBLIC :: RandNormal
-    
+
 CONTAINS
 
 SUBROUTINE InitParticleGlobals()
@@ -126,7 +106,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS ...'
@@ -144,13 +124,13 @@ PURE FUNCTION CROSS(v1,v2)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN) :: v1(3)    ! 
-REAL,INTENT(IN) :: v2(3)    ! 
+REAL,INTENT(IN) :: v1(3)    !
+REAL,INTENT(IN) :: v2(3)    !
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL            :: CROSS(3) !
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !===================================================================================================================================
 CROSS=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
 END FUNCTION CROSS
@@ -166,13 +146,13 @@ FUNCTION CROSSNORM(v1,v2)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN) :: v1(3)    ! 
-REAL,INTENT(IN) :: v2(3)    ! 
+REAL,INTENT(IN) :: v1(3)    !
+REAL,INTENT(IN) :: v2(3)    !
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL            :: CROSSNORM(3) !
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL            :: length
 !===================================================================================================================================
 CROSSNORM=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
@@ -184,13 +164,13 @@ END FUNCTION CROSSNORM
 ! Performe an almost zero check. But ...
 ! Bruce Dawson quote:
 ! "There is no silver bullet. You have to choose wisely."
-!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless. 
-!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs 
+!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless.
+!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs
 !      to your calculation. Maybe."
-!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want. 
-!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs. 
+!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
+!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs.
 !      An absolute epsilon could be used if you knew exactly what number you were comparing against."
-!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink. 
+!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
 !      Good luck and God speed."
 !===================================================================================================================================
 FUNCTION AlmostZero(Num)
@@ -212,17 +192,17 @@ AlmostZero=.FALSE.
 IF(ABS(Num).LE.EpsMach) AlmostZero=.TRUE.
 
 END FUNCTION AlmostZero
- 
+
 !===================================================================================================================================
 ! Bruce Dawson quote:
 ! "There is no silver bullet. You have to choose wisely."
-!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless. 
-!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs 
+!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless.
+!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs
 !      to your calculation. Maybe."
-!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want. 
-!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs. 
+!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
+!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs.
 !      An absolute epsilon could be used if you knew exactly what number you were comparing against."
-!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink. 
+!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
 !      Good luck and God speed."
 !===================================================================================================================================
 FUNCTION AlmostEqual(Num1,Num2)
@@ -248,7 +228,7 @@ END FUNCTION AlmostEqual
 
 FUNCTION UNITVECTOR(v1)
 !===================================================================================================================================
-! compute  a unit vector from a given vector 
+! compute  a unit vector from a given vector
 !===================================================================================================================================
 ! MODULES
 USE Mod_Globals
@@ -256,13 +236,13 @@ USE Mod_Globals
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN) :: v1(3)    ! 
+REAL,INTENT(IN) :: v1(3)    !
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL            :: UNITVECTOR(3)
 REAL            :: invL
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !===================================================================================================================================
 invL=SQRT(v1(1)*v1(1)+v1(2)*v1(2)+v1(3)*v1(3))
 invL=1./invL
@@ -289,7 +269,7 @@ LOGICAL :: connected
 GetFreeUnit=55
 INQUIRE(UNIT=GetFreeUnit, OPENED=connected)
 IF(connected)THEN
-  DO  
+  DO
     GetFreeUnit=GetFreeUnit+1
     INQUIRE(UNIT=GetFreeUnit, OPENED=connected)
     IF(.NOT.connected)EXIT
@@ -297,62 +277,10 @@ IF(connected)THEN
 END IF
 END FUNCTION GETFREEUNIT
 
-!FUNCTION CNTSTR(Key,Proposal)
-!!===================================================================================================================================
-!! Counts all occurances of string named "key" from inifile and store in "GETSTR". If keyword "Key" is not found in ini file,
-!! the default value "Proposal" is used for "GETINT" (error if "Proposal" not given).
-!! Inifile was read in before and is stored as list of character strings starting with "FirstString".
-!!===================================================================================================================================
-!! MODULES
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT VARIABLES
-!CHARACTER(LEN=*),INTENT(IN)          :: Key      ! Search for this keyword in ini file
-!CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: Proposal ! Default values as character string (as in ini file)
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! OUTPUT VARIABLES
-!INTEGER                              :: CntStr   ! Number of parameters named "Key" in inifile
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!INTEGER                              :: IntProposal
-!CHARACTER(LEN=LEN(Key))              :: TmpKey
-!TYPE(tString),POINTER                :: Str1
-!!===================================================================================================================================
-!! Read-in ini file if not done already
-!CALL FillStrings
-!ReadInDone=.TRUE.
-!
-!CntStr=0
-!CALL LowCase(Key,TmpKey)
-!! Remove blanks
-!TmpKey=REPLACE(TmpKey," ","",Every=.TRUE.)
-!
-!! Search
-!Str1=>FirstString
-!DO WHILE (ASSOCIATED(Str1))
-!  IF (INDEX(CHAR(Str1%Str),TRIM(TmpKey)//'=').EQ.1) THEN
-!    CntStr=CntStr+1
-!  END IF ! (INDEX...
-!  ! Next string in list
-!  Str1=>Str1%NextStr
-!END DO
-!IF (CntStr.EQ.0) THEN
-!  IF (PRESENT(Proposal)) THEN
-!    READ(Proposal,'(I3)')IntProposal
-!    CntStr=IntProposal
-!  ELSE
-!    SWRITE(UNIT_StdOut,*) 'Inifile missing necessary keyword item : ',TRIM(TmpKey)
-!    CALL abort(&
-!__STAMP__&
-!,'Code stopped!',999,999.)
-!  END IF
-!END IF
-!END FUNCTION CNTSTR
 
 FUNCTION RandNormal(mean_opt,deviation_opt)
 !===================================================================================================================================
-! Computes probability density of the Gaussian normal distribution with standard deviation unity with the Box—Muller—Wiener (BMW) 
+! Computes probability density of the Gaussian normal distribution with standard deviation unity with the Box—Muller—Wiener (BMW)
 ! algorithm. Might be inefficient due to the high number of trigonometric and square function calls
 ! > Toral and Chakrabarti, "Generation of Gaussian distributed random numbers by using a numerical inversion method", 1993
 ! > Code based on https://people.sc.fsu.edu/~jburkardt/f_src/normal/normal.f90 (r4_normal_ab) and
@@ -369,7 +297,7 @@ REAL,INTENT(IN),OPTIONAL :: deviation_opt
 ! OUTPUT VARIABLE
 REAL            :: RandNormal
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL            :: mean
 REAL            :: deviation
 REAL            :: random(2),r,theta

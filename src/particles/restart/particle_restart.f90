@@ -50,7 +50,7 @@ USE MOD_Restart_Vars,            ONLY:RestartTime,RestartFile
 USE MOD_Particle_Vars,           ONLY:PartState, PartSpecies, PEM, PDM, Species, nSpecies, PartPosRef,PartReflCount
 USE MOD_Part_Tools,              ONLY:UpdateNextFreePosition
 USE MOD_Eval_XYZ,                ONLY:TensorProductInterpolation
-USE MOD_Particle_Mesh,           ONLY:SingleParticleToExactElement,SingleParticleToExactElementNoMap
+USE MOD_Particle_Localization,   ONLY:SingleParticleToExactElement,SingleParticleToExactElementNoMap
 USE MOD_Particle_Mesh_Vars,      ONLY:epsOneCell
 USE MOD_Particle_Tracking_Vars,  ONLY:DoRefMapping
 USE MOD_Particle_Erosion_Analyze,ONLY:CalcSurfaceValues

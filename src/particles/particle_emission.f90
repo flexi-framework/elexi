@@ -384,7 +384,7 @@ USE MOD_Particle_Vars,         ONLY: Species,PDM,PartState
 USE MOD_Particle_Mesh_Vars,    ONLY: GEO
 USE MOD_Timedisc_Vars,         ONLY: dt
 USE MOD_Particle_TimeDisc_Vars,ONLY: RKdtFrac
-USE MOD_Particle_Mesh,         ONLY: SingleParticleToExactElement,SingleParticleToExactElementNoMap
+USE MOD_Particle_Localization, ONLY: SingleParticleToExactElement,SingleParticleToExactElementNoMap
 USE MOD_Particle_Tracking_Vars,ONLY: DoRefMapping, TriaTracking
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,     ONLY: PartMPI,PartMPIInsert

@@ -202,7 +202,7 @@ USE MOD_Particle_Vars
 USE MOD_TimeDisc_Vars       ,ONLY: RKb,RKc
 #if USE_LOADBALANCE
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
-USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,LoadBalanceSample
+USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,PerformLoadBalance,LoadBalanceSample,ElemTime
 #endif /*LOADBALANCE*/
 #if USE_MPI_SHARED
 USE MOD_Particle_MPI_Shared ,ONLY: UpdateDGShared
@@ -407,11 +407,12 @@ DO
 
   ! Check if less or equal LoadBalanceSample number of iteration left until analyze step
 #if USE_LOADBALANCE
-  IF ((dtAnalyze.LE.LoadBalanceSample*dt                                       & ! all iterations in LoadbalanceSample interval
-       .OR. (ALMOSTEQUALRELATIVE(dtAnalyze,LoadBalanceSample*dt,1e-5)))        & ! make sure to get the first iteration in interval
-       .AND. DoLoadBalance)                                                    & ! make sure Loadbalancing is enabled
-    ! If yes, add the current ElemLoad to the statistics
-    CALL ComputeElemLoad()
+  IF ((dtAnalyze.LE.LoadBalanceSample*dt                                      & ! all iterations in LoadbalanceSample interval
+       .OR. (ALMOSTEQUALRELATIVE(dtAnalyze,LoadBalanceSample*dt,1e-5)))       & ! make sure to get the first iteration in interval
+       .AND. DoLoadBalance) THEN
+    PerformLoadBalance = .TRUE.                                                 ! make sure Loadbalancing is enabled
+    ElemTime           = 0.                                                     ! nullify ElemTime before measuring in the next iter
+  END IF
 #endif /*LOADBALANCE*/
 
   CALL PrintStatusLine(t,dt,tStart,tEnd)
@@ -424,13 +425,13 @@ DO
     CALL TrackingParticlePosition(t)
   END IF
 
-! Only run particle tracking if steady state is requested
-IF(.NOT.PartSteadyState) THEN
+  ! Only run particle tracking if steady state is requested
+  IF(.NOT.PartSteadyState) THEN
 #endif
   CALL TimeStep(t)
 #if USE_PARTICLES
-ELSE
-! We have to call particle tracking manually because we are not entering TimeStep()
+  ELSE
+  ! We have to call particle tracking manually because we are not entering TimeStep()
 
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
@@ -461,8 +462,14 @@ ELSE
                       'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
   END SELECT
 
-END IF
-#endif
+  END IF
+
+#if USE_LOADBALANCE
+  ! If loadbalance is performed in the current step, distribute the recorded load to the elements
+  IF(PerformLoadBalance) CALL ComputeElemLoad()
+  PerformLoadBalance = .FALSE.
+#endif /* USE_LOADBALANCE */
+#endif /* PARTICLES */
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! Perform Timestep using a global time stepping routine, attention: only RK3 has time dependent BC
@@ -524,6 +531,7 @@ END IF
 
     ! do loadbalance output
 #if USE_LOADBALANCE
+    ! Output the loadbalance information with part weights at the analyze step
     IF(DoLoadBalance) CALL AnalyzeLoadBalance()
 #endif
 

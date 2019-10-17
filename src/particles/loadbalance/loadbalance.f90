@@ -69,6 +69,8 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("LoadBalance")
 CALL prms%CreateLogicalOption( 'DoLoadBalance'                ,  "Set flag for doing dynamic LoadBalance.", '.FALSE.')
+CALL prms%CreateLogicalOption( 'DoLoadBalanceTimeBased'       ,  "Set flag to calculate load (im)balance based on elapsed time"  //&
+                                                                 " instead of DG and particle weights", '.TRUE.')
 CALL prms%CreateIntOption(     'LoadBalanceSample'            ,  "Define number of iterations (before analyze_dt)"               //&
                                                                  " that are used for calculation of elemtime information",         &
                                                                  value='1')
@@ -105,6 +107,7 @@ CALL prms%CreateIntOption(     'InitialAutoRestartSample',       "Define number 
 
 END SUBROUTINE DefineParametersLoadBalance
 
+
 #if USE_MPI
 SUBROUTINE InitLoadBalance()
 !===================================================================================================================================
@@ -127,36 +130,42 @@ USE MOD_ReadInTools            ,ONLY: GETLOGICAL, GETREAL, GETINT
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT LOAD BALANCE ...'
 
-#if USE_PARTICLES
-! Read particle MPI weight
-ParticleMPIWeight   = GETREAL('Particles-MPIWeight','0.02')
-IF (ParticleMPIWeight.LT.0.0) CALL abort(__STAMP__,' ERROR: Particle weight cannot be negative!')
-
-! Rescale ParticleMPIWeight with PP_N^3 to account for ElemTime(DG) = 1
-!ParticleMPIWeight   = ParticleMPIWeight * PP_N**3
-#endif /*PARTICLES*/
-
 #if USE_LOADBALANCE
 IF(nProcessors.EQ.1)THEN
   ! deactivate load balance for single core computations
-  DoLoadBalance     = .FALSE.
+  DoLoadBalance        = .FALSE.
   SWRITE(UNIT_stdOut,'(A)') 'No LoadBalance (nProcessors=1): DoLoadBalance=', DoLoadBalance
-  DeviationThreshold= HUGE(1.0)
+  DeviationThreshold   = HUGE(1.0)
 ELSE
-  DoLoadBalance     = GETLOGICAL('DoLoadBalance'          ,'F')
-  LoadBalanceSample = GETINT    ('LoadBalanceSample'      ,'1')
-  DeviationThreshold= GETREAL   ('Load-DeviationThreshold','0.10')
+  DoLoadBalance        = GETLOGICAL('DoLoadBalance'          ,'F')
+  LoadBalanceTimeBased = GETLOGICAL('DOLoadBalanceTimeBased' ,'T')
+  LoadBalanceSample    = GETINT    ('LoadBalanceSample'      ,'1')
+  DeviationThreshold   = GETREAL   ('Load-DeviationThreshold','0.10')
+END IF
+
+IF (DoLoadBalance.AND.(.NOT.LoadBalanceTimeBased)) THEN
+  ! Read particle MPI weight
+  ParticleMPIWeight   = GETREAL('Particles-MPIWeight','0.02')
+  IF (ParticleMPIWeight.LT.0.0) CALL abort(__STAMP__,' ERROR: Particle weight cannot be negative!')
+
+  ! Rescale ParticleMPIWeight with PP_N^3 to account for ElemTime(DG) = 1
+  !ParticleMPIWeight   = ParticleMPIWeight * PP_N**3
 END IF
 !> =================================================================================================================================
 #else
-DoLoadBalance       = .FALSE. ! deactivate loadbalance if no preproc flag is set
-DeviationThreshold  = HUGE(1.0)
-LoadBalanceSample   = 0
-#endif /*USE_LOADBALANCE*/
-nLoadBalance        = 0
-nLoadBalanceSteps   = 0
+DoLoadBalance          = .FALSE. ! deactivate loadbalance if no preproc flag is set
+DeviationThreshold     = HUGE(1.0)
+LoadBalanceSample      = 0
 
-InitLoadBalanceIsDone= .TRUE.
+#endif /*USE_LOADBALANCE*/
+
+! Initialize and nullify variables
+ALLOCATE(tCurrent(1:LB_NTIMES))
+tcurrent               = 0.
+nLoadBalance           = 0
+nLoadBalanceSteps      = 0
+
+InitLoadBalanceIsDone  = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LOAD BALANCE DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitLoadBalance
@@ -172,16 +181,15 @@ SUBROUTINE ComputeElemLoad()
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Preproc
-USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,nLoadBalance
-USE MOD_LoadBalance_Vars       ,ONLY: DeviationThreshold,PerformLoadBalance,LoadBalanceSample
-USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nDeposPerElem,nTracksPerElem
-USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem
+USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceTimeBased,ElemTime,tCurrent,nLoadBalance
+USE MOD_LoadBalance_Vars       ,ONLY: DeviationThreshold,PerformLoadBalance
+USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem
 USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight
 USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance
 USE MOD_LoadDistribution       ,ONLY: WriteElemTimeStatistics
-USE MOD_Particle_Mesh          ,ONLY: CountPartsPerElem
+USE MOD_Particle_Localization  ,ONLY: CountPartsPerElem
 USE MOD_Particle_Tracking_vars ,ONLY: DoRefMapping
-USE MOD_TimeDisc_Vars          ,ONLY: t
+USE MOD_TimeDisc_Vars          ,ONLY: t,nRKStages
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -191,74 +199,66 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER               :: iElem
 INTEGER(KIND=8)       :: HelpSum
-REAL                  :: stotalDepos,stotalParts,sTotalTracks
-REAL                  :: ElemTime_current(PP_nElems),delta(PP_nElems)
+REAL                  :: stotalParts,sTotalTracks
 !===================================================================================================================================
-! number of load balance calls to Compute Elem Load
-nLoadBalance = nLoadBalance + 1
 
-! ----------------------------------------------
-! calculate weightings
-stotalDepos=1.0
-sTotalTracks=1.0
+! Calculate Load Balance based on elapsed time, linearly distributed to each element
+IF (LoadBalanceTimeBased) THEN
+  ! Increment number of load balance calls to Compute Elem Load
+  nLoadBalance = nLoadBalance + 1
 
-! Recount particles
-CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of LB
+  ! Calculate weightings, these are the denominators
+  sTotalTracks = 1.0
 
-! calculate and weight particle number per element
-helpSum=SUM(nPartsPerElem)
-IF(helpSum.GT.0) THEN
-    stotalParts=1.0/REAL(helpSum)
-ELSE
-    stotalParts=1.0/REAL(PP_nElems)
-    nPartsPerElem=1
-END IF
+  ! Recount particles
+  CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.)
 
-! set and weight tracks per element
-IF (DoRefMapping) THEN
-    helpSum=SUM(nTracksPerElem)
+  ! Calculate and weight particle number per element
+  helpSum = SUM(nPartsPerElem)
+  IF(helpSum.GT.0) THEN
+    stotalParts   = 1.0/REAL(helpSum)
+  ! No particle count, distribute load equally on all elements
+  ELSE
+    stotalParts   = 1.0/REAL(PP_nElems)
+    nPartsPerElem = 1
+  END IF
+
+  ! Calculate and weight tracks per element
+  IF (DoRefMapping) THEN
+    helpSum = SUM(nTracksPerElem)
     IF(SUM(nTracksPerElem).GT.0) THEN
-        sTotalTracks=1.0/REAL(helpSum)
+      sTotalTracks=1.0/REAL(helpSum)
     END IF
-END IF
+  END IF
 
-! set and weight depositions per element
-helpSum=SUM(nDeposPerElem)
-IF(helpSum.GT.0) THEN
-    stotalDepos=1.0/REAL(helpSum)
-END IF
-! ----------------------------------------------
+  ! distribute times of different routines on elements with respective weightings
+  DO iElem = 1,PP_nElems
+    ! Time used in DG routines, assume equal load per element
+    !> Missed the first call to DGTimeDerivative_WeakForm, rescale the time accordingly
+    ElemTime(iElem) = ElemTime(iElem)            * ((nRKStages+1)/nRKStages)           &
+                    + tCurrent(LB_DG)            / REAL(PP_nElems)
+    ! Add particle LB times to elements with respective weightings
+    ElemTime(iElem) = ElemTime(iElem)                                                  &
+                    + tCurrent(LB_INTERPOLATION) * nPartsPerElem(iElem) *sTotalParts   &
+                    + tCurrent(LB_PUSH)          * nPartsPerElem(iElem) *sTotalParts   &
+                    + tCurrent(LB_TRACK)         * nTracksPerElem(iElem)*sTotalTracks
+  END DO ! iElem=1,PP_nElems
 
-! distribute times of different routines on elements with respective weightings
-!> no time measurement and particles are present: simply add the ParticleMPIWeight times the number of particles present
-!> TODO: FIGURE OUT IF WE WANT TO MULTIPLY WITH PP_N TO ACCOUNT FOR DG LOAD
-!ElemTime_current = 0.
-DO iElem=1,PP_nElems
-!    ElemTime_current(iElem) = ElemTime_current(iElem) + nPartsPerElem(iElem)*ParticleMPIWeight + 1.0
-    ElemTime_current(iElem) = 1. + nPartsPerElem(iElem)*ParticleMPIWeight
-END DO ! iElem=1,PP_nElems
-
-! If statistical values are gathered over multiple time steps
-IF(LoadBalanceSample.GT.1) THEN
-    !<<< Welford's algorithm
-    !    (count, mean, M2) = existingAggregate
-    !    count = count + 1
-    !    delta = newValue - mean
-    !    mean = mean + delta / count
-    delta    = ElemTime_current - ElemTime
-    ElemTime = ElemTime + delta / nLoadBalance
-
-! Only use information from current time step
+! Calculate Load Balance based on the amount of particles per cell
 ELSE
-    ElemTime = ElemTime_current
-END IF
+  ! simply add the ParticleMPIWeight times the number of particles present
+  !> TODO: FIGURE OUT IF WE WANT TO MULTIPLY WITH PP_N TO ACCOUNT FOR DG LOAD
+  DO iElem = 1,PP_nElems
+    ElemTime(iElem) = 1. + nPartsPerElem(iElem)*ParticleMPIWeight
+  END DO ! iElem=1,PP_nElems
 
-! Sanity check ElemTime
-IF((MAXVAL(nPartsPerElem).GT.0).AND.(MAXVAL(ElemTime).LE.1.0))THEN
+  ! Sanity check ElemTime
+  IF((MAXVAL(nPartsPerElem).GT.0).AND.(MAXVAL(ElemTime).LE.1.0))THEN
     IPWRITE (*,*) "parts, time =", MAXVAL(nPartsPerElem),MAXVAL(ElemTime)
     CALL abort(__STAMP__&
         ,' ERROR: MAXVAL(nPartsPerElem).GT.0 but MAXVAL(ElemTime).LE.1.0 with ParticleMPIWeight=',RealInfo=ParticleMPIWeight)
-END IF
+  END IF
+END IF ! LoadBalanceTimeBased
 
 ! Determine sum of balance and calculate target balanced weight and communicate via MPI_ALLREDUCE
 CALL ComputeImbalance()
@@ -270,9 +270,10 @@ CALL WriteElemTimeStatistics(WriteHeader=.FALSE.,time=t)
 PerformLoadBalance=.FALSE.
 IF(CurrentImbalance.GT.DeviationThreshold) PerformLoadBalance=.TRUE.
 
-nTracksPerElem=0
-nDeposPerElem=0
-nPartsPerElem=0
+! Reset counters
+nTracksPerElem = 0
+nPartsPerElem  = 0
+tCurrent       = 0.
 
 END SUBROUTINE ComputeElemLoad
 #endif /*USE_LOADBALANCE*/
@@ -288,7 +289,6 @@ USE MOD_Particle_Globals
 USE MOD_Preproc
 USE MOD_Restart                ,ONLY: Restart
 USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,nLoadBalanceSteps,NewImbalance,MinWeight,MaxWeight
-!USE MOD_PICDepo_Vars           ,ONLY: DepositionType
 USE MOD_Particle_MPI           ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance,MaxWeight,MinWeight
 USE MOD_LoadBalance_Vars       ,ONLY: Currentimbalance,PerformLoadBalance,nLoadBalance
@@ -340,18 +340,6 @@ SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' OldImbalance: ', CurrentImbalance
 SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' NewImbalance: ', NewImbalance
 SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MaxWeight:    ', MaxWeight
 SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MinWeight:    ', MinWeight
-
-!! e.g. 'shape_function', 'shape_function_1d', 'shape_function_cylindrical'
-!IF(TRIM(DepositionType(1:MIN(14,LEN(TRIM(ADJUSTL(DepositionType)))))).EQ.'shape_function')THEN
-!  ! open receive buffer for number of particles
-!  CALL IRecvNbofParticles()
-!  ! send number of particles
-!  CALL SendNbOfParticles()
-!  ! finish communication of number of particles and send particles
-!  CALL MPIParticleSend()
-!  ! finish communication
-!  CALL MPIParticleRecv()
-!END IF
 
 ! Calculate time spent for load balance restart
 LB_Time=FLEXITIME()
@@ -477,6 +465,10 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+
+! Deallocate arrays
+SDEALLOCATE(tCurrent)
+
 InitLoadBalanceIsDone = .FALSE.
 
 END SUBROUTINE FinalizeLoadBalance

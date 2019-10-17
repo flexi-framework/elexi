@@ -159,3 +159,14 @@
 ! format
 #define OUTPUTFORMAT '(E25.14E3)'
 #endif
+
+! Load Balance (LB) position in array for measuring the time that is spent on specific operations
+#define LB_DG            1
+#define LB_DGCOMM        2
+#define LB_EMISSION      3
+#define LB_TRACK         4
+#define LB_INTERPOLATION 5
+#define LB_PUSH          6
+#define LB_PARTCOMM      7
+
+#define LB_NTIMES        7

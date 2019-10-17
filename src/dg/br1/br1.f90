@@ -183,6 +183,9 @@ USE MOD_MPI_Vars
 USE MOD_MPI,                ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 #endif
 USE MOD_Mesh_Vars,          ONLY: nSides,nElems
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Tools,  ONLY: LBStartTime,LBPauseTime,LBSplitTime
+#endif /*USE_LOADBALANCE*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -192,17 +195,32 @@ REAL,INTENT(INOUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solut
 REAL,INTENT(IN)    :: t                                                 !< current simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#if USE_LOADBALANCE
+REAL               :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
 ! fill the global surface flux list
 ! #### use gradUz_slave for storing the fluxes, NormVec is applied later ####
 ! ## DO NOT USE SAME STORAGE for transformed/untransformed fluxes, since NormVec can be applied before communication is finished ##
 #if USE_MPI
 ! Receive YOUR
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
 CALL StartReceiveMPIData(gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DGCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 ! Compute lifting MPI fluxes
 CALL Lifting_FillFlux(   UPrim_master,UPrim_slave,gradUz_slave,doMPISides=.TRUE.)
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DG,tLBStart)
+#endif /*USE_LOADBALANCE*/
 ! Start Send MINE
 CALL StartSendMPIData(   gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DGCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #endif /*USE_MPI*/
 
 
@@ -238,9 +256,15 @@ CALL Lifting_SurfInt(PP_N,gradUy_master,gradUy,.FALSE.,L_hatMinus,L_hatPlus,weak
 #if (PP_dim==3)
 CALL Lifting_SurfInt(PP_N,gradUz_master,gradUz,.FALSE.,L_hatMinus,L_hatPlus,weak=doWeakLifting)
 #endif
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DG,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #if USE_MPI
 ! Complete send / receive
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DGCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 CALL Lifting_FillFlux_NormVec(gradUz_slave,gradUx_master,gradUy_master,gradUz_master,doMPISides=.TRUE.)
 ! Attention: we only have one Flux (gradUx/y/z_master) for the Lifting
 !            => input it to Flux_Mortar for both fluxes (master/slave)
@@ -265,6 +289,9 @@ CALL ApplyJacobianPrim(gradUy,toPhysical=.TRUE.,FVE=0)
 #if (PP_dim==3)
 CALL ApplyJacobianPrim(gradUz,toPhysical=.TRUE.,FVE=0)
 #endif
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DG,tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 ! We need the gradients at the face of the grid cells
 #if USE_MPI
@@ -274,17 +301,38 @@ CALL StartReceiveMPIData(gradUy_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU
 #if (PP_dim==3)
 CALL StartReceiveMPIData(gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=2)
 #endif
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DGCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 CALL ProlongToFacePrim(PP_N,gradUx,gradUx_master,gradUx_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 CALL U_MortarPrim(gradUx_master,gradUx_slave,doMPISides=.TRUE.)
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DG,tLBStart)
+#endif /*USE_LOADBALANCE*/
 CALL StartSendMPIData(   gradUx_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=2)
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DGCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 CALL ProlongToFacePrim(PP_N,gradUy,gradUy_master,gradUy_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 CALL U_MortarPrim(gradUy_master,gradUy_slave,doMPISides=.TRUE.)
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DG,tLBStart)
+#endif /*USE_LOADBALANCE*/
 CALL StartSendMPIData(   gradUy_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=2)
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DGCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #if (PP_dim==3)
 CALL ProlongToFacePrim(PP_N,gradUz,gradUz_master,gradUz_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 CALL U_MortarPrim(gradUz_master,gradUz_slave,doMPISides=.TRUE.)
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DG,tLBStart)
+#endif /*USE_LOADBALANCE*/
 CALL StartSendMPIData(   gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=2)
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DGCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #endif
 #endif /*USE_MPI*/
 
@@ -299,6 +347,9 @@ CALL U_MortarPrim(gradUy_master,gradUy_slave,doMPISides=.FALSE.)
 #if (PP_dim==3)
 CALL U_MortarPrim(gradUz_master,gradUz_slave,doMPISides=.FALSE.)
 #endif
+#if USE_LOADBALANCE
+CALL LBSplitTime(LB_DG,tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE Lifting
 

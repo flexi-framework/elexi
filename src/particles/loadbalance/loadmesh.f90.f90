@@ -39,7 +39,7 @@ CONTAINS
 
 #if USE_MPI
 !===================================================================================================================================
-!> 
+!>
 !===================================================================================================================================
 SUBROUTINE LoadPartition(FileString)
 ! MODULES                                                                                                                         !
@@ -96,17 +96,17 @@ IF(MPIRoot)THEN
     ElemTime_local=0.0
     nElems = nGlobalElems ! Temporary set nElems as nGlobalElems for GetArrayAndName
     offsetElem=0          ! Offset is the index of first entry, hdf5 array starts at 0-.GT. -1
-  
+
     ! Ready to get the restart data
     CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
     CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData_loc)
     CALL CloseDataFile()
-  
+
     ! Check if restart file has load balancing data
     IF (ALLOCATED(VarNamesElemData_loc)) THEN
         ALLOCATE(ElemData_loc(nVal(1),nVal(2)))
         ElemData_loc = RESHAPE(tmp,(/nVal(1),nVal(2)/))
-        
+
         ! Search for ElemTime
         DO iVar=1,nVal(1)
             IF (STRICMP(VarNamesElemData_loc(iVar),"ElemTime")) THEN
@@ -114,15 +114,15 @@ IF(MPIRoot)THEN
                 ElemTimeExists = .TRUE.
             END IF
         END DO
-        
+
         ! De-allocate temporary variables
         DEALLOCATE(ElemData_loc,VarNamesElemData_loc,tmp)
     END IF
-  
+
     ! Set the global elem time
     ElemGlobalTime = ElemTime_local
     DEALLOCATE(ElemTime_local)
-    
+
     ! if the elemtime is 0.0, the value must be changed in order to prevent a division by zero
     IF(MAXVAL(ElemGlobalTime).LE.0.0) THEN
         ElemGlobalTime = 1.0
@@ -152,9 +152,9 @@ END SUBROUTINE LoadPartition
 
 SUBROUTINE LoadElemTime()
 !===================================================================================================================================
-!> 
+!>
 !===================================================================================================================================
-! MODULES  
+! MODULES
 USE MOD_Globals
 USE MOD_LoadDistribution
 USE MOD_LoadBalance_Vars
@@ -193,7 +193,7 @@ IF(ElemTimeExists.AND.MPIRoot)THEN
     TargetWeight=SUM(WeightSum_proc)/nProcessors
     NewImbalance =  (MaxWeight-TargetWeight ) / TargetWeight
     IF(TargetWeight.LE.0.0) CALL abort(__STAMP__,' LoadBalance: TargetWeight = ',RealInfo=TargetWeight)
-    
+
     SWRITE(UNIT_stdOut,'(A)') ' Calculated new (theoretical) imbalance with offsetElemMPI information'
     SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MaxWeight:        ', MaxWeight
     SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MinWeight:        ', MinWeight
@@ -217,10 +217,6 @@ ELSE
 END IF
 nPartsPerElem=0
 CALL AddToElemData(ElementOut,'nPartsPerElem',IntArray=nPartsPerElem(:))
-
-SDEALLOCATE(nDeposPerElem)
-ALLOCATE(nDeposPerElem(1:nElems))
-nDeposPerElem=0
 
 SDEALLOCATE(nTracksPerElem)
 ALLOCATE(nTracksPerElem(1:nElems))

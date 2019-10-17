@@ -80,6 +80,7 @@ USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
 #if USE_LOADBALANCE
 USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
+USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -89,6 +90,9 @@ REAL,INTENT(IN)               :: dt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iPart
+#if USE_LOADBALANCE
+REAL                          :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 #if USE_MPI
 #if USE_LOADBALANCE
@@ -109,11 +113,17 @@ PEM%lastElement(1:PDM%ParticleVecLength)   = PEM%Element(1:PDM%ParticleVecLength
 
 ! forces on particles
 IF (t.GE.DelayTime) THEN
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
   CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)
 #if USE_RW
   CALL ParticleRandomWalk(t)
 #endif
   CALL CalcPartRHS()
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_INTERPOLATION,tLBStart)
+#endif /*USE_LOADBALANCE*/
 END IF
 
 ! particle push using Euler
@@ -154,12 +164,18 @@ IF (t.GE.DelayTime) THEN
     ENDIF !< ParticleInside
   END DO
 END IF
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_PUSH,tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 ! Locate and communicate particles (only if particle have changed)
 IF (t.GE.DelayTime) THEN
 #if USE_MPI
   ! open receive buffer for number of particles
   CALL IRecvNbofParticles()
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #endif
   ! track new particle position
   IF(DoRefMapping)THEN
@@ -174,12 +190,18 @@ IF (t.GE.DelayTime) THEN
   ! emitt particles inserted in current time step
   CALL ParticleInserting()
 #if USE_MPI
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
   ! send number of particles
   CALL SendNbOfParticles()
   ! finish communication of number of particles and send particles
   CALL MPIParticleSend()
   ! receive particles, locate and finish communication
   CALL MPIParticleRecv()
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #endif
   ! find next free position in particle array
   CALL UpdateNextFreePosition()
@@ -206,12 +228,16 @@ USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
 #if USE_LOADBALANCE
 USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
+USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
+#if USE_LOADBALANCE
+REAL                          :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if USE_MPI
 #if USE_LOADBALANCE
@@ -231,6 +257,9 @@ LastPartPos(    1:PDM%ParticleVecLength,3) = PartState(  1:PDM%ParticleVecLength
 PEM%lastElement(1:PDM%ParticleVecLength)   = PEM%Element(1:PDM%ParticleVecLength)
 
 IF (t.GE.DelayTime) THEN
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
   ! forces on particle
   ! can be used to hide sending of number of particles
   !--> Interpolate fluid field to particle position
@@ -241,6 +270,9 @@ IF (t.GE.DelayTime) THEN
 #endif
   !--> Calculate the particle right hand side and push
   CALL CalcPartRHS()
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
+#endif /*USE_LOADBALANCE*/
 END IF
 
 END SUBROUTINE Particle_TimeStepByLSERK_RHS
@@ -276,6 +308,9 @@ USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -287,9 +322,15 @@ REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 LOGICAL                       :: part_err
 INTEGER                       :: iPart
 !REAL                          :: v_magnitude
+#if USE_LOADBALANCE
+REAL                          :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 IF (t.GE.DelayTime) THEN
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
   part_err = .FALSE.
 
   ! particle push for first RK stage
@@ -341,10 +382,16 @@ IF (t.GE.DelayTime) THEN
   !IF (part_err) THEN
   !    CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
   !END IF
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_PUSH,tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 #if USE_MPI
   ! open receive buffer for number of particles
   CALL IRecvNbofParticles()
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #endif
   ! track new particle position
   IF(DoRefMapping)THEN
@@ -359,12 +406,18 @@ IF (t.GE.DelayTime) THEN
   ! emitt particles inserted in current time step
   CALL ParticleInserting()
 #if USE_MPI
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
   ! send number of particles
   CALL SendNbOfParticles()
   ! finish communication of number of particles and send particles
   CALL MPIParticleSend()
   ! find next free position in particle array
   CALL MPIParticleRecv()
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #endif
 END IF
 
@@ -389,12 +442,16 @@ USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
 #if USE_LOADBALANCE
 USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
+USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
+#if USE_LOADBALANCE
+REAL                          :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -417,6 +474,9 @@ LastPartPos(    1:PDM%ParticleVecLength,3) = PartState(  1:PDM%ParticleVecLength
 PEM%lastElement(1:PDM%ParticleVecLength)   = PEM%Element(1:PDM%ParticleVecLength)
 
 IF (t.GE.DelayTime) THEN
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
   ! forces on particle
   ! can be used to hide sending of number of particles
   !--> Interpolate fluid field to particle position
@@ -427,6 +487,9 @@ IF (t.GE.DelayTime) THEN
 #endif
   !--> Calculate the particle right hand side and push
   CALL CalcPartRHS()
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
+#endif /*USE_LOADBALANCE*/
 END IF
 
 END SUBROUTINE Particle_TimeStepByLSERK_RK_RHS
@@ -457,6 +520,9 @@ USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIPa
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -470,6 +536,9 @@ LOGICAL                       :: part_err
 INTEGER                       :: iPart, iStage_loc
 REAL                          :: RandVal!,v_magnitude
 REAL                          :: Pa_rebuilt_coeff(1:nRKStages),Pa_rebuilt(1:3,1:nRKStages),Pv_rebuilt(1:3,1:nRKStages),v_rebuilt(1:3,0:nRKStages-1)
+#if USE_LOADBALANCE
+REAL                          :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 ! Rebuild Pt_tmp-coefficients assuming F=const. (value at wall) in previous stages
@@ -482,6 +551,9 @@ DO iStage_loc=1,nRKStages
 END DO
 
 IF (t.GE.DelayTime) THEN
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
   part_err = .FALSE.
 
   ! particle push for nth RK stage
@@ -577,10 +649,17 @@ IF (t.GE.DelayTime) THEN
   !                        FutureTime=tWriteData,isErrorFile=.TRUE.)
   !END IF
 
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_PUSH,tLBStart)
+#endif /*USE_LOADBALANCE*/
+
   ! particle tracking
 #if USE_MPI
   ! open receive buffer for number of particles
   CALL IRecvNbofParticles()
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #endif
   IF(DoRefMapping)THEN
     CALL ParticleRefTracking()
@@ -594,12 +673,18 @@ IF (t.GE.DelayTime) THEN
   ! emitt particles inserted in current time step
   CALL ParticleInserting()
 #if USE_MPI
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
   ! send number of particles
   CALL SendNbOfParticles()
   ! finish communication of number of particles and send particles
   CALL MPIParticleSend()
   ! find next free position in particle array
   CALL MPIParticleRecv()
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #endif
 END IF
 

@@ -306,6 +306,9 @@ USE MOD_Particle_Mesh_Vars,          ONLY:ElemBaryNGeo
 USE MOD_TimeDisc_Vars,               ONLY:currentStage
 USE MOD_Particle_Globals,            ONLY:epsMach
 #endif /*CODE_ANALYZE*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Tools,           ONLY:LBStartTime,LBElemPauseTime,LBElemSplitTime
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -333,6 +336,9 @@ REAL                          :: alphaOld
 #if CODE_ANALYZE
 REAL                          :: IntersectionPoint(1:3)
 #endif /*CODE_ANALYZE*/
+#if USE_LOADBALANCE
+REAL                          :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 IF(PRESENT(DoParticle_IN))THEN
@@ -349,6 +355,9 @@ DO iPart=1,PDM%ParticleVecLength
   PartDoubleCheck=0
   alphaOld = -1.0
   IF(DoParticle(iPart))THEN
+#if USE_LOADBALANCE
+    CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
     IF (MeasureTrackTime) nTracks=nTracks+1
     PartisDone=.FALSE.
     ElemID = PEM%lastElement(iPart)
@@ -643,6 +652,9 @@ DO iPart=1,PDM%ParticleVecLength
               IF(ALMOSTZERO(lengthPartTrajectory))THEN
                 PartisDone=.TRUE.
               END IF
+#if USE_LOADBALANCE
+              IF (OldElemID.LE.PP_nElems) CALL LBElemSplitTime(OldElemID,tLBStart)
+#endif /*USE_LOADBALANCE*/
               EXIT
             END IF
             IF(crossedBC) THEN
@@ -745,6 +757,9 @@ DO iPart=1,PDM%ParticleVecLength
                   PartisDone=.TRUE.
                 END IF
                 !PartTrajectory=PartTrajectory/lengthPartTrajectory
+#if USE_LOADBALANCE
+                IF (OldElemID.LE.PP_nElems) CALL LBElemSplitTime(OldElemID,tLBStart)
+#endif /*USE_LOADBALANCE*/
                 !EXIT
               END IF
               IF(SwitchedElement) EXIT
@@ -876,6 +891,9 @@ DO iPart=1,PDM%ParticleVecLength
         IF(CountNbOfLostParts) nLostParts=nLostParts+1
       END IF
     END IF ! markTol
+#if USE_LOADBALANCE
+    IF (PEM%Element(iPart).LE.PP_nElems) CALL LBElemPauseTime(PEM%Element(iPart),tLBStart)
+#endif /*USE_LOADBALANCE*/
   END IF ! Part inside
 END DO ! iPart
 
@@ -958,6 +976,10 @@ USE MOD_Eval_xyz,                ONLY:EvaluateFieldAtRefPos
 USE MOD_MPI_Vars,                ONLY:offsetElemMPI
 USE MOD_Particle_MPI_Vars,       ONLY:PartHaloElemToProc
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars,        ONLY:nTracksPerElem
+USE MOD_LoadBalance_Tools,       ONLY:LBStartTime, LBElemPauseTime, LBPauseTime
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -970,17 +992,16 @@ LOGICAL,INTENT(IN),OPTIONAL      :: doParticle_In(1:PDM%ParticleVecLength)
 LOGICAL                           :: doParticle(1:PDM%ParticleVecLength)
 INTEGER                           :: iPart, ElemID,oldElemID,newElemID
 INTEGER                           :: CellX,CellY,CellZ,iBGMElem,nBGMElems
-REAL                              :: oldXi(3),newXi(3), LastPos(3),vec(3)!,loc_distance
-!REAL                              :: epsOne
+REAL                              :: oldXi(3),newXi(3),LastPos(3),vec(3)
 #if USE_MPI
 INTEGER                           :: InElem
 #endif
 INTEGER                           :: TestElem,LastElemID
-!LOGICAL                           :: ParticleFound(1:PDM%ParticleVecLength),PartisDone
 LOGICAL                           :: PartisDone,PartIsMoved
-!LOGICAL                           :: HitBC(1:PDM%ParticleVecLength)
 REAL                              :: lengthPartTrajectory0, epsElement
-! load balance
+#if USE_LOADBALANCE
+REAL                              :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 IF(PRESENT(DoParticle_IN))THEN
@@ -994,13 +1015,13 @@ DO iPart=1,PDM%ParticleVecLength
     LastElemID = PEM%lastElement(iPart)
     ElemID=LastElemID
     nTracks=nTracks+1
+#if USE_LOADBALANCE
+    CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
     ! sanity check
     PartIsDone=.FALSE.
     IF(IsTracingBCElem(ElemID))THEN
       lengthPartTrajectory0=0.
-      !IF(GEO%nPeriodicVectors.GT.0.)THEN
-      !  lengthPartTrajectory0=BCELEM(ElemID)%ElemToSideDistance(BCElem(ElemID)%lastSide)
-      !END IF
       CALL ParticleBCTracking(lengthPartTrajectory0 &
                              ,ElemID,1,BCElem(ElemID)%lastSide,BCElem(ElemID)%lastSide,iPart,PartIsDone,PartIsMoved,1)
       IF(PartIsDone) THEN
@@ -1013,9 +1034,15 @@ DO iPart=1,PDM%ParticleVecLength
         ! particle has not encountered any boundary condition
         CALL TensorProductInterpolation(PartState(iPart,1:3),PartPosRef(1:3,iPart),ElemID)
       END IF
-!      IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).LT.epsOneCell(ElemID)) THEN ! particle is inside
       IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).LT.1.0) THEN ! particle is inside
          PEM%Element(iPart)=ElemID
+#if USE_LOADBALANCE
+         IF(ElemID.LE.PP_nElems)THEN
+           CALL LBElemPauseTime(ElemID,tLBStart)
+         ELSE IF(PEM%LastElement(iPart).LE.PP_nElems)THEN
+           CALL LBElemPauseTime(PEM%LastElement(iPart),tLBStart)
+         END IF
+#endif /*USE_LOADBALANCE*/
         CYCLE
       END IF
     ELSE ! no bc elem, therefore, no bc interaction possible
@@ -1037,12 +1064,29 @@ DO iPart=1,PDM%ParticleVecLength
       !IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).LT.epsOneCell) THEN ! particle inside
       IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).LT.1.0) THEN ! particle inside
         PEM%Element(iPart)  = ElemID
+#if USE_LOADBALANCE
+         IF(ElemID.LE.PP_nElems)THEN
+           CALL LBElemPauseTime(ElemID,tLBStart)
+         ELSE IF(PEM%LastElement(iPart).LE.PP_nElems)THEN
+           CALL LBElemPauseTime(PEM%LastElement(iPart),tLBStart)
+         END IF
+#endif /*USE_LOADBALANCE*/
         CYCLE
       !ELSE IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).GT.1.5) THEN
       !  IPWRITE(UNIT_stdOut,*) ' partposref to large!',iPart
       END IF
     END IF ! initial check
+#if USE_LOADBALANCE
+    IF(ElemID.LE.PP_nElems)THEN
+      CALL LBElemPauseTime(ElemID,tLBStart)
+    ELSE IF(PEM%LastElement(iPart).LE.PP_nElems)THEN
+      CALL LBElemPauseTime(PEM%LastElement(iPart),tLBStart)
+    END IF
+#endif /*USE_LOADBALANCE*/
     ! still not located
+#if USE_LOADBALANCE
+    CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
     ! relocate particle
     oldElemID = PEM%lastElement(iPart) ! this is not!  a possible elem
     ! get background mesh cell of particle
@@ -1093,6 +1137,9 @@ DO iPart=1,PDM%ParticleVecLength
     DO iBGMElem=1,nBGMElems
       IF(ALMOSTEQUAL(Distance(iBGMELem),-1.0)) CYCLE
       ElemID=ListDistance(iBGMElem)
+#if USE_LOADBALANCE
+      IF(ElemID.LE.PP_nElems) nTracksPerElem(ElemID)=nTracksPerElem(ElemID)+1
+#endif /*USE_LOADBALANCE*/
       CALL TensorProductInterpolation(PartState(iPart,1:3),PartPosRef(1:3,iPart),ElemID)
       IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).LT.1.0) THEN ! particle inside
       !IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).LT.epsOneCell) THEN ! particle inside
@@ -1251,6 +1298,9 @@ __STAMP__ &
         END IF ! BCElem
       END IF ! inner eps to large
     END IF
+#if USE_LOADBALANCE
+    CALL LBPauseTime(LB_TRACK,tLBStart)
+#endif /*USE_LOADBALANCE*/
   END IF
 END DO ! iPart
 

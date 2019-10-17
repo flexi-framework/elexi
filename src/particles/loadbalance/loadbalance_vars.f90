@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -22,9 +22,11 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                             :: DoLoadBalance                              ! DoLoadBalance
+LOGICAL                             :: LoadBalanceTimeBased                       ! Flag if loadbalance is performed based on
+                                                                                  ! elapsed time
 LOGICAL                             :: PerformLoadBalance=.FALSE.                 ! Flag if loadbalance is performed in current iter
 INTEGER                             :: LoadBalanceSample                          ! Number of samples for loadbalance
 LOGICAL                             :: InitLoadBalanceIsDone                      ! switch for checking
@@ -41,7 +43,7 @@ REAL                                :: NewImbalance                             
 
 ! Variables moved over from mesh_reading/timedisc/restart
 LOGICAL                             :: ElemTimeExists
-REAL                                :: RestartWallTime                            ! wall time at the beginning of a simulation OR 
+REAL                                :: RestartWallTime                            ! wall time at the beginning of a simulation OR
                                                                                   ! when a restart is performed via Load Balance
 LOGICAl                             :: DoInitialAutoRestart= .FALSE.
 INTEGER                             :: InitialAutoRestartSample
@@ -64,12 +66,18 @@ REAL                                :: WeightSum                                
 REAL                                :: targetWeight                               ! optimal weight for each proc
 
 !-----------------------------------------------------------------------------------------------------------------------------------
+! particle load balancing
+!-----------------------------------------------------------------------------------------------------------------------------------
+REAL,ALLOCATABLE                    :: tCurrent(:)                                ! Time measured over one step
+                                                                                  ! measured for all elements on one proc and later
+                                                                                  ! weighted onto each element
+
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! Element Local measurement
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE                    :: ElemTime(:)
 REAL,ALLOCATABLE                    :: ElemGlobalTime(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerElem(:)
-INTEGER(KIND=4),ALLOCATABLE         :: nDeposPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nTracksPerElem(:)
 
 

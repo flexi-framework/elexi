@@ -369,11 +369,7 @@ END DO
 END SUBROUTINE ParticleInserting
 
 
-#if USE_MPI
 SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle,mode)
-#else
-SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
-#endif /* MPI*/
 !===================================================================================================================================
 ! Set particle position
 !===================================================================================================================================
@@ -395,9 +391,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)                       :: FractNbr, iInit
-#if USE_MPI
-INTEGER,INTENT(IN)                       :: mode
-#endif
+INTEGER,INTENT(IN),OPTIONAL              :: mode
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER,INTENT(INOUT)                    :: NbrOfParticle
@@ -925,7 +919,7 @@ IF (mode.EQ.1) THEN
       IF (InsideMyBGM) THEN
         IF (.NOT.ALLOCATED(GEO%FIBGM(CellX,CellY,CellZ)%ShapeProcs)) InsideMyBGM=.FALSE.
       END IF
-
+!
       ! Loop over all procs in the shapeRegion and send each the particle in THEIR halo region
       IF (InsideMyBGM) THEN
         DO j=2,GEO%FIBGM(CellX,CellY,CellZ)%ShapeProcs(1)+1

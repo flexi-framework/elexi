@@ -113,7 +113,7 @@ TYPE tFastInitBGM
 #if USE_MPI
   INTEGER, ALLOCATABLE                   :: ShapeProcs(:)                     ! first Entry: Number of Shapeprocs,
                                                                               ! following: ShapeProcs
-  INTEGER, ALLOCATABLE                   :: PaddingProcs(:)                   ! first Entry: Number of Paddingprocs,
+!  INTEGER, ALLOCATABLE                   :: PaddingProcs(:)                   ! first Entry: Number of Paddingprocs,
                                                                               ! following: PaddingProcs
   INTEGER, ALLOCATABLE                   :: SharedProcs(:)                    ! first Entry: Number of Sharedprocs,
                                                                               ! following: SharedProcs

@@ -1282,8 +1282,6 @@ INTEGER                          :: i,j
 INTEGER                          :: ii,jj,kk
 INTEGER                          :: BGMCells,  m, CurrentProc, Cell, Procs
 INTEGER                          :: imin, imax, kmin, kmax, jmin, jmax
-INTEGER                          :: nPaddingCellsX, nPaddingCellsY, nPaddingCellsZ
-INTEGER                          :: nShapePaddingX, nShapePaddingY, nShapePaddingZ
 INTEGER                          :: NbrOfBGMCells(0:PartMPI%nProcs-1)
 INTEGER                          :: Displacement(1:PartMPI%nProcs)
 INTEGER, ALLOCATABLE             :: BGMCellsArray(:),CellProcNum(:,:,:)
@@ -1329,21 +1327,13 @@ IF (ALLOCATED(GEO%FIBGM)) THEN
       DO kBGM=GEO%FIBGMkmin,GEO%FIBGMkmax
         SDEALLOCATE(GEO%FIBGM(iBGM,jBGM,kBGM)%Element)
         SDEALLOCATE(GEO%FIBGM(iBGM,jBGM,kBGM)%ShapeProcs)
-        SDEALLOCATE(GEO%FIBGM(iBGM,jBGM,kBGM)%PaddingProcs)
+!        SDEALLOCATE(GEO%FIBGM(iBGM,jBGM,kBGM)%PaddingProcs)
       END DO
     END DO
   END DO
   DEALLOCATE(GEO%FIBGM)
 END IF
 #endif /*MPI*/
-
-!--- compute number of background cells in each direction
-!BGMimax = INT((GEO%xmax-GEO%xminglob)/GEO%FIBGMdeltas(1)+1.00001)
-!BGMimin = INT((GEO%xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)+0.99999)
-!BGMjmax = INT((GEO%ymax-GEO%yminglob)/GEO%FIBGMdeltas(2)+1.00001)
-!BGMjmin = INT((GEO%ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)+0.99999)
-!BGMkmax = INT((GEO%zmax-GEO%zminglob)/GEO%FIBGMdeltas(3)+1.00001)
-!BGMkmin = INT((GEO%zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)+0.99999)
 
 ! now fail safe, enlarge the BGM grid for safety reasons
 BGMimax = INT((GEO%xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))+1
@@ -1379,6 +1369,7 @@ DO i=1,nSpecies
     END DO
 END DO
 
+! halo region is added to BGM
 ! if the user supplied a velocity guess for the halo eps region, use it. Otherwise pick the speed of sound as guess for the upper
 ! limit
 IF (halo_eps_velo.EQ.0) halo_eps_velo = 343
@@ -1392,22 +1383,6 @@ globalDiag = SQRT( (GEO%xmaxglob-GEO%xminglob)**2 &
                  + (GEO%ymaxglob-GEO%yminglob)**2 &
                  + (GEO%zmaxglob-GEO%zminglob)**2 )
 
-! We are allowed to miss a periodic vector initially if we include the cells on the other side of the periodic BC in our halo
-! region. Obviously, this is still a bad solution to an even worse case. We do not need the global diagonal, we only have to make
-! sure the periodic sides are inside. Use the periodic vectors with an arbitrary 5% tolerance
-!IF (GEO%nPeriodicVectors.GT.0) THEN
-!  halo_eps=globalDiag
-!  DO i=1,GEO%nPeriodicVectors
-!    IF (1.05*NORM2(GEO%PeriodicVectors(1:3,i)).GT.halo_eps) THEN
-!      halo_eps = 1.05*NORM2(GEO%PeriodicVectors(1:3,i))
-!    END IF
-!  END DO
-!
-!! Inform the user about our decision to increase the halo distance
-!  SWRITE(UNIT_stdOut,'(A39)')        ' |   periodic case                      | '
-!  SWRITE(UNIT_stdOut,'(A39)')        ' |   raising halo distance              | '
-!END IF
-
 ! Limit halo_eps to diagonal of bounding box
 IF(halo_eps.GT.globalDiag)THEN
   SWRITE(UNIT_stdOut,'(A46,E24.12)') ' |                  unlimited halo distance | ',halo_eps
@@ -1418,7 +1393,7 @@ END IF
 halo_eps2=halo_eps*halo_eps
 SWRITE(UNIT_stdOut,'(A46,E24.12)')   ' |                            halo distance | ',halo_eps
 
-! save the min, max of the background mesh
+! save the min, max of the background mesh (with one padding cell in each direction)
 GEO%FIBGMimax=BGMimax
 GEO%FIBGMimin=BGMimin
 GEO%FIBGMjmax=BGMjmax
@@ -1451,17 +1426,17 @@ DO kBGM = BGMkmin,BGMkmax
    END DO
 END DO
 
-!--- compute number of elements in each background cell
 !--> Move over all BGM cells the elem is inside and add it to each background mesh cell
+!--- .1) Compute number of elements in each background mesh cell, which is needed for the allocation
+!---    of the mapping variable
+!---    ElemToBGM is the BGM without halo
 DO iElem=1,PP_nElems
-  ! here fancy stuff, because element could be wide out of element range
   BGMCellXmin = ElemToBGM(1,iElem)
   BGMCellXmax = ElemToBGM(2,iElem)
   BGMCellYmin = ElemToBGM(3,iElem)
   BGMCellYmax = ElemToBGM(4,iElem)
   BGMCellZmin = ElemToBGM(5,iElem)
   BGMCellZmax = ElemToBGM(6,iElem)
-  ! add the current element to number of BGM-elems
   DO iBGM = BGMCellXmin,BGMCellXmax
     DO jBGM = BGMCellYmin,BGMCellYmax
       DO kBGM = BGMCellZmin,BGMCellZmax
@@ -1471,7 +1446,7 @@ DO iElem=1,PP_nElems
   END DO ! iBGM
 END DO ! iElem
 
-!--- allocate mapping variable and clean number for mapping (below)
+!--- .2) Allocate mapping variable and clean number for mapping
 DO kBGM = BGMkmin,BGMkmax
   DO jBGM = BGMjmin,BGMjmax
     DO iBGM = BGMimin,BGMimax
@@ -1482,16 +1457,15 @@ DO kBGM = BGMkmin,BGMkmax
   END DO ! jBGM
 END DO ! iBGM
 
-!--- map elements to background cells
+!--- .3) Map elements to background cells, and add the index of the current element to the BGM cell
+!---     as well as count number of elements in each BGM cell
 DO iElem=1,PP_nElems
-  ! here fancy stuff, because element could be wide out of element range
   BGMCellXmin = ElemToBGM(1,iElem)
   BGMCellXmax = ElemToBGM(2,iElem)
   BGMCellYmin = ElemToBGM(3,iElem)
   BGMCellYmax = ElemToBGM(4,iElem)
   BGMCellZmin = ElemToBGM(5,iElem)
   BGMCellZmax = ElemToBGM(6,iElem)
-  ! add the current Element to BGM-Elem
   DO kBGM = BGMCellZmin,BGMCellZmax
     DO jBGM = BGMCellYmin,BGMCellYmax
       DO iBGM = BGMCellXmin,BGMCellXmax
@@ -1539,10 +1513,7 @@ END DO
 CALL MPI_ALLGATHERV(BGMCellsArray(1:BGMCells*3), BGMCells*3, MPI_INTEGER, GlobalBGMCellsArray, &
                    & NbrOfBGMCells(0:PartMPI%nProcs-1)*3, Displacement, MPI_INTEGER, PartMPI%COMM, IERROR)
 
-!--- JN: first: count required array size for ReducedBGMArray
-!--- TS: Define padding stencil (max of halo and shape padding)
-!        Reason: This padding is used to build the ReducedBGM, so any information
-!                outside this region is lost
+!--- BGM cells with periodic BCs have a padding of one; and non-periodic BC cells take halo_eps into account
 IF (GEO%nPeriodicVectors.GT.0) THEN  !Periodic (can't be done below because ReducedBGMArray is sorted by proc)
   FIBGMCellPadding(1:3)=1
   IF(.NOT.GEO%directions(1)) FIBGMCellPadding(1) = INT(halo_eps/GEO%FIBGMdeltas(1))+1
@@ -1551,16 +1522,6 @@ IF (GEO%nPeriodicVectors.GT.0) THEN  !Periodic (can't be done below because Redu
 ELSE
   FIBGMCellPadding(1:3) = INT(halo_eps/GEO%FIBGMdeltas(1:3))+1
 END IF
-
-! halo region already included in BGM
-!--> Reminder to re-add nShapePadding if we want to move back to 2-way coupling. Otherwise, remove nShapePadding altogether
-nShapePaddingX = 0
-nShapePaddingY = 0
-nShapePaddingZ = 0
-
-nPaddingCellsX = MAX(nShapePaddingX,FIBGMCellPadding(1))
-nPaddingCellsY = MAX(nShapePaddingY,FIBGMCellPadding(2))
-nPaddingCellsZ = MAX(nShapePaddingZ,FIBGMCellPadding(3))
 
 ! find the number of cells in the global BGM that are within the BGM bounding box of my proc. They must be added to the
 ! ReducedBGMArray on the current proc and communicated to the neighbor procs. Still counting in communication notation, so size is
@@ -1571,9 +1532,9 @@ DO i=1, SUM(NbrOfBGMCells)*3, 3
   IF  (i .GT. SUM(NbrOfBGMCells(0: CurrentProc))*3 .AND. CurrentProc .LT. PartMPI%nProcs-1) THEN
     CurrentProc=CurrentProc+1
   END IF
-  IF  (.NOT.(GlobalBGMCellsArray(i) .LT. BGMimin-nPaddingCellsX .OR. GlobalBGMCellsArray(i).GT. BGMimax+nPaddingCellsX &
-      & .OR. GlobalBGMCellsArray(i+1) .LT. BGMjmin-nPaddingCellsY .OR. GlobalBGMCellsArray(i+1) .GT. BGMjmax+nPaddingCellsY &
-      & .OR. GlobalBGMCellsArray(i+2) .LT. BGMkmin-nPaddingCellsZ .OR. GlobalBGMCellsArray(i+2) .GT. BGMkmax+nPaddingCellsZ &
+  IF  (.NOT.(GlobalBGMCellsArray(i) .LT. BGMimin-FIBGMCellPadding(1) .OR. GlobalBGMCellsArray(i).GT. BGMimax+FIBGMCellPadding(1) &
+      & .OR. GlobalBGMCellsArray(i+1) .LT. BGMjmin-FIBGMCellPadding(2) .OR. GlobalBGMCellsArray(i+1) .GT. BGMjmax+FIBGMCellPadding(2) &
+      & .OR. GlobalBGMCellsArray(i+2) .LT. BGMkmin-FIBGMCellPadding(3) .OR. GlobalBGMCellsArray(i+2) .GT. BGMkmax+FIBGMCellPadding(3) &
       & .OR. CurrentProc .EQ. PartMPI%Myrank)) THEN
     j=j+3
   END IF
@@ -1616,12 +1577,12 @@ IF (GEO%nPeriodicVectors.GT.0) THEN
       IF  (i .GT. SUM(NbrOfBGMCells(0: CurrentProc))*3 .AND. CurrentProc .LT. PartMPI%nProcs-1) THEN
         CurrentProc=CurrentProc+1
       END IF
-      IF  (.NOT.(GlobalBGMCellsArray(i)  +Shift(1) .LT. BGMimin-nPaddingCellsX &
-           .OR.  GlobalBGMCellsArray(i)  +Shift(1) .GT. BGMimax+nPaddingCellsX &
-           .OR.  GlobalBGMCellsArray(i+1)+Shift(2) .LT. BGMjmin-nPaddingCellsY &
-           .OR.  GlobalBGMCellsArray(i+1)+Shift(2) .GT. BGMjmax+nPaddingCellsY &
-           .OR.  GlobalBGMCellsArray(i+2)+Shift(3) .LT. BGMkmin-nPaddingCellsZ &
-           .OR.  GlobalBGMCellsArray(i+2)+Shift(3) .GT. BGMkmax+nPaddingCellsZ &
+      IF  (.NOT.(GlobalBGMCellsArray(i)  +Shift(1) .LT. BGMimin-FIBGMCellPadding(1) &
+           .OR.  GlobalBGMCellsArray(i)  +Shift(1) .GT. BGMimax+FIBGMCellPadding(1) &
+           .OR.  GlobalBGMCellsArray(i+1)+Shift(2) .LT. BGMjmin-FIBGMCellPadding(2) &
+           .OR.  GlobalBGMCellsArray(i+1)+Shift(2) .GT. BGMjmax+FIBGMCellPadding(2) &
+           .OR.  GlobalBGMCellsArray(i+2)+Shift(3) .LT. BGMkmin-FIBGMCellPadding(3) &
+           .OR.  GlobalBGMCellsArray(i+2)+Shift(3) .GT. BGMkmax+FIBGMCellPadding(3) &
            .OR. CurrentProc .EQ. PartMPI%MyRank)) THEN
         j=j+3
       END IF
@@ -1646,12 +1607,12 @@ IF (GEO%nPeriodicVectors.GT.0) THEN  !Periodic (can't be done below because Redu
       IF  (i .GT. SUM(NbrOfBGMCells(0: CurrentProc))*3 .AND. CurrentProc .LT. PartMPI%nProcs-1) THEN
         CurrentProc=CurrentProc+1
       END IF
-      IF  (.NOT.(GlobalBGMCellsArray(i)   +Shift(1) .LT. BGMimin-nPaddingCellsX &
-           .OR.  GlobalBGMCellsArray(i)   +Shift(1) .GT. BGMimax+nPaddingCellsX &
-           .OR.  GlobalBGMCellsArray(i+1) +Shift(2) .LT. BGMjmin-nPaddingCellsY &
-           .OR.  GlobalBGMCellsArray(i+1) +Shift(2) .GT. BGMjmax+nPaddingCellsY &
-           .OR.  GlobalBGMCellsArray(i+2) +Shift(3) .LT. BGMkmin-nPaddingCellsZ &
-           .OR.  GlobalBGMCellsArray(i+2) +Shift(3) .GT. BGMkmax+nPaddingCellsZ &
+      IF  (.NOT.(GlobalBGMCellsArray(i)   +Shift(1) .LT. BGMimin-FIBGMCellPadding(1) &
+           .OR.  GlobalBGMCellsArray(i)   +Shift(1) .GT. BGMimax+FIBGMCellPadding(1) &
+           .OR.  GlobalBGMCellsArray(i+1) +Shift(2) .LT. BGMjmin-FIBGMCellPadding(2) &
+           .OR.  GlobalBGMCellsArray(i+1) +Shift(2) .GT. BGMjmax+FIBGMCellPadding(2) &
+           .OR.  GlobalBGMCellsArray(i+2) +Shift(3) .LT. BGMkmin-FIBGMCellPadding(3) &
+           .OR.  GlobalBGMCellsArray(i+2) +Shift(3) .GT. BGMkmax+FIBGMCellPadding(3) &
            .OR.  CurrentProc .EQ. PartMPI%MyRank)) THEN
         ReducedBGMArray(j)=GlobalBGMCellsArray(i)     +Shift(1)
         ReducedBGMArray(j+1)=GlobalBGMCellsArray(i+1) +Shift(2)
@@ -1670,9 +1631,9 @@ ELSE ! non periodic case
     IF  (i .GT. SUM(NbrOfBGMCells(0: CurrentProc))*3 .AND. CurrentProc .LT. PartMPI%nProcs-1) THEN
       CurrentProc=CurrentProc+1
     END IF
-    IF  (.NOT.(GlobalBGMCellsArray(i)   .LT. BGMimin-nPaddingCellsX .OR. GlobalBGMCellsArray(i).GT.    BGMimax+nPaddingCellsX &
-        & .OR. GlobalBGMCellsArray(i+1) .LT. BGMjmin-nPaddingCellsY .OR. GlobalBGMCellsArray(i+1) .GT. BGMjmax+nPaddingCellsY &
-        & .OR. GlobalBGMCellsArray(i+2) .LT. BGMkmin-nPaddingCellsZ .OR. GlobalBGMCellsArray(i+2) .GT. BGMkmax+nPaddingCellsZ &
+    IF  (.NOT.(GlobalBGMCellsArray(i)   .LT. BGMimin-FIBGMCellPadding(1) .OR. GlobalBGMCellsArray(i).GT.    BGMimax+FIBGMCellPadding(1) &
+        & .OR. GlobalBGMCellsArray(i+1) .LT. BGMjmin-FIBGMCellPadding(2) .OR. GlobalBGMCellsArray(i+1) .GT. BGMjmax+FIBGMCellPadding(2) &
+        & .OR. GlobalBGMCellsArray(i+2) .LT. BGMkmin-FIBGMCellPadding(3) .OR. GlobalBGMCellsArray(i+2) .GT. BGMkmax+FIBGMCellPadding(3) &
          & .OR. CurrentProc .EQ. PartMPI%MyRank)) THEN
       ReducedBGMArray(j  )=GlobalBGMCellsArray(i  )
       ReducedBGMArray(j+1)=GlobalBGMCellsArray(i+1)
@@ -1683,46 +1644,15 @@ ELSE ! non periodic case
   END DO !i
 END IF !periodic
 
-
-!--- JN: Determine required size of CellProcList array (hope this works, everytime I try to again understand this
-!        shape function parallelization stuff, I get confused...)
-!--- JN: But therefore we first have to refill BGMCellsArray to not only contain
-!        cells with PIC%FastInitBGM%nElem.GT.0 but also those adjacent to them!
-!--- TS: Actually, not the adjacent cell needs to be considered but a shape_proc stencil
-!        Usually, the shape function radius is chosen to be the size of one BGM, but this
-!        is not necessarily always true. Hence new shape_proc padding:
-
-BGMCells=0
-DO iBGM=BGMimin, BGMimax  !Count BGMCells with Elements inside or adjacent and save their indices in BGMCellsArray
-  DO jBGM=BGMjmin, BGMjmax
-    DO kBGM=BGMkmin, BGMkmax
-      iMin=MAX(iBGM-nShapePaddingX,BGMimin); iMax=MIN(iBGM+nShapePaddingX,BGMimax)
-      jMin=MAX(jBGM-nShapePaddingY,BGMjmin); jMax=MIN(jBGM+nShapePaddingY,BGMjmax)
-      kMin=MAX(kBGM-nShapePaddingZ,BGMkmin); kMax=MIN(kBGM+nShapePaddingZ,BGMkmax)
-      IF (SUM(GEO%FIBGM(iMin:iMax,jMin:jMax,kMin:kMax)%nElem) .GT. 0) THEN
-        ! debug here changed i,j,k to ibgm,jbgm,kbgm
-        BGMCellsArray(BGMCells*3+1)= iBGM
-        BGMCellsArray(BGMCells*3+2)= jBGM
-        BGMCellsArray(BGMCells*3+3)= kBGM
-        BGMCells=BGMCells+1
-      END IF
-    END DO !iBGM
-  END DO !jBGM
-END DO !kBGM
-
-! now create a temporary array in which for all BGM Cells + ShapePadding the processes are saved
-! reason: this way, the ReducedBGM List only needs to be searched once and not once for each BGM Cell+Stencil
-
 ! first count the maximum number of procs that exist within each BGM cell (inkl. Shape Padding region)
-ALLOCATE(CellProcNum(BGMimin-nShapePaddingX:BGMimax+nShapePaddingX, &
-                     BGMjmin-nShapePaddingY:BGMjmax+nShapePaddingY, &
-                     BGMkmin-nShapePaddingZ:BGMkmax+nShapePaddingZ))
+ALLOCATE(CellProcNum(BGMimin:BGMimax, BGMjmin:BGMjmax, BGMkmin:BGMkmax))
 CellProcNum = 0
 Procs = 0 ! = maximum number of procs in one BGM cell
+
 DO j=1, SUM(ReducedNbrOfBGMCells)*3-2, 3
-  IF((ReducedBGMArray(j).GE.BGMimin-nShapePaddingX).AND.(ReducedBGMArray(j).LE.BGMimax+nShapePaddingX))THEN
-    IF((ReducedBGMArray(j+1).GE.BGMjmin-nShapePaddingY).AND.(ReducedBGMArray(j+1).LE.BGMjmax+nShapePaddingY))THEN
-      IF((ReducedBGMArray(j+2).GE.BGMkmin-nShapePaddingZ).AND.(ReducedBGMArray(j+2).LE.BGMkmax+nShapePaddingZ))THEN !inside
+  IF((ReducedBGMArray(j).GE.BGMimin).AND.(ReducedBGMArray(j).LE.BGMimax))THEN
+    IF((ReducedBGMArray(j+1).GE.BGMjmin).AND.(ReducedBGMArray(j+1).LE.BGMjmax))THEN
+      IF((ReducedBGMArray(j+2).GE.BGMkmin).AND.(ReducedBGMArray(j+2).LE.BGMkmax))THEN !inside
         CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) = &
              CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) + 1
         Procs = MAX(Procs, CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)))
@@ -1732,24 +1662,21 @@ DO j=1, SUM(ReducedNbrOfBGMCells)*3-2, 3
 END DO
 
 ! allocate the temporary array
-ALLOCATE(CellProcList(BGMimin-nShapePaddingX:BGMimax+nShapePaddingX, &
-                      BGMjmin-nShapePaddingY:BGMjmax+nShapePaddingY, &
-                      BGMkmin-nShapePaddingZ:BGMkmax+nShapePaddingZ, &
-                      1:Procs))
-CellProcList = -1
+ALLOCATE(CellProcList(BGMimin:BGMimax, BGMjmin:BGMjmax, BGMkmin:BGMkmax, 1:Procs))
+CellProcList=-1
 
 ! fill array with proc numbers
-CellProcNum = 0
+CellProcNum=0
 j_offset = 0
 DO CurrentProc = 0,PartMPI%nProcs-1
   DO j = 1+j_offset, ReducedNbrOfBGMCells(CurrentProc)*3-2+j_offset,3
-    IF((ReducedBGMArray(j).GE.BGMimin-nShapePaddingX).AND.(ReducedBGMArray(j).LE.BGMimax+nShapePaddingX))THEN
-      IF((ReducedBGMArray(j+1).GE.BGMjmin-nShapePaddingY).AND.(ReducedBGMArray(j+1).LE.BGMjmax+nShapePaddingY))THEN
-        IF((ReducedBGMArray(j+2).GE.BGMkmin-nShapePaddingZ).AND.(ReducedBGMArray(j+2).LE.BGMkmax+nShapePaddingZ))THEN
-          CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) = &
-             CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) + 1
-          CellProcList(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2), &
-             CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2))) = CurrentProc
+    IF((ReducedBGMArray(j).GE.BGMimin).AND.(ReducedBGMArray(j).LE.BGMimax))THEN
+      IF((ReducedBGMArray(j+1).GE.BGMjmin).AND.(ReducedBGMArray(j+1).LE.BGMjmax))THEN
+        IF((ReducedBGMArray(j+2).GE.BGMkmin).AND.(ReducedBGMArray(j+2).LE.BGMkmax))THEN
+          CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) =&
+            CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2))+1
+          CellProcList(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2),&
+            CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2))) = CurrentProc
         END IF
       END IF
     END IF
@@ -1760,9 +1687,9 @@ END DO
 ! fill real array
 DO Cell=0, BGMCells-1
   TempProcList=0
-  DO iBGM = BGMCellsArray(Cell*3+1)-nShapePaddingX, BGMCellsArray(Cell*3+1)+nShapePaddingX
-    DO jBGM = BGMCellsArray(Cell*3+2)-nShapePaddingY, BGMCellsArray(Cell*3+2)+nShapePaddingY
-      DO kBGM = BGMCellsArray(Cell*3+3)-nShapePaddingZ, BGMCellsArray(Cell*3+3)+nShapePaddingZ
+  DO iBGM = BGMCellsArray(Cell*3+1), BGMCellsArray(Cell*3+1)
+    DO jBGM = BGMCellsArray(Cell*3+2), BGMCellsArray(Cell*3+2)
+      DO kBGM = BGMCellsArray(Cell*3+3), BGMCellsArray(Cell*3+3)
         DO m = 1,CellProcNum(iBGM,jBGM,kBGM)
           TempProcList(CellProcList(iBGM,jBGM,kBGM,m))=1       ! every proc that is within the stencil gets a 1
         END DO ! m
@@ -1775,8 +1702,8 @@ DO Cell=0, BGMCells-1
 
   Procs=SUM(TempProcList)
   IF (Procs.NE.0) THEN
-    ALLOCATE(GEO%FIBGM(ii-nShapePaddingX,jj-nShapePaddingY,kk-nShapePaddingZ)%ShapeProcs(1:Procs+1))
-    GEO%FIBGM(ii-nShapePaddingX,jj-nShapePaddingY,kk-nShapePaddingZ)%ShapeProcs(1) = Procs
+    ALLOCATE(GEO%FIBGM(ii,jj,kk)%ShapeProcs(1:Procs+1))
+    GEO%FIBGM(ii,jj,kk)%ShapeProcs(1) = Procs
     j=2
 
     DO m=0,PartMPI%nProcs-1
@@ -1794,112 +1721,14 @@ DO Cell=0, BGMCells-1
           PartMPI%isMPINeighbor(m) = .true.
           PartMPI%nMPINeighbors=PartMPI%nMPINeighbors+1
         END IF
-        GEO%FIBGM(ii-nShapePaddingX,jj-nShapePaddingY,kk-nShapePaddingZ)%ShapeProcs(j)=m
+        GEO%FIBGM(ii,jj,kk)%ShapeProcs(j)=m
         j=j+1
       END IF
     END DO !m
   END IF
 END DO !Cell
 
-
-! ----------------------------------------------------------------!
-!--- AS: Do it again for Paddingcells
-DEALLOCATE(CellProcList)
-DEALLOCATE(CellProcNum)
-!--- JN: Determine required size of CellProcList array (hope this works, everytime I try to again understand this
-!        shape function parallelization stuff, I get confused...)
-!--- JN: But therefore we first have to refill BGMCellsArray to not only contain
-!        cells with PIC%FastInitBGM%nElem.GT.0 but also those adjacent and the paddingcells to them!
-BGMCells=0
-DO iBGM=BGMimin, BGMimax  !Count BGMCells with Elements inside or adjacent and save their indices in BGMCellsArray
-  DO jBGM=BGMjmin, BGMjmax
-    DO kBGM=BGMkmin, BGMkmax
-      iMin=MAX(iBGM-nPaddingCellsX,BGMimin); iMax=MIN(iBGM+nPaddingCellsX,BGMimax)
-      jMin=MAX(jBGM-nPaddingCellsY,BGMjmin); jMax=MIN(jBGM+nPaddingCellsY,BGMjmax)
-      kMin=MAX(kBGM-nPaddingCellsZ,BGMkmin); kMax=MIN(kBGM+nPaddingCellsZ,BGMkmax)
-      IF (SUM(GEO%FIBGM(iMin:iMax,jMin:jMax,kMin:kMax)%nElem) .GT. 0) THEN
-        BGMCellsArray(BGMCells*3+1)= iBGM
-        BGMCellsArray(BGMCells*3+2)= jBGM
-        BGMCellsArray(BGMCells*3+3)= kBGM
-        BGMCells=BGMCells+1
-      END IF
-    END DO !iBGM
-  END DO !jBGM
-END DO !kBGM
-
-! now create a temporary array in which for all BGM Cells + ShapePadding the processes are saved
-! reason: this way, the ReducedBGM List only needs to be searched once and not once for each BGM Cell+Stencil
-
-! first count the maximum number of procs that exist within each BGM cell (inkl. Shape Padding region)
-ALLOCATE(CellProcNum(BGMimin-nPaddingCellsX:BGMimax+nPaddingCellsX, &
-                     BGMjmin-nPaddingCellsY:BGMjmax+nPaddingCellsY, &
-                     BGMkmin-nPaddingCellsZ:BGMkmax+nPaddingCellsZ))
-CellProcNum = 0
-Procs = 0
-DO j=1, SUM(ReducedNbrOfBGMCells)*3-2, 3
-   IF((ReducedBGMArray(j).GE.BGMimin-nPaddingCellsX).AND.(ReducedBGMArray(j).LE.BGMimax+nPaddingCellsX))THEN
-     IF((ReducedBGMArray(j+1).GE.BGMjmin-nPaddingCellsY).AND.(ReducedBGMArray(j+1).LE.BGMjmax+nPaddingCellsY))THEN
-       IF((ReducedBGMArray(j+2).GE.BGMkmin-nPaddingCellsZ).AND.(ReducedBGMArray(j+2).LE.BGMkmax+nPaddingCellsZ))THEN
-        CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) = &
-             CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) + 1
-        Procs = MAX(Procs, CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)))
-       END IF
-     END IF
-   END IF
-END DO
-
-! allocate the temporary array
-ALLOCATE(CellProcList(BGMimin-nPaddingCellsX:BGMimax+nPaddingCellsX, &
-                      BGMjmin-nPaddingCellsY:BGMjmax+nPaddingCellsY, &
-                      BGMkmin-nPaddingCellsZ:BGMkmax+nPaddingCellsZ, &
-                      1:Procs))
-CellProcList = -1
-
-! fill array with proc numbers
-CellProcNum = 0
-j_offset = 0
-
-DO CurrentProc = 0,PartMPI%nProcs-1
-  DO j = 1+j_offset, j_offset+ReducedNbrOfBGMCells(CurrentProc)*3-2,3
-    CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) = &
-             CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2)) + 1
-    CellProcList(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2), &
-             CellProcNum(ReducedBGMArray(j),ReducedBGMArray(j+1),ReducedBGMArray(j+2))) = CurrentProc
-  END DO
-  j_offset = j_offset + ReducedNbrOfBGMCells(CurrentProc)*3
-END DO
-
-! fill real array
-DO Cell=0, BGMCells-1
-  TempProcList=0
-  DO iBGM = BGMCellsArray(Cell*3+1)-nPaddingCellsX, BGMCellsArray(Cell*3+1)+nPaddingCellsX
-    DO jBGM = BGMCellsArray(Cell*3+2)-nPaddingCellsY, BGMCellsArray(Cell*3+2)+nPaddingCellsY
-      DO kBGM = BGMCellsArray(Cell*3+3)-nPaddingCellsZ, BGMCellsArray(Cell*3+3)+nPaddingCellsZ
-        DO m = 1,CellProcNum(iBGM,jBGM,kBGM)
-          TempProcList(CellProcList(iBGM,jBGM,kBGM,m))=1       ! every proc that is within the stencil gets a 1
-        END DO ! m
-        kk = kBGM
-      END DO !l
-      jj = jBGM
-    END DO !k
-    ii = iBGM
-  END DO !i
-
-  Procs=SUM(TempProcList)
-  IF (Procs.NE.0) THEN
-    ALLOCATE(GEO%FIBGM(ii-nPaddingCellsX,jj-nPaddingCellsY,kk-nPaddingCellsZ)%PaddingProcs(1:Procs+1))
-    GEO%FIBGM(ii-nPaddingCellsX,jj-nPaddingCellsY,kk-nPaddingCellsZ)%PaddingProcs(1) = Procs
-    j=2
-    DO m=0,PartMPI%nProcs-1
-      IF (TempProcList(m) .EQ. 1) THEN
-        GEO%FIBGM(ii-nPaddingCellsX,jj-nPaddingCellsY,kk-nPaddingCellsZ)%PaddingProcs(j)=m
-        j=j+1
-      END IF
-    END DO !m
-  END IF
-END DO !Cell
-
-DEALLOCATE(ReducedBGMArray, BGMCellsArray, CellProcList, GlobalBGMCellsArray, CellProcNum)
+DEALLOCATE(ReducedBGMArray, BGMCellsArray, CellProcNum, GlobalBGMCellsArray, CellProcList)
 
 #endif /*MPI*/
 

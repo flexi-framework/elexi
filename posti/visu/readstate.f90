@@ -113,11 +113,14 @@ USE MOD_Exactfunc           ,ONLY: DefineParametersExactFunc
 #if PARABOLIC
 USE MOD_Lifting             ,ONLY: DefineParametersLifting,InitLifting,FinalizeLifting
 #endif
-USE MOD_Filter              ,ONLY:DefineParametersFilter,InitFilter,FinalizeFilter
-USE MOD_Overintegration     ,ONLY:DefineParametersOverintegration,InitOverintegration,FinalizeOverintegration
+USE MOD_Filter              ,ONLY: DefineParametersFilter,InitFilter,FinalizeFilter
+USE MOD_Overintegration     ,ONLY: DefineParametersOverintegration,InitOverintegration,FinalizeOverintegration
 USE MOD_ReadInTools         ,ONLY: prms
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters
 USE MOD_Restart_Vars        ,ONLY: RestartTime
+#if USE_PARTICLES
+USE MOD_Particle_Mesh       ,ONLY: DefineParametersParticleMesh,FinalizeParticleMesh
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -166,6 +169,9 @@ CALL DefineParametersExactFunc()
 #if PARABOLIC
 CALL DefineParametersLifting()
 #endif
+#if USE_PARTICLES
+CALL DefineParametersParticleMesh()
+#endif
 CALL prms%read_options(prmfile)
 
 ! Initialization of I/O routines
@@ -181,6 +187,9 @@ CALL InitRestart(statefile)
 ! TODO: what todo with vars that are set in InitOutput, that normally is executed here.
 
 IF (changedMeshFile.OR.changedWithDGOperator) THEN
+#if USE_PARTICLES
+  CALL FinalizeParticleMesh()
+#endif
   CALL FinalizeMesh()
   CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 END IF

@@ -332,8 +332,9 @@ IF (meshMode.GT.0) THEN
   ALLOCATE(MortarInfo(MI_FLIP,4,nMortarSides)) ! [1]: 1: Neighbour sides, 2: Flip, [2]: small sides
 
 #if USE_PARTICLES
+  SDEALLOCATE(MortarSlave2MasterInfo)
   ALLOCATE(MortarSlave2MasterInfo(1:nSides))
-! Particles need this changed to -1 to follow boltzplatz assumptions
+! Particles need this changed to -1 to follow PICLAS assumptions
   MortarType=-1
 #else
   MortarType=0
@@ -489,6 +490,7 @@ IF (.NOT.postiMode) DEALLOCATE(scaledJac)
 CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
 
 #if USE_PARTICLES
+SDEALLOCATE(ElemGlobalID)
 ALLOCATE(ElemGlobalID(1:nElems))
 DO iElem=1,nElems
   ElemGlobalID(iElem)=OffsetElem+iElem

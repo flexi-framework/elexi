@@ -624,6 +624,7 @@ FirstElemID = offsetElem+1
 LastElemID  = offsetElem+nElems
 
 !--- Build a mapping from each local side to the corresponding global mapping
+SDEALLOCATE(ElemToElemGlob)
 ALLOCATE(ElemToElemGlob(1:4,1:6,FirstElemID:LastElemID))
 ElemToElemGlob = -1
 
@@ -1281,7 +1282,6 @@ INTEGER                          :: i,j
 #if USE_MPI
 INTEGER                          :: ii,jj,kk
 INTEGER                          :: BGMCells,  m, CurrentProc, Cell, Procs
-INTEGER                          :: imin, imax, kmin, kmax, jmin, jmax
 INTEGER                          :: NbrOfBGMCells(0:PartMPI%nProcs-1)
 INTEGER                          :: Displacement(1:PartMPI%nProcs)
 INTEGER, ALLOCATABLE             :: BGMCellsArray(:),CellProcNum(:,:,:)

@@ -65,7 +65,7 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: i,NbrOfParticle,iInit,insertParticles
+INTEGER               :: i,NbrOfParticle,iInit,insertParticles,ParticleVecLengthGlob
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(132("-"))')
@@ -75,8 +75,10 @@ SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING... '
 CALL UpdateNextFreePosition()
 
 ! FLEXI gained restart capability from pure fluid solution. Do initial particle inserting only if we are not restarting or if there
-! are no particles present in the current file
-IF (.NOT.DoRestart .OR. (PDM%ParticleVecLength.EQ.0)) THEN
+! are no particles present in the current file. Check globally, otherwise some procs might block
+CALL MPI_ALLREDUCE(PDM%ParticleVecLength,ParticleVecLengthGlob,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,iError)
+
+IF (.NOT.DoRestart .OR. (ParticleVecLengthGlob.EQ.0)) THEN
   ! for the case of particle insertion per time, the inserted particle number for the current time must
   ! be updated. Otherwise, at the first timestep after restart, these particles will be inserted again
   ! Do insanity check of max. particle number compared to the number that is to be inserted for certain insertion types

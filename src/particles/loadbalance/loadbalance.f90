@@ -87,10 +87,9 @@ CALL prms%CreateIntOption(     'WeightDistributionMethod'     ,  "Method for dis
                                                                  " 0: distribute to procs using elemloads\n"                     //&
                                                                  " 1: distribute to procs using elemloads, last proc recieves"   //&
                                                                  " least\n"                                                      //&
-                                                                 " 2: NOT WORKING\n"//&
+                                                                 " 2: TODO DEFINE\n"//&
                                                                  " 3: TODO DEFINE\n"//&
-                                                                 " 4: TODO DEFINE\n"//&
-                                                                 " 5/6: iterative smoothing of loads towards last proc\n")
+                                                                 " 4/5: iterative smoothing of loads towards last proc\n")
 
 CALL prms%SetSection("Restart")
 CALL prms%CreateLogicalOption( 'DoInitialAutoRestart',           "Set Flag for doing automatic initial restart with"             //&

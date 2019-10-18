@@ -54,7 +54,7 @@ USE MOD_StringTools,    ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)  :: FileString !< (IN) mesh filename
+CHARACTER(LEN=*),INTENT(IN)    :: FileString                          !> mesh filename
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: nVal(15),iVar
@@ -93,9 +93,9 @@ CALL CloseDataFile()
 ! 1) Only MPIRoot does readin of ElemTime
 IF(MPIRoot)THEN
     ALLOCATE(ElemTime_local(1:nGlobalElems))
-    ElemTime_local=0.0
-    nElems = nGlobalElems ! Temporary set nElems as nGlobalElems for GetArrayAndName
-    offsetElem=0          ! Offset is the index of first entry, hdf5 array starts at 0-.GT. -1
+    ElemTime_local = 0.0
+    nElems         = nGlobalElems    ! Temporary set nElems as nGlobalElems for GetArrayAndName
+    offsetElem     = 0               ! Offset is the index of first entry, hdf5 array starts at 0-.GT. -1
 
     ! Ready to get the restart data
     CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)

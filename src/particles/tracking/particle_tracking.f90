@@ -1026,6 +1026,9 @@ DO iPart=1,PDM%ParticleVecLength
                              ,ElemID,1,BCElem(ElemID)%lastSide,BCElem(ElemID)%lastSide,iPart,PartIsDone,PartIsMoved,1)
       IF(PartIsDone) THEN
         IF(.NOT.PDM%ParticleInside(iPart)) DoParticle(iPart)=.FALSE.
+!#if USE_LOADBALANCE
+        ! We might want to consider adding these elements to ElemTime if we have a lot of particle "just moving through"
+!#endif
         CYCLE ! particle has left domain by a boundary condition
       END IF
       IF(PartIsMoved)THEN ! particle is reflected at a wall

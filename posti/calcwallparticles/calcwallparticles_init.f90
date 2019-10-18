@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -79,7 +79,7 @@ CALL prms%CreateLogicalOption('Part-WriteMacroVolumeValues',"")
 CALL prms%CreateLogicalOption('Part-WriteMacroSurfaceValues',"")
 
 CALL prms%SetSection("Particle Boundaries")
-                                
+
 CALL prms%CreateStringOption(   'Part-Boundary[$]-Condition'  &
                                 , 'Used boundary condition for boundary[$].\n'//&
                                   '- open\n'//&
@@ -94,35 +94,35 @@ CALL prms%CreateStringOption(   'Part-Boundary[$]-Condition'  &
 CALL prms%CreateStringOption(   'Part-Boundary[$]-SourceName'  &
                                 , 'No Default. Source Name of Boundary[i]. Has to be selected for all'//&
                                   'nBounds. Has to be same name as defined in preproc tool', numberedmulti=.TRUE.)
-                                  
+
 CALL prms%CreateRealArrayOption('Part-PeriodicVector[$]'      , 'TODO-DEFINE-PARAMETER\nVector for periodic boundaries.'//&
                                                                    'Has to be the same as defined in preproc.ini in their'//&
                                                                    ' respective order. ', '1. , 0. , 0.', numberedmulti=.TRUE.)
-    
+
 ! Ambient condition=================================================================================================================
 CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientCondition'  &
                                 , 'Use ambient condition (condition "behind" boundary).', '.FALSE.'&
                                 , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientConditionFix'  &
                                 , 'TODO-DEFINE-PARAMETER', '.TRUE.', numberedmulti=.TRUE.)
-    
+
 CALL prms%CreateRealArrayOption('Part-Boundary[$]-AmbientVelo'  &
                                 , 'Ambient velocity', '0. , 0. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption('Part-Boundary[$]-WallVelo'  &
                                 , 'Velocity (global x,y,z in [m/s]) of reflective particle boundary [$].' &
                                 , '0. , 0. , 0.', numberedmulti=.TRUE.)
-    
+
 CALL prms%CreateRealOption(     'Part-Boundary[$]-AmbientDens'  &
                                 , 'Ambient density', '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Boundary[$]-AmbientDynamicVisc'  &
                                 , 'Ambient dynamic viscosity', '1.72326582572253E-5', numberedmulti=.TRUE.)
-    
+
 CALL prms%CreateIntOption(      'Particles-RandomSeed[$]'     , 'Seed [$] for Random Number Generator', '1', numberedmulti=.TRUE.)
 
 END SUBROUTINE DefineParametersParticles
 
 !===================================================================================================================================
-! Glue Subroutine for particle initialization 
+! Glue Subroutine for particle initialization
 !===================================================================================================================================
 SUBROUTINE InitParticles()
 ! MODULES
@@ -162,7 +162,7 @@ IF (WriteMacroSurfaceValues.OR.DSMC%CalcSurfaceVal) THEN
 END IF
 
 #if USE_MPI
-! has to be called AFTER InitializeVariables and InitDSMC 
+! has to be called AFTER InitializeVariables and InitDSMC
 CALL InitParticleCommSize()
 #endif
 
@@ -172,7 +172,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticles
 
 !===================================================================================================================================
-! Initialize the variables first 
+! Initialize the variables first
 !===================================================================================================================================
 SUBROUTINE InitializeVariables()
 ! MODULES
@@ -317,7 +317,7 @@ DO iPBC=1,nPartBound
     END IF
   END DO
 END DO
-! Errorhandler for PartBound-Types that could not be mapped to the 
+! Errorhandler for PartBound-Types that could not be mapped to the
 ! FieldBound-Types.
 DO iBC = 1,nBCs
   IF (PartBound%MapToPartBC(iBC).EQ.-10) THEN
@@ -327,7 +327,7 @@ __STAMP__&
   END IF
 END DO
 
-ALLOCATE(PEM%Element(1:PDM%maxParticleNumber), PEM%lastElement(1:PDM%maxParticleNumber), STAT=ALLOCSTAT) 
+ALLOCATE(PEM%Element(1:PDM%maxParticleNumber), PEM%lastElement(1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) THEN
  CALL abort(&
 __STAMP__&
@@ -355,7 +355,7 @@ END SUBROUTINE InitializeVariables
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! finalize particle variables
 !----------------------------------------------------------------------------------------------------------------------------------!
-SUBROUTINE FinalizeParticles() 
+SUBROUTINE FinalizeParticles()
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
@@ -363,7 +363,7 @@ USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------

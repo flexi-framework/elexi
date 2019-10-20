@@ -103,6 +103,7 @@ CALL MPI_ALLREDUCE(nSides-nMPISides_YOUR,nSides_Shared,1,MPI_INTEGER,MPI_SUM,MPI
 
 !> Send offsetSide of node root to all other procs on node
 IF (myRank_shared.EQ.0) offsetSide_shared_root = offsetSide
+CALL MPI_BCAST(offsetSide_shared_root,1,MPI_INTEGER,0,MPI_COMM_SHARED,IERROR)
 
 !> Calculate the local offset relative to the node MPI root. MPI sides on neighbor processors are ignored
 FirstSideShared = offsetSide-offsetSide_shared_root+1
@@ -191,6 +192,8 @@ INTEGER                         :: FirstElemHaloShared,LastElemHaloShared
 INTEGER                         :: FirstSideHaloShared,LastSideHaloShared
 INTEGER                         :: iElem,iSide,ilocSide
 !=================================================================================================================================
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT SHARED PARTICLE MESH...'
 
 !> Calculate the local offset relative to the node MPI root
 FirstElemShared = offsetElem-offsetElem_shared_root+1
@@ -336,6 +339,9 @@ CALL MPI_WIN_SYNC(BezierControlPoints3D_Shared_Win,IERROR)
 ! CALL MPI_WIN_SYNC(slenXiEtaZetaBasis_Shared_Win   ,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
+SWRITE(UNIT_stdOut,'(A)')' INIT SHARED PARTICLE MESH DONE!'
+SWRITE(UNIT_StdOut,'(132("-"))')
+
 END SUBROUTINE InitParticleMeshShared
 
 
@@ -369,6 +375,9 @@ U_Shared(:,:,:,:,FirstElemShared:LastElemShared) = U(:,:,:,:,:)
 ! Synchronize all RMA communication
 CALL MPI_WIN_SYNC(U_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+! Intel documentation claims this is required on "certain architectures". Whatever this means...
+! https://software.intel.com/en-us/articles/an-introduction-to-mpi-3-shared-memory-programming
+CALL MPI_WIN_SYNC(U_Shared_Win,IERROR)
 
 END SUBROUTINE UpdateDGShared
 
@@ -387,6 +396,11 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !=================================================================================================================================
+! Unlock all RMA windows
+CALL MPI_WIN_UNLOCK_ALL(Elem_xGP_Shared_Win,  IERROR)
+CALL MPI_WIN_UNLOCK_ALL(NodeCoords_Shared_Win,IERROR)
+CALL MPI_WIN_UNLOCK_ALL(ElemToSide_Shared_Win,IERROR)
+CALL MPI_WIN_UNLOCK_ALL(SideToElem_Shared_Win,IERROR)
 
 ! Free RMA windows
 CALL MPI_WIN_FREE(Elem_xGP_Shared_Win,  IERROR)
@@ -413,9 +427,13 @@ IMPLICIT NONE
 !=================================================================================================================================
 
 ! Free RMA windows
+CALL MPI_WIN_UNLOCK_ALL(BezierControlPoints3D_Shared_Win,IERROR)
+!CALL MPI_WIN_UNLOCK_ALL(XiEtaZetaBasis_Shared_Win       ,IERROR)
+!CALL MPI_WIN_UNLOCK_ALL(slenXiEtaZetaBasis_Shared_Win   ,IERROR)
+
 CALL MPI_WIN_FREE(BezierControlPoints3D_Shared_Win,IERROR)
-! CALL MPI_WIN_FREE(XiEtaZetaBasis_Shared_Win       ,IERROR)
-! CALL MPI_WIN_FREE(slenXiEtaZetaBasis_Shared_Win   ,IERROR)
+!CALL MPI_WIN_FREE(XiEtaZetaBasis_Shared_Win       ,IERROR)
+!CALL MPI_WIN_FREE(slenXiEtaZetaBasis_Shared_Win   ,IERROR)
 
 END SUBROUTINE FinalizeParticleMeshShared
 

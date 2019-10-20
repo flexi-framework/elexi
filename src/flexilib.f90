@@ -375,9 +375,11 @@ CALL FinalizeCommandlineArguments()
 #if USE_MPI
 #if USE_MPI_SHARED
 CALL FinalizeMeshShared()
+#if USE_PARTICLES
 CALL FinalizeParticleMeshShared()
+#endif /*PARTICLES*/
 CALL FinalizeMPIShared()
-#endif
+#endif /*MPI_SHARED*/
 ! For flexilib MPI init/finalize is controlled by main program
 CALL FinalizeMPI()
 #if USE_PARTICLES

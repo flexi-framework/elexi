@@ -26,14 +26,14 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 ! Mesh
-REAL,POINTER    :: BezierControlPoints3D_Shared(:,:,:,:)      !> BezierControlPoints3D on current node
-INTEGER         :: BezierControlPoints3D_Shared_Win           !> Pointer to shared memory window
-!REAL,POINTER    :: XiEtaZetaBasis_Shared(:,:,:)
-!INTEGER         :: XiEtaZetaBasis_Shared_Win                  !> Pointer to shared memory window
-!REAL,POINTER    :: slenXiEtaZetaBasis_Shared(:,:)
-!INTEGER         :: slenXiEtaZetaBasis_Shared_Win              !> Pointer to shared memory window
-INTEGER,POINTER :: PartHaloElemToProc_Shared(:,:)             !> PartHaloElemToProc mapping on current node
-INTEGER         :: PartHaloElemToProc_Shared_Win              !> Pointer to shared memory window
+REAL(KIND=8),POINTER    :: BezierControlPoints3D_Shared(:,:,:,:)      !> BezierControlPoints3D on current node
+INTEGER                 :: BezierControlPoints3D_Shared_Win           !> Pointer to shared memory window
+!REAL,POINTER            :: XiEtaZetaBasis_Shared(:,:,:)
+!INTEGER                 :: XiEtaZetaBasis_Shared_Win                  !> Pointer to shared memory window
+!REAL,POINTER            :: slenXiEtaZetaBasis_Shared(:,:)
+!INTEGER                 :: slenXiEtaZetaBasis_Shared_Win              !> Pointer to shared memory window
+INTEGER,POINTER         :: PartHaloElemToProc_Shared(:,:)             !> PartHaloElemToProc mapping on current node
+INTEGER                 :: PartHaloElemToProc_Shared_Win              !> Pointer to shared memory window
 
 
 #endif /* MPI_SHARED */

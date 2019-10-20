@@ -222,7 +222,7 @@ LastSideHaloShared  = nSides_Shared + offsetSideHalo_shared+nTotalSides - nSides
 
 !==== ElemToSide ================================================================================================================
 !> DataSizeLength for ElemToSide
-MPISharedSize = INT(5*nTotalElems_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = INT(2*6*nTotalElems_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
 CALL Allocate_Shared(MPISharedSize,(/2,6,nTotalElems_Shared/),ElemToSide_Shared_Win,ElemToSide_Shared)
 
 !> ElemToSide from each proc
@@ -271,10 +271,14 @@ END DO
 !==== BezierControlPoint3D ======================================================================================================
 !> DataSizeLength for BezierControlPoint3D
 IF (useCurveds) THEN
-  MPISharedSize = INT(3*(NGeo+1)*(NGeo+1)*nSides_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+!  MPISharedSize = INT(3*(NGeo+1)*(NGeo+1)*nSides_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+  ! BezerControlPoints are allocated with KIND=8
+  MPISharedSize = INT(3*(NGeo+1)*(NGeo+1)*nSides_Shared,MPI_ADDRESS_KIND)*KIND(BezierControlPoints3D)
   CALL Allocate_Shared(MPISharedSize,(/3,NGeo+1,NGeo+1,nSides_Shared/),BezierControlPoints3D_Shared_Win,BezierControlPoints3D_Shared)
 ELSE
-  MPISharedSize = INT(3*(1   +1)*(1   +1)*nSides_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+!  MPISharedSize = INT(3*(1   +1)*(1   +1)*nSides_Shared,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+  ! BezerControlPoints are allocated with KIND=8
+  MPISharedSize = INT(3*(1   +1)*(1   +1)*nSides_Shared,MPI_ADDRESS_KIND)*KIND(BezierControlPoints3D)
   CALL Allocate_Shared(MPISharedSize,(/3,   1+1,   1+1,nSides_Shared/),BezierControlPoints3D_Shared_Win,BezierControlPoints3D_Shared)
 END IF
 

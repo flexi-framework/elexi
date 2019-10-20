@@ -88,7 +88,7 @@ CALL MPI_ALLREDUCE(nElems,nElems_Shared,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IE
 
 !> Sanity check number of cells per node
 CALL MPI_REDUCE(nElems_Shared,nElems_Shared_Glob,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,IERROR)
-SWRITE(UNIT_stdOut,'(A,F14.1,A)') ' | Copying information for ',REAL(nElems_Shared_Glob)/REAL(nProcessors_Shared),' cells/node in shared memory'
+SWRITE(UNIT_stdOut,'(A,F14.1,A)') ' | Copying information for ',REAL(nElems_Shared_Glob)/REAL(nProcessors_Global),' cells/node in shared memory'
 
 !> Send offsetElem of node root to all other procs on node
 IF (myRank_shared.EQ.0) offsetElem_shared_root = offsetElem

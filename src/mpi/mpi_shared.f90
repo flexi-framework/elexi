@@ -91,6 +91,9 @@ INTEGER                                   :: i,worldGroup,sharedGroup
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT MPI SHARED COMMUNICATION ...'
 
+! Save the global number of procs
+nProcessors_Global = nProcessors
+
 ! Split the node communicator (shared memory) from the global communicator
 CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, myRank, MPI_INFO_NULL, MPI_COMM_SHARED,IERROR)
 

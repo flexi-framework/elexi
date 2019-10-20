@@ -103,6 +103,7 @@ CALL MPI_ALLREDUCE(nSides-nMPISides_YOUR,nSides_Shared,1,MPI_INTEGER,MPI_SUM,MPI
 
 !> Send offsetSide of node root to all other procs on node
 IF (myRank_shared.EQ.0) offsetSide_shared_root = offsetSide
+CALL MPI_BCAST(offsetSide_shared_root,1,MPI_INTEGER,0,MPI_COMM_SHARED,IERROR)
 
 !> Calculate the local offset relative to the node MPI root. MPI sides on neighbor processors are ignored
 FirstSideShared = offsetSide-offsetSide_shared_root+1
@@ -423,10 +424,12 @@ IMPLICIT NONE
 
 ! Free RMA windows
 CALL MPI_WIN_UNLOCK_ALL(BezierControlPoints3D_Shared_Win,IERROR)
+!CALL MPI_WIN_UNLOCK_ALL(XiEtaZetaBasis_Shared_Win       ,IERROR)
+!CALL MPI_WIN_UNLOCK_ALL(slenXiEtaZetaBasis_Shared_Win   ,IERROR)
 
 CALL MPI_WIN_FREE(BezierControlPoints3D_Shared_Win,IERROR)
-! CALL MPI_WIN_FREE(XiEtaZetaBasis_Shared_Win       ,IERROR)
-! CALL MPI_WIN_FREE(slenXiEtaZetaBasis_Shared_Win   ,IERROR)
+!CALL MPI_WIN_FREE(XiEtaZetaBasis_Shared_Win       ,IERROR)
+!CALL MPI_WIN_FREE(slenXiEtaZetaBasis_Shared_Win   ,IERROR)
 
 END SUBROUTINE FinalizeParticleMeshShared
 

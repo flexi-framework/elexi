@@ -281,6 +281,7 @@ INTEGER            :: iSide,lowerLimit,ElemID,SideID,NBElemID
 #endif
 
 LOGICAL            :: meshCheckRef
+REAL,ALLOCATABLE   :: scaledJacRef(:,:,:)
 !==================================================================================================================================
 ! Prerequisites
 Metrics_fTilde=0.
@@ -385,16 +386,18 @@ DO iElem=1,nElems
 
   ! Check Jacobians in Ref already (no good if we only go on because N doesn't catch misbehaving points)
   IF (meshCheckRef) THEN
+    ALLOCATE(scaledJacRef(0:NGeoRef,0:NGeoRef,0:ZDIM(NGeoRef)))
     DO k=0,ZDIM(NGeoRef); DO j=0,NGeoRef; DO i=0,NGeoRef
-      scaledJac(i,j,k,iElem)=detJac_ref(1,i,j,k,iElem)/MAXVAL(detJac_ref(1,:,:,:,iElem))
-      IF(scaledJac(i,j,k,iElem).LT.0.01) THEN
-        WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac(i,j,k,iElem)
+      scaledJacRef(i,j,k)=detJac_ref(1,i,j,k,iElem)/MAXVAL(detJac_ref(1,:,:,:,iElem))
+      IF(scaledJacRef(i,j,k).LT.0.01) THEN
+        WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJacRef(i,j,k)
         WRITE(Unit_StdOut,*) 'Coords near:', Elem_xGP(:,INT(PP_N/2),INT(PP_N/2),INT(PP_NZ/2),iElem)
         WRITE(Unit_StdOut,*) 'This check is optional. You can disable it by setting meshCheckRef = F'
         CALL abort(__STAMP__,&
           'Scaled Jacobian in reference system lower then tolerance in global element:',iElem+offsetElem)
       END IF
     END DO; END DO; END DO !i,j,k=0,N
+    DEALLOCATE(scaledJacRef)
   END IF
 
   ! interpolate detJac_ref to the solution points

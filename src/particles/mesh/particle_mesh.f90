@@ -3094,7 +3094,12 @@ END IF
   SWRITE(UNIT_StdOut,'(A,I8)') ' Number of reassigned (Tol)       faces: ', FoundTol
 END IF !PeriodicReorder
 
-SWRITE(UNIT_StdOut,'(A)') ' Sanity check of particle periodic vectors successful!'
+IF (PeriodicReorder) THEN
+  SWRITE(UNIT_StdOut,'(A)') ' Sanity check of particle periodic vectors successful!'
+ELSE
+
+  SWRITE(UNIT_StdOut,'(A)') ' Sanity check of particle periodic vectors omitted!'
+end IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 ! fill Element type checking sides

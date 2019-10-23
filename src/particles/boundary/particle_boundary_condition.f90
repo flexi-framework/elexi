@@ -295,7 +295,7 @@ CASE(2) !PartBound%ReflectiveBC)
         CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,               &
                                opt_BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC)
       CASE('coeffRes')
-        CALL  DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,              &
+        CALL DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,              &
                                 opt_BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,              &
                                 WallCoeffModel=PartBound%WallCoeffModel(PartBound%MapToPartBC(BC(SideID))))
       CASE DEFAULT
@@ -980,8 +980,8 @@ PartTrajectory(1:3)     = PartTrajectoryTang(1:3) - PartTrajectoryNorm(1:3)
 ! Save the old lengthPartTrajectory and rescale to new. We can't compute a complete new lengthPartTrajectory as we do not have the
 ! current LSERK time step here
 lengthPartTrajectory_old= lengthPartTrajectory
-PartTrajectory_rescale  = SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                          +    PartTrajectory(2)*PartTrajectory(2) &
+PartTrajectory_rescale  = SQRT(PartTrajectory(1)*PartTrajectory(1)                        &
+                          +    PartTrajectory(2)*PartTrajectory(2)                        &
                           +    PartTrajectory(3)*PartTrajectory(3) )
 lengthPartTrajectory    = lengthPartTrajectory  *PartTrajectory_rescale
 

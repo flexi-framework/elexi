@@ -124,7 +124,7 @@ CALL prms%CreateStringOption(   'Part-Species[$]-SpaceIC'  &
                               , 'cuboid', numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(   'Part-Species[$]-velocityDistribution'  &
                                 , 'Used velocity distribution.\n'//&
-                                  '   constant: all particles have the same defined velocity.(VeloIC, VeloVec)\n'//&
+                                  '   constant: all particles have the same velocity defined in VeloVecIC\n'//&
                                   '   fluid:    particles have local fluid velocity\n'&
                                   , 'constant', numberedmulti=.TRUE.)
 
@@ -141,13 +141,13 @@ CALL prms%CreateRealOption(     'Part-Species[$]-ParticleEmission' &
 CALL prms%CreateRealOption(     'Part-Species[$]-MacroParticleFactor' &
                                 , 'Number of Microparticle per Macroparticle for species [$]', '1.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-MassIC'  &
-                                , 'Particle Mass (without MPF) of species [$] [kg]', '0.', numberedmulti=.TRUE.)
+                                , 'Particle Mass of species [$] [kg]', '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-DensityIC'  &
-                                , 'Particle density (without MPF) of species [$] [kg/m^3]', '0.', numberedmulti=.TRUE.)
+                                , 'Particle density of species [$] [kg/m^3]', '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-RadiusIC'  &
                                 , 'Radius for IC circle', '1.', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(     'Part-Species[$]-VeloIC'  &
-                                , 'Absolute value of initial velocity. (ensemble velocity) ', '0.', numberedmulti=.TRUE.)
+!CALL prms%CreateRealOption(     'Part-Species[$]-VeloIC'  &
+!                                , 'Absolute value of initial velocity. (ensemble velocity) ', '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-VeloTurbIC'  &
                                 , 'Turbulent fluctuation of initial velocity. (ensemble velocity) ', '0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(     'Part-Species[$]-LowVeloThreshold' &
@@ -180,7 +180,7 @@ CALL prms%CreateRealArrayOption('Part-Species[$]-BaseVector2IC'  &
 CALL prms%CreateRealArrayOption('Part-Species[$]-NormalIC'  &
                                 , 'Normal orientation of circle.', '0. , 0. , 1.', numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption('Part-Species[$]-VeloVecIC '  &
-                                , 'Normalized velocity vector for given VeloIC', '0. , 0. , 0.', numberedmulti=.TRUE.)
+                                , 'Velocity vector for given species', '0. , 0. , 0.', numberedmulti=.TRUE.)
 
 CALL prms%SetSection("Particle Species Ninits")
 CALL prms%CreateLogicalOption(  'Part-Species[$]-UseForEmission' &
@@ -493,7 +493,7 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%CuboidHeightIC        = GETREAL('Part-Species'//TRIM(tmpStr2)//'-CuboidHeightIC','1.')
     Species(iSpec)%Init(iInit)%CylinderHeightIC      = GETREAL('Part-Species'//TRIM(tmpStr2)//'-CylinderHeightIC','1.')
     Species(iSpec)%Init(iInit)%CalcHeightFromDt      = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-CalcHeightFromDt','.FALSE.')
-    Species(iSpec)%Init(iInit)%VeloIC                = GETREAL('Part-Species'//TRIM(tmpStr2)//'-VeloIC','0.')
+!   Species(iSpec)%Init(iInit)%VeloIC                = GETREAL('Part-Species'//TRIM(tmpStr2)//'-VeloIC','0.')
     Species(iSpec)%Init(iInit)%VeloTurbIC            = GETREAL('Part-Species'//TRIM(tmpStr2)//'-VeloTurbIC','0.')
     Species(iSpec)%Init(iInit)%VeloVecIC             = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-VeloVecIC',3,'0. , 0. , 0.')
     Species(iSpec)%Init(iInit)%ParticleEmissionType  = GETINT('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-ParticleEmissionType','2')
@@ -503,6 +503,12 @@ DO iSpec = 1, nSpecies
     ! Nullify additional init data here
     Species(iSpec)%Init(iInit)%InsertedParticle      = 0
     Species(iSpec)%Init(iInit)%InsertedParticleSurplus = 0
+
+    ! Get absolute value of particle velocity vector and normalize the VeloVecIC vector
+    Species(iSpec)%Init(iInit)%VeloIC                = SQRT(Species(iSpec)%Init(iInit)%VeloVecIC(1)**2.                      &
+                                                           +Species(iSpec)%Init(iInit)%VeloVecIC(2)**2.                      &
+                                                           +Species(iSpec)%Init(iInit)%VeloVecIC(3)**2.)
+    Species(iSpec)%Init(iInit)%VeloVecIC             = Species(iSpec)%Init(iInit)%VeloVecIC/Species(iSpec)%Init(iInit)%VeloIC
 
     !----------- various checks/calculations after read-in of Species(i)%Init(iInit)%-data ----------------------------------!
 

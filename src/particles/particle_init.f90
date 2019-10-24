@@ -410,6 +410,9 @@ ALLOCATE(PartState(           1:PDM%maxParticleNumber,1:6),    &
          Pt(                  1:PDM%maxParticleNumber,1:3),    &
          PartSpecies(         1:PDM%maxParticleNumber),        &
          PDM%ParticleInside(  1:PDM%maxParticleNumber),        &
+#if USE_SM
+         PDM%ParticleInsideSM(1:PDM%maxParticleNumber), &
+#endif
          PDM%nextFreePosition(1:PDM%maxParticleNumber),        &
          PDM%IsNewPart(       1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
@@ -426,6 +429,10 @@ PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
 
 ! Allocate particle-to-element-mapping (PEM) arrays
 ALLOCATE(PEM%Element(1:PDM%maxParticleNumber), PEM%lastElement(1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+#if USE_SM
+ALLOCATE(PEM%hasCrossedSM(1:PDM%maxParticleNumber))
+PEM%hasCrossedSM = .FALSE.
+#endif
 IF (ALLOCSTAT.NE.0) &
  CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate PEM arrays!')
 
@@ -508,7 +515,11 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%VeloIC                = SQRT(Species(iSpec)%Init(iInit)%VeloVecIC(1)**2.                      &
                                                            +Species(iSpec)%Init(iInit)%VeloVecIC(2)**2.                      &
                                                            +Species(iSpec)%Init(iInit)%VeloVecIC(3)**2.)
-    Species(iSpec)%Init(iInit)%VeloVecIC             = Species(iSpec)%Init(iInit)%VeloVecIC/Species(iSpec)%Init(iInit)%VeloIC
+
+    ! Only normalize if the vector does not have zero length. If it has, our job is done
+    IF (Species(iSpec)%Init(iInit)%VeloIC.NE.0) THEN
+      Species(iSpec)%Init(iInit)%VeloVecIC             = Species(iSpec)%Init(iInit)%VeloVecIC/Species(iSpec)%Init(iInit)%VeloIC
+    END IF
 
     !----------- various checks/calculations after read-in of Species(i)%Init(iInit)%-data ----------------------------------!
 
@@ -725,7 +736,10 @@ DO iPartBound=1,nPartBound
   ! Periodic
   CASE('periodic')
      PartBound%TargetBoundCond(iPartBound)      = PartBound%PeriodicBC
-
+#if USE_SM
+  CASE('sliding')
+     PartBound%TargetBoundCond(iPartBound) = PartBound%SlidingMeshBC
+#endif /*USE_SM*/
   ! Invalid boundary option
   CASE DEFAULT
      SWRITE(*,*) ' Boundary does not exists: ', TRIM(tmpString)
@@ -1153,7 +1167,10 @@ SDEALLOCATE(FieldAtParticle)
 #if USE_RW
 SDEALLOCATE(TurbFieldAtParticle)
 #endif
-
+#if USE_SM
+SDEALLOCATE(PEM%hasCrossedSM)
+SDEALLOCATE(PDM%ParticleInsideSM)
+#endif
 END SUBROUTINE FinalizeParticles
 
 

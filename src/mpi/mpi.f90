@@ -352,7 +352,7 @@ INTEGER,INTENT(INOUT)       :: MPIRequest(nRequests) !< communication handles
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-CALL MPI_WaitAll(nRequests,MPIRequest,MPI_STATUSES_IGNORE,iError)
+CALL MPI_WaitAll(nRequests,MPIRequest,MPI_STATUS_IGNORE,iError)
 END SUBROUTINE FinishExchangeMPIData
 
 !==================================================================================================================================

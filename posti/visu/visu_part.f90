@@ -292,7 +292,10 @@ SUBROUTINE PartitionPartMPI(ListIn)
 ! MODULES
 USE MOD_Globals
 USE MOD_Visu_Vars                ,ONLY: tVisuParticle
-USE MOD_Particle_MPI_Vars        ,ONLY: PartitionPartIsDone, nPartsMPI, offsetPartMPI
+USE MOD_Particle_MPI_Vars        ,ONLY: PartitionPartIsDone
+#if USE_MPI
+USE MOD_Particle_MPI_Vars        ,ONLY: nPartsMPI, offsetPartMPI
+#endif /* MPI */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -322,9 +325,14 @@ ListIn%offsetPart=offsetPartMPI(myRank)
 ListIn%nLocalParts=ListIn%nGlobalParts
 ListIn%offsetPart=0
 #endif /* MPI */
+
 PartitionPartIsDone=.TRUE.
+
+#if USE_MPI
 SDEALLOCATE(offsetPartMPI)
 SDEALLOCATE(nPartsMPI)
+#endif /* MPI */
+
 END SUBROUTINE PartitionPartMPI
 #endif /*PARTICLES*/
 

@@ -809,10 +809,10 @@ USE MOD_Globals
 USE MOD_Mesh_Vars,    ONLY:nElems,nGlobalElems,offsetElem
 #if USE_MPI
 USE MOD_MPI_Vars,     ONLY:offsetElemMPI
-#endif /*MPI*/
 #if USE_PARTICLES
 USE MOD_LoadMesh,     ONLY:LoadElemTime
 #endif /*PARTICLES*/
+#endif /*MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadMesh,     ONLY:LoadPartition
 USE MOD_Restart_Vars, ONLY:DoRestart

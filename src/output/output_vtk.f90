@@ -567,7 +567,7 @@ END SUBROUTINE WriteVarnamesToVTK_array
 #if USE_PARTICLES
 SUBROUTINE WritePartDataToVTK_array(nParts_out,nVar_out,coords_out,values_out,nodeids_out,&
                                       varnamespart_out, componentspart_out, coords, values,nodeids,&
-                                      VarNamePartCombine,VarNamePartCombineLen,VarNamePartVisu,PartCPointers_allocated) 
+                                      VarNamePartCombine,VarNamePartCombineLen,VarNamePartVisu,PartCPointers_allocated)
 USE ISO_C_BINDING
 !===================================================================================================================================
 ! Subroutine to write 3D point data to VTK format
@@ -593,7 +593,7 @@ TYPE (CARRAY), INTENT(INOUT)      :: values_out
 TYPE (CARRAY), INTENT(INOUT)      :: nodeids_out
 TYPE (CARRAY), INTENT(INOUT)      :: varnamespart_out
 TYPE (CARRAY), INTENT(INOUT)      :: componentspart_out
-LOGICAL,INTENT(INOUT)             :: PartCPointers_allocated 
+LOGICAL,INTENT(INOUT)             :: PartCPointers_allocated
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                           :: iPart, nPartVarCombine, iVar, iVar2
@@ -608,7 +608,7 @@ END IF
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PARTICEL DATA TO VTX XML BINARY (VTU) ARRAY..."
 
 PartCPointers_allocated=.TRUE.
-! values and coords are already in the correct structure of VTK/Paraview 
+! values and coords are already in the correct structure of VTK/Paraview
 ! set the sizes of the arrays
 coords_out%len = 3*nParts_Out
 values_out%len = nVar_out*nParts_out
@@ -664,6 +664,7 @@ END DO ! iPart=1,nParts_out
 SWRITE(UNIT_stdOut,'(A)')" Done!"
 END SUBROUTINE WritePartDataToVTK_array
 
+
 SUBROUTINE WriteDataToVTKPart(nParts,nVal,Coord,Value,FileString,VarNamePartVisu,VarNamePartCombine,VarNamePartCombineLen,&
     nGlobalParts)
 !===================================================================================================================================
@@ -677,18 +678,18 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)            :: nVal                    ! Number of nodal output variables
 INTEGER,INTENT(IN)            :: nParts                  ! Number of output Particle
-REAL,INTENT(IN)               :: Coord(3,nParts)         ! CoordsVector 
-REAL,INTENT(IN)               :: Value(nVal,nParts)      ! Statevector 
+REAL,INTENT(IN)               :: Coord(3,nParts)         ! CoordsVector
+REAL,INTENT(IN)               :: Value(nVal,nParts)      ! Statevector
 CHARACTER(LEN=*),INTENT(IN)   :: FileString              ! Output file name
 CHARACTER(LEN=255),INTENT(IN) :: VarNamePartVisu(:)
 INTEGER,INTENT(IN)            :: VarNamePartCombine(:)
 INTEGER,INTENT(IN)            :: VarNamePartCombineLen(:)
-INTEGER,INTENT(IN)            :: nGlobalParts 
+INTEGER,INTENT(IN)            :: nGlobalParts
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,k,iPart,Offset,nBytes,nVTKElems,nVTKCells,ivtk=44,iVar,str_len
+INTEGER            :: iPart,Offset,nBytes,nVTKElems,nVTKCells,ivtk=44,iVar,str_len
 INTEGER            :: INTdummy
 INTEGER            :: Vertex(nGlobalParts)
 INTEGER            :: ElemType
@@ -697,14 +698,21 @@ CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf,components_string
 CHARACTER(LEN=255) :: VarNameString
 REAL(KIND=4)       :: FLOATdummy
+INTEGER            :: nParts_glob(1:nProcessors)
+#if USE_MPI
+INTEGER            :: i,j,k,iProc,nMaxParts
+INTEGER            :: nParts_proc
 REAL,ALLOCATABLE   :: buf(:), buf2(:,:)
-INTEGER            :: nParts_glob(1:nProcessors), nParts_proc
-INTEGER            :: iProc, nMaxParts
+#endif
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PART/EROSION DATA TO VTX XML BINARY (VTU) FILE..."
 
 ! collect number of particles on each proc
+#if USE_MPI
 CALL MPI_ALLGATHER(nParts,1,MPI_INTEGER,nParts_glob(:),1,MPI_INTEGER,MPI_COMM_FLEXI,iError)
+#else
+nParts_glob(1) = nParts
+#endif /* USE_MPI */
 
 IF(nParts.LT.1)THEN
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
@@ -718,12 +726,12 @@ nVTKCells=nGlobalParts
 IF(MPIRoot)THEN
   ! Line feed character
   lf = char(10)
- 
+
   OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
-   
+
   Buffer='  <UnstructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
   WRITE(TempStr1,'(I16)')nVTKElems
   WRITE(TempStr2,'(I16)')nVTKCells

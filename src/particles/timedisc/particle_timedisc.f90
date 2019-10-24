@@ -219,10 +219,10 @@ USE MOD_Globals
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 #endif /*MPI*/
 USE MOD_PICInterpolation
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
+USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif
@@ -433,10 +433,10 @@ USE MOD_Globals
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 #endif /*MPI*/
 USE MOD_PICInterpolation
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
+USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 #endif

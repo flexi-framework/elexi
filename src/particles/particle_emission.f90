@@ -76,7 +76,11 @@ CALL UpdateNextFreePosition()
 
 ! FLEXI gained restart capability from pure fluid solution. Do initial particle inserting only if we are not restarting or if there
 ! are no particles present in the current file. Check globally, otherwise some procs might block
+#if USE_MPI
 CALL MPI_ALLREDUCE(PDM%ParticleVecLength,ParticleVecLengthGlob,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,iError)
+#else
+ParticleVecLengthGlob = PDM%ParticleVecLength
+#endif /* MPI */
 
 IF (.NOT.DoRestart .OR. (ParticleVecLengthGlob.EQ.0)) THEN
   ! for the case of particle insertion per time, the inserted particle number for the current time must
@@ -1133,12 +1137,16 @@ ELSE
 
        ! Match particle to exact element
        IF(DoRefMapping.OR.TriaTracking)THEN
+#if USE_MPI
          ! Only one proc emitting, we don't need to worry about double particles
          IF (PartMPI%InitGroup(InitGroup)%nProcs.EQ.1) THEN
+#endif
            CALL SingleParticleToExactElement(ParticleIndexNbr,doHALO=.FALSE.,InitFix=.FALSE.,doRelocate=.FALSE.)
+#if USE_MPI
          ELSE
            CALL SingleParticleToExactElement(ParticleIndexNbr,doHALO=.FALSE.,InitFix=.TRUE.,doRelocate=.FALSE.)
          END IF
+#endif
        ELSE
          CALL SingleParticleToExactElementNoMap(ParticleIndexNbr,doHALO=.FALSE.,doRelocate=.FALSE.)
        END IF

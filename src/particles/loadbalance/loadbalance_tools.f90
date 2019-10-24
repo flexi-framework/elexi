@@ -24,6 +24,7 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+#if USE_LOADBALANCE
 INTERFACE LBStartTime
   MODULE PROCEDURE LBStartTime
 END INTERFACE
@@ -196,4 +197,5 @@ CALL CPU_TIME(LocalTime)
 #endif
 END FUNCTION LOCALTIME
 
+#endif /* LOADBALANCE */
 END MODULE MOD_LoadBalance_Tools

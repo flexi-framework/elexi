@@ -102,7 +102,7 @@ SDEALLOCATE(FieldAtParticle)
 ALLOCATE(FieldAtParticle(1:PP_nVar,1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 #if USE_RW
 SDEALLOCATE(TurbFieldAtParticle)
-ALLOCATE(TurbFieldAtParticle(1:nVarTurb1,:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+ALLOCATE(TurbFieldAtParticle(1:nVarTurb,1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 #endif
 IF (ALLOCSTAT.NE.0) THEN
   CALL abort(&

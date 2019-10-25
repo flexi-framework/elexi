@@ -99,10 +99,10 @@ END IF
 !--- Allocate arrays for interpolation of fields to particles
 SDEALLOCATE(FieldAtParticle)
 ! Allocate array for rho,momentum,energy,(tke,omega)
-ALLOCATE(FieldAtParticle(1:PDM%maxParticleNumber,1:PP_nVar), STAT=ALLOCSTAT)
+ALLOCATE(FieldAtParticle(1:PP_nVar,1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 #if USE_RW
 SDEALLOCATE(TurbFieldAtParticle)
-ALLOCATE(TurbFieldAtParticle(1:PDM%maxParticleNumber,1:nVarTurb), STAT=ALLOCSTAT)
+ALLOCATE(TurbFieldAtParticle(1:nVarTurb1,:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 #endif
 IF (ALLOCSTAT.NE.0) THEN
   CALL abort(&
@@ -190,17 +190,17 @@ IF(firstPart.GT.lastPart) RETURN
 IF (.NOT.InterpolationElemLoop) THEN
   DO iPart = firstPart, LastPart
     IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
-    CALL InterpolateFieldToSingleParticle(iPart,FieldAtParticle(iPart,1:PP_nVar))
+    CALL InterpolateFieldToSingleParticle(iPart,FieldAtParticle(1:PP_nVar,iPart))
   END DO
   RETURN
 END IF
 
-FieldAtParticle(firstPart:lastPart,:) = 0.
-FieldAtParticle(firstPart:lastPart,1) = externalField(1)
-FieldAtParticle(firstPart:lastPart,2) = externalField(2)
-FieldAtParticle(firstPart:lastPart,3) = externalField(3)
-FieldAtParticle(firstPart:lastPart,4) = externalField(4)
-FieldAtParticle(firstPart:lastPart,5) = externalField(5)
+FieldAtParticle(:,firstPart:lastPart) = 0.
+FieldAtParticle(1,firstPart:lastPart) = externalField(1)
+FieldAtParticle(2,firstPart:lastPart) = externalField(2)
+FieldAtParticle(3,firstPart:lastPart) = externalField(3)
+FieldAtParticle(4,firstPart:lastPart) = externalField(4)
+FieldAtParticle(5,firstPart:lastPart) = externalField(5)
 
 IF (DoInterpolation) THEN                 ! skip if no self fields are calculated
   SELECT CASE(TRIM(InterpolationType))
@@ -212,7 +212,7 @@ IF (DoInterpolation) THEN                 ! skip if no self fields are calculate
         IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
         IF (PEM%Element(iPart).EQ.iElem) THEN
           IF (.NOT.DoRefMapping) THEN
-            CALL TensorProductInterpolation(PartState(iPart,1:3),PartPosRef(1:3,iPart),iElem,ForceMode=.TRUE.,PartID=iPart)
+            CALL TensorProductInterpolation(PartState(1:3,iPart),PartPosRef(1:3,iPart),iElem,ForceMode=.TRUE.,PartID=iPart)
           END IF
           !--- evaluate at Particle position
 #if USE_RW
@@ -224,7 +224,7 @@ IF (DoInterpolation) THEN                 ! skip if no self fields are calculate
 #if USE_RW
           END IF
 #endif
-          FieldAtParticle(iPart,1:PP_nVar) = FieldAtParticle(iPart,1:PP_nVar) + field(1:PP_nVar)
+          FieldAtParticle(1:PP_nVar,iPart) = FieldAtParticle(1:PP_nVar,iPart) + field(1:PP_nVar)
         END IF ! Element(iPart).EQ.iElem
       END DO ! iPart
     END DO ! iElem=1,PP_N
@@ -234,8 +234,8 @@ IF (DoInterpolation) THEN                 ! skip if no self fields are calculate
 !          IF(.NOT.PDM%ParticleInside(iPart))CYCLE
 !          IF(PEM%Element(iPart).EQ.iElem)THEN
 !            !--- evaluate at Particle position
-!            CALL GetPositionInRefElem(PartState(iPart,1:3),5,PP_N,U(1:5,:,:,:,iElem),field(1:5),iElem,iPart)
-!            FieldAtParticle(iPart,:) = FieldAtParticle(iPart,:) + field(1:6)
+!            CALL GetPositionInRefElem(PartState(1:3,iPart),5,PP_N,U(1:5,:,:,:,iElem),field(1:5),iElem,iPart)
+!            FieldAtParticle(:,iPart) = FieldAtParticle(:,iPart) + field(1:6)
 !          END IF ! Element(iPart).EQ.iElem
 !        END DO ! iPart
 !      END DO ! iElem=1,PP_nElems
@@ -298,7 +298,7 @@ IF (DoInterpolation) THEN                 ! skip if no self fields are calculate
   CASE('particle_position')
       ! particles have already been mapped in deposition, other eval routine used
       IF(.NOT.DoRefMapping)THEN
-        CALL TensorProductInterpolation(PartState(PartID,1:3),PartPosRef(1:3,PartID),ElemID,ForceMode=.TRUE.,PartID=PartID)
+        CALL TensorProductInterpolation(PartState(1:3,PartID),PartPosRef(PartID,1:3),ElemID,ForceMode=.TRUE.,PartID=PartID)
       END IF
       !--- evaluate at Particle position
       CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,PartID),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,ElemID),field(1:PP_nVar),ElemID)

@@ -577,8 +577,8 @@ __STAMP__&
         IPWRITE(UNIT_stdOut,*) ' Newton-Iter', NewtonIter
         IPWRITE(UNIT_stdOut,*) ' xi  ', xi(1:3)
         IPWRITE(UNIT_stdOut,*) ' PartPos', X_in
-        IPWRITE(UNIT_stdOut,*) ' PartVel', PartState(PartID,4:6),SQRT(PartState(PartID,4)**2 + PartState(PartID,5)**2 + &
-                                           PartState(PartID,6)**2)
+        IPWRITE(UNIT_stdOut,*) ' PartVel', PartState(4:6,PartID),SQRT(PartState(4,PartID)**2 + PartState(5,PartID)**2 + &
+                                           PartState(6  ,PartID)**2)
         IPWRITE(UNIT_stdOut,*) ' ElemID', ElemID+offSetElem
         IF(PRESENT(PartID)) IPWRITE(UNIT_stdOut,*) ' PartID', PartID
 

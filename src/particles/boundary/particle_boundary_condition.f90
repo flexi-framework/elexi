@@ -462,14 +462,14 @@ IF (IsAuxBC) THEN
       n_loc    = AuxBC_plane(AuxBCMap(AuxBCIdx))%n_vec
 
     CASE ('cylinder')
-      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      intersec = LastPartPos(1:3,PartID) + alpha*PartTrajectory
       r_vec    = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%r_vec
       axis     = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%axis
       n_loc    = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis) ) )
       IF (.NOT.AuxBC_cylinder(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
 
     CASE ('cone')
-      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      intersec = LastPartPos(1:3,PartID) + alpha*PartTrajectory
       r_vec    = AuxBC_cone(AuxBCMap(AuxBCIdx))%r_vec
       axis     = AuxBC_cone(AuxBCMap(AuxBCIdx))%axis
       cos2inv  = 1./COS(AuxBC_cone(AuxBCMap(AuxBCIdx))%halfangle)**2
@@ -477,7 +477,7 @@ IF (IsAuxBC) THEN
       IF (.NOT.AuxBC_cone(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
 
     CASE ('parabol')
-      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      intersec = LastPartPos(1:3,PartID) + alpha*PartTrajectory
       r_vec    = AuxBC_parabol(AuxBCMap(AuxBCIdx))%r_vec
       axis     = AuxBC_parabol(AuxBCMap(AuxBCIdx))%axis
       n_loc    = UNITVECTOR( intersec - ( r_vec + axis*(DOT_PRODUCT(intersec-r_vec,axis)+0.5*AuxBC_parabol(AuxBCMap(AuxBCIdx))%zfac) ) )
@@ -555,8 +555,8 @@ ELSE
 END IF !IsAuxBC
 
 ! Make sure we have to old velocity safe, then update particle velocity
-v_old                = PartState(PartID,4:6)
-PartState(PartID,4:6)= PartState(PartID,4:6)-2.*DOT_PRODUCT(PartState(PartID,4:6),n_loc)*n_loc + WallVelo
+v_old                = PartState(4:6,PartID)
+PartState(4:6,PartID)= PartState(4:6,PartID)-2.*DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc + WallVelo
 
 ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
 IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
@@ -609,13 +609,13 @@ END IF
 
 ! set particle position on face
 !--> first move the particle to the boundary
-LastPartPos(PartID,1:3) = LastPartPos(PartID,1:3) + PartTrajectory(1:3)*alpha
+LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !--> flip trajectory and move the remainder of the particle push
 PartTrajectory(1:3)     = PartTrajectory(1:3)-2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
-PartState(PartID,1:3)   = LastPartPos(PartID,1:3) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
+PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
 
 ! compute moved particle || rest of movement
-PartTrajectory          = PartState(PartID,1:3) - LastPartPos(PartID,1:3)
+PartTrajectory          = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
 lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)          &
                           +    PartTrajectory(2)*PartTrajectory(2)          &
                           +    PartTrajectory(3)*PartTrajectory(3) )
@@ -651,19 +651,19 @@ IF (.NOT.ALMOSTZERO(DOT_PRODUCT(WallVelo,WallVelo))) THEN
   ! Reconstruction in timedisc during push
   PDM%IsNewPart(PartID) = .TRUE.
 ELSE
-  Pt_temp(PartID,1:3) = Pt_temp(PartID,1:3)-2.*DOT_PRODUCT(Pt_temp(PartID,1:3),n_loc)*n_loc
+  Pt_temp(1:3,PartID) = Pt_temp(1:3,PartID)-2.*DOT_PRODUCT(Pt_temp(1:3,PartID),n_loc)*n_loc
   ! Reflect also force history for symmetry
   IF (Symmetry) THEN
-    Pt_temp(PartID,4:6) = Pt_temp(PartID,4:6)-2.*DOT_PRODUCT(Pt_temp(PartID,4:6),n_loc)*n_loc
+    Pt_temp(4:6,PartID) = Pt_temp(4:6,PartID)-2.*DOT_PRODUCT(Pt_temp(4:6,PartID),n_loc)*n_loc
   ! Produces best result compared to analytical solution in place capacitor ...
   ELSE
-    Pt_temp(PartID,4:6) = 0.
+    Pt_temp(4:6,PartID) = 0.
   END IF
 END IF
 
 ! Remove sliding low velocity particles
 IF (LowVeloRemove) THEN
-    v_magnitude   = SQRT(DOT_PRODUCT(PartState(PartID,4:6),PartState(PartID,4:6)))
+    v_magnitude   = SQRT(DOT_PRODUCT(PartState(4:6,PartID),PartState(4:6,PartID)))
 
     IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.(v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold))THEN
           Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
@@ -748,14 +748,14 @@ IF (IsAuxBC) THEN
       n_loc    = AuxBC_plane(AuxBCMap(AuxBCIdx))%n_vec
 
     CASE ('cylinder')
-      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      intersec = LastPartPos(1:3,PartID) + alpha*PartTrajectory
       r_vec    = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%r_vec
       axis     = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%axis
       n_loc    = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis) ) )
       IF (.NOT.AuxBC_cylinder(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
 
     CASE ('cone')
-      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      intersec = LastPartPos(1:3,PartID) + alpha*PartTrajectory
       r_vec    = AuxBC_cone(AuxBCMap(AuxBCIdx))%r_vec
       axis     = AuxBC_cone(AuxBCMap(AuxBCIdx))%axis
       cos2inv  = 1./COS(AuxBC_cone(AuxBCMap(AuxBCIdx))%halfangle)**2
@@ -763,7 +763,7 @@ IF (IsAuxBC) THEN
       IF (.NOT.AuxBC_cone(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
 
     CASE ('parabol')
-      intersec = LastPartPos(PartID,1:3) + alpha*PartTrajectory
+      intersec = LastPartPos(1:3,PartID) + alpha*PartTrajectory
       r_vec    = AuxBC_parabol(AuxBCMap(AuxBCIdx))%r_vec
       axis     = AuxBC_parabol(AuxBCMap(AuxBCIdx))%axis
       n_loc    = UNITVECTOR( intersec - ( r_vec + axis*(DOT_PRODUCT(intersec-r_vec,axis)+0.5*AuxBC_parabol(AuxBCMap(AuxBCIdx))%zfac) ) )
@@ -848,11 +848,11 @@ ELSE
 END IF !IsAuxBC
 
 ! Make sure we have the old velocity safe
-v_old   = PartState(PartID,4:6)
+v_old   = PartState(4:6,PartID)
 
 ! Respect coefficient of restitution
-v_norm  = DOT_PRODUCT(PartState(PartID,4:6),n_loc)*n_loc
-v_tang  = PartState(PartID,4:6) - v_norm
+v_norm  = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
+v_tang  = PartState(4:6,PartID) - v_norm
 
 ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
 IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                    &
@@ -964,7 +964,7 @@ END IF
 
 ! set particle position on face
 !--> first move the particle to the boundary
-LastPartPos(PartID,1:3) = LastPartPos(PartID,1:3) + PartTrajectory(1:3)*alpha
+LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !--> flip trajectory and move the remainder of the particle push
 !===================================================================================================================================
 ! > modified with coefficients of restitution
@@ -989,10 +989,10 @@ lengthPartTrajectory    = lengthPartTrajectory  *PartTrajectory_rescale
 PartTrajectory          = PartTrajectory        /PartTrajectory_rescale
 
 ! lengthPartTrajectory is coupled to alpha, so use the old value to non-dimensionalize it
-PartState(PartID,1:3)   = LastPartPos(PartID,1:3) + (1-alpha/lengthPartTrajectory_old) * PartTrajectory(1:3) * lengthPartTrajectory
+PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + (1-alpha/lengthPartTrajectory_old) * PartTrajectory(1:3) * lengthPartTrajectory
 
 ! compute moved particle || rest of movement
-PartTrajectory          = PartState(PartID,1:3) - LastPartPos(PartID,1:3)
+PartTrajectory          = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
 lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)                        &
                           +    PartTrajectory(2)*PartTrajectory(2)                        &
                           +    PartTrajectory(3)*PartTrajectory(3) )
@@ -1000,7 +1000,7 @@ PartTrajectory          = PartTrajectory/lengthPartTrajectory
 
 
 ! compute new particle velocity, modified with coefficents of restitution
-PartState(PartID,4:6)= eps_t * v_tang - eps_n * v_norm + WallVelo
+PartState(4:6,PartID)= eps_t * v_tang - eps_n * v_norm + WallVelo
 
 IF (EP_inUse) THEN
   ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
@@ -1031,19 +1031,19 @@ IF (.NOT.ALMOSTZERO(DOT_PRODUCT(WallVelo,WallVelo))) THEN
   ! Reconstruction in timedisc during push
   PDM%IsNewPart(PartID)=.TRUE.
 ELSE
-  Pt_temp(PartID,1:3)=Pt_temp(PartID,1:3)-2.*DOT_PRODUCT(Pt_temp(PartID,1:3),n_loc)*n_loc
+  Pt_temp(1:3,PartID)=Pt_temp(1:3,PartID)-2.*DOT_PRODUCT(Pt_temp(1:3,PartID),n_loc)*n_loc
   ! Reflect also force history for symmetry
   IF (Symmetry) THEN
-    Pt_temp(PartID,4:6)=Pt_temp(PartID,4:6)-2.*DOT_PRODUCT(Pt_temp(PartID,4:6),n_loc)*n_loc
+    Pt_temp(4:6,PartID)=Pt_temp(4:6,PartID)-2.*DOT_PRODUCT(Pt_temp(4:6,PartID),n_loc)*n_loc
   ! Produces best result compared to analytical solution in place capacitor ...
   ELSE
-    Pt_temp(PartID,4:6)=0.
+    Pt_temp(4:6,PartID)=0.
   END IF
 END IF
 
 ! Remove sliding low velocity particles
 IF (LowVeloRemove) THEN
-    v_magnitude   = SQRT(DOT_PRODUCT(PartState(PartID,4:6),PartState(PartID,4:6)))
+    v_magnitude   = SQRT(DOT_PRODUCT(PartState(4:6,PartID),PartState(4:6,PartID)))
 
     IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.(v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold))THEN
           Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
@@ -1138,26 +1138,26 @@ PVID = SidePeriodicType(SideID)
 IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
   IF(PartID.EQ.PARTOUT)THEN
     IPWRITE(UNIT_stdout,'(I0,A)') '     PeriodicBC: '
-    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' ParticlePosition: ',PartState(PartID,1:3)
-    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' LastPartPos:      ',LastPartPos(PartID,1:3)
+    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' ParticlePosition: ',PartState(1:3,PartID)
+    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' LastPartPos:      ',LastPartPos(1:3,PartID)
   END IF
 END IF
 #endif /*CODE_ANALYZE*/
 
 ! set last particle position on face
-LastPartPos(PartID,1:3) = LastPartPos(PartID,1:3) + PartTrajectory(1:3)*alpha
+LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 ! perform the periodic movement
-LastPartPos(PartID,1:3) = LastPartPos(PartID,1:3) + SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
+LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
 ! update particle positon after periodic BC
-PartState(PartID,1:3)   = LastPartPos(PartID,1:3) + (lengthPartTrajectory-alpha)*PartTrajectory
+PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + (lengthPartTrajectory-alpha)*PartTrajectory
 lengthPartTrajectory    = lengthPartTrajectory - alpha
 
 #if CODE_ANALYZE
 IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
   IF(PartID.EQ.PARTOUT)THEN
     IPWRITE(UNIT_stdout,'(I0,A)') '     PeriodicBC: '
-    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' ParticlePosition-pp: ',PartState(PartID,1:3)
-    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' LastPartPo-pp:       ',LastPartPos(PartID,1:3)
+    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' ParticlePosition-pp: ',PartState(1:3,PartID)
+    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' LastPartPo-pp:       ',LastPartPos(1:3,PartID)
   END IF
 END IF
 #endif /*CODE_ANALYZE*/
@@ -1252,7 +1252,7 @@ END IF
 SurfSideID=SurfMesh%SideIDToSurfID(SideID)
 
 ! Make sure we have to old velocity safe
-v_old = PartState(PartID,4:6)
+v_old = PartState(4:6,PartID)
 
 ! compute p and q for supersampling
 ! correction of xi and eta, can only be applied if xi & eta are not used later!

@@ -106,10 +106,10 @@ END IF
 #endif /*MPI*/
 
 ! set last particle position and element
-LastPartPos(    1:PDM%ParticleVecLength,1) = PartState(  1:PDM%ParticleVecLength,1)
-LastPartPos(    1:PDM%ParticleVecLength,2) = PartState(  1:PDM%ParticleVecLength,2)
-LastPartPos(    1:PDM%ParticleVecLength,3) = PartState(  1:PDM%ParticleVecLength,3)
-PEM%lastElement(1:PDM%ParticleVecLength)   = PEM%Element(1:PDM%ParticleVecLength)
+LastPartPos(  1,1:PDM%ParticleVecLength) = PartState(1,1:PDM%ParticleVecLength)
+LastPartPos(  2,1:PDM%ParticleVecLength) = PartState(2,1:PDM%ParticleVecLength)
+LastPartPos(  3,1:PDM%ParticleVecLength) = PartState(3,1:PDM%ParticleVecLength)
+PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(1:PDM%ParticleVecLength)
 
 ! forces on particles
 IF (t.GE.DelayTime) THEN
@@ -132,27 +132,27 @@ IF (t.GE.DelayTime) THEN
     IF (PDM%ParticleInside(iPart)) THEN
       !-- Tracer Particles
       IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
-        PartState(iPart,1) = PartState(iPart,1) + PartState(iPart,4)*dt
-        PartState(iPart,2) = PartState(iPart,2) + PartState(iPart,5)*dt
-        PartState(iPart,3) = PartState(iPart,3) + PartState(iPart,6)*dt
-        PartState(iPart,4) = Pt(iPart,1)
-        PartState(iPart,5) = Pt(iPart,2)
-        PartState(iPart,6) = Pt(iPart,3)
+        PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*dt
+        PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*dt
+        PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*dt
+        PartState(4,iPart) = Pt       (1,iPart)
+        PartState(5,iPart) = Pt       (2,iPart)
+        PartState(6,iPart) = Pt       (3,iPart)
       !-- Normal particles
       ELSE
         !-- Particle Push
         !-> Sanity Check Particle Pusher / WARNING: Might Cause Slowdowns
-        !IF (ANY(ISNAN(Pt(iPart,:)))) THEN
+        !IF (ANY(ISNAN(Pt(:,iPart)))) THEN
         !    IPWRITE(UNIT_stdOut,*) 'Found invalid particle push, ignoring. PartID:', iPart
         !    Pt(iPart,:) = 0
         !ENDIF
 
-        PartState(iPart,1) = PartState(iPart,1) + PartState(iPart,4)*dt
-        PartState(iPart,2) = PartState(iPart,2) + PartState(iPart,5)*dt
-        PartState(iPart,3) = PartState(iPart,3) + PartState(iPart,6)*dt
-        PartState(iPart,4) = PartState(iPart,4) + Pt(iPart,1)*dt
-        PartState(iPart,5) = PartState(iPart,5) + Pt(iPart,2)*dt
-        PartState(iPart,6) = PartState(iPart,6) + Pt(iPart,3)*dt
+        PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*dt
+        PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*dt
+        PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*dt
+        PartState(4,iPart) = PartState(4,iPart) + Pt       (1,iPart)*dt
+        PartState(5,iPart) = PartState(5,iPart) + Pt       (2,iPart)*dt
+        PartState(6,iPart) = PartState(6,iPart) + Pt       (3,iPart)*dt
 
         !-- Sanity Check Particle / WARNING: Might Cause Slowdowns
         !IF (ANY(ISNAN(PartState(iPart,:)))) THEN
@@ -251,10 +251,10 @@ END IF
 #endif /*USE_MPI*/
 
 ! set last particle position and element
-LastPartPos(    1:PDM%ParticleVecLength,1) = PartState(  1:PDM%ParticleVecLength,1)
-LastPartPos(    1:PDM%ParticleVecLength,2) = PartState(  1:PDM%ParticleVecLength,2)
-LastPartPos(    1:PDM%ParticleVecLength,3) = PartState(  1:PDM%ParticleVecLength,3)
-PEM%lastElement(1:PDM%ParticleVecLength)   = PEM%Element(1:PDM%ParticleVecLength)
+LastPartPos(  1,1:PDM%ParticleVecLength) = PartState(1,1:PDM%ParticleVecLength)
+LastPartPos(  2,1:PDM%ParticleVecLength) = PartState(2,1:PDM%ParticleVecLength)
+LastPartPos(  3,1:PDM%ParticleVecLength) = PartState(3,1:PDM%ParticleVecLength)
+PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(1:PDM%ParticleVecLength)
 
 IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
@@ -346,33 +346,33 @@ IF (t.GE.DelayTime) THEN
       !    Pt(iPart,:) = 0
       !ENDIF
 
-      Pt_temp(iPart,1)   = PartState(iPart,4)
-      Pt_temp(iPart,2)   = PartState(iPart,5)
-      Pt_temp(iPart,3)   = PartState(iPart,6)
-      Pt_temp(iPart,4)   = Pt(iPart,1)
-      Pt_temp(iPart,5)   = Pt(iPart,2)
-      Pt_temp(iPart,6)   = Pt(iPart,3)
-      PartState(iPart,1) = PartState(iPart,1) + PartState(iPart,4)*b_dt(1)
-      PartState(iPart,2) = PartState(iPart,2) + PartState(iPart,5)*b_dt(1)
-      PartState(iPart,3) = PartState(iPart,3) + PartState(iPart,6)*b_dt(1)
-      PartState(iPart,4) = PartState(iPart,4) + Pt(iPart,1)*b_dt(1)
-      PartState(iPart,5) = PartState(iPart,5) + Pt(iPart,2)*b_dt(1)
-      PartState(iPart,6) = PartState(iPart,6) + Pt(iPart,3)*b_dt(1)
+      Pt_temp  (1,iPart) = PartState(4,iPart)
+      Pt_temp  (2,iPart) = PartState(5,iPart)
+      Pt_temp  (3,iPart) = PartState(6,iPart)
+      Pt_temp  (4,iPart) = Pt       (1,iPart)
+      Pt_temp  (5,iPart) = Pt       (2,iPart)
+      Pt_temp  (6,iPart) = Pt       (3,iPart)
+      PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*b_dt(1)
+      PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*b_dt(1)
+      PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*b_dt(1)
+      PartState(4,iPart) = PartState(4,iPart) + Pt       (1,iPart)*b_dt(1)
+      PartState(5,iPart) = PartState(5,iPart) + Pt       (2,iPart)*b_dt(1)
+      PartState(6,iPart) = PartState(6,iPart) + Pt       (3,iPart)*b_dt(1)
 
       ! Sanity Check Particle / WARNING: Might Cause Slowdowns
-      !IF (ANY(ISNAN(PartState(iPart,:)))) THEN
+      !IF (ANY(ISNAN(PartState(:,iPart)))) THEN
       !    PDM%ParticleInside(iPart) = .FALSE.
       !    IPWRITE(UNIT_stdOut,*) 'Found invalid particle, removing. PartID:', iPart
       !ENDIF
 
       ! Try to find particles with too high velocity
-      !v_magnitude   = SQRT(DOT_PRODUCT(PartState(iPart,4:6),PartState(iPart,4:6)))
+      !v_magnitude   = SQRT(DOT_PRODUCT(PartState(4:6,iPart),PartState(4:6,iPart)))
 
       !IF ((Species(PartSpecies(iPart))%HighVeloThreshold.NE.0).AND.(v_magnitude.GT.Species(PartSpecies(iPart))%HighVeloThreshold))THEN
       !  part_err = .TRUE.
       !  IPWRITE(UNIT_stdOut,*) ' High velocity particle detected. Writing error state and removing particle ...'
-      !  IPWRITE(UNIT_stdout,*) ' LastPos:',  PartState(iPart,1:3)
-      !  IPWRITE(UNIT_stdout,*) ' Velocity:', PartState(iPart,4:6)
+      !  IPWRITE(UNIT_stdout,*) ' LastPos:',  PartState(1:3,iPart)
+      !  IPWRITE(UNIT_stdout,*) ' Velocity:', PartState(4:6,iPart)
       !  PDM%ParticleInside(iPart) = .FALSE.
       !END IF
 
@@ -468,10 +468,10 @@ END IF
 #endif /*USE_MPI*/
 
 ! set last particle position and element
-LastPartPos(    1:PDM%ParticleVecLength,1) = PartState(  1:PDM%ParticleVecLength,1)
-LastPartPos(    1:PDM%ParticleVecLength,2) = PartState(  1:PDM%ParticleVecLength,2)
-LastPartPos(    1:PDM%ParticleVecLength,3) = PartState(  1:PDM%ParticleVecLength,3)
-PEM%lastElement(1:PDM%ParticleVecLength)   = PEM%Element(1:PDM%ParticleVecLength)
+LastPartPos(  1,1:PDM%ParticleVecLength) = PartState(1,1:PDM%ParticleVecLength)
+LastPartPos(  2,1:PDM%ParticleVecLength) = PartState(2,1:PDM%ParticleVecLength)
+LastPartPos(  3,1:PDM%ParticleVecLength) = PartState(3,1:PDM%ParticleVecLength)
+PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(1:PDM%ParticleVecLength)
 
 IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
@@ -561,28 +561,28 @@ IF (t.GE.DelayTime) THEN
     IF (PDM%ParticleInside(iPart)) THEN
         ! "normal" particles are pushed with whole timestep
       IF (.NOT.PDM%IsNewPart(iPart)) THEN
-        Pt_temp(iPart,1) = PartState(iPart,4) - RKA(iStage) * Pt_temp(iPart,1)
-        Pt_temp(iPart,2) = PartState(iPart,5) - RKA(iStage) * Pt_temp(iPart,2)
-        Pt_temp(iPart,3) = PartState(iPart,6) - RKA(iStage) * Pt_temp(iPart,3)
-        Pt_temp(iPart,4) = Pt(iPart,1)        - RKA(iStage) * Pt_temp(iPart,4)
-        Pt_temp(iPart,5) = Pt(iPart,2)        - RKA(iStage) * Pt_temp(iPart,5)
-        Pt_temp(iPart,6) = Pt(iPart,3)        - RKA(iStage) * Pt_temp(iPart,6)
+        Pt_temp(1,iPart) = PartState(4,iPart) - RKA(iStage) * Pt_temp(1,iPart)
+        Pt_temp(2,iPart) = PartState(5,iPart) - RKA(iStage) * Pt_temp(2,iPart)
+        Pt_temp(3,iPart) = PartState(6,iPart) - RKA(iStage) * Pt_temp(3,iPart)
+        Pt_temp(4,iPart) = Pt       (1,iPart) - RKA(iStage) * Pt_temp(4,iPart)
+        Pt_temp(5,iPart) = Pt       (2,iPart) - RKA(iStage) * Pt_temp(5,iPart)
+        Pt_temp(6,iPart) = Pt       (3,iPart) - RKA(iStage) * Pt_temp(6,iPart)
 
         ! Sanity Check Particle Pusher / WARNING: Might Cause Slowdowns
-        !IF (ANY(ISNAN(Pt(iPart,:)))) THEN
+        !IF (ANY(ISNAN(Pt(:,iPart)))) THEN
         !  IPWRITE(UNIT_stdOut,*) 'Found invalid particle push, ignoring. PartID:', iPart
-        !  Pt(iPart,:) = 0
+        !  Pt(:,iPart) = 0
         !ENDIF
 
-        PartState(iPart,1) = PartState(iPart,1) + Pt_temp(iPart,1)*b_dt(iStage)
-        PartState(iPart,2) = PartState(iPart,2) + Pt_temp(iPart,2)*b_dt(iStage)
-        PartState(iPart,3) = PartState(iPart,3) + Pt_temp(iPart,3)*b_dt(iStage)
-        PartState(iPart,4) = PartState(iPart,4) + Pt_temp(iPart,4)*b_dt(iStage)
-        PartState(iPart,5) = PartState(iPart,5) + Pt_temp(iPart,5)*b_dt(iStage)
-        PartState(iPart,6) = PartState(iPart,6) + Pt_temp(iPart,6)*b_dt(iStage)
+        PartState(1,iPart) = PartState(1,iPart) + Pt_temp(1,iPart)*b_dt(iStage)
+        PartState(2,iPart) = PartState(2,iPart) + Pt_temp(2,iPart)*b_dt(iStage)
+        PartState(3,iPart) = PartState(3,iPart) + Pt_temp(3,iPart)*b_dt(iStage)
+        PartState(4,iPart) = PartState(4,iPart) + Pt_temp(4,iPart)*b_dt(iStage)
+        PartState(5,iPart) = PartState(5,iPart) + Pt_temp(5,iPart)*b_dt(iStage)
+        PartState(6,iPart) = PartState(6,iPart) + Pt_temp(6,iPart)*b_dt(iStage)
 
         ! Sanity Check Particle / WARNING: Might Cause Slowdowns
-        !IF (ANY(ISNAN(PartState(iPart,:)))) THEN
+        !IF (ANY(ISNAN(PartState(:,iPart)))) THEN
         !  PDM%ParticleInside(iPart) = .FALSE.
         !  IPWRITE(UNIT_stdOut,*) 'Found invalid particle, removing. PartID:', iPart
         !ENDIF
@@ -592,12 +592,12 @@ IF (t.GE.DelayTime) THEN
         RandVal         = 1.
         Pa_rebuilt(:,:) = 0.
         DO iStage_loc=1,iStage
-          Pa_rebuilt(1:3,iStage_loc)=Pa_rebuilt_coeff(iStage_loc)*Pt(iPart,1:3)
+          Pa_rebuilt(1:3,iStage_loc)=Pa_rebuilt_coeff(iStage_loc)*Pt(1:3,iPart)
         END DO
         v_rebuilt(:,:)=0.
         DO iStage_loc=iStage-1,0,-1
           IF (iStage_loc.EQ.iStage-1) THEN
-            v_rebuilt(1:3,iStage_loc) = PartState(iPart,4:6) + (RandVal-1.)*b_dt(iStage_loc+1)*Pa_rebuilt(1:3,iStage_loc+1)
+            v_rebuilt(1:3,iStage_loc) = PartState(4:6,iPart) + (RandVal-1.)*b_dt(iStage_loc+1)*Pa_rebuilt(1:3,iStage_loc+1)
           ELSE
             v_rebuilt(1:3,iStage_loc) = v_rebuilt(1:3,iStage_loc+1) - b_dt(iStage_loc+1)*Pa_rebuilt(1:3,iStage_loc+1)
           END IF
@@ -612,19 +612,19 @@ IF (t.GE.DelayTime) THEN
         END DO
 
         ! Pt_temp is rebuilt, do particle push
-        Pt_temp(iPart,1:3) = Pv_rebuilt(1:3,iStage)
-        Pt_temp(iPart,4:6) = Pa_rebuilt(1:3,iStage)
-        PartState(iPart,1) = PartState(iPart,1) + Pt_temp(iPart,1)*b_dt(iStage)*RandVal
-        PartState(iPart,2) = PartState(iPart,2) + Pt_temp(iPart,2)*b_dt(iStage)*RandVal
-        PartState(iPart,3) = PartState(iPart,3) + Pt_temp(iPart,3)*b_dt(iStage)*RandVal
-        PartState(iPart,4) = PartState(iPart,4) + Pt_temp(iPart,4)*b_dt(iStage)*RandVal
-        PartState(iPart,5) = PartState(iPart,5) + Pt_temp(iPart,5)*b_dt(iStage)*RandVal
-        PartState(iPart,6) = PartState(iPart,6) + Pt_temp(iPart,6)*b_dt(iStage)*RandVal
+        Pt_temp  (1:3,iPart) = Pv_rebuilt(1:3,iStage)
+        Pt_temp  (4:6,iPart) = Pa_rebuilt(1:3,iStage)
+        PartState(1  ,iPart) = PartState(1,iPart) + Pt_temp(1,iPart)*b_dt(iStage)*RandVal
+        PartState(2  ,iPart) = PartState(2,iPart) + Pt_temp(2,iPart)*b_dt(iStage)*RandVal
+        PartState(3  ,iPart) = PartState(3,iPart) + Pt_temp(3,iPart)*b_dt(iStage)*RandVal
+        PartState(4  ,iPart) = PartState(4,iPart) + Pt_temp(4,iPart)*b_dt(iStage)*RandVal
+        PartState(5  ,iPart) = PartState(5,iPart) + Pt_temp(5,iPart)*b_dt(iStage)*RandVal
+        PartState(6  ,iPart) = PartState(6,iPart) + Pt_temp(6,iPart)*b_dt(iStage)*RandVal
 
         PDM%IsNewPart(iPart) = .FALSE. !change to false: Pt_temp is now rebuilt...
 
         ! Sanity Check Particle / WARNING: Might Cause Slowdowns
-        !IF (ANY(ISNAN(PartState(iPart,:)))) THEN
+        !IF (ANY(ISNAN(PartState(:,iPart)))) THEN
         !  PDM%ParticleInside(iPart) = .FALSE.
         !  IPWRITE(UNIT_stdOut,*) 'Found invalid particle, removing. PartID:', iPart
         !ENDIF
@@ -632,13 +632,13 @@ IF (t.GE.DelayTime) THEN
       END IF !IsNewPart
 
       ! Try to find particles with too high velocity
-      !v_magnitude   = SQRT(DOT_PRODUCT(PartState(iPart,4:6),PartState(iPart,4:6)))
+      !v_magnitude   = SQRT(DOT_PRODUCT(PartState(4:6,iPart),PartState(4:6,iPart)))
 
       !IF ((Species(PartSpecies(iPart))%HighVeloThreshold.NE.0).AND.(v_magnitude.GT.Species(PartSpecies(iPart))%HighVeloThreshold))THEN
       !  part_err = .TRUE.
       !  IPWRITE(UNIT_stdOut,*) ' High velocity particle detected. Writing error state and removing particle ...'
-      !  IPWRITE(UNIT_stdout,*) ' LastPos:',  PartState(iPart,1:3)
-      !  IPWRITE(UNIT_stdout,*) ' Velocity:', PartState(iPart,4:6)
+      !  IPWRITE(UNIT_stdout,*) ' LastPos:',  PartState(1:3,iPart)
+      !  IPWRITE(UNIT_stdout,*) ' Velocity:', PartState(4:6,iPart)
       !  PDM%ParticleInside(iPart) = .FALSE.
       !END IF
     END IF

@@ -1132,7 +1132,7 @@ ELSE
 
     ! Check if we exceeded the maximum particle number
     IF (ParticleIndexNbr.NE.0) THEN
-       PartState(ParticleIndexNbr,1:DimSend) = particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+DimSend)
+       PartState(1:DimSend,ParticleIndexNbr) = particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+DimSend)
        PDM%ParticleInside(ParticleIndexNbr)  = .TRUE.
 
        ! Match particle to exact element
@@ -1325,7 +1325,7 @@ CASE('random')
       CALL RANDOM_NUMBER(RandVal)
       RandVal(:) = RandVal(:) - 0.5
       RandVal(:) = RandVal(:)/SQRT(RandVal(1)**2+RandVal(2)**2+RandVal(3)**2)
-      PartState(PositionNbr,4:6) = RandVal(1:3) * VeloIC
+      PartState(4:6,PositionNbr) = RandVal(1:3) * VeloIC
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
     END IF
@@ -1340,7 +1340,7 @@ CASE('constant')
   DO WHILE (i .le. NbrOfParticle)
     PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
     IF (PositionNbr .ne. 0) THEN
-      PartState(PositionNbr,4:6) = VeloVecIC(1:3) * VeloIC
+      PartState(4:6,PositionNbr) = VeloVecIC(1:3) * VeloIC
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
     END IF
@@ -1362,7 +1362,7 @@ CASE('constant_turbulent')
           RandVal(j) = RandNormal()
       END DO
       ! Superposition mean and turbulent velocity components
-      PartState(PositionNbr,4:6) = VeloVecIC(1:3) * VeloIC + RandVal(1:3) * VeloTurbIC * VeloIC
+      PartState(4:6,PositionNbr) = VeloVecIC(1:3) * VeloIC + RandVal(1:3) * VeloTurbIC * VeloIC
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
     END IF
@@ -1377,11 +1377,11 @@ CASE('radial_constant')
   DO WHILE (i .le. NbrOfParticle)
     PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
     IF (PositionNbr .ne. 0) THEN
-      Radius(1:3) = PartState(PositionNbr,1:3) - BasePointIC(1:3)
+      Radius(1:3) = PartState(1:3,PositionNbr) - BasePointIC(1:3)
       ! Unity radius
       ! Radius(1:3) = Radius(1:3) / RadiusIC
       Radius(1:3) = Radius(1:3) / SQRT(Radius(1)**2+Radius(2)**2+Radius(3)**2)
-      PartState(PositionNbr,4:6) = Radius(1:3) * VeloIC
+      PartState(4:6,PositionNbr) = Radius(1:3) * VeloIC
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
     END IF
@@ -1405,11 +1405,11 @@ CASE('fluid')
 
   ! Get background field
   FieldAtParticle(:,:) = 0.
-  FieldAtParticle(:,1) = externalField(1)
-  FieldAtParticle(:,2) = externalField(2)
-  FieldAtParticle(:,3) = externalField(3)
-  FieldAtParticle(:,4) = externalField(4)
-  FieldAtParticle(:,5) = externalField(5)
+  FieldAtParticle(1,:) = externalField(1)
+  FieldAtParticle(2,:) = externalField(2)
+  FieldAtParticle(3,:) = externalField(3)
+  FieldAtParticle(4,:) = externalField(4)
+  FieldAtParticle(5,:) = externalField(5)
 
   ! Interpolate fluid and field to particle
   DO WHILE (i .LE. NbrOfParticle)
@@ -1422,19 +1422,19 @@ CASE('fluid')
           iElem = PEM%Element(PositionNbr)
           ! get position in reference space if not already calculated
           IF (.NOT.DoRefMapping) THEN
-              CALL TensorProductInterpolation(PartState(PositionNbr,1:3),PartPosRef(1:3,PositionNbr),iElem)
+              CALL TensorProductInterpolation(PartState(1:3,PositionNbr),PartPosRef(1:3,PositionNbr),iElem)
           END IF
           ! evaluate at Particle position
           CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,iElem),field(1:PP_nVar),iElem)
-          FieldAtParticle(PositionNbr,1:PP_nVar) = FieldAtParticle(PositionNbr,1:PP_nVar) + field(1:PP_nVar)
+          FieldAtParticle(1:PP_nVar,PositionNbr) = FieldAtParticle(1:PP_nVar,PositionNbr) + field(1:PP_nVar)
         CASE DEFAULT
           CALL abort(__STAMP__, 'ERROR: Unknown InterpolationType in particle emission!')
       END SELECT
 
       ! Calculate velocity from momentum and density
-      PartState(PositionNbr,4) = FieldAtParticle(PositionNbr,2)/FieldAtParticle(PositionNbr,1)
-      PartState(PositionNbr,5) = FieldAtParticle(PositionNbr,3)/FieldAtParticle(PositionNbr,1)
-      PartState(PositionNbr,6) = FieldAtParticle(PositionNbr,4)/FieldAtParticle(PositionNbr,1)
+      PartState(4,PositionNbr) = FieldAtParticle(2,PositionNbr)/FieldAtParticle(1,PositionNbr)
+      PartState(5,PositionNbr) = FieldAtParticle(3,PositionNbr)/FieldAtParticle(1,PositionNbr)
+      PartState(6,PositionNbr) = FieldAtParticle(4,PositionNbr)/FieldAtParticle(1,PositionNbr)
 
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0

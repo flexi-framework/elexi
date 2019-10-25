@@ -213,7 +213,7 @@ REAL                              :: e_kin_old,e_kin_new
 
 !----  Calculating values before and after reflection
 v_magnitude_old   = SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
-v_magnitude_new   = SQRT(DOT_PRODUCT(PartState(PartID,4:6),PartState(PartID,4:6)))
+v_magnitude_new   = SQRT(DOT_PRODUCT(PartState(4:6,PartID),PartState(4:6,PartID)))
 e_kin_old         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_old**2.
 e_kin_new         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_new**2.
 !e_kin_loss        = e_kin_old-e_kin_new
@@ -229,7 +229,7 @@ e_kin_new         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_new**2.
 ! Record individual impact
 EP_Impacts = EP_Impacts + 1
 
-EP_Data(1:3,EP_Impacts) = LastPartPos(PartID,1:3)
+EP_Data(1:3,EP_Impacts) = LastPartPos(1:3,PartID)
 EP_Data(4:6,EP_Impacts) = v_old(1:3)
 EP_Data(7,EP_Impacts)   = REAL(PartSpecies(PartID))
 EP_Data(8,EP_Impacts)   = REAL(BCSideID)
@@ -402,11 +402,7 @@ END IF
   FileString=TRIM(FileName)//'.h5'
 
   IF(MPIRoot)THEN
-#if USE_MPI
     CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-#else
-    CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-#endif
     CALL WriteAttributeToHDF5(File_ID,'VarNamesErosion',EPDataSize,StrArray=StrVarNames)
     CALL CloseDataFile()
   END IF

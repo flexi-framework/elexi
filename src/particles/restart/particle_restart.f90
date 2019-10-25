@@ -124,12 +124,12 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL ReadArray('PartData',2,(/PartDataSize,locnPart/),offsetnPart,2,RealArray=PartData)!,&
                            !xfer_mode_independent=.TRUE.)
     IF (locnPart.GT.0) THEN
-      PartState(1:locnPart,1)   = PartData(1,offsetnPart+1:offsetnPart+locnPart)
-      PartState(1:locnPart,2)   = PartData(2,offsetnPart+1:offsetnPart+locnPart)
-      PartState(1:locnPart,3)   = PartData(3,offsetnPart+1:offsetnPart+locnPart)
-      PartState(1:locnPart,4)   = PartData(4,offsetnPart+1:offsetnPart+locnPart)
-      PartState(1:locnPart,5)   = PartData(5,offsetnPart+1:offsetnPart+locnPart)
-      PartState(1:locnPart,6)   = PartData(6,offsetnPart+1:offsetnPart+locnPart)
+      PartState(1,1:locnPart)   = PartData(1,offsetnPart+1:offsetnPart+locnPart)
+      PartState(2,1:locnPart)   = PartData(2,offsetnPart+1:offsetnPart+locnPart)
+      PartState(3,1:locnPart)   = PartData(3,offsetnPart+1:offsetnPart+locnPart)
+      PartState(4,1:locnPart)   = PartData(4,offsetnPart+1:offsetnPart+locnPart)
+      PartState(5,1:locnPart)   = PartData(5,offsetnPart+1:offsetnPart+locnPart)
+      PartState(6,1:locnPart)   = PartData(6,offsetnPart+1:offsetnPart+locnPart)
       PartSpecies(1:locnPart)   = INT(PartData(7,offsetnPart+1:offsetnPart+locnPart))
       IF (PartDataSize.EQ.8) THEN
           PartReflCount(1:locnPart) = INT(PartData(8,offsetnPart+1:offsetnPart+locnPart))
@@ -171,7 +171,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     COUNTER2 = 0
     IF(DoRefMapping) THEN
       DO i = 1,PDM%ParticleVecLength
-        CALL TensorProductInterpolation(PartState(i,1:3),Xi,PEM%Element(i))
+        CALL TensorProductInterpolation(PartState(1:3,i),Xi,PEM%Element(i))
         IF(ALL(ABS(Xi).LE.EpsOneCell(PEM%Element(i)))) THEN ! particle inside
           InElementCheck=.TRUE.
           PartPosRef(1:3,i)=Xi
@@ -192,7 +192,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       END DO
     ELSE ! no Ref Mapping
       DO i = 1,PDM%ParticleVecLength
-        CALL TensorProductInterpolation(PartState(i,1:3),Xi,PEM%Element(i))
+        CALL TensorProductInterpolation(PartState(1:3,i),Xi,PEM%Element(i))
         IF(ALL(ABS(Xi).LE.1.0)) THEN ! particle inside
           InElementCheck=.TRUE.
           IF(ALLOCATED(PartPosRef)) PartPosRef(1:3,i)=Xi
@@ -223,7 +223,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       COUNTER = 0
       DO i = 1, PDM%ParticleVecLength
         IF (.NOT.PDM%ParticleInside(i)) THEN
-          SendBuff(COUNTER+1:COUNTER+6) = PartState(i,1:6)
+          SendBuff(COUNTER+1:COUNTER+6) = PartState(1:6,i)
           SendBuff(COUNTER+7)           = REAL(PartSpecies(i))
           COUNTER = COUNTER + PartDataSize
         END IF
@@ -242,7 +242,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       CurrentPartNum = PDM%ParticleVecLength+1
       COUNTER = 0
       DO i = 1, SUM(LostParts)
-        PartState(CurrentPartNum,1:6) = RecBuff(COUNTER+1:COUNTER+6)
+        PartState(1:6,CurrentPartNum) = RecBuff(COUNTER+1:COUNTER+6)
         PDM%ParticleInside(CurrentPartNum) = .true.
         IF(DoRefMapping)THEN
           CALL SingleParticleToExactElement(CurrentPartNum,doHALO=.FALSE.,initFix=.FALSE.,doRelocate=.FALSE.)

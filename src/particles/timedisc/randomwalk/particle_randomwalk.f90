@@ -87,8 +87,8 @@ INTEGER                          :: iPart
 
 ! Iterate over all particles and add random walk to mean push
 DO iPart = 1,PDM%ParticleVecLength
-  IF (PDM%ParticleInside(iPart).AND.(t.GT.TurbPartState(iPart,4))) THEN
-    CALL ParticleRandomWalkPush(iPart,FieldAtParticle(iPart,1:PP_nVar))
+  IF (PDM%ParticleInside(iPart).AND.(t.GT.TurbPartState(4,iPart))) THEN
+    CALL ParticleRandomWalkPush(iPart,FieldAtParticle(1:PP_nVar,iPart))
   END IF
 END DO
 
@@ -137,8 +137,8 @@ CASE('none')
     ! Do nothing
 
 CASE('Gosman')
-    tke     = TurbFieldAtParticle(PartID,1)
-    epsturb = TurbFieldAtParticle(PartID,2)
+    tke     = TurbFieldAtParticle(1,PartID)
+    epsturb = TurbFieldAtParticle(2,PartID)
 
     ! SST renamed C_mu, change back for clarity
     C_mu    = betaStar
@@ -153,9 +153,9 @@ CASE('Gosman')
     rho_p   = Species(PartSpecies(PartID))%DensityIC
 
     ! Droplet relaxation time
-    udiff   = PartState(PartID,4) - (FieldAtParticle(2)/FieldAtParticle(1))
-    vdiff   = PartState(PartID,5) - (FieldAtParticle(3)/FieldAtParticle(1))
-    wdiff   = PartState(PartID,6) - (FieldAtParticle(4)/FieldAtParticle(1))
+    udiff   = PartState(4,PartID) - (FieldAtParticle(2)/FieldAtParticle(1))
+    vdiff   = PartState(5,PartID) - (FieldAtParticle(3)/FieldAtParticle(1))
+    wdiff   = PartState(6,PartID) - (FieldAtParticle(4)/FieldAtParticle(1))
 
     ! Get nu to stay in same equation format
     nu      = mu0/FieldAtParticle(1)
@@ -193,10 +193,10 @@ CASE('Gosman')
     END IF
 
     ! Calculate random walk push. We are isentropic, so use vectors
-    TurbPartState(PartID,1:3) = lambda(1:3)*udash
+    TurbPartState(1:3,PartID) = lambda(1:3)*udash
 
     ! Save time when eddy expires
-    TurbPartState(PartID,4)   = t + t_int
+    TurbPartState(4,PartID)   = t + t_int
 
 CASE DEFAULT
     CALL abort(__STAMP__, ' No particle random walk model given. This should not happen.')

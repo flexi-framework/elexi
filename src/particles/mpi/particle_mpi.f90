@@ -384,7 +384,7 @@ DO iProc=1, PartMPI%nMPINeighbors
       ! fill content
       ElemID=PEM%Element(iPart)
       ! position and velocity in physical space
-      PartSendBuf(iProc)%content(1+iPos:6+iPos) = PartState(iPart,1:6)
+      PartSendBuf(iProc)%content(1+iPos:6+iPos) = PartState(1:6,iPart)
       ! position in reference space (if required)
       IF(DoRefMapping) THEN ! + deposition type....
         PartSendBuf(iProc)%content(7+iPos:9+iPos) = PartPosRef(1:3,iPart)
@@ -413,7 +413,7 @@ DO iProc=1, PartMPI%nMPINeighbors
       jPos=jPos+1
 
       ! Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
-      PartSendBuf(iProc)%content(1+jPos:6+jPos) = Pt_temp(iPart,1:6)
+      PartSendBuf(iProc)%content(1+jPos:6+jPos) = Pt_temp(1:6,iPart)
       IF (PDM%IsNewPart(iPart)) THEN
         PartSendBuf(iProc)%content(7+jPos) = 1.
       ELSE
@@ -462,9 +462,9 @@ PartMPIExchange%nMPIParticles=SUM(PartMPIExchange%nPartsRecv(1,:))
 
 DO iPart=1,PDM%ParticleVecLength
   IF(PartTargetProc(iPart).EQ.-1) CYCLE
-  PartState(iPart,1:6)=0.
+  PartState(1:6,iPart)=0.
   PartSpecies(iPart)=0
-  Pt_temp(iPart,1:6)=0.
+  Pt_temp(1:6,iPart)=0.
 END DO ! iPart=1,PDM%ParticleVecLength
 
 
@@ -593,7 +593,7 @@ DO iProc=1,PartMPI%nMPINeighbors
     IF(PartID.EQ.0) &
       CALL abort(__STAMP__,' Error in ParticleExchange_parallel. Corrupted list: PIC%nextFreePosition', nRecv)
     ! position and velocity in physical space
-    PartState(PartID,1:6)   = PartRecvBuf(iProc)%content( 1+iPos: 6+iPos)
+    PartState(1:6,PartID)   = PartRecvBuf(iProc)%content( 1+iPos: 6+iPos)
     ! position in reference space (if required)
     IF(DoRefMapping) THEN
       PartPosRef(1:3,PartID) = PartRecvBuf(iProc)%content(7+iPos: 9+iPos)
@@ -622,7 +622,7 @@ DO iProc=1,PartMPI%nMPINeighbors
     jPos=jPos+1
 
     ! Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
-    Pt_temp(PartID,1:6)     = PartRecvBuf(iProc)%content( 1+jPos:6+jPos)
+    Pt_temp(1:6,PartID)     = PartRecvBuf(iProc)%content( 1+jPos:6+jPos)
     IF ( INT(PartRecvBuf(iProc)%content( 7+jPos)) .EQ. 1) THEN
       PDM%IsNewPart(PartID)=.TRUE.
     ELSE IF ( INT(PartRecvBuf(iProc)%content( 7+jPos)) .EQ. 0) THEN

@@ -34,17 +34,17 @@ REAL                  :: dt_max_particles                                    ! M
 !INTEGER               :: WeirdElems                                          ! Number of Weird Elements (=Elements which are folded
                                                                               ! into themselves)
 
-REAL    , ALLOCATABLE :: PartState(:,:)                                      ! (1:NParts,1:6) with 2nd index: x,y,z,vx,vy,vz
+REAL    , ALLOCATABLE :: PartState(:,:)                                      ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz
 #if USE_RW
-REAL    , ALLOCATABLE :: TurbPartState(:,:)                                  ! (1:NParts,1:4) with 2nd index vx',vy',vz',t_remaining
+REAL    , ALLOCATABLE :: TurbPartState(:,:)                                  ! (1:4,1:NParts) with 2nd index vx',vy',vz',t_remaining
 #endif
 REAL    , ALLOCATABLE :: PartPosRef(:,:)                                     ! (1:3,1:NParts) particles pos mapped to -1|1 space
-INTEGER , ALLOCATABLE :: PartPosGauss(:,:)                                   ! (1:NParts,1:3) Gauss point localization of particles
+INTEGER , ALLOCATABLE :: PartPosGauss(:,:)                                   ! (1:3,1:NParts) Gauss point localization of particles
 REAL    , ALLOCATABLE :: Pt(:,:)                                             ! Derivative of PartState (vx,xy,vz) only
 INTEGER , ALLOCATABLE :: PartReflCount(:)                                    ! Counter of number of reflections
 
 REAL    , ALLOCATABLE :: Pt_temp(:,:)                                        ! LSERK4 additional derivative of PartState                                                          ! (1:NParts,1:6) with 2nd index: x,y,z,vx,vy,vz
-REAL    , ALLOCATABLE :: LastPartPos(:,:)                                    ! (1:NParts,1:3) with 2nd index: x,y,z
+REAL    , ALLOCATABLE :: LastPartPos(:,:)                                    ! (1:3,1:NParts) with 2nd index: x,y,z
 INTEGER , ALLOCATABLE :: PartSpecies(:)                                      ! (1:NParts)
 INTEGER               :: PartRHSMethod
 REAL                  :: PartGravity(3)

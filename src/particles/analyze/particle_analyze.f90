@@ -190,9 +190,9 @@ Ekin = 0.!d0
 IF (nSpecAnalyze.GT.1) THEN
   DO i=1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(i)) THEN
-      partV2 = PartState(i,4) * PartState(i,4) &
-              + PartState(i,5) * PartState(i,5) &
-              + PartState(i,6) * PartState(i,6)
+      partV2 = PartState(4,i) * PartState(4,i) &
+             + PartState(5,i) * PartState(5,i) &
+             + PartState(6,i) * PartState(6,i)
           Ekin(nSpecAnalyze)   = Ekin(nSpecAnalyze)   + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
           Ekin(PartSpecies(i)) = Ekin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
     END IF ! (PDM%ParticleInside(i))
@@ -201,9 +201,9 @@ IF (nSpecAnalyze.GT.1) THEN
 ELSE ! nSpecAnalyze = 1 : only 1 species
   DO i=1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(i)) THEN
-      partV2 = PartState(i,4) * PartState(i,4) &
-             + PartState(i,5) * PartState(i,5) &
-             + PartState(i,6) * PartState(i,6)
+      partV2 = PartState(4,i) * PartState(4,i) &
+             + PartState(5,i) * PartState(5,i) &
+             + PartState(6,i) * PartState(6,i)
           Ekin(PartSpecies(i)) = Ekin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
     END IF ! particle inside
   END DO ! particleveclength
@@ -241,9 +241,9 @@ REAL                               :: CalcEkinPart
 REAL                               :: partV2, Ekin !,gamma1
 !===================================================================================================================================
 
-  partV2 = PartState(iPart,4) * PartState(iPart,4) &
-         + PartState(iPart,5) * PartState(iPart,5) &
-         + PartState(iPart,6) * PartState(iPart,6)
+  partV2 = PartState(4,iPart) * PartState(4,iPart) &
+         + PartState(5,iPart) * PartState(5,iPart) &
+         + PartState(6,iPart) * PartState(6,iPart)
 
   Ekin= 0.5*Species(PartSpecies(iPart))%MassIC*partV2
   CalcEkinPart=Ekin
@@ -283,6 +283,7 @@ iunit=GETFREEUNIT()
 TrackingFilename = ('ParticlePosition.csv')
 
 INQUIRE(FILE = TrackingFilename, EXIST=fexist)
+
 IF(.NOT.fexist) THEN
 #if USE_MPI
  IF(PartMPI%MPIRoot)THEN
@@ -311,27 +312,34 @@ IF(.NOT.fexist) THEN
     CLOSE(iunit)
 #if USE_MPI
   END IF
+  ! Wait with all procs until the file is available.
+  ! WARNING: Global sync point, but this routine is only supposed to work for debug anyways
+  CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 END IF
 
-iunit=GETFREEUNIT()
-OPEN(unit=iunit,FILE=TrackingFileName,FORM='Formatted',POSITION='APPEND',STATUS='old')
-!CALL FLUSH (iunit)
-DO i=1,PDM%ParticleVecLength
-  IF (PDM%ParticleInside(i)) THEN
-    WRITE(iunit,104,ADVANCE='NO') TIME
-    WRITE(iunit,'(A1)',ADVANCE='NO') ','
-    WRITE(iunit,'(I12)',ADVANCE='NO') i
-    DO iPartState=1,6
+! Check again, we might be on the other proc and only see the file now
+INQUIRE(FILE = TrackingFilename, EXIST=fexist)
+IF(fexist) THEN
+  iunit=GETFREEUNIT()
+  OPEN(unit=iunit,FILE=TrackingFileName,FORM='Formatted',POSITION='APPEND',STATUS='old')
+  !CALL FLUSH (iunit)
+  DO i=1,PDM%ParticleVecLength
+    IF (PDM%ParticleInside(i)) THEN
+      WRITE(iunit,104,ADVANCE='NO') TIME
       WRITE(iunit,'(A1)',ADVANCE='NO') ','
-      WRITE(iunit,104,ADVANCE='NO') PartState(i,iPartState)
-    END DO
-    WRITE(iunit,'(A1)',ADVANCE='NO') ','
-    WRITE(iunit,'(I12)',ADVANCE='NO') PEM%Element(i)
-    WRITE(iunit,'(A)') ' '
-   END IF
-END DO
-CLOSE(iunit)
+      WRITE(iunit,'(I12)',ADVANCE='NO') i
+      DO iPartState=1,6
+        WRITE(iunit,'(A1)',ADVANCE='NO') ','
+        WRITE(iunit,104,ADVANCE='NO') PartState(iPartState,i)
+      END DO
+      WRITE(iunit,'(A1)',ADVANCE='NO') ','
+      WRITE(iunit,'(I12)',ADVANCE='NO') PEM%Element(i)
+      WRITE(iunit,'(A)') ' '
+     END IF
+  END DO
+  CLOSE(iunit)
+END IF
 
 IF (printDiff) THEN
   diffPos=0.

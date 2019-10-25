@@ -388,53 +388,49 @@ printRandomSeeds      = GETLOGICAL(  'printRandomSeeds','.FALSE.')
 PDM%maxParticleNumber = GETINT(      'Part-maxParticleNumber','1')
 PartGravity           = GETREALARRAY('Part-Gravity'          ,3  ,'0. , 0. , 0.')
 
-! Allocate and nullify array for Runge-Kutta time derivative
-ALLOCATE(Pt_temp(1:PDM%maxParticleNumber,1:6), STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) &
-  CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate Pt_temp!')
-Pt_temp=0.
-
-! Allocate and invalidate array for particle position in reference coordinates
-ALLOCATE(PartPosRef(1:3,PDM%MaxParticleNumber), STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) &
-  CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate PartPosRef!')
-PartPosRef=-888.
-
 ! Allocate array to hold particle properties
-ALLOCATE(PartState(           1:PDM%maxParticleNumber,1:6),    &
+ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
 #if USE_RW
-         TurbPartState(       1:PDM%maxParticleNumber,1:4),    &
+         TurbPartState(   1:4,1:PDM%maxParticleNumber),    &
 #endif
-         PartReflCount(       1:PDM%maxParticleNumber),        &
-         LastPartPos(         1:PDM%maxParticleNumber,1:3),    &
-         Pt(                  1:PDM%maxParticleNumber,1:3),    &
-         PartSpecies(         1:PDM%maxParticleNumber),        &
-         PDM%ParticleInside(  1:PDM%maxParticleNumber),        &
+         PartReflCount(       1:PDM%maxParticleNumber),    &
+         LastPartPos(     1:3,1:PDM%maxParticleNumber),    &
+         PartPosRef(      1:3,1:PDM%MaxParticleNumber),    &
+! Allocate array for Runge-Kutta time stepping
+         Pt(              1:3,1:PDM%maxParticleNumber),    &
+         Pt_temp(         1:6,1:PDM%maxParticleNumber),    &
+         PartSpecies(         1:PDM%maxParticleNumber),    &
+         PDM%ParticleInside(  1:PDM%maxParticleNumber),    &
 #if USE_SM
-         PDM%ParticleInsideSM(1:PDM%maxParticleNumber), &
+         PDM%ParticleInsideSM(1:PDM%maxParticleNumber),    &
 #endif
-         PDM%nextFreePosition(1:PDM%maxParticleNumber),        &
-         PDM%IsNewPart(       1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+! Allocate array for particle position in reference coordinates
+         PDM%nextFreePosition(1:PDM%maxParticleNumber),    &
+         PDM%IsNewPart(       1:PDM%maxParticleNumber),    &
+! Allocate particle-to-element-mapping (PEM) arrays
+         PEM%Element(         1:PDM%maxParticleNumber),    &
+         PEM%lastElement(     1:PDM%maxParticleNumber),    &
+#if USE_SM
+         PEM%hasCrossedSM(    1:PDM%maxParticleNumber),    &
+#endif
+         STAT=ALLOCSTAT)
+
 IF (ALLOCSTAT.NE.0) &
   CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
 
 PDM%ParticleInside(1:PDM%maxParticleNumber)  = .FALSE.
-PDM%IsNewPart(1:PDM%maxParticleNumber)       = .FALSE.
-LastPartPos(1:PDM%maxParticleNumber,1:3)     = 0.
+PDM%IsNewPart(     1:PDM%maxParticleNumber)  = .FALSE.
+LastPartPos(   1:3,1:PDM%maxParticleNumber)  = 0.
 PartState                                    = 0.
 PartReflCount                                = 0.
 Pt                                           = 0.
 PartSpecies                                  = 0
 PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
-
-! Allocate particle-to-element-mapping (PEM) arrays
-ALLOCATE(PEM%Element(1:PDM%maxParticleNumber), PEM%lastElement(1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+Pt_temp                                      = 0
+PartPosRef                                   =-888.
 #if USE_SM
-ALLOCATE(PEM%hasCrossedSM(1:PDM%maxParticleNumber))
-PEM%hasCrossedSM = .FALSE.
+PEM%hasCrossedSM                             = .FALSE.
 #endif
-IF (ALLOCSTAT.NE.0) &
- CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate PEM arrays!')
 
 ! Initialize tracking of particle trapped by fouling
 KeepWallParticles       = GETLOGICAL('Part-KeepWallParticles','.FALSE.')

@@ -27,7 +27,7 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ABSTRACT INTERFACE
-  SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
+  PPURE SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
     REAL,DIMENSION(PP_nVar),INTENT(OUT):: F
@@ -392,7 +392,7 @@ END SUBROUTINE ViscousFlux
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
 !==================================================================================================================================
-SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa
 #ifdef SPLIT_DG
@@ -502,7 +502,7 @@ END SUBROUTINE Riemann_HLLC
 !=================================================================================================================================
 !> Roe's approximate Riemann solver
 !=================================================================================================================================
-SUBROUTINE Riemann_Roe(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_Roe(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars  ,ONLY: kappaM1
 #ifdef SPLIT_DG
@@ -580,7 +580,7 @@ END SUBROUTINE Riemann_Roe
 !> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
 !>  A review of entropy fixes as applied to Roe's linearization.
 !=================================================================================================================================
-SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
 #ifdef SPLIT_DG
@@ -691,7 +691,7 @@ END SUBROUTINE Riemann_RoeEntropyFix
 !=================================================================================================================================
 !> low mach number Roe's approximate Riemann solver according to Oßwald(2015)
 !=================================================================================================================================
-SUBROUTINE Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars  ,ONLY: kappaM1,kappa
 #ifdef SPLIT_DG

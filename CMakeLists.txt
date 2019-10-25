@@ -339,12 +339,27 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   # add flags only for compiling not linking!
   SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
 
+ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
+  #environment specific variables
+  IF(ONHAWK GREATER -1)
+    SET(FLEXI_INSTRUCTION "-march=core-avx2")
+  ELSE()
+    SET(FLEXI_INSTRUCTION "-march=native")
+  ENDIF()
+  # set Flags
+  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -std=f2008")
+  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
+  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
+  # add flags only for compiling not linking!
+  SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
+
 ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
   #environment specific variables
   IF(ONHORNET GREATER -1)
      SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
   ELSEIF(ONHAWK GREATER -1)
-     SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+    SET(FLEXI_INSTRUCTION "-march=core-avx2")
   ELSE()
      SET(FLEXI_INSTRUCTION "-xHost")
   ENDIF()
@@ -476,6 +491,9 @@ MESSAGE(STATUS "Using BLAS/Lapack library")
 IF (FLEXI_MKL)
   SET(BLA_VENDOR "Intel") #search only for Intel BLAS (=MKL)
 ENDIF()
+#IF (ONHAWK GREATER -1)
+  #SET(BLA_VENDOR "FLAME") #search only for Intel BLAS (=MKL)
+#ENDIF()
 FIND_PACKAGE(LAPACK QUIET)
 IF (LAPACK_FOUND)
   LIST(APPEND linkedlibs ${LAPACK_LIBRARIES})

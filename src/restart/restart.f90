@@ -125,7 +125,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   RestartTurb=GETLOGICAL('RestartTurb','.FALSE.')
   IF (.NOT.RestartTurb.AND..NOT.postiMode) RestartMean=GETLOGICAL('RestartMean','.FALSE.')
   ! Read in attributes
-  IF (.NOT.RestartMean.AND..NOT.postiMode) THEN
+  IF (.NOT.RestartMean.OR.postiMode) THEN
     CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart)
   ELSE
     CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart,'Mean')

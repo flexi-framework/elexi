@@ -289,6 +289,9 @@ END IF
 NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
 DGonly            = GETLOGICAL('DGonly')
 CALL CloseDataFile()
+! the parameter in the state file might indicate a restart from a time averaged file. However, FLEXI has already done that so hard
+! ignore the parameter here
+RestartMean = .FALSE.
 
 CALL visu_getVarNamesAndFileType(statefile,"",VarnamesAll,BCNamesAll)
 

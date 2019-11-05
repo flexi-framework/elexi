@@ -123,9 +123,9 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   ! Read this here because we need to change array names in case of a mean file
   RestartTurb=GETLOGICAL('RestartTurb','.FALSE.')
-  IF (.NOT.RestartTurb) RestartMean=GETLOGICAL('RestartMean','.FALSE.')
+  IF (.NOT.RestartTurb.AND..NOT.postiMode) RestartMean=GETLOGICAL('RestartMean','.FALSE.')
   ! Read in attributes
-  IF (.NOT.RestartMean) THEN
+  IF (.NOT.RestartMean.AND..NOT.postiMode) THEN
     CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart)
   ELSE
     CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart,'Mean')
@@ -144,7 +144,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL CollectiveStop(__STAMP__, "Restart File has different number of elements!")
   END IF
   IF (nVar_Restart.GT.PP_nVar) THEN
-    IF (RestartMean) THEN
+    IF (RestartMean.AND..NOT.postiMode) THEN
 #if EQNSYSNR == 3
       SWRITE(UNIT_StdOut,'(A)') ' Restart from mean file. Parameter for mu_tilda required!'
 #endif
@@ -292,7 +292,7 @@ IF(DoRestart)THEN
 #endif
 
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
-  IF (RestartMean) THEN
+  IF (RestartMean.AND..NOT.postiMode) THEN
     SWRITE(UNIT_stdOut,'(A)') 'Trying to restart from a mean file ...'
     SWRITE(UNIT_StdOut,'(A)') 'WARNING: Make absolutely sure the mean file has ALL conservative variables available!'
     SWRITE(UNIT_StdOut,'(132("-"))')
@@ -322,7 +322,7 @@ IF(DoRestart)THEN
   ! Allocate larger array for restart with turbulent quantitites
   ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
-  IF (RestartMean) THEN
+  IF (RestartMean.AND..NOT.postiMode) THEN
     CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
   ELSE
     CALL ReadArray('DG_Solution',5,HSize_proc,OffsetElem,5,RealArray=U_local)
@@ -484,7 +484,7 @@ IF(DoRestart)THEN
   END IF
   CALL CloseDataFile()
 
-  IF (RestartMean) THEN
+  IF (RestartMean.AND..NOT.postiMode) THEN
     SWRITE(UNIT_stdOut,'(A)') 'Restart from mean file successful.'
   END IF
 

@@ -242,6 +242,7 @@ USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
 USE MOD_StringTools        ,ONLY: INTTOSTR
+USE MOD_Restart_Vars       ,ONLY: RestartMean
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
@@ -289,9 +290,6 @@ END IF
 NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
 DGonly            = GETLOGICAL('DGonly')
 CALL CloseDataFile()
-! the parameter in the state file might indicate a restart from a time averaged file. However, FLEXI has already done that so hard
-! ignore the parameter here
-RestartMean = .FALSE.
 
 CALL visu_getVarNamesAndFileType(statefile,"",VarnamesAll,BCNamesAll)
 

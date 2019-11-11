@@ -127,12 +127,15 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: LowVeloThreshold                 ! Threshold value for removal of low velocity particles
   REAL                                   :: HighVeloThreshold                ! Threshold value for removal of high velocity particle
   INTEGER                                :: LowVeloCounter                   ! Counter how many low velocity particles were removed
-  !Random Walk method
-  CHARACTER(40)                          :: RWModel                          ! specifying Keyword for RW model
   ! Bons particle rebound model
   REAL                                   :: YoungIC                          ! Young's modulus
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
+#if USE_RW
+  !Random Walk method
+  CHARACTER(40)                          :: RWModel                          ! specifying Keyword for RW model
+  CHARACTER(40)                          :: RWTime                           ! time stepping mode for RW model
+#endif
 END TYPE
 
 

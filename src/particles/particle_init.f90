@@ -205,16 +205,24 @@ CALL prms%CreateRealOption(     'Part-Boundary[$]-Poisson'  &
 ! Fong coefficient of restitution
 CALL prms%CreateRealOption(     'Part-Boundary[$]-CoR'  &
                                 , "Coefficent of restitution for normal velocity component", '0.', numberedmulti=.TRUE.)
+
+#if USE_RW
 !===================================================================================================================================
 ! > Random Walk (Subgroup of Part-Species)
 ! >>> Values in this section only apply for turbulence models providing turbulent kinetic energy and a turbulent length/time scale
 !===================================================================================================================================
 CALL prms%CreateStringOption(   'Part-Species[$]-RWModel' &
-                                , 'Random walk model used for RANS calculations.\n'//&
+                                , 'Random walk model used for steady-state calculations.\n'//&
                                 ' - Gosman \n'//&
                                 ' - Dehbi \n'//&
                                 ' - Langevin \n'&
                                 , 'none' , numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(   'Part-Species[$]-RWTime'  &
+                                , 'Time stepping used for random walk model.\n'//&
+                                ' - RK \n'//&
+                                ' - RW'&
+                                , 'RW', numberedmulti=.TRUE.)
+#endif /* USE_RW */
 
 !===================================================================================================================================
 ! > Boundaries
@@ -478,8 +486,11 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%PoissonIC             = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-PoissonIC','0.')
     Species(iSpec)%YieldCoeff            = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-YieldCoeff','0.')
 
+#if USE_RW
     !--> Random Walk model
     Species(iSpec)%RWModel               = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-RWModel','none'))
+    Species(iSpec)%RWTime                = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-RWTime' ,'RW'))
+#endif
 
     ! Emission and init data
     Species(iSpec)%Init(iInit)%UseForInit            = GETLOGICAL('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-UseForInit','.TRUE.')
@@ -732,10 +743,6 @@ DO iPartBound=1,nPartBound
   ! Periodic
   CASE('periodic')
      PartBound%TargetBoundCond(iPartBound)      = PartBound%PeriodicBC
-#if USE_SM
-  CASE('sliding')
-     PartBound%TargetBoundCond(iPartBound) = PartBound%SlidingMeshBC
-#endif /*USE_SM*/
   ! Invalid boundary option
   CASE DEFAULT
      SWRITE(*,*) ' Boundary does not exists: ', TRIM(tmpString)

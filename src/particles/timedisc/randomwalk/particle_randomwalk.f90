@@ -87,8 +87,8 @@ INTEGER                          :: iPart
 
 ! Iterate over all particles and add random walk to mean push
 DO iPart = 1,PDM%ParticleVecLength
-  IF (PDM%ParticleInside(iPart).AND.(t.GT.TurbPartState(4,iPart))) THEN
-    CALL ParticleRandomWalkPush(iPart,FieldAtParticle(1:PP_nVar,iPart))
+  IF (PDM%ParticleInside(iPart)) THEN
+    CALL ParticleRandomWalkPush(iPart,t,FieldAtParticle(1:PP_nVar,iPart))
   END IF
 END DO
 
@@ -97,19 +97,19 @@ END SUBROUTINE ParticleRandomWalk
 !===================================================================================================================================
 ! Random Walk Push
 !===================================================================================================================================
-SUBROUTINE ParticleRandomWalkPush(PartID,FieldAtParticle)
+SUBROUTINE ParticleRandomWalkPush(PartID,t,FieldAtParticle)
 ! MODULES
 USE MOD_Particle_Globals
 USE MOD_EOS_Vars,          ONLY:mu0
 USE MOD_Equation_Vars,     ONLY: betaStar
 USE MOD_Particle_Vars,     ONLY: Species, PartSpecies, PartState, TurbPartState
 USE MOD_PICInterpolation_Vars,ONLY: TurbFieldAtParticle
-USE MOD_Timedisc_Vars,     ONLY: t
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)  :: PartID
+REAL,INTENT(IN)     :: t
 REAL,INTENT(IN)     :: FieldAtParticle(1:PP_nVar)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -127,6 +127,22 @@ REAL                :: rho_p,Vol,r
 REAL                :: udiff,vdiff,wdiff
 REAL                :: nu
 !===================================================================================================================================
+
+! Check time stepping scheme requested for RW model
+SELECT CASE(TRIM(Species(PartSpecies(PartID))%RWTime))
+
+CASE('RK')
+  ! Time stepping with every RK step. Do nothing here
+
+CASE('RW')
+  ! Time stepping with min(eddy time scale, transit time scale). Return if called too early
+  IF (t.LT.TurbPartState(4,PartID)) RETURN
+
+CASE DEFAULT
+    CALL abort(__STAMP__, ' No particle random walk time step given. This should not happen.')
+
+END SELECT
+
 
 SELECT CASE(TRIM(Species(PartSpecies(PartID))%RWModel))
 

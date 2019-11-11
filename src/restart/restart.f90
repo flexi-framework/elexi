@@ -123,7 +123,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   ! Read this here because we need to change array names in case of a mean file
   RestartTurb=GETLOGICAL('RestartTurb','.FALSE.')
-  IF (.NOT.RestartTurb.AND..NOT.postiMode) RestartMean=GETLOGICAL('RestartMean','.FALSE.')
+  IF (.NOT.RestartTurb.OR.postiMode) RestartMean=GETLOGICAL('RestartMean','.FALSE.')
   ! Read in attributes
   IF (.NOT.RestartMean.OR.postiMode) THEN
     CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart)

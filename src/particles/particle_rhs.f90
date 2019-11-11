@@ -80,6 +80,9 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Vars,     ONLY : Species, PartSpecies, PartGravity
 USE MOD_Particle_Vars,     ONLY : PartState, RepWarn
 USE MOD_EOS_Vars,          ONLY : mu0
+#if USE_RW
+USE MOD_Particle_Vars,     ONLY : TurbPartState
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -180,10 +183,10 @@ r       = (3.*Vol/4./pi)**(1./3.)
 ! Get nu to stay in same equation format
 nu      = mu0/FieldAtParticle(1)
 
-#if USE_RM
-udiff   = PartState(4,PartID) - ((FieldAtParticle(2)/FieldAtParticle(1)) + TurbPartState(1))
-vdiff   = PartState(5,PartID) - ((FieldAtParticle(3)/FieldAtParticle(1)) + TurbPartState(2))
-wdiff   = PartState(6,PartID) - ((FieldAtParticle(4)/FieldAtParticle(1)) + TurbPartState(3))
+#if USE_RW
+udiff   = PartState(4,PartID) - ((FieldAtParticle(2)/FieldAtParticle(1)) + TurbPartState(1,PartID))
+vdiff   = PartState(5,PartID) - ((FieldAtParticle(3)/FieldAtParticle(1)) + TurbPartState(2,PartID))
+wdiff   = PartState(6,PartID) - ((FieldAtParticle(4)/FieldAtParticle(1)) + TurbPartState(3,PartID))
 #else
 udiff   = PartState(4,PartID) - (FieldAtParticle(2)/FieldAtParticle(1))
 vdiff   = PartState(5,PartID) - (FieldAtParticle(3)/FieldAtParticle(1))
@@ -219,10 +222,10 @@ IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
 r       = (3.*Vol/4./pi)**(1./3.)
 
-#if USE_RM
-udiff   = PartState(4,PartID) - ((FieldAtParticle(2)/FieldAtParticle(1)) + TurbPartState(1))
-vdiff   = PartState(5,PartID) - ((FieldAtParticle(3)/FieldAtParticle(1)) + TurbPartState(2))
-wdiff   = PartState(6,PartID) - ((FieldAtParticle(4)/FieldAtParticle(1)) + TurbPartState(3))
+#if USE_RW
+udiff   = PartState(4,PartID) - ((FieldAtParticle(2)/FieldAtParticle(1)) + TurbPartState(1,PartID))
+vdiff   = PartState(5,PartID) - ((FieldAtParticle(3)/FieldAtParticle(1)) + TurbPartState(2,PartID))
+wdiff   = PartState(6,PartID) - ((FieldAtParticle(4)/FieldAtParticle(1)) + TurbPartState(3,PartID))
 #else
 udiff   = PartState(4,PartID) - (FieldAtParticle(2)/FieldAtParticle(1))
 vdiff   = PartState(5,PartID) - (FieldAtParticle(3)/FieldAtParticle(1))
@@ -265,10 +268,10 @@ IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
 r       = (3.*Vol/4./pi)**(1./3.)
 
-#if USE_RM
-udiff   = PartState(4,PartID) - ((FieldAtParticle(2)/FieldAtParticle(1)) + TurbPartState(1))
-vdiff   = PartState(5,PartID) - ((FieldAtParticle(3)/FieldAtParticle(1)) + TurbPartState(2))
-wdiff   = PartState(6,PartID) - ((FieldAtParticle(4)/FieldAtParticle(1)) + TurbPartState(3))
+#if USE_RW
+udiff   = PartState(4,PartID) - ((FieldAtParticle(2)/FieldAtParticle(1)) + TurbPartState(1,PartID))
+vdiff   = PartState(5,PartID) - ((FieldAtParticle(3)/FieldAtParticle(1)) + TurbPartState(2,PartID))
+wdiff   = PartState(6,PartID) - ((FieldAtParticle(4)/FieldAtParticle(1)) + TurbPartState(3,PartID))
 #else
 udiff   = PartState(4,PartID) - (FieldAtParticle(2)/FieldAtParticle(1))
 vdiff   = PartState(5,PartID) - (FieldAtParticle(3)/FieldAtParticle(1))

@@ -144,6 +144,7 @@ USE MOD_Eval_xyz,                ONLY:TensorProductInterpolation,GetPositionInRe
 USE MOD_DG_Vars,                 ONLY:UTurb
 USE MOD_Restart_Vars,            ONLY:RestartTurb
 USE MOD_Equation_Vars,           ONLY:nVarTurb
+USE MOD_PICInterpolation_Vars,   ONLY:TurbFieldAtParticle
 #endif
 #if USE_MPI
 ! only required for shape function??
@@ -218,6 +219,7 @@ IF (DoInterpolation) THEN                 ! skip if no self fields are calculate
 #if USE_RW
           IF (RestartTurb) THEN
             CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,iPart),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,iElem),field(1:PP_nVar),iElem,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb))
+            TurbFieldAtParticle(1:nVarTurb,iPart) = turbfield(1:nVarTurb)
           ELSE
 #endif
             CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,iPart),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,iElem),field(1:PP_nVar),iElem)
@@ -267,6 +269,12 @@ USE MOD_Eval_xyz,                ONLY:TensorProductInterpolation,GetPositionInRe
 #if USE_MPI
 USE MOD_Mesh_Vars,               ONLY:nElems
 #endif
+#if USE_RW
+USE MOD_DG_Vars,                 ONLY:UTurb
+USE MOD_Restart_Vars,            ONLY:RestartTurb
+USE MOD_Equation_Vars,           ONLY:nVarTurb
+USE MOD_PICInterpolation_Vars,   ONLY:TurbFieldAtParticle
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -280,6 +288,9 @@ REAL,INTENT(OUT)             :: FieldAtParticle(1:PP_nVar)
 ! LOCAL VARIABLES
 REAL                         :: Field(1:PP_nVar) !,Pos(3)
 INTEGER                      :: ElemID
+#if USE_RW
+REAL                         :: turbField(nVarTurb)
+#endif
 !===================================================================================================================================
   FieldAtParticle(:) = 0.
   FieldAtParticle(1) = externalField(1)
@@ -301,7 +312,16 @@ IF (DoInterpolation) THEN                 ! skip if no self fields are calculate
         CALL TensorProductInterpolation(PartState(1:3,PartID),PartPosRef(PartID,1:3),ElemID,ForceMode=.TRUE.,PartID=PartID)
       END IF
       !--- evaluate at Particle position
-      CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,PartID),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,ElemID),field(1:PP_nVar),ElemID)
+#if USE_RW
+      IF (RestartTurb) THEN
+        CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,PartID),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,ElemID),field(1:PP_nVar),ElemID,UTurb(1:nVarTurb,:,:,:,ElemID),turbField(1:nVarTurb))
+        TurbFieldAtParticle(1:nVarTurb,PartID) = turbfield(1:nVarTurb)
+      ELSE
+#endif
+        CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,PartID),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,ElemID),field(1:PP_nVar),ElemID)
+#if USE_RW
+      END IF
+#endif
       FieldAtParticle(1:PP_nVar) = FieldAtParticle(1:PP_nVar) + field(1:PP_nVar)
   CASE DEFAULT
     CALL abort(&

@@ -126,6 +126,7 @@ REAL                :: lambda(3)
 REAL                :: rho_p,Vol,r
 REAL                :: udiff,vdiff,wdiff
 REAL                :: nu
+INTEGER             :: i
 !===================================================================================================================================
 
 ! Check time stepping scheme requested for RW model
@@ -159,10 +160,6 @@ CASE('Gosman')
     ! SST renamed C_mu, change back for clarity
     C_mu    = betaStar
 
-    ! Eddy length and lifetime
-    l_e     = C_mu**(3./4.)*tke**(3./2.) / epsturb
-    tau_e   = C_L * tke / epsturb
-
     ! Assume spherical particles for now
     Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
     r       = (3.*Vol/4./pi)**(1./3.)
@@ -184,35 +181,51 @@ CASE('Gosman')
       Cd  = 1. + 0.15*Rep**0.687
 !    ENDIF
 
-    tau     = (4./3.)*FieldAtParticle(1)*(2.*r)/(rho_p*Cd*sqrt(udiff**2. + vdiff**2. + wdiff**2.))
+    ! Division by zero if particle velocity equal fluid velocity. Avoid this!
+    IF (udiff.NE.0. .OR. vdiff.NE.0. .OR. wdiff.EQ.0.) THEN
+      tau     = (4./3.)*FieldAtParticle(1)*(2.*r)/(rho_p*Cd*sqrt(udiff**2. + vdiff**2. + wdiff**2.))
+    ELSE
+      tau     = HUGE(1.)
+    END IF
 
     ! Turbulent velocity fluctuation
     udash   = (2.*tke/3.)**0.5
     vdash   = udash
     wdash   = udash
 
-    ! Get random number and rescale to [-1,1]
-    CALL RANDOM_NUMBER(random)
-    lambda(1) = 2.*random - 1.
-    CALL RANDOM_NUMBER(random)
-    lambda(2) = 2.*random - 1.
-    CALL RANDOM_NUMBER(random)
-    lambda(3) = 2.*random - 1.
+    ! Get random number with Gaussian distribution
+    DO i = 1,3
+      lambda(i) = RandNormal()
+    END DO
 
-    ! Estimate interaction time
-    t_e     = l_e/SQRT(udash**2. + vdash**2. + wdash**2.)
-    IF (tau.LT.1) THEN
-      t_r   = -tau*LOG(1.-l_e/tau*SQRT(udiff**2. + vdiff*2. + wdiff**2.))
-      t_int = MIN(t_e,t_r)
-    ELSE ! Particle captured by eddy
-      t_int = t_e
-    END IF
+    ! Catch negative or zero dissipation rate
+    ! Eddy length and lifetime
+    IF (TKE.GT.0 .AND. epsturb.GT.0) THEN
+      l_e     = C_mu**(3./4.)*tke**(3./2.) / epsturb
+!      tau_e   = C_L * tke / epsturb
 
-    ! Calculate random walk push. We are isentropic, so use vectors
-    TurbPartState(1:3,PartID) = lambda(1:3)*udash
+      ! Estimate interaction time
+      t_e     = l_e/SQRT(udash**2. + vdash**2. + wdash**2.)
+      tau_e   = l_e/(tau*SQRT(udiff**2. + vdiff**2. + wdiff**2.))
 
-    ! Save time when eddy expires
-    TurbPartState(4,PartID)   = t + t_int
+      IF (tau_e.LT.1.) THEN
+        t_r   = -tau*LOG(1.-tau_e)
+        t_int = MIN(t_e,t_r)
+      ELSE ! Particle captured by eddy
+        t_int = t_e
+      END IF
+
+      ! Calculate random walk push. We are isentropic, so use vectors
+      TurbPartState(1:3,PartID) = lambda(1:3)*udash
+
+      ! Save time when eddy expires
+      TurbPartState(4,PartID)   = t + t_int
+
+    ! TKE or epsilon is zero. No random velocity but try again in the next RK stage
+    ELSE
+      TurbPartState(1:3,PartID) = 0.
+      TurbPartState(4,  PartID) = t
+    ENDIF
 
 CASE DEFAULT
     CALL abort(__STAMP__, ' No particle random walk model given. This should not happen.')
@@ -240,5 +253,5 @@ IMPLICIT NONE
 
 END SUBROUTINE ParticleFinalizeRandomWalk
 
-#endif /*USE_RM*/
+#endif /*USE_RW*/
 END MODULE MOD_Particle_RandomWalk

@@ -481,7 +481,7 @@ IF (t.GE.DelayTime) THEN
   ! can be used to hide sending of number of particles
   !--> Interpolate fluid field to particle position
   CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)   ! forces on particles
-#if USE_RM
+#if USE_RW
   !--> Calculate the random walk push
   CALL ParticleRandomWalk(t)
 #endif

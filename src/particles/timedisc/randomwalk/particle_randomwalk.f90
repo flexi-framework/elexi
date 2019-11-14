@@ -117,14 +117,13 @@ REAL,INTENT(IN)     :: FieldAtParticle(1:PP_nVar)
 ! LOCAL VARIABLES
 REAL                :: tke,epsturb,C_mu
 REAL                :: l_e,t_e,t_r,t_int,tau_e,tau
-REAL                :: udash,vdash,wdash
-REAL,PARAMETER      :: C_L = 0.3                                ! Debhi (2008)
+REAL                :: udiff(1:3),udash(1:3)
+REAL,PARAMETER      :: C_L = 0.3                                                                                     ! Debhi (2008)
 REAL                :: ReP
 REAL                :: Cd
 REAL                :: random
 REAL                :: lambda(3)
 REAL                :: rho_p,Vol,r
-REAL                :: udiff,vdiff,wdiff
 REAL                :: nu
 INTEGER             :: i
 !===================================================================================================================================
@@ -166,9 +165,7 @@ CASE('Gosman')
     rho_p   = Species(PartSpecies(PartID))%DensityIC
 
     ! Droplet relaxation time
-    udiff   = PartState(4,PartID) - (FieldAtParticle(2)/FieldAtParticle(1))
-    vdiff   = PartState(5,PartID) - (FieldAtParticle(3)/FieldAtParticle(1))
-    wdiff   = PartState(6,PartID) - (FieldAtParticle(4)/FieldAtParticle(1))
+    udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
 
     ! Get nu to stay in same equation format
     nu      = mu0/FieldAtParticle(1)
@@ -182,16 +179,14 @@ CASE('Gosman')
 !    ENDIF
 
     ! Division by zero if particle velocity equal fluid velocity. Avoid this!
-    IF (udiff.NE.0. .OR. vdiff.NE.0. .OR. wdiff.EQ.0.) THEN
-      tau     = (4./3.)*FieldAtParticle(1)*(2.*r)/(rho_p*Cd*sqrt(udiff**2. + vdiff**2. + wdiff**2.))
+    IF (ANY(udiff.NE.0)) THEN
+      tau     = (4./3.)*FieldAtParticle(1)*(2.*r)/(rho_p*Cd*sqrt(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.))
     ELSE
       tau     = HUGE(1.)
     END IF
 
     ! Turbulent velocity fluctuation
-    udash   = (2.*tke/3.)**0.5
-    vdash   = udash
-    wdash   = udash
+    udash(1:3)   = (2.*tke/3.)**0.5
 
     ! Get random number with Gaussian distribution
     DO i = 1,3
@@ -201,24 +196,30 @@ CASE('Gosman')
     ! Catch negative or zero dissipation rate
     ! Eddy length and lifetime
     IF (TKE.GT.0 .AND. epsturb.GT.0) THEN
-      l_e     = C_mu**(3./4.)*tke**(3./2.) / epsturb
+      l_e     = C_mu**(1./2.)*tke**(3./2.) / epsturb
 !      tau_e   = C_L * tke / epsturb
 
-      ! Estimate interaction time
-      t_e     = l_e/SQRT(udash**2. + vdash**2. + wdash**2.)
-      tau_e   = l_e/(tau*SQRT(udiff**2. + vdiff**2. + wdiff**2.))
+      ! Calculate random walk push. We are isentropic, so use vectors
+      TurbPartState(1:3,PartID) = lambda(1:3)*udash(1:3)
 
+      ! Estimate interaction time. The values here are already depend on the random draw.
+      ! If TKE!=0, then udash can only be zero if ALL Gaussian random numbers are zero.
+      ! What are the chances? Ommit the check for now.
+!      IF(ANY(udash.NE.0)) THEN
+      t_e     = l_e/     SQRT(udash(1)**2. + udash(2)**2. + udash(3)**2.)
+!       END IF
+      tau_e   = l_e/(tau*SQRT(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.))
+
+      ! Particles either leaves the eddy or the eddy expires
       IF (tau_e.LT.1.) THEN
         t_r   = -tau*LOG(1.-tau_e)
         t_int = MIN(t_e,t_r)
-      ELSE ! Particle captured by eddy
+      ! Particle captured by eddy, so interaction time is eddy life time
+      ELSE
         t_int = t_e
       END IF
 
-      ! Calculate random walk push. We are isentropic, so use vectors
-      TurbPartState(1:3,PartID) = lambda(1:3)*udash
-
-      ! Save time when eddy expires
+      ! Save time when eddy expires or particle finished crossing it
       TurbPartState(4,PartID)   = t + t_int
 
     ! TKE or epsilon is zero. No random velocity but try again in the next RK stage

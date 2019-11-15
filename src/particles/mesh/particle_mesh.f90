@@ -293,7 +293,7 @@ USE MOD_Mesh_Vars
 USE MOD_Particle_Basis
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Surfaces_Vars, ONLY:BezierEpsilonBilinear,BezierElevation,BezierControlPoints3DElevated
-USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping,MeasureTrackTime,FastPeriodic,CountNbOfLostParts,nLostParts,CartesianPeriodic
+USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping,FastPeriodic,CountNbOfLostParts,nLostParts,CartesianPeriodic
 USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking, WriteTriaDebugMesh
 USE MOD_Interpolation_Vars
 #if CODE_ANALYZE
@@ -302,7 +302,7 @@ USE MOD_Particle_Tracking_Vars, ONLY:PartOut,MPIRankOut
 USE MOD_ReadInTools,            ONLY:GETREAL,GETINT,GETLOGICAL,GetRealArray
 USE MOD_Particle_Surfaces_Vars, ONLY:BezierSampleN,BezierSampleXi,SurfFluxSideSize,TriaSurfaceFlux,WriteTriaSurfaceFluxDebugMesh
 #if USE_LOADBALANCE
-! ElemTime set in loadmesh.f90
+USE MOD_Particle_Tracking_Vars, ONLY:MeasureTrackTime
 #else
 USE MOD_LoadBalance_Vars,       ONLY:ElemTime
 #endif
@@ -388,7 +388,6 @@ MPIRankOut         = GETINT('MPIRankOut','0')
 !IF(.NOT.DoRefMapping) THEN
 !  SDEALLOCATE(nTracksPerElem)
 !END IF
-MeasureTrackTime  = GETLOGICAL('MeasureTrackTime','.FALSE.')
 CartesianPeriodic = GETLOGICAL('CartesianPeriodic','.FALSE.')
 IF(CartesianPeriodic) FastPeriodic = GETLOGICAL('FastPeriodic','.FALSE.')
 
@@ -2441,17 +2440,16 @@ SUBROUTINE BuildElementBasis()
 !================================================================================================================================
 USE MOD_Globals
 USE MOD_Particle_Globals
+USE MOD_Basis,                    ONLY:LagrangeInterpolationPolys
 USE MOD_Preproc
 USE MOD_Mesh_Vars,                ONLY:NGeo
-USE MOD_Particle_Mesh_Vars,       ONLY:XCL_NGeo,wBaryCL_NGeo,XiCL_NGeo
-USE MOD_Particle_Surfaces_Vars,   ONLY:BezierControlPoints3D
 USE MOD_Particle_Basis,           ONLY:DeCasteljauInterpolation
+USE MOD_Particle_Mesh_Vars,       ONLY:XCL_NGeo,wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,       ONLY:XiEtaZetaBasis,slenXiEtaZetaBasis,ElemRadiusNGeo,ElemRadius2NGeo
 USE MOD_Particle_Mesh_Vars,       ONLY:ElemBaryNgeo
-USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 USE MOD_Particle_Mesh_Vars,       ONLY:nTotalElems,PartElemToSide
-USE MOD_Basis,                    ONLY:LagrangeInterpolationPolys
-USE MOD_Eval_xyz,                 ONLY:EvaluateFieldAtRefPos
+USE MOD_Particle_Surfaces_Vars,   ONLY:BezierControlPoints3D
+USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------

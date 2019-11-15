@@ -116,7 +116,7 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-  CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)
+  CALL InterpolateFieldToParticle()
 #if USE_RW
   CALL ParticleRandomWalk(t)
 #endif
@@ -263,7 +263,7 @@ IF (t.GE.DelayTime) THEN
   ! forces on particle
   ! can be used to hide sending of number of particles
   !--> Interpolate fluid field to particle position
-  CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)
+  CALL InterpolateFieldToParticle()
 #if USE_RW
   !--> Calculate the random walk push
   CALL ParticleRandomWalk(t)
@@ -480,7 +480,7 @@ IF (t.GE.DelayTime) THEN
   ! forces on particle
   ! can be used to hide sending of number of particles
   !--> Interpolate fluid field to particle position
-  CALL InterpolateFieldToParticle(doInnerParts=.TRUE.)   ! forces on particles
+  CALL InterpolateFieldToParticle()   ! forces on particles
 #if USE_RW
   !--> Calculate the random walk push
   CALL ParticleRandomWalk(t)

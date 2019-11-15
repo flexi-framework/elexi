@@ -69,7 +69,7 @@ USE MOD_Particle_Vars,               ONLY:PartState,PEM,PDM,PartPosRef,KeepWallP
 USE MOD_Particle_Mesh_Vars,          ONLY:Geo
 USE MOD_Particle_Tracking_Vars,      ONLY:DoRefMapping,TriaTracking
 USE MOD_Particle_Mesh_Vars,          ONLY:epsOneCell,IsTracingBCElem,ElemRadius2NGeo
-USE MOD_Eval_xyz,                    ONLY:TensorProductInterpolation
+USE MOD_Eval_xyz,                    ONLY:GetPositionInRefElem
 USE MOD_Particle_Utils,              ONLY:InsertionSort
 USE MOD_Particle_Tracking_Vars,      ONLY:DoRefMapping,Distance,ListDistance
 USE MOD_Particle_Boundary_Condition, ONLY:PARTSWITCHELEMENT
@@ -207,7 +207,7 @@ DO iBGMElem=1,nBGMElems
   END IF
 
   ! get position in reference element for element ElemID
-  CALL TensorProductInterpolation(PartState(1:3,iPart),xi,ElemID)
+  CALL GetPositionInRefElem(PartState(1:3,iPart),xi,ElemID)
 
   ! check if we are within tolerance for our chosen element
   IF(MAXVAL(ABS(Xi)).LT.epsOneCell(ElemID)) THEN
@@ -482,7 +482,6 @@ USE MOD_Particle_Intersection,  ONLY:ComputeCurvedIntersection
 USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping
 #if CODE_ANALYZE
 USE MOD_Globals,                ONLY:MyRank,UNIT_stdout
-USE MOD_Mesh_Vars,              ONLY:NGeo
 USE MOD_Particle_Tracking_Vars, ONLY:PartOut,MPIRankOut
 USE MOD_Particle_Surfaces,      ONLY:OutputBezierControlPoints
 USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3d
@@ -509,9 +508,6 @@ REAL,INTENT(OUT),OPTIONAL                :: Tol_Opt
 #endif /*CODE_ANALYZE*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if CODE_ANALYZE
-INTEGER                                  :: I,J,K
-#endif /*CODE_ANALYZE*/
 INTEGER                                  :: ilocSide,flip,SideID,BCSideID
 REAL                                     :: PartTrajectory(1:3),NormVec(1:3)
 REAL                                     :: lengthPartTrajectory,PartPos(1:3),LastPosTmp(1:3)

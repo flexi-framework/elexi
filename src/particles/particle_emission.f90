@@ -1267,12 +1267,18 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Particle_Globals,        ONLY: RandNormal
 USE MOD_DG_Vars,                 ONLY: U
-USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount
-USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
+USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
 USE MOD_PICInterpolation,        ONLY: InterpolateFieldToParticle
-USE MOD_PICInterpolation_Vars,   ONLY: externalField, FieldAtParticle, InterpolationType
-USE MOD_Eval_xyz,                ONLY: TensorProductInterpolation, GetPositionInRefElem, EvaluateFieldAtPhysPos
+USE MOD_PICInterpolation_Vars,   ONLY: DoInterpolation,FieldAtParticle,externalField
 USE MOD_PIC_Vars
+USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
+USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount
+#if USE_RW
+USE MOD_DG_Vars,                 ONLY: UTurb
+USE MOD_Restart_Vars,            ONLY: RestartTurb
+USE MOD_Equation_Vars,           ONLY: nVarTurb
+USE MOD_PICInterpolation_Vars,   ONLY: TurbFieldAtParticle
+#endif /* USE_RW */
 !IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !!-----------------------------------------------------------------------------------------------------------------------------------
@@ -1296,6 +1302,9 @@ REAL                             :: VeloIC                           ! velocity 
 REAL                             :: VeloTurbIC                       ! turbulent fluctuation for velocity for initial Data
 REAL                             :: VeloVecIC(3)                     ! normalized velocity vector
 REAL                             :: Alpha                            ! WaveNumber for sin-deviation initiation.
+#if USE_RW
+REAL                             :: turbField(nVarTurb)
+#endif
 !===================================================================================================================================
 ! Abort if we don't have any/too many particles
 IF(NbrOfParticle.lt.1) RETURN
@@ -1416,20 +1425,41 @@ CASE('fluid')
     PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
     ! Valid particle which got recently position
     IF (PositionNbr .NE. 0) THEN
-      SELECT CASE(TRIM(InterpolationType))
-        CASE('particle_position')
-          ! find the element the particle is in
-          iElem = PEM%Element(PositionNbr)
-          ! get position in reference space if not already calculated
-          IF (.NOT.DoRefMapping) THEN
-              CALL TensorProductInterpolation(PartState(1:3,PositionNbr),PartPosRef(1:3,PositionNbr),iElem)
-          END IF
-          ! evaluate at Particle position
-          CALL EvaluateFieldAtPhysPos(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,iElem),field(1:PP_nVar),iElem)
-          FieldAtParticle(1:PP_nVar,PositionNbr) = FieldAtParticle(1:PP_nVar,PositionNbr) + field(1:PP_nVar)
-        CASE DEFAULT
-          CALL abort(__STAMP__, 'ERROR: Unknown InterpolationType in particle emission!')
-      END SELECT
+
+    ! Return if no interpolation is wanted
+    IF (.NOT.DoInterpolation) RETURN
+
+      iElem = PEM%Element(PositionNbr)
+      IF (.NOT.DoRefMapping) THEN
+#if USE_RW
+        IF (RestartTurb) THEN
+          CALL EvaluateFieldAtPhysPos(PartState(1:3,PositionNbr),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar) ,iElem,PositionNbr &
+                                                                             ,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb))
+        ELSE
+#endif
+          CALL EvaluateFieldAtPhysPos(PartState(1:3,PositionNbr),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,iElem),field    (1:PP_nVar) ,iElem,PositionNbr)
+#if USE_RW
+        END IF ! RestartTurb
+#endif
+      ! RefMapping, evaluate in reference space
+      ELSE
+#if USE_RW
+        IF (RestartTurb) THEN
+          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar) ,iElem &
+                                                                             ,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb))
+        ELSE
+#endif
+          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (1:PP_nVar,:,:,:,iElem),field    (1:PP_nVar) ,iElem)
+#if USE_RW
+        END IF ! RestartTurb
+#endif
+      END IF ! RefMapping
+
+      ! Add the interpolated field to the background field
+      FieldAtParticle(    1:PP_nVar, PositionNbr) = FieldAtParticle(1:PP_nVar,PositionNbr) + field(1:PP_nVar)
+#if USE_RW
+      TurbFieldAtParticle(1:nVarTurb,PositionNbr) = turbfield(      1:nVarTurb)
+#endif
 
       ! Calculate velocity from momentum and density
       PartState(4,PositionNbr) = FieldAtParticle(2,PositionNbr)/FieldAtParticle(1,PositionNbr)

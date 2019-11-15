@@ -73,7 +73,6 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars,          ONLY : PDM
 USE MOD_PICInterpolation_Vars,  ONLY : FieldAtParticle
-USE MOD_Particle_Vars,          ONLY : TurbPartState
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -121,7 +120,6 @@ REAL                :: udiff(1:3),udash(1:3)
 REAL,PARAMETER      :: C_L = 0.3                                                                                     ! Debhi (2008)
 REAL                :: ReP
 REAL                :: Cd
-REAL                :: random
 REAL                :: lambda(3)
 REAL                :: rho_p,Vol,r
 REAL                :: nu
@@ -170,7 +168,7 @@ CASE('Gosman')
     ! Get nu to stay in same equation format
     nu      = mu0/FieldAtParticle(1)
 
-    Rep     = 2.*r*SQRT(udiff**2. + vdiff**2. + wdiff**2.)/nu
+    Rep     = 2.*r*SQRT(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.)/nu
     ! Empirical relation of nonlinear drag from Clift et al. (1978)
 !    IF (Rep .LT. 1) THEN
 !      Cd  = 1.

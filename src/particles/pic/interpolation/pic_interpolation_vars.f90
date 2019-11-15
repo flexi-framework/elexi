@@ -24,29 +24,13 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL,ALLOCATABLE                      :: FieldAtParticle(:,:) ! (PIC%maxParticleNumber,5) 2nd index: rho,u_x,u_y,u_z,e
+LOGICAL                               :: DoInterpolation          ! Flag for interpolation
+LOGICAL                               :: InterpolationElemLoop    ! Interpolate with outer iElem-loop (not for many Elems per proc!)
+REAL,ALLOCATABLE                      :: FieldAtParticle(:,:)     ! (PIC%maxParticleNumber,5) 2nd index: rho,u_x,u_y,u_z,e
 #if USE_RW
 REAL,ALLOCATABLE                      :: turbFieldAtParticle(:,:) ! (PIC%maxParticleNumber,2) 2nd index: k,epsilon
 #endif
-CHARACTER(LEN=256)                    :: InterpolationType    ! Type of Interpolation-Method
-LOGICAL                               :: InterpolationElemLoop! Interpolate with outer iElem-loop (not for many Elems per proc!)
-REAL                                  :: externalField(PP_nVar)! ext field is added to the maxwell-solver-field
-LOGICAL                               :: DoInterpolation      ! Flag for interpolation
-LOGICAL                               :: useBGField           ! Flag for BGField via h5-File
-INTEGER                               :: NBG                  ! Polynomial degree of BG-Field
-INTEGER                               :: BGType               ! Type of BG-Field (Electric,Magnetic,Both)
-INTEGER                               :: BGDataSize           ! Type of BG-Field (Electric,Magnetic,Both)
-REAL, ALLOCATABLE                     :: BGField(:,:,:,:,:)   ! BGField data
-                                                              ! (1:x,0:NBG,0:NBG,0:NBG,1:PP_nElems)
-REAL,ALLOCATABLE                      :: BGField_xGP(:)       ! Gauss point coordinates
-REAL,ALLOCATABLE                      :: BGField_wGP(:)       ! GP integration weights
-REAL,ALLOCATABLE                      :: BGField_wBary(:)     ! barycentric weights
-
-
-CHARACTER(LEN=256)                    :: FileNameVariableExternalField ! filename containing the externanl field csv table
-LOGICAL                               :: useVariableExternalField      ! use given external field. only for Bz variation in z
-REAL,ALLOCATABLE                      :: VariableExternalField(:,:)    ! z - Pos , Bz
-REAL                                  :: DeltaExternalField
-INTEGER                               :: nIntPoints                    ! number of all interpolation points external field
+LOGICAL                               :: useExternalField          ! Flag for external field
+REAL                                  :: externalField(PP_nVar)   ! ext field is added to the maxwell-solver-field
 !===================================================================================================================================
 END MODULE MOD_PICInterpolation_Vars

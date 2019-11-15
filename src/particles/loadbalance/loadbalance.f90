@@ -117,6 +117,9 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_LoadBalance_Vars
 USE MOD_ReadInTools            ,ONLY: GETLOGICAL, GETREAL, GETINT
+#if USE_LOADBALANCE
+USE MOD_Particle_Tracking_Vars ,ONLY: MeasureTrackTime
+#endif
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -140,6 +143,7 @@ ELSE
   LoadBalanceTimeBased = GETLOGICAL('DOLoadBalanceTimeBased' ,'T')
   LoadBalanceSample    = GETINT    ('LoadBalanceSample'      ,'1')
   DeviationThreshold   = GETREAL   ('Load-DeviationThreshold','0.10')
+  MeasureTrackTime     = GETLOGICAL('MeasureTrackTime'       ,'F')
 END IF
 
 IF (DoLoadBalance.AND.(.NOT.LoadBalanceTimeBased)) THEN

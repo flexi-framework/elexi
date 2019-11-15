@@ -49,7 +49,7 @@ USE MOD_Mesh_Vars,               ONLY:offsetElem
 USE MOD_Restart_Vars,            ONLY:RestartTime,RestartFile
 USE MOD_Particle_Vars,           ONLY:PartState, PartSpecies, PEM, PDM, Species, nSpecies, PartPosRef,PartReflCount
 USE MOD_Part_Tools,              ONLY:UpdateNextFreePosition
-USE MOD_Eval_XYZ,                ONLY:TensorProductInterpolation
+USE MOD_Eval_XYZ,                ONLY:GetPositionInRefElem
 USE MOD_Particle_Localization,   ONLY:SingleParticleToExactElement,SingleParticleToExactElementNoMap
 USE MOD_Particle_Mesh_Vars,      ONLY:epsOneCell
 USE MOD_Particle_Tracking_Vars,  ONLY:DoRefMapping
@@ -171,7 +171,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     COUNTER2 = 0
     IF(DoRefMapping) THEN
       DO i = 1,PDM%ParticleVecLength
-        CALL TensorProductInterpolation(PartState(1:3,i),Xi,PEM%Element(i))
+        CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
         IF(ALL(ABS(Xi).LE.EpsOneCell(PEM%Element(i)))) THEN ! particle inside
           InElementCheck=.TRUE.
           PartPosRef(1:3,i)=Xi
@@ -192,7 +192,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       END DO
     ELSE ! no Ref Mapping
       DO i = 1,PDM%ParticleVecLength
-        CALL TensorProductInterpolation(PartState(1:3,i),Xi,PEM%Element(i))
+        CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
         IF(ALL(ABS(Xi).LE.1.0)) THEN ! particle inside
           InElementCheck=.TRUE.
           IF(ALLOCATED(PartPosRef)) PartPosRef(1:3,i)=Xi

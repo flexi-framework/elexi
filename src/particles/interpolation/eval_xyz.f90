@@ -28,6 +28,10 @@ PRIVATE
 
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
+INTERFACE EvaluateFieldAtPhysPos
+  MODULE PROCEDURE EvaluateFieldAtPhysPos
+END INTERFACE
+
 INTERFACE GetPositionInRefElem
   MODULE PROCEDURE GetPositionInRefElem
 END INTERFACE
@@ -36,75 +40,86 @@ INTERFACE TensorProductInterpolation
   MODULE PROCEDURE TensorProductInterpolation
 END INTERFACE
 
-INTERFACE EvaluateFieldAtPhysPos
-  MODULE PROCEDURE EvaluateFieldAtPhysPos
-END INTERFACE
-
 INTERFACE EvaluateFieldAtRefPos
   MODULE PROCEDURE EvaluateFieldAtRefPos
 END INTERFACE
 
-
-PUBLIC :: GetPositionInRefElem,TensorProductInterpolation, EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
+PUBLIC :: EvaluateFieldAtPhysPos
+PUBLIC :: GetPositionInRefElem
+PUBLIC :: TensorProductInterpolation
+PUBLIC :: EvaluateFieldAtRefPos
 !===================================================================================================================================
 
 CONTAINS
 
-SUBROUTINE GetPositionInRefElem(x_in,NVar,N_in,U_In,U_Out,ElemID,PartID)
+
+SUBROUTINE EvaluateFieldAtPhysPos(x_in,NVar,N_in,U_In,        U_Out,ElemID,PartID  &
+#if USE_RW
+                                                 ,UTurb_In_opt,Uturb_Out_opt        &
+#endif
+)
 !===================================================================================================================================
 !> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
 !> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
-!> 3) interpolate background field to position ( U_Out -> U_Out(x_in)+BG_field(x_in) )
+!> 3) interpolate backgroundfield to position ( U_Out -> U_Out(x_in)+BG_field(x_in) )
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
-USE MOD_Interpolation_Vars,      ONLY:xGP,wBary
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_PICInterpolation_Vars,   ONLY:NBG,BGField,useBGField,BGDataSize,BGField_wBary, BGField_xGP,BGType
-USE MOD_Particle_Mesh_Vars,      ONLY:CurvedElem,wBaryCL_NGeo1,XiCL_NGeo1
-USE MOD_Particle_Mesh_Vars,      ONLY:dXCL_NGeo,XCL_NGeo,wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
+USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
+USE MOD_Mesh_Vars,             ONLY: NGeo
+USE MOD_Particle_Mesh_Vars,    ONLY: dXCL_NGeo,XCL_NGeo,wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars,    ONLY: CurvedElem,wBaryCL_NGeo1,XiCL_NGeo1
+#if USE_RW
+USE MOD_Equation_Vars,         ONLY: nVarTurb
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)  :: NVar                                  !< 6 (Ex, Ey, Ez, Bx, By, Bz)
-INTEGER,INTENT(IN)  :: N_In                                  !< usually PP_N
-INTEGER,INTENT(IN)  :: ElemID                                !< elem index
-REAL,INTENT(IN)     :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)     !< elem state
-REAL,INTENT(IN)     :: x_in(3)                               !< physical position of particle
-INTEGER,INTENT(IN),OPTIONAL :: PartID
+REAL,INTENT(IN)           :: x_in(3)                                       !< position in physical space
+INTEGER,INTENT(IN)        :: NVar                                          !< 5 (rho,u_x,u_y,u_z,e)
+INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
+INTEGER,INTENT(IN)        :: ElemID                                        !< Element index
+REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
+INTEGER,INTENT(IN)        :: PartID                                        !< particle ID
+#if USE_RW
+REAL,INTENT(IN),OPTIONAL  :: Uturb_In_opt(1:nVarTurb,0:N_In,0:N_in,0:N_In) !< Turbulent quantities in Element
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)    :: U_Out(1:NVar)                         !< Interpolated state
+REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at reference position xi_in
+#if USE_RW
+REAL,INTENT(OUT),OPTIONAL :: UTurb_Out_opt(1:nVarTurb)                     !< Interpolated turbulent quantities at reference position xi_in
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k
-REAL                :: xi(3)
-REAL, PARAMETER     :: EPSONE=1.00000001
-REAL                :: L_xi(3,0:PP_N), L_eta_zeta
-REAL                :: XCL_NGeo1(1:3,0:1,0:1,0:1)
-REAL                :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
-! h5-external e,b field
-REAL,ALLOCATABLE    :: L_xi_BGField(:,:), U_BGField(:)
+INTEGER                   :: i,j,k
+REAL                      :: xi(3)
+REAL                      :: L_xi(3,0:PP_N), L_eta_zeta
+REAL                      :: XCL_NGeo1(1:3,0:1,0:1,0:1)
+REAL                      :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
+REAL, PARAMETER           :: EPSONE=1.00000001
 !===================================================================================================================================
 
 CALL GetRefNewtonStartValue(X_in,Xi,ElemID)
 
+! If the element is curved, all Gauss points are required
 IF(CurvedElem(ElemID))THEN
   CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID) &
                     ,NGeo,ElemID,Mode=1,PartID=PartID)
+! If the element is not curved, only the corner nodes are required
 ELSE
   ! fill dummy XCL_NGeo1
-  XCL_NGeo1(1:3,0,0,0) = XCL_NGeo(1:3, 0  , 0  , 0  ,ElemID)
-  XCL_NGeo1(1:3,1,0,0) = XCL_NGeo(1:3,NGeo, 0  , 0  ,ElemID)
-  XCL_NGeo1(1:3,0,1,0) = XCL_NGeo(1:3, 0  ,NGeo, 0  ,ElemID)
-  XCL_NGeo1(1:3,1,1,0) = XCL_NGeo(1:3,NGeo,NGeo, 0  ,ElemID)
-  XCL_NGeo1(1:3,0,0,1) = XCL_NGeo(1:3, 0  , 0  ,NGeo,ElemID)
-  XCL_NGeo1(1:3,1,0,1) = XCL_NGeo(1:3,NGeo, 0  ,NGeo,ElemID)
-  XCL_NGeo1(1:3,0,1,1) = XCL_NGeo(1:3, 0  ,NGeo,NGeo,ElemID)
-  XCL_NGeo1(1:3,1,1,1) = XCL_NGeo(1:3,NGeo,NGeo,NGeo,ElemID)
+  XCL_NGeo1 (1:3,    0,0,0) = XCL_NGeo (1:3,     0  , 0  , 0  ,ElemID)
+  XCL_NGeo1 (1:3,    1,0,0) = XCL_NGeo (1:3,    NGeo, 0  , 0  ,ElemID)
+  XCL_NGeo1 (1:3,    0,1,0) = XCL_NGeo (1:3,     0  ,NGeo, 0  ,ElemID)
+  XCL_NGeo1 (1:3,    1,1,0) = XCL_NGeo (1:3,    NGeo,NGeo, 0  ,ElemID)
+  XCL_NGeo1 (1:3,    0,0,1) = XCL_NGeo (1:3,     0  , 0  ,NGeo,ElemID)
+  XCL_NGeo1 (1:3,    1,0,1) = XCL_NGeo (1:3,    NGeo, 0  ,NGeo,ElemID)
+  XCL_NGeo1 (1:3,    0,1,1) = XCL_NGeo (1:3,     0  ,NGeo,NGeo,ElemID)
+  XCL_NGeo1 (1:3,    1,1,1) = XCL_NGeo (1:3,    NGeo,NGeo,NGeo,ElemID)
   ! fill dummy dXCL_NGeo1
   dXCL_NGeo1(1:3,1:3,0,0,0) = dXCL_NGeo(1:3,1:3, 0  , 0  , 0  ,ElemID)
   dXCL_NGeo1(1:3,1:3,1,0,0) = dXCL_NGeo(1:3,1:3,NGeo, 0  , 0  ,ElemID)
@@ -133,42 +148,24 @@ DO k=0,N_in
   END DO ! j=0,N_In
 END DO ! k=0,N_In
 
-IF(useBGField)THEN
-  ! use of BG-Field with possible different polynomial order and nodetype
-  ALLOCATE( L_xi_BGField(3,0:NBG)             &
-          , U_BGField(1:BGDataSize)           )
-!          , X3D_tmp1(BGDataSize,0:NBG,0:NBG) &
-!          , X3D_tmp2(BGDataSize,0:NBG)       &
-!          , X3D_tmp3(BGDataSize)             )
-  CALL LagrangeInterpolationPolys(xi(1),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(1,:))
-  CALL LagrangeInterpolationPolys(xi(2),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(2,:))
-  CALL LagrangeInterpolationPolys(xi(3),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(3,:))
+#if USE_RW
+IF (PRESENT(UTurb_In_opt)) THEN
+  UTurb_Out_opt = 0.
+  DO k=0,N_in
+    DO j=0,N_in
+      L_eta_zeta=L_xi(2,j)*L_xi(3,k)
+      DO i=0,N_in
+        UTurb_Out_opt = Uturb_Out_opt + UTurb_In_opt(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      END DO ! i=0,N_In
+    END DO ! j=0,N_In
+  END DO ! k=0,N_In
+END IF
+#endif
 
-  U_BGField(:)=0
-  DO k=0,NBG
-    DO j=0,NBG
-      L_eta_zeta=L_xi_BGField(2,j)*L_xi_BGField(3,k)
-      DO i=0,NBG
-        U_BGField = U_BGField + BGField(:,i,j,k,ElemID)*L_xi_BGField(1,i)*L_Eta_Zeta
-      END DO ! i=0,NBG
-    END DO ! j=0,NBG
-  END DO ! k=0,NBG
-
-  SELECT CASE(BGType)
-  CASE(1)
-    U_Out(1:3)=U_Out(1:3)+U_BGField
-  CASE(2)
-    U_Out(4:6)=U_Out(4:6)+U_BGField
-  CASE(3)
-    U_Out=U_Out+U_BGField
-  END SELECT
-  DEALLOCATE( L_xi_BGField, U_BGField)! X3d_tmp1, x3d_tmp2, x3d_tmp3)
-END IF ! useBGField
-
-END SUBROUTINE GetPositionInRefElem
+END SUBROUTINE EvaluateFieldAtPhysPos
 
 
-SUBROUTINE TensorProductInterpolation(x_in,xi,ElemID,DoReUseMap,ForceMode,PartID)
+SUBROUTINE GetPositionInRefElem(x_in,xi,ElemID,DoReUseMap,ForceMode)
 !===================================================================================================================================
 !> Get Position within reference element (x_in -> xi=[-1,1])
 !===================================================================================================================================
@@ -177,20 +174,20 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
 USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Mesh_Vars,      ONLY:CurvedElem,wBaryCL_NGeo1,XiCL_NGeo1
 USE MOD_Particle_Mesh_Vars,      ONLY:dXCL_NGeo,XCL_NGeo,wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars,      ONLY:CurvedElem,wBaryCL_NGeo1,XiCL_NGeo1
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)          :: ElemID                        !< element index
-REAL,INTENT(IN)             :: x_in(3)                       !< position in physical space
-LOGICAL,INTENT(IN),OPTIONAL :: DoReUseMap                    !< flag if start values for newton elem mapping already exists
-LOGICAL,INTENT(IN),OPTIONAL :: ForceMode                     !< flag for mode change in RefElemNewton
-INTEGER,INTENT(IN),OPTIONAL :: PartID
+INTEGER,INTENT(IN)          :: ElemID                                 !< element index
+REAL,INTENT(IN)             :: x_in(3)                                !< position in physical space
+LOGICAL,INTENT(IN),OPTIONAL :: DoReUseMap                             !< flag if start values for Newton elem mapping already exists
+LOGICAL,INTENT(IN),OPTIONAL :: ForceMode                              !< flag for mode change in RefElemNewton
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT)          :: xi(1:3)                       !< position in reference element
+REAL,INTENT(INOUT)          :: xi(1:3)                                !< position in reference element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                    :: iMode
@@ -205,13 +202,11 @@ IF(.NOT.PRESENT(DoReUseMap))THEN
 END IF
 
 IF(CurvedElem(ElemID))THEN
-  CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID),NGeo,ElemID,Mode=iMode &
-                    ,PartID=PartID)
+  CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID),NGeo,ElemID,Mode=iMode)
 ELSE
   ! fill dummy XCL_NGeo1
   IF(NGeo.EQ.1)THEN
-    CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID),NGeo,ElemID,Mode=iMode &
-                      ,PartID=PartID)
+    CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID),NGeo,ElemID,Mode=iMode)
   ELSE
     XCL_NGeo1(1:3,0,0,0) = XCL_NGeo(1:3, 0  , 0  , 0  ,ElemID)
     XCL_NGeo1(1:3,1,0,0) = XCL_NGeo(1:3,NGeo, 0  , 0  ,ElemID)
@@ -230,32 +225,32 @@ ELSE
     dXCL_NGeo1(1:3,1:3,1,0,1) = dXCL_NGeo(1:3,1:3,NGeo, 0  ,NGeo,ElemID)
     dXCL_NGeo1(1:3,1:3,0,1,1) = dXCL_NGeo(1:3,1:3, 0  ,NGeo,NGeo,ElemID)
     dXCL_NGeo1(1:3,1:3,1,1,1) = dXCL_NGeo(1:3,1:3,NGeo,NGeo,NGeo,ElemID)
-    CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo1,XiCL_NGeo1,XCL_NGeo1,dXCL_NGeo1,1,ElemID,Mode=iMode,PartID=PartID)
+    CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo1,XiCL_NGeo1,XCL_NGeo1,dXCL_NGeo1,1,ElemID,Mode=iMode)
   END IF
 END IF
 
-END SUBROUTINE TensorProductInterpolation
+END SUBROUTINE GetPositionInRefElem
 
 
-SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,xGP_in,wBary_In,U_In,U_Out)
+SUBROUTINE TensorProductInterpolation(Xi_in,NVar,N_in,xGP_in,wBary_In,U_In,U_Out)
 !===================================================================================================================================
 !> Interpolates a 3D tensor product Lagrange basis defined by (N_in+1) 1D interpolation points to the position Xi
 !===================================================================================================================================
 ! MODULES
-USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
+USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)        :: NVar                            !< 6 (Ex, Ey, Ez, Bx, By, Bz)
-INTEGER,INTENT(IN)        :: N_in                            !< usually PP_N
-REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In) !< State in Element
-REAL,INTENT(IN)           :: xi_in(3)                        !< position in reference element
-REAL,INTENT(IN)           :: xGP_In(0:N_in)
-REAL,INTENT(IN)           :: wBary_In(0:N_in)
+REAL,INTENT(IN)            :: Xi_in(3)                              !< position in reference element
+INTEGER,INTENT(IN)         :: NVar                                  !< 5 (rho,u_x,u_y,u_z,e)
+INTEGER,INTENT(IN)         :: N_In                                  !< usually PP_N
+REAL,INTENT(IN)            :: xGP_In(0:N_in)
+REAL,INTENT(IN)            :: wBary_In(0:N_in)
+REAL,INTENT(IN)            :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)     !< State in element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)          :: U_Out(1:NVar)                   !< Interpolated state at reference position xi_in
+REAL,INTENT(OUT)           :: U_Out(1:NVar)                         !< Interpolated state at reference position xi_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: i,j,k
@@ -275,14 +270,15 @@ DO k=0,N_in
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In
-END SUBROUTINE EvaluateFieldAtRefPos
+
+END SUBROUTINE TensorProductInterpolation
 
 
+SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out,ElemID                 &
 #if USE_RW
-SUBROUTINE EvaluateFieldAtPhysPos(xi_in,NVar,N_in,U_In,U_Out,ElemID,UTurb_In_opt,Uturb_Out_opt)
-#else
-SUBROUTINE EvaluateFieldAtPhysPos(xi_in,NVar,N_in,U_In,U_Out,ElemID)
+                                                ,UTurb_In_opt,Uturb_Out_opt        &
 #endif
+)
 !===================================================================================================================================
 !> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
 !> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
@@ -290,7 +286,6 @@ SUBROUTINE EvaluateFieldAtPhysPos(xi_in,NVar,N_in,U_In,U_Out,ElemID)
 ! MODULES
 USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
 USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
-USE MOD_PICInterpolation_Vars, ONLY: NBG,BGField,useBGField,BGDataSize,BGField_xGP,BGField_wBary,BGType
 #if USE_RW
 USE MOD_Equation_Vars,         ONLY: nVarTurb
 #endif
@@ -298,29 +293,24 @@ USE MOD_Equation_Vars,         ONLY: nVarTurb
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)        :: NVar                            !< 5 (rho,u_x,u_y,u_z,e)
-INTEGER,INTENT(IN)        :: N_In                            !< usually PP_N
-INTEGER,INTENT(IN)        :: ElemID                          !< Element index
-REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In) !< State in Element
-REAL,INTENT(IN)           :: xi_in(3)                        !< position in reference element
+REAL,INTENT(IN)           :: Xi_in(3)                                      !< position in reference element
+INTEGER,INTENT(IN)        :: NVar                                          !< 5 (rho,u_x,u_y,u_z,e)
+INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
+INTEGER,INTENT(IN)        :: ElemID                                        !< Element index
+REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
 #if USE_RW
 REAL,INTENT(IN),OPTIONAL  :: Uturb_In_opt(1:nVarTurb,0:N_In,0:N_in,0:N_In) !< Turbulent quantities in Element
 #endif
-!----------------------------------------------------------------------------------------------------------------------------------- ! -----------------------------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)          :: U_Out(1:NVar)                   !< Interpolated state at reference position xi_in
+REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at reference position xi_in
 #if USE_RW
-REAL,INTENT(OUT),OPTIONAL :: UTurb_Out_opt(1:nVarTurb)       !< Interpolated turbulent quantities at reference position xi_in
+REAL,INTENT(OUT),OPTIONAL :: UTurb_Out_opt(1:nVarTurb)                     !< Interpolated turbulent quantities at reference position xi_in
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k
-!REAL                :: X3D_Buf1(1:NVar,0:N_In,0:N_In)  ! first intermediate results from 1D interpolations
-!REAL                :: X3D_Buf2(1:NVar,0:N_In) ! second intermediate results from 1D interpolations
-REAL                :: L_xi(3,0:N_in), L_eta_zeta
-!REAL                :: buff,buff2
-! h5-external e,b field
-REAL,ALLOCATABLE    :: L_xi_BGField(:,:), U_BGField(:)
+INTEGER                   :: i,j,k
+REAL                      :: L_xi(3,0:N_in), L_eta_zeta
 !===================================================================================================================================
 
 ! 2.1) get "Vandermonde" vectors
@@ -353,86 +343,7 @@ IF (PRESENT(UTurb_In_opt)) THEN
 END IF
 #endif
 
-!! 2.2) do the tensor product thing
-!X3D_buf1=0.
-!! first direction iN_In
-!DO k=0,N_In
-!  DO j=0,N_In
-!    DO i=0,N_In
-!      X3D_Buf1(:,j,k)=X3D_Buf1(:,j,k)+Lag2(1,i)*X3D_In(:,i,j,k)
-!    END DO
-!  END DO
-!END DO
-!X3D_buf2=0.
-!! second direction jN_In
-!DO k=0,N_In
-!  DO j=0,N_In
-!    X3D_Buf2(:,k)=X3D_Buf2(:,k)+Lag2(2,j)*X3D_Buf1(:,j,k)
-!  END DO
-!END DO
-!X3D_Out=0.
-!! last direction kN_In
-!DO k=0,N_In
-!  X3D_Out(:)=X3D_Out(:)+Lag2(3,k)*X3D_Buf2(:,k)
-!END DO
-
-IF(useBGField)THEN
-  ! use of BG-Field with possible different polynomial order and nodetype
-  ALLOCATE( L_xi_BGField(3,0:NBG)             &
-          , U_BGField(1:BGDataSize)           )
-!          , X3D_tmp1(BGDataSize,0:NBG,0:NBG) &
-!          , X3D_tmp2(BGDataSize,0:NBG)       &
-!          , X3D_tmp3(BGDataSize)             )
-  CALL LagrangeInterpolationPolys(xi_in(1),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(1,:))
-  CALL LagrangeInterpolationPolys(xi_in(2),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(2,:))
-  CALL LagrangeInterpolationPolys(xi_in(3),NBG,BGField_xGP,BGField_wBary,L_xi_BGField(3,:))
-
-  U_BGField(:)=0
-  DO k=0,NBG
-    DO j=0,NBG
-      L_eta_zeta=L_xi_BGField(2,j)*L_xi_BGField(3,k)
-      DO i=0,NBG
-        U_BGField = U_BGField + BGField(:,i,j,k,ElemID)*L_xi_BGField(1,i)*L_Eta_Zeta
-      END DO ! i=0,NBG
-    END DO ! j=0,NBG
-  END DO ! k=0,NBG
-
-
-  !! 2.2) do the tensor product thing
-  !X3D_tmp1=0.
-  !! first direction iN_In
-  !DO k=0,NBG
-  !  DO j=0,NBG
-  !    DO i=0,NBG
-  !      X3D_tmp1(:,j,k)=X3D_tmp1(:,j,k)+L_xi_BGField(1,i)*BGField(:,i,j,k,ElemID)
-  !    END DO
-  !  END DO
-  !END DO
-  !X3D_tmp2=0.
-  !! second direction jN_In
-  !DO k=0,NBG
-  !  DO j=0,NBG
-  !    X3D_tmp2(:,k)=X3D_tmp2(:,k)+L_xi_BGField(2,j)*X3D_tmp1(:,j,k)
-  !  END DO
-  !END DO
-  !X3D_tmp3=0.
-  !! last direction kN_In
-  !DO k=0,NBG
-  !  X3D_tmp3(:)=X3D_tmp3(:)+L_xi_BGField(3,k)*X3D_tmp2(:,k)
-  !END DO
-  SELECT CASE(BGType)
-  CASE(1)
-    U_Out(1:3)=U_Out(1:3)+U_BGField
-  CASE(2)
-    U_Out(4:6)=U_Out(4:6)+U_BGField
-  CASE(3)
-    U_Out=U_Out+U_BGField
-  END SELECT
-  DEALLOCATE( L_xi_BGField, U_BGFIeld)! X3d_tmp1, x3d_tmp2, x3d_tmp3)
-END IF ! useBGField
-
-
-END SUBROUTINE EvaluateFieldAtPhysPos
+END SUBROUTINE EvaluateFieldAtRefPos
 
 
 SUBROUTINE RefElemNewton(Xi,X_In,wBaryCL_N_In,XiCL_N_In,XCL_N_In,dXCL_N_In,N_In,ElemID,Mode,PartID)
@@ -572,28 +483,22 @@ __STAMP__&
   ! check xi value for plausibility
   IF(ANY(ABS(Xi).GT.1.5)) THEN
     IF(Mode.EQ.1)THEN
-      IF ((PDM%ParticleInside(PartID)).OR.(.NOT.AllowLoosing)) THEN
-        IPWRITE(UNIT_stdOut,*) ' Particle not inside of element, force!!!'
-        IPWRITE(UNIT_stdOut,*) ' Newton-Iter', NewtonIter
-        IPWRITE(UNIT_stdOut,*) ' xi  ', xi(1:3)
-        IPWRITE(UNIT_stdOut,*) ' PartPos', X_in
-        IPWRITE(UNIT_stdOut,*) ' PartVel', PartState(4:6,PartID),SQRT(PartState(4,PartID)**2 + PartState(5,PartID)**2 + &
-                                           PartState(6  ,PartID)**2)
-        IPWRITE(UNIT_stdOut,*) ' ElemID', ElemID+offSetElem
-        IF(PRESENT(PartID)) IPWRITE(UNIT_stdOut,*) ' PartID', PartID
+      IPWRITE(UNIT_stdOut,*) ' Particle not inside of element, force!!!'
+      IPWRITE(UNIT_stdOut,*) ' Newton-Iter', NewtonIter
+      IPWRITE(UNIT_stdOut,*) ' xi  ', xi(1:3)
+      IPWRITE(UNIT_stdOut,*) ' PartPos', X_in
+      IPWRITE(UNIT_stdOut,*) ' PartVel', PartState(4:6,PartID),SQRT(PartState(4,PartID)**2 + PartState(5,PartID)**2 + &
+                                         PartState(6  ,PartID)**2)
+      IPWRITE(UNIT_stdOut,*) ' ElemID', ElemID+offSetElem
+      IF(PRESENT(PartID)) IPWRITE(UNIT_stdOut,*) ' PartID', PartID
 
-        ! In loose mode, remove the invalid particle and write to log
-        IF (AllowLoosing) THEN
-            PDM%ParticleInside(PartID) = .FALSE.
-            IPWRITE(UNIT_stdOut,*) ' Lost particle removed from domain. Continuing simulation ...'
-        END IF
-
-      END IF
+      ! In loose mode, remove the invalid particle and write to log
+      IF (AllowLoosing) THEN
+          PDM%ParticleInside(PartID) = .FALSE.
+          IPWRITE(UNIT_stdOut,*) ' Lost particle removed from domain. Continuing simulation ...'
       ! In strict mode, abort program
-      IF (.NOT.AllowLoosing) THEN
-        CALL abort(&
-  __STAMP__&
-  ,'Particle Not inSide of Element, ElemID,',ElemID)
+      ELSE
+        CALL abort(__STAMP__,'Particle Not inSide of Element, ElemID,',ElemID)
       END IF
     ELSE
       EXIT

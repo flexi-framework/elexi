@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -48,7 +48,8 @@ PUBLIC::GetBoundaryInteraction,GetBoundaryInteractionRef,GetBoundaryInteractionA
 
 CONTAINS
 
-SUBROUTINE GetBoundaryInteraction(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,ElemID,crossedBC,TriNum)
+SUBROUTINE GetBoundaryInteraction(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,locSideID,ElemID,crossedBC&
+                                  ,TriNum)
 !===================================================================================================================================
 ! Computes the post boundary state of a particle that interacts with a boundary condition
 !  OpenBC                  = 1
@@ -74,7 +75,7 @@ USE MOD_StringTools,            ONLY:LowCase
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                   :: iPart,SideID,flip
+INTEGER,INTENT(IN)                   :: iPart,SideID,flip,locSideID
 REAL,INTENT(IN)                      :: xi,eta
 INTEGER,INTENT(IN)                   :: TriNum
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -102,6 +103,7 @@ CASE(1) !PartBound%OpenBC)
   ! If the particle is close to BC, it encounters the BC only if it leaves element/grid
   IF (.NOT.TriaTracking) THEN
     ! Calculate the side normal vector
+    !if particle is close to BC, it encounters the BC only if it leaves element/grid
     IF(alpha/lengthPartTrajectory.LE.epsilontol) THEN
       SELECT CASE(SideType(SideID))
         CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
@@ -125,7 +127,7 @@ CASE(1) !PartBound%OpenBC)
       ! Match boundary name with 'outlet'
       CALL LowCase(TRIM(BoundaryName(BC(SideID))),BCStringTmp)
       IF (BCStringTmp.EQ.'outlet') THEN
-        CALL SideErosion(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,TriNum=TriNum)
+        CALL SideErosion(PartTrajectory,xi,eta,iPart,SideID,flip,TriNum=TriNum)
       END IF
     END IF
   END IF
@@ -149,12 +151,12 @@ CASE(2) !PartBound%ReflectiveBC)
     SELECT CASE(PartBound%WallModel(PartBound%MapToPartBC(BC(SideID))))
       ! perfectly reflecting, specular re-emission
       CASE('perfRef')
-         CALL  PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip, &
-           opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,TriNum=TriNum)
+         CALL  PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,              &
+           opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,TriNum=TriNum,opt_LocalSide= locSideID,opt_ElemID=ElemID)
       ! reflection using coefficient of restitution (CoR)
       CASE('coeffRes')
-         CALL  DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip, &
-           opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,TriNum=TriNum,                               &
+         CALL  DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,              &
+           opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,TriNum=TriNum,opt_LocalSide= locSideID,opt_ElemID=ElemID, &
            WallCoeffModel=PartBound%WallCoeffModel(PartBound%MapToPartBC(BC(SideID))))
       CASE DEFAULT
           CALL abort(__STAMP__, ' No or invalid particle wall model given. Please update Part-Boundary[$]-WallModel.')
@@ -177,7 +179,7 @@ CASE(10) !PartBound%SymmetryBC
 !-----------------------------------------------------------------------------------------------------------------------------------
   ! For particles, symmetry equals perfect reflection, also flip forces direction
   CALL  PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip, &
-                          opt_Symmetry=.TRUE.,opt_Reflected=crossedBC,TriNum=TriNum)
+                          opt_Symmetry=.TRUE.,opt_Reflected=crossedBC,TriNum=TriNum,opt_LocalSide= locSideID,opt_ElemID=ElemID)
 
 !CASE(100) !PartBound%AnalyzeBC
 !!-----------------------------------------------------------------------------------------------------------------------------------
@@ -267,7 +269,7 @@ CASE(1) !PartBound%OpenBC)
       ! Match boundary name with 'outlet'
       CALL LowCase(TRIM(BoundaryName(BC(SideID))),BCStringTmp)
       IF (BCStringTmp.EQ.'outlet') THEN
-        CALL SideErosion(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip)
+        CALL SideErosion(PartTrajectory,xi,eta,iPart,SideID,flip)
       END IF
     END IF
   END IF
@@ -292,11 +294,11 @@ CASE(2) !PartBound%ReflectiveBC)
     SELECT CASE(PartBound%WallModel(PartBound%MapToPartBC(BC(SideID))))
       ! perfectly reflecting, specular re-emission
       CASE('perfRef')
-        CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,               &
+        CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,           &
                                opt_BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC)
       CASE('coeffRes')
-        CALL DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,              &
-                                opt_BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,              &
+        CALL DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,           &
+                                BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,              &
                                 WallCoeffModel=PartBound%WallCoeffModel(PartBound%MapToPartBC(BC(SideID))))
       CASE DEFAULT
           CALL abort(__STAMP__, ' No or invalid particle wall model given. Please update Part-Boundary[$]-WallModel.')
@@ -401,7 +403,7 @@ END SUBROUTINE GetBoundaryInteractionAuxBC
 
 
 SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,flip,opt_BCSideID, &
-  opt_Symmetry,opt_Reflected,TriNum,AuxBCIdx)
+  opt_Symmetry,opt_Reflected,TriNum,AuxBCIdx,opt_LocalSide,opt_ElemID)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Computes the perfect reflection in 3D
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -411,10 +413,9 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
 USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Mesh_Vars,     ONLY:epsInCell
 USE MOD_Particle_Surfaces,      ONLY:CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Vars,          ONLY:PartState,LastPartPos,Species,PartSpecies,PartReflCount
-USE MOD_Particle_Surfaces_Vars, ONLY:SideNormVec,SideType,epsilontol
+USE MOD_Particle_Surfaces_Vars, ONLY:SideNormVec,SideType
 USE MOD_Mesh_Vars,              ONLY:BC
 USE MOD_Particle_Vars,          ONLY:Pt_temp,PDM
 USE MOD_Particle_Vars,          ONLY:WriteMacroSurfaceValues
@@ -432,13 +433,14 @@ INTEGER,INTENT(IN),OPTIONAL       :: opt_BCSideID
 LOGICAL,INTENT(IN),OPTIONAL       :: opt_Symmetry
 INTEGER,INTENT(IN),OPTIONAL       :: TriNum
 INTEGER,INTENT(IN),OPTIONAL       :: AuxBCIdx
+INTEGER,INTENT(IN),OPTIONAL       :: opt_LocalSide
+INTEGER,INTENT(IN),OPTIONAL       :: opt_ElemID
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 LOGICAL,INTENT(OUT),OPTIONAL      :: opt_Reflected
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                              :: v_old(1:3),n_loc(1:3),WallVelo(3),intersec(3),r_vec(3),axis(3),cos2inv
-REAL                              :: epsLength
 REAL                              :: Xitild,EtaTild
 INTEGER                           :: p,q,SurfSideID,locBCID,BCSideID
 LOGICAL                           :: Symmetry,IsAuxBC
@@ -501,8 +503,7 @@ IF (IsAuxBC) THEN
 
 ! Normal BC
 ELSE
-  ! Get eps tolerance, wall velo and BCID
-  epsLength = MAX(epsInCell,epsilontol)*lengthPartTrajectory
+  ! Get wall velo and BCID
   WallVelo  = PartBound%WallVelo(1:3,PartBound%MapToPartBC(BC(SideID)))
   locBCID   = PartBound%MapToPartBC(BC(SideID))
 
@@ -522,7 +523,7 @@ ELSE
   ELSE
     ! Get side normal vector
     IF (TriaTracking) THEN
-      CALL CalcNormAndTangTriangle(nVec=n_loc,TriNum=TriNum,SideID=SideID)
+      CALL CalcNormAndTangTriangle(nVec=n_loc,TriNum=TriNum,ElemID_opt=opt_ElemID,LocSideID_opt=opt_LocalSide)
     ELSE
       SELECT CASE(SideType(SideID))
       CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
@@ -598,7 +599,7 @@ IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
 !  ! End ugly hack
 
   ! Record particle impact
-  CALL RecordParticleBoundarySampling(PartID,SurfSideID,locBCID,p,q,v_old,PartTrajectory,PartFaceAngle,alpha)
+  CALL RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
 END IF !.NOT.IsAuxBC
 
 ! Make sure we have the old values safe
@@ -675,8 +676,8 @@ END IF
 END SUBROUTINE PerfectReflection
 
 
-SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,flip,opt_BCSideID, &
-  opt_Symmetry,opt_Reflected,TriNum,AuxBCIdx,WallCoeffModel)
+SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,flip,BCSideID, &
+  opt_Symmetry,opt_Reflected,TriNum,AuxBCIdx,opt_LocalSide,opt_ElemID,WallCoeffModel)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Computes the diffuse reflection in 3D
 ! only implemented for DoRefMapping tracking
@@ -686,13 +687,12 @@ SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 USE MOD_Globals
 USE MOD_ErosionPoints,          ONLY:RecordErosionPoint
 USE MOD_ErosionPoints_Vars,     ONLY:EP_inUse
-USE MOD_Mesh_Vars,              ONLY:BC
+USE MOD_Mesh_Vars,              ONLY:NGeo,BC
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Erosion_Vars,  ONLY:PartTrackReflection
-USE MOD_Particle_Mesh_Vars,     ONLY:epsInCell
 USE MOD_Particle_Surfaces,      ONLY:CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
-USE MOD_Particle_Surfaces_Vars, ONLY:SideNormVec,SideType,epsilontol
+USE MOD_Particle_Surfaces_Vars, ONLY:SideNormVec,SideType,BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
 USE MOD_Particle_Vars,          ONLY:PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars,          ONLY:Pt_temp,PDM
@@ -707,10 +707,12 @@ IMPLICIT NONE
 REAL,INTENT(INOUT)                :: PartTrajectory(1:3), lengthPartTrajectory, alpha
 REAL,INTENT(IN)                   :: xi, eta
 INTEGER,INTENT(IN)                :: PartID, SideID, flip
-INTEGER,INTENT(IN),OPTIONAL       :: opt_BCSideID
+INTEGER,INTENT(IN),OPTIONAL       :: BCSideID
 LOGICAL,INTENT(IN),OPTIONAL       :: opt_Symmetry
 INTEGER,INTENT(IN),OPTIONAL       :: TriNum
 INTEGER,INTENT(IN),OPTIONAL       :: AuxBCIdx
+INTEGER,INTENT(IN),OPTIONAL       :: opt_LocalSide
+INTEGER,INTENT(IN),OPTIONAL       :: opt_ElemID
 CHARACTER(LEN=255),INTENT(IN)     :: WallCoeffModel
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -718,9 +720,9 @@ LOGICAL,INTENT(OUT),OPTIONAL      :: opt_Reflected
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                              :: v_old(1:3),n_loc(1:3),WallVelo(3),intersec(3),r_vec(3),axis(3),cos2inv
-REAL                              :: epsLength
+REAL                              :: tang1(1:3),tang2(1:3)
 REAL                              :: Xitild,EtaTild
-INTEGER                           :: p,q,SurfSideID,locBCID,BCSideID
+INTEGER                           :: p,q,SurfSideID,locBCID
 LOGICAL                           :: Symmetry, IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngleDeg,PartFaceAngle_old
 REAL                              :: v_magnitude,v_norm(3),v_tang(3)
@@ -784,39 +786,67 @@ IF (IsAuxBC) THEN
     CALL abort(__STAMP__,'Error in DiffuseReflection: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
   END IF
   WallVelo=PartAuxBC%WallVelo(1:3,AuxBCIdx)
+  IF (n_loc(3).NE.0.) THEN
+    tang1(1) = 1.0
+    tang1(2) = 1.0
+    tang1(3) = -(n_loc(1)+n_loc(2))/n_loc(3)
+  ELSE
+    IF (n_loc(2).NE.0.) THEN
+      tang1(1) = 1.0
+      tang1(3) = 1.0
+      tang1(2) = -(n_loc(1)+n_loc(3))/n_loc(2)
+    ELSE
+      IF (n_loc(1).NE.0.) THEN
+        tang1(2) = 1.0
+        tang1(3) = 1.0
+        tang1(1) = -(n_loc(2)+n_loc(3))/n_loc(1)
+      ELSE
+        CALL abort(&
+__STAMP__&
+,'Error in DiffuseReflection, n_vec is zero for AuxBC',AuxBCIdx)
+      END IF
+    END IF
+  END IF
+  tang1=UNITVECTOR(tang1)
+  tang2=CROSSNORM(n_loc,tang1)
 
 ! Normal BC
 ELSE
-  ! Get eps tolerance, wall velo and BCID
-  epsLength = MAX(epsInCell,epsilontol)*lengthPartTrajectory
+  ! Get wall velo and BCID
   WallVelo  = PartBound%WallVelo(1:3,PartBound%MapToPartBC(BC(SideID)))
   locBCID   = PartBound%MapToPartBC(BC(SideID))
 
-  ! Instead of checking DoRefMapping, we pass opt_BCSideID if true
-  IF(PRESENT(opt_BCSideID))THEN
+  ! Instead of checking DoRefMapping, we pass BCSideID if true
+  IF(PRESENT(BCSideID))THEN
     ! Get side normal vector
-    BCSideID=opt_BCSideID
     SELECT CASE(SideType(BCSideID))
     CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
       n_loc=SideNormVec(1:3,BCSideID)
+      tang1=UNITVECTOR(BezierControlPoints3D(:,NGeo,0,BCSideID)-BezierControlPoints3D(:,0,0,BCSideID))
+      tang2=CROSSNORM(n_loc,tang1)
+      !tang2=BezierControlPoints3D(:,0,NGeo,BCSideID)-BezierControlPoints3D(:,0,0,BCSideID)
     CASE(BILINEAR)
-      CALL CalcNormAndTangBilinear(nVec=n_loc,xi=xi,eta=eta,SideID=BCSideID)
+      CALL CalcNormAndTangBilinear(n_loc,tang1,tang2,xi,eta,BCSideID)
     CASE(CURVED)
-      CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=BCSideID)
+      CALL CalcNormAndTangBezier(n_loc,tang1,tang2,xi,eta,BCSideID)
     END SELECT
   ! not reference mapping
   ELSE
     ! Get side normal vector
     IF (TriaTracking) THEN
-      CALL CalcNormAndTangTriangle(nVec=n_loc,TriNum=TriNum,SideID=SideID)
+      CALL CalcNormAndTangTriangle(nVec=n_loc,tang1=tang1,tang2=tang2, &
+          TriNum=TriNum,ElemID_opt=opt_ElemID,LocSideID_opt=opt_LocalSide)
     ELSE
       SELECT CASE(SideType(SideID))
       CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
         n_loc=SideNormVec(1:3,SideID)
+        tang1=UNITVECTOR(BezierControlPoints3D(:,NGeo,0,SideID)-BezierControlPoints3D(:,0,0,SideID))
+        tang2=CROSSNORM(n_loc,tang1)
+        !tang2=BezierControlPoints3D(:,0,NGeo,SideID)-BezierControlPoints3D(:,0,0,SideID)
       CASE(BILINEAR)
-        CALL CalcNormAndTangBilinear(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
+        CALL CalcNormAndTangBilinear(n_loc,tang1,tang2,xi,eta,SideID)
       CASE(CURVED)
-        CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
+        CALL CalcNormAndTangBezier(n_loc,tang1,tang2,xi,eta,SideID)
       END SELECT
       ! Flip side orientation if not on the master side
       IF(flip.NE.0) n_loc=-n_loc
@@ -829,22 +859,13 @@ ELSE
     Symmetry = .FALSE.
   END IF
 
-  IF(DOT_PRODUCT(PartTrajectory,n_loc).LE.0.) THEN
-    IF(PRESENT(opt_Reflected)) opt_Reflected=.FALSE.
-    RETURN
-  ELSE
-    IF(PRESENT(opt_Reflected)) opt_Reflected=.TRUE.
-  END IF
-
   ! Check if particle is encountering the boundary
-  IF(DOT_PRODUCT(PartTrajectory,n_loc).LE.0.) THEN
-    ! Particle does not encounter the boundary, return
+  IF(DOT_PRODUCT(n_loc,PartTrajectory).LT.0.)  THEN
     IF(PRESENT(opt_Reflected)) opt_Reflected=.FALSE.
     RETURN
   ELSE
     IF(PRESENT(opt_Reflected)) opt_Reflected=.TRUE.
   END IF
-
 END IF !IsAuxBC
 
 ! Make sure we have the old velocity safe
@@ -953,7 +974,7 @@ IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
   ! End ugly hack
 
   ! Record particle impact
-  CALL RecordParticleBoundarySampling(PartID,SurfSideID,locBCID,p,q,v_old,PartTrajectory,PartFaceAngle,alpha)
+  CALL RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
 END IF !.NOT.IsAuxBC
 
 ! Make sure we have the old values safe
@@ -1063,10 +1084,10 @@ SUBROUTINE PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,Si
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking,DoRefMapping
-USE MOD_Particle_Mesh_Vars,     ONLY:epsInCell,GEO,SidePeriodicType
+USE MOD_Particle_Mesh_Vars,     ONLY:GEO,SidePeriodicType
 USE MOD_Particle_Surfaces,      ONLY:CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Vars,          ONLY:PartState,LastPartPos,PEM
-USE MOD_Particle_Surfaces_vars, ONLY:SideNormVec,SideType,epsilontol
+USE MOD_Particle_Surfaces_vars, ONLY:SideNormVec,SideType
 USE MOD_Particle_Mesh_Vars,     ONLY:PartSideToElem
 #if CODE_ANALYZE
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -1087,12 +1108,8 @@ INTEGER,INTENT(INOUT),OPTIONAL    :: ElemID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                              :: n_loc(1:3)
-REAL                              :: epsLength
 INTEGER                           :: PVID,moved(2),locSideID
 !===================================================================================================================================
-
-! Get eps tolerance
-epsLength=MAX(epsInCell,epsilontol)*lengthPartTrajectory
 
 ! Instead of checking DoRefMapping, we pass opt_BCSideID if true
 IF(PRESENT(BCSideID))THEN
@@ -1180,7 +1197,7 @@ IF (DoRefMapping) PEM%LastElement(PartID) = 0
 END SUBROUTINE PeriodicBC
 
 
-SUBROUTINE SideErosion(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,flip,BCSideID,TriNum)
+SUBROUTINE SideErosion(PartTrajectory,xi,eta,PartID,SideID,flip,BCSideID,TriNum)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Tracks erosion on designated sides other than reflective wall
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1190,10 +1207,9 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
 USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Mesh_Vars,     ONLY:epsInCell
 USE MOD_Particle_Surfaces,      ONLY:CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Vars,          ONLY:PartState,PartReflCount
-USE MOD_Particle_Surfaces_Vars, ONLY:SideNormVec,SideType,epsilontol
+USE MOD_Particle_Surfaces_Vars, ONLY:SideNormVec,SideType
 USE MOD_Mesh_Vars,              ONLY:BC
 USE MOD_ErosionPoints,          ONLY:RecordErosionPoint
 USE MOD_ErosionPoints_Vars,     ONLY:EP_inUse
@@ -1201,7 +1217,7 @@ USE MOD_ErosionPoints_Vars,     ONLY:EP_inUse
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-REAL,INTENT(INOUT)                :: PartTrajectory(1:3), lengthPartTrajectory, alpha
+REAL,INTENT(INOUT)                :: PartTrajectory(1:3)
 REAL,INTENT(IN)                   :: xi, eta
 INTEGER,INTENT(IN)                :: PartID, SideID, flip
 INTEGER,INTENT(IN),OPTIONAL       :: BCSideID
@@ -1209,13 +1225,11 @@ INTEGER,INTENT(IN),OPTIONAL       :: TriNum
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                              :: v_old(1:3),n_loc(1:3)
-REAL                              :: epsLength
 REAL                              :: Xitild,EtaTild
 INTEGER                           :: p,q,SurfSideID,locBCID
 REAL                              :: PartFaceAngle
 !===================================================================================================================================
-  ! Get eps tolerance and BCID
-epsLength = MAX(epsInCell,epsilontol)*lengthPartTrajectory
+  ! Get BCID
 locBCID   = PartBound%MapToPartBC(BC(SideID))
 
 ! Instead of checking DoRefMapping, we pass opt_BCSideID if true
@@ -1277,7 +1291,7 @@ PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 ENDIF
 ! End ugly hack
 
-CALL RecordParticleBoundarySampling(PartID,SurfSideID,locBCID,p,q,v_old,PartTrajectory,PartFaceAngle,alpha)
+CALL RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
 
 IF (EP_inUse) CALL RecordErosionPoint(BCSideID        = BC(SideID),                       &
                                       PartID          = PartID,                           &
@@ -1289,7 +1303,7 @@ IF (EP_inUse) CALL RecordErosionPoint(BCSideID        = BC(SideID),             
 END SUBROUTINE SideErosion
 
 
-SUBROUTINE RecordParticleBoundarySampling(PartID,SurfSideID,locBCID,p,q,v_old,PartTrajectory,PartFaceAngle,alpha)
+SUBROUTINE RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Combined routine to add calculated erosion variables to tracking array
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1304,8 +1318,8 @@ USE MOD_Particle_Vars,          ONLY:Species,PartSpecies,nSpecies
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-REAL,INTENT(IN)                   :: PartTrajectory(1:3), PartFaceAngle, v_old(1:3), alpha
-INTEGER,INTENT(IN)                :: PartID, SurfSideID, locBCID, p, q
+REAL,INTENT(IN)                   :: PartFaceAngle, v_old(1:3)
+INTEGER,INTENT(IN)                :: PartID, SurfSideID, p, q
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                              :: delta                          ! Reusable variable for variance calculation

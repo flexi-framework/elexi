@@ -295,7 +295,7 @@ CASE(2) !PartBound%ReflectiveBC)
       ! perfectly reflecting, specular re-emission
       CASE('perfRef')
         CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,           &
-                               opt_BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC)
+                               BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC)
       CASE('coeffRes')
         CALL DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,           &
                                 BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,              &
@@ -329,7 +329,7 @@ CASE(10) !PartBound%SymmetryBC
 !-----------------------------------------------------------------------------------------------------------------------------------
   BCSideID=PartBCSideList(SideID)
   CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,             &
-                         opt_BCSideID=BCSideID,opt_Symmetry=.TRUE.,opt_reflected=crossedBC)
+                         BCSideID=BCSideID,opt_Symmetry=.TRUE.,opt_reflected=crossedBC)
 
 CASE DEFAULT
   CALL abort(__STAMP__,' ERROR: PartBound not associated!. BC(SideID)',BC(SideID),REAL(SideID/nSides))
@@ -402,7 +402,7 @@ END SELECT
 END SUBROUTINE GetBoundaryInteractionAuxBC
 
 
-SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,flip,opt_BCSideID, &
+SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,flip,BCSideID, &
   opt_Symmetry,opt_Reflected,TriNum,AuxBCIdx,opt_LocalSide,opt_ElemID)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Computes the perfect reflection in 3D
@@ -429,7 +429,7 @@ IMPLICIT NONE
 REAL,INTENT(INOUT)                :: PartTrajectory(1:3), lengthPartTrajectory, alpha
 REAL,INTENT(IN)                   :: xi, eta
 INTEGER,INTENT(IN)                :: PartID, SideID, flip
-INTEGER,INTENT(IN),OPTIONAL       :: opt_BCSideID
+INTEGER,INTENT(IN),OPTIONAL       :: BCSideID
 LOGICAL,INTENT(IN),OPTIONAL       :: opt_Symmetry
 INTEGER,INTENT(IN),OPTIONAL       :: TriNum
 INTEGER,INTENT(IN),OPTIONAL       :: AuxBCIdx
@@ -442,7 +442,7 @@ LOGICAL,INTENT(OUT),OPTIONAL      :: opt_Reflected
 ! LOCAL VARIABLES
 REAL                              :: v_old(1:3),n_loc(1:3),WallVelo(3),intersec(3),r_vec(3),axis(3),cos2inv
 REAL                              :: Xitild,EtaTild
-INTEGER                           :: p,q,SurfSideID,locBCID,BCSideID
+INTEGER                           :: p,q,SurfSideID,locBCID
 LOGICAL                           :: Symmetry,IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngle_old
 REAL                              :: PartTrajectory_old(3)
@@ -507,10 +507,9 @@ ELSE
   WallVelo  = PartBound%WallVelo(1:3,PartBound%MapToPartBC(BC(SideID)))
   locBCID   = PartBound%MapToPartBC(BC(SideID))
 
-  ! Instead of checking DoRefMapping, we pass opt_BCSideID if true
-  IF(PRESENT(opt_BCSideID)) THEN
+  ! Instead of checking DoRefMapping, we pass BCSideID if true
+  IF(PRESENT(BCSideID)) THEN
     ! Get side normal vector
-    BCSideID=opt_BCSideID
     SELECT CASE(SideType(BCSideID))
     CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
       n_loc=SideNormVec(1:3,BCSideID)

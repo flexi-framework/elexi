@@ -699,7 +699,7 @@ USE MOD_Particle_Vars,          ONLY:Pt_temp,PDM
 USE MOD_Particle_Vars,          ONLY:WriteMacroSurfaceValues
 USE MOD_TimeDisc_Vars,          ONLY:TimeDiscType
 ! Bons particle rebound model
-USE MOD_PICInterpolation_Vars,  ONLY:FieldAtParticle
+USE MOD_Particle_Interpolation_Vars,ONLY:FieldAtParticle
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!

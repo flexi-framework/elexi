@@ -14,18 +14,24 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-! Subroutines to interpolate the DG solution to the particle position
+! Contains routines for interpolation of one-way coupled particles
 !===================================================================================================================================
-MODULE  MOD_PICInterpolation
+MODULE MOD_Particle_Interpolation
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-!----------------------------------------------------------------------------------------------------------------------------------
-PUBLIC :: InterpolateFieldToParticle,InitializeInterpolation,InterpolateFieldToSingleParticle
-!===================================================================================================================================
-INTERFACE InitializeInterpolation
-  MODULE PROCEDURE InitializeInterpolation
+!-----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Private Part ---------------------------------------------------------------------------------------------------------------------
+! Public Part ----------------------------------------------------------------------------------------------------------------------
+INTERFACE InitParticleInterpolation
+  MODULE PROCEDURE InitParticleInterpolation
+END INTERFACE
+
+INTERFACE DefineParametersParticleInterpolation
+  MODULE PROCEDURE DefineParametersParticleInterpolation
 END INTERFACE
 
 INTERFACE InterpolateFieldToParticle
@@ -35,11 +41,36 @@ END INTERFACE
 INTERFACE InterpolateFieldToSingleParticle
   MODULE PROCEDURE InterpolateFieldToSingleParticle
 END INTERFACE
-!===================================================================================================================================
 
+PUBLIC :: InitParticleInterpolation
+PUBLIC :: DefineParametersParticleInterpolation
+PUBLIC :: InterpolateFieldToParticle
+PUBLIC :: InterpolateFieldToSingleParticle
+
+!===================================================================================================================================
 CONTAINS
 
-SUBROUTINE InitializeInterpolation
+!==================================================================================================================================
+!> Define parameters for particle interpolation
+!==================================================================================================================================
+SUBROUTINE DefineParametersParticleInterpolation()
+! MODULES
+USE MOD_Globals
+USE MOD_ReadInTools ,ONLY: prms
+IMPLICIT NONE
+!==================================================================================================================================
+CALL prms%SetSection("Particle Interpolation")
+
+CALL prms%CreateLogicalOption(  'Part-DoInterpolation'         , "Compute the DG solution field's influence on the Particle", '.TRUE.')
+CALL prms%CreateLogicalOption(  'Part-InterpolationElemLoop'   , 'Interpolate with outer iElem-loop (not'                         //&
+                                                                'for many Elems per proc!)', '.TRUE.')
+CALL prms%CreateRealArrayOption('Part-externalField'           , 'External field is added to the'                                 //&
+                                                                'maxwell-solver-field', '0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0')
+CALL prms%CreateRealOption(     'Part-scaleexternalField'      , 'Scale the provided external field', '1.0')
+
+END SUBROUTINE DefineParametersParticleInterpolation
+
+SUBROUTINE InitParticleInterpolation()
 !===================================================================================================================================
 ! Initialize the interpolation variables
 !===================================================================================================================================
@@ -48,43 +79,64 @@ USE MOD_Globals
 USE MOD_Particle_Globals,       ONLY:PP_nElems
 USE MOD_ReadInTools
 USE MOD_Particle_Vars,          ONLY:PDM
-USE MOD_PICInterpolation_Vars
+USE MOD_Particle_Interpolation_Vars
 #if USE_RW
 USE MOD_Equation_Vars,          ONLY:nVarTurb
 #endif
+#if USE_MPI
+USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
+#endif
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: ALLOCSTAT
+INTEGER                   :: ALLOCSTAT,LoopDisabled,LoopDisabledGlob
 REAL                      :: scaleExternalField
 !===================================================================================================================================
+IF(PartInterpolationInitIsDone)THEN
+   SWRITE(*,*) "InitParticleInterpolation already called."
+   RETURN
+END IF
 
-DoInterpolation       = GETLOGICAL('PIC-DoInterpolation','.TRUE.')
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE INTERPOLATION ...'
+
+DoInterpolation       = GETLOGICAL('Part-DoInterpolation','.TRUE.')
 
 ! For low number of particles, the loop over all elements becomes quite inefficient. User can opt out with setting
 ! InterpolationElemLoop = F.
-InterpolationElemLoop = GETLOGICAL('PIC-InterpolationElemLoop','.TRUE.')
+InterpolationElemLoop = GETLOGICAL('Part-InterpolationElemLoop','.TRUE.')
 
 ! Even if the user did not opt out, switch InterpolationElemLoop off for procs with high number of elems.
 !>> so far arbitrary treshold of 10 elems per proc
-IF (InterpolationElemLoop.AND.(PP_nElems.GT.10)) InterpolationElemLoop=.FALSE.
+IF (InterpolationElemLoop.AND.(PP_nElems.GT.10)) THEN
+  InterpolationElemLoop = .FALSE.
+  LoopDisabled          = 1
+
+#if USE_MPI
+  CALL MPI_ALLREDUCE(LoopDisabled,LoopDisabledGlob,1,MPI_INTEGER,MPI_SUM,PartMPI%COMM,iError)
+  SWRITE(*,*) ' InterpolationElemLoop disabled due to high number of elements on ',LoopDisabledGlob,'of',PartMPI%nProcs,'procs'
+#else
+  LoopDisabledGlob = LoopDisabled
+  WRITE(*,*)  ' InterpolationElemLoop disabled due to high number of elements'
+#endif
+END IF
 
 ! Size of external field depends on the equations system. Distinguish here between LES and RANS-SA
 #if EQNSYSNR == 3   /*Spalart-Allmaras*/
-externalField(1:PP_nVar)= GETREALARRAY('PIC-externalField',PP_nVar,'0.,0.,0.,0.,0.,0.')
+externalField(1:PP_nVar)= GETREALARRAY('Part-externalField',PP_nVar,'0.,0.,0.,0.,0.,0.')
 #else               /*Navier-Stokes*/
-externalField(1:PP_nVar)= GETREALARRAY('PIC-externalField',PP_nVar,'0.,0.,0.,0.,0.')
+externalField(1:PP_nVar)= GETREALARRAY('Part-externalField',PP_nVar,'0.,0.,0.,0.,0.')
 #endif
 
 ! Only consider the external field if it is not equal to zero
 IF (ANY(externalField.NE.0)) THEN
   useExternalField   = .TRUE.
-  scaleexternalField = GETREAL('PIC-scaleexternalField','1.0')
+  scaleexternalField = GETREAL('Part-scaleexternalField','1.0')
   externalField      = externalField*ScaleExternalField
 ELSE
   useExternalField   = .FALSE.
@@ -99,9 +151,13 @@ SDEALLOCATE(TurbFieldAtParticle)
 ! Allocate array for TKE,epsilson
 ALLOCATE(TurbFieldAtParticle(1:nVarTurb,1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 #endif
-IF (ALLOCSTAT.NE.0) CALL abort(__STAMP__,'ERROR in pic_interpolation.f90: Cannot allocate FieldAtParticle array!',ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) CALL abort(__STAMP__,'ERROR in Part_interpolation.f90: Cannot allocate FieldAtParticle array!',ALLOCSTAT)
 
-END SUBROUTINE InitializeInterpolation
+PartInterpolationInitIsDone=.TRUE.
+
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE INTERPOLATION DONE!'
+SWRITE(UNIT_StdOut,'(132("-"))')
+END SUBROUTINE InitParticleInterpolation
 
 
 SUBROUTINE InterpolateFieldToParticle()
@@ -116,12 +172,12 @@ USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRef
 USE MOD_Mesh_Vars,               ONLY: nElems
 USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PDM,PEM
 USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
-USE MOD_PICInterpolation_Vars,   ONLY: FieldAtParticle,useExternalField,externalField
-USE MOD_PICInterpolation_Vars,   ONLY: DoInterpolation,InterpolationElemLoop
+USE MOD_Particle_Interpolation_Vars, ONLY: FieldAtParticle,useExternalField,externalField
+USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
-USE MOD_PICInterpolation_Vars,   ONLY: TurbFieldAtParticle
+USE MOD_Particle_Interpolation_Vars,   ONLY: TurbFieldAtParticle
 USE MOD_Restart_Vars,            ONLY: RestartTurb
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -143,10 +199,10 @@ REAL                             :: turbField(nVarTurb)
 ! Return if no interpolation is wanted
 IF (.NOT.DoInterpolation) RETURN
 
-! null field vector
+! Null field vector
 field     = 0.
 #if USE_RW
-! null turbulent field vector
+! Null turbulent field vector
 turbField = 0.
 #endif
 
@@ -230,7 +286,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
-USE MOD_PICInterpolation_Vars,   ONLY: useExternalField,externalField
+USE MOD_Particle_Interpolation_Vars,   ONLY: useExternalField,externalField
 USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
 USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PEM
 #if USE_MPI
@@ -240,7 +296,7 @@ USE MOD_Mesh_Vars,               ONLY: nElems
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Restart_Vars,            ONLY: RestartTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
-USE MOD_PICInterpolation_Vars,   ONLY: TurbFieldAtParticle
+USE MOD_Particle_Interpolation_Vars,   ONLY: TurbFieldAtParticle
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
@@ -305,4 +361,4 @@ TurbFieldAtParticle(1:nVarTurb,PartID) = turbfield(      1:nVarTurb)
 END SUBROUTINE InterpolateFieldToSingleParticle
 
 
-END MODULE MOD_PICInterpolation
+END MODULE MOD_Particle_Interpolation

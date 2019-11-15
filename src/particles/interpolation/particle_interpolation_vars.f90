@@ -15,7 +15,7 @@
 !===================================================================================================================================
 ! Contains the constant Advection Velocity Vector used for the linear scalar advection equation
 !===================================================================================================================================
-MODULE MOD_PICInterpolation_Vars
+MODULE MOD_Particle_Interpolation_Vars
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -24,13 +24,16 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+LOGICAL                               :: PartInterpolationInitIsDone=.FALSE.
 LOGICAL                               :: DoInterpolation          ! Flag for interpolation
 LOGICAL                               :: InterpolationElemLoop    ! Interpolate with outer iElem-loop (not for many Elems per proc!)
-REAL,ALLOCATABLE                      :: FieldAtParticle(:,:)     ! (PIC%maxParticleNumber,5) 2nd index: rho,u_x,u_y,u_z,e
+REAL,ALLOCATABLE                      :: FieldAtParticle(:,:)     ! (PDM%maxParticleNumber,5) 2nd index: rho,u_x,u_y,u_z,e
 #if USE_RW
-REAL,ALLOCATABLE                      :: turbFieldAtParticle(:,:) ! (PIC%maxParticleNumber,2) 2nd index: k,epsilon
+REAL,ALLOCATABLE                      :: turbFieldAtParticle(:,:) ! (PDM%maxParticleNumber,2) 2nd index: k,epsilon
 #endif
+
+
 LOGICAL                               :: useExternalField          ! Flag for external field
 REAL                                  :: externalField(PP_nVar)   ! ext field is added to the maxwell-solver-field
 !===================================================================================================================================
-END MODULE MOD_PICInterpolation_Vars
+END MODULE MOD_Particle_Interpolation_Vars

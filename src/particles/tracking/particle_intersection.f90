@@ -131,12 +131,6 @@ ny = ny/nVal
 nz = nz/nVal
 
 !---- Calculate Intersection
-
-!--- the following has been used for impulse computations, not implemented yet?
-!   IF (nx.NE.0) PIC%InverseImpulseX(iPart) = .NOT.(PIC%InverseImpulseX(iPart))
-!   IF (ny.NE.0) PIC%InverseImpulseY(iPart) = .NOT.(PIC%InverseImpulseY(iPart))
-!   IF (nz.NE.0) PIC%InverseImpulseZ(iPart) = .NOT.(PIC%InverseImpulseZ(iPart))
-
 bx = PoldX - xNod
 by = PoldY - yNod
 bz = PoldZ - zNod
@@ -154,21 +148,8 @@ dist = SQRT(((ay * bz - az * by) * (ay * bz - az * by) +   &
 ! dist is then simply length of vector b instead of |axb|/|a|
 IF (dist.NE.dist) dist = SQRT(bx*bx+by*by+bz*bz)
 
-!   PoldStarX = PoldX + 2 * dist * nx
-!   PoldStarY = PoldY + 2 * dist * ny
-!   PoldStarZ = PoldZ + 2 * dist * nz
-
-!VectorShift(1) = PnewX - PoldX
-!VectorShift(2) = PnewY - PoldY
-!VectorShift(3) = PnewZ - PoldZ
-
 alpha = PartTrajectory(1) * nx + PartTrajectory(2) * ny + PartTrajectory(3) * nz
 alpha = dist / alpha
-
-!IntersectionPos(1) = PoldX + alpha * PartTrajectory(1)
-!IntersectionPos(2) = PoldY + alpha * PartTrajectory(2)
-!IntersectionPos(3) = PoldZ + alpha * PartTrajectory(3)
-
 RETURN
 
 END SUBROUTINE IntersectionWithWall

@@ -268,22 +268,21 @@ SUBROUTINE Analyze(Time,iter)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Analyze_Vars
-USE MOD_AnalyzeEquation,    ONLY: AnalyzeEquation
-USE MOD_Output,             ONLY: OutputToFile
-USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_Mesh_Vars,          ONLY: nGlobalElems
-USE MOD_Benchmarking,       ONLY: Benchmarking
+USE MOD_AnalyzeEquation,          ONLY: AnalyzeEquation
+USE MOD_Output,                   ONLY: OutputToFile
+USE MOD_Output_Vars,              ONLY: ProjectName
+USE MOD_Mesh_Vars,                ONLY: nGlobalElems
+USE MOD_Benchmarking,             ONLY: Benchmarking
 #if USE_PARTICLES
-USE MOD_DSMC_Vars
 USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Erosion_Analyze,ONLY: CalcSurfaceValues
-USE MOD_Particle_Tracking_Vars,ONLY:CountNbOfLostParts
-USE MOD_ErosionPoints,      ONLY: WriteEP
-USE MOD_ErosionPoints_Vars, ONLY: EP_inUse
-USE MOD_Particle_Output,    ONLY: WriteInfoStdOut
+USE MOD_Particle_Erosion_Analyze, ONLY: CalcSurfaceValues
+USE MOD_Particle_Tracking_Vars,   ONLY: CountNbOfLostParts
+USE MOD_ErosionPoints,            ONLY: WriteEP
+USE MOD_ErosionPoints_Vars,       ONLY: EP_inUse
+USE MOD_Particle_Output,          ONLY: WriteInfoStdOut
 #if USE_LOADBALANCE
-USE MOD_LoadDistribution,   ONLY: WriteElemTimeStatistics
+USE MOD_LoadDistribution,         ONLY: WriteElemTimeStatistics
 #endif /*LOADBALANCE*/
 #endif /*PARTICLES*/
 IMPLICIT NONE

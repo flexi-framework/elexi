@@ -41,66 +41,73 @@ SUBROUTINE UpdateNextFreePosition()
 ! Updates next free position
 !===================================================================================================================================
 ! MODULES
-  USE MOD_Globals
-  USE MOD_Particle_Vars
-  USE MOD_DSMC_Vars,               ONLY : useDSMC
+USE MOD_Globals
+USE MOD_Particle_Vars
 ! IMPLICIT VARIABLE HANDLING
-  IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-  INTEGER                          :: counter1,i,n
+INTEGER                          :: counter1,i,n
 !===================================================================================================================================
 
-  IF(PDM%maxParticleNumber.EQ.0) RETURN
-  counter1 = 1
-  IF (useDSMC) THEN
-    PEM%pNumber(:) = 0
-  END IF
-!  n = PDM%ParticleVecLength !PDM%maxParticleNumber
-  n = PDM%maxParticleNumber
-  PDM%ParticleVecLength = 0
-  PDM%insideParticleNumber = 0
-  IF (useDSMC) THEN
-   DO i=1,n
-     IF (.NOT.PDM%ParticleInside(i)) THEN
-       PDM%nextFreePosition(counter1) = i
-       counter1 = counter1 + 1
-     ELSE
-       IF (PEM%pNumber(PEM%Element(i)).EQ.0) THEN
-         PEM%pStart(PEM%Element(i)) = i                     ! Start of Linked List for Particles in Elem
-       ELSE
-         PEM%pNext(PEM%pEnd(PEM%Element(i))) = i            ! Next Particle of same Elem (Linked List)
-       END IF
-       PEM%pEnd(PEM%Element(i)) = i
-       PEM%pNumber(PEM%Element(i)) = &                      ! Number of Particles in Element
-       PEM%pNumber(PEM%Element(i)) + 1
-       PDM%ParticleVecLength = i
-     END IF
-   END DO
-  ELSE ! no DSMC
-   DO i=1,n
-     IF (.NOT.PDM%ParticleInside(i)) THEN
-       PDM%nextFreePosition(counter1) = i
-       counter1 = counter1 + 1
-     ELSE
-       PDM%ParticleVecLength = i
-     END IF
-   END DO
-  ENDIF
-  PDM%insideParticleNumber = PDM%ParticleVecLength - counter1+1
-  PDM%CurrentNextFreePosition = 0
-  DO i = n+1,PDM%maxParticleNumber
-   PDM%nextFreePosition(counter1) = i
-   counter1 = counter1 + 1
-  END DO
-  PDM%nextFreePosition(counter1:PDM%MaxParticleNumber)=0 ! exists if MaxParticleNumber is reached!!!
-  IF (counter1.GT.PDM%MaxParticleNumber) PDM%nextFreePosition(PDM%MaxParticleNumber)=0
+IF(PDM%maxParticleNumber.EQ.0) RETURN
 
-  RETURN
+counter1 = 1
+
+IF (useLinkedList) THEN
+  PEM%pNumber(:) = 0
+END IF
+
+n = PDM%maxParticleNumber
+PDM%ParticleVecLength    = 0
+PDM%insideParticleNumber = 0
+
+IF (useLinkedList) THEN
+ DO i=1,n
+   IF (.NOT.PDM%ParticleInside(i)) THEN
+     PDM%nextFreePosition(counter1) = i
+     counter1 = counter1 + 1
+   ELSE
+     IF (PEM%pNumber(PEM%Element(i)).EQ.0) THEN
+       PEM%pStart(PEM%Element(i)) = i                     ! Start of Linked List for Particles in Elem
+     ELSE
+       PEM%pNext(PEM%pEnd(PEM%Element(i))) = i            ! Next Particle of same Elem (Linked List)
+     END IF
+     PEM%pEnd(PEM%Element(i)) = i
+     PEM%pNumber(PEM%Element(i)) = &                      ! Number of Particles in Element
+     PEM%pNumber(PEM%Element(i)) + 1
+     PDM%ParticleVecLength = i
+   END IF
+ END DO
+
+! no linked list
+ELSE
+ DO i=1,n
+   IF (.NOT.PDM%ParticleInside(i)) THEN
+     PDM%nextFreePosition(counter1) = i
+     counter1 = counter1 + 1
+   ELSE
+     PDM%ParticleVecLength = i
+   END IF
+ END DO
+ENDIF
+
+PDM%insideParticleNumber = PDM%ParticleVecLength - counter1+1
+PDM%CurrentNextFreePosition = 0
+
+DO i = n+1,PDM%maxParticleNumber
+ PDM%nextFreePosition(counter1) = i
+ counter1 = counter1 + 1
+END DO
+
+PDM%nextFreePosition(counter1:PDM%MaxParticleNumber) = 0 ! exists if MaxParticleNumber is reached!!!
+IF (counter1.GT.PDM%MaxParticleNumber) PDM%nextFreePosition(PDM%MaxParticleNumber)=0
+
+RETURN
 END SUBROUTINE UpdateNextFreePosition
 
 FUNCTION DiceUnitVector()
@@ -109,25 +116,25 @@ FUNCTION DiceUnitVector()
 !===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
-  IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-  REAL                     :: PI
-  REAL                     :: DiceUnitVector(3)
-  REAL                     :: iRan, bVec, aVec
+REAL                     :: PI
+REAL                     :: DiceUnitVector(3)
+REAL                     :: iRan, bVec, aVec
 !===================================================================================================================================
-  CALL RANDOM_NUMBER(iRan)
-  bVec              = 1. - 2.*iRan
-  aVec              = SQRT(1. - bVec**2.)
-  DiceUnitVector(3) = bVec
-  CALL RANDOM_NUMBER(iRan)
-  bVec              = Pi *2. * iRan
-  DiceUnitVector(1) = aVec * COS(bVec)
-  DiceUnitVector(2) = aVec * SIN(bVec)
+CALL RANDOM_NUMBER(iRan)
+bVec              = 1. - 2.*iRan
+aVec              = SQRT(1. - bVec**2.)
+DiceUnitVector(3) = bVec
+CALL RANDOM_NUMBER(iRan)
+bVec              = Pi *2. * iRan
+DiceUnitVector(1) = aVec * COS(bVec)
+DiceUnitVector(2) = aVec * SIN(bVec)
 
 END FUNCTION DiceUnitVector
 

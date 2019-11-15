@@ -54,16 +54,16 @@ SUBROUTINE WriteParticleToHDF5(FileName)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Mesh_Vars,          ONLY:nGlobalElems, offsetElem
-USE MOD_Particle_Vars,      ONLY:PDM, PEM, PartState, PartSpecies,PartReflCount
-USE MOD_part_tools,         ONLY:UpdateNextFreePosition
-USE MOD_DSMC_Vars,          ONLY:UseDSMC
-USE MOD_Particle_Erosion_Vars,ONLY:PartTrackReflection
+USE MOD_Mesh_Vars,             ONLY: nGlobalElems, offsetElem
+USE MOD_Part_Tools,            ONLY: UpdateNextFreePosition
+USE MOD_Particle_Erosion_Vars, ONLY: PartTrackReflection
+USE MOD_Particle_Vars,         ONLY: PDM, PEM, PartState, PartSpecies,PartReflCount
+USE MOD_Particle_Vars,         ONLY: useLinkedList
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,  ONLY:PartMPI
+USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
 #endif /*MPI*/
 #if CODE_ANALYZE
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
+USE MOD_Particle_Tracking_Vars,ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -137,7 +137,7 @@ REAL                           :: L_xi(3,0:PP_N), L_eta_zeta
            PEM%pNumber(1:PP_nElems)          , &
            PEM%pNext(1:PDM%maxParticleNumber), &
            PEM%pEnd(1:PP_nElems) )
-  useDSMC=.TRUE.
+  useLinkedList=.TRUE.
   CALL UpdateNextFreePosition()
 
 !!! Ende kleiner Hack von JN (Teil 1/2)
@@ -264,7 +264,7 @@ ASSOCIATE (&
   DEALLOCATE(PartData)
 
 !!! Kleiner Hack von JN (Teil 2/2):
-  useDSMC=.FALSE.
+  useLinkedList=.FALSE.
   DEALLOCATE(PEM%pStart , &
              PEM%pNumber, &
              PEM%pNext  , &

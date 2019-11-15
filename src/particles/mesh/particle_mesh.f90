@@ -106,7 +106,7 @@ CALL prms%CreateLogicalOption( 'DoRefMapping'&
 
 CALL prms%CreateLogicalOption( 'TriaTracking'&
   , 'Using Triangle-aproximation [T] or (bi-)linear and bezier (curved) description [F] of sides for tracing algorithms.'//&
-  ' Currently flag is only used in DSMC timediscs. Requires DoRefMapping=F.'&
+  ' Requires DoRefMapping=F.'&
   ,'.FALSE.')
 CALL prms%CreateLogicalOption( 'Write-Tria-DebugMesh'&
   , 'Writes per proc triangulated Surfacemesh used for Triatracking. Requires TriaTracking=T.'&

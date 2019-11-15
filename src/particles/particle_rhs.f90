@@ -50,8 +50,8 @@ SUBROUTINE CalcPartRHS()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Particle_Vars,          ONLY : PDM, Pt
-USE MOD_PICInterpolation_Vars,  ONLY : FieldAtParticle
+USE MOD_Particle_Vars,                ONLY : PDM, Pt
+USE MOD_Particle_Interpolation_Vars,  ONLY : FieldAtParticle
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

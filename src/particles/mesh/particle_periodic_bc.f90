@@ -152,7 +152,6 @@ SUBROUTINE GetPeriodicVectors()
 ! For particles, each periodic vector has to satisfy following conditions
 ! 1) only a Cartesian displacement/ periodicity is supported, e.g. periodicity in x,y,z
 ! 2) Mesh has to fit into the FIBGM, therefore, the displacement is a multiple of the FIBGM-delta
-! 3) Additionally for PIC with Volume or BSpline weighting/deposition
 !    Periodic displacement has to be multiple of BGMdeltas of deposition method
 !
 ! NEW: Cartesian mesh is required for shape-function deposition
@@ -161,7 +160,6 @@ SUBROUTINE GetPeriodicVectors()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Mesh_Vars, ONLY: GEO
-!USE MOD_PICDepo_Vars
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

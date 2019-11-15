@@ -63,15 +63,15 @@ USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 USE MOD_MPI,               ONLY:InitMPIvars
 #endif
 #if USE_PARTICLES
-USE MOD_Particle_Analyze,  ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
-USE MOD_Particle_Erosion,  ONLY:DefineParametersParticleErosion,InitParticleErosion
 USE MOD_ErosionPoints,     ONLY:DefineParametersErosionPoints,InitErosionPoints
-USE MOD_Particle_Surfaces, ONLY:InitParticleSurfaces
-USE MOD_Particle_Mesh,     ONLY:DefineparametersParticleMesh,InitParticleMesh, InitElemBoundingBox
+USE MOD_Particle_Analyze,  ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling,ONLY:RestartParticleBoundarySampling
+USE MOD_Particle_Erosion,  ONLY:DefineParametersParticleErosion,InitParticleErosion
 USE MOD_ParticleInit,      ONLY:InitParticles,DefineParametersParticles
-USE MOD_PICInit,           ONLY:DefineParametersPIC
+USE MOD_Particle_Interpolation,ONLY:DefineParametersParticleInterpolation
+USE MOD_Particle_Mesh,     ONLY:DefineparametersParticleMesh,InitParticleMesh, InitElemBoundingBox
 USE MOD_Particle_Restart
+USE MOD_Particle_Surfaces, ONLY:InitParticleSurfaces
 #if USE_MPI
 USE MOD_Particle_MPI,      ONLY:InitParticleMPI
 USE MOD_LoadBalance,       ONLY:DefineParametersLoadBalance,InitLoadBalance
@@ -167,7 +167,7 @@ CALL DefineParametersRecordPoints()
 #if USE_PARTICLES
 CALL DefineParametersParticles()
 CALL DefineParametersParticleMesh()
-CALL DefineParametersPIC()
+CALL DefineParametersParticleInterpolation()
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleErosion()
 CALL DefineParametersErosionPoints

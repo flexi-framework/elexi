@@ -78,7 +78,7 @@ END TYPE
 
 TYPE (tSurfaceMesh)                     :: SurfMesh
 
-TYPE tSampWall             ! DSMC sample for Wall
+TYPE tSampWall
   ! easier to communicate
   ! Data structure is repeated for every species + average
   REAL,ALLOCATABLE                      :: State(:,:,:)                ! 1     Impact Counter
@@ -108,8 +108,6 @@ TYPE tPartBoundary
   LOGICAL , ALLOCATABLE                  :: AmbientCondition(:)
   LOGICAL , ALLOCATABLE                  :: AmbientConditionFix(:)
   REAL    , ALLOCATABLE                  :: AmbientTemp(:)
-  REAL    , ALLOCATABLE                  :: AmbientMeanPartMass(:)
-  REAL    , ALLOCATABLE                  :: AmbientBeta(:)
   REAL    , ALLOCATABLE                  :: AmbientVelo(:,:)
   REAL    , ALLOCATABLE                  :: AmbientDens(:)
   REAL    , ALLOCATABLE                  :: AmbientDynamicVisc(:) ! dynamic viscousity
@@ -154,7 +152,6 @@ TYPE tAuxBC_cone
   REAL                                   :: lmin
   REAL                                   :: lmax
   REAL                                   :: geomatrix(3,3)
-  !REAL                                   :: geomatrix2(3,3)
   REAL                                   :: rotmatrix(3,3)
   LOGICAL                                :: inwards
 END TYPE tAuxBC_cone

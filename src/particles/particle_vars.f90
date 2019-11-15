@@ -13,7 +13,7 @@
 !=================================================================================================================================
 
 !===================================================================================================================================
-! Contains the Particles' variables (general for all modules: PIC, DSMC, FP)
+! Contains general particles variables
 !===================================================================================================================================
 MODULE MOD_Particle_Vars
 ! MODULES
@@ -31,8 +31,8 @@ LOGICAL               :: AllowLoosing                                        ! F
 LOGICAL               :: KeepWallParticles                                   ! Flag for tracking of particles trapped by fouling
 LOGICAL               :: printRandomSeeds                                    ! print random seeds or not
 REAL                  :: dt_max_particles                                    ! Maximum timestep for particles (for static fields!)
-!INTEGER               :: WeirdElems                                          ! Number of Weird Elements (=Elements which are folded
-                                                                              ! into themselves)
+
+LOGICAL               :: useLinkedList                                       ! Flag to trigger the start of the linked list for output tools
 
 REAL    , ALLOCATABLE :: PartState(:,:)                                      ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz
 #if USE_RW
@@ -43,7 +43,8 @@ INTEGER , ALLOCATABLE :: PartPosGauss(:,:)                                   ! (
 REAL    , ALLOCATABLE :: Pt(:,:)                                             ! Derivative of PartState (vx,xy,vz) only
 INTEGER , ALLOCATABLE :: PartReflCount(:)                                    ! Counter of number of reflections
 
-REAL    , ALLOCATABLE :: Pt_temp(:,:)                                        ! LSERK4 additional derivative of PartState                                                          ! (1:NParts,1:6) with 2nd index: x,y,z,vx,vy,vz
+REAL    , ALLOCATABLE :: Pt_temp(:,:)                                        ! LSERK4 additional derivative of PartState
+                                                                             ! (1:NParts,1:6) with 2nd index: x,y,z,vx,vy,vz
 REAL    , ALLOCATABLE :: LastPartPos(:,:)                                    ! (1:3,1:NParts) with 2nd index: x,y,z
 INTEGER , ALLOCATABLE :: PartSpecies(:)                                      ! (1:NParts)
 INTEGER               :: PartRHSMethod
@@ -148,17 +149,16 @@ TYPE tParticleElementMapping
 !----------------------------------------------------------------------------!----------------------------------
                                                                              ! Following vectors are assigned in
                                                                              ! SUBROUTINE UpdateNextFreePosition
-                                                                             ! IF (PIC%withDSMC .OR. PIC%withFP)
   INTEGER                , ALLOCATABLE    :: pStart(:)         !   =>NULL()  ! Start of Linked List for Particles in Element
-                                                               !             ! pStart(1:PIC%nElem)
+                                                               !             ! pStart(1:PEM%nElem)
   INTEGER                , ALLOCATABLE    :: pNumber(:)        !   =>NULL()  ! Number of Particles in Element
-                                                               !             ! pStart(1:PIC%nElem)
+                                                               !             ! pStart(1:PEM%nElem)
   INTEGER                , ALLOCATABLE    :: wNumber(:)        !   =>NULL()  ! Number of Wall-Particles in Element
-                                                                             ! pStart(1:PIC%nElem)
+                                                                             ! pStart(1:PEM%nElem)
   INTEGER                , ALLOCATABLE    :: pEnd(:)           !   =>NULL()  ! End of Linked List for Particles in Element
-                                                               !             ! pEnd(1:PIC%nElem)
+                                                               !             ! pEnd(1:PEM%nElem)
   INTEGER                , ALLOCATABLE    :: pNext(:)          !   =>NULL()  ! Next Particle in same Element (Linked List)
-                                                                             ! pStart(1:PIC%maxParticleNumber)
+                                                                             ! pStart(1:PEM%maxParticleNumber)
 END TYPE
 
 TYPE(tParticleElementMapping)            :: PEM

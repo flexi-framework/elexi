@@ -68,10 +68,10 @@ USE MOD_TimeDisc_Vars,           ONLY: t
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
 #endif /*MPI*/
-USE MOD_part_emission,           ONLY: ParticleInserting
-USE MOD_part_RHS,                ONLY: CalcPartRHS
-USE MOD_PICInterpolation
-USE MOD_Part_tools,              ONLY: UpdateNextFreePosition
+USE MOD_Part_Emission,           ONLY: ParticleInserting
+USE MOD_Part_RHS,                ONLY: CalcPartRHS
+USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
+USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
 USE MOD_Particle_Vars,           ONLY: Species, PartSpecies, PartState, Pt, LastPartPos, DelayTime, PEM, PDM
@@ -220,8 +220,8 @@ USE MOD_Globals
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
 #endif /*MPI*/
-USE MOD_PICInterpolation
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
+USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 #if USE_RW
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
@@ -300,8 +300,8 @@ USE MOD_FV_Vars,                 ONLY: FV_toDGinRK
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/
-USE MOD_part_emission,           ONLY: ParticleInserting
-USE MOD_Part_tools,              ONLY: UpdateNextFreePosition
+USE MOD_Part_Emission,           ONLY: ParticleInserting
+USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
 USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM
@@ -434,7 +434,7 @@ USE MOD_Globals
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
 #endif /*MPI*/
-USE MOD_PICInterpolation
+USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 #if USE_RW
@@ -507,13 +507,13 @@ USE MOD_PreProc
 USE MOD_Vector
 USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
 USE MOD_HDF5_Output,             ONLY: WriteState
-USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
-USE MOD_PICInterpolation,        ONLY: InterpolateFieldToParticle
-USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM
-USE MOD_part_RHS,                ONLY: CalcPartRHS
+USE MOD_Part_Emission,           ONLY: ParticleInserting
+USE MOD_Part_RHS,                ONLY: CalcPartRHS
+USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
+USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
-USE MOD_part_emission,           ONLY: ParticleInserting
-USE MOD_part_tools,              ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping,TriaTracking
+USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/

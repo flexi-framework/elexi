@@ -113,8 +113,6 @@ TYPE tFastInitBGM
 #if USE_MPI
   INTEGER, ALLOCATABLE                   :: ShapeProcs(:)                     ! first Entry: Number of Shapeprocs,
                                                                               ! following: ShapeProcs
-!  INTEGER, ALLOCATABLE                   :: PaddingProcs(:)                   ! first Entry: Number of Paddingprocs,
-                                                                              ! following: PaddingProcs
   INTEGER, ALLOCATABLE                   :: SharedProcs(:)                    ! first Entry: Number of Sharedprocs,
                                                                               ! following: SharedProcs
   !INTEGER                                :: nBCSides                          ! number BC sides in BGM cell
@@ -216,13 +214,12 @@ INTEGER, ALLOCATABLE                     :: ElemToGlobalElemID(:)  ! mapping for
 !===================================================================================================================================
 INTEGER          :: NGeoElevated                !< polynomial degree of elevated geometric transformation
 !-----------------------------------------------------------------------------------------------------------------------------------
-! PIC - for Newton localisation of particles in curved Elements
+! Interpolation - for Newton localisation of particles in curved Elements
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE    :: XiCL_NGeo(:)
 REAL,ALLOCATABLE    :: XiCL_NGeo1(:)
 REAL,ALLOCATABLE    :: XCL_NGeo(:,:,:,:,:)
-REAL,ALLOCATABLE    :: dXCL_NGeo(:,:,:,:,:,:) !jacobi matrix of the mapping P\in NGeo
-!REAL,ALLOCATABLE    :: dXCL_N(:,:,:,:,:,:) !jacobi matrix of the mapping P\in NGeo
+REAL,ALLOCATABLE    :: dXCL_NGeo(:,:,:,:,:,:) ! Jacobi matrix of the mapping P\in NGeo
 REAL,ALLOCATABLE    :: wBaryCL_NGeo(:)
 REAL,ALLOCATABLE    :: wBaryCL_NGeo1(:)
 REAL,ALLOCATABLE    :: DCL_NGeo(:,:)
@@ -247,10 +244,6 @@ INTEGER(KIND=8),ALLOCATABLE     :: ElemToElemGlob(:,:,:)             !< mapping 
                                                                      !< [OffSetElem+1:OffsetElem+PP_nElems]
 INTEGER(KIND=4),ALLOCATABLE     :: ElemGlobalID(:)                   !< global element id of each element
 !----------------------------------------------------------------------------------------------------------------------------------
-! partns - do it with 5th dimension nElems for particles
-!REAL,ALLOCATABLE    :: XCL_NGeo(:,:,:,:,:)
-!REAL,ALLOCATABLE    :: dXCL_NGeo(:,:,:,:,:,:) !jacobi matrix of the mapping P\in NGeo
-
 INTEGER          :: offsetSide=0        !< for MPI, until now=0  Sides pointer array range
 
 !-----------------------------------------------------------------------------------------------------------------------------------

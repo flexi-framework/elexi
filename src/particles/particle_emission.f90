@@ -1268,16 +1268,15 @@ USE MOD_PreProc
 USE MOD_Particle_Globals,        ONLY: RandNormal
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
-USE MOD_PICInterpolation,        ONLY: InterpolateFieldToParticle
-USE MOD_PICInterpolation_Vars,   ONLY: DoInterpolation,FieldAtParticle,externalField
-USE MOD_PIC_Vars
+USE MOD_Particle_Interpolation,      ONLY: InterpolateFieldToParticle
+USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,FieldAtParticle,externalField
 USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
 USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Restart_Vars,            ONLY: RestartTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
-USE MOD_PICInterpolation_Vars,   ONLY: TurbFieldAtParticle
+USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
 #endif /* USE_RW */
 !IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1307,9 +1306,9 @@ REAL                             :: turbField(nVarTurb)
 #endif
 !===================================================================================================================================
 ! Abort if we don't have any/too many particles
-IF(NbrOfParticle.lt.1) RETURN
-IF(NbrOfParticle.gt.PDM%maxParticleNumber) &
-    CALL abort(__STAMP__,'NbrOfParticle > PIC%maxParticleNumber!')
+IF(NbrOfParticle.LT.1) RETURN
+IF(NbrOfParticle.GT.PDM%maxParticleNumber) &
+    CALL abort(__STAMP__,'NbrOfParticle > PDM%maxParticleNumber!')
 
 ! Collect velocity parameters for current Init
 velocityDistribution  = Species(FractNbr)%Init(iInit)%velocityDistribution

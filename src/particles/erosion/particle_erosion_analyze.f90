@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-! Module for DSMC Sampling and Output
+! Module for erosion sampling and output
 !===================================================================================================================================
 MODULE MOD_Particle_Erosion_Analyze
 ! MODULES
@@ -25,11 +25,6 @@ INTERFACE CalcSurfaceValues
   MODULE PROCEDURE CalcSurfaceValues
 END INTERFACE
 
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 PUBLIC :: CalcSurfaceValues
 !===================================================================================================================================
 
@@ -48,11 +43,10 @@ USE MOD_Analyze_Vars               ,ONLY: Analyze_dt
 USE MOD_Mesh_Vars                  ,ONLY: MeshFile
 USE MOD_Timedisc_Vars              ,ONLY: t
 USE MOD_Restart_Vars               ,ONLY: RestartTime
-USE MOD_DSMC_Vars                  ,ONLY: MacroSurfaceVal ,MacroSurfaceSpecVal
 USE MOD_Particle_Analyze_Vars      ,ONLY: TimeSample
 USE MOD_Particle_Boundary_Vars     ,ONLY: SurfMesh,nSurfSample,SampWall
 USE MOD_Particle_Boundary_Sampling ,ONLY: WriteSurfSampleToHDF5
-USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Erosion_Vars      ,ONLY: MacroSurfaceVal,MacroSurfaceSpecVal,nErosionVars
 USE MOD_Particle_Vars              ,ONLY: nSpecies,WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_CalcWallParticles_Vars
 ! IMPLICIT VARIABLE HANDLING

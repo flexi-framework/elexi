@@ -358,8 +358,7 @@ USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars,ONLY:PartBound,nPartBound,PartAuxBC,LowVeloRemove
 USE MOD_Particle_Boundary_Vars,ONLY:nAuxBCs,AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone,AuxBC_parabol,UseAuxBCs
 USE MOD_Mesh_Vars,             ONLY:BoundaryName,BoundaryType, nBCs
-USE MOD_PICInterpolation,      ONLY:InitializeInterpolation
-USE MOD_PICInit,               ONLY:InitPIC
+USE MOD_Particle_Interpolation,ONLY:InitParticleInterpolation
 USE MOD_Particle_Mesh,         ONLY:InitFIBGM,MarkAuxBCElems
 USE MOD_Particle_MPI_Vars,     ONLY:SafetyFactor,halo_eps_velo
 #if USE_MPI
@@ -841,7 +840,7 @@ ALLOCATE(iseeds(SeedSize))
 iseeds(:)=0
 CALL RANDOM_SEED(GET = iseeds(1:SeedSize))
 IF(printRandomSeeds)THEN
-  IPWRITE(UNIT_StdOut,*) 'Random seeds in PIC_init:'
+  IPWRITE(UNIT_StdOut,*) 'Random seeds in Particle_Interpolation_init:'
   DO iSeed = 1,SeedSize
      IPWRITE(UNIT_StdOut,*) iseeds(iSeed)
   END DO
@@ -1090,8 +1089,7 @@ END IF
 
 ! Initialize interpolation and particle-in-cell for field -> particle coupling
 !--> Could not be called earlier because a halo region has to be build depending on the given BCs
-CALL InitializeInterpolation()
-CALL InitPIC()
+CALL InitParticleInterpolation()
 
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' INIT FIBGM...'
@@ -1122,7 +1120,7 @@ SUBROUTINE FinalizeParticles()
 USE MOD_Globals
 USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars
-USE MOD_PICInterpolation_Vars
+USE MOD_Particle_Interpolation_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES

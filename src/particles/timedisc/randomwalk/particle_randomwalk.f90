@@ -226,6 +226,9 @@ CASE('Gosman')
       TurbPartState(4,  PartID) = t
     ENDIF
 
+    ! Currently not interested in reflection count but t_interaction. Overload reflection counter here
+    PartState(8,PartID) = t_int
+
 CASE DEFAULT
     CALL abort(__STAMP__, ' No particle random walk model given. This should not happen.')
 

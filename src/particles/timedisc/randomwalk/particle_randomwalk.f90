@@ -99,9 +99,9 @@ END SUBROUTINE ParticleRandomWalk
 SUBROUTINE ParticleRandomWalkPush(PartID,t,FieldAtParticle)
 ! MODULES
 USE MOD_Particle_Globals
-USE MOD_EOS_Vars,          ONLY:mu0
+USE MOD_EOS_Vars,          ONLY: mu0
 USE MOD_Equation_Vars,     ONLY: betaStar
-USE MOD_Particle_Vars,     ONLY: Species, PartSpecies, PartState, TurbPartState
+USE MOD_Particle_Vars,     ONLY: Species,PartSpecies,PartState,TurbPartState
 USE MOD_Particle_Interpolation_Vars,ONLY: TurbFieldAtParticle
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -225,9 +225,6 @@ CASE('Gosman')
       TurbPartState(1:3,PartID) = 0.
       TurbPartState(4,  PartID) = t
     ENDIF
-
-    ! Currently not interested in reflection count but t_interaction. Overload reflection counter here
-    PartState(8,PartID) = t_int
 
 CASE DEFAULT
     CALL abort(__STAMP__, ' No particle random walk model given. This should not happen.')

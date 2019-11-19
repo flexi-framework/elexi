@@ -17,7 +17,6 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Erosion_Vars
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE

@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -18,13 +18,10 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Localization
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! required variables
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
+
 INTERFACE SingleParticleToExactElement
   MODULE PROCEDURE SingleParticleToExactElement
 END INTERFACE
@@ -45,11 +42,11 @@ INTERFACE CountPartsPerElem
   MODULE PROCEDURE CountPartsPerElem
 END INTERFACE
 
-PUBLIC::SingleParticleToExactElement
-PUBLIC::SingleParticleToExactElementNoMap
-PUBLIC::PartInElemCheck
-PUBLIC::ParticleInsideQuad3D
-PUBLIC::CountPartsPerElem
+PUBLIC :: SingleParticleToExactElement
+PUBLIC :: SingleParticleToExactElementNoMap
+PUBLIC :: PartInElemCheck
+PUBLIC :: ParticleInsideQuad3D
+PUBLIC :: CountPartsPerElem
 !===================================================================================================================================
 
 CONTAINS

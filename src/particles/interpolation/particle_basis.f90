@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -20,9 +20,6 @@ MODULE MOD_Particle_Basis
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-SAVE
-!----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE BuildBezierVdm
@@ -49,12 +46,12 @@ INTERFACE ComputeBernSteinCoeff
    MODULE PROCEDURE ComputeBernSteinCoeff
 END INTERFACE
 
-PUBLIC::BuildBezierVdm
-PUBLIC::BuildBezierDMat
-PUBLIC::DeCasteljauInterpolation
-PUBLIC::BernSteinPolynomial
-PUBLIC::GetInverse
-PUBLIC::ComputeBernSteinCoeff
+PUBLIC :: BuildBezierVdm
+PUBLIC :: BuildBezierDMat
+PUBLIC :: DeCasteljauInterpolation
+PUBLIC :: BernSteinPolynomial
+PUBLIC :: GetInverse
+PUBLIC :: ComputeBernSteinCoeff
 !==================================================================================================================================
 
 CONTAINS
@@ -62,7 +59,7 @@ CONTAINS
 SUBROUTINE BuildBezierVdm(N_In,xi_In,Vdm_Bezier,sVdm_Bezier)
 !===================================================================================================================================
 ! build a 1D Vandermonde matrix using the Bezier basis functions of degree N_In
-! todo: replace numerical recipes function gaussj() for calculation the inverse of V 
+! todo: replace numerical recipes function gaussj() for calculation the inverse of V
 ! by a BLAS routine for better matrix conditioning
 !===================================================================================================================================
 ! MODULES
@@ -80,9 +77,9 @@ REAL,INTENT(IN)    :: xi_In(0:N_In)
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)   :: Vdm_Bezier(0:N_In,0:N_In),sVdm_Bezier(0:N_In,0:N_In)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER            :: i,j, errorflag,IPIV(1:N_in+1),jStart,jEnd
-REAL               :: dummy,eps 
+REAL               :: dummy,eps
 REAL               :: dummy_vec(0:N_In)
 !===================================================================================================================================
 ! set NPartCurved to N_In (NGeo)
@@ -103,7 +100,7 @@ ElevationMatrix(:,:) = 0.
 DO i=0,N_In
   DO j=0,N_In
     ! 1.) evaluate the berstein polynomial at xi_in -> build vandermonde
-    CALL BernsteinPolynomial(N_In,j,xi_in(i),Vdm_Bezier(i,j)) 
+    CALL BernsteinPolynomial(N_In,j,xi_in(i),Vdm_Bezier(i,j))
     ! 2.) build array with binomial coeffs for bezier clipping
     IF(i.GE.j)THEN!only calculate LU (for n >= k, else 0)
       arrayNchooseK(i,j)=REAL(CHOOSE(i,j))
@@ -125,7 +122,7 @@ ElevationMatrix(N_In+BezierElevation,N_In) = 1.
 DO i=1,N_In+BezierElevation-1 ! from 0+1 to p_new-1 -> remove the edge points
   jStart = MAX(0,i-BezierElevation)
   jEnd   = MIN(N_In,i)
-  DO j=jStart,jEnd 
+  DO j=jStart,jEnd
     !ElevationMatrix(i,j)=REAL(CHOOSE(N_In,j))*REAL(CHOOSE(BezierElevation,i-j)) / REAL(CHOOSE(N_In+BezierElevation,i))
     ElevationMatrix(i,j)=CHOOSE_large(N_In,j)*CHOOSE_large(BezierElevation,i-j) / CHOOSE_large(N_In+BezierElevation,i)
   END DO
@@ -160,7 +157,7 @@ dummy_vec=0.
 !DO i=0,N_In
   !print*,Vdm_Bezier(i,:)
 !END DO
-! Invert A: Caution!!! From now on A=A^(-1) 
+! Invert A: Caution!!! From now on A=A^(-1)
 sVdm_Bezier=Vdm_Bezier
 CALL DGETRF(N_In+1,N_In+1,sVdm_Bezier,N_In+1,IPIV,errorflag)
 IF (errorflag .NE. 0) CALL Abort(&
@@ -185,7 +182,7 @@ __STAMP__ &
 !print*,SUM(ABS(MATMUL(sVdm_Bezier,Vdm_Bezier)))
 !print*,"(N_In+1)"
 !print*,(N_In+1)
-!check (Vdm_Bezier)^(-1)*Vdm_Bezier := I 
+!check (Vdm_Bezier)^(-1)*Vdm_Bezier := I
 dummy=SUM(ABS(MATMUL(sVdm_Bezier,Vdm_Bezier)))-REAL(N_In+1)
 !print*,dummy,PP_RealTolerance
 !read*
@@ -212,7 +209,7 @@ REAL,INTENT(IN)    :: xi_In(0:N_In)
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)   :: DMat(0:N_In,0:N_In)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER            :: i,j
 REAL               :: XiPlus,XiMinus
 !REAL               :: rtmp1,rtmp2
@@ -283,7 +280,7 @@ REAL,INTENT(IN)                    :: xi_In(1:2)
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                   :: xPoint(1:3)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL,DIMENSION(3,0:N_In,0:N_In)    :: ReducedBezierControlPoints
 REAL                               :: MinusXi,Xi,MinusEta,Eta
 INTEGER                            :: l,p,q,iDeCasteljau
@@ -346,7 +343,7 @@ SUBROUTINE ComputeBernSteinCoeff(N_In,NChooseK)
 !===================================================================================================================================
 ! required for deposition
 ! build a 1D Vandermonde matrix using the Bezier basis functions of degree N_In
-! todo: replace numerical recipes function gaussj() for calculation the inverse of V 
+! todo: replace numerical recipes function gaussj() for calculation the inverse of V
 ! by a BLAS routine for better matrix conditioning
 !===================================================================================================================================
 ! MODULES
@@ -361,10 +358,10 @@ INTEGER,INTENT(IN) :: N_In
 !REAL,INTENT(IN)    :: xi_In(0:N_In)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)    :: NchooseK(0:N_In,0:N_In) 
+REAL,INTENT(OUT)    :: NchooseK(0:N_In,0:N_In)
 !REAL,INTENT(OUT)   :: Vdm_Bezier(0:N_In,0:N_In),sVdm_Bezier(0:N_In,0:N_In)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER            :: i,j!,errorflag
 !REAL               :: Vector(3)
 !REAL               :: Matrix(0:N_In,0:N_In)
@@ -376,7 +373,7 @@ NchooseK(:,:) = 0.
 !Vandermonde on xi_In
 DO i=0,N_In
   DO j=0,N_In
-!    CALL BernsteinPolynomial(N_In,j,xi_in(i),Vdm_BernSteinN_GaussN(i,j)) 
+!    CALL BernsteinPolynomial(N_In,j,xi_in(i),Vdm_BernSteinN_GaussN(i,j))
     ! array with binomial coeffs for bezier clipping
     IF(i.GE.j)THEN!only calculate LU (for n >= k, else 0)
       NchooseK(i,j)=REAL(CHOOSE(i,j))
@@ -399,7 +396,7 @@ USE MOD_PreProc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 !input parameters
-INTEGER,INTENT(IN) :: N_in,k   
+INTEGER,INTENT(IN) :: N_in,k
 !-----------------------------------------------------------------------------------------------------------------------------------
 !output parameters
 INTEGER(KIND=8)            :: CHOOSE
@@ -438,7 +435,7 @@ USE MOD_PreProc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 !input parameters
-INTEGER,INTENT(IN) :: N_in 
+INTEGER,INTENT(IN) :: N_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 !output parameters
 INTEGER(KIND=8)    :: FACTORIAL
@@ -473,7 +470,7 @@ USE MOD_PreProc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 !input parameters
-INTEGER,INTENT(IN) :: N_in 
+INTEGER,INTENT(IN) :: N_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 !output parameters
 REAL(KIND=8)    :: FACTORIAL_REAL
@@ -497,7 +494,7 @@ END FUNCTION FACTORIAL_REAL
 
 FUNCTION GetInverse(dim1,A) RESULT(Ainv)
 !============================================================================================================================
-! invert a matrix (dependant in LAPACK Routines) 
+! invert a matrix (dependant in LAPACK Routines)
 !============================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -513,7 +510,7 @@ REAL                :: Ainv(dim1,dim1)
 !----------------------------------------------------------------------------------------------------------------------------
 !local variables
 INTEGER            :: IPIV(dim1),INFO,lwork,i,j
-REAL               :: WORK(dim1*dim1) 
+REAL               :: WORK(dim1*dim1)
 !============================================================================================================================
 ! Store A in Ainv to prevent it from being overwritten by LAPACK
   DO j=1,dim1
@@ -554,7 +551,7 @@ USE MOD_PreProc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 !input parameters
-INTEGER,INTENT(IN) :: N_in,k   
+INTEGER,INTENT(IN) :: N_in,k
 !-----------------------------------------------------------------------------------------------------------------------------------
 !output parameters
 REAL(KIND=8)       :: CHOOSE_large
@@ -580,6 +577,6 @@ ELSE
 END IF
 !IF(CHOOSE_large.LT.0) CALL abort(__STAMP__&
   !'CHOOSE_large is negative. This is not allowed! ',999,REAL(CHOOSE_large))
-END FUNCTION CHOOSE_large   
+END FUNCTION CHOOSE_large
 
 END MODULE MOD_Particle_Basis

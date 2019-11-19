@@ -16,7 +16,6 @@
 !===================================================================================================================================
 MODULE MOD_Particle_MPI_Shared_Vars
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE

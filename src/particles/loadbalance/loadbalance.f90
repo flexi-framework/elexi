@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -22,8 +22,10 @@ MODULE MOD_LoadBalance
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
+
+INTERFACE DefineParametersLoadBalance
+  MODULE PROCEDURE DefineParametersLoadBalance
+END INTERFACE
 
 #if USE_MPI
 INTERFACE InitLoadBalance
@@ -32,6 +34,10 @@ END INTERFACE
 
 INTERFACE FinalizeLoadBalance
   MODULE PROCEDURE FinalizeLoadBalance
+END INTERFACE
+
+INTERFACE LoadBalance
+  MODULE PROCEDURE LoadBalance
 END INTERFACE
 
 #if USE_LOADBALANCE
@@ -43,25 +49,25 @@ INTERFACE AnalyzeLoadBalance
   MODULE PROCEDURE AnalyzeLoadBalance
 END INTERFACE
 #endif /*USE_LOADBALANCE*/
+#endif /*USE_MPI*/
 
-INTERFACE LoadBalance
-  MODULE PROCEDURE LoadBalance
-END INTERFACE
-
-PUBLIC::InitLoadBalance,FinalizeLoadBalance,LoadBalance
+PUBLIC :: DefineParametersLoadBalance
+#if USE_MPI
+PUBLIC :: InitLoadBalance
+PUBLIC :: FinalizeLoadBalance
+PUBLIC :: LoadBalance
 #if USE_LOADBALANCE
-PUBLIC::ComputeElemLoad,AnalyzeLoadBalance
+PUBLIC :: ComputeElemLoad
+PUBLIC :: AnalyzeLoadBalance
 #endif /*USE_LOADBALANCE*/
 #endif /*MPI*/
-
-PUBLIC::DefineParametersLoadBalance
 !===================================================================================================================================
 
 CONTAINS
 
-!==================================================================================================================================
+!===================================================================================================================================
 !> Define parameters
-!==================================================================================================================================
+!===================================================================================================================================
 SUBROUTINE DefineParametersLoadBalance()
 ! MODULES
 USE MOD_ReadInTools            ,ONLY: prms,addStrListEntry

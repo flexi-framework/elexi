@@ -22,20 +22,21 @@ MODULE MOD_LoadDistribution
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-#if USE_MPI
-INTERFACE ApplyWeightDistributionMethod
-  MODULE PROCEDURE ApplyWeightDistributionMethod
-END INTERFACE
-#endif /*MPI*/
 
 INTERFACE WriteElemTimeStatistics
   MODULE PROCEDURE WriteElemTimeStatistics
 END INTERFACE
 
 #if USE_MPI
+INTERFACE ApplyWeightDistributionMethod
+  MODULE PROCEDURE ApplyWeightDistributionMethod
+END INTERFACE
+#endif /*MPI*/
+
+PUBLIC  :: WriteElemTimeStatistics
+#if USE_MPI
 PUBLIC  :: ApplyWeightDistributionMethod
 #endif /*MPI*/
-PUBLIC  :: WriteElemTimeStatistics
 !===================================================================================================================================
 
 CONTAINS

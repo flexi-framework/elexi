@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -23,18 +23,17 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! required variables
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                                 :: DoRefMapping                  ! tracking by mapping particle into reference element
 LOGICAL                                 :: TriaTracking                  ! tracking by using surface representation by triangles
-LOGICAL                                 :: WriteTriaDebugMesh            ! 
+LOGICAL                                 :: WriteTriaDebugMesh            !
 REAL                                    :: tTracking                     ! Tracking time
 REAL                                    :: tLocalization                 ! localization time
 INTEGER                                 :: nTracks                       ! number of tracked particles
 INTEGER                                 :: nCurrentParts                 ! current number of particles
 LOGICAL                                 :: MeasureTrackTime              ! switch, if tracking time is measure
-LOGICAL                                 :: FastPeriodic                  ! moves the particle along whole periodic vector, 
+LOGICAL                                 :: FastPeriodic                  ! moves the particle along whole periodic vector,
                                                                          ! neglecting possible reflexions
 LOGICAL                                 :: CountNbOfLostParts            ! logical, to count the lost particles
 LOGICAL                                 :: CartesianPeriodic             ! old periodic for refmapping and ALL bcs periocic
@@ -57,7 +56,7 @@ TYPE tTrackingInfo
 END TYPE
 
 TYPE(tTrackingInfo)                     :: TrackInfo
-  
+
 #if CODE_ANALYZE
 INTEGER                                 :: PartOut
 INTEGER                                 :: MPIRankOut

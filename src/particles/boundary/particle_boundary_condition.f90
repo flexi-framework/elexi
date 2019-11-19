@@ -18,15 +18,10 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Boundary_Condition
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
 
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 INTERFACE GetBoundaryInteraction
   MODULE PROCEDURE GetBoundaryInteraction
 END INTERFACE
@@ -43,7 +38,10 @@ INTERFACE PartSwitchElement
   MODULE PROCEDURE PartSwitchElement
 END INTERFACE
 
-PUBLIC::GetBoundaryInteraction,GetBoundaryInteractionRef,GetBoundaryInteractionAuxBC,PartSwitchElement
+PUBLIC :: GetBoundaryInteraction
+PUBLIC :: GetBoundaryInteractionRef
+PUBLIC :: GetBoundaryInteractionAuxBC
+PUBLIC :: PartSwitchElement
 !===================================================================================================================================
 
 CONTAINS

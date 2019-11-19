@@ -20,6 +20,7 @@ MODULE MOD_Particle_Erosion_Analyze
 ! MODULES
 IMPLICIT NONE
 PRIVATE
+!-----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE CalcSurfaceValues
   MODULE PROCEDURE CalcSurfaceValues
@@ -29,7 +30,6 @@ PUBLIC :: CalcSurfaceValues
 !===================================================================================================================================
 
 CONTAINS
-
 
 SUBROUTINE CalcSurfaceValues(restart_opt,remap_opt)
 !===================================================================================================================================

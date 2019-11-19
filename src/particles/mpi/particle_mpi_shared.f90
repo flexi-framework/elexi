@@ -21,9 +21,7 @@ MODULE MOD_Particle_MPI_Shared
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! required variables
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
+
 #if USE_MPI_SHARED
 INTERFACE InitMeshShared
   MODULE PROCEDURE InitMeshShared
@@ -45,11 +43,11 @@ INTERFACE UpdateDGShared
   MODULE PROCEDURE UpdateDGShared
 END INTERFACE
 
-PUBLIC:: InitMeshShared
-PUBLIC:: InitParticleMeshShared
-PUBLIC:: FinalizeMeshShared
-PUBLIC:: FinalizeParticleMeshShared
-PUBLIC:: UpdateDGShared
+PUBLIC :: InitMeshShared
+PUBLIC :: InitParticleMeshShared
+PUBLIC :: FinalizeMeshShared
+PUBLIC :: FinalizeParticleMeshShared
+PUBLIC :: UpdateDGShared
 !===================================================================================================================================
 
 CONTAINS

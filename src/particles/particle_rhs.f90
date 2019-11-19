@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -22,24 +22,13 @@ MODULE MOD_part_RHS
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-! Private Part --------------------------------------------------------------------------------------------------------------------
-
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 INTERFACE CalcPartRHS
   MODULE PROCEDURE CalcPartRHS
 END INTERFACE
 
-INTERFACE NON_RELATIVISTIC_PUSH
-  MODULE PROCEDURE NON_RELATIVISTIC_PUSH
-END INTERFACE
-
-!----------------------------------------------------------------------------------------------------------------------------------
-PUBLIC            :: CalcPartRHS
-PUBLIC            :: NON_RELATIVISTIC_PUSH
-!----------------------------------------------------------------------------------------------------------------------------------
+PUBLIC :: CalcPartRHS
+!==================================================================================================================================
 
 CONTAINS
 

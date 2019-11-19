@@ -18,12 +18,11 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Boundary_Vars
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! required variables
+! Global variables
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                                 :: NSurfSample                   ! polynomial degree of particle BC sampling
 REAL,ALLOCATABLE                        :: XiEQ_SurfSample(:)            ! position of XiEQ_SurfSample

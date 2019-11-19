@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -23,8 +23,8 @@ USE MOD_Globals
 #if USE_MPI
 USE MPI
 #endif /*MPI*/
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -47,7 +47,6 @@ REAL                         :: PID                                   !> Perform
                                                                       !> (nGlobalElems*(PP_N+1)**3*iter_loc)
 
 !=================================================================================================================================
-!==================================================================================================================================
 
 INTERFACE InitParticleGlobals
   MODULE PROCEDURE InitParticleGlobals
@@ -89,6 +88,7 @@ PUBLIC :: AlmostEqual
 PUBLIC :: UnitVector
 PUBLIC :: InitParticleGlobals
 PUBLIC :: RandNormal
+!===================================================================================================================================
 
 CONTAINS
 

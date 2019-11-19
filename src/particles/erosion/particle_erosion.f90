@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -17,14 +17,11 @@
 ! Contains some wrapper functions for analysis of particle erosion
 !===================================================================================================================================
 MODULE MOD_Particle_Erosion
-! IMPLICIT VARIABLE HANDLING
+! MODULES
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+
 INTERFACE DefineParametersParticleErosion
   MODULE PROCEDURE DefineParametersParticleErosion
 END INTERFACE
@@ -36,12 +33,14 @@ END INTERFACE
 INTERFACE FinalizeParticleErosion
   MODULE PROCEDURE FinalizeParticleErosion
 END INTERFACE
-!
-PUBLIC:: DefineParametersParticleErosion
-PUBLIC:: InitParticleErosion
-PUBLIC:: FinalizeParticleErosion
+
+PUBLIC :: DefineParametersParticleErosion
+PUBLIC :: InitParticleErosion
+PUBLIC :: FinalizeParticleErosion
 !==================================================================================================================================
+
 CONTAINS
+
 !==================================================================================================================================
 !> Define parameters for erosion if particles
 !==================================================================================================================================

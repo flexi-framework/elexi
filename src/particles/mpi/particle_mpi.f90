@@ -18,13 +18,9 @@
 !===================================================================================================================================
 MODULE MOD_Particle_MPI
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! required variables
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 
 INTERFACE InitParticleMPI
   MODULE PROCEDURE InitParticleMPI
@@ -67,18 +63,18 @@ INTERFACE ExchangeBezierControlPoints3D
   MODULE PROCEDURE ExchangeBezierControlPoints3D
 END INTERFACE
 
-PUBLIC::InitParticleMPI
-PUBLIC::InitHaloMesh
-PUBLIC::InitParticleCommSize
-PUBLIC::InitEmissionComm
-PUBLIC::FinalizeParticleMPI
-PUBLIC::ExchangeBezierControlPoints3D
-PUBLIC::IRecvNbOfParticles
-PUBLIC::SendNbofParticles
-PUBLIC::MPIParticleSend
-PUBLIC::MPIParticleRecv
+PUBLIC :: InitParticleMPI
+PUBLIC :: InitHaloMesh
+PUBLIC :: InitParticleCommSize
+PUBLIC :: InitEmissionComm
+PUBLIC :: FinalizeParticleMPI
+PUBLIC :: ExchangeBezierControlPoints3D
+PUBLIC :: IRecvNbOfParticles
+PUBLIC :: SendNbofParticles
+PUBLIC :: MPIParticleSend
+PUBLIC :: MPIParticleRecv
 #else
-PUBLIC::InitParticleMPI
+PUBLIC :: InitParticleMPI
 #endif /*MPI*/
 !===================================================================================================================================
 

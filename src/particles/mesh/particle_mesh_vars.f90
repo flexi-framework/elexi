@@ -18,15 +18,12 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Mesh_Vars
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! required variables
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
-
+!-----------------------------------------------------------------------------------------------------------------------------------
 
 LOGICAL             :: ParticleMeshInitIsDone
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -56,7 +53,7 @@ INTEGER,ALLOCATABLE :: PartSideToElem(:,:)                                      
                                                                                           ! SideToElem: my geometry + halo
                                                                                           ! geometry + halo information
 
-INTEGER(KIND=8),ALLOCATABLE :: PartElemToElemGlob(:,:,:)                                      ! Mapping from ElemToElem
+INTEGER(KIND=8),ALLOCATABLE :: PartElemToElemGlob(:,:,:)                                  ! Mapping from ElemToElem
                                                                                           ! 1:4,1:6,1:nTotalElems
                                                                                           ! now in global-elem-ids !!!
 INTEGER(KIND=4),ALLOCATABLE :: PartElemToElemAndSide(:,:,:)                               ! Mapping from ElemToElem

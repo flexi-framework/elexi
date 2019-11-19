@@ -21,8 +21,7 @@ MODULE MOD_ErosionPoints
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
+
 INTERFACE DefineParametersErosionPoints
   MODULE PROCEDURE DefineParametersErosionPoints
 END INTERFACE
@@ -47,8 +46,12 @@ INTERFACE FinalizeErosionPoints
   MODULE PROCEDURE FinalizeErosionPoints
 END INTERFACE
 
-PUBLIC::DefineParametersErosionPoints,InitErosionPoints,FinalizeErosionPoints
-PUBLIC::RecordErosionPoint,RestartErosionPoint,WriteEP
+PUBLIC :: DefineParametersErosionPoints
+PUBLIC :: InitErosionPoints
+PUBLIC :: FinalizeErosionPoints
+PUBLIC :: RecordErosionPoint
+PUBLIC :: RestartErosionPoint
+PUBLIC :: WriteEP
 !==================================================================================================================================
 
 CONTAINS

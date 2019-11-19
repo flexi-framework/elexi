@@ -25,6 +25,7 @@ MODULE MOD_Particle_Restart
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
+
 INTERFACE ParticleRestart
   MODULE PROCEDURE ParticleRestart
 END INTERFACE

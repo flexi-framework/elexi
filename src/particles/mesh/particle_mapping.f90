@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -14,21 +14,15 @@
 #include "flexi.h"
 
 !==================================================================================================================================
-!> Contains subroutines to build mappings for easier handling of 3D data-structures and their connectivity
+!> Contains subroutines to build mappings for easier handling of 3D data-structures and their connectivity,
+!> build mappings for volume GPs to side GPs, etc
 !==================================================================================================================================
 MODULE MOD_Particle_Mappings
-!===================================================================================================================================
-! build mappings for volume GPs to side GPs, etc
-!===================================================================================================================================
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+
 INTERFACE Particle_InitMappings
   MODULE PROCEDURE Particle_InitMappings
 END INTERFACE
@@ -37,8 +31,8 @@ INTERFACE SideToAdjointLocSide
   MODULE PROCEDURE SideToAdjointLocSide
 END INTERFACE
 
-PUBLIC::Particle_InitMappings
-PUBLIC::SideToAdjointLocSide
+PUBLIC :: Particle_InitMappings
+PUBLIC :: SideToAdjointLocSide
 !===================================================================================================================================
 
 CONTAINS

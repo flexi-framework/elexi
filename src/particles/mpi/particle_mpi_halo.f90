@@ -21,9 +21,6 @@ MODULE MOD_Particle_MPI_Halo
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! required variables
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 
 #if USE_MPI
 INTERFACE IdentifyHaloMPINeighborhood
@@ -41,11 +38,9 @@ END INTERFACE
 
 PUBLIC :: IdentifyHaloMPINeighborhood,ExchangeHaloGeometry
 PUBLIC :: WriteParticlePartitionInformation
-
 !===================================================================================================================================
 
 CONTAINS
-
 
 SUBROUTINE IdentifyHaloMPINeighborhood(iProc,SideIndex,ElemIndex)
 !===================================================================================================================================

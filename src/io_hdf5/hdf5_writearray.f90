@@ -30,7 +30,8 @@ PRIVATE
 !  MODULE PROCEDURE GatheredWriteArray
 !END INTERFACE
 
-PUBLIC :: WriteArray,GatheredWriteArray
+PUBLIC :: WriteArray
+PUBLIC :: GatheredWriteArray
 !==================================================================================================================================
 
 CONTAINS

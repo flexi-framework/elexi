@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -14,17 +14,14 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-! Contains global variables provided by the particle surfaces routines
+! Builds the mesh for particle tracking, separate from the DG mesh
 !===================================================================================================================================
 MODULE MOD_Particle_Mesh
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! required variables
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
+
 INTERFACE InitParticleMeshBasis
     MODULE PROCEDURE InitParticleMeshBasis
 END INTERFACE
@@ -71,20 +68,20 @@ INTERFACE MarkAuxBCElems
   MODULE PROCEDURE MarkAuxBCElems
 END INTERFACE
 
-PUBLIC::DefineParametersParticleMesh
-PUBLIC::InitParticleMeshBasis
-PUBLIC::InitParticleGeometry
-PUBLIC::InitElemVolumes
-PUBLIC::InitParticleMesh
-PUBLIC::InitFIBGM
-PUBLIC::InitElemBoundingBox
-PUBLIC::FinalizeParticleMesh
-PUBLIC::buildGlobConnection
+PUBLIC :: DefineParametersParticleMesh
+PUBLIC :: InitParticleMeshBasis
+PUBLIC :: InitParticleGeometry
+PUBLIC :: InitElemVolumes
+PUBLIC :: InitParticleMesh
+PUBLIC :: InitFIBGM
+PUBLIC :: InitElemBoundingBox
+PUBLIC :: FinalizeParticleMesh
+PUBLIC :: buildGlobConnection
 #if USE_MPI
-PUBLIC::exchangeElemID
+PUBLIC :: exchangeElemID
 #endif
-PUBLIC::BuildElementOrigin
-PUBLIC::MarkAuxBCElems
+PUBLIC :: BuildElementOrigin
+PUBLIC :: MarkAuxBCElems
 !===================================================================================================================================
 
 CONTAINS

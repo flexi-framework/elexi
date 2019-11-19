@@ -22,6 +22,7 @@ USE MOD_IO_HDF5
 USE MOD_HDF5_WriteArray
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE WriteParticleToHDF5
@@ -36,9 +37,19 @@ INTERFACE WriteHDF5Header
   MODULE PROCEDURE WriteHDF5Header
 END INTERFACE
 
+!INTERFACE WriteArrayToHDF5
+!  MODULE PROCEDURE WriteArrayToHDF5
+!END INTERFACE
+
+!INTERFACE DistributedWriteArray
+!  MODULE PROCEDURE DistributedWriteArray
+!END INTERFACE
+
 PUBLIC :: WriteParticleToHDF5
 PUBLIC :: WriteAttributeToHDF5
 PUBLIC :: WriteHDF5Header
+PUBLIC :: WriteArrayToHDF5
+PUBLIC :: DistributedWriteArray
 !==================================================================================================================================
 
 CONTAINS
@@ -275,7 +286,6 @@ ASSOCIATE (&
 END SUBROUTINE WriteParticleToHDF5
 
 
-! Private SUBROUTINES
 SUBROUTINE WriteArrayToHDF5(DataSetName,rank,nValGlobal,nVal,offset,&
                             collective,resizeDim,chunkSize,&
                             RealArray,IntegerArray,StrArray)

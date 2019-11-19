@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -21,12 +21,7 @@ MODULE MOD_ParticleInit
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-! Private Part --------------------------------------------------------------------------------------------------------------------
-
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 INTERFACE DefineParametersParticles
   MODULE PROCEDURE DefineParametersParticles
 END INTERFACE
@@ -39,8 +34,9 @@ INTERFACE FinalizeParticles
   MODULE PROCEDURE FinalizeParticles
 END INTERFACE
 
-PUBLIC::DefineParametersParticles
-PUBLIC::InitParticles,FinalizeParticles
+PUBLIC :: DefineParametersParticles
+PUBLIC :: InitParticles
+PUBLIC :: FinalizeParticles
 !==================================================================================================================================
 
 CONTAINS

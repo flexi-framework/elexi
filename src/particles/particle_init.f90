@@ -422,9 +422,15 @@ IF (ALLOCSTAT.NE.0) &
   CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
 
 PDM%ParticleInside(1:PDM%maxParticleNumber)  = .FALSE.
+#if USE_SM
+PDM%ParticleInsideSM(1:PDM%maxParticleNumber)= .FALSE.
+#endif
 PDM%IsNewPart(     1:PDM%maxParticleNumber)  = .FALSE.
 LastPartPos(   1:3,1:PDM%maxParticleNumber)  = 0.
 PartState                                    = 0.
+#if USE_RW
+TurbPartState                                = 0.
+#endif
 PartReflCount                                = 0.
 Pt                                           = 0.
 PartSpecies                                  = 0

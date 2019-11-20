@@ -174,6 +174,7 @@ USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
 USE MOD_Particle_Interpolation_Vars,   ONLY: TurbFieldAtParticle
+USE MOD_Particle_RandomWalk_Vars,ONLY: RWTime
 USE MOD_Particle_Vars,           ONLY: Species,PartSpecies,TurbPartState
 USE MOD_Restart_Vars,            ONLY: RestartTurb
 USE MOD_TimeDisc_Vars,           ONLY: t
@@ -218,7 +219,7 @@ IF (.NOT.InterpolationElemLoop) THEN
     IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
 #if USE_RW
     ! Do not change the particle velocity if RW is working in full Euler mode
-    IF ((TRIM(Species(PartSpecies(iPart))%RWTime).EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
+    IF ((RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 #endif
     CALL InterpolateFieldToSingleParticle(iPart,FieldAtParticle(1:PP_nVar,iPart))
   END DO
@@ -241,7 +242,7 @@ DO iElem=1,nElems
     IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
 #if USE_RW
     ! Do not change the particle velocity if RW is working in full Euler mode
-    IF ((TRIM(Species(PartSpecies(iPart))%RWTime).EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
+    IF ((RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 #endif
 
     ! Particle is inside and in current element

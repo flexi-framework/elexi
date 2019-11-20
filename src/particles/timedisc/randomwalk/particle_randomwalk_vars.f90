@@ -15,7 +15,7 @@
 !===================================================================================================================================
 ! Contains the variables for particle random walk models
 !===================================================================================================================================
-MODULE MOD_RandomWalk_Vars
+MODULE MOD_Particle_RandomWalk_Vars
 ! MODULES
 IMPLICIT NONE
 PUBLIC
@@ -23,5 +23,9 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+LOGICAL                                :: ParticleRWInitIsDone=.FALSE.
+!Random Walk method
+CHARACTER(40)                          :: RWModel                          ! specifying Keyword for RW model
+CHARACTER(40)                          :: RWTime                           ! time stepping mode for RW model
 !===================================================================================================================================
-END MODULE MOD_RandomWalk_Vars
+END MODULE MOD_Particle_RandomWalk_Vars

@@ -39,9 +39,10 @@ SUBROUTINE CalcPartRHS()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Particle_Vars,                ONLY : PDM, Pt
-USE MOD_Particle_Interpolation_Vars,  ONLY : FieldAtParticle
+USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
+USE MOD_Particle_Vars,                ONLY: PDM, Pt
 !#if USE_RW
+!USE MOD_Particle_RandomWalk_Vars,     ONLY: RWTime
 !USE MOD_Particle_Vars,                ONLY: Species,PartSpecies,TurbPartState
 !USE MOD_TimeDisc_Vars,                ONLY: t
 !#endif
@@ -60,7 +61,7 @@ DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
 !#if USE_RW
 !    ! Do not change the particle velocity if RW is working in full Euler mode
-!    IF ((TRIM(Species(PartSpecies(iPart))%RWTime).EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
+!    IF (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 !#endif
     Pt(1:3,iPart) = NON_RELATIVISTIC_PUSH(iPart,FieldAtParticle(1:PP_nVar,iPart))
   END IF

@@ -89,6 +89,24 @@ CALL prms%CreateRealOption('Particles-ManualTimeStep',      'Manual time step ro
 
 CALL prms%CreateRealArrayOption('Part-Gravity',             'Gravitational acceleration as vector',         '0. , 0. , 0.')
 
+#if USE_RW
+CALL prms%SetSection("Particle Random Walk")
+!===================================================================================================================================
+! >>> Values in this section only apply for turbulence models providing turbulent kinetic energy and a turbulent length/time scale
+!===================================================================================================================================
+CALL prms%CreateStringOption(   'Part-RWModel' &
+                                , 'Random walk model used for steady-state calculations.\n'//&
+                                ' - Gosman \n'//&
+                                ' - Dehbi \n'//&
+                                ' - Langevin \n'&
+                                , 'none')
+CALL prms%CreateStringOption(   'Part-RWTime'  &
+                                , 'Time stepping used for random walk model.\n'//&
+                                ' - RK \n'//&
+                                ' - RW'&
+                                , 'RW')
+#endif /* USE_RW */
+
 !===================================================================================================================================
 ! > Species
 ! >>> Values in this section appear multiple times
@@ -202,24 +220,6 @@ CALL prms%CreateRealOption(     'Part-Boundary[$]-Poisson'  &
 CALL prms%CreateRealOption(     'Part-Boundary[$]-CoR'  &
                                 , "Coefficent of restitution for normal velocity component", '0.', numberedmulti=.TRUE.)
 
-#if USE_RW
-!===================================================================================================================================
-! > Random Walk (Subgroup of Part-Species)
-! >>> Values in this section only apply for turbulence models providing turbulent kinetic energy and a turbulent length/time scale
-!===================================================================================================================================
-CALL prms%CreateStringOption(   'Part-Species[$]-RWModel' &
-                                , 'Random walk model used for steady-state calculations.\n'//&
-                                ' - Gosman \n'//&
-                                ' - Dehbi \n'//&
-                                ' - Langevin \n'&
-                                , 'none' , numberedmulti=.TRUE.)
-CALL prms%CreateStringOption(   'Part-Species[$]-RWTime'  &
-                                , 'Time stepping used for random walk model.\n'//&
-                                ' - RK \n'//&
-                                ' - RW'&
-                                , 'RW', numberedmulti=.TRUE.)
-#endif /* USE_RW */
-
 !===================================================================================================================================
 ! > Boundaries
 ! >>> Values in this section appear multiple times
@@ -295,6 +295,9 @@ USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceV
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
 #endif
+#if USE_RW
+USE MOD_Particle_RandomWalk,        ONLY: ParticleInitRandomWalk
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -318,8 +321,12 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES ...'
 !  CALL AddToElemData(ElementOut,'nPartsPerElem',LongIntArray=nPartsPerElem(:))
 !END IF
 
-Call InitParticleGlobals
+CALL InitParticleGlobals()
 CALL InitializeVariables(ManualTimeStep_opt)
+! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
+#if USE_RW
+CALL ParticleInitRandomWalk()
+#endif
 
 ! Restart particles here, otherwise we can not know if we need to have an initial emission
 CALL ParticleRestart()
@@ -393,9 +400,6 @@ PartGravity           = GETREALARRAY('Part-Gravity'          ,3  ,'0. , 0. , 0.'
 
 ! Allocate array to hold particle properties
 ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
-#if USE_RW
-         TurbPartState(   1:4,1:PDM%maxParticleNumber),    &
-#endif
          PartReflCount(       1:PDM%maxParticleNumber),    &
          LastPartPos(     1:3,1:PDM%maxParticleNumber),    &
          PartPosRef(      1:3,1:PDM%MaxParticleNumber),    &
@@ -428,9 +432,6 @@ PDM%ParticleInsideSM(1:PDM%maxParticleNumber)= .FALSE.
 PDM%IsNewPart(     1:PDM%maxParticleNumber)  = .FALSE.
 LastPartPos(   1:3,1:PDM%maxParticleNumber)  = 0.
 PartState                                    = 0.
-#if USE_RW
-TurbPartState                                = 0.
-#endif
 PartReflCount                                = 0.
 Pt                                           = 0.
 PartSpecies                                  = 0
@@ -486,12 +487,6 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%YoungIC               = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-YoungIC','0.')
     Species(iSpec)%PoissonIC             = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-PoissonIC','0.')
     Species(iSpec)%YieldCoeff            = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-YieldCoeff','0.')
-
-#if USE_RW
-    !--> Random Walk model
-    Species(iSpec)%RWModel               = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-RWModel','none'))
-    Species(iSpec)%RWTime                = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-RWTime' ,'RW'))
-#endif
 
     ! Emission and init data
     Species(iSpec)%Init(iInit)%UseForInit            = GETLOGICAL('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-UseForInit','.TRUE.')
@@ -1123,6 +1118,9 @@ USE MOD_Globals
 USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Interpolation_Vars
+#if USE_RW
+USE MOD_Particle_RandomWalk
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -1134,9 +1132,6 @@ IMPLICIT NONE
 SDEALLOCATE(Pt_temp)
 SDEALLOCATE(PartPosRef)
 SDEALLOCATE(PartState)
-#if USE_RW
-SDEALLOCATE(TurbPartState)
-#endif
 SDEALLOCATE(LastPartPos)
 SDEALLOCATE(PartSpecies)
 SDEALLOCATE(Pt)
@@ -1167,13 +1162,15 @@ SDEALLOCATE(PEM%pNumber)
 SDEALLOCATE(PEM%pEnd)
 SDEALLOCATE(PEM%pNext)
 SDEALLOCATE(FieldAtParticle)
-#if USE_RW
-SDEALLOCATE(TurbFieldAtParticle)
-#endif
 #if USE_SM
 SDEALLOCATE(PEM%hasCrossedSM)
 SDEALLOCATE(PDM%ParticleInsideSM)
 #endif
+#if USE_RW
+SDEALLOCATE(TurbFieldAtParticle)
+CALL ParticleFinalizeRandomWalk()
+#endif
+
 END SUBROUTINE FinalizeParticles
 
 

@@ -51,14 +51,52 @@ SUBROUTINE ParticleInitRandomWalk()
 !
 !===================================================================================================================================
 ! MODULES
-
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_ReadInTools,                ONLY: GETSTR
+USE MOD_Particle_Vars,              ONLY: PDM,TurbPartState
+USE MOD_Particle_RandomWalk_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER               :: ALLOCSTAT
+INTEGER               :: nRWVars
 !----------------------------------------------------------------------------------------------------------------------------------
+IF(ParticleRWInitIsDone) RETURN
+
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE RANDOM WALK ...!'
+
+!--> Random Walk model
+RWModel = TRIM(GETSTR('Part-RWModel','none'))
+RWTime  = TRIM(GETSTR('Part-RWTime' ,'RW'))
+
+SELECT CASE(RWModel)
+
+  CASE('Mofakham')
+    IF (RWTime.EQ.'RK'.AND.MPIROOT) &
+      WRITE(*,*) 'WARNING: Modified Mofakham (2020) model is exactly Gosman (1983) with RW time step equal to RK time step.'
+  nRWVars = 7
+
+  CASE('Gosman')
+    nRWVars = 4
+
+  CASE DEFAULT
+    CALL abort(__STAMP__, ' No particle random walk model given.')
+END SELECT
+
+! Allocate array to hold the RW properties for every particle
+ALLOCATE(TurbPartState(1:nRWVars,1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) &
+  CALL abort(__STAMP__,'ERROR in particle_randomwalk.f90: Cannot allocate particle random walk arrays!')
+TurbPartState = 0.
+
+ParticleRWInitIsDone=.TRUE.
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE RANDOM WALK DONE!'
+SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE ParticleInitRandomWalk
 
@@ -100,7 +138,8 @@ USE MOD_Particle_Globals
 USE MOD_EOS_Vars,          ONLY: mu0
 USE MOD_Equation_Vars,     ONLY: betaStar
 USE MOD_Particle_Vars,     ONLY: Species,PartSpecies,PartState,TurbPartState
-USE MOD_Particle_Interpolation_Vars,ONLY: TurbFieldAtParticle
+USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
+USE MOD_Particle_RandomWalk_Vars,    ONLY: RWModel,RWTime
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -124,23 +163,7 @@ REAL                :: nu
 INTEGER             :: i
 !===================================================================================================================================
 
-! Check time stepping scheme requested for RW model
-SELECT CASE(TRIM(Species(PartSpecies(PartID))%RWTime))
-
-CASE('RK')
-  ! Time stepping with every RK step. Do nothing here
-
-CASE('RW')
-  ! Time stepping with min(eddy time scale, transit time scale). Return if called too early
-  IF (t.LT.TurbPartState(4,PartID)) RETURN
-
-CASE DEFAULT
-    CALL abort(__STAMP__, ' No particle random walk time step given. This should not happen.')
-
-END SELECT
-
-
-SELECT CASE(TRIM(Species(PartSpecies(PartID))%RWModel))
+SELECT CASE(RWModel)
 
 !===================================================================================================================================
 ! LES/DNS mode. Assume fully resolved turbulence
@@ -149,6 +172,123 @@ CASE('none')
     ! Do nothing
 
 CASE('Gosman')
+!===================================================================================================================================
+! Gosman (1983) model including the correction for exponent of C_mu equal 1/2.
+!> Gosman, A. D., and Loannides, E., "Aspects of computer simulation of liquid-fueled combustors." Journal of energy 7.6 (1983):
+!> 482-490.
+!===================================================================================================================================
+  ! Check time stepping scheme requested for RW model
+  SELECT CASE(RWTime)
+
+    CASE('RK')
+      ! Time stepping with every RK step. Do nothing here
+
+    CASE('RW')
+      ! Time stepping with min(eddy time scale, transit time scale). Return if called too early
+      IF (t.LT.TurbPartState(4,PartID)) RETURN
+
+    CASE DEFAULT
+      CALL abort(__STAMP__, ' No particle random walk time step given. This should not happen.')
+
+  END SELECT
+
+
+    tke     = TurbFieldAtParticle(1,PartID)
+    epsturb = TurbFieldAtParticle(2,PartID)
+
+    ! SST renamed C_mu, change back for clarity
+    C_mu    = betaStar
+
+    ! Assume spherical particles for now
+    Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
+    r       = (3.*Vol/4./pi)**(1./3.)
+    rho_p   = Species(PartSpecies(PartID))%DensityIC
+
+    ! Droplet relaxation time
+    udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
+
+    ! Get nu to stay in same equation format
+    nu      = mu0/FieldAtParticle(1)
+
+    Rep     = 2.*r*SQRT(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.)/nu
+    ! Empirical relation of nonlinear drag from Clift et al. (1978)
+  !    IF (Rep .LT. 1) THEN
+  !      Cd  = 1.
+  !    ELSE
+      Cd  = 1. + 0.15*Rep**0.687
+  !    ENDIF
+
+    ! Division by zero if particle velocity equal fluid velocity. Avoid this!
+    IF (ANY(udiff.NE.0)) THEN
+      tau     = (4./3.)*FieldAtParticle(1)*(2.*r)/(rho_p*Cd*sqrt(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.))
+    ELSE
+      tau     = HUGE(1.)
+    END IF
+
+    ! Turbulent velocity fluctuation
+    udash(1:3)   = (2.*tke/3.)**0.5
+
+    ! Get random number with Gaussian distribution
+    DO i = 1,3
+      lambda(i) = RandNormal()
+    END DO
+
+    ! Catch negative or zero dissipation rate
+    ! Eddy length and lifetime
+    IF (TKE.GT.0 .AND. epsturb.GT.0) THEN
+      l_e     = C_mu**(1./2.)*tke**(3./2.) / epsturb
+  !      tau_e   = C_L * tke / epsturb
+
+      ! Calculate random walk push. We are isentropic, so use vectors
+      TurbPartState(1:3,PartID) = lambda(1:3)*udash(1:3)
+
+      ! Estimate interaction time. The values here are already depend on the random draw.
+      ! If TKE!=0, then udash can only be zero if ALL Gaussian random numbers are zero.
+      ! What are the chances? Omit the check for now.
+  !      IF(ANY(udash.NE.0)) THEN
+      t_e     = l_e/     SQRT(udash(1)**2. + udash(2)**2. + udash(3)**2.)
+  !       END IF
+      tau_e   = l_e/(tau*SQRT(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.))
+
+      ! Particles either leaves the eddy or the eddy expires
+      IF (tau_e.LT.1.) THEN
+        t_r   = -tau*LOG(1.-tau_e)
+        t_int = MIN(t_e,t_r)
+      ! Particle captured by eddy, so interaction time is eddy life time
+      ELSE
+        t_int = t_e
+      END IF
+
+      ! Save time when eddy expires or particle finished crossing it
+      TurbPartState(4,PartID)   = t + t_int
+
+    ! TKE or epsilon is zero. No random velocity but try again in the next RK stage
+    ELSE
+      TurbPartState(1:3,PartID) = 0.
+      TurbPartState(4,  PartID) = t
+    ENDIF
+
+CASE('Mofakham')
+!===================================================================================================================================
+! Modified Mofakham (2020) model. Calculation of udash and t_int similar to Gosman (1983) but random variables lambda_i fixed for
+! t_int. Basis of this reasoning is following passage:
+!<<< "It should be emphasized that the cross-correlation between the components of velocity fluctuations in different directions in
+!<<<  inhomogeneous flows cannot be included by employing the standard DRW model. In this approach, it is assumed that a particle
+!<<<  interacts with a turbulent eddy for a time interval t_int during which [lambda_i] is fixed."
+!> Mofakham, Amir A., and Ahmadi, G., "On random walk models for simulation of particle-laden turbulent flows.", International
+!> Journal of Multiphase Flow (2019): 103157.
+!===================================================================================================================================
+  ! Particle still inside of eddy, only update the RMS turbulence
+  IF (t.LT.TurbPartState(4,PartID)) THEN
+    tke         = TurbFieldAtParticle(1,PartID)
+    lambda(1:3) = TurbPartState    (5:7,PartID)
+
+    ! Turbulent velocity fluctuation
+    udash(1:3)  = (2.*tke/3.)**0.5
+
+    ! Calculate random walk push. We are isentropic, so use vectors
+    TurbPartState(1:3,PartID) = lambda(1:3)*udash(1:3)
+  ELSE
     tke     = TurbFieldAtParticle(1,PartID)
     epsturb = TurbFieldAtParticle(2,PartID)
 
@@ -200,7 +340,7 @@ CASE('Gosman')
 
       ! Estimate interaction time. The values here are already depend on the random draw.
       ! If TKE!=0, then udash can only be zero if ALL Gaussian random numbers are zero.
-      ! What are the chances? Ommit the check for now.
+      ! What are the chances? Omit the check for now.
 !      IF(ANY(udash.NE.0)) THEN
       t_e     = l_e/     SQRT(udash(1)**2. + udash(2)**2. + udash(3)**2.)
 !       END IF
@@ -215,14 +355,18 @@ CASE('Gosman')
         t_int = t_e
       END IF
 
-      ! Save time when eddy expires or particle finished crossing it
-      TurbPartState(4,PartID)   = t + t_int
+      ! Save time when eddy expires or particle finished crossing it and the random numbers
+      TurbPartState(4  ,PartID) = t + t_int
+      TurbPartState(5:7,PartID) = lambda(1:3)
 
     ! TKE or epsilon is zero. No random velocity but try again in the next RK stage
     ELSE
       TurbPartState(1:3,PartID) = 0.
-      TurbPartState(4,  PartID) = t
+      TurbPartState(4  ,PartID) = t
+      ! Nullify random numbers just to make sure
+      TurbPartState(5:7,PartID) = 0.
     ENDIF
+  END IF ! t.LT.t_int
 
 CASE DEFAULT
     CALL abort(__STAMP__, ' No particle random walk model given. This should not happen.')
@@ -239,7 +383,8 @@ END SUBROUTINE ParticleRandomWalkPush
 !===================================================================================================================================
 SUBROUTINE ParticleFinalizeRandomWalk()
 ! MODULES
-
+USE MOD_Particle_Vars,              ONLY: TurbPartState
+USE MOD_Particle_RandomWalk_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -247,6 +392,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+SDEALLOCATE(TurbPartState)
+
+ParticleRWInitIsDone=.FALSE.
 
 END SUBROUTINE ParticleFinalizeRandomWalk
 

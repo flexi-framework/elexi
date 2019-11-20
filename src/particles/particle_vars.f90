@@ -131,11 +131,6 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: YoungIC                          ! Young's modulus
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
-#if USE_RW
-  !Random Walk method
-  CHARACTER(40)                          :: RWModel                          ! specifying Keyword for RW model
-  CHARACTER(40)                          :: RWTime                           ! time stepping mode for RW model
-#endif
 END TYPE
 
 

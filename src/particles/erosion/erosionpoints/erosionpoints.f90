@@ -188,7 +188,7 @@ END SUBROUTINE InitEPCommunicator
 #endif /*USE_MPI*/
 
 
-SUBROUTINE RecordErosionPoint(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_old,PartReflCount)
+SUBROUTINE RecordErosionPoint(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_old,PartReflCount,alpha)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Combined routine to add erosion impacts to tracking array
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -196,7 +196,7 @@ SUBROUTINE RecordErosionPoint(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_TimeDisc_Vars,           ONLY: t
+USE MOD_TimeDisc_Vars,           ONLY: t,CurrentStage,dt,RKc
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Erosion_Vars
 USE MOD_ErosionPoints_Vars
@@ -207,11 +207,13 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 REAL,INTENT(IN)                   :: PartFaceAngle, v_old(1:3)
 REAL,INTENT(IN)                   :: PartFaceAngle_old
+REAL,INTENT(IN)                   :: alpha
 INTEGER,INTENT(IN)                :: BCSideID,PartID,PartReflCount
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                              :: v_magnitude_old,v_magnitude_new
 REAL                              :: e_kin_old,e_kin_new
+REAL                              :: t_loc
 !===================================================================================================================================
 
 !----  Calculating values before and after reflection
@@ -229,6 +231,16 @@ e_kin_new         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_new**2.
 
 ! LastParPos is set to impact location!
 
+! Calculate exact impact time
+IF (CurrentStage.EQ.1) THEN
+    t_loc = t                                                       & ! current physical time
+          +  RKc(CurrentStage)                     *dt                ! current stage time
+ELSE
+    t_loc = t                                                       & ! current physical time
+          +  RKc(CurrentStage)                     *dt              & ! current stage time
+          + (RKc(CurrentStage)-RKc(currentStage-1))*dt*alpha
+END IF
+
 ! Record individual impact
 EP_Impacts = EP_Impacts + 1
 
@@ -236,7 +248,7 @@ EP_Data(1:3,EP_Impacts) = LastPartPos(1:3,PartID)
 EP_Data(4:6,EP_Impacts) = v_old(1:3)
 EP_Data(7,EP_Impacts)   = REAL(PartSpecies(PartID))
 EP_Data(8,EP_Impacts)   = REAL(BCSideID)
-EP_Data(9,EP_Impacts)   = t
+EP_Data(9,EP_Impacts)   = t_loc
 EP_Data(10,EP_Impacts)  = REAL(PartReflCount)
 EP_Data(11,EP_Impacts)  = e_kin_old
 EP_Data(12,EP_Impacts)  = e_kin_new

@@ -125,7 +125,7 @@ CASE(1) !PartBound%OpenBC)
       ! Match boundary name with 'outlet'
       CALL LowCase(TRIM(BoundaryName(BC(SideID))),BCStringTmp)
       IF (BCStringTmp.EQ.'outlet') THEN
-        CALL SideErosion(PartTrajectory,xi,eta,iPart,SideID,flip,TriNum=TriNum)
+        CALL SideErosion(PartTrajectory,xi,eta,iPart,SideID,flip,alpha,TriNum=TriNum)
       END IF
     END IF
   END IF
@@ -267,7 +267,7 @@ CASE(1) !PartBound%OpenBC)
       ! Match boundary name with 'outlet'
       CALL LowCase(TRIM(BoundaryName(BC(SideID))),BCStringTmp)
       IF (BCStringTmp.EQ.'outlet') THEN
-        CALL SideErosion(PartTrajectory,xi,eta,iPart,SideID,flip)
+        CALL SideErosion(PartTrajectory,xi,eta,iPart,SideID,flip,alpha)
       END IF
     END IF
   END IF
@@ -638,7 +638,8 @@ IF (EP_inUse) THEN
                           PartFaceAngle   = PartFaceAngle,                &
                           v_old           = v_old,                        &
                           PartFaceAngle_old =PartFaceAngle_old,           &
-                          PartReflCount  = PartReflCount(PartID))
+                          PartReflCount   = PartReflCount(PartID),        &
+                          alpha           = alpha)
 END IF
 
 ! Increase reflection counter
@@ -1038,7 +1039,8 @@ IF (EP_inUse) THEN
                           PartFaceAngle   = PartFaceAngle,                                &
                           v_old           = v_old,                                        &
                           PartFaceAngle_old =PartFaceAngle_old,                           &
-                          PartReflCount  = PartReflCount(PartID))
+                          PartReflCount   = PartReflCount(PartID),                        &
+                          alpha           = alpha)
 END IF
 
 ! increase reflection counter
@@ -1194,7 +1196,7 @@ IF (DoRefMapping) PEM%LastElement(PartID) = 0
 END SUBROUTINE PeriodicBC
 
 
-SUBROUTINE SideErosion(PartTrajectory,xi,eta,PartID,SideID,flip,BCSideID,TriNum)
+SUBROUTINE SideErosion(PartTrajectory,xi,eta,PartID,SideID,flip,alpha,BCSideID,TriNum)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Tracks erosion on designated sides other than reflective wall
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1215,7 +1217,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 REAL,INTENT(INOUT)                :: PartTrajectory(1:3)
-REAL,INTENT(IN)                   :: xi, eta
+REAL,INTENT(IN)                   :: xi, eta, alpha
 INTEGER,INTENT(IN)                :: PartID, SideID, flip
 INTEGER,INTENT(IN),OPTIONAL       :: BCSideID
 INTEGER,INTENT(IN),OPTIONAL       :: TriNum
@@ -1295,7 +1297,8 @@ IF (EP_inUse) CALL RecordErosionPoint(BCSideID        = BC(SideID),             
                                       PartFaceAngle   = PartFaceAngle,                    &
                                       v_old           = v_old,                            &
                                       PartFaceAngle_old =PartFaceAngle,                   &
-                                      PartReflCount  = PartReflCount(PartID))
+                                      PartReflCount   = PartReflCount(PartID),            &
+                                      alpha           = alpha)
 
 END SUBROUTINE SideErosion
 

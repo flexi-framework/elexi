@@ -185,6 +185,7 @@ CASE('Gosman')
 
     CASE('RW')
       ! Time stepping with min(eddy time scale, transit time scale). Return if called too early
+      !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
       IF (t.LT.TurbPartState(4,PartID)) RETURN
 
     CASE DEFAULT
@@ -260,6 +261,8 @@ CASE('Gosman')
       END IF
 
       ! Save time when eddy expires or particle finished crossing it
+      !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for
+      !> Euler. Plus, that way we make the same error twice (but in opposite direction in time), so we're regaining some accuracy?
       TurbPartState(4,PartID)   = t + t_int
 
     ! TKE or epsilon is zero. No random velocity but try again in the next RK stage
@@ -279,6 +282,7 @@ CASE('Mofakham')
 !> Journal of Multiphase Flow (2019): 103157.
 !===================================================================================================================================
   ! Particle still inside of eddy, only update the RMS turbulence
+  !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
   IF (t.LT.TurbPartState(4,PartID)) THEN
     tke         = TurbFieldAtParticle(1,PartID)
     lambda(1:3) = TurbPartState    (5:7,PartID)

@@ -184,6 +184,7 @@ INTEGER                          :: InitGroup
 !===================================================================================================================================
 
 ! We are calling particleInserting differently in FLEXI. Calculate RKdtFrac here using Timedisc_Vars
+!> Basically a fancy way to reconstruct tStage for the next Runge-Kutta stage
 IF (currentStage.EQ.1) THEN
   RKdtFrac      = RKC(2)
   RKdtFracTotal = RKdtFrac

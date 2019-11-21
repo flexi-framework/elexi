@@ -577,15 +577,16 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
 USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
-#endif
+#endif /* FV */
 #if USE_PARTICLES
 USE MOD_Globals      ,ONLY: CollectiveStop
-USE MOD_Particle_TimeDisc
+USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByEuler,Particle_TimeStepByLSERK_RHS,Particle_TimeStepByLSERK
+USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByLSERK_RK_RHS,Particle_TimeStepByLSERK_RK
 USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
 #if USE_MPI_SHARED
 USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
-#endif
-#endif
+#endif /* MPI_SHARED */
+#endif /* PARTICLES */
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -616,7 +617,7 @@ SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CALL CollectiveStop(__STAMP__,&
                     'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
 END SELECT
-#endif
+#endif /* PARTICLES */
 
 !CALL DGTimeDerivative_weakForm(tStage)      !allready called in timedisc
 CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
@@ -635,7 +636,7 @@ CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
       CALL CollectiveStop(__STAMP__,&
                       'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
   END SELECT
-#endif
+#endif /* PARTICLES */
 
 ! Following steps
 DO iStage=2,nRKStages
@@ -651,12 +652,12 @@ DO iStage=2,nRKStages
       CALL CollectiveStop(__STAMP__,&
                       'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
   END SELECT
-#endif
+#endif /* PARTICLES */
 
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
-#endif
+#endif /* FV */
   CALL DGTimeDerivative_weakForm(tStage)
   CALL VAXPBY(nTotalU,Ut_temp,Ut,ConstOut=-RKA(iStage)) !Ut_temp = Ut - Ut_temp*RKA(iStage)
   CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
@@ -674,7 +675,7 @@ DO iStage=2,nRKStages
       CALL CollectiveStop(__STAMP__,&
                       'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
   END SELECT
-#endif
+#endif /* PARTICLES */
 
 END DO
 CurrentStage=1

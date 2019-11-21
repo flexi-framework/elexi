@@ -61,6 +61,7 @@ DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
 !#if USE_RW
 !    ! Do not change the particle velocity if RW is working in full Euler mode
+!    !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
 !    IF (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 !#endif
     Pt(1:3,iPart) = NON_RELATIVISTIC_PUSH(iPart,FieldAtParticle(1:PP_nVar,iPart))

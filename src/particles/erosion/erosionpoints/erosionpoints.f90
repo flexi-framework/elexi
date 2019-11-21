@@ -234,10 +234,10 @@ e_kin_new         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_new**2.
 ! Calculate exact impact time
 IF (CurrentStage.EQ.1) THEN
     t_loc = t                                                       & ! current physical time
-          +  RKc(CurrentStage)                     *dt                ! current stage time
+          +  RKc(CurrentStage)                     *dt*alpha          ! current stage time
 ELSE
     t_loc = t                                                       & ! current physical time
-          +  RKc(CurrentStage)                     *dt              & ! current stage time
+          +  RKc(CurrentStage-1)                   *dt              & ! current stage time
           + (RKc(CurrentStage)-RKc(currentStage-1))*dt*alpha
 END IF
 

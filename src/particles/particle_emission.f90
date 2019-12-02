@@ -403,17 +403,18 @@ LOGICAL                                  :: InsideMyBGM
 #endif
 REAL,ALLOCATABLE                         :: particle_positions(:)
 INTEGER                                  :: allocStat
-INTEGER                                  :: i,j,k,iPart,ParticleIndexNbr
+INTEGER                                  :: i,j,k,iPart,ParticleIndexNbr, iIndex
 INTEGER                                  :: mySumOfMatchedParticles, sumOfMatchedParticles
 INTEGER                                  :: nChunks, chunkSize, chunkSize2
 REAL                                     :: lineVector(3),VectorGap(3)
 REAL                                     :: RandVal(3), Particle_pos(3),lineVector2(3)
-REAL                                     :: RandVal1
+REAL                                     :: RandVal1, RandVal2
 REAL                                     :: radius, argumentTheta
 REAL                                     :: pilen
 REAL                                     :: x_step, y_step, z_step,  x_pos , y_pos
 REAL                                     :: xlen, ylen, zlen
 REAL                                     :: PartIns
+REAL                                     :: pdf
 INTEGER                                  :: DimSend
 LOGICAL                                  :: insideExcludeRegion
 #if USE_MPI
@@ -514,6 +515,23 @@ IF (mode.EQ.1) THEN
         particle_positions(i*3-2) = Particle_pos(1)
         particle_positions(i*3-1) = Particle_pos(2)
         particle_positions(i*3  ) = Particle_pos(3)
+      END DO
+    !------------------SpaceIC-case: Gaussian_distribution-------------------------------------------------------------------------------------------
+    CASE ('Gaussian')
+      ! position particle along line by drawing it from a Gaussian distribution
+      DO i=1,chunkSize
+        CALL RANDOM_NUMBER(RandVal1)
+        CALL RANDOM_NUMBER(RandVal2)
+!        iIndex = MAXLOC(Species(FractNbr)%Init(iInit)%BaseVector1IC)
+!        pdf = 1./SQRT(2.*PI*Species(FractNbr)%Init(iInit)%BaseVariance)*EXP(-(RandVal1-Species(FractNbr)%Init(iInit)%BasePointIC(2))**2/(2.*Species(FractNbr)%Init(iInit)%BaseVariance))
+        pdf = COS(2.*PI*RandVal1)*SQRT(-2.*LOG(1.-RandVal2))
+!        pdf = SIN(2.*PI*RandVal1)*SQRT(-2.*LOG(1.-RandVal2))
+        Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%BaseVector1IC *&
+        (Species(FractNbr)%Init(iInit)%BasePointIC(2) + pdf* Species(FractNbr)%Init(iInit)%BaseVariance)
+        particle_positions(i*3-2) = Particle_pos(1)
+        particle_positions(i*3-1) = Particle_pos(2)
+        particle_positions(i*3  ) = Particle_pos(3)
+        WRITE(*,*) Particle_pos
       END DO
     !------------------SpaceIC-case: disc-------------------------------------------------------------------------------------------
     CASE('disc')

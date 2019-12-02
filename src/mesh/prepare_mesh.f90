@@ -221,6 +221,7 @@ IF((nMortarInnerSides+nMortarMPISides).NE.nMortarSides) &
 
 
 #if USE_PARTICLES
+IF(ALLOCATED(SidePeriodicType)) DEALLOCATE(SidePeriodicType)
 ALLOCATE(SidePeriodicType(1:nSides))
 SidePeriodicType = 0
 ! positive entry: adding the periodic vector ends on the plus side

@@ -191,6 +191,8 @@ CALL prms%CreateRealArrayOption('Part-Species[$]-BaseVector1IC'  &
                                   'First base vector for IC cuboid', '1. , 0. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption('Part-Species[$]-BaseVector2IC'  &
                                 , 'Second base vector for IC cuboid', '0. , 1. , 0.', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(     'Part-Species[$]-BaseVariance'  &
+                                , 'Variance for Gaussian distribtution','1.', numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption('Part-Species[$]-NormalIC'  &
                                 , 'Normal orientation of circle.', '0. , 0. , 1.', numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption('Part-Species[$]-VeloVecIC '  &
@@ -498,6 +500,7 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%RadiusIC              = GETREAL('Part-Species'//TRIM(tmpStr2)//'-RadiusIC','1.')
     Species(iSpec)%Init(iInit)%NormalIC              = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC',3,'0. , 0. , 1.')
     Species(iSpec)%Init(iInit)%BasePointIC           = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC',3,'0. , 0. , 0.')
+    Species(iSpec)%Init(iInit)%BaseVariance          = GETREAL('Part-Species'//TRIM(tmpStr2)//'-BaseVariance','1.')
     Species(iSpec)%Init(iInit)%BaseVector1IC         = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector1IC',3,'1. , 0. , 0.')
     Species(iSpec)%Init(iInit)%BaseVector2IC         = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector2IC',3,'0. , 1. , 0.')
     Species(iSpec)%Init(iInit)%CuboidHeightIC        = GETREAL('Part-Species'//TRIM(tmpStr2)//'-CuboidHeightIC','1.')

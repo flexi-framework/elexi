@@ -386,8 +386,10 @@ int visuReader::RequestData(
    dprintf(posti_unit, "NodeTypeVisu = %s\n", NodeTypeVisu); // insert NodeType
    dprintf(posti_unit, "Avg2D = %s\n", (this->Avg2d ? "T" : "F"));
    dprintf(posti_unit, "DGonly = %s\n", (this->DGonly ? "T" : "F"));
-   if (strlen(MeshFileOverwrite) > 0) {
-      dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
+   if (MeshFileOverwrite != NULL ) {
+     if (strlen(MeshFileOverwrite) > 0) {
+        dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
+     }
    }
 
    // write selected state varnames to the parameter file
@@ -427,7 +429,12 @@ int visuReader::RequestData(
    // call Posti tool (Fortran code)
    // the arrays coords_*, values_* and nodeids_* are allocated in the Posti tool
    // and contain the vtk data
-   int strlen_prm = strlen(ParameterFileOverwrite);
+   int strlen_prm;
+   if (ParameterFileOverwrite == NULL) {
+     strlen_prm = 0;
+   } else {
+     strlen_prm = strlen(ParameterFileOverwrite);
+   }
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str());
    __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm,
@@ -438,8 +445,8 @@ int visuReader::RequestData(
          &coords_FV,&values_FV,&nodeids_FV,&varnames,
          &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
          &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf,
-				 &coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,
-				 &coords_Erosion,&values_Erosion,&nodeids_Erosion,&varnames_Erosion,&components_Erosion);
+	 &coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,
+	 &coords_Erosion,&values_Erosion,&nodeids_Erosion,&varnames_Erosion,&components_Erosion);
 
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 

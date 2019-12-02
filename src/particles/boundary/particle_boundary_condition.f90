@@ -1187,7 +1187,7 @@ ElemID    = Moved(1)
 #if USE_MPI
 ! New element is neither on proc nor in halo region, abort
 IF(ElemID.EQ.-1) &
-  CALL abort(__STAMP__,' Halo region to small. Neighbor element is missing!')
+  CALL abort(__STAMP__,' Halo region too small. Neighbor element is missing!')
 #endif /*MPI*/
 
 ! Remove history for last element

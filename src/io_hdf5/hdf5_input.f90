@@ -303,9 +303,12 @@ INTEGER                              :: hdferr
 CALL h5eset_auto_f(0, hdferr)
 ! Open the dataset with default properties.
 IF(PRESENT(attrib))THEN
-  IF(attrib) THEN
+  IF(attrib)THEN
     CALL H5AOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
     CALL H5ACLOSE_F(DSet_ID, iError)
+  ELSE
+    CALL H5DOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
+    CALL H5DCLOSE_F(DSet_ID, iError)
   END IF
 ELSE
   CALL H5DOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)

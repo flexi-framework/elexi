@@ -64,13 +64,13 @@ DO iPart = 1,PDM%ParticleVecLength
 !    !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
 !    IF (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 !#endif
-    Pt(1:3,iPart) = NON_RELATIVISTIC_PUSH(iPart,FieldAtParticle(1:PP_nVar,iPart))
+    Pt(1:3,iPart) = ParticlePush(iPart,FieldAtParticle(1:PP_nVar,iPart))
   END IF
 END DO
 
 END SUBROUTINE CalcPartRHS
 
-FUNCTION NON_RELATIVISTIC_PUSH(PartID,FieldAtParticle)
+FUNCTION ParticlePush(PartID,FieldAtParticle)
 !===================================================================================================================================
 ! NON relativistic push
 !===================================================================================================================================
@@ -90,7 +90,7 @@ INTEGER,INTENT(IN)  :: PartID
 REAL,INTENT(IN)     :: FieldAtParticle(1:PP_nVar)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL                :: NON_RELATIVISTIC_PUSH(1:3) ! The stamp
+REAL                :: ParticlePush(1:3) ! The stamp
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: Pt(1:3)
@@ -297,8 +297,8 @@ CASE DEFAULT
 
 END SELECT
 
-NON_RELATIVISTIC_PUSH = Pt
+ParticlePush = Pt
 
-END FUNCTION NON_RELATIVISTIC_PUSH
+END FUNCTION ParticlePush
 
 END MODULE MOD_part_RHS

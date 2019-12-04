@@ -135,7 +135,7 @@ REAL            :: CROSS(3) !
 CROSS=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
 END FUNCTION CROSS
 
-FUNCTION CROSSNORM(v1,v2)
+PURE FUNCTION CROSSNORM(v1,v2)
 !===================================================================================================================================
 ! computes the cross product of to 3 dimensional vectpors: cross=v1 x v2
 ! and normalizes the vector

@@ -282,7 +282,7 @@ END SUBROUTINE InitCalcTimeAverage
 !==================================================================================================================================
 !> Return index of string VarName in array VarNameList
 !==================================================================================================================================
-FUNCTION GETMAPBYNAME(VarName,VarNameList,nVarList)
+PURE FUNCTION GETMAPBYNAME(VarName,VarNameList,nVarList)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

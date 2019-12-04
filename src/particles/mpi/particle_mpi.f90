@@ -1003,9 +1003,13 @@ DO iSpec=1,nSpecies
       xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC
       RegionOnProc=BoxInProc(xCoords(1:3,1:2),2)
     CASE ('Gaussian')
-      xlen = 1.
-      ylen=1.
-      zlen=1.
+      xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
+           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(1)*Species(iSpec)%Init(iInit)%NormalIC(1))
+      ylen=Species(iSpec)%Init(iInit)%RadiusIC * &
+           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(2)*Species(iSpec)%Init(iInit)%NormalIC(2))
+      zlen=Species(iSpec)%Init(iInit)%RadiusIC * &
+           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(3)*Species(iSpec)%Init(iInit)%NormalIC(3))
+      ! all 8 edges
       xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
       xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
       xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)

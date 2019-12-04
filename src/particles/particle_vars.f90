@@ -83,6 +83,7 @@ TYPE tInit                                                                   ! P
   REAL                                   :: BasePointIC(3)                   ! base point for IC cuboid and IC sphere
   REAL                                   :: BaseVector1IC(3)                 ! first base vector for IC cuboid
   REAL                                   :: BaseVector2IC(3)                 ! second base vector for IC cuboid
+  REAL                                   :: BaseVariance                     ! variance for Gaussian distribtion
   REAL                                   :: CuboidHeightIC                   ! third measure of cuboid
                                                                              ! (set 0 for flat rectangle),
                                                                              ! negative value = opposite direction

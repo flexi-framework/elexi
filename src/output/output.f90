@@ -236,6 +236,7 @@ REAL    :: FV_percent
 #endif
 REAL    :: percent,time_remaining,mins,secs,hours
 #if USE_PARTICLES
+INTEGER :: nParticleOnProc,iPart
 INTEGER :: nParticleInDomain
 #endif
 !==================================================================================================================================
@@ -251,11 +252,15 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,i
 #endif
 
 #if USE_PARTICLES
+nParticleOnProc = 0
+DO iPart=1,PDM%ParticleVecLength
+  IF (PDM%ParticleInside(iPart)) nParticleOnProc = nParticleOnProc + 1
+END DO
 #if USE_MPI
 ! Gather number of particles on ALL procs
-CALL MPI_REDUCE(PDM%ParticleVecLength,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
 #else
-nParticleInDomain = PDM%ParticleVecLength
+nParticleInDomain = nParticleOnProc
 #endif
 #endif
 

@@ -556,17 +556,17 @@ END IF !IsAuxBC
 v_old                = PartState(4:6,PartID)
 PartState(4:6,PartID)= PartState(4:6,PartID)-2.*DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc + WallVelo
 
-! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
-  DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
-  PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
-  DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
-  PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
-ELSE
+! ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
+! IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
+!   DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
+!   PartFaceAngle=ABS(0.5*PI - ACOS(1.))
+! ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
+!   DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
+!   PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
+! ELSE
   PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-ENDIF
-! End ugly hack
+! ENDIF
+! ! End ugly hack
 
 ! Sample macrovalues on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
@@ -629,7 +629,7 @@ IF (EP_inUse) THEN
 !    DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
 !    PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
 !  ELSE
-!    PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+  PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 !  ENDIF
 !  ! End ugly hack
 
@@ -873,17 +873,17 @@ v_old   = PartState(4:6,PartID)
 v_norm  = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
 v_tang  = PartState(4:6,PartID) - v_norm
 
-! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                    &
-  DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
-  PartFaceAngle = ABS(0.5*PI - ACOS(1.))
-ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.               &
-  DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
-  PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
-ELSE
+! ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
+! IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                    &
+!   DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
+!   PartFaceAngle = ABS(0.5*PI - ACOS(1.))
+! ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.               &
+!   DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
+!   PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
+! ELSE
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-ENDIF
-! End ugly hack
+! ENDIF
+! ! End ugly hack
 
 SELECT CASE(WallCoeffModel)
   ! Tabaoff, W.; Wakeman, T.: Basic Erosion Investigation in Small Turbomachinery. / Cincinnati Univ. OH, 1981
@@ -959,17 +959,17 @@ IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
     q=INT((Etatild+1.0)/dXiEQ_SurfSample)+1
   END IF
 
-  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                          &
-      DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
-      PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                     &
-      DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
-      PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
-  ELSE
+!  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
+!  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                          &
+!      DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
+!      PartFaceAngle=ABS(0.5*PI - ACOS(1.))
+!  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                     &
+!      DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
+!      PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
+!  ELSE
   PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-  ENDIF
-  ! End ugly hack
+!  ENDIF
+!  ! End ugly hack
 
   ! Record particle impact
   CALL RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
@@ -999,6 +999,8 @@ PartTrajectory(1:3)     = PartTrajectoryTang(1:3) - PartTrajectoryNorm(1:3)
 ! Save the old lengthPartTrajectory and rescale to new. We can't compute a complete new lengthPartTrajectory as we do not have the
 ! current LSERK time step here
 lengthPartTrajectory_old= lengthPartTrajectory
+! PartTrajectory should have uniform length but does not since we used CoR. Rescale the lengthPartTrajectory to the shorter
+! PartTrajectory
 PartTrajectory_rescale  = SQRT(PartTrajectory(1)*PartTrajectory(1)                        &
                           +    PartTrajectory(2)*PartTrajectory(2)                        &
                           +    PartTrajectory(3)*PartTrajectory(3) )
@@ -1007,32 +1009,34 @@ lengthPartTrajectory    = lengthPartTrajectory  *PartTrajectory_rescale
 ! Rescale the PartTrajectory to uniform length, otherwise we apply the coefficients twice
 PartTrajectory          = PartTrajectory        /PartTrajectory_rescale
 
-! lengthPartTrajectory is coupled to alpha, so use the old value to non-dimensionalize it
-PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + (1-alpha/lengthPartTrajectory_old) * PartTrajectory(1:3) * lengthPartTrajectory
+! Check if the Particle is right at wall. If yes, do not recompute PartTrajectory
+IF (alpha/lengthPartTrajectory_old.NE.1) THEN
+  ! lengthPartTrajectory is coupled to alpha, so use the old value to non-dimensionalize it
+  PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + (1-alpha/lengthPartTrajectory_old) * PartTrajectory(1:3) * lengthPartTrajectory
 
-! compute moved particle || rest of movement
-PartTrajectory          = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
-lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)                        &
-                          +    PartTrajectory(2)*PartTrajectory(2)                        &
-                          +    PartTrajectory(3)*PartTrajectory(3) )
-PartTrajectory          = PartTrajectory/lengthPartTrajectory
-
+  ! compute moved particle || rest of movement
+  PartTrajectory(1:3)     = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
+  lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)                        &
+                            +    PartTrajectory(2)*PartTrajectory(2)                        &
+                            +    PartTrajectory(3)*PartTrajectory(3) )
+  PartTrajectory          = PartTrajectory/lengthPartTrajectory
+END IF
 
 ! compute new particle velocity, modified with coefficents of restitution
 PartState(4:6,PartID)= eps_t * v_tang - eps_n * v_norm + WallVelo
 
 IF (EP_inUse) THEN
-  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                            &
-    DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
-    PartFaceAngle = ABS(0.5*PI - ACOS(1.))
-  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                       &
-    DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
-    PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
-  ELSE
+!  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
+!  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                            &
+!    DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
+!    PartFaceAngle = ABS(0.5*PI - ACOS(1.))
+!  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                       &
+!    DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
+!    PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
+!  ELSE
     PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-  ENDIF
-  ! End ugly hack
+!  ENDIF
+!  ! End ugly hack
 
   CALL RecordErosionPoint(BCSideID        = BC(SideID),                                   &
                           PartID          = PartID,                                       &
@@ -1278,17 +1282,17 @@ ELSE
   q=INT((Etatild+1.0)/dXiEQ_SurfSample)+1
 END IF
 
-! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                              &
-    DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
-    PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                         &
-    DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
-    PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
-ELSE
+! ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
+! IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                              &
+!     DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
+!     PartFaceAngle=ABS(0.5*PI - ACOS(1.))
+! ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                         &
+!     DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
+!     PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
+! ELSE
 PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-ENDIF
-! End ugly hack
+! ENDIF
+! ! End ugly hack
 
 CALL RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
 

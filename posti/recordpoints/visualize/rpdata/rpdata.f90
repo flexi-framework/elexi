@@ -77,6 +77,7 @@ IF(PRESENT(firstFile)) THEN
     firstFile_loc=.TRUE.
   ELSE
     firstFile_loc=.FALSE.
+  END IF
 ELSE
   firstFile_loc=.FALSE.
 END IF

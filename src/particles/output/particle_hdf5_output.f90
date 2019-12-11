@@ -49,7 +49,9 @@ PUBLIC :: WriteParticleToHDF5
 PUBLIC :: WriteAttributeToHDF5
 PUBLIC :: WriteHDF5Header
 PUBLIC :: WriteArrayToHDF5
+#if USE_MPI
 PUBLIC :: DistributedWriteArray
+#endif
 !==================================================================================================================================
 
 CONTAINS

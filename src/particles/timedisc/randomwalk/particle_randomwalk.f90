@@ -193,25 +193,38 @@ CASE('Gosman')
 
   END SELECT
 
+  tke     = TurbFieldAtParticle(1,PartID)
+  epsturb = TurbFieldAtParticle(2,PartID)
 
-    tke     = TurbFieldAtParticle(1,PartID)
-    epsturb = TurbFieldAtParticle(2,PartID)
+  ! SST renamed C_mu, change back for clarity
+  C_mu    = betaStar
 
-    ! SST renamed C_mu, change back for clarity
-    C_mu    = betaStar
+  ! Assume spherical particles for now
+  Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
+  r       = (3.*Vol/4./pi)**(1./3.)
+  rho_p   = Species(PartSpecies(PartID))%DensityIC
 
-    ! Assume spherical particles for now
-    Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
-    r       = (3.*Vol/4./pi)**(1./3.)
-    rho_p   = Species(PartSpecies(PartID))%DensityIC
+  ! Turbulent velocity fluctuation
+  udash(1:3)   = (2.*tke/3.)**0.5
+
+  ! Get random number with Gaussian distribution
+  DO i = 1,3
+    lambda(i) = RandNormal()
+  END DO
+
+  ! Catch negative or zero dissipation rate
+  ! Eddy length and lifetime
+  IF (TKE.GT.0 .AND. epsturb.GT.0) THEN
+    ! Calculate random walk push. We are isentropic, so use vectors
+    TurbPartState(1:3,PartID) = lambda(1:3)*udash(1:3)
 
     ! Droplet relaxation time
-    udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
+    udiff(1:3) = PartState(4:6,PartID) - ((FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
 
     ! Get nu to stay in same equation format
     nu      = mu0/FieldAtParticle(1)
 
-    Rep     = 2.*r*SQRT(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.)/nu
+    Rep     = 2.*r*SQRT(SUM(udiff(1:3)**2.))/nu
     ! Empirical relation of nonlinear drag from Clift et al. (1978)
   !    IF (Rep .LT. 1) THEN
   !      Cd  = 1.
@@ -221,55 +234,41 @@ CASE('Gosman')
 
     ! Division by zero if particle velocity equal fluid velocity. Avoid this!
     IF (ANY(udiff.NE.0)) THEN
-      tau     = (4./3.)*FieldAtParticle(1)*(2.*r)/(rho_p*Cd*sqrt(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.))
+      tau     = (4./3.)*rho_p*(2.*r)/(FieldAtParticle(1)*Cd*SQRT(SUM(udiff(1:3)**2.)))
     ELSE
       tau     = HUGE(1.)
     END IF
 
-    ! Turbulent velocity fluctuation
-    udash(1:3)   = (2.*tke/3.)**0.5
+    l_e     = C_mu**(1./2.)*tke**(3./2.) / epsturb
+!    tau_e   = C_L * tke / epsturb
 
-    ! Get random number with Gaussian distribution
-    DO i = 1,3
-      lambda(i) = RandNormal()
-    END DO
+    ! Estimate interaction time. The values here are already depend on the random draw.
+    ! If TKE!=0, then udash can only be zero if ALL Gaussian random numbers are zero.
+    ! What are the chances? Omit the check for now.
+!    IF(ANY(udash.NE.0)) THEN
+    t_e     = l_e/     SQRT(SUM(udash(1:3)**2.))
+!    END IF
+    tau_e   = l_e/(tau*SQRT(SUM(udiff(1:3)**2.)))
 
-    ! Catch negative or zero dissipation rate
-    ! Eddy length and lifetime
-    IF (TKE.GT.0 .AND. epsturb.GT.0) THEN
-      l_e     = C_mu**(1./2.)*tke**(3./2.) / epsturb
-  !      tau_e   = C_L * tke / epsturb
-
-      ! Calculate random walk push. We are isentropic, so use vectors
-      TurbPartState(1:3,PartID) = lambda(1:3)*udash(1:3)
-
-      ! Estimate interaction time. The values here are already depend on the random draw.
-      ! If TKE!=0, then udash can only be zero if ALL Gaussian random numbers are zero.
-      ! What are the chances? Omit the check for now.
-  !      IF(ANY(udash.NE.0)) THEN
-      t_e     = l_e/     SQRT(udash(1)**2. + udash(2)**2. + udash(3)**2.)
-  !       END IF
-      tau_e   = l_e/(tau*SQRT(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.))
-
-      ! Particles either leaves the eddy or the eddy expires
-      IF (tau_e.LT.1.) THEN
-        t_r   = -tau*LOG(1.-tau_e)
-        t_int = MIN(t_e,t_r)
-      ! Particle captured by eddy, so interaction time is eddy life time
-      ELSE
-        t_int = t_e
-      END IF
-
-      ! Save time when eddy expires or particle finished crossing it
-      !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for
-      !> Euler. Plus, that way we make the same error twice (but in opposite direction in time), so we're regaining some accuracy?
-      TurbPartState(4,PartID)   = t + t_int
-
-    ! TKE or epsilon is zero. No random velocity but try again in the next RK stage
+    ! Particles either leaves the eddy or the eddy expires
+    IF (tau_e.LT.1.) THEN
+      t_r   = -tau*LOG(1.-tau_e)
+      t_int = MIN(t_e,t_r)
+    ! Particle captured by eddy, so interaction time is eddy life time
     ELSE
-      TurbPartState(1:3,PartID) = 0.
-      TurbPartState(4,  PartID) = t
-    ENDIF
+      t_int = t_e
+    END IF
+
+    ! Save time when eddy expires or particle finished crossing it
+    !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for
+    !> Euler. Plus, that way we make the same error twice (but in opposite direction in time), so we're regaining some accuracy?
+    TurbPartState(4,PartID)   = t + t_int
+
+  ! TKE or epsilon is zero. No random velocity but try again in the next RK stage
+  ELSE
+    TurbPartState(1:3,PartID) = 0.
+    TurbPartState(4,  PartID) = t
+  ENDIF
 
 CASE('Mofakham')
 !===================================================================================================================================
@@ -304,27 +303,6 @@ CASE('Mofakham')
     r       = (3.*Vol/4./pi)**(1./3.)
     rho_p   = Species(PartSpecies(PartID))%DensityIC
 
-    ! Droplet relaxation time
-    udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
-
-    ! Get nu to stay in same equation format
-    nu      = mu0/FieldAtParticle(1)
-
-    Rep     = 2.*r*SQRT(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.)/nu
-    ! Empirical relation of nonlinear drag from Clift et al. (1978)
-!    IF (Rep .LT. 1) THEN
-!      Cd  = 1.
-!    ELSE
-      Cd  = 1. + 0.15*Rep**0.687
-!    ENDIF
-
-    ! Division by zero if particle velocity equal fluid velocity. Avoid this!
-    IF (ANY(udiff.NE.0)) THEN
-      tau     = (4./3.)*FieldAtParticle(1)*(2.*r)/(rho_p*Cd*sqrt(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.))
-    ELSE
-      tau     = HUGE(1.)
-    END IF
-
     ! Turbulent velocity fluctuation
     udash(1:3)   = (2.*tke/3.)**0.5
 
@@ -336,19 +314,40 @@ CASE('Mofakham')
     ! Catch negative or zero dissipation rate
     ! Eddy length and lifetime
     IF (TKE.GT.0 .AND. epsturb.GT.0) THEN
-      l_e     = C_mu**(1./2.)*tke**(3./2.) / epsturb
-!      tau_e   = C_L * tke / epsturb
-
       ! Calculate random walk push. We are isentropic, so use vectors
       TurbPartState(1:3,PartID) = lambda(1:3)*udash(1:3)
+
+      ! Droplet relaxation time
+      udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
+
+      ! Get nu to stay in same equation format
+      nu      = mu0/FieldAtParticle(1)
+
+      Rep     = 2.*r*SQRT(SUM(udiff(1:3)**2.))/nu
+      ! Empirical relation of nonlinear drag from Clift et al. (1978)
+!    IF (Rep .LT. 1) THEN
+!      Cd  = 1.
+!    ELSE
+      Cd  = 1. + 0.15*Rep**0.687
+!    ENDIF
+
+      ! Division by zero if particle velocity equal fluid velocity. Avoid this!
+      IF (ANY(udiff.NE.0)) THEN
+        tau     = (4./3.)*rho_p*(2.*r)/(FieldAtParticle(1)*Cd*SQRT(SUM(udiff(1:3)**2.)))
+      ELSE
+        tau     = HUGE(1.)
+      END IF
+
+      l_e     = C_mu**(1./2.)*tke**(3./2.) / epsturb
+!      tau_e   = C_L * tke / epsturb
 
       ! Estimate interaction time. The values here are already depend on the random draw.
       ! If TKE!=0, then udash can only be zero if ALL Gaussian random numbers are zero.
       ! What are the chances? Omit the check for now.
 !      IF(ANY(udash.NE.0)) THEN
-      t_e     = l_e/     SQRT(udash(1)**2. + udash(2)**2. + udash(3)**2.)
+      t_e     = l_e/     SQRT(SUM(udash(1:3)**2.))
 !       END IF
-      tau_e   = l_e/(tau*SQRT(udiff(1)**2. + udiff(2)**2. + udiff(3)**2.))
+      tau_e   = l_e/(tau*SQRT(SUM(udiff(1:3)**2.)))
 
       ! Particles either leaves the eddy or the eddy expires
       IF (tau_e.LT.1.) THEN

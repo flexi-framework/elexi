@@ -219,7 +219,7 @@ CASE('Gosman')
     TurbPartState(1:3,PartID) = lambda(1:3)*udash(1:3)
 
     ! Droplet relaxation time
-    udiff(1:3) = PartState(4:6,PartID) - ((FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
+    udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
 
     ! Get nu to stay in same equation format
     nu      = mu0/FieldAtParticle(1)

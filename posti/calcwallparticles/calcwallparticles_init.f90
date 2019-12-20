@@ -100,22 +100,21 @@ CALL prms%CreateRealArrayOption('Part-PeriodicVector[$]'      , 'TODO-DEFINE-PAR
                                                                    ' respective order. ', '1. , 0. , 0.', numberedmulti=.TRUE.)
 
 ! Ambient condition=================================================================================================================
-CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientCondition'  &
-                                , 'Use ambient condition (condition "behind" boundary).', '.FALSE.'&
-                                , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientConditionFix'  &
-                                , 'TODO-DEFINE-PARAMETER', '.TRUE.', numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(  'Part-Boundary-AmbientCondition'  &
+                                , 'Use ambient condition (condition "behind" boundary).', multiple=.TRUE.)
+CALL prms%CreateLogicalOption(  'Part-Boundary-AmbientConditionFix'  &
+                                , 'TODO-DEFINE-PARAMETER', multiple=.TRUE.)
 
-CALL prms%CreateRealArrayOption('Part-Boundary[$]-AmbientVelo'  &
-                                , 'Ambient velocity', '0. , 0. , 0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption('Part-Boundary[$]-WallVelo'  &
+CALL prms%CreateRealArrayOption('Part-Boundary-AmbientVelo'  &
+                                , 'Ambient velocity', multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Part-Boundary-WallVelo'  &
                                 , 'Velocity (global x,y,z in [m/s]) of reflective particle boundary [$].' &
-                                , '0. , 0. , 0.', numberedmulti=.TRUE.)
+                                , multiple=.TRUE.)
 
-CALL prms%CreateRealOption(     'Part-Boundary[$]-AmbientDens'  &
-                                , 'Ambient density', '0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(     'Part-Boundary[$]-AmbientDynamicVisc'  &
-                                , 'Ambient dynamic viscosity', '1.72326582572253E-5', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(     'Part-Boundary-AmbientDens'  &
+                                , 'Ambient density', multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Part-Boundary-AmbientDynamicVisc'  &
+                                , 'Ambient dynamic viscosity', multiple=.TRUE.)
 
 CALL prms%CreateIntOption(      'Particles-RandomSeed[$]'     , 'Seed [$] for Random Number Generator', '1', numberedmulti=.TRUE.)
 
@@ -298,33 +297,31 @@ DO iBC=1,nBCs
     IF (TRIM(BoundaryName(iBC)).EQ.tmpStringBC(iPartBound)) THEN
       PartBound%SourceBoundType(iBC) = TRIM(GETSTR('Part-BoundaryType'))
       PartBound%SourceBoundName(iBC) = tmpStringBC(iPartBound)
+
+      SELECT CASE (TRIM(tmpString))
+      CASE('open')
+         PartBound%TargetBoundCond(iPartBound) = PartBound%OpenBC          ! definitions see typesdef_pic
+!         PartBound%AmbientCondition(iPartBound) = GETLOGICAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientCondition','.FALSE.')
+!         IF(PartBound%AmbientCondition(iPartBound)) THEN
+!           PartBound%AmbientConditionFix(iPartBound) = GETLOGICAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientConditionFix','.TRUE.')
+!           PartBound%AmbientVelo(1:3,iPartBound) = GETREALARRAY('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientVelo',3,'0. , 0. , 0.')
+!           PartBound%AmbientDens(iPartBound) = GETREAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientDens','0')
+!           PartBound%AmbientDynamicVisc(iPartBound)=&
+!               GETREAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientDynamicVisc','1.72326582572253E-5') ! N2:T=288K
+!         END IF
+      CASE('reflective')
+         PartBound%TargetBoundCond(iPartBound) = PartBound%ReflectiveBC
+!         PartBound%WallVelo(1:3,iPartBound)    = GETREALARRAY('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-WallVelo',3,'0. , 0. , 0.')
+      CASE('periodic')
+         PartBound%TargetBoundCond(iPartBound) = PartBound%PeriodicBC
+      CASE DEFAULT
+         SWRITE(*,*) ' Boundary does not exists: ', TRIM(tmpString)
+         CALL abort(&
+__    STAMP__&
+             ,'Particle Boundary Condition does not exist')
+      END SELECT
     END IF
   END DO
-END DO
-
-DO iBC=1,nBCs
-  SELECT CASE (TRIM(tmpString))
-  CASE('open')
-     PartBound%TargetBoundCond(iPartBound) = PartBound%OpenBC          ! definitions see typesdef_pic
-!     PartBound%AmbientCondition(iPartBound) = GETLOGICAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientCondition','.FALSE.')
-!     IF(PartBound%AmbientCondition(iPartBound)) THEN
-!       PartBound%AmbientConditionFix(iPartBound) = GETLOGICAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientConditionFix','.TRUE.')
-!       PartBound%AmbientVelo(1:3,iPartBound) = GETREALARRAY('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientVelo',3,'0. , 0. , 0.')
-!       PartBound%AmbientDens(iPartBound) = GETREAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientDens','0')
-!       PartBound%AmbientDynamicVisc(iPartBound)=&
-!           GETREAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientDynamicVisc','1.72326582572253E-5') ! N2:T=288K
-!     END IF
-  CASE('reflective')
-     PartBound%TargetBoundCond(iPartBound) = PartBound%ReflectiveBC
-!     PartBound%WallVelo(1:3,iPartBound)    = GETREALARRAY('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-WallVelo',3,'0. , 0. , 0.')
-  CASE('periodic')
-     PartBound%TargetBoundCond(iPartBound) = PartBound%PeriodicBC
-  CASE DEFAULT
-     SWRITE(*,*) ' Boundary does not exists: ', TRIM(tmpString)
-     CALL abort(&
-__STAMP__&
-         ,'Particle Boundary Condition does not exist')
-  END SELECT
 END DO
 
 ALLOCATE(PEM%Element(1:PDM%maxParticleNumber), PEM%lastElement(1:PDM%maxParticleNumber), STAT=ALLOCSTAT)

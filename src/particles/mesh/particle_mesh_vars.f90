@@ -108,8 +108,6 @@ TYPE tFastInitBGM
   INTEGER                                :: nElem                             ! Number of elements in background mesh cell
   INTEGER, ALLOCATABLE                   :: Element(:)                        ! List of elements/physical cells in BGM cell
 #if USE_MPI
-  INTEGER, ALLOCATABLE                   :: ShapeProcs(:)                     ! first Entry: Number of Shapeprocs,
-                                                                              ! following: ShapeProcs
   INTEGER, ALLOCATABLE                   :: SharedProcs(:)                    ! first Entry: Number of Sharedprocs,
                                                                               ! following: SharedProcs
   !INTEGER                                :: nBCSides                          ! number BC sides in BGM cell

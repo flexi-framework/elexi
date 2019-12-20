@@ -122,16 +122,16 @@ DO iBC=1,nBCs
   BCName=''
 END DO
 DO iBC=1,nBCs
-  IF (PartBound%MapToPartBC(iBC).EQ.-1) CYCLE !inner side (can be just in the name list from preproc although already sorted out)
+  IF (PartBound%TargetBoundCond(iBC).EQ.-1) CYCLE !inner side (can be just in the name list from preproc although already sorted out)
   ! Check if side is an outlet
   CALL lowcase(TRIM(BoundaryName(iBC)),hilfBC)
   SWRITE(*,*) hilfBC
 
-  IF (PartBound%TargetBoundCond(PartBound%MapToPartBC(iBC)).EQ.PartBound%ReflectiveBC) THEN
+  IF (PartBound%TargetBoundCond(iBC).EQ.PartBound%ReflectiveBC) THEN
     nSurfBC = nSurfBC + 1
     BCName(nSurfBC) = BoundaryName(iBC)
   ! Add outlet sides if required for erosion tracking
-  ELSEIF (ErosionOutlet .AND. PartBound%TargetBoundCond(PartBound%MapToPartBC(iBC)).EQ.PartBound%OpenBC &
+  ELSEIF (ErosionOutlet .AND. PartBound%TargetBoundCond(iBC).EQ.PartBound%OpenBC &
   .AND.(hilfBC.EQ.'outlet')) THEN
     nSurfBC = nSurfBC + 1
     BCName(nSurfBC) = BoundaryName(iBC)
@@ -155,11 +155,11 @@ DO iSide=1,nBCSides
   ! Check if side is an outlet
   CALL LowCase(TRIM(BoundaryName(BC(iSide))),hilfBC)
 
-  IF (PartBound%TargetBoundCond(PartBound%MapToPartBC(BC(iSide))).EQ.PartBound%ReflectiveBC) THEN
+  IF (PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%ReflectiveBC) THEN
     SurfMesh%nSides = SurfMesh%nSides + 1
     SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nSides
   ! Add outlet sides if required for erosion tracking
-  ELSEIF (ErosionOutlet .AND. PartBound%TargetBoundCond(PartBound%MapToPartBC(BC(iSide))).EQ.PartBound%OpenBC &
+  ELSEIF (ErosionOutlet .AND. PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%OpenBC &
   .AND. (hilfBC.EQ.'outlet')) THEN
     SurfMesh%nSides = SurfMesh%nSides + 1
     SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nSides
@@ -173,11 +173,11 @@ DO iSide=nSides+1,nTotalSides
   ! Check if side is an outlet
   CALL LowCase(TRIM(BoundaryName(BC(iSide))),hilfBC)
 
-  IF (PartBound%TargetBoundCond(PartBound%MapToPartBC(BC(iSide))).EQ.PartBound%ReflectiveBC) THEN
+  IF (PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%ReflectiveBC) THEN
     SurfMesh%nTotalSides = SurfMesh%nTotalSides + 1
     SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nTotalSides
   ! Add outlet sides if required for erosion tracking
-  ELSEIF (ErosionOutlet .AND. PartBound%TargetBoundCond(PartBound%MapToPartBC(BC(iSide))).EQ.PartBound%OpenBC &
+  ELSEIF (ErosionOutlet .AND. PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%OpenBC &
   .AND. (hilfBC.EQ.'outlet')) THEN
     SurfMesh%nTotalSides = SurfMesh%nTotalSides + 1
     SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nTotalSides

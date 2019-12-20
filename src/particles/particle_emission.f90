@@ -399,7 +399,6 @@ INTEGER,INTENT(INOUT)                    :: NbrOfParticle
 INTEGER                                  :: iProc,tProc, CellX, CellY, CellZ
 INTEGER                                  :: msg_status(1:MPI_STATUS_SIZE)
 INTEGER                                  :: MessageSize
-LOGICAL                                  :: InsideMyBGM
 #endif
 REAL,ALLOCATABLE                         :: particle_positions(:)
 INTEGER                                  :: allocStat
@@ -578,7 +577,7 @@ IF (mode.EQ.1) THEN
         CALL RANDOM_NUMBER(RandVal)
         ! expand RandVal from [0,1] to [0,2PI]
         ! x: normalized Gaussian distribution
-        norm_pdf = COS(2.*PI*RandVal(1))*SQRT(-2.*LOG(1.-RandVal(2)))
+        norm_pdf = COS(2.*PI*RandVal(1))*SQRT(-2.*LOG(RandVal(2)))
         ! z = mu + std*x, mu=0.0
         pdf = norm_pdf * Species(FractNbr)%Init(iInit)%BaseVariance
 !        pdf = SIN(2.*PI*RandVal1)*SQRT(-2.*LOG(1.-RandVal2))
@@ -982,36 +981,16 @@ IF (mode.EQ.1) THEN
       CellX = INT((particle_positions(DimSend*(i-1)+1)-GEO%xminglob)/GEO%FIBGMdeltas(1))+1
       CellY = INT((particle_positions(DimSend*(i-1)+2)-GEO%yminglob)/GEO%FIBGMdeltas(2))+1
       CellZ = INT((particle_positions(DimSend*(i-1)+3)-GEO%zminglob)/GEO%FIBGMdeltas(3))+1
-      InsideMyBGM=.TRUE.
 
       ! check if the found cell is within our FIGBM region
       IF ((CellX.GT.GEO%FIBGMimax).OR.(CellX.LT.GEO%FIBGMimin) .OR. &
           (CellY.GT.GEO%FIBGMjmax).OR.(CellY.LT.GEO%FIBGMjmin) .OR. &
           (CellZ.GT.GEO%FIBGMkmax).OR.(CellZ.LT.GEO%FIBGMkmin)) THEN
-        InsideMyBGM=.FALSE.
       END If
 
-      ! TODO: remove ShapeProcs altogether
-      IF (InsideMyBGM) THEN
-        IF (.NOT.ALLOCATED(GEO%FIBGM(CellX,CellY,CellZ)%ShapeProcs)) InsideMyBGM=.FALSE.
-      END IF
-!
-      ! Loop over all procs in the shapeRegion and send each the particle in THEIR halo region
-      IF (InsideMyBGM) THEN
-        DO j=2,GEO%FIBGM(CellX,CellY,CellZ)%ShapeProcs(1)+1
-          iProc=GEO%FIBGM(CellX,CellY,CellZ)%ShapeProcs(j)
-          tProc=PartMPI%InitGroup(InitGroup)%CommToGroup(iProc)
-          IF(tProc.EQ.-1)CYCLE
-          PartMPIInsert%nPartsSend(tProc)=PartMPIInsert%nPartsSend(tProc)+1
-        END DO
-        PartMPIInsert%nPartsSend(PartMPI%InitGroup(InitGroup)%MyRank)=&
-               PartMPIInsert%nPartsSend(PartMPI%InitGroup(InitGroup)%MyRank)+1
-      ! Send the particle to the final proc, no halo
-      ELSE
-        DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
-          PartMPIInsert%nPartsSend(iProc)=PartMPIInsert%nPartsSend(iProc)+1
-        END DO
-      END IF
+      DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
+        PartMPIInsert%nPartsSend(iProc)=PartMPIInsert%nPartsSend(iProc)+1
+      END DO
     END DO
 
   ! only mpi root sends a message
@@ -1050,46 +1029,19 @@ IF (mode.EQ.1) THEN
       CellX = INT((particle_positions(DimSend*(i-1)+1)-GEO%xminglob)/GEO%FIBGMdeltas(1))+1
       CellY = INT((particle_positions(DimSend*(i-1)+2)-GEO%yminglob)/GEO%FIBGMdeltas(2))+1
       CellZ = INT((particle_positions(DimSend*(i-1)+3)-GEO%zminglob)/GEO%FIBGMdeltas(3))+1
-      InsideMyBGM=.TRUE.
 
       ! check if the found cell is within our FIGBM region
       IF ((CellX.GT.GEO%FIBGMimax).OR.(CellX.LT.GEO%FIBGMimin) .OR. &
           (CellY.GT.GEO%FIBGMjmax).OR.(CellY.LT.GEO%FIBGMjmin) .OR. &
           (CellZ.GT.GEO%FIBGMkmax).OR.(CellZ.LT.GEO%FIBGMkmin)) THEN
-        InsideMyBGM=.FALSE.
       END If
 
-      ! TODO: remove ShapeProcs altogether
-      IF (InsideMyBGM) THEN
-        IF (.NOT.ALLOCATED(GEO%FIBGM(CellX,CellY,CellZ)%ShapeProcs)) InsideMyBGM=.FALSE.
-      END IF
-
-      ! Loop over all procs in the shapeRegion and send each the particle in THEIR halo region
-      IF (InsideMyBGM) THEN
-        DO j=2,GEO%FIBGM(CellX,CellY,CellZ)%ShapeProcs(1)+1
-          iProc = GEO%FIBGM(CellX,CellY,CellZ)%ShapeProcs(j)
-          tProc = PartMPI%InitGroup(InitGroup)%CommToGroup(iProc)
-
-          ! No communication to considered shapeProc
-          IF(tProc.EQ.-1)CYCLE
-
-          PartMPIInsert%nPartsSend(tProc)=PartMPIInsert%nPartsSend(tProc)+1
-          k=PartMPIInsert%nPartsSend(tProc)
-          PartMPIInsert%send_message(tProc)%content(DimSend*(k-1)+1:DimSend*k)=particle_positions(DimSend*(i-1)+1:DimSend*i)
-        END DO
-        PartMPIInsert%nPartsSend(PartMPI%InitGroup(InitGroup)%MyRank)= &
-            PartMPIInsert%nPartsSend(PartMPI%InitGroup(InitGroup)%MyRank)+1
-        k=PartMPIInsert%nPartsSend(PartMPI%InitGroup(InitGroup)%MyRank)
-        PartMPIInsert%send_message(PartMPI%InitGroup(InitGroup)%MyRank)%content(DimSend*(k-1)+1:DimSend*k)=&
-                                                                          particle_positions(DimSend*(i-1)+1:DimSend*i)
       ! Send the particle to the final proc, no halo
-      ELSE
-        DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
-          PartMPIInsert%nPartsSend(iProc)=PartMPIInsert%nPartsSend(iProc)+1
-          k=PartMPIInsert%nPartsSend(iProc)
-          PartMPIInsert%send_message(iProc)%content(DimSend*(k-1)+1:DimSend*k)=particle_positions(DimSend*(i-1)+1:DimSend*i)
-        END DO
-      END IF
+      DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
+        PartMPIInsert%nPartsSend(iProc)=PartMPIInsert%nPartsSend(iProc)+1
+        k=PartMPIInsert%nPartsSend(iProc)
+        PartMPIInsert%send_message(iProc)%content(DimSend*(k-1)+1:DimSend*k)=particle_positions(DimSend*(i-1)+1:DimSend*i)
+      END DO
     END DO
 
     ! particle positions are in send_message, deallocate particle_positions

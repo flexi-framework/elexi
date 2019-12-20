@@ -159,7 +159,7 @@ SUBROUTINE ComputePlanarRectIntersection(isHit                       &
                                         ,alpha                       &
                                         ,xi                          &
                                         ,eta                         &
-                                        ,PartID                       &
+                                        ,PartID                      &
                                         ,flip                        &
                                         ,SideID                      &
                                         ,opt_CriticalParllelInSide   )

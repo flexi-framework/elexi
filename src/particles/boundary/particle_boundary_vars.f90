@@ -99,8 +99,8 @@ TYPE tPartBoundary
   INTEGER                                :: SymmetryBC              = 10     ! = 10 (s.u.) Boundary Condition Integer Definition
 !  INTEGER                                :: AnalyzeBC               = 100    ! = 100 (s.u.) Boundary Condition Integer Definition
   CHARACTER(LEN=200)   , ALLOCATABLE     :: SourceBoundName(:)    ! Link part 1 for mapping Boltzplatz BCs to Particle BC
-  INTEGER              , ALLOCATABLE     :: TargetBoundCond(:)    ! Link part 2 for mapping Boltzplatz BCs to Particle BC
-  INTEGER              , ALLOCATABLE     :: MapToPartBC(:)        ! Map from FLEXI BCindex to Particle BC (NOT TO TYPE!)
+  CHARACTER(LEN=200)   , ALLOCATABLE     :: SourceBoundType(:)    ! Link part 2 for mapping Boltzplatz BCs to Particle BC
+  INTEGER              , ALLOCATABLE     :: TargetBoundCond(:)    ! Link part 3 for mapping Boltzplatz BCs to Particle BC
   REAL    , ALLOCATABLE                  :: MomentumACC(:)
   REAL    , ALLOCATABLE                  :: WallTemp(:)
   REAL    , ALLOCATABLE                  :: WallVelo(:,:)

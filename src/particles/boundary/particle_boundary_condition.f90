@@ -87,14 +87,14 @@ REAL                                 :: n_loc(1:3)
 CHARACTER(20)                        :: BCStringTmp
 !===================================================================================================================================
 
-IF (.NOT. ALLOCATED(PartBound%MapToPartBC)) &
+IF (.NOT. ALLOCATED(PartBound%TargetBoundCond)) &
   CALL abort(__STAMP__,' ERROR: PartBound not allocated!.',999,999.)
 
 ! Reset flag
 crossedBC    =.FALSE.
 
 ! Select the corresponding boundary condition and calculate particle treatment
-SELECT CASE(PartBound%TargetBoundCond(PartBound%MapToPartBC(BC(SideID))))
+SELECT CASE(PartBound%TargetBoundCond(BC(SideID)))
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(1) !PartBound%OpenBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -146,7 +146,7 @@ CASE(2) !PartBound%ReflectiveBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
   IF (PDM%ParticleInside(iPart)) THEN
     ! simple reflection
-    SELECT CASE(PartBound%WallModel(PartBound%MapToPartBC(BC(SideID))))
+    SELECT CASE(PartBound%WallModel(BC(SideID)))
       ! perfectly reflecting, specular re-emission
       CASE('perfRef')
          CALL  PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,              &
@@ -155,7 +155,7 @@ CASE(2) !PartBound%ReflectiveBC)
       CASE('coeffRes')
          CALL  DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,              &
            opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,TriNum=TriNum,opt_LocalSide= locSideID,opt_ElemID=ElemID, &
-           WallCoeffModel=PartBound%WallCoeffModel(PartBound%MapToPartBC(BC(SideID))))
+           WallCoeffModel=PartBound%WallCoeffModel(BC(SideID)))
       CASE DEFAULT
           CALL abort(__STAMP__, ' No or invalid particle wall model given. Please update Part-Boundary[$]-WallModel.')
     END SELECT
@@ -231,14 +231,14 @@ INTEGER                              :: BCSideID
 CHARACTER(20)                        :: BCStringTmp
 !===================================================================================================================================
 
-IF (.NOT. ALLOCATED(PartBound%MapToPartBC)) &
+IF (.NOT. ALLOCATED(PartBound%TargetBoundCond)) &
   CALL abort(__STAMP__,' ERROR: PartBound not allocated!.',999,999.)
 
 ! Reset flag
 crossedBC    =.FALSE.
 
 ! Select the corresponding boundary condition and calculate particle treatment
-SELECT CASE(PartBound%TargetBoundCond(PartBound%MapToPartBC(BC(SideID))))
+SELECT CASE(PartBound%TargetBoundCond(BC(SideID)))
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(1) !PartBound%OpenBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -289,7 +289,7 @@ CASE(2) !PartBound%ReflectiveBC)
   BCSideID=PartBCSideList(SideID)
   ! simple reflection
   IF (PDM%ParticleInside(iPart)) THEN
-    SELECT CASE(PartBound%WallModel(PartBound%MapToPartBC(BC(SideID))))
+    SELECT CASE(PartBound%WallModel(BC(SideID)))
       ! perfectly reflecting, specular re-emission
       CASE('perfRef')
         CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,           &
@@ -297,7 +297,7 @@ CASE(2) !PartBound%ReflectiveBC)
       CASE('coeffRes')
         CALL DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,flip,           &
                                 BCSideID=BCSideID,opt_Symmetry=.FALSE.,opt_Reflected=crossedBC,              &
-                                WallCoeffModel=PartBound%WallCoeffModel(PartBound%MapToPartBC(BC(SideID))))
+                                WallCoeffModel=PartBound%WallCoeffModel(BC(SideID)))
       CASE DEFAULT
           CALL abort(__STAMP__, ' No or invalid particle wall model given. Please update Part-Boundary[$]-WallModel.')
       END SELECT
@@ -502,8 +502,8 @@ IF (IsAuxBC) THEN
 ! Normal BC
 ELSE
   ! Get wall velo and BCID
-  WallVelo  = PartBound%WallVelo(1:3,PartBound%MapToPartBC(BC(SideID)))
-  locBCID   = PartBound%MapToPartBC(BC(SideID))
+  WallVelo  = PartBound%WallVelo(1:3,BC(SideID))
+  locBCID   = PartBound%TargetBoundCond(BC(SideID))
 
   ! Instead of checking DoRefMapping, we pass BCSideID if true
   IF(PRESENT(BCSideID)) THEN
@@ -811,8 +811,8 @@ __STAMP__&
 ! Normal BC
 ELSE
   ! Get wall velo and BCID
-  WallVelo  = PartBound%WallVelo(1:3,PartBound%MapToPartBC(BC(SideID)))
-  locBCID   = PartBound%MapToPartBC(BC(SideID))
+  WallVelo  = PartBound%WallVelo(1:3,BC(SideID))
+  locBCID   = PartBound%TargetBoundCond(BC(SideID))
 
   ! Instead of checking DoRefMapping, we pass BCSideID if true
   IF(PRESENT(BCSideID))THEN
@@ -1229,12 +1229,9 @@ INTEGER,INTENT(IN),OPTIONAL       :: TriNum
 ! LOCAL VARIABLES
 REAL                              :: v_old(1:3),n_loc(1:3)
 REAL                              :: Xitild,EtaTild
-INTEGER                           :: p,q,SurfSideID,locBCID
+INTEGER                           :: p,q,SurfSideID
 REAL                              :: PartFaceAngle
 !===================================================================================================================================
-  ! Get BCID
-locBCID   = PartBound%MapToPartBC(BC(SideID))
-
 ! Instead of checking DoRefMapping, we pass opt_BCSideID if true
 IF(PRESENT(BCSideID))THEN
   ! Get side normal vector

@@ -80,7 +80,7 @@ CALL prms%CreateLogicalOption('Part-WriteMacroSurfaceValues',"")
 
 CALL prms%SetSection("Particle Boundaries")
 
-CALL prms%CreateStringOption(   'Part-Boundary[$]-Condition'  &
+CALL prms%CreateStringOption(   'Part-BoundaryType'  &
                                 , 'Used boundary condition for boundary[$].\n'//&
                                   '- open\n'//&
                                   '- reflective\n'//&
@@ -90,10 +90,10 @@ CALL prms%CreateStringOption(   'Part-Boundary[$]-Condition'  &
                                   'PB-AmbientVelo,PB-AmbientDens,PB-AmbientDynamicVisc,PB-AmbientThermalCond,PB-Voltage\n'//&
                                  'If condition=reflective: PB-MomentumACC,PB-WallTemp,PB-TransACC,PB-VibACC,PB-RotACC,'//&
                                   'PB-WallVelo,Voltage,SpeciesSwaps.If condition=periodic:Part-nPeriodicVectors,'//&
-                                  'Part-PeriodicVector[$]', 'open', numberedmulti=.TRUE.)
-CALL prms%CreateStringOption(   'Part-Boundary[$]-SourceName'  &
+                                  'Part-PeriodicVector[$]', multiple=.TRUE.)
+CALL prms%CreateStringOption(   'Part-BoundaryName'  &
                                 , 'No Default. Source Name of Boundary[i]. Has to be selected for all'//&
-                                  'nBounds. Has to be same name as defined in preproc tool', numberedmulti=.TRUE.)
+                                  'nBounds. Has to be same name as defined in preproc tool', multiple=.TRUE.)
 
 CALL prms%CreateRealArrayOption('Part-PeriodicVector[$]'      , 'TODO-DEFINE-PARAMETER\nVector for periodic boundaries.'//&
                                                                    'Has to be the same as defined in preproc.ini in their'//&
@@ -202,6 +202,7 @@ INTEGER               :: iPBC, iBC
 INTEGER               :: ALLOCSTAT
 CHARACTER(32)         :: hilf
 CHARACTER(200)        :: tmpString
+CHARACTER(200), ALLOCATABLE        :: tmpStringBC(:)
 !===================================================================================================================================
 
 ! Read basic particle parameter
@@ -251,15 +252,8 @@ __STAMP__&
 END IF
 
 ! Read in boundary parameters
-! Leave out this check in FLEXI even though we should probably do it
-!dummy_int  = CNTSTR('Part-nBounds')       ! check if Part-nBounds is present in .ini file
+nPartBound = CountOption('Part-BoundaryName')
 
-nPartBound = GETINT('Part-nBounds','1.')  ! get number of particle boundaries
-IF ((nPartBound.LE.0)) THEN
-  CALL abort(&
-__STAMP__&
-  ,'ERROR: nPartBound .LE. 0:', nPartBound)
-END IF
 ALLOCATE(PartBound%SourceBoundName(1:nPartBound))
 ALLOCATE(PartBound%TargetBoundCond(1:nPartBound))
 ALLOCATE(PartBound%MomentumACC(1:nPartBound))
@@ -273,10 +267,42 @@ ALLOCATE(PartBound%AmbientDens(1:nPartBound))
 ALLOCATE(PartBound%SolidState(1:nPartBound))
 PartBound%SolidState(1:nPartBound)=.FALSE.
 
-!--
+ALLOCATE(tmpStringBC                  (1:nBCs))
+
+! Loop over all particle boundaries and get information
 DO iPartBound=1,nPartBound
-  WRITE(UNIT=hilf,FMT='(I0)') iPartBound
-  tmpString = TRIM(GETSTR('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-Condition','open'))
+  tmpStringBC(iPartBound) = TRIM(GETSTR('Part-BoundaryName'))
+END DO
+
+!--
+DO iBC=1,nBCs
+  IF (BoundaryType(iBC,1).EQ.0) THEN
+    PartBound%TargetBoundCond(iBC) = -1
+    SWRITE(*,*)"... PartBound",iBC,"is internal bound, no mapping needed"
+    CYCLE
+  END IF
+
+  PartBound%SourceBoundName(iBC) = BoundaryName(iBC)
+
+  SELECT CASE (BoundaryType(iBC, BC_TYPE))
+  CASE(1)
+    PartBound%SourceBoundType(iBC)='periodic'
+  CASE(3,4)
+    PartBound%SourceBoundType(iBC)='reflective'
+  CASE(9)
+    PartBound%SourceBoundType(iBC)='symmetry'
+  CASE DEFAULT
+    PartBound%SourceBoundType(iBC)='open'
+  END SELECT
+  DO iPartBound=1,nPartBound
+    IF (TRIM(BoundaryName(iBC)).EQ.tmpStringBC(iPartBound)) THEN
+      PartBound%SourceBoundType(iBC) = TRIM(GETSTR('Part-BoundaryType'))
+      PartBound%SourceBoundName(iBC) = tmpStringBC(iPartBound)
+    END IF
+  END DO
+END DO
+
+DO iBC=1,nBCs
   SELECT CASE (TRIM(tmpString))
   CASE('open')
      PartBound%TargetBoundCond(iPartBound) = PartBound%OpenBC          ! definitions see typesdef_pic
@@ -299,32 +325,6 @@ DO iPartBound=1,nPartBound
 __STAMP__&
          ,'Particle Boundary Condition does not exist')
   END SELECT
-  PartBound%SourceBoundName(iPartBound) = TRIM(GETSTR('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-SourceName'))
-END DO
-
-! Set mapping from field boundary to particle boundary index
-ALLOCATE(PartBound%MapToPartBC(1:nBCs))
-PartBound%MapToPartBC(:)=-10
-DO iPBC=1,nPartBound
-  DO iBC = 1, nBCs
-    IF (BoundaryType(iBC,1).EQ.0) THEN
-      PartBound%MapToPartBC(iBC) = -1 !there are no internal BCs in the mesh, they are just in the name list!
-      SWRITE(*,*)"... PartBound",iPBC,"is internal bound, no mapping needed"
-    END IF
-    IF (TRIM(BoundaryName(iBC)).EQ.TRIM(PartBound%SourceBoundName(iPBC))) THEN
-      PartBound%MapToPartBC(iBC) = iPBC !PartBound%TargetBoundCond(iPBC)
-      SWRITE(*,*)"... Mapped PartBound",iPBC,"on FieldBound",BoundaryType(iBC,1),",i.e.:",TRIM(BoundaryName(iBC))
-    END IF
-  END DO
-END DO
-! Errorhandler for PartBound-Types that could not be mapped to the
-! FieldBound-Types.
-DO iBC = 1,nBCs
-  IF (PartBound%MapToPartBC(iBC).EQ.-10) THEN
-    CALL abort(&
-__STAMP__&
-    ,' PartBound%MapToPartBC for Boundary is not set. iBC: :',iBC)
-  END IF
 END DO
 
 ALLOCATE(PEM%Element(1:PDM%maxParticleNumber), PEM%lastElement(1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
@@ -349,6 +349,8 @@ DO iPartBound=1,nPartBound
   BCdata_auxSF(iPartBound)%LocalArea=0.
 END DO
 !nDataBC_CollectCharges=0
+
+SDEALLOCATE(tmpStringBC)
 
 END SUBROUTINE InitializeVariables
 

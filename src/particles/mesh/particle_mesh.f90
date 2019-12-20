@@ -1322,7 +1322,6 @@ IF (ALLOCATED(GEO%FIBGM)) THEN
     DO jBGM=GEO%FIBGMjmin,GEO%FIBGMjmax
       DO kBGM=GEO%FIBGMkmin,GEO%FIBGMkmax
         SDEALLOCATE(GEO%FIBGM(iBGM,jBGM,kBGM)%Element)
-        SDEALLOCATE(GEO%FIBGM(iBGM,jBGM,kBGM)%ShapeProcs)
 !        SDEALLOCATE(GEO%FIBGM(iBGM,jBGM,kBGM)%PaddingProcs)
       END DO
     END DO
@@ -1698,8 +1697,6 @@ DO Cell=0, BGMCells-1
 
   Procs=SUM(TempProcList)
   IF (Procs.NE.0) THEN
-    ALLOCATE(GEO%FIBGM(ii,jj,kk)%ShapeProcs(1:Procs+1))
-    GEO%FIBGM(ii,jj,kk)%ShapeProcs(1) = Procs
     j=2
 
     DO m=0,PartMPI%nProcs-1
@@ -1717,7 +1714,6 @@ DO Cell=0, BGMCells-1
           PartMPI%isMPINeighbor(m) = .true.
           PartMPI%nMPINeighbors=PartMPI%nMPINeighbors+1
         END IF
-        GEO%FIBGM(ii,jj,kk)%ShapeProcs(j)=m
         j=j+1
       END IF
     END DO !m

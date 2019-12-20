@@ -219,8 +219,8 @@ CALL prms%CreateRealOption(     'Part-Boundary[$]-Poisson'  &
 
 
 ! Fong coefficient of restitution
-CALL prms%CreateRealOption(     'Part-Boundary-CoR'  &
-                                , "Coefficent of restitution for normal velocity component", multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Part-Boundary[$]-CoR'  &
+                                , "Coefficent of restitution for normal velocity component", numberedmulti=.TRUE.)
 
 !===================================================================================================================================
 ! > Boundaries
@@ -247,31 +247,31 @@ CALL prms%CreateRealArrayOption('Part-PeriodicVector[$]'      , 'TODO-DEFINE-PAR
                                                                    ' respective order. ', '1.,0.,0.', numberedmulti=.TRUE.)
 
 ! Wall model =======================================================================================================================
-CALL prms%CreateStringOption(   'Part-Boundary-WallModel' &
+CALL prms%CreateStringOption(   'Part-Boundary[$]-WallModel' &
                                 , 'Wall model to be used. Options:.\n'//&
                                   'perfRef  - perfect reflection\n'//&
-                                  'coeffRes - Coefficient of restitution',multiple=.TRUE.)
-CALL prms%CreateStringOption('Part-Boundary-WallCoeffModel' &
+                                  'coeffRes - Coefficient of restitution',numberedmulti=.TRUE.)
+CALL prms%CreateStringOption('Part-Boundary[$]-WallCoeffModel' &
                                 , 'Coefficients to be used. Options:.\n'//&
                                   'Tabakoff1981 \n'//&
                                   'Bons2017 \n'    //&
-                                  'Fong2019',multiple=.TRUE.)
+                                  'Fong2019',numberedmulti=.TRUE.)
 
 ! Ambient condition=================================================================================================================
-CALL prms%CreateLogicalOption(  'Part-Boundary-AmbientCondition'  &
-                                , 'Use ambient condition (condition "behind" boundary).', multiple=.TRUE.)
-CALL prms%CreateLogicalOption(  'Part-Boundary-AmbientConditionFix'  &
-                                , 'TODO-DEFINE-PARAMETER', multiple=.TRUE.)
+CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientCondition'  &
+                                , 'Use ambient condition (condition "behind" boundary).', numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientConditionFix'  &
+                                , 'TODO-DEFINE-PARAMETER', numberedmulti=.TRUE.)
 
-CALL prms%CreateRealArrayOption('Part-Boundary-AmbientVelo'  &
-                                , 'Ambient velocity', multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Part-Boundary-WallVelo'  &
+CALL prms%CreateRealArrayOption('Part-Boundary[$]-AmbientVelo'  &
+                                , 'Ambient velocity', numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption('Part-Boundary[$]-WallVelo'  &
                                 , 'Velocity (global x,y,z in [m/s]) of reflective particle boundary.' &
-                                , multiple=.TRUE.)
+                                , numberedmulti=.TRUE.)
 
-CALL prms%CreateRealOption(     'Part-Boundary-AmbientDens', 'Ambient density', multiple=.TRUE.)
-CALL prms%CreateRealOption(     'Part-Boundary-AmbientDynamicVisc'  &
-                                , 'Ambient dynamic viscosity', multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Part-Boundary[$]-AmbientDens', 'Ambient density', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(     'Part-Boundary[$]-AmbientDynamicVisc'  &
+                                , 'Ambient dynamic viscosity', numberedmulti=.TRUE.)
 
 CALL prms%CreateIntOption(      'Particles-RandomSeed[$]'     , 'Seed [$] for Random Number Generator', '1', numberedmulti=.TRUE.)
 
@@ -736,52 +736,50 @@ DO iBC=1,nBCs
       ! check if PartBC is not periodic, but DGBC
       IF ((BoundaryType(iBC, BC_TYPE).EQ.1) .AND. (TRIM(PartBound%SourceBoundType(iBC)).NE.'periodic')) &
         GEO%nPeriodicVectors=GEO%nPeriodicVectors-1
-
-      ! Select boundary condition for particles
-      SELECT CASE (PartBound%SourceBoundType(iBC))
-      ! Inflow / outflow
-      CASE('open')
-        WRITE(*,*) iBC
-        PartBound%TargetBoundCond(iBC)      = PartBound%OpenBC
-        PartBound%AmbientCondition(iBC)     = GETLOGICAL(  'Part-Boundary-AmbientCondition','.FALSE.')
-        IF(PartBound%AmbientCondition(iBC)) THEN
-          PartBound%AmbientConditionFix(iBC)= GETLOGICAL(  'Part-Boundary-AmbientConditionFix','.TRUE.')
-          PartBound%AmbientVelo(1:3,iBC)    = GETREALARRAY('Part-Boundary-AmbientVelo',3,'0., 0., 0.')
-          PartBound%AmbientDens(iBC)        = GETREAL(     'Part-Boundary-AmbientDens','0')
-          PartBound%AmbientDynamicVisc(iBC) = GETREAL(     'Part-Boundary-AmbientDynamicVisc','1.72326582572253E-5') ! N2:T=288K
-          WRITE(*,*) PartBound%AmbientDynamicVisc
-        END IF
-
-      ! Reflective (wall)
-      CASE('reflective')
-        PartBound%TargetBoundCond(iBC)      = PartBound%ReflectiveBC
-        PartBound%WallVelo(1:3,iBC)         = GETREALARRAY('Part-Boundary-WallVelo',3,'0. , 0. , 0.')
-        PartBound%WallModel(iBC)            = GETSTR(      'Part-Boundary-WallModel','perfRef')
-
-        ! Non-perfect reflection
-        IF (PartBound%WallModel(iBC).EQ.'coeffRes') THEN
-            PartBound%WallCoeffModel(iBC)   = GETSTR(      'Part-Boundary-WallCoeffModel','Tabakoff1981')
-
-            ! Bons particle rebound model
-            IF (PartBound%WallCoeffModel(iBC).EQ.'Bons2017') THEN
-                PartBound%Young(iBC)        = GETREAL(     'Part-Boundary-Young')
-                PartBound%Poisson(iBC)      = GETREAL(     'Part-Boundary-Poisson')
-           ELSEIF (PartBound%WallCoeffModel(iBC).EQ.'Fong2019') THEN
-                PartBound%CoR(iBC)          = GETREAL(     'Part-Boundary-CoR','1.')
-            END IF
-        END IF
-
-      ! Periodic
-      CASE('periodic')
-        PartBound%TargetBoundCond(iBC)      = PartBound%PeriodicBC
-
-      ! Invalid boundary option
-      CASE DEFAULT
-        SWRITE(*,*) ' Boundary does not exists: ', TRIM(PartBound%SourceBoundType(iBC))
-        CALL abort(__STAMP__,'Particle Boundary Condition does not exist')
-      END SELECT
     END IF
   END DO
+  WRITE(UNIT=tmpStr,FMT='(I0)') iBC
+  ! Select boundary condition for particles
+  SELECT CASE (PartBound%SourceBoundType(iBC))
+  ! Inflow / outflow
+  CASE('open')
+    PartBound%TargetBoundCond(iBC)      = PartBound%OpenBC
+    PartBound%AmbientCondition(iBC)     = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-AmbientCondition','.FALSE.')
+    IF(PartBound%AmbientCondition(iBC)) THEN
+      PartBound%AmbientConditionFix(iBC)= GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-AmbientConditionFix','.TRUE.')
+      PartBound%AmbientVelo(1:3,iBC)    = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-AmbientVelo',3,'0., 0., 0.')
+      PartBound%AmbientDens(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-AmbientDens','0')
+      PartBound%AmbientDynamicVisc(iBC) = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-AmbientDynamicVisc','1.72326582572253E-5') ! N2:T=288K
+    END IF
+
+  ! Reflective (wall)
+  CASE('reflective')
+    PartBound%TargetBoundCond(iBC)      = PartBound%ReflectiveBC
+    PartBound%WallVelo(1:3,iBC)         = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-WallVelo',3,'0. , 0. , 0.')
+    PartBound%WallModel(iBC)            = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallModel','perfRef')
+
+    ! Non-perfect reflection
+    IF (PartBound%WallModel(iBC).EQ.'coeffRes') THEN
+        PartBound%WallCoeffModel(iBC)   = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallCoeffModel','Tabakoff1981')
+
+        ! Bons particle rebound model
+        IF (PartBound%WallCoeffModel(iBC).EQ.'Bons2017') THEN
+            PartBound%Young(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Young')
+            PartBound%Poisson(iBC)      = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Poisson')
+       ELSEIF (PartBound%WallCoeffModel(iBC).EQ.'Fong2019') THEN
+            PartBound%CoR(iBC)          = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-CoR','1.')
+        END IF
+    END IF
+
+  ! Periodic
+  CASE('periodic')
+    PartBound%TargetBoundCond(iBC)      = PartBound%PeriodicBC
+
+  ! Invalid boundary option
+  CASE DEFAULT
+    SWRITE(*,*) ' Boundary does not exists: ', TRIM(PartBound%SourceBoundType(iBC))
+    CALL abort(__STAMP__,'Particle Boundary Condition does not exist')
+  END SELECT
 END DO
 
 GEO%nPeriodicVectors=GEO%nPeriodicVectors/2

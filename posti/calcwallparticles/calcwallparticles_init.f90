@@ -297,31 +297,30 @@ DO iBC=1,nBCs
     IF (TRIM(BoundaryName(iBC)).EQ.tmpStringBC(iPartBound)) THEN
       PartBound%SourceBoundType(iBC) = TRIM(GETSTR('Part-BoundaryType'))
       PartBound%SourceBoundName(iBC) = tmpStringBC(iPartBound)
-
-      SELECT CASE (TRIM(tmpString))
-      CASE('open')
-         PartBound%TargetBoundCond(iPartBound) = PartBound%OpenBC          ! definitions see typesdef_pic
-!         PartBound%AmbientCondition(iPartBound) = GETLOGICAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientCondition','.FALSE.')
-!         IF(PartBound%AmbientCondition(iPartBound)) THEN
-!           PartBound%AmbientConditionFix(iPartBound) = GETLOGICAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientConditionFix','.TRUE.')
-!           PartBound%AmbientVelo(1:3,iPartBound) = GETREALARRAY('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientVelo',3,'0. , 0. , 0.')
-!           PartBound%AmbientDens(iPartBound) = GETREAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientDens','0')
-!           PartBound%AmbientDynamicVisc(iPartBound)=&
-!               GETREAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientDynamicVisc','1.72326582572253E-5') ! N2:T=288K
-!         END IF
-      CASE('reflective')
-         PartBound%TargetBoundCond(iPartBound) = PartBound%ReflectiveBC
-!         PartBound%WallVelo(1:3,iPartBound)    = GETREALARRAY('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-WallVelo',3,'0. , 0. , 0.')
-      CASE('periodic')
-         PartBound%TargetBoundCond(iPartBound) = PartBound%PeriodicBC
-      CASE DEFAULT
-         SWRITE(*,*) ' Boundary does not exists: ', TRIM(tmpString)
-         CALL abort(&
-__    STAMP__&
-             ,'Particle Boundary Condition does not exist')
-      END SELECT
     END IF
   END DO
+  SELECT CASE (TRIM(tmpString))
+  CASE('open')
+     PartBound%TargetBoundCond(iPartBound) = PartBound%OpenBC          ! definitions see typesdef_pic
+!     PartBound%AmbientCondition(iPartBound) = GETLOGICAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientCondition','.FALSE.')
+!     IF(PartBound%AmbientCondition(iPartBound)) THEN
+!       PartBound%AmbientConditionFix(iPartBound) = GETLOGICAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientConditionFix','.TRUE.')
+!       PartBound%AmbientVelo(1:3,iPartBound) = GETREALARRAY('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientVelo',3,'0. , 0. , 0.')
+!       PartBound%AmbientDens(iPartBound) = GETREAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientDens','0')
+!       PartBound%AmbientDynamicVisc(iPartBound)=&
+!           GETREAL('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-AmbientDynamicVisc','1.72326582572253E-5') ! N2:T=288K
+!     END IF
+  CASE('reflective')
+     PartBound%TargetBoundCond(iPartBound) = PartBound%ReflectiveBC
+!     PartBound%WallVelo(1:3,iPartBound)    = GETREALARRAY('Part-Boundary'//TRIM(ADJUSTL(hilf))//'-WallVelo',3,'0. , 0. , 0.')
+  CASE('periodic')
+     PartBound%TargetBoundCond(iPartBound) = PartBound%PeriodicBC
+  CASE DEFAULT
+     SWRITE(*,*) ' Boundary does not exists: ', TRIM(tmpString)
+     CALL abort(&
+__STAMP__&
+         ,'Particle Boundary Condition does not exist')
+  END SELECT
 END DO
 
 ALLOCATE(PEM%Element(1:PDM%maxParticleNumber), PEM%lastElement(1:PDM%maxParticleNumber), STAT=ALLOCSTAT)

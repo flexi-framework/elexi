@@ -228,7 +228,7 @@ CALL prms%CreateRealOption(     'Part-Boundary[$]-CoR'  &
 !===================================================================================================================================
 CALL prms%SetSection("Particle Boundaries")
 
-CALL prms%CreateStringOption(   'Part-BoundaryType'  &
+CALL prms%CreateStringOption(   'Part-Boundary[$]-Type'  &
                                 , 'Used boundary condition for boundary.\n'//&
                                   '- open\n'//&
                                   '- reflective\n'//&
@@ -238,9 +238,9 @@ CALL prms%CreateStringOption(   'Part-BoundaryType'  &
                                   'PB-AmbientVelo,PB-AmbientDens,PB-AmbientDynamicVisc,PB-AmbientThermalCond,PB-Voltage\n'//&
                                  'If condition=reflective: PB-MomentumACC,PB-WallTemp,PB-TransACC,PB-VibACC,PB-RotACC,'//&
                                   'PB-WallVelo,Voltage,SpeciesSwaps.If condition=periodic:Part-nPeriodicVectors,'//&
-                                  'Part-PeriodicVector', multiple=.TRUE.)
-CALL prms%CreateStringOption(   'Part-BoundaryName'  &
-                                , 'Source Name of Boundary. Has to be same name as defined in preproc tool', multiple=.TRUE.)
+                                  'Part-PeriodicVector', numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(   'Part-Boundary[$]-Name'  &
+                                , 'Source Name of Boundary. Has to be same name as defined in preproc tool', numberedmulti=.TRUE.)
 
 CALL prms%CreateRealArrayOption('Part-PeriodicVector[$]'      , 'TODO-DEFINE-PARAMETER\nVector for periodic boundaries.'//&
                                                                    'Has to be the same as defined in preproc.ini in their'//&
@@ -703,9 +703,9 @@ ALLOCATE(PartBound%CoR                (1:nBCs))
 ALLOCATE(tmpStringBC                  (1:nBCs))
 
 ! Loop over all particle boundaries and get information
-DO iPartBound=1,nPartBound
-  tmpStringBC(iPartBound) = TRIM(GETSTR('Part-BoundaryName'))
-END DO
+!DO iPartBound=1,nPartBound
+!  tmpStringBC(iPartBound) = TRIM(GETSTR('Part-BoundaryName'))
+!END DO
 
 GEO%nPeriodicVectors=0
 DO iBC=1,nBCs
@@ -715,30 +715,31 @@ DO iBC=1,nBCs
     CYCLE
   END IF
 
-  PartBound%SourceBoundName(iBC) = BoundaryName(iBC)
   SELECT CASE (BoundaryType(iBC, BC_TYPE))
   CASE(1)
-    PartBound%SourceBoundType(iBC)='periodic'
+    tmpString='periodic'
     GEO%nPeriodicVectors=GEO%nPeriodicVectors+1
 !  CASE(2,12,22)
 !    tmpString='open'
   CASE(3,4)
-    PartBound%SourceBoundType(iBC)='reflective'
+    tmpString='reflective'
   CASE(9)
-    PartBound%SourceBoundType(iBC)='symmetry'
+    tmpString='symmetry'
   CASE DEFAULT
-    PartBound%SourceBoundType(iBC)='open'
+    tmpString='open'
   END SELECT
-  DO iPartBound=1,nPartBound
-    IF (TRIM(BoundaryName(iBC)).EQ.tmpStringBC(iPartBound)) THEN
-      PartBound%SourceBoundType(iBC) = TRIM(GETSTR('Part-BoundaryType'))
-      PartBound%SourceBoundName(iBC) = tmpStringBC(iPartBound)
-      ! check if PartBC is not periodic, but DGBC
-      IF ((BoundaryType(iBC, BC_TYPE).EQ.1) .AND. (TRIM(PartBound%SourceBoundType(iBC)).NE.'periodic')) &
-        GEO%nPeriodicVectors=GEO%nPeriodicVectors-1
-    END IF
-  END DO
+!  DO iPartBound=1,nPartBound
+!    IF (TRIM(BoundaryName(iBC)).EQ.tmpStringBC(iPartBound)) THEN
+!      PartBound%SourceBoundType(iBC) = TRIM(GETSTR('Part-BoundaryType'))
+!      PartBound%SourceBoundName(iBC) = tmpStringBC(iPartBound)
+!      ! check if PartBC is not periodic, but DGBC
+!      IF ((BoundaryType(iBC, BC_TYPE).EQ.1) .AND. (TRIM(PartBound%SourceBoundType(iBC)).NE.'periodic')) &
+!        GEO%nPeriodicVectors=GEO%nPeriodicVectors-1
+!    END IF
+!  END DO
   WRITE(UNIT=tmpStr,FMT='(I0)') iBC
+  PartBound%SourceBoundType(iBC) = TRIM(GETSTR('Part-Boundary'//TRIM(tmpStr)//'-Type', tmpString))
+  PartBound%SourceBoundName(iBC) = TRIM(GETSTR('Part-Boundary'//TRIM(tmpStr)//'-Name', BoundaryName(iBC))) !tmpStringBC(iPartBound)
   ! Select boundary condition for particles
   SELECT CASE (PartBound%SourceBoundType(iBC))
   ! Inflow / outflow

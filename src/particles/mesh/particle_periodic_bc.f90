@@ -60,7 +60,7 @@ CHARACTER(32)          :: hilf
 LOGICAL                :: hasPeriodic
 !===================================================================================================================================
 
-GEO%nPeriodicVectors       = GETINT('Part-nPeriodicVectors','0')
+!GEO%nPeriodicVectors       = GETINT('Part-nPeriodicVectors','0')
 
 ! sanity check with DG boundary conditions
 hasPeriodic=.FALSE.
@@ -71,18 +71,18 @@ DO iBC=1,nBCs
 END DO ! iBC=1,nBCs
 
 ! found periodic DG BC but no periodic particle BC
-IF(hasPeriodic .AND. GEO%nPeriodicVectors.EQ.0)THEN
-  CALL abort(&
-__STAMP__&
-  ,' Periodic-field-BCs require to set the periodic-vectors for the particles!')
-END IF
+!IF(hasPeriodic .AND. GEO%nPeriodicVectors.EQ.0)THEN
+!  CALL abort(&
+!__STAMP__&
+!  ,' Periodic-field-BCs require to set the periodic-vectors for the particles!')
+!END IF
 
 ! found no periodic DG BC but periodic particle BC
-IF(.NOT.hasPeriodic .AND. GEO%nPeriodicVectors.GT.0)THEN
-  CALL abort(&
-__STAMP__&
-  ,' Periodic particle-BCs and non-periodic-field-BCs: not tested!')
-END IF
+!IF(.NOT.hasPeriodic .AND. GEO%nPeriodicVectors.GT.0)THEN
+!  CALL abort(&
+!__STAMP__&
+!  ,' Periodic particle-BCs and non-periodic-field-BCs: not tested!')
+!END IF
 
 DO iVec = 1, SIZE(PartBound%TargetBoundCond)
   IF((PartBound%TargetBoundCond(iVec).EQ.PartBound%PeriodicBC).AND.(GEO%nPeriodicVectors.EQ.0))THEN

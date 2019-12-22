@@ -151,7 +151,13 @@ udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
 #endif
 
 Rep     = SQRT(SUM(udiff(1:3)**2.))*(2.*r)/(mu0/FieldAtParticle(1))
-Cd      = 24./Rep*(1. + 0.15*Rep**0.687)
+
+! Fix for zero Reynolds number
+IF(Rep.GT.0)THEN
+  Cd      = 24./Rep*(1. + 0.15*Rep**0.687)
+ELSE
+  Cd      = 0.
+END IF
 
 ! Warn when outside valid range of Wang model
 IF(Rep.GT.40) THEN

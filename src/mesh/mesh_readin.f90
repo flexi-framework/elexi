@@ -274,7 +274,7 @@ CALL BuildPartition()
 FirstElemInd=offsetElem+1
 LastElemInd =offsetElem+nElems
 
-CALL readBCs()
+CALL ReadBCs()
 
 !----------------------------------------------------------------------------------------------------------------------------
 !                              ELEMENTS

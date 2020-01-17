@@ -74,23 +74,26 @@ IF (SGSModel.NE.'none'.AND.RWModel.NE.'none') &
   CALL abort(__STAMP__,'SGS and RW not compatible!')
 #endif
 
-CALL InitSGSFilter()
+IF (SGSModel.NE.'none') THEN
+  CALL InitSGSFilter()
 
-! Allocate array to hold the SGS properties for every particle
-ALLOCATE(VelSGS  (1:nSGSVars,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-         kSGS    (1         ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-         kSGSPart(1              ,1:PDM%maxParticleNumber), &
-         sigmaSGS(1              ,1:PDM%maxParticleNumber), &
-         tauSGS  (1              ,1:PDM%maxParticleNumber), &
-         tauL    (1:2            ,1:PDM%maxParticleNumber), &
-         G_SGS   (1:3       ,1:3 ,1:PDM%maxParticleNumber), &
-         B_SGS   (1:3       ,1:3 ,1:PDM%maxParticleNumber), &
-         TurbPartState(1:2*nSGSVars,1:PDM%maxParticleNumber), &
-         TurbPt_Temp  (1:nSGSVars  ,1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) &
-  CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
-TurbPartState = 0.
-TurbPt_Temp   = 0.
+  ! Allocate array to hold the SGS properties for every particle
+  ALLOCATE(USGS  (1:4      ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
+           USGSPart(1:4    ,1:PDM%maxParticleNumber),      &
+           kSGS    (1      ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
+           kSGSPart(1      ,1:PDM%maxParticleNumber),      &
+           sigmaSGS(1      ,1:PDM%maxParticleNumber),      &
+           tauSGS  (1      ,1:PDM%maxParticleNumber),      &
+           tauL    (1:2    ,1:PDM%maxParticleNumber),      &
+           G_SGS   (1:3,1:3,1:PDM%maxParticleNumber),      &
+           B_SGS   (1:3,1:3,1:PDM%maxParticleNumber),      &
+           TurbPartState(1:6,1:PDM%maxParticleNumber),     &
+           TurbPt_Temp  (1:3,1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
+  IF (ALLOCSTAT.NE.0) &
+    CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+  TurbPartState = 0.
+  TurbPt_Temp   = 0.
+END IF
 
 ParticleSGSInitIsDone=.TRUE.
 
@@ -147,7 +150,7 @@ SUBROUTINE ParticleSGS(iStage,dt,b_dt)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Analyze_Vars          ,ONLY: ElemVol
-USE MOD_DG_Vars               ,ONLY: UPrim
+USE MOD_DG_Vars               ,ONLY: U!Prim
 USE MOD_Filter                ,ONLY: Filter_Pointer
 USE MOD_Filter_Vars           ,ONLY: FilterMat
 USE MOD_Particle_Globals
@@ -192,25 +195,28 @@ CASE('Breuer')
 
 
 ! Filter the velocity field (low-pass)
-VelSGS = UPrim(2:1+nSGSVars,:,:,:,:)
+USGS = U(1:4,:,:,:,:)
 
 ! Filter overwrites the array in place. FilterMat already filled in InitSGSFilter
-CALL Filter_Pointer(VelSGS,FilterMat)
+CALL Filter_Pointer(USGS,FilterMat)
 
-kSGS     = 0.5*SUM((UPrim(2:1+nSGSVars,:,:,:,:)-VelSGS)**2.)
+CALL InterpolateFieldToParticle(4,USGS,USGSPart)
+!kSGS(1,:,:,:,:) = USGS(1,:,:,:,:)
+!kSGS     = 0.5*SUM((UPrim(2:1+nSGSVars,:,:,:,:)-USGS)**2.)
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(1,kSGS,kSGSPart)
-! Time scale of SGS scales
-sigmaSGS = SQRT(2./3.*kSGSPart)
-
+!CALL InterpolateFieldToParticle(1,kSGS,kSGSPart)
 DO iPart=1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
+  kSGSPart(1,iPart)     = 0.5*SUM((FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart)-USGSPart(2:4,iPart)/USGSPart(1,iPart))**2.)
+
+  ! Time scale of SGS scales
+  sigmaSGS(1,iPart) = SQRT(2./3.*kSGSPart(1,iPart))
 
   ! draw random number
   IF(iStage.EQ.1)THEN
-    DO i=1,nSGSVars
-      TurbPartState(nSGSVars+i,iPart)=RandNormal()
+    DO i=1,3
+      TurbPartState(3+i,iPart)=RandNormal()
     END DO
   END IF
 

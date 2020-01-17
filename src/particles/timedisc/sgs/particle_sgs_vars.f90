@@ -25,9 +25,9 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                                :: ParticleSGSInitIsDone=.FALSE.
 !SGS method
-CHARACTER(40)                          :: SGSModel                          ! specifying keyword for SGS model
-INTEGER, PARAMETER                     :: nSGSVars=3
-REAL,ALLOCATABLE                       :: VelSGS  (:,:,:,:,:)                 ! Filtered velocity
+CHARACTER(40)                          :: SGSModel                            ! specifying keyword for SGS model
+REAL,ALLOCATABLE                       :: USGS  (:,:,:,:,:)                   ! Unfiltered state
+REAL,ALLOCATABLE                       :: USGSPart(:,:)                       ! Filtered state
 REAL,ALLOCATABLE                       :: kSGS    (:,:,:,:,:)                 ! SGS kinetic energy
 REAL,ALLOCATABLE                       :: kSGSPart(:,:)
 REAL,ALLOCATABLE                       :: sigmaSGS(:,:)                       ! SGS kinetic energy standard deviation

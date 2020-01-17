@@ -290,6 +290,8 @@ USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
 USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Erosion_Vars
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
+USE MOD_Particle_SGS,               ONLY: ParticleSGS
+USE MOD_Particle_SGS_Vars,          ONLY: SGSModel
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
@@ -297,6 +299,7 @@ USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
 #if USE_RW
 USE MOD_Particle_RandomWalk,        ONLY: ParticleInitRandomWalk
 #endif
+USE MOD_Particle_SGS,               ONLY: ParticleInitSGS
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -325,6 +328,10 @@ CALL InitializeVariables(ManualTimeStep_opt)
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
 #if USE_RW
 CALL ParticleInitRandomWalk()
+#else
+IF(SGSModel.NE.'none') THEN
+  CALL ParticleInitSGS()
+END IF
 #endif
 
 ! Restart particles here, otherwise we can not know if we need to have an initial emission

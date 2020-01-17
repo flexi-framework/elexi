@@ -93,11 +93,8 @@ SUBROUTINE InitFilter()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Filter_Vars
-USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeType
-USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
 USE MOD_ReadInTools       ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
-USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_IO_HDF5           ,ONLY:AddToElemData
 #if EQNSYSNR==2
 USE MOD_IO_HDF5           ,ONLY:ElementOut

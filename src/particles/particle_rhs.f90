@@ -76,12 +76,10 @@ FUNCTION ParticlePush(PartID,FieldAtParticle)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Globals
+USE MOD_EOS_Vars,          ONLY : mu0
 USE MOD_Particle_Vars,     ONLY : Species, PartSpecies, PartGravity
 USE MOD_Particle_Vars,     ONLY : PartState, RepWarn
-USE MOD_EOS_Vars,          ONLY : mu0
-#if USE_RW
 USE MOD_Particle_Vars,     ONLY : TurbPartState
-#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -144,11 +142,11 @@ IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
 r       = (3.*Vol/4./pi)**(1./3.)
 
-#if USE_RW
-udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
-#else
-udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
-#endif
+IF(ALLOCATED(TurbPartState)) THEN
+  udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
+ELSE
+  udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
+END IF
 
 Rep     = SQRT(SUM(udiff(1:3)**2.))*(2.*r)/(mu0/FieldAtParticle(1))
 
@@ -167,13 +165,13 @@ IF(Rep.GT.40) THEN
   ENDIF
 ENDIF
 
-#if USE_RW
-Pt      = - FieldAtParticle(1)/Species(PartSpecies(PartID))%DensityIC * 3./4. * Cd/(2.*r) * SQRT(SUM(udiff(1:3)**2)) &
-          * (PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)))
-#else
-Pt      = - FieldAtParticle(1)/Species(PartSpecies(PartID))%DensityIC * 3./4. * Cd/(2.*r) * SQRT(SUM(udiff(1:3)**2)) &
-          * (PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1)))
-#endif
+IF (ALLOCATED(TurbPartState)) THEN
+  Pt      = - FieldAtParticle(1)/Species(PartSpecies(PartID))%DensityIC * 3./4. * Cd/(2.*r) * SQRT(SUM(udiff(1:3)**2)) &
+            * (PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)))
+ELSE
+  Pt      = - FieldAtParticle(1)/Species(PartSpecies(PartID))%DensityIC * 3./4. * Cd/(2.*r) * SQRT(SUM(udiff(1:3)**2)) &
+            * (PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1)))
+END IF
 
 ! Add gravity if required
 IF(ANY(PartGravity.NE.0)) THEN
@@ -195,11 +193,12 @@ r       = (3.*Vol/4./pi)**(1./3.)
 ! Get nu to stay in same equation format
 nu      = mu0/FieldAtParticle(1)
 
-#if USE_RW
-udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
-#else
-udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
-#endif
+IF(ALLOCATED(TurbPartState)) THEN
+  udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
+ELSE
+  udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
+END IF
+
 Rep     = 2.*r*SQRT(SUM(udiff(1:3)**2))/nu
 
 ! Empirical relation of nonlinear drag from Clift et al. (1978)
@@ -211,11 +210,11 @@ ENDIF
 
 taup    = (Species(PartSpecies(PartID))%DensityIC*(2.*r)**2.)/(18*FieldAtParticle(1)*nu)
 
-#if USE_RW
-Pt      = ((FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)) - PartState(4:6,PartID))/taup * Cd
-#else
-Pt      =  (FieldAtParticle(2:4)/FieldAtParticle(1)                              - PartState(4:6,PartID))/taup * Cd
-#endif
+IF (ALLOCATED(TurbPartState)) THEN
+  Pt      = ((FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)) - PartState(4:6,PartID))/taup * Cd
+ELSE
+  Pt      =  (FieldAtParticle(2:4)/FieldAtParticle(1)                              - PartState(4:6,PartID))/taup * Cd
+END IF
 
 ! Add gravity if required
 IF(ANY(PartGravity.NE.0)) THEN
@@ -234,26 +233,26 @@ IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
 r       = (3.*Vol/4./pi)**(1./3.)
 
-#if USE_RW
-udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
-#else
-udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
-#endif
+IF(ALLOCATED(TurbPartState)) THEN
+  udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
+ELSE
+  udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
+END IF
 Rep     = 2.*FieldAtParticle(1)*r*SQRT(SUM(udiff(1:3)**2.))
 Cd      = 1. + (Rep**2./3.)/6.
 
 IF(Rep.LT.1) THEN
-#if USE_RW
+  IF (ALLOCATED(TurbPartState)) THEN
     Fstokes = 6.   *pi*mu0*r*((FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)) - PartState(4:6,PartID))
-#else
+  ELSE
     Fstokes = 6.   *pi*mu0*r*((FieldAtParticle(2:4)/FieldAtParticle(1)                            ) - PartState(4:6,PartID))
-#endif
+  END IF
 ELSE
-#if USE_RW
+  IF (ALLOCATED(TurbPartState)) THEN
     Fstokes = 6.*Cd*pi*mu0*r*((FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)) - PartState(4:6,PartID))
-#else
+  ELSE
     Fstokes = 6.*Cd*pi*mu0*r*((FieldAtParticle(2:4)/FieldAtParticle(1)                            ) - PartState(4:6,PartID))
-#endif
+  END IF
 
     IF(Rep.GT.1000) THEN
       IF (RepWarn.EQV..FALSE.) THEN
@@ -284,20 +283,20 @@ IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
 r       = (3.*Vol/4./pi)**(1./3.)
 
-#if USE_RW
-udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
-#else
-udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
-#endif
+IF(ALLOCATED(TurbPartState)) THEN
+  udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
+ELSE
+  udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
+END IF
 Rep     = 2.*FieldAtParticle(1)*r*SQRT(SUM(udiff(1:3)**2.))
 Cd      = 1. + (Rep**2./3.)/6.
 
-#if USE_RW
-Fstokes = .5*FieldAtParticle(1) * Cd * pi * r**2. * ((FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)) &
-                                                                                               - PartState(4:6,PartID)) * SQRT(SUM(udiff(1:3)**2.))
-#else
-Fstokes = .5*FieldAtParticle(1) * Cd * pi * r**2. * ((FieldAtParticle(2:4)/FieldAtParticle(1)) - PartState(4:6,PartID)) * SQRT(SUM(udiff(1:3)**2.))
-#endif
+IF (ALLOCATED(TurbPartState)) THEN
+  Fstokes = .5*FieldAtParticle(1) * Cd * pi * r**2. * ((FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)) &
+                                                                                                - PartState(4:6,PartID)) * SQRT(SUM(udiff(1:3)**2.))
+ELSE
+  Fstokes = .5*FieldAtParticle(1) * Cd * pi * r**2. * ((FieldAtParticle(2:4)/FieldAtParticle(1)) - PartState(4:6,PartID)) * SQRT(SUM(udiff(1:3)**2.))
+END IF
 
 ! Add gravity if required
 IF(ANY(PartGravity.NE.0)) THEN

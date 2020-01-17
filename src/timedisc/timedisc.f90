@@ -442,7 +442,7 @@ DO
     CurrentStage=1
     tStage=t
 
-    CALL Particle_TimeStepByLSERK_RHS(t)
+    CALL Particle_TimeStepByLSERK_RHS(t,iStage,dt,b_dt)
     CALL Particle_TimeStepByLSERK(t,b_dt)
 
     DO iStage=2,nRKStages
@@ -450,7 +450,7 @@ DO
         tStage=t+dt*RKc(iStage)
         IF(doCalcIndicator) CALL CalcIndicator(U,t)
 
-        CALL Particle_TimeStepByLSERK_RK_RHS(t)
+        CALL Particle_TimeStepByLSERK_RK_RHS(t,iStage,dt,b_dt)
         CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
     END DO
 
@@ -610,7 +610,7 @@ tStage=t
 #if USE_PARTICLES
 SELECT CASE (TRIM(ParticleTimeDiscMethod))
   CASE('Runge-Kutta')
-    CALL Particle_TimeStepByLSERK_RHS(t)
+    CALL Particle_TimeStepByLSERK_RHS(t,iStage,dt,b_dt)
   CASE('Euler')
     CALL Particle_TimeStepByEuler(dt)
   CASE DEFAULT
@@ -645,7 +645,7 @@ DO iStage=2,nRKStages
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK_RK_RHS(t)
+      CALL Particle_TimeStepByLSERK_RK_RHS(t,iStage,dt,b_dt)
     CASE('Euler')
       ! Do nothing
     CASE DEFAULT
@@ -733,7 +733,7 @@ CurrentStage=1
 tStage=t
 
 #if USE_PARTICLES
-CALL Particle_TimeStepByLSERK_RHS(t)
+CALL Particle_TimeStepByLSERK_RHS(t,iStage,dt,b_dt)
 #endif
 
 CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
@@ -750,7 +750,7 @@ DO iStage=2,nRKStages
   tStage=t+dt*RKc(iStage)
 
 #if USE_PARTICLES
-  CALL Particle_TimeStepByLSERK_RK_RHS(t)
+  CALL Particle_TimeStepByLSERK_RK_RHS(t,iStage,dt,b_dt)
 #endif
 
   IF(doCalcIndicator) CALL CalcIndicator(U,t)

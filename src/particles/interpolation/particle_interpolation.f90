@@ -156,43 +156,45 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticleInterpolation
 
 
-SUBROUTINE InterpolateFieldToParticle()
+SUBROUTINE InterpolateFieldToParticle(nVar,U,FieldAtParticle)
 !===================================================================================================================================
 ! interpolates field to particles
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_DG_Vars,                 ONLY: U
+!USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
 USE MOD_Mesh_Vars,               ONLY: nElems
 USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PDM,PEM
 USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
-USE MOD_Particle_Interpolation_Vars, ONLY: FieldAtParticle,useExternalField,externalField
+!USE MOD_Particle_Interpolation_Vars, ONLY: FieldAtParticle,useExternalField,externalField
+USE MOD_Particle_Interpolation_Vars, ONLY: useExternalField,externalField
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
-#if USE_RW
-USE MOD_DG_Vars,                 ONLY: UTurb
-USE MOD_Equation_Vars,           ONLY: nVarTurb
-USE MOD_Particle_Interpolation_Vars,   ONLY: TurbFieldAtParticle
+!#if USE_RW
+!USE MOD_DG_Vars,                 ONLY: UTurb
+!USE MOD_Equation_Vars,           ONLY: nVarTurb
+!USE MOD_Particle_Interpolation_Vars,   ONLY: TurbFieldAtParticle
 USE MOD_Particle_RandomWalk_Vars,ONLY: RWTime
-USE MOD_Particle_Vars,           ONLY: Species,PartSpecies,TurbPartState
-USE MOD_Restart_Vars,            ONLY: RestartTurb
-USE MOD_TimeDisc_Vars,           ONLY: t
-#endif
+!USE MOD_Particle_Vars,           ONLY: Species,PartSpecies,TurbPartState
+USE MOD_Particle_Vars,           ONLY: TurbPartState
+!USE MOD_Restart_Vars,            ONLY: RestartTurb
+!USE MOD_TimeDisc_Vars,           ONLY: t
+!#endif
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+INTEGER,INTENT(IN)                  :: nVar
+REAL,INTENT(IN)                     :: U(1:nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
+REAL,INTENT(OUT)                    :: FieldAtParticle(1:nVar,1:PDM%maxParticleNumber)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                          :: firstPart,lastPart
-REAL                             :: field(PP_nVar)
+REAL                             :: field(nVar)
 INTEGER                          :: iPart,iElem,iVar
-#if USE_RW
-REAL                             :: turbField(nVarTurb)
-#endif
 !===================================================================================================================================
 
 ! Return if no interpolation is wanted
@@ -222,18 +224,18 @@ IF (.NOT.InterpolationElemLoop) THEN
     !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
     IF ((RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 #endif
-    CALL InterpolateFieldToSingleParticle(iPart,FieldAtParticle(1:PP_nVar,iPart))
+    CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,PEM%Element(iPart)),FieldAtParticle(:,iPart))
   END DO
   RETURN
 END IF
 
 ! InterpolationElemLoop is true, so initialize everything for it
 FieldAtParticle(:,firstPart:lastPart)   = 0.
-IF (useExternalField) THEN
-  DO iVar = 1,PP_nVar
-    FieldAtParticle(iVar,firstPart:lastPart) = externalField(iVar)
-  END DO
-END IF
+!IF (useExternalField) THEN
+!  DO iVar = 1,PP_nVar
+!    FieldAtParticle(iVar,firstPart:lastPart) = externalField(iVar)
+!  END DO
+!END IF
 
 ! Loop first over all elements, then over all particles within the element. Ideally, this reduces cache misses as the interpolation
 ! happens with the same element metrics
@@ -251,35 +253,14 @@ DO iElem=1,nElems
     IF (PEM%Element(iPart).EQ.iElem) THEN
       ! Not RefMapping, evaluate at physical position
       IF (.NOT.DoRefMapping) THEN
-#if USE_RW
-        IF (RestartTurb) THEN
-          CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar),iElem,iPart &
-                                                                       ,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb))
-        ELSE
-#endif
-          CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar),iElem,iPart)
-#if USE_RW
-       END IF
-#endif
+        CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,iElem),field,iElem,iPart)
       ! RefMapping, evaluate in reference space
       ELSE
-#if USE_RW
-        IF (RestartTurb) THEN
-          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,iPart),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar),iElem &
-                                                                       ,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb))
-        ELSE
-#endif
-          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,iPart),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar),iElem)
-#if USE_RW
-        END IF
-#endif
+        CALL EvaluateFieldAtRefPos(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,iElem),field,iElem)
       END IF ! RefMapping
 
       ! Add the interpolated field to the background field
-      FieldAtParticle(    1:PP_nVar, iPart) = FieldAtParticle(1:PP_nVar,iPart) + field(1:PP_nVar)
-#if USE_RW
-      TurbFieldAtParticle(1:nVarTurb,iPart) = turbfield(      1:nVarTurb)
-#endif
+      FieldAtParticle(:,iPart) = FieldAtParticle(:,iPart) + field(:)
     END IF ! Element(iPart).EQ.iElem
   END DO ! iPart
 END DO ! iElem=1,PP_N
@@ -287,26 +268,20 @@ END DO ! iElem=1,PP_N
 END SUBROUTINE InterpolateFieldToParticle
 
 
-SUBROUTINE InterpolateFieldToSingleParticle(PartID,FieldAtParticle)
+SUBROUTINE InterpolateFieldToSingleParticle(PartID,nVar,U,FieldAtParticle)
 !===================================================================================================================================
 ! interpolates field to particles
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_DG_Vars,                 ONLY: U
+!USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
-USE MOD_Particle_Interpolation_Vars,   ONLY: useExternalField,externalField
+!USE MOD_Particle_Interpolation_Vars,   ONLY: useExternalField,externalField
 USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
 USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PEM
 #if USE_MPI
 USE MOD_Mesh_Vars,               ONLY: nElems
-#endif
-#if USE_RW
-USE MOD_DG_Vars,                 ONLY: UTurb
-USE MOD_Restart_Vars,            ONLY: RestartTurb
-USE MOD_Equation_Vars,           ONLY: nVarTurb
-USE MOD_Particle_Interpolation_Vars,   ONLY: TurbFieldAtParticle
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
@@ -314,22 +289,21 @@ USE MOD_Particle_Interpolation_Vars,   ONLY: TurbFieldAtParticle
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)               :: PartID
+INTEGER,INTENT(IN)               :: nVar
+REAL,INTENT(IN)                  :: U(1:nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                 :: FieldAtParticle(1:PP_nVar)
+REAL,INTENT(OUT)                 :: FieldAtParticle(1:nVar)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                             :: field(1:PP_nVar)
+REAL                             :: field(1:nVar)
 INTEGER                          :: ElemID
-#if USE_RW
-REAL                             :: turbField(nVarTurb)
-#endif
 !===================================================================================================================================
 
 FieldAtParticle(:)   = 0.
-IF (useExternalField) THEN
-  FieldAtParticle(:) = externalField(:)
-END IF
+!IF (useExternalField) THEN
+!  FieldAtParticle(:) = externalField(:)
+!END IF
 
 ElemID=PEM%Element(PartID)
 ! No solution available in the halo region (yet), so return for particles there
@@ -338,35 +312,14 @@ IF(ElemID.GT.nElems) RETURN
 #endif
 
 IF (.NOT.DoRefMapping) THEN
-#if USE_RW
-  IF (RestartTurb) THEN
-    CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,ElemID),field    (1:PP_nVar),ElemID,PartID &
-                                                                 ,UTurb(1:nVarTurb,:,:,:,ElemID),turbField(1:nVarTurb))
-  ELSE
-#endif
-    CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),PP_nVar,PP_N,U    (1:PP_nVar,:,:,:,ElemID),field     (1:PP_nVar),ElemID,PartID)
-#if USE_RW
-  END IF
-#endif
+  CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID,PartID)
 ! RefMapping, evaluate in reference space
 ELSE
-#if USE_RW
-  IF (RestartTurb) THEN
-   CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PartID),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,ElemID),field    (1:PP_nVar),ElemID        &
-                                                                ,UTurb(1:nVarTurb,:,:,:,ElemID),turbField(1:nVarTurb))
-  ELSE
-#endif
-   CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PartID),PP_nVar,PP_N,U    (1:PP_nVar,:,:,:,ElemID) ,field    (1:PP_nVar),ElemID)
-#if USE_RW
-  END IF
-#endif
+  CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID)
 END IF ! RefMapping
 
 ! Add the interpolated field to the background field
-FieldAtParticle(    1:PP_nVar )        = FieldAtParticle(1:PP_nVar)  + field(1:PP_nVar)
-#if USE_RW
-TurbFieldAtParticle(1:nVarTurb,PartID) = turbfield(      1:nVarTurb)
-#endif
+FieldAtParticle(:)        = FieldAtParticle(:)  + field(:)
 
 END SUBROUTINE InterpolateFieldToSingleParticle
 

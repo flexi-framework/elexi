@@ -51,8 +51,10 @@ USE MOD_Preproc,                    ONLY: PP_N, PP_NZ
 USE MOD_Mesh_Vars,                  ONLY: nElems
 USE MOD_ReadInTools,                ONLY: GETSTR
 USE MOD_Particle_SGS_Vars
-USE MOD_Particle_randomwalk_Vars,   ONLY: RWModel
 USE MOD_Particle_Vars,              ONLY: PDM,TurbPartState,TurbPt_temp
+#if USE_RW
+USE MOD_Particle_Randomwalk_Vars,   ONLY: RWModel
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -118,8 +120,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                   :: iDeg
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT SGS FILTER...'
+SWRITE(UNIT_stdOut,'(A)') ' Init SGS filter ...'
 
 ! Abort if Navier-Stokes filter is requested in addition to the SST filter
 IF(FilterType.GT.0) CALL CollectiveStop(__STAMP__,"SGS incompatible with Navier-Stokes filter!")
@@ -138,8 +139,6 @@ END DO
 FilterMat=MATMUL(MATMUL(Vdm_Leg,FilterMat),sVdm_Leg)
 
 FilterInitIsDone = .TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT SGS FILTER DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitSGSFilter
 
 !===================================================================================================================================
@@ -150,7 +149,7 @@ SUBROUTINE ParticleSGS(iStage,dt,b_dt)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Analyze_Vars          ,ONLY: ElemVol
-USE MOD_DG_Vars               ,ONLY: U!Prim
+USE MOD_DG_Vars               ,ONLY: U
 USE MOD_Filter                ,ONLY: Filter_Pointer
 USE MOD_Filter_Vars           ,ONLY: FilterMat
 USE MOD_Particle_Globals
@@ -158,7 +157,7 @@ USE MOD_Particle_SGS_Vars
 USE MOD_Particle_Interpolation, ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars, ONLY: FieldAtParticle
 USE MOD_Particle_Vars         ,ONLY: TurbPartState, PDM, PEM, PartState, TurbPt_Temp
-USE MOD_TimeDisc_Vars         ,ONLY: RKA,nRKStages
+USE MOD_TimeDisc_Vars         ,ONLY: RKA
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -193,7 +192,6 @@ CASE('Breuer')
 !simulations of turbulent bubble–laden and particle–laden flows." International Journal of Multiphase Flow, 89 (2017): 23-44.
 !===================================================================================================================================
 
-
 ! Filter the velocity field (low-pass)
 USGS = U(1:4,:,:,:,:)
 
@@ -221,8 +219,16 @@ DO iPart=1,PDM%ParticleVecLength
   END IF
 
   ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
-  ElemID   = PEM%Element(iPart)
-  tauSGS   = C*(ElemVol(ElemID)**(1./3.)/(PP_N+1))/sigmaSGS(1,iPart)
+  IF (ALMOSTZERO(sigmaSGS(1,iPart))) THEN
+    ! No SGS turbulent kinetic energy, avoid float error
+    tauSGS   = HUGE(1.)
+    IPWRITE(*,*) 'No SGS turbulent kinetic energy after filtering. Omiting timestep for particle',iPart
+  ELSE
+    ! Valid SGS turbulent kinetic energy
+    ElemID   = PEM%Element(iPart)
+    tauSGS   = C*(ElemVol(ElemID)**(1./3.)/(PP_N+1))/sigmaSGS(1,iPart)
+  END IF
+
   ! Relative velocity
   udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
   urel       = udiff/SQRT(SUM(udiff**2))
@@ -260,6 +266,14 @@ DO iPart=1,PDM%ParticleVecLength
   ELSE
     TurbPt_temp  (1:3,iPart) = Pt(1:3) - RKA(iStage)    * TurbPt_temp(1:3,iPart)
     TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + TurbPt_temp(1,iPart)*b_dt
+  END IF
+
+  ! Sanity check. Use 10*U as arbitrary threshold
+  IF (ANY(ABS(TurbPartState(1:3,iPart)).GT.10.*MAXVAL(ABS(PartState(4:6,iPart))))) THEN
+    IPWRITE(*,*) 'Obtained SGS velocity of',SQRT(SUM(TurbPartState(1:3,iPart)**2)), &
+                 'while resolved velocity is',SQRT(SUM(PartState(4:6,iPart)**2)),   &
+                 'Omiting timestep for particle',iPart
+!    TurbPartState(:,iPart) = 0.
   END IF
 END DO
 

@@ -1135,13 +1135,13 @@ USE MOD_Globals!,                 ONLY:Cross,abort
 USE MOD_Particle_Globals
 USE MOD_Eval_xyz,                ONLY:GetPositionInRefElem,EvaluateFieldAtRefPos
 USE MOD_Mesh_Vars,               ONLY:OffSetElem,useCurveds,NGeo
-USE MOD_Particle_Vars,           ONLY:PDM,PEM,PartState,PartPosRef,LastPartPos,AllowLoosing
+USE MOD_Particle_Localization,   ONLY:SingleParticleToExactElement,PartInElemCheck
 USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo,ElemRadius2NGeo
 USE MOD_Particle_Mesh_Vars,      ONLY:Geo,IsTracingBCElem,BCElem,epsOneCell
 USE MOD_Particle_MPI_Vars,       ONLY:halo_eps2
 USE MOD_Particle_Tracking_Vars,  ONLY:nTracks,Distance,ListDistance,CartesianPeriodic
 USE MOD_Particle_Utils,          ONLY:InsertionSort
-USE MOD_Particle_Localization,   ONLY:SingleParticleToExactElement,PartInElemCheck
+USE MOD_Particle_Vars,           ONLY:PDM,PEM,PartState,TurbPartState,PartPosRef,LastPartPos,AllowLoosing
 #if USE_MPI
 USE MOD_MPI_Vars,                ONLY:offsetElemMPI
 USE MOD_Particle_MPI_Vars,       ONLY:PartHaloElemToProc
@@ -1382,6 +1382,8 @@ DO iPart=1,PDM%ParticleVecLength
           IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
           IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
           IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' LastPartPos            ', LastPartPos(1:3,iPart)
+          IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Velocity               ', PartState(4:6,iPart)
+          IF (ALLOCATED(TurbPartState)) IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Velocity (SGS)         ', TurbPartState(1:3,iPart)
           Vec=PartState(1:3,iPart)-LastPartPos(1:3,iPart)
           IPWRITE(UNIT_stdOut,'(I0,A,X,E15.8)') ' displacement /halo_eps ', DOT_PRODUCT(Vec,Vec)/halo_eps2
 #if USE_MPI
@@ -1458,6 +1460,8 @@ DO iPart=1,PDM%ParticleVecLength
               IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
               IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
               IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
+              IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Velocity               ', PartState(4:6,iPart)
+              IF (ALLOCATED(TurbPartState)) IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Velocity (SGS)         ', TurbPartState(1:3,iPart)
               Vec=PartState(1:3,iPart)-LastPartPos(1:3,iPart)
               IPWRITE(UNIT_stdOut,'(I0,A,X,E15.8)') ' displacement /halo_eps ', DOT_PRODUCT(Vec,Vec)/halo_eps2
 #if USE_MPI

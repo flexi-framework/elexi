@@ -171,7 +171,8 @@ USE MOD_Particle_Tracking_Vars,      ONLY: DoRefMapping
 USE MOD_Particle_Vars,               ONLY: PartPosRef,PartState,PDM,PEM
 USE MOD_Particle_Vars,               ONLY: TurbPartState
 #if USE_RW
-USE MOD_Particle_RandomWalk_Vars,    ONLY: RWTime
+USE MOD_Particle_RandomWalk_Vars,    ONLY: RWModel,RWTime
+USE MOD_TimeDisc_Vars,               ONLY: t
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
@@ -194,11 +195,8 @@ IF (.NOT.DoInterpolation) RETURN
 
 ! Null field vector
 field     = 0.
-#if USE_RW
-! Null turbulent field vector
-turbField = 0.
-#endif
 
+! Loop variables
 firstPart = 1
 lastPart  = PDM%ParticleVecLength
 
@@ -214,7 +212,7 @@ IF (.NOT.InterpolationElemLoop) THEN
 #if USE_RW
     ! Do not change the particle velocity if RW is working in full Euler mode
     !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
-    IF ((RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
+    IF ((RWModel.EQ.'Gosman') .AND. (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 #endif
     CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,PEM%Element(iPart)),FieldAtParticle(:,iPart))
   END DO

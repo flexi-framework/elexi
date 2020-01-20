@@ -67,22 +67,26 @@ USE MOD_TimeDisc_Vars,           ONLY: t
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
 #endif /*MPI*/
+USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
-USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
 USE MOD_Particle_Vars,           ONLY: Species, PartSpecies, PartState, Pt, LastPartPos, DelayTime, PEM, PDM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
 #if USE_RW
+USE MOD_DG_Vars,                 ONLY: UTurb
+USE MOD_Equation_Vars,           ONLY: nVarTurb
+USE MOD_Particle_Interpolation_Vars,  ONLY: TurbFieldAtParticle
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
+USE MOD_Restart_Vars,            ONLY: RestartTurb
 #endif
 #if USE_LOADBALANCE
-USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
+USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -120,7 +124,7 @@ IF (t.GE.DelayTime) THEN
 #endif /*USE_LOADBALANCE*/
   CALL InterpolateFieldToParticle(PP_nVar,U     ,FieldAtParticle)
 #if USE_RW
-  IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,turbField)
+  IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,TurbFieldAtParticle)
   CALL ParticleRandomWalk(t)
 #endif
   CALL CalcPartRHS()
@@ -225,18 +229,22 @@ USE MOD_Timedisc_Vars,           ONLY: nRKStages
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
 #endif /*MPI*/
+USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
-USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
 #if USE_RW
+USE MOD_DG_Vars,                 ONLY: UTurb
+USE MOD_Equation_Vars,           ONLY: nVarTurb
+USE MOD_Particle_Interpolation_Vars,  ONLY: TurbFieldAtParticle
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
+USE MOD_Restart_Vars,            ONLY: RestartTurb
 #endif
 #if USE_LOADBALANCE
-USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime
+USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -276,7 +284,7 @@ IF (t.GE.DelayTime) THEN
   !--> Interpolate fluid field to particle position
 CALL InterpolateFieldToParticle(PP_nVar,U     ,FieldAtParticle)
 #if USE_RW
-  IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,turbField)
+  IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,TurbFieldAtParticle)
   !--> Calculate the random walk push
   CALL ParticleRandomWalk(t)
 #endif
@@ -318,9 +326,6 @@ USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
 USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM
-#if USE_RW
-USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
-#endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
@@ -455,7 +460,11 @@ USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
 #if USE_RW
+USE MOD_DG_Vars,                 ONLY: UTurb
+USE MOD_Equation_Vars,           ONLY: nVarTurb
+USE MOD_Particle_Interpolation_Vars,  ONLY: TurbFieldAtParticle
 USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
+USE MOD_Restart_Vars,            ONLY: RestartTurb
 #endif
 #if USE_LOADBALANCE
 USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
@@ -502,7 +511,7 @@ IF (t.GE.DelayTime) THEN
   !--> Interpolate fluid field to particle position
   CALL InterpolateFieldToParticle(PP_nVar,U     ,FieldAtParticle)
 #if USE_RW
-  IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,turbField)
+  IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,TurbFieldAtParticle)
   CALL ParticleRandomWalk(t)
 #endif
   !--> Calculate the particle right hand side and push
@@ -538,9 +547,6 @@ USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/
-#if USE_RW
-USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
-#endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif

@@ -336,9 +336,9 @@ CALL InitializeVariables(ManualTimeStep_opt)
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
 #if USE_RW
 CALL ParticleInitRandomWalk()
-#else
-CALL ParticleInitSGS()
 #endif
+! InitSGS must be called after InitRandomWalk and will abort FLEXI if an RW model is defined
+CALL ParticleInitSGS()
 
 ! Restart particles here, otherwise we can not know if we need to have an initial emission
 CALL ParticleRestart()

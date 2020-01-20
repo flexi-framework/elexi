@@ -77,6 +77,7 @@ USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,Parti
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
 USE MOD_Particle_Vars,           ONLY: Species, PartSpecies, PartState, Pt, LastPartPos, DelayTime, PEM, PDM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
+USE MOD_Particle_SGS_Vars,       ONLY: SGSinUse
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
@@ -127,8 +128,8 @@ IF (t.GE.DelayTime) THEN
   IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,TurbFieldAtParticle)
   CALL ParticleRandomWalk(t)
 #endif
+  IF (SGSinUse) CALL ParticleSGS(1,dt,dt)
   CALL CalcPartRHS()
-  CALL ParticleSGS(1,dt,dt)
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -235,6 +236,7 @@ USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
+USE MOD_Particle_SGS_Vars,       ONLY: SGSinUse
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
@@ -289,8 +291,8 @@ CALL InterpolateFieldToParticle(PP_nVar,U     ,FieldAtParticle)
   CALL ParticleRandomWalk(t)
 #endif
   !--> Calculate the particle right hand side and push
+  IF (SGSinUse) CALL ParticleSGS(iStage,dt,b_dt(iStage))
   CALL CalcPartRHS()
-  CALL ParticleSGS(iStage,dt,b_dt(iStage))
 #if USE_LOADBALANCE
   CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -459,6 +461,7 @@ USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
+USE MOD_Particle_SGS_Vars,       ONLY: SGSinUse
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
@@ -515,8 +518,8 @@ IF (t.GE.DelayTime) THEN
   CALL ParticleRandomWalk(t)
 #endif
   !--> Calculate the particle right hand side and push
+  IF (SGSinUse) CALL ParticleSGS(iStage,dt,b_dt(iStage))
   CALL CalcPartRHS()
-  CALL ParticleSGS(iStage,dt,b_dt(iStage))
 #if USE_LOADBALANCE
   CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/

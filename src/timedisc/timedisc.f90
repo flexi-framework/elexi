@@ -442,7 +442,7 @@ DO
     CurrentStage=1
     tStage=t
 
-    CALL Particle_TimeStepByLSERK_RHS(t,iStage,dt,b_dt)
+    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt,b_dt)
     CALL Particle_TimeStepByLSERK(t,b_dt)
 
     DO iStage=2,nRKStages
@@ -450,7 +450,7 @@ DO
         tStage=t+dt*RKc(iStage)
         IF(doCalcIndicator) CALL CalcIndicator(U,t)
 
-        CALL Particle_TimeStepByLSERK_RK_RHS(t,iStage,dt,b_dt)
+        CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt,b_dt)
         CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
     END DO
 

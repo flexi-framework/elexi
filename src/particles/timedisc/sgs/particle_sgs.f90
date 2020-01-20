@@ -68,34 +68,49 @@ IF(ParticleSGSInitIsDone) RETURN
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL ...!'
 
-!--> SGS model
+! SGS model
 SGSModel = TRIM(GETSTR('Part-SGSModel','none'))
 
+! SGS and RW are not compatible. Go back and think about what you were trying to simulate.
 #if USE_RW
 IF (SGSModel.NE.'none'.AND.RWModel.NE.'none') &
   CALL abort(__STAMP__,'SGS and RW not compatible!')
 #endif
 
-IF (SGSModel.NE.'none') THEN
-  CALL InitSGSFilter()
+SELECT CASE(SGSModel)
+  CASE('Breuer')
+    ! Set number of variables and SGS flag active
+    nSGSVars = 6
+    SGSinUse =  .TRUE.
 
-  ! Allocate array to hold the SGS properties for every particle
-  ALLOCATE(USGS  (1:4      ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-           USGSPart(1:4    ,1:PDM%maxParticleNumber),      &
-           kSGS    (1      ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-           kSGSPart(1      ,1:PDM%maxParticleNumber),      &
-           sigmaSGS(1      ,1:PDM%maxParticleNumber),      &
-           tauSGS  (1      ,1:PDM%maxParticleNumber),      &
-           tauL    (1:2    ,1:PDM%maxParticleNumber),      &
-           G_SGS   (1:3,1:3,1:PDM%maxParticleNumber),      &
-           B_SGS   (1:3,1:3,1:PDM%maxParticleNumber),      &
-           TurbPartState(1:6,1:PDM%maxParticleNumber),     &
-           TurbPt_Temp  (1:3,1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
-  IF (ALLOCSTAT.NE.0) &
-    CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
-  TurbPartState = 0.
-  TurbPt_Temp   = 0.
-END IF
+    ! Init double-filtering for SGS turbulent kinetic energy
+    CALL InitSGSFilter()
+
+    ! Allocate array to hold the SGS properties for every particle
+    ALLOCATE(USGS         (1:4       ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
+             USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
+             kSGS         (1         ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
+             kSGSPart     (1         ,1:PDM%maxParticleNumber),      &
+             sigmaSGS     (1         ,1:PDM%maxParticleNumber),      &
+             tauSGS       (1         ,1:PDM%maxParticleNumber),      &
+             tauL         (1:2       ,1:PDM%maxParticleNumber),      &
+             G_SGS        (1:3,1:3   ,1:PDM%maxParticleNumber),      &
+             B_SGS        (1:3,1:3   ,1:PDM%maxParticleNumber),      &
+             TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
+             TurbPt_Temp  (1:3       ,1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
+    IF (ALLOCSTAT.NE.0) &
+      CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+    TurbPartState = 0.
+    TurbPt_Temp   = 0.
+
+  CASE('none')
+    ! Do nothing
+    nSGSVars = 0
+    SGSinUse = .FALSE.
+
+  CASE DEFAULT
+    CALL abort(__STAMP__, ' No valid particle subgrid scale (SGS) model given.')
+END SELECT
 
 ParticleSGSInitIsDone=.TRUE.
 

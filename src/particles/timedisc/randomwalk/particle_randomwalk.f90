@@ -63,7 +63,6 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER               :: ALLOCSTAT
-INTEGER               :: nRWVars
 !----------------------------------------------------------------------------------------------------------------------------------
 IF(ParticleRWInitIsDone) RETURN
 
@@ -74,18 +73,24 @@ SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE RANDOM WALK ...!'
 RWModel = TRIM(GETSTR('Part-RWModel','none'))
 RWTime  = TRIM(GETSTR('Part-RWTime' ,'RW'))
 
+! Set number of RW vars here, needed for MPI init
 SELECT CASE(RWModel)
-
   CASE('Mofakham')
     IF (RWTime.EQ.'RK'.AND.MPIROOT) &
       WRITE(*,*) 'WARNING: Modified Mofakham (2020) model is exactly Gosman (1983) with RW time step equal to RK time step.'
-  nRWVars = 7
+    nRWVars = 7
+    RWinUse =  .TRUE.
 
   CASE('Gosman')
     nRWVars = 4
+    RWinUse =  .TRUE.
+
+  CASE('none')
+    nRWVars = 0
+    RWinUse =  .FALSE.
 
   CASE DEFAULT
-    CALL abort(__STAMP__, ' No particle random walk model given.')
+    CALL abort(__STAMP__, ' No valid particle random walk model given.')
 END SELECT
 
 ! Allocate array to hold the RW properties for every particle

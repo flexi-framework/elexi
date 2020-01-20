@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2020  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -300,7 +300,6 @@ USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Erosion_Vars
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_SGS,               ONLY: ParticleSGS
-USE MOD_Particle_SGS_Vars,          ONLY: SGSModel
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
@@ -338,9 +337,7 @@ CALL InitializeVariables(ManualTimeStep_opt)
 #if USE_RW
 CALL ParticleInitRandomWalk()
 #else
-IF(SGSModel.NE.'none') THEN
-  CALL ParticleInitSGS()
-END IF
+CALL ParticleInitSGS()
 #endif
 
 ! Restart particles here, otherwise we can not know if we need to have an initial emission
@@ -372,15 +369,15 @@ SUBROUTINE InitializeVariables(ManualTimeStep_opt)
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_ReadInTools
+!USE MOD_Equation_Vars         ,ONLY:IniRefState, RefStatePrim
+USE MOD_Mesh_Vars,             ONLY:BoundaryName,BoundaryType, nBCs
 USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars,ONLY:PartBound,nPartBound,PartAuxBC,LowVeloRemove
 USE MOD_Particle_Boundary_Vars,ONLY:nAuxBCs,AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone,AuxBC_parabol,UseAuxBCs
-USE MOD_Mesh_Vars,             ONLY:BoundaryName,BoundaryType, nBCs
 USE MOD_Particle_Interpolation,ONLY:InitParticleInterpolation
 USE MOD_Particle_Mesh,         ONLY:InitFIBGM,MarkAuxBCElems
-USE MOD_Particle_MPI_Vars,     ONLY:SafetyFactor,halo_eps_velo
-USE MOD_Equation_Vars         ,ONLY:IniRefState, RefStatePrim
 USE MOD_Particle_Mesh_Vars,    ONLY:GEO
+USE MOD_Particle_MPI_Vars,     ONLY:SafetyFactor,halo_eps_velo
 #if USE_MPI
 USE MOD_Particle_MPI,          ONLY:InitEmissionComm
 USE MOD_Particle_MPI_Vars,     ONLY:PartMPI
@@ -395,10 +392,9 @@ REAL,INTENT(IN),OPTIONAL       :: ManualTimeStep_opt                            
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER               :: iSpec, iInit, iPartBound, iSeed
-INTEGER               :: SeedSize, iPBC, iBC, iExclude
+INTEGER               :: SeedSize, iBC, iExclude
 INTEGER               :: iAuxBC, nAuxBCplanes, nAuxBCcylinders, nAuxBCcones, nAuxBCparabols
 INTEGER               :: ALLOCSTAT
-INTEGER               :: dummy_int
 CHARACTER(32)         :: tmpStr, tmpStr2, tmpStr3
 CHARACTER(200)        :: tmpString
 CHARACTER(200), ALLOCATABLE        :: tmpStringBC(:)

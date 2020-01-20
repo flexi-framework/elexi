@@ -163,24 +163,16 @@ SUBROUTINE InterpolateFieldToParticle(nVar,U,FieldAtParticle)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-!USE MOD_DG_Vars,                 ONLY: U
-USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
-USE MOD_Mesh_Vars,               ONLY: nElems
-USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PDM,PEM
-USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
-!USE MOD_Particle_Interpolation_Vars, ONLY: FieldAtParticle,useExternalField,externalField
+USE MOD_Eval_xyz,                    ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
+USE MOD_Mesh_Vars,                   ONLY: nElems
 USE MOD_Particle_Interpolation_Vars, ONLY: useExternalField,externalField
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
-!#if USE_RW
-!USE MOD_DG_Vars,                 ONLY: UTurb
-!USE MOD_Equation_Vars,           ONLY: nVarTurb
-!USE MOD_Particle_Interpolation_Vars,   ONLY: TurbFieldAtParticle
-USE MOD_Particle_RandomWalk_Vars,ONLY: RWTime
-!USE MOD_Particle_Vars,           ONLY: Species,PartSpecies,TurbPartState
-USE MOD_Particle_Vars,           ONLY: TurbPartState
-!USE MOD_Restart_Vars,            ONLY: RestartTurb
-!USE MOD_TimeDisc_Vars,           ONLY: t
-!#endif
+USE MOD_Particle_Tracking_Vars,      ONLY: DoRefMapping
+USE MOD_Particle_Vars,               ONLY: PartPosRef,PartState,PDM,PEM
+USE MOD_Particle_Vars,               ONLY: TurbPartState
+#if USE_RW
+USE MOD_Particle_RandomWalk_Vars,    ONLY: RWTime
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

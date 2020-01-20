@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2020  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -20,12 +20,16 @@ MODULE MOD_Particle_RandomWalk_Vars
 IMPLICIT NONE
 PUBLIC
 SAVE
+#if USE_RW
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                                :: ParticleRWInitIsDone=.FALSE.
+LOGICAL                                :: RWinUse                          ! Flag for active RW
 !Random Walk method
+INTEGER                                :: nRWVars                          ! number of variables in TurbPartState
 CHARACTER(40)                          :: RWModel                          ! specifying Keyword for RW model
 CHARACTER(40)                          :: RWTime                           ! time stepping mode for RW model
 !===================================================================================================================================
+#endif /*USE_RW*/
 END MODULE MOD_Particle_RandomWalk_Vars

@@ -154,10 +154,14 @@ SUBROUTINE InitParticleCommSize()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_Particle_Erosion_Vars,    ONLY:PartTrackReflection
 USE MOD_Particle_MPI_Vars
-USE MOD_Particle_Vars,          ONLY:PDM
-USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping
-USE MOD_Particle_Erosion_Vars,  ONLY:PartTrackReflection
+USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars,SGSinUse
+USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
+USE MOD_Particle_Vars,            ONLY:PDM
+#if USE_RW
+USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -170,6 +174,12 @@ INTEGER         :: ALLOCSTAT
 PartCommSize   = 0
 ! PartState: position and velocity
 PartCommSize   = PartCommSize + 6
+! TurbPartState: SGS turbulent velocity and random draw
+PartCommSize   = PartCommSize + nSGSVars
+#if USE_RW
+! TurbPartState: RW turbulent velocity, interaction time and random draw
+PartCommSize   = PartCommSize + nRWVars
+#endif
 ! Tracking: Include Reference coordinates
 IF(DoRefMapping) PartCommSize=PartCommSize+3
 ! Species-ID
@@ -181,6 +191,8 @@ PartCommSize   = PartCommSize + 1
 ! communication after each Runge-Kutta stage, so send time derivative must be communicated to the new proc
 ! Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
 PartCommSize   = PartCommSize + 6
+! TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
+IF (SGSinUse)    PartCommSize = PartCommSize + 3
 ! IsNewPart for RK-Reconstruction
 PartCommSize   = PartCommSize + 1
 
@@ -338,11 +350,18 @@ USE MOD_Preproc
 USE MOD_Particle_Tracking_vars,   ONLY:DoRefMapping
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,PartHaloElemToProc,PartCommSize,PartSendBuf, PartRecvBuf &
                                       ,PartTargetProc
-USE MOD_Particle_Vars,            ONLY:PartState,PartSpecies,PEM,PDM,PartPosRef
-USE MOD_Particle_Vars,            ONLY:Pt_temp
-! variables for erosion tracking
+USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef
+USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
+USE MOD_Particle_Vars,            ONLY:TurbPartState,TurbPt_temp
+! Variables for erosion tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Erosion_Vars
+! Variables for SGS model
+USE MOD_Particle_SGS_Vars,        ONLY:SGSinUse,nSGSVars
+#if USE_RW
+! Variables for RW model
+USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -379,29 +398,30 @@ DO iProc=1, PartMPI%nMPINeighbors
     IF(PartTargetProc(iPart).EQ.iProc) THEN
       ! fill content
       ElemID=PEM%Element(iPart)
+
       ! position and velocity in physical space
       PartSendBuf(iProc)%content(1+iPos:6+iPos) = PartState(1:6,iPart)
+      jpos=iPos+6
+
+      ! SGS turbulent velocity and random draw
+      PartSendBuf(iProc)%content(1+jPos:nSGSVars+jPos) = TurbPartState(1:nSGSVars,iPart)
+      jpos=jpos+nSGSVars
+#if USE_RW
+      ! RW turbulent velocity, interaction time and random draw
+      PartSendBuf(iProc)%content(1+jPos:nRWVars+jPos) = TurbPartState(1:nRWVars,iPart)
+      jpos=jpos+nRWVars
+#endif
+
       ! position in reference space (if required)
-      IF(DoRefMapping) THEN ! + deposition type....
-        PartSendBuf(iProc)%content(7+iPos:9+iPos) = PartPosRef(1:3,iPart)
-        jPos=iPos+9
-      ELSE
-        jPos=iPos+6
+      IF(DoRefMapping) THEN
+        PartSendBuf(iProc)%content(1+jPos:3+jPos) = PartPosRef(1:3,iPart)
+        jPos=jPos+3
       END IF
 
       ! reflection counter
       IF (PartTrackReflection) THEN
-          IF(DoRefMapping) THEN
-              PartSendBuf(iProc)%content(10+iPos) = REAL(PartReflCount(iPart),KIND=8)
-          ELSE
-              PartSendBuf(iProc)%content(7+iPos)  = REAL(PartReflCount(iPart),KIND=8)
-          ENDIF
-          ! Now update send buffer position
-          IF(DoRefMapping) THEN
-              jPos=iPos+10
-          ELSE
-              jPos=iPos+7
-          END IF
+        PartSendBuf(iProc)%content(1+jPos) = REAL(PartReflCount(iPart),KIND=8)
+        jPos=jPos+1
       END IF
 
       ! particles species
@@ -410,12 +430,21 @@ DO iProc=1, PartMPI%nMPINeighbors
 
       ! Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
       PartSendBuf(iProc)%content(1+jPos:6+jPos) = Pt_temp(1:6,iPart)
-      IF (PDM%IsNewPart(iPart)) THEN
-        PartSendBuf(iProc)%content(7+jPos) = 1.
-      ELSE
-        PartSendBuf(iProc)%content(7+jPos) = 0.
+      jPos=jPos+6
+
+      ! TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
+      IF (SGSinUse) THEN
+        PartSendBuf(iProc)%content(1+jPos:3+jPos) = TurbPt_temp(1:3,iPart)
+        jpos=jpos+3
       END IF
-      jPos=jPos+7
+
+      ! IsNewPart for RK-Reconstruction
+      IF (PDM%IsNewPart(iPart)) THEN
+        PartSendBuf(iProc)%content(1+jPos) = 1.
+      ELSE
+        PartSendBuf(iProc)%content(1+jPos) = 0.
+      END IF
+      jPos=jPos+1
 
       ! native ElemID of particle position on receiving proc
       PartSendBuf(iProc)%content(  1+jPos) = REAL(PartHaloElemToProc(NATIVE_ELEM_ID,ElemID),KIND=8)
@@ -428,6 +457,7 @@ DO iProc=1, PartMPI%nMPINeighbors
         CALL Abort(__STAMP__,' Particle-wrong sending message size!')
       END IF
 
+      ! Move index counter to beginning of new part variables
       iPos=iPos+PartCommSize
 
       ! particle is ready for send, now it can deleted
@@ -458,9 +488,9 @@ PartMPIExchange%nMPIParticles=SUM(PartMPIExchange%nPartsRecv(1,:))
 
 DO iPart=1,PDM%ParticleVecLength
   IF(PartTargetProc(iPart).EQ.-1) CYCLE
-  PartState(1:6,iPart)=0.
-  PartSpecies(iPart)=0
-  Pt_temp(1:6,iPart)=0.
+  PartState(1:6,iPart) = 0.
+  PartSpecies(iPart)   = 0
+  Pt_temp(1:6,iPart)   = 0.
 END DO ! iPart=1,PDM%ParticleVecLength
 
 
@@ -533,13 +563,20 @@ SUBROUTINE MPIParticleRecv()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Tracking_vars,   ONLY:DoRefMapping
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,PartCommSize, PartRecvBuf,PartSendBuf
-USE MOD_Particle_Vars,            ONLY:PartState,PartSpecies,PEM,PDM,PartPosRef
-USE MOD_Particle_Vars,            ONLY:Pt_temp
+USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef
+USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
+USE MOD_Particle_Vars,            ONLY:TurbPartState,TurbPt_temp
+USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 ! variables for erosion tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Erosion_Vars
+! Variables for SGS model
+USE MOD_Particle_SGS_Vars,        ONLY:SGSinUse,nSGSVars
+#if USE_RW
+! Variables for RW model
+USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -588,29 +625,29 @@ DO iProc=1,PartMPI%nMPINeighbors
     PartID = PDM%nextFreePosition(nRecv+PDM%CurrentNextFreePosition)
     IF(PartID.EQ.0) &
       CALL abort(__STAMP__,' Error in ParticleExchange_parallel. Corrupted list: PIC%nextFreePosition', nRecv)
+
     ! position and velocity in physical space
-    PartState(1:6,PartID)   = PartRecvBuf(iProc)%content( 1+iPos: 6+iPos)
+    PartState(1:6,PartID)   = PartRecvBuf(iProc)%content(1+iPos:6+iPos)
+    jpos=iPos+6
+
+    TurbPartState(1:nSGSVars,PartID) = PartRecvBuf(iProc)%content(1+jpos:nSGSVars+jpos)
+    jpos=jpos+nSGSVars
+#if USE_RW
+      ! RW turbulent velocity, interaction time and random draw
+      TurbPartState(1:nRWVars,PartID) = PartRecvBuf(iProc)%content(1+jPos:nRWVars+jPos)
+      jpos=jpos+nRWVars
+#endif
+
     ! position in reference space (if required)
     IF(DoRefMapping) THEN
-      PartPosRef(1:3,PartID) = PartRecvBuf(iProc)%content(7+iPos: 9+iPos)
-      jPos=iPos+9
-    ELSE
-      jPos=iPos+6
+      PartPosRef(1:3,PartID) = PartRecvBuf(iProc)%content(7+iPos:9+iPos)
+      jPos=jPos+3
     END IF
 
     ! reflection counter
     IF (PartTrackReflection) THEN
-        IF(DoRefMapping)THEN
-            PartReflCount(PartID)   = INT(PartRecvBuf(iProc)%content(10+iPos),KIND=4)
-        ELSE
-            PartReflCount(PartID)   = INT(PartRecvBuf(iProc)%content(7+iPos),KIND=4)
-        END IF
-        ! Now update receive buffer position
-        IF(DoRefMapping) THEN
-            jPos=iPos+10
-        ELSE
-            jPos=iPos+7
-        END IF
+      PartReflCount(PartID)   = INT(PartRecvBuf(iProc)%content(1+jPos),KIND=4)
+      jpos=jpos+1
     END IF
 
     ! particles species
@@ -619,22 +656,34 @@ DO iProc=1,PartMPI%nMPINeighbors
 
     ! Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
     Pt_temp(1:6,PartID)     = PartRecvBuf(iProc)%content( 1+jPos:6+jPos)
-    IF ( INT(PartRecvBuf(iProc)%content( 7+jPos)) .EQ. 1) THEN
+    jpos=jpos+6
+
+    ! TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
+    IF (SGSinUse) THEN
+      TurbPt_temp(1:3,PartID) = PartRecvBuf(iProc)%content(1+jPos:3+jPos)
+      jpos=jpos+3
+    END IF
+
+    ! IsNewPart for RK-Reconstruction
+    IF      ( INT(PartRecvBuf(iProc)%content( 1+jPos)) .EQ. 1) THEN
       PDM%IsNewPart(PartID)=.TRUE.
-    ELSE IF ( INT(PartRecvBuf(iProc)%content( 7+jPos)) .EQ. 0) THEN
+    ELSE IF ( INT(PartRecvBuf(iProc)%content( 1+jPos)) .EQ. 0) THEN
       PDM%IsNewPart(PartID)=.FALSE.
     ELSE
       CALL Abort(__STAMP__,'Error with IsNewPart in MPIParticleRecv!')
     END IF
-    jPos=jPos+7
+    jPos=jPos+1
 
     ! native ElemID of particle position on my proc
     PEM%Element(PartID)     = INT(PartRecvBuf(iProc)%content(1+jPos),KIND=4)
     jPos=jPos+1
+
+    ! PartCommSize must be a multiple of particles to receive
     IF(MOD(jPos,PartCommSize).NE.0)THEN
       IPWRITE(UNIT_stdOut,*)  'jPos',jPos
       CALL Abort(__STAMP__,' Particle-wrong receiving message size!')
     END IF
+
     ! Set Flag for received parts in order to localize them later
     PDM%ParticleInside(PartID) = .TRUE.
     PEM%lastElement(PartID)    = -888

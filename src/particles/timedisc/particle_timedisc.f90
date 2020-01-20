@@ -128,8 +128,8 @@ IF (t.GE.DelayTime) THEN
   IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,TurbFieldAtParticle)
   CALL ParticleRandomWalk(t)
 #endif
-  IF (SGSinUse) CALL ParticleSGS(1,dt,dt)
   CALL CalcPartRHS()
+  IF (SGSinUse) CALL ParticleSGS(1,dt,dt)
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -291,8 +291,8 @@ CALL InterpolateFieldToParticle(PP_nVar,U     ,FieldAtParticle)
   CALL ParticleRandomWalk(t)
 #endif
   !--> Calculate the particle right hand side and push
-  IF (SGSinUse) CALL ParticleSGS(iStage,dt,b_dt(iStage))
   CALL CalcPartRHS()
+  IF (SGSinUse) CALL ParticleSGS(iStage,dt,b_dt(iStage))
 #if USE_LOADBALANCE
   CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -518,8 +518,8 @@ IF (t.GE.DelayTime) THEN
   CALL ParticleRandomWalk(t)
 #endif
   !--> Calculate the particle right hand side and push
-  IF (SGSinUse) CALL ParticleSGS(iStage,dt,b_dt(iStage))
   CALL CalcPartRHS()
+  IF (SGSinUse) CALL ParticleSGS(iStage,dt,b_dt(iStage))
 #if USE_LOADBALANCE
   CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/

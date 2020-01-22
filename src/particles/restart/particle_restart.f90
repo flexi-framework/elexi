@@ -96,34 +96,40 @@ doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
 
 IF (LEN_TRIM(RestartFile).GT.0) THEN
   SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' Reading Particles from Restartfile...'
-
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-  !read local ElemInfo from HDF5
-  FirstElemInd=offsetElem+1
-  LastElemInd=offsetElem+PP_nElems
-  ! read local ParticleInfo from HDF5
+
+  ! Read the first/last ElemID on the local proc
+  FirstElemInd = offsetElem+1
+  LastElemInd  = offsetElem+PP_nElems
+
+  ! Check if file contains particle information
   CALL DatasetExists(File_ID,'PartData',PartDataExists)
   IF(PartDataExists)THEN
-    ! get PartInt
+    ! PartInt contains the indices of the particles in each element
     ALLOCATE(PartInt(PartIntSize,FirstElemInd:LastElemInd))
+
+    ! Read number of local particles and their offset from HDF5
     CALL ReadArray('PartInt',2,(/PartIntSize,PP_nElems/),offsetElem,2,IntArray=PartInt)
-    ! read local Particle Data from HDF5
-    locnPart=PartInt(ELEM_LastPartInd,LastElemInd)-PartInt(ELEM_FirstPartInd,FirstElemInd)
-    offsetnPart=PartInt(ELEM_FirstPartInd,FirstElemInd)
-    ! get size of PartData
+    locnPart    = PartInt(ELEM_LastPartInd,LastElemInd)-PartInt(ELEM_FirstPartInd,FirstElemInd)
+    offsetnPart = PartInt(ELEM_FirstPartInd,FirstElemInd)
+
+    ! Get size of PartData
     CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
     CHECKSAFEINT(HSize(2),4)
     PartDataSize = INT(HSize(1))
     SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Number of particle variables',' | ',PartDataSize
-    ! Do not start counting reflections mid-simulation
+
+    ! Reflections are stored in the 8th data column. Do not start counting reflections mid-simulation
     IF (PartDataSize.EQ.7) THEN
         PartTrackReflection = .FALSE.
         SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Reflections not tracked previously. Disabling reflection counter',' | ',PartDataSize
     END IF
-    ! get PartData
+
+    ! Get PartData
     ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
-    CALL ReadArray('PartData',2,(/PartDataSize,locnPart/),offsetnPart,2,RealArray=PartData)!,&
-                           !xfer_mode_independent=.TRUE.)
+    CALL ReadArray('PartData',2,(/PartDataSize,locnPart/),offsetnPart,2,RealArray=PartData)
+
+    ! Loop over all particles on local proc and fill the PartState
     IF (locnPart.GT.0) THEN
       PartState(1,1:locnPart)   = PartData(1,offsetnPart+1:offsetnPart+locnPart)
       PartState(2,1:locnPart)   = PartData(2,offsetnPart+1:offsetnPart+locnPart)
@@ -132,19 +138,27 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       PartState(5,1:locnPart)   = PartData(5,offsetnPart+1:offsetnPart+locnPart)
       PartState(6,1:locnPart)   = PartData(6,offsetnPart+1:offsetnPart+locnPart)
       PartSpecies(1:locnPart)   = INT(PartData(7,offsetnPart+1:offsetnPart+locnPart))
+      ! Reflections were tracked previously and are therefore still enabled
       IF (PartDataSize.EQ.8) THEN
           PartReflCount(1:locnPart) = INT(PartData(8,offsetnPart+1:offsetnPart+locnPart))
       END IF
+
+      ! Fill the particle-to-element-mapping (PEM) with the information from HDF5
       DO iElem=FirstElemInd,LastElemInd
+        ! If the element contains a particle, add its ID to the element. Particles are still ordered along the SFC at this point
         IF (PartInt(ELEM_LastPartInd,iElem).GT.PartInt(ELEM_FirstPartInd,iElem)) THEN
-          PEM%Element(PartInt(ELEM_FirstPartInd,iElem)-offsetnPart+1 : &
+          PEM%Element    (PartInt(ELEM_FirstPartInd,iElem)-offsetnPart+1 : &
                                  PartInt(ELEM_LastPartInd,iElem) -offsetnPart)  = iElem-offsetElem
           PEM%LastElement(PartInt(ELEM_FirstPartInd,iElem)-offsetnPart+1 : &
                                  PartInt(ELEM_LastPartInd,iElem) -offsetnPart)  = iElem-offsetElem
         END IF
       END DO
+
+      ! All particle properties restored. Particle ready to be tracked
       PDM%ParticleInside(1:locnPart) = .TRUE.
     END IF
+
+    ! De-allocate arrays used for read-in
     DEALLOCATE(PartInt,PartData)
     PDM%ParticleVecLength = PDM%ParticleVecLength + locnPart
     CALL UpdateNextFreePosition()

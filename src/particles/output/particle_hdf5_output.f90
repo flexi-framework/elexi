@@ -144,7 +144,7 @@ REAL,ALLOCATABLE               :: TurbPartData(:,:)
 
 #if USE_MPI
   !>> Sum up particles from the other procs
-  sendbuf(1)  =locnPart
+  sendbuf(1)  = locnPart
   recvbuf     = 0
   CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,iError)
   !>> Offset of each proc is the sum of the particles on the previous procs

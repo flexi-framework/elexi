@@ -282,14 +282,18 @@ IF(MPIroot)THEN
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV '
 #endif
+#if USE_PARTICLES
   IF (nParticleInDomain.GT.0) THEN
     WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,I8,A1)',ADVANCE='NO') 'Time = ', t, &
         ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs), &
         ', # of Particles:', nParticleInDomain, ACHAR(13)
   ELSE
+#endif
     WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A1)',ADVANCE='NO') 'Time = ', t, &
         ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs), ACHAR(13)
+#if USE_PARTICLES
   END IF
+#endif
 #ifdef INTEL
   CLOSE(UNIT_stdOut)
 #endif

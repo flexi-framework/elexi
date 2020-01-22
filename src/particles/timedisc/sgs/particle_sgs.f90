@@ -97,11 +97,11 @@ SELECT CASE(SGSModel)
              G_SGS        (1:3,1:3   ,1:PDM%maxParticleNumber),      &
              B_SGS        (1:3,1:3   ,1:PDM%maxParticleNumber),      &
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
-             TurbPt_Temp  (1:3       ,1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
+             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
       CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
     TurbPartState = 0.
-    TurbPt_Temp   = 0.
+    TurbPt_temp   = 0.
 
   CASE('none')
     ! Do nothing
@@ -305,6 +305,7 @@ END SUBROUTINE ParticleSGS
 !===================================================================================================================================
 SUBROUTINE ParticleFinalizeSGS()
 ! MODULES
+USE MOD_Particle_Vars,              ONLY: TurbPartState,TurbPt_temp
 USE MOD_Particle_SGS_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -313,6 +314,17 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+SDEALLOCATE(USGS)
+SDEALLOCATE(USGSPart)
+SDEALLOCATE(kSGS)
+SDEALLOCATE(kSGSPart)
+SDEALLOCATE(sigmaSGS)
+SDEALLOCATE(tauSGS)
+SDEALLOCATE(tauL)
+SDEALLOCATE(G_SGS)
+SDEALLOCATE(B_SGS)
+SDEALLOCATE(TurbPartState)
+SDEALLOCATE(TurbPt_temp)
 
 ParticleSGSInitIsDone=.FALSE.
 

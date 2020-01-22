@@ -1144,8 +1144,9 @@ USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Interpolation_Vars
 #if USE_RW
-USE MOD_Particle_RandomWalk
+USE MOD_Particle_RandomWalk,    ONLY: ParticleFinalizeRandomWalk
 #endif
+USE MOD_Particle_SGS,           ONLY: ParticleFinalizeSGS
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -1189,14 +1190,17 @@ SDEALLOCATE(PEM%pNumber)
 SDEALLOCATE(PEM%pEnd)
 SDEALLOCATE(PEM%pNext)
 SDEALLOCATE(FieldAtParticle)
+! Sliding Mesh
 #if USE_SM
 SDEALLOCATE(PEM%hasCrossedSM)
 SDEALLOCATE(PDM%ParticleInsideSM)
+! SGS/RW turbulence model
 #endif
-#if USE_RW
 SDEALLOCATE(TurbFieldAtParticle)
+#if USE_RW
 CALL ParticleFinalizeRandomWalk()
 #endif
+CALL ParticleFinalizeSGS()
 
 END SUBROUTINE FinalizeParticles
 

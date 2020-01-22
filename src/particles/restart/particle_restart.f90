@@ -61,6 +61,12 @@ USE MOD_ErosionPoints_Vars,      ONLY:EP_inUse
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,       ONLY:PartMPI
 #endif /*MPI*/
+! Particle turbulence models
+USE MOD_Particle_Vars,           ONLY:TurbPartState
+USE MOD_Particle_SGS_Vars,       ONLY:nSGSVars
+#if USE_RW
+USE MOD_Particle_RandomWalk_Vars,ONLY:nRWVars
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -91,6 +97,10 @@ INTEGER                  :: NbrOfFoundParts, CompleteNbrOfFound, RecCount(0:Part
 INTEGER                  :: i
 INTEGER                  :: iElem
 LOGICAL                  :: doFlushFiles_loc
+! Particle turbulence models
+INTEGER                  :: TurbPartSize         !number of turbulent properties with curent setup
+INTEGER                  :: TurbPartDataSize     !number of turbulent properties in HDF5 file
+REAL,ALLOCATABLE         :: TurbPartData(:,:)    !number of entries in each line of TurbPartData
 !===================================================================================================================================
 doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
 
@@ -137,7 +147,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       PartState(4,1:locnPart)   = PartData(4,offsetnPart+1:offsetnPart+locnPart)
       PartState(5,1:locnPart)   = PartData(5,offsetnPart+1:offsetnPart+locnPart)
       PartState(6,1:locnPart)   = PartData(6,offsetnPart+1:offsetnPart+locnPart)
-      PartSpecies(1:locnPart)   = INT(PartData(7,offsetnPart+1:offsetnPart+locnPart))
+      PartSpecies(1:locnPart)=INT(PartData(7,offsetnPart+1:offsetnPart+locnPart))
       ! Reflections were tracked previously and are therefore still enabled
       IF (PartDataSize.EQ.8) THEN
           PartReflCount(1:locnPart) = INT(PartData(8,offsetnPart+1:offsetnPart+locnPart))
@@ -156,6 +166,40 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
       ! All particle properties restored. Particle ready to be tracked
       PDM%ParticleInside(1:locnPart) = .TRUE.
+    END IF
+
+    ! Get size of TurbPartData, reuse PartDim dummy
+    CALL GetDataSize(File_ID,'TurbPartData',PartDim,HSize)
+    CHECKSAFEINT(HSize(2),4)
+    TurbPartSize = INT(HSize(1))
+    SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Number of turbulent particle variables',' | ',TurbPartSize
+
+    ! Total size of turbulent properties
+    TurbPartDataSize = nSGSVars
+#if USE_RW
+    TurbPartDataSize = TurbPartDataSize + nRWVars
+#endif
+
+    ! Compare number of turbulent properties of current run against HDF5
+    IF ((TurbPartDataSize.EQ.0).AND.(TurbPartSize.NE.0)) THEN
+      SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data but current run in DNS mode. Ignoring ...'
+    ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.NE.TurbPartSize)) THEN
+      CALL abort(__STAMP__,' Number of turbulent variables in HDF5 does not match requested SGS/RW model!')
+    ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.EQ.TurbPartSize)) THEN
+      ! Maybe add check that compares the models here. Should resort to a warning in case we want to change the model midrun, so
+      ! nothing urgent
+      SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data with ',TurbPartDataSize, &
+                                                  ' variables. Continuing run.'
+      ! Get TurbPartData
+      ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
+      CALL ReadArray('TurbPartData',2,(/TurbPartDataSize,locnPart/),offsetnPart,2,RealArray=TurbPartData)
+
+      ! Loop over all particles on local proc and fill the TurbPartState
+      IF (locnPart.GT.0) THEN
+        TurbPartState(1:TurbPartDataSize,1:locnPart) = TurbPartData(1:TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart)
+      END IF
+
+    ! Last case is no turbulent properties in current run or HDF5. Do nothing ...
     END IF
 
     ! De-allocate arrays used for read-in

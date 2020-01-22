@@ -640,7 +640,7 @@ DO iProc=1,PartMPI%nMPINeighbors
 
     ! position in reference space (if required)
     IF(DoRefMapping) THEN
-      PartPosRef(1:3,PartID) = PartRecvBuf(iProc)%content(7+iPos:9+iPos)
+      PartPosRef(1:3,PartID) = PartRecvBuf(iProc)%content(1+jPos:3+jPos)
       jPos=jPos+3
     END IF
 

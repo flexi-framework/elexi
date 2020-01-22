@@ -403,14 +403,16 @@ DO iProc=1, PartMPI%nMPINeighbors
       PartSendBuf(iProc)%content(1+iPos:6+iPos) = PartState(1:6,iPart)
       jpos=iPos+6
 
-      ! SGS turbulent velocity and random draw
-      PartSendBuf(iProc)%content(1+jPos:nSGSVars+jPos) = TurbPartState(1:nSGSVars,iPart)
-      jpos=jpos+nSGSVars
+      IF (ALLOCATED(TurbPartState)) THEN
+        ! SGS turbulent velocity and random draw
+        PartSendBuf(iProc)%content(1+jPos:nSGSVars+jPos) = TurbPartState(1:nSGSVars,iPart)
+        jpos=jpos+nSGSVars
 #if USE_RW
-      ! RW turbulent velocity, interaction time and random draw
-      PartSendBuf(iProc)%content(1+jPos:nRWVars+jPos) = TurbPartState(1:nRWVars,iPart)
-      jpos=jpos+nRWVars
+        ! RW turbulent velocity, interaction time and random draw
+        PartSendBuf(iProc)%content(1+jPos:nRWVars+jPos) = TurbPartState(1:nRWVars,iPart)
+        jpos=jpos+nRWVars
 #endif
+      END IF
 
       ! position in reference space (if required)
       IF(DoRefMapping) THEN
@@ -425,7 +427,7 @@ DO iProc=1, PartMPI%nMPINeighbors
       END IF
 
       ! particles species
-      PartSendBuf(iProc)%content(       1+jPos) = REAL(PartSpecies(iPart),KIND=8)
+      PartSendBuf(iProc)%content(1+jPos) = REAL(PartSpecies(iPart),KIND=8)
       jPos=jPos+1
 
       ! Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
@@ -630,13 +632,16 @@ DO iProc=1,PartMPI%nMPINeighbors
     PartState(1:6,PartID)   = PartRecvBuf(iProc)%content(1+iPos:6+iPos)
     jpos=iPos+6
 
-    TurbPartState(1:nSGSVars,PartID) = PartRecvBuf(iProc)%content(1+jpos:nSGSVars+jpos)
-    jpos=jpos+nSGSVars
+    IF (ALLOCATED(TurbPartState)) THEN
+      ! SGS turbulent velocity and random draw
+      TurbPartState(1:nSGSVars,PartID) = PartRecvBuf(iProc)%content(1+jpos:nSGSVars+jpos)
+      jpos=jpos+nSGSVars
 #if USE_RW
       ! RW turbulent velocity, interaction time and random draw
       TurbPartState(1:nRWVars,PartID) = PartRecvBuf(iProc)%content(1+jPos:nRWVars+jPos)
       jpos=jpos+nRWVars
 #endif
+    END IF
 
     ! position in reference space (if required)
     IF(DoRefMapping) THEN

@@ -234,7 +234,7 @@ REAL,INTENT(IN) :: tEnd   !< end time of simulation
 INTEGER :: FVcounter
 REAL    :: FV_percent
 #endif
-REAL    :: percent,time_remaining,mins,secs,hours
+REAL    :: percent,time_remaining,mins,secs,hours,days
 #if USE_PARTICLES
 INTEGER :: nParticleOnProc,iPart
 INTEGER :: nParticleInDomain
@@ -276,23 +276,20 @@ IF(MPIroot)THEN
   time_remaining = time_remaining / 60
   mins = MOD(time_remaining,60.)
   time_remaining = time_remaining / 60
-  hours = MOD(time_remaining,24.)
+  hours= MOD(time_remaining,24.)
+  days = time_remaining / 24
 #if FV_ENABLED
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV '
 #endif
-#if USE_PARTICLES
   IF (nParticleInDomain.GT.0) THEN
-  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A,I8,A1)',ADVANCE='NO') 'Time = ', t, &
-      ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(hours),':',INT(mins),':',INT(secs), &
-      ', # of Particles:', nParticleInDomain, ACHAR(13)
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,I8,A1)',ADVANCE='NO') 'Time = ', t, &
+        ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs), &
+        ', # of Particles:', nParticleInDomain, ACHAR(13)
   ELSE
-#endif
-  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1)',ADVANCE='NO') 'Time = ', t, &
-      ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(hours),':',INT(mins),':',INT(secs), ACHAR(13)
-#if USE_PARTICLES
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A1)',ADVANCE='NO') 'Time = ', t, &
+        ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs), ACHAR(13)
   END IF
-#endif
 #ifdef INTEL
   CLOSE(UNIT_stdOut)
 #endif

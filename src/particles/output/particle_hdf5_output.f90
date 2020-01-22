@@ -78,6 +78,12 @@ USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
 #if CODE_ANALYZE
 USE MOD_Particle_Tracking_Vars,ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
+! Particle turbulence models
+USE MOD_Particle_Vars,         ONLY: TurbPartState
+USE MOD_Particle_SGS_Vars,     ONLY: nSGSVars
+#if USE_RW
+USE MOD_Particle_RandomWalk_Vars,      ONLY: nRWVars
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -106,7 +112,10 @@ INTEGER                        :: locnPart_max
 INTEGER                        :: i,j,k,m,iPartition
 REAL                           :: L_xi(3,0:PP_N), L_eta_zeta
 #endif
-!=============================================
+! Particle turbulence models
+INTEGER                        :: TurbPartDataSize
+REAL,ALLOCATABLE               :: TurbPartData(:,:)
+!===================================================================================================================================
 ! Write properties -----------------------------------------------------------------------------------------------------------------
 
   ! Check if we are counting reflections
@@ -116,7 +125,17 @@ REAL                           :: L_xi(3,0:PP_N), L_eta_zeta
     PartDataSize=7
   END IF
 
+  ! Check if we are using any particle turbulence model
+  IF (ALLOCATED(TurbPartState)) THEN
+    TurbPartDataSize = nSGSVars
+#if USE_RW
+    TurbPartDataSize = TurbPartDataSize + nRWVars
+#endif
+  END IF
+
+  ! Determine number of particles in the complete domain
   locnPart =   0
+  !>> Count number of particle on local proc
   DO pcount = 1,PDM%ParticleVecLength
     IF(PDM%ParticleInside(pcount)) THEN
       locnPart = locnPart + 1
@@ -124,42 +143,52 @@ REAL                           :: L_xi(3,0:PP_N), L_eta_zeta
   END DO
 
 #if USE_MPI
-  sendbuf(1)=locnPart
-  recvbuf=0
+  !>> Sum up particles from the other procs
+  sendbuf(1)  =locnPart
+  recvbuf     = 0
   CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,iError)
-  offsetnPart=recvbuf(1)
-  sendbuf(1)=recvbuf(1)+locnPart
-  CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_WORLD,iError) !last proc knows global number
-  !global numbers
-  nPart_glob=sendbuf(1)
+  !>> Offset of each proc is the sum of the particles on the previous procs
+  offsetnPart = recvbuf(1)
+  sendbuf(1)  = recvbuf(1)+locnPart
+  !>> Last proc knows the global number
+  CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_WORLD,iError)
+  !>> Gather the global number and communicate to root (MPIRank.EQ.0)
+  nPart_glob  = sendbuf(1)
   CALL MPI_GATHER(locnPart,1,MPI_INTEGER,nParticles,1,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
   LOGWRITE(*,*)'offsetnPart,locnPart,nPart_glob',offsetnPart,locnPart,nPart_glob
   CALL MPI_REDUCE(locnPart, locnPart_max, 1, MPI_INTEGER, MPI_MAX, 0, MPI_COMM_WORLD, IERROR)
 #else
-  offsetnPart=0
-  nPart_glob=locnPart
-  locnPart_max=locnPart
+  offsetnPart  = 0
+  nPart_glob   = locnPart
+  locnPart_max = locnPart
 #endif
 
+  ! Allocate data arrays for mean particle quantities
   ALLOCATE(PartInt( PartIntSize ,offsetElem+1 :offsetElem+PP_nElems))
   ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
+  ! Allocate data arrays for turbulent particle quantities
+  ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
 
-!!! Kleiner Hack von JN (Teil 1/2):
-
-  ALLOCATE(PEM%pStart(1:PP_nElems)           , &
-           PEM%pNumber(1:PP_nElems)          , &
-           PEM%pNext(1:PDM%maxParticleNumber), &
-           PEM%pEnd(1:PP_nElems) )
+  ! Update next free position using a linked list
+  ALLOCATE(PEM%pStart (1:PP_nElems)            , &
+           PEM%pNumber(1:PP_nElems)            , &
+           PEM%pNext  (1:PDM%maxParticleNumber), &
+           PEM%pEnd   (1:PP_nElems))
   useLinkedList=.TRUE.
   CALL UpdateNextFreePosition()
 
-!!! Ende kleiner Hack von JN (Teil 1/2)
-  iPart=offsetnPart
+   ! Walk along the linked list and fill the data arrays
+  iPart = offsetnPart
+  ! Walk over all elements on local proc
   DO iElem_loc=1,PP_nElems
+    ! Reconstruct global ElemID using the offset along the space-filling curve (SFC)
     iElem_glob = iElem_loc + offsetElem
+    ! Set start of particle numbers in current element
     PartInt(1,iElem_glob)=iPart
+    ! Find all particles in current element
     IF (ALLOCATED(PEM%pNumber)) THEN
       PartInt(2,iElem_glob) = PartInt(1,iElem_glob) + PEM%pNumber(iElem_loc)
+      ! Sum up particles and add properties to output array
       pcount = PEM%pStart(iElem_loc)
       DO iPart=PartInt(1,iElem_glob)+1,PartInt(2,iElem_glob)
         PartData(1,iPart)=PartState(1,pcount)
@@ -173,25 +202,30 @@ REAL                           :: L_xi(3,0:PP_N), L_eta_zeta
             PartData(8,iPart)=REAL(PartReflCount(pcount))
         END IF
 
-#if CODE_ANALYZE
-        IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-          IF(pcount.EQ.PARTOUT)THEN
-            PartData(7,iPart)=-PartData(7,iPart)
-          END IF
-        END IF
-#endif /*CODE_ANALYZE*/
+        ! Turbulent particle properties
+        IF (ALLOCATED(TurbPartState)) TurbPartData(:,iPart)=TurbPartState(:,pcount)
 
+        ! piclas leftover? Might remove
+!#if CODE_ANALYZE
+!        IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
+!          IF(pcount.EQ.PARTOUT)THEN
+!            PartData(7,iPart)=-PartData(7,iPart)
+!          END IF
+!        END IF
+!#endif /*CODE_ANALYZE*/
+
+        ! Set the index to the next particle
         pcount = PEM%pNext(pcount)
       END DO
+      ! Set counter to the end of particle number in the current element
       iPart = PartInt(2,iElem_glob)
     ELSE
-      CALL abort(&
-      __STAMP__&
-      , " Particle HDF5-Output method not supported! PEM%pNumber not associated")
+      CALL abort(__STAMP__, " Particle HDF5-Output method not supported! PEM%pNumber not associated")
     END IF
     PartInt(2,iElem_glob)=iPart
   END DO
 
+  ! Allocate PartInt varnames array and fill it
   nVar=2
   ALLOCATE(StrVarNames(nVar))
   StrVarNames(1)='FirstPartID'
@@ -231,6 +265,7 @@ ASSOCIATE (&
                           collective=.TRUE.    ,IntArray=PartInt)
   DEALLOCATE(StrVarNames)
 
+  ! Allocate PartData varnames array and fill it
   ALLOCATE(StrVarNames(PartDataSize))
   StrVarNames(1)='ParticlePositionX'
   StrVarNames(2)='ParticlePositionY'
@@ -267,6 +302,26 @@ ASSOCIATE (&
   CALL CloseDataFile()
 #endif /*MPI*/
 
+  ! Turbulent particle properties currently not supported to be read directly. Do not associate varnames
+#if USE_MPI
+ CALL DistributedWriteArray(FileName,&
+                            DataSetName='TurbPartData'   ,rank=2       ,&
+                            nValGlobal=(/TurbPartDataSize,nPart_glob/) ,&
+                            nVal=      (/TurbPartDataSize,locnPart  /) ,&
+                            offset=    (/0               ,offsetnPart/),&
+                            collective=.FALSE.,offSetDim=2             ,&
+                            communicator=PartMPI%COMM,RealArray=TurbPartData)
+#else
+  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteArrayToHDF5(DataSetName='TurbPartData'   ,rank=2          ,&
+                        nValGlobal=(/TurbPartDataSize,nPart_glob/)    ,&
+                        nVal=      (/TurbPartDataSize,locnPart/)      ,&
+                        offset=    (/0               ,offsetnPart/)   ,&
+                        collective=.TRUE., RealArray=PartData)
+  CALL CloseDataFile()
+#endif /*MPI*/
+
+
 
   END ASSOCIATE
   ! reswitch
@@ -276,14 +331,12 @@ ASSOCIATE (&
   DEALLOCATE(PartInt)
   DEALLOCATE(PartData)
 
-!!! Kleiner Hack von JN (Teil 2/2):
+  ! De-allocate linked list and return to normal particle array mode
   useLinkedList=.FALSE.
   DEALLOCATE(PEM%pStart , &
              PEM%pNumber, &
              PEM%pNext  , &
              PEM%pEnd   )
-!!! Ende kleiner Hack von JN (Teil 2/2)
-
 
 END SUBROUTINE WriteParticleToHDF5
 

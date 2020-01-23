@@ -487,8 +487,8 @@ IF(iSample.GT.0)THEN
 END IF
 ! Reset buffer
 RP_Data=0.
-
 iSample=0
+
 RP_fileExists=.TRUE.
 IF(resetCounters)THEN
   ! Recompute required buffersize from timestep and add 10% tolerance

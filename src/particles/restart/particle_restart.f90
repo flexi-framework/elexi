@@ -141,13 +141,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
     ! Loop over all particles on local proc and fill the PartState
     IF (locnPart.GT.0) THEN
-      PartState(1,1:locnPart)   = PartData(1,offsetnPart+1:offsetnPart+locnPart)
-      PartState(2,1:locnPart)   = PartData(2,offsetnPart+1:offsetnPart+locnPart)
-      PartState(3,1:locnPart)   = PartData(3,offsetnPart+1:offsetnPart+locnPart)
-      PartState(4,1:locnPart)   = PartData(4,offsetnPart+1:offsetnPart+locnPart)
-      PartState(5,1:locnPart)   = PartData(5,offsetnPart+1:offsetnPart+locnPart)
-      PartState(6,1:locnPart)   = PartData(6,offsetnPart+1:offsetnPart+locnPart)
-      PartSpecies(1:locnPart)=INT(PartData(7,offsetnPart+1:offsetnPart+locnPart))
+      PartState(1:6,1:locnPart)     =     PartData(1:6,offsetnPart+1:offsetnPart+locnPart)
+      PartSpecies(  1:locnPart)     = INT(PartData(7  ,offsetnPart+1:offsetnPart+locnPart))
       ! Reflections were tracked previously and are therefore still enabled
       IF (PartDataSize.EQ.8) THEN
           PartReflCount(1:locnPart) = INT(PartData(8,offsetnPart+1:offsetnPart+locnPart))
@@ -213,60 +208,69 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' Reading Particles from Restartfile... DONE!'
     SWRITE(UNIT_StdOut,'(132("-"))')
 
+    ! Reconstruct the number of particles inserted before restart from the emission rate
     DO i=1,nSpecies
       DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
         Species(i)%Init(iInit)%InsertedParticle = INT(Species(i)%Init(iInit)%ParticleEmission * RestartTime,8)
       END DO
     END DO
 
-    ! if ParticleVecLength GT maxParticleNumber: Stop
+    ! Abort if HDF5 file contains more particles than memory allocated for in current run
     IF (PDM%ParticleVecLength.GT.PDM%maxParticleNumber) THEN
-      CALL abort(&
-  __STAMP__&
-  ,' Number of Particles in Restart higher than MaxParticleNumber!')
+      CALL abort(__STAMP__,' Number of Particles in Restart higher than MaxParticleNumber!')
     END IF
 
     ! Since the elementside-local node number are NOT persistant and dependent on the location
     ! of the MPI borders, all particle-element mappings need to be checked after a restart
     ! Step 1: Identify particles that are not in the element in which they were before the restart
-    COUNTER = 0
+    COUNTER  = 0
     COUNTER2 = 0
     IF(DoRefMapping) THEN
       DO i = 1,PDM%ParticleVecLength
         CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
-        IF(ALL(ABS(Xi).LE.EpsOneCell(PEM%Element(i)))) THEN ! particle inside
+        ! Particle already inside the correct element
+        IF(ALL(ABS(Xi).LE.EpsOneCell(PEM%Element(i)))) THEN
           InElementCheck=.TRUE.
           PartPosRef(1:3,i)=Xi
         ELSE
           InElementCheck=.FALSE.
         END IF
-        IF (.NOT.InElementCheck) THEN  ! try to find them within MyProc
+
+        ! Particle not inside the correct element, try to find them within the current proc
+        IF (.NOT.InElementCheck) THEN
           COUNTER = COUNTER + 1
-          !CALL SingleParticleToExactElement(i)
           CALL SingleParticleToExactElement(i,doHALO=.FALSE.,initFix=.FALSE.,doRelocate=.FALSE.)
+          ! Particle not located on the current proc
           IF (.NOT.PDM%ParticleInside(i)) THEN
             COUNTER2 = COUNTER2 + 1
             PartPosRef(1:3,i) = -888.
+          ! Particle on the correct proc but inside the wrong element
           ELSE
             PEM%LastElement(i) = PEM%Element(i)
           END IF
         END IF
       END DO
-    ELSE ! no Ref Mapping
+    ! No Ref Mapping
+    ELSE
       DO i = 1,PDM%ParticleVecLength
         CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
-        IF(ALL(ABS(Xi).LE.1.0)) THEN ! particle inside
+        ! Particle already inside the correct element
+        IF(ALL(ABS(Xi).LE.1.0)) THEN
           InElementCheck=.TRUE.
+          ! PartPosRef might be allocated for other functions, so try to write the position in ref space
           IF(ALLOCATED(PartPosRef)) PartPosRef(1:3,i)=Xi
         ELSE
           InElementCheck=.FALSE.
         END IF
-        IF (.NOT.InElementCheck) THEN  ! try to find them within MyProc
+
+        ! Particle not inside the correct element, try to find them within the current proc
+        IF (.NOT.InElementCheck) THEN
           COUNTER = COUNTER + 1
-          !CALL SingleParticleToExactElement(i)
           CALL SingleParticleToExactElementNoMap(i,doHALO=.FALSE.,doRelocate=.FALSE.)
+          ! Particle not located on the current proc
           IF (.NOT.PDM%ParticleInside(i)) THEN
             COUNTER2 = COUNTER2 + 1
+          ! Particle on the correct proc but inside the wrong element
           ELSE
             PEM%LastElement(i) = PEM%Element(i)
           END IF
@@ -328,7 +332,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       SWRITE(UNIT_stdOut,*) SUM(LostParts)-CompleteNbrOfFound,'were not found and have been removed.'
     END IF
 #else
-    IF (COUNTER.NE.0) WRITE(*,*) COUNTER,'Particles are in different element after restart!'
+    IF (COUNTER .NE.0) WRITE(*,*) COUNTER ,'Particles are in different element after restart!'
     IF (COUNTER2.NE.0) WRITE(*,*) COUNTER2,'of which could not be found and are removed!'
 #endif
     CALL UpdateNextFreePosition()
@@ -339,10 +343,11 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 CALL CloseDataFile()
 
   ! Get individual impact data
-IF (EP_inUse)           CALL RestartErosionPoint
+  IF (EP_inUse)         CALL RestartErosionPoint
 
   ! Delete all files that will be rewritten --> moved from restart.f90 since we need it here
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
+! No restart
 ELSE
   ! Delete all files since we are doing a fresh start --> moved from restart.f90 since we need it here
   IF (doFlushFiles_loc) CALL FlushFiles()

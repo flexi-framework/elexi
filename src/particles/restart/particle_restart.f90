@@ -199,6 +199,9 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         TurbPartState(1:TurbPartDataSize,1:locnPart) = TurbPartData(1:TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart)
       END IF
 
+      ! De-allocate array used for readin
+      DEALLOCATE(TurbPartData)
+
     ! Last case is no turbulent properties in current run or HDF5. Do nothing ...
     END IF
 

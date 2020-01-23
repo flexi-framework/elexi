@@ -192,7 +192,7 @@ PartCommSize   = PartCommSize + 1
 ! Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
 PartCommSize   = PartCommSize + 6
 ! TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
-IF (SGSinUse)    PartCommSize = PartCommSize + 3
+! IF (SGSinUse)    PartCommSize = PartCommSize + 3
 ! IsNewPart for RK-Reconstruction
 PartCommSize   = PartCommSize + 1
 
@@ -357,7 +357,7 @@ USE MOD_Particle_Vars,            ONLY:TurbPartState,TurbPt_temp
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Erosion_Vars
 ! Variables for SGS model
-USE MOD_Particle_SGS_Vars,        ONLY:SGSinUse,nSGSVars
+USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
 #if USE_RW
 ! Variables for RW model
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
@@ -435,10 +435,10 @@ DO iProc=1, PartMPI%nMPINeighbors
       jPos=jPos+6
 
       ! TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
-      IF (SGSinUse) THEN
-        PartSendBuf(iProc)%content(1+jPos:3+jPos) = TurbPt_temp(1:3,iPart)
-        jpos=jpos+3
-      END IF
+!      IF (SGSinUse) THEN
+!        PartSendBuf(iProc)%content(1+jPos:3+jPos) = TurbPt_temp(1:3,iPart)
+!        jpos=jpos+3
+!      END IF
 
       ! IsNewPart for RK-Reconstruction
       IF (PDM%IsNewPart(iPart)) THEN
@@ -574,7 +574,7 @@ USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Erosion_Vars
 ! Variables for SGS model
-USE MOD_Particle_SGS_Vars,        ONLY:SGSinUse,nSGSVars
+USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
 #if USE_RW
 ! Variables for RW model
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
@@ -664,10 +664,10 @@ DO iProc=1,PartMPI%nMPINeighbors
     jpos=jpos+6
 
     ! TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
-    IF (SGSinUse) THEN
-      TurbPt_temp(1:3,PartID) = PartRecvBuf(iProc)%content(1+jPos:3+jPos)
-      jpos=jpos+3
-    END IF
+!    IF (SGSinUse) THEN
+!      TurbPt_temp(1:3,PartID) = PartRecvBuf(iProc)%content(1+jPos:3+jPos)
+!      jpos=jpos+3
+!    END IF
 
     ! IsNewPart for RK-Reconstruction
     IF      ( INT(PartRecvBuf(iProc)%content( 1+jPos)) .EQ. 1) THEN

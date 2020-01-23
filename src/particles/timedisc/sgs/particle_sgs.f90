@@ -80,7 +80,7 @@ IF (SGSModel.NE.'none'.AND.RWModel.NE.'none') &
 SELECT CASE(SGSModel)
   CASE('Breuer')
     ! Set number of variables and SGS flag active
-    nSGSVars = 6
+    nSGSVars = 3
     SGSinUse =  .TRUE.
 
     ! Init double-filtering for SGS turbulent kinetic energy
@@ -207,6 +207,9 @@ CASE('Breuer')
 !simulations of turbulent bubble–laden and particle–laden flows." International Journal of Multiphase Flow, 89 (2017): 23-44.
 !===================================================================================================================================
 
+! Time integration using Euler-Maruyama scheme
+IF (iStage.NE.1) RETURN
+
 ! Filter the velocity field (low-pass)
 USGS = U(1:4,:,:,:,:)
 
@@ -221,17 +224,17 @@ CALL InterpolateFieldToParticle(4,USGS,USGSPart)
 DO iPart=1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
-  kSGSPart(1,iPart)     = 0.5*SUM((FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart)-USGSPart(2:4,iPart)/USGSPart(1,iPart))**2.)
+  kSGSPart(1,iPart) = 0.5*SUM((FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart)-USGSPart(2:4,iPart)/USGSPart(1,iPart))**2.)
 
   ! Time scale of SGS scales
   sigmaSGS(1,iPart) = SQRT(2./3.*kSGSPart(1,iPart))
 
   ! draw random number
-  IF(iStage.EQ.1)THEN
-    DO i=1,3
-      TurbPartState(3+i,iPart)=RandNormal()
-    END DO
-  END IF
+!  IF(iStage.EQ.1)THEN
+!    DO i=1,3
+!      TurbPartState(3+i,iPart)=RandNormal()
+!    END DO
+!  END IF
 
   ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
   IF (ALMOSTZERO(sigmaSGS(1,iPart))) THEN
@@ -269,19 +272,27 @@ DO iPart=1,PDM%ParticleVecLength
 
   ! RUNGE-KUTTA
   ! Sum up turbulent contributions
+!  Pt(1:3)=0.
+!  DO j=1,3
+!    Pt(1:3) = Pt(1:3) - G_SGS(1:3,j,iPart)*TurbPartState(j,iPart) + B_SGS(1:3,j,iPart)*TurbPartState(j+3,iPart)/SQRT(dt)
+!  END DO
+!  !--> First RK stage
+!  IF (iStage.EQ.1) THEN
+!    TurbPt_temp  (1:3,iPart) = Pt
+!    TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + TurbPt_temp(1:3,iPart)*b_dt
+!  !--> Later RK stage
+!  ELSE
+!    TurbPt_temp  (1:3,iPart) = Pt(1:3) - RKA(iStage)    * TurbPt_temp(1:3,iPart)
+!    TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + TurbPt_temp(1,iPart)*b_dt
+!  END IF
+
+  ! EULER
+  ! Sum up turbulent contributions
   Pt(1:3)=0.
   DO j=1,3
-    Pt(1:3) = Pt(1:3) - G_SGS(1:3,j,iPart)*TurbPartState(j,iPart) + B_SGS(1:3,j,iPart)*TurbPartState(j+3,iPart)/SQRT(dt)
+    Pt(1:3) = Pt(1:3) - G_SGS(1:3,j,iPart)*TurbPartState(j,iPart)*dt + B_SGS(1:3,j,iPart)*RandNormal()*SQRT(dt)
   END DO
-  !--> First RK stage
-  IF (iStage.EQ.1) THEN
-    TurbPt_temp  (1:3,iPart) = Pt
-    TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + TurbPt_temp(1:3,iPart)*b_dt
-  !--> Later RK stage
-  ELSE
-    TurbPt_temp  (1:3,iPart) = Pt(1:3) - RKA(iStage)    * TurbPt_temp(1:3,iPart)
-    TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + TurbPt_temp(1,iPart)*b_dt
-  END IF
+  TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + Pt(1:3)
 
   ! Sanity check. Use 10*U as arbitrary threshold
   IF (ANY(ABS(TurbPartState(1:3,iPart)).GT.10.*MAXVAL(ABS(PartState(4:6,iPart))))) THEN

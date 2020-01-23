@@ -1196,8 +1196,8 @@ SDEALLOCATE(PEM%hasCrossedSM)
 SDEALLOCATE(PDM%ParticleInsideSM)
 ! SGS/RW turbulence model
 #endif
-SDEALLOCATE(TurbFieldAtParticle)
 #if USE_RW
+SDEALLOCATE(TurbFieldAtParticle)
 CALL ParticleFinalizeRandomWalk()
 #endif
 CALL ParticleFinalizeSGS()

@@ -236,7 +236,7 @@ DO iElem=1,nElems
 #if USE_RW
     ! Do not change the particle velocity if RW is working in full Euler mode
      !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
-    IF ((RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
+    IF ((RWModel.EQ.'Gosman') .AND. (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 #endif
 
     ! Particle is inside and in current element

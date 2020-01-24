@@ -87,7 +87,7 @@ SELECT CASE(SGSModel)
     CALL InitSGSFilter()
 
     ! Allocate array to hold the SGS properties for every particle
-    ALLOCATE(USGS         (1:4       ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
+    ALLOCATE(USGS         (1:PP_nVar ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
              USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
              kSGS         (1         ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
              kSGSPart     (1         ,1:PDM%maxParticleNumber),      &
@@ -211,16 +211,14 @@ CASE('Breuer')
 IF (iStage.NE.1) RETURN
 
 ! Filter the velocity field (low-pass)
-USGS = U(1:4,:,:,:,:)
+USGS = U
 
 ! Filter overwrites the array in place. FilterMat already filled in InitSGSFilter
 CALL Filter_Pointer(USGS,FilterMat)
 
-CALL InterpolateFieldToParticle(4,USGS,USGSPart)
-!kSGS(1,:,:,:,:) = USGS(1,:,:,:,:)
-!kSGS     = 0.5*SUM((UPrim(2:1+nSGSVars,:,:,:,:)-USGS)**2.)
 ! Interpolate SGS kinetic energy to particle position
-!CALL InterpolateFieldToParticle(1,kSGS,kSGSPart)
+CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),USGSPart)
+
 DO iPart=1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
@@ -229,46 +227,45 @@ DO iPart=1,PDM%ParticleVecLength
   ! Time scale of SGS scales
   sigmaSGS(1,iPart) = SQRT(2./3.*kSGSPart(1,iPart))
 
-  ! draw random number
-!  IF(iStage.EQ.1)THEN
-!    DO i=1,3
-!      TurbPartState(3+i,iPart)=RandNormal()
-!    END DO
-!  END IF
-
-  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
   IF (ALMOSTZERO(sigmaSGS(1,iPart))) THEN
     ! No SGS turbulent kinetic energy, avoid float error
-    tauSGS   = HUGE(1.)
-    IPWRITE(*,*) 'No SGS turbulent kinetic energy after filtering. Omiting timestep for particle',iPart
+
+    ! We ASSUME that these are the correct matrix indices
+    G_SGS(:,:,iPart) = 0.
+    DO i=1,3
+      G_SGS(i,i,iPart) = 1.
+    END DO
+    B_SGS(:,:,iPart) = 0.
   ELSE
+
     ! Valid SGS turbulent kinetic energy
+    ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
     ElemID   = PEM%Element(iPart)
     tauSGS   = C*(ElemVol(ElemID)**(1./3.)/(PP_N+1))/sigmaSGS(1,iPart)
-  END IF
 
-  ! Relative velocity
-  udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
-  urel       = udiff/SQRT(SUM(udiff**2))
-  ! parallel
-  tauL(1,iPart) = tauSGS(1,iPart)/(SQRT(1+betaSGS**2*SUM(udiff**2)/kSGSPart(1,iPart)*3/2))
-  ! perpendicular
-  tauL(2,iPart) = tauSGS(1,iPart)/(SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart(1,iPart)*3/2))
+    ! Relative velocity
+    udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
+    urel       = udiff/SQRT(SUM(udiff**2))
+    ! parallel
+    tauL(1,iPart) = tauSGS(1,iPart)/(SQRT(1+betaSGS**2*SUM(udiff**2)/kSGSPart(1,iPart)*3/2))
+    ! perpendicular
+    tauL(2,iPart) = tauSGS(1,iPart)/(SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart(1,iPart)*3/2))
 
-  ! Calculate drift and diffusion matrix
-  DO i=1,3
-    DO j=1,3
-      IF (i.EQ.j) THEN
-        G_SGS(i,j,iPart) = 1/tauL(2,iPart) + (1/tauL(1,iPart) - 1/tauL(2,iPart))*urel(i)*urel(j)
-        B_SGS(i,j,iPart) = 1/SQRT(tauL(2,iPart)) + (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
-      ELSE
-        G_SGS(i,j,iPart) =                   (1/tauL(1,iPart) - 1/tauL(2,iPart))*urel(i)*urel(j)
-        B_SGS(i,j,iPart) =                   (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
-      END IF
+    ! Calculate drift and diffusion matrix
+    DO i=1,3
+      DO j=1,3
+        IF (i.EQ.j) THEN
+          G_SGS(i,j,iPart) = 1/tauL(2,iPart) + (1/tauL(1,iPart) - 1/tauL(2,iPart))*urel(i)*urel(j)
+          B_SGS(i,j,iPart) = 1/SQRT(tauL(2,iPart)) + (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
+        ELSE
+          G_SGS(i,j,iPart) =                   (1/tauL(1,iPart) - 1/tauL(2,iPart))*urel(i)*urel(j)
+          B_SGS(i,j,iPart) =                   (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
+        END IF
+      END DO
     END DO
-  END DO
 
-  B_SGS(:,:,iPart)=SQRT(2*sigmaSGS(1,iPart)**2)*B_SGS(:,:,iPart)
+    B_SGS(:,:,iPart)=SQRT(2*sigmaSGS(1,iPart)**2)*B_SGS(:,:,iPart)
+  END IF
 
   ! RUNGE-KUTTA
   ! Sum up turbulent contributions
@@ -298,7 +295,7 @@ DO iPart=1,PDM%ParticleVecLength
   IF (ANY(ABS(TurbPartState(1:3,iPart)).GT.10.*MAXVAL(ABS(PartState(4:6,iPart))))) THEN
     IPWRITE(*,*) 'Obtained SGS velocity of',SQRT(SUM(TurbPartState(1:3,iPart)**2)), &
                  'while resolved velocity is',SQRT(SUM(PartState(4:6,iPart)**2)),   &
-                 'Omiting timestep for particle',iPart
+                 'for',iPart
 !    TurbPartState(:,iPart) = 0.
   END IF
 END DO

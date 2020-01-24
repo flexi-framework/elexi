@@ -279,8 +279,6 @@ END DO ! iElem
 END SUBROUTINE Filter
 
 
-
-
 #if EQNSYSNR==2
 !===============================================================================================================================
 !> LAF implementation via filter (only for Euler/Navier-Stokes)

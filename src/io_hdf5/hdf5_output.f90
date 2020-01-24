@@ -213,24 +213,29 @@ END IF ! (NOut.NE.PP_N)
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
-#if !USE_RW
-CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                        DataSetName='DG_Solution', rank=5,&
-                        nValGlobal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nGlobalElems/),&
-                        nVal=nVal                                              ,&
-                        offset=    (/0,      0,     0,     0,     offsetElem/),&
-                        collective=.TRUE.,RealArray=UOut)
+#if USE_RW
+IF (RestartTurb) THEN
+  CALL GatheredWriteArray(FileName,create=.FALSE.,&
+                          DataSetName='DG_Solution', rank=5,&
+                          nValGlobal=(/PP_nVar+nVarTurb,NOut+1,NOut+1,NOut+1,nGlobalElems/),&
+                          nVal=nVal                                              ,&
+                          offset=    (/0,      0,     0,     0,     offsetElem/),&
+                          collective=.TRUE.,RealArray=UOut)
+  ! UOut always separately allocated with RestartTurb
+  DEALLOCATE(UOut)
+ELSE
+#endif
+  CALL GatheredWriteArray(FileName,create=.FALSE.,&
+                          DataSetName='DG_Solution', rank=5,&
+                          nValGlobal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nGlobalElems/),&
+                          nVal=nVal                                              ,&
+                          offset=    (/0,      0,     0,     0,     offsetElem/),&
+                          collective=.TRUE.,RealArray=UOut)
 
-! Deallocate UOut only if we did not point to U
-IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
-#else
-CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                        DataSetName='DG_Solution', rank=5,&
-                        nValGlobal=(/PP_nVar+nVarTurb,NOut+1,NOut+1,NOut+1,nGlobalElems/),&
-                        nVal=nVal                                              ,&
-                        offset=    (/0,      0,     0,     0,     offsetElem/),&
-                        collective=.TRUE.,RealArray=UOut)
-IF (RestartTurb)                                              DEALLOCATE(UOut)
+  ! Deallocate UOut only if we did not point to U
+  IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
+#if USE_RW
+END IF
 #endif
 
 #if USE_PARTICLES

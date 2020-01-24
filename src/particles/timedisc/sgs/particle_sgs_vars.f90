@@ -27,6 +27,7 @@ LOGICAL                                :: ParticleSGSInitIsDone=.FALSE.
 LOGICAL                                :: SGSinUse                            ! Flag for active SGS
 !SGS method
 INTEGER                                :: nSGSVars                            ! number of variables in TurbPartState
+INTEGER                                :: nSGSFilter                          ! number of cut-off modes in high-pass filter
 CHARACTER(40)                          :: SGSModel                            ! specifying keyword for SGS model
 REAL,ALLOCATABLE                       :: USGS  (:,:,:,:,:)                   ! Unfiltered state
 REAL,ALLOCATABLE                       :: USGSPart(:,:)                       ! Filtered state

@@ -115,6 +115,8 @@ CALL prms%CreateStringOption(   'Part-SGSModel' &
                                 ' - Breuer \n'//&
                                 ' - none'&
                                 , 'none')
+CALL prms%CreateIntOption(      'Part-SGSNFilter' &
+                                , 'Number of cut-off modes in the high-pass SGS filter','2')
 
 !===================================================================================================================================
 ! > Species

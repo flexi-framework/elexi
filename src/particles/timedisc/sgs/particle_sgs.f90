@@ -49,7 +49,7 @@ SUBROUTINE ParticleInitSGS()
 USE MOD_Globals,                    ONLY: ABORT, MPIRoot, Unit_STDOUT
 USE MOD_Preproc,                    ONLY: PP_N, PP_NZ
 USE MOD_Mesh_Vars,                  ONLY: nElems
-USE MOD_ReadInTools,                ONLY: GETSTR
+USE MOD_ReadInTools,                ONLY: GETINT,GETSTR
 USE MOD_Particle_SGS_Vars
 USE MOD_Particle_Vars,              ONLY: PDM,TurbPartState,TurbPt_temp
 #if USE_RW
@@ -84,6 +84,8 @@ SELECT CASE(SGSModel)
     SGSinUse =  .TRUE.
 
     ! Init double-filtering for SGS turbulent kinetic energy
+    !>> Modal Filter, default to cut-off at PP_N-2
+    nSGSFilter = GETINT('Part-SGSNFilter','2')
     CALL InitSGSFilter()
 
     ! Allocate array to hold the SGS properties for every particle
@@ -127,7 +129,8 @@ SUBROUTINE InitSGSFilter()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Filter_Vars
-USE MOD_Interpolation_Vars,ONLY:Vdm_Leg,sVdm_Leg
+USE MOD_Interpolation_Vars    ,ONLY: Vdm_Leg,sVdm_Leg
+USE MOD_Particle_SGS_Vars     ,ONLY: nSGSFilter
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -140,12 +143,12 @@ SWRITE(UNIT_stdOut,'(A)') ' Init SGS filter...'
 ! Abort if Navier-Stokes filter is requested in addition to the SST filter
 IF(FilterType.GT.0) CALL CollectiveStop(__STAMP__,"SGS incompatible with Navier-Stokes filter!")
 
-! Prepare Hesthaven filter
+! Prepare modal cut-off filter (low pass)
 ALLOCATE(FilterMat(0:PP_N,0:PP_N))
 FilterMat = 0.
 
-! Modal Filter, hard cutoff at PP_N-2 for now
-NFilter = PP_N - 2
+! Modal Filter, default to cut-off at PP_N-2
+NFilter = PP_N - nSGSFilter
 DO iDeg=0,NFilter
   FilterMat(iDeg,iDeg) = 1.
 END DO
@@ -231,18 +234,17 @@ DO iPart=1,PDM%ParticleVecLength
   ! Time scale of SGS scales
   sigmaSGS(1,iPart) = SQRT(2./3.*kSGSPart(1,iPart))
 
+  ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(sigmaSGS(1,iPart))) THEN
-    ! No SGS turbulent kinetic energy, avoid float error
-
     ! We ASSUME that these are the correct matrix indices
     G_SGS(:,:,iPart) = 0.
     DO i=1,3
       G_SGS(i,i,iPart) = 1.
     END DO
     B_SGS(:,:,iPart) = 0.
-  ELSE
 
-    ! Valid SGS turbulent kinetic energy
+  ! Valid SGS turbulent kinetic energy
+  ELSE
     ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
     ElemID   = PEM%Element(iPart)
     tauSGS   = C*(ElemVol(ElemID)**(1./3.)/(PP_N+1))/sigmaSGS(1,iPart)

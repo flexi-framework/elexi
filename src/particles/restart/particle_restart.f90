@@ -127,7 +127,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
     CHECKSAFEINT(HSize(2),4)
     PartDataSize = INT(HSize(1))
-    SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Number of particle variables',' | ',PartDataSize
+    SWRITE(UNIT_stdOut,'(A3,A38,A3,I25)')' | ','Number of particle variables',' | ',PartDataSize
 
     ! Reflections are stored in the 8th data column. Do not start counting reflections mid-simulation
     IF (PartDataSize.EQ.7) THEN
@@ -167,7 +167,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL GetDataSize(File_ID,'TurbPartData',PartDim,HSize)
     CHECKSAFEINT(HSize(2),4)
     TurbPartSize = INT(HSize(1))
-    SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Number of turbulent particle variables',' | ',TurbPartSize
+    SWRITE(UNIT_stdOut,'(A3,A38,A3,I25)')' | ','Number of turbulent particle variables',' | ',TurbPartSize
 
     ! Total size of turbulent properties
     TurbPartDataSize = nSGSVars
@@ -184,7 +184,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       ! Maybe add check that compares the models here. Should resort to a warning in case we want to change the model midrun, so
       ! nothing urgent
       SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data with ',TurbPartDataSize, &
-                                                  ' variables. Continuing run.'
+                                                  ' variables and matching current setup. Continuing run...'
       ! Get TurbPartData
       ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
       CALL ReadArray('TurbPartData',2,(/TurbPartDataSize,locnPart/),offsetnPart,2,RealArray=TurbPartData)

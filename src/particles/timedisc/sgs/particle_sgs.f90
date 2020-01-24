@@ -66,7 +66,7 @@ INTEGER               :: ALLOCSTAT
 IF(ParticleSGSInitIsDone) RETURN
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL ...!'
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL ...'
 
 ! SGS model
 SGSModel = TRIM(GETSTR('Part-SGSModel','none'))
@@ -135,7 +135,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                   :: iDeg
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)') ' Init SGS filter ...'
+SWRITE(UNIT_stdOut,'(A)') ' Init SGS filter...'
 
 ! Abort if Navier-Stokes filter is requested in addition to the SST filter
 IF(FilterType.GT.0) CALL CollectiveStop(__STAMP__,"SGS incompatible with Navier-Stokes filter!")
@@ -216,13 +216,17 @@ USGS = U
 ! Filter overwrites the array in place. FilterMat already filled in InitSGSFilter
 CALL Filter_Pointer(USGS,FilterMat)
 
+! Obtain the high-pass filtered velocity field
+USGS = U - USGS
+
 ! Interpolate SGS kinetic energy to particle position
 CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),USGSPart)
 
 DO iPart=1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
-  kSGSPart(1,iPart) = 0.5*SUM((FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart)-USGSPart(2:4,iPart)/USGSPart(1,iPart))**2.)
+  ! Use unfiltered density to obtain velocity in primitive variables
+  kSGSPart(1,iPart) = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(1,iPart))**2.)
 
   ! Time scale of SGS scales
   sigmaSGS(1,iPart) = SQRT(2./3.*kSGSPart(1,iPart))

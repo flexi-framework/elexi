@@ -71,17 +71,16 @@ SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE RANDOM WALK ...!'
 
 !--> Random Walk model
 RWModel = TRIM(GETSTR('Part-RWModel','none'))
-RWTime  = TRIM(GETSTR('Part-RWTime' ,'RW'))
 
 ! Set number of RW vars here, needed for MPI init
 SELECT CASE(RWModel)
   CASE('Mofakham')
-    IF (RWTime.EQ.'RK'.AND.MPIROOT) &
-      WRITE(*,*) 'WARNING: Modified Mofakham (2020) model is exactly Gosman (1983) with RW time step equal to RK time step.'
     nRWVars = 7
     RWinUse =  .TRUE.
 
   CASE('Gosman')
+    ! Only Gosman gives no information on time integration, so RWTime only required here
+    RWTime  = TRIM(GETSTR('Part-RWTime' ,'RW'))
     nRWVars = 4
     RWinUse =  .TRUE.
 

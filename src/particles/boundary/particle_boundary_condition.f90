@@ -440,7 +440,7 @@ LOGICAL,INTENT(OUT),OPTIONAL      :: opt_Reflected
 ! LOCAL VARIABLES
 REAL                              :: v_old(1:3),n_loc(1:3),WallVelo(3),intersec(3),r_vec(3),axis(3),cos2inv
 REAL                              :: Xitild,EtaTild
-INTEGER                           :: p,q,SurfSideID,locBCID
+INTEGER                           :: p,q,SurfSideID
 LOGICAL                           :: Symmetry,IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngle_old
 REAL                              :: PartTrajectory_old(3)
@@ -503,7 +503,6 @@ IF (IsAuxBC) THEN
 ELSE
   ! Get wall velo and BCID
   WallVelo  = PartBound%WallVelo(1:3,BC(SideID))
-  locBCID   = PartBound%TargetBoundCond(BC(SideID))
 
   ! Instead of checking DoRefMapping, we pass BCSideID if true
   IF(PRESENT(BCSideID)) THEN
@@ -556,17 +555,7 @@ END IF !IsAuxBC
 v_old                = PartState(4:6,PartID)
 PartState(4:6,PartID)= PartState(4:6,PartID)-2.*DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc + WallVelo
 
-! ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-! IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND. &
-!   DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
-!   PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-! ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND. &
-!   DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
-!   PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
-! ELSE
-  PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-! ENDIF
-! ! End ugly hack
+PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
 ! Sample macrovalues on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
@@ -582,18 +571,6 @@ IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
     p=INT((Xitild +1.0)/dXiEQ_SurfSample)+1
     q=INT((Etatild+1.0)/dXiEQ_SurfSample)+1
   END IF
-
-!  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-!  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.              &
-!    DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
-!    PartFaceAngle = ABS(0.5*PI - ACOS(1.))
-!  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.         &
-!    DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
-!    PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
-!  ELSE
-!    PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-!  ENDIF
-!  ! End ugly hack
 
   ! Record particle impact
   CALL RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
@@ -621,17 +598,7 @@ PartTrajectory          = PartTrajectory/lengthPartTrajectory
 
 ! Recording of individual particle impacts
 IF (EP_inUse) THEN
-!  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-!  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.            &
-!    DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
-!    PartFaceAngle = ABS(0.5*PI - ACOS(1.))
-!  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.       &
-!    DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
-!    PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
-!  ELSE
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-!  ENDIF
-!  ! End ugly hack
 
   CALL RecordErosionPoint(BCSideID        = BC(SideID),                   &
                           PartID          = PartID,                       &
@@ -693,7 +660,7 @@ USE MOD_Particle_Surfaces,      ONLY:CalcNormAndTangTriangle,CalcNormAndTangBili
 USE MOD_Particle_Surfaces_Vars, ONLY:SideNormVec,SideType,BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
 USE MOD_Particle_Vars,          ONLY:PartState,LastPartPos,Species,PartSpecies,PartReflCount
-USE MOD_Particle_Vars,          ONLY:Pt_temp,PDM
+USE MOD_Particle_Vars,          ONLY:PDM
 USE MOD_Particle_Vars,          ONLY:WriteMacroSurfaceValues
 USE MOD_TimeDisc_Vars,          ONLY:TimeDiscType
 ! Bons particle rebound model
@@ -720,14 +687,13 @@ LOGICAL,INTENT(OUT),OPTIONAL      :: opt_Reflected
 REAL                              :: v_old(1:3),n_loc(1:3),WallVelo(3),intersec(3),r_vec(3),axis(3),cos2inv
 REAL                              :: tang1(1:3),tang2(1:3)
 REAL                              :: Xitild,EtaTild
-INTEGER                           :: p,q,SurfSideID,locBCID
+INTEGER                           :: p,q,SurfSideID
 LOGICAL                           :: Symmetry, IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngleDeg,PartFaceAngle_old
-REAL                              :: v_magnitude,v_norm(3),v_tang(3)
-REAL                              :: PartTrajectory_old(3)
 REAL                              :: PartTrajectoryTang(3),PartTrajectoryNorm(3)
-REAL                              :: PartTrajectory_rescale
-REAL                              :: eps_n, eps_t, lengthPartTrajectory_old
+REAL                              :: v_magnitude,v_norm(3),v_tang(3)
+REAL                              :: intersecRemain
+REAL                              :: eps_n, eps_t
 ! Bons particle rebound model
 REAL                              :: E_eff
 REAL                              :: Vol,r,w,w_crit,sigma_y
@@ -812,7 +778,6 @@ __STAMP__&
 ELSE
   ! Get wall velo and BCID
   WallVelo  = PartBound%WallVelo(1:3,BC(SideID))
-  locBCID   = PartBound%TargetBoundCond(BC(SideID))
 
   ! Instead of checking DoRefMapping, we pass BCSideID if true
   IF(PRESENT(BCSideID))THEN
@@ -869,25 +834,16 @@ END IF !IsAuxBC
 ! Make sure we have the old velocity safe
 v_old   = PartState(4:6,PartID)
 
-! Respect coefficient of restitution
+! Calculate wall normal and tangential velocity, impact angle
 v_norm  = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
 v_tang  = PartState(4:6,PartID) - v_norm
-
-! ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-! IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                    &
-!   DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
-!   PartFaceAngle = ABS(0.5*PI - ACOS(1.))
-! ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.               &
-!   DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
-!   PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
-! ELSE
-  PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-! ENDIF
-! ! End ugly hack
+PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
 SELECT CASE(WallCoeffModel)
+  !=================================================================================================================================
   ! Tabaoff, W.; Wakeman, T.: Basic Erosion Investigation in Small Turbomachinery. / Cincinnati Univ. OH, 1981
   ! >> Ignored variance (random fluctuations in reflection values) and ONLY took mean values!
+  !=================================================================================================================================
   CASE('Tabakoff1981')
     ! Transfer from radians to degree
     PartFaceAngleDeg = PartFaceAngle * 180/PI
@@ -896,8 +852,10 @@ SELECT CASE(WallCoeffModel)
     eps_n = 1.    - 0.0211 * PartFaceAngleDeg  + 0.000228 * PartFaceAngleDeg**2. - 0.000000876 * PartFaceAngleDeg**3.
     eps_t = 0.953                              - 0.00446  * PartFaceAngleDeg**2. + 0.000000648 * PartFaceAngleDeg**3.
 
+  !===================================================================================================================================
   ! Bons, J., Prenter, R., Whitaker, S.: A Simple Physics-Based Model for Particle Rebound and Deposition in Turbomachinery
   ! / J. Turbomach 139(8), 2017
+  !===================================================================================================================================
   CASE('Bons2017')
     ! Assume spherical particles for now
     Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
@@ -909,7 +867,7 @@ SELECT CASE(WallCoeffModel)
 
     ! Find composite elastic modulus
     E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
-               (1. - PartBound%Poisson(locBCID)            **2.)/PartBound%Young(locBCID)               )**(-1.)
+               (1. - PartBound%Poisson(BC(SideID))            **2.)/PartBound%Young(BC(SideID))               )**(-1.)
 
     ! Find critical deformation
     sigma_y = Species(PartSpecies(PartID))%YieldCoeff*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
@@ -932,12 +890,14 @@ SELECT CASE(WallCoeffModel)
     eps_t   = 1. - FieldAtParticle(PartID,1) / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * (eps_n * &
                                                SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))) * (1/(eps_n)+1)*COS(PartFaceAngle)**2.
 
+  !=================================================================================================================================
   ! Fong, W.; Amili, O.; Coletti, F.: Velocity and spatial distribution of intertial particles in a turbulent channel flow
   ! / J. FluidMech 872, 2019
+  !=================================================================================================================================
   CASE('Fong2019')
     ! Reuse YieldCoeff to modify the normal velocity, keep tangential velocity
     eps_t   = 1.
-    eps_n   = PartBound%CoR(locBCID)
+    eps_n   = PartBound%CoR(BC(SideID))
 
   CASE DEFAULT
       CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')
@@ -959,30 +919,29 @@ IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
     q=INT((Etatild+1.0)/dXiEQ_SurfSample)+1
   END IF
 
-!  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-!  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                          &
-!      DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
-!      PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-!  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                     &
-!      DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
-!      PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
-!  ELSE
-  PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-!  ENDIF
-!  ! End ugly hack
-
   ! Record particle impact
   CALL RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
 END IF !.NOT.IsAuxBC
 
 ! Make sure we have the old values safe
 IF (EP_inUse) THEN
-    PartTrajectory_old = PartTrajectory
+!    PartTrajectory_old = PartTrajectory
     PartFaceAngle_old  = PartFaceAngle
 END IF
 
 ! set particle position on face
 !--> first move the particle to the boundary
+#if CODE_ANALYZE
+WRITE(UNIT_stdout,'(110("-"))')
+WRITE(UNIT_stdout,'(A,I1)') '     | Diffusive reflection on BC: ', BC(SideID)
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | LastPartPos:                ',LastPartPos(1,PartID),LastPartPos(2,PartID),LastPartPos(3,PartID)
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory:             ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity:                   ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | alpha,lengthPartTrajectory: ',alpha,lengthPartTrajectory
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Intersection:               ', LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | CoR (normal/tangential):    ',eps_n,eps_t
+#endif
+
 LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !--> flip trajectory and move the remainder of the particle push
 !===================================================================================================================================
@@ -992,51 +951,30 @@ IF (.NOT.(TimeDiscType.EQ.'LSERKW2').AND..NOT.(TimeDiscType.EQ.'LSWERKW3'))     
     CALL ABORT(__STAMP__,                                                                 &
     'Time discretization '//TRIM(TimeDiscType)//' is incompatible with current implementation of coefficients of restitution.')
 
-PartTrajectoryTang(1:3) = eps_t*(PartTrajectory(1:3) - DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
+! Calculate wall normal and tangential velocity components after impact, rescale to uniform length
 PartTrajectoryNorm(1:3) = eps_n*(DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
+PartTrajectoryTang(1:3) = eps_t*(PartTrajectory(1:3) - DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
 PartTrajectory(1:3)     = PartTrajectoryTang(1:3) - PartTrajectoryNorm(1:3)
+PartTrajectory          = PartTrajectory/SQRT(SUM(PartTrajectory**2.))
 
-! Save the old lengthPartTrajectory and rescale to new. We can't compute a complete new lengthPartTrajectory as we do not have the
-! current LSERK time step here
-lengthPartTrajectory_old= lengthPartTrajectory
-! PartTrajectory should have uniform length but does not since we used CoR. Rescale the lengthPartTrajectory to the shorter
-! PartTrajectory
-PartTrajectory_rescale  = SQRT(PartTrajectory(1)*PartTrajectory(1)                        &
-                          +    PartTrajectory(2)*PartTrajectory(2)                        &
-                          +    PartTrajectory(3)*PartTrajectory(3) )
-lengthPartTrajectory    = lengthPartTrajectory  *PartTrajectory_rescale
+! Rescale the remainder to the new length
+intersecRemain = SQRT(eps_n*eps_n + eps_t*eps_t)/SQRT(2.) * (lengthPartTrajectory - alpha)
 
-! Rescale the PartTrajectory to uniform length, otherwise we apply the coefficients twice
-PartTrajectory          = PartTrajectory        /PartTrajectory_rescale
+! Compute moved particle || rest of movement. PartTrajectory has already been updated
+PartState(1:3,PartID) = LastPartPos(1:3,PartID) + intersecRemain*PartTrajectory(1:3)
 
-! Check if the Particle is right at wall. If yes, do not recompute PartTrajectory
-IF (alpha/lengthPartTrajectory_old.NE.1) THEN
-  ! lengthPartTrajectory is coupled to alpha, so use the old value to non-dimensionalize it
-  PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + (1-alpha/lengthPartTrajectory_old) * PartTrajectory(1:3) * lengthPartTrajectory
-
-  ! compute moved particle || rest of movement
-  PartTrajectory(1:3)     = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
-  lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)                        &
-                            +    PartTrajectory(2)*PartTrajectory(2)                        &
-                            +    PartTrajectory(3)*PartTrajectory(3) )
-  PartTrajectory          = PartTrajectory/lengthPartTrajectory
-END IF
-
-! compute new particle velocity, modified with coefficents of restitution
+! Compute new particle velocity, modified with coefficents of restitution
 PartState(4:6,PartID)= eps_t * v_tang - eps_n * v_norm + WallVelo
 
+#if CODE_ANALYZE
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory (CoR)        ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | alpha (CoR):                ',interSecRemain
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | NewPartPos:                 ',PartState(1,PartID),PartState(2,PartID),PartState(3,PartID)
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity (CoR):             ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
+#endif
+
 IF (EP_inUse) THEN
-!  ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-!  IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                            &
-!    DOT_PRODUCT(PartTrajectory,n_loc) > 1.0) THEN
-!    PartFaceAngle = ABS(0.5*PI - ACOS(1.))
-!  ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                       &
-!    DOT_PRODUCT(PartTrajectory,n_loc) < -1.0) THEN
-!    PartFaceAngle = ABS(0.5*PI - ACOS(-1.))
-!  ELSE
-    PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-!  ENDIF
-!  ! End ugly hack
+  PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
   CALL RecordErosionPoint(BCSideID        = BC(SideID),                                   &
                           PartID          = PartID,                                       &
@@ -1051,19 +989,8 @@ END IF
 IF (PartTrackReflection) PartReflCount(PartID) = PartReflCount(PartID) + 1
 
 ! Correction for Runge-Kutta. Reflect or delete force history / acceleration
-IF (.NOT.ALMOSTZERO(DOT_PRODUCT(WallVelo,WallVelo))) THEN
-  ! Reconstruction in timedisc during push
-  PDM%IsNewPart(PartID)=.TRUE.
-ELSE
-  Pt_temp(1:3,PartID)=Pt_temp(1:3,PartID)-2.*DOT_PRODUCT(Pt_temp(1:3,PartID),n_loc)*n_loc
-  ! Reflect also force history for symmetry
-  IF (Symmetry) THEN
-    Pt_temp(4:6,PartID)=Pt_temp(4:6,PartID)-2.*DOT_PRODUCT(Pt_temp(4:6,PartID),n_loc)*n_loc
-  ! Produces best result compared to analytical solution in place capacitor ...
-  ELSE
-    Pt_temp(4:6,PartID)=0.
-  END IF
-END IF
+! Coefficients of Restitution cause non-differentiable jump in velocity. Always erase force history and reconstruction in timedisc during push
+PDM%IsNewPart(PartID)=.TRUE.
 
 ! Remove sliding low velocity particles
 IF (LowVeloRemove) THEN
@@ -1279,17 +1206,7 @@ ELSE
   q=INT((Etatild+1.0)/dXiEQ_SurfSample)+1
 END IF
 
-! ! Ugly hack to catch limited machine accuracy resulting in case DOT_PRODUCT greater than 1
-! IF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),1.0) .AND.                              &
-!     DOT_PRODUCT(PartTrajectory,n_loc)>1.0) THEN
-!     PartFaceAngle=ABS(0.5*PI - ACOS(1.))
-! ELSEIF (ALMOSTEQUAL(DOT_PRODUCT(PartTrajectory,n_loc),-1.0) .AND.                         &
-!     DOT_PRODUCT(PartTrajectory,n_loc)<-1.0) THEN
-!     PartFaceAngle=ABS(0.5*PI - ACOS(-1.))
-! ELSE
 PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
-! ENDIF
-! ! End ugly hack
 
 CALL RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
 

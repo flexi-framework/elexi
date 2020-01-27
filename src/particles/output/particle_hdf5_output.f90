@@ -167,7 +167,7 @@ REAL,ALLOCATABLE               :: TurbPartData(:,:)
   ALLOCATE(PartInt( PartIntSize ,offsetElem+1 :offsetElem+PP_nElems))
   ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
   ! Allocate data arrays for turbulent particle quantities
-  ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
+  IF (ALLOCATED(TurbPartState)) ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
 
   ! Update next free position using a linked list
   ALLOCATE(PEM%pStart (1:PP_nElems)            , &
@@ -304,7 +304,7 @@ ASSOCIATE (&
 
   ! Turbulent particle properties currently not supported to be read directly. Do not associate varnames
 #if USE_MPI
- CALL DistributedWriteArray(FileName,&
+  IF (ALLOCATED(TurbPartState)) CALL DistributedWriteArray(FileName,    &
                             DataSetName='TurbPartData'   ,rank=2       ,&
                             nValGlobal=(/TurbPartDataSize,nPart_glob/) ,&
                             nVal=      (/TurbPartDataSize,locnPart  /) ,&
@@ -312,13 +312,15 @@ ASSOCIATE (&
                             collective=.FALSE.,offSetDim=2             ,&
                             communicator=PartMPI%COMM,RealArray=TurbPartData)
 #else
-  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-  CALL WriteArrayToHDF5(DataSetName='TurbPartData'   ,rank=2          ,&
-                        nValGlobal=(/TurbPartDataSize,nPart_glob/)    ,&
-                        nVal=      (/TurbPartDataSize,locnPart/)      ,&
-                        offset=    (/0               ,offsetnPart/)   ,&
-                        collective=.TRUE., RealArray=PartData)
-  CALL CloseDataFile()
+  IF (ALLOCATED(TurbPartState)) THEN
+    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+    CALL WriteArrayToHDF5(DataSetName='TurbPartData'   ,rank=2          ,&
+                          nValGlobal=(/TurbPartDataSize,nPart_glob/)    ,&
+                          nVal=      (/TurbPartDataSize,locnPart/)      ,&
+                          offset=    (/0               ,offsetnPart/)   ,&
+                          collective=.TRUE., RealArray=PartData)
+    CALL CloseDataFile()
+  END IF
 #endif /*MPI*/
 
 

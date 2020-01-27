@@ -555,6 +555,7 @@ END IF !IsAuxBC
 v_old                = PartState(4:6,PartID)
 PartState(4:6,PartID)= PartState(4:6,PartID)-2.*DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc + WallVelo
 
+! Calculate impact angle
 PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
 ! Sample macrovalues on boundary

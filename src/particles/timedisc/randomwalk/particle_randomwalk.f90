@@ -284,6 +284,26 @@ CASE('Mofakham')
 !> Mofakham, Amir A., and Ahmadi, G., "On random walk models for simulation of particle-laden turbulent flows.", International
 !> Journal of Multiphase Flow (2019): 103157.
 !===================================================================================================================================
+  ! Check time stepping scheme requested for RW model
+  SELECT CASE(RWTime)
+
+    CASE('RK')
+      ! Time stepping with every RK step. Do nothing here
+
+    CASE('Euler')
+      ! Time integration with Euler-Maruyama scheme
+      IF (currentStage.NE.1) RETURN
+
+    CASE('RW')
+      ! Time stepping with min(eddy time scale, transit time scale). Return if called too early
+      !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
+      IF (t.LT.TurbPartState(4,PartID)) RETURN
+
+    CASE DEFAULT
+      CALL abort(__STAMP__, ' No particle random walk time step given. This should not happen.')
+
+  END SELECT
+
   ! Particle still inside of eddy, only update the RMS turbulence
   !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
   IF (t.LT.TurbPartState(4,PartID)) THEN

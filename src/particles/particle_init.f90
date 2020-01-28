@@ -790,6 +790,9 @@ DO iBC=1,nBCs
   CASE('periodic')
     PartBound%TargetBoundCond(iBC)      = PartBound%PeriodicBC
 
+  CASE('symmetry')
+    PartBound%TargetBoundCond(iBC)      = PartBound%SymmetryBC
+
   ! Invalid boundary option
   CASE DEFAULT
     SWRITE(*,*) ' Boundary does not exists: ', TRIM(PartBound%SourceBoundType(iBC))

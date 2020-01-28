@@ -297,13 +297,15 @@ DO iPart=1,PDM%ParticleVecLength
   END DO
   TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + Pt(1:3)
 
-  ! Sanity check. Use 10*U as arbitrary threshold
-  IF (ANY(ABS(TurbPartState(1:3,iPart)).GT.10.*MAXVAL(ABS(PartState(4:6,iPart))))) THEN
-    IPWRITE(*,*) 'Obtained SGS velocity of',SQRT(SUM(TurbPartState(1:3,iPart)**2)), &
-                 'while resolved velocity is',SQRT(SUM(PartState(4:6,iPart)**2)),   &
-                 'for',iPart
+!>> In near-wall turbulence, the SGS fluctuations can readily exceed 10*U_resolved
+!  ! Sanity check. Use 10*U as arbitrary threshold
+!  IF (ANY(ABS(TurbPartState(1:3,iPart)).GT.10.*MAXVAL(ABS(PartState(4:6,iPart))))) THEN
+!    IPWRITE(*,*) 'Obtained SGS velocity of',SQRT(SUM(TurbPartState(1:3,iPart)**2)), &
+!                 'while resolved velocity is',SQRT(SUM(PartState(4:6,iPart)**2)),   &
+!                 'for',iPart
 !    TurbPartState(:,iPart) = 0.
-  END IF
+!  END IF
+
 END DO
 
 CASE DEFAULT

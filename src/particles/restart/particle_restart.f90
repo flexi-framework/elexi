@@ -163,41 +163,52 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       PDM%ParticleInside(1:locnPart) = .TRUE.
     END IF
 
-    ! Get size of TurbPartData, reuse PartDim dummy
-    CALL GetDataSize(File_ID,'TurbPartData',PartDim,HSize)
-    CHECKSAFEINT(HSize(2),4)
-    TurbPartSize = INT(HSize(1))
-    SWRITE(UNIT_stdOut,'(A3,A38,A3,I25)')' | ','Number of turbulent particle variables',' | ',TurbPartSize
-
     ! Total size of turbulent properties
     TurbPartDataSize = nSGSVars
 #if USE_RW
     TurbPartDataSize = TurbPartDataSize + nRWVars
 #endif
 
-    ! Compare number of turbulent properties of current run against HDF5
-    IF ((TurbPartDataSize.EQ.0).AND.(TurbPartSize.NE.0)) THEN
-      SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data but current run in DNS mode. Ignoring ...'
-    ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.NE.TurbPartSize)) THEN
-      CALL abort(__STAMP__,' Number of turbulent variables in HDF5 does not match requested SGS/RW model!')
-    ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.EQ.TurbPartSize)) THEN
-      ! Maybe add check that compares the models here. Should resort to a warning in case we want to change the model midrun, so
-      ! nothing urgent
-      SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data with ',TurbPartDataSize, &
-                                                  ' variables and matching current setup. Continuing run...'
-      ! Get TurbPartData
-      ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
-      CALL ReadArray('TurbPartData',2,(/TurbPartDataSize,locnPart/),offsetnPart,2,RealArray=TurbPartData)
+    ! Check if TurbPartData exists in HDF5 file
+    CALL DatasetExists(File_ID,'TurbPartData',TurbPartDataExists)
+    IF(TurbPartDataExists)THEN
 
-      ! Loop over all particles on local proc and fill the TurbPartState
-      IF (locnPart.GT.0) THEN
-        TurbPartState(1:TurbPartDataSize,1:locnPart) = TurbPartData(1:TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart)
+      ! Get size of TurbPartData, reuse PartDim dummy
+      CALL GetDataSize(File_ID,'TurbPartData',PartDim,HSize)
+      CHECKSAFEINT(HSize(2),4)
+      TurbPartSize = INT(HSize(1))
+      SWRITE(UNIT_stdOut,'(A3,A38,A3,I25)')' | ','Number of turbulent particle variables',' | ',TurbPartSize
+
+      ! Compare number of turbulent properties of current run against HDF5
+      IF ((TurbPartDataSize.EQ.0).AND.(TurbPartSize.NE.0)) THEN
+        SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data but current run in DNS mode. Ignoring ...'
+      ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.NE.TurbPartSize)) THEN
+        CALL abort(__STAMP__,' Number of turbulent variables in HDF5 does not match requested SGS/RW model!')
+      ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.EQ.TurbPartSize)) THEN
+        ! Maybe add check that compares the models here. Should resort to a warning in case we want to change the model midrun, so
+        ! nothing urgent
+        SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data with ',TurbPartDataSize, &
+                                                    ' variables and matching current setup. Continuing run...'
+        ! Get TurbPartData
+        ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
+        CALL ReadArray('TurbPartData',2,(/TurbPartDataSize,locnPart/),offsetnPart,2,RealArray=TurbPartData)
+
+        ! Loop over all particles on local proc and fill the TurbPartState
+        IF (locnPart.GT.0) THEN
+          TurbPartState(1:TurbPartDataSize,1:locnPart) = TurbPartData(1:TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart)
+        END IF
+
+        ! De-allocate array used for readin
+        DEALLOCATE(TurbPartData)
+
+      ! Last case is no turbulent properties in current run or HDF5. Do nothing ...
       END IF
-
-      ! De-allocate array used for readin
-      DEALLOCATE(TurbPartData)
-
-    ! Last case is no turbulent properties in current run or HDF5. Do nothing ...
+    ! No turbulent particle properties in HDF5
+    ELSE
+      IF (TurbPartDataSize.NE.0) THEN
+        SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES') ' | HDF5 state file not containing SGS/RW data but model active in current run.'
+        SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES') ' | SGS/RW model will start without history...'
+      END IF
     END IF
 
     ! De-allocate arrays used for read-in

@@ -25,6 +25,6 @@ SAVE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL ::                   PartDataExists                              ! Flag if restart file has saved part data
-
+LOGICAL ::                   TurbPartDataExists                          ! Flag if restart file has saved turbulent part data
 !===================================================================================================================================
 END MODULE MOD_Particle_Restart_Vars

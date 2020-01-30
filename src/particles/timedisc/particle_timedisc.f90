@@ -564,7 +564,8 @@ REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 ! LOCAL VARIABLES
 LOGICAL                       :: part_err
 INTEGER                       :: iPart, iStage_loc
-REAL                          :: RandVal!,v_magnitude
+REAL,PARAMETER                :: RandVal = 1.                         ! Random time increment for new parts to accomplish temporal
+                                                                      ! dispersion within on time step. Currently disabled
 REAL                          :: Pa_rebuilt_coeff(1:nRKStages),Pa_rebuilt(1:3,1:nRKStages),Pv_rebuilt(1:3,1:nRKStages),v_rebuilt(1:3,0:nRKStages-1)
 #if USE_LOADBALANCE
 REAL                          :: tLBStart
@@ -619,7 +620,6 @@ IF (t.GE.DelayTime) THEN
 
       !IsNewPart: no Pt_temp history available. Either because of emissionType = 1 or because of reflection with almost zero wallVelo
       ELSE
-        RandVal         = 1.
         Pa_rebuilt(:,:) = 0.
         DO iStage_loc=1,iStage
           Pa_rebuilt(1:3,iStage_loc)=Pa_rebuilt_coeff(iStage_loc)*Pt(1:3,iPart)

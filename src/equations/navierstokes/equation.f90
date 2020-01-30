@@ -144,7 +144,11 @@ IF(nRefState .GT. 0)THEN
   END IF
 #endif
     ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
-    UE(SRHO) = 1./RefStatePrim(1,i)
+    IF(RefStatePrim(1,i).EQ.0.)THEN
+      UE(SRHO)=0.
+    ELSE
+      UE(SRHO) = 1./RefStatePrim(1,i)
+    END IF
     UE(PRES) = RefStatePrim(5,i)
     RefStatePrim(6,i) = TEMPERATURE_HE(UE)
     CALL PrimToCons(RefStatePrim(:,i),RefStateCons(:,i))

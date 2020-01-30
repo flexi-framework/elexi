@@ -104,6 +104,7 @@ USE MOD_Mesh_Vars         ,ONLY: MeshInitIsDone,nBCSides,BC,BoundaryType,nBCs,Fa
 USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
 #endif
 USE MOD_EOS               ,ONLY: ConsToPrim
+USE MOD_EOS_Vars          ,ONLY: Mach
 USE MOD_ExactFunc         ,ONLY: ExactFunc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -142,9 +143,9 @@ DO iSide=1,nBCSides
   IF((locType.EQ.27).AND.(locState.LT.1))&
     CALL abort(__STAMP__,&
                'No inflow refstate (Tt,alpha,beta,empty,pT) in refstate defined for BC_TYPE',locType)
-  IF((locType.EQ.28).AND.(locState.LT.1))&
+  IF((locType.EQ.28).AND.((locState.LT.1).OR.Mach.EQ.0.))&
     CALL abort(__STAMP__,&
-               'No inflow refstate (Tt,alpha,beta,empty,p) in refstate defined for BC_TYPE',locType)
+               'No inflow refstate (Tt,alpha,beta,empty,p) in refstate or no Mach number defined for BC_TYPE',locType)
   IF((locType.EQ.121).AND.(locState.LT.1))&
     CALL abort(__STAMP__,&
                'No exactfunc defined for BC_TYPE',locType)
@@ -257,7 +258,7 @@ USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_EOS          ,ONLY: ConsToPrim,PrimtoCons
 USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
-USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
+USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R,Mach
 USE MOD_ExactFunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -470,7 +471,7 @@ CASE(3,4,9,91,23,24,25,27,28)
       UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
     END DO; END DO !p,q
 
-  CASE(28) ! Subsonic inflow BC (adiabatic), stagnation T and static pressure and inflow angles are prescribed (typical *internal* inflow BC)
+  CASE(28) ! Subsonic inflow BC (adiabatic), stagnation T and static pressure and inflow angles as well as the Mach number are prescribed (typical *internal* inflow BC)
     ! Refstate for this case is special
     ! Compute temperature from density and pressure
     ! Nv specifies inflow direction of inflow:
@@ -486,27 +487,29 @@ CASE(3,4,9,91,23,24,25,27,28)
     Tt=RefStatePrim(1,BCState)
     nv=RefStatePrim(2:4,BCState)
     pb=RefStatePrim(5,BCState)
+    Ma = Mach
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
 
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
-      A=SUM(nv(1:3)*(-1.)*NormVec(1:3,p,q))
-      ! sound speed from inner state
-      c=SQRT(kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q))
-      ! 1D Riemann invariant: Rminus = Ui-2ci /kappamM1, Rminus = Ubc-2cb /kappaM1, normal component only!
-      Rminus=-UPrim_boundary(2,p,q)-2./KappaM1*c
-      ! The Newton iteration for the T_b in the paper can be avoided by rewriting EQ 5 from the  paper
-      ! not in T, but in sound speed -> quadratic equation, solve with PQ Formel (Mitternachtsformel is
-      ! FORBIDDEN)
-      tmp1=(A**2*KappaM1+2.)/(Kappa*R*A**2*KappaM1)   !a
-      tmp2=2*Rminus/(Kappa*R*A**2)                    !b
-      tmp3=KappaM1*Rminus*Rminus/(2.*Kappa*R*A**2)-Tt !c
-      cb=(-tmp2+SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)   !
-      c=(-tmp2-SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)    ! dummy
-      cb=MAX(cb,c)                                    ! Following the FUN3D Paper, the max. of the two
+!      A=SUM(nv(1:3)*(-1.)*NormVec(1:3,p,q))
+!      ! sound speed from inner state
+!      c=SQRT(kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q))
+!      ! 1D Riemann invariant: Rminus = Ui-2ci /kappamM1, Rminus = Ubc-2cb /kappaM1, normal component only!
+!      Rminus=-UPrim_boundary(2,p,q)-2./KappaM1*c
+!      ! The Newton iteration for the T_b in the paper can be avoided by rewriting EQ 5 from the  paper
+!      ! not in T, but in sound speed -> quadratic equation, solve with PQ Formel (Mitternachtsformel is
+!      ! FORBIDDEN)
+!      tmp1=(A**2*KappaM1+2.)/(Kappa*R*A**2*KappaM1)   !a
+!      tmp2=2*Rminus/(Kappa*R*A**2)                    !b
+!      tmp3=KappaM1*Rminus*Rminus/(2.*Kappa*R*A**2)-Tt !c
+!      cb=(-tmp2+SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)   !
+!      c=(-tmp2-SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)    ! dummy
+!      cb=MAX(cb,c)                                    ! Following the FUN3D Paper, the max. of the two
       ! is the physical one...not 100% clear why
       ! compute static T  at bc from c
-      Tb=cb**2/(Kappa*R)
-      Ma=SQRT(2./KappaM1*(Tt/Tb-1.))
+      Tb=Tt/(1+KappaM1*0.5*Ma**2)
+!      Tb=cb**2/(Kappa*R)
+!      Ma=SQRT(2./KappaM1*(Tt/Tb-1.))
       U=Ma*SQRT(Kappa*R*Tb)
       UPrim_boundary(1,p,q) = pb/(R*Tb)
       UPrim_boundary(5,p,q) = pb

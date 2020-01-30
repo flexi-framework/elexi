@@ -80,6 +80,7 @@ CALL prms%CreateRealOption(     'mu0',          "Dynamic Viscosity", '0.')
 CALL prms%CreateRealOption(     'Ts',           "Sutherland's law for variable viscosity: Ts", '110.4')
 CALL prms%CreateRealOption(     'Tref',         "Sutherland's law for variable viscosity: Tref ", '280.0')
 CALL prms%CreateRealOption(     'ExpoSuth',     "Sutherland's law for variable viscosity: Exponent", '1.5')
+CALL prms%CreateRealOption(     'Ma',           "Mach number", '0.')
 
 END SUBROUTINE DefineParametersEos
 
@@ -92,7 +93,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1,KappaP1,cp,cv
-USE MOD_EOS_Vars      ,ONLY: R,sKappaM1,sKappaP1
+USE MOD_EOS_Vars      ,ONLY: R,sKappaM1,sKappaP1,Mach
 #if PARABOLIC
 USE MOD_EOS_Vars      ,ONLY: mu0,Pr,KappaSpr
 #if PP_VISC == 1
@@ -174,6 +175,8 @@ ExpoSuth=GETREAL('ExpoSuth')
 mu0     =mu0/Tref**ExpoSuth
 #endif
 #endif /*PARABOLIC*/
+! Mach number (for BC 28)
+Mach = GETREAL('Ma')
 
 SWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')

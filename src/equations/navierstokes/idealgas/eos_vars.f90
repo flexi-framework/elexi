@@ -31,6 +31,7 @@ REAL              :: sKappaM1          !< = \f$1/(\kappa -1)\f$
 REAL              :: KappaP1           !< = \f$\kappa + 1\f$
 REAL              :: sKappaP1          !< = \f$1/(\kappa +1)\f$
 REAL              :: R                 !< specific gas constant
+REAL              :: Mach              !< Mach number
 
 LOGICAL           :: EosInitIsDone=.FALSE.
 !==================================================================================================================================

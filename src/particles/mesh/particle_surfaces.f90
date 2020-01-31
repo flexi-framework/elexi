@@ -122,6 +122,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: tmp,iSide!,iBCSide
+REAL                            :: epsilonrel
 CHARACTER(LEN=2)                :: dummy
 !===================================================================================================================================
 
@@ -145,10 +146,19 @@ BezierClipMaxIter     = GETINT('BezierClipMaxIter','100')
 BezierClipLineVectorMethod = GETINT('BezierClipLineVectorMethod','2')
 
 epsilontol            = GETREAL('epsilontol','0.')
-! if nothing is entered, than a default value is used
-! for tolerance issuses see, e.g. Haselbxxx PIC Tracking Paper
-! epsilon approx 100*tolerance of the algorithm
-IF(ALMOSTZERO(epsilontol)) epsilontol=100.*EpsMach
+! it might be smarter to give the tolerance as a relationship to the machine epsilon (epsMach)
+IF(ALMOSTZERO(epsilontol)) THEN
+  epsilonrel          = GETREAL('epsilonrel','0.')
+  IF(.NOT.ALMOSTZERO(epsilonrel)) THEN
+    epsilontol=epsilonrel*EpsMach
+  ! if nothing is entered, than a default value is used
+  ! for tolerance issuses see, e.g. Haselbxxx PIC Tracking Paper
+  ! epsilon approx 100*tolerance of the algorithm
+  ELSE
+    epsilontol=100.*EpsMach
+  END IF
+END IF
+SWRITE(UNIT_stdOut,'(A44,17x,E12.6,A2,E12.6)')   ' |              epsilon (abs,rel epsMach) | ',epsilontol,', ',epsilontol/EpsMach
 MinusEps              = -epsilontol
 OnePlusEps            = 1.0 + 100.*epsilontol
 OneMinusEps           = 1.0 - epsilontol

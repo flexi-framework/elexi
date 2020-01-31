@@ -211,7 +211,7 @@ LOGICAL                           :: CriticalParallelInSide
   IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
       WRITE(UNIT_stdout,'(110("-"))')
-      WRITE(UNIT_stdout,'(A)') '     | Output of planar face constants: '
+      WRITE(UNIT_stdout,'(A,I0)')      '     | Output of planar face constants for Side: ',SideID
       WRITE(UNIT_stdout,'(A,3(X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,SideID)
       WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
       WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
@@ -221,18 +221,18 @@ LOGICAL                           :: CriticalParallelInSide
   END IF
 #endif /*CODE_ANALYZE*/
 ! set alpha to minus 1, asume no intersection
-alpha=-1.0
-xi=-2.
-eta=-2.
-isHit=.FALSE.
+alpha = -1.0
+xi    = -2.
+eta   = -2.
+isHit = .FALSE.
 
 ! new with flip
 IF(flip.EQ.0)THEN
-  NormVec  =SideNormVec(1:3,SideID)
-  locDistance=SideDistance(SideID)
+  NormVec     = SideNormVec(1:3,SideID)
+  locDistance = SideDistance(SideID)
 ELSE
-  NormVec  =-SideNormVec(1:3,SideID)
-  locDistance=-SideDistance(SideID)
+  NormVec     = -SideNormVec(1:3,SideID)
+  locDistance = -SideDistance(SideID)
 END IF
 coeffA=DOT_PRODUCT(NormVec,PartTrajectory)
 
@@ -293,6 +293,14 @@ ELSE
   P1 = 0.25*BaseVectors1(:,SideID)
   P2 = 0.25*BaseVectors2(:,SideID)
 END IF
+
+#if CODE_ANALYZE
+  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
+    IF(PartID.EQ.PARTOUT)THEN
+      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Possible Intersection at: ',inter(1:3
+    END IF
+  END IF
+#endif /*CODE_ANALYZE*/
 
 A1=P1(1)*P1(1)+P1(2)*P1(2)+P1(3)*P1(3)
 B1=P2(1)*P1(1)+P2(2)*P1(2)+P2(3)*P1(3)
@@ -784,8 +792,8 @@ C = a1(4)*a2(2)-a1(2)*a2(4)
     IF(PartID.EQ.PARTOUT)THEN
       WRITE(UNIT_stdout,'(A,4(X,G0))') '     | a1: ',a1
       WRITE(UNIT_stdout,'(A,4(X,G0))') '     | a2: ',a2
-      WRITE(UNIT_stdout,'(A)') '     | Quadratic equation constants: '
-      WRITE(UNIT_stdout,'(3(A,G0))') '     | A: ',A,' | B: ',B,' | C: ',C
+      WRITE(UNIT_stdout,'(A)')         '     | Quadratic equation constants: '
+      WRITE(UNIT_stdout,'(3(A,G0))')   '     | A: ',A,' | B: ',B,' | C: ',C
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
@@ -803,7 +811,7 @@ END IF
 #if CODE_ANALYZE
   IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
-      WRITE(UNIT_stdout,'(A)') '     | Quadratic equation constants (after scaling): '
+      WRITE(UNIT_stdout,'(A)')       '     | Quadratic equation constants (after scaling): '
       WRITE(UNIT_stdout,'(3(A,G0))') '     | A: ',A,' | B: ',B,' | C: ',C
     END IF
   END IF
@@ -814,7 +822,7 @@ CALL QuadraticSolver(A,B,C,nRoot,Eta(1),Eta(2))
 #if CODE_ANALYZE
   IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
-      WRITE(UNIT_stdout,'(A)') '     | Output after QuadraticSolver: '
+      WRITE(UNIT_stdout,'(A)')              '     | Output after QuadraticSolver: '
       WRITE(UNIT_stdout,'(A,I0,A,2(X,G0))') '     | number of root: ',nRoot,' | Eta: ',Eta(1:2)
     END IF
   END IF

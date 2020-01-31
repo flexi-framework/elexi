@@ -196,7 +196,8 @@ CALL prms%CreateIntOption(     'BezierNewtonMaxIter'    , ' TODO-DEFINE-PARAMETE
 CALL prms%CreateRealOption(    'BezierSplitLimit'       , ' Limit for splitting in BezierClipping.'// &
    ' Value allows to detect multiple intersections and speed up computation. Parameter is multiplied by 2' , '0.6')
 CALL prms%CreateIntOption(     'BezierClipMaxIter'      , ' Max iteration of BezierClipping' , '100')
-CALL prms%CreateRealOption(    'epsilontol'             , 'TODO-DEFINE-PARAMETER' , '0.')
+CALL prms%CreateRealOption(    'epsilontol'             , ' Tolerance (absolute) for comparison against zero', '0.')
+CALL prms%CreateRealOption(    'epsilonrel'             , ' Tolerance (relative) for comparison against zero', '0.')
 CALL prms%CreateRealOption(    'BezierClipHit'          , ' Tolerance in [-1,1] of BezierFace' , '0.')
 CALL prms%CreateRealOption(    'BezierNewtonHit'        , ' Tolerance in [-1,1] of BezierNewton' , '0.')
 CALL prms%CreateIntOption(     'BezierClipMaxIntersec'  , ' Max. number of multiple intersections. Default: 2*(NGeo+1)')
@@ -2633,6 +2634,7 @@ INTEGER                   :: i
 
 IsNotEqual=.FALSE.
 
+! TODO: WHY IS HERE A FIXED TOLERANCE? MAKE IT A RELATIVE ONE AGAINST VECLENGTH OR EPSMACH
 DO i=1,N
   IF( ABS(Points1(1,i)-Points2(1,i)).GT.1e-14 .OR. &
       ABS(Points1(2,i)-Points2(2,i)).GT.1e-14 .OR. &
@@ -2817,12 +2819,32 @@ DO iElem=1,nTotalElems
         v1=UNITVECTOR(BezierControlPoints3D(:,0   ,NGeo,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID))
         v2=UNITVECTOR(BezierControlPoints3D(:,NGeo,0   ,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID))
         v3=UNITVECTOR(BezierControlPoints3D(:,NGeo,NGeo,SideID)-BezierControlPoints3D(:,0   ,NGeo,SideID))
-        IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
-        IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
+        ! The comparison against zero is really dangerous. If the vector length is small, the unit vector might be off by machine epsilon/vecLength.
+        ! So it is smarter to check against this value
+!        IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
+!        IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
+        IF(.NOT.(ABS(DOT_PRODUCT(v1,v2)).LT.                                                                            &
+          MAX(epsilon(0.)/NORM2(BezierControlPoints3D(:,0   ,NGeo,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID)),   &
+              epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,0   ,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID))))) &
+                isRectangular=.FALSE.
+        IF(.NOT.(ABS(DOT_PRODUCT(v1,v3)).LT.                                                                            &
+          MAX(epsilon(0.)/NORM2(BezierControlPoints3D(:,0   ,NGeo,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID)),   &
+              epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,Ngeo,SideID)-BezierControlPoints3D(:,0   ,Ngeo,SideID))))) &
+                isRectangular=.FALSE.
         IF(isRectangular)THEN
           v1=UNITVECTOR(BezierControlPoints3D(:,NGeo,NGeo,SideID)-BezierControlPoints3D(:,NGeo,0   ,SideID))
-          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
-          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
+        ! The comparison against zero is really dangerous. If the vector length is small, the unit vector might be off by machine epsilon/vecLength.
+        ! So it is smarter to check against this value
+!          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
+!          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
+          IF(.NOT.(ABS(DOT_PRODUCT(v1,v2)).LT.                                                                            &
+            MAX(epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,NGeo,SideID)-BezierControlPoints3D(:,Ngeo,0   ,SideID)),   &
+                epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,0   ,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID))))) &
+                  isRectangular=.FALSE.
+          IF(.NOT.(ABS(DOT_PRODUCT(v1,v3)).LT.                                                                            &
+            MAX(epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,NGeo,SideID)-BezierControlPoints3D(:,Ngeo,0   ,SideID)),   &
+                epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,Ngeo,SideID)-BezierControlPoints3D(:,0   ,Ngeo,SideID)))))&
+                  isRectangular=.FALSE.
         END IF
         IF(isRectangular)THEN
           SideType(TrueSideID)=PLANAR_RECT
@@ -2915,12 +2937,30 @@ DO iElem=1,nTotalElems
           v1=UNITVECTOR(BezierControlPoints3D(:,0   ,NGeo,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID))
           v2=UNITVECTOR(BezierControlPoints3D(:,NGeo,0   ,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID))
           v3=UNITVECTOR(BezierControlPoints3D(:,NGeo,NGeo,SideID)-BezierControlPoints3D(:,0   ,NGeo,SideID))
-          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
-          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
+!          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
+!          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
+          IF(.NOT.(ABS(DOT_PRODUCT(v1,v2)).LT.                                                                            &
+            MAX(epsilon(0.)/NORM2(BezierControlPoints3D(:,0   ,NGeo,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID)),   &
+                epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,0   ,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID))))) &
+                  isRectangular=.FALSE.
+          IF(.NOT.(ABS(DOT_PRODUCT(v1,v3)).LT.                                                                            &
+            MAX(epsilon(0.)/NORM2(BezierControlPoints3D(:,0   ,NGeo,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID)),   &
+                epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,Ngeo,SideID)-BezierControlPoints3D(:,0   ,Ngeo,SideID))))) &
+                  isRectangular=.FALSE.
           IF(isRectangular)THEN
             v1=UNITVECTOR(BezierControlPoints3D(:,NGeo,NGeo,SideID)-BezierControlPoints3D(:,NGeo,0   ,SideID))
-            IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
-            IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
+            ! The comparison against zero is really dangerous. If the vector length is small, the unit vector might be off by machine epsilon/vecLength.
+            ! So it is smarter to check against this value
+!            IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
+!            IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
+            IF(.NOT.(ABS(DOT_PRODUCT(v1,v2)).LT.                                                                            &
+              MAX(epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,NGeo,SideID)-BezierControlPoints3D(:,Ngeo,0   ,SideID)),   &
+                  epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,0   ,SideID)-BezierControlPoints3D(:,0   ,0   ,SideID))))) &
+                    isRectangular=.FALSE.
+            IF(.NOT.(ABS(DOT_PRODUCT(v1,v3)).LT.                                                                            &
+              MAX(epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,NGeo,SideID)-BezierControlPoints3D(:,Ngeo,0   ,SideID)),   &
+                  epsilon(0.)/NORM2(BezierControlPoints3D(:,Ngeo,Ngeo,SideID)-BezierControlPoints3D(:,0   ,Ngeo,SideID)))))&
+                    isRectangular=.FALSE.
           END IF
           IF(isRectangular)THEN
             SideType(TrueSideID)=PLANAR_RECT

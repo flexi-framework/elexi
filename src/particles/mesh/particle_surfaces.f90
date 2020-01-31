@@ -152,7 +152,7 @@ IF(ALMOSTZERO(epsilontol)) THEN
   IF(.NOT.ALMOSTZERO(epsilonrel)) THEN
     epsilontol=epsilonrel*EpsMach
   ! if nothing is entered, than a default value is used
-  ! for tolerance issuses see, e.g. Haselbxxx PIC Tracking Paper
+  ! for tolerance issuses see, e.g. Haselbacher et al., "An efficient and robust particle-localization algorithm for unstructured grids"
   ! epsilon approx 100*tolerance of the algorithm
   ELSE
     epsilontol=100.*EpsMach
@@ -989,9 +989,9 @@ END DO
 ! 2-c.) bounding box extension
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-dx=ABS(ABS(SideSlabIntervals(2))-ABS(SideSlabIntervals(1)))
-dy=ABS(ABS(SideSlabIntervals(4))-ABS(SideSlabIntervals(3)))
-dz=ABS(ABS(SideSlabIntervals(6))-ABS(SideSlabIntervals(5)))
+dx=ABS(SideSlabIntervals(2)-SideSlabIntervals(1))
+dy=ABS(SideSlabIntervals(4)-SideSlabIntervals(3))
+dz=ABS(SideSlabIntervals(6)-SideSlabIntervals(5))
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! 3.) Is Side critical? (particle path parallel to the larger surface, therefore numerous intersections are possilbe)
@@ -1018,38 +1018,34 @@ END IF
 !     this results also in the decision whether a side is also considered flat or bilinear!
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-dMax=MAX(dx,dy,dz)
-dMin=MIN(dx,dy,dz)
-IF(dx/dMax.LT.BezierEpsilonBilinear)THEN
-  CALL Abort(&
-__STAMP__&
-,'Bezier side length is degenerated. dx/dMax.LT.BezierEpsilonBilinear ->',0,dx/dMax)
+! check dimensions of sideslabs in x, y and z direction where the slab area (w)x(l) is defined by x-z and the height of the side-slab is y
+dMax=MAX(h,l,w)
+IF(l/dMax.LT.BezierEpsilonBilinear)THEN
+  ! side is almost a line
+  CALL ABORT(__STAMP__,'ERROR: found degenerated side. length/dMax of a side slab is ->',0,l/dMax)
 END IF
-IF(dy/dMax.LT.BezierEpsilonBilinear)THEN
+IF(w/dMax.LT.BezierEpsilonBilinear)THEN
+  ! side is almost a line
+  CALL ABORT(__STAMP__,'ERROR: found degenerated side. width/dMax of a side slab is ->',0,w/dMax)
+END IF
+IF(h/dMax.LT.BezierEpsilonBilinear)THEN
+  ! the height of the sideslab is almost zero --> flat in regards to machine precision
   SideSlabIntervals(3:4)=0.
-  dy=0.
-END IF
-IF(dz/dMax.LT.BezierEpsilonBilinear)THEN
-  CALL Abort(&
-__STAMP__&
-,'Bezier side length is degenerated. dz/dMax.LT.BezierEpsilonBilinear ->',0,dz/dMax)
+  h=0.
 END IF
 
-IF(dx*dy*dz.LT.0) THEN
-  IPWRITE(UNIT_stdOut,*) ' Warning, no bounding box'
-  IF(dx*dy*dz.LT.0) CALL Abort(&
-__STAMP__&
-,'A bounding box (for sides) is negative!?. dx*dy*dz.LT.0 ->',0,(dx*dy*dz))
+IF(l*w*h.LT.0) THEN
+  CALL ABORT(__STAMP__,'A bounding box (for sides) is negative!?. length*width*height.LT.0 ->',0,(l*w*h))
 END IF
 
-IF(ALMOSTZERO(dy/SQRT(dx*dx+dy*dy+dz*dz)))THEN ! bounding box volume is approx zeros
+IF(ALMOSTZERO(h/SQRT(l*l+w*w+h*h)))THEN ! bounding box volume is approx zeros
   BoundingBoxIsEmpty=.TRUE.
 ELSE
   BoundingBoxIsEmpty=.FALSE.
 END IF
 
 #if CODE_ANALYZE
-SideBoundingBoxVolume=dx*dy*dz
+SideBoundingBoxVolume=h*l*w
 #endif /*CODE_ANALYZE*/
 END SUBROUTINE GetSideSlabNormalsAndIntervals
 

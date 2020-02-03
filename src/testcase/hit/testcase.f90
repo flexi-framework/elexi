@@ -439,7 +439,9 @@ DR_p      = DR_p     /Vol
 
 ! Taylor microscale Reynolds number (Petersen, 2010)
 nu0      = mu0/rho
-lTaylor  = SQRT(15.*nu0/(DR_SD+DR_p))*uRMS
+!>> Taylor microscale should be calculated with compressible eps, but currently unstable. Use only deviatoric part eps1 for now
+!lTaylor  = SQRT(15.*nu0/(DR_SD+DR_p))*uRMS
+lTaylor  = SQRT(15.*nu0/DR_SD)*uRMS
 Reynolds = uRMS * lTaylor/nu0
 
 ! Increment output counter and write output

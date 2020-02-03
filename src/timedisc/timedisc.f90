@@ -328,7 +328,7 @@ CALL Analyze(t,iter)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
-CALL PrintStatusLine(t,dt,tStart,tEnd)
+!CALL PrintStatusLine(t,dt,tStart,tEnd)
 
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A,ES16.7)')'Initial Timestep  : ', dt

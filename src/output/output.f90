@@ -284,13 +284,17 @@ IF(MPIroot)THEN
 #endif
 #if USE_PARTICLES
   IF (nParticleInDomain.GT.0) THEN
-    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,I8,A1)',ADVANCE='NO') 'Time = ', t, &
-        ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs), &
-        ', # of Particles:', nParticleInDomain, ACHAR(13)
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,I8,A,A,A1,A,A4,F6.2,A3,A1)',ADVANCE='NO') &
+      '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),          &
+      '  # part inside = ', nParticleInDomain,' |',                                                                        &
+      REPEAT('=',MAX(CEILING(percent/3)-1,0)),'>',REPEAT(' ',INT((100-percent)/3)),'| [',percent,'%] ',            &
+      ACHAR(13) ! ACHAR(13) is carriage return
   ELSE
 #endif
-    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A1)',ADVANCE='NO') 'Time = ', t, &
-        ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs), ACHAR(13)
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I3,A1,I0.2,A1,I0.2,A1,I0.2,A14,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO') &
+      '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',&
+      REPEAT('=',MAX(CEILING(percent/2)-1,0)),'>',REPEAT(' ',INT((100-percent)/2)),'| [',percent,'%] ',&
+      ACHAR(13) ! ACHAR(13) is carriage return
 #if USE_PARTICLES
   END IF
 #endif

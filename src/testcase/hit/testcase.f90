@@ -54,7 +54,7 @@ INTERFACE TestcaseSource
 END INTERFACE
 
 INTERFACE AnalyzeTestCase
-  MODULE PROCEDURE DO_NOTHING
+  MODULE PROCEDURE AnalyzeTestCase
 END INTERFACE
 
 INTERFACE GetBoundaryFluxTestcase
@@ -89,14 +89,21 @@ SUBROUTINE DefineParametersTestcase()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms
+IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
+
+! HIT parameters
 CALL prms%CreateRealOption('HIT_k'      , 'Target turbulent kinetic energy in HIT', '0.')
 !CALL prms%CreateRealOption('HIT_rho'    , 'Target density in HIT', '0.')
 CALL prms%CreateRealOption('HIT_tFilter', 'Temp filter width of exponential, explicit time filter', '0.')
 !CALL prms%CreateIntOption( 'HIT_nFilter', 'Polynomial degree of the HIT cut-off filter','0')
 CALL prms%CreateRealOption('HIT_tauRMS' , 'Strength of RMS forcing.','0.')
 
+! Analyze paramters
+CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
+CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
+                                              "(Note: always called at global analyze level)", '10')
 END SUBROUTINE DefineParametersTestcase
 
 
@@ -111,6 +118,8 @@ USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState
 !USE MOD_Filter_Vars
 !USE MOD_Interpolation_Vars, ONLY: Vdm_Leg,sVdm_Leg
 USE MOD_Mesh_Vars,          ONLY: nElems
+USE MOD_Output,         ONLY: InitOutputToFile
+USE MOD_Output_Vars,    ONLY: ProjectName
 USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
 USE MOD_TestCase_Vars
 IMPLICIT NONE
@@ -120,6 +129,7 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+CHARACTER(LEN=31)        :: varnames(nHITVars)
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE HOMOGENEOUS ISOTROPIC TURBULENCE...'
@@ -163,6 +173,25 @@ ALLOCATE(HIT_RMS(1:3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(UPrim_temp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 HIT_RMS    = 0.
 UPRIM_temp = 0.
+
+
+! Length of Buffer for TGV output
+nWriteStats      = GETINT( 'nWriteStats','100')
+nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','10')
+
+IF(MPIRoot)THEN
+  ALLOCATE(Time(nWriteStats))
+  ALLOCATE(writeBuf(nHITVars,nWriteStats))
+  Filename = TRIM(ProjectName)//'_HITAnalysis'
+
+  varnames(1) ="Dissipation Rate Incompressible"
+  varnames(2) ="Dissipation Rate Compressible"
+  varnames(3) ="Ekin incomp"
+  varnames(4) ="Ekin comp"
+  varnames(5) ="U RMS"
+  varnames(6) ="Reynolds number"
+  CALL InitOutputToFile(FileName,'Homogeneous Isotropic Turbulence Analysis Data',nHITVars,varnames)
+END IF
 
 ! Small trick to survive the first DG call when dt is not set
 InitHITDone = .FALSE.
@@ -268,20 +297,176 @@ END DO
 
 END SUBROUTINE TestcaseSource
 
-!!==================================================================================================================================
-!!> Testcase specific analyze routines
-!!==================================================================================================================================
-!SUBROUTINE AnalyzeTestcase()
-!! MODULES
-!IMPLICIT NONE
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT/OUTPUT VARIABLES
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! OUTPUT VARIABLES
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!!==================================================================================================================================
-!END SUBROUTINE AnalyzeTestcase
+!==================================================================================================================================
+!> Perform HIT-specific analysis: compute dissipation rates, kinetic energy and Reynolds number
+!==================================================================================================================================
+SUBROUTINE AnalyzeTestcase(t)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc,        ONLY: N
+USE MOD_Analyze_Vars,   ONLY: wGPVol,Vol
+USE MOD_DG_Vars,        ONLY: U
+USE MOD_EOS_Vars,       ONLY: mu0,KappaM1
+USE MOD_Lifting_Vars,   ONLY: GradUx,GradUy,GradUz
+USE MOD_Mesh_Vars,      ONLY: nElems,sJ
+USE MOD_TestCase_Vars
+#if USE_MPI
+USE MOD_MPI_Vars
+#endif
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)                 :: t                      !< simulation time
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                         :: i,j,k,p,q,iElem
+REAL                            :: Vel(1:3),Pressure,rho,uRMS,nu0
+REAL                            :: GradVel(1:3,1:3)
+REAL                            :: E,Ekin                        ! Integrands: 0.5*v*v
+REAL                            :: E_comp,Ekin_comp              ! Integrands: 0.5*rho*v*v
+REAL                            :: Intfactor                     ! Integration weights
+REAL                            :: S(1:3,1:3)                    ! Strain rate tensor S (symmetric)
+REAL                            :: Sd(1:3,1:3)                   ! Deviatoric part of the strain rate tensor S
+REAL                            :: divU                          ! Divergence of velocity vector
+REAL                            :: eps3                          ! Integrand: p*(div u)
+REAL                            :: u_tens, s_tens, sd_tens       ! Matrix product, integrands of Gradvel, S, Sd
+REAL                            :: DR_S,DR_Sd,DR_p !,DR_u        ! Contributions to dissipation rate
+REAL                            :: Reynolds,lTaylor              ! Reynolds number and Taylor microscale
+#if USE_MPI
+REAL                            :: rho_glob
+REAL                            :: Ekin_glob,Ekin_comp_glob
+REAL                            :: DR_S_glob,DR_Sd_glob,DR_p_glob !,DR_u_Glob
+#endif
+!==================================================================================================================================
+Ekin      = 0.
+Ekin_comp = 0.
+rho       = 0.
+!DR_u      = 0.
+DR_S      = 0.
+DR_Sd     = 0.
+DR_p      = 0.
+
+DO iElem=1,nElems
+  DO k = 0,PP_N
+    DO j = 0,PP_N
+      DO i = 0,PP_N
+      ! Compute primitive gradients (of u,v,w) at each GP
+      Vel    (1:3) = U(2:4,i,j,k,iElem)/U(1,i,j,k,iElem)
+      GradVel(:,1) = GradUx(2:4,i,j,k,iElem)
+      GradVel(:,2) = GradUy(2:4,i,j,k,iElem)
+      GradVel(:,3) = GradUz(2:4,i,j,k,iElem)
+
+      ! Pressure and density
+      Pressure = KappaM1*(U(5,i,j,k,iElem)-0.5*SUM(U(2:4,i,j,k,iElem)*Vel(1:3)))
+      rho      = rho + U(1,i,j,k,iElem)
+
+      ! Compute divergence of velocity
+      divU = GradVel(1,1) + GradVel(2,2) + GradVel(3,3)
+      ! Compute tensor of velocity gradients
+      S  = 0.5*(Gradvel+TRANSPOSE(GradVel))
+      ! Deviatoric part of strain tensor
+      Sd = S
+      DO p = 1,3
+        Sd(p,p) = Sd(p,p) - 1./3.*divU
+      END DO
+
+      ! Compute kinetic energy integrand (incompressible/compressible)
+      E      = 0.5 * SUM(Vel(1:3)*Vel(1:3))
+      E_comp = U(1,i,j,k,iElem) * E
+
+      ! Compute integrand for epsilon3, pressure contribution to dissipation (compressiblity effect)
+      eps3 = Pressure * divU
+      ! Matrix product for velocity gradient tensor, S:S and Sd:Sd
+      u_tens=0.; s_tens=0.; sd_tens=0.
+      DO p=1,3
+        DO q=1,3
+          u_tens  = u_tens  + GradVel(p,q)*GradVel(p,q)
+          s_tens  = s_tens  + S(p,q)      *S(p,q)
+          sd_tens = sd_tens + Sd(p,q)     *Sd(p,q)
+        END DO
+      END DO
+
+      ! Compute integration factor
+      Intfactor = wGPVol(i,j,k) / sJ(i,j,k,iElem,0)
+
+      ! Compute integrals
+      !>> Kinetic energy (incompressible/compressible)
+      Ekin      = Ekin      + E     *Intfactor
+      Ekin_comp = Ekin_comp + E_comp*IntFactor
+      !>> Dissipation rate
+  !    DR_u  = DR_u  + u_tens *IntFactor  ! epsilon incomp from velocity gradient tensor (Diss Fauconnier)
+      DR_S  = DR_S  + 2./U(1,i,j,k,iElem)*S_tens *IntFactor  ! epsilon incomp from strain rate tensor (incomp) (Sagaut)
+      DR_SD = DR_SD + 2./U(1,i,j,k,iElem)*sd_tens*Intfactor  ! epsilon 1 from deviatoric part of strain rate tensor Sd (compressible)
+      DR_p  = DR_p  - 1./U(1,i,j,k,iElem)*eps3   *Intfactor  ! epsilon 3 from pressure times div u (compressible)
+      END DO
+    END DO
+  END DO
+END DO
+
+#if USE_MPI
+! MPI case: Globalize analyze variables
+CALL MPI_REDUCE(rho      ,rho_Glob        ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(Ekin     ,Ekin_Glob       ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(Ekin_comp,Ekin_comp_Glob  ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+!CALL MPI_REDUCE(DR_u     ,DR_u_Glob       ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(DR_S     ,DR_S_Glob       ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(DR_Sd    ,DR_Sd_Glob      ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(DR_p     ,DR_p_Glob       ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+! Overwrite the variables only on root
+IF (MPIRoot) THEN
+  rho       = rho_Glob
+  Ekin      = Ekin_Glob
+  Ekin_comp = Ekin_comp_Glob
+!  DR_u      = DR_u_Glob
+  DR_S      = DR_S_Glob
+  DR_Sd     = DR_SD_Glob
+  DR_p      = DR_p_Glob
+ELSE
+  ! Only root continues from here
+  RETURN
+END IF
+#endif
+
+! Normalize the integrals with the volume and calculate turbulent quantities. The density is already accounted for in the integrands
+rho       = rho      /Vol
+Ekin      = Ekin     /Vol
+Ekin_comp = Ekin_comp/Vol
+uRMS      = SQRT(Ekin*2./3.)
+!DR_u      = DR_u *mu0/Vol
+DR_S      = DR_S *mu0/Vol
+DR_SD     = DR_SD*mu0/Vol
+DR_p      = DR_p     /Vol
+
+! Taylor microscale Reynolds number (Petersen, 2010)
+nu0      = mu0/rho
+lTaylor  = SQRT(15.*nu0/(DR_SD+DR_p))*uRMS
+Reynolds = uRMS * lTaylor/nu0
+
+! Increment output counter and write output
+ioCounter=ioCounter+1
+
+IF(ioCounter.EQ.nWriteStats)THEN
+  Time(ioCounter)                = t
+  writeBuf(1:nHITVars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,uRMS,Reynolds/)
+  CALL WriteStats()
+  ioCounter = 0
+END IF
+
+END SUBROUTINE AnalyzeTestcase
+
+
+!==================================================================================================================================
+!> Write HIT Analysis Data to File
+!==================================================================================================================================
+SUBROUTINE WriteStats()
+! MODULES
+USE MOD_TestCase_Vars
+USE MOD_Output,        ONLY: OutputToFile
+IMPLICIT NONE
+!==================================================================================================================================
+CALL OutputToFile(FileName,Time(1:ioCounter),(/nHITVars,ioCounter/),&
+                           RESHAPE(writeBuf(:,1:ioCounter),(/nHITVars*ioCounter/)))
+END SUBROUTINE WriteStats
 
 
 !==================================================================================================================================

@@ -116,11 +116,14 @@ USE MOD_Globals
 USE MOD_PreProc,            ONLY: N
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState
 !USE MOD_Filter_Vars
+USE MOD_HDF5_Input,         ONLY: File_ID,OpenDataFile,CloseDataFile,ReadArray,DatasetExists,GetDataSize
+USE MOD_IO_HDF5,            ONLY:AddToFieldData,FieldOut,HSIZE,nDims
 !USE MOD_Interpolation_Vars, ONLY: Vdm_Leg,sVdm_Leg
-USE MOD_Mesh_Vars,          ONLY: nElems
-USE MOD_Output,         ONLY: InitOutputToFile
-USE MOD_Output_Vars,    ONLY: ProjectName
+USE MOD_Mesh_Vars,          ONLY: nElems,offsetElem
+USE MOD_Output,             ONLY: InitOutputToFile
+USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
+USE MOD_Restart_Vars,       ONLY: doRestart,restartFile,interpolateSolution
 USE MOD_TestCase_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -129,14 +132,16 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+LOGICAL                  :: hitDataExists
+INTEGER                  :: HSize_proc(5)
+REAL,ALLOCATABLE         :: HIT_local(:,:,:,:,:)
 CHARACTER(LEN=31)        :: varnames(nHITVars)
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE HOMOGENEOUS ISOTROPIC TURBULENCE...'
 
 #if FV_ENABLED
-CALL CollectiveStop(__STAMP__, &
-  'The testcase has not been implemented for FV yet!')
+CALL CollectiveStop(__STAMP__,'The testcase has not been implemented for FV yet!')
 #endif
 
 ! Initialize HIT filter
@@ -164,16 +169,51 @@ HIT_rho = RefStatePrim(1,IniRefState)
 ! Read target turbulent kinetic energy and relaxation time
 HIT_k      = GETREAL('HIT_k'     ,'0.')
 HIT_tauRMS = GETREAL('HIT_tauRMS','0.')
-!IF ((HIT_k.EQ.0).OR.(HIT_tauRMS.EQ.0)) &
-!  CALL CollectiveStop(__STAMP__, &
-!    'HIT target parameters cannot be zero!')
+
+IF ((HIT_tFilter.EQ.0)) &
+  CALL CollectiveStop(__STAMP__, 'HIT target parameters cannot be zero!')
 
 ! Allocate array for temporally filtered RMS
 ALLOCATE(HIT_RMS(1:3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(UPrim_temp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-HIT_RMS    = 0.
 UPRIM_temp = 0.
 
+! Try to restart from state file
+IF(DoRestart)THEN
+  CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL DatasetExists(File_ID,'HIT',HITDataExists)
+  IF (HITDataExists) THEN
+    CALL GetDataSize(File_ID,'HIT',nDims,HSize)
+    HSize_proc = INT(HSize)
+    HSize_proc(5) = nElems
+    IF (HSize_proc(1).EQ.3) THEN
+        SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='YES') ' | HDF5 state file containing HIT data with ',HSize_proc(1), &
+                                                    ' variables and matching current setup. Continuing run...'
+    ELSE
+      CALL CollectiveStop(__STAMP__,'HDF5 state file containing HIT data with different number of variables!')
+    END IF
+
+    ALLOCATE(HIT_local(1:3,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+    CALL ReadArray('HIT',5,HSize_proc,OffsetElem,5,RealArray=HIT_local)
+    ! No interpolation needed, read solution directly from file
+    IF(.NOT. InterpolateSolution)THEN
+      HIT_RMS = HIT_local
+      DEALLOCATE(HIT_local)
+    ELSE
+      CALL CollectiveStop(__STAMP__,'Interpolation currently not supported for HIT test case!')
+    END IF
+  ELSE
+    SWRITE(UNIT_stdOut,'(A)')' | No restart variables for HIT test case found. Starting without u_RMS history!'
+    HIT_RMS    = 0.
+  END IF
+  CALL CloseDataFile()
+ELSE
+  HIT_RMS    = 0.
+END IF
+
+! HIT_RMS required for restart, so add it as additional field data
+CALL AddToFieldData(FieldOut,(/3,PP_N+1,PP_N+1,PP_NZ+1,nElems/),'HIT',(/'HIT_RMSx','HIT_RMSy','HIT_RMSz'/), &
+                    RealArray=HIT_RMS,doSeparateOutput=.TRUE.)
 
 ! Length of Buffer for TGV output
 nWriteStats      = GETINT( 'nWriteStats','100')
@@ -246,6 +286,7 @@ END SUBROUTINE ExactFuncTestcase
 !==================================================================================================================================
 SUBROUTINE TestcaseSource(Ut)
 ! MODULES
+USE MOD_Globals
 USE MOD_PreProc,        ONLY: N
 USE MOD_Analyze_Vars,   ONLY: wGPVol,ElemVol
 USE MOD_DG_Vars,        ONLY: U
@@ -275,6 +316,9 @@ END IF
 !==================================================================================================================================
 CALL ConsToPrim(PP_N,UPrim_temp,U)
 
+!IF (dt.LT.HIT_tFilter) &
+!  CALL CollectiveStop(__STAMP__,"Time step dropped below HIT_tFilter. Increase your temporal filter width")
+
 DO iElem=1,nElems
   ! Time-average the solution to obtain RMS
   fac=dt/HIT_tFilter
@@ -285,9 +329,8 @@ DO iElem=1,nElems
 
   ! Calculate scalar k in every cell. First integrate with Gaussian integration, then scale with factor 1/2
   TKE = 0.
-  HIT_RMS = 1.
-   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    TKE = TKE + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    TKE = TKE + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)*SUM(HIT_RMS(1:3,i,j,k,iElem))
   END DO; END DO; END DO
   TKE = TKE/(2.*ElemVol(iElem))
 
@@ -441,18 +484,22 @@ DR_p      = DR_p     /Vol
 nu0      = mu0/rho
 !>> Taylor microscale should be calculated with compressible eps, but currently unstable. Use only deviatoric part eps1 for now
 !lTaylor  = SQRT(15.*nu0/(DR_SD+DR_p))*uRMS
-lTaylor  = SQRT(15.*nu0/DR_SD)*uRMS
+!>> Taylor microscale calculated using incompressible epsilon (Hillewaert, 2012)
+lTaylor  = SQRT(15.*nu0/DR_S)*uRMS
 Reynolds = uRMS * lTaylor/nu0
 
-! Increment output counter and write output
-ioCounter=ioCounter+1
+! Increment output counter and fill output array at every time step
+ioCounter        = ioCounter + 1
+Time(ioCounter)  = t
+writeBuf(1:nHITVars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,uRMS,Reynolds/)
 
+! Perform output
 IF(ioCounter.EQ.nWriteStats)THEN
-  Time(ioCounter)                = t
-  writeBuf(1:nHITVars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,uRMS,Reynolds/)
   CALL WriteStats()
   ioCounter = 0
 END IF
+
+! HIT_RMS is required for restart, so hook in here to add it to the state file
 
 END SUBROUTINE AnalyzeTestcase
 

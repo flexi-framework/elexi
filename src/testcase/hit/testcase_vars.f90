@@ -45,7 +45,7 @@ REAL,ALLOCATABLE          :: writeBuf(:,:)            !< log data (nHITVars+1,nW
 INTEGER,PARAMETER         :: nHITvars    = 6          !< Number of variables to be evaluated for HIT, time not included
 INTEGER                   :: ioCounter   = 0          !< current number of buffer items
 INTEGER                   :: nWriteStats =-999        !< Write testcase statistics to file at every n-th AnalyzeTestcase step
-CHARACTER(LEN=255)        :: Filename                 !< filename to store testcase log data
+CHARACTER(LEN=255)        :: FileName                 !< filename to store testcase log data
 !==================================================================================================================================
 
 END MODULE MOD_TestCase_Vars

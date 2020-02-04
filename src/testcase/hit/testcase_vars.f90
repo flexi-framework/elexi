@@ -30,6 +30,7 @@ LOGICAL                   :: InitHITDone
 !----------------------------------------------------------------------------------------------------------------------------------
 ! TESTCASE VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+LOGICAL                   :: HIT_Avg                  !< Flag to perform spatial averaging
 REAL                      :: HIT_k                    !< target turbulent kinetic energy
 REAL                      :: HIT_rho                  !< density for initialization
 REAL                      :: HIT_tauRMS               !< relaxation parameter for linear forcing

@@ -94,6 +94,7 @@ IMPLICIT NONE
 CALL prms%SetSection("Testcase")
 
 ! HIT parameters
+CALL prms%CreateLogicalOption('HIT_Avg' , 'Flag to perform spatial averaging of HIT forcing','T')
 CALL prms%CreateRealOption('HIT_k'      , 'Target turbulent kinetic energy in HIT', '0.')
 !CALL prms%CreateRealOption('HIT_rho'    , 'Target density in HIT', '0.')
 CALL prms%CreateRealOption('HIT_tFilter', 'Temp filter width of exponential, explicit time filter', '0.')
@@ -122,7 +123,7 @@ USE MOD_IO_HDF5,            ONLY:AddToFieldData,FieldOut,HSIZE,nDims
 USE MOD_Mesh_Vars,          ONLY: nElems,offsetElem
 USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
+USE MOD_ReadInTools,        ONLY: GETINT,GETREAL,GETLOGICAL
 USE MOD_Restart_Vars,       ONLY: doRestart,restartFile,interpolateSolution
 USE MOD_TestCase_Vars
 IMPLICIT NONE
@@ -233,6 +234,9 @@ IF(MPIRoot)THEN
   CALL InitOutputToFile(FileName,'Homogeneous Isotropic Turbulence Analysis Data',nHITVars,varnames)
 END IF
 
+! Spatial averaging according to de Laage de Meux, 2015
+HIT_Avg = GETLOGICAL('HIT_Avg','.TRUE.')
+
 ! Small trick to survive the first DG call when dt is not set
 InitHITDone = .FALSE.
 
@@ -288,12 +292,15 @@ SUBROUTINE TestcaseSource(Ut)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc,        ONLY: N
-USE MOD_Analyze_Vars,   ONLY: wGPVol,ElemVol
+USE MOD_Analyze_Vars,   ONLY: wGPVol,ElemVol,Vol
 USE MOD_DG_Vars,        ONLY: U
 USE MOD_EOS,            ONLY: ConsToPrim
 USE MOD_Mesh_Vars,      ONLY: nElems,sJ
 USE MOD_TestCase_Vars
 USE MOD_TimeDisc_Vars,  ONLY: dt
+#if USE_MPI
+USE MOD_MPI_Vars
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -302,6 +309,7 @@ REAL,INTENT(INOUT)              :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !<
 ! LOCAL VARIABLES
 INTEGER         :: iElem,i,j,k
 REAL            :: fac,TKE
+REAL            :: TKE_glob
 !==================================================================================================================================
 ! Small trick to survive the first DG call when dt is not set
 IF (.NOT.InitHITDone) THEN
@@ -319,24 +327,46 @@ CALL ConsToPrim(PP_N,UPrim_temp,U)
 !IF (dt.LT.HIT_tFilter) &
 !  CALL CollectiveStop(__STAMP__,"Time step dropped below HIT_tFilter. Increase your temporal filter width")
 
-DO iElem=1,nElems
-  ! Time-average the solution to obtain RMS
-  fac=dt/HIT_tFilter
-  HIT_RMS(1:3,:,:,:,iElem) = HIT_RMS(1:3,:,:,:,iElem) + ((UPrim_temp(2:4,:,:,:,iElem))**2 - HIT_RMS(1:3,:,:,:,iElem)) * fac
+TKE = 0.
 
-  ! Filter the time-averaged solution (RMS)
-  ! CALL Filter_Pointer(BaseFlowRMS,FilterMat)
+! Time-average the solution to obtain RMS
+!  TODO PROUD FILTER
+fac=dt/HIT_tFilter
+HIT_RMS(1:3,:,:,:,:) = HIT_RMS(1:3,:,:,:,:) + ((UPrim_temp(2:4,:,:,:,:))**2 - HIT_RMS(1:3,:,:,:,:)) * fac
 
-  ! Calculate scalar k in every cell. First integrate with Gaussian integration, then scale with factor 1/2
-  TKE = 0.
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+! Filter the time-averaged solution (RMS)
+! CALL Filter_Pointer(BaseFlowRMS,FilterMat)
+
+! Calculate scalar k. First integrate with Gaussian integration, then scale with factor 1/2
+IF (HIT_Avg) THEN
+  ! Calculate forcing coefficient based on global spatial average
+  DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     TKE = TKE + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)*SUM(HIT_RMS(1:3,i,j,k,iElem))
-  END DO; END DO; END DO
-  TKE = TKE/(2.*ElemVol(iElem))
+  END DO; END DO; END DO; END DO
 
-  ! Apply forcing to the time derivative
-  Ut(2:4,:,:,:,iElem)=Ut(2:4,:,:,:,iElem) + 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)*U(2:4,:,:,:,iElem)
-END DO
+#if USE_MPI
+  ! Communicate TKE to all procs
+  CALL MPI_ALLREDUCE(TKE,TKE_glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+#else
+  TKE_glob = TKE
+#endif
+  ! Overwrite TKE and apply the forcing to the time derivative
+  TKE = TKE_glob/Vol
+  Ut(2:4,:,:,:,:) = Ut(2:4,:,:,:,:) + 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)*U(2:4,:,:,:,:)
+
+ELSE
+  ! Apply the forcing to every cell
+  DO iElem=1,nElems
+    TKE = 0.
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      TKE = TKE + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)*SUM(HIT_RMS(1:3,i,j,k,iElem))
+    END DO; END DO; END DO
+    TKE = TKE/(2.*ElemVol(iElem))
+
+    ! Apply forcing to the time derivative
+    Ut(2:4,:,:,:,iElem) = Ut(2:4,:,:,:,iElem) + 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)*U(2:4,:,:,:,iElem)
+  END DO
+END IF ! HIT_Avg
 
 END SUBROUTINE TestcaseSource
 

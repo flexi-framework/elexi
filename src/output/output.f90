@@ -284,16 +284,16 @@ IF(MPIroot)THEN
 #endif
 #if USE_PARTICLES
   IF (nParticleInDomain.GT.0) THEN
-    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,I8,A,A,A1,A,A4,F6.2,A3,A1)',ADVANCE='NO') &
-      '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),          &
-      '  # part inside = ', nParticleInDomain,' |',                                                                        &
-      REPEAT('=',MAX(CEILING(percent/3)-1,0)),'>',REPEAT(' ',INT((100-percent)/3)),'| [',percent,'%] ',            &
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I7,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A4,F6.2,A3,A1)',ADVANCE='NO') &
+      '   Time = ', t,'  dt = ', dt, ' ', ' # Part inside = ', nParticleInDomain,                                  &
+      '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                       &
+      REPEAT('=',MAX(CEILING(percent/3.)-1,0)),'>',REPEAT(' ',33-MAX(CEILING(percent/3.)-1,0)),'| [',percent,'%] ',&
       ACHAR(13) ! ACHAR(13) is carriage return
   ELSE
 #endif
-    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I3,A1,I0.2,A1,I0.2,A1,I0.2,A14,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO') &
-      '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',&
-      REPEAT('=',MAX(CEILING(percent/2)-1,0)),'>',REPEAT(' ',INT((100-percent)/2)),'| [',percent,'%] ',&
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO')    &
+      '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
+      REPEAT('=',MAX(CEILING(percent/2.)-1,0)),'>',REPEAT(' ',50-MAX(CEILING(percent/2.)-1,0)),'| [',percent,'%] ',&
       ACHAR(13) ! ACHAR(13) is carriage return
 #if USE_PARTICLES
   END IF

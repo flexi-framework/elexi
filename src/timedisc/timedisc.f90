@@ -100,18 +100,31 @@ TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
 
 #if USE_PARTICLES
 ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
+! Check if we are running a steady state tracking
+SWRITE(UNIT_StdOut,'(66("-"))')
+PartSteadyState   = GETLOGICAL('Part-SteadyState',   'F')
+Part_dt_Min       = GETREAL   ('Part-SteadyTimeStep','0.')
 #endif
 
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
 
 CALL SetTimeDiscCoefs(TimeDiscMethod)
-SELECT CASE(TimeDiscType)
-CASE('LSERKW2')
-  TimeStep=>TimeStepByLSERKW2
-CASE('LSERKK3')
-  TimeStep=>TimeStepByLSERKK3
-END SELECT
+
+#if USE_PARTICLES
+IF (PartSteadyState) THEN
+  TimeStep=>TimeStepSteadyState
+ELSE
+#endif
+  SELECT CASE(TimeDiscType)
+    CASE('LSERKW2')
+      TimeStep=>TimeStepByLSERKW2
+    CASE('LSERKK3')
+      TimeStep=>TimeStepByLSERKK3
+  END SELECT
+#if USE_PARTICLES
+END IF
+#endif
 
 IF(TimeDiscInitIsDone)THEN
    SWRITE(*,*) "InitTimeDisc already called."
@@ -141,15 +154,6 @@ ALLOCATE(dtElem(nElems))
 dtElem=0.
 
 CALL AddToElemData(ElementOut,'dt',dtElem)
-
-#if USE_PARTICLES
-! Check if we are running a steady state tracking
-SWRITE(UNIT_StdOut,'(66("-"))')
-PartSteadyState   = GETLOGICAL('Part-SteadyState',   'F')
-Part_dt_Min       = GETREAL   ('Part-SteadyTimeStep','0.')
-
-!CALL Particle_InitTimeDisc()
-#endif
 
 TimediscInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT TIMEDISC DONE!'
@@ -195,19 +199,17 @@ USE MOD_FV
 #if USE_PARTICLES
 USE MOD_Particle_Globals    ,ONLY: ALMOSTZERO
 USE MOD_Particle_Analyze    ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars,ONLY: TrackParticlePosition,TrackParticleConvergence
-USE MOD_Particle_TimeDisc
-USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod,PartSteadyState,Part_dt_min
-USE MOD_Particle_Vars
-USE MOD_TimeDisc_Vars       ,ONLY: RKb,RKc
+USE MOD_Particle_Analyze_Vars,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
+USE MOD_Particle_TimeDisc_Vars,ONLY: PartSteadyState,Part_dt_min
+USE MOD_Particle_Vars       ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 #if USE_LOADBALANCE
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
 USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,PerformLoadBalance,LoadBalanceSample,ElemTime
 #endif /*LOADBALANCE*/
+#endif /*PARTICLES*/
 #if USE_MPI_SHARED
 USE MOD_Particle_MPI_Shared ,ONLY: UpdateDGShared
 #endif
-#endif /*PARTICLES*/
 use MOD_IO_HDF5
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -221,10 +223,6 @@ REAL                         :: CalcTimeStart,CalcTimeEnd
 INTEGER                      :: TimeArray(8)              !< Array for system time
 INTEGER                      :: errType,nCalcTimestep,writeCounter
 LOGICAL                      :: doAnalyze,doFinalize
-#if USE_PARTICLES
-REAL                         :: tStage,b_dt(1:nRKStages)
-INTEGER                      :: iStage
-#endif /*PARTICLES*/
 !==================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -328,6 +326,7 @@ CALL Analyze(t,iter)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
+! This call gets overwritten by the following output
 !CALL PrintStatusLine(t,dt,tStart,tEnd)
 
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -339,17 +338,10 @@ END IF
 CALL FV_Info(1_8)
 #endif
 
-#if USE_PARTICLES
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-IF (TrackParticlePosition) THEN
-  CALL TrackingParticlePosition(t)
-END IF
-
 ! Update the initial solution in the MPI-3 shared memory array
 #if USE_MPI_SHARED
 CALL UpdateDGShared(U)
 #endif /*MPI_SHARED*/
-#endif
 
 SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 
@@ -419,51 +411,9 @@ DO
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! Perform Timestep using a global time stepping routine, attention: only RK3 has time dependent BC
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#if USE_PARTICLES
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (TrackParticlePosition) THEN
-    CALL TrackingParticlePosition(t)
-  END IF
-
-  ! Only run particle tracking if steady state is requested
-  IF(.NOT.PartSteadyState) THEN
-#endif
   CALL TimeStep(t)
+
 #if USE_PARTICLES
-  ELSE
-  ! We have to call particle tracking manually because we are not entering TimeStep()
-
-  SELECT CASE (TRIM(ParticleTimeDiscMethod))
-    CASE('Runge-Kutta')
-
-    ! Premultiply with dt
-    b_dt=RKb*dt
-
-    CurrentStage=1
-    tStage=t
-
-    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt,b_dt)
-    CALL Particle_TimeStepByLSERK(t,b_dt)
-
-    DO iStage=2,nRKStages
-        CurrentStage=iStage
-        tStage=t+dt*RKc(iStage)
-        IF(doCalcIndicator) CALL CalcIndicator(U,t)
-
-        CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt,b_dt)
-        CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
-    END DO
-
-    CASE('Euler')
-    CALL Particle_TimeStepByEuler(dt)
-
-    CASE DEFAULT
-    CALL CollectiveStop(__STAMP__,&
-                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-  END SELECT
-
-  END IF
-
 #if USE_LOADBALANCE
   ! If loadbalance is performed in the current step, distribute the recorded load to the elements
   IF(PerformLoadBalance) CALL ComputeElemLoad()
@@ -549,7 +499,7 @@ END DO
 
 #if USE_PARTICLES
 ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (TrackParticlePosition .OR. TrackParticleConvergence) THEN
+  IF (doParticlePositionTrack .OR. doParticleConvergenceTrack) THEN
     CALL TrackingParticlePosition(t)
   END IF
 #endif
@@ -580,13 +530,15 @@ USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif /* FV */
 #if USE_PARTICLES
 USE MOD_Globals      ,ONLY: CollectiveStop
+USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
+USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
 USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByEuler,Particle_TimeStepByLSERK_RHS,Particle_TimeStepByLSERK
 USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByLSERK_RK_RHS,Particle_TimeStepByLSERK_RK
 USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
+#endif /* PARTICLES */
 #if USE_MPI_SHARED
 USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
 #endif /* MPI_SHARED */
-#endif /* PARTICLES */
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -617,18 +569,24 @@ SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CALL CollectiveStop(__STAMP__,&
                     'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
 END SELECT
+
+! Outputs the particle position and velocity at every time step. Use only for debugging purposes
+IF (doParticlePositionTrack) THEN
+  CALL TrackingParticlePosition(t)
+END IF
 #endif /* PARTICLES */
 
 !CALL DGTimeDerivative_weakForm(tStage)      !allready called in timedisc
 CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 
+#if USE_MPI_SHARED
+  CALL UpdateDGShared(U)
+#endif /*MPI_SHARED*/
+
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
-#if USE_MPI_SHARED
-      CALL UpdateDGShared(U)
-#endif /*MPI_SHARED*/
       CALL Particle_TimeStepByLSERK(t,b_dt)
     CASE('Euler')
       ! Do nothing
@@ -652,6 +610,11 @@ DO iStage=2,nRKStages
       CALL CollectiveStop(__STAMP__,&
                       'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
   END SELECT
+
+  ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
+  IF (doParticlePositionTrack) THEN
+    CALL TrackingParticlePosition(t)
+  END IF
 #endif /* PARTICLES */
 
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
@@ -662,12 +625,13 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,Ut_temp,Ut,ConstOut=-RKA(iStage)) !Ut_temp = Ut - Ut_temp*RKA(iStage)
   CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
 
+#if USE_MPI_SHARED
+  CALL UpdateDGShared(U)
+#endif /*MPI_SHARED*/
+
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
-#if USE_MPI_SHARED
-      CALL UpdateDGShared(U)
-#endif /*MPI_SHARED*/
       CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
     CASE('Euler')
       ! Do nothing
@@ -705,11 +669,13 @@ USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
+USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
+USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
 USE MOD_Particle_TimeDisc
+#endif /*USE_PARTICLES*/
 #if USE_MPI_SHARED
 USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
 #endif
-#endif /*USE_PARTICLES*/
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -734,6 +700,11 @@ tStage=t
 
 #if USE_PARTICLES
 CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt,b_dt)
+
+! Outputs the particle position and velocity at every time step. Use only for debugging purposes
+IF (doParticlePositionTrack) THEN
+  CALL TrackingParticlePosition(t)
+END IF
 #endif
 
 CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
@@ -751,6 +722,11 @@ DO iStage=2,nRKStages
 
 #if USE_PARTICLES
   CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt,b_dt)
+
+  ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
+  IF (doParticlePositionTrack) THEN
+    CALL TrackingParticlePosition(t)
+  END IF
 #endif
 
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
@@ -763,16 +739,92 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                !U = U + RKg3(ek)*Uprev
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                   !U = U + Ut*b_dt(iStage)
 
-#if USE_PARTICLES
 #if USE_MPI_SHARED
   CALL UpdateDGShared(U)
 #endif /*MPI_SHARED*/
+
+#if USE_PARTICLES
   CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
 #endif
 END DO
 CurrentStage=1
 
 END SUBROUTINE TimeStepByLSERKK3
+
+
+#if USE_PARTICLES
+!===================================================================================================================================
+!> Low-Storage Runge-Kutta integration with frozen fluid: 2 register version
+!> This procedure takes the current time t, the time step dt and the intial solution.
+!> Only particle push is integrated in time
+!> RKA/b/c coefficients are low-storage coefficients, NOT the ones from butcher table.
+!===================================================================================================================================
+SUBROUTINE TimeStepSteadyState(t)
+! MODULES
+USE MOD_Globals               ,ONLY: CollectiveStop
+USE MOD_PreProc
+USE MOD_TimeDisc_Vars         ,ONLY: dt,RKb,RKc,nRKStages,CurrentStage
+USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
+USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
+USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByEuler,Particle_TimeStepByLSERK_RHS,Particle_TimeStepByLSERK
+USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByLSERK_RK_RHS,Particle_TimeStepByLSERK_RK
+USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
+!#if USE_MPI_SHARED
+!USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
+!#endif /* MPI_SHARED */
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)  :: t                                     !< current simulation time
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL     :: tStage,b_dt(1:nRKStages)
+INTEGER  :: iStage
+!===================================================================================================================================
+
+! Premultiply with dt
+b_dt = RKb*dt
+
+! First evaluation of DG operator already done in timedisc
+CurrentStage = 1
+tStage       = t
+
+
+! Outputs the particle position and velocity at every time step. Use only for debugging purposes
+IF (doParticlePositionTrack) THEN
+  CALL TrackingParticlePosition(t)
+END IF
+
+SELECT CASE (TRIM(ParticleTimeDiscMethod))
+  CASE('Runge-Kutta')
+    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt,b_dt)
+    CALL Particle_TimeStepByLSERK(t,b_dt)
+
+    ! Following steps
+    DO iStage = 2,nRKStages
+      CurrentStage = iStage
+      tStage       = t+dt*RKc(iStage)
+
+      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt,b_dt)
+
+      ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
+      IF (doParticlePositionTrack) THEN
+        CALL TrackingParticlePosition(t)
+      END IF
+
+      CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
+    END DO
+
+  CASE('Euler')
+    CALL Particle_TimeStepByEuler(dt)
+  CASE DEFAULT
+    CALL CollectiveStop(__STAMP__,&
+                    'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
+END SELECT
+
+CurrentStage = 1
+END SUBROUTINE TimeStepSteadyState
+#endif
 
 
 !===================================================================================================================================

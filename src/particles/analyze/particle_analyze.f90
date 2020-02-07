@@ -136,10 +136,10 @@ IF (CalcPartBalance) THEN
 END IF
 
 ! Track and write position of each particle. Primarily intended for debug purposes
-TrackParticlePosition    = GETLOGICAL('Part-TrackPosition',   '.FALSE.')
-TrackParticleConvergence = GETLOGICAL('Part-TrackConvergence','.FALSE.')
+doParticlePositionTrack    = GETLOGICAL('Part-TrackPosition',   '.FALSE.')
+doParticleConvergenceTrack = GETLOGICAL('Part-TrackConvergence','.FALSE.')
 
-IF(TrackParticlePosition)THEN
+IF(doParticlePositionTrack)THEN
   printDiff=GETLOGICAL('printDiff','.FALSE.')
   IF(printDiff)THEN
     printDiffTime = GETREAL(     'printDiffTime','12.')

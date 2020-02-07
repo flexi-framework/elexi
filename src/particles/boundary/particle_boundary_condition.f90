@@ -663,7 +663,7 @@ USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
 USE MOD_Particle_Vars,          ONLY:PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars,          ONLY:PDM
 USE MOD_Particle_Vars,          ONLY:WriteMacroSurfaceValues
-USE MOD_TimeDisc_Vars,          ONLY:TimeDiscType
+!USE MOD_TimeDisc_Vars,          ONLY:TimeDiscType
 ! Bons particle rebound model
 USE MOD_Particle_Interpolation_Vars,ONLY:FieldAtParticle
 ! IMPLICIT VARIABLE HANDLING
@@ -948,9 +948,9 @@ LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !===================================================================================================================================
 ! > modified with coefficients of restitution
 ! > WARNING: this only works with LSERK. Check and abort if not fulfilled
-IF (.NOT.(TimeDiscType.EQ.'LSERKW2').AND..NOT.(TimeDiscType.EQ.'LSWERKW3'))               &
-    CALL ABORT(__STAMP__,                                                                 &
-    'Time discretization '//TRIM(TimeDiscType)//' is incompatible with current implementation of coefficients of restitution.')
+!IF (.NOT.(TimeDiscType.EQ.'LSERKW2').AND..NOT.(TimeDiscType.EQ.'LSWERKW3'))               &
+!    CALL ABORT(__STAMP__,                                                                 &
+!    'Time discretization '//TRIM(TimeDiscType)//' is incompatible with current implementation of coefficients of restitution.')
 
 ! Calculate wall normal and tangential velocity components after impact, rescale to uniform length
 PartTrajectoryNorm(1:3) = eps_n*(DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)

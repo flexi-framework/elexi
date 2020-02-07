@@ -38,12 +38,13 @@ REAL,ALLOCATABLE          :: HIT_RMS(:,:,:,:,:)       !< u_rms of current soluti
 REAL,ALLOCATABLE          :: UPrim_temp(:,:,:,:,:)    !< temporal derivative of primitive variables
 !INTEGER                   :: HIT_nFilter              !< polynomial degree of cut-off filter
 REAL                      :: HIT_tFilter              !< filter width of temporal filter
+REAL                      :: A_ILF                    !< forcing coefficient
 !----------------------------------------------------------------------------------------------------------------------------------
 ! ANAYLZE VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE          :: Time(:)                  !< times of log data (nWriteStats)
 REAL,ALLOCATABLE          :: writeBuf(:,:)            !< log data (nHITVars+1,nWriteStats)
-INTEGER,PARAMETER         :: nHITvars    = 6          !< Number of variables to be evaluated for HIT, time not included
+INTEGER,PARAMETER         :: nHITvars    = 7          !< Number of variables to be evaluated for HIT, time not included
 INTEGER                   :: ioCounter   = 0          !< current number of buffer items
 INTEGER                   :: nWriteStats =-999        !< Write testcase statistics to file at every n-th AnalyzeTestcase step
 CHARACTER(LEN=255)        :: FileName                 !< filename to store testcase log data

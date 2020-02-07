@@ -231,6 +231,7 @@ IF(MPIRoot)THEN
   varnames(4) ="Ekin comp"
   varnames(5) ="U RMS"
   varnames(6) ="Reynolds number"
+  varnames(7) ="A ILF"
   CALL InitOutputToFile(FileName,'Homogeneous Isotropic Turbulence Analysis Data',nHITVars,varnames)
 END IF
 
@@ -341,7 +342,7 @@ HIT_RMS(1:3,:,:,:,:) = HIT_RMS(1:3,:,:,:,:) + ((UPrim_temp(2:4,:,:,:,:))**2 - HI
 IF (HIT_Avg) THEN
   ! Calculate forcing coefficient based on global spatial average
   DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    TKE = TKE + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)*SUM(HIT_RMS(1:3,i,j,k,iElem))
+    TKE = TKE + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)*SUM(HIT_RMS(1:3,i,j,k,iElem))/2.
   END DO; END DO; END DO; END DO
 
 #if USE_MPI
@@ -352,9 +353,11 @@ IF (HIT_Avg) THEN
 #endif
   ! Overwrite TKE and apply the forcing to the time derivative
   TKE = TKE_glob/Vol
-  Ut(2:4,:,:,:,:) = Ut(2:4,:,:,:,:) + 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)*U(2:4,:,:,:,:)
+  A_ILF = 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)
+  Ut(2:4,:,:,:,:) = Ut(2:4,:,:,:,:) + A_ILF*U(2:4,:,:,:,:)
 
 ELSE
+  A_ILF = 0.
   ! Apply the forcing to every cell
   DO iElem=1,nElems
     TKE = 0.
@@ -365,6 +368,9 @@ ELSE
 
     ! Apply forcing to the time derivative
     Ut(2:4,:,:,:,iElem) = Ut(2:4,:,:,:,iElem) + 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)*U(2:4,:,:,:,iElem)
+
+    ! Integrate the forcing coefficient
+    A_ILF = A_ILF + 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)*ElemVol(iElem)
   END DO
 END IF ! HIT_Avg
 
@@ -485,6 +491,10 @@ CALL MPI_REDUCE(Ekin_comp,Ekin_comp_Glob  ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_
 CALL MPI_REDUCE(DR_S     ,DR_S_Glob       ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 CALL MPI_REDUCE(DR_Sd    ,DR_Sd_Glob      ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 CALL MPI_REDUCE(DR_p     ,DR_p_Glob       ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+IF (HIT_Avg) THEN
+  CALL MPI_ALLREDUCE(MPI_IN_PLACE,A_ILF,2,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+END IF
+
 ! Overwrite the variables only on root
 IF (MPIRoot) THEN
   rho       = rho_Glob
@@ -509,6 +519,9 @@ uRMS      = SQRT(Ekin*2./3.)
 DR_S      = DR_S *mu0/Vol
 DR_SD     = DR_SD*mu0/Vol
 DR_p      = DR_p     /Vol
+IF (HIT_Avg) THEN
+  A_ILF = A_ILF/Vol
+END IF
 
 ! Taylor microscale Reynolds number (Petersen, 2010)
 nu0      = mu0/rho
@@ -521,7 +534,7 @@ Reynolds = uRMS * lTaylor/nu0
 ! Increment output counter and fill output array at every time step
 ioCounter        = ioCounter + 1
 Time(ioCounter)  = t
-writeBuf(1:nHITVars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,uRMS,Reynolds/)
+writeBuf(1:nHITVars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,uRMS,Reynolds,A_ILF/)
 
 ! Perform output
 IF(ioCounter.EQ.nWriteStats)THEN

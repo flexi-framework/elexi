@@ -94,12 +94,13 @@ IMPLICIT NONE
 CALL prms%SetSection("Testcase")
 
 ! HIT parameters
-CALL prms%CreateLogicalOption('HIT_Avg' , 'Flag to perform spatial averaging of HIT forcing','T')
-CALL prms%CreateRealOption('HIT_k'      , 'Target turbulent kinetic energy in HIT', '0.')
-!CALL prms%CreateRealOption('HIT_rho'    , 'Target density in HIT', '0.')
-CALL prms%CreateRealOption('HIT_tFilter', 'Temp filter width of exponential, explicit time filter', '0.')
-!CALL prms%CreateIntOption( 'HIT_nFilter', 'Polynomial degree of the HIT cut-off filter','0')
-CALL prms%CreateRealOption('HIT_tauRMS' , 'Strength of RMS forcing.','0.')
+CALL prms%CreateLogicalOption('HIT_Forcing', 'Flag to perform HIT forcing','T')
+CALL prms%CreateLogicalOption('HIT_Avg'    , 'Flag to perform spatial averaging of HIT forcing','T')
+CALL prms%CreateRealOption('HIT_k'         , 'Target turbulent kinetic energy in HIT', '0.')
+!CALL prms%CreateRealOption('HIT_rho'       , 'Target density in HIT', '0.')
+CALL prms%CreateRealOption('HIT_tFilter'   , 'Temp filter width of exponential, explicit time filter', '0.')
+!CALL prms%CreateIntOption( 'HIT_nFilter   ', 'Polynomial degree of the HIT cut-off filter','0')
+CALL prms%CreateRealOption('HIT_tauRMS'    , 'Strength of RMS forcing.','0.')
 
 ! Analyze paramters
 CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
@@ -144,6 +145,8 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE HOMOGENEOUS ISOTROPIC TURBULENCE...'
 #if FV_ENABLED
 CALL CollectiveStop(__STAMP__,'The testcase has not been implemented for FV yet!')
 #endif
+
+HIT_Forcing = GETLOGICAL('HIT_Forcing','.TRUE.')
 
 ! Initialize HIT filter
 ! HIT_nFilter = GETINT( 'HIT_nFilter','0')
@@ -317,6 +320,9 @@ IF (.NOT.InitHITDone) THEN
   InitHITDone = .TRUE.
   RETURN
 END IF
+
+! Return if no HIT forcing required
+IF (.NOT.HIT_Forcing) RETURN
 
 !==================================================================================================================================
 ! de Laage de Meux mode, case 'D. Restriction to the isotropic case and link with the linear forcing of Lundgren'

@@ -12,7 +12,7 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d.f90
                           ${TOOL_DIR}/CMakeLists.txt
                           ${TOOL_DIR}/converttovisu.f90
                           ${TOOL_DIR}/mappings.f90
-                          ${TOOL_DIR}/paraviewReader/
+                          ${TOOL_DIR}/paraviewReader/Reader/
                           ${TOOL_DIR}/pluginTypes_visu.h
                           ${TOOL_DIR}/plugin_visu.h
                           ${TOOL_DIR}/posti_visu.f90
@@ -43,27 +43,38 @@ IF (POSTI_USE_PARAVIEW)
    FIND_PACKAGE(ParaView)
 ENDIF()
 IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
-   # If Paraview is compiled with OSPRay, we need to include the TBB_ROOT. Assume TBB is installed if we detect OSPRay
+   MESSAGE(STATUS "Found ParaView version ${ParaView_VERSION}")
+   # If Paraview is compiled with OSPRay, we need to include the TBB_ROOT for Paraview <=5.7. Assume TBB is installed if we detect OSPRay
    # since it is needed for OSPRay anyways.
-   FIND_PACKAGE(OSPRAY QUIET)
-   IF(ospray_FOUND)
-     # Find TBB and TBB library. Now hard requirement because of OSPRay
-	   FIND_PACKAGE(TBB REQUIRED)
-     IF (TBB_FOUND)
-       FIND_LIBRARY(TBB_LIBRARY tbb)
+   IF(${ParaView_VERSION} VERSION_LESS "5.7")
+     FIND_PACKAGE(OSPRAY QUIET)
+     IF(ospray_FOUND)
+       # Find TBB and TBB library. Now hard requirement because of OSPRay
+       FIND_PACKAGE(TBB REQUIRED)
+       IF (TBB_FOUND)
+         FIND_LIBRARY(TBB_LIBRARY tbb)
+       ENDIF()
+       TARGET_LINK_LIBRARIES(${client_target} ospray::ospray)
      ENDIF()
-     TARGET_LINK_LIBRARIES(${client_target} ospray::ospray)
-	 ENDIF()
+   ENDIF()
 
    SET(POSTI_PV_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
-   IF(POSTI_PV_SUFFIX STREQUAL "")
-     SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader)
+   # For Paraview >= 5.7, we need to stash the files on directory deeper
+   IF(${ParaView_VERSION} VERSION_LESS "5.7")
+     IF(POSTI_PV_SUFFIX STREQUAL "")
+       SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader/Reader/)
+     ELSE()
+       SET(TOOL_DIR_PV ${CMAKE_CURRENT_BINARY_DIR})
+       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.h      "")
+       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.cxx    "")
+       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.xml    "")
+     ENDIF()
    ELSE()
-     SET(TOOL_DIR_PV ${CMAKE_CURRENT_BINARY_DIR})
-     FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.h      "")
-     FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.cxx    "")
-     FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.xml    "")
-     FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.plugin "")
+     IF(POSTI_PV_SUFFIX STREQUAL "")
+       SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader)
+     ELSE()
+       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.plugin "")
+     ENDIF()
    ENDIF()
 
    # Only required for ParaView <= 5.6
@@ -71,11 +82,11 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
      INCLUDE(${PARAVIEW_USE_FILE})
      MESSAGE(STATUS ${PARAVIEW_USE_FILE})
    ELSE()
-    set(BUILD_SHARED_LIBS ON)
+     SET(BUILD_SHARED_LIBS ON)
    ENDIF()
 
    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-   INCLUDE_DIRECTORIES(${TOOL_DIR}/paraviewReader/)
+   INCLUDE_DIRECTORIES(${TOOL_DIR}/paraviewReader/Reader/)
 
    # Changed beginning form Paraview 5.7
    IF(${ParaView_VERSION} VERSION_LESS "5.7")
@@ -91,6 +102,9 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
         PROVIDES_PLUGINS plugins
         ENABLE_BY_DEFAULT ON)
       paraview_plugin_build(
+#        RUNTIME_DESTINATION
+#        LIBRARY_DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+#        LIBRARY_SUBDIRECTORY
         PLUGINS ${plugins})
    ENDIF()
 
@@ -110,5 +124,6 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
    ENDIF()
 
    ADD_DEPENDENCIES(     visuReader${POSTI_PV_SUFFIX} ${TOOL_NAME}lib libflexishared)
+   
    TARGET_LINK_LIBRARIES(visuReader${POSTI_PV_SUFFIX} PUBLIC ${TOOL_NAME}lib libflexishared)
 ENDIF()

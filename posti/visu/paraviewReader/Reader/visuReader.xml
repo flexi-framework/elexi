@@ -1,7 +1,9 @@
 <ServerManagerConfiguration>
    <ProxyGroup name="sources">
       <!-- ================================================================== -->
-      <SourceProxy name="visuReader" class="visuReader" label="visuReader">
+     <SourceProxy name="visuReader"
+                  class="visuReader"
+                  label="visuReader">
          <Documentation
             long_help="Read a Flexi state or mesh file ( h5 file )."
             short_help="Read a Flexi state or mesh file ( h5 file ).">
@@ -63,7 +65,7 @@
                </RequiredProperties>
             </StringListDomain>
             <Documentation>
-               User-defined NodeType at which to visualize. 
+               User-defined NodeType at which to visualize.
             </Documentation>
          </StringVectorProperty>
 #if PP_dim == 3
@@ -79,7 +81,7 @@
            Average solution in z-direction.
            </Documentation>
          </IntVectorProperty>
-#endif         
+#endif
          <IntVectorProperty command="SetDGonly"
            default_values="0"
            animateable="0"

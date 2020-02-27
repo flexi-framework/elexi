@@ -1,0 +1,6 @@
+NAME
+  visuReaderModule
+DEPENDS
+  ParaView::VTKExtensionsCore
+  VTK::CommonCore
+  VTK::CommonExecutionModel

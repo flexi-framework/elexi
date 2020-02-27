@@ -1,0 +1,8 @@
+NAME
+  visuReader
+DESCRIPTION
+  FLEXI HDF5 Reader
+REQUIRES_MODULES
+  ParaView::VTKExtensionsIOCore
+  VTK::CommonCore
+  VTK::CommonExecutionModel

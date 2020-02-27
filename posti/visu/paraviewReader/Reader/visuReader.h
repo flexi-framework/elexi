@@ -33,7 +33,7 @@
 
 #include "vtkStringArray.h"
 
-#include "../pluginTypes_visu.h"
+#include "../../pluginTypes_visu.h"
 
 #include "vtkIOParallelModule.h" // For export macro
 #include "vtkMultiBlockDataSetAlgorithm.h"

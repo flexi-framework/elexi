@@ -939,7 +939,7 @@ END SUBROUTINE Riemann_HLLEM
 !==================================================================================================================================
 !> Riemann solver using purely the average fluxes
 !==================================================================================================================================
-SUBROUTINE Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
 IMPLICIT NONE
@@ -963,7 +963,7 @@ END SUBROUTINE Riemann_FluxAverage
 !==================================================================================================================================
 !> kinetic energy preserving and entropy consistent flux according to Chandrashekar (2012)
 !==================================================================================================================================
-SUBROUTINE Riemann_CH(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_CH(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,sKappaM1
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer,GetLogMean

@@ -558,7 +558,7 @@ DO iVar=nVarDep+1,nVarAll
         END IF
       CASE(5) ! Pointwise data
         IF (Avg2d) THEN
-          IF (nSize-1.NE.PP_N) THEN
+          IF (nSize-1.NE. PP_N) THEN
             CALL CollectiveStop(__STAMP__,&
                 "Avg2D only works for FieldData on PP_N!")
           END IF
@@ -671,7 +671,7 @@ DO iVar=nVarDep+1,nVarAll
           END DO
           ! For FV, we are visualizing on a grid with 2*(PP_N+1) points. This means, to visualize generic datasets on this grid
           ! only makes sense if they are of polynomial degree PP_N! TODO: More general approach?
-          IF (nSize-1.NE.PP_N) THEN
+          IF (nSize-1.NE. PP_N) THEN
             SWRITE(*,*) "Can not convert variable ",TRIM(VariableName)," from dataset ", TRIM(DatasetName), "to FV visu grid",&
                         "since size is not equal to PP_N!"
             USurfVisu_FV(:,:,0,:,iVarVisu) = 0.

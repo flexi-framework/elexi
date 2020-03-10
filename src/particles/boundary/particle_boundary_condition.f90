@@ -121,7 +121,7 @@ CASE(1) !PartBound%OpenBC)
   ! Sample on outlet if requested
   !--> TODO: Move this to an AuxBC
   IF (PDM%ParticleInside(iPart)) THEN
-    IF (WriteMacroSurfaceValues .AND. ErosionOutlet) THEN
+    IF (WriteMacroSurfaceValues .AND. doParticleErosionOutlet) THEN
       ! Match boundary name with 'outlet'
       CALL LowCase(TRIM(BoundaryName(BC(SideID))),BCStringTmp)
       IF (BCStringTmp.EQ.'outlet') THEN
@@ -263,7 +263,7 @@ CASE(1) !PartBound%OpenBC)
   ! Sample on outlet if requested
   !--> TODO: Move this to an AuxBC
   IF (PDM%ParticleInside(iPart)) THEN
-    IF (WriteMacroSurfaceValues .AND. ErosionOutlet) THEN
+    IF (WriteMacroSurfaceValues .AND. doParticleErosionOutlet) THEN
       ! Match boundary name with 'outlet'
       CALL LowCase(TRIM(BoundaryName(BC(SideID))),BCStringTmp)
       IF (BCStringTmp.EQ.'outlet') THEN
@@ -419,7 +419,7 @@ USE MOD_Particle_Vars,          ONLY:Pt_temp,PDM
 USE MOD_Particle_Vars,          ONLY:WriteMacroSurfaceValues
 USE MOD_ErosionPoints,          ONLY:RecordErosionPoint
 USE MOD_ErosionPoints_Vars,     ONLY:EP_inUse
-USE MOD_Particle_Erosion_Vars,  ONLY:PartTrackReflection
+USE MOD_Particle_Erosion_Vars,  ONLY:doParticleReflectionTrack
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -611,7 +611,7 @@ IF (EP_inUse) THEN
 END IF
 
 ! Increase reflection counter
-IF (PartTrackReflection) PartReflCount(PartID) = PartReflCount(PartID) + 1
+IF (doParticleReflectionTrack) PartReflCount(PartID) = PartReflCount(PartID) + 1
 
 ! Correction for Runge-Kutta. Reflect or delete force history / acceleration
 IF (.NOT.ALMOSTZERO(DOT_PRODUCT(WallVelo,WallVelo))) THEN
@@ -656,7 +656,7 @@ USE MOD_ErosionPoints_Vars,     ONLY:EP_inUse
 USE MOD_Mesh_Vars,              ONLY:NGeo,BC
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Erosion_Vars,  ONLY:PartTrackReflection
+USE MOD_Particle_Erosion_Vars,  ONLY:doParticleReflectionTrack
 USE MOD_Particle_Surfaces,      ONLY:CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars, ONLY:SideNormVec,SideType,BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
@@ -987,7 +987,7 @@ IF (EP_inUse) THEN
 END IF
 
 ! increase reflection counter
-IF (PartTrackReflection) PartReflCount(PartID) = PartReflCount(PartID) + 1
+IF (doParticleReflectionTrack) PartReflCount(PartID) = PartReflCount(PartID) + 1
 
 ! Correction for Runge-Kutta. Reflect or delete force history / acceleration
 ! Coefficients of Restitution cause non-differentiable jump in velocity. Always erase force history and reconstruction in timedisc during push

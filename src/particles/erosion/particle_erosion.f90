@@ -94,10 +94,10 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE EROSION...'
 
-PartTrackErosion = GETLOGICAL('DoErosion','F')
+doParticleErosionTrack = GETLOGICAL('DoErosion','F')
 
 ! Switch surface macro values flag to .TRUE. for erosion tracking
-IF (PartTrackErosion) WriteMacroSurfaceValues = .TRUE.
+IF (doParticleErosionTrack) WriteMacroSurfaceValues = .TRUE.
 
 ParticleErosionInitIsDone=.TRUE.
 

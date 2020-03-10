@@ -69,6 +69,7 @@ CALL prms%CreateLogicalOption(  'CalcPartBalance'       , 'Calculate the Particl
                                                           '- input and outflow energy of all particles','.FALSE.')
 CALL prms%CreateLogicalOption(  'Part-TrackPosition'    , 'Track particle position','.FALSE.')
 CALL prms%CreateLogicalOption(  'Part-TrackConvergence' , 'Track particle convergence (i.e. final position)','.FALSE.')
+CALL prms%CreateLogicalOption(  'Part-TrackDispersion'  , 'Track particle convergence radius (i.e. absolute path)','.FALSE.')
 CALL prms%CreateLogicalOption(  'printDiff'             , '.FALSE.')
 CALL prms%CreateRealOption(     'PrintDiffTime'         , '12')
 CALL prms%CreateRealArrayOption('printDiffVec'          , '0. , 0. , 0. , 0. , 0. , 0.')
@@ -80,13 +81,13 @@ SUBROUTINE InitParticleAnalyze()
 ! Initializes variables necessary for analyse subroutines
 !===================================================================================================================================
 ! MODULES
-  USE MOD_Globals
-  USE MOD_Preproc
-  USE MOD_Particle_Analyze_Vars
-  USE MOD_ReadInTools             ,ONLY: GETLOGICAL, GETINT, GETSTR, GETINTARRAY, GETREALARRAY, GETREAL
-  USE MOD_Particle_Vars           ,ONLY: nSpecies
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_Particle_Analyze_Vars
+USE MOD_ReadInTools             ,ONLY: GETLOGICAL, GETINT, GETSTR, GETINTARRAY, GETREALARRAY, GETREAL
+USE MOD_Particle_Vars           ,ONLY: nSpecies,PDM
 ! IMPLICIT VARIABLE HANDLING
-  IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -139,12 +140,18 @@ END IF
 doParticlePositionTrack    = GETLOGICAL('Part-TrackPosition',   '.FALSE.')
 doParticleConvergenceTrack = GETLOGICAL('Part-TrackConvergence','.FALSE.')
 
-IF(doParticlePositionTrack)THEN
+IF(doParticlePositionTrack) THEN
   printDiff=GETLOGICAL('printDiff','.FALSE.')
-  IF(printDiff)THEN
+  IF(printDiff) THEN
     printDiffTime = GETREAL(     'printDiffTime','12.')
     printDiffVec  = GETREALARRAY('printDiffVec',6,'0.,0.,0.,0.,0.,0.')
   END IF
+END IF
+
+doParticleDispersionTrack = GETLOGICAL('Part-TrackDispersion','.FALSE.')
+IF(doParticleDispersionTrack) THEN
+  ALLOCATE(PartPath(1:3,PDM%maxParticleNumber))
+  PartPath = 0.
 END IF
 
 ParticleAnalyzeInitIsDone=.TRUE.

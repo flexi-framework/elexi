@@ -106,7 +106,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING ...'
 WRITE(UNIT=hilf,FMT='(I0)') NGeo
 
 nSurfSample = GETINT('Particles-nSurfSample',TRIM(hilf))
-ErosionOutlet = GETLOGICAL('Particles-ErosionOutlet','F')
+doParticleErosionOutlet = GETLOGICAL('Particles-ErosionOutlet','F')
 
 ALLOCATE(XiEQ_SurfSample(0:nSurfSample))
 
@@ -131,7 +131,7 @@ DO iBC=1,nBCs
     nSurfBC = nSurfBC + 1
     BCName(nSurfBC) = BoundaryName(iBC)
   ! Add outlet sides if required for erosion tracking
-  ELSEIF (ErosionOutlet .AND. PartBound%TargetBoundCond(iBC).EQ.PartBound%OpenBC &
+  ELSEIF (doParticleErosionOutlet .AND. PartBound%TargetBoundCond(iBC).EQ.PartBound%OpenBC &
   .AND.(hilfBC.EQ.'outlet')) THEN
     nSurfBC = nSurfBC + 1
     BCName(nSurfBC) = BoundaryName(iBC)
@@ -159,7 +159,7 @@ DO iSide=1,nBCSides
     SurfMesh%nSides = SurfMesh%nSides + 1
     SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nSides
   ! Add outlet sides if required for erosion tracking
-  ELSEIF (ErosionOutlet .AND. PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%OpenBC &
+  ELSEIF (doParticleErosionOutlet .AND. PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%OpenBC &
   .AND. (hilfBC.EQ.'outlet')) THEN
     SurfMesh%nSides = SurfMesh%nSides + 1
     SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nSides
@@ -177,7 +177,7 @@ DO iSide=nSides+1,nTotalSides
     SurfMesh%nTotalSides = SurfMesh%nTotalSides + 1
     SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nTotalSides
   ! Add outlet sides if required for erosion tracking
-  ELSEIF (ErosionOutlet .AND. PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%OpenBC &
+  ELSEIF (doParticleErosionOutlet .AND. PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%OpenBC &
   .AND. (hilfBC.EQ.'outlet')) THEN
     SurfMesh%nTotalSides = SurfMesh%nTotalSides + 1
     SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nTotalSides

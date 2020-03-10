@@ -69,7 +69,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Mesh_Vars,             ONLY: nGlobalElems, offsetElem
 USE MOD_Part_Tools,            ONLY: UpdateNextFreePosition
-USE MOD_Particle_Erosion_Vars, ONLY: PartTrackReflection
+USE MOD_Particle_Erosion_Vars, ONLY: doParticleReflectionTrack
 USE MOD_Particle_Vars,         ONLY: PDM, PEM, PartState, PartSpecies,PartReflCount
 USE MOD_Particle_Vars,         ONLY: useLinkedList
 #if USE_MPI
@@ -118,12 +118,9 @@ REAL,ALLOCATABLE               :: TurbPartData(:,:)
 !===================================================================================================================================
 ! Write properties -----------------------------------------------------------------------------------------------------------------
 
+  PartDataSize=7
   ! Check if we are counting reflections
-  IF (PartTrackReflection) THEN
-    PartDataSize=8
-  ELSE
-    PartDataSize=7
-  END IF
+  IF (doParticleReflectionTrack) PartDataSize = PartDataSize +1
 
   ! Check if we are using any particle turbulence model
   IF (ALLOCATED(TurbPartState)) THEN
@@ -198,7 +195,7 @@ REAL,ALLOCATABLE               :: TurbPartData(:,:)
         PartData(5,iPart)=PartState(5,pcount)
         PartData(6,iPart)=PartState(6,pcount)
         PartData(7,iPart)=REAL(PartSpecies(pcount))
-        IF (PartTrackReflection) THEN
+        IF (doParticleReflectionTrack) THEN
             PartData(8,iPart)=REAL(PartReflCount(pcount))
         END IF
 
@@ -274,7 +271,7 @@ ASSOCIATE (&
   StrVarNames(5)='VelocityY'
   StrVarNames(6)='VelocityZ'
   StrVarNames(7)='Species'
-  IF (PartTrackReflection) THEN
+  IF (doParticleReflectionTrack) THEN
       StrVarNames(8)='ReflectionCount'
   END IF
 

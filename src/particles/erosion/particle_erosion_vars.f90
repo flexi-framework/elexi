@@ -24,9 +24,9 @@ SAVE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                       :: ParticleErosionInitIsDone = .FALSE.
-LOGICAL                       :: PartTrackErosion
-LOGICAL                       :: PartTrackReflection = .TRUE.            ! Flag if reflections should be counted
-LOGICAL                       :: ErosionOutlet                           ! Flag if erosion should be tracked on outlet
+LOGICAL                       :: doParticleErosionTrack                  ! Flag if erosion data should be tracked
+LOGICAL                       :: doParticleErosionOutlet                 ! Flag if erosion should be tracked on outlet
+LOGICAL                       :: doParticleReflectionTrack = .TRUE.      ! Flag if reflections should be counted
 LOGICAL                       :: ErosionRestart                          ! Flag if we are restarting erosion tracking
 
 INTEGER                       :: nErosionVars                            ! Number of Vars = nErosionVars * (nSPecies + 1)

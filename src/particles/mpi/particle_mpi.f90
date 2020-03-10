@@ -154,7 +154,8 @@ SUBROUTINE InitParticleCommSize()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Erosion_Vars,    ONLY:PartTrackReflection
+USE MOD_Particle_Analyze_Vars,    ONLY:doParticleDispersionTrack
+USE MOD_Particle_Erosion_Vars,    ONLY:doParticleReflectionTrack
 USE MOD_Particle_MPI_Vars
 USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars,SGSinUse
 USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
@@ -197,7 +198,10 @@ PartCommSize   = PartCommSize + 6
 PartCommSize   = PartCommSize + 1
 
 ! Include reflection counter
-IF(PartTrackReflection) PartCommSize   = PartCommSize + 1
+IF(doParticleReflectionTrack) PartCommSize = PartCommSize + 1
+
+! Include dispersion path
+IF(doParticleDispersionTrack) PartCommSize = PartCommSize + 3
 
 ! additional stuff for full RK schemes, e.g. implicit and imex RK
 ! if iStage=0, then the PartStateN is not communicated
@@ -347,12 +351,13 @@ SUBROUTINE MPIParticleSend()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Tracking_vars,   ONLY:DoRefMapping
+USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,PartHaloElemToProc,PartCommSize,PartSendBuf, PartRecvBuf &
                                       ,PartTargetProc
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
 USE MOD_Particle_Vars,            ONLY:TurbPartState,TurbPt_temp
+USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 ! Variables for erosion tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Erosion_Vars
@@ -421,9 +426,15 @@ DO iProc=1, PartMPI%nMPINeighbors
       END IF
 
       ! reflection counter
-      IF (PartTrackReflection) THEN
+      IF (doParticleReflectionTrack) THEN
         PartSendBuf(iProc)%content(1+jPos) = REAL(PartReflCount(iPart),KIND=8)
         jPos=jPos+1
+      END IF
+
+      ! absolute particle path
+      IF (doParticleDispersionTrack) THEN
+        PartSendBuf(iProc)%content(1+jPos:3+jPos) = PartPath(1:3,iPart)
+        jPos=jPos+3
       END IF
 
       ! particles species
@@ -487,12 +498,15 @@ END DO ! iProc
 ! total number of received particles
 PartMPIExchange%nMPIParticles=SUM(PartMPIExchange%nPartsRecv(1,:))
 
-
+! Nullify everything just to be safe
 DO iPart=1,PDM%ParticleVecLength
   IF(PartTargetProc(iPart).EQ.-1) CYCLE
   PartState(1:6,iPart) = 0.
   PartSpecies(iPart)   = 0
   Pt_temp(1:6,iPart)   = 0.
+  IF (doParticleReflectionTrack) PartReflCount(  iPart) = 0
+  IF (doParticleDispersionTrack) PartPath(    :,iPart) = 0.
+  IF (ALLOCATED(TurbPartState))  TurbPartState(:,iPart) = 0.
 END DO ! iPart=1,PDM%ParticleVecLength
 
 
@@ -565,6 +579,7 @@ SUBROUTINE MPIParticleRecv()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,PartCommSize, PartRecvBuf,PartSendBuf
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
@@ -650,17 +665,23 @@ DO iProc=1,PartMPI%nMPINeighbors
     END IF
 
     ! reflection counter
-    IF (PartTrackReflection) THEN
-      PartReflCount(PartID)   = INT(PartRecvBuf(iProc)%content(1+jPos),KIND=4)
+    IF (doParticleReflectionTrack) THEN
+      PartReflCount(PartID)  = INT(PartRecvBuf(iProc)%content(1+jPos),KIND=4)
       jpos=jpos+1
     END IF
 
+    ! absolute particle path
+    IF (doParticleDispersionTrack) THEN
+      PartPath(1:3,PartID)   = PartRecvBuf(iProc)%content(1+jPos:3+jPos)
+      jPos=jPos+3
+    END IF
+
     ! particles species
-    PartSpecies(PartID)     = INT(PartRecvBuf(iProc)%content( 1+jPos),KIND=4)
+    PartSpecies(PartID)      = INT(PartRecvBuf(iProc)%content(1+jPos),KIND=4)
     jPos=jPos+1
 
     ! Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
-    Pt_temp(1:6,PartID)     = PartRecvBuf(iProc)%content( 1+jPos:6+jPos)
+    Pt_temp(1:6,PartID)      = PartRecvBuf(iProc)%content(1+jPos:6+jPos)
     jpos=jpos+6
 
     ! TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation

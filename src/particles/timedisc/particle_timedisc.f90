@@ -71,6 +71,7 @@ USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
+USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
@@ -173,6 +174,14 @@ IF (t.GE.DelayTime) THEN
     ENDIF !< ParticleInside
   END DO
 END IF
+
+! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
+IF (doParticleDispersionTrack) THEN
+  DO iPart=1,PDM%ParticleVecLength
+    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+  END DO
+END IF
+
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_PUSH,tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -312,22 +321,23 @@ SUBROUTINE Particle_TimeStepByLSERK(t,b_dt)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_TimeDisc_Vars,           ONLY: nRKStages
 USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
 USE MOD_PruettDamping,           ONLY: TempFilterTimeDeriv
 USE MOD_HDF5_Output,             ONLY: WriteState
+USE MOD_TimeDisc_Vars,           ONLY: nRKStages
 #if FV_ENABLED
 USE MOD_FV,                      ONLY: FV_Switch
 USE MOD_FV_Vars,                 ONLY: FV_toDGinRK
 #endif
+USE MOD_Part_Emission,           ONLY: ParticleInserting
+USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
+USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
+USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
+USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
+USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/
-USE MOD_Part_Emission,           ONLY: ParticleInserting
-USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
-USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
-USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
-USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
@@ -398,6 +408,13 @@ IF (t.GE.DelayTime) THEN
 
     END IF
   END DO
+
+  ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
+  IF (doParticleDispersionTrack) THEN
+    DO iPart=1,PDM%ParticleVecLength
+      IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+    END DO
+  END IF
 
   !IF (part_err) THEN
   !    CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
@@ -538,15 +555,16 @@ SUBROUTINE Particle_TimeStepByLSERK_RK(t,iStage,b_dt)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
 USE MOD_HDF5_Output,             ONLY: WriteState
+USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
+USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping,TriaTracking
-USE MOD_Particle_Vars,           ONLY: PartState, Pt, Pt_temp, DelayTime, PDM
+USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/
@@ -673,6 +691,13 @@ IF (t.GE.DelayTime) THEN
       !END IF
     END IF
   END DO
+
+  ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
+  IF (doParticleDispersionTrack) THEN
+    DO iPart=1,PDM%ParticleVecLength
+      IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+    END DO
+  END IF
 
   !IF (part_err) THEN
   !    CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&

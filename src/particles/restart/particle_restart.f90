@@ -55,7 +55,7 @@ USE MOD_Particle_Localization,   ONLY:SingleParticleToExactElement,SingleParticl
 USE MOD_Particle_Mesh_Vars,      ONLY:epsOneCell
 USE MOD_Particle_Tracking_Vars,  ONLY:DoRefMapping
 USE MOD_Particle_Erosion_Analyze,ONLY:CalcSurfaceValues
-USE MOD_Particle_Erosion_Vars,   ONLY:ErosionRestart,PartTrackReflection
+USE MOD_Particle_Erosion_Vars,   ONLY:ErosionRestart,doParticleReflectionTrack
 USE MOD_ErosionPoints,           ONLY:RestartErosionPoint
 USE MOD_ErosionPoints_Vars,      ONLY:EP_inUse
 #if USE_MPI
@@ -131,7 +131,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
     ! Reflections are stored in the 8th data column. Do not start counting reflections mid-simulation
     IF (PartDataSize.EQ.7) THEN
-        PartTrackReflection = .FALSE.
+        doParticleReflectionTrack = .FALSE.
         SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Reflections not tracked previously. Disabling reflection counter',' | ',PartDataSize
     END IF
 

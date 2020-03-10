@@ -31,6 +31,7 @@ LOGICAL                       :: CalcEkin                              ! Compute
 LOGICAL                       :: doParticlePositionTrack               ! track the particle movement
                                                                        ! stored in .csv format, debug only, no MPI
 LOGICAL                       :: doParticleConvergenceTrack            ! track the final particle position, stored in .csv format
+LOGICAL                       :: doParticleDispersionTrack             ! track the final particle position, stored in .csv format
 INTEGER                       :: nSpecAnalyze                          ! number of analyzed species 1 or nSpecies+1
 INTEGER,ALLOCATABLE           :: nPartIn(:)                            ! Number of entry and leaving particles
 INTEGER,ALLOCATABLE           :: nPartOut(:)                           ! Number of entry and leaving particles
@@ -38,6 +39,7 @@ INTEGER,ALLOCATABLE           :: nPartInTmp(:)                         ! Number 
 REAL,ALLOCATABLE              :: PartEkinIn(:)                         ! energy and temperatur of input particle
 REAL,ALLOCATABLE              :: PartEkinOut(:)                        ! energy and temperatur of input particle
 REAL,ALLOCATABLE              :: PartEKinInTmp(:)                      ! energy and temperatur of input particle
+REAL,ALLOCATABLE              :: PartPath(:,:)                         ! absolute particle path (used for dispersion calculation)
 LOGICAL                       :: printDiff
 REAL                          :: printDiffTime
 REAL                          :: printDiffVec(6)

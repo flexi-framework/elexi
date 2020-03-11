@@ -304,6 +304,7 @@ SUBROUTINE InitParticleGlobals()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_ReadInTools,                ONLY: GETINT
 USE MOD_Particle_Globals,           ONLY: PI
 USE MOD_Particle_Vars,              ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING

@@ -67,7 +67,7 @@ USE MOD_ErosionPoints,     ONLY:DefineParametersErosionPoints,InitErosionPoints
 USE MOD_Particle_Analyze,  ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling,ONLY:RestartParticleBoundarySampling
 USE MOD_Particle_Erosion,  ONLY:DefineParametersParticleErosion,InitParticleErosion
-USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticlesGlobals,InitParticles
+USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticleGlobals,InitParticles
 USE MOD_Particle_Interpolation,ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,     ONLY:DefineparametersParticleMesh,InitParticleMesh, InitElemBoundingBox
 USE MOD_Particle_Restart

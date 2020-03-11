@@ -82,7 +82,6 @@ PUBLIC :: CROSSNORM
 PUBLIC :: AlmostZero
 PUBLIC :: AlmostEqual
 PUBLIC :: UnitVector
-PUBLIC :: InitParticleGlobals
 PUBLIC :: RandNormal
 !===================================================================================================================================
 

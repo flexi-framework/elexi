@@ -67,7 +67,7 @@ USE MOD_ErosionPoints,     ONLY:DefineParametersErosionPoints,InitErosionPoints
 USE MOD_Particle_Analyze,  ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling,ONLY:RestartParticleBoundarySampling
 USE MOD_Particle_Erosion,  ONLY:DefineParametersParticleErosion,InitParticleErosion
-USE MOD_ParticleInit,      ONLY:InitParticles,DefineParametersParticles
+USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticlesGlobals,InitParticles
 USE MOD_Particle_Interpolation,ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,     ONLY:DefineparametersParticleMesh,InitParticleMesh, InitElemBoundingBox
 USE MOD_Particle_Restart
@@ -247,6 +247,7 @@ CALL InitParticleMPI
 #endif
 CALL InitElemBoundingBox()
 CALL InitParticleSurfaces
+CALL InitParticleGlobals
 CALL InitParticleAnalyze
 #if USE_MPI_SHARED
 CALL InitParticleMeshShared()
@@ -324,7 +325,7 @@ USE MOD_Particle_Analyze,  ONLY:FinalizeParticleAnalyze
 USE MOD_Particle_Erosion,  ONLY:FinalizeParticleErosion
 USE MOD_ErosionPoints,     ONLY:FinalizeErosionPoints
 USE MOD_Particle_Boundary_Sampling,ONLY:FinalizeParticleBoundarySampling
-USE MOD_ParticleInit,      ONLY:FinalizeParticles
+USE MOD_Particle_Init,     ONLY:FinalizeParticles
 #if USE_MPI
 USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
 #endif

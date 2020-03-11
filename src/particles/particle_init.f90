@@ -16,7 +16,7 @@
 !==================================================================================================================================
 ! Contains the routines that set up communicators and control non-blocking communication
 !==================================================================================================================================
-MODULE MOD_ParticleInit
+MODULE MOD_Particle_Init
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -25,6 +25,10 @@ PRIVATE
 INTERFACE DefineParametersParticles
   MODULE PROCEDURE DefineParametersParticles
 END INTERFACE
+
+INTERFACE InitParticleGlobals
+  MODULE PROCEDURE InitParticleGlobals
+END INTERFACE InitParticleGlobals
 
 INTERFACE InitParticles
   MODULE PROCEDURE InitParticles
@@ -35,6 +39,7 @@ INTERFACE FinalizeParticles
 END INTERFACE
 
 PUBLIC :: DefineParametersParticles
+PUBLIC :: InitParticleGlobals
 PUBLIC :: InitParticles
 PUBLIC :: FinalizeParticles
 !==================================================================================================================================
@@ -288,6 +293,39 @@ CALL prms%CreateIntOption(      'Particles-RandomSeed[$]'     , 'Seed [$] for Ra
 
 END SUBROUTINE DefineParametersParticles
 
+
+!===================================================================================================================================
+! Global particle parameters needed for other particle inits
+!===================================================================================================================================
+SUBROUTINE InitParticleGlobals()
+!===================================================================================================================================
+! Pre-compute required constants
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Particle_Globals,           ONLY: PI
+USE MOD_Particle_Vars,              ONLY: PDM
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS ...'
+
+PDM%maxParticleNumber = GETINT('Part-maxParticleNumber','1')
+PI=ACOS(-1.0D0)
+
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS DONE'
+
+END SUBROUTINE InitParticleGlobals
+
+
 !===================================================================================================================================
 ! Glue Subroutine for particle initialization
 !===================================================================================================================================
@@ -333,7 +371,6 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES ...'
 !  CALL AddToElemData(ElementOut,'nPartsPerElem',LongIntArray=nPartsPerElem(:))
 !END IF
 
-CALL InitParticleGlobals()
 CALL InitializeVariables(ManualTimeStep_opt)
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
 #if USE_RW
@@ -362,6 +399,7 @@ ParticlesInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLES DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticles
+
 
 !===================================================================================================================================
 ! Initialize the variables first
@@ -410,8 +448,6 @@ REAL                  :: alpha1, alpha2
 ! Read print flags
 printRandomSeeds      = GETLOGICAL(  'printRandomSeeds','.FALSE.')
 
-! Read basic particle parameter
-PDM%maxParticleNumber = GETINT(      'Part-maxParticleNumber','1')
 PartGravity           = GETREALARRAY('Part-Gravity'          ,3  ,'0. , 0. , 0.')
 
 ! Allocate array to hold particle properties
@@ -1266,4 +1302,4 @@ mat                      = 0.
 FORALL(j = 1:3) mat(j,j) = 1.
 END SUBROUTINE
 
-END MODULE MOD_ParticleInit
+END MODULE MOD_Particle_Init

@@ -181,7 +181,7 @@ IF(MPIRoot)THEN
 END IF
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
-FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_calcturb_',OutputTime))//'.h5'
+FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_calcturb',OutputTime))//'.h5'
 IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',nVarTurb,NOut,varnames_loc,MeshFileName,OutputTime,ArrayName)
 
 ! Set size of output

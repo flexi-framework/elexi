@@ -154,7 +154,7 @@ CMAKE_DEPENDENT_OPTION(FLEXI_PARTICLES_RW "Use random walk model for particles" 
                                                    "FLEXI_PARTICLES;FLEXI_MPI" OFF)
 CMAKE_DEPENDENT_OPTION(FLEXI_FV_RECONSTRUCTION "Enable 2nd order reconstruction for FV" ON
                                                "FLEXI_FV" OFF)
-SET(   FLEXI_BUILD_HDF5 ON  CACHE BOOL "Compile and build hdf5 library")
+SET(   FLEXI_BUILD_HDF5 OFF  CACHE BOOL "Compile and build hdf5 library")
 
 SET(   FLEXI_EQNSYSNAME "navierstokes" CACHE STRING
                         "Used equation system (navierstokes/linearscalaradvection/rans_sa)")

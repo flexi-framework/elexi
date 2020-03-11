@@ -288,6 +288,10 @@ DO iArg=1+skipArgs,nArgs
 !> - Comparable to incompressible turbulent dissipation (eps1) according to Hillewaert (2013)
 !> =================================================================================================================================
         CASE(3)
+            ! This mode needs at least a time-average and a state-file
+            IF ((nArgs-skipArgs).LT.2) &
+                CALL CollectiveStop(__STAMP__, 'At least a timeAvg and a state files are requirede for Mode=3!')
+
             ! Conservative variables plus k and epsilon
             nVarTurb = 7
 

@@ -365,7 +365,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(OUT)                     :: nVar_HDF5     !< number of variables
 INTEGER,INTENT(OUT)                     :: N_HDF5        !< polynomial degree
-INTEGER,INTENT(OUT)                     :: nElems_HDF5   !< inumber of elements
+INTEGER,INTENT(OUT)                     :: nElems_HDF5   !< number of elements
 CHARACTER(LEN=*),INTENT(IN)             :: ArrayName     !< array name to use in state file
 CHARACTER(LEN=*),OPTIONAL,INTENT(OUT)   :: NodeType_HDF5 !< nodetype string
 !----------------------------------------------------------------------------------------------------------------------------------

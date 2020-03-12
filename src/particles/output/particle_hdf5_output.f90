@@ -198,7 +198,7 @@ REAL,ALLOCATABLE               :: TurbPartData(:,:)
         PartData(1:6,iPart) = PartState(1:6,pcount)
         PartData(7  ,iPart) = REAL(PartSpecies(pcount))
         IF (doParticleReflectionTrack) PartData(8,iPart) = REAL(PartReflCount(pcount))
-        IF (doParticleDispersionTrack) PartData(9+varShift:11+varShift,iPart) = PartPath(1:3,pcount)
+        IF (doParticleDispersionTrack) PartData(8+varShift:10+varShift,iPart) = PartPath(1:3,pcount)
 
         ! Turbulent particle properties
         IF (ALLOCATED(TurbPartState))  TurbPartData(:,iPart)=TurbPartState(:,pcount)
@@ -262,7 +262,7 @@ ASSOCIATE (&
   IF (doParticleReflectionTrack) &
     StrVarNames(8) = 'ReflectionCount'
   IF (doParticleDispersionTrack) &
-    StrVarNames(9+varShift:11+varShift)=(/'PartPathX','PartPathY','PartPathZ'/)
+    StrVarNames(8+varShift:10+varShift)=(/'PartPathX','PartPathY','PartPathZ'/)
 
   IF(MPIRoot)THEN
     CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)

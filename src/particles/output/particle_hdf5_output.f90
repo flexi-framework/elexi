@@ -66,9 +66,10 @@ SUBROUTINE WriteParticleToHDF5(FileName)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Particle_Globals
 USE MOD_Mesh_Vars,             ONLY: nGlobalElems, offsetElem
 USE MOD_Part_Tools,            ONLY: UpdateNextFreePosition
+USE MOD_Particle_Globals
+USE MOD_Particle_Analyze_Vars, ONLY: PartPath,doParticleDispersionTrack
 USE MOD_Particle_Erosion_Vars, ONLY: doParticleReflectionTrack
 USE MOD_Particle_Vars,         ONLY: PDM, PEM, PartState, PartSpecies,PartReflCount
 USE MOD_Particle_Vars,         ONLY: useLinkedList
@@ -82,7 +83,7 @@ USE MOD_Particle_Tracking_Vars,ONLY: PartOut,MPIRankOut
 USE MOD_Particle_Vars,         ONLY: TurbPartState
 USE MOD_Particle_SGS_Vars,     ONLY: nSGSVars
 #if USE_RW
-USE MOD_Particle_RandomWalk_Vars,      ONLY: nRWVars
+USE MOD_Particle_RandomWalk_Vars,ONLY: nRWVars
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -94,7 +95,7 @@ CHARACTER(LEN=255),INTENT(IN)  :: FileName
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
-INTEGER                        :: nVar
+INTEGER                        :: nVar,VarShift
 #if USE_MPI
 INTEGER                        :: sendbuf(2),recvbuf(2)
 INTEGER                        :: nParticles(0:nProcessors-1)
@@ -118,9 +119,15 @@ REAL,ALLOCATABLE               :: TurbPartData(:,:)
 !===================================================================================================================================
 ! Write properties -----------------------------------------------------------------------------------------------------------------
 
-  PartDataSize=7
+  PartDataSize = 7
+  varShift     = 0
   ! Check if we are counting reflections
-  IF (doParticleReflectionTrack) PartDataSize = PartDataSize +1
+  IF (doParticleReflectionTrack) THEN
+    PartDataSize = PartDataSize + 1
+    varShift     = 1
+  END IF
+  IF (doParticleDispersionTrack) &
+    PartDataSize = PartDataSize + 3
 
   ! Check if we are using any particle turbulence model
   IF (ALLOCATED(TurbPartState)) THEN
@@ -187,29 +194,14 @@ REAL,ALLOCATABLE               :: TurbPartData(:,:)
       PartInt(2,iElem_glob) = PartInt(1,iElem_glob) + PEM%pNumber(iElem_loc)
       ! Sum up particles and add properties to output array
       pcount = PEM%pStart(iElem_loc)
-      DO iPart=PartInt(1,iElem_glob)+1,PartInt(2,iElem_glob)
-        PartData(1,iPart)=PartState(1,pcount)
-        PartData(2,iPart)=PartState(2,pcount)
-        PartData(3,iPart)=PartState(3,pcount)
-        PartData(4,iPart)=PartState(4,pcount)
-        PartData(5,iPart)=PartState(5,pcount)
-        PartData(6,iPart)=PartState(6,pcount)
-        PartData(7,iPart)=REAL(PartSpecies(pcount))
-        IF (doParticleReflectionTrack) THEN
-            PartData(8,iPart)=REAL(PartReflCount(pcount))
-        END IF
+      DO iPart = PartInt(1,iElem_glob)+1,PartInt(2,iElem_glob)
+        PartData(1:6,iPart) = PartState(1:6,pcount)
+        PartData(7  ,iPart) = REAL(PartSpecies(pcount))
+        IF (doParticleReflectionTrack) PartData(8,iPart) = REAL(PartReflCount(pcount))
+        IF (doParticleDispersionTrack) PartData(9+varShift:11+varShift,iPart) = PartPath(1:3,pcount)
 
         ! Turbulent particle properties
-        IF (ALLOCATED(TurbPartState)) TurbPartData(:,iPart)=TurbPartState(:,pcount)
-
-        ! piclas leftover? Might remove
-!#if CODE_ANALYZE
-!        IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-!          IF(pcount.EQ.PARTOUT)THEN
-!            PartData(7,iPart)=-PartData(7,iPart)
-!          END IF
-!        END IF
-!#endif /*CODE_ANALYZE*/
+        IF (ALLOCATED(TurbPartState))  TurbPartData(:,iPart)=TurbPartState(:,pcount)
 
         ! Set the index to the next particle
         pcount = PEM%pNext(pcount)
@@ -264,16 +256,13 @@ ASSOCIATE (&
 
   ! Allocate PartData varnames array and fill it
   ALLOCATE(StrVarNames(PartDataSize))
-  StrVarNames(1)='ParticlePositionX'
-  StrVarNames(2)='ParticlePositionY'
-  StrVarNames(3)='ParticlePositionZ'
-  StrVarNames(4)='VelocityX'
-  StrVarNames(5)='VelocityY'
-  StrVarNames(6)='VelocityZ'
-  StrVarNames(7)='Species'
-  IF (doParticleReflectionTrack) THEN
-      StrVarNames(8)='ReflectionCount'
-  END IF
+  StrVarNames(1:3) = (/'ParticlePositionX','ParticlePositionY','ParticlePositionZ'/)
+  StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityX'        /)
+  StrVarNames(7)   = 'Species'
+  IF (doParticleReflectionTrack) &
+    StrVarNames(8) = 'ReflectionCount'
+  IF (doParticleDispersionTrack) &
+    StrVarNames(9+varShift:11+varShift)=(/'PartPathX','PartPathY','PartPathZ'/)
 
   IF(MPIRoot)THEN
     CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
@@ -319,8 +308,6 @@ ASSOCIATE (&
     CALL CloseDataFile()
   END IF
 #endif /*MPI*/
-
-
 
   END ASSOCIATE
   ! reswitch

@@ -396,7 +396,7 @@ INTEGER,INTENT(INOUT)                    :: NbrOfParticle
 !!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
-INTEGER                                  :: iProc,tProc, CellX, CellY, CellZ
+INTEGER                                  :: iProc, CellX, CellY, CellZ
 INTEGER                                  :: msg_status(1:MPI_STATUS_SIZE)
 INTEGER                                  :: MessageSize
 #endif

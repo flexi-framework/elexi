@@ -251,7 +251,12 @@ DO iPart=1,PDM%ParticleVecLength
 
     ! Relative velocity
     udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
-    urel       = udiff/SQRT(SUM(udiff**2))
+    IF (ANY(udiff.NE.0)) THEN
+     urel       = udiff/SQRT(SUM(udiff**2))
+   ELSE
+     urel       = 0.
+   END IF
+
     ! parallel
     tauL(1,iPart) = tauSGS(1,iPart)/(SQRT(1+betaSGS**2*SUM(udiff**2)/kSGSPart(1,iPart)*3/2))
     ! perpendicular

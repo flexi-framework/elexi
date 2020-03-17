@@ -355,29 +355,28 @@ DO
 #if FV_ENABLED
   CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif
-  CALL DGTimeDerivative_weakForm(t)
-  IF(nCalcTimestep.LT.1)THEN
-
 #if USE_PARTICLES
-    ! Only calculate time step if not set manually
-    IF(.NOT.PartSteadyState.OR.(ALMOSTZERO(dt_Min))) THEN
+  ! Only calculate time step if not running in stationary mode
+  IF (.NOT.PartSteadyState) THEN
 #endif
+    CALL DGTimeDerivative_weakForm(t)
+    IF (nCalcTimestep.LT.1) THEN
       dt_Min=CALCTIMESTEP(errType)
-#if USE_PARTICLES
-    ENDIF
-#endif
-    nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
-    dt_MinOld=dt_Min
-    IF(errType.NE.0)THEN
-      CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
-                            FutureTime=tWriteData,isErrorFile=.TRUE.)
-      CALL abort(__STAMP__,&
+      nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
+      dt_MinOld=dt_Min
+      IF(errType.NE.0)THEN
+        CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
+                              FutureTime=tWriteData,isErrorFile=.TRUE.)
+        CALL abort(__STAMP__,&
 #if EQNSYSNR == 3
-  'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
+        'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
 #else
-  'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
+        'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
 #endif
+      END IF
+#if USE_PARTICLES
     END IF
+#endif
   END IF
   nCalcTimestep=nCalcTimestep-1
 

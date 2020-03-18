@@ -357,7 +357,7 @@ DO
 #endif
 #if USE_PARTICLES
   ! Only calculate time step if not running in stationary mode
-  IF (.NOT.PartSteadyState) THEN
+  IF (.NOT.PartSteadyState.OR.iter.EQ.0) THEN
 #endif
     CALL DGTimeDerivative_weakForm(t)
     IF (nCalcTimestep.LT.1) THEN

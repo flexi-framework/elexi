@@ -360,7 +360,11 @@ DO
   IF (.NOT.PartSteadyState.OR.iter.EQ.0) THEN
 #endif
     CALL DGTimeDerivative_weakForm(t)
+#if USE_PARTICLES
     IF (.NOT.PartSteadyState.AND.nCalcTimestep.LT.1) THEN
+#else
+    IF (nCalcTimestep.LT.1) THEN
+#endif
       dt_Min=CALCTIMESTEP(errType)
       nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
       dt_MinOld=dt_Min

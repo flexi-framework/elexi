@@ -31,7 +31,8 @@ LOGICAL                 :: doConservativeDissipation
 
 ! Parameters for turbulence calculation
 REAL,PARAMETER          :: betaStar = 0.09
-REAL                    :: RestartEpsilon                   !< Constant omega in the domain for Turb=1
+REAL                    :: RestartEpsilon                   !< Constant epsilon in the domain for Turb=1,11
+REAL                    :: RestartTKE                       !< Constant TKE in the domain for Turb=1,11
 
 !CHARACTER(LEN=255)      :: MeshFile
 !CHARACTER(LEN=255)      :: ProjectName

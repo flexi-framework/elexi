@@ -1408,9 +1408,7 @@ IF (ALLOCSTAT.NE.0) THEN
 #else
   iProc=0
 #endif /*MPI*/
-  CALL abort(&
-  __STAMP__&
-  , 'Problem allocating GEO%FIBGM!' )
+  CALL abort(__STAMP__, 'Problem allocating GEO%FIBGM!' )
 END IF
 
 ! null number of element per BGM cell
@@ -1627,7 +1625,7 @@ ELSE ! non periodic case
     IF  (i .GT. SUM(NbrOfBGMCells(0: CurrentProc))*3 .AND. CurrentProc .LT. PartMPI%nProcs-1) THEN
       CurrentProc=CurrentProc+1
     END IF
-    IF  (.NOT.(GlobalBGMCellsArray(i)   .LT. BGMimin-FIBGMCellPadding(1) .OR. GlobalBGMCellsArray(i).GT.    BGMimax+FIBGMCellPadding(1) &
+    IF  (.NOT.(GlobalBGMCellsArray(i)   .LT. BGMimin-FIBGMCellPadding(1) .OR. GlobalBGMCellsArray(i)   .GT. BGMimax+FIBGMCellPadding(1) &
         & .OR. GlobalBGMCellsArray(i+1) .LT. BGMjmin-FIBGMCellPadding(2) .OR. GlobalBGMCellsArray(i+1) .GT. BGMjmax+FIBGMCellPadding(2) &
         & .OR. GlobalBGMCellsArray(i+2) .LT. BGMkmin-FIBGMCellPadding(3) .OR. GlobalBGMCellsArray(i+2) .GT. BGMkmax+FIBGMCellPadding(3) &
          & .OR. CurrentProc .EQ. PartMPI%MyRank)) THEN
@@ -4298,8 +4296,7 @@ INTEGER                              :: BCID,iBC,flip,ilocSide,iElem,SideID,idir
 REAL,ALLOCATABLE                     :: DummyBezierControlPoints3D(:,:,:,:)
 REAL,ALLOCATABLE                     :: DummyBezierControlPoints3DElevated(:,:,:,:)
 REAL,ALLOCATABLE,DIMENSION(:,:,:)    :: DummySideSlabNormals                  ! normal vectors of bounding slab box
-REAL,ALLOCATABLE,DIMENSION(:,:)      :: DummySideSlabIntervals               ! intervalls beta1, beta2, beta3
-!REAL,ALLOCATABLE,DIMENSION(:,:)      :: DummySidePeriodicDisplacement        ! intervalls beta1, beta2, beta3
+REAL,ALLOCATABLE,DIMENSION(:,:)      :: DummySideSlabIntervals                ! intervalls beta1, beta2, beta3
 LOGICAL,ALLOCATABLE,DIMENSION(:)     :: DummyBoundingBoxIsEmpty
 INTEGER,ALLOCATABLE,DIMENSION(:)     :: DummyBC
 INTEGER,ALLOCATABLE,DIMENSION(:)     :: DummyMortarSlave2MasterInfo
@@ -4311,15 +4308,16 @@ REAL                                 :: MinMax(1:2),MinMaxGlob(1:6),xTest(1:3)
 !===================================================================================================================================
 
 ! 1) loop over all sides and detect periodic sides
-nPartPeriodicSides=0
-MapPeriodicSides=.FALSE.
+nPartPeriodicSides = 0
+MapPeriodicSides   = .FALSE.
+
 IF(.NOT.CartesianPeriodic .AND. GEO%nPeriodicVectors.GT.0)THEN
   DO iSide=1,nSides
     IF(SidePeriodicType(iSide).NE.0)THEN
       ! abort if particles are traced over mortar sides
-      IF(MortarSlave2MasterInfo(iSide).NE.-1.OR.MortarType(1,iSide).GE.0) CALL abort(&
-__STAMP__&
-      , ' Periodic tracing over mortar sides is not implemented!')
+      IF(MortarSlave2MasterInfo(iSide).NE.-1.OR.MortarType(1,iSide).GE.0) &
+        CALL abort(__STAMP__,' Periodic tracing over mortar sides is not implemented!')
+
       ! ignore MPI sides, these have NOT to be mirrored
       ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
       IF(ElemID.EQ.-1) THEN
@@ -4329,7 +4327,7 @@ __STAMP__&
       END IF
       NBElemID=PartSideToElem(S2E_NB_ELEM_ID,iSide)
       ! only master side is on proc, nothing to do
-      IF(NBElemID.LT.1) CYCLE
+      IF(NBElemID.LT.1)      CYCLE
       IF(NBElemID.GT.nElems) CYCLE
       ! if master and slave side are on proc, duplicate
       nPartPeriodicSides=nPartPeriodicSides+1
@@ -4338,7 +4336,6 @@ __STAMP__&
   END DO
 END IF
 
-!IF(nPartPeriodicSides.GT.0)THEN
 IF(MapPeriodicSides)THEN
   ! map min-max glob to local array
   MinMaxGlob(1)=GEO%xminglob
@@ -4349,33 +4346,31 @@ IF(MapPeriodicSides)THEN
   MinMaxGlob(6)=GEO%zmaxglob
 
   ! 2) increase BezierControlPoints and SideXXX from old nSides to nSides+nDuplicatePeriodicSides
-  ALLOCATE(DummyBezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:nTotalSides))
+  ALLOCATE(DummyBezierControlPoints3d        (1:3,0:NGeo,        0:NGeo,        1:nTotalSides))
   ALLOCATE(DummyBezierControlPoints3dElevated(1:3,0:NGeoElevated,0:NGeoElevated,1:nTotalSides))
-  ALLOCATE(DummySideSlabNormals(1:3,1:3,1:nTotalSides))
-  ALLOCATE(DummySideSlabIntervals(1:6,1:nTotalSides))
-  !ALLOCATE(DummySidePeriodicDisplacement(1:3,1:nTotalSides))
-  ALLOCATE(DummyBoundingBoxIsEmpty(1:nTotalSides))
-  ALLOCATE(DummyBC(1:nTotalSides))
-  ALLOCATE(DummyMortarType(1:2,1:nTotalSides))
-  ALLOCATE(DummyPartSideToElem(1:5,1:nTotalSides))
-  ALLOCATE(DummySidePeriodicType(1:nTotalSides))
-  ALLOCATE(DummyMortarSlave2MasterInfo(1:nTotalSides))
+  ALLOCATE(DummySideSlabNormals              (1:3,1:3,                          1:nTotalSides))
+  ALLOCATE(DummySideSlabIntervals            (1:6,                              1:nTotalSides))
+  ALLOCATE(DummyBoundingBoxIsEmpty           (                                  1:nTotalSides))
+  ALLOCATE(DummyBC                           (                                  1:nTotalSides))
+  ALLOCATE(DummyMortarType                   (1:2,                              1:nTotalSides))
+  ALLOCATE(DummyPartSideToElem               (1:5,                              1:nTotalSides))
+  ALLOCATE(DummySidePeriodicType             (                                  1:nTotalSides))
+  ALLOCATE(DummyMortarSlave2MasterInfo       (                                  1:nTotalSides))
 
   ! copy data to backup
-  DummyBezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:nTotalSides) = BezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:nTotalSides)
+  DummyBezierControlPoints3d (1:3,0:NGeo,0:NGeo,1:nTotalSides) = BezierControlPoints3d (1:3,0:NGeo,0:NGeo,1:nTotalSides)
   DummyBezierControlPoints3dElevated(1:3,0:NGeoElevated,0:NGeoElevated,1:nTotalSides) &
      = BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated,1:nTotalSides)
-  DummySideSlabNormals(1:3,1:3,1:nTotalSides)                 = SideSlabNormals(1:3,1:3,1:nTotalSides)
-  DummySideSlabIntervals(1:6,1:nTotalSides)                   = SideSlabIntervals(1:6,1:nTotalSides)
-  !DummySidePeriodicDisplacement(1:3,1:nTotalSides)            = SidePeriodicDisplacement(1:3,1:nTotalSides)
-  DummyBoundingBoxIsEmpty(1:nTotalSides)                      = BoundingBoxIsEmpty(1:nTotalSides)
-  DummyBC(1:nTotalSides)                                      = BC(1:nTotalSides)
-  DummyMortarSlave2MasterInfo(1:nTotalSides)                  = MortarSlave2MasterInfo(1:nTotalSides)
-  DummyMortarType(1:2,1:nTotalSides)                          = MortarType(1:2,1:nTotalSides)
-  DummyPartSideTOElem(1:5,1:nTotalSides)                      = PartSideTOElem(1:5,1:nTotalSides)
-  DummySidePeriodicType(1:nTotalSides)                        = SidePeriodicType(1:nTotalSides)
+  DummySideSlabNormals       (1:3,1:3,          1:nTotalSides) = SideSlabNormals       (1:3,1:3,          1:nTotalSides)
+  DummySideSlabIntervals     (1:6,              1:nTotalSides) = SideSlabIntervals     (1:6,              1:nTotalSides)
+  DummyBoundingBoxIsEmpty    (                  1:nTotalSides) = BoundingBoxIsEmpty    (                  1:nTotalSides)
+  DummyBC                    (                  1:nTotalSides) = BC                    (                  1:nTotalSides)
+  DummyMortarSlave2MasterInfo(                  1:nTotalSides) = MortarSlave2MasterInfo(                  1:nTotalSides)
+  DummyMortarType            (1:2,              1:nTotalSides) = MortarType            (1:2,              1:nTotalSides)
+  DummyPartSideTOElem        (1:5,              1:nTotalSides) = PartSideTOElem        (1:5,              1:nTotalSides)
+  DummySidePeriodicType      (                  1:nTotalSides) = SidePeriodicType      (                  1:nTotalSides)
 
-  ! deallocate old values and reallocate
+  ! deallocate old values
   DEALLOCATE(BezierControlPoints3D)
   DEALLOCATE(BezierControlPoints3DElevated)
   DEALLOCATE(SideSlabNormals)
@@ -4387,84 +4382,90 @@ IF(MapPeriodicSides)THEN
   DEALLOCATE(PartSideToElem)
   DEALLOCATE(SidePeriodicType)
 
+  ! increase number of sides and reallocate
   tmpnSides  =nTotalSides
   nTotalSides=nTotalSides+nPartPeriodicSides
-  ALLOCATE(BezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:nTotalSides))
-  BezierControlPoints3d=-1.
-  ALLOCATE(BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated,1:nTotalSides))
-  BezierControlPoints3DElevated=-1.
-  ALLOCATE(SideSlabNormals(1:3,1:3,1:nTotalSides))
-  SideSlabNormals=-1.
-  ALLOCATE(SideSlabIntervals(1:6,1:nTotalSides))
-  SideSlabIntervals=-1.
-  ALLOCATE(BoundingBoxIsEmpty(1:nTotalSides))
-  BoundingBoxIsEmpty=.FALSE.
-  ALLOCATE(BC(1:nTotalSides))
-  BC=-3
-  ALLOCATE(MortarSlave2MasterInfo(1:nTotalSides))
-  MortarSlave2MasterInfo=-1
-  ALLOCATE(MortarType(1:2,1:nTotalSides))
-  MortarType=-1
-  ALLOCATE(PartSideToElem(1:5,1:nTotalSides))
-  PartSideToElem=-1
-  ALLOCATE(SidePeriodicType(1:nTotalSides))
-  SidePeriodicType=0
-  !ALLOCATE(SidePeriodicDisplacement(1:3,1:nTotalSides))
 
-  BezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:tmpnSides) = DummyBezierControlPoints3d(1:3,0:NGeo,0:NGeo,1:tmpnSides)
-  BezierControlPoints3dElevated(1:3,0:NGeoElevated,0:NGeoElevated,1:tmpnSides) &
+  ALLOCATE(BezierControlPoints3d        (1:3,0:NGeo,        0:NGeo,        1:nTotalSides) &
+          ,BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated,1:nTotalSides) &
+          ,SideSlabNormals              (1:3,1:3,                          1:nTotalSides) &
+          ,SideSlabIntervals            (1:6,                              1:nTotalSides) &
+          ,BoundingBoxIsEmpty           (                                  1:nTotalSides) &
+          ,BC                           (                                  1:nTotalSides) &
+          ,MortarSlave2MasterInfo       (                                  1:nTotalSides) &
+          ,MortarType                   (1:2,                              1:nTotalSides) &
+          ,PartSideToElem               (1:5,                              1:nTotalSides) &
+          ,SidePeriodicType             (                                  1:nTotalSides))
+  BezierControlPoints3d         = -1.
+  BezierControlPoints3DElevated = -1.
+  SideSlabNormals               = -1.
+  SideSlabIntervals             = -1.
+  BoundingBoxIsEmpty            = .FALSE.
+  BC                            = -3
+  MortarSlave2MasterInfo        = -1
+  MortarType                    = -1
+  PartSideToElem                = -1
+  SidePeriodicType              = 0
+
+  ! fill the new array with the non-periodic values
+  BezierControlPoints3d (1:3,0:NGeo,0:NGeo,1:tmpnSides) = DummyBezierControlPoints3d (1:3,0:NGeo,0:NGeo,1:tmpnSides)
+  BezierControlPoints3dElevated          (1:3,0:NGeoElevated,0:NGeoElevated,1:tmpnSides) &
      = DummyBezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated,1:tmpnSides)
-  SideSlabNormals(1:3,1:3,1:tmpnSides)                 = DummySideSlabNormals(1:3,1:3,1:tmpnSides)
-  SideSlabIntervals(1:6,1:tmpnSides)                   = DummySideSlabIntervals(1:6,1:tmpnSides)
-  BoundingBoxIsEmpty(1:tmpnSides)                      = DummyBoundingBoxIsEmpty(1:tmpnSides)
-  !SidePeriodicDisplacement(1:3,1:nTotalSides)          = DummySidePeriodicDisplacement(1:3,1:nTotalSides)
-  BC(1:tmpnSides)                                      = DummyBC(1:tmpnSides)
-  MortarSlave2MasterInfo(1:tmpnSides)                  = DummyMortarSlave2MasterInfo(1:tmpnSides)
-  MortarType(1:2,1:tmpnSides)                          = DummyMortarType(1:2,1:tmpnSides)
-  PartSideToElem(1:5,1:tmpnSides)                      = DummyPartSideTOElem(1:5,1:tmpnSides)
-  SidePeriodicType(1:tmpnSides)                        = DummySidePeriodicType(1:tmpnSides)
+  SideSlabNormals       (1:3,1:3,          1:tmpnSides) = DummySideSlabNormals       (1:3,1:3,          1:tmpnSides)
+  SideSlabIntervals     (1:6,              1:tmpnSides) = DummySideSlabIntervals     (1:6,              1:tmpnSides)
+  BoundingBoxIsEmpty    (                  1:tmpnSides) = DummyBoundingBoxIsEmpty    (                  1:tmpnSides)
+  BC                    (                  1:tmpnSides) = DummyBC                    (                  1:tmpnSides)
+  MortarSlave2MasterInfo(                  1:tmpnSides) = DummyMortarSlave2MasterInfo(                  1:tmpnSides)
+  MortarType            (1:2,              1:tmpnSides) = DummyMortarType            (1:2,              1:tmpnSides)
+  PartSideToElem        (1:5,              1:tmpnSides) = DummyPartSideTOElem        (1:5,              1:tmpnSides)
+  SidePeriodicType      (                  1:tmpnSides) = DummySidePeriodicType      (                  1:tmpnSides)
 
   ! 3) loop over the OLD sides and copy the corresponding SideXXX. The missing BezierControlPoints (periodic shifted values)
   !    are build from the other element. Now two BezierControlPoints existes which are shifted by the sideperiodicvector
-  nPartPeriodicSides=0
+  nPartPeriodicSides = 0
   DO iSide=1,tmpnSides
     IF(SidePeriodicType(iSide).NE.0)THEN
-      NBElemID=PartSideToElem(S2E_NB_ELEM_ID,iSide)
-      IF(NBElemID.LT.1) CYCLE
+      NBElemID    = PartSideToElem(S2E_NB_ELEM_ID,    iSide)
+      IF(NBElemID.LT.1)      CYCLE
       IF(NBElemID.GT.nElems) CYCLE
-      NBlocSideID=PartSideToElem(S2E_NB_LOC_SIDE_ID,iSide)
-      flip=PartSideToElem(S2E_FLIP,iSide)
-      locSideID=PartSideToElem(S2E_LOC_SIDE_ID,iSide)
-      ElemID   =PartSideToElem(S2E_ELEM_ID,iSide)
-      ! 3b) set newSideID and sidedata
+      NBlocSideID = PartSideToElem(S2E_NB_LOC_SIDE_ID,iSide)
+      flip        = PartSideToElem(S2E_FLIP,          iSide)
+      locSideID   = PartSideToElem(S2E_LOC_SIDE_ID,   iSide)
+      ElemID      = PartSideToElem(S2E_ELEM_ID,       iSide)
+
+      ! 3b) set newSideID and SideData
       IF(ElemID.EQ.-1) THEN
         ! MPI side
-        newSideID=iSide
-        PVID=SidePeriodicType(iSide)
-        SidePeriodicType(newSideID)=-SidePeriodicType(iSide) ! stored the inital alpha value
+        newSideID                   = iSide
+        PVID                        = SidePeriodicType(iSide)
+        SidePeriodicType(newSideID) =-SidePeriodicType(iSide) ! stored the inital alpha value
       ELSE
-        nPartPeriodicSides=nPartPeriodicSides+1
-        newSideID=tmpnSides+nPartPeriodicSides
-        ! bc
+        ! side on same proc
+        nPartPeriodicSides = nPartPeriodicSides+1
+        newSideID          = nPartPeriodicSides+tmpnSides
+        ! BC
         BCID = BC(iSide)
         PVID = BoundaryType(BCID,BC_ALPHA)
-        ! loop over bc to get the NEW BC type
+        ! loop over BC to get the NEW BC type
         DO iBC = 1,nBCs
-          IF(BoundaryType(iBC,BC_ALPHA).EQ.-PVID) THEn
-            BC(newSideID)=iBC
+          IF(BoundaryType(iBC,BC_ALPHA).EQ.-PVID) THEN
+            BC(newSideID) = iBC
             EXIT
           END IF
         END DO
+
         MortarSlave2MasterInfo(newSideID) = DummyMortarSlave2MasterInfo(iSide)
-        PVID=SidePeriodicType(iSide)
-        SidePeriodicType(newSideID)=-SidePeriodicType(iSide) ! stored the inital alpha value
+        PVID                        =  SidePeriodicType(iSide)
+        SidePeriodicType(newSideID) = -SidePeriodicType(iSide) ! stored the inital alpha value
+
         ! rebuild sides for sanity
         CALL GetBezierControlPoints3D(XCL_NGeo(1:3,0:NGeo,0:NGeo,0:NGeo,ElemID),ElemID,ilocSide_In=locSideID,SideID_In=iSide)
-        CALL GetSideSlabNormalsAndIntervals(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)                             &
+        CALL GetSideSlabNormalsAndIntervals(BezierControlPoints3D        (1:3,0:NGeo,        0:NGeo,        iSide)     &
                                            ,BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated,iSide)     &
-                                           ,SideSlabNormals(1:3,1:3,iSide)                                             &
-                                           ,SideSlabInterVals(1:6,iSide)                                               &
-                                           ,BoundingBoxIsEmpty(iSide)                                                  )
+                                           ,SideSlabNormals              (1:3,1:3,                          iSide)     &
+                                           ,SideSlabInterVals            (1:6,                              iSide)     &
+                                           ,BoundingBoxIsEmpty           (                                  iSide))
+
         ! sanity check
         xTest(1:3) = BezierControlPoints3D(1:3,0,0,iSide)
         xTest      = xTest + SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
@@ -4475,6 +4476,7 @@ IF(MapPeriodicSides)THEN
         IF(xTest(2)-1e-8.GT.MinMaxGlob(5)) SidePeriodicType(iSide)=-SidePeriodicType(iSide)
         IF(xTest(3)-1e-8.GT.MinMaxGlob(6)) SidePeriodicType(iSide)=-SidePeriodicType(iSide)
       END IF
+
       ! the flip has to be set to -1, artificial master side
       PartElemToSide(E2S_FLIP   ,NBlocSideID,NBElemID) = 0
       PartElemToSide(E2S_SIDE_ID,NBlocSideID,NBElemID) = newSideID
@@ -4490,6 +4492,7 @@ IF(MapPeriodicSides)THEN
       !END DO ! q=0,NGeo
       !! recompute quark
       !CALL RotateMasterToSlave(flip,NBlocSideID,BezierControlPoints3d(1:3,0:NGeo,0:NGeo,newSideID))
+
       DO idir=1,3
         MinMax(1)=MINVAL(BezierControlPoints3d(iDir,:,:,newSideID))
         MinMax(2)=MAXVAL(BezierControlPoints3d(iDir,:,:,newSideID))

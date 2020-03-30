@@ -91,6 +91,7 @@ CALL prms%CreateLogicalOption("doConservativeDissipation", "Calculate turbulent 
                                                  " of using the filtered velocity gradients.")
 CALL prms%CreateIntFromStringOption('OutputFormat',"File format for visualization: None, Tecplot, TecplotASCII, ParaView. "//&
                                                  " Note: Tecplot output is currently unavailable due to licensing issues.", 'None')
+CALL prms%CreateRealOption(   'RestartTKE'      ,"Constant TKE to be applied throughout the domain.", '0.')
 CALL prms%CreateRealOption(   'Restartepsilon'  ,"Constant epsilon to be applied throughout the domain.", '0.')
 CALL prms%CreateStringOption( 'NodeTypeVisu'    ,"NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL addStrListEntry(         'OutputFormat'    ,'none',        OUTPUTFORMAT_NONE)

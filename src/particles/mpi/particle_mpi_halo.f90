@@ -363,47 +363,58 @@ END IF
 DO iSide=1,nExternalSides
   DO q=0,NGeo
     DO p=0,NGeo
+      ! check each node associated with the side and find corresponding BGM elem
       NodeX(:) = BezierSides3d(:,p,q,iSide)
       iBGM = INT((NodeX(1)-GEO%xminglob)/GEO%FIBGMdeltas(1))+1
       jBGM = INT((NodeX(2)-GEO%yminglob)/GEO%FIBGMdeltas(2))+1
       kBGM = INT((NodeX(3)-GEO%zminglob)/GEO%FIBGMdeltas(3))+1
+
+      ! add padding and loop over all BGM cells
       DO iPBGM = iBGM-FIBGMCellPadding(1),iBGM+FIBGMCellPadding(1)
         DO jPBGM = jBGM-FIBGMCellPadding(2),jBGM+FIBGMCellPadding(2)
           DO kPBGM = kBGM-FIBGMCellPadding(3),kBGM+FIBGMCellPadding(3)
+            ! check if the BGM elem is in valid range
             IF((iPBGM.GT.GEO%FIBGMimax).OR.(iPBGM.LT.GEO%FIBGMimin) .OR. &
                (jPBGM.GT.GEO%FIBGMjmax).OR.(jPBGM.LT.GEO%FIBGMjmin) .OR. &
-               (kPBGM.GT.GEO%FIBGMkmax).OR.(kPBGM.LT.GEO%FIBGMkmin) ) CYCLE
+               (kPBGM.GT.GEO%FIBGMkmax).OR.(kPBGM.LT.GEO%FIBGMkmin)) CYCLE
+
+            ! loop over all elements associated with BGM elem
             DO iBGMElem = 1, GEO%FIBGM(iPBGM,jPBGM,kPBGM)%nElem
               ElemID = GEO%FIBGM(iPBGM,jPBGM,kPBGM)%Element(iBGMElem)
-              IF(ElemIndex(ElemID).GT.0) CYCLE ! element is already marked
+              ! element is already marked
+              IF(ElemIndex(ElemID).GT.0) CYCLE
+
+              ! check nodes of all sides associated with elem
               DO ilocSide=1,6
-                SideID=PartElemToSide(E2S_SIDE_ID,iLocSide,ElemID)
-                IF(SideID.LT.1) CYCLE
+                SideID = PartElemToSide(E2S_SIDE_ID,iLocSide,ElemID)
+                IF(SideID.LT.1)          CYCLE
                 IF(SideID.GT.nPartSides) CYCLE
-                ! caution, not save if corect
-                leave=.FALSE.
+
+                leave = .FALSE.
                 IF(SideIndex(SideID).EQ.0)THEN
                   DO s=0,NGeo
                     DO r=0,NGeo
+                      ! compare distance of nodes against halo distance
                       IF(SQRT(DOT_Product(BezierControlPoints3D(:,r,s,SideID)-NodeX &
-                                         ,BezierControlPoints3D(:,r,s,SideID)-NodeX )).LE.halo_eps)THEN
-                        NbOfSides=NbOfSides+1
-                        SideIndex(SideID)=NbOfSides
+                                         ,BezierControlPoints3D(:,r,s,SideID)-NodeX)).LE.halo_eps)THEN
+                        NbOfSides         = NbOfSides+1
+                        SideIndex(SideID) = NbOfSides
+                        ! mark element
                         IF(ElemIndex(ElemID).EQ.0)THEN
-                          NbOfElems=NbOfElems+1
-                          ElemIndex(ElemID)=NbofElems
+                          NbOfElems         = NbOfElems+1
+                          ElemIndex(ElemID) = NbofElems
                         END IF
                         leave=.TRUE.
-                        ! mark potential Inner elements on the other side
+                        ! mark potential inner elements on the other side
                         DO iMortar=1,4
                           NBElemID=INT(ElemToElemGlob(iMortar,ilocSide,offSetElem+ElemID)-offSetElem,4)
                           CHECKSAFEINT(NBElemID,4)
-                          IF(NBElemID.LE.0) CYCLE
+                          IF(NBElemID.LE.0)         CYCLE
                           IF(NBElemID.GT.PP_nElems) CYCLE
                           ! check if NBElem is already marked, if not, mark it!
                           IF(ElemIndex(NbElemID).EQ.0)THEN
-                            NbOfElems=NbOfElems+1
-                            ElemIndex(NbElemID)=NbofElems
+                            NbOfElems           = NbOfElems+1
+                            ElemIndex(NbElemID) = NbofElems
                           END IF
                         END DO ! iMortar=1,4
                         EXIT
@@ -426,51 +437,59 @@ END DO ! iSide
 IF (GEO%nPeriodicVectors.GT.0) THEN
   IF(.NOT.CartesianPeriodic)THEN
     DO iElem=1,PP_nElems
-      IF(ElemIndex(iElem).GT.0)CYCLE
+      ! check if NBElem is already marked
+      IF(ElemIndex(iElem).GT.0) CYCLE
+
       leave=.FALSE.
+      ! check nodes of all sides associated with elem
       DO ilocSide=1,6
-        SideID=PartElemToSide(E2S_SIDE_ID,ilocSide,iElem)
-        IF(SideID.LT.1) CYCLE
+        SideID = PartElemToSide(E2S_SIDE_ID,ilocSide,iElem)
+        IF(SideID.LT.1)          CYCLE
         IF(SideID.GT.nPartSides) CYCLE
-        PVID=SidePeriodicType(SideID)
+        PVID   = SidePeriodicType(SideID)
         IF(PVID.EQ.0) CYCLE
+
         ! do not (!) reduce the number of side-BezierControlPoints which are compared to the received sides
         ! since the (moved) sides are checked individually
-        firstBezierPoint=0
-        lastBezierPoint=NGeo
+        firstBezierPoint = 0
+        lastBezierPoint  = NGeo
+
+        ! get correctly oriented periodic vector
         Vec1(1:3)= SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
-        ! loop over all send sides, you do not have to check the halo mesh like in the svn-trunk
-        ! the distance-x,y,z check is cheaper than a modified check here and similar fast
+        ! loop over all send sides and compare the periodically shifted nodes against halo distance
         DO iSide=1,nExternalSides
           DO q=firstBezierPoint,lastBezierPoint
             DO p=firstBezierPoint,lastBezierPoint
               NodeX(:) = BezierSides3D(:,p,q,iSide)
               DO s=firstBezierPoint,lastBezierPoint
                 DO r=firstBezierPoint,lastBezierPoint
+                  ! first check if the distance on one of the Cartesian axis is already too large
                   distance(1)=ABS(BezierControlPoints3D(1,r,s,SideID)+Vec1(1)-NodeX(1))
                   IF(distance(1).GT.halo_eps) CYCLE
                   distance(2)=ABS(BezierControlPoints3D(2,r,s,SideID)+Vec1(2)-NodeX(2))
                   IF(distance(2).GT.halo_eps) CYCLE
                   distance(3)=ABS(BezierControlPoints3D(3,r,s,SideID)+Vec1(3)-NodeX(3))
                   IF(distance(3).GT.halo_eps) CYCLE
-                  IF(SQRT(DOT_Product(Distance,Distance)).LE.halo_eps)THEN
+                  ! check if the absolute distance is within halo distance
+                  IF(SQRT(DOT_Product(Distance,Distance)).LE.halo_eps) THEN
                     IF(SideIndex(SideID).GT.0)THEN
-                      NbOfSides=NbOfSides+1
-                      SideIndex(SideID)=NbOfSides
+                      NbOfSides         = NbOfSides+1
+                      SideIndex(SideID) = NbOfSides
                     END IF
-                    NbOfElems=NbOfElems+1
-                    ElemIndex(iElem)=NbofElems
+                    ! mark the element
+                    NbOfElems        = NbOfElems+1
+                    ElemIndex(iElem) = NbofElems
                     leave=.TRUE.
-                    ! mark potential Inner elements on the other side
+                    ! mark potential inner elements on the other side
                     DO iMortar=1,4
                       NBElemID=INT(ElemToElemGlob(iMortar,ilocSide,offSetElem+iElem)-offSetElem,4)
                       CHECKSAFEINT(NBElemID,4)
-                      IF(NBElemID.LE.0) CYCLE
+                      IF(NBElemID.LE.0)         CYCLE
                       IF(NBElemID.GT.PP_nElems) CYCLE
                       ! check if NBElem is already marked, if not, mark it!
                       IF(ElemIndex(NbElemID).EQ.0)THEN
-                        NbOfElems=NbOfElems+1
-                        ElemIndex(NbElemID)=NbofElems
+                        NbOfElems           = NbOfElems+1
+                        ElemIndex(NbElemID) = NbofElems
                       END IF
                     END DO ! iMortar=1,4
                     EXIT
@@ -486,7 +505,7 @@ IF (GEO%nPeriodicVectors.GT.0) THEN
         END DO ! iSide=1,nExternalSides
       END DO ! ilocSide=1,6
     END DO ! ! iElem=1,PP_nElems
-  ELSE
+  ELSE ! CartesianPeriodic
     Vec1(1:3) = 0.
     Vec2(1:3) = 0.
     Vec3(1:3) = 0.
@@ -510,38 +529,44 @@ IF (GEO%nPeriodicVectors.GT.0) THEN
             (casematrix(iCase,3).EQ.0)) CYCLE
         DO q=0,NGeo
           DO p=0,NGeo
-            NodeX(:) = BezierSides3d(:,p,q,iSide) + &
+            ! calculate the shifted node position
+            NodeX(:) = BezierSides3d(:,p,q,iSide)    + &
                        casematrix(iCase,1)*Vec1(1:3) + &
                        casematrix(iCase,2)*Vec2(1:3) + &
                        casematrix(iCase,3)*Vec3(1:3)
+
+            ! check each node associated with the side and find corresponding BGM elem
             iBGM = INT((NodeX(1)-GEO%xminglob)/GEO%FIBGMdeltas(1))+1
             jBGM = INT((NodeX(2)-GEO%yminglob)/GEO%FIBGMdeltas(2))+1
             kBGM = INT((NodeX(3)-GEO%zminglob)/GEO%FIBGMdeltas(3))+1
             DO iPBGM = iBGM-FIBGMCellPadding(1),iBGM+FIBGMCellPadding(1)
               DO jPBGM = jBGM-FIBGMCellPadding(2),jBGM+FIBGMCellPadding(2)
                 DO kPBGM = kBGM-FIBGMCellPadding(3),kBGM+FIBGMCellPadding(3)
+                  ! check if the BGM elem is in valid range
                   IF((iPBGM.GT.GEO%FIBGMimax).OR.(iPBGM.LT.GEO%FIBGMimin) .OR. &
                      (jPBGM.GT.GEO%FIBGMjmax).OR.(jPBGM.LT.GEO%FIBGMjmin) .OR. &
                      (kPBGM.GT.GEO%FIBGMkmax).OR.(kPBGM.LT.GEO%FIBGMkmin) ) CYCLE
+
+                  ! loop over all elements associated with BGM elem
                   DO iBGMElem = 1, GEO%FIBGM(iPBGM,jPBGM,kPBGM)%nElem
                     ElemID = GEO%FIBGM(iPBGM,jPBGM,kPBGM)%Element(iBGMElem)
                     IF(ElemIndex(ElemID).GT.0) CYCLE ! element is already marked
                     DO ilocSide=1,6
                       SideID=PartElemToSide(E2S_SIDE_ID,iLocSide,ElemID)
-                      IF(SideID.LT.1) CYCLE
+                      IF(SideID.LT.1)          CYCLE
                       IF(SideID.GT.nPartSides) CYCLE
-                      ! caution, not save if corect
+
                       leave=.FALSE.
                       IF(SideIndex(SideID).EQ.0)THEN
                         DO s=0,NGeo
                           DO r=0,NGeo
                             IF(SQRT(DOT_Product(BezierControlPoints3D(:,r,s,SideID)-NodeX &
                                                ,BezierControlPoints3D(:,r,s,SideID)-NodeX )).LE.halo_eps)THEN
-                              NbOfSides=NbOfSides+1
-                              SideIndex(SideID)=NbOfSides
+                              NbOfSides         = NbOfSides+1
+                              SideIndex(SideID) = NbOfSides
                               IF(ElemIndex(ElemID).EQ.0)THEN
-                                NbOfElems=NbOfElems+1
-                                ElemIndex(ElemID)=NbofElems
+                                NbOfElems         = NbOfElems+1
+                                ElemIndex(ElemID) = NbofElems
                               END IF
                               leave=.TRUE.
                               EXIT
@@ -572,16 +597,16 @@ DO iSide=1,nPartSides
     ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
     IF((ElemID.GT.0).AND.(ElemID.LE.PP_nElems))THEN
       IF(ElemIndex(ElemID).EQ.0)THEN
-        NbOfElems=NbOfElems+1
-        ElemIndex(ElemID)=NbofElems
+        NbOfElems         = NbOfElems+1
+        ElemIndex(ElemID) = NbofElems
       END IF
     END IF
     ! slave
     ElemID=PartSideToElem(S2E_NB_ELEM_ID,iSide)
     IF((ElemID.GT.0).AND.(ElemID.LE.PP_nElems))THEN
       IF(ElemIndex(ElemID).EQ.0)THEN
-        NbOfElems=NbOfElems+1
-        ElemIndex(ElemID)=NbofElems
+        NbOfElems         = NbOfElems+1
+        ElemIndex(ElemID) = NbofElems
       END IF
     END IF
   END IF
@@ -641,10 +666,9 @@ TYPE tMPISideMessage
   REAL,ALLOCATABLE,DIMENSION(:,:,:)  :: SideSlabNormals                 ! normal vectors of bounding slab box
   REAL,ALLOCATABLE,DIMENSION(:,:)    :: SideSlabIntervals               ! intervalls beta1, beta2, beta3
   LOGICAL,ALLOCATABLE,DIMENSION(:)   :: BoundingBoxIsEmpty
-  !INTEGER,ALLOCATABLE       :: PeriodicElemSide(:,:)
-  INTEGER                   :: nNodes                 ! number of nodes to send
-  INTEGER                   :: nSides                 ! number of sides to send
-  INTEGER                   :: nElems                 ! number of elems to send
+  INTEGER                   :: nNodes                                   ! number of nodes to send
+  INTEGER                   :: nSides                                   ! number of sides to send
+  INTEGER                   :: nElems                                   ! number of elems to send
   LOGICAL,ALLOCATABLE       :: curvedElem(:)
   INTEGER,ALLOCATABLE       :: ElemType(:)
   INTEGER,ALLOCATABLE       :: SideType(:)

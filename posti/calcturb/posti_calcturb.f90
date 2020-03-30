@@ -168,6 +168,40 @@ DO iArg=1+skipArgs,nArgs
             SWRITE(UNIT_stdOut,'(A)') ' CALLING OUTPUT DONE'
 
 !> =================================================================================================================================
+!> Simple conversion mode to combine LES timeavg to restart to 2-equation RANS. Sets epsilon to RestartEpsilon
+!> =================================================================================================================================
+        CASE (11)
+            ! Conservative variables plus mu_tilda
+            nVarTurb = 7
+
+            ! Read state file
+            IF (iArg.EQ.(1+skipArgs)) THEN
+                ! Get epsilon desired for restart
+                RestartEpsilon=GETREAL('RestartEpsilon'  ,'0.')
+                RestartTKE    =GETREAL('RestartTKE'      ,'0.')
+                ! Get mean values
+                SWRITE(UNIT_stdOut,'(A)') ' PROCESSING MEAN VALUES...'
+                CALL ReadStateFile(Parameterfile,Statefile,ArrayName='Mean')
+            END IF
+
+            ! Set remaining varname
+            ALLOCATE(varNames_loc(nVarTurb))
+            varnames_loc(1:5) = varnames_gen(1:5)
+            varnames_loc(6)   = 'TKE'
+            varnames_loc(6)   = 'epsilon'
+
+            ! Fill restart epsilon
+            ALLOCATE(USolution(nVarTurb,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems))
+            USolution(1:5,:,:,:,:) = U(:,:,:,:,:)
+            USolution(6  ,:,:,:,:) = RestartEpsilon
+            USolution(7  ,:,:,:,:) = RestartTKE
+
+            ! Output the state file
+            SWRITE(UNIT_stdOut,'(A)') ' CALLING OUTPUT...'
+            CALL WriteStateFile(MeshFileName=TRIM(MeshFile),SolutionArray=USolution,ArrayName='DG_Solution')
+            SWRITE(UNIT_stdOut,'(A)') ' CALLING OUTPUT DONE'
+
+!> =================================================================================================================================
 !> Dissipation calculation according to Canuto (1997)
 !> FLEXI "should" already operate on mass-averaged fluctuations for compressible flows. CHECK THIS!
 !> =================================================================================================================================

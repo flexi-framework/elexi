@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 ! Contains subroutines to build the requiered data to track particles on (curviilinear) meshes, etc.
@@ -30,9 +31,9 @@ INTERFACE FinalizeParticleSurfaces
   MODULE PROCEDURE FinalizeParticleSurfaces
 END INTERFACE
 
-INTERFACE GetBezierControlPoints3D
-  MODULE PROCEDURE GetBezierControlPoints3D
-END INTERFACE
+!INTERFACE GetBezierControlPoints3D
+!  MODULE PROCEDURE GetBezierControlPoints3D
+!END INTERFACE
 
 INTERFACE CalcNormAndTangTriangle
   MODULE PROCEDURE CalcNormAndTangTriangle
@@ -66,8 +67,16 @@ INTERFACE RotateMasterToSlave
   MODULE PROCEDURE RotateMasterToSlave
 END INTERFACE
 
+INTERFACE ElevateBezierPolynomial
+  MODULE PROCEDURE ElevateBezierPolynomial
+END INTERFACE
+
 INTERFACE EvaluateBezierPolynomialAndGradient
   MODULE PROCEDURE EvaluateBezierPolynomialAndGradient
+END INTERFACE
+
+INTERFACE GetBezierControlPoints3DElevated
+  MODULE PROCEDURE GetBezierControlPoints3DElevated
 END INTERFACE
 
 #if CODE_ANALYZE
@@ -78,7 +87,8 @@ END INTERFACE
 
 PUBLIC :: InitParticleSurfaces
 PUBLIC :: FinalizeParticleSurfaces
-PUBLIC :: GetBezierControlPoints3D
+!PUBLIC :: GetBezierControlPoints3D
+PUBLIC :: GetBezierControlPoints3DElevated
 PUBLIC :: GetSideSlabNormalsAndIntervals
 PUBLIC :: GetSideBoundingBox
 PUBLIC :: GetElemSlabNormalsAndIntervals
@@ -101,24 +111,20 @@ SUBROUTINE InitParticleSurfaces()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_Particle_Surfaces_vars
 USE MOD_Preproc
 USE MOD_Mesh_Vars,                  ONLY:nSides,NGeo,nBCSides
-USE MOD_ReadInTools,                ONLY:GETREAL,GETINT,GETLOGICAL
+USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Vars,         ONLY:PartBCSideList
+USE MOD_Particle_Surfaces_Vars
 USE MOD_Particle_Tracking_Vars,     ONLY:DoRefMapping
+USE MOD_ReadInTools,                ONLY:GETREAL,GETINT,GETLOGICAL
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,     ONLY:rBoundingBoxChecks,rPerformBezierClip,rPerformBezierNewton
 #endif /*CODE_ANALYZE*/
-!USE MOD_Particle_SFC_Vars,          ONLY:whichBoundBox
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: tmp,iSide!,iBCSide
@@ -266,24 +272,26 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-SDEALLOCATE(SideType)
-!SDEALLOCATE(BiLinearCoeff)
-SDEALLOCATE(SideNormVec)
-SDEALLOCATE(SideDistance)
-SDEALLOCATE(BezierControlPoints3D)
-!SDEALLOCATE(SuperSampledBiLinearCoeff)
+#if !(USE_MPI)
+SDEALLOCATE(SideType_Shared)
+SDEALLOCATE(SideNormVec_Shared)
+SDEALLOCATE(SideDistance_Shared)
 SDEALLOCATE(SideSlabNormals)
 SDEALLOCATE(SideSlabIntervals)
-SDEALLOCATE(BaseVectors0)
-SDEALLOCATE(BaseVectors1)
-SDEALLOCATE(BaseVectors2)
-SDEALLOCATE(BaseVectors3)
-SDEALLOCATE(BaseVectorsScale)
 SDEALLOCATE(ElemSlabNormals)
 SDEALLOCATE(ElemSlabIntervals)
 SDEALLOCATE(BoundingBoxIsEmpty)
+#endif /*!(USE_MPI)*/
+!SDEALLOCATE(BiLinearCoeff)
+!SDEALLOCATE(SuperSampledBiLinearCoeff)
+MDEALLOCATE(BaseVectors0)
+MDEALLOCATE(BaseVectors1)
+MDEALLOCATE(BaseVectors2)
+MDEALLOCATE(BaseVectors3)
+MDEALLOCATE(BaseVectorsScale)
 SDEALLOCATE(ElevationMatrix)
-SDEALLOCATE(BezierControlPoints3DElevated)
+MDEALLOCATE(BezierControlPoints3D)
+MDEALLOCATE(BezierControlPoints3DElevated)
 SDEALLOCATE(locAlpha)
 SDEALLOCATE(locXi)
 SDEALLOCATE(locEta)
@@ -293,7 +301,6 @@ SDEALLOCATE(Vdm_Bezier)
 SDEALLOCATE(sVdm_Bezier)
 SDEALLOCATE(D_Bezier)
 SDEALLOCATE(arrayNChooseK)
-SDEALLOCATE(BezierControlPoints3DElevated)
 SDEALLOCATE(FacNchooseK)
 SDEALLOCATE(BezierSampleXi)
 SDEALLOCATE(SurfMeshSubSideData)
@@ -312,15 +319,18 @@ SUBROUTINE CalcNormAndTangTriangle(nVec,tang1,tang2,area,midpoint,ndist,xyzNod,V
 !================================================================================================================================
 ! function to compute the geo-data of a triangulated surface
 !================================================================================================================================
-USE MOD_Globals,                              ONLY:Abort
-USE MOD_Particle_Globals
+USE MOD_Globals,                              ONLY:ABORT
 USE MOD_PreProc
-!USE MOD_Particle_Vars,                        ONLY:PEM
-USE MOD_Particle_Mesh_Vars,                   ONLY:GEO,PartSideToElem,PartElemToSide
-USE MOD_Mesh_Vars,                            ONLY:NGeo
-USE MOD_Particle_Mesh_Vars,                   ONLY:XCL_NGeo
-USE MOD_Particle_Tracking_Vars,               ONLY:TrackInfo,TriaTracking
+!USE MOD_Mesh_Vars,                            ONLY:NGeo
+USE MOD_Particle_Globals
+!USE MOD_Particle_Mesh_Vars,                   ONLY:XCL_NGeo
 USE MOD_Particle_Surfaces_Vars,               ONLY:SideNormVec, SideType
+USE MOD_Particle_Tracking_Vars,               ONLY:TriaTracking
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars,             ONLY:SideInfo_Shared,NodeCoords_Shared,ElemSideNodeID_Shared
+#else
+USE MOD_Particle_Mesh_Vars,                   ONLY:SideInfo_Shared,NodeCoords_Shared,ElemSideNodeID_Shared
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -336,128 +346,38 @@ REAL,INTENT(INOUT),OPTIONAL            :: xyzNod(3) ,Vectors(3,3)
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                :: ElemID, LocSideID
-INTEGER                                :: Node1, Node2, p, q, flip
-REAL                                   :: xNod, zNod, yNod, Vector1(3), Vector2(3)!, swap(3)
-REAL                                   :: nVal, ndistVal, nx, ny, nz, dotpr, SideCoord_tmp(1:3,0:1,0:1), SideCoord(1:3,0:1,0:1)
+INTEGER                                :: Node1, Node2
+REAL                                   :: xNod, zNod, yNod, Vector1(3), Vector2(3)
+REAL                                   :: nVal, ndistVal, nx, ny, nz, dotpr
 !================================================================================================================================
 IF (PRESENT(ElemID_opt).AND.PRESENT(LocSideID_opt)) THEN
   ElemID=ElemID_opt
   LocSideID=LocSideID_opt
 ELSE IF (PRESENT(SideID)) THEN
-  ElemID = PartSideToElem(S2E_ELEM_ID,SideID)
-  IF (ElemID .EQ. TrackInfo%CurrElem) THEN
-    LocSideID = PartSideToElem(S2E_LOC_SIDE_ID,SideID)
-  ELSE
-    ElemID = PartSideToElem(S2E_NB_ELEM_ID,SideID)
-    LocSideID = PartSideToElem(S2E_NB_LOC_SIDE_ID,SideID)
-  END IF
+  ElemID = SideInfo_Shared(SIDE_ELEMID,SideID)
+  LocSideID = SideInfo_Shared(SIDE_LOCALID,SideID)
 ELSE
-  CALL abort(&
-__STAMP__&
-, 'either SideID or ElemID+LocSideID have to be given to CalcNormAndTangTriangle!')
+  CALL abort(__STAMP__, 'Either SideID or ElemID+LocSideID have to be given to CalcNormAndTangTriangle!')
 END IF
 
-IF (TriaTracking) THEN
-  xNod = GEO%NodeCoords(1,GEO%ElemSideNodeID(1,LocSideID,ElemID))
-  yNod = GEO%NodeCoords(2,GEO%ElemSideNodeID(1,LocSideID,ElemID))
-  zNod = GEO%NodeCoords(3,GEO%ElemSideNodeID(1,LocSideID,ElemID))
-ELSE
-! -- .NOT.TriaTracking: GEO%NodeCoords do not exist -> build Points in same way (cf. InitTriaParticleGeometry in particle_surface.f90)
-! -- but consider only the min/max of edges (i.e., 0,NGeo). This is required, since Vector1 and Vector2 must give the right nVec and
-! -- the rule of how the xyz and Vectors build the 2 trias must be consistent! Yes, the following is the same for Tria1/2, but it is just in the init...
-  SELECT CASE(LocSideID)
-  CASE(XI_MINUS)
-    DO q=0,1
-      DO p=0,1
-        SideCoord_tmp(1:3,p,q)=XCL_NGeo(1:3,0,q*NGeo,p*NGeo,ElemID)
-      END DO !p
-    END DO !q
-  CASE(XI_PLUS)
-    DO q=0,1
-      DO p=0,1
-        SideCoord_tmp(1:3,p,q)=XCL_NGeo(1:3,NGeo,p*NGeo,q*NGeo,ElemID)
-      END DO !p
-    END DO !q
-  CASE(ETA_MINUS)
-    DO q=0,1
-      DO p=0,1
-        SideCoord_tmp(1:3,p,q)=XCL_NGeo(1:3,p*NGeo,0,q*NGeo,ElemID)
-      END DO !p
-    END DO !q
-  CASE(ETA_PLUS)
-    DO q=0,1
-      DO p=0,1
-        SideCoord_tmp(1:3,p,q)=XCL_NGeo(1:3,NGeo*(1-p),NGeo,q*NGeo,ElemID)
-      END DO !p
-    END DO !q
-  CASE(ZETA_MINUS)
-    DO q=0,1
-      DO p=0,1
-        SideCoord_tmp(1:3,q,p)=XCL_NGeo(1:3,p*NGeo,q*NGeo,0,ElemID)
-      END DO !p
-    END DO !q
-  CASE(ZETA_PLUS)
-    DO q=0,1
-      DO p=0,1
-        SideCoord_tmp(1:3,p,q)=XCL_NGeo(1:3,p*NGeo,q*NGeo,NGeo,ElemID)
-      END DO !p
-    END DO ! q
-  END SELECT
-  flip=PartElemToSide(E2S_FLIP,LocSideID,ElemID)
-  ! master side, flip=0
-  ! slave side,  flip=1,..,4
-  SELECT CASE(flip)
-  CASE(0) ! master side
-    SideCoord(:,:,:)=SideCoord_tmp
-  CASE(1) ! slave side, SideID=q,jSide=p
-    DO q=0,1
-      DO p=0,1
-        SideCoord(:,p,q)=SideCoord_tmp(:,p,q)
-      END DO ! p
-    END DO ! q
-  CASE(2) ! slave side, SideID=N-p,jSide=q
-    DO q=0,1
-      DO p=0,1
-        SideCoord(:,p,q)=SideCoord_tmp(:,1-q,p)
-      END DO ! p
-    END DO ! q
-  CASE(3) ! slave side, SideID=N-q,jSide=N-p
-    DO q=0,1
-      DO p=0,1
-        SideCoord(:,p,q)=SideCoord_tmp(:,1-p,1-q)
-      END DO ! p
-    END DO ! q
-  CASE(4) ! slave side, SideID=p,jSide=N-q
-    DO q=0,1
-      DO p=0,1
-        SideCoord(:,p,q)=SideCoord_tmp(:,q,1-p)
-      END DO ! p
-    END DO ! q
-  END SELECT
-  xNod = SideCoord(1,0,0)
-  yNod = SideCoord(2,0,0)
-  zNod = SideCoord(3,0,0)
-END IF !TriaTracking
+xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,LocSideID,ElemID)+1)
+yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,LocSideID,ElemID)+1)
+zNod = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,LocSideID,ElemID)+1)
+
 IF(PRESENT(xyzNod) .AND. TriNum.EQ.1) THEN !only write for first Tria
   xyzNod = (/xNod,yNod,zNod/)
 END IF
 
 Node1 = TriNum+1     ! normal = cross product of 1-2 and 1-3 for first triangle
 Node2 = TriNum+2     !          and 1-3 and 1-4 for second triangle
-IF (TriaTracking) THEN
-  Vector1(1) = GEO%NodeCoords(1,GEO%ElemSideNodeID(Node1,LocSideID,ElemID)) - xNod
-  Vector1(2) = GEO%NodeCoords(2,GEO%ElemSideNodeID(Node1,LocSideID,ElemID)) - yNod
-  Vector1(3) = GEO%NodeCoords(3,GEO%ElemSideNodeID(Node1,LocSideID,ElemID)) - zNod
-  Vector2(1) = GEO%NodeCoords(1,GEO%ElemSideNodeID(Node2,LocSideID,ElemID)) - xNod
-  Vector2(2) = GEO%NodeCoords(2,GEO%ElemSideNodeID(Node2,LocSideID,ElemID)) - yNod
-  Vector2(3) = GEO%NodeCoords(3,GEO%ElemSideNodeID(Node2,LocSideID,ElemID)) - zNod
-ELSE IF (TriNum.EQ.1) THEN
-  Vector1 = SideCoord(:,1,0) - (/xNod,yNod,zNod/)
-  Vector2 = SideCoord(:,1,1) - (/xNod,yNod,zNod/)
-ELSE !TriNum.EQ.2
-  Vector1 = SideCoord(:,1,1) - (/xNod,yNod,zNod/)
-  Vector2 = SideCoord(:,0,1) - (/xNod,yNod,zNod/)
-END IF
+
+Vector1(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)+1) - xNod
+Vector1(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)+1) - yNod
+Vector1(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)+1) - zNod
+Vector2(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)+1) - xNod
+Vector2(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)+1) - yNod
+Vector2(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)+1) - zNod
+
 nx = - Vector1(2) * Vector2(3) + Vector1(3) * Vector2(2) !NV (inwards)
 ny = - Vector1(3) * Vector2(1) + Vector1(1) * Vector2(3)
 nz = - Vector1(1) * Vector2(2) + Vector1(2) * Vector2(1)
@@ -465,7 +385,8 @@ nVal = SQRT(nx*nx + ny*ny + nz*nz)
 nx = -nx / nVal
 ny = -ny / nVal
 nz = -nz / nVal
-IF (.NOT.TriaTracking .AND. (SideType(SideID).EQ.PLANAR_RECT .OR. SideType(SideID).EQ.PLANAR_NONRECT)) THEN
+IF (.NOT.TriaTracking) THEN
+  IF ((SideType(SideID).EQ.PLANAR_RECT .OR. SideType(SideID).EQ.PLANAR_NONRECT)) THEN
   !if surfflux-side are planar, TriaSurfaceflux can be also used for tracing or Refmapping (for which SideNormVec exists)!
   !warning: these values go into SurfMeshSubSideData and if TriaSurfaceflux they should be used only for planar_rect/_nonrect sides
   dotpr=DOT_PRODUCT(SideNormVec(1:3,SideID),(/nx,ny,nz/))
@@ -474,6 +395,7 @@ IF (.NOT.TriaTracking .AND. (SideType(SideID).EQ.PLANAR_RECT .OR. SideType(SideI
 __STAMP__&
 , 'SideNormVec is not identical with V1xV2!')
   END IF
+END IF
 END IF
 IF (PRESENT(Vectors) .AND. TriNum.EQ.1) THEN
   Vectors(:,1) = Vector1
@@ -759,86 +681,85 @@ END IF
 END SUBROUTINE EvaluateBezierPolynomialAndGradient
 
 
-SUBROUTINE GetBezierControlPoints3D(XCL_NGeo,ElemID,ilocSide_In,SideID_In)
-!===================================================================================================================================
-! computes the nodes for Bezier Control Points for [P][I][C] [A]daptive [S]uper [S]ampled Surfaces [O]perations
-! the control points (coeffs for bezier basis) are calculated using the change basis subroutine that interpolates the points
-! from the curved lagrange basis geometry (pre-computed inverse of vandermonde is required)
-! This version uses mapping, hence simplified to one loop
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals
-USE MOD_Preproc
-USE MOD_Mesh_Vars,                ONLY:ElemToSide,NGeo,MortarType!,MortarSlave2MasterInfo
-USE MOD_Particle_Mesh_Vars,       ONLY:MortarSlave2MasterInfo
-USE MOD_Particle_Surfaces_Vars,   ONLY:BezierControlPoints3D,sVdm_Bezier
-USE MOD_ChangeBasis,              ONLY:ChangeBasis2D
-USE MOD_Mappings,                 ONLY:CGNS_SideToVol2
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-INTEGER,INTENT(IN)          :: ElemID
-REAL,INTENT(IN)             :: XCL_NGeo(3,0:NGeo,0:NGeo,0:NGeo)
-INTEGER,INTENT(IN),OPTIONAL :: ilocSide_In
-INTEGER,INTENT(IN),OPTIONAL :: SideID_In
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER                           :: SideID,ilocSide,flip
-INTEGER                           :: p,q,pq(2)
-REAL                              :: tmp(3,0:NGeo,0:NGeo)
-REAL                              :: tmp2(3,0:NGeo,0:NGeo)
-LOGICAL                           :: DoSide
-!===================================================================================================================================
+!SUBROUTINE GetBezierControlPoints3D(XCL_NGeo,ElemID,ilocSide_In,SideID_In)
+!!===================================================================================================================================
+!! computes the nodes for Bezier Control Points for [P][I][C] [A]daptive [S]uper [S]ampled Surfaces [O]perations
+!! the control points (coeffs for bezier basis) are calculated using the change basis subroutine that interpolates the points
+!! from the curved lagrange basis geometry (pre-computed inverse of vandermonde is required)
+!! This version uses mapping, hence simplified to one loop
+!!===================================================================================================================================
+!! MODULES
+!USE MOD_Globals
+!USE MOD_Preproc
+!USE MOD_Mesh_Vars,                ONLY:ElemToSide,NGeo,MortarType!,MortarSlave2MasterInfo
+!USE MOD_Particle_Mesh_Vars,       ONLY:MortarSlave2MasterInfo
+!USE MOD_Particle_Surfaces_Vars,   ONLY:BezierControlPoints3D,sVdm_Bezier
+!USE MOD_ChangeBasis,              ONLY:ChangeBasis2D
+!USE MOD_Mappings,                 ONLY:CGNS_SideToVol2
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!! INPUT VARIABLES
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT VARIABLES
+!INTEGER,INTENT(IN)          :: ElemID
+!REAL,INTENT(IN)             :: XCL_NGeo(3,0:NGeo,0:NGeo,0:NGeo)
+!INTEGER,INTENT(IN),OPTIONAL :: ilocSide_In
+!INTEGER,INTENT(IN),OPTIONAL :: SideID_In
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! OUTPUT VARIABLES
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!INTEGER                           :: SideID,ilocSide,flip
+!INTEGER                           :: p,q,pq(2)
+!REAL                              :: tmp(3,0:NGeo,0:NGeo)
+!REAL                              :: tmp2(3,0:NGeo,0:NGeo)
+!LOGICAL                           :: DoSide
+!!===================================================================================================================================
+!
+!DO ilocSide=1,6
+!  DoSide=.FALSE.
+!  SideID=ElemToSide(E2S_SIDE_ID,ilocSide,ElemID)
+!  flip=ElemToSide(E2S_FLIP,ilocSide,ElemID)
+!  IF(PRESENT(ilocSide_In))THEN
+!    DoSide=.TRUE.
+!    IF(ilocSide_In.NE.ilocSide) CYCLE
+!    IF(.NOT.PRESENT(SideID_In)) CALL abort(&
+!__STAMP__&
+!,' Error in Input! SideID_In required! ')
+!  END IF
+!  !if flip=0, master side or Mortar side
+!  IF(flip.EQ.0.OR.MortarType(1,SideID).GE.0.OR.MortarSlave2MasterInfo(SideID).NE.-1.OR.DoSide)THEN
+!    IF(PRESENT(SideID_In)) SideID=SideID_In
+!    SELECT CASE(iLocSide)
+!    CASE(XI_MINUS)
+!      tmp=XCL_NGeo(1:3,0   ,:   ,:   )
+!    CASE(XI_PLUS)
+!      tmp=XCL_NGeo(1:3,NGeo,:   ,:   )
+!    CASE(ETA_MINUS)
+!      tmp=XCL_NGeo(1:3,:   ,0   ,:   )
+!    CASE(ETA_PLUS)
+!      tmp=XCL_NGeo(1:3,:   ,NGeo,:   )
+!    CASE(ZETA_MINUS)
+!      tmp=XCL_NGeo(1:3,:   ,:   ,0   )
+!    CASE(ZETA_PLUS)
+!      tmp=XCL_NGeo(1:3,:   ,:   ,NGeo)
+!    END SELECT
+!    CALL ChangeBasis2D(3,NGeo,NGeo,sVdm_Bezier,tmp,tmp2)
+!    ! turn into right hand system of side
+!    DO q=0,NGeo; DO p=0,NGeo
+!      ! Adjust for 3D case in FLEXI
+!      pq=CGNS_SideToVol2(NGeo,p,q,iLocSide,3)
+!      ! Compute BezierControlPoints3D for sides in MASTER system
+!      BezierControlPoints3D(1:3,p,q,sideID)=tmp2(1:3,pq(1),pq(2))
+!    END DO; END DO ! p,q
+!  END IF
+!END DO ! ilocSide=1,6
+!
+!END SUBROUTINE GetBezierControlPoints3D
 
-DO ilocSide=1,6
-  DoSide=.FALSE.
-  SideID=ElemToSide(E2S_SIDE_ID,ilocSide,ElemID)
-  flip=ElemToSide(E2S_FLIP,ilocSide,ElemID)
-  IF(PRESENT(ilocSide_In))THEN
-    DoSide=.TRUE.
-    IF(ilocSide_In.NE.ilocSide) CYCLE
-    IF(.NOT.PRESENT(SideID_In)) CALL abort(&
-__STAMP__&
-,' Error in Input! SideID_In required! ')
-  END IF
-  !if flip=0, master side or Mortar side
-  IF(flip.EQ.0.OR.MortarType(1,SideID).GE.0.OR.MortarSlave2MasterInfo(SideID).NE.-1.OR.DoSide)THEN
-    IF(PRESENT(SideID_In)) SideID=SideID_In
-    SELECT CASE(iLocSide)
-    CASE(XI_MINUS)
-      tmp=XCL_NGeo(1:3,0   ,:   ,:   )
-    CASE(XI_PLUS)
-      tmp=XCL_NGeo(1:3,NGeo,:   ,:   )
-    CASE(ETA_MINUS)
-      tmp=XCL_NGeo(1:3,:   ,0   ,:   )
-    CASE(ETA_PLUS)
-      tmp=XCL_NGeo(1:3,:   ,NGeo,:   )
-    CASE(ZETA_MINUS)
-      tmp=XCL_NGeo(1:3,:   ,:   ,0   )
-    CASE(ZETA_PLUS)
-      tmp=XCL_NGeo(1:3,:   ,:   ,NGeo)
-    END SELECT
-    CALL ChangeBasis2D(3,NGeo,NGeo,sVdm_Bezier,tmp,tmp2)
-    ! turn into right hand system of side
-    DO q=0,NGeo; DO p=0,NGeo
-      ! Adjust for 3D case in FLEXI
-      pq=CGNS_SideToVol2(NGeo,p,q,iLocSide,3)
-      ! Compute BezierControlPoints3D for sides in MASTER system
-      BezierControlPoints3D(1:3,p,q,sideID)=tmp2(1:3,pq(1),pq(2))
-    END DO; END DO ! p,q
-  END IF
-END DO ! ilocSide=1,6
-
-END SUBROUTINE GetBezierControlPoints3D
 
 
-
-SUBROUTINE GetSideSlabNormalsAndIntervals(BezierControlPoints3D,BezierControlPoints3DElevated &
-                                         ,SideSlabNormals,SideSlabInterVals,BoundingBoxIsEmpty )
+SUBROUTINE GetSideSlabNormalsAndIntervals(BezierControlPoints3D,SideSlabNormals,SideSlabInterVals,BoundingBoxIsEmpty)
 !===================================================================================================================================
 ! computes the oriented-slab box for each bezier basis surface (i.e. 3 slab normals + 3 intervalls)
 ! see article:
@@ -854,62 +775,44 @@ SUBROUTINE GetSideSlabNormalsAndIntervals(BezierControlPoints3D,BezierControlPoi
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Preproc
-USE MOD_Mesh_Vars,                ONLY: NGeo!,NGeoElevated
 USE MOD_Particle_Mesh_Vars,       ONLY: NGeoElevated
-!USE MOD_Particle_Surfaces_Vars,   ONLY: SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
-!USE MOD_Particle_Surfaces_Vars,   ONLY: BezierControlPoints3DElevated,BezierElevation,BezierControlPoints3D
-USE MOD_Particle_Surfaces_Vars,   ONLY: BezierElevation
-USE MOD_Particle_Surfaces_Vars,   ONLY: BezierEpsilonBilinear
-#if CODE_ANALYZE
-USE MOD_Particle_Surfaces_Vars,   ONLY: SideBoundingBoxVolume
-#endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)     :: BezierControlPoints3D(1:3,0:NGeo,0:NGeo)
+REAL,INTENT(IN)     :: BezierControlPoints3D(1:3,0:NGeoElevated,0:NGeoElevated)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)    :: BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated)
 REAL,INTENT(OUT)    :: SideSlabNormals(1:3,1:3)
 REAL,INTENT(OUT)    :: SideSlabInterVals(1:6)
 LOGICAL,INTENT(OUT) :: BoundingBoxIsEmpty
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!INTEGER                           :: lastSideID,flip,SideID
 INTEGER            :: p,q, i
-!REAL                              :: tmp(3,0:NGeo,0:NGeo)
-REAL               :: skalprod(3),dx,dy,dz,dMax,dMin,w,h,l
+REAL               :: skalprod(3),dx,dy,dz,dMax,w,h,l
 LOGICAL            :: SideIsCritical
 !===================================================================================================================================
-
-
-IF(BezierElevation.EQ.0)THEN
-  BezierControlPoints3DElevated=BezierControlPoints3D
-ELSE
-  CALL GetBezierControlPoints3DElevated(NGeo,NGeoElevated,BezierControlPoints3D(1:3,0:NGeo,0:NGeo)     &
-                                            ,BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated) )
-END IF
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! 0.) check if side is planar
 !-----------------------------------------------------------------------------------------------------------------------------------
+! done in particle_mesh
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! 1.) slab normal vectors
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! n_1=V_1+V_2 (V: corner vectors in xi-direction)
-SideSlabNormals(:,1)=BezierControlPoints3DElevated(:,NGeoElevated,0)                      &
-                           -BezierControlPoints3DElevated(:,0,0)                                         &
-                           +BezierControlPoints3DElevated(:,NGeoElevated,NGeoElevated)   &
-                           -BezierControlPoints3DElevated(:,0,NGeoElevated)
+SideSlabNormals(:,1)=BezierControlPoints3D(:,NGeoElevated,0)              &
+                    -BezierControlPoints3D(:,0,0)                         &
+                    +BezierControlPoints3D(:,NGeoElevated,NGeoElevated)   &
+                    -BezierControlPoints3D(:,0,NGeoElevated)
 SideSlabNormals(:,1)=SideSlabNormals(:,1)/SQRT(DOT_PRODUCT(SideSlabNormals(:,1),SideSlabNormals(:,1)))
 ! n_2=n_1 x (U_1+U_2) (U: corner vectors in eta-direction)
-SideSlabNormals(:,2)=BezierControlPoints3DElevated(:,0,NGeoElevated)                      &
-                           -BezierControlPoints3DElevated(:,0,0)                                         &
-                           +BezierControlPoints3DElevated(:,NGeoElevated,NGeoElevated)   &
-                           -BezierControlPoints3DElevated(:,NGeoElevated,0)
+SideSlabNormals(:,2)=BezierControlPoints3D(:,0,NGeoElevated)                      &
+                           -BezierControlPoints3D(:,0,0)                                         &
+                           +BezierControlPoints3D(:,NGeoElevated,NGeoElevated)   &
+                           -BezierControlPoints3D(:,NGeoElevated,0)
 
 !fehlt das?
 SideSlabNormals(:,2)=CROSSNORM(SideSlabNormals(:,1),SideSlabNormals(:,2))
@@ -951,12 +854,12 @@ SideSlabIntervals(:)=0.
 DO q=0,NGeoElevated
   DO p=0,NGeoElevated
     IF((p.EQ.0).AND.(q.EQ.0))CYCLE
-    skalprod(1)=DOT_PRODUCT(BezierControlPoints3DElevated(:,p,q)-&
-                            BezierControlPoints3DElevated(:,0,0),SideSlabNormals(:,1))
-    skalprod(2)=DOT_PRODUCT(BezierControlPoints3DElevated(:,p,q)-&
-                            BezierControlPoints3DElevated(:,0,0),SideSlabNormals(:,2))
-    skalprod(3)=DOT_PRODUCT(BezierControlPoints3DElevated(:,p,q)-&
-                            BezierControlPoints3DElevated(:,0,0),SideSlabNormals(:,3))
+    skalprod(1)=DOT_PRODUCT(BezierControlPoints3D(:,p,q)-&
+                            BezierControlPoints3D(:,0,0),SideSlabNormals(:,1))
+    skalprod(2)=DOT_PRODUCT(BezierControlPoints3D(:,p,q)-&
+                            BezierControlPoints3D(:,0,0),SideSlabNormals(:,2))
+    skalprod(3)=DOT_PRODUCT(BezierControlPoints3D(:,p,q)-&
+                            BezierControlPoints3D(:,0,0),SideSlabNormals(:,3))
     IF    (skalprod(1).LT.0.)THEN
       SideSlabIntervals(1)=MIN(SideSlabIntervals(1),skalprod(1))
     ELSEIF(skalprod(1).GT.0.)THEN
@@ -1020,15 +923,15 @@ END IF
 
 ! check dimensions of sideslabs in x, y and z direction where the slab area (w)x(l) is defined by x-z and the height of the side-slab is y
 dMax=MAX(h,l,w)
-IF(l/dMax.LT.BezierEpsilonBilinear)THEN
+IF(l/dMax.LT.1.0e-6)THEN
   ! side is almost a line
   CALL ABORT(__STAMP__,'ERROR: found degenerated side. length/dMax of a side slab is ->',0,l/dMax)
 END IF
-IF(w/dMax.LT.BezierEpsilonBilinear)THEN
+IF(w/dMax.LT.1.0e-6)THEN
   ! side is almost a line
   CALL ABORT(__STAMP__,'ERROR: found degenerated side. width/dMax of a side slab is ->',0,w/dMax)
 END IF
-IF(h/dMax.LT.BezierEpsilonBilinear)THEN
+IF(h/dMax.LT.1.0e-6)THEN
   ! the height of the sideslab is almost zero --> flat in regards to machine precision
   SideSlabIntervals(3:4)=0.
   h=0.
@@ -1044,9 +947,6 @@ ELSE
   BoundingBoxIsEmpty=.FALSE.
 END IF
 
-#if CODE_ANALYZE
-SideBoundingBoxVolume=h*l*w
-#endif /*CODE_ANALYZE*/
 END SUBROUTINE GetSideSlabNormalsAndIntervals
 
 
@@ -1572,7 +1472,7 @@ INTEGER                       :: p,q,pq(2)
 BezierControlPoints3D_tmp=BezierControlPoints3D
 
 DO q=0,NGeo; DO p=0,NGeo
-  pq = Flip_M2S(NGeo,p,q,flip,3) ! CHECK DIMENSION FOR FLEXI
+  pq = Flip_M2S(NGeo,p,q,flip,3)
   BezierControlPoints3D(:,pq(1),pq(2))=BezierControlPoints3d_tmp(:,p,q)
 END DO; END DO ! p,q
 
@@ -1598,25 +1498,25 @@ REAL,INTENT(IN),OPTIONAL  :: BezierControlPoints2d_in(1:2,0:NGeo,0:NGeo)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER          :: k,i,j
-REAL             :: BezierControlPoints3d(1:3,0:NGeo,0:NGeo)
+REAL             :: BezierControlPoints3D(1:3,0:NGeo,0:NGeo)
 !===================================================================================================================================
 
-BezierControlPoints3d=0.
+BezierControlPoints3D=0.
 IF(PRESENT(BezierControlPoints3d_in))THEN
-  BezierControlPoints3d=BezierControlPoints3d_in
+  BezierControlPoints3D=BezierControlPoints3d_in
 ELSE IF(PRESENT(BezierControlPoints2d_in))THEN
-  BezierControlPoints3d(1:2,:,:)=BezierControlPoints2d_in(:,:,:)
+  BezierControlPoints3D(1:2,:,:)=BezierControlPoints2d_in(:,:,:)
 ELSE
   CALL abort(&
 __STAMP__&
-,' Tilman hat nicht aufgepasst.!')
+,' OutputBezierControlPoints(): Something went wrong.!')
 END IF
 
 DO K=1,3
   WRITE(UNIT_stdout,'(A,I1,A)',ADVANCE='NO')' P(:,:,',K,') = [ '
   DO I=0,NGeo ! output for MATLAB
     DO J=0,NGeo
-      WRITE(UNIT_stdout,'(E24.12)',ADVANCE='NO') BezierControlPoints3d(K,J,I)
+      WRITE(UNIT_stdout,'(E24.12)',ADVANCE='NO') BezierControlPoints3D(K,J,I)
       IF(J.EQ.NGeo)THEN
         IF(I.EQ.NGeo)THEN
           WRITE(UNIT_stdout,'(A)')' ];'

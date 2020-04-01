@@ -726,6 +726,7 @@ ENDIF()
 
 # collect F90 files of 'particle' directory (recursive) in new list 'particlesF90'
 IF (FLEXI_PARTICLES)
+    INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/particles)
     FILE(GLOB_RECURSE particlesF90 ./src/particles/*.f90)
 # append 'particlesF90'-list to 'flexiF90'-list
     LIST(APPEND flexiF90 ${particlesF90})

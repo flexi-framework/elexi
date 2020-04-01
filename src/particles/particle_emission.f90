@@ -1466,11 +1466,11 @@ CASE('fluid')
       ELSE
 #if USE_RW
         IF (RestartTurb) THEN
-          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar) ,iElem &
+          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar)  &
                                                                              ,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb))
         ELSE
 #endif
-          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (1:PP_nVar,:,:,:,iElem),field    (1:PP_nVar) ,iElem)
+          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (1:PP_nVar,:,:,:,iElem),field    (1:PP_nVar))
 #if USE_RW
         END IF ! RestartTurb
 #endif

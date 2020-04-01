@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 ! Contains routines to locate the particle on the mesh
@@ -22,12 +23,12 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE SingleParticleToExactElement
-  MODULE PROCEDURE SingleParticleToExactElement
+INTERFACE SinglePointToElement
+  MODULE PROCEDURE SinglePointToElement
 END INTERFACE
 
-INTERFACE SingleParticleToExactElementNoMap
-  MODULE PROCEDURE SingleParticleToExactElementNoMap
+INTERFACE LocateParticleInElement
+  MODULE PROCEDURE LocateParticleInElement
 END INTERFACE
 
 INTERFACE PartInElemCheck
@@ -42,449 +43,185 @@ INTERFACE CountPartsPerElem
   MODULE PROCEDURE CountPartsPerElem
 END INTERFACE
 
-PUBLIC :: SingleParticleToExactElement
-PUBLIC :: SingleParticleToExactElementNoMap
-PUBLIC :: PartInElemCheck
-PUBLIC :: ParticleInsideQuad3D
-PUBLIC :: CountPartsPerElem
+PUBLIC:: SinglePointToElement
+PUBLIC:: LocateParticleInElement
+PUBLIC:: PartInElemCheck
+PUBLIC:: ParticleInsideQuad3D
+PUBLIC:: CountPartsPerElem
 !===================================================================================================================================
 
 CONTAINS
 
 
-SUBROUTINE SingleParticleToExactElement(iPart,doHalo,initFix,doRelocate)
+SUBROUTINE LocateParticleInElement(PartID,doHALO)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! Finds a single particle in its host element
+!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES                                                                                                                          !
+USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef
+USE MOD_Eval_xyz,                    ONLY:GetPositionInRefElem
+USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: PartID
+LOGICAL,INTENT(IN)                :: doHalo
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: ElemID
 !===================================================================================================================================
-! this subroutine maps each particle to an element
-! currently, a background mesh is used to find possible elements. if multiple elements are possible, the element with the smallest
-! distance is picked as an initial guess
+ElemID = SinglePointToElement(PartState(1:3,PartID),doHALO=doHALO)
+PEM%Element(PartID) = ElemID
+IF(ElemID.EQ.-1)THEN
+  PDM%ParticleInside(PartID)=.FALSE.
+ELSE
+  PDM%ParticleInside(PartID)=.TRUE.
+  IF(DoRefMapping)THEN
+    CALL GetPositionInRefElem(PartState(1:3,PartID),PartPosRef(1:3,PartID),ElemID)
+  END IF ! DoRefMapping
+END IF ! ElemID.EQ.-1
+END SUBROUTINE LocateParticleInElement
+
+
 !===================================================================================================================================
+!> This function maps a 3D point to an element
+!> returns elementID or -1 in case no element was found
+!===================================================================================================================================
+INTEGER FUNCTION SinglePointToElement(Pos3D,doHALO)
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Preproc
-USE MOD_Particle_Vars,               ONLY:PartState,PEM,PDM,PartPosRef,KeepWallParticles
-USE MOD_Particle_Mesh_Vars,          ONLY:Geo
-USE MOD_Particle_Tracking_Vars,      ONLY:DoRefMapping,TriaTracking
-USE MOD_Particle_Mesh_Vars,          ONLY:epsOneCell,IsTracingBCElem,ElemRadius2NGeo
-USE MOD_Eval_xyz,                    ONLY:GetPositionInRefElem
-USE MOD_Particle_Utils,              ONLY:InsertionSort
-USE MOD_Particle_Tracking_Vars,      ONLY:DoRefMapping,Distance,ListDistance
-USE MOD_Particle_Boundary_Condition, ONLY:PARTSWITCHELEMENT
-USE MOD_Particle_MPI_Vars,           ONLY:SafetyFactor
+USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
+USE MOD_Particle_Mesh_Vars,     ONLY: ElemRadius2NGeo
+USE MOD_Particle_Mesh_Vars,     ONLY: Geo
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
+USE MOD_Particle_Mesh_Tools    ,ONLY: ParticleInsideQuad3D,GetCNElemID
+USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance,TriaTracking
+USE MOD_Utils                  ,ONLY: InsertionSort
 #if USE_MPI
-USE MOD_Mesh_Vars,                   ONLY:ElemToSide,BC
-USE MOD_Particle_MPI_Vars,           ONLY:PartHaloElemToProc
+USE MOD_Particle_MPI_Shared_Vars,ONLY: ElemBaryNGeo_Shared
+#else
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 #endif
-USE MOD_Particle_Mesh_Vars,          ONLY:ElemBaryNGeo
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)                :: iPart
+REAL,INTENT(IN)    :: Pos3D(1:3)
 LOGICAL,INTENT(IN)                :: doHalo
-LOGICAL,INTENT(IN)                :: initFix
-LOGICAL,INTENT(IN)                :: doRelocate
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                           :: iBGMElem,nBGMElems,ElemID,CellX,CellY,CellZ
-!-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL                           :: InElementCheck,ParticleFound
-REAL                              :: xi(1:3),Distance2,Det(6,2)
-#if USE_MPI
-INTEGER                           :: XiDir,locSideID,flip,SideID
-REAL                              :: locXi,locEta,tmpXi
-INTEGER                           :: Moved(2)
-#endif /*MPI*/
+INTEGER :: iBGMElem,nBGMElems, ElemID, iBGM,jBGM,kBGM
+REAL    :: Distance2, RefPos(1:3)
+REAL    :: Det(6,2)
+LOGICAL :: InElementCheck
 !===================================================================================================================================
-ParticleFound = .FALSE.
+#if USE_MPI
+ASSOCIATE(ElemBaryNGeo => ElemBaryNGeo_Shared)
+#endif
 
-! --- if the particle is at a wall, leave it in the last element
-IF (KeepWallParticles) THEN
-  IF (PDM%ParticleAtWall(iPart)) THEN
-    PEM%Element(iPart) = PEM%lastElement(iPart)
-    ParticleFound = .TRUE.
+SinglePointToElement = -1
+
+! --- get background mesh cell of point
+iBGM = CEILING((Pos3D(1)-GEO%xminglob)/GEO%FIBGMdeltas(1))
+iBGM = MAX(MIN(GEO%FIBGMimax,iBGM),GEO%FIBGMimin)
+jBGM = CEILING((Pos3D(2)-GEO%yminglob)/GEO%FIBGMdeltas(2))
+jBGM = MAX(MIN(GEO%FIBGMjmax,jBGM),GEO%FIBGMjmin)
+kBGM = CEILING((Pos3D(3)-GEO%zminglob)/GEO%FIBGMdeltas(3))
+kBGM = MAX(MIN(GEO%FIBGMkmax,kBGM),GEO%FIBGMkmin)
+
+!--- check all cells associated with this beckground mesh cell
+nBGMElems = FIBGM_nElems(iBGM,jBGM,kBGM)
+
+! get closest element barycenter
+Distance=-1.
+
+ListDistance=0
+DO iBGMElem = 1, nBGMElems
+  ElemID = GetCNElemID(FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iBGMElem))
+
+  Distance2=(Pos3D(1)-ElemBaryNGeo(1,ElemID))*(Pos3D(1)-ElemBaryNGeo(1,ElemID)) &
+           +(Pos3D(2)-ElemBaryNGeo(2,ElemID))*(Pos3D(2)-ElemBaryNGeo(2,ElemID)) &
+           +(Pos3D(3)-ElemBaryNGeo(3,ElemID))*(Pos3D(3)-ElemBaryNGeo(3,ElemID))
+
+  IF(Distance2.GT.ElemRadius2NGeo(ElemID))THEN
+    Distance(iBGMElem)=-1.
+  ELSE
+    Distance(iBGMElem)=Distance2
+  END IF
+  ListDistance(iBGMElem)=ElemID
+END DO ! nBGMElems
+
+IF(ALMOSTEQUAL(MAXVAL(Distance),-1.))THEN
+  RETURN
+END IF
+
+IF(nBGMElems.GT.1) CALL InsertionSort(Distance(1:nBGMElems),ListDistance(1:nBGMElems),nBGMElems)
+
+! loop through sorted list and start by closest element
+InElementCheck=.FALSE.
+DO iBGMElem=1,nBGMElems
+  IF(ALMOSTEQUAL(Distance(iBGMElem),-1.))CYCLE
+  ElemID=ListDistance(iBGMElem)
+  IF(.NOT.DoHALO)THEN
+    ! TODO: THIS NEEDS TO BE ADJUSTED FOR MPI3-SHARED
+    ! IF (ElemID.GT.PP_nElems) CYCLE
+  END IF
+  IF (TriaTracking) THEN
+    CALL ParticleInsideQuad3D(Pos3D(1:3),ElemID,InElementCheck,Det)
+  ELSE
+    CALL GetPositionInRefElem(Pos3D(1:3),RefPos,ElemID)
+    IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck=.TRUE.
+  END IF
+  IF(InElementCheck)THEN
+    SinglePointToElement = ElemID
     RETURN
   END IF
-END IF
+END DO ! iBGMElem
 
-! --- check if the particle is inside our bounding box (including/excluding the halo region)
-IF(DoHALO)THEN
-  IF ( (PartState(1,iPart).LT.GEO%xminglob).OR.(PartState(1,iPart).GT.GEO%xmaxglob).OR. &
-       (PartState(2,iPart).LT.GEO%yminglob).OR.(PartState(2,iPart).GT.GEO%ymaxglob).OR. &
-       (PartState(3,iPart).LT.GEO%zminglob).OR.(PartState(3,iPart).GT.GEO%zmaxglob)) THEN
-     PDM%ParticleInside(iPart) = .FALSE.
-     RETURN
-  END IF
-ELSE
-  IF ( (PartState(1,iPart).LT.GEO%xmin).OR.(PartState(1,iPart).GT.GEO%xmax).OR. &
-       (PartState(2,iPart).LT.GEO%ymin).OR.(PartState(2,iPart).GT.GEO%ymax).OR. &
-       (PartState(3,iPart).LT.GEO%zmin).OR.(PartState(3,iPart).GT.GEO%zmax)) THEN
-     PDM%ParticleInside(iPart) = .FALSE.
-     RETURN
-  END IF
-END IF
-
-! --- get background mesh cell of particle
-CellX = CEILING((PartState(1,iPart)-GEO%xminglob)/GEO%FIBGMdeltas(1))
-CellX = MAX(MIN(GEO%TFIBGMimax,CellX),GEO%TFIBGMimin)
-CellY = CEILING((PartState(2,iPart)-GEO%yminglob)/GEO%FIBGMdeltas(2))
-CellY = MAX(MIN(GEO%TFIBGMjmax,CellY),GEO%TFIBGMjmin)
-CellZ = CEILING((PartState(3,iPart)-GEO%zminglob)/GEO%FIBGMdeltas(3))
-CellZ = MAX(MIN(GEO%TFIBGMkmax,CellZ),GEO%TFIBGMkmin)
-
-
-IF (TriaTracking) THEN
-  !--- check all cells associated with this background mesh cell
-  DO iBGMElem = 1, GEO%FIBGM(CellX,CellY,CellZ)%nElem
-    ElemID = GEO%FIBGM(CellX,CellY,CellZ)%Element(iBGMElem)
-    CALL ParticleInsideQuad3D(PartState(1:3,iPart),ElemID,InElementCheck,Det)
-    IF (InElementCheck) THEN
-       PEM%Element(iPart) = ElemID
-       ParticleFound = .TRUE.
-       EXIT
-    END IF
-  END DO
-  IF (.NOT.ParticleFound) THEN
-    PDM%ParticleInside(iPart) = .FALSE.
-  END IF
-   RETURN
-END IF
-
-!--- check all cells associated with this background mesh cell
-nBGMElems=GEO%TFIBGM(CellX,CellY,CellZ)%nElem
-
-! get distance to background cell barycenter
-Distance=-1.
-ListDistance=0
-DO iBGMElem = 1, nBGMElems
-  ElemID = GEO%TFIBGM(CellX,CellY,CellZ)%Element(iBGMElem)
-  Distance2=(PartState(1,iPart)-ElemBaryNGeo(1,ElemID))*(PartState(1,iPart)-ElemBaryNGeo(1,ElemID)) &
-           +(PartState(2,iPart)-ElemBaryNGeo(2,ElemID))*(PartState(2,iPart)-ElemBaryNGeo(2,ElemID)) &
-           +(PartState(3,iPart)-ElemBaryNGeo(3,ElemID))*(PartState(3,iPart)-ElemBaryNGeo(3,ElemID))
-  IF(Distance2.GT.ElemRadius2NGeo(ElemID))THEN
-    Distance(iBGMElem)=-1.
-  ELSE
-    Distance(iBGMElem)=Distance2
-  END IF
-  ListDistance(iBGMElem)=ElemID
-END DO ! nBGMElems
-
-! no candidate in background mesh for our particle position. Can't determine if the current position is valid because we're missing
-! the BC information as well. Abort and inform the user to increase the size of the halo mesh.
-!>> WARNING: If we did an invalid push, we might abort here as well.
-IF(ALMOSTEQUAL(MAXVAL(Distance),-1.))THEN
-  PDM%ParticleInside(iPart) = .FALSE.
-  IF(DoRelocate) CALL abort(&
-__STAMP__&
-  , ' halo mesh too small. increase halo distance by increasing the safety factor. Currently Part-SafetyFactor = ',&
-  RealInfo=SafetyFactor)
-  RETURN
-END IF
-
-!  multiple cells associated with this background mesh cell. Sort according to distance to the cell barycenter
-IF(nBGMElems.GT.1) CALL InsertionSort(Distance(1:nBGMElems),ListDistance(1:nBGMElems),nBGMElems)
-
-! loop through sorted list and start by closest element
-DO iBGMElem=1,nBGMElems
-  IF(ALMOSTEQUAL(Distance(iBGMElem),-1.))CYCLE
-  ElemID=ListDistance(iBGMElem)
-
-  ! exclude elements not within our local mesh (without the halo region)
-  IF(.NOT.DoHALO)THEN
-    IF(ElemID.GT.PP_nElems) CYCLE
-  END IF
-
-  IF(IsTracingBCElem(ElemID))THEN
-    CALL PartInElemCheck(PartState(1:3,iPart),iPart,ElemID,InElementCheck)
-    IF(.NOT.InElementCheck) CYCLE
-  END IF
-
-  ! get position in reference element for element ElemID
-  CALL GetPositionInRefElem(PartState(1:3,iPart),xi,ElemID)
-
-  ! check if we are within tolerance for our chosen element
-  IF(MAXVAL(ABS(Xi)).LT.epsOneCell(ElemID)) THEN
-    IF(.NOT.InitFix) THEN
-      InElementCheck=.TRUE.
-    ELSE
-     ! take extra care in the MPI case. We might encounter xi larger than unity but smaller then epsOneCell [1,epsOneCell], than the
-     ! particle is found at least twice.
-     InElementCheck=.TRUE.
-     ! InElementCheck can only be set to false in the following part
 #if USE_MPI
-     ! check if xi is larger than unity, than the  particle is found at least twice
-     ! particle close to the cell border and possible outside
-     IF(MAXVAL(ABS(Xi)).GT.0.99999999) THEN
-       ! find the direction closest to the neighbor side
-       XiDir = MAXLOC(ABS(Xi),1)
-       ! now, get neighbor-side id
-       SELECT CASE(XiDir)
-       CASE(1) ! Xi
-         IF(Xi(XiDir).GT.0)THEN
-           ! XI_PLUS
-           locSideID=XI_PLUS
-           locXi=Xi(3)
-           locEta=Xi(2)
-         ELSE
-           ! XI_MINUS
-           locSideID=XI_MINUS
-           locXi=Xi(2)
-           locEta=Xi(3)
-         END IF
-       CASE(2) ! Eta
-         IF(Xi(XiDir).GT.0)THEN
-           locSideID=ETA_PLUS
-           locXi=-Xi(1)
-           locEta=Xi(3)
-         ELSE
-           locSideID=ETA_MINUS
-           locXi=Xi(1)
-           locEta=Xi(3)
-         END IF
-       CASE(3) ! Zeta
-         IF(Xi(XiDir).GT.0)THEN
-           locSideID=ZETA_PLUS
-           locXi =Xi(1)
-           locEta=Xi(2)
-         ELSE
-           locSideID=ZETA_MINUS
-           locXi=Xi(2)
-           locEta=Xi(1)
-         END IF
-       CASE DEFAULT
-         CALL abort(&
-__STAMP__&
-, ' Error in  mesh-connectivity!')
-       END SELECT
-       ! get flip and rotate xi and eta into side-master system
-       flip     =ElemToSide(E2S_FLIP,locSideID,ElemID)
-       SideID   =ElemToSide(E2S_SIDE_ID,locSideID,ElemID)
-       SELECT CASE(Flip)
-       CASE(1) ! slave side, SideID=q,jSide=p
-         tmpXi=locEta
-         locEta=locXi
-         locXi=tmpXi
-       CASE(2) ! slave side, SideID=N-p,jSide=q
-         locXi=-locXi
-         locEta=locEta
-       CASE(3) ! slave side, SideID=N-q,jSide=N-p
-         tmpXi =-locEta
-         locEta=-locXi
-         locXi=tmpXi
-       CASE(4) ! slave side, SideID=p,jSide=N-q
-         locXi =locXi
-         locEta=-locEta
-       END SELECT
-       IF(BC(SideID).GT.0)THEN
-         InElementCheck=.FALSE.
-       ELSE
-        ! check if neighbor element is an mpi-element and if yes, only take the particle if I am the lower rank
-         Moved = PARTSWITCHELEMENT(locxi,loceta,locSideID,SideID,ElemID)
-         IF(Moved(1).GT.PP_nElems)THEN
-           IF(PartHaloElemToProc(NATIVE_PROC_ID,Moved(1)).LT.MyRank)THEN
-             InElementCheck=.FALSE.
-           END IF
-         END IF
-       END IF
-     END IF
-#endif /*MPI*/
-    END IF
-  ! particle at face,edge or node, check most possible point
-  ELSE
-    InElementCheck=.FALSE.
-  END IF
+END ASSOCIATE
+#endif /*USE_MPI*/
 
-  ! found the particle on the current proc, set the corresponding ElemID (and save the position in reference space, if required)
-  IF (InElementCheck) THEN
-    PEM%Element(iPart) = ElemID
-    IF(DoRefMapping) PartPosRef(1:3,iPart) = Xi
-    ParticleFound = .TRUE.
-    EXIT
-  END IF
-END DO ! iBGMElem
-
-! particle not found
-IF (.NOT.ParticleFound) THEN
-  ! abort if we are required to find it on the current proc, otherwise just remove it from the list of particles
-  IF(DoRelocate) CALL abort(&
-__STAMP__&
-  , ' halo mesh too small. increase halo distance by increasing the safety factor. Currently Part-SafetyFactor = ',&
-  RealInfo=SafetyFactor)
-  PDM%ParticleInside(iPart) = .FALSE.
-END IF
-
-END SUBROUTINE SingleParticleToExactElement
+END FUNCTION SinglePointToElement
 
 
-SUBROUTINE SingleParticleToExactElementNoMap(iPart,doHALO,doRelocate)
-!===================================================================================================================================
-! this subroutine maps each particle to an element
-! currently, a background mesh is used to find possible elements. if multiple elements are possible, the element with the smallest
-! distance is picked as an initial guess
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_Preproc
-USE MOD_Particle_Vars,          ONLY:PartState,PEM,PDM
-USE MOD_Particle_Mesh_Vars,     ONLY:ElemRadius2NGeo
-USE MOD_Particle_Mesh_Vars,     ONLY:Geo
-USE MOD_Particle_Utils,         ONLY:InsertionSort
-USE MOD_Particle_Tracking_Vars, ONLY:Distance,ListDistance
-USE MOD_Particle_Mesh_Vars,     ONLY:ElemBaryNGeo
-USE MOD_Particle_MPI_Vars,      ONLY:SafetyFactor
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)                :: iPart
-LOGICAL,INTENT(IN)                :: doHalo
-LOGICAL,INTENT(IN)                :: doRelocate
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER                           :: iBGMElem,nBGMElems, ElemID, CellX,CellY,CellZ
-!-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL                           :: ParticleFound,InElementCheck
-REAL                              :: Distance2
-!===================================================================================================================================
-
-ParticleFound = .FALSE.
-
-! --- check if the particle is inside our bounding box (including/excluding the halo region)
-IF(DoHALO)THEN
-  IF ( (PartState(1,iPart).LT.GEO%xminglob).OR.(PartState(1,iPart).GT.GEO%xmaxglob).OR. &
-       (PartState(2,iPart).LT.GEO%yminglob).OR.(PartState(2,iPart).GT.GEO%ymaxglob).OR. &
-       (PartState(3,iPart).LT.GEO%zminglob).OR.(PartState(3,iPart).GT.GEO%zmaxglob)) THEN
-     PDM%ParticleInside(iPart) = .FALSE.
-     RETURN
-  END IF
-ELSE
-  IF ( (PartState(1,iPart).LT.GEO%xmin).OR.(PartState(1,iPart).GT.GEO%xmax).OR. &
-       (PartState(2,iPart).LT.GEO%ymin).OR.(PartState(2,iPart).GT.GEO%ymax).OR. &
-       (PartState(3,iPart).LT.GEO%zmin).OR.(PartState(3,iPart).GT.GEO%zmax)) THEN
-     PDM%ParticleInside(iPart) = .FALSE.
-     RETURN
-  END IF
-END IF
-
-! --- get background mesh cell of particle
-CellX = CEILING((PartState(1,iPart)-GEO%xminglob)/GEO%FIBGMdeltas(1))
-CellX = MAX(MIN(GEO%TFIBGMimax,CellX),GEO%TFIBGMimin)
-CellY = CEILING((PartState(2,iPart)-GEO%yminglob)/GEO%FIBGMdeltas(2))
-CellY = MAX(MIN(GEO%TFIBGMjmax,CellY),GEO%TFIBGMjmin)
-CellZ = CEILING((PartState(3,iPart)-GEO%zminglob)/GEO%FIBGMdeltas(3))
-CellZ = MAX(MIN(GEO%TFIBGMkmax,CellZ),GEO%TFIBGMkmin)
-
-!--- check all cells associated with this background mesh cell
-nBGMElems=GEO%TFIBGM(CellX,CellY,CellZ)%nElem
-
-! get distance to background cell barycenter
-Distance=-1.
-ListDistance=0
-DO iBGMElem = 1, nBGMElems
-  ElemID = GEO%TFIBGM(CellX,CellY,CellZ)%Element(iBGMElem)
-  IF(.NOT.DoHALO)THEN
-    IF(ElemID.GT.PP_nElems) CYCLE
-  END IF
-  Distance2=(PartState(1,iPart)-ElemBaryNGeo(1,ElemID))*(PartState(1,iPart)-ElemBaryNGeo(1,ElemID)) &
-           +(PartState(2,iPart)-ElemBaryNGeo(2,ElemID))*(PartState(2,iPart)-ElemBaryNGeo(2,ElemID)) &
-           +(PartState(3,iPart)-ElemBaryNGeo(3,ElemID))*(PartState(3,iPart)-ElemBaryNGeo(3,ElemID))
-  IF(Distance2.GT.ElemRadius2NGeo(ElemID))THEN
-    Distance(iBGMElem)=-1.
-  ELSE
-    Distance(iBGMElem)=Distance2
-  END IF
-  ListDistance(iBGMElem)=ElemID
-END DO ! nBGMElems
-
-! no candidate in background mesh for our particle position. Can't determine if the current position is valid because we're missing
-! the BC information as well. Abort and inform the user to increase the size of the halo mesh.
-!>> WARNING: If we did an invalid push, we might abort here as well.
-IF(ALMOSTEQUAL(MAXVAL(Distance),-1.))THEN
-  PDM%ParticleInside(iPart) = .FALSE.
-  IF(DoRelocate)THEN
-    IPWRITE(UNIT_StdOut,*) 'Position',PartState(1:3,iPart)
-    CALL abort(&
-  __STAMP__&
-  , ' halo mesh too small. increase halo distance by increasing the safety factor. Currently Part-SafetyFactor = ',&
-  RealInfo=SafetyFactor)
-  END IF
-  RETURN
-END IF
-
-!  multiple cells associated with this background mesh cell. Sort according to distance to the cell barycenter
-IF(nBGMElems.GT.1) CALL InsertionSort(Distance(1:nBGMElems),ListDistance(1:nBGMElems),nBGMElems)
-
-! loop through sorted list and start by closest element
-DO iBGMElem=1,nBGMElems
-  IF(ALMOSTEQUAL(Distance(iBGMElem),-1.))CYCLE
-  ElemID=ListDistance(iBGMElem)
-
-  ! exclude elements not within our local mesh (without the halo region)
-  IF(.NOT.DoHALO)THEN
-    IF(ElemID.GT.PP_nElems) CYCLE
-  END IF
-
-  CALL PartInElemCheck(PartState(1:3,iPart),iPart,ElemID,InElementCheck)
-
-  ! no intersection found and particle is in final element
-  IF(InElementCheck)THEN
-    PEM%Element(iPart) = ElemID
-    ParticleFound=.TRUE.
-    EXIT
-  END IF
-END DO ! iBGMElem
-
-! particle not found
-IF (.NOT.ParticleFound) THEN
-  IF(DoRelocate) CALL abort(&
-  __STAMP__&
-  , ' halo mesh too small. increase halo distance by increasing the safety factor. Currently Part-SafetyFactor = ',&
-  RealInfo=SafetyFactor)
-  PDM%ParticleInside(iPart) = .FALSE.
-END IF
-
-END SUBROUTINE SingleParticleToExactElementNoMap
-
-
-SUBROUTINE PartInElemCheck(PartPos_In,PartID,ElemID,FoundInElem,IntersectPoint_Opt&
+SUBROUTINE PartInElemCheck(PartPos_In,PartID,ElemID,FoundInElem,IntersectPoint_Opt, &
 #if CODE_ANALYZE
-        ,Sanity_Opt&
-        ,Tol_Opt&
-        ,CodeAnalyze_Opt)
+                           Sanity_Opt,Tol_Opt,CodeAnalyze_Opt)
 #else
-        )
+                           Tol_Opt)
 #endif /*CODE_ANALYZE*/
 !===================================================================================================================================
 ! Checks if particle is in Element
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Globals
-USE MOD_Particle_Mesh_Vars,     ONLY:ElemBaryNGeo
-USE MOD_Particle_Surfaces_Vars, ONLY:SideType,SideNormVec
-USE MOD_Particle_Mesh_Vars,     ONLY:PartElemToSide,PartBCSideList
-USE MOD_Particle_Surfaces,      ONLY:CalcNormAndTangBilinear,CalcNormAndTangBezier
-USE MOD_Particle_Intersection,  ONLY:ComputePlanarRectIntersection
-USE MOD_Particle_Intersection,  ONLY:ComputePlanarCurvedIntersection
-USE MOD_Particle_Intersection,  ONLY:ComputeBiLinearIntersection
-USE MOD_Particle_Intersection,  ONLY:ComputeCurvedIntersection
-USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping
+USE MOD_Particle_Intersection  ,ONLY: ComputePlanarRectIntersection
+USE MOD_Particle_Intersection  ,ONLY: ComputePlanarCurvedIntersection
+USE MOD_Particle_Intersection  ,ONLY: ComputeBiLinearIntersection
+USE MOD_Particle_Intersection  ,ONLY: ComputeCurvedIntersection
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
+USE MOD_Particle_Mesh          ,ONLY: GetGlobalNonUniqueSideID
+USE MOD_Particle_Surfaces      ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBezier
+USE MOD_Particle_Surfaces_Vars ,ONLY: SideType,SideNormVec
+USE MOD_Particle_Vars          ,ONLY: LastPartPos
 #if CODE_ANALYZE
-USE MOD_Globals,                ONLY:MyRank,UNIT_stdout
-USE MOD_Particle_Tracking_Vars, ONLY:PartOut,MPIRankOut
-USE MOD_Particle_Surfaces,      ONLY:OutputBezierControlPoints
-USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3d
-USE MOD_Particle_Intersection,  ONLY:OutputTrajectory
+USE MOD_Globals                ,ONLY: MyRank,UNIT_stdout
+USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
+USE MOD_Particle_Surfaces      ,ONLY: OutputBezierControlPoints
+USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
+USE MOD_Particle_Intersection  ,ONLY: OutputTrajectory
 #endif /*CODE_ANALYZE*/
-USE MOD_Particle_Vars,          ONLY:LastPartPos
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars,ONLY:SideInfo_Shared
+#else
+USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -500,22 +237,17 @@ LOGICAL,INTENT(IN),OPTIONAL              :: Sanity_Opt
 ! OUTPUT VARIABLES
 LOGICAL,INTENT(OUT)                      :: FoundInElem
 REAL,INTENT(OUT),OPTIONAL                :: IntersectPoint_Opt(1:3)
-#if CODE_ANALYZE
 REAL,INTENT(OUT),OPTIONAL                :: Tol_Opt
-#endif /*CODE_ANALYZE*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                  :: ilocSide,flip,SideID,BCSideID
+INTEGER                                  :: ilocSide,flip,SideID
 REAL                                     :: PartTrajectory(1:3),NormVec(1:3)
 REAL                                     :: lengthPartTrajectory,PartPos(1:3),LastPosTmp(1:3)
 LOGICAL                                  :: isHit
 REAL                                     :: alpha,eta,xi,IntersectPoint(1:3)
 !===================================================================================================================================
 
-#if CODE_ANALYZE
 IF(PRESENT(tol_Opt)) tol_Opt=-1.
-#endif
-
 ! virtual move to element barycenter
 LastPosTmp(1:3)         = LastPartPos(1:3,PartID)
 LastPartPos(1:3,PartID) = ElemBaryNGeo(1:3,ElemID)
@@ -551,17 +283,10 @@ PartTrajectory=PartTrajectory/lengthPartTrajectory
 ! reset intersection counter and alpha
 isHit = .FALSE.
 alpha = -1.
-
-! check for intersections with each side
 DO ilocSide=1,6
-  SideID = PartElemToSide(E2S_SIDE_ID,ilocSide,ElemID)
-  flip   = PartElemToSide(E2S_FLIP,ilocSide,ElemID)
-  IF(DoRefMapping)THEN
-    IF(SideID.LT.1) CYCLE
-    BCSideID=SideID
-    SideID=PartBCSideList(BCSideID)
-    IF(SideID.LT.1) CYCLE
-  END IF
+
+  SideID = GetGlobalNonUniqueSideID(ElemID,iLocSide)
+  flip   = SideInfo_Shared(SIDE_FLIP,SideID)
 
   SELECT CASE(SideType(SideID))
   CASE(PLANAR_RECT)
@@ -569,11 +294,7 @@ DO ilocSide=1,6
   CASE(PLANAR_CURVED)
     CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,Alpha,xi,eta,PartID,flip,SideID)
   CASE(BILINEAR,PLANAR_NONRECT)
-      CALL ComputeBiLinearIntersection(isHit,PartTrajectory,lengthPartTrajectory,Alpha                &
-                                                                                       ,xi            &
-                                                                                       ,eta           &
-                                                                                       ,PartID,SideID &
-                                                                                       ,ElemCheck_Opt=.TRUE.)
+      CALL ComputeBiLinearIntersection(  isHit,PartTrajectory,lengthPartTrajectory,Alpha,xi,eta,PartID,     SideID,ElemCheck_Opt=.TRUE.)
   CASE(CURVED)
     CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,Alpha,xi,eta,PartID,SideID,ElemCheck_Opt=.TRUE.)
   END SELECT
@@ -776,6 +497,5 @@ DO iPart=1,PDM%ParticleVecLength
 END DO ! iPart=1,PDM%ParticleVecLength
 
 END SUBROUTINE CountPartsPerElem
-
 
 END MODULE MOD_Particle_Localization

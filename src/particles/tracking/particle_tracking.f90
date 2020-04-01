@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 ! Contains global variables provided by the particle surfaces routines
@@ -1133,7 +1134,7 @@ SUBROUTINE ParticleRefTracking()
 USE MOD_Preproc
 USE MOD_Globals!,                 ONLY:Cross,abort
 USE MOD_Particle_Globals
-USE MOD_Eval_xyz,                ONLY:GetPositionInRefElem,EvaluateFieldAtRefPos
+USE MOD_Eval_xyz,                ONLY:GetPositionInRefElem
 USE MOD_Mesh_Vars,               ONLY:OffSetElem,useCurveds,NGeo
 USE MOD_Particle_Localization,   ONLY:SingleParticleToExactElement,PartInElemCheck
 USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo,ElemRadius2NGeo

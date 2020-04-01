@@ -262,7 +262,6 @@ SUBROUTINE TrackingParticlePosition(time)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Mesh_Vars,     ONLY:ElemGlobalID
 USE MOD_Particle_Vars,          ONLY:PartState, PDM, PEM
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
@@ -279,7 +278,7 @@ REAL,INTENT(IN)                :: time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,iunit,iPartState
-CHARACTER(LEN=60) :: TrackingFilename
+CHARACTER(LEN=60)  :: TrackingFilename
 LOGICAL            :: fexist
 REAL               :: diffPos,diffVelo
 !===================================================================================================================================
@@ -339,7 +338,7 @@ IF(fexist) THEN
         WRITE(iunit,104,ADVANCE='NO') PartState(iPartState,i)
       END DO
       WRITE(iunit,'(A1)',ADVANCE='NO') ','
-      WRITE(iunit,'(I12)',ADVANCE='NO') ElemGlobalID(PEM%Element(i))
+      WRITE(iunit,'(I12)',ADVANCE='NO') PEM%Element(i)
       WRITE(iunit,'(A)') ' '
      END IF
   END DO

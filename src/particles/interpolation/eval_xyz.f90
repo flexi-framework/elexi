@@ -22,10 +22,6 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE EvaluateFieldAtPhysPos
-  MODULE PROCEDURE EvaluateFieldAtPhysPos
-END INTERFACE
-
 INTERFACE GetPositionInRefElem
   MODULE PROCEDURE GetPositionInRefElem
 END INTERFACE
@@ -34,13 +30,17 @@ INTERFACE TensorProductInterpolation
   MODULE PROCEDURE TensorProductInterpolation
 END INTERFACE
 
+INTERFACE EvaluateFieldAtPhysPos
+  MODULE PROCEDURE EvaluateFieldAtPhysPos
+END INTERFACE
+
 INTERFACE EvaluateFieldAtRefPos
   MODULE PROCEDURE EvaluateFieldAtRefPos
 END INTERFACE
 
-PUBLIC :: EvaluateFieldAtPhysPos
 PUBLIC :: GetPositionInRefElem
 PUBLIC :: TensorProductInterpolation
+PUBLIC :: EvaluateFieldAtPhysPos
 PUBLIC :: EvaluateFieldAtRefPos
 !===================================================================================================================================
 
@@ -63,7 +63,7 @@ USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
 USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
 USE MOD_Mesh_Vars,             ONLY: NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: dXCL_NGeo,XCL_NGeo,wBaryCL_NGeo,XiCL_NGeo
-USE MOD_Particle_Mesh_Vars,    ONLY: CurvedElem,wBaryCL_NGeo1,XiCL_NGeo1
+USE MOD_Particle_Mesh_Vars,    ONLY: ElemCurved,wBaryCL_NGeo1,XiCL_NGeo1
 #if USE_RW
 USE MOD_Equation_Vars,         ONLY: nVarTurb
 #endif
@@ -99,7 +99,7 @@ REAL, PARAMETER           :: EPSONE=1.00000001
 CALL GetRefNewtonStartValue(X_in,Xi,ElemID)
 
 ! If the element is curved, all Gauss points are required
-IF(CurvedElem(ElemID))THEN
+IF(ElemCurved(ElemID))THEN
   CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID) &
                     ,NGeo,ElemID,Mode=1,PartID=PartID)
 ! If the element is not curved, only the corner nodes are required
@@ -167,11 +167,17 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
 USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Mesh_Vars,      ONLY:dXCL_NGeo,XCL_NGeo,wBaryCL_NGeo,XiCL_NGeo
-USE MOD_Particle_Mesh_Vars,      ONLY:CurvedElem,wBaryCL_NGeo1,XiCL_NGeo1
+USE MOD_Particle_Mesh_Vars,      ONLY:wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars,      ONLY:wBaryCL_NGeo1,XiCL_NGeo1
+USE MOD_Particle_Mesh_Vars,      ONLY:ElemCurved
+#if USE_MPI
+USE MOD_Particle_Mesh_Vars,      ONLY:XCL_NGeo_Shared,dXCL_NGeo_Shared
+!USE MOD_MPI_Shared_Vars,         ONLY:GlobalElem2CNTotalElem
+#else
+USE MOD_Mesh_Vars,               ONLY:dXCL_NGeo,XCL_NGeo
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)          :: ElemID                                 !< element index
@@ -188,13 +194,21 @@ REAL                       :: XCL_NGeo1(1:3,0:1,0:1,0:1)
 REAL                       :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
 !===================================================================================================================================
 
+#if USE_MPI
+! TODO: This might become required once we reduce the halo region
+!ASSOCIATE(ElemID   => GlobalElem2CNTotalElem(ElemID), &
+!          XCL_NGeo => XCL_NGeo_Shared)
+ASSOCIATE( XCL_NGeo =>  XCL_NGeo_Shared &
+         ,dXCL_NGeo => dXCL_NGeo_Shared)
+#endif
+
 iMode=2
 IF(PRESENT(ForceMode)) iMode=1
 IF(.NOT.PRESENT(DoReUseMap))THEN
   CALL GetRefNewtonStartValue(X_in,Xi,ElemID)
 END IF
 
-IF(CurvedElem(ElemID))THEN
+IF(ElemCurved(ElemID))THEN
   CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID),NGeo,ElemID,Mode=iMode)
 ELSE
   ! fill dummy XCL_NGeo1
@@ -221,6 +235,10 @@ ELSE
     CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo1,XiCL_NGeo1,XCL_NGeo1,dXCL_NGeo1,1,ElemID,Mode=iMode)
   END IF
 END IF
+
+#if USE_MPI
+END ASSOCIATE
+#endif
 
 END SUBROUTINE GetPositionInRefElem
 
@@ -267,7 +285,7 @@ END DO ! k=0,N_In
 END SUBROUTINE TensorProductInterpolation
 
 
-SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out,ElemID                 &
+SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out                        &
 #if USE_RW
                                                 ,UTurb_In_opt,Uturb_Out_opt        &
 #endif
@@ -289,7 +307,6 @@ IMPLICIT NONE
 REAL,INTENT(IN)           :: Xi_in(3)                                      !< position in reference element
 INTEGER,INTENT(IN)        :: NVar                                          !< 5 (rho,u_x,u_y,u_z,e)
 INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
-INTEGER,INTENT(IN)        :: ElemID                                        !< Element index
 REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
 #if USE_RW
 REAL,INTENT(IN),OPTIONAL  :: Uturb_In_opt(1:nVarTurb,0:N_In,0:N_in,0:N_In) !< Turbulent quantities in Element
@@ -348,7 +365,6 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
 USE MOD_Particle_Mesh_Vars,      ONLY:RefMappingEps
-USE MOD_Mesh_Vars,               ONLY:offsetElem
 USE MOD_Particle_Vars,           ONLY:PartState,PDM,AllowLoosing
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -482,7 +498,7 @@ __STAMP__&
       IPWRITE(UNIT_stdOut,*) ' PartPos', X_in
       IPWRITE(UNIT_stdOut,*) ' PartVel', PartState(4:6,PartID),SQRT(PartState(4,PartID)**2 + PartState(5,PartID)**2 + &
                                          PartState(6  ,PartID)**2)
-      IPWRITE(UNIT_stdOut,*) ' ElemID', ElemID+offSetElem
+      IPWRITE(UNIT_stdOut,*) ' ElemID', ElemID
       IF(PRESENT(PartID)) IPWRITE(UNIT_stdOut,*) ' PartID', PartID
 
       ! In loose mode, remove the invalid particle and write to log
@@ -561,14 +577,18 @@ SUBROUTINE GetRefNewtonStartValue(X_in,Xi,ElemID)
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Preproc,                 ONLY:PP_N
+USE MOD_Interpolation_Vars,      ONLY:xGP
+USE MOD_Mesh_Vars,               ONLY:NGeo,Elem_xGP,offsetElem
 USE MOD_Particle_Globals,        ONLY:PP_nElems
 USE MOD_Particle_Mesh_Vars,      ONLY:RefMappingGuess,RefMappingEps
 USE MOD_Particle_Mesh_Vars,      ONLY:XiEtaZetaBasis,slenXiEtaZetaBasis,XCL_NGeo
-USE MOD_Mesh_Vars,               ONLY:Elem_xGP
-USE MOD_Interpolation_Vars,      ONLY:xGP
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo,XCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars,      ONLY:XCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Tracking_vars,  ONLY:DoRefMapping
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars,ONLY:ElemBaryNGeo_Shared
+#else
+USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -588,6 +608,9 @@ INTEGER                       :: i,j,k
 REAL                          :: dX,dY,dZ
 INTEGER                       :: RefMappingGuessLoc
 !===================================================================================================================================
+#if USE_MPI
+ASSOCIATE(ElemBaryNGeo => ElemBaryNGeo_Shared)
+#endif
 
 epsOne=1.0+RefMappingEps
 RefMappingGuessLoc=RefMappingGuess
@@ -618,11 +641,11 @@ CASE(2)
   Winner_Dist=SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP(:,0,0,0,ElemID)),(x_in(:)-Elem_xGP(:,0,0,0,ElemID))))
   Xi(:)=(/xGP(0),xGP(0),xGP(0)/) ! start value
   DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
-    dX=ABS(X_in(1) - Elem_xGP(1,i,j,k,ElemID))
+    dX=ABS(X_in(1) - Elem_xGP(1,i,j,k,ElemID-offsetElem))
     IF(dX.GT.Winner_Dist) CYCLE
-    dY=ABS(X_in(2) - Elem_xGP(2,i,j,k,ElemID))
+    dY=ABS(X_in(2) - Elem_xGP(2,i,j,k,ElemID-offsetElem))
     IF(dY.GT.Winner_Dist) CYCLE
-    dZ=ABS(X_in(3) - Elem_xGP(3,i,j,k,ElemID))
+    dZ=ABS(X_in(3) - Elem_xGP(3,i,j,k,ElemID-offsetElem))
     IF(dZ.GT.Winner_Dist) CYCLE
     Dist=SQRT(dX*dX+dY*dY+dZ*dZ)
     IF (Dist.LT.Winner_Dist) THEN
@@ -635,11 +658,11 @@ CASE(3)
   Winner_Dist=SQRT(DOT_PRODUCT((x_in(:)-XCL_NGeo(:,0,0,0,ElemID)),(x_in(:)-XCL_NGeo(:,0,0,0,ElemID))))
   Xi(:)=(/XiCL_NGeo(0),XiCL_NGeo(0),XiCL_NGeo(0)/) ! start value
   DO i=0,NGeo; DO j=0,NGeo; DO k=0,NGeo
-    dX=ABS(X_in(1) - XCL_NGeo(1,i,j,k,ElemID))
+    dX=ABS(X_in(1) - XCL_NGeo(1,i,j,k,ElemID-offsetElem))
     IF(dX.GT.Winner_Dist) CYCLE
-    dY=ABS(X_in(2) - XCL_NGeo(2,i,j,k,ElemID))
+    dY=ABS(X_in(2) - XCL_NGeo(2,i,j,k,ElemID-offsetElem))
     IF(dY.GT.Winner_Dist) CYCLE
-    dZ=ABS(X_in(3) - XCL_NGeo(3,i,j,k,ElemID))
+    dZ=ABS(X_in(3) - XCL_NGeo(3,i,j,k,ElemID-offsetElem))
     IF(dZ.GT.Winner_Dist) CYCLE
     Dist=SQRT(dX*dX+dY*dY+dZ*dZ)
     IF (Dist.LT.Winner_Dist) THEN
@@ -651,6 +674,10 @@ CASE(4)
   ! trivial guess
   xi=0.
 END SELECT
+
+#if USE_MPI
+END ASSOCIATE
+#endif /*USE_MPI*/
 
 END SUBROUTINE GetRefNewtonStartValue
 

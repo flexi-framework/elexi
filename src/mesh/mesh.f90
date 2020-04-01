@@ -118,13 +118,6 @@ USE MOD_2D
 USE MOD_Particle_Mesh!,          ONLY:InitParticleMesh,InitElemVolumes,InitTriaParticleGeometry
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Mappings,      ONLY:Particle_InitMappings
-USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
-USE MOD_Particle_Surfaces_Vars, ONLY:BezierControlPoints3D,SideSlabNormals,SideSlabIntervals
-USE MOD_Particle_Surfaces_Vars, ONLY:BoundingBoxIsEmpty,ElemSlabNormals,ElemSlabIntervals
-USE MOD_Interpolation_Vars,     ONLY:xGP
-#if CODE_ANALYZE
-USE MOD_Particle_Surfaces_Vars, ONLY: SideBoundingBoxVolume
-#endif /*CODE_ANALYZE*/
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -389,7 +382,7 @@ IF (meshMode.GT.1) THEN
   ALLOCATE(            sJ(  0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
   ALLOCATE(     scaledJac(  0:PP_N,0:PP_N,0:PP_NZ,nElems))
   NGeoRef=3*NGeo ! build jacobian at higher degree
-  ALLOCATE(    DetJac_Ref(1,0:NgeoRef,0:NgeoRef,0:ZDIM(NGeoRef),nElems))
+  ALLOCATE(    DetJac_Ref(1,0:NGeoRef,0:NGeoRef,0:ZDIM(NGeoRef),nElems))
 
   ! surface data
   ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
@@ -405,26 +398,8 @@ IF (meshMode.GT.1) THEN
   ! assign normal and tangential vectors and surfElems on faces
 
 #if USE_PARTICLES
-  ALLOCATE(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,1:nSides) )
-  BezierControlPoints3D=0.
-
-  ALLOCATE(SideSlabNormals(1:3,1:3,1:nSides),SideSlabIntervals(1:6,nSides),BoundingBoxIsEmpty(1:nSides) )
-  SideSlabNormals=0.
-  SideSlabIntervals=0.
-  BoundingBoxIsEmpty=.TRUE.
-  ALLOCATE(ElemSlabNormals(1:3,0:3,1:nElems),ElemSlabIntervals(1:6,nElems) )
-  ElemSlabNormals=0.
-  ElemSlabIntervals=0.
-#if CODE_ANALYZE
-  ALLOCATE(SideBoundingBoxVolume(1:nSides))
-  SideBoundingBoxVolume=0.
-#endif /*CODE_ANALYZE*/
-
-  ! compute elem bary and elem radius
+  ! initialize particle mesh (including shared halo region)
   CALL InitParticleMesh()
-  IF (TriaTracking) THEN
-    CALL InitParticleGeometry()
-  END IF
 #endif
 
 #if (PP_dim == 3)
@@ -432,23 +407,12 @@ IF (meshMode.GT.1) THEN
   crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')
 #endif
   SWRITE(UNIT_stdOut,'(A)') " NOW CALLING calcMetrics..."
+  
 #if USE_PARTICLES
-  CALL InitParticleMeshBasis(NGeo,PP_N,xGP)
+  CALL InitParticleMeshBasis()
 #endif
 
-#if USE_PARTICLES
-  ALLOCATE(XCL_NGeo(1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
-  XCL_NGeo = 0.
-  ALLOCATE(dXCL_NGeo(1:3,1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
-  dXCL_NGeo = 0.
-  CALL CalcMetrics(XCL_NGeo_Out=XCL_NGeo,dXCL_NGeo_Out=dXCL_NGeo)
-
-  ALLOCATE(ElemBaryNGeo(1:3, 1:nElems))
-  CALL BuildElementOrigin()
-
-#else
   CALL CalcMetrics()     ! DG metrics
-#endif
 
 #if FV_ENABLED
   CALL InitFV_Metrics()  ! FV metrics
@@ -472,14 +436,7 @@ IF (meshMode.GT.0) THEN
   END DO ! iElem
 END IF
 
-#if USE_PARTICLES
-! init element volume
-IF(meshMode.GT.0) CALL InitElemVolumes()
-#endif
-
-#if !USE_MPI_SHARED
 SDEALLOCATE(NodeCoords)
-#endif
 SDEALLOCATE(dXCL_N)
 SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
@@ -488,16 +445,6 @@ SDEALLOCATE(ElemToTree)
 IF (.NOT.postiMode) DEALLOCATE(scaledJac)
 
 CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
-
-#if USE_PARTICLES
-SDEALLOCATE(ElemGlobalID)
-ALLOCATE(ElemGlobalID(1:nElems))
-DO iElem=1,nElems
-  ElemGlobalID(iElem)=OffsetElem+iElem
-END DO ! iElem=1,nElems
-CALL AddToElemData(ElementOut,'ElemID',IntArray=ElemGlobalID)
-#endif /*PARTICLES*/
-
 
 MeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'

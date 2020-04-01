@@ -246,7 +246,7 @@ DO iElem=1,nElems
         CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,iElem),field,iElem,iPart)
       ! RefMapping, evaluate in reference space
       ELSE
-        CALL EvaluateFieldAtRefPos(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,iElem),field,iElem)
+        CALL EvaluateFieldAtRefPos(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,iElem),field)
       END IF ! RefMapping
 
       ! Add the interpolated field to the background field
@@ -305,7 +305,7 @@ IF (.NOT.DoRefMapping) THEN
   CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID,PartID)
 ! RefMapping, evaluate in reference space
 ELSE
-  CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID)
+  CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field)
 END IF ! RefMapping
 
 ! Add the interpolated field to the background field

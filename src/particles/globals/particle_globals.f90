@@ -48,10 +48,6 @@ REAL                         :: PID                                   !> Perform
 
 !=================================================================================================================================
 
-INTERFACE CROSS
-  MODULE PROCEDURE CROSS
-END INTERFACE CROSS
-
 INTERFACE CROSSNORM
   MODULE PROCEDURE CROSSNORM
 END INTERFACE CROSSNORM
@@ -77,8 +73,8 @@ INTERFACE RandNormal
 END INTERFACE
 
 PUBLIC :: PI
-PUBLIC :: CROSS
 PUBLIC :: CROSSNORM
+PUBLIC :: VECNORM
 PUBLIC :: AlmostZero
 PUBLIC :: AlmostEqual
 PUBLIC :: UnitVector
@@ -87,25 +83,6 @@ PUBLIC :: RandNormal
 
 CONTAINS
 
-PURE FUNCTION CROSS(v1,v2)
-!===================================================================================================================================
-! computes the cross product of to 3 dimensional vectpors: cross=v1 x v2
-!===================================================================================================================================
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN) :: v1(3)    !
-REAL,INTENT(IN) :: v2(3)    !
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL            :: CROSS(3) !
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-CROSS=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
-END FUNCTION CROSS
 
 PURE FUNCTION CROSSNORM(v1,v2)
 !===================================================================================================================================
@@ -127,11 +104,33 @@ REAL            :: CROSSNORM(3) !
 ! LOCAL VARIABLES
 REAL            :: length
 !===================================================================================================================================
-CROSSNORM=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
-length=SQRT(CROSSNORM(1)*CROSSNORM(1)+CROSSNORM(2)*CROSSNORM(2)+CROSSNORM(3)*CROSSNORM(3))
-CROSSNORM=CROSSNORM/length
+CROSSNORM = (/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
+length    = SQRT(CROSSNORM(1)*CROSSNORM(1)+CROSSNORM(2)*CROSSNORM(2)+CROSSNORM(3)*CROSSNORM(3))
+CROSSNORM = CROSSNORM/length
 END FUNCTION CROSSNORM
 
+
+PURE FUNCTION VECNORM(v1)
+!===================================================================================================================================
+! Computes the Euclidean norm (length) of a vector
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN) :: v1(3)    ! Vector
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL            :: VECNORM  ! Euclidean norm (length) of the vector v1
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+VECNORM = SQRT(v1(1)*v1(1)+v1(2)*v1(2)+v1(3)*v1(3))
+END FUNCTION VECNORM
+
+
+PURE FUNCTION AlmostZero(Num)
 !===================================================================================================================================
 ! Performe an almost zero check. But ...
 ! Bruce Dawson quote:
@@ -145,14 +144,13 @@ END FUNCTION CROSSNORM
 !    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
 !      Good luck and God speed."
 !===================================================================================================================================
-FUNCTION AlmostZero(Num)
 ! MODULES
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL            :: Num ! Number
+REAL,INTENT(IN) :: Num ! Number
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 LOGICAL         :: AlmostZero
@@ -165,6 +163,8 @@ IF(ABS(Num).LE.EpsMach) AlmostZero=.TRUE.
 
 END FUNCTION AlmostZero
 
+
+PURE FUNCTION AlmostEqual(Num1,Num2)
 !===================================================================================================================================
 ! Bruce Dawson quote:
 ! "There is no silver bullet. You have to choose wisely."
@@ -177,14 +177,13 @@ END FUNCTION AlmostZero
 !    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
 !      Good luck and God speed."
 !===================================================================================================================================
-FUNCTION AlmostEqual(Num1,Num2)
 ! MODULES
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL            :: Num1,Num2      ! Number
+REAL,INTENT(IN) :: Num1,Num2      ! Number
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 LOGICAL         :: ALMOSTEQUAL
@@ -198,7 +197,8 @@ ELSE
 END IF
 END FUNCTION AlmostEqual
 
-FUNCTION UNITVECTOR(v1)
+
+PURE FUNCTION UNITVECTOR(v1)
 !===================================================================================================================================
 ! compute  a unit vector from a given vector
 !===================================================================================================================================

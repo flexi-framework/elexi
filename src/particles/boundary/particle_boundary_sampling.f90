@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 !> Samples the particle conditions upon encountering a boundary
@@ -67,8 +68,6 @@ SUBROUTINE InitParticleBoundarySampling()
 USE MOD_Globals
 USE MOD_Basis                   ,ONLY:LegendreGaussNodesAndWeights
 USE MOD_Mesh_Vars               ,ONLY:NGeo,BC,nSides,nBCSides,nBCs,BoundaryName
-USE MOD_ReadInTools
-USE MOD_StringTools             ,ONLY:LowCase
 USE MOD_Particle_Boundary_Vars  ,ONLY:nSurfSample,dXiEQ_SurfSample,PartBound,XiEQ_SurfSample,SurfMesh,SampWall,nSurfBC,SurfBCName
 USE MOD_Particle_Boundary_Vars  ,ONLY:SurfCOMM
 USE MOD_Particle_Erosion_Vars
@@ -77,10 +76,14 @@ USE MOD_Particle_Surfaces       ,ONLY:EvaluateBezierPolynomialAndGradient
 USE MOD_Particle_Surfaces_Vars  ,ONLY:BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars  ,ONLY:DoRefMapping,TriaTracking
 USE MOD_Particle_Vars           ,ONLY:nSpecies
+USE MOD_ReadInTools
+USE MOD_StringTools             ,ONLY:LowCase
 #if USE_MPI
 USE MOD_Particle_MPI_Vars       ,ONLY:PartMPI
+USE MOD_Particle_MPI_Shared_Vars,ONLY:ElemInfo_Shared,ElemSideNodeID_Shared,NodeCoords_Shared
 #else
 USE MOD_Particle_Boundary_Vars  ,ONLY:offSetSurfSide
+USE MOD_Particle_Mesh_Vars      ,ONLY:ElemSideNodeID_Shared
 #endif /*MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
@@ -166,23 +169,24 @@ DO iSide=1,nBCSides
   END IF
 END DO
 
-! halo sides
-SurfMesh%nTotalSides=SurfMesh%nSides
-DO iSide=nSides+1,nTotalSides
-  IF(BC(iSide).EQ.0) CYCLE
-  ! Check if side is an outlet
-  CALL LowCase(TRIM(BoundaryName(BC(iSide))),hilfBC)
-
-  IF (PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%ReflectiveBC) THEN
-    SurfMesh%nTotalSides = SurfMesh%nTotalSides + 1
-    SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nTotalSides
-  ! Add outlet sides if required for erosion tracking
-  ELSEIF (doParticleErosionOutlet .AND. PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%OpenBC &
-  .AND. (hilfBC.EQ.'outlet')) THEN
-    SurfMesh%nTotalSides = SurfMesh%nTotalSides + 1
-    SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nTotalSides
-  END IF
-END DO
+! TODO: Adjust this for new halo region
+!! halo sides
+!SurfMesh%nTotalSides=SurfMesh%nSides
+!DO iSide=nSides+1,nTotalSides
+!  IF(BC(iSide).EQ.0) CYCLE
+!  ! Check if side is an outlet
+!  CALL LowCase(TRIM(BoundaryName(BC(iSide))),hilfBC)
+!
+!  IF (PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%ReflectiveBC) THEN
+!    SurfMesh%nTotalSides = SurfMesh%nTotalSides + 1
+!    SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nTotalSides
+!  ! Add outlet sides if required for erosion tracking
+!  ELSEIF (doParticleErosionOutlet .AND. PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%OpenBC &
+!  .AND. (hilfBC.EQ.'outlet')) THEN
+!    SurfMesh%nTotalSides = SurfMesh%nTotalSides + 1
+!    SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nTotalSides
+!  END IF
+!END DO
 
 ALLOCATE(SurfMesh%SurfSideToGlobSideMap(1:SurfMesh%nTotalSides))
 SurfMesh%SurfSideToGlobSideMap(:) = -1
@@ -225,77 +229,12 @@ SurfCOMM%nProcs=1
 SurfCOMM%MyOutputRank=0
 SurfCOMM%MPIOutputRoot=.TRUE.
 SurfCOMM%nOutputProcs = 1
-SurfCOMM%nOutputProcs=1
 ! get correct offsets
 OffSetSurfSide=0
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
-! Initialize surface collision sampling and analyze
-!CalcSurfCollis%AnalyzeSurfCollis = GETLOGICAL('Particles-AnalyzeSurfCollis','.FALSE.')
-!AnalyzeSurfCollis%NumberOfBCs    = 1 !initialize for ifs (BCs=0 means all)
-!ALLOCATE(AnalyzeSurfCollis%BCs(1))
-!AnalyzeSurfCollis%BCs = 0
-!IF (.NOT.CalcSurfCollis%AnalyzeSurfCollis .AND. SFResampleAnalyzeSurfCollis) THEN
-!  CALL abort(__STAMP__,&
-!    'ERROR: SFResampleAnalyzeSurfCollis was set without CalcSurfCollis%AnalyzeSurfCollis!')
-!END IF
-!IF (CalcSurfCollis%AnalyzeSurfCollis) THEN
-!  AnalyzeSurfCollis%maxPartNumber = GETINT('Particles-maxSurfCollisNumber','0')
-!  AnalyzeSurfCollis%NumberOfBCs   = GETINT('Particles-NumberOfBCs','1')
-!  IF (AnalyzeSurfCollis%NumberOfBCs.EQ.1) THEN !already allocated
-!    AnalyzeSurfCollis%BCs = GETINT('Particles-SurfCollisBC','0') ! 0 means all...
-!  ELSE
-!    DEALLOCATE(AnalyzeSurfCollis%BCs)
-!    ALLOCATE(AnalyzeSurfCollis%BCs(1:AnalyzeSurfCollis%NumberOfBCs)) !dummy
-!    hilf2=''
-!    DO iBC=1,AnalyzeSurfCollis%NumberOfBCs !build default string: 0,0,0,...
-!      WRITE(UNIT=hilf,FMT='(I0)') 0
-!      hilf2=TRIM(hilf2)//TRIM(hilf)
-!      IF (iBC.NE.AnalyzeSurfCollis%NumberOfBCs) hilf2=TRIM(hilf2)//','
-!    END DO
-!    AnalyzeSurfCollis%BCs = GETINTARRAY('Particles-SurfCollisBC',AnalyzeSurfCollis%NumberOfBCs,TRIM(hilf2))
-!  END IF
-!  ALLOCATE(AnalyzeSurfCollis%Data(1:AnalyzeSurfCollis%maxPartNumber,1:9))
-!  ALLOCATE(AnalyzeSurfCollis%Spec(1:AnalyzeSurfCollis%maxPartNumber))
-!  ALLOCATE(AnalyzeSurfCollis%BCid(1:AnalyzeSurfCollis%maxPartNumber))
-!  ALLOCATE(AnalyzeSurfCollis%Number(1:nSpecies+1))
-!  IF (LastAnalyzeSurfCollis%Restart) THEN
-!    CALL ReadAnalyzeSurfCollisToHDF5()
-!  END IF
-!  !ALLOCATE(AnalyzeSurfCollis%Rate(1:nSpecies+1))
-!  AnalyzeSurfCollis%Data=0.
-!  AnalyzeSurfCollis%Spec=0
-!  AnalyzeSurfCollis%BCid=0
-!  AnalyzeSurfCollis%Number=0
-!  !AnalyzeSurfCollis%Rate=0.
-!END IF
-!! Species-dependent calculations
-!ALLOCATE(CalcSurfCollis%SpeciesFlags(1:nSpecies))
-!CalcSurfCollis%NbrOfSpecies = GETINT('Particles-CalcSurfCollis_NbrOfSpecies','0')
-!IF ( (CalcSurfCollis%NbrOfSpecies.GT.0) .AND. (CalcSurfCollis%NbrOfSpecies.LE.nSpecies) ) THEN
-!  ALLOCATE(CalcSurfCollis_SpeciesRead(1:CalcSurfCollis%NbrOfSpecies))
-!  hilf2=''
-!  DO iSpec=1,CalcSurfCollis%NbrOfSpecies !build default string: 1 - CSC_NoS
-!    WRITE(UNIT=hilf,FMT='(I0)') iSpec
-!    hilf2=TRIM(hilf2)//TRIM(hilf)
-!    IF (ispec.NE.CalcSurfCollis%NbrOfSpecies) hilf2=TRIM(hilf2)//','
-!  END DO
-!  CalcSurfCollis_SpeciesRead = GETINTARRAY('Particles-CalcSurfCollis_Species',CalcSurfCollis%NbrOfSpecies,TRIM(hilf2))
-!  CalcSurfCollis%SpeciesFlags(:)=.FALSE.
-!  DO iSpec=1,CalcSurfCollis%NbrOfSpecies
-!    CalcSurfCollis%SpeciesFlags(CalcSurfCollis_SpeciesRead(ispec))=.TRUE.
-!  END DO
-!  DEALLOCATE(CalcSurfCollis_SpeciesRead)
-!ELSE IF (CalcSurfCollis%NbrOfSpecies.EQ.0) THEN !default
-!  CalcSurfCollis%SpeciesFlags(:)=.TRUE.
-!ELSE
-!  CALL abort(&
-!  __STAMP__&
-!  ,'Error in Particles-CalcSurfCollis_NbrOfSpecies!')
-!END IF
-
+! nothing more to do for procs without surfaces on them
 IF(.NOT.SurfMesh%SurfOnProc) RETURN
-
 
 ! allocate everything
 ALLOCATE(SampWall(1:SurfMesh%nTotalSides))
@@ -323,23 +262,24 @@ DO iSide=1,nTotalSides
     SideID=iSide
   END IF
   IF (TriaTracking) THEN
+    ! TODO: This has to come from ElemInfo_Shared
     ElemID = PartSideToElem(S2E_ELEM_ID,iSide)
     LocSideID = PartSideToElem(S2E_LOC_SIDE_ID,iSide)
 
     SurfaceVal = 0.
-    xNod = GEO%NodeCoords(1,GEO%ElemSideNodeID(1,LocSideID,ElemID))
-    yNod = GEO%NodeCoords(2,GEO%ElemSideNodeID(1,LocSideID,ElemID))
-    zNod = GEO%NodeCoords(3,GEO%ElemSideNodeID(1,LocSideID,ElemID))
+    xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,LocSideID,ElemID))
+    yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,LocSideID,ElemID))
+    zNod = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,LocSideID,ElemID))
 
     DO TriNum = 1,2
       Node1 = TriNum+1     ! normal = cross product of 1-2 and 1-3 for first triangle
       Node2 = TriNum+2     !          and 1-3 and 1-4 for second triangle
-      Vector1(1) = GEO%NodeCoords(1,GEO%ElemSideNodeID(Node1,LocSideID,ElemID)) - xNod
-      Vector1(2) = GEO%NodeCoords(2,GEO%ElemSideNodeID(Node1,LocSideID,ElemID)) - yNod
-      Vector1(3) = GEO%NodeCoords(3,GEO%ElemSideNodeID(Node1,LocSideID,ElemID)) - zNod
-      Vector2(1) = GEO%NodeCoords(1,GEO%ElemSideNodeID(Node2,LocSideID,ElemID)) - xNod
-      Vector2(2) = GEO%NodeCoords(2,GEO%ElemSideNodeID(Node2,LocSideID,ElemID)) - yNod
-      Vector2(3) = GEO%NodeCoords(3,GEO%ElemSideNodeID(Node2,LocSideID,ElemID)) - zNod
+        Vector1(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)) - xNod
+        Vector1(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)) - yNod
+        Vector1(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)) - zNod
+        Vector2(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)) - xNod
+        Vector2(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)) - yNod
+        Vector2(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)) - zNod
       nx = - Vector1(2) * Vector2(3) + Vector1(3) * Vector2(2) !NV (inwards)
       ny = - Vector1(3) * Vector2(1) + Vector1(1) * Vector2(3)
       nz = - Vector1(1) * Vector2(2) + Vector1(2) * Vector2(1)
@@ -376,7 +316,7 @@ END DO ! iSide=1,nTotalSides
 
 ! get the full area of the BC's of all faces
 Area=0.
-DO iSide=1,nBCSides
+DO iSide=1,nSides
   SurfSideID=SurfMesh%SideIDToSurfID(iSide)
   IF(SurfSideID.EQ.-1) CYCLE
   Area = Area + SUM(SurfMesh%SurfaceArea(:,:,SurfSideID))
@@ -384,7 +324,7 @@ END DO ! iSide=1,nTotalSides
 
 #if USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,Area,1,MPI_DOUBLE_PRECISION,MPI_SUM,SurfCOMM%COMM,iError)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 SWRITE(UNIT_stdOut,'(A,E25.14E3)') ' Surface-Area: ', Area
 
@@ -426,7 +366,7 @@ INTEGER,ALLOCATABLE       :: countSurfSideMPI(:)
 LOGICAL                   :: OutputOnProc
 !===================================================================================================================================
 color=MPI_UNDEFINED
-IF(SurfMesh%SurfonProc) color=2
+IF(SurfMesh%SurfOnProc) color=1001
 ! THEN
 ! color=2
 ! ELSE
@@ -437,7 +377,7 @@ IF(PartMPI%MPIRoot) THEN
   Surfrank=-1
   noSurfrank=-1
   SurfCOMM%Myrank=0
-  IF(SurfMesh%SurfonProc) THEN
+  IF(SurfMesh%SurfOnProc) THEN
     Surfrank=0
   ELSE
     noSurfrank=0
@@ -473,16 +413,16 @@ END IF
 ! now, create output communicator
 OutputOnProc=.FALSE.
 color=MPI_UNDEFINED
-IF(SurfMesh%nSides.GT.0) THEN
+IF(SurfMesh%nOutputSides.GT.0) THEN
   OutputOnProc=.TRUE.
-  color=4
+  color=1002
 END IF
 
 IF(PartMPI%MPIRoot) THEN
   Surfrank=-1
   noSurfrank=-1
   SurfCOMM%MyOutputRank=0
-  IF(SurfMesh%nSides.GT.0) THEN
+  IF(SurfMesh%nOutputSides.GT.0) THEN
     Surfrank=0
   ELSE
     noSurfrank=0
@@ -515,15 +455,14 @@ IF(SurfCOMM%MyOutputRank.EQ.0 .AND. OutputOnProc) THEN
 !   WRITE(UNIT_stdout,'(A18,I5,A6)') 'SURF OUTPUT-COMM: ',SurfCOMM%nOutputProcs,' procs'
 END IF
 
-IF(SurfMesh%nSides.EQ.0) RETURN
-
-! get correct offsets
+IF(SurfMesh%nOutputSides.EQ.0) RETURN
+! get correct offsets for output of hdf5 file (master sides)
 ALLOCATE(offsetSurfSideMPI(0:SurfCOMM%nOutputProcs))
 offsetSurfSideMPI=0
 ALLOCATE(countSurfSideMPI(0:SurfCOMM%nOutputProcs-1))
 countSurfSideMPI=0
 
-CALL MPI_GATHER(SurfMesh%nSides,1,MPI_INTEGER,countSurfSideMPI,1,MPI_INTEGER,0,SurfCOMM%OutputCOMM,iError)
+CALL MPI_GATHER(SurfMesh%nOutputSides,1,MPI_INTEGER,countSurfSideMPI,1,MPI_INTEGER,0,SurfCOMM%OutputCOMM,iError)
 
 IF (SurfCOMM%MPIOutputRoot) THEN
   DO iProc=1,SurfCOMM%nOutputProcs-1
@@ -567,7 +506,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 LOGICAL                           :: isMPINeighbor(0:SurfCOMM%nProcs-1)
 LOGICAL                           :: RecvMPINeighbor(0:SurfCOMM%nProcs-1)
-INTEGER                           :: nDOF,ALLOCSTAT,SideID
+INTEGER                           :: nDOF,ALLOCSTAT,SideID,TargetProc,TargetElem
 INTEGER                           :: iProc, GlobalProcID,iSide,ElemID,SurfSideID,LocalProcID,iSendSide,iRecvSide,iPos
 INTEGER,ALLOCATABLE               :: recv_status_list(:,:)
 INTEGER                           :: RecvRequest(0:SurfCOMM%nProcs-1),SendRequest(0:SurfCOMM%nProcs-1)
@@ -599,13 +538,14 @@ IF(SurfMesh%nTotalSides.GT.SurfMesh%nSides)THEN
       SurfSideID=SurfMesh%SideIDToSurfID(iSide)
       IF(SurfSideID.EQ.-1) CYCLE
       ! get elemid
+      ! TODO: Move this to new halo region
       ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
       IF(ElemID.LE.PP_nElems)THEN
         CALL abort(&
 __STAMP__&
 ,' Error in PartSideToElem. Halo-Side cannot be connected to local element', ElemID  )
       END IF
-      IF(GlobalProcID.EQ.PartHaloElemToProc(NATIVE_PROC_ID,ElemID))THEN
+      IF(GlobalProcID.EQ.TargetProc)THEN
         IF(.NOT.isMPINeighbor(iProc))THEN
           isMPINeighbor(iProc)=.TRUE.
         END IF
@@ -697,13 +637,14 @@ IF(ANY(IsMPINeighbor))THEN
         SurfSideID=SurfMesh%SideIDToSurfID(iSide)
         IF(SurfSideID.EQ.-1) CYCLE
         ! get elemid
+        ! TODO: Move this to new halo region
         ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
         IF(ElemID.LE.PP_nElems)THEN
         CALL abort(&
 __STAMP__&
 ,' Error in PartSideToElem. Halo-Side cannot be connected to local element', ElemID  )
         END IF
-        IF(GlobalProcID.EQ.PartHaloElemToProc(NATIVE_PROC_ID,ElemID))THEN
+        IF(GlobalProcID.EQ.TargetProc)THEN
           ! caution:
           ! native-proc-id is id in global list || PartMPI%COMM
           ! local-proc-id is the nth neighbor in SurfCOMM%COMM
@@ -720,7 +661,6 @@ __STAMP__&
     END DO ! iProc = 0, SurfCOMM%nProcs-1
   END IF
 END IF
-
 
 ! build SurfMesh exchange information
 ! next, allocate SurfCOMM%MPINeighbor
@@ -752,6 +692,7 @@ DO iProc=1,SurfCOMM%nMPINeighbors
     SurfSideID=SurfMesh%SideIDToSurfID(iSide)
     IF(SurfSideID.EQ.-1) CYCLE
     ! get elemid
+    ! TODO: Move this to new halo region
     IF(iProc.EQ.PartHaloSideToProc(LOCAL_PROC_ID,iSide))THEN
       SurfExchange%nSidesSend(iProc)=SurfExchange%nSidesSend(iProc)+1
       PartHaloSideToProc(LOCAL_SEND_ID,iSide) =SurfExchange%nSidesSend(iProc)
@@ -838,6 +779,7 @@ DO iProc=1,SurfCOMM%nMPINeighbors
     IF(iProc.EQ.PartHaloSideToProc(LOCAL_PROC_ID,iSide))THEN
       iSendSide=iSendSide+1
       ! get elemid
+      ! TODO: Move this to new halo region
       ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
 !       IF(ElemID.LE.PP_nElems)THEN
 !         IPWRITE(UNIT_stdOut,*) ' Error in PartSideToElem'
@@ -903,10 +845,10 @@ DO iProc=1,SurfCOMM%nMPINeighbors
     IF(NativeElemID.GT.PP_nElems)THEN
      CALL abort(&
 __STAMP__&
-          ,' Cannot send halo-data to other progs. big error! ', ElemID, REAL(PP_nElems))
+          ,' Cannot send halo-data to other procs. big error! ', ElemID, REAL(PP_nElems))
     END IF
     SideID=PartElemToSide(E2S_SIDE_ID,NativeLocSideID,NativeElemID)
-    IF(SideID.GT.nBCSides)THEN
+    IF(SideID.GT.nSides)THEN
       IPWRITE(UNIT_stdOut,*) ' Received wrong sideid. Is not a BC side! '
       IPWRITE(UNIT_stdOut,*) ' SideID, nBCSides, nSides ', SideID, nBCSides, nSides
       IPWRITE(UNIT_stdOut,*) ' ElemID, locsideid        ', NativeElemID, NativeLocSideID
@@ -919,9 +861,9 @@ __STAMP__&
     IF(SurfSideID.EQ.-1)THEN
      CALL abort(&
 __STAMP__&
-          ,' Side is not even a reflective BC side! ', SurfSideID )
+          ,' Side is not even a reflective BC side! ', SideID )
     END IF
-    SurfCOMM%MPINeighbor(iProc)%RecvList(iRecvSide)=SurfSideID
+    SurfCOMM%MPINeighbor(iProc)%RecvList(iRecvSide)=SideID
     iPos=iPos+2
   END DO ! RecvSide=1,SurfExchange%nSidesRecv(iProc)-1,2
 END DO ! iProc
@@ -948,7 +890,7 @@ END SUBROUTINE GetHaloSurfMapping
 SUBROUTINE ExchangeSurfData()
 !===================================================================================================================================
 ! exchange the surface data
-! only processes with samling sides in their halo region and the original process participate on the communication
+! only processes with sampling sides in their halo region and the original process participate on the communication
 ! structure is similar to particle communication
 ! each process sends his halo-information directly to the origin process by use of a list, containing the surfsideids for sending
 ! the receiving process adds the new data to his own sides
@@ -1138,6 +1080,7 @@ SDEALLOCATE(SampWallTmp)
 
 END SUBROUTINE ExchangeSurfData
 #endif /*MPI*/
+
 
 SUBROUTINE RestartParticleBoundarySampling(remap_opt)
 !===================================================================================================================================
@@ -1660,7 +1603,7 @@ SDEALLOCATE(SurfCOMM%MPINeighbor)
 SDEALLOCATE(SurfSendBuf)
 SDEALLOCATE(SurfRecvBuf)
 SDEALLOCATE(OffSetSurfSideMPI)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 END SUBROUTINE FinalizeParticleBoundarySampling
 
 END MODULE MOD_Particle_Boundary_Sampling

@@ -108,15 +108,6 @@
 
 !#define DEBUGMESH
 
-! Boundaries for Particles
-#if USE_PARTICLES
-#define PLANAR_RECT    0
-#define PLANAR_NONRECT 1
-#define BILINEAR       2
-#define PLANAR_CURVED  3
-#define CURVED         4
-#endif
-
 #if !(FV_ENABLED)
 #define FV_Elems(x) 0
 #define FV_Elems_master(x) 0
@@ -147,26 +138,3 @@
 #define PP_NZ   PP_N
 #define DIMV    1:3
 #endif
-
-! entries for PartHaloToProc
-#if USE_PARTICLES
-#define NATIVE_ELEM_ID  1
-#define NATIVE_PROC_ID  2
-#define LOCAL_PROC_ID   3
-!#define NATIVE_SIDE_ID  1
-#define LOCAL_SEND_ID   4
-
-! format
-#define OUTPUTFORMAT '(E25.14E3)'
-#endif
-
-! Load Balance (LB) position in array for measuring the time that is spent on specific operations
-#define LB_DG            1
-#define LB_DGCOMM        2
-#define LB_EMISSION      3
-#define LB_TRACK         4
-#define LB_INTERPOLATION 5
-#define LB_PUSH          6
-#define LB_PARTCOMM      7
-
-#define LB_NTIMES        7

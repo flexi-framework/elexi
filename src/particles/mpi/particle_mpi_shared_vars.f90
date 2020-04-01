@@ -19,21 +19,169 @@ MODULE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 PUBLIC
 SAVE
-#if USE_MPI_SHARED
+#if USE_MPI
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+LOGICAL            :: MPISharedInitIsDone=.FALSE.
+
+! Communication
+INTEGER            :: ComputeNodeRootRank             !> Rank of compute-node root in global comm
+INTEGER            :: myComputeNodeRank               !> Rank of current proc on current compute-node
+INTEGER            :: myLeaderGroupRank               !> Rank of compute-node root in compute-node-root comm
+INTEGER,ALLOCATABLE:: MPIRankGlobal(:)                !> Array of size nProcessors holding the global rank of each proc
+INTEGER,ALLOCATABLE:: MPIRankShared(:)                !> Array of size nProcessors holding the shared rank of each proc
+INTEGER            :: nComputeNodeProcessors          !> Number of procs on current compute-node
+INTEGER            :: nLeaderGroupProcs               !> Number of nodes
+INTEGER            :: nProcessors_Global              !> Number of total procs
+INTEGER            :: MPI_COMM_SHARED                 !> Communicator on current compute-node
+INTEGER            :: MPI_COMM_LEADERS_SHARED         !> Communicator compute-node roots (my_rank_shared=0)
 
 ! Mesh
-REAL(KIND=8),POINTER    :: BezierControlPoints3D_Shared(:,:,:,:)      !> BezierControlPoints3D on current node
-INTEGER                 :: BezierControlPoints3D_Shared_Win           !> Pointer to shared memory window
-!REAL,POINTER            :: XiEtaZetaBasis_Shared(:,:,:)
-!INTEGER                 :: XiEtaZetaBasis_Shared_Win                  !> Pointer to shared memory window
-!REAL,POINTER            :: slenXiEtaZetaBasis_Shared(:,:)
-!INTEGER                 :: slenXiEtaZetaBasis_Shared_Win              !> Pointer to shared memory window
-INTEGER,POINTER         :: PartHaloElemToProc_Shared(:,:)             !> PartHaloElemToProc mapping on current node
-INTEGER                 :: PartHaloElemToProc_Shared_Win              !> Pointer to shared memory window
+!> Counters
+INTEGER            :: nNonUniqueGlobalSides           !> total nb. of non-unique sides of mesh (hexahedral: 6*nElems)
+INTEGER            :: nNonUniqueGlobalNodes           !> total nb. of non-unique nodes of mesh (hexahedral: 8**NGeo * nElems)
+INTEGER            :: nNonUniqueGlobalTrees           !> total nb. of trees
+INTEGER            :: nUniqueMasterMortarSides        !> total nb. of master mortar sides in the mesh
+INTEGER            :: nComputeNodeElems               !> Number of elems on current compute-node
+INTEGER            :: nComputeNodeSides               !> Number of sides on current compute-node
+INTEGER            :: nComputeNodeNodes               !> Number of nodes on current compute-node
+INTEGER            :: nComputeNodeTrees               !> Number of trees on current compute-node
+INTEGER            :: nComputeNodeTotalElems          !> Number of elems on current compute-node (including halo region)
+INTEGER            :: nComputeNodeTotalSides          !> Number of sides on current compute-node (including halo region)
+INTEGER            :: nComputeNodeTotalNodes          !> Number of nodes on current compute-node (including halo region)
+INTEGER            :: offsetComputeNodeElem           !> elem offset of compute-node root
+INTEGER            :: offsetComputeNodeSide           !> side offset of compute-node root
+INTEGER            :: offsetComputeNodeNode           !> node offset of compute-node root
+INTEGER            :: offsetComputeNodeTree           !> tree offset of compute-node root
 
+INTEGER            :: nComputeNodeBCSides
 
-#endif /* MPI_SHARED */
+INTEGER, ALLOCATABLE :: CNTotalElem2GlobalElem(:)     !> Compute Nodes mapping 1:nTotal -> 1:nGlobal
+INTEGER, ALLOCATABLE :: GlobalElem2CNTotalElem(:)     !> Reverse Mapping
+
+! Shared arrays containing information for complete mesh
+INTEGER,POINTER :: ElemInfo_Shared(:,:)
+INTEGER         :: ElemInfo_Shared_Win
+
+INTEGER,POINTER :: ElemToProcID_Shared(:)
+INTEGER         :: ElemToProcID_Shared_Win
+
+INTEGER,POINTER :: SideInfo_Shared(:,:)
+INTEGER         :: SideInfo_Shared_Win
+
+INTEGER,POINTER :: NodeInfo_Shared(:)
+INTEGER         :: NodeInfo_Shared_Win
+REAL,POINTER    :: NodeCoords_Shared(:,:)
+INTEGER         :: NodeCoords_Shared_Win
+
+REAL,POINTER    :: xiMinMax_Shared(:,:,:)
+INTEGER         :: xiMinMax_Shared_Win
+REAL,POINTER    :: TreeCoords_Shared(:,:,:,:,:)
+INTEGER         :: TreeCoords_Shared_Win
+INTEGER,POINTER :: ElemToTree_Shared(:)
+INTEGER         :: ElemToTree_Shared_Win
+
+INTEGER,POINTER :: ElemToBCSides_Shared(:,:)            !> Mapping from elem to BC sides within halo eps
+INTEGER         :: ElemToBCSides_Shared_Win
+REAL,POINTER    :: SideBCMetrics_Shared(:,:)            !> Metrics for BC sides, see piclas.h
+INTEGER         :: SideBCMetrics_Shared_Win             !> 1 - Global SideID
+                                                        !> 2 - ElemID for BC side (non-unique)
+                                                        !> 3 - Distance from BC side to element origin
+                                                        !> 4 - Radius of BC Side
+                                                        !> 5 - Origin of BC Side, x-coordinate
+                                                        !> 6 - Origin of BC Side, y-coordinate
+                                                        !> 7 - Origin of BC Side, z-coordinate
+
+INTEGER,POINTER :: FIBGM_nElems_Shared(:,:,:)           !> FastInitBackgroundMesh of compute node
+INTEGER         :: FIBGM_nElems_Shared_Win
+INTEGER,POINTER :: FIBGM_Element_Shared(:)              !> FastInitBackgroundMesh of compute node
+INTEGER         :: FIBGM_Element_Shared_Win
+
+REAL,POINTER    :: BoundsOfElem_Shared(:,:,:)           !> Cartesian bounding box around element
+INTEGER         :: BoundsOfElem_Shared_Win
+INTEGER,POINTER :: ElemToBGM_Shared(:,:)                !> BGM Bounding box around element (respective BGM indices) of compute node
+INTEGER         :: ElemToBGM_Shared_Win
+INTEGER,POINTER :: FIBGM_offsetElem_Shared(:,:,:)
+INTEGER         :: FIBGM_offsetElem_Shared_Win
+
+REAL,POINTER    :: XCL_NGeo_Array(:)                          !> 1D array, pointer changes to proper array bounds
+INTEGER         :: XCL_NGeo_Shared_Win
+REAL,POINTER    :: dXCL_NGeo_Array(:)                         !> 1D array, pointer changes to proper array bounds
+INTEGER         :: dXCL_NGeo_Shared_Win
+REAL,POINTER    :: BezierControlPoints3D_Shared(:)            !> BezierControlPoints in 1D array. Pointer changes to proper array bounds
+INTEGER         :: BezierControlPoints3D_Shared_Win
+REAL,POINTER    :: BezierControlPoints3DElevated_Shared(:)    !> BezierControlPoints in 1D array. Pointer changes to proper array bounds
+INTEGER         :: BezierControlPoints3DElevated_Shared_Win
+REAL,POINTER    :: ElemsJ_Shared(:)                           !> 1/DetJac for each Gauss Point. 1D array, pointer changes to proper array bounds
+INTEGER         :: ElemsJ_Shared_Win
+REAL,POINTER    :: ElemEpsOneCell_Shared(:)                   !> tolerance for particle in inside ref element 1+epsinCell
+INTEGER         :: ElemEpsOneCell_Shared_Win
+
+REAL,POINTER    :: ElemBaryNGeo_Shared(:,:)
+INTEGER         :: ElemBaryNGeo_Shared_Win
+REAL,POINTER    :: ElemRadiusNGeo_Shared(:)
+INTEGER         :: ElemRadiusNGeo_Shared_Win
+REAL,POINTER    :: ElemRadius2NGeo_Shared(:)
+INTEGER         :: ElemRadius2NGeo_Shared_Win
+REAL,POINTER    :: XiEtaZetaBasis_Shared(:,:,:)
+INTEGER         :: XiEtaZetaBasis_Shared_Win
+REAL,POINTER    :: slenXiEtaZetaBasis_Shared(:,:)
+INTEGER         :: slenXiEtaZetaBasis_Shared_Win
+
+LOGICAL,POINTER :: ElemCurved_Shared(:)                 !> Flag if an element is curved
+INTEGER         :: ElemCurved_Shared_Win
+LOGICAL,POINTER :: ConcaveElemSide_Shared(:,:)
+INTEGER         :: ConcaveElemSide_Shared_Win
+INTEGER,POINTER :: ElemNodeID_Shared(:,:)               !> Contains the 8 corner nodes of an element, important for NGeo > 1
+INTEGER         :: ElemNodeID_Shared_Win
+INTEGER,POINTER :: ElemSideNodeID_Shared(:,:,:)         !> Contains the 4 corner nodes of the local sides in an element
+INTEGER         :: ElemSideNodeID_Shared_Win
+REAL,POINTER    :: ElemMidPoint_Shared(:,:)
+INTEGER         :: ElemMidPoint_Shared_Win
+
+REAL,POINTER    :: SideSlabNormals_Shared(:,:,:)
+INTEGER         :: SideSlabNormals_Shared_Win
+REAL,POINTER    :: SideSlabIntervals_Shared(:,:)
+INTEGER         :: SideSlabIntervals_Shared_Win
+LOGICAL,POINTER :: BoundingBoxIsEmpty_Shared(:)
+INTEGER         :: BoundingBoxIsEmpty_Shared_Win
+
+INTEGER,POINTER :: SideType_Shared(:)
+INTEGER         :: SideType_Shared_Win
+REAL,POINTER    :: SideDistance_Shared(:)
+INTEGER         :: SideDistance_Shared_Win
+REAL,POINTER    :: SideNormVec_Shared(:,:)
+INTEGER         :: SideNormVec_Shared_Win
+
+REAL,POINTER    :: BaseVectors0_Shared(:,:)
+INTEGER         :: BaseVectors0_Shared_Win
+REAL,POINTER    :: BaseVectors1_Shared(:,:)
+INTEGER         :: BaseVectors1_Shared_Win
+REAL,POINTER    :: BaseVectors2_Shared(:,:)
+INTEGER         :: BaseVectors2_Shared_Win
+REAL,POINTER    :: BaseVectors3_Shared(:,:)
+INTEGER         :: BaseVectors3_Shared_Win
+REAL,POINTER    :: BaseVectorsScale_Shared(:)
+INTEGER         :: BaseVectorsScale_Shared_Win
+
+! Shared arrays containing information for mesh on compute node
+REAL,POINTER    :: ElemVolume_Shared(:)
+INTEGER         :: ElemVolume_Shared_Win
+REAL,POINTER    :: ElemMPVolumePortion_Shared(:)
+INTEGER         :: ElemMPVolumePortion_Shared_Win
+REAL,POINTER    :: ElemCharLength_Shared(:)
+INTEGER         :: ElemCharLength_Shared_Win
+REAL,POINTER    :: ElemCharLengthX_Shared(:)
+INTEGER         :: ElemCharLengthX_Shared_Win
+REAL,POINTER    :: ElemCharLengthY_Shared(:)
+INTEGER         :: ElemCharLengthY_Shared_Win
+REAL,POINTER    :: ElemCharLengthZ_Shared(:)
+INTEGER         :: ElemCharLengthZ_Shared_Win
+
+!> Solution
+REAL,POINTER       :: U_Shared(:,:,:,:,:)             !> DG solution on current node
+INTEGER            :: U_Shared_Win                    !> Pointer to shared memory window
+
+#endif /* USE_MPI */
 END MODULE

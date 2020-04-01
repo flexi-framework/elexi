@@ -75,14 +75,11 @@ USE MOD_Particle_Surfaces, ONLY:InitParticleSurfaces
 #if USE_MPI
 USE MOD_Particle_MPI,      ONLY:InitParticleMPI
 USE MOD_LoadBalance,       ONLY:DefineParametersLoadBalance,InitLoadBalance
-#endif /*MPI*/
-#if USE_MPI_SHARED
-USE MOD_MPI_Shared,        ONLY:DefineParametersMPIShared,InitMPIShared
-USE MOD_Particle_MPI_Shared,ONLY: InitMeshShared,InitParticleMeshShared
-#endif
+USE MOD_Particle_MPI_Shared,ONLY:DefineParametersMPIShared,InitMPIShared
 #if USE_LOADBALANCE
 USE MOD_Restart_Vars,      ONLY:DoRestart
 #endif /*LOADBALANCE*/
+#endif /*MPI*/
 #endif /*PARTICLES*/
 USE MOD_Sponge,            ONLY:DefineParametersSponge,InitSponge
 #if FV_ENABLED
@@ -173,8 +170,6 @@ CALL DefineParametersParticleErosion()
 CALL DefineParametersErosionPoints
 #if USE_MPI
 CALL DefineParametersLoadBalance()
-#endif
-#if USE_MPI_SHARED
 CALL DefineParametersMPIShared()
 #endif
 #endif /*PARTICLES*/
@@ -226,8 +221,11 @@ CALL InitFV_Basis()
 #endif
 CALL InitMortar()
 CALL InitOutput()
+#if USE_PARTICLES
 #if USE_LOADBALANCE
 CALL InitLoadBalance()
+#endif
+CALL InitMPIShared()
 #endif
 CALL InitMesh(meshMode=2)
 CALL InitRestart()

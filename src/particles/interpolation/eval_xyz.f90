@@ -172,7 +172,6 @@ USE MOD_Particle_Mesh_Vars,      ONLY:wBaryCL_NGeo1,XiCL_NGeo1
 USE MOD_Particle_Mesh_Vars,      ONLY:ElemCurved
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars,      ONLY:XCL_NGeo_Shared,dXCL_NGeo_Shared
-!USE MOD_MPI_Shared_Vars,         ONLY:GlobalElem2CNTotalElem
 #else
 USE MOD_Mesh_Vars,               ONLY:dXCL_NGeo,XCL_NGeo
 #endif
@@ -585,7 +584,7 @@ USE MOD_Particle_Mesh_Vars,      ONLY:XiEtaZetaBasis,slenXiEtaZetaBasis,XCL_NGeo
 USE MOD_Particle_Mesh_Vars,      ONLY:XCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Tracking_vars,  ONLY:DoRefMapping
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars,ONLY:ElemBaryNGeo_Shared
+USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo_Shared
 #else
 USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo
 #endif

@@ -28,7 +28,6 @@ INTERFACE IdentifyPartExchangeProcs
   MODULE PROCEDURE IdentifyPartExchangeProcs
 END INTERFACE
 
-
 PUBLIC :: IdentifyPartExchangeProcs
 !===================================================================================================================================
 
@@ -44,11 +43,13 @@ SUBROUTINE IdentifyPartExchangeProcs
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
-USE MOD_Particle_Mesh          ,ONLY: GetGlobalNonUniqueSideID
-USE MOD_Particle_MPI_Vars      ,ONLY: halo_eps
+USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem
+USE MOD_Particle_Globals        ,ONLY: VECNORM
+USE MOD_Particle_Mesh           ,ONLY: GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,BoundsOfElem_Shared
+USE MOD_Particle_MPI_Vars       ,ONLY: halo_eps
 USE MOD_Particle_MPI_Shared_Vars
-USE MOD_Particle_MPI_Vars      ,ONLY: nExchangeProcessors,ExchangeProcToGlobalProc,GlobalProcToExchangeProc
+USE MOD_Particle_MPI_Vars       ,ONLY: nExchangeProcessors,ExchangeProcToGlobalProc,GlobalProcToExchangeProc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------

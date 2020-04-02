@@ -16,7 +16,7 @@
 !===================================================================================================================================
 ! Contains tools for particles
 !===================================================================================================================================
-MODULE MOD_part_tools
+MODULE MOD_Part_Tools
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -26,7 +26,12 @@ INTERFACE UpdateNextFreePosition
   MODULE PROCEDURE UpdateNextFreePosition
 END INTERFACE
 
+INTERFACE DiceUnitVector
+  MODULE PROCEDURE DiceUnitVector
+END INTERFACE
+
 PUBLIC :: UpdateNextFreePosition
+PUBLIC :: DiceUnitVector
 !===================================================================================================================================
 
 CONTAINS
@@ -133,4 +138,4 @@ DiceUnitVector(2) = aVec * SIN(bVec)
 
 END FUNCTION DiceUnitVector
 
-END MODULE MOD_part_tools
+END MODULE MOD_Part_Tools

@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !==================================================================================================================================
 ! Contains the routines that set up communicators and control non-blocking communication
@@ -36,6 +37,15 @@ END INTERFACE
 
 INTERFACE FinalizeParticles
   MODULE PROCEDURE FinalizeParticles
+END INTERFACE
+
+INTERFACE PortabilityGetPID
+  FUNCTION GetPID_C() BIND (C, name='getpid')
+    !GETPID() is an intrinstic compiler function in gnu. This routine ensures the portability with other compilers.
+    USE ISO_C_BINDING,         ONLY: PID_T => C_INT
+    IMPLICIT NONE
+    INTEGER(KIND=PID_T)        :: GetPID_C
+  END FUNCTION GetPID_C
 END INTERFACE
 
 PUBLIC :: DefineParametersParticles
@@ -79,9 +89,6 @@ CALL prms%CreateLogicalOption('Part-TrackPosition',         'Track particle posi
 CALL prms%CreateLogicalOption('Part-WriteMacroSurfaceValues','Set [T] to activate iteration dependant sampling and h5 output'    //&
                                                             ' surfaces.',                                                          &
                                                                                                             '.FALSE.')
-CALL prms%CreateLogicalOption('Part-KeepWallParticles',     'Flag if particles stuck to walls through fouling should be removed',  &
-                                                                                                            '.FALSE.')
-CALL prms%CreateLogicalOption('printRandomSeeds',           'Flag defining if random seeds are written.',   '.FALSE.')
 CALL prms%CreateLogicalOption('Part-AllowLoosing',          'Flag if a lost particle should abort the programm','.FALSE.')
 CALL prms%CreateLogicalOption('Part-LowVeloRemove',         'Flag if low velocity particles should be removed', '.FALSE.')
 
@@ -341,6 +348,7 @@ USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Erosion_Vars
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_SGS,               ONLY: ParticleSGS
+USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod,DoRefMapping,TriaTracking
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
@@ -358,6 +366,7 @@ REAL,INTENT(IN),OPTIONAL       :: ManualTimeStep_opt                            
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                        :: nTrackingMethod
 !===================================================================================================================================
 IF(ParticlesInitIsDone)THEN
    SWRITE(*,*) "InitParticles already called."
@@ -366,11 +375,29 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES ...'
 
-!IF(.NOT.ALLOCATED(nPartsPerElem))THEN
-!  ALLOCATE(nPartsPerElem(1:nElems))
-!  nPartsPerElem=0
-!  CALL AddToElemData(ElementOut,'nPartsPerElem',LongIntArray=nPartsPerElem(:))
-!END IF
+! Find tracking method immediately, a lot of the later variables depend on it
+nTrackingMethod = CountOption('TrackingMethod')
+IF (nTrackingMethod.EQ.1) THEN
+  ! New selection setting DoRefMapping and TriaTracking for compatibility
+  TrackingMethod  = GETINTFROMSTR('TrackingMethod')
+  SELECT CASE(TrackingMethod)
+  CASE(REFMAPPING)
+    DoRefMapping=.TRUE.
+    TriaTracking=.FALSE.
+  CASE(TRACING)
+    DoRefMapping=.FALSE.
+    TriaTracking=.FALSE.
+  CASE(TRIATRACKING)
+    DoRefMapping=.FALSE.
+    TriaTracking=.TRUE.
+  END SELECT
+ELSE IF (nTrackingMethod.EQ.0) THEN
+  ! Old selection explicitly stating DoRefMapping and TriaTracking
+  DoRefMapping = GETLOGICAL('DoRefMapping',".TRUE.")
+  TriaTracking = GETLOGICAL('TriaTracking','.FALSE.')
+ELSE
+  CALL CollectiveStop(__STAMP__,"Invalid number of tracking methods given!")
+END IF
 
 CALL InitializeVariables(ManualTimeStep_opt)
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
@@ -384,6 +411,8 @@ CALL ParticleInitSGS()
 CALL ParticleRestart()
 ! Initialize emission. If no particles are present, assume restart from pure fluid and perform initial inserting
 CALL InitializeParticleEmission()
+! TODO
+!CALL InitializeParticleSurfaceflux()
 
 ! Initialize surface sampling
 IF (WriteMacroSurfaceValues) THEN
@@ -410,19 +439,18 @@ SUBROUTINE InitializeVariables(ManualTimeStep_opt)
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_ReadInTools
-!USE MOD_Equation_Vars         ,ONLY:IniRefState, RefStatePrim
-USE MOD_Mesh_Vars,             ONLY:BoundaryName,BoundaryType, nBCs
 USE MOD_Particle_Vars
-USE MOD_Particle_Boundary_Vars,ONLY:PartBound,nPartBound,PartAuxBC,LowVeloRemove
-USE MOD_Particle_Boundary_Vars,ONLY:nAuxBCs,AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone,AuxBC_parabol,UseAuxBCs
-USE MOD_Particle_Interpolation,ONLY:InitParticleInterpolation
-USE MOD_Particle_Mesh,         ONLY:InitFIBGM,MarkAuxBCElems
-USE MOD_Particle_Mesh_Vars,    ONLY:GEO
-USE MOD_Particle_MPI_Vars,     ONLY:SafetyFactor,halo_eps_velo
+USE MOD_Particle_Boundary_Vars, ONLY:LowVeloRemove
+USE MOD_Particle_Boundary_Vars, ONLY:nAuxBCs
+USE MOD_Particle_Interpolation, ONLY:InitParticleInterpolation
+USE MOD_Particle_Mesh,          ONLY:InitParticleMesh
+USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
+USE MOD_Particle_MPI_Vars,      ONLY:SafetyFactor,halo_eps_velo
 #if USE_MPI
-USE MOD_Particle_MPI,          ONLY:InitEmissionComm
-USE MOD_Particle_MPI_Vars,     ONLY:PartMPI
-#endif /*MPI*/
+USE MOD_Particle_MPI,           ONLY:InitEmissionComm
+USE MOD_Particle_MPI_Halo,      ONLY:IdentifyPartExchangeProcs
+USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -432,28 +460,80 @@ REAL,INTENT(IN),OPTIONAL       :: ManualTimeStep_opt                            
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: iSpec, iInit, iPartBound, iSeed
-INTEGER               :: SeedSize, iBC, iExclude
-INTEGER               :: iAuxBC, nAuxBCplanes, nAuxBCcylinders, nAuxBCcones, nAuxBCparabols
-INTEGER               :: ALLOCSTAT
-CHARACTER(32)         :: tmpStr, tmpStr2, tmpStr3
-CHARACTER(200)        :: tmpString
-CHARACTER(200), ALLOCATABLE        :: tmpStringBC(:)
-LOGICAL               :: TrueRandom
-INTEGER,ALLOCATABLE   :: iSeeds(:)
-REAL                  :: n_vec(3), cos2, rmax
-REAL, DIMENSION(3,1)  :: n,n1,n2
-REAL, DIMENSION(3,3)  :: rot1, rot2
-REAL                  :: alpha1, alpha2
 !===================================================================================================================================
-! Read print flags
-printRandomSeeds      = GETLOGICAL(  'printRandomSeeds','.FALSE.')
+CALL AllocateParticleArrays()
+CALL InitializeVariablesRandomNumbers()
 
-PartGravity           = GETREALARRAY('Part-Gravity'          ,3  ,'0. , 0. , 0.')
+! gravitational acceleration
+PartGravity             = GETREALARRAY('Part-Gravity'          ,3  ,'0. , 0. , 0.')
+! Output of macroscopic surface values
+WriteMacroSurfaceValues = GETLOGICAL( 'Part-WriteMacroSurfaceValues','.FALSE.')
 
+! Number of species
+nSpecies                = GETINT(     'Part-nSpecies','1')
+! Abort if running particle code without any species
+IF (nSpecies.LE.0) &
+  CALL abort(__STAMP__,'ERROR: nSpecies .LE. 0:', nSpecies)
+! Allocate species array
+ALLOCATE(Species(1:nSpecies))
+CALL InitializeVariablesSpeciesInits()
+
+CALL InitializeVariablesPartBoundary()
+
+! Flag if a lost particle should abort the program
+AllowLoosing      = GETLOGICAL('Part-AllowLoosing' ,'.FALSE.')
+! Flag if low velocity particles should be removed
+LowVeloRemove     = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
+
+! AuxBCs
+nAuxBCs=GETINT('Part-nAuxBCs','0')
+CALL InitializeVariablesAuxBC()
+
+!-- Build BGM and halo region
+CALL InitParticleMesh()
+#if USE_MPI
+!-- Build MPI communication
+CALL IdentifyPartExchangeProcs()
+#endif
+
+! Initialize interpolation and particle-in-cell for field -> particle coupling
+!--> Could not be called earlier because a halo region has to be build depending on the given BCs
+CALL InitParticleInterpolation()
+
+! Initialize MPI communicator for emmission procs
+#if USE_MPI
+CALL InitEmissionComm()
+CALL MPI_BARRIER(PartMPI%COMM,IERROR)
+#endif /*MPI*/
+
+SWRITE(UNIT_StdOut,'(132("-"))')
+
+END SUBROUTINE InitializeVariables
+
+
+SUBROUTINE AllocateParticleArrays()
+!===================================================================================================================================
+! Initialize the variables first
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_ReadInTools
+USE MOD_Particle_Vars
+USE MOD_Particle_Tracking_Vars  ,ONLY: DoRefMapping
+USE MOD_Mesh_Vars               ,ONLY: nElems
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER               :: ALLOCSTAT
+!===================================================================================================================================
 ! Allocate array to hold particle properties
 ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
-         PartReflCount(       1:PDM%maxParticleNumber),    &
+
          LastPartPos(     1:3,1:PDM%maxParticleNumber),    &
          PartPosRef(      1:3,1:PDM%MaxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
@@ -474,7 +554,6 @@ ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
          PEM%hasCrossedSM(    1:PDM%maxParticleNumber),    &
 #endif
          STAT=ALLOCSTAT)
-
 IF (ALLOCSTAT.NE.0) &
   CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
 
@@ -494,21 +573,96 @@ PartPosRef                                   =-888.
 #if USE_SM
 PEM%hasCrossedSM                             = .FALSE.
 #endif
+         
+END SUBROUTINE AllocateParticleArrays
 
-! Initialize tracking of particle trapped by fouling
-KeepWallParticles       = GETLOGICAL('Part-KeepWallParticles','.FALSE.')
 
-! Output of macroscopic values
-WriteMacroSurfaceValues = GETLOGICAL('Part-WriteMacroSurfaceValues','.FALSE.')
+SUBROUTINE InitializeVariablesRandomNumbers()
+!===================================================================================================================================
+! Initialize the variables first
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_ReadInTools
+USE MOD_Particle_Vars
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER               :: iSeed, nRandomSeeds,SeedSize
+CHARACTER(32)         :: hilf
+!===================================================================================================================================
+!--- initialize randomization
+! Read print flags
+nRandomSeeds = GETINT('Part-NumberOfRandomSeeds','0')
+! specifies compiler specific minimum number of seeds
+CALL RANDOM_SEED(Size = SeedSize)
 
-! Number of species
-nSpecies                = GETINT(    'Part-nSpecies','1')
-! Abort if running particle code without any species
-IF (nSpecies.LE.0) &
-  CALL abort(__STAMP__,'ERROR: nSpecies .LE. 0:', nSpecies)
-! Allocate species array
-ALLOCATE(Species(1:nSpecies))
+ALLOCATE(Seeds(SeedSize))
+! to ensure a solid run when an unfitting number of seeds is provided in ini
+Seeds(:)=1
+IF(nRandomSeeds.EQ.-1) THEN
+  ! ensures different random numbers through irreproducable random seeds (via System_clock)
+  CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
+ELSE IF(nRandomSeeds.EQ.0) THEN
+ !   IF (Restart) THEN
+ !   CALL !numbers from state file
+ ! ELSE IF (.NOT.Restart) THEN
+  CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
+ELSE IF(nRandomSeeds.GT.0) THEN
+  ! read in numbers from ini
+  IF(nRandomSeeds.NE.SeedSize) THEN
+    SWRITE (*,*) 'Expected ',SeedSize,'seeds. Provided ',nRandomSeeds,'. Computer uses default value for all unset values.'
+  END IF
+  
+  DO iSeed=1,MIN(SeedSize,nRandomSeeds)
+    WRITE(UNIT=hilf,FMT='(I0)') iSeed
+    Seeds(iSeed)= GETINT('Particles-RandomSeed'//TRIM(hilf))
+  END DO
+  
+  IF (ALL(Seeds(:).EQ.0)) CALL ABORT(__STAMP__,'Not all seeds can be set to zero ')
+  CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
+ELSE
+  SWRITE (*,*) 'Error: nRandomSeeds not defined.'//&
+  'Choose nRandomSeeds'//&
+  '=-1    pseudo random'//&
+  '= 0    hard-coded deterministic numbers'//&
+  '> 0    numbers from ini. Expected ',SeedSize,'seeds.'
+END IF
 
+END SUBROUTINE InitializeVariablesRandomNumbers
+
+
+SUBROUTINE InitializeVariablesSpeciesInits()
+!===================================================================================================================================
+! Initialize the variables first
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Globals
+USE MOD_ReadInTools
+USE MOD_Mesh_Vars              ,ONLY: nElems
+USE MOD_Particle_Vars
+USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemVolume_shared
+#if USE_MPI
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER               :: iSpec,iInit,iExclude
+CHARACTER(32)         :: tmpStr,tmpStr2,tmpStr3
+!===================================================================================================================================
 ! Loop over all species and get requested data
 DO iSpec = 1, nSpecies
   WRITE(UNIT=tmpStr,FMT='(I2)') iSpec
@@ -542,27 +696,27 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%YieldCoeff            = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-YieldCoeff','0.')
 
     ! Emission and init data
-    Species(iSpec)%Init(iInit)%UseForInit            = GETLOGICAL('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-UseForInit','.TRUE.')
-    Species(iSpec)%Init(iInit)%UseForEmission        = GETLOGICAL('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-UseForEmission','.TRUE.')
-    Species(iSpec)%Init(iInit)%SpaceIC               = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-SpaceIC','cuboid'))
-    Species(iSpec)%Init(iInit)%velocityDistribution  = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-velocityDistribution','constant'))
-    Species(iSpec)%Init(iInit)%InflowRiseTime        = GETREAL('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-InflowRiseTime','0.')
-    Species(iSpec)%Init(iInit)%initialParticleNumber = GETINT('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-initialParticleNumber','0')
-    Species(iSpec)%Init(iInit)%RadiusIC              = GETREAL('Part-Species'//TRIM(tmpStr2)//'-RadiusIC','1.')
+    Species(iSpec)%Init(iInit)%UseForInit            = GETLOGICAL(  'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-UseForInit','.TRUE.')
+    Species(iSpec)%Init(iInit)%UseForEmission        = GETLOGICAL(  'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-UseForEmission','.TRUE.')
+    Species(iSpec)%Init(iInit)%SpaceIC               = TRIM(GETSTR( 'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-SpaceIC','cuboid'))
+    Species(iSpec)%Init(iInit)%velocityDistribution  = TRIM(GETSTR( 'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-velocityDistribution','constant'))
+    Species(iSpec)%Init(iInit)%InflowRiseTime        = GETREAL(     'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-InflowRiseTime','0.')
+    Species(iSpec)%Init(iInit)%initialParticleNumber = GETINT(      'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-initialParticleNumber','0')
+    Species(iSpec)%Init(iInit)%RadiusIC              = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC','1.')
     Species(iSpec)%Init(iInit)%NormalIC              = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC',3,'0. , 0. , 1.')
     Species(iSpec)%Init(iInit)%BasePointIC           = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC',3,'0. , 0. , 0.')
-    Species(iSpec)%Init(iInit)%BaseVariance          = GETREAL('Part-Species'//TRIM(tmpStr2)//'-BaseVariance','1.')
+    Species(iSpec)%Init(iInit)%BaseVariance          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-BaseVariance','1.')
     Species(iSpec)%Init(iInit)%BaseVector1IC         = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector1IC',3,'1. , 0. , 0.')
     Species(iSpec)%Init(iInit)%BaseVector2IC         = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector2IC',3,'0. , 1. , 0.')
-    Species(iSpec)%Init(iInit)%CuboidHeightIC        = GETREAL('Part-Species'//TRIM(tmpStr2)//'-CuboidHeightIC','1.')
-    Species(iSpec)%Init(iInit)%CylinderHeightIC      = GETREAL('Part-Species'//TRIM(tmpStr2)//'-CylinderHeightIC','1.')
-    Species(iSpec)%Init(iInit)%CalcHeightFromDt      = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-CalcHeightFromDt','.FALSE.')
+    Species(iSpec)%Init(iInit)%CuboidHeightIC        = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-CuboidHeightIC','1.')
+    Species(iSpec)%Init(iInit)%CylinderHeightIC      = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-CylinderHeightIC','1.')
+    Species(iSpec)%Init(iInit)%CalcHeightFromDt      = GETLOGICAL(  'Part-Species'//TRIM(tmpStr2)//'-CalcHeightFromDt','.FALSE.')
 !   Species(iSpec)%Init(iInit)%VeloIC                = GETREAL('Part-Species'//TRIM(tmpStr2)//'-VeloIC','0.')
-    Species(iSpec)%Init(iInit)%VeloTurbIC            = GETREAL('Part-Species'//TRIM(tmpStr2)//'-VeloTurbIC','0.')
+    Species(iSpec)%Init(iInit)%VeloTurbIC            = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloTurbIC','0.')
     Species(iSpec)%Init(iInit)%VeloVecIC             = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-VeloVecIC',3,'0. , 0. , 0.')
-    Species(iSpec)%Init(iInit)%ParticleEmissionType  = GETINT('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-ParticleEmissionType','2')
-    Species(iSpec)%Init(iInit)%ParticleEmission      = GETREAL('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-ParticleEmission','0.')
-    Species(iSpec)%Init(iInit)%NumberOfExcludeRegions= GETINT('Part-Species'//TRIM(tmpStr2)//'-NumberOfExcludeRegions','0')
+    Species(iSpec)%Init(iInit)%ParticleEmissionType  = GETINT(      'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-ParticleEmissionType','2')
+    Species(iSpec)%Init(iInit)%ParticleEmission      = GETREAL(     'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-ParticleEmission','0.')
+    Species(iSpec)%Init(iInit)%NumberOfExcludeRegions= GETINT(      'Part-Species'//TRIM(tmpStr2)//'-NumberOfExcludeRegions','0')
 
     ! Nullify additional init data here
     Species(iSpec)%Init(iInit)%InsertedParticle      = 0
@@ -721,6 +875,35 @@ DO iSpec = 1, nSpecies
   END DO ! iInit
 END DO ! iSpec
 
+END SUBROUTINE InitializeVariablesSpeciesInits
+
+
+SUBROUTINE InitializeVariablesPartBoundary()
+!===================================================================================================================================
+! Initialize the variables first
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_ReadInTools
+USE MOD_Mesh_Vars              ,ONLY: BoundaryName,BoundaryType,nBCs
+USE MOD_Particle_Vars
+USE MOD_Particle_Boundary_Vars ,ONLY: PartBound,nPartBound
+USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
+USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER               :: iPartBound,iBC
+CHARACTER(32)         :: tmpStr
+CHARACTER(200)        :: tmpString
+INTEGER               :: ALLOCSTAT
+CHARACTER(200), ALLOCATABLE :: tmpStringBC(:)
+!===================================================================================================================================
 ! Read in boundary parameters
 ! Leave out this check in FLEXI even though we should probably do it
 !dummy_int  = CountOption('Part-nBounds')       ! check if Part-nBounds is present in .ini file
@@ -839,89 +1022,41 @@ END DO
 
 GEO%nPeriodicVectors=GEO%nPeriodicVectors/2
 
+SDEALLOCATE(tmpStringBC)
 
-!--- Read Manual Time Step
-useManualTimeStep = .FALSE.
-!> Check if we're running Posti
-IF (.NOT.PRESENT(ManualTimeStep_opt)) ManualTimeStep    = GETREAL('Particles-ManualTimeStep', '0.0')
-IF (ManualTimeStep.GT.0.0)            useManualTimeStep = .True.
+END SUBROUTINE InitializeVariablesPartBoundary
 
-!--- initialize randomization (= random if one or more seeds are 0 or random is wanted)
-nrSeeds = GETINT('Part-NumberOfRandomSeeds','0')
-IF (nrSeeds.GT.0) THEN
-   ALLOCATE(seeds(1:nrSeeds))
-   DO iSeed = 1, nrSeeds
-      WRITE(UNIT=tmpStr,FMT='(I0)') iSeed
-      seeds(iSeed) = GETINT('Particles-RandomSeed'//TRIM(tmpStr),'0')
-   END DO
-END IF
 
-CALL RANDOM_SEED(Size = SeedSize)                ! Check for number of needed Seeds
-TrueRandom = .FALSE.                             ! FALSE for defined random seed
-
-! Check if the correct number of random seeds was given
-IF (nrSeeds.GT.0) THEN
-   IF (nrSeeds.NE.SeedSize) THEN
-      IF(printRandomSeeds)THEN
-        IPWRITE(UNIT_StdOut,*) 'Error: Number of seeds for RNG must be ',SeedSize
-        IPWRITE(UNIT_StdOut,*) 'Random RNG seeds are used'
-      END IF
-      TrueRandom = .TRUE.
-   END IF
-   DO iSeed = 1, nrSeeds
-      IF (Seeds(iSeed).EQ.0) THEN
-         IF(printRandomSeeds)THEN
-           IPWRITE(UNIT_StdOut,*) 'Error: ',SeedSize,' seeds for RNG must be defined'
-           IPWRITE(UNIT_StdOut,*) 'Random RNG seeds are used'
-         END IF
-         TrueRandom = .TRUE.
-      END IF
-   END DO
-ELSE
-   TrueRandom = .TRUE.
-END IF
-
-! Get true random number if requested
-IF (TrueRandom) THEN
-! Changed in FLEXI to get true random numbers FOR EACH PROC
-   SDEALLOCATE(seeds)
-   ALLOCATE(seeds(SeedSize))
-   CALL RANDOM_SEED(GET = seeds(1:SeedSize))
-#if USE_MPI
-   Seeds(1:SeedSize)    = Seeds(1:SeedSize)+PartMPI%MyRank
-#endif
-   CALL RANDOM_SEED(PUT = Seeds(1:SeedSize))
-ELSE
-#if USE_MPI
-   Seeds(1:SeedSize)    = Seeds(1:SeedSize)+PartMPI%MyRank
-#endif
-   CALL RANDOM_SEED(PUT = Seeds(1:SeedSize))
-END IF
-
-! Get final random seeds and print if requested
-ALLOCATE(iseeds(SeedSize))
-iseeds(:)=0
-CALL RANDOM_SEED(GET = iseeds(1:SeedSize))
-IF(printRandomSeeds)THEN
-  IPWRITE(UNIT_StdOut,*) 'Random seeds in Particle_Interpolation_init:'
-  DO iSeed = 1,SeedSize
-     IPWRITE(UNIT_StdOut,*) iseeds(iSeed)
-  END DO
-END IF
-DEALLOCATE(iseeds)
-
-! Time delay before initial particle insering
-DelayTime         = GETREAL(   'Part-DelayTime'    ,'0.')
-
-! Flag if a lost particle should abort the program
-AllowLoosing      = GETLOGICAL('Part-AllowLoosing' ,'.FALSE.')
-
-! Flag if low velocity particles should be removed
-LowVeloRemove     = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
-
-! AuxBCs
-nAuxBCs=GETINT('Part-nAuxBCs','0')
-
+SUBROUTINE InitializeVariablesAuxBC()
+!===================================================================================================================================
+! Initialize the variables first
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_ReadInTools
+USE MOD_Mesh_Vars              ,ONLY: BoundaryName,BoundaryType,nBCs
+USE MOD_Particle_Globals       ,ONLY: PI,ALMOSTZERO
+USE MOD_Particle_Boundary_Vars ,ONLY: PartAuxBC
+USE MOD_Particle_Boundary_Vars ,ONLY: nAuxBCs,AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone,AuxBC_parabol,UseAuxBCs
+USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping
+USE MOD_Particle_Vars
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER               :: iAuxBC, nAuxBCplanes, nAuxBCcylinders, nAuxBCcones, nAuxBCparabols
+INTEGER               :: iPartBound
+CHARACTER(32)         :: tmpStr,tmpStr2
+CHARACTER(200)        :: tmpString
+REAL                  :: n_vec(3), cos2, rmax
+REAL, DIMENSION(3,1)  :: n,n1,n2
+REAL, DIMENSION(3,3)  :: rot1, rot2
+REAL                  :: alpha1, alpha2
+!===================================================================================================================================
 !--> Only read anything if there are auxiliary BCs
 IF (nAuxBCs.GT.0) THEN
   UseAuxBCs=.TRUE.
@@ -1150,31 +1285,40 @@ ELSE
   UseAuxBCs=.FALSE.
 END IF
 
-! Initialize interpolation and particle-in-cell for field -> particle coupling
-!--> Could not be called earlier because a halo region has to be build depending on the given BCs
-CALL InitParticleInterpolation()
-
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT FIBGM...'
-SafetyFactor  = GETREAL('Part-SafetyFactor','1.0')
-halo_eps_velo = GETREAL('Particles-HaloEpsVelo','0')
-
-! Initialize Fast-Init BackGround Mesh (FIBGM)
-CALL InitFIBGM()
-
-! Initialize MPI communicator for emmission procs
-#if USE_MPI
-CALL InitEmissionComm()
-CALL MPI_BARRIER(PartMPI%COMM,IERROR)
-#endif /*MPI*/
-
-SDEALLOCATE(tmpStringBC)
-
-SWRITE(UNIT_StdOut,'(132("-"))')
-
-END SUBROUTINE InitializeVariables
+END SUBROUTINE InitializeVariablesAuxBC
 
 
+SUBROUTINE InitializeVariablesTimeStep(ManualTimeStep_opt)
+!===================================================================================================================================
+! Initialize the variables first
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_ReadInTools
+USE MOD_Particle_Vars
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN),OPTIONAL   :: ManualTimeStep_opt
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+ !--- Read Manual Time Step
+useManualTimeStep = .FALSE.
+!> Check if we're running Posti
+IF (.NOT.PRESENT(ManualTimeStep_opt)) ManualTimeStep    = GETREAL('Particles-ManualTimeStep', '0.0')
+IF (ManualTimeStep.GT.0.0)            useManualTimeStep = .True.
+
+! Time delay before initial particle insering
+DelayTime         = GETREAL(   'Part-DelayTime'    ,'0.')
+
+END SUBROUTINE InitializeVariablesTimeStep
+ 
+ 
+         
 !===================================================================================================================================
 ! finalize particle variables
 !===================================================================================================================================
@@ -1302,5 +1446,87 @@ INTEGER                           :: j
 mat                      = 0.
 FORALL(j = 1:3) mat(j,j) = 1.
 END SUBROUTINE
+
+
+SUBROUTINE InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
+!===================================================================================================================================
+!> Initialize pseudo random numbers: Create Random_seed array
+!===================================================================================================================================
+! MODULES
+#if USE_MPI
+USE MOD_Particle_MPI_Vars,     ONLY:PartMPI
+#endif
+! IMPLICIT VARIABLE HANDLING
+!===================================================================================================================================
+IMPLICIT NONE
+! VARIABLES
+INTEGER,INTENT(IN)             :: nRandomSeeds
+INTEGER,INTENT(IN)             :: SeedSize
+INTEGER,INTENT(INOUT)          :: Seeds(SeedSize)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! LOCAL VARIABLES
+INTEGER                        :: iSeed,DateTime(8),ProcessID,iStat,OpenFileID,GoodSeeds
+INTEGER(KIND=8)                :: Clock,AuxilaryClock
+LOGICAL                        :: uRandomExists
+!==================================================================================================================================
+
+uRandomExists=.FALSE.
+IF (nRandomSeeds.NE.-1) THEN
+  Clock     = 1536679165842_8
+  ProcessID = 3671
+ELSE
+! First try if the OS provides a random number generator
+  OPEN(NEWUNIT=OpenFileID, FILE="/dev/urandom", ACCESS="stream", &
+       FORM="unformatted", ACTION="read", STATUS="old", IOSTAT=iStat)
+  IF (iStat.EQ.0) THEN
+    READ(OpenFileID) Seeds
+    CLOSE(OpenFileID)
+    uRandomExists=.TRUE.
+  ELSE
+    ! Fallback to XOR:ing the current time and pid. The PID is
+    ! useful in case one launches multiple instances of the same
+    ! program in parallel.
+    CALL SYSTEM_CLOCK(COUNT=Clock)
+    IF (Clock .EQ. 0) THEN
+      CALL DATE_AND_TIME(values=DateTime)
+      Clock =(DateTime(1) - 1970) * 365_8 * 24 * 60 * 60 * 1000 &
+      + DateTime(2) * 31_8 * 24 * 60 * 60 * 1000 &
+      + DateTime(3) * 24_8 * 60 * 60 * 1000 &
+      + DateTime(5) * 60 * 60 * 1000 &
+      + DateTime(6) * 60 * 1000 &
+      + DateTime(7) * 1000 &
+      + DateTime(8)
+    END IF
+    ProcessID = GetPID_C()
+  END IF
+END IF
+IF(.NOT. uRandomExists) THEN
+  Clock = IEOR(Clock, INT(ProcessID, KIND(Clock)))
+  AuxilaryClock=Clock
+  DO iSeed = 1, SeedSize
+#if USE_MPI
+    IF (nRandomSeeds.EQ.0) THEN
+      AuxilaryClock=AuxilaryClock+PartMPI%MyRank
+    ELSE IF(nRandomSeeds.GT.0) THEN
+      AuxilaryClock=AuxilaryClock+(PartMPI%MyRank+1)*Seeds(iSeed)*37
+    END IF
+#else
+    IF (nRandomSeeds.GT.0) THEN
+      AuxilaryClock=AuxilaryClock+Seeds(iSeed)*37
+    END IF
+#endif
+    IF (AuxilaryClock .EQ. 0) THEN
+      AuxilaryClock = 104729
+    ELSE
+      AuxilaryClock = MOD(AuxilaryClock, 4294967296_8)
+    END IF
+    AuxilaryClock = MOD(AuxilaryClock * 279470273_8, 4294967291_8)
+    GoodSeeds = INT(MOD(AuxilaryClock, INT(HUGE(0),KIND=8)), KIND(0))
+    Seeds(iSeed) = GoodSeeds
+  END DO
+END IF
+CALL RANDOM_SEED(PUT=Seeds)
+
+END SUBROUTINE InitRandomSeed
 
 END MODULE MOD_Particle_Init

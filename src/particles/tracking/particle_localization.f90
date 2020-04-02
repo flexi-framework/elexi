@@ -93,14 +93,14 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Preproc
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
-USE MOD_Particle_Mesh_Vars,     ONLY: ElemRadius2NGeo
-USE MOD_Particle_Mesh_Vars,     ONLY: Geo
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo
+USE MOD_Particle_Mesh_Vars     ,ONLY: Geo
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
-USE MOD_Particle_Mesh_Tools    ,ONLY: ParticleInsideQuad3D,GetCNElemID
+USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID
 USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance,TriaTracking
-USE MOD_Utils                  ,ONLY: InsertionSort
+USE MOD_Particle_Utils         ,ONLY: InsertionSort
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars,ONLY: ElemBaryNGeo_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared
 #else
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 #endif
@@ -201,12 +201,14 @@ SUBROUTINE PartInElemCheck(PartPos_In,PartID,ElemID,FoundInElem,IntersectPoint_O
 ! Checks if particle is in Element
 !===================================================================================================================================
 ! MODULES
+USE MOD_Particle_Globals       ,ONLY: ALMOSTZERO
 USE MOD_Particle_Intersection  ,ONLY: ComputePlanarRectIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh          ,ONLY: GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared
 USE MOD_Particle_Surfaces      ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideType,SideNormVec
 USE MOD_Particle_Vars          ,ONLY: LastPartPos
@@ -217,11 +219,6 @@ USE MOD_Particle_Surfaces      ,ONLY: OutputBezierControlPoints
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Intersection  ,ONLY: OutputTrajectory
 #endif /*CODE_ANALYZE*/
-#if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars,ONLY:SideInfo_Shared
-#else
-USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared
-#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -389,10 +386,17 @@ END SUBROUTINE PartInElemCheck
 
 SUBROUTINE ParticleInsideQuad3D(PartStateLoc,ElemID,InElementCheck,Det)
 !===================================================================================================================================
-! checks if particle is inside of linear element with triangulated faces
+!> Checks if particle is inside of a linear element with triangulated faces, compatible with mortars
+!> Regular element: The determinant of a 3x3 matrix, where the three vectors point from the particle to the nodes of a triangle, is
+!>                  is used to determine whether the particle is inside the element. The geometric equivalent is the triple product
+!>                  A*(B x C), spanning a signed volume. If the volume/determinant is positive, then the particle is inside.
+!> Element with neighbouring mortar elements: Additional checks of the smaller sides are required if the particle is in not in the
+!>                                       concave part of the element but in the convex. Analogous procedure using the determinants.
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Mesh_Vars,  ONLY : GEO
+USE MOD_Globals
+USE MOD_Particle_Mesh_Vars    ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars    ,ONLY :ConcaveElemSide_Shared,ElemSideNodeID_Shared
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -406,58 +410,117 @@ REAL   ,INTENT(OUT)           :: Det(6,2)
 LOGICAL,INTENT(OUT)           :: InElementCheck
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                       :: ilocSide, NodeNum
-LOGICAL                       :: PosCheck, NegCheck
-REAL                          :: A(1:3,1:4), cross(3)
+INTEGER                       :: ilocSide, NodeNum, SideID, SideIDMortar, ind, NbElemID, nNbMortars, nlocSides, localSideID
+LOGICAL                       :: PosCheck, NegCheck, InElementCheckMortar, InElementCheckMortarNb
+REAL                          :: A(1:3,1:4), crossP(3)
 !===================================================================================================================================
 InElementCheck = .TRUE.
+InElementCheckMortar = .TRUE.
+!--- Loop over the 6 sides of the element
+nlocSides = ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)
+DO iLocSide = 1,nlocSides
+  SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID) + iLocSide
+  IF (SideInfo_Shared(SIDE_LOCALID,SideID).LE.0) CYCLE
+  localSideID = SideInfo_Shared(SIDE_LOCALID,SideID)
+  DO NodeNum = 1,4
+    !--- A = vector from particle to node coords
+    A(:,NodeNum) = NodeCoords_Shared(:,ElemSideNodeID_Shared(NodeNum,localSideID,ElemID)+1) - PartStateLoc(1:3)
+  END DO
 
-! for all 6 sides of the element
-DO iLocSide = 1,6
-   !--- initialize flags for side checks
-   PosCheck = .FALSE.
-   NegCheck = .FALSE.
+  NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
+  !--- Treatment of sides which are adjacent to mortar elements
+  IF (NbElemID.LT.0) THEN
+    PosCheck = .FALSE.
+    NegCheck = .FALSE.
+    !--- Checking the concave part of the side
+    IF (ConcaveElemSide_Shared(localSideID,ElemID)) THEN
+      ! If the element is actually concave, CalcDetOfTrias determines its determinants
+      Det(localSideID,1:2) = CalcDetOfTrias(A,1)
+      IF (Det(localSideID,1).GE.0) PosCheck = .TRUE.
+      IF (Det(localSideID,2).GE.0) PosCheck = .TRUE.
+      !--- final determination whether particle is in element
+      IF (.NOT.PosCheck) InElementCheckMortar = .FALSE.
+    ELSE
+      ! If its a convex element, CalcDetOfTrias determines the concave determinants
+      Det(localSideID,1:2) = CalcDetOfTrias(A,2)
+      IF (Det(localSideID,1).GE.0) PosCheck = .TRUE.
+      IF (Det(localSideID,2).GE.0) PosCheck = .TRUE.
+      !--- final determination whether particle is in element
+      IF (.NOT.PosCheck) InElementCheckMortar= .FALSE.
+    END IF
+    !--- Checking the convex part of the side
+    IF (.NOT.InElementCheckMortar) THEN
+      InElementCheckMortar = .TRUE.
+      IF (ConcaveElemSide_Shared(localSideID,ElemID)) THEN
+        Det(localSideID,1:2) = CalcDetOfTrias(A,2)
+        IF (Det(localSideID,1).LT.0) NegCheck = .TRUE.
+        IF (Det(localSideID,2).LT.0) NegCheck = .TRUE.
+        !--- final determination whether particle is in element
+        IF (NegCheck) InElementCheckMortar = .FALSE.
+      ELSE
+        Det(localSideID,1:2) = CalcDetOfTrias(A,1)
+        IF (Det(localSideID,1).LT.0) NegCheck = .TRUE.
+        IF (Det(localSideID,2).LT.0) NegCheck = .TRUE.
+        !--- final determination whether particle is in element
+        IF (NegCheck) InElementCheckMortar= .FALSE.
+      END IF
+      !--- Particle is in a convex elem but not in concave, checking additionally the mortar neighbors. If particle is not inside
+      !    the mortar elements, it has to be in the original element.
+      IF (InElementCheckMortar) THEN
+        nNbMortars = MERGE(4,2,SideInfo_Shared(SIDE_NBELEMID,SideID).EQ.-1)
+        DO ind = 1, nNbMortars
+          InElementCheckMortarNb = .TRUE.
+          SideIDMortar = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID) + iLocSide + ind
+          NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideIDMortar)
+          ! If small mortar element not defined, skip it for now, likely not inside the halo region (additional check is performed
+          ! after the MPI communication: ParticleInsideQuad3D_MortarMPI)
+          IF (NbElemID.LT.1) CYCLE
+          CALL ParticleInsideNbMortar(PartStateLoc,NbElemID,InElementCheckMortarNb)
+          IF (InElementCheckMortarNb) THEN
+            InElementCheck = .FALSE.
+            EXIT
+          END IF
+        END DO
+      ELSE
+        InElementCheck = .FALSE.
+      END IF
+    END IF
+  ELSE ! Treatment of regular elements without mortars
+    PosCheck = .FALSE.
+    NegCheck = .FALSE.
+    !--- compute cross product for vector 1 and 3
+    crossP(1) = A(2,1) * A(3,3) - A(3,1) * A(2,3)
+    crossP(2) = A(3,1) * A(1,3) - A(1,1) * A(3,3)
+    crossP(3) = A(1,1) * A(2,3) - A(2,1) * A(1,3)
+    !--- negative determinant of triangle 1 (points 1,3,2):
+    Det(localSideID,1) = crossP(1) * A(1,2) + &
+                      crossP(2) * A(2,2) + &
+                      crossP(3) * A(3,2)
+    Det(localSideID,1) = -det(localSideID,1)
+    !--- determinant of triangle 2 (points 1,3,4):
+    Det(localSideID,2) = crossP(1) * A(1,4) + &
+                      crossP(2) * A(2,4) + &
+                      crossP(3) * A(3,4)
+    IF (Det(localSideID,1).LT.0) THEN
+      NegCheck = .TRUE.
+    ELSE
+      PosCheck = .TRUE.
+    END IF
+    IF (Det(localSideID,2).LT.0) THEN
+      NegCheck = .TRUE.
+    ELSE
+      PosCheck = .TRUE.
+    END IF
+    !--- final determination whether particle is in element
+    IF (ConcaveElemSide_Shared(localSideID,ElemID)) THEN
+      IF (.NOT.PosCheck) InElementCheck = .FALSE.
+    ELSE
+      IF (NegCheck) InElementCheck = .FALSE.
+    END IF
+  END IF ! Mortar element or regular element
+END DO ! iLocSide = 1,6
 
-   !--- A = vector from particle to node coords
-   DO NodeNum = 1,4
-     A(:,NodeNum) = GEO%NodeCoords(:,GEO%ElemSideNodeID(NodeNum,iLocSide,ElemID)) - PartStateLoc(1:3)
-   END DO
-
-   !--- compute cross product for vector 1 and 3
-   cross(1) = A(2,1) * A(3,3) - A(3,1) * A(2,3)
-   cross(2) = A(3,1) * A(1,3) - A(1,1) * A(3,3)
-   cross(3) = A(1,1) * A(2,3) - A(2,1) * A(1,3)
-
-   !--- negative determinant of triangle 1 (points 1,3,2):
-   Det(iLocSide,1) = cross(1) * A(1,2) + &
-                     cross(2) * A(2,2) + &
-                     cross(3) * A(3,2)
-   Det(iLocSide,1) = -det(iLocSide,1)
-
-   !--- determinant of triangle 2 (points 1,3,4):
-   Det(iLocSide,2) = cross(1) * A(1,4) + &
-                     cross(2) * A(2,4) + &
-                     cross(3) * A(3,4)
-
-   IF (Det(iLocSide,1).LT.0) THEN
-     NegCheck = .TRUE.
-   ELSE
-     PosCheck = .TRUE.
-   END IF
-
-   IF (Det(iLocSide,2).LT.0) THEN
-     NegCheck = .TRUE.
-   ELSE
-     PosCheck = .TRUE.
-   END IF
-
-   !--- final determination whether particle is in element
-   IF (GEO%ConcaveElemSide(iLocSide,ElemID)) THEN
-     IF (.NOT.PosCheck) InElementCheck = .FALSE.
-   ELSE
-     IF (NegCheck)      InElementCheck = .FALSE.
-   END IF
-END DO
+RETURN
 
 END SUBROUTINE ParticleInsideQuad3D
 
@@ -497,5 +560,58 @@ DO iPart=1,PDM%ParticleVecLength
 END DO ! iPart=1,PDM%ParticleVecLength
 
 END SUBROUTINE CountPartsPerElem
+
+
+PURE FUNCTION CalcDetOfTrias(A,bending)
+!================================================================================================================================
+!> Calculates the determinant A*(B x C) for both triangles of a side. bending = 1 gives the determinant considering the actual
+!> orientation of the side (concave/convex), 2 gives the opposite of the saved form (e.g. a concave side gets the convex analog)
+!================================================================================================================================
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!--------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)                     :: A(3,4)
+INTEGER,INTENT(IN)                  :: bending
+!--------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                                :: CalcDetOfTrias(2)
+!--------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                :: cross(3)
+!================================================================================================================================
+IF (bending.EQ.1) THEN
+  !--- compute cross product for vector 1 and 3
+  cross(1) = A(2,1) * A(3,3) - A(3,1) * A(2,3)
+  cross(2) = A(3,1) * A(1,3) - A(1,1) * A(3,3)
+  cross(3) = A(1,1) * A(2,3) - A(2,1) * A(1,3)
+
+  !--- negative determinant of triangle 1 (points 1,3,2):
+  CalcDetOfTrias(1) = cross(1) * A(1,2) + &
+                   cross(2) * A(2,2) + &
+                   cross(3) * A(3,2)
+  CalcDetOfTrias(1)  = -CalcDetOfTrias(1)
+  !--- determinant of triangle 2 (points 1,3,4):
+  CalcDetOfTrias(2)  = cross(1) * A(1,4) + &
+                   cross(2) * A(2,4) + &
+                   cross(3) * A(3,4)
+ELSE
+  !--- compute cross product for vector 2 and 4
+  cross(1) = A(2,2) * A(3,4) - A(3,2) * A(2,4)
+  cross(2) = A(3,2) * A(1,4) - A(1,2) * A(3,4)
+  cross(3) = A(1,2) * A(2,4) - A(2,2) * A(1,4)
+
+  !--- negative determinant of triangle 1 (points 2,4,1):
+  CalcDetOfTrias(1) = cross(1) * A(1,1) + &
+                   cross(2) * A(2,1) + &
+                   cross(3) * A(3,1)
+  !--- determinant of triangle 2 (points 2,4,3):
+  CalcDetOfTrias(2) = cross(1) * A(1,3) + &
+                   cross(2) * A(2,3) + &
+                   cross(3) * A(3,3)
+  CalcDetOfTrias(2) = -CalcDetOfTrias(2)
+END IF
+
+END FUNCTION CalcDetOfTrias
 
 END MODULE MOD_Particle_Localization

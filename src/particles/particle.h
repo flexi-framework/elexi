@@ -95,3 +95,8 @@
 #define LB_PARTCOMM      7
 
 #define LB_NTIMES        7
+
+! Tracking method
+#define REFMAPPING    1
+#define TRACING       2
+#define TRIATRACKING  3

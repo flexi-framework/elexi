@@ -105,6 +105,9 @@ TYPE(tMPIMessage),ALLOCATABLE  :: NodeRecvBuf(:)                             ! N
 TYPE(tMPIMessage),ALLOCATABLE  :: NodeSendBuf(:)                             ! NodeSendBuf with all requried types
 
 
+TYPE(tMPIMessage),ALLOCATABLE  :: EmissionRecvBuf(:)                         ! EmissionRecvBuf with all required types
+TYPE(tMPIMessage),ALLOCATABLE  :: EmissionSendBuf(:)                         ! EmissionSendBuf with all requried types
+
 TYPE tParticleMPIExchange
   INTEGER,ALLOCATABLE            :: nPartsSend(:,:)                          ! Only MPI neighbors
   INTEGER,ALLOCATABLE            :: nPartsRecv(:,:)                          ! Only MPI neighbors

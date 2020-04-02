@@ -533,6 +533,8 @@ USE MOD_ChangeBasis            ,ONLY: ChangeBasis3D
 USE MOD_Interpolation_Vars     ,ONLY: NodeTypeCL
 USE MOD_Mesh_Vars              ,ONLY: NGeo,InterpolateFromTree
 USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: XCL_NGeo_Array,dXCL_NGeo_Array
 USE MOD_Particle_Mesh_Vars     ,ONLY: XCL_NGeo,dXCL_NGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 USE MOD_Particle_MPI_Shared_Vars,ONLY:GlobalElem2CNTotalElem
@@ -540,6 +542,7 @@ USE MOD_Particle_MPI_Shared_Vars,ONLY:GlobalElem2CNTotalElem
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID
+USE MOD_Particle_Mesh_Vars     ,ONLY: XCL_NGeo_Shared_Win,dXCL_NGeo_Shared_Win
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -642,6 +645,7 @@ USE MOD_PreProc
 USE MOD_ChangeBasis            ,ONLY: ChangeBasis2D
 USE MOD_Mappings               ,ONLY: CGNS_SideToVol2
 USE MOD_Mesh_Vars              ,ONLY: NGeo
+USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Mesh_Vars     ,ONLY: NGeoElevated,XCL_NGeo_Shared
 USE MOD_Particle_Surfaces      ,ONLY: GetBezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D,sVdm_Bezier
@@ -780,9 +784,7 @@ USE MOD_PreProc
 USE MOD_ReadInTools
 USE MOD_Globals
 USE MOD_Mesh_Vars              ,ONLY: NGeo
-!USE MOD_Mesh_Vars              ,ONLY: Elems,offsetElem,ElemToSide
-!USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
-!USE MOD_Particle_Tracking_Vars ,ONLY: WriteTriaDebugMesh
+USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
@@ -1003,12 +1005,11 @@ SUBROUTINE WeirdElementCheck()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Mesh_Vars ,ONLY: WeirdElems
 #if USE_MPI
 USE MOD_Particle_MPI_Shared_Vars
-#else
-USE MOD_Mesh_Vars
-#endif
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1206,11 +1207,15 @@ USE MOD_Particle_Basis         ,ONLY: DeCasteljauInterpolation
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Mesh_Vars     ,ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis,ElemRadiusNGeo,ElemRadius2NGeo,XCL_NGeo_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: NodeCoords_Shared,ElemBaryNGeo_Shared
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID
-!USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping
 #if USE_MPI
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadiusNGEO_Shared,ElemRadiusNGeo_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo_Shared,ElemRadius2NGeo_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: XiEtaZetaBasis_Shared,XiEtaZetaBasis_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: slenXiEtaZetaBasis_Shared,slenXiEtaZetaBasis_Shared_Win
 #else
 USE MOD_Mesh_Vars              ,ONLY: ElemBaryNGeo,XCL_NGeo,nELems
 #endif
@@ -1231,9 +1236,9 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 !================================================================================================================================
 #if USE_MPI
   MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-  CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemRadiusNGeo_Shared_Win,ElemRadiusNGEO_Shared)
+  CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemRadiusNGeo_Shared_Win,ElemRadiusNGeo_Shared)
   CALL MPI_WIN_LOCK_ALL(0,ElemRadiusNGeo_Shared_Win,IERROR)
-  CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemRadius2NGeo_Shared_Win,ElemRadius2NGEO_Shared)
+  CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemRadius2NGeo_Shared_Win,ElemRadius2NGeo_Shared)
   CALL MPI_WIN_LOCK_ALL(0,ElemRadius2NGeo_Shared_Win,IERROR)
   MPISharedSize = INT((3*6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
   CALL Allocate_Shared(MPISharedSize,(/3,6,nComputeNodeTotalElems/),XiEtaZetaBasis_Shared_Win,XiEtaZetaBasis_Shared)
@@ -1326,11 +1331,13 @@ SUBROUTINE BuildElementRadiusTria()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Particle_Globals       ,ONLY: VECNORM
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo,ElemBaryNGeo_Shared,ElemRadius2NGeo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 #if USE_MPI
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared_Win,ElemRadius2NGeo_Shared_Win
 #else
 USE MOD_Mesh_Vars              ,ONLY: nELems
 #endif
@@ -1438,9 +1445,11 @@ USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 USE MOD_Mesh_Vars          ,ONLY: NGeo
 USE MOD_Particle_Mesh_Vars ,ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars ,ONLY: XCL_NGeo_Shared
+USE MOD_Particle_Mesh_Vars,ONLY: XCL_NGeo_Shared,ElemBaryNGeo_Shared
 #if USE_MPI
 USE MOD_Particle_MPI_Shared,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
+USE MOD_Particle_Mesh_Vars,ONLY: ElemBaryNGeo_Shared_Win
 #else
 USE MOD_Particle_Mesh_Vars ,ONLY: XCL_NGeo
 #endif
@@ -1512,13 +1521,18 @@ USE MOD_ChangeBasis            ,ONLY: changeBasis3D
 USE MOD_Mesh_Vars              ,ONLY: NGeo
 USE MOD_Particle_Globals       ,ONLY: ALMOSTZERO,CROSSNORM,UNITVECTOR
 USE MOD_Particle_Mesh_Vars     ,ONLY: Vdm_CLNGeo1_CLNGeo,Vdm_CLNGeo1_CLNGeo
-USE MOD_Particle_Mesh_Vars     ,ONLY: XCL_NGeo_Shared
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemCurved
+USE MOD_Particle_Mesh_Vars     ,ONLY: XCL_NGeo_Shared,ElemBaryNGeo_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared,ElemCurved
+USE MOD_Particle_Mesh_Vars     ,ONLY: BoundingBoxIsEmpty_Shared
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D,SideType,SideNormVec,SideDistance
 #if USE_MPI
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemCurved_Shared,ElemCurved_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: SideDistance_Shared,SideDistance_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: SideType_Shared,SideType_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: SideNormVec_Shared,SideNormVec_Shared_Win
 #endif /* USE_MPI */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1535,14 +1549,11 @@ LOGICAL,ALLOCATABLE                      :: SideIsDone(:)
 REAL                                     :: XCL_NGeo1(1:3,0:1,0:1,0:1)
 REAL                                     :: XCL_NGeoNew(1:3,0:NGeo,0:NGeo,0:NGeo)
 REAL                                     :: XCL_NGeoLoc(1:3,0:NGeo,0:NGeo,0:NGeo)
-!REAL                                     :: Vec1(1:3)
 REAL                                     :: BezierControlPoints_loc(1:3,0:NGeo,0:NGeo)
 INTEGER                                  :: NGeo3,NGeo2
-!INTEGER                                  :: PVID
 REAL                                     :: XCL_NGeoSideNew(1:3,0:NGeo,0:NGeo)
 REAL                                     :: XCL_NGeoSideOld(1:3,0:NGeo,0:NGeo)
 LOGICAL                                  :: isCurvedSide,isRectangular
-!REAL                                     :: ScalarProduct
 #if USE_MPI
 INTEGER(KIND=MPI_ADDRESS_KIND)           :: MPISharedSize
 #endif /* USE_MPI */
@@ -1967,18 +1978,20 @@ USE MOD_Mesh_Vars              ,ONLY: NGeo
 USE MOD_Particle_Basis         ,ONLY: DeCasteljauInterpolation
 USE MOD_Particle_Globals       ,ONLY: ALMOSTZERO
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,SideInfo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides,SideBCMetrics
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared,ElemRadiusNGeo_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides_Shared,SideBCMetrics_Shared
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
 USE MOD_Particle_Vars          ,ONLY: ManualTimeStep
 #if USE_MPI
 USE MOD_CalcTimeStep           ,ONLY: CalcTimeStep
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides_Shared_Win,SideBCMetrics_Shared_Win
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_MPI_Vars      ,ONLY: halo_eps,halo_eps_velo
 USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
-#else
-USE MOD_Mesh_Vars              ,ONLY: ElemToBCSides_Shared,SideBCMetrics_Shared,nComputeNodeBCSides
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1993,6 +2006,7 @@ INTEGER                        :: firstBezierPoint,lastBezierPoint
 INTEGER                        :: ElemID,SideID
 INTEGER                        :: iElem,firstElem,lastElem
 INTEGER                        :: iSide,firstSide,lastSide,iLocSide
+INTEGER                        :: nComputeNodeBCSides
 INTEGER                        :: nBCSidesElem,nBCSidesProc,offsetBCSidesProc,offsetBCSides
 INTEGER,ALLOCATABLE            :: ElemToBCSidesProc(:,:)
 LOGICAL,ALLOCATABLE            :: BCSideElem(:)
@@ -2047,6 +2061,7 @@ ALLOCATE(BCSideElem(1:nComputeNodeTotalSides))
 IF (halo_eps.EQ.0) THEN
   ! reconstruct halo_eps_velo
   IF (halo_eps_velo.EQ.0) THEN
+    ! Set to speed of sound
     BC_halo_eps_velo = 343
   ELSE
     BC_halo_eps_velo = halo_eps_velo
@@ -2397,14 +2412,13 @@ USE MOD_Mesh_Vars              ,ONLY: sJ
 USE MOD_Mesh_Vars              ,ONLY: nElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: dXCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemsJ,ElemEpsOneCell
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemsJ_Shared,ElemEpsOneCell_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: RefMappingEps
 #if USE_MPI
 USE MOD_Mesh_Vars              ,ONLY: offsetElem
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
-#else
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides_Shared,SideBCMetrics_Shared,nComputeNodeBCSides
-USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemsJ_Shared_Win,ElemEpsOneCell_Shared_Win
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -2540,12 +2554,16 @@ USE MOD_Preproc
 USE MOD_Mathtools              ,ONLY: CROSS
 USE MOD_Mesh_Vars              ,ONLY: NGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: NGeoElevated
+USE MOD_Particle_Mesh_Vars     ,ONLY: NodeCoords_Shared,ElemBaryNGeo_Shared
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,BaseVectorsScale
 #if USE_MPI
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
+USE MOD_Particle_Mesh_Vars     ,ONLY: BaseVectorsScale_Shared,BaseVectorsScale_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: BaseVectors0_Shared,BaseVectors1_Shared,BaseVectors2_Shared,BaseVectors3_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: BaseVectors0_Shared_Win,BaseVectors1_Shared_Win,BaseVectors2_Shared_Win,BaseVectors3_Shared_Win
 #endif /* USE_MPI */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -2644,6 +2662,7 @@ SUBROUTINE GetMeshMinMax()
 USE MOD_Mesh_Vars          ,ONLY: NodeCoords
 USE MOD_Particle_Mesh_Vars ,ONLY: GEO
 #if USE_MPI
+USE MOD_Particle_Mesh_Vars ,ONLY: NodeCoords_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -2798,6 +2817,7 @@ USE MOD_Globals
 USE MOD_Mesh_Vars                          ,ONLY:nElems
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Vars                 ,ONLY:ElemHasAuxBCs
+USE MOD_Particle_Mesh_Vars                 ,ONLY: BoundsOfElem_Shared
 USE MOD_Particle_Boundary_Vars             ,ONLY:nAuxBCs,AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone!,AuxBC_parabol
 #if USE_MPI
 USE MOD_Particle_MPI_Shared_Vars
@@ -3059,7 +3079,7 @@ FUNCTION GetGlobalNonUniqueSideID(ElemID,localSideID)
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: ElemInfo_Shared, SideInfo_Shared
+USE MOD_Particle_Mesh_Vars   ,ONLY: ElemInfo_Shared, SideInfo_Shared
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES

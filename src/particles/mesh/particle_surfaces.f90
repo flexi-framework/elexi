@@ -321,16 +321,10 @@ SUBROUTINE CalcNormAndTangTriangle(nVec,tang1,tang2,area,midpoint,ndist,xyzNod,V
 !================================================================================================================================
 USE MOD_Globals,                              ONLY:ABORT
 USE MOD_PreProc
-!USE MOD_Mesh_Vars,                            ONLY:NGeo
 USE MOD_Particle_Globals
-!USE MOD_Particle_Mesh_Vars,                   ONLY:XCL_NGeo
 USE MOD_Particle_Surfaces_Vars,               ONLY:SideNormVec, SideType
 USE MOD_Particle_Tracking_Vars,               ONLY:TriaTracking
-#if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars,             ONLY:SideInfo_Shared,NodeCoords_Shared,ElemSideNodeID_Shared
-#else
 USE MOD_Particle_Mesh_Vars,                   ONLY:SideInfo_Shared,NodeCoords_Shared,ElemSideNodeID_Shared
-#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -357,7 +351,7 @@ ELSE IF (PRESENT(SideID)) THEN
   ElemID = SideInfo_Shared(SIDE_ELEMID,SideID)
   LocSideID = SideInfo_Shared(SIDE_LOCALID,SideID)
 ELSE
-  CALL abort(__STAMP__, 'Either SideID or ElemID+LocSideID have to be given to CalcNormAndTangTriangle!')
+  CALL ABORT(__STAMP__, 'Either SideID or ElemID+LocSideID have to be given to CalcNormAndTangTriangle!')
 END IF
 
 xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,LocSideID,ElemID)+1)
@@ -527,9 +521,8 @@ REAL,DIMENSION(2,3)                    :: gradXiEta
 !================================================================================================================================
 
 ! caution we require the formula in [0;1]
-CALL EvaluateBezierPolynomialAndGradient((/xi,eta/),NGeo,3,BezierControlPoints3D(1:3,0:NGeo,0:NGeo,SideID),Gradient=gradXiEta)
+CALL EvaluateBezierPolynomialAndGradient((/xi,eta/),NGeo,3,BezierControlPoints3D(:,:,:,SideID),Gradient=gradXiEta)
 nVec =CROSSNORM(gradXiEta(1,:),gradXiEta(2,:))
-gradXiEta(2,:)=CROSSNORM(nVec,gradXiEta(1,:))
 IF(PRESENT(tang1)) tang1=UNITVECTOR(gradXiEta(1,:))
 IF(PRESENT(tang2)) tang2=CROSSNORM(nVec,gradXiEta(1,:))
 
@@ -684,8 +677,8 @@ END SUBROUTINE EvaluateBezierPolynomialAndGradient
 !SUBROUTINE GetBezierControlPoints3D(XCL_NGeo,ElemID,ilocSide_In,SideID_In)
 !!===================================================================================================================================
 !! computes the nodes for Bezier Control Points for [P][I][C] [A]daptive [S]uper [S]ampled Surfaces [O]perations
-!! the control points (coeffs for bezier basis) are calculated using the change basis subroutine that interpolates the points
-!! from the curved lagrange basis geometry (pre-computed inverse of vandermonde is required)
+!! the control points (coeffs for Bezier basis) are calculated using the change basis subroutine that interpolates the points
+!! from the curved Lagrange basis geometry (pre-computed inverse of Vandermonde is required)
 !! This version uses mapping, hence simplified to one loop
 !!===================================================================================================================================
 !! MODULES
@@ -747,10 +740,9 @@ END SUBROUTINE EvaluateBezierPolynomialAndGradient
 !    CALL ChangeBasis2D(3,NGeo,NGeo,sVdm_Bezier,tmp,tmp2)
 !    ! turn into right hand system of side
 !    DO q=0,NGeo; DO p=0,NGeo
-!      ! Adjust for 3D case in FLEXI
 !      pq=CGNS_SideToVol2(NGeo,p,q,iLocSide,3)
 !      ! Compute BezierControlPoints3D for sides in MASTER system
-!      BezierControlPoints3D(1:3,p,q,sideID)=tmp2(1:3,pq(1),pq(2))
+!      BezierControlPoints3D(1:3,p,q,SideID)=tmp2(1:3,pq(1),pq(2))
 !    END DO; END DO ! p,q
 !  END IF
 !END DO ! ilocSide=1,6
@@ -1001,7 +993,7 @@ SUBROUTINE GetElemSlabNormalsAndIntervals(NGeo,ElemID)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_PARTICLE_Globals
+USE MOD_Particle_Globals
 USE MOD_Preproc
 USE MOD_Particle_Mesh_Vars,       ONLY:PartElemToSide,GEO,RefMappingEps
 USE MOD_Particle_Surfaces_Vars,   ONLY:ElemSlabNormals,ElemSlabIntervals,BezierControlPoints3DElevated,BezierElevation
@@ -1317,7 +1309,7 @@ DO jSample=1,BezierSampleN; DO iSample=1,BezierSampleN !loop through Sub-Element
       F=DOT_PRODUCT(gradXiEta2D(1,1:2),gradXiEta2D(2,1:2))
       G=DOT_PRODUCT(gradXiEta2D(2,1:2),gradXiEta2D(2,1:2))
     ELSE
-      CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,3,BezierControlPoints3D(1:3,0:NGeo,0:NGeo,SideID) &
+      CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,3,BezierControlPoints3D(:,:,:,SideID) &
                                               ,Gradient=gradXiEta3D)
       ! calculate first fundamental form
       E=DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(1,1:3))
@@ -1343,7 +1335,7 @@ DO jSample=1,BezierSampleN; DO iSample=1,BezierSampleN !loop through Sub-Element
         F=DOT_PRODUCT(gradXiEta2D(1,1:2),gradXiEta2D(2,1:2))
         G=DOT_PRODUCT(gradXiEta2D(2,1:2),gradXiEta2D(2,1:2))
       ELSE
-        CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,3,BezierControlPoints3D(1:3,0:NGeo,0:NGeo,SideID) &
+        CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,3,BezierControlPoints3D(:,:,:,SideID) &
           ,Gradient=gradXiEta3D)
         ! calculate first fundamental form
         E=DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(1,1:3))

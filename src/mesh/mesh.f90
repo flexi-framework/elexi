@@ -115,9 +115,9 @@ USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 USE MOD_2D
 #endif
 #if USE_PARTICLES
-USE MOD_Particle_Mesh!,          ONLY:InitParticleMesh,InitElemVolumes,InitTriaParticleGeometry
-USE MOD_Particle_Mesh_Vars
-USE MOD_Particle_Mappings,      ONLY:Particle_InitMappings
+!USE MOD_Particle_Mesh!,          ONLY:InitParticleMesh,InitElemVolumes,InitTriaParticleGeometry
+!USE MOD_Particle_Mesh_Vars
+!USE MOD_Particle_Mappings,      ONLY:Particle_InitMappings
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -137,8 +137,6 @@ INTEGER           :: firstSlaveSide      ! lower side ID of array U_slave/gradUx
 INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx_slave...
 INTEGER           :: iSide,LocSideID,SideID
 INTEGER           :: NGeoOverride
-#if USE_MPI_SHARED
-#endif
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
@@ -246,9 +244,7 @@ ELSE
 ENDIF
 
 ! Return if no connectivity and metrics are required (e.g. for visualization mode)
-#if !USE_PARTICLES
 IF (meshMode.GT.0) THEN
-#endif
 
   SWRITE(UNIT_stdOut,'(A)') " NOW CALLING setLocalSideIDs..."
   CALL setLocalSideIDs()
@@ -325,8 +321,6 @@ IF (meshMode.GT.0) THEN
   ALLOCATE(MortarInfo(MI_FLIP,4,nMortarSides)) ! [1]: 1: Neighbour sides, 2: Flip, [2]: small sides
 
 #if USE_PARTICLES
-  SDEALLOCATE(MortarSlave2MasterInfo)
-  ALLOCATE(MortarSlave2MasterInfo(1:nSides))
 ! Particles need this changed to -1 to follow PICLAS assumptions
   MortarType=-1
 #else
@@ -361,14 +355,7 @@ IF (meshMode.GT.0) THEN
   ! Build necessary mappings
   CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M,dim=PP_dim)
 
-#if USE_PARTICLES
-  CALL Particle_InitMappings(PP_N, VolToSideA, VolToSideIJKA, VolToSide2A, CGNS_VolToSideA, &
-        SideToVolA, SideToVol2A, CGNS_SideToVol2A, FS2M)
-#endif
-
-#if !USE_PARTICLES
 END IF
-#endif
 
 IF (meshMode.GT.1) THEN
 
@@ -396,12 +383,6 @@ IF (meshMode.GT.1) THEN
   ! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
   ! assign 1/detJ (sJ)
   ! assign normal and tangential vectors and surfElems on faces
-
-#if USE_PARTICLES
-  ! initialize particle mesh (including shared halo region)
-  CALL InitParticleMesh()
-#endif
-
 #if (PP_dim == 3)
   ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
   crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')

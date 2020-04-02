@@ -71,7 +71,7 @@ USE MOD_Mesh_Vars               ,ONLY:NGeo,BC,nSides,nBCSides,nBCs,BoundaryName
 USE MOD_Particle_Boundary_Vars  ,ONLY:nSurfSample,dXiEQ_SurfSample,PartBound,XiEQ_SurfSample,SurfMesh,SampWall,nSurfBC,SurfBCName
 USE MOD_Particle_Boundary_Vars  ,ONLY:SurfCOMM
 USE MOD_Particle_Erosion_Vars
-USE MOD_Particle_Mesh_Vars      ,ONLY:nTotalSides,PartSideToElem,PartBCSideList,GEO
+USE MOD_Particle_Mesh_Vars      ,ONLY:GEO
 USE MOD_Particle_Surfaces       ,ONLY:EvaluateBezierPolynomialAndGradient
 USE MOD_Particle_Surfaces_Vars  ,ONLY:BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars  ,ONLY:DoRefMapping,TriaTracking
@@ -79,69 +79,80 @@ USE MOD_Particle_Vars           ,ONLY:nSpecies
 USE MOD_ReadInTools
 USE MOD_StringTools             ,ONLY:LowCase
 #if USE_MPI
+USE MOD_Particle_Mesh_Vars      ,ONLY:ElemInfo_Shared,SideInfo_Shared,ElemSideNodeID_Shared,NodeCoords_Shared
 USE MOD_Particle_MPI_Vars       ,ONLY:PartMPI
-USE MOD_Particle_MPI_Shared_Vars,ONLY:ElemInfo_Shared,ElemSideNodeID_Shared,NodeCoords_Shared
+USE MOD_Particle_MPI_Shared_Vars,ONLY:nNonUniqueGlobalSides,nComputeNodeTotalSides
 #else
 USE MOD_Particle_Boundary_Vars  ,ONLY:offSetSurfSide
-USE MOD_Particle_Mesh_Vars      ,ONLY:ElemSideNodeID_Shared
-#endif /*MPI*/
-!----------------------------------------------------------------------------------------------------------------------------------!
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                :: p,q,iSide,SurfSideID,SideID,ElemID,LocSideID
-INTEGER                                :: iSample,jSample, iBC
+INTEGER                                :: iSample,jSample,iBC,iSurfBC
 INTEGER                                :: TriNum, Node1, Node2
+INTEGER                                :: nSurfSampleBC
 REAL,DIMENSION(2,3)                    :: gradXiEta3D
 REAL,ALLOCATABLE,DIMENSION(:)          :: Xi_NGeo,wGP_NGeo
 REAL                                   :: XiOut(1:2),E,F,G,D,tmp1,area,tmpI2,tmpJ2
 REAL                                   :: xNod, zNod, yNod, Vector1(3), Vector2(3), nx, ny, nz
 REAL                                   :: nVal, SurfaceVal
 CHARACTER(20)                          :: hilf, hilfBC
-CHARACTER(LEN=255),ALLOCATABLE         :: BCName(:)
+CHARACTER(LEN=255),ALLOCATABLE         :: BCName(:),SurfSampleBCs(:)
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING ...'
+
+! standard is sampling on NGeo
 WRITE(UNIT=hilf,FMT='(I0)') NGeo
+nSurfSample             = GETINT    ('Particles-nSurfSample',TRIM(hilf))
 
-nSurfSample = GETINT('Particles-nSurfSample',TRIM(hilf))
-doParticleErosionOutlet = GETLOGICAL('Particles-ErosionOutlet','F')
-
+! get equidistant supersampling points
 ALLOCATE(XiEQ_SurfSample(0:nSurfSample))
-
 dXiEQ_SurfSample =2./REAL(nSurfSample)
 DO q=0,nSurfSample
   XiEQ_SurfSample(q) = dXiEQ_SurfSample * REAL(q) - 1.
 END DO
 
 ! create boundary name mapping for surfaces SurfaceBC number mapping
+nSurfSampleBC  = CountOption('Particles-SurfSampleBC')
+ALLOCATE(SurfSampleBCs(nSurfSampleBC))
+DO iSurfBC=1,nSurfSampleBC
+  SurfSampleBCs(iSurfBC) = TRIM(GETSTR('Particles-SurfSampleBC'))
+END DO
+
+! compare BCs against requested BCs
 nSurfBC = 0
 ALLOCATE(BCName(1:nBCs))
 DO iBC=1,nBCs
   BCName=''
-END DO
-DO iBC=1,nBCs
-  IF (PartBound%TargetBoundCond(iBC).EQ.-1) CYCLE !inner side (can be just in the name list from preproc although already sorted out)
-  ! Check if side is an outlet
-  CALL lowcase(TRIM(BoundaryName(iBC)),hilfBC)
-  SWRITE(*,*) hilfBC
-
+  ! inner side
+  IF (PartBound%TargetBoundCond(iBC).EQ.-1) CYCLE
+  
+  ! always sample walls
   IF (PartBound%TargetBoundCond(iBC).EQ.PartBound%ReflectiveBC) THEN
     nSurfBC = nSurfBC + 1
     BCName(nSurfBC) = BoundaryName(iBC)
-  ! Add outlet sides if required for erosion tracking
-  ELSEIF (doParticleErosionOutlet .AND. PartBound%TargetBoundCond(iBC).EQ.PartBound%OpenBC &
-  .AND.(hilfBC.EQ.'outlet')) THEN
-    nSurfBC = nSurfBC + 1
-    BCName(nSurfBC) = BoundaryName(iBC)
+    CYCLE
   END IF
+  
+  ! check if BC is explicitly requested
+  CALL lowcase(TRIM(BoundaryName(iBC)),hilfBC)
+  DO iSurfBC=1,nSurfSampleBC
+    IF (hilfBC.EQ.SurfSampleBCs(iSurfBC)) THEN
+      nSurfBC = nSurfBC + 1
+      BCName(nSurfBC) = BoundaryName(iBC)
+      EXIT
+    END IF
+  END DO
 END DO
+
+! write back found BC names
 IF (nSurfBC.GE.1) THEN
-ALLOCATE(SurfBCName(1:nSurfBC))
+  ALLOCATE(SurfBCName(1:nSurfBC))
   DO iBC=1,nSurfBC
     SurfBCName(iBC) = BCName(iBC)
   END DO
@@ -149,66 +160,109 @@ END IF
 DEALLOCATE(BCName)
 
 ! get number of BC-Sides
-ALLOCATE(SurfMesh%SideIDToSurfID(1:nTotalSides))
-SurfMesh%SideIDToSurfID(1:nTotalSides)=-1
-! first own sides
-SurfMesh%nSides=0
-DO iSide=1,nBCSides
-  IF(BC(iSide).EQ.0) CYCLE
-  ! Check if side is an outlet
-  CALL LowCase(TRIM(BoundaryName(BC(iSide))),hilfBC)
+ALLOCATE(SurfMesh%SideIDToSurfID(1:nNonUniqueGlobalSides))
+SurfMesh%SideIDToSurfID(1:nNonUniqueGlobalSides) = -1
 
-  IF (PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%ReflectiveBC) THEN
-    SurfMesh%nSides = SurfMesh%nSides + 1
-    SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nSides
-  ! Add outlet sides if required for erosion tracking
-  ELSEIF (doParticleErosionOutlet .AND. PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%OpenBC &
-  .AND. (hilfBC.EQ.'outlet')) THEN
-    SurfMesh%nSides = SurfMesh%nSides + 1
-    SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nSides
-  END IF
-END DO
-
-! TODO: Adjust this for new halo region
-!! halo sides
-!SurfMesh%nTotalSides=SurfMesh%nSides
-!DO iSide=nSides+1,nTotalSides
+! first sides on local proc. This comes from the DG part and is not affected by the new halo region
+SurfMesh%nSides = 0
+!DO iSide=1,nBCSides
+!  ! inner side
 !  IF(BC(iSide).EQ.0) CYCLE
-!  ! Check if side is an outlet
-!  CALL LowCase(TRIM(BoundaryName(BC(iSide))),hilfBC)
-!
+!  
+!  ! always sample walls
 !  IF (PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%ReflectiveBC) THEN
-!    SurfMesh%nTotalSides = SurfMesh%nTotalSides + 1
-!    SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nTotalSides
-!  ! Add outlet sides if required for erosion tracking
-!  ELSEIF (doParticleErosionOutlet .AND. PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%OpenBC &
-!  .AND. (hilfBC.EQ.'outlet')) THEN
-!    SurfMesh%nTotalSides = SurfMesh%nTotalSides + 1
-!    SurfMesh%SideIDToSurfID(iSide)=SurfMesh%nTotalSides
+!    SurfMesh%nSides                = SurfMesh%nSides + 1
+!    SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nSides
+!    CYCLE
 !  END IF
+!  
+!  ! check if BC is explicitly requested
+!  CALL lowcase(TRIM(BoundaryName(BC(iSide))),hilfBC)
+!  DO iSurfBC=1,nSurfSampleBC
+!    IF (hilfBC.EQ.SurfSampleBCs(iSurfBC)) THEN
+!      SurfMesh%nSides                = SurfMesh%nSides + 1
+!      SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nSides
+!      EXIT
+!    END IF
+!  END DO
 !END DO
 
+! use here global side IDs as well. Simplifies things later
+SurfMesh%nTotalSides = SurfMesh%nSides
+DO iSide=1,nComputeNodeTotalSides
+  ! inner (mortar) side
+  IF(SideInfo_Shared(SIDE_BCID,iSide).EQ.0) CYCLE
+  
+  ! skip if element is not proc (i.e. later added to global sides)
+  IF (ElemInfo_Shared(ELEM_RANK,SideInfo_Shared(SIDE_ELEMID,iSide)).NE.myRank) CYCLE
+  
+  ! always sample walls
+  IF (PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,iSide)).EQ.PartBound%ReflectiveBC) THEN
+    SurfMesh%nTotalSides           = SurfMesh%nTotalSides + 1
+    SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nTotalSides
+    CYCLE
+  END IF
+  
+  ! check if BC is explicitly requested
+  CALL lowcase(TRIM(BoundaryName(SideInfo_Shared(SIDE_BCID,iSide))),hilfBC)
+  DO iSurfBC=1,nSurfSampleBC
+    IF (hilfBC.EQ.SurfSampleBCs(iSurfBC)) THEN
+      SurfMesh%nTotalSides           = SurfMesh%nTotalSides + 1
+      SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nTotalSides
+      EXIT
+    END IF
+  END DO
+END DO
+
+! then sides in halo region. These currently include all BC sides on node (incl. halo region). Massive overkill, change to ALLREDUCE
+! later
+SurfMesh%nTotalSides = SurfMesh%nSides
+DO iSide=1,nComputeNodeTotalSides
+  ! inner (mortar) side
+  IF(SideInfo_Shared(SIDE_BCID,iSide).EQ.0) CYCLE
+  
+  ! skip if element is on proc (i.e. already added to local side)
+  IF (ElemInfo_Shared(ELEM_RANK,SideInfo_Shared(SIDE_ELEMID,iSide)).EQ.myRank) CYCLE
+  
+  ! always sample walls
+  IF (PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,iSide)).EQ.PartBound%ReflectiveBC) THEN
+    SurfMesh%nTotalSides           = SurfMesh%nTotalSides + 1
+    SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nTotalSides
+    CYCLE
+  END IF
+  
+  ! check if BC is explicitly requested
+  CALL lowcase(TRIM(BoundaryName(SideInfo_Shared(SIDE_BCID,iSide))),hilfBC)
+  DO iSurfBC=1,nSurfSampleBC
+    IF (hilfBC.EQ.SurfSampleBCs(iSurfBC)) THEN
+      SurfMesh%nTotalSides           = SurfMesh%nTotalSides + 1
+      SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nTotalSides
+      EXIT
+    END IF
+  END DO
+END DO
+
+! build reverse mapping
 ALLOCATE(SurfMesh%SurfSideToGlobSideMap(1:SurfMesh%nTotalSides))
 SurfMesh%SurfSideToGlobSideMap(:) = -1
-DO iSide = 1,nTotalSides
+DO iSide = 1,nComputeNodeTotalSides
   IF (SurfMesh%SideIDToSurfID(iSide).LE.0) CYCLE
   SurfMesh%SurfSideToGlobSideMap(SurfMesh%SideIDToSurfID(iSide)) = iSide
 END DO
 
+! check if local proc as BC sides to sample
 SurfMesh%SurfOnProc=.FALSE.
-!IF(SurfMesh%nSides.GT.0)
 IF(SurfMesh%nTotalSides.GT.0) SurfMesh%SurfOnProc=.TRUE.
 
+! communicate all local sides to get the total number of surf sampling sides
 #if USE_MPI
 CALL MPI_ALLREDUCE(SurfMesh%nSides,SurfMesh%nGlobalSides,1,MPI_INTEGER,MPI_SUM,PartMPI%COMM,iError)
 #else
 SurfMesh%nGlobalSides=SurfMesh%nSides
 #endif
-
-
 SWRITE(UNIT_stdOut,'(A,I8)') ' nGlobalSurfSides ', SurfMesh%nGlobalSides
 
-! Allocate N+1 Species to have space for average
+! allocate arrays to hold data. If nSpecies > 1, one more species is added to hold the global average
 nErosionVars        = 17
 IF (nSpecies.EQ.1) THEN
     SurfMesh%SampSize   = nErosionVars
@@ -220,51 +274,47 @@ END IF
 ! split communitator
 CALL InitSurfCommunicator()
 IF(SurfMesh%SurfOnProc) THEN
-  CALL GetHaloSurfMapping()
+!  CALL GetHaloSurfMapping()
 END IF
 #else
-SurfCOMM%MyRank=0
-SurfCOMM%MPIRoot=.TRUE.
-SurfCOMM%nProcs=1
-SurfCOMM%MyOutputRank=0
-SurfCOMM%MPIOutputRoot=.TRUE.
-SurfCOMM%nOutputProcs = 1
-! get correct offsets
-OffSetSurfSide=0
+SurfCOMM%MyRank        = 0
+SurfCOMM%MPIRoot       = .TRUE.
+SurfCOMM%nProcs        = 1
+SurfCOMM%MyOutputRank  = 0
+SurfCOMM%MPIOutputRoot = .TRUE.
+SurfCOMM%nOutputProcs  = 1
+OffSetSurfSide         = 0
 #endif /*USE_MPI*/
 
-! nothing more to do for procs without surfaces on them
+! nothing more to do for procs without sampling surfaces on them
 IF(.NOT.SurfMesh%SurfOnProc) RETURN
 
-! allocate everything
+! allocate arrays for surface data
 ALLOCATE(SampWall(1:SurfMesh%nTotalSides))
-
-DO iSide=1,SurfMesh%nTotalSides ! caution: iSurfSideID
+DO iSide=1,SurfMesh%nTotalSides
   ALLOCATE(SampWall(iSide)%State(1:SurfMesh%SampSize,1:nSurfSample,1:nSurfSample))
   SampWall(iSide)%State=0.
 END DO
 
+! compute area of sub-faces
 ALLOCATE(SurfMesh%SurfaceArea(1:nSurfSample,1:nSurfSample,1:SurfMesh%nTotalSides))
-SurfMesh%SurfaceArea=0.
+SurfMesh%SurfaceArea = 0.
 
 ALLOCATE(Xi_NGeo( 0:NGeo)  &
         ,wGP_NGeo(0:NGeo) )
 CALL LegendreGaussNodesAndWeights(NGeo,Xi_NGeo,wGP_NGeo)
+tmp1 = dXiEQ_SurfSample/2.0 !(b-a)/2
 
-! compute area of sub-faces
-tmp1=dXiEQ_SurfSample/2.0 !(b-a)/2
-DO iSide=1,nTotalSides
-  SurfSideID=SurfMesh%SideIDToSurfID(iSide)
+DO iSide = 1,nComputeNodeTotalSides
+  SurfSideID = SurfMesh%SideIDToSurfID(iSide)
+  
+  ! ignore sides that are not sampled
   IF(SurfSideID.EQ.-1) CYCLE
-  IF(DoRefMapping)THEN
-    SideID=PartBCSideList(iSide)
-  ELSE
-    SideID=iSide
-  END IF
+  
   IF (TriaTracking) THEN
     ! TODO: This has to come from ElemInfo_Shared
-    ElemID = PartSideToElem(S2E_ELEM_ID,iSide)
-    LocSideID = PartSideToElem(S2E_LOC_SIDE_ID,iSide)
+    ElemID    = SideInfo_Shared(SIDE_ELEMID ,iSide)
+    LocSideID = SideInfo_Shared(SIDE_LOCALID,iSide)
 
     SurfaceVal = 0.
     xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,LocSideID,ElemID))
@@ -312,38 +362,41 @@ DO iSide=1,nTotalSides
       END DO ! iSample=1,nSurfSample
     END DO ! jSample=1,nSurfSample
   END IF
-END DO ! iSide=1,nTotalSides
+END DO ! iSide=1,nComputeNodeTotalSides
 
-! get the full area of the BC's of all faces
+! get the full area of the BC's of all faces on local proc
 Area=0.
-DO iSide=1,nSides
-  SurfSideID=SurfMesh%SideIDToSurfID(iSide)
+DO iSide=1,nComputeNodeTotalSides
+  ! skip if element is not proc
+  IF (ElemInfo_Shared(ELEM_RANK,SideInfo_Shared(SIDE_ELEMID,iSide)).NE.myRank) CYCLE
+  
+  SurfSideID = SurfMesh%SideIDToSurfID(iSide)
   IF(SurfSideID.EQ.-1) CYCLE
   Area = Area + SUM(SurfMesh%SurfaceArea(:,:,SurfSideID))
-END DO ! iSide=1,nTotalSides
+END DO ! iSide=1,nComputeNodeTotalSides
 
 #if USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,Area,1,MPI_DOUBLE_PRECISION,MPI_SUM,SurfCOMM%COMM,iError)
 #endif /*USE_MPI*/
 
-SWRITE(UNIT_stdOut,'(A,E25.14E3)') ' Surface-Area: ', Area
-
+! clean-up
 DEALLOCATE(Xi_NGeo,wGP_NGeo)
 
+SWRITE(UNIT_stdOut,'(A,E25.14E3)') ' Surface-Area: ', Area
 SWRITE(UNIT_stdOut,'(A)') ' ... DONE.'
 
 END SUBROUTINE InitParticleBoundarySampling
 
 #if USE_MPI
+! TODO: rebuild for new halo region
 SUBROUTINE InitSurfCommunicator()
 !===================================================================================================================================
 ! Creates two new subcommunicators.
-! SurfCOMM%COMM contains all MPI-Ranks which have reflective boundary faces in their halo-region and process which have reflective
+! SurfCOMM%COMM contains all MPI-Ranks which have sampling boundary faces in their halo-region and process which have sampling
 ! boundary faces in their origin region. This communicator is used to communicate the wall-sampled values of halo-faces to the
 ! origin face
 ! SurfCOMM%OutputCOMM is another subset. This communicator contains only the processes with origin surfaces. It is used to perform
 ! collective writes of the surf-sampled values.
-! Sets also used for communication of adsorption variables
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -365,79 +418,85 @@ LOGICAL                   :: hasSurf
 INTEGER,ALLOCATABLE       :: countSurfSideMPI(:)
 LOGICAL                   :: OutputOnProc
 !===================================================================================================================================
+
+! define color for procs with sampling surfaces
 color=MPI_UNDEFINED
 IF(SurfMesh%SurfOnProc) color=1001
-! THEN
-! color=2
-! ELSE
-! color=1
-! END IF
-! create ranks for RP communicator
+
+! create ranks for sampling communicator
+! TODO: shouldn't this just be an MPI_EXSCAN? But then, root wouldn't know the total number ...
 IF(PartMPI%MPIRoot) THEN
-  Surfrank=-1
-  noSurfrank=-1
-  SurfCOMM%Myrank=0
+  SurfRank        = -1
+  noSurfrank      = -1
+  SurfCOMM%MyRank = 0
   IF(SurfMesh%SurfOnProc) THEN
-    Surfrank=0
+    SurfRank   = 0
   ELSE
-    noSurfrank=0
+    noSurfRank = 0
   END IF
+  ! root communicates with all procs to get global numbers and informs the proc
   DO iProc=1,nProcessors-1
     CALL MPI_RECV(hasSurf,1,MPI_LOGICAL,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
     IF(hasSurf) THEN
-      SurfRank=SurfRank+1
+      SurfRank   = SurfRank   + 1
       CALL MPI_SEND(SurfRank,1,MPI_INTEGER,iProc,0,MPI_COMM_WORLD,iError)
     ELSE
-      noSurfRank=noSurfRank+1
+      noSurfRank = noSurfRank + 1
       CALL MPI_SEND(noSurfRank,1,MPI_INTEGER,iProc,0,MPI_COMM_WORLD,iError)
     END IF
   END DO
 ELSE
+  ! all other procs send their information to root
   CALL MPI_SEND(SurfMesh%SurfOnProc,1,MPI_LOGICAL,0,0,MPI_COMM_WORLD,iError)
-  CALL MPI_RECV(SurfCOMM%MyRank,1,MPI_INTEGER,0,0,MPI_COMM_WORLD,MPIstatus,iError)
+  CALL MPI_RECV(SurfCOMM%MyRank    ,1,MPI_INTEGER,0,0,MPI_COMM_WORLD,MPIstatus,iError)
 END IF
 
 ! create new SurfMesh communicator for SurfMesh communication
-CALL MPI_COMM_SPLIT(PartMPI%COMM, color, SurfCOMM%MyRank, SurfCOMM%COMM,iError)
+CALL MPI_COMM_SPLIT(PartMPI%COMM,color,SurfCOMM%MyRank,SurfCOMM%COMM,iError)
 IF(SurfMesh%SurfOnPRoc) THEN
-  CALL MPI_COMM_SIZE(SurfCOMM%COMM, SurfCOMM%nProcs,iError)
+  CALL MPI_COMM_SIZE(SurfCOMM%COMM,SurfCOMM%nProcs,iError)
 ELSE
   SurfCOMM%nProcs = 0
 END IF
-SurfCOMM%MPIRoot=.FALSE.
+
+! root flags itself as SurfCOMM%MPIROOT
+SurfCOMM%MPIRoot = .FALSE.
 IF(SurfCOMM%MyRank.EQ.0 .AND. SurfMesh%SurfOnProc) THEN
   SurfCOMM%MPIRoot=.TRUE.
-!   WRITE(UNIT_stdout,'(A18,I5,A6)') 'SURF COMM:        ',SurfCOMM%nProcs,' procs'
 END IF
 
-! now, create output communicator
-OutputOnProc=.FALSE.
-color=MPI_UNDEFINED
-IF(SurfMesh%nOutputSides.GT.0) THEN
-  OutputOnProc=.TRUE.
-  color=1002
+! now, create output communicator when proc has local sides
+OutputOnProc = .FALSE.
+color        = MPI_UNDEFINED
+IF (SurfMesh%nSides.GT.0) THEN
+  OutputOnProc = .TRUE.
+  color        = 1002
 END IF
 
+! create ranks for output communicator
+! TODO: shouldn't this just be an MPI_EXSCAN? But then, root wouldn't know the total number ...
 IF(PartMPI%MPIRoot) THEN
-  Surfrank=-1
-  noSurfrank=-1
-  SurfCOMM%MyOutputRank=0
-  IF(SurfMesh%nOutputSides.GT.0) THEN
-    Surfrank=0
+  SurfRank              = -1
+  noSurfRank            = -1
+  SurfCOMM%MyOutputRank = 0
+  IF (SurfMesh%nSides.GT.0) THEN
+    SurfRank   = 0
   ELSE
-    noSurfrank=0
+    noSurfRank = 0
   END IF
+  ! root communicates with all procs to get global numbers and informs the proc
   DO iProc=1,nProcessors-1
     CALL MPI_RECV(hasSurf,1,MPI_LOGICAL,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
     IF(hasSurf) THEN
-      SurfRank=SurfRank+1
+      SurfRank   = SurfRank+1
       CALL MPI_SEND(SurfRank,1,MPI_INTEGER,iProc,0,MPI_COMM_WORLD,iError)
     ELSE
-      noSurfRank=noSurfRank+1
+      noSurfRank = noSurfRank+1
       CALL MPI_SEND(noSurfRank,1,MPI_INTEGER,iProc,0,MPI_COMM_WORLD,iError)
     END IF
   END DO
 ELSE
+  ! all other procs send their information to root
   CALL MPI_SEND(OutputOnProc,1,MPI_LOGICAL,0,0,MPI_COMM_WORLD,iError)
   CALL MPI_RECV(SurfCOMM%MyOutputRank,1,MPI_INTEGER,0,0,MPI_COMM_WORLD,MPIstatus,iError)
 END IF
@@ -449,442 +508,549 @@ IF(OutputOnPRoc)THEN
 ELSE
   SurfCOMM%nOutputProcs = 0
 END IF
-SurfCOMM%MPIOutputRoot=.FALSE.
+
+! root flags itself as SurfCOMM%MPIOutputRoot
+SurfCOMM%MPIOutputRoot  = .FALSE.
 IF(SurfCOMM%MyOutputRank.EQ.0 .AND. OutputOnProc) THEN
-  SurfCOMM%MPIOutputRoot=.TRUE.
-!   WRITE(UNIT_stdout,'(A18,I5,A6)') 'SURF OUTPUT-COMM: ',SurfCOMM%nOutputProcs,' procs'
+  SurfCOMM%MPIOutputRoot = .TRUE.
 END IF
 
-IF(SurfMesh%nOutputSides.EQ.0) RETURN
-! get correct offsets for output of hdf5 file (master sides)
-ALLOCATE(offsetSurfSideMPI(0:SurfCOMM%nOutputProcs))
-offsetSurfSideMPI=0
-ALLOCATE(countSurfSideMPI(0:SurfCOMM%nOutputProcs-1))
-countSurfSideMPI=0
+IF(SurfMesh%nSides.EQ.0) RETURN
+! get correct offsets for output of hdf5 file (master sides, i.e. proc local sides)
+ALLOCATE(offsetSurfSideMPI(0:SurfCOMM%nOutputProcs)   &
+        ,countSurfSideMPI (0:SurfCOMM%nOutputProcs-1))
+offsetSurfSideMPI = 0
+countSurfSideMPI  = 0
 
-CALL MPI_GATHER(SurfMesh%nOutputSides,1,MPI_INTEGER,countSurfSideMPI,1,MPI_INTEGER,0,SurfCOMM%OutputCOMM,iError)
-
+! SurfCOMM%MPIOutputRoot gathers all information and sends it to the proc
+CALL MPI_GATHER(SurfMesh%nSides,1,MPI_INTEGER,countSurfSideMPI,1,MPI_INTEGER,0,SurfCOMM%OutputCOMM,iError)
 IF (SurfCOMM%MPIOutputRoot) THEN
   DO iProc=1,SurfCOMM%nOutputProcs-1
-    offsetSurfSideMPI(iProc)=SUM(countSurfSideMPI(0:iProc-1))
+    offsetSurfSideMPI(iProc) = SUM(countSurfSideMPI(0:iProc-1))
   END DO
-  offsetSurfSideMPI(SurfCOMM%nOutputProcs)=SUM(countSurfSideMPI(:))
+  offsetSurfSideMPI(SurfCOMM%nOutputProcs) = SUM(countSurfSideMPI(:))
 END IF
 CALL MPI_BCAST (offsetSurfSideMPI,size(offsetSurfSideMPI),MPI_INTEGER,0,SurfCOMM%OutputCOMM,iError)
 offsetSurfSide=offsetSurfSideMPI(SurfCOMM%MyOutputRank)
 
 END SUBROUTINE InitSurfCommunicator
 
-
-SUBROUTINE GetHaloSurfMapping()
-!===================================================================================================================================
-! build all missing stuff for surface-sampling communicator, like
-! offSetMPI
-! MPI-neighbor list
-! PartHaloSideToProc
-! only receiving process knows to which local side the sending information is going, the sending process does not know the final
-! sideid
-! if only a processes has to send his data to another, the whole structure is build, but not filled. only if the nsidesrecv,send>0
-! communication is performed
-!===================================================================================================================================
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_Preproc
-USE MOD_Mesh_Vars                   ,ONLY:nSides,nBCSides
-USE MOD_Particle_Boundary_Vars      ,ONLY:SurfMesh,SurfComm,nSurfSample
-USE MOD_Particle_MPI_Vars           ,ONLY:PartHaloSideToProc,PartHaloElemToProc,SurfSendBuf,SurfRecvBuf,SurfExchange
-USE MOD_Particle_Mesh_Vars          ,ONLY:nTotalSides,PartSideToElem,PartElemToSide
-!----------------------------------------------------------------------------------------------------------------------------------!
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-! INPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-LOGICAL                           :: isMPINeighbor(0:SurfCOMM%nProcs-1)
-LOGICAL                           :: RecvMPINeighbor(0:SurfCOMM%nProcs-1)
-INTEGER                           :: nDOF,ALLOCSTAT,SideID,TargetProc,TargetElem
-INTEGER                           :: iProc, GlobalProcID,iSide,ElemID,SurfSideID,LocalProcID,iSendSide,iRecvSide,iPos
-INTEGER,ALLOCATABLE               :: recv_status_list(:,:)
-INTEGER                           :: RecvRequest(0:SurfCOMM%nProcs-1),SendRequest(0:SurfCOMM%nProcs-1)
-INTEGER                           :: SurfToGlobal(0:SurfCOMM%nProcs-1)
-INTEGER                           :: NativeElemID, NativeLocSideID
-!===================================================================================================================================
-
-nDOF=(nSurfSample)*(nSurfSample)
-
-! get mapping from local rank to global rank...
-CALL MPI_ALLGATHER(MyRank,1, MPI_INTEGER, SurfToGlobal(0:SurfCOMM%nProcs-1), 1, MPI_INTEGER, SurfCOMM%COMM, IERROR)
-
-! get list of mpi surf-comm neighbors in halo-region
-isMPINeighbor=.FALSE.
-IF(SurfMesh%nTotalSides.GT.SurfMesh%nSides)THEN
-  ! PartHaloSideToProc has the mapping from the local sideid to the corresponding
-  ! element-id, localsideid, native-proc-id and local-proc-id
-  ! caution:
-  ! native-proc-id is id in global list || PartMPI%COMM
-  ! local-proc-id is the nth neighbor in SurfCOMM%COMM
-  ! caution2:
-  !  this mapping is done only for reflective bcs, thus, each open side or non-reflective side
-  !  points to -1
-  ! get all MPI-neighbors to communicate with
-  DO iProc=0,SurfCOMM%nProcs-1
-    IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
-    GlobalProcID=SurfToGlobal(iProc)
-    DO iSide=nSides+1,nTotalSides
-      SurfSideID=SurfMesh%SideIDToSurfID(iSide)
-      IF(SurfSideID.EQ.-1) CYCLE
-      ! get elemid
-      ! TODO: Move this to new halo region
-      ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
-      IF(ElemID.LE.PP_nElems)THEN
-        CALL abort(&
-__STAMP__&
-,' Error in PartSideToElem. Halo-Side cannot be connected to local element', ElemID  )
-      END IF
-      IF(GlobalProcID.EQ.TargetProc)THEN
-        IF(.NOT.isMPINeighbor(iProc))THEN
-          isMPINeighbor(iProc)=.TRUE.
-        END IF
-      END IF
-    END DO ! iSide=nSides+1,nTotalSides
-  END DO ! iProc = 0, SurfCOMM%nProcs-1
-END IF
-
-! Make sure SurfCOMM%MPINeighbor is consistent
-! 1) communication of found is neighbor
-ALLOCATE(RECV_STATUS_LIST(1:MPI_STATUS_SIZE,0:SurfCOMM%nProcs-1))
-! receive and send connection information
-DO iProc=0,SurfCOMM%nProcs-1
-  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
-  CALL MPI_IRECV( RecvMPINeighbor(iProc)                    &
-                , 1                                         &
-                , MPI_LOGICAL                               &
-                , iProc                                     &
-                , 1001                                      &
-                , SurfCOMM%COMM                             &
-                , RecvRequest(iProc)                        &
-                , IERROR )
-END DO ! iProc
-DO iProc=0,SurfCOMM%nProcs-1
-  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
-  CALL MPI_ISEND( isMPINeighbor(iProc)                      &
-                , 1                                         &
-                , MPI_LOGICAL                               &
-                , iProc                                     &
-                , 1001                                      &
-                , SurfCOMM%COMM                             &
-                , SendRequest(iProc)                        &
-                , IERROR )
-  IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
-    __STAMP__&
-    ,' MPI Communication error', IERROR)
-END DO ! iProc
-
-! finish communication
-DO iProc=0,SurfCOMM%nProcs-1
-  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
-  CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
-    __STAMP__&
-    ,' MPI Communication error', IERROR)
-  CALL MPI_WAIT(RecvRequest(iProc),recv_status_list(:,iProc),IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
-    __STAMP__&
-    ,' MPI Communication error', IERROR)
-END DO ! iProc
-DEALLOCATE(RECV_STATUS_LIST)
-
-! 2) finalize MPI consistency check.
-DO iProc=0,SurfCOMM%nProcs-1
-  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
-  IF (RecvMPINeighbor(iProc).NEQV.isMPINeighbor(iProc)) THEN
-    IF(.NOT.isMPINeighbor(iProc))THEN
-      isMPINeighbor(iProc)=.TRUE.
-      ! it is a debug output
-      !IPWRITE(UNIT_stdOut,*) ' Found missing mpi-neighbor'
-    END IF
-  END IF
-END DO ! iProc
-
-! build the mapping
-SurfCOMM%nMPINeighbors=0
-IF(ANY(IsMPINeighbor))THEN
-  ! PartHaloSideToProc has the mapping from the local sideid to the corresponding
-  ! element-id, localsideid, native-proc-id and local-proc-id
-  ! caution:
-  ! native-proc-id is id in global list || PartMPI%COMM
-  ! local-proc-id is the nth neighbor in SurfCOMM%COMM
-  ! caution2:
-  !  this mapping is done only for reflective bcs, thus, each open side or non-reflective side
-  !  points to -1
-  IF(SurfMesh%nTotalSides.GT.SurfMesh%nSides)THEN
-    ALLOCATE(PartHaloSideToProc(1:4,nSides+1:nTotalSides))
-    PartHaloSideToProc=-1
-    ! get all MPI-neighbors to communicate with
-    DO iProc=0,SurfCOMM%nProcs-1
-      IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
-      IF(isMPINeighbor(iProc))THEN
-        SurfCOMM%nMPINeighbors=SurfCOMM%nMPINeighbors+1
-      ELSE
-        CYCLE
-      END IF
-      GlobalProcID=SurfToGlobal(iProc)
-      DO iSide=nSides+1,nTotalSides
-        SurfSideID=SurfMesh%SideIDToSurfID(iSide)
-        IF(SurfSideID.EQ.-1) CYCLE
-        ! get elemid
-        ! TODO: Move this to new halo region
-        ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
-        IF(ElemID.LE.PP_nElems)THEN
-        CALL abort(&
-__STAMP__&
-,' Error in PartSideToElem. Halo-Side cannot be connected to local element', ElemID  )
-        END IF
-        IF(GlobalProcID.EQ.TargetProc)THEN
-          ! caution:
-          ! native-proc-id is id in global list || PartMPI%COMM
-          ! local-proc-id is the nth neighbor in SurfCOMM%COMM
-          PartHaloSideToProc(NATIVE_PROC_ID,iSide)=GlobalProcID
-          PartHaloSideToProc(LOCAL_PROC_ID ,iSide)=SurfCOMM%nMPINeighbors
-        END IF
-      END DO ! iSide=nSides+1,nTotalSides
-    END DO ! iProc = 0, SurfCOMM%nProcs-1
-  ELSE
-    ! process receives only surface data from other processes, but does not send data.
-    DO iProc=0,SurfCOMM%nProcs-1
-      IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
-      IF(isMPINeighbor(iProc)) SurfCOMM%nMPINeighbors=SurfCOMM%nMPINeighbors+1
-    END DO ! iProc = 0, SurfCOMM%nProcs-1
-  END IF
-END IF
-
-! build SurfMesh exchange information
-! next, allocate SurfCOMM%MPINeighbor
-ALLOCATE(SurfCOMM%MPINeighbor(1:SurfCOMM%nMPINeighbors))
-! set native proc-id of each SurfCOMM-MPI-Neighbor
-LocalProcID=0
-DO iProc = 0,SurfCOMM%nProcs-1
-  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
-  IF(isMPINeighbor(iProc))THEN
-    LocalProcID=LocalProcID+1
-    ! map from local proc id to global
-    SurfCOMM%MPINeighbor(LocalProcID)%NativeProcID=iProc !PartMPI%MPINeighbor(iProc)
-  END IF
-END DO ! iProc=1,PartMPI%nMPINeighbors
-
-! array how many data has to be communicated
-! number of Sides
-ALLOCATE(SurfExchange%nSidesSend(1:SurfCOMM%nMPINeighbors) &
-        ,SurfExchange%nSidesRecv(1:SurfCOMM%nMPINeighbors) &
-        ,SurfExchange%SendRequest(SurfCOMM%nMPINeighbors)  &
-        ,SurfExchange%RecvRequest(SurfCOMM%nMPINeighbors)  )
-
-SurfExchange%nSidesSend=0
-SurfExchange%nSidesRecv=0
-! loop over all neighbors
-DO iProc=1,SurfCOMM%nMPINeighbors
-  ! proc-id in SurfCOMM%nProcs
-  DO iSide=nSides+1,nTotalSides
-    SurfSideID=SurfMesh%SideIDToSurfID(iSide)
-    IF(SurfSideID.EQ.-1) CYCLE
-    ! get elemid
-    ! TODO: Move this to new halo region
-    IF(iProc.EQ.PartHaloSideToProc(LOCAL_PROC_ID,iSide))THEN
-      SurfExchange%nSidesSend(iProc)=SurfExchange%nSidesSend(iProc)+1
-      PartHaloSideToProc(LOCAL_SEND_ID,iSide) =SurfExchange%nSidesSend(iProc)
-    END IF
-  END DO ! iSide=nSides+1,nTotalSides
-END DO ! iProc=1,SurfCOMM%nMPINeighbors
-
-! open receive number of send particles
-ALLOCATE(RECV_STATUS_LIST(1:MPI_STATUS_SIZE,1:SurfCOMM%nMPINeighbors))
-DO iProc=1,SurfCOMM%nMPINeighbors
-  CALL MPI_IRECV( SurfExchange%nSidesRecv(iProc)            &
-                , 1                                         &
-                , MPI_INTEGER                               &
-                , SurfCOMM%MPINeighbor(iProc)%NativeProcID  &
-                , 1001                                      &
-                , SurfCOMM%COMM                             &
-                , SurfExchange%RecvRequest(iProc)           &
-                , IERROR )
-END DO ! iProc
-
-DO iProc=1,SurfCOMM%nMPINeighbors
-  ALLOCATE(SurfCOMM%MPINeighbor(iProc)%SendList(SurfExchange%nSidesSend(iProc)))
-  SurfCOMM%MPINeighbor(iProc)%SendList=0
-  CALL MPI_ISEND( SurfExchange%nSidesSend(iProc)           &
-                , 1                                        &
-                , MPI_INTEGER                              &
-                , SurfCOMM%MPINeighbor(iProc)%NativeProcID &
-                , 1001                                     &
-                , SurfCOMM%COMM                            &
-                , SurfExchange%SendRequest(iProc)          &
-                , IERROR )
-END DO ! iProc
+! TODO: rebuild for new halo region
+!SUBROUTINE InitSurfCommunication()
+!!===================================================================================================================================
+!
+!!===================================================================================================================================
+!! MODULES                                                                                                                          !
+!!----------------------------------------------------------------------------------------------------------------------------------!
+!USE MOD_Globals
+!USE MOD_Preproc
+!USE MOD_Particle_Globals
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!----------------------------------------------------------------------------------------------------------------------------------!
+!! INPUT/OUTPUT VARIABLES
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!INTEGER                           :: iProc,GlobalProcID
+!INTEGER                           :: firstSide,lastSide
+!INTEGER                           :: SurfToGlobal(0:SurfCOMM%nProcs-1)
+!!===================================================================================================================================
+!
+!! get mapping from local rank to global rank...
+!CALL MPI_ALLGATHER(MyRank,1, MPI_INTEGER, SurfToGlobal(0:SurfCOMM%nProcs-1), 1, MPI_INTEGER, SurfCOMM%COMM, IERROR)
+!
+!! find all procs with surface sampling sides to communicate with
+!isMPINeighbor=.FALSE.
+!IF (SurfMesh%nTotalSides.GT.SurfMesh%nSides) THEN
+!  DO iProc=0,SurfCOMM%nProcs-1
+!    ! ignore myself
+!    IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!    
+!    ! check if the proc has surface sampling sides
+!    GlobalProcID = SurfToGlobal(iProc)
+!    firstSide    = ElemInfo_Shared(ELEM_FIRSTSIDEIND,offsetElemMPI(GlobalProcID)+1)
+!    lastSide     = ElemInfo_Shared(ELEM_LASTSIDEIND ,offsetElemMPI(GlobalProcID+1))
+!    
+!    DO iSide = firstSide,lastSide
+!      SurfSideID = SurfMesh%SideIDToSurfID(iSide)
+!      
+!      ! ignore sides that are not sampled
+!      IF(SurfSideID.EQ.-1) CYCLE
+!      
+!      ! flag once a surface sampling side is found
+!      IF (.NOT.isMPINeighbor(iProc)) THEN
+!        isMPINeighbor(iProc) = .TRUE.
+!        EXIT
+!      END IF
+!    END DO ! iSide = firstSide,lastSide
+!  END DO ! iProc=0,SurfCOMM%nProcs-1
+!END IF
+!
+!! Make sure SurfCOMM%MPINeighbor is consistent
+!ALLOCATE(RECV_STATUS_LIST(1:MPI_STATUS_SIZE,0:SurfCOMM%nProcs-1))
+!! receive and send connection information
+!DO iProc=0,SurfCOMM%nProcs-1
+!  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!  CALL MPI_IRECV( RecvMPINeighbor(iProc)                    &
+!                , 1                                         &
+!                , MPI_LOGICAL                               &
+!                , iProc                                     &
+!                , 1001                                      &
+!                , SurfCOMM%COMM                             &
+!                , RecvRequest(iProc)                        &
+!                , IERROR )
+!END DO ! iProc
+!DO iProc=0,SurfCOMM%nProcs-1
+!  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!  CALL MPI_ISEND( isMPINeighbor(iProc)                      &
+!                , 1                                         &
+!                , MPI_LOGICAL                               &
+!                , iProc                                     &
+!                , 1001                                      &
+!                , SurfCOMM%COMM                             &
+!                , SendRequest(iProc)                        &
+!                , IERROR )
+!  IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+!END DO ! iProc
+!
+!! finish communication
+!DO iProc=0,SurfCOMM%nProcs-1
+!  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!  CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
+!  IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+!  CALL MPI_WAIT(RecvRequest(iProc),recv_status_list(:,iProc),IERROR)
+!  IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+!END DO ! iProc
+!DEALLOCATE(RECV_STATUS_LIST)
+!
+!! Make sure we agree on how many sides need to be exchanged
+!!>> TODO: if the halo region is reduced, we might encounter the case where some procs on the other nodes are NOT within our halo
+!!>> region. Things will badly break then
+!ALLOCATE(SurfExchange%nSidesSend(1:SurfCOMM%nMPINeighbors) &
+!        ,SurfExchange%nSidesRecv(1:SurfCOMM%nMPINeighbors) &
+!        ,SurfExchange%SendRequest(SurfCOMM%nMPINeighbors)  &
+!        ,SurfExchange%RecvRequest(SurfCOMM%nMPINeighbors))
+!
+!SurfExchange%nSidesSend=0
+!SurfExchange%nSidesRecv=0
+!! loop over all neighbors
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  !
+!END DO
+!  
+!
+!END SUBROUTINE InitSurfCommunication
 
 
-! 4) Finish Received number of particles
-DO iProc=1,SurfCOMM%nMPINeighbors
-  CALL MPI_WAIT(SurfExchange%SendRequest(iProc),MPIStatus,IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
-__STAMP__&
-,' MPI Communication error', IERROR)
-  CALL MPI_WAIT(SurfExchange%RecvRequest(iProc),recv_status_list(:,iProc),IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
-__STAMP__&
-          ,' MPI Communication error', IERROR)
-END DO ! iProc
-
-! allocate send and receive buffer
-ALLOCATE(SurfSendBuf(SurfCOMM%nMPINeighbors))
-ALLOCATE(SurfRecvBuf(SurfCOMM%nMPINeighbors))
-DO iProc=1,SurfCOMM%nMPINeighbors
-  IF(SurfExchange%nSidesSend(iProc).GT.0)THEN
-    ALLOCATE(SurfSendBuf(iProc)%content(2*SurfExchange%nSidesSend(iProc)),STAT=ALLOCSTAT)
-    SurfSendBuf(iProc)%Content=-1
-  END IF
-  IF(SurfExchange%nSidesRecv(iProc).GT.0)THEN
-    ALLOCATE(SurfRecvBuf(iProc)%content(2*SurfExchange%nSidesRecv(iProc)),STAT=ALLOCSTAT)
-  END IF
-END DO ! iProc=1,PartMPI%nMPINeighbors
-
-! open receive buffer
-DO iProc=1,SurfCOMM%nMPINeighbors
-  IF(SurfExchange%nSidesRecv(iProc).EQ.0) CYCLE
-  CALL MPI_IRECV( SurfRecvBuf(iProc)%content                   &
-                , 2*SurfExchange%nSidesRecv(iProc)             &
-                , MPI_DOUBLE_PRECISION                         &
-                , SurfCOMM%MPINeighbor(iProc)%NativeProcID     &
-                , 1004                                         &
-                , SurfCOMM%COMM                                &
-                , SurfExchange%RecvRequest(iProc)              &
-                , IERROR )
-END DO ! iProc
-
-! build message
-! after this message, the receiving process knows to which of his sides the sending process will send the
-  ! surface data
-DO iProc=1,SurfCOMM%nMPINeighbors
-  IF(SurfExchange%nSidesSend(iProc).EQ.0) CYCLE
-  iSendSide=0
-  iPos=1
-  DO iSide=nSides+1,nTotalSides
-    SurfSideID=SurfMesh%SideIDToSurfID(iSide)
-    IF(SurfSideID.EQ.-1) CYCLE
-    ! get elemid
-    IF(iProc.EQ.PartHaloSideToProc(LOCAL_PROC_ID,iSide))THEN
-      iSendSide=iSendSide+1
-      ! get elemid
-      ! TODO: Move this to new halo region
-      ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
-!       IF(ElemID.LE.PP_nElems)THEN
-!         IPWRITE(UNIT_stdOut,*) ' Error in PartSideToElem'
-!       END IF
-!       IF(ElemID.LE.1)THEN
-!         IPWRITE(UNIT_stdOut,*) ' Error in PartSideToElem'
-!       END IF
-      SurfCOMM%MPINeighbor(iProc)%SendList(iSendSide)=SurfSideID
-!       IPWRITE(*,*) 'negative elem id',PartHaloElemToProc(NATIVE_ELEM_ID,ElemID),PartSideToElem(S2E_LOC_SIDE_ID,iSide)
-      SurfSendBuf(iProc)%content(iPos  )= REAL(PartHaloElemToProc(NATIVE_ELEM_ID,ElemID))
-      SurfSendBuf(iProc)%content(iPos+1)= REAL(PartSideToElem(S2E_LOC_SIDE_ID,iSide))
-      iPos=iPos+2
-    END IF
-  END DO ! iSide=nSides+1,nTotalSides
-  IF(iSendSide.NE.SurfExchange%nSidesSend(iProc)) CALL abort(&
-__STAMP__&
-          ,' Message too short!',iProc)
-  IF(ANY(SurfSendBuf(iProc)%content.LE.0))THEN
-    IPWRITE(UNIT_stdOut,*) ' nSendSides', SurfExchange%nSidesSend(iProc), ' to Proc ', iProc
-    CALL abort(&
-__STAMP__&
-          ,' Sent NATIVE_ELEM_ID or LOCSIDEID is zero!')
-  END IF
-END DO
-
-DO iProc=1,SurfCOMM%nMPINeighbors
-  IF(SurfExchange%nSidesSend(iProc).EQ.0) CYCLE
-  CALL MPI_ISEND( SurfSendBuf(iProc)%content               &
-                , 2*SurfExchange%nSidesSend(iProc)         &
-                , MPI_DOUBLE_PRECISION                     &
-                , SurfCOMM%MPINeighbor(iProc)%NativeProcID &
-                , 1004                                     &
-                , SurfCOMM%COMM                            &
-                , SurfExchange%SendRequest(iProc)          &
-                , IERROR )
-END DO ! iProc
-
-! 4) Finish Received number of particles
-DO iProc=1,SurfCOMM%nMPINeighbors
-  IF(SurfExchange%nSidesSend(iProc).NE.0) THEN
-    CALL MPI_WAIT(SurfExchange%SendRequest(iProc),MPIStatus,IERROR)
-    IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
-__STAMP__&
-          ,' MPI Communication error', IERROR)
-  END IF
-  IF(SurfExchange%nSidesRecv(iProc).NE.0) THEN
-    CALL MPI_WAIT(SurfExchange%RecvRequest(iProc),recv_status_list(:,iProc),IERROR)
-    IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
-__STAMP__&
-          ,' MPI Communication error', IERROR)
-  END IF
-END DO ! iProc
-
-! fill list with received side ids
-! store the receiving data
-DO iProc=1,SurfCOMM%nMPINeighbors
-  ALLOCATE(SurfCOMM%MPINeighbor(iProc)%RecvList(SurfExchange%nSidesRecv(iProc)))
-  IF(SurfExchange%nSidesRecv(iProc).EQ.0) CYCLE
-  iPos=1
-  DO iRecvSide=1,SurfExchange%nSidesRecv(iProc)
-    NativeElemID   =INT(SurfRecvBuf(iProc)%content(iPos))
-    NativeLocSideID=INT(SurfRecvBuf(iProc)%content(iPos+1))
-    IF(NativeElemID.GT.PP_nElems)THEN
-     CALL abort(&
-__STAMP__&
-          ,' Cannot send halo-data to other procs. big error! ', ElemID, REAL(PP_nElems))
-    END IF
-    SideID=PartElemToSide(E2S_SIDE_ID,NativeLocSideID,NativeElemID)
-    IF(SideID.GT.nSides)THEN
-      IPWRITE(UNIT_stdOut,*) ' Received wrong sideid. Is not a BC side! '
-      IPWRITE(UNIT_stdOut,*) ' SideID, nBCSides, nSides ', SideID, nBCSides, nSides
-      IPWRITE(UNIT_stdOut,*) ' ElemID, locsideid        ', NativeElemID, NativeLocSideID
-      IPWRITE(UNIT_stdOut,*) ' Sending process has error in halo-region! ', SurfCOMM%MPINeighbor(iProc)%NativeProcID
-     CALL abort(&
-__STAMP__&
-          ,' Big error in halo region! NativeLocSideID ', NativeLocSideID )
-    END IF
-    SurfSideID=SurfMesh%SideIDToSurfID(SideID)
-    IF(SurfSideID.EQ.-1)THEN
-     CALL abort(&
-__STAMP__&
-          ,' Side is not even a reflective BC side! ', SideID )
-    END IF
-    SurfCOMM%MPINeighbor(iProc)%RecvList(iRecvSide)=SideID
-    iPos=iPos+2
-  END DO ! RecvSide=1,SurfExchange%nSidesRecv(iProc)-1,2
-END DO ! iProc
-
-DO iProc=1,SurfCOMM%nMPINeighbors
-  SDEALLOCATE(SurfSendBuf(iProc)%content)
-  SDEALLOCATE(SurfRecvBuf(iProc)%content)
-  IF(SurfExchange%nSidesSend(iProc).GT.0) THEN
-    ALLOCATE(SurfSendBuf(iProc)%content((SurfMesh%SampSize)*nDOF*SurfExchange%nSidesSend(iProc)))
-    SurfSendBuf(iProc)%content=0.
-  END IF
-  IF(SurfExchange%nSidesRecv(iProc).GT.0) THEN
-    ALLOCATE(SurfRecvBuf(iProc)%content((SurfMesh%SampSize)*nDOF*SurfExchange%nSidesRecv(iProc)))
-    SurfRecvBuf(iProc)%content=0.
-  END IF
-END DO ! iProc
-DEALLOCATE(recv_status_list)
-
-CALL MPI_BARRIER(SurfCOMM%Comm,iError)
-
-END SUBROUTINE GetHaloSurfMapping
+!SUBROUTINE GetHaloSurfMapping()
+!!===================================================================================================================================
+!! build all missing stuff for surface-sampling communicator, like
+!! offSetMPI
+!! MPI-neighbor list
+!! PartHaloSideToProc
+!! only receiving process knows to which local side the sending information is going, the sending process does not know the final
+!! sideid
+!! if only a processes has to send his data to another, the whole structure is build, but not filled. only if the nsidesrecv,send>0
+!! communication is performed
+!!===================================================================================================================================
+!! MODULES                                                                                                                          !
+!!----------------------------------------------------------------------------------------------------------------------------------!
+!USE MOD_Globals
+!USE MOD_Particle_Globals
+!USE MOD_Preproc
+!USE MOD_Mesh_Vars                   ,ONLY:nSides,nBCSides
+!USE MOD_Particle_Boundary_Vars      ,ONLY:SurfMesh,SurfComm,nSurfSample
+!USE MOD_Particle_MPI_Vars           ,ONLY:PartHaloSideToProc,PartHaloElemToProc,SurfSendBuf,SurfRecvBuf,SurfExchange
+!USE MOD_Particle_Mesh_Vars          ,ONLY:nTotalSides,PartSideToElem,PartElemToSide
+!!----------------------------------------------------------------------------------------------------------------------------------!
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!! INPUT VARIABLES
+!!----------------------------------------------------------------------------------------------------------------------------------!
+!! OUTPUT VARIABLES
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!LOGICAL                           :: isMPINeighbor(0:SurfCOMM%nProcs-1)
+!LOGICAL                           :: RecvMPINeighbor(0:SurfCOMM%nProcs-1)
+!INTEGER                           :: nDOF,ALLOCSTAT,SideID,TargetProc,TargetElem
+!INTEGER                           :: iProc, GlobalProcID,iSide,ElemID,SurfSideID,LocalProcID,iSendSide,iRecvSide,iPos
+!INTEGER,ALLOCATABLE               :: recv_status_list(:,:)
+!INTEGER                           :: RecvRequest(0:SurfCOMM%nProcs-1),SendRequest(0:SurfCOMM%nProcs-1)
+!INTEGER                           :: SurfToGlobal(0:SurfCOMM%nProcs-1)
+!INTEGER                           :: NativeElemID, NativeLocSideID
+!!===================================================================================================================================
+!
+!nDOF=(nSurfSample)*(nSurfSample)
+!
+!! get mapping from local rank to global rank...
+!CALL MPI_ALLGATHER(MyRank,1, MPI_INTEGER, SurfToGlobal(0:SurfCOMM%nProcs-1), 1, MPI_INTEGER, SurfCOMM%COMM, IERROR)
+!
+!! get list of mpi surf-comm neighbors in halo-region
+!isMPINeighbor=.FALSE.
+!IF(SurfMesh%nTotalSides.GT.SurfMesh%nSides)THEN
+!  ! PartHaloSideToProc has the mapping from the local sideid to the corresponding
+!  ! element-id, localsideid, native-proc-id and local-proc-id
+!  ! caution:
+!  ! native-proc-id is id in global list || PartMPI%COMM
+!  ! local-proc-id is the nth neighbor in SurfCOMM%COMM
+!  ! caution2:
+!  !  this mapping is done only for reflective bcs, thus, each open side or non-reflective side
+!  !  points to -1
+!  ! get all MPI-neighbors to communicate with
+!  DO iProc=0,SurfCOMM%nProcs-1
+!    IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!    GlobalProcID=SurfToGlobal(iProc)
+!    DO iSide=nSides+1,nTotalSides
+!      SurfSideID=SurfMesh%SideIDToSurfID(iSide)
+!      IF(SurfSideID.EQ.-1) CYCLE
+!      ! get elemid
+!      ! TODO: Move this to new halo region
+!      ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
+!      IF(ElemID.LE.PP_nElems)THEN
+!        CALL abort(&
+!__STAMP__&
+!,' Error in PartSideToElem. Halo-Side cannot be connected to local element', ElemID  )
+!      END IF
+!      IF(GlobalProcID.EQ.TargetProc)THEN
+!        IF(.NOT.isMPINeighbor(iProc))THEN
+!          isMPINeighbor(iProc)=.TRUE.
+!        END IF
+!      END IF
+!    END DO ! iSide=nSides+1,nTotalSides
+!  END DO ! iProc = 0, SurfCOMM%nProcs-1
+!END IF
+!
+!! Make sure SurfCOMM%MPINeighbor is consistent
+!! 1) communication of found is neighbor
+!ALLOCATE(RECV_STATUS_LIST(1:MPI_STATUS_SIZE,0:SurfCOMM%nProcs-1))
+!! receive and send connection information
+!DO iProc=0,SurfCOMM%nProcs-1
+!  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!  CALL MPI_IRECV( RecvMPINeighbor(iProc)                    &
+!                , 1                                         &
+!                , MPI_LOGICAL                               &
+!                , iProc                                     &
+!                , 1001                                      &
+!                , SurfCOMM%COMM                             &
+!                , RecvRequest(iProc)                        &
+!                , IERROR )
+!END DO ! iProc
+!DO iProc=0,SurfCOMM%nProcs-1
+!  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!  CALL MPI_ISEND( isMPINeighbor(iProc)                      &
+!                , 1                                         &
+!                , MPI_LOGICAL                               &
+!                , iProc                                     &
+!                , 1001                                      &
+!                , SurfCOMM%COMM                             &
+!                , SendRequest(iProc)                        &
+!                , IERROR )
+!  IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
+!    __STAMP__&
+!    ,' MPI Communication error', IERROR)
+!END DO ! iProc
+!
+!! finish communication
+!DO iProc=0,SurfCOMM%nProcs-1
+!  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!  CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
+!  IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
+!    __STAMP__&
+!    ,' MPI Communication error', IERROR)
+!  CALL MPI_WAIT(RecvRequest(iProc),recv_status_list(:,iProc),IERROR)
+!  IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
+!    __STAMP__&
+!    ,' MPI Communication error', IERROR)
+!END DO ! iProc
+!DEALLOCATE(RECV_STATUS_LIST)
+!
+!! 2) finalize MPI consistency check.
+!DO iProc=0,SurfCOMM%nProcs-1
+!  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!  IF (RecvMPINeighbor(iProc).NEQV.isMPINeighbor(iProc)) THEN
+!    IF(.NOT.isMPINeighbor(iProc))THEN
+!      isMPINeighbor(iProc)=.TRUE.
+!      ! it is a debug output
+!      !IPWRITE(UNIT_stdOut,*) ' Found missing mpi-neighbor'
+!    END IF
+!  END IF
+!END DO ! iProc
+!
+!! build the mapping
+!SurfCOMM%nMPINeighbors=0
+!IF(ANY(IsMPINeighbor))THEN
+!  ! PartHaloSideToProc has the mapping from the local sideid to the corresponding
+!  ! element-id, localsideid, native-proc-id and local-proc-id
+!  ! caution:
+!  ! native-proc-id is id in global list || PartMPI%COMM
+!  ! local-proc-id is the nth neighbor in SurfCOMM%COMM
+!  ! caution2:
+!  !  this mapping is done only for reflective bcs, thus, each open side or non-reflective side
+!  !  points to -1
+!  IF(SurfMesh%nTotalSides.GT.SurfMesh%nSides)THEN
+!    ALLOCATE(PartHaloSideToProc(1:4,nSides+1:nTotalSides))
+!    PartHaloSideToProc=-1
+!    ! get all MPI-neighbors to communicate with
+!    DO iProc=0,SurfCOMM%nProcs-1
+!      IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!      IF(isMPINeighbor(iProc))THEN
+!        SurfCOMM%nMPINeighbors=SurfCOMM%nMPINeighbors+1
+!      ELSE
+!        CYCLE
+!      END IF
+!      GlobalProcID=SurfToGlobal(iProc)
+!      DO iSide=nSides+1,nTotalSides
+!        SurfSideID=SurfMesh%SideIDToSurfID(iSide)
+!        IF(SurfSideID.EQ.-1) CYCLE
+!        ! get elemid
+!        ! TODO: Move this to new halo region
+!        ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
+!        IF(ElemID.LE.PP_nElems)THEN
+!        CALL abort(&
+!__STAMP__&
+!,' Error in PartSideToElem. Halo-Side cannot be connected to local element', ElemID  )
+!        END IF
+!        IF(GlobalProcID.EQ.TargetProc)THEN
+!          ! caution:
+!          ! native-proc-id is id in global list || PartMPI%COMM
+!          ! local-proc-id is the nth neighbor in SurfCOMM%COMM
+!          PartHaloSideToProc(NATIVE_PROC_ID,iSide)=GlobalProcID
+!          PartHaloSideToProc(LOCAL_PROC_ID ,iSide)=SurfCOMM%nMPINeighbors
+!        END IF
+!      END DO ! iSide=nSides+1,nTotalSides
+!    END DO ! iProc = 0, SurfCOMM%nProcs-1
+!  ELSE
+!    ! process receives only surface data from other processes, but does not send data.
+!    DO iProc=0,SurfCOMM%nProcs-1
+!      IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!      IF(isMPINeighbor(iProc)) SurfCOMM%nMPINeighbors=SurfCOMM%nMPINeighbors+1
+!    END DO ! iProc = 0, SurfCOMM%nProcs-1
+!  END IF
+!END IF
+!
+!! build SurfMesh exchange information
+!! next, allocate SurfCOMM%MPINeighbor
+!ALLOCATE(SurfCOMM%MPINeighbor(1:SurfCOMM%nMPINeighbors))
+!! set native proc-id of each SurfCOMM-MPI-Neighbor
+!LocalProcID=0
+!DO iProc = 0,SurfCOMM%nProcs-1
+!  IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
+!  IF(isMPINeighbor(iProc))THEN
+!    LocalProcID=LocalProcID+1
+!    ! map from local proc id to global
+!    SurfCOMM%MPINeighbor(LocalProcID)%NativeProcID=iProc !PartMPI%MPINeighbor(iProc)
+!  END IF
+!END DO ! iProc=1,PartMPI%nMPINeighbors
+!
+!! array how many data has to be communicated
+!! number of Sides
+!ALLOCATE(SurfExchange%nSidesSend(1:SurfCOMM%nMPINeighbors) &
+!        ,SurfExchange%nSidesRecv(1:SurfCOMM%nMPINeighbors) &
+!        ,SurfExchange%SendRequest(SurfCOMM%nMPINeighbors)  &
+!        ,SurfExchange%RecvRequest(SurfCOMM%nMPINeighbors)  )
+!
+!SurfExchange%nSidesSend=0
+!SurfExchange%nSidesRecv=0
+!! loop over all neighbors
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  ! proc-id in SurfCOMM%nProcs
+!  DO iSide=nSides+1,nTotalSides
+!    SurfSideID=SurfMesh%SideIDToSurfID(iSide)
+!    IF(SurfSideID.EQ.-1) CYCLE
+!    ! get elemid
+!    ! TODO: Move this to new halo region
+!    IF(iProc.EQ.PartHaloSideToProc(LOCAL_PROC_ID,iSide))THEN
+!      SurfExchange%nSidesSend(iProc)=SurfExchange%nSidesSend(iProc)+1
+!      PartHaloSideToProc(LOCAL_SEND_ID,iSide) =SurfExchange%nSidesSend(iProc)
+!    END IF
+!  END DO ! iSide=nSides+1,nTotalSides
+!END DO ! iProc=1,SurfCOMM%nMPINeighbors
+!
+!! open receive number of send particles
+!ALLOCATE(RECV_STATUS_LIST(1:MPI_STATUS_SIZE,1:SurfCOMM%nMPINeighbors))
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  CALL MPI_IRECV( SurfExchange%nSidesRecv(iProc)            &
+!                , 1                                         &
+!                , MPI_INTEGER                               &
+!                , SurfCOMM%MPINeighbor(iProc)%NativeProcID  &
+!                , 1001                                      &
+!                , SurfCOMM%COMM                             &
+!                , SurfExchange%RecvRequest(iProc)           &
+!                , IERROR )
+!END DO ! iProc
+!
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  ALLOCATE(SurfCOMM%MPINeighbor(iProc)%SendList(SurfExchange%nSidesSend(iProc)))
+!  SurfCOMM%MPINeighbor(iProc)%SendList=0
+!  CALL MPI_ISEND( SurfExchange%nSidesSend(iProc)           &
+!                , 1                                        &
+!                , MPI_INTEGER                              &
+!                , SurfCOMM%MPINeighbor(iProc)%NativeProcID &
+!                , 1001                                     &
+!                , SurfCOMM%COMM                            &
+!                , SurfExchange%SendRequest(iProc)          &
+!                , IERROR )
+!END DO ! iProc
+!
+!
+!! 4) Finish Received number of particles
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  CALL MPI_WAIT(SurfExchange%SendRequest(iProc),MPIStatus,IERROR)
+!  IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
+!__STAMP__&
+!,' MPI Communication error', IERROR)
+!  CALL MPI_WAIT(SurfExchange%RecvRequest(iProc),recv_status_list(:,iProc),IERROR)
+!  IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
+!__STAMP__&
+!          ,' MPI Communication error', IERROR)
+!END DO ! iProc
+!
+!! allocate send and receive buffer
+!ALLOCATE(SurfSendBuf(SurfCOMM%nMPINeighbors))
+!ALLOCATE(SurfRecvBuf(SurfCOMM%nMPINeighbors))
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  IF(SurfExchange%nSidesSend(iProc).GT.0)THEN
+!    ALLOCATE(SurfSendBuf(iProc)%content(2*SurfExchange%nSidesSend(iProc)),STAT=ALLOCSTAT)
+!    SurfSendBuf(iProc)%Content=-1
+!  END IF
+!  IF(SurfExchange%nSidesRecv(iProc).GT.0)THEN
+!    ALLOCATE(SurfRecvBuf(iProc)%content(2*SurfExchange%nSidesRecv(iProc)),STAT=ALLOCSTAT)
+!  END IF
+!END DO ! iProc=1,PartMPI%nMPINeighbors
+!
+!! open receive buffer
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  IF(SurfExchange%nSidesRecv(iProc).EQ.0) CYCLE
+!  CALL MPI_IRECV( SurfRecvBuf(iProc)%content                   &
+!                , 2*SurfExchange%nSidesRecv(iProc)             &
+!                , MPI_DOUBLE_PRECISION                         &
+!                , SurfCOMM%MPINeighbor(iProc)%NativeProcID     &
+!                , 1004                                         &
+!                , SurfCOMM%COMM                                &
+!                , SurfExchange%RecvRequest(iProc)              &
+!                , IERROR )
+!END DO ! iProc
+!
+!! build message
+!! after this message, the receiving process knows to which of his sides the sending process will send the
+!  ! surface data
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  IF(SurfExchange%nSidesSend(iProc).EQ.0) CYCLE
+!  iSendSide=0
+!  iPos=1
+!  DO iSide=nSides+1,nTotalSides
+!    SurfSideID=SurfMesh%SideIDToSurfID(iSide)
+!    IF(SurfSideID.EQ.-1) CYCLE
+!    ! get elemid
+!    IF(iProc.EQ.PartHaloSideToProc(LOCAL_PROC_ID,iSide))THEN
+!      iSendSide=iSendSide+1
+!      ! get elemid
+!      ! TODO: Move this to new halo region
+!      ElemID=PartSideToElem(S2E_ELEM_ID,iSide)
+!!       IF(ElemID.LE.PP_nElems)THEN
+!!         IPWRITE(UNIT_stdOut,*) ' Error in PartSideToElem'
+!!       END IF
+!!       IF(ElemID.LE.1)THEN
+!!         IPWRITE(UNIT_stdOut,*) ' Error in PartSideToElem'
+!!       END IF
+!      SurfCOMM%MPINeighbor(iProc)%SendList(iSendSide)=SurfSideID
+!!       IPWRITE(*,*) 'negative elem id',PartHaloElemToProc(NATIVE_ELEM_ID,ElemID),PartSideToElem(S2E_LOC_SIDE_ID,iSide)
+!      SurfSendBuf(iProc)%content(iPos  )= REAL(PartHaloElemToProc(NATIVE_ELEM_ID,ElemID))
+!      SurfSendBuf(iProc)%content(iPos+1)= REAL(PartSideToElem(S2E_LOC_SIDE_ID,iSide))
+!      iPos=iPos+2
+!    END IF
+!  END DO ! iSide=nSides+1,nTotalSides
+!  IF(iSendSide.NE.SurfExchange%nSidesSend(iProc)) CALL abort(&
+!__STAMP__&
+!          ,' Message too short!',iProc)
+!  IF(ANY(SurfSendBuf(iProc)%content.LE.0))THEN
+!    IPWRITE(UNIT_stdOut,*) ' nSendSides', SurfExchange%nSidesSend(iProc), ' to Proc ', iProc
+!    CALL abort(&
+!__STAMP__&
+!          ,' Sent NATIVE_ELEM_ID or LOCSIDEID is zero!')
+!  END IF
+!END DO
+!
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  IF(SurfExchange%nSidesSend(iProc).EQ.0) CYCLE
+!  CALL MPI_ISEND( SurfSendBuf(iProc)%content               &
+!                , 2*SurfExchange%nSidesSend(iProc)         &
+!                , MPI_DOUBLE_PRECISION                     &
+!                , SurfCOMM%MPINeighbor(iProc)%NativeProcID &
+!                , 1004                                     &
+!                , SurfCOMM%COMM                            &
+!                , SurfExchange%SendRequest(iProc)          &
+!                , IERROR )
+!END DO ! iProc
+!
+!! 4) Finish Received number of particles
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  IF(SurfExchange%nSidesSend(iProc).NE.0) THEN
+!    CALL MPI_WAIT(SurfExchange%SendRequest(iProc),MPIStatus,IERROR)
+!    IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
+!__STAMP__&
+!          ,' MPI Communication error', IERROR)
+!  END IF
+!  IF(SurfExchange%nSidesRecv(iProc).NE.0) THEN
+!    CALL MPI_WAIT(SurfExchange%RecvRequest(iProc),recv_status_list(:,iProc),IERROR)
+!    IF(IERROR.NE.MPI_SUCCESS) CALL abort(&
+!__STAMP__&
+!          ,' MPI Communication error', IERROR)
+!  END IF
+!END DO ! iProc
+!
+!! fill list with received side ids
+!! store the receiving data
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  ALLOCATE(SurfCOMM%MPINeighbor(iProc)%RecvList(SurfExchange%nSidesRecv(iProc)))
+!  IF(SurfExchange%nSidesRecv(iProc).EQ.0) CYCLE
+!  iPos=1
+!  DO iRecvSide=1,SurfExchange%nSidesRecv(iProc)
+!    NativeElemID   =INT(SurfRecvBuf(iProc)%content(iPos))
+!    NativeLocSideID=INT(SurfRecvBuf(iProc)%content(iPos+1))
+!    IF(NativeElemID.GT.PP_nElems)THEN
+!     CALL abort(&
+!__STAMP__&
+!          ,' Cannot send halo-data to other procs. big error! ', ElemID, REAL(PP_nElems))
+!    END IF
+!    SideID=PartElemToSide(E2S_SIDE_ID,NativeLocSideID,NativeElemID)
+!    IF(SideID.GT.nSides)THEN
+!      IPWRITE(UNIT_stdOut,*) ' Received wrong sideid. Is not a BC side! '
+!      IPWRITE(UNIT_stdOut,*) ' SideID, nBCSides, nSides ', SideID, nBCSides, nSides
+!      IPWRITE(UNIT_stdOut,*) ' ElemID, locsideid        ', NativeElemID, NativeLocSideID
+!      IPWRITE(UNIT_stdOut,*) ' Sending process has error in halo-region! ', SurfCOMM%MPINeighbor(iProc)%NativeProcID
+!     CALL abort(&
+!__STAMP__&
+!          ,' Big error in halo region! NativeLocSideID ', NativeLocSideID )
+!    END IF
+!    SurfSideID=SurfMesh%SideIDToSurfID(SideID)
+!    IF(SurfSideID.EQ.-1)THEN
+!     CALL abort(&
+!__STAMP__&
+!          ,' Side is not even a reflective BC side! ', SideID )
+!    END IF
+!    SurfCOMM%MPINeighbor(iProc)%RecvList(iRecvSide)=SideID
+!    iPos=iPos+2
+!  END DO ! RecvSide=1,SurfExchange%nSidesRecv(iProc)-1,2
+!END DO ! iProc
+!
+!DO iProc=1,SurfCOMM%nMPINeighbors
+!  SDEALLOCATE(SurfSendBuf(iProc)%content)
+!  SDEALLOCATE(SurfRecvBuf(iProc)%content)
+!  IF(SurfExchange%nSidesSend(iProc).GT.0) THEN
+!    ALLOCATE(SurfSendBuf(iProc)%content((SurfMesh%SampSize)*nDOF*SurfExchange%nSidesSend(iProc)))
+!    SurfSendBuf(iProc)%content=0.
+!  END IF
+!  IF(SurfExchange%nSidesRecv(iProc).GT.0) THEN
+!    ALLOCATE(SurfRecvBuf(iProc)%content((SurfMesh%SampSize)*nDOF*SurfExchange%nSidesRecv(iProc)))
+!    SurfRecvBuf(iProc)%content=0.
+!  END IF
+!END DO ! iProc
+!DEALLOCATE(recv_status_list)
+!
+!CALL MPI_BARRIER(SurfCOMM%Comm,iError)
+!
+!END SUBROUTINE GetHaloSurfMapping
 
 
 SUBROUTINE ExchangeSurfData()
@@ -1092,11 +1258,10 @@ USE MOD_Globals
 USE MOD_IO_HDF5
 USE MOD_HDF5_Input
 USE MOD_HDF5_Output
-!USE MOD_Mesh_Vars,                  ONLY:nSides,nBCSides
 USE MOD_Output_Vars,                ONLY:ProjectName
 USE MOD_Restart_Vars,               ONLY:RestartTime
 USE MOD_Particle_Vars,              ONLY:nSpecies,WriteMacroSurfaceValues
-USE MOD_Particle_Boundary_Vars,     ONLY:SurfCOMM!,nSurfBC,SurfBCName
+USE MOD_Particle_Boundary_Vars,     ONLY:SurfCOMM
 USE MOD_Particle_Boundary_Vars,     ONLY:nSurfSample,SurfMesh,offSetSurfSide,SampWall
 USE MOD_Particle_Erosion_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1201,34 +1366,6 @@ END IF
 
       ! We got the array, close the file
       CALL CloseDataFile()
-
-!#if USE_MPI
-!END IF
-!CALL MPI_BARRIER(SurfCOMM%COMM,iERROR)
-!#endif
-
-!      ! In MPI case, communicate array to all procs
-!#if USE_MPI
-!      ! A MPI_BCAST or MPI_SCATTER would be more elegant here
-!      SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' Communicating erosion data to all procs ...'
-!      IF(SurfCOMM%MPIOutputRoot)THEN
-!        DO iSide=1,SurfMesh%nGlobalSides
-!          DO p=1,nSurfSample
-!            DO q=1,nSurfSample
-!              DO iVal=1,nErosionVars
-!                CALL MPI_BCAST(RestartArray(iVal,p,q,iSide),1,MPI_DOUBLE_PRECISION,0,SurfCOMM%OutputCOMM,iError)
-!              END DO
-!            END DO
-!          END DO
-!        END DO
-!      END IF
-!
-!      CALL MPI_ALLREDUCE(MPI_IN_PLACE,RestartArray,RestartVarCount*nSurfSample*nSurfSample*SurfMesh%nGlobalSides, &
-!                          MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,iError)
-!
-!      ! get mapping from local rank to global rank...
-!      CALL MPI_ALLGATHER(MyRank,1, MPI_INTEGER, SurfToGlobal(0:SurfCOMM%nProcs-1), 1, MPI_INTEGER, SurfCOMM%COMM, IERROR)
-!#endif
 
       ! Only loop over sides on current proc (meaningless in single core case)
       DO iSide=1,SurfMesh%nSides

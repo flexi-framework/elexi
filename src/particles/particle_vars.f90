@@ -27,8 +27,6 @@ REAL                  :: ManualTimeStep                                      ! M
 LOGICAL               :: useManualTimeStep                                   ! Logical Flag for manual timestep. For consistency
                                                                              ! with IAG programming style
 LOGICAL               :: AllowLoosing                                        ! Flag if a lost particle should abort the program
-LOGICAL               :: KeepWallParticles                                   ! Flag for tracking of particles trapped by fouling
-LOGICAL               :: printRandomSeeds                                    ! print random seeds or not
 REAL                  :: dt_max_particles                                    ! Maximum timestep for particles (for static fields!)
 
 LOGICAL               :: useLinkedList                                       ! Flag to trigger the start of the linked list for output tools
@@ -103,7 +101,7 @@ TYPE tInit                                                                   ! P
   REAL                                   :: MJyRatio                         ! y direction portion of velocity for Maxwell-Juettner
   REAL                                   :: MJzRatio                         ! z direction portion of velocity for Maxwell-Juettner
   REAL                                   :: Alpha                            ! WaveNumber for sin-deviation initiation.
-                                                                             ! cyl. as alternative to Part.Emis. in Type1
+  REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3) 
   INTEGER                                :: ParticleEmissionType             ! Emission Type 1 = emission rate in 1/s,
                                                                              !               2 = emission rate 1/iteration
   REAL                                   :: ParticleEmission                 ! Emission in [1/s] or [1/Iteration]
@@ -117,6 +115,30 @@ TYPE tInit                                                                   ! P
 #endif /*MPI*/
 END TYPE tInit
 
+TYPE typeSurfaceflux
+  INTEGER                                :: BC                               ! PartBound to be emitted from
+  CHARACTER(30)                          :: velocityDistribution             ! specifying keyword for velocity distribution
+  REAL                                   :: VeloIC                           ! velocity for inital Data
+  REAL                                   :: VeloVecIC(3)                     ! normalized velocity vector
+  REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3)
+  LOGICAL                                :: VeloIsNormal                     ! VeloIC is in Surf-Normal instead of VeloVecIC
+  LOGICAL                                :: ReduceNoise                      ! reduce stat. noise by global calc. of PartIns
+  INTEGER(KIND=8)                        :: InsertedParticle                 ! Number of all already inserted Particles
+  INTEGER(KIND=8)                        :: InsertedParticleSurplus          ! accumulated "negative" number of inserted Particles
+  INTEGER(KIND=8)                        :: tmpInsertedParticle              ! tmp Number of all already inserted Particles
+  INTEGER(KIND=8)                        :: tmpInsertedParticleSurplus       ! tmp accumulated "negative" number of inserted Particles
+  LOGICAL                                :: CircularInflow                   ! Circular region, which can be used to define small
+                                                                             ! geometry features on large boundaries
+  INTEGER                                :: dir(3)                           ! axial (1) and orth. coordinates (2,3) of polar system
+  REAL                                   :: origin(2)                        ! origin in orth. coordinates of polar system
+  REAL                                   :: rmax                             ! max radius of to-be inserted particles
+  REAL                                   :: rmin                             ! min radius of to-be inserted particles
+  REAL, ALLOCATABLE                      :: ConstMassflowWeight(:,:,:)       ! Adaptive, Type 4: Weighting factor for SF-sides to
+                                                                             ! insert the right amount of particles
+  REAL                                   :: SampledMassflow                  ! Actual mass flow rate through a surface flux boundary
+  REAL, ALLOCATABLE                      :: nVFRSub(:,:)                     ! normal volume flow rate through subsubside
+END TYPE
+  
 TYPE tSpecies                                                                ! Particle Data for each Species
   !General Species Values
   TYPE(tInit), ALLOCATABLE               :: Init(:)  !     =>NULL()          ! Particle Data for each Initialisation
@@ -124,6 +146,8 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: MassIC                           ! Particle Mass (without MPF)
   REAL                                   :: DensityIC                        ! Particle Density (without MPF)
   INTEGER                                :: NumberOfInits                    ! Number of different initial particle placements
+  TYPE(typeSurfaceflux),ALLOCATABLE      :: Surfaceflux(:)                   ! Particle Data for each SurfaceFlux emission
+  INTEGER                                :: nSurfacefluxBCs                  ! Number of SF emissions
   INTEGER                                :: StartnumberOfInits               ! 0 if old emit defined (array is copied into 0. entry)
   REAL                                   :: LowVeloThreshold                 ! Threshold value for removal of low velocity particles
   REAL                                   :: HighVeloThreshold                ! Threshold value for removal of high velocity particle

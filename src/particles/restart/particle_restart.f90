@@ -41,24 +41,24 @@ CONTAINS
 SUBROUTINE ParticleRestart(doFlushFiles)
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_Particle_Restart_Vars
 USE MOD_PreProc
-USE MOD_HDF5_Input
-USE MOD_HDF5_Output,             ONLY:FlushFiles
-USE MOD_Mesh_Vars,               ONLY:offsetElem
-USE MOD_Restart_Vars,            ONLY:RestartTime,RestartFile
-USE MOD_Particle_Vars,           ONLY:PartState, PartSpecies, PEM, PDM, Species, nSpecies, PartPosRef,PartReflCount
-USE MOD_Part_Tools,              ONLY:UpdateNextFreePosition
-USE MOD_Eval_XYZ,                ONLY:GetPositionInRefElem
-USE MOD_Particle_Localization,   ONLY:SingleParticleToExactElement,SingleParticleToExactElementNoMap
-USE MOD_Particle_Mesh_Vars,      ONLY:epsOneCell
-USE MOD_Particle_Tracking_Vars,  ONLY:DoRefMapping
-USE MOD_Particle_Erosion_Analyze,ONLY:CalcSurfaceValues
-USE MOD_Particle_Erosion_Vars,   ONLY:ErosionRestart,doParticleReflectionTrack
 USE MOD_ErosionPoints,           ONLY:RestartErosionPoint
 USE MOD_ErosionPoints_Vars,      ONLY:EP_inUse
+USE MOD_Eval_XYZ,                ONLY:GetPositionInRefElem
+USE MOD_HDF5_Input
+USE MOD_HDF5_Output,             ONLY:FlushFiles
+USE MOD_Mesh_Vars,               ONLY:offsetElem,nGlobalElems
+USE MOD_Part_Tools,              ONLY:UpdateNextFreePosition
+USE MOD_Particle_Erosion_Analyze,ONLY:CalcSurfaceValues
+USE MOD_Particle_Erosion_Vars,   ONLY:ErosionRestart,doParticleReflectionTrack
+USE MOD_Particle_Globals
+USE MOD_Particle_Localization,   ONLY:LocateParticleInElement
+USE MOD_Particle_Mesh_Vars,      ONLY:ElemEpsOneCell
+USE MOD_Particle_Restart_Vars
+USE MOD_Particle_Vars,           ONLY:PartState,PartSpecies,PEM,PDM,Species,nSpecies,PartPosRef,PartReflCount
+USE MOD_Restart_Vars,            ONLY:RestartTime,RestartFile
 #if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars,ONLY:nComputeNodeTotalElems
 USE MOD_Particle_MPI_Vars,       ONLY:PartMPI
 #endif /*MPI*/
 ! Particle turbulence models
@@ -89,7 +89,7 @@ REAL                     :: xi(3)
 LOGICAL                  :: InElementCheck
 INTEGER                  :: COUNTER, COUNTER2
 #if USE_MPI
-REAL, ALLOCATABLE        :: SendBuff(:), RecBuff(:)
+REAL, ALLOCATABLE        :: SendBuff(:),RecvBuff(:)
 INTEGER                  :: LostParts(0:PartMPI%nProcs-1), Displace(0:PartMPI%nProcs-1),CurrentPartNum
 INTEGER                  :: NbrOfFoundParts, CompleteNbrOfFound, RecCount(0:PartMPI%nProcs-1)
 #endif /*MPI*/
@@ -153,9 +153,9 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         ! If the element contains a particle, add its ID to the element. Particles are still ordered along the SFC at this point
         IF (PartInt(ELEM_LastPartInd,iElem).GT.PartInt(ELEM_FirstPartInd,iElem)) THEN
           PEM%Element    (PartInt(ELEM_FirstPartInd,iElem)-offsetnPart+1 : &
-                                 PartInt(ELEM_LastPartInd,iElem) -offsetnPart)  = iElem-offsetElem
+                                 PartInt(ELEM_LastPartInd,iElem) -offsetnPart)  = iElem
           PEM%LastElement(PartInt(ELEM_FirstPartInd,iElem)-offsetnPart+1 : &
-                                 PartInt(ELEM_LastPartInd,iElem) -offsetnPart)  = iElem-offsetElem
+                                 PartInt(ELEM_LastPartInd,iElem) -offsetnPart)  = iElem
         END IF
       END DO
 
@@ -236,58 +236,44 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     ! Step 1: Identify particles that are not in the element in which they were before the restart
     COUNTER  = 0
     COUNTER2 = 0
-    IF(DoRefMapping) THEN
-      DO i = 1,PDM%ParticleVecLength
-        CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
-        ! Particle already inside the correct element
-        IF(ALL(ABS(Xi).LE.EpsOneCell(PEM%Element(i)))) THEN
-          InElementCheck=.TRUE.
-          PartPosRef(1:3,i)=Xi
-        ELSE
-          InElementCheck=.FALSE.
-        END IF
 
-        ! Particle not inside the correct element, try to find them within the current proc
-        IF (.NOT.InElementCheck) THEN
-          COUNTER = COUNTER + 1
-          CALL SingleParticleToExactElement(i,doHALO=.FALSE.,initFix=.FALSE.,doRelocate=.FALSE.)
-          ! Particle not located on the current proc
-          IF (.NOT.PDM%ParticleInside(i)) THEN
+    DO i = 1,PDM%ParticleVecLength
+      CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
+      ! Particle already inside the correct element
+      IF(ALL(ABS(Xi).LE.ElemEpsOneCell(PEM%Element(i)))) THEN
+        InElementCheck=.TRUE.
+        PartPosRef(1:3,i)=Xi
+      ELSE
+        InElementCheck=.FALSE.
+      END IF
+
+      ! Particle not inside the correct element, try to find them within the current proc
+      IF (.NOT.InElementCheck) THEN
+        COUNTER = COUNTER + 1
+        CALL LocateParticleInElement(i,doHALO=.TRUE.)
+        ! Particle located on the current node
+        IF (PDM%ParticleInside(i)) THEN
+          ! particle on the current node but on the wrong proc
+          IF ((PEM%Element(i).GT.offsetElem).AND.(PEM%Element(i).LE.offsetElem+PP_nElems)) THEN
             COUNTER2 = COUNTER2 + 1
             PartPosRef(1:3,i) = -888.
           ! Particle on the correct proc but inside the wrong element
           ELSE
             PEM%LastElement(i) = PEM%Element(i)
           END IF
-        END IF
-      END DO
-    ! No Ref Mapping
-    ELSE
-      DO i = 1,PDM%ParticleVecLength
-        CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
-        ! Particle already inside the correct element
-        IF(ALL(ABS(Xi).LE.1.0)) THEN
-          InElementCheck=.TRUE.
-          ! PartPosRef might be allocated for other functions, so try to write the position in ref space
-          IF(ALLOCATED(PartPosRef)) PartPosRef(1:3,i)=Xi
+        ! Particle located on the current node
         ELSE
-          InElementCheck=.FALSE.
-        END IF
-
-        ! Particle not inside the correct element, try to find them within the current proc
-        IF (.NOT.InElementCheck) THEN
-          COUNTER = COUNTER + 1
-          CALL SingleParticleToExactElementNoMap(i,doHALO=.FALSE.,doRelocate=.FALSE.)
-          ! Particle not located on the current proc
-          IF (.NOT.PDM%ParticleInside(i)) THEN
-            COUNTER2 = COUNTER2 + 1
-          ! Particle on the correct proc but inside the wrong element
+          ! Every element was checked, the particle is truly lost
+          IF (nComputeNodeTotalElems.EQ.nGlobalElems) THEN
+            CALL ABORT(__STAMP__,'Particle not located on the compute-node during restart. PartID:',i)
+          ! Still elements unchecked, let the procs on the other nodes figure it out
           ELSE
-            PEM%LastElement(i) = PEM%Element(i)
+            COUNTER2 = COUNTER2 + 1
+            PartPosRef(1:3,i) = -888.
           END IF
         END IF
-      END DO
-    END IF
+      END IF
+    END DO
 
 #if USE_MPI
     ! Step 2: All particles that are not found withing MyProc need to be communicated to the others and located there
@@ -295,16 +281,22 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL MPI_ALLGATHER(COUNTER2, 1, MPI_INTEGER, LostParts, 1, MPI_INTEGER, PartMPI%COMM, IERROR)
     IF (SUM(LostParts).GT.0) THEN
       ALLOCATE(SendBuff(1:COUNTER2*PartDataSize))
-      ALLOCATE(RecBuff(1:SUM(LostParts)*PartDataSize))
+      ALLOCATE(RecvBuff(1:SUM(LostParts)*PartDataSize))
+      
       ! Fill SendBuffer
       COUNTER = 0
       DO i = 1, PDM%ParticleVecLength
         IF (.NOT.PDM%ParticleInside(i)) THEN
           SendBuff(COUNTER+1:COUNTER+6) = PartState(1:6,i)
           SendBuff(COUNTER+7)           = REAL(PartSpecies(i))
+          ! Reflections were tracked previously and are therefore still enabled
+          IF (PartDataSize.EQ.8) THEN
+          SendBuff(COUNTER+8)           = REAL(PartReflCount(i))
+          END IF
           COUNTER = COUNTER + PartDataSize
         END IF
       END DO
+      
       ! Distribute lost particles to all procs
       COUNTER = 0
       DO i = 0, PartMPI%nProcs-1
@@ -312,30 +304,33 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         Displace(i) = COUNTER
         COUNTER = COUNTER + LostParts(i)*PartDataSize
       END DO
+      
       CALL MPI_ALLGATHERV(SendBuff, PartDataSize*LostParts(PartMPI%MyRank), MPI_DOUBLE_PRECISION, &
-           RecBuff, RecCount, Displace, MPI_DOUBLE_PRECISION, PartMPI%COMM, IERROR)
+           RecvBuff, RecCount, Displace, MPI_DOUBLE_PRECISION, PartMPI%COMM, IERROR)
+           
       ! Add them to particle list and check if they are in MyProcs domain
       NbrOfFoundParts = 0
-      CurrentPartNum = PDM%ParticleVecLength+1
-      COUNTER = 0
+      CurrentPartNum  = PDM%ParticleVecLength+1
+      COUNTER         = 0
       DO i = 1, SUM(LostParts)
-        PartState(1:6,CurrentPartNum) = RecBuff(COUNTER+1:COUNTER+6)
-        PDM%ParticleInside(CurrentPartNum) = .true.
-        IF(DoRefMapping)THEN
-          CALL SingleParticleToExactElement(CurrentPartNum,doHALO=.FALSE.,initFix=.FALSE.,doRelocate=.FALSE.)
-        ELSE
-          CALL SingleParticleToExactElementNoMap(CurrentPartNum,doHALO=.FALSE.,doRelocate=.FALSE.)
-        END IF
-        !CALL SingleParticleToExactElement(CurrentPartNum)
-        IF (PDM%ParticleInside(CurrentPartNum)) THEN
+        PartState(1:6,CurrentPartNum) = RecvBuff(COUNTER+1:COUNTER+6)
+        PDM%ParticleInside(CurrentPartNum) = .TRUE.
+        CALL LocateParticleInElement(i,doHALO=.FALSE.)
+        ! Particle is located on current node. Only keep it if it belongs on this proc
+        IF (PDM%ParticleInside(CurrentPartNum).AND.(PEM%Element(i).GT.offsetElem).AND.(PEM%Element(i).LE.offsetElem+PP_nElems)) THEN
           PEM%LastElement(CurrentPartNum) = PEM%Element(CurrentPartNum)
+          PartSpecies(    CurrentPartNum) = INT(RecvBuff(COUNTER+7))
+          ! Reflections were tracked previously and are therefore still enabled
+          IF (PartDataSize.EQ.8) THEN
+            PartReflCount(CurrentPartNum) = INT(RecvBuff(COUNTER+8))
+          END IF
           NbrOfFoundParts = NbrOfFoundParts + 1
-          PartSpecies(CurrentPartNum) = INT(RecBuff(COUNTER+7))
-          CurrentPartNum = CurrentPartNum + 1
+          CurrentPartNum  = CurrentPartNum + 1
         END IF
         COUNTER = COUNTER + PartDataSize
       END DO
       PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfFoundParts
+      
       ! Combine number of found particles to make sure none are lost completely
       CALL MPI_ALLREDUCE(NbrOfFoundParts, CompleteNbrOfFound, 1, MPI_INTEGER, MPI_SUM, PartMPI%COMM, IERROR)
       SWRITE(UNIT_stdOut,*) SUM(LostParts),'were not in the correct proc after restart.'

@@ -364,7 +364,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
 USE MOD_Particle_Mesh_Vars,      ONLY:RefMappingEps
-USE MOD_Particle_Vars,           ONLY:PartState,PDM
+USE MOD_Particle_Vars,           ONLY:PartState
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -569,17 +569,13 @@ SUBROUTINE GetRefNewtonStartValue(X_in,Xi,ElemID)
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Preproc,                 ONLY:PP_N
 USE MOD_Interpolation_Vars,      ONLY:xGP
-USE MOD_Mesh_Vars,               ONLY:NGeo,Elem_xGP,offsetElem
+USE MOD_Mesh_Vars,               ONLY:NGeo!,Elem_xGP,offsetElem
 USE MOD_Particle_Globals,        ONLY:PP_nElems
 USE MOD_Particle_Mesh_Vars,      ONLY:RefMappingGuess,RefMappingEps
-USE MOD_Particle_Mesh_Vars,      ONLY:XiEtaZetaBasis,slenXiEtaZetaBasis,XCL_NGeo
-USE MOD_Particle_Mesh_Vars,      ONLY:XCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars,      ONLY:XiEtaZetaBasis,slenXiEtaZetaBasis
+USE MOD_Particle_Mesh_Vars,      ONLY:XiCL_NGeo
 USE MOD_Particle_Tracking_vars,  ONLY:DoRefMapping
-#if USE_MPI
-USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo_Shared
-#else
-USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo
-#endif
+USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo_Shared,XCL_NGeo_Shared,Elem_xGP_Shared
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -629,14 +625,14 @@ CASE(1)
   IF(MAXVAL(ABS(Xi)).GT.epsOne) Xi=MAX(MIN(1.0d0,Xi),-1.0d0)
 CASE(2)
   ! compute distance on Gauss Points
-  Winner_Dist=SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP(:,0,0,0,ElemID)),(x_in(:)-Elem_xGP(:,0,0,0,ElemID))))
+  Winner_Dist=SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID)),(x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID))))
   Xi(:)=(/xGP(0),xGP(0),xGP(0)/) ! start value
   DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
-    dX=ABS(X_in(1) - Elem_xGP(1,i,j,k,ElemID-offsetElem))
+    dX=ABS(X_in(1) - Elem_xGP_Shared(1,i,j,k,ElemID))
     IF(dX.GT.Winner_Dist) CYCLE
-    dY=ABS(X_in(2) - Elem_xGP(2,i,j,k,ElemID-offsetElem))
+    dY=ABS(X_in(2) - Elem_xGP_Shared(2,i,j,k,ElemID))
     IF(dY.GT.Winner_Dist) CYCLE
-    dZ=ABS(X_in(3) - Elem_xGP(3,i,j,k,ElemID-offsetElem))
+    dZ=ABS(X_in(3) - Elem_xGP_Shared(3,i,j,k,ElemID))
     IF(dZ.GT.Winner_Dist) CYCLE
     Dist=SQRT(dX*dX+dY*dY+dZ*dZ)
     IF (Dist.LT.Winner_Dist) THEN
@@ -646,14 +642,14 @@ CASE(2)
   END DO; END DO; END DO
 CASE(3)
   ! compute distance on XCL Points
-  Winner_Dist=SQRT(DOT_PRODUCT((x_in(:)-XCL_NGeo(:,0,0,0,ElemID)),(x_in(:)-XCL_NGeo(:,0,0,0,ElemID))))
+  Winner_Dist=SQRT(DOT_PRODUCT((x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID)),(x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID))))
   Xi(:)=(/XiCL_NGeo(0),XiCL_NGeo(0),XiCL_NGeo(0)/) ! start value
   DO i=0,NGeo; DO j=0,NGeo; DO k=0,NGeo
-    dX=ABS(X_in(1) - XCL_NGeo(1,i,j,k,ElemID-offsetElem))
+    dX=ABS(X_in(1) - XCL_NGeo_Shared(1,i,j,k,ElemID))
     IF(dX.GT.Winner_Dist) CYCLE
-    dY=ABS(X_in(2) - XCL_NGeo(2,i,j,k,ElemID-offsetElem))
+    dY=ABS(X_in(2) - XCL_NGeo_Shared(2,i,j,k,ElemID))
     IF(dY.GT.Winner_Dist) CYCLE
-    dZ=ABS(X_in(3) - XCL_NGeo(3,i,j,k,ElemID-offsetElem))
+    dZ=ABS(X_in(3) - XCL_NGeo_Shared(3,i,j,k,ElemID))
     IF(dZ.GT.Winner_Dist) CYCLE
     Dist=SQRT(dX*dX+dY*dY+dZ*dZ)
     IF (Dist.LT.Winner_Dist) THEN

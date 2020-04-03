@@ -42,7 +42,8 @@ SUBROUTINE UpdateNextFreePosition()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars
+USE MOD_Mesh_Vars            ,ONLY: offsetElem
+USE MOD_Particle_Vars        ,ONLY: PDM,PEM,useLinkedList
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -51,7 +52,8 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                          :: counter1,i,n
+INTEGER            :: counter1,i,n
+INTEGER            :: ElemID
 !===================================================================================================================================
 
 IF(PDM%maxParticleNumber.EQ.0) RETURN
@@ -62,7 +64,7 @@ IF (useLinkedList) THEN
   PEM%pNumber(:) = 0
 END IF
 
-n = PDM%maxParticleNumber
+n = PDM%ParticleVecLength !PDM%maxParticleNumber
 PDM%ParticleVecLength    = 0
 PDM%insideParticleNumber = 0
 
@@ -72,14 +74,14 @@ IF (useLinkedList) THEN
      PDM%nextFreePosition(counter1) = i
      counter1 = counter1 + 1
    ELSE
-     IF (PEM%pNumber(PEM%Element(i)).EQ.0) THEN
-       PEM%pStart(PEM%Element(i)) = i                     ! Start of Linked List for Particles in Elem
+     ElemID = PEM%Element(i) - offsetElem
+      IF (PEM%pNumber(ElemID).EQ.0) THEN
+        PEM%pStart(ElemID) = i                          ! Start of Linked List for Particles in Elem
      ELSE
-       PEM%pNext(PEM%pEnd(PEM%Element(i))) = i            ! Next Particle of same Elem (Linked List)
+        PEM%pNext(PEM%pEnd(ElemID)) = i                 ! Next Particle of same Elem (Linked List)
      END IF
-     PEM%pEnd(PEM%Element(i)) = i
-     PEM%pNumber(PEM%Element(i)) = &                      ! Number of Particles in Element
-     PEM%pNumber(PEM%Element(i)) + 1
+     PEM%pEnd(ElemID)      = i
+     PEM%pNumber(ElemID)   = PEM%pNumber(ElemID) + 1    ! Number of Particles in Element
      PDM%ParticleVecLength = i
    END IF
  END DO
@@ -96,7 +98,7 @@ ELSE
  END DO
 ENDIF
 
-PDM%insideParticleNumber = PDM%ParticleVecLength - counter1+1
+PDM%insideParticleNumber    = PDM%ParticleVecLength - counter1+1
 PDM%CurrentNextFreePosition = 0
 
 DO i = n+1,PDM%maxParticleNumber
@@ -112,10 +114,11 @@ END SUBROUTINE UpdateNextFreePosition
 
 FUNCTION DiceUnitVector()
 !===================================================================================================================================
-!
+! Calculate random normalized vector in 3D (unit space)
 !===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
+USE MOD_Particle_Globals ,ONLY: Pi
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -123,7 +126,6 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: PI
 REAL                     :: DiceUnitVector(3)
 REAL                     :: iRan, bVec, aVec
 !===================================================================================================================================

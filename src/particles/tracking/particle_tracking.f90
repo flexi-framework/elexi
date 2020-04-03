@@ -159,7 +159,7 @@ DO i = 1,PDM%ParticleVecLength
         DO iLocSide=1,nlocSides
           TempSideID  = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID) + iLocSide
           localSideID = SideInfo_Shared(SIDE_LOCALID,TempSideID)
-          
+
           ! Side is not one of the 6 local sides
           IF (localSideID.LE.0) CYCLE
 
@@ -362,7 +362,7 @@ DO i = 1,PDM%ParticleVecLength
             DoneLastElem(3,1) = TriNum
             DoneLastElem(4,1) = SideID
           END IF
-        ELSE  ! BC(SideID).LE.0
+        ELSE  ! SideInfo_Shared(SIDE_BCID,SideID).LE.0
           DO ind2= 5, 1, -1
             DoneLastElem(:,ind2+1) = DoneLastElem(:,ind2)
           END DO
@@ -375,7 +375,7 @@ DO i = 1,PDM%ParticleVecLength
             ELSE
             ElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
             END IF
-          END IF  ! BC(SideID).GT./.LE. 0
+          END IF  ! SideInfo_Shared(SIDE_BCID,SideID).GT./.LE. 0
         IF (ElemID.LT.1) THEN
           IPWRITE(UNIT_stdout,*) 'Particle Velocity: ',SQRT(DOTPRODUCT(PartState(4:6,i)))
           CALL ABORT(__STAMP__,'ERROR: Element not defined! Please increase the size of the halo region (HaloEpsVelo)!')
@@ -541,7 +541,7 @@ DO iPart=1,PDM%ParticleVecLength
     IF (MeasureTrackTime) nTracks=nTracks+1
     PartisDone = .FALSE.
     ElemID     = PEM%lastElement(iPart)
-    
+
     ! Calculate particle trajectory
     PartTrajectory       = PartState(1:3,iPart) - LastPartPos(1:3,iPart)
     lengthPartTrajectory = SQRT(DOT_PRODUCT(PartTrajectory,PartTrajectory))
@@ -795,8 +795,6 @@ DO iPart=1,PDM%ParticleVecLength
                 WRITE(UNIT_stdout,'(A,L)') '     -> BC was intersected on a side'
               CASE(2) ! AuxBC intersection
                 WRITE(UNIT_stdout,'(A,L)') '     -> BC was intersected on an AuxBC'
-              CASE(3) ! MacroPart intersection
-                WRITE(UNIT_stdout,'(A,L)') '     -> BC was intersected on an MacroPart'
               END SELECT
             END IF
           END IF ; END IF
@@ -935,7 +933,7 @@ DO iPart=1,PDM%ParticleVecLength
       IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
       CALL ABORT(__STAMP__,' PartPos outside of mesh AFTER tracking. iPart= ,currentStage= ',iPart,REAL(currentStage))
     END IF
-    
+
     ! caution: reuse of variable, foundHit=TRUE == inside
     ElemID=PEM%Element(iPart)
     CALL GetPositionInRefElem(PartState(1:3,iPart),RefPos,ElemID)
@@ -1748,6 +1746,7 @@ REAL                              :: v1(3),v2(3)
 #endif /* CODE_ANALYZE */
 !===================================================================================================================================
 ! Side is a boundary side
+        print *, 'alpha'
 IF (SideInfo_Shared(SIDE_BCID,SideID).GT.0) THEN
   CALL GetBoundaryInteraction(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,flip,ElemID,crossedBC)
   TrackInfo%CurrElem = ElemID
@@ -2245,7 +2244,7 @@ IF(nInter.EQ.0) THEN
   IF(PartPosRef(3,PartID).GT. 1.) PartPosRef(3,PartID)= 0.99
   IF(PartPosRef(3,PartID).LT.-1.) PartPosRef(3,PartID)=-0.99
   CALL LocateParticleInElement(PartID,doHalo=.FALSE.)
-  
+
   ! particle successfully located
   IF (PDM%ParticleInside(PartID)) THEN
     RETURN

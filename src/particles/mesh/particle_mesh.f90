@@ -177,6 +177,7 @@ CALL prms%CreateRealOption(    'BezierSplitLimit'       , ' Limit for splitting 
    ' Value allows to detect multiple intersections and speed up computation. Parameter is multiplied by 2' , '0.6')
 CALL prms%CreateIntOption(     'BezierClipMaxIter'      , ' Max iteration of BezierClipping' , '100')
 CALL prms%CreateRealOption(    'epsilontol'             , ' Tolerance (absolute) for comparison against zero', '0.')
+CALL prms%CreateRealOption(    'epsilonrel'             , ' Tolerance (relative) for comparison against zero', '0.')
 CALL prms%CreateRealOption(    'BezierClipHit'          , ' Tolerance in [-1,1] of BezierFace' , '0.')
 CALL prms%CreateRealOption(    'BezierNewtonHit'        , ' Tolerance in [-1,1] of BezierNewton' , '0.')
 CALL prms%CreateIntOption(     'BezierClipMaxIntersec'  , ' Max. number of multiple intersections. Default: 2*(NGeo+1)')
@@ -196,6 +197,7 @@ USE MOD_Mesh_Vars
 USE MOD_Particle_Basis
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Surfaces_Vars
+USE MOD_ReadInTools            ,ONLY: GETINT
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -245,18 +247,20 @@ CALL InitializeVandermonde       (NGeo,N   ,wBaryCL_NGeo,XiCL_NGeo,XiCL_N   ,Vdm
 CALL InitializeVandermonde       (NGeo,NGeo,wBary_NGeo  ,Xi_NGeo  ,XiCL_NGeo,Vdm_NGeo_CLNGeo  )
 
 ! small wBaryCL_NGEO
-ALLOCATE                         (wBaryCL_NGeo1(0:1),XiCL_NGeo1(0:1))
 CALL ChebyGaussLobNodesAndWeights(1                 ,XiCL_NGeo1)
 CALL BarycentricWeights          (1                 ,XiCL_NGeo1,wBaryCL_NGeo1)
 CALL InitializeVandermonde       (1, NGeo,wBaryCL_NGeo1,XiCL_NGeo1,XiCL_NGeo ,Vdm_CLNGeo1_CLNGeo)
 
 ! initialize Vandermonde for Bezier basis surface representation (particle tracking with curved elements)
+BezierElevation = GETINT('BezierElevation','0')
+NGeoElevated    = NGeo + BezierElevation
+
 CALL BuildBezierVdm              (NGeo,XiCL_NGeo,Vdm_Bezier,sVdm_Bezier)
 CALL BuildBezierDMat             (NGeo,Xi_NGeo,D_Bezier)
 
 ! allocate Chebyshev-Lobatto physical coordinates
-ALLOCATE( XCL_NGeo(1:3,    0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems)   &
-        ,dXCL_NGeo(1:3,1:3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo),1:nElems))
+ALLOCATE( XCL_NGeo(1:3,    0:NGeo,0:NGeo,0:ZDIM(NGeo),1:nElems)   &
+        ,dXCL_NGeo(1:3,1:3,0:NGeo,0:NGeo,0:ZDIM(NGeo),1:nElems))
 XCL_NGeo  = 0.
 dXCL_NGeo = 0.
 
@@ -331,10 +335,6 @@ SDEALLOCATE(ElemTime)
 ALLOCATE(ElemTime(1:nElems))
 #endif
 !===================================================================================================================================
-
-DoRefMapping       = GETLOGICAL('DoRefMapping',".TRUE.")
-TriaTracking       = GETLOGICAL('TriaTracking','.FALSE.')
-
 ! Build BGM to Element mapping and identify which of the elements, sides and nodes are in the compute-node local and halo region
 CALL BuildBGMAndIdentifyHaloRegion()
 
@@ -410,8 +410,6 @@ IF (TriaTracking) THEN
 ELSE
   CALL CalcParticleMeshMetrics()
 
-  BezierElevation = GETINT('BezierElevation','0')
-  NGeoElevated    = NGeo + BezierElevation
   CALL CalcBezierControlPoints()
 
 #if USE_MPI
@@ -697,6 +695,7 @@ IF (BezierElevation.GT.0) THEN
   IF (myComputeNodeRank.EQ.0) THEN
     BezierControlPoints3DElevated = 0.
   END IF
+  CALL MPI_WIN_SYNC(BezierControlPoints3DElevated_Shared_Win,IERROR)
 END IF
 #else
 ALLOCATE(BezierControlPoints3D(1:3,1:NGeo+1,1:NGeo+1,1:nNonUniqueGlobalSides) &
@@ -763,7 +762,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 IF (BezierElevation.GT.0) THEN
   DO iSide=firstSide,LastSide
     ! Ignore small mortar sides attached to big mortar sides
-    IF (SideInfo_Shared(SIDE_LOCALID,iSide).LT.1 .OR. SideInfo_Shared(SIDE_LOCALID,iSide).LT.6) CYCLE
+    IF (SideInfo_Shared(SIDE_LOCALID,iSide).LT.1 .OR. SideInfo_Shared(SIDE_LOCALID,iSide).GT.6) CYCLE
     ! Indices in shared arrays are shifted by 1
     CALL GetBezierControlPoints3DElevated( NGeo,NGeoElevated                                                       &
                                          , BezierControlPoints3D        (1:3,0:NGeo        ,0:NGeo        ,iSide)  &
@@ -1725,6 +1724,7 @@ DO iElem=firstElem,lastElem
         SideType(SideID)=BILINEAR
       END IF
     ELSE
+      BezierControlPoints_loc(1:3,0:NGeo,0:NGeo) = BezierControlPoints3D(1:3,0:NGeo,0:NGeo,SideID)
       ! possible curved face
       SELECT CASE(ilocSide)
       CASE(XI_MINUS)
@@ -1988,7 +1988,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared,ElemRadiusNGeo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides_Shared,SideBCMetrics_Shared
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
-USE MOD_Particle_Vars          ,ONLY: ManualTimeStep
+USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
 #if USE_MPI
 USE MOD_CalcTimeStep           ,ONLY: CalcTimeStep
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides_Shared_Win,SideBCMetrics_Shared_Win
@@ -2662,10 +2662,10 @@ SUBROUTINE GetMeshMinMax()
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_Mesh_Vars          ,ONLY: NodeCoords
+USE MOD_Mesh_Vars          ,ONLY: offsetElem,nElems
 USE MOD_Particle_Mesh_Vars ,ONLY: GEO
 #if USE_MPI
-USE MOD_Particle_Mesh_Vars ,ONLY: NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -2676,16 +2676,18 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,POINTER                   :: NodeCoordsPointer(:,:,:,:,:)
+INTEGER                        :: offsetLocalNode,nLocalNodes
 !===================================================================================================================================
+! calculate all offsets
+offsetLocalNode = ElemInfo_Shared(ELEM_FIRSTNODEIND,offsetElem+1)
+nLocalNodes     = ElemInfo_Shared(ELEM_LASTNODEIND ,offsetElem+nElems)-ElemInfo_Shared(ELEM_FIRSTNODEIND,offsetElem+1)
 
-NodeCoordsPointer => NodeCoords
-GEO%xmin     = MINVAL(NodeCoordsPointer(1,:,:,:,:))
-GEO%xmax     = MAXVAL(NodeCoordsPointer(1,:,:,:,:))
-GEO%ymin     = MINVAL(NodeCoordsPointer(2,:,:,:,:))
-GEO%ymax     = MAXVAL(NodeCoordsPointer(2,:,:,:,:))
-GEO%zmin     = MINVAL(NodeCoordsPointer(3,:,:,:,:))
-GEO%zmax     = MAXVAL(NodeCoordsPointer(3,:,:,:,:))
+GEO%xmin     = MINVAL(NodeCoords_Shared(1,offsetLocalNode+1:offsetLocalNode+nLocalNodes))
+GEO%xmax     = MAXVAL(NodeCoords_Shared(1,offsetLocalNode+1:offsetLocalNode+nLocalNodes))
+GEO%ymin     = MINVAL(NodeCoords_Shared(2,offsetLocalNode+1:offsetLocalNode+nLocalNodes))
+GEO%ymax     = MAXVAL(NodeCoords_Shared(2,offsetLocalNode+1:offsetLocalNode+nLocalNodes))
+GEO%zmin     = MINVAL(NodeCoords_Shared(3,offsetLocalNode+1:offsetLocalNode+nLocalNodes))
+GEO%zmax     = MAXVAL(NodeCoords_Shared(3,offsetLocalNode+1:offsetLocalNode+nLocalNodes))
 
 #if USE_MPI
 GEO%CNxmin   = MINVAL(NodeCoords_Shared(1,offsetComputeNodeNode+1:offsetComputeNodeNode+nComputeNodeNodes))

@@ -89,15 +89,13 @@ CALL prms%CreateLogicalOption('Part-TrackPosition',         'Track particle posi
 CALL prms%CreateLogicalOption('Part-WriteMacroSurfaceValues','Set [T] to activate iteration dependant sampling and h5 output'    //&
                                                             ' surfaces.',                                                          &
                                                                                                             '.FALSE.')
-CALL prms%CreateLogicalOption('Part-AllowLoosing',          'Flag if a lost particle should abort the programm','.FALSE.')
 CALL prms%CreateLogicalOption('Part-LowVeloRemove',         'Flag if low velocity particles should be removed', '.FALSE.')
 
 CALL prms%CreateRealOption('Part-DelayTime',                "During delay time the particles won't be moved so "                 //&
                                                             "the fluid field can be evolved",               '0.')
 CALL prms%CreateRealOption('Part-SafetyFactor',             'Factor to scale the halo region with MPI',     '1.')
-CALL prms%CreateRealOption('Part-SteadyTimeStep',           'Manual time step routine for frozen fluid state', '0.')
+CALL prms%CreateRealOption('Part-ManualTimestep',           'Manual time step routine for frozen fluid state', '0.')
 CALL prms%CreateRealOption('Particles-HaloEpsVelo',         'Maximum velocity to be considered for halo region', '0.')
-CALL prms%CreateRealOption('Particles-ManualTimeStep',      'Manual time step routine for frozen fluid state', '0.')
 
 CALL prms%CreateRealArrayOption('Part-Gravity',             'Gravitational acceleration as vector',         '0. , 0. , 0.')
 
@@ -311,8 +309,9 @@ SUBROUTINE InitParticleGlobals()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ReadInTools,                ONLY: GETINT
+USE MOD_ReadInTools,                ONLY: GETINT,GETLOGICAL,GETINTFROMSTR,CountOption
 USE MOD_Particle_Globals,           ONLY: PI
+USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod,DoRefMapping,TriaTracking
 USE MOD_Particle_Vars,              ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -322,58 +321,13 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                        :: nTrackingMethod
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS ...'
 
 PDM%maxParticleNumber = GETINT('Part-maxParticleNumber','1')
 PI=ACOS(-1.0D0)
-
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS DONE'
-
-END SUBROUTINE InitParticleGlobals
-
-
-!===================================================================================================================================
-! Glue Subroutine for particle initialization
-!===================================================================================================================================
-SUBROUTINE InitParticles(ManualTimeStep_opt)
-! MODULES
-USE MOD_Globals
-USE Mod_Particle_Globals
-USE MOD_ReadInTools
-USE MOD_IO_HDF5,                    ONLY: AddToElemData
-USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
-USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
-USE MOD_Particle_Erosion_Vars
-USE MOD_Particle_Restart,           ONLY: ParticleRestart
-USE MOD_Particle_SGS,               ONLY: ParticleSGS
-USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod,DoRefMapping,TriaTracking
-USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
-#if USE_MPI
-USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
-#endif
-#if USE_RW
-USE MOD_Particle_RandomWalk,        ONLY: ParticleInitRandomWalk
-#endif
-USE MOD_Particle_SGS,               ONLY: ParticleInitSGS
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN),OPTIONAL       :: ManualTimeStep_opt                                             !> ManualTimeStep coming from Posti
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER                        :: nTrackingMethod
-!===================================================================================================================================
-IF(ParticlesInitIsDone)THEN
-   SWRITE(*,*) "InitParticles already called."
-   RETURN
-END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES ...'
 
 ! Find tracking method immediately, a lot of the later variables depend on it
 nTrackingMethod = CountOption('TrackingMethod')
@@ -407,6 +361,50 @@ ELSE IF (nTrackingMethod.EQ.0) THEN
 ELSE
   CALL CollectiveStop(__STAMP__,"Invalid number of tracking methods given!")
 END IF
+
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS DONE'
+
+END SUBROUTINE InitParticleGlobals
+
+
+!===================================================================================================================================
+! Glue Subroutine for particle initialization
+!===================================================================================================================================
+SUBROUTINE InitParticles(ManualTimeStep_opt)
+! MODULES
+USE MOD_Globals
+USE Mod_Particle_Globals
+USE MOD_ReadInTools
+USE MOD_IO_HDF5,                    ONLY: AddToElemData
+USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
+USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
+USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Restart,           ONLY: ParticleRestart
+USE MOD_Particle_SGS,               ONLY: ParticleSGS
+USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
+#if USE_MPI
+USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
+#endif
+#if USE_RW
+USE MOD_Particle_RandomWalk,        ONLY: ParticleInitRandomWalk
+#endif
+USE MOD_Particle_SGS,               ONLY: ParticleInitSGS
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN),OPTIONAL       :: ManualTimeStep_opt                                             !> ManualTimeStep coming from Posti
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+IF(ParticlesInitIsDone)THEN
+   SWRITE(*,*) "InitParticles already called."
+   RETURN
+END IF
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES ...'
 
 CALL InitializeVariables(ManualTimeStep_opt)
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
@@ -449,14 +447,15 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
-USE MOD_Particle_Boundary_Vars, ONLY:LowVeloRemove
-USE MOD_Particle_Boundary_Vars, ONLY:nAuxBCs
-USE MOD_Particle_Interpolation, ONLY:InitParticleInterpolation
-USE MOD_Particle_Mesh,          ONLY:InitParticleMesh
+USE MOD_Particle_Boundary_Vars ,ONLY: LowVeloRemove
+USE MOD_Particle_Boundary_Vars ,ONLY: nAuxBCs
+USE MOD_Particle_Interpolation ,ONLY: InitParticleInterpolation
+USE MOD_Particle_Mesh          ,ONLY: GetMeshMinMax
+USE MOD_Particle_Mesh          ,ONLY: InitParticleMesh
 #if USE_MPI
-USE MOD_Particle_MPI,           ONLY:InitEmissionComm
-USE MOD_Particle_MPI_Halo,      ONLY:IdentifyPartExchangeProcs
-USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
+USE MOD_Particle_MPI           ,ONLY: InitEmissionComm
+USE MOD_Particle_MPI_Halo      ,ONLY: IdentifyPartExchangeProcs
+USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -486,9 +485,6 @@ ALLOCATE(Species(1:nSpecies))
 CALL InitializeVariablesSpeciesInits()
 
 CALL InitializeVariablesPartBoundary()
-
-! Flag if a lost particle should abort the program
-AllowLoosing      = GETLOGICAL('Part-AllowLoosing' ,'.FALSE.')
 ! Flag if low velocity particles should be removed
 LowVeloRemove     = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 
@@ -496,12 +492,9 @@ LowVeloRemove     = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 nAuxBCs=GETINT('Part-nAuxBCs','0')
 CALL InitializeVariablesAuxBC()
 
-!--- Read Manual Time Step
-useManualTimeStep = .FALSE.
-ManualTimeStep    = GETREAL('Particles-ManualTimeStep', '0.0')
-IF (ManualTimeStep.GT.0.0) THEN
-  useManualTimeStep=.True.
-END IF
+! calculate cartesian borders of node local and global mesh
+CALL GetMeshMinMax()
+
 CALL InitializeVariablesTimeStep(ManualTimeStep_opt)
 
 !-- Build BGM and halo region
@@ -546,7 +539,7 @@ INTEGER               :: ALLOCSTAT
 !===================================================================================================================================
 ! Allocate array to hold particle properties
 ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
-
+         PartReflCount(       1:PDM%maxParticleNumber),    &
          LastPartPos(     1:3,1:PDM%maxParticleNumber),    &
          PartPosRef(      1:3,1:PDM%MaxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
@@ -1304,6 +1297,7 @@ SUBROUTINE InitializeVariablesTimeStep(ManualTimeStep_opt)
 USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
+!USE MOD_Particle_Timedisc_Vars,   ONLY: useManualTimeStep,ManualTimeStep
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1314,13 +1308,13 @@ REAL,INTENT(IN),OPTIONAL   :: ManualTimeStep_opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
- !--- Read Manual Time Step
-useManualTimeStep = .FALSE.
-!> Check if we're running Posti
-IF (.NOT.PRESENT(ManualTimeStep_opt)) ManualTimeStep    = GETREAL('Particles-ManualTimeStep', '0.0')
-IF (ManualTimeStep.GT.0.0)            useManualTimeStep = .True.
+!!--- Read Manual Time Step
+!useManualTimeStep = .FALSE.
+!!> ManualTimeStep_opt only gets passed when running Posti. InitTimedisc was not called, so get information here
+!IF (.NOT.PRESENT(ManualTimeStep_opt)) ManualTimeStep    = GETREAL('Particles-ManualTimeStep', '0.0')
+!IF (ManualTimeStep.GT.0.0)            useManualTimeStep = .TRUE.
 
-! Time delay before initial particle insering
+! Time delay before initial particle inserting
 DelayTime         = GETREAL(   'Part-DelayTime'    ,'0.')
 
 END SUBROUTINE InitializeVariablesTimeStep

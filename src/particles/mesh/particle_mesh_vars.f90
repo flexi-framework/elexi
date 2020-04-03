@@ -286,12 +286,12 @@ END TYPE
 ! -> this should be replaced with NodeInfo_Shared
 ! ====================================================================
 TYPE tGeometry
-  REAL                                   :: CNxmin                   ! minimum x coord of all compute-node nodes
-  REAL                                   :: CNxmax                   ! minimum y coord of all compute-node nodes
-  REAL                                   :: CNymin                   ! minimum z coord of all compute-node nodes
-  REAL                                   :: CNymax                   ! max x coord of all compute-node nodes
-  REAL                                   :: CNzmin                   ! max y coord of all compute-node nodes
-  REAL                                   :: CNzmax                   ! max z coord of all compute-node nodes
+  REAL                                   :: CNxmin                            ! minimum x coord of all compute-node nodes
+  REAL                                   :: CNxmax                            ! minimum y coord of all compute-node nodes
+  REAL                                   :: CNymin                            ! minimum z coord of all compute-node nodes
+  REAL                                   :: CNymax                            ! max x coord of all compute-node nodes
+  REAL                                   :: CNzmin                            ! max y coord of all compute-node nodes
+  REAL                                   :: CNzmax                            ! max z coord of all compute-node nodes
   REAL                                   :: xminglob                          ! global minimum x coord of all nodes
   REAL                                   :: yminglob                          ! global minimum y coord of all nodes
   REAL                                   :: zminglob                          ! global minimum z coord of all nodes

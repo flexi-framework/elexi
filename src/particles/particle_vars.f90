@@ -23,12 +23,6 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL                  :: ManualTimeStep                                      ! Manual TimeStep
-LOGICAL               :: useManualTimeStep                                   ! Logical Flag for manual timestep. For consistency
-                                                                             ! with IAG programming style
-LOGICAL               :: AllowLoosing                                        ! Flag if a lost particle should abort the program
-REAL                  :: dt_max_particles                                    ! Maximum timestep for particles (for static fields!)
-
 LOGICAL               :: useLinkedList                                       ! Flag to trigger the start of the linked list for output tools
 
 REAL    , ALLOCATABLE :: PartState(:,:)                                      ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz

@@ -24,9 +24,9 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL           :: PartSteadyState                     !< flag for running in SteadyState mode
-REAL              :: Part_dt_min                         !< time step for running in SteadyState mode
-CHARACTER(LEN=255):: ParticleTimeDiscMethod              !< name of specific time discretization scheme
+REAL              :: ManualTimeStep                  !< Manual TimeStep
+LOGICAL           :: useManualTimeStep               !< Logical Flag for manual timestep. For consistency with IAG programming style
+CHARACTER(LEN=255):: ParticleTimeDiscMethod          !< name of specific time discretization scheme
 REAL              :: RKdtFrac
 REAL              :: RKdtFracTotal
 !===================================================================================================================================

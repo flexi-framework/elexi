@@ -57,7 +57,7 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound
 USE MOD_Particle_Erosion_Vars
 USE MOD_Particle_Surfaces_vars     ,ONLY: SideNormVec,SideType
 USE MOD_Part_Operations            ,ONLY: RemoveParticle
-USE MOD_Mesh_Vars                  ,ONLY: BC
+!USE MOD_Mesh_Vars                  ,ONLY: BC
 #if CODE_ANALYZE
 USE MOD_Globals                    ,ONLY: myRank
 USE MOD_Mesh_Vars                  ,ONLY: NGeo
@@ -131,11 +131,8 @@ END SELECT
 IF (.NOT. ALLOCATED(PartBound%TargetBoundCond)) &
   CALL ABORT(__STAMP__,' ERROR: PartBound not allocated!.')
 
-ASSOCIATE( iBC => PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,SideID)))
-  
 ! Select the corresponding boundary condition and calculate particle treatment
-SELECT CASE(PartBound%TargetBoundCond(iBC))
-
+SELECT CASE(PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,SideID)))
 CASE(1) !PartBound%OpenBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
   ! Sample on surface if requested
@@ -146,7 +143,7 @@ CASE(2) !PartBound%ReflectiveBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
 !  IF (PDM%ParticleInside(iPart)) THEN
     ! simple reflection
-    SELECT CASE(PartBound%WallModel(BC(SideID)))
+    SELECT CASE(PartBound%WallModel(SideInfo_Shared(SIDE_BCID,SideID)))
       ! perfectly reflecting, specular re-emission
       CASE('perfRef')
          CALL  PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,n_loc,opt_Symmetry=.FALSE.)
@@ -180,7 +177,6 @@ CASE(10) !PartBound%SymmetryBC
 CASE DEFAULT
   CALL abort(__STAMP__,' ERROR: PartBound not associated!. (unknown case)',999,999.)
 END SELECT
-END ASSOCIATE
 
 END SUBROUTINE GetBoundaryInteraction
 
@@ -293,11 +289,12 @@ SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 USE MOD_Globals
 USE MOD_ErosionPoints              ,ONLY: RecordErosionPoint
 USE MOD_ErosionPoints_Vars         ,ONLY: EP_inUse
-USE MOD_Mesh_Vars                  ,ONLY: BC
+!USE MOD_Mesh_Vars                  ,ONLY: BC
 USE MOD_Particle_Boundary_Sampling ,ONLY: SideErosion
-USE MOD_Particle_Erosion_Vars      ,ONLY: doParticleReflectionTrack
-USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars
+USE MOD_Particle_Erosion_Vars      ,ONLY: doParticleReflectionTrack
+USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
+USE MOD_Particle_Globals
 USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars              ,ONLY: Pt_temp,PDM
 USE MOD_Particle_Vars              ,ONLY: WriteMacroSurfaceValues
@@ -335,7 +332,7 @@ IF (IsAuxBC) THEN
 ! Normal BC
 ELSE
   ! Get wall velo and BCID
-  WallVelo  = PartBound%WallVelo(1:3,BC(SideID))
+  WallVelo  = PartBound%WallVelo(1:3,SideInfo_Shared(SIDE_BCID,SideID))
 
   IF(PRESENT(opt_Symmetry)) THEN
     Symmetry = opt_Symmetry
@@ -353,11 +350,10 @@ END IF
 ! Sample on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
   CALL SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID,alpha)
-END IF !.NOT.IsAuxBC 
- 
-! Update particle velocity
-PartState(4:6,PartID)= PartState(4:6,PartID)-2.*DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc + WallVelo
+END IF !.NOT.IsAuxBC
 
+! Update particle velocity
+PartState(4:6,PartID) = PartState(4:6,PartID)-2.*DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc + WallVelo
 
 ! set particle position on face
 !--> first move the particle to the boundary
@@ -368,8 +364,8 @@ PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthP
 
 ! compute moved particle || rest of movement
 PartTrajectory          = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
-lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)          &
-                          +    PartTrajectory(2)*PartTrajectory(2)          &
+lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)            &
+                          +    PartTrajectory(2)*PartTrajectory(2)            &
                           +    PartTrajectory(3)*PartTrajectory(3) )
 PartTrajectory          = PartTrajectory/lengthPartTrajectory
 
@@ -377,13 +373,13 @@ PartTrajectory          = PartTrajectory/lengthPartTrajectory
 IF (EP_inUse) THEN
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
-  CALL RecordErosionPoint(BCSideID        = BC(SideID),                   &
-                          PartID          = PartID,                       &
-                          PartFaceAngle   = PartFaceAngle,                &
-                          v_old           = v_old,                        &
-                          PartFaceAngle_old =PartFaceAngle_old,           &
-                          PartReflCount   = PartReflCount(PartID),        &
-                          alpha           = alpha)
+  CALL RecordErosionPoint(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID) &
+                         ,PartID          = PartID                        &
+                         ,PartFaceAngle   = PartFaceAngle                 &
+                         ,v_old           = v_old                         &
+                         ,PartFaceAngle_old =PartFaceAngle_old            &
+                         ,PartReflCount   = PartReflCount(PartID)         &
+                         ,alpha           = alpha)
 END IF
 
 ! Increase reflection counter
@@ -427,7 +423,7 @@ SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 USE MOD_Globals
 USE MOD_ErosionPoints,            ONLY:RecordErosionPoint
 USE MOD_ErosionPoints_Vars,       ONLY:EP_inUse
-USE MOD_Mesh_Vars,                ONLY:BC
+!USE MOD_Mesh_Vars,                ONLY:BC
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Sampling,ONLY:SideErosion
 USE MOD_Particle_Boundary_Vars
@@ -526,7 +522,7 @@ SELECT CASE(WallCoeffModel)
 
     ! Find composite elastic modulus
     E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
-               (1. - PartBound%Poisson(BC(SideID))            **2.)/PartBound%Young(BC(SideID))               )**(-1.)
+               (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))            **2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID))               )**(-1.)
 
     ! Find critical deformation
     sigma_y = Species(PartSpecies(PartID))%YieldCoeff*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
@@ -556,7 +552,7 @@ SELECT CASE(WallCoeffModel)
   CASE('Fong2019')
     ! Reuse YieldCoeff to modify the normal velocity, keep tangential velocity
     eps_t   = 1.
-    eps_n   = PartBound%CoR(BC(SideID))
+    eps_n   = PartBound%CoR(SideInfo_Shared(SIDE_BCID,SideID))
 
   CASE DEFAULT
       CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')
@@ -572,7 +568,7 @@ END IF
 !--> first move the particle to the boundary
 #if CODE_ANALYZE
 WRITE(UNIT_stdout,'(110("-"))')
-WRITE(UNIT_stdout,'(A,I1)') '     | Diffusive reflection on BC: ', BC(SideID)
+WRITE(UNIT_stdout,'(A,I1)') '     | Diffusive reflection on BC: ', SideInfo_Shared(SIDE_BCID,SideID)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | LastPartPos:                ',LastPartPos(1,PartID),LastPartPos(2,PartID),LastPartPos(3,PartID)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory:             ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity:                   ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
@@ -615,7 +611,7 @@ WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity (CoR):       
 IF (EP_inUse) THEN
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
-  CALL RecordErosionPoint(BCSideID        = BC(SideID),                                   &
+  CALL RecordErosionPoint(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID),                                   &
                           PartID          = PartID,                                       &
                           PartFaceAngle   = PartFaceAngle,                                &
                           v_old           = v_old,                                        &

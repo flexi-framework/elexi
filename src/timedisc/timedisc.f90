@@ -86,7 +86,7 @@ USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
 #if USE_PARTICLES
 USE MOD_ReadInTools         ,ONLY:GETLOGICAL
 USE MOD_Particle_TimeDisc
-USE MOD_Particle_TimeDisc_Vars,ONLY:ParticleTimeDiscMethod,PartSteadyState,Part_dt_min
+USE MOD_Particle_TimeDisc_Vars,ONLY:ParticleTimeDiscMethod,UseManualTimestep,ManualTimestep
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -102,8 +102,12 @@ TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
 ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
 ! Check if we are running a steady state tracking
 SWRITE(UNIT_StdOut,'(66("-"))')
-PartSteadyState   = GETLOGICAL('Part-SteadyState',   'F')
-Part_dt_Min       = GETREAL   ('Part-SteadyTimeStep','0.')
+!--- Read Manual Time Step
+useManualTimeStep = GETLOGICAL('Part-SteadyState'   ,'F')
+ManualTimeStep    = GETREAL   ('Part-ManualTimeStep','0.0')
+IF (ManualTimeStep.GT.0.) THEN
+  useManualTimeStep = .TRUE.
+END IF
 #endif
 
 CALL StripSpaces(TimeDiscMethod)
@@ -112,7 +116,7 @@ CALL LowCase(TimeDiscMethod)
 CALL SetTimeDiscCoefs(TimeDiscMethod)
 
 #if USE_PARTICLES
-IF (PartSteadyState) THEN
+IF (UseManualTimestep) THEN
   TimeStep=>TimeStepSteadyState
 ELSE
 #endif
@@ -200,7 +204,7 @@ USE MOD_FV
 USE MOD_Particle_Globals    ,ONLY: ALMOSTZERO
 USE MOD_Particle_Analyze    ,ONLY: TrackingParticlePosition
 USE MOD_Particle_Analyze_Vars,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
-USE MOD_Particle_TimeDisc_Vars,ONLY: PartSteadyState,Part_dt_min
+USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimestep,ManualTimestep
 USE MOD_Particle_Vars       ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 #if USE_LOADBALANCE
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
@@ -295,15 +299,16 @@ doFinalize=.FALSE.
 IF(WriteMacroSurfaceValues) MacroValSampTime = t
 
 ! Check if we are running in SteadyState mode
-IF (PartSteadyState) THEN
-  dt_min = Part_dt_min
-  dt     = Part_dt_min
+IF (UseManualTimestep) THEN
+  dt_min = ManualTimestep
+  dt     = ManualTimestep
 END IF
 
 ! Get time step if needed
-IF ((PartSteadyState.AND.(dt_Min.EQ.0)).OR.(.NOT.PartSteadyState)) THEN
+IF ((UseManualTimestep.AND.(dt_Min.EQ.0.)).OR.(.NOT.UseManualTimestep)) THEN
 #endif
-  dt=CALCTIMESTEP(errType)
+  dt     = CALCTIMESTEP(errType)
+  dt_min = CALCTIMESTEP(errType)
 #if USE_PARTICLES
 ELSE
   errType = 0
@@ -357,11 +362,11 @@ DO
 #endif
 #if USE_PARTICLES
   ! Only calculate time step if not running in stationary mode
-  IF (.NOT.PartSteadyState.OR.iter.EQ.0) THEN
+  IF (.NOT.UseManualTimestep.OR.iter.EQ.0) THEN
 #endif
     CALL DGTimeDerivative_weakForm(t)
 #if USE_PARTICLES
-    IF (.NOT.PartSteadyState.AND.nCalcTimestep.LT.1) THEN
+    IF (.NOT.UseManualTimestep.AND.nCalcTimestep.LT.1) THEN
 #else
     IF (nCalcTimestep.LT.1) THEN
 #endif
@@ -616,7 +621,7 @@ DO iStage=2,nRKStages
 
   ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
   IF (doParticlePositionTrack) THEN
-    CALL TrackingParticlePosition(t)
+    CALL TrackingParticlePosition(tStage)
   END IF
 #endif /* PARTICLES */
 
@@ -728,7 +733,7 @@ DO iStage=2,nRKStages
 
   ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
   IF (doParticlePositionTrack) THEN
-    CALL TrackingParticlePosition(t)
+    CALL TrackingParticlePosition(tStage)
   END IF
 #endif
 
@@ -812,7 +817,7 @@ SELECT CASE (TRIM(ParticleTimeDiscMethod))
 
       ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
       IF (doParticlePositionTrack) THEN
-        CALL TrackingParticlePosition(t)
+        CALL TrackingParticlePosition(tStage)
       END IF
 
       CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)

@@ -798,7 +798,7 @@ LOGICAL            :: SideIsCritical
 SideSlabNormals(:,1)=BezierControlPoints3D(:,NGeoElevated,0)              &
                     -BezierControlPoints3D(:,0,0)                         &
                     +BezierControlPoints3D(:,NGeoElevated,NGeoElevated)   &
-                    -BezierControlPoints3D(:,0,NGeoElevated)
+                    -BezierControlPoints3D(:,0,NGeoElevated)              
 SideSlabNormals(:,1)=SideSlabNormals(:,1)/SQRT(DOT_PRODUCT(SideSlabNormals(:,1),SideSlabNormals(:,1)))
 ! n_2=n_1 x (U_1+U_2) (U: corner vectors in eta-direction)
 SideSlabNormals(:,2)=BezierControlPoints3D(:,0,NGeoElevated)                      &
@@ -1153,11 +1153,11 @@ REAL               :: temp(1:3,0:NGeoElevated,0:NGeo)
 temp=0.
 ! p-direction
 DO q=0,NGeo
-  temp(:,:,q)=ElevateBezierPolynomial(NGeo,BezierControlPoints(:,:,q))
+  temp(:,:,q) = ElevateBezierPolynomial(NGeo,BezierControlPoints(:,:,q))
 END DO
 ! q-direction
 DO p=0,NGeoElevated
-  BezierControlPointsElevated(:,p,:)=ElevateBezierPolynomial(NGeo,temp(:,p,:))
+  BezierControlPointsElevated(:,p,:) = ElevateBezierPolynomial(NGeo,temp(:,p,:))
 END DO
 END SUBROUTINE GetBezierControlPoints3DElevated
 

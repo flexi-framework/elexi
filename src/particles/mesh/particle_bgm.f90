@@ -75,7 +75,7 @@ USE MOD_TimeDisc_Vars          ,ONLY: t
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
-USE MOD_Particle_Vars          ,ONLY: manualtimestep
+USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
@@ -136,10 +136,10 @@ lastElem  = nElems
 
 moveBGMindex = 1 ! BGM indeces must be >1 --> move by 1
 DO iElem = firstElem, lastElem
-  offSetNodeID=ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
-  nNodeIDs=ElemInfo_Shared(ELEM_LASTNODEIND,iElem)-ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
-  firstNodeID = offsetNodeID+1
-  lastNodeID = offsetNodeID+nNodeIDs
+  offSetNodeID = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
+  nNodeIDs     = ElemInfo_Shared(ELEM_LASTNODEIND,iElem)-ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
+  firstNodeID  = offsetNodeID+1
+  lastNodeID   = offsetNodeID+nNodeIDs
 
   xmin=MINVAL(NodeCoords_Shared(1,firstNodeID:lastNodeID))
   xmax=MAXVAL(NodeCoords_Shared(1,firstNodeID:lastNodeID))

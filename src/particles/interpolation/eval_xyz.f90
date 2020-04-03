@@ -364,7 +364,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
 USE MOD_Particle_Mesh_Vars,      ONLY:RefMappingEps
-USE MOD_Particle_Vars,           ONLY:PartState,PDM,AllowLoosing
+USE MOD_Particle_Vars,           ONLY:PartState,PDM
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -499,15 +499,7 @@ __STAMP__&
                                          PartState(6  ,PartID)**2)
       IPWRITE(UNIT_stdOut,*) ' ElemID', ElemID
       IF(PRESENT(PartID)) IPWRITE(UNIT_stdOut,*) ' PartID', PartID
-
-      ! In loose mode, remove the invalid particle and write to log
-      IF (AllowLoosing) THEN
-          PDM%ParticleInside(PartID) = .FALSE.
-          IPWRITE(UNIT_stdOut,*) ' Lost particle removed from domain. Continuing simulation ...'
-      ! In strict mode, abort program
-      ELSE
-        CALL abort(__STAMP__,'Particle Not inSide of Element, ElemID,',ElemID)
-      END IF
+      CALL abort(__STAMP__,'Particle Not inSide of Element, ElemID,',ElemID)
     ELSE
       EXIT
     END IF

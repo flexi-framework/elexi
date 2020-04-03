@@ -311,8 +311,8 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 ! calculate all offsets
 FirstElemInd = offsetElem+1
 LastElemInd  = offsetElem+nElems
-offsetNodeID = ElemInfo(ELEM_FIRSTNODEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
-nNodeIDs     = ElemInfo(ELEM_LASTNODEIND ,LastElemInd)-ElemInfo(ELEM_FIRSTNODEIND,FirstElemind)
+offsetNodeID = ElemInfo_Shared(ELEM_FIRSTNODEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
+nNodeIDs     = ElemInfo_Shared(ELEM_LASTNODEIND ,LastElemInd)-ElemInfo_Shared(ELEM_FIRSTNODEIND,FirstElemind)
 FirstNodeInd = offsetNodeID+1
 LastNodeInd  = offsetNodeID+nNodeIDs
 
@@ -336,7 +336,7 @@ CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalNodes/),NodeCoords_Shared
 CALL MPI_WIN_LOCK_ALL(0,NodeCoords_Shared_Win,IERROR)
 NodeCoords_Shared(:,offsetNodeID+1:offsetNodeID+nNodeIDs) = NodeCoords_indx(:,:)
 CALL MPI_WIN_SYNC(NodeCoords_Shared_Win,IERROR)
-
+CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #else
 ALLOCATE(NodeInfo_Shared(1:nNodeIDs))
 NodeInfo_Shared(1:nNodeIDs) = NodeInfo(:)

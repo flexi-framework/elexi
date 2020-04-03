@@ -140,14 +140,14 @@ DO iBC=1,nBCs
   BCName=''
   ! inner side
   IF (PartBound%TargetBoundCond(iBC).EQ.-1) CYCLE
-  
+
   ! always sample walls
   IF (PartBound%TargetBoundCond(iBC).EQ.PartBound%ReflectiveBC) THEN
     nSurfBC = nSurfBC + 1
     BCName(nSurfBC) = BoundaryName(iBC)
     CYCLE
   END IF
-  
+
   ! check if BC is explicitly requested
   CALL lowcase(TRIM(BoundaryName(iBC)),tmpStrBC)
   DO iSurfBC=1,nSurfSampleBC
@@ -177,14 +177,14 @@ SurfMesh%nSides = 0
 !DO iSide=1,nBCSides
 !  ! inner side
 !  IF(BC(iSide).EQ.0) CYCLE
-!  
+!
 !  ! always sample walls
 !  IF (PartBound%TargetBoundCond(BC(iSide)).EQ.PartBound%ReflectiveBC) THEN
 !    SurfMesh%nSides                = SurfMesh%nSides + 1
 !    SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nSides
 !    CYCLE
 !  END IF
-!  
+!
 !  ! check if BC is explicitly requested
 !  CALL lowcase(TRIM(BoundaryName(BC(iSide))),tmpStrBC)
 !  DO iSurfBC=1,nSurfSampleBC
@@ -201,17 +201,17 @@ SurfMesh%nTotalSides = SurfMesh%nSides
 DO iSide=1,nComputeNodeTotalSides
   ! inner (mortar) side
   IF(SideInfo_Shared(SIDE_BCID,iSide).EQ.0) CYCLE
-  
+
   ! skip if element is not proc (i.e. later added to global sides)
   IF (ElemInfo_Shared(ELEM_RANK,SideInfo_Shared(SIDE_ELEMID,iSide)).NE.myRank) CYCLE
-  
+
   ! always sample walls
   IF (PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,iSide)).EQ.PartBound%ReflectiveBC) THEN
     SurfMesh%nTotalSides           = SurfMesh%nTotalSides + 1
     SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nTotalSides
     CYCLE
   END IF
-  
+
   ! check if BC is explicitly requested
   CALL lowcase(TRIM(BoundaryName(SideInfo_Shared(SIDE_BCID,iSide))),tmpStrBC)
   DO iSurfBC=1,nSurfSampleBC
@@ -229,17 +229,17 @@ SurfMesh%nTotalSides = SurfMesh%nSides
 DO iSide=1,nComputeNodeTotalSides
   ! inner (mortar) side
   IF(SideInfo_Shared(SIDE_BCID,iSide).EQ.0) CYCLE
-  
+
   ! skip if element is on proc (i.e. already added to local side)
   IF (ElemInfo_Shared(ELEM_RANK,SideInfo_Shared(SIDE_ELEMID,iSide)).EQ.myRank) CYCLE
-  
+
   ! always sample walls
   IF (PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,iSide)).EQ.PartBound%ReflectiveBC) THEN
     SurfMesh%nTotalSides           = SurfMesh%nTotalSides + 1
     SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nTotalSides
     CYCLE
   END IF
-  
+
   ! check if BC is explicitly requested
   CALL lowcase(TRIM(BoundaryName(SideInfo_Shared(SIDE_BCID,iSide))),tmpStrBC)
   DO iSurfBC=1,nSurfSampleBC
@@ -316,10 +316,10 @@ tmp1 = dXiEQ_SurfSample/2.0 !(b-a)/2
 
 DO iSide = 1,nComputeNodeTotalSides
   SurfSideID = SurfMesh%SideIDToSurfID(iSide)
-  
+
   ! ignore sides that are not sampled
   IF(SurfSideID.EQ.-1) CYCLE
-  
+
   IF (TriaTracking) THEN
     ! TODO: This has to come from ElemInfo_Shared
     ElemID    = SideInfo_Shared(SIDE_ELEMID ,iSide)
@@ -378,7 +378,7 @@ Area=0.
 DO iSide=1,nComputeNodeTotalSides
   ! skip if element is not proc
   IF (ElemInfo_Shared(ELEM_RANK,SideInfo_Shared(SIDE_ELEMID,iSide)).NE.myRank) CYCLE
-  
+
   SurfSideID = SurfMesh%SideIDToSurfID(iSide)
   IF(SurfSideID.EQ.-1) CYCLE
   Area = Area + SUM(SurfMesh%SurfaceArea(:,:,SurfSideID))
@@ -574,18 +574,18 @@ END SUBROUTINE InitSurfCommunicator
 !  DO iProc=0,SurfCOMM%nProcs-1
 !    ! ignore myself
 !    IF(iProc.EQ.SurfCOMM%MyRank) CYCLE
-!    
+!
 !    ! check if the proc has surface sampling sides
 !    GlobalProcID = SurfToGlobal(iProc)
 !    firstSide    = ElemInfo_Shared(ELEM_FIRSTSIDEIND,offsetElemMPI(GlobalProcID)+1)
 !    lastSide     = ElemInfo_Shared(ELEM_LASTSIDEIND ,offsetElemMPI(GlobalProcID+1))
-!    
+!
 !    DO iSide = firstSide,lastSide
 !      SurfSideID = SurfMesh%SideIDToSurfID(iSide)
-!      
+!
 !      ! ignore sides that are not sampled
 !      IF(SurfSideID.EQ.-1) CYCLE
-!      
+!
 !      ! flag once a surface sampling side is found
 !      IF (.NOT.isMPINeighbor(iProc)) THEN
 !        isMPINeighbor(iProc) = .TRUE.
@@ -646,7 +646,7 @@ END SUBROUTINE InitSurfCommunicator
 !DO iProc=1,SurfCOMM%nMPINeighbors
 !  !
 !END DO
-!  
+!
 !
 !END SUBROUTINE InitSurfCommunication
 
@@ -1264,13 +1264,15 @@ SUBROUTINE SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID,alpha)
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_ErosionPoints,          ONLY:RecordErosionPoint
-USE MOD_ErosionPoints_Vars,     ONLY:EP_inUse
-USE MOD_Mesh_Vars,              ONLY:BC
+!USE MOD_ErosionPoints,          ONLY:RecordErosionPoint
+!USE MOD_ErosionPoints_Vars,     ONLY:EP_inUse
+!USE MOD_Mesh_Vars,              ONLY:BC
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Tracking_Vars, ONLY:TrackingMethod
-USE MOD_Particle_Vars,          ONLY:PartState,PartReflCount
+!USE MOD_Particle_Vars,          ONLY:PartReflCount
+USE MOD_Particle_Vars,          ONLY:PartState
+USE MOD_Particle_Vars,          ONLY:WriteMacroSurfaceValues
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1286,36 +1288,44 @@ REAL                              :: Xitild,EtaTild
 INTEGER                           :: p,q,SurfSideID
 REAL                              :: PartFaceAngle
 !===================================================================================================================================
-! Find correct boundary on SurfMesh
-SurfSideID=SurfMesh%SideIDToSurfID(SideID)
 
-! Not a sampling surface (e.g. call for outlet without sampling)
-IF (SurfSideID.EQ.-1) RETURN
+IF (WriteMacroSurfaceValues) THEN
+  ! Find correct boundary on SurfMesh
+  SurfSideID=SurfMesh%SideIDToSurfID(SideID)
 
-! Make sure we have to old velocity safe
-v_old = PartState(4:6,PartID)
+  ! Not a sampling surface (e.g. call for outlet without sampling)
+  IF (SurfSideID.EQ.-1) RETURN
 
-! compute p and q for supersampling
-SELECT CASE(TrackingMethod)
-  CASE(REFMAPPING,TRACING)
-    Xitild  = MIN(MAX(-1.,xi ),0.99)
-    Etatild = MIN(MAX(-1.,eta),0.99)
-    p = INT((Xitild +1.0)/dXiEQ_SurfSample)+1
-    q = INT((Etatild+1.0)/dXiEQ_SurfSample)+1
-  CASE(TRIATRACKING)
-END SELECT
+  ! Make sure we have to old velocity safe
+  v_old = PartState(4:6,PartID)
 
-PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+  ! compute p and q for supersampling
+  SELECT CASE(TrackingMethod)
+    CASE(REFMAPPING,TRACING)
+      Xitild  = MIN(MAX(-1.,xi ),0.99)
+      Etatild = MIN(MAX(-1.,eta),0.99)
+      p = INT((Xitild +1.0)/dXiEQ_SurfSample)+1
+      q = INT((Etatild+1.0)/dXiEQ_SurfSample)+1
+    CASE(TRIATRACKING)
+  END SELECT
 
-CALL RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
+  PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
-IF (EP_inUse) CALL RecordErosionPoint(BCSideID        = BC(SideID),                       &
-                                      PartID          = PartID,                           &
-                                      PartFaceAngle   = PartFaceAngle,                    &
-                                      v_old           = v_old,                            &
-                                      PartFaceAngle_old =PartFaceAngle,                   &
-                                      PartReflCount   = PartReflCount(PartID),            &
-                                      alpha           = alpha)
+  CALL RecordParticleBoundarySampling(PartID                                              &
+                                     ,SurfSideID                                          &
+                                     ,p                                                   &
+                                     ,q                                                   &
+                                     ,v_old                                               &
+                                     ,PartFaceAngle)
+END IF
+
+!IF (EP_inUse) CALL RecordErosionPoint(BCSideID        = BC(SideID),                       &
+!                                      PartID          = PartID,                           &
+!                                      PartFaceAngle   = PartFaceAngle,                    &
+!                                      v_old           = v_old,                            &
+!                                      PartFaceAngle_old = PartFaceAngle,                  &
+!                                      PartReflCount   = PartReflCount(PartID),            &
+!                                      alpha           = alpha)
 
 END SUBROUTINE SideErosion
 

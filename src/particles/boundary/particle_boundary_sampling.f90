@@ -31,6 +31,14 @@ INTERFACE RestartParticleBoundarySampling
   MODULE PROCEDURE RestartParticleBoundarySampling
 END INTERFACE
 
+INTERFACE RecordParticleBoundarySampling
+  MODULE PROCEDURE RecordParticleBoundarySampling
+END INTERFACE
+
+INTERFACE SideErosion
+  MODULE PROCEDURE SideErosion
+END INTERFACE
+
 INTERFACE FinalizeParticleBoundarySampling
   MODULE PROCEDURE FinalizeParticleBoundarySampling
 END INTERFACE
@@ -47,6 +55,8 @@ END INTERFACE
 
 PUBLIC :: InitParticleBoundarySampling
 PUBLIC :: RestartParticleBoundarySampling
+PUBLIC :: RecordParticleBoundarySampling
+PUBLIC :: SideErosion
 PUBLIC :: FinalizeParticleBoundarySampling
 PUBLIC :: WriteSurfSampleToHDF5
 #if USE_MPI
@@ -67,14 +77,13 @@ SUBROUTINE InitParticleBoundarySampling()
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Basis                   ,ONLY:LegendreGaussNodesAndWeights
-USE MOD_Mesh_Vars               ,ONLY:NGeo,BC,nSides,nBCSides,nBCs,BoundaryName
+USE MOD_Mesh_Vars               ,ONLY:NGeo,nBCs,BoundaryName
 USE MOD_Particle_Boundary_Vars  ,ONLY:nSurfSample,dXiEQ_SurfSample,PartBound,XiEQ_SurfSample,SurfMesh,SampWall,nSurfBC,SurfBCName
-USE MOD_Particle_Boundary_Vars  ,ONLY:SurfCOMM
+USE MOD_Particle_Boundary_Vars  ,ONLY:SurfCOMM,SurfSampleBCs
 USE MOD_Particle_Erosion_Vars
-USE MOD_Particle_Mesh_Vars      ,ONLY:GEO
 USE MOD_Particle_Surfaces       ,ONLY:EvaluateBezierPolynomialAndGradient
 USE MOD_Particle_Surfaces_Vars  ,ONLY:BezierControlPoints3D
-USE MOD_Particle_Tracking_Vars  ,ONLY:DoRefMapping,TriaTracking
+USE MOD_Particle_Tracking_Vars  ,ONLY:TriaTracking
 USE MOD_Particle_Vars           ,ONLY:nSpecies
 USE MOD_ReadInTools
 USE MOD_StringTools             ,ONLY:LowCase
@@ -91,7 +100,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                :: p,q,iSide,SurfSideID,SideID,ElemID,LocSideID
+INTEGER                                :: p,q,iSide,SurfSideID,ElemID,LocSideID
 INTEGER                                :: iSample,jSample,iBC,iSurfBC
 INTEGER                                :: TriNum, Node1, Node2
 INTEGER                                :: nSurfSampleBC
@@ -100,15 +109,15 @@ REAL,ALLOCATABLE,DIMENSION(:)          :: Xi_NGeo,wGP_NGeo
 REAL                                   :: XiOut(1:2),E,F,G,D,tmp1,area,tmpI2,tmpJ2
 REAL                                   :: xNod, zNod, yNod, Vector1(3), Vector2(3), nx, ny, nz
 REAL                                   :: nVal, SurfaceVal
-CHARACTER(20)                          :: hilf, hilfBC
-CHARACTER(LEN=255),ALLOCATABLE         :: BCName(:),SurfSampleBCs(:)
+CHARACTER(20)                          :: tmpStr, tmpStrBC
+CHARACTER(LEN=255),ALLOCATABLE         :: BCName(:)
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING ...'
 
 ! standard is sampling on NGeo
-WRITE(UNIT=hilf,FMT='(I0)') NGeo
-nSurfSample             = GETINT    ('Particles-nSurfSample',TRIM(hilf))
+WRITE(UNIT=tmpStr,FMT='(I0)') NGeo
+nSurfSample             = GETINT    ('Particles-nSurfSample',TRIM(tmpStr))
 
 ! get equidistant supersampling points
 ALLOCATE(XiEQ_SurfSample(0:nSurfSample))
@@ -140,9 +149,9 @@ DO iBC=1,nBCs
   END IF
   
   ! check if BC is explicitly requested
-  CALL lowcase(TRIM(BoundaryName(iBC)),hilfBC)
+  CALL lowcase(TRIM(BoundaryName(iBC)),tmpStrBC)
   DO iSurfBC=1,nSurfSampleBC
-    IF (hilfBC.EQ.SurfSampleBCs(iSurfBC)) THEN
+    IF (tmpStrBC.EQ.SurfSampleBCs(iSurfBC)) THEN
       nSurfBC = nSurfBC + 1
       BCName(nSurfBC) = BoundaryName(iBC)
       EXIT
@@ -177,9 +186,9 @@ SurfMesh%nSides = 0
 !  END IF
 !  
 !  ! check if BC is explicitly requested
-!  CALL lowcase(TRIM(BoundaryName(BC(iSide))),hilfBC)
+!  CALL lowcase(TRIM(BoundaryName(BC(iSide))),tmpStrBC)
 !  DO iSurfBC=1,nSurfSampleBC
-!    IF (hilfBC.EQ.SurfSampleBCs(iSurfBC)) THEN
+!    IF (tmpStrBC.EQ.SurfSampleBCs(iSurfBC)) THEN
 !      SurfMesh%nSides                = SurfMesh%nSides + 1
 !      SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nSides
 !      EXIT
@@ -204,9 +213,9 @@ DO iSide=1,nComputeNodeTotalSides
   END IF
   
   ! check if BC is explicitly requested
-  CALL lowcase(TRIM(BoundaryName(SideInfo_Shared(SIDE_BCID,iSide))),hilfBC)
+  CALL lowcase(TRIM(BoundaryName(SideInfo_Shared(SIDE_BCID,iSide))),tmpStrBC)
   DO iSurfBC=1,nSurfSampleBC
-    IF (hilfBC.EQ.SurfSampleBCs(iSurfBC)) THEN
+    IF (tmpStrBC.EQ.SurfSampleBCs(iSurfBC)) THEN
       SurfMesh%nTotalSides           = SurfMesh%nTotalSides + 1
       SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nTotalSides
       EXIT
@@ -232,9 +241,9 @@ DO iSide=1,nComputeNodeTotalSides
   END IF
   
   ! check if BC is explicitly requested
-  CALL lowcase(TRIM(BoundaryName(SideInfo_Shared(SIDE_BCID,iSide))),hilfBC)
+  CALL lowcase(TRIM(BoundaryName(SideInfo_Shared(SIDE_BCID,iSide))),tmpStrBC)
   DO iSurfBC=1,nSurfSampleBC
-    IF (hilfBC.EQ.SurfSampleBCs(iSurfBC)) THEN
+    IF (tmpStrBC.EQ.SurfSampleBCs(iSurfBC)) THEN
       SurfMesh%nTotalSides           = SurfMesh%nTotalSides + 1
       SurfMesh%SideIDToSurfID(iSide) = SurfMesh%nTotalSides
       EXIT
@@ -348,7 +357,7 @@ DO iSide = 1,nComputeNodeTotalSides
           DO p=0,NGeo
             XiOut(1)=tmp1*Xi_NGeo(p)+tmpI2
             XiOut(2)=tmp1*Xi_NGeo(q)+tmpJ2
-            CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,3,BezierControlPoints3D(1:3,0:NGeo,0:NGeo,SideID) &
+            CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,3,BezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide) &
                                                     ,Gradient=gradXiEta3D)
             ! calculate first fundamental form
             E=DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(1,1:3))
@@ -1246,6 +1255,280 @@ SDEALLOCATE(SampWallTmp)
 
 END SUBROUTINE ExchangeSurfData
 #endif /*MPI*/
+
+
+SUBROUTINE SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID,alpha)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! Tracks erosion on designated sides other than reflective wall
+!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Globals
+USE MOD_ErosionPoints,          ONLY:RecordErosionPoint
+USE MOD_ErosionPoints_Vars,     ONLY:EP_inUse
+USE MOD_Mesh_Vars,              ONLY:BC
+USE MOD_Particle_Globals
+USE MOD_Particle_Boundary_Vars
+USE MOD_Particle_Tracking_Vars, ONLY:TrackingMethod
+USE MOD_Particle_Vars,          ONLY:PartState,PartReflCount
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+REAL,INTENT(IN)                   :: PartTrajectory(1:3)
+REAL,INTENT(IN)                   :: n_loc(1:3)
+REAL,INTENT(IN)                   :: xi,eta,alpha
+INTEGER,INTENT(IN)                :: PartID,SideID
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                              :: v_old(1:3)
+REAL                              :: Xitild,EtaTild
+INTEGER                           :: p,q,SurfSideID
+REAL                              :: PartFaceAngle
+!===================================================================================================================================
+! Find correct boundary on SurfMesh
+SurfSideID=SurfMesh%SideIDToSurfID(SideID)
+
+! Not a sampling surface (e.g. call for outlet without sampling)
+IF (SurfSideID.EQ.-1) RETURN
+
+! Make sure we have to old velocity safe
+v_old = PartState(4:6,PartID)
+
+! compute p and q for supersampling
+SELECT CASE(TrackingMethod)
+  CASE(REFMAPPING,TRACING)
+    Xitild  = MIN(MAX(-1.,xi ),0.99)
+    Etatild = MIN(MAX(-1.,eta),0.99)
+    p = INT((Xitild +1.0)/dXiEQ_SurfSample)+1
+    q = INT((Etatild+1.0)/dXiEQ_SurfSample)+1
+  CASE(TRIATRACKING)
+END SELECT
+
+PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+
+CALL RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
+
+IF (EP_inUse) CALL RecordErosionPoint(BCSideID        = BC(SideID),                       &
+                                      PartID          = PartID,                           &
+                                      PartFaceAngle   = PartFaceAngle,                    &
+                                      v_old           = v_old,                            &
+                                      PartFaceAngle_old =PartFaceAngle,                   &
+                                      PartReflCount   = PartReflCount(PartID),            &
+                                      alpha           = alpha)
+
+END SUBROUTINE SideErosion
+
+
+SUBROUTINE RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! Combined routine to add calculated erosion variables to tracking array
+!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Globals
+USE MOD_Particle_Globals
+USE MOD_Particle_Boundary_Vars
+USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Vars,          ONLY:Species,PartSpecies,nSpecies
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+REAL,INTENT(IN)                   :: PartFaceAngle, v_old(1:3)
+INTEGER,INTENT(IN)                :: PartID, SurfSideID, p, q
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                              :: delta                          ! Reusable variable for variance calculation
+REAL                              :: delta2                         ! Reusable variable for variance calculation
+INTEGER                           :: nShift                         ! Shift amount for species tracking
+REAL                              :: v_magnitude
+REAL                              :: e_kin
+!===================================================================================================================================
+nShift        = PartSpecies(PartID) * nErosionVars
+
+!===================================================================================================================================
+! SAMP WALL
+!===================================================================================================================================
+
+!----  Sampling kinetic energy at walls
+v_magnitude   = SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
+e_kin         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude**2.
+
+!---- All Variables are saved DOUBLE. First Total, then per SPECIES
+!===================================================================================================================================
+!---- 1. - .. / Impact Counter
+    SampWall(SurfSideID)%State(1,p,q)                       = SampWall(SurfSideID)%State(1,p,q) + 1
+!<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+IF (nSpecies.GT.1) THEN
+    SampWall(SurfSideID)%State(1+nShift,p,q)                = SampWall(SurfSideID)%State(1+nShift,p,q) + 1
+END IF
+
+!===================================================================================================================================
+!---- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
+!<<< Welford's algorithm for variance
+!    (count, mean, M2) = existingAggregate
+!    count = count + 1
+!    delta = newValue - mean
+!    mean = mean + delta / count
+!    delta2 = newValue - mean
+!    M2 = M2 + delta * delta2
+
+!   Record first impact, otherwise min will be frozen at zero
+    IF (SampWall(SurfSideID)%State(1,p,q).EQ.1)     THEN
+!        SampWall(SurfSideID)%State(2,p,q)                   = e_kin
+        SampWall(SurfSideID)%State(3,p,q)                   = e_kin
+        SampWall(SurfSideID)%State(4,p,q)                   = e_kin
+    END IF
+
+!   All subsequent impacts
+    delta                                                   = e_kin - SampWall(SurfSideID)%State(2,p,q)
+!   Update mean
+    SampWall(SurfSideID)%State(2,p,q)                       = SampWall(SurfSideID)%State(2,p,q) + delta /                          &
+                                                              SampWall(SurfSideID)%State(1,p,q)
+!    Find min/max of distribution
+    IF (e_kin.LT.SampWall(SurfSideID)%State(3,p,q)) THEN
+        SampWall(SurfSideID)%State(3,p,q)               = e_kin
+    END IF
+    IF (e_kin.GT.SampWall(SurfSideID)%State(4,p,q)) THEN
+        SampWall(SurfSideID)%State(4,p,q)               = e_kin
+    END IF
+!   delta2 = newValue - mean
+    delta2                                                  = e_kin - SampWall(SurfSideID)%State(2,p,q)
+!   M2 = M2 + delta * delta2
+    SampWall(SurfSideID)%State(5,p,q)                       = SampWall(SurfSideID)%State(5,p,q) + delta * delta2
+!   Update sample variance here so we can check values at runtime, variance       = M2/count
+!                                                                  sampleVariance = M2/(count - 1)
+    SampWall(SurfSideID)%State(6,p,q)                       = SampWall(SurfSideID)%State(5,p,q)/SampWall(SurfSideID)%State(1,p,q)
+!<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+IF (nSpecies.GT.1) THEN
+
+!   Record first impact, otherwise min will be frozen at zero
+    IF (SampWall(SurfSideID)%State(1+nShift,p,q).EQ.1)     THEN
+!        SampWall(SurfSideID)%State(2+nShift,p,q)            = e_kin
+        SampWall(SurfSideID)%State(3+nShift,p,q)            = e_kin
+        SampWall(SurfSideID)%State(4+nShift,p,q)            = e_kin
+    END IF
+
+!   All subsequent impacts
+    delta                                                   = e_kin - SampWall(SurfSideID)%State(2+nShift,p,q)
+!   Update mean
+    SampWall(SurfSideID)%State(2+nShift,p,q)                = SampWall(SurfSideID)%State(2+nShift,p,q) + delta /                   &
+                                                              SampWall(SurfSideID)%State(1+nShift,p,q)
+!   Find min/max of distribution
+    IF (e_kin.LT.SampWall(SurfSideID)%State(3+nShift,p,q)) THEN
+        SampWall(SurfSideID)%State(3+nShift,p,q)        = e_kin
+    END IF
+    IF (e_kin.GT.SampWall(SurfSideID)%State(4+nShift,p,q)) THEN
+        SampWall(SurfSideID)%State(4+nShift,p,q)        = e_kin
+    END IF
+!   delta2 = newValue - mean
+    delta2                                                  = e_kin - SampWall(SurfSideID)%State(2+nShift,p,q)
+!   M2 = M2 + delta * delta2
+    SampWall(SurfSideID)%State(5+nShift,p,q)                = SampWall(SurfSideID)%State(5+nShift,p,q) + delta * delta2
+!   Update sample variance here so we can check values at runtime, variance       = M2/count
+!                                                                  sampleVariance = M2/(count - 1)
+    SampWall(SurfSideID)%State(6+nShift,p,q)                = SampWall(SurfSideID)%State(5+nShift,p,q) /                           &
+                                                              SampWall(SurfSideID)%State(1+nShift,p,q)
+END IF
+
+!===================================================================================================================================
+!---- 7. - 11 / Impact angle (mean, min, max, M2, variance)
+!   Record first impact, otherwise min will be frozen at zero
+    IF (SampWall(SurfSideID)%State(1,p,q).EQ.1)     THEN
+!        SampWall(SurfSideID)%State(7,p,q)                   = PartFaceAngle
+        SampWall(SurfSideID)%State(8,p,q)                   = PartFaceAngle
+        SampWall(SurfSideID)%State(9,p,q)                   = PartFaceAngle
+    END IF
+
+!   All subsequent impacts
+    delta                                                   = PartFaceAngle - SampWall(SurfSideID)%State(7,p,q)
+!   Update mean
+    SampWall(SurfSideID)%State(7,p,q)                       = SampWall(SurfSideID)%State(7,p,q) + delta /                          &
+                                                              SampWall(SurfSideID)%State(1,p,q)
+!    Find min/max of distribution
+    IF (PartFaceAngle.LT.SampWall(SurfSideID)%State(8,p,q)) THEN
+        SampWall(SurfSideID)%State(8,p,q)                = PartFaceAngle
+    END IF
+    IF (PartFaceAngle.GT.SampWall(SurfSideID)%State(9,p,q)) THEN
+        SampWall(SurfSideID)%State(9,p,q)                = PartFaceAngle
+    END IF
+!   delta2 = newValue - mean
+    delta2                                                  = PartFaceAngle - SampWall(SurfSideID)%State(7,p,q)
+!   M2 = M2 + delta * delta2
+    SampWall(SurfSideID)%State(10,p,q)                      = SampWall(SurfSideID)%State(10,p,q) + delta * delta2
+!   Update sample variance here so we can check values at runtime, variance       = M2/count
+!                                                                  sampleVariance = M2/(count - 1)
+    SampWall(SurfSideID)%State(11,p,q)                      = SampWall(SurfSideID)%State(10,p,q)/SampWall(SurfSideID)%State(1,p,q)
+!<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+IF (nSpecies.GT.1) THEN
+
+!   Record first impact, otherwise min will be frozen at zero
+    IF (SampWall(SurfSideID)%State(1+nShift,p,q).EQ.1)     THEN
+!        SampWall(SurfSideID)%State(7+nShift,p,q)            = PartFaceAngle
+        SampWall(SurfSideID)%State(8+nShift,p,q)            = PartFaceAngle
+        SampWall(SurfSideID)%State(9+nShift,p,q)            = PartFaceAngle
+    END IF
+
+!   All subsequent impacts
+    delta                                                   = PartFaceAngle - SampWall(SurfSideID)%State(7+nShift,p,q)
+!   Update mean
+    SampWall(SurfSideID)%State(7+nShift,p,q)                = SampWall(SurfSideID)%State(7+nShift,p,q) + delta /                   &
+                                                              SampWall(SurfSideID)%State(1+nShift,p,q)
+!   Find min/max of distribution
+    IF (PartFaceAngle.LT.SampWall(SurfSideID)%State(8+nShift,p,q)) THEN
+        SampWall(SurfSideID)%State(8+nShift,p,q)        = PartFaceAngle
+    END IF
+    IF (PartFaceAngle.GT.SampWall(SurfSideID)%State(9+nShift,p,q)) THEN
+        SampWall(SurfSideID)%State(9+nShift,p,q)        = PartFaceAngle
+    END IF
+!   delta2 = newValue - mean
+    delta2                                                  = PartFaceAngle - SampWall(SurfSideID)%State(7+nShift,p,q)
+!   M2 = M2 + delta * delta2
+    SampWall(SurfSideID)%State(10+nShift,p,q)               = SampWall(SurfSideID)%State(10+nShift,p,q) + delta * delta2
+!   Update sample variance here so we can check values at runtime, variance       = M2/count
+!                                                                  sampleVariance = M2/(count - 1)
+    SampWall(SurfSideID)%State(11+nShift,p,q)               = SampWall(SurfSideID)%State(10+nShift,p,q) /                          &
+                                                              SampWall(SurfSideID)%State(1+nShift,p,q)
+END IF
+
+!===================================================================================================================================
+!---- 12 - 14 / Sampling Current Forces at walls
+    SampWall(SurfSideID)%State(12,p,q)= SampWall(SurfSideID)%State(12,p,q) + Species(PartSpecies(PartID))%MassIC                   &
+                                        * (v_old(1))
+    SampWall(SurfSideID)%State(13,p,q)= SampWall(SurfSideID)%State(13,p,q) + Species(PartSpecies(PartID))%MassIC                   &
+                                        * (v_old(2))
+    SampWall(SurfSideID)%State(14,p,q)= SampWall(SurfSideID)%State(14,p,q) + Species(PartSpecies(PartID))%MassIC                   &
+                                        * (v_old(3))
+!<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+IF (nSpecies.GT.1) THEN
+    SampWall(SurfSideID)%State(12+nShift,p,q)= SampWall(SurfSideID)%State(12+nShift,p,q) + Species(PartSpecies(PartID))%MassIC     &
+                                               * (v_old(1))
+    SampWall(SurfSideID)%State(13+nShift,p,q)= SampWall(SurfSideID)%State(13+nShift,p,q) + Species(PartSpecies(PartID))%MassIC     &
+                                               * (v_old(2))
+    SampWall(SurfSideID)%State(14+nShift,p,q)= SampWall(SurfSideID)%State(14+nShift,p,q) + Species(PartSpecies(PartID))%MassIC     &
+                                               * (v_old(3))
+END IF
+
+!===================================================================================================================================
+!---- 15 - 17 / Sampling Average Forces at walls
+    SampWall(SurfSideID)%State(15,p,q)= SampWall(SurfSideID)%State(15,p,q) + Species(PartSpecies(PartID))%MassIC                   &
+                                        * (v_old(1))
+    SampWall(SurfSideID)%State(16,p,q)= SampWall(SurfSideID)%State(16,p,q) + Species(PartSpecies(PartID))%MassIC                   &
+                                        * (v_old(2))
+    SampWall(SurfSideID)%State(17,p,q)= SampWall(SurfSideID)%State(17,p,q) + Species(PartSpecies(PartID))%MassIC                   &
+                                        * (v_old(3))
+!<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+IF (nSpecies.GT.1) THEN
+    SampWall(SurfSideID)%State(15+nShift,p,q)= SampWall(SurfSideID)%State(15+nShift,p,q) + Species(PartSpecies(PartID))%MassIC     &
+                                        * (v_old(1))
+    SampWall(SurfSideID)%State(16+nShift,p,q)= SampWall(SurfSideID)%State(16+nShift,p,q) + Species(PartSpecies(PartID))%MassIC     &
+                                        * (v_old(2))
+    SampWall(SurfSideID)%State(17+nShift,p,q)= SampWall(SurfSideID)%State(17+nShift,p,q) + Species(PartSpecies(PartID))%MassIC     &
+                                        * (v_old(3))
+END IF
+
+END SUBROUTINE RecordParticleBoundarySampling
 
 
 SUBROUTINE RestartParticleBoundarySampling(remap_opt)

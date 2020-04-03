@@ -73,54 +73,54 @@ INTEGER,ALLOCATABLE                      :: ProcNbrOfParticle(:)
 #endif
 !===================================================================================================================================/
 
-  DoExactPartNumInsert =  .FALSE.
-  ! check if particle inserting during simulation or initial inserting and also if via partdensity or exact particle number
-  ! nbrOfParticles is set for initial inserting if initialPartNum or partdensity is set in ini
-  ! ParticleEmission and Partdensity not working together
-  IF (NbrofParticle.EQ.0.AND.(Species(FractNbr)%Init(iInit)%ParticleEmission.EQ.0)) RETURN
-  IF ((NbrofParticle.GT.0).AND.(Species(FractNbr)%Init(iInit)%PartDensity.LE.0.)) THEN
-    DoExactPartNumInsert =  .TRUE.
-  END IF
-  chunksize = 0
+DoExactPartNumInsert =  .FALSE.
+! check if particle inserting during simulation or initial inserting and also if via partdensity or exact particle number
+! nbrOfParticles is set for initial inserting if initialPartNum or partdensity is set in ini
+! ParticleEmission and Partdensity not working together
+IF (NbrofParticle.EQ.0.AND.(Species(FractNbr)%Init(iInit)%ParticleEmission.EQ.0)) RETURN
+IF ((NbrofParticle.GT.0).AND.(Species(FractNbr)%Init(iInit)%PartDensity.LE.0.)) THEN
+  DoExactPartNumInsert =  .TRUE.
+END IF
+chunksize = 0
 #if USE_MPI
 ! emission group communicator
-  InitGroup=Species(FractNbr)%Init(iInit)%InitCOMM
-  IF(PartMPI%InitGroup(InitGroup)%COMM.EQ.MPI_COMM_NULL) THEN
-    NbrofParticle=0
-    RETURN
-  END IF
-  IF (PartMPI%InitGroup(InitGroup)%nProcs.GT.1) THEN
-    IF (DoExactPartNumInsert) THEN !###$ ToDo
-      IF (PartMPI%InitGroup(InitGroup)%MPIROOT) THEN
-        ALLOCATE(ProcMeshVol(0:PartMPI%InitGroup(InitGroup)%nProcs-1))
-        ALLOCATE(ProcNbrOfParticle(0:PartMPI%InitGroup(InitGroup)%nProcs-1))
-        ProcMeshVol=0.
-        ProcNbrOfParticle=0
-      ELSE ! to reduce global memory allocation if a lot of procs are used
-        ALLOCATE(ProcMeshVol(1))
-        ALLOCATE(ProcNbrOfParticle(1))
-        ProcMeshVol=0.
-        ProcNbrOfParticle=0
-      END IF !InitGroup%MPIroot
-      CALL MPI_GATHER(LocalVolume,1,MPI_DOUBLE_PRECISION &
-                     ,ProcMeshVol,1,MPI_DOUBLE_PRECISION,0,PartMPI%InitGroup(InitGroup)%COMM,iError)
-      IF (PartMPI%InitGroup(InitGroup)%MPIROOT) THEN
-        CALL IntegerDivide(NbrOfParticle,PartMPI%InitGroup(InitGroup)%nProcs,ProcMeshVol,ProcNbrOfParticle)
-      END IF
-      CALL MPI_SCATTER(ProcNbrOfParticle, 1, MPI_INTEGER, chunksize, 1, MPI_INTEGER, 0, PartMPI%InitGroup(InitGroup)%COMM, IERROR)
-      SDEALLOCATE(ProcMeshVol)
-      SDEALLOCATE(ProcNbrOfParticle)
+InitGroup=Species(FractNbr)%Init(iInit)%InitCOMM
+IF(PartMPI%InitGroup(InitGroup)%COMM.EQ.MPI_COMM_NULL) THEN
+  NbrofParticle=0
+  RETURN
+END IF
+IF (PartMPI%InitGroup(InitGroup)%nProcs.GT.1) THEN
+  IF (DoExactPartNumInsert) THEN !###$ ToDo
+    IF (PartMPI%InitGroup(InitGroup)%MPIROOT) THEN
+      ALLOCATE(ProcMeshVol(0:PartMPI%InitGroup(InitGroup)%nProcs-1))
+      ALLOCATE(ProcNbrOfParticle(0:PartMPI%InitGroup(InitGroup)%nProcs-1))
+      ProcMeshVol=0.
+      ProcNbrOfParticle=0
+    ELSE ! to reduce global memory allocation if a lot of procs are used
+      ALLOCATE(ProcMeshVol(1))
+      ALLOCATE(ProcNbrOfParticle(1))
+      ProcMeshVol=0.
+      ProcNbrOfParticle=0
+    END IF !InitGroup%MPIroot
+    CALL MPI_GATHER(LocalVolume,1,MPI_DOUBLE_PRECISION &
+                   ,ProcMeshVol,1,MPI_DOUBLE_PRECISION,0,PartMPI%InitGroup(InitGroup)%COMM,iError)
+    IF (PartMPI%InitGroup(InitGroup)%MPIROOT) THEN
+      CALL IntegerDivide(NbrOfParticle,PartMPI%InitGroup(InitGroup)%nProcs,ProcMeshVol,ProcNbrOfParticle)
     END IF
-  ELSE
-    chunksize = NbrOfParticle
+    CALL MPI_SCATTER(ProcNbrOfParticle, 1, MPI_INTEGER, chunksize, 1, MPI_INTEGER, 0, PartMPI%InitGroup(InitGroup)%COMM, IERROR)
+    SDEALLOCATE(ProcMeshVol)
+    SDEALLOCATE(ProcNbrOfParticle)
   END IF
+ELSE
+  chunksize = NbrOfParticle
+END IF
 #else
-  IF (DoExactPartNumInsert) chunksize = NbrOfParticle
+IF (DoExactPartNumInsert) chunksize = NbrOfParticle
 #endif /*USE_MPI*/
-  IF ((chunksize.GT.0).OR.(Species(FractNbr)%Init(iInit)%PartDensity.GT.0.)) THEN
-    CALL SetCellLocalParticlePosition(chunkSize,FractNbr,iInit,DoExactPartNumInsert)
-  END IF
-  NbrOfParticle = chunksize
+IF ((chunksize.GT.0).OR.(Species(FractNbr)%Init(iInit)%PartDensity.GT.0.)) THEN
+  CALL SetCellLocalParticlePosition(chunkSize,FractNbr,iInit,DoExactPartNumInsert)
+END IF
+NbrOfParticle = chunksize
 
 END SUBROUTINE SetParticlePositionCellLocal
 
@@ -131,11 +131,7 @@ SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
-USE MOD_Particle_Globals,      ONLY: PI
-USE MOD_Particle_Vars,         ONLY: Species,PDM,PartState
-USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
-USE MOD_Timedisc_Vars,         ONLY: dt
-USE MOD_Particle_TimeDisc_Vars,ONLY: RKdtFrac
+USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition,SetParticlePositionPoint
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine, SetParticlePositionLine, SetParticlePositionDisk
@@ -159,11 +155,8 @@ INTEGER,INTENT(INOUT)                    :: NbrOfParticle
 REAL,ALLOCATABLE                         :: particle_positions(:)
 INTEGER                                  :: i,ParticleIndexNbr,allocStat,nChunks, chunkSize
 INTEGER                                  :: mySumOfMatchedParticles, sumOfMatchedParticles, DimSend
-LOGICAL                                  :: DoExactPartNumInsert
 #if USE_MPI
 INTEGER                                  :: InitGroup
-REAL,ALLOCATABLE                         :: ProcMeshVol(:)
-INTEGER,ALLOCATABLE                      :: ProcNbrOfParticle(:)
 #endif
 !===================================================================================================================================
 IF (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'cell_local') THEN

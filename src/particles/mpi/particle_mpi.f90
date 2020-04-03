@@ -145,7 +145,7 @@ USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars,    ONLY:doParticleDispersionTrack
 USE MOD_Particle_Erosion_Vars,    ONLY:doParticleReflectionTrack
 USE MOD_Particle_MPI_Vars
-USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars,SGSinUse
+USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
 USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 USE MOD_Particle_Vars,            ONLY:PDM
 #if USE_RW
@@ -349,10 +349,10 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,PartCommSize,PartSendBuf,PartRecvBuf,PartTargetProc
-USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors,ExchangeProcToGlobalProc,GlobalProcToExchangeProc
+USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors,ExchangeProcToGlobalProc
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
-USE MOD_Particle_Vars,            ONLY:TurbPartState,TurbPt_temp
+USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
 USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 ! Variables for erosion tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
@@ -371,7 +371,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                       :: iPart,iPos,iProc,jPos
 INTEGER                       :: recv_status_list(1:MPI_STATUS_SIZE,0:nExchangeProcessors-1)
-INTEGER                       :: MessageSize, nRecvParticles, nSendParticles, nSendExtParticles, nRecvExtParticles
+INTEGER                       :: MessageSize, nRecvParticles, nSendParticles
 INTEGER                       :: ALLOCSTAT
 !===================================================================================================================================
 

@@ -40,6 +40,10 @@ INTERFACE SetCellLocalParticlePosition
   MODULE PROCEDURE SetCellLocalParticlePosition
 END INTERFACE
 
+INTERFACE SamplePoissonDistri
+  MODULE PROCEDURE SamplePoissonDistri
+END INTERFACE
+
 !===================================================================================================================================
 PUBLIC :: IntegerDivide
 PUBLIC :: InsideExcludeRegionCheck
@@ -53,6 +57,7 @@ PUBLIC :: SetParticlePositionCircle
 PUBLIC :: SetParticlePositionCuboidCylinder
 PUBLIC :: SetParticlePositionSphere
 PUBLIC :: SetParticlePositionSinDeviation
+PUBLIC :: SamplePoissonDistri
 !===================================================================================================================================
 CONTAINS
 
@@ -198,19 +203,19 @@ LOGICAL,INTENT(INOUT),OPTIONAL :: Flag_opt
 INTEGER,INTENT(OUT)            :: IntSample
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                        :: Flag
-INTEGER                        :: Npois
-REAL                           :: Tpois, RandVal1
+LOGICAL         :: Flag
+INTEGER         :: Npois
+REAL            :: Tpois, RandVal1
 !===================================================================================================================================
 
 IF (PRESENT(Flag_opt)) THEN
-  Flag = Flag_opt
+  Flag=Flag_opt
 ELSE
-  Flag = .FALSE.
+  Flag=.FALSE.
 END IF
 
-Npois = 0
-Tpois = 1.0
+Npois=0
+Tpois=1.0
 CALL RANDOM_NUMBER(RandVal1)
 
 ! Continue looping until found a valid sample or ran into an error
@@ -254,8 +259,8 @@ USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
 USE MOD_Particle_Localization  ,ONLY: ParticleInsideQuad3D
 USE MOD_Particle_Localization  ,ONLY: PartInElemCheck
 USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
-USE MOD_Particle_Mesh_Vars     ,ONLY: GEO,ElemEpsOneCell
-USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared,ElemVolume_Shared,ElemMidPoint_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemEpsOneCell !,GEO
+USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared,ElemVolume_Shared
 USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping, TriaTracking
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PEM,PartState
 ! IMPLICIT VARIABLE HANDLING
@@ -277,7 +282,6 @@ REAL                             :: Det(6,2)
 REAL                             :: RefPos(1:3)
 INTEGER                          :: CellChunkSize(1:nElems)
 INTEGER                          :: chunkSize_tmp, ParticleIndexNbr
-REAL                             :: adaptTimestep
 !-----------------------------------------------------------------------------------------------------------------------------------
   IF (UseExactPartNum) THEN
     IF(chunkSize.GE.PDM%maxParticleNumber) &
@@ -524,7 +528,6 @@ SUBROUTINE SetParticlePositionCuboidCylinder(FractNbr,iInit,chunkSize,particle_p
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
-USE MOD_Particle_Globals       ,ONLY: Pi
 USE MOD_Particle_Timedisc_Vars ,ONLY: RKdtFrac
 USE MOD_Particle_Vars          ,ONLY: Species
 USE MOD_Timedisc_Vars          ,ONLY: dt
@@ -619,11 +622,11 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER, INTENT(INOUT)  :: chunkSize
-REAL, INTENT(OUT)       :: particle_positions(:)
+REAL,INTENT(OUT)       :: particle_positions(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Particle_pos(3), iRan, radius
-INTEGER                 :: i, chunkSize2
+REAL                    :: Particle_pos(3),iRan,radius
+INTEGER                 :: i,chunkSize2
 LOGICAL                 :: insideExcludeRegion
 !===================================================================================================================================
   i=1

@@ -525,6 +525,111 @@ RETURN
 END SUBROUTINE ParticleInsideQuad3D
 
 
+PURE SUBROUTINE ParticleInsideNbMortar(PartStateLoc,ElemID,InElementCheck)
+!===================================================================================================================================
+!> Routines checks if the particle is inside the neighbouring mortar element. Used for the regular ParticleInsideQuad3D routine
+!> after it was determined that the particle is not in the concave part but in the convex part of the element.
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Mesh_Vars    ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars    ,ONLY :ConcaveElemSide_Shared,ElemSideNodeID_Shared
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)            :: ElemID
+REAL   ,INTENT(IN)            :: PartStateLoc(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+LOGICAL,INTENT(OUT)           :: InElementCheck
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                       :: ilocSide, NodeNum, SideID, nlocSides, localSideID, NbElemID
+LOGICAL                       :: PosCheck, NegCheck
+REAL                          :: A(1:3,1:4), cross(3)
+REAL                          :: Det(2)
+!===================================================================================================================================
+InElementCheck = .TRUE.
+nlocSides = ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)
+DO iLocSide = 1,nlocSides
+  SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID) + iLocSide
+  IF (SideInfo_Shared(SIDE_LOCALID,SideID).LE.0) CYCLE
+  localSideID = SideInfo_Shared(SIDE_LOCALID,SideID)      ! for all 6 sides of the element
+  DO NodeNum = 1,4
+  !--- A = vector from particle to node coords
+    A(:,NodeNum) = NodeCoords_Shared(:,ElemSideNodeID_Shared(NodeNum,localSideID,ElemID)+1) - PartStateLoc(1:3)
+  END DO
+  NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
+  !--- Treatment of sides which are adjacent to mortar elements
+  IF (NbElemID.LT.0) THEN
+    !--- initialize flags for side checks
+    PosCheck = .FALSE.
+    NegCheck = .FALSE.
+    !--- Check if the particle is inside the convex element. If its outside, it has to be inside the original element
+    IF (ConcaveElemSide_Shared(localSideID,ElemID)) THEN
+      Det(1:2) = CalcDetOfTrias(A,2)
+      IF (Det(1).LT.0) NegCheck = .TRUE.
+      IF (Det(2).LT.0) NegCheck = .TRUE.
+      !--- final determination whether particle is in element
+      IF (NegCheck) THEN
+        InElementCheck = .FALSE.
+        RETURN
+      END IF
+    ELSE
+      Det(1:2) = CalcDetOfTrias(A,1)
+      IF (Det(1).LT.0) NegCheck = .TRUE.
+      IF (Det(2).LT.0) NegCheck = .TRUE.
+      !--- final determination whether particle is in element
+      IF (NegCheck) THEN
+        InElementCheck = .FALSE.
+        RETURN
+      END IF
+    END IF
+  ELSE ! Regular side
+    PosCheck = .FALSE.
+    NegCheck = .FALSE.
+    !--- compute cross product for vector 1 and 3
+    cross(1) = A(2,1) * A(3,3) - A(3,1) * A(2,3)
+    cross(2) = A(3,1) * A(1,3) - A(1,1) * A(3,3)
+    cross(3) = A(1,1) * A(2,3) - A(2,1) * A(1,3)
+    !--- negative determinant of triangle 1 (points 1,3,2):
+    Det(1) = cross(1) * A(1,2) + &
+                      cross(2) * A(2,2) + &
+                      cross(3) * A(3,2)
+    Det(1) = -det(1)
+    !--- determinant of triangle 2 (points 1,3,4):
+    Det(2) = cross(1) * A(1,4) + &
+                      cross(2) * A(2,4) + &
+                      cross(3) * A(3,4)
+    IF (Det(1).LT.0) THEN
+      NegCheck = .TRUE.
+    ELSE
+      PosCheck = .TRUE.
+    END IF
+    IF (Det(2).LT.0) THEN
+      NegCheck = .TRUE.
+    ELSE
+      PosCheck = .TRUE.
+    END IF
+    !--- final determination whether particle is in element
+    IF (ConcaveElemSide_Shared(localSideID,ElemID)) THEN
+      IF (.NOT.PosCheck) THEN
+        InElementCheck = .FALSE.
+        RETURN
+      END IF
+    ELSE
+      IF (NegCheck) THEN
+        InElementCheck = .FALSE.
+        RETURN
+      END IF
+    END IF
+  END IF  ! Mortar or regular side
+END DO  ! iLocSide = 1,6
+
+END SUBROUTINE ParticleInsideNbMortar
+
+
 SUBROUTINE CountPartsPerElem(ResetNumberOfParticles)
 !===================================================================================================================================
 ! count number of particles in element

@@ -69,7 +69,7 @@ USE MOD_Particle_Boundary_Sampling,ONLY:RestartParticleBoundarySampling
 USE MOD_Particle_Erosion,  ONLY:DefineParametersParticleErosion,InitParticleErosion
 USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticleGlobals,InitParticles
 USE MOD_Particle_Interpolation,ONLY:DefineParametersParticleInterpolation
-USE MOD_Particle_Mesh,     ONLY:DefineparametersParticleMesh,InitParticleMesh, InitElemBoundingBox
+USE MOD_Particle_Mesh,     ONLY:DefineparametersParticleMesh,InitParticleMesh
 USE MOD_Particle_Restart
 USE MOD_Particle_Surfaces, ONLY:InitParticleSurfaces
 #if USE_MPI
@@ -222,6 +222,7 @@ CALL InitFV_Basis()
 CALL InitMortar()
 CALL InitOutput()
 #if USE_PARTICLES
+CALL InitParticleGlobals
 #if USE_LOADBALANCE
 CALL InitLoadBalance()
 #endif
@@ -236,20 +237,11 @@ CALL InitIndicator()
 CALL InitMPIvars()
 #endif
 #if USE_PARTICLES
-#if USE_MPI_SHARED
-CALL InitMPIShared()
-CALL InitMeshShared()
-#endif
 #if USE_MPI
 CALL InitParticleMPI
 #endif
-CALL InitElemBoundingBox()
 CALL InitParticleSurfaces
-CALL InitParticleGlobals
 CALL InitParticleAnalyze
-#if USE_MPI_SHARED
-CALL InitParticleMeshShared()
-#endif
 #endif /*PARTICLES*/
 CALL InitEquation()
 CALL InitDG()

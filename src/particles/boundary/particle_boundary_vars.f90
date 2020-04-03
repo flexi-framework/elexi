@@ -29,6 +29,7 @@ SAVE
 ! Global variables
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                                 :: NSurfSample                   ! polynomial degree of particle BC sampling
+CHARACTER(LEN=255),ALLOCATABLE          :: SurfSampleBCs(:)              ! name of additional surface sampling BCs
 REAL,ALLOCATABLE                        :: XiEQ_SurfSample(:)            ! position of XiEQ_SurfSample
 REAL                                    :: dXiEQ_SurfSample              ! deltaXi in [-1,1]
 INTEGER                                 :: OffSetSurfSide                ! offset of local surf side

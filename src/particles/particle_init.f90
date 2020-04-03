@@ -395,6 +395,15 @@ ELSE IF (nTrackingMethod.EQ.0) THEN
   ! Old selection explicitly stating DoRefMapping and TriaTracking
   DoRefMapping = GETLOGICAL('DoRefMapping',".TRUE.")
   TriaTracking = GETLOGICAL('TriaTracking','.FALSE.')
+  IF (DoRefMapping) THEN
+    TrackingMethod = REFMAPPING
+  ELSE
+    IF (TriaTracking) THEN
+      TrackingMethod = TRIATRACKING
+    ELSE
+      TrackingMethod = TRACING
+    END IF
+  END IF
 ELSE
   CALL CollectiveStop(__STAMP__,"Invalid number of tracking methods given!")
 END IF
@@ -444,8 +453,6 @@ USE MOD_Particle_Boundary_Vars, ONLY:LowVeloRemove
 USE MOD_Particle_Boundary_Vars, ONLY:nAuxBCs
 USE MOD_Particle_Interpolation, ONLY:InitParticleInterpolation
 USE MOD_Particle_Mesh,          ONLY:InitParticleMesh
-USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
-USE MOD_Particle_MPI_Vars,      ONLY:SafetyFactor,halo_eps_velo
 #if USE_MPI
 USE MOD_Particle_MPI,           ONLY:InitEmissionComm
 USE MOD_Particle_MPI_Halo,      ONLY:IdentifyPartExchangeProcs
@@ -489,6 +496,14 @@ LowVeloRemove     = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 nAuxBCs=GETINT('Part-nAuxBCs','0')
 CALL InitializeVariablesAuxBC()
 
+!--- Read Manual Time Step
+useManualTimeStep = .FALSE.
+ManualTimeStep    = GETREAL('Particles-ManualTimeStep', '0.0')
+IF (ManualTimeStep.GT.0.0) THEN
+  useManualTimeStep=.True.
+END IF
+CALL InitializeVariablesTimeStep(ManualTimeStep_opt)
+
 !-- Build BGM and halo region
 CALL InitParticleMesh()
 #if USE_MPI
@@ -519,8 +534,6 @@ SUBROUTINE AllocateParticleArrays()
 USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
-USE MOD_Particle_Tracking_Vars  ,ONLY: DoRefMapping
-USE MOD_Mesh_Vars               ,ONLY: nElems
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -645,11 +658,8 @@ SUBROUTINE InitializeVariablesSpeciesInits()
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_ReadInTools
-USE MOD_Mesh_Vars              ,ONLY: nElems
 USE MOD_Particle_Vars
-USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemVolume_shared
-#if USE_MPI
+#if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
@@ -889,7 +899,6 @@ USE MOD_Mesh_Vars              ,ONLY: BoundaryName,BoundaryType,nBCs
 USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars ,ONLY: PartBound,nPartBound
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
-USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -898,10 +907,10 @@ USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: iPartBound,iBC
+INTEGER               :: iBC
 CHARACTER(32)         :: tmpStr
 CHARACTER(200)        :: tmpString
-INTEGER               :: ALLOCSTAT
+!INTEGER               :: ALLOCSTAT
 CHARACTER(200), ALLOCATABLE :: tmpStringBC(:)
 !===================================================================================================================================
 ! Read in boundary parameters
@@ -1034,11 +1043,10 @@ SUBROUTINE InitializeVariablesAuxBC()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools
-USE MOD_Mesh_Vars              ,ONLY: BoundaryName,BoundaryType,nBCs
 USE MOD_Particle_Globals       ,ONLY: PI,ALMOSTZERO
 USE MOD_Particle_Boundary_Vars ,ONLY: PartAuxBC
 USE MOD_Particle_Boundary_Vars ,ONLY: nAuxBCs,AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone,AuxBC_parabol,UseAuxBCs
-USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping
+USE MOD_Particle_Mesh          ,ONLY: MarkAuxBCElems
 USE MOD_Particle_Vars
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE

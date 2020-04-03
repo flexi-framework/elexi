@@ -42,12 +42,13 @@ SUBROUTINE InitializeParticleEmission()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars,      ONLY : Species,nSpecies,PDM,PEM
+USE MOD_Particle_Vars,      ONLY: Species,nSpecies,PDM,PEM
+USE MOD_Part_Emission_Tools,ONLY: SetParticleMass
 USE MOD_Part_Pos_and_Velo,  ONLY: SetParticlePosition,SetParticleVelocity
-USE MOD_Part_Tools,         ONLY : UpdateNextFreePosition
-USE MOD_Restart_Vars,       ONLY : DoRestart
+USE MOD_Part_Tools,         ONLY: UpdateNextFreePosition
+USE MOD_Restart_Vars,       ONLY: DoRestart
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,  ONLY : PartMPI
+USE MOD_Particle_MPI_Vars,  ONLY: PartMPI
 #endif /* MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -57,8 +58,7 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: i,NbrOfParticle,iInit,iPart,PositionNbr
-INTEGER               :: nPartInside
+INTEGER               :: i,NbrOfParticle,iInit
 INTEGER               :: insertParticles
 INTEGER               :: ParticleVecLengthGlob
 !===================================================================================================================================
@@ -145,19 +145,21 @@ SUBROUTINE ParticleInserting()
 !===================================================================================================================================
 ! Modules
 #if USE_MPI
-USE MOD_Particle_MPI_Vars     , ONLY: PartMPI
+USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /* MPI*/
 USE MOD_Globals
-USE MOD_Restart_Vars          , ONLY: RestartTime
+USE MOD_Restart_Vars           ,ONLY: RestartTime
+USE MOD_Part_Emission_Tools    ,ONLY: SamplePoissonDistri
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticleMass
 USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
 USE MOD_Part_Tools             ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze       ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
-USE MOD_Particle_Globals      , ONLY: ALMOSTEQUAL
-USE MOD_Particle_Restart_Vars , ONLY: PartDataExists
-USE MOD_Particle_Timedisc_Vars, ONLY: RKdtFrac,RKdtFracTotal
-USE MOD_Particle_Vars         , ONLY: Species,nSpecies,PartSpecies,PDM,DelayTime,DoPoissonRounding,DoTimeDepInflow
-USE MOD_Timedisc_Vars         , ONLY: dt,t,RKc,nRKStages,currentStage
+USE MOD_Particle_Globals       ,ONLY: ALMOSTEQUAL
+USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists
+USE MOD_Particle_Timedisc_Vars ,ONLY: RKdtFrac,RKdtFracTotal
+USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PartSpecies,PDM,DelayTime,DoPoissonRounding,DoTimeDepInflow
+USE MOD_Timedisc_Vars          ,ONLY: dt,t,RKc,nRKStages,currentStage
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES

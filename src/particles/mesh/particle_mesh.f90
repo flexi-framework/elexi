@@ -270,27 +270,30 @@ SUBROUTINE InitParticleMesh()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Mesh_Vars,              ONLY:NGeo,nElems,useCurveds
+USE MOD_Mesh_Vars              ,ONLY: NGeo,nElems,useCurveds
+USE MOD_Particle_BGM           ,ONLY: BuildBGMAndIdentifyHaloRegion
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Vars
-USE MOD_Particle_Surfaces_Vars, ONLY:BezierElevation,BezierControlPoints3D,BezierControlPoints3DElevated
-USE MOD_Particle_Surfaces_Vars, ONLY:SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
-USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping,FastPeriodic,CountNbOfLostParts,nLostParts,CartesianPeriodic
-USE MOD_Particle_Surfaces_Vars, ONLY:BezierSampleN,BezierSampleXi,SurfFluxSideSize,TriaSurfaceFlux
-USE MOD_Particle_Tracking_Vars, ONLY:TriaTracking
-USE MOD_ReadInTools,            ONLY:GETREAL,GETINT,GETLOGICAL,GetRealArray
+USE MOD_Particle_Mesh_Tools    ,ONLY: InitGetGlobalElemID,InitGetCNElemID
+USE MOD_Particle_Surfaces      ,ONLY: GetSideSlabNormalsAndIntervals
+USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation,BezierControlPoints3D,BezierControlPoints3DElevated
+USE MOD_Particle_Surfaces_Vars ,ONLY: SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
+USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping,FastPeriodic,CountNbOfLostParts,nLostParts,CartesianPeriodic
+USE MOD_Particle_Surfaces_Vars ,ONLY: BezierSampleN,BezierSampleXi,SurfFluxSideSize,TriaSurfaceFlux
+USE MOD_Particle_Tracking_Vars ,ONLY: TriaTracking
+USE MOD_ReadInTools            ,ONLY: GETREAL,GETINT,GETLOGICAL,GetRealArray
 #if CODE_ANALYZE
-USE MOD_Particle_Surfaces_Vars, ONLY:SideBoundingBoxVolume
-USE MOD_Particle_Tracking_Vars, ONLY:PartOut,MPIRankOut
+USE MOD_Particle_Surfaces_Vars ,ONLY: SideBoundingBoxVolume
+USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 #if USE_MPI
-USE MOD_Particle_MPI_Shared,    ONLY: Allocate_Shared
+USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif /* USE_MPI */
 #if USE_LOADBALANCE
-USE MOD_Particle_Tracking_Vars, ONLY:MeasureTrackTime
+USE MOD_Particle_Tracking_Vars ,ONLY: MeasureTrackTime
 #else
-USE MOD_LoadBalance_Vars,       ONLY:ElemTime
+USE MOD_LoadBalance_Vars       ,ONLY: ElemTime
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -530,6 +533,7 @@ SUBROUTINE CalcParticleMeshMetrics()
 USE MOD_Globals
 USE MOD_Basis                  ,ONLY: BarycentricWeights,ChebyGaussLobNodesAndWeights,InitializeVandermonde
 USE MOD_ChangeBasis            ,ONLY: ChangeBasis3D
+USE MOD_Interpolation          ,ONLY: GetDerivativeMatrix
 USE MOD_Interpolation_Vars     ,ONLY: NodeTypeCL
 USE MOD_Mesh_Vars              ,ONLY: NGeo,InterpolateFromTree
 USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
@@ -1207,7 +1211,7 @@ USE MOD_Particle_Basis         ,ONLY: DeCasteljauInterpolation
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Mesh_Vars     ,ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis,ElemRadiusNGeo,ElemRadius2NGeo,XCL_NGeo_Shared
-USE MOD_Particle_Mesh_Vars     ,ONLY: NodeCoords_Shared,ElemBaryNGeo_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID
 #if USE_MPI
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
@@ -2554,7 +2558,6 @@ USE MOD_Preproc
 USE MOD_Mathtools              ,ONLY: CROSS
 USE MOD_Mesh_Vars              ,ONLY: NGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: NGeoElevated
-USE MOD_Particle_Mesh_Vars     ,ONLY: NodeCoords_Shared,ElemBaryNGeo_Shared
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,BaseVectorsScale

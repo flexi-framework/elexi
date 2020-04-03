@@ -60,9 +60,18 @@ INTERFACE AlmostEqual
   MODULE PROCEDURE AlmostEqual
 END INTERFACE AlmostEqual
 
+INTERFACE DOTPRODUCT
+  MODULE PROCEDURE DOTPRODUCT
+END INTERFACE DOTPRODUCT
+
 INTERFACE UnitVector
   MODULE PROCEDURE UnitVector
 END INTERFACE UnitVector
+
+INTERFACE OrthoNormVec
+  MODULE PROCEDURE OrthoNormVec
+END INTERFACE OrthoNormVec
+
 
 INTERFACE GETFREEUNIT
   MODULE PROCEDURE GETFREEUNIT
@@ -77,6 +86,7 @@ PUBLIC :: CROSSNORM
 PUBLIC :: VECNORM
 PUBLIC :: AlmostZero
 PUBLIC :: AlmostEqual
+PUBLIC :: DOTPRODUCT
 PUBLIC :: UnitVector
 PUBLIC :: RandNormal
 !===================================================================================================================================
@@ -196,6 +206,52 @@ ELSE
  ALMOSTEQUAL=.FALSE.
 END IF
 END FUNCTION AlmostEqual
+
+
+PURE FUNCTION DOTPRODUCT(v1)
+!===================================================================================================================================
+! Computes the dot product of a vector with itself
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN) :: v1(3)       ! Input 3D vector
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL            :: DOTPRODUCT  ! Dot product of v1 with itself
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+DOTPRODUCT=v1(1)*v1(1)+v1(2)*v1(2)+v1(3)*v1(3)
+END FUNCTION DOTPRODUCT
+
+
+PURE SUBROUTINE OrthoNormVec(v1,v2,v3)
+!===================================================================================================================================
+!> computes orthonormal basis from a given vector v1 (v1 must be normalized)
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN) :: v1(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT) :: v2(3), v3(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+IF(ABS(v1(3)).LT.100*EpsMach)THEN
+  v2=(/-v1(2)-v1(3) , v1(1) , v1(1)       /)
+ELSE
+  v2=(/ v1(3)       , v1(3) ,-v1(1)-v1(2) /)
+END IF
+v2    = UNITVECTOR(v2)
+v3(:) = CROSSNORM(v1,v2)
+END SUBROUTINE OrthoNormVec
 
 
 PURE FUNCTION UNITVECTOR(v1)

@@ -21,6 +21,9 @@ MODULE MOD_Particle_InterSection
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
+INTERFACE IntersectionWithWall
+  MODULE PROCEDURE IntersectionWithWall
+END INTERFACE
 
 INTERFACE ComputePlanarCurvedIntersection
   MODULE PROCEDURE ComputePlanarCurvedIntersection
@@ -47,17 +50,126 @@ INTERFACE OutputTrajectory
   MODULE PROCEDURE OutputTrajectory
 END INTERFACE
 #endif /*CODE_ANALYZE*/
-PUBLIC::ComputePlanarRectIntersection
-PUBLIC::ComputePlanarCurvedIntersection
-PUBLIC::ComputeBilinearIntersection
-PUBLIC::ComputeCurvedIntersection
-PUBLIC::ComputeAuxBCIntersection
+
+PUBLIC :: IntersectionWithWall
+PUBLIC :: ComputePlanarRectIntersection
+PUBLIC :: ComputePlanarCurvedIntersection
+PUBLIC :: ComputeBilinearIntersection
+PUBLIC :: ComputeCurvedIntersection
+PUBLIC :: ComputeAuxBCIntersection
 #if CODE_ANALYZE
-PUBLIC::OutputTrajectory
+PUBLIC :: OutputTrajectory
 #endif /*CODE_ANALYZE*/
 !===================================================================================================================================
 
 CONTAINS
+
+
+SUBROUTINE IntersectionWithWall(PartTrajectory,alpha,iPart,iLocSide,Element,TriNum)!, IntersectionPos)
+!===================================================================================================================================
+! Compute the Intersection with bilinear surface by approximating the surface with two triangles
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Vars,          ONLY : lastPartPos,PartState
+USE MOD_Particle_Mesh_Vars
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)               :: iPart
+INTEGER,INTENT(IN)               :: iLocSide
+INTEGER,INTENT(IN)               :: Element
+INTEGER,INTENT(IN)               :: TriNum
+REAL, INTENT(IN)                 :: PartTrajectory(1:3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(INOUT)               :: alpha
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                          :: Node1,Node2
+REAL                             :: PoldX,PoldY,PoldZ,PnewX,PnewY,PnewZ,nx,ny,nz,nVal
+REAL                             :: bx,by,bz,ax,ay,az,dist
+REAL                             :: xNod,yNod,zNod
+REAL                             :: Vector1(1:3),Vector2(1:3)
+!===================================================================================================================================
+
+PoldX = LastPartPos(1,iPart)
+PoldY = LastPartPos(2,iPart)
+PoldZ = LastPartPos(3,iPart)
+PnewX = PartState(1,iPart)
+PnewY = PartState(2,iPart)
+PnewZ = PartState(3,iPart)
+
+xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,iLocSide,Element)+1)
+yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,iLocSide,Element)+1)
+zNod = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,iLocSide,Element)+1)
+
+!---- Calculate normal vector:
+Node1 = TriNum+1     ! normal = cross product of 1-2 and 1-3 for first triangle
+Node2 = TriNum+2     !          and 1-3 and 1-4 for second triangle
+
+Vector1(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node1,iLocSide,Element)+1) - xNod
+Vector1(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node1,iLocSide,Element)+1) - yNod
+Vector1(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node1,iLocSide,Element)+1) - zNod
+
+Vector2(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node2,iLocSide,Element)+1) - xNod
+Vector2(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node2,iLocSide,Element)+1) - yNod
+Vector2(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node2,iLocSide,Element)+1) - zNod
+
+
+nx = Vector1(2) * Vector2(3) - Vector1(3) * Vector2(2)
+ny = Vector1(3) * Vector2(1) - Vector1(1) * Vector2(3)
+nz = Vector1(1) * Vector2(2) - Vector1(2) * Vector2(1)
+
+nVal = SQRT(nx*nx + ny*ny + nz*nz)
+
+nx = nx/nVal
+ny = ny/nVal
+nz = nz/nVal
+
+!---- Calculate Intersection
+
+!--- the following has been used for impulse computations, not implemented yet?
+!   IF (nx.NE.0) PIC%InverseImpulseX(iPart) = .NOT.(PIC%InverseImpulseX(iPart))
+!   IF (ny.NE.0) PIC%InverseImpulseY(iPart) = .NOT.(PIC%InverseImpulseY(iPart))
+!   IF (nz.NE.0) PIC%InverseImpulseZ(iPart) = .NOT.(PIC%InverseImpulseZ(iPart))
+
+bx = PoldX - xNod
+by = PoldY - yNod
+bz = PoldZ - zNod
+
+ax = bx - nx * (bx * nx + by * ny + bz * nz)
+ay = by - ny * (bx * nx + by * ny + bz * nz)
+az = bz - nz * (bx * nx + by * ny + bz * nz)
+
+dist = SQRT(((ay * bz - az * by) * (ay * bz - az * by) +   &
+      (az * bx - ax * bz) * (az * bx - ax * bz) +   &
+      (ax * by - ay * bx) * (ax * by - ay * bx))/   &
+      (ax * ax + ay * ay + az * az))
+
+! If vector from old point to new point goes through the node, a will be zero
+! dist is then simply length of vector b instead of |axb|/|a|
+IF (dist.NE.dist) dist = SQRT(bx*bx+by*by+bz*bz)
+
+!   PoldStarX = PoldX + 2 * dist * nx
+!   PoldStarY = PoldY + 2 * dist * ny
+!   PoldStarZ = PoldZ + 2 * dist * nz
+
+!VectorShift(1) = PnewX - PoldX
+!VectorShift(2) = PnewY - PoldY
+!VectorShift(3) = PnewZ - PoldZ
+
+alpha = PartTrajectory(1) * nx + PartTrajectory(2) * ny + PartTrajectory(3) * nz
+IF(ABS(alpha).GT.0.) alpha = dist / alpha
+
+
+!IntersectionPos(1) = PoldX + alpha * PartTrajectory(1)
+!IntersectionPos(2) = PoldY + alpha * PartTrajectory(2)
+!IntersectionPos(3) = PoldZ + alpha * PartTrajectory(3)
+
+RETURN
+
+END SUBROUTINE IntersectionWithWall
 
 
 SUBROUTINE ComputePlanarRectIntersection(isHit                       &
@@ -523,8 +635,8 @@ USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 USE MOD_Mesh_Vars,               ONLY:NGeo
 #endif /*CODE_ANALYZE*/
 #if USE_MPI
-USE MOD_Mesh_Vars,               ONLY:BC
-#endif /*MPI*/
+!USE MOD_Mesh_Vars,               ONLY:BC
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

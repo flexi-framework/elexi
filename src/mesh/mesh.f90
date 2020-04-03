@@ -115,7 +115,7 @@ USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 USE MOD_2D
 #endif
 #if USE_PARTICLES
-!USE MOD_Particle_Mesh!,          ONLY:InitParticleMesh,InitElemVolumes,InitTriaParticleGeometry
+USE MOD_Particle_Mesh      ,ONLY:InitParticleMeshBasis
 !USE MOD_Particle_Mesh_Vars
 !USE MOD_Particle_Mappings,      ONLY:Particle_InitMappings
 #endif
@@ -330,11 +330,6 @@ IF (meshMode.GT.0) THEN
 
   SWRITE(UNIT_stdOut,'(A)') " NOW CALLING fillMeshInfo..."
   CALL fillMeshInfo()
-
-!#if USE_PARTICLES
-!  CALL InitParticleMeshBasis(NGeo,PP_N,xGP)
-!#endif
-
 
 #if !USE_PARTICLES
 ! keep pointers for particle mesh

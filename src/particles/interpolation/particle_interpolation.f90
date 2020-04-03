@@ -165,13 +165,13 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Eval_xyz,                    ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
 USE MOD_Mesh_Vars,                   ONLY: nElems
-USE MOD_Particle_Interpolation_Vars, ONLY: useExternalField,externalField
+!USE MOD_Particle_Interpolation_Vars, ONLY: useExternalField,externalField
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
 USE MOD_Particle_Tracking_Vars,      ONLY: DoRefMapping
 USE MOD_Particle_Vars,               ONLY: PartPosRef,PartState,PDM,PEM
-USE MOD_Particle_Vars,               ONLY: TurbPartState
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars,    ONLY: RWModel,RWTime
+USE MOD_Particle_Vars,               ONLY: TurbPartState
 USE MOD_TimeDisc_Vars,               ONLY: t
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -187,7 +187,7 @@ REAL,INTENT(OUT)                    :: FieldAtParticle(1:nVar,1:PDM%maxParticleN
 ! LOCAL VARIABLES
 INTEGER                          :: firstPart,lastPart
 REAL                             :: field(nVar)
-INTEGER                          :: iPart,iElem,iVar
+INTEGER                          :: iPart,iElem!,iVar
 !===================================================================================================================================
 
 ! Return if no interpolation is wanted

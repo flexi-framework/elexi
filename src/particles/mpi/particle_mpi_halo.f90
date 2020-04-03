@@ -55,10 +55,10 @@ USE MOD_Particle_MPI_Vars       ,ONLY: nExchangeProcessors,ExchangeProcToGlobalP
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem,ElemID,firstElem,lastElem,NbElemID
-INTEGER                        :: iSide,SideID,firstSide,lastSide,iLocSide
+INTEGER                        :: iSide,SideID,iLocSide !,firstSide,lastSide
 INTEGER                        :: iMortar,nMortarElems,NbSideID
-INTEGER                        :: iProc,GlobalProcID,HaloProc
-INTEGER                        :: nExchangeProcs,nExchangeSides
+INTEGER                        :: iProc,HaloProc !,GlobalProcID
+INTEGER                        :: nExchangeSides !,nExchangeProcs
 INTEGER,ALLOCATABLE            :: ExchangeSides(:)
 REAL,ALLOCATABLE               :: BoundsOfElemCenter(:),MPISideBoundsOfElemCenter(:,:)
 !=================================================================================================================================

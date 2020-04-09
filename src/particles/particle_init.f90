@@ -85,7 +85,6 @@ CALL prms%CreateIntOption('Part-NumberOfRandomSeeds',       'Number of random se
 
 CALL prms%CreateLogicalOption('Part-SteadyState',           'Only update particle position while keeping fluid state frozen',      &
                                                             '.FALSE.')
-CALL prms%CreateLogicalOption('Part-TrackPosition',         'Track particle position',                      '.FALSE.')
 CALL prms%CreateLogicalOption('Part-WriteMacroSurfaceValues','Set [T] to activate iteration dependant sampling and h5 output'    //&
                                                             ' surfaces.',                                                          &
                                                                                                             '.FALSE.')
@@ -579,7 +578,7 @@ PartPosRef                                   =-888.
 #if USE_SM
 PEM%hasCrossedSM                             = .FALSE.
 #endif
-         
+
 END SUBROUTINE AllocateParticleArrays
 
 
@@ -624,12 +623,12 @@ ELSE IF(nRandomSeeds.GT.0) THEN
   IF(nRandomSeeds.NE.SeedSize) THEN
     SWRITE (*,*) 'Expected ',SeedSize,'seeds. Provided ',nRandomSeeds,'. Computer uses default value for all unset values.'
   END IF
-  
+
   DO iSeed=1,MIN(SeedSize,nRandomSeeds)
     WRITE(UNIT=hilf,FMT='(I0)') iSeed
     Seeds(iSeed)= GETINT('Particles-RandomSeed'//TRIM(hilf))
   END DO
-  
+
   IF (ALL(Seeds(:).EQ.0)) CALL ABORT(__STAMP__,'Not all seeds can be set to zero ')
   CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
 ELSE
@@ -1318,9 +1317,9 @@ REAL,INTENT(IN),OPTIONAL   :: ManualTimeStep_opt
 DelayTime         = GETREAL(   'Part-DelayTime'    ,'0.')
 
 END SUBROUTINE InitializeVariablesTimeStep
- 
- 
-         
+
+
+
 !===================================================================================================================================
 ! finalize particle variables
 !===================================================================================================================================

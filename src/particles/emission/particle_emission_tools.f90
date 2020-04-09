@@ -51,6 +51,7 @@ PUBLIC :: SetParticleMass
 PUBLIC :: SetCellLocalParticlePosition
 PUBLIC :: SetParticlePositionPoint
 PUBLIC :: SetParticlePositionEquidistLine
+PUBLIC :: SetParticlePositionGaussian
 PUBLIC :: SetParticlePositionLine
 PUBLIC :: SetParticlePositionDisk
 PUBLIC :: SetParticlePositionCircle
@@ -292,7 +293,7 @@ INTEGER                          :: chunkSize_tmp, ParticleIndexNbr
     CALL IntegerDivide(chunkSize,nElems,ElemVolume_Shared(:),CellChunkSize(:))
   ELSE
     ! numerical PartDensity is needed
-    PartDens      = Species(iSpec)%Init(iInit)%PartDensity 
+    PartDens      = Species(iSpec)%Init(iInit)%PartDensity
     chunkSize_tmp = INT(PartDens * LocalVolume)
     IF(chunkSize_tmp.GE.PDM%maxParticleNumber) &
       CALL ABORT(__STAMP__, &
@@ -629,26 +630,27 @@ REAL                    :: Particle_pos(3),iRan,radius
 INTEGER                 :: i,chunkSize2
 LOGICAL                 :: insideExcludeRegion
 !===================================================================================================================================
-  i=1
-  chunkSize2=0
-  DO WHILE (i .LE. chunkSize)
-    CALL RANDOM_NUMBER(iRan)
-    radius = Species(FractNbr)%Init(iInit)%RadiusIC*iRan**(1./3.)
-    Particle_pos = DICEUNITVECTOR()*radius + Species(FractNbr)%Init(iInit)%BasePointIC
-    IF (Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions.GT.0) THEN
-      CALL InsideExcludeRegionCheck(FractNbr, iInit, Particle_pos, insideExcludeRegion)
-      IF (insideExcludeRegion) THEN
-        i=i+1
-        CYCLE !particle is in excluded region
-      END IF
+i=1
+chunkSize2=0
+DO WHILE (i .LE. chunkSize)
+  CALL RANDOM_NUMBER(iRan)
+  radius = Species(FractNbr)%Init(iInit)%RadiusIC*iRan**(1./3.)
+  Particle_pos = DICEUNITVECTOR()*radius + Species(FractNbr)%Init(iInit)%BasePointIC
+  IF (Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions.GT.0) THEN
+    CALL InsideExcludeRegionCheck(FractNbr, iInit, Particle_pos, insideExcludeRegion)
+    IF (insideExcludeRegion) THEN
+      i=i+1
+      CYCLE !particle is in excluded region
     END IF
-    particle_positions((chunkSize2+1)*3-2) = Particle_pos(1)
-    particle_positions((chunkSize2+1)*3-1) = Particle_pos(2)
-    particle_positions((chunkSize2+1)*3  ) = Particle_pos(3)
-    i=i+1
-    chunkSize2=chunkSize2+1
-  END DO
-  chunkSize = chunkSize2
+  END IF
+  particle_positions((chunkSize2+1)*3-2) = Particle_pos(1)
+  particle_positions((chunkSize2+1)*3-1) = Particle_pos(2)
+  particle_positions((chunkSize2+1)*3  ) = Particle_pos(3)
+  i=i+1
+  chunkSize2=chunkSize2+1
+END DO
+chunkSize = chunkSize2
+
 END SUBROUTINE SetParticlePositionSphere
 
 
@@ -672,7 +674,7 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 REAL, INTENT(OUT)       :: particle_positions(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Particle_pos(3), xlen, ylen, zlen, pilen, x_step, y_step, z_step, x_pos, y_pos
+REAL                    :: xlen, ylen, zlen, pilen, x_step, y_step, z_step, x_pos, y_pos
 INTEGER                 :: i, iPart, j, k
 !===================================================================================================================================
   IF(Species(FractNbr)%Init(iInit)%initialParticleNumber.NE. &
@@ -705,6 +707,108 @@ INTEGER                 :: i, iPart, j, k
     END DO
   END DO
 END SUBROUTINE SetParticlePositionSinDeviation
+
+
+SUBROUTINE SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions)
+!===================================================================================================================================
+! position particle along line by drawing it from a Gaussian distribution
+!===================================================================================================================================
+! modules
+USE MOD_Globals
+USE MOD_Particle_Globals       ,ONLY: Pi
+USE MOD_Particle_Vars          ,ONLY: Species
+!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL, INTENT(OUT)       :: particle_positions(:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                    :: Particle_pos(3),RandVal(3),lineVector(3),lineVector2(3),radius
+REAL                    :: argumentTheta,pdf,norm_pdf
+INTEGER                 :: i
+!===================================================================================================================================
+! find normal vector direction and length.
+IF (Species(FractNbr)%Init(iInit)%NormalIC(1).EQ.0.) THEN
+  IF (Species(FractNbr)%Init(iInit)%NormalIC(2).EQ.0.) THEN
+    IF (Species(FractNbr)%Init(iInit)%NormalIC(3).EQ.0.) &
+      CALL abort(__STAMP__,'Error in SetParticlePosition, NormalIC should not be zero')
+    lineVector(1:2) = 1.0
+    lineVector(3) = 0.0
+  ELSE
+    IF (Species(FractNbr)%Init(iInit)%NormalIC(3).EQ.0.) THEN
+      lineVector(1) = 1.0
+      lineVector(3) = 1.0
+      lineVector(2) = 0.0
+    ELSE
+      lineVector(1) = 1.0
+      lineVector(2:3) = 0.0
+    END IF
+  END IF
+ELSE
+  IF (Species(FractNbr)%Init(iInit)%NormalIC(2).EQ.0.) THEN
+    IF (Species(FractNbr)%Init(iInit)%NormalIC(3).EQ.0.) THEN
+      lineVector(2:3) = 1.0
+      lineVector(1) = 0.0
+    ELSE
+      lineVector(2) = 1.0
+      lineVector(1) = 0.0
+      lineVector(3) = 0.0
+    END IF
+  ELSE
+    IF (Species(FractNbr)%Init(iInit)%NormalIC(3).EQ.0.) THEN
+      lineVector(3) = 1.0
+      lineVector(1:2) = 0.0
+    ELSE
+       lineVector(2) = 0.0
+       lineVector(3) = -Species(FractNbr)%Init(iInit)%NormalIC(1)
+       lineVector(1) = Species(FractNbr)%Init(iInit)%NormalIC(3)
+    END IF
+  END IF
+END IF
+
+! normalize lineVector to unit length
+lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * &
+             lineVector(2) + lineVector(3) * lineVector(3))
+
+! calculate lineVector cross product with normal vector initial condition
+lineVector2(1) = Species(FractNbr)%Init(iInit)%NormalIC(2) * lineVector(3) - &
+     Species(FractNbr)%Init(iInit)%NormalIC(3) * lineVector(2)
+lineVector2(2) = Species(FractNbr)%Init(iInit)%NormalIC(3) * lineVector(1) - &
+     Species(FractNbr)%Init(iInit)%NormalIC(1) * lineVector(3)
+lineVector2(3) = Species(FractNbr)%Init(iInit)%NormalIC(1) * lineVector(2) - &
+     Species(FractNbr)%Init(iInit)%NormalIC(2) * lineVector(1)
+
+! normalize lineVector2 to unit length
+lineVector2 = lineVector2 / SQRT(lineVector2(1) * lineVector2(1) + lineVector2(2) * &
+     lineVector2(2) + lineVector2(3) * lineVector2(3))
+
+DO i=1,chunkSize
+  CALL RANDOM_NUMBER(RandVal)
+  ! expand RandVal from [0,1] to [0,2PI]
+  ! x: normalized Gaussian distribution
+  norm_pdf = COS(2.*PI*RandVal(1))*SQRT(-2.*LOG(RandVal(2)))
+  ! z = mu + std*x, mu=0.0
+  pdf = norm_pdf * Species(FractNbr)%Init(iInit)%BaseVariance
+  argumentTheta = 2.*PI*RandVal(3)
+  radius = MIN(pdf*Species(FractNbr)%Init(iInit)%RadiusIC,Species(FractNbr)%Init(iInit)%RadiusIC)
+  radius = MAX(0.,radius)-MIN(0.,radius)
+  ! position particle at random angle
+  Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC +  &
+                 linevector  * cos(argumentTheta) * radius +  &
+                 linevector2 * sin(argumentTheta) * radius
+  particle_positions(i*3-2) = Particle_pos(1)
+  particle_positions(i*3-1) = Particle_pos(2)
+  particle_positions(i*3  ) = Particle_pos(3)
+END DO
+
+
+
+END SUBROUTINE SetParticlePositionGaussian
 
 
 SUBROUTINE InsideExcludeRegionCheck(FractNbr, iInit, Particle_pos, insideExcludeRegion)

@@ -134,9 +134,10 @@ USE MOD_Globals
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition,SetParticlePositionPoint
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine, SetParticlePositionLine, SetParticlePositionDisk
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine, SetParticlePositionDisk
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionCuboidCylinder,SetParticlePositionCircle
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionSphere,SetParticlePositionSinDeviation
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionGaussian
 #if USE_MPI
 USE MOD_Particle_MPI_Emission  ,ONLY: SendEmissionParticlesToProcs
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
@@ -175,7 +176,7 @@ END IF
 #endif /*USE_MPI*/
 
 DimSend      = 3            !save (and send) only positions
-nChunks      = 1  
+nChunks      = 1
 sumOfMatchedParticles   = 0
 mySumOfMatchedParticles = 0
 chunkSize    = nbrOfParticle
@@ -211,7 +212,7 @@ IF (PartMPI%InitGroup(InitGroup)%MPIROOT.OR.nChunks.GT.1) THEN
   CASE ('line')
     CALL SetParticlePositionLine(FractNbr,iInit,chunkSize,particle_positions)
   CASE ('Gaussian')
-    ! TODO
+    CALL SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions)
   CASE('disc')
     CALL SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
   CASE('circle', 'circle_equidistant')
@@ -367,7 +368,7 @@ SELECT CASE (init_or_sf)
 CASE(2) !SurfaceFlux
   ! TODO
   CALL ABORT(__STAMP__,'surface flux not yet implemented in FLEXI')
-  
+
   IF (TRIM(Species(FractNbr)%Surfaceflux(iInit)%velocityDistribution).EQ.'constant') THEN
     velocityDistribution=Species(FractNbr)%Surfaceflux(iInit)%velocityDistribution
   ELSE

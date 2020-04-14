@@ -4,3 +4,7 @@ DEPENDS
   ParaView::VTKExtensionsCore
   VTK::CommonCore
   VTK::CommonExecutionModel
+  VTK::CommonDataModel
+  VTK::ParallelCore
+  VTK::ParallelMPI
+  VTK::IOParallel

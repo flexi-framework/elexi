@@ -70,11 +70,7 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
        FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.xml    "")
      ENDIF()
    ELSE()
-     IF(POSTI_PV_SUFFIX STREQUAL "")
-       SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader)
-     ELSE()
-       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.plugin "")
-     ENDIF()
+     SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader)
    ENDIF()
 
    # Only required for ParaView <= 5.6
@@ -96,34 +92,36 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
        REQUIRED_ON_SERVER
        DEPENDS                "${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.h"
        )
+
+     IF(NOT POSTI_PV_SUFFIX STREQUAL "")
+       SET(EXTENSIONS "h" "xml" "cxx")
+       FOREACH(EX ${EXTENSIONS})
+         SET(OLDFILE ${TOOL_DIR}/paraviewReader/visuReader.${EX})
+         SET(NEWFILE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.${EX})
+         ADD_CUSTOM_TARGET(
+           ${EX}_COPY
+           COMMAND ${CMAKE_COMMAND} -E copy ${OLDFILE} ${NEWFILE}
+           COMMAND sed -i 's/visuReader/visuReader${POSTI_PV_SUFFIX}/g' ${NEWFILE}
+           COMMAND sed -i 's/2 Posti Visu/2 Posti Visu ${POSTI_PV_SUFFIX}/g' ${NEWFILE}
+           )
+         ADD_DEPENDENCIES(visuReader${POSTI_PV_SUFFIX} ${EX}_COPY)
+       ENDFOREACH()
+     ENDIF()
+
    ELSE()
-      paraview_plugin_scan(
-        PLUGIN_FILES "${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.plugin"
-        PROVIDES_PLUGINS plugins
-        ENABLE_BY_DEFAULT ON)
-      paraview_plugin_build(
-#        RUNTIME_DESTINATION
-#        LIBRARY_DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
-#        LIBRARY_SUBDIRECTORY
-        PLUGINS ${plugins})
+     PARAVIEW_PLUGIN_SCAN(
+       PLUGIN_FILES "${TOOL_DIR_PV}/visuReader.plugin"
+       PROVIDES_PLUGINS plugins
+       ENABLE_BY_DEFAULT ON)
+
+     PARAVIEW_PLUGIN_BUILD(
+#       RUNTIME_DESTINATION
+#       LIBRARY_DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+#       LIBRARY_SUBDIRECTORY
+       PLUGINS ${plugins})
    ENDIF()
 
-   IF(NOT POSTI_PV_SUFFIX STREQUAL "")
-     SET(EXTENSIONS "h" "xml" "cxx")
-     FOREACH(EX ${EXTENSIONS})
-       SET(OLDFILE ${TOOL_DIR}/paraviewReader/visuReader.${EX})
-       SET(NEWFILE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.${EX})
-       ADD_CUSTOM_TARGET(
-         ${EX}_COPY
-         COMMAND ${CMAKE_COMMAND} -E copy ${OLDFILE} ${NEWFILE}
-         COMMAND sed -i 's/visuReader/visuReader${POSTI_PV_SUFFIX}/g' ${NEWFILE}
-         COMMAND sed -i 's/2 Posti Visu/2 Posti Visu ${POSTI_PV_SUFFIX}/g' ${NEWFILE}
-         )
-       ADD_DEPENDENCIES(visuReader${POSTI_PV_SUFFIX} ${EX}_COPY)
-     ENDFOREACH()
-   ENDIF()
 
    ADD_DEPENDENCIES(     visuReader${POSTI_PV_SUFFIX} ${TOOL_NAME}lib libflexishared)
-   
    TARGET_LINK_LIBRARIES(visuReader${POSTI_PV_SUFFIX} PUBLIC ${TOOL_NAME}lib libflexishared)
 ENDIF()

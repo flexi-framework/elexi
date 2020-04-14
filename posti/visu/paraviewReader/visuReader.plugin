@@ -1,8 +1,12 @@
 NAME
-  visuReader
+  visuReader${POSTI_PV_SUFFIX}
 DESCRIPTION
   FLEXI HDF5 Reader
 REQUIRES_MODULES
   ParaView::VTKExtensionsIOCore
   VTK::CommonCore
   VTK::CommonExecutionModel
+  VTK::CommonDataModel
+  VTK::ParallelCore
+  VTK::ParallelMPI
+  VTK::IOParallel

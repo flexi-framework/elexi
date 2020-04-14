@@ -1,4 +1,4 @@
-paraview_add_plugin(visuReader
+paraview_add_plugin(visuReader${POSTI_PV_SUFFIX}
   REQUIRED_ON_SERVER
   VERSION "1.0"
   MODULES visuReaderModule

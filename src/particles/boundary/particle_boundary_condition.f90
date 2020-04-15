@@ -54,7 +54,7 @@ USE MOD_Particle_Tracking_Vars     ,ONLY: TrackingMethod
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Boundary_Sampling ,ONLY: SideErosion
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound
-USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Surfaces_vars     ,ONLY: SideNormVec,SideType
 USE MOD_Part_Operations            ,ONLY: RemoveParticle
 !USE MOD_Mesh_Vars                  ,ONLY: BC
@@ -289,15 +289,15 @@ SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 USE MOD_Globals
 USE MOD_ErosionPoints              ,ONLY: RecordErosionPoint
 USE MOD_ErosionPoints_Vars         ,ONLY: EP_inUse
-!USE MOD_Mesh_Vars                  ,ONLY: BC
 USE MOD_Particle_Boundary_Sampling ,ONLY: SideErosion
-USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Erosion_Vars      ,ONLY: doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC
+USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues
+USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
 USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars              ,ONLY: Pt_temp,PDM
-USE MOD_Particle_Vars              ,ONLY: WriteMacroSurfaceValues
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -421,18 +421,18 @@ SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_ErosionPoints,            ONLY:RecordErosionPoint
-USE MOD_ErosionPoints_Vars,       ONLY:EP_inUse
-!USE MOD_Mesh_Vars,                ONLY:BC
+USE MOD_ErosionPoints            ,ONLY: RecordErosionPoint
+USE MOD_ErosionPoints_Vars       ,ONLY: EP_inUse
 USE MOD_Particle_Globals
+USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC
 USE MOD_Particle_Boundary_Sampling,ONLY:SideErosion
-USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Erosion_Vars,    ONLY:doParticleReflectionTrack
-USE MOD_Particle_Mesh_Vars,       ONLY:SideInfo_Shared
-USE MOD_Particle_Surfaces,        ONLY:CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
-USE MOD_Particle_Vars,            ONLY:PartState,LastPartPos,Species,PartSpecies,PartReflCount
-USE MOD_Particle_Vars,            ONLY:PDM
-USE MOD_Particle_Vars,            ONLY:WriteMacroSurfaceValues
+USE MOD_Particle_Boundary_Vars   ,ONLY: WriteMacroSurfaceValues
+USE MOD_Particle_Boundary_Vars   ,ONLY: doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars   ,ONLY: LowVeloRemove
+USE MOD_Particle_Mesh_Vars       ,ONLY: SideInfo_Shared
+USE MOD_Particle_Surfaces        ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
+USE MOD_Particle_Vars            ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
+USE MOD_Particle_Vars            ,ONLY: PDM
 ! Bons particle rebound model
 USE MOD_Particle_Interpolation_Vars,ONLY:FieldAtParticle
 ! IMPLICIT VARIABLE HANDLING

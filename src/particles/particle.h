@@ -85,6 +85,11 @@
 !#define NATIVE_SIDE_ID  1
 #define LOCAL_SEND_ID   4
 
+! surface sampling entries
+#define SURF_SIDEID       1
+#define SURF_RANK         2
+#define SURF_LEADER       3
+
 ! Load Balance (LB) position in array for measuring the time that is spent on specific operations
 #define LB_DG            1
 #define LB_DGCOMM        2

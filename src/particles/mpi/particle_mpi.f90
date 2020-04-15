@@ -143,7 +143,7 @@ SUBROUTINE InitParticleCommSize()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars,    ONLY:doParticleDispersionTrack
-USE MOD_Particle_Erosion_Vars,    ONLY:doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars,    ONLY:doParticleReflectionTrack
 USE MOD_Particle_MPI_Vars
 USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
 USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
@@ -356,7 +356,7 @@ USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
 USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 ! Variables for erosion tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
-USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Boundary_Vars
 ! Variables for SGS model
 USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
 #if USE_RW
@@ -569,7 +569,7 @@ USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
 USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
 ! variables for erosion tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
-USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Boundary_Vars
 ! Variables for SGS model
 USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
 #if USE_RW

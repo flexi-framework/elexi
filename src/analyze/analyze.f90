@@ -276,7 +276,7 @@ USE MOD_Benchmarking,             ONLY: Benchmarking
 #if USE_PARTICLES
 USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Erosion_Analyze, ONLY: CalcSurfaceValues
+USE MOD_Particle_Boundary_Analyze, ONLY: CalcSurfaceValues
 USE MOD_Particle_Tracking_Vars,   ONLY: CountNbOfLostParts
 USE MOD_ErosionPoints,            ONLY: WriteEP
 USE MOD_ErosionPoints_Vars,       ONLY: EP_inUse

@@ -204,8 +204,8 @@ USE MOD_FV
 USE MOD_Particle_Globals    ,ONLY: ALMOSTZERO
 USE MOD_Particle_Analyze    ,ONLY: TrackingParticlePosition
 USE MOD_Particle_Analyze_Vars,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
+USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimestep,ManualTimestep
-USE MOD_Particle_Vars       ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 #if USE_LOADBALANCE
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
 USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,PerformLoadBalance,LoadBalanceSample,ElemTime

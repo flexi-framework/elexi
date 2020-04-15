@@ -16,6 +16,9 @@
 !===================================================================================================================================
 MODULE MOD_Particle_MPI_Shared_Vars
 ! MODULES
+USE mpi
+
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -26,37 +29,50 @@ SAVE
 LOGICAL            :: MPISharedInitIsDone=.FALSE.
 
 ! Communication
-INTEGER            :: ComputeNodeRootRank             !> Rank of compute-node root in global comm
-INTEGER            :: myComputeNodeRank               !> Rank of current proc on current compute-node
-INTEGER            :: myLeaderGroupRank               !> Rank of compute-node root in compute-node-root comm
-INTEGER,ALLOCATABLE:: MPIRankGlobal(:)                !> Array of size nProcessors holding the global rank of each proc
-INTEGER,ALLOCATABLE:: MPIRankShared(:)                !> Array of size nProcessors holding the shared rank of each proc
-INTEGER            :: nComputeNodeProcessors          !> Number of procs on current compute-node
-INTEGER            :: nLeaderGroupProcs               !> Number of nodes
-INTEGER            :: nProcessors_Global              !> Number of total procs
-INTEGER            :: MPI_COMM_SHARED                 !> Communicator on current compute-node
-INTEGER            :: MPI_COMM_LEADERS_SHARED         !> Communicator compute-node roots (my_rank_shared=0)
+INTEGER            :: ComputeNodeRootRank                   !> Rank of compute-node root in global comm
+INTEGER            :: myComputeNodeRank                     !> Rank of current proc on current compute-node
+INTEGER            :: myLeaderGroupRank                     !> Rank of compute-node root in compute-node-root comm
+INTEGER,ALLOCATABLE:: MPIRankGlobal(:)                      !> Array of size nProcessors holding the global rank of each proc
+INTEGER,ALLOCATABLE:: MPIRankShared(:)                      !> Array of size nProcessors holding the shared rank of each proc
+INTEGER,ALLOCATABLE:: MPIRankLeader(:)                      !> Array of size nLeaderGroupProcs holding the global rank of each proc
+INTEGER            :: nComputeNodeProcessors                !> Number of procs on current compute-node
+INTEGER            :: nLeaderGroupProcs                     !> Number of nodes
+INTEGER            :: nProcessors_Global                    !> Number of total procs
+INTEGER            :: MPI_COMM_SHARED                       !> Communicator on current compute-node
+INTEGER            :: MPI_COMM_LEADERS_SHARED               !> Communicator compute-node roots (my_rank_shared=0)
 
 ! Mesh
 !> Counters
-INTEGER            :: nNonUniqueGlobalSides           !> total nb. of non-unique sides of mesh (hexahedral: 6*nElems)
-INTEGER            :: nNonUniqueGlobalNodes           !> total nb. of non-unique nodes of mesh (hexahedral: 8**NGeo * nElems)
-INTEGER            :: nNonUniqueGlobalTrees           !> total nb. of trees
-INTEGER            :: nUniqueMasterMortarSides        !> total nb. of master mortar sides in the mesh
-INTEGER            :: nComputeNodeElems               !> Number of elems on current compute-node
-INTEGER            :: nComputeNodeSides               !> Number of sides on current compute-node
-INTEGER            :: nComputeNodeNodes               !> Number of nodes on current compute-node
-INTEGER            :: nComputeNodeTrees               !> Number of trees on current compute-node
-INTEGER            :: nComputeNodeTotalElems          !> Number of elems on current compute-node (including halo region)
-INTEGER            :: nComputeNodeTotalSides          !> Number of sides on current compute-node (including halo region)
-INTEGER            :: nComputeNodeTotalNodes          !> Number of nodes on current compute-node (including halo region)
-INTEGER            :: offsetComputeNodeElem           !> elem offset of compute-node root
-INTEGER            :: offsetComputeNodeSide           !> side offset of compute-node root
-INTEGER            :: offsetComputeNodeNode           !> node offset of compute-node root
-INTEGER            :: offsetComputeNodeTree           !> tree offset of compute-node root
+INTEGER            :: nNonUniqueGlobalSides                 !> total nb. of non-unique sides of mesh (hexahedral: 6*nElems)
+INTEGER            :: nNonUniqueGlobalNodes                 !> total nb. of non-unique nodes of mesh (hexahedral: 8**NGeo * nElems)
+INTEGER            :: nNonUniqueGlobalTrees                 !> total nb. of trees
+INTEGER            :: nUniqueMasterMortarSides              !> total nb. of master mortar sides in the mesh
+INTEGER            :: nComputeNodeElems                     !> Number of elems on current compute-node
+INTEGER            :: nComputeNodeSides                     !> Number of sides on current compute-node
+INTEGER            :: nComputeNodeNodes                     !> Number of nodes on current compute-node
+INTEGER            :: nComputeNodeTrees                     !> Number of trees on current compute-node
+INTEGER            :: nComputeNodeTotalElems                !> Number of elems on current compute-node (including halo region)
+INTEGER            :: nComputeNodeTotalSides                !> Number of sides on current compute-node (including halo region)
+INTEGER            :: nComputeNodeTotalNodes                !> Number of nodes on current compute-node (including halo region)
+INTEGER            :: offsetComputeNodeElem                 !> elem offset of compute-node root
+INTEGER            :: offsetComputeNodeSide                 !> side offset of compute-node root
+INTEGER            :: offsetComputeNodeNode                 !> node offset of compute-node root
+INTEGER            :: offsetComputeNodeTree                 !> tree offset of compute-node root
 
-INTEGER, ALLOCATABLE :: CNTotalElem2GlobalElem(:)     !> Compute Nodes mapping 1:nTotal -> 1:nGlobal
-INTEGER, ALLOCATABLE :: GlobalElem2CNTotalElem(:)     !> Reverse Mapping
+! Surface sampling
+INTEGER,ALLOCATABLE:: MPIRankSharedLeader(:)                !> Array of size nLeaderGroupProcs holding the leader rank of each proc
+INTEGER,ALLOCATABLE:: MPIRankSurfLeader(:)                  !> Array of size nLeaderGroupProcs holding the surf rank of each proc
+INTEGER            :: MPI_COMM_LEADERS_SURF=MPI_COMM_NULL   !> Communicator compute-node roots on surface communicator (my_rank_shared=0)
+INTEGER            :: mySurfRank           =-888            !> rank on MPI_COMM_LEADERS_SURF
+INTEGER            :: nSurfLeaders                          !> compute-node leaders on MPI_COMM_LEADERS_SURF
+!INTEGER            :: nSurfCommProc                         !> compute-nodes which send or receive sides from us
+
+INTEGER,ALLOCATABLE,DIMENSION(:,:):: nSurfSidesLeader       !> number of surf sides per leader proc
+                                                            !> 1 - sides from local leader to other leader
+                                                            !> 2 - sides from other leader to local leader
+
+INTEGER, ALLOCATABLE :: CNTotalElem2GlobalElem(:)           !> Compute Nodes mapping 1:nTotal -> 1:nGlobal
+INTEGER, ALLOCATABLE :: GlobalElem2CNTotalElem(:)           !> Reverse Mapping
 
 !> Solution
 REAL,POINTER       :: U_Shared(:,:,:,:,:)             !> DG solution on current node

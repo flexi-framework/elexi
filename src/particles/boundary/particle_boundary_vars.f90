@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 ! Contains global variables provided by the particle surfaces routines
@@ -25,6 +26,80 @@ USE MPI
 IMPLICIT NONE
 PUBLIC
 SAVE
+
+LOGICAL                                 :: SurfOnNode
+INTEGER                                 :: SurfSampSize                  !> Impact number + Energy + Angle + Force
+REAL,ALLOCPOINT,DIMENSION(:,:,:)        :: SurfSideArea                  !> Area of supersampled surface side
+! ====================================================================
+! Mesh info
+INTEGER                                 :: nSurfTotalSides
+
+INTEGER                                 :: nComputeNodeSurfSides         !> Number of surface sampling sides on compute node
+INTEGER                                 :: nComputeNodeSurfTotalSides    !> Number of surface sampling sides on compute node (including halo region)
+INTEGER                                 :: offsetComputeNodeSurfSide     !> elem offset of compute-node root
+
+! ====================================================================
+! Impact statistics
+REAL,ALLOCATABLE,DIMENSION(:,:,:,:)     :: SampWallState                 !> 1     Impact Counter
+                                                                         !> 2-5   E_kin (mean, min, max, M2, variance)
+                                                                         !> 6-9   Impact Angle (mean, min, max, deltaE)
+                                                                         !> 10-12 Current Forces in x, y, z direction
+                                                                         !> 13-15 Average Forces in x, y, z direction
+                                                                         !> 10    Impact angle
+                                                                         !> 11    Wall-Collision counter
+
+! ====================================================================
+! MPI3 shared variables
+INTEGER,ALLOCPOINT,DIMENSION(:,:)       :: GlobalSide2SurfSide           ! Mapping Global Side ID to Surf Side ID
+                                                                         !> 1 - Surf SideID
+                                                                         !> 2 - Surf Side proc global rank
+INTEGER,ALLOCPOINT,DIMENSION(:,:)       :: SurfSide2GlobalSide           ! Inverse mapping
+                                                                         !> 1 - Surf SideID
+                                                                         !> 2 - Surf Side proc global rank
+INTEGER,ALLOCPOINT,DIMENSION(:,:)       :: GlobalSide2SurfSide_Shared
+INTEGER,ALLOCPOINT,DIMENSION(:,:)       :: SurfSide2GlobalSide_Shared
+
+#if USE_MPI
+REAL,POINTER,DIMENSION(:,:,:)           :: SurfSideArea_Shared           !> Area of supersampled surface side
+INTEGER                                 :: SurfSideArea_Shared_Win
+
+INTEGER,ALLOCATABLE,DIMENSION(:,:)      :: GlobalSide2SurfHaloSide       ! Mapping Global Side ID to Surf Halo Side ID (exists only on leader procs)
+                                                                         !> 1st dim: leader rank
+                                                                         !> 2nd dim: Surf SideID
+INTEGER,ALLOCATABLE,DIMENSION(:,:)      :: SurfHaloSide2GlobalSide       ! Inverse mapping  (exists only on leader procs)
+                                                                         !> 1st dim: leader rank
+                                                                         !> 2nd dim: Surf SideID
+
+INTEGER                                 :: GlobalSide2SurfSide_Shared_Win
+INTEGER                                 :: SurfSide2GlobalSide_Shared_Win
+
+TYPE tSurfaceMapping
+  INTEGER,ALLOCATABLE                   :: RecvSurfGlobalID(:)
+  INTEGER,ALLOCATABLE                   :: SendSurfGlobalID(:)
+  INTEGER                               :: nSendSurfSides
+  INTEGER                               :: nRecvSurfSides
+END TYPE
+TYPE (tSurfaceMapping),ALLOCATABLE      :: SurfMapping(:)
+
+! ====================================================================
+! Impact statistics
+REAL,POINTER,DIMENSION(:,:,:,:)         :: SampWallState_Shared
+
+INTEGER                                 :: SampWallState_Shared_Win
+#endif /* USE_MPI */
+
+LOGICAL                                 :: doParticleReflectionTrack = .TRUE.      ! Flag if reflections should be counted
+LOGICAL                                 :: doParticleErosionTrack                  ! Flag if erosion data should be tracked
+LOGICAL                                 :: WriteMacroSurfaceValues   = .FALSE.     ! Output of macroscopic values on surface
+REAL                                    :: MacroValSampTime                        ! Sampling time for WriteMacroVal
+LOGICAL                                 :: ErosionRestart                          ! Flag if we are restarting erosion tracking
+
+INTEGER                                 :: nErosionVars                            ! Number of Vars = nErosionVars * (nSPecies + 1)
+
+REAL,ALLOCATABLE                        :: MacroSurfaceVal(:,:,:,:)                ! variables,p,q,sides
+REAL,ALLOCATABLE                        :: MacroSurfaceSpecVal(:,:,:,:,:)          ! Macrovalues for Species specific surface output
+
+
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Global variables
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -35,72 +110,8 @@ REAL                                    :: dXiEQ_SurfSample              ! delta
 INTEGER                                 :: OffSetSurfSide                ! offset of local surf side
 INTEGER                                 :: nSurfBC                       ! number of surface side BCs
 CHARACTER(LEN=255),ALLOCATABLE          :: SurfBCName(:)                 ! names of belonging surface BC
-#if USE_MPI
-INTEGER,ALLOCATABLE                     :: OffSetSurfSideMPI(:)          ! integer offset for particle boundary sampling
-#endif /*MPI*/
 
-#if USE_MPI
-TYPE tSurfaceSendList
-  INTEGER                               :: NativeProcID
-  INTEGER,ALLOCATABLE                   :: SendList(:)                   ! list containing surfsideid of sides to send to proc
-  INTEGER,ALLOCATABLE                   :: RecvList(:)                   ! list containing surfsideid of sides to recv from proc
-
-  INTEGER,ALLOCATABLE                   :: SurfDistSendList(:)           ! list containing surfsideid of sides to send to proc
-  INTEGER,ALLOCATABLE                   :: SurfDistRecvList(:)           ! list containing surfsideid of sides to recv from proc
-  INTEGER,ALLOCATABLE                   :: CoverageSendList(:)           ! list containing surfsideid of sides to send to proc
-  INTEGER,ALLOCATABLE                   :: CoverageRecvList(:)           ! list containing surfsideid of sides to recv from proc
-
-END TYPE
-#endif /*MPI*/
-
-TYPE tSurfaceCOMM
-  LOGICAL                               :: MPIRoot                       ! if root of mpi communicator
-  INTEGER                               :: MyRank                        ! local rank in new group
-  INTEGER                               :: nProcs                        ! number of processes
-  LOGICAL                               :: MPIOutputRoot                 ! if root of mpi communicator
-  INTEGER                               :: MyOutputRank                  ! local rank in new group
-  INTEGER                               :: nOutputProcs                  ! number of output processes
-#if USE_MPI
-  INTEGER                               :: COMM=MPI_COMM_NULL            ! communicator
-  INTEGER                               :: nMPINeighbors                 ! number of processes to communicate with
-  TYPE(tSurfaceSendList),ALLOCATABLE    :: MPINeighbor(:)                ! list containing all mpi neighbors
-  INTEGER                               :: OutputCOMM=MPI_COMM_NULL      ! communicator for output
-#endif /*MPI*/
-END TYPE
-TYPE (tSurfaceCOMM)                     :: SurfCOMM
-
-TYPE tSurfaceMesh
-  INTEGER                               :: SampSize                      ! integer of sampsize
-  LOGICAL                               :: SurfOnProc                    ! flag if reflective boundary condition is on proc
-  INTEGER                               :: nSides                        ! Number of Sides on Surface (reflective)
-  INTEGER                               :: nOutputSides                  ! Number of surfaces that are assigned to an MPI rank for
-                                                                         ! surface sampling (MacroSurfaceVal and MacroSurfaceSpecVal) 
-                                                                         ! and output to .h5 (SurfData) purposes:
-                                                                         ! nOutputSides = bcsides + maser_innersides
-  INTEGER                               :: nTotalSides                   ! Number of Sides on Surface incl. HALO sides
-  INTEGER                               :: nGlobalSides                  ! Global number of Sides on Surfaces (reflective)
-  INTEGER,ALLOCATABLE                   :: SideIDToSurfID(:)             ! Mapping form the SideID to shorter side list
-  REAL, ALLOCATABLE                     :: SurfaceArea(:,:,:)            ! Area of Surface
-  INTEGER,ALLOCATABLE                   :: SurfSideToGlobSideMap(:)      ! map of surfside ID to global Side ID
-END TYPE
-
-TYPE (tSurfaceMesh)                     :: SurfMesh
-
-TYPE tSampWall
-  ! easier to communicate
-  ! Data structure is repeated for every species + average
-  REAL,ALLOCATABLE                      :: State(:,:,:)                ! 1     Impact Counter
-                                                                       ! 2-5   E_kin (mean, min, max, M2, variance)
-                                                                       ! 6-9   Impact Angle (mean, min, max, deltaE)
-                                                                       ! 10-12 Current Forces in x, y, z direction
-                                                                       ! 13-15 Average Forces in x, y, z direction
-                                                                       ! 10    Impact angle
-                                                                       ! 11 Wall-Collision counter
-  !REAL, ALLOCATABLE                    :: Force(:,:,:)                ! x, y, z direction
-  !REAL, ALLOCATABLE                    :: Counter(:,:,:)              ! Wall-Collision counter
-END TYPE
-TYPE(tSampWall), ALLOCATABLE            :: SampWall(:)             ! Wall sample array (number of BC-Sides)
-
+! Boundary
 TYPE tPartBoundary
   INTEGER                                :: OpenBC                  = 1      ! = 1 (s.u.) Boundary Condition Integer Definition
   INTEGER                                :: ReflectiveBC            = 2      ! = 2 (s.u.) Boundary Condition Integer Definition
@@ -110,7 +121,6 @@ TYPE tPartBoundary
   CHARACTER(LEN=200)   , ALLOCATABLE     :: SourceBoundName(:)    ! Link part 1 for mapping Boltzplatz BCs to Particle BC
   CHARACTER(LEN=200)   , ALLOCATABLE     :: SourceBoundType(:)    ! Link part 2 for mapping Boltzplatz BCs to Particle BC
   INTEGER              , ALLOCATABLE     :: TargetBoundCond(:)    ! Link part 3 for mapping Boltzplatz BCs to Particle BC
-  REAL    , ALLOCATABLE                  :: MomentumACC(:)
   REAL    , ALLOCATABLE                  :: WallTemp(:)
   REAL    , ALLOCATABLE                  :: WallVelo(:,:)
   LOGICAL , ALLOCATABLE                  :: AmbientCondition(:)
@@ -180,7 +190,7 @@ TYPE(tAuxBC_parabol), ALLOCATABLE       :: AuxBC_parabol(:)
 TYPE tPartAuxBC
   INTEGER                                :: OpenBC                  = 1      ! = 1 (s.u.) Boundary Condition Integer Definition
   INTEGER                                :: ReflectiveBC            = 2      ! = 2 (s.u.) Boundary Condition Integer Definition
-  INTEGER              , ALLOCATABLE     :: TargetBoundCond(:)
+  INTEGER , ALLOCATABLE                  :: TargetBoundCond(:)
   REAL    , ALLOCATABLE                  :: MomentumACC(:)
   REAL    , ALLOCATABLE                  :: WallTemp(:)
   REAL    , ALLOCATABLE                  :: WallVelo(:,:)

@@ -95,7 +95,7 @@ TYPE tInit                                                                   ! P
   REAL                                   :: MJyRatio                         ! y direction portion of velocity for Maxwell-Juettner
   REAL                                   :: MJzRatio                         ! z direction portion of velocity for Maxwell-Juettner
   REAL                                   :: Alpha                            ! WaveNumber for sin-deviation initiation.
-  REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3) 
+  REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3)
   INTEGER                                :: ParticleEmissionType             ! Emission Type 1 = emission rate in 1/s,
                                                                              !               2 = emission rate 1/iteration
   REAL                                   :: ParticleEmission                 ! Emission in [1/s] or [1/Iteration]
@@ -132,7 +132,7 @@ TYPE typeSurfaceflux
   REAL                                   :: SampledMassflow                  ! Actual mass flow rate through a surface flux boundary
   REAL, ALLOCATABLE                      :: nVFRSub(:,:)                     ! normal volume flow rate through subsubside
 END TYPE
-  
+
 TYPE tSpecies                                                                ! Particle Data for each Species
   !General Species Values
   TYPE(tInit), ALLOCATABLE               :: Init(:)  !     =>NULL()          ! Particle Data for each Initialisation
@@ -200,8 +200,6 @@ REAL                                     :: DelayTime
 
 LOGICAL                                  :: ParticlesInitIsDone=.FALSE.
 
-LOGICAL                                  :: WriteMacroSurfaceValues=.FALSE.   ! Output of macroscopic values on surface
-REAL                                     :: MacroValSampTime                  ! Sampling time for WriteMacroVal
 LOGICAL                                  :: DoPoissonRounding                 ! Perform Poisson sampling instead of random rounding
 LOGICAL                                  :: DoTimeDepInflow                   ! Insertion and SurfaceFlux w simple random rounding
 LOGICAL                                  :: FindNeighbourElems=.FALSE.

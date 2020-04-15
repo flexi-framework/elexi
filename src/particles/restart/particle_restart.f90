@@ -49,8 +49,8 @@ USE MOD_HDF5_Input
 USE MOD_HDF5_Output,             ONLY:FlushFiles
 USE MOD_Mesh_Vars,               ONLY:offsetElem,nGlobalElems
 USE MOD_Part_Tools,              ONLY:UpdateNextFreePosition
-USE MOD_Particle_Erosion_Analyze,ONLY:CalcSurfaceValues
-USE MOD_Particle_Erosion_Vars,   ONLY:ErosionRestart,doParticleReflectionTrack
+USE MOD_Particle_Boundary_Analyze,ONLY:CalcSurfaceValues
+USE MOD_Particle_Boundary_Vars,   ONLY:ErosionRestart,doParticleReflectionTrack
 USE MOD_Particle_Globals
 USE MOD_Particle_Localization,   ONLY:LocateParticleInElement
 USE MOD_Particle_Mesh_Vars,      ONLY:ElemEpsOneCell
@@ -105,7 +105,7 @@ REAL,ALLOCATABLE         :: TurbPartData(:,:)    !number of entries in each line
 doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
 
 IF (LEN_TRIM(RestartFile).GT.0) THEN
-  SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' Reading Particles from Restartfile...'
+  SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE...'
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
   ! Read the first/last ElemID on the local proc
@@ -127,7 +127,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
     CHECKSAFEINT(HSize(2),4)
     PartDataSize = INT(HSize(1))
-    SWRITE(UNIT_stdOut,'(A3,A38,A3,I25)')' | ','Number of particle variables',' | ',PartDataSize
+    SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of particle variables:           ', PartDataSize
 
     ! Reflections are stored in the 8th data column. Do not start counting reflections mid-simulation
     IF (PartDataSize.EQ.7) THEN
@@ -216,7 +216,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     PDM%ParticleVecLength = PDM%ParticleVecLength + locnPart
     CALL UpdateNextFreePosition()
 
-    SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' Reading Particles from Restartfile... DONE!'
+    SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE DONE!'
     SWRITE(UNIT_StdOut,'(132("-"))')
 
     ! Reconstruct the number of particles inserted before restart from the emission rate
@@ -282,7 +282,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     IF (SUM(LostParts).GT.0) THEN
       ALLOCATE(SendBuff(1:COUNTER2*PartDataSize))
       ALLOCATE(RecvBuff(1:SUM(LostParts)*PartDataSize))
-      
+
       ! Fill SendBuffer
       COUNTER = 0
       DO i = 1, PDM%ParticleVecLength
@@ -296,7 +296,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
           COUNTER = COUNTER + PartDataSize
         END IF
       END DO
-      
+
       ! Distribute lost particles to all procs
       COUNTER = 0
       DO i = 0, PartMPI%nProcs-1
@@ -304,10 +304,10 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         Displace(i) = COUNTER
         COUNTER = COUNTER + LostParts(i)*PartDataSize
       END DO
-      
+
       CALL MPI_ALLGATHERV(SendBuff, PartDataSize*LostParts(PartMPI%MyRank), MPI_DOUBLE_PRECISION, &
            RecvBuff, RecCount, Displace, MPI_DOUBLE_PRECISION, PartMPI%COMM, IERROR)
-           
+
       ! Add them to particle list and check if they are in MyProcs domain
       NbrOfFoundParts = 0
       CurrentPartNum  = PDM%ParticleVecLength+1
@@ -330,7 +330,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         COUNTER = COUNTER + PartDataSize
       END DO
       PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfFoundParts
-      
+
       ! Combine number of found particles to make sure none are lost completely
       CALL MPI_ALLREDUCE(NbrOfFoundParts, CompleteNbrOfFound, 1, MPI_INTEGER, MPI_SUM, PartMPI%COMM, IERROR)
       SWRITE(UNIT_stdOut,*) SUM(LostParts),'were not in the correct proc after restart.'

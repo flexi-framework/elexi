@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 ! Module for calculation of particle forces on surfaces for convergence analysis
@@ -36,14 +37,20 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE CalcWallParticles(AlphaMean,AlphaVar,EkinMean,EkinVar,partForce,maxForce)
 ! MODULES
-USE MOD_Preproc
 USE MOD_Globals
+USE MOD_Preproc
+USE MOD_AnalyzeEquation_Vars     ,ONLY: isWall
+USE MOD_Mesh_Vars                ,ONLY: BC,nBCs
+USE MOD_Particle_Analyze_Vars    ,ONLY: TimeSample
+USE MOD_Particle_Boundary_Vars   ,ONLY: nComputeNodeSurfSides
+USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSideArea,nSurfSample
+USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSide2GlobalSide
+USE MOD_Particle_Boundary_Vars   ,ONLY: SampWallState_Shared
+USE MOD_Particle_Boundary_Vars    ,ONLY: MacroSurfaceVal
 USE MOD_Particle_Globals
-USE MOD_Mesh_Vars,              ONLY: nBCSides,BC,nBCs
-USE MOD_AnalyzeEquation_Vars,   ONLY: isWall
-USE MOD_Particle_Analyze_Vars,  ONLY: TimeSample
-USE MOD_Particle_Boundary_Vars, ONLY: SurfMesh,SampWall,nSurfSample
-USE MOD_Particle_Erosion_Vars,  ONLY: MacroSurfaceVal
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: mySurfRank
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -73,20 +80,20 @@ EkinVar   = 0.
 partForce = 0.
 maxForce  = 0.
 
-DO iSide=1,nBCSides
+DO iSide=1,nComputeNodeSurfSides
     iBC=BC(iSide)
     IF(.NOT.isWall(iBC)) CYCLE
-    SurfSideID=SurfMesh%SideIDToSurfID(iSide)
-    DO q=1,nSurfSample
-        DO p=1,nSurfSample
+    SurfSideID = SurfSide2GlobalSide(SURF_SIDEID,iSide)
+    DO q = 1,nSurfSample
+        DO p = 1,nSurfSample
             ! Only consider walls with actual impacts
-            IF (SampWall(SurfSideID)%State(1,p,q).EQ.0) CYCLE
+            IF (SampWallState_Shared(1,p,q,SurfSideID).EQ.0) CYCLE
             ! Average kinetic energy
-            EkinMean(iBC)  = EkinMean(iBC)  + MacroSurfaceVal(3,p,q,SurfSideID) * SurfMesh%SurfaceArea(p,q,SurfSideID)
-            EkinVar(iBC)   = EkinVar(iBC)   + MacroSurfaceVal(6,p,q,SurfSideID) * SurfMesh%SurfaceArea(p,q,SurfSideID)
+            EkinMean(iBC)  = EkinMean(iBC)  + MacroSurfaceVal(3,p,q,SurfSideID) * SurfSideArea(p,q,SurfSideID)
+            EkinVar(iBC)   = EkinVar(iBC)   + MacroSurfaceVal(6,p,q,SurfSideID) * SurfSideArea(p,q,SurfSideID)
             ! Average impact angle
-            AlphaMean(iBC) = AlphaMean(iBC) + MacroSurfaceVal(7,p,q,SurfSideID) * SurfMesh%SurfaceArea(p,q,SurfSideID)
-            AlphaVar(iBC)  = AlphaVar(iBC)  + MacroSurfaceVal(10,p,q,SurfSideID)* SurfMesh%SurfaceArea(p,q,SurfSideID)
+            AlphaMean(iBC) = AlphaMean(iBC) + MacroSurfaceVal(7,p,q,SurfSideID) * SurfSideArea(p,q,SurfSideID)
+            AlphaVar(iBC)  = AlphaVar(iBC)  + MacroSurfaceVal(10,p,q,SurfSideID)* SurfSideArea(p,q,SurfSideID)
             ! Integrated impact force
             IF (.NOT.ALMOSTZERO(TimeSample)) THEN
                 tmpForceX   = MacroSurfaceVal(11,p,q,SurfSideID)
@@ -99,13 +106,13 @@ DO iSide=1,nBCSides
             ! Max impact force
             maxForce(iBC)  = MAX(maxForce(iBC),tmpForce)
 
-            SideArea(iBC)  = SideArea(iBC) + SurfMesh%SurfaceArea(p,q,SurfSideID)
+            SideArea(iBC)  = SideArea(iBC) + SurfSideArea(p,q,SurfSideID)
         END DO
     END DO
 END DO
 
 #if USE_MPI
-IF(MPIRoot)THEN
+IF(mySurfRank.EQ.0)THEN
     CALL MPI_REDUCE(MPI_IN_PLACE,EkinMean ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
     CALL MPI_REDUCE(MPI_IN_PLACE,EkinVar  ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
     CALL MPI_REDUCE(MPI_IN_PLACE,AlphaMean,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)

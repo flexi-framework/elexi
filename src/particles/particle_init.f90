@@ -85,9 +85,6 @@ CALL prms%CreateIntOption('Part-NumberOfRandomSeeds',       'Number of random se
 
 CALL prms%CreateLogicalOption('Part-SteadyState',           'Only update particle position while keeping fluid state frozen',      &
                                                             '.FALSE.')
-CALL prms%CreateLogicalOption('Part-WriteMacroSurfaceValues','Set [T] to activate iteration dependant sampling and h5 output'    //&
-                                                            ' surfaces.',                                                          &
-                                                                                                            '.FALSE.')
 CALL prms%CreateLogicalOption('Part-LowVeloRemove',         'Flag if low velocity particles should be removed', '.FALSE.')
 
 CALL prms%CreateRealOption('Part-DelayTime',                "During delay time the particles won't be moved so "                 //&
@@ -277,7 +274,7 @@ CALL prms%CreateStringOption('Part-Boundary[$]-WallCoeffModel' &
                                   'Bons2017 \n'    //&
                                   'Fong2019',numberedmulti=.TRUE.)
 
-! Ambient condition=================================================================================================================
+! Ambient condition ================================================================================================================
 CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientCondition'  &
                                 , 'Use ambient condition (condition "behind" boundary).', numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(  'Part-Boundary[$]-AmbientConditionFix'  &
@@ -376,11 +373,10 @@ USE Mod_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_IO_HDF5,                    ONLY: AddToElemData
 USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
-USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
-USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_SGS,               ONLY: ParticleSGS
-USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,WriteMacroSurfaceValues
+USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
 #endif
@@ -420,11 +416,6 @@ CALL InitializeParticleEmission()
 ! TODO
 !CALL InitializeParticleSurfaceflux()
 
-! Initialize surface sampling
-IF (WriteMacroSurfaceValues) THEN
-  CALL InitParticleBoundarySampling()
-END IF
-
 #if USE_MPI
 ! has to be called AFTER InitializeVariables because we need to read the parameter file to know the CommSize
 CALL InitParticleCommSize()
@@ -446,6 +437,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
+USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Boundary_Vars ,ONLY: LowVeloRemove
 USE MOD_Particle_Boundary_Vars ,ONLY: nAuxBCs
 USE MOD_Particle_Interpolation ,ONLY: InitParticleInterpolation
@@ -471,8 +463,7 @@ CALL InitializeVariablesRandomNumbers()
 
 ! gravitational acceleration
 PartGravity             = GETREALARRAY('Part-Gravity'          ,3  ,'0. , 0. , 0.')
-! Output of macroscopic surface values
-WriteMacroSurfaceValues = GETLOGICAL( 'Part-WriteMacroSurfaceValues','.FALSE.')
+
 
 ! Number of species
 nSpecies                = GETINT(     'Part-nSpecies','1')
@@ -502,6 +493,9 @@ CALL InitParticleMesh()
 !-- Build MPI communication
 CALL IdentifyPartExchangeProcs()
 #endif
+
+! Initialize surface sampling
+CALL InitParticleBoundarySampling()
 
 ! Initialize interpolation and particle-in-cell for field -> particle coupling
 !--> Could not be called earlier because a halo region has to be build depending on the given BCs
@@ -916,7 +910,6 @@ nPartBound = CountOption('Part-BoundaryName')
 ALLOCATE(PartBound%SourceBoundName    (1:nBCs))
 ALLOCATE(PartBound%SourceBoundType    (1:nBCs))
 ALLOCATE(PartBound%TargetBoundCond    (1:nBCs))
-ALLOCATE(PartBound%MomentumACC        (1:nBCs))
 ALLOCATE(PartBound%WallTemp           (1:nBCs))
 ALLOCATE(PartBound%WallVelo       (1:3,1:nBCs))
 ALLOCATE(PartBound%WallModel          (1:nBCs))
@@ -1329,6 +1322,7 @@ SUBROUTINE FinalizeParticles()
 USE MOD_Globals
 USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars
+USE MOD_Particle_Boundary_Sampling, ONLY:FinalizeParticleBoundarySampling
 USE MOD_Particle_Interpolation_Vars
 #if USE_RW
 USE MOD_Particle_RandomWalk,    ONLY: ParticleFinalizeRandomWalk
@@ -1356,7 +1350,6 @@ SDEALLOCATE(Species)
 SDEALLOCATE(PartBound%SourceBoundName)
 SDEALLOCATE(PartBound%SourceBoundType)
 SDEALLOCATE(PartBound%TargetBoundCond)
-SDEALLOCATE(PartBound%MomentumACC)
 SDEALLOCATE(PartBound%WallTemp)
 SDEALLOCATE(PartBound%WallVelo)
 SDEALLOCATE(PartBound%AmbientCondition)
@@ -1388,6 +1381,7 @@ SDEALLOCATE(TurbFieldAtParticle)
 CALL ParticleFinalizeRandomWalk()
 #endif
 CALL ParticleFinalizeSGS()
+CALL FinalizeParticleBoundarySampling()
 
 END SUBROUTINE FinalizeParticles
 

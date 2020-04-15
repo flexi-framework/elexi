@@ -65,8 +65,7 @@ USE MOD_MPI,               ONLY:InitMPIvars
 #if USE_PARTICLES
 USE MOD_ErosionPoints,     ONLY:DefineParametersErosionPoints,InitErosionPoints
 USE MOD_Particle_Analyze,  ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
-USE MOD_Particle_Boundary_Sampling,ONLY:RestartParticleBoundarySampling
-USE MOD_Particle_Erosion,  ONLY:DefineParametersParticleErosion,InitParticleErosion
+USE MOD_Particle_Boundary_Sampling,ONLY:DefineParametersParticleBoundarySampling,RestartParticleBoundarySampling
 USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticleGlobals,InitParticles
 USE MOD_Particle_Interpolation,ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,     ONLY:DefineparametersParticleMesh,InitParticleMesh
@@ -166,8 +165,8 @@ CALL DefineParametersParticles()
 CALL DefineParametersParticleMesh()
 CALL DefineParametersParticleInterpolation()
 CALL DefineParametersParticleAnalyze()
-CALL DefineParametersParticleErosion()
-CALL DefineParametersErosionPoints
+CALL DefineParametersParticleBoundarySampling()
+CALL DefineParametersErosionPoints()
 #if USE_MPI
 CALL DefineParametersLoadBalance()
 CALL DefineParametersMPIShared()
@@ -260,7 +259,6 @@ CALL InitErosionPoints()
 #endif
 CALL Restart()
 #if USE_PARTICLES
-CALL InitParticleErosion
 CALL InitParticles()
 CALL RestartParticleBoundarySampling()
 !CALL ParticleRestart()
@@ -312,9 +310,7 @@ USE MOD_Indicator,         ONLY:FinalizeIndicator
 USE MOD_ReadInTools,       ONLY:FinalizeParameters
 #if USE_PARTICLES
 USE MOD_Particle_Analyze,  ONLY:FinalizeParticleAnalyze
-USE MOD_Particle_Erosion,  ONLY:FinalizeParticleErosion
 USE MOD_ErosionPoints,     ONLY:FinalizeErosionPoints
-USE MOD_Particle_Boundary_Sampling,ONLY:FinalizeParticleBoundarySampling
 USE MOD_Particle_Init,     ONLY:FinalizeParticles
 #if USE_MPI
 USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
@@ -340,10 +336,8 @@ CALL FinalizeFV()
 #endif
 #if USE_PARTICLES
 CALL FinalizeParticleAnalyze
-CALL FinalizeParticleErosion
 CALL FinalizeErosionPoints()
 CALL FinalizeParticles
-CALL FinalizeParticleBoundarySampling
 #endif
 CALL FinalizeDG()
 CALL FinalizeEquation()

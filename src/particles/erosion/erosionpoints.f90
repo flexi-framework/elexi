@@ -80,10 +80,10 @@ SUBROUTINE InitErosionPoints()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_ReadInTools         ,ONLY: GETSTR,GETINT,GETLOGICAL,GETREAL
-USE MOD_Interpolation_Vars  ,ONLY: InterpolationInitIsDone
+USE MOD_ReadInTools            ,ONLY: GETSTR,GETINT,GETLOGICAL,GETREAL
+USE MOD_Interpolation_Vars     ,ONLY: InterpolationInitIsDone
 USE MOD_ErosionPoints_Vars
-USE MOD_Particle_Boundary_Vars,     ONLY:SurfMesh
+USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -99,16 +99,16 @@ IF(.NOT.EP_inUse) RETURN
 nEP_Procs = 0
 
 IF((.NOT.InterpolationInitIsDone) .OR. ErosionPointsInitIsDone)THEN
-   CALL Abort(__STAMP__,&
-     "InitErosionPoints not ready to be called or already called.")
+   CALL Abort(__STAMP__,"InitErosionPoints not ready to be called or already called.")
 END IF
+
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT EROSIONPOINTS...'
 
 EP_maxMemory     = GETINT('Part-EP_MaxMemory','100')           ! Max buffer (100MB)
 EP_MaxBufferSize = EP_MaxMemory*131072/EPDataSize    != size in bytes/(real*EPDataSize)
 
-IF(SurfMesh%nSides.NE.0) THEN
+IF(nSurfTotalSides.NE.0) THEN
   EP_onProc        = .TRUE.
   nEP_Procs        = 1
 END IF
@@ -198,7 +198,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_TimeDisc_Vars,           ONLY: t,CurrentStage,dt,RKc
 USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Boundary_Vars
 USE MOD_ErosionPoints_Vars
 USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos
 ! IMPLICIT VARIABLE HANDLING
@@ -269,7 +269,7 @@ USE MOD_IO_HDF5
 USE MOD_HDF5_Input
 USE MOD_HDF5_Output
 USE MOD_Restart_Vars,               ONLY: RestartFile
-USE MOD_Particle_Erosion_Vars
+USE MOD_Particle_Boundary_Vars
 USE MOD_Erosionpoints_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
@@ -287,9 +287,7 @@ INTEGER                        :: ErosionDim              !dummy for rank of Ero
 ! Ignore procs without erosion surfaces on them
 !IF(SurfMesh%nSides.EQ.0) RETURN
 !#endif
-IF(MPIroot)THEN
-    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='NO')' RESTARTING EROSIONPOINT DATA FROM HDF5 FILE...'
-END IF
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' RESTARTING EROSION POINT DATA FROM HDF5 FILE...'
 
 EP_Impacts = 0
 
@@ -298,22 +296,22 @@ CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,'ErosionData',ErosionDataExists)
 
 IF(ErosionDataExists) THEN
-    CALL GetDataSize(File_ID,'ErosionData',ErosionDim,HSize)
-    CHECKSAFEINT(HSize(2),4)
-    EP_glob    = INT(HSize(2))
-    SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Number of impacts',' | ',EP_glob
-    ! We lost the impact <-> proc association, so fill the entire array
-    CALL ReadArray(ArrayName='ErosionData', rank=2,&
-                     nVal=      (/EPDataSize,EP_glob/),&
-                     offset_in  = 0,&
-                     offset_dim = 2,&
-                     RealArray  = EP_Data(1:EPDataSize,1:EP_glob))
-    ! Pretend all impacts happened on MPI_ROOT, so we can write out
-    IF(MPIroot) THEN
-        EP_Impacts = EP_glob
-        WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' DONE'
-        WRITE(UNIT_StdOut,'(132("-"))')
-    END IF
+  CALL GetDataSize(File_ID,'ErosionData',ErosionDim,HSize)
+  CHECKSAFEINT(HSize(2),4)
+  EP_glob    = INT(HSize(2))
+  SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of impacts:                      ', EP_glob
+  ! We lost the impact <-> proc association, so fill the entire array
+  CALL ReadArray(ArrayName='ErosionData', rank=2,&
+                   nVal=      (/EPDataSize,EP_glob/),&
+                   offset_in  = 0,&
+                   offset_dim = 2,&
+                   RealArray  = EP_Data(1:EPDataSize,1:EP_glob))
+  ! Pretend all impacts happened on MPI_ROOT, so we can write out
+  IF(MPIroot) THEN
+    EP_Impacts = EP_glob
+    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' RESTARTING EROSION POINT DATA FROM HDF5 FILE DONE'
+    WRITE(UNIT_StdOut,'(132("-"))')
+  END IF
 END IF
 
 END SUBROUTINE RestartErosionPoint

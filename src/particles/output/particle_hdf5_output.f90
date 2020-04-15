@@ -70,7 +70,7 @@ USE MOD_Mesh_Vars,             ONLY: nGlobalElems, offsetElem
 USE MOD_Part_Tools,            ONLY: UpdateNextFreePosition
 USE MOD_Particle_Globals
 USE MOD_Particle_Analyze_Vars, ONLY: PartPath,doParticleDispersionTrack
-USE MOD_Particle_Erosion_Vars, ONLY: doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars, ONLY: doParticleReflectionTrack
 USE MOD_Particle_Vars,         ONLY: PDM, PEM, PartState, PartSpecies,PartReflCount
 USE MOD_Particle_Vars,         ONLY: useLinkedList
 #if USE_MPI

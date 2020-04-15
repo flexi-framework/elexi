@@ -96,7 +96,7 @@ USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_TimeAverage,        ONLY: InitCalcTimeAverage
 #if USE_PARTICLES
-USE MOD_Particle_Vars,      ONLY: WriteMacroSurfaceValues
+USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues
 USE MOD_CalcWallParticles
 USE MOD_CalcWallParticles_Vars
 #endif

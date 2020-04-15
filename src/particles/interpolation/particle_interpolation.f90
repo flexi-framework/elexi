@@ -169,9 +169,9 @@ USE MOD_Particle_Interpolation_Vars, ONLY: useExternalField,externalField
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
 USE MOD_Particle_Tracking_Vars,      ONLY: DoRefMapping
 USE MOD_Particle_Vars,               ONLY: PartPosRef,PartState,PDM,PEM
-USE MOD_Particle_Vars,               ONLY: TurbPartState
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars,    ONLY: RWModel,RWTime
+USE MOD_Particle_Vars,               ONLY: TurbPartState
 USE MOD_TimeDisc_Vars,               ONLY: t
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------

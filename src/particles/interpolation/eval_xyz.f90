@@ -46,11 +46,7 @@ PUBLIC :: EvaluateFieldAtRefPos
 
 CONTAINS
 
-SUBROUTINE EvaluateFieldAtPhysPos(x_in,NVar,N_in,U_In,        U_Out,ElemID,PartID  &
-#if USE_RW
-                                                 ,UTurb_In_opt,Uturb_Out_opt       &
-#endif
-)
+SUBROUTINE EvaluateFieldAtPhysPos(x_in,NVar,N_in,U_In,U_Out,ElemID,PartID)
 !===================================================================================================================================
 !> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
 !> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
@@ -64,9 +60,6 @@ USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
 USE MOD_Mesh_Vars,             ONLY: NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: dXCL_NGeo,XCL_NGeo,wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: CurvedElem,wBaryCL_NGeo1,XiCL_NGeo1
-#if USE_RW
-USE MOD_Equation_Vars,         ONLY: nVarTurb
-#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -77,15 +70,9 @@ INTEGER,INTENT(IN)        :: N_In                                          !< us
 INTEGER,INTENT(IN)        :: ElemID                                        !< Element index
 REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
 INTEGER,INTENT(IN)        :: PartID                                        !< particle ID
-#if USE_RW
-REAL,INTENT(IN),OPTIONAL  :: Uturb_In_opt(1:nVarTurb,0:N_In,0:N_in,0:N_In) !< Turbulent quantities in Element
-#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at reference position xi_in
-#if USE_RW
-REAL,INTENT(OUT),OPTIONAL :: UTurb_Out_opt(1:nVarTurb)                     !< Interpolated turbulent quantities at reference position xi_in
-#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: i,j,k
@@ -140,21 +127,6 @@ DO k=0,N_in
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In
-
-#if USE_RW
-IF (PRESENT(UTurb_In_opt)) THEN
-  UTurb_Out_opt = 0.
-  DO k=0,N_in
-    DO j=0,N_in
-      L_eta_zeta=L_xi(2,j)*L_xi(3,k)
-      DO i=0,N_in
-        UTurb_Out_opt = Uturb_Out_opt + UTurb_In_opt(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      END DO ! i=0,N_In
-    END DO ! j=0,N_In
-  END DO ! k=0,N_In
-END IF
-#endif
-
 END SUBROUTINE EvaluateFieldAtPhysPos
 
 
@@ -267,11 +239,7 @@ END DO ! k=0,N_In
 END SUBROUTINE TensorProductInterpolation
 
 
-SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out,ElemID                 &
-#if USE_RW
-                                                ,UTurb_In_opt,Uturb_Out_opt        &
-#endif
-)
+SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out,ElemID)
 !===================================================================================================================================
 !> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
 !> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
@@ -279,9 +247,6 @@ SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out,ElemID              
 ! MODULES
 USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
 USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
-#if USE_RW
-USE MOD_Equation_Vars,         ONLY: nVarTurb
-#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -291,15 +256,9 @@ INTEGER,INTENT(IN)        :: NVar                                          !< 5 
 INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
 INTEGER,INTENT(IN)        :: ElemID                                        !< Element index
 REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
-#if USE_RW
-REAL,INTENT(IN),OPTIONAL  :: Uturb_In_opt(1:nVarTurb,0:N_In,0:N_in,0:N_In) !< Turbulent quantities in Element
-#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at reference position xi_in
-#if USE_RW
-REAL,INTENT(OUT),OPTIONAL :: UTurb_Out_opt(1:nVarTurb)                     !< Interpolated turbulent quantities at reference position xi_in
-#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: i,j,k
@@ -321,21 +280,6 @@ DO k=0,N_in
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In
-
-#if USE_RW
-IF (PRESENT(UTurb_In_opt)) THEN
-  UTurb_Out_opt = 0.
-  DO k=0,N_in
-    DO j=0,N_in
-      L_eta_zeta=L_xi(2,j)*L_xi(3,k)
-      DO i=0,N_in
-        UTurb_Out_opt = Uturb_Out_opt + UTurb_In_opt(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      END DO ! i=0,N_In
-    END DO ! j=0,N_In
-  END DO ! k=0,N_In
-END IF
-#endif
-
 END SUBROUTINE EvaluateFieldAtRefPos
 
 

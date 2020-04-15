@@ -1299,6 +1299,7 @@ USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Restart_Vars,            ONLY: RestartTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
 USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
+USE MOD_Particle_Vars,           ONLY: TurbPartState
 #endif /* USE_RW */
 !IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1452,27 +1453,17 @@ CASE('fluid')
 
       iElem = PEM%Element(PositionNbr)
       IF (.NOT.DoRefMapping) THEN
+        CALL EvaluateFieldAtPhysPos(PartState    (1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar) ,iElem,PositionNbr)
 #if USE_RW
-        IF (RestartTurb) THEN
-          CALL EvaluateFieldAtPhysPos(PartState(1:3,PositionNbr),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar) ,iElem,PositionNbr &
-                                                                             ,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb))
-        ELSE
-#endif
-          CALL EvaluateFieldAtPhysPos(PartState(1:3,PositionNbr),PP_nVar,PP_N,U(1:PP_nVar,:,:,:,iElem),field    (1:PP_nVar) ,iElem,PositionNbr)
-#if USE_RW
-        END IF ! RestartTurb
+        IF (RestartTurb) CALL &
+             EvaluateFieldAtPhysPos(TurbPartState(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb),iElem,PositionNbr)
 #endif
       ! RefMapping, evaluate in reference space
       ELSE
+        CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar) ,iElem)
 #if USE_RW
-        IF (RestartTurb) THEN
-          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar) ,iElem &
-                                                                             ,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb))
-        ELSE
-#endif
-          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (1:PP_nVar,:,:,:,iElem),field    (1:PP_nVar) ,iElem)
-#if USE_RW
-        END IF ! RestartTurb
+        IF (RestartTurb) CALL &
+             EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbfield(1:nVarTurb),iElem)
 #endif
       END IF ! RefMapping
 

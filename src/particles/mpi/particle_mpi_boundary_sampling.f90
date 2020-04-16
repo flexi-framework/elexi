@@ -47,8 +47,8 @@ SUBROUTINE InitSurfCommunication()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_SURF
-!USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeProcessors
-USE MOD_Particle_MPI_Shared_Vars,ONLY: myLeaderGroupRank,myComputeNoderank,nLeaderGroupProcs
+!USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeProcessors,myComputeNoderank
+USE MOD_Particle_MPI_Shared_Vars,ONLY: myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPIRankSharedLeader,MPIRankSurfLeader
 USE MOD_Particle_MPI_Shared_Vars,ONLY: mySurfRank,nSurfLeaders!,nSurfCommProc
 USE MOD_Particle_Boundary_Vars  ,ONLY: nComputeNodeSurfSides,nComputeNodeSurfTotalSides,offsetComputeNodeSurfSide
@@ -58,7 +58,7 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfTotalSides
 !USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSide2GlobalSide
 USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
-USE MOD_Particle_Vars           ,ONLY: nSpecies
+!USE MOD_Particle_Vars           ,ONLY: nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -75,7 +75,7 @@ INTEGER                       :: nRecvSurfSidesTmp(0:nLeaderGroupProcs-1)
 !INTEGER                       :: nSurfSidesLeader(1:2,0:nLeaderGroupProcs-1)
 INTEGER                       :: RecvRequest(0:nLeaderGroupProcs-1),SendRequest(0:nLeaderGroupProcs-1)
 INTEGER                       :: SendSurfGlobalID(0:nLeaderGroupProcs-1,1:nComputeNodeSurfTotalSides)
-INTEGER                       :: SampSizeAllocate
+!INTEGER                       :: SampSizeAllocate
 !===================================================================================================================================
 !--- Open receive buffer (number of sampling surfaces in other node's halo region)
 DO iProc = 0,nLeaderGroupProcs-1
@@ -284,9 +284,9 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SurfOnNode
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSampSize,nSurfSample
 USE MOD_Particle_Boundary_Vars  ,ONLY: nComputeNodeSurfTotalSides
 USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide
-USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping,PartBound
+USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState,SampWallState_Shared,SampWallState_Shared_Win
-USE MOD_Particle_Boundary_Vars   ,ONLY: nErosionVars
+USE MOD_Particle_Boundary_Vars  ,ONLY: nErosionVars
 USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nSurfLeaders,myComputeNodeRank,mySurfRank
@@ -303,7 +303,7 @@ INTEGER                         :: iProc,SideID
 INTEGER                         :: iPos,p,q
 INTEGER                         :: iSpec,nShift
 INTEGER                         :: MessageSize,iSurfSide,SurfSideID
-INTEGER                         :: nValues,nReactiveValues
+INTEGER                         :: nValues
 INTEGER                         :: RecvRequest(0:nSurfLeaders-1),SendRequest(0:nSurfLeaders-1)
 REAL                            :: SampWallTmp(1:SurfSampSize)
 !===================================================================================================================================

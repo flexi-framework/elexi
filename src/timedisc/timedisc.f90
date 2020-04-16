@@ -307,8 +307,7 @@ END IF
 ! Get time step if needed
 IF ((UseManualTimestep.AND.(dt_Min.EQ.0.)).OR.(.NOT.UseManualTimestep)) THEN
 #endif
-  dt     = CALCTIMESTEP(errType)
-  dt_min = CALCTIMESTEP(errType)
+  dt=CALCTIMESTEP(errType)
 #if USE_PARTICLES
 ELSE
   errType = 0

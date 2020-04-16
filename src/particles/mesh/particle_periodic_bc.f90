@@ -39,14 +39,13 @@ SUBROUTINE InitPeriodicBC()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools,            ONLY:GETINT,GETREALARRAY
-USE MOD_Particle_Mesh_Vars,     ONLY:GEO,NbrOfCases,casematrix
+USE MOD_Particle_Mesh_Vars,     ONLY:GEO
 USE MOD_Particle_Boundary_Vars, ONLY:PartBound
 USE MOD_Mesh_Vars,              ONLY:BoundaryType,nBCs
 #if USE_MPI
 USE MOD_Particle_Vars,          ONLY:PDM
 USE MOD_Particle_MPI_Vars,      ONLY:PartShiftVector
 #endif /*MPI*/
-!----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -55,15 +54,15 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                :: iVec, ind, ind2,iBC
+INTEGER                :: iVec,iBC
 CHARACTER(32)          :: hilf
 LOGICAL                :: hasPeriodic
 !===================================================================================================================================
 
-! sanity check with DG boundary conditions
-hasPeriodic=.FALSE.
+GEO%nPeriodicVectors       = GETINT('Part-nPeriodicVectors','0')
 
-! loop over all DG BCs and check for a periodic BC
+! sanity check with DG. Both must be either periodic or non-periodic.
+hasPeriodic = .FALSE.
 DO iBC=1,nBCs
   IF(BoundaryType(iBC,BC_TYPE).EQ.1) hasPeriodic=.TRUE.
 END DO ! iBC=1,nBCs
@@ -82,43 +81,6 @@ END DO
 
 CALL GetPeriodicVectors()
 
-! build periodic case matrix for shape-function-deposition
-IF (GEO%nPeriodicVectors.GT.0) THEN
-  ! build case matrix
-  NbrOfCases = 3**GEO%nPeriodicVectors
-  SDEALLOCATE(casematrix)
-  ALLOCATE(casematrix(1:NbrOfCases,1:3))
-  casematrix(:,:) = 0
-  IF (GEO%nPeriodicVectors.EQ.1) THEN
-    casematrix(1,1) = 1
-    casematrix(3,1) = -1
-  END IF
-  IF (GEO%nPeriodicVectors.EQ.2) THEN
-    casematrix(1:3,1) = 1
-    casematrix(7:9,1) = -1
-    DO ind = 1,3
-      casematrix(ind*3-2,2) = 1
-      casematrix(ind*3,2) = -1
-    END DO
-  END IF
-  IF (GEO%nPeriodicVectors.EQ.3) THEN
-    casematrix(1:9,1) = 1
-    casematrix(19:27,1) = -1
-    DO ind = 1,3
-      casematrix(ind*9-8:ind*9-6,2) = 1
-      casematrix(ind*9-2:ind*9,2) = -1
-      DO ind2 = 1,3
-        casematrix((ind2*3-2)+(ind-1)*9,3) = 1
-        casematrix((ind2*3)+(ind-1)*9,3) = -1
-      END DO
-    END DO
-  END IF
-ELSE
-  NbrOfCases = 1
-  SDEALLOCATE(casematrix)
-  ALLOCATE(casematrix(1:1,1:3))
-  casematrix(:,:) = 0
-END IF
 #if USE_MPI
 SDEALLOCATE(PartShiftVector)
 IF (GEO%nPeriodicVectors.GT.0) THEN
@@ -157,26 +119,25 @@ INTEGER                :: iPV
 REAL                   :: eps(1:3)!,dummy
 !===================================================================================================================================
 
-LOGWRITE(*,*)'nPeriodicVectors = ',GEO%nPeriodicVectors
-IF ((GEO%nPeriodicVectors.GT.3).OR.(GEO%nPeriodicVectors.LT.0)) THEN
-CALL abort(&
-__STAMP__&
-,'nPeriodicVectors must be >= 0 and <= 3!',GEO%nPeriodicVectors,999.)
-END IF
+LOGWRITE(*,*) 'nPeriodicVectors = ',GEO%nPeriodicVectors
+IF ((GEO%nPeriodicVectors.GT.3).OR.(GEO%nPeriodicVectors.LT.0)) &
+  CALL abort(__STAMP__,'nPeriodicVectors must be >= 0 and <= 3!',GEO%nPeriodicVectors,999.)
 
-GEO%directions=.FALSE.
-IF(GEO%nPeriodicVectors.EQ.0) RETURN
+GEO%directions = .FALSE.
+IF (GEO%nPeriodicVectors.EQ.0) RETURN
 
 SDEALLOCATE(GEO%DirPeriodicVectors)
 ALLOCATE(GEO%DirPeriodicVectors(1:GEO%nPeriodicVectors))
+
 ! check if all periodic vectors are cartesian
 !directions(1:3)=.FALSE.
 DO iPV = 1,GEO%nPeriodicVectors
   LOGWRITE(*,*)'PeriodicVectors(1:3),',iPV,')=',GEO%PeriodicVectors(1:3,iPV)
-  IF(GEO%PeriodicVectors(1,iPV).NE.0) THEN
-    IF((GEO%PeriodicVectors(2,iPV).NE.0).OR.(GEO%PeriodicVectors(3,iPV).NE.0)) &
+  IF (GEO%PeriodicVectors(1,iPV).NE.0) THEN
+    IF ((GEO%PeriodicVectors(2,iPV).NE.0).OR.(GEO%PeriodicVectors(3,iPV).NE.0)) &
       CALL abort(__STAMP__,'Periodic Vector not in Cartesian direction!',iPV)
-    GEO%DirPeriodicVectors(iPV)=1
+
+    GEO%DirPeriodicVectors(iPV) = 1
     IF (.NOT.GEO%directions(1)) THEN
       GEO%directions(1) = .TRUE.
     ELSE
@@ -185,17 +146,18 @@ DO iPV = 1,GEO%nPeriodicVectors
   ELSE IF (GEO%PeriodicVectors(2,iPV).NE.0) THEN
     IF ((GEO%PeriodicVectors(1,iPV).NE.0).OR.(GEO%PeriodicVectors(3,iPV).NE.0)) &
       CALL abort(__STAMP__,'Periodic Vector not in Cartesian direction!',iPV)
-    GEO%DirPeriodicVectors(iPV)=2
+
+    GEO%DirPeriodicVectors(iPV) = 2
     IF (.NOT.GEO%directions(2)) THEN
       GEO%directions(2) = .TRUE.
     ELSE
       CALL abort(__STAMP__,'2 Periodic Vectors in y-direction!',iPV)
     END IF
   ELSE IF (GEO%PeriodicVectors(3,iPV).NE.0) THEN
-    IF ((GEO%PeriodicVectors(1,iPV).NE.0).OR.(GEO%PeriodicVectors(2,iPV).NE.0)) THEN
+    IF ((GEO%PeriodicVectors(1,iPV).NE.0).OR.(GEO%PeriodicVectors(2,iPV).NE.0)) &
       CALL abort(__STAMP__,'Periodic Vector not in Cartesian direction!',iPV)
-    END IF
-    GEO%DirPeriodicVectors(iPV)=3
+
+    GEO%DirPeriodicVectors(iPV) = 3
     IF (.NOT.GEO%directions(3)) THEN
       GEO%directions(3) = .TRUE.
     ELSE

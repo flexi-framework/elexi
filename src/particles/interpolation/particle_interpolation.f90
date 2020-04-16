@@ -22,12 +22,12 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitParticleInterpolation
-  MODULE PROCEDURE InitParticleInterpolation
-END INTERFACE
-
 INTERFACE DefineParametersParticleInterpolation
   MODULE PROCEDURE DefineParametersParticleInterpolation
+END INTERFACE
+
+INTERFACE InitParticleInterpolation
+  MODULE PROCEDURE InitParticleInterpolation
 END INTERFACE
 
 INTERFACE InterpolateFieldToParticle
@@ -38,8 +38,8 @@ INTERFACE InterpolateFieldToSingleParticle
   MODULE PROCEDURE InterpolateFieldToSingleParticle
 END INTERFACE
 
-PUBLIC :: InitParticleInterpolation
 PUBLIC :: DefineParametersParticleInterpolation
+PUBLIC :: InitParticleInterpolation
 PUBLIC :: InterpolateFieldToParticle
 PUBLIC :: InterpolateFieldToSingleParticle
 !===================================================================================================================================
@@ -169,11 +169,14 @@ USE MOD_Mesh_Vars,                   ONLY: nElems
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
 USE MOD_Particle_Tracking_Vars,      ONLY: DoRefMapping
 USE MOD_Particle_Vars,               ONLY: PartPosRef,PartState,PDM,PEM
+#if USE_MPI
+USE MOD_Mesh_Vars,                   ONLY: offsetElem
+#endif /*USE_MPI*/
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars,    ONLY: RWModel,RWTime
 USE MOD_Particle_Vars,               ONLY: TurbPartState
 USE MOD_TimeDisc_Vars,               ONLY: t
-#endif
+#endif /*USE_RW*/
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -185,6 +188,7 @@ REAL,INTENT(IN)                     :: U(1:nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
 REAL,INTENT(OUT)                    :: FieldAtParticle(1:nVar,1:PDM%maxParticleNumber)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                          :: firstElem,lastElem,ElemID
 INTEGER                          :: firstPart,lastPart
 REAL                             :: field(nVar)
 INTEGER                          :: iPart,iElem!,iVar
@@ -209,12 +213,16 @@ IF (.NOT.InterpolationElemLoop) THEN
   DO iPart = firstPart, LastPart
     ! Particle already left the domain, ignore it
     IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
+
+    ! U is allocated locally, correct ElemID. The mesh uses global ID, so both need to be kept
+    ElemID = PEM%Element(iPart) - offsetElem
+
 #if USE_RW
     ! Do not change the particle velocity if RW is working in full Euler mode
     !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
     IF ((RWModel.EQ.'Gosman') .AND. (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 #endif
-    CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,PEM%Element(iPart)),FieldAtParticle(:,iPart))
+    CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,ElemID),FieldAtParticle(:,iPart))
   END DO
   RETURN
 END IF
@@ -229,7 +237,16 @@ FieldAtParticle(:,firstPart:lastPart)   = 0.
 
 ! Loop first over all elements, then over all particles within the element. Ideally, this reduces cache misses as the interpolation
 ! happens with the same element metrics
-DO iElem=1,nElems
+#if USE_MPI
+! Adjust check for new halo region, ElemID is now global element ID
+firstElem = offsetElem + 1
+lastElem  = offsetElem + nElems
+#else
+firstElem = 1
+lastElem  = PP_nElems
+#endif /*USE_MPI*/
+
+DO iElem = firstElem,lastElem
   DO iPart=firstPart,LastPart
     ! Particle already left the domain, ignore it
     IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
@@ -241,12 +258,15 @@ DO iElem=1,nElems
 
     ! Particle is inside and in current element
     IF (PEM%Element(iPart).EQ.iElem) THEN
+      ! U is allocated locally, correct ElemID. The mesh uses global ID, so both need to be kept
+      ElemID = iElem - offsetElem
+
       ! Not RefMapping, evaluate at physical position
       IF (.NOT.DoRefMapping) THEN
-        CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,iElem),field,iElem,iPart)
+        CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,iElem,iPart)
       ! RefMapping, evaluate in reference space
       ELSE
-        CALL EvaluateFieldAtRefPos(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,iElem),field)
+        CALL EvaluateFieldAtRefPos(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field)
       END IF ! RefMapping
 
       ! Add the interpolated field to the background field
@@ -271,7 +291,7 @@ USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRef
 USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
 USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PEM
 #if USE_MPI
-USE MOD_Mesh_Vars,               ONLY: nElems
+USE MOD_Mesh_Vars,               ONLY: offsetElem,nElems
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
@@ -298,7 +318,8 @@ FieldAtParticle(:)   = 0.
 ElemID=PEM%Element(PartID)
 ! No solution available in the halo region (yet), so return for particles there
 #if USE_MPI
-IF(ElemID.GT.nElems) RETURN
+! Adjust check for new halo region, ElemID is now global element ID
+IF ((ElemID.LT.offsetElem+1).OR.(ElemID.GT.offsetElem+nElems)) RETURN
 #endif
 
 IF (.NOT.DoRefMapping) THEN

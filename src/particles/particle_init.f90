@@ -366,7 +366,8 @@ END SUBROUTINE InitParticleGlobals
 !===================================================================================================================================
 ! Glue Subroutine for particle initialization
 !===================================================================================================================================
-SUBROUTINE InitParticles(ManualTimeStep_opt)
+!SUBROUTINE InitParticles(ManualTimeStep_opt)
+SUBROUTINE InitParticles()
 ! MODULES
 USE MOD_Globals
 USE Mod_Particle_Globals
@@ -388,7 +389,7 @@ USE MOD_Particle_SGS,               ONLY: ParticleInitSGS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN),OPTIONAL       :: ManualTimeStep_opt                                             !> ManualTimeStep coming from Posti
+!REAL,INTENT(IN),OPTIONAL       :: ManualTimeStep_opt                                             !> ManualTimeStep coming from Posti
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -401,7 +402,8 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES ...'
 
-CALL InitializeVariables(ManualTimeStep_opt)
+!CALL InitializeVariables(ManualTimeStep_opt)
+CALL InitializeVariables()
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
 #if USE_RW
 CALL ParticleInitRandomWalk()
@@ -431,7 +433,8 @@ END SUBROUTINE InitParticles
 !===================================================================================================================================
 ! Initialize the variables first
 !===================================================================================================================================
-SUBROUTINE InitializeVariables(ManualTimeStep_opt)
+!SUBROUTINE InitializeVariables(ManualTimeStep_opt)
+SUBROUTINE InitializeVariables()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
@@ -452,7 +455,7 @@ USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN),OPTIONAL       :: ManualTimeStep_opt                                             !> ManualTimeStep coming from Posti
+!REAL,INTENT(IN),OPTIONAL       :: ManualTimeStep_opt                                             !> ManualTimeStep coming from Posti
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -485,7 +488,8 @@ CALL InitializeVariablesAuxBC()
 ! calculate cartesian borders of node local and global mesh
 CALL GetMeshMinMax()
 
-CALL InitializeVariablesTimeStep(ManualTimeStep_opt)
+!CALL InitializeVariablesTimeStep(ManualTimeStep_opt)
+CALL InitializeVariablesTimeStep()
 
 !-- Build BGM and halo region
 CALL InitParticleMesh()
@@ -1281,7 +1285,8 @@ END IF
 END SUBROUTINE InitializeVariablesAuxBC
 
 
-SUBROUTINE InitializeVariablesTimeStep(ManualTimeStep_opt)
+!SUBROUTINE InitializeVariablesTimeStep(ManualTimeStep_opt)
+SUBROUTINE InitializeVariablesTimeStep()
 !===================================================================================================================================
 ! Initialize the variables first
 !===================================================================================================================================
@@ -1294,7 +1299,7 @@ USE MOD_Particle_Vars
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN),OPTIONAL   :: ManualTimeStep_opt
+!REAL,INTENT(IN),OPTIONAL   :: ManualTimeStep_opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------

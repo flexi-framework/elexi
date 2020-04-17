@@ -376,18 +376,32 @@ IF (t.GE.DelayTime) THEN
       !    Pt(iPart,:) = 0
       !ENDIF
 
-      Pt_temp  (1,iPart) = PartState(4,iPart)
-      Pt_temp  (2,iPart) = PartState(5,iPart)
-      Pt_temp  (3,iPart) = PartState(6,iPart)
-      Pt_temp  (4,iPart) = Pt       (1,iPart)
-      Pt_temp  (5,iPart) = Pt       (2,iPart)
-      Pt_temp  (6,iPart) = Pt       (3,iPart)
-      PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*b_dt(1)
-      PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*b_dt(1)
-      PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*b_dt(1)
-      PartState(4,iPart) = PartState(4,iPart) + Pt       (1,iPart)*b_dt(1)
-      PartState(5,iPart) = PartState(5,iPart) + Pt       (2,iPart)*b_dt(1)
-      PartState(6,iPart) = PartState(6,iPart) + Pt       (3,iPart)*b_dt(1)
+      IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
+        Pt_temp  (1,iPart) = PartState(4,iPart)
+        Pt_temp  (2,iPart) = PartState(5,iPart)
+        Pt_temp  (3,iPart) = PartState(6,iPart)
+        PartState(4,iPart) = Pt(1)
+        PartState(5,iPart) = Pt(2)
+        PartState(6,iPart) = Pt(3)
+
+        PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*b_dt(1)
+        PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*b_dt(1)
+        PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*b_dt(1)
+      ELSE
+        Pt_temp  (1,iPart) = PartState(4,iPart)
+        Pt_temp  (2,iPart) = PartState(5,iPart)
+        Pt_temp  (3,iPart) = PartState(6,iPart)
+        Pt_temp  (4,iPart) = Pt       (1,iPart)
+        Pt_temp  (5,iPart) = Pt       (2,iPart)
+        Pt_temp  (6,iPart) = Pt       (3,iPart)
+
+        PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*b_dt(1)
+        PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*b_dt(1)
+        PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*b_dt(1)
+        PartState(4,iPart) = PartState(4,iPart) + Pt       (1,iPart)*b_dt(1)
+        PartState(5,iPart) = PartState(5,iPart) + Pt       (2,iPart)*b_dt(1)
+        PartState(6,iPart) = PartState(6,iPart) + Pt       (3,iPart)*b_dt(1)
+      END IF
 
       ! Sanity Check Particle / WARNING: Might Cause Slowdowns
       !IF (ANY(ISNAN(PartState(:,iPart)))) THEN
@@ -608,33 +622,34 @@ IF (t.GE.DelayTime) THEN
   ! particle push for nth RK stage
   DO iPart=1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(iPart)) THEN
-        ! "normal" particles are pushed with whole timestep
+      ! "normal" particles are pushed with whole timestep
       IF (.NOT.PDM%IsNewPart(iPart)) THEN
-        Pt_temp(1,iPart) = PartState(4,iPart) - RKA(iStage) * Pt_temp(1,iPart)
-        Pt_temp(2,iPart) = PartState(5,iPart) - RKA(iStage) * Pt_temp(2,iPart)
-        Pt_temp(3,iPart) = PartState(6,iPart) - RKA(iStage) * Pt_temp(3,iPart)
-        Pt_temp(4,iPart) = Pt       (1,iPart) - RKA(iStage) * Pt_temp(4,iPart)
-        Pt_temp(5,iPart) = Pt       (2,iPart) - RKA(iStage) * Pt_temp(5,iPart)
-        Pt_temp(6,iPart) = Pt       (3,iPart) - RKA(iStage) * Pt_temp(6,iPart)
+        IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
+          Pt_temp(1,iPart) = PartState(4,iPart) - RKA(iStage) * Pt_temp(1,iPart)
+          Pt_temp(2,iPart) = PartState(5,iPart) - RKA(iStage) * Pt_temp(2,iPart)
+          Pt_temp(3,iPart) = PartState(6,iPart) - RKA(iStage) * Pt_temp(3,iPart)
 
-        ! Sanity Check Particle Pusher / WARNING: Might Cause Slowdowns
-        !IF (ANY(ISNAN(Pt(:,iPart)))) THEN
-        !  IPWRITE(UNIT_stdOut,*) 'Found invalid particle push, ignoring. PartID:', iPart
-        !  Pt(:,iPart) = 0
-        !ENDIF
+          PartState(4,iPart) = Pt(1)
+          PartState(5,iPart) = Pt(2)
+          PartState(6,iPart) = Pt(3)
+          PartState(1,iPart) = PartState(1,iPart) + Pt_temp(1,iPart)*b_dt(iStage)
+          PartState(2,iPart) = PartState(2,iPart) + Pt_temp(2,iPart)*b_dt(iStage)
+          PartState(3,iPart) = PartState(3,iPart) + Pt_temp(3,iPart)*b_dt(iStage)
+        ELSE
+          Pt_temp(1,iPart) = PartState(4,iPart) - RKA(iStage) * Pt_temp(1,iPart)
+          Pt_temp(2,iPart) = PartState(5,iPart) - RKA(iStage) * Pt_temp(2,iPart)
+          Pt_temp(3,iPart) = PartState(6,iPart) - RKA(iStage) * Pt_temp(3,iPart)
+          Pt_temp(4,iPart) = Pt       (1,iPart) - RKA(iStage) * Pt_temp(4,iPart)
+          Pt_temp(5,iPart) = Pt       (2,iPart) - RKA(iStage) * Pt_temp(5,iPart)
+          Pt_temp(6,iPart) = Pt       (3,iPart) - RKA(iStage) * Pt_temp(6,iPart)
 
-        PartState(1,iPart) = PartState(1,iPart) + Pt_temp(1,iPart)*b_dt(iStage)
-        PartState(2,iPart) = PartState(2,iPart) + Pt_temp(2,iPart)*b_dt(iStage)
-        PartState(3,iPart) = PartState(3,iPart) + Pt_temp(3,iPart)*b_dt(iStage)
-        PartState(4,iPart) = PartState(4,iPart) + Pt_temp(4,iPart)*b_dt(iStage)
-        PartState(5,iPart) = PartState(5,iPart) + Pt_temp(5,iPart)*b_dt(iStage)
-        PartState(6,iPart) = PartState(6,iPart) + Pt_temp(6,iPart)*b_dt(iStage)
-
-        ! Sanity Check Particle / WARNING: Might Cause Slowdowns
-        !IF (ANY(ISNAN(PartState(:,iPart)))) THEN
-        !  PDM%ParticleInside(iPart) = .FALSE.
-        !  IPWRITE(UNIT_stdOut,*) 'Found invalid particle, removing. PartID:', iPart
-        !ENDIF
+          PartState(1,iPart) = PartState(1,iPart) + Pt_temp(1,iPart)*b_dt(iStage)
+          PartState(2,iPart) = PartState(2,iPart) + Pt_temp(2,iPart)*b_dt(iStage)
+          PartState(3,iPart) = PartState(3,iPart) + Pt_temp(3,iPart)*b_dt(iStage)
+          PartState(4,iPart) = PartState(4,iPart) + Pt_temp(4,iPart)*b_dt(iStage)
+          PartState(5,iPart) = PartState(5,iPart) + Pt_temp(5,iPart)*b_dt(iStage)
+          PartState(6,iPart) = PartState(6,iPart) + Pt_temp(6,iPart)*b_dt(iStage)
+        END IF
 
       !IsNewPart: no Pt_temp history available. Either because of emissionType = 1 or because of reflection with almost zero wallVelo
       ELSE

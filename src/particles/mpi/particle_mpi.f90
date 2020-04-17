@@ -297,7 +297,7 @@ DO iPart=1,PDM%ParticleVecLength
   ELSE
     IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
   END IF
-  
+
   ElemID=PEM%Element(iPart)
   ProcID = ElemInfo_Shared(ELEM_RANK,ElemID)
 
@@ -309,7 +309,6 @@ DO iPart=1,PDM%ParticleVecLength
       PartMPIExchange%nPartsSend(1,GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,ProcID)) + 1
     PartTargetProc(iPart) = GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,ProcID)
 END DO ! iPart
-
 
 ! 2) send number of send particles
 !--- Loop over all neighboring procs. Map local proc ID to global through ExchangeProcToGlobalProc.
@@ -591,7 +590,7 @@ INTEGER                       :: MessageSize,nRecvParticles
 DO iProc=0,nExchangeProcessors-1
   ! skip proc if no particles are to be sent
   IF(SUM(PartMPIExchange%nPartsSend(:,iProc)).EQ.0) CYCLE
-  
+
   CALL MPI_WAIT(PartMPIExchange%SendRequest(2,iProc),MPIStatus,IERROR)
   IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
 END DO ! iProc
@@ -609,7 +608,7 @@ DO iProc=0,nExchangeProcessors-1
 
   ! finish communication with iproc
   CALL MPI_WAIT(PartMPIExchange%RecvRequest(2,iProc),recv_status_list(:,iProc),IERROR)
-  
+
   ! place particle information in correct arrays
   DO iPos=0,MessageSize-1,PartCommSize
     ! find free position in particle array

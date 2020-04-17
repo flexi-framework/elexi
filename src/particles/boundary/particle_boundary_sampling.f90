@@ -113,7 +113,7 @@ USE MOD_ReadInTools             ,ONLY: GETINT,GETLOGICAL,GETINTARRAY,GETSTR,COUN
 USE MOD_StringTools             ,ONLY: LowCase
 #if USE_MPI
 USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPIRankLeader
+USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPIRankLeader,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalSides,nNonUniqueGlobalSides
@@ -313,12 +313,16 @@ DO iSide = firstSide,lastSide
       GlobalSide2SurfSideProc(SURF_LEADER,iSide) = myLeaderGroupRank
     ELSE
       ! find the compute node
-      DO iLeader = 0,nLeaderProcs-1
+      DO iLeader = 0,nLeaderGroupProcs-2
+        ! The last proc is not a leader proc, so catch it separately
         IF ((GlobalElemRank.GE.MPIRankLeader(iLeader)).AND.(GlobalElemRank.LT.MPIRankLeader(iLeader+1))) THEN
           GlobalSide2SurfSideProc(SURF_LEADER,iSide) = iLeader
-      EXIT
-    END IF
-  END DO
+          EXIT
+        ELSE
+          GlobalSide2SurfSideProc(SURF_LEADER,iSide) = nLeaderGroupProcs-1
+          EXIT
+        END IF
+      END DO
     END IF
     SurfSide2GlobalSideProc(SURF_SIDEID,nSurfSidesProc) = iSide
     SurfSide2GlobalSideProc(2:3        ,nSurfSidesProc) = GlobalSide2SurfSideProc(2:3,iSide)

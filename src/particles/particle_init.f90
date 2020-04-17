@@ -193,6 +193,10 @@ CALL prms%CreateIntOption(      'Part-Species[$]-initialParticleNumber'  &
                                   'Initial particle number', '0', numberedmulti=.TRUE.)
 CALL prms%CreateIntOption(      'Part-Species[$]-NumberOfExcludeRegions'  &
                                 , 'Number of different regions to be excluded', '0', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(     'Part-Species[$]-PartDensity' &
+                                , 'TODO-DEFINE-PARAMETER\n'//&
+                                  'PartDensity (real particles per m^3) or (vpi_)cub./cyl. '//&
+                                  'as alternative to Part.Emis. in Type1 ', '0.', numberedmulti=.TRUE.)
 CALL prms%CreateIntOption(      'Part-Species[$]-ParticleEmissionType'  &
                                 , 'Define Emission Type for particles (volume emission)\n'//&
                                   '1 = emission rate in part/s,\n'//&
@@ -716,6 +720,7 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%VeloVecIC             = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-VeloVecIC',3,'0. , 0. , 0.')
     Species(iSpec)%Init(iInit)%ParticleEmissionType  = GETINT(      'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-ParticleEmissionType','2')
     Species(iSpec)%Init(iInit)%ParticleEmission      = GETREAL(     'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-ParticleEmission','0.')
+    Species(iSpec)%Init(iInit)%PartDensity           = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-PartDensity','0.')
     Species(iSpec)%Init(iInit)%NumberOfExcludeRegions= GETINT(      'Part-Species'//TRIM(tmpStr2)//'-NumberOfExcludeRegions','0')
 
     ! Nullify additional init data here

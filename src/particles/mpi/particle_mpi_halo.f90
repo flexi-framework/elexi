@@ -82,7 +82,7 @@ END DO
 ! Identify all procs with elements in range. If all elements are on the current proc, they are already added
 ! and we are done here
 IF (nComputeNodeElems.NE.nComputeNodeTotalElems) THEN
-  !> Count all MPI sides on current proc. 
+  !> Count all MPI sides on current proc.
   firstElem = offsetElem+1
   lastElem  = offsetElem+nElems
 
@@ -91,37 +91,37 @@ IF (nComputeNodeElems.NE.nComputeNodeTotalElems) THEN
   !  IF (SideInfo_Shared(SIDE_NBELEMTYPE,iSide).EQ.2) THEN
   !    nExchangeSides = nExchangeSides + 1
   !  END IF
-  !END DO 
+  !END DO
 
   !>>> For all element, loop over the six sides and check if the neighbor element is on the current proc
   !>>> Special care for big mortar sides, here the SIDE_ELEMID must be used
   nExchangeSides = 0
-  
+
   DO iElem = firstElem,lastElem
     DO iLocSide = 1,6
       SideID   = GetGlobalNonUniqueSideID(iElem,iLocSide)
       NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
-      
+
       ! Mortar side
       IF (NbElemID.LT.0) THEN
         nMortarElems = MERGE(4,2,SideInfo_Shared(SIDE_NBELEMID,SideID).EQ.-1)
-        
+
         DO iMortar = 1,nMortarElems
           NbSideID = -SideInfo_Shared(SIDE_LOCALID,SideID + iMortar)
           ! If small mortar side not defined, skip it for now, likely not inside the halo region
           IF (NbSideID.LT.1) CYCLE
-          
+
           NbElemID = SideInfo_Shared(SIDE_ELEMID,NbSideID)
           ! If small mortar element not defined, skip it for now, likely not inside the halo region
           IF (NbElemID.LT.1) CYCLE
-          
+
           ! If any of the small mortar sides is not on the local proc, the side is a MPI side
           IF (NbElemID.LT.firstElem .OR. NbElemID.GT.lastElem) THEN
             nExchangeSides = nExchangeSides + 1
             EXIT
           END IF
         END DO
-      
+
       ! regular side or small mortar side
       ELSE
         IF (NbElemID.LT.firstElem .OR. NbElemID.GT.lastElem) THEN
@@ -133,12 +133,12 @@ IF (nComputeNodeElems.NE.nComputeNodeTotalElems) THEN
 
   IF (nComputeNodeProcessors.GT.1.AND.nExchangeSides.EQ.0) &
     CALL ABORT(__STAMP__,'Found no side connectivity between processor domains')
-  
+
   !> Build mapping for all MPI sides on current proc
   ALLOCATE(ExchangeSides(1:nExchangeSides))
 
   nExchangeSides = 0
-  
+
   ! This approach does not work, we get only the MPI sides pointing into the compute-node halo region
   !DO iSide = firstSide,lastSide
   !  IF (SideInfo_Shared(SIDE_NBELEMTYPE,iSide).EQ.2) THEN
@@ -151,20 +151,20 @@ IF (nComputeNodeElems.NE.nComputeNodeTotalElems) THEN
     DO iLocSide = 1,6
       SideID   = GetGlobalNonUniqueSideID(iElem,iLocSide)
       NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
-    
+
       ! Mortar side
       IF (NbElemID.LT.0) THEN
         nMortarElems = MERGE(4,2,SideInfo_Shared(SIDE_NBELEMID,SideID).EQ.-1)
-        
+
         DO iMortar = 1,nMortarElems
           NbSideID = -SideInfo_Shared(SIDE_LOCALID,SideID + iMortar)
           ! If small mortar side not defined, skip it for now, likely not inside the halo region
           IF (NbSideID.LT.1) CYCLE
-          
+
           NbElemID = SideInfo_Shared(SIDE_ELEMID,NbSideID)
           ! If small mortar element not defined, skip it for now, likely not inside the halo region
           IF (NbElemID.LT.1) CYCLE
-          
+
           ! If any of the small mortar sides is not on the local proc, the side is a MPI side
           IF (NbElemID.LT.firstElem .OR. NbElemID.GT.lastElem) THEN
             nExchangeSides = nExchangeSides + 1
@@ -172,7 +172,7 @@ IF (nComputeNodeElems.NE.nComputeNodeTotalElems) THEN
             EXIT
           END IF
         END DO
-      
+
       ! regular side or small mortar side
       ELSE
         IF (NbElemID.LT.firstElem .OR. NbElemID.GT.lastElem) THEN
@@ -199,24 +199,28 @@ IF (nComputeNodeElems.NE.nComputeNodeTotalElems) THEN
   END DO
 
   !> Check all elements in the CN halo region against local MPI sides. Check is identical to particle_bgm.f90
-  !>>> Check the bounding box of each element in compute-nodes' halo domain against the bounding boxes of the 
+  !>>> Check the bounding box of each element in compute-nodes' halo domain against the bounding boxes of the
   !>>> of the elements of the MPI-surface (local proc MPI sides)
-  DO iElem = nComputeNodeElems,nComputeNodeTotalElems
+  DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
     ElemID = CNTotalElem2GlobalElem(iElem)
     HaloProc = ElemInfo_Shared(ELEM_RANK,ElemID)
-    
+
 !#if CODE_ANALYZE
     ! Sanity checks. Elems in halo region must have ELEM_HALOFLAG=2 and the proc must not be flagged yet
-    IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).NE.2) &
-      CALL ABORT(__STAMP__, 'Element found in range of halo elements while not flagged as such!')
-    
-    IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc).EQ.1) &
+    IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).NE.2) THEN
+      IPWRITE(UNIT_stdOut,*) 'Element ID:',ElemID,'Halo Flag: ',ElemInfo_Shared(ELEM_HALOFLAG,ElemID)
+      CALL ABORT(__STAMP__,  'Element found in range of halo elements while not flagged as such!')
+    END IF
+
+    IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc).EQ.1) THEN
+      IPWRITE(UNIT_stdOut,*) 'Element ID:',ElemID,'Halo Proc: ',HaloProc
       CALL ABORT(__STAMP__, 'Proc claimed to have elements both on compute node and in halo region!')
+    END IF
 !#endif
 
     ! Skip if the proc is already flagged
     IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc).EQ.2) CYCLE
-    
+
     BoundsOfElemCenter(1:3) = (/ SUM(BoundsOfElem_Shared(1:2,1,ElemID)), &
                                 SUM(BoundsOfElem_Shared(1:2,2,ElemID)), &
                                 SUM(BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
@@ -227,7 +231,7 @@ IF (nComputeNodeElems.NE.nComputeNodeTotalElems) THEN
         ! compare distance of centers with sum of element outer radii+halo_eps
         IF (VECNORM(BoundsOfElemCenter(1:3)-MPISideBoundsOfElemCenter(1:3,iSide)) &
             .GT. halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide) ) CYCLE
-        
+
         ! flag the proc as exchange proc (in halo region)
         GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
         GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -249,8 +253,8 @@ END DO
 nExchangeProcessors = nComputeNodeProcessors
 DO iProc = 0,nProcessors_Global-1
   IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).EQ.2) THEN
-    ExchangeProcToGlobalProc(EXCHANGE_PROC_TYPE,iProc) = 2
-    ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,iProc) = nExchangeProcessors
+    ExchangeProcToGlobalProc(EXCHANGE_PROC_TYPE,nExchangeProcessors) = 2
+    ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,nExchangeProcessors) = iProc
     nExchangeProcessors = nExchangeProcessors +1
   END IF
 END DO

@@ -250,9 +250,7 @@ ELSE
         PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
       END IF
     ELSE
-          CALL abort(&
-    __STAMP__&
-    ,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
+      CALL ABORT(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
     END IF
   END DO
 END IF

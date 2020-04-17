@@ -209,7 +209,7 @@ ELSE
     halo_eps = MAX(halo_eps,RKc(iStage+1)-RKc(iStage))
   END DO
   halo_eps = MAX(halo_eps,1.-RKc(nRKStages))
-  SWRITE(UNIT_stdOut,'(A46,E24.12)') ' |                  max. RKdtFrac','CALCUL. | ',halo_eps
+  SWRITE(UNIT_stdOut,'(A46,E24.12)')   ' |                    max. RKdtFrac,CALCUL. | ',halo_eps
   !dt multiplied with maximum RKdtFrac
   halo_eps = halo_eps*halo_eps_velo*deltaT*SafetyFactor
 
@@ -560,12 +560,18 @@ IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
   DO iElem = firstHaloElem, lastHaloElem
     ElemID = offsetCNHalo2GlobalElem(iElem)
     IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).EQ.0) CYCLE
-    BGMCellXmin = ElemToBGM_Shared(1,ElemID)
-    BGMCellXmax = ElemToBGM_Shared(2,ElemID)
-    BGMCellYmin = ElemToBGM_Shared(3,ElemID)
-    BGMCellYmax = ElemToBGM_Shared(4,ElemID)
-    BGMCellZmin = ElemToBGM_Shared(5,ElemID)
-    BGMCellZmax = ElemToBGM_Shared(6,ElemID)
+!    BGMCellXmin = ElemToBGM_Shared(1,ElemID)
+!    BGMCellXmax = ElemToBGM_Shared(2,ElemID)
+!    BGMCellYmin = ElemToBGM_Shared(3,ElemID)
+!    BGMCellYmax = ElemToBGM_Shared(4,ElemID)
+!    BGMCellZmin = ElemToBGM_Shared(5,ElemID)
+!    BGMCellZmax = ElemToBGM_Shared(6,ElemID)
+    BGMCellXmin = MAX(ElemToBGM_Shared(1,ElemID),BGMimin)
+    BGMCellXmax = MIN(ElemToBGM_Shared(2,ElemID),BGMimax)
+    BGMCellYmin = MAX(ElemToBGM_Shared(3,ElemID),BGMjmin)
+    BGMCellYmax = MIN(ElemToBGM_Shared(4,ElemID),BGMjmax)
+    BGMCellZmin = MAX(ElemToBGM_Shared(5,ElemID),BGMkmin)
+    BGMCellZmax = MIN(ElemToBGM_Shared(6,ElemID),BGMkmax)
     ! add current Element to BGM-Elem
     DO kBGM = BGMCellZmin,BGMCellZmax
       DO jBGM = BGMCellYmin,BGMCellYmax
@@ -582,12 +588,18 @@ END IF
 #endif  /*USE_MPI*/
 
 DO iElem = offsetElem+1, offsetElem+nElems
-  BGMCellXmin = ElemToBGM_Shared(1,iElem)
-  BGMCellXmax = ElemToBGM_Shared(2,iElem)
-  BGMCellYmin = ElemToBGM_Shared(3,iElem)
-  BGMCellYmax = ElemToBGM_Shared(4,iElem)
-  BGMCellZmin = ElemToBGM_Shared(5,iElem)
-  BGMCellZmax = ElemToBGM_Shared(6,iElem)
+!  BGMCellXmin = ElemToBGM_Shared(1,iElem)
+!  BGMCellXmax = ElemToBGM_Shared(2,iElem)
+!  BGMCellYmin = ElemToBGM_Shared(3,iElem)
+!  BGMCellYmax = ElemToBGM_Shared(4,iElem)
+!  BGMCellZmin = ElemToBGM_Shared(5,iElem)
+!  BGMCellZmax = ElemToBGM_Shared(6,iElem)
+  BGMCellXmin = MAX(ElemToBGM_Shared(1,iElem),BGMimin)
+  BGMCellXmax = MIN(ElemToBGM_Shared(2,iElem),BGMimax)
+  BGMCellYmin = MAX(ElemToBGM_Shared(3,iElem),BGMjmin)
+  BGMCellYmax = MIN(ElemToBGM_Shared(4,iElem),BGMjmax)
+  BGMCellZmin = MAX(ElemToBGM_Shared(5,iElem),BGMkmin)
+  BGMCellZmax = MIN(ElemToBGM_Shared(6,iElem),BGMkmax)
   ! add current Element to BGM-Elem
   DO kBGM = BGMCellZmin,BGMCellZmax
     DO jBGM = BGMCellYmin,BGMCellYmax
@@ -916,7 +928,7 @@ PURE FUNCTION FINDLOC(Array,Value,Dim)
 !> Implements a subset of the intrinsic FINDLOC function for Fortran < 2008
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
-USE MOD_Globals                ,ONLY: ABORT
+!USE MOD_Globals                ,ONLY: ABORT
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -939,7 +951,7 @@ DO iVar = 1,SIZE(ARRAY,1)
   END IF
 END DO
 
-CALL ABORT(__STAMP__,'Periodic vector not found in array!')
+!CALL ABORT(__STAMP__,'Periodic vector not found in array!')
 
 END FUNCTION FINDLOC
 #endif

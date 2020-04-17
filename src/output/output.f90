@@ -258,7 +258,7 @@ DO iPart=1,PDM%ParticleVecLength
 END DO
 #if USE_MPI
 ! Gather number of particles on ALL procs
-CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 #else
 nParticleInDomain = nParticleOnProc
 #endif

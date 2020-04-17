@@ -334,7 +334,7 @@ USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
-USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos
+USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos,PartSpecies,Species
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/
@@ -380,9 +380,9 @@ IF (t.GE.DelayTime) THEN
         Pt_temp  (1,iPart) = PartState(4,iPart)
         Pt_temp  (2,iPart) = PartState(5,iPart)
         Pt_temp  (3,iPart) = PartState(6,iPart)
-        PartState(4,iPart) = Pt(1)
-        PartState(5,iPart) = Pt(2)
-        PartState(6,iPart) = Pt(3)
+        PartState(4,iPart) = Pt(1,iPart)
+        PartState(5,iPart) = Pt(2,iPart)
+        PartState(6,iPart) = Pt(3,iPart)
 
         PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*b_dt(1)
         PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*b_dt(1)
@@ -578,7 +578,7 @@ USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping,TriaTracking
-USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos
+USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos,PartSpecies,Species
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/
@@ -629,9 +629,9 @@ IF (t.GE.DelayTime) THEN
           Pt_temp(2,iPart) = PartState(5,iPart) - RKA(iStage) * Pt_temp(2,iPart)
           Pt_temp(3,iPart) = PartState(6,iPart) - RKA(iStage) * Pt_temp(3,iPart)
 
-          PartState(4,iPart) = Pt(1)
-          PartState(5,iPart) = Pt(2)
-          PartState(6,iPart) = Pt(3)
+          PartState(4,iPart) = Pt(1,iPart)
+          PartState(5,iPart) = Pt(2,iPart)
+          PartState(6,iPart) = Pt(3,iPart)
           PartState(1,iPart) = PartState(1,iPart) + Pt_temp(1,iPart)*b_dt(iStage)
           PartState(2,iPart) = PartState(2,iPart) + Pt_temp(2,iPart)*b_dt(iStage)
           PartState(3,iPart) = PartState(3,iPart) + Pt_temp(3,iPart)*b_dt(iStage)

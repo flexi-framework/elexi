@@ -116,7 +116,11 @@ CASE('Tracer')
 !===================================================================================================================================
 ! Passive tracer moving with fluid velocity
 !===================================================================================================================================
-Pt         = FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)
+IF(ALLOCATED(TurbPartState)) THEN
+  Pt         = FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)
+ELSE
+  Pt         = FieldAtParticle(2:4)/FieldAtParticle(1)
+END IF
 
 CASE('Convergence')
 !===================================================================================================================================

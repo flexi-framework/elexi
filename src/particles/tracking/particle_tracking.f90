@@ -1046,7 +1046,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: GEO,ElemEpsOneCell
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_Element,FIBGM_offsetElem
-USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID
+USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID,GetCNElemID
 USE MOD_Particle_MPI_Vars      ,ONLY: halo_eps2
 USE MOD_Particle_Tracking_Vars ,ONLY: nTracks,Distance,ListDistance,CartesianPeriodic
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
@@ -1067,6 +1067,7 @@ IMPLICIT NONE
 INTEGER                           :: iPart
 ! Elements
 INTEGER                           :: ElemID,oldElemID,newElemID,LastElemID
+INTEGER                           :: CNElemID
 ! Background mesh
 INTEGER                           :: CellX,CellY,CellZ,iBGMElem,nBGMElems
 ! Particles
@@ -1076,7 +1077,7 @@ REAL                              :: vec(3),lengthPartTrajectory0
 INTEGER                           :: InElem
 #endif
 ! Tracking
-INTEGER                           :: TestElem
+INTEGER                           :: TestElem,CNTestElem
 LOGICAL                           :: PartisDone,PartIsMoved
 REAL                              :: epsElement
 #if USE_LOADBALANCE
@@ -1088,6 +1089,7 @@ DO iPart=1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
     LastElemID = PEM%lastElement(iPart)
     ElemID     = LastElemID
+    CNElemID   = GetCNElemID(ElemID)
 #if USE_LOADBALANCE
     CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -1099,13 +1101,13 @@ DO iPart=1,PDM%ParticleVecLength
     IF (ElemToBCSides(ELEM_NBR_BCSIDES,ElemID).GT.0) THEN
       lengthPartTrajectory0 = 0.
       CALL ParticleBCTracking(lengthPartTrajectory0 &
-                             ,ElemID                                                                              &
-                             ,ElemToBCSides(ELEM_FIRST_BCSIDE,ElemID)                                             &
-                             ,ElemToBCSides(ELEM_FIRST_BCSIDE,ElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,ElemID) -1 &
-                             ,ElemToBCSides(ELEM_NBR_BCSIDES,ElemID)                                              &
-                             ,iPart                                                                               &
-                             ,PartIsDone                                                                          &
-                             ,PartIsMoved                                                                         &
+                             ,ElemID                                                                                  &
+                             ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID)                                               &
+                             ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID) -1 &
+                             ,ElemToBCSides(ELEM_NBR_BCSIDES ,CNElemID)                                               &
+                             ,iPart                                                                                   &
+                             ,PartIsDone                                                                              &
+                             ,PartIsMoved                                                                             &
                              ,1)
       ! Particle has left domain by a boundary condition
       IF(PartIsDone) CYCLE
@@ -1131,7 +1133,7 @@ DO iPart=1,PDM%ParticleVecLength
       IF (GEO%nPeriodicVectors.GT.0.AND.CartesianPeriodic) THEN
         LastPos=PartState(1:3,iPart)
         CALL PeriodicMovement(iPart)
-        IF (ElemToBCSides(ELEM_NBR_BCSIDES,ElemID).EQ.-1) THEN
+        IF (ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID).EQ.-1) THEN
           DO WHILE ( .NOT.ALMOSTEQUAL(LastPos(1),PartState(1,iPart)) &
               .OR.   .NOT.ALMOSTEQUAL(LastPos(2),PartState(2,iPart)) &
               .OR.   .NOT.ALMOSTEQUAL(LastPos(3),PartState(3,iPart)) )
@@ -1184,23 +1186,24 @@ DO iPart=1,PDM%ParticleVecLength
       Distance     = -1.
       ListDistance = -1
       DO iBGMElem = 1, nBGMElems
-        ElemID = GetCNElemID(FIBGM_Element(FIBGM_offsetElem(CellX,CellY,CellZ)+iBGMElem))
-        ListDistance(iBGMElem) = ElemID
+        ElemID   = FIBGM_Element(FIBGM_offsetElem(CellX,CellY,CellZ)+iBGMElem)
+        CNElemID = GetCNElemID(FIBGM_Element(FIBGM_offsetElem(CellX,CellY,CellZ)+iBGMElem))
+        ListDistance(iBGMElem) = CNElemID
 
         ! no element associated with BGM elelemt
         IF (ElemID.EQ.-1) &
           CALL ABORT(__STAMP__,'Error during RefMapping: unable to find element associated with BGM element!')
 
         ! oldElemID was previously checked and particle not found inside
-        IF(ElemID.EQ.OldElemID)THEN
+        IF (ElemID.EQ.OldElemID) THEN
           Distance(iBGMElem) = -1.0
         ELSE
-          Distance(iBGMElem) = ( (PartState(1,iPart)-ElemBaryNGeo_Shared(1,ElemID))*(PartState(1,iPart)-ElemBaryNGeo_Shared(1,ElemID)) &
-                               + (PartState(2,iPart)-ElemBaryNGeo_Shared(2,ElemID))*(PartState(2,iPart)-ElemBaryNGeo_Shared(2,ElemID)) &
-                               + (PartState(3,iPart)-ElemBaryNGeo_Shared(3,ElemID))*(PartState(3,iPart)-ElemBaryNGeo_Shared(3,ElemID)))
+          Distance(iBGMElem) = ( (PartState(1,iPart)-ElemBaryNGeo_Shared(1,CNElemID))*(PartState(1,iPart)-ElemBaryNGeo_Shared(1,CNElemID)) &
+                               + (PartState(2,iPart)-ElemBaryNGeo_Shared(2,CNElemID))*(PartState(2,iPart)-ElemBaryNGeo_Shared(2,CNElemID)) &
+                               + (PartState(3,iPart)-ElemBaryNGeo_Shared(3,CNElemID))*(PartState(3,iPart)-ElemBaryNGeo_Shared(3,CNElemID)))
 
           ! Do not consider the element if it is too far away
-          IF(Distance(iBGMElem).GT.ElemRadius2NGeo(ElemID))THEN
+          IF(Distance(iBGMElem).GT.ElemRadius2NGeo(CNElemID))THEN
             Distance(iBGMElem)=-1.0
           END IF
         END IF
@@ -1222,7 +1225,7 @@ DO iPart=1,PDM%ParticleVecLength
       ! ignore old element and elements out of range
       IF(ALMOSTEQUAL(Distance(iBGMELem),-1.0)) CYCLE
 
-      ElemID = ListDistance(iBGMElem)
+      ElemID = GetGlobalElemID(ListDistance(iBGMElem))
 #if USE_LOADBALANCE
       ! Cell is on current proc, assign load to new cell
       IF (ElemID.GT.offsetElem+1.AND.ElemID.LE.offsetElem+PP_nElems) THEN
@@ -1259,18 +1262,19 @@ DO iPart=1,PDM%ParticleVecLength
       END IF
 
       ! Set test element
-      TestElem = PEM%Element(iPart)
-      IF(TestElem.EQ.0.)THEN
+      TestElem   = PEM%Element(iPart)
+      CNTestElem = GetCNElemID(TestElem)
+      IF(CNTestElem.LE.0.)THEN
         epsElement = MAXVAL(ElemEpsOneCell)
       ELSE
-        epsElement = ElemEpsOneCell(TestElem)
+        epsElement = ElemEpsOneCell(CNTestElem)
       END IF
 
       ! Position in reference space is outside tolerance of the test element
       IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).GT.epsElement) THEN
         PartIsDone=.FALSE.
         ! Element is not a boundary element
-        IF (ElemToBCSides(ELEM_NBR_BCSIDES,TestElem).LE.0) THEN
+        IF (ElemToBCSides(ELEM_NBR_BCSIDES,CNTestElem).LE.0) THEN
           ! ausgabe
           IPWRITE(UNIT_stdOut,'(I0,A)') ' Tolerance Issue with internal element '
           IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' xi                     ', PartPosRef(1:3,iPart)
@@ -1323,24 +1327,24 @@ DO iPart=1,PDM%ParticleVecLength
           ! Tracking on curved meshes with NGeo>1. Check if the particle intersected with face and left the element
           IF(useCurveds)THEN
             IF(NGeo.GT.1)THEN
-              CALL FallBackFaceIntersection(TestElem                                                                                &
-                                           ,ElemToBCSides(ELEM_FIRST_BCSIDE,TestElem)                                               &
-                                           ,ElemToBCSides(ELEM_FIRST_BCSIDE,TestElem) + ElemToBCSides(ELEM_NBR_BCSIDES,TestElem) -1 &
-                                           ,ElemToBCSides(ELEM_NBR_BCSIDES ,TestElem)                                               &
+              CALL FallBackFaceIntersection(TestElem                                                                                    &
+                                           ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem)                                                 &
+                                           ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem) + ElemToBCSides(ELEM_NBR_BCSIDES,CNTestElem) -1 &
+                                           ,ElemToBCSides(ELEM_NBR_BCSIDES ,CNTestElem)                                                 &
                                            ,iPart)
               END IF
           END IF
 
           ! No fall back algorithm algorithm, try the normal tracking for boundary elements
           lengthPartTrajectory0 = 0.
-          CALL ParticleBCTracking(lengthPartTrajectory0 &
-                                 ,TestElem                                                                                &
-                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,TestElem)                                               &
-                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,TestElem) + ElemToBCSides(ELEM_NBR_BCSIDES,TestElem) -1 &
-                                 ,ElemToBCSides(ELEM_NBR_BCSIDES ,TestElem)                                               &
-                                 ,iPart                                                                                   &
-                                 ,PartIsDone                                                                              &
-                                 ,PartIsMoved                                                                             &
+          CALL ParticleBCTracking(lengthPartTrajectory0                                                                       &
+                                 ,TestElem                                                                                    &
+                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem)                                                 &
+                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem) + ElemToBCSides(ELEM_NBR_BCSIDES,CNTestElem) -1 &
+                                 ,ElemToBCSides(ELEM_NBR_BCSIDES ,CNTestElem)                                                 &
+                                 ,iPart                                                                                       &
+                                 ,PartIsDone                                                                                  &
+                                 ,PartIsMoved                                                                                 &
                                  ,1)
           IF(PartIsDone) CYCLE
 

@@ -2128,6 +2128,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,SideInfo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides,SideBCMetrics
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared,ElemRadiusNGeo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides_Shared,SideBCMetrics_Shared
+USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
 USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
@@ -2265,11 +2266,12 @@ offsetBCSides     = 0
 
 ! sum up all BC sides in range of BC_halo_eps
 DO iElem = firstElem,lastElem
+  ElemID = GetGlobalElemID(iElem)
   nBCSidesElem  = 0
   BCSideElem    = .FALSE.
 
   ! check local side of an element
-  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,iElem)
+  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
     IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
     nBCSidesElem = nBCSidesElem + 1
     nBCSidesProc = nBCSidesProc + 1
@@ -2278,7 +2280,7 @@ DO iElem = firstElem,lastElem
   ! loop over all sides. Check distance from every local side to total sides. Once a side has been flagged,
   ! it must not be counted again
   DO ilocSide = 1,6
-    SideID = GetGlobalNonUniqueSideID(iElem,ilocSide)
+    SideID = GetGlobalNonUniqueSideID(ElemID,ilocSide)
     ! Get BezierControlPoints for local side. BezierControlPoints3D available for ALL sides in shared memory
     NodesLocSide(:,:,:)= BezierControlPoints3D(:,:,:,SideID)
     SELECT CASE(ilocSide)
@@ -2295,7 +2297,7 @@ DO iElem = firstElem,lastElem
       ! ignore non-BC sides
       IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
       ! ignore sides of the same element
-      IF (SideInfo_Shared(SIDE_ELEMID,iSide).EQ.iElem) CYCLE
+      IF (SideInfo_Shared(SIDE_ELEMID,iSide).EQ.ElemID) CYCLE
       ! ignore already flagged sides
       IF (BCSideElem(iSide).EQV..TRUE.) CYCLE
 
@@ -2565,6 +2567,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: dXCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemsJ,ElemEpsOneCell
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemsJ_Shared,ElemEpsOneCell_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: RefMappingEps
+USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID
 #if USE_MPI
 USE MOD_Mesh_Vars              ,ONLY: offsetElem
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
@@ -2579,6 +2582,7 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                        :: ElemID
 INTEGER                        :: i,j,k
 ! Vandermonde matrices
 REAL                           :: Vdm_CLNGeo_NGeoRef(0:NgeoRef,0:NGeo)
@@ -2621,7 +2625,8 @@ CALL GetVandermonde(    Ngeo   , NodeTypeCL  , NgeoRef , NodeType  , Vdm_CLNGeo_
 CALL GetVandermonde(    NgeoRef, NodeType    , PP_N    , NodeType  , Vdm_NGeoRef_N     , modal=.TRUE.)
 
 DO iElem = firstElem,lastElem
-  ElemLocID = iElem-offsetElem
+  ElemID    = GetGlobalElemID(iElem)
+  ElemLocID = ElemID-offsetElem
   ! element on local proc, sJ already calculated in metrics.f90
   IF ((ElemLocID.GT.0) .AND. (ElemLocID.LE.nElems)) THEN
     ElemsJ(:,:,:,iElem) = sJ(:,:,:,ElemLocID,0)

@@ -293,8 +293,7 @@ DO iSide = firstSide,lastSide
     nSurfSidesProc = nSurfSidesProc + 1
 #if USE_MPI
     ! check if element for this side is on the current compute-node
-    IF ((SideInfo_Shared(SIDE_ID,iSide).GT.ElemInfo_Shared(ELEM_FIRSTSIDEIND,offsetComputeNodeElem+1))                  .AND. &
-        (SideInfo_Shared(SIDE_ID,iSide).LE.ElemInfo_Shared(ELEM_LASTSIDEIND ,offsetComputeNodeElem+nComputeNodeElems))) THEN
+    IF ((SideInfo_Shared(SIDE_ELEMID,iSide).GE.offsetComputeNodeElem+1).AND.SideInfo_Shared(SIDE_ELEMID,iSide).LE.offsetComputeNodeElem+nComputeNodeElems) THEN
       nComputeNodeSurfSides  = nComputeNodeSurfSides + 1
     END IF
 
@@ -324,6 +323,12 @@ DO iSide = firstSide,lastSide
         END IF
       END DO
     END IF
+
+    ! check if element for this side is on the current compute-node. Alternative version to the check above
+!    IF (GlobalSide2SurfSideProc(SURF_LEADER,iSide).EQ.myLeaderGroupRank) THEN
+!      nComputeNodeSurfSides  = nComputeNodeSurfSides + 1
+!    END IF
+
     SurfSide2GlobalSideProc(SURF_SIDEID,nSurfSidesProc) = iSide
     SurfSide2GlobalSideProc(2:3        ,nSurfSidesProc) = GlobalSide2SurfSideProc(2:3,iSide)
   END IF ! reflective side
@@ -380,10 +385,11 @@ CALL MPI_WIN_LOCK_ALL(0,SurfSide2GlobalSide_Shared_Win,IERROR)
 SurfSide2GlobalSide => SurfSide2GlobalSide_Shared
 
 ! This barrier MIGHT not be required
+CALL MPI_WIN_SYNC(GlobalSide2SurfSide_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(SurfSide2GlobalSide_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
-SurfSide2GlobalSide(    :,offsetSurfTotalSidesProc+1:offsetSurfTotalSidesProc+nSurfSidesProc) &
+SurfSide2GlobalSide(        :,offsetSurfTotalSidesProc+1:offsetSurfTotalSidesProc+nSurfSidesProc) &
   = SurfSide2GlobalSideProc(:,1                         :                         nSurfSidesProc)
 
 CALL MPI_WIN_SYNC(GlobalSide2SurfSide_Shared_Win,IERROR)
@@ -402,6 +408,14 @@ DEALLOCATE(SurfSide2GlobalSideProc)
 SurfOnNode = .FALSE.
 IF (nComputeNodeSurfTotalSides.GT.0) SurfOnNode = .TRUE.
 
+! Set size of erosion sampling array
+nErosionVars        = 17
+IF (nSpecies.EQ.1) THEN
+    SurfSampSize   = nErosionVars
+ELSE
+    SurfSampSize   = nErosionVars*(nSpecies+1)
+END IF
+
 !> Leader communication
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) THEN
@@ -417,18 +431,11 @@ nSurfTotalSides = nComputeNodeTotalSides
 !> User sanity check
 SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of sampling sides:               ', nSurfTotalSides
 
-! allocate arrays to hold data. If nSpecies > 1, one more species is added to hold the global average
-nErosionVars        = 17
-IF (nSpecies.EQ.1) THEN
-    SurfSampSize   = nErosionVars
-ELSE
-    SurfSampSize   = nErosionVars*(nSpecies+1)
-END IF
-
 ! surface sampling array do not need to be allocated if there are no sides within halo_eps range
 IF(.NOT.SurfOnNode) RETURN
 
-! allocate everything. Caution: SideID is surfSideID, not global ID
+! allocate arrays to hold data. If nSpecies > 1, one more species is added to hold the global average
+! Caution: SideID is surfSideID, not global ID
 !> First local arrays for boundary sampling
 !>>> Pointer structure type ruins possibility of ALLREDUCE, need separate arrays for everything
 ALLOCATE(SampWallState(1:SurfSampSize,1:nSurfSample,1:nSurfSample,1:nComputeNodeSurfTotalSides))

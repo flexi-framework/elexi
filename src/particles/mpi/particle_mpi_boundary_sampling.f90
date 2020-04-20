@@ -77,6 +77,9 @@ INTEGER                       :: RecvRequest(0:nLeaderGroupProcs-1),SendRequest(
 INTEGER                       :: SendSurfGlobalID(0:nLeaderGroupProcs-1,1:nComputeNodeSurfTotalSides)
 !INTEGER                       :: SampSizeAllocate
 !===================================================================================================================================
+
+nRecvSurfSidesTmp = 0
+
 !--- Open receive buffer (number of sampling surfaces in other node's halo region)
 DO iProc = 0,nLeaderGroupProcs-1
   IF (iProc.EQ.myLeaderGroupRank) CYCLE
@@ -92,7 +95,6 @@ DO iProc = 0,nLeaderGroupProcs-1
 END DO
 
 !--- count all surf sides per other compute-node which get sampling data from current leader
-nRecvSurfSidesTmp = 0
 nSendSurfSidesTmp = 0
 
 DO iSide = 1,nComputeNodeSurfTotalSides
@@ -120,9 +122,9 @@ END DO
 DO iProc = 0,nLeaderGroupProcs-1
   IF (iProc.EQ.myLeaderGroupRank) CYCLE
 
-  CALL MPI_WAIT(SendRequest(iProc),msg_status(:),IERROR)
+  CALL MPI_WAIT(SendRequest(iProc),MPISTATUS,IERROR)
   IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
-  CALL MPI_WAIT(RecvRequest(iProc),msg_status(:),IERROR)
+  CALL MPI_WAIT(RecvRequest(iProc),MPISTATUS,IERROR)
   IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
 END DO
 
@@ -175,8 +177,8 @@ DO iProc = 0,nSurfLeaders-1
   IF (iProc .EQ. mySurfRank) CYCLE
 
   ! Save number of send and recv sides
-  SurfMapping(iProc)%nRecvSurfSides = nSendSurfSidesTmp(MPIRankSurfLeader(iProc))
-  SurfMapping(iProc)%nSendSurfSides = nRecvSurfSidesTmp(MPIRankSurfLeader(iProc))
+  SurfMapping(iProc)%nRecvSurfSides = nRecvSurfSidesTmp(MPIRankSurfLeader(iProc))
+  SurfMapping(iProc)%nSendSurfSides = nSendSurfSidesTmp(MPIRankSurfLeader(iProc))
 
   ! Only open recv buffer if we are expecting sides from this leader node
   IF (nRecvSurfSidesTmp(MPIRankSurfLeader(iProc)).EQ.0) CYCLE
@@ -247,7 +249,6 @@ DO iProc = 0,nSurfLeaders-1
     SurfRecvBuf(iProc)%content = 0.
   END IF
 END DO ! iProc
-
 
 !--- Save number of total surf sides
 IF (surfOnNode) THEN
@@ -428,6 +429,10 @@ IF (myComputeNodeRank.EQ.0) THEN
           ! All Variables are saved DOUBLE. First Total, then per SPECIES
           !-- 1. - .. / Impact Counter
           SampWallState_Shared(1,p,q,SurfSideID) = SampWallState_Shared(1,p,q,SurfSideID) + SampWallTmp(1)
+
+          ! Avoid division by zero
+          IF (SampWallState_Shared(1,p,q,SurfSideID).EQ.0) CYCLE
+
           !-- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
           SampWallState_Shared(2,p,q,SurfSideID) = ( SampWallState_Shared(2,p,q,SurfSideID)                                        &
                                                    *(SampWallState_Shared(1,p,q,SurfSideID)                                        &
@@ -460,6 +465,10 @@ IF (myComputeNodeRank.EQ.0) THEN
               nShift = iSpec * nErosionVars
               !-- 1. - .. / Impact Counter
               SampWallState_Shared(1+nShift,p,q,SurfSideID) = SampWallState_Shared(1+nShift,p,q,SurfSideID) + SampWallTmp(1+nShift)
+
+              ! Avoid division by zero
+              IF (SampWallState_Shared(1+nShift,p,q,SurfSideID).EQ.0) CYCLE
+
               !-- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
               SampWallState_Shared(2+nShift,p,q,SurfSideID) = ( SampWallState_Shared(2+nShift,p,q,SurfSideID)                      &
                                                               *(SampWallState_Shared(1+nShift,p,q,SurfSideID)                      &

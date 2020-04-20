@@ -798,7 +798,7 @@ LOGICAL            :: SideIsCritical
 SideSlabNormals(:,1)=BezierControlPoints3D(:,NGeoElevated,0)              &
                     -BezierControlPoints3D(:,0,0)                         &
                     +BezierControlPoints3D(:,NGeoElevated,NGeoElevated)   &
-                    -BezierControlPoints3D(:,0,NGeoElevated)              
+                    -BezierControlPoints3D(:,0,NGeoElevated)
 SideSlabNormals(:,1)=SideSlabNormals(:,1)/SQRT(DOT_PRODUCT(SideSlabNormals(:,1),SideSlabNormals(:,1)))
 ! n_2=n_1 x (U_1+U_2) (U: corner vectors in eta-direction)
 SideSlabNormals(:,2)=BezierControlPoints3D(:,0,NGeoElevated)                      &

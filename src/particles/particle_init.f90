@@ -447,6 +447,7 @@ USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Boundary_Vars ,ONLY: LowVeloRemove
 USE MOD_Particle_Boundary_Vars ,ONLY: nAuxBCs
+USE MOD_ErosionPoints          ,ONLY: InitErosionPoints
 USE MOD_Particle_Interpolation ,ONLY: InitParticleInterpolation
 USE MOD_Particle_Mesh          ,ONLY: GetMeshMinMax
 USE MOD_Particle_Mesh          ,ONLY: InitParticleMesh
@@ -504,6 +505,9 @@ CALL IdentifyPartExchangeProcs()
 
 ! Initialize surface sampling
 CALL InitParticleBoundarySampling()
+
+! Initialize impact recording
+CALL InitErosionPoints()
 
 ! Initialize interpolation and particle-in-cell for field -> particle coupling
 !--> Could not be called earlier because a halo region has to be build depending on the given BCs
@@ -1333,15 +1337,17 @@ USE MOD_Globals
 USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Sampling, ONLY:FinalizeParticleBoundarySampling
+USE MOD_ErosionPoints,              ONLY:FinalizeErosionPoints
 USE MOD_Particle_Interpolation_Vars
 #if USE_RW
-USE MOD_Particle_RandomWalk,    ONLY: ParticleFinalizeRandomWalk
+USE MOD_Particle_RandomWalk,        ONLY: ParticleFinalizeRandomWalk
 #endif
-USE MOD_Particle_SGS,           ONLY: ParticleFinalizeSGS
+USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -1391,6 +1397,7 @@ SDEALLOCATE(TurbFieldAtParticle)
 CALL ParticleFinalizeRandomWalk()
 #endif
 CALL ParticleFinalizeSGS()
+CALL FinalizeErosionPoints()
 CALL FinalizeParticleBoundarySampling()
 
 END SUBROUTINE FinalizeParticles

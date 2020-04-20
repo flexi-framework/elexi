@@ -132,7 +132,7 @@ IF(MPIRoot)THEN
 END IF
 
 ! 2) Distribute logical information ElemTimeExists
-CALL MPI_BCAST (ElemTimeExists,1,MPI_LOGICAL,0,MPI_COMM_WORLD,iError)
+CALL MPI_BCAST (ElemTimeExists,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
 
 ! Distribute the elements according to the selected distribution method
 CALL ApplyWeightDistributionMethod(ElemTimeExists)

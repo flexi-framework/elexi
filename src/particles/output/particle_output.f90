@@ -56,11 +56,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-IF (ParticleOutputInitIsDone) THEN
-  CALL abort(&
-  __STAMP__&
-  ,'InitOutput not ready to be called or already called.',999,999.)
-END IF
+IF (ParticleOutputInitIsDone) &
+  CALL ABORT(__STAMP__,'InitOutput not ready to be called or already called.',999,999.)
+
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE OUTPUT...'
 
@@ -87,18 +85,14 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                      :: nLostPartsTot
 !===================================================================================================================================
-#if USE_MPI
-IF(MPIRoot) THEN
-  CALL MPI_REDUCE(nLostParts,nLostPartsTot,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,IERROR)
-ELSE ! no Root
-  CALL MPI_REDUCE(nLostParts,nLostPartsTot,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,IERROR)
-END IF
-#else
-nLostPartsTot = nLostParts
-#endif /*MPI*/
 
-IF(CountNbOfLostParts)THEN
-    WRITE(UNIT_stdOut,'(A,I12)')' NbOfLostParticle : ',nLostPartsTot
+IF (CountNbOfLostParts) THEN
+#if USE_MPI
+  CALL MPI_REDUCE(nLostParts,nLostPartsTot,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+#else
+  nLostPartsTot = nLostParts
+#endif /*MPI*/
+  WRITE(UNIT_stdOut,'(A,I12)')' NbOfLostParticle : ',nLostPartsTot
 END IF
 
 END SUBROUTINE

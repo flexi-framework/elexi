@@ -669,7 +669,7 @@ INTEGER,INTENT(INOUT),OPTIONAL    :: ElemID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                           :: PVID
-INTEGER                           :: moved(2),locSideID
+!INTEGER                           :: moved(2),locSideID
 !===================================================================================================================================
 
 PVID = BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)

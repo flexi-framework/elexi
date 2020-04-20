@@ -113,7 +113,9 @@ ELSE
   IF(.NOT.initDone) CALL MPI_INIT(iError)
   IF(iError .NE. 0) &
     CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
-  MPI_COMM_FLEXI = MPI_COMM_WORLD
+!  MPI_COMM_FLEXI = MPI_COMM_WORLD
+  ! Duplicate communicator instead of just copying it. Creates a clean copy with all the cached information intact
+  CALL MPI_COMM_DUP(MPI_COMM_WORLD,MPI_COMM_FLEXI,iError)
 END IF
 
 CALL MPI_COMM_RANK(MPI_COMM_FLEXI, myRank     , iError)

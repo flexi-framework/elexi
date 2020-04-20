@@ -85,7 +85,7 @@ SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT SHARED MESH...'
 CALL MPI_ALLREDUCE(nElems,nElems_Shared,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IERROR)
 
 !> Sanity check number of cells per node
-CALL MPI_REDUCE(nElems_Shared,nElems_Shared_Glob,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,IERROR)
+CALL MPI_REDUCE(nElems_Shared,nElems_Shared_Glob,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
 SWRITE(UNIT_stdOut,'(A,F14.1,A)') ' | Copying information for ',REAL(nElems_Shared_Glob)/REAL(nProcessors_Global),' cells/node in shared memory'
 
 !> Send offsetElem of node root to all other procs on node

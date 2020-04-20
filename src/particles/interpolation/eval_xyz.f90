@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 !> Contains routines for transformation from reference to physical space and vice versa
@@ -53,16 +54,17 @@ SUBROUTINE GetPositionInRefElem(x_in,xi,ElemID,DoReUseMap,ForceMode)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Mesh_Vars,      ONLY:wBaryCL_NGeo,XiCL_NGeo
-USE MOD_Particle_Mesh_Vars,      ONLY:wBaryCL_NGeo1,XiCL_NGeo1
-USE MOD_Particle_Mesh_Vars,      ONLY:ElemCurved
+USE MOD_Basis,                   ONLY: LagrangeInterpolationPolys
+USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Particle_Mesh_Vars,      ONLY: wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars,      ONLY: wBaryCL_NGeo1,XiCL_NGeo1
+USE MOD_Particle_Mesh_Vars,      ONLY: ElemCurved
 #if USE_MPI
-USE MOD_Particle_Mesh_Vars,      ONLY:XCL_NGeo_Shared,dXCL_NGeo_Shared
+USE MOD_Particle_Mesh_Tools,     ONLY: GetCNElemID
+USE MOD_Particle_Mesh_Vars,      ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
-USE MOD_Mesh_Vars,               ONLY:dXCL_NGeo,XCL_NGeo
-#endif
+USE MOD_Mesh_Vars,               ONLY: dXCL_NGeo,XCL_NGeo
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -82,11 +84,10 @@ REAL                       :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
 !===================================================================================================================================
 
 #if USE_MPI
-! TODO: This might become required once we reduce the halo region
-!ASSOCIATE(ElemID   => GlobalElem2CNTotalElem(ElemID), &
-!          XCL_NGeo => XCL_NGeo_Shared)
-ASSOCIATE( XCL_NGeo =>  XCL_NGeo_Shared &
-         ,dXCL_NGeo => dXCL_NGeo_Shared)
+ASSOCIATE(ElemID     => GetCNElemID(ElemID) &
+!ASSOCIATE( XCL_NGeo  => XCL_NGeo_Shared     &
+         , XCL_NGeo  => XCL_NGeo_Shared     &
+         ,dXCL_NGeo  => dXCL_NGeo_Shared)
 #endif
 
 iMode=2
@@ -135,7 +136,7 @@ SUBROUTINE TensorProductInterpolation(Xi_in,NVar,N_in,xGP_in,wBary_In,U_In,U_Out
 !> Interpolates a 3D tensor product Lagrange basis defined by (N_in+1) 1D interpolation points to the position Xi
 !===================================================================================================================================
 ! MODULES
-USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
+USE MOD_Basis,                   ONLY: LagrangeInterpolationPolys
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -184,11 +185,17 @@ USE MOD_Preproc
 USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
 USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
 USE MOD_Mesh_Vars,             ONLY: NGeo
-USE MOD_Particle_Mesh_Vars,    ONLY: dXCL_NGeo,XCL_NGeo,wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars,    ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: ElemCurved,wBaryCL_NGeo1,XiCL_NGeo1
+#if USE_MPI
+USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
+USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
+#else
+USE MOD_Mesh_Vars,             ONLY: dXCL_NGeo,XCL_NGeo
+#endif /*USE_MPI*/
 #if USE_RW
 USE MOD_Equation_Vars,         ONLY: nVarTurb
-#endif
+#endif /*USE_RW*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -212,6 +219,13 @@ REAL                      :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
 REAL, PARAMETER           :: EPSONE=1.00000001
 !===================================================================================================================================
 
+!print *, ElemID,GetCNElemID(ElemID)
+#if USE_MPI
+ASSOCIATE(ElemID     => GetCNElemID(ElemID) &
+         , XCL_NGeo  =>  XCL_NGeo_Shared    &
+!ASSOCIATE( XCL_NGeo  =>  XCL_NGeo_Shared    &
+         ,dXCL_NGeo  => dXCL_NGeo_Shared)
+#endif /*USE_MPI*/
 CALL GetRefNewtonStartValue(X_in,Xi,ElemID)
 
 ! If the element is curved, all Gauss points are required
@@ -256,6 +270,11 @@ DO k=0,N_in
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In
+
+#if USE_MPI
+END ASSOCIATE
+#endif
+
 END SUBROUTINE EvaluateFieldAtPhysPos
 
 
@@ -315,7 +334,8 @@ USE MOD_Particle_Vars,           ONLY:PartState
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)               :: N_In,ElemID
+INTEGER,INTENT(IN)               :: N_In
+INTEGER,INTENT(IN)               :: ElemID                   !> ElemID on compute node, not global ID
 INTEGER,INTENT(IN)               :: Mode
 INTEGER,INTENT(IN),OPTIONAL      :: PartID
 REAL,INTENT(IN)                  :: X_in(3)                  !> position in physical space
@@ -335,7 +355,6 @@ REAL                             :: Jac(1:3,1:3),sdetJac,sJac(1:3,1:3)
 REAL                             :: buff,buff2, Norm_F, Norm_F_old,lambda
 INTEGER                          :: iArmijo
 !===================================================================================================================================
-
 
 ! initial guess
 CALL LagrangeInterpolationPolys(Xi(1),N_In,XiCL_N_in,wBaryCL_N_in,Lag(1,:))
@@ -386,9 +405,7 @@ DO WHILE((deltaXi2.GT.RefMappingEps).AND.(NewtonIter.LT.100))
   ELSE !shit
    ! Newton has not converged !?!?
    IF(Mode.EQ.1)THEN
-    CALL abort(&
-__STAMP__&
-, 'Newton in FindXiForPartPos singular. iter,sdetJac',NewtonIter,sDetJac)
+    CALL ABORT(__STAMP__, 'Newton in FindXiForPartPos singular. iter,sdetJac',NewtonIter,sDetJac)
    ELSE
      Xi(1)=HUGE(1.0)
      Xi(2)=Xi(1)
@@ -514,14 +531,16 @@ SUBROUTINE GetRefNewtonStartValue(X_in,Xi,ElemID)
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Globals
+
 USE MOD_Preproc,                 ONLY:PP_N
 USE MOD_Interpolation_Vars,      ONLY:xGP
 USE MOD_Mesh_Vars,               ONLY:NGeo!,Elem_xGP,offsetElem
-USE MOD_Particle_Globals,        ONLY:PP_nElems
+!USE MOD_Particle_Globals,        ONLY:PP_nElems
 USE MOD_Particle_Mesh_Vars,      ONLY:RefMappingGuess,RefMappingEps
 USE MOD_Particle_Mesh_Vars,      ONLY:XiEtaZetaBasis,slenXiEtaZetaBasis
 USE MOD_Particle_Mesh_Vars,      ONLY:XiCL_NGeo
-USE MOD_Particle_Tracking_vars,  ONLY:DoRefMapping
+!USE MOD_Particle_Tracking_vars,  ONLY:DoRefMapping
 USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo_Shared,XCL_NGeo_Shared,Elem_xGP_Shared
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
@@ -546,17 +565,19 @@ INTEGER                       :: RefMappingGuessLoc
 ASSOCIATE(ElemBaryNGeo => ElemBaryNGeo_Shared)
 #endif
 
-epsOne=1.0+RefMappingEps
-RefMappingGuessLoc=RefMappingGuess
+epsOne             = 1.0+RefMappingEps
+RefMappingGuessLoc = RefMappingGuess
 ! the location of the Gauss-points within halo elements is not communicated. Instead of looking for the closest Gauss-point, the
 ! closest CL-point is used
-IF(ElemID.GT.PP_nElems)THEN
-  IF(DoRefMapping)THEN
-    IF(RefMappingGuess.EQ.2) RefMappingGuessLoc=3
-  ELSE
-    IF(RefMappingGuess.EQ.2) RefMappingGuessLoc=1
-  END IF
-END IF
+! this is no longer true with the new halo region
+!IF(ElemID.GT.PP_nElems) THEN
+!  IF(DoRefMapping)THEN
+!    IF(RefMappingGuess.EQ.2) RefMappingGuessLoc=3
+!  ELSE
+!    IF(RefMappingGuess.EQ.2) RefMappingGuessLoc=1
+!  END IF
+!END IF
+
 SELECT CASE(RefMappingGuessLoc)
 CASE(1)
   Ptild=X_in - ElemBaryNGeo(:,ElemID)

@@ -296,7 +296,7 @@ detJac_Ref=0.
 dXCL_N=0.
 DO iElem=1,nElems
 #if USE_PARTICLES
-  ! point to correct element
+  ! point to correct element. The shift is needed because the associate always casts to 1:nVar
   ASSOCIATE( XCL_NGeo =>  XCL_Ngeo(:  ,:,:,:,iElem)  &
            ,dXCL_NGeo => dXCL_NGeo(:,:,:,:,:,iElem)  &
            ,shift     => 1)

@@ -86,7 +86,7 @@ END DO ! iElem
 
 LoadSend=PreSum(OldElems)
 
-CALL MPI_EXSCAN(LoadSend, LowerBoundary, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, iERROR)
+CALL MPI_EXSCAN(LoadSend, LowerBoundary, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_FLEXI, iERROR)
 IF(MPIRoot) LowerBoundary=0.
 
 UpperBoundary = LowerBoundary+PreSum(OldElems)
@@ -136,7 +136,7 @@ DO iRank = minRank,maxRank
   END IF
 END DO ! iRank=minRank,maxRank
 
-CALL MPI_ALLTOALL(send_count, 1, MPI_INTEGER, recv_count, 1, MPI_INTEGER, MPI_COMM_WORLD, iERROR)
+CALL MPI_ALLTOALL(send_count, 1, MPI_INTEGER, recv_count, 1, MPI_INTEGER, MPI_COMM_FLEXI, iERROR)
 newElems = SUM(recv_count)
 
 DEALLOCATE(PreSum, send_count, recv_count, split)
@@ -245,7 +245,7 @@ CASE(-1) ! same as in no-restart: the elements are equally distributed
       offsetElemMPI(nProcessors)=nGlobalElems
     END IF
     ! Send the load distribution to all other procs
-    CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_WORLD,iERROR)
+    CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)
 
 !------------------------------------------------------------------------------------------------------------------------------!
 CASE(0) ! old scheme
@@ -273,7 +273,7 @@ CASE(0) ! old scheme
       offsetElemMPI(nProcessors)=nGlobalElems
     END IF
     ! Send the load distribution to all other procs
-    CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_WORLD,iERROR)
+    CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)
 
 !------------------------------------------------------------------------------------------------------------------------------!
 CASE(1)
@@ -383,13 +383,13 @@ CASE(1)
     END DO
   END IF
   ! Send the load distribution to all other procs
-  CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_WORLD,iERROR)
+  CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)
 
 !------------------------------------------------------------------------------------------------------------------------------!
 CASE(2)
     ! 1: last Proc receives the least load
     ! Distribute ElemGlobalTime to all procs
-    CALL MPI_BCAST(ElemGlobalTime,nGlobalElems,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,iError)
+    CALL MPI_BCAST(ElemGlobalTime,nGlobalElems,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
 
     ! Do Rebalance
     WeightSum = 0.
@@ -462,7 +462,7 @@ CASE(2)
       MyElems=ElemDistri(MyRank)
       CALL SingleStepOptimalPartition(MyElems,NewElems,ElemGlobalTime(FirstElemInd:LastElemInd))
       ElemDistri=0
-      CALL MPI_ALLGATHER(NewElems,1,MPI_INTEGER,ElemDistri(:),1,MPI_INTEGER,MPI_COMM_WORLD,iERROR)
+      CALL MPI_ALLGATHER(NewElems,1,MPI_INTEGER,ElemDistri(:),1,MPI_INTEGER,MPI_COMM_FLEXI,iERROR)
       ! calculate proc offset
       OffSetElemMPI(0)=0
       DO jProc=0,nProcessors-1
@@ -485,7 +485,7 @@ CASE(2)
 !------------------------------------------------------------------------------------------------------------------------------!
 CASE(3)
     ! Distribute ElemGlobalTime to all procs
-    CALL MPI_BCAST(ElemGlobalTime,nGlobalElems,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,iError)
+    CALL MPI_BCAST(ElemGlobalTime,nGlobalElems,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
 
     ! Do Rebalance
     WeightSum = 0.
@@ -530,7 +530,7 @@ CASE(3)
 
       IF(NewElems.LE.0)                             ErrorCode = ErrorCode+100
 
-      CALL MPI_ALLGATHER(NewElems,1,MPI_INTEGER,ElemDistri(:),1,MPI_INTEGER,MPI_COMM_WORLD,iERROR)
+      CALL MPI_ALLGATHER(NewElems,1,MPI_INTEGER,ElemDistri(:),1,MPI_INTEGER,MPI_COMM_FLEXI,iERROR)
 
       ! calculate proc offset
       OffSetElemMPI(0)=0
@@ -837,7 +837,7 @@ CASE(4,5)
     END IF
 
     ! at the end communicate the found distribution to all other procs
-    CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_WORLD,iERROR)
+    CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)
 
 #if CODE_ANALYZE
     SWRITE(*,*) 'done'

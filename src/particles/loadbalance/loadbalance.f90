@@ -391,9 +391,9 @@ IF(ALMOSTZERO(WeightSum))THEN
     IPWRITE(*,*) 'Info: The calculated time of all elems is zero. ALMOSTZERO(WeightSum)=.TRUE., WeightSum=',WeightSum
 END IF
 
-CALL MPI_ALLREDUCE(WeightSum,TargetWeight,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)
-CALL MPI_ALLREDUCE(WeightSum,MaxWeight   ,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,iError)
-CALL MPI_ALLREDUCE(WeightSum,MinWeight   ,1,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,iError)
+CALL MPI_ALLREDUCE(WeightSum,TargetWeight,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(WeightSum,MaxWeight   ,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(WeightSum,MinWeight   ,1,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_FLEXI,iError)
 
 WeightSum    = TargetWeight             ! Set total weight for writing to file
 TargetWeight = TargetWeight/nProcessors ! Calculate the average value that is supposed to be the optimally distributed weight
@@ -444,8 +444,8 @@ REAL                         :: ElemSum,ElemTimeMin,ElemTimeMax
 ElemSum = SUM(ElemTime)
 
 ! Procs without particles would cause divide by zero
-CALL MPI_REDUCE(ElemSum,ElemTimeMin,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_WORLD,iError)
-CALL MPI_REDUCE(ElemSum,ElemTimeMax,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_WORLD,iError)
+CALL MPI_REDUCE(ElemSum,ElemTimeMin,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(ElemSum,ElemTimeMax,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
 
 IF(MPIROOT) THEN
     WRITE(UNIT_StdOut,'(132("."))')

@@ -318,7 +318,7 @@ IF(.NOT.fexist) THEN
   END IF
   ! Wait with all procs until the file is available.
   ! WARNING: Global sync point, but this routine is only supposed to work for debug anyways
-  CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+  CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
 END IF
 

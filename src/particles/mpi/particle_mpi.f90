@@ -96,9 +96,9 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if USE_MPI
-INTEGER                         :: color
-#endif /*USE_MPI*/
+!#if USE_MPI
+!INTEGER                         :: color
+!#endif /*USE_MPI*/
 !===================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -107,19 +107,22 @@ IF(ParticleMPIInitIsDone) &
   CALL ABORT(__STAMP__,' Particle MPI already initialized!')
 
 #if USE_MPI
-PartMPI%myRank = myRank
-color = 999
-CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,color,PartMPI%MyRank,PartMPI%COMM,iERROR)
-CALL MPI_COMM_SIZE (PartMPI%COMM,PartMPI%nProcs ,iError)
-!PartMPI%COMM   = MPI_COMM_WORLD
-IF(PartMPI%nProcs.NE.nProcessors) CALL ABORT(__STAMP__,' MPI Communicater-size does not match!', IERROR)
+! Split particle communicator from MPI_COMM_FLEXI, should be safer than MPI_COMM_FLEXI?
+!PartMPI%myRank = myRank
+!color = 999
+!CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,PartMPI%MyRank,PartMPI%COMM,iERROR)
+
+! Duplicate communicator rather than splitting to avoid overhead
+CALL MPI_COMM_DUP (MPI_COMM_FLEXI,PartMPI%COMM,iError)
+CALL MPI_COMM_RANK(PartMPI%COMM,PartMPI%myRank,iError)
+CALL MPI_COMM_SIZE(PartMPI%COMM,PartMPI%nProcs,iError)
+
+!IF(PartMPI%nProcs.NE.nProcessors) CALL ABORT(__STAMP__,' MPI Communicater-size does not match!', IERROR)
 PartCommSize   = 0
-IF(PartMPI%MyRank.EQ.0) THEN
-  PartMPI%MPIRoot=.TRUE.
-ELSE
-  PartMPI%MPIRoot=.FALSE.
-END IF
-iMessage=0
+PartMPI%MPIRoot=.FALSE.
+IF(PartMPI%MyRank.EQ.0) PartMPI%MPIRoot=.TRUE.
+
+iMessage       = 0
 #else
 PartMPI%myRank = 0
 PartMPI%nProcs = 1
@@ -468,13 +471,9 @@ END DO ! iProc
 !--- particles to communicate
 DO iProc=0,nExchangeProcessors-1
   CALL MPI_WAIT(PartMPIExchange%SendRequest(1,iProc),MPIStatus,IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(&
-    __STAMP__&
-    ,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
   CALL MPI_WAIT(PartMPIExchange%RecvRequest(1,iProc),recv_status_list(:,iProc),IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(&
-    __STAMP__&
-    ,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
 END DO ! iProc
 
 ! total number of received particles

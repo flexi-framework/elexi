@@ -63,7 +63,7 @@ USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 USE MOD_MPI,               ONLY:InitMPIvars
 #endif
 #if USE_PARTICLES
-USE MOD_ErosionPoints,     ONLY:DefineParametersErosionPoints,InitErosionPoints
+USE MOD_ErosionPoints,     ONLY:DefineParametersErosionPoints
 USE MOD_Particle_Analyze,  ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling,ONLY:DefineParametersParticleBoundarySampling,RestartParticleBoundarySampling
 USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticleGlobals,InitParticles
@@ -254,9 +254,6 @@ CALL InitSponge()
 CALL InitTimeDisc()
 CALL InitAnalyze()
 CALL InitRecordpoints()
-#if USE_PARTICLES
-CALL InitErosionPoints()
-#endif
 CALL Restart()
 #if USE_PARTICLES
 CALL InitParticles()
@@ -310,7 +307,6 @@ USE MOD_Indicator,         ONLY:FinalizeIndicator
 USE MOD_ReadInTools,       ONLY:FinalizeParameters
 #if USE_PARTICLES
 USE MOD_Particle_Analyze,  ONLY:FinalizeParticleAnalyze
-USE MOD_ErosionPoints,     ONLY:FinalizeErosionPoints
 USE MOD_Particle_Init,     ONLY:FinalizeParticles
 #if USE_MPI
 USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
@@ -336,7 +332,6 @@ CALL FinalizeFV()
 #endif
 #if USE_PARTICLES
 CALL FinalizeParticleAnalyze
-CALL FinalizeErosionPoints()
 CALL FinalizeParticles
 #endif
 CALL FinalizeDG()

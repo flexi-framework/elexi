@@ -96,7 +96,7 @@ USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: Geo
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
-USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID
+USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID,GetCNElemID
 USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance,TriaTracking
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
 #if USE_MPI
@@ -166,9 +166,9 @@ IF(nBGMElems.GT.1) CALL InsertionSort(Distance(1:nBGMElems),ListDistance(1:nBGME
 ! loop through sorted list and start by closest element
 InElementCheck=.FALSE.
 DO iBGMElem=1,nBGMElems
-  IF(ALMOSTEQUAL(Distance(iBGMElem),-1.))CYCLE
-  ElemID=ListDistance(iBGMElem)
-  IF(.NOT.DoHALO)THEN
+  IF (ALMOSTEQUAL(Distance(iBGMElem),-1.)) CYCLE
+  ElemID = GetGlobalElemID(ListDistance(iBGMElem))
+  IF (.NOT.DoHALO) THEN
     ! TODO: THIS NEEDS TO BE ADJUSTED FOR MPI3-SHARED
     ! IF (ElemID.GT.PP_nElems) CYCLE
   END IF
@@ -178,7 +178,7 @@ DO iBGMElem=1,nBGMElems
     CALL GetPositionInRefElem(Pos3D(1:3),RefPos,ElemID)
     IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck=.TRUE.
   END IF
-  IF(InElementCheck)THEN
+  IF (InElementCheck) THEN
     SinglePointToElement = ElemID
     RETURN
   END IF

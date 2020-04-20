@@ -105,7 +105,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT MPI SHARED COMMUNICATION ...'
 nProcessors_Global = nProcessors
 
 ! Split the node communicator (shared memory) from the global communicator
-CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, myRank, MPI_INFO_NULL, MPI_COMM_SHARED,IERROR)
+CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_FLEXI, MPI_COMM_TYPE_SHARED, myRank, MPI_INFO_NULL, MPI_COMM_SHARED,IERROR)
 
 ! Find my rank on the shared communicator, comm size and proc name
 CALL MPI_COMM_RANK(MPI_COMM_SHARED, myComputeNodeRank,IERROR)
@@ -120,7 +120,7 @@ DO i=0,nProcessors-1
 END DO
 
 ! Get handles for each group
-CALL MPI_COMM_GROUP(MPI_COMM_WORLD , worldGroup,IERROR)
+CALL MPI_COMM_GROUP(MPI_COMM_FLEXI , worldGroup,IERROR)
 CALL MPI_COMM_GROUP(MPI_COMM_SHARED,sharedGroup,IERROR)
 
 ! Finally translate global rank to local rank
@@ -135,7 +135,7 @@ MPI_COMM_LEADERS_SHARED=MPI_COMM_NULL
 myLeaderGroupRank=-1
 color=MPI_UNDEFINED
 IF(myComputeNodeRank.EQ.0) color=101
-CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,color,myRank,MPI_COMM_LEADERS_SHARED,IERROR)
+CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,myRank,MPI_COMM_LEADERS_SHARED,IERROR)
 IF(myComputeNodeRank.EQ.0)THEN
   CALL MPI_COMM_RANK(MPI_COMM_LEADERS_SHARED,myLeaderGroupRank,IERROR)
   CALL MPI_COMM_SIZE(MPI_COMM_LEADERS_SHARED,nLeaderGroupProcs,IERROR)

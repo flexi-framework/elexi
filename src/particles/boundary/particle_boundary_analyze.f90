@@ -48,7 +48,7 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues,MacroValSampTi
 USE MOD_Particle_Boundary_Vars     ,ONLY: nSurfSample
 USE MOD_Particle_Boundary_Vars     ,ONLY: SurfOnNode,SurfSideArea
 USE MOD_Particle_Boundary_Vars     ,ONLY: nComputeNodeSurfSides,SampWallState_Shared
-USE MOD_Particle_Boundary_Sampling ,ONLY: WriteSurfSampleToHDF5
+USE MOD_Particle_Boundary_Sampling ,ONLY: WriteSurfSample
 USE MOD_Particle_Boundary_Vars     ,ONLY: MacroSurfaceVal,MacroSurfaceSpecVal,nErosionVars
 USE MOD_Particle_Vars              ,ONLY: nSpecies
 USE MOD_CalcWallParticles_Vars
@@ -169,7 +169,7 @@ IF (nSpecies.GT.1) THEN
   END DO; END DO; END DO; END DO
 END IF
 
-CALL WriteSurfSampleToHDF5(TRIM(MeshFile),ActualTime,remap_opt)
+CALL WriteSurfSample(TRIM(MeshFile),ActualTime,remap_opt)
 
 ! Only deallocate if we don't need the values for wall calculations
 IF (.NOT.doCalcWallParticles) THEN

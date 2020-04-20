@@ -117,8 +117,8 @@ ALLOCATE(EP_Data(EPDataSize,EP_MaxBufferSize))
 
 #if USE_MPI
 CALL InitEPCommunicator()
-CALL MPI_BARRIER(MPI_COMM_WORLD,iERROR)
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,nEP_Procs,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,iError)
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,nEP_Procs,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
 
 EP_Impacts = 0
@@ -165,22 +165,22 @@ IF(MPIRoot) THEN
     noEPrank=0
   END IF
   DO iProc=1,nProcessors-1
-    CALL MPI_RECV(hasEP,1,MPI_LOGICAL,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
+    CALL MPI_RECV(hasEP,1,MPI_LOGICAL,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
     IF(hasEP) THEN
       EPrank=EPrank+1
-      CALL MPI_SEND(EPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_WORLD,iError)
+      CALL MPI_SEND(EPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_FLEXI,iError)
     ELSE
       noEPrank=noEPrank+1
-      CALL MPI_SEND(noEPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_WORLD,iError)
+      CALL MPI_SEND(noEPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_FLEXI,iError)
     END IF
   END DO
 ELSE
-    CALL MPI_SEND(EP_onProc,1,MPI_LOGICAL,0,0,MPI_COMM_WORLD,iError)
-    CALL MPI_RECV(myEPrank,1,MPI_INTEGER,0,0,MPI_COMM_WORLD,MPIstatus,iError)
+    CALL MPI_SEND(EP_onProc,1,MPI_LOGICAL,0,0,MPI_COMM_FLEXI,iError)
+    CALL MPI_RECV(myEPrank,1,MPI_INTEGER,0,0,MPI_COMM_FLEXI,MPIstatus,iError)
 END IF
 
 ! create new EP communicator for EP output
-CALL MPI_COMM_SPLIT(MPI_COMM_WORLD, color, myEPrank, EP_COMM,iError)
+CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI, color, myEPrank, EP_COMM,iError)
 IF(EP_onProc) CALL MPI_COMM_SIZE(EP_COMM, nEP_Procs,iError)
 IF(myEPrank.EQ.0 .AND. EP_onProc) WRITE(*,*) 'EP COMM:',nEP_Procs,'procs'
 
@@ -324,17 +324,15 @@ SUBROUTINE WriteEP(OutputTime,resetCounters)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE HDF5
-USE MOD_IO_HDF5           ,ONLY: File_ID,OpenDataFile,CloseDataFile
-USE MOD_HDF5_Output       ,ONLY: WriteAttribute,MarkWriteSuccessfull
-USE MOD_HDF5_WriteArray   ,ONLY: WriteArray
-USE MOD_Output_Vars       ,ONLY: ProjectName
-#if USE_MPI
-USE MOD_Erosionpoints_Vars ,ONLY: EP_COMM
-USE MOD_Particle_HDF5_output,ONLY:DistributedWriteArray
-#endif /*MPI*/
-USE MOD_Particle_HDF5_output,ONLY:WriteAttributeToHDF5,WriteArrayToHDF5,WriteHDF5Header
 USE MOD_ErosionPoints_Vars
+USE MOD_HDF5_Output           ,ONLY: WriteAttribute,MarkWriteSuccessfull
+USE MOD_HDF5_WriteArray       ,ONLY: WriteArray
+USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
+USE MOD_Output_Vars           ,ONLY: ProjectName
+#if USE_MPI
+USE MOD_Erosionpoints_Vars    ,ONLY: EP_COMM
+USE MOD_Particle_HDF5_output  ,ONLY: DistributedWriteArray
+#endif /*MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -367,90 +365,97 @@ IF(MPIroot)THEN
   GETTIME(startT)
 END IF
 
-! Find our offset
+!>> Sum up particles from the other procs
 #if USE_MPI
-  sendbuf(1) = locEP
-  recvbuf    = 0
-  CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,iError)
-  offsetEP   = recvbuf(1)
-  sendbuf(1) = recvbuf(1)+locEP
-  CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_WORLD,iError)            !last proc knows global number
-  !global numbers
-  EP_glob    = sendbuf(1)
-  CALL MPI_GATHER(locEP,1,MPI_INTEGER,nImpacts,1,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
+sendbuf(1) = locEP
+recvbuf    = 0
+CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+!>> Offset of each proc is the sum of the particles on the previous procs
+offsetEP   = recvbuf(1)
+sendbuf(1) = recvbuf(1)+locEP
+!>> Last proc knows the global number
+CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
+!>> Gather the global number and communicate to root (MPIRank.EQ.0)
+EP_glob    = sendbuf(1)
+CALL MPI_GATHER(locEP,1,MPI_INTEGER,nImpacts,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 #else
-  offsetEP   = 0
-  EP_glob    = locEP
+offsetEP   = 0
+EP_glob    = locEP
 #endif
 
-  EP_Buffersize = EP_glob
+EP_Buffersize = EP_glob
 
-  ! Array for erosion point vars
-  ALLOCATE(StrVarNames(EPDataSize))
-  StrVarNames(1) ='ParticlePositionX'
-  StrVarNames(2) ='ParticlePositionY'
-  StrVarNames(3) ='ParticlePositionZ'
-  StrVarNames(4) ='VelocityX'
-  StrVarNames(5) ='VelocityY'
-  StrVarNames(6) ='VelocityZ'
-  StrVarNames(7) ='Species'
-  StrVarNames(8) ='BoundaryNumber'
-  StrVarNames(9) ='ImpactTime'
-  StrVarNames(10)='ReflectionCount'
-  StrVarNames(11)='E_kin_impact'
-  StrVarNames(12)='E_kin_reflected'
-  StrVarNames(13)='Alpha_impact'
-  StrVarNames(14)='Alpha_reflected'
+! Array for erosion point vars
+ALLOCATE(StrVarNames(EPDataSize))
+StrVarNames(1) ='ParticlePositionX'
+StrVarNames(2) ='ParticlePositionY'
+StrVarNames(3) ='ParticlePositionZ'
+StrVarNames(4) ='VelocityX'
+StrVarNames(5) ='VelocityY'
+StrVarNames(6) ='VelocityZ'
+StrVarNames(7) ='Species'
+StrVarNames(8) ='BoundaryNumber'
+StrVarNames(9) ='ImpactTime'
+StrVarNames(10)='ReflectionCount'
+StrVarNames(11)='E_kin_impact'
+StrVarNames(12)='E_kin_reflected'
+StrVarNames(13)='Alpha_impact'
+StrVarNames(14)='Alpha_reflected'
 
 !IF(myEPrank.EQ.0)THEN
 !  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,' impacts local / ',EP_Buffersize,' impacts global.'
 !END IF
 
-  ! Get dedicated filled write array
-!  ALLOCATE(EP_write(offsetEP+1:offsetEP+locEP,EPDataSize))
-!  DO iEP=offsetEP+1,offsetEP+locEP
-!  EP_write(offsetEP+1:offsetEP+locEP,EPDataSize) = EP_Data(1:locEP,EPDataSize)
-!  END DO
+! Get dedicated filled write array
+!ALLOCATE(EP_write(offsetEP+1:offsetEP+locEP,EPDataSize))
+!DO iEP=offsetEP+1,offsetEP+locEP
+!EP_write(offsetEP+1:offsetEP+locEP,EPDataSize) = EP_Data(1:locEP,EPDataSize)
+!END DO
 
-  ! Regenerate state file skeleton
-  FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',OutputTime))
-  FileString=TRIM(FileName)//'.h5'
+! Regenerate state file skeleton
+FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',OutputTime))
+FileString=TRIM(FileName)//'.h5'
 
-  IF(MPIRoot)THEN
-    CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteAttributeToHDF5(File_ID,'VarNamesErosion',EPDataSize,StrArray=StrVarNames)
-    CALL CloseDataFile()
-  END IF
+IF(MPIRoot)THEN
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteAttribute(File_ID,'VarNamesErosion',EPDataSize,StrArray=StrVarNames)
+  CALL CloseDataFile()
+END IF
 
 #if USE_MPI
- CALL DistributedWriteArray(FileString                             ,&
-                            DataSetName='ErosionData',rank=2       ,&
-                            nValGlobal=(/EPDataSize  ,EP_glob  /)  ,&
-                            nVal=      (/EPDataSize  ,locEP    /)  ,&
-                            offset=    (/0           ,offsetEP /)  ,&
-                            collective=.FALSE.       ,offSetDim=2   ,&
-                            communicator=MPI_COMM_WORLD,RealArray=EP_Data(1:EPDataSize,1:locEP))
+CALL DistributedWriteArray(FileString                                    ,&
+                           DataSetName  = 'ErosionData'                  ,&
+                           rank         = 2                              ,&
+                           nValGlobal   = (/EPDataSize  ,EP_glob  /)     ,&
+                           nVal         = (/EPDataSize  ,locEP    /)     ,&
+                           offset       = (/0           ,offsetEP /)     ,&
+                           collective   = .FALSE.                        ,&
+                           offSetDim=2                                   ,&
+                           communicator = EP_COMM                        ,&
+                           RealArray    = EP_Data(1:EPDataSize,1:locEP))
 #else
-  CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-  CALL WriteArrayToHDF5(DataSetName='ErosionData'   ,rank=2        ,&
-                        nValGlobal=(/EPDataSize     ,EP_glob  /)   ,&
-                        nVal=      (/EPDataSize     ,locEP    /)   ,&
-                        offset=    (/0              ,offsetEP /)   ,&
-                        collective=.TRUE., RealArray=EP_Data(1:EPDataSize,1:locEP))
-  CALL CloseDataFile()
+CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+CALL WriteArray(           DataSetName  = 'ErosionData'                  ,&
+                           rank         = 2                              ,&
+                           nValGlobal   = (/EPDataSize     ,EP_glob  /)  ,&
+                           nVal         = (/EPDataSize     ,locEP    /)  ,&
+                           offset       = (/0              ,offsetEP /)  ,&
+                           collective   = .TRUE.                         ,&
+                           RealArray    = EP_Data(1:EPDataSize,1:locEP))
+CALL CloseDataFile()
+CALL MPI_BARRIER(PartMPI%COMM,iERROR)
 #endif /*MPI*/
 
-  ! Deallocate everything
-  DEALLOCATE(StrVarNames)
+! Deallocate everything
+DEALLOCATE(StrVarNames)
 
-  ! Erase record variables
-  IF (resetCounters) THEN
-    EP_Impacts = 0
-    locEP      = 0
-    EP_glob    = 0
-
-    EP_Data    = 0.
-  END IF
+! Erase record variables
+IF (resetCounters) THEN
+  EP_Impacts = 0
+  locEP      = 0
+  EP_glob    = 0
+  EP_Data    = 0.
+END IF
 
 IF(MPIroot)THEN
 !  CALL MarkWriteSuccessfull(FileName)

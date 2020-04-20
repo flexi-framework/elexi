@@ -253,15 +253,15 @@ ELSE
   locDistance = -SideDistance(SideID)
 END IF
 
-coeffA=DOT_PRODUCT(NormVec,PartTrajectory)
+coeffA = DOT_PRODUCT(NormVec,PartTrajectory)
 
 !! corresponding to particle starting in plane
 !! interaction should be computed in last step
-CriticalParallelInSide=.FALSE.
+CriticalParallelInSide = .FALSE.
 IF(ALMOSTZERO(coeffA)) CriticalParallelInSide=.TRUE.
 
 ! extension for periodic sides
-locSideDistance=locDistance-DOT_PRODUCT(LastPartPos(1:3,PartID),NormVec)
+locSideDistance = locDistance-DOT_PRODUCT(LastPartPos(1:3,PartID),NormVec)
 
 IF(CriticalParallelInSide)THEN ! particle parallel to side
   IF(ALMOSTZERO(locSideDistance))THEN ! particle on/in side
@@ -2546,7 +2546,7 @@ SUBROUTINE ComputeBezierIntersectionPoint(nXiClip,nEtaClip,PartID,SideID,nInterS
 ! a) alpha in [0,lenghtPartTrajectrory]  ! intersection point is between LastPartPos and PartPos
 ! b) alpha is not a multiple intersection
 !===================================================================================================================================
-! MODULES       
+! MODULES
 USE MOD_Globals,                 ONLY:UNIT_stdout,myRank,ABORT
 USE MOD_Mesh_Vars,               ONLY:NGeo
 USE MOD_Particle_Surfaces_Vars,  ONLY:XiArray,EtaArray,locAlpha,locXi,locEta

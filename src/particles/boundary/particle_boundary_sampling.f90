@@ -46,8 +46,8 @@ INTERFACE FinalizeParticleBoundarySampling
   MODULE PROCEDURE FinalizeParticleBoundarySampling
 END INTERFACE
 
-INTERFACE WriteSurfSampleToHDF5
-  MODULE PROCEDURE WriteSurfSampleToHDF5
+INTERFACE WriteSurfSample
+  MODULE PROCEDURE WriteSurfSample
 END INTERFACE
 
 PUBLIC :: DefineParametersParticleBoundarySampling
@@ -56,7 +56,7 @@ PUBLIC :: RestartParticleBoundarySampling
 PUBLIC :: RecordParticleBoundarySampling
 PUBLIC :: SideErosion
 PUBLIC :: FinalizeParticleBoundarySampling
-PUBLIC :: WriteSurfSampleToHDF5
+PUBLIC :: WriteSurfSample
 !===================================================================================================================================
 
 CONTAINS
@@ -1026,7 +1026,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 END SUBROUTINE RestartParticleBoundarySampling
 
 
-SUBROUTINE WriteSurfSampleToHDF5(MeshFileName,OutputTime,remap_opt)
+SUBROUTINE WriteSurfSample(MeshFileName,OutputTime,remap_opt)
 !===================================================================================================================================
 !> write the final values of the surface sampling to a HDF5 state file
 !> additional performs all the final required computations
@@ -1035,7 +1035,8 @@ SUBROUTINE WriteSurfSampleToHDF5(MeshFileName,OutputTime,remap_opt)
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_IO_HDF5
-USE MOD_HDF5_Output
+USE MOD_HDF5_Output             ,ONLY: WriteHeader,WriteAttribute
+USE MOD_HDF5_WriteArray         ,ONLY: WriteArray
 USE MOD_Output_Vars             ,ONLY: ProjectName
 USE MOD_Particle_Vars           ,ONLY: nSpecies
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfBC,SurfBCName
@@ -1043,7 +1044,6 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfSample,offSetSurfSide
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared
 USE MOD_Particle_boundary_Vars  ,ONLY: nComputeNodeSurfSides,offsetComputeNodeSurfSide
 USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_HDF5_output    ,ONLY: WriteAttributeToHDF5,WriteArrayToHDF5,WriteHDF5Header
 #if USE_MPI
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfTotalSides
@@ -1119,15 +1119,15 @@ IF (mySurfRank.EQ.0) THEN
   Statedummy = 'DSMCSurfState'
 
   ! Write file header
-  CALL WriteHDF5Header(Statedummy,File_ID)
-  CALL WriteAttributeToHDF5(File_ID,'DSMC_nSurfSample',1,IntegerScalar=nSurfSample)
-  CALL WriteAttributeToHDF5(File_ID,'DSMC_nSpecies'   ,1,IntegerScalar=nSpecies)
-  CALL WriteAttributeToHDF5(File_ID,'MeshFile'        ,1,StrScalar=(/TRIM(MeshFileName)/))
-  CALL WriteAttributeToHDF5(File_ID,'Time'            ,1,RealScalar=OutputTime)
-  CALL WriteAttributeToHDF5(File_ID,'BC_Surf'         ,nSurfBC,StrArray=SurfBCName)
-  CALL WriteAttributeToHDF5(File_ID,'N',1             ,IntegerScalar=nSurfSample)
+  CALL WriteHeader(Statedummy,File_ID)
+  CALL WriteAttribute(File_ID,'DSMC_nSurfSample',1       ,IntScalar =nSurfSample)
+  CALL WriteAttribute(File_ID,'DSMC_nSpecies'   ,1       ,IntScalar =nSpecies)
+  CALL WriteAttribute(File_ID,'MeshFile'        ,1       ,StrScalar =(/TRIM(MeshFileName)/))
+  CALL WriteAttribute(File_ID,'Time'            ,1       ,RealScalar=OutputTime)
+  CALL WriteAttribute(File_ID,'BC_Surf'         ,nSurfBC ,StrArray  =SurfBCName)
+  CALL WriteAttribute(File_ID,'N'               ,1       ,IntScalar =nSurfSample)
   NodeTypeTemp='VISU'
-  CALL WriteAttributeToHDF5(File_ID,'NodeType'        ,1,StrScalar=(/NodeTypeTemp/))
+  CALL WriteAttribute(File_ID,'NodeType'        ,1       ,StrScalar =(/NodeTypeTemp/))
 
   ALLOCATE(Str2DVarNames(1:nVar2D_Total))
   nVarCount=0
@@ -1180,7 +1180,7 @@ IF (mySurfRank.EQ.0) THEN
       END DO
   END IF
 
-  CALL WriteAttributeToHDF5(File_ID,'VarNamesSurface',nVar2D_Total,StrArray=Str2DVarNames)
+  CALL WriteAttribute(File_ID,'VarNamesSurface',nVar2D_Total,StrArray=Str2DVarNames)
 
   CALL CloseDataFile()
   DEALLOCATE(Str2DVarNames)
@@ -1201,19 +1201,23 @@ ASSOCIATE (&
       nLocalSides          => nComputeNodeSurfSides     , &
       offsetSurfSide       => offsetComputeNodeSurfSide)
 DO iSpec = 1,nSpecies
-    CALL WriteArrayToHDF5(DataSetName=H5_Name, rank=4                                  , &
-                    nValGlobal=(/nVar2D_Total,nSurfSample,nSurfSample,nGlobalSides  /) , &
-                    nVal=      (/nVar2D_Spec ,nSurfSample,nSurfSample,nLocalSides   /) , &
-                    offset=    (/nVarCount   ,          0,          0,offsetSurfSide/) , &
-                    collective=.TRUE.,RealArray=MacroSurfaceSpecVal(:,:,:,:,iSpec))
+    CALL WriteArray(DataSetName = H5_Name                                                 , &
+                    rank        = 4                                                       , &
+                    nValGlobal  = (/nVar2D_Total,nSurfSample,nSurfSample,nGlobalSides  /) , &
+                    nVal        = (/nVar2D_Spec ,nSurfSample,nSurfSample,nLocalSides   /) , &
+                    offset      = (/nVarCount   ,          0,          0,offsetSurfSide/) , &
+                    collective  = .TRUE.                                                  , &
+                    RealArray   = MacroSurfaceSpecVal(:,:,:,:,iSpec))
     nVarCount = nVarCount + nVar2D_Spec
-END DO
-CALL WriteArrayToHDF5(DataSetName=H5_Name, rank=4                                      , &
-                    nValGlobal=(/NVar2D_Total,nSurfSample,nSurfSample,nGlobalSides  /) , &
-                    nVal=      (/nVar2D      ,nSurfSample,nSurfSample,nLocalSides   /) , &
-                    offset=    (/nVarCount   ,          0,          0,offsetSurfSide/) , &
-                    collective=.TRUE., RealArray=MacroSurfaceVal)
 
+END DO
+CALL WriteArray(    DataSetName = H5_Name                                                 , &
+                    rank        = 4                                                       , &
+                    nValGlobal  = (/NVar2D_Total,nSurfSample,nSurfSample,nGlobalSides  /) , &
+                    nVal        = (/nVar2D      ,nSurfSample,nSurfSample,nLocalSides   /) , &
+                    offset      = (/nVarCount   ,          0,          0,offsetSurfSide/) , &
+                    collective  = .TRUE.                                                  , &
+                    RealArray   = MacroSurfaceVal)
 CALL CloseDataFile()
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
@@ -1222,7 +1226,7 @@ IF (mySurfRank.EQ.0) THEN
 #endif
   CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   Statedummy = 'RestartState'
-  CALL WriteAttributeToHDF5(File_ID,'NRestart',1,IntegerScalar=OutputVarCount)
+  CALL WriteAttribute(File_ID,'NRestart',1,IntScalar=OutputVarCount)
   CALL CloseDataFile()
 #if USE_MPI
 END IF
@@ -1235,13 +1239,14 @@ CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
 
 ! This array is purely for restart
 WRITE(H5_Name,'(A)') 'RestartData'
-CALL WriteArrayToHDF5(DataSetName=H5_Name, rank=4                                          , &
-                    nValGlobal=(/OutputVarCount  ,nSurfSample,nSurfSample,nGlobalSides  /) , &
-                    nVal=      (/OutputVarCount  ,nSurfSample,nSurfSample,nLocalSides   /) , &
-                    offset=    (/0               ,          0,          0,offsetSurfSide/) , &
-                    collective=.TRUE., RealArray=OutputArray)
+CALL WriteArray    (DataSetName = H5_Name                                                   , &
+                    rank        = 4                                                         , &
+                    nValGlobal  = (/OutputVarCount,nSurfSample,nSurfSample,nGlobalSides  /) , &
+                    nVal        = (/OutputVarCount,nSurfSample,nSurfSample,nLocalSides   /) , &
+                    offset      = (/0             ,          0,          0,offsetSurfSide/) , &
+                    collective  = .TRUE.                                                    , &
+                    RealArray   = OutputArray)
 END ASSOCIATE
-
 CALL CloseDataFile()
 
 !> Only reset current forces here so we have them in case of restart
@@ -1262,7 +1267,7 @@ IF (mySurfRank.EQ.0) THEN
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE  [',EndT-StartT,'s]'
 END IF
 
-END SUBROUTINE WriteSurfSampleToHDF5
+END SUBROUTINE WriteSurfSample
 
 
 SUBROUTINE FinalizeParticleBoundarySampling()

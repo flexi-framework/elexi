@@ -504,7 +504,6 @@ END IF
 
 ! ensure synchronization on compute node
 CALL MPI_WIN_SYNC(SampWallState_Shared_Win       ,IERROR)
-
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 END SUBROUTINE ExchangeSurfData

@@ -1135,7 +1135,7 @@ IF (mySurfRank.EQ.0) THEN
   CALL WriteHeader(Statedummy,File_ID)
   CALL WriteAttribute(File_ID,'DSMC_nSurfSample',1       ,IntScalar =nSurfSample)
   CALL WriteAttribute(File_ID,'DSMC_nSpecies'   ,1       ,IntScalar =nSpecies)
-  CALL WriteAttribute(File_ID,'MeshFile'        ,1       ,StrScalar =(/MeshFileName)/)
+  CALL WriteAttribute(File_ID,'MeshFile'        ,1       ,StrScalar =(/MeshFileName/))
   CALL WriteAttribute(File_ID,'Time'            ,1       ,RealScalar=OutputTime)
   CALL WriteAttribute(File_ID,'BC_Surf'         ,nSurfBC ,StrArray  =SurfBCName)
   CALL WriteAttribute(File_ID,'N'               ,1       ,IntScalar =nSurfSample)

@@ -1098,7 +1098,7 @@ DO iPart=1,PDM%ParticleVecLength
     PartIsDone = .FALSE.
 
     ! check if element is a BC element. If yes, handle with Tracing instead of RefMapping
-    IF (ElemToBCSides(ELEM_NBR_BCSIDES,ElemID).GT.0) THEN
+    IF (ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID).GT.0) THEN
       lengthPartTrajectory0 = 0.
       CALL ParticleBCTracking(lengthPartTrajectory0 &
                              ,ElemID                                                                                  &
@@ -1351,7 +1351,7 @@ DO iPart=1,PDM%ParticleVecLength
           CALL GetPositionInRefElem(PartState(1:3,iPart),PartPosRef(1:3,iPart),TestElem)
 
           ! Position in reference space greater than unity, particle not inside element. Try to relocate
-          IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).GT.ElemEpsOneCell(TestElem))THEN
+          IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).GT.ElemEpsOneCell(CNTestElem))THEN
             IPWRITE(UNIT_stdOut,'(I0,A)') ' Tolerance Issue with BC element, relocating!! '
             CALL LocateParticleInElement(iPart,doHALO=.TRUE.)
 
@@ -1360,7 +1360,7 @@ DO iPart=1,PDM%ParticleVecLength
               IPWRITE(UNIT_stdOut,'(I0,A)') ' Tolerance Issue with BC element '
               IPWRITE(UNIT_stdOut,'(I0,A,3(X,I0))')    ' iPart                  ', ipart
               IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' xi                     ', partposref(1:3,ipart)
-              IPWRITE(UNIT_stdOut,'(I0,A,1(X,E15.8))') ' EpsOneCell             ', ElemEpsOneCell(TestElem)
+              IPWRITE(UNIT_stdOut,'(I0,A,1(X,E15.8))') ' EpsOneCell             ', ElemEpsOneCell(CNTestElem)
               IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' oldxi                  ', oldxi
               IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' newxi                  ', newxi
               IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' LastPartPos            ', LastPartPos(1:3,iPart)
@@ -1373,28 +1373,28 @@ DO iPart=1,PDM%ParticleVecLength
               IF (ALLOCATED(TurbPartState)) IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Velocity (SGS)         ', TurbPartState(1:3,iPart)
               Vec=PartState(1:3,iPart)-LastPartPos(1:3,iPart)
               IPWRITE(UNIT_stdOut,'(I0,A,X,E15.8)') ' displacement /halo_eps ', DOT_PRODUCT(Vec,Vec)/halo_eps2
-#if USE_MPI
-              inelem=PEM%Element(ipart)
-              IF(inelem.LE.PP_nElems)THEN
-                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = F'
-                IPWRITE(UNIT_stdout,'(I0,A,I0)') ' elemid               ', inelem+offsetelem
-              ELSE
-                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = T'
-!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' elemid         ', offsetelemmpi(PartHaloElemToProc(NATIVE_PROC_ID,inelem)) &
-!                                                                 + PartHaloElemToProc(NATIVE_ELEM_ID,inelem)
-              END IF
-              IF(testelem.LE.PP_nElems)THEN
-                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = F'
-                IPWRITE(UNIT_stdout,'(I0,A,I0)') ' testelem             ', testelem+offsetelem
-              ELSE
-                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = T'
-!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' testelem         ', offsetelemmpi(PartHaloElemToProc(NATIVE_PROC_ID,testelem)) &
-!                                                               + PartHaloElemToProc(NATIVE_ELEM_ID,testelem)
-              END IF
-
-#else
-              IPWRITE(UNIt_stdOut,'(I0,A,I0)') ' elemid                 ', pem%element(ipart)+offsetelem
-#endif
+!#if USE_MPI
+!              inelem=PEM%Element(ipart)
+!              IF(inelem.LE.PP_nElems)THEN
+!                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = F'
+!                IPWRITE(UNIT_stdout,'(I0,A,I0)') ' elemid               ', inelem+offsetelem
+!              ELSE
+!                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = T'
+!!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' elemid         ', offsetelemmpi(PartHaloElemToProc(NATIVE_PROC_ID,inelem)) &
+!!                                                                 + PartHaloElemToProc(NATIVE_ELEM_ID,inelem)
+!              END IF
+!              IF(testelem.LE.PP_nElems)THEN
+!                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = F'
+!                IPWRITE(UNIT_stdout,'(I0,A,I0)') ' testelem             ', testelem+offsetelem
+!              ELSE
+!                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = T'
+!!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' testelem         ', offsetelemmpi(PartHaloElemToProc(NATIVE_PROC_ID,testelem)) &
+!!                                                               + PartHaloElemToProc(NATIVE_ELEM_ID,testelem)
+!              END IF
+!
+!#else
+!              IPWRITE(UNIt_stdOut,'(I0,A,I0)') ' elemid                 ', pem%element(ipart)+offsetelem
+!#endif
               IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartSpecies  ', PartSpecies(iPart)
               CALL ABORT(__STAMP__ ,'Particle not inside of Element, ipart',ipart)
             END IF ! inside
@@ -1428,6 +1428,7 @@ USE MOD_Particle_Mesh_Vars          ,ONLY: SideBCMetrics,ElemToBCSides
 USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteraction
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars          ,ONLY: GEO,ElemRadiusNGeo
+USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID
 USE MOD_Particle_Utils              ,ONLY: InsertionSort
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectInterSection
@@ -1457,6 +1458,7 @@ INTEGER                       :: ilocSide
 INTEGER                       :: nInter
 ! Elements
 INTEGER                       :: OldElemID
+INTEGER                       :: CNElemID,CNOldElemID
 ! Sides
 INTEGER                       :: SideID,flip
 ! Particles
@@ -1636,20 +1638,23 @@ DO WHILE(DoTracing)
           END IF
 
           ! check if a periodic boundary was crossed during boundary interaction
+          CNOldElemID = GetCNElemID(OldElemID)
+
           IF(GEO%nPeriodicVectors.GT.0)THEN
             lengthPartTrajectory0 = MAXVAL(SideBCMetrics(BCSIDE_DISTANCE,                     &
-                                           ElemToBCSides(ELEM_FIRST_BCSIDE,OldElemID):        &
-                                           ElemToBCSides(ELEM_FIRST_BCSIDE,OldElemID)+ElemToBCSides(ELEM_NBR_BCSIDES,OldElemID)))
+                                           ElemToBCSides(ELEM_FIRST_BCSIDE,CNOldElemID):      &
+                                           ElemToBCSides(ELEM_FIRST_BCSIDE,CNOldElemID)+ElemToBCSides(ELEM_NBR_BCSIDES,CNOldElemID)))
           END IF
 
+          CNElemID = GetCNElemID(ElemID)
           CALL ParticleBCTracking(lengthPartTrajectory0&
-                                 ,ElemID                                                                              &
-                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,ElemID)                                             &
-                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,ElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,ElemID) -1 &
-                                 ,ElemToBCSides(ELEM_NBR_BCSIDES,ElemID)                                              &
-                                 ,PartID                                                                              &
-                                 ,PartIsDone                                                                          &
-                                 ,PartIsMoved                                                                         &
+                                 ,ElemID                                                                                  &
+                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID)                                               &
+                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID) -1 &
+                                 ,ElemToBCSides(ELEM_NBR_BCSIDES ,CNElemID)                                               &
+                                 ,PartID                                                                                  &
+                                 ,PartIsDone                                                                              &
+                                 ,PartIsMoved                                                                             &
                                  ,iCount+1)
           PartisMoved=.TRUE.
           RETURN

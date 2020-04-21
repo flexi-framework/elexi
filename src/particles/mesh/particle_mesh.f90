@@ -2392,10 +2392,11 @@ nBCSidesProc      = 0
 
 ! We did not know the number of BC sides before. Therefore, we need to do the check again and build the final mapping
 DO iElem = firstElem,lastElem
-  BCSideElem    = .FALSE.
+  ElemID     = GetGlobalElemID(iElem)
+  BCSideElem = .FALSE.
 
   ! check local side of an element
-  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,iElem)
+  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
     ! ignore inner and virtual (mortar) sides
     IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
 
@@ -2407,7 +2408,7 @@ DO iElem = firstElem,lastElem
   ! loop over all sides. Check distance from every local side to total sides. Once a side has been flagged,
   ! it must not be counted again
   DO ilocSide = 1,6
-    SideID = GetGlobalNonUniqueSideID(iElem,ilocSide)
+    SideID = GetGlobalNonUniqueSideID(ElemID,ilocSide)
       ! Get BezierControlPoints for local side. BezierControlPoints3D available for ALL sides in shared memory
       NodesLocSide(:,:,:)= BezierControlPoints3D(:,:,:,SideID)
       SELECT CASE(ilocSide)
@@ -2424,7 +2425,7 @@ DO iElem = firstElem,lastElem
         ! ignore non-BC sides
         IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
         ! ignore sides of the same element
-        IF (SideInfo_Shared(SIDE_ELEMID,iSide).EQ.iElem) CYCLE
+        IF (SideInfo_Shared(SIDE_ELEMID,iSide).EQ.ElemID) CYCLE
         ! ignore already flagged sides
         IF (BCSideElem(iSide).EQV..TRUE.) CYCLE
 
@@ -2448,7 +2449,7 @@ DO iElem = firstElem,lastElem
                 IF (SQRT(dX*dX+dY*dY+dZ*dZ).LE.BC_halo_eps) THEN
                   nBCSidesProc = nBCSidesProc + 1
                   SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(iSide)
-                  SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(iElem)
+                  SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(ElemID)
                   BCSideElem(iSide) = .TRUE.
                   SideInRange       = .TRUE.
                   EXIT
@@ -2804,7 +2805,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /* USE_MPI */
 
 SWRITE(UNIT_stdOut,'(A)')' GET LINEAR SIDE BASEVECTORS DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE GetLinearSideBaseVectors
 
 

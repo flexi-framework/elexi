@@ -413,7 +413,7 @@ INTEGER,ALLOCATABLE            :: displsNode(:),recvcountNode(:)
 INTEGER,ALLOCATABLE            :: displsTree(:),recvcountTree(:)
 !===================================================================================================================================
 #if USE_MPI
-SWRITE(UNIT_stdOut,'(A)') ' COMMUNICATING MESH ON SHARED MEMORY...'
+SWRITE(UNIT_stdOut,'(A)') ' Communicating mesh on shared memory...'
 
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 

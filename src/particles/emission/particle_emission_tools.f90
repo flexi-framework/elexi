@@ -51,13 +51,13 @@ PUBLIC :: SetParticleMass
 PUBLIC :: SetCellLocalParticlePosition
 PUBLIC :: SetParticlePositionPoint
 PUBLIC :: SetParticlePositionEquidistLine
-PUBLIC :: SetParticlePositionGaussian
 PUBLIC :: SetParticlePositionLine
 PUBLIC :: SetParticlePositionDisk
 PUBLIC :: SetParticlePositionCircle
 PUBLIC :: SetParticlePositionCuboidCylinder
 PUBLIC :: SetParticlePositionSphere
-PUBLIC :: SetParticlePositionSinDeviation
+!PUBLIC :: SetParticlePositionSinDeviation
+PUBLIC :: SetParticlePositionGaussian
 PUBLIC :: SamplePoissonDistri
 !===================================================================================================================================
 CONTAINS
@@ -654,59 +654,59 @@ chunkSize = chunkSize2
 END SUBROUTINE SetParticlePositionSphere
 
 
-SUBROUTINE SetParticlePositionSinDeviation(FractNbr,iInit,chunkSize,particle_positions)
-!===================================================================================================================================
-! Set particle position
-!===================================================================================================================================
-! modules
-USE MOD_Globals
-USE MOD_Particle_Globals       ,ONLY: Pi
-USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
-USE MOD_Particle_Vars          ,ONLY: Species
-!----------------------------------------------------------------------------------------------------------------------------------
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL, INTENT(OUT)       :: particle_positions(:)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL                    :: xlen, ylen, zlen, pilen, x_step, y_step, z_step, x_pos, y_pos
-INTEGER                 :: i, iPart, j, k
-!===================================================================================================================================
-  IF(Species(FractNbr)%Init(iInit)%initialParticleNumber.NE. &
-      (Species(FractNbr)%Init(iInit)%maxParticleNumberX * Species(FractNbr)%Init(iInit)%maxParticleNumberY &
-      * Species(FractNbr)%Init(iInit)%maxParticleNumberZ)) THEN
-   SWRITE(*,*) 'for species ',FractNbr,' does not match number of particles in each direction!'
-   CALL abort(__STAMP__,'ERROR: Number of particles in init / emission region',iInit)
-  END IF
-  xlen = ABS(GEO%xmaxglob  - GEO%xminglob)
-  ylen = ABS(GEO%ymaxglob  - GEO%yminglob)
-  zlen = ABS(GEO%zmaxglob  - GEO%zminglob)
-  pilen=2.0*PI/xlen
-  x_step = xlen/Species(FractNbr)%Init(iInit)%maxParticleNumberX
-  y_step = ylen/Species(FractNbr)%Init(iInit)%maxParticleNumberY
-  z_step = zlen/Species(FractNbr)%Init(iInit)%maxParticleNumberZ
-  iPart = 1
-  DO i=1,Species(FractNbr)%Init(iInit)%maxParticleNumberX
-    x_pos = (i * x_step - x_step*0.5)
-    x_pos = GEO%xminglob + x_pos + Species(FractNbr)%Init(iInit)%Amplitude &
-            * SIN(Species(FractNbr)%Init(iInit)%WaveNumber * pilen * x_pos)
-    DO j=1,Species(FractNbr)%Init(iInit)%maxParticleNumberY
-      y_pos =  GEO%yminglob + j * y_step - y_step * 0.5
-      DO k=1,Species(FractNbr)%Init(iInit)%maxParticleNumberZ
-        particle_positions(iPart*3-2) = x_pos
-        particle_positions(iPart*3-1) = y_pos
-        particle_positions(iPart*3  ) = GEO%zminglob &
-                                  + k * z_step - z_step * 0.5
-        iPart = iPart + 1
-      END DO
-    END DO
-  END DO
-END SUBROUTINE SetParticlePositionSinDeviation
+!SUBROUTINE SetParticlePositionSinDeviation(FractNbr,iInit,chunkSize,particle_positions)
+!!===================================================================================================================================
+!! Set particle position
+!!===================================================================================================================================
+!! modules
+!USE MOD_Globals
+!USE MOD_Particle_Globals       ,ONLY: Pi
+!USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
+!USE MOD_Particle_Vars          ,ONLY: Species
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT VARIABLES
+!INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! OUTPUT VARIABLES
+!REAL, INTENT(OUT)       :: particle_positions(:)
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!REAL                    :: xlen, ylen, zlen, pilen, x_step, y_step, z_step, x_pos, y_pos
+!INTEGER                 :: i, iPart, j, k
+!!===================================================================================================================================
+!  IF(Species(FractNbr)%Init(iInit)%initialParticleNumber.NE. &
+!      (Species(FractNbr)%Init(iInit)%maxParticleNumberX * Species(FractNbr)%Init(iInit)%maxParticleNumberY &
+!      * Species(FractNbr)%Init(iInit)%maxParticleNumberZ)) THEN
+!   SWRITE(*,*) 'for species ',FractNbr,' does not match number of particles in each direction!'
+!   CALL abort(__STAMP__,'ERROR: Number of particles in init / emission region',iInit)
+!  END IF
+!  xlen = ABS(GEO%xmaxglob  - GEO%xminglob)
+!  ylen = ABS(GEO%ymaxglob  - GEO%yminglob)
+!  zlen = ABS(GEO%zmaxglob  - GEO%zminglob)
+!  pilen=2.0*PI/xlen
+!  x_step = xlen/Species(FractNbr)%Init(iInit)%maxParticleNumberX
+!  y_step = ylen/Species(FractNbr)%Init(iInit)%maxParticleNumberY
+!  z_step = zlen/Species(FractNbr)%Init(iInit)%maxParticleNumberZ
+!  iPart = 1
+!  DO i=1,Species(FractNbr)%Init(iInit)%maxParticleNumberX
+!    x_pos = (i * x_step - x_step*0.5)
+!    x_pos = GEO%xminglob + x_pos + Species(FractNbr)%Init(iInit)%Amplitude &
+!            * SIN(Species(FractNbr)%Init(iInit)%WaveNumber * pilen * x_pos)
+!    DO j=1,Species(FractNbr)%Init(iInit)%maxParticleNumberY
+!      y_pos =  GEO%yminglob + j * y_step - y_step * 0.5
+!      DO k=1,Species(FractNbr)%Init(iInit)%maxParticleNumberZ
+!        particle_positions(iPart*3-2) = x_pos
+!        particle_positions(iPart*3-1) = y_pos
+!        particle_positions(iPart*3  ) = GEO%zminglob &
+!                                  + k * z_step - z_step * 0.5
+!        iPart = iPart + 1
+!      END DO
+!    END DO
+!  END DO
+!END SUBROUTINE SetParticlePositionSinDeviation
 
 
 SUBROUTINE SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions)

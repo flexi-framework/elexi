@@ -692,40 +692,78 @@ DO iSpec = 1, nSpecies
 
     ! get species values // only once
     !--> General Species Values
-    Species(iSpec)%RHSMethod             = TRIM(GETSTR('Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-RHSMethod','none'))
-    Species(iSpec)%MassIC                = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-MassIC','0.')
-    Species(iSpec)%DensityIC             = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-DensityIC','0.')
-    Species(iSpec)%LowVeloThreshold      = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-LowVeloThreshold','0.')
-    Species(iSpec)%HighVeloThreshold     = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-HighVeloThreshold','0.')
+    SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec,'-Init',iInit
+    Species(iSpec)%RHSMethod             = TRIM(GETSTR('Part-Species'//TRIM(tmpStr2)//'-RHSMethod'        ,'none'))
+    Species(iSpec)%MassIC                = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-MassIC'           ,'0.')
+    Species(iSpec)%DensityIC             = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-DensityIC'        ,'0.')
+    Species(iSpec)%LowVeloThreshold      = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-LowVeloThreshold' ,'0.')
+    Species(iSpec)%HighVeloThreshold     = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-HighVeloThreshold','0.')
 
     !--> Bons particle rebound model
-    Species(iSpec)%YoungIC               = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-YoungIC','0.')
-    Species(iSpec)%PoissonIC             = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-PoissonIC','0.')
-    Species(iSpec)%YieldCoeff            = GETREAL(    'Part-Species'//TRIM(tmpStr2)         //'-YieldCoeff','0.')
+    SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading rebound  particle properties for Species',iSpec,'-Init',iInit
+    Species(iSpec)%YoungIC               = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-YoungIC'          ,'0.')
+    Species(iSpec)%PoissonIC             = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-PoissonIC'        ,'0.')
+    Species(iSpec)%YieldCoeff            = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-YieldCoeff'       ,'0.')
 
     ! Emission and init data
-    Species(iSpec)%Init(iInit)%UseForInit            = GETLOGICAL(  'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-UseForInit','.TRUE.')
-    Species(iSpec)%Init(iInit)%UseForEmission        = GETLOGICAL(  'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-UseForEmission','.TRUE.')
-    Species(iSpec)%Init(iInit)%SpaceIC               = TRIM(GETSTR( 'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-SpaceIC','cuboid'))
-    Species(iSpec)%Init(iInit)%velocityDistribution  = TRIM(GETSTR( 'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-velocityDistribution','constant'))
-    Species(iSpec)%Init(iInit)%InflowRiseTime        = GETREAL(     'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-InflowRiseTime','0.')
-    Species(iSpec)%Init(iInit)%initialParticleNumber = GETINT(      'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-initialParticleNumber','0')
-    Species(iSpec)%Init(iInit)%RadiusIC              = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC','1.')
-    Species(iSpec)%Init(iInit)%NormalIC              = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC',3,'0. , 0. , 1.')
-    Species(iSpec)%Init(iInit)%BasePointIC           = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC',3,'0. , 0. , 0.')
-    Species(iSpec)%Init(iInit)%BaseVariance          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-BaseVariance','1.')
-    Species(iSpec)%Init(iInit)%BaseVector1IC         = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector1IC',3,'1. , 0. , 0.')
-    Species(iSpec)%Init(iInit)%BaseVector2IC         = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector2IC',3,'0. , 1. , 0.')
-    Species(iSpec)%Init(iInit)%CuboidHeightIC        = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-CuboidHeightIC','1.')
-    Species(iSpec)%Init(iInit)%CylinderHeightIC      = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-CylinderHeightIC','1.')
-    Species(iSpec)%Init(iInit)%CalcHeightFromDt      = GETLOGICAL(  'Part-Species'//TRIM(tmpStr2)//'-CalcHeightFromDt','.FALSE.')
-!   Species(iSpec)%Init(iInit)%VeloIC                = GETREAL('Part-Species'//TRIM(tmpStr2)//'-VeloIC','0.')
-    Species(iSpec)%Init(iInit)%VeloTurbIC            = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloTurbIC','0.')
-    Species(iSpec)%Init(iInit)%VeloVecIC             = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-VeloVecIC',3,'0. , 0. , 0.')
-    Species(iSpec)%Init(iInit)%ParticleEmissionType  = GETINT(      'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-ParticleEmissionType','2')
-    Species(iSpec)%Init(iInit)%ParticleEmission      = GETREAL(     'Part-Species'//TRIM(ADJUSTL(tmpStr2))//'-ParticleEmission','0.')
-    Species(iSpec)%Init(iInit)%PartDensity           = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-PartDensity','0.')
+    SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading emission particle properties for Species',iSpec,'-Init',iInit
+    Species(iSpec)%Init(iInit)%UseForInit            = GETLOGICAL(  'Part-Species'//TRIM(tmpStr2)//'-UseForInit'            ,'.TRUE.')
+    Species(iSpec)%Init(iInit)%UseForEmission        = GETLOGICAL(  'Part-Species'//TRIM(tmpStr2)//'-UseForEmission'        ,'.TRUE.')
+    Species(iSpec)%Init(iInit)%initialParticleNumber = GETINT(      'Part-Species'//TRIM(tmpStr2)//'-initialParticleNumber' ,'0')
+    Species(iSpec)%Init(iInit)%ParticleEmissionType  = GETINT(      'Part-Species'//TRIM(tmpStr2)//'-ParticleEmissionType'  ,'1')
+    Species(iSpec)%Init(iInit)%ParticleEmission      = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-ParticleEmission'      ,'0.')
+    Species(iSpec)%Init(iInit)%PartDensity           = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-PartDensity'           ,'0.')
+    Species(iSpec)%Init(iInit)%SpaceIC               = TRIM(GETSTR( 'Part-Species'//TRIM(tmpStr2)//'-SpaceIC'               ,'cuboid'))
+    Species(iSpec)%Init(iInit)%VeloVecIC             = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-VeloVecIC'           ,3,'0. , 0. , 0.')
+!   Species(iSpec)%Init(iInit)%VeloIC                = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloIC'                ,'0.')
+    Species(iSpec)%Init(iInit)%VeloTurbIC            = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloTurbIC'            ,'0.')
+    Species(iSpec)%Init(iInit)%velocityDistribution  = TRIM(GETSTR( 'Part-Species'//TRIM(tmpStr2)//'-velocityDistribution'  ,'constant'))
+    Species(iSpec)%Init(iInit)%InflowRiseTime        = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-InflowRiseTime'        ,'0.')
     Species(iSpec)%Init(iInit)%NumberOfExcludeRegions= GETINT(      'Part-Species'//TRIM(tmpStr2)//'-NumberOfExcludeRegions','0')
+
+    !> Read only emission properties required for SpaceIC
+    !>>> Parameters must be set to false to allow conformity checks afterwards
+    Species(iSpec)%Init(iInit)%CalcHeightFromDt = .FALSE.
+
+    SELECT CASE(Species(iSpec)%Init(iInit)%SpaceIC)
+      CASE('point')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+      CASE('line','line_with_equidistant_distribution')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%BaseVector1IC     = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector1IC' ,3,'1. , 0. , 0.')
+      CASE('disc')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'      ,'1.')
+        Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3,'0. , 0. , 1.')
+      CASE('circle', 'circle_equidistant')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'        ,'1.')
+        Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3,'0. , 0. , 1.')
+      CASE('cuboid')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%BaseVector1IC     = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector1IC' ,3,'1. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%BaseVector2IC     = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector2IC' ,3,'0. , 1. , 0.')
+        Species(iSpec)%Init(iInit)%CuboidHeightIC    = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-CuboidHeightIC'  ,'1.')
+        Species(iSpec)%Init(iInit)%CalcHeightFromDt  = GETLOGICAL(  'Part-Species'//TRIM(tmpStr2)//'-CalcHeightFromDt','.FALSE.')
+      CASE('cylinder')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%BaseVector1IC     = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector1IC' ,3,'1. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%BaseVector2IC     = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector2IC' ,3,'0. , 1. , 0.')
+        Species(iSpec)%Init(iInit)%CylinderHeightIC  = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-CylinderHeightIC','1.')
+      CASE('sphere')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'        ,'1.')
+      CASE('Gaussian')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%BaseVariance      = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-BaseVariance'    ,'1.')
+        Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'        ,'1.')
+        Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3,'0. , 0. , 1.')
+!      CASE('sin_deviation')
+        ! Currently not implemented
+      CASE DEFAULT
+        CALL ABORT(__STAMP__,'Unknown particle emission type')
+    END SELECT
+
 
     ! Nullify additional init data here
     Species(iSpec)%Init(iInit)%InsertedParticle      = 0
@@ -748,38 +786,45 @@ DO iSpec = 1, nSpecies
       .AND.(Species(iSpec)%Init(iInit)%UseForInit) ) THEN
       IF (Species(iSpec)%Init(iInit)%initialParticleNumber.EQ.0) THEN
         Species(iSpec)%Init(iInit)%UseForInit=.FALSE.
-        SWRITE(*,*) "WARNING: Initial ParticleInserting disabled as no ParticleNumber"
-        SWRITE(*,*) " detected for Species, Init ", iSpec, iInit
+        SWRITE(UNIT_StdOut,'(A)',ADVANCE='NO') ' | WARNING: Initial ParticleInserting disabled as no ParticleNumber'
+        SWRITE(UNIT_StdOut,'(A,I0,A,I0)')      ' detected for Species',iSpec,'-Init',iInit
       END IF
     END IF
 
     !--- cuboid-/cylinder-height calculation from v and dt
-    IF (.NOT.Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
-      IF (TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cuboid') THEN
-        ! flag is initialized with -1, compatibility issue
-        IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CuboidHeightIC,-1.)) THEN
-          Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
-          SWRITE(*,*) "WARNING: Cuboid height will be calculated from v and dt!"
+    SELECT CASE(Species(iSpec)%Init(iInit)%SpaceIC)
+      CASE('cuboid')
+        IF (.NOT.Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
+          IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CuboidHeightIC,-1.)) THEN
+            Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
+            SWRITE(*,*) "WARNING: Cuboid height will be calculated from v and dt!"
+          END IF
         END IF
-      ELSE IF (TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cylinder') THEN
-        ! flag is initialized with -1, compatibility issue
-        IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CylinderHeightIC,-1.)) THEN
-          Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
-          SWRITE(*,*) "WARNING: Cylinder height will be calculated from v and dt!"
+
+      CASE('cylinder')
+        IF (.NOT.Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
+          IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CylinderHeightIC,-1.)) THEN
+            Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
+            SWRITE(*,*) "WARNING: Cylinder height will be calculated from v and dt!"
+          END IF
         END IF
-      END IF
-    END IF
+
+      CASE DEFAULT
+        IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
+          CALL abort(__STAMP__,' Calculating height from v and dt is only supported for cuboid or cylinder!')
+        END IF
+    END SELECT
+
     IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
-      IF ((TRIM(Species(iSpec)%Init(iInit)%SpaceIC).NE.'cuboid') &
-          .AND.(TRIM(Species(iSpec)%Init(iInit)%SpaceIC).NE.'cylinder')) &
-        CALL abort(__STAMP__,' Calculating height from v and dt is only supported for cuboid or cylinder!')
-      IF (Species(iSpec)%Init(iInit)%UseForInit) &
+      IF (Species(iSpec)%Init(iInit)%UseForInit) THEN
         CALL abort(__STAMP__,' Calculating height from v and dt is not supported for initial ParticleInserting!')
+      END IF
     END IF
 
     !--- read ExcludeRegions and normalize/calculate corresponding vectors
     IF (Species(iSpec)%Init(iInit)%NumberOfExcludeRegions.GT.0) THEN
       ALLOCATE(Species(iSpec)%Init(iInit)%ExcludeRegion(1:Species(iSpec)%Init(iInit)%NumberOfExcludeRegions))
+
       IF  ((TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cuboid') &
        .OR.(TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cylinder')) THEN
         DO iExclude=1,Species(iSpec)%Init(iInit)%NumberOfExcludeRegions
@@ -812,9 +857,9 @@ DO iSpec = 1, nSpecies
             .OR. ((.NOT.ALMOSTEQUAL(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(1),0.)   &
               .OR. .NOT.ALMOSTEQUAL(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(2),1.))  &
               .OR. .NOT.ALMOSTEQUAL(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(3),0.))) &
-            .AND.    (((ALMOSTEQUAL(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(1),0.))       &
-              .AND.    (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(2),0.)))      &
-              .AND.    (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(3),1.))))) THEN
+            .AND.    (((ALMOSTEQUAL(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC     (1),0.))  &
+              .AND.    (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC     (2),0.))) &
+              .AND.    (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC     (3),1.))))) THEN
             !-- cuboid; or BV are non-default and NormalIC is default: calc. NormalIC for ExcludeRegions from BV1/2
             !   (for def. BV and non-def. NormalIC; or all def. or non-def.: Use User-defined NormalIC when ExclRegion is cylinder)
             Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(1)          &
@@ -878,7 +923,7 @@ DO iSpec = 1, nSpecies
         ! old style parameters has been defined for inits/emissions
         Species(iSpec)%StartnumberOfInits = 0
       END IF
-      SWRITE(*,*) "StartnumberOfInits of Species ", iSpec, " = ", Species(iSpec)%StartnumberOfInits
+      SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | StartNumberOfInits of Species ', iSpec, ' = ', Species(iSpec)%StartnumberOfInits
     END IF ! iInit .EQ.0
 
   END DO ! iInit
@@ -919,6 +964,9 @@ CHARACTER(200), ALLOCATABLE :: tmpStringBC(:)
 ! get number of particle boundaries
 nPartBound = CountOption('Part-BoundaryName')
 
+SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(UNIT_StdOut,'(A)') ' | Reading particle boundary properties'
+
 ! Allocate arrays for particle boundaries
 ALLOCATE(PartBound%SourceBoundName    (1:nBCs))
 ALLOCATE(PartBound%SourceBoundType    (1:nBCs))
@@ -957,73 +1005,65 @@ DO iBC=1,nBCs
   END IF
 
   SELECT CASE (BoundaryType(iBC, BC_TYPE))
-  CASE(1)
-    tmpString='periodic'
-    GEO%nPeriodicVectors=GEO%nPeriodicVectors+1
-!  CASE(2,12,22)
-!    tmpString='open'
-  CASE(3,4)
-    tmpString='reflective'
-  CASE(9)
-    tmpString='symmetry'
-  CASE DEFAULT
-    tmpString='open'
+   CASE(1)
+     tmpString = 'periodic'
+     GEO%nPeriodicVectors = GEO%nPeriodicVectors+1
+!   CASE(2,12,22)
+!     tmpString='open'
+   CASE(3,4)
+     tmpString = 'reflective'
+   CASE(9)
+     tmpString = 'symmetry'
+   CASE DEFAULT
+     tmpString = 'open'
   END SELECT
-!  DO iPartBound=1,nPartBound
-!    IF (TRIM(BoundaryName(iBC)).EQ.tmpStringBC(iPartBound)) THEN
-!      PartBound%SourceBoundType(iBC) = TRIM(GETSTR('Part-BoundaryType'))
-!      PartBound%SourceBoundName(iBC) = tmpStringBC(iPartBound)
-!      ! check if PartBC is not periodic, but DGBC
-!      IF ((BoundaryType(iBC, BC_TYPE).EQ.1) .AND. (TRIM(PartBound%SourceBoundType(iBC)).NE.'periodic')) &
-!        GEO%nPeriodicVectors=GEO%nPeriodicVectors-1
-!    END IF
-!  END DO
+
   WRITE(UNIT=tmpStr,FMT='(I0)') iBC
   PartBound%SourceBoundType(iBC) = TRIM(GETSTR('Part-Boundary'//TRIM(tmpStr)//'-Type', tmpString))
   PartBound%SourceBoundName(iBC) = TRIM(GETSTR('Part-Boundary'//TRIM(tmpStr)//'-Name', BoundaryName(iBC))) !tmpStringBC(iPartBound)
   ! Select boundary condition for particles
   SELECT CASE (PartBound%SourceBoundType(iBC))
-  ! Inflow / outflow
-  CASE('open')
-    PartBound%TargetBoundCond(iBC)      = PartBound%OpenBC
-    PartBound%AmbientCondition(iBC)     = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-AmbientCondition','.FALSE.')
-    IF(PartBound%AmbientCondition(iBC)) THEN
-      PartBound%AmbientConditionFix(iBC)= GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-AmbientConditionFix','.TRUE.')
-      PartBound%AmbientVelo(1:3,iBC)    = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-AmbientVelo',3,'0., 0., 0.')
-      PartBound%AmbientDens(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-AmbientDens','0')
-      PartBound%AmbientDynamicVisc(iBC) = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-AmbientDynamicVisc','1.72326582572253E-5') ! N2:T=288K
-    END IF
+    ! Inflow / outflow
+    CASE('open')
+      PartBound%TargetBoundCond(iBC)      = PartBound%OpenBC
+      PartBound%AmbientCondition(iBC)     = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-AmbientCondition'   ,'.FALSE.')
+      IF(PartBound%AmbientCondition(iBC)) THEN
+        PartBound%AmbientConditionFix(iBC)= GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-AmbientConditionFix','.TRUE.')
+        PartBound%AmbientVelo(1:3,iBC)    = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-AmbientVelo'      ,3,'0., 0., 0.')
+        PartBound%AmbientDens(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-AmbientDens'        ,'0')
+        PartBound%AmbientDynamicVisc(iBC) = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-AmbientDynamicVisc' ,'1.72326582572253E-5') ! N2:T=288K
+      END IF
 
-  ! Reflective (wall)
-  CASE('reflective')
-    PartBound%TargetBoundCond(iBC)      = PartBound%ReflectiveBC
-    PartBound%WallVelo(1:3,iBC)         = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-WallVelo',3,'0. , 0. , 0.')
-    PartBound%WallModel(iBC)            = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallModel','perfRef')
+    ! Reflective (wall)
+    CASE('reflective')
+      PartBound%TargetBoundCond(iBC)      = PartBound%ReflectiveBC
+      PartBound%WallVelo(1:3,iBC)         = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-WallVelo'         ,3,'0. , 0. , 0.')
+      PartBound%WallModel(iBC)            = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallModel'          ,'perfRef')
 
-    ! Non-perfect reflection
-    IF (PartBound%WallModel(iBC).EQ.'coeffRes') THEN
-        PartBound%WallCoeffModel(iBC)   = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallCoeffModel','Tabakoff1981')
+      ! Non-perfect reflection
+      IF (PartBound%WallModel(iBC).EQ.'coeffRes') THEN
+          PartBound%WallCoeffModel(iBC)   = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallCoeffModel'     ,'Tabakoff1981')
 
-        ! Bons particle rebound model
-        IF (PartBound%WallCoeffModel(iBC).EQ.'Bons2017') THEN
-            PartBound%Young(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Young')
-            PartBound%Poisson(iBC)      = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Poisson')
-       ELSEIF (PartBound%WallCoeffModel(iBC).EQ.'Fong2019') THEN
-            PartBound%CoR(iBC)          = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-CoR','1.')
-        END IF
-    END IF
+          ! Bons particle rebound model
+          IF (PartBound%WallCoeffModel(iBC).EQ.'Bons2017') THEN
+              PartBound%Young(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Young')
+              PartBound%Poisson(iBC)      = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Poisson')
+         ELSEIF (PartBound%WallCoeffModel(iBC).EQ.'Fong2019') THEN
+              PartBound%CoR(iBC)          = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-CoR'                ,'1.')
+          END IF
+      END IF
 
-  ! Periodic
-  CASE('periodic')
-    PartBound%TargetBoundCond(iBC)      = PartBound%PeriodicBC
+    ! Periodic
+    CASE('periodic')
+      PartBound%TargetBoundCond(iBC)      = PartBound%PeriodicBC
 
-  CASE('symmetry')
-    PartBound%TargetBoundCond(iBC)      = PartBound%SymmetryBC
+    CASE('symmetry')
+      PartBound%TargetBoundCond(iBC)      = PartBound%SymmetryBC
 
-  ! Invalid boundary option
-  CASE DEFAULT
-    SWRITE(*,*) ' Boundary does not exists: ', TRIM(PartBound%SourceBoundType(iBC))
-    CALL abort(__STAMP__,'Particle Boundary Condition does not exist')
+    ! Invalid boundary option
+    CASE DEFAULT
+      SWRITE(*,*) ' Boundary does not exists: ', TRIM(PartBound%SourceBoundType(iBC))
+      CALL abort(__STAMP__,'Particle Boundary Condition does not exist')
   END SELECT
 END DO
 

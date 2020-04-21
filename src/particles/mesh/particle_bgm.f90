@@ -208,7 +208,7 @@ ELSE
     halo_eps = MAX(halo_eps,RKc(iStage+1)-RKc(iStage))
   END DO
   halo_eps = MAX(halo_eps,1.-RKc(nRKStages))
-  SWRITE(UNIT_stdOut,'(A46,E24.12)')   ' |                    max. RKdtFrac,CALCUL. | ',halo_eps
+  SWRITE(UNIT_StdOut,'(A,E24.12)') ' | Max. RK dtFrac, calculated      ', halo_eps
   !dt multiplied with maximum RKdtFrac
   halo_eps = halo_eps*halo_eps_velo*deltaT*SafetyFactor
 
@@ -217,13 +217,13 @@ ELSE
                    + (GEO%ymaxglob-GEO%yminglob)**2 &
                    + (GEO%zmaxglob-GEO%zminglob)**2 )
   IF(halo_eps.GT.globalDiag)THEN
-    SWRITE(UNIT_stdOut,'(A46,E24.12)') ' |                  unlimited halo distance | ',halo_eps
-    SWRITE(UNIT_stdOut,'(A46)')        ' |              limitation of halo distance | '
+    SWRITE(UNIT_StdOut,'(A,E24.12)') ' | unlimited halo distance       ', halo_eps
+    SWRITE(UNIT_StdOut,'(A       )') ' | limitation of halo distance'
     halo_eps=globalDiag
   END IF
 
   halo_eps2=halo_eps*halo_eps
-  SWRITE(UNIT_stdOut,'(A46,E24.12)')   ' |                            halo distance | ',halo_eps
+  SWRITE(UNIT_StdOut,'(A,E24.12)') ' | halo distance                   ', halo_eps
 END IF
 
 moveBGMindex = 1 ! BGM indices must be >0 --> move by 1

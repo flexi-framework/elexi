@@ -13,6 +13,9 @@
 !=================================================================================================================================
 #if PARABOLIC
 #include "flexi.h"
+#if USE_PARTICLES
+#include "particle.h"
+#endif /*USE_PARTICLES*/
 
 !==================================================================================================================================
 !> \brief Contains the BR1 lifting procedures (initialization and lifting operator) for computing the lifted solution gradients

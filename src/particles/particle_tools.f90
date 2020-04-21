@@ -42,7 +42,6 @@ SUBROUTINE UpdateNextFreePosition()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Mesh_Vars            ,ONLY: offsetElem
 USE MOD_Particle_Vars        ,ONLY: PDM,PEM,useLinkedList
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

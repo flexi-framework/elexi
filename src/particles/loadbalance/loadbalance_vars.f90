@@ -48,6 +48,7 @@ REAL                                :: RestartWallTime                          
                                                                                   ! when a restart is performed via Load Balance
 LOGICAl                             :: DoInitialAutoRestart= .FALSE.
 INTEGER                             :: InitialAutoRestartSample
+LOGICAl                             :: IAR_PerformPartWeightLB= .FALSE.
 
 TYPE tData
   INTEGER, ALLOCATABLE :: offsetElemMPI(:)

@@ -208,14 +208,16 @@ USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_ErosionPoints       ,ONLY: WriteEP
 USE MOD_ErosionPoints_Vars  ,ONLY: EP_inUse
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimestep,ManualTimestep
+#endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
-USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,PerformLoadBalance,LoadBalanceSample,ElemTime
+USE MOD_LoadBalance_Timedisc,ONLY: LoadBalance,InitialAutoRestart
+USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,PerformLoadBalance
+USE MOD_LoadBalance_Vars    ,ONLY: RestartWallTime,LoadBalanceSample
 #endif /*LOADBALANCE*/
-#endif /*PARTICLES*/
-#if USE_MPI_SHARED
-USE MOD_Particle_MPI_Shared ,ONLY: UpdateDGShared
-#endif
+!#if USE_MPI_SHARED
+!USE MOD_Particle_MPI_Shared ,ONLY: UpdateDGShared
+!#endif
 use MOD_IO_HDF5
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -229,6 +231,10 @@ REAL                         :: CalcTimeStart,CalcTimeEnd
 INTEGER                      :: TimeArray(8)              !< Array for system time
 INTEGER                      :: errType,nCalcTimestep,writeCounter
 LOGICAL                      :: doAnalyze,doFinalize
+#if USE_LOADBALANCE
+INTEGER                      :: tmp_LoadBalanceSample    !> loadbalance sample saved until initial autorestart ist finished
+LOGICAL                      :: tmp_DoLoadBalance        !> loadbalance flag saved until initial autorestart ist finished
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -317,6 +323,10 @@ ELSE
 END IF
 #endif
 
+#if USE_LOADBALANCE
+CALL InitialAutoRestart(t,dt,dt_min,tend,tAnalyze,Analyze_dt,tmp_LoadBalanceSample,tmp_DoLoadBalance)
+#endif
+
 nCalcTimestep=0
 dt_MinOld=-999.
 IF(errType.NE.0) CALL abort(__STAMP__,&
@@ -345,10 +355,10 @@ END IF
 CALL FV_Info(1_8)
 #endif
 
-! Update the initial solution in the MPI-3 shared memory array
-#if USE_MPI_SHARED
-CALL UpdateDGShared(U)
-#endif /*MPI_SHARED*/
+!! Update the initial solution in the MPI-3 shared memory array
+!#if USE_MPI_SHARED
+!CALL UpdateDGShared(U)
+!#endif /*MPI_SHARED*/
 
 SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 
@@ -413,7 +423,6 @@ DO
        .OR. (ALMOSTEQUALRELATIVE(dtAnalyze,LoadBalanceSample*dt,1e-5)))       & ! make sure to get the first iteration in interval
        .AND. DoLoadBalance) THEN
     PerformLoadBalance = .TRUE.                                                 ! make sure Loadbalancing is enabled
-    ElemTime           = 0.                                                     ! nullify ElemTime before measuring in the next iter
   END IF
 #endif /*LOADBALANCE*/
 
@@ -423,12 +432,10 @@ DO
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   CALL TimeStep(t)
 
-#if USE_PARTICLES
 #if USE_LOADBALANCE
   ! If loadbalance is performed in the current step, distribute the recorded load to the elements
   IF(PerformLoadBalance) CALL ComputeElemLoad()
   PerformLoadBalance = .FALSE.
-#endif /* USE_LOADBALANCE */
 #endif /* PARTICLES */
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -493,12 +500,6 @@ DO
       writeCounter=0
     END IF
 
-    ! do loadbalance output
-#if USE_LOADBALANCE
-    ! Output the loadbalance information with part weights at the analyze step
-    IF(DoLoadBalance) CALL AnalyzeLoadBalance()
-#endif
-
     ! do analysis
     CALL Analyze(t,iter)
     iter_loc=0
@@ -507,6 +508,22 @@ DO
     doAnalyze=.FALSE.
 
   END IF !ANALYZE
+
+#if USE_LOADBALANCE
+  ! Output the loadbalance information with part weights at the analyze step
+  IF(DoLoadBalance) CALL AnalyzeLoadBalance()
+
+  ! Check if load balancing must be performed
+  IF (DoLoadBalance.AND.        &
+      t.LT.tEnd    .AND.        &   ! do not perform a load balance restart when the last timestep is performed
+      PerformLoadBalance) THEN      ! computeElemLoad indicated sufficient imbalance
+!        RestartTime     = t          ! Set restart simulation time to current simulation time because the time is not read from the state file
+      RestartWallTime = FLEXITIME()   ! Set restart wall time if a load balance step is performed
+
+      ! perform the actual loadbalance step
+      CALL LoadBalance()
+  END IF
+#endif
 
   IF(doFinalize) EXIT
 END DO
@@ -550,9 +567,9 @@ USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByEuler,Particle_TimeStepB
 USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByLSERK_RK_RHS,Particle_TimeStepByLSERK_RK
 USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
 #endif /* PARTICLES */
-#if USE_MPI_SHARED
-USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
-#endif /* MPI_SHARED */
+!#if USE_MPI_SHARED
+!USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
+!#endif /* MPI_SHARED */
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -594,9 +611,9 @@ END IF
 CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 
-#if USE_MPI_SHARED
-  CALL UpdateDGShared(U)
-#endif /*MPI_SHARED*/
+!#if USE_MPI_SHARED
+!  CALL UpdateDGShared(U)
+!#endif /*MPI_SHARED*/
 
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
@@ -639,9 +656,9 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,Ut_temp,Ut,ConstOut=-RKA(iStage)) !Ut_temp = Ut - Ut_temp*RKA(iStage)
   CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
 
-#if USE_MPI_SHARED
-  CALL UpdateDGShared(U)
-#endif /*MPI_SHARED*/
+!#if USE_MPI_SHARED
+!  CALL UpdateDGShared(U)
+!#endif /*MPI_SHARED*/
 
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
@@ -687,9 +704,9 @@ USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
 USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
 USE MOD_Particle_TimeDisc
 #endif /*USE_PARTICLES*/
-#if USE_MPI_SHARED
-USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
-#endif
+!#if USE_MPI_SHARED
+!USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
+!#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -753,9 +770,9 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                !U = U + RKg3(ek)*Uprev
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                   !U = U + Ut*b_dt(iStage)
 
-#if USE_MPI_SHARED
-  CALL UpdateDGShared(U)
-#endif /*MPI_SHARED*/
+!#if USE_MPI_SHARED
+!  CALL UpdateDGShared(U)
+!#endif /*MPI_SHARED*/
 
 #if USE_PARTICLES
   CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)

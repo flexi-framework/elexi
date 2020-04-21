@@ -57,7 +57,7 @@ USE MOD_IO_HDF5,           ONLY:DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_Output,            ONLY:DefineParametersOutput,InitOutput
 USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze
 USE MOD_RecordPoints,      ONLY:DefineParametersRecordPoints,InitRecordPoints
-USE MOD_TimeDisc,          ONLY:DefineParametersTimedisc,InitTimeDisc,TimeDisc
+USE MOD_TimeDisc,          ONLY:DefineParametersTimedisc,InitTimeDisc
 USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
@@ -159,7 +159,6 @@ CALL DefineParametersSponge()
 CALL DefineParametersTimedisc()
 CALL DefineParametersAnalyze()
 CALL DefineParametersRecordPoints()
-! Particles
 #if USE_PARTICLES
 CALL DefineParametersParticles()
 CALL DefineParametersParticleMesh()
@@ -170,7 +169,7 @@ CALL DefineParametersErosionPoints()
 #if USE_MPI
 CALL DefineParametersLoadBalance()
 CALL DefineParametersMPIShared()
-#endif
+#endif /*USE_MPI*/
 #endif /*PARTICLES*/
 
 ! check for command line argument --help or --markdown
@@ -222,11 +221,11 @@ CALL InitMortar()
 CALL InitOutput()
 #if USE_PARTICLES
 CALL InitParticleGlobals
+CALL InitMPIShared()
 #if USE_LOADBALANCE
 CALL InitLoadBalance()
-#endif
-CALL InitMPIShared()
-#endif
+#endif /*USE_LOADBALANCE*/
+#endif  /*USE_PARTICLES*/
 CALL InitMesh(meshMode=2)
 CALL InitRestart()
 CALL InitFilter()
@@ -235,13 +234,6 @@ CALL InitIndicator()
 #if USE_MPI
 CALL InitMPIvars()
 #endif
-#if USE_PARTICLES
-#if USE_MPI
-CALL InitParticleMPI
-#endif
-CALL InitParticleSurfaces
-CALL InitParticleAnalyze
-#endif /*PARTICLES*/
 CALL InitEquation()
 CALL InitDG()
 #if FV_ENABLED
@@ -256,10 +248,14 @@ CALL InitAnalyze()
 CALL InitRecordpoints()
 CALL Restart()
 #if USE_PARTICLES
+#if USE_MPI
+CALL InitParticleMPI
+#endif /*USE_MPI*/
+CALL InitParticleSurfaces
+CALL InitParticleAnalyze
 CALL InitParticles()
 CALL RestartParticleBoundarySampling()
-!CALL ParticleRestart()
-#endif /*PARTICLES*/
+#endif /*USE_PARTICLES*/
 CALL IgnoredParameters()
 
 ! Measure init duration
@@ -293,10 +289,6 @@ USE MOD_RecordPoints,      ONLY:FinalizeRecordPoints
 USE MOD_TimeDisc,          ONLY:FinalizeTimeDisc
 #if USE_MPI
 USE MOD_MPI,               ONLY:FinalizeMPI
-#if USE_MPI_SHARED
-USE MOD_MPI_Shared,        ONLY:FinalizeMPIShared
-USE MOD_Particle_MPI_Shared,ONLY:FinalizeMeshShared
-#endif
 #endif
 USE MOD_Sponge,            ONLY:FinalizeSponge
 #if FV_ENABLED
@@ -308,11 +300,10 @@ USE MOD_ReadInTools,       ONLY:FinalizeParameters
 #if USE_PARTICLES
 USE MOD_Particle_Analyze,  ONLY:FinalizeParticleAnalyze
 USE MOD_Particle_Init,     ONLY:FinalizeParticles
+USE MOD_Particle_Mesh,     ONLY:FinalizeParticleMesh
 #if USE_MPI
 USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
-#endif
-#if USE_MPI_SHARED
-USE MOD_Particle_MPI_Shared,ONLY:FinalizeParticleMeshShared
+USE MOD_Particle_MPI_Shared,ONLY:FinalizeMPIShared
 #endif
 #endif /*PARTICLES*/
 IMPLICIT NONE
@@ -329,10 +320,6 @@ CALL FinalizeLifting()
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 CALL FinalizeFV()
-#endif
-#if USE_PARTICLES
-CALL FinalizeParticleAnalyze
-CALL FinalizeParticles
 #endif
 CALL FinalizeDG()
 CALL FinalizeEquation()
@@ -352,20 +339,21 @@ CALL FinalizeIndicator()
 Time=FLEXITIME()
 CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
-#if USE_MPI
-#if USE_MPI_SHARED
-CALL FinalizeMeshShared()
 #if USE_PARTICLES
-CALL FinalizeParticleMeshShared()
-#endif /*PARTICLES*/
+CALL FinalizeParticleAnalyze
+CALL FinalizeParticleMesh
+CALL FinalizeParticles
+#if USE_MPI
 CALL FinalizeMPIShared()
-#endif /*MPI_SHARED*/
+#endif /*MPI*/
+#if USE_LOADBALANCE
+CALL FinalizeLoadBalance()
+#endif /*USE_LOADBALANCE*/
+#endif /*USE_PARTICLES*/
+#if USE_MPI
 ! For flexilib MPI init/finalize is controlled by main program
 CALL FinalizeMPI()
-#if USE_PARTICLES
-CALL FinalizeLoadBalance()
-#endif /*PARTICLES*/
-#endif /*MPI*/
+#endif
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' FLEXI FINISHED! [',Time-StartTime,' sec ]'
 SWRITE(UNIT_stdOut,'(132("="))')

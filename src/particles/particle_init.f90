@@ -827,6 +827,8 @@ DO iSpec = 1, nSpecies
 
       IF  ((TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cuboid') &
        .OR.(TRIM(Species(iSpec)%Init(iInit)%SpaceIC).EQ.'cylinder')) THEN
+
+        ! Read in information for exclude regions
         DO iExclude=1,Species(iSpec)%Init(iInit)%NumberOfExcludeRegions
           WRITE(UNIT=tmpStr3,FMT='(I0)') iExclude
           tmpStr3=TRIM(tmpStr2)//'-ExcludeRegion'//TRIM(tmpStr3)
@@ -862,20 +864,20 @@ DO iSpec = 1, nSpecies
               .AND.    (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC     (3),1.))))) THEN
             !-- cuboid; or BV are non-default and NormalIC is default: calc. NormalIC for ExcludeRegions from BV1/2
             !   (for def. BV and non-def. NormalIC; or all def. or non-def.: Use User-defined NormalIC when ExclRegion is cylinder)
-            Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(1)          &
-              = Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(2) &
-              * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(3) &
-              - Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(3) &
+            Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(1)                  &
+              = Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(2)         &
+              * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(3)         &
+              - Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(3)         &
               * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(2)
-            Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(2)          &
-              = Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(3) &
-              * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(1) &
-              - Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(1) &
+            Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(2)                  &
+              = Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(3)         &
+              * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(1)         &
+              - Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(1)         &
               * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(3)
-            Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(3)          &
-              = Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(1) &
-              * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(2) &
-              - Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(2) &
+            Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(3)                  &
+              = Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(1)         &
+              * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(2)         &
+              - Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(2)         &
               * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(1)
           ELSE IF ( (TRIM(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%SpaceIC).NE.'cuboid')    .AND. &
                     (TRIM(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%SpaceIC).NE.'cylinder')) THEN

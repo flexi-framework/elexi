@@ -287,7 +287,7 @@ INTEGER                        :: ErosionDim              !dummy for rank of Ero
 ! Ignore procs without erosion surfaces on them
 !IF(SurfMesh%nSides.EQ.0) RETURN
 !#endif
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' RESTARTING EROSION POINT DATA FROM HDF5 FILE...'
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' RESTARTING PARTICLE IMPACT RECORDING FROM HDF5 FILE...'
 
 EP_Impacts = 0
 
@@ -301,17 +301,22 @@ IF(ErosionDataExists) THEN
   EP_glob    = INT(HSize(2))
   SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of impacts:                      ', EP_glob
   ! We lost the impact <-> proc association, so fill the entire array
-  CALL ReadArray(ArrayName='ErosionData', rank=2,&
-                   nVal=      (/EPDataSize,EP_glob/),&
-                   offset_in  = 0,&
-                   offset_dim = 2,&
-                   RealArray  = EP_Data(1:EPDataSize,1:EP_glob))
-  ! Pretend all impacts happened on MPI_ROOT, so we can write out
-  IF(MPIroot) THEN
-    EP_Impacts = EP_glob
-    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' RESTARTING EROSION POINT DATA FROM HDF5 FILE DONE'
-    WRITE(UNIT_StdOut,'(132("-"))')
-  END IF
+  CALL ReadArray(ArrayName  = 'ErosionData'          , &
+                 rank       = 2                      , &
+                 nVal       = (/EPDataSize,EP_glob/) , &
+                 offset_in  = 0                      , &
+                 offset_dim = 2                      , &
+                 RealArray  = EP_Data(1:EPDataSize,1:EP_glob))
+END IF
+
+! Root has significantly more load here, keep everything in sync
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
+
+! Pretend all impacts happened on MPI_ROOT, so we can write out in the next state file write-out
+IF(MPIroot) THEN
+  EP_Impacts = EP_glob
+  WRITE(UNIT_stdOut,'(A,F0.3,A)')' RESTARTING PARTICLE IMPACT RECORDING FROM HDF5 FILE DONE'
+  WRITE(UNIT_StdOut,'(132("-"))')
 END IF
 
 END SUBROUTINE RestartErosionPoint

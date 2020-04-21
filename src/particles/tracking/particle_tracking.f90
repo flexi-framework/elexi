@@ -1152,8 +1152,9 @@ DO iPart=1,PDM%ParticleVecLength
          ! Particle is on current proc, assign load to new cell
          IF (ElemID.GT.offsetElem+1.AND.ElemID.LE.offsetElem+PP_nElems) THEN
            CALL LBElemPauseTime(ElemID,tLBStart)
-         ELSE IF(PEM%LastElement(iPart).LE.nComputeNodeTotalElems)THEN
-           CALL LBElemPauseTime(PEM%LastElement(iPart),tLBStart)
+         ! Dp not assign load in halo region yet
+!         ELSE IF(PEM%LastElement(iPart).LE.nComputeNodeTotalElems) THEN
+!           CALL LBElemPauseTime(PEM%LastElement(iPart),tLBStart)
          END IF
 #endif /*USE_LOADBALANCE*/
         CYCLE
@@ -1164,9 +1165,10 @@ DO iPart=1,PDM%ParticleVecLength
     ! Particle is on current proc, assign load to new cell
     IF (ElemID.GT.offsetElem+1.AND.ElemID.LE.offsetElem+PP_nElems) THEN
       CALL LBElemPauseTime(ElemID,tLBStart)
-   ! Particle moved into halo region, so blame the last cell on proc
-    ELSE IF(PEM%LastElement(iPart).LE.nComputeNodeTotalElems)THEN
-      CALL LBElemPauseTime(PEM%LastElement(iPart),tLBStart)
+    ! Particle moved into halo region, so blame the last cell on proc
+    ! Dp not assign load in halo region yet
+!    ELSE IF(PEM%LastElement(iPart).LE.nComputeNodeTotalElems)THEN
+!      CALL LBElemPauseTime(PEM%LastElement(iPart),tLBStart)
     END IF
 #endif /*USE_LOADBALANCE*/
 

@@ -37,10 +37,6 @@ INTERFACE FinalizeLoadBalance
   MODULE PROCEDURE FinalizeLoadBalance
 END INTERFACE
 
-INTERFACE LoadBalance
-  MODULE PROCEDURE LoadBalance
-END INTERFACE
-
 #if USE_LOADBALANCE
 INTERFACE ComputeElemLoad
   MODULE PROCEDURE ComputeElemLoad
@@ -56,12 +52,11 @@ PUBLIC :: DefineParametersLoadBalance
 #if USE_MPI
 PUBLIC :: InitLoadBalance
 PUBLIC :: FinalizeLoadBalance
-PUBLIC :: LoadBalance
 #if USE_LOADBALANCE
 PUBLIC :: ComputeElemLoad
 PUBLIC :: AnalyzeLoadBalance
 #endif /*USE_LOADBALANCE*/
-#endif /*MPI*/
+#endif /*USE_MPI*/
 !===================================================================================================================================
 
 CONTAINS
@@ -190,7 +185,6 @@ SUBROUTINE ComputeElemLoad()
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_Particle_Globals
 USE MOD_Preproc
 USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceTimeBased,ElemTime,tCurrent,nLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: DeviationThreshold,PerformLoadBalance
@@ -198,9 +192,11 @@ USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem
 USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight
 USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance
 USE MOD_LoadDistribution       ,ONLY: WriteElemTimeStatistics
+USE MOD_Particle_Globals
 USE MOD_Particle_Localization  ,ONLY: CountPartsPerElem
 USE MOD_Particle_Tracking_vars ,ONLY: DoRefMapping
-USE MOD_TimeDisc_Vars          ,ONLY: t,nRKStages
+USE MOD_TimeDisc_Vars          ,ONLY: t
+!USE MOD_TimeDisc_Vars          ,ONLY: nRKStages
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -248,7 +244,7 @@ IF (LoadBalanceTimeBased) THEN
 !    !> Missed the first call to DGTimeDerivative_WeakForm, rescale the time accordingly
 !    ElemTime(iElem) = ElemTime(iElem)            * ((nRKStages+1)/nRKStages)           &
 !                    + tCurrent(LB_DG)            / REAL(PP_nElems)
-    ElemTime(iElem) = ElemTime(iElem) + + tCurrent(LB_DG)/ REAL(PP_nElems)
+    ElemTime(iElem) = ElemTime(iElem) + tCurrent(LB_DG)/ REAL(PP_nElems)
     ! Add particle LB times to elements with respective weightings
     ElemTime(iElem) = ElemTime(iElem)                                                  &
                     + tCurrent(LB_INTERPOLATION) * nPartsPerElem(iElem) *sTotalParts   &
@@ -278,7 +274,7 @@ CALL ComputeImbalance()
 CALL WriteElemTimeStatistics(WriteHeader=.FALSE.,time=t)
 
 ! only check if imbalance is > a given threshold
-PerformLoadBalance=.FALSE.
+PerformLoadBalance = .FALSE.
 IF(CurrentImbalance.GT.DeviationThreshold) PerformLoadBalance=.TRUE.
 
 ! Reset counters
@@ -288,76 +284,6 @@ tCurrent       = 0.
 
 END SUBROUTINE ComputeElemLoad
 #endif /*USE_LOADBALANCE*/
-
-
-SUBROUTINE LoadBalance()
-!===================================================================================================================================
-! routine perfoming the load balancing
-!===================================================================================================================================
-! USED MODULES
-USE MOD_Globals
-USE MOD_Preproc
-USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,nLoadBalanceSteps,NewImbalance,MinWeight,MaxWeight
-USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance,MaxWeight,MinWeight
-USE MOD_LoadBalance_Vars       ,ONLY: Currentimbalance,PerformLoadBalance
-USE MOD_Particle_Globals       ,ONLY: InitializationWallTime
-USE MOD_Particle_MPI           ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
-USE MOD_Restart                ,ONLY: Restart
-! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL                  :: LB_Time,LB_StartTime
-!===================================================================================================================================
-! only do load-balance if necessary
-IF(.NOT.PerformLoadBalance) THEN
-  ElemTime=0.
-!  InitializationWallTime=0.
-  RETURN
-END IF
-
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' PERFORMING LOAD BALANCE ...'
-
-! Record time spent for load balance restart
-LB_StartTime=FLEXITIME()
-
-nLoadBalanceSteps = nLoadBalanceSteps + 1
-
-!===================================================================================================================================
-! This currently kills loadbalance because FLEXI is not aware of it!
-
-! finialize all arrays
-!CALL FinalizeFlexi(IsLoadBalance=.TRUE.)
-! reallocate
-!CALL InitFlexi(IsLoadBalance=.TRUE.) ! determines new imbalance in InitMesh() -> ReadMesh()
-
-! restart
-!CALL Restart()
-!===================================================================================================================================
-
-! zero ElemTime, the measurement starts again
-ElemTime     = 0.
-
-IF(NewImbalance.GT.CurrentImbalance) THEN
-  SWRITE(UNIT_stdOut,'(A)') ' WARNING: LoadBalance not successful!'
-ELSE
-  SWRITE(UNIT_stdOut,'(A)') ' LoadBalance successful!'
-END IF
-SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' OldImbalance: ', CurrentImbalance
-SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' NewImbalance: ', NewImbalance
-SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MaxWeight:    ', MaxWeight
-SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MinWeight:    ', MinWeight
-
-! Calculate time spent for load balance restart
-LB_Time=FLEXITIME()
-InitializationWallTime = LB_Time - LB_StartTime
-SWRITE(UNIT_stdOut,'(A,F14.2,A)') ' INITIALIZATION DONE! [',InitializationWallTime,' sec ]'
-SWRITE(UNIT_stdOut,'(A)')         ' LOAD BALANCE DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
-END SUBROUTINE LoadBalance
 
 
 #if USE_LOADBALANCE

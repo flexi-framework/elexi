@@ -54,6 +54,7 @@ USE MOD_Particle_Boundary_Vars,   ONLY:ErosionRestart,doParticleReflectionTrack
 USE MOD_Particle_Globals
 USE MOD_Particle_Localization,   ONLY:LocateParticleInElement
 USE MOD_Particle_Mesh_Vars,      ONLY:ElemEpsOneCell
+USE MOD_Particle_Mesh_Tools,     ONLY:GetCNElemID
 USE MOD_Particle_Restart_Vars
 USE MOD_Particle_Vars,           ONLY:PartState,PartSpecies,PEM,PDM,Species,nSpecies,PartPosRef,PartReflCount
 USE MOD_Restart_Vars,            ONLY:RestartTime,RestartFile
@@ -95,7 +96,7 @@ INTEGER                  :: NbrOfFoundParts, CompleteNbrOfFound, RecCount(0:Part
 #endif /*MPI*/
 !REAL                     :: VFR_total
 INTEGER                  :: i
-INTEGER                  :: iElem
+INTEGER                  :: iElem,CNElemID
 LOGICAL                  :: doFlushFiles_loc
 ! Particle turbulence models
 INTEGER                  :: TurbPartSize         !number of turbulent properties with curent setup
@@ -149,7 +150,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       END IF
 
       ! Fill the particle-to-element-mapping (PEM) with the information from HDF5
-      DO iElem=FirstElemInd,LastElemInd
+      DO iElem = FirstElemInd,LastElemInd
         ! If the element contains a particle, add its ID to the element. Particles are still ordered along the SFC at this point
         IF (PartInt(ELEM_LastPartInd,iElem).GT.PartInt(ELEM_FirstPartInd,iElem)) THEN
           PEM%Element    (PartInt(ELEM_FirstPartInd,iElem)-offsetnPart+1 : &
@@ -240,7 +241,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     DO i = 1,PDM%ParticleVecLength
       CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
       ! Particle already inside the correct element
-      IF(ALL(ABS(Xi).LE.ElemEpsOneCell(PEM%Element(i)))) THEN
+      CNElemID = GetCNElemID(PEM%Element(i))
+      IF(ALL(ABS(Xi).LE.ElemEpsOneCell(CNElemID))) THEN
         InElementCheck=.TRUE.
         PartPosRef(1:3,i)=Xi
       ELSE

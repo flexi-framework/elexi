@@ -762,7 +762,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if USE_MPI
+#if USE_MPI && !USE_LOADBALANCE
 INTEGER           :: iElem
 INTEGER           :: iProc
 #endif

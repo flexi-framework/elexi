@@ -205,6 +205,8 @@ USE MOD_Particle_Globals    ,ONLY: ALMOSTZERO
 USE MOD_Particle_Analyze    ,ONLY: TrackingParticlePosition
 USE MOD_Particle_Analyze_Vars,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
 USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues,MacroValSampTime
+USE MOD_ErosionPoints       ,ONLY: WriteEP
+USE MOD_ErosionPoints_Vars  ,ONLY: EP_inUse
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimestep,ManualTimestep
 #if USE_LOADBALANCE
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
@@ -307,8 +309,9 @@ END IF
 ! Get time step if needed
 IF ((UseManualTimestep.AND.(dt_Min.EQ.0.)).OR.(.NOT.UseManualTimestep)) THEN
 #endif
-  dt=CALCTIMESTEP(errType)
+  dt     = CALCTIMESTEP(errType)
 #if USE_PARTICLES
+  dt_min = dt
 ELSE
   errType = 0
 END IF
@@ -361,7 +364,7 @@ DO
 #endif
 #if USE_PARTICLES
   ! Only calculate time step if not running in stationary mode
-  IF (.NOT.UseManualTimestep.OR.iter.EQ.0) THEN
+  IF (.NOT.UseManualTimestep) THEN
 #endif
     CALL DGTimeDerivative_weakForm(t)
 !#if USE_PARTICLES
@@ -481,6 +484,10 @@ DO
       tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
       CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                             FutureTime=tWriteData,isErrorFile=.FALSE.)
+#if USE_PARTICLES
+      ! Write individual particle surface impact data
+      IF(EP_inUse)          CALL WriteEP(OutputTime=t,resetCounters=.TRUE.)
+#endif /*USE_PARTICLES*/
       ! Visualize data
       CALL Visualize(t,U)
       writeCounter=0

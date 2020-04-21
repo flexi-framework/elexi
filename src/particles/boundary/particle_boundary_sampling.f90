@@ -114,7 +114,7 @@ USE MOD_StringTools             ,ONLY: LowCase
 #if USE_MPI
 USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPIRankLeader,nLeaderGroupProcs
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF
+USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalSides,nNonUniqueGlobalSides
 USE MOD_Particle_MPI_Shared_Vars,ONLY: offsetComputeNodeElem,nComputeNodeElems
@@ -568,12 +568,17 @@ END IF
 CALL MPI_BCAST(area,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_SHARED,iError)
 #endif /*USE_MPI*/
 
-SWRITE(UNIT_StdOut,'(A,ES10.4E2)') ' | Surface-Area:                         ', Area
-
 ! de-allocate temporary interpolation points and weights
 DEALLOCATE(Xi_NGeo,wGP_NGeo)
 
-SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
+#if USE_MPI
+IF (mySurfRank.EQ.0) THEN
+#endif
+  WRITE(UNIT_StdOut,'(A,ES10.4E2)') ' | Surface-Area:                         ', Area
+  WRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
+#if USE_MPI
+END IF
+#endif
 
 END SUBROUTINE InitParticleBoundarySampling
 
@@ -945,8 +950,9 @@ END IF
 
 ! Only surf root knows about this so far, first inform the other surf leaders. They inform every proc
 #if USE_MPI
-IF (myComputeNodeRank.EQ.0) &
+IF (myComputeNodeRank.EQ.0) THEN
   CALL MPI_BCAST(ErosionRestart,1,MPI_LOGICAL,0,MPI_COMM_LEADERS_SURF,iError)
+END IF
 CALL MPI_BCAST(ErosionRestart,1,MPI_LOGICAL,0,MPI_COMM_SHARED      ,iError)
 #endif
 IF (.NOT.ErosionRestart) RETURN
@@ -1129,7 +1135,7 @@ IF (mySurfRank.EQ.0) THEN
   CALL WriteHeader(Statedummy,File_ID)
   CALL WriteAttribute(File_ID,'DSMC_nSurfSample',1       ,IntScalar =nSurfSample)
   CALL WriteAttribute(File_ID,'DSMC_nSpecies'   ,1       ,IntScalar =nSpecies)
-  CALL WriteAttribute(File_ID,'MeshFile'        ,1       ,StrScalar =(/TRIM(MeshFileName)/))
+  CALL WriteAttribute(File_ID,'MeshFile'        ,1       ,StrScalar =(/MeshFileName)/)
   CALL WriteAttribute(File_ID,'Time'            ,1       ,RealScalar=OutputTime)
   CALL WriteAttribute(File_ID,'BC_Surf'         ,nSurfBC ,StrArray  =SurfBCName)
   CALL WriteAttribute(File_ID,'N'               ,1       ,IntScalar =nSurfSample)
@@ -1195,7 +1201,6 @@ IF (mySurfRank.EQ.0) THEN
 END IF
 
 CALL MPI_BARRIER(MPI_COMM_LEADERS_SURF,iERROR)
-
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.,communicatorOpt=MPI_COMM_LEADERS_SURF)
 #else
 CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
@@ -1207,6 +1212,7 @@ ASSOCIATE (&
       nGlobalSides         => nSurfTotalSides           , &
       nLocalSides          => nComputeNodeSurfSides     , &
       offsetSurfSide       => offsetComputeNodeSurfSide)
+
 DO iSpec = 1,nSpecies
     CALL WriteArray(DataSetName = H5_Name                                                 , &
                     rank        = 4                                                       , &
@@ -1216,8 +1222,8 @@ DO iSpec = 1,nSpecies
                     collective  = .TRUE.                                                  , &
                     RealArray   = MacroSurfaceSpecVal(:,:,:,:,iSpec))
     nVarCount = nVarCount + nVar2D_Spec
-
 END DO
+
 CALL WriteArray(    DataSetName = H5_Name                                                 , &
                     rank        = 4                                                       , &
                     nValGlobal  = (/NVar2D_Total,nSurfSample,nSurfSample,nGlobalSides  /) , &
@@ -1229,6 +1235,7 @@ CALL CloseDataFile()
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 #if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_LEADERS_SURF,iERROR)
 IF (mySurfRank.EQ.0) THEN
 #endif
   CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
@@ -1271,7 +1278,7 @@ END IF
 
 IF (mySurfRank.EQ.0) THEN
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE  [',EndT-StartT,'s]'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s]'
 END IF
 
 END SUBROUTINE WriteSurfSample

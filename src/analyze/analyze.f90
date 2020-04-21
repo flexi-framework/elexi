@@ -274,17 +274,9 @@ USE MOD_Output_Vars,              ONLY: ProjectName
 USE MOD_Mesh_Vars,                ONLY: nGlobalElems
 USE MOD_Benchmarking,             ONLY: Benchmarking
 #if USE_PARTICLES
-USE MOD_Particle_Vars
-USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Boundary_Analyze, ONLY: CalcSurfaceValues
-USE MOD_Particle_Tracking_Vars,   ONLY: CountNbOfLostParts
-USE MOD_ErosionPoints,            ONLY: WriteEP
-USE MOD_ErosionPoints_Vars,       ONLY: EP_inUse
-USE MOD_Particle_Output,          ONLY: WriteInfoStdOut
-#if USE_LOADBALANCE
-USE MOD_LoadDistribution,         ONLY: WriteElemTimeStatistics
-#endif /*LOADBALANCE*/
-#endif /*PARTICLES*/
+USE MOD_Particle_Analyze,         ONLY: ParticleAnalyze,ParticleInformation
+#endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -296,9 +288,14 @@ CHARACTER(LEN=40)               :: formatStr
 REAL                            :: CalcTime,RunTime
 REAL                            :: L_Inf_Error(PP_nVar),L_2_Error(PP_nVar)
 !==================================================================================================================================
+
+#if USE_PARTICLES
+CALL ParticleAnalyze(iter)
+#endif /*USE_PARTICLES*/
+
 ! Graphical output
-CalcTime=FLEXITIME()
-RunTime=CalcTime-StartTime
+CalcTime = FLEXITIME()
+RunTime  = CalcTime-StartTime
 SWRITE(UNIT_StdOut,'(A14,ES16.7)')' Sim time   : ',Time
 
 ! Calculate error norms
@@ -316,30 +313,12 @@ IF(doCalcErrorNorms)THEN
   END IF !MPIroot
 END IF  ! ErrorNorms
 
-#if USE_PARTICLES
-! Calculate particle surface erosion data
-IF (WriteMacroSurfaceValues) THEN
-  CALL CalcSurfaceValues
-END IF
-
-! Write individual particle surface impact data
-IF(EP_inUse) THEN
-  CALL WriteEP(OutputTime=Time,resetCounters=.TRUE.)
-END IF
-
-! Write information to console output
-IF (CountNbOfLostParts) THEN
-  CALL WriteInfoStdOut()
-END IF
-
-#if USE_LOADBALANCE
-! Create .csv file for performance analysis and load balance: write header line
-CALL WriteElemTimeStatistics(WriteHeader=.TRUE.,iter=iter)
-#endif /*LOADBALANCE*/
-#endif /*PARTICLES*/
-
 CALL AnalyzeEquation(Time)
 CALL Benchmarking()
+
+#if USE_PARTICLES
+CALL ParticleInformation()
+#endif /*USE_PARTICLES*/
 
 IF(MPIroot .AND. (Time.GT.0.)) THEN
   WRITE(UNIT_StdOut,'(132("."))')

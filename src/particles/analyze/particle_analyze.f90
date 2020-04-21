@@ -26,6 +26,14 @@ INTERFACE InitParticleAnalyze
   MODULE PROCEDURE InitParticleAnalyze
 END INTERFACE
 
+INTERFACE ParticleAnalyze
+  MODULE PROCEDURE ParticleAnalyze
+END INTERFACE
+
+INTERFACE ParticleInformation
+  MODULE PROCEDURE ParticleInformation
+END INTERFACE
+
 INTERFACE FinalizeParticleAnalyze
   MODULE PROCEDURE FinalizeParticleAnalyze
 END INTERFACE
@@ -43,6 +51,8 @@ INTERFACE TrackingParticlePosition
 END INTERFACE
 
 PUBLIC :: InitParticleAnalyze
+PUBLIC :: ParticleAnalyze
+PUBLIC :: ParticleInformation
 PUBLIC :: FinalizeParticleAnalyze
 PUBLIC :: DefineParametersParticleAnalyze
 PUBLIC :: CalcKineticEnergy
@@ -75,6 +85,7 @@ CALL prms%CreateRealOption(     'PrintDiffTime'         , '12')
 CALL prms%CreateRealArrayOption('printDiffVec'          , '0. , 0. , 0. , 0. , 0. , 0.')
 
 END SUBROUTINE DefineParametersParticleAnalyze
+
 
 SUBROUTINE InitParticleAnalyze()
 !===================================================================================================================================
@@ -119,10 +130,10 @@ IF (CalcPartBalance) THEN
   SDEALLOCATE(nPartOut)
   SDEALLOCATE(PartEkinIn)
   SDEALLOCATE(PartEkinOut)
-  ALLOCATE( nPartIn(nSpecies)     &
-          , nPartOut(nSpecies)     &
-          , PartEkinOut(nSpecies) &
-          , PartEkinIn(nSpecies)  )
+  ALLOCATE( nPartIn(nSpecies)        &
+          , nPartOut(nSpecies)       &
+          , PartEkinOut(nSpecies)    &
+          , PartEkinIn(nSpecies))
   nPartIn=0
   nPartOut=0
   PartEkinOut=0.
@@ -131,7 +142,7 @@ IF (CalcPartBalance) THEN
   SDEALLOCATE( nPartInTmp)
   SDEALLOCATE( PartEkinInTmp)
   ALLOCATE( nPartInTmp(nSpecies)     &
-          , PartEkinInTmp(nSpecies)  )
+          , PartEkinInTmp(nSpecies))
   PartEkinInTmp=0.
   nPartInTmp=0
 END IF
@@ -160,6 +171,88 @@ SWRITE(UNIT_stdOut,'(A)')' INIT PARTCILE ANALYZE DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleAnalyze
+
+
+SUBROUTINE ParticleAnalyze(iter)
+!==================================================================================================================================
+!> Controls particle analysis routines and is called at analyze time levels
+!> - calls erosion impcat output
+!> - informs about lost particles
+!> - writes load balancing statistics
+!==================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues
+USE MOD_Particle_Boundary_Analyze ,ONLY: CalcSurfaceValues
+USE MOD_Particle_Tracking_Vars    ,ONLY: CountNbOfLostParts
+USE MOD_Particle_Output           ,ONLY: WriteInfoStdOut
+#if USE_LOADBALANCE
+USE MOD_LoadDistribution          ,ONLY: WriteElemTimeStatistics
+#endif /*LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+
+! Calculate particle surface erosion data
+IF (WriteMacroSurfaceValues) THEN
+  CALL CalcSurfaceValues
+END IF
+
+! Write information to console output
+IF (CountNbOfLostParts) THEN
+  CALL WriteInfoStdOut()
+END IF
+
+#if USE_LOADBALANCE
+! Create .csv file for performance analysis and load balance: write header line
+CALL WriteElemTimeStatistics(WriteHeader=.TRUE.,iter=iter)
+#endif /*LOADBALANCE*/
+
+END SUBROUTINE ParticleAnalyze
+
+
+SUBROUTINE ParticleInformation()
+!==================================================================================================================================
+!> Displays the actual status of the particle phase in the simulation and counts the number of impacts
+!==================================================================================================================================
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Erosionpoints_Vars        ,ONLY: EP_Buffersize
+USE MOD_Particle_Vars             ,ONLY: PDM
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: nParticleOnProc,iPart
+INTEGER :: nParticleInDomain
+!==================================================================================================================================
+
+! Count number of particles on local proc
+nParticleOnProc = 0
+DO iPart=1,PDM%ParticleVecLength
+  IF (PDM%ParticleInside(iPart)) nParticleOnProc = nParticleOnProc + 1
+END DO
+#if USE_MPI
+! Gather number of particles on all procs
+CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+#else
+nParticleInDomain = nParticleOnProc
+#endif
+
+! Output particle and impact information
+!SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(UNIT_StdOut,'(A14,I16)')' # Particle : ', nParticleInDomain
+SWRITE(UNIT_StdOut,'(A14,I16)')' # Impacts  : ', EP_Buffersize
+
+END SUBROUTINE ParticleInformation
+
 
 
 SUBROUTINE CalcKineticEnergy(Ekin)

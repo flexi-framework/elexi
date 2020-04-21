@@ -65,9 +65,9 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("ErosionPoints")
-CALL prms%CreateLogicalOption('Part-EP_inUse',          "Set true to record individual particle impact data.",&
+CALL prms%CreateLogicalOption('Part-EP_inUse',     "Set true to record individual particle impact data.",                         &
                                                    '.FALSE.')
-CALL prms%CreateIntOption(    'Part-EP_MaxMemory',      "Maximum memory in MiB to be used for storing erosionpoint state history. ",&!//&
+CALL prms%CreateIntOption(    'Part-EP_MaxMemory', "Maximum memory in MiB to be used for storing erosionpoint state history. ",   &!//&
 !                                                   "If memory is exceeded before regular IO level states are written to file.",&
                                                    '100')
 END SUBROUTINE DefineParametersErosionPoints
@@ -324,13 +324,14 @@ SUBROUTINE WriteEP(OutputTime,resetCounters)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_ErosionPoints_Vars
+USE MOD_Erosionpoints_Vars    ,ONLY: EP_COMM,EP_Buffersize
+USE MOD_Erosionpoints_Vars    ,ONLY: EPDataSize,offsetEP
+USE MOD_Erosionpoints_Vars    ,ONLY: EP_Data,EP_Impacts
 USE MOD_HDF5_Output           ,ONLY: WriteAttribute,MarkWriteSuccessfull
 USE MOD_HDF5_WriteArray       ,ONLY: WriteArray
 USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars           ,ONLY: ProjectName
 #if USE_MPI
-USE MOD_Erosionpoints_Vars    ,ONLY: EP_COMM
 USE MOD_Particle_HDF5_output  ,ONLY: DistributedWriteArray
 #endif /*MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -351,8 +352,6 @@ INTEGER                        :: sendbuf(2),recvbuf(2)
 INTEGER                        :: nImpacts(0:nProcessors-1)
 #endif
 !==================================================================================================================================
-! Only use procs with surfaces on them
-!IF(.NOT.EP_onProc) RETURN
 
 ! Find amount of recorded impacts on current proc
 locEP   = EP_Impacts
@@ -360,7 +359,7 @@ EP_glob = 0
 
 IF(MPIroot)THEN
 !  WRITE(UNIT_StdOut,'(132("-"))')
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='NO')' WRITE EROSIONPOINT DATA TO HDF5 FILE...'
+!  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='NO')' WRITE EROSION IMPACTS STATE TO HDF5 FILE...'
 !  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,'/',EP_Buffersize,' impacts.'
   GETTIME(startT)
 END IF
@@ -401,16 +400,6 @@ StrVarNames(11)='E_kin_impact'
 StrVarNames(12)='E_kin_reflected'
 StrVarNames(13)='Alpha_impact'
 StrVarNames(14)='Alpha_reflected'
-
-!IF(myEPrank.EQ.0)THEN
-!  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,' impacts local / ',EP_Buffersize,' impacts global.'
-!END IF
-
-! Get dedicated filled write array
-!ALLOCATE(EP_write(offsetEP+1:offsetEP+locEP,EPDataSize))
-!DO iEP=offsetEP+1,offsetEP+locEP
-!EP_write(offsetEP+1:offsetEP+locEP,EPDataSize) = EP_Data(1:locEP,EPDataSize)
-!END DO
 
 ! Regenerate state file skeleton
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',OutputTime))
@@ -460,9 +449,9 @@ END IF
 IF(MPIroot)THEN
 !  CALL MarkWriteSuccessfull(FileName)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE  [',EndT-StartT,'s]'
-  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,' impacts local / ',EP_Buffersize,' impacts global.'
-  WRITE(UNIT_StdOut,'(132("-"))')
+!  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s]'
+!  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,' impacts local / ',EP_Buffersize,' impacts global.'
+!  WRITE(UNIT_StdOut,'(132("-"))')
 END IF
 END SUBROUTINE WriteEP
 

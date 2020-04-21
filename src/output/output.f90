@@ -200,6 +200,7 @@ SWRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitOutput
 
+
 !==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================
@@ -252,12 +253,13 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,i
 #endif
 
 #if USE_PARTICLES
+! Count number of particles on local proc
 nParticleOnProc = 0
 DO iPart=1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) nParticleOnProc = nParticleOnProc + 1
 END DO
 #if USE_MPI
-! Gather number of particles on ALL procs
+! Gather number of particles on all procs
 CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 #else
 nParticleInDomain = nParticleOnProc
@@ -303,6 +305,7 @@ IF(MPIroot)THEN
 #endif
 END IF
 END SUBROUTINE PrintStatusLine
+
 
 !==================================================================================================================================
 !> Supersample DG dataset at (equidistant) visualization points and output to file.

@@ -87,7 +87,7 @@ USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 USE MOD_Restart_Vars,            ONLY: RestartTurb
 #endif
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
+USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 #endif
 ! IMPLICIT VARIABLE HANDLING
@@ -254,7 +254,7 @@ USE MOD_Particle_RandomWalk,     ONLY: ParticleRandomWalk
 USE MOD_Restart_Vars,            ONLY: RestartTurb
 #endif
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime
+USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime
 USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 #endif
 ! IMPLICIT VARIABLE HANDLING
@@ -339,7 +339,7 @@ USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPa
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
+USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -488,7 +488,7 @@ USE MOD_Restart_Vars,            ONLY: RestartTurb
 #endif
 #if USE_LOADBALANCE
 USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
-USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
+USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -569,7 +569,7 @@ USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPa
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Tools,       ONLY: LBStartTime,LBPauseTime,LBSplitTime
+USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

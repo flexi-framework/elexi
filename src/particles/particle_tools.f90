@@ -74,7 +74,7 @@ IF (useLinkedList) THEN
      PDM%nextFreePosition(counter1) = i
      counter1 = counter1 + 1
    ELSE
-     ElemID = PEM%Element(i) - offsetElem
+     ElemID = PEM%Element(i)
       IF (PEM%pNumber(ElemID).EQ.0) THEN
         PEM%pStart(ElemID) = i                          ! Start of Linked List for Particles in Elem
      ELSE

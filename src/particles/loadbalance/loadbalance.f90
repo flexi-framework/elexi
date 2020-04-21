@@ -156,6 +156,7 @@ END IF
 IF (DoLoadBalance.AND.(.NOT.LoadBalanceTimeBased)) THEN
   ! Read particle MPI weight
   ParticleMPIWeight   = GETREAL('Particles-MPIWeight','0.02')
+  LoadBalanceSample   = 0.
   IF (ParticleMPIWeight.LT.0.0) CALL abort(__STAMP__,' ERROR: Particle weight cannot be negative!')
 
   ! Rescale ParticleMPIWeight with PP_N^3 to account for ElemTime(DG) = 1
@@ -244,9 +245,10 @@ IF (LoadBalanceTimeBased) THEN
   ! distribute times of different routines on elements with respective weightings
   DO iElem = 1,PP_nElems
     ! Time used in DG routines, assume equal load per element
-    !> Missed the first call to DGTimeDerivative_WeakForm, rescale the time accordingly
-    ElemTime(iElem) = ElemTime(iElem)            * ((nRKStages+1)/nRKStages)           &
-                    + tCurrent(LB_DG)            / REAL(PP_nElems)
+!    !> Missed the first call to DGTimeDerivative_WeakForm, rescale the time accordingly
+!    ElemTime(iElem) = ElemTime(iElem)            * ((nRKStages+1)/nRKStages)           &
+!                    + tCurrent(LB_DG)            / REAL(PP_nElems)
+    ElemTime(iElem) = ElemTime(iElem) + + tCurrent(LB_DG)/ REAL(PP_nElems)
     ! Add particle LB times to elements with respective weightings
     ElemTime(iElem) = ElemTime(iElem)                                                  &
                     + tCurrent(LB_INTERPOLATION) * nPartsPerElem(iElem) *sTotalParts   &
@@ -257,7 +259,6 @@ IF (LoadBalanceTimeBased) THEN
 ! Calculate Load Balance based on the amount of particles per cell
 ELSE
   ! simply add the ParticleMPIWeight times the number of particles present
-  !> TODO: FIGURE OUT IF WE WANT TO MULTIPLY WITH PP_N TO ACCOUNT FOR DG LOAD
   DO iElem = 1,PP_nElems
     ElemTime(iElem) = 1. + nPartsPerElem(iElem)*ParticleMPIWeight
   END DO ! iElem=1,PP_nElems
@@ -291,17 +292,17 @@ END SUBROUTINE ComputeElemLoad
 
 SUBROUTINE LoadBalance()
 !===================================================================================================================================
-! routine perfoming the load balancing stuff
+! routine perfoming the load balancing
 !===================================================================================================================================
 ! USED MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals
 USE MOD_Preproc
-USE MOD_Restart                ,ONLY: Restart
 USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,nLoadBalanceSteps,NewImbalance,MinWeight,MaxWeight
-USE MOD_Particle_MPI           ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance,MaxWeight,MinWeight
-USE MOD_LoadBalance_Vars       ,ONLY: Currentimbalance,PerformLoadBalance,nLoadBalance
+USE MOD_LoadBalance_Vars       ,ONLY: Currentimbalance,PerformLoadBalance
+USE MOD_Particle_Globals       ,ONLY: InitializationWallTime
+USE MOD_Particle_MPI           ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
+USE MOD_Restart                ,ONLY: Restart
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -329,9 +330,9 @@ nLoadBalanceSteps = nLoadBalanceSteps + 1
 ! This currently kills loadbalance because FLEXI is not aware of it!
 
 ! finialize all arrays
-!CALL FinalizeBoltzplatz(IsLoadBalance=.TRUE.)
+!CALL FinalizeFlexi(IsLoadBalance=.TRUE.)
 ! reallocate
-!CALL InitBoltzplatz(IsLoadBalance=.TRUE.) ! determines new imbalance in InitMesh() -> ReadMesh()
+!CALL InitFlexi(IsLoadBalance=.TRUE.) ! determines new imbalance in InitMesh() -> ReadMesh()
 
 ! restart
 !CALL Restart()
@@ -339,7 +340,6 @@ nLoadBalanceSteps = nLoadBalanceSteps + 1
 
 ! zero ElemTime, the measurement starts again
 ElemTime     = 0.
-nLoadBalance = 0
 
 IF(NewImbalance.GT.CurrentImbalance) THEN
   SWRITE(UNIT_stdOut,'(A)') ' WARNING: LoadBalance not successful!'

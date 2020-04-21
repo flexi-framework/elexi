@@ -32,8 +32,9 @@ INTEGER                             :: LoadBalanceSample                        
 LOGICAL                             :: InitLoadBalanceIsDone                      ! switch for checking
 
 ! counter
-INTEGER                             :: nLoadBalance                               ! number of load balances
-INTEGER                             :: nLoadBalanceSteps                          ! number of performed  load balances steps
+INTEGER                             :: nLoadBalance                               ! Number of load balances calculations (calls of ComputeElemLoad)
+INTEGER                             :: nLoadBalanceSteps                          ! Number of performed load balances steps
+INTEGER                             :: LoadBalanceMaxSteps                        ! Number of maximum allowed performed load balances steps
 REAL,ALLOCATABLE                    :: LoadDistri(:)                              ! Weighted load distribution of all procs
 INTEGER,ALLOCATABLE                 :: PartDistri(:)                              ! Part distribution of all procs
 REAL                                :: MaxWeight                                  ! Maximum Weight of proc on domain
@@ -76,6 +77,8 @@ REAL,ALLOCATABLE                    :: tCurrent(:)                              
 ! Element Local measurement
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE                    :: ElemTime(:)
+REAL,ALLOCATABLE                    :: ElemTime_tmp(:)                          ! Additional container for restarting and keeping the old ElemTime values in
+                                                                                ! the state.h5 file
 REAL,ALLOCATABLE                    :: ElemGlobalTime(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nTracksPerElem(:)

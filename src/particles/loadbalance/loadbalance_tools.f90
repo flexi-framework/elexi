@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2019  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -12,189 +12,204 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
-!> Module contains the routines for load balancing
+!> Module contains the tools for load_balancing
 !===================================================================================================================================
 MODULE MOD_LoadBalance_Tools
+!----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-!-----------------------------------------------------------------------------------------------------------------------------------
 
-#if USE_LOADBALANCE
-INTERFACE LBStartTime
-  MODULE PROCEDURE LBStartTime
+#if USE_MPI
+INTERFACE DomainDecomposition
+  MODULE PROCEDURE DomainDecomposition
 END INTERFACE
 
-INTERFACE LBSplitTime
-  MODULE PROCEDURE LBSplitTime
-END INTERFACE
-
-INTERFACE LBPauseTime
-  MODULE PROCEDURE LBPauseTime
-END INTERFACE
-
-INTERFACE LBElemSplitTime
-  MODULE PROCEDURE LBElemSplitTime
-END INTERFACE
-
-INTERFACE LBElemPauseTime
-  MODULE PROCEDURE LBElemPauseTime
-END INTERFACE
-
-PUBLIC::LBStartTime
-PUBLIC::LBSplitTime
-PUBLIC::LBPauseTime
-PUBLIC::LBElemSplitTime
-PUBLIC::LBElemPauseTime
-!===================================================================================================================================
+PUBLIC::DomainDecomposition
+#endif /*USE_MPI*/
+!==================================================================================================================================
 
 CONTAINS
 
-SUBROUTINE LBStartTime(tLBStart)
+
+#if USE_MPI
+SUBROUTINE DomainDecomposition()
 !===================================================================================================================================
-!> calculates and sets start time for Loadbalance.
+!> Read ElemTime from .h5 container and compute domain decomposition
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_LoadBalance_Vars ,ONLY: PerformLoadBalance
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT)       :: tLBStart
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! LOCAL VARIABLES
-!===================================================================================================================================
-IF(.NOT. PerformLoadBalance) RETURN
-tLBStart = LOCALTIME()
-END SUBROUTINE LBStartTime
-
-
-SUBROUTINE LBSplitTime(LB_index,tLBStart)
-!===================================================================================================================================
-!> Splits the time and resets LB_start. Adds time to tcurrent(LB_index) for current proc
-!===================================================================================================================================
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_LoadBalance_Vars ,ONLY: PerformLoadBalance,tCurrent
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)  :: LB_index
-REAL,INTENT(INOUT)  :: tLBStart
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! LOCAL VARIABLES
-REAL                :: tLBEnd
-!===================================================================================================================================
-IF(.NOT. PerformLoadBalance) RETURN
-tLBEnd   = LOCALTIME()
-tCurrent(LB_index) = tCurrent(LB_index) + tLBEnd-tLBStart
-tLBStart = tLBEnd
-END SUBROUTINE LBSplitTime
-
-
-SUBROUTINE LBPauseTime(LB_index,tLBStart)
-!===================================================================================================================================
-!> calculates end time and adds time to tcurrent(LB_index) for current proc
-!> does not reset tLBstart
-!===================================================================================================================================
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_LoadBalance_Vars ,ONLY: PerformLoadBalance,tCurrent
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)  :: LB_index
-REAL,INTENT(IN)     :: tLBStart
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! LOCAL VARIABLES
-REAL                :: tLBEnd
-!===================================================================================================================================
-IF(.NOT. PerformLoadBalance) RETURN
-tLBEnd   = LOCALTIME()
-tCurrent(LB_index) = tCurrent(LB_index) + tLBEnd - tLBStart
-END SUBROUTINE LBPauseTime
-
-
-SUBROUTINE LBElemSplitTime(ElemID,tLBStart)
-!===================================================================================================================================
-!> Splits the time and resets LB_start. Adds time to Elemtime(ElemID)
-!===================================================================================================================================
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_LoadBalance_Vars ,ONLY: ElemTime, PerformLoadBalance
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)  :: ElemID
-REAL,INTENT(INOUT)  :: tLBStart
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! LOCAL VARIABLES
-REAL                :: tLBEnd
-!===================================================================================================================================
-IF(.NOT. PerformLoadBalance) RETURN
-tLBEnd   = LOCALTIME()
-ElemTime(ELemID) = ElemTime(ElemID)+tLBEnd-tLBStart
-tLBStart = tLBEnd
-END SUBROUTINE LBElemSplitTime
-
-
-SUBROUTINE LBElemPauseTime(ElemID,tLBStart)
-!===================================================================================================================================
-!> calculates end time and adds time to Elemtime(ElemID)
-!> does not reset tLBstart
-!===================================================================================================================================
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_LoadBalance_Vars ,ONLY: ElemTime, PerformLoadBalance
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)  :: ElemID
-REAL,INTENT(IN)     :: tLBStart
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! LOCAL VARIABLES
-REAL                :: tLBEnd
-!===================================================================================================================================
-IF(.NOT. PerformLoadBalance) RETURN
-tLBEnd   = LOCALTIME()
-ElemTime(ELemID) = ElemTime(ElemID) + tLBEnd-tLBStart
-END SUBROUTINE LBElemPauseTime
-
-
-FUNCTION LOCALTIME()
-!===================================================================================================================================
-! Calculates current local time (own function because of a laterMPI implementation)
-!===================================================================================================================================
-! MODULES
-USE MPI
+USE MOD_Globals
+USE MOD_LoadDistribution     ,ONLY: ApplyWeightDistributionMethod
+USE MOD_LoadBalance_Vars     ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,PartDistri,TargetWeight,ElemTime
+USE MOD_IO_HDF5
+USE MOD_Mesh_Vars            ,ONLY: offsetElem,nElems,nGlobalElems
+USE MOD_MPI_Vars             ,ONLY: offsetElemMPI
+USE MOD_Restart_Vars         ,ONLY: DoRestart
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL                            :: LocalTime
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! LOCAL VARIABLES
+LOGICAL                        :: ElemTimeExists
+REAL,ALLOCATABLE               :: WeightSum_proc(:)
+INTEGER                        :: iProc
+INTEGER                        :: iElem
 !===================================================================================================================================
-#if USE_MPI
-LocalTime = MPI_WTIME()
-#else
-CALL CPU_TIME(LocalTime)
-#endif
-END FUNCTION LOCALTIME
 
-#endif /* LOADBALANCE */
+SDEALLOCATE(offsetElemMPI)
+ALLOCATE(offsetElemMPI(0:nProcessors))
+offsetElemMPI  = 0
+SDEALLOCATE(LoadDistri)
+ALLOCATE(LoadDistri(   0:nProcessors-1))
+LoadDistri(:)  = 0.
+SDEALLOCATE(PartDistri)
+ALLOCATE(PartDistri(   0:nProcessors-1))
+PartDistri(:)  = 0
+ElemTimeExists = .FALSE.
+
+IF (DoRestart) THEN
+  !--------------------------------------------------------------------------------------------------------------------------------!
+  ! Readin of ElemTime: Read in only by MPIRoot in single mode, only communicate logical ElemTimeExists
+  ! because the root performs the distribution of elements (domain decomposition) due to the load distribution scheme
+  SDEALLOCATE(ElemGlobalTime)
+  ALLOCATE(ElemGlobalTime(1:nGlobalElems)) ! Allocate ElemGlobalTime for all MPI ranks
+  ElemGlobalTime = 0.
+
+  ! 1) Only MPIRoot does readin of ElemTime
+  IF (MPIRoot) THEN
+    ! read ElemTime by root only
+    CALL ReadElemTime(single=.TRUE.)
+
+    ! if the elemtime is 0.0, the value must be changed in order to prevent a division by zero
+    IF (MAXVAL(ElemGlobalTime).LE.0.) THEN
+      ElemGlobalTime = 1.0
+      ElemTimeExists = .FALSE.
+    ELSE
+      ElemTimeExists = .TRUE.
+    END IF
+  END IF
+
+  ! 2) Distribute logical information ElemTimeExists
+  CALL MPI_BCAST (ElemTimeExists,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
+
+  ! Distribute the elements according to the selected distribution method
+  CALL ApplyWeightDistributionMethod(ElemTimeExists)
+ELSE
+  ! Simple partition: nGlobalelems/nProcessors
+  nElems = nGlobalElems/nProcessors
+  iElem  = nGlobalElems-nElems*nProcessors
+  DO iProc = 0,nProcessors-1
+    offsetElemMPI(iProc) = nElems*iProc + MIN(iProc,iElem)
+  END DO
+  offsetElemMPI(nProcessors) = nGlobalElems
+END IF ! IF(DoRestart)
+
+! Set local number of elements
+nElems     = offsetElemMPI(myRank+1) - offsetElemMPI(myRank)
+offsetElem = offsetElemMPI(myRank)
+LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
+
+! Sanity check: local nElems and offset
+IF(nElems.LE.0) CALL abort(__STAMP__,' Process did not receive any elements/load! ')
+
+! Read the ElemTime again, but this time with every proc, depending on the domain decomposition in order to write the data
+! to the state file (keep ElemTime on restart, if no new ElemTime is calculated during the run or replace with newly measured values
+! if LoadBalance is on)
+IF (ElemTimeExists) CALL ReadElemTime(single=.FALSE.)
+
+! Set new ElemTime depending on new load distribution
+SDEALLOCATE(ElemTime)
+ALLOCATE(ElemTime(1:nElems))
+ElemTime = 0.
+CALL AddToElemData(ElementOut,'ElemTime',RealArray=ElemTime(1:nElems))
+
+! Calculate new (theoretical) imbalance with offsetElemMPI information
+IF (ElemTimeExists.AND.MPIRoot) THEN
+  ALLOCATE(WeightSum_proc(0:nProcessors-1))
+  DO iProc=0,nProcessors-1
+    WeightSum_proc(iProc) = SUM(ElemGlobalTime(1+offsetElemMPI(iProc):offsetElemMPI(iProc+1)))
+  END DO
+  SDEALLOCATE(ElemGlobalTime)
+  MaxWeight = MAXVAL(WeightSum_proc)
+  MinWeight = MINVAL(WeightSum_proc)
+  ! WeightSum (Mesh global value) is already set in BalanceMethod scheme
+
+  ! new computation of current imbalance
+  TargetWeight = SUM(WeightSum_proc)/nProcessors
+  NewImbalance = (MaxWeight-TargetWeight )/TargetWeight
+
+  ! abort if invalid targetWeight
+  IF(TargetWeight.LE.0.0) CALL abort(__STAMP__,' LoadBalance: TargetWeight = ',RealInfo=TargetWeight)
+
+  ! valid decomposition, output result
+  SWRITE(UNIT_stdOut,'(A)') ' Calculated new (theoretical) imbalance with offsetElemMPI information'
+  SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MaxWeight:        ', MaxWeight
+  SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MinWeight:        ', MinWeight
+  SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' TargetWeight:     ', TargetWeight
+  SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' NewImbalance:     ', NewImbalance
+  DEALLOCATE(WeightSum_proc)
+ELSE
+  SWRITE(UNIT_stdOut,'(A)') ' No ElemTime found in restart file'
+  NewImbalance = -1.
+  MaxWeight    = -1.
+  MinWeight    = -1.
+END IF
+
+END SUBROUTINE DomainDecomposition
+
+
+SUBROUTINE ReadElemTime(single)
+!===================================================================================================================================
+!> Read ElemTime from .h5 container either single=.TRUE. (only MPI root) or single=.FALSE. (all ranks)
+!===================================================================================================================================
+! MODULES                                                                                                                          !
+USE MOD_Globals
+USE MOD_IO_HDF5
+USE MOD_HDF5_Input       ,ONLY: ReadArray,DatasetExists
+USE MOD_LoadBalance_Vars ,ONLY: ElemGlobalTime
+USE MOD_LoadBalance_Vars ,ONLY: ElemTime_tmp
+USE MOD_Mesh_Vars        ,ONLY: offsetElem,nElems,nGlobalElems
+USE MOD_Restart_Vars     ,ONLY: RestartFile
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
+LOGICAL,INTENT(IN)  :: single !< read data file either single=.TRUE. (only MPI root) or single=.FALSE. (all ranks)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! LOCAL VARIABLES
+LOGICAL             :: ElemTimeExists
+!===================================================================================================================================
+
+! Read data file either single=.TRUE. (only MPI root) or single=.FALSE. (all ranks)
+IF (single) THEN
+  nElems         = nGlobalElems   ! Temporarily set nElems as nGlobalElems for GetArrayAndName
+  offsetElem     = 0              ! Offset is the index of first entry, hdf5 array starts at 0-.GT. -1
+
+  ! NEW method
+  CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
+  CALL DatasetExists(File_ID,'ElemTime',ElemTimeExists)
+  IF (ElemTimeExists) THEN
+    CALL ReadArray('ElemTime',2,(/1,nGlobalElems/),0,2,RealArray=ElemGlobalTime)
+    WRITE(UNIT_stdOut,*) "Read ElemTime from restart file: "//TRIM(RestartFile)
+  END IF ! ElemTimeExists
+  CALL CloseDataFile()
+
+ELSE
+  SDEALLOCATE(ElemTime_tmp)
+  ALLOCATE(ElemTime_tmp(1:nElems))
+  ElemTime_tmp  = 0.
+  CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.,communicatorOpt=MPI_COMM_FLEXI)
+  CALL ReadArray('ElemTime',2,(/1,nElems/),OffsetElem,2,RealArray=ElemTime_tmp)
+  CALL CloseDataFile()
+END IF ! single
+
+END SUBROUTINE ReadElemTime
+#endif /*USE_MPI*/
+
+
 END MODULE MOD_LoadBalance_Tools

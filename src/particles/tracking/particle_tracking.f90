@@ -83,7 +83,7 @@ USE MOD_Particle_Vars               ,ONLY:PEM,PDM,PartSpecies
 USE MOD_Particle_Vars               ,ONLY:PartState,LastPartPos
 #if USE_LOADBALANCE
 USE MOD_Particle_Tracking_Vars      ,ONLY:ntracks,MeasureTrackTime
-USE MOD_LoadBalance_Tools           ,ONLY:LBStartTime,LBElemPauseTime,LBElemSplitTime
+USE MOD_LoadBalance_Timers          ,ONLY:LBStartTime,LBElemPauseTime,LBElemSplitTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -449,7 +449,7 @@ USE MOD_Particle_Mesh_Vars          ,ONLY:GEO
 USE MOD_TimeDisc_Vars               ,ONLY:currentStage
 #endif /*CODE_ANALYZE*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Tools           ,ONLY:LBStartTime,LBElemPauseTime,LBElemSplitTime
+USE MOD_LoadBalance_Timers          ,ONLY:LBStartTime,LBElemPauseTime,LBElemSplitTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1053,7 +1053,7 @@ USE MOD_Particle_Utils         ,ONLY: InsertionSort
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,TurbPartState,PartPosRef,LastPartPos,PartSpecies
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: nTracksPerElem
-USE MOD_LoadBalance_Tools      ,ONLY: LBStartTime, LBElemPauseTime, LBPauseTime
+USE MOD_LoadBalance_Timers     ,ONLY: LBStartTime, LBElemPauseTime, LBPauseTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

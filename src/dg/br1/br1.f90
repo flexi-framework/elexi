@@ -184,7 +184,7 @@ USE MOD_MPI,                ONLY: StartReceiveMPIData,StartSendMPIData,FinishExc
 #endif
 USE MOD_Mesh_Vars,          ONLY: nSides,nElems
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Tools,  ONLY: LBStartTime,LBPauseTime,LBSplitTime
+USE MOD_LoadBalance_Timers, ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif /*USE_LOADBALANCE*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

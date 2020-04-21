@@ -254,11 +254,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 
 ! Open mesh file
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-#if USE_LOADBALANCE
-CALL BuildPartition(FileString)
-#else
 CALL BuildPartition()
-#endif
 FirstElemInd=offsetElem+1
 LastElemInd =offsetElem+nElems
 
@@ -751,30 +747,19 @@ END SUBROUTINE ReadMesh
 !==================================================================================================================================
 !> Partition the mesh by numbers of processors. Elements are distributed equally to all processors.
 !==================================================================================================================================
-#if USE_LOADBALANCE
-SUBROUTINE BuildPartition(FileString)
-#else
 SUBROUTINE BuildPartition()
-#endif
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Mesh_Vars,    ONLY:nElems,nGlobalElems,offsetElem
 #if USE_MPI
 USE MOD_MPI_Vars,     ONLY:offsetElemMPI
-#if USE_PARTICLES
-USE MOD_LoadMesh,     ONLY:LoadElemTime
-#endif /*PARTICLES*/
-#endif /*MPI*/
+#endif /*USE_MPI*/
 #if USE_LOADBALANCE
-USE MOD_LoadMesh,     ONLY:LoadPartition
-USE MOD_Restart_Vars, ONLY:DoRestart
-#endif /*LOADBALANCE*/
+USE MOD_LoadBalance_Tools, ONLY:DomainDecomposition
+#endif /*USE_LOADBALANCE*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-#if USE_LOADBALANCE
-CHARACTER(LEN=*),INTENT(IN)  :: FileString !< (IN) mesh filename
-#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
@@ -796,45 +781,32 @@ IF(nGlobalElems.LT.nProcessors) THEN
   'ERROR: Number of elements (1) is smaller then number of processors (2)!',nGlobalElems,REAL(nProcessors))
 END IF
 
+#if USE_LOADBALANCE
+CALL DomainDecomposition()
+#else
 !simple partition: nGlobalelems/nprocs, do this on proc 0
 IF(ALLOCATED(offsetElemMPI)) DEALLOCATE(offsetElemMPI)
 ALLOCATE(offsetElemMPI(0:nProcessors))
 offsetElemMPI=0
-
-! Try to use partitioning in load balancing
-#if USE_LOADBALANCE
-IF (DoRestart.AND.(nProcessors.GT.1)) THEN
-    CALL LoadPartition(FileString)
-ELSE
-#endif /*LOADBALANCE*/
-
-! If we do not use load balancing, distribute elems equally on proc(s)
 nElems = nGlobalElems/nProcessors
 iElem  = nGlobalElems-nElems*nProcessors
 DO iProc = 0,nProcessors-1
   offsetElemMPI(iProc)=nElems*iProc+MIN(iProc,iElem)
 END DO
 offsetElemMPI(nProcessors) = nGlobalElems
-
-#if USE_LOADBALANCE
-END IF
-#endif /*LOADBALANCE*/
+#endif /*USE_LOADBALANCE*/
 
 !local nElems and offset
-nElems=offsetElemMPI(myRank+1)-offsetElemMPI(myRank)
-offsetElem=offsetElemMPI(myRank)
+nElems     = offsetElemMPI(myRank+1)-offsetElemMPI(myRank)
+offsetElem = offsetElemMPI(myRank)
 LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
-
-! Remaining part of load balancing
-#if USE_PARTICLES
-CALL LoadElemTime()
-#endif
-
 #else /*USE_MPI*/
-nElems=nGlobalElems   !local number of Elements
-offsetElem=0          ! offset is the index of first entry, hdf5 array starts at 0-.GT. -1
+nElems     = nGlobalElems   ! local number of Elements
+offsetElem = 0              ! offset is the index of first entry, hdf5 array starts at 0-.GT. -1
 #endif /*USE_MPI*/
+
 END SUBROUTINE BuildPartition
+
 
 #if USE_MPI
 !==================================================================================================================================

@@ -1022,7 +1022,7 @@ INTEGER                        :: nParticles(0:nProcessors-1)
 LOGICAL                        :: reSwitch
 INTEGER                        :: pcount
 INTEGER                        :: locnPart,offsetnPart
-INTEGER                        :: iPart,nPart_glob, iElem_glob, iElem_loc
+INTEGER                        :: iPart,nPart_glob,iElem
 INTEGER,ALLOCATABLE            :: PartInt(:,:)
 REAL,ALLOCATABLE               :: PartData(:,:)
 INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
@@ -1095,27 +1095,25 @@ ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
 IF (ALLOCATED(TurbPartState)) ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
 
 ! Update next free position using a linked list
-ALLOCATE(PEM%pStart (1:PP_nElems)            , &
-         PEM%pNumber(1:PP_nElems)            , &
-         PEM%pNext  (1:PDM%maxParticleNumber), &
-         PEM%pEnd   (1:PP_nElems))
-useLinkedList=.TRUE.
+ALLOCATE(PEM%pStart (offsetElem+1:offsetElem+PP_nElems) , &
+         PEM%pNumber(offsetElem+1:offsetElem+PP_nElems) , &
+         PEM%pNext  (1           :PDM%maxParticleNumber), &
+         PEM%pEnd   (offsetElem+1:offsetElem+PP_nElems))
+useLinkedList = .TRUE.
 CALL UpdateNextFreePosition()
 
 ! Walk along the linked list and fill the data arrays
 iPart = offsetnPart
 ! Walk over all elements on local proc
-DO iElem_loc=1,PP_nElems
-  ! Reconstruct global ElemID using the offset along the space-filling curve (SFC)
-  iElem_glob = iElem_loc + offsetElem
+DO iElem = offsetElem+1,offsetElem+PP_nElems
   ! Set start of particle numbers in current element
-  PartInt(1,iElem_glob) = iPart
+  PartInt(1,iElem) = iPart
   ! Find all particles in current element
   IF (ALLOCATED(PEM%pNumber)) THEN
-    PartInt(2,iElem_glob) = PartInt(1,iElem_glob) + PEM%pNumber(iElem_loc)
+    PartInt(2,iElem) = PartInt(1,iElem) + PEM%pNumber(iElem)
     ! Sum up particles and add properties to output array
-    pcount = PEM%pStart(iElem_loc)
-    DO iPart = PartInt(1,iElem_glob)+1,PartInt(2,iElem_glob)
+    pcount = PEM%pStart(iElem)
+    DO iPart = PartInt(1,iElem)+1,PartInt(2,iElem)
       PartData(1:6,iPart) = PartState(1:6,pcount)
       PartData(7  ,iPart) = REAL(PartSpecies(pcount))
       IF (doParticleReflectionTrack) PartData(8,iPart) = REAL(PartReflCount(pcount))
@@ -1128,12 +1126,12 @@ DO iElem_loc=1,PP_nElems
       pcount = PEM%pNext(pcount)
     END DO
     ! Set counter to the end of particle number in the current element
-    iPart = PartInt(2,iElem_glob)
+    iPart = PartInt(2,iElem)
   ELSE
     CALL abort(__STAMP__, " Particle HDF5-Output method not supported! PEM%pNumber not associated")
   END IF
-  PartInt(2,iElem_glob)=iPart
-END DO
+  PartInt(2,iElem)=iPart
+END DO ! iElem = offsetElem+1,offsetElem+PP_nElems
 
 ! Allocate PartInt varnames array and fill it
 nVar=2

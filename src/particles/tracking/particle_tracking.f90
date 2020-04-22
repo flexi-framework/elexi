@@ -72,18 +72,19 @@ SUBROUTINE ParticleTriaTracking()
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Particle_Globals
+USE MOD_Mesh_Vars                   ,ONLY: offsetElem
+USE MOD_Particle_Globals            ,ONLY: PP_nElems,DOTPRODUCT
 USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteraction
 USE MOD_Particle_Boundary_Vars      ,ONLY: PartBound
 USE MOD_Particle_Localization       ,ONLY: ParticleInsideQuad3D
 USE MOD_Particle_Intersection       ,ONLY: IntersectionWithWall
-USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Mesh_Vars          ,ONLY: ElemInfo_Shared,SideInfo_Shared
 USE MOD_Particle_Tracking_Vars      ,ONLY: CountNbOfLostParts,nLostParts,TrackInfo
-USE MOD_Particle_Vars               ,ONLY:PEM,PDM,PartSpecies
-USE MOD_Particle_Vars               ,ONLY:PartState,LastPartPos
+USE MOD_Particle_Vars               ,ONLY: PEM,PDM,PartSpecies
+USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 #if USE_LOADBALANCE
-USE MOD_Particle_Tracking_Vars      ,ONLY:ntracks,MeasureTrackTime
-USE MOD_LoadBalance_Timers          ,ONLY:LBStartTime,LBElemPauseTime,LBElemSplitTime
+USE MOD_Particle_Tracking_Vars      ,ONLY: ntracks,MeasureTrackTime
+USE MOD_LoadBalance_Timers          ,ONLY: LBStartTime,LBElemPauseTime,LBElemSplitTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -349,7 +350,7 @@ DO i = 1,PDM%ParticleVecLength
                                                                        ,TriNum=TriNum)
           IF(.NOT.PDM%ParticleInside(i)) PartisDone = .TRUE.
 #if USE_LOADBALANCE
-          IF (OldElemID.LE.PP_nElems) CALL LBElemSplitTime(OldElemID,tLBStart)
+          IF (OldElemID.GE.offsetElem+1.AND.OldElemID.LE.offsetElem+PP_nElems) CALL LBElemSplitTime(OldElemID-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
           IF ((BCType.EQ.2).OR.(BCType.EQ.10)) THEN
             DoneLastElem(:,:) = 0
@@ -384,7 +385,8 @@ DO i = 1,PDM%ParticleVecLength
       END IF  ! InElementCheck = T/F
     END DO  ! .NOT.PartisDone
 #if USE_LOADBALANCE
-    IF (PEM%Element(i).LE.PP_nElems) CALL LBElemPauseTime(PEM%Element(i),tLBStart)
+    IF (PEM%Element(i).GE.offsetElem+1 .AND.PEM%Element(i).LE.offsetElem+PP_nElems) &
+      CALL LBElemPauseTime(PEM%Element(i)-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
   END IF
 END DO ! i = 1,PDM%ParticleVecLength
@@ -422,18 +424,11 @@ SUBROUTINE ParticleTracing()
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_Particle_Vars               ,ONLY: PEM,PDM
-USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
-USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
-USE MOD_Particle_Mesh_Vars          ,ONLY: ElemRadiusNGeo,ElemHasAuxBCs
+USE MOD_Eval_xyz                    ,ONLY: GetPositionInRefElem
+USE MOD_Mesh_Vars                   ,ONLY: offsetElem
 USE MOD_Particle_Boundary_Vars      ,ONLY: nAuxBCs,UseAuxBCs
 USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteractionAuxBC
-USE MOD_Particle_Utils              ,ONLY: InsertionSort
-USE MOD_Particle_Tracking_vars,      ONLY: ntracks,MeasureTrackTime, CountNbOfLostParts , nLostParts
-USE MOD_Particle_Mesh               ,ONLY: GetGlobalNonUniqueSideID
-USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID
-USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
+USE MOD_Particle_Globals            ,ONLY: PP_nElems
 USE MOD_Particle_Localization       ,ONLY: LocateParticleInElement
 USE MOD_Particle_Localization       ,ONLY: PartInElemCheck
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
@@ -441,7 +436,15 @@ USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectInterSection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeAuxBCIntersection
-USE MOD_Eval_xyz                    ,ONLY: GetPositionInRefElem
+USE MOD_Particle_Mesh               ,ONLY: GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID
+USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
+USE MOD_Particle_Mesh_Vars          ,ONLY: ElemRadiusNGeo,ElemHasAuxBCs
+USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
+USE MOD_Particle_Tracking_vars,      ONLY: ntracks,MeasureTrackTime, CountNbOfLostParts , nLostParts
+USE MOD_Particle_Utils              ,ONLY: InsertionSort
+USE MOD_Particle_Vars               ,ONLY: PEM,PDM
+USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 #if CODE_ANALYZE
 USE MOD_Particle_Intersection       ,ONLY:OutputTrajectory
 USE MOD_Particle_Tracking_Vars      ,ONLY:PartOut,MPIRankOut
@@ -805,7 +808,7 @@ DO iPart=1,PDM%ParticleVecLength
 ! -- 6. Update particle position and decide if double check might be necessary
 ! check what happened with particle (crossedBC or switched element) and set partisdone or double check
 #if USE_LOADBALANCE
-          IF (OldElemID.LE.PP_nElems) CALL LBElemSplitTime(OldElemID,tLBStart)
+          IF (OldElemID.GE.offsetElem+1 .AND.OldElemID.LE.offsetElem+PP_nElems) CALL LBElemSplitTime(OldElemID-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
           IF(crossedBC) THEN
             firstElem = ElemID
@@ -906,7 +909,8 @@ DO iPart=1,PDM%ParticleVecLength
     END DO ! PartisDone=.FALSE.
 
 #if USE_LOADBALANCE
-    IF (PEM%Element(iPart).LE.PP_nElems) CALL LBElemPauseTime(PEM%Element(iPart),tLBStart)
+    IF (PEM%Element(iPart).GE.offsetElem+1.AND.PEM%Element(iPart).GE.offsetElem+PP_nElems) &
+      CALL LBElemPauseTime(PEM%Element(iPart),tLBStart)
 #endif /*USE_LOADBALANCE*/
   END IF ! Part inside
 END DO ! iPart
@@ -1121,7 +1125,7 @@ DO iPart=1,PDM%ParticleVecLength
 #if USE_LOADBALANCE
          ! Particle is on current proc, assign load to new cell
          IF (ElemID.GT.offsetElem+1.AND.ElemID.LE.offsetElem+PP_nElems) THEN
-           CALL LBElemPauseTime(ElemID,tLBStart)
+           CALL LBElemPauseTime(ElemID-offsetElem,tLBStart)
          END IF
 #endif /*USE_LOADBALANCE*/
         CYCLE
@@ -1151,7 +1155,7 @@ DO iPart=1,PDM%ParticleVecLength
 #if USE_LOADBALANCE
          ! Particle is on current proc, assign load to new cell
          IF (ElemID.GT.offsetElem+1.AND.ElemID.LE.offsetElem+PP_nElems) THEN
-           CALL LBElemPauseTime(ElemID,tLBStart)
+           CALL LBElemPauseTime(ElemID-offsetElem,tLBStart)
          ! Dp not assign load in halo region yet
 !         ELSE IF(PEM%LastElement(iPart).LE.nComputeNodeTotalElems) THEN
 !           CALL LBElemPauseTime(PEM%LastElement(iPart),tLBStart)
@@ -1164,7 +1168,7 @@ DO iPart=1,PDM%ParticleVecLength
 #if USE_LOADBALANCE
     ! Particle is on current proc, assign load to new cell
     IF (ElemID.GT.offsetElem+1.AND.ElemID.LE.offsetElem+PP_nElems) THEN
-      CALL LBElemPauseTime(ElemID,tLBStart)
+      CALL LBElemPauseTime(ElemID-offsetElem,tLBStart)
     ! Particle moved into halo region, so blame the last cell on proc
     ! Dp not assign load in halo region yet
 !    ELSE IF(PEM%LastElement(iPart).LE.nComputeNodeTotalElems)THEN
@@ -1231,7 +1235,7 @@ DO iPart=1,PDM%ParticleVecLength
 #if USE_LOADBALANCE
       ! Cell is on current proc, assign load to new cell
       IF (ElemID.GT.offsetElem+1.AND.ElemID.LE.offsetElem+PP_nElems) THEN
-        nTracksPerElem(ElemID)=nTracksPerElem(ElemID)+1
+        nTracksPerElem(ElemID-offsetElem)=nTracksPerElem(ElemID-offsetElem)+1
       END IF
 #endif /*USE_LOADBALANCE*/
       CALL GetPositionInRefElem(PartState(1:3,iPart),PartPosRef(1:3,iPart),ElemID)

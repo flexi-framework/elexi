@@ -1293,8 +1293,9 @@ SUBROUTINE FinalizeParticleBoundarySampling()
 USE MOD_Particle_Boundary_Vars
 !USE MOD_Particle_Vars               ,ONLY: WriteMacroSurfaceValues
 #if USE_MPI
+USE MOD_Particle_MPI_Boundary_Sampling,ONLY: FinalizeSurfCommunication
 USE MOD_Particle_MPI_Vars           ,ONLY: SurfSendBuf,SurfRecvBuf
-USE MOD_Particle_MPI_Shared_Vars    ,ONLY: MPI_COMM_LEADERS_SURF,nSurfLeaders
+USE MOD_Particle_MPI_Shared_Vars    ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF,nSurfLeaders
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
@@ -1313,50 +1314,22 @@ INTEGER :: iProc,iError
 ! Return if nothing was allocated
 IF (.NOT.WriteMacroSurfaceValues) RETURN
 
-SDEALLOCATE(XiEQ_SurfSample)
-!SDEALLOCATE(SurfMesh%SurfaceArea)
-!SDEALLOCATE(SurfMesh%SideIDToSurfID)
-!SDEALLOCATE(SurfMesh%SurfSideToGlobSideMap)
-!DO iSurfSide=1,SurfMesh%nSides
-!  SDEALLOCATE(SampWall(iSurfSide)%State)
-!END DO
-SDEALLOCATE(SurfBCName)
-!SDEALLOCATE(SampWall)
+! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 #if USE_MPI
-!SDEALLOCATE(PartHaloSideToProc)
-!SDEALLOCATE(SurfExchange%nSidesSend)
-!SDEALLOCATE(SurfExchange%nSidesRecv)
-!SDEALLOCATE(SurfExchange%SendRequest)
-!SDEALLOCATE(SurfExchange%RecvRequest)
-!DO iProc=1,SurfCOMM%nMPINeighbors
-!  IF (ALLOCATED(SurfSendBuf))THEN
-!    SDEALLOCATE(SurfSendBuf(iProc)%content)
-!  END IF
-!  IF (ALLOCATED(SurfRecvBuf))THEN
-!    SDEALLOCATE(SurfRecvBuf(iProc)%content)
-!  END IF
-!  IF (ALLOCATED(SurfCOMM%MPINeighbor))THEN
-!    SDEALLOCATE(SurfCOMM%MPINeighbor(iProc)%SendList)
-!    SDEALLOCATE(SurfCOMM%MPINeighbor(iProc)%RecvList)
-!  END IF
-!END DO ! iProc=1,PartMPI%nMPINeighbors
-!SDEALLOCATE(SurfCOMM%MPINeighbor)
-SDEALLOCATE(SurfSendBuf)
-SDEALLOCATE(SurfRecvBuf)
-!SDEALLOCATE(OffSetSurfSideMPI)
-#endif /*USE_MPI*/
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
-! adjusted for new halo region
-SDEALLOCATE(SampWallState)
-MDEALLOCATE(SurfSideArea)
-MDEALLOCATE(GlobalSide2SurfSide)
-MDEALLOCATE(SurfSide2GlobalSide)
-MDEALLOCATE(GlobalSide2SurfSide_Shared)
-MDEALLOCATE(SurfSide2GlobalSide_Shared)
-#if USE_MPI
-IF(MPI_COMM_LEADERS_SURF.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS_SURF,iERROR)
-SDEALLOCATE(GlobalSide2SurfHaloSide)
-SDEALLOCATE(SurfHaloSide2GlobalSide)
+CALL MPI_WIN_UNLOCK_ALL(SampWallState_Shared_Win      ,iError)
+CALL MPI_WIN_FREE(      SampWallState_Shared_Win      ,iError)
+CALL MPI_WIN_UNLOCK_ALL(GlobalSide2SurfSide_Shared_Win,iError)
+CALL MPI_WIN_FREE(      GlobalSide2SurfSide_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(SurfSide2GlobalSide_Shared_Win,iError)
+CALL MPI_WIN_FREE(      SurfSide2GlobalSide_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(SurfSideArea_Shared_Win       ,iError)
+CALL MPI_WIN_FREE(      SurfSideArea_Shared_Win       ,iError)
+
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+! Deallocate surf leader mapping and free surf leader communicator
 IF (ALLOCATED(SurfMapping)) THEN
   DO iProc = 0,nSurfLeaders-1
     SDEALLOCATE(SurfMapping(iProc)%RecvSurfGlobalID)
@@ -1364,9 +1337,31 @@ IF (ALLOCATED(SurfMapping)) THEN
   END DO
   SDEALLOCATE(SurfMapping)
 END IF
-CALL MPI_WIN_UNLOCK_ALL(SampWallState_Shared_Win,iError)
-CALL MPI_WIN_FREE(SampWallState_Shared_Win,iError)
+
+!SDEALLOCATE(GlobalSide2SurfHaloSide)
+!SDEALLOCATE(SurfHaloSide2GlobalSide)
+SDEALLOCATE(SurfSendBuf)
+SDEALLOCATE(SurfRecvBuf)
+
+CALL FinalizeSurfCommunication()
+
+IF(MPI_COMM_LEADERS_SURF.NE.MPI_COMM_NULL) THEN
+  CALL MPI_COMM_FREE(MPI_COMM_LEADERS_SURF,iERROR)
+END IF
 #endif /*USE_MPI*/
+
+! Then, free the pointers or arrays
+SDEALLOCATE(XiEQ_SurfSample)
+SDEALLOCATE(SurfBCName)
+SDEALLOCATE(SurfSampleBCs)
+SDEALLOCATE(SampWallState)
+MDEALLOCATE(SampWallState_Shared)
+MDEALLOCATE(SurfSideArea)
+MDEALLOCATE(SurfSideArea_Shared)
+MDEALLOCATE(GlobalSide2SurfSide)
+MDEALLOCATE(SurfSide2GlobalSide)
+MDEALLOCATE(GlobalSide2SurfSide_Shared)
+MDEALLOCATE(SurfSide2GlobalSide_Shared)
 
 END SUBROUTINE FinalizeParticleBoundarySampling
 

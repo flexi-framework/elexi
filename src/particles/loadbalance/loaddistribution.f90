@@ -187,6 +187,7 @@ INTEGER                        :: iDistriIter,itershift,imax,numOfCalls,nthMinLo
 INTEGER,ALLOCATABLE            :: PartInt(:,:)
 INTEGER                        :: locnPart
 LOGICAL                        :: PartIntExists
+INTEGER,PARAMETER              :: PartIntSize=2        !number of entries in each line of PartInt
 INTEGER,PARAMETER              :: ELEM_FirstPartInd=1
 INTEGER,PARAMETER              :: ELEM_LastPartInd =2
 REAL                           :: TargetWeight_loc
@@ -197,13 +198,11 @@ CurWeight = 0.0
 ! Load balancing for particles: read in particle data
 CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,'PartInt',PartIntExists)
-
-IF(PartIntExists)THEN
+IF (PartIntExists) THEN
     ALLOCATE(PartInt(1:nGlobalElems,2))
     PartInt(:,:)           = 0
-    CALL ReadArray('PartInt',2,(/nGlobalElems,2/),0,1,IntArray=PartInt)
+    CALL ReadArray('PartInt',2,(/PartIntSize,nGlobalElems/),0,2,IntArray=PartInt)
 END IF
-
 CALL CloseDataFile()
 
 ALLOCATE(PartsInElem(1:nGlobalElems))
@@ -238,12 +237,12 @@ END IF
 SELECT CASE(WeightDistributionMethod)
 CASE(-1) ! same as in no-restart: the elements are equally distributed
   IF(MPIRoot)THEN
-    nElems=nGlobalElems/nProcessors
-    iElem=nGlobalElems-nElems*nProcessors
+    nElems = nGlobalElems/nProcessors
+    iElem  = nGlobalElems-nElems*nProcessors
     DO iProc=0,nProcessors-1
-      offsetElemMPI(iProc)=nElems*iProc+MIN(iProc,iElem)
+      offsetElemMPI(iProc) = nElems*iProc+MIN(iProc,iElem)
     END DO
-    offsetElemMPI(nProcessors)=nGlobalElems
+    offsetElemMPI(nProcessors) = nGlobalElems
   END IF
   ! Send the load distribution to all other procs
   CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)

@@ -78,6 +78,9 @@ CONTAINS
   PROCEDURE :: read_options               !< routine that loops over the lines of a parameter files
                                           !< and calls read_option for every option. Outputs all unknow options
   PROCEDURE :: read_option                !< routine that parses a single line from the parameter file.
+#if USE_LOADBALANCE
+  PROCEDURE :: finalize                   !< routine that resets the parameters for loadbalance
+#endif /*USE LOADBALANCE*/
 END TYPE Parameters
 
 INTERFACE IgnoredParameters
@@ -189,16 +192,43 @@ CHARACTER(LEN=*),INTENT(IN)     :: section                !< section to set
 this%actualSection = section
 END SUBROUTINE SetSection
 
+#if USE_LOADBALANCE
+!==================================================================================================================================
+!> Resets all parameters defined in THIS linked list.
+!> Therefore, if loadbalance, it iterates over all entries of this linked list and sets removed flag to false.
+!> If no loadbalance, then all entries are deallocated and pointers nullified
+!==================================================================================================================================
+SUBROUTINE finalize(this)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CLASS(Parameters),INTENT(INOUT) :: this               !< CLASS(Parameters)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CLASS(link), POINTER            :: current
+!==================================================================================================================================
+
+! iterate over all options and set removed to false
+current => this%firstLink
+DO WHILE (associated(current))
+  current%opt%isRemoved=.FALSE.
+  current => current%next
+END DO
+
+END SUBROUTINE finalize
+#endif /*USE_LOADBALANCE*/
+
 !==================================================================================================================================
 !> General routine to create an option.
 !> Fills all fields of the option. Since the prms\%parse function is used to set the value, this routine can be abstract for all
 !> types of options.
 !==================================================================================================================================
+SUBROUTINE CreateOption(this, opt, name, description, value, multiple      &
 #if USE_PARTICLES
-SUBROUTINE CreateOption(this, opt, name, description, value, multiple, numberedmulti)
-#else
-SUBROUTINE CreateOption(this, opt, name, description, value, multiple)
-#endif
+                                                           , numberedmulti &
+#endif /*USE_PARTICLES*/
+                                                           )
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)       :: this             !< CLASS(Parameters)
 CLASS(OPTION),INTENT(INOUT)           :: opt              !< option class
@@ -208,7 +238,7 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL  :: value            !< option value
 LOGICAL,INTENT(IN),OPTIONAL           :: multiple         !< marker if multiple option
 #if USE_PARTICLES
 LOGICAL,INTENT(IN),OPTIONAL           :: numberedmulti    !< marker if numbered multiple option
-#endif
+#endif /*USE_PARTICLES*/
 ! LOCAL VARIABLES
 CLASS(link), POINTER :: newLink
 !==================================================================================================================================
@@ -227,7 +257,7 @@ END IF
 #if USE_PARTICLES
 opt%numberedmulti = .FALSE.
 IF (PRESENT(numberedmulti)) opt%numberedmulti = numberedmulti
-#endif
+#endif /*USE_PARTICLES*/
 
 opt%isSet = .FALSE.
 opt%name = name
@@ -249,11 +279,11 @@ END SUBROUTINE CreateOption
 !==================================================================================================================================
 !> Create a new integer option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
+SUBROUTINE CreateIntOption(this, name, description, value, multiple      &
 #if USE_PARTICLES
-SUBROUTINE CreateIntOption(this, name, description, value, multiple, numberedmulti)
-#else
-SUBROUTINE CreateIntOption(this, name, description, value, multiple)
-#endif
+                                                         , numberedmulti &
+#endif /*USE_PARTICLES*/
+                                                         )
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -262,27 +292,27 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 #if USE_PARTICLES
 LOGICAL,INTENT(IN),OPTIONAL          :: numberedmulti  !< marker if numbered multiple option
-#endif
+#endif /*USE_PARTICLES*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(IntOption),ALLOCATABLE,TARGET :: intopt
 !==================================================================================================================================
 ALLOCATE(intopt)
+CALL this%CreateOption(intopt, name, description, value=value, multiple=multiple            &
 #if USE_PARTICLES
-CALL this%CreateOption(intopt, name, description, value=value, multiple=multiple, numberedmulti=numberedmulti)
-#else
-CALL this%CreateOption(intopt, name, description, value=value, multiple=multiple)
-#endif
+                                                             , numberedmulti=numberedmulti  &
+#endif /*USE_PARTICLES*/
+                                                             )
 END SUBROUTINE CreateIntOption
 
 !==================================================================================================================================
 !> Create a new integer option with a optional string representation. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
+SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple         &
 #if USE_PARTICLES
-SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple, numberedmulti)
-#else
-SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple)
-#endif
+                                                                   , numberedmulti    &
+#endif /*USE_PARTICLES*/
+                                                                   )
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -291,27 +321,28 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 #if USE_PARTICLES
 LOGICAL,INTENT(IN),OPTIONAL          :: numberedmulti  !< marker if numbered multiple option
-#endif
+#endif /*USE_PARTICLES*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(IntFromStringOption),ALLOCATABLE,TARGET :: intfromstropt
 !==================================================================================================================================
 ALLOCATE(intfromstropt)
+
+CALL this%CreateOption(intfromstropt, name, description, value=value, multiple=multiple           &
 #if USE_PARTICLES
-CALL this%CreateOption(intfromstropt, name, description, value=value, multiple=multiple, numberedmulti=numberedmulti)
-#else
-CALL this%CreateOption(intfromstropt, name, description, value=value, multiple=multiple)
-#endif
+                                                                    , numberedmulti=numberedmulti &
+#endif /*USE_PARTICLES*/
+                                                                    )
 END SUBROUTINE CreateIntFromStringOption
 
 !==================================================================================================================================
 !> Create a new logical option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
+SUBROUTINE CreateLogicalOption(this, name, description, value, multiple           &
 #if USE_PARTICLES
-SUBROUTINE CreateLogicalOption(this, name, description, value, multiple, numberedmulti)
-#else
-SUBROUTINE CreateLogicalOption(this, name, description, value, multiple)
-#endif
+                                                             , numberedmulti      &
+#endif /*USE_PARTICLES*/
+                                                             )
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -326,21 +357,21 @@ LOGICAL,INTENT(IN),OPTIONAL          :: numberedmulti  !< marker if numbered mul
 CLASS(LogicalOption),ALLOCATABLE,TARGET :: logicalopt
 !==================================================================================================================================
 ALLOCATE(logicalopt)
+CALL this%CreateOption(logicalopt, name, description, value=value, multiple=multiple           &
 #if USE_PARTICLES
-CALL this%CreateOption(logicalopt, name, description, value=value, multiple=multiple, numberedmulti=numberedmulti)
-#else
-CALL this%CreateOption(logicalopt, name, description, value=value, multiple=multiple)
-#endif
+                                                                 , numberedmulti=numberedmulti &
+#endif /*USE_PARTICLES*/
+                                                                 )
 END SUBROUTINE CreateLogicalOption
 
 !==================================================================================================================================
 !> Create a new real option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
+SUBROUTINE CreateRealOption(this, name, description, value, multiple              &
 #if USE_PARTICLES
-SUBROUTINE CreateRealOption(this, name, description, value, multiple, numberedmulti)
-#else
-SUBROUTINE CreateRealOption(this, name, description, value, multiple)
-#endif
+                                                          , numberedmulti      &
+#endif /*USE_PARTICLES*/
+                                                          )
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -355,21 +386,21 @@ LOGICAL,INTENT(IN),OPTIONAL          :: numberedmulti  !< marker if numbered mul
 CLASS(RealOption),ALLOCATABLE,TARGET :: realopt
 !==================================================================================================================================
 ALLOCATE(realopt)
+CALL this%CreateOption(realopt, name, description, value=value, multiple=multiple           &
 #if USE_PARTICLES
-CALL this%CreateOption(realopt, name, description, value=value, multiple=multiple, numberedmulti=numberedmulti)
-#else
-CALL this%CreateOption(realopt, name, description, value=value, multiple=multiple)
-#endif
+                                                             , numberedmulti=numberedmulti  &
+#endif /*USE_PARTICLES*/
+                                                             )
 END SUBROUTINE CreateRealOption
 
 !==================================================================================================================================
 !> Create a new string option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
+SUBROUTINE CreateStringOption(this, name, description, value, multiple            &
 #if USE_PARTICLES
-SUBROUTINE CreateStringOption(this, name, description, value, multiple, numberedmulti)
-#else
-SUBROUTINE CreateStringOption(this, name, description, value, multiple)
-#endif
+                                                             , numberedmulti      &
+#endif /*USE_PARTICLES*/
+                                                             )
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -384,21 +415,21 @@ LOGICAL,INTENT(IN),OPTIONAL          :: numberedmulti  !< marker if numbered mul
 CLASS(StringOption),ALLOCATABLE,TARGET :: stringopt
 !==================================================================================================================================
 ALLOCATE(stringopt)
+CALL this%CreateOption(stringopt, name, description, value=value, multiple=multiple         &
 #if USE_PARTICLES
-CALL this%CreateOption(stringopt, name, description, value=value, multiple=multiple, numberedmulti=numberedmulti)
-#else
-CALL this%CreateOption(stringopt, name, description, value=value, multiple=multiple)
-#endif
+                                                             , numberedmulti=numberedmulti  &
+#endif /*USE_PARTICLES*/
+                                                             )
 END SUBROUTINE CreateStringOption
 
 !==================================================================================================================================
 !> Create a new integer array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
+SUBROUTINE CreateIntArrayOption(this, name, description, value, multiple          &
 #if USE_PARTICLES
-SUBROUTINE CreateIntArrayOption(this, name, description, value, multiple, numberedmulti)
-#else
-SUBROUTINE CreateIntArrayOption(this, name, description, value, multiple)
-#endif
+                                                             , numberedmulti      &
+#endif /*USE_PARTICLES*/
+                                                             )
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -413,21 +444,21 @@ LOGICAL,INTENT(IN),OPTIONAL          :: numberedmulti  !< marker if numbered mul
 CLASS(IntArrayOption),ALLOCATABLE,TARGET :: intopt
 !==================================================================================================================================
 ALLOCATE(intopt)
+CALL this%CreateOption(intopt, name, description, value=value, multiple=multiple            &
 #if USE_PARTICLES
-CALL this%CreateOption(intopt, name, description, value=value, multiple=multiple, numberedmulti=numberedmulti)
-#else
-CALL this%CreateOption(intopt, name, description, value=value, multiple=multiple)
-#endif
+                                                             , numberedmulti=numberedmulti  &
+#endif /*USE_PARTICLES*/
+                                                             )
 END SUBROUTINE CreateIntArrayOption
 
 !==================================================================================================================================
 !> Create a new logical array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
+SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple      &
 #if USE_PARTICLES
-SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple, numberedmulti)
-#else
-SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple)
-#endif
+                                                             , numberedmulti      &
+#endif /*USE_PARTICLES*/
+                                                             )
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -442,21 +473,21 @@ LOGICAL,INTENT(IN),OPTIONAL          :: numberedmulti  !< marker if numbered mul
 CLASS(LogicalArrayOption),ALLOCATABLE,TARGET :: logicalopt
 !==================================================================================================================================
 ALLOCATE(logicalopt)
+CALL this%CreateOption(logicalopt, name, description, value=value, multiple=multiple        &
 #if USE_PARTICLES
-CALL this%CreateOption(logicalopt, name, description, value=value, multiple=multiple, numberedmulti=numberedmulti)
-#else
-CALL this%CreateOption(logicalopt, name, description, value=value, multiple=multiple)
-#endif
+                                                             , numberedmulti=numberedmulti  &
+#endif /*USE_PARTICLES*/
+                                                             )
 END SUBROUTINE CreateLogicalArrayOption
 
 !==================================================================================================================================
 !> Create a new real array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
+SUBROUTINE CreateRealArrayOption(this, name, description, value, multiple         &
 #if USE_PARTICLES
-SUBROUTINE CreateRealArrayOption(this, name, description, value, multiple, numberedmulti)
-#else
-SUBROUTINE CreateRealArrayOption(this, name, description, value, multiple)
-#endif
+                                                             , numberedmulti      &
+#endif /*USE_PARTICLES*/
+                                                             )
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -471,11 +502,11 @@ LOGICAL,INTENT(IN),OPTIONAL          :: numberedmulti  !< marker if numbered mul
 CLASS(RealArrayOption),ALLOCATABLE,TARGET :: realopt
 !==================================================================================================================================
 ALLOCATE(realopt)
+CALL this%CreateOption(realopt, name, description, value=value, multiple=multiple           &
 #if USE_PARTICLES
-CALL this%CreateOption(realopt, name, description, value=value, multiple=multiple, numberedmulti=numberedmulti)
-#else
-CALL this%CreateOption(realopt, name, description, value=value, multiple=multiple)
-#endif
+                                                             , numberedmulti=numberedmulti  &
+#endif /*USE_PARTICLES*/
+                                                             )
 END SUBROUTINE CreateRealArrayOption
 
 !==================================================================================================================================
@@ -726,7 +757,7 @@ DO WHILE (associated(current))
   IF (current%opt%numberedmulti) THEN
     current => current%next
   ELSE
-#endif
+#endif /*USE_PARTICLES*/
   ! compare name
   IF (current%opt%NAMEEQUALS(name)) THEN
     found = .TRUE.
@@ -759,7 +790,7 @@ DO WHILE (associated(current))
   current => current%next
 #if USE_PARTICLES
   END IF
-#endif
+#endif /*USE_PARTICLES*/
 END DO
 
 #if USE_PARTICLES
@@ -793,7 +824,7 @@ DO WHILE (associated(current))
     current => current%next
   END IF
 END DO
-#endif
+#endif /*USE_PARTICLES*/
 
 END FUNCTION read_option
 
@@ -821,7 +852,7 @@ DO WHILE (associated(current))
       current => current%next
       CYCLE
     END IF
-#endif
+#endif /*USE_PARTICLES*/
     SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
   END IF
   current => current%next
@@ -1033,7 +1064,7 @@ CLASS(Option),POINTER :: opt
 CHARACTER(LEN=255)    :: proposal_loc
 #if USE_PARTICLES
 CLASS(OPTION),ALLOCATABLE    :: newopt
-#endif
+#endif /*USE_PARTICLES*/
 !==================================================================================================================================
 
 ! iterate over all options
@@ -1146,7 +1177,7 @@ DO WHILE (associated(current))
     current => current%next
   END IF
 END DO
-#endif
+#endif /*USE_PARTICLES*/
 
 CALL ABORT(__STAMP__, &
     'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
@@ -1172,7 +1203,7 @@ CLASS(Option),POINTER :: opt
 CHARACTER(LEN=255)    :: proposal_loc
 #if USE_PARTICLES
 CLASS(OPTION),ALLOCATABLE    :: newopt
-#endif
+#endif /*USE_PARTICLES*/
 !INTEGER               :: i
 !==================================================================================================================================
 
@@ -1298,7 +1329,7 @@ DO WHILE (associated(current))
     current => current%next
   END IF
 END DO
-#endif
+#endif /*USE_PARTICLES*/
 
 CALL ABORT(__STAMP__, &
     'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&

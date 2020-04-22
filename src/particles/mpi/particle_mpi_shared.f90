@@ -110,6 +110,11 @@ CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_FLEXI, MPI_COMM_TYPE_SHARED, myRank, MPI_INFO_
 ! Find my rank on the shared communicator, comm size and proc name
 CALL MPI_COMM_RANK(MPI_COMM_SHARED, myComputeNodeRank,IERROR)
 CALL MPI_COMM_SIZE(MPI_COMM_SHARED, nComputeNodeProcessors,IERROR)
+
+! MPI3 shared implementation currently only works with equal procs per node
+IF (MOD(nComputeNodeProcessors,nProcessors_Global).NE.0) &
+  CALL ABORT(__STAMP__,'MPI shared communication currently only supported with equal procs per node!')
+
 SWRITE(UNIT_stdOUt,'(A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs per node'
 
 ! Map global rank number into shared rank number. Returns MPI_UNDEFINED if not on the same node
@@ -707,8 +712,8 @@ SDEALLOCATE(MPIRankGlobal)
 SDEALLOCATE(MPIRankShared)
 
 ! Free the shared communicator
-CALL MPI_COMM_FREE(MPI_COMM_SHARED, IERROR)
-CALL MPI_COMM_FREE(MPI_COMM_LEADERS_SHARED, IERROR)
+IF(MPI_COMM_SHARED        .NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_SHARED        ,IERROR)
+IF(MPI_COMM_LEADERS_SHARED.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS_SHARED,IERROR)
 MPISharedInitIsDone=.FALSE.
 
 END SUBROUTINE FinalizeMPIShared

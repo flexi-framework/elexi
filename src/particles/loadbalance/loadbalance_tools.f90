@@ -45,8 +45,9 @@ SUBROUTINE DomainDecomposition()
 USE MOD_Globals
 USE MOD_LoadDistribution     ,ONLY: ApplyWeightDistributionMethod
 USE MOD_LoadBalance_Vars     ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,PartDistri,TargetWeight,ElemTime
-USE MOD_IO_HDF5
-USE MOD_Mesh_Vars            ,ONLY: offsetElem,nElems,nGlobalElems
+USE MOD_HDF5_Input           ,ONLY: OpenDataFile
+USE MOD_IO_HDF5              ,ONLY: AddToElemData,ElementOut
+USE MOD_Mesh_Vars            ,ONLY: MeshFile,offsetElem,nElems,nGlobalElems
 USE MOD_MPI_Vars             ,ONLY: offsetElemMPI
 USE MOD_Restart_Vars         ,ONLY: DoRestart
 ! IMPLICIT VARIABLE HANDLING
@@ -115,7 +116,7 @@ offsetElem = offsetElemMPI(myRank)
 LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
 
 ! Sanity check: local nElems and offset
-IF(nElems.LE.0) CALL abort(__STAMP__,' Process did not receive any elements/load! ')
+IF (nElems.LE.0) CALL ABORT(__STAMP__,' Process did not receive any elements/load! ')
 
 ! Read the ElemTime again, but this time with every proc, depending on the domain decomposition in order to write the data
 ! to the state file (keep ElemTime on restart, if no new ElemTime is calculated during the run or replace with newly measured values
@@ -126,7 +127,8 @@ IF (ElemTimeExists) CALL ReadElemTime(single=.FALSE.)
 SDEALLOCATE(ElemTime)
 ALLOCATE(ElemTime(1:nElems))
 ElemTime = 0.
-CALL AddToElemData(ElementOut,'ElemTime',RealArray=ElemTime(1:nElems))
+CALL AddToElemData(ElementOut,'ElemTime',ElemTime)
+!CALL AddToElemData(ElementOut,'ElemTime',RealArray=ElemTime(1:nElems))
 
 ! Calculate new (theoretical) imbalance with offsetElemMPI information
 IF (ElemTimeExists.AND.MPIRoot) THEN
@@ -159,6 +161,9 @@ ELSE
   MaxWeight    = -1.
   MinWeight    = -1.
 END IF
+
+! Re-open mesh file to continue readin
+CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 END SUBROUTINE DomainDecomposition
 

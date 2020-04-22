@@ -755,6 +755,7 @@ USE MOD_Mesh_Vars,    ONLY:nElems,nGlobalElems,offsetElem
 USE MOD_MPI_Vars,     ONLY:offsetElemMPI
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
+USE MOD_LoadBalance,       ONLY:InitLoadBalanceTracking
 USE MOD_LoadBalance_Tools, ONLY:DomainDecomposition
 #endif /*USE_LOADBALANCE*/
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -781,12 +782,13 @@ IF(nGlobalElems.LT.nProcessors) THEN
   'ERROR: Number of elements (1) is smaller then number of processors (2)!',nGlobalElems,REAL(nProcessors))
 END IF
 
+SDEALLOCATE(offsetElemMPI)
+ALLOCATE(   offsetElemMPI(0:nProcessors))
 #if USE_LOADBALANCE
 CALL DomainDecomposition()
+CALL InitLoadBalanceTracking()
 #else
 !simple partition: nGlobalelems/nprocs, do this on proc 0
-IF(ALLOCATED(offsetElemMPI)) DEALLOCATE(offsetElemMPI)
-ALLOCATE(offsetElemMPI(0:nProcessors))
 offsetElemMPI=0
 nElems = nGlobalElems/nProcessors
 iElem  = nGlobalElems-nElems*nProcessors

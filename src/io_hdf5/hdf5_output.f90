@@ -1028,10 +1028,6 @@ REAL,ALLOCATABLE               :: PartData(:,:)
 INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
 INTEGER                        :: PartDataSize       !number of entries in each line of PartData
 INTEGER                        :: locnPart_max
-#if USE_SM
-INTEGER                        :: i,j,k,m,iPartition
-REAL                           :: L_xi(3,0:PP_N), L_eta_zeta
-#endif
 ! Particle turbulence models
 INTEGER                        :: TurbPartDataSize
 REAL,ALLOCATABLE               :: TurbPartData(:,:)

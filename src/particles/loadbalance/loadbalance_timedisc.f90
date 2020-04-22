@@ -24,7 +24,7 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-#if USE_MPI
+#if USE_LOADBALANCE
 INTERFACE InitialAutoRestart
   MODULE PROCEDURE InitialAutoRestart
 END INTERFACE
@@ -35,12 +35,12 @@ END INTERFACE
 
 PUBLIC :: InitialAutoRestart
 PUBLIC :: LoadBalance
-#endif /*USE_MPI*/
+#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 CONTAINS
 
-#if USE_MPI
+#if USE_LOADBALANCE
 
 SUBROUTINE InitialAutoRestart(t,dt,dt_min,tend,tAnalyze,Analyze_dt,tmp_LoadBalanceSample,tmp_DoLoadBalance)
 !===================================================================================================================================
@@ -48,7 +48,7 @@ SUBROUTINE InitialAutoRestart(t,dt,dt_min,tend,tAnalyze,Analyze_dt,tmp_LoadBalan
 !===================================================================================================================================
 ! USED MODULES
 USE MOD_LoadBalance_Vars
-USE MOD_Restart_Vars           ,ONLY: RestartTime
+USE MOD_Restart_Vars               ,ONLY: RestartTime
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -88,25 +88,51 @@ END IF
 END SUBROUTINE InitialAutoRestart
 
 
-SUBROUTINE LoadBalance()
+SUBROUTINE LoadBalance(OutputTime)
 !===================================================================================================================================
 ! routine perfoming the load balancing
 !===================================================================================================================================
 ! USED MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,nLoadBalanceSteps,NewImbalance,MinWeight,MaxWeight
-USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance,MaxWeight,MinWeight
-USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
-USE MOD_Particle_Globals       ,ONLY: InitializationWallTime
-!USE MOD_Restart                ,ONLY: Restart
+USE MOD_Analyze                    ,ONLY: InitAnalyze,FinalizeAnalyze
+USE MOD_DG                         ,ONLY: InitDG,FinalizeDG
+USE MOD_Filter                     ,ONLY: InitFilter,FinalizeFilter
+USE MOD_Lifting                    ,ONLY: InitLifting,FinalizeLifting
+USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,nLoadBalanceSteps,NewImbalance,MinWeight,MaxWeight
+USE MOD_LoadBalance_Vars           ,ONLY: CurrentImbalance,MaxWeight,MinWeight
+USE MOD_LoadBalance_Vars           ,ONLY: PerformLoadBalance
+USE MOD_Indicator                  ,ONLY: InitIndicator,FinalizeIndicator
+USE MOD_Mesh                       ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
+USE MOD_Mesh_Vars                  ,ONLY: nElems
+USE MOD_MPI                        ,ONLY: InitMPIVars,FinalizeMPI
+USE MOD_Output_Vars                ,ONLY: ProjectName
+USE MOD_Overintegration            ,ONLY: InitOverintegration,FinalizeOverintegration
+USE MOD_Particle_Boundary_Sampling ,ONLY: RestartParticleBoundarySampling
+USE MOD_Particle_Analyze           ,ONLY: InitParticleAnalyze,FinalizeParticleAnalyze
+USE MOD_Particle_Globals           ,ONLY: InitializationWallTime
+USE MOD_Particle_Init              ,ONLY: InitParticles,FinalizeParticles
+USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh,FinalizeParticleMesh
+USE MOD_Particle_MPI               ,ONLY: InitParticleMPI,FinalizeParticleMPI
+USE MOD_Particle_Surfaces          ,ONLY: InitParticleSurfaces,FinalizeParticleSurfaces
+USE MOD_RecordPoints               ,ONLY: InitRecordPoints,FinalizeRecordPoints
+USE MOD_ReadInTools                ,ONLY: prms
+USE MOD_Restart                    ,ONLY: InitRestart,FinalizeRestart,Restart
+USE MOD_Restart_Vars               ,ONLY: RestartFile,doRestart
+USE MOD_Sponge                     ,ONLY: InitSponge,FinalizeSponge
+!USE MOD_TimeDisc                   ,ONLY: InitTimeDisc,FinalizeTimeDisc
+USE MOD_TimeDisc_Vars              ,ONLY: dtElem
+#if PARABOLIC
+USE MOD_Lifting                    ,ONLY: InitLifting
+#endif /*PARABOLIC*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+ REAL,INTENT(IN)                :: OutputTime     !< simulation time when output is performed
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                  :: LB_Time,LB_StartTime
+REAL                            :: LB_Time,LB_StartTime
 !===================================================================================================================================
 ! only do load-balance if necessary
 IF (.NOT.PerformLoadBalance) THEN
@@ -130,9 +156,69 @@ nLoadBalanceSteps = nLoadBalanceSteps + 1
 
 ! Either have to move InitFlexi & FinalizeFlexi into separate file or call the subroutines here manually. Chose the latter option to
 ! keep compatibility with master branch
+!-- Save the last output file name as restart file name
+RestartFile = TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//'State',OutputTime))//'.h5'
+doRestart   = .TRUE.
 
-! restart
-!CALL Restart()
+!-- Finalize every mesh dependent routine
+CALL FinalizeRecordPoints()
+CALL FinalizeAnalyze()
+#if PARABOLIC
+CALL FinalizeLifting()
+#endif /*PARABOLIC*/
+#if FV_ENABLED
+CALL FinalizeFV()
+#endif /*PARABOLIC*/
+CALL FinalizeDG()
+! Calling timedisc causes circular depends. We only need to reallocate dtElem
+!CALL FinalizeTimeDisc()
+CALL FinalizeRestart()
+SDEALLOCATE(dtElem)
+
+CALL FinalizeMesh()
+CALL FinalizeSponge()
+CALL FinalizeOverintegration()
+CALL FinalizeFilter()
+CALL FinalizeIndicator()
+CALL FinalizeParticleMPI()
+CALL FinalizeParticles()
+CALL FinalizeParticleAnalyze()
+CALL FinalizeParticleSurfaces()
+CALL FinalizeParticleMesh()
+CALL FinalizeMPI()
+
+!-- Set removed flag to false
+CALL prms%finalize()
+
+!-- Restart every mesh dependent routine
+CALL InitMesh(meshMode=2)
+CALL InitRestart()
+CALL InitFilter()
+CALL InitOverintegration()
+CALL InitIndicator()
+CALL InitMPIvars()
+CALL InitDG()
+#if FV_ENABLED
+CALL InitFV()
+#endif /*FV_ENABLED*/
+#if PARABOLIC
+CALL InitLifting()
+#endif /*PARABOLIC*/
+CALL InitSponge()
+
+! Calling timedisc causes circular depends. We only need to reallocate dtElem
+!CALL InitTimeDisc()
+ALLOCATE(dtElem(nElems))
+dtElem = 0.
+
+CALL InitAnalyze()
+CALL InitRecordpoints()
+CALL Restart()
+CALL InitParticleMPI()
+CALL InitParticleSurfaces()
+CALL InitParticleAnalyze()
+CALL InitParticles()
+CALL RestartParticleBoundarySampling()
 
 ! zero ElemTime, the measurement starts again
 ElemTime     = 0.
@@ -153,7 +239,10 @@ InitializationWallTime = LB_Time - LB_StartTime
 SWRITE(UNIT_stdOut,'(A,F14.2,A)') ' INITIALIZATION DONE! [',InitializationWallTime,' sec ]'
 SWRITE(UNIT_stdOut,'(A)')         ' LOAD BALANCE DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
+
+PerformLoadBalance = .FALSE.
+
 END SUBROUTINE LoadBalance
-#endif /*USE_MPI*/
+#endif /*USE_LOADBALANCE*/
 
 END MODULE MOD_LoadBalance_TimeDisc

@@ -57,6 +57,10 @@ INTERFACE CommunicateMeshReadin
   MODULE PROCEDURE CommunicateMeshReadin
 END INTERFACE
 
+INTERFACE FinalizeMeshReadin
+  MODULE PROCEDURE FinalizeMeshReadin
+END INTERFACE
+
 PUBLIC :: ReadMeshBasics
 PUBLIC :: ReadMeshElems
 PUBLIC :: ReadMeshSides
@@ -64,6 +68,7 @@ PUBLIC :: ReadMeshSideNeighbors
 PUBLIC :: ReadMeshNodes
 PUBLIC :: ReadMeshTrees
 PUBLIC :: CommunicateMeshReadin
+PUBLIC :: FinalizeMeshReadin
 !===================================================================================================================================
 
 CONTAINS
@@ -386,7 +391,7 @@ END SUBROUTINE ReadMeshTrees
 
 SUBROUTINE CommunicateMeshReadin()
 !===================================================================================================================================
-! Create particle mesh arrays for nodes
+! Communicates the readin mesh between MPI leaders
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -527,6 +532,65 @@ END IF
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 END SUBROUTINE CommunicateMeshReadin
+
+
+SUBROUTINE FinalizeMeshReadin()
+!===================================================================================================================================
+! Finalizes the shared mesh readin
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars
+USE MOD_Particle_Mesh_Vars
+#if USE_MPI
+USE MOD_Particle_MPI_Shared
+USE MOD_Particle_MPI_Shared_Vars
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+! elems
+CALL MPI_WIN_UNLOCK_ALL(ElemInfo_Shared_Win,iError)
+CALL MPI_WIN_FREE(ElemInfo_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(ElemToProcID_Shared_Win,iError)
+CALL MPI_WIN_FREE(ElemToProcID_Shared_Win,iError)
+
+! sides
+CALL MPI_WIN_UNLOCK_ALL(SideInfo_Shared_Win,iError)
+CALL MPI_WIN_FREE(SideInfo_Shared_Win,iError)
+
+! nodes
+CALL MPI_WIN_UNLOCK_ALL(NodeInfo_Shared_Win,iError)
+CALL MPI_WIN_FREE(NodeInfo_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(NodeCoords_Shared_Win,iError)
+CALL MPI_WIN_FREE(NodeCoords_Shared_Win,iError)
+
+! trees
+IF (ASSOCIATED(TreeCoords_Shared)) THEN
+  CALL MPI_WIN_UNLOCK_ALL(TreeCoords_Shared_Win,iError)
+  CALL MPI_WIN_FREE(TreeCoords_Shared_Win,iError)
+END IF
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+#endif /*USE_MPI*/
+
+! Then, free the pointers or arrays
+MDEALLOCATE(ElemInfo_Shared)
+MDEALLOCATE(ElemToProcID_Shared)
+MDEALLOCATE(SideInfo_Shared)
+MDEALLOCATE(NodeInfo_Shared)
+MDEALLOCATE(NodeCoords_Shared)
+MDEALLOCATE(TreeCoords_Shared)
+
+END SUBROUTINE FinalizeMeshReadin
 
 
 END MODULE MOD_Particle_Mesh_Readin

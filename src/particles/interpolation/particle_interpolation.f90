@@ -38,10 +38,15 @@ INTERFACE InterpolateFieldToSingleParticle
   MODULE PROCEDURE InterpolateFieldToSingleParticle
 END INTERFACE
 
+INTERFACE FinalizeParticleInterpolation
+  MODULE PROCEDURE FinalizeParticleInterpolation
+END INTERFACE
+
 PUBLIC :: DefineParametersParticleInterpolation
 PUBLIC :: InitParticleInterpolation
 PUBLIC :: InterpolateFieldToParticle
 PUBLIC :: InterpolateFieldToSingleParticle
+PUBLIC :: FinalizeParticleInterpolation
 !===================================================================================================================================
 
 CONTAINS
@@ -65,6 +70,7 @@ CALL prms%CreateRealArrayOption('Part-externalField'           , 'External field
 CALL prms%CreateRealOption(     'Part-scaleexternalField'      , 'Scale the provided external field', '1.0')
 
 END SUBROUTINE DefineParametersParticleInterpolation
+
 
 SUBROUTINE InitParticleInterpolation()
 !===================================================================================================================================
@@ -93,7 +99,7 @@ USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
 INTEGER                   :: ALLOCSTAT,LoopDisabled,LoopDisabledGlob
 REAL                      :: scaleExternalField
 !===================================================================================================================================
-IF(PartInterpolationInitIsDone)THEN
+IF (PartInterpolationInitIsDone) THEN
    SWRITE(*,*) "InitParticleInterpolation already called."
    RETURN
 END IF
@@ -153,6 +159,7 @@ PartInterpolationInitIsDone=.TRUE.
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE INTERPOLATION DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
+
 END SUBROUTINE InitParticleInterpolation
 
 
@@ -333,6 +340,32 @@ END IF ! RefMapping
 FieldAtParticle(:)        = FieldAtParticle(:)  + field(:)
 
 END SUBROUTINE InterpolateFieldToSingleParticle
+
+
+SUBROUTINE FinalizeParticleInterpolation()
+!===================================================================================================================================
+! Finalize the interpolation variables
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Interpolation_Vars
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+SDEALLOCATE(FieldAtParticle)
+#if USE_RW
+SDEALLOCATE(TurbFieldAtParticle)
+#endif /*USE_RW*/
+
+PartInterpolationInitIsDone = .FALSE.
+
+END SUBROUTINE FinalizeParticleInterpolation
 
 
 END MODULE MOD_Particle_Interpolation

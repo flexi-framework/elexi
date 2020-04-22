@@ -28,7 +28,12 @@ INTERFACE IdentifyPartExchangeProcs
   MODULE PROCEDURE IdentifyPartExchangeProcs
 END INTERFACE
 
+INTERFACE FinalizePartExchangeProcs
+  MODULE PROCEDURE FinalizePartExchangeProcs
+END INTERFACE
+
 PUBLIC :: IdentifyPartExchangeProcs
+PUBLIC :: FinalizePartExchangeProcs
 !===================================================================================================================================
 
 CONTAINS
@@ -387,6 +392,28 @@ SWRITE(UNIT_stdOut,'(A)') ' IDENTIFYING Particle Exchange Processors DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE IdentifyPartExchangeProcs
+
+
+!===================================================================================================================================
+! Deallocates arrays for halo exchange
+!===================================================================================================================================
+SUBROUTINE FinalizePartExchangeProcs()
+! MODULES
+USE MOD_Particle_MPI_Vars       ,ONLY: ExchangeProcToGlobalProc,GlobalProcToExchangeProc
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+SDEALLOCATE(ExchangeProcToGlobalProc)
+SDEALLOCATE(GlobalProcToExchangeProc)
+
+END SUBROUTINE FinalizePartExchangeProcs
+
+
 #endif /*MPI*/
 
 END MODULE MOD_Particle_MPI_Halo

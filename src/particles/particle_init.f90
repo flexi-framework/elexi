@@ -452,7 +452,7 @@ USE MOD_Particle_Interpolation ,ONLY: InitParticleInterpolation
 USE MOD_Particle_Mesh          ,ONLY: GetMeshMinMax
 USE MOD_Particle_Mesh          ,ONLY: InitParticleMesh
 #if USE_MPI
-USE MOD_Particle_MPI           ,ONLY: InitEmissionComm
+USE MOD_Particle_MPI_Emission  ,ONLY: InitEmissionComm
 USE MOD_Particle_MPI_Halo      ,ONLY: IdentifyPartExchangeProcs
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*USE_MPI*/
@@ -547,31 +547,22 @@ ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
          PartReflCount(       1:PDM%maxParticleNumber),    &
          LastPartPos(     1:3,1:PDM%maxParticleNumber),    &
          PartPosRef(      1:3,1:PDM%MaxParticleNumber),    &
+         PartSpecies(         1:PDM%maxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
          Pt(              1:3,1:PDM%maxParticleNumber),    &
          Pt_temp(         1:6,1:PDM%maxParticleNumber),    &
-         PartSpecies(         1:PDM%maxParticleNumber),    &
-         PDM%ParticleInside(  1:PDM%maxParticleNumber),    &
-#if USE_SM
-         PDM%ParticleInsideSM(1:PDM%maxParticleNumber),    &
-#endif
 ! Allocate array for particle position in reference coordinates
+         PDM%ParticleInside(  1:PDM%maxParticleNumber),    &
          PDM%nextFreePosition(1:PDM%maxParticleNumber),    &
          PDM%IsNewPart(       1:PDM%maxParticleNumber),    &
 ! Allocate particle-to-element-mapping (PEM) arrays
          PEM%Element(         1:PDM%maxParticleNumber),    &
          PEM%lastElement(     1:PDM%maxParticleNumber),    &
-#if USE_SM
-         PEM%hasCrossedSM(    1:PDM%maxParticleNumber),    &
-#endif
          STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
   CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
 
 PDM%ParticleInside(1:PDM%maxParticleNumber)  = .FALSE.
-#if USE_SM
-PDM%ParticleInsideSM(1:PDM%maxParticleNumber)= .FALSE.
-#endif
 PDM%IsNewPart(     1:PDM%maxParticleNumber)  = .FALSE.
 LastPartPos(   1:3,1:PDM%maxParticleNumber)  = 0.
 PartState                                    = 0.
@@ -581,9 +572,6 @@ PartSpecies                                  = 0
 PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
 Pt_temp                                      = 0
 PartPosRef                                   =-888.
-#if USE_SM
-PEM%hasCrossedSM                             = .FALSE.
-#endif
 
 END SUBROUTINE AllocateParticleArrays
 
@@ -657,9 +645,6 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
-#if USE_LOADBALANCE
-USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
-#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1373,18 +1358,21 @@ END SUBROUTINE InitializeVariablesTimeStep
 ! finalize particle variables
 !===================================================================================================================================
 SUBROUTINE FinalizeParticles()
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars
+USE MOD_ErosionPoints,              ONLY: FinalizeErosionPoints
 USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Boundary_Sampling, ONLY:FinalizeParticleBoundarySampling
-USE MOD_ErosionPoints,              ONLY:FinalizeErosionPoints
-USE MOD_Particle_Interpolation_Vars
+USE MOD_Particle_Boundary_Sampling, ONLY: FinalizeParticleBoundarySampling
+USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
+USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
+USE MOD_Particle_Vars
+#if USE_MPI
+USE MOD_Particle_MPI_Emission,      ONLY: FinalizeEmissionComm
+USE MOD_Particle_MPI_Halo,          ONLY: FinalizePartExchangeProcs
+#endif /*USE_MPI*/
 #if USE_RW
 USE MOD_Particle_RandomWalk,        ONLY: ParticleFinalizeRandomWalk
-#endif
-USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
+#endif /*USE_RW*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1394,17 +1382,31 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-SDEALLOCATE(Pt_temp)
-SDEALLOCATE(PartPosRef)
+
+#if USE_MPI
+! Must be finalized before Species is deallocated
+CALL FinalizeEmissionComm
+#endif
+
+! particle properties
+SDEALLOCATE(Species)
 SDEALLOCATE(PartState)
+SDEALLOCATE(PartReflCount)
 SDEALLOCATE(LastPartPos)
+SDEALLOCATE(PartPosRef)
 SDEALLOCATE(PartSpecies)
+
+! Runge-Kutta time stepping
 SDEALLOCATE(Pt)
+SDEALLOCATE(Pt_temp)
+
+! particle position in reference coordinates
 SDEALLOCATE(PDM%ParticleInside)
 SDEALLOCATE(PDM%nextFreePosition)
 SDEALLOCATE(PDM%nextFreePosition)
 SDEALLOCATE(PDM%IsNewPart)
-SDEALLOCATE(Species)
+
+! particle boundary information
 SDEALLOCATE(PartBound%SourceBoundName)
 SDEALLOCATE(PartBound%SourceBoundType)
 SDEALLOCATE(PartBound%TargetBoundCond)
@@ -1421,26 +1423,41 @@ SDEALLOCATE(PartBound%WallCoeffModel)
 SDEALLOCATE(PartBound%Young)
 SDEALLOCATE(PartBound%Poisson)
 SDEALLOCATE(PartBound%CoR)
+
+! particle-to-element-mapping (PEM) arrays
 SDEALLOCATE(PEM%Element)
 SDEALLOCATE(PEM%lastElement)
 SDEALLOCATE(PEM%pStart)
 SDEALLOCATE(PEM%pNumber)
 SDEALLOCATE(PEM%pEnd)
 SDEALLOCATE(PEM%pNext)
-SDEALLOCATE(FieldAtParticle)
-! Sliding Mesh
-#if USE_SM
-SDEALLOCATE(PEM%hasCrossedSM)
-SDEALLOCATE(PDM%ParticleInsideSM)
-! SGS/RW turbulence model
-#endif
+
+! interpolation
+CALL FinalizeParticleInterpolation
+
+! random walk
 #if USE_RW
-SDEALLOCATE(TurbFieldAtParticle)
 CALL ParticleFinalizeRandomWalk()
-#endif
+#endif /*USE_RW*/
+
+!
+SDEALLOCATE(Seeds)
+
+! subgrid-scale model
 CALL ParticleFinalizeSGS()
+
+! particle impact tracking
 CALL FinalizeErosionPoints()
+
+! particle surface sampling
 CALL FinalizeParticleBoundarySampling()
+
+#if USE_MPI
+! particle MPI halo exchange
+CALL FinalizePartExchangeProcs()
+#endif
+
+ParticlesInitIsDone = .FALSE.
 
 END SUBROUTINE FinalizeParticles
 
@@ -1511,9 +1528,9 @@ SUBROUTINE InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
 USE MOD_Particle_MPI_Vars,     ONLY:PartMPI
 #endif
 ! IMPLICIT VARIABLE HANDLING
-!===================================================================================================================================
 IMPLICIT NONE
-! VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nRandomSeeds
 INTEGER,INTENT(IN)             :: SeedSize
 INTEGER,INTENT(INOUT)          :: Seeds(SeedSize)

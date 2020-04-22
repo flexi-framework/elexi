@@ -38,6 +38,10 @@ INTERFACE FinalizeLoadBalance
 END INTERFACE
 
 #if USE_LOADBALANCE
+INTERFACE InitLoadBalanceTracking
+  MODULE PROCEDURE InitLoadBalanceTracking
+END INTERFACE
+
 INTERFACE ComputeElemLoad
   MODULE PROCEDURE ComputeElemLoad
 END INTERFACE
@@ -53,6 +57,7 @@ PUBLIC :: DefineParametersLoadBalance
 PUBLIC :: InitLoadBalance
 PUBLIC :: FinalizeLoadBalance
 #if USE_LOADBALANCE
+PUBLIC :: InitLoadBalanceTracking
 PUBLIC :: ComputeElemLoad
 PUBLIC :: AnalyzeLoadBalance
 #endif /*USE_LOADBALANCE*/
@@ -157,7 +162,6 @@ IF (DoLoadBalance.AND.(.NOT.LoadBalanceTimeBased)) THEN
   ! Rescale ParticleMPIWeight with PP_N^3 to account for ElemTime(DG) = 1
   !ParticleMPIWeight   = ParticleMPIWeight * PP_N**3
 END IF
-!> =================================================================================================================================
 #else
 DoLoadBalance          = .FALSE. ! deactivate loadbalance if no preproc flag is set
 DeviationThreshold     = HUGE(1.0)
@@ -178,6 +182,38 @@ END SUBROUTINE InitLoadBalance
 
 
 #if USE_LOADBALANCE
+SUBROUTINE InitLoadBalanceTracking
+!===================================================================================================================================
+! Re-allocate nPartsPerElem depending on new number of elements
+!===================================================================================================================================
+! MODULES
+USE MOD_IO_HDF5                ,ONLY: AddToElemData,ElementOut
+USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem
+USE MOD_Mesh_Vars              ,ONLY: nElems
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! Maybe this could happen in shared memory
+IF (.NOT.ALLOCATED(nPartsPerElem)) THEN
+  ALLOCATE(nPartsPerElem(1:nElems))
+ELSE
+  SDEALLOCATE(nPartsPerElem)
+  ALLOCATE(nPartsPerElem(1:nElems))
+END IF
+CALL AddToElemData(ElementOut,'nPartsPerElem',IntArray=nPartsPerElem(:))
+SDEALLOCATE(nTracksPerElem)
+ALLOCATE(nTracksPerElem(1:nElems))
+nPartsPerElem          = 0
+nTracksPerElem         = 0
+
+END SUBROUTINE InitLoadBalanceTracking
+
+
 SUBROUTINE ComputeElemLoad()
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! compute the element load
@@ -350,6 +386,7 @@ END IF
 
 END SUBROUTINE ComputeImbalance
 
+
 !===================================================================================================================================
 ! Routine to print loadbalance stats
 !===================================================================================================================================
@@ -373,9 +410,13 @@ ElemSum = SUM(ElemTime)
 CALL MPI_REDUCE(ElemSum,ElemTimeMin,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
 CALL MPI_REDUCE(ElemSum,ElemTimeMax,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
 
-IF(MPIROOT) THEN
-    WRITE(UNIT_StdOut,'(132("."))')
+IF (MPIROOT) THEN
+  IF (ElemTimeMin.GT.0) THEN
+!    WRITE(UNIT_StdOut,'(132("."))')
     WRITE(UNIT_StdOut,'(A,F5.2,A)')  ' PART. LOAD INBALANCE (MAX/MIN): [',ElemTimeMax/ElemTimeMin,' ]'
+  ELSE
+    WRITE(UNIT_StdOut,'(A,F5.2,A)')  ' PART. LOAD INBALANCE (MAX/MIN): [',0.,' ]'
+  END IF
 END IF
 
 CALL ComputeImbalance(output_opt=.TRUE.)

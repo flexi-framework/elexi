@@ -63,12 +63,12 @@ INTEGER,ALLOCPOINT,DIMENSION(:,:)       :: SurfSide2GlobalSide_Shared
 REAL,POINTER,DIMENSION(:,:,:)           :: SurfSideArea_Shared           !> Area of supersampled surface side
 INTEGER                                 :: SurfSideArea_Shared_Win
 
-INTEGER,ALLOCATABLE,DIMENSION(:,:)      :: GlobalSide2SurfHaloSide       ! Mapping Global Side ID to Surf Halo Side ID (exists only on leader procs)
-                                                                         !> 1st dim: leader rank
-                                                                         !> 2nd dim: Surf SideID
-INTEGER,ALLOCATABLE,DIMENSION(:,:)      :: SurfHaloSide2GlobalSide       ! Inverse mapping  (exists only on leader procs)
-                                                                         !> 1st dim: leader rank
-                                                                         !> 2nd dim: Surf SideID
+!INTEGER,ALLOCATABLE,DIMENSION(:,:)      :: GlobalSide2SurfHaloSide       ! Mapping Global Side ID to Surf Halo Side ID (exists only on leader procs)
+!                                                                         !> 1st dim: leader rank
+!                                                                         !> 2nd dim: Surf SideID
+!INTEGER,ALLOCATABLE,DIMENSION(:,:)      :: SurfHaloSide2GlobalSide       ! Inverse mapping  (exists only on leader procs)
+!                                                                         !> 1st dim: leader rank
+!                                                                         !> 2nd dim: Surf SideID
 
 INTEGER                                 :: GlobalSide2SurfSide_Shared_Win
 INTEGER                                 :: SurfSide2GlobalSide_Shared_Win

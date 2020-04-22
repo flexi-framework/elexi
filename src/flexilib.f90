@@ -249,10 +249,10 @@ CALL InitRecordpoints()
 CALL Restart()
 #if USE_PARTICLES
 #if USE_MPI
-CALL InitParticleMPI
+CALL InitParticleMPI()
 #endif /*USE_MPI*/
-CALL InitParticleSurfaces
-CALL InitParticleAnalyze
+CALL InitParticleSurfaces()
+CALL InitParticleAnalyze()
 CALL InitParticles()
 CALL RestartParticleBoundarySampling()
 #endif /*USE_PARTICLES*/
@@ -289,23 +289,25 @@ USE MOD_RecordPoints,      ONLY:FinalizeRecordPoints
 USE MOD_TimeDisc,          ONLY:FinalizeTimeDisc
 #if USE_MPI
 USE MOD_MPI,               ONLY:FinalizeMPI
-#endif
+#endif /*USE_MPI*/
 USE MOD_Sponge,            ONLY:FinalizeSponge
 #if FV_ENABLED
 USE MOD_FV,                ONLY:FinalizeFV
 USE MOD_FV_Basis,          ONLY:FinalizeFV_Basis
-#endif
+#endif /*FV_ENABLED*/
 USE MOD_Indicator,         ONLY:FinalizeIndicator
 USE MOD_ReadInTools,       ONLY:FinalizeParameters
 #if USE_PARTICLES
 USE MOD_Particle_Analyze,  ONLY:FinalizeParticleAnalyze
 USE MOD_Particle_Init,     ONLY:FinalizeParticles
 USE MOD_Particle_Mesh,     ONLY:FinalizeParticleMesh
+USE MOD_Particle_Surfaces, ONLY:FinalizeParticleSurfaces
 #if USE_MPI
 USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
+USE MOD_Particle_MPI,      ONLY:FinalizeParticleMPI
 USE MOD_Particle_MPI_Shared,ONLY:FinalizeMPIShared
-#endif
-#endif /*PARTICLES*/
+#endif /*USE_MPI*/
+#endif /*USE_PARTICLES*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -335,21 +337,26 @@ CALL FinalizeFilter()
 CALL FinalizeFV_Basis()
 #endif
 CALL FinalizeIndicator()
-! Measure simulation duration
-Time=FLEXITIME()
-CALL FinalizeParameters()
-CALL FinalizeCommandlineArguments()
 #if USE_PARTICLES
-CALL FinalizeParticleAnalyze
-CALL FinalizeParticleMesh
-CALL FinalizeParticles
 #if USE_MPI
-CALL FinalizeMPIShared()
+CALL FinalizeParticleMPI()
 #endif /*MPI*/
 #if USE_LOADBALANCE
 CALL FinalizeLoadBalance()
 #endif /*USE_LOADBALANCE*/
+CALL FinalizeParticles()
+CALL FinalizeParticleAnalyze()
+CALL FinalizeParticleSurfaces()
+CALL FinalizeParticleMesh()
+#if USE_MPI
+! Must be called last because MPI3 shared windows are deallocated on MPI_COMM_SHARED
+CALL FinalizeMPIShared()
+#endif /*MPI*/
 #endif /*USE_PARTICLES*/
+! Measure simulation duration
+Time=FLEXITIME()
+CALL FinalizeParameters()
+CALL FinalizeCommandlineArguments()
 #if USE_MPI
 ! For flexilib MPI init/finalize is controlled by main program
 CALL FinalizeMPI()

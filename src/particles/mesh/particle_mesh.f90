@@ -200,7 +200,7 @@ END SUBROUTINE DefineParametersParticleMesh
 
 SUBROUTINE InitParticleMeshBasis()
 !===================================================================================================================================
-! Read Parameter from inputfile
+! Init basic metrics needed for particle mesh
 !===================================================================================================================================
 ! MODULES
 USE MOD_PreProc                ,ONLY: N
@@ -307,11 +307,9 @@ USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif /* USE_MPI */
-#if USE_LOADBALANCE
-USE MOD_Particle_Tracking_Vars ,ONLY: MeasureTrackTime
-#else
+#if !USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: ElemTime
-#endif
+#endif /*!USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -341,12 +339,11 @@ IF(ParticleMeshInitIsDone) CALL ABORT(__STAMP__, ' Particle-Mesh is already init
 !===================================================================================================================================
 PP_nElems = nElems
 
-#if USE_LOADBALANCE
-! ElemTime already set in loadmesh
-#else
+! ElemTime already set in loadbalance.f90
+#if !USE_LOADBALANCE
 SDEALLOCATE(ElemTime)
 ALLOCATE(ElemTime(1:nElems))
-#endif
+#endif /*!USE_LOADBALANCE*/
 !===================================================================================================================================
 ! Build BGM to Element mapping and identify which of the elements, sides and nodes are in the compute-node local and halo region
 CALL BuildBGMAndIdentifyHaloRegion()
@@ -2875,25 +2872,227 @@ END SUBROUTINE GetMeshMinMax
 
 SUBROUTINE FinalizeParticleMesh()
 !===================================================================================================================================
-! read required parameters
+! Deallocates variables for the particle mesh
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 !USE MOD_Mesh_Vars              ,ONLY: nElems
+USE MOD_Particle_BGM           ,ONLY: FinalizeBGM
+USE MOD_Particle_Mesh_Readin   ,ONLY: FinalizeMeshReadin
 USE MOD_Particle_Mesh_Vars
-USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance
+USE MOD_Particle_Surfaces_Vars
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,Distance,ListDistance
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_vars,ONLY: MPI_COMM_SHARED
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !INTEGER                             :: iELem,iNode
 !===================================================================================================================================
+
+! Particle mesh readin happens during mesh readin, finalize with gathered routine here
+CALL FinalizeMeshReadin()
+
+CALL FinalizeBGM()
+
+! Particle mesh metrics
+SDEALLOCATE(DCL_N)
+SDEALLOCATE(Vdm_CLN_GaussN)
+SDEALLOCATE(Vdm_CLNGeo_GaussN)
+SDEALLOCATE(Vdm_CLNGeo_CLN)
+SDEALLOCATE(Vdm_CLNGeo1_CLNGeo)
+SDEALLOCATE(Vdm_NGeo_CLNGeo)
+SDEALLOCATE(Vdm_Bezier)
+SDEALLOCATE(sVdm_Bezier)
+SDEALLOCATE(wBaryCL_NGeo)
+SDEALLOCATE(wBaryCL_NGeo1)
+SDEALLOCATE(Xi_NGeo)
+SDEALLOCATE(XiCL_NGeo)
+SDEALLOCATE(XiCL_NGeo1)
+SDEALLOCATE(DCL_NGeo)
+SDEALLOCATE(D_Bezier)
+SDEALLOCATE(XCL_NGeo)
+SDEALLOCATE(dXCL_NGeo)
+
+SELECT CASE (TrackingMethod)
+
+  ! RefMapping, Tracing
+  CASE(1,2)
+    ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+#if USE_MPI
+    CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+    ! CalcParticleMeshMetrics
+    CALL MPI_WIN_UNLOCK_ALL(XCL_NGeo_Shared_Win             ,iError)
+    CALL MPI_WIN_FREE(      XCL_NGeo_Shared_Win             ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(Elem_xGP_Shared_Win             ,iError)
+    CALL MPI_WIN_FREE(      Elem_xGP_Shared_Win             ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(dXCL_NGeo_Shared_Win            ,iError)
+    CALL MPI_WIN_FREE(      dXCL_NGeo_Shared_Win            ,iError)
+
+    ! CalcBezierControlPoints
+    CALL MPI_WIN_UNLOCK_ALL(BezierControlPoints3D_Shared_Win,iError)
+    CALL MPI_WIN_FREE(      BezierControlPoints3D_Shared_Win,iError)
+    IF (BezierElevation.GT.0) THEN
+      CALL MPI_WIN_UNLOCK_ALL(BezierControlPoints3DElevated_Shared_Win,iError)
+      CALL MPI_WIN_FREE(      BezierControlPoints3DElevated_Shared_Win,iError)
+    END IF
+
+    ! GetSideSlabNormalsAndIntervals (allocated in particle_mesh.f90)
+    CALL MPI_WIN_UNLOCK_ALL(SideSlabNormals_Shared_Win      ,iError)
+    CALL MPI_WIN_FREE(      SideSlabNormals_Shared_Win      ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(SideSlabIntervals_Shared_Win    ,iError)
+    CALL MPI_WIN_FREE(      SideSlabIntervals_Shared_Win    ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(BoundingBoxIsEmpty_Shared_Win   ,iError)
+    CALL MPI_WIN_FREE(      BoundingBoxIsEmpty_Shared_Win   ,iError)
+
+    ! BuildElementOriginShared
+    CALL MPI_WIN_UNLOCK_ALL(ElemBaryNGeo_Shared_Win         ,iError)
+    CALL MPI_WIN_FREE(      ElemBaryNGeo_Shared_Win         ,iError)
+
+    ! IdentifyElemAndSideType
+    CALL MPI_WIN_UNLOCK_ALL(ElemCurved_Shared_Win           ,iError)
+    CALL MPI_WIN_FREE(      ElemCurved_Shared_Win           ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(SideType_Shared_Win             ,iError)
+    CALL MPI_WIN_FREE(      SideType_Shared_Win             ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(SideDistance_Shared_Win         ,iError)
+    CALL MPI_WIN_FREE(      SideDistance_Shared_Win         ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(SideNormVec_Shared_Win          ,iError)
+    CALL MPI_WIN_FREE(      SideNormVec_Shared_Win          ,iError)
+
+    ! BuildElementBasisAndRadius
+    CALL MPI_WIN_UNLOCK_ALL(ElemRadiusNGeo_Shared_Win       ,iError)
+    CALL MPI_WIN_FREE(      ElemRadiusNGeo_Shared_Win       ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemRadius2NGeo_Shared_Win      ,iError)
+    CALL MPI_WIN_FREE(      ElemRadius2NGeo_Shared_Win      ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(XiEtaZetaBasis_Shared_Win       ,iError)
+    CALL MPI_WIN_FREE(      XiEtaZetaBasis_Shared_Win       ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(slenXiEtaZetaBasis_Shared_Win   ,iError)
+    CALL MPI_WIN_FREE(      slenXiEtaZetaBasis_Shared_Win   ,iError)
+
+    ! GetLinearSideBaseVectors
+    CALL MPI_WIN_UNLOCK_ALL(BaseVectors0_Shared_Win         ,iError)
+    CALL MPI_WIN_FREE(      BaseVectors0_Shared_Win         ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(BaseVectors1_Shared_Win         ,iError)
+    CALL MPI_WIN_FREE(      BaseVectors1_Shared_Win         ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(BaseVectors2_Shared_Win         ,iError)
+    CALL MPI_WIN_FREE(      BaseVectors2_Shared_Win         ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(BaseVectors3_Shared_Win         ,iError)
+    CALL MPI_WIN_FREE(      BaseVectors3_Shared_Win         ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(BaseVectorsScale_Shared_Win     ,iError)
+    CALL MPI_WIN_FREE(      BaseVectorsScale_Shared_Win     ,iError)
+
+    ! BuildBCElemDistance
+    IF (TrackingMethod.EQ.1) THEN
+      CALL MPI_WIN_UNLOCK_ALL(ElemToBCSides_Shared_Win        ,iError)
+      CALL MPI_WIN_FREE(      ElemToBCSides_Shared_Win        ,iError)
+      CALL MPI_WIN_UNLOCK_ALL(SideBCMetrics_Shared_Win        ,iError)
+      CALL MPI_WIN_FREE(      SideBCMetrics_Shared_Win        ,iError)
+    END IF
+
+    ! BuildEpsOneCell
+    CALL MPI_WIN_UNLOCK_ALL(ElemsJ_Shared_Win               ,iError)
+    CALL MPI_WIN_FREE(      ElemsJ_Shared_Win               ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemEpsOneCell_Shared_Win       ,iError)
+    CALL MPI_WIN_FREE(      ElemEpsOneCell_Shared_Win       ,iError)
+
+    CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+#endif /*USE_MPI*/
+
+    ! Then, free the pointers or arrays
+    ! CalcParticleMeshMetrics
+    MDEALLOCATE(XCL_NGeo_Array)
+    MDEALLOCATE(Elem_xGP_Array)
+    MDEALLOCATE(dXCL_NGeo_Array)
+
+    ! CalcBezierControlPoints
+    MDEALLOCATE(BezierControlPoints3D_Shared)
+    MDEALLOCATE(BezierControlPoints3DElevated_Shared)
+
+    ! GetSideSlabNormalsAndIntervals (allocated in particle_mesh.f90)
+    MDEALLOCATE(SideSlabNormals_Shared)
+    MDEALLOCATE(SideSlabIntervals_Shared)
+    MDEALLOCATE(BoundingBoxIsEmpty_Shared)
+
+    ! BuildElementOriginShared
+    MDEALLOCATE(ElemBaryNGeo_Shared)
+
+    ! IdentifyElemAndSideType
+    MDEALLOCATE(ElemCurved_Shared)
+    MDEALLOCATE(SideType_Shared)
+    MDEALLOCATE(SideDistance_Shared)
+    MDEALLOCATE(SideNormVec_Shared)
+
+    ! BuildElementBasisAndRadius
+    MDEALLOCATE(ElemRadiusNGeo_Shared)
+    MDEALLOCATE(ElemRadius2NGeo_Shared)
+    MDEALLOCATE(XiEtaZetaBasis_Shared)
+    MDEALLOCATE(slenXiEtaZetaBasis_Shared)
+
+    ! GetLinearSideBaseVectors
+    MDEALLOCATE(BaseVectors0_Shared)
+    MDEALLOCATE(BaseVectors1_Shared)
+    MDEALLOCATE(BaseVectors2_Shared)
+    MDEALLOCATE(BaseVectors3_Shared)
+    MDEALLOCATE(BaseVectorsScale_Shared)
+
+    ! BuildBCElemDistance
+    IF (TrackingMethod.EQ.1) THEN
+      MDEALLOCATE(ElemToBCSides_Shared)
+      MDEALLOCATE(SideBCMetrics_Shared)
+    END IF
+
+    ! BuildEpsOneCell
+    MDEALLOCATE(ElemsJ_Shared)
+    MDEALLOCATE(ElemEpsOneCell_Shared)
+
+!  ! Tracing
+!  CASE(2)
+
+  ! TriaTracking
+  CASE(3)
+    ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+#if USE_MPI
+    CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+    ! InitParticleGeometry
+    CALL MPI_WIN_UNLOCK_ALL(ConcaveElemSide_Shared_Win,iError)
+    CALL MPI_WIN_FREE(ConcaveElemSide_Shared_Win,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemNodeID_Shared_Win,iError)
+    CALL MPI_WIN_FREE(ElemNodeID_Shared_Win,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemSideNodeID_Shared_Win,iError)
+    CALL MPI_WIN_FREE(ElemSideNodeID_Shared_Win,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemMidPoint_Shared_Win,iError)
+    CALL MPI_WIN_FREE(ElemMidPoint_Shared_Win,iError)
+
+    ! BuildElementRadiusTria
+    CALL MPI_WIN_UNLOCK_ALL(ElemBaryNGeo_Shared_Win,iError)
+    CALL MPI_WIN_FREE(ElemBaryNGeo_Shared_Win,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemRadius2NGeo_Shared_Win,iError)
+    CALL MPI_WIN_FREE(ElemRadius2NGeo_Shared_Win,iError)
+
+    CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+#endif /*USE_MPI*/
+
+    ! Then, free the pointers or arrays
+    ! InitParticleGeometry
+    MDEALLOCATE(ConcaveElemSide_Shared)
+    MDEALLOCATE(ElemNodeID_Shared)
+    MDEALLOCATE(ElemSideNodeID_Shared)
+    MDEALLOCATE(ElemMidPoint_Shared)
+
+    ! BuildElementRadiusTria
+    MDEALLOCATE(ElemBaryNGeo_Shared)
+    MDEALLOCATE(ElemRadius2NGEO_Shared)
+
+END SELECT
+
 
 !SDEALLOCATE(PartElemToSide)
 !SDEALLOCATE(PartSideToElem)

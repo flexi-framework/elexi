@@ -32,9 +32,13 @@ INTERFACE ExchangeSurfData
   MODULE PROCEDURE ExchangeSurfData
 END INTERFACE
 
+INTERFACE FinalizeSurfCommunication
+  MODULE PROCEDURE FinalizeSurfCommunication
+END INTERFACE
 
 PUBLIC :: InitSurfCommunication
 PUBLIC :: ExchangeSurfData
+PUBLIC :: FinalizeSurfCommunication
 !===================================================================================================================================
 
 CONTAINS
@@ -515,7 +519,46 @@ CALL MPI_WIN_SYNC(SampWallState_Shared_Win       ,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 END SUBROUTINE ExchangeSurfData
-#endif /*USE_MPI*/
 
+
+SUBROUTINE FinalizeSurfCommunication()
+!----------------------------------------------------------------------------------------------------------------------------------!
+! Deallocated arrays used for sampling surface communication
+!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES
+USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,mySurfRank
+USE MOD_Particle_MPI_Shared_Vars,ONLY: MPIRankSharedLeader,MPIRankSurfLeader
+USE MOD_Particle_MPI_Shared_Vars,ONLY: nSurfLeaders
+USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping
+USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                       :: iProc
+!===================================================================================================================================
+
+IF (myComputeNodeRank.NE.0) RETURN
+
+SDEALLOCATE(MPIRankSharedLeader)
+SDEALLOCATE(MPIRankSurfLeader)
+
+DO iProc = 0,nSurfLeaders-1
+  ! Ignore myself
+  IF (iProc .EQ. mySurfRank) CYCLE
+
+  SDEALLOCATE(SurfMapping(iProc)%SendSurfGlobalID)
+  SDEALLOCATE(SurfMapping(iProc)%RecvSurfGlobalID)
+  SDEALLOCATE(SurfSendBuf(iProc)%content)
+  SDEALLOCATE(SurfRecvBuf(iProc)%content)
+END DO
+SDEALLOCATE(SurfMapping)
+SDEALLOCATE(SurfSendBuf)
+SDEALLOCATE(SurfRecvBuf)
+
+END SUBROUTINE FinalizeSurfCommunication
+#endif /*USE_MPI*/
 
 END MODULE MOD_Particle_MPI_Boundary_Sampling

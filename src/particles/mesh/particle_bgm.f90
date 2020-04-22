@@ -23,8 +23,21 @@ MODULE MOD_Particle_BGM
 IMPLICIT NONE
 PRIVATE
 
-PUBLIC::DefineParametersParticleBGM
-PUBLIC::BuildBGMAndIdentifyHaloRegion
+INTERFACE DefineParametersParticleBGM
+    MODULE PROCEDURE DefineParametersParticleBGM
+END INTERFACE
+
+INTERFACE BuildBGMAndIdentifyHaloRegion
+    MODULE PROCEDURE BuildBGMAndIdentifyHaloRegion
+END INTERFACE
+
+INTERFACE FinalizeBGM
+    MODULE PROCEDURE FinalizeBGM
+END INTERFACE
+
+PUBLIC :: DefineParametersParticleBGM
+PUBLIC :: BuildBGMAndIdentifyHaloRegion
+PUBLIC :: FinalizeBGM
 
 CONTAINS
 
@@ -693,6 +706,50 @@ ALLOCATE(Distance    (1:MAXVAL(FIBGM_nElems)) &
         ,ListDistance(1:MAXVAL(FIBGM_nElems)) )
 
 END SUBROUTINE BuildBGMAndIdentifyHaloRegion
+
+
+SUBROUTINE FinalizeBGM()
+!===================================================================================================================================
+! Deallocates variables for the particle background mesh
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_MPI_Shared_Vars
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+CALL MPI_WIN_UNLOCK_ALL(ElemToBGM_Shared_Win,iError)
+CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(BoundsOfElem_Shared_Win,iError)
+CALL MPI_WIN_FREE(BoundsOfElem_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(FIBGM_nElems_Shared_Win,iError)
+CALL MPI_WIN_FREE(FIBGM_nElems_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(FIBGM_offsetElem_Shared_Win,iError)
+CALL MPI_WIN_FREE(FIBGM_offsetElem_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(FIBGM_Element_Shared_Win,iError)
+CALL MPI_WIN_FREE(FIBGM_Element_Shared_Win,iError)
+
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+#endif /*USE_MPI*/
+
+! Then, free the pointers or arrays
+MDEALLOCATE(ElemToBGM_Shared)
+MDEALLOCATE(BoundsOfElem_Shared)
+MDEALLOCATE(FIBGM_nElems_Shared)
+MDEALLOCATE(FIBGM_offsetElem_Shared)
+MDEALLOCATE(FIBGM_Element_Shared)
+
+END SUBROUTINE FinalizeBGM
 
 
 SUBROUTINE CheckPeriodicSides()

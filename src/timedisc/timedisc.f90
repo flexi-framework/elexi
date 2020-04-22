@@ -435,7 +435,6 @@ DO
 #if USE_LOADBALANCE
   ! If loadbalance is performed in the current step, distribute the recorded load to the elements
   IF(PerformLoadBalance) CALL ComputeElemLoad()
-  PerformLoadBalance = .FALSE.
 #endif /* PARTICLES */
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -461,6 +460,7 @@ DO
   IF(doAnalyze) THEN
     CalcTimeEnd=FLEXITIME()
 
+
     IF(MPIroot)THEN
       ! Get calculation time per DOF
       CalcTimeEnd=(CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_loc))/nRKStages
@@ -473,7 +473,6 @@ DO
       IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
       WRITE(UNIT_stdOut,'(A,ES16.7)')   '#Timesteps  : ',REAL(iter)
     END IF !MPIroot
-
 #if FV_ENABLED
     CALL FV_Info(iter_loc)
 #endif
@@ -506,12 +505,11 @@ DO
     CalcTimeStart=FLEXITIME()
     tAnalyze=  MIN(tAnalyze+Analyze_dt,  tEnd)
     doAnalyze=.FALSE.
-
   END IF !ANALYZE
 
 #if USE_LOADBALANCE
   ! Output the loadbalance information with part weights at the analyze step
-  IF(DoLoadBalance) CALL AnalyzeLoadBalance()
+!  IF(DoLoadBalance) CALL AnalyzeLoadBalance()
 
   ! Check if load balancing must be performed
   IF (DoLoadBalance.AND.        &
@@ -521,7 +519,7 @@ DO
       RestartWallTime = FLEXITIME()   ! Set restart wall time if a load balance step is performed
 
       ! perform the actual loadbalance step
-      CALL LoadBalance()
+      CALL LoadBalance(OutputTime=t)
   END IF
 #endif
 
@@ -719,6 +717,7 @@ REAL     :: tStage,b_dt(1:nRKStages)
 INTEGER  :: iStage
 !===================================================================================================================================
 IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
+
 
 ! Premultiply with dt
 b_dt=RKb*dt

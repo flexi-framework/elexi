@@ -284,9 +284,11 @@ CASE(1)
     LastProcDiff      = 0.
     iDistriIter       = 0
 
+    WRITE(UNIT_stdOut,'(A)') ' Performing iterative search for new load distribution ...'
     DO WHILE(.NOT.FoundDistribution)
       iDistriIter     = iDistriIter+1
-      SWRITE(*,'(A19,I4,A19,G0)') '... LoadDistriIter ',iDistriIter,' with TargetWeight=',TargetWeight_loc
+!      SWRITE(*,'(A19,I4,A19,G0)') '... LoadDistriIter ',iDistriIter,' with TargetWeight=',TargetWeight_loc
+      WRITE(*,'(A,I4,A,ES15.7)') ' | Iteration ',iDistriIter,' with TargetWeight ',TargetWeight_loc
 
       TargetWeight_loc = TargetWeight_loc+LastProcDiff/REAL(nProcessors)
       curiElem         = 1
@@ -371,6 +373,9 @@ CASE(1)
         CALL abort(__STAMP__,' Lost Elements and/or Particles during load distribution!')
 
     END DO ! .NOT.FoundDistribution
+
+    WRITE(UNIT_stdOut,'(A,I0,A)') ' Found new load distribution after ',iDistriIter, 'iterations.'
+
   END IF ! MPIRoot
   ! Send the load distribution to all other procs
   CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)

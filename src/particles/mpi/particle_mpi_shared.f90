@@ -49,15 +49,15 @@ INTERFACE Allocate_Shared
   MODULE PROCEDURE Allocate_Shared_Real_6
 END INTERFACE
 
-INTERFACE UpdateDGShared
-  MODULE PROCEDURE UpdateDGShared
-END INTERFACE
+!INTERFACE UpdateDGShared
+!  MODULE PROCEDURE UpdateDGShared
+!END INTERFACE
 
 PUBLIC :: DefineParametersMPIShared
 PUBLIC :: InitMPIShared
 PUBLIC :: FinalizeMPIShared
 PUBLIC :: Allocate_Shared
-PUBLIC :: UpdateDGShared
+!PUBLIC :: UpdateDGShared
 !==================================================================================================================================
 
 CONTAINS
@@ -98,6 +98,7 @@ IMPLICIT NONE
 INTEGER                         :: i,worldGroup,sharedGroup
 INTEGER                         :: color
 !==================================================================================================================================
+
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT MPI SHARED COMMUNICATION ...'
 
@@ -719,41 +720,41 @@ MPISharedInitIsDone=.FALSE.
 END SUBROUTINE FinalizeMPIShared
 
 
-SUBROUTINE UpdateDGShared(U)
-!===================================================================================================================================
-! Updates the DG solution in the MPI-3 shared memory window in the current node
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals,            ONLY: iError
-USE MOD_Preproc,            ONLY: N
-USE MOD_Mesh_Vars,          ONLY: nElems,offsetElem
-USE MOD_Particle_MPI_Shared_Vars
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-REAL,INTENT(IN)                 :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER                         :: FirstElemShared,LastElemShared
-!=================================================================================================================================
-
-!> Calculate the local offset relative to the node MPI root
-FirstElemShared = offsetElem-offsetComputeNodeElem+1
-LastElemShared  = offsetElem-offsetComputeNodeElem+nElems
-
-!> Update the DG solution in the RMA window
-U_Shared(:,:,:,:,FirstElemShared:LastElemShared) = U(:,:,:,:,:)
-
-! Synchronize all RMA communication
-CALL MPI_WIN_SYNC(U_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
-! Intel documentation claims this is required on "certain architectures". Whatever this means...
-! https://software.intel.com/en-us/articles/an-introduction-to-mpi-3-shared-memory-programming
-CALL MPI_WIN_SYNC(U_Shared_Win,IERROR)
-
-END SUBROUTINE UpdateDGShared
+!SUBROUTINE UpdateDGShared(U)
+!!===================================================================================================================================
+!! Updates the DG solution in the MPI-3 shared memory window in the current node
+!!===================================================================================================================================
+!! MODULES
+!USE MOD_Globals,            ONLY: iError
+!USE MOD_Preproc,            ONLY: N
+!USE MOD_Mesh_Vars,          ONLY: nElems,offsetElem
+!USE MOD_Particle_MPI_Shared_Vars
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT/OUTPUT VARIABLES
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!REAL,INTENT(IN)                 :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!INTEGER                         :: FirstElemShared,LastElemShared
+!!=================================================================================================================================
+!
+!!> Calculate the local offset relative to the node MPI root
+!FirstElemShared = offsetElem-offsetComputeNodeElem+1
+!LastElemShared  = offsetElem-offsetComputeNodeElem+nElems
+!
+!!> Update the DG solution in the RMA window
+!U_Shared(:,:,:,:,FirstElemShared:LastElemShared) = U(:,:,:,:,:)
+!
+!! Synchronize all RMA communication
+!CALL MPI_WIN_SYNC(U_Shared_Win,IERROR)
+!CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+!! Intel documentation claims this is required on "certain architectures". Whatever this means...
+!! https://software.intel.com/en-us/articles/an-introduction-to-mpi-3-shared-memory-programming
+!CALL MPI_WIN_SYNC(U_Shared_Win,IERROR)
+!
+!END SUBROUTINE UpdateDGShared
 #endif /* USE_MPI */
 
 END MODULE MOD_Particle_MPI_Shared

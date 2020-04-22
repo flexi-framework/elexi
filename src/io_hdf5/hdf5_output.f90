@@ -97,6 +97,9 @@ USE MOD_DG_Vars           ,ONLY: UTurb
 USE MOD_Equation_Vars     ,ONLY: nVarTurb
 USE MOD_Restart_Vars      ,ONLY: RestartTurb
 #endif
+#if USE_LOADBALANCE
+USE MOD_Particle_HDF5_Output,ONLY: WriteElemTime
+#endif /*USE_LOADBALANCE*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -237,7 +240,11 @@ END IF
 
 #if USE_PARTICLES
 CALL WriteParticle(FileName)
-#endif /*Particles*/
+#endif /*USE_PARTICLES*/
+#if USE_LOADBALANCE
+! Write 'ElemTime' to a separate container in the state.h5 file
+CALL WriteElemTime(FileName)
+#endif /*USE_LOADBALANCE*/
 
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)

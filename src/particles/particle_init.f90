@@ -371,7 +371,7 @@ END SUBROUTINE InitParticleGlobals
 ! Glue Subroutine for particle initialization
 !===================================================================================================================================
 !SUBROUTINE InitParticles(ManualTimeStep_opt)
-SUBROUTINE InitParticles()
+SUBROUTINE InitParticles(doLoadBalance_opt)
 ! MODULES
 USE MOD_Globals
 USE Mod_Particle_Globals
@@ -394,6 +394,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !REAL,INTENT(IN),OPTIONAL       :: ManualTimeStep_opt                                             !> ManualTimeStep coming from Posti
+LOGICAL,INTENT(IN),OPTIONAL      :: doLoadBalance_opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -416,7 +417,11 @@ CALL ParticleInitRandomWalk()
 CALL ParticleInitSGS()
 
 ! Restart particles here, otherwise we can not know if we need to have an initial emission
-CALL ParticleRestart()
+IF (PRESENT(doLoadBalance_opt)) THEN
+  CALL ParticleRestart(doFlushFiles=.FALSE.)
+ELSE
+  CALL ParticleRestart()
+END IF
 ! Initialize emission. If no particles are present, assume restart from pure fluid and perform initial inserting
 CALL InitializeParticleEmission()
 ! TODO

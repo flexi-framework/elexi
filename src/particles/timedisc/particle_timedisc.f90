@@ -76,7 +76,7 @@ USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
-USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
+USE MOD_Particle_Tracking_vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: Species, PartSpecies, PartState, Pt, LastPartPos, DelayTime, PEM, PDM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
 USE MOD_Particle_SGS_Vars,       ONLY: SGSinUse
@@ -197,15 +197,17 @@ IF (t.GE.DelayTime) THEN
 #endif /*USE_LOADBALANCE*/
 #endif
   ! track new particle position
-  IF(DoRefMapping)THEN
-    CALL ParticleRefTracking()
-  ELSE
-    IF (TriaTracking) THEN
-      CALL ParticleTriaTracking()
-    ELSE
+  SELECT CASE (TrackingMethod)
+    CASE(1)
+      CALL ParticleRefTracking()
+    CASE(2)
       CALL ParticleTracing()
-    END IF
-  END IF
+    CASE(3)
+      CALL ParticleTriaTracking()
+  END SELECT
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_TRACK,tLBStart)
+#endif /*USE_LOADBALANCE*/
   ! emitt particles inserted in current time step
   CALL ParticleInserting()
 #if USE_MPI
@@ -334,7 +336,7 @@ USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
-USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping,TriaTracking
+USE MOD_Particle_Tracking_vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos,PartSpecies,Species
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
@@ -446,15 +448,17 @@ IF (t.GE.DelayTime) THEN
 #endif /*USE_LOADBALANCE*/
 #endif
   ! track new particle position
-  IF(DoRefMapping)THEN
-    CALL ParticleRefTracking()
-  ELSE
-    IF (TriaTracking) THEN
-      CALL ParticleTriaTracking()
-    ELSE
+  SELECT CASE (TrackingMethod)
+    CASE(1)
+      CALL ParticleRefTracking()
+    CASE(2)
       CALL ParticleTracing()
-    END IF
-  END IF
+    CASE(3)
+      CALL ParticleTriaTracking()
+  END SELECT
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_TRACK,tLBStart)
+#endif /*USE_LOADBALANCE*/
   ! emitt particles inserted in current time step
   CALL ParticleInserting()
 #if USE_MPI
@@ -578,7 +582,7 @@ USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
-USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping,TriaTracking
+USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos,PartSpecies,Species
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
@@ -732,15 +736,17 @@ IF (t.GE.DelayTime) THEN
   CALL LBSplitTime(LB_PARTCOMM,tLBStart)
 #endif /*USE_LOADBALANCE*/
 #endif
-  IF(DoRefMapping)THEN
-    CALL ParticleRefTracking()
-  ELSE
-    IF (TriaTracking) THEN
-      CALL ParticleTriaTracking()
-    ELSE
+  SELECT CASE (TrackingMethod)
+    CASE(1)
+      CALL ParticleRefTracking()
+    CASE(2)
       CALL ParticleTracing()
-    END IF
-  END IF
+    CASE(3)
+      CALL ParticleTriaTracking()
+  END SELECT
+#if USE_LOADBALANCE
+  CALL LBSplitTime(LB_TRACK,tLBStart)
+#endif /*USE_LOADBALANCE*/
   ! emitt particles inserted in current time step
   CALL ParticleInserting()
 #if USE_MPI

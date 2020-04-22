@@ -296,9 +296,9 @@ ELSE
   END DO ! iElem=1,PP_nElems
 
   ! Sanity check ElemTime
-  IF((MAXVAL(nPartsPerElem).GT.0).AND.(MAXVAL(ElemTime).LE.1.0))THEN
+  IF((MAXVAL(nPartsPerElem).GT.0).AND.(MAXVAL(ElemTime).LE.1.0)) THEN
     IPWRITE (*,*) "parts, time =", MAXVAL(nPartsPerElem),MAXVAL(ElemTime)
-    CALL abort(__STAMP__&
+    CALL ABORT(__STAMP__&
         ,' ERROR: MAXVAL(nPartsPerElem).GT.0 but MAXVAL(ElemTime).LE.1.0 with ParticleMPIWeight=',RealInfo=ParticleMPIWeight)
   END IF
 END IF ! LoadBalanceTimeBased

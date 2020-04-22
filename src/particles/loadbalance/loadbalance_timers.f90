@@ -143,7 +143,7 @@ REAL                :: tLBEnd
 !===================================================================================================================================
 IF(.NOT. PerformLoadBalance) RETURN
 tLBEnd   = LOCALTIME()
-ElemTime(ELemID) = ElemTime(ElemID)+tLBEnd-tLBStart
+ElemTime(ELemID) = ElemTime(ElemID) + tLBEnd-tLBStart
 tLBStart = tLBEnd
 END SUBROUTINE LBElemSplitTime
 

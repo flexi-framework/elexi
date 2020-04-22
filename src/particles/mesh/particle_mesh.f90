@@ -343,6 +343,7 @@ PP_nElems = nElems
 #if !USE_LOADBALANCE
 SDEALLOCATE(ElemTime)
 ALLOCATE(ElemTime(1:nElems))
+ELemTime = 0.
 #endif /*!USE_LOADBALANCE*/
 !===================================================================================================================================
 ! Build BGM to Element mapping and identify which of the elements, sides and nodes are in the compute-node local and halo region

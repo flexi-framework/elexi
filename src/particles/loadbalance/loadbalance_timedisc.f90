@@ -136,7 +136,7 @@ REAL                            :: LB_Time,LB_StartTime
 !===================================================================================================================================
 ! only do load-balance if necessary
 IF (.NOT.PerformLoadBalance) THEN
-  ElemTime=0.
+  ElemTime = 0.
   InitializationWallTime = 0.
   RETURN
 END IF
@@ -217,27 +217,28 @@ CALL Restart()
 CALL InitParticleMPI()
 CALL InitParticleSurfaces()
 CALL InitParticleAnalyze()
-CALL InitParticles()
+CALL InitParticles(doLoadBalance_opt=.TRUE.)
 CALL RestartParticleBoundarySampling()
 
 ! zero ElemTime, the measurement starts again
-ElemTime     = 0.
+ElemTime = 0.
 
 IF(NewImbalance.GT.CurrentImbalance) THEN
   SWRITE(UNIT_stdOut,'(A)') ' WARNING: LoadBalance not successful!'
 ELSE
   SWRITE(UNIT_stdOut,'(A)') ' LoadBalance successful!'
 END IF
-SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' OldImbalance: ', CurrentImbalance
-SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' NewImbalance: ', NewImbalance
-SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MaxWeight:    ', MaxWeight
-SWRITE(UNIT_stdOut,'(A25,ES15.7)') ' MinWeight:    ', MinWeight
+SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | OldImbalance:                                  ', CurrentImbalance
+SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | NewImbalance:                                  ', NewImbalance
+SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | MaxWeight:                                     ', MaxWeight
+SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | MinWeight:                                     ', MinWeight
 
 ! Calculate time spent for load balance restart
 LB_Time=FLEXITIME()
 InitializationWallTime = LB_Time - LB_StartTime
-SWRITE(UNIT_stdOut,'(A,F14.2,A)') ' INITIALIZATION DONE! [',InitializationWallTime,' sec ]'
-SWRITE(UNIT_stdOut,'(A)')         ' LOAD BALANCE DONE!'
+!SWRITE(UNIT_stdOut,'(A,F14.2,A)') '  INITIALIZATION DONE IN [',InitializationWallTime,' sec ]'
+!SWRITE(UNIT_stdOut,'(A)')         ' LOAD BALANCE DONE!'
+SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' LOAD BALANCE DONE IN [',InitializationWallTime,' sec ]'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 PerformLoadBalance = .FALSE.

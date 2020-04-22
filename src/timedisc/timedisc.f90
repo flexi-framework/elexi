@@ -501,10 +501,10 @@ DO
 
     ! do analysis
     CALL Analyze(t,iter)
-    iter_loc=0
-    CalcTimeStart=FLEXITIME()
-    tAnalyze=  MIN(tAnalyze+Analyze_dt,  tEnd)
-    doAnalyze=.FALSE.
+    iter_loc  = 0
+    CalcTimeStart = FLEXITIME()
+    tAnalyze  = MIN(tAnalyze+Analyze_dt,  tEnd)
+    doAnalyze = .FALSE.
   END IF !ANALYZE
 
 #if USE_LOADBALANCE
@@ -513,8 +513,8 @@ DO
 
   ! Check if load balancing must be performed
   IF (DoLoadBalance.AND.        &
-      t.LT.tEnd    .AND.        &   ! do not perform a load balance restart when the last timestep is performed
-      PerformLoadBalance) THEN      ! computeElemLoad indicated sufficient imbalance
+      t+dt.LT.tEnd .AND.        &     ! do not perform a load balance restart when the last timestep is performed
+      PerformLoadBalance) THEN        ! computeElemLoad indicated sufficient imbalance
 !        RestartTime     = t          ! Set restart simulation time to current simulation time because the time is not read from the state file
       RestartWallTime = FLEXITIME()   ! Set restart wall time if a load balance step is performed
 

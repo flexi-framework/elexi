@@ -187,6 +187,7 @@ USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
 USE MOD_Mesh_Vars,             ONLY: NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: ElemCurved,wBaryCL_NGeo1,XiCL_NGeo1
+USE MOD_Particle_Tracking_Vars,ONLY: TrackingMethod
 #if USE_MPI
 USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
@@ -229,7 +230,7 @@ ASSOCIATE(ElemID     => GetCNElemID(ElemID) &
 CALL GetRefNewtonStartValue(X_in,Xi,ElemID)
 
 ! If the element is curved, all Gauss points are required
-IF(ElemCurved(ElemID))THEN
+IF (ElemCurved(ElemID)) THEN
   CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID) &
                     ,NGeo,ElemID,Mode=1,PartID=PartID)
 ! If the element is not curved, only the corner nodes are required
@@ -529,9 +530,8 @@ SUBROUTINE GetRefNewtonStartValue(X_in,Xi,ElemID)
 !===================================================================================================================================
 !> Returns the initial value/ guess for the Newton's algorithm
 !===================================================================================================================================
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_Globals
+! MODULES
+  USE MOD_Globals
 
 USE MOD_Preproc,                 ONLY: PP_N
 USE MOD_Interpolation_Vars,      ONLY: xGP
@@ -577,55 +577,59 @@ RefMappingGuessLoc = RefMappingGuess
 !END IF
 
 SELECT CASE(RefMappingGuessLoc)
-CASE(1)
-  Ptild=X_in - ElemBaryNGeo(:,ElemID)
-  ! plus coord system (1-3) and minus coord system (4-6)
-  DO iDir=1,6
-    XiLinear(iDir)=DOT_PRODUCT(Ptild,XiEtaZetaBasis(:,iDir,ElemID))*slenXiEtaZetaBasis(iDir,ElemID)
-  END DO
-  ! compute guess as average value
-  DO iDir=1,3
-    Xi(iDir)=0.5*(XiLinear(iDir)-XiLinear(iDir+3))
-  END DO
-  ! limit xi to [-1,1]
-  IF(MAXVAL(ABS(Xi)).GT.epsOne) Xi=MAX(MIN(1.0d0,Xi),-1.0d0)
-CASE(2)
-  ! compute distance on Gauss Points
-  Winner_Dist=SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID)),(x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID))))
-  Xi(:)=(/xGP(0),xGP(0),xGP(0)/) ! start value
-  DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
-    dX=ABS(X_in(1) - Elem_xGP_Shared(1,i,j,k,ElemID))
-    IF(dX.GT.Winner_Dist) CYCLE
-    dY=ABS(X_in(2) - Elem_xGP_Shared(2,i,j,k,ElemID))
-    IF(dY.GT.Winner_Dist) CYCLE
-    dZ=ABS(X_in(3) - Elem_xGP_Shared(3,i,j,k,ElemID))
-    IF(dZ.GT.Winner_Dist) CYCLE
-    Dist=SQRT(dX*dX+dY*dY+dZ*dZ)
-    IF (Dist.LT.Winner_Dist) THEN
-      Winner_Dist=Dist
-      Xi(:)=(/xGP(i),xGP(j),xGP(k)/) ! start value
-    END IF
-  END DO; END DO; END DO
-CASE(3)
-  ! compute distance on XCL Points
-  Winner_Dist=SQRT(DOT_PRODUCT((x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID)),(x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID))))
-  Xi(:)=(/XiCL_NGeo(0),XiCL_NGeo(0),XiCL_NGeo(0)/) ! start value
-  DO i=0,NGeo; DO j=0,NGeo; DO k=0,NGeo
-    dX=ABS(X_in(1) - XCL_NGeo_Shared(1,i,j,k,ElemID))
-    IF(dX.GT.Winner_Dist) CYCLE
-    dY=ABS(X_in(2) - XCL_NGeo_Shared(2,i,j,k,ElemID))
-    IF(dY.GT.Winner_Dist) CYCLE
-    dZ=ABS(X_in(3) - XCL_NGeo_Shared(3,i,j,k,ElemID))
-    IF(dZ.GT.Winner_Dist) CYCLE
-    Dist=SQRT(dX*dX+dY*dY+dZ*dZ)
-    IF (Dist.LT.Winner_Dist) THEN
-      Winner_Dist=Dist
-      Xi(:)=(/XiCL_NGeo(i),XiCL_NGeo(j),XiCL_NGeo(k)/) ! start value
-    END IF
-  END DO; END DO; END DO
-CASE(4)
-  ! trivial guess
-  xi=0.
+
+  CASE(1)
+    Ptild = X_in - ElemBaryNGeo(:,ElemID)
+    ! plus coord system (1-3) and minus coord system (4-6)
+    DO iDir = 1,6
+      XiLinear(iDir) = DOT_PRODUCT(Ptild,XiEtaZetaBasis(:,iDir,ElemID))*slenXiEtaZetaBasis(iDir,ElemID)
+    END DO
+    ! compute guess as average value
+    DO iDir = 1,3
+      Xi(iDir) = 0.5*(XiLinear(iDir)-XiLinear(iDir+3))
+    END DO
+    ! limit xi to [-1,1]
+    IF(MAXVAL(ABS(Xi)).GT.epsOne) Xi = MAX(MIN(1.0d0,Xi),-1.0d0)
+
+  CASE(2)
+    ! compute distance on Gauss Points
+    Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID)),(x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID))))
+    Xi(:) = (/xGP(0),xGP(0),xGP(0)/) ! start value
+    DO i = 0,PP_N; DO j = 0,PP_N; DO k = 0,PP_N
+      dX = ABS(X_in(1) - Elem_xGP_Shared(1,i,j,k,ElemID))
+      IF(dX.GT.Winner_Dist) CYCLE
+      dY = ABS(X_in(2) - Elem_xGP_Shared(2,i,j,k,ElemID))
+      IF(dY.GT.Winner_Dist) CYCLE
+      dZ = ABS(X_in(3) - Elem_xGP_Shared(3,i,j,k,ElemID))
+      IF(dZ.GT.Winner_Dist) CYCLE
+      Dist = SQRT(dX*dX+dY*dY+dZ*dZ)
+      IF (Dist.LT.Winner_Dist) THEN
+        Winner_Dist = Dist
+        Xi(:) = (/xGP(i),xGP(j),xGP(k)/) ! start value
+      END IF
+    END DO; END DO; END DO
+
+  CASE(3)
+    ! compute distance on XCL Points
+    Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID)),(x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID))))
+    Xi(:) = (/XiCL_NGeo(0),XiCL_NGeo(0),XiCL_NGeo(0)/) ! start value
+    DO i = 0,NGeo; DO j = 0,NGeo; DO k = 0,NGeo
+      dX = ABS(X_in(1) - XCL_NGeo_Shared(1,i,j,k,ElemID))
+      IF (dX.GT.Winner_Dist) CYCLE
+      dY = ABS(X_in(2) - XCL_NGeo_Shared(2,i,j,k,ElemID))
+      IF (dY.GT.Winner_Dist) CYCLE
+      dZ = ABS(X_in(3) - XCL_NGeo_Shared(3,i,j,k,ElemID))
+      IF (dZ.GT.Winner_Dist) CYCLE
+      Dist = SQRT(dX*dX+dY*dY+dZ*dZ)
+      IF (Dist.LT.Winner_Dist) THEN
+        Winner_Dist = Dist
+        Xi(:) = (/XiCL_NGeo(i),XiCL_NGeo(j),XiCL_NGeo(k)/) ! start value
+      END IF
+    END DO; END DO; END DO
+
+  CASE(4)
+    ! trivial guess
+    xi=0.
 END SELECT
 
 END SUBROUTINE GetRefNewtonStartValue

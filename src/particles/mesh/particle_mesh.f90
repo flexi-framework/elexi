@@ -385,13 +385,13 @@ IF(UseCurveds)THEN ! don't use RefMappingGuess=1, because RefMappingGuess is onl
   ! curved elements can be stronger deformed, hence, a better guess can be used
   ! RefMappingGuess 2,3 searches the closest Gauss/CL points of the considered element. This point is used as the initial value for
   ! the mapping. Note, that the position of the CL points can still be advantageous for the initial guess.
-  RefMappingGuessProposal=2
+  RefMappingGuessProposal = 2
   IF(PP_N.GT.NGeo)THEN ! there are more Gauss points within an element then CL-points
                        ! Gauss points sample the element finer
                        ! Note: the Gauss points does not exist for HALO elements, here, the closest CL point is used
-    RefMappingGuessProposal=2
+    RefMappingGuessProposal = 2
   ELSE ! more CL-points than Gauss points, hence, better sampling of the element
-    RefMappingGuessProposal=3
+    RefMappingGuessProposal = 3
   END IF
 ELSE
   RefMappingGuessProposal=1 ! default for linear meshes. Guess is exact for cubical, non-twisted elements
@@ -412,13 +412,15 @@ __STAMP__ &
 ,'Wrong guessing method for mapping from physical space in reference space.',RefMappingGuess,999.)
 END IF
 
+CALL CalcParticleMeshMetrics()
+
 IF (TriaTracking) THEN
   CALL InitParticleGeometry()
   ! Compute convex element radius^2
   CALL BuildElementRadiusTria()
-ELSE
-  CALL CalcParticleMeshMetrics()
 
+  CALL BuildElemTypeTria()
+ELSE
   CALL CalcBezierControlPoints()
 
 #if USE_MPI
@@ -1338,10 +1340,12 @@ IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !INTEGER                        :: ALLOCSTAT
-INTEGER                        :: iElem,SideID,i,j,k,ilocSide
+INTEGER                        :: iElem,SideID
+INTEGER                        :: i,j,k,ilocSide
+INTEGER                        :: iDir
 REAL                           :: Xi(3,6),xPos(3),Radius
 REAL                           :: Lag(1:3,0:NGeo)
-INTEGER                        :: firstElem, lastElem, iDir
+INTEGER                        :: firstElem,lastElem
 #if USE_MPI
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif /*USE_MPI*/
@@ -1406,19 +1410,17 @@ DO iElem=firstElem,lastElem
     CALL LagrangeInterpolationPolys(Xi(1,iDir),NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(1,:))
     CALL LagrangeInterpolationPolys(Xi(2,iDir),NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(2,:))
     CALL LagrangeInterpolationPolys(Xi(3,iDir),NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(3,:))
-    xPos=0.
-    DO k=0,NGeo
-      DO j=0,NGeo
-        DO i=0,NGeo
-          xPos=xPos+XCL_NGeo(:,i,j,k,iElem)*Lag(1,i)*Lag(2,j)*Lag(3,k)
-        END DO !i=0,NGeo
-      END DO !j=0,NGeo
-    END DO !k=0,NGeo
-    XiEtaZetaBasis(1:3,iDir,iElem)=xPos
+
+    xPos = 0.
+    DO k = 0,NGeo; DO j = 0,NGeo; DO i = 0,NGeo
+      xPos = xPos+XCL_NGeo(:,i,j,k,iElem)*Lag(1,i)*Lag(2,j)*Lag(3,k)
+    END DO; END DO; END DO
+
+    XiEtaZetaBasis(1:3,iDir,iElem) = xPos
     ! compute vector from each barycenter to sidecenter
-    XiEtaZetaBasis(:,iDir,iElem)=XiEtaZetaBasis(:,iDir,iElem)-ElemBaryNGeo(:,iElem)
+    XiEtaZetaBasis(:,iDir,iElem)   = XiEtaZetaBasis(:,iDir,iElem)-ElemBaryNGeo(:,iElem)
     ! compute length: The root is omitted here due to optimization
-    slenXiEtaZetaBasis(iDir,iElem)=1.0/DOT_PRODUCT(XiEtaZetaBasis(:,iDir,iElem),XiEtaZetaBasis(:,iDir,iElem))
+    slenXiEtaZetaBasis(iDir,iElem) = 1.0/DOT_PRODUCT(XiEtaZetaBasis(:,iDir,iElem),XiEtaZetaBasis(:,iDir,iElem))
   END DO ! iDir = 1, 6
 
   Radius=0.
@@ -1452,14 +1454,22 @@ SUBROUTINE BuildElementRadiusTria()
 !================================================================================================================================
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_Basis                  ,ONLY: LagrangeInterpolationPolys
+USE MOD_Mesh_Vars              ,ONLY: NGeo
 USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo,ElemRadius2NGeo
+USE MOD_Particle_Mesh_Vars     ,ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis
+USE MOD_Particle_Mesh_Vars     ,ONLY: wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID
 #if USE_MPI
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
+USE MOD_Particle_Mesh_Vars     ,ONLY: XCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared,ElemRadius2NGeo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared_Win,ElemRadius2NGeo_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: XiEtaZetaBasis_Shared,XiEtaZetaBasis_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: slenXiEtaZetaBasis_Shared,slenXiEtaZetaBasis_Shared_Win
 #else
 USE MOD_Mesh_Vars              ,ONLY: nELems
 #endif /*USE_MPI*/
@@ -1472,25 +1482,42 @@ IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !INTEGER                        :: ALLOCSTAT
-INTEGER                        :: iElem,iNode
+INTEGER                        :: iElem,ElemID,iNode
+INTEGER                        :: iDir
+INTEGER                        :: i,j,k
 REAL                           :: xPos(3),Radius
+REAL                           :: Xi(3,6),Lag(1:3,0:NGeo)
 INTEGER                        :: firstElem, lastElem
 #if USE_MPI
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif /*USE_MPI*/
 !================================================================================================================================
+
 #if USE_MPI
-  MPISharedSize = INT((3*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-  CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeTotalElems/),ElemBaryNGeo_Shared_Win,ElemBaryNGeo_Shared)
-  CALL MPI_WIN_LOCK_ALL(0,ElemBaryNGeo_Shared_Win,IERROR)
-  MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-  CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemRadius2NGeo_Shared_Win,ElemRadius2NGEO_Shared)
-  CALL MPI_WIN_LOCK_ALL(0,ElemRadius2NGeo_Shared_Win,IERROR)
-  ElemRadius2NGeo    => ElemRadius2NGeo_Shared
-  ElemBaryNGeo       => ElemBaryNGeo_Shared
+MPISharedSize = INT((3*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeTotalElems/),ElemBaryNGeo_Shared_Win,ElemBaryNGeo_Shared)
+CALL MPI_WIN_LOCK_ALL(0,ElemBaryNGeo_Shared_Win,IERROR)
+MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemRadius2NGeo_Shared_Win,ElemRadius2NGEO_Shared)
+CALL MPI_WIN_LOCK_ALL(0,ElemRadius2NGeo_Shared_Win,IERROR)
+MPISharedSize = INT((3*6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/3,6,nComputeNodeTotalElems/),XiEtaZetaBasis_Shared_Win,XiEtaZetaBasis_Shared)
+CALL MPI_WIN_LOCK_ALL(0,XiEtaZetaBasis_Shared_Win,IERROR)
+MPISharedSize = INT((6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/6,nComputeNodeTotalElems/),slenXiEtaZetaBasis_Shared_Win,slenXiEtaZetaBasis_Shared)
+CALL MPI_WIN_LOCK_ALL(0,slenXiEtaZetaBasis_Shared_Win,IERROR)
+ElemRadius2NGeo    => ElemRadius2NGeo_Shared
+ElemBaryNGeo       => ElemBaryNGeo_Shared
+XiEtaZetaBasis     => XiEtaZetaBasis_Shared
+slenXiEtaZetaBasis => slenXiEtaZetaBasis_Shared
+
+ASSOCIATE(XCL_NGeo     => XCL_NGeo_Shared)
+
 #else
-  ALLOCATE(ElemBaryNGeo(1:3,nElems) &
-          ,ElemRadius2NGeo( nElems))
+ALLOCATE(ElemRadiusNGeo(          nElems) &
+        ,ElemRadius2NGeo(         nElems) &
+        ,XiEtaZetaBasis(1:3,1:6,1:nElems) &
+        ,slenXiEtaZetaBasis(1:6,1:nElems))
 #endif /*USE_MPI*/
 
 #if USE_MPI
@@ -1505,34 +1532,125 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /* USE_MPI*/
 
 #if USE_MPI
-firstElem=INT(REAL(myComputeNodeRank*    nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
-lastElem =INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL( myComputeNodeRank*   nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 #else
-firstElem=1
-lastElem=nElems
+firstElem = 1
+lastElem  = nElems
 #endif /*USE_MPI*/
 
-DO iElem=firstElem,lastElem
-  Radius=0.
-  xPos  =0.
-  DO iNode=1,8
-    xPos = xPos + NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)+iNode)
+Xi(:,1) = (/ 1.0 , 0.0  ,  0.0/) ! xi plus
+Xi(:,2) = (/ 0.0 , 1.0  ,  0.0/) ! eta plus
+Xi(:,3) = (/ 0.0 , 0.0  ,  1.0/) ! zeta plus
+Xi(:,4) = (/-1.0 , 0.0  ,  0.0/) ! xi minus
+Xi(:,5) = (/ 0.0 , -1.0 ,  0.0/) ! eta minus
+Xi(:,6) = (/ 0.0 , 0.0  , -1.0/) ! zeta minus
+
+DO iElem = firstElem,lastElem
+  ElemID = GetGlobalElemID(iElem)
+  Radius = 0.
+  xPos   = 0.
+
+  DO iNode = 1,8
+    xPos = xPos + NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)+iNode)
   END DO
     ElemBaryNGeo(:,iElem) = xPos/8.
-  DO iNode=1,8
-    xPos   = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)+iNode) - ElemBaryNGeo(:,iElem)
+  DO iNode = 1,8
+    xPos   = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)+iNode) - ElemBaryNGeo(:,iElem)
     Radius = MAX(Radius,VECNORM(xPos))
   END DO
   ElemRadius2NGeo(iElem) = Radius*Radius
+
+  ! get point on each side
+  DO iDir = 1, 6
+    CALL LagrangeInterpolationPolys(Xi(1,iDir),NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(1,:))
+    CALL LagrangeInterpolationPolys(Xi(2,iDir),NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(2,:))
+    CALL LagrangeInterpolationPolys(Xi(3,iDir),NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(3,:))
+
+    xPos = 0.
+    DO k = 0,NGeo; DO j = 0,NGeo; DO i = 0,NGeo
+      xPos = xPos+XCL_NGeo(:,i,j,k,iElem)*Lag(1,i)*Lag(2,j)*Lag(3,k)
+    END DO; END DO; END DO
+
+    XiEtaZetaBasis(1:3,iDir,iElem) = xPos
+    ! compute vector from each barycenter to sidecenter
+    XiEtaZetaBasis(:,iDir,iElem)   = XiEtaZetaBasis(:,iDir,iElem)-ElemBaryNGeo(:,iElem)
+    ! compute length: The root is omitted here due to optimization
+    slenXiEtaZetaBasis(iDir,iElem) = 1.0/DOT_PRODUCT(XiEtaZetaBasis(:,iDir,iElem),XiEtaZetaBasis(:,iDir,iElem))
+  END DO ! iDir = 1, 6
 END DO ! iElem
 
 #if USE_MPI
+END ASSOCIATE
 CALL MPI_WIN_SYNC(ElemRadius2NGeo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(ElemBaryNGeo_Shared_Win,IERROR)
+CALL MPI_WIN_SYNC(XiEtaZetaBasis_Shared_Win,IERROR)
+CALL MPI_WIN_SYNC(slenXiEtaZetaBasis_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /*USE_MPI*/
 
 END SUBROUTINE BuildElementRadiusTria
+
+
+SUBROUTINE BuildElemTypeTria()
+!===================================================================================================================================
+!> Dummy routine to fill the ElemCurved array with TriaTracking
+!===================================================================================================================================
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemCurved
+#if USE_MPI
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemCurved_Shared,ElemCurved_Shared_Win
+USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
+USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
+USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank
+USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
+#else
+USE MOD_Particle_Mesh_Vars     ,ONLY: nComputeNodeElems
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+#if USE_MPI
+INTEGER(KIND=MPI_ADDRESS_KIND)           :: MPISharedSize
+#endif /* USE_MPI */
+!===================================================================================================================================
+
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curved ...'
+
+! elements
+#if USE_MPI
+MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemCurved_Shared_Win,ElemCurved_Shared)
+CALL MPI_WIN_LOCK_ALL(0,ElemCurved_Shared_Win,IERROR)
+ElemCurved => ElemCurved_Shared
+#else
+ALLOCATE(ElemCurved(1:nComputeNodeElems))
+#endif /*USE_MPI*/
+
+! only CN root nullifies
+#if USE_MPI
+IF (myComputeNodeRank.EQ.0) THEN
+#endif /*USE_MPI*/
+  ElemCurved   = .FALSE.
+#if USE_MPI
+END IF
+#endif /*USE_MPI*/
+
+#if USE_MPI
+CALL MPI_WIN_SYNC(ElemCurved_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+#endif /*USE_MPI*/
+
+END SUBROUTINE BuildElemTypeTria
 
 
 SUBROUTINE PointsEqual(N,Points1,Points2,IsNotEqual)
@@ -1736,10 +1854,6 @@ ElemCurved => ElemCurved_Shared
 #else
 ALLOCATE(ElemCurved(1:nComputeNodeElems))
 #endif /*USE_MPI*/
-!IF (.NOT.DoRefMapping) THEN
-!  ALLOCATE(ElemType(1:nTotalElems))
-!  ElemType=-1
-!END IF
 
 ! sides
 #if USE_MPI
@@ -3112,6 +3226,14 @@ SELECT CASE (TrackingMethod)
 #if USE_MPI
     CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
+    ! CalcParticleMeshMetrics
+    CALL MPI_WIN_UNLOCK_ALL(XCL_NGeo_Shared_Win             ,iError)
+    CALL MPI_WIN_FREE(      XCL_NGeo_Shared_Win             ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(Elem_xGP_Shared_Win             ,iError)
+    CALL MPI_WIN_FREE(      Elem_xGP_Shared_Win             ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(dXCL_NGeo_Shared_Win            ,iError)
+    CALL MPI_WIN_FREE(      dXCL_NGeo_Shared_Win            ,iError)
+
     ! InitParticleGeometry
     CALL MPI_WIN_UNLOCK_ALL(ConcaveElemSide_Shared_Win,iError)
     CALL MPI_WIN_FREE(ConcaveElemSide_Shared_Win,iError)
@@ -3127,11 +3249,24 @@ SELECT CASE (TrackingMethod)
     CALL MPI_WIN_FREE(ElemBaryNGeo_Shared_Win,iError)
     CALL MPI_WIN_UNLOCK_ALL(ElemRadius2NGeo_Shared_Win,iError)
     CALL MPI_WIN_FREE(ElemRadius2NGeo_Shared_Win,iError)
+    CALL MPI_WIN_UNLOCK_ALL(XiEtaZetaBasis_Shared_Win       ,iError)
+    CALL MPI_WIN_FREE(      XiEtaZetaBasis_Shared_Win       ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(slenXiEtaZetaBasis_Shared_Win   ,iError)
+    CALL MPI_WIN_FREE(      slenXiEtaZetaBasis_Shared_Win   ,iError)
+
+    ! BuildElemTypeTria
+    CALL MPI_WIN_UNLOCK_ALL(ElemCurved_Shared_Win           ,iError)
+    CALL MPI_WIN_FREE(      ElemCurved_Shared_Win           ,iError)
 
     CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 #endif /*USE_MPI*/
 
     ! Then, free the pointers or arrays
+    ! CalcParticleMeshMetrics
+    MDEALLOCATE(XCL_NGeo_Array)
+    MDEALLOCATE(Elem_xGP_Array)
+    MDEALLOCATE(dXCL_NGeo_Array)
+    
     ! InitParticleGeometry
     MDEALLOCATE(ConcaveElemSide_Shared)
     MDEALLOCATE(ElemNodeID_Shared)
@@ -3141,6 +3276,12 @@ SELECT CASE (TrackingMethod)
     ! BuildElementRadiusTria
     MDEALLOCATE(ElemBaryNGeo_Shared)
     MDEALLOCATE(ElemRadius2NGEO_Shared)
+    MDEALLOCATE(XiEtaZetaBasis_Shared)
+    MDEALLOCATE(slenXiEtaZetaBasis_Shared)
+
+    !  BuildElemTypeTria
+    MDEALLOCATE(ElemCurved)
+    MDEALLOCATE(ElemCurved_Shared)
 
 END SELECT
 

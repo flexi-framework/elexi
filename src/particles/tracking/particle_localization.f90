@@ -142,7 +142,7 @@ DO iBGMElem = 1, nBGMElems
            +(Pos3D(2)-ElemBaryNGeo(2,ElemID))*(Pos3D(2)-ElemBaryNGeo(2,ElemID)) &
            +(Pos3D(3)-ElemBaryNGeo(3,ElemID))*(Pos3D(3)-ElemBaryNGeo(3,ElemID))
 
-  IF(Distance2.GT.ElemRadius2NGeo(ElemID))THEN
+  IF (Distance2.GT.ElemRadius2NGeo(ElemID)) THEN
     Distance(iBGMElem)=-1.
   ELSE
     Distance(iBGMElem)=Distance2
@@ -150,7 +150,7 @@ DO iBGMElem = 1, nBGMElems
   ListDistance(iBGMElem)=ElemID
 END DO ! nBGMElems
 
-IF(ALMOSTEQUAL(MAXVAL(Distance),-1.))THEN
+IF (ALMOSTEQUAL(MAXVAL(Distance),-1.)) THEN
   RETURN
 END IF
 

@@ -56,6 +56,7 @@ USE MOD_Particle_Localization,   ONLY: LocateParticleInElement
 USE MOD_Particle_Mesh_Vars,      ONLY: ElemEpsOneCell
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNElemID
 USE MOD_Particle_Restart_Vars
+USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies,PartPosRef,PartReflCount
 USE MOD_Restart_Vars,            ONLY: RestartTime,RestartFile
 #if USE_MPI
@@ -243,12 +244,24 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
       ! Particle already inside the correct element
       CNElemID = GetCNElemID(PEM%Element(i))
-      IF(ALL(ABS(Xi).LE.ElemEpsOneCell(CNElemID))) THEN
-        InElementCheck=.TRUE.
-        PartPosRef(1:3,i)=Xi
-      ELSE
-        InElementCheck=.FALSE.
-      END IF
+
+      SELECT CASE(TrackingMethod)
+        CASE(1)
+          IF(ALL(ABS(Xi).LE.ElemEpsOneCell(CNElemID))) THEN
+            InElementCheck=.TRUE.
+            PartPosRef(1:3,i)=Xi
+          ELSE
+            InElementCheck=.FALSE.
+          END IF
+
+        CASE(2,3)
+          IF(ALL(ABS(Xi).LE.1.0)) THEN ! particle inside
+            InElementCheck=.TRUE.
+            IF(ALLOCATED(PartPosRef)) PartPosRef(1:3,i)=Xi
+          ELSE
+            InElementCheck=.FALSE.
+          END IF
+      END SELECT
 
       ! Particle not inside the correct element, try to find them within the current proc
       IF (.NOT.InElementCheck) THEN

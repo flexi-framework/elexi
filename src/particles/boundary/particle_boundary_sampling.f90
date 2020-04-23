@@ -651,6 +651,8 @@ IF (WriteMacroSurfaceValues) THEN
       p = INT((Xitild +1.0)/dXiEQ_SurfSample)+1
       q = INT((Etatild+1.0)/dXiEQ_SurfSample)+1
     CASE(TRIATRACKING)
+      p = 1
+      q = 1
   END SELECT
 
   PartFaceAngle=ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))

@@ -1318,11 +1318,9 @@ SUBROUTINE FinalizeParticleBoundarySampling()
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Particle_Boundary_Vars
-!USE MOD_Particle_Vars               ,ONLY: WriteMacroSurfaceValues
 #if USE_MPI
-USE MOD_Particle_MPI_Boundary_Sampling,ONLY: FinalizeSurfCommunication
-USE MOD_Particle_MPI_Vars           ,ONLY: SurfSendBuf,SurfRecvBuf
-USE MOD_Particle_MPI_Shared_Vars    ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF,nSurfLeaders
+USE MOD_Particle_MPI_Boundary_Sampling ,ONLY: FinalizeSurfCommunication
+USE MOD_Particle_MPI_Shared_Vars       ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
@@ -1332,9 +1330,8 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!INTEGER :: iSurfSide
 #if USE_MPI
-INTEGER :: iProc,iError
+INTEGER                           :: iError
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
@@ -1356,18 +1353,7 @@ CALL MPI_WIN_FREE(      SurfSideArea_Shared_Win       ,iError)
 
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
-! Deallocate surf leader mapping and free surf leader communicator
-IF (ALLOCATED(SurfMapping)) THEN
-  DO iProc = 0,nSurfLeaders-1
-    SDEALLOCATE(SurfMapping(iProc)%RecvSurfGlobalID)
-    SDEALLOCATE(SurfMapping(iProc)%SendSurfGlobalID)
-  END DO
-  SDEALLOCATE(SurfMapping)
-END IF
-
-SDEALLOCATE(SurfSendBuf)
-SDEALLOCATE(SurfRecvBuf)
-
+! Communication is handled in particle_mpi_boundary_sampling.f90
 CALL FinalizeSurfCommunication()
 
 IF(MPI_COMM_LEADERS_SURF.NE.MPI_COMM_NULL) THEN

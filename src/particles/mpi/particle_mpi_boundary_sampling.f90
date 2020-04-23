@@ -176,6 +176,10 @@ SWRITE(UNIT_stdOUt,'(A,I0,A)') ' Starting surface communication between ', nSurf
 
 !--- Open receive buffer (mapping from message surface ID to global side ID)
 ALLOCATE(SurfMapping(0:nSurfLeaders-1))
+
+!SurfMapping(:)%nRecvSurfSides = 0
+!SurfMapping(:)%nSendSurfSides = 0
+
 DO iProc = 0,nSurfLeaders-1
   ! Ignore myself
   IF (iProc .EQ. mySurfRank) CYCLE
@@ -526,11 +530,12 @@ SUBROUTINE FinalizeSurfCommunication()
 ! Deallocated arrays used for sampling surface communication
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES
+USE MOD_Particle_Boundary_Vars  ,ONLY: SurfOnNode
+USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping
+USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,mySurfRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPIRankSharedLeader,MPIRankSurfLeader
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nSurfLeaders
-USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping
-USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -542,6 +547,9 @@ INTEGER                       :: iProc
 
 IF (myComputeNodeRank.NE.0) RETURN
 
+! nodes without sampling surfaces do not take part in this routine
+IF (.NOT.SurfOnNode) RETURN
+
 SDEALLOCATE(MPIRankSharedLeader)
 SDEALLOCATE(MPIRankSurfLeader)
 
@@ -549,10 +557,15 @@ DO iProc = 0,nSurfLeaders-1
   ! Ignore myself
   IF (iProc .EQ. mySurfRank) CYCLE
 
-  SDEALLOCATE(SurfMapping(iProc)%SendSurfGlobalID)
-  SDEALLOCATE(SurfMapping(iProc)%RecvSurfGlobalID)
-  SDEALLOCATE(SurfSendBuf(iProc)%content)
-  SDEALLOCATE(SurfRecvBuf(iProc)%content)
+  IF (SurfMapping(iProc)%nRecvSurfSides.NE.0) THEN
+    SDEALLOCATE(SurfMapping(iProc)%RecvSurfGlobalID)
+    SDEALLOCATE(SurfRecvBuf(iProc)%content)
+  END IF
+
+  IF (SurfMapping(iProc)%nSendSurfSides.NE.0) THEN
+    SDEALLOCATE(SurfMapping(iProc)%SendSurfGlobalID)
+    SDEALLOCATE(SurfSendBuf(iProc)%content)
+  END IF
 END DO
 SDEALLOCATE(SurfMapping)
 SDEALLOCATE(SurfSendBuf)

@@ -116,7 +116,12 @@ CALL MPI_COMM_SIZE(MPI_COMM_SHARED, nComputeNodeProcessors,IERROR)
 IF (MOD(nProcessors_Global,nComputeNodeProcessors).NE.0) &
   CALL ABORT(__STAMP__,'MPI shared communication currently only supported with equal procs per node!')
 
-SWRITE(UNIT_stdOUt,'(A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs per node'
+IF (nProcessors_Global/nComputeNodeProcessors.EQ.1) THEN
+  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',1,' node'
+ELSE
+  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',         &
+                                                            nProcessors_Global/nComputeNodeProcessors,' nodes'
+END IF
 
 ! Map global rank number into shared rank number. Returns MPI_UNDEFINED if not on the same node
 ALLOCATE(MPIRankGlobal(0:nProcessors-1))

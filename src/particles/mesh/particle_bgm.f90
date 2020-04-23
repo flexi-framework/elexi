@@ -754,6 +754,9 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 #endif /*USE_MPI*/
 
 ! Then, free the pointers or arrays
+SDEALLOCATE(CNTotalElem2GlobalElem)
+SDEALLOCATE(GlobalElem2CNTotalElem)
+
 MDEALLOCATE(ElemToBGM_Shared)
 MDEALLOCATE(BoundsOfElem_Shared)
 MDEALLOCATE(FIBGM_nElems_Shared)
@@ -989,7 +992,6 @@ PURE FUNCTION FINDLOC(Array,Value,Dim)
 !> Implements a subset of the intrinsic FINDLOC function for Fortran < 2008
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
-!USE MOD_Globals                ,ONLY: ABORT
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1012,7 +1014,8 @@ DO iVar = 1,SIZE(ARRAY,1)
   END IF
 END DO
 
-!CALL ABORT(__STAMP__,'Periodic vector not found in array!')
+! Return error code -1 if the value was not found
+FINDLOC = -1
 
 END FUNCTION FINDLOC
 #endif /*GCC_VERSION < 90000*/

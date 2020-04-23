@@ -163,7 +163,7 @@ IF(ALMOSTZERO(epsilontol)) THEN
     epsilontol=100.*EpsMach
   END IF
 END IF
-SWRITE(UNIT_stdOut,'(A44,17x,E12.6,A2,E12.6)')   ' |              epsilon (abs,rel epsMach) | ',epsilontol,', ',epsilontol/EpsMach
+SWRITE(UNIT_stdOut,'(A44,17x,E12.6,A2,E12.6)')   ' |         epsilon (abs.,rel. to epsMach) | ',epsilontol,', ',epsilontol/EpsMach
 MinusEps              = -epsilontol
 OnePlusEps            = 1.0 + 100.*epsilontol
 OneMinusEps           = 1.0 - epsilontol

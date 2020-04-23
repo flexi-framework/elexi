@@ -113,7 +113,7 @@ CALL MPI_COMM_RANK(MPI_COMM_SHARED, myComputeNodeRank,IERROR)
 CALL MPI_COMM_SIZE(MPI_COMM_SHARED, nComputeNodeProcessors,IERROR)
 
 ! MPI3 shared implementation currently only works with equal procs per node
-IF (MOD(nComputeNodeProcessors,nProcessors_Global).NE.0) &
+IF (MOD(nProcessors_Global,nComputeNodeProcessors).NE.0) &
   CALL ABORT(__STAMP__,'MPI shared communication currently only supported with equal procs per node!')
 
 SWRITE(UNIT_stdOUt,'(A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs per node'

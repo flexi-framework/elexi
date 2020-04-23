@@ -80,9 +80,7 @@ SUBROUTINE ReadMeshBasics()
 ! MODULES
 USE MOD_Globals
 USE MOD_HDF5_Input                ,ONLY: File_ID,ReadAttribute
-#if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nNonUniqueGlobalSides,nNonUniqueGlobalNodes
-#endif
+USE MOD_Particle_Mesh_Vars        ,ONLY: nNonUniqueGlobalSides,nNonUniqueGlobalNodes
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -117,8 +115,8 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iProc
 #if USE_MPI
+INTEGER                        :: iProc
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
 !===================================================================================================================================
@@ -132,17 +130,20 @@ CALL MPI_WIN_LOCK_ALL(0,ElemInfo_Shared_Win,IERROR)
 ElemInfo_Shared(1:ELEMINFOSIZE_H5,offsetElem+1:offsetElem+nElems) = ElemInfo(:,:)
 ElemInfo_Shared(ELEM_RANK        ,offsetElem+1:offsetElem+nElems) = myRank
 CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
+#endif  /*USE_MPI*/
 
 ! allocate temporary array to hold processor rank for each elem
 ALLOCATE(ElemInfo_Shared_tmp(offsetElem+1:offsetElem+nElems))
 ElemInfo_Shared_tmp(offsetElem+1:offsetElem+nElems) = myRank
 
+#if USE_MPI
 ! broadcast elem offset of compute-node root
 offsetComputeNodeElem=offsetElem
 CALL MPI_BCAST(offsetComputeNodeElem,1, MPI_INTEGER,0,MPI_COMM_SHARED,iERROR)
 
 #else
 ! allocate local array for ElemInfo
+nComputeNodeElems = nElems
 ALLOCATE(ElemInfo_Shared(1:ELEMINFOSIZE,1:nElems))
 ElemInfo_Shared(1:ELEMINFOSIZE_H5,1:nElems) = ElemInfo(:,:)
 #endif  /*USE_MPI*/
@@ -177,21 +178,23 @@ USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
-#endif
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iElem,FirstElemInd,LastElemInd,NbElemID
-INTEGER                        :: iSide,sideCount
+INTEGER                        :: FirstElemInd,LastElemInd
 INTEGER                        :: nSideIDs,offsetSideID
+INTEGER                        :: iElem,NbElemID
+INTEGER                        :: iSide,sideCount
 INTEGER                        :: iLocSide,jLocSide,nlocSides,nlocSidesNb,NbSideID
 #if USE_MPI
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
-#endif
+#endif /*USE_MPI*/
 !===================================================================================================================================
+
 FirstElemInd = offsetElem+1
 LastElemInd  = offsetElem+nElems
 offsetSideID = ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
@@ -207,9 +210,13 @@ SideInfo_Shared(1                :SIDEINFOSIZE_H5,offsetSideID+1:offsetSideID+nS
 SideInfo_Shared(SIDEINFOSIZE_H5+1:SIDEINFOSIZE+1 ,offsetSideID+1:offsetSideID+nSideIDs) = 0
 CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
-
-DO iSide=1,nSideIDs
-  END DO
+#else
+nComputeNodeElems = nSideIDs
+ALLOCATE(SideInfo_Shared(1:SIDEINFOSIZE+1,1:nSideIDs))
+SideInfo_Shared(1                :SIDEINFOSIZE_H5,1:nSideIDs) = SideInfo(:,:)
+SideInfo_Shared(SIDEINFOSIZE_H5+1:SIDEINFOSIZE+1 ,1:nSideIDs) = 0
+nTotalSides = nSideIDs
+#endif /*USE_MPI*/
 
 ! fill the SIDE_LOCALID. Basically, this array contains the 1:6 local sides of an element. ! If an element has hanging nodes (i.e.
 ! has a big mortar side), the big side has negative index (-1,-2 or -3) and the next 2 (-2, -3) or 4 (-1) sides are the subsides.
@@ -241,15 +248,11 @@ DO iElem=FirstElemInd,LastElemInd
     END IF
   END DO
 END DO
+
+#if USE_MPI
 CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
-
-#else
-ALLOCATE(SideInfo_Shared(1:SIDEINFOSIZE,1:nSideIDs))
-SideInfo_Shared(1:SIDEINFOSIZE,1:nSideIDs) = SideInfo(:,:)
-SideInfo_Shared(SIDEINFOSIZE+1,1:nSideIDs) = 0
-nTotalSides = nSideIDs
-#endif  /*USE_MPI*/
+#endif /*USE_MPI*/
 
 ALLOCATE(SideInfo_Shared_tmp(offsetSideID+1:offsetSideID+nSideIDs))
 
@@ -261,13 +264,13 @@ SUBROUTINE ReadMeshSideNeighbors(ElemID,SideID)
 ! Fills temporary array to add side neighbors to SideInfo(_Shared)
 !===================================================================================================================================
 ! MODULES
+#if USE_MPI
 USE MOD_Globals
 USE MOD_Mesh_Vars
 USE MOD_Particle_Mesh_Vars
-#if USE_MPI
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
-#endif
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -277,12 +280,15 @@ INTEGER,INTENT(IN)             :: SideID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+
+#if USE_MPI
 IF (ElemID.LE.offsetComputeNodeElem+1 .OR. ElemID.GT.offsetComputeNodeElem+nComputeNodeElems) THEN
   ! neighbour element is outside of compute-node
   SideInfo_Shared_tmp(SideID) = 2
 ELSE
   SideInfo_Shared_tmp(SideID) = 1
 END IF
+#endif /*USE_MPI*/
 
 END SUBROUTINE ReadMeshSideNeighbors
 
@@ -345,6 +351,7 @@ NodeCoords_Shared(:,offsetNodeID+1:offsetNodeID+nNodeIDs) = NodeCoords_indx(:,:)
 CALL MPI_WIN_SYNC(NodeCoords_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #else
+nComputeNodeNodes = nNodeIDs
 ALLOCATE(NodeInfo_Shared(1:nNodeIDs))
 NodeInfo_Shared(1:nNodeIDs) = NodeInfo(:)
 ALLOCATE(NodeCoords_Shared(3,nNodeIDs))
@@ -402,22 +409,24 @@ USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
-#endif
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iProc
 INTEGER                        :: FirstElemInd,LastElemInd
 INTEGER                        :: nSideIDs,offsetSideID
+#if USE_MPI
+INTEGER                        :: iProc
 INTEGER                        :: nNodeIDs,offsetNodeID
 INTEGER,ALLOCATABLE            :: displsCN(:),recvcountCN(:)
 INTEGER,ALLOCATABLE            :: displsElem(:),recvcountElem(:)
 INTEGER,ALLOCATABLE            :: displsSide(:),recvcountSide(:)
 INTEGER,ALLOCATABLE            :: displsNode(:),recvcountNode(:)
 INTEGER,ALLOCATABLE            :: displsTree(:),recvcountTree(:)
+#endif /*USE_MPI*/
 !===================================================================================================================================
 #if USE_MPI
 SWRITE(UNIT_stdOut,'(A)') ' Communicating mesh on shared memory...'
@@ -431,7 +440,14 @@ offsetSideID = ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0
 nSideIDs     = ElemInfo(ELEM_LASTSIDEIND,LastElemInd)-ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd)
 offsetNodeID = ElemInfo(ELEM_FIRSTNODEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
 nNodeIDs     = ElemInfo(ELEM_LASTNODEIND,LastElemInd)-ElemInfo(ELEM_FIRSTNODEIND,FirstElemind)
+#else
+FirstElemInd = 1
+LastElemInd  = nElems
+offsetSideID = ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
+nSideIDs     = ElemInfo(ELEM_LASTSIDEIND,LastElemInd)-ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd)
+#endif /*USE_MPI*/
 
+#if USE_MPI
 IF(myComputeNodeRank.EQ.0)THEN
   ! Arrays for the compute-node to communicate their offsets
   ALLOCATE(displsCN   (0:nLeaderGroupProcs-1))
@@ -516,10 +532,12 @@ IF(myComputeNodeRank.EQ.0)THEN
   END IF
 END IF
 #endif  /*USE_MPI*/
+
 ElemInfo_Shared(ELEM_RANK,     offsetElem+1  :offsetElem+nElems)     = ElemInfo_Shared_tmp
 SideInfo_Shared(SIDEINFOSIZE+1,offsetSideID+1:offsetSideID+nSideIDs) = SideInfo_Shared_tmp
 DEALLOCATE(ElemInfo_Shared_tmp,SideInfo_Shared_tmp)
 
+#if USE_MPI
 ! final sync of all mesh shared arrays
 CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
@@ -532,6 +550,7 @@ IF (isMortarMesh) THEN
 END IF
 
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+#endif  /*USE_MPI*/
 
 END SUBROUTINE CommunicateMeshReadin
 

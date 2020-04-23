@@ -173,14 +173,11 @@ SUBROUTINE InterpolateFieldToParticle(nVar,U,FieldAtParticle)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Eval_xyz,                    ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
-USE MOD_Mesh_Vars,                   ONLY: nElems
+USE MOD_Mesh_Vars,                   ONLY: nElems,offsetElem
 !USE MOD_Particle_Interpolation_Vars, ONLY: useExternalField,externalField
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
 USE MOD_Particle_Tracking_Vars,      ONLY: DoRefMapping
 USE MOD_Particle_Vars,               ONLY: PartPosRef,PartState,PDM,PEM
-#if USE_MPI
-USE MOD_Mesh_Vars,                   ONLY: offsetElem
-#endif /*USE_MPI*/
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars,    ONLY: RWModel,RWTime
 USE MOD_Particle_Vars,               ONLY: TurbPartState
@@ -252,7 +249,7 @@ firstElem = offsetElem + 1
 lastElem  = offsetElem + nElems
 #else
 firstElem = 1
-lastElem  = PP_nElems
+lastElem  = nElems
 #endif /*USE_MPI*/
 
 DO iElem = firstElem,lastElem
@@ -296,12 +293,10 @@ USE MOD_Globals
 USE MOD_PreProc
 !USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
+USE MOD_Mesh_Vars,               ONLY: offsetElem,nElems
 !USE MOD_Particle_Interpolation_Vars,   ONLY: useExternalField,externalField
 USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
 USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PEM
-#if USE_MPI
-USE MOD_Mesh_Vars,               ONLY: offsetElem,nElems
-#endif
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -326,10 +321,8 @@ FieldAtParticle(:)   = 0.
 
 ElemID=PEM%Element(PartID)
 ! No solution available in the halo region (yet), so return for particles there
-#if USE_MPI
 ! Adjust check for new halo region, ElemID is now global element ID
 IF ((ElemID.LT.offsetElem+1).OR.(ElemID.GT.offsetElem+nElems)) RETURN
-#endif
 
 IF (.NOT.DoRefMapping) THEN
   CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID,PartID)

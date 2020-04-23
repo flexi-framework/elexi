@@ -101,8 +101,10 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfTotalSides
 USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide,SurfSide2GlobalSide
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSideArea,SurfSampSize
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState
+USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSampleBCs
 USE MOD_Particle_Boundary_Vars  ,ONLY: nErosionVars,doParticleErosionTrack,WriteMacroSurfaceValues
+USE MOD_Particle_Mesh_Vars      ,ONLY: offsetComputeNodeElem,nComputeNodeElems
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemSideNodeID_Shared
 USE MOD_Particle_Surfaces       ,ONLY: EvaluateBezierPolynomialAndGradient
@@ -112,17 +114,17 @@ USE MOD_Particle_Vars           ,ONLY: nSpecies
 USE MOD_ReadInTools             ,ONLY: GETINT,GETLOGICAL,GETINTARRAY,GETSTR,COUNTOPTION
 USE MOD_StringTools             ,ONLY: LowCase
 #if USE_MPI
+USE MOD_Particle_Mesh_Vars      ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPIRankLeader,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalSides,nNonUniqueGlobalSides
-USE MOD_Particle_MPI_Shared_Vars,ONLY: offsetComputeNodeElem,nComputeNodeElems
+USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalSides
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide_Shared,GlobalSide2SurfSide_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSide2GlobalSide_Shared,SurfSide2GlobalSide_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSideArea_Shared,SurfSideArea_Shared_Win
-USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared,SampWallState_Shared_Win
+USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared_Win
 USE MOD_Particle_MPI_Boundary_Sampling,ONLY: InitSurfCommunication
 #else
 USE MOD_Particle_Boundary_Vars  ,ONLY: mySurfRank
@@ -293,7 +295,6 @@ DO iSide = firstSide,lastSide
   ! count number of reflective and inner BC sides
   IF ((PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,iSide)).EQ.PartBound%ReflectiveBC).OR.DoSide) THEN
     nSurfSidesProc = nSurfSidesProc + 1
-#if USE_MPI
     ! check if element for this side is on the current compute-node
     IF ((SideInfo_Shared(SIDE_ELEMID,iSide).GE.offsetComputeNodeElem+1).AND.SideInfo_Shared(SIDE_ELEMID,iSide).LE.offsetComputeNodeElem+nComputeNodeElems) THEN
       nComputeNodeSurfSides  = nComputeNodeSurfSides + 1
@@ -302,7 +303,6 @@ DO iSide = firstSide,lastSide
     ! TODO: Add another check to determine the surface side in halo_eps from current proc. Node-wide halo can become quite large with
     !       with 128 procs!
 
-#endif /*USE_MPI*/
     ! Write local mapping from Side to Surf side. The rank is already correct, the offset must be corrected by the proc offset later
     GlobalSide2SurfSideProc(SURF_SIDEID,iSide) = nSurfSidesProc
     GlobalSide2SurfSideProc(SURF_RANK  ,iSide) = ElemInfo_Shared(ELEM_RANK,SideInfo_Shared(SIDE_ELEMID,iSide))
@@ -379,7 +379,8 @@ DO iSide = firstSide,lastSide
 END DO
 
 #else
-offsetSurfTotalSidesProc  = 0
+offsetSurfTotalSidesProc   = 0
+nComputeNodeSurfTotalSides = nSurfSidesProc
 GlobalSide2SurfSide(:,firstSide:lastSide) = GlobalSide2SurfSide(:,firstSide:lastSide)
 #endif /*USE_MPI*/
 
@@ -895,9 +896,10 @@ USE MOD_Restart_Vars               ,ONLY: RestartTime
 USE MOD_Particle_Vars              ,ONLY: nSpecies
 USE MOD_Particle_Boundary_Vars     ,ONLY: SurfOnNode
 USE MOD_Particle_Boundary_Vars     ,ONLY: nSurfSample,offsetComputeNodeSurfSide,nComputeNodeSurfSides
-USE MOD_Particle_Boundary_Vars,     ONLY: SampWallState_Shared,SampWallState_Shared_Win
+USE MOD_Particle_Boundary_Vars,     ONLY: SampWallState_Shared
 USE MOD_Particle_Boundary_Vars
 #if USE_MPI
+USE MOD_Particle_Boundary_Vars,     ONLY: SampWallState_Shared_Win
 USE MOD_Particle_MPI_Shared_Vars   ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
 USE MOD_Particle_MPI_Shared_Vars   ,ONLY: myComputeNodeRank,mySurfRank
 #else

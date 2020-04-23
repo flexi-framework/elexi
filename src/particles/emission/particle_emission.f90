@@ -90,7 +90,7 @@ IF (.NOT.DoRestart .OR. (ParticleVecLengthGlob.EQ.0)) THEN
 #if USE_MPI
             insertParticles = insertParticles + INT(REAL(Species(i)%Init(iInit)%initialParticleNumber)/PartMPI%nProcs)
 #else
-            insertParticles = insertParticles + Species(i)%Init(iInit)%initialParticleNumber)
+            insertParticles = insertParticles + INT(Species(i)%Init(iInit)%initialParticleNumber)
 #endif
           END IF
       END DO

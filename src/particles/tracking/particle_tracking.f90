@@ -72,8 +72,7 @@ SUBROUTINE ParticleTriaTracking()
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Mesh_Vars                   ,ONLY: offsetElem
-USE MOD_Particle_Globals            ,ONLY: PP_nElems,DOTPRODUCT
+USE MOD_Particle_Globals            ,ONLY: DOTPRODUCT
 USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteraction
 USE MOD_Particle_Boundary_Vars      ,ONLY: PartBound
 USE MOD_Particle_Localization       ,ONLY: ParticleInsideQuad3D
@@ -83,8 +82,10 @@ USE MOD_Particle_Tracking_Vars      ,ONLY: CountNbOfLostParts,nLostParts,TrackIn
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM,PartSpecies
 USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 #if USE_LOADBALANCE
-USE MOD_Particle_Tracking_Vars      ,ONLY: ntracks,MeasureTrackTime
 USE MOD_LoadBalance_Timers          ,ONLY: LBStartTime,LBElemPauseTime,LBElemSplitTime
+USE MOD_Mesh_Vars                   ,ONLY: offsetElem
+USE MOD_Particle_Globals            ,ONLY: PP_nElems
+USE MOD_Particle_Tracking_Vars      ,ONLY: ntracks,MeasureTrackTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -425,10 +426,8 @@ SUBROUTINE ParticleTracing()
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Eval_xyz                    ,ONLY: GetPositionInRefElem
-USE MOD_Mesh_Vars                   ,ONLY: offsetElem
 USE MOD_Particle_Boundary_Vars      ,ONLY: nAuxBCs,UseAuxBCs
 USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteractionAuxBC
-USE MOD_Particle_Globals            ,ONLY: PP_nElems
 USE MOD_Particle_Localization       ,ONLY: LocateParticleInElement
 USE MOD_Particle_Localization       ,ONLY: PartInElemCheck
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
@@ -446,13 +445,15 @@ USE MOD_Particle_Utils              ,ONLY: InsertionSort
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM
 USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 #if CODE_ANALYZE
-USE MOD_Particle_Intersection       ,ONLY:OutputTrajectory
-USE MOD_Particle_Tracking_Vars      ,ONLY:PartOut,MPIRankOut
-USE MOD_Particle_Mesh_Vars          ,ONLY:GEO
-USE MOD_TimeDisc_Vars               ,ONLY:currentStage
+USE MOD_Particle_Intersection       ,ONLY: OutputTrajectory
+USE MOD_Particle_Tracking_Vars      ,ONLY: PartOut,MPIRankOut
+USE MOD_Particle_Mesh_Vars          ,ONLY: GEO
+USE MOD_TimeDisc_Vars               ,ONLY: currentStage
 #endif /*CODE_ANALYZE*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Timers          ,ONLY:LBStartTime,LBElemPauseTime,LBElemSplitTime
+USE MOD_LoadBalance_Timers          ,ONLY: LBStartTime,LBElemPauseTime,LBElemSplitTime
+USE MOD_Mesh_Vars                   ,ONLY: offsetElem
+USE MOD_Particle_Globals            ,ONLY: PP_nElems
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -528,7 +529,7 @@ DO iPart=1,PDM%ParticleVecLength
      IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' global ElemID  ', ElemID
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo_Shared(1:3,ElemID)
+     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,ElemID)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartRefPos:        ', RefPos(1:3)
@@ -947,7 +948,7 @@ DO iPart=1,PDM%ParticleVecLength
      IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' gloabal ElemID ', ElemID
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo_Shared(1:3,ElemID)
+     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,ElemID)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartRefPos:        ', RefPos(1:3)
@@ -1045,7 +1046,7 @@ USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 USE MOD_Mesh_Vars              ,ONLY: OffSetElem,useCurveds,NGeo
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Particle_Localization  ,ONLY: PartInElemCheck
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO,ElemEpsOneCell
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides
@@ -1204,9 +1205,9 @@ DO iPart=1,PDM%ParticleVecLength
         IF (ElemID.EQ.OldElemID) THEN
           Distance(iBGMElem) = -1.0
         ELSE
-          Distance(iBGMElem) = ( (PartState(1,iPart)-ElemBaryNGeo_Shared(1,CNElemID))*(PartState(1,iPart)-ElemBaryNGeo_Shared(1,CNElemID)) &
-                               + (PartState(2,iPart)-ElemBaryNGeo_Shared(2,CNElemID))*(PartState(2,iPart)-ElemBaryNGeo_Shared(2,CNElemID)) &
-                               + (PartState(3,iPart)-ElemBaryNGeo_Shared(3,CNElemID))*(PartState(3,iPart)-ElemBaryNGeo_Shared(3,CNElemID)))
+          Distance(iBGMElem) = ( (PartState(1,iPart)-ElemBaryNGeo(1,CNElemID))*(PartState(1,iPart)-ElemBaryNGeo(1,CNElemID)) &
+                               + (PartState(2,iPart)-ElemBaryNGeo(2,CNElemID))*(PartState(2,iPart)-ElemBaryNGeo(2,CNElemID)) &
+                               + (PartState(3,iPart)-ElemBaryNGeo(3,CNElemID))*(PartState(3,iPart)-ElemBaryNGeo(3,CNElemID)))
 
           ! Do not consider the element if it is too far away
           IF(Distance(iBGMElem).GT.ElemRadius2NGeo(CNElemID))THEN
@@ -1712,6 +1713,7 @@ USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectInterSection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
+USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh               ,ONLY: GetGlobalNonUniqueSideID
 !USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID
 USE MOD_Particle_Surfaces           ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBezier
@@ -1719,14 +1721,11 @@ USE MOD_Particle_Surfaces_Vars,      ONLY: SideNormVec
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
 USE MOD_Particle_Tracking_Vars      ,ONLY: TrackInfo
 USE MOD_Particle_Vars,               ONLY: PDM
-#if USE_MPI
-USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
-#endif /* USE_MPI */
 #if CODE_ANALYZE
 USE MOD_Mesh_Vars                   ,ONLY: NGeo
 USE MOD_Particle_Localization       ,ONLY: SinglePointToElement
 USE MOD_Particle_Surfaces_Vars      ,ONLY: BezierControlPoints3D
-USE MOD_Particle_Mesh_Vars          ,ONLY: ElemBaryNGeo_Shared
+USE MOD_Particle_Mesh_Vars          ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Vars               ,ONLY: PartState
 #endif /* CODE_ANALYZE */
 ! IMPLICIT VARIABLE HANDLING
@@ -1791,7 +1790,7 @@ ELSE
            + BezierControlPoints3D(:,NGeo,0   ,SideID)  &
            + BezierControlPoints3D(:,0   ,NGeo,SideID)  &
            + BezierControlPoints3D(:,NGeo,NGeo,SideID))
-  v2 = v1  - ElemBaryNGeo_Shared(:,ElemID)
+  v2 = v1  - ElemBaryNGeo(:,ElemID)
 
   IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
     IPWRITE(UNIT_stdout,*) 'Obtained wrong side orientation from flip. SideID:',SideID,'flip:',flip,'PartID:',PartID
@@ -2174,20 +2173,21 @@ SUBROUTINE FallBackFaceIntersection(ElemID,firstSide,LastSide,nlocSides,PartID)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Particle_Vars,               ONLY:PDM,PartState,LastPartPos
-USE MOD_Particle_Surfaces_Vars,      ONLY:SideType
-USE MOD_Particle_Boundary_Condition, ONLY:GetBoundaryInteraction
-USE MOD_Particle_Mesh_Vars
-USE MOD_Particle_Mesh_Vars,          ONLY:BCElem
-USE MOD_Particle_Utils,              ONLY:InsertionSort
-USE MOD_Particle_Localization,       ONLY:LocateParticleInElement
-USE MOD_Particle_Intersection,       ONLY:ComputeCurvedIntersection
-USE MOD_Particle_Intersection,       ONLY:ComputePlanarCurvedIntersection
-USE MOD_Particle_Intersection,       ONLY:ComputePlanarRectInterSection
-USE MOD_Particle_INtersection,       ONLY:ComputeBiLinearIntersection
-USE MOD_Particle_Vars,               ONLY:PartPosRef
-USE MOD_Eval_xyz,                    ONLY:TensorProductInterpolation
-USE MOD_Particle_Mesh_Vars,          ONLY:XCL_NGeo,XiCL_NGeo,wBaryCL_NGeo
+USE MOD_Eval_xyz,                    ONLY: TensorProductInterpolation
+USE MOD_Particle_Boundary_Condition, ONLY: GetBoundaryInteraction
+USE MOD_Particle_Localization,       ONLY: LocateParticleInElement
+USE MOD_Particle_Intersection,       ONLY: ComputeCurvedIntersection
+USE MOD_Particle_Intersection,       ONLY: ComputePlanarCurvedIntersection
+USE MOD_Particle_Intersection,       ONLY: ComputePlanarRectInterSection
+USE MOD_Particle_Intersection,       ONLY: ComputeBiLinearIntersection
+USE MOD_Particle_Mesh_Vars,          ONLY: SideInfo_Shared
+USE MOD_Particle_Mesh_Vars,          ONLY: SideBCMetrics
+USE MOD_Particle_Mesh_Vars,          ONLY: ElemBaryNGeo
+USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID
+USE MOD_Particle_Surfaces_Vars,      ONLY: SideType
+USE MOD_Particle_Utils,              ONLY: InsertionSort
+USE MOD_Particle_Vars,               ONLY: PDM,PartState,LastPartPos
+USE MOD_Particle_Vars,               ONLY: PartPosRef
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -2208,7 +2208,7 @@ REAL                          :: PartTrajectory(1:3),lengthPartTrajectory
 tmpPos                  = PartState  (1:3,PartID)
 tmpLastPartPos(1:3)     = LastPartPos(1:3,PartID)
 tmpVec                  = PartTrajectory
-LastPartPos(1:3,PartID) = ElemBaryNGeo_Shared(:,ElemID)
+LastPartPos(1:3,PartID) = ElemBaryNGeo(:,GetCNElemID(ElemID))
 
 PartTrajectory       = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
 lengthPartTrajectory = SQRT(PartTrajectory(1)*PartTrajectory(1) &

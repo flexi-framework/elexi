@@ -31,6 +31,20 @@ LOGICAL             :: ParticleMeshInitIsDone
 ! Mesh info
 REAL                                     :: MeshVolume         ! total Volume of mesh
 REAL                                     :: LocalVolume        ! volume of proc
+
+INTEGER            :: nNonUniqueGlobalSides                 !> total nb. of non-unique sides of mesh (hexahedral: 6*nElems)
+INTEGER            :: nNonUniqueGlobalNodes                 !> total nb. of non-unique nodes of mesh (hexahedral: 8**NGeo * nElems)
+INTEGER            :: nNonUniqueGlobalTrees                 !> total nb. of trees
+INTEGER            :: nUniqueMasterMortarSides              !> total nb. of master mortar sides in the mesh
+INTEGER            :: nComputeNodeElems                     !> Number of elems on current compute-node
+INTEGER            :: nComputeNodeSides                     !> Number of sides on current compute-node
+INTEGER            :: nComputeNodeNodes                     !> Number of nodes on current compute-node
+INTEGER            :: nComputeNodeTrees                     !> Number of trees on current compute-node
+INTEGER            :: offsetComputeNodeElem                 !> elem offset of compute-node root
+INTEGER            :: offsetComputeNodeSide                 !> side offset of compute-node root
+INTEGER            :: offsetComputeNodeNode                 !> node offset of compute-node root
+INTEGER            :: offsetComputeNodeTree                 !> tree offset of compute-node root
+
 ! ====================================================================
 ! MPI3 shared variables
 REAL,ALLOCPOINT,DIMENSION(:,:)           :: ElemBaryNGeo       ! element local basis: origin

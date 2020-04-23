@@ -48,9 +48,9 @@ SUBROUTINE SetParticlePositionCellLocal(FractNbr,iInit,NbrOfParticle)
 ! modules
 USE MOD_Globals
 USE MOD_Particle_Vars          ,ONLY: Species
-USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
 USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition
 #if USE_MPI
+USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -235,6 +235,7 @@ IF (PartMPI%InitGroup(InitGroup)%nProcs.GT.1) THEN
   CALL SendEmissionParticlesToProcs(chunkSize,DimSend,FractNbr,iInit,mySumOfMatchedParticles,particle_positions)
 ! Finish emission on local proc
 ELSE
+#endif /*USE_MPI*/
   mySumOfMatchedParticles = 0
   ParticleIndexNbr        = 1
   DO i=1,chunkSize
@@ -254,7 +255,11 @@ ELSE
       CALL ABORT(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
     END IF
   END DO
+#if USE_MPI
 END IF
+#endif /*USE_MPI*/
+
+#if USE_MPI
 ! we want always warnings to know if the emission has failed. if a timedisc does not require this, this
 ! timedisc has to be handled separately
 ! check the sum of the matched particles: did each particle find its "home"-CPU?

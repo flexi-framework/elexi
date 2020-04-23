@@ -94,16 +94,12 @@ USE MOD_Particle_Globals
 USE MOD_Preproc
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: Geo
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID,GetCNElemID
 USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance,TriaTracking
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
-#if USE_MPI
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared
-#else
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
-#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -121,9 +117,6 @@ REAL    :: Distance2, RefPos(1:3)
 REAL    :: Det(6,2)
 LOGICAL :: InElementCheck
 !===================================================================================================================================
-#if USE_MPI
-ASSOCIATE(ElemBaryNGeo => ElemBaryNGeo_Shared)
-#endif
 
 SinglePointToElement = -1
 
@@ -183,10 +176,6 @@ DO iBGMElem=1,nBGMElems
     RETURN
   END IF
 END DO ! iBGMElem
-
-#if USE_MPI
-END ASSOCIATE
-#endif /*USE_MPI*/
 
 END FUNCTION SinglePointToElement
 

@@ -36,11 +36,11 @@
 
 ! number of entry in each line of ElemInfo
 #define ELEMINFOSIZE_H5   6
-#if USE_MPI
+!#if USE_MPI
 #define ELEMINFOSIZE      8
-#else
-#define ELEMINFOSIZE      6
-#endif /* USE_MPI*/
+!#else
+!#define ELEMINFOSIZE      6
+!#endif /* USE_MPI*/
 ! ElemInfo in H5 file
 #define ELEM_TYPE         1
 #define ELEM_ZONE         2

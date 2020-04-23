@@ -537,16 +537,12 @@ USE MOD_Preproc,                 ONLY: PP_N
 USE MOD_Interpolation_Vars,      ONLY: xGP
 USE MOD_Mesh_Vars,               ONLY: NGeo!,Elem_xGP,offsetElem
 !USE MOD_Particle_Globals,        ONLY: PP_nElems
+USE MOD_Particle_Mesh_Vars,      ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Vars,      ONLY: RefMappingGuess,RefMappingEps
 USE MOD_Particle_Mesh_Vars,      ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis
 USE MOD_Particle_Mesh_Vars,      ONLY: XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,      ONLY: XCL_NGeo_Shared,Elem_xGP_Shared
 !USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping
-#if USE_MPI
-USE MOD_Particle_Mesh_Vars,      ONLY: ElemBaryNGeo_Shared
-#else
-USE MOD_Particle_Mesh_Vars,      ONLY: ElemBaryNGeo
-#endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -566,9 +562,6 @@ INTEGER                       :: i,j,k
 REAL                          :: dX,dY,dZ
 INTEGER                       :: RefMappingGuessLoc
 !===================================================================================================================================
-#if USE_MPI
-ASSOCIATE(ElemBaryNGeo => ElemBaryNGeo_Shared)
-#endif
 
 epsOne             = 1.0+RefMappingEps
 RefMappingGuessLoc = RefMappingGuess
@@ -634,10 +627,6 @@ CASE(4)
   ! trivial guess
   xi=0.
 END SELECT
-
-#if USE_MPI
-END ASSOCIATE
-#endif /*USE_MPI*/
 
 END SUBROUTINE GetRefNewtonStartValue
 

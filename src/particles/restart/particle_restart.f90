@@ -42,31 +42,32 @@ SUBROUTINE ParticleRestart(doFlushFiles)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-!USE MOD_ErosionPoints,           ONLY:RestartErosionPoint
-!USE MOD_ErosionPoints_Vars,      ONLY:EP_inUse
-USE MOD_Eval_XYZ,                ONLY:GetPositionInRefElem
+!USE MOD_ErosionPoints,           ONLY: RestartErosionPoint
+!USE MOD_ErosionPoints_Vars,      ONLY: EP_inUse
+USE MOD_Eval_XYZ,                ONLY: GetPositionInRefElem
 USE MOD_HDF5_Input
-USE MOD_HDF5_Output,             ONLY:FlushFiles
-USE MOD_Mesh_Vars,               ONLY:offsetElem,nGlobalElems
-USE MOD_Part_Tools,              ONLY:UpdateNextFreePosition
+USE MOD_HDF5_Output,             ONLY: FlushFiles
+USE MOD_Mesh_Vars,               ONLY: offsetElem
+USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Boundary_Analyze,ONLY:CalcSurfaceValues
-USE MOD_Particle_Boundary_Vars,   ONLY:ErosionRestart,doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars,  ONLY: ErosionRestart,doParticleReflectionTrack
 USE MOD_Particle_Globals
-USE MOD_Particle_Localization,   ONLY:LocateParticleInElement
-USE MOD_Particle_Mesh_Vars,      ONLY:ElemEpsOneCell
-USE MOD_Particle_Mesh_Tools,     ONLY:GetCNElemID
+USE MOD_Particle_Localization,   ONLY: LocateParticleInElement
+USE MOD_Particle_Mesh_Vars,      ONLY: ElemEpsOneCell
+USE MOD_Particle_Mesh_Tools,     ONLY: GetCNElemID
 USE MOD_Particle_Restart_Vars
-USE MOD_Particle_Vars,           ONLY:PartState,PartSpecies,PEM,PDM,Species,nSpecies,PartPosRef,PartReflCount
-USE MOD_Restart_Vars,            ONLY:RestartTime,RestartFile
+USE MOD_Particle_Vars,           ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies,PartPosRef,PartReflCount
+USE MOD_Restart_Vars,            ONLY: RestartTime,RestartFile
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars,ONLY:nComputeNodeTotalElems
-USE MOD_Particle_MPI_Vars,       ONLY:PartMPI
+USE MOD_Mesh_Vars,               ONLY: nGlobalElems
+USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
+USE MOD_Particle_MPI_Vars,       ONLY: PartMPI
 #endif /*MPI*/
 ! Particle turbulence models
-USE MOD_Particle_Vars,           ONLY:TurbPartState
-USE MOD_Particle_SGS_Vars,       ONLY:nSGSVars
+USE MOD_Particle_Vars,           ONLY: TurbPartState
+USE MOD_Particle_SGS_Vars,       ONLY: nSGSVars
 #if USE_RW
-USE MOD_Particle_RandomWalk_Vars,ONLY:nRWVars
+USE MOD_Particle_RandomWalk_Vars,ONLY: nRWVars
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -266,13 +267,17 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         ! Particle located on the current node
         ELSE
           ! Every element was checked, the particle is truly lost
+#if USE_MPI
           IF (nComputeNodeTotalElems.EQ.nGlobalElems) THEN
+#endif /*USE_MPI*/
             CALL ABORT(__STAMP__,'Particle not located on the compute-node during restart. PartID:',i)
           ! Still elements unchecked, let the procs on the other nodes figure it out
+#if USE_MPI
           ELSE
             COUNTER2 = COUNTER2 + 1
             PartPosRef(1:3,i) = -888.
           END IF
+#endif /*USE_MPI*/
         END IF
       END IF
     END DO

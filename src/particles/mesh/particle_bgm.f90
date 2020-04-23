@@ -73,22 +73,23 @@ SUBROUTINE BuildBGMAndIdentifyHaloRegion()
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem,nGlobalElems
+USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
 USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Periodic_BC   ,ONLY: InitPeriodicBC
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO,FIBGM_nElems,FIBGM_Element,FIBGM_offsetElem
 USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance
 USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray
-USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
 USE MOD_DG                     ,ONLY: DGTimeDerivative_weakForm
 USE MOD_CalcTimeStep           ,ONLY: CalcTimeStep
-USE MOD_TimeDisc_Vars          ,ONLY: t
 #if USE_MPI
+USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
+USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
+USE MOD_TimeDisc_Vars          ,ONLY: t
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
@@ -99,29 +100,30 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem
-REAL                           :: xmin, xmax, ymin, ymax, zmin, zmax
-INTEGER                        :: iBGM, jBGM, kBGM
-INTEGER                        :: BGMimax, BGMimin, BGMjmax, BGMjmin, BGMkmax, BGMkmin
+INTEGER                        :: FirstElem,LastElem
+INTEGER                        :: firstNodeID,lastNodeID
+INTEGER                        :: offsetNodeID,nNodeIDs,currentOffset,moveBGMindex
+REAL                           :: xmin,xmax,ymin,ymax,zmin,zmax
+INTEGER                        :: iBGM,jBGM,kBGM
+INTEGER                        :: BGMimax,BGMimin,BGMjmax,BGMjmin,BGMkmax,BGMkmin
 INTEGER                        :: BGMiDelta,BGMjDelta,BGMkDelta
-INTEGER                        :: BGMCellXmax, BGMCellXmin, BGMCellYmax, BGMCellYmin, BGMCellZmax, BGMCellZmin
+INTEGER                        :: BGMCellXmax,BGMCellXmin,BGMCellYmax,BGMCellYmin,BGMCellZmax,BGMCellZmin
 #if USE_MPI
 INTEGER                        :: errType,iStage
-INTEGER                        :: iSide, SideID
+INTEGER                        :: iSide,SideID
 INTEGER                        :: ElemID
 REAL                           :: deltaT
 REAL                           :: globalDiag
-INTEGER,ALLOCATABLE            :: sendbuf(:,:,:), recvbuf(:,:,:)
+INTEGER,ALLOCATABLE            :: sendbuf(:,:,:),recvbuf(:,:,:)
 INTEGER,ALLOCATABLE            :: offsetElemsInBGMCell(:,:,:)
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
-INTEGER                        :: nHaloElems, nMPISidesShared, currentOffset, moveBGMindex
-INTEGER,ALLOCATABLE            :: offsetCNHalo2GlobalElem(:), offsetMPISideShared(:)
-REAL,ALLOCATABLE               :: BoundsOfElemCenter(:), MPISideBoundsOfElemCenter(:,:)
+INTEGER                        :: nHaloElems,nMPISidesShared
+INTEGER,ALLOCATABLE            :: offsetCNHalo2GlobalElem(:),offsetMPISideShared(:)
+REAL,ALLOCATABLE               :: BoundsOfElemCenter(:),MPISideBoundsOfElemCenter(:,:)
 LOGICAL                        :: ElemInsideHalo
-INTEGER                        :: FirstElem, LastElem, firstHaloElem, lastHaloElem
-INTEGER                        :: offsetNodeID, nNodeIDs, firstNodeID, lastNodeID
+INTEGER                        :: firstHaloElem,lastHaloElem
 #else
-INTEGER,ALLOCATABLE            :: ElemToBGM(:,:)
-REAL,POINTER                   :: NodeCoordsPointer(:,:,:,:,:)
+REAL                           :: halo_eps
 #endif
 !===================================================================================================================================
 
@@ -202,11 +204,14 @@ IF (ALLOCATED(GEO%FIBGM)) THEN
 END IF
 #endif /*USE_LOADBALANCE*/
 
+#if USE_MPI
 SafetyFactor  =GETREAL('Part-SafetyFactor','1.0')
 halo_eps_velo =GETREAL('Particles-HaloEpsVelo','0')
 
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
+#endif /*USE_MPI*/
   halo_eps  = 0.
+#if USE_MPI
   halo_eps2 = 0.
 ELSE
   IF (ManualTimeStep.EQ.0.0) THEN
@@ -238,6 +243,7 @@ ELSE
   halo_eps2=halo_eps*halo_eps
   SWRITE(UNIT_StdOut,'(A,E24.12)') ' | halo distance                   ', halo_eps
 END IF
+#endif /*USE_MPI*/
 
 moveBGMindex = 1 ! BGM indices must be >0 --> move by 1
 ! enlarge BGM with halo region (all element outside of this region will be cut off)
@@ -420,6 +426,8 @@ CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
 IF (GEO%nPeriodicVectors.GT.0) CALL CheckPeriodicSides()
+#else
+ElemInfo_Shared(ELEM_HALOFLAG,:) = 1
 #endif  /*USE_MPI*/
 
 !--- compute number of elements in each background cell
@@ -493,9 +501,12 @@ END IF
 ! allocated shared memory for nElems per BGM cell
 ! MPI shared memory is continouos, beginning from 1. All shared arrays have to
 ! be shifted from BGM[i]min to 1
+#endif /*USE_MPI*/
 BGMiDelta=BGMimax-BGMimin
 BGMjDelta=BGMjmax-BGMjmin
 BGMkDelta=BGMkmax-BGMkmin
+
+#if USE_MPI
 MPISharedSize = INT((BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
 CALL Allocate_Shared(MPISharedSize,(/BGMiDelta+1,BGMjDelta+1,BGMkDelta+1/) &
                     ,FIBGM_nElems_Shared_Win,FIBGM_nElems_Shared)

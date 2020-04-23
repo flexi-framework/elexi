@@ -46,15 +46,18 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE ParticleInitSGS()
 ! MODULES
-USE MOD_Globals,                    ONLY: ABORT, MPIRoot, Unit_STDOUT
-USE MOD_Preproc,                    ONLY: PP_N, PP_NZ
+USE MOD_Globals,                    ONLY: ABORT,Unit_STDOUT
+USE MOD_Preproc,                    ONLY: PP_N,PP_NZ
 USE MOD_Mesh_Vars,                  ONLY: nElems
 USE MOD_ReadInTools,                ONLY: GETINT,GETSTR
 USE MOD_Particle_SGS_Vars
 USE MOD_Particle_Vars,              ONLY: PDM,TurbPartState,TurbPt_temp
+#if USE_MPI
+USE MOD_Globals,                    ONLY: MPIRoot
+#endif /*USE_MPI*/
 #if USE_RW
 USE MOD_Particle_Randomwalk_Vars,   ONLY: RWModel
-#endif
+#endif /*USE_RW*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -62,7 +65,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER               :: ALLOCSTAT
-!----------------------------------------------------------------------------------------------------------------------------------
+!===================================================================================================================================
+
 IF(ParticleSGSInitIsDone) RETURN
 
 SWRITE(UNIT_StdOut,'(132("-"))')

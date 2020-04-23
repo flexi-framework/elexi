@@ -221,7 +221,9 @@ CALL InitMortar()
 CALL InitOutput()
 #if USE_PARTICLES
 CALL InitParticleGlobals
+#if USE_MPI
 CALL InitMPIShared()
+#endif /*USE_MPÌ*/
 #if USE_LOADBALANCE
 CALL InitLoadBalance()
 #endif /*USE_LOADBALANCE*/

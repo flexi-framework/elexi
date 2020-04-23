@@ -3025,6 +3025,7 @@ SELECT CASE (TrackingMethod)
     MDEALLOCATE(ElemBaryNGeo_Shared)
 
     ! IdentifyElemAndSideType
+    MDEALLOCATE(ElemCurved)
     MDEALLOCATE(ElemCurved_Shared)
     MDEALLOCATE(SideType_Shared)
     MDEALLOCATE(SideDistance_Shared)
@@ -3094,56 +3095,14 @@ SELECT CASE (TrackingMethod)
 
 END SELECT
 
-
-!SDEALLOCATE(PartElemToSide)
-!SDEALLOCATE(PartSideToElem)
-!SDEALLOCATE(PartElemIsMortar)
-!SDEALLOCATE(PartElemToElemGlob)
-!SDEALLOCATE(PartElemToElemAndSide)
-SDEALLOCATE(PartBCSideList)
 SDEALLOCATE(SidePeriodicType)
 SDEALLOCATE(SidePeriodicDisplacement)
-!SDEALLOCATE(IsTracingBCElem)
-!SDEALLOCATE(TracingBCInnerSides)
-!SDEALLOCATE(TracingBCTotalSides)
 SDEALLOCATE(ElemType)
 SDEALLOCATE(GEO%PeriodicVectors)
-!SDEALLOCATE(GEO%PeriodicVectorsLength)
 SDEALLOCATE(GEO%FIBGM)
 !SDEALLOCATE(GEO%Volume)
-!SDEALLOCATE(GEO%MPVolumePortion)
-!SDEALLOCATE(GEO%CharLength)
 SDEALLOCATE(GEO%ElemToFIBGM)
 SDEALLOCATE(GEO%TFIBGM)
-
-!SDEALLOCATE(GEO%ElemToNodeID)
-!SDEALLOCATE(GEO%ElemSideNodeID)
-!SDEALLOCATE(GEO%ElemToNodeIDGlobal)
-!SDEALLOCATE(GEO%NodeCoords)
-!SDEALLOCATE(GEO%ElemsOnNode)
-!SDEALLOCATE(GEO%NeighNodesOnNode)
-!SDEALLOCATE(GEO%NumNeighborElems)
-!IF (ALLOCATED(GEO%ElemToNeighElems)) THEN
-!  DO iElem=1,nElems
-!    SDEALLOCATE(GEO%ElemToNeighElems(iElem)%ElemID)
-!  END DO
-!END IF
-!SDEALLOCATE(GEO%ElemToNeighElems)
-!IF (ALLOCATED(GEO%NodeToElem)) THEN
-!  DO iNode=1,nNodes
-!    SDEALLOCATE(GEO%NodeToElem(iNode)%ElemID)
-!  END DO
-!END IF
-!SDEALLOCATE(GEO%NodeToElem)
-!IF (ALLOCATED(GEO%NodeToNeighNode)) THEN
-!  DO iNode=1,nNodes
-!    SDEALLOCATE(GEO%NodeToNeighNode(iNode)%ElemID)
-!  END DO
-!END IF
-!SDEALLOCATE(GEO%NodeToNeighNode)
-!SDEALLOCATE(GEO%ConcaveElemSide)
-!SDEALLOCATE(GEO%ElemMidPoint)
-!SDEALLOCATE(GEO%BoundsOfElem)
 
 SDEALLOCATE(BCElem)
 MDEALLOCATE(XiEtaZetaBasis)
@@ -3153,11 +3112,8 @@ MDEALLOCATE(ElemRadius2NGeo)
 MDEALLOCATE(ElemEpsOneCell)
 SDEALLOCATE(Distance)
 SDEALLOCATE(ListDistance)
-!SDEALLOCATE(isTracingTrouble)
 SDEALLOCATE(ElemTolerance)
 SDEALLOCATE(ElemToGlobalElemID)
-!SDEALLOCATE(ElemHaloInfoProc)
-MDEALLOCATE(ElemCurved)
 
 ParticleMeshInitIsDone=.FALSE.
 

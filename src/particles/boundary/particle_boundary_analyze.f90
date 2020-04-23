@@ -56,8 +56,7 @@ USE MOD_CalcWallParticles_Vars
 USE MOD_Particle_Boundary_Vars     ,ONLY: SurfOnNode
 USE MOD_Particle_MPI_Boundary_Sampling,ONLY: ExchangeSurfData
 USE MOD_Particle_MPI_Shared_Vars   ,ONLY: MPI_COMM_LEADERS_SURF
-#endif
-
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -99,10 +98,10 @@ IF(.NOT.SurfOnNode) RETURN
 
 #if USE_MPI
 CALL ExchangeSurfData()
-#endif
 
 ! Only surface sampling leaders take part in the remainder of this routine
 IF (MPI_COMM_LEADERS_SURF.EQ.MPI_COMM_NULL) RETURN
+#endif /*USE_MPI*/
 
 ! Allocate N+1 Species to have space for average
 IF (nSpecies.EQ.1) THEN

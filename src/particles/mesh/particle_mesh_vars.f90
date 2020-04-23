@@ -250,9 +250,6 @@ INTEGER,ALLOCATABLE :: TracingBCTotalSides(:)                                   
                                                                                           ! element faces that are possibly reached)
 INTEGER,ALLOCATABLE :: ElemType(:)              !< Type of Element 1: only planar side, 2: one bilinear side 3. one curved side
 LOGICAL,ALLOCATABLE :: ElemHasAuxBCs(:,:)
-INTEGER             :: nTotalBCSides                                                      ! total number of BC sides (my+halo)
-INTEGER             :: nTotalBCElems                                                      ! total number of bc elems (my+halo)
-INTEGER,ALLOCATABLE :: PartBCSideList(:)                                                  ! mapping from SideID to BCSideID
 
 INTEGER                                 :: RefMappingGuess                                ! select guess for mapping into reference
                                                                                           ! element

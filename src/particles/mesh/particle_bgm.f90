@@ -418,9 +418,9 @@ ELSE
 END IF ! nComputeNodeProcessors.EQ.nProcessors_Global
 CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
-#endif  /*USE_MPI*/
 
 IF (GEO%nPeriodicVectors.GT.0) CALL CheckPeriodicSides()
+#endif  /*USE_MPI*/
 
 !--- compute number of elements in each background cell
 DO iElem = offsetElem+1, offsetElem+nElems
@@ -752,6 +752,7 @@ MDEALLOCATE(FIBGM_Element_Shared)
 END SUBROUTINE FinalizeBGM
 
 
+#if USE_MPI
 SUBROUTINE CheckPeriodicSides()
 !===================================================================================================================================
 !> checks the elements against periodic distance
@@ -764,10 +765,8 @@ USE MOD_Mesh_Vars              ,ONLY: BoundaryType,nGlobalElems
 USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,SideInfo_Shared,BoundsOfElem_Shared
-#if USE_MPI
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_MPI_Vars      ,ONLY: halo_eps
-#endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -787,13 +786,8 @@ REAL,ALLOCATABLE               :: PeriodicSideBoundsOfElemCenter(:,:)
 INTEGER,ALLOCATABLE            :: nPeriodicVectorsPerElem(:,:)
 !===================================================================================================================================
 
-#if USE_MPI
 firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
-#else
-firstElem = 1
-lastElem  = nElems
-#endif  /*USE_MPI*/
 
 ! count number of elements with periodic sides
 nPeriodicElems = 0
@@ -1010,7 +1004,8 @@ END DO
 !CALL ABORT(__STAMP__,'Periodic vector not found in array!')
 
 END FUNCTION FINDLOC
-#endif
+#endif /*GCC_VERSION < 90000*/
+#endif /*USE_MPI*/
 
 
 END MODULE MOD_Particle_BGM

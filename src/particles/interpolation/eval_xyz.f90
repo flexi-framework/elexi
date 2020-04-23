@@ -63,7 +63,7 @@ USE MOD_Particle_Mesh_Vars,      ONLY: ElemCurved
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,      ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
-USE MOD_Mesh_Vars,               ONLY: dXCL_NGeo,XCL_NGeo
+USE MOD_Particle_Mesh_Vars,      ONLY: dXCL_NGeo,XCL_NGeo
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -191,7 +191,7 @@ USE MOD_Particle_Mesh_Vars,    ONLY: ElemCurved,wBaryCL_NGeo1,XiCL_NGeo1
 USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
-USE MOD_Mesh_Vars,             ONLY: dXCL_NGeo,XCL_NGeo
+USE MOD_Particle_Mesh_Vars,    ONLY: dXCL_NGeo,XCL_NGeo
 #endif /*USE_MPI*/
 #if USE_RW
 USE MOD_Equation_Vars,         ONLY: nVarTurb
@@ -533,15 +533,20 @@ SUBROUTINE GetRefNewtonStartValue(X_in,Xi,ElemID)
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 
-USE MOD_Preproc,                 ONLY:PP_N
-USE MOD_Interpolation_Vars,      ONLY:xGP
-USE MOD_Mesh_Vars,               ONLY:NGeo!,Elem_xGP,offsetElem
-!USE MOD_Particle_Globals,        ONLY:PP_nElems
-USE MOD_Particle_Mesh_Vars,      ONLY:RefMappingGuess,RefMappingEps
-USE MOD_Particle_Mesh_Vars,      ONLY:XiEtaZetaBasis,slenXiEtaZetaBasis
-USE MOD_Particle_Mesh_Vars,      ONLY:XiCL_NGeo
-!USE MOD_Particle_Tracking_vars,  ONLY:DoRefMapping
-USE MOD_Particle_Mesh_Vars,      ONLY:ElemBaryNGeo_Shared,XCL_NGeo_Shared,Elem_xGP_Shared
+USE MOD_Preproc,                 ONLY: PP_N
+USE MOD_Interpolation_Vars,      ONLY: xGP
+USE MOD_Mesh_Vars,               ONLY: NGeo!,Elem_xGP,offsetElem
+!USE MOD_Particle_Globals,        ONLY: PP_nElems
+USE MOD_Particle_Mesh_Vars,      ONLY: RefMappingGuess,RefMappingEps
+USE MOD_Particle_Mesh_Vars,      ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis
+USE MOD_Particle_Mesh_Vars,      ONLY: XiCL_NGeo
+USE MOD_Particle_Mesh_Vars,      ONLY: XCL_NGeo_Shared,Elem_xGP_Shared
+!USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping
+#if USE_MPI
+USE MOD_Particle_Mesh_Vars,      ONLY: ElemBaryNGeo_Shared
+#else
+USE MOD_Particle_Mesh_Vars,      ONLY: ElemBaryNGeo
+#endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

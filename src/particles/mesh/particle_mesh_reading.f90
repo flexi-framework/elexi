@@ -248,7 +248,9 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 ALLOCATE(SideInfo_Shared(1:SIDEINFOSIZE,1:nSideIDs))
 SideInfo_Shared(1:SIDEINFOSIZE,1:nSideIDs) = SideInfo(:,:)
 SideInfo_Shared(SIDEINFOSIZE+1,1:nSideIDs) = 0
+nTotalSides = nSideIDs
 #endif  /*USE_MPI*/
+
 ALLOCATE(SideInfo_Shared_tmp(offsetSideID+1:offsetSideID+nSideIDs))
 
 END SUBROUTINE ReadMeshSides

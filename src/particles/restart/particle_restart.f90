@@ -42,8 +42,8 @@ SUBROUTINE ParticleRestart(doFlushFiles)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ErosionPoints,           ONLY:RestartErosionPoint
-USE MOD_ErosionPoints_Vars,      ONLY:EP_inUse
+!USE MOD_ErosionPoints,           ONLY:RestartErosionPoint
+!USE MOD_ErosionPoints_Vars,      ONLY:EP_inUse
 USE MOD_Eval_XYZ,                ONLY:GetPositionInRefElem
 USE MOD_HDF5_Input
 USE MOD_HDF5_Output,             ONLY:FlushFiles
@@ -350,8 +350,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   END IF ! PartDataExists
 CALL CloseDataFile()
 
-  ! Get individual impact data
-  IF (EP_inUse)         CALL RestartErosionPoint
+!  ! Get individual impact data
+!  IF (EP_inUse)         CALL RestartErosionPoint
 
   ! Delete all files that will be rewritten --> moved from restart.f90 since we need it here
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)

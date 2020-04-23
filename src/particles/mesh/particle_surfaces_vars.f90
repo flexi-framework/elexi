@@ -44,8 +44,6 @@ REAL,ALLOCATABLE,DIMENSION(:,:)         :: ElevationMatrix              ! array 
 
 REAL,ALLOCPOINT,DIMENSION(:,:,:)       :: SideSlabNormals              ! normal vectors of bounding slab box (Sides)
 REAL,ALLOCPOINT,DIMENSION(:,:)         :: SideSlabIntervals            ! intervalls beta1, beta2, beta3 (Sides)
-REAL,ALLOCPOINT,DIMENSION(:,:,:)       :: ElemSlabNormals              ! normal vectors of bounding slab box (Elements)
-REAL,ALLOCPOINT,DIMENSION(:,:)         :: ElemSlabIntervals            ! intervalls beta1, beta2, beta3 (Elements)
 LOGICAL,ALLOCPOINT,DIMENSION(:)        :: BoundingBoxIsEmpty           ! logical if Side bounding box is empty
 
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: Vdm_Bezier,sVdm_Bezier       ! Vdm from/to Bezier Polynomial from BC representation
@@ -58,7 +56,6 @@ REAL,ALLOCPOINT,DIMENSION(:,:)         :: SideNormVec                  ! normal 
 REAL,ALLOCPOINT,DIMENSION(:)           :: SideDistance                 ! distance of planar base from origin
 
 INTEGER,ALLOCATABLE,DIMENSION(:)        :: gElemBCSides                 ! number of BC-Sides of element
-REAL                                    :: BezierHitEpsBi               ! epsilon tolerance for bi-linear faces
 REAL                                    :: epsilontol                   ! epsilon for setting the tolerance
 REAL                                    :: OneMinusEps                  ! 1 - eps: epsilontol
 REAL                                    :: OnePlusEps                   ! 1 + eps: epsilontol for setting the boundary tolerance
@@ -96,7 +93,7 @@ REAL(KIND=16)                           :: rTotalBezierNewton           ! total 
 REAL,ALLOCATABLE,DIMENSION(:)           :: SideBoundingBoxVolume        ! Bounding Box volume
 #endif /*CODE_ANALYZE*/
 
-! Surface sampling
+! Surface flux
 INTEGER                                 :: BezierSampleN                ! equidistant sampling of bezier surface for emission
 INTEGER                                 :: SurfFluxSideSize(2)          ! discretization of sides for Surfaceflux
 REAL,ALLOCATABLE,DIMENSION(:)           :: BezierSampleXi               ! ref coordinate for equidistant bezier surface sampling

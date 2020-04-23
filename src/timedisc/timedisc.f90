@@ -339,7 +339,7 @@ IF(errType.NE.0) CALL abort(__STAMP__,&
 ! Run initial analyze
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,*) 'Errors of initial solution:'
-CALL Analyze(t,iter)
+CALL Analyze(t,iter,tend)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
@@ -500,7 +500,7 @@ DO
     END IF
 
     ! do analysis
-    CALL Analyze(t,iter)
+    CALL Analyze(t,iter,tend)
     iter_loc  = 0
     CalcTimeStart = FLEXITIME()
     tAnalyze  = MIN(tAnalyze+Analyze_dt,  tEnd)

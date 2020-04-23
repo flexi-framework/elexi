@@ -103,6 +103,7 @@ USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,nLoadBalanceSteps,NewImbalanc
 USE MOD_LoadBalance_Vars           ,ONLY: CurrentImbalance,MaxWeight,MinWeight
 USE MOD_LoadBalance_Vars           ,ONLY: PerformLoadBalance
 USE MOD_Indicator                  ,ONLY: InitIndicator,FinalizeIndicator
+USE MOD_IO_HDF5                    ,ONLY: ElementOut,FieldOut
 USE MOD_Mesh                       ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars                  ,ONLY: nElems
 USE MOD_MPI                        ,ONLY: InitMPIVars,FinalizeMPI
@@ -189,6 +190,8 @@ CALL FinalizeMPI()
 
 !-- Set removed flag to false
 CALL prms%finalize()
+ElementOut   => NULL() !< linked list of output pointers
+FieldOut     => NULL() !< linked list of output pointers
 
 !-- Restart every mesh dependent routine
 CALL InitMesh(meshMode=2)

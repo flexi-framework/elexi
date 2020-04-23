@@ -2547,13 +2547,16 @@ SUBROUTINE ComputeBezierIntersectionPoint(nXiClip,nEtaClip,PartID,SideID,nInterS
 ! b) alpha is not a multiple intersection
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals,                 ONLY:UNIT_stdout,myRank,ABORT
+USE MOD_Globals,                 ONLY:UNIT_stdout,ABORT
 USE MOD_Mesh_Vars,               ONLY:NGeo
 USE MOD_Particle_Surfaces_Vars,  ONLY:XiArray,EtaArray,locAlpha,locXi,locEta
 USE MOD_Particle_Surfaces_Vars,  ONLY:epsilontol,Beziercliphit
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipTolerance,BezierClipLocalTol,BezierClipMaxIntersec
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Particle_Vars,           ONLY:LastPartPos
+#if USE_MPI
+USE MOD_Globals,                 ONLY:myRank
+#endif /*USE_MPI
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBezier
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut

@@ -110,7 +110,7 @@ IF (ParticleAnalyzeInitIsDone) THEN
 END IF
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE ANALYZE...'
+SWRITE(UNIT_StdOut,'(A)') ' INIT PARTICLE ANALYZE...'
 
 DoAnalyze = .FALSE.
   CalcEkin = GETLOGICAL('CalcKineticEnergy','.FALSE.')

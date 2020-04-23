@@ -16,7 +16,9 @@
 !===================================================================================================================================
 MODULE MOD_Particle_MPI_Shared_Vars
 ! MODULES
+#if USE_MPI
 USE mpi
+#endif
 
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

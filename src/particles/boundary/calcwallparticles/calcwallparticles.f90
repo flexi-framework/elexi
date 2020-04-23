@@ -45,12 +45,14 @@ USE MOD_Particle_Analyze_Vars    ,ONLY: TimeSample
 USE MOD_Particle_Boundary_Vars   ,ONLY: nComputeNodeSurfSides
 USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSideArea,nSurfSample
 USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSide2GlobalSide
-USE MOD_Particle_Boundary_Vars   ,ONLY: SampWallState_Shared
-USE MOD_Particle_Boundary_Vars    ,ONLY: MacroSurfaceVal
+USE MOD_Particle_Boundary_Vars   ,ONLY: MacroSurfaceVal
 USE MOD_Particle_Globals
 #if USE_MPI
+USE MOD_Particle_Boundary_Vars   ,ONLY: SampWallState_Shared
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_LEADERS_SURF
-#endif
+#else
+USE MOD_Particle_Boundary_Vars   ,ONLY: SampWallState
+#endif /*USE_MPI*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -66,6 +68,11 @@ INTEGER                        :: iBC,iSide,p,q,SurfSideID
 REAL,ALLOCATABLE               :: SideArea(:)
 REAL                           :: tmpForce,tmpForceX,tmpForceY,tmpForceZ
 !==================================================================================================================================
+
+#if USE_MPI
+ASSOCIATE(SampWallState => SampWallState_Shared)
+#endif /*USE_MPI*/
+
 ALLOCATE(SideArea(nBCs))
 SideArea  = 0.
 tmpForceX = 0.
@@ -80,38 +87,42 @@ EkinVar   = 0.
 partForce = 0.
 maxForce  = 0.
 
-DO iSide=1,nComputeNodeSurfSides
-    iBC=BC(iSide)
-    IF(.NOT.isWall(iBC)) CYCLE
-    SurfSideID = SurfSide2GlobalSide(SURF_SIDEID,iSide)
-    DO q = 1,nSurfSample
-        DO p = 1,nSurfSample
-            ! Only consider walls with actual impacts
-            IF (SampWallState_Shared(1,p,q,SurfSideID).EQ.0) CYCLE
-            ! Average kinetic energy
-            EkinMean(iBC)  = EkinMean(iBC)  + MacroSurfaceVal(3,p,q,SurfSideID) * SurfSideArea(p,q,SurfSideID)
-            EkinVar(iBC)   = EkinVar(iBC)   + MacroSurfaceVal(6,p,q,SurfSideID) * SurfSideArea(p,q,SurfSideID)
-            ! Average impact angle
-            AlphaMean(iBC) = AlphaMean(iBC) + MacroSurfaceVal(7,p,q,SurfSideID) * SurfSideArea(p,q,SurfSideID)
-            AlphaVar(iBC)  = AlphaVar(iBC)  + MacroSurfaceVal(10,p,q,SurfSideID)* SurfSideArea(p,q,SurfSideID)
-            ! Integrated impact force
-            IF (.NOT.ALMOSTZERO(TimeSample)) THEN
-                tmpForceX   = MacroSurfaceVal(11,p,q,SurfSideID)
-                tmpForceY   = MacroSurfaceVal(12,p,q,SurfSideID)
-                tmpForceZ   = MacroSurfaceVal(13,p,q,SurfSideID)
-            END IF
-            tmpForce    = SQRT(tmpForceX**2 + tmpForceY**2 + tmpForceZ**2)
+DO iSide = 1,nComputeNodeSurfSides
+  iBC = BC(iSide)
 
-            partForce(iBC) = partForce(iBC) + tmpForce
-            ! Max impact force
-            maxForce(iBC)  = MAX(maxForce(iBC),tmpForce)
+  IF(.NOT.isWall(iBC)) CYCLE
 
-            SideArea(iBC)  = SideArea(iBC) + SurfSideArea(p,q,SurfSideID)
-        END DO
+  SurfSideID = SurfSide2GlobalSide(SURF_SIDEID,iSide)
+  DO q = 1,nSurfSample
+    DO p = 1,nSurfSample
+      ! Only consider walls with actual impacts
+      IF (SampWallState(1,p,q,SurfSideID).EQ.0) CYCLE
+      ! Average kinetic energy
+      EkinMean(iBC)  = EkinMean(iBC)  + MacroSurfaceVal(3,p,q,SurfSideID) * SurfSideArea(p,q,SurfSideID)
+      EkinVar(iBC)   = EkinVar(iBC)   + MacroSurfaceVal(6,p,q,SurfSideID) * SurfSideArea(p,q,SurfSideID)
+      ! Average impact angle
+      AlphaMean(iBC) = AlphaMean(iBC) + MacroSurfaceVal(7,p,q,SurfSideID) * SurfSideArea(p,q,SurfSideID)
+      AlphaVar(iBC)  = AlphaVar(iBC)  + MacroSurfaceVal(10,p,q,SurfSideID)* SurfSideArea(p,q,SurfSideID)
+      ! Integrated impact force
+      IF (.NOT.ALMOSTZERO(TimeSample)) THEN
+        tmpForceX   = MacroSurfaceVal(11,p,q,SurfSideID)
+        tmpForceY   = MacroSurfaceVal(12,p,q,SurfSideID)
+        tmpForceZ   = MacroSurfaceVal(13,p,q,SurfSideID)
+      END IF
+      tmpForce    = SQRT(tmpForceX**2 + tmpForceY**2 + tmpForceZ**2)
+
+      partForce(iBC) = partForce(iBC) + tmpForce
+      ! Max impact force
+      maxForce(iBC)  = MAX(maxForce(iBC),tmpForce)
+
+      SideArea(iBC)  = SideArea(iBC) + SurfSideArea(p,q,SurfSideID)
     END DO
+  END DO
 END DO
 
 #if USE_MPI
+END ASSOCIATE
+
 CALL MPI_REDUCE(MPI_IN_PLACE,EkinMean ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_LEADERS_SURF,iError)
 CALL MPI_REDUCE(MPI_IN_PLACE,EkinVar  ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_LEADERS_SURF,iError)
 CALL MPI_REDUCE(MPI_IN_PLACE,AlphaMean,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_LEADERS_SURF,iError)
@@ -119,15 +130,17 @@ CALL MPI_REDUCE(MPI_IN_PLACE,AlphaVar ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_C
 CALL MPI_REDUCE(MPI_IN_PLACE,partForce,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_LEADERS_SURF,iError)
 CALL MPI_REDUCE(MPI_IN_PLACE,maxForce ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_LEADERS_SURF,iError)
 CALL MPI_REDUCE(MPI_IN_PLACE,SideArea ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_LEADERS_SURF,iError)
-#endif
+#endif /*USE_MPI*/
 
-DO iBC=1,nBCs
-    IF(.NOT.isWall(iBC)) CYCLE
-    IF(ALMOSTZERO(SideArea(iBC))) CYCLE
-    EkinMean(iBC)  = EkinMean(iBC)  / SideArea(iBC)
-    EkinVar(iBC)   = EkinVar(iBC)   / SideArea(iBC)
-    AlphaMean(iBC) = AlphaMean(iBC) / SideArea(iBC)
-    AlphaVar(iBC)  = AlphaVar(iBC)  / SideArea(iBC)
+DO iBC = 1,nBCs
+  IF(.NOT.isWall(iBC)) CYCLE
+
+  IF(ALMOSTZERO(SideArea(iBC))) CYCLE
+
+  EkinMean(iBC)  = EkinMean(iBC)  / SideArea(iBC)
+  EkinVar(iBC)   = EkinVar(iBC)   / SideArea(iBC)
+  AlphaMean(iBC) = AlphaMean(iBC) / SideArea(iBC)
+  AlphaVar(iBC)  = AlphaVar(iBC)  / SideArea(iBC)
 END DO
 
 ! Deallocate Macrosurfaces we couldn't deallocate earlier

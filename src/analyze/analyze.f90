@@ -263,7 +263,7 @@ END SUBROUTINE InitAnalyzeBasis
 !> - calls generic error norm computation
 !> - calls equation system specific analysis
 !==================================================================================================================================
-SUBROUTINE Analyze(Time,iter)
+SUBROUTINE Analyze(Time,iter,tend)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -282,6 +282,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                 :: Time                   !< current simulation time
 INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
+REAL,INTENT(IN)                 :: tend                   !< simulation end time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=40)               :: formatStr
@@ -320,7 +321,7 @@ CALL Benchmarking()
 CALL ParticleInformation()
 #endif /*USE_PARTICLES*/
 
-IF(MPIroot .AND. (Time.GT.0.)) THEN
+IF(MPIroot .AND. (Time.GT.0.) .AND. (Time.LT.tend)) THEN
   WRITE(UNIT_StdOut,'(132("."))')
   WRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
   WRITE(UNIT_StdOut,'(132("-"))')

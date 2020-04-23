@@ -115,18 +115,20 @@ InterpolationElemLoop = GETLOGICAL('Part-InterpolationElemLoop','.TRUE.')
 
 ! Even if the user did not opt out, switch InterpolationElemLoop off for procs with high number of elems.
 !>> so far arbitrary treshold of 10 elems per proc
+LoopDisabled = 0
 IF (InterpolationElemLoop.AND.(PP_nElems.GT.10)) THEN
   InterpolationElemLoop = .FALSE.
   LoopDisabled          = 1
+END IF
 
 #if USE_MPI
-  CALL MPI_ALLREDUCE(LoopDisabled,LoopDisabledGlob,1,MPI_INTEGER,MPI_SUM,PartMPI%COMM,iError)
-  SWRITE(*,*) ' InterpolationElemLoop disabled due to high number of elements on ',LoopDisabledGlob,'of',PartMPI%nProcs,'procs'
+CALL MPI_ALLREDUCE(LoopDisabled,LoopDisabledGlob,1,MPI_INTEGER,MPI_SUM,PartMPI%COMM,iError)
+SWRITE(UNIT_StdOut,'(A,I0,A,I0,A)') ' InterpolationElemLoop disabled due to high number of elements on ',LoopDisabledGlob, &
+                                  ' of ',PartMPI%nProcs,'procs'
 #else
-  LoopDisabledGlob = LoopDisabled
-  WRITE(*,*)  ' InterpolationElemLoop disabled due to high number of elements'
+LoopDisabledGlob = LoopDisabled
+WRITE(UNIT_StdOut,'(A)')          ' InterpolationElemLoop disabled due to high number of elements'
 #endif
-END IF
 
 ! Size of external field depends on the equations system. Distinguish here between LES and RANS-SA
 #if EQNSYSNR == 3   /*Spalart-Allmaras*/

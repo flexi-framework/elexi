@@ -2176,7 +2176,6 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Particle_Vars,               ONLY:PDM,PartState,LastPartPos
 USE MOD_Particle_Surfaces_Vars,      ONLY:SideType
-USE MOD_Particle_Mesh_Vars,          ONLY:PartBCSideList
 USE MOD_Particle_Boundary_Condition, ONLY:GetBoundaryInteraction
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Mesh_Vars,          ONLY:BCElem

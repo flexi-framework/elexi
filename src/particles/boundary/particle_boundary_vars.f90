@@ -22,6 +22,7 @@ MODULE MOD_Particle_Boundary_Vars
 #if USE_MPI
 USE MPI
 #endif /*USE_MPI*/
+
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
@@ -47,6 +48,7 @@ REAL,ALLOCATABLE,DIMENSION(:,:,:,:)     :: SampWallState                 !> 1   
                                                                          !> 13-15 Average Forces in x, y, z direction
                                                                          !> 10    Impact angle
                                                                          !> 11    Wall-Collision counter
+REAL,ALLOCPOINT,DIMENSION(:,:,:,:)      :: SampWallState_Shared
 
 ! ====================================================================
 ! MPI3 shared variables
@@ -81,11 +83,9 @@ TYPE tSurfaceMapping
 END TYPE
 TYPE (tSurfaceMapping),ALLOCATABLE      :: SurfMapping(:)
 
-! ====================================================================
-! Impact statistics
-REAL,POINTER,DIMENSION(:,:,:,:)         :: SampWallState_Shared
-
 INTEGER                                 :: SampWallState_Shared_Win
+#else /*USE_MPI*/
+INTEGER                                 :: mySurfRank
 #endif /* USE_MPI */
 
 LOGICAL                                 :: doParticleReflectionTrack = .TRUE.      ! Flag if reflections should be counted

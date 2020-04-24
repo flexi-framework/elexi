@@ -206,7 +206,7 @@ END IF
 
 #if USE_MPI
 SafetyFactor  =GETREAL('Part-SafetyFactor','1.0')
-halo_eps_velo =GETREAL('Particles-HaloEpsVelo','0')
+halo_eps_velo =GETREAL('Part-HaloEpsVelo' ,'0')
 
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
 #endif /*USE_MPI*/
@@ -751,11 +751,11 @@ CALL MPI_WIN_UNLOCK_ALL(FIBGM_Element_Shared_Win,iError)
 CALL MPI_WIN_FREE(FIBGM_Element_Shared_Win,iError)
 
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
-#endif /*USE_MPI*/
 
 ! Then, free the pointers or arrays
 SDEALLOCATE(CNTotalElem2GlobalElem)
 SDEALLOCATE(GlobalElem2CNTotalElem)
+#endif /*USE_MPI*/
 
 MDEALLOCATE(ElemToBGM_Shared)
 MDEALLOCATE(BoundsOfElem_Shared)

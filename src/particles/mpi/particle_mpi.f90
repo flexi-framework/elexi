@@ -112,14 +112,12 @@ CALL MPI_COMM_RANK(PartMPI%COMM,PartMPI%myRank,iError)
 CALL MPI_COMM_SIZE(PartMPI%COMM,PartMPI%nProcs,iError)
 
 !IF(PartMPI%nProcs.NE.nProcessors) CALL ABORT(__STAMP__,' MPI Communicater-size does not match!', IERROR)
-PartCommSize   = 0
-PartMPI%MPIRoot=.FALSE.
+PartCommSize    = 0
+PartMPI%MPIRoot = .FALSE.
 IF(PartMPI%MyRank.EQ.0) PartMPI%MPIRoot=.TRUE.
-
-iMessage       = 0
 #else
-PartMPI%myRank = 0
-PartMPI%nProcs = 1
+PartMPI%myRank  = 0
+PartMPI%nProcs  = 1
 PartMPI%MPIRoot=.TRUE.
 #endif  /*MPI*/
 

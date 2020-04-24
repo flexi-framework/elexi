@@ -107,8 +107,6 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE INTERPOLATION ...'
 
-DoInterpolation       = GETLOGICAL('Part-DoInterpolation','.TRUE.')
-
 ! For low number of particles, the loop over all elements becomes quite inefficient. User can opt out with setting
 ! InterpolationElemLoop = F.
 InterpolationElemLoop = GETLOGICAL('Part-InterpolationElemLoop','.TRUE.')

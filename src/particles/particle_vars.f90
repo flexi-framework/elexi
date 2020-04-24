@@ -202,7 +202,6 @@ LOGICAL                                  :: ParticlesInitIsDone=.FALSE.
 
 LOGICAL                                  :: DoPoissonRounding                 ! Perform Poisson sampling instead of random rounding
 LOGICAL                                  :: DoTimeDepInflow                   ! Insertion and SurfaceFlux w simple random rounding
-LOGICAL                                  :: FindNeighbourElems=.FALSE.
 LOGICAL                                  :: RepWarn = .FALSE.                 ! Warning for Reynolds limit of particle model
 
 INTEGER(8)                               :: nTotalPart

@@ -128,7 +128,7 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared_Win
 USE MOD_Particle_MPI_Boundary_Sampling,ONLY: InitSurfCommunication
 #else
 USE MOD_Particle_Boundary_Vars  ,ONLY: mySurfRank
-USE MOD_Particle_Mesh_Vars      ,ONLY: nTotalSides
+USE MOD_Particle_Mesh_Vars      ,ONLY: nComputeNodeSides
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -197,7 +197,7 @@ CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeTotalSides/),GlobalSide2SurfS
 CALL MPI_WIN_LOCK_ALL(0,GlobalSide2SurfSide_Shared_Win,IERROR)
 GlobalSide2SurfSide => GlobalSide2SurfSide_Shared
 #else
-ALLOCATE(GlobalSide2SurfSide(1:3,1:nTotalSides))
+ALLOCATE(GlobalSide2SurfSide(1:3,1:nComputeNodeSides))
 #endif /*USE_MPI*/
 
 ! only CN root nullifies
@@ -264,9 +264,9 @@ ALLOCATE(GlobalSide2SurfSideProc(1:3,firstSide:lastSide) &
         ,SurfSide2GlobalSideProc(1:3,1         :INT(nNonUniqueGlobalSides/REAL(nComputeNodeProcessors))))
 #else
 firstSide = 1
-lastSide  = nTotalSides
-ALLOCATE(GlobalSide2SurfSideProc(1:3,1:nTotalSides) &
-        ,SurfSide2GlobalSideProc(1:3,1:nTotalSides))
+lastSide  = nComputeNodeSides
+ALLOCATE(GlobalSide2SurfSideProc(1:3,1:nComputeNodeSides) &
+        ,SurfSide2GlobalSideProc(1:3,1:nComputeNodeSides))
 #endif /*USE_MPI*/
 
 GlobalSide2SurfSideProc    = -1

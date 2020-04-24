@@ -75,19 +75,22 @@ USE MOD_ReadInTools            ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("LoadBalance")
-CALL prms%CreateLogicalOption( 'DoLoadBalance'                ,  "Set flag for doing dynamic LoadBalance.", '.FALSE.')
+CALL prms%CreateLogicalOption( 'DoLoadBalance'                ,  "Set flag for doing dynamic LoadBalance."                         &
+                                                              ,  '.FALSE.')
 CALL prms%CreateLogicalOption( 'DoLoadBalanceTimeBased'       ,  "Set flag to calculate load (im)balance based on elapsed time"  //&
-                                                                 " instead of DG and particle weights", '.TRUE.')
+                                                                 " instead of DG and particle weights"                             &
+                                                              ,  '.TRUE.')
+CALL prms%CreateLogicalOption( 'MeasureTrackTime'             ,  "If .TRUE. then the time how long the tracking routines are"    //&
+                                                                 "called are sampled and written for each MPI-Proc."               &
+                                                              ,  '.FALSE.')
 CALL prms%CreateIntOption(     'LoadBalanceSample'            ,  "Define number of iterations (before analyze_dt)"               //&
-                                                                 " that are used for calculation of elemtime information",         &
-                                                                 value='1')
+                                                                 " that are used for calculation of elemtime information"          &
+                                                              ,  '1')
 
 CALL prms%CreateRealOption(    'Load-DeviationThreshold'      ,  "Define threshold for dynamic load-balancing.\n"                //&
                                                                  "Restart performed if (Maxweight-Targetweight)/Targetweight >"  //&
-                                                                 " defined value.",                                                &
-                                                                 value='0.10')
-CALL prms%CreateRealOption(    'Particles-MPIWeight'          ,  "Define weight of particles for elem loads.",                     &
-                                                                 value='0.02')
+                                                                 " defined value.",                                        '0.10')
+CALL prms%CreateRealOption(    'Particles-MPIWeight'          ,  "Define weight of particles for elem loads.",             '0.02')
 CALL prms%CreateIntOption(     'WeightDistributionMethod'     ,  "Method for distributing the elem to procs.\n"                  //&
                                                                  "DEFAULT: 1 if Elemtime exits else -1\n"                        //&
                                                                  "-1: elements are equally distributed\n"                        //&
@@ -102,8 +105,8 @@ CALL prms%SetSection("Restart")
 CALL prms%CreateLogicalOption( 'DoInitialAutoRestart',           "Set Flag for doing automatic initial restart with"             //&
                                                                  " loadbalancing routines after first 'InitialAutoRestartSample'"//&
                                                                  "-number of iterations.\n"                                      //&
-                                                                 "Restart is done if Imbalance > 'Load-DeviationThreshold'.",      &
-                                                                 '.FALSE.')
+                                                                 "Restart is done if Imbalance > 'Load-DeviationThreshold'."       &
+                                                              ,  '.FALSE.')
 CALL prms%CreateIntOption(     'InitialAutoRestartSample',       "Define number of iterations at simulation start used for"      //&
                                                                  " elemtime sampling before performing automatic initial"        //&
                                                                  " restart.\n"                                                   //&

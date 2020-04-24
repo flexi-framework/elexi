@@ -187,7 +187,7 @@ USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
 USE MOD_Mesh_Vars,             ONLY: NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: ElemCurved,wBaryCL_NGeo1,XiCL_NGeo1
-USE MOD_Particle_Tracking_Vars,ONLY: TrackingMethod
+!USE MOD_Particle_Tracking_Vars,ONLY: TrackingMethod
 #if USE_MPI
 USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
@@ -565,16 +565,6 @@ INTEGER                       :: RefMappingGuessLoc
 
 epsOne             = 1.0+RefMappingEps
 RefMappingGuessLoc = RefMappingGuess
-! the location of the Gauss-points within halo elements is not communicated. Instead of looking for the closest Gauss-point, the
-! closest CL-point is used
-! this is no longer true with the new halo region
-!IF(ElemID.GT.PP_nElems) THEN
-!  IF(DoRefMapping)THEN
-!    IF(RefMappingGuess.EQ.2) RefMappingGuessLoc=3
-!  ELSE
-!    IF(RefMappingGuess.EQ.2) RefMappingGuessLoc=1
-!  END IF
-!END IF
 
 SELECT CASE(RefMappingGuessLoc)
 

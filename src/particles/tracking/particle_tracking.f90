@@ -119,7 +119,7 @@ DO i = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(i)) THEN
 
 #if USE_LOADBALANCE
-    IF (MeasureTrackTime) nTracks=nTracks+1
+    IF (MeasureTrackTime) nTracks = nTracks+1
     CALL LBStartTime(tLBStart)
 #endif
 
@@ -542,7 +542,7 @@ DO iPart=1,PDM%ParticleVecLength
 #endif /*CODE_ANALYZE*/
 
     ! -- 1. Initialize particle path and tracking info
-    IF (MeasureTrackTime) nTracks=nTracks+1
+    IF (MeasureTrackTime) nTracks = nTracks+1
     PartisDone = .FALSE.
     ElemID     = PEM%lastElement(iPart)
 
@@ -575,7 +575,6 @@ DO iPart=1,PDM%ParticleVecLength
     ! track particle vector until the final particle position is achieved
     dolocSide = .TRUE.
     firstElem = ElemID
-!    IF (ElemType(ElemID).EQ.1) THEN
 !      !removed CheckPlanarInside since it can be inconsistent for planar-assumed sides:
 !      !they can still be planar-nonrect for which the bilin-algorithm will be used which might give a different result
 !      !(anyway, this was a speed-up for completely planar meshes only, but those should be now calculated with triatracking)

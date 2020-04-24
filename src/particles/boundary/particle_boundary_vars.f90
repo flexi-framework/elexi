@@ -123,12 +123,12 @@ TYPE tPartBoundary
   INTEGER              , ALLOCATABLE     :: TargetBoundCond(:)    ! Link part 3 for mapping Boltzplatz BCs to Particle BC
   REAL    , ALLOCATABLE                  :: WallTemp(:)
   REAL    , ALLOCATABLE                  :: WallVelo(:,:)
-  LOGICAL , ALLOCATABLE                  :: AmbientCondition(:)
-  LOGICAL , ALLOCATABLE                  :: AmbientConditionFix(:)
-  REAL    , ALLOCATABLE                  :: AmbientTemp(:)
-  REAL    , ALLOCATABLE                  :: AmbientVelo(:,:)
-  REAL    , ALLOCATABLE                  :: AmbientDens(:)
-  REAL    , ALLOCATABLE                  :: AmbientDynamicVisc(:) ! dynamic viscousity
+!  LOGICAL , ALLOCATABLE                  :: AmbientCondition(:)
+!  LOGICAL , ALLOCATABLE                  :: AmbientConditionFix(:)
+!  REAL    , ALLOCATABLE                  :: AmbientTemp(:)
+!  REAL    , ALLOCATABLE                  :: AmbientVelo(:,:)
+!  REAL    , ALLOCATABLE                  :: AmbientDens(:)
+!  REAL    , ALLOCATABLE                  :: AmbientDynamicVisc(:) ! dynamic viscousity
   CHARACTER(LEN=255),ALLOCATABLE         :: WallModel(:)
   CHARACTER(LEN=255),ALLOCATABLE         :: WallCoeffModel(:)
   ! Bons particle rebound model

@@ -77,123 +77,83 @@ USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
-CALL prms%SetSection('Tracking')
 
-CALL prms%CreateIntFromStringOption('TrackingMethod', "Define Method that is used for tracking of particles:\n"//&
-                                                      "refmapping (1): reference mapping of particle position"//&
-                                                      " with (bi-)linear and bezier (curved) description of sides.\n"//&
-                                                      "tracing (2): tracing of particle path "//&
-                                                      "with (bi-)linear and bezier (curved) description of sides.\n"//&
-                                                      "triatracking (3): tracing of particle path "//&
-                                                      "with triangle-aproximation of (bi-)linear sides.\n", &
-                                                      "triatracking")
-CALL addStrListEntry('TrackingMethod' , 'refmapping'      , REFMAPPING)
-CALL addStrListEntry('TrackingMethod' , 'tracing'         , TRACING)
-CALL addStrListEntry('TrackingMethod' , 'triatracking'    , TRIATRACKING)
-CALL addStrListEntry('TrackingMethod' , 'default'         , TRIATRACKING)
-
-CALL prms%CreateLogicalOption( 'DoRefMapping'&
-  , 'Refmapping [T] or Tracing [F] algorithms are used for tracking of particles.'&
-  , '.TRUE.')
-
-CALL prms%CreateLogicalOption( 'TriaTracking'&
-  , 'Using Triangle-aproximation [T] or (bi-)linear and bezier (curved) description [F] of sides for tracing algorithms.'//&
-  ' Requires DoRefMapping=F.'&
-  ,'.FALSE.')
-CALL prms%CreateLogicalOption( 'Write-Tria-DebugMesh'&
-  , 'Writes per proc triangulated Surfacemesh used for Triatracking. Requires TriaTracking=T.'&
-  ,'.FALSE.')
-CALL prms%CreateLogicalOption( 'TriaSurfaceFlux'&
-  , 'Using Triangle-aproximation [T] or (bi-)linear and bezier (curved) description [F] of sides for surfaceflux.'//&
-  ' Default is set to TriaTracking')
-CALL prms%CreateLogicalOption( 'Write-TriaSurfaceFlux-DebugMesh'&
-  , 'Writes per proc triangulated Surfacemesh used for TriaSurfaceFlux. Requires TriaSurfaceFlux=T.'&
-  ,'.FALSE.')
-
-CALL prms%CreateLogicalOption( 'CountNbOfLostParts'&
-  , 'Count number of lost particles during tracking that can not be found with fallbacks.','.FALSE.')
-#if CODE_ANALYZE
-CALL prms%CreateIntOption(     'PartOut'&
-  , 'If compiled with CODE_ANALYZE flag: For This particle number every tracking information is written as STDOUT.','0')
-CALL prms%CreateIntOption(     'MPIRankOut'&
-  , 'If compiled with CODE_ANALYZE flag: This MPI-Proc writes the tracking information for the defined PartOut.','0')
-#endif /*CODE_ANALYZE*/
-CALL prms%CreateLogicalOption( 'MeasureTrackTime'&
-  , 'If .TRUE. then the time how long the tracking routines are called are sampled and written for each MPI-Proc.','.FALSE.')
-CALL prms%CreateLogicalOption( 'CartesianPeriodic'&
-    , ' Simplified treatment for periodic box with Refmapping. Not computation of intersection points at periodic BCs.','.FALSE.')
-CALL prms%CreateLogicalOption( 'FastPeriodic'&
-  , ' Further simplification by directly moving particle into grid. Instead of moving the particle several times the periodic'//&
-    ' displacements, the particle is mapped directly back into the domain. ','.FALSE.')
-CALL prms%CreateIntOption(     'RefMappingGuess'&
-  , ' Initial guess of the Newton for mapping the particle into reference coordinates.\n'//&
-    '1 -linear pseudo-Cartesian coordinates\n'//&
-    '2 - Xi of closest Gauss point\n'//&
-    '3 - Xi of closest XCL_ngeo point\n'//&
-    '4 -trival guess (0,0,0)^t')
-CALL prms%CreateRealOption(    'RefMappingEps'&
-  , ' Tolerance for mapping particle into reference element measured as L2-norm of deltaXi' , '1e-4')
-CALL prms%CreateIntOption(     'BezierElevation'&
-  , ' Use BezierElevation>0 to tighten the bounding box. Typical values>10','0')
-CALL prms%CreateIntOption(     'BezierSampleN'&
-  , 'TODO-DEFINE-PARAMETER\n'//&
-    'Default value: NGeo equidistant sampling of bezier surface for emission','0')
-
+! Halo region
+CALL prms%CreateRealOption(         'Part-SafetyFactor'         , 'Factor to scale the halo region with MPI'                       &
+                                                                , '1.')
+CALL prms%CreateRealOption(         'Part-HaloEpsVelo'          , 'Maximum velocity to be considered for halo region'              &
+                                                                , '0.')
 
 ! Background mesh init variables
-CALL prms%CreateRealArrayOption('Part-FIBGMdeltas'&
-  , 'Define the deltas for the cartesian Fast-Init-Background-Mesh.'//&
-  ' They should be of the similar size as the smallest cells of the used mesh for simulation.'&
-  , '1. , 1. , 1.')
-CALL prms%CreateRealArrayOption('Part-FactorFIBGM'&
-  , 'Factor with which the background mesh will be scaled.'&
-  , '1. , 1. , 1.')
-CALL prms%CreateLogicalOption( 'printMPINeighborWarnings'&
-    ,  ' Print warning if the MPI-Halo-region between to procs are not overlapping. Only one proc find the other in halo ' &
-    ,'.FALSE.')
-CALL prms%CreateLogicalOption( 'printBezierControlPointsWarnings'&
-    ,  ' Print warning if MINVAL(BezierControlPoints3d(iDir,:,:,newSideID)) and global boundaries are too close ' &
-    ,'.FALSE.')
+CALL prms%CreateRealArrayOption(    'Part-FIBGMdeltas'          , 'Define the deltas for the cartesian Fast-Init-Background-Mesh.'//&
+                                                                  ' They should be of the similar size as the smallest cells of' //&
+                                                                  ' the used mesh for simulation.'                                 &
+                                                                , '1. , 1. , 1.')
+CALL prms%CreateRealArrayOption(    'Part-FactorFIBGM'          , 'Factor with which the background mesh will be scaled.'          &
+                                                                , '1. , 1. , 1.')
 
-! Mesh check of periodic vectors
-CALL prms%CreateLogicalOption( 'Part-PeriodicCheck'&
-    ,  ' Disable check of periodic vectors in case of borderline conformal mesh ' &
-    ,'.TRUE.')
-CALL prms%CreateLogicalOption( 'Part-PeriodicReorder'&
-    ,  ' Flag if FLEXI should try to reorder particle periodic vectors ' &
-    ,'.FALSE.')
-CALL prms%CreateLogicalOption( 'Part-PeriodicStrict'&
-    ,  ' Flag if FLEXI should abort in case no periodic vectors are found ' &
-    ,'.FALSE.')
-CALL prms%CreateRealOption('Part-PeriodicVecTol'&
-    ,   'Tolerance angle when looking for periodic vectors ' &
-    ,'0')
+! Periodic vectors
+CALL prms%CreateIntOption(          'Part-nPeriodicVectors'     , 'Number of the periodic vectors j=1,...,n.'                    //&
+                                                                  ' Value has to be the same as defined in preprog.ini'            &
+                                                                , '0')
+CALL prms%CreateLogicalOption(      'CartesianPeriodic'         , ' Simplified treatment for periodic box with Refmapping. Not'  //&
+                                                                  ' computation of intersection points at periodic BCs.'           &
+                                                                , '.FALSE.')
+CALL prms%CreateLogicalOption(      'FastPeriodic'              , ' Further simplification by directly moving particle into'     //&
+                                                                  ' grid. Instead of moving the particle several times the'      //&
+                                                                  ' periodic displacements, the particle is mapped directly back'//&
+                                                                  ' into the domain.'                                              &
+                                                                , '.FALSE.')
 
-! Wall models
-!CALL prms%CreateStringOption('Part-WallModel'&
-!  , ' Wall model to be used for particle tracking Available options:.\n'//&
-!    'perfRef  - perfect reflection\n'//&
-!    'coeffRes - Coefficient of restitution')
-!CALL prms%CreateRealOption('Part-WallCoeff-Tang'        , 'Coefficient of restituation in tangential direction', '1.0')
-!CALL prms%CreateRealOption('Part-WallCoeff-Norm'        , 'Coefficient of restituation in tangential direction', '1.0')
+! RefMapping
+CALL prms%CreateIntOption(          'RefMappingGuess'           , ' Initial guess of the Newton for mapping the particle into'   //&
+                                                                  ' reference coordinates.\n'                                    //&
+                                                                  '1 -linear pseudo-Cartesian coordinates\n'                     //&
+                                                                  '2 - Xi of closest Gauss point\n'                              //&
+                                                                  '3 - Xi of closest XCL_ngeo point\n'                           //&
+                                                                  '4 -trival guess (0,0,0)^t')
+CALL prms%CreateRealOption(         'RefMappingEps'             , ' Tolerance for mapping particle into reference element'       //&
+                                                                  ' measured as L2-norm of deltaXi.'                               &
+                                                                , '1e-4')
 
-CALL prms%CreateRealOption(    'BezierNewtonAngle'      , ' BoundingBox intersection angle for switching between '//&
-'Bezierclipping and BezierNewton.' , '1.570796326')
-CALL prms%CreateRealOption(    'BezierClipTolerance'    , ' Tolerance for BezierClipping' , '1e-8')
-CALL prms%CreateRealOption(    'BezierNewtonTolerance'  , ' Tolerance for BezierNewton' , '1e-4')
-CALL prms%CreateIntOption(     'BezierNewtonGuess'      , ' Initial guess for BezierNewton\n'// &
-    '1 - linear projected face\n'//&
-    '2 - closest projected BeziercontrolPoint\n'//&
-    '4 - (0,0)^t' , '1')
-CALL prms%CreateIntOption(     'BezierNewtonMaxIter'    , ' TODO-DEFINE-PARAMETER' , '100')
-CALL prms%CreateRealOption(    'BezierSplitLimit'       , ' Limit for splitting in BezierClipping.'// &
-   ' Value allows to detect multiple intersections and speed up computation. Parameter is multiplied by 2' , '0.6')
-CALL prms%CreateIntOption(     'BezierClipMaxIter'      , ' Max iteration of BezierClipping' , '100')
-CALL prms%CreateRealOption(    'epsilontol'             , ' Tolerance (absolute) for comparison against zero', '0.')
-CALL prms%CreateRealOption(    'epsilonrel'             , ' Tolerance (relative) for comparison against zero', '0.')
-CALL prms%CreateRealOption(    'BezierClipHit'          , ' Tolerance in [-1,1] of BezierFace' , '0.')
-CALL prms%CreateRealOption(    'BezierNewtonHit'        , ' Tolerance in [-1,1] of BezierNewton' , '0.')
-CALL prms%CreateIntOption(     'BezierClipMaxIntersec'  , ' Max. number of multiple intersections. Default: 2*(NGeo+1)')
+! Bezier surfaces
+CALL prms%CreateIntOption(          'BezierElevation'           , ' Use BezierElevation>0 to tighten the bounding box. Typical'  //&
+                                                                  ' values>10'                                                     &
+                                                                , '0')
+CALL prms%CreateIntOption(          'BezierSampleN'             , 'TODO-DEFINE-PARAMETER\n'                                      //&
+                                                                  'Default value: NGeo equidistant sampling of bezier surface'   //&
+                                                                  ' for emission'                                                  &
+                                                                , '0')
+
+CALL prms%CreateRealOption(         'BezierNewtonAngle'         , ' BoundingBox intersection angle for switching between '       //&
+                                                                  'Bezierclipping and BezierNewton.'                               &
+                                                                , '1.570796326')
+CALL prms%CreateRealOption(         'BezierClipTolerance'       , ' Tolerance for BezierClipping'                                  &
+                                                                , '1e-8')
+CALL prms%CreateRealOption(         'BezierNewtonTolerance'     , ' Tolerance for BezierNewton'                                    &
+                                                                , '1e-4')
+CALL prms%CreateIntOption(          'BezierNewtonGuess'         , ' Initial guess for BezierNewton\n'                            //&
+                                                                  ' 1 - linear projected face\n'                                 //&
+                                                                  ' 2 - closest projected BeziercontrolPoint\n'                  //&
+                                                                  ' 4 - (0,0)^t'                                                   &
+                                                                , '1')
+CALL prms%CreateIntOption(          'BezierNewtonMaxIter'       , ' TODO-DEFINE-PARAMETER'                                         &
+                                                                , '100')
+CALL prms%CreateRealOption(         'BezierSplitLimit'          , ' Limit for splitting in BezierClipping.'                      //&
+                                                                  ' Value allows to detect multiple intersections and speed up ' //&
+                                                                  'computation. Parameter is multiplied by 2'                      &
+                                                                , '0.6')
+CALL prms%CreateIntOption(          'BezierClipMaxIter'         , ' Max iteration of BezierClipping'                               &
+                                                                , '100')
+CALL prms%CreateRealOption(         'epsilontol'                , ' Tolerance (absolute) for comparison against zero'              &
+                                                                , '0.')
+CALL prms%CreateRealOption(         'epsilonrel'                , ' Tolerance (relative) for comparison against zero'              &
+                                                                , '0.')
+CALL prms%CreateRealOption(         'BezierClipHit'             , ' Tolerance in [-1,1] of BezierFace'                             &
+                                                                , '0.')
+CALL prms%CreateRealOption(         'BezierNewtonHit'           , ' Tolerance in [-1,1] of BezierNewton'                           &
+                                                                , '0.')
+CALL prms%CreateIntOption(          'BezierClipMaxIntersec'     , ' Max. number of multiple intersections. Default: 2*(NGeo+1)')
 
 END SUBROUTINE DefineParametersParticleMesh
 
@@ -290,14 +250,15 @@ USE MOD_Preproc
 USE MOD_Mesh_Vars              ,ONLY: NGeo,nElems,useCurveds
 USE MOD_Particle_BGM           ,ONLY: BuildBGMAndIdentifyHaloRegion
 USE MOD_Particle_Globals
+USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Mesh_Tools    ,ONLY: InitGetGlobalElemID,InitGetCNElemID
 USE MOD_Particle_Surfaces      ,ONLY: GetSideSlabNormalsAndIntervals
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation,BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
-USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping,FastPeriodic,CountNbOfLostParts,nLostParts,CartesianPeriodic
+USE MOD_Particle_Tracking_Vars ,ONLY: FastPeriodic,CountNbOfLostParts,nLostParts,CartesianPeriodic
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierSampleN,BezierSampleXi,SurfFluxSideSize,TriaSurfaceFlux
-USE MOD_Particle_Tracking_Vars ,ONLY: TriaTracking
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_ReadInTools            ,ONLY: GETREAL,GETINT,GETLOGICAL,GetRealArray
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideBoundingBoxVolume
@@ -355,27 +316,18 @@ CALL InitGetGlobalElemID()
 ! Initialize mapping function: GetCNElemID()
 CALL InitGetCNElemID()
 
-IF ((DoRefMapping.OR.UseCurveds.OR.(NGeo.GT.1)).AND.(TriaTracking)) THEN
-  CALL ABORT(__STAMP__,'DoRefMapping=T .OR. UseCurveds=T .OR. NGEO>1! Not possible with TriaTracking=T at the same time!')
+IF ((TrackingMethod.EQ.REFMAPPING.OR.UseCurveds.OR.(NGeo.GT.1)).AND.(TrackingMethod.EQ.TRIATRACKING)) THEN
+  CALL CollectiveStop(__STAMP__, &
+         'TrackingMethod=REFMAPPING .OR. UseCurveds=T .OR. NGEO>1! Not possible with TrackingMethod=TRIATRACKING at the same time!')
 END IF
 CountNbOfLostParts = GETLOGICAL('CountNbOfLostParts',".FALSE.")
 nLostParts         = 0
-
-PeriodicCheck      = GETLOGICAL('Part-PeriodicCheck',".TRUE.")
 
 #if CODE_ANALYZE
 PARTOUT            = GETINT('PartOut','0')
 MPIRankOut         = GETINT('MPIRankOut','0')
 #endif /*CODE_ANALYZE*/
 
-! Particle wall model
-!PartWallModel      = GETSTR('Part-WallModel','perfRef')
-!PartWallTang       = GETREAL('Part-WallCoeff-Tang', '1.0')
-!PartWallNorm       = GETREAL('Part-WallCoeff-Norm', '1.0')
-
-!IF(.NOT.DoRefMapping) THEN
-!  SDEALLOCATE(nTracksPerElem)
-!END IF
 CartesianPeriodic = GETLOGICAL('CartesianPeriodic','.FALSE.')
 IF(CartesianPeriodic) FastPeriodic = GETLOGICAL('FastPeriodic','.FALSE.')
 
@@ -404,114 +356,123 @@ END IF
 RefMappingEps   = GETREAL('RefMappingEps','1e-4')
 
 epsInCell       = SQRT(3.0*RefMappingEps)
-!epsOneCell      = 1.0+epsInCell
 
 IF((RefMappingGuess.LT.1).OR.(RefMappingGuess.GT.4))THEN
-   CALL abort(&
-__STAMP__ &
-,'Wrong guessing method for mapping from physical space in reference space.',RefMappingGuess,999.)
+   CALL ABORT(__STAMP__ ,'Wrong guessing method for mapping from physical space in reference space.',RefMappingGuess,999.)
 END IF
 
-CALL CalcParticleMeshMetrics()
+SELECT CASE(TrackingMethod)
 
-IF (TriaTracking) THEN
-  CALL InitParticleGeometry()
-  ! Compute convex element radius^2
-  CALL BuildElementRadiusTria()
+  CASE(TRIATRACKING)
+    CALL InitParticleGeometry()
+    ! Compute convex element radius^2
+    CALL BuildElementRadiusTria()
 
-  CALL BuildElemTypeTria()
-ELSE
-  CALL CalcBezierControlPoints()
+    ! Interpolation needs coordinates in reference system
+    IF (DoInterpolation) THEN
+      CALL CalcParticleMeshMetrics()
+
+      CALL BuildElemTypeAndBasisTria()
+    END IF
+
+  CASE(TRACING,REFMAPPING)
+    CALL CalcParticleMeshMetrics()
+
+    CALL CalcBezierControlPoints()
 
 #if USE_MPI
-  MPISharedSize = INT((3**2*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-  CALL Allocate_Shared(MPISharedSize,(/3,3,nNonUniqueGlobalSides/),SideSlabNormals_Shared_Win,SideSlabNormals_Shared)
-  CALL MPI_WIN_LOCK_ALL(0,SideSlabNormals_Shared_Win,IERROR)
-  MPISharedSize = INT((6*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-  CALL Allocate_Shared(MPISharedSize,(/6,nNonUniqueGlobalSides/),SideSlabIntervals_Shared_Win,SideSlabIntervals_Shared)
-  CALL MPI_WIN_LOCK_ALL(0,SideSlabIntervals_Shared_Win,IERROR)
-  MPISharedSize = INT((nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-  CALL Allocate_Shared(MPISharedSize,(/nNonUniqueGlobalSides/),BoundingBoxIsEmpty_Shared_Win,BoundingBoxIsEmpty_Shared)
-  CALL MPI_WIN_LOCK_ALL(0,BoundingBoxIsEmpty_Shared_Win,IERROR)
-  firstSide = INT(REAL (myComputeNodeRank   *nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
-  lastSide  = INT(REAL((myComputeNodeRank+1)*nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
-  SideSlabNormals    => SideSlabNormals_Shared
-  SideSlabIntervals  => SideSlabIntervals_Shared
-  BoundingBoxIsEmpty => BoundingBoxIsEmpty_Shared
-  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+    MPISharedSize = INT((3**2*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+    CALL Allocate_Shared(MPISharedSize,(/3,3,nNonUniqueGlobalSides/),SideSlabNormals_Shared_Win,SideSlabNormals_Shared)
+    CALL MPI_WIN_LOCK_ALL(0,SideSlabNormals_Shared_Win,IERROR)
+    MPISharedSize = INT((6*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+    CALL Allocate_Shared(MPISharedSize,(/6,nNonUniqueGlobalSides/),SideSlabIntervals_Shared_Win,SideSlabIntervals_Shared)
+    CALL MPI_WIN_LOCK_ALL(0,SideSlabIntervals_Shared_Win,IERROR)
+    MPISharedSize = INT((nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+    CALL Allocate_Shared(MPISharedSize,(/nNonUniqueGlobalSides/),BoundingBoxIsEmpty_Shared_Win,BoundingBoxIsEmpty_Shared)
+    CALL MPI_WIN_LOCK_ALL(0,BoundingBoxIsEmpty_Shared_Win,IERROR)
+    firstSide = INT(REAL (myComputeNodeRank   *nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
+    lastSide  = INT(REAL((myComputeNodeRank+1)*nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
+    SideSlabNormals    => SideSlabNormals_Shared
+    SideSlabIntervals  => SideSlabIntervals_Shared
+    BoundingBoxIsEmpty => BoundingBoxIsEmpty_Shared
+    CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #else
-  ALLOCATE(SideSlabNormals(1:3,1:3,1:nNonUniqueGlobalSides) &
-          ,SideSlabIntervals(  1:6,1:nNonUniqueGlobalSides) &
-          ,BoundingBoxIsEmpty(     1:nNonUniqueGlobalSides) &
-          ,STAT=ALLOCSTAT)
-  IF (ALLOCSTAT.NE.0) CALL ABORT(__STAMP__,'  Cannot allocate SideMetrics arrays!')
-  firstSide = 1
-  lastSide  = nNonUniqueGlobalSides
+    ALLOCATE(SideSlabNormals(1:3,1:3,1:nNonUniqueGlobalSides) &
+            ,SideSlabIntervals(  1:6,1:nNonUniqueGlobalSides) &
+            ,BoundingBoxIsEmpty(     1:nNonUniqueGlobalSides) &
+            ,STAT=ALLOCSTAT)
+    IF (ALLOCSTAT.NE.0) CALL ABORT(__STAMP__,'  Cannot allocate SideMetrics arrays!')
+    firstSide = 1
+    lastSide  = nNonUniqueGlobalSides
 #endif /* USE_MPI */
 #if CODE_ANALYZE
-  ALLOCATE(SideBoundingBoxVolume(nSides))
+    ALLOCATE(SideBoundingBoxVolume(nSides))
 #endif /*CODE_ANALYZE*/
 
-  IF (BezierElevation.GT.0) THEN
-    DO iSide=firstSide,LastSide
-      ! Ignore small mortar sides attached to big mortar sides
-      IF (SideInfo_Shared(SIDE_LOCALID,iSide).LT.1 .OR. SideInfo_Shared(SIDE_LOCALID,iSide).GT.6) CYCLE
-      CALL GetSideSlabNormalsAndIntervals(BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated,iSide)     &
-                                         ,SideSlabNormals(   1:3,1:3,iSide)                          &
-                                         ,SideSlabInterVals( 1:6    ,iSide)                          &
-                                         ,BoundingBoxIsEmpty(iSide))
-    END DO
-  ELSE
-    DO iSide=firstSide,LastSide
-      ! Ignore small mortar sides attached to big mortar sides
-      IF (SideInfo_Shared(SIDE_LOCALID,iSide).LT.1 .OR. SideInfo_Shared(SIDE_LOCALID,iSide).GT.6) CYCLE
-      CALL GetSideSlabNormalsAndIntervals(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)             &
-                                         ,SideSlabNormals(   1:3,1:3,iSide)                          &
-                                         ,SideSlabInterVals( 1:6    ,iSide)                          &
-                                         ,BoundingBoxIsEmpty(iSide))
-    END DO
-  END IF
+    IF (BezierElevation.GT.0) THEN
+      DO iSide=firstSide,LastSide
+        ! Ignore small mortar sides attached to big mortar sides
+        IF (SideInfo_Shared(SIDE_LOCALID,iSide).LT.1 .OR. SideInfo_Shared(SIDE_LOCALID,iSide).GT.6) CYCLE
+        CALL GetSideSlabNormalsAndIntervals(BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated,iSide)     &
+                                           ,SideSlabNormals(   1:3,1:3,iSide)                          &
+                                           ,SideSlabInterVals( 1:6    ,iSide)                          &
+                                           ,BoundingBoxIsEmpty(iSide))
+      END DO
+    ELSE
+      DO iSide=firstSide,LastSide
+        ! Ignore small mortar sides attached to big mortar sides
+        IF (SideInfo_Shared(SIDE_LOCALID,iSide).LT.1 .OR. SideInfo_Shared(SIDE_LOCALID,iSide).GT.6) CYCLE
+        CALL GetSideSlabNormalsAndIntervals(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)             &
+                                           ,SideSlabNormals(   1:3,1:3,iSide)                          &
+                                           ,SideSlabInterVals( 1:6    ,iSide)                          &
+                                           ,BoundingBoxIsEmpty(iSide))
+      END DO
+    END IF
 #if USE_MPI
-  CALL MPI_WIN_SYNC(SideSlabNormals_Shared_Win,IERROR)
-  CALL MPI_WIN_SYNC(SideSlabIntervals_Shared_Win,IERROR)
-  CALL MPI_WIN_SYNC(BoundingBoxIsEmpty_Shared_Win,IERROR)
-  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+    CALL MPI_WIN_SYNC(SideSlabNormals_Shared_Win,IERROR)
+    CALL MPI_WIN_SYNC(SideSlabIntervals_Shared_Win,IERROR)
+    CALL MPI_WIN_SYNC(BoundingBoxIsEmpty_Shared_Win,IERROR)
+    CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /* USE_MPI */
 #if CODE_ANALYZE
-  ! TODO: bounding box volumes must be calculated for all unique sides.
-  offsetSideID = ElemInfo_Shared(SideIf
-  DO iSide=offsetMPISides_YOUR,LastSide
-    dx=ABS(SideSlabIntervals(2)-SideSlabIntervals(1))
-    dy=ABS(SideSlabIntervals(4)-SideSlabIntervals(3))
-    dz=ABS(SideSlabIntervals(6)-SideSlabIntervals(5))
-    SideID = SideInfo
-    SideBoundingBoxVolume(SideID)=dx*dy*dz
-  END DO
+    ! TODO: bounding box volumes must be calculated for all unique sides.
+    offsetSideID = ElemInfo_Shared(SideIf
+    DO iSide=offsetMPISides_YOUR,LastSide
+      dx=ABS(SideSlabIntervals(2)-SideSlabIntervals(1))
+      dy=ABS(SideSlabIntervals(4)-SideSlabIntervals(3))
+      dz=ABS(SideSlabIntervals(6)-SideSlabIntervals(5))
+      SideID = SideInfo
+      SideBoundingBoxVolume(SideID)=dx*dy*dz
+    END DO
 #endif /*CODE_ANALYZE*/
 
-  ! Compute element bary and element radius for node elements (with halo region)
-  CALL BuildElementOriginShared()
+    ! Compute element bary and element radius for node elements (with halo region)
+    CALL BuildElementOriginShared()
 
-  ! Check the side type (planar, bilinear, curved)
-  CALL IdentifyElemAndSideType()
+    ! Check the side type (planar, bilinear, curved)
+    CALL IdentifyElemAndSideType()
 
-  ! Compute the element XiEtaZetaBasis and the radius of the convex hull
-  CALL BuildElementBasisAndRadius()
+    ! Compute the element XiEtaZetaBasis and the radius of the convex hull
+    CALL BuildElementBasisAndRadius()
 
-  ! Get basevectors for (bi-)linear sides
-  CALL GetLinearSideBaseVectors()
+    ! Get basevectors for (bi-)linear sides
+    CALL GetLinearSideBaseVectors()
 
-  IF (DoRefMapping) THEN
-    ! Identify BCElems
-    CALL BuildBCElemDistance()
-  END IF
+    IF (TrackingMethod.EQ.REFMAPPING) THEN
+      ! Identify BCElems
+      CALL BuildBCElemDistance()
+    END IF
 
-  CALL BuildEpsOneCell()
-END IF
+    CALL BuildEpsOneCell()
+
+  CASE DEFAULT
+    CALL ABORT(__STAMP__,'Invalid tracking method in particle_mesh.f90!')
+
+END SELECT
 
 
 ! BezierAreaSample stuff:
-WRITE(hilf,'(L1)') TriaTracking
+WRITE(hilf,'(L1)') (TrackingMethod.EQ.TRIATRACKING)
 TriaSurfaceFlux = GETLOGICAL('TriaSurfaceFlux',TRIM(hilf))
 IF (TriaSurfaceFlux) THEN
   BezierSampleN = 1
@@ -1454,24 +1415,19 @@ SUBROUTINE BuildElementRadiusTria()
 !================================================================================================================================
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Basis                  ,ONLY: LagrangeInterpolationPolys
-USE MOD_Mesh_Vars              ,ONLY: NGeo
-USE MOD_Particle_Globals       ,ONLY: VECNORM
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,NodeCoords_Shared
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo,ElemRadius2NGeo
-USE MOD_Particle_Mesh_Vars     ,ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis
-USE MOD_Particle_Mesh_Vars     ,ONLY: wBaryCL_NGeo,XiCL_NGeo
-USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID
+USE MOD_Particle_Globals        ,ONLY: VECNORM
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo,ElemRadius2NGeo
+USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID
 #if USE_MPI
-USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
-USE MOD_Particle_MPI_Shared_Vars
-USE MOD_Particle_Mesh_Vars     ,ONLY: XCL_NGeo_Shared
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared,ElemRadius2NGeo_Shared
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo_Shared_Win,ElemRadius2NGeo_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: XiEtaZetaBasis_Shared,XiEtaZetaBasis_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: slenXiEtaZetaBasis_Shared,slenXiEtaZetaBasis_Shared_Win
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo_Shared,ElemRadius2NGeo_Shared
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo_Shared_Win,ElemRadius2NGeo_Shared_Win
+USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
+USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
+USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
+USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
 #else
-USE MOD_Mesh_Vars              ,ONLY: nELems
+USE MOD_Mesh_Vars               ,ONLY: nELems
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1483,10 +1439,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !INTEGER                        :: ALLOCSTAT
 INTEGER                        :: iElem,ElemID,iNode
-INTEGER                        :: iDir
-INTEGER                        :: i,j,k
 REAL                           :: xPos(3),Radius
-REAL                           :: Xi(3,6),Lag(1:3,0:NGeo)
 INTEGER                        :: firstElem, lastElem
 #if USE_MPI
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
@@ -1500,24 +1453,12 @@ CALL MPI_WIN_LOCK_ALL(0,ElemBaryNGeo_Shared_Win,IERROR)
 MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
 CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemRadius2NGeo_Shared_Win,ElemRadius2NGEO_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemRadius2NGeo_Shared_Win,IERROR)
-MPISharedSize = INT((3*6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/3,6,nComputeNodeTotalElems/),XiEtaZetaBasis_Shared_Win,XiEtaZetaBasis_Shared)
-CALL MPI_WIN_LOCK_ALL(0,XiEtaZetaBasis_Shared_Win,IERROR)
-MPISharedSize = INT((6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/6,nComputeNodeTotalElems/),slenXiEtaZetaBasis_Shared_Win,slenXiEtaZetaBasis_Shared)
-CALL MPI_WIN_LOCK_ALL(0,slenXiEtaZetaBasis_Shared_Win,IERROR)
 ElemRadius2NGeo    => ElemRadius2NGeo_Shared
 ElemBaryNGeo       => ElemBaryNGeo_Shared
-XiEtaZetaBasis     => XiEtaZetaBasis_Shared
-slenXiEtaZetaBasis => slenXiEtaZetaBasis_Shared
-
-ASSOCIATE(XCL_NGeo     => XCL_NGeo_Shared)
 
 #else
-ALLOCATE(ElemRadiusNGeo(          nElems) &
-        ,ElemRadius2NGeo(         nElems) &
-        ,XiEtaZetaBasis(1:3,1:6,1:nElems) &
-        ,slenXiEtaZetaBasis(1:6,1:nElems))
+ALLOCATE(ElemBaryNGeo(1:3,nElems) &
+        ,ElemRadius2NGeo( nElems))
 #endif /*USE_MPI*/
 
 #if USE_MPI
@@ -1539,13 +1480,6 @@ firstElem = 1
 lastElem  = nElems
 #endif /*USE_MPI*/
 
-Xi(:,1) = (/ 1.0 , 0.0  ,  0.0/) ! xi plus
-Xi(:,2) = (/ 0.0 , 1.0  ,  0.0/) ! eta plus
-Xi(:,3) = (/ 0.0 , 0.0  ,  1.0/) ! zeta plus
-Xi(:,4) = (/-1.0 , 0.0  ,  0.0/) ! xi minus
-Xi(:,5) = (/ 0.0 , -1.0 ,  0.0/) ! eta minus
-Xi(:,6) = (/ 0.0 , 0.0  , -1.0/) ! zeta minus
-
 DO iElem = firstElem,lastElem
   ElemID = GetGlobalElemID(iElem)
   Radius = 0.
@@ -1560,7 +1494,113 @@ DO iElem = firstElem,lastElem
     Radius = MAX(Radius,VECNORM(xPos))
   END DO
   ElemRadius2NGeo(iElem) = Radius*Radius
+END DO ! iElem
 
+#if USE_MPI
+CALL MPI_WIN_SYNC(ElemRadius2NGeo_Shared_Win,IERROR)
+CALL MPI_WIN_SYNC(ElemBaryNGeo_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+#endif /*USE_MPI*/
+
+END SUBROUTINE BuildElementRadiusTria
+
+
+SUBROUTINE BuildElemTypeAndBasisTria()
+!===================================================================================================================================
+!> Dummy routine to fill the ElemCurved array with TriaTracking
+!===================================================================================================================================
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_Basis                   ,ONLY: LagrangeInterpolationPolys
+USE MOD_Mesh_Vars               ,ONLY: NGeo
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemCurved
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo
+USE MOD_Particle_Mesh_Vars      ,ONLY: wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars      ,ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis
+#if USE_MPI
+USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo_Shared
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemCurved_Shared,ElemCurved_Shared_Win
+USE MOD_Particle_Mesh_Vars      ,ONLY: XiEtaZetaBasis_Shared,XiEtaZetaBasis_Shared_Win
+USE MOD_Particle_Mesh_Vars      ,ONLY: slenXiEtaZetaBasis_Shared,slenXiEtaZetaBasis_Shared_Win
+USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
+USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
+USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
+USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
+#else
+USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo
+USE MOD_Mesh_Vars               ,ONLY: nElems
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                        :: iElem,iDir
+INTEGER                        :: i,j,k
+REAL                           :: xPos(3)
+REAL                           :: Xi(3,6),Lag(1:3,0:NGeo)
+INTEGER                        :: firstElem, lastElem
+#if USE_MPI
+INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
+#endif /* USE_MPI */
+!===================================================================================================================================
+
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curved ...'
+
+! elements
+#if USE_MPI
+MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemCurved_Shared_Win,ElemCurved_Shared)
+CALL MPI_WIN_LOCK_ALL(0,ElemCurved_Shared_Win,IERROR)
+MPISharedSize = INT((3*6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/3,6,nComputeNodeTotalElems/),XiEtaZetaBasis_Shared_Win,XiEtaZetaBasis_Shared)
+CALL MPI_WIN_LOCK_ALL(0,XiEtaZetaBasis_Shared_Win,IERROR)
+MPISharedSize = INT((6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/6,nComputeNodeTotalElems/),slenXiEtaZetaBasis_Shared_Win,slenXiEtaZetaBasis_Shared)
+CALL MPI_WIN_LOCK_ALL(0,slenXiEtaZetaBasis_Shared_Win,IERROR)
+ElemCurved         => ElemCurved_Shared
+XiEtaZetaBasis     => XiEtaZetaBasis_Shared
+slenXiEtaZetaBasis => slenXiEtaZetaBasis_Shared
+
+ASSOCIATE(XCL_NGeo     => XCL_NGeo_Shared)
+
+#else
+ALLOCATE(ElemCurved(            1:nElems) &
+        ,XiEtaZetaBasis(1:3,1:6,1:nElems) &
+        ,slenXiEtaZetaBasis(1:6,1:nElems))
+#endif /*USE_MPI*/
+
+! only CN root nullifies
+#if USE_MPI
+IF (myComputeNodeRank.EQ.0) THEN
+#endif /*USE_MPI*/
+  ElemCurved   = .FALSE.
+#if USE_MPI
+END IF
+#endif /*USE_MPI*/
+
+#if USE_MPI
+firstElem = INT(REAL( myComputeNodeRank*   nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+#else
+firstElem = 1
+lastElem  = nElems
+#endif /*USE_MPI*/
+
+Xi(:,1) = (/ 1.0 , 0.0  ,  0.0/) ! xi plus
+Xi(:,2) = (/ 0.0 , 1.0  ,  0.0/) ! eta plus
+Xi(:,3) = (/ 0.0 , 0.0  ,  1.0/) ! zeta plus
+Xi(:,4) = (/-1.0 , 0.0  ,  0.0/) ! xi minus
+Xi(:,5) = (/ 0.0 , -1.0 ,  0.0/) ! eta minus
+Xi(:,6) = (/ 0.0 , 0.0  , -1.0/) ! zeta minus
+
+DO iElem = firstElem,lastElem
   ! get point on each side
   DO iDir = 1, 6
     CALL LagrangeInterpolationPolys(Xi(1,iDir),NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(1,:))
@@ -1578,79 +1618,17 @@ DO iElem = firstElem,lastElem
     ! compute length: The root is omitted here due to optimization
     slenXiEtaZetaBasis(iDir,iElem) = 1.0/DOT_PRODUCT(XiEtaZetaBasis(:,iDir,iElem),XiEtaZetaBasis(:,iDir,iElem))
   END DO ! iDir = 1, 6
-END DO ! iElem
+END DO
 
 #if USE_MPI
 END ASSOCIATE
-CALL MPI_WIN_SYNC(ElemRadius2NGeo_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(ElemBaryNGeo_Shared_Win,IERROR)
+CALL MPI_WIN_SYNC(ElemCurved_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(XiEtaZetaBasis_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(slenXiEtaZetaBasis_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /*USE_MPI*/
 
-END SUBROUTINE BuildElementRadiusTria
-
-
-SUBROUTINE BuildElemTypeTria()
-!===================================================================================================================================
-!> Dummy routine to fill the ElemCurved array with TriaTracking
-!===================================================================================================================================
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_Globals
-USE MOD_Preproc
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemCurved
-#if USE_MPI
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemCurved_Shared,ElemCurved_Shared_Win
-USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
-#else
-USE MOD_Particle_Mesh_Vars     ,ONLY: nComputeNodeElems
-#endif /*USE_MPI*/
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-#if USE_MPI
-INTEGER(KIND=MPI_ADDRESS_KIND)           :: MPISharedSize
-#endif /* USE_MPI */
-!===================================================================================================================================
-
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curved ...'
-
-! elements
-#if USE_MPI
-MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemCurved_Shared_Win,ElemCurved_Shared)
-CALL MPI_WIN_LOCK_ALL(0,ElemCurved_Shared_Win,IERROR)
-ElemCurved => ElemCurved_Shared
-#else
-ALLOCATE(ElemCurved(1:nComputeNodeElems))
-#endif /*USE_MPI*/
-
-! only CN root nullifies
-#if USE_MPI
-IF (myComputeNodeRank.EQ.0) THEN
-#endif /*USE_MPI*/
-  ElemCurved   = .FALSE.
-#if USE_MPI
-END IF
-#endif /*USE_MPI*/
-
-#if USE_MPI
-CALL MPI_WIN_SYNC(ElemCurved_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
-#endif /*USE_MPI*/
-
-END SUBROUTINE BuildElemTypeTria
+END SUBROUTINE BuildElemTypeAndBasisTria
 
 
 SUBROUTINE PointsEqual(N,Points1,Points2,IsNotEqual)
@@ -2093,58 +2071,6 @@ DO iElem=firstElem,lastElem
     SideIsDone(SideID)=.TRUE.
   END DO ! ilocSide=1,6
 END DO ! iElem=1,nTotalElems
-
-! TODO with PERIODIC SIDES
-! sanity check for side periodic type
-!DO iSide=1,nPartSides
-!  IF(DoRefmapping)THEN
-!    BCSideID  =PartBCSideList(iSide)
-!    IF(BCSideID.LE.0) CYCLE
-!  ELSE
-!    BCSideID  =iSide
-!  END IF
-!  PVID=SidePeriodicType(iSide)
-!  IF(PVID.EQ.0) CYCLE
-!  IF(.NOT.PartMeshHasPeriodicBCs) CYCLE
-!  Vec1=SIGN(GEO%PeriodicVectors(1:3,ABS(PVID)),REAL(PVID))
-!  ScalarProduct=DOT_PRODUCT(SideNormVec(1:3,BCSideID),Vec1)
-!  IF(ALMOSTEQUAL(ScalarProduct,GEO%PeriodicVectorsLength(ABS(PVID))))THEN
-!    SidePeriodicType(iSide)=-SidePeriodicType(iSide)
-!  ELSEIF(.NOT.ALMOSTEQUAL(ScalarProduct,-GEO%PeriodicVectorsLength(ABS(PVID))))THEN
-!    WRITE (*,*) "BCSideID                  : ", BCSideID
-!    WRITE (*,*) "SideNormVec(1:3,BCSideID) : ", SideNormVec(1:3,BCSideID)
-!    WRITE (*,*) "Vec1                      : ", Vec1
-!    CALL abort(&
-!__STAMP__&
-!        , ' Missalignment between SideNormVec and PeriodicVector!',ABS(PVID),ScalarProduct)
-!  END IF
-!END DO ! iSide=1,nPartSides
-
-!! fill Element type checking sides
-!IF (.NOT.DoRefMapping) THEN
-!  DO iElem=1,nTotalElems
-!    DO ilocSide=1,6
-!      SideID=PartElemToSide(E2S_SIDE_ID,ilocSide,iElem)
-!      SELECT CASE(SideType(SideID))
-!      CASE(PLANAR_RECT,PLANAR_NONRECT)
-!        IF (ElemType(iElem).GE.1) THEN
-!          CYCLE
-!        ELSE
-!          ElemType(iElem) = 1
-!        END IF
-!      CASE(BILINEAR)
-!        IF (ElemType(iElem).GE.2) THEN
-!          CYCLE
-!        ELSE
-!          ElemType(iElem) = 2
-!        END IF
-!      CASE(PLANAR_CURVED,CURVED)
-!        ElemType(iElem) = 3
-!        EXIT
-!      END SELECT
-!    END DO ! ilocSide=1,6
-!  END DO ! iElem=1,nTotalElems
-!END IF
 
 #if USE_MPI
 CALL MPI_WIN_SYNC(ElemCurved_Shared_Win,IERROR)
@@ -3266,7 +3192,7 @@ SELECT CASE (TrackingMethod)
     MDEALLOCATE(XCL_NGeo_Array)
     MDEALLOCATE(Elem_xGP_Array)
     MDEALLOCATE(dXCL_NGeo_Array)
-    
+
     ! InitParticleGeometry
     MDEALLOCATE(ConcaveElemSide_Shared)
     MDEALLOCATE(ElemNodeID_Shared)
@@ -3285,16 +3211,10 @@ SELECT CASE (TrackingMethod)
 
 END SELECT
 
-SDEALLOCATE(SidePeriodicType)
-SDEALLOCATE(SidePeriodicDisplacement)
-SDEALLOCATE(ElemType)
 SDEALLOCATE(GEO%PeriodicVectors)
 SDEALLOCATE(GEO%FIBGM)
-!SDEALLOCATE(GEO%Volume)
-SDEALLOCATE(GEO%ElemToFIBGM)
 SDEALLOCATE(GEO%TFIBGM)
 
-SDEALLOCATE(BCElem)
 MDEALLOCATE(XiEtaZetaBasis)
 MDEALLOCATE(slenXiEtaZetaBasis)
 MDEALLOCATE(ElemRadiusNGeo)

@@ -211,11 +211,10 @@ SideInfo_Shared(SIDEINFOSIZE_H5+1:SIDEINFOSIZE+1 ,offsetSideID+1:offsetSideID+nS
 CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #else
-nComputeNodeElems = nSideIDs
+nComputeNodeSides = nSideIDs
 ALLOCATE(SideInfo_Shared(1:SIDEINFOSIZE+1,1:nSideIDs))
 SideInfo_Shared(1                :SIDEINFOSIZE_H5,1:nSideIDs) = SideInfo(:,:)
 SideInfo_Shared(SIDEINFOSIZE_H5+1:SIDEINFOSIZE+1 ,1:nSideIDs) = 0
-nTotalSides = nSideIDs
 #endif /*USE_MPI*/
 
 ! fill the SIDE_LOCALID. Basically, this array contains the 1:6 local sides of an element. ! If an element has hanging nodes (i.e.

@@ -3288,6 +3288,14 @@ SELECT CASE (TrackingMethod)
     CALL MPI_WIN_UNLOCK_ALL(ElemVolume_Shared_Win           ,iError)
     CALL MPI_WIN_FREE(      ElemVolume_Shared_Win           ,iError)
 
+    ! GetBCSidesAndOrgin
+    CALL MPI_WIN_UNLOCK_ALL(BCSide2SideID_Shared_Win        ,iError)
+    CALL MPI_WIN_FREE(      BCSide2SideID_Shared_Win        ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(SideID2BCSide_Shared_Win        ,iError)
+    CALL MPI_WIN_FREE(      SideID2BCSide_Shared_Win        ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(BCSideMetrics_Shared_Win        ,iError)
+    CALL MPI_WIN_FREE(      BCSideMetrics_Shared_Win        ,iError)
+
     ! CalcParticleMeshMetrics
     CALL MPI_WIN_UNLOCK_ALL(XCL_NGeo_Shared_Win             ,iError)
     CALL MPI_WIN_FREE(      XCL_NGeo_Shared_Win             ,iError)
@@ -3368,6 +3376,11 @@ SELECT CASE (TrackingMethod)
     ! Then, free the pointers or arrays
     ! InitElemVolumes
     MDEALLOCATE(ElemVolume_Shared)
+
+    ! GetBCSidesAndOrgin
+    MDEALLOCATE(BCSide2SideID_Shared)
+    MDEALLOCATE(SideID2BCSide_Shared)
+    MDEALLOCATE(BCSideMetrics_Shared)
 
     ! CalcParticleMeshMetrics
     MDEALLOCATE(XCL_NGeo_Array)

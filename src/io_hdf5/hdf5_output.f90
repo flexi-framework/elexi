@@ -1178,7 +1178,7 @@ ASSOCIATE (&
   ! Allocate PartData varnames array and fill it
   ALLOCATE(StrVarNames(PartDataSize))
   StrVarNames(1:3) = (/'ParticlePositionX','ParticlePositionY','ParticlePositionZ'/)
-  StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityX'        /)
+  StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityZ'        /)
   StrVarNames(7)   = 'Species'
   IF (doParticleReflectionTrack) &
     StrVarNames(8) = 'ReflectionCount'

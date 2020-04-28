@@ -187,9 +187,6 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                        :: FirstElemInd,LastElemInd
 INTEGER                        :: nSideIDs,offsetSideID
-INTEGER                        :: iElem,NbElemID
-INTEGER                        :: iSide,sideCount
-INTEGER                        :: iLocSide,jLocSide,nlocSides,nlocSidesNb,NbSideID
 #if USE_MPI
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif /*USE_MPI*/
@@ -215,42 +212,6 @@ nComputeNodeSides = nSideIDs
 ALLOCATE(SideInfo_Shared(1:SIDEINFOSIZE+1,1:nSideIDs))
 SideInfo_Shared(1                :SIDEINFOSIZE_H5,1:nSideIDs) = SideInfo(:,:)
 SideInfo_Shared(SIDEINFOSIZE_H5+1:SIDEINFOSIZE+1 ,1:nSideIDs) = 0
-#endif /*USE_MPI*/
-
-! fill the SIDE_LOCALID. Basically, this array contains the 1:6 local sides of an element. ! If an element has hanging nodes (i.e.
-! has a big mortar side), the big side has negative index (-1,-2 or -3) and the next 2 (-2, -3) or 4 (-1) sides are the subsides.
-! Consequently, a hexahedral element can have more than 6 non-unique sides. If we find a small mortar side in the small element,
-! the SIDE_LOCALID points to the global ID of the big mortar side, indicated by negative sign
-DO iElem=FirstElemInd,LastElemInd
-  iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)
-  SideInfo_Shared(SIDE_ELEMID,iSide+1:ElemInfo_Shared(ELEM_LASTSIDEIND,iElem)) = iElem
-  sideCount = 0
-  nlocSides = ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)
-  DO iLocSide = 1,nlocSides
-    iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem) + iLocSide
-    ! Big mortar side
-    IF (MOD(SideInfo_Shared(SIDE_TYPE,iSide),10).GT.4) THEN
-      ! Check all sides on the small element side to find the small mortar side pointing back
-      NbElemID    = SideInfo_Shared(SIDE_NBELEMID,iSide)
-      nlocSidesNb = ElemInfo_Shared(ELEM_LASTSIDEIND,NbElemID) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,NbElemID)
-      DO jLocSide = 1,nlocSidesNb
-        NbSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,NbElemID) + jLocSide
-        IF (ABS(SideInfo_Shared(SIDE_ID,iSide)).EQ.ABS(SideInfo_Shared(SIDE_ID,NbSideID))) THEN
-          SideInfo_Shared(SIDE_LOCALID,iSide) = -NbSideID
-          EXIT
-        END IF
-      END DO
-    ! Regular side
-    ELSE
-      sideCount = sideCount + 1
-      SideInfo_Shared(SIDE_LOCALID,iSide) = sideCount
-    END IF
-  END DO
-END DO
-
-#if USE_MPI
-CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /*USE_MPI*/
 
 ALLOCATE(SideInfo_Shared_tmp(offsetSideID+1:offsetSideID+nSideIDs))
@@ -385,13 +346,33 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
 !===================================================================================================================================
 #if USE_MPI
+MPISharedSize = INT(3*2*nGlobalElems,MPI_ADDRESS_KIND)*MPI_DOUBLE
+CALL Allocate_Shared(MPISharedSize,(/3,2,nGlobalElems/),xiMinMax_Shared_Win,xiMinMax_Shared)
+CALL MPI_WIN_LOCK_ALL(0,xiMinMax_Shared_Win,IERROR)
+xiMinMax_Shared(:,:,offsetElem+1:offsetElem+nElems) = xiMinMax(:,:,:)
+MPISharedSize = INT(nGlobalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/nGlobalElems/),ElemToTree_Shared_Win,ElemToTree_Shared)
+CALL MPI_WIN_LOCK_ALL(0,ElemToTree_Shared_Win,IERROR)
+ElemToTree_Shared(offsetElem+1:offsetElem+nElems) = ElemToTree(:)
 ! allocate shared array for TreeCoords
 CALL MPI_ALLREDUCE(nTrees,nNonUniqueGlobalTrees,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,IERROR)
 MPISharedSize = INT((NGeoTree+1)**3*nNonUniqueGlobalTrees,MPI_ADDRESS_KIND)*MPI_DOUBLE
 CALL Allocate_Shared(MPISharedSize,(/3,nGeoTree+1,nGeoTree+1,nGeoTree+1,nNonUniqueGlobalTrees/),TreeCoords_Shared_Win,TreeCoords_Shared)
 CALL MPI_WIN_LOCK_ALL(0,TreeCoords_Shared_Win,IERROR)
 TreeCoords_Shared(:,:,:,:,offsetTree:offsetTree+nTrees) = TreeCoords(:,:,:,:,:)
+
+CALL MPI_WIN_SYNC(xiMinMax_Shared_Win,IERROR)
+CALL MPI_WIN_SYNC(ElemToTree_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(TreeCoords_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+#else
+nNonUniqueGlobalTrees = nTrees
+ALLOCATE(xiMinMax_Shared(3,2,nElems))
+xiMinMax_Shared(:,:,:) = xiMinMax(:,:,:)
+ALLOCATE(ElemToTree_Shared(nElems))
+ElemToTree_Shared(:) = ElemToTree(:)
+ALLOCATE(TreeCoords_Shared(3,nGeoTree+1,nGeoTree+1,nGeoTree+1,nNonUniqueGlobalTrees))
+TreeCoords_Shared(:,:,:,:,:) = TreeCoords(:,:,:,:,:)
 #endif  /*USE_MPI*/
 
 END SUBROUTINE ReadMeshTrees
@@ -415,8 +396,12 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+!INTEGER                        :: FirstElem,LastElem
 INTEGER                        :: FirstElemInd,LastElemInd
 INTEGER                        :: nSideIDs,offsetSideID
+INTEGER                        :: iElem,NbElemID
+INTEGER                        :: iSide,sideCount
+INTEGER                        :: iLocSide,jLocSide,nlocSides,nlocSidesNb,NbSideID
 #if USE_MPI
 INTEGER                        :: iProc
 INTEGER                        :: nNodeIDs,offsetNodeID
@@ -447,7 +432,7 @@ nSideIDs     = ElemInfo(ELEM_LASTSIDEIND,LastElemInd)-ElemInfo(ELEM_FIRSTSIDEIND
 #endif /*USE_MPI*/
 
 #if USE_MPI
-IF(myComputeNodeRank.EQ.0)THEN
+IF (myComputeNodeRank.EQ.0) THEN
   ! Arrays for the compute-node to communicate their offsets
   ALLOCATE(displsCN   (0:nLeaderGroupProcs-1))
   ALLOCATE(recvcountCN(0:nLeaderGroupProcs-1))
@@ -470,7 +455,7 @@ END IF
 offsetComputeNodeSide=offsetSideID
 CALL MPI_BCAST(offsetComputeNodeSide,1, MPI_INTEGER,0,MPI_COMM_SHARED,iERROR)
 
-IF(myComputeNodeRank.EQ.0)THEN
+IF (myComputeNodeRank.EQ.0) THEN
   ! Arrays for the compute node to hold the side offsets
   ALLOCATE(displsSide   (0:nLeaderGroupProcs-1))
   ALLOCATE(recvcountSide(0:nLeaderGroupProcs-1))
@@ -486,7 +471,7 @@ END IF
 offsetComputeNodeNode=offsetNodeID
 CALL MPI_BCAST(offsetComputeNodeNode,1, MPI_INTEGER,0,MPI_COMM_SHARED,iERROR)
 
-IF(myComputeNodeRank.EQ.0)THEN
+IF (myComputeNodeRank.EQ.0) THEN
   ! Arrays for the compute node to hold the node offsets
   ALLOCATE(displsNode(0:nLeaderGroupProcs-1))
   ALLOCATE(recvcountNode(0:nLeaderGroupProcs-1))
@@ -502,7 +487,7 @@ END IF
 offsetComputeNodeTree=offsetTree
 CALL MPI_BCAST(offsetComputeNodeTree,1, MPI_INTEGER,0,MPI_COMM_SHARED,iERROR)
 
-IF(myComputeNodeRank.EQ.0)THEN
+IF (myComputeNodeRank.EQ.0) THEN
   ! Arrays for the compute node to hold the node offsets
   ALLOCATE(displsTree(0:nLeaderGroupProcs-1))
   ALLOCATE(recvcountTree(0:nLeaderGroupProcs-1))
@@ -530,13 +515,69 @@ IF(myComputeNodeRank.EQ.0)THEN
         ,displsTree               ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,IERROR)
   END IF
 END IF
+
+! Ensure communication for determination of SIDE_LOCALID
+CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
+CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #endif  /*USE_MPI*/
+
+! fill the SIDE_LOCALID. Basically, this array contains the 1:6 local sides of an element. ! If an element has hanging nodes (i.e.
+! has a big mortar side), the big side has negative index (-1,-2 or -3) and the next 2 (-2, -3) or 4 (-1) sides are the subsides.
+! Consequently, a hexahedral element can have more than 6 non-unique sides. If we find a small mortar side in the small element,
+! the SIDE_LOCALID points to the global ID of the big mortar side, indicated by negative sign
+!
+! This step has to be done after ElemInfo and SideInfo are communicated as some side might be missing on the current node otherwise
+!#if USE_MPI
+!firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
+!lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
+!#else
+!firstElem = 1
+!lastElem  = nElems
+!#endif
+
+!DO iElem = FirstElem,LastElem
+DO iElem = FirstElemInd,LastElemInd
+  iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)
+  SideInfo_Shared(SIDE_ELEMID,iSide+1:ElemInfo_Shared(ELEM_LASTSIDEIND,iElem)) = iElem
+  sideCount = 0
+  nlocSides = ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)
+  DO iLocSide = 1,nlocSides
+    iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem) + iLocSide
+    ! Big mortar side
+    IF (SideInfo_Shared(SIDE_TYPE,iSide).GT.100) THEN
+      ! Check all sides on the small element side to find the small mortar side pointing back
+      NbElemID    = SideInfo_Shared(SIDE_NBELEMID,iSide)
+      nlocSidesNb = ElemInfo_Shared(ELEM_LASTSIDEIND,NbElemID) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,NbElemID)
+      DO jLocSide = 1,nlocSidesNb
+        NbSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,NbElemID) + jLocSide
+        IF (ABS(SideInfo_Shared(SIDE_ID,iSide)).EQ.ABS(SideInfo_Shared(SIDE_ID,NbSideID))) THEN
+          SideInfo_Shared(SIDE_LOCALID,iSide) = -NbSideID
+          EXIT
+        END IF
+      END DO
+    ! Regular side
+    ELSE
+      sideCount = sideCount + 1
+      SideInfo_Shared(SIDE_LOCALID,iSide) = sideCount
+    END IF
+  END DO
+END DO
 
 ElemInfo_Shared(ELEM_RANK,     offsetElem+1  :offsetElem+nElems)     = ElemInfo_Shared_tmp
 SideInfo_Shared(SIDEINFOSIZE+1,offsetSideID+1:offsetSideID+nSideIDs) = SideInfo_Shared_tmp
 DEALLOCATE(ElemInfo_Shared_tmp,SideInfo_Shared_tmp)
 
 #if USE_MPI
+! Perform second communication step to distribute updated SIDE_LOCALID
+CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+
+IF (myComputeNodeRank.EQ.0) THEN
+  CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,SideInfo_Shared,(SIDEINFOSIZE+1)   *recvcountSide  &
+      ,(SIDEINFOSIZE+1)*displsSide,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
+END IF
+
 ! final sync of all mesh shared arrays
 CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)

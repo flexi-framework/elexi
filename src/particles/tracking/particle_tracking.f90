@@ -136,7 +136,7 @@ DO i = 1,PDM%ParticleVecLength
       !     triangle (ParticleInsideQuad3D)
       oldElemIsMortar = .FALSE.
       CALL ParticleInsideQuad3D(PartState(1:3,i),ElemID,InElementCheck,det)
-      !---- If it is, set new ElementNumber = lement and LocalizeOn = .FALSE. ->PartisDone
+      !---- If it is, set new ElementNumber = ElemID and LocalizeOn = .FALSE. ->PartisDone
       IF (InElementCheck) THEN
         ! If particle is inside the given ElemID, set new PEM%Element and stop tracking this particle ->PartisDone
         PEM%Element(i) = ElemID
@@ -1174,6 +1174,8 @@ DO iPart=1,PDM%ParticleVecLength
 !    ELSE IF(PEM%LastElement(iPart).LE.nComputeNodeTotalElems)THEN
 !      CALL LBElemPauseTime(PEM%LastElement(iPart),tLBStart)
     END IF
+    ! TODO: Check this call!
+    CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
 
     ! relocate particle
@@ -1492,12 +1494,10 @@ END IF
 
 PartTrajectory=PartTrajectory/lengthPartTrajectory
 
-! Init variables. Double checkif lastpartpos is close to side and first intersection is found for this position (negative alpha)
+! Init variables. Double check if LastPartPos is close to side and first intersection is found for this position (negative alpha)
 PartisMoved = .FALSE.
 DoTracing   = .TRUE.
 lengthPartTrajectory0 = MAX(lengthPartTrajectory0,lengthPartTrajectory)
-
-! init variables for double check if LastPartPos is close to side and first intersection is found for this position (negative alpha)
 doubleCheck = .FALSE.
 alphaOld    = -1.0
 

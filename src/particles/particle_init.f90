@@ -113,7 +113,7 @@ CALL prms%CreateIntOption(          'Part-maxParticleNumber'   , 'Max number of 
                                                                , '1')
 CALL prms%CreateIntOption(          'Part-NumberOfRandomSeeds' , 'Number of random seeds for particle random number generator'     &
                                                                , '0')
-CALL prms%CreateIntOption(          'Particles-RandomSeed[$]'  , 'Seed [$] for Random Number Generator'                            &
+CALL prms%CreateIntOption(          'Part-RandomSeed[$]'       , 'Seed [$] for Random Number Generator'                            &
                                                                , '1'        , numberedmulti=.TRUE.)
 
 ! Timedisc
@@ -655,7 +655,7 @@ ELSE IF(nRandomSeeds.GT.0) THEN
 
   DO iSeed=1,MIN(SeedSize,nRandomSeeds)
     WRITE(UNIT=hilf,FMT='(I0)') iSeed
-    Seeds(iSeed)= GETINT('Particles-RandomSeed'//TRIM(hilf))
+    Seeds(iSeed)= GETINT('Part-RandomSeed'//TRIM(hilf))
   END DO
 
   IF (ALL(Seeds(:).EQ.0)) CALL ABORT(__STAMP__,'Not all seeds can be set to zero ')
@@ -1390,7 +1390,7 @@ USE MOD_Particle_Vars
 !!--- Read Manual Time Step
 !useManualTimeStep = .FALSE.
 !!> ManualTimeStep_opt only gets passed when running Posti. InitTimedisc was not called, so get information here
-!IF (.NOT.PRESENT(ManualTimeStep_opt)) ManualTimeStep    = GETREAL('Particles-ManualTimeStep', '0.0')
+!IF (.NOT.PRESENT(ManualTimeStep_opt)) ManualTimeStep    = GETREAL('Part-ManualTimeStep', '0.0')
 !IF (ManualTimeStep.GT.0.0)            useManualTimeStep = .TRUE.
 
 ! Time delay before initial particle inserting

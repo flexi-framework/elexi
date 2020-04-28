@@ -90,7 +90,7 @@ CALL prms%CreateIntOption(     'LoadBalanceSample'            ,  "Define number 
 CALL prms%CreateRealOption(    'Load-DeviationThreshold'      ,  "Define threshold for dynamic load-balancing.\n"                //&
                                                                  "Restart performed if (Maxweight-Targetweight)/Targetweight >"  //&
                                                                  " defined value.",                                        '0.10')
-CALL prms%CreateRealOption(    'Particles-MPIWeight'          ,  "Define weight of particles for elem loads.",             '0.02')
+CALL prms%CreateRealOption(    'Part-MPIWeight'               ,  "Define weight of particles for elem loads.",             '0.02')
 CALL prms%CreateIntOption(     'WeightDistributionMethod'     ,  "Method for distributing the elem to procs.\n"                  //&
                                                                  "DEFAULT: 1 if Elemtime exits else -1\n"                        //&
                                                                  "-1: elements are equally distributed\n"                        //&
@@ -158,7 +158,7 @@ END IF
 
 IF (DoLoadBalance.AND.(.NOT.LoadBalanceTimeBased)) THEN
   ! Read particle MPI weight
-  ParticleMPIWeight   = GETREAL('Particles-MPIWeight','0.02')
+  ParticleMPIWeight   = GETREAL('Part-MPIWeight','0.02')
   LoadBalanceSample   = 0.
   IF (ParticleMPIWeight.LT.0.0) CALL abort(__STAMP__,' ERROR: Particle weight cannot be negative!')
 

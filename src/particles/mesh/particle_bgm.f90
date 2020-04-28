@@ -404,7 +404,6 @@ ELSE
       ! Only add element to BGM if inside halo region on node.
       ! THIS IS WRONG. WE ARE WORKING ON THE CN HALO REGION. IF WE OMIT THE
       ! ELEMENT HERE, WE LOOSE IT. IF WE KEEP IT, WE BREAK AT 589. YOUR CALL.
-!      print *, ElemID,BoundsOfElem_Shared(1,1,iElem),GEO%xminglob
       BGMCellXmin = MAX(ElemToBGM_Shared(1,ElemID),BGMimin)
       BGMCellXmax = MIN(ElemToBGM_Shared(2,ElemID),BGMimax)
       BGMCellYmin = MAX(ElemToBGM_Shared(3,ElemID),BGMjmin)
@@ -887,6 +886,8 @@ DO iElem = firstElem,lastElem
       CASE(1)
         ! check the only possible periodic vector
         iPeriodicVector = FINDLOC(ABS(nPeriodicVectorsPerElem(:,iPeriodicElem)),1,1)
+        IF (iPeriodicVector.EQ.-1) &
+          CALL ABORT(__STAMP__,'Error determining periodic vector!')
         ! check if element is within halo_eps of periodically displaced element
         IF (VECNORM( BoundsOfElemCenter(1:3)                                                                               &
                    + GEO%PeriodicVectors(1:3,iPeriodicVector) * nPeriodicVectorsPerElem(iPeriodicVector,iPeriodicElem)     &

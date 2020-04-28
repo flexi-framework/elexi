@@ -74,8 +74,10 @@ CALL prms%CreateLogicalOption(  'DoErosion',                      'Flag, if the 
 CALL prms%CreateLogicalOption(  'Part-WriteMacroSurfaceValues',   'Set [T] to activate iteration dependant sampling and h5 output'//&
                                                                   ' surfaces.',                                                    &
                                                                   '.FALSE.')
-CALL prms%CreateIntOption(      'Particles-nSurfSample',          'Define polynomial degree of particle BC sampling. Default:'   //&
+CALL prms%CreateIntOption(      'Part-nSurfSample',               'Define polynomial degree of particle BC sampling. Default:'   //&
                                                                   ' NGeo', '1')
+CALL prms%CreateStringOption(   'Part-SurfSampleBC',              'Define additional surfaces with impact tracking'                &
+                                                                  , multiple=.TRUE.)
 
 END SUBROUTINE DefineParametersParticleBoundarySampling
 
@@ -178,7 +180,7 @@ IF (doParticleErosionTrack) WriteMacroSurfaceValues = .TRUE.
 
 ! standard is sampling on NGeo
 WRITE(UNIT=tmpStr,FMT='(I0)') NGeo
-nSurfSample             = GETINT    ('Particles-nSurfSample',TRIM(tmpStr))
+nSurfSample             = GETINT    ('Part-nSurfSample',TRIM(tmpStr))
 
 IF((nSurfSample.GT.1).AND.(TriaTracking)) &
   CALL abort(__STAMP__,'nSurfSample cannot be >1 if TriaTracking=T')
@@ -213,10 +215,10 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /* USE_MPI*/
 
 ! create boundary name mapping for surfaces SurfaceBC number mapping
-nSurfSampleBC  = CountOption('Particles-SurfSampleBC')
+nSurfSampleBC  = CountOption('Part-SurfSampleBC')
 ALLOCATE(SurfSampleBCs(nSurfSampleBC))
 DO iSurfBC=1,nSurfSampleBC
-  SurfSampleBCs(iSurfBC) = TRIM(GETSTR('Particles-SurfSampleBC'))
+  SurfSampleBCs(iSurfBC) = TRIM(GETSTR('Part-SurfSampleBC'))
 END DO
 
 ! compare BCs against requested BCs

@@ -192,7 +192,7 @@ USE MOD_Particle_Mesh_Vars,    ONLY: ElemCurved,wBaryCL_NGeo1,XiCL_NGeo1
 USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
-USE MOD_Particle_Mesh_Vars,    ONLY: dXCL_NGeo,XCL_NGeo
+USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo,dXCL_NGeo
 #endif /*USE_MPI*/
 #if USE_RW
 USE MOD_Equation_Vars,         ONLY: nVarTurb
@@ -220,7 +220,6 @@ REAL                      :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
 REAL, PARAMETER           :: EPSONE=1.00000001
 !===================================================================================================================================
 
-!print *, ElemID,GetCNElemID(ElemID)
 #if USE_MPI
 ASSOCIATE(ElemID     => GetCNElemID(ElemID) &
          , XCL_NGeo  =>  XCL_NGeo_Shared    &
@@ -401,11 +400,17 @@ DO WHILE((deltaXi2.GT.RefMappingEps).AND.(NewtonIter.LT.100))
 
   ! Compute inverse of Jacobian
   sdetJac=getDet(Jac)
-  IF(sdetJac.GT.0.) THEN
+  IF (sdetJac.GT.0.) THEN
    sdetJac=1./sdetJac
   ELSE !shit
    ! Newton has not converged !?!?
-   IF(Mode.EQ.1)THEN
+   IF (Mode.EQ.1) THEN
+    IPWRITE(UNIT_stdOut,*) ' Particle not inside of element!'
+    IPWRITE(UNIT_stdOut,*) ' sdetJac     ', sdetJac
+    IPWRITE(UNIT_stdOut,*) ' Newton-Iter ', NewtonIter
+    IPWRITE(UNIT_stdOut,*) ' xi          ', xi(1:3)
+    IPWRITE(UNIT_stdOut,*) ' PartPos     ', X_in
+    IPWRITE(UNIT_stdOut,*) ' ElemID      ', ElemID
     CALL ABORT(__STAMP__, 'Newton in FindXiForPartPos singular. iter,sdetJac',NewtonIter,sDetJac)
    ELSE
      Xi(1)=HUGE(1.0)

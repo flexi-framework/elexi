@@ -110,15 +110,12 @@ EP_MaxBufferSize = EP_MaxMemory*131072/EPDataSize    != size in bytes/(real*EPDa
 
 IF(nSurfTotalSides.NE.0) THEN
   EP_onProc        = .TRUE.
-  nEP_Procs        = 1
 END IF
 
 ALLOCATE(EP_Data(EPDataSize,EP_MaxBufferSize))
 
 #if USE_MPI
 CALL InitEPCommunicator()
-CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,nEP_Procs,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
 
 EP_Impacts = 0
@@ -127,7 +124,7 @@ EP_Impacts = 0
 EP_maxBufferSize_glob   = EP_MaxBufferSize*nEP_Procs
 
 ErosionPointsInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A,I12,A,I12,A)') ' Buffer allocatated for max. ',EP_maxBufferSize_glob, ' impacts ( ',     &
+SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' | Buffer allocatated for max. ',EP_maxBufferSize_glob, ' impacts (',     &
                                                                       EP_MaxBufferSize,      ' impacts/proc)'
 SWRITE(UNIT_stdOut,'(A)')' INIT EROSIONPOINTS DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -147,42 +144,24 @@ USE MOD_ErosionPoints_Vars   ,ONLY: EP_onProc,myEPrank,EP_COMM,nEP_Procs
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: color,iProc
-INTEGER                   :: noEPrank,EPrank
-LOGICAL                   :: hasEP
+INTEGER                   :: color
 !==================================================================================================================================
 color=MPI_UNDEFINED
 IF(EP_onProc) color=2
 
-! create ranks for EP communicator
-IF(MPIRoot) THEN
-  EPrank=-1
-  noEPrank=-1
-  myEPRank=0
-  IF(EP_onProc) THEN
-    EPrank=0
-  ELSE
-    noEPrank=0
-  END IF
-  DO iProc=1,nProcessors-1
-    CALL MPI_RECV(hasEP,1,MPI_LOGICAL,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
-    IF(hasEP) THEN
-      EPrank=EPrank+1
-      CALL MPI_SEND(EPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_FLEXI,iError)
-    ELSE
-      noEPrank=noEPrank+1
-      CALL MPI_SEND(noEPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_FLEXI,iError)
-    END IF
-  END DO
-ELSE
-    CALL MPI_SEND(EP_onProc,1,MPI_LOGICAL,0,0,MPI_COMM_FLEXI,iError)
-    CALL MPI_RECV(myEPrank,1,MPI_INTEGER,0,0,MPI_COMM_FLEXI,MPIstatus,iError)
+! create new EP communicator for EP communication. Pass MPI_INFO_NULL as rank to follow the original ordering
+CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,MPI_INFO_NULL,EP_COMM,iError)
+
+! Find my rank on the shared communicator, comm size and proc name
+IF(EP_onProc) THEN
+  CALL MPI_COMM_RANK(EP_COMM, myEPrank ,iError)
+  CALL MPI_COMM_SIZE(EP_COMM, nEP_Procs,iError)
+
+  IF(myEPrank.EQ.0) &
+    WRITE(UNIT_StdOut,'(A,I0,A)') ' Starting impact tracking communications between ', nEP_Procs, ' procs'
 END IF
 
-! create new EP communicator for EP output
-CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI, color, myEPrank, EP_COMM,iError)
-IF(EP_onProc) CALL MPI_COMM_SIZE(EP_COMM, nEP_Procs,iError)
-IF(myEPrank.EQ.0 .AND. EP_onProc) WRITE(*,*) 'EP COMM:',nEP_Procs,'procs'
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
 
 END SUBROUTINE InitEPCommunicator
 #endif /*USE_MPI*/

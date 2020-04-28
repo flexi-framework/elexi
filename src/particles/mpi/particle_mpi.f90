@@ -281,8 +281,6 @@ IF(PRESENT(DoParticle_IN)) doPartInExists=.TRUE.
 
 ! 1) get number of send particles
 !--- Count number of particles in cells in the halo region and add them to the message
-!--- CAUTION: using local indices for halo elem -> proc association with PartHaloElemToProc. PartMPI%Neighbor contains the inverse
-!--- mapping
 PartMPIExchange%nPartsSend=0
 PartTargetProc=-1
 DO iPart=1,PDM%ParticleVecLength

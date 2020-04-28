@@ -158,7 +158,7 @@ CASE(2) !PartBound%ReflectiveBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(3) !PartBound%PeriodicBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
-  CALL PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,ElemID) ! opt_reflected is peri-moved
+  CALL PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,iPart,SideID,ElemID) ! opt_reflected is peri-moved
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(6) !PartBound%MPINeighborhoodBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -641,7 +641,7 @@ END IF
 END SUBROUTINE DiffuseReflection
 
 
-SUBROUTINE PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,ElemID)
+SUBROUTINE PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,PartID,SideID,ElemID)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Computes the periodic shift in 3D
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -661,7 +661,6 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 REAL,INTENT(INOUT)                :: PartTrajectory(1:3), lengthPartTrajectory, alpha
-REAL,INTENT(IN)                   :: xi,eta
 INTEGER,INTENT(IN)                :: PartID,SideID
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES

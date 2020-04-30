@@ -147,7 +147,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
       ELSE IF(STRICMP(datasetNames(i), "PartData")) THEN
         CALL InitPartState(datasetNames(i),PD)
         CYCLE
-      ELSE IF(STRICMP(datasetNames(i), "ErosionData")) THEN
+      ELSE IF(STRICMP(datasetNames(i), "ImpactData")) THEN
         CALL InitPartState(datasetNames(i),PDE)
         CYCLE
 #endif
@@ -242,7 +242,6 @@ USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
 USE MOD_StringTools        ,ONLY: INTTOSTR
-USE MOD_Restart_Vars       ,ONLY: RestartMean
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
@@ -645,7 +644,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL ReadPartStateFile(statefile,DataArray,PD)
   END IF
   IF (changedStateFile.OR.PDE%changedPartVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
-    DataArray='ErosionData'
+    DataArray='ImpactData'
     CALL ReadPartStateFile(statefile,DataArray,PDE)
   END IF
 #endif

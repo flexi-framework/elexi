@@ -66,27 +66,27 @@ INTEGER,INTENT(IN),OPTIONAL      :: reflCount_opt
 INTEGER                  :: COUNTER, EP_restart, EP_considered
 INTEGER                  :: i, EP_glob, ErosionDim
 REAL,ALLOCATABLE         :: PartData(:,:)
-LOGICAL                  :: ErosionDataExists
+LOGICAL                  :: ImpactDataExists
 !===================================================================================================================================
 
 EP_Impacts = 0
 COUNTER    = 0
 
-! Open the restart file and search for erosionData
+! Open the restart file and search for ImpactData
 CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL DatasetExists(File_ID,'ErosionData',ErosionDataExists)
+CALL DatasetExists(File_ID,'ImpactData',ImpactDataExists)
 
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
 
-IF(ErosionDataExists) THEN
-    CALL GetDataSize(File_ID,'ErosionData',ErosionDim,HSize)
+IF(ImpactDataExists) THEN
+    CALL GetDataSize(File_ID,'ImpactData',ErosionDim,HSize)
 !    CHECKSAFEINT(HSize(1),4)
     EP_glob    = HSize(1)
 !    SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Number of impacts',' | ',EP_glob
     
     ! We lost the impact <-> proc association, so fill the entire array
     ALLOCATE(PartData(1:EP_glob,1:EPDataSize))
-    CALL ReadArray(ArrayName='ErosionData', rank=2,&
+    CALL ReadArray(ArrayName='ImpactData', rank=2,&
                  nVal=      (/EP_glob  ,EPDataSize/),&
                  offset_in  = 0,&
                  offset_dim = 1,&

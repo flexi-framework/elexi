@@ -130,7 +130,7 @@ SDEALLOCATE(ListIn%mapAllVarsToVisuVars)
 
 IF(datasetNames.EQ.'PartData')THEN
   CALL GetVarNames("VarNamesParticles",varnames,VarNamesExist)
-ELSE IF(datasetNames.EQ.'ErosionData')THEN
+ELSE IF(datasetNames.EQ.'ImpactData')THEN
   CALL GetVarNames("VarNamesErosion",varnames,VarNamesExist)
 END IF
 
@@ -293,9 +293,6 @@ SUBROUTINE PartitionPartMPI(ListIn)
 USE MOD_Globals
 USE MOD_Visu_Vars                ,ONLY: tVisuParticle
 USE MOD_Particle_MPI_Vars        ,ONLY: PartitionPartIsDone
-#if USE_MPI
-USE MOD_Particle_MPI_Vars        ,ONLY: nPartsMPI, offsetPartMPI
-#endif /* MPI */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -306,8 +303,10 @@ TYPE(tVisuParticle),INTENT(INOUT)       :: ListIn
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
-INTEGER                                 :: iProc, iPart
-#endif /* MPI */
+INTEGER,ALLOCATABLE                     :: offsetPartMPI(:)
+INTEGER,ALLOCATABLE                     :: nPartsMPI(:)
+INTEGER                                 :: iProc,iPart
+#endif /*USE_MPI*/
 !==================================================================================================================================
 #if USE_MPI
 ALLOCATE(offsetPartMPI(0:nProcessors),nPartsMPI(0:nProcessors-1))

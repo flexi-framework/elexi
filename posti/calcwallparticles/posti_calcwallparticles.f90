@@ -82,7 +82,7 @@ REAL                    :: Time                                                 
 REAL                    :: ManualTimeStep_opt                                                     !< Pass dt to main code
 INTEGER                 :: i,iBound,iVal,iSide,p,q
 INTEGER                 :: boundaryNum
-LOGICAL                 :: ErosionDataExists
+LOGICAL                 :: ImpactDataExists
 CHARACTER(LEN=255)      :: remap_opt_name,format_remap_opt
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
@@ -223,9 +223,9 @@ IF(postiAvg) THEN
             DoRestart = .TRUE.
             ! Read in parameters of restart solution
             CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-            CALL DatasetExists(File_ID,'RestartData',ErosionDataExists)
+            CALL DatasetExists(File_ID,'RestartData',ImpactDataExists)
 
-            IF (.NOT.ErosionDataExists) THEN
+            IF (.NOT.ImpactDataExists) THEN
                 SWRITE(UNIT_StdOut,'(A)')'Not an erosion surfState. Skipping!'
                 CYCLE
             ELSE
@@ -256,9 +256,9 @@ IF(surfAvg) THEN
             DoRestart = .TRUE.
             ! Read in parameters of restart solution
             CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-            CALL DatasetExists(File_ID,'RestartData',ErosionDataExists)
+            CALL DatasetExists(File_ID,'RestartData',ImpactDataExists)
 
-            IF (.NOT.ErosionDataExists) THEN
+            IF (.NOT.ImpactDataExists) THEN
                 SWRITE(UNIT_StdOut,'(A)')'Not an erosion surfState. Skipping!'
                 CYCLE
             ELSE

@@ -75,6 +75,7 @@ CHE_particle:
     <<: *defaults_gnu
     stage: reggie_particle
     script:
+        - cd build_gnu
         - python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/CHE -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------

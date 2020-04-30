@@ -12,6 +12,7 @@ before_script:
 stages:
   - build
   - reggie_checkin
+  - reggie_particle
   - reggie_nightly
   - reggie_weekly
   - deploy
@@ -67,6 +68,14 @@ gnu:
     - cd build_gnu
     - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
 
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+# Stage "reggie_particle": Run basic particle regression checks
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+CHE_particle:
+    <<: *defaults_gnu
+    stage: reggie_particle
+    script:
+        - python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/CHE -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
@@ -74,6 +83,7 @@ gnu:
 #                         - h-p-convtests
 #                         - parabolic testcases
 #                         - riemann solver tests
+#                         - particle mortar tests
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 gnu_build_all:
   <<: *defaults_gnu
@@ -105,11 +115,11 @@ gnu_riemann:
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/riemann -j 6; fi
 
-gnu_particle:
+NIG_particle:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle -j 6; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/NIG -j 6; fi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_weekly": Build and run more complex tests, basically complete simulatons
@@ -137,6 +147,12 @@ gnu_channelRANS:
   stage: reggie_weekly
   script:
     - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6; fi
+
+WEK_particle:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/WEK -j 6; fi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf

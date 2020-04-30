@@ -100,7 +100,7 @@ INTEGER                         :: color
 !==================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT MPI SHARED COMMUNICATION ...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT MPI SHARED COMMUNICATION...'
 
 ! Save the global number of procs
 nProcessors_Global = nProcessors

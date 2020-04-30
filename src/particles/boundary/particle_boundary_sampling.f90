@@ -70,7 +70,9 @@ USE MOD_ReadInTools             ,ONLY: PRMS
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Particle Boundary Sampling")
-CALL prms%CreateLogicalOption(  'DoErosion',                      'Flag, if the current calculation requires erosion tracking.')
+CALL prms%CreateLogicalOption(  'Part-ImpactSampling',            'Set [T] to activate iteration dependant sampling and h5 output'//&
+                                                                  ' surfaces.',                                                    &
+                                                                  '.FALSE.')
 CALL prms%CreateLogicalOption(  'Part-WriteMacroSurfaceValues',   'Set [T] to activate iteration dependant sampling and h5 output'//&
                                                                   ' surfaces.',                                                    &
                                                                   '.FALSE.')
@@ -105,7 +107,7 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSideArea,SurfSampSize
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSampleBCs
-USE MOD_Particle_Boundary_Vars  ,ONLY: nErosionVars,doParticleErosionTrack,WriteMacroSurfaceValues
+USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars,doParticleImpactSample,WriteMacroSurfaceValues
 USE MOD_Particle_Mesh_Vars      ,ONLY: offsetComputeNodeElem,nComputeNodeElems
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemSideNodeID_Shared
@@ -168,15 +170,23 @@ INTEGER                                :: sendbuf,recvbuf
 !===================================================================================================================================
 
 ! Get input parameters
-SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING ...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING...'
 
 ! Output of macroscopic surface values
 !> Double Variable because we follow both FLEXI and PICLas style
-doParticleErosionTrack  = GETLOGICAL('DoErosion','F')
-WriteMacroSurfaceValues = GETLOGICAL('Part-WriteMacroSurfaceValues','.FALSE.')
+doParticleImpactSample   = GETLOGICAL('Part-ImpactSampling','F')
+WriteMacroSurfaceValues  = GETLOGICAL('Part-WriteMacroSurfaceValues','.FALSE.')
+!
+!! Switch surface macro values flag to .TRUE. for erosion tracking
+IF (doParticleImpactSample.OR.WriteMacroSurfaceValues) THEN
+  WriteMacroSurfaceValues = .TRUE.
+  doParticleImpactSample  = .TRUE.
+END IF
 
-! Switch surface macro values flag to .TRUE. for erosion tracking
-IF (doParticleErosionTrack) WriteMacroSurfaceValues = .TRUE.
+IF (.NOT.WriteMacroSurfaceValues) THEN
+  SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
+  RETURN
+END IF
 
 ! standard is sampling on NGeo
 WRITE(UNIT=tmpStr,FMT='(I0)') NGeo
@@ -418,11 +428,11 @@ SurfOnNode = .FALSE.
 IF (nComputeNodeSurfTotalSides.GT.0) SurfOnNode = .TRUE.
 
 ! Set size of erosion sampling array
-nErosionVars        = 17
+nImpactVars        = 17
 IF (nSpecies.EQ.1) THEN
-    SurfSampSize   = nErosionVars
+    SurfSampSize   = nImpactVars
 ELSE
-    SurfSampSize   = nErosionVars*(nSpecies+1)
+    SurfSampSize   = nImpactVars*(nSpecies+1)
 END IF
 
 !> Leader communication
@@ -611,7 +621,7 @@ SUBROUTINE SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID,alpha)
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 !USE MOD_ErosionPoints,          ONLY:RecordErosionPoint
-!USE MOD_ErosionPoints_Vars,     ONLY:EP_inUse
+!USE MOD_ErosionPoints_Vars,     ONLY:doParticleImpactTrack
 !USE MOD_Mesh_Vars,              ONLY:BC
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars
@@ -667,7 +677,7 @@ IF (WriteMacroSurfaceValues) THEN
                                      ,PartFaceAngle)
 END IF
 
-!IF (EP_inUse) CALL RecordErosionPoint(BCSideID        = BC(SideID),                       &
+!IF (doParticleImpactTrack) CALL RecordErosionPoint(BCSideID        = BC(SideID),                       &
 !                                      PartID          = PartID,                           &
 !                                      PartFaceAngle   = PartFaceAngle,                    &
 !                                      v_old           = v_old,                            &
@@ -703,7 +713,7 @@ INTEGER                           :: nShift                         ! Shift amou
 REAL                              :: v_magnitude
 REAL                              :: e_kin
 !===================================================================================================================================
-nShift        = PartSpecies(PartID) * nErosionVars
+nShift        = PartSpecies(PartID) * nImpactVars
 
 !===================================================================================================================================
 ! SAMP WALL
@@ -920,7 +930,7 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: remap_opt       ! routine was called fro
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)                  :: FileName,FileString
 CHARACTER(LEN=255)                  :: H5_Name
-LOGICAL                             :: ErosionDataExists
+LOGICAL                             :: ImpactDataExists
 INTEGER                             :: RestartVarCount,NRestartFile
 REAL,ALLOCATABLE                    :: RestartArray(:,:,:,:)
 !===================================================================================================================================
@@ -931,7 +941,7 @@ IF (.NOT.SurfOnNode) RETURN
 
 ! surface sampling is not restarted if not required in current run
 IF(.NOT.WriteMacroSurfaceValues) THEN
-    ErosionRestart = .FALSE.
+    ImpactRestart = .FALSE.
     RETURN
 END IF
 
@@ -941,16 +951,16 @@ IF (myComputeNodeRank.EQ.0) THEN
 
   ! Get number of required erosion vars
   IF (nSpecies.EQ.1) THEN
-      RestartVarCount =  nErosionVars
+      RestartVarCount =  nImpactVars
   ELSE
-      RestartVarCount = (nErosionVars*(nSpecies+1))
+      RestartVarCount = (nImpactVars*(nSpecies+1))
   END IF
 
   ! Allocate array for restart on ALL procs
   IF (nSpecies.EQ.1) THEN
-    ALLOCATE(RestartArray (nErosionVars              ,1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides))
+    ALLOCATE(RestartArray (nImpactVars              ,1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides))
   ELSE
-    ALLOCATE(RestartArray((nErosionVars)*(nSpecies+1),1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides))
+    ALLOCATE(RestartArray((nImpactVars)*(nSpecies+1),1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides))
   END IF
   RestartArray = 0.
 
@@ -958,7 +968,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   IF (PRESENT(remap_opt)) THEN
       FileString=remap_opt
   ELSE
-      FileName=TIMESTAMP(TRIM(ProjectName)//'_ErosionSurfState',RestartTime)
+      FileName=TIMESTAMP(TRIM(ProjectName)//'_SurfState',RestartTime)
       FileString=TRIM(FileName)//'.h5'
   END IF
 #if USE_MPI
@@ -972,17 +982,17 @@ IF ((mySurfRank.EQ.0).AND..NOT.FILEEXISTS(FileString)) THEN
   WRITE(UNIT_StdOut,'(132("-"))')
 ELSE
   ! Set flag to take restart time into account
-  ErosionRestart = .TRUE.
+  ImpactRestart = .TRUE.
 END IF
 
 ! Only surf root knows about this so far, first inform the other surf leaders. They inform every proc
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) THEN
-  CALL MPI_BCAST(ErosionRestart,1,MPI_LOGICAL,0,MPI_COMM_LEADERS_SURF,iError)
+  CALL MPI_BCAST(ImpactRestart,1,MPI_LOGICAL,0,MPI_COMM_LEADERS_SURF,iError)
 END IF
-CALL MPI_BCAST(ErosionRestart,1,MPI_LOGICAL,0,MPI_COMM_SHARED      ,iError)
+CALL MPI_BCAST(ImpactRestart,1,MPI_LOGICAL,0,MPI_COMM_SHARED      ,iError)
 #endif
-IF (.NOT.ErosionRestart) RETURN
+IF (.NOT.ImpactRestart) RETURN
 
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) THEN
@@ -992,9 +1002,9 @@ IF (myComputeNodeRank.EQ.0) THEN
 #endif /*USE_MPI*/
 
   ! Check if erosion file has restart data
-  CALL DatasetExists(File_ID,'RestartData',ErosionDataExists)
+  CALL DatasetExists(File_ID,'RestartData',ImpactDataExists)
 
-  IF (ErosionDataExists) THEN
+  IF (ImpactDataExists) THEN
     ! Check if size of restart array is correct
     CALL ReadAttribute(File_ID,'NRestart',1,IntScalar=NRestartFile)
     IF (NRestartFile.NE.RestartVarCount) THEN
@@ -1003,7 +1013,7 @@ IF (myComputeNodeRank.EQ.0) THEN
         WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING EROSION TRACKING FROM HDF5 FILE DONE'
         WRITE(UNIT_StdOut,'(132("-"))')
       END IF
-      ErosionRestart = .FALSE.
+      ImpactRestart = .FALSE.
       CALL CloseDataFile()
     END IF
   ELSE
@@ -1012,7 +1022,7 @@ IF (myComputeNodeRank.EQ.0) THEN
       WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING EROSION TRACKING FROM HDF5 FILE DONE'
       WRITE(UNIT_StdOut,'(132("-"))')
     END IF
-    ErosionRestart = .FALSE.
+    ImpactRestart = .FALSE.
     CALL CloseDataFile()
   END IF
 #if USE_MPI
@@ -1021,9 +1031,9 @@ END IF
 
 ! Only surf leader knows about this so far, inform other procs
 #if USE_MPI
-CALL MPI_BCAST(ErosionRestart,1,MPI_LOGICAL,0,MPI_COMM_SHARED      ,iError)
+CALL MPI_BCAST(ImpactRestart,1,MPI_LOGICAL,0,MPI_COMM_SHARED      ,iError)
 #endif
-IF (.NOT.ErosionRestart) RETURN
+IF (.NOT.ImpactRestart) RETURN
 
 ! Dataset is valid and still open on node roots
 #if USE_MPI
@@ -1132,9 +1142,9 @@ END IF
 
 ! Allocate and fill output array
 IF (nSpecies.EQ.1) THEN
-    OutputVarCount = nErosionVars
+    OutputVarCount = nImpactVars
 ELSE
-    OutputVarCount = (nErosionVars*(nSpecies+1))
+    OutputVarCount = (nImpactVars*(nSpecies+1))
 END IF
 ALLOCATE(OutputArray (OutputVarCount,1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides))
 OutputArray(:,:,:,1:nComputeNodeSurfSides) = SampWallState_Shared(:,:,:,1:nComputeNodeSurfSides)
@@ -1142,15 +1152,15 @@ OutputArray(:,:,:,1:nComputeNodeSurfSides) = SampWallState_Shared(:,:,:,1:nCompu
 IF (PRESENT(remap_opt)) THEN
   FileName=TIMESTAMP(TRIM(ProjectName)//remap_opt,OutputTime)
 ELSE
-  FileName=TIMESTAMP(TRIM(ProjectName)//'_ErosionSurfState',OutputTime)
+  FileName=TIMESTAMP(TRIM(ProjectName)//'_SurfState',OutputTime)
 END IF
 FileString=TRIM(FileName)//'.h5'
 
 ! Create dataset attribute "SurfVarNames"
 IF (nSpecies.EQ.1) THEN
-    nVar2D = nErosionVars - 1
+    nVar2D = nImpactVars - 1
 ELSE
-    nVar2D = (nErosionVars - 1) * (nSpecies+1)
+    nVar2D = (nImpactVars - 1) * (nSpecies+1)
 END IF
 nVar2D_Spec=1
 nVar2D_Total = nVar2D + nVar2D_Spec*nSpecies
@@ -1203,7 +1213,7 @@ IF (mySurfRank.EQ.0) THEN
   IF (nSpecies.GT.1) THEN
       DO iSpec=1,nSpecies
           WRITE(SpecID,'(I3.3)') iSpec
-          nShift = iSpec * (nErosionVars - 1)
+          nShift = iSpec * (nImpactVars - 1)
 
           Str2DVarNames(nVarCount+nShift+1) ='Species'//TRIM(SpecID)//'_Impacts'
           Str2DVarNames(nVarCount+nShift+2) ='Species'//TRIM(SpecID)//'_ImpactsPerArea'
@@ -1301,8 +1311,8 @@ SampWallState_Shared(12:14,:,:,:) = 0.
 !-- Multiple species. All Variables are saved DOUBLE. First Total, then per SPECIES
 IF (nSpecies.GT.1) THEN
   DO iSpec=1,nSpecies
-    nShift    = iSpec * (nErosionVars-1)
-    nShiftRHS = iSpec * nErosionVars
+    nShift    = iSpec * (nImpactVars-1)
+    nShiftRHS = iSpec * nImpactVars
     SampWallState_Shared(12+nShiftRHS:14+nShiftRHS,:,:,:) = 0.
   END DO
 END IF

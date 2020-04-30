@@ -293,7 +293,7 @@ IF(DoRestart)THEN
 
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
   IF (RestartMean.AND..NOT.postiMode) THEN
-    SWRITE(UNIT_stdOut,'(A)') 'Trying to restart from a mean file ...'
+    SWRITE(UNIT_stdOut,'(A)') 'Trying to restart from a mean file...'
     SWRITE(UNIT_StdOut,'(A)') 'WARNING: Make absolutely sure the mean file has ALL conservative variables available!'
     SWRITE(UNIT_StdOut,'(132("-"))')
     CALL GetDataSize(File_ID,'Mean',nDims,HSize)

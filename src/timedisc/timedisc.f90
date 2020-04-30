@@ -206,7 +206,7 @@ USE MOD_Particle_Analyze    ,ONLY: TrackingParticlePosition
 USE MOD_Particle_Analyze_Vars,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
 USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_ErosionPoints       ,ONLY: WriteEP
-USE MOD_ErosionPoints_Vars  ,ONLY: EP_inUse
+USE MOD_ErosionPoints_Vars  ,ONLY: doParticleImpactTrack
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimestep,ManualTimestep
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
@@ -492,7 +492,7 @@ DO
                             FutureTime=tWriteData,isErrorFile=.FALSE.)
 #if USE_PARTICLES
       ! Write individual particle surface impact data
-      IF(EP_inUse)          CALL WriteEP(OutputTime=t,resetCounters=.TRUE.)
+      IF(doParticleImpactTrack)  CALL WriteEP(OutputTime=t,resetCounters=.TRUE.)
 #endif /*USE_PARTICLES*/
       ! Visualize data
       CALL Visualize(t,U)

@@ -49,7 +49,7 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: nSurfSample
 USE MOD_Particle_Boundary_Vars     ,ONLY: SurfOnNode,SurfSideArea
 USE MOD_Particle_Boundary_Vars     ,ONLY: nComputeNodeSurfSides,SampWallState_Shared
 USE MOD_Particle_Boundary_Sampling ,ONLY: WriteSurfSample
-USE MOD_Particle_Boundary_Vars     ,ONLY: MacroSurfaceVal,MacroSurfaceSpecVal,nErosionVars
+USE MOD_Particle_Boundary_Vars     ,ONLY: MacroSurfaceVal,MacroSurfaceSpecVal,nImpactVars
 USE MOD_Particle_Vars              ,ONLY: nSpecies
 USE MOD_CalcWallParticles_Vars
 #if USE_MPI
@@ -105,9 +105,9 @@ IF (MPI_COMM_LEADERS_SURF.EQ.MPI_COMM_NULL) RETURN
 
 ! Allocate N+1 Species to have space for average
 IF (nSpecies.EQ.1) THEN
-  ALLOCATE(MacroSurfaceVal(nErosionVars-1,1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides))
+  ALLOCATE(MacroSurfaceVal(nImpactVars-1,1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides))
 ELSE
-  ALLOCATE(MacroSurfaceVal((nErosionVars-1)*(nSpecies+1),1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides))
+  ALLOCATE(MacroSurfaceVal((nImpactVars-1)*(nSpecies+1),1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides))
 END IF
 ALLOCATE(MacroSurfaceSpecVal(1,1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides,nSpecies))
 
@@ -142,8 +142,8 @@ END DO; END DO; END DO
 !===================================================================================================================================
 IF (nSpecies.GT.1) THEN
   DO iSurfSide = 1,nComputeNodeSurfSides; DO q = 1,nSurfSample; DO p = 1,nSurfSample; DO iSpec=1,nSpecies
-    nShift    = iSpec * (nErosionVars-1)
-    nShiftRHS = iSpec *  nErosionVars
+    nShift    = iSpec * (nImpactVars-1)
+    nShiftRHS = iSpec *  nImpactVars
     !---- 1. - .. / Impact Counter
     MacroSurfaceVal(1+nShift         ,p,q,iSurfSide) = SampWallState_Shared(1+nShiftRHS,p,q,iSurfSide)
     MacroSurfaceSpecVal(1            ,p,q,iSurfSide,iSpec)= SampWallState_Shared(1+nShiftRHS,p,q,iSurfSide) / TimeSample

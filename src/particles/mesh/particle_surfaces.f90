@@ -127,8 +127,8 @@ CHARACTER(LEN=2)                :: dummy
 !===================================================================================================================================
 
 IF(ParticleSurfaceInitIsDone) RETURN
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACES ...!'
+!SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACES...'
 
 BezierNewtonAngle          = GETREAL('BezierNewtonAngle'         ,'1.570796326')  ! 1°=0.01754 (in rad)
 BezierClipTolerance        = GETREAL('BezierClipTolerance'       ,'1e-8')

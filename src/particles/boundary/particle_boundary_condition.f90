@@ -288,7 +288,7 @@ SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_ErosionPoints              ,ONLY: RecordErosionPoint
-USE MOD_ErosionPoints_Vars         ,ONLY: EP_inUse
+USE MOD_ErosionPoints_Vars         ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Sampling ,ONLY: SideErosion
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack
@@ -343,7 +343,7 @@ END IF !IsAuxBC
 
 ! Make sure we have the old values safe
 v_old                = PartState(4:6,PartID)
-IF (EP_inUse) THEN
+IF (doParticleImpactTrack) THEN
   PartFaceAngle_old  = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 END IF
 
@@ -370,7 +370,7 @@ lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)            &
 PartTrajectory          = PartTrajectory/lengthPartTrajectory
 
 ! Recording of individual particle impacts
-IF (EP_inUse) THEN
+IF (doParticleImpactTrack) THEN
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
   CALL RecordErosionPoint(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID) &
@@ -422,7 +422,7 @@ SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_ErosionPoints            ,ONLY: RecordErosionPoint
-USE MOD_ErosionPoints_Vars       ,ONLY: EP_inUse
+USE MOD_ErosionPoints_Vars       ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC
 USE MOD_Particle_Boundary_Sampling,ONLY:SideErosion
@@ -560,7 +560,7 @@ SELECT CASE(WallCoeffModel)
 END SELECT
 
 ! Make sure we have the old values safe
-IF (EP_inUse) THEN
+IF (doParticleImpactTrack) THEN
     PartFaceAngle_old  = PartFaceAngle
 END IF
 
@@ -608,7 +608,7 @@ WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | NewPartPos:           
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity (CoR):             ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
 #endif
 
-IF (EP_inUse) THEN
+IF (doParticleImpactTrack) THEN
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
   CALL RecordErosionPoint(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID),                                   &

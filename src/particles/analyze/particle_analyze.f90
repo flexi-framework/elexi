@@ -109,7 +109,7 @@ IF (ParticleAnalyzeInitIsDone) THEN
   RETURN
 END IF
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A)') ' INIT PARTICLE ANALYZE...'
 
 DoAnalyze = .FALSE.
@@ -222,7 +222,7 @@ SUBROUTINE ParticleInformation()
 !==================================================================================================================================
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Erosionpoints_Vars        ,ONLY: EP_Buffersize
+USE MOD_Erosionpoints_Vars        ,ONLY: doParticleImpactTrack,EP_Buffersize
 USE MOD_Particle_Vars             ,ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -249,7 +249,9 @@ nParticleInDomain = nParticleOnProc
 ! Output particle and impact information
 !SWRITE(UNIT_StdOut,'(132("."))')
 SWRITE(UNIT_StdOut,'(A14,I16)')' # Particle : ', nParticleInDomain
+IF (doParticleImpactTrack) THEN
 SWRITE(UNIT_StdOut,'(A14,I16)')' # Impacts  : ', EP_Buffersize
+END IF
 
 END SUBROUTINE ParticleInformation
 

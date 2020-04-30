@@ -273,13 +273,6 @@ TYPE tGeometry
   INTEGER                                :: FIBGMkmin                         ! smallest index of FastInitBGM (z)
   INTEGER                                :: FIBGMkmax                         ! biggest index of FastInitBGM (z)
 
-  TYPE (tFastInitBGM),ALLOCATABLE        :: TFIBGM(:,:,:)  !       =>NULL()   ! FastInitBackgroundMesh
-  INTEGER                                :: TFIBGMimin                        ! smallest index of FastInitBGM (x)
-  INTEGER                                :: TFIBGMimax                        ! biggest index of FastInitBGM (x)
-  INTEGER                                :: TFIBGMjmin                        ! smallest index of FastInitBGM (y)
-  INTEGER                                :: TFIBGMjmax                        ! biggest index of FastInitBGM (y)
-  INTEGER                                :: TFIBGMkmin                        ! smallest index of FastInitBGM (z)
-  INTEGER                                :: TFIBGMkmax                        ! biggest index of FastInitBGM (z)
   REAL, ALLOCATABLE                      :: CharLength(:)                     ! Characteristic length for each cell: L=V^(1/3)
   INTEGER, ALLOCATABLE                   :: ElemToRegion(:)                   ! ElemToRegion(1:nElems)
 END TYPE
@@ -291,9 +284,6 @@ INTEGER                                  :: WeirdElems                        ! 
 
 INTEGER                                  :: NbrOfRegions                      ! Nbr of regions to be mapped to Elems
 REAL, ALLOCATABLE                        :: RegionBounds(:,:)                 ! RegionBounds ((xmin,xmax,ymin,...)|1:NbrOfRegions)
-LOGICAL,ALLOCATABLE                      :: isTracingTrouble(:)
-REAL,ALLOCATABLE                         :: ElemTolerance(:)
-INTEGER, ALLOCATABLE                     :: ElemToGlobalElemID(:)             ! mapping form local-elemid to global-id
 
 !===================================================================================================================================
 INTEGER                                  :: NGeoElevated                      !< polynomial degree of elevated geometric transformation

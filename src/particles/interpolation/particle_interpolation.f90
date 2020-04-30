@@ -105,7 +105,7 @@ IF (PartInterpolationInitIsDone) THEN
 END IF
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE INTERPOLATION ...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE INTERPOLATION...'
 
 ! For low number of particles, the loop over all elements becomes quite inefficient. User can opt out with setting
 ! InterpolationElemLoop = F.
@@ -127,7 +127,7 @@ IF (MPIRoot.AND.LoopDisabledGlob.GT.0) THEN
 END IF
 #else
 LoopDisabledGlob = LoopDisabled
-WRITE(UNIT_StdOut,'(A)')          ' InterpolationElemLoop disabled due to high number of elements'
+WRITE(UNIT_StdOut,'(A)')          ' | InterpolationElemLoop disabled due to high number of elements'
 #endif
 
 ! Size of external field depends on the equations system. Distinguish here between LES and RANS-SA

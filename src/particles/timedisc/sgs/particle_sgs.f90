@@ -69,8 +69,8 @@ INTEGER               :: ALLOCSTAT
 
 IF(ParticleSGSInitIsDone) RETURN
 
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL ...'
+!SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL...'
 
 ! SGS model
 SGSModel = TRIM(GETSTR('Part-SGSModel','none'))

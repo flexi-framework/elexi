@@ -339,7 +339,7 @@ CASE('Mofakham')
       IF (ANY(udiff.NE.0)) THEN
         tau     = (4./3.)*rho_p*(2.*r)/(FieldAtParticle(1)*Cd*SQRT(SUM(udiff(1:3)**2.)))
       ELSE
-        WRITE(*,*) 'No velocity fluctuation in random walk. Mitigating ...'
+        WRITE(*,*) 'No velocity fluctuation in random walk. Mitigating...'
         tau     = HUGE(1.)
       END IF
 

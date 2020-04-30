@@ -285,7 +285,7 @@ SELECT CASE(WeightDistributionMethod)
       LastProcDiff      = 0.
       iDistriIter       = 0
 
-      WRITE(UNIT_stdOut,'(A)') ' Performing iterative search for new load distribution ...'
+      WRITE(UNIT_stdOut,'(A)') ' Performing iterative search for new load distribution...'
       DO WHILE(.NOT.FoundDistribution)
         iDistriIter     = iDistriIter+1
         WRITE(*,'(A,I4,A,ES15.7)') ' | Iteration ',iDistriIter,' with TargetWeight ',TargetWeight_loc

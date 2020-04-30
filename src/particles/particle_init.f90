@@ -190,8 +190,8 @@ CALL prms%CreateStringOption(       'Part-Species[$]-velocityDistribution', 'Use
                                                                   ' VeloVecIC\n'                                                 //&
                                                                   ' - fluid:    particles have local fluid velocity\n'             &
                                                                 , 'constant', numberedmulti=.TRUE.)
-!CALL prms%CreateRealOption(         'Part-Species[$]-VeloIC'    , 'Absolute value of initial velocity. (ensemble velocity) '      &
-!                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-VeloIC'    , 'Absolute value of initial velocity. (ensemble velocity) '      &
+                                                                , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-Species[$]-VeloVecIC ', 'Velocity vector for given species'                              &
                                                                 , '0. , 0. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-VeloTurbIC', 'Turbulent fluctuation of initial velocity. (ensemble velocity) '&
@@ -350,7 +350,7 @@ IMPLICIT NONE
 INTEGER                        :: nTrackingMethod
 !===================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS ...'
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS...'
 
 PDM%maxParticleNumber = GETINT('Part-maxParticleNumber','1')
 PI=ACOS(-1.0D0)
@@ -434,8 +434,8 @@ IF(ParticlesInitIsDone)THEN
    SWRITE(*,*) "InitParticles already called."
    RETURN
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES ...'
+!SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES...'
 
 !CALL InitializeVariables(ManualTimeStep_opt)
 CALL InitializeVariables()
@@ -650,7 +650,8 @@ ELSE IF(nRandomSeeds.EQ.0) THEN
 ELSE IF(nRandomSeeds.GT.0) THEN
   ! read in numbers from ini
   IF(nRandomSeeds.NE.SeedSize) THEN
-    SWRITE (*,*) 'Expected ',SeedSize,'seeds. Provided ',nRandomSeeds,'. Computer uses default value for all unset values.'
+    SWRITE (UNIT_StdOut,'(A,I0,A,I0,A)') ' | Expected ',SeedSize,' seeds. Provided ', nRandomSeeds ,&
+                                         '. Computer uses default value for all unset values.'
   END IF
 
   DO iSeed=1,MIN(SeedSize,nRandomSeeds)
@@ -735,7 +736,7 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%PartDensity           = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-PartDensity'           ,'0.')
     Species(iSpec)%Init(iInit)%SpaceIC               = TRIM(GETSTR( 'Part-Species'//TRIM(tmpStr2)//'-SpaceIC'               ,'cuboid'))
     Species(iSpec)%Init(iInit)%VeloVecIC             = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-VeloVecIC'           ,3,'0. , 0. , 0.')
-!   Species(iSpec)%Init(iInit)%VeloIC                = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloIC'                ,'0.')
+    Species(iSpec)%Init(iInit)%VeloIC                = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloIC'                ,'0.')
     Species(iSpec)%Init(iInit)%VeloTurbIC            = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloTurbIC'            ,'0.')
     Species(iSpec)%Init(iInit)%velocityDistribution  = TRIM(GETSTR( 'Part-Species'//TRIM(tmpStr2)//'-velocityDistribution'  ,'constant'))
     Species(iSpec)%Init(iInit)%InflowRiseTime        = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-InflowRiseTime'        ,'0.')
@@ -790,9 +791,11 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%InsertedParticleSurplus = 0
 
     ! Get absolute value of particle velocity vector and normalize the VeloVecIC vector
-    Species(iSpec)%Init(iInit)%VeloIC                = SQRT(Species(iSpec)%Init(iInit)%VeloVecIC(1)**2.                      &
-                                                           +Species(iSpec)%Init(iInit)%VeloVecIC(2)**2.                      &
-                                                           +Species(iSpec)%Init(iInit)%VeloVecIC(3)**2.)
+    IF (Species(iSpec)%Init(iInit)%VeloIC.EQ.0) THEN
+      Species(iSpec)%Init(iInit)%VeloIC                = SQRT(Species(iSpec)%Init(iInit)%VeloVecIC(1)**2.                      &
+                                                             +Species(iSpec)%Init(iInit)%VeloVecIC(2)**2.                      &
+                                                             +Species(iSpec)%Init(iInit)%VeloVecIC(3)**2.)
+    END IF
 
     ! Only normalize if the vector does not have zero length. If it has, our job is done
     IF (Species(iSpec)%Init(iInit)%VeloIC.NE.0) THEN

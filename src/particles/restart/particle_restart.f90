@@ -43,14 +43,14 @@ SUBROUTINE ParticleRestart(doFlushFiles)
 USE MOD_Globals
 USE MOD_PreProc
 !USE MOD_ErosionPoints,           ONLY: RestartErosionPoint
-!USE MOD_ErosionPoints_Vars,      ONLY: EP_inUse
+!USE MOD_ErosionPoints_Vars,      ONLY: doParticleImpactTrack
 USE MOD_Eval_XYZ,                ONLY: GetPositionInRefElem
 USE MOD_HDF5_Input
 USE MOD_HDF5_Output,             ONLY: FlushFiles
 USE MOD_Mesh_Vars,               ONLY: offsetElem
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Boundary_Analyze,ONLY:CalcSurfaceValues
-USE MOD_Particle_Boundary_Vars,  ONLY: ErosionRestart,doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars,  ONLY: ImpactRestart,doParticleReflectionTrack
 USE MOD_Particle_Globals
 USE MOD_Particle_Localization,   ONLY: LocateParticleInElement
 USE MOD_Particle_Mesh_Vars,      ONLY: ElemEpsOneCell
@@ -184,7 +184,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
       ! Compare number of turbulent properties of current run against HDF5
       IF ((TurbPartDataSize.EQ.0).AND.(TurbPartSize.NE.0)) THEN
-        SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data but current run in DNS mode. Ignoring ...'
+        SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data but current run in DNS mode. Ignoring...'
       ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.NE.TurbPartSize)) THEN
         CALL abort(__STAMP__,' Number of turbulent variables in HDF5 does not match requested SGS/RW model!')
       ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.EQ.TurbPartSize)) THEN
@@ -369,7 +369,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 CALL CloseDataFile()
 
 !  ! Get individual impact data
-!  IF (EP_inUse)         CALL RestartErosionPoint
+!  IF (doParticleImpactTrack)         CALL RestartErosionPoint
 
   ! Delete all files that will be rewritten --> moved from restart.f90 since we need it here
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
@@ -382,10 +382,10 @@ END IF
 ! Make sure we update our surface data after reading the sampling data
 #if USE_MPI
 ! Only procs with SurfMesh know about the restart so far. Communicate to all here
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,ErosionRestart,1,MPI_LOGICAL,MPI_LOR,PartMPI%COMM,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,ImpactRestart,1,MPI_LOGICAL,MPI_LOR,PartMPI%COMM,iError)
 #endif
 
-IF (ErosionRestart) CALL CalcSurfaceValues(restart_opt=.TRUE.)
+IF (ImpactRestart) CALL CalcSurfaceValues(restart_opt=.TRUE.)
 
 !#if USE_MPI
 !CALL MPI_BARRIER(PartMPI%COMM,iError)

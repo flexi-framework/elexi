@@ -23,7 +23,7 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL            :: ErosionPointsInitIsDone = .FALSE. !< mark wheter erosionpoints init routine is finished
-LOGICAL            :: EP_inUse  = .FALSE.     !< mark whether erosionpoints should be evaluated during computation
+LOGICAL            :: doParticleImpactTrack  = .FALSE.     !< mark whether erosionpoints should be evaluated during computation
 LOGICAL            :: EP_onProc = .FALSE.     !< marks wheter current proc has EPs
 LOGICAL            :: EP_fileExists = .FALSE. !< flag if EP file for analyze level has been created
 INTEGER            :: EP_Buffersize           !< no. of time samples (size of EP_Data)

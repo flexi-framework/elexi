@@ -294,7 +294,7 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: nComputeNodeSurfTotalSides
 USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState,SampWallState_Shared,SampWallState_Shared_Win
-USE MOD_Particle_Boundary_Vars  ,ONLY: nErosionVars
+USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars
 USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nSurfLeaders,myComputeNodeRank,mySurfRank
@@ -469,7 +469,7 @@ IF (myComputeNodeRank.EQ.0) THEN
           !<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
           IF (nSpecies.GT.1) THEN
             DO iSpec = 1,nSpecies
-              nShift = iSpec * nErosionVars
+              nShift = iSpec * nImpactVars
               !-- 1. - .. / Impact Counter
               SampWallState_Shared(1+nShift,p,q,SurfSideID) = SampWallState_Shared(1+nShift,p,q,SurfSideID) + SampWallTmp(1+nShift)
 

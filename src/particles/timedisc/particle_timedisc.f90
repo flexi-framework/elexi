@@ -151,26 +151,12 @@ IF (t.GE.DelayTime) THEN
         PartState(6,iPart) = Pt       (3,iPart)
       !-- Normal particles
       ELSE
-        !-- Particle Push
-        !-> Sanity Check Particle Pusher / WARNING: Might Cause Slowdowns
-        !IF (ANY(ISNAN(Pt(:,iPart)))) THEN
-        !    IPWRITE(UNIT_stdOut,*) 'Found invalid particle push, ignoring. PartID:', iPart
-        !    Pt(iPart,:) = 0
-        !ENDIF
-
         PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*dt
         PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*dt
         PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*dt
         PartState(4,iPart) = PartState(4,iPart) + Pt       (1,iPart)*dt
         PartState(5,iPart) = PartState(5,iPart) + Pt       (2,iPart)*dt
         PartState(6,iPart) = PartState(6,iPart) + Pt       (3,iPart)*dt
-
-        !-- Sanity Check Particle / WARNING: Might Cause Slowdowns
-        !IF (ANY(ISNAN(PartState(iPart,:)))) THEN
-        !    PDM%ParticleInside(iPart) = .FALSE.
-        !    IPWRITE(UNIT_stdOut,*) 'Found invalid particle, removing. PartID:', iPart
-        !ENDIF
-
       ENDIF !< Tracer
     ENDIF !< ParticleInside
   END DO
@@ -352,7 +338,6 @@ REAL,INTENT(IN)               :: t
 REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                       :: part_err
 INTEGER                       :: iPart
 !REAL                          :: v_magnitude
 #if USE_LOADBALANCE
@@ -364,20 +349,12 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-  part_err = .FALSE.
 
   ! particle push for first RK stage
   DO iPart=1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(iPart)) THEN
       ! Pt is always known at this position, change isNewPart to false
       PDM%IsNewPart(iPart)=.FALSE.
-
-      !-- Particle Push
-      ! Sanity Check Particle Pusher / WARNING: Might Cause Slowdowns
-      !IF (ANY(ISNAN(Pt(iPart,:)))) THEN
-      !    IPWRITE(UNIT_stdOut,*) 'Found invalid particle push, ignoring. PartID:', iPart
-      !    Pt(iPart,:) = 0
-      !ENDIF
 
       IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
         Pt_temp  (1,iPart) = PartState(4,iPart)
@@ -405,24 +382,6 @@ IF (t.GE.DelayTime) THEN
         PartState(5,iPart) = PartState(5,iPart) + Pt       (2,iPart)*b_dt(1)
         PartState(6,iPart) = PartState(6,iPart) + Pt       (3,iPart)*b_dt(1)
       END IF
-
-      ! Sanity Check Particle / WARNING: Might Cause Slowdowns
-      !IF (ANY(ISNAN(PartState(:,iPart)))) THEN
-      !    PDM%ParticleInside(iPart) = .FALSE.
-      !    IPWRITE(UNIT_stdOut,*) 'Found invalid particle, removing. PartID:', iPart
-      !ENDIF
-
-      ! Try to find particles with too high velocity
-      !v_magnitude   = SQRT(DOT_PRODUCT(PartState(4:6,iPart),PartState(4:6,iPart)))
-
-      !IF ((Species(PartSpecies(iPart))%HighVeloThreshold.NE.0).AND.(v_magnitude.GT.Species(PartSpecies(iPart))%HighVeloThreshold))THEN
-      !  part_err = .TRUE.
-      !  IPWRITE(UNIT_stdOut,*) ' High velocity particle detected. Writing error state and removing particle ...'
-      !  IPWRITE(UNIT_stdout,*) ' LastPos:',  PartState(1:3,iPart)
-      !  IPWRITE(UNIT_stdout,*) ' Velocity:', PartState(4:6,iPart)
-      !  PDM%ParticleInside(iPart) = .FALSE.
-      !END IF
-
     END IF
   END DO
 
@@ -433,9 +392,6 @@ IF (t.GE.DelayTime) THEN
     END DO
   END IF
 
-  !IF (part_err) THEN
-  !    CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
-  !END IF
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_PUSH,tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -599,7 +555,6 @@ INTEGER,INTENT(IN)            :: iStage
 REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                       :: part_err
 INTEGER                       :: iPart, iStage_loc
 REAL,PARAMETER                :: RandVal = 1.                         ! Random time increment for new parts to accomplish temporal
                                                                       ! dispersion within on time step. Currently disabled
@@ -622,7 +577,6 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-  part_err = .FALSE.
 
   ! particle push for nth RK stage
   DO iPart=1,PDM%ParticleVecLength
@@ -690,25 +644,7 @@ IF (t.GE.DelayTime) THEN
         PartState(6  ,iPart) = PartState(6,iPart) + Pt_temp(6,iPart)*b_dt(iStage)*RandVal
 
         PDM%IsNewPart(iPart) = .FALSE. !change to false: Pt_temp is now rebuilt...
-
-        ! Sanity Check Particle / WARNING: Might Cause Slowdowns
-        !IF (ANY(ISNAN(PartState(:,iPart)))) THEN
-        !  PDM%ParticleInside(iPart) = .FALSE.
-        !  IPWRITE(UNIT_stdOut,*) 'Found invalid particle, removing. PartID:', iPart
-        !ENDIF
-
       END IF !IsNewPart
-
-      ! Try to find particles with too high velocity
-      !v_magnitude   = SQRT(DOT_PRODUCT(PartState(4:6,iPart),PartState(4:6,iPart)))
-
-      !IF ((Species(PartSpecies(iPart))%HighVeloThreshold.NE.0).AND.(v_magnitude.GT.Species(PartSpecies(iPart))%HighVeloThreshold))THEN
-      !  part_err = .TRUE.
-      !  IPWRITE(UNIT_stdOut,*) ' High velocity particle detected. Writing error state and removing particle ...'
-      !  IPWRITE(UNIT_stdout,*) ' LastPos:',  PartState(1:3,iPart)
-      !  IPWRITE(UNIT_stdout,*) ' Velocity:', PartState(4:6,iPart)
-      !  PDM%ParticleInside(iPart) = .FALSE.
-      !END IF
     END IF
   END DO
 
@@ -718,11 +654,6 @@ IF (t.GE.DelayTime) THEN
       IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
     END DO
   END IF
-
-  !IF (part_err) THEN
-  !    CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
-  !                        FutureTime=tWriteData,isErrorFile=.TRUE.)
-  !END IF
 
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_PUSH,tLBStart)

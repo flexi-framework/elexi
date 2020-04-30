@@ -291,7 +291,7 @@ INTEGER          :: ALLOCSTAT
 !===================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MESH ...'
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MESH...'
 IF(ParticleMeshInitIsDone) CALL ABORT(__STAMP__, ' Particle-Mesh is already initialized.')
 
 !===================================================================================================================================
@@ -730,7 +730,7 @@ INTEGER                        :: ALLOCSTAT
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(A)') ' CALCULATING BezierControlPoints ...'
+SWRITE(UNIT_stdOut,'(A)') ' CALCULATING BezierControlPoints...'
 
 ! Build BezierControlPoints3D (compute-node local+halo)
 #if USE_MPI
@@ -935,7 +935,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 LocalVolume = SUM(ElemVolume_Shared(offsetElemCNProc+1:offsetElemCNProc+nElems))
 MeshVolume  = SUM(ElemVolume_Shared(:))
 
-SWRITE(UNIT_StdOut,'(A,E18.8)') ' |              Total MESH Volume |                ', MeshVolume
+SWRITE(UNIT_StdOut,'(A,E18.8)') ' |              Total MESH Volume         |        ', MeshVolume
 END SUBROUTINE InitElemVolumes
 
 
@@ -1603,7 +1603,7 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 !===================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curved ...'
+SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curved...'
 
 ! elements
 #if USE_MPI
@@ -1873,7 +1873,7 @@ INTEGER                                  :: nLinearElemsTot,nCurvedElemsTot
 !===================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curved ...'
+SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curved...'
 
 ! elements
 #if USE_MPI
@@ -2447,7 +2447,7 @@ INTEGER                        :: sendbuf,recvbuf
 !===================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A)') ' Identifying BC sides and calculating side metrics ...'
+SWRITE(UNIT_StdOut,'(A)') ' Identifying BC sides and calculating side metrics...'
 
 ! elements
 #if USE_MPI
@@ -2948,7 +2948,7 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 !===================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A)') ' Building EpsOneCell for all elements ...'
+SWRITE(UNIT_StdOut,'(A)') ' Building EpsOneCell for all elements...'
 
 ! build sJ for all elements not on local proc
 #if USE_MPI
@@ -3232,14 +3232,14 @@ SUBROUTINE FinalizeParticleMesh()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-!USE MOD_Mesh_Vars              ,ONLY: nElems
-USE MOD_Particle_BGM           ,ONLY: FinalizeBGM
-USE MOD_Particle_Mesh_Readin   ,ONLY: FinalizeMeshReadin
+USE MOD_Particle_BGM                ,ONLY: FinalizeBGM
+USE MOD_Particle_Interpolation_Vars ,ONLY: DoInterpolation
+USE MOD_Particle_Mesh_Readin        ,ONLY: FinalizeMeshReadin
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Surfaces_Vars
-USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,Distance,ListDistance
+USE MOD_Particle_Tracking_Vars      ,ONLY: TrackingMethod,Distance,ListDistance
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_vars,ONLY: MPI_COMM_SHARED
+USE MOD_Particle_MPI_Shared_vars    ,ONLY: MPI_COMM_SHARED
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -3289,12 +3289,14 @@ SELECT CASE (TrackingMethod)
     CALL MPI_WIN_FREE(      ElemVolume_Shared_Win           ,iError)
 
     ! GetBCSidesAndOrgin
-    CALL MPI_WIN_UNLOCK_ALL(BCSide2SideID_Shared_Win        ,iError)
-    CALL MPI_WIN_FREE(      BCSide2SideID_Shared_Win        ,iError)
-    CALL MPI_WIN_UNLOCK_ALL(SideID2BCSide_Shared_Win        ,iError)
-    CALL MPI_WIN_FREE(      SideID2BCSide_Shared_Win        ,iError)
-    CALL MPI_WIN_UNLOCK_ALL(BCSideMetrics_Shared_Win        ,iError)
-    CALL MPI_WIN_FREE(      BCSideMetrics_Shared_Win        ,iError)
+    IF (TrackingMethod.EQ.REFMAPPING) THEN
+      CALL MPI_WIN_UNLOCK_ALL(BCSide2SideID_Shared_Win        ,iError)
+      CALL MPI_WIN_FREE(      BCSide2SideID_Shared_Win        ,iError)
+      CALL MPI_WIN_UNLOCK_ALL(SideID2BCSide_Shared_Win        ,iError)
+      CALL MPI_WIN_FREE(      SideID2BCSide_Shared_Win        ,iError)
+      CALL MPI_WIN_UNLOCK_ALL(BCSideMetrics_Shared_Win        ,iError)
+      CALL MPI_WIN_FREE(      BCSideMetrics_Shared_Win        ,iError)
+    END IF
 
     ! CalcParticleMeshMetrics
     CALL MPI_WIN_UNLOCK_ALL(XCL_NGeo_Shared_Win             ,iError)
@@ -3357,7 +3359,7 @@ SELECT CASE (TrackingMethod)
     CALL MPI_WIN_FREE(      BaseVectorsScale_Shared_Win     ,iError)
 
     ! BuildBCElemDistance
-    IF (TrackingMethod.EQ.1) THEN
+    IF (TrackingMethod.EQ.REFMAPPING) THEN
       CALL MPI_WIN_UNLOCK_ALL(ElemToBCSides_Shared_Win        ,iError)
       CALL MPI_WIN_FREE(      ElemToBCSides_Shared_Win        ,iError)
       CALL MPI_WIN_UNLOCK_ALL(SideBCMetrics_Shared_Win        ,iError)
@@ -3378,55 +3380,85 @@ SELECT CASE (TrackingMethod)
     MDEALLOCATE(ElemVolume_Shared)
 
     ! GetBCSidesAndOrgin
-    MDEALLOCATE(BCSide2SideID_Shared)
-    MDEALLOCATE(SideID2BCSide_Shared)
-    MDEALLOCATE(BCSideMetrics_Shared)
+    IF (TrackingMethod.EQ.REFMAPPING) THEN
+      MDEALLOCATE(BCSide2SideID_Shared)
+      MDEALLOCATE(SideID2BCSide_Shared)
+      MDEALLOCATE(BCSideMetrics_Shared)
+      MDEALLOCATE(BCSide2SideID)
+      MDEALLOCATE(SideID2BCSide)
+      MDEALLOCATE(BCSideMetrics)
+    END IF
 
     ! CalcParticleMeshMetrics
+    MDEALLOCATE(XCL_NGeo_Shared)
     MDEALLOCATE(XCL_NGeo_Array)
+    MDEALLOCATE(Elem_xGP_Shared)
     MDEALLOCATE(Elem_xGP_Array)
+    MDEALLOCATE(dXCL_NGeo_Shared)
     MDEALLOCATE(dXCL_NGeo_Array)
 
     ! CalcBezierControlPoints
+    MDEALLOCATE(BezierControlPoints3D)
     MDEALLOCATE(BezierControlPoints3D_Shared)
+    MDEALLOCATE(BezierControlPoints3DElevated)
     MDEALLOCATE(BezierControlPoints3DElevated_Shared)
 
     ! GetSideSlabNormalsAndIntervals (allocated in particle_mesh.f90)
+    MDEALLOCATE(SideSlabNormals)
     MDEALLOCATE(SideSlabNormals_Shared)
+    MDEALLOCATE(SideSlabIntervals)
     MDEALLOCATE(SideSlabIntervals_Shared)
+    MDEALLOCATE(BoundingBoxIsEmpty)
     MDEALLOCATE(BoundingBoxIsEmpty_Shared)
 
     ! BuildElementOriginShared
+    MDEALLOCATE(ElemBaryNGeo)
     MDEALLOCATE(ElemBaryNGeo_Shared)
 
     ! IdentifyElemAndSideType
     MDEALLOCATE(ElemCurved)
     MDEALLOCATE(ElemCurved_Shared)
+    MDEALLOCATE(SideType)
     MDEALLOCATE(SideType_Shared)
+    MDEALLOCATE(SideDistance)
     MDEALLOCATE(SideDistance_Shared)
+    MDEALLOCATE(SideNormVec)
     MDEALLOCATE(SideNormVec_Shared)
 
     ! BuildElementBasisAndRadius
+    MDEALLOCATE(ElemRadiusNGeo)
     MDEALLOCATE(ElemRadiusNGeo_Shared)
+    MDEALLOCATE(ElemRadius2NGeo)
     MDEALLOCATE(ElemRadius2NGeo_Shared)
+    MDEALLOCATE(XiEtaZetaBasis)
     MDEALLOCATE(XiEtaZetaBasis_Shared)
+    MDEALLOCATE(slenXiEtaZetaBasis)
     MDEALLOCATE(slenXiEtaZetaBasis_Shared)
 
     ! GetLinearSideBaseVectors
+    MDEALLOCATE(BaseVectors0)
     MDEALLOCATE(BaseVectors0_Shared)
+    MDEALLOCATE(BaseVectors1)
     MDEALLOCATE(BaseVectors1_Shared)
+    MDEALLOCATE(BaseVectors2)
     MDEALLOCATE(BaseVectors2_Shared)
+    MDEALLOCATE(BaseVectors3)
     MDEALLOCATE(BaseVectors3_Shared)
+    MDEALLOCATE(BaseVectorsScale)
     MDEALLOCATE(BaseVectorsScale_Shared)
 
     ! BuildBCElemDistance
-    IF (TrackingMethod.EQ.1) THEN
+    IF (TrackingMethod.EQ.REFMAPPING) THEN
+      MDEALLOCATE(ElemToBCSides)
       MDEALLOCATE(ElemToBCSides_Shared)
+      MDEALLOCATE(SideBCMetrics)
       MDEALLOCATE(SideBCMetrics_Shared)
     END IF
 
     ! BuildEpsOneCell
+    MDEALLOCATE(ElemsJ)
     MDEALLOCATE(ElemsJ_Shared)
+    MDEALLOCATE(ElemEpsOneCell)
     MDEALLOCATE(ElemEpsOneCell_Shared)
 
 !  ! Tracing
@@ -3438,46 +3470,68 @@ SELECT CASE (TrackingMethod)
 #if USE_MPI
     CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
-    ! CalcParticleMeshMetrics
-    CALL MPI_WIN_UNLOCK_ALL(XCL_NGeo_Shared_Win             ,iError)
-    CALL MPI_WIN_FREE(      XCL_NGeo_Shared_Win             ,iError)
-    CALL MPI_WIN_UNLOCK_ALL(Elem_xGP_Shared_Win             ,iError)
-    CALL MPI_WIN_FREE(      Elem_xGP_Shared_Win             ,iError)
-    CALL MPI_WIN_UNLOCK_ALL(dXCL_NGeo_Shared_Win            ,iError)
-    CALL MPI_WIN_FREE(      dXCL_NGeo_Shared_Win            ,iError)
+    ! InitElemVolumes
+    CALL MPI_WIN_UNLOCK_ALL(ElemVolume_Shared_Win           ,iError)
+    CALL MPI_WIN_FREE(      ElemVolume_Shared_Win           ,iError)
+
+    IF (DoInterpolation) THEN
+      ! CalcParticleMeshMetrics
+      CALL MPI_WIN_UNLOCK_ALL(XCL_NGeo_Shared_Win             ,iError)
+      CALL MPI_WIN_FREE(      XCL_NGeo_Shared_Win             ,iError)
+      CALL MPI_WIN_UNLOCK_ALL(Elem_xGP_Shared_Win             ,iError)
+      CALL MPI_WIN_FREE(      Elem_xGP_Shared_Win             ,iError)
+      CALL MPI_WIN_UNLOCK_ALL(dXCL_NGeo_Shared_Win            ,iError)
+      CALL MPI_WIN_FREE(      dXCL_NGeo_Shared_Win            ,iError)
+
+      ! BuildElemTypeAndBasisTria
+      CALL MPI_WIN_UNLOCK_ALL(ElemCurved_Shared_Win           ,iError)
+      CALL MPI_WIN_FREE(      ElemCurved_Shared_Win           ,iError)
+      CALL MPI_WIN_UNLOCK_ALL(XiEtaZetaBasis_Shared_Win       ,iError)
+      CALL MPI_WIN_FREE(      XiEtaZetaBasis_Shared_Win       ,iError)
+      CALL MPI_WIN_UNLOCK_ALL(slenXiEtaZetaBasis_Shared_Win   ,iError)
+      CALL MPI_WIN_FREE(      slenXiEtaZetaBasis_Shared_Win   ,iError)
+    END IF
 
     ! InitParticleGeometry
-    CALL MPI_WIN_UNLOCK_ALL(ConcaveElemSide_Shared_Win,iError)
-    CALL MPI_WIN_FREE(ConcaveElemSide_Shared_Win,iError)
-    CALL MPI_WIN_UNLOCK_ALL(ElemNodeID_Shared_Win,iError)
-    CALL MPI_WIN_FREE(ElemNodeID_Shared_Win,iError)
-    CALL MPI_WIN_UNLOCK_ALL(ElemSideNodeID_Shared_Win,iError)
-    CALL MPI_WIN_FREE(ElemSideNodeID_Shared_Win,iError)
-    CALL MPI_WIN_UNLOCK_ALL(ElemMidPoint_Shared_Win,iError)
-    CALL MPI_WIN_FREE(ElemMidPoint_Shared_Win,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ConcaveElemSide_Shared_Win      ,iError)
+    CALL MPI_WIN_FREE(      ConcaveElemSide_Shared_Win      ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemNodeID_Shared_Win           ,iError)
+    CALL MPI_WIN_FREE(      ElemNodeID_Shared_Win           ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemSideNodeID_Shared_Win       ,iError)
+    CALL MPI_WIN_FREE(      ElemSideNodeID_Shared_Win       ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemMidPoint_Shared_Win         ,iError)
+    CALL MPI_WIN_FREE(      ElemMidPoint_Shared_Win         ,iError)
 
     ! BuildElementRadiusTria
-    CALL MPI_WIN_UNLOCK_ALL(ElemBaryNGeo_Shared_Win,iError)
-    CALL MPI_WIN_FREE(ElemBaryNGeo_Shared_Win,iError)
-    CALL MPI_WIN_UNLOCK_ALL(ElemRadius2NGeo_Shared_Win,iError)
-    CALL MPI_WIN_FREE(ElemRadius2NGeo_Shared_Win,iError)
-    CALL MPI_WIN_UNLOCK_ALL(XiEtaZetaBasis_Shared_Win       ,iError)
-    CALL MPI_WIN_FREE(      XiEtaZetaBasis_Shared_Win       ,iError)
-    CALL MPI_WIN_UNLOCK_ALL(slenXiEtaZetaBasis_Shared_Win   ,iError)
-    CALL MPI_WIN_FREE(      slenXiEtaZetaBasis_Shared_Win   ,iError)
-
-    ! BuildElemTypeTria
-    CALL MPI_WIN_UNLOCK_ALL(ElemCurved_Shared_Win           ,iError)
-    CALL MPI_WIN_FREE(      ElemCurved_Shared_Win           ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemBaryNGeo_Shared_Win         ,iError)
+    CALL MPI_WIN_FREE(      ElemBaryNGeo_Shared_Win         ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(ElemRadius2NGeo_Shared_Win      ,iError)
+    CALL MPI_WIN_FREE(      ElemRadius2NGeo_Shared_Win      ,iError)
 
     CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 #endif /*USE_MPI*/
 
     ! Then, free the pointers or arrays
-    ! CalcParticleMeshMetrics
-    MDEALLOCATE(XCL_NGeo_Array)
-    MDEALLOCATE(Elem_xGP_Array)
-    MDEALLOCATE(dXCL_NGeo_Array)
+    ! InitElemVolumes
+    MDEALLOCATE(ElemVolume_Shared)
+
+    IF (DoInterpolation) THEN
+      ! CalcParticleMeshMetrics
+      MDEALLOCATE(XCL_NGeo_Shared)
+      MDEALLOCATE(XCL_NGeo_Array)
+      MDEALLOCATE(Elem_xGP_Shared)
+      MDEALLOCATE(Elem_xGP_Array)
+      MDEALLOCATE(dXCL_NGeo_Shared)
+      MDEALLOCATE(dXCL_NGeo_Array)
+
+      ! BuildElemTypeAndBasisTria
+      MDEALLOCATE(ElemCurved)
+      MDEALLOCATE(ElemCurved_Shared)
+      MDEALLOCATE(XiEtaZetaBasis)
+      MDEALLOCATE(XiEtaZetaBasis_Shared)
+      MDEALLOCATE(slenXiEtaZetaBasis)
+      MDEALLOCATE(slenXiEtaZetaBasis_Shared)
+    END IF
 
     ! InitParticleGeometry
     MDEALLOCATE(ConcaveElemSide_Shared)
@@ -3486,30 +3540,20 @@ SELECT CASE (TrackingMethod)
     MDEALLOCATE(ElemMidPoint_Shared)
 
     ! BuildElementRadiusTria
+    MDEALLOCATE(ElemBaryNGeo)
     MDEALLOCATE(ElemBaryNGeo_Shared)
-    MDEALLOCATE(ElemRadius2NGEO_Shared)
-    MDEALLOCATE(XiEtaZetaBasis_Shared)
-    MDEALLOCATE(slenXiEtaZetaBasis_Shared)
-
-    !  BuildElemTypeTria
-    MDEALLOCATE(ElemCurved)
-    MDEALLOCATE(ElemCurved_Shared)
+    MDEALLOCATE(ElemRadius2NGeo)
+    MDEALLOCATE(ElemRadius2NGeo_Shared)
 
 END SELECT
 
+! Background mesh
 SDEALLOCATE(GEO%PeriodicVectors)
 SDEALLOCATE(GEO%FIBGM)
-SDEALLOCATE(GEO%TFIBGM)
 
-MDEALLOCATE(XiEtaZetaBasis)
-MDEALLOCATE(slenXiEtaZetaBasis)
-MDEALLOCATE(ElemRadiusNGeo)
-MDEALLOCATE(ElemRadius2NGeo)
-MDEALLOCATE(ElemEpsOneCell)
+! Tracking Vars
 SDEALLOCATE(Distance)
 SDEALLOCATE(ListDistance)
-SDEALLOCATE(ElemTolerance)
-SDEALLOCATE(ElemToGlobalElemID)
 
 ParticleMeshInitIsDone=.FALSE.
 

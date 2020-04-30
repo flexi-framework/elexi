@@ -215,7 +215,7 @@ IF(MPIRoot)THEN
           'RPList from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Read recordpoint definitions from data file "'//TRIM(FileString)//'" ...'
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Read recordpoint definitions from data file "'//TRIM(FileString)//'"...'
 ! Open data file
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 

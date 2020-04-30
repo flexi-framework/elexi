@@ -89,12 +89,12 @@ INTEGER                                 :: mySurfRank
 #endif /* USE_MPI */
 
 LOGICAL                                 :: doParticleReflectionTrack = .TRUE.      ! Flag if reflections should be counted
-LOGICAL                                 :: doParticleErosionTrack                  ! Flag if erosion data should be tracked
+LOGICAL                                 :: doParticleImpactSample                  ! Flag if impact data should be tracked
 LOGICAL                                 :: WriteMacroSurfaceValues   = .FALSE.     ! Output of macroscopic values on surface
 REAL                                    :: MacroValSampTime                        ! Sampling time for WriteMacroVal
-LOGICAL                                 :: ErosionRestart                          ! Flag if we are restarting erosion tracking
+LOGICAL                                 :: ImpactRestart                           ! Flag if we are restarting erosion tracking
 
-INTEGER                                 :: nErosionVars                            ! Number of Vars = nErosionVars * (nSPecies + 1)
+INTEGER                                 :: nImpactVars                             ! Number of Vars = nImpactVars * (nSpecies + 1)
 
 REAL,ALLOCATABLE                        :: MacroSurfaceVal(:,:,:,:)                ! variables,p,q,sides
 REAL,ALLOCATABLE                        :: MacroSurfaceSpecVal(:,:,:,:,:)          ! Macrovalues for Species specific surface output

@@ -143,7 +143,7 @@ IF (.NOT.PerformLoadBalance) THEN
 END IF
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' PERFORMING LOAD BALANCE ...'
+SWRITE(UNIT_stdOut,'(A)') ' PERFORMING LOAD BALANCE...'
 
 ! Record time spent for load balance restart
 LB_StartTime=FLEXITIME()

@@ -96,7 +96,7 @@ IMPLICIT NONE
 !===================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MPI ... '
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MPI... '
 IF(ParticleMPIInitIsDone) &
   CALL ABORT(__STAMP__,' Particle MPI already initialized!')
 

@@ -2380,7 +2380,7 @@ det(3) = ((Ay(3) * Vz - Az(3) * Vy) * Ax(2)  + &
          (Az(3) * Vx - Ax(3) * Vz) * Ay(2)  + &
          (Ax(3) * Vy - Ay(3) * Vx) * Az(2))
 
-! Comparison of the determinants with eps, where a zero is stored (due to machine precision)
+! Comparison of the determinants with against machine precision (eps)
 IF ((det(1).ge.-eps).AND.(det(2).ge.-eps).AND.(det(3).ge.-eps)) THEN
  ThroughSide = .TRUE.
 END IF

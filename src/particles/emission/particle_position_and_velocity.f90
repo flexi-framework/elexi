@@ -392,7 +392,7 @@ SELECT CASE(TRIM(velocityDistribution))
 !===================================================================================================================================
 CASE('random')
   i = 1
-  DO WHILE (i .le. NbrOfParticle)
+  DO WHILE (i .LE. NbrOfParticle)
     PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
     IF (PositionNbr .ne. 0) THEN
       CALL RANDOM_NUMBER(RandVal)

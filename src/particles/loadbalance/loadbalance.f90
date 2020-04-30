@@ -139,14 +139,14 @@ USE MOD_Particle_Tracking_Vars ,ONLY: MeasureTrackTime
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT LOAD BALANCE ...'
+!SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INIT LOAD BALANCE...'
 
 #if USE_LOADBALANCE
 IF(nProcessors.EQ.1)THEN
   ! deactivate load balance for single core computations
   DoLoadBalance        = .FALSE.
-  SWRITE(UNIT_stdOut,'(A)') 'No LoadBalance (nProcessors=1): DoLoadBalance=', DoLoadBalance
+  SWRITE(UNIT_stdOut,'(A)') 'No LoadBalance (nProcessors=1)'
   DeviationThreshold   = HUGE(1.0)
 ELSE
   DoLoadBalance        = GETLOGICAL('DoLoadBalance'          ,'F')
@@ -180,7 +180,7 @@ nLoadBalanceSteps      = 0
 
 InitLoadBalanceIsDone  = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LOAD BALANCE DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitLoadBalance
 
 

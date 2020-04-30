@@ -65,9 +65,9 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("ErosionPoints")
-CALL prms%CreateLogicalOption('Part-EP_inUse',     "Set true to record individual particle impact data.",                         &
+CALL prms%CreateLogicalOption('Part-TrackImpacts',     "Set true to record individual particle impact data.",                         &
                                                    '.FALSE.')
-CALL prms%CreateIntOption(    'Part-EP_MaxMemory', "Maximum memory in MiB to be used for storing erosionpoint state history. ",   &!//&
+CALL prms%CreateIntOption(    'Part-TrackImpactsMemory', "Maximum memory in MiB to be used for storing erosionpoint state history. ",   &!//&
 !                                                   "If memory is exceeded before regular IO level states are written to file.",&
                                                    '100')
 END SUBROUTINE DefineParametersErosionPoints
@@ -82,8 +82,11 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_ReadInTools            ,ONLY: GETSTR,GETINT,GETLOGICAL,GETREAL
 USE MOD_Interpolation_Vars     ,ONLY: InterpolationInitIsDone
-USE MOD_ErosionPoints_Vars
-USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides
+USE MOD_ErosionPoints_Vars     ,ONLY: doParticleImpactTrack
+USE MOD_ErosionPoints_Vars     ,ONLY: EP_Data,EPDataSize,EP_Impacts
+USE MOD_ErosionPoints_Vars     ,ONLY: EP_onProc,nEP_Procs,EP_MaxBufferSize
+USE MOD_ErosionPoints_Vars,     ONLY: ErosionPointsInitIsDone
+USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides,doParticleImpactSample
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -92,11 +95,6 @@ USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides
 INTEGER               :: EP_maxMemory
 INTEGER(KIND=8)       :: EP_maxBufferSize_glob
 !==================================================================================================================================
-! check if erosionpoints are activated
-EP_inUse=GETLOGICAL('Part-EP_inUse','.FALSE.')
-IF(.NOT.EP_inUse) RETURN
-
-nEP_Procs = 0
 
 IF((.NOT.InterpolationInitIsDone) .OR. ErosionPointsInitIsDone)THEN
    CALL Abort(__STAMP__,"InitErosionPoints not ready to be called or already called.")
@@ -105,19 +103,32 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT EROSIONPOINTS...'
 
-EP_maxMemory     = GETINT('Part-EP_MaxMemory','100')           ! Max buffer (100MB)
+! check if erosionpoints are activated
+doParticleImpactTrack = GETLOGICAL('Part-TrackImpacts','.FALSE.')
+IF (.NOT.doParticleImpactTrack) THEN
+  SWRITE(UNIT_stdOut,'(A)')' INIT EROSIONPOINTS DONE!'
+  RETURN
+END IF
+
+! surfaces sides are determined in particle_boundary_sampling.f90!
+IF (.NOT.doParticleImpactSample) &
+ CALL COLLECTIVESTOP(__STAMP__,'Impact tracking only available with Part-ImpactSampling=T!')
+
+EP_maxMemory     = GETINT('Part-TrackImpactsMemory','100')           ! Max buffer (100MB)
 EP_MaxBufferSize = EP_MaxMemory*131072/EPDataSize    != size in bytes/(real*EPDataSize)
 
 IF(nSurfTotalSides.NE.0) THEN
   EP_onProc        = .TRUE.
 END IF
 
-ALLOCATE(EP_Data(EPDataSize,EP_MaxBufferSize))
-
+! Initialize impact tracking communicator (needed for output)
 #if USE_MPI
 CALL InitEPCommunicator()
 #endif /*USE_MPI*/
 
+! Allocate and nullify impact tracking arrays
+ALLOCATE(EP_Data(EPDataSize,EP_MaxBufferSize))
+EP_Data    = 0.
 EP_Impacts = 0
 
 ! This might overflow a kind=4 integer, so use a larger on to be sure
@@ -259,9 +270,9 @@ END SUBROUTINE RecordErosionPoint
 !
 !!----------------------------------------------------------------------------------------------------------------------------------
 !! LOCAL VARIABLES
-!LOGICAL                        :: ErosionDataExists
+!LOGICAL                        :: ImpactDataExists
 !INTEGER                        :: EP_glob
-!INTEGER                        :: ErosionDim              !dummy for rank of ErosionData
+!INTEGER                        :: ImpactDim              !dummy for rank of ImpactData
 !!==================================================================================================================================
 !!#if USE_MPI
 !! Ignore procs without erosion surfaces on them
@@ -271,18 +282,18 @@ END SUBROUTINE RecordErosionPoint
 !
 !EP_Impacts = 0
 !
-!! Open the restart file and search for erosionData
+!! Open the restart file and search for ImpactData
 !IF (MPIRoot) THEN
 !  CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
-!  CALL DatasetExists(File_ID,'ErosionData',ErosionDataExists)
+!  CALL DatasetExists(File_ID,'ImpactData',ImpactDataExists)
 !
-!  IF (ErosionDataExists) THEN
-!    CALL GetDataSize(File_ID,'ErosionData',ErosionDim,HSize)
+!  IF (ImpactDataExists) THEN
+!    CALL GetDataSize(File_ID,'ImpactData',ImpactDim,HSize)
 !    CHECKSAFEINT(HSize(2),4)
 !    EP_glob    = INT(HSize(2))
 !    WRITE(UNIT_StdOut,'(A,I8)') ' | Number of impacts:                      ', EP_glob
 !    ! We lost the impact <-> proc association, so fill the entire array
-!    CALL ReadArray(ArrayName  = 'ErosionData'          , &
+!    CALL ReadArray(ArrayName  = 'ImpactData'          , &
 !                   rank       = 2                      , &
 !                   nVal       = (/EPDataSize,EP_glob/) , &
 !                   offset_in  = 0                      , &
@@ -401,7 +412,7 @@ END IF
 
 #if USE_MPI
 CALL DistributedWriteArray(FileString                                    ,&
-                           DataSetName  = 'ErosionData'                  ,&
+                           DataSetName  = 'ImpactData'                   ,&
                            rank         = 2                              ,&
                            nValGlobal   = (/EPDataSize  ,EP_glob  /)     ,&
                            nVal         = (/EPDataSize  ,locEP    /)     ,&
@@ -413,7 +424,7 @@ CALL DistributedWriteArray(FileString                                    ,&
 !CALL MPI_BARRIER(PartMPI%COMM,iERROR)
 #else
 CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-CALL WriteArray(           DataSetName  = 'ErosionData'                  ,&
+CALL WriteArray(           DataSetName  = 'ImpactData'                   ,&
                            rank         = 2                              ,&
                            nValGlobal   = (/EPDataSize     ,EP_glob  /)  ,&
                            nVal         = (/EPDataSize     ,locEP    /)  ,&

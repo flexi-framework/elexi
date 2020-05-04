@@ -494,7 +494,7 @@ END FUNCTION FillVorticity
 !> the velocity gradient tensor \f[ \Delta u \f].
 !> Calculation of the eigenvalues is done using LAPACK.
 !==================================================================================================================================
-PURE FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
+FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

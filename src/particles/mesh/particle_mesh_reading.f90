@@ -259,8 +259,11 @@ SUBROUTINE ReadMeshNodes()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_ChangeBasisByDim          ,ONLY: ChangeBasisVolume
 USE MOD_HDF5_Input                ,ONLY: ReadArray
-USE MOD_Mesh_Vars
+USE MOD_Interpolation             ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars        ,ONLY: NodeType,NodeTypeVISU
+USE MOD_Mesh_Vars                 ,ONLY: nElems,NGeo,nGlobalElems,offsetElem,useCurveds
 USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_Particle_MPI_Shared
@@ -272,11 +275,15 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                        :: iElem,iNode,i,j,k
 INTEGER                        :: FirstElemInd,LastElemInd
 INTEGER                        :: FirstNodeInd,LastNodeInd
 INTEGER                        :: nNodeIDs,offsetNodeID
 INTEGER,ALLOCATABLE            :: NodeInfo(:)
 REAL,ALLOCATABLE               :: NodeCoords_indx(:,:)
+INTEGER                        :: CornerNodeIDswitch(8)
+REAL,ALLOCATABLE               :: Vdm_EQNGeo_EQNGeoOverride(:,:)
+REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:),NodeCoordsNew(:,:,:,:)
 #if USE_MPI
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
@@ -295,27 +302,121 @@ CALL ReadArray('GlobalNodeIDs',1,(/nNodeIDs/),offsetNodeID,1,IntArray=NodeInfo)
 ALLOCATE(NodeCoords_indx(3,nNodeIDs))
 CALL ReadArray('NodeCoords',2,(/3,nNodeIDs/),offsetNodeID,2,RealArray=NodeCoords_indx)
 
-#if USE_MPI
-! allocate shared array for NodeInfo
-CALL MPI_ALLREDUCE(nNodeIDs,nComputeNodeNodes,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IERROR)
-MPISharedSize = INT(nNonUniqueGlobalNodes,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/nNonUniqueGlobalNodes/),NodeInfo_Shared_Win,NodeInfo_Shared)
-CALL MPI_WIN_LOCK_ALL(0,NodeInfo_Shared_Win,IERROR)
-NodeInfo_Shared(offsetNodeID+1:offsetNodeID+nNodeIDs) = NodeInfo(:)
-CALL MPI_WIN_SYNC(NodeInfo_Shared_Win,IERROR)
+! Keep all nodes if elements are curved and not interpolated
+IF (NGeoOverride.LE.0.AND.(useCurveds.OR.NGeo.EQ.1)) THEN
 
-MPISharedSize = INT(3*nNonUniqueGlobalNodes,MPI_ADDRESS_KIND)*MPI_DOUBLE
-CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalNodes/),NodeCoords_Shared_Win,NodeCoords_Shared)
-CALL MPI_WIN_LOCK_ALL(0,NodeCoords_Shared_Win,IERROR)
-NodeCoords_Shared(:,offsetNodeID+1:offsetNodeID+nNodeIDs) = NodeCoords_indx(:,:)
+#if USE_MPI
+!  ! allocate shared array for NodeInfo
+  CALL MPI_ALLREDUCE(nNodeIDs,nComputeNodeNodes,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IERROR)
+!  MPISharedSize = INT(nNonUniqueGlobalNodes,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+!  CALL Allocate_Shared(MPISharedSize,(/nNonUniqueGlobalNodes/),NodeInfo_Shared_Win,NodeInfo_Shared)
+!  CALL MPI_WIN_LOCK_ALL(0,NodeInfo_Shared_Win,IERROR)
+!  NodeInfo_Shared(offsetNodeID+1:offsetNodeID+nNodeIDs) = NodeInfo(:)
+!  CALL MPI_WIN_SYNC(NodeInfo_Shared_Win,IERROR)
+
+  MPISharedSize = INT(3*nNonUniqueGlobalNodes,MPI_ADDRESS_KIND)*MPI_DOUBLE
+  CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalNodes/),NodeCoords_Shared_Win,NodeCoords_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,NodeCoords_Shared_Win,IERROR)
+  NodeCoords_Shared(:,offsetNodeID+1:offsetNodeID+nNodeIDs) = NodeCoords_indx(:,:)
+#else
+  nComputeNodeNodes = nNodeIDs
+!  ALLOCATE(NodeInfo_Shared(1:nNodeIDs))
+!  NodeInfo_Shared(1:nNodeIDs) = NodeInfo(:)
+  ALLOCATE(NodeCoords_Shared(3,nNodeIDs))
+  NodeCoords_Shared(:,:) = NodeCoords_indx(:,:)
+#endif  /*USE_MPI*/
+
+! Reduce NodeCoords if no curved elements are to be used
+ELSE IF (NGeoOverride.LE.0.AND..NOT.useCurveds.AND.NGeo.GT.1) THEN
+  ! the cornernodes are not the first 8 entries (for Ngeo>1) of nodeinfo array so mapping is built
+  CornerNodeIDswitch(1)=1
+  CornerNodeIDswitch(2)=(Ngeo+1)
+  CornerNodeIDswitch(3)=(Ngeo+1)*Ngeo+1
+  CornerNodeIDswitch(4)=(Ngeo+1)**2
+  CornerNodeIDswitch(5)=(Ngeo+1)**2*Ngeo+1
+  CornerNodeIDswitch(6)=(Ngeo+1)**2*Ngeo+(Ngeo+1)
+  CornerNodeIDswitch(7)=(Ngeo+1)**2*Ngeo+(Ngeo+1)*Ngeo+1
+  CornerNodeIDswitch(8)=(Ngeo+1)**2*Ngeo+(Ngeo+1)**2
+
+  ASSOCIATE(CNS => CornerNodeIDswitch)
+
+  ! Only the 8 corner nodes count for nodes. (NGeo+1)**2 = 8
+  nComputeNodeNodes = 8*nComputeNodeElems
+
+#if USE_MPI
+  MPISharedSize = INT(3*8*nGlobalElems,MPI_ADDRESS_KIND)*MPI_DOUBLE
+  CALL Allocate_Shared(MPISharedSize,(/3,8*nGlobalElems/),NodeCoords_Shared_Win,NodeCoords_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,NodeCoords_Shared_Win,IERROR)
+#else
+  ALLOCATE(NodeCoords_Shared(3,8*nGlobalElems))
+#endif  /*USE_MPI*/
+
+  ! throw away all nodes except the 8 corner nodes of each hexa
+  DO iElem = FirstElemInd,LastElemInd
+    FirstNodeInd = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
+    ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) = 8*(iElem-1)
+    ElemInfo_Shared(ELEM_LASTNODEIND ,iElem) = 8* iElem
+    DO iNode = 1,8
+      NodeCoords_Shared(:,8*(iElem-1) + iNode) = NodeCoords_indx(:,FirstNodeInd+CNS(iNode))
+    END DO
+  END DO
+
+  END ASSOCIATE
+
+! Interpolate NodeCoords if NGeo != NGeoOverride
+ELSE
+  ALLOCATE(Vdm_EQNGeo_EQNGeoOverride(0:NGeoOverride,0:NGeo))
+  CALL GetVandermonde(NGeo,NodeTypeVISU,NGeoOverride,NodeTypeVISU,Vdm_EQNGeo_EQNGeoOverride,modal=.FALSE.)
+
+  nComputeNodeNodes = (NGeoOverride+1)**2 * nComputeNodeElems
+
+#if USE_MPI
+  MPISharedSize = INT(3*(NGeoOverride+1)**2*nGlobalElems,MPI_ADDRESS_KIND)*MPI_DOUBLE
+  CALL Allocate_Shared(MPISharedSize,(/3,(NGeoOverride+1)**2*nGlobalElems/),NodeCoords_Shared_Win,NodeCoords_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,NodeCoords_Shared_Win,IERROR)
+#else
+  ALLOCATE(NodeCoords_Shared(3,(NGeoOverride+1)**2*nGlobalElems))
+#endif  /*USE_MPI*/
+
+  ALLOCATE( NodeCoordsTmp(1:3,0:NGeo        ,0:NGeo        ,0:NGeo)                                                                &
+          , NodeCoordsNew(1:3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride))
+
+  DO iElem=FirstElemInd,LastElemInd
+    FirstNodeInd = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) + 1
+    LastNodeInd  = ElemInfo_Shared(ELEM_LASTNODEIND ,iElem)
+    ! change ElemInfo_Shared to reflect new NodeCoords
+    ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) = (NGeoOverride+1)**2*(iElem-1)
+    ElemInfo_Shared(ELEM_LASTNODEIND ,iElem) = (NGeoOverride+1)**2*(iElem)
+
+    DO k = 0,NGeo; DO j = 0,NGeo; DO i = 0,NGeo
+      NodeCoordsTmp(:,i,j,k) = NodeCoords_indx(:,k*(NGeo+1)**2 + j*(NGeo+1) + i)
+    END DO; END DO; END DO
+
+    ! interpolate NodeCoords to new NGeo
+    CALL ChangeBasisVolume(3,NGeo,NGeoOverride,Vdm_EQNGeo_EQNGeoOverride                                                           &
+                          ,NodeCoordsTmp                                                                                           &
+                          ,NodeCoordsNew)
+
+    DO k = 0,NGeo; DO j = 0,NGeo; DO i = 0,NGeo
+      NodeCoords_Shared(:,ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) + k*(NGeo+1)**2 + j*(NGeo+1) + i + 1) = NodeCoordsNew(:,i,j,k)
+    END DO; END DO; END DO
+  END DO
+END IF
+
+! Update node counters
+offsetNodeID = ElemInfo_Shared(ELEM_FIRSTNODEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
+nNodeIDs     = ElemInfo_Shared(ELEM_LASTNODEIND ,LastElemInd)-ElemInfo_Shared(ELEM_FIRSTNODEIND,FirstElemind)
+FirstNodeInd = offsetNodeID+1
+LastNodeInd  = offsetNodeID+nNodeIDs
+
+! scale mesh if desired. Mesh deformation currently not supported!
+IF (ABS(meshScale-1.).GT.1e-14) THEN
+  NodeCoords_Shared(:,FirstNodeInd:LastNodeInd) = NodeCoords_Shared(:,FirstNodeInd:LastNodeInd) * meshScale
+END IF
+
+#if USE_MPI
 CALL MPI_WIN_SYNC(NodeCoords_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
-#else
-nComputeNodeNodes = nNodeIDs
-ALLOCATE(NodeInfo_Shared(1:nNodeIDs))
-NodeInfo_Shared(1:nNodeIDs) = NodeInfo(:)
-ALLOCATE(NodeCoords_Shared(3,nNodeIDs))
-NodeCoords_Shared(:,:) = NodeCoords_indx(:,:)
 #endif  /*USE_MPI*/
 
 DEALLOCATE(NodeInfo,NodeCoords_indx)
@@ -502,8 +603,8 @@ IF (myComputeNodeRank.EQ.0) THEN
       ,ELEMINFOSIZE*displsElem    ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
   CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,SideInfo_Shared,(SIDEINFOSIZE+1)   *recvcountSide  &
       ,(SIDEINFOSIZE+1)*displsSide,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
-  CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,NodeInfo_Shared,                    recvcountNode  &
-      ,displsNode                 ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
+!  CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,NodeInfo_Shared,                    recvcountNode  &
+!      ,displsNode                 ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
   CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,NodeCoords_Shared,3                *recvcountNode  &
       ,3*displsNode               ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,IERROR)
   IF(isMortarMesh)THEN
@@ -581,7 +682,7 @@ END IF
 ! final sync of all mesh shared arrays
 CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(NodeInfo_Shared_Win,IERROR)
+!CALL MPI_WIN_SYNC(NodeInfo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(NodeCoords_Shared_Win,IERROR)
 IF (isMortarMesh) THEN
   CALL MPI_WIN_SYNC(xiMinMax_Shared_Win,IERROR)
@@ -630,8 +731,8 @@ CALL MPI_WIN_UNLOCK_ALL(SideInfo_Shared_Win,iError)
 CALL MPI_WIN_FREE(SideInfo_Shared_Win,iError)
 
 ! nodes
-CALL MPI_WIN_UNLOCK_ALL(NodeInfo_Shared_Win,iError)
-CALL MPI_WIN_FREE(NodeInfo_Shared_Win,iError)
+!CALL MPI_WIN_UNLOCK_ALL(NodeInfo_Shared_Win,iError)
+!CALL MPI_WIN_FREE(NodeInfo_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(NodeCoords_Shared_Win,iError)
 CALL MPI_WIN_FREE(NodeCoords_Shared_Win,iError)
 
@@ -647,7 +748,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 MDEALLOCATE(ElemInfo_Shared)
 MDEALLOCATE(ElemToProcID_Shared)
 MDEALLOCATE(SideInfo_Shared)
-MDEALLOCATE(NodeInfo_Shared)
+!MDEALLOCATE(NodeInfo_Shared)
 MDEALLOCATE(NodeCoords_Shared)
 MDEALLOCATE(TreeCoords_Shared)
 

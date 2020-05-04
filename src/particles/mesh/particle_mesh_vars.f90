@@ -26,7 +26,9 @@ SAVE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-LOGICAL             :: ParticleMeshInitIsDone
+LOGICAL            :: ParticleMeshInitIsDone
+INTEGER            :: NGeoOverride
+REAL               :: meshScale
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Mesh info
 REAL               :: MeshVolume                            ! total Volume of mesh

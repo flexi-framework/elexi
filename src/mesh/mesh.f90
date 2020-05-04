@@ -116,8 +116,7 @@ USE MOD_2D
 #endif
 #if USE_PARTICLES
 USE MOD_Particle_Mesh      ,ONLY:InitParticleMeshBasis
-!USE MOD_Particle_Mesh_Vars
-!USE MOD_Particle_Mappings,      ONLY:Particle_InitMappings
+USE MOD_Particle_Mesh_Vars ,ONLY:NGeoOverride,meshScale
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -127,7 +126,7 @@ INTEGER,INTENT(IN) :: meshMode !< 0: only read and build Elem_xGP,
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: MeshFile_IN !< file name of mesh to be read
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL              :: x(3),meshScale
+REAL              :: x(3)
 REAL,POINTER      :: coords(:,:,:,:,:),coordsTmp(:,:,:,:,:),Vdm_EQNGeo_EQNGeoOverride(:,:)
 INTEGER           :: iElem,i,j,k,nElemsLoc
 LOGICAL           :: validMesh
@@ -136,7 +135,10 @@ INTEGER           :: lastMasterSide      ! upper side ID of array U_master/gradU
 INTEGER           :: firstSlaveSide      ! lower side ID of array U_slave/gradUx_slave...
 INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx_slave...
 INTEGER           :: iSide,LocSideID,SideID
+#if !USE_PARTICLES
+REAL              :: meshScale
 INTEGER           :: NGeoOverride
+#endif /*!USE_PARTICLES*/
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
@@ -166,6 +168,10 @@ IF(useCurveds.AND.(PP_N.LT.NGeo))THEN
                            & can cause problems on periodic boundaries! Set N>=NGeo'
 ENDIF
 
+#if USE_PARTICLES
+NGeoOverride = GETINT ('NGeoOverride','-1' )
+meshScale    = GETREAL('meshScale'   ,'1.0')
+#endif /*USE_PARTICLES*/
 CALL readMesh(MeshFile) !set nElems
 
 #if (PP_dim == 2)
@@ -192,7 +198,9 @@ ELSE
   nElemsLoc=nElems
 ENDIF
 
+#if !USE_PARTICLES
 NGeoOverride=GETINT('NGeoOverride','-1')
+#endif /*!USE_PARTICLES*/
 IF(NGeoOverride.GT.0)THEN
   ALLOCATE(CoordsTmp(3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride,nElemsLoc))
   ALLOCATE(Vdm_EQNGeo_EQNGeoOverride(0:NGeoOverride,0:NGeo))
@@ -218,11 +226,16 @@ END IF
 SWRITE(UNIT_StdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
 
 ! scale and deform mesh if desired (warning: no mesh output!)
+#if !USE_PARTICLES
 meshScale=GETREAL('meshScale','1.0')
+#endif /*!USE_PARTICLES*/
 IF(ABS(meshScale-1.).GT.1e-14)&
   Coords = Coords*meshScale
 
 IF(GETLOGICAL('meshdeform','.FALSE.'))THEN
+#if USE_PARTICLES
+  CALL COLLECTIVESTOP(__STAMP__,'Mesh deformation currently not supported in conjunction with particles!')
+#endif
   DO iElem=1,nElemsLoc
     DO k=0,ZDIM(NGeo); DO j=0,NGeo; DO i=0,NGeo
       x(:)=Coords(:,i,j,k,iElem)
@@ -383,7 +396,7 @@ IF (meshMode.GT.1) THEN
   crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')
 #endif
   SWRITE(UNIT_stdOut,'(A)') " NOW CALLING calcMetrics..."
-  
+
 #if USE_PARTICLES
   CALL InitParticleMeshBasis()
 #endif

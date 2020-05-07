@@ -110,20 +110,11 @@ TYPE tInit                                                                   ! P
 END TYPE tInit
 
 TYPE tSurfFluxSubSideData
-  REAL                                   :: projFak                          ! VeloVecIC projected to inwards normal
-  REAL                                   :: Velo_t1                          ! Velo comp. of first orth. vector
-  REAL                                   :: Velo_t2                          ! Velo comp. of second orth. vector
   REAL                                   :: nVFR                             ! normal volume flow rate through subside
   REAL                                   :: Dmax                             ! maximum Jacobian determinant of subside for opt. ARM
   REAL,ALLOCATABLE                       :: BezierControlPoints2D(:,:,:)     ! BCP of SubSide projected to VeloVecIC
                                                                              ! (1:2,0:NGeo,0:NGeo)
 END TYPE tSurfFluxSubSideData
-
-TYPE tSurfFluxLink
-  INTEGER                                :: PartIdx
-  INTEGER,ALLOCATABLE                    :: SideInfo(:)
-  TYPE(tSurfFluxLink), POINTER           :: next => null()
-END TYPE tSurfFluxLink
 
 TYPE typeSurfaceflux
   INTEGER                                :: BC                               ! PartBound to be emitted from
@@ -136,9 +127,7 @@ TYPE typeSurfaceflux
   LOGICAL                                :: AcceptReject                     ! perform ARM for skewness of RefMap-positioning
   INTEGER                                :: ARM_DmaxSampleN                  ! number of sample intervals in xi/eta for Dmax-calc.
   REAL                                   :: VFR_total                        ! Total Volumetric flow rate through surface
-  REAL                     , ALLOCATABLE :: VFR_total_allProcs(:)            ! -''-, all values for root in ReduceNoise-case
   REAL                                   :: VFR_total_allProcsTotal          !     -''-, total
-  REAL                                   :: totalAreaSF                      ! Total area of the respective surface flux
   INTEGER(KIND=8)                        :: InsertedParticle                 ! Number of all already inserted Particles
   INTEGER(KIND=8)                        :: InsertedParticleSurplus          ! accumulated "negative" number of inserted Particles
   INTEGER(KIND=8)                        :: tmpInsertedParticle              ! tmp Number of all already inserted Particles
@@ -151,11 +140,6 @@ TYPE typeSurfaceflux
   REAL                                   :: rmax                             ! max radius of to-be inserted particles
   REAL                                   :: rmin                             ! min radius of to-be inserted particles
   INTEGER, ALLOCATABLE                   :: SurfFluxSideRejectType(:)        ! Type if parts in side can be rejected (1:SideNumber)
-  REAL                                   :: PressureFraction
-  TYPE(tSurfFluxLink), POINTER           :: firstSurfFluxPart => null()      ! pointer to first particle inserted for iSurfaceFlux
-                                                                             ! used for linked list during sampling
-  TYPE(tSurfFluxLink), POINTER           :: lastSurfFluxPart => null()       ! pointer to last particle inserted for iSurfaceFlux
-                                                                             ! used for abort criterion in do while during sampling
   REAL, ALLOCATABLE                      :: ConstMassflowWeight(:,:,:)       ! Adaptive, Type 4: Weighting factor for SF-sides to
                                                                              ! insert the right amount of particles
   REAL                                   :: SampledMassflow                  ! Actual mass flow rate through a surface flux boundary

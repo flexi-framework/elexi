@@ -267,12 +267,6 @@ USGS = U - USGS
 ! Interpolate SGS kinetic energy to particle position
 CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),USGSPart)
 
-! WARNING! TODO! Set constant relative velocity
-USGSPart       (1:4,:) = 1.
-FieldAtParticle(1  ,:) = 1.
-FieldAtParticle(2:4,:) = 0.
-! WARNING! TODO! Set constant relative velocity
-
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
@@ -299,10 +293,6 @@ DO iPart = 1,PDM%ParticleVecLength
 
     ! Relative velocity
     udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
-
-    ! WARNING! TODO! Set constant relative velocity
-    udiff = 1.
-    ! WARNING! TODO! Set constant relative velocity
 
     IF (ANY(udiff.NE.0)) THEN
       urel = udiff/SQRT(SUM(udiff**2))
@@ -388,12 +378,6 @@ USGS = U - USGS
 ! Interpolate SGS kinetic energy to particle position
 CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),USGSPart)
 
-! WARNING! TODO! Set constant relative velocity
-USGSPart       (1:4,:) = 1.
-FieldAtParticle(1  ,:) = 1.
-FieldAtParticle(2:4,:) = 0.
-! WARNING! TODO! Set constant relative velocity
-
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
@@ -406,7 +390,11 @@ DO iPart = 1,PDM%ParticleVecLength
   ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(sigmaSGS(iPart))) THEN
     ! We ASSUME that these are the correct matrix indices
-
+    E_SGS(:,:,iPart) = 0.
+    DO i = 1,3
+      E_SGS(i,i,iPart) = 1.
+    END DO
+    W_SGS(:,:,iPart) = 0.
 
   ! Valid SGS turbulent kinetic energy
   ELSE
@@ -416,10 +404,6 @@ DO iPart = 1,PDM%ParticleVecLength
 
     ! Relative velocity
     udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
-
-    ! WARNING! TODO! Set constant relative velocity
-    udiff = 1.
-    ! WARNING! TODO! Set constant relative velocity
 
     IF (ANY(udiff.NE.0)) THEN
       urel = udiff/SQRT(SUM(udiff**2))

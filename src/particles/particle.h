@@ -101,8 +101,9 @@
 #define LB_INTERPOLATION 5
 #define LB_PUSH          6
 #define LB_PARTCOMM      7
+#define LB_SURFFLUX      8
 
-#define LB_NTIMES        7
+#define LB_NTIMES        8
 
 ! Tracking method
 #define REFMAPPING    1

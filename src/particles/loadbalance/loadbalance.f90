@@ -191,7 +191,7 @@ SUBROUTINE InitLoadBalanceTracking
 !===================================================================================================================================
 ! MODULES
 USE MOD_IO_HDF5                ,ONLY: AddToElemData,ElementOut
-USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem
+USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem,nSurfacefluxPerElem
 USE MOD_Mesh_Vars              ,ONLY: nElems
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -201,18 +201,19 @@ USE MOD_Mesh_Vars              ,ONLY: nElems
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
+! allocate element counters
 ! Maybe this could happen in shared memory
-IF (.NOT.ALLOCATED(nPartsPerElem)) THEN
-  ALLOCATE(nPartsPerElem(1:nElems))
-ELSE
-  SDEALLOCATE(nPartsPerElem)
-  ALLOCATE(nPartsPerElem(1:nElems))
-END IF
-CALL AddToElemData(ElementOut,'nPartsPerElem',IntArray=nPartsPerElem(:))
+SDEALLOCATE(nPartsPerElem)
+ALLOCATE(nPartsPerElem(1:nElems))
 SDEALLOCATE(nTracksPerElem)
 ALLOCATE(nTracksPerElem(1:nElems))
-nPartsPerElem          = 0
-nTracksPerElem         = 0
+SDEALLOCATE(nSurfacefluxPerElem)
+ALLOCATE(nSurfacefluxPerElem(1:nElems))
+
+CALL AddToElemData(ElementOut,'nPartsPerElem',IntArray=nPartsPerElem(:))
+nPartsPerElem       = 0
+nTracksPerElem      = 0
+nSurfacefluxPerElem = 0
 
 END SUBROUTINE InitLoadBalanceTracking
 
@@ -227,13 +228,13 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceTimeBased,ElemTime,tCurrent,nLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: DeviationThreshold,PerformLoadBalance
-USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem
+USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem!,nSurfacefluxPerElem
 USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight
 USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance
 USE MOD_LoadDistribution       ,ONLY: WriteElemTimeStatistics
 USE MOD_Particle_Globals
 USE MOD_Particle_Localization  ,ONLY: CountPartsPerElem
-USE MOD_Particle_Tracking_vars ,ONLY: DoRefMapping
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_TimeDisc_Vars          ,ONLY: t
 !USE MOD_TimeDisc_Vars          ,ONLY: nRKStages
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -246,6 +247,7 @@ IMPLICIT NONE
 INTEGER               :: iElem
 INTEGER(KIND=8)       :: HelpSum
 REAL                  :: stotalParts,sTotalTracks
+!REAL                  :: sTotalSurfaceFluxes
 !===================================================================================================================================
 
 ! Calculate Load Balance based on elapsed time, linearly distributed to each element
@@ -254,7 +256,8 @@ IF (LoadBalanceTimeBased) THEN
   nLoadBalance = nLoadBalance + 1
 
   ! Calculate weightings, these are the denominators
-  sTotalTracks = 1.0
+  sTotalTracks        = 1.
+!  sTotalSurfaceFluxes = 1.
 
   ! Recount particles
   CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.)
@@ -270,12 +273,17 @@ IF (LoadBalanceTimeBased) THEN
   END IF
 
   ! Calculate and weight tracks per element
-  IF (DoRefMapping) THEN
+  IF (TrackingMethod.EQ.REFMAPPING) THEN
     helpSum = SUM(nTracksPerElem)
     IF(SUM(nTracksPerElem).GT.0) THEN
-      sTotalTracks=1.0/REAL(helpSum)
+      sTotalTracks = 1.0/REAL(helpSum)
     END IF
   END IF
+!  ! calculate and weight number of surface fluxes
+!  helpSum = SUM(nSurfacefluxPerElem)
+!  IF(helpSum.GT.0) THEN
+!    sTotalSurfaceFluxes = 1.0/REAL(helpSum)
+!  END IF
 
   ! distribute times of different routines on elements with respective weightings
   DO iElem = 1,PP_nElems
@@ -289,6 +297,7 @@ IF (LoadBalanceTimeBased) THEN
                     + tCurrent(LB_INTERPOLATION) * nPartsPerElem(iElem) *sTotalParts   &
                     + tCurrent(LB_PUSH)          * nPartsPerElem(iElem) *sTotalParts   &
                     + tCurrent(LB_TRACK)         * nTracksPerElem(iElem)*sTotalTracks
+!                    + tCurrent(LB_SURFFLUX)      * nSurfacefluxPerElem(iElem)*stotalSurfacefluxes
   END DO ! iElem=1,PP_nElems
 
 ! Calculate Load Balance based on the amount of particles per cell
@@ -317,9 +326,10 @@ PerformLoadBalance = .FALSE.
 IF(CurrentImbalance.GT.DeviationThreshold) PerformLoadBalance=.TRUE.
 
 ! Reset counters
-nTracksPerElem = 0
-nPartsPerElem  = 0
-tCurrent       = 0.
+nTracksPerElem       = 0
+nPartsPerElem        = 0
+!nSurfacePartsPerElem = 0
+tCurrent             = 0.
 
 END SUBROUTINE ComputeElemLoad
 #endif /*USE_LOADBALANCE*/

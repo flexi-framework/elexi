@@ -82,6 +82,7 @@ REAL,ALLOCATABLE                    :: ElemTime_tmp(:)                          
                                                                                 ! the state.h5 file
 REAL,ALLOCATABLE                    :: ElemGlobalTime(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerElem(:)
+INTEGER(KIND=8),ALLOCATABLE         :: nSurfacefluxPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nTracksPerElem(:)
 
 

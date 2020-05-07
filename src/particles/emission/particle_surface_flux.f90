@@ -944,7 +944,6 @@ USE MOD_Particle_Timedisc_Vars  ,ONLY: RKdtFrac
 USE MOD_Particle_Vars           ,ONLY: Species,nSpecies,PDM,PEM
 USE MOD_Particle_Vars           ,ONLY: PartState,LastPartPos
 USE MOD_Particle_Vars           ,ONLY: DoPoissonRounding,DoTimeDepInflow
-USE MOD_Particle_Vars           ,ONLY: tSurfFluxLink
 USE MOD_TimeDisc_Vars           ,ONLY: dt
 #if CODE_ANALYZE
 USE MOD_Part_Emission_Tools     ,ONLY: CalcVectorAdditionCoeffs

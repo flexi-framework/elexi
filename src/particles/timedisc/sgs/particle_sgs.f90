@@ -42,21 +42,22 @@ PUBLIC::ParticleFinalizeSGS
 CONTAINS
 
 !===================================================================================================================================
-!
+! Initialize the particle subgrid-scale model
 !===================================================================================================================================
 SUBROUTINE ParticleInitSGS()
 ! MODULES
-USE MOD_Globals,                    ONLY: ABORT,Unit_STDOUT
-USE MOD_Preproc,                    ONLY: PP_N,PP_NZ
-USE MOD_Mesh_Vars,                  ONLY: nElems
-USE MOD_ReadInTools,                ONLY: GETINT,GETSTR
+USE MOD_Globals               ,ONLY: ABORT,Unit_STDOUT
+USE MOD_Preproc               ,ONLY: PP_N,PP_NZ
+USE MOD_Analyze_Vars          ,ONLY: ElemVol
+USE MOD_Mesh_Vars             ,ONLY: nElems
 USE MOD_Particle_SGS_Vars
-USE MOD_Particle_Vars,              ONLY: PDM,TurbPartState,TurbPt_temp
+USE MOD_Particle_Vars         ,ONLY: PDM,TurbPartState,TurbPt_temp
+USE MOD_ReadInTools           ,ONLY: GETINT,GETSTR
 #if USE_MPI
-USE MOD_Globals,                    ONLY: MPIRoot
+USE MOD_Globals               ,ONLY: MPIRoot
 #endif /*USE_MPI*/
 #if USE_RW
-USE MOD_Particle_Randomwalk_Vars,   ONLY: RWModel
+USE MOD_Particle_Randomwalk_Vars,ONLY: RWModel
 #endif /*USE_RW*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -95,19 +96,52 @@ SELECT CASE(SGSModel)
     ! Allocate array to hold the SGS properties for every particle
     ALLOCATE(USGS         (1:PP_nVar ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
              USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
-             kSGS         (1         ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-             kSGSPart     (1         ,1:PDM%maxParticleNumber),      &
-             sigmaSGS     (1         ,1:PDM%maxParticleNumber),      &
-             tauSGS       (1         ,1:PDM%maxParticleNumber),      &
+!             kSGS         (           0:PP_N,0:PP_N,0:PP_NZ,nElems), &
+             kSGSPart     (           1:PDM%maxParticleNumber),      &
+             sigmaSGS     (           1:PDM%maxParticleNumber),      &
+             tauSGS       (           1:PDM%maxParticleNumber),      &
              tauL         (1:2       ,1:PDM%maxParticleNumber),      &
              G_SGS        (1:3,1:3   ,1:PDM%maxParticleNumber),      &
              B_SGS        (1:3,1:3   ,1:PDM%maxParticleNumber),      &
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
-             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
+             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
+             ElemVolN     (         1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
       CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+
+    TurbPartState   = 0.
+    TurbPt_temp     = 0.
+    ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
+
+  CASE('Breuer-Analytic')
+    ! Set number of variables and SGS flag active
+    nSGSVars = 3
+    SGSinUse =  .TRUE.
+
+    ! Init double-filtering for SGS turbulent kinetic energy
+    !>> Modal Filter, default to cut-off at PP_N-2
+    nSGSFilter = GETINT('Part-SGSNFilter','2')
+    CALL InitSGSFilter()
+
+    ! Allocate array to hold the SGS properties for every particle
+    ALLOCATE(USGS         (1:PP_nVar ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
+             USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
+!             kSGS         (           0:PP_N,0:PP_N,0:PP_NZ,nElems), &
+             kSGSPart     (           1:PDM%maxParticleNumber),      &
+             sigmaSGS     (           1:PDM%maxParticleNumber),      &
+             tauSGS       (           1:PDM%maxParticleNumber),      &
+             tauL         (1:2       ,1:PDM%maxParticleNumber),      &
+             E_SGS        (1:3,1:3   ,1:PDM%maxParticleNumber),      &
+             W_SGS        (1:3,1:3   ,1:PDM%maxParticleNumber),      &
+             TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
+             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
+             ElemVolN     (         1:nElems),STAT=ALLOCSTAT)
+    IF (ALLOCSTAT.NE.0) &
+      CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+
     TurbPartState = 0.
     TurbPt_temp   = 0.
+    ElemVolN      = ElemVol**(1./3.)/(PP_N+1)
 
   CASE('none')
     ! Do nothing
@@ -124,6 +158,7 @@ SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE ParticleInitSGS
+
 
 !==================================================================================================================================
 !> Initialize all necessary information to perform SGS filtering
@@ -145,7 +180,7 @@ INTEGER                   :: iDeg
 SWRITE(UNIT_stdOut,'(A)') ' Init SGS filter...'
 
 ! Abort if Navier-Stokes filter is requested in addition to the SST filter
-IF(FilterType.GT.0) CALL CollectiveStop(__STAMP__,"SGS incompatible with Navier-Stokes filter!")
+IF(FilterType.GT.0) CALL CollectiveStop(__STAMP__, 'SGS incompatible with Navier-Stokes filter!')
 
 ! Prepare modal cut-off filter (low pass)
 ALLOCATE(FilterMat(0:PP_N,0:PP_N))
@@ -153,15 +188,17 @@ FilterMat = 0.
 
 ! Modal Filter, default to cut-off at PP_N-2
 NFilter = PP_N - nSGSFilter
-DO iDeg=0,NFilter
+DO iDeg = 0,NFilter
   FilterMat(iDeg,iDeg) = 1.
 END DO
 
 ! Assemble filter matrix in nodal space
-FilterMat=MATMUL(MATMUL(Vdm_Leg,FilterMat),sVdm_Leg)
+FilterMat = MATMUL(MATMUL(Vdm_Leg,FilterMat),sVdm_Leg)
 
 FilterInitIsDone = .TRUE.
+
 END SUBROUTINE InitSGSFilter
+
 
 !===================================================================================================================================
 ! SGS deconvolution
@@ -170,16 +207,17 @@ SUBROUTINE ParticleSGS(iStage,dt,b_dt)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Analyze_Vars          ,ONLY: ElemVol
-USE MOD_DG_Vars               ,ONLY: U
-USE MOD_Filter                ,ONLY: Filter_Pointer
-USE MOD_Filter_Vars           ,ONLY: FilterMat
+USE MOD_DG_Vars                     ,ONLY: U
+USE MOD_Filter                      ,ONLY: Filter_Pointer
+USE MOD_Filter_Vars                 ,ONLY: FilterMat
+USE MOD_Mesh_Vars                   ,ONLY: offsetElem
 USE MOD_Particle_Globals
 USE MOD_Particle_SGS_Vars
-USE MOD_Particle_Interpolation, ONLY: InterpolateFieldToParticle
-USE MOD_Particle_Interpolation_Vars, ONLY: FieldAtParticle
-USE MOD_Particle_Vars         ,ONLY: TurbPartState, PDM, PEM, PartState, TurbPt_Temp
-USE MOD_TimeDisc_Vars         ,ONLY: RKA
+USE MOD_Particle_Interpolation      ,ONLY: InterpolateFieldToParticle
+USE MOD_Particle_Interpolation_Vars ,ONLY: FieldAtParticle
+USE MOD_Particle_Vars               ,ONLY: TurbPartState,PDM,PEM,PartState
+!USE MOD_Particle_Vars               ,ONLY: TurbPt_Temp
+!USE MOD_TimeDisc_Vars               ,ONLY: RKA
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -205,7 +243,7 @@ CASE('none')
 !===================================================================================================================================
 ! DNS mode. Assume fully resolved turbulence
 !===================================================================================================================================
-  ! Do nothing
+! Do nothing
 
 CASE('Breuer')
 !===================================================================================================================================
@@ -229,20 +267,26 @@ USGS = U - USGS
 ! Interpolate SGS kinetic energy to particle position
 CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),USGSPart)
 
-DO iPart=1,PDM%ParticleVecLength
+! WARNING! TODO! Set constant relative velocity
+USGSPart       (1:4,:) = 1.
+FieldAtParticle(1  ,:) = 1.
+FieldAtParticle(2:4,:) = 0.
+! WARNING! TODO! Set constant relative velocity
+
+DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
   ! Use unfiltered density to obtain velocity in primitive variables
-  kSGSPart(1,iPart) = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(1,iPart))**2.)
+  kSGSPart(iPart) = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(1,iPart))**2.)
 
   ! Time scale of SGS scales
-  sigmaSGS(1,iPart) = SQRT(2./3.*kSGSPart(1,iPart))
+  sigmaSGS(iPart) = SQRT(2./3.*kSGSPart(iPart))
 
   ! No SGS turbulent kinetic energy, avoid float error
-  IF (ALMOSTZERO(sigmaSGS(1,iPart))) THEN
+  IF (ALMOSTZERO(sigmaSGS(iPart))) THEN
     ! We ASSUME that these are the correct matrix indices
     G_SGS(:,:,iPart) = 0.
-    DO i=1,3
+    DO i = 1,3
       G_SGS(i,i,iPart) = 1.
     END DO
     B_SGS(:,:,iPart) = 0.
@@ -250,36 +294,41 @@ DO iPart=1,PDM%ParticleVecLength
   ! Valid SGS turbulent kinetic energy
   ELSE
     ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
-    ElemID   = PEM%Element(iPart)
-    tauSGS   = C*(ElemVol(ElemID)**(1./3.)/(PP_N+1))/sigmaSGS(1,iPart)
+    ElemID   = PEM%Element(iPart) - offsetElem
+    tauSGS   = C*ElemVolN(ElemID)/sigmaSGS(iPart)
 
     ! Relative velocity
     udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
+
+    ! WARNING! TODO! Set constant relative velocity
+    udiff = 1.
+    ! WARNING! TODO! Set constant relative velocity
+
     IF (ANY(udiff.NE.0)) THEN
-     urel       = udiff/SQRT(SUM(udiff**2))
-   ELSE
-     urel       = 0.
-   END IF
+      urel = udiff/SQRT(SUM(udiff**2))
+    ELSE
+      urel = 0.
+    END IF
 
     ! parallel
-    tauL(1,iPart) = tauSGS(1,iPart)/(SQRT(1+betaSGS**2*SUM(udiff**2)/kSGSPart(1,iPart)*3/2))
+    tauL(1,iPart) = tauSGS(iPart)/(SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
     ! perpendicular
-    tauL(2,iPart) = tauSGS(1,iPart)/(SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart(1,iPart)*3/2))
+    tauL(2,iPart) = tauSGS(iPart)/(SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
 
     ! Calculate drift and diffusion matrix
-    DO i=1,3
-      DO j=1,3
+    DO i = 1,3
+      DO j = 1,3
         IF (i.EQ.j) THEN
-          G_SGS(i,j,iPart) = 1/tauL(2,iPart) + (1/tauL(1,iPart) - 1/tauL(2,iPart))*urel(i)*urel(j)
+          G_SGS(i,j,iPart) = 1/     tauL(2,iPart)  + (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
           B_SGS(i,j,iPart) = 1/SQRT(tauL(2,iPart)) + (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
         ELSE
-          G_SGS(i,j,iPart) =                   (1/tauL(1,iPart) - 1/tauL(2,iPart))*urel(i)*urel(j)
-          B_SGS(i,j,iPart) =                   (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
+          G_SGS(i,j,iPart) =                         (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
+          B_SGS(i,j,iPart) =                         (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
         END IF
       END DO
     END DO
 
-    B_SGS(:,:,iPart)=SQRT(2*sigmaSGS(1,iPart)**2)*B_SGS(:,:,iPart)
+    B_SGS(:,:,iPart) = SQRT(2*sigmaSGS(iPart)**2)*B_SGS(:,:,iPart)
   END IF
 
   ! RUNGE-KUTTA
@@ -300,8 +349,8 @@ DO iPart=1,PDM%ParticleVecLength
 
   ! EULER
   ! Sum up turbulent contributions
-  Pt(1:3)=0.
-  DO j=1,3
+  Pt(1:3) = 0.
+  DO j = 1,3
     Pt(1:3) = Pt(1:3) - G_SGS(1:3,j,iPart)*TurbPartState(j,iPart)*dt + B_SGS(1:3,j,iPart)*RandNormal()*SQRT(dt)
   END DO
   TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + Pt(1:3)
@@ -317,13 +366,104 @@ DO iPart=1,PDM%ParticleVecLength
 
 END DO
 
+CASE('Breuer-Analytic')
+!===================================================================================================================================
+! Breuer (2017) model, second option
+!> Breuer, M. and Hoppe, F., "Influence of a cost–efficient Langevin subgrid-scale model on the dispersed phase of large–eddy
+!simulations of turbulent bubble–laden and particle–laden flows." International Journal of Multiphase Flow, 89 (2017): 23-44.
+!===================================================================================================================================
+
+! Time integration in first RK stage (p. 26)
+IF (iStage.NE.1) RETURN
+
+! Filter the velocity field (low-pass)
+USGS = U
+
+! Filter overwrites the array in place. FilterMat already filled in InitSGSFilter
+CALL Filter_Pointer(USGS,FilterMat)
+
+! Obtain the high-pass filtered velocity field
+USGS = U - USGS
+
+! Interpolate SGS kinetic energy to particle position
+CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),USGSPart)
+
+! WARNING! TODO! Set constant relative velocity
+USGSPart       (1:4,:) = 1.
+FieldAtParticle(1  ,:) = 1.
+FieldAtParticle(2:4,:) = 0.
+! WARNING! TODO! Set constant relative velocity
+
+DO iPart = 1,PDM%ParticleVecLength
+  ! Only consider particles
+  IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
+  ! Use unfiltered density to obtain velocity in primitive variables
+  kSGSPart(iPart) = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(1,iPart))**2.)
+
+  ! Time scale of SGS scales
+  sigmaSGS(iPart) = SQRT(2./3.*kSGSPart(iPart))
+
+  ! No SGS turbulent kinetic energy, avoid float error
+  IF (ALMOSTZERO(sigmaSGS(iPart))) THEN
+    ! We ASSUME that these are the correct matrix indices
+
+
+  ! Valid SGS turbulent kinetic energy
+  ELSE
+    ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
+    ElemID   = PEM%Element(iPart) - offsetElem
+    tauSGS   = C*ElemVolN(ElemID)/sigmaSGS(iPart)
+
+    ! Relative velocity
+    udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
+
+    ! WARNING! TODO! Set constant relative velocity
+    udiff = 1.
+    ! WARNING! TODO! Set constant relative velocity
+
+    IF (ANY(udiff.NE.0)) THEN
+      urel = udiff/SQRT(SUM(udiff**2))
+    ELSE
+      urel = 0.
+    END IF
+
+    ! parallel
+    tauL(1,iPart) = tauSGS(iPart)/(SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
+    ! perpendicular
+    tauL(2,iPart) = tauSGS(iPart)/(SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
+
+    ! Calculate drift and diffusion matrix
+    DO i = 1,3
+      DO j = 1,3
+        IF (i.EQ.j) THEN
+          E_SGS(i,j,iPart) = EXP(-dt/tauL(2,iPart)) + (EXP(-dt/tauL(1,iPart)) - EXP(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+          W_SGS(i,j,iPart) =  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart)))                                                   &
+                           + (sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(1,iPart)))                                                   &
+                           -  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
+        ELSE
+          E_SGS(i,j,iPart) =                          (exp(-dt/tauL(1,iPart)) - exp(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+          W_SGS(i,j,iPart) = (sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(1,iPart)))                                                   &
+                           -  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
+        END IF
+      END DO
+    END DO
+  END IF
+
+  ! Sum up turbulent contributions
+  Pt(1:3) = 0.
+  DO j = 1,3
+    Pt(1:3) = Pt(1:3) - E_SGS(1:3,j,iPart)*TurbPartState(j,iPart) + W_SGS(1:3,j,iPart)*RandNormal()
+  END DO
+  TurbPartState(1:3,iPart) = Pt(1:3)
+END DO
+
 CASE DEFAULT
-    CALL abort(__STAMP__, ' No particle SGS model given. This should not happen.')
+  CALL ABORT(__STAMP__, ' No particle SGS model given. This should not happen.')
 
 END SELECT
 
-
 END SUBROUTINE ParticleSGS
+
 
 !===================================================================================================================================
 !> Finalize the SGS model
@@ -341,15 +481,18 @@ IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(USGS)
 SDEALLOCATE(USGSPart)
-SDEALLOCATE(kSGS)
+!SDEALLOCATE(kSGS)
 SDEALLOCATE(kSGSPart)
 SDEALLOCATE(sigmaSGS)
 SDEALLOCATE(tauSGS)
 SDEALLOCATE(tauL)
-SDEALLOCATE(G_SGS)
 SDEALLOCATE(B_SGS)
+SDEALLOCATE(E_SGS)
+SDEALLOCATE(G_SGS)
+SDEALLOCATE(W_SGS)
 SDEALLOCATE(TurbPartState)
 SDEALLOCATE(TurbPt_temp)
+SDEALLOCATE(ElemVolN)
 
 ParticleSGSInitIsDone=.FALSE.
 

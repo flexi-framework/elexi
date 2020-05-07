@@ -32,6 +32,7 @@ LOGICAL                   :: InitHITDone
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                   :: HIT_Forcing              !< Flag to perform HIT forcing
 LOGICAL                   :: HIT_Avg                  !< Flag to perform spatial averaging
+LOGICAL                   :: HIT_1st                  !< Flag to update forcing only in the 1st RK stage
 REAL                      :: HIT_k                    !< target turbulent kinetic energy
 REAL                      :: HIT_rho                  !< density for initialization
 REAL                      :: HIT_tauRMS               !< relaxation parameter for linear forcing

@@ -101,7 +101,7 @@ IF((.NOT.InterpolationInitIsDone) .OR. ErosionPointsInitIsDone)THEN
 END IF
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT EROSIONPOINTS...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT IMPACT TRACKING...'
 
 ! check if erosionpoints are activated
 doParticleImpactTrack = GETLOGICAL('Part-TrackImpacts','.FALSE.')
@@ -112,7 +112,7 @@ END IF
 
 ! surfaces sides are determined in particle_boundary_sampling.f90!
 IF (.NOT.doParticleImpactSample) &
- CALL COLLECTIVESTOP(__STAMP__,'Impact tracking only available with Part-ImpactSampling=T!')
+ CALL COLLECTIVESTOP(__STAMP__,'Impact tracking only available with Part-SurfaceSampling=T!')
 
 EP_maxMemory     = GETINT('Part-TrackImpactsMemory','100')           ! Max buffer (100MB)
 EP_MaxBufferSize = EP_MaxMemory*131072/EPDataSize    != size in bytes/(real*EPDataSize)
@@ -137,7 +137,7 @@ EP_maxBufferSize_glob   = EP_MaxBufferSize*nEP_Procs
 ErosionPointsInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' | Buffer allocatated for max. ',EP_maxBufferSize_glob, ' impacts (',     &
                                                                       EP_MaxBufferSize,      ' impacts/proc)'
-SWRITE(UNIT_stdOut,'(A)')' INIT EROSIONPOINTS DONE!'
+SWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitErosionPoints
 

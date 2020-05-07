@@ -42,10 +42,6 @@ INTERFACE CalcKineticEnergy
   MODULE PROCEDURE CalcKineticEnergy
 END INTERFACE
 
-INTERFACE CalcEkinPart
-  MODULE PROCEDURE CalcEkinPart
-END INTERFACE
-
 INTERFACE TrackingParticlePosition
   MODULE PROCEDURE TrackingParticlePosition
 END INTERFACE
@@ -56,7 +52,6 @@ PUBLIC :: ParticleInformation
 PUBLIC :: FinalizeParticleAnalyze
 PUBLIC :: DefineParametersParticleAnalyze
 PUBLIC :: CalcKineticEnergy
-PUBLIC :: CalcEkinPart
 PUBLIC :: TrackingParticlePosition
 !==================================================================================================================================
 
@@ -236,7 +231,7 @@ INTEGER :: nParticleInDomain
 
 ! Count number of particles on local proc
 nParticleOnProc = 0
-DO iPart=1,PDM%ParticleVecLength
+DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) nParticleOnProc = nParticleOnProc + 1
 END DO
 #if USE_MPI
@@ -317,37 +312,6 @@ END IF
 #endif /*MPI*/
 
 END SUBROUTINE CalcKineticEnergy
-
-
-Function CalcEkinPart(iPart)
-!===================================================================================================================================
-! computes the kinetic energy of one particle
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals
-USE MOD_Preproc
-USE MOD_Particle_Vars,          ONLY : PartState, PartSpecies, Species
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-INTEGER,INTENT(IN)                 :: iPart
-REAL                               :: CalcEkinPart
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL                               :: partV2, Ekin !,gamma1
-!===================================================================================================================================
-
-  partV2 = PartState(4,iPart) * PartState(4,iPart) &
-         + PartState(5,iPart) * PartState(5,iPart) &
-         + PartState(6,iPart) * PartState(6,iPart)
-
-  Ekin= 0.5*Species(PartSpecies(iPart))%MassIC*partV2
-  CalcEkinPart=Ekin
-
-END FUNCTION CalcEkinPart
 
 
 SUBROUTINE TrackingParticlePosition(time)
@@ -446,8 +410,8 @@ IF (printDiff) THEN
   IF (time.GE.printDiffTime) THEN
     printDiff=.FALSE.
     DO iPartState=1,3
-      diffPos=diffPos+(printDiffVec(iPartState)-PartState(1,iPartState))**2
-      diffVelo=diffVelo+(printDiffVec(iPartState+3)-PartState(1,iPartState+3))**2
+      diffPos  = diffPos+(printDiffVec(iPartState)-PartState(1,iPartState))**2
+      diffVelo = diffVelo+(printDiffVec(iPartState+3)-PartState(1,iPartState+3))**2
     END DO
     WRITE(*,'(A,e24.14,x,e24.14)') 'L2-norm from printDiffVec: ',SQRT(diffPos),SQRT(diffVelo)
   END IF

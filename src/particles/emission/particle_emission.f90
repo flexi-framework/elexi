@@ -153,7 +153,7 @@ USE MOD_Part_Emission_Tools    ,ONLY: SamplePoissonDistri
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticleMass
 USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
 USE MOD_Part_Tools             ,ONLY: UpdateNextFreePosition
-USE MOD_Particle_Analyze       ,ONLY: CalcEkinPart
+USE MOD_Particle_Analyze_Tools ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
 USE MOD_Particle_Globals       ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists
@@ -195,7 +195,7 @@ ELSE
 END IF
 
 !---  Emission at time step (initial emission see particle_init.f90: InitializeParticleEmission)
-DO i=1,nSpecies
+DO i = 1,nSpecies
   DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
     ! species to be used for init
     IF (Species(i)%Init(iInit)%UseForEmission) THEN
@@ -319,7 +319,7 @@ DO i=1,nSpecies
           END IF
 
         CASE DEFAULT
-          CALL abort(__STAMP__,'Unknown particle emission type')
+          CALL ABORT(__STAMP__,'Unknown particle emission type')
           ! Line below not required anymore, but might want to change back to silent fail later
           ! NbrOfParticle = 0
         END SELECT

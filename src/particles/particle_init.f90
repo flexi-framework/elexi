@@ -805,13 +805,19 @@ DO iSpec = 1, nSpecies
     !----------- various checks/calculations after read-in of Species(i)%Init(iInit)%-data ----------------------------------!
 
     !--- Check if Initial ParticleInserting is really used
-    IF   (((Species(iSpec)%Init(iInit)%ParticleEmissionType.EQ.1).OR.(Species(iSpec)%Init(iInit)%ParticleEmissionType.EQ.2)) &
-      .AND.(Species(iSpec)%Init(iInit)%UseForInit) ) THEN
-      IF (Species(iSpec)%Init(iInit)%initialParticleNumber.EQ.0) THEN
-        Species(iSpec)%Init(iInit)%UseForInit=.FALSE.
-        SWRITE(UNIT_StdOut,'(A)',ADVANCE='NO') ' | WARNING: Initial ParticleInserting disabled as no ParticleNumber'
-        SWRITE(UNIT_StdOut,'(A,I0,A,I0)')      ' detected for Species',iSpec,'-Init',iInit
-      END IF
+    IF (Species(iSpec)%Init(iInit)%UseForInit                   .AND. &
+       (Species(iSpec)%Init(iInit)%initialParticleNumber.EQ.0)) THEN
+      Species(iSpec)%Init(iInit)%UseForInit = .FALSE.
+      SWRITE(UNIT_StdOut,'(A)',ADVANCE='NO') ' | WARNING: Initial ParticleInserting disabled as no ParticleNumber'
+      SWRITE(UNIT_StdOut,'(A,I0,A,I0)')      ' detected for Species',iSpec,'-Init',iInit
+    END IF
+
+    !--- Check if ParticleEmission is really used
+    IF (Species(iSpec)%Init(iInit)%UseForEmission         .AND. &
+       (Species(iSpec)%Init(iInit)%ParticleEmission.EQ.0)) THEN
+      Species(iSpec)%Init(iInit)%UseForEmission = .FALSE.
+      SWRITE(UNIT_StdOut,'(A)',ADVANCE='NO') ' | WARNING: Particle emission disabled as no emission rate'
+      SWRITE(UNIT_StdOut,'(A,I0,A,I0)')      ' detected for Species',iSpec,'-Init',iInit
     END IF
 
     !--- cuboid-/cylinder-height calculation from v and dt

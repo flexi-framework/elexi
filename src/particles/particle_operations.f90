@@ -82,12 +82,11 @@ END SUBROUTINE CreateParticle
 SUBROUTINE RemoveParticle(PartID,alpha,crossedBC)
 !===================================================================================================================================
 !> Removes a single particle "PartID" by setting the required variables.
-!> If CalcPartBalance/UseAdaptive/CalcMassflowRate = T: adds/substracts the particle to/from the respective counter
-!>  !!!NOTE!!! This routine is inside particle analyze because of circular definition of modules (CalcEkinPart)
+!> If CalcPartBalance = T: adds/substracts the particle to/from the respective counter
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Vars           ,ONLY: PDM,PartSpecies
-USE MOD_Particle_Analyze        ,ONLY: CalcEkinPart
+USE MOD_Particle_Analyze_Tools  ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars   ,ONLY: CalcPartBalance,nPartOut,PartEkinOut
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE

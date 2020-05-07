@@ -109,6 +109,22 @@ TYPE tInit                                                                   ! P
 #endif /*MPI*/
 END TYPE tInit
 
+TYPE tSurfFluxSubSideData
+  REAL                                   :: projFak                          ! VeloVecIC projected to inwards normal
+  REAL                                   :: Velo_t1                          ! Velo comp. of first orth. vector
+  REAL                                   :: Velo_t2                          ! Velo comp. of second orth. vector
+  REAL                                   :: nVFR                             ! normal volume flow rate through subside
+  REAL                                   :: Dmax                             ! maximum Jacobian determinant of subside for opt. ARM
+  REAL,ALLOCATABLE                       :: BezierControlPoints2D(:,:,:)     ! BCP of SubSide projected to VeloVecIC
+                                                                             ! (1:2,0:NGeo,0:NGeo)
+END TYPE tSurfFluxSubSideData
+
+TYPE tSurfFluxLink
+  INTEGER                                :: PartIdx
+  INTEGER,ALLOCATABLE                    :: SideInfo(:)
+  TYPE(tSurfFluxLink), POINTER           :: next => null()
+END TYPE tSurfFluxLink
+
 TYPE typeSurfaceflux
   INTEGER                                :: BC                               ! PartBound to be emitted from
   CHARACTER(30)                          :: velocityDistribution             ! specifying keyword for velocity distribution
@@ -117,16 +133,29 @@ TYPE typeSurfaceflux
   REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3)
   LOGICAL                                :: VeloIsNormal                     ! VeloIC is in Surf-Normal instead of VeloVecIC
   LOGICAL                                :: ReduceNoise                      ! reduce stat. noise by global calc. of PartIns
+  LOGICAL                                :: AcceptReject                     ! perform ARM for skewness of RefMap-positioning
+  INTEGER                                :: ARM_DmaxSampleN                  ! number of sample intervals in xi/eta for Dmax-calc.
+  REAL                                   :: VFR_total                        ! Total Volumetric flow rate through surface
+  REAL                     , ALLOCATABLE :: VFR_total_allProcs(:)            ! -''-, all values for root in ReduceNoise-case
+  REAL                                   :: VFR_total_allProcsTotal          !     -''-, total
+  REAL                                   :: totalAreaSF                      ! Total area of the respective surface flux
   INTEGER(KIND=8)                        :: InsertedParticle                 ! Number of all already inserted Particles
   INTEGER(KIND=8)                        :: InsertedParticleSurplus          ! accumulated "negative" number of inserted Particles
   INTEGER(KIND=8)                        :: tmpInsertedParticle              ! tmp Number of all already inserted Particles
   INTEGER(KIND=8)                        :: tmpInsertedParticleSurplus       ! tmp accumulated "negative" number of inserted Particles
+  TYPE(tSurfFluxSubSideData),ALLOCATABLE :: SurfFluxSubSideData(:,:,:)       ! SF-specific Data of Sides (1:N,1:N,1:SideNumber)
   LOGICAL                                :: CircularInflow                   ! Circular region, which can be used to define small
                                                                              ! geometry features on large boundaries
   INTEGER                                :: dir(3)                           ! axial (1) and orth. coordinates (2,3) of polar system
   REAL                                   :: origin(2)                        ! origin in orth. coordinates of polar system
   REAL                                   :: rmax                             ! max radius of to-be inserted particles
   REAL                                   :: rmin                             ! min radius of to-be inserted particles
+  INTEGER, ALLOCATABLE                   :: SurfFluxSideRejectType(:)        ! Type if parts in side can be rejected (1:SideNumber)
+  REAL                                   :: PressureFraction
+  TYPE(tSurfFluxLink), POINTER           :: firstSurfFluxPart => null()      ! pointer to first particle inserted for iSurfaceFlux
+                                                                             ! used for linked list during sampling
+  TYPE(tSurfFluxLink), POINTER           :: lastSurfFluxPart => null()       ! pointer to last particle inserted for iSurfaceFlux
+                                                                             ! used for abort criterion in do while during sampling
   REAL, ALLOCATABLE                      :: ConstMassflowWeight(:,:,:)       ! Adaptive, Type 4: Weighting factor for SF-sides to
                                                                              ! insert the right amount of particles
   REAL                                   :: SampledMassflow                  ! Actual mass flow rate through a surface flux boundary
@@ -152,46 +181,40 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
 END TYPE
 
-
 INTEGER                                  :: nSpecies                         ! number of species
-TYPE(tSpecies), ALLOCATABLE              :: Species(:)      !      => NULL() ! Species Data Vector
+TYPE(tSpecies), ALLOCATABLE              :: Species(:)        !   => NULL()  ! Species Data Vector
 
 TYPE tParticleElementMapping
-  INTEGER                , ALLOCATABLE   :: Element(:)      !      =>NULL()  ! Element number allocated to each Particle
-  INTEGER                , ALLOCATABLE   :: lastElement(:)  !      =>NULL()  ! Element number allocated
+  INTEGER                , ALLOCATABLE   :: Element(:)        !   =>NULL()   ! Element number allocated to each Particle
+  INTEGER                , ALLOCATABLE   :: lastElement(:)    !   =>NULL()   ! Element number allocated
 !----------------------------------------------------------------------------!----------------------------------
                                                                              ! Following vectors are assigned in
                                                                              ! SUBROUTINE UpdateNextFreePosition
-  INTEGER                , ALLOCATABLE    :: pStart(:)         !   =>NULL()  ! Start of Linked List for Particles in Element
-                                                               !             ! pStart(1:PEM%nElem)
-  INTEGER                , ALLOCATABLE    :: pNumber(:)        !   =>NULL()  ! Number of Particles in Element
-                                                               !             ! pStart(1:PEM%nElem)
-  INTEGER                , ALLOCATABLE    :: wNumber(:)        !   =>NULL()  ! Number of Wall-Particles in Element
+  INTEGER                , ALLOCATABLE   :: pStart(:)         !   =>NULL()   ! Start of Linked List for Particles in Element
                                                                              ! pStart(1:PEM%nElem)
-  INTEGER                , ALLOCATABLE    :: pEnd(:)           !   =>NULL()  ! End of Linked List for Particles in Element
-                                                               !             ! pEnd(1:PEM%nElem)
-  INTEGER                , ALLOCATABLE    :: pNext(:)          !   =>NULL()  ! Next Particle in same Element (Linked List)
+  INTEGER                , ALLOCATABLE   :: pNumber(:)        !   =>NULL()   ! Number of Particles in Element
+                                                                             ! pStart(1:PEM%nElem)
+  INTEGER                , ALLOCATABLE   :: wNumber(:)        !   =>NULL()   ! Number of Wall-Particles in Element
+                                                                             ! pStart(1:PEM%nElem)
+  INTEGER                , ALLOCATABLE   :: pEnd(:)           !   =>NULL()   ! End of Linked List for Particles in Element
+                                                                             ! pEnd(1:PEM%nElem)
+  INTEGER                , ALLOCATABLE   :: pNext(:)          !   =>NULL()   ! Next Particle in same Element (Linked List)
                                                                              ! pStart(1:PEM%maxParticleNumber)
 END TYPE
 
 TYPE(tParticleElementMapping)            :: PEM
 
 TYPE tParticleDataManagement
-  INTEGER                                :: CurrentNextFreePosition         ! Index of nextfree index in nextFreePosition-Array
-  INTEGER                                :: maxParticleNumber               ! Maximum Number of all Particles
-  INTEGER                                :: ParticleVecLength               ! Vector Length for Particle Push Calculation
-  INTEGER                                :: insideParticleNumber            ! Number of all recent Particles inside
-  INTEGER , ALLOCATABLE                  :: PartInit(:)                     ! (1:NParts), initial emission condition number
-                                                                            ! the calculation area
-  INTEGER ,ALLOCATABLE                   :: nextFreePosition(:)  ! =>NULL() ! next_free_Position(1:max_Particle_Number)
-                                                                            ! List of free Positon
-  LOGICAL ,ALLOCATABLE                   :: ParticleInside(:)    ! =>NULL() ! Particle_inside(1:Particle_Number)
-  LOGICAL , ALLOCATABLE                  :: ParticleAtWall(:)               ! Particle_adsorbed_on_to_wall(1:Particle_number)
-                                                                            ! (1:3,1:PDM%maxParticleNumber)
-                                                                            ! 1: surface index ElemToSide(i,localsideID,ElementID)
-                                                                            ! 2: p
-                                                                            ! 3: q
-  LOGICAL ,ALLOCATABLE                   :: IsNewPart(:)                    ! Reconstruct RK-scheme in next stage
+  INTEGER                                :: CurrentNextFreePosition          ! Index of nextfree index in nextFreePosition-Array
+  INTEGER                                :: maxParticleNumber                ! Maximum Number of all Particles
+  INTEGER                                :: ParticleVecLength                ! Vector Length for Particle Push Calculation
+  INTEGER                                :: insideParticleNumber             ! Number of all recent Particles inside
+  INTEGER , ALLOCATABLE                  :: PartInit(:)                      ! (1:NParts), initial emission condition number
+                                                                             ! the calculation area
+  INTEGER ,ALLOCATABLE                   :: nextFreePosition(:)  ! =>NULL()  ! next_free_Position(1:max_Particle_Number)
+                                                                             ! List of free Positon
+  LOGICAL ,ALLOCATABLE                   :: ParticleInside(:)    ! =>NULL()  ! Particle_inside(1:Particle_Number)
+  LOGICAL ,ALLOCATABLE                   :: IsNewPart(:)                     ! Reconstruct RK-scheme in next stage
 END TYPE
 
 TYPE (tParticleDataManagement)           :: PDM
@@ -200,12 +223,12 @@ REAL                                     :: DelayTime
 
 LOGICAL                                  :: ParticlesInitIsDone=.FALSE.
 
-LOGICAL                                  :: DoPoissonRounding                 ! Perform Poisson sampling instead of random rounding
-LOGICAL                                  :: DoTimeDepInflow                   ! Insertion and SurfaceFlux w simple random rounding
-LOGICAL                                  :: RepWarn = .FALSE.                 ! Warning for Reynolds limit of particle model
-
-INTEGER(8)                               :: nTotalPart
-INTEGER(8)                               :: nTotalHalfPart
+LOGICAL                                  :: DoSurfaceFlux                    ! Flag for emitting by SurfaceFluxBCs
+LOGICAL                                  :: UseCircularInflow                !
+INTEGER, ALLOCATABLE                     :: CountCircInflowType(:,:,:)
+LOGICAL                                  :: DoPoissonRounding                ! Perform Poisson sampling instead of random rounding
+LOGICAL                                  :: DoTimeDepInflow                  ! Insertion and SurfaceFlux w simple random rounding
+LOGICAL                                  :: RepWarn = .FALSE.                ! Warning for Reynolds limit of particle model
 
 !===================================================================================================================================
 END MODULE MOD_Particle_Vars

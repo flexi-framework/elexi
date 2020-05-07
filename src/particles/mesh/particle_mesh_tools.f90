@@ -23,6 +23,20 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
+ABSTRACT INTERFACE
+  PURE INTEGER FUNCTION GetGlobalElemIDInterface(iElem)
+    INTEGER,INTENT(IN) :: iElem
+  END FUNCTION
+END INTERFACE
+
+PROCEDURE(GetGlobalElemIDInterface),POINTER :: GetGlobalElemID !< pointer defining the mapping: compute-node element ID -> global element ID
+
+ABSTRACT INTERFACE
+  PURE INTEGER FUNCTION GetCNElemIDInterface(iElem)
+    INTEGER,INTENT(IN) :: iElem
+  END FUNCTION
+END INTERFACE
+
 INTERFACE InitGetGlobalElemID
   MODULE PROCEDURE InitGetGlobalElemID
 END INTERFACE
@@ -39,18 +53,12 @@ INTERFACE GetCNElemID
   PROCEDURE GetCNElemID
 END INTERFACE
 
-ABSTRACT INTERFACE
-  PURE INTEGER FUNCTION GetGlobalElemIDInterface(iElem)
-    INTEGER,INTENT(IN) :: iElem
-  END FUNCTION
+INTERFACE GetGlobalNonUniqueSideID
+  MODULE PROCEDURE GetGlobalNonUniqueSideID
 END INTERFACE
 
-PROCEDURE(GetGlobalElemIDInterface),POINTER :: GetGlobalElemID !< pointer defining the mapping: compute-node element ID -> global element ID
-
-ABSTRACT INTERFACE
-  PURE INTEGER FUNCTION GetCNElemIDInterface(iElem)
-    INTEGER,INTENT(IN) :: iElem
-  END FUNCTION
+INTERFACE GetSideBoundingBoxTria
+  MODULE PROCEDURE GetSideBoundingBoxTria
 END INTERFACE
 
 PROCEDURE(GetCNElemIDInterface)    ,POINTER :: GetCNElemID     !< pointer defining the mapping: global element ID -> compute-node element ID
@@ -59,6 +67,8 @@ PUBLIC :: InitGetGlobalElemID
 PUBLIC :: InitGetCNElemID
 PUBLIC :: GetGlobalElemID
 PUBLIC :: GetCNElemID
+PUBLIC :: GetGlobalNonUniqueSideID
+PUBLIC :: GetSideBoundingBoxTria
 !===================================================================================================================================
 
 CONTAINS
@@ -204,6 +214,86 @@ INTEGER :: GetCNElemID_fromTotalElem
 GetCNElemID_fromTotalElem = GlobalElem2CNTotalElem(iElem)
 END FUNCTION GetCNElemID_fromTotalElem
 #endif /*USE_MPI*/
+
+
+FUNCTION GetGlobalNonUniqueSideID(ElemID,localSideID)
+!===================================================================================================================================
+!> Determines the non-unique global side ID of the local side in global element ElemID
+!===================================================================================================================================
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Globals
+USE MOD_Particle_Mesh_Vars   ,ONLY: ElemInfo_Shared, SideInfo_Shared
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: ElemID                              !< global element ID
+INTEGER,INTENT(IN) :: localSideID                         !< local side id of an element (1:6)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+INTEGER :: GetGlobalNonUniqueSideID
+INTEGER :: iSide,firstSide,lastSide
+!----------------------------------------------------------------------------------------------------------------------------------!
+! LOCAL VARIABLES
+!===================================================================================================================================
+firstSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID) + 1
+lastSide  = ElemInfo_Shared(ELEM_LASTSIDEIND, ElemID)
+
+! Small mortar sides are added after
+DO iSide = firstSide,lastSide
+  IF (SideInfo_Shared(SIDE_LOCALID,iSide).EQ.localSideID) THEN
+    GetGlobalNonUniqueSideID = iSide
+    RETURN
+  END IF
+END DO
+
+! We should never arrive here
+CALL ABORT(__STAMP__,'GlobalSideID not found for Elem',ElemID)
+END FUNCTION GetGlobalNonUniqueSideID
+
+
+!==================================================================================================================================!
+!> Determines the bounding box of a TriaSurfaceSide
+!==================================================================================================================================!
+SUBROUTINE GetSideBoundingBoxTria(SideID, BoundingBox)
+! MODULES
+USE MOD_Particle_Mesh_Vars      ,ONLY: NodeCoords_Shared,ElemSideNodeID_Shared, SideInfo_Shared
+!----------------------------------------------------------------------------------------------------------------------------------
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES
+INTEGER, INTENT(IN)           :: SideID
+REAL, INTENT(OUT)             :: BoundingBox(1:3,1:8)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                   :: iLocSide,ElemId,iNode
+REAL                      :: NodePoints(1:3,1:4)
+REAL                      :: xMin,xMax,yMin,yMax,zMin,zMax
+!==================================================================================================================================
+
+ElemId = SideInfo_Shared(SIDE_ELEMID,SideID)
+iLocSide = SideInfo_Shared(SIDE_LOCALID,SideID)
+
+DO iNode = 1, 4
+  NodePoints(1:3,iNode) = NodeCoords_Shared(1:3,ElemSideNodeID_Shared(iNode,iLocSide,ElemId)+1)
+END DO
+
+xMin = MINVAL(NodePoints(1,:))
+yMin = MINVAL(NodePoints(2,:))
+zMin = MINVAL(NodePoints(3,:))
+xMax = MAXVAL(NodePoints(1,:))
+yMax = MAXVAL(NodePoints(2,:))
+zMax = MAXVAL(NodePoints(3,:))
+
+BoundingBox(1:3,1) = (/xMin,yMin,zMin/)
+BoundingBox(1:3,2) = (/xMax,yMin,zMin/)
+BoundingBox(1:3,3) = (/xMax,yMax,zMin/)
+BoundingBox(1:3,4) = (/xMin,yMax,zMin/)
+BoundingBox(1:3,5) = (/xMin,yMin,zMax/)
+BoundingBox(1:3,6) = (/xMax,yMin,zMax/)
+BoundingBox(1:3,7) = (/xMax,yMax,zMax/)
+BoundingBox(1:3,8) = (/xMin,yMax,zMax/)
+
+END SUBROUTINE GetSideBoundingBoxTria
 
 
 END MODULE MOD_Particle_Mesh_Tools

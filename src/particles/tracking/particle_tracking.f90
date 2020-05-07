@@ -435,8 +435,7 @@ USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectInterSection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeAuxBCIntersection
-USE MOD_Particle_Mesh               ,ONLY: GetGlobalNonUniqueSideID
-USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID
+USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars          ,ONLY: ElemRadiusNGeo,ElemHasAuxBCs
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
@@ -1713,8 +1712,7 @@ USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectInterSection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
-USE MOD_Particle_Mesh               ,ONLY: GetGlobalNonUniqueSideID
-!USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID
+USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces           ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars,      ONLY: SideNormVec
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType

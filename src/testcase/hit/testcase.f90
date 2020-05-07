@@ -94,16 +94,17 @@ IMPLICIT NONE
 CALL prms%SetSection("Testcase")
 
 ! HIT parameters
-CALL prms%CreateLogicalOption('HIT_Forcing', 'Flag to perform HIT forcing','T')
-CALL prms%CreateLogicalOption('HIT_Avg'    , 'Flag to perform spatial averaging of HIT forcing','T')
-CALL prms%CreateRealOption('HIT_k'         , 'Target turbulent kinetic energy in HIT', '0.')
-!CALL prms%CreateRealOption('HIT_rho'       , 'Target density in HIT', '0.')
-CALL prms%CreateRealOption('HIT_tFilter'   , 'Temp filter width of exponential, explicit time filter', '0.')
-!CALL prms%CreateIntOption( 'HIT_nFilter   ', 'Polynomial degree of the HIT cut-off filter','0')
-CALL prms%CreateRealOption('HIT_tauRMS'    , 'Strength of RMS forcing.','0.')
+CALL prms%CreateLogicalOption('HIT_Forcing', 'Flag to perform HIT forcing'                            ,'T')
+CALL prms%CreateLogicalOption('HIT_Avg'    , 'Flag to perform spatial averaging of HIT forcing'       ,'T')
+CALL prms%CreateLogicalOption('HIT_1st'    , 'Flag to update HIT forcing only in first RK stage'      ,'T')
+CALL prms%CreateRealOption(   'HIT_k'      , 'Target turbulent kinetic energy in HIT'                 ,'0.')
+!CALL prms%CreateRealOption(   'HIT_rho'    , 'Target density in HIT'                                  ,'0.')
+CALL prms%CreateRealOption(   'HIT_tFilter', 'Temp filter width of exponential, explicit time filter' ,'0.')
+!CALL prms%CreateIntOption(    'HIT_nFilter', 'Polynomial degree of the HIT cut-off filter'            ,'0')
+CALL prms%CreateRealOption(   'HIT_tauRMS' , 'Strength of RMS forcing.'                               ,'0.')
 
 ! Analyze paramters
-CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
+CALL prms%CreateIntOption('nWriteStats'     , "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
                                               "(Note: always called at global analyze level)", '10')
 END SUBROUTINE DefineParametersTestcase
@@ -192,7 +193,7 @@ IF(DoRestart)THEN
     HSize_proc(5) = nElems
     IF (HSize_proc(1).EQ.3) THEN
         SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='YES') ' | HDF5 state file containing HIT data with ',HSize_proc(1), &
-                                                    ' variables and matching current setup. Continuing run...'
+                                                     ' variables and matching current setup. Continuing run...'
     ELSE
       CALL CollectiveStop(__STAMP__,'HDF5 state file containing HIT data with different number of variables!')
     END IF
@@ -220,7 +221,7 @@ CALL AddToFieldData(FieldOut,(/3,PP_N+1,PP_N+1,PP_NZ+1,nElems/),'HIT',(/'HIT_RMS
                     RealArray=HIT_RMS,doSeparateOutput=.TRUE.)
 
 ! Length of Buffer for TGV output
-nWriteStats      = GETINT( 'nWriteStats','100')
+nWriteStats      = GETINT( 'nWriteStats'     ,'100')
 nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','10')
 
 IF(MPIRoot)THEN
@@ -240,6 +241,7 @@ END IF
 
 ! Spatial averaging according to de Laage de Meux, 2015
 HIT_Avg = GETLOGICAL('HIT_Avg','.TRUE.')
+HIT_1st = GETLOGICAL('HIT_1st','.FALSE.')
 
 ! Small trick to survive the first DG call when dt is not set
 InitHITDone = .FALSE.
@@ -301,7 +303,7 @@ USE MOD_DG_Vars,        ONLY: U
 USE MOD_EOS,            ONLY: ConsToPrim
 USE MOD_Mesh_Vars,      ONLY: nElems,sJ
 USE MOD_TestCase_Vars
-USE MOD_TimeDisc_Vars,  ONLY: dt
+USE MOD_TimeDisc_Vars,  ONLY: dt,CurrentStage
 #if USE_MPI
 USE MOD_MPI_Vars
 #endif
@@ -346,20 +348,26 @@ HIT_RMS(1:3,:,:,:,:) = HIT_RMS(1:3,:,:,:,:) + ((UPrim_temp(2:4,:,:,:,:))**2 - HI
 
 ! Calculate scalar k. First integrate with Gaussian integration, then scale with factor 1/2
 IF (HIT_Avg) THEN
-  ! Calculate forcing coefficient based on global spatial average
-  DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    TKE = TKE + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)*SUM(HIT_RMS(1:3,i,j,k,iElem))/2.
-  END DO; END DO; END DO; END DO
+
+  ! Only update forcing coefficient during first RK stage if required
+  IF (CurrentStage.EQ.1 .OR. HIT_1st) THEN
+    ! Calculate forcing coefficient based on global spatial average
+    DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      TKE = TKE + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)*SUM(HIT_RMS(1:3,i,j,k,iElem))/2.
+    END DO; END DO; END DO; END DO
 
 #if USE_MPI
-  ! Communicate TKE to all procs
-  CALL MPI_ALLREDUCE(TKE,TKE_glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+    ! Communicate TKE to all procs
+    CALL MPI_ALLREDUCE(TKE,TKE_glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
 #else
-  TKE_glob = TKE
+    TKE_glob = TKE
 #endif
-  ! Overwrite TKE and apply the forcing to the time derivative
-  TKE = TKE_glob/Vol
-  A_ILF = 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)
+    ! Overwrite TKE and apply the forcing to the time derivative
+    TKE = TKE_glob/Vol
+    A_ILF = 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)
+  END IF
+
+  ! Apply the forcing to the time derivative
   Ut(2:4,:,:,:,:) = Ut(2:4,:,:,:,:) + A_ILF*U(2:4,:,:,:,:)
 
 ELSE
@@ -381,6 +389,7 @@ ELSE
 END IF ! HIT_Avg
 
 END SUBROUTINE TestcaseSource
+
 
 !==================================================================================================================================
 !> Perform HIT-specific analysis: compute dissipation rates, kinetic energy and Reynolds number

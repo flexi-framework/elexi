@@ -29,13 +29,17 @@ LOGICAL                                :: SGSinUse                            ! 
 INTEGER                                :: nSGSVars                            ! number of variables in TurbPartState
 INTEGER                                :: nSGSFilter                          ! number of cut-off modes in high-pass filter
 CHARACTER(40)                          :: SGSModel                            ! specifying keyword for SGS model
-REAL,ALLOCATABLE                       :: USGS  (:,:,:,:,:)                   ! Unfiltered state
+REAL,ALLOCATABLE                       :: USGS(:,:,:,:,:)                     ! Unfiltered state
 REAL,ALLOCATABLE                       :: USGSPart(:,:)                       ! Filtered state
-REAL,ALLOCATABLE                       :: kSGS    (:,:,:,:,:)                 ! SGS kinetic energy
-REAL,ALLOCATABLE                       :: kSGSPart(:,:)
-REAL,ALLOCATABLE                       :: sigmaSGS(:,:)                       ! SGS kinetic energy standard deviation
-REAL,ALLOCATABLE                       :: tauSGS  (:,:)                       ! SGS time scale
-REAL,ALLOCATABLE                       :: tauL    (:,:)                       ! Parallel and perpendicular SGS time scale
-REAL,ALLOCATABLE                       :: G_SGS(:,:,:), B_SGS(:,:,:)
+!REAL,ALLOCATABLE                       :: kSGS(:,:,:,:,:)                     ! SGS kinetic energy
+REAL,ALLOCATABLE                       :: kSGSPart(:)
+REAL,ALLOCATABLE                       :: sigmaSGS(:)                         ! SGS kinetic energy standard deviation
+REAL,ALLOCATABLE                       :: tauSGS(:)                           ! SGS time scale
+REAL,ALLOCATABLE                       :: tauL (:,:)                          ! Parallel and perpendicular SGS time scale
+REAL,ALLOCATABLE                       :: B_SGS(:,:,:)                        ! Diffusion matrix
+REAL,ALLOCATABLE                       :: E_SGS(:,:,:)                        ! Exponential of the drift matrix
+REAL,ALLOCATABLE                       :: G_SGS(:,:,:)                        ! Drift matrix
+REAL,ALLOCATABLE                       :: W_SGS(:,:,:)                        ! Covariance matrix
+REAL,ALLOCATABLE                       :: ElemVolN(:)                         ! ElemVol**(1./3.)/(PP_N+1)
 !===================================================================================================================================
 END MODULE MOD_Particle_SGS_Vars

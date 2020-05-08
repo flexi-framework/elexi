@@ -98,24 +98,24 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: Geo
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID,GetCNElemID
-USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance,TriaTracking
+USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance,TrackingMethod
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL,INTENT(IN)    :: Pos3D(1:3)
+REAL,INTENT(IN)                   :: Pos3D(1:3)
 LOGICAL,INTENT(IN)                :: doHalo
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: iBGMElem,nBGMElems, ElemID, iBGM,jBGM,kBGM
-REAL    :: Distance2, RefPos(1:3)
-REAL    :: Det(6,2)
-LOGICAL :: InElementCheck
+INTEGER                           :: iBGMElem,nBGMElems,ElemID,CNElemID, iBGM,jBGM,kBGM
+REAL                              :: Distance2, RefPos(1:3)
+REAL                              :: Det(6,2)
+LOGICAL                           :: InElementCheck
 !===================================================================================================================================
 
 SinglePointToElement = -1
@@ -136,18 +136,18 @@ Distance=-1.
 
 ListDistance=0
 DO iBGMElem = 1, nBGMElems
-  ElemID = GetCNElemID(FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iBGMElem))
+  CNElemID  = GetCNElemID(FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iBGMElem))
 
-  Distance2=(Pos3D(1)-ElemBaryNGeo(1,ElemID))*(Pos3D(1)-ElemBaryNGeo(1,ElemID)) &
-           +(Pos3D(2)-ElemBaryNGeo(2,ElemID))*(Pos3D(2)-ElemBaryNGeo(2,ElemID)) &
-           +(Pos3D(3)-ElemBaryNGeo(3,ElemID))*(Pos3D(3)-ElemBaryNGeo(3,ElemID))
+  Distance2 = (Pos3D(1)-ElemBaryNGeo(1,CNElemID))*(Pos3D(1)-ElemBaryNGeo(1,CNElemID)) &
+            + (Pos3D(2)-ElemBaryNGeo(2,CNElemID))*(Pos3D(2)-ElemBaryNGeo(2,CNElemID)) &
+            + (Pos3D(3)-ElemBaryNGeo(3,CNElemID))*(Pos3D(3)-ElemBaryNGeo(3,CNElemID))
 
-  IF (Distance2.GT.ElemRadius2NGeo(ElemID)) THEN
-    Distance(iBGMElem)=-1.
+  IF (Distance2.GT.ElemRadius2NGeo(CNElemID)) THEN
+    Distance(iBGMElem) = -1.
   ELSE
-    Distance(iBGMElem)=Distance2
+    Distance(iBGMElem) = Distance2
   END IF
-  ListDistance(iBGMElem)=ElemID
+  ListDistance(iBGMElem) = CNElemID
 END DO ! nBGMElems
 
 IF (ALMOSTEQUAL(MAXVAL(Distance),-1.)) THEN
@@ -157,24 +157,31 @@ END IF
 IF(nBGMElems.GT.1) CALL InsertionSort(Distance(1:nBGMElems),ListDistance(1:nBGMElems),nBGMElems)
 
 ! loop through sorted list and start by closest element
-InElementCheck=.FALSE.
-DO iBGMElem=1,nBGMElems
+InElementCheck = .FALSE.
+
+DO iBGMElem = 1,nBGMElems
+  ! Element is out of range
   IF (ALMOSTEQUAL(Distance(iBGMElem),-1.)) CYCLE
+
   ElemID = GetGlobalElemID(ListDistance(iBGMElem))
+
   IF (.NOT.DoHALO) THEN
     ! TODO: THIS NEEDS TO BE ADJUSTED FOR MPI3-SHARED
     ! IF (ElemID.GT.PP_nElems) CYCLE
   END IF
-  IF (TriaTracking) THEN
+
+  IF (TrackingMethod.EQ.TRIATRACKING) THEN
     CALL ParticleInsideQuad3D(Pos3D(1:3),ElemID,InElementCheck,Det)
   ELSE
     CALL GetPositionInRefElem(Pos3D(1:3),RefPos,ElemID)
     IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck=.TRUE.
   END IF
+
   IF (InElementCheck) THEN
     SinglePointToElement = ElemID
     RETURN
   END IF
+
 END DO ! iBGMElem
 
 END FUNCTION SinglePointToElement
@@ -195,7 +202,7 @@ USE MOD_Particle_Intersection  ,ONLY: ComputePlanarRectIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputeCurvedIntersection
-USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared
 USE MOD_Particle_Surfaces      ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBezier
@@ -226,6 +233,7 @@ REAL,INTENT(OUT),OPTIONAL                :: IntersectPoint_Opt(1:3)
 REAL,INTENT(OUT),OPTIONAL                :: Tol_Opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                                  :: CNElemID
 INTEGER                                  :: ilocSide,flip,SideID
 REAL                                     :: PartTrajectory(1:3),NormVec(1:3)
 REAL                                     :: lengthPartTrajectory,PartPos(1:3),LastPosTmp(1:3)
@@ -234,9 +242,12 @@ REAL                                     :: alpha,eta,xi,IntersectPoint(1:3)
 !===================================================================================================================================
 
 IF(PRESENT(tol_Opt)) tol_Opt=-1.
+
+CNElemID = GetCNElemID(ElemID)
+
 ! virtual move to element barycenter
 LastPosTmp(1:3)         = LastPartPos(1:3,PartID)
-LastPartPos(1:3,PartID) = ElemBaryNGeo(1:3,ElemID)
+LastPartPos(1:3,PartID) = ElemBaryNGeo(1:3,CNElemID)
 PartPos(1:3)            = PartPos_In(1:3)
 
 ! get trajectory from element barycenter to current position
@@ -269,20 +280,20 @@ PartTrajectory=PartTrajectory/lengthPartTrajectory
 ! reset intersection counter and alpha
 isHit = .FALSE.
 alpha = -1.
-DO ilocSide=1,6
 
+DO ilocSide = 1,6
   SideID = GetGlobalNonUniqueSideID(ElemID,iLocSide)
   flip   = SideInfo_Shared(SIDE_FLIP,SideID)
 
   SELECT CASE(SideType(SideID))
-  CASE(PLANAR_RECT)
-    CALL ComputePlanarRectIntersection(ishit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta ,PartID,flip,SideID)
-  CASE(PLANAR_CURVED)
-    CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,Alpha,xi,eta,PartID,flip,SideID)
-  CASE(BILINEAR,PLANAR_NONRECT)
-      CALL ComputeBiLinearIntersection(  isHit,PartTrajectory,lengthPartTrajectory,Alpha,xi,eta,PartID,     SideID,ElemCheck_Opt=.TRUE.)
-  CASE(CURVED)
-    CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,Alpha,xi,eta,PartID,SideID,ElemCheck_Opt=.TRUE.)
+    CASE(PLANAR_RECT)
+      CALL ComputePlanarRectIntersection(  ishit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta ,PartID,flip,SideID)
+    CASE(PLANAR_CURVED)
+      CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,flip,SideID)
+    CASE(BILINEAR,PLANAR_NONRECT)
+        CALL ComputeBiLinearIntersection(  isHit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID     ,SideID,ElemCheck_Opt=.TRUE.)
+    CASE(CURVED)
+      CALL ComputeCurvedIntersection(      isHit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID     ,SideID,ElemCheck_Opt=.TRUE.)
   END SELECT
 
 #if CODE_ANALYZE
@@ -295,6 +306,7 @@ DO ilocSide=1,6
       WRITE(UNIT_stdout,'(A,2(X,G0))') '     | Intersection xi/eta: ',xi,eta
     END IF
   END IF
+
   IF(PRESENT(Sanity_Opt))THEN
     IF(Sanity_Opt)THEN
       IF(alpha.GT.-1)THEN
@@ -311,7 +323,8 @@ DO ilocSide=1,6
       END IF
     END IF
   END IF
-  ! Dirty fix for PartInElemCheck if Lastpartpos is almost on side (tolerance issues)
+
+  ! Dirty fix for PartInElemCheck if LastPartPos is almost on side (tolerance issues)
   IF(PRESENT(CodeAnalyze_Opt))THEN
     IF(CodeAnalyze_Opt)THEN
       IF((alpha)/LengthPartTrajectory.GT.0.9)THEN
@@ -323,14 +336,14 @@ DO ilocSide=1,6
 
   ! found an intersection with a side, but we might be moving into this element from the boundary. Get side normal vector and
   ! intersection point to check.
-  IF(alpha.GT.-1)THEN
+  IF (alpha.GT.-1) THEN
     SELECT CASE(SideType(SideID))
-    CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
-      NormVec=SideNormVec(1:3,SideID)
-    CASE(BILINEAR)
-      CALL CalcNormAndTangBilinear(nVec=NormVec,xi=xi,eta=eta,SideID=SideID)
-    CASE(CURVED)
-      CALL CalcNormAndTangBezier(nVec=NormVec,xi=xi,eta=eta,SideID=SideID)
+      CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
+        NormVec = SideNormVec(1:3,SideID)
+      CASE(BILINEAR)
+        CALL CalcNormAndTangBilinear(nVec=NormVec,xi=xi,eta=eta,SideID=SideID)
+      CASE(CURVED)
+        CALL CalcNormAndTangBezier(nVec=NormVec,xi=xi,eta=eta,SideID=SideID)
     END SELECT
     IF(flip.NE.0) NormVec=-NormVec
     IntersectPoint=LastPartPos(1:3,PartID)+alpha*PartTrajectory
@@ -360,11 +373,12 @@ DO ilocSide=1,6
 END DO ! ilocSide
 
 ! write final decision. We are inside if we did not find an intersection or are moving into this element from the cell boundary
-FoundInElem=.TRUE.
-IF(PRESENT(IntersectPoint_Opt)) IntersectPoint_Opt=0.
-IF(alpha.GT.-1) THEN
-  FoundInElem=.FALSE.
-  IF(PRESENT(IntersectPoint_Opt)) IntersectPoint_Opt=IntersectPoint
+FoundInElem = .TRUE.
+IF(PRESENT(IntersectPoint_Opt)) IntersectPoint_Opt = 0.
+
+IF (alpha.GT.-1) THEN
+  FoundInElem = .FALSE.
+  IF(PRESENT(IntersectPoint_Opt)) IntersectPoint_Opt = IntersectPoint
 END IF
 
 ! reset the LastParPos to its original value
@@ -384,8 +398,9 @@ SUBROUTINE ParticleInsideQuad3D(PartStateLoc,ElemID,InElementCheck,Det)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Particle_Mesh_Tools   ,ONLY: GetCNElemID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Mesh_Vars    ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
-USE MOD_Particle_Mesh_Vars    ,ONLY :ConcaveElemSide_Shared,ElemSideNodeID_Shared
+USE MOD_Particle_Mesh_Vars    ,ONLY: ConcaveElemSide_Shared,ElemSideNodeID_Shared
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -399,21 +414,24 @@ REAL   ,INTENT(OUT)           :: Det(6,2)
 LOGICAL,INTENT(OUT)           :: InElementCheck
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                       :: ilocSide, NodeNum, SideID, SideIDMortar, ind, NbElemID, nNbMortars, nlocSides, localSideID
+INTEGER                       :: NbElemID,CNElemID
+INTEGER                       :: ilocSide, NodeNum, SideID, SideIDMortar, ind, nNbMortars
 LOGICAL                       :: PosCheck, NegCheck, InElementCheckMortar, InElementCheckMortarNb
 REAL                          :: A(1:3,1:4), crossP(3)
 !===================================================================================================================================
+
 InElementCheck = .TRUE.
 InElementCheckMortar = .TRUE.
-!--- Loop over the 6 sides of the element
-nlocSides = ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)
-DO iLocSide = 1,nlocSides
-  SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID) + iLocSide
-  IF (SideInfo_Shared(SIDE_LOCALID,SideID).LE.0) CYCLE
-  localSideID = SideInfo_Shared(SIDE_LOCALID,SideID)
+
+CNElemID  = GetCNElemID(ElemID)
+
+! loop over all sides attached to an element
+DO iLocSide = 1,6
+  SideID = GetGlobalNonUniqueSideID(ElemID,iLocSide)
+
   DO NodeNum = 1,4
     !--- A = vector from particle to node coords
-    A(:,NodeNum) = NodeCoords_Shared(:,ElemSideNodeID_Shared(NodeNum,localSideID,ElemID)+1) - PartStateLoc(1:3)
+    A(:,NodeNum) = NodeCoords_Shared(:,ElemSideNodeID_Shared(NodeNum,iLocSide,CNElemID)+1) - PartStateLoc(1:3)
   END DO
 
   NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
@@ -421,35 +439,37 @@ DO iLocSide = 1,nlocSides
   IF (NbElemID.LT.0) THEN
     PosCheck = .FALSE.
     NegCheck = .FALSE.
+
     !--- Checking the concave part of the side
-    IF (ConcaveElemSide_Shared(localSideID,ElemID)) THEN
+    IF (ConcaveElemSide_Shared(iLocSide,CNElemID)) THEN
       ! If the element is actually concave, CalcDetOfTrias determines its determinants
-      Det(localSideID,1:2) = CalcDetOfTrias(A,1)
-      IF (Det(localSideID,1).GE.0) PosCheck = .TRUE.
-      IF (Det(localSideID,2).GE.0) PosCheck = .TRUE.
+      Det(iLocSide,1:2) = CalcDetOfTrias(A,1)
+      IF (Det(iLocSide,1).GE.0) PosCheck = .TRUE.
+      IF (Det(iLocSide,2).GE.0) PosCheck = .TRUE.
       !--- final determination whether particle is in element
       IF (.NOT.PosCheck) InElementCheckMortar = .FALSE.
     ELSE
       ! If its a convex element, CalcDetOfTrias determines the concave determinants
-      Det(localSideID,1:2) = CalcDetOfTrias(A,2)
-      IF (Det(localSideID,1).GE.0) PosCheck = .TRUE.
-      IF (Det(localSideID,2).GE.0) PosCheck = .TRUE.
+      Det(iLocSide,1:2) = CalcDetOfTrias(A,2)
+      IF (Det(iLocSide,1).GE.0) PosCheck = .TRUE.
+      IF (Det(iLocSide,2).GE.0) PosCheck = .TRUE.
       !--- final determination whether particle is in element
       IF (.NOT.PosCheck) InElementCheckMortar= .FALSE.
     END IF
+
     !--- Checking the convex part of the side
     IF (.NOT.InElementCheckMortar) THEN
       InElementCheckMortar = .TRUE.
-      IF (ConcaveElemSide_Shared(localSideID,ElemID)) THEN
-        Det(localSideID,1:2) = CalcDetOfTrias(A,2)
-        IF (Det(localSideID,1).LT.0) NegCheck = .TRUE.
-        IF (Det(localSideID,2).LT.0) NegCheck = .TRUE.
+      IF (ConcaveElemSide_Shared(iLocSide,CNElemID)) THEN
+        Det(iLocSide,1:2) = CalcDetOfTrias(A,2)
+        IF (Det(iLocSide,1).LT.0) NegCheck = .TRUE.
+        IF (Det(iLocSide,2).LT.0) NegCheck = .TRUE.
         !--- final determination whether particle is in element
         IF (NegCheck) InElementCheckMortar = .FALSE.
       ELSE
-        Det(localSideID,1:2) = CalcDetOfTrias(A,1)
-        IF (Det(localSideID,1).LT.0) NegCheck = .TRUE.
-        IF (Det(localSideID,2).LT.0) NegCheck = .TRUE.
+        Det(iLocSide,1:2) = CalcDetOfTrias(A,1)
+        IF (Det(iLocSide,1).LT.0) NegCheck = .TRUE.
+        IF (Det(iLocSide,2).LT.0) NegCheck = .TRUE.
         !--- final determination whether particle is in element
         IF (NegCheck) InElementCheckMortar= .FALSE.
       END IF
@@ -474,7 +494,9 @@ DO iLocSide = 1,nlocSides
         InElementCheck = .FALSE.
       END IF
     END IF
-  ELSE ! Treatment of regular elements without mortars
+
+  ! Treatment of regular elements without mortars
+  ELSE
     PosCheck = .FALSE.
     NegCheck = .FALSE.
     !--- compute cross product for vector 1 and 3
@@ -482,30 +504,34 @@ DO iLocSide = 1,nlocSides
     crossP(2) = A(3,1) * A(1,3) - A(1,1) * A(3,3)
     crossP(3) = A(1,1) * A(2,3) - A(2,1) * A(1,3)
     !--- negative determinant of triangle 1 (points 1,3,2):
-    Det(localSideID,1) = crossP(1) * A(1,2) + &
+    Det(iLocSide,1) = crossP(1) * A(1,2) + &
                       crossP(2) * A(2,2) + &
                       crossP(3) * A(3,2)
-    Det(localSideID,1) = -det(localSideID,1)
+    Det(iLocSide,1) = -det(iLocSide,1)
     !--- determinant of triangle 2 (points 1,3,4):
-    Det(localSideID,2) = crossP(1) * A(1,4) + &
+    Det(iLocSide,2) = crossP(1) * A(1,4) + &
                       crossP(2) * A(2,4) + &
                       crossP(3) * A(3,4)
-    IF (Det(localSideID,1).LT.0) THEN
+
+    IF (Det(iLocSide,1).LT.0) THEN
       NegCheck = .TRUE.
     ELSE
       PosCheck = .TRUE.
     END IF
-    IF (Det(localSideID,2).LT.0) THEN
+
+    IF (Det(iLocSide,2).LT.0) THEN
       NegCheck = .TRUE.
     ELSE
       PosCheck = .TRUE.
     END IF
+
     !--- final determination whether particle is in element
-    IF (ConcaveElemSide_Shared(localSideID,ElemID)) THEN
+    IF (ConcaveElemSide_Shared(iLocSide,CNElemID)) THEN
       IF (.NOT.PosCheck) InElementCheck = .FALSE.
     ELSE
       IF (NegCheck) InElementCheck = .FALSE.
     END IF
+
   END IF ! Mortar element or regular element
 END DO ! iLocSide = 1,6
 
@@ -520,8 +546,9 @@ PURE SUBROUTINE ParticleInsideNbMortar(PartStateLoc,ElemID,InElementCheck)
 !> after it was determined that the particle is not in the concave part but in the convex part of the element.
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Mesh_Vars    ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
-USE MOD_Particle_Mesh_Vars    ,ONLY :ConcaveElemSide_Shared,ElemSideNodeID_Shared
+USE MOD_Particle_Mesh_Tools   ,ONLY: GetCNElemID,GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Vars    ,ONLY: SideInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars    ,ONLY: ConcaveElemSide_Shared,ElemSideNodeID_Shared
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -534,29 +561,35 @@ REAL   ,INTENT(IN)            :: PartStateLoc(3)
 LOGICAL,INTENT(OUT)           :: InElementCheck
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                       :: ilocSide, NodeNum, SideID, nlocSides, localSideID, NbElemID
+INTEGER                       :: NbElemID,CNElemID
+INTEGER                       :: ilocSide, NodeNum, SideID
 LOGICAL                       :: PosCheck, NegCheck
 REAL                          :: A(1:3,1:4), cross(3)
 REAL                          :: Det(2)
 !===================================================================================================================================
+
 InElementCheck = .TRUE.
-nlocSides = ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)
-DO iLocSide = 1,nlocSides
-  SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID) + iLocSide
-  IF (SideInfo_Shared(SIDE_LOCALID,SideID).LE.0) CYCLE
-  localSideID = SideInfo_Shared(SIDE_LOCALID,SideID)      ! for all 6 sides of the element
+CNElemID  = GetCNElemID(ElemID)
+
+! loop over all sides attached to an element
+DO iLocSide = 1,6
+  SideID = GetGlobalNonUniqueSideID(ElemID,iLocSide)
+
   DO NodeNum = 1,4
   !--- A = vector from particle to node coords
-    A(:,NodeNum) = NodeCoords_Shared(:,ElemSideNodeID_Shared(NodeNum,localSideID,ElemID)+1) - PartStateLoc(1:3)
+    A(:,NodeNum) = NodeCoords_Shared(:,ElemSideNodeID_Shared(NodeNum,iLocSide,CNElemID)+1) - PartStateLoc(1:3)
   END DO
+
   NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
+
   !--- Treatment of sides which are adjacent to mortar elements
   IF (NbElemID.LT.0) THEN
     !--- initialize flags for side checks
     PosCheck = .FALSE.
     NegCheck = .FALSE.
+
     !--- Check if the particle is inside the convex element. If its outside, it has to be inside the original element
-    IF (ConcaveElemSide_Shared(localSideID,ElemID)) THEN
+    IF (ConcaveElemSide_Shared(iLocSide,CNElemID)) THEN
       Det(1:2) = CalcDetOfTrias(A,2)
       IF (Det(1).LT.0) NegCheck = .TRUE.
       IF (Det(2).LT.0) NegCheck = .TRUE.
@@ -575,7 +608,9 @@ DO iLocSide = 1,nlocSides
         RETURN
       END IF
     END IF
-  ELSE ! Regular side
+
+  ! Regular side
+  ELSE
     PosCheck = .FALSE.
     NegCheck = .FALSE.
     !--- compute cross product for vector 1 and 3
@@ -596,13 +631,15 @@ DO iLocSide = 1,nlocSides
     ELSE
       PosCheck = .TRUE.
     END IF
+
     IF (Det(2).LT.0) THEN
       NegCheck = .TRUE.
     ELSE
       PosCheck = .TRUE.
     END IF
+
     !--- final determination whether particle is in element
-    IF (ConcaveElemSide_Shared(localSideID,ElemID)) THEN
+    IF (ConcaveElemSide_Shared(iLocSide,CNElemID)) THEN
       IF (.NOT.PosCheck) THEN
         InElementCheck = .FALSE.
         RETURN
@@ -613,6 +650,7 @@ DO iLocSide = 1,nlocSides
         RETURN
       END IF
     END IF
+
   END IF  ! Mortar or regular side
 END DO  ! iLocSide = 1,6
 
@@ -625,8 +663,9 @@ SUBROUTINE CountPartsPerElem(ResetNumberOfParticles)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Preproc
-USE MOD_Particle_Globals
 USE MOD_LoadBalance_Vars,        ONLY: nPartsPerElem
+USE MOD_Mesh_Vars,               ONLY: offsetElem
+USE MOD_Particle_Globals
 USE MOD_Particle_Vars,           ONLY: PDM,PEM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -639,16 +678,21 @@ LOGICAL,INTENT(IN) :: ResetNumberOfParticles
 ! LOCAL VARIABLES
 INTEGER           :: iPart, ElemID
 !===================================================================================================================================
+
 ! DO NOT NULL this here, if e.g. this routine is called in between RK-stages in which particles are created
-IF(ResetNumberOfParticles)THEN
-  nPartsPerElem=0
+IF (ResetNumberOfParticles) THEN
+  nPartsPerElem = 0
 END IF
+
 ! loop over all particles and add them up
-DO iPart=1,PDM%ParticleVecLength
-  IF(PDM%ParticleInside(iPart))THEN
-    ElemID = PEM%Element(iPart)
-    IF(ElemID.LE.PP_nElems)THEN
-      nPartsPerElem(ElemID)=nPartsPerElem(ElemID)+1
+DO iPart = 1,PDM%ParticleVecLength
+  IF (PDM%ParticleInside(iPart)) THEN
+    ! LoadBalance operates on local ElemID
+    ElemID = PEM%Element(iPart) - offsetElem
+
+    ! Only consider elements currently on the same proc
+    IF (ElemID.GE.1 .AND. ElemID.LE.PP_nElems) THEN
+      nPartsPerElem(ElemID) = nPartsPerElem(ElemID) + 1
     END IF
   END IF
 END DO ! iPart=1,PDM%ParticleVecLength

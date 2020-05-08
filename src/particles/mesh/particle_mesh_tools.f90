@@ -216,7 +216,7 @@ END FUNCTION GetCNElemID_fromTotalElem
 #endif /*USE_MPI*/
 
 
-FUNCTION GetGlobalNonUniqueSideID(ElemID,localSideID)
+PURE FUNCTION GetGlobalNonUniqueSideID(ElemID,localSideID)
 !===================================================================================================================================
 !> Determines the non-unique global side ID of the local side in global element ElemID
 !===================================================================================================================================
@@ -239,6 +239,9 @@ INTEGER :: iSide,firstSide,lastSide
 firstSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID) + 1
 lastSide  = ElemInfo_Shared(ELEM_LASTSIDEIND, ElemID)
 
+! Default to -1
+GetGlobalNonUniqueSideID = -1
+
 ! Small mortar sides are added after
 DO iSide = firstSide,lastSide
   IF (SideInfo_Shared(SIDE_LOCALID,iSide).EQ.localSideID) THEN
@@ -247,8 +250,6 @@ DO iSide = firstSide,lastSide
   END IF
 END DO
 
-! We should never arrive here
-CALL ABORT(__STAMP__,'GlobalSideID not found for Elem',ElemID)
 END FUNCTION GetGlobalNonUniqueSideID
 
 
@@ -265,16 +266,16 @@ INTEGER, INTENT(IN)           :: SideID
 REAL, INTENT(OUT)             :: BoundingBox(1:3,1:8)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: iLocSide,ElemId,iNode
+INTEGER                   :: iLocSide,CNElemID,iNode
 REAL                      :: NodePoints(1:3,1:4)
 REAL                      :: xMin,xMax,yMin,yMax,zMin,zMax
 !==================================================================================================================================
 
-ElemId = SideInfo_Shared(SIDE_ELEMID,SideID)
+CNElemID = GetCNElemID(SideInfo_Shared(SIDE_ELEMID,SideID))
 iLocSide = SideInfo_Shared(SIDE_LOCALID,SideID)
 
 DO iNode = 1, 4
-  NodePoints(1:3,iNode) = NodeCoords_Shared(1:3,ElemSideNodeID_Shared(iNode,iLocSide,ElemId)+1)
+  NodePoints(1:3,iNode) = NodeCoords_Shared(1:3,ElemSideNodeID_Shared(iNode,iLocSide,CNElemID)+1)
 END DO
 
 xMin = MINVAL(NodePoints(1,:))

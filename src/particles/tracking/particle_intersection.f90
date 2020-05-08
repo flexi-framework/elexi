@@ -71,8 +71,9 @@ SUBROUTINE IntersectionWithWall(PartTrajectory,alpha,iPart,iLocSide,Element,TriN
 ! Compute the Intersection with bilinear surface by approximating the surface with two triangles
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Vars,          ONLY : lastPartPos,PartState
+USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Vars,               ONLY: lastPartPos,PartState
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -87,12 +88,15 @@ REAL, INTENT(IN)                 :: PartTrajectory(1:3)
 REAL,INTENT(INOUT)               :: alpha
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                          :: CNElemID
 INTEGER                          :: Node1,Node2
 REAL                             :: PoldX,PoldY,PoldZ,PnewX,PnewY,PnewZ,nx,ny,nz,nVal
 REAL                             :: bx,by,bz,ax,ay,az,dist
 REAL                             :: xNod,yNod,zNod
 REAL                             :: Vector1(1:3),Vector2(1:3)
 !===================================================================================================================================
+
+CNElemID = GetCNElemID(Element)
 
 PoldX = lastPartPos(1,iPart)
 PoldY = lastPartPos(2,iPart)
@@ -101,21 +105,21 @@ PnewX = PartState(1,iPart)
 PnewY = PartState(2,iPart)
 PnewZ = PartState(3,iPart)
 
-xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,iLocSide,Element)+1)
-yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,iLocSide,Element)+1)
-zNod = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,iLocSide,Element)+1)
+xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
+yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
+zNod = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
 
 !---- Calculate normal vector:
 Node1 = TriNum+1     ! normal = cross product of 1-2 and 1-3 for first triangle
 Node2 = TriNum+2     !          and 1-3 and 1-4 for second triangle
 
-Vector1(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node1,iLocSide,Element)+1) - xNod
-Vector1(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node1,iLocSide,Element)+1) - yNod
-Vector1(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node1,iLocSide,Element)+1) - zNod
+Vector1(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node1,iLocSide,CNElemID)+1) - xNod
+Vector1(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node1,iLocSide,CNElemID)+1) - yNod
+Vector1(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node1,iLocSide,CNElemID)+1) - zNod
 
-Vector2(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node2,iLocSide,Element)+1) - xNod
-Vector2(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node2,iLocSide,Element)+1) - yNod
-Vector2(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node2,iLocSide,Element)+1) - zNod
+Vector2(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node2,iLocSide,CNElemID)+1) - xNod
+Vector2(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node2,iLocSide,CNElemID)+1) - yNod
+Vector2(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node2,iLocSide,CNElemID)+1) - zNod
 
 
 nx = Vector1(2) * Vector2(3) - Vector1(3) * Vector2(2)

@@ -435,7 +435,7 @@ USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectInterSection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeAuxBCIntersection
-USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID,GetCNElemID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars          ,ONLY: ElemRadiusNGeo,ElemHasAuxBCs
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
@@ -462,8 +462,9 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                       :: iPart,ElemID,flip,OldElemID,firstElem,iAuxBC
-INTEGER                       :: ilocSide,SideID
+INTEGER                       :: iPart
+INTEGER                       :: ElemID,CNElemID,OldElemID,firstElem
+INTEGER                       :: ilocSide,SideID,flip,iAuxBC
 LOGICAL                       :: dolocSide(1:6)
 LOGICAL                       :: PartisDone,foundHit,markTol,crossedBC,SwitchedElement,isCriticalParallelInFace
 REAL                          :: localpha,xi,eta
@@ -521,14 +522,15 @@ DO iPart=1,PDM%ParticleVecLength
       END IF
     END IF
     ! caution: reuse of variable, foundHit=TRUE == inside
-    ElemID=PEM%lastElement(iPart)
+    ElemID   = PEM%lastElement(iPart)
+    CNElemID = GetCNElemID(ElemID)
     CALL GetPositionInRefElem(LastPartPos(1:3,iPart),RefPos,ElemID)
     IF (MAXVAL(ABS(RefPos)).LE.1.0+1e-4) foundHit=.TRUE.
     IF(.NOT.foundHit)THEN  ! particle not inside
      IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' global ElemID  ', ElemID
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,ElemID)
+     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,CNElemID)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartRefPos:        ', RefPos(1:3)
@@ -544,6 +546,7 @@ DO iPart=1,PDM%ParticleVecLength
     IF (MeasureTrackTime) nTracks = nTracks+1
     PartisDone = .FALSE.
     ElemID     = PEM%lastElement(iPart)
+    CNElemID   = GetCNElemID(ElemID)
 
     ! Calculate particle trajectory
     PartTrajectory       = PartState(1:3,iPart) - LastPartPos(1:3,iPart)
@@ -552,7 +555,7 @@ DO iPart=1,PDM%ParticleVecLength
     oldLengthPartTrajectory=LengthPartTrajectory
 
     ! Check if the particle moved at all. If not, tracking is done
-    IF(.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(ElemID)) .OR. LengthPartTrajectory.EQ.0) THEN
+    IF(.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID)) .OR. LengthPartTrajectory.EQ.0) THEN
       PEM%Element(iPart) = ElemID
       PartisDone         = .TRUE.
       CYCLE
@@ -877,14 +880,14 @@ DO iPart=1,PDM%ParticleVecLength
           ' Particle tracking done: ',PartisDone,' Particle is double checked: ',PartDoubleCheck
           IF(SwitchedElement) THEN
             WRITE(UNIT_stdout,'(A,I0,A,I0)') '     | First_ElemID: ',PEM%LastElement(iPart),' | new Element: ',ElemID
-          WRITE(UNIT_stdOut,'(A,I0)')        '     | first global ElemID       ', GetGlobalElemID(PEM%LastElement(iPart))
-          WRITE(UNIT_stdOut,'(A,I0)')        '     | new global ElemID       ', GetGlobalElemID(ElemID)
+          WRITE(UNIT_stdOut,'(A,I0)')        '     | first global ElemID     ', PEM%LastElement(iPart)
+          WRITE(UNIT_stdOut,'(A,I0)')        '     | new global ElemID       ', ElemID
             END IF
           IF( crossedBC) THEN
-            WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Last    PartPos:       ',lastPartPos(1:3,iPart)
-            WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Current PartPos:       ',PartState(1:3,iPart)
-            WRITE(UNIT_stdout,'(A,3(X,G0))') '     | PartTrajectory:        ',PartTrajectory(1:3)
-            WRITE(UNIT_stdout,'(A,(G0))')    '     | Length PartTrajectory: ',lengthPartTrajectory
+            WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Last    PartPos:        ',lastPartPos(1:3,iPart)
+            WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Current PartPos:        ',PartState(1:3,iPart)
+            WRITE(UNIT_stdout,'(A,3(X,G0))') '     | PartTrajectory:         ',PartTrajectory(1:3)
+            WRITE(UNIT_stdout,'(A,(G0))')    '     | Length PartTrajectory:  ',lengthPartTrajectory
           END IF
         WRITE(UNIT_stdout,'(128("="))')
       END IF ; END IF
@@ -2290,21 +2293,24 @@ SUBROUTINE ParticleThroughSideCheck3DFast(PartID,PartTrajectory,iLocSide,Element
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Vars
+USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
+! INPUT VARIABLES
 INTEGER,INTENT(IN)               :: PartID
 INTEGER,INTENT(IN)               :: iLocSide
 INTEGER,INTENT(IN)               :: Element
 INTEGER,INTENT(IN)               :: TriNum
 REAL,   INTENT(IN)               :: PartTrajectory(1:3)
-LOGICAL,INTENT(OUT)              :: ThroughSide
 LOGICAL, INTENT(IN), OPTIONAL    :: IsMortar
 !-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+LOGICAL,INTENT(OUT)              :: ThroughSide
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                          :: CNElemID
 INTEGER                          :: n, NodeID
 REAL                             :: Px, Py, Pz
 REAL                             :: Vx, Vy, Vz
@@ -2312,7 +2318,9 @@ REAL                             :: xNode(3), yNode(3), zNode(3), Ax(3), Ay(3), 
 REAL                             :: det(3)
 REAL                             :: eps
 !===================================================================================================================================
-eps = 0.
+
+eps      = 0.
+CNElemID = GetCNElemID(Element)
 
 ThroughSide = .FALSE.
 
@@ -2326,9 +2334,9 @@ Vy = PartTrajectory(2)
 Vz = PartTrajectory(3)
 
 ! Get the coordinates of the first node and the vector from the particle position to the node
-xNode(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,iLocSide,Element)+1)
-yNode(1) = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,iLocSide,Element)+1)
-zNode(1) = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,iLocSide,Element)+1)
+xNode(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
+yNode(1) = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
+zNode(1) = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
 
 Ax(1) = xNode(1) - Px
 Ay(1) = yNode(1) - Py
@@ -2337,17 +2345,17 @@ Az(1) = zNode(1) - Pz
 IF(PRESENT(IsMortar)) THEN
   ! Note: reverse orientation in the mortar case, as the side is treated from the perspective of the smaller neighbouring element
   !       (TriNum=1: NodeID=3,2; TriNum=2: NodeID=4,3)
-  xNode(2) = NodeCoords_Shared(1,ElemSideNodeID_Shared(2+TriNum,iLocSide,Element)+1)
-  yNode(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(2+TriNum,iLocSide,Element)+1)
-  zNode(2) = NodeCoords_Shared(3,ElemSideNodeID_Shared(2+TriNum,iLocSide,Element)+1)
+  xNode(2) = NodeCoords_Shared(1,ElemSideNodeID_Shared(2+TriNum,iLocSide,CNElemID)+1)
+  yNode(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(2+TriNum,iLocSide,CNElemID)+1)
+  zNode(2) = NodeCoords_Shared(3,ElemSideNodeID_Shared(2+TriNum,iLocSide,CNElemID)+1)
 
   Ax(2) = xNode(2) - Px
   Ay(2) = yNode(2) - Py
   Az(2) = zNode(2) - Pz
 
-  xNode(3) = NodeCoords_Shared(1,ElemSideNodeID_Shared(1+TriNum,iLocSide,Element)+1)
-  yNode(3) = NodeCoords_Shared(2,ElemSideNodeID_Shared(1+TriNum,iLocSide,Element)+1)
-  zNode(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(1+TriNum,iLocSide,Element)+1)
+  xNode(3) = NodeCoords_Shared(1,ElemSideNodeID_Shared(1+TriNum,iLocSide,CNElemID)+1)
+  yNode(3) = NodeCoords_Shared(2,ElemSideNodeID_Shared(1+TriNum,iLocSide,CNElemID)+1)
+  zNode(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(1+TriNum,iLocSide,CNElemID)+1)
 
   Ax(3) = xNode(3) - Px
   Ay(3) = yNode(3) - Py
@@ -2355,9 +2363,9 @@ IF(PRESENT(IsMortar)) THEN
 ELSE
   DO n = 2,3
     NodeID = n+TriNum-1       ! m = true node number of the sides (TriNum=1: NodeID=2,3; TriNum=2: NodeID=3,4)
-    xNode(n) = NodeCoords_Shared(1,ElemSideNodeID_Shared(NodeID,iLocSide,Element)+1)
-    yNode(n) = NodeCoords_Shared(2,ElemSideNodeID_Shared(NodeID,iLocSide,Element)+1)
-    zNode(n) = NodeCoords_Shared(3,ElemSideNodeID_Shared(NodeID,iLocSide,Element)+1)
+    xNode(n) = NodeCoords_Shared(1,ElemSideNodeID_Shared(NodeID,iLocSide,CNElemID)+1)
+    yNode(n) = NodeCoords_Shared(2,ElemSideNodeID_Shared(NodeID,iLocSide,CNElemID)+1)
+    zNode(n) = NodeCoords_Shared(3,ElemSideNodeID_Shared(NodeID,iLocSide,CNElemID)+1)
 
     Ax(n) = xNode(n) - Px
     Ay(n) = yNode(n) - Py
@@ -2395,8 +2403,9 @@ SUBROUTINE ParticleThroughSideLastPosCheck(i,iLocSide,Element,InElementCheck,Tri
 !> is inside the element. Output of determinant is used to determine which of the sides was crossed first.
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Vars
+USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Vars
 !-----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -2410,28 +2419,31 @@ REAL   ,INTENT(OUT)              :: det
 REAL   ,INTENT(OUT), OPTIONAL    :: detPartPos
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                          :: CNElemID
 INTEGER                          :: NodeNum, ind, iNode
 REAL                             :: Ax(3),Ay(3),Az(3)
 REAL                             :: NodeCoord(1:3,1:3)
 !===================================================================================================================================
 
+CNElemID = GetCNElemID(Element)
+
 InElementCheck = .TRUE.
 
 !--- coords of first node:
 DO ind = 1,3
-  NodeCoord(ind,1) = NodeCoords_Shared(ind,ElemSideNodeID_Shared(1,iLocSide,Element)+1)
+  NodeCoord(ind,1) = NodeCoords_Shared(ind,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
 END DO
 
 !--- coords of other two nodes (depending on triangle):
 IF(PRESENT(isMortarSide)) THEN
   ! Note: reversed orientation as the triangle is treated from the perspective of the smaller neighbouring mortar element
-  NodeCoord(1:3,2) = NodeCoords_Shared(1:3,ElemSideNodeID_Shared(2+TriNum,iLocSide,Element)+1)
-  NodeCoord(1:3,3) = NodeCoords_Shared(1:3,ElemSideNodeID_Shared(1+TriNum,iLocSide,Element)+1)
+  NodeCoord(1:3,2) = NodeCoords_Shared(1:3,ElemSideNodeID_Shared(2+TriNum,iLocSide,CNElemID)+1)
+  NodeCoord(1:3,3) = NodeCoords_Shared(1:3,ElemSideNodeID_Shared(1+TriNum,iLocSide,CNElemID)+1)
 ELSE
   DO iNode = 2,3
     NodeNum = iNode + TriNum - 1
     DO ind = 1,3
-      NodeCoord(ind,iNode) = NodeCoords_Shared(ind,ElemSideNodeID_Shared(NodeNum,iLocSide,Element)+1)
+      NodeCoord(ind,iNode) = NodeCoords_Shared(ind,ElemSideNodeID_Shared(NodeNum,iLocSide,CNElemID)+1)
     END DO
   END DO
 END IF
@@ -2493,95 +2505,5 @@ END IF
 
 END FUNCTION PARTHASMOVED
 
-
-!SUBROUTINE ParticleSanityCheck(PartID)
-!!===================================================================================================================================
-!! this routine checks the LastPartPos and PartPosition for sanity
-!! 1) check if LastPartPos is within globalminmax of proc
-!! 2) check if ParticlePosition is within globalminmax
-!! 3) check if PartPosRef is within the element
-!!===================================================================================================================================
-!! MODULES
-!USE MOD_Preproc
-!USE MOD_Globals
-!USE MOD_Mesh_Vars,              ONLY:offsetElem
-!USE MOD_Particle_Globals
-!USE MOD_Particle_Localization,  ONLY:PartInElemCheck
-!USE MOD_Particle_Mesh_Vars,     ONLY:GEO
-!USE MOD_Particle_Mesh_Vars,     ONLY:ElemBaryNGeo_Shared
-!USE MOD_Particle_Tracking_Vars, ONLY:DoRefMapping
-!USE MOD_Particle_Vars,          ONLY:PEM,PDM,LastPartPos,PartState
-!USE MOD_TimeDisc_Vars,          ONLY:currentStage
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT VARIABLES
-!INTEGER,INTENT(IN)               :: PartID
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! OUTPUT VARIABLES
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!INTEGER                          :: ElemID
-!LOGICAL                          :: IsHit
-!REAL                             :: IntersectionPoint(1:3)
-!!===================================================================================================================================
-!
-!IF(   (LastPartPos(1,PartID).GT.GEO%xmaxglob) &
-!  .OR.(LastPartPos(1,PartID).LT.GEO%xminglob) &
-!  .OR.(LastPartPos(2,PartID).GT.GEO%ymaxglob) &
-!  .OR.(LastPartPos(2,PartID).LT.GEO%yminglob) &
-!  .OR.(LastPartPos(3,PartID).GT.GEO%zmaxglob) &
-!  .OR.(LastPartPos(3,PartID).LT.GEO%zminglob) ) THEN
-!  IPWRITE(UNIt_stdOut,'(I0,A18,L)')                            ' ParticleInside ', PDM%ParticleInside(PartID)
-!  IPWRITE(UNIt_stdOut,'(I0,A18,L)')                            ' PDM%IsNewPart ' , PDM%IsNewPart     (PartID)
-!  IPWRITE(UNIt_stdOut,'(I0,A18,x,A18,x,A18)')                  '    min ', ' value ', ' max '
-!  IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' x', GEO%xminglob, LastPartPos(1,PartID), GEO%xmaxglob
-!  IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' y', GEO%yminglob, LastPartPos(2,PartID), GEO%ymaxglob
-!  IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' z', GEO%zminglob, LastPartPos(3,PartID), GEO%zmaxglob
-!  CALL abort(__STAMP__,' LastPartPos outside of mesh. PartID=, currentStage',PartID,REAL(currentStage))
-!END IF
-!IF(   (PartState(1,PartID).GT.GEO%xmaxglob) &
-!  .OR.(PartState(1,PartID).LT.GEO%xminglob) &
-!  .OR.(PartState(2,PartID).GT.GEO%ymaxglob) &
-!  .OR.(PartState(2,PartID).LT.GEO%yminglob) &
-!  .OR.(PartState(3,PartID).GT.GEO%zmaxglob) &
-!  .OR.(PartState(3,PartID).LT.GEO%zminglob) ) THEN
-!  IPWRITE(UNIt_stdOut,'(I0,A18,L)')                            ' ParticleInside ', PDM%ParticleInside(PartID)
-!  IPWRITE(UNIt_stdOut,'(I0,A18,3(X,E27.16))')                  ' LastPartPos    ', LastPartPos   (1:3,PartID)
-!  IPWRITE(UNIt_stdOut,'(I0,A18,3(X,E27.16))')                  ' Velocity       ', PartState     (4:6,PartID)
-!  IPWRITE(UNIt_stdOut,'(I0,A18,L)')                            ' PDM%IsNewPart ', PDM%IsNewPart      (PartID)
-!  IPWRITE(UNIt_stdOut,'(I0,A18,x,A18,x,A18)')                  '    min ', ' value ', ' max '
-!  IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' x', GEO%xminglob, PartState(1,PartID), GEO%xmaxglob
-!  IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' y', GEO%yminglob, PartState(2,PartID), GEO%ymaxglob
-!  IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' z', GEO%zminglob, PartState(3,PartID), GEO%zmaxglob
-!  CALL abort(__STAMP__,' PartPos outside of mesh. PartID=, currentStage',PartID,REAL(currentStage))
-!END IF
-!
-!IF(.NOT.DoRefMapping)THEN
-!  ElemID=PEM%Element(PartID)
-!#if CODE_ANALYZE
-!  CALL PartInElemCheck(PartState(1:3,PartID),PartID,ElemID,isHit,IntersectionPoint,CodeAnalyze_Opt=.TRUE.)
-!#else
-!  CALL PartInElemCheck(PartState(1:3,PartID),PartID,ElemID,isHit,IntersectionPoint)
-!#endif /*CODE_ANALYZE*/
-!  IF(.NOT.isHit)THEN  ! particle not inside
-!    IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
-!    IF(ElemID.LE.PP_nElems)THEN
-!      IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' ElemID         ', ElemID+offSetElem
-!!    ELSE
-!!#if USE_MPI
-!!          IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' ElemID         ', offSetElemMPI(PartHaloElemToProc(NATIVE_PROC_ID,ElemID)) &
-!!                                                    + PartHaloElemToProc(NATIVE_ELEM_ID,ElemID)
-!!#endif /*USE_MPI*/
-!    END IF
-!    IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' ElemBaryNGeo:      ', ElemBaryNGeo_Shared(1:3,ElemID)
-!    IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' IntersectionPoint: ', IntersectionPoint
-!    IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' LastPartPos:       ', LastPartPos (1:3,PartID)
-!    IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' PartPos:           ', PartState   (1:3,PartID)
-!    CALL abort(__STAMP__,'PartID=. ',PartID)
-!  END IF
-!END IF
-!
-!END SUBROUTINE ParticleSanityCheck
 
 END MODULE MOD_Particle_Tracking

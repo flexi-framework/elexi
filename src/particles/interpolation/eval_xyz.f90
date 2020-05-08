@@ -531,7 +531,7 @@ getInv(3,3) = ( Mat(1,1) * Mat(2,2) - Mat(1,2) * Mat(2,1) ) * sdet
 END FUNCTION getInv
 
 
-SUBROUTINE GetRefNewtonStartValue(X_in,Xi,ElemID)
+SUBROUTINE GetRefNewtonStartValue(X_in,Xi,CNElemID)
 !===================================================================================================================================
 !> Returns the initial value/ guess for the Newton's algorithm
 !===================================================================================================================================
@@ -552,7 +552,7 @@ USE MOD_Particle_Mesh_Vars,      ONLY: XCL_NGeo_Shared,Elem_xGP_Shared
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)             :: ElemID
+INTEGER,INTENT(IN)             :: CNElemID
 REAL,INTENT(IN)                :: X_in(1:3)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -574,10 +574,10 @@ RefMappingGuessLoc = RefMappingGuess
 SELECT CASE(RefMappingGuessLoc)
 
   CASE(1)
-    Ptild = X_in - ElemBaryNGeo(:,ElemID)
+    Ptild = X_in - ElemBaryNGeo(:,CNElemID)
     ! plus coord system (1-3) and minus coord system (4-6)
     DO iDir = 1,6
-      XiLinear(iDir) = DOT_PRODUCT(Ptild,XiEtaZetaBasis(:,iDir,ElemID))*slenXiEtaZetaBasis(iDir,ElemID)
+      XiLinear(iDir) = DOT_PRODUCT(Ptild,XiEtaZetaBasis(:,iDir,CNElemID))*slenXiEtaZetaBasis(iDir,CNElemID)
     END DO
     ! compute guess as average value
     DO iDir = 1,3
@@ -588,14 +588,14 @@ SELECT CASE(RefMappingGuessLoc)
 
   CASE(2)
     ! compute distance on Gauss Points
-    Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID)),(x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID))))
+    Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP_Shared(:,0,0,0,CNElemID)),(x_in(:)-Elem_xGP_Shared(:,0,0,0,CNElemID))))
     Xi(:) = (/xGP(0),xGP(0),xGP(0)/) ! start value
     DO i = 0,PP_N; DO j = 0,PP_N; DO k = 0,PP_N
-      dX = ABS(X_in(1) - Elem_xGP_Shared(1,i,j,k,ElemID))
+      dX = ABS(X_in(1) - Elem_xGP_Shared(1,i,j,k,CNElemID))
       IF(dX.GT.Winner_Dist) CYCLE
-      dY = ABS(X_in(2) - Elem_xGP_Shared(2,i,j,k,ElemID))
+      dY = ABS(X_in(2) - Elem_xGP_Shared(2,i,j,k,CNElemID))
       IF(dY.GT.Winner_Dist) CYCLE
-      dZ = ABS(X_in(3) - Elem_xGP_Shared(3,i,j,k,ElemID))
+      dZ = ABS(X_in(3) - Elem_xGP_Shared(3,i,j,k,CNElemID))
       IF(dZ.GT.Winner_Dist) CYCLE
       Dist = SQRT(dX*dX+dY*dY+dZ*dZ)
       IF (Dist.LT.Winner_Dist) THEN
@@ -606,14 +606,14 @@ SELECT CASE(RefMappingGuessLoc)
 
   CASE(3)
     ! compute distance on XCL Points
-    Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID)),(x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID))))
+    Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-XCL_NGeo_Shared(:,0,0,0,CNElemID)),(x_in(:)-XCL_NGeo_Shared(:,0,0,0,CNElemID))))
     Xi(:) = (/XiCL_NGeo(0),XiCL_NGeo(0),XiCL_NGeo(0)/) ! start value
     DO i = 0,NGeo; DO j = 0,NGeo; DO k = 0,NGeo
-      dX = ABS(X_in(1) - XCL_NGeo_Shared(1,i,j,k,ElemID))
+      dX = ABS(X_in(1) - XCL_NGeo_Shared(1,i,j,k,CNElemID))
       IF (dX.GT.Winner_Dist) CYCLE
-      dY = ABS(X_in(2) - XCL_NGeo_Shared(2,i,j,k,ElemID))
+      dY = ABS(X_in(2) - XCL_NGeo_Shared(2,i,j,k,CNElemID))
       IF (dY.GT.Winner_Dist) CYCLE
-      dZ = ABS(X_in(3) - XCL_NGeo_Shared(3,i,j,k,ElemID))
+      dZ = ABS(X_in(3) - XCL_NGeo_Shared(3,i,j,k,CNElemID))
       IF (dZ.GT.Winner_Dist) CYCLE
       Dist = SQRT(dX*dX+dY*dY+dZ*dZ)
       IF (Dist.LT.Winner_Dist) THEN

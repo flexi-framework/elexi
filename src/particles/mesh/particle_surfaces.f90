@@ -259,12 +259,13 @@ SUBROUTINE CalcNormAndTangTriangle(nVec,tang1,tang2,area,midpoint,ndist,xyzNod,V
 !================================================================================================================================
 ! function to compute the geo-data of a triangulated surface
 !================================================================================================================================
-USE MOD_Globals,                              ONLY:ABORT
+USE MOD_Globals,                              ONLY: ABORT
 USE MOD_PreProc
 USE MOD_Particle_Globals
-USE MOD_Particle_Surfaces_Vars,               ONLY:SideNormVec, SideType
-USE MOD_Particle_Tracking_Vars,               ONLY:TriaTracking
-USE MOD_Particle_Mesh_Vars,                   ONLY:SideInfo_Shared,NodeCoords_Shared,ElemSideNodeID_Shared
+USE MOD_Particle_Mesh_Vars,                   ONLY: SideInfo_Shared,NodeCoords_Shared,ElemSideNodeID_Shared
+USE MOD_Particle_Mesh_Tools,                  ONLY: GetCNElemID
+USE MOD_Particle_Surfaces_Vars,               ONLY: SideNormVec, SideType
+USE MOD_Particle_Tracking_Vars,               ONLY: TriaTracking
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -279,24 +280,24 @@ REAL,INTENT(OUT),OPTIONAL              :: tang1(3), tang2(3), area, midpoint(3),
 REAL,INTENT(INOUT),OPTIONAL            :: xyzNod(3) ,Vectors(3,3)
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                :: ElemID, LocSideID
+INTEGER                                :: CNElemID, LocSideID
 INTEGER                                :: Node1, Node2
 REAL                                   :: xNod, zNod, yNod, Vector1(3), Vector2(3)
 REAL                                   :: nVal, ndistVal, nx, ny, nz, dotpr
 !================================================================================================================================
 IF (PRESENT(ElemID_opt).AND.PRESENT(LocSideID_opt)) THEN
-  ElemID=ElemID_opt
-  LocSideID=LocSideID_opt
+  CNElemID  = GetCNElemID(ElemID_opt)
+  LocSideID = LocSideID_opt
 ELSE IF (PRESENT(SideID)) THEN
-  ElemID = SideInfo_Shared(SIDE_ELEMID,SideID)
+  CNElemID  = GetCNElemID(SideInfo_Shared(SIDE_ELEMID ,SideID))
   LocSideID = SideInfo_Shared(SIDE_LOCALID,SideID)
 ELSE
   CALL ABORT(__STAMP__, 'Either SideID or ElemID+LocSideID have to be given to CalcNormAndTangTriangle!')
 END IF
 
-xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,LocSideID,ElemID)+1)
-yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,LocSideID,ElemID)+1)
-zNod = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,LocSideID,ElemID)+1)
+xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,LocSideID,CNElemID)+1)
+yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,LocSideID,CNElemID)+1)
+zNod = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,LocSideID,CNElemID)+1)
 
 IF(PRESENT(xyzNod) .AND. TriNum.EQ.1) THEN !only write for first Tria
   xyzNod = (/xNod,yNod,zNod/)
@@ -305,12 +306,12 @@ END IF
 Node1 = TriNum+1     ! normal = cross product of 1-2 and 1-3 for first triangle
 Node2 = TriNum+2     !          and 1-3 and 1-4 for second triangle
 
-Vector1(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)+1) - xNod
-Vector1(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)+1) - yNod
-Vector1(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)+1) - zNod
-Vector2(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)+1) - xNod
-Vector2(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)+1) - yNod
-Vector2(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)+1) - zNod
+Vector1(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node1,LocSideID,CNElemID)+1) - xNod
+Vector1(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node1,LocSideID,CNElemID)+1) - yNod
+Vector1(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node1,LocSideID,CNElemID)+1) - zNod
+Vector2(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node2,LocSideID,CNElemID)+1) - xNod
+Vector2(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node2,LocSideID,CNElemID)+1) - yNod
+Vector2(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node2,LocSideID,CNElemID)+1) - zNod
 
 nx = - Vector1(2) * Vector2(3) + Vector1(3) * Vector2(2) !NV (inwards)
 ny = - Vector1(3) * Vector2(1) + Vector1(1) * Vector2(3)
@@ -735,10 +736,15 @@ LOGICAL            :: SideIsCritical
 ! 1.) slab normal vectors
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! n_1=V_1+V_2 (V: corner vectors in xi-direction)
-SideSlabNormals(:,1)=BezierControlPoints3D(:,NGeoElevated,0)              &
-                    -BezierControlPoints3D(:,0,0)                         &
-                    +BezierControlPoints3D(:,NGeoElevated,NGeoElevated)   &
-                    -BezierControlPoints3D(:,0,NGeoElevated)
+SideSlabNormals(:,1) = BezierControlPoints3D(:,NGeoElevated,0)              &
+                     - BezierControlPoints3D(:,0,0)                         &
+                     + BezierControlPoints3D(:,NGeoElevated,NGeoElevated)   &
+                     - BezierControlPoints3D(:,0,NGeoElevated)
+
+IF (ALL(SideSlabNormals(:,1).EQ.0)) &
+  CALL ABORT(__STAMP__,             &
+  'Error while calculating side slab normals and intervals. Normal vector length zero. Possibly wrong BezierControlPoints')
+
 SideSlabNormals(:,1)=SideSlabNormals(:,1)/SQRT(DOT_PRODUCT(SideSlabNormals(:,1),SideSlabNormals(:,1)))
 ! n_2=n_1 x (U_1+U_2) (U: corner vectors in eta-direction)
 SideSlabNormals(:,2)=BezierControlPoints3D(:,0,NGeoElevated)                      &

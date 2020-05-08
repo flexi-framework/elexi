@@ -302,7 +302,7 @@ END IF
 
 ichunkSize       = 1
 ParticleIndexNbr = 1
-DO iElem = 1, nElems
+DO iElem = offsetElem+1, offsetElem+nElems
   ASSOCIATE( Bounds => BoundsOfElem_Shared(1:2,1:3,offsetElem+iElem) ) ! 1-2: Min, Max value; 1-3: x,y,z
     IF (UseExactPartNum) THEN
       nPart = CellChunkSize(iElem)

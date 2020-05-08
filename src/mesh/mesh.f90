@@ -223,7 +223,13 @@ IF(NGeoOverride.GT.0)THEN
   DEALLOCATE(CoordsTmp, Vdm_EQNGeo_EQNGeoOverride)
 END IF
 
+#if USE_PARTICLES
+IF(NGeoOverride.GT.0)THEN
+#endif /*!USE_PARTICLES*/
 SWRITE(UNIT_StdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
+#if USE_PARTICLES
+End IF
+#endif /*!USE_PARTICLES*/
 
 ! scale and deform mesh if desired (warning: no mesh output!)
 #if !USE_PARTICLES

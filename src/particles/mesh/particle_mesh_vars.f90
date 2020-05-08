@@ -98,9 +98,9 @@ REAL,ALLOCPOINT    :: SideBCMetrics_Shared(:,:)                !> Metrics for BC
                                                                !> 7 - Origin of BC Side, z-coordinate
 
 INTEGER,ALLOCPOINT :: ElemToBGM_Shared(:,:)                    !> BGM Bounding box around element (respective BGM indices) of compute node
-INTEGER,ALLOCPOINT :: FIBGM_nElems_Shared(:,:,:)               !> FastInitBackgroundMesh of compute node
+INTEGER,ALLOCPOINT :: FIBGM_nElems_Shared(:)                   !> FastInitBackgroundMesh of compute node
 INTEGER,ALLOCPOINT :: FIBGM_Element_Shared(:)                  !> FastInitBackgroundMesh of compute node
-INTEGER,ALLOCPOINT :: FIBGM_offsetElem_Shared(:,:,:)
+INTEGER,ALLOCPOINT :: FIBGM_offsetElem_Shared(:)
 
 REAL,ALLOCPOINT    :: BoundsOfElem_Shared(:,:,:)               !> Cartesian bounding box around element
 

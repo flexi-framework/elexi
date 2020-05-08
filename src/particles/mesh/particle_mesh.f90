@@ -247,7 +247,7 @@ USE MOD_Particle_BGM           ,ONLY: BuildBGMAndIdentifyHaloRegion
 USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation
 USE MOD_Particle_Mesh_Vars
-USE MOD_Particle_Mesh_Tools    ,ONLY: InitGetGlobalElemID,InitGetCNElemID
+USE MOD_Particle_Mesh_Tools    ,ONLY: InitGetGlobalElemID,InitGetCNElemID,GetCNElemID
 USE MOD_Particle_Surfaces      ,ONLY: GetSideSlabNormalsAndIntervals
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation,BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
@@ -407,8 +407,12 @@ SELECT CASE(TrackingMethod)
 
     IF (BezierElevation.GT.0) THEN
       DO iSide=firstSide,LastSide
+        ! ignore sides that are not on the compute node
+        IF (GetCNElemID(SideInfo_Shared(SIDE_ELEMID,iSide)).EQ.-1) CYCLE
+
         ! Ignore small mortar sides attached to big mortar sides
         IF (SideInfo_Shared(SIDE_LOCALID,iSide).LT.1 .OR. SideInfo_Shared(SIDE_LOCALID,iSide).GT.6) CYCLE
+
         CALL GetSideSlabNormalsAndIntervals(BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated,iSide)     &
                                            ,SideSlabNormals(   1:3,1:3,iSide)                          &
                                            ,SideSlabInterVals( 1:6    ,iSide)                          &
@@ -416,8 +420,12 @@ SELECT CASE(TrackingMethod)
       END DO
     ELSE
       DO iSide=firstSide,LastSide
+        ! ignore sides that are not on the compute node
+        IF (GetCNElemID(SideInfo_Shared(SIDE_ELEMID,iSide)).EQ.-1) CYCLE
+
         ! Ignore small mortar sides attached to big mortar sides
         IF (SideInfo_Shared(SIDE_LOCALID,iSide).LT.1 .OR. SideInfo_Shared(SIDE_LOCALID,iSide).GT.6) CYCLE
+
         CALL GetSideSlabNormalsAndIntervals(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,iSide)             &
                                            ,SideSlabNormals(   1:3,1:3,iSide)                          &
                                            ,SideSlabInterVals( 1:6    ,iSide)                          &
@@ -714,8 +722,9 @@ USE MOD_Mesh_Vars                ,ONLY: nElems
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem,iSide,ilocSide
+INTEGER                        :: SideID
 INTEGER                        :: firstElem,lastElem,firstSide,lastSide
-INTEGER                        :: p,q,pq(2), SideID
+INTEGER                        :: p,q,pq(2)
 REAL                           :: tmp(3,0:NGeo,0:NGeo)
 REAL                           :: tmp2(3,0:NGeo,0:NGeo)
 #if USE_MPI
@@ -781,28 +790,31 @@ firstSide = 1
 lastSide  = nNonUniqueGlobalSides
 #endif /*USE_MPI*/
 
+! iElem is CN elem
 DO iElem = firstElem, lastElem
   DO ilocSide=1,6
     SELECT CASE(iLocSide)
     CASE(XI_MINUS)
-      tmp=XCL_NGeo_Shared(1:3 , 0    , :    , :   ,iElem )
+      tmp = XCL_NGeo_Shared(1:3 , 0    , :    , :   ,iElem )
     CASE(XI_PLUS)
-      tmp=XCL_NGeo_Shared(1:3 , NGeo , :    , :   ,iElem )
+      tmp = XCL_NGeo_Shared(1:3 , NGeo , :    , :   ,iElem )
     CASE(ETA_MINUS)
-      tmp=XCL_NGeo_Shared(1:3 , :    , 0    , :   ,iElem )
+      tmp = XCL_NGeo_Shared(1:3 , :    , 0    , :   ,iElem )
     CASE(ETA_PLUS)
-      tmp=XCL_NGeo_Shared(1:3 , :    , NGeo , :   ,iElem )
+      tmp = XCL_NGeo_Shared(1:3 , :    , NGeo , :   ,iElem )
     CASE(ZETA_MINUS)
-      tmp=XCL_NGeo_Shared(1:3 , :    , :    , 0   ,iElem )
+      tmp = XCL_NGeo_Shared(1:3 , :    , :    , 0   ,iElem )
     CASE(ZETA_PLUS)
-      tmp=XCL_NGeo_Shared(1:3 , :    , :    , NGeo,iElem )
+      tmp = XCL_NGeo_Shared(1:3 , :    , :    , NGeo,iElem )
     END SELECT
     CALL ChangeBasis2D(3,NGeo,NGeo,sVdm_Bezier,tmp,tmp2)
+
     ! get global SideID of local side
     SideID = GetGlobalNonUniqueSideID(GetGlobalElemID(iElem),iLocSide)
-    DO q=0,NGeo; DO p=0,NGeo
+
+    DO q = 0,NGeo; DO p = 0,NGeo
       ! turn into right hand system of side
-      pq=CGNS_SideToVol2(NGeo,p,q,iLocSide,3)
+      pq = CGNS_SideToVol2(NGeo,p,q,iLocSide,3)
       BezierControlPoints3D(1:3,p,q,SideID) = tmp2(1:3,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! ilocSide=1,6
@@ -942,6 +954,7 @@ SUBROUTINE InitParticleGeometry()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars                ,ONLY: NGeo
+USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ConcaveElemSide_Shared,ElemNodeID_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemSideNodeID_Shared,ElemMidPoint_Shared
@@ -963,7 +976,7 @@ USE MOD_Mesh_Vars                ,ONLY: nElems
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem,FirstElem,LastElem
+INTEGER            :: iElem,FirstElem,LastElem,GlobalElemID
 INTEGER            :: GlobalSideID,nlocSides,localSideID,iLocSide
 INTEGER            :: iNode
 INTEGER            :: nStart, NodeNum
@@ -1039,24 +1052,28 @@ CALL MPI_WIN_SYNC(ConcaveElemSide_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #endif
 
+! iElem is CNElemID
 DO iElem = firstElem,lastElem
+  GlobalElemID = GetGlobalElemID(iElem)
+
   DO iNode = 1,8
-    ElemNodeID_Shared(iNode,iElem) = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) + CNS(iNode)
+    ElemNodeID_Shared(iNode,iElem) = ElemInfo_Shared(ELEM_FIRSTNODEIND,GlobalElemID) + CNS(iNode)
   END DO
 
-  nlocSides = ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)
+  nlocSides = ElemInfo_Shared(ELEM_LASTSIDEIND,GlobalElemID) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,GlobalElemID)
   DO iLocSide = 1,nlocSides
     ! Get global SideID
-    GlobalSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem) + iLocSide
+    GlobalSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,GlobalElemID) + iLocSide
+
     IF (SideInfo_Shared(SIDE_LOCALID,GlobalSideID).LE.0) CYCLE
     localSideID = SideInfo_Shared(SIDE_LOCALID,GlobalSideID)
     ! Find start of CGNS mapping from flip
     nStart = MAX(0,MOD(SideInfo_Shared(SIDE_FLIP,GlobalSideID),10)-1)
     ! Shared memory array starts at 1, but NodeID at 0
-    ElemSideNodeID_Shared(1:4,localSideID,iElem) = (/ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)+NodeMap(MOD(nStart  ,4)+1,localSideID)-1, &
-                                                     ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)+NodeMap(MOD(nStart+1,4)+1,localSideID)-1, &
-                                                     ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)+NodeMap(MOD(nStart+2,4)+1,localSideID)-1, &
-                                                     ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)+NodeMap(MOD(nStart+3,4)+1,localSideID)-1/)
+    ElemSideNodeID_Shared(1:4,localSideID,iElem) = (/ElemInfo_Shared(ELEM_FIRSTNODEIND,GlobalElemID)+NodeMap(MOD(nStart  ,4)+1,localSideID)-1, &
+                                                     ElemInfo_Shared(ELEM_FIRSTNODEIND,GlobalElemID)+NodeMap(MOD(nStart+1,4)+1,localSideID)-1, &
+                                                     ElemInfo_Shared(ELEM_FIRSTNODEIND,GlobalElemID)+NodeMap(MOD(nStart+2,4)+1,localSideID)-1, &
+                                                     ElemInfo_Shared(ELEM_FIRSTNODEIND,GlobalElemID)+NodeMap(MOD(nStart+3,4)+1,localSideID)-1/)
   END DO
 END DO
 END ASSOCIATE
@@ -1065,18 +1082,20 @@ CALL MPI_WIN_SYNC(ElemNodeID_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(ElemSideNodeID_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #endif
+
 !--- Save whether Side is concave or convex
 DO iElem = firstElem,lastElem
-  nlocSides = ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)
+  ! iElem is CNElemID
+  GlobalElemID = GetGlobalElemID(iElem)
+
+  nlocSides = ElemInfo_Shared(ELEM_LASTSIDEIND,GlobalElemID) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,GlobalElemID)
   DO iLocSide = 1,nlocSides
     !--- Check whether the bilinear side is concave
     !--- Node Number 4 and triangle 1-2-3
-    GlobalSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem) + iLocSide
+    GlobalSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,GlobalElemID) + iLocSide
     IF (SideInfo_Shared(SIDE_LOCALID,GlobalSideID).LE.0) CYCLE
     localSideID = SideInfo_Shared(SIDE_LOCALID,GlobalSideID)
     DO NodeNum = 1,3               ! for all 3 nodes of triangle
-!      A(:,NodeNum) = GEO%NodeCoords(:,GEO%ElemSideNodeID(NodeNum,iLocSide,iElem)) &
-!                   - GEO%NodeCoords(:,GEO%ElemSideNodeID(4,iLocSide,iElem))
        A(:,NodeNum) = NodeCoords_Shared(:,ElemSideNodeID_Shared(NodeNum,localSideID,iElem)+1) &
                     - NodeCoords_Shared(:,ElemSideNodeID_Shared(4      ,localSideID,iElem)+1)
     END DO
@@ -1084,15 +1103,17 @@ DO iElem = firstElem,lastElem
     detcon = ((A(2,1) * A(3,2) - A(3,1) * A(2,2)) * A(1,3) +     &
               (A(3,1) * A(1,2) - A(1,1) * A(3,2)) * A(2,3) +     &
               (A(1,1) * A(2,2) - A(2,1) * A(1,2)) * A(3,3))
-!    IF (detcon.LT.0) GEO%ConcaveElemSide(iLocSide,iElem)=.TRUE.
     IF (detcon.LT.0) ConcaveElemSide_Shared(localSideID,iElem) = .TRUE.
   END DO
 END DO
 
 DO iElem = firstElem,lastElem
+  ! iElem is CNElemID
+  GlobalElemID = GetGlobalElemID(iElem)
+
   ElemMidPoint_Shared(:,iElem) = 0.
   DO iNode = 1,8
-    ElemMidPoint_Shared(1:3,iElem) = ElemMidPoint_Shared(1:3,iElem) + NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)+iNode)
+    ElemMidPoint_Shared(1:3,iElem) = ElemMidPoint_Shared(1:3,iElem) + NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,GlobalElemID)+iNode)
   END DO
   ElemMidPoint_Shared(1:3,iElem) = ElemMidPoint_Shared(1:3,iElem) / 8.
 END DO
@@ -1143,17 +1164,17 @@ USE MOD_Mesh_Vars                 ,ONLY: nElems
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: iElem, iLocSide, kLocSide, iNode
+INTEGER             :: iElem, iLocSide, kLocSide, iNode
 INTEGER,ALLOCATABLE :: WeirdElemNbrs(:)
-REAL              :: vec(1:3), Node(1:3,1:4),det(1:3)
-LOGICAL           :: WEIRD, TRICHECK, TRIABSCHECK
-INTEGER           :: firstElem,lastElem
+REAL                :: vec(1:3), Node(1:3,1:4),det(1:3)
+LOGICAL             :: WEIRD, TRICHECK, TRIABSCHECK
+INTEGER             :: firstElem,lastElem
 !===================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' CHECKING FOR WEIRD ELEMENTS...'
 
 #if USE_MPI
-firstElem = INT(REAL(myComputeNodeRank*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 #else
 firstElem = 1
@@ -1163,7 +1184,9 @@ lastElem  = nElems
 ALLOCATE(WeirdElemNbrs(1:lastElem-firstElem+1))
 
 WeirdElems = 0
-DO iElem = firstElem,lastElem ! go through all elements
+
+! go through all CN elements
+DO iElem = firstElem,lastElem
   WEIRD = .FALSE.
   DO iLocSide = 1,5  ! go through local sides
     IF (.not.WEIRD) THEN  ! if one is found there is no need to continue
@@ -1253,7 +1276,6 @@ DO iElem = firstElem,lastElem ! go through all elements
   END IF
 END DO
 
-SWRITE(UNIT_stdOut,'(A)')' CHECKING FOR WEIRD ELEMENTS DONE!'
 IF(WeirdElems.GT.0) THEN
   IPWRITE(UNIT_stdOut,*)' FOUND', WeirdElems, 'ELEMENTS!'
   IPWRITE(UNIT_stdOut,*)' WEIRD ELEM NUMBERS:'
@@ -1261,6 +1283,8 @@ IF(WeirdElems.GT.0) THEN
     IPWRITE(UNIT_stdOut,*) WeirdElemNbrs(iElem)
   END DO
 END IF
+
+SWRITE(UNIT_stdOut,'(A)')' CHECKING FOR WEIRD ELEMENTS DONE!'
 
 DEALLOCATE(WeirdElemNbrs)
 
@@ -1277,9 +1301,9 @@ SUBROUTINE MapRegionToElem()
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Mesh_Vars          ,ONLY: nElems
-USE MOD_Particle_Mesh_Vars ,ONLY: NbrOfRegions,RegionBounds,GEO
-USE MOD_Particle_Mesh_Vars ,ONLY: ElemBaryNGeo
+USE MOD_Mesh_Vars                 ,ONLY: nElems
+USE MOD_Particle_Mesh_Vars        ,ONLY: NbrOfRegions,RegionBounds,GEO
+USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -1299,7 +1323,7 @@ DO iElem=1,nElems
     IF ((ElemBaryNGeo(2,iElem).LT.RegionBounds(3,iRegions)).OR.(ElemBaryNGEO(2,iElem).GE.RegionBounds(4,iRegions))) CYCLE
     IF ((ElemBaryNGeo(3,iElem).LT.RegionBounds(5,iRegions)).OR.(ElemBaryNGEO(3,iElem).GE.RegionBounds(6,iRegions))) CYCLE
     IF (GEO%ElemToRegion(iElem).EQ.0) THEN
-      GEO%ElemToRegion(iElem)=iRegions
+      GEO%ElemToRegion(iElem) = iRegions
     ELSE
       CALL ABORT(__STAMP__,'Defined regions are overlapping')
     END IF
@@ -1317,37 +1341,36 @@ SUBROUTINE BuildElementBasisAndRadius()
 !================================================================================================================================
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Basis                  ,ONLY: LagrangeInterpolationPolys
-USE MOD_Mesh_Vars              ,ONLY: NGeo
-USE MOD_Particle_Basis         ,ONLY: DeCasteljauInterpolation
-USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
-USE MOD_Particle_Mesh_Vars     ,ONLY: wBaryCL_NGeo,XiCL_NGeo
-USE MOD_Particle_Mesh_Vars     ,ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis,ElemRadiusNGeo,ElemRadius2NGeo
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
-USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
+USE MOD_Basis                     ,ONLY: LagrangeInterpolationPolys
+USE MOD_Mesh_Vars                 ,ONLY: NGeo
+USE MOD_Particle_Basis            ,ONLY: DeCasteljauInterpolation
+USE MOD_Particle_Surfaces_Vars    ,ONLY: BezierControlPoints3D
+USE MOD_Particle_Mesh_Vars        ,ONLY: wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars        ,ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis,ElemRadiusNGeo,ElemRadius2NGeo
+USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo
+USE MOD_Particle_Mesh_Tools       ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
 #if USE_MPI
-USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeProcessors,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
-USE MOD_Particle_Mesh_Vars     ,ONLY: XCL_NGeo_Shared
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadiusNGEO_Shared,ElemRadiusNGeo_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo_Shared,ElemRadius2NGeo_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: XiEtaZetaBasis_Shared,XiEtaZetaBasis_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: slenXiEtaZetaBasis_Shared,slenXiEtaZetaBasis_Shared_Win
+USE MOD_Particle_MPI_Shared       ,ONLY: Allocate_Shared
+USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeTotalElems
+USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeProcessors,myComputeNodeRank
+USE MOD_Particle_MPI_Shared_Vars  ,ONLY: MPI_COMM_SHARED
+USE MOD_Particle_Mesh_Vars        ,ONLY: XCL_NGeo_Shared
+USE MOD_Particle_Mesh_Vars        ,ONLY: ElemRadiusNGEO_Shared,ElemRadiusNGeo_Shared_Win
+USE MOD_Particle_Mesh_Vars        ,ONLY: ElemRadius2NGeo_Shared,ElemRadius2NGeo_Shared_Win
+USE MOD_Particle_Mesh_Vars        ,ONLY: XiEtaZetaBasis_Shared,XiEtaZetaBasis_Shared_Win
+USE MOD_Particle_Mesh_Vars        ,ONLY: slenXiEtaZetaBasis_Shared,slenXiEtaZetaBasis_Shared_Win
 #else
-USE MOD_Particle_Mesh_Vars     ,ONLY: XCL_NGeo
-USE MOD_Mesh_Vars              ,ONLY: nELems
+USE MOD_Particle_Mesh_Vars        ,ONLY: XCL_NGeo
+USE MOD_Mesh_Vars                 ,ONLY: nELems
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !--------------------------------------------------------------------------------------------------------------------------------
-!OUTPUT VARIABLES
+! OUTPUT VARIABLES
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!INTEGER                        :: ALLOCSTAT
 INTEGER                        :: iElem,SideID
 INTEGER                        :: i,j,k,ilocSide
 INTEGER                        :: iDir
@@ -1412,7 +1435,8 @@ Xi(:,4) = (/-1.0 , 0.0  ,  0.0/) ! xi minus
 Xi(:,5) = (/ 0.0 , -1.0 ,  0.0/) ! eta minus
 Xi(:,6) = (/ 0.0 , 0.0  , -1.0/) ! zeta minus
 
-DO iElem=firstElem,lastElem
+! iElem is CN elem
+DO iElem = firstElem,lastElem
   ! get point on each side
   DO iDir = 1, 6
     CALL LagrangeInterpolationPolys(Xi(1,iDir),NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(1,:))
@@ -1421,12 +1445,12 @@ DO iElem=firstElem,lastElem
 
     xPos = 0.
     DO k = 0,NGeo; DO j = 0,NGeo; DO i = 0,NGeo
-      xPos = xPos+XCL_NGeo(:,i,j,k,iElem)*Lag(1,i)*Lag(2,j)*Lag(3,k)
+      xPos = xPos + XCL_NGeo(:,i,j,k,iElem)*Lag(1,i)*Lag(2,j)*Lag(3,k)
     END DO; END DO; END DO
 
     XiEtaZetaBasis(1:3,iDir,iElem) = xPos
     ! compute vector from each barycenter to sidecenter
-    XiEtaZetaBasis(:,iDir,iElem)   = XiEtaZetaBasis(:,iDir,iElem)-ElemBaryNGeo(:,iElem)
+    XiEtaZetaBasis(  :,iDir,iElem) = XiEtaZetaBasis(:,iDir,iElem)-ElemBaryNGeo(:,iElem)
     ! compute length: The root is omitted here due to optimization
     slenXiEtaZetaBasis(iDir,iElem) = 1.0/DOT_PRODUCT(XiEtaZetaBasis(:,iDir,iElem),XiEtaZetaBasis(:,iDir,iElem))
   END DO ! iDir = 1, 6
@@ -1462,29 +1486,28 @@ SUBROUTINE BuildElementRadiusTria()
 !================================================================================================================================
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Globals        ,ONLY: VECNORM
-USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,NodeCoords_Shared
-USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo,ElemRadius2NGeo
-USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID
+USE MOD_Particle_Globals          ,ONLY: VECNORM
+USE MOD_Particle_Mesh_Vars        ,ONLY: ElemInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo,ElemRadius2NGeo
+USE MOD_Particle_Mesh_Tools       ,ONLY: GetGlobalElemID
 #if USE_MPI
-USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo_Shared,ElemRadius2NGeo_Shared
-USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo_Shared_Win,ElemRadius2NGeo_Shared_Win
-USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
+USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo_Shared,ElemRadius2NGeo_Shared
+USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo_Shared_Win,ElemRadius2NGeo_Shared_Win
+USE MOD_Particle_MPI_Shared       ,ONLY: Allocate_Shared
+USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeTotalElems
+USE MOD_Particle_MPI_Shared_Vars  ,ONLY: myComputeNodeRank,nComputeNodeProcessors
+USE MOD_Particle_MPI_Shared_Vars  ,ONLY: MPI_COMM_SHARED
 #else
-USE MOD_Mesh_Vars               ,ONLY: nELems
+USE MOD_Mesh_Vars                 ,ONLY: nELems
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !--------------------------------------------------------------------------------------------------------------------------------
-!OUTPUT VARIABLES
+! OUTPUT VARIABLES
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!INTEGER                        :: ALLOCSTAT
 INTEGER                        :: iElem,ElemID,iNode
 REAL                           :: xPos(3),Radius
 INTEGER                        :: firstElem, lastElem
@@ -1775,20 +1798,23 @@ CALL MPI_WIN_SYNC(ElemBaryNGeo_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /* USE_MPI*/
 
-DO iElem=firstElem,lastElem
-  ! evaluate the polynomial at origin: Xi=(/0.0,0.0,0.0/)
-  CALL LagrangeInterpolationPolys(0.0,NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(1,:))
-  CALL LagrangeInterpolationPolys(0.0,NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(2,:))
-  CALL LagrangeInterpolationPolys(0.0,NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(3,:))
-  xPos=0.
-  DO k=0,NGeo
-    DO j=0,NGeo
-      buf=Lag(2,j)*Lag(3,k)
-      DO i=0,NGeo
-        xPos=xPos+XCL_NGeo(1:3,i,j,k,iElem)*Lag(1,i)*buf
-      END DO !i=0,NGeo
-    END DO !j=0,NGeo
-  END DO !k=0,NGeo
+! evaluate the polynomial at origin: Xi=(/0.0,0.0,0.0/)
+CALL LagrangeInterpolationPolys(0.0,NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(1,:))
+CALL LagrangeInterpolationPolys(0.0,NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(2,:))
+CALL LagrangeInterpolationPolys(0.0,NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(3,:))
+
+DO iElem = firstElem,lastElem
+  xPos = 0.
+
+  DO k = 0,NGeo
+    DO j = 0,NGeo
+      buf = Lag(2,j)*Lag(3,k)
+      DO i = 0,NGeo
+        xPos = xPos + XCL_NGeo(1:3,i,j,k,iElem)*Lag(1,i)*buf
+      END DO ! i = 0,NGeo
+    END DO ! j = 0,NGeo
+  END DO ! k = 0,NGeo
+
   ElemBaryNGeo(:,iElem)=xPos
 END DO ! iElem
 
@@ -2237,6 +2263,7 @@ USE MOD_Globals
 USE MOD_Mesh_Vars                ,ONLY: NGeo
 USE MOD_Particle_Basis           ,ONLY: DeCasteljauInterpolation
 USE MOD_Particle_Globals         ,ONLY: VECNORM
+USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars       ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID,SideID2BCSide,BCSideMetrics
 USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides,nUniqueBCSides
@@ -2277,6 +2304,9 @@ lastSide  = nNonUniqueGlobalSides
 ! Count number of BC sides in range
 nUniqueBCSidesProc = 0
 DO iSide = firstSide,lastSide
+  ! ignore elements not on the compute node
+  IF (GetCNElemID(SideInfo_Shared(SIDE_ELEMID,iSide)).EQ.-1) CYCLE
+
   ! ignore inner and virtual (mortar) sides
   IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
 
@@ -2334,6 +2364,9 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
 nUniqueBCSidesProc = 0
 DO iSide = firstSide,lastSide
+  ! ignore elements not on the compute node
+  IF (GetCNElemID(SideInfo_Shared(SIDE_ELEMID,iSide)).EQ.-1) CYCLE
+
   ! ignore inner and virtual (mortar) sides
   IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
 
@@ -2345,7 +2378,7 @@ DO iSide = firstSide,lastSide
   ! calculate origin, radius for all BC sides
   !> build side origin
   xi     = 0.
-  ! TODO: BezierControlPoints are alloced with global side ID, so this SHOULD work. Breaks if we reduce the halo region
+  ! TODO: BezierControlPoints are allocated with global side ID, so this SHOULD work. Breaks if we reduce the halo region
   CALL DeCasteljauInterpolation(NGeo,xi,iSide,origin)
   BCSideMetrics(1:3,BCSideID) = origin(1:3)
 
@@ -2389,7 +2422,7 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides,SideBCMetrics
 USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID,SideID2BCSide,BCSideMetrics
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemBaryNGeo,ElemRadiusNGeo
 USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides,nUniqueBCSides
-USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID,GetCNElemID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Utils           ,ONLY: InsertionSort
 #if USE_MPI
@@ -2424,6 +2457,7 @@ INTEGER                        :: iSide,firstSide,lastSide,iLocSide
 INTEGER                        :: nComputeNodeBCSides
 INTEGER                        :: nBCSidesElem,nBCSidesProc,offsetBCSidesProc,offsetBCSides
 INTEGER                        :: iBCSide,BCElemID,BCSideID
+INTEGER                        :: CNElemID,BCCNElemID
 INTEGER,ALLOCATABLE            :: ElemToBCSidesProc(:,:)
 REAL                           :: dX,dY,dZ
 REAL                           :: origin(1:3),vec(1:3)
@@ -2598,22 +2632,26 @@ DO iElem = firstElem,lastElem
     ! loop over all sides. Check distance from every local side to total sides.
     DO iBCSide = 1,nUniqueBCSides
 
-      BCSideID = BCSide2SideID(iBCSide)
-      BCElemID = SideInfo_Shared(SIDE_ELEMID,BCSideID)
+      BCSideID   = BCSide2SideID(iBCSide)
+      BCElemID   = SideInfo_Shared(SIDE_ELEMID,BCSideID)
+      BCCNElemID = GetCNElemID(BCElemID)
+
+      ! Ignore elements not on the compute node
+      IF (BCCNElemID.EQ.-1) CYCLE
 
       ! Ignore the same element
       IF (BCElemID.EQ.iElem) CYCLE
 
       ! Check if barycenter of element is in range
-      IF (VECNORM(ElemBaryNGeo(:,ElemID) - ElemBaryNGeo(:,BCElemID)) &
-        .GT. (BC_halo_eps + ElemRadiusNGeo(ElemID) + ElemRadiusNGeo(BCElemID))) CYCLE
+      IF (VECNORM(ElemBaryNGeo(:,iElem) - ElemBaryNGeo(:,BCCNElemID)) &
+        .GT. (BC_halo_eps + ElemRadiusNGeo(iElem) + ElemRadiusNGeo(BCCNElemID))) CYCLE
 
       ! loop over all local sides of the element. Use a named loop so the entire element can be cycled
 Check1: DO ilocSide = 1,6
           SideID = GetGlobalNonUniqueSideID(ElemID,ilocSide)
 
-              ! compare all nodes between local and BC side to check if within BC_halo_eps. Once one node pair is in range, flag the entire
-              ! side and stop checking. First, get BezierControlPoints for local side. BezierControlPoints3D available for ALL sides in shared memory
+          ! compare all nodes between local and BC side to check if within BC_halo_eps. Once one node pair is in range, flag the entire
+          ! side and stop checking. First, get BezierControlPoints for local side. BezierControlPoints3D available for ALL sides in shared memory
           SELECT CASE(ilocSide)
             CASE(XI_MINUS,XI_PLUS)
               firstBezierPoint = 0
@@ -2709,20 +2747,20 @@ nBCSidesProc      = 0
 ! We did not know the number of BC sides before. Therefore, we need to do the check again and build the final mapping
 ! for fullMesh, each element requires ALL BC faces
 IF (fullMesh) THEN
-DO iElem = firstElem,lastElem
-  ElemID     = GetGlobalElemID(iElem)
+  DO iElem = firstElem,lastElem
+    ElemID     = GetGlobalElemID(iElem)
     nBCSidesElem  = 0
 
-  ! check local side of an element
-  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
+    ! check local side of an element
+    DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
 
-    ! ignore inner and virtual (mortar) sides
-    IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
+      ! ignore inner and virtual (mortar) sides
+      IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
 
-    nBCSidesProc = nBCSidesProc + 1
-    SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(iSide)
-    SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(iElem)
-  END DO
+      nBCSidesProc = nBCSidesProc + 1
+      SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(iSide)
+      SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(iElem)
+    END DO
 
     DO iBCSide = 1,nUniqueBCSides
       BCSideID = BCSide2SideID(iBCSide)
@@ -2752,22 +2790,26 @@ ELSE
 
       nBCSidesProc = nBCSidesProc + 1
       SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(iSide)
-      SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(iElem)
+      SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(ElemID)
     END DO
 
-  ! loop over all sides. Check distance from every local side to total sides. Once a side has been flagged,
-  ! it must not be counted again
+    ! loop over all sides. Check distance from every local side to total sides. Once a side has been flagged,
+    ! it must not be counted again
     DO iBCSide = 1,nUniqueBCSides
 
       BCSideID = BCSide2SideID(iBCSide)
       BCElemID = SideInfo_Shared(SIDE_ELEMID,BCSideID)
+      BCCNElemID = GetCNElemID(BCElemID)
+
+      ! Ignore elements not on the compute node
+      IF (BCCNElemID.EQ.-1) CYCLE
 
       ! Ignore the same element
       IF (BCElemID.EQ.iElem) CYCLE
 
       ! Check if barycenter of element is in range
-      IF (VECNORM(ElemBaryNGeo(:,ElemID) - ElemBaryNGeo(:,BCElemID)) &
-        .GT. (BC_halo_eps + ElemRadiusNGeo(ElemID) + ElemRadiusNGeo(BCElemID))) CYCLE
+      IF (VECNORM(ElemBaryNGeo(:,iElem) - ElemBaryNGeo(:,BCCNElemID)) &
+        .GT. (BC_halo_eps + ElemRadiusNGeo(iElem) + ElemRadiusNGeo(BCCNElemID))) CYCLE
 
       ! loop over all local sides of the element. Use a named loop so the entire element can be cycled
 Check2: DO ilocSide = 1,6
@@ -2827,18 +2869,18 @@ lastSide  = nComputeNodeBCSides
 
 ! calculate origin, radius and distance to sides
 DO iSide = firstSide,lastSide
-  SideID = INT(SideBCMetrics(BCSIDE_SIDEID,iSide))
+  SideID   = INT(SideBCMetrics(BCSIDE_SIDEID,iSide))
   BCSideID = SideID2BCSide(SideID)
-  ElemID = INT(SideBCMetrics(BCSIDE_ELEMID,iSide))
+  CNElemID = GetCNElemID(INT(SideBCMetrics(BCSIDE_ELEMID,iSide)))
 
   !> get origin and radius from BC Side
   SideBCMetrics(5:7          ,iSide) = BCSideMetrics(1:3,BCSideID)
   SideBCMetrics(BCSIDE_RADIUS,iSide) = BCSideMetrics(4  ,BCSideID)
 
   !> build side distance
-  origin(1:3) = ElemBaryNGeo(1:3,ElemID)
+  origin(1:3) = ElemBaryNGeo(1:3,CNElemID)
   vec(1:3)    = origin(1:3) - SideBCMetrics(5:7,iSide)
-  SideBCMetrics(BCSIDE_DISTANCE,iSide) = SQRT(DOT_PRODUCT(vec,vec))-ElemRadiusNGeo(ElemID)-SideBCMetrics(BCSIDE_RADIUS,iSide)
+  SideBCMetrics(BCSIDE_DISTANCE,iSide) = SQRT(DOT_PRODUCT(vec,vec))-ElemRadiusNGeo(CNElemID)-SideBCMetrics(BCSIDE_RADIUS,iSide)
 END DO ! iSide
 
 #if USE_MPI

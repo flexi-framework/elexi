@@ -913,11 +913,12 @@ IF (BCdata_auxSF(currentBC)%SideNumber.LT.1) THEN
 ELSE
   CALL IntegerDivide( PartInsSF                                                                                       &
                     , BCdata_auxSF(currentBC)%SideNumber*SurfFluxSideSize(1)*SurfFluxSideSize(2)                      &
-                    , Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(1:SurfFluxSideSize(1),1:SurfFluxSideSize(2) &
-                                                                         ,1:BCdata_auxSF(currentBC)%SideNumber)%nVFR  &
-                                                                         ,PartInsSubSides(1:SurfFluxSideSize(1)       &
+                    , Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(1:SurfFluxSideSize(1)                       &
                                                                          ,1:SurfFluxSideSize(2)                       &
-                                                                         ,1:BCdata_auxSF(currentBC)%SideNumber) )
+                                                                         ,1:BCdata_auxSF(currentBC)%SideNumber)%nVFR  &
+                                                                         ,PartInsSubSides(      1:SurfFluxSideSize(1) &
+                                                                                         ,      1:SurfFluxSideSize(2) &
+                                                                                         ,1:BCdata_auxSF(currentBC)%SideNumber))
 END IF
 
 END SUBROUTINE CalcPartInsSubSidesStandardCase

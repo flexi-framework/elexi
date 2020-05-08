@@ -108,6 +108,7 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSampleBCs
 USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars,doParticleImpactSample,WriteMacroSurfaceValues
+USE MOD_Particle_Mesh_Tools     ,ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars      ,ONLY: offsetComputeNodeElem,nComputeNodeElems
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemSideNodeID_Shared
@@ -123,7 +124,7 @@ USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPIRankLeader,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalSides
+!USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalSides
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide_Shared,GlobalSide2SurfSide_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSide2GlobalSide_Shared,SurfSide2GlobalSide_Shared_Win
@@ -152,7 +153,7 @@ INTEGER                                :: iSurfBC,nSurfSampleBC
 CHARACTER(20)                          :: tmpStr,tmpStrBC
 CHARACTER(LEN=255),ALLOCATABLE         :: BCName(:)
 ! surface area
-INTEGER                                :: SideID,ElemID,LocSideID
+INTEGER                                :: SideID,ElemID,CNElemID,LocSideID
 INTEGER                                :: p,q,iSample,jSample
 INTEGER                                :: TriNum, Node1, Node2
 REAL                                   :: area,nVal
@@ -204,8 +205,8 @@ END DO
 
 ! Allocate shared array for surf sides
 #if USE_MPI
-MPISharedSize = INT((3*nComputeNodeTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeTotalSides/),GlobalSide2SurfSide_Shared_Win,GlobalSide2SurfSide_Shared)
+MPISharedSize = INT((3*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalSides/),GlobalSide2SurfSide_Shared_Win,GlobalSide2SurfSide_Shared)
 CALL MPI_WIN_LOCK_ALL(0,GlobalSide2SurfSide_Shared_Win,IERROR)
 GlobalSide2SurfSide => GlobalSide2SurfSide_Shared
 #else
@@ -273,7 +274,7 @@ DEALLOCATE(BCName)
 firstSide = INT(REAL( myComputeNodeRank   *nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
 lastSide  = INT(REAL((myComputeNodeRank+1)*nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
 ALLOCATE(GlobalSide2SurfSideProc(1:3,firstSide:lastSide) &
-        ,SurfSide2GlobalSideProc(1:3,1         :INT(nNonUniqueGlobalSides/REAL(nComputeNodeProcessors))))
+        ,SurfSide2GlobalSideProc(1:3,1:INT(nNonUniqueGlobalSides/REAL(nComputeNodeProcessors))))
 #else
 firstSide = 1
 lastSide  = nComputeNodeSides
@@ -520,21 +521,22 @@ DO iSide = firstSide,LastSide
 
   IF (TriaTracking) THEN
     ElemID    = SideInfo_Shared(SIDE_ELEMID ,SideID)
+    CNElemID  = GetCNElemID(ElemID)
     LocSideID = SideInfo_Shared(SIDE_LOCALID,SideID)
     area = 0.
-    xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,LocSideID,ElemID)+1)
-    yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,LocSideID,ElemID)+1)
-    zNod = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,LocSideID,ElemID)+1)
+    xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,LocSideID,CNElemID)+1)
+    yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,LocSideID,CNElemID)+1)
+    zNod = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,LocSideID,CNElemID)+1)
 
     DO TriNum = 1,2
       Node1 = TriNum+1     ! normal = cross product of 1-2 and 1-3 for first triangle
       Node2 = TriNum+2     !          and 1-3 and 1-4 for second triangle
-        Vector1(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)+1) - xNod
-        Vector1(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)+1) - yNod
-        Vector1(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node1,LocSideID,ElemID)+1) - zNod
-        Vector2(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)+1) - xNod
-        Vector2(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)+1) - yNod
-        Vector2(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node2,LocSideID,ElemID)+1) - zNod
+        Vector1(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node1,LocSideID,CNElemID)+1) - xNod
+        Vector1(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node1,LocSideID,CNElemID)+1) - yNod
+        Vector1(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node1,LocSideID,CNElemID)+1) - zNod
+        Vector2(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node2,LocSideID,CNElemID)+1) - xNod
+        Vector2(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node2,LocSideID,CNElemID)+1) - yNod
+        Vector2(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node2,LocSideID,CNElemID)+1) - zNod
       nx = - Vector1(2) * Vector2(3) + Vector1(3) * Vector2(2) !NV (inwards)
       ny = - Vector1(3) * Vector2(1) + Vector1(1) * Vector2(3)
       nz = - Vector1(1) * Vector2(2) + Vector1(2) * Vector2(1)

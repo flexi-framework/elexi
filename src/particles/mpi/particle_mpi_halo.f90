@@ -134,7 +134,7 @@ IF (nComputeNodeElems.NE.nComputeNodeTotalElems) THEN
 
       ! regular side or small mortar side
       ELSE
-                IF (NbElemID.LT.firstElem .OR. NbElemID.GT.lastElem) THEN
+        IF (NbElemID.LT.firstElem .OR. NbElemID.GT.lastElem) THEN
           nExchangeSides = nExchangeSides + 1
         END IF
       END IF

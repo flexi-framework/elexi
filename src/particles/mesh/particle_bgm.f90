@@ -498,36 +498,36 @@ IF(myComputeNodeRank.EQ.nComputeNodeProcessors-1)THEN
 END IF
 
 ! allocated shared memory for nElems per BGM cell
-! MPI shared memory is continouos, beginning from 1. All shared arrays have to
-! be shifted from BGM[i]min to 1
+! MPI shared memory is continuous, beginning from 1. All shared arrays have to
+! be shifted to BGM[i]min with pointers
 #endif /*USE_MPI*/
-BGMiDelta=BGMimax-BGMimin
-BGMjDelta=BGMjmax-BGMjmin
-BGMkDelta=BGMkmax-BGMkmin
+BGMiDelta = BGMimax - BGMimin
+BGMjDelta = BGMjmax - BGMjmin
+BGMkDelta = BGMkmax - BGMkmin
 
 #if USE_MPI
 MPISharedSize = INT((BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/BGMiDelta+1,BGMjDelta+1,BGMkDelta+1/) &
+CALL Allocate_Shared(MPISharedSize,(/(BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1)/) &
                     ,FIBGM_nElems_Shared_Win,FIBGM_nElems_Shared)
 CALL MPI_WIN_LOCK_ALL(0,FIBGM_nElems_Shared_Win,IERROR)
-FIBGM_nElems => FIBGM_nElems_Shared
 ! allocated shared memory for BGM cell offset in 1D array of BGM to element mapping
 MPISharedSize = INT((BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/BGMiDelta+1,BGMjDelta+1,BGMkDelta+1/) &
+CALL Allocate_Shared(MPISharedSize,(/(BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1)/) &
                     ,FIBGM_offsetElem_Shared_Win,FIBGM_offsetElem_Shared)
 CALL MPI_WIN_LOCK_ALL(0,FIBGM_offsetElem_Shared_Win,IERROR)
-FIBGM_offsetElem => FIBGM_offsetElem_Shared
+FIBGM_nElems    (BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax) => FIBGM_nElems_Shared
+FIBGM_offsetElem(BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax) => FIBGM_offsetElem_Shared
 
 ! last proc of compute-node writes into shared memory to make nElems per BGM accessible for every proc
 IF(myComputeNodeRank.EQ.nComputeNodeProcessors-1)THEN
   currentOffset = 0
-  DO iBGM = 1,BGMiDelta+1
-    DO jBGM = 1,BGMjDelta+1
-      DO kBGM = 1,BGMkDelta+1
+  DO iBGM = BGMimin,BGMimax
+    DO jBGM = BGMjmin,BGMjmax
+      DO kBGM = BGMkmin,BGMkmax
         ! senfbuf and recvbuf have to stay on original position. Shift 1 --> BGMimin
-        FIBGM_nElems(iBGM,jBGM,kBGM)     = sendbuf(BGMimin+iBGM-1,BGMjmin+jBGM-1,BGMkmin+kBGM-1)
+        FIBGM_nElems(iBGM,jBGM,kBGM)     = sendbuf(iBGM,jBGM,kBGM)
         FIBGM_offsetElem(iBGM,jBGM,kBGM) = currentOffset
-        currentOffset = currentoffset    + sendbuf(BGMimin+iBGM-1,BGMjmin+jBGM-1,BGMkmin+kBGM-1)
+        currentOffset = currentoffset    + sendbuf(iBGM,jBGM,kBGM)
       END DO ! kBGM
     END DO ! jBGM
   END DO ! iBGM
@@ -537,12 +537,12 @@ CALL MPI_WIN_SYNC(FIBGM_nElems_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(FIBGM_offsetElem_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #else /*NOT USE_MPI*/
-ALLOCATE( FIBGM_nElems    (BGMiDelta+1,BGMjDelta+1,BGMkDelta+1))
-ALLOCATE( FIBGM_offsetElem(BGMiDelta+1,BGMjDelta+1,BGMkDelta+1))
+ALLOCATE( FIBGM_nElems    (BGMimin:BGMimax,BGMjmin:BGMjmax,BGMjmin:BGMjmax))
+ALLOCATE( FIBGM_offsetElem(BGMimin:BGMimax,BGMjmin:BGMjmax,BGMjmin:BGMjmax))
 currentOffset = 0
-DO iBGM = 1,BGMiDelta+1
-  DO jBGM = 1,BGMjDelta+1
-    DO kBGM = 1,BGMkDelta+1
+  DO iBGM = BGMimin,BGMimax
+    DO jBGM = BGMjmin,BGMjmax
+      DO kBGM = BGMkmin,BGMkmax
       FIBGM_nElems(iBGM,jBGM,kBGM)     = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem
       FIBGM_offsetElem(iBGM,jBGM,kBGM) = currentOffset
       currentOffset = currentoffset    + GEO%FIBGM(iBGM,jBGM,kBGM)%nElem
@@ -553,17 +553,16 @@ END DO ! iBGM
 
 #if USE_MPI
 ! allocate 1D array for mapping of BGM cell to Element indeces
-MPISharedSize = INT((FIBGM_offsetElem(BGMiDelta+1,BGMjDelta+1,BGMkDelta+1) + &
-                     FIBGM_nElems    (BGMiDelta+1,BGMjDelta+1,BGMkDelta+1))  &
-                     ,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/FIBGM_offsetElem(BGMiDelta+1,BGMjDelta+1,BGMkDelta+1)   + &
-                                     FIBGM_nElems    (BGMiDelta+1,BGMjDelta+1,BGMkDelta+1)/)   &
+MPISharedSize = INT((FIBGM_offsetElem(BGMimax,BGMjmax,BGMkmax) + FIBGM_nElems    (BGMimax,BGMjmax,BGMkmax))  &
+                    ,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/FIBGM_offsetElem(BGMimax,BGMjmax,BGMkmax)   + &
+                                     FIBGM_nElems    (BGMimax,BGMjmax,BGMkmax)/)   &
                      ,FIBGM_Element_Shared_Win,FIBGM_Element_Shared)
 CALL MPI_WIN_LOCK_ALL(0,FIBGM_Element_Shared_Win,IERROR)
 FIBGM_Element => FIBGM_Element_Shared
 #else
-ALLOCATE( FIBGM_Element(1:FIBGM_offsetElem(BGMiDelta+1,BGMjDelta+1,BGMkDelta+1) + &
-                          FIBGM_nElems    (BGMiDelta+1,BGMjDelta+1,BGMkDelta+1)))
+ALLOCATE( FIBGM_Element(1:FIBGM_offsetElem(BGMimax,BGMjmax,BGMkmax) + &
+                          FIBGM_nElems    (BGMimax,BGMjmax,BGMkmax)))
 #endif  /*USE_MPI*/
 
 DO iBGM = BGMimin,BGMimax

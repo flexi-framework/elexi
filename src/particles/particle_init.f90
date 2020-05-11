@@ -792,9 +792,7 @@ DO iSpec = 1, nSpecies
 
     ! Get absolute value of particle velocity vector and normalize the VeloVecIC vector
     IF (Species(iSpec)%Init(iInit)%VeloIC.EQ.0) THEN
-      Species(iSpec)%Init(iInit)%VeloIC                = SQRT(Species(iSpec)%Init(iInit)%VeloVecIC(1)**2.                      &
-                                                             +Species(iSpec)%Init(iInit)%VeloVecIC(2)**2.                      &
-                                                             +Species(iSpec)%Init(iInit)%VeloVecIC(3)**2.)
+      Species(iSpec)%Init(iInit)%VeloIC                = VECNORM(Species(iSpec)%Init(iInit)%VeloVecIC(1:3))
     END IF
 
     ! Only normalize if the vector does not have zero length. If it has, our job is done

@@ -138,7 +138,7 @@ SUBROUTINE InitParticleCommSize()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars,    ONLY:doParticleDispersionTrack
-USE MOD_Particle_Boundary_Vars,    ONLY:doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars,   ONLY:doParticleReflectionTrack
 USE MOD_Particle_MPI_Vars
 USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
 USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
@@ -244,7 +244,7 @@ END DO ! iProc
 END SUBROUTINE IRecvNbOfParticles
 
 
-SUBROUTINE SendNbOfParticles(doParticle_In)
+SUBROUTINE SendNbOfParticles()
 !===================================================================================================================================
 ! this routine sends the number of send particles. The following steps are performed:
 ! 1) Compute number of Send Particles
@@ -267,31 +267,24 @@ USE MOD_Particle_Vars          ,ONLY: PEM,PDM
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-LOGICAL,INTENT(IN),OPTIONAL   :: doParticle_In(1:PDM%ParticleVecLength)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                       :: doPartInExists
 INTEGER                       :: iPart,ElemID
 INTEGER                       :: iProc,ProcID
 !===================================================================================================================================
-doPartInExists=.FALSE.
-IF(PRESENT(DoParticle_IN)) doPartInExists=.TRUE.
 
 ! 1) get number of send particles
 !--- Count number of particles in cells in the halo region and add them to the message
-PartMPIExchange%nPartsSend=0
-PartTargetProc=-1
-DO iPart=1,PDM%ParticleVecLength
-  ! TODO: Info why and under which conditions the following 'CYCLE' is called
-  IF(doPartInExists)THEN
-    IF (.NOT.(PDM%ParticleInside(iPart).AND.DoParticle_In(iPart))) CYCLE
-  ELSE
-    IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
-  END IF
+PartMPIExchange%nPartsSend = 0
+PartTargetProc = -1
 
-  ElemID=PEM%Element(iPart)
+DO iPart=1,PDM%ParticleVecLength
+  ! Cycle if particle does not exist on proc
+  IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
+
+  ElemID = PEM%Element(iPart)
   ProcID = ElemInfo_Shared(ELEM_RANK,ElemID)
 
   ! Particle on local proc, do nothing

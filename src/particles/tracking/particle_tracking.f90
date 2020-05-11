@@ -1108,8 +1108,8 @@ DO iPart=1,PDM%ParticleVecLength
       lengthPartTrajectory0 = 0.
       CALL ParticleBCTracking(lengthPartTrajectory0 &
                              ,ElemID                                                                                  &
-                             ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID)                                               &
-                             ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID) -1 &
+                             ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + 1                                           &
+                             ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID)    &
                              ,ElemToBCSides(ELEM_NBR_BCSIDES ,CNElemID)                                               &
                              ,iPart                                                                                   &
                              ,PartIsDone                                                                              &
@@ -1338,8 +1338,8 @@ DO iPart=1,PDM%ParticleVecLength
           IF(useCurveds)THEN
             IF(NGeo.GT.1)THEN
               CALL FallBackFaceIntersection(TestElem                                                                                    &
-                                           ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem)                                                 &
-                                           ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem) + ElemToBCSides(ELEM_NBR_BCSIDES,CNTestElem) -1 &
+                                           ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem) + 1                                             &
+                                           ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem) + ElemToBCSides(ELEM_NBR_BCSIDES,CNTestElem)    &
                                            ,ElemToBCSides(ELEM_NBR_BCSIDES ,CNTestElem)                                                 &
                                            ,iPart)
               END IF
@@ -1349,8 +1349,8 @@ DO iPart=1,PDM%ParticleVecLength
           lengthPartTrajectory0 = 0.
           CALL ParticleBCTracking(lengthPartTrajectory0                                                                       &
                                  ,TestElem                                                                                    &
-                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem)                                                 &
-                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem) + ElemToBCSides(ELEM_NBR_BCSIDES,CNTestElem) -1 &
+                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem) + 1                                             &
+                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNTestElem) + ElemToBCSides(ELEM_NBR_BCSIDES,CNTestElem)    &
                                  ,ElemToBCSides(ELEM_NBR_BCSIDES ,CNTestElem)                                                 &
                                  ,iPart                                                                                       &
                                  ,PartIsDone                                                                                  &
@@ -1649,20 +1649,20 @@ DO WHILE(DoTracing)
           CNOldElemID = GetCNElemID(OldElemID)
 
           IF(GEO%nPeriodicVectors.GT.0)THEN
-            lengthPartTrajectory0 = MAXVAL(SideBCMetrics(BCSIDE_DISTANCE,                     &
-                                           ElemToBCSides(ELEM_FIRST_BCSIDE,CNOldElemID):      &
-                                           ElemToBCSides(ELEM_FIRST_BCSIDE,CNOldElemID)+ElemToBCSides(ELEM_NBR_BCSIDES,CNOldElemID)))
+            lengthPartTrajectory0 = MAXVAL(SideBCMetrics(BCSIDE_DISTANCE,                         &
+                                           ElemToBCSides(ELEM_FIRST_BCSIDE,CNOldElemID) + 1:      &
+                                           ElemToBCSides(ELEM_FIRST_BCSIDE,CNOldElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,CNOldElemID)))
           END IF
 
           CNElemID = GetCNElemID(ElemID)
           CALL ParticleBCTracking(lengthPartTrajectory0&
-                                 ,ElemID                                                                                  &
-                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID)                                               &
-                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID) -1 &
-                                 ,ElemToBCSides(ELEM_NBR_BCSIDES ,CNElemID)                                               &
-                                 ,PartID                                                                                  &
-                                 ,PartIsDone                                                                              &
-                                 ,PartIsMoved                                                                             &
+                                 ,ElemID                                                                                &
+                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + 1                                         &
+                                 ,ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID)  &
+                                 ,ElemToBCSides(ELEM_NBR_BCSIDES ,CNElemID)                                             &
+                                 ,PartID                                                                                &
+                                 ,PartIsDone                                                                            &
+                                 ,PartIsMoved                                                                           &
                                  ,iCount+1)
           PartisMoved=.TRUE.
           RETURN

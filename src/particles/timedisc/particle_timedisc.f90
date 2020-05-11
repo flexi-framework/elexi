@@ -115,10 +115,8 @@ END IF
 #endif /*MPI*/
 
 ! set last particle position and element
-LastPartPos(  1,1:PDM%ParticleVecLength) = PartState(1,1:PDM%ParticleVecLength)
-LastPartPos(  2,1:PDM%ParticleVecLength) = PartState(2,1:PDM%ParticleVecLength)
-LastPartPos(  3,1:PDM%ParticleVecLength) = PartState(3,1:PDM%ParticleVecLength)
-PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(1:PDM%ParticleVecLength)
+LastPartPos(1:3,1:PDM%ParticleVecLength) = PartState(1:3,1:PDM%ParticleVecLength)
+PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(  1:PDM%ParticleVecLength)
 
 ! forces on particles
 IF (t.GE.DelayTime) THEN
@@ -143,20 +141,12 @@ IF (t.GE.DelayTime) THEN
     IF (PDM%ParticleInside(iPart)) THEN
       !-- Tracer Particles
       IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
-        PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*dt
-        PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*dt
-        PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*dt
-        PartState(4,iPart) = Pt       (1,iPart)
-        PartState(5,iPart) = Pt       (2,iPart)
-        PartState(6,iPart) = Pt       (3,iPart)
+        PartState(1:3,iPart) = PartState(1:3,iPart) + PartState(4:6,iPart)*dt
+        PartState(4:6,iPart) = Pt       (1:3,iPart)
       !-- Normal particles
       ELSE
-        PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*dt
-        PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*dt
-        PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*dt
-        PartState(4,iPart) = PartState(4,iPart) + Pt       (1,iPart)*dt
-        PartState(5,iPart) = PartState(5,iPart) + Pt       (2,iPart)*dt
-        PartState(6,iPart) = PartState(6,iPart) + Pt       (3,iPart)*dt
+        PartState(1:3,iPart) = PartState(1:3,iPart) + PartState(4:6,iPart)*dt
+        PartState(4:6,iPart) = PartState(4:6,iPart) + Pt       (1:3,iPart)*dt
       ENDIF !< Tracer
     ENDIF !< ParticleInside
   END DO
@@ -271,10 +261,8 @@ END IF
 #endif /*USE_MPI*/
 
 ! set last particle position and element
-LastPartPos(  1,1:PDM%ParticleVecLength) = PartState(1,1:PDM%ParticleVecLength)
-LastPartPos(  2,1:PDM%ParticleVecLength) = PartState(2,1:PDM%ParticleVecLength)
-LastPartPos(  3,1:PDM%ParticleVecLength) = PartState(3,1:PDM%ParticleVecLength)
-PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(1:PDM%ParticleVecLength)
+LastPartPos(1:3,1:PDM%ParticleVecLength) = PartState(1:3,1:PDM%ParticleVecLength)
+PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(  1:PDM%ParticleVecLength)
 
 IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
@@ -358,37 +346,26 @@ IF (t.GE.DelayTime) THEN
       PDM%IsNewPart(iPart)=.FALSE.
 
       IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
-        Pt_temp  (1,iPart) = PartState(4,iPart)
-        Pt_temp  (2,iPart) = PartState(5,iPart)
-        Pt_temp  (3,iPart) = PartState(6,iPart)
-        PartState(4,iPart) = Pt(1,iPart)
-        PartState(5,iPart) = Pt(2,iPart)
-        PartState(6,iPart) = Pt(3,iPart)
+        Pt_temp  (1:3,iPart) = PartState(4:6,iPart)
+        PartState(4:6,iPart) = Pt(       1:3,iPart)
 
-        PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*b_dt(1)
-        PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*b_dt(1)
-        PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*b_dt(1)
+        PartState(1:3,iPart) = PartState(1:3,iPart) + PartState(4:6,iPart)*b_dt(1)
       ELSE
-        Pt_temp  (1,iPart) = PartState(4,iPart)
-        Pt_temp  (2,iPart) = PartState(5,iPart)
-        Pt_temp  (3,iPart) = PartState(6,iPart)
-        Pt_temp  (4,iPart) = Pt       (1,iPart)
-        Pt_temp  (5,iPart) = Pt       (2,iPart)
-        Pt_temp  (6,iPart) = Pt       (3,iPart)
+        Pt_temp  (1:3,iPart) = PartState(4:6,iPart)
+        Pt_temp  (4:6,iPart) = Pt       (1:3,iPart)
 
-        PartState(1,iPart) = PartState(1,iPart) + PartState(4,iPart)*b_dt(1)
-        PartState(2,iPart) = PartState(2,iPart) + PartState(5,iPart)*b_dt(1)
-        PartState(3,iPart) = PartState(3,iPart) + PartState(6,iPart)*b_dt(1)
-        PartState(4,iPart) = PartState(4,iPart) + Pt       (1,iPart)*b_dt(1)
-        PartState(5,iPart) = PartState(5,iPart) + Pt       (2,iPart)*b_dt(1)
-        PartState(6,iPart) = PartState(6,iPart) + Pt       (3,iPart)*b_dt(1)
+        PartState(1:3,iPart) = PartState(1:3,iPart) + PartState(4:6,iPart)*b_dt(1)
+        PartState(4:6,iPart) = PartState(4:6,iPart) + Pt       (1:3,iPart)*b_dt(1)
       END IF
     END IF
   END DO
 
   ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
   IF (doParticleDispersionTrack) THEN
-    DO iPart=1,PDM%ParticleVecLength
+    DO iPart = 1,PDM%ParticleVecLength
+      ! Cycle since PDM does not need to be filled
+      IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
+
       IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
     END DO
   END IF
@@ -494,10 +471,8 @@ END IF
 #endif /*USE_MPI*/
 
 ! set last particle position and element
-LastPartPos(  1,1:PDM%ParticleVecLength) = PartState(1,1:PDM%ParticleVecLength)
-LastPartPos(  2,1:PDM%ParticleVecLength) = PartState(2,1:PDM%ParticleVecLength)
-LastPartPos(  3,1:PDM%ParticleVecLength) = PartState(3,1:PDM%ParticleVecLength)
-PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(1:PDM%ParticleVecLength)
+LastPartPos(1:3,1:PDM%ParticleVecLength) = PartState(1:3,1:PDM%ParticleVecLength)
+PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(  1:PDM%ParticleVecLength)
 
 IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
@@ -587,30 +562,15 @@ IF (t.GE.DelayTime) THEN
       ! "normal" particles are pushed with whole timestep
       IF (.NOT.PDM%IsNewPart(iPart)) THEN
         IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
-          Pt_temp(1,iPart) = PartState(4,iPart) - RKA(iStage) * Pt_temp(1,iPart)
-          Pt_temp(2,iPart) = PartState(5,iPart) - RKA(iStage) * Pt_temp(2,iPart)
-          Pt_temp(3,iPart) = PartState(6,iPart) - RKA(iStage) * Pt_temp(3,iPart)
+          Pt_temp(1:3,iPart) = PartState(4:6,iPart) - RKA(iStage) * Pt_temp(1:3,iPart)
 
-          PartState(4,iPart) = Pt(1,iPart)
-          PartState(5,iPart) = Pt(2,iPart)
-          PartState(6,iPart) = Pt(3,iPart)
-          PartState(1,iPart) = PartState(1,iPart) + Pt_temp(1,iPart)*b_dt(iStage)
-          PartState(2,iPart) = PartState(2,iPart) + Pt_temp(2,iPart)*b_dt(iStage)
-          PartState(3,iPart) = PartState(3,iPart) + Pt_temp(3,iPart)*b_dt(iStage)
+          PartState(1:3,iPart) = PartState(1:3,iPart) + Pt_temp(1:3,iPart)*b_dt(iStage)
+          PartState(4:6,iPart) = Pt(       1:3,iPart)
         ELSE
-          Pt_temp(1,iPart) = PartState(4,iPart) - RKA(iStage) * Pt_temp(1,iPart)
-          Pt_temp(2,iPart) = PartState(5,iPart) - RKA(iStage) * Pt_temp(2,iPart)
-          Pt_temp(3,iPart) = PartState(6,iPart) - RKA(iStage) * Pt_temp(3,iPart)
-          Pt_temp(4,iPart) = Pt       (1,iPart) - RKA(iStage) * Pt_temp(4,iPart)
-          Pt_temp(5,iPart) = Pt       (2,iPart) - RKA(iStage) * Pt_temp(5,iPart)
-          Pt_temp(6,iPart) = Pt       (3,iPart) - RKA(iStage) * Pt_temp(6,iPart)
+          Pt_temp(1:3,iPart) = PartState(4:6,iPart) - RKA(iStage) * Pt_temp(1:3,iPart)
+          Pt_temp(4:6,iPart) = Pt       (1:3,iPart) - RKA(iStage) * Pt_temp(4:6,iPart)
 
-          PartState(1,iPart) = PartState(1,iPart) + Pt_temp(1,iPart)*b_dt(iStage)
-          PartState(2,iPart) = PartState(2,iPart) + Pt_temp(2,iPart)*b_dt(iStage)
-          PartState(3,iPart) = PartState(3,iPart) + Pt_temp(3,iPart)*b_dt(iStage)
-          PartState(4,iPart) = PartState(4,iPart) + Pt_temp(4,iPart)*b_dt(iStage)
-          PartState(5,iPart) = PartState(5,iPart) + Pt_temp(5,iPart)*b_dt(iStage)
-          PartState(6,iPart) = PartState(6,iPart) + Pt_temp(6,iPart)*b_dt(iStage)
+          PartState(1:6,iPart) = PartState(1:6,iPart) + Pt_temp(1:6,iPart)*b_dt(iStage)
         END IF
 
       !IsNewPart: no Pt_temp history available. Either because of emissionType = 1 or because of reflection with almost zero wallVelo
@@ -639,12 +599,7 @@ IF (t.GE.DelayTime) THEN
         ! Pt_temp is rebuilt, do particle push
         Pt_temp  (1:3,iPart) = Pv_rebuilt(1:3,iStage)
         Pt_temp  (4:6,iPart) = Pa_rebuilt(1:3,iStage)
-        PartState(1  ,iPart) = PartState(1,iPart) + Pt_temp(1,iPart)*b_dt(iStage)*RandVal
-        PartState(2  ,iPart) = PartState(2,iPart) + Pt_temp(2,iPart)*b_dt(iStage)*RandVal
-        PartState(3  ,iPart) = PartState(3,iPart) + Pt_temp(3,iPart)*b_dt(iStage)*RandVal
-        PartState(4  ,iPart) = PartState(4,iPart) + Pt_temp(4,iPart)*b_dt(iStage)*RandVal
-        PartState(5  ,iPart) = PartState(5,iPart) + Pt_temp(5,iPart)*b_dt(iStage)*RandVal
-        PartState(6  ,iPart) = PartState(6,iPart) + Pt_temp(6,iPart)*b_dt(iStage)*RandVal
+        PartState(1:6,iPart) = PartState( 1:6,iPart) + Pt_temp(1:6,iPart)*b_dt(iStage)*RandVal
 
         PDM%IsNewPart(iPart) = .FALSE. !change to false: Pt_temp is now rebuilt...
       END IF !IsNewPart
@@ -653,7 +608,10 @@ IF (t.GE.DelayTime) THEN
 
   ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
   IF (doParticleDispersionTrack) THEN
-    DO iPart=1,PDM%ParticleVecLength
+    DO iPart = 1,PDM%ParticleVecLength
+      ! Cycle since PDM does not need to be filled
+      IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
+
       IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
     END DO
   END IF

@@ -2609,9 +2609,11 @@ IF (fullMesh) THEN
     ! Write local mapping from Elem to BC sides. The number is already correct, the offset must be corrected later
     IF (nBCSidesElem.GT.0) THEN
       ElemToBCSidesProc(ELEM_NBR_BCSIDES ,iElem) = nBCSidesElem
-      ElemToBCSidesProc(ELEM_FIRST_BCSIDE,iElem) = offsetBCSides + 1
+      ElemToBCSidesProc(ELEM_FIRST_BCSIDE,iElem) = offsetBCSides
     END IF
   END DO ! iElem
+
+  offsetBCSides = nBCSidesProc
 
 ! .NOT. fullMesh
 ELSE
@@ -2691,7 +2693,7 @@ Check1: DO ilocSide = 1,6
     ! Write local mapping from Elem to BC sides. The number is already correct, the offset must be corrected later
     IF (nBCSidesElem.GT.0) THEN
       ElemToBCSidesProc(ELEM_NBR_BCSIDES ,iElem) = nBCSidesElem
-      ElemToBCSidesProc(ELEM_FIRST_BCSIDE,iElem) = offsetBCSides + 1
+      ElemToBCSidesProc(ELEM_FIRST_BCSIDE,iElem) = offsetBCSides
     END IF
 
     offsetBCSides = nBCSidesProc
@@ -2899,8 +2901,8 @@ DO iElem = firstElem,lastElem
   IF (ElemToBCSides(ELEM_NBR_BCSIDES,iElem).LE.0) CYCLE
 
   ! save values in temporary array
-  firstSide    = ElemToBCSides(ELEM_FIRST_BCSIDE,iElem)
-  lastSide     = ElemToBCSides(ELEM_FIRST_BCSIDE,iElem)+ElemToBCSides(ELEM_NBR_BCSIDES,iElem)-1
+  firstSide    = ElemToBCSides(ELEM_FIRST_BCSIDE,iElem) + 1
+  lastSide     = ElemToBCSides(ELEM_FIRST_BCSIDE,iElem) + ElemToBCSides(ELEM_NBR_BCSIDES,iElem)
   nBCSidesElem = ElemToBCSides(ELEM_NBR_BCSIDES,iElem)
 
   tmpSideBCMetrics(:,1:nBCSidesElem) = SideBCMetrics(:,firstSide:lastSide)

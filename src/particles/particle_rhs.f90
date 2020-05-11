@@ -117,7 +117,7 @@ CASE('Tracer')
 !===================================================================================================================================
 ! Passive tracer moving with fluid velocity
 !===================================================================================================================================
-IF(ALLOCATED(TurbPartState)) THEN
+IF (ALLOCATED(TurbPartState)) THEN
   Pt         = FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)
 ELSE
   Pt         = FieldAtParticle(2:4)/FieldAtParticle(1)
@@ -313,9 +313,7 @@ ENDIF
 Pt      = Fd/Species(PartSpecies(PartID))%MassIC
 
 CASE DEFAULT
-  CALL abort(&
-  __STAMP__&
-  ,'No valid RHS method given.')
+  CALL ABORT(__STAMP__, 'No valid RHS method given.')
 
 END SELECT
 

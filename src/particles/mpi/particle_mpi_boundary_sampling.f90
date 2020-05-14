@@ -69,7 +69,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                       :: msg_status(1:MPI_STATUS_SIZE)
+!INTEGER                       :: msg_status(1:MPI_STATUS_SIZE)
 INTEGER                       :: iProc,color
 INTEGER                       :: leadersGroup,LeaderID,surfGroup
 INTEGER                       :: iSide
@@ -230,12 +230,12 @@ DO iProc = 0,nSurfLeaders-1
   IF (iProc .EQ. mySurfRank) CYCLE
 
   IF (nSendSurfSidesTmp(MPIRankSurfLeader(iProc)).NE.0) THEN
-    CALL MPI_WAIT(SendRequest(iProc),msg_status(:),IERROR)
+    CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
     IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
   END IF
 
   IF (nRecvSurfSidesTmp(MPIRankSurfLeader(iProc)).NE.0) THEN
-    CALL MPI_WAIT(RecvRequest(iProc),msg_status(:),IERROR)
+    CALL MPI_WAIT(RecvRequest(iProc),MPIStatus,IERROR)
     IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
   END IF
 END DO

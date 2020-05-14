@@ -394,7 +394,7 @@ END DO
 #else
 offsetSurfTotalSidesProc   = 0
 nComputeNodeSurfTotalSides = nSurfSidesProc
-GlobalSide2SurfSide(:,firstSide:lastSide) = GlobalSide2SurfSide(:,firstSide:lastSide)
+GlobalSide2SurfSide(:,firstSide:lastSide) = GlobalSide2SurfSideProc(:,firstSide:lastSide)
 #endif /*USE_MPI*/
 
 ! Build inverse mapping

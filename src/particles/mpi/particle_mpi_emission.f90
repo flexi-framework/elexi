@@ -1061,17 +1061,17 @@ ymax =-HUGE(1)
 zmin = HUGE(1)
 zmax =-HUGE(1)
 
-testval = CEILING((MINVAL(CartNodes(1,:)) - GEO%xminglob)/GEO%FIBGMdeltas(1))
+testval = FLOOR((MINVAL(CartNodes(1,:)) - GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
 xmin    = MIN(xmin,testval)
-testval = CEILING((MAXVAL(CartNodes(1,:)) - GEO%xminglob)/GEO%FIBGMdeltas(1))
+testval = FLOOR((MAXVAL(CartNodes(1,:)) - GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
 xmax    = MAX(xmax,testval)
-testval = CEILING((MINVAL(CartNodes(2,:)) - GEO%yminglob)/GEO%FIBGMdeltas(2))
+testval = FLOOR((MINVAL(CartNodes(2,:)) - GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
 ymin    = MIN(ymin,testval)
-testval = CEILING((MAXVAL(CartNodes(2,:)) - GEO%yminglob)/GEO%FIBGMdeltas(2))
+testval = FLOOR((MAXVAL(CartNodes(2,:)) - GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
 ymax    = MAX(ymax,testval)
-testval = CEILING((MINVAL(CartNodes(3,:)) - GEO%zminglob)/GEO%FIBGMdeltas(3))
+testval = FLOOR((MINVAL(CartNodes(3,:)) - GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
 zmin    = MIN(zmin,testval)
-testval = CEILING((MAXVAL(CartNodes(3,:)) - GEO%zminglob)/GEO%FIBGMdeltas(3))
+testval = FLOOR((MAXVAL(CartNodes(3,:)) - GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
 zmax    = MAX(zmax,testval)
 
 IF(    ((xmin.LE.GEO%FIBGMimax).AND.(xmax.GE.GEO%FIBGMimin)) &
@@ -1109,17 +1109,17 @@ ymax =-HUGE(1)
 zmin = HUGE(1)
 zmax =-HUGE(1)
 
-testval = CEILING((CartNode(1)-GEO%xminglob)/GEO%FIBGMdeltas(1))
+testval = FLOOR((CartNode(1)-GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
 xmin    = MIN(xmin,testval)
-testval = CEILING((CartNode(1)-GEO%xminglob)/GEO%FIBGMdeltas(1))
+testval = FLOOR((CartNode(1)-GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
 xmax    = MAX(xmax,testval)
-testval = CEILING((CartNode(2)-GEO%yminglob)/GEO%FIBGMdeltas(2))
+testval = FLOOR((CartNode(2)-GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
 ymin    = MIN(ymin,testval)
-testval = CEILING((CartNode(2)-GEO%yminglob)/GEO%FIBGMdeltas(2))
+testval = FLOOR((CartNode(2)-GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
 ymax    = MAX(ymax,testval)
-testval = CEILING((CartNode(3)-GEO%zminglob)/GEO%FIBGMdeltas(3))
+testval = FLOOR((CartNode(3)-GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
 zmin    = MIN(zmin,testval)
-testval = CEILING((CartNode(3)-GEO%zminglob)/GEO%FIBGMdeltas(3))
+testval = FLOOR((CartNode(3)-GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
 zmax    = MAX(zmax,testval)
 
 IF(    ((xmin.LE.GEO%FIBGMimax).AND.(xmax.GE.GEO%FIBGMimin)) &

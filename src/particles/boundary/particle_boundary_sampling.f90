@@ -109,7 +109,6 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSampleBCs
 USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars,doParticleImpactSample,WriteMacroSurfaceValues
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetCNElemID
-USE MOD_Particle_Mesh_Vars      ,ONLY: offsetComputeNodeElem,nComputeNodeElems
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemSideNodeID_Shared
 USE MOD_Particle_Surfaces       ,ONLY: EvaluateBezierPolynomialAndGradient
@@ -121,10 +120,9 @@ USE MOD_StringTools             ,ONLY: LowCase
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars      ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPIRankLeader,nLeaderGroupProcs
+USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
-!USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalSides
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide_Shared,GlobalSide2SurfSide_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSide2GlobalSide_Shared,SurfSide2GlobalSide_Shared_Win
@@ -143,7 +141,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                                :: iBC
 INTEGER                                :: iSide,firstSide,lastSide
-INTEGER                                :: nSurfSidesProc
+INTEGER                                :: nSurfSidesProc,nSurfSidesTmp
 INTEGER                                :: offsetSurfTotalSidesProc
 INTEGER,ALLOCATABLE                    :: GlobalSide2SurfSideProc(:,:)
 INTEGER,ALLOCATABLE                    :: SurfSide2GlobalSideProc(:,:)
@@ -162,7 +160,6 @@ REAL,DIMENSION(:),ALLOCATABLE          :: Xi_NGeo,wGP_NGeo
 REAL                                   :: XiOut(1:2),E,F,G,D,tmp1,tmpI2,tmpJ2
 REAL                                   :: xNod, zNod, yNod, Vector1(3), Vector2(3), nx, ny, nz
 #if USE_MPI
-INTEGER                                :: iLeader
 INTEGER                                :: offsetSurfSidesProc
 INTEGER                                :: GlobalElemID,GlobalElemRank
 INTEGER(KIND=MPI_ADDRESS_KIND)         :: MPISharedSize
@@ -288,7 +285,7 @@ nComputeNodeSurfSides      = 0
 nSurfSidesProc             = 0
 
 ! check every BC side
-DO iSide = firstSide,lastSide
+SideLoop: DO iSide = firstSide,lastSide
   ! ignore non-BC sides
   IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
 
@@ -305,13 +302,13 @@ DO iSide = firstSide,lastSide
     END IF
   END DO
 
-  ! count number of reflective and inner BC sides
+  ! count number of reflective or explicitly requested BC sides
   IF ((PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,iSide)).EQ.PartBound%ReflectiveBC).OR.DoSide) THEN
     nSurfSidesProc = nSurfSidesProc + 1
     ! check if element for this side is on the current compute-node
-    IF ((SideInfo_Shared(SIDE_ELEMID,iSide).GE.offsetComputeNodeElem+1).AND.SideInfo_Shared(SIDE_ELEMID,iSide).LE.offsetComputeNodeElem+nComputeNodeElems) THEN
-      nComputeNodeSurfSides  = nComputeNodeSurfSides + 1
-    END IF
+!    IF ((SideInfo_Shared(SIDE_ELEMID,iSide).GE.offsetComputeNodeElem+1).AND.SideInfo_Shared(SIDE_ELEMID,iSide).LE.offsetComputeNodeElem+nComputeNodeElems) THEN
+!      nComputeNodeSurfSides  = nComputeNodeSurfSides + 1
+!    END IF
 
     ! TODO: Add another check to determine the surface side in halo_eps from current proc. Node-wide halo can become quite large with
     !       with 128 procs!
@@ -328,39 +325,29 @@ DO iSide = firstSide,lastSide
       GlobalSide2SurfSideProc(SURF_LEADER,iSide) = myLeaderGroupRank
     ELSE
       ! find the compute node
-      DO iLeader = 0,nLeaderGroupProcs-2
-        ! The last proc is not a leader proc, so catch it separately
-        IF ((GlobalElemRank.GE.MPIRankLeader(iLeader)).AND.(GlobalElemRank.LT.MPIRankLeader(iLeader+1))) THEN
-          GlobalSide2SurfSideProc(SURF_LEADER,iSide) = iLeader
-          EXIT
-        ELSE
-          GlobalSide2SurfSideProc(SURF_LEADER,iSide) = nLeaderGroupProcs-1
-          EXIT
-        END IF
-      END DO
+      GlobalSide2SurfSideProc(SURF_LEADER,iSide) = INT(GlobalElemRank/nComputeNodeProcessors)
     END IF
 #else
     GlobalSide2SurfSideProc(SURF_LEADER,iSide) = GlobalSide2SurfSideProc(SURF_RANK,iSide)
 #endif /*USE_MPI*/
 
     ! check if element for this side is on the current compute-node. Alternative version to the check above
-!    IF (GlobalSide2SurfSideProc(SURF_LEADER,iSide).EQ.myLeaderGroupRank) THEN
-!      nComputeNodeSurfSides  = nComputeNodeSurfSides + 1
-!    END IF
-
-    SurfSide2GlobalSideProc(SURF_SIDEID,nSurfSidesProc) = iSide
-    SurfSide2GlobalSideProc(2:3        ,nSurfSidesProc) = GlobalSide2SurfSideProc(2:3,iSide)
+    IF (GlobalSide2SurfSideProc(SURF_LEADER,iSide).EQ.myLeaderGroupRank) THEN
+      nComputeNodeSurfSides  = nComputeNodeSurfSides + 1
+    END IF
   END IF ! reflective side
-END DO
+
+  IF (iSide.EQ.236) print *, 'S236',GlobalSide2SurfSideProc(SURF_SIDEID,iSide)
+END DO SideLoop
 
 ! Find CN global number of total surf sides and write Side to Surf Side mapping into shared array
 #if USE_MPI
-sendbuf = nSurfSidesProc
+sendbuf = nSurfSidesProc - nComputeNodeSurfSides
 recvbuf = 0
 CALL MPI_EXSCAN(sendbuf,recvbuf,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,iError)
 offsetSurfTotalSidesProc   = recvbuf
 ! last proc knows CN total number of BC elems
-sendbuf = offsetSurfTotalSidesProc + nSurfSidesProc
+sendbuf = offsetSurfTotalSidesProc + nSurfSidesProc - nComputeNodeSurfSides
 CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nComputeNodeProcessors-1,MPI_COMM_SHARED,iError)
 nComputeNodeSurfTotalSides = sendbuf
 
@@ -372,29 +359,39 @@ offsetSurfSidesProc   = recvbuf
 ! last proc knows CN total number of BC elems
 sendbuf = offsetSurfSidesProc + nComputeNodeSurfSides
 CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nComputeNodeProcessors-1,MPI_COMM_SHARED,iError)
-nComputeNodeSurfSides = sendbuf
+nComputeNodeSurfSides      = sendbuf
+nComputeNodeSurfTotalSides = nComputeNodeSurfTotalSides + nComputeNodeSurfSides
 
 ! increment SURF_SIDEID by offset
+nSurfSidesTmp = 0
 DO iSide = firstSide,lastSide
   IF (GlobalSide2SurfSideProc(SURF_SIDEID,iSide).EQ.-1) CYCLE
 
   ! sort compute-node local sides first
   IF (GlobalSide2SurfSideProc(SURF_LEADER,iSide).EQ.myLeaderGroupRank) THEN
-    GlobalSide2SurfSideProc(SURF_SIDEID,iSide) = GlobalSide2SurfSideProc(SURF_SIDEID,iSide) + offsetSurfSidesProc
-    GlobalSide2SurfSide    (:          ,iSide) = GlobalSide2SurfSideProc(:          ,iSide)
-  ! sampling sides in halo region follow at the end
-  ELSE
-    GlobalSide2SurfSideProc(SURF_SIDEID,iSide) = GlobalSide2SurfSideProc(SURF_SIDEID,iSide) + nComputeNodeSurfSides     &
-                                                                                            + offsetSurfTotalSidesProc  &
-                                                                                            - offsetSurfSidesProc
-    GlobalSide2SurfSide    (:          ,iSide) = GlobalSide2SurfSideProc(:          ,iSide)
+    nSurfSidesTmp = nSurfSidesTmp + 1
+
+    GlobalSide2SurfSide(:          ,iSide) = GlobalSide2SurfSideProc(:          ,iSide)
+    GlobalSide2SurfSide(SURF_SIDEID,iSide) = nSurfSidesTmp + offsetSurfSidesProc
   END IF
 END DO
 
+nSurfSidesTmp = 0
+DO iSide = firstSide,lastSide
+  IF (GlobalSide2SurfSideProc(SURF_SIDEID,iSide).EQ.-1) CYCLE
+
+  ! sampling sides in halo region follow at the end
+  IF (GlobalSide2SurfSideProc(SURF_LEADER,iSide).NE.myLeaderGroupRank) THEN
+    nSurfSidesTmp = nSurfSidesTmp + 1
+
+    GlobalSide2SurfSide(:          ,iSide) = GlobalSide2SurfSideProc(:          ,iSide)
+    GlobalSide2SurfSide(SURF_SIDEID,iSide) = nSurfSidesTmp + nComputeNodeSurfSides + offsetSurfTotalSidesProc
+  END IF
+END DO
 #else
 offsetSurfTotalSidesProc   = 0
 nComputeNodeSurfTotalSides = nSurfSidesProc
-GlobalSide2SurfSide(:,firstSide:lastSide) = GlobalSide2SurfSideProc(:,firstSide:lastSide)
+GlobalSide2SurfSide(SURF_SIDEID,firstSide:lastSide) = GlobalSide2SurfSideProc(SURF_SIDEID,firstSide:lastSide)
 #endif /*USE_MPI*/
 
 ! Build inverse mapping
@@ -404,13 +401,12 @@ CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeSurfTotalSides/),SurfSide2Glo
 CALL MPI_WIN_LOCK_ALL(0,SurfSide2GlobalSide_Shared_Win,IERROR)
 SurfSide2GlobalSide => SurfSide2GlobalSide_Shared
 
-! This barrier MIGHT not be required
-CALL MPI_WIN_SYNC(GlobalSide2SurfSide_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(SurfSide2GlobalSide_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+DO iSide = firstSide,lastSide
+  IF (GlobalSide2SurfSideProc(SURF_SIDEID,iSide).EQ.-1) CYCLE
 
-SurfSide2GlobalSide(        :,offsetSurfTotalSidesProc+1:offsetSurfTotalSidesProc+nSurfSidesProc) &
-  = SurfSide2GlobalSideProc(:,1                         :                         nSurfSidesProc)
+  SurfSide2GlobalSide(:          ,GlobalSide2SurfSide(SURF_SIDEID,iSide)) = GlobalSide2SurfSide(:,iSide)
+  SurfSide2GlobalSide(SURF_SIDEID,GlobalSide2SurfSide(SURF_SIDEID,iSide)) = iSide
+END DO
 
 CALL MPI_WIN_SYNC(GlobalSide2SurfSide_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(SurfSide2GlobalSide_Shared_Win,IERROR)
@@ -1151,7 +1147,7 @@ IF (nSpecies.EQ.1) THEN
 ELSE
     nVar2D = (nImpactVars - 1) * (nSpecies+1)
 END IF
-nVar2D_Spec=1
+nVar2D_Spec  = 1
 nVar2D_Total = nVar2D + nVar2D_Spec*nSpecies
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
@@ -1231,12 +1227,12 @@ IF (mySurfRank.EQ.0) THEN
 END IF
 
 CALL MPI_BARRIER(MPI_COMM_LEADERS_SURF,iERROR)
-CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.,communicatorOpt=MPI_COMM_LEADERS_SURF)
+CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.,communicatorOpt = MPI_COMM_LEADERS_SURF)
 #else
 CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
 #endif
 
-nVarCount=0
+nVarCount = 0
 WRITE(H5_Name,'(A)') 'SurfaceData'
 ASSOCIATE (&
       nGlobalSides         => nSurfTotalSides           , &
@@ -1250,7 +1246,7 @@ DO iSpec = 1,nSpecies
                     nVal        = (/nVar2D_Spec ,nSurfSample,nSurfSample,nLocalSides   /) , &
                     offset      = (/nVarCount   ,          0,          0,offsetSurfSide/) , &
                     collective  = .TRUE.                                                  , &
-                    RealArray   = MacroSurfaceSpecVal(:,:,:,:,iSpec))
+                    RealArray   = MacroSurfaceSpecVal(1:nVar2D_Spec,1:nSurfSample,1:nSurfSample,1:nLocalSides,iSpec))
     nVarCount = nVarCount + nVar2D_Spec
 END DO
 
@@ -1260,7 +1256,7 @@ CALL WriteArray(    DataSetName = H5_Name                                       
                     nVal        = (/nVar2D      ,nSurfSample,nSurfSample,nLocalSides   /) , &
                     offset      = (/nVarCount   ,          0,          0,offsetSurfSide/) , &
                     collective  = .TRUE.                                                  , &
-                    RealArray   = MacroSurfaceVal)
+                    RealArray   = MacroSurfaceVal(1:nVar2D,1:nSurfSample,1:nSurfSample,1:nLocalSides))
 CALL CloseDataFile()
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)

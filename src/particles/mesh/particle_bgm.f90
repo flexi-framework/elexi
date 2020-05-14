@@ -159,12 +159,12 @@ DO iElem = firstElem, lastElem
   firstNodeID  = offsetNodeID+1
   lastNodeID   = offsetNodeID+nNodeIDs
 
-  xmin=MINVAL(NodeCoords_Shared(1,firstNodeID:lastNodeID))
-  xmax=MAXVAL(NodeCoords_Shared(1,firstNodeID:lastNodeID))
-  ymin=MINVAL(NodeCoords_Shared(2,firstNodeID:lastNodeID))
-  ymax=MAXVAL(NodeCoords_Shared(2,firstNodeID:lastNodeID))
-  zmin=MINVAL(NodeCoords_Shared(3,firstNodeID:lastNodeID))
-  zmax=MAXVAL(NodeCoords_Shared(3,firstNodeID:lastNodeID))
+  xmin = MINVAL(NodeCoords_Shared(1,firstNodeID:lastNodeID))
+  xmax = MAXVAL(NodeCoords_Shared(1,firstNodeID:lastNodeID))
+  ymin = MINVAL(NodeCoords_Shared(2,firstNodeID:lastNodeID))
+  ymax = MAXVAL(NodeCoords_Shared(2,firstNodeID:lastNodeID))
+  zmin = MINVAL(NodeCoords_Shared(3,firstNodeID:lastNodeID))
+  zmax = MAXVAL(NodeCoords_Shared(3,firstNodeID:lastNodeID))
 
   BoundsOfElem_Shared(1,1,iElem) = xmin
   BoundsOfElem_Shared(2,1,iElem) = xmax
@@ -254,12 +254,12 @@ BGMjmax = FLOOR((MIN(GEO%CNymax+halo_eps,GEO%ymaxglob)-GEO%yminglob)/GEO%FIBGMde
 BGMkmin = FLOOR((MAX(GEO%CNzmin-halo_eps,GEO%zminglob)-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
 BGMkmax = FLOOR((MIN(GEO%CNzmax+halo_eps,GEO%zmaxglob)-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
 ! write function-local BGM indices into global variables
-GEO%FIBGMimin=BGMimin
-GEO%FIBGMimax=BGMimax
-GEO%FIBGMjmin=BGMjmin
-GEO%FIBGMjmax=BGMjmax
-GEO%FIBGMkmin=BGMkmin
-GEO%FIBGMkmax=BGMkmax
+GEO%FIBGMimin = BGMimin
+GEO%FIBGMimax = BGMimax
+GEO%FIBGMjmin = BGMjmin
+GEO%FIBGMjmax = BGMjmax
+GEO%FIBGMkmin = BGMkmin
+GEO%FIBGMkmax = BGMkmax
 ! initialize BGM min/max indices using GEO min/max distances
 !GEO%FIBGMimax = INT((GEO%xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))+1  + moveBGMindex
 !GEO%FIBGMimin = INT((GEO%xmin-GEO%xminglob)/GEO%FIBGMdeltas(1))-1  + moveBGMindex

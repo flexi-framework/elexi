@@ -155,7 +155,7 @@ END IF
 ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
 IF (doParticleDispersionTrack) THEN
   DO iPart=1,PDM%ParticleVecLength
-    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
   END DO
 END IF
 
@@ -366,7 +366,7 @@ IF (t.GE.DelayTime) THEN
       ! Cycle since PDM does not need to be filled
       IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
 
-      IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+      IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
     END DO
   END IF
 
@@ -612,7 +612,7 @@ IF (t.GE.DelayTime) THEN
       ! Cycle since PDM does not need to be filled
       IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
 
-      IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+      IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
     END DO
   END IF
 

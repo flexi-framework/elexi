@@ -296,5 +296,4 @@ BoundingBox(1:3,8) = (/xMin,yMax,zMax/)
 
 END SUBROUTINE GetSideBoundingBoxTria
 
-
 END MODULE MOD_Particle_Mesh_Tools

@@ -3227,6 +3227,7 @@ INTEGER                        :: offsetLocalNode,nLocalNodes
 offsetLocalNode = ElemInfo_Shared(ELEM_FIRSTNODEIND,offsetElem+1)
 nLocalNodes     = ElemInfo_Shared(ELEM_LASTNODEIND ,offsetElem+nElems)-ElemInfo_Shared(ELEM_FIRSTNODEIND,offsetElem+1)
 
+! proc local
 GEO%xmin     = MINVAL(NodeCoords_Shared(1,offsetLocalNode+1:offsetLocalNode+nLocalNodes))
 GEO%xmax     = MAXVAL(NodeCoords_Shared(1,offsetLocalNode+1:offsetLocalNode+nLocalNodes))
 GEO%ymin     = MINVAL(NodeCoords_Shared(2,offsetLocalNode+1:offsetLocalNode+nLocalNodes))
@@ -3235,12 +3236,15 @@ GEO%zmin     = MINVAL(NodeCoords_Shared(3,offsetLocalNode+1:offsetLocalNode+nLoc
 GEO%zmax     = MAXVAL(NodeCoords_Shared(3,offsetLocalNode+1:offsetLocalNode+nLocalNodes))
 
 #if USE_MPI
+! compute-node local
 GEO%CNxmin   = MINVAL(NodeCoords_Shared(1,offsetComputeNodeNode+1:offsetComputeNodeNode+nComputeNodeNodes))
 GEO%CNxmax   = MAXVAL(NodeCoords_Shared(1,offsetComputeNodeNode+1:offsetComputeNodeNode+nComputeNodeNodes))
 GEO%CNymin   = MINVAL(NodeCoords_Shared(2,offsetComputeNodeNode+1:offsetComputeNodeNode+nComputeNodeNodes))
 GEO%CNymax   = MAXVAL(NodeCoords_Shared(2,offsetComputeNodeNode+1:offsetComputeNodeNode+nComputeNodeNodes))
 GEO%CNzmin   = MINVAL(NodeCoords_Shared(3,offsetComputeNodeNode+1:offsetComputeNodeNode+nComputeNodeNodes))
 GEO%CNzmax   = MAXVAL(NodeCoords_Shared(3,offsetComputeNodeNode+1:offsetComputeNodeNode+nComputeNodeNodes))
+
+! global
 GEO%xminglob = MINVAL(NodeCoords_Shared(1,:))
 GEO%xmaxglob = MAXVAL(NodeCoords_Shared(1,:))
 GEO%yminglob = MINVAL(NodeCoords_Shared(2,:))
@@ -3248,12 +3252,15 @@ GEO%ymaxglob = MAXVAL(NodeCoords_Shared(2,:))
 GEO%zminglob = MINVAL(NodeCoords_Shared(3,:))
 GEO%zmaxglob = MAXVAL(NodeCoords_Shared(3,:))
 #else
+! compute-node local (dummy)
 GEO%CNxmin   = GEO%xmin
 GEO%CNxmax   = GEO%xmax
 GEO%CNymin   = GEO%ymin
 GEO%CNymax   = GEO%ymax
 GEO%CNzmin   = GEO%zmin
 GEO%CNzmax   = GEO%zmax
+
+! global (dummy)
 GEO%xminglob = GEO%xmin
 GEO%xmaxglob = GEO%xmax
 GEO%yminglob = GEO%ymin

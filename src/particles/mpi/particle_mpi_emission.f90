@@ -60,10 +60,10 @@ SUBROUTINE InitEmissionComm()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
-USE MOD_Particle_Vars,          ONLY:Species,nSpecies
-USE MOD_Particle_Mesh_Vars,     ONLY:GEO
-USE MOD_Particle_MPI_Vars,      ONLY:halo_eps
+USE MOD_Particle_Mesh_Vars,     ONLY: GEO
+USE MOD_Particle_MPI_Vars,      ONLY: PartMPI
+USE MOD_Particle_MPI_Vars,      ONLY: halo_eps
+USE MOD_Particle_Vars,          ONLY: Species,nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -96,234 +96,241 @@ DO iSpec=1,nSpecies
   DO iInit=Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
     nInitRegions=nInitRegions+1
     SELECT CASE(TRIM(Species(iSpec)%Init(iInit)%SpaceIC))
-    CASE ('point')
-       xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
-       RegionOnProc=PointInProc(xCoords(1:3,1))
-    CASE ('line_with_equidistant_distribution')
-      xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
-      xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC
-      RegionOnProc=BoxInProc(xCoords(1:3,1:2),2)
-    CASE ('line')
-      xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
-      xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC
-      RegionOnProc=BoxInProc(xCoords(1:3,1:2),2)
-    CASE ('Gaussian')
-      xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(1)*Species(iSpec)%Init(iInit)%NormalIC(1))
-      ylen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(2)*Species(iSpec)%Init(iInit)%NormalIC(2))
-      zlen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(3)*Species(iSpec)%Init(iInit)%NormalIC(3))
-      ! all 8 edges
-      xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
-      xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
-      xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)
-      xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,-zlen/)
-      xCoords(1:3,5) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,+zlen/)
-      xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,+zlen/)
-      xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,+zlen/)
-      xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
-      RegionOnProc=BoxInProc(xCoords(1:3,1:8),8)
-    CASE('disc')
-      xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(1)*Species(iSpec)%Init(iInit)%NormalIC(1))
-      ylen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(2)*Species(iSpec)%Init(iInit)%NormalIC(2))
-      zlen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(3)*Species(iSpec)%Init(iInit)%NormalIC(3))
-      ! all 8 edges
-      xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
-      xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
-      xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)
-      xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,-zlen/)
-      xCoords(1:3,5) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,+zlen/)
-      xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,+zlen/)
-      xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,+zlen/)
-      xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
-      RegionOnProc=BoxInProc(xCoords(1:3,1:8),8)
-    CASE('circle')
-      xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(1)*Species(iSpec)%Init(iInit)%NormalIC(1))
-      ylen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(2)*Species(iSpec)%Init(iInit)%NormalIC(2))
-      zlen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(3)*Species(iSpec)%Init(iInit)%NormalIC(3))
-      ! all 8 edges
-      xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
-      xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
-      xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)
-      xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,-zlen/)
-      xCoords(1:3,5) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,+zlen/)
-      xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,+zlen/)
-      xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,+zlen/)
-      xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
-      RegionOnProc=BoxInProc(xCoords(1:3,1:8),8)
-    CASE('circle_equidistant')
-      xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(1)*Species(iSpec)%Init(iInit)%NormalIC(1))
-      ylen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(2)*Species(iSpec)%Init(iInit)%NormalIC(2))
-      zlen=Species(iSpec)%Init(iInit)%RadiusIC * &
-           SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(3)*Species(iSpec)%Init(iInit)%NormalIC(3))
-      ! all 8 edges
-      xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
-      xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
-      xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)
-      xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,-zlen/)
-      xCoords(1:3,5) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,+zlen/)
-      xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,+zlen/)
-      xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,+zlen/)
-      xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
-      RegionOnProc=BoxInProc(xCoords(1:3,1:8),8)
-    CASE('cuboid')
-      lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(3) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(2)
-      lineVector(2) = Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(1) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(3)
-      lineVector(3) = Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(2) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
-      IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
-         CALL ABORT(&
-         __STAMP__&
-         ,'BaseVectors are parallel!')
-      ELSE
-        lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + &
-          lineVector(3) * lineVector(3))
-      END IF
-      xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
-      xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC
-      xCoords(1:3,3)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector2IC
-      xCoords(1:3,4)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC&
-                                                           +Species(iSpec)%Init(iInit)%BaseVector2IC
+      CASE ('point')
+         xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
+         RegionOnProc=PointInProc(xCoords(1:3,1))
 
-      IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN !directly calculated by timestep
-        height = halo_eps
-      ELSE
-        height= Species(iSpec)%Init(iInit)%CuboidHeightIC
-      END IF
-      DO iNode=1,4
-        xCoords(1:3,iNode+4)=xCoords(1:3,iNode)+lineVector*height
-      END DO ! iNode
-      RegionOnProc=BoxInProc(xCoords,8)
-    CASE('cylinder')
-      lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(3) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(2)
-      lineVector(2) = Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(1) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(3)
-      lineVector(3) = Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(2) - &
-        Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
-      IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
-         CALL ABORT(&
-         __STAMP__&
-         ,'BaseVectors are parallel!')
-      ELSE
-        lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + &
-          lineVector(3) * lineVector(3))
-      END IF
-      radius = Species(iSpec)%Init(iInit)%RadiusIC
-      ! here no radius, already inclueded
-      xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC-Species(iSpec)%Init(iInit)%BaseVector1IC &
-                                                           -Species(iSpec)%Init(iInit)%BaseVector2IC
+      CASE ('line_with_equidistant_distribution')
+        xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
+        xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC
+        RegionOnProc = BoxInProc(xCoords(1:3,1:2),2)
 
-      xCoords(1:3,2)=xCoords(1:3,1)+2.0*Species(iSpec)%Init(iInit)%BaseVector1IC
-      xCoords(1:3,3)=xCoords(1:3,1)+2.0*Species(iSpec)%Init(iInit)%BaseVector2IC
-      xCoords(1:3,4)=xCoords(1:3,1)+2.0*Species(iSpec)%Init(iInit)%BaseVector1IC&
-                                   +2.0*Species(iSpec)%Init(iInit)%BaseVector2IC
+      CASE ('line')
+        xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
+        xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC
+        RegionOnProc = BoxInProc(xCoords(1:3,1:2),2)
 
-      IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN !directly calculated by timestep
-        height = halo_eps
-      ELSE
-        height= Species(iSpec)%Init(iInit)%CylinderHeightIC
-      END IF
-      DO iNode=1,4
-        xCoords(1:3,iNode+4)=xCoords(1:3,iNode)+lineVector*height
-      END DO ! iNode
-      RegionOnProc=BoxInProc(xCoords,8)
-    CASE('cuboid_equal')
-       xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &
-            + Species(iSpec)%Init(iInit)%BaseVector1IC(2)**2 &
-            + Species(iSpec)%Init(iInit)%BaseVector1IC(3)**2 )
-       ylen = SQRT(Species(iSpec)%Init(iInit)%BaseVector2IC(1)**2 &
-            + Species(iSpec)%Init(iInit)%BaseVector2IC(2)**2 &
-            + Species(iSpec)%Init(iInit)%BaseVector2IC(3)**2 )
-       zlen = ABS(Species(iSpec)%Init(iInit)%CuboidHeightIC)
+      CASE ('Gaussian')
+        xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(1)*Species(iSpec)%Init(iInit)%NormalIC(1))
+        ylen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(2)*Species(iSpec)%Init(iInit)%NormalIC(2))
+        zlen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(3)*Species(iSpec)%Init(iInit)%NormalIC(3))
+        ! all 8 edges
+        xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
+        xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
+        xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)
+        xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,-zlen/)
+        xCoords(1:3,5) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,+zlen/)
+        xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,+zlen/)
+        xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,+zlen/)
+        xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
+        RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
-       ! make sure the vectors correspond to x,y,z-dir
-       IF ((xlen.NE.Species(iSpec)%Init(iInit)%BaseVector1IC(1)).OR. &
-           (ylen.NE.Species(iSpec)%Init(iInit)%BaseVector2IC(2)).OR. &
-           (zlen.NE.Species(iSpec)%Init(iInit)%CuboidHeightIC)) THEN
-          CALL ABORT(&
-          __STAMP__&
-          ,'Basevectors1IC,-2IC and CuboidHeightIC have to be in x,y,z-direction, respectively for emission condition')
-       END IF
-       DO iNode=1,8
-        xCoords(1:3,iNode) = Species(iSpec)%Init(iInit)%BasePointIC(1:3)
-       END DO
-       xCoords(1:3,2) = xCoords(1:3,1) + (/xlen,0.,0./)
-       xCoords(1:3,3) = xCoords(1:3,1) + (/0.,ylen,0./)
-       xCoords(1:3,4) = xCoords(1:3,1) + (/xlen,ylen,0./)
-       xCoords(1:3,5) = xCoords(1:3,1) + (/0.,0.,zlen/)
-       xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.,0./)
-       xCoords(1:3,7) = xCoords(1:3,5) + (/0.,ylen,0./)
-       xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
-       RegionOnProc=BoxInProc(xCoords,8)
+      CASE('disc')
+        xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(1)*Species(iSpec)%Init(iInit)%NormalIC(1))
+        ylen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(2)*Species(iSpec)%Init(iInit)%NormalIC(2))
+        zlen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(3)*Species(iSpec)%Init(iInit)%NormalIC(3))
+        ! all 8 edges
+        xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
+        xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
+        xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)
+        xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,-zlen/)
+        xCoords(1:3,5) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,+zlen/)
+        xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,+zlen/)
+        xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,+zlen/)
+        xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
+        RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
-     !~j CALL ABORT(&
-     !~j __STAMP__&
-     !~j ,'ERROR in ParticleEmission_parallel: cannot deallocate particle_positions!')
-    CASE ('cuboid_with_equidistant_distribution')
-       xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &
-            + Species(iSpec)%Init(iInit)%BaseVector1IC(2)**2 &
-            + Species(iSpec)%Init(iInit)%BaseVector1IC(3)**2 )
-       ylen = SQRT(Species(iSpec)%Init(iInit)%BaseVector2IC(1)**2 &
-            + Species(iSpec)%Init(iInit)%BaseVector2IC(2)**2 &
-            + Species(iSpec)%Init(iInit)%BaseVector2IC(3)**2 )
-       zlen = ABS(Species(iSpec)%Init(iInit)%CuboidHeightIC)
+      CASE('circle')
+        xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(1)*Species(iSpec)%Init(iInit)%NormalIC(1))
+        ylen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(2)*Species(iSpec)%Init(iInit)%NormalIC(2))
+        zlen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(3)*Species(iSpec)%Init(iInit)%NormalIC(3))
+        ! all 8 edges
+        xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
+        xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
+        xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)
+        xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,-zlen/)
+        xCoords(1:3,5) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,+zlen/)
+        xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,+zlen/)
+        xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,+zlen/)
+        xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
+        RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
-       ! make sure the vectors correspond to x,y,z-dir
-       IF ((xlen.NE.Species(iSpec)%Init(iInit)%BaseVector1IC(1)).OR. &
-           (ylen.NE.Species(iSpec)%Init(iInit)%BaseVector2IC(2)).OR. &
-           (zlen.NE.Species(iSpec)%Init(iInit)%CuboidHeightIC)) THEN
-          CALL ABORT(&
-          __STAMP__&
-          ,'Basevectors1IC,-2IC and CuboidHeightIC have to be in x,y,z-direction, respectively for emission condition')
-       END IF
-       DO iNode=1,8
-        xCoords(1:3,iNode) = Species(iSpec)%Init(iInit)%BasePointIC(1:3)
-       END DO
-       xCoords(1:3,2) = xCoords(1:3,1) + (/xlen,0.,0./)
-       xCoords(1:3,3) = xCoords(1:3,1) + (/0.,ylen,0./)
-       xCoords(1:3,4) = xCoords(1:3,1) + (/xlen,ylen,0./)
-       xCoords(1:3,5) = xCoords(1:3,1) + (/0.,0.,zlen/)
-       xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.,0./)
-       xCoords(1:3,7) = xCoords(1:3,5) + (/0.,ylen,0./)
-       xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
-       RegionOnProc=BoxInProc(xCoords,8)
-    CASE('sin_deviation')
-       IF(Species(iSpec)%Init(iInit)%initialParticleNumber.NE. &
-            (Species(iSpec)%Init(iInit)%maxParticleNumberX * Species(iSpec)%Init(iInit)%maxParticleNumberY &
-            * Species(iSpec)%Init(iInit)%maxParticleNumberZ)) THEN
-         SWRITE(*,*) 'for species ',iSpec,' does not match number of particles in each direction!'
-         CALL ABORT(&
-         __STAMP__&
-         ,'ERROR: Number of particles in init / emission region',iInit)
-       END IF
-       xlen = abs(GEO%xmaxglob  - GEO%xminglob)
-       ylen = abs(GEO%ymaxglob  - GEO%yminglob)
-       zlen = abs(GEO%zmaxglob  - GEO%zminglob)
-       xCoords(1:3,1) = (/GEO%xminglob,GEO%yminglob,GEO%zminglob/)
-       xCoords(1:3,2) = xCoords(1:3,1) + (/xlen,0.,0./)
-       xCoords(1:3,3) = xCoords(1:3,1) + (/0.,ylen,0./)
-       xCoords(1:3,4) = xCoords(1:3,1) + (/xlen,ylen,0./)
-       xCoords(1:3,5) = xCoords(1:3,1) + (/0.,0.,zlen/)
-       xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.,0./)
-       xCoords(1:3,7) = xCoords(1:3,5) + (/0.,ylen,0./)
-       xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
-       RegionOnProc=BoxInProc(xCoords,8)
-    CASE DEFAULT
-      CALL ABORT(&
-      __STAMP__&
-      ,'ERROR: Given SpaceIC is not implemented!')
+      CASE('circle_equidistant')
+        xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(1)*Species(iSpec)%Init(iInit)%NormalIC(1))
+        ylen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(2)*Species(iSpec)%Init(iInit)%NormalIC(2))
+        zlen=Species(iSpec)%Init(iInit)%RadiusIC * &
+             SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(3)*Species(iSpec)%Init(iInit)%NormalIC(3))
+        ! all 8 edges
+        xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
+        xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
+        xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)
+        xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,-zlen/)
+        xCoords(1:3,5) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,+zlen/)
+        xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,+zlen/)
+        xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,+zlen/)
+        xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
+        RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
+
+      CASE('cuboid')
+        lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(3) - &
+          Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(2)
+        lineVector(2) = Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(1) - &
+          Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(3)
+        lineVector(3) = Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(2) - &
+          Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
+        IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
+           CALL ABORT(__STAMP__,'BaseVectors are parallel!')
+        ELSE
+          lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + &
+                                         lineVector(3) * lineVector(3))
+        END IF
+        xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC
+        xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC + Species(iSpec)%Init(iInit)%BaseVector1IC
+        xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC + Species(iSpec)%Init(iInit)%BaseVector2IC
+        xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC + Species(iSpec)%Init(iInit)%BaseVector1IC &
+                                                                + Species(iSpec)%Init(iInit)%BaseVector2IC
+
+        ! directly calculated by timestep
+        IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
+          height = halo_eps
+        ELSE
+          height = Species(iSpec)%Init(iInit)%CuboidHeightIC
+        END IF
+
+        DO iNode=1,4
+          xCoords(1:3,iNode+4) = xCoords(1:3,iNode)+lineVector*height
+        END DO ! iNode
+        RegionOnProc = BoxInProc(xCoords,8)
+
+      CASE('cylinder')
+        lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(3) - &
+          Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(2)
+        lineVector(2) = Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(1) - &
+          Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(3)
+        lineVector(3) = Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(2) - &
+          Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
+        IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
+           CALL ABORT(__STAMP__,'BaseVectors are parallel!')
+        ELSE
+          lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + &
+            lineVector(3) * lineVector(3))
+        END IF
+        radius = Species(iSpec)%Init(iInit)%RadiusIC
+        ! here no radius, already inclueded
+        xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC-Species(iSpec)%Init(iInit)%BaseVector1IC &
+                                                             -Species(iSpec)%Init(iInit)%BaseVector2IC
+
+        xCoords(1:3,2) = xCoords(1:3,1) + 2.0*Species(iSpec)%Init(iInit)%BaseVector1IC
+        xCoords(1:3,3) = xCoords(1:3,1) + 2.0*Species(iSpec)%Init(iInit)%BaseVector2IC
+        xCoords(1:3,4) = xCoords(1:3,1) + 2.0*Species(iSpec)%Init(iInit)%BaseVector1IC&
+                                        + 2.0*Species(iSpec)%Init(iInit)%BaseVector2IC
+
+        IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN !directly calculated by timestep
+          height = halo_eps
+        ELSE
+          height= Species(iSpec)%Init(iInit)%CylinderHeightIC
+        END IF
+        DO iNode=1,4
+          xCoords(1:3,iNode+4)=xCoords(1:3,iNode)+lineVector*height
+        END DO ! iNode
+
+        RegionOnProc = BoxInProc(xCoords,8)
+
+      CASE('cuboid_equal')
+         xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &
+              + Species(iSpec)%Init(iInit)%BaseVector1IC(2)**2 &
+              + Species(iSpec)%Init(iInit)%BaseVector1IC(3)**2 )
+         ylen = SQRT(Species(iSpec)%Init(iInit)%BaseVector2IC(1)**2 &
+              + Species(iSpec)%Init(iInit)%BaseVector2IC(2)**2 &
+              + Species(iSpec)%Init(iInit)%BaseVector2IC(3)**2 )
+         zlen = ABS(Species(iSpec)%Init(iInit)%CuboidHeightIC)
+
+         ! make sure the vectors correspond to x,y,z-dir
+         IF ((xlen.NE.Species(iSpec)%Init(iInit)%BaseVector1IC(1)).OR. &
+             (ylen.NE.Species(iSpec)%Init(iInit)%BaseVector2IC(2)).OR. &
+             (zlen.NE.Species(iSpec)%Init(iInit)%CuboidHeightIC)) THEN
+            CALL ABORT(__STAMP__, &
+              'Basevectors1IC,-2IC and CuboidHeightIC have to be in x,y,z-direction, respectively for emission condition')
+         END IF
+
+         DO iNode=1,8
+          xCoords(1:3,iNode) = Species(iSpec)%Init(iInit)%BasePointIC(1:3)
+         END DO
+
+         xCoords(1:3,2) = xCoords(1:3,1) + (/xlen,0.,0./)
+         xCoords(1:3,3) = xCoords(1:3,1) + (/0.,ylen,0./)
+         xCoords(1:3,4) = xCoords(1:3,1) + (/xlen,ylen,0./)
+         xCoords(1:3,5) = xCoords(1:3,1) + (/0.,0.,zlen/)
+         xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.,0./)
+         xCoords(1:3,7) = xCoords(1:3,5) + (/0.,ylen,0./)
+         xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
+         RegionOnProc = BoxInProc(xCoords,8)
+
+      CASE ('cuboid_with_equidistant_distribution')
+         xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &
+              + Species(iSpec)%Init(iInit)%BaseVector1IC(2)**2 &
+              + Species(iSpec)%Init(iInit)%BaseVector1IC(3)**2 )
+         ylen = SQRT(Species(iSpec)%Init(iInit)%BaseVector2IC(1)**2 &
+              + Species(iSpec)%Init(iInit)%BaseVector2IC(2)**2 &
+              + Species(iSpec)%Init(iInit)%BaseVector2IC(3)**2 )
+         zlen = ABS(Species(iSpec)%Init(iInit)%CuboidHeightIC)
+
+         ! make sure the vectors correspond to x,y,z-dir
+         IF ((xlen.NE.Species(iSpec)%Init(iInit)%BaseVector1IC(1)).OR. &
+             (ylen.NE.Species(iSpec)%Init(iInit)%BaseVector2IC(2)).OR. &
+             (zlen.NE.Species(iSpec)%Init(iInit)%CuboidHeightIC)) THEN
+            CALL ABORT(__STAMP__, &
+              'Basevectors1IC,-2IC and CuboidHeightIC have to be in x,y,z-direction, respectively for emission condition')
+         END IF
+
+         DO iNode=1,8
+          xCoords(1:3,iNode) = Species(iSpec)%Init(iInit)%BasePointIC(1:3)
+         END DO
+
+         xCoords(1:3,2) = xCoords(1:3,1) + (/xlen,0.,0./)
+         xCoords(1:3,3) = xCoords(1:3,1) + (/0.,ylen,0./)
+         xCoords(1:3,4) = xCoords(1:3,1) + (/xlen,ylen,0./)
+         xCoords(1:3,5) = xCoords(1:3,1) + (/0.,0.,zlen/)
+         xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.,0./)
+         xCoords(1:3,7) = xCoords(1:3,5) + (/0.,ylen,0./)
+         xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
+         RegionOnProc = BoxInProc(xCoords,8)
+
+      CASE('sin_deviation')
+         IF(Species(iSpec)%Init(iInit)%initialParticleNumber.NE. &
+              (Species(iSpec)%Init(iInit)%maxParticleNumberX * Species(iSpec)%Init(iInit)%maxParticleNumberY &
+              * Species(iSpec)%Init(iInit)%maxParticleNumberZ)) THEN
+           SWRITE(*,*) 'for species ',iSpec,' does not match number of particles in each direction!'
+           CALL ABORT(__STAMP__,'ERROR: Number of particles in init / emission region',iInit)
+         END IF
+
+         xlen = abs(GEO%xmaxglob  - GEO%xminglob)
+         ylen = abs(GEO%ymaxglob  - GEO%yminglob)
+         zlen = abs(GEO%zmaxglob  - GEO%zminglob)
+         xCoords(1:3,1) = (/GEO%xminglob,GEO%yminglob,GEO%zminglob/)
+         xCoords(1:3,2) = xCoords(1:3,1) + (/xlen,0.,0./)
+         xCoords(1:3,3) = xCoords(1:3,1) + (/0.,ylen,0./)
+         xCoords(1:3,4) = xCoords(1:3,1) + (/xlen,ylen,0./)
+         xCoords(1:3,5) = xCoords(1:3,1) + (/0.,0.,zlen/)
+         xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.,0./)
+         xCoords(1:3,7) = xCoords(1:3,5) + (/0.,ylen,0./)
+         xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
+         RegionOnProc = BoxInProc(xCoords,8)
+
+      CASE DEFAULT
+        CALL ABORT(__STAMP__,'ERROR: Given SpaceIC is not implemented!')
+
     END SELECT
     ! create new communicator
     color=MPI_UNDEFINED
@@ -1025,7 +1032,7 @@ SDEALLOCATE( PartMPI%InitGroup)
 END SUBROUTINE FinalizeEmissionComm
 
 
-FUNCTION BoxInProc(CartNodes,nNodes)
+PURE FUNCTION BoxInProc(CartNodes,nNodes)
 !===================================================================================================================================
 ! check if bounding box is on proc
 !===================================================================================================================================
@@ -1045,35 +1052,36 @@ LOGICAL           :: BoxInProc
 INTEGER           :: xmin,xmax,ymin,ymax,zmin,zmax,testval
 !===================================================================================================================================
 
-BoxInProc=.FALSE.
+BoxInProc = .FALSE.
 ! get background of nodes
-xmin=HUGE(1)
-xmax=-HUGE(1)
-ymin=HUGE(1)
-ymax=-HUGE(1)
-zmin=HUGE(1)
-zmax=-HUGE(1)
-testval = CEILING((MINVAL(CartNodes(1,:))-GEO%xminglob)/GEO%FIBGMdeltas(1))
+xmin = HUGE(1)
+xmax =-HUGE(1)
+ymin = HUGE(1)
+ymax =-HUGE(1)
+zmin = HUGE(1)
+zmax =-HUGE(1)
+
+testval = CEILING((MINVAL(CartNodes(1,:)) - GEO%xminglob)/GEO%FIBGMdeltas(1))
 xmin    = MIN(xmin,testval)
-testval = CEILING((MAXVAL(CartNodes(1,:))-GEO%xminglob)/GEO%FIBGMdeltas(1))
+testval = CEILING((MAXVAL(CartNodes(1,:)) - GEO%xminglob)/GEO%FIBGMdeltas(1))
 xmax    = MAX(xmax,testval)
-testval = CEILING((MINVAL(CartNodes(2,:))-GEO%yminglob)/GEO%FIBGMdeltas(2))
+testval = CEILING((MINVAL(CartNodes(2,:)) - GEO%yminglob)/GEO%FIBGMdeltas(2))
 ymin    = MIN(ymin,testval)
-testval = CEILING((MAXVAL(CartNodes(2,:))-GEO%yminglob)/GEO%FIBGMdeltas(2))
+testval = CEILING((MAXVAL(CartNodes(2,:)) - GEO%yminglob)/GEO%FIBGMdeltas(2))
 ymax    = MAX(ymax,testval)
-testval = CEILING((MINVAL(CartNodes(3,:))-GEO%zminglob)/GEO%FIBGMdeltas(3))
+testval = CEILING((MINVAL(CartNodes(3,:)) - GEO%zminglob)/GEO%FIBGMdeltas(3))
 zmin    = MIN(zmin,testval)
-testval = CEILING((MAXVAL(CartNodes(3,:))-GEO%zminglob)/GEO%FIBGMdeltas(3))
+testval = CEILING((MAXVAL(CartNodes(3,:)) - GEO%zminglob)/GEO%FIBGMdeltas(3))
 zmax    = MAX(zmax,testval)
 
 IF(    ((xmin.LE.GEO%FIBGMimax).AND.(xmax.GE.GEO%FIBGMimin)) &
   .AND.((ymin.LE.GEO%FIBGMjmax).AND.(ymax.GE.GEO%FIBGMjmin)) &
-  .AND.((zmin.LE.GEO%FIBGMkmax).AND.(zmax.GE.GEO%FIBGMkmin)) ) BoxInProc=.TRUE.
+  .AND.((zmin.LE.GEO%FIBGMkmax).AND.(zmax.GE.GEO%FIBGMkmin)) ) BoxInProc = .TRUE.
 
 END FUNCTION BoxInProc
 
 
-FUNCTION PointInProc(CartNode)
+PURE FUNCTION PointInProc(CartNode)
 !===================================================================================================================================
 ! check if point is on proc
 !===================================================================================================================================
@@ -1092,14 +1100,15 @@ LOGICAL           :: PointInProc
 INTEGER           :: xmin,xmax,ymin,ymax,zmin,zmax,testval
 !===================================================================================================================================
 
-PointInProc=.FALSE.
+PointInProc = .FALSE.
 ! get background of nodes
-xmin=HUGE(1)
-xmax=-HUGE(1)
-ymin=HUGE(1)
-ymax=-HUGE(1)
-zmin=HUGE(1)
-zmax=-HUGE(1)
+xmin = HUGE(1)
+xmax =-HUGE(1)
+ymin = HUGE(1)
+ymax =-HUGE(1)
+zmin = HUGE(1)
+zmax =-HUGE(1)
+
 testval = CEILING((CartNode(1)-GEO%xminglob)/GEO%FIBGMdeltas(1))
 xmin    = MIN(xmin,testval)
 testval = CEILING((CartNode(1)-GEO%xminglob)/GEO%FIBGMdeltas(1))
@@ -1115,7 +1124,7 @@ zmax    = MAX(zmax,testval)
 
 IF(    ((xmin.LE.GEO%FIBGMimax).AND.(xmax.GE.GEO%FIBGMimin)) &
   .AND.((ymin.LE.GEO%FIBGMjmax).AND.(ymax.GE.GEO%FIBGMjmin)) &
-  .AND.((zmin.LE.GEO%FIBGMkmax).AND.(zmax.GE.GEO%FIBGMkmin)) ) PointInProc=.TRUE.
+  .AND.((zmin.LE.GEO%FIBGMkmax).AND.(zmax.GE.GEO%FIBGMkmin)) ) PointInProc = .TRUE.
 
 END FUNCTION PointInProc
 #endif /*USE_MPI*/

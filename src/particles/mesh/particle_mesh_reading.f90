@@ -352,8 +352,10 @@ ELSE IF (NGeoOverride.LE.0.AND..NOT.useCurveds.AND.NGeo.GT.1) THEN
 #endif  /*USE_MPI*/
 
   ! throw away all nodes except the 8 corner nodes of each hexa
+  nNonUniqueGlobalNodes = 8*nGlobalElems
+
   DO iElem = FirstElemInd,LastElemInd
-    FirstNodeInd = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
+    FirstNodeInd = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) - offsetNodeID
     ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) = 8*(iElem-1)
     ElemInfo_Shared(ELEM_LASTNODEIND ,iElem) = 8* iElem
     DO iNode = 1,8
@@ -382,8 +384,8 @@ ELSE
           , NodeCoordsNew(1:3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride))
 
   DO iElem=FirstElemInd,LastElemInd
-    FirstNodeInd = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) + 1
-    LastNodeInd  = ElemInfo_Shared(ELEM_LASTNODEIND ,iElem)
+!    FirstNodeInd = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) + 1
+!    LastNodeInd  = ElemInfo_Shared(ELEM_LASTNODEIND ,iElem)
     ! change ElemInfo_Shared to reflect new NodeCoords
     ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) = (NGeoOverride+1)**2*(iElem-1)
     ElemInfo_Shared(ELEM_LASTNODEIND ,iElem) = (NGeoOverride+1)**2*(iElem)
@@ -521,15 +523,15 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 ! calculate all offsets
 FirstElemInd = offsetElem+1
 LastElemInd  = offsetElem+nElems
-offsetSideID = ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
-nSideIDs     = ElemInfo(ELEM_LASTSIDEIND,LastElemInd)-ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd)
-offsetNodeID = ElemInfo(ELEM_FIRSTNODEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
-nNodeIDs     = ElemInfo(ELEM_LASTNODEIND,LastElemInd)-ElemInfo(ELEM_FIRSTNODEIND,FirstElemind)
+offsetSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
+nSideIDs     = ElemInfo_Shared(ELEM_LASTSIDEIND ,LastElemInd) - ElemInfo_Shared(ELEM_FIRSTSIDEIND,FirstElemInd)
+offsetNodeID = ElemInfo_Shared(ELEM_FIRSTNODEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
+nNodeIDs     = ElemInfo_Shared(ELEM_LASTNODEIND ,LastElemInd) - ElemInfo_Shared(ELEM_FIRSTNODEIND,FirstElemind)
 #else
 FirstElemInd = 1
 LastElemInd  = nElems
-offsetSideID = ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
-nSideIDs     = ElemInfo(ELEM_LASTSIDEIND,LastElemInd)-ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd)
+offsetSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
+nSideIDs     = ElemInfo_Shared(ELEM_LASTSIDEIND,LastElemInd)-ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd)
 #endif /*USE_MPI*/
 
 #if USE_MPI

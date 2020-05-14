@@ -161,6 +161,7 @@ CALL prms%CreateStringOption(       'Part-RWTime'   , 'Time stepping used for ra
 !===================================================================================================================================
 CALL prms%CreateStringOption(       'Part-SGSModel' , 'SGS model used for reconstruction of SGS influence on particle\n'         //&
                                                       ' - Breuer \n'                                                             //&
+                                                      ' - Breuer-Analytic \n'                                                    //&
                                                       ' - none'                                                                    &
                                                     , 'none')
 CALL prms%CreateIntOption(          'Part-SGSNFilter','Number of cut-off modes in the high-pass SGS filter'                        &
@@ -694,6 +695,7 @@ CHARACTER(32)         :: tmpStr,tmpStr2,tmpStr3
 !===================================================================================================================================
 ! Loop over all species and get requested data
 DO iSpec = 1, nSpecies
+  SWRITE(UNIT_StdOut,'(66("-"))')
   WRITE(UNIT=tmpStr,FMT='(I2)') iSpec
 
   ! Get number of requested inits

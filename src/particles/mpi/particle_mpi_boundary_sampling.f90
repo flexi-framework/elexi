@@ -156,7 +156,7 @@ CALL MPI_COMM_GROUP(MPI_COMM_LEADERS_SURF  ,surfGroup   ,IERROR)
 
 ! Finally translate global rank to local rank
 CALL MPI_GROUP_TRANSLATE_RANKS(leadersGroup,nLeaderGroupProcs,MPIRankSharedLeader,surfGroup,MPIRankSurfLeader,IERROR)
-SWRITE(UNIT_stdOUt,'(A,I0,A)') ' Starting surface communication between ', nSurfLeaders, ' compute nodes'
+SWRITE(UNIT_stdOUt,'(A,I0,A)') ' Starting surface communication between ', nSurfLeaders, ' compute nodes...'
 
 !!--- Count all communicated sides and build mapping for other leaders
 !ALLOCATE(nSurfSidesLeader(1:2,0:nSurfLeaders-1))
@@ -177,8 +177,8 @@ SWRITE(UNIT_stdOUt,'(A,I0,A)') ' Starting surface communication between ', nSurf
 !--- Open receive buffer (mapping from message surface ID to global side ID)
 ALLOCATE(SurfMapping(0:nSurfLeaders-1))
 
-!SurfMapping(:)%nRecvSurfSides = 0
-!SurfMapping(:)%nSendSurfSides = 0
+SurfMapping(:)%nRecvSurfSides = 0
+SurfMapping(:)%nSendSurfSides = 0
 
 DO iProc = 0,nSurfLeaders-1
   ! Ignore myself
@@ -245,6 +245,9 @@ ALLOCATE(SurfSendBuf(0:nSurfLeaders-1))
 ALLOCATE(SurfRecvBuf(0:nSurfLeaders-1))
 
 DO iProc = 0,nSurfLeaders-1
+  ! Ignore myself
+  IF (iProc .EQ. mySurfRank) CYCLE
+
   ! Only allocate send buffer if we are expecting sides from this leader node
   IF (SurfMapping(iProc)%nSendSurfSides.GT.0) THEN
     ALLOCATE(SurfSendBuf(iProc)%content(SurfSampSize*(nSurfSample**2)*SurfMapping(iProc)%nSendSurfSides))

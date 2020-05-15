@@ -37,6 +37,8 @@ ABSTRACT INTERFACE
   END FUNCTION
 END INTERFACE
 
+PROCEDURE(GetCNElemIDInterface)    ,POINTER :: GetCNElemID     !< pointer defining the mapping: global element ID -> compute-node element ID
+
 INTERFACE InitGetGlobalElemID
   MODULE PROCEDURE InitGetGlobalElemID
 END INTERFACE
@@ -60,8 +62,6 @@ END INTERFACE
 INTERFACE GetSideBoundingBoxTria
   MODULE PROCEDURE GetSideBoundingBoxTria
 END INTERFACE
-
-PROCEDURE(GetCNElemIDInterface)    ,POINTER :: GetCNElemID     !< pointer defining the mapping: global element ID -> compute-node element ID
 
 PUBLIC :: InitGetGlobalElemID
 PUBLIC :: InitGetCNElemID
@@ -102,16 +102,16 @@ GetGlobalElemID => GetGlobalElemID_iElem
 ! Suppress compiler warning
 RETURN
 #if USE_MPI
-dummy=GetGlobalElemID_fromTotalElem(1)
+dummy = GetGlobalElemID_fromTotalElem(1)
 #endif
-dummy=GetGlobalElemID_iElem(1)
+dummy = GetGlobalElemID_iElem(1)
 END SUBROUTINE InitGetGlobalElemID
 
 
 !==================================================================================================================================!
 !> Get the compute-node element ID in case of MPI=OFF or single compute node (CN)
 !==================================================================================================================================!
-PURE FUNCTION GetGlobalElemID_iElem(iElem)
+PURE INTEGER FUNCTION GetGlobalElemID_iElem(iElem)
 ! MODULES
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)              :: iElem
@@ -119,7 +119,7 @@ INTEGER,INTENT(IN)              :: iElem
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: GetGlobalElemID_iElem
+!INTEGER :: GetGlobalElemID_iElem
 !===================================================================================================================================
 GetGlobalElemID_iElem = iElem
 END FUNCTION GetGlobalElemID_iElem
@@ -129,14 +129,14 @@ END FUNCTION GetGlobalElemID_iElem
 !==================================================================================================================================!
 !> Get the global element ID in case of MPI=ON for single or multiple compute nodes (CN)
 !==================================================================================================================================!
-PURE FUNCTION GetGlobalElemID_fromTotalElem(iElem)
+PURE INTEGER FUNCTION GetGlobalElemID_fromTotalElem(iElem)
 ! MODULES
 USE MOD_Particle_MPI_Shared_Vars, ONLY:CNTotalElem2GlobalElem
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)              :: iElem
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-INTEGER :: GetGlobalElemID_fromTotalElem
+!INTEGER :: GetGlobalElemID_fromTotalElem
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -182,7 +182,7 @@ END SUBROUTINE InitGetCNElemID
 !==================================================================================================================================!
 !> Get the CN element ID in case of MPI=OFF or single compute node (CN)
 !==================================================================================================================================!
-PURE FUNCTION GetCNElemID_iElem(iElem)
+PURE INTEGER FUNCTION GetCNElemID_iElem(iElem)
 ! MODULES
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)              :: iElem
@@ -190,7 +190,7 @@ INTEGER,INTENT(IN)              :: iElem
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: GetCNElemID_iElem
+!INTEGER :: GetCNElemID_iElem
 !===================================================================================================================================
 GetCNElemID_iElem = iElem
 END FUNCTION GetCNElemID_iElem
@@ -200,14 +200,14 @@ END FUNCTION GetCNElemID_iElem
 !==================================================================================================================================!
 !> Get the CN element ID in case of MPI=ON for single or multiple compute nodes (CN)
 !==================================================================================================================================!
-PURE FUNCTION GetCNElemID_fromTotalElem(iElem)
+PURE INTEGER FUNCTION GetCNElemID_fromTotalElem(iElem)
 ! MODULES
 USE MOD_Particle_MPI_Shared_Vars, ONLY:GlobalElem2CNTotalElem
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)              :: iElem
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-INTEGER :: GetCNElemID_fromTotalElem
+!INTEGER :: GetCNElemID_fromTotalElem
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -216,7 +216,7 @@ END FUNCTION GetCNElemID_fromTotalElem
 #endif /*USE_MPI*/
 
 
-PURE FUNCTION GetGlobalNonUniqueSideID(ElemID,localSideID)
+PURE INTEGER FUNCTION GetGlobalNonUniqueSideID(ElemID,localSideID)
 !===================================================================================================================================
 !> Determines the non-unique global side ID of the local side in global element ElemID
 !===================================================================================================================================
@@ -231,7 +231,7 @@ INTEGER,INTENT(IN) :: ElemID                              !< global element ID
 INTEGER,INTENT(IN) :: localSideID                         !< local side id of an element (1:6)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
-INTEGER :: GetGlobalNonUniqueSideID
+!INTEGER :: GetGlobalNonUniqueSideID
 INTEGER :: iSide,firstSide,lastSide
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! LOCAL VARIABLES

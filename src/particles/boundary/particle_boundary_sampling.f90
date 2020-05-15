@@ -437,16 +437,12 @@ END IF
 IF (myComputeNodeRank.EQ.0) THEN
   CALL InitSurfCommunication()
 END IF
-! The leaders are synchronized at this point, but behind the other procs. Bring them back into sync
-CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-CALL MPI_BCAST(nSurfTotalSides,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
+! The leaders are synchronized at this point, but behind the other procs. nSurfTotalSides is only required when compiled without
+! MPI, so perform latency hiding by postponing synchronization
 #else
 mySurfRank      = 0
 nSurfTotalSides = nComputeNodeSurfTotalSides
 #endif /* USE_MPI */
-
-!> User sanity check
-SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of sampling sides:               ', nSurfTotalSides
 
 ! surface sampling array do not need to be allocated if there are no sides within halo_eps range
 IF(.NOT.SurfOnNode) RETURN
@@ -533,10 +529,10 @@ DO iSide = firstSide,LastSide
         Vector2(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node2,LocSideID,CNElemID)+1) - xNod
         Vector2(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node2,LocSideID,CNElemID)+1) - yNod
         Vector2(3) = NodeCoords_Shared(3,ElemSideNodeID_Shared(Node2,LocSideID,CNElemID)+1) - zNod
-      nx = - Vector1(2) * Vector2(3) + Vector1(3) * Vector2(2) !NV (inwards)
-      ny = - Vector1(3) * Vector2(1) + Vector1(1) * Vector2(3)
-      nz = - Vector1(1) * Vector2(2) + Vector1(2) * Vector2(1)
-      nVal = SQRT(nx*nx + ny*ny + nz*nz)
+        nx = - Vector1(2) * Vector2(3) + Vector1(3) * Vector2(2) !NV (inwards)
+        ny = - Vector1(3) * Vector2(1) + Vector1(1) * Vector2(3)
+        nz = - Vector1(1) * Vector2(2) + Vector1(2) * Vector2(1)
+        nVal = SQRT(nx*nx + ny*ny + nz*nz)
         area = area + nVal/2.
     END DO
     SurfSideArea(1,1,iSide) = area
@@ -555,10 +551,10 @@ DO iSide = firstSide,LastSide
             CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,3,BezierControlPoints3D(1:3,0:NGeo,0:NGeo,SideID) &
                                                     ,Gradient=gradXiEta3D)
             ! calculate first fundamental form
-            E=DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(1,1:3))
-            F=DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(2,1:3))
-            G=DOT_PRODUCT(gradXiEta3D(2,1:3),gradXiEta3D(2,1:3))
-            D=SQRT(E*G-F*F)
+            E = DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(1,1:3))
+            F = DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(2,1:3))
+            G = DOT_PRODUCT(gradXiEta3D(2,1:3),gradXiEta3D(2,1:3))
+            D = SQRT(E*G-F*F)
             area = area+tmp1*tmp1*D*wGP_NGeo(p)*wGP_NGeo(q)
           END DO
         END DO
@@ -595,9 +591,14 @@ CALL MPI_BCAST(area,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_SHARED,iError)
 DEALLOCATE(Xi_NGeo,wGP_NGeo)
 
 #if USE_MPI
+! Delayed synchronization
+CALL MPI_BCAST(nSurfTotalSides,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+
 IF (mySurfRank.EQ.0) THEN
 #endif
-  WRITE(UNIT_StdOut,'(A,ES10.4E2)') ' | Surface-Area:                         ', Area
+  WRITE(UNIT_StdOut,'(A,I8)')       ' | Number of sampling sides:           '    , nSurfTotalSides
+  WRITE(UNIT_StdOut,'(A,ES10.4E2)') ' | Surface-Area:                           ', Area
   WRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
 #if USE_MPI
 END IF

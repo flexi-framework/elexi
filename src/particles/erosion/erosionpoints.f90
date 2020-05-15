@@ -157,18 +157,18 @@ USE MOD_ErosionPoints_Vars   ,ONLY: EP_onProc,myEPrank,EP_COMM,nEP_Procs
 ! LOCAL VARIABLES
 INTEGER                   :: color
 !==================================================================================================================================
-color=MPI_UNDEFINED
+color = MPI_UNDEFINED
 IF(EP_onProc) color=2
 
 ! create new EP communicator for EP communication. Pass MPI_INFO_NULL as rank to follow the original ordering
 CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,MPI_INFO_NULL,EP_COMM,iError)
 
 ! Find my rank on the shared communicator, comm size and proc name
-IF(EP_onProc) THEN
+IF (EP_onProc) THEN
   CALL MPI_COMM_RANK(EP_COMM, myEPrank ,iError)
   CALL MPI_COMM_SIZE(EP_COMM, nEP_Procs,iError)
 
-  IF(myEPrank.EQ.0) &
+  IF (myEPrank.EQ.0) &
     WRITE(UNIT_StdOut,'(A,I0,A)') ' Starting impact tracking communications between ', nEP_Procs, ' procs'
 END IF
 

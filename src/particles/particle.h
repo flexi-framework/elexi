@@ -62,7 +62,7 @@
 #define SIDE_BCID         5
 #define SIDE_ELEMID       6
 #define SIDE_LOCALID      7
-#define SIDE_NBELEMTYPE   8
+#define SIDE_NBSIDEID     8
 
 ! Entry position in ElemBCSides
 #define ELEM_NBR_BCSIDES   1

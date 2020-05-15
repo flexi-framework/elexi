@@ -209,7 +209,7 @@ REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< St
 INTEGER,INTENT(IN)        :: PartID                                        !< particle ID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at reference position xi_in
+REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at physical position x_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: i,j,k

@@ -78,7 +78,7 @@ USE MOD_Particle_Boundary_Vars      ,ONLY: PartBound
 USE MOD_Particle_Localization       ,ONLY: ParticleInsideQuad3D
 USE MOD_Particle_Intersection       ,ONLY: IntersectionWithWall
 USE MOD_Particle_Mesh_Vars          ,ONLY: ElemInfo_Shared,SideInfo_Shared
-USE MOD_Particle_Tracking_Vars      ,ONLY: CountNbOfLostParts,nLostParts,TrackInfo
+USE MOD_Particle_Tracking_Vars      ,ONLY: CountNbOfLostParts,NbrOfLostParticles,TrackInfo
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM,PartSpecies
 USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 #if USE_LOADBALANCE
@@ -231,7 +231,7 @@ DO i = 1,PDM%ParticleVecLength
             IPWRITE(*,*) 'Velo:    ', PartState(4:6,i)
             IPWRITE(*,*) 'Particle deleted!'
               PDM%ParticleInside(i) = .FALSE.
-              IF(CountNbOfLostParts) nLostParts=nLostParts+1
+              IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
             PartisDone = .TRUE.
             EXIT
 
@@ -331,7 +331,7 @@ DO i = 1,PDM%ParticleVecLength
               IPWRITE(*,*) 'Velo:    ', PartState(4:6,i)
               IPWRITE(*,*) 'Particle deleted!'
               PDM%ParticleInside(i) = .FALSE.
-              IF(CountNbOfLostParts) nLostParts=nLostParts+1
+              IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
               PartisDone = .TRUE.
               EXIT
             END IF
@@ -439,7 +439,7 @@ USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID,GetCNElemID,GetGlobal
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars          ,ONLY: ElemRadiusNGeo,ElemHasAuxBCs
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
-USE MOD_Particle_Tracking_vars,      ONLY: ntracks,MeasureTrackTime, CountNbOfLostParts , nLostParts
+USE MOD_Particle_Tracking_vars,      ONLY: ntracks,MeasureTrackTime, CountNbOfLostParts , NbrOfLostParticles
 USE MOD_Particle_Utils              ,ONLY: InsertionSort
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM
 USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
@@ -669,7 +669,7 @@ DO iPart=1,PDM%ParticleVecLength
           IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Removing particle with id: ',iPart
           PartIsDone                = .TRUE.
           PDM%ParticleInside(iPart) = .FALSE.
-          IF(CountNbOfLostParts) nLostParts = nLostParts + 1
+          IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles + 1
           EXIT
         END IF
           IF(foundHit) THEN
@@ -710,7 +710,7 @@ DO iPart=1,PDM%ParticleVecLength
               IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Removing particle with id: ',iPart
               PartIsDone = .TRUE.
               PDM%ParticleInside(iPart) = .FALSE.
-              IF(CountNbOfLostParts) nLostParts = nLostParts+1
+              IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles+1
               EXIT
             END IF
             IF(foundHit) THEN

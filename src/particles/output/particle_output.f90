@@ -74,7 +74,7 @@ SUBROUTINE WriteInfoStdOut()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Tracking_Vars,ONLY: nLostParts,countNbOfLostParts
+USE MOD_Particle_Tracking_Vars,ONLY: NbrOfLostParticles,countNbOfLostParts
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -88,9 +88,9 @@ INTEGER                      :: nLostPartsTot
 
 IF (CountNbOfLostParts) THEN
 #if USE_MPI
-  CALL MPI_REDUCE(nLostParts,nLostPartsTot,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+  CALL MPI_REDUCE(NbrOfLostParticles,nLostPartsTot,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
 #else
-  nLostPartsTot = nLostParts
+  nLostPartsTot = NbrOfLostParticles
 #endif /*MPI*/
   WRITE(UNIT_stdOut,'(A,I12)')' NbOfLostParticle : ',nLostPartsTot
 END IF

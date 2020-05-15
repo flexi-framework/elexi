@@ -97,7 +97,7 @@ CALL prms%CreateLogicalOption(      'TriaSurfaceFlux','Using Triangle-aproximati
                                                       'description [F] of sides for surfaceflux.'                                  &
                                                     , '.TRUE.')
 
-CALL prms%CreateLogicalOption(    'CountNbOfLostParts'        , 'Count number of lost particles during tracking that can not be '//&
+CALL prms%CreateLogicalOption(      'CountNbOfLostParts'      , 'Count number of lost particles during tracking that can not be '//&
                                                                 'found with fallbacks.'                                            &
                                                               , '.FALSE.')
 
@@ -362,22 +362,26 @@ IF (nTrackingMethod.EQ.1) THEN
   ! New selection setting DoRefMapping and TriaTracking for compatibility
   TrackingMethod  = GETINTFROMSTR('TrackingMethod')
   SELECT CASE(TrackingMethod)
-  CASE(REFMAPPING)
-    DoRefMapping=.TRUE.
-    TriaTracking=.FALSE.
-  CASE(TRACING)
-    DoRefMapping=.FALSE.
-    TriaTracking=.FALSE.
-  CASE(TRIATRACKING)
-    DoRefMapping=.FALSE.
-    TriaTracking=.TRUE.
+    CASE(REFMAPPING)
+      DoRefMapping = .TRUE.
+      TriaTracking = .FALSE.
+    CASE(TRACING)
+      DoRefMapping = .FALSE.
+      TriaTracking = .FALSE.
+    CASE(TRIATRACKING)
+      DoRefMapping = .FALSE.
+      TriaTracking = .TRUE.
   END SELECT
 ELSE IF (nTrackingMethod.EQ.0) THEN
   ! Old selection explicitly stating DoRefMapping and TriaTracking
-  DoRefMapping = GETLOGICAL('DoRefMapping',".TRUE.")
+  DoRefMapping = GETLOGICAL('DoRefMapping','.TRUE.')
   TriaTracking = GETLOGICAL('TriaTracking','.FALSE.')
   IF (DoRefMapping) THEN
-    TrackingMethod = REFMAPPING
+    IF (TriaTracking) THEN
+      CALL COLLECTIVESTOP(__STAMP__,'DoRefMapping and TriaTracking are mutually exclusive!')
+    ELSE
+      TrackingMethod = REFMAPPING
+    END IF
   ELSE
     IF (TriaTracking) THEN
       TrackingMethod = TRIATRACKING
@@ -386,7 +390,7 @@ ELSE IF (nTrackingMethod.EQ.0) THEN
     END IF
   END IF
 ELSE
-  CALL CollectiveStop(__STAMP__,"Invalid number of tracking methods given!")
+  CALL COLLECTIVESTOP(__STAMP__,'Invalid number of tracking methods given!')
 END IF
 
 DoInterpolation       = GETLOGICAL('Part-DoInterpolation','.TRUE.')

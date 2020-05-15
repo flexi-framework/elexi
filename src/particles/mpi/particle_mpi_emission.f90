@@ -1049,34 +1049,47 @@ INTEGER,INTENT(IN):: nNodes
 LOGICAL           :: BoxInProc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: xmin,xmax,ymin,ymax,zmin,zmax,testval
+!INTEGER           :: xmin,xmax,ymin,ymax,zmin,zmax,testval
+REAL,DIMENSION(6)  :: xCoords
 !===================================================================================================================================
 
 BoxInProc = .FALSE.
-! get background of nodes
-xmin = HUGE(1)
-xmax =-HUGE(1)
-ymin = HUGE(1)
-ymax =-HUGE(1)
-zmin = HUGE(1)
-zmax =-HUGE(1)
+!! get background of nodes
+!xmin = HUGE(1)
+!xmax =-HUGE(1)
+!ymin = HUGE(1)
+!ymax =-HUGE(1)
+!zmin = HUGE(1)
+!zmax =-HUGE(1)
+!
+!testval = FLOOR((MINVAL(CartNodes(1,:)) - GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
+!xmin    = MIN(xmin,testval)
+!testval = FLOOR((MAXVAL(CartNodes(1,:)) - GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
+!xmax    = MAX(xmax,testval)
+!testval = FLOOR((MINVAL(CartNodes(2,:)) - GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
+!ymin    = MIN(ymin,testval)
+!testval = FLOOR((MAXVAL(CartNodes(2,:)) - GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
+!ymax    = MAX(ymax,testval)
+!testval = FLOOR((MINVAL(CartNodes(3,:)) - GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
+!zmin    = MIN(zmin,testval)
+!testval = FLOOR((MAXVAL(CartNodes(3,:)) - GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
+!zmax    = MAX(zmax,testval)
+!
+!IF(    ((xmin.LE.GEO%FIBGMimax).AND.(xmax.GE.GEO%FIBGMimin)) &
+!  .AND.((ymin.LE.GEO%FIBGMjmax).AND.(ymax.GE.GEO%FIBGMjmin)) &
+!  .AND.((zmin.LE.GEO%FIBGMkmax).AND.(zmax.GE.GEO%FIBGMkmin)) ) BoxInProc = .TRUE.
 
-testval = FLOOR((MINVAL(CartNodes(1,:)) - GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
-xmin    = MIN(xmin,testval)
-testval = FLOOR((MAXVAL(CartNodes(1,:)) - GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
-xmax    = MAX(xmax,testval)
-testval = FLOOR((MINVAL(CartNodes(2,:)) - GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
-ymin    = MIN(ymin,testval)
-testval = FLOOR((MAXVAL(CartNodes(2,:)) - GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
-ymax    = MAX(ymax,testval)
-testval = FLOOR((MINVAL(CartNodes(3,:)) - GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
-zmin    = MIN(zmin,testval)
-testval = FLOOR((MAXVAL(CartNodes(3,:)) - GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
-zmax    = MAX(zmax,testval)
+! Calculate directly with global coordinates
+xCoords(1) = MINVAL(CartNodes(1,:))
+xCoords(2) = MAXVAL(CartNodes(1,:))
+xCoords(3) = MINVAL(CartNodes(2,:))
+xCoords(4) = MAXVAL(CartNodes(2,:))
+xCoords(5) = MINVAL(CartNodes(3,:))
+xCoords(6) = MAXVAL(CartNodes(3,:))
 
-IF(    ((xmin.LE.GEO%FIBGMimax).AND.(xmax.GE.GEO%FIBGMimin)) &
-  .AND.((ymin.LE.GEO%FIBGMjmax).AND.(ymax.GE.GEO%FIBGMjmin)) &
-  .AND.((zmin.LE.GEO%FIBGMkmax).AND.(zmax.GE.GEO%FIBGMkmin)) ) BoxInProc = .TRUE.
+IF(    ((xCoords(1).LE.GEO%xmaxglob).AND.(xCoords(2).GE.GEO%xminglob)) &
+  .AND.((xCoords(3).LE.GEO%ymaxglob).AND.(xCoords(4).GE.GEO%yminglob)) &
+  .AND.((xCoords(5).LE.GEO%zmaxglob).AND.(xCoords(6).GE.GEO%zminglob)) ) BoxInProc = .TRUE.
 
 END FUNCTION BoxInProc
 
@@ -1097,34 +1110,38 @@ REAL,INTENT(IN)   :: CartNode(1:3)
 LOGICAL           :: PointInProc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: xmin,xmax,ymin,ymax,zmin,zmax,testval
+!INTEGER           :: xmin,xmax,ymin,ymax,zmin,zmax,testval
 !===================================================================================================================================
 
 PointInProc = .FALSE.
-! get background of nodes
-xmin = HUGE(1)
-xmax =-HUGE(1)
-ymin = HUGE(1)
-ymax =-HUGE(1)
-zmin = HUGE(1)
-zmax =-HUGE(1)
+!! get background of nodes
+!xmin = HUGE(1)
+!xmax =-HUGE(1)
+!ymin = HUGE(1)
+!ymax =-HUGE(1)
+!zmin = HUGE(1)
+!zmax =-HUGE(1)
+!
+!testval = FLOOR((CartNode(1)-GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
+!xmin    = MIN(xmin,testval)
+!testval = FLOOR((CartNode(1)-GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
+!xmax    = MAX(xmax,testval)
+!testval = FLOOR((CartNode(2)-GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
+!ymin    = MIN(ymin,testval)
+!testval = FLOOR((CartNode(2)-GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
+!ymax    = MAX(ymax,testval)
+!testval = FLOOR((CartNode(3)-GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
+!zmin    = MIN(zmin,testval)
+!testval = FLOOR((CartNode(3)-GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
+!zmax    = MAX(zmax,testval)
+!
+!IF(    ((xmin.LE.GEO%FIBGMimax).AND.(xmax.GE.GEO%FIBGMimin)) &
+!  .AND.((ymin.LE.GEO%FIBGMjmax).AND.(ymax.GE.GEO%FIBGMjmin)) &
+!  .AND.((zmin.LE.GEO%FIBGMkmax).AND.(zmax.GE.GEO%FIBGMkmin)) ) PointInProc = .TRUE.
 
-testval = FLOOR((CartNode(1)-GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
-xmin    = MIN(xmin,testval)
-testval = FLOOR((CartNode(1)-GEO%xminglob)/GEO%FIBGMdeltas(1)) + 1
-xmax    = MAX(xmax,testval)
-testval = FLOOR((CartNode(2)-GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
-ymin    = MIN(ymin,testval)
-testval = FLOOR((CartNode(2)-GEO%yminglob)/GEO%FIBGMdeltas(2)) + 1
-ymax    = MAX(ymax,testval)
-testval = FLOOR((CartNode(3)-GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
-zmin    = MIN(zmin,testval)
-testval = FLOOR((CartNode(3)-GEO%zminglob)/GEO%FIBGMdeltas(3)) + 1
-zmax    = MAX(zmax,testval)
-
-IF(    ((xmin.LE.GEO%FIBGMimax).AND.(xmax.GE.GEO%FIBGMimin)) &
-  .AND.((ymin.LE.GEO%FIBGMjmax).AND.(ymax.GE.GEO%FIBGMjmin)) &
-  .AND.((zmin.LE.GEO%FIBGMkmax).AND.(zmax.GE.GEO%FIBGMkmin)) ) PointInProc = .TRUE.
+IF(    ((CartNode(1).LE.GEO%xmaxglob).AND.(CartNode(1).GE.GEO%xminglob)) &
+  .AND.((CartNode(2).LE.GEO%ymaxglob).AND.(CartNode(2).GE.GEO%yminglob)) &
+  .AND.((CartNode(3).LE.GEO%zmaxglob).AND.(CartNode(3).GE.GEO%zminglob)) ) PointInProc = .TRUE.
 
 END FUNCTION PointInProc
 #endif /*USE_MPI*/

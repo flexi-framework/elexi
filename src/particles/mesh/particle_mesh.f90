@@ -251,7 +251,7 @@ USE MOD_Particle_Mesh_Tools    ,ONLY: InitGetGlobalElemID,InitGetCNElemID,GetCNE
 USE MOD_Particle_Surfaces      ,ONLY: GetSideSlabNormalsAndIntervals
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation,BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
-USE MOD_Particle_Tracking_Vars ,ONLY: FastPeriodic,CountNbOfLostParts,nLostParts,CartesianPeriodic
+USE MOD_Particle_Tracking_Vars ,ONLY: FastPeriodic,CountNbOfLostParts,NbrOfLostParticles,NbrOfLostParticlesTotal,CartesianPeriodic
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierSampleN,BezierSampleXi,SurfFluxSideSize,TriaSurfaceFlux
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_ReadInTools            ,ONLY: GETREAL,GETINT,GETLOGICAL,GetRealArray
@@ -310,12 +310,17 @@ CALL InitGetGlobalElemID()
 ! Initialize mapping function: GetCNElemID()
 CALL InitGetCNElemID()
 
-IF ((TrackingMethod.EQ.REFMAPPING.OR.UseCurveds.OR.(NGeo.GT.1)).AND.(TrackingMethod.EQ.TRIATRACKING)) THEN
-  CALL CollectiveStop(__STAMP__, &
-         'TrackingMethod=REFMAPPING .OR. UseCurveds=T .OR. NGEO>1! Not possible with TrackingMethod=TRIATRACKING at the same time!')
+!IF ((TrackingMethod.EQ.REFMAPPING.OR.UseCurveds.OR.(NGeo.GT.1)).AND.(TrackingMethod.EQ.TRIATRACKING)) THEN
+!  CALL CollectiveStop(__STAMP__, &
+!         'TrackingMethod=REFMAPPING .OR. UseCurveds=T .OR. NGEO>1! Not possible with TrackingMethod=TRIATRACKING at the same time!')
+!END IF
+
+CountNbOfLostParts      = GETLOGICAL('CountNbOfLostParts',".FALSE.")
+IF (CountNbOfLostParts) THEN
+  NbrOfLostParticles      = 0
+  NbrOfLostParticlesTotal = 0
+!  DisplayLostParticles    = GETLOGICAL('DisplayLostParticles')
 END IF
-CountNbOfLostParts = GETLOGICAL('CountNbOfLostParts',".FALSE.")
-nLostParts         = 0
 
 #if CODE_ANALYZE
 PARTOUT            = GETINT('PartOut','0')
@@ -549,32 +554,11 @@ REAL                           :: NodeCoordstmp(1:3,0:NGeo,0:NGeo,0:NGeo)
 REAL                           :: DCL_NGeo(0:Ngeo,0:Ngeo)
 REAL                           :: Vdm_EQNGeo_CLN   (0:PP_N ,0:NGeo)
 REAL                           :: Vdm_CLNloc_N     (0:PP_N ,0:PP_N)
-!REAL                           :: Vdm_NGeo_CLNGeo(0:NGeo,0:NGeo)
-INTEGER                        :: CornerNodeIDswitch(8)
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif /*USE_MPI*/
 !===================================================================================================================================
+
 #if USE_MPI
-! the cornernodes are not the first 8 entries (for Ngeo>1) of nodeinfo array so mapping is built
-!CornerNodeIDswitch(1)=1
-!CornerNodeIDswitch(2)=(Ngeo+1)
-!CornerNodeIDswitch(3)=(Ngeo+1)**2
-!CornerNodeIDswitch(4)=(Ngeo+1)*Ngeo+1
-!CornerNodeIDswitch(5)=(Ngeo+1)**2*Ngeo+1
-!CornerNodeIDswitch(6)=(Ngeo+1)**2*Ngeo+(Ngeo+1)
-!CornerNodeIDswitch(7)=(Ngeo+1)**2*Ngeo+(Ngeo+1)**2
-!CornerNodeIDswitch(8)=(Ngeo+1)**2*Ngeo+(Ngeo+1)*Ngeo+1
-CornerNodeIDswitch(1)=1
-CornerNodeIDswitch(2)=2
-CornerNodeIDswitch(3)=3
-CornerNodeIDswitch(4)=4
-CornerNodeIDswitch(5)=5
-CornerNodeIDswitch(6)=6
-CornerNodeIDswitch(7)=7
-CornerNodeIDswitch(8)=8
-
-ASSOCIATE(CNS => CornerNodeIDswitch )
-
 ! This is a trick. Allocate as 1D array and then set a pointer with the proper array bounds
 MPISharedSize = INT((3*(NGeo+1)**3*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
 CALL Allocate_Shared(MPISharedSize,(/3*  (NGeo+1)*(NGeo+1)*(NGeo+1)*nComputeNodeTotalElems/), XCL_NGeo_Shared_Win,XCL_NGeo_Array)
@@ -641,22 +625,14 @@ ELSE
         nodeID = nodeID + 1
       END DO; END DO; END DO ! i = 0, NGeo
     ELSE
-      NodeCoordstmp(:,0,0,0) = NodeCoords_Shared(:,firstNodeID+CNS(1))
-      NodeCoordstmp(:,1,0,0) = NodeCoords_Shared(:,firstNodeID+CNS(2))
-      NodeCoordstmp(:,0,1,0) = NodeCoords_Shared(:,firstNodeID+CNS(3))
-      NodeCoordstmp(:,1,1,0) = NodeCoords_Shared(:,firstNodeID+CNS(4))
-      NodeCoordstmp(:,0,0,1) = NodeCoords_Shared(:,firstNodeID+CNS(5))
-      NodeCoordstmp(:,1,0,1) = NodeCoords_Shared(:,firstNodeID+CNS(6))
-      NodeCoordstmp(:,0,1,1) = NodeCoords_Shared(:,firstNodeID+CNS(7))
-      NodeCoordstmp(:,1,1,1) = NodeCoords_Shared(:,firstNodeID+CNS(8))
-!      DO i = 0, NGeo
-!        DO j = 0, NGeo
-!          DO k = 0, NGeo
-!            NodeCoordstmp(:,i,j,k) = NodeCoords_Shared(:,firstNodeID+CNS(NodeID))
-!            nodeID = nodeID + 1
-!          END DO
-!        END DO
-!      END DO ! i = 0, NGeo
+      NodeCoordstmp(:,0,0,0) = NodeCoords_Shared(:,firstNodeID+1)
+      NodeCoordstmp(:,1,0,0) = NodeCoords_Shared(:,firstNodeID+2)
+      NodeCoordstmp(:,0,1,0) = NodeCoords_Shared(:,firstNodeID+3)
+      NodeCoordstmp(:,1,1,0) = NodeCoords_Shared(:,firstNodeID+4)
+      NodeCoordstmp(:,0,0,1) = NodeCoords_Shared(:,firstNodeID+5)
+      NodeCoordstmp(:,1,0,1) = NodeCoords_Shared(:,firstNodeID+6)
+      NodeCoordstmp(:,0,1,1) = NodeCoords_Shared(:,firstNodeID+7)
+      NodeCoordstmp(:,1,1,1) = NodeCoords_Shared(:,firstNodeID+8)
     END IF
     CALL ChangeBasis3D(3,NGeo,NGeo,Vdm_NGeo_CLNGeo,NodeCoordstmp,XCL_NGeo_Shared(:,:,:,:,nComputeNodeElems+iElem))
     CALL ChangeBasis3D(3,NGeo,PP_N,Vdm_EQNGeo_CLN ,NodeCoordstmp,Elem_xGP_Shared(:,:,:,:,nComputeNodeElems+iElem))
@@ -674,8 +650,6 @@ ELSE
     END DO; END DO; END DO !i,j,k=0,Ngeo
     END DO ! iElem = firstHaloElem, lastHaloElem
 END IF
-
-END ASSOCIATE
 
 CALL MPI_WIN_SYNC(XCL_NGeo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(dXCL_NGeo_Shared_Win,IERROR)
@@ -2339,6 +2313,7 @@ CALL Allocate_Shared(MPISharedSize,(/4,nUniqueBCSides/),BCSideMetrics_Shared_Win
 CALL MPI_WIN_LOCK_ALL(0,BCSideMetrics_Shared_Win,IERROR)
 BCSideMetrics => BCSideMetrics_Shared
 #else
+offsetUniqueBCSidesProc = 0
 nUniqueBCSides = nUniqueBCSidesProc
 
 ALLOCATE(BCSide2SideID(    1:nUniqueBCSides)        &

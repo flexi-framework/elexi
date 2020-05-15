@@ -164,6 +164,8 @@ INTEGER                                :: offsetSurfSidesProc
 INTEGER                                :: GlobalElemID,GlobalElemRank
 INTEGER(KIND=MPI_ADDRESS_KIND)         :: MPISharedSize
 INTEGER                                :: sendbuf,recvbuf
+#else
+INTEGER,PARAMETER                      :: myLeaderGroupRank = 0
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
@@ -285,7 +287,7 @@ nComputeNodeSurfSides      = 0
 nSurfSidesProc             = 0
 
 ! check every BC side
-SideLoop: DO iSide = firstSide,lastSide
+DO iSide = firstSide,lastSide
   ! ignore non-BC sides
   IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
 
@@ -306,7 +308,7 @@ SideLoop: DO iSide = firstSide,lastSide
   IF ((PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,iSide)).EQ.PartBound%ReflectiveBC).OR.DoSide) THEN
     nSurfSidesProc = nSurfSidesProc + 1
     ! check if element for this side is on the current compute-node
-!    IF ((SideInfo_Shared(SIDE_ELEMID,iSide).GE.offsetComputeNodeElem+1).AND.SideInfo_Shared(SIDE_ELEMID,iSide).LE.offsetComputeNodeElem+nComputeNodeElems) THEN
+!    IF ((iSide.GE.offsetComputeNodeElem+1).(AND.iSide.LE.offsetComputeNodeElem+nComputeNodeElems)) THEN
 !      nComputeNodeSurfSides  = nComputeNodeSurfSides + 1
 !    END IF
 
@@ -336,9 +338,7 @@ SideLoop: DO iSide = firstSide,lastSide
       nComputeNodeSurfSides  = nComputeNodeSurfSides + 1
     END IF
   END IF ! reflective side
-
-  IF (iSide.EQ.236) print *, 'S236',GlobalSide2SurfSideProc(SURF_SIDEID,iSide)
-END DO SideLoop
+END DO
 
 ! Find CN global number of total surf sides and write Side to Surf Side mapping into shared array
 #if USE_MPI
@@ -391,7 +391,7 @@ END DO
 #else
 offsetSurfTotalSidesProc   = 0
 nComputeNodeSurfTotalSides = nSurfSidesProc
-GlobalSide2SurfSide(SURF_SIDEID,firstSide:lastSide) = GlobalSide2SurfSideProc(SURF_SIDEID,firstSide:lastSide)
+GlobalSide2SurfSide(:,firstSide:lastSide) = GlobalSide2SurfSideProc(:,firstSide:lastSide)
 #endif /*USE_MPI*/
 
 ! Build inverse mapping

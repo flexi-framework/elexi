@@ -444,6 +444,12 @@ DO iPart = 1,PDM%ParticleVecLength
 
     W_SGS(:,:,iPart) = 0.
 
+    ! Sum up turbulent contributions
+    Pt(1:3) = 0.
+    DO j = 1,3
+      Pt(1:3) = Pt(1:3) + E_SGS(1:3,j,iPart)*TurbPartState(j,iPart)
+    END DO
+
   ! Valid SGS turbulent kinetic energy
   ELSE
 
@@ -469,13 +475,14 @@ DO iPart = 1,PDM%ParticleVecLength
         END IF
       END DO
     END DO
+
+    ! Sum up turbulent contributions
+    Pt(1:3) = 0.
+    DO j = 1,3
+      Pt(1:3) = Pt(1:3) + E_SGS(1:3,j,iPart)*TurbPartState(j,iPart) + W_SGS(1:3,j,iPart)*RandNormal()
+    END DO
   END IF
 
-  ! Sum up turbulent contributions
-  Pt(1:3) = 0.
-  DO j = 1,3
-    Pt(1:3) = Pt(1:3) + E_SGS(1:3,j,iPart)*TurbPartState(j,iPart) + W_SGS(1:3,j,iPart)*RandNormal()
-  END DO
   TurbPartState(1:3,iPart) = Pt(1:3)
 END DO
 

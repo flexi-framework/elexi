@@ -276,29 +276,51 @@ DO iPart = 1,PDM%ParticleVecLength
   ! Time scale of SGS scales
   sigmaSGS(iPart) = SQRT(2./3.*kSGSPart(iPart))
 
+  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
+  ElemID   = PEM%Element(iPart) - offsetElem
+
+  ! Relative velocity
+  udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
+
+  IF (ANY(udiff.NE.0)) THEN
+    urel = udiff/SQRT(SUM(udiff**2))
+  ELSE
+    urel = 0.
+  END IF
+
   ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(sigmaSGS(iPart))) THEN
-    ! We ASSUME that these are the correct matrix indices
-    G_SGS(:,:,iPart) = 0.
+    ! We ASSUME that these are the CORRECT matrix indices
+
+    ! parallel
+    tauL(1,iPart) = C*ElemVolN(ElemID)/(betaSGS*SQRT(SUM(udiff**2)))
+    ! perpendicular
+    tauL(2,iPart) = C*ElemVolN(ElemID)/(betaSGS*2*SQRT(SUM(udiff**2)))
+
+    ! Calculate drift and diffusion matrix
     DO i = 1,3
-      G_SGS(i,i,iPart) = 1.
+      DO j = 1,3
+        IF (i.EQ.j) THEN
+          G_SGS(i,j,iPart) = 1/     tauL(2,iPart)  + (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
+        ELSE
+          G_SGS(i,j,iPart) =                         (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
+        END IF
+      END DO
     END DO
+    ! as sigma is ALMOSTZERO
     B_SGS(:,:,iPart) = 0.
+
+    ! EULER
+    ! Sum up turbulent contributions
+    Pt(1:3) = 0.
+    DO j = 1,3
+      Pt(1:3) = Pt(1:3) - G_SGS(1:3,j,iPart)*TurbPartState(j,iPart)*dt
+    END DO
 
   ! Valid SGS turbulent kinetic energy
   ELSE
-    ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
-    ElemID   = PEM%Element(iPart) - offsetElem
+
     tauSGS   = C*ElemVolN(ElemID)/sigmaSGS(iPart)
-
-    ! Relative velocity
-    udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
-
-    IF (ANY(udiff.NE.0)) THEN
-      urel = udiff/SQRT(SUM(udiff**2))
-    ELSE
-      urel = 0.
-    END IF
 
     ! parallel
     tauL(1,iPart) = tauSGS(iPart)/(SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
@@ -319,7 +341,16 @@ DO iPart = 1,PDM%ParticleVecLength
     END DO
 
     B_SGS(:,:,iPart) = SQRT(2*sigmaSGS(iPart)**2)*B_SGS(:,:,iPart)
+
+    ! EULER
+    ! Sum up turbulent contributions
+    Pt(1:3) = 0.
+    DO j = 1,3
+      Pt(1:3) = Pt(1:3) - G_SGS(1:3,j,iPart)*TurbPartState(j,iPart)*dt + B_SGS(1:3,j,iPart)*RandNormal()*SQRT(dt)
+    END DO
   END IF
+
+  TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + Pt(1:3)
 
   ! RUNGE-KUTTA
   ! Sum up turbulent contributions
@@ -337,13 +368,6 @@ DO iPart = 1,PDM%ParticleVecLength
 !    TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + TurbPt_temp(1,iPart)*b_dt
 !  END IF
 
-  ! EULER
-  ! Sum up turbulent contributions
-  Pt(1:3) = 0.
-  DO j = 1,3
-    Pt(1:3) = Pt(1:3) - G_SGS(1:3,j,iPart)*TurbPartState(j,iPart)*dt + B_SGS(1:3,j,iPart)*RandNormal()*SQRT(dt)
-  END DO
-  TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + Pt(1:3)
 
 !>> In near-wall turbulence, the SGS fluctuations can readily exceed 10*U_resolved
 !  ! Sanity check. Use 10*U as arbitrary threshold
@@ -387,29 +411,43 @@ DO iPart = 1,PDM%ParticleVecLength
   ! Time scale of SGS scales
   sigmaSGS(iPart) = SQRT(2./3.*kSGSPart(iPart))
 
+  ! Relative velocity
+  udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
+
+  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
+  ElemID   = PEM%Element(iPart) - offsetElem
+
+  IF (ANY(udiff.NE.0)) THEN
+    urel = udiff/SQRT(SUM(udiff**2))
+  ELSE
+    urel = 0.
+  END IF
+
   ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(sigmaSGS(iPart))) THEN
     ! We ASSUME that these are the correct matrix indices
-    E_SGS(:,:,iPart) = 0.
+
+    ! parallel
+    tauL(1,iPart) = C*ElemVolN(ElemID)/(betaSGS*SQRT(SUM(udiff**2)))
+    ! perpendicular
+    tauL(2,iPart) = C*ElemVolN(ElemID)/(betaSGS*2*SQRT(SUM(udiff**2)))
+
     DO i = 1,3
-      E_SGS(i,i,iPart) = 1.
+      DO j = 1,3
+        IF (i.EQ.j) THEN
+          E_SGS(i,j,iPart) = EXP(-dt/tauL(2,iPart)) + (EXP(-dt/tauL(1,iPart)) - EXP(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+        ELSE
+          E_SGS(i,j,iPart) =                          (exp(-dt/tauL(1,iPart)) - exp(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+        END IF
+      END DO
     END DO
+
     W_SGS(:,:,iPart) = 0.
 
   ! Valid SGS turbulent kinetic energy
   ELSE
-    ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
-    ElemID   = PEM%Element(iPart) - offsetElem
+
     tauSGS   = C*ElemVolN(ElemID)/sigmaSGS(iPart)
-
-    ! Relative velocity
-    udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
-
-    IF (ANY(udiff.NE.0)) THEN
-      urel = udiff/SQRT(SUM(udiff**2))
-    ELSE
-      urel = 0.
-    END IF
 
     ! parallel
     tauL(1,iPart) = tauSGS(iPart)/(SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))

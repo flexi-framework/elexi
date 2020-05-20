@@ -175,7 +175,8 @@ DO i = 1,PDM%ParticleVecLength
               ! If small mortar element not defined, skip it for now, likely not inside the halo region (additional check is
               ! performed after the MPI communication: ParticleInsideQuad3D_MortarMPI)
               IF (NbElemID.LT.1) CYCLE
-              nbSideID = ABS(SideInfo_Shared(SIDE_LOCALID,nbSideID))
+              ! For small mortar sides, SIDE_NBSIDEID contains the SideID of the corresponding big mortar side
+              nbSideID = SideInfo_Shared(SIDE_NBSIDEID,nbSideID)
               NblocSideID = SideInfo_Shared(SIDE_LOCALID,nbSideID)
               DO TriNum = 1,2
                 ThroughSide = .FALSE.
@@ -1815,7 +1816,7 @@ ELSE
   nMortarElems = MERGE(4,2,SideInfo_Shared(SIDE_NBELEMID,SideID).EQ.-1)
 
     DO iMortar = 1,nMortarElems
-      NbSideID = -SideInfo_Shared(SIDE_LOCALID,SideID + iMortar)
+      NbSideID = SideInfo_Shared(SIDE_NBSIDEID,SideID + iMortar)
       ! If small mortar side not defined, skip it for now, likely not inside the halo region (additional check is
       ! performed after the MPI communication: ParticleInsideQuad3D_MortarMPI)
       IF (NbSideID.LT.1) CYCLE
@@ -1863,7 +1864,7 @@ ELSE
     END DO
 
     ! passed none of the mortar elements. Keep particle inside current element and warn
-    IPWRITE(*,*) 'Boundary issue with inner mortar element', ElemID
+    IPWRITE(UNIT_stdOut,*) 'Boundary issue with inner mortar element', ElemID
 
   ! regular side
   ELSE

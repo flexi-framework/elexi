@@ -421,7 +421,6 @@ REAL,INTENT(OUT),OPTIONAL              :: tang1(3), tang2(3)
 REAL,DIMENSION(3)                      :: a,b
 !================================================================================================================================
 
-
 b=xi*0.25*(BezierControlPoints3D(:,0   ,0   ,SideID)-BezierControlPoints3D(:,NGeo,0  ,SideID)  &
           +BezierControlPoints3D(:,NGeo,NGeo,SideID)-BezierControlPoints3D(:,0   ,NGeo,SideID) ) &
    +0.25*(-BezierControlPoints3D(:,0   ,0   ,SideID)-BezierControlPoints3D(:,NGeo,0  ,SideID)   &

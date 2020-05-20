@@ -659,9 +659,9 @@ DO iElem = FirstElemInd,LastElemInd
     END IF
       ! Check all sides on the small element side to find the small mortar side pointing back
       NbElemID    = SideInfo_Shared(SIDE_NBELEMID,iSide)
-    IF(NbElemID.EQ.0) THEN
+    IF (NbElemID.EQ.0) THEN
       SideInfo_Shared(SIDE_NBSIDEID,iSide) = 0
-    ELSE IF (NbElemID.LT.-1) THEN
+    ELSE IF (NbElemID.LE.-1) THEN
       SideInfo_Shared(SIDE_NBSIDEID,iSide) = -1
     ELSE
       nlocSidesNb = ElemInfo_Shared(ELEM_LASTSIDEIND,NbElemID) -  ElemInfo_Shared(ELEM_FIRSTSIDEIND,NbElemID)

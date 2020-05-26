@@ -291,56 +291,76 @@ DO iPart = 1,PDM%ParticleVecLength
   ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(sigmaSGS(iPart))) THEN
     ! We ASSUME that these are the CORRECT matrix indices
+    IF(ALMOSTZERO(MAXVAL(udiff)))THEN
+      RETURN
+    ELSE
+      ! parallel
+      tauL(1,iPart) = C*ElemVolN(ElemID)/(betaSGS*SQRT(SUM(udiff**2)))
+      ! perpendicular
+      tauL(2,iPart) = C*ElemVolN(ElemID)/(betaSGS*2*SQRT(SUM(udiff**2)))
 
-    ! parallel
-    tauL(1,iPart) = C*ElemVolN(ElemID)/(betaSGS*SQRT(SUM(udiff**2)))
-    ! perpendicular
-    tauL(2,iPart) = C*ElemVolN(ElemID)/(betaSGS*2*SQRT(SUM(udiff**2)))
-
-    ! Calculate drift and diffusion matrix
-    DO i = 1,3
-      DO j = 1,3
-        IF (i.EQ.j) THEN
-          G_SGS(i,j,iPart) = 1/     tauL(2,iPart)  + (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
-        ELSE
-          G_SGS(i,j,iPart) =                         (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
-        END IF
+      ! Calculate drift and diffusion matrix
+      DO i = 1,3
+        DO j = 1,3
+          IF (i.EQ.j) THEN
+            G_SGS(i,j,iPart) = 1/     tauL(2,iPart)  + (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
+          ELSE
+            G_SGS(i,j,iPart) =                         (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
+          END IF
+        END DO
       END DO
-    END DO
-    ! as sigma is ALMOSTZERO
-    B_SGS(:,:,iPart) = 0.
+      ! as sigma is ALMOSTZERO
+      B_SGS(:,:,iPart) = 0.
 
-    ! EULER
-    ! Sum up turbulent contributions
-    Pt(1:3) = 0.
-    DO j = 1,3
-      Pt(1:3) = Pt(1:3) - G_SGS(1:3,j,iPart)*TurbPartState(j,iPart)*dt
-    END DO
+      ! EULER
+      ! Sum up turbulent contributions
+      Pt(1:3) = 0.
+      DO j = 1,3
+        Pt(1:3) = Pt(1:3) - G_SGS(1:3,j,iPart)*TurbPartState(j,iPart)*dt
+      END DO
+    END IF
 
   ! Valid SGS turbulent kinetic energy
   ELSE
 
     tauSGS   = C*ElemVolN(ElemID)/sigmaSGS(iPart)
 
-    ! parallel
-    tauL(1,iPart) = tauSGS(iPart)/(SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
-    ! perpendicular
-    tauL(2,iPart) = tauSGS(iPart)/(SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
+    IF(ALMOSTZERO(MAXVAL(udiff)))THEN
+      ! parallel
+      tauL(1,iPart) = tauSGS(iPart)
+      ! perpendicular
+      tauL(2,iPart) = tauSGS(iPart)
 
-    ! Calculate drift and diffusion matrix
-    DO i = 1,3
-      DO j = 1,3
-        IF (i.EQ.j) THEN
-          G_SGS(i,j,iPart) = 1/     tauL(2,iPart)  + (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
-          B_SGS(i,j,iPart) = 1/SQRT(tauL(2,iPart)) + (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
-        ELSE
-          G_SGS(i,j,iPart) =                         (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
-          B_SGS(i,j,iPart) =                         (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
-        END IF
+      ! Calculate drift and diffusion matrix
+      G_SGS(:,:,iPart)=0.
+      B_SGS(:,:,iPart)=0.
+      DO i = 1,3
+        G_SGS(i,i,iPart) = 1/     tauL(2,iPart)
+        B_SGS(i,i,iPart) = 1/SQRT(tauL(2,iPart))
       END DO
-    END DO
+      B_SGS(:,:,iPart) = SQRT(2*sigmaSGS(iPart)**2)*B_SGS(:,:,iPart)
 
-    B_SGS(:,:,iPart) = SQRT(2*sigmaSGS(iPart)**2)*B_SGS(:,:,iPart)
+    ELSE
+      ! parallel
+      tauL(1,iPart) = tauSGS(iPart)/(SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
+      ! perpendicular
+      tauL(2,iPart) = tauSGS(iPart)/(SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
+
+      ! Calculate drift and diffusion matrix
+      DO i = 1,3
+        DO j = 1,3
+          IF (i.EQ.j) THEN
+            G_SGS(i,j,iPart) = 1/     tauL(2,iPart)  + (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
+            B_SGS(i,j,iPart) = 1/SQRT(tauL(2,iPart)) + (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
+          ELSE
+            G_SGS(i,j,iPart) =                         (1/     tauL(1,iPart)  - 1/     tauL(2,iPart)) *urel(i)*urel(j)
+            B_SGS(i,j,iPart) =                         (1/SQRT(tauL(1,iPart)) - 1/SQRT(tauL(2,iPart)))*urel(i)*urel(j)
+          END IF
+        END DO
+      END DO
+
+      B_SGS(:,:,iPart) = SQRT(2*sigmaSGS(iPart)**2)*B_SGS(:,:,iPart)
+    END IF
 
     ! EULER
     ! Sum up turbulent contributions
@@ -426,55 +446,73 @@ DO iPart = 1,PDM%ParticleVecLength
   ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(sigmaSGS(iPart))) THEN
     ! We ASSUME that these are the correct matrix indices
+    IF(ALMOSTZERO(MAXVAL(udiff)))THEN
+      RETURN
+    ELSE
+      ! parallel
+      tauL(1,iPart) = C*ElemVolN(ElemID)/(betaSGS*SQRT(SUM(udiff**2)))
+      ! perpendicular
+      tauL(2,iPart) = C*ElemVolN(ElemID)/(betaSGS*2*SQRT(SUM(udiff**2)))
 
-    ! parallel
-    tauL(1,iPart) = C*ElemVolN(ElemID)/(betaSGS*SQRT(SUM(udiff**2)))
-    ! perpendicular
-    tauL(2,iPart) = C*ElemVolN(ElemID)/(betaSGS*2*SQRT(SUM(udiff**2)))
-
-    DO i = 1,3
-      DO j = 1,3
-        IF (i.EQ.j) THEN
-          E_SGS(i,j,iPart) = EXP(-dt/tauL(2,iPart)) + (EXP(-dt/tauL(1,iPart)) - EXP(-dt/tauL(2,iPart)))*urel(i)*urel(j)
-        ELSE
-          E_SGS(i,j,iPart) =                          (exp(-dt/tauL(1,iPart)) - exp(-dt/tauL(2,iPart)))*urel(i)*urel(j)
-        END IF
+      DO i = 1,3
+        DO j = 1,3
+          IF (i.EQ.j) THEN
+            E_SGS(i,j,iPart) = EXP(-dt/tauL(2,iPart)) + (EXP(-dt/tauL(1,iPart)) - EXP(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+          ELSE
+            E_SGS(i,j,iPart) =                          (exp(-dt/tauL(1,iPart)) - exp(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+          END IF
+        END DO
       END DO
-    END DO
 
-    W_SGS(:,:,iPart) = 0.
+      W_SGS(:,:,iPart) = 0.
 
-    ! Sum up turbulent contributions
-    Pt(1:3) = 0.
-    DO j = 1,3
-      Pt(1:3) = Pt(1:3) + E_SGS(1:3,j,iPart)*TurbPartState(j,iPart)
-    END DO
+      ! Sum up turbulent contributions
+      Pt(1:3) = 0.
+      DO j = 1,3
+        Pt(1:3) = Pt(1:3) + E_SGS(1:3,j,iPart)*TurbPartState(j,iPart)
+      END DO
+    END IF
 
   ! Valid SGS turbulent kinetic energy
   ELSE
 
     tauSGS   = C*ElemVolN(ElemID)/sigmaSGS(iPart)
 
-    ! parallel
-    tauL(1,iPart) = tauSGS(iPart)/(SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
-    ! perpendicular
-    tauL(2,iPart) = tauSGS(iPart)/(SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
+    IF(ALMOSTZERO(MAXVAL(udiff)))THEN
+      ! parallel
+      tauL(1,iPart) = tauSGS(iPart)
+      ! perpendicular
+      tauL(2,iPart) = tauSGS(iPart)
 
-    ! Calculate drift and diffusion matrix
-    DO i = 1,3
-      DO j = 1,3
-        IF (i.EQ.j) THEN
-          E_SGS(i,j,iPart) = EXP(-dt/tauL(2,iPart)) + (EXP(-dt/tauL(1,iPart)) - EXP(-dt/tauL(2,iPart)))*urel(i)*urel(j)
-          W_SGS(i,j,iPart) =  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart)))                                                   &
-                           + (sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(1,iPart)))                                                   &
-                           -  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
-        ELSE
-          E_SGS(i,j,iPart) =                          (exp(-dt/tauL(1,iPart)) - exp(-dt/tauL(2,iPart)))*urel(i)*urel(j)
-          W_SGS(i,j,iPart) = (sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(1,iPart)))                                                   &
-                           -  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
-        END IF
+      ! Calculate drift and diffusion matrix
+      E_SGS(:,:,iPart) = 0.
+      DO i = 1,3
+        E_SGS(i,i,iPart) = EXP(-dt/tauL(2,iPart))
+        W_SGS(i,j,iPart) = sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart)))
       END DO
-    END DO
+
+    ELSE
+      ! parallel
+      tauL(1,iPart) = tauSGS(iPart)/(SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
+      ! perpendicular
+      tauL(2,iPart) = tauSGS(iPart)/(SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart(iPart)*3/2))
+
+      ! Calculate drift and diffusion matrix
+      DO i = 1,3
+        DO j = 1,3
+          IF (i.EQ.j) THEN
+            E_SGS(i,j,iPart) = EXP(-dt/tauL(2,iPart)) + (EXP(-dt/tauL(1,iPart)) - EXP(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+            W_SGS(i,j,iPart) =  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart)))                                                   &
+                             + (sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(1,iPart)))                                                   &
+                             -  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
+          ELSE
+            E_SGS(i,j,iPart) =                          (exp(-dt/tauL(1,iPart)) - exp(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+            W_SGS(i,j,iPart) = (sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(1,iPart)))                                                   &
+                             -  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
+          END IF
+        END DO
+      END DO
+    END IF
 
     ! Sum up turbulent contributions
     Pt(1:3) = 0.

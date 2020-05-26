@@ -188,8 +188,6 @@ CALL MPI_WIN_SYNC(BoundsOfElem_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #endif  /*USE_MPI*/
 
-!CALL InitPeriodicBC()
-
 ! deallocate stuff // required for dynamic load balance
 #if USE_LOADBALANCE
 IF (ALLOCATED(GEO%FIBGM)) THEN
@@ -803,7 +801,7 @@ lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProces
 
 ! count number of elements with periodic sides
 nPeriodicElems = 0
-DO iElem = firstElem,lastElem
+DO iElem = 1,nGlobalElems
   ! only consider elements within the DG region
   IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.0) CYCLE
 

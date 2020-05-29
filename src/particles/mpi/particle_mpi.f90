@@ -52,14 +52,6 @@ INTERFACE MPIParticleRecv
   MODULE PROCEDURE MPIParticleRecv
 END INTERFACE
 
-!INTERFACE InitHaloMesh
-!  MODULE PROCEDURE InitHaloMesh
-!END INTERFACE
-
-!INTERFACE ExchangeBezierControlPoints3D
-!  MODULE PROCEDURE ExchangeBezierControlPoints3D
-!END INTERFACE
-
 PUBLIC :: InitParticleMPI
 PUBLIC :: InitParticleCommSize
 PUBLIC :: SendNbOfParticles
@@ -67,11 +59,9 @@ PUBLIC :: IRecvNbOfParticles
 PUBLIC :: MPIParticleSend
 PUBLIC :: MPIParticleRecv
 PUBLIC :: FinalizeParticleMPI
-!PUBLIC :: InitHaloMesh
-!PUBLIC :: ExchangeBezierControlPoints3D
 #else
 PUBLIC :: InitParticleMPI
-#endif /*MPI*/
+#endif /*USE_MPI*/
 !===================================================================================================================================
 
 CONTAINS

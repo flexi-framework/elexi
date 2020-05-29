@@ -23,6 +23,11 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+
+INTERFACE DefineParametersMPI
+  MODULE PROCEDURE DefineParametersMPI
+END INTERFACE
+
 INTERFACE InitMPI
   MODULE PROCEDURE InitMPI
 END INTERFACE
@@ -56,6 +61,7 @@ INTERFACE FinalizeMPI
   MODULE PROCEDURE FinalizeMPI
 END INTERFACE
 
+PUBLIC::DefineParametersMPI
 PUBLIC::InitMPIvars
 PUBLIC::StartReceiveMPIData
 PUBLIC::StartSendMPIData
@@ -67,7 +73,6 @@ PUBLIC::FinalizeMPI
 #endif
 !==================================================================================================================================
 
-PUBLIC::DefineParametersMPI
 CONTAINS
 
 !==================================================================================================================================

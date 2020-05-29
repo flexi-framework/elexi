@@ -816,6 +816,9 @@ DO iElem = 1,nGlobalElems
   END DO
 END DO
 
+! return if there are no periodic elements on the compute node or inside the halo region
+IF (nPeriodicElems.EQ.0) RETURN
+
 ALLOCATE(PeriodicSideBoundsOfElemCenter(1:4,1:nPeriodicElems))
 ALLOCATE(nPeriodicVectorsPerElem(1:3,1:nPeriodicElems))
 

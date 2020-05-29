@@ -70,7 +70,14 @@ SUBROUTINE DefineParametersParticleMesh()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
 !==================================================================================================================================
 
 ! Halo region
@@ -168,14 +175,17 @@ USE MOD_Particle_Surfaces_Vars
 USE MOD_ReadInTools            ,ONLY: GETINT
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(0:N)                     :: XiCL_N,wBaryCL_N
 REAL,DIMENSION(0:NGeo)                  :: wBary_NGeo
 INTEGER                                 :: i
 !===================================================================================================================================
+
 ALLOCATE(DCL_N             (0:N   ,0:N)     &
         ,Vdm_CLN_GaussN    (0:N   ,0:N)     &
         ,Vdm_CLNGeo_GaussN (0:N   ,0:NGeo)  &
@@ -268,9 +278,9 @@ USE MOD_LoadBalance_Vars       ,ONLY: ElemTime
 #endif /*!USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -541,9 +551,12 @@ USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,nProcessors_Global,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
 #endif /*USE_MPI*/
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! LOCAL VARIABLES
 #if USE_MPI
@@ -551,9 +564,9 @@ INTEGER                        :: iElem,ElemID
 INTEGER                        :: firstHaloElem,lastHaloElem,nComputeNodeHaloElems
 INTEGER                        :: firstNodeID,nodeID,i,j,k,ll
 REAL                           :: NodeCoordstmp(1:3,0:NGeo,0:NGeo,0:NGeo)
-REAL                           :: DCL_NGeo(0:Ngeo,0:Ngeo)
-REAL                           :: Vdm_EQNGeo_CLN   (0:PP_N ,0:NGeo)
-REAL                           :: Vdm_CLNloc_N     (0:PP_N ,0:PP_N)
+REAL                           :: DCL_NGeo(         0:Ngeo,0:Ngeo)
+REAL                           :: Vdm_EQNGeo_CLN(   0:PP_N,0:NGeo)
+REAL                           :: Vdm_CLNloc_N(     0:PP_N,0:PP_N)
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif /*USE_MPI*/
 !===================================================================================================================================
@@ -690,9 +703,12 @@ USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
 #else
 USE MOD_Mesh_Vars                ,ONLY: nElems
 #endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem,iSide,ilocSide
@@ -840,10 +856,10 @@ USE MOD_Particle_MPI_Shared_Vars ,ONLY: myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
- !-----------------------------------------------------------------------------------------------------------------------------------
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -943,10 +959,10 @@ USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
 USE MOD_Mesh_Vars                ,ONLY: nElems
 #endif
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -1131,10 +1147,10 @@ USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeTotalElems,nComputeNodeProc
 USE MOD_Mesh_Vars                 ,ONLY: nElems
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -1278,8 +1294,9 @@ USE MOD_Preproc
 USE MOD_Mesh_Vars                 ,ONLY: nElems
 USE MOD_Particle_Mesh_Vars        ,ONLY: NbrOfRegions,RegionBounds,GEO
 USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -1303,7 +1320,6 @@ DO iElem=1,nElems
     END IF
   END DO ! iRegions=1,NbrOfRegions
 END DO ! iElem=1,nElems
-
 
 END SUBROUTINE MapRegionToElem
 
@@ -1339,9 +1355,9 @@ USE MOD_Mesh_Vars                 ,ONLY: nELems
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!--------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-!--------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -1476,9 +1492,9 @@ USE MOD_Mesh_Vars                 ,ONLY: nELems
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!--------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-!--------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -1680,8 +1696,9 @@ SUBROUTINE PointsEqual(N,Points1,Points2,IsNotEqual)
 ! compute the distance between two data sets
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)        :: N
 REAL,INTENT(IN)           :: Points1(1:3,1:N)
@@ -1732,8 +1749,10 @@ USE MOD_Particle_Mesh_Vars ,ONLY: XCL_NGeo
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!--------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem,i,j,k
@@ -1960,14 +1979,7 @@ DO iElem=firstElem,lastElem
   ! b) use curved information to decide side type
   DO ilocSide=1,6
     SideID = GetGlobalNonUniqueSideID(GetGlobalElemID(iElem),iLocSide)
-
-    ! Why were only flips LT. 0 considered? All flips are equal!
-!    IF (SideInfo_Shared(SIDE_ID,SideID).GT.0) THEN
-!      flip = 0
-!    ELSE
-!      flip = MOD(Sideinfo_Shared(SIDE_FLIP,SideID),10)
-!    END IF
-    flip = Sideinfo_Shared(SIDE_FLIP,SideID)
+    flip   = Sideinfo_Shared(SIDE_FLIP,SideID)
 
     IF(.NOT.ElemCurved(iElem))THEN
       BezierControlPoints_loc(1:3,0:NGeo,0:NGeo) = BezierControlPoints3D(1:3,0:NGeo,0:NGeo,SideID)
@@ -2433,7 +2445,6 @@ INTEGER                        :: nComputeNodeBCSides
 INTEGER                        :: nBCSidesElem,nBCSidesProc,offsetBCSidesProc,offsetBCSides
 INTEGER                        :: iBCSide,BCElemID,BCSideID
 INTEGER                        :: CNElemID,BCCNElemID
-INTEGER,ALLOCATABLE            :: ElemToBCSidesProc(:,:)
 REAL                           :: dX,dY,dZ
 REAL                           :: origin(1:3),vec(1:3)
 REAL                           :: BC_halo_eps
@@ -2478,7 +2489,6 @@ firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nCompute
 lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 firstSide = 1
 lastSide  = nNonUniqueGlobalSides
-ALLOCATE(ElemToBCSidesProc(1:2,1:nComputeNodeTotalElems))
 
 ! if running on one node, halo_eps is meaningless. Get a representative BC_halo_eps for BC side identification
 fullMesh = .FALSE.
@@ -2547,10 +2557,8 @@ firstElem = 1
 lastElem  = nElems
 firstSide = 1
 lastSide  = nNonUniqueGlobalSides
-ALLOCATE(ElemToBCSidesProc(1:2,1:nElems))
 #endif /*USE_MPI*/
 
-ElemToBCSidesProc = -1
 nBCSidesProc      = 0
 offsetBCSides     = 0
 
@@ -2583,8 +2591,8 @@ IF (fullMesh) THEN
 
     ! Write local mapping from Elem to BC sides. The number is already correct, the offset must be corrected later
     IF (nBCSidesElem.GT.0) THEN
-      ElemToBCSidesProc(ELEM_NBR_BCSIDES ,iElem) = nBCSidesElem
-      ElemToBCSidesProc(ELEM_FIRST_BCSIDE,iElem) = offsetBCSides
+      ElemToBCSides(ELEM_NBR_BCSIDES ,iElem) = nBCSidesElem
+      ElemToBCSides(ELEM_FIRST_BCSIDE,iElem) = offsetBCSides
     END IF
   END DO ! iElem
 
@@ -2592,36 +2600,36 @@ IF (fullMesh) THEN
 
 ! .NOT. fullMesh
 ELSE
-! sum up all BC sides in range of BC_halo_eps
-DO iElem = firstElem,lastElem
-  ElemID = GetGlobalElemID(iElem)
-  nBCSidesElem  = 0
+  ! sum up all BC sides in range of BC_halo_eps
+  DO iElem = firstElem,lastElem
+    ElemID = GetGlobalElemID(iElem)
+    nBCSidesElem  = 0
 
-  ! check local side of an element
-  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
-      ! ignore inner and virtual (mortar) sides
-    IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
+    ! check local side of an element
+    DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
+        ! ignore inner and virtual (mortar) sides
+      IF (SideInfo_Shared(SIDE_BCID,iSide).LE.0) CYCLE
 
-    nBCSidesElem = nBCSidesElem + 1
-    nBCSidesProc = nBCSidesProc + 1
-  END DO
+      nBCSidesElem = nBCSidesElem + 1
+      nBCSidesProc = nBCSidesProc + 1
+    END DO
 
-    ! loop over all sides. Check distance from every local side to total sides.
-    DO iBCSide = 1,nUniqueBCSides
+      ! loop over all sides. Check distance from every local side to total sides.
+      DO iBCSide = 1,nUniqueBCSides
 
-      BCSideID   = BCSide2SideID(iBCSide)
-      BCElemID   = SideInfo_Shared(SIDE_ELEMID,BCSideID)
-      BCCNElemID = GetCNElemID(BCElemID)
+        BCSideID   = BCSide2SideID(iBCSide)
+        BCElemID   = SideInfo_Shared(SIDE_ELEMID,BCSideID)
+        BCCNElemID = GetCNElemID(BCElemID)
 
-      ! Ignore elements not on the compute node
-      IF (BCCNElemID.EQ.-1) CYCLE
+        ! Ignore elements not on the compute node
+        IF (BCCNElemID.EQ.-1) CYCLE
 
-      ! Ignore the same element
-      IF (BCElemID.EQ.iElem) CYCLE
+        ! Ignore the same element
+        IF (BCElemID.EQ.iElem) CYCLE
 
-      ! Check if barycenter of element is in range
-      IF (VECNORM(ElemBaryNGeo(:,iElem) - ElemBaryNGeo(:,BCCNElemID)) &
-        .GT. (BC_halo_eps + ElemRadiusNGeo(iElem) + ElemRadiusNGeo(BCCNElemID))) CYCLE
+        ! Check if barycenter of element is in range
+        IF (VECNORM(ElemBaryNGeo(:,iElem) - ElemBaryNGeo(:,BCCNElemID)) &
+          .GT. (BC_halo_eps + ElemRadiusNGeo(iElem) + ElemRadiusNGeo(BCCNElemID))) CYCLE
 
       ! loop over all local sides of the element. Use a named loop so the entire element can be cycled
 Check1: DO ilocSide = 1,6
@@ -2667,8 +2675,8 @@ Check1: DO ilocSide = 1,6
 
     ! Write local mapping from Elem to BC sides. The number is already correct, the offset must be corrected later
     IF (nBCSidesElem.GT.0) THEN
-      ElemToBCSidesProc(ELEM_NBR_BCSIDES ,iElem) = nBCSidesElem
-      ElemToBCSidesProc(ELEM_FIRST_BCSIDE,iElem) = offsetBCSides
+      ElemToBCSides(ELEM_NBR_BCSIDES ,iElem) = nBCSidesElem
+      ElemToBCSides(ELEM_FIRST_BCSIDE,iElem) = offsetBCSides
     END IF
 
     offsetBCSides = nBCSidesProc
@@ -2686,15 +2694,11 @@ sendbuf = offsetBCSidesProc + nBCSidesProc
 CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nComputeNodeProcessors-1,MPI_COMM_SHARED,iError)
 nComputeNodeBCSides = sendbuf
 
-ElemToBCSides(1,firstElem:lastElem) = ElemToBCSidesProc(1,firstElem:lastElem)
-ElemToBCSides(2,firstElem:lastElem) = ElemToBCSidesProc(2,firstElem:lastElem) + offsetBCSidesProc
+ElemToBCSides(ELEM_FIRST_BCSIDE,firstElem:lastElem) = ElemToBCSides(ELEM_FIRST_BCSIDE,firstElem:lastElem) + offsetBCSidesProc
 #else
 offsetBCSidesProc   = 0
 nComputeNodeBCSides = nBCSidesProc
-
-ElemToBCSides(:,firstElem:lastElem) = ElemToBCSidesProc(:,firstElem:lastElem)
 #endif /*USE_MPI*/
-DEALLOCATE(ElemToBCSidesProc)
 
 ! Allocate shared array for BC sides
 #if USE_MPI
@@ -3091,7 +3095,9 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: BaseVectors0_Shared_Win,BaseVectors1_Sha
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT/OUTPUT VARIABLES
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iSide,firstSide,lastSide
@@ -3188,9 +3194,9 @@ USE MOD_Particle_Mesh_Vars ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars ,ONLY: offsetComputeNodeNode,nComputeNodeNodes
 #endif /*USE_MPI*/
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -3270,7 +3276,6 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!INTEGER                             :: iELem,iNode
 !===================================================================================================================================
 
 ! Particle mesh readin happens during mesh readin, finalize with gathered routine here
@@ -3598,7 +3603,7 @@ USE MOD_Particle_Boundary_Vars             ,ONLY:nAuxBCs,AuxBCType,AuxBCMap,AuxB
 USE MOD_Particle_MPI_Shared_Vars
 #endif
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -3616,139 +3621,156 @@ ElemHasAuxBCs=.FALSE.
 
 DO iAuxBC=1,nAuxBCs
   SELECT CASE (TRIM(AuxBCType(iAuxBC)))
-  CASE ('plane')
-    r_vec=AuxBC_plane(AuxBCMap(iAuxBC))%r_vec
-    n_vec=AuxBC_plane(AuxBCMap(iAuxBC))%n_vec
-    radius=AuxBC_plane(AuxBCMap(iAuxBC))%radius
-    ! loop over all  elements
-    DO iElem=1,nElems
-      ASSOCIATE( Bounds => BoundsOfElem_Shared(1:2,1:3,iElem) ) ! 1-2: Min, Max value; 1-3: x,y,z
-      fmin=-DOT_PRODUCT(r_vec,n_vec)
-      fmax=fmin
-      DO icoord=1,3
-        IF (n_vec(icoord).GE.0) THEN
-          fmin = fmin + n_vec(icoord)*Bounds(1,icoord)
-          fmax = fmax + n_vec(icoord)*Bounds(2,icoord)
-        ELSE
-          fmin = fmin + n_vec(icoord)*Bounds(2,icoord)
-          fmax = fmax + n_vec(icoord)*Bounds(1,icoord)
-        END IF
-      END DO
-      IF ((fmin.LE.0 .AND. fmax.GT.0).OR.(fmin.LT.0 .AND. fmax.GE.0)) THEN !plane intersects the box!
-        !radius check needs to be implemented (compute intersection polygon and minimum radii): would sort out further elements!!!
-        !quick, conservative solution: calculate bounding box of disc in space and compare with bb of element
-        ElemHasAuxBCs(iElem,iAuxBC)=.TRUE.
-        IF (radius .LT. 0.5*HUGE(radius)) THEN !huge was default
-          BoundsBC(1,1:3) = r_vec - radius * SQRT(1.-(n_vec*n_vec))
-          BoundsBC(2,1:3) = r_vec + radius * SQRT(1.-(n_vec*n_vec))
-          DO icoord=1,3
-            IF ( BoundsBC(2,icoord).LT.Bounds(1,icoord) .OR. BoundsBC(1,icoord).GT.Bounds(2,icoord) ) THEN
-              ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
-              EXIT
-            END IF
-          END DO
-        END IF
-      ELSE IF ((fmin.LT.0 .AND. fmax.LT.0).OR.(fmin.GT.0 .AND. fmax.GT.0)) THEN !plane does not intersect the box!
-        ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
-      ELSE !e.g. if elem has zero volume...
-        CALL abort(&
-          __STAMP__&
-          ,'Error in MarkAuxBCElems for AuxBC:',iAuxBC)
-      END IF
-      END ASSOCIATE
-    END DO
-  CASE ('cylinder','cone')
-    IF (TRIM(AuxBCType(iAuxBC)).EQ.'cylinder') THEN
-      r_vec=AuxBC_cylinder(AuxBCMap(iAuxBC))%r_vec
-      n_vec=AuxBC_cylinder(AuxBCMap(iAuxBC))%axis
-      radius=AuxBC_cylinder(AuxBCMap(iAuxBC))%radius
-      lmin=AuxBC_cylinder(AuxBCMap(iAuxBC))%lmin
-      lmax=AuxBC_cylinder(AuxBCMap(iAuxBC))%lmax
-    ELSE !cone
-      r_vec=AuxBC_cone(AuxBCMap(iAuxBC))%r_vec
-      n_vec=AuxBC_cone(AuxBCMap(iAuxBC))%axis
-      halfangle=AuxBC_cone(AuxBCMap(iAuxBC))%halfangle
-      lmin=AuxBC_cone(AuxBCMap(iAuxBC))%lmin
-      lmax=AuxBC_cone(AuxBCMap(iAuxBC))%lmax
-    END IF
-    cartesian=.TRUE.
-    backwards=.FALSE.
-    IF (ABS(n_vec(1)).EQ.1.) THEN
-      dir(1)=1
-      dir(2)=2
-      dir(3)=3
-      IF (n_vec(1).LT.0.) backwards=.TRUE.
-    ELSE IF (ABS(n_vec(2)).EQ.1.) THEN
-      dir(1)=2
-      dir(2)=3
-      dir(3)=1
-      IF (n_vec(2).LT.0.) backwards=.TRUE.
-    ELSE IF (ABS(n_vec(3)).EQ.1.) THEN
-      dir(1)=3
-      dir(2)=1
-      dir(3)=2
-      IF (n_vec(3).LT.0.) backwards=.TRUE.
-    ELSE
-      cartesian=.FALSE.
-      SWRITE(*,*) 'WARNING in MarkAuxBCElems: all Elems are set to ElemHasAuxBCs=.TRUE. for AuxBC:',iAuxBC
-      ElemHasAuxBCs(:,iAuxBC)=.TRUE. !actual intersection with box check to-be implemented!!!
-    END IF
-    IF (cartesian) THEN
-      IF (backwards) THEN
-        deltamin = -lmax
-        deltamax = -lmin
-      ELSE
-        deltamin = lmin
-        deltamax = lmax
-      END IF
-      origin(1) = r_vec(dir(2))
-      origin(2) = r_vec(dir(3))
+
+    CASE ('plane')
+      r_vec  = AuxBC_plane(AuxBCMap(iAuxBC))%r_vec
+      n_vec  = AuxBC_plane(AuxBCMap(iAuxBC))%n_vec
+      radius = AuxBC_plane(AuxBCMap(iAuxBC))%radius
+
       ! loop over all  elements
-      DO iElem=1,nElems
-        ASSOCIATE( Bounds => BoundsOfElem_Shared(1:2,1:3,iElem) ) ! 1-2: Min, Max value; 1-3: x,y,z
-        ! check for lmin and lmax
-        IF ( r_vec(dir(1))+deltamax.LT.Bounds(1,dir(1)) .OR. r_vec(dir(1))+deltamin.GT.Bounds(2,dir(1)) ) THEN
-          ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
-        ELSE !between lmin and lmax
-          IF (TRIM(AuxBCType(iAuxBC)).EQ.'cylinder') THEN
-            CALL CheckBoundsWithCartRadius(Bounds,dir,origin,radius,positiontype)
-          ELSE !cone
-            !local minimum radius
-            IF (backwards) THEN
-              radius = MAX(-Bounds(2,dir(1))+r_vec(dir(1)),lmin)*TAN(halfangle)
-            ELSE
-              radius = MAX(Bounds(1,dir(1))-r_vec(dir(1)),lmin)*TAN(halfangle)
-            END IF
-            CALL CheckBoundsWithCartRadius(Bounds,dir,origin,radius,positiontype_tmp)
-            !local maximum radius
-            IF (backwards) THEN
-              radius = MIN(-Bounds(1,dir(1))+r_vec(dir(1)),lmax)*TAN(halfangle)
-            ELSE
-              radius = MIN(Bounds(2,dir(1))-r_vec(dir(1)),lmax)*TAN(halfangle)
-            END IF
-            CALL CheckBoundsWithCartRadius(Bounds,dir,origin,radius,positiontype)
-            !if both are type 0 or both are type 1 than the "total" type is not 2:
-            IF ( .NOT.(positiontype_tmp.EQ.0 .AND. positiontype.EQ.0) &
-              .AND. .NOT.(positiontype_tmp.EQ.1 .AND. positiontype.EQ.1) ) THEN
-              positiontype=2
-            END IF
-          END IF
-          IF (positiontype.EQ.2) THEN
-            ElemHasAuxBCs(iElem,iAuxBC)=.TRUE.
+      DO iElem = 1,nElems
+        ! 1-2: Min, Max value; 1-3: x,y,z
+        ASSOCIATE( Bounds => BoundsOfElem_Shared(1:2,1:3,iElem) )
+
+        fmin = -DOT_PRODUCT(r_vec,n_vec)
+        fmax = fmin
+        DO icoord=1,3
+          IF (n_vec(icoord).GE.0) THEN
+            fmin = fmin + n_vec(icoord)*Bounds(1,icoord)
+            fmax = fmax + n_vec(icoord)*Bounds(2,icoord)
           ELSE
-            ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
+            fmin = fmin + n_vec(icoord)*Bounds(2,icoord)
+            fmax = fmax + n_vec(icoord)*Bounds(1,icoord)
           END IF
-        END IF !check for lmin and lmax
+        END DO
+
+        ! plane intersects the box!
+        IF ((fmin.LE.0 .AND. fmax.GT.0).OR.(fmin.LT.0 .AND. fmax.GE.0)) THEN
+          !radius check needs to be implemented (compute intersection polygon and minimum radii): would sort out further elements!!!
+          !quick, conservative solution: calculate bounding box of disc in space and compare with bb of element
+          ElemHasAuxBCs(iElem,iAuxBC) = .TRUE.
+
+          IF (radius .LT. 0.5*HUGE(radius)) THEN !huge was default
+            BoundsBC(1,1:3) = r_vec - radius * SQRT(1.-(n_vec*n_vec))
+            BoundsBC(2,1:3) = r_vec + radius * SQRT(1.-(n_vec*n_vec))
+            DO icoord=1,3
+              IF ( BoundsBC(2,icoord).LT.Bounds(1,icoord) .OR. BoundsBC(1,icoord).GT.Bounds(2,icoord) ) THEN
+                ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
+                EXIT
+              END IF
+            END DO
+          END IF
+        ! plane does not intersect the box!
+        ELSE IF ((fmin.LT.0 .AND. fmax.LT.0).OR.(fmin.GT.0 .AND. fmax.GT.0)) THEN
+          ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
+        ! e.g. if elem has zero volume...
+        ELSE
+          CALL abort(__STAMP__,'Error in MarkAuxBCElems for AuxBC:',iAuxBC)
+        END IF
+
         END ASSOCIATE
-      END DO !iElem
-    END IF !cartesian
-  CASE('parabol')
-    ElemHasAuxBCs(:,iAuxBC)=.TRUE. ! to be implemented!!!
-  CASE DEFAULT
-    SWRITE(*,*) ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
-    CALL abort(&
-      __STAMP__&
-      ,'AuxBC does not exist')
+      END DO
+
+    CASE ('cylinder','cone')
+      IF (TRIM(AuxBCType(iAuxBC)).EQ.'cylinder') THEN
+        r_vec=AuxBC_cylinder(AuxBCMap(iAuxBC))%r_vec
+        n_vec=AuxBC_cylinder(AuxBCMap(iAuxBC))%axis
+        radius=AuxBC_cylinder(AuxBCMap(iAuxBC))%radius
+        lmin=AuxBC_cylinder(AuxBCMap(iAuxBC))%lmin
+        lmax=AuxBC_cylinder(AuxBCMap(iAuxBC))%lmax
+      ELSE !cone
+        r_vec=AuxBC_cone(AuxBCMap(iAuxBC))%r_vec
+        n_vec=AuxBC_cone(AuxBCMap(iAuxBC))%axis
+        halfangle=AuxBC_cone(AuxBCMap(iAuxBC))%halfangle
+        lmin=AuxBC_cone(AuxBCMap(iAuxBC))%lmin
+        lmax=AuxBC_cone(AuxBCMap(iAuxBC))%lmax
+      END IF
+
+      cartesian = .TRUE.
+      backwards = .FALSE.
+      IF (ABS(n_vec(1)).EQ.1.) THEN
+        dir(1)=1
+        dir(2)=2
+        dir(3)=3
+        IF (n_vec(1).LT.0.) backwards = .TRUE.
+      ELSE IF (ABS(n_vec(2)).EQ.1.) THEN
+        dir(1)=2
+        dir(2)=3
+        dir(3)=1
+        IF (n_vec(2).LT.0.) backwards = .TRUE.
+      ELSE IF (ABS(n_vec(3)).EQ.1.) THEN
+        dir(1)=3
+        dir(2)=1
+        dir(3)=2
+        IF (n_vec(3).LT.0.) backwards = .TRUE.
+      ELSE
+        cartesian=.FALSE.
+        SWRITE(*,*) 'WARNING in MarkAuxBCElems: all Elems are set to ElemHasAuxBCs=.TRUE. for AuxBC:',iAuxBC
+        ElemHasAuxBCs(:,iAuxBC) = .TRUE. !actual intersection with box check to-be implemented!!!
+      END IF
+
+      IF (cartesian) THEN
+        IF (backwards) THEN
+          deltamin = -lmax
+          deltamax = -lmin
+        ELSE
+          deltamin = lmin
+          deltamax = lmax
+        END IF
+
+        origin(1) = r_vec(dir(2))
+        origin(2) = r_vec(dir(3))
+
+        ! loop over all  elements
+        DO iElem=1,nElems
+          ! 1-2: Min, Max value; 1-3: x,y,z
+          ASSOCIATE( Bounds => BoundsOfElem_Shared(1:2,1:3,iElem) )
+
+          ! check for lmin and lmax
+          IF ( r_vec(dir(1))+deltamax.LT.Bounds(1,dir(1)) .OR. r_vec(dir(1))+deltamin.GT.Bounds(2,dir(1)) ) THEN
+            ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
+          ELSE !between lmin and lmax
+            IF (TRIM(AuxBCType(iAuxBC)).EQ.'cylinder') THEN
+              CALL CheckBoundsWithCartRadius(Bounds,dir,origin,radius,positiontype)
+            ELSE !cone
+              !local minimum radius
+              IF (backwards) THEN
+                radius = MAX(-Bounds(2,dir(1))+r_vec(dir(1)),lmin)*TAN(halfangle)
+              ELSE
+                radius = MAX(Bounds(1,dir(1))-r_vec(dir(1)),lmin)*TAN(halfangle)
+              END IF
+              CALL CheckBoundsWithCartRadius(Bounds,dir,origin,radius,positiontype_tmp)
+              !local maximum radius
+              IF (backwards) THEN
+                radius = MIN(-Bounds(1,dir(1))+r_vec(dir(1)),lmax)*TAN(halfangle)
+              ELSE
+                radius = MIN(Bounds(2,dir(1))-r_vec(dir(1)),lmax)*TAN(halfangle)
+              END IF
+              CALL CheckBoundsWithCartRadius(Bounds,dir,origin,radius,positiontype)
+              !if both are type 0 or both are type 1 than the "total" type is not 2:
+              IF ( .NOT.(positiontype_tmp.EQ.0 .AND. positiontype.EQ.0) &
+                .AND. .NOT.(positiontype_tmp.EQ.1 .AND. positiontype.EQ.1) ) THEN
+                positiontype=2
+              END IF
+            END IF
+            IF (positiontype.EQ.2) THEN
+              ElemHasAuxBCs(iElem,iAuxBC)=.TRUE.
+            ELSE
+              ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
+            END IF
+          END IF !check for lmin and lmax
+
+          END ASSOCIATE
+        END DO !iElem
+      END IF !cartesian
+
+    CASE('parabol')
+      ! to be implemented!!!
+      ElemHasAuxBCs(:,iAuxBC) = .TRUE.
+
+    CASE DEFAULT
+      SWRITE(*,*) ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
+      CALL abort(__STAMP__,'AuxBC does not exist')
   END SELECT
 END DO
 
@@ -3764,11 +3786,9 @@ SUBROUTINE CheckBoundsWithCartRadius(Bounds,dir,origin,radius,positiontype)
 ! (based on "check where the sides are located relative to rmax" in particle_emission for SimpleRadialVeloFit)
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-!
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 REAL,INTENT(IN)           :: Bounds(1:2,1:3), origin(2), radius
 INTEGER,INTENT(IN)        :: dir(3)
@@ -3782,9 +3802,9 @@ REAL                      :: BoundingBox(1:3,1:8), point(2), pointRadius
 LOGICAL                   :: done, insideBound
 !===================================================================================================================================
 !-- convert minmax-values to bb-points
-DO iDir1=0,1
-  DO iDir2=0,1
-      DO iDir3=0,1
+DO iDir1 = 0,1
+  DO iDir2 = 0,1
+      DO iDir3 = 0,1
         BoundingBox(1,iDir1*4 + iDir2*2 + iDir3+1) = Bounds(iDir1+1,1)
         BoundingBox(2,iDir1*4 + iDir2*2 + iDir3+1) = Bounds(iDir2+1,2)
         BoundingBox(3,iDir1*4 + iDir2*2 + iDir3+1) = Bounds(iDir3+1,3)
@@ -3793,32 +3813,40 @@ DO iDir1=0,1
 END DO
 
 !-- check where the points are located relative to radius
-done=.FALSE.
-DO iDir1=0,1
+done = .FALSE.
+DO iDir1 = 0,1
   IF(done) EXIT
-  DO iDir2=0,1
+
+  DO iDir2  =0,1
     IF(done) EXIT
-    DO iDir3=0,1
+
+    DO iDir3 = 0,1
       !-- coords orth. to axis of point:
       iPoint=iDir1*4 + iDir2*2 + iDir3+1
       point(1) = BoundingBox(dir(2),iPoint)-origin(1)
       point(2) = BoundingBox(dir(3),iPoint)-origin(2)
       pointRadius = SQRT( (point(1))**2+(point(2))**2 )
+
       IF (iPoint.EQ.1) THEN
         IF (pointRadius.LE.radius) THEN
           insideBound=.TRUE.
         ELSE !outside
           insideBound=.FALSE.
         END IF !in-/outside?
-      ELSE !iPoint.GT.1: type must be 2 if state of point if different from last point
+
+      ! iPoint.GT.1: type must be 2 if state of point if different from last point
+      ELSE
         IF (pointRadius.LE.radius) THEN
-          IF (.NOT.insideBound) THEN !different from last point
+          ! different from last point
+          IF (.NOT.insideBound) THEN
             positiontype=2
             done=.TRUE.
             EXIT
-        END IF
-        ELSE !outside
-          IF (insideBound) THEN !different from last point
+          END IF
+        ! outside
+        ELSE
+          ! different from last point
+          IF (insideBound) THEN
             positiontype=2
             done=.TRUE.
             EXIT
@@ -3828,6 +3856,7 @@ DO iDir1=0,1
     END DO !iDir3
   END DO !iDir2
 END DO !iDir1
+
 IF (.NOT.done) THEN
   IF (insideBound) THEN
     positiontype=0
@@ -3838,7 +3867,8 @@ IF (.NOT.done) THEN
          origin(2) + radius .GE. Bounds(1,dir(3)) .AND. &
          origin(2) - radius .LE. Bounds(2,dir(3)) ) THEN !circle completely or partly inside box
       positiontype=2
-    ELSE !points are really outside
+    ! points are really outside
+    ELSE
       positiontype=1
     END IF
   END IF

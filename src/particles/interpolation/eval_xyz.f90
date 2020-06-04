@@ -131,7 +131,7 @@ END ASSOCIATE
 END SUBROUTINE GetPositionInRefElem
 
 
-SUBROUTINE TensorProductInterpolation(Xi_in,NVar,N_in,xGP_in,wBary_In,U_In,U_Out)
+PPURE SUBROUTINE TensorProductInterpolation(Xi_in,NVar,N_in,xGP_in,wBary_In,U_In,U_Out)
 !===================================================================================================================================
 !> Interpolates a 3D tensor product Lagrange basis defined by (N_in+1) 1D interpolation points to the position Xi
 !===================================================================================================================================
@@ -278,7 +278,7 @@ END ASSOCIATE
 END SUBROUTINE EvaluateFieldAtPhysPos
 
 
-SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out)
+PPURE SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out)
 !===================================================================================================================================
 !> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
 !> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
@@ -531,7 +531,7 @@ getInv(3,3) = ( Mat(1,1) * Mat(2,2) - Mat(1,2) * Mat(2,1) ) * sdet
 END FUNCTION getInv
 
 
-SUBROUTINE GetRefNewtonStartValue(X_in,Xi,CNElemID)
+PPURE SUBROUTINE GetRefNewtonStartValue(X_in,Xi,CNElemID)
 !===================================================================================================================================
 !> Returns the initial value/ guess for the Newton's algorithm
 !===================================================================================================================================

@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 ! Contains routines for interpolation of one-way coupled particles
@@ -176,7 +177,7 @@ USE MOD_Eval_xyz,                    ONLY: EvaluateFieldAtPhysPos,EvaluateFieldA
 USE MOD_Mesh_Vars,                   ONLY: nElems,offsetElem
 !USE MOD_Particle_Interpolation_Vars, ONLY: useExternalField,externalField
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
-USE MOD_Particle_Tracking_Vars,      ONLY: DoRefMapping
+USE MOD_Particle_Tracking_Vars,      ONLY: TrackingMethod
 USE MOD_Particle_Vars,               ONLY: PartPosRef,PartState,PDM,PEM
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars,    ONLY: RWModel,RWTime
@@ -213,9 +214,56 @@ lastPart  = PDM%ParticleVecLength
 ! Return if there are no particles
 IF(firstPart.GT.lastPart) RETURN
 
-! For low number of particles, the loop over all elements becomes quite inefficient. User can opt out with setting
-! InterpolationElemLoop = F.
-IF (.NOT.InterpolationElemLoop) THEN
+! InterpolationElemLoop is true, so initialize everything for it
+IF (InterpolationElemLoop) THEN
+  FieldAtParticle(:,firstPart:lastPart)   = 0.
+!  IF (useExternalField) THEN
+!    DO iVar = 1,PP_nVar
+!      FieldAtParticle(iVar,firstPart:lastPart) = externalField(iVar)
+!    END DO
+!  END IF
+
+  ! Loop first over all elements, then over all particles within the element. Ideally, this reduces cache misses as the interpolation
+  ! happens with the same element metrics
+#if USE_MPI
+  ! Adjust check for new halo region, ElemID is now global element ID
+  firstElem = offsetElem + 1
+  lastElem  = offsetElem + nElems
+#else
+  firstElem = 1
+  lastElem  = nElems
+#endif /*USE_MPI*/
+
+  DO iElem = firstElem,lastElem
+    DO iPart = firstPart,LastPart
+      ! Particle already left the domain, ignore it
+      IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
+#if USE_RW
+      ! Do not change the particle velocity if RW is working in full Euler mode
+       !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
+      IF ((RWModel.EQ.'Gosman') .AND. (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
+#endif
+
+      ! Particle is inside and in current element
+      IF (PEM%Element(iPart).EQ.iElem) THEN
+        ! U is allocated locally, correct ElemID. The mesh uses global ID, so both need to be kept
+        ElemID = iElem - offsetElem
+
+        ! RefMapping, evaluate in reference space
+        IF (TrackingMethod.EQ.REFMAPPING) THEN
+          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field)
+        ! Not RefMapping, evaluate at physical position
+        ELSE
+          CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,iElem,iPart)
+        END IF ! TrackingMethod.EQ.REFMAPPING
+
+        ! Add the interpolated field to the background field
+        FieldAtParticle(:,iPart) = FieldAtParticle(:,iPart) + field(:)
+      END IF ! Element(iPart).EQ.iElem
+    END DO ! iPart
+  END DO ! iElem=1,PP_N
+! For low number of particles, the loop over all elements becomes quite inefficient. User can opt out with setting InterpolationElemLoop = F.
+ELSE
   DO iPart = firstPart, LastPart
     ! Particle already left the domain, ignore it
     IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
@@ -230,56 +278,7 @@ IF (.NOT.InterpolationElemLoop) THEN
 #endif
     CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,ElemID),FieldAtParticle(:,iPart))
   END DO
-  RETURN
 END IF
-
-! InterpolationElemLoop is true, so initialize everything for it
-FieldAtParticle(:,firstPart:lastPart)   = 0.
-!IF (useExternalField) THEN
-!  DO iVar = 1,PP_nVar
-!    FieldAtParticle(iVar,firstPart:lastPart) = externalField(iVar)
-!  END DO
-!END IF
-
-! Loop first over all elements, then over all particles within the element. Ideally, this reduces cache misses as the interpolation
-! happens with the same element metrics
-#if USE_MPI
-! Adjust check for new halo region, ElemID is now global element ID
-firstElem = offsetElem + 1
-lastElem  = offsetElem + nElems
-#else
-firstElem = 1
-lastElem  = nElems
-#endif /*USE_MPI*/
-
-DO iElem = firstElem,lastElem
-  DO iPart=firstPart,LastPart
-    ! Particle already left the domain, ignore it
-    IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
-#if USE_RW
-    ! Do not change the particle velocity if RW is working in full Euler mode
-     !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
-    IF ((RWModel.EQ.'Gosman') .AND. (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
-#endif
-
-    ! Particle is inside and in current element
-    IF (PEM%Element(iPart).EQ.iElem) THEN
-      ! U is allocated locally, correct ElemID. The mesh uses global ID, so both need to be kept
-      ElemID = iElem - offsetElem
-
-      ! Not RefMapping, evaluate at physical position
-      IF (.NOT.DoRefMapping) THEN
-        CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,iElem,iPart)
-      ! RefMapping, evaluate in reference space
-      ELSE
-        CALL EvaluateFieldAtRefPos(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field)
-      END IF ! RefMapping
-
-      ! Add the interpolated field to the background field
-      FieldAtParticle(:,iPart) = FieldAtParticle(:,iPart) + field(:)
-    END IF ! Element(iPart).EQ.iElem
-  END DO ! iPart
-END DO ! iElem=1,PP_N
 
 END SUBROUTINE InterpolateFieldToParticle
 
@@ -295,7 +294,7 @@ USE MOD_PreProc
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
 USE MOD_Mesh_Vars,               ONLY: offsetElem,nElems
 !USE MOD_Particle_Interpolation_Vars,   ONLY: useExternalField,externalField
-USE MOD_Particle_Tracking_Vars,  ONLY: DoRefMapping
+USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PEM
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
@@ -315,6 +314,7 @@ INTEGER                          :: ElemID
 !===================================================================================================================================
 
 FieldAtParticle(:)   = 0.
+
 !IF (useExternalField) THEN
 !  FieldAtParticle(:) = externalField(:)
 !END IF
@@ -324,12 +324,13 @@ ElemID=PEM%Element(PartID)
 ! Adjust check for new halo region, ElemID is now global element ID
 IF ((ElemID.LT.offsetElem+1).OR.(ElemID.GT.offsetElem+nElems)) RETURN
 
-IF (.NOT.DoRefMapping) THEN
-  CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID,PartID)
 ! RefMapping, evaluate in reference space
-ELSE
+IF (TrackingMethod.EQ.REFMAPPING) THEN
   CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field)
-END IF ! RefMapping
+! Not RefMapping, evaluate at physical position
+ELSE
+  CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID,PartID)
+END IF ! TrackingMethod.EQ.REFMAPPING
 
 ! Add the interpolated field to the background field
 FieldAtParticle(:)        = FieldAtParticle(:)  + field(:)

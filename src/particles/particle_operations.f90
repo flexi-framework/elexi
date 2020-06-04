@@ -46,7 +46,9 @@ SUBROUTINE CreateParticle(Species,Pos,ElemID,Velocity,NewPartID)
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Particle_Vars ,ONLY: PDM,PEM,PartState,LastPartPos,PartSpecies
+USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,LastPartPos,PartSpecies
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
+USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -69,8 +71,13 @@ LastPartPos(1:3,newParticleID) = Pos(1:3)
 PartState(1:3,newParticleID)   = Pos(1:3)
 PartState(4:6,newParticleID)   = Velocity(1:3)
 
+! Set the new reference position here
+IF(TrackingMethod.EQ.REFMAPPING)THEN
+  CALL GetPositionInRefElem(PartState(1:3,newParticleID),PartPosRef(1:3,newParticleID),ElemID)
+END IF ! TrackingMethod.EQ.REFMAPPING
+
 PDM%ParticleInside(newParticleID) = .TRUE.
-PDM%IsNewPart(newParticleID)      = .FALSE.   ! ??????? correct ????
+PDM%IsNewPart(newParticleID)      = .TRUE.
 PEM%Element(newParticleID)        = ElemID
 PEM%lastElement(newParticleID)    = ElemID
 

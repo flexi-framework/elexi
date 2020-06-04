@@ -483,7 +483,7 @@ END DO !iElem
 !                              NODES
 !----------------------------------------------------------------------------------------------------------------------------
 #if USE_PARTICLES
-! Particles want to node coords in the old 2D format, hence this readin happens twice
+! Particles want to node coordinates in the old 2D format, hence this read-in happens twice
 CALL ReadMeshNodes()
 #endif
 

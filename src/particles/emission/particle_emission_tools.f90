@@ -262,7 +262,7 @@ USE MOD_Particle_Localization  ,ONLY: PartInElemCheck
 USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemEpsOneCell !,GEO
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared,ElemVolume_Shared
-USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping, TriaTracking
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PEM,PartState
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -312,21 +312,24 @@ DO iElem = offsetElem+1, offsetElem+nElems
     END IF
     DO iPart = 1, nPart
       ParticleIndexNbr = PDM%nextFreePosition(iChunksize + PDM%CurrentNextFreePosition)
-      IF (ParticleIndexNbr .ne. 0) THEN
+      IF (ParticleIndexNbr .NE. 0) THEN
         InsideFlag = .FALSE.
+
         DO WHILE(.NOT.InsideFlag)
           CALL RANDOM_NUMBER(RandomPos)
           RandomPos = Bounds(1,:) + RandomPos*(Bounds(2,:)-Bounds(1,:))
-          IF (DoRefMapping) THEN
-            CALL GetPositionInRefElem(RandomPos,RefPos,iElem)
-            IF (MAXVAL(ABS(RefPos)).GT.ElemEpsOneCell(iElem)) InsideFlag=.TRUE.
-          ELSE
-            IF (TriaTracking) THEN
-              CALL ParticleInsideQuad3D(RandomPos,iElem,InsideFlag,Det)
-            ELSE
+
+          SELECT CASE(TrackingMethod)
+            CASE(REFMAPPING)
+              CALL GetPositionInRefElem(RandomPos,RefPos,iElem)
+              IF (MAXVAL(ABS(RefPos)).GT.ElemEpsOneCell(iElem)) InsideFlag=.TRUE.
+
+            CASE(TRACING)
               CALL PartInElemCheck(RandomPos,iPart,iElem,InsideFlag)
-            END IF
-          END IF
+
+            CASE(TRIATRACKING)
+              CALL ParticleInsideQuad3D(RandomPos,iElem,InsideFlag,Det)
+          END SELECT
         END DO
         PartState(     1:3,ParticleIndexNbr) = RandomPos(1:3)
         PDM%ParticleInside(ParticleIndexNbr) = .TRUE.

@@ -547,7 +547,6 @@ USE MOD_Particle_Mesh_Vars,      ONLY: RefMappingGuess,RefMappingEps
 USE MOD_Particle_Mesh_Vars,      ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis
 USE MOD_Particle_Mesh_Vars,      ONLY: XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,      ONLY: XCL_NGeo_Shared,Elem_xGP_Shared
-!USE MOD_Particle_Tracking_vars,  ONLY: DoRefMapping
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

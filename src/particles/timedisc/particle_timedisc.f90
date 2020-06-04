@@ -174,11 +174,11 @@ IF (t.GE.DelayTime) THEN
 #endif
   ! track new particle position
   SELECT CASE (TrackingMethod)
-    CASE(1)
+    CASE(REFMAPPING)
       CALL ParticleRefTracking()
-    CASE(2)
+    CASE(TRACING)
       CALL ParticleTracing()
-    CASE(3)
+    CASE(TRIATRACKING)
       CALL ParticleTriaTracking()
   END SELECT
 #if USE_LOADBALANCE
@@ -383,11 +383,11 @@ IF (t.GE.DelayTime) THEN
 #endif
   ! track new particle position
   SELECT CASE (TrackingMethod)
-    CASE(1)
+    CASE(REFMAPPING)
       CALL ParticleRefTracking()
-    CASE(2)
+    CASE(TRACING)
       CALL ParticleTracing()
-    CASE(3)
+    CASE(TRIATRACKING)
       CALL ParticleTriaTracking()
   END SELECT
 #if USE_LOADBALANCE
@@ -629,11 +629,11 @@ IF (t.GE.DelayTime) THEN
 #endif /*USE_LOADBALANCE*/
 #endif
   SELECT CASE (TrackingMethod)
-    CASE(1)
+    CASE(REFMAPPING)
       CALL ParticleRefTracking()
-    CASE(2)
+    CASE(TRACING)
       CALL ParticleTracing()
-    CASE(3)
+    CASE(TRIATRACKING)
       CALL ParticleTriaTracking()
   END SELECT
 #if USE_LOADBALANCE

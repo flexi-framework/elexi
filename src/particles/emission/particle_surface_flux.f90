@@ -306,7 +306,7 @@ USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces      ,ONLY: CalcNormAndTangTriangle
 USE MOD_Particle_Surfaces_Vars ,ONLY: BCdata_auxSF, SurfMeshSubSideData,SurfFluxSideSize,TriaSurfaceFlux
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideType
-USE MOD_Particle_Tracking_Vars ,ONLY: TriaTracking
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_Particle_Vars          ,ONLY: UseCircularInflow,Species,DoSurfaceFlux,nSpecies
 USE MOD_ReadInTools
 #if USE_MPI
@@ -426,10 +426,10 @@ DO iBC = 1,countDataBC
       SideID = GetGlobalNonUniqueSideID(offsetElem+ElemID,iLocSide)
 
       !check that all sides are planar if TriaSurfaceFlux is used for Tracing or RefMapping
-      IF (.NOT.TriaTracking) THEN
+      IF (.NOT.TrackingMethod.EQ.TRIATRACKING) THEN
         IF (SideType(SideID).NE.PLANAR_RECT .AND. SideType(SideID).NE.PLANAR_NONRECT) &
           CALL ABORT(__STAMP__,'Every surfaceflux-sides must be planar if TriaSurfaceFlux is used for Tracing or RefMapping!')
-      END IF !.NOT.TriaTracking
+      END IF !.NOT.TrackingMethod.EQ.TRIATRACKING
 
       ! Store additional information for TriaSurfaceFlux
       DO jSample=1,SurfFluxSideSize(2); DO iSample=1,SurfFluxSideSize(1)

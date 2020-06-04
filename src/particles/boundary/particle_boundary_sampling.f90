@@ -113,7 +113,7 @@ USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoord
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemSideNodeID_Shared
 USE MOD_Particle_Surfaces       ,ONLY: EvaluateBezierPolynomialAndGradient
 USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D
-USE MOD_Particle_Tracking_Vars  ,ONLY: TriaTracking
+USE MOD_Particle_Tracking_Vars  ,ONLY: TrackingMethod
 USE MOD_Particle_Vars           ,ONLY: nSpecies
 USE MOD_ReadInTools             ,ONLY: GETINT,GETLOGICAL,GETINTARRAY,GETSTR,COUNTOPTION
 USE MOD_StringTools             ,ONLY: LowCase
@@ -192,7 +192,7 @@ END IF
 WRITE(UNIT=tmpStr,FMT='(I0)') NGeo
 nSurfSample             = GETINT    ('Part-nSurfSample',TRIM(tmpStr))
 
-IF((nSurfSample.GT.1).AND.(TriaTracking)) &
+IF((nSurfSample.GT.1).AND.(TrackingMethod.EQ.TRIATRACKING)) &
   CALL abort(__STAMP__,'nSurfSample cannot be >1 if TriaTracking=T')
 
 ! Calculate equidistant surface points
@@ -511,7 +511,7 @@ DO iSide = firstSide,LastSide
   ! get global SideID. This contains only nonUniqueSide, no special mortar treatment required
   SideID = SurfSide2GlobalSide(SURF_SIDEID,iSide)
 
-  IF (TriaTracking) THEN
+  IF (TrackingMethod.EQ.TRIATRACKING) THEN
     ElemID    = SideInfo_Shared(SIDE_ELEMID ,SideID)
     CNElemID  = GetCNElemID(ElemID)
     LocSideID = SideInfo_Shared(SIDE_LOCALID,SideID)
@@ -536,7 +536,7 @@ DO iSide = firstSide,LastSide
         area = area + nVal/2.
     END DO
     SurfSideArea(1,1,iSide) = area
-  ! .NOT. TriaTracking
+  ! .NOT. TrackingMethod.EQ.TRIATRACKING
   ELSE
     ! call here stephens algorithm to compute area
     DO jSample=1,nSurfSample

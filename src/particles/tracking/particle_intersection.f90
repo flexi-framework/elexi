@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 ! Provides routines to calculate the intersection of the particle trajectory with a side depending on the side type
@@ -353,7 +354,7 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,SideSlabNormals
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Particle_Surfaces_Vars,  ONLY:locXi,locEta,locAlpha,SideDistance
 USE MOD_Particle_Utils,          ONLY:InsertionSort
-USE MOD_Particle_Tracking_Vars,  ONLY:DoRefMapping
+USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:rBoundingBoxChecks
 #if USE_MPI
@@ -405,7 +406,7 @@ CriticalParallelInSide=.FALSE.
 !> 1) check if particle is moving in other direction or exactly parallel, no intersection
 !> 2) difference between SideDistance (distance from origin to sice) and the dot product is the distance of the particle to the side
 !> 3) check if distance from particle to side is longer than the particle vector, no intersection
-IF(DoRefMapping)THEN
+IF(TrackingMethod.EQ.REFMAPPING)THEN
   coeffA=DOT_PRODUCT(SideNormVec(1:3,SideID),PartTrajectory)
   IF(coeffA.LE.0.)RETURN
   locSideDistance=SideDistance(SideID)-DOT_PRODUCT(LastPartPos(1:3,PartID),SideNormVec(1:3,SideID))
@@ -527,7 +528,7 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Vars,           ONLY:LastPartPos
 USE MOD_Particle_Surfaces_Vars,  ONLY:BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,BaseVectorsScale,SideNormVec
 USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBilinear
-USE MOD_Particle_Tracking_Vars,  ONLY:DoRefMapping
+USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D,epsilonTol
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -895,7 +896,7 @@ ELSE
     RETURN
   END IF
   isHit=.TRUE.
-  IF(DoRefMapping) THEN
+  IF(TrackingMethod.EQ.REFMAPPING) THEN
     SELECT CASE(InterType)
     CASE(1)
       alpha  =t  (1)
@@ -974,7 +975,7 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:locXi,locEta,locAlpha
 USE MOD_Particle_Surfaces_Vars,  ONLY:BoundingBoxIsEmpty
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideSlabNormals
 USE MOD_Particle_Utils,          ONLY:InsertionSort
-USE MOD_Particle_Tracking_Vars,  ONLY:DoRefMapping
+USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipTolerance,BezierClipLocalTol
 USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBezier
 #if CODE_ANALYZE
@@ -1027,7 +1028,7 @@ rBoundingBoxChecks=rBoundingBoxChecks+1.
 
 CriticalParallelInSide=.FALSE.
 IF(BoundingBoxIsEmpty(SideID))THEN
-  IF(DoRefMapping)THEN
+  IF(TrackingMethod.EQ.REFMAPPING)THEN
     IF(DOT_PRODUCT(SideNormVec(1:3,SideID),PartTrajectory).LT.0.)RETURN
   ELSE
     IF(ALMOSTZERO(DOT_PRODUCT(SideNormVec(1:3,SideID),PartTrajectory))) CriticalParallelInSide=.TRUE.
@@ -1222,7 +1223,7 @@ CASE DEFAULT
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
-  IF(DoRefMapping)THEN
+  IF(TrackingMethod.EQ.REFMAPPING)THEN
     DO iInter=1,nInterSections
       IF(locAlpha(iInter).GT.-1.0)THEN
         alpha=locAlpha(iInter)

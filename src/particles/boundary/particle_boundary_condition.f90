@@ -82,7 +82,7 @@ REAL                                 :: n_loc(1:3)
 REAL                                 :: v1(3),v2(3)
 #endif /* CODE_ANALYZE */
 !===================================================================================================================================
-crossedBC    =.FALSE.
+crossedBC = .FALSE.
 
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(TrackingMethod)

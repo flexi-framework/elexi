@@ -455,7 +455,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Elem
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI,PartMPIInsert,PartMPILocate
 USE MOD_Particle_MPI_Vars      ,ONLY: EmissionSendBuf,EmissionRecvBuf
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef,Species
-USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -510,10 +510,10 @@ PartMPIInsert%nPartsRecv=0
 
 ! Arrays for communication of particles located in final element. Reuse particle_mpi infrastructure wherever possible
 PartCommSize   = 0
-PartCommSize   = PartCommSize + 3                            ! Emission position (physical space)
-IF(DoRefMapping) PartCommSize = PartCommSize+3               ! Emission position (reference space)
-!PartCommSize   = PartCommSize + 1                            ! Species-ID
-PartCommSize   = PartCommSize + 1                            ! ID of element
+PartCommSize   = PartCommSize + 3                              ! Emission position (physical space)
+IF(TrackingMethod.EQ.REFMAPPING) PartCommSize = PartCommSize+3 ! Emission position (reference space)
+!PartCommSize   = PartCommSize + 1                             ! Species-ID
+PartCommSize   = PartCommSize + 1                              ! ID of element
 
 PartMPILocate%nPartsSend=0
 PartMPILocate%nPartsRecv=0
@@ -725,14 +725,14 @@ DO i = 1, chunkSize
 
       ! Assemble temporary PartState to send the final particle position
       chunkState(1:3,i) = particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+3)
-      IF (DoRefMapping) THEN
+      IF (TrackingMethod.EQ.REFMAPPING) THEN
         CALL GetPositionInRefElem(chunkState(1:3,i),chunkState(4:6,i),ElemID)
 !        chunkState(7,i) = Species(FractNbr)
         chunkState(7,i) = REAL(ElemID,KIND=8)
       ELSE
 !        chunkState(4,i) = Species(FractNbr)
         chunkState(4,i) = REAL(ElemID,KIND=8)
-      END IF ! DoRefMapping
+      END IF ! TrackingMethod.EQ.REFMAPPING
     ! Located particle on local proc.
     ELSE
       ! Find a free position in the PDM array
@@ -743,9 +743,9 @@ DO i = 1, chunkSize
         ! Fill the PartState manually to avoid a second localization
         PartState(1:DimSend,ParticleIndexNbr) = particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+DimSend)
         PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
-        IF (DoRefMapping) THEN
+        IF (TrackingMethod.EQ.REFMAPPING) THEN
           CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),ElemID)
-        END IF ! DoRefMapping
+        END IF ! TrackingMethod.EQ.REFMAPPING
         PEM%Element(ParticleIndexNbr)         = ElemID
       ELSE
         CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
@@ -880,15 +880,15 @@ DO i = 1,TotalNbrOfRecvParts
   IF (ParticleIndexNbr.NE.0) THEN
     ! Fill the PartState manually to avoid a second localization
     PartState(1:3,ParticleIndexNbr) = recvPartPos(DimSend*(i-1)+1:DimSend*(i-1)+3)
-    IF (DoRefMapping) THEN
+    IF (TrackingMethod.EQ.REFMAPPING) THEN
       PartPosRef(1:3,ParticleIndexNbr) = recvPartPos(DimSend*(i-1)+4:DimSend*(i-1)+6)
-    END IF ! DoRefMapping
+    END IF ! TrackingMethod.EQ.REFMAPPING
     PEM%Element(ParticleIndexNbr)    = INT(recvPartPos(DimSend*(i-1)+PartCommSize),KIND=4)
 
     PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
-    IF (DoRefMapping) THEN
-      CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),ElemID)
-    END IF ! DoRefMapping
+!    IF (TrackingMethod.EQ.REFMAPPING) THEN
+!      CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),ElemID)
+!    END IF ! TrackingMethod.EQ.REFMAPPING
   ELSE
     CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
   END IF
@@ -920,16 +920,16 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
     IF (ParticleIndexNbr.NE.0) THEN
       ! Fill the PartState manually to avoid a second localization
       PartState(1:3,ParticleIndexNbr) = EmissionRecvBuf(iProc)%content(PartCommSize*(i-1)+1:PartCommSize*(i-1)+3)
-      IF (DoRefMapping) THEN
+      IF (TrackingMethod.EQ.REFMAPPING) THEN
         PartPosRef(1:3,ParticleIndexNbr) = EmissionRecvBuf(iProc)%content(PartCommSize*(i-1)+4:PartCommSize*(i-1)+6)
-      END IF ! DoRefMapping
+      END IF ! TrackingMethod.EQ.REFMAPPING
       PEM%Element(ParticleIndexNbr)    = INT(EmissionRecvBuf(iProc)%content(PartCommSize*(i)),KIND=4)
 !      WRITE(*,*) ParticleIndexNbr,PEM%Element(ParticleIndexNbr)
 
       PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
-      IF (DoRefMapping) THEN
-        CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),PEM%Element(ParticleIndexNbr))
-      END IF ! DoRefMapping
+!      IF (TrackingMethod.EQ.REFMAPPING) THEN
+!        CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),PEM%Element(ParticleIndexNbr))
+!      END IF ! TrackingMethod.EQ.REFMAPPING
     ELSE
       CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
     END IF

@@ -265,7 +265,7 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Vars,                   ONLY: SideInfo_Shared,NodeCoords_Shared,ElemSideNodeID_Shared
 USE MOD_Particle_Mesh_Tools,                  ONLY: GetCNElemID
 USE MOD_Particle_Surfaces_Vars,               ONLY: SideNormVec, SideType
-USE MOD_Particle_Tracking_Vars,               ONLY: TriaTracking
+USE MOD_Particle_Tracking_Vars,               ONLY: TrackingMethod
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -285,6 +285,7 @@ INTEGER                                :: Node1, Node2
 REAL                                   :: xNod, zNod, yNod, Vector1(3), Vector2(3)
 REAL                                   :: nVal, ndistVal, nx, ny, nz, dotpr
 !================================================================================================================================
+
 IF (PRESENT(ElemID_opt).AND.PRESENT(LocSideID_opt)) THEN
   CNElemID  = GetCNElemID(ElemID_opt)
   LocSideID = LocSideID_opt
@@ -320,35 +321,37 @@ nVal = SQRT(nx*nx + ny*ny + nz*nz)
 nx = -nx / nVal
 ny = -ny / nVal
 nz = -nz / nVal
-IF (.NOT.TriaTracking) THEN
+IF (.NOT.TrackingMethod.EQ.TRIATRACKING) THEN
   IF ((SideType(SideID).EQ.PLANAR_RECT .OR. SideType(SideID).EQ.PLANAR_NONRECT)) THEN
-  !if surfflux-side are planar, TriaSurfaceflux can be also used for tracing or Refmapping (for which SideNormVec exists)!
-  !warning: these values go into SurfMeshSubSideData and if TriaSurfaceflux they should be used only for planar_rect/_nonrect sides
-  dotpr=DOT_PRODUCT(SideNormVec(1:3,SideID),(/nx,ny,nz/))
-  IF ( .NOT.ALMOSTEQUALRELATIVE(dotpr,1.,1.0E-2) ) THEN
-    CALL abort(&
-__STAMP__&
-, 'SideNormVec is not identical with V1xV2!')
+    !if surfflux-side are planar, TriaSurfaceflux can be also used for tracing or Refmapping (for which SideNormVec exists)!
+    !warning: these values go into SurfMeshSubSideData and if TriaSurfaceflux they should be used only for planar_rect/_nonrect sides
+    dotpr=DOT_PRODUCT(SideNormVec(1:3,SideID),(/nx,ny,nz/))
+    IF ( .NOT.ALMOSTEQUALRELATIVE(dotpr,1.,1.0E-2) ) THEN
+      CALL abort(__STAMP__,'SideNormVec is not identical with V1xV2!')
+    END IF
   END IF
 END IF
-END IF
+
 IF (PRESENT(Vectors) .AND. TriNum.EQ.1) THEN
   Vectors(:,1) = Vector1
   Vectors(:,2) = Vector2
 ELSE IF (PRESENT(Vectors)) THEN !TriNum.EQ.2
   Vectors(:,3) = Vector2
 END IF
+
 IF(PRESENT(nVec)) THEN
   nVec = (/nx,ny,nz/)
 END IF
 IF(PRESENT(area)) THEN
   area = nVal*0.5
 END IF
+
 IF(PRESENT(midpoint)) THEN
   midpoint(1) = xNod + (Vector1(1)+Vector2(1))/2.
   midpoint(2) = yNod + (Vector1(2)+Vector2(2))/2.
   midpoint(3) = zNod + (Vector1(3)+Vector2(3))/2.
 END IF
+
 IF(PRESENT(ndist)) THEN
   ndist(1) = ny * (Vector1(3)-Vector2(3)) - nz * (Vector1(2)-Vector2(2)) !NV to Vec1-Vec2 in plane (outwards from tria)
   ndist(2) = nz * (Vector1(1)-Vector2(1)) - nx * (Vector1(3)-Vector2(3))

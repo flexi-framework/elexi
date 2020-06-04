@@ -58,9 +58,9 @@ SUBROUTINE LocateParticleInElement(PartID,doHALO)
 ! Finds a single particle in its host element
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
+USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef
-USE MOD_Eval_xyz,                    ONLY:GetPositionInRefElem
-USE MOD_Particle_Tracking_Vars ,ONLY: DoRefMapping
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -76,9 +76,9 @@ IF(ElemID.EQ.-1)THEN
   PDM%ParticleInside(PartID)=.FALSE.
 ELSE
   PDM%ParticleInside(PartID)=.TRUE.
-  IF(DoRefMapping)THEN
+  IF(TrackingMethod.EQ.REFMAPPING)THEN
     CALL GetPositionInRefElem(PartState(1:3,PartID),PartPosRef(1:3,PartID),ElemID)
-  END IF ! DoRefMapping
+  END IF ! TrackingMethod.EQ.REFMAPPING
 END IF ! ElemID.EQ.-1
 END SUBROUTINE LocateParticleInElement
 

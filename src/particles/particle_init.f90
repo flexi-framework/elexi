@@ -91,7 +91,7 @@ CALL prms%CreateLogicalOption(      'DoRefMapping'  , 'Refmapping [T] or Tracing
 
 CALL prms%CreateLogicalOption(      'TriaTracking'  , 'Using Triangle-aproximation [T] or (bi-)linear and bezier (curved) '      //&
                                                       'description [F] of sides for tracing algorithms.'                         //&
-                                                      ' Requires DoRefMapping=F.'                                                  &
+                                                      ' Requires .NOT.REFMAPPING'                                                  &
                                                     , '.FALSE.')
 CALL prms%CreateLogicalOption(      'TriaSurfaceFlux','Using Triangle-aproximation [T] or (bi-)linear and bezier (curved) '      //&
                                                       'description [F] of sides for surfaceflux.'                                  &
@@ -338,7 +338,7 @@ USE MOD_PreProc
 USE MOD_ReadInTools,                ONLY: GETINT,GETLOGICAL,GETINTFROMSTR,CountOption
 USE MOD_Particle_Globals,           ONLY: PI
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
-USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod,DoRefMapping,TriaTracking
+USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
 USE MOD_Particle_Vars,              ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -349,6 +349,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: nTrackingMethod
+LOGICAL                        :: DoRefMapping,TriaTracking
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS...'
@@ -361,17 +362,6 @@ nTrackingMethod = CountOption('TrackingMethod')
 IF (nTrackingMethod.EQ.1) THEN
   ! New selection setting DoRefMapping and TriaTracking for compatibility
   TrackingMethod  = GETINTFROMSTR('TrackingMethod')
-  SELECT CASE(TrackingMethod)
-    CASE(REFMAPPING)
-      DoRefMapping = .TRUE.
-      TriaTracking = .FALSE.
-    CASE(TRACING)
-      DoRefMapping = .FALSE.
-      TriaTracking = .FALSE.
-    CASE(TRIATRACKING)
-      DoRefMapping = .FALSE.
-      TriaTracking = .TRUE.
-  END SELECT
 ELSE IF (nTrackingMethod.EQ.0) THEN
   ! Old selection explicitly stating DoRefMapping and TriaTracking
   DoRefMapping = GETLOGICAL('DoRefMapping','.TRUE.')

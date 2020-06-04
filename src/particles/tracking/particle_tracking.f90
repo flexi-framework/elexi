@@ -399,7 +399,7 @@ END SUBROUTINE ParticleTriaTracking
 SUBROUTINE ParticleTracing()
 !===================================================================================================================================
 !> Routine for tracking of moving particles using polynomial description of sides.
-!> Routine calculates intersection and boundary interaction for (dorefmapping = false) and (TriaTracking = false)
+!> Routine calculates intersection and boundary interaction for TrackingMethod.EQ.TRACING
 !> Time is analyzed for LoadBalancing purposes for each element independently because elements with e.g. surface are more costly
 !> ---------------------------------------------------------------------------------------------------------------------------------
 !> - Loop over all particles, which are in own proc --> PDM%ParticleInside(1:PDM%ParticleVecLength)
@@ -1568,7 +1568,7 @@ DO WHILE(DoTracing)
       IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
         IF(PartID.EQ.PARTOUT)THEN
           WRITE(UNIT_stdout,'(30("-"))')
-          WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (DoubleCheck dorefmapping): '
+          WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (DoubleCheck REFMAPPING): '
           WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(SideID),' | SideID: ',SideID,' | Hit: ',isHit
           WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide),' | LengthPartTrajectory: ', lengthPartTrajectory
           WRITE(UNIT_stdout,'((A,G0))')      '     | AlphaOld: ',alphaOld
@@ -1598,7 +1598,7 @@ DO WHILE(DoTracing)
       IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
         IF(PartID.EQ.PARTOUT)THEN
           WRITE(UNIT_stdout,'(30("-"))')
-          WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (dorefmapping, BCTracing): '
+          WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (REFMAPPING, BCTracing): '
           WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(SideID),' | SideID: ',SideID,' | Hit: ',isHit
           WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide),' | LengthPartTrajectory: ', lengthPartTrajectory
           WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)

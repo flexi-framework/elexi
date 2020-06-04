@@ -131,7 +131,7 @@ USE MOD_Particle_Analyze_Vars,    ONLY:doParticleDispersionTrack
 USE MOD_Particle_Boundary_Vars,   ONLY:doParticleReflectionTrack
 USE MOD_Particle_MPI_Vars
 USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
-USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
+USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
 USE MOD_Particle_Vars,            ONLY:PDM
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
@@ -155,7 +155,7 @@ PartCommSize   = PartCommSize + nSGSVars
 PartCommSize   = PartCommSize + nRWVars
 #endif
 ! Tracking: Include Reference coordinates
-IF(DoRefMapping) PartCommSize=PartCommSize+3
+IF(TrackingMethod.EQ.REFMAPPING) PartCommSize=PartCommSize+3
 ! Species-ID
 PartCommSize   = PartCommSize + 1
 ! id of element
@@ -328,7 +328,7 @@ USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors,ExchangeProcToGlobalP
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
 USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
-USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
+USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
 ! Variables for erosion tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Boundary_Vars
@@ -386,7 +386,7 @@ DO iProc=0,nExchangeProcessors-1
 #endif
       END IF
       !>> particle position in reference space
-      IF(DoRefMapping) THEN
+      IF(TrackingMethod.EQ.REFMAPPING) THEN
         PartSendBuf(iProc)%content(1+jPos:3+jPos) = PartPosRef(1:3,iPart)
         jPos=jPos+3
       END IF
@@ -537,7 +537,7 @@ USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
 USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
-USE MOD_Particle_Tracking_Vars,   ONLY:DoRefMapping
+USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
 ! variables for erosion tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Boundary_Vars
@@ -605,7 +605,7 @@ DO iProc=0,nExchangeProcessors-1
 #endif
     END IF
     !>> particle position in reference space
-    IF(DoRefMapping) THEN
+    IF(TrackingMethod.EQ.REFMAPPING) THEN
       PartPosRef(1:3,PartID) = PartRecvBuf(iProc)%content(1+jPos:3+jPos)
       jPos=jPos+3
     END IF

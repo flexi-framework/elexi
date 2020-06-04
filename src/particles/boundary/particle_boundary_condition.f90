@@ -133,6 +133,7 @@ IF (.NOT. ALLOCATED(PartBound%TargetBoundCond)) &
 
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,SideID)))
+!-----------------------------------------------------------------------------------------------------------------------------------
 CASE(1) !PartBound%OpenBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
   ! Sample on surface if requested

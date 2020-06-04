@@ -46,7 +46,7 @@ SUBROUTINE CreateParticle(Species,Pos,ElemID,Velocity,NewPartID)
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,LastPartPos,PartSpecies
+USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef,LastPartPos,PartSpecies
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 !----------------------------------------------------------------------------------------------------------------------------------!

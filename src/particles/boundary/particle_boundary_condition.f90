@@ -497,6 +497,19 @@ PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
 SELECT CASE(WallCoeffModel)
   !=================================================================================================================================
+  ! Grant, G., Tabakoff, W.. "Erosion prediction in turbomachinery resulting from environmental solid particles."
+  ! / Journal of Aircraft 12.5 (1975): 471-478.
+  ! >> Ignored variance (random fluctuations in reflection values) and ONLY took mean values!
+  !=================================================================================================================================
+  CASE('Grant1975')
+    ! Transfer from radians to degree
+    PartFaceAngleDeg = PartFaceAngle * 180/PI
+
+    ! Compute cubic polynomials for coefficient of restitution
+    eps_n = 1.    - 0.4159 * PartFaceAngleDeg  + 0.4994 * PartFaceAngleDeg**2. - 0.292 * PartFaceAngleDeg**3.
+    eps_t = 1.    - 2.12   * PartFaceAngleDeg  + 3.0775 * PartFaceAngleDeg**2. - 1.1   * PartFaceAngleDeg**3.
+
+  !=================================================================================================================================
   ! Tabaoff, W.; Wakeman, T.: Basic Erosion Investigation in Small Turbomachinery. / Cincinnati Univ. OH, 1981
   ! >> Ignored variance (random fluctuations in reflection values) and ONLY took mean values!
   !=================================================================================================================================

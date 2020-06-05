@@ -351,6 +351,47 @@ CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-RadiusIC'  , 'Radiu
 CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-NumberOfExcludeRegions', 'Number of different regions to be excluded' &
                                                                 , '0'       , numberedmulti=.TRUE.)
 
+! Surface Flux
+CALL prms%SetSection("Particle Surface Flux")
+CALL prms%CreateIntOption(          'Part-Species[$]-nSurfacefluxBCs'  ,  'Number of SF emissions'                                 &
+                                                                       , '0'       , numberedmulti=.TRUE.)
+CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-BC',  'PartBound to be emitted from'                           &
+                                                                       , '0'       , numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(       'Part-Species[$]-Surfaceflux[$]-velocityDistribution', 'Specifying keyword for velocity distribution' &
+                                                                       , 'constant', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-VeloIC', 'Velocity for inital Data'                            &
+                                                                       , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-VeloIsNormal', 'VeloIC is in Surf-Normal instead of VeloVecIC' &
+                                                                       , '.FALSE.' , numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Surfaceflux[$]-VeloVecIC','Normalized velocity vector'                        &
+                                                                       , '0.0 , 0.0 , 0.0', numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-CircularInflow', 'Enables the utilization of a circular'     //&
+                                                                         'region as a surface flux on the selected boundary. '   //&
+                                                                         'Only possible on surfaces, which are in xy, xz, and '  //&
+                                                                         'yz-planes.'                                              &
+                                                                       , '.FALSE.' , numberedmulti=.TRUE.)
+CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-axialDir', 'Axial direction of coordinates in polar system'    &
+                                                                                   , numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Surfaceflux[$]-origin'  , 'Origin in orth(ogonal?) coordinates of polar system' &
+                                                                      , '0.0 , 0.0', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-rmax', ' Max radius of to-be inserted particles'               &
+                                                                      , '1E21'     , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-rmin', 'Min radius of to-be inserted particles'                &
+                                                                      , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-PartDensity','PartDensity (real particles per m^3) or cub./' //&
+                                                                        'cyl. as alternative  to Part.Emis. in Type1'              &
+                                                                      , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-ReduceNoise','Reduce stat. noise by global calc. of PartIns',  &
+                                                                      '.FALSE.'    , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-AcceptReject',' Perform ARM for skewness of RefMap-positioning'&
+                                                                      , '.TRUE.'   , numberedmulti=.TRUE.)
+CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-ARM_DmaxSampleN', 'Number of sample intervals in xi/eta for '//&
+                                                                        'Dmax-calc.'                                               &
+                                                                      , '1'        , numberedmulti=.TRUE.)
+
+CALL prms%CreateLogicalOption(      'OutputSurfaceFluxLinked'         , 'Flag to print the SurfaceFlux-linked Info'                &
+                                                                      , '.FALSE.')
+
 !===================================================================================================================================
 ! > Boundaries
 !===================================================================================================================================
@@ -501,6 +542,7 @@ USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_SGS,               ONLY: ParticleSGS
+USE MOD_Particle_Surface_Flux,      ONLY: InitializeParticleSurfaceflux
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
@@ -544,8 +586,8 @@ ELSE
 END IF
 ! Initialize emission. If no particles are present, assume restart from pure fluid and perform initial inserting
 CALL InitializeParticleEmission()
-! TODO
-!CALL InitializeParticleSurfaceflux()
+! Initialize surface flux
+CALL InitializeParticleSurfaceflux()
 
 #if USE_MPI
 ! has to be called AFTER InitializeVariables because we need to read the parameter file to know the CommSize
@@ -897,16 +939,16 @@ DO iSpec = 1, nSpecies
     IF (Species(iSpec)%Init(iInit)%UseForInit                   .AND. &
        (Species(iSpec)%Init(iInit)%initialParticleNumber.EQ.0)) THEN
       Species(iSpec)%Init(iInit)%UseForInit = .FALSE.
-      SWRITE(UNIT_StdOut,'(A)',ADVANCE='NO') ' | WARNING: Initial ParticleInserting disabled as no ParticleNumber'
-      SWRITE(UNIT_StdOut,'(A,I0,A,I0)')      ' detected for Species',iSpec,'-Init',iInit
+      SWRITE(UNIT_StdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no ParticleNumber detected,'
+      SWRITE(UNIT_StdOut,'(A)')                        ' disabling initial particle inserting!'
     END IF
 
     !--- Check if ParticleEmission is really used
     IF (Species(iSpec)%Init(iInit)%UseForEmission         .AND. &
        (Species(iSpec)%Init(iInit)%ParticleEmission.EQ.0)) THEN
       Species(iSpec)%Init(iInit)%UseForEmission = .FALSE.
-      SWRITE(UNIT_StdOut,'(A)',ADVANCE='NO') ' | WARNING: Particle emission disabled as no emission rate'
-      SWRITE(UNIT_StdOut,'(A,I0,A,I0)')      ' detected for Species',iSpec,'-Init',iInit
+      SWRITE(UNIT_StdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no emission rate  detected,'
+      SWRITE(UNIT_StdOut,'(A)')                        ' disabling particle emission!'
     END IF
 
     !--- cuboid-/cylinder-height calculation from v and dt
@@ -1058,11 +1100,12 @@ SUBROUTINE InitializeVariablesPartBoundary()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_ReadInTools
 USE MOD_Mesh_Vars              ,ONLY: BoundaryName,BoundaryType,nBCs
-USE MOD_Particle_Vars
 USE MOD_Particle_Boundary_Vars ,ONLY: PartBound,nPartBound
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
+USE MOD_Particle_Surfaces_Vars ,ONLY: BCdata_auxSF
+USE MOD_Particle_Vars
+USE MOD_ReadInTools
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1083,6 +1126,11 @@ CHARACTER(200), ALLOCATABLE :: tmpStringBC(:)
 
 ! get number of particle boundaries
 nPartBound = CountOption('Part-BoundaryName')
+
+! if no part boundaries are given, assume the same number as for the DG part
+IF (nPartBound.EQ.0) THEN
+  nPartBound = nBCs
+END IF
 
 SWRITE(UNIT_StdOut,'(132("."))')
 SWRITE(UNIT_StdOut,'(A)') ' | Reading particle boundary properties'
@@ -1108,16 +1156,19 @@ ALLOCATE(PartBound%Poisson            (1:nBCs))
 
 ! Fong coefficent of restitution
 ALLOCATE(PartBound%CoR                (1:nBCs))
-
 ALLOCATE(tmpStringBC                  (1:nBCs))
+
+! Surface Flux
+ALLOCATE(BCdata_auxSF                 (1:nBCs))
 
 ! Loop over all particle boundaries and get information
 !DO iPartBound=1,nPartBound
 !  tmpStringBC(iPartBound) = TRIM(GETSTR('Part-BoundaryName'))
 !END DO
 
-GEO%nPeriodicVectors=0
-DO iBC=1,nBCs
+GEO%nPeriodicVectors = 0
+
+DO iBC = 1,nBCs
   IF (BoundaryType(iBC,1).EQ.0) THEN
     PartBound%TargetBoundCond(iBC) = -1
     SWRITE(*,*)"... PartBound",iBC,"is internal bound, no mapping needed"
@@ -1198,7 +1249,7 @@ DO iBC=1,nBCs
   END SELECT
 END DO
 
-GEO%nPeriodicVectors=GEO%nPeriodicVectors/2
+GEO%nPeriodicVectors = GEO%nPeriodicVectors/2
 
 SDEALLOCATE(tmpStringBC)
 

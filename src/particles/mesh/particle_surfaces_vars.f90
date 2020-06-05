@@ -121,10 +121,10 @@ TYPE tBCdata_auxSF
   INTEGER                                :: SideNumber                  ! Number of Particles in Sides in SurfacefluxBC
   REAL                                   :: GlobalArea, LocalArea       ! Sum of global and local tria-areas
   INTEGER                , ALLOCATABLE   :: SideList(:)                 ! List of Sides in BC (1:SideNumber)
-  TYPE(tTriaSwapGeo)     , ALLOCATABLE   :: TriaSwapGeo(:,:,:)             ! data for tria-swapping in surfflux (:,:,1:SideNumber)
-  TYPE(tTriaSideGeo)     , ALLOCATABLE   :: TriaSideGeo(:)                 ! data for trias in surfflux (1:SideNumber)
+  TYPE(tTriaSwapGeo)     , ALLOCATABLE   :: TriaSwapGeo(:,:,:)          ! data for tria-swapping in surfflux (:,:,1:SideNumber)
+  TYPE(tTriaSideGeo)     , ALLOCATABLE   :: TriaSideGeo(:)              ! data for trias in surfflux (1:SideNumber)
 END TYPE tBCdata_auxSF
-TYPE(tBCdata_auxSF),ALLOCATABLE          :: BCdata_auxSF(:)             !aux. data of BCs for surfacefluxes, (1:nPartBound) (!!!)
+TYPE(tBCdata_auxSF),ALLOCATABLE          :: BCdata_auxSF(:)             !aux. data of BCs for surfacefluxes, (1:nBCs) (!!!)
 
 
 !===================================================================================================================================

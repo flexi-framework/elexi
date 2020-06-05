@@ -110,6 +110,10 @@ TYPE tInit                                                                   ! P
 END TYPE tInit
 
 TYPE tSurfFluxSubSideData
+  REAL                                   :: projFak                          ! VeloVecIC projected to inwards normal
+  REAL                                   :: a_nIn                            ! speed ratio projected to inwards normal
+  REAL                                   :: Velo_t1                          ! Velo comp. of first orth. vector
+  REAL                                   :: Velo_t2                          ! Velo comp. of second orth. vector
   REAL                                   :: nVFR                             ! normal volume flow rate through subside
   REAL                                   :: Dmax                             ! maximum Jacobian determinant of subside for opt. ARM
   REAL,ALLOCATABLE                       :: BezierControlPoints2D(:,:,:)     ! BCP of SubSide projected to VeloVecIC

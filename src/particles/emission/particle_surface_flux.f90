@@ -17,7 +17,7 @@
 !===================================================================================================================================
 ! module for particle emission
 !===================================================================================================================================
-MODULE MOD_Surface_Flux
+MODULE MOD_Particle_Surface_Flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 IMPLICIT NONE
@@ -379,6 +379,7 @@ END DO ! BCSideID
 DO iBC = 1,countDataBC
   ! store number of sides for BCID (including non-SF BCIDs)
   BCdata_auxSF(TmpMapToBC(iBC))%SideNumber = TmpSideNumber(iBC)
+
   IF (TmpSideNumber(iBC).EQ.0) CYCLE
 
   ! allocate array to hold additional SF data
@@ -648,6 +649,90 @@ END IF !  (rmin > Surfaceflux-rmax) .OR. (rmax < Surfaceflux-rmin)
 END SUBROUTINE DefineCircInflowRejectType
 
 
+SUBROUTINE InitNonAdaptiveSurfFlux(iSpec,iSF,iSide,tmp_SubSideAreas)
+!===================================================================================================================================
+! SideList for SurfaceFlux in BCdata_auxSF is created. Furthermore, the side areas are communicated.
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfFluxSideSize,SurfMeshSubSideData,BCdata_auxSF
+USE MOD_Particle_Vars           ,ONLY: Species
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER, INTENT(IN)   :: iSpec,iSF,iSide
+REAL, INTENT(IN)      :: tmp_SubSideAreas(SurfFluxSideSize(1),SurfFluxSideSize(2))
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER               :: jSample, iSample, currentBC, BCSideID
+REAL                  :: vec_nIn(3), nVFR, vec_t1(3), vec_t2(3), projFak, a, vSF
+!===================================================================================================================================
+
+currentBC = Species(iSpec)%Surfaceflux(iSF)%BC
+BCSideID  = BCdata_auxSF(currentBC)%SideList(iSide)
+
+DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
+  vec_nIn = SurfMeshSubSideData(iSample,jSample,BCSideID)%vec_nIn
+  vec_t1  = SurfMeshSubSideData(iSample,jSample,BCSideID)%vec_t1
+  vec_t2  = SurfMeshSubSideData(iSample,jSample,BCSideID)%vec_t2
+
+  ! VeloVecIC projected to inwards normal
+  IF (.NOT.Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal) THEN
+    projFak = DOT_PRODUCT(vec_nIn,Species(iSpec)%Surfaceflux(iSF)%VeloVecIC)
+  ELSE
+    projFak = 1.
+  END IF
+
+  ! dummy for projected speed ratio in constant v-distri
+  a = 0
+  !-- compute total volume flow rate through surface
+  SELECT CASE(TRIM(Species(iSpec)%Surfaceflux(iSF)%velocityDistribution))
+    CASE('constant')
+      ! Velo proj. to inwards normal
+      vSF = Species(iSpec)%Surfaceflux(iSF)%VeloIC * projFak
+      ! VFR proj. to inwards normal (only positive parts!)
+      nVFR = MAX(tmp_SubSideAreas(iSample,jSample) * vSF,0.)
+    CASE DEFAULT
+      CALL abort(__STAMP__,'wrong velo-distri for Surfaceflux!')
+  END SELECT
+
+  ! check rmax-rejection
+  IF (Species(iSpec)%Surfaceflux(iSF)%CircularInflow) THEN
+    ! complete side is outside of valid bounds
+    IF (Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide).EQ.1) THEN
+      nVFR = 0.
+    END IF
+  END IF
+
+  Species(iSpec)%Surfaceflux(iSF)%VFR_total = Species(iSpec)%Surfaceflux(iSF)%VFR_total + nVFR
+  !-- store SF-specific SubSide data in SurfFluxSubSideData (incl. projected velos)
+  Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%nVFR    = nVFR
+  Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%projFak = projFak
+  Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%a_nIn   = a
+
+  IF (.NOT.Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal) THEN
+    ! v in t1-dir
+    Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%Velo_t1 &
+      = Species(iSpec)%Surfaceflux(iSF)%VeloIC &
+      * DOT_PRODUCT(vec_t1,Species(iSpec)%Surfaceflux(iSF)%VeloVecIC)
+    ! v in t2-dir
+    Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%Velo_t2 &
+      = Species(iSpec)%Surfaceflux(iSF)%VeloIC &
+      * DOT_PRODUCT(vec_t2,Species(iSpec)%Surfaceflux(iSF)%VeloVecIC)
+  ELSE
+    ! v in t1-dir
+    Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%Velo_t1 = 0.
+    ! v in t2-dir
+    Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%Velo_t2 = 0.
+  END IF! .NOT.VeloIsNormal
+END DO; END DO !jSample = 1,SurfFluxSideSize(2); iSample = 1,SurfFluxSideSize(1)
+
+END SUBROUTINE InitNonAdaptiveSurfFlux
+
+
 !===================================================================================================================================
 ! Init Particle Inserting via Surface Flux
 !===================================================================================================================================
@@ -687,6 +772,8 @@ REAL                  :: tmp_SubSideAreas(SurfFluxSideSize(1),SurfFluxSideSize(2
 REAL,ALLOCATABLE      :: tmp_BezierControlPoints2D(:,:,:,:,:)
 REAL                  :: VFR_total
 !===================================================================================================================================
+
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX...'
 
 ALLOCATE(SurfMeshSubSideData(SurfFluxSideSize(1),SurfFluxSideSize(2),1:nBCSides), &
          SurfMeshSideAreas  (1:nBCSides))
@@ -831,8 +918,11 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,DoSurfaceFlux,1,MPI_LOGICAL,MPI_LOR,PartMPI%COMM
 
 !-- no SFs defined
 IF (.NOT.DoSurfaceFlux) THEN
-  SWRITE(*,*) 'WARNING: No Sides for SurfacefluxBCs found! DoSurfaceFlux is now disabled!'
+  SWRITE(UNIT_StdOut,'(A)') ' | WARNING: No sides for SurfaceFluxBCs found! SurfaceFlux is now disabled!'
 END IF
+
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX DONE'
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitializeParticleSurfaceflux
 
@@ -1503,4 +1593,4 @@ END SELECT
 
 END SUBROUTINE SetSurfacefluxVelocities
 
-END MODULE MOD_Surface_Flux
+END MODULE MOD_Particle_Surface_Flux

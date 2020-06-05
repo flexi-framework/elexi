@@ -206,7 +206,7 @@ CALL prms%CreateRealOption(         'Part-Species[$]-HighVeloThreshold', 'Thresh
 
 
 ! emission time
-CALL prms%SetSection('Particle Species Ninits')
+CALL prms%SetSection('Particle Species Emission')
 CALL prms%CreateLogicalOption(      'Part-Species[$]-UseForEmission', 'Flag to use Init/Emission for emission'                     &
                                                                 , '.FALSE.' , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-UseForInit', 'Flag to use Init/Emission for init'                             &
@@ -263,6 +263,94 @@ CALL prms%CreateRealOption(         'Part-Species[$]-RadiusIC'  , 'Radius for IC
 CALL prms%CreateIntOption(          'Part-Species[$]-NumberOfExcludeRegions', 'Number of different regions to be excluded'         &
                                                                 , '0'       , numberedmulti=.TRUE.)
 
+CALL prms%SetSection("Particle Species nInits")
+! if nInit > 0 some variables have to be defined twice
+CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-RHSMethod' , 'Particle model used for forces calculation.\n'        //&
+                                                                  ' - Wang\n'                                                    //&
+                                                                  ' - Jacobs\n'                                                  //&
+                                                                  ' - Vinkovic'                                                    &
+                                                                , 'none'     , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-MassIC'    , 'Particle Mass of species [$] [kg]'                      &
+                                                                , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'               &
+                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-velocityDistribution', 'Used velocity distribution.\n'              //&
+                                                                  ' - constant: all particles have the same velocity defined in' //&
+                                                                  ' VeloVecIC\n'                                                 //&
+                                                                  ' - fluid:    particles have local fluid velocity\n'             &
+                                                                , 'constant', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloIC'    , 'Absolute value of initial velocity. (ensemble velocity) ' &
+                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-VeloVecIC ', 'Velocity vector for given species'                      &
+                                                                , '0. , 0. , 0.', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloTurbIC', 'Turbulent fluctuation of initial velocity. (ensemble velocity) '&
+                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-LowVeloThreshold', 'Threshold velocity of particles after reflection.' //&
+                                                                  ' Slower particles are deleted [$] [m/s]'                        &
+                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-HighVeloThreshold', 'Threshold velocity of particles in the entire field.' //&
+                                                                  ' Faster particles are deleted [$] [m/s]'                        &
+                                                                , '0.'      , numberedmulti=.TRUE.)
+
+
+! emission time
+CALL prms%SetSection('Particle Species Ninits Emission')
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-UseForEmission', 'Flag to use Init/Emission for emission'             &
+                                                                , '.FALSE.' , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-UseForInit', 'Flag to use Init/Emission for init'                     &
+                                                                , '.TRUE.'  , numberedmulti=.TRUE.)
+CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-initialParticleNumber', 'Initial particle number'                     &
+                                                                , '0'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-InflowRiseTime', 'Time to ramp the number of inflow particles linearly from' //&
+                                                                  ' zero to unity'                                                 &
+                                                                , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-ParticleEmissionType', 'Define Emission Type for particles (volume' //&
+                                                                  ' emission)\n'                                                 //&
+                                                                  '1 = emission rate in part/s,\n'//&
+                                                                  '2 = emission rate part/iteration\n'&
+                                                                , '2'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-ParticleEmission', 'Emission rate in part/s or part/iteration.'       &
+                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-PartDensity', 'PartDensity (real particles per m^3) or (vpi_)cub./cyl.' //&
+                                                                   'as alternative to Part.Emis. in Type1 '                        &
+                                                                 , '0.'     , numberedmulti=.TRUE.)
+
+! emission region
+CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Specifying Keyword for particle space condition of species ' //&
+                                                                  '[$] in case of one init.\n'                                   //&
+                                                                  ' - point\n'                                                   //&
+                                                                  ' - line_with_equidistant_distribution\n'                      //&
+                                                                  ' - line\n'                                                    //&
+                                                                  ' - disc\n'                                                    //&
+                                                                  ' - circle_equidistant\n'                                      //&
+                                                                  ' - cuboid\n'                                                  //&
+                                                                  ' - cylinder\n'                                                //&
+                                                                  ' - Gaussian\n'                                                  &
+                                                                , 'cuboid'  , numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BasePointIC','Base point for IC cuboid and IC sphere'                 &
+                                                                 , '0. , 0. , 0.', numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BaseVector1IC','First base vector for IC cuboid'                      &
+                                                                 , '1. , 0. , 0.', numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BaseVector2IC', 'Second base vector for IC cuboid'                    &
+                                                                 , '0. , 1. , 0.', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-BaseVariance','Variance for Gaussian distribtution'                   &
+                                                                 ,'1.'           , numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-NormalIC'   , 'Normal orientation of circle.'                         &
+                                                                 , '0. , 0. , 1.', numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-CalcHeightFromDt', 'Calculated cuboid/cylinder height from v and dt'  &
+                                                                , '.FALSE.'  , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-CuboidHeightIC'  , 'Height of cuboid if SpaceIC=cuboid'               &
+                                                                , '1.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-CylinderHeightIC', 'Third measure of cylinder  (set 0 for flat rectangle),' //&
+                                                                  ' negative value = opposite direction'                           &
+                                                                , '1.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-RadiusIC'  , 'Radius for IC circle'                                   &
+                                                                , '1.'       , numberedmulti=.TRUE.)
+
+! Exclude regions
+CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-NumberOfExcludeRegions', 'Number of different regions to be excluded' &
+                                                                , '0'       , numberedmulti=.TRUE.)
+
 !===================================================================================================================================
 ! > Boundaries
 !===================================================================================================================================
@@ -293,18 +381,25 @@ CALL prms%CreateStringOption(       'Part-Boundary[$]-WallCoeffModel', 'Coeffici
                                                                   ' - Bons2017\n'                                                //&
                                                                   ' - Fong2019'                                                    &
                                                                             , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-YoungIC'   , "Young's modulus defining stiffness of particle material"        &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC' , "Poisson ratio defining relation of transverse to axial strain"  &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff', "Yield strength defining elastic deformation"                    &
-                                                                ,'0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-Young'    , "Young's modulus defining stiffness of wall material"            &
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-Poisson'  , "Poisson ratio defining relation of transverse to axial strain"  &
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-CoR'      , "Coefficent of restitution for normal velocity component"        &
                                                                 , '1.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-YoungIC'   , "Young's modulus defining stiffness of particle material"        &
+                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC' , "Poisson ratio defining relation of transverse to axial strain"  &
+                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff', "Yield strength defining elastic deformation"                    &
+                                                                ,'0.'       , numberedmulti=.TRUE.)
+! if nInit > 0 some variables have to be defined twice
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-YoungIC'   , "Young's modulus defining stiffness of particle material"&
+                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-PoissonIC' , "Poisson ratio defining relation of transverse to axial strain" &
+                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-YieldCoeff', "Yield strength defining elastic deformation"            &
+                                                                ,'0.'       , numberedmulti=.TRUE.)
 
 ! Ambient condition ================================================================================================================
 CALL prms%CreateLogicalOption(      'Part-Boundary[$]-AmbientCondition', 'Use ambient condition (condition "behind" boundary).'    &

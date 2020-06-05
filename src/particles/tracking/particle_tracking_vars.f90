@@ -28,7 +28,7 @@ SAVE
 INTEGER                                 :: TrackingMethod                ! Method that is used for tracking of particles
 !                                          - REFMAPPING                  - tracking by mapping particle into reference element
 !                                          - TRACING                     - tracking by tracing the particle path on curved sides
-!                                          - TRIATRACKING                - racking by using surface representation by triangles
+!                                          - TRIATRACKING                - tracking by using surface representation by triangles
 REAL                                    :: tTracking                     ! Tracking time
 REAL                                    :: tLocalization                 ! localization time
 INTEGER                                 :: nTracks                       ! number of tracked particles

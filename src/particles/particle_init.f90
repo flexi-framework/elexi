@@ -1160,6 +1160,12 @@ ALLOCATE(tmpStringBC                  (1:nBCs))
 
 ! Surface Flux
 ALLOCATE(BCdata_auxSF                 (1:nBCs))
+DO iBC=1,nBCs
+  ! init value when not used
+  BCdata_auxSF(iBC)%SideNumber = -1
+  BCdata_auxSF(iBC)%GlobalArea = 0.
+  BCdata_auxSF(iBC)%LocalArea  = 0.
+END DO
 
 ! Loop over all particle boundaries and get information
 !DO iPartBound=1,nPartBound

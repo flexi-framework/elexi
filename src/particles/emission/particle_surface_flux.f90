@@ -99,7 +99,7 @@ DO iSpec = 1,nSpecies
     ! SurfaceFlux data not yet set
     ELSE IF (BCdata_auxSF(Species(iSpec)%Surfaceflux(iSF)%BC)%SideNumber.EQ.-1) THEN
       BCdata_auxSF(Species(iSpec)%Surfaceflux(iSF)%BC)%SideNumber = 0
-      nDataBC = nDataBC+1
+      nDataBC = nDataBC + 1
     END IF
 
     ! Get SurfaceFlux velocity distribution
@@ -322,6 +322,7 @@ INTEGER, INTENT(IN)                           :: nDataBC
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER               :: TmpMapToBC(1:nDataBC),TmpSideStart(1:nDataBC),TmpSideNumber(1:nDataBC),TmpSideEnd(1:nDataBC)
+! Next: Sides of diff. BCs ar not overlapping!
 INTEGER               :: TmpSideNext(1:nBCSides)
 INTEGER               :: countDataBC,iBC,BCSideID,currentBC,iSF,ElemID,iCount,iLocSide,SideID,iPartBound
 INTEGER               :: iSample, jSample, iSpec
@@ -445,7 +446,7 @@ DO iBC = 1,countDataBC
 
     !-- BC-list specific data
     ! sum up total area
-    DO jSample=1,SurfFluxSideSize(2); DO iSample=1,SurfFluxSideSize(1)
+    DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
       BCdata_auxSF(TmpMapToBC(iBC))%LocalArea = BCdata_auxSF(TmpMapToBC(iBC))%LocalArea &
         + SurfMeshSubSideData(iSample,jSample,BCSideID)%area
     END DO; END DO
@@ -784,6 +785,7 @@ CALL BCSurfMeshSideAreasandNormals()
 
 UseCircularInflow = .FALSE.
 MaxSurfacefluxBCs = 0
+nDataBC           = 0
 DoSurfaceFlux     = .FALSE.
 
 !-- 1.: read/prepare parameters and determine nec. BCs

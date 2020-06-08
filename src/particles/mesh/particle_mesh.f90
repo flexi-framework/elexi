@@ -456,10 +456,10 @@ SELECT CASE(TrackingMethod)
 #if CODE_ANALYZE
     ! TODO: bounding box volumes must be calculated for all unique sides.
     offsetSideID = ElemInfo_Shared(SideIf
-    DO iSide=offsetMPISides_YOUR,LastSide
-      dx=ABS(SideSlabIntervals(2)-SideSlabIntervals(1))
-      dy=ABS(SideSlabIntervals(4)-SideSlabIntervals(3))
-      dz=ABS(SideSlabIntervals(6)-SideSlabIntervals(5))
+    DO iSide = offsetMPISides_YOUR,LastSide
+      dx = ABS(SideSlabIntervals(2)-SideSlabIntervals(1))
+      dy = ABS(SideSlabIntervals(4)-SideSlabIntervals(3))
+      dz = ABS(SideSlabIntervals(6)-SideSlabIntervals(5))
       SideID = SideInfo
       SideBoundingBoxVolume(SideID)=dx*dy*dz
     END DO
@@ -492,19 +492,24 @@ SELECT CASE(TrackingMethod)
 
 END SELECT
 
-! BezierAreaSample stuff:
+! Equidistant BezierControlPoints, required for BezierAreaSample
 WRITE(tmpStr,'(L1)') (TrackingMethod.EQ.TRIATRACKING)
 TriaSurfaceFlux = GETLOGICAL('TriaSurfaceFlux',TRIM(tmpStr))
+IF((TrackingMethod.EQ.TRIATRACKING).AND.(.NOT.TriaSurfaceFlux)) THEN
+  CALL ABORT(__STAMP__,'TriaSurfaceFlux explicitly turned off for TriaTracking!')
+END IF
+
+! Dummy in case surfaceFlux is calculated on triangles
 IF (TriaSurfaceFlux) THEN
-  BezierSampleN = 1
-  SurfFluxSideSize=(/1,2/)
+  BezierSampleN    = 1
+  SurfFluxSideSize = (/1,2/)
 ELSE
   WRITE(tmpStr,'(I2.2)') NGeo
-  BezierSampleN = GETINT('BezierSampleN',tmpStr)
-  SurfFluxSideSize=BezierSampleN
-  ALLOCATE(BezierSampleXi(0:BezierSampleN))!,STAT=ALLOCSTAT)
-  DO iSample=0,BezierSampleN
-    BezierSampleXi(iSample)=-1.+2.0/BezierSampleN*iSample
+  BezierSampleN    = GETINT('BezierSampleN',tmpStr)
+  SurfFluxSideSize = BezierSampleN
+  ALLOCATE(BezierSampleXi(0:BezierSampleN))
+  DO iSample = 0,BezierSampleN
+    BezierSampleXi(iSample) = -1. + 2.0/BezierSampleN*iSample
   END DO
 END IF
 

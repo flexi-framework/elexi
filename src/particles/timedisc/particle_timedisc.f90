@@ -61,14 +61,8 @@ SUBROUTINE Particle_TimeStepByEuler(dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Vector
-USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
-USE MOD_TimeDisc_Vars,           ONLY: t
-#if USE_MPI
-USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
-USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-#endif /*MPI*/
 USE MOD_DG_Vars,                 ONLY: U
+USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
@@ -80,6 +74,12 @@ USE MOD_Particle_Tracking_vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: Species, PartSpecies, PartState, Pt, LastPartPos, DelayTime, PEM, PDM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
 USE MOD_Particle_SGS_Vars,       ONLY: SGSinUse
+USE MOD_Particle_Surface_Flux,   ONLY: ParticleSurfaceflux
+USE MOD_TimeDisc_Vars,           ONLY: t
+#if USE_MPI
+USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
+USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
+#endif /*MPI*/
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
@@ -120,6 +120,7 @@ PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(  1:PDM%ParticleVecLength
 
 ! forces on particles
 IF (t.GE.DelayTime) THEN
+  CALL ParticleSurfaceflux()
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -214,11 +215,6 @@ END SUBROUTINE Particle_TimeStepByEuler
 SUBROUTINE Particle_TimeStepByLSERK_RHS(t,iStage,dt,b_dt)
 ! MODULES
 USE MOD_Globals
-USE MOD_Timedisc_Vars,           ONLY: nRKStages
-#if USE_MPI
-USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
-USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-#endif /*MPI*/
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
@@ -226,6 +222,12 @@ USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
 USE MOD_Particle_SGS_Vars,       ONLY: SGSinUse
+USE MOD_Particle_Surface_Flux,   ONLY: ParticleSurfaceflux
+USE MOD_Timedisc_Vars,           ONLY: nRKStages
+#if USE_MPI
+USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
+USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
+#endif /*MPI*/
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
@@ -265,6 +267,7 @@ LastPartPos(1:3,1:PDM%ParticleVecLength) = PartState(1:3,1:PDM%ParticleVecLength
 PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(  1:PDM%ParticleVecLength)
 
 IF (t.GE.DelayTime) THEN
+  CALL ParticleSurfaceflux()
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -343,7 +346,7 @@ IF (t.GE.DelayTime) THEN
   DO iPart=1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(iPart)) THEN
       ! Pt is always known at this position, change isNewPart to false
-      PDM%IsNewPart(iPart)=.FALSE.
+      PDM%IsNewPart(iPart) = .FALSE.
 
       IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
         Pt_temp  (1:3,iPart) = PartState(4:6,iPart)
@@ -421,11 +424,6 @@ END SUBROUTINE Particle_TimeStepByLSERK
 SUBROUTINE Particle_TimeStepByLSERK_RK_RHS(t,iStage,dt,b_dt)
 ! MODULES
 USE MOD_Globals
-USE MOD_Timedisc_Vars,           ONLY: nRKStages
-#if USE_MPI
-USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
-USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
-#endif /*MPI*/
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
@@ -433,6 +431,12 @@ USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
 USE MOD_Particle_SGS_Vars,       ONLY: SGSinUse
+USE MOD_Particle_Surface_Flux,   ONLY: ParticleSurfaceflux
+USE MOD_Timedisc_Vars,           ONLY: nRKStages
+#if USE_MPI
+USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
+USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
+#endif /*MPI*/
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
@@ -475,6 +479,7 @@ LastPartPos(1:3,1:PDM%ParticleVecLength) = PartState(1:3,1:PDM%ParticleVecLength
 PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(  1:PDM%ParticleVecLength)
 
 IF (t.GE.DelayTime) THEN
+  CALL ParticleSurfaceflux()
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/

@@ -1483,19 +1483,19 @@ LOGICAL                       :: isHit,doubleCheck
 !===================================================================================================================================
 
 ! Calculate particle trajectory
-PartTrajectory=PartState(1:3,PartID) - LastPartPos(1:3,PartID)
-lengthPartTrajectory=SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                         +PartTrajectory(2)*PartTrajectory(2) &
-                         +PartTrajectory(3)*PartTrajectory(3) )
+PartTrajectory = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
+lengthPartTrajectory = SQRT(PartTrajectory(1)*PartTrajectory(1) &
+                          + PartTrajectory(2)*PartTrajectory(2) &
+                          + PartTrajectory(3)*PartTrajectory(3) )
 
 ! Check if the particle moved at all. If not, tracking is done
-IF(.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(ElemID)))THEN
-  PEM%Element(PartID)=ElemID
-  PartisDone=.TRUE.
+IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(ElemID))) THEN
+  PEM%Element(PartID) = ElemID
+  PartisDone = .TRUE.
   RETURN
 END IF
 
-PartTrajectory=PartTrajectory/lengthPartTrajectory
+PartTrajectory = PartTrajectory/lengthPartTrajectory
 
 ! Init variables. Double check if LastPartPos is close to side and first intersection is found for this position (negative alpha)
 PartisMoved = .FALSE.
@@ -1505,28 +1505,28 @@ doubleCheck = .FALSE.
 alphaOld    = -1.0
 
 DO WHILE(DoTracing)
-  IF(GEO%nPeriodicVectors.GT.0.AND.CartesianPeriodic)THEN
+  IF (GEO%nPeriodicVectors.GT.0.AND.CartesianPeriodic) THEN
     ! Account for periodic displacement
     CALL PeriodicMovement(PartID,PeriMoved)
     ! Position and trajectory has to be recomputed after periodic displacement
-    IF(PeriMoved)THEN
-      IF(GEO%nPeriodicVectors.EQ.3) CYCLE
+    IF (PeriMoved) THEN
+      IF (GEO%nPeriodicVectors.EQ.3) CYCLE
       PartTrajectory=PartState(1:3,PartID) - LastPartPos(1:3,PartID)
       lengthPartTrajectory=SQRT(PartTrajectory(1)*PartTrajectory(1)  &
                                +PartTrajectory(2)*PartTrajectory(2)  &
                                +PartTrajectory(3)*PartTrajectory(3))
     ELSE
-      IF(GEO%nPeriodicVectors.EQ.3) RETURN
+      IF (GEO%nPeriodicVectors.EQ.3) RETURN
     END IF
   ELSE
-    PeriMoved=.FALSE.
+    PeriMoved = .FALSE.
   END IF
   locAlpha = -1.0
   nInter   = 0
 
   ! track particle vector until the final particle position is achieved
   ! check if particle can intersect with current side
-  DO iLocSide=firstSide,LastSide
+  DO iLocSide = firstSide,LastSide
 
     ! SideBCMetrics is sorted by distance. stop if the first side is out of range
     IF (SideBCMetrics(BCSIDE_DISTANCE,ilocSide).GT.lengthPartTrajectory0) EXIT
@@ -1581,16 +1581,16 @@ DO WHILE(DoTracing)
     ELSE
       SELECT CASE(SideType(SideID))
         CASE(PLANAR_RECT)
-          CALL ComputePlanarRectInterSection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
+          CALL ComputePlanarRectInterSection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                             ,  xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
         CASE(BILINEAR,PLANAR_NONRECT)
-          CALL ComputeBiLinearIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
-                                          ,    xi(ilocSide),eta(ilocSide),PartID,    SideID)
+          CALL ComputeBiLinearIntersection(    isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
+                                          ,    xi(ilocSide),eta(ilocSide),PartID,     SideID)
         CASE(PLANAR_CURVED)
           CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                               ,xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
         CASE(CURVED)
-          CALL ComputeCurvedIntersection(    isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
+          CALL ComputeCurvedIntersection(      isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                         ,      xi(ilocSide),eta(ilocSide),PartID,     SideID)
     END SELECT
 
@@ -1607,14 +1607,14 @@ DO WHILE(DoTracing)
 #endif /*CODE_ANALYZE*/
     END IF
 
-    IF(locAlpha(ilocSide).GT.-1.0)THEN
+    IF (locAlpha(ilocSide).GT.-1.0) THEN
       nInter = nInter+1
     END IF
   END DO ! ilocSide
 
   ! No periodic movement in first intersection
-  IF(nInter.EQ.0)THEN
-    IF(.NOT.PeriMoved) DoTracing=.FALSE.
+  IF (nInter.EQ.0) THEN
+    IF (.NOT.PeriMoved) DoTracing = .FALSE.
   ! Take first possible intersection
   ELSE
     PartIsMoved = .TRUE.
@@ -1629,7 +1629,7 @@ DO WHILE(DoTracing)
     END DO
 
     DO ilocSide = firstSide,lastSide
-      IF(locAlpha(ilocSide).GT.-1)THEN
+      IF (locAlpha(ilocSide).GT.-1) THEN
         hitlocSide = locSideList(ilocSide)
         SideID     = INT(SideBCMetrics(BCSIDE_SIDEID,hitlocSide))
         flip       = SideInfo_Shared(SIDE_FLIP,SideID)
@@ -1639,7 +1639,7 @@ DO WHILE(DoTracing)
                                    ,ElemID,reflected)
 
         ! particle moved to a new element in boundary interaction
-        IF(ElemID.NE.OldElemID)THEN
+        IF (ElemID.NE.OldElemID) THEN
           ! Try to recursively calculate the intersection 1000 times. Threshold might be changed...
           IF (iCount.GE.1000 .AND. MOD(iCount,1000).EQ.0) THEN
             IPWRITE(*,'(I4,A,I0,A,3(x,I0))') ' WARNING: proc has called BCTracking ',iCount  &

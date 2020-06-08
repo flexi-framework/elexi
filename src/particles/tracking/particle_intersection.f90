@@ -561,10 +561,10 @@ LOGICAL                           :: ElemCheck
 !===================================================================================================================================
 
 ! set alpha to minus 1, assume no intersection
-alpha=-1.0
-xitild=-2.0
-etatild=-2.0
-isHit=.FALSE.
+alpha   = -1.0
+xitild  = -2.0
+etatild = -2.0
+isHit   = .FALSE.
 
 ! compute initial vectors
 BiLinearCoeff(:,1) = 0.25*BaseVectors3(:,SideID)
@@ -576,7 +576,7 @@ BiLinearCoeff(:,4) = 0.25*BaseVectors0(:,SideID)
   IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
       WRITE(UNIT_stdout,'(110("-"))')
-      WRITE(UNIT_stdout,'(A)') '     | Output of bilinear intersection equation constants: '
+      WRITE(UNIT_stdout,'(A)')         '     | Output of bilinear intersection equation constants: '
       WRITE(UNIT_stdout,'(A,3(X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,SideID)
       WRITE(UNIT_stdout,'(A,4(X,G0))') '     | BilinearCoeff: ',BilinearCoeff(1,1:4)
       WRITE(UNIT_stdout,'(A,4(X,G0))') '     | BilinearCoeff: ',BilinearCoeff(2,1:4)
@@ -690,7 +690,7 @@ C = a1(4)*a2(2)-a1(2)*a2(4)
 
 !scale with <PartTraj.,NormVec>^2 and cell-scale (~area) for getting coefficients at least approx. in the order of 1
 scaleFac = DOT_PRODUCT(PartTrajectory,SideNormVec(1:3,SideID)) !both vectors are already normalized
-IF(scaleFac.NE.0.)THEN
+IF (scaleFac.NE.0.) THEN
   scaleFac = scaleFac**2 * BaseVectorsScale(SideID) !<...>^2 * cell-scale
   scaleFac = 1./scaleFac
   A = A * scaleFac
@@ -699,8 +699,8 @@ IF(scaleFac.NE.0.)THEN
 END IF
 
 #if CODE_ANALYZE
-  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-    IF(PartID.EQ.PARTOUT)THEN
+  IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
+    IF (PartID.EQ.PARTOUT) THEN
       WRITE(UNIT_stdout,'(A)')       '     | Quadratic equation constants (after scaling): '
       WRITE(UNIT_stdout,'(3(A,G0))') '     | A: ',A,' | B: ',B,' | C: ',C
     END IF
@@ -710,8 +710,8 @@ END IF
 CALL QuadraticSolver(A,B,C,nRoot,Eta(1),Eta(2))
 
 #if CODE_ANALYZE
-  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-    IF(PartID.EQ.PARTOUT)THEN
+  IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
+    IF (PartID.EQ.PARTOUT) THEN
       WRITE(UNIT_stdout,'(A)')              '     | Output after QuadraticSolver: '
       WRITE(UNIT_stdout,'(A,I0,A,2(X,G0))') '     | number of root: ',nRoot,' | Eta: ',Eta(1:2)
     END IF
@@ -724,19 +724,19 @@ END IF
 
 IF (nRoot.EQ.1) THEN
 #if CODE_ANALYZE
-  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-    IF(PartID.EQ.PARTOUT)THEN
+  IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
+    IF (PartID.EQ.PARTOUT) THEN
       WRITE(UNIT_stdout,'(A)') '     | nRoot = 1 '
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
 
-  IF(ABS(eta(1)).LE.1.0) THEN!.LT.BezierClipHit)THEN
+  IF (ABS(eta(1)).LE.1.0) THEN!.LT.BezierClipHit)THEN
     ! check for Xi only, if eta is possible
-    xi(1)=ComputeXi(a1,a2,eta(1))
-    IF(ABS(xi(1)).LE.1.0) THEN!.LT.BezierClipHit)THEN
+    xi(1) = ComputeXi(a1,a2,eta(1))
+    IF( ABS(xi(1)).LE.1.0) THEN!.LT.BezierClipHit)THEN
       ! compute alpha only with valid xi and eta
-      t(1)=ComputeSurfaceDistance2(SideNormVec(1:3,SideID),BiLinearCoeff,xi(1),eta(1),PartTrajectory,PartID)
+      t(1) = ComputeSurfaceDistance2(SideNormVec(1:3,SideID),BiLinearCoeff,xi(1),eta(1),PartTrajectory,PartID)
       IF (PRESENT(alpha2)) THEN
         IF (alpha2.GT.-1.0) THEN
           IF (ALMOSTEQUAL(t(1),alpha2)) THEN
@@ -753,20 +753,20 @@ IF (nRoot.EQ.1) THEN
       END IF
       alphaNorm=t(1)/lengthPartTrajectory
 #if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-        IF(PartID.EQ.PARTOUT)THEN
+      IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
+        IF (PartID.EQ.PARTOUT) THEN
           WRITE(UNIT_stdout,'(A,G0,A,G0,A,G0)') '     | xi: ',xi(1),' | t: ',t(1),' | alphaNorm: ',alphaNorm
         END IF
       END IF
 #endif /*CODE_ANALYZE*/
-      IF((alphaNorm.LE.1.0) .AND.(alphaNorm.GE.0.))THEN!.GT.-epsilontol))THEN
-        alpha=t(1)!/LengthPartTrajectory
-        xitild=xi(1)
-        etatild=eta(1)
-        isHit=.TRUE.
+      IF ((alphaNorm.LE.1.0) .AND.(alphaNorm.GE.0.)) THEN!.GT.-epsilontol))THEN
+        alpha   = t(1)!/LengthPartTrajectory
+        xitild  = xi(1)
+        etatild = eta(1)
+        isHit   = .TRUE.
 #if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-        IF(PartID.EQ.PARTOUT)THEN
+      IF( PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
+        IF (PartID.EQ.PARTOUT) THEN
           WRITE(UNIT_stdout,'(A,G0,A,G0)') '     | alphanorm: ',alphaNorm,' | epsilonTolerance: ',epsilontol
         END IF
       END IF
@@ -782,12 +782,12 @@ IF (nRoot.EQ.1) THEN
     RETURN
   END IF ! eta .lt. OnePlusEps
 ELSE
-  InterType=0
-  t(:)=-1.
+  InterType = 0
+  t(:) = -1.
 
 #if CODE_ANALYZE
-  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-    IF(PartID.EQ.PARTOUT)THEN
+  IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
+    IF (PartID.EQ.PARTOUT) THEN
       WRITE(UNIT_stdout,'(A)') '     | nRoot = 2 '
     END IF
   END IF
@@ -796,19 +796,19 @@ ELSE
   ! check if intersection is possible
   ! t(1) has to be nullified if intersection is NOT possible
   ! else, the selection scheme is WRONG
-  IF(ABS(eta(1)).LE.1.0) THEN!.LT.BezierClipHit)THEN
+  IF (ABS(eta(1)).LE.1.0) THEN!.LT.BezierClipHit)THEN
     ! check for Xi only, if eta is possible
-    xi(1)=ComputeXi(a1,a2,eta(1))
-    IF(ABS(xi(1)).LE.1.0) THEN!.LT.BezierCliphit)THEN
+    xi(1) = ComputeXi(a1,a2,eta(1))
+    IF (ABS(xi(1)).LE.1.0) THEN!.LT.BezierCliphit)THEN
       ! compute alpha only with valid xi and eta
-      t(1)=ComputeSurfaceDistance2(SideNormVec(1:3,SideID),BiLinearCoeff,xi(1),eta(1),PartTrajectory,PartID)
+      t(1) = ComputeSurfaceDistance2(SideNormVec(1:3,SideID),BiLinearCoeff,xi(1),eta(1),PartTrajectory,PartID)
       IF (PRESENT(alpha2)) THEN
         IF (alpha2.GT.-1.0) THEN
           IF (ALMOSTEQUAL(t(1),alpha2)) THEN
             t(1)=-1.0
 #if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-              IF(PartID.EQ.PARTOUT)THEN
+            IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
+              IF (PartID.EQ.PARTOUT) THEN
                 WRITE(UNIT_stdout,'(A)') 'changed t1'
               END IF
             END IF
@@ -924,34 +924,34 @@ ELSE
   ! no refmapping
   ! take closest
   SELECT CASE(InterType)
-  CASE(1)
-    alpha=t(1)
-    xitild=xi(1)
-    etatild=eta(1)
-  CASE(2)
-    alpha=t(2)
-    xitild=xi(2)
-    etatild=eta(2)
-  CASE(3)
-    ElemCheck = .FALSE.
-    IF(PRESENT(ElemCheck_Opt))THEN
-      ElemCheck = ElemCheck_Opt
-    END IF
-    IF(ElemCheck)THEN
-      alpha = -1
-      xitild = -2
-      etatild = -2
-    ELSE
-      IF(ABS(t(1)).LT.ABS(t(2)))THEN
-        alpha=t(1)
-        xitild=xi(1)
-        etatild=eta(1)
-      ELSE
-        alpha=t(2)
-        xitild=xi(2)
-        etatild=eta(2)
+    CASE(1)
+      alpha=t(1)
+      xitild=xi(1)
+      etatild=eta(1)
+    CASE(2)
+      alpha=t(2)
+      xitild=xi(2)
+      etatild=eta(2)
+    CASE(3)
+      ElemCheck = .FALSE.
+      IF(PRESENT(ElemCheck_Opt))THEN
+        ElemCheck = ElemCheck_Opt
       END IF
-    END IF
+      IF(ElemCheck)THEN
+        alpha=-1
+        xitild=-2
+        etatild=-2
+      ELSE
+        IF(ABS(t(1)).LT.ABS(t(2)))THEN
+          alpha=t(1)
+          xitild=xi(1)
+          etatild=eta(1)
+        ELSE
+          alpha=t(2)
+          xitild=xi(2)
+          etatild=eta(2)
+        END IF
+      END IF
   END SELECT
 END IF ! nRoot
 

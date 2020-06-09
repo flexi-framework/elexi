@@ -36,9 +36,10 @@ INTEGER                       :: nSpecAnalyze                          ! number 
 INTEGER,ALLOCATABLE           :: nPartIn(:)                            ! Number of entry and leaving particles
 INTEGER,ALLOCATABLE           :: nPartOut(:)                           ! Number of entry and leaving particles
 INTEGER,ALLOCATABLE           :: nPartInTmp(:)                         ! Number of entry and leaving particles
-REAL,ALLOCATABLE              :: PartEkinIn(:)                         ! energy and temperatur of input particle
-REAL,ALLOCATABLE              :: PartEkinOut(:)                        ! energy and temperatur of input particle
-REAL,ALLOCATABLE              :: PartEKinInTmp(:)                      ! energy and temperatur of input particle
+REAL,ALLOCATABLE              :: PartEkin(:)                           ! kinetic energy of particle
+REAL,ALLOCATABLE              :: PartEkinIn(:)                         ! kinetic energy of input particle
+REAL,ALLOCATABLE              :: PartEkinOut(:)                        ! kinetic energy of outflow particle
+REAL,ALLOCATABLE              :: PartEKinInTmp(:)                      ! kinetic energy of input particle (tmp)
 REAL,ALLOCATABLE              :: PartPath(:,:)                         ! absolute particle path (used for dispersion calculation)
 LOGICAL                       :: printDiff
 REAL                          :: printDiffTime

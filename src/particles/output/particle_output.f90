@@ -142,9 +142,11 @@ IF (MPIRoot) THEN
     IF (DoRestart .and. FILEEXISTS(outfile)) THEN
       OPEN(unit_index,file=TRIM(outfile),position="APPEND",status="OLD")
     ELSE
-      OPEN(unit_index,file=TRIM(outfile))
       !--- insert header
-      WRITE(unit_index,'(A8)',ADVANCE='NO') '001-TIME'
+      OPEN(unit_index,file=TRIM(outfile))
+      ! Time
+      WRITE(unit_index,'(A8,A5)',ADVANCE='NO') '001-TIME',' '
+      ! Particle number balance
       IF (CalcPartBalance) THEN
         DO iSpec = 1,nSpecAnalyze
           WRITE(unit_index,'(A1)',ADVANCE='NO') ','
@@ -156,8 +158,9 @@ IF (MPIRoot) THEN
           WRITE(unit_index,'(I3.3,A15,I3.3,A5)',ADVANCE='NO') OutputCounter,'-nPartOut-Spec-',iSpec,' '
           OutputCounter = OutputCounter + 1
         END DO
-!     END IF
-!     IF (CalcPartBalance) THEN
+     END IF
+     ! Particle kinetic energy balance
+     IF (CalcPartBalance) THEN
         DO iSpec = 1,nSpecAnalyze
           WRITE(unit_index,'(A1)',ADVANCE='NO') ','
           WRITE(unit_index,'(I3.3,A8,I3.3,A5)',ADVANCE='NO') OutputCounter,'-EkinIn-',iSpec,' '
@@ -166,6 +169,14 @@ IF (MPIRoot) THEN
         DO iSpec=1, nSpecAnalyze
           WRITE(unit_index,'(A1)',ADVANCE='NO') ','
           WRITE(unit_index,'(I3.3,A9,I3.3,A5)',ADVANCE='NO') OutputCounter,'-EkinOut-',iSpec,' '
+          OutputCounter = OutputCounter + 1
+        END DO
+      END IF
+      ! Instantaneous particle kinetic energy
+      IF (CalcEkin) THEN
+        DO iSpec=1, nSpecAnalyze
+          WRITE(unit_index,'(A1)',ADVANCE='NO') ','
+          WRITE(unit_index,'(I3.3,A,I3.3,A5)',ADVANCE='NO') OutputCounter,'-Ekin-',iSpec,' '
           OutputCounter = OutputCounter + 1
         END DO
       END IF
@@ -210,6 +221,7 @@ END IF
 IF (MPIRoot) THEN
   ! Time
   WRITE(unit_index,WRITEFORMAT,ADVANCE='NO') t
+  ! Particle number balance
   IF (CalcPartBalance) THEN
     DO iSpec = 1,nSpecAnalyze
       WRITE(unit_index,'(A1)',ADVANCE='NO') ','
@@ -219,8 +231,9 @@ IF (MPIRoot) THEN
       WRITE(unit_index,'(A1)',ADVANCE='NO') ','
       WRITE(unit_index,WRITEFORMAT,ADVANCE='NO') REAL(nPartOut(iSpec))
     END DO
-!  END IF
-!  IF (CalcPartBalance) THEN
+  END IF
+  ! Particle kinetic energy balance
+  IF (CalcPartBalance) THEN
     DO iSpec = 1,nSpecAnalyze
       WRITE(unit_index,'(A1)',ADVANCE='NO') ','
       WRITE(unit_index,WRITEFORMAT,ADVANCE='NO') PartEkinIn(iSpec)
@@ -228,6 +241,13 @@ IF (MPIRoot) THEN
     DO iSpec = 1,nSpecAnalyze
       WRITE(unit_index,'(A1)',ADVANCE='NO') ','
       WRITE(unit_index,WRITEFORMAT,ADVANCE='NO') PartEkinOut(iSpec)
+    END DO
+  END IF
+  ! Instantaneous particle kinetic energy
+  IF (CalcEkin) THEN
+    DO iSpec=1, nSpecAnalyze
+      WRITE(unit_index,'(A1)',ADVANCE='NO') ','
+      WRITE(unit_index,WRITEFORMAT,ADVANCE='NO') PartEkin(iSpec)
     END DO
   END IF
 

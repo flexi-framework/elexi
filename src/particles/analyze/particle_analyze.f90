@@ -71,8 +71,8 @@ CALL prms%SetSection("Particle Analyze")
 
 CALL prms%CreateIntOption(      'Part-AnalyzeStep'      , 'Analyze is performed each Nth time step','1')
 CALL prms%CreateLogicalOption(  'CalcKineticEnergy'     , 'Calculate Kinetic Energy. ','.FALSE.')
-CALL prms%CreateLogicalOption(  'CalcPartBalance'       , 'Calculate the Particle Power Balance'//&
-                                                          '- input and outflow energy of all particles','.FALSE.')
+CALL prms%CreateLogicalOption(  'CalcPartBalance'       , 'Calculate the Particle Kinetic Energy Balance'//&
+                                                          '- input and outflow kinetic energy of all particles','.FALSE.')
 CALL prms%CreateLogicalOption(  'Part-TrackPosition'    , 'Track particle position','.FALSE.')
 CALL prms%CreateLogicalOption(  'Part-TrackConvergence' , 'Track particle convergence (i.e. final position)','.FALSE.')
 CALL prms%CreateLogicalOption(  'Part-TrackDispersion'  , 'Track particle convergence radius (i.e. absolute path)','.FALSE.')
@@ -109,13 +109,19 @@ END IF
 SWRITE(UNIT_StdOut,'(A)') ' INIT PARTICLE ANALYZE...'
 
 DoAnalyze = .FALSE.
-  CalcEkin = GETLOGICAL('CalcKineticEnergy','.FALSE.')
-  IF(CalcEkin) DoAnalyze = .TRUE.
 
 IF(nSpecies.GT.1) THEN
   nSpecAnalyze = nSpecies + 1
 ELSE
   nSpecAnalyze = 1
+END IF
+
+CalcEkin = GETLOGICAL('CalcKineticEnergy','.FALSE.')
+IF (CalcEkin) THEN
+  DoAnalyze = .TRUE.
+  SDEALLOCATE(PartEkin)
+  ALLOCATE( PartEkin (nSpecAnalyze))
+  PartEkin = 0.
 END IF
 
 ! Calculate number and kinetic energy of particles entering / leaving the domain
@@ -178,7 +184,7 @@ SUBROUTINE ParticleAnalyze(iter)
 !==================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Analyze_Vars     ,ONLY: CalcPartBalance
+USE MOD_Particle_Analyze_Vars     ,ONLY: DoAnalyze,CalcEkin
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Analyze ,ONLY: CalcSurfaceValues
 USE MOD_Particle_Tracking_Vars    ,ONLY: CountNbOfLostParts
@@ -205,7 +211,11 @@ IF (CountNbOfLostParts) THEN
   CALL WriteInfoStdOut()
 END IF
 
-IF (CalcPartBalance) THEN
+IF (CalcEkin) THEN
+  CALL CalcKineticEnergy()
+END IF
+
+IF (DoAnalyze) THEN
   CALL WriteParticleAnalyze()
 END IF
 
@@ -257,17 +267,18 @@ END IF
 END SUBROUTINE ParticleInformation
 
 
-SUBROUTINE CalcKineticEnergy(Ekin)
+SUBROUTINE CalcKineticEnergy()
 !===================================================================================================================================
 ! compute the kinetic energy of particles
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Vars,          ONLY : PartState, PartSpecies, Species, PDM
-USE MOD_Particle_Analyze_Vars,  ONLY : nSpecAnalyze
+USE MOD_Particle_Globals      ,ONLY: DOTPRODUCT
+USE MOD_Particle_Analyze_Vars ,ONLY: PartEkin,nSpecAnalyze
+USE MOD_Particle_Vars         ,ONLY: PartState,PartSpecies,Species,PDM
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,      ONLY : PartMPI
+USE MOD_Particle_MPI_Vars     ,ONLY: PartMPI
 #endif /*MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -275,44 +286,38 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: Ekin(nSpecAnalyze)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: i
-REAL(KIND=8)              :: partV2
-#if USE_MPI
-REAL                      :: RD(nSpecAnalyze)
-#endif /*MPI*/
+REAL(KIND=8)      :: partV2
 !===================================================================================================================================
 
-Ekin = 0.!d0
+PartEkin = 0.
+
+! nSpecAnalyze > 1, calculate species and sum
 IF (nSpecAnalyze.GT.1) THEN
-  DO i=1,PDM%ParticleVecLength
+  DO i = 1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(i)) THEN
-      partV2 = PartState(4,i) * PartState(4,i) &
-             + PartState(5,i) * PartState(5,i) &
-             + PartState(6,i) * PartState(6,i)
-          Ekin(nSpecAnalyze)   = Ekin(nSpecAnalyze)   + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
-          Ekin(PartSpecies(i)) = Ekin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
+      partV2   = DOTPRODUCT(PartState(4:6,i))
+      PartEkin(nSpecAnalyze)   = PartEkin(nSpecAnalyze)   + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
+      PartEkin(PartSpecies(i)) = PartEkin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
     END IF ! (PDM%ParticleInside(i))
   END DO ! i=1,PDM%ParticleVecLength
-
-ELSE ! nSpecAnalyze = 1 : only 1 species
-  DO i=1,PDM%ParticleVecLength
+! nSpecAnalyze = 1 : only 1 species
+ELSE
+  DO i = 1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(i)) THEN
-      partV2 = PartState(4,i) * PartState(4,i) &
-             + PartState(5,i) * PartState(5,i) &
-             + PartState(6,i) * PartState(6,i)
-          Ekin(PartSpecies(i)) = Ekin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
+      partV2   = DOTPRODUCT(PartState(4:6,i))
+      PartEkin(PartSpecies(i)) = PartEkin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
     END IF ! particle inside
-  END DO ! particleveclength
+  END DO ! 1,PDM%ParticleVecLength
 END IF
 
 #if USE_MPI
 IF(PartMPI%MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,Ekin,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM, IERROR)
+  CALL MPI_REDUCE(MPI_IN_PLACE,PartEkin,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM, IERROR)
 ELSE
-  CALL MPI_REDUCE(Ekin  ,RD        ,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM, IERROR)
+  CALL MPI_REDUCE(PartEkin    ,0       ,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM, IERROR)
 END IF
 #endif /*MPI*/
 
@@ -428,18 +433,30 @@ END SUBROUTINE TrackingParticlePosition
 
 SUBROUTINE FinalizeParticleAnalyze()
 !===================================================================================================================================
-! Finalizes variables necessary for analyse subroutines
+! Finalizes variables necessary for analyze subroutines
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Analyze_Vars,ONLY:ParticleAnalyzeInitIsDone
-! IMPLICIT VARIABLE HANDLINGDGInitIsDone
+USE MOD_Particle_Analyze_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+
+SDEALLOCATE(PartEkin)
+
+SDEALLOCATE(nPartIn)
+SDEALLOCATE(nPartOut)
+SDEALLOCATE(PartEkinIn)
+SDEALLOCATE(PartEkinOut)
+
+SDEALLOCATE( nPartInTmp)
+SDEALLOCATE( PartEkinInTmp)
+
 ParticleAnalyzeInitIsDone = .FALSE.
+
 END SUBROUTINE FinalizeParticleAnalyze
 
 

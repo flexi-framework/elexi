@@ -109,3 +109,11 @@
 #define REFMAPPING    1
 #define TRACING       2
 #define TRIATRACKING  3
+
+! formats
+! print to std out like  "    1.41421356237310E+000   -1.41421356237310E+000   -1.41421356237310E+000"
+! (looks good and prevents the first digit of being a zero)
+#define WRITEFORMAT '(ES25.14E3)'
+! print to csv file like "0.1414213562373095E+001,-.1414213562373095E+001,-.1414213562373095E+001"
+! (does not look that good but it saves disk space)
+#define CSVFORMAT '(A1,E23.16E3)'

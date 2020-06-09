@@ -18,10 +18,10 @@
 ! module for particle emission
 !===================================================================================================================================
 MODULE MOD_Particle_Surface_Flux
-!----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 IMPLICIT NONE
 PRIVATE
+!-----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE InitializeParticleSurfaceflux
   MODULE PROCEDURE InitializeParticleSurfaceflux
@@ -1026,6 +1026,7 @@ USE MOD_Part_Emission_Tools     ,ONLY: IntegerDivide,SetParticleMass,SamplePoiss
 USE MOD_Part_Pos_and_Velo       ,ONLY: SetParticleVelocity
 USE MOD_Part_Tools              ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Tools  ,ONLY: CalcEkinPart
+USE MOD_Particle_Analyze_Vars   ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
 USE MOD_Particle_Globals        ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces       ,ONLY: EvaluateBezierPolynomialAndGradient
@@ -1033,7 +1034,7 @@ USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfFluxSideSize,TriaSurfaceFlux
 USE MOD_Particle_Surfaces_Vars  ,ONLY: BCdata_auxSF
 USE MOD_Particle_Timedisc_Vars  ,ONLY: RKdtFrac
 USE MOD_Particle_Vars           ,ONLY: Species,nSpecies,PDM,PEM
-USE MOD_Particle_Vars           ,ONLY: PartState,LastPartPos
+USE MOD_Particle_Vars           ,ONLY: PartState,LastPartPos,PartSpecies
 USE MOD_Particle_Vars           ,ONLY: DoSurfaceFlux,DoPoissonRounding,DoTimeDepInflow
 USE MOD_TimeDisc_Vars           ,ONLY: dt
 #if CODE_ANALYZE
@@ -1053,7 +1054,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: globElemID
-INTEGER                     :: iSpec,iSF,iSide,currentBC,SideID
+INTEGER                     :: iSpec,PositionNbr,iSF,iSide,currentBC,SideID
 INTEGER                     :: NbrOfParticle
 INTEGER                     :: BCSideID,ElemID,iLocSide,iSample,jSample,PartInsSubSide,iPart,iPartTotal
 INTEGER                     :: ParticleIndexNbr
@@ -1259,6 +1260,17 @@ DO iSpec = 1,nSpecies
 
     !----- 2b.: set remaining properties
     CALL SetParticleMass(iSpec,NbrOfParticle)
+
+    ! Compute number of input particles and energy
+    IF(CalcPartBalance) THEN
+      nPartIn(iSpec)=nPartIn(iSpec) + NbrOfParticle
+      DO iPart=1,NbrOfParticle
+        PositionNbr = PDM%nextFreePosition(iPart + PDM%CurrentNextFreePosition)
+        IF (PositionNbr.NE.0) PartEkinIn(PartSpecies(PositionNbr))= PartEkinIn(PartSpecies(PositionNbr))+CalcEkinPart(PositionNbr)
+      END DO ! iPart
+    END IF ! CalcPartBalance
+
+    ! instead of an UpdateNextfreePosition we update the particleVecLength only
     PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
     PDM%ParticleVecLength       = PDM%ParticleVecLength       + NbrOfParticle
 

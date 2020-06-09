@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 ! Module for particle emission
@@ -334,7 +335,7 @@ DO i = 1,nSpecies
         !CALL UpdateNextFreePosition()
 
         ! Compute number of input particles and energy
-        IF(CalcPartBalance) THEN
+        IF (CalcPartBalance) THEN
           ! Alter history, dirty hack for balance calculation
           PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition - NbrOfParticle
           IF(NbrOfParticle.GT.0) THEN

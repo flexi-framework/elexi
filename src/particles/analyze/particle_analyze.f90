@@ -12,12 +12,13 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 !> Contains routines for statistical analysis of particle behavior
 !===================================================================================================================================
 MODULE MOD_Particle_Analyze
-! IMPLICIT VARIABLE HANDLING
+! MODULES
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -125,21 +126,21 @@ IF (CalcPartBalance) THEN
   SDEALLOCATE(nPartOut)
   SDEALLOCATE(PartEkinIn)
   SDEALLOCATE(PartEkinOut)
-  ALLOCATE( nPartIn(nSpecies)        &
-          , nPartOut(nSpecies)       &
-          , PartEkinOut(nSpecies)    &
-          , PartEkinIn(nSpecies))
-  nPartIn=0
-  nPartOut=0
-  PartEkinOut=0.
-  PartEkinIn=0.
+  ALLOCATE( nPartIn    (nSpecAnalyze)    &
+          , nPartOut   (nSpecAnalyze)    &
+          , PartEkinOut(nSpecAnalyze)    &
+          , PartEkinIn (nSpecAnalyze))
+  nPartIn     = 0
+  nPartOut    = 0
+  PartEkinOut = 0.
+  PartEkinIn  = 0.
 
   SDEALLOCATE( nPartInTmp)
   SDEALLOCATE( PartEkinInTmp)
   ALLOCATE( nPartInTmp(nSpecies)     &
           , PartEkinInTmp(nSpecies))
-  PartEkinInTmp=0.
-  nPartInTmp=0
+  PartEkinInTmp = 0.
+  nPartInTmp    = 0
 END IF
 
 ! Track and write position of each particle. Primarily intended for debug purposes
@@ -177,10 +178,11 @@ SUBROUTINE ParticleAnalyze(iter)
 !==================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Particle_Analyze_Vars     ,ONLY: CalcPartBalance
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Analyze ,ONLY: CalcSurfaceValues
 USE MOD_Particle_Tracking_Vars    ,ONLY: CountNbOfLostParts
-USE MOD_Particle_Output           ,ONLY: WriteInfoStdOut
+USE MOD_Particle_Output           ,ONLY: WriteParticleAnalyze,WriteInfoStdOut
 #if USE_LOADBALANCE
 USE MOD_LoadDistribution          ,ONLY: WriteElemTimeStatistics
 #endif /*LOADBALANCE*/
@@ -201,6 +203,10 @@ END IF
 ! Write information to console output
 IF (CountNbOfLostParts) THEN
   CALL WriteInfoStdOut()
+END IF
+
+IF (CalcPartBalance) THEN
+  CALL WriteParticleAnalyze()
 END IF
 
 #if USE_LOADBALANCE
@@ -249,7 +255,6 @@ SWRITE(UNIT_StdOut,'(A14,I16)')' # Impacts  : ', EP_Buffersize
 END IF
 
 END SUBROUTINE ParticleInformation
-
 
 
 SUBROUTINE CalcKineticEnergy(Ekin)
@@ -419,6 +424,7 @@ END IF
 104    FORMAT (e25.14)
 
 END SUBROUTINE TrackingParticlePosition
+
 
 SUBROUTINE FinalizeParticleAnalyze()
 !===================================================================================================================================

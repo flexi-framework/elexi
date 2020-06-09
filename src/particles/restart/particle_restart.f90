@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !==================================================================================================================================
 !> \brief Routines that handle restart capabilities.
@@ -246,7 +247,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       CNElemID = GetCNElemID(PEM%Element(i))
 
       SELECT CASE(TrackingMethod)
-        CASE(1)
+        CASE(REFMAPPING)
           IF(ALL(ABS(Xi).LE.ElemEpsOneCell(CNElemID))) THEN
             InElementCheck=.TRUE.
             PartPosRef(1:3,i)=Xi
@@ -254,7 +255,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
             InElementCheck=.FALSE.
           END IF
 
-        CASE(2,3)
+        CASE(TRACING,TRIATRACKING)
           IF(ALL(ABS(Xi).LE.1.0)) THEN ! particle inside
             InElementCheck=.TRUE.
             IF(ALLOCATED(PartPosRef)) PartPosRef(1:3,i)=Xi

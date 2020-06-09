@@ -338,32 +338,33 @@ MPIRankOut         = GETINT('MPIRankOut','0')
 #endif /*CODE_ANALYZE*/
 
 CartesianPeriodic = GETLOGICAL('CartesianPeriodic','.FALSE.')
-IF(CartesianPeriodic) FastPeriodic = GETLOGICAL('FastPeriodic','.FALSE.')
+IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('FastPeriodic','.FALSE.')
 
-! method from xPhysic to parameter space
-
-IF(UseCurveds)THEN ! don't use RefMappingGuess=1, because RefMappingGuess is only best for linear cubical elements
+IF (UseCurveds) THEN ! don't use RefMappingGuess=1, because RefMappingGuess is only best for linear cubical elements
   ! curved elements can be stronger deformed, hence, a better guess can be used
   ! RefMappingGuess 2,3 searches the closest Gauss/CL points of the considered element. This point is used as the initial value for
   ! the mapping. Note, that the position of the CL points can still be advantageous for the initial guess.
   RefMappingGuessProposal = 2
-  IF(PP_N.GT.NGeo)THEN ! there are more Gauss points within an element then CL-points
-                       ! Gauss points sample the element finer
-                       ! Note: the Gauss points does not exist for HALO elements, here, the closest CL point is used
+  ! there are more Gauss points within an element then CL-points. Gauss points sample the element finer
+  IF (PP_N.GT.NGeo) THEN
     RefMappingGuessProposal = 2
-  ELSE ! more CL-points than Gauss points, hence, better sampling of the element
+  ! more CL-points than Gauss points, hence, better sampling of the element
+  ELSE
     RefMappingGuessProposal = 3
   END IF
+! default for linear meshes. Guess is exact for cubical, non-twisted elements
 ELSE
-  RefMappingGuessProposal=1 ! default for linear meshes. Guess is exact for cubical, non-twisted elements
+  RefMappingGuessProposal = 1
 END IF
+
 WRITE(tmpStr,'(I2.2)') RefMappingGuessProposal
 RefMappingGuess = GETINT('RefMappingGuess',tmpStr)
-IF((RefMappingGuess.LT.1).AND.(UseCurveds)) THEN ! this might cause problems
+! Linear intial guess on curved meshes might cause problems.
+IF((RefMappingGuess.EQ.1).AND.(UseCurveds)) THEN
   SWRITE(UNIT_stdOut,'(A)')' WARNING: read-in [RefMappingGuess=1] when using [UseCurveds=T] may create problems!'
 END IF
-RefMappingEps   = GETREAL('RefMappingEps','1e-4')
 
+RefMappingEps   = GETREAL('RefMappingEps','1e-4')
 epsInCell       = SQRT(3.0*RefMappingEps)
 
 IF((RefMappingGuess.LT.1).OR.(RefMappingGuess.GT.4))THEN
@@ -371,6 +372,14 @@ IF((RefMappingGuess.LT.1).OR.(RefMappingGuess.GT.4))THEN
 END IF
 
 CALL InitElemVolumes()
+
+! TriaSurfaceFlux needs to be determined before particle mesh init to build all required information. TriaSurfaceFlux is enabled by
+! default for TriaTracking and disabled otherwise
+WRITE(tmpStr,'(L1)') (TrackingMethod.EQ.TRIATRACKING)
+TriaSurfaceFlux = GETLOGICAL('TriaSurfaceFlux',TRIM(tmpStr))
+IF((TrackingMethod.EQ.TRIATRACKING).AND.(.NOT.TriaSurfaceFlux)) THEN
+  CALL ABORT(__STAMP__,'TriaSurfaceFlux explicitly turned off for TriaTracking!')
+END IF
 
 SELECT CASE(TrackingMethod)
 
@@ -387,6 +396,11 @@ SELECT CASE(TrackingMethod)
     END IF
 
   CASE(TRACING,REFMAPPING)
+    ! TriaSurfaceFlux needs ElemNodeID_Shared
+    IF (TriaSurfaceFlux) THEN
+      CALL InitParticleGeometry()
+    END IF
+
     CALL CalcParticleMeshMetrics()
 
     CALL CalcBezierControlPoints()
@@ -492,14 +506,7 @@ SELECT CASE(TrackingMethod)
 
 END SELECT
 
-! Equidistant BezierControlPoints, required for BezierAreaSample
-WRITE(tmpStr,'(L1)') (TrackingMethod.EQ.TRIATRACKING)
-TriaSurfaceFlux = GETLOGICAL('TriaSurfaceFlux',TRIM(tmpStr))
-IF((TrackingMethod.EQ.TRIATRACKING).AND.(.NOT.TriaSurfaceFlux)) THEN
-  CALL ABORT(__STAMP__,'TriaSurfaceFlux explicitly turned off for TriaTracking!')
-END IF
-
-! Dummy in case surfaceFlux is calculated on triangles
+! Equidistant BezierControlPoints, required for BezierAreaSample. Dummy in case surfaceFlux is calculated on triangles
 IF (TriaSurfaceFlux) THEN
   BezierSampleN    = 1
   SurfFluxSideSize = (/1,2/)
@@ -943,7 +950,7 @@ END SUBROUTINE InitElemVolumes
 
 SUBROUTINE InitParticleGeometry()
 !===================================================================================================================================
-! Subroutine for particle geometry initialization (GEO container)
+! Subroutine for particle geometry initialization in case of TriaTracking.
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -998,13 +1005,13 @@ CornerNodeIDswitch(8)=(Ngeo+1)**2*Ngeo+(Ngeo+1)*Ngeo+1
 
 ! Corner node switch to order HOPR coordinates in CGNS format
 ASSOCIATE(CNS => CornerNodeIDswitch )
-  ! CGNS Mapping
-  NodeMap(:,1)=(/CNS(1),CNS(4),CNS(3),CNS(2)/)
-  NodeMap(:,2)=(/CNS(1),CNS(2),CNS(6),CNS(5)/)
-  NodeMap(:,3)=(/CNS(2),CNS(3),CNS(7),CNS(6)/)
-  NodeMap(:,4)=(/CNS(3),CNS(4),CNS(8),CNS(7)/)
-  NodeMap(:,5)=(/CNS(1),CNS(5),CNS(8),CNS(4)/)
-  NodeMap(:,6)=(/CNS(5),CNS(6),CNS(7),CNS(8)/)
+! CGNS Mapping
+NodeMap(:,1)=(/CNS(1),CNS(4),CNS(3),CNS(2)/)
+NodeMap(:,2)=(/CNS(1),CNS(2),CNS(6),CNS(5)/)
+NodeMap(:,3)=(/CNS(2),CNS(3),CNS(7),CNS(6)/)
+NodeMap(:,4)=(/CNS(3),CNS(4),CNS(8),CNS(7)/)
+NodeMap(:,5)=(/CNS(1),CNS(5),CNS(8),CNS(4)/)
+NodeMap(:,6)=(/CNS(5),CNS(6),CNS(7),CNS(8)/)
 
 #if USE_MPI
 MPISharedSize = INT(6*nComputeNodeTotalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
@@ -3307,10 +3314,10 @@ SDEALLOCATE(D_Bezier)
 SDEALLOCATE(XCL_NGeo)
 SDEALLOCATE(dXCL_NGeo)
 
-SELECT CASE (TrackingMethod)
+SELECT CASE(TrackingMethod)
 
   ! RefMapping, Tracing
-  CASE(1,2)
+  CASE(REFMAPPING,TRACING)
     ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 #if USE_MPI
     CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
@@ -3318,6 +3325,18 @@ SELECT CASE (TrackingMethod)
     ! InitElemVolumes
     CALL MPI_WIN_UNLOCK_ALL(ElemVolume_Shared_Win           ,iError)
     CALL MPI_WIN_FREE(      ElemVolume_Shared_Win           ,iError)
+
+    ! InitParticleGeometry
+    IF (TriaSurfaceFlux) THEN
+      CALL MPI_WIN_UNLOCK_ALL(ConcaveElemSide_Shared_Win      ,iError)
+      CALL MPI_WIN_FREE(      ConcaveElemSide_Shared_Win      ,iError)
+      CALL MPI_WIN_UNLOCK_ALL(ElemNodeID_Shared_Win           ,iError)
+      CALL MPI_WIN_FREE(      ElemNodeID_Shared_Win           ,iError)
+      CALL MPI_WIN_UNLOCK_ALL(ElemSideNodeID_Shared_Win       ,iError)
+      CALL MPI_WIN_FREE(      ElemSideNodeID_Shared_Win       ,iError)
+      CALL MPI_WIN_UNLOCK_ALL(ElemMidPoint_Shared_Win         ,iError)
+      CALL MPI_WIN_FREE(      ElemMidPoint_Shared_Win         ,iError)
+    END IF
 
     ! GetBCSidesAndOrgin
     IF (TrackingMethod.EQ.REFMAPPING) THEN
@@ -3410,6 +3429,14 @@ SELECT CASE (TrackingMethod)
     ! InitElemVolumes
     MDEALLOCATE(ElemVolume_Shared)
 
+    ! InitParticleGeometry
+    IF (TriaSurfaceFlux) THEN
+      MDEALLOCATE(ConcaveElemSide_Shared)
+      MDEALLOCATE(ElemNodeID_Shared)
+      MDEALLOCATE(ElemSideNodeID_Shared)
+      MDEALLOCATE(ElemMidPoint_Shared)
+    END IF
+
     ! GetBCSidesAndOrgin
     IF (TrackingMethod.EQ.REFMAPPING) THEN
       MDEALLOCATE(BCSide2SideID_Shared)
@@ -3493,10 +3520,10 @@ SELECT CASE (TrackingMethod)
     MDEALLOCATE(ElemEpsOneCell_Shared)
 
 !  ! Tracing
-!  CASE(2)
+!  CASE(TRACING)
 
   ! TriaTracking
-  CASE(3)
+  CASE(TRIATRACKING)
     ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 #if USE_MPI
     CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)

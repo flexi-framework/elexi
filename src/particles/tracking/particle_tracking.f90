@@ -445,9 +445,10 @@ USE MOD_Particle_Utils              ,ONLY: InsertionSort
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM
 USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 #if CODE_ANALYZE
+USE MOD_Particle_Globals            ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Intersection       ,ONLY: OutputTrajectory
 USE MOD_Particle_Tracking_Vars      ,ONLY: PartOut,MPIRankOut
-USE MOD_Particle_Mesh_Vars          ,ONLY: GEO
+USE MOD_Particle_Mesh_Vars          ,ONLY: GEO,ElemBaryNGeo
 USE MOD_TimeDisc_Vars               ,ONLY: currentStage
 #endif /*CODE_ANALYZE*/
 #if USE_LOADBALANCE
@@ -528,17 +529,17 @@ DO iPart=1,PDM%ParticleVecLength
     CALL GetPositionInRefElem(LastPartPos(1:3,iPart),RefPos,ElemID)
     IF (MAXVAL(ABS(RefPos)).LE.1.0+1e-4) foundHit=.TRUE.
     IF(.NOT.foundHit)THEN  ! particle not inside
-     IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
-     IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
-     IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' global ElemID  ', ElemID
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,CNElemID)
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartRefPos:        ', RefPos(1:3)
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' Velocity:          ', PartState(4:6,iPart)
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartTrajectory:    ', PartState(1:3,iPart) - LastPartPos(1:3,iPart)
-     IPWRITE(UNIT_stdOut,'(I0,A,ES25.14E3)')      ' lengthPT:          ', SQRT(DOT_PRODUCT(PartTrajectory,PartTrajectory))
-     CALL ABORT(__STAMP__,'ERROR: Lastpartpos in wrong element. PartID:',iPart)
+      IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
+      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
+      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' global ElemID  ', ElemID
+      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,CNElemID)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartRefPos:        ', RefPos(1:3)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' Velocity:          ', PartState(4:6,iPart)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartTrajectory:    ', PartState(1:3,iPart) - LastPartPos(1:3,iPart)
+      IPWRITE(UNIT_stdOut,'(I0,A,ES25.14E3)')      ' lengthPT:          ', SQRT(DOT_PRODUCT(PartTrajectory,PartTrajectory))
+      CALL ABORT(__STAMP__,'ERROR: Lastpartpos in wrong element. PartID:',iPart)
     END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/

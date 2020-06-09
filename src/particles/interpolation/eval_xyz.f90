@@ -459,17 +459,16 @@ DO WHILE((deltaXi2.GT.RefMappingEps).AND.(NewtonIter.LT.100))
   END DO ! Armijo iteration
 
   ! check xi value for plausibility
-  IF(ANY(ABS(Xi).GT.1.5)) THEN
-    IF(Mode.EQ.1)THEN
-      IPWRITE(UNIT_stdOut,*) ' Particle not inside of element, force!!!'
-      IPWRITE(UNIT_stdOut,*) ' Newton-Iter', NewtonIter
-      IPWRITE(UNIT_stdOut,*) ' xi  ', xi(1:3)
-      IPWRITE(UNIT_stdOut,*) ' PartPos', X_in
-      IPWRITE(UNIT_stdOut,*) ' PartVel', PartState(4:6,PartID),SQRT(PartState(4,PartID)**2 + PartState(5,PartID)**2 + &
-                                         PartState(6  ,PartID)**2)
-      IPWRITE(UNIT_stdOut,*) ' ElemID', ElemID
-      IF(PRESENT(PartID)) IPWRITE(UNIT_stdOut,*) ' PartID', PartID
-      CALL abort(__STAMP__,'Particle Not inSide of Element, ElemID,',ElemID)
+  IF (ANY(ABS(Xi).GT.1.5)) THEN
+    IF (Mode.EQ.1) THEN
+      IPWRITE(UNIT_stdOut,*) ' Particle not inside of element, strict mode enabled!'
+      IPWRITE(UNIT_StdOut,*) ' Newton-Iter:   ', NewtonIter
+      IPWRITE(UNIT_stdOut,*) ' xi:            ', xi(1:3)
+      IPWRITE(UNIT_stdOut,*) ' PartPos (phys):', X_in
+      IPWRITE(UNIT_stdOut,*) ' PartVel:       ', PartState(4:6,PartID),'abs:',SQRT(SUM(PartState(4:6,PartID)**2))
+      IPWRITE(UNIT_stdOut,*) ' ElemID:        ', ElemID
+      IF(PRESENT(PartID)) IPWRITE(UNIT_stdOut,*) ' PartID:        ', PartID
+      CALL abort(__STAMP__,'Particle not inside of Element, ElemID,',ElemID)
     ELSE
       EXIT
     END IF

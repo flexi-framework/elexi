@@ -1114,15 +1114,15 @@ DO iSpec = 1,nSpecies
 
       ! mortar elements MIGHT need to be treated differently. Take the side pointing back
       IF (ElemID.LT.1) THEN
-        ElemID = SideToElem(2,BCSideID)
+        ElemID   = SideToElem(2,BCSideID)
         iLocSide = SideToElem(4,BCSideID)
       ELSE
         iLocSide = SideToElem(3,BCSideID)
       END IF
 
       !  Get global ElemID and SideID from local SideID
-      globElemId = ElemID + offSetElem
-      SideID     = GetGlobalNonUniqueSideID(globElemId,iLocSide)
+      globElemID = ElemID + offSetElem
+      SideID     = GetGlobalNonUniqueSideID(globElemID,iLocSide)
 
       ! NodeCoords for TriaGeometry
       IF (TriaSurfaceFlux) xyzNod(1:3) = BCdata_auxSF(currentBC)%TriaSideGeo(iSide)%xyzNod(1:3)
@@ -1223,9 +1223,9 @@ DO iSpec = 1,nSpecies
             LastPartPos(1:3,ParticleIndexNbr)    = PartState(1:3,ParticleIndexNbr)
             PDM%ParticleInside(ParticleIndexNbr) = .TRUE.
             PDM%IsNewPart(     ParticleIndexNbr) = .TRUE.
-            PEM%Element(ParticleIndexNbr)        = ElemID
+            PEM%Element(ParticleIndexNbr)        = globElemID
             ! needed when ParticlePush is not executed, e.g. "delay"
-            PEM%LastElement(ParticleIndexNbr)    = ElemID
+            PEM%LastElement(ParticleIndexNbr)    = globElemID
             iPartTotal = iPartTotal + 1
 
 #if CODE_ANALYZE

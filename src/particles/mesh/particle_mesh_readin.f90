@@ -795,13 +795,13 @@ IMPLICIT NONE
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
 ! Only update ElemToProcID when performing load balance, keep other mesh information in shared memory
+CALL MPI_WIN_UNLOCK_ALL(ElemToProcID_Shared_Win,iError)
+CALL MPI_WIN_FREE(ElemToProcID_Shared_Win,iError)
+MDEALLOCATE(ElemToProcID_Shared)
+
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) THEN
-#endif /*USE_LOADBALANCE*/
-  CALL MPI_WIN_UNLOCK_ALL(ElemToProcID_Shared_Win,iError)
-  CALL MPI_WIN_FREE(ElemToProcID_Shared_Win,iError)
-  MDEALLOCATE(ElemToProcID_Shared)
-#if USE_LOADBALANCE
+  CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
   RETURN
 END IF
 #endif /*USE_LOADBALANCE*/

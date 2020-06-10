@@ -25,10 +25,8 @@ PRIVATE
 ! Variables
 INTEGER,ALLOCATABLE       :: ElemInfo_Shared_tmp(:)
 INTEGER,ALLOCATABLE       :: SideInfo_Shared_tmp(:)
-
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Interfaces
-
 INTERFACE ReadMeshBasics
   MODULE PROCEDURE ReadMeshBasics
 END INTERFACE
@@ -81,6 +79,9 @@ SUBROUTINE ReadMeshBasics()
 USE MOD_Globals
 USE MOD_HDF5_Input                ,ONLY: File_ID,ReadAttribute
 USE MOD_Particle_Mesh_Vars        ,ONLY: nNonUniqueGlobalSides,nNonUniqueGlobalNodes
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -88,6 +89,10 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) RETURN
+#endif /*USE_LOADBALANCE*/
 
 !CALL ReadAttribute(File_ID,'nUniqueSides',1,IntScalar=nGlobalUniqueSidesFromMesh)
 CALL ReadAttribute(File_ID,'nSides'      ,1,IntScalar=nNonUniqueGlobalSides)
@@ -109,6 +114,9 @@ USE MOD_MPI_Vars                  ,ONLY: offsetElemMPI
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -120,16 +128,24 @@ INTEGER                        :: iProc
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
 !===================================================================================================================================
+
 #if USE_MPI
 ! allocate shared array for ElemInfo
 CALL MPI_ALLREDUCE(nElems,nComputeNodeElems,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IERROR)
-MPISharedSize = INT((ELEM_HALOFLAG)*nGlobalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/ELEMINFOSIZE,nGlobalElems/),ElemInfo_Shared_Win,ElemInfo_Shared)
-CALL MPI_WIN_LOCK_ALL(0,ElemInfo_Shared_Win,IERROR)
 
-ElemInfo_Shared(1:ELEMINFOSIZE_H5,offsetElem+1:offsetElem+nElems) = ElemInfo(:,:)
-ElemInfo_Shared(ELEM_RANK        ,offsetElem+1:offsetElem+nElems) = myRank
-CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  MPISharedSize = INT((ELEM_HALOFLAG)*nGlobalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+  CALL Allocate_Shared(MPISharedSize,(/ELEMINFOSIZE,nGlobalElems/),ElemInfo_Shared_Win,ElemInfo_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,ElemInfo_Shared_Win,IERROR)
+
+  ElemInfo_Shared(1:ELEMINFOSIZE_H5,offsetElem+1:offsetElem+nElems) = ElemInfo(:,:)
+  ElemInfo_Shared(ELEM_RANK        ,offsetElem+1:offsetElem+nElems) = myRank
+  CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 #endif  /*USE_MPI*/
 
 ! allocate temporary array to hold processor rank for each elem
@@ -179,6 +195,9 @@ USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -197,6 +216,12 @@ LastElemInd  = offsetElem+nElems
 offsetSideID = ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
 nSideIDs     = ElemInfo(ELEM_LASTSIDEIND ,LastElemInd)-ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd)
 
+ALLOCATE(SideInfo_Shared_tmp(offsetSideID+1:offsetSideID+nSideIDs))
+
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) RETURN
+#endif /*USE_LOADBALANCE*/
+
 #if USE_MPI
 ! all procs on my compute-node communicate the number of non-unique sides
 CALL MPI_ALLREDUCE(nSideIDs,nComputeNodeSides,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IERROR)
@@ -213,8 +238,6 @@ ALLOCATE(SideInfo_Shared(1:SIDEINFOSIZE+1,1:nSideIDs))
 SideInfo_Shared(1                :SIDEINFOSIZE_H5,1:nSideIDs) = SideInfo(:,:)
 SideInfo_Shared(SIDEINFOSIZE_H5+1:SIDEINFOSIZE+1 ,1:nSideIDs) = 0
 #endif /*USE_MPI*/
-
-ALLOCATE(SideInfo_Shared_tmp(offsetSideID+1:offsetSideID+nSideIDs))
 
 END SUBROUTINE ReadMeshSides
 
@@ -271,6 +294,9 @@ USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -290,6 +316,11 @@ REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:),NodeCoordsNew(:,:,:,:)
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
 !===================================================================================================================================
+
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) RETURN
+#endif /*USE_LOADBALANCE*/
+
 ! calculate all offsets
 FirstElemInd = offsetElem+1
 LastElemInd  = offsetElem+nElems
@@ -305,7 +336,7 @@ ALLOCATE(NodeCoords_indx(3,nNodeIDs))
 CALL ReadArray('NodeCoords',2,(/3,nNodeIDs/),offsetNodeID,2,RealArray=NodeCoords_indx)
 
 ! Keep all nodes if elements are curved and not interpolated
-IF (NGeoOverride.LE.0.AND.(useCurveds.OR.NGeo.EQ.1)) THEN
+IF (NGeoOverride.LE.0 .AND. (useCurveds.OR.NGeo.EQ.1)) THEN
 
 #if USE_MPI
 !  ! allocate shared array for NodeInfo
@@ -329,8 +360,8 @@ IF (NGeoOverride.LE.0.AND.(useCurveds.OR.NGeo.EQ.1)) THEN
 #endif  /*USE_MPI*/
 
 ! Reduce NodeCoords if no curved elements are to be used
-ELSE IF (NGeoOverride.LE.0.AND..NOT.useCurveds.AND.NGeo.GT.1) THEN
-  ! the cornernodes are not the first 8 entries (for Ngeo>1) of nodeinfo array so mapping is built
+ELSE IF (NGeoOverride.LE.0 .AND. .NOT.useCurveds .AND. NGeo.GT.1) THEN
+  ! the cornernodes are not the first 8 entries (for Ngeo>1) of NodeInfo array so mapping is built
   CornerNodeIDswitch(1)=1
   CornerNodeIDswitch(2)=(Ngeo+1)
   CornerNodeIDswitch(3)=(Ngeo+1)*Ngeo+1
@@ -440,6 +471,9 @@ USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -450,6 +484,11 @@ IMPLICIT NONE
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
 !===================================================================================================================================
+
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) RETURN
+#endif /*USE_LOADBALANCE*/
+
 #if USE_MPI
 MPISharedSize = INT(3*2*nGlobalElems,MPI_ADDRESS_KIND)*MPI_DOUBLE
 CALL Allocate_Shared(MPISharedSize,(/3,2,nGlobalElems/),xiMinMax_Shared_Win,xiMinMax_Shared)
@@ -495,6 +534,9 @@ USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -517,9 +559,8 @@ INTEGER,ALLOCATABLE            :: displsNode(:),recvcountNode(:)
 INTEGER,ALLOCATABLE            :: displsTree(:),recvcountTree(:)
 #endif /*USE_MPI*/
 !===================================================================================================================================
-#if USE_MPI
-SWRITE(UNIT_stdOut,'(A)') ' Communicating mesh on shared memory...'
 
+#if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 ! calculate all offsets
@@ -535,6 +576,25 @@ LastElemInd  = nElems
 offsetSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
 nSideIDs     = ElemInfo_Shared(ELEM_LASTSIDEIND,LastElemInd)-ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd)
 #endif /*USE_MPI*/
+
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) THEN
+  ! Update mappings with new information
+  ElemInfo_Shared(ELEM_RANK,     offsetElem+1  :offsetElem+nElems)     = ElemInfo_Shared_tmp
+  SideInfo_Shared(SIDEINFOSIZE+1,offsetSideID+1:offsetSideID+nSideIDs) = SideInfo_Shared_tmp
+  DEALLOCATE(ElemInfo_Shared_tmp,SideInfo_Shared_tmp)
+
+  ! final sync of all mesh shared arrays
+  CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
+  CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
+  CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+
+  SWRITE(UNIT_stdOut,'(A)') ' Updating mesh on shared memory...'
+  RETURN
+END IF
+#endif /*USE_LOADBALANCE*/
+
+SWRITE(UNIT_stdOut,'(A)') ' Communicating mesh on shared memory...'
 
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) THEN
@@ -719,6 +779,9 @@ USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -731,11 +794,21 @@ IMPLICIT NONE
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
+! Only update ElemToProcID when performing load balance, keep other mesh information in shared memory
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL MPI_WIN_UNLOCK_ALL(ElemToProcID_Shared_Win,iError)
+  CALL MPI_WIN_FREE(ElemToProcID_Shared_Win,iError)
+  MDEALLOCATE(ElemToProcID_Shared)
+#if USE_LOADBALANCE
+  RETURN
+END IF
+#endif /*USE_LOADBALANCE*/
+
 ! elems
 CALL MPI_WIN_UNLOCK_ALL(ElemInfo_Shared_Win,iError)
 CALL MPI_WIN_FREE(ElemInfo_Shared_Win,iError)
-CALL MPI_WIN_UNLOCK_ALL(ElemToProcID_Shared_Win,iError)
-CALL MPI_WIN_FREE(ElemToProcID_Shared_Win,iError)
 
 ! sides
 CALL MPI_WIN_UNLOCK_ALL(SideInfo_Shared_Win,iError)
@@ -757,7 +830,6 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
 ! Then, free the pointers or arrays
 MDEALLOCATE(ElemInfo_Shared)
-MDEALLOCATE(ElemToProcID_Shared)
 MDEALLOCATE(SideInfo_Shared)
 !MDEALLOCATE(NodeInfo_Shared)
 MDEALLOCATE(NodeCoords_Shared)

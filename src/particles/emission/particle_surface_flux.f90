@@ -906,7 +906,7 @@ IF (DoRestart) THEN
         VFR_total = Species(iSpec)%Surfaceflux(iSF)%VFR_total
       END IF
 
-      Species(iSpec)%Surfaceflux(iSF)%InsertedParticle = INT(Species(iSpec)%Surfaceflux(iSF)%PartDensity*RestartTime / VFR_total,8)
+      Species(iSpec)%Surfaceflux(iSF)%InsertedParticle = INT(Species(iSpec)%Surfaceflux(iSF)%PartDensity*RestartTime*VFR_total,8)
     END DO
   END DO
 END IF

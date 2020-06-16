@@ -587,7 +587,7 @@ END IF
 ! Initialize emission. If no particles are present, assume restart from pure fluid and perform initial inserting
 CALL InitializeParticleEmission()
 ! Initialize surface flux
-CALL InitializeParticleSurfaceflux()
+CALL InitializeParticleSurfaceFlux()
 
 #if USE_MPI
 ! has to be called AFTER InitializeVariables because we need to read the parameter file to know the CommSize

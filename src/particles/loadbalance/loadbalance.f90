@@ -228,7 +228,7 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceTimeBased,ElemTime,tCurrent,nLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: DeviationThreshold,PerformLoadBalance
-USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem!,nSurfacefluxPerElem
+USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem,nSurfacefluxPerElem
 USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight
 USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance
 USE MOD_LoadDistribution       ,ONLY: WriteElemTimeStatistics
@@ -247,17 +247,17 @@ IMPLICIT NONE
 INTEGER               :: iElem
 INTEGER(KIND=8)       :: HelpSum
 REAL                  :: stotalParts,sTotalTracks
-!REAL                  :: sTotalSurfaceFluxes
+REAL                  :: sTotalSurfaceFluxes
 !===================================================================================================================================
 
 ! Calculate Load Balance based on elapsed time, linearly distributed to each element
 IF (LoadBalanceTimeBased) THEN
-  ! Increment number of load balance calls to Compute Elem Load
+  ! Increment number of load balance calls to ComputeElemLoad
   nLoadBalance = nLoadBalance + 1
 
   ! Calculate weightings, these are the denominators
   sTotalTracks        = 1.
-!  sTotalSurfaceFluxes = 1.
+  sTotalSurfaceFluxes = 1.
 
   ! Recount particles
   CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.)
@@ -275,15 +275,15 @@ IF (LoadBalanceTimeBased) THEN
   ! Calculate and weight tracks per element
   IF (TrackingMethod.EQ.REFMAPPING) THEN
     helpSum = SUM(nTracksPerElem)
-    IF(SUM(nTracksPerElem).GT.0) THEN
+    IF (SUM(nTracksPerElem).GT.0) THEN
       sTotalTracks = 1.0/REAL(helpSum)
     END IF
   END IF
-!  ! calculate and weight number of surface fluxes
-!  helpSum = SUM(nSurfacefluxPerElem)
-!  IF(helpSum.GT.0) THEN
-!    sTotalSurfaceFluxes = 1.0/REAL(helpSum)
-!  END IF
+  ! calculate and weight number of surface fluxes
+  helpSum = SUM(nSurfacefluxPerElem)
+  IF (helpSum.GT.0) THEN
+    sTotalSurfaceFluxes = 1.0/REAL(helpSum)
+  END IF
 
   ! distribute times of different routines on elements with respective weightings
   DO iElem = 1,PP_nElems
@@ -296,8 +296,8 @@ IF (LoadBalanceTimeBased) THEN
     ElemTime(iElem) = ElemTime(iElem)                                                  &
                     + tCurrent(LB_INTERPOLATION) * nPartsPerElem(iElem) *sTotalParts   &
                     + tCurrent(LB_PUSH)          * nPartsPerElem(iElem) *sTotalParts   &
-                    + tCurrent(LB_TRACK)         * nTracksPerElem(iElem)*sTotalTracks
-!                    + tCurrent(LB_SURFFLUX)      * nSurfacefluxPerElem(iElem)*stotalSurfacefluxes
+                    + tCurrent(LB_TRACK)         * nTracksPerElem(iElem)*sTotalTracks  &
+                    + tCurrent(LB_SURFFLUX)      * nSurfacefluxPerElem(iElem)*stotalSurfacefluxes
   END DO ! iElem=1,PP_nElems
 
 ! Calculate Load Balance based on the amount of particles per cell

@@ -105,11 +105,19 @@ DO iSpec = 1,nSpecies
     Species(iSpec)%Surfaceflux(iSF)%velocityDistribution  = &
         TRIM(GETSTR('Part-Species'//TRIM(tmpStr2)//'-velocityDistribution','constant'))
 
-    IF (TRIM(Species(iSpec)%Surfaceflux(iSF)%velocityDistribution).NE.'constant') &
-      CALL abort(__STAMP__, 'Only constant velocity distribution implemented for SurfaceFlux!')
+    ! Read in distribution-dependent variables
+    SELECT CASE(TRIM(Species(iSpec)%Surfaceflux(iSF)%velocityDistribution))
+      CASE('constant')
+        Species(iSpec)%Surfaceflux(iSF)%VeloIC       = GETREAL(   'Part-Species'//TRIM(tmpStr2)//'-VeloIC'      )
+        Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-VeloIsNormal')
 
-    Species(iSpec)%Surfaceflux(iSF)%VeloIC       = GETREAL(   'Part-Species'//TRIM(tmpStr2)//'-VeloIC'      )
-    Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-VeloIsNormal')
+      CASE('fluid')
+        ! Calculate emission vector and velocity from boundary state
+        Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal = .FALSE.
+
+      CASE DEFAULT
+        CALL abort(__STAMP__, 'Invalid velocity distribution for particle SurfaceFlux!')
+    END SELECT
 
     ! Get additional SurfaceFlux velocity information
     IF (Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal) THEN
@@ -654,8 +662,12 @@ SUBROUTINE InitNonAdaptiveSurfFlux(iSpec,iSF,iSide,tmp_SubSideAreas)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_GetBoundaryFlux         ,ONLY: GetBoundaryState
+USE MOD_Mesh_Vars               ,ONLY: BoundaryType,BC
+USE MOD_Particle_Globals        ,ONLY: VECNORM
 USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfFluxSideSize,SurfMeshSubSideData,BCdata_auxSF
 USE MOD_Particle_Vars           ,ONLY: Species
+USE MOD_TimeDisc_Vars           ,ONLY: t
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -666,8 +678,12 @@ REAL, INTENT(IN)      :: tmp_SubSideAreas(SurfFluxSideSize(1),SurfFluxSideSize(2
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: jSample, iSample, currentBC, BCSideID
+INTEGER               :: jSample, iSample, currentBC, BCSideID, BCType
 REAL                  :: vec_nIn(3), nVFR, vec_t1(3), vec_t2(3), projFak, a, vSF
+REAL                  :: UPrim_BC   (PP_nVarPrim,1,1)
+REAL,PARAMETER        :: UPrim_dummy(PP_nVarPrim,1,1) = 0.
+REAL,PARAMETER        :: Face_xGP (3,1,1) = 0.
+REAL                  :: fluid_nIn(3,1,1),fluid_t1(3,1,1),fluid_t2(3,1,1)
 !===================================================================================================================================
 
 currentBC = Species(iSpec)%Surfaceflux(iSF)%BC
@@ -694,8 +710,49 @@ DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
       vSF = Species(iSpec)%Surfaceflux(iSF)%VeloIC * projFak
       ! VFR proj. to inwards normal (only positive parts!)
       nVFR = MAX(tmp_SubSideAreas(iSample,jSample) * vSF,0.)
+
+    CASE('fluid')
+      BCType  = Boundarytype(BC(BCSideID),BC_TYPE)
+
+      ! Check if the BC features a constant state. Call routine of EQS if true
+      SELECT CASE(BCType)
+        CASE(2,12,121,22)
+          ! Interpolate to constant solution, Nloc = 0. Use dummy arrays for unused input variables
+          !-- TODO: Use iSample,jSample for a more exact interpolation
+          fluid_nIn(:,1,1) = vec_nIn
+          fluid_t1 (:,1,1) = vec_t1
+          fluid_t2 (:,1,1) = vec_t2
+
+          CALL GetBoundaryState( SideID         = BCSideID      &
+                               , t              = t             &
+                               , Nloc           = 0             &
+                               , UPrim_boundary = UPrim_BC      &
+                               , UPrim_master   = UPrim_dummy   &
+                               , NormVec        = fluid_nIn     &
+                               , TangVec1       = fluid_t1      &
+                               , TangVec2       = fluid_t2      &
+                               , Face_xGP       = Face_xGP)
+
+          Species(iSpec)%Surfaceflux(iSF)%VeloIC    = VECNORM(UPrim_BC(2:4,1,1))
+          IF (Species(iSpec)%Surfaceflux(iSF)%VeloIC.EQ.0) &
+            CALL ABORT(__STAMP__,'Fluid BCState velocity component normal to boundary > 0 required for particle SurfaceFlux!')
+          Species(iSpec)%Surfaceflux(iSF)%VeloVecIC = UPrim_BC(2:4,1,1) / Species(iSpec)%Surfaceflux(iSF)%VeloIC
+
+          ! projFak needs to be updated since VeloVecIC was previously unknown
+          projFak = DOT_PRODUCT(vec_nIn,Species(iSpec)%Surfaceflux(iSF)%VeloVecIC)
+
+          ! Velo proj. to inwards normal
+          vSF    = Species(iSpec)%Surfaceflux(iSF)%VeloIC * projFak
+          ! VFR proj. to inwards normal (only positive parts!)
+          nVFR = MAX(tmp_SubSideAreas(iSample,jSample) * vSF,0.)
+
+        CASE DEFAULT
+          CALL ABORT(__STAMP__,'Constant fluid BCState required for particle Surfaceflux!')
+      END SELECT
+
+
     CASE DEFAULT
-      CALL abort(__STAMP__,'wrong velo-distri for Surfaceflux!')
+      CALL ABORT(__STAMP__,'Invalid velocity distribution for particle SurfaceFlux!')
   END SELECT
 
   ! check rmax-rejection
@@ -1533,10 +1590,12 @@ END SUBROUTINE CalcPartInsPoissonDistr
 SUBROUTINE SetSurfacefluxVelocities(FractNbr,iSF,iSample,jSample,BCSideID,SideID,NbrOfParticle,PartIns)
 ! MODULES
 USE MOD_Globals
+USE MOD_GetBoundaryFlux          ,ONLY: GetBoundaryState
 USE MOD_Particle_Globals         ,ONLY: VECNORM
 USE MOD_Particle_Surfaces        ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars   ,ONLY: SurfMeshSubSideData,TriaSurfaceFlux
 USE MOD_Particle_Vars
+USE MOD_TimeDisc_Vars            ,ONLY: t
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1556,7 +1615,11 @@ INTEGER,INTENT(IN)               :: PartIns
 INTEGER                          :: i,PositionNbr
 REAL                             :: Vec3D(3),vec_nIn(1:3),vec_t1(1:3),vec_t2(1:3)
 CHARACTER(30)                    :: velocityDistribution
-REAL                             :: VeloVecIC(1:3)
+REAL                             :: VeloIC,VeloVecIC(1:3)
+REAL                             :: UPrim_BC   (PP_nVarPrim,1,1)
+REAL,PARAMETER                   :: UPrim_dummy(PP_nVarPrim,1,1) = 0.
+REAL,PARAMETER                   :: Face_xGP (3,1,1) = 0.
+REAL                             :: fluid_nIn(3,1,1),fluid_t1(3,1,1),fluid_t2(3,1,1)
 !===================================================================================================================================
 
 ! Return if no particles are to be inserted
@@ -1569,8 +1632,32 @@ SELECT CASE(TRIM(Species(FractNbr)%Surfaceflux(iSF)%velocityDistribution))
       VeloVecIC(1:3) = Species(FractNbr)%Surfaceflux(iSF)%VeloVecIC(1:3)
       VeloVecIC(1:3) = VeloVecIC(1:3) / VECNORM(VeloVecIC(1:3))
     END IF
+
+  CASE('fluid')
+    velocityDistribution = 'fluid'
+    ! Interpolate to constant solution, Nloc = 0. Use dummy arrays for unused input variables
+    !-- TODO: Use iSample,jSample for a more exact interpolation
+    fluid_nIn(:,1,1) = vec_nIn
+    fluid_t1 (:,1,1) = vec_t1
+    fluid_t2 (:,1,1) = vec_t2
+
+    CALL GetBoundaryState( SideID         = BCSideID      &
+                         , t              = t             &
+                         , Nloc           = 0             &
+                         , UPrim_boundary = UPrim_BC      &
+                         , UPrim_master   = UPrim_dummy   &
+                         , NormVec        = fluid_nIn     &
+                         , TangVec1       = fluid_t1      &
+                         , TangVec2       = fluid_t2      &
+                         , Face_xGP       = Face_xGP)
+
+    VeloIC    = VECNORM(UPrim_BC(2:4,1,1))
+    IF (VeloIC.EQ.0) &
+      CALL ABORT(__STAMP__,'Fluid BCState velocity component normal to boundary > 0 required for particle SurfaceFlux!')
+    VeloVecIC(1:3) = UPrim_BC(2:4,1,1) / VeloIC
+
   CASE DEFAULT
-    CALL ABORT(__STAMP__,'Wrong VelocityDistribution!')
+    CALL ABORT(__STAMP__,'Invalid velocity distribution for particle SurfaceFlux!')
 END SELECT
 
 IF (.NOT.Species(FractNbr)%Surfaceflux(iSF)%VeloIsNormal) THEN
@@ -1605,8 +1692,20 @@ SELECT CASE(TRIM(velocityDistribution))
       END IF ! PositionNbr .NE. 0
     END DO ! i = ...NbrOfParticle
 
+  CASE('fluid')
+    DO i = NbrOfParticle-PartIns+1,NbrOfParticle
+      PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
+      IF (PositionNbr .NE. 0) THEN
+        vec_nIn(1:3) = VeloVecIC(1:3)
+        !-- build complete velo-vector
+        Vec3D(1:3) = vec_nIn(1:3) * VeloIC
+        PartState(4:6,PositionNbr) = Vec3D(1:3)
+      END IF ! PositionNbr .NE. 0
+
+    END DO ! i = ...NbrOfParticle
+
   CASE DEFAULT
-    CALL ABORT(__STAMP__,'Wrong VelocityDistribution!')
+    CALL ABORT(__STAMP__,'Invalid velocity distribution for particle SurfaceFlux!')
 END SELECT
 
 END SUBROUTINE SetSurfacefluxVelocities

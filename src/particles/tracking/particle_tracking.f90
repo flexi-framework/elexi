@@ -615,7 +615,7 @@ DO iPart=1,PDM%ParticleVecLength
       ! NOT PartDoubleCheck
       ELSE
 ! -- 4. Check if particle intersected a side and also which side (also AuxBCs)
-!       For each side only one intersection is chosen, but particle might insersect more than one side. Assign pointer list
+!       For each side only one intersection is chosen, but particle might intersect more than one side. Assign pointer list
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
@@ -653,6 +653,8 @@ DO iPart=1,PDM%ParticleVecLength
               CALL abort(__STAMP__,' Missing required side-data. Please increase halo region. ',SideID)
           END SELECT
 
+          IF (myRank.EQ.2.AND.iPart.EQ.44) print *, foundHit,PartState(1:3,iPart),LastPartPos(1:3,iPart),SideType(SideID)
+
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
           IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
@@ -667,7 +669,7 @@ DO iPart=1,PDM%ParticleVecLength
 #endif /*CODE_ANALYZE*/
         ! Particle detected inside of face and PartTrajectory parallel to face
         IF (isCriticalParallelInFace) THEN
-          IPWRITE(UNIT_stdOut,'(I0,A)')    ' Warning: Particle located inside of face and moves parallel to side. Undefined position. '
+          IPWRITE(UNIT_stdOut,'(I0,A)')    ' Warning: Particle located inside of face and moves parallel to side. Undefined position.'
           IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Removing particle with id: ',iPart
           PartIsDone                = .TRUE.
           PDM%ParticleInside(iPart) = .FALSE.
@@ -698,7 +700,7 @@ DO iPart=1,PDM%ParticleVecLength
             END IF
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
-            IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
+            IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN; IF (iPart.EQ.PARTOUT) THEN
               WRITE(UNIT_stdout,'(30("-"))')
               WRITE(UNIT_stdout,'(A)')        '     | Output after compute AuxBC intersection (particle tracing): '
               WRITE(UNIT_stdout,'(A,I0,A,L)') '     | AuxBC: ',iAuxBC,' | Hit: ',foundHit
@@ -707,7 +709,7 @@ DO iPart=1,PDM%ParticleVecLength
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
             ! Particle detected inside of face and PartTrajectory parallel to face
-            IF(isCriticalParallelInFace)THEN
+            IF (isCriticalParallelInFace) THEN
               IPWRITE(UNIT_stdOut,'(I0,A)')    ' Warning: Particle located inside of BC and moves parallel to side. Undefined position. '
               IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Removing particle with id: ',iPart
               PartIsDone = .TRUE.
@@ -715,7 +717,7 @@ DO iPart=1,PDM%ParticleVecLength
               IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles+1
               EXIT
             END IF
-            IF(foundHit) THEN
+            IF (foundHit) THEN
               ! start from last intersection entry and place current intersection in correct entry position
               currentIntersect => lastIntersect
               CALL AssignListPosition(currentIntersect,locAlpha,iAuxBC,2)
@@ -818,7 +820,7 @@ DO iPart=1,PDM%ParticleVecLength
             firstElem = ElemID
           END IF
 
-          IF(crossedBC .OR. SwitchedElement) THEN
+          IF (crossedBC .OR. SwitchedElement) THEN
             IF (PartDoubleCheck) THEN
               PartDoubleCheck=.FALSE.
             END IF
@@ -836,13 +838,13 @@ DO iPart=1,PDM%ParticleVecLength
         IF(.NOT.crossedBC .AND. .NOT.SwitchedElement .AND. .NOT.PartIsDone .AND. PartDoubleCheck) THEN
           moveList=.FALSE.
           SELECT CASE (currentIntersect%intersectCase)
-          CASE(1)
-            SideID = GetGlobalNonUniqueSideID(OldElemID,currentIntersect%Side)
-            ! missing!!! : mapping from GlobalNonUnique to CNtotalsides
-            SELECT CASE(SideType(SideID))
-              CASE(BILINEAR,PLANAR_NONRECT)
-                moveList=.TRUE.
-            END SELECT
+            CASE(1)
+              SideID = GetGlobalNonUniqueSideID(OldElemID,currentIntersect%Side)
+              ! missing!!! : mapping from GlobalNonUnique to CNtotalsides
+              SELECT CASE(SideType(SideID))
+                CASE(BILINEAR,PLANAR_NONRECT)
+                  moveList=.TRUE.
+              END SELECT
           END SELECT
           IF (moveList) THEN
             lastIntersect%alpha  = currentIntersect%alpha

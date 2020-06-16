@@ -325,7 +325,7 @@ CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Speci
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
                                                                   ' - cylinder\n'                                                //&
-                                                                  ' - Gaussian\n'                                                  &
+                                                                  ' - Gaussian'                                                    &
                                                                 , 'cuboid'  , numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BasePointIC','Base point for IC cuboid and IC sphere'                 &
                                                                  , '0. , 0. , 0.', numberedmulti=.TRUE.)
@@ -357,7 +357,9 @@ CALL prms%CreateIntOption(          'Part-Species[$]-nSurfacefluxBCs'  ,  'Numbe
                                                                        , '0'       , numberedmulti=.TRUE.)
 CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-BC',  'PartBound to be emitted from'                           &
                                                                        , '0'       , numberedmulti=.TRUE.)
-CALL prms%CreateStringOption(       'Part-Species[$]-Surfaceflux[$]-velocityDistribution', 'Specifying keyword for velocity distribution' &
+CALL prms%CreateStringOption(       'Part-Species[$]-Surfaceflux[$]-velocityDistribution', 'Specifying keyword for velocity distribution\n' //&
+                                                                       ' - constant\n'                                           //&
+                                                                       ' - fluid'                                                  &
                                                                        , 'constant', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-VeloIC', 'Velocity for inital Data'                            &
                                                                        , '0.'      , numberedmulti=.TRUE.)

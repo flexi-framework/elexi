@@ -59,7 +59,7 @@ USE MOD_Particle_Surfaces_vars     ,ONLY: SideNormVec,SideType
 USE MOD_Part_Operations            ,ONLY: RemoveParticle
 !USE MOD_Mesh_Vars                  ,ONLY: BC
 #if CODE_ANALYZE
-USE MOD_Globals                    ,ONLY: myRank
+USE MOD_Globals                    ,ONLY: myRank,UNIT_stdout
 USE MOD_Mesh_Vars                  ,ONLY: NGeo
 USE MOD_Particle_Surfaces_Vars     ,ONLY: BezierControlPoints3D
 #endif /* CODE_ANALYZE */
@@ -125,8 +125,9 @@ SELECT CASE(TrackingMethod)
   CASE(TRIATRACKING)
     CALL CalcNormAndTangTriangle(nVec=n_loc,TriNum=TriNum,SideID=SideID)
 END SELECT
+
 ! required for refmapping and tracing, optional for triatracking
-  crossedBC = .TRUE.
+crossedBC = .TRUE.
 
 IF (.NOT. ALLOCATED(PartBound%TargetBoundCond)) &
   CALL ABORT(__STAMP__,' ERROR: PartBound not allocated!.')

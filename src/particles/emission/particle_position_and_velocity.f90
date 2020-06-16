@@ -519,9 +519,7 @@ CASE('fluid')
 #endif
 
       ! Calculate velocity from momentum and density
-      PartState(4,PositionNbr) = FieldAtParticle(2,PositionNbr)/FieldAtParticle(1,PositionNbr)
-      PartState(5,PositionNbr) = FieldAtParticle(3,PositionNbr)/FieldAtParticle(1,PositionNbr)
-      PartState(6,PositionNbr) = FieldAtParticle(4,PositionNbr)/FieldAtParticle(1,PositionNbr)
+      PartState(4:6,PositionNbr) = FieldAtParticle(2:4,PositionNbr)/FieldAtParticle(1,PositionNbr)
 
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0

@@ -561,6 +561,9 @@ INTEGER,ALLOCATABLE            :: displsTree(:),recvcountTree(:)
 !===================================================================================================================================
 
 #if USE_MPI
+! MPISharedInitIsDone is not set if this routine is called from posti
+IF (.NOT.MPISharedInitIsDone) RETURN
+
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 ! calculate all offsets

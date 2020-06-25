@@ -61,6 +61,7 @@ USE MOD_Part_Operations            ,ONLY: RemoveParticle
 #if CODE_ANALYZE
 USE MOD_Globals                    ,ONLY: myRank,UNIT_stdout
 USE MOD_Mesh_Vars                  ,ONLY: NGeo
+USE MOD_Particle_Mesh_Tools        ,ONLY: GetCNElemID
 USE MOD_Particle_Surfaces_Vars     ,ONLY: BezierControlPoints3D
 #endif /* CODE_ANALYZE */
 ! IMPLICIT VARIABLE HANDLING
@@ -107,7 +108,7 @@ SELECT CASE(TrackingMethod)
              + BezierControlPoints3D(:,NGeo,0   ,SideID)  &
              + BezierControlPoints3D(:,0   ,NGeo,SideID)  &
              + BezierControlPoints3D(:,NGeo,NGeo,SideID))
-    v2 = v1  - ElemBaryNGeo(:,ElemID)
+    v2 = v1  - ElemBaryNGeo(:,GetCNElemID(ElemID))
 
     IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
       IPWRITE(UNIT_stdout,*) 'Obtained wrong side orientation from flip. flip:',flip,'PartID:',iPart

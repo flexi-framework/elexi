@@ -283,11 +283,11 @@ alpha = -1.
 
 DO ilocSide = 1,6
   SideID = GetGlobalNonUniqueSideID(ElemID,iLocSide)
-  flip   = SideInfo_Shared(SIDE_FLIP,SideID)
+  flip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
 
   SELECT CASE(SideType(SideID))
     CASE(PLANAR_RECT)
-      CALL ComputePlanarRectIntersection(  ishit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta ,PartID,flip,SideID)
+      CALL ComputePlanarRectIntersection(  ishit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,flip,SideID)
     CASE(PLANAR_CURVED)
       CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,flip,SideID)
     CASE(BILINEAR,PLANAR_NONRECT)
@@ -481,9 +481,11 @@ DO iLocSide = 1,6
           InElementCheckMortarNb = .TRUE.
           SideIDMortar = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID) + iLocSide + ind
           NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideIDMortar)
-          ! If small mortar element not defined, skip it for now, likely not inside the halo region (additional check is performed
-          ! after the MPI communication: ParticleInsideQuad3D_MortarMPI)
-          IF (NbElemID.LT.1) CYCLE
+
+          ! If small mortar element not defined, abort. Every available information on the compute-node is kept in shared memory, so
+          ! no way to recover it during runtime
+          IF (NbElemID.LT.1) CALL ABORT(__STAMP__,'Small mortar element not defined!',ElemID)
+
           CALL ParticleInsideNbMortar(PartStateLoc,NbElemID,InElementCheckMortarNb)
           IF (InElementCheckMortarNb) THEN
             InElementCheck = .FALSE.

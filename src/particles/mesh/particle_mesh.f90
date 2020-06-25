@@ -1070,7 +1070,7 @@ DO iElem = firstElem,lastElem
     IF (SideInfo_Shared(SIDE_LOCALID,GlobalSideID).LE.0) CYCLE
     localSideID = SideInfo_Shared(SIDE_LOCALID,GlobalSideID)
     ! Find start of CGNS mapping from flip
-    nStart = MAX(0,MOD(SideInfo_Shared(SIDE_FLIP,GlobalSideID),10)-1)
+    nStart = MERGE(0,MAX(0,MOD(SideInfo_Shared(SIDE_FLIP,GlobalSideID),10)-1),SideInfo_Shared(SIDE_ID,GlobalSideID).GT.0)
     ! Shared memory array starts at 1, but NodeID at 0
     ElemSideNodeID_Shared(1:4,localSideID,iElem) = (/ElemInfo_Shared(ELEM_FIRSTNODEIND,GlobalElemID)+NodeMap(MOD(nStart  ,4)+1,localSideID)-1, &
                                                      ElemInfo_Shared(ELEM_FIRSTNODEIND,GlobalElemID)+NodeMap(MOD(nStart+1,4)+1,localSideID)-1, &
@@ -1105,7 +1105,12 @@ DO iElem = firstElem,lastElem
     detcon = ((A(2,1) * A(3,2) - A(3,1) * A(2,2)) * A(1,3) +     &
               (A(3,1) * A(1,2) - A(1,1) * A(3,2)) * A(2,3) +     &
               (A(1,1) * A(2,2) - A(2,1) * A(1,2)) * A(3,3))
-    IF (detcon.LT.0) ConcaveElemSide_Shared(localSideID,iElem) = .TRUE.
+    !--- arbitrary choice if detcon exactly zero, define the one with lower SideID as concave
+    IF (detcon.LT.0) THEN
+      ConcaveElemSide_Shared(localSideID,iElem) = .TRUE.
+    ELSE IF (detcon.EQ.0.0) THEN
+      IF (GlobalSideID.LT.SideInfo_Shared(SIDE_NBSIDEID,GlobalSideID)) ConcaveElemSide_Shared(localSideID,iElem) = .TRUE.
+    END IF
   END DO
 END DO
 
@@ -1991,7 +1996,7 @@ DO iElem=firstElem,lastElem
   ! b) use curved information to decide side type
   DO ilocSide=1,6
     SideID = GetGlobalNonUniqueSideID(GetGlobalElemID(iElem),iLocSide)
-    flip   = Sideinfo_Shared(SIDE_FLIP,SideID)
+    flip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
 
     IF(.NOT.ElemCurved(iElem))THEN
       BezierControlPoints_loc(1:3,0:NGeo,0:NGeo) = BezierControlPoints3D(1:3,0:NGeo,0:NGeo,SideID)

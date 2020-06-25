@@ -167,22 +167,22 @@ RefStatePrim(6,IniRefState) = TEMPERATURE_HE(UE)
 CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 
 IF (customChannel) THEN
-    rho      = RefStatePrim(1,IniRefState)
-    delta    = GETREAL('Part-ChannelDelta','0.')
-    uBulkScale  = 1./(uBulk*rho)
+  rho      = RefStatePrim(1,IniRefState)
+  delta    = GETREAL('Part-ChannelDelta','0.')
+  uBulkScale  = 1./(uBulk*rho)
 
-    ! Calculate new forcing pressure
-    dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho
+  ! Calculate new forcing pressure
+  dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho
 
-    ! Tell the user the calculated variables to check
-    SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Bulk velocity given. uBulk =',uBulk
-    SWRITE(Unit_STDOUT,'(A,F6.2,A)') ' | Associated pressure gradient. -dp/dx=:', dpdx, 'Pa s'
+  ! Tell the user the calculated variables to check
+  SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Bulk velocity given. uBulk =',uBulk
+  SWRITE(Unit_STDOUT,'(A,F6.2,A)') ' | Associated pressure gradient. -dp/dx=:', dpdx, 'Pa s'
 ELSE
-    SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Bulk velocity based on initial velocity profile =',uBulk
-    SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Associated pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
-    END IF
+  ! Re_tau^2*rho*nu^2/delta^3
+  dpdx = -1.
 
-    dpdx = -1. ! Re_tau^2*rho*nu^2/delta^3
+  SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Bulk velocity based on initial velocity profile =',uBulk
+  SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Associated pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
 ENDIF
 
 IF(.NOT.MPIRoot) RETURN
@@ -242,47 +242,47 @@ Amplitude = 0.1*Prim(2)
 
 #if EQNSYSNR == 2
 IF (customChannel) THEN
-    x_int(1) = x(1)/delta
-    x_int(2) = x(2)/delta
-    x_int(3) = x(3)/delta
+  x_int(1) = x(1)/delta
+  x_int(2) = x(2)/delta
+  x_int(3) = x(3)/delta
 
-    Prim(2)=Prim(2)+sin(20.0*PP_PI*(x_int(2)/(2.0)))*sin(20.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-    Prim(2)=Prim(2)+sin(30.0*PP_PI*(x_int(2)/(2.0)))*sin(30.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-    Prim(2)=Prim(2)+sin(35.0*PP_PI*(x_int(2)/(2.0)))*sin(35.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-    Prim(2)=Prim(2)+sin(40.0*PP_PI*(x_int(2)/(2.0)))*sin(40.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-    Prim(2)=Prim(2)+sin(45.0*PP_PI*(x_int(2)/(2.0)))*sin(45.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-    Prim(2)=Prim(2)+sin(50.0*PP_PI*(x_int(2)/(2.0)))*sin(50.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(20.0*PP_PI*(x_int(2)/(2.0)))*sin(20.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(30.0*PP_PI*(x_int(2)/(2.0)))*sin(30.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(35.0*PP_PI*(x_int(2)/(2.0)))*sin(35.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(40.0*PP_PI*(x_int(2)/(2.0)))*sin(40.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(45.0*PP_PI*(x_int(2)/(2.0)))*sin(45.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(50.0*PP_PI*(x_int(2)/(2.0)))*sin(50.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
 
-    Prim(3)=Prim(3)+sin(30.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-    Prim(3)=Prim(3)+sin(35.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-    Prim(3)=Prim(3)+sin(40.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-    Prim(3)=Prim(3)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-    Prim(3)=Prim(3)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(3)=Prim(3)+sin(30.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(3)=Prim(3)+sin(35.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(3)=Prim(3)+sin(40.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(3)=Prim(3)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(3)=Prim(3)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
 
-    Prim(4)=Prim(4)+sin(30.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
-    Prim(4)=Prim(4)+sin(35.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
-    Prim(4)=Prim(4)+sin(40.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
-    Prim(4)=Prim(4)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
-    Prim(4)=Prim(4)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+  Prim(4)=Prim(4)+sin(30.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+  Prim(4)=Prim(4)+sin(35.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+  Prim(4)=Prim(4)+sin(40.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+  Prim(4)=Prim(4)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+  Prim(4)=Prim(4)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
 ELSE
-    Prim(2)=Prim(2)+sin(20.0*PP_PI*(x(2)/(2.0)))*sin(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-    Prim(2)=Prim(2)+sin(30.0*PP_PI*(x(2)/(2.0)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-    Prim(2)=Prim(2)+sin(35.0*PP_PI*(x(2)/(2.0)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-    Prim(2)=Prim(2)+sin(40.0*PP_PI*(x(2)/(2.0)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-    Prim(2)=Prim(2)+sin(45.0*PP_PI*(x(2)/(2.0)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-    Prim(2)=Prim(2)+sin(50.0*PP_PI*(x(2)/(2.0)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(20.0*PP_PI*(x(2)/(2.0)))*sin(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(30.0*PP_PI*(x(2)/(2.0)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(35.0*PP_PI*(x(2)/(2.0)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(40.0*PP_PI*(x(2)/(2.0)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(45.0*PP_PI*(x(2)/(2.0)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(2)=Prim(2)+sin(50.0*PP_PI*(x(2)/(2.0)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
 
-    Prim(3)=Prim(3)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-    Prim(3)=Prim(3)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-    Prim(3)=Prim(3)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-    Prim(3)=Prim(3)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-    Prim(3)=Prim(3)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(3)=Prim(3)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(3)=Prim(3)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(3)=Prim(3)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(3)=Prim(3)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(3)=Prim(3)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
 
-    Prim(4)=Prim(4)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(2)/(2.0)))*Amplitude
-    Prim(4)=Prim(4)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(2)/(2.0)))*Amplitude
-    Prim(4)=Prim(4)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
-    Prim(4)=Prim(4)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
-    Prim(4)=Prim(4)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
+  Prim(4)=Prim(4)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(2)/(2.0)))*Amplitude
+  Prim(4)=Prim(4)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(2)/(2.0)))*Amplitude
+  Prim(4)=Prim(4)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
+  Prim(4)=Prim(4)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
+  Prim(4)=Prim(4)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
 ENDIF
 #endif
 

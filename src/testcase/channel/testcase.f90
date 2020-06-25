@@ -116,7 +116,6 @@ USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState,RefStateCons
 USE MOD_EOS,                ONLY: PrimToCons
 USE MOD_EOS_Vars,           ONLY: kappa,mu0,R
 USE MOD_Output,             ONLY: InitOutputToFile
-USE MOD_Testcase_Vars,      ONLY: utau
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -124,7 +123,6 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
-!REAL                     :: rho
 REAL                     :: bulkMach,pressure
 CHARACTER(LEN=7)         :: varnames(2)
 REAL                     :: UE(PP_2Var)
@@ -147,6 +145,7 @@ IF (customChannel) THEN
   uTau        = GETREAL('Part-ChannelUtau', '0.')
 !  uBulkScale  = 1./uBulk
   Re_tau      = GETREAL('Part-ChannelReTau','0.')
+  SWRITE(Unit_STDOUT,'(A)') ' | Warning: Channel Init based on Moser. Initial state might be inaccurate!'
 ! Non-dimensional case with given Re_tau according to Moser
 ELSE
   uBulkScale  = 1.
@@ -157,7 +156,7 @@ ELSE
   uBulk       = uBulk/Re_tau
 ENDIF
 
-! Set the background pressure according to choosen bulk Mach number
+! Set the background pressure according to chosen bulk Mach number
 bulkMach = GETREAL('ChannelMach','0.1')
 pressure = (uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa
 RefStatePrim(5,IniRefState) = pressure
@@ -166,11 +165,6 @@ UE(SRHO) = 1./RefStatePrim(1,IniRefState)
 UE(PRES) = RefStatePrim(5,IniRefState)
 RefStatePrim(6,IniRefState) = TEMPERATURE_HE(UE)
 CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
-
-IF(MPIRoot) THEN
-  WRITE(*,*) 'Bulk velocity based on initial velocity Profile =',uBulk
-  WRITE(*,*) 'Associated Pressure for Mach = ',bulkMach,' is', pressure
-END IF
 
 IF (customChannel) THEN
     rho      = RefStatePrim(1,IniRefState)
@@ -181,25 +175,11 @@ IF (customChannel) THEN
     dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho
 
     ! Tell the user the calculated variables to check
-    IF(MPIRoot) THEN
-      WRITE(*,*) 'Bulk velocity given. uBulk =',uBulk
-      WRITE(*,*) 'Associated pressure gradient. -dp/dx=:', dpdx, 'Pa s'
-    END IF
+    SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Bulk velocity given. uBulk =',uBulk
+    SWRITE(Unit_STDOUT,'(A,F6.2,A)') ' | Associated pressure gradient. -dp/dx=:', dpdx, 'Pa s'
 ELSE
-    Re_tau       = 1/mu0
-    c1 = 2.4390244
-    uBulk=c1*exp(-Re_tau/3.)*((Re_tau+c1)*exp(Re_tau/3.)*log(Re_tau+c1)+1.3064019*(Re_tau*exp(Re_tau/3)&
-          +29.627395*exp(8./33.*Re_tau)+0.66762137*(Re_tau+3)))  -97.4857927165
-    uBulk=uBulk/Re_tau
-
-    !prevent wrong pressure in channel testcase
-    IF(MPIRoot) THEN
-      WRITE(*,*) 'Bulk velocity based on initial velocity Profile =',uBulk
-      WRITE(*,*) 'Associated Pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
-      IF (ABS(RefStatePrim(5,IniRefState)- (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa)/(uBulk/0.1)**2&
-        *RefStatePrim(1,IniRefState)/kappa .GT. 0.01) THEN
-        CALL abort(__STAMP__,'RefState incorrect, correct pressure in parameter file')
-      END IF
+    SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Bulk velocity based on initial velocity profile =',uBulk
+    SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Associated pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
     END IF
 
     dpdx = -1. ! Re_tau^2*rho*nu^2/delta^3
@@ -229,7 +209,6 @@ USE MOD_Globals,      ONLY: Abort
 USE MOD_Equation_Vars,ONLY: RefStatePrim,IniRefState
 USE MOD_EOS,          ONLY: PrimToCons
 USE MOD_EOS_Vars,     ONLY: mu0
-USE MOD_Testcase_Vars,ONLY: utau
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

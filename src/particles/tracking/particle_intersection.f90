@@ -226,7 +226,7 @@ LOGICAL                           :: CriticalParallelInSide
   END IF
 #endif /*CODE_ANALYZE*/
 
-! set alpha to minus 1, asume no intersection
+! set alpha to minus 1, assume no intersection
 alpha = -1.0
 xi    = -2.
 eta   = -2.
@@ -251,7 +251,7 @@ ELSE
 CriticalParallelInSide = .FALSE.
 END IF
 
-! difference between SideDistance (distance from origin to sice) and the dot product is the distance of the particle to the side
+! difference between SideDistance (distance from origin to side) and the dot product is the distance of the particle to the side
 locSideDistance = locDistance-DOT_PRODUCT(LastPartPos(1:3,PartID),NormVec)
 
 ! particle moving parallel to side
@@ -1017,19 +1017,19 @@ LOGICAL                                  :: CriticalParallelInSide,failed
 !REAL                                     :: Interval1D,dInterVal1D
 !===================================================================================================================================
 ! set alpha to minus 1, asume no intersection
-alpha=-1.0
-Xi   = 2.0
-Eta  = 2.0
-isHit=.FALSE.
+alpha =-1.0
+Xi    = 2.0
+Eta   = 2.0
+isHit = .FALSE.
 
 #if CODE_ANALYZE
 rBoundingBoxChecks=rBoundingBoxChecks+1.
 #endif /*CODE_ANALYZE*/
 
-CriticalParallelInSide=.FALSE.
-IF(BoundingBoxIsEmpty(SideID))THEN
-  IF(TrackingMethod.EQ.REFMAPPING)THEN
-    IF(DOT_PRODUCT(SideNormVec(1:3,SideID),PartTrajectory).LT.0.)RETURN
+CriticalParallelInSide = .FALSE.
+IF (BoundingBoxIsEmpty(SideID)) THEN
+  IF (TrackingMethod.EQ.REFMAPPING) THEN
+    IF (DOT_PRODUCT(SideNormVec(1:3,SideID),PartTrajectory).LT.0.) RETURN
   ELSE
     IF(ALMOSTZERO(DOT_PRODUCT(SideNormVec(1:3,SideID),PartTrajectory))) CriticalParallelInSide=.TRUE.
   END IF

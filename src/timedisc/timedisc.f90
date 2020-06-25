@@ -84,9 +84,9 @@ USE MOD_Filter_Vars         ,ONLY:NFilter,FilterType
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
 #if USE_PARTICLES
-USE MOD_ReadInTools         ,ONLY:GETLOGICAL
+USE MOD_ReadInTools               ,ONLY:GETLOGICAL
 USE MOD_Particle_TimeDisc
-USE MOD_Particle_TimeDisc_Vars,ONLY:ParticleTimeDiscMethod,UseManualTimestep,ManualTimestep
+USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimestep,ManualTimestep
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -201,13 +201,13 @@ USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_FV
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
-USE MOD_Particle_Globals    ,ONLY: ALMOSTZERO
-USE MOD_Particle_Analyze    ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
-USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues,MacroValSampTime
-USE MOD_ErosionPoints       ,ONLY: WriteEP
-USE MOD_ErosionPoints_Vars  ,ONLY: doParticleImpactTrack
-USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimestep,ManualTimestep
+USE MOD_Particle_Globals          ,ONLY: ALMOSTZERO
+USE MOD_Particle_Analyze          ,ONLY: TrackingParticlePosition
+USE MOD_Particle_Analyze_Vars     ,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
+USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
+USE MOD_ErosionPoints             ,ONLY: WriteEP
+USE MOD_ErosionPoints_Vars        ,ONLY: doParticleImpactTrack
+USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimestep,ManualTimestep
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance

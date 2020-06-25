@@ -304,7 +304,6 @@ USE MOD_PreProc
 USE MOD_Vector
 USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
 USE MOD_PruettDamping,           ONLY: TempFilterTimeDeriv
-USE MOD_HDF5_Output,             ONLY: WriteState
 USE MOD_TimeDisc_Vars,           ONLY: nRKStages
 #if FV_ENABLED
 USE MOD_FV,                      ONLY: FV_Switch
@@ -513,7 +512,6 @@ SUBROUTINE Particle_TimeStepByLSERK_RK(t,iStage,b_dt)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_HDF5_Output,             ONLY: WriteState
 USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_RHS,                ONLY: CalcPartRHS

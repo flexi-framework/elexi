@@ -281,7 +281,7 @@ IMPLICIT NONE
 INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(1)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
-INTEGER,INTENT(OUT),POINTER               :: DataPointer(:)         !> Pointer to the RMA window
+INTEGER,INTENT(OUT),POINTER               :: DataPointer(:)           !> Pointer to the RMA window
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later

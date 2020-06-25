@@ -162,8 +162,8 @@ ELSE
   MinWeight    = -1.
 END IF
 
-! Re-open mesh file to continue readin
-CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+! Re-open mesh file to continue readin. Meshfile is not set if this routine is called from posti
+IF (INDEX(MeshFile,'h5').NE.0)  CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 END SUBROUTINE DomainDecomposition
 

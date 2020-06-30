@@ -206,9 +206,9 @@ CALL MPI_Info_set(MPIInfo, "romio_cb_write","enable", iError)
 !    SWRITE(*,*) 'FAILED CHANGING NFS LOCK POLICY'
 !END IF
 ! Abort on ILA NFS if we would get absurdly high IO times
-CALL get_environment_variable("OMPI_MCA_fs_ufs_lock_algorithm", NFS_test)
-IF (NFS_test.NE.'1') CALL CollectiveStop(__STAMP__, &
-                     'OMPI_MCA_fs_ufs_lock_algorithm != 1 on ILA NFS. Aborting to avoid high IO wait. Please load the FLEXI module')
+!CALL get_environment_variable("OMPI_MCA_fs_ufs_lock_algorithm", NFS_test)
+!IF (NFS_test.NE.'1') CALL CollectiveStop(__STAMP__, &
+!                     'OMPI_MCA_fs_ufs_lock_algorithm != 1 on ILA NFS. Aborting to avoid high IO wait. Please load the FLEXI module')
 #endif
 #endif /*USE_MPI*/
 END SUBROUTINE InitMPIInfo

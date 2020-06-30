@@ -16,6 +16,7 @@ CMAKE_DEPENDENT_OPTION(POSTI_BUILD_WALLPARTICLES         "Build the wallparticle
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_TURBULENCE            "Build the turbulence tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_TO3D                  "Build the 3D extrusion tool"                        OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_AVG2D                 "Build the 2D average tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_AVG1D                 "Build the 1D average tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
 OPTION(ENABLE_OPENMP "Enable OpenMP" OFF)
 IF(ENABLE_OPENMP)
   IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
@@ -134,4 +135,8 @@ ENDIF()
 
 IF(POSTI_BUILD_AVG2D)
 	INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg2D/CMakeLists.txt)
+ENDIF()
+
+IF(POSTI_BUILD_AVG1D)
+	INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg1D/CMakeLists.txt)
 ENDIF()

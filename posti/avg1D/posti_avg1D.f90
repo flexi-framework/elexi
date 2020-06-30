@@ -18,9 +18,9 @@
 !> the third dimension. Works for either pointwise or elementwise data sets.
 !> The original file will be copied, so it keeps all attributes, user block contents etc.
 !>
-!> Usage: posti_avg2D statefile.h5
+!> Usage: posti_avg1D statefile.h5
 !===================================================================================================================================
-PROGRAM avg2D
+PROGRAM avg1D
 ! MODULES
 USE MOD_Globals
 USE MOD_Commandline_Arguments
@@ -41,10 +41,10 @@ CHARACTER(LEN=255),ALLOCATABLE       :: tmpDatasetNames(:)
 INTEGER,ALLOCATABLE                  :: Elem_IJK(:,:)
 INTEGER                              :: nElems_IJK(3)
 INTEGER                              :: nElems,iElem,iDataset,l
-REAL,ALLOCATABLE                     :: RealArray(:,:,:,:,:),RealAvg(:,:,:,:,:)
-REAL,ALLOCATABLE                     :: RealElemArray(:,:),RealElemAvg(:,:,:)
+REAL,ALLOCATABLE                     :: RealArray(:,:,:,:,:),RealAvg(:,:,:)
+REAL,ALLOCATABLE                     :: RealElemArray(:,:),RealElemAvg(:,:)
 INTEGER                              :: nVar,N
-INTEGER                              :: p,q,i,j
+INTEGER                              :: p,q,i,j,k
 CHARACTER(LEN=255)                   :: MeshFile,NodeType,NewFileName
 REAL,ALLOCATABLE                     :: xGP(:),wGP(:)
 !===================================================================================================================================
@@ -82,7 +82,7 @@ CALL GetDatasetNamesInGroup("/",tmpDatasetNames)
 CALL CloseDataFile()
 
 ! Copy the current file, so we keep all the attributes etc.
-NewFileName = Args(1)(:LEN(TRIM(Args(1)))-3)//'_avg2D.h5'
+NewFileName = Args(1)(:LEN(TRIM(Args(1)))-3)//'_avg1D.h5'
 IF (MPIRoot) CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(Args(1))//" "//TRIM(NewFileName))
 
 ! Loop over all the datasets
@@ -115,55 +115,50 @@ DO iDataset = 1, SIZE(tmpDatasetNames)
   ! Compute the averages
   IF (nDims.EQ.2) THEN
     ! Elementwise data set
-    ALLOCATE(RealElemAvg(nVar,nElems_IJK(1),nElems_IJK(2)))
-    RealElemAvg = 0.
-    DO iElem=1,nElems
-      ! Indixes in the IJK sorting
-      i = Elem_IJK(1,iElem)
-      j = Elem_IJK(2,iElem)
-      ! Build sum
-      RealElemAvg(:,i,j) = RealElemAvg(:,i,j) + RealElemArray(:,iElem)
-    END DO ! iElem
-    ! Finish sum
-    RealElemAvg = RealElemAvg / nElems_IJK(3)
-    ! Write back to the array itself
-    DO iElem=1,nElems
-      ! Indixes in the IJK sorting
-      i = Elem_IJK(1,iElem)
-      j = Elem_IJK(2,iElem)
-      RealElemArray(:,iElem) = RealElemAvg(:,i,j)
-    END DO ! iElem
-  ELSE IF (nDims.EQ.5) THEN
-    ! Pointwise data set
-    ALLOCATE(RealAvg(nVar,0:N,0:N,nElems_IJK(1),nElems_IJK(2)))
-    RealAvg = 0.
-    DO iElem=1,nElems
-      ! Indixes in the IJK sorting
-      i = Elem_IJK(1,iElem)
-      j = Elem_IJK(2,iElem)
-      ! Build sum
-      DO q=0,N; DO p=0,N
-        DO l = 0,N
-          RealAvg(:,p,q,i,j) = RealAvg(:,p,q,i,j) + RealArray(:,p,q,l,iElem)*wGP(l)/2.
-        END DO ! l = 0,N
-      END DO; END DO ! p,q=0,PP_N
-    END DO ! iElem
-    ! Finish sum
-    RealAvg = RealAvg / (nElems_IJK(3))
-    ! Write back to the array itself
-    DO iElem=1,nElems
-      ! Indixes in the IJK sorting
-      i = Elem_IJK(1,iElem)
-      j = Elem_IJK(2,iElem)
-      ! Build sum
-      DO q=0,N; DO p=0,N
-        DO l = 0,N
-          RealArray(:,p,q,l,iElem) = RealAvg(:,p,q,i,j)
-        END DO ! l = 0,N
-      END DO; END DO ! p,q=0,PP_N
-    END DO ! iElem
-  END IF
-
+    ALLOCATE(RealElemAvg(nVar,nElems_IJK(2)))
+      RealElemAvg = 0.
+      DO iElem = 1,nElems
+        ! Indices in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        ! Build sum
+        RealElemAvg(:,i) = RealElemAvg(:,i) + RealElemArray(:,iElem)
+      END DO ! iElem
+      ! Finish sum
+      RealElemAvg = RealElemAvg / (nElems_IJK(1) * nElems_IJK(3))
+      ! Write back to the array itself
+      DO iElem=1,nElems
+        ! Indices in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        RealElemArray(:,iElem) = RealElemAvg(:,i)
+      END DO ! iElem
+    ELSE IF (nDims.EQ.5) THEN
+      ! Pointwise data set
+      ALLOCATE(RealAvg(nVar,0:N,nElems_IJK(2)))
+      RealAvg = 0.
+      DO iElem = 1,nElems
+        ! Indices in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        ! Build sum
+        DO p = 0,N
+          DO l = 0,N; DO k = 0,N
+            RealAvg(:,p,i) = RealAvg(:,p,i) + RealArray(:,l,p,k,iElem)*wGP(l)/2.*wGP(k)/2.
+          END DO; END DO ! l = 0,N
+        END DO ! p,q=0,PP_N
+      END DO ! iElem
+      ! Finish sum
+      RealAvg = RealAvg / (nElems_IJK(1)*nElems_IJK(3))
+      ! Write back to the array itself
+      DO iElem=1,nElems
+        ! Indices in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        ! Build sum
+        DO p = 0,N
+          DO l = 0,N; DO k=0,N
+            RealArray(:,l,p,k,iElem) = RealAvg(:,p,i)
+          END DO; END DO ! l = 0,N
+        END DO ! p,q=0,PP_N
+      END DO ! iElem
+    END IF
 
   ! Open new file and write the array
   WRITE(*,*) 'Write dataset ',tmpDatasetNames(iDataset)
@@ -203,4 +198,4 @@ WRITE(UNIT_stdOut,'(132("="))')
 WRITE(UNIT_stdOut,'(A)') ' TO3D TOOL FINISHED! '
 WRITE(UNIT_stdOut,'(132("="))')
 
-END PROGRAM avg2D
+END PROGRAM avg1D

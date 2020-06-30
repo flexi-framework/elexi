@@ -290,7 +290,7 @@ IF(MPIroot)THEN
   IF (PRESENT(doPrintETA_opt)) THEN
     IF (mins.LT.1) THEN
       WRITE(UNIT_stdOut,'(A,A4,A,A1,A,A3,F6.2,A3)',ADVANCE='YES')                                                                 &
-      ' ETA [d:h:m]:   <1 min remaining','|',                                                                                &
+      ' ETA [d:h:m]:   <1 min remaining','|',                                                                                     &
           REPEAT('=',MAX(CEILING(percent/1.785714285714286)-1,0)),'>',REPEAT(' ',56-MAX(CEILING(percent/1.785714285714286)-1,0)), &
           '| [',percent,'%] '
     ELSE
@@ -307,7 +307,7 @@ IF(MPIroot)THEN
         '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                       &
         REPEAT('=',MAX(CEILING(percent/3.)-1,0)),'>',REPEAT(' ',33-MAX(CEILING(percent/3.)-1,0)),'| [',percent,'%] ',&
         ACHAR(13) ! ACHAR(13) is carriage return
-  ELSE
+    ELSE
 #endif
       WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO')    &
         '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
@@ -315,8 +315,8 @@ IF(MPIroot)THEN
         ACHAR(13) ! ACHAR(13) is carriage return
 #if USE_PARTICLES
     END IF
-  END IF
 #endif
+  END IF
 #ifdef INTEL
   CLOSE(UNIT_stdOut)
 #endif

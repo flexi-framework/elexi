@@ -204,7 +204,7 @@ END SUBROUTINE InitOutput
 !==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================
-SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd)
+SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doPrintETA_opt)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! description
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -229,6 +229,7 @@ REAL,INTENT(IN) :: t      !< current simulation time
 REAL,INTENT(IN) :: dt     !< current time step
 REAL,INTENT(IN) :: tStart !< start time of simulation
 REAL,INTENT(IN) :: tEnd   !< end time of simulation
+LOGICAL,INTENT(IN),OPTIONAL :: doPrintETA_opt !< flag to print current ETA
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if FV_ENABLED
@@ -246,7 +247,9 @@ FVcounter = SUM(FV_Elems)
 totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount during analyze
 #endif
 
-IF(.NOT.doPrintStatusLine) RETURN
+IF (.NOT.PRESENT(doPrintETA_opt)) THEN
+  IF(.NOT.doPrintStatusLine) RETURN
+END IF
 
 #if FV_ENABLED && USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
@@ -284,20 +287,34 @@ IF(MPIroot)THEN
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV '
 #endif
+  IF (PRESENT(doPrintETA_opt)) THEN
+    IF (mins.LT.1) THEN
+      WRITE(UNIT_stdOut,'(A,A4,A,A1,A,A3,F6.2,A3)',ADVANCE='YES')                                                                 &
+      ' ETA [d:h:m]:   <1 min remaining','|',                                                                                &
+          REPEAT('=',MAX(CEILING(percent/1.785714285714286)-1,0)),'>',REPEAT(' ',56-MAX(CEILING(percent/1.785714285714286)-1,0)), &
+          '| [',percent,'%] '
+    ELSE
+      WRITE(UNIT_stdOut,'(A,I4,A1,I0.2,A1,I0.2,A6,A,A1,A,A3,F6.2,A3)',ADVANCE='YES')                                              &
+      ' ETA [d:h:m]:       ',INT(days),':',INT(hours),':',INT(mins),' |',                                                         &
+          REPEAT('=',MAX(CEILING(percent/1.785714285714286)-1,0)),'>',REPEAT(' ',56-MAX(CEILING(percent/1.785714285714286)-1,0)), &
+          '| [',percent,'%] '
+    END IF
+  ELSE
 #if USE_PARTICLES
-  IF (nParticleInDomain.GT.0) THEN
-    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I7,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A4,F6.2,A3,A1)',ADVANCE='NO') &
-      '   Time = ', t,'  dt = ', dt, ' ', ' # Part inside = ', nParticleInDomain,                                  &
-      '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                       &
-      REPEAT('=',MAX(CEILING(percent/3.)-1,0)),'>',REPEAT(' ',33-MAX(CEILING(percent/3.)-1,0)),'| [',percent,'%] ',&
-      ACHAR(13) ! ACHAR(13) is carriage return
+    IF (nParticleInDomain.GT.0) THEN
+      WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I7,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A4,F6.2,A3,A1)',ADVANCE='NO') &
+        '   Time = ', t,'  dt = ', dt, ' ', ' # Part inside = ', nParticleInDomain,                                  &
+        '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                       &
+        REPEAT('=',MAX(CEILING(percent/3.)-1,0)),'>',REPEAT(' ',33-MAX(CEILING(percent/3.)-1,0)),'| [',percent,'%] ',&
+        ACHAR(13) ! ACHAR(13) is carriage return
   ELSE
 #endif
-    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO')    &
-      '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
-      REPEAT('=',MAX(CEILING(percent/2.)-1,0)),'>',REPEAT(' ',50-MAX(CEILING(percent/2.)-1,0)),'| [',percent,'%] ',&
-      ACHAR(13) ! ACHAR(13) is carriage return
+      WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO')    &
+        '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
+        REPEAT('=',MAX(CEILING(percent/2.)-1,0)),'>',REPEAT(' ',50-MAX(CEILING(percent/2.)-1,0)),'| [',percent,'%] ',&
+        ACHAR(13) ! ACHAR(13) is carriage return
 #if USE_PARTICLES
+    END IF
   END IF
 #endif
 #ifdef INTEL

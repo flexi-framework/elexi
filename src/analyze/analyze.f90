@@ -263,13 +263,13 @@ END SUBROUTINE InitAnalyzeBasis
 !> - calls generic error norm computation
 !> - calls equation system specific analysis
 !==================================================================================================================================
-SUBROUTINE Analyze(Time,iter,tend)
+SUBROUTINE Analyze(Time,iter,tend,tstart_opt,dt_opt,doPrintETA_opt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation,          ONLY: AnalyzeEquation
-USE MOD_Output,                   ONLY: OutputToFile
+USE MOD_Output,                   ONLY: OutputToFile,PrintStatusLine
 USE MOD_Output_Vars,              ONLY: ProjectName
 USE MOD_Mesh_Vars,                ONLY: nGlobalElems
 USE MOD_Benchmarking,             ONLY: Benchmarking
@@ -283,6 +283,9 @@ IMPLICIT NONE
 REAL,INTENT(IN)                 :: Time                   !< current simulation time
 INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
 REAL,INTENT(IN)                 :: tend                   !< simulation end time
+REAL,INTENT(IN),OPTIONAL        :: tStart_opt             !< start time of simulation
+REAL,INTENT(IN),OPTIONAL        :: dt_opt                 !< current time step
+LOGICAL,INTENT(IN),OPTIONAL     :: doPrintETA_opt         !< flag to print current ETA
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=40)               :: formatStr
@@ -320,6 +323,7 @@ CALL Benchmarking()
 #if USE_PARTICLES
 CALL ParticleInformation()
 #endif /*USE_PARTICLES*/
+IF (PRESENT(doPrintETA_opt)) CALL PrintStatusLine(t=Time,dt=dt_opt,tStart=tStart_opt,tEnd=tend,doPrintETA_opt=.TRUE.)
 
 IF(MPIroot .AND. (Time.GT.0.) .AND. (Time.LT.tend)) THEN
   WRITE(UNIT_StdOut,'(132("."))')

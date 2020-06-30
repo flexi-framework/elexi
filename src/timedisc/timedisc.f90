@@ -500,7 +500,7 @@ DO
     END IF
 
     ! do analysis
-    CALL Analyze(t,iter,tend)
+    CALL Analyze(t,iter,tend,tStart_opt=tStart,dt_opt=dt,doPrintETA_opt=.TRUE.)
     iter_loc  = 0
     CalcTimeStart = FLEXITIME()
     tAnalyze  = MIN(tAnalyze+Analyze_dt,  tEnd)

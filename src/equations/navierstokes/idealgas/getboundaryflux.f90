@@ -604,6 +604,7 @@ USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_EOS          ,ONLY: PrimToCons,ConsToPrim
 USE MOD_ExactFunc    ,ONLY: ExactFunc
+USE MOD_ExactFunc_Vars,ONLY: JetRadius
 #if PARABOLIC
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Riemann      ,ONLY: ViscousFlux
@@ -705,7 +706,7 @@ ELSE
     )
     Flux = Flux + Fd_Face_loc
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
-      IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).GT.1.6e-03)THEN
+      IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).GT.JetRadius)THEN
         ! Now we compute the 1D Euler flux, but use the info that the normal component u=0
         ! we directly tranform the flux back into the Cartesian coords: F=(0,n1*p,n2*p,n3*p,0)^T
         Flux(1  ,p,q) = 0.
@@ -1029,6 +1030,7 @@ USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
 USE MOD_Testcase     ,ONLY: Lifting_GetBoundaryFluxTestcase
+USE MOD_ExactFunc_Vars,ONLY: JetRadius
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1061,7 +1063,7 @@ ELSE
   CASE(31)
     Flux=0.5*(UPrim_master+UPrim_boundary)
     DO q=0,PP_NZ; DO p=0,PP_N
-      IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).GT.1.6e-03)THEN
+      IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).GT.JetRadius)THEN
         Flux(1  ,p,q) = UPrim_Boundary(1,p,q)
         Flux(2:4,p,q) = 0.
         Flux(5  ,p,q) = UPrim_Boundary(5,p,q)

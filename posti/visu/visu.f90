@@ -707,9 +707,10 @@ END SUBROUTINE visu
 !> Subroutine to write the solution U to HDF5 format
 !> Is used for postprocessing
 !==================================================================================================================================
-SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,FileString,MeshFileName,VarNames_loc,UVisu_DG,data2D)
+SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,nElems_loc,FileString,MeshFileName,VarNames_loc,dim,UVisu_DG)
 ! MODULES
-USE MOD_Globals               ,ONLY: TIMESTAMP,MPIROOT,MPI_COMM_FLEXI,UNIT_stdOut
+USE MOD_Globals               !,ONLY: ABORT,TIMESTAMP,MPIROOT,MPI_COMM_FLEXI,UNIT_stdOut
+USE MOD_PreProc
 USE MOD_HDF5_Output           ,ONLY: GenerateFileSkeleton,MarkWriteSuccessfull
 USE MOD_HDF5_WriteArray       ,ONLY: GatheredWriteArray
 USE MOD_Mesh_Vars             ,ONLY: nElems,nGlobalElems,offsetElem
@@ -721,24 +722,28 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVarVisu
 INTEGER,INTENT(IN)             :: NVisu
+INTEGER,INTENT(IN)             :: nElems_loc
 CHARACTER(LEN=*),INTENT(IN)    :: FileString
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName
 CHARACTER(LEN=*),INTENT(IN)    :: VarNames_loc(nVarVisu)
-REAL,INTENT(IN),TARGET         :: UVisu_DG(nVarVisu,NVisu+1,NVisu+1,NVisu+1,nElems)
-LOGICAL,INTENT(IN),OPTIONAL    :: data2D
+INTEGER,INTENT(IN)             :: dim
+REAL,INTENT(IN),TARGET         :: UVisu_DG(0:nVisu,0:nVisu,0:MERGE(nVisu,0,dim.GT.2),1:nElems,1:nVarVisu)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName!,FileType
-REAL,POINTER                   :: UOut(:,:,:,:,:)
-INTEGER                        :: nVal(5)
-INTEGER                        :: dim
+INTEGER                        :: iElem,iVar
+REAL,POINTER                   :: UOut(:,:,:,:,:),UOut2D(:,:,:,:)
+INTEGER,ALLOCATABLE            :: nVal(:),nValGlobal(:),offset(:)
 #if USE_MPI
-INTEGER                        :: iError
+INTEGER                        :: nGlobalElems_loc,offsetElem_loc
+INTEGER                        :: recvbuf,sendbuf
 #endif
 !==================================================================================================================================
 
-dim = MERGE(3,2,PRESENT(data2D))
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO HDF5 FILE..."
+ALLOCATE( nVal      (dim+2) &
+        , nValGlobal(dim+2) &
+        , offset    (dim+2))
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 !FileType = 'Solution'
@@ -757,31 +762,87 @@ IF(MPIRoot) CALL GenerateFileSkeleton( TRIM(FileName)                           
 
 ! Set size of output
 nVal=(/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nElems/)
-
 IF (dim.EQ.3) THEN
-  UOut => UVisu_DG
+  nVal       = (/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nElems      /)
+  nValGlobal = (/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/)
+  offset     = (/0       ,0      ,0      ,0      ,offsetElem  /)
+  ! UVisu_DG is sorted in the old style, re-sort for HDF5
+  ALLOCATE(UOut(1:nVarVisu,0:NVisu,0:NVisu,0:NVisu,1:nElems))
+  DO iElem = 1,nElems
+!    DO k = 0,NVisu; DO j = 0,NVisu; DO i = 0,NVisu;
+      DO iVar = 1,nVarVisu
+        UOut(iVar,:,:,:,iElem) = UVisu_DG(:,:,:,iElem,iVar)
+      END DO
+!    END DO; END DO; END DO
+  END DO
 ELSE
-  ! The output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-    ALLOCATE(UOut(nVarVisu,0:NVisu,0:NVisu,0:NVisu,nElems))
-    CALL ExpandArrayTo3D(5,(/nVarVisu,NVisu+1,NVisu+1,1,nElems/),4,NVisu+1,UVisu_DG(:,:,:,1,:),UOut)
+#if USE_MPI
+  ASSOCIATE( nElems       => nElems_loc       &
+           , nGlobalElems => nGlobalElems_loc &
+           , offsetElem   => offsetElem_loc)
+
+  ! Calculate local offset
+  sendbuf = nElems
+  recvbuf = 0
+  CALL MPI_EXSCAN(sendbuf,recvbuf,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+  offsetElem = recvbuf
+  sendbuf    = recvbuf + nElems
+  CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
+  nGlobalElems = sendbuf
+#endif
+
+  ! USurfVisu_DG is sorted in the old style, re-sort for HDF5
+  nVal       = (/nVarVisu,NVisu+1,NVisu+1,nElems      /)
+  nValGlobal = (/nVarVisu,NVisu+1,NVisu+1,nGlobalElems/)
+  offset     = (/0       ,0      ,0      ,offsetElem  /)
+!  ! The output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+!  ALLOCATE(UOut(nVarVisu,0:NVisu,0:NVisu,0:NVisu,nElems))
+!  CALL ExpandArrayTo3D(5,(/nVarVisu,NVisu+1,NVisu+1,1,nElems/),4,NVisu+1,UVisu_DG(:,:,:,1,:),UOut)
+  ALLOCATE(UOut2D(1:nVarVisu,0:NVisu,0:NVisu,1:nElems))
+  DO iElem = 1,nElems
+!    DO k = 0,NVisu; DO j = 0,NVisu
+      DO iVar = 1,nVarVisu
+        UOut2D(iVar,:,:,iElem) = UVisu_DG(:,:,0,iElem,iVar)
+      END DO
+!    END DO; END DO
+  END DO
+
+#if USE_MPI
+  END ASSOCIATE
+#endif
 END IF
 
 ! Reopen file and write DG solution
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
-CALL GatheredWriteArray( TRIM(FileName)                                                   &
-                       , create      = .FALSE.                                            &
-                       , DataSetName = 'Posti'                                            &
-                       , rank        = 5                                                  &
-                       , nValGlobal  = (/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/)  &
-                       , nVal        = nVal                                               &
-                       , offset      = (/0,      0,     0,     0,     offsetElem/)        &
-                       , collective  =.TRUE.                                              &
-                       , RealArray   = UOut)
 
-!! Deallocate UOut only if we did not point to U
-!IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
+IF (dim.EQ.3) THEN
+  CALL GatheredWriteArray( TRIM(FileName)            &
+                         , create      = .FALSE.     &
+                         , DataSetName = 'Posti'     &
+                         , rank        = dim+2       &
+                         , nValGlobal  = nValGlobal  &
+                         , nVal        = nVal        &
+                         , offset      = offset      &
+                         , collective  =.TRUE.       &
+                         , RealArray   = UOut)
+  DEALLOCATE(UOut)
+ELSE
+  CALL GatheredWriteArray( TRIM(FileName)            &
+                         , create      = .FALSE.     &
+                         , DataSetName = 'Posti2D'   &
+                         , rank        = dim+2       &
+                         , nValGlobal  = nValGlobal  &
+                         , nVal        = nVal        &
+                         , offset      = offset      &
+                         , collective  =.TRUE.       &
+                         , RealArray   = UOut2D)
+  DEALLOCATE(UOut2D)
+END IF
+
+DEALLOCATE(nVal,nValGlobal,offset)
+
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessfull(FileName)
   WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"

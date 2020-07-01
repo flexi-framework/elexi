@@ -225,10 +225,10 @@ DO iArg=1+skipArgs,nArgs
 
   IF(HDF5Output) THEN
     FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
-    CALL visu_WriteHDF5(nVarVisu,NVisu,FileString_DG,MeshFile,VarNames_loc,UVisu_DG)
+    CALL visu_WriteHDF5(nVarVisu,NVisu,nElems_DG,FileString_DG,MeshFile,VarNames_loc,3,UVisu_DG)
     IF (doSurfVisu) THEN
       FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))//'.h5'
-      CALL visu_WriteHDF5(nVarVisu,NVisu,FileString_SurfDG,MeshFile,VarNames_loc,UVisu_DG,data2D=.TRUE.)
+      CALL visu_WriteHDF5(nVarSurfVisuAll,NVisu,nBCSidesVisu_DG,FileString_SurfDG,MeshFile,VarNamesSurf_loc,2,USurfVisu_DG)
     END IF
   END IF
 

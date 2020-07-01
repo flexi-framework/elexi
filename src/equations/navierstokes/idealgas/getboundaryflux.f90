@@ -35,6 +35,7 @@
 !>  INFLOW BCs:
 !>  * 27  : Subsonic inflow BC, WARNING: REFSTATE is different: Tt,alpha,beta,<empty>,pT (4th entry ignored!!), angles in DEG
 !>  * 28  : Subsonic inflow BC, WARNING: REFSTATE is different: Tt,alpha,beta,<empty>,p (4th entry ignored!!), angles in DEG
+!>  * 31  : Roundjet: exact function BC in jet and wall BC apart from the jet
 !==================================================================================================================================
 !==================================================================================================================================
 MODULE MOD_GetBoundaryFlux
@@ -109,6 +110,7 @@ USE MOD_Equation_Vars     ,ONLY: nRefState,BCData,BCDataPrim,nBCByType,BCSideID
 USE MOD_Equation_Vars     ,ONLY: BCStateFile,RefStatePrim
 USE MOD_Interpolation_Vars,ONLY: InterpolationInitIsDone
 USE MOD_Mesh_Vars         ,ONLY: MeshInitIsDone,nBCSides,BC,BoundaryType,nBCs,Face_xGP
+USE MOD_Exactfunc_Vars    ,ONLY: JetRadius, RoundJetInitDone
 #if PARABOLIC
 USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
 #endif
@@ -136,7 +138,7 @@ MaxBCState = 0
 DO iSide=1,nBCSides
   locType =BoundaryType(BC(iSide),BC_TYPE)
   locState=BoundaryType(BC(iSide),BC_STATE)
-  IF((locType.NE.22).AND.(locType.NE.3).AND.(locType.NE.121)) MaxBCState = MAX(MaxBCState,locState)
+  IF((locType.NE.22).AND.(locType.NE.3).AND.(locType.NE.121).AND.(locType.NE.31)) MaxBCState = MAX(MaxBCState,locState)
   IF((locType.EQ.4).AND.(locState.LT.1))&
     CALL abort(__STAMP__,&
                'No temperature (refstate) defined for BC_TYPE',locType)
@@ -178,6 +180,18 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxBCStateGlobal,1,MPI_INTEGER,MPI_MAX,MPI_COMM_
 IF(MaxBCState.GT.nRefState)THEN
   CALL abort(__STAMP__,&
     'ERROR: Boundary RefState not defined! (MaxBCState,nRefState):',MaxBCState,REAL(nRefState))
+END IF
+
+IF (.NOT.RoundJetInitDone) THEN
+   DO i=1,nBCs
+     locType =BoundaryType(i,BC_TYPE)
+     locState=BoundaryType(i,BC_STATE)
+     IF ((locType.EQ.31).AND.(locState.EQ.5)) THEN
+       JetRadius        = GETREAL('JetRadius','1.0')
+       RoundJetInitDone = .TRUE.
+       EXIT
+     END IF
+   END DO
 END IF
 
 #if PARABOLIC
@@ -263,13 +277,14 @@ SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,Ta
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals      ,ONLY: Abort
-USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
-USE MOD_EOS          ,ONLY: ConsToPrim,PrimtoCons
-USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
-USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R,Mach
-USE MOD_ExactFunc    ,ONLY: ExactFunc
-USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
+USE MOD_Globals        ,ONLY: Abort
+USE MOD_Mesh_Vars      ,ONLY: BoundaryType,BC
+USE MOD_EOS            ,ONLY: ConsToPrim,PrimtoCons
+USE MOD_EOS            ,ONLY: PRESSURE_RIEMANN
+USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,Mach
+USE MOD_ExactFunc      ,ONLY: ExactFunc
+USE MOD_ExactFunc_Vars ,ONLY: JetRadius
+USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
 !----------------------------------------------------------------------------------------------------------------------------------
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -321,7 +336,32 @@ CASE(22) ! exact BC = Dirichlet BC !!
     CALL ExactFunc(BCState,t,Face_xGP(:,p,q),Cons)
     CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
   END DO; END DO
+CASE(31) ! exact BC = Dirichlet BC !!
+  ! SPECIAL BC: BCState specifies exactfunc to be used!!
+  DO q=0,ZDIM(Nloc); DO p=0,Nloc
+    IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).LE.JetRadius)THEN
+      CALL ExactFunc(BCState,t,Face_xGP(:,p,q),Cons)
+      CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
+    ELSE
+      ! transform into local system
+      UPrim_boundary(1,p,q)= UPrim_master(1,p,q)
+      UPrim_boundary(2,p,q)= SUM(UPrim_master(2:4,p,q)*NormVec( :,p,q))
+      UPrim_boundary(3,p,q)= SUM(UPrim_master(2:4,p,q)*TangVec1(:,p,q))
+      UPrim_boundary(4,p,q)= SUM(UPrim_master(2:4,p,q)*TangVec2(:,p,q))
+      UPrim_boundary(5:PP_nVarPrim,p,q)= UPrim_master(5:PP_nVarPrim,p,q)
 
+      UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
+      UPrim_boundary(2:4,p,q)= 0. ! no slip
+      UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! adiabatic => temperature from the inside
+      ! set density via ideal gas equation, consistent to pressure and temperature
+      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
+
+      ! transform back to global system
+      UPrim_boundary(2:4,p,q) = UPrim_boundary(2,p,q)*NormVec( :,p,q) &
+                               +UPrim_boundary(3,p,q)*TangVec1(:,p,q) &
+                               +UPrim_boundary(4,p,q)*TangVec2(:,p,q)
+    END IF
+  END DO; END DO
 
 CASE(3,4,9,91,23,24,25,27,28)
   ! Initialize boundary state with rotated inner state
@@ -647,6 +687,62 @@ ELSE
     Flux = Flux + Fd_Face_loc
 #endif /*PARABOLIC*/
 
+  CASE(31)
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
+      CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q))
+      CALL PrimToCons(UPrim_boundary(:,p,q),      UCons_boundary(:,p,q))
+    END DO; END DO ! p,q=0,PP_N
+    CALL Riemann(Nloc,Flux,UCons_master,UCons_boundary,UPrim_master,UPrim_boundary, &
+        NormVec,TangVec1,TangVec2,doBC=.TRUE.)
+#if PARABOLIC
+    CALL ViscousFlux(Nloc,Fd_Face_loc,UPrim_master,UPrim_boundary,&
+         gradUx_master,gradUy_master,gradUz_master,&
+         gradUx_master,gradUy_master,gradUz_master,&
+         NormVec&
+#if EDDYVISCOSITY
+        ,muSGS_master(:,:,:,SideID),muSGS_master(:,:,:,SideID)&
+#endif
+    )
+    Flux = Flux + Fd_Face_loc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
+      IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).GT.1.6e-03)THEN
+        ! Now we compute the 1D Euler flux, but use the info that the normal component u=0
+        ! we directly tranform the flux back into the Cartesian coords: F=(0,n1*p,n2*p,n3*p,0)^T
+        Flux(1  ,p,q) = 0.
+        Flux(2:4,p,q) = UPrim_boundary(5,p,q)*NormVec(:,p,q)
+        Flux(5  ,p,q) = 0.
+      END IF
+    END DO;END DO
+#endif /*PARABOLIC*/
+
+#if EDDYVISCOSITY
+    muSGS_master(:,:,:,SideID)=0.
+#endif
+    ! Diffusion
+#if PARABOLIC
+    ! Evaluate 3D Diffusion Flux with interior state and symmetry gradients
+    CALL EvalDiffFlux3D(Nloc,UPrim_boundary,&
+                        gradUx_master, gradUy_master, gradUz_master, &
+                        Fd_Face_loc,   Gd_Face_loc,   Hd_Face_loc    &
+#if EDDYVISCOSITY
+                       ,muSGS_master(:,:,:,SideID) &
+#endif
+                         )
+    ! Enforce energy flux is exactly zero at adiabatic wall
+    Fd_Face_loc(5,:,:)=0.
+    Gd_Face_loc(5,:,:)=0.
+    Hd_Face_loc(5,:,:)=0.
+
+    ! Sum up Euler and Diffusion Flux
+    DO iVar=2,PP_nVar
+      Flux(iVar,:,:) = Flux(iVar,:,:)        + &
+        NormVec(1,:,:)*Fd_Face_loc(iVar,:,:) + &
+        NormVec(2,:,:)*Gd_Face_loc(iVar,:,:) + &
+        NormVec(3,:,:)*Hd_Face_loc(iVar,:,:)
+    END DO ! iVar
+#endif /*PARABOLIC*/
+
+
   CASE(3,4,9,91) ! Walls
 #if EDDYVISCOSITY
     muSGS_master(:,:,:,SideID)=0.
@@ -907,7 +1003,7 @@ ELSE
   CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary,UPrim_master,&
       NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
-  CASE(2,3,4,9,91,12,121,22,23,24,25,27,28)
+  CASE(2,3,4,9,91,12,121,22,23,24,25,27,28,31)
     DO q=0,PP_NZ; DO p=0,PP_N
       gradU(:,p,q) = (UPrim_master(:,p,q) - UPrim_boundary(:,p,q)) * sdx_Face(p,q,3)
     END DO; END DO ! p,q=0,PP_N
@@ -961,7 +1057,17 @@ ELSE
                         NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
   CASE(2,12,121,22,23,24,25,27,28) ! Riemann solver based BCs
-      Flux=0.5*(UPrim_master+UPrim_boundary)
+    Flux=0.5*(UPrim_master+UPrim_boundary)
+  CASE(31)
+    Flux=0.5*(UPrim_master+UPrim_boundary)
+    DO q=0,PP_NZ; DO p=0,PP_N
+      IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).GT.1.6e-03)THEN
+        Flux(1  ,p,q) = UPrim_Boundary(1,p,q)
+        Flux(2:4,p,q) = 0.
+        Flux(5  ,p,q) = UPrim_Boundary(5,p,q)
+        Flux(6  ,p,q) = UPrim_Boundary(6,p,q)
+      END IF
+    END DO; END DO !p,q
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
       Flux(1  ,p,q) = UPrim_Boundary(1,p,q)

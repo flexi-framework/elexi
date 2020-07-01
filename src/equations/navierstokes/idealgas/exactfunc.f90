@@ -95,6 +95,7 @@ CALL prms%CreateRealArrayOption(    'IniCenter',    "Shu Vortex CASE(7) (x,y,z)"
 CALL prms%CreateRealArrayOption(    'IniAxis',      "Shu Vortex CASE(7) (x,y,z)")
 CALL prms%CreateRealOption(         'IniAmplitude', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
+CALL prms%CreateRealOption(         'JetRadius',    "Roundjet CASE(5)", '1.0')
 #if PARABOLIC
 CALL prms%CreateRealOption(         'delta99_in',   "Blasius boundary layer CASE(1338)")
 CALL prms%CreateRealArrayOption(    'x_in',         "Blasius boundary layer CASE(1338)")
@@ -131,6 +132,9 @@ CASE(2,21,3,4,41,42,43,44) ! synthetic test cases
   AdvVel       = GETREALARRAY('AdvVel',3)
 CASE(31)
   AdvArray     = GETREALARRAY('AdvArray',9)
+CASE(5) ! Roundjet
+  JetRadius        = GETREAL('JetRadius','1.0')
+  RoundjetInitDone =.TRUE.
 CASE(7) ! Shu Vortex
   IniCenter    = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
   IniAxis      = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
@@ -181,6 +185,7 @@ USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
 USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniAxis,AdvVel,AdvArray
 USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens
 USE MOD_Exactfunc_Vars ,ONLY: P_Parameter,U_Parameter
+USE MOD_Exactfunc_Vars ,ONLY: JetRadius
 USE MOD_Equation_Vars  ,ONLY: IniRefState,RefStateCons,RefStatePrim
 USE MOD_Timedisc_Vars  ,ONLY: fullBoundaryOrder,CurrentStage,dt,RKb,RKc,t
 USE MOD_TestCase       ,ONLY: ExactFuncTestcase
@@ -450,16 +455,16 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   prim(2:4)=0.
   prim(5)  =1./Kappa
   prim(6) = prim(5)/(prim(1)*R)
-  ! Jet inflow (from x=0, diameter 2.0)
-  ! Initial jet radius: rj=1.
+  ! Jet inflow (from x=0)
+  ! Initial jet radius: JetRadius
   ! Momentum thickness: delta_theta0=0.05=1/20
   ! Re=65000
   ! Uco=0.
   ! Uj=0.9
   r_len=SQRT((x(2)*x(2)+x(3)*x(3)))
-  prim(2)=0.9*0.5*(1.+TANH((1.-r_len)*10.))
+  prim(2)=0.9*0.5*(1.+TANH((JetRadius-r_len)/JetRadius*10.))
   CALL RANDOM_NUMBER(random)
-  ! Random disturbance +-5%
+  ! Random disturbance +-5%; uniform distribution between -1,1
   random=0.05*2.*(random-0.5)
   prim(2)=prim(2)+random*prim(2)
   prim(3)=x(2)/r_len*0.5*random*prim(2)
@@ -470,8 +475,8 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   prim(5)  =1./Kappa
   prim(6) = prim(5)/(prim(1)*R)
   CALL PrimToCons(prim,ResuR)
-!   after x=10 blend to ResuR
-  Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)-10.))
+  ! after x/r0=10 blend to ResuR
+  Resu=ResuL+(ResuR-ResuL)*0.5*(JetRadius+tanh(x(1)/JetRadius-10.))
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow
     prim(1)=RefStatePrim(1,RefState)  ! Density

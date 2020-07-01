@@ -120,7 +120,6 @@ DO iArg=1+skipArgs,nArgs
 #endif
   END IF
 
-
   ALLOCATE(varnames_loc(nVarVisu))
   ALLOCATE(varnamesSurf_loc(nVarSurfVisuAll))
   DO iVar=1,nVarAll
@@ -222,6 +221,15 @@ DO iArg=1+skipArgs,nArgs
   !END DO
   !CLOSE(iounit) ! close the file
 !#endif
+  END IF
+
+  IF(HDF5Output) THEN
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
+    CALL visu_WriteHDF5(nVarVisu,NVisu,FileString_DG,MeshFile,VarNames_loc,UVisu_DG)
+    IF (doSurfVisu) THEN
+      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))//'.h5'
+      CALL visu_WriteHDF5(nVarVisu,NVisu,FileString_SurfDG,MeshFile,VarNames_loc,UVisu_DG,data2D=.TRUE.)
+    END IF
   END IF
 
   DEALLOCATE(VarNames_loc)

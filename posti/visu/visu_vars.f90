@@ -66,6 +66,7 @@ LOGICAL                           :: Avg2D                       !< Flag indicat
 LOGICAL                           :: Avg2D_old = .FALSE.         !< Previus state of Avg2D flag, used to check for change
 LOGICAL                           :: Avg2DHDF5Output             !< Flag indicating if the averaged solution should be written to a
                                                                  !< .h5 file
+LOGICAL                           :: HDF5Output                  !< Flag indicating if the solution should be written to a .h5 file
 
 
 ! The following flags indicate if during successive visualizations of (different) state files the respective properties

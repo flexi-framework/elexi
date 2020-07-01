@@ -38,6 +38,10 @@ INTERFACE visu
   MODULE PROCEDURE visu
 END INTERFACE
 
+INTERFACE visu_WriteHDF5
+  MODULE PROCEDURE Visu_WriteHDF5
+END INTERFACE
+
 INTERFACE FinalizeVisu
   MODULE PROCEDURE FinalizeVisu
 END INTERFACE
@@ -45,6 +49,7 @@ END INTERFACE
 PUBLIC:: visu_getVarNamesAndFileType
 PUBLIC:: visu_InitFile
 PUBLIC:: visu
+PUBLIC:: visu_WriteHDF5
 PUBLIC:: FinalizeVisu
 
 CONTAINS
@@ -296,6 +301,7 @@ CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 ! HDF5 Output for avg2D
 IF (Avg2D) Avg2DHDF5Output = GETLOGICAL("Avg2DHDF5Output")
+HDF5Output = GETLOGICAL("HDF5Output")
 
 ! check if state, mesh, NVisu, DGonly or Avg2D changed
 changedStateFile = .NOT.STRICMP(statefile,statefile_old)
@@ -523,6 +529,7 @@ CALL prms%CreateIntOption(    "NVisu"           , "Polynomial degree at which so
 CALL prms%CreateIntOption(    "NCalc"           , "Polynomial degree at which calculations are done.")
 CALL prms%CreateLogicalOption("Avg2D"           , "Average solution in z-direction",".FALSE.")
 CALL prms%CreateLogicalOption("Avg2DHDF5Output" , "Write averaged solution to HDF5 file",".FALSE.")
+CALL prms%CreateLogicalOption("HDF5Output"      , "Write solution to HDF5 file",".FALSE.")
 CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL prms%CreateLogicalOption("DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
 CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
@@ -694,6 +701,95 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(*,*) "Visu finished for state file: ", TRIM(statefile)
 SWRITE(UNIT_StdOut,'(132("="))')
 END SUBROUTINE visu
+
+
+!==================================================================================================================================
+!> Subroutine to write the solution U to HDF5 format
+!> Is used for postprocessing
+!==================================================================================================================================
+SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,FileString,MeshFileName,VarNames_loc,UVisu_DG,data2D)
+! MODULES
+USE MOD_Globals               ,ONLY: TIMESTAMP,MPIROOT,MPI_COMM_FLEXI,UNIT_stdOut
+USE MOD_HDF5_Output           ,ONLY: GenerateFileSkeleton,MarkWriteSuccessfull
+USE MOD_HDF5_WriteArray       ,ONLY: GatheredWriteArray
+USE MOD_Mesh_Vars             ,ONLY: nElems,nGlobalElems,offsetElem
+!USE MOD_Output_Vars           ,ONLY: ProjectName
+USE MOD_Visu_Vars             ,ONLY: OutputTime
+USE MOD_2D                    ,ONLY: ExpandArrayTo3D
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nVarVisu
+INTEGER,INTENT(IN)             :: NVisu
+CHARACTER(LEN=*),INTENT(IN)    :: FileString
+CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName
+CHARACTER(LEN=*),INTENT(IN)    :: VarNames_loc(nVarVisu)
+REAL,INTENT(IN),TARGET         :: UVisu_DG(nVarVisu,NVisu+1,NVisu+1,NVisu+1,nElems)
+LOGICAL,INTENT(IN),OPTIONAL    :: data2D
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=255)             :: FileName!,FileType
+REAL,POINTER                   :: UOut(:,:,:,:,:)
+INTEGER                        :: nVal(5)
+INTEGER                        :: dim
+#if USE_MPI
+INTEGER                        :: iError
+#endif
+!==================================================================================================================================
+
+dim = MERGE(3,2,PRESENT(data2D))
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO HDF5 FILE..."
+
+! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
+!FileType = 'Solution'
+!FileName = TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),OutputTime))//'.h5'
+FileName = FileString
+
+IF(MPIRoot) CALL GenerateFileSkeleton( TRIM(FileName)                                   &
+                                     , 'State'                                          &
+                                     , nVarVisu                                         &
+                                     , NVisu                                            &
+                                     , VarNames_loc                                     &
+                                     , MeshFileName                                     &
+                                     , OutputTime                                       &
+                                     , create        = .TRUE.                           &
+                                     , Dataset       = 'Posti')
+
+! Set size of output
+nVal=(/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nElems/)
+
+IF (dim.EQ.3) THEN
+  UOut => UVisu_DG
+ELSE
+  ! The output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+    ALLOCATE(UOut(nVarVisu,0:NVisu,0:NVisu,0:NVisu,nElems))
+    CALL ExpandArrayTo3D(5,(/nVarVisu,NVisu+1,NVisu+1,1,nElems/),4,NVisu+1,UVisu_DG(:,:,:,1,:),UOut)
+END IF
+
+! Reopen file and write DG solution
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+#endif
+CALL GatheredWriteArray( TRIM(FileName)                                                   &
+                       , create      = .FALSE.                                            &
+                       , DataSetName = 'Posti'                                            &
+                       , rank        = 5                                                  &
+                       , nValGlobal  = (/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/)  &
+                       , nVal        = nVal                                               &
+                       , offset      = (/0,      0,     0,     0,     offsetElem/)        &
+                       , collective  =.TRUE.                                              &
+                       , RealArray   = UOut)
+
+!! Deallocate UOut only if we did not point to U
+!IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
+IF(MPIRoot)THEN
+  CALL MarkWriteSuccessfull(FileName)
+  WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
+END IF
+
+END SUBROUTINE visu_WriteHDF5
+
+
 
 !===================================================================================================================================
 !> Deallocate arrays used by visu.

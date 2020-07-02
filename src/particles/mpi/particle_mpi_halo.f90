@@ -58,7 +58,7 @@ USE MOD_Particle_Mesh_Vars      ,ONLY: BoundsOfElem_Shared
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
 USE MOD_Particle_MPI_Vars       ,ONLY: halo_eps
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputenodeProcessors,nProcessors_Global!,ComputeNodeRootRank
+USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputenodeProcessors,nProcessors_Global,myLeaderGroupRank!,ComputeNodeRootRank
 USE MOD_Particle_MPI_Vars       ,ONLY: nExchangeProcessors,ExchangeProcToGlobalProc,GlobalProcToExchangeProc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -77,6 +77,7 @@ INTEGER                        :: nExchangeSides
 !INTEGER                        :: nExchangeProcs
 INTEGER,ALLOCATABLE            :: ExchangeSides(:)
 REAL,ALLOCATABLE               :: BoundsOfElemCenter(:),MPISideBoundsOfElemCenter(:,:)
+INTEGER                        :: ExchangeProcLeader
 ! Non-symmetric particle exchange
 INTEGER,ALLOCATABLE            :: SendRequest(:),RecvRequest(:)
 LOGICAL,ALLOCATABLE            :: GlobalProcToRecvProc(:)
@@ -109,8 +110,7 @@ nExchangeProcessors = 0
 !  nExchangeProcessors = nExchangeProcessors + 1
 !END DO
 
-! Identify all procs with elements in range. If all elements are on the current proc, they are already added
-! and we are done here
+! Identify all procs with elements in range. This includes checking the procs on the compute-node as they might lie far apart
 IF (nProcessors.GT.1) THEN
   !> Count all MPI sides on current proc.
   firstElem = offsetElem+1
@@ -229,8 +229,8 @@ IF (nProcessors.GT.1) THEN
   END DO
 
   !> Check all elements in the CN halo region against local MPI sides. Check is identical to particle_bgm.f90
-  !>>> Check the bounding box of each element in compute-nodes' halo domain against the bounding boxes of the
-  !>>> of the elements of the MPI-surface (local proc MPI sides)
+  !>>> Check the bounding box of each element in compute-nodes' halo domain against the bounding boxes of the elements of the
+  !>>> MPI-surface (local proc MPI sides)
 
   ! Use a named loop so the entire element can be cycled
 ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
@@ -252,7 +252,7 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
 !    END IF
 !#endif
 
-    ! Skip if the proc is already flagged, only if the exact elements are not required (.NOT.shape_function)
+    ! Skip if the proc is already flagged
     IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc).NE.-1) CYCLE
 
     BoundsOfElemCenter(1:3) = (/SUM(BoundsOfElem_Shared(1:2,1,ElemID)), &
@@ -393,14 +393,14 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
   END DO ElemLoop
 END IF
 
-! Communicate non-symmetric particle exchange partners to catch non-symmetric proc identification
+! Communicate non-symmetric part exchange partners to catch non-symmetric proc identification due to inverse distance calculation
 ALLOCATE(GlobalProcToRecvProc(0:nProcessors_Global-1), &
          SendRequest         (0:nProcessors_Global-1), &
          RecvRequest         (0:nProcessors_Global-1))
 
 GlobalProcToRecvProc = .FALSE.
 
-! Notify every proc that the local proc has identified
+! Notify every proc which was identified by the local proc
 DO iProc = 0,nProcessors_Global-1
   IF (iProc.EQ.myRank) CYCLE
 
@@ -413,7 +413,7 @@ DO iProc = 0,nProcessors_Global-1
                 , RecvRequest(iProc)           &
                 , IERROR)
 
-  ! Send flag if communication is desired
+  ! CommFlag holds the information if the local proc wants to communicate with iProc
   CommFlag = MERGE(.TRUE.,.FALSE.,GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).NE.-1)
   CALL MPI_ISEND( CommFlag                     &
                 , 1                            &
@@ -425,6 +425,7 @@ DO iProc = 0,nProcessors_Global-1
                 , IERROR)
 END DO
 
+! Finish communication
 DO iProc = 0,nProcessors_Global-1
   IF (iProc.EQ.myRank) CYCLE
 
@@ -434,7 +435,7 @@ DO iProc = 0,nProcessors_Global-1
   IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
 END DO
 
-! Append previously not found procs to exchange processors
+! Append previously not found procs to list of exchange processors
 nNonSymmetricExchangeProcs = 0
 DO iProc = 0,nProcessors_Global-1
   IF (iProc.EQ.myRank) CYCLE
@@ -453,7 +454,7 @@ END DO
 
 DEALLOCATE(GlobalProcToRecvProc,RecvRequest,SendRequest)
 
-! On smooth grids, nNonSymmetricExchangeProcs should be zero
+! On smooth grids, nNonSymmetricExchangeProcs should be zero. Only output if previously missing particle exchange procs are found
 CALL MPI_REDUCE(nNonSymmetricExchangeProcs,nNonSymmetricExchangeProcsGlob,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
 IF (nNonSymmetricExchangeProcsGlob.GT.1) THEN
   SWRITE(Unit_StdOut,'(A,I0,A)') ' | Found ',nNonSymmetricExchangeProcsGlob, &
@@ -461,6 +462,8 @@ IF (nNonSymmetricExchangeProcsGlob.GT.1) THEN
 END IF
 
 ! Build reverse mapping
+!-- EXCHANGE_PROC_TYPE information is currently unused and either -1 (no communication) or 2 (communication). Can be used to
+!-- implement check if exchange partner is on the same compute node, so build it here
 ALLOCATE(ExchangeProcToGlobalProc(2,0:nExchangeProcessors-1))
 
 ! Loop through all procs and build reverse mapping
@@ -472,9 +475,17 @@ ALLOCATE(ExchangeProcToGlobalProc(2,0:nExchangeProcessors-1))
 
 nExchangeProcessors = 0
 DO iProc = 0,nProcessors_Global-1
-  IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).EQ.2) THEN
-    ExchangeProcToGlobalProc(EXCHANGE_PROC_TYPE,nExchangeProcessors) = 2
-    ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,nExchangeProcessors) = iProc
+  IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).NE.-1) THEN
+    ! Find it the other proc is on the same compute node
+    ExchangeProcLeader = INT(GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,iProc)/nComputeNodeProcessors)
+    IF (ExchangeProcLeader.EQ.myLeaderGroupRank) THEN
+      GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc) = 1
+      ExchangeProcToGlobalProc(EXCHANGE_PROC_TYPE,nExchangeProcessors) = 1
+      ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,nExchangeProcessors) = iProc
+    ELSE
+      ExchangeProcToGlobalProc(EXCHANGE_PROC_TYPE,nExchangeProcessors) = 2
+      ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,nExchangeProcessors) = iProc
+    END IF
     nExchangeProcessors = nExchangeProcessors + 1
   END IF
 END DO

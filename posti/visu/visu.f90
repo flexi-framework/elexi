@@ -707,15 +707,16 @@ END SUBROUTINE visu
 !> Subroutine to write the solution U to HDF5 format
 !> Is used for postprocessing
 !==================================================================================================================================
-SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,nElems_loc,FileString,MeshFileName,VarNames_loc,dim,UVisu_DG)
+SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,nElems_loc,FileString,MeshFileName,VarNames_loc,dim,UVisu_DG,UVisu_DG2D,UVisu_DG1D)
 ! MODULES
 USE MOD_Globals               !,ONLY: ABORT,TIMESTAMP,MPIROOT,MPI_COMM_FLEXI,UNIT_stdOut
 USE MOD_PreProc
-USE MOD_HDF5_Output           ,ONLY: GenerateFileSkeleton,MarkWriteSuccessfull
+USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
+USE MOD_HDF5_Output           ,ONLY: GenerateFileSkeleton,WriteAttribute,MarkWriteSuccessfull
 USE MOD_HDF5_WriteArray       ,ONLY: GatheredWriteArray
 USE MOD_Mesh_Vars             ,ONLY: nElems,nGlobalElems,offsetElem
 !USE MOD_Output_Vars           ,ONLY: ProjectName
-USE MOD_Visu_Vars             ,ONLY: OutputTime
+USE MOD_Visu_Vars             ,ONLY: OutputTime,NCalc,nVarCalc
 USE MOD_2D                    ,ONLY: ExpandArrayTo3D
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -727,11 +728,13 @@ CHARACTER(LEN=*),INTENT(IN)    :: FileString
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName
 CHARACTER(LEN=*),INTENT(IN)    :: VarNames_loc(nVarVisu)
 INTEGER,INTENT(IN)             :: dim
-REAL,INTENT(IN),TARGET         :: UVisu_DG(0:nVisu,0:nVisu,0:MERGE(nVisu,0,dim.GT.2),1:nElems,1:nVarVisu)
+REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG  (0:nVisu,0:nVisu,0:MERGE(nVisu,0,dim.GT.2),1:nElems,1:nVarVisu)
+REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG2D(0:NCalc,0:ZDIM(NCalc),1:nElems,1:nVarCalc)
+REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG1D(nVarVisu)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName!,FileType
-INTEGER                        :: iElem,iVar
+INTEGER                        :: iElem,iVar,k
 REAL,POINTER                   :: UOut(:,:,:,:,:),UOut2D(:,:,:,:)
 INTEGER,ALLOCATABLE            :: nVal(:),nValGlobal(:),offset(:)
 #if USE_MPI
@@ -741,105 +744,154 @@ INTEGER                        :: recvbuf,sendbuf
 !==================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO HDF5 FILE..."
-ALLOCATE( nVal      (dim+2) &
-        , nValGlobal(dim+2) &
-        , offset    (dim+2))
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 !FileType = 'Solution'
 !FileName = TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),OutputTime))//'.h5'
 FileName = FileString
 
-IF(MPIRoot) CALL GenerateFileSkeleton( TRIM(FileName)                                   &
-                                     , 'State'                                          &
-                                     , nVarVisu                                         &
-                                     , NVisu                                            &
-                                     , VarNames_loc                                     &
-                                     , MeshFileName                                     &
-                                     , OutputTime                                       &
-                                     , create        = .TRUE.                           &
-                                     , Dataset       = 'Posti')
+SELECT CASE(dim)
+  CASE(3)
+    IF(MPIRoot) CALL GenerateFileSkeleton( TRIM(FileName)                                   &
+                                         , 'State'                                          &
+                                         , nVarVisu                                         &
+                                         , NVisu                                            &
+                                         , VarNames_loc                                     &
+                                         , MeshFileName                                     &
+                                         , OutputTime                                       &
+                                         , create        = .TRUE.                           &
+                                         , Dataset       = 'Posti')
+    ALLOCATE( nVal      (dim+2) &
+            , nValGlobal(dim+2) &
+            , offset    (dim+2))
+
+  CASE(2)
+    IF(MPIRoot) THEN
+      CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+      CALL WriteAttribute(File_ID,'VarNames_Posti2D',nVarVisu,StrArray=VarNames_loc)
+      CALL CloseDataFile()
+    END IF
+    ALLOCATE( nVal      (dim+2) &
+            , nValGlobal(dim+2) &
+            , offset    (dim+2))
+
+  CASE(1)
+    IF(MPIRoot) THEN
+      CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+      CALL WriteAttribute(File_ID,'VarNames_Posti1D',nVarVisu,StrArray=VarNames_loc)
+      CALL CloseDataFile()
+    END IF
+    ALLOCATE( nVal      (1) &
+            , nValGlobal(1) &
+            , offset    (1))
+
+  CASE DEFAULT
+    CALL ABORT(__STAMP__,'Invalid dimension for hdf5 output!')
+
+END SELECT
 
 ! Set size of output
-nVal=(/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nElems/)
-IF (dim.EQ.3) THEN
-  nVal       = (/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nElems      /)
-  nValGlobal = (/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/)
-  offset     = (/0       ,0      ,0      ,0      ,offsetElem  /)
-  ! UVisu_DG is sorted in the old style, re-sort for HDF5
-  ALLOCATE(UOut(1:nVarVisu,0:NVisu,0:NVisu,0:NVisu,1:nElems))
-  DO iElem = 1,nElems
-!    DO k = 0,NVisu; DO j = 0,NVisu; DO i = 0,NVisu;
-      DO iVar = 1,nVarVisu
-        UOut(iVar,:,:,:,iElem) = UVisu_DG(:,:,:,iElem,iVar)
-      END DO
-!    END DO; END DO; END DO
-  END DO
-ELSE
-#if USE_MPI
-  ASSOCIATE( nElems       => nElems_loc       &
-           , nGlobalElems => nGlobalElems_loc &
-           , offsetElem   => offsetElem_loc)
+SELECT CASE(dim)
+  CASE(3)
+    nVal       = (/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nElems      /)
+    nValGlobal = (/nVarVisu,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/)
+    offset     = (/0       ,0      ,0      ,0      ,offsetElem  /)
+    ! UVisu_DG is sorted in the old style, re-sort for HDF5
+    ALLOCATE(UOut(1:nVarVisu,0:NVisu,0:NVisu,0:NVisu,1:nElems))
+    DO iElem = 1,nElems
+  !    DO k = 0,NVisu; DO j = 0,NVisu; DO i = 0,NVisu;
+        DO iVar = 1,nVarVisu
+          UOut(iVar,:,:,:,iElem) = UVisu_DG(:,:,:,iElem,iVar)
+        END DO
+  !    END DO; END DO; END DO
+    END DO
 
-  ! Calculate local offset
-  sendbuf = nElems
-  recvbuf = 0
-  CALL MPI_EXSCAN(sendbuf,recvbuf,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
-  offsetElem = recvbuf
-  sendbuf    = recvbuf + nElems
-  CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
-  nGlobalElems = sendbuf
+  CASE (2)
+#if USE_MPI
+    ASSOCIATE( nElems       => nElems_loc       &
+             , nGlobalElems => nGlobalElems_loc &
+             , offsetElem   => offsetElem_loc)
+
+    ! Calculate local offset
+    sendbuf = nElems
+    recvbuf = 0
+    CALL MPI_EXSCAN(sendbuf,recvbuf,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+    offsetElem = recvbuf
+    sendbuf    = recvbuf + nElems
+    CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
+    nGlobalElems = sendbuf
 #endif
 
-  ! USurfVisu_DG is sorted in the old style, re-sort for HDF5
-  nVal       = (/nVarVisu,NVisu+1,NVisu+1,nElems      /)
-  nValGlobal = (/nVarVisu,NVisu+1,NVisu+1,nGlobalElems/)
-  offset     = (/0       ,0      ,0      ,offsetElem  /)
-!  ! The output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-!  ALLOCATE(UOut(nVarVisu,0:NVisu,0:NVisu,0:NVisu,nElems))
-!  CALL ExpandArrayTo3D(5,(/nVarVisu,NVisu+1,NVisu+1,1,nElems/),4,NVisu+1,UVisu_DG(:,:,:,1,:),UOut)
-  ALLOCATE(UOut2D(1:nVarVisu,0:NVisu,0:NVisu,1:nElems))
-  DO iElem = 1,nElems
-!    DO k = 0,NVisu; DO j = 0,NVisu
-      DO iVar = 1,nVarVisu
-        UOut2D(iVar,:,:,iElem) = UVisu_DG(:,:,0,iElem,iVar)
-      END DO
-!    END DO; END DO
-  END DO
+    ! USurfVisu_DG is sorted in the old style, re-sort for HDF5
+    nVal       = (/nVarVisu,NVisu+1,NVisu+1,nElems      /)
+    nValGlobal = (/nVarVisu,NVisu+1,NVisu+1,nGlobalElems/)
+    offset     = (/0       ,0      ,0      ,offsetElem  /)
+  !  ! The output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+  !  ALLOCATE(UOut(nVarVisu,0:NVisu,0:NVisu,0:NVisu,nElems))
+  !  CALL ExpandArrayTo3D(5,(/nVarVisu,NVisu+1,NVisu+1,1,nElems/),4,NVisu+1,UVisu_DG(:,:,:,1,:),UOut)
+    ALLOCATE(UOut2D(1:nVarVisu,0:NVisu,0:NVisu,1:nElems))
+    DO iElem = 1,nElems
+  !    DO k = 0,NVisu; DO j = 0,NVisu
+        DO iVar = 1,nVarVisu
+          UOut2D(iVar,:,:,iElem) = UVisu_DG2D(0,0,1,iVar)
+        END DO
+  !    END DO; END DO
+    END DO
 
 #if USE_MPI
-  END ASSOCIATE
+    END ASSOCIATE
 #endif
-END IF
+
+  CASE (1)
+    nVal       = (/nVarVisu/)
+    nValGlobal = (/nVarVisu/)
+    offset     = (/0       /)
+
+END SELECT
 
 ! Reopen file and write DG solution
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
 
-IF (dim.EQ.3) THEN
-  CALL GatheredWriteArray( TRIM(FileName)            &
-                         , create      = .FALSE.     &
-                         , DataSetName = 'Posti'     &
-                         , rank        = dim+2       &
-                         , nValGlobal  = nValGlobal  &
-                         , nVal        = nVal        &
-                         , offset      = offset      &
-                         , collective  =.TRUE.       &
-                         , RealArray   = UOut)
-  DEALLOCATE(UOut)
-ELSE
-  CALL GatheredWriteArray( TRIM(FileName)            &
-                         , create      = .FALSE.     &
-                         , DataSetName = 'Posti2D'   &
-                         , rank        = dim+2       &
-                         , nValGlobal  = nValGlobal  &
-                         , nVal        = nVal        &
-                         , offset      = offset      &
-                         , collective  =.TRUE.       &
-                         , RealArray   = UOut2D)
-  DEALLOCATE(UOut2D)
-END IF
+SELECT CASE(dim)
+  CASE(3)
+    CALL GatheredWriteArray( TRIM(FileName)            &
+                           , create      = .FALSE.     &
+                           , DataSetName = 'Posti'     &
+                           , rank        = dim+2       &
+                           , nValGlobal  = nValGlobal  &
+                           , nVal        = nVal        &
+                           , offset      = offset      &
+                           , collective  =.TRUE.       &
+                           , RealArray   = UOut)
+    DEALLOCATE(UOut)
+
+  CASE(2)
+    CALL GatheredWriteArray( TRIM(FileName)            &
+                           , create      = .FALSE.     &
+                           , DataSetName = 'Posti2D'   &
+                           , rank        = dim+2       &
+                           , nValGlobal  = nValGlobal  &
+                           , nVal        = nVal        &
+                           , offset      = offset      &
+                           , collective  =.TRUE.       &
+                           , RealArray   = UOut2D)
+    DEALLOCATE(UOut2D)
+
+  CASE(1)
+    CALL GatheredWriteArray( TRIM(FileName)            &
+                           , create      = .FALSE.     &
+                           , DataSetName = 'Posti1D'   &
+                           , rank        = 1           &
+                           , nValGlobal  = nValGlobal  &
+                           , nVal        = nVal        &
+                           , offset      = offset      &
+                           , collective  =.TRUE.       &
+                           , RealArray   = UVisu_DG1D)
+
+
+END SELECT
 
 DEALLOCATE(nVal,nValGlobal,offset)
 

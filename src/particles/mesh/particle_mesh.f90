@@ -944,7 +944,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 LocalVolume = SUM(ElemVolume_Shared(offsetElemCNProc+1:offsetElemCNProc+nElems))
 MeshVolume  = SUM(ElemVolume_Shared(:))
 
-SWRITE(UNIT_StdOut,'(A,E18.8)') ' |              Total MESH Volume         |        ', MeshVolume
+SWRITE(UNIT_StdOut,'(A,E18.8)') ' | Total MESH Volume: ', MeshVolume
 END SUBROUTINE InitElemVolumes
 
 
@@ -2688,6 +2688,14 @@ Check1: DO ilocSide = 1,6
           END DO ! p
         END DO ! q
       END DO Check1 ! ilocSide
+
+!      ! Compare distance of element center to side center while also taking the radii into account
+!      !-- This approach gives almost triple the amount of BCSides of the method above!
+!      IF (VECNORM(ElemBaryNGeo(:,iElem) - BCSideMetrics(1:3,iBCSide)) &
+!        .LE. (BC_halo_eps + ElemRadiusNGeo(iElem) + BCSideMetrics(4,iBCSide))) THEN
+!        nBCSidesElem = nBCSidesElem + 1
+!        nBCSidesProc = nBCSidesProc + 1
+!      END IF
     END DO ! iBCSide
 
     ! Write local mapping from Elem to BC sides. The number is already correct, the offset must be corrected later
@@ -2850,6 +2858,15 @@ Check2: DO ilocSide = 1,6
           END DO ! p
         END DO ! q
       END DO Check2 ! ilocSide
+
+!      ! Compare distance of element center to side center while also taking the radii into account
+!      !-- This approach gives almost triple the amount of BCSides of the method above!
+!      IF (VECNORM(ElemBaryNGeo(:,iElem) - BCSideMetrics(1:3,iBCSide)) &
+!        .LE. (BC_halo_eps + ElemRadiusNGeo(iElem) + BCSideMetrics(4,iBCSide))) THEN
+!        nBCSidesProc = nBCSidesProc + 1
+!        SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(BCSideID)
+!        SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(BCElemID)
+!      END IF
     END DO ! iBCSide
   END DO ! iElem
 END IF ! fullMesh

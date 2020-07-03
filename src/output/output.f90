@@ -291,12 +291,12 @@ IF(MPIroot)THEN
     IF (mins.LT.1) THEN
       WRITE(UNIT_stdOut,'(A,A4,A,A1,A,A3,F6.2,A3)',ADVANCE='YES')                                                                 &
       ' ETA [d:h:m]:   <1 min remaining','|',                                                                                     &
-          REPEAT('=',MAX(CEILING(percent/1.785714285714286)-1,0)),'>',REPEAT(' ',56-MAX(CEILING(percent/1.785714285714286)-1,0)), &
+          REPEAT('=',MAX(CEILING(percent/1.754385964912281)-1,0)),'>',REPEAT(' ',56-MAX(CEILING(percent/1.754385964912281)-1,0)), &
           '| [',percent,'%] '
     ELSE
       WRITE(UNIT_stdOut,'(A,I4,A1,I0.2,A1,I0.2,A6,A,A1,A,A3,F6.2,A3)',ADVANCE='YES')                                              &
       ' ETA [d:h:m]:       ',INT(days),':',INT(hours),':',INT(mins),' |',                                                         &
-          REPEAT('=',MAX(CEILING(percent/1.785714285714286)-1,0)),'>',REPEAT(' ',56-MAX(CEILING(percent/1.785714285714286)-1,0)), &
+          REPEAT('=',MAX(CEILING(percent/1.754385964912281)-1,0)),'>',REPEAT(' ',56-MAX(CEILING(percent/1.754385964912281)-1,0)), &
           '| [',percent,'%] '
     END IF
   ELSE

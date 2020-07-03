@@ -1087,9 +1087,9 @@ xCoords(4) = MAXVAL(CartNodes(2,:))
 xCoords(5) = MINVAL(CartNodes(3,:))
 xCoords(6) = MAXVAL(CartNodes(3,:))
 
-IF(    ((xCoords(1).LE.GEO%xmaxglob).AND.(xCoords(2).GE.GEO%xminglob)) &
-  .AND.((xCoords(3).LE.GEO%ymaxglob).AND.(xCoords(4).GE.GEO%yminglob)) &
-  .AND.((xCoords(5).LE.GEO%zmaxglob).AND.(xCoords(6).GE.GEO%zminglob)) ) BoxInProc = .TRUE.
+IF(    ((xCoords(1).LE.GEO%xmax).AND.(xCoords(2).GE.GEO%xmin)) &
+  .AND.((xCoords(3).LE.GEO%ymax).AND.(xCoords(4).GE.GEO%ymin)) &
+  .AND.((xCoords(5).LE.GEO%zmax).AND.(xCoords(6).GE.GEO%zmin)) ) BoxInProc = .TRUE.
 
 END FUNCTION BoxInProc
 
@@ -1139,9 +1139,9 @@ PointInProc = .FALSE.
 !  .AND.((ymin.LE.GEO%FIBGMjmax).AND.(ymax.GE.GEO%FIBGMjmin)) &
 !  .AND.((zmin.LE.GEO%FIBGMkmax).AND.(zmax.GE.GEO%FIBGMkmin)) ) PointInProc = .TRUE.
 
-IF(    ((CartNode(1).LE.GEO%xmaxglob).AND.(CartNode(1).GE.GEO%xminglob)) &
-  .AND.((CartNode(2).LE.GEO%ymaxglob).AND.(CartNode(2).GE.GEO%yminglob)) &
-  .AND.((CartNode(3).LE.GEO%zmaxglob).AND.(CartNode(3).GE.GEO%zminglob)) ) PointInProc = .TRUE.
+IF(    ((CartNode(1).LE.GEO%xmax).AND.(CartNode(1).GE.GEO%xmin)) &
+  .AND.((CartNode(2).LE.GEO%ymax).AND.(CartNode(2).GE.GEO%ymin)) &
+  .AND.((CartNode(3).LE.GEO%zmax).AND.(CartNode(3).GE.GEO%zmin)) ) PointInProc = .TRUE.
 
 END FUNCTION PointInProc
 #endif /*USE_MPI*/

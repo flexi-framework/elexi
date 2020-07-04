@@ -243,9 +243,6 @@ END IF
 HIT_Avg = GETLOGICAL('HIT_Avg','.TRUE.')
 HIT_1st = GETLOGICAL('HIT_1st','.FALSE.')
 
-! Small trick to survive the first DG call when dt is not set
-InitHITDone = .FALSE.
-
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE HOMOGENEOUS ISOTROPIC TURBULENCE DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
@@ -317,9 +314,8 @@ INTEGER         :: iElem,i,j,k
 REAL            :: fac,TKE
 REAL            :: TKE_glob
 !==================================================================================================================================
-! Small trick to survive the first DG call when dt is not set
-IF (.NOT.InitHITDone) THEN
-  InitHITDone = .TRUE.
+! Small trick to survive the first DG call(s) when dt is not yet set
+IF (dt.GE.HUGE(1.)) THEN
   RETURN
 END IF
 

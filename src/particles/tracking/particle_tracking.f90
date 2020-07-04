@@ -78,14 +78,14 @@ USE MOD_Particle_Boundary_Vars      ,ONLY: PartBound
 USE MOD_Particle_Localization       ,ONLY: ParticleInsideQuad3D
 USE MOD_Particle_Intersection       ,ONLY: IntersectionWithWall
 USE MOD_Particle_Mesh_Vars          ,ONLY: ElemInfo_Shared,SideInfo_Shared
-USE MOD_Particle_Tracking_Vars      ,ONLY: CountNbOfLostParts,NbrOfLostParticles,TrackInfo
+USE MOD_Particle_Tracking_Vars      ,ONLY: TrackInfo !CountNbOfLostParts,NbrOfLostParticles
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM,PartSpecies
 USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Timers          ,ONLY: LBStartTime,LBElemPauseTime,LBElemSplitTime
+USE MOD_LoadBalance_Timers          ,ONLY: LBStartTime, LBElemSplitTime, LBElemPauseTime
 USE MOD_Mesh_Vars                   ,ONLY: offsetElem
 USE MOD_Particle_Globals            ,ONLY: PP_nElems
-USE MOD_Particle_Tracking_Vars      ,ONLY: ntracks,MeasureTrackTime
+USE MOD_Particle_Tracking_Vars      ,ONLY: nTracks,MeasureTrackTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -121,7 +121,7 @@ DO i = 1,PDM%ParticleVecLength
 #if USE_LOADBALANCE
     IF (MeasureTrackTime) nTracks = nTracks+1
     CALL LBStartTime(tLBStart)
-#endif
+#endif /*USE_LOADBALANCE*/
 
     ! Reset all tracking variables
     PartisDone = .FALSE.
@@ -233,11 +233,13 @@ DO i = 1,PDM%ParticleVecLength
             IPWRITE(*,*) 'LastPos: ', LastPartPos(1:3,i)
             IPWRITE(*,*) 'Pos:     ', PartState(1:3,i)
             IPWRITE(*,*) 'Velo:    ', PartState(4:6,i)
-            IPWRITE(*,*) 'Particle deleted!'
-              PDM%ParticleInside(i) = .FALSE.
-              IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
-            PartisDone = .TRUE.
-            EXIT
+            ! Halo branch of PICLas does not loose particles anymore, so try to abort instead of just warn
+!            IPWRITE(*,*) 'Particle deleted!'
+            CALL ABORT(__STAMP__,'Lost particle detected during TriaTracking!')
+!            PDM%ParticleInside(i) = .FALSE.
+!            IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
+!            PartisDone = .TRUE.
+!            EXIT
 
           ELSE IF (NrOfThroughSides.GT.1) THEN
             ! Use the slower search method if particle appears to have crossed more than one side (possible for irregular hexagons
@@ -333,11 +335,13 @@ DO i = 1,PDM%ParticleVecLength
               IPWRITE(*,*) 'LastPos: ', LastPartPos(1:3,i)
               IPWRITE(*,*) 'Pos:     ', PartState(1:3,i)
               IPWRITE(*,*) 'Velo:    ', PartState(4:6,i)
-              IPWRITE(*,*) 'Particle deleted!'
-              PDM%ParticleInside(i) = .FALSE.
-              IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
-              PartisDone = .TRUE.
-              EXIT
+              ! Halo branch of PICLas does not loose particles anymore, so try to abort instead of just warn
+!              IPWRITE(*,*) 'Particle deleted!'
+              CALL ABORT(__STAMP__,'Lost particle detected during TriaTracking!')
+!              PDM%ParticleInside(i) = .FALSE.
+!              IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
+!              PartisDone = .TRUE.
+!              EXIT
             END IF
           END IF  ! NrOfThroughSides.EQ.0/.GT.1
         END IF  ! NrOfThroughSides.NE.1
@@ -592,7 +596,7 @@ DO iPart=1,PDM%ParticleVecLength
       ! This prevents particles to get lost unnoticed in case any intersection has marked tolerance.
       ! markTol =.FALSE.
       IF (PartDoubleCheck) THEN
-! -- 3. special check if some double check has to be performed (only necessary for bilinear sides and macrospheres)
+! -- 3. special check if some double check has to be performed (only necessary for bilinear sides)
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
@@ -611,6 +615,32 @@ DO iPart=1,PDM%ParticleVecLength
           IF(foundHit) THEN
             CALL AssignListPosition(currentIntersect,locAlpha,iLocSide,1,xi_IN=xi,eta_IN=eta)
             IF((ABS(xi).GE.0.99).OR.(ABS(eta).GE.0.99)) markTol=.TRUE.
+          END IF
+        END IF
+#if CODE_ANALYZE
+!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
+        IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
+          WRITE(UNIT_stdout,'(30("-"))')
+          WRITE(UNIT_stdout,'(A)')             '     | Output after compute intersection (tracing double check): '
+          IF (currentIntersect%IntersectCase.EQ.1) THEN
+            WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(SideID),' | SideID: ',SideID,' | Hit: ',foundHit
+            WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi,eta
+            WRITE(UNIT_stdout,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
+          ELSE IF (currentIntersect%IntersectCase.EQ.3) THEN
+            WRITE(UNIT_stdout,'(A,I0,A,L)')    '     | MaroPartID: ',iMB,' | Hit: ',foundHit
+            WRITE(UNIT_stdout,'(A,G0)')        '     | AlphaSphere: ',locAlphaSphere
+          END IF
+          WRITE(UNIT_stdout,'(2(A,G0))')       '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ', lengthPartTrajectory
+        END IF ; END IF
+!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
+#endif /*CODE_ANALYZE*/
+        ! if double check found no intersection reset entry in list and adjust last entry pointer
+        IF (.NOT.foundHit) THEN
+          currentIntersect%alpha = HUGE(1.)
+          currentIntersect%intersectCase = 0
+          IF (ASSOCIATED(currentIntersect%prev) .AND. .NOT.ASSOCIATED(currentIntersect%prev,firstIntersect)) THEN
+            lastIntersect => currentIntersect
+            lastIntersect%prev => currentIntersect%prev
           END IF
         END IF
 
@@ -653,8 +683,6 @@ DO iPart=1,PDM%ParticleVecLength
             CASE DEFAULT
               CALL abort(__STAMP__,' Missing required side-data. Please increase halo region. ',SideID)
           END SELECT
-
-          IF (myRank.EQ.2.AND.iPart.EQ.44) print *, foundHit,PartState(1:3,iPart),LastPartPos(1:3,iPart),SideType(SideID)
 
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
@@ -1429,7 +1457,7 @@ END SUBROUTINE ParticleRefTracking
 
 
 RECURSIVE SUBROUTINE ParticleBCTracking(lengthPartTrajectory0 &
-                                       ,ElemID,firstSide,LastSide,nlocSides,PartId,PartisDone,PartisMoved,iCount)
+                                       ,ElemID,firstSide,lastSide,nlocSides,PartId,PartisDone,PartisMoved,iCount)
 !===================================================================================================================================
 ! Calculate intersection with boundary and choose boundary interaction type for reference tracking routine
 !===================================================================================================================================
@@ -1492,8 +1520,9 @@ lengthPartTrajectory = SQRT(PartTrajectory(1)*PartTrajectory(1) &
                           + PartTrajectory(2)*PartTrajectory(2) &
                           + PartTrajectory(3)*PartTrajectory(3) )
 
+CNElemID   = GetCNElemID(ElemID)
 ! Check if the particle moved at all. If not, tracking is done
-IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(ElemID))) THEN
+IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID))) THEN
   PEM%Element(PartID) = ElemID
   PartisDone = .TRUE.
   RETURN

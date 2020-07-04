@@ -76,8 +76,14 @@ USE MOD_Preproc
 USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
 USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Periodic_BC   ,ONLY: InitPeriodicBC
-USE MOD_Particle_Mesh_Vars
-USE MOD_Particle_Mesh_Vars     ,ONLY: GEO,FIBGM_nElems,FIBGM_Element,FIBGM_offsetElem
+USE MOD_Particle_Mesh_Vars     ,ONLY: GEO,nNonUniqueGlobalSides,nNonUniqueGlobalNodes,offsetComputeNodeElem,nComputeNodeElems
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,ElemInfo_Shared_Win,SideInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared,BoundsOfElem_Shared_Win,ElemToBGM_Shared,ElemToBGM_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_nElems_Shared,FIBGM_nElems_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element,FIBGM_Element_Shared,FIBGM_Element_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem,FIBGM_offsetElem_Shared,FIBGM_offsetElem_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMToProc_Shared,FIBGMToProc_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMProcs,FIBGMProcs_Shared,FIBGMProcs_Shared_Win
 USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance
 USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray
 USE MOD_DG                     ,ONLY: DGTimeDerivative_weakForm
@@ -122,6 +128,10 @@ INTEGER,ALLOCATABLE            :: offsetCNHalo2GlobalElem(:),offsetMPISideShared
 REAL,ALLOCATABLE               :: BoundsOfElemCenter(:),MPISideBoundsOfElemCenter(:,:)
 LOGICAL                        :: ElemInsideHalo
 INTEGER                        :: firstHaloElem,lastHaloElem
+! FIBGMToProc
+INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize
+INTEGER                        :: BGMiminglob,BGMimaxglob,BGMjminglob,BGMjmaxglob,BGMkminglob,BGMkmaxglob
+LOGICAL,ALLOCATABLE            :: FIBGMToProcLoc(:,:,:,:)
 #else
 REAL                           :: halo_eps
 #endif
@@ -141,7 +151,7 @@ CALL Allocate_Shared(MPISharedSize,(/6,nGlobalElems/),ElemToBGM_Shared_Win,ElemT
 CALL Allocate_Shared(MPISharedSize,(/2,3,nGlobalElems/),BoundsOfElem_Shared_Win,BoundsOfElem_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemToBGM_Shared_Win,IERROR)
 CALL MPI_WIN_LOCK_ALL(0,BoundsOfElem_Shared_Win,IERROR)
-firstElem = INT(REAL(myComputeNodeRank*nGlobalElems)/REAL(nComputeNodeProcessors))+1
+firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
 #else
 ! In order to use only one type of variables VarName_Shared in code structure such as tracking etc. for NON_MPI
@@ -152,7 +162,7 @@ firstElem = 1
 lastElem  = nElems
 #endif  /*USE_MPI*/
 
-moveBGMindex = 1 ! BGM indeces must be >1 --> move by 1
+moveBGMindex = 1 ! BGM indices must be >1 --> move by 1
 DO iElem = firstElem, lastElem
   offSetNodeID = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
   nNodeIDs     = ElemInfo_Shared(ELEM_LASTNODEIND,iElem)-ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
@@ -173,7 +183,7 @@ DO iElem = firstElem, lastElem
   BoundsOfElem_Shared(1,3,iElem) = zmin
   BoundsOfElem_Shared(2,3,iElem) = zmax
 
-  ! BGM indeces must be >0 --> move by 1
+  ! BGM indices must be >0 --> move by 1
   ElemToBGM_Shared(1,iElem) = FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
   ElemToBGM_Shared(2,iElem) = FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
   ElemToBGM_Shared(3,iElem) = FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
@@ -708,9 +718,146 @@ ELSE
 END IF
 #endif  /*USE_MPI*/
 
+#if USE_MPI
+! Loop over all elements and build a global FIBGM to processor mapping. This is required to identify potential emission procs
+BGMiminglob = 0 + moveBGMindex
+BGMimaxglob = FLOOR((GEO%xmaxglob-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
+BGMjminglob = 0 + moveBGMindex
+BGMjmaxglob = FLOOR((GEO%ymaxglob-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
+BGMkminglob = 0 + moveBGMindex
+BGMkmaxglob = FLOOR((GEO%zmaxglob-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
+
+GEO%FIBGMiminglob = BGMiminglob
+GEO%FIBGMimaxglob = BGMimaxglob
+GEO%FIBGMjminglob = BGMjminglob
+GEO%FIBGMjmaxglob = BGMjmaxglob
+GEO%FIBGMkminglob = BGMkminglob
+GEO%FIBGMkmaxglob = BGMkmaxglob
+
+firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
+
+! Flag each FIBGM element proc positive
+ALLOCATE(FIBGMToProcLoc(BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob,0:nProcessors_Global-1))
+FIBGMToProcLoc = .FALSE.
+
+DO iElem = firstElem,lastElem
+  ProcRank = ElemInfo_Shared(ELEM_RANK,iElem)
+
+  DO kBGM = ElemToBGM_Shared(5,iElem),ElemToBGM_Shared(6,iElem)
+    DO jBGM = ElemToBGM_Shared(3,iElem),ElemToBGM_Shared(4,iElem)
+      DO iBGM = ElemToBGM_Shared(1,iElem),ElemToBGM_Shared(2,iElem)
+        FIBGMToProcLoc(iBGM,jBGM,kBGM,ProcRank) = .TRUE.
+      END DO
+    END DO
+  END DO
+END DO
+
+! Perform logical OR and place data on CN root
+MessageSize = (BGMimaxglob-BGMiminglob+1)*(BGMjmaxglob-BGMjminglob+1)*(BGMkmaxglob-BGMkminglob+1)*nProcessors_Global
+IF (myComputeNodeRank.EQ.0) THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE  ,FIBGMToProcLoc,MessageSize,MPI_LOGICAL,MPI_LOR,0,MPI_COMM_SHARED,iError)
+ELSE
+  CALL MPI_REDUCE(FIBGMToProcLoc,FIBGMToProcLoc,MessageSize,MPI_LOGICAL,MPI_LOR,0,MPI_COMM_SHARED,iError)
+  DEALLOCATE(FIBGMToProcLoc)
+END IF
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+! Allocate shared array to hold the mapping
+MPISharedSize = INT(2*(BGMimaxglob-BGMiminglob+1)*(BGMjmaxglob-BGMjminglob+1)*(BGMkmaxglob-BGMkminglob+1),MPI_ADDRESS_KIND)&
+                                                                                                         *MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/2,BGMimaxglob-BGMiminglob+1,BGMjmaxglob-BGMjminglob+1,BGMkmaxglob-BGMkminglob+1/), &
+                                    FIBGMToProc_Shared_Win,FIBGMToProc_Shared)
+CALL MPI_WIN_LOCK_ALL(0,FIBGMToProc_Shared_Win,IERROR)
+FIBGMToProc => FIBGMToProc_Shared
+
+IF (myComputeNodeRank.EQ.0) THEN
+  FIBGMToProc = 0
+END IF
+CALL MPI_WIN_SYNC(FIBGMToProc_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+
+! CN root build the mapping to avoid further communication
+IF (myComputeNodeRank.EQ.0) THEN
+  nFIBGMToProc = 0
+
+  DO kBGM = BGMkminglob,BGMkmaxglob
+    DO jBGM = BGMjminglob,BGMjmaxglob
+      DO iBGM = BGMiminglob,BGMimaxglob
+        ! Save current offset
+        FIBGMToProc(FIBGM_FIRSTPROCIND,iBGM,jBGM,kBGM) = nFIBGMToProc
+        ! Save number of procs per FIBGM element
+        DO iProc = 0,nProcessors_Global-1
+          ! Proc belongs to current FIBGM cell
+          IF (FIBGMToProcLoc(iBGM,jBGM,kBGM,iProc)) THEN
+            nFIBGMToProc = nFIBGMToProc + 1
+            FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM) = FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM) + 1
+          END IF
+        END DO
+      END DO
+    END DO
+  END DO
+END IF
+
+! Synchronize array and communicate the information to other procs on CN node
+CALL MPI_WIN_SYNC(FIBGMToProc_Shared_Win,IERROR)
+CALL MPI_BCAST(nFIBGMToProc,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+
+! Allocate shared array to hold the proc information
+MPISharedSize = INT(nFIBGMToProc,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+CALL Allocate_Shared(MPISharedSize,(/nFIBGMToProc/),FIBGMProcs_Shared_Win,FIBGMProcs_Shared)
+CALL MPI_WIN_LOCK_ALL(0,FIBGMProcs_Shared_Win,IERROR)
+FIBGMProcs => FIBGMProcs_Shared
+
+IF (myComputeNodeRank.EQ.0) THEN
+  FIBGMProcs= -1
+END IF
+CALL MPI_WIN_SYNC(FIBGMProcs_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+
+! CN root fills the information
+IF (myComputeNodeRank.EQ.0) THEN
+  nFIBGMToProc = 0
+
+  DO kBGM = BGMkminglob,BGMkmaxglob
+    DO jBGM = BGMjminglob,BGMjmaxglob
+      DO iBGM = BGMiminglob,BGMimaxglob
+        ! Save proc ID
+        DO iProc = 0,nProcessors_Global-1
+          ! Proc belongs to current FIBGM cell
+          IF (FIBGMToProcLoc(iBGM,jBGM,kBGM,iProc)) THEN
+            nFIBGMToProc = nFIBGMToProc + 1
+            FIBGMProcs(nFIBGMToProc) = iProc
+          END IF
+        END DO
+      END DO
+    END DO
+  END DO
+
+  DEALLOCATE(FIBGMToProcLoc)
+END IF
+
+CALL MPI_WIN_SYNC(FIBGMProcs_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+#endif
+
 ! and get max number of bgm-elems
 ALLOCATE(Distance    (1:MAXVAL(FIBGM_nElems)) &
         ,ListDistance(1:MAXVAL(FIBGM_nElems)) )
+
+! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+CALL MPI_WIN_UNLOCK_ALL(ElemToBGM_Shared_Win,iError)
+CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
+
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+! Then, free the pointers or arrays
+MDEALLOCATE(ElemToBGM_Shared)
+#endif /*USE_MPI*/
 
 END SUBROUTINE BuildBGMAndIdentifyHaloRegion
 
@@ -735,8 +882,8 @@ USE MOD_Particle_MPI_Shared_Vars
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
-CALL MPI_WIN_UNLOCK_ALL(ElemToBGM_Shared_Win,iError)
-CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
+!CALL MPI_WIN_UNLOCK_ALL(ElemToBGM_Shared_Win,iError)
+!CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(BoundsOfElem_Shared_Win,iError)
 CALL MPI_WIN_FREE(BoundsOfElem_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(FIBGM_nElems_Shared_Win,iError)
@@ -745,6 +892,10 @@ CALL MPI_WIN_UNLOCK_ALL(FIBGM_offsetElem_Shared_Win,iError)
 CALL MPI_WIN_FREE(FIBGM_offsetElem_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(FIBGM_Element_Shared_Win,iError)
 CALL MPI_WIN_FREE(FIBGM_Element_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(FIBGMToProc_Shared_Win,iError)
+CALL MPI_WIN_FREE(FIBGMToProc_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(FIBGMProcs_Shared_Win,iError)
+CALL MPI_WIN_FREE(FIBGMProcs_Shared_Win,iError)
 
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
@@ -753,11 +904,15 @@ SDEALLOCATE(CNTotalElem2GlobalElem)
 SDEALLOCATE(GlobalElem2CNTotalElem)
 #endif /*USE_MPI*/
 
-MDEALLOCATE(ElemToBGM_Shared)
+!MDEALLOCATE(ElemToBGM_Shared)
 MDEALLOCATE(BoundsOfElem_Shared)
 MDEALLOCATE(FIBGM_nElems_Shared)
 MDEALLOCATE(FIBGM_offsetElem_Shared)
 MDEALLOCATE(FIBGM_Element_Shared)
+MDEALLOCATE(FIBGMToProc)
+MDEALLOCATE(FIBGMToProc_Shared)
+MDEALLOCATE(FIBGMProcs)
+MDEALLOCATE(FIBGMProcs_Shared)
 
 END SUBROUTINE FinalizeBGM
 

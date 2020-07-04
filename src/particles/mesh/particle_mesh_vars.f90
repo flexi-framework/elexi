@@ -76,8 +76,11 @@ INTEGER,ALLOCPOINT,DIMENSION(:)          :: BCSide2SideID      !> Mapping from c
 INTEGER,ALLOCPOINT,DIMENSION(:)          :: SideID2BCSide      !> Inverse mapping
 REAL,ALLOCPOINT,DIMENSION(:,:)           :: BCSideMetrics      !> Side origin and radius for each compute-node BC side
 
+! FIBGM to proc mapping
+INTEGER,ALLOCPOINT,DIMENSION(:,:,:,:)    :: FIBGMToProc
+INTEGER,ALLOCPOINT,DIMENSION(:)          :: FIBGMProcs
+
 ! Shared arrays containing information for complete mesh
-INTEGER,ALLOCPOINT,DIMENSION(:)          :: ElemToProcID_Shared
 INTEGER,ALLOCPOINT,DIMENSION(:)          :: ElemToTree_Shared
 INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: ElemInfo_Shared
 INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: SideInfo_Shared
@@ -101,6 +104,9 @@ INTEGER,ALLOCPOINT :: ElemToBGM_Shared(:,:)                    !> BGM Bounding b
 INTEGER,ALLOCPOINT :: FIBGM_nElems_Shared(:)                   !> FastInitBackgroundMesh of compute node
 INTEGER,ALLOCPOINT :: FIBGM_Element_Shared(:)                  !> FastInitBackgroundMesh of compute node
 INTEGER,ALLOCPOINT :: FIBGM_offsetElem_Shared(:)
+
+INTEGER,ALLOCPOINT :: FIBGMToProc_Shared(:,:,:,:)
+INTEGER,ALLOCPOINT :: FIBGMProcs_Shared(:)
 
 REAL,ALLOCPOINT    :: BoundsOfElem_Shared(:,:,:)               !> Cartesian bounding box around element
 
@@ -152,7 +158,6 @@ REAL,ALLOCPOINT    :: ElemVolume_Shared(:)
 
 #if USE_MPI
 ! integers to hold shared memory windows
-INTEGER           :: ElemToProcID_Shared_Win
 INTEGER           :: ElemToTree_Shared_Win
 INTEGER           :: ElemInfo_Shared_Win
 INTEGER           :: SideInfo_Shared_Win
@@ -169,6 +174,9 @@ INTEGER           :: ElemToBGM_Shared_Win
 INTEGER           :: FIBGM_nElems_Shared_Win
 INTEGER           :: FIBGM_Element_Shared_Win
 INTEGER           :: FIBGM_offsetElem_Shared_Win
+
+INTEGER           :: FIBGMToProc_Shared_Win
+INTEGER           :: FIBGMProcs_Shared_Win
 
 INTEGER           :: BoundsOfElem_Shared_Win
 
@@ -274,6 +282,12 @@ TYPE tGeometry
   INTEGER                                :: FIBGMjmax                         ! biggest index of FastInitBGM (y)
   INTEGER                                :: FIBGMkmin                         ! smallest index of FastInitBGM (z)
   INTEGER                                :: FIBGMkmax                         ! biggest index of FastInitBGM (z)
+  INTEGER                                :: FIBGMiminglob
+  INTEGER                                :: FIBGMimaxglob
+  INTEGER                                :: FIBGMjminglob
+  INTEGER                                :: FIBGMjmaxglob
+  INTEGER                                :: FIBGMkminglob
+  INTEGER                                :: FIBGMkmaxglob
 
   REAL, ALLOCATABLE                      :: CharLength(:)                     ! Characteristic length for each cell: L=V^(1/3)
   INTEGER, ALLOCATABLE                   :: ElemToRegion(:)                   ! ElemToRegion(1:nElems)

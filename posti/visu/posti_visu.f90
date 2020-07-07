@@ -111,12 +111,12 @@ DO iArg=1+skipArgs,nArgs
   CALL visu(MPI_COMM_WORLD, prmfile, postifile, statefile)
 
   IF (MeshFileMode) THEN
-    FileString_DG=TRIM(MeshFile)//'_visu.vtu'
+    FileString_DG=TRIM(MeshFile)//'_visu'
   ELSE
 #if FV_ENABLED
-    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
 #else
-    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
 #endif
   END IF
 
@@ -134,11 +134,11 @@ DO iArg=1+skipArgs,nArgs
   IF (Avg2D) THEN
 
     CALL WriteDataToVTK(nVarVisu,NVisu,nElemsAvg2D_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
-        dim=2,DGFV=0,nValAtLastDimension=.TRUE.)
+        dim=2,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.)
 #if FV_ENABLED
     FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
     CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElemsAvg2D_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-        dim=2,DGFV=1,nValAtLastDimension=.TRUE.)
+        dim=2,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.)
 
     IF (MPIRoot) THEN
       ! write multiblock file
@@ -148,12 +148,12 @@ DO iArg=1+skipArgs,nArgs
 #endif
   ELSE
     CALL WriteDataToVTK(nVarVisu,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
-        dim=PP_dim,DGFV=0,nValAtLastDimension=.TRUE.)
+        dim=PP_dim,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.)
 #if FV_ENABLED
     IF (.NOT.MeshFileMode) THEN
       FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
       CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-          dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.)
+          dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.)
 
       IF (MPIRoot) THEN
         ! write multiblock file

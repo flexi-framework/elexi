@@ -176,7 +176,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
 USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage
-USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData
+USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
@@ -229,7 +229,7 @@ REAL                         :: dt_MinOld,dtAnalyze,dtEnd,tStart
 INTEGER(KIND=8)              :: iter,iter_loc
 REAL                         :: CalcTimeStart,CalcTimeEnd
 INTEGER                      :: TimeArray(8)              !< Array for system time
-INTEGER                      :: errType,nCalcTimestep,writeCounter
+INTEGER                      :: errType,nCalcTimestep,writeCounter,writeTCounter
 LOGICAL                      :: doAnalyze,doFinalize
 #if USE_LOADBALANCE
 INTEGER                      :: tmp_LoadBalanceSample    !> loadbalance sample saved until initial autorestart ist finished
@@ -299,6 +299,7 @@ tStart = t
 iter=0
 iter_loc=0
 writeCounter=0
+writeTCounter=0
 doAnalyze=.FALSE.
 doFinalize=.FALSE.
 
@@ -477,11 +478,17 @@ DO
     CALL FV_Info(iter_loc)
 #endif
 
+    ! Visualize data and write time average solution
+    writeTCounter=writeTCounter+1
+    IF((writeTCounter.EQ.nTimeAvgData).OR.doFinalize)THEN
+      IF(doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
+      writeTCounter=0
+    END IF
+
     ! Visualize data and write solution
     writeCounter=writeCounter+1
     IF((writeCounter.EQ.nWriteData).OR.doFinalize)THEN
       ! Write various derived data
-      IF(doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
       IF(RP_onProc)         CALL WriteRP(PP_nVar,StrVarNames,t,.TRUE.)
       IF(CalcPruettDamping) CALL WriteBaseflow(TRIM(MeshFile),t)
       ! Write state file

@@ -60,6 +60,7 @@ USE MOD_Preproc
 USE MOD_ReadInTools, ONLY: CountOption,GETSTR,GETLOGICAL,GETINT
 USE MOD_Mesh_Vars,   ONLY: nElems
 USE MOD_AnalyzeEquation_Vars
+USE MOD_Analyze_Vars,ONLY: nTimeAvgData, Analyze_dt, WriteTimeAvg_dt
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -274,6 +275,9 @@ UFluc = 0.
 dtOld=0.
 dtAvg=0.
 
+! Compute output time intervall for time averages
+WriteTimeAvg_dt=Analyze_dt*nTimeAvgData
+
 DEALLOCATE(VarNamesAvgList,VarNamesAvgIni,VarNamesFlucIni)
 DEALLOCATE(VarNamesFlucList)
 END SUBROUTINE InitCalcTimeAverage
@@ -322,7 +326,7 @@ USE MOD_Mesh_Vars    ,ONLY: MeshFile,nElems
 USE MOD_HDF5_Output  ,ONLY: WriteTimeAverage
 USE MOD_EOS          ,ONLY: ConsToPrim
 USE MOD_EOS_Vars     ,ONLY: Kappa
-USE MOD_Analyze_Vars ,ONLY: WriteData_dt
+USE MOD_Analyze_Vars ,ONLY: WriteTimeAvg_dt
 USE MOD_AnalyzeEquation_Vars
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems,FV_Vdm
@@ -499,7 +503,7 @@ END DO ! iElem
 IF(Finalize)THEN
   IF(nVarAvg .GT.0) UAvg =UAvg /dtAvg
   IF(nVarFluc.GT.0) UFluc=UFluc/dtAvg
-  tFuture=t+WriteData_dt
+  tFuture=t+WriteTimeAvg_dt
   FV_Elems_loc=FV_ENABLED
   CALL WriteTimeAverage(MeshFile,t,dtAvg,FV_Elems_loc,(/PP_N+1,PP_N+1,PP_NZ+1/),&
                         nVarAvg ,VarNamesAvgOut ,UAvg ,&

@@ -63,7 +63,10 @@ CALL prms%CreateLogicalOption('AnalyzeToFile',   "Set true to output result of e
 CALL prms%CreateRealOption(   'Analyze_dt',      "Specifies time intervall at which analysis routines are called.",&
                                                  '0.')
 CALL prms%CreateIntOption(    'nWriteData' ,     "Intervall as multiple of Analyze_dt at which HDF5 files "//&
-                                                 "(e.g. State,TimeAvg,Fluc) are written.",&
+                                                 "(e.g. State) are written.",&
+                                                 '1')
+CALL prms%CreateIntOption(    'nTimeAvgData' ,   "Intervall as multiple of Analyze_dt at which HDF5 files "//&
+                                                 "(e.g. TimeAvg,Fluc) are written.",&
                                                  '1')
 CALL prms%CreateIntOption(    'NAnalyze'   ,     "Polynomial degree at which analysis is performed (e.g. for L2 errors). "//&
                                                  "Default: 2*N.")
@@ -119,6 +122,7 @@ AnalyzeRefState   =GETINT('AnalyzeRefState' ,INTTOSTR(IniRefState))
 
 Analyze_dt        =GETREAL('Analyze_dt','0.0')
 nWriteData        =GETINT('nWriteData' ,'1')
+nTimeAvgData      =GETINT('nTimeAvgData' ,INTTOSTR(nWriteData))
 NAnalyze          =GETINT('NAnalyze'   ,INTTOSTR(2*(PP_N+1)))
 #if PP_dim == 3
 NAnalyzeZ         =NAnalyze

@@ -255,7 +255,6 @@ nVTKPoints = NVisu_elem * nTotalElems
 nVTKCells  = ((NVisu+DGFV_loc)/(1+DGFV_loc))**dim*nTotalElems
 
 ! write header of VTK file
-IPWRITE(*,*) MPI_Root
 IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
   ! Line feed character
   lf = char(10)

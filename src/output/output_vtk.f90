@@ -255,7 +255,8 @@ nVTKPoints = NVisu_elem * nTotalElems
 nVTKCells  = ((NVisu+DGFV_loc)/(1+DGFV_loc))**dim*nTotalElems
 
 ! write header of VTK file
-IF((.NOT.PostiParallel_loc.AND.MPI_Root.GT.0).OR.PostiParallel_loc)THEN
+IPWRITE(*,*) MPI_Root
+IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
   ! Line feed character
   lf = char(10)
 
@@ -448,15 +449,18 @@ END SUBROUTINE WriteDataToVTK
 !===================================================================================================================================
 !> Links DG and FV VTK files together
 !===================================================================================================================================
-SUBROUTINE WriteVTKMultiBlockDataSet(FileString,FileString_DG,FileString_FV)
+SUBROUTINE WriteVTKMultiBlockDataSet(FileString,FileString_DG,FileString_FV,FileString_Part)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN) :: FileString     !< Output file name
-CHARACTER(LEN=*),INTENT(IN) :: FileString_DG  !< Filename of DG VTU file
-CHARACTER(LEN=*),INTENT(IN) :: FileString_FV  !< Filename of FV VTU file
+CHARACTER(LEN=*),INTENT(IN)          :: FileString       !< Output file name
+CHARACTER(LEN=*),INTENT(IN)          :: FileString_DG    !< Filename of DG VTU file
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: FileString_FV    !< Filename of FV VTU file
+#if USE_PARTICLES
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: FileString_Part  !< Filename of FV VTU file
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ivtk
@@ -471,9 +475,19 @@ IF (MPIRoot) THEN
   Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
   WRITE(ivtk) TRIM(BUFFER)
   Buffer='  <vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
+  IF(nProcessors.GT.1)THEN
+    Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'.pvtu">'//lf;WRITE(ivtk) TRIM(BUFFER)
+  ELSE
+    Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'.vtu">'//lf;WRITE(ivtk) TRIM(BUFFER)
+  END IF
   Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    <DataSet index="1" name="FV" file="'//TRIM(FileString_FV)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
+  IF(FileString_FV.NE.' ')THEN
+    Buffer='    <DataSet index="1" name="FV" file="'//TRIM(FileString_FV)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
+#if USE_PARTICLES
+  ELSEIF(FileString_Part.NE.' ')THEN
+    Buffer='    <DataSet index="1" name="Part" file="'//TRIM(FileString_Part)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
+#endif
+  END IF
   Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='  </vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)
@@ -484,7 +498,7 @@ END SUBROUTINE WriteVTKMultiBlockDataSet
 !===================================================================================================================================
 !> Writes PVTU files
 !===================================================================================================================================
-SUBROUTINE WriteParallelVTK(FileString,nVal,VarNames)!,FileString_DG,FileString_FV)
+SUBROUTINE WriteParallelVTK(FileString,nVal,VarNames)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
@@ -493,8 +507,6 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN) :: FileString     !< Output file name
 INTEGER,INTENT(IN)          :: nVal                 !< Number of nodal output variables
 CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables that will be written out
-!CHARACTER(LEN=*),INTENT(IN) :: FileString_DG  !< Filename of DG VTU file
-!CHARACTER(LEN=*),INTENT(IN) :: FileString_FV  !< Filename of FV VTU file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ivtk, iVal, iProc

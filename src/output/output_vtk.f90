@@ -449,7 +449,7 @@ END SUBROUTINE WriteDataToVTK
 !===================================================================================================================================
 !> Links DG and FV VTK files together
 !===================================================================================================================================
-SUBROUTINE WriteVTKMultiBlockDataSet(FileString,FileString_DG,FileString_FV,FileString_Part)
+SUBROUTINE WriteVTKMultiBlockDataSet(FileString,FileString_DG,FileString_FV)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
@@ -458,9 +458,6 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN)          :: FileString       !< Output file name
 CHARACTER(LEN=*),INTENT(IN)          :: FileString_DG    !< Filename of DG VTU file
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: FileString_FV    !< Filename of FV VTU file
-#if USE_PARTICLES
-CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: FileString_Part  !< Filename of FV VTU file
-#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ivtk
@@ -475,19 +472,9 @@ IF (MPIRoot) THEN
   Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
   WRITE(ivtk) TRIM(BUFFER)
   Buffer='  <vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  IF(nProcessors.GT.1)THEN
-    Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'.pvtu">'//lf;WRITE(ivtk) TRIM(BUFFER)
-  ELSE
-    Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'.vtu">'//lf;WRITE(ivtk) TRIM(BUFFER)
-  END IF
+  Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'.vtu">'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  IF(FileString_FV.NE.' ')THEN
-    Buffer='    <DataSet index="1" name="FV" file="'//TRIM(FileString_FV)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
-#if USE_PARTICLES
-  ELSEIF(FileString_Part.NE.' ')THEN
-    Buffer='    <DataSet index="1" name="Part" file="'//TRIM(FileString_Part)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
-#endif
-  END IF
+  Buffer='    <DataSet index="1" name="FV" file="'//TRIM(FileString_FV)//'.vtu">'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='  </vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)

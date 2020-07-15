@@ -22,6 +22,14 @@ MODULE MOD_Particle_InterSection
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
+!> Named parameters for bilinear intersection
+INTEGER,PARAMETER    :: BILINEAR_XNORMAL   = 1
+INTEGER,PARAMETER    :: BILINEAR_YNORMAL   = 2
+INTEGER,PARAMETER    :: BILINEAR_ZNORMAL   = 3
+INTEGER,PARAMETER    :: BILINEAR_XPARALLEL = 4
+INTEGER,PARAMETER    :: BILINEAR_YPARALLEL = 5
+INTEGER,PARAMETER    :: BILINEAR_ZPARALLEL = 6
+INTEGER,PARAMETER    :: BILINEAR_FULL      = 7
 
 INTERFACE IntersectionWithWall
   MODULE PROCEDURE IntersectionWithWall
@@ -526,7 +534,7 @@ SUBROUTINE ComputeBiLinearIntersection(isHit,PartTrajectory,lengthPartTrajectory
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars,           ONLY:LastPartPos
-USE MOD_Particle_Surfaces_Vars,  ONLY:BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,BaseVectorsScale,SideNormVec
+USE MOD_Particle_Surfaces_Vars  ,ONLY:BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,BaseVectorsScale,SideNormVec
 USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBilinear
 USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
 #if CODE_ANALYZE
@@ -552,11 +560,11 @@ REAL,INTENT(OUT)                  :: alpha,xitild,etatild
 LOGICAL,INTENT(OUT)               :: isHit
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(4)                 :: a1,a2
+REAL,DIMENSION(4)                 :: a1,a2,a3
 REAL,DIMENSION(1:3,1:4)           :: BiLinearCoeff
 REAL                              :: A,B,C,alphaNorm
 REAL                              :: xi(2),eta(2),t(2), scaleFac!, n_loc(1:3)
-INTEGER                           :: InterType,nRoot
+INTEGER                           :: BILINEAR_TYPE,InterType,nRoot
 LOGICAL                           :: ElemCheck
 !===================================================================================================================================
 
@@ -572,388 +580,330 @@ BiLinearCoeff(:,2) = 0.25*BaseVectors1(:,SideID)
 BiLinearCoeff(:,3) = 0.25*BaseVectors2(:,SideID)
 BiLinearCoeff(:,4) = 0.25*BaseVectors0(:,SideID)
 
-#if CODE_ANALYZE
-IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-  IF (PartID.EQ.PARTOUT) THEN
-    WRITE(UNIT_stdout,'(110("-"))')
-    WRITE(UNIT_stdout,'(A)')         '     | Output of bilinear intersection equation constants: '
-    WRITE(UNIT_stdout,'(A,3(X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,SideID)
-    WRITE(UNIT_stdout,'(A,4(X,G0))') '     | BilinearCoeff: ',BilinearCoeff(1,1:4)
-    WRITE(UNIT_stdout,'(A,4(X,G0))') '     | BilinearCoeff: ',BilinearCoeff(2,1:4)
-    WRITE(UNIT_stdout,'(A,4(X,G0))') '     | BilinearCoeff: ',BilinearCoeff(3,1:4)
-    WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
-    WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
-    WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
-    WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
+! Check if the site can be encountered. Both vectors are already normalized
+scaleFac = DOT_PRODUCT(PartTrajectory,SideNormVec(1:3,SideID))
+IF (ALMOSTZERO(scaleFac)) RETURN
+
+! Check if any of the trajectory components are 0. This invalidates eq. (6) in the Ramsay paper and must be handled separately
+IF (ALMOSTZERO(PartTrajectory(1))) THEN
+  IF (ALMOSTZERO(PartTrajectory(2))) THEN
+    ! qx = 0, qy = 0, qz != 0
+    BILINEAR_TYPE = BILINEAR_ZPARALLEL
+  ELSE IF (ALMOSTZERO(PartTrajectory(3))) THEN
+    ! qx = 0, qy != 0, qz = 0
+    BILINEAR_TYPE = BILINEAR_YPARALLEL
+  ELSE
+    ! qx = 0, qy != 0, qz != 0
+    BILINEAR_TYPE = BILINEAR_XNORMAL
   END IF
-END IF
-#endif /*CODE_ANALYZE*/
-
-! compute product with particle trajectory
-!> check the orientation of the SideNormVec, since otherwise coeffs can be cancelled out for trajectories with 0-components
-IF((ABS(SideNormVec(1,SideID)).GE.ABS(SideNormVec(2,SideID))) .AND.(ABS(SideNormVec(1,SideID)).LE.ABS(SideNormVec(3,SideID))) &
-  .AND. .NOT.ALMOSTZERO(PartTrajectory(1)))THEN
-  a1(1)= BilinearCoeff(2,1)*PartTrajectory(1) - BilinearCoeff(1,1)*PartTrajectory(2)
-  a1(2)= BilinearCoeff(2,2)*PartTrajectory(1) - BilinearCoeff(1,2)*PartTrajectory(2)
-  a1(3)= BilinearCoeff(2,3)*PartTrajectory(1) - BilinearCoeff(1,3)*PartTrajectory(2)
-  a1(4)=(BilinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(1) &
-       -(BilinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(2)
-
-  a2(1)= BilinearCoeff(3,1)*PartTrajectory(1) - BilinearCoeff(1,1)*PartTrajectory(3)
-  a2(2)= BilinearCoeff(3,2)*PartTrajectory(1) - BilinearCoeff(1,2)*PartTrajectory(3)
-  a2(3)= BilinearCoeff(3,3)*PartTrajectory(1) - BilinearCoeff(1,3)*PartTrajectory(3)
-  a2(4)=(BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(1) &
-       -(BilinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(3)
-
-ELSE IF(ABS(SideNormVec(2,SideID)).LE.ABS(SideNormVec(3,SideID)) &
-  .AND. .NOT.ALMOSTZERO(PartTrajectory(1)))THEN
-  a1(1)= BilinearCoeff(1,1)*PartTrajectory(2) - BilinearCoeff(2,1)*PartTrajectory(1)
-  a1(2)= BilinearCoeff(1,2)*PartTrajectory(2) - BilinearCoeff(2,2)*PartTrajectory(1)
-  a1(3)= BilinearCoeff(1,3)*PartTrajectory(2) - BilinearCoeff(2,3)*PartTrajectory(1)
-  a1(4)=(BilinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(2) &
-       -(BilinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(1)
-
-  a2(1)= BilinearCoeff(3,1)*PartTrajectory(2) - BilinearCoeff(2,1)*PartTrajectory(3)
-  a2(2)= BilinearCoeff(3,2)*PartTrajectory(2) - BilinearCoeff(2,2)*PartTrajectory(3)
-  a2(3)= BilinearCoeff(3,3)*PartTrajectory(2) - BilinearCoeff(2,3)*PartTrajectory(3)
-  a2(4)=(BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(2) &
-       -(BilinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(3)
-
-ELSE IF(.NOT.ALMOSTZERO(PartTrajectory(3)))THEN
-a1(1)= BilinearCoeff(1,1)*PartTrajectory(3) - BilinearCoeff(3,1)*PartTrajectory(1)
-a1(2)= BilinearCoeff(1,2)*PartTrajectory(3) - BilinearCoeff(3,2)*PartTrajectory(1)
-a1(3)= BilinearCoeff(1,3)*PartTrajectory(3) - BilinearCoeff(3,3)*PartTrajectory(1)
-  a1(4)=(BilinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(3) &
-       -(BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(1)
-
-a2(1)= BilinearCoeff(2,1)*PartTrajectory(3) - BilinearCoeff(3,1)*PartTrajectory(2)
-a2(2)= BilinearCoeff(2,2)*PartTrajectory(3) - BilinearCoeff(3,2)*PartTrajectory(2)
-a2(3)= BilinearCoeff(2,3)*PartTrajectory(3) - BilinearCoeff(3,3)*PartTrajectory(2)
-  a2(4)=(BilinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(3) &
-       -(BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(2)
-
-!if PartTrajectory should be zero in largest component of SideNormVec, decide based on original check:
-ELSE IF((ABS(PartTrajectory(1)).GE.ABS(PartTrajectory(2))).AND.(ABS(PartTrajectory(1)).GE.ABS(PartTrajectory(3))))THEN
-  a1(1)= BilinearCoeff(2,1)*PartTrajectory(1) - BilinearCoeff(1,1)*PartTrajectory(2)
-  a1(2)= BilinearCoeff(2,2)*PartTrajectory(1) - BilinearCoeff(1,2)*PartTrajectory(2)
-  a1(3)= BilinearCoeff(2,3)*PartTrajectory(1) - BilinearCoeff(1,3)*PartTrajectory(2)
-  a1(4)=(BilinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(1) &
-       -(BilinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(2)
-
-  a2(1)= BilinearCoeff(3,1)*PartTrajectory(1) - BilinearCoeff(1,1)*PartTrajectory(3)
-  a2(2)= BilinearCoeff(3,2)*PartTrajectory(1) - BilinearCoeff(1,2)*PartTrajectory(3)
-  a2(3)= BilinearCoeff(3,3)*PartTrajectory(1) - BilinearCoeff(1,3)*PartTrajectory(3)
-  a2(4)=(BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(1) &
-       -(BilinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(3)
-
-ELSE IF(ABS(PartTrajectory(2)).GE.ABS(PartTrajectory(3)))THEN
-  a1(1)= BilinearCoeff(1,1)*PartTrajectory(2) - BilinearCoeff(2,1)*PartTrajectory(1)
-  a1(2)= BilinearCoeff(1,2)*PartTrajectory(2) - BilinearCoeff(2,2)*PartTrajectory(1)
-  a1(3)= BilinearCoeff(1,3)*PartTrajectory(2) - BilinearCoeff(2,3)*PartTrajectory(1)
-  a1(4)=(BilinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(2) &
-       -(BilinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(1)
-
-  a2(1)= BilinearCoeff(3,1)*PartTrajectory(2) - BilinearCoeff(2,1)*PartTrajectory(3)
-  a2(2)= BilinearCoeff(3,2)*PartTrajectory(2) - BilinearCoeff(2,2)*PartTrajectory(3)
-  a2(3)= BilinearCoeff(3,3)*PartTrajectory(2) - BilinearCoeff(2,3)*PartTrajectory(3)
-  a2(4)=(BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(2) &
-       -(BilinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(3)
-
+ELSE IF (ALMOSTZERO(PartTrajectory(2))) THEN
+  IF (ALMOSTZERO(PartTrajectory(3))) THEN
+    ! qx != 0, qy = 0, qz = 0
+    BILINEAR_TYPE = BILINEAR_XPARALLEL
+  ELSE
+    ! qx != 0, qy = 0, qz != 0
+    BILINEAR_TYPE = BILINEAR_YNORMAL
+  END IF
+ELSE IF (ALMOSTZERO(PartTrajectory(3))) THEN
+  ! qx != 0, qy != 0, qz = 0
+  BILINEAR_TYPE = BILINEAR_ZNORMAL
 ELSE
-  a1(1)= BilinearCoeff(1,1)*PartTrajectory(3) - BilinearCoeff(3,1)*PartTrajectory(1)
-  a1(2)= BilinearCoeff(1,2)*PartTrajectory(3) - BilinearCoeff(3,2)*PartTrajectory(1)
-  a1(3)= BilinearCoeff(1,3)*PartTrajectory(3) - BilinearCoeff(3,3)*PartTrajectory(1)
-  a1(4)=(BilinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(3) &
-       -(BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(1)
-
-  a2(1)= BilinearCoeff(2,1)*PartTrajectory(3) - BilinearCoeff(3,1)*PartTrajectory(2)
-  a2(2)= BilinearCoeff(2,2)*PartTrajectory(3) - BilinearCoeff(3,2)*PartTrajectory(2)
-  a2(3)= BilinearCoeff(2,3)*PartTrajectory(3) - BilinearCoeff(3,3)*PartTrajectory(2)
-  a2(4)=(BilinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(3) &
-       -(BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(2)
+  ! qx != 0, qy != 0, qz != 0
+  BILINEAR_TYPE = BILINEAR_FULL
 END IF
 
-A = a2(1)*a1(3)-a1(1)*a2(3)
-B = a2(1)*a1(4)-a1(1)*a2(4)+a2(2)*a1(3)-a1(2)*a2(3)
-C = a1(4)*a2(2)-a1(2)*a2(4)
 
-#if CODE_ANALYZE
-  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-    IF(PartID.EQ.PARTOUT)THEN
-      WRITE(UNIT_stdout,'(A,4(X,G0))') '     | a1: ',a1
-      WRITE(UNIT_stdout,'(A,4(X,G0))') '     | a2: ',a2
-      WRITE(UNIT_stdout,'(A)')         '     | Quadratic equation constants: '
-      WRITE(UNIT_stdout,'(3(A,G0))')   '     | A: ',A,' | B: ',B,' | C: ',C
-    END IF
-  END IF
-#endif /*CODE_ANALYZE*/
+SELECT CASE(BILINEAR_TYPE)
+  CASE(BILINEAR_XPARALLEL)
+    A = -BilinearCoeff(3,1)*BilinearCoeff(2,3) + BilinearCoeff(2,1)*BilinearCoeff(3,3)
+    B = -BilinearCoeff(3,1)*BilinearCoeff(2,4) + BilinearCoeff(3,1)*LastPartPos(2,PartID) &
+        -BilinearCoeff(3,2)*BilinearCoeff(2,3) + BilinearCoeff(3,3)*BilinearCoeff(2,2)    &
+        +BilinearCoeff(3,4)*BilinearCoeff(2,1) - BilinearCoeff(2,1)*LastPartPos(3,PartID)
+    C = -BilinearCoeff(2,4)*BilinearCoeff(3,2) + BilinearCoeff(3,2)*LastPartPos(2,PartID) &
+        +BilinearCoeff(3,4)*BilinearCoeff(2,2) - BilinearCoeff(2,2)*LastPartPos(3,PartID)
 
-!scale with <PartTraj.,NormVec>^2 and cell-scale (~area) for getting coefficients at least approx. in the order of 1
-scaleFac = DOT_PRODUCT(PartTrajectory,SideNormVec(1:3,SideID)) !both vectors are already normalized
-IF (scaleFac.NE.0.) THEN
-  scaleFac = scaleFac**2 * BaseVectorsScale(SideID) !<...>^2 * cell-scale
-  scaleFac = 1./scaleFac
-  A = A * scaleFac
-  B = B * scaleFac
-  C = C * scaleFac
-END IF
+  CASE(BILINEAR_YPARALLEL)
+    A = -BilinearCoeff(3,1)*BilinearCoeff(1,3) + BilinearCoeff(1,1)*BilinearCoeff(3,3)
+    B = -BilinearCoeff(3,1)*BilinearCoeff(1,4) + BilinearCoeff(3,1)*LastPartPos(1,PartID) &
+        -BilinearCoeff(3,2)*BilinearCoeff(1,3) + BilinearCoeff(3,3)*BilinearCoeff(1,2)    &
+        +BilinearCoeff(3,4)*BilinearCoeff(1,1) - BilinearCoeff(1,1)*LastPartPos(3,PartID)
+    C = -BilinearCoeff(1,4)*BilinearCoeff(3,2) + BilinearCoeff(3,2)*LastPartPos(1,PartID) &
+        +BilinearCoeff(3,4)*BilinearCoeff(1,2) - BilinearCoeff(1,2)*LastPartPos(3,PartID)
 
-#if CODE_ANALYZE
-  IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-    IF (PartID.EQ.PARTOUT) THEN
-      WRITE(UNIT_stdout,'(A)')       '     | Quadratic equation constants (after scaling): '
-      WRITE(UNIT_stdout,'(3(A,G0))') '     | A: ',A,' | B: ',B,' | C: ',C
-    END IF
-  END IF
-#endif /*CODE_ANALYZE*/
+  CASE(BILINEAR_ZPARALLEL)
+    A = -BilinearCoeff(2,1)*BilinearCoeff(1,3) + BilinearCoeff(1,1)*BilinearCoeff(2,3)
+    B = -BilinearCoeff(2,1)*BilinearCoeff(1,4) + BilinearCoeff(2,1)*LastPartPos(1,PartID) &
+        -BilinearCoeff(2,2)*BilinearCoeff(1,3) + BilinearCoeff(2,3)*BilinearCoeff(1,2)    &
+        +BilinearCoeff(2,4)*BilinearCoeff(1,1) - BilinearCoeff(1,1)*LastPartPos(2,PartID)
+    C = -BilinearCoeff(1,4)*BilinearCoeff(2,2) + BilinearCoeff(2,2)*LastPartPos(1,PartID) &
+        +BilinearCoeff(2,4)*BilinearCoeff(1,2) - BilinearCoeff(1,2)*LastPartPos(2,PartID)
+
+  CASE(BILINEAR_XNORMAL)
+    A2(1) = BilinearCoeff(2,1)*PartTrajectory(3) - BilinearCoeff(3,1)*PartTrajectory(2)
+    A2(2) = BilinearCoeff(2,2)*PartTrajectory(3) - BilinearCoeff(3,2)*PartTrajectory(2)
+    A2(3) = BilinearCoeff(2,3)*PartTrajectory(3) - BilinearCoeff(3,3)*PartTrajectory(2)
+    A2(4) =(BiLinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(3) - (BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(2)
+
+    A = -BiLinearCoeff(1,1)*A2(3) + BiLinearCoeff(1,3)*A2(1)
+    B = -BiLinearCoeff(1,1)*A2(4) + BiLinearCoeff(1,3)*A2(2) - BiLinearCoeff(1,2)*A2(3) + (BiLinearCoeff(1,4) - &
+         LastPartPos(1,PartID))*A2(1)
+    C = -BiLinearCoeff(1,2)*A2(4) + BilinearCoeff(1,4)*A2(2) - LastPartPos(1,PartID)*A2(2)
+
+  CASE(BILINEAR_YNORMAL)
+    A1(1) = BilinearCoeff(1,1)*PartTrajectory(3) - BilinearCoeff(3,1)*PartTrajectory(1)
+    A1(2) = BilinearCoeff(1,2)*PartTrajectory(3) - BilinearCoeff(3,2)*PartTrajectory(1)
+    A1(3) = BilinearCoeff(1,3)*PartTrajectory(3) - BilinearCoeff(3,3)*PartTrajectory(1)
+    A1(4) =(BiLinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(3) - (BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(1)
+
+    A = -BiLinearCoeff(2,1)*A1(3) + BiLinearCoeff(2,3)*A1(1)
+    B = -BiLinearCoeff(2,1)*A1(4) + BiLinearCoeff(2,3)*A1(2) - BiLinearCoeff(2,2)*A1(3) + (BiLinearCoeff(2,4) - &
+         LastPartPos(2,PartID))*A1(1)
+    C = -BiLinearCoeff(2,2)*A1(4) + BilinearCoeff(2,4)*A1(2) - LastPartPos(2,PartID)*A1(2)
+
+  CASE(BILINEAR_ZNORMAL)
+    A3(1) = BilinearCoeff(1,1)*PartTrajectory(2) - BilinearCoeff(2,1)*PartTrajectory(1)
+    A3(2) = BilinearCoeff(1,2)*PartTrajectory(2) - BilinearCoeff(2,2)*PartTrajectory(1)
+    A3(3) = BilinearCoeff(1,3)*PartTrajectory(2) - BilinearCoeff(2,3)*PartTrajectory(1)
+    A3(4) =(BiLinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(2) - (BilinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(1)
+
+    A = -BiLinearCoeff(3,1)*A3(3) + BiLinearCoeff(3,3)*A3(1)
+    B = -BiLinearCoeff(3,1)*A3(4) + BiLinearCoeff(3,3)*A3(2) - BiLinearCoeff(3,2)*A3(3) + (BiLinearCoeff(3,4) - &
+         LastPartPos(3,PartID))*A3(1)
+    C = -BiLinearCoeff(3,2)*A3(4) + BilinearCoeff(3,4)*A3(2) - LastPartPos(3,PartID)*A3(2)
+
+  CASE(BILINEAR_FULL)
+    a1(1)= BilinearCoeff(1,1)*PartTrajectory(3) - BilinearCoeff(3,1)*PartTrajectory(1)
+    a1(2)= BilinearCoeff(1,2)*PartTrajectory(3) - BilinearCoeff(3,2)*PartTrajectory(1)
+    a1(3)= BilinearCoeff(1,3)*PartTrajectory(3) - BilinearCoeff(3,3)*PartTrajectory(1)
+    a1(4)=(BilinearCoeff(1,4)-LastPartPos(1,PartID))*PartTrajectory(3) &
+         -(BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(1)
+
+    a2(1)= BilinearCoeff(2,1)*PartTrajectory(3) - BilinearCoeff(3,1)*PartTrajectory(2)
+    a2(2)= BilinearCoeff(2,2)*PartTrajectory(3) - BilinearCoeff(3,2)*PartTrajectory(2)
+    a2(3)= BilinearCoeff(2,3)*PartTrajectory(3) - BilinearCoeff(3,3)*PartTrajectory(2)
+    a2(4)=(BilinearCoeff(2,4)-LastPartPos(2,PartID))*PartTrajectory(3) &
+         -(BilinearCoeff(3,4)-LastPartPos(3,PartID))*PartTrajectory(2)
+
+    A = a2(1)*a1(3)-a1(1)*a2(3)
+    B = a2(1)*a1(4)-a1(1)*a2(4)+a2(2)*a1(3)-a1(2)*a2(3)
+    C = a1(4)*a2(2)-a1(2)*a2(4)
+END SELECT
+
+! Scale with <PartTraj.,NormVec>^2 and cell-scale (~area) for getting coefficients at least approx. in the order of 1
+scaleFac = scaleFac**2 * BaseVectorsScale(SideID) !<...>^2 * cell-scale
+scaleFac = 1./scaleFac
+A = A * scaleFac
+B = B * scaleFac
+C = C * scaleFac
 
 CALL QuadraticSolver(A,B,C,nRoot,Eta(1),Eta(2))
 
-#if CODE_ANALYZE
-  IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-    IF (PartID.EQ.PARTOUT) THEN
-      WRITE(UNIT_stdout,'(A)')              '     | Output after QuadraticSolver: '
-      WRITE(UNIT_stdout,'(A,I0,A,2(X,G0))') '     | number of root: ',nRoot,' | Eta: ',Eta(1:2)
-    END IF
-  END IF
-#endif /*CODE_ANALYZE*/
+! nRoot equals the number of possible intersections with the bilinear surface. However, only values between [-1,1] are valid
+SELECT CASE(nRoot)
+  ! No intersection
+  CASE(0)
+    RETURN
 
-IF(nRoot.EQ.0)THEN
-  RETURN
-END IF
+  ! One possible intersection
+  CASE(1)
+    ! Check if eta is valid
+    IF (ABS(eta(1)).LE.1.0) THEN
+      ! check for Xi only, if eta is possible
+      SELECT CASE(BILINEAR_TYPE)
+        CASE(BILINEAR_XPARALLEL,BILINEAR_YPARALLEL,BILINEAR_ZPARALLEL)
+          xi(1) = ComputeXi(BILINEAR_TYPE,eta(1),LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
 
-IF (nRoot.EQ.1) THEN
-#if CODE_ANALYZE
-  IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-    IF (PartID.EQ.PARTOUT) THEN
-      WRITE(UNIT_stdout,'(A)') '     | nRoot = 1 '
-    END IF
-  END IF
-#endif /*CODE_ANALYZE*/
+        CASE(BILINEAR_XNORMAL)
+          xi(1) = ComputeXi(BILINEAR_TYPE,eta(1),A2=A2,PartTrajectory=PartTrajectory,LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
 
-  IF (ABS(eta(1)).LE.1.0) THEN!.LT.BezierClipHit)THEN
-    ! check for Xi only, if eta is possible
-    xi(1) = ComputeXi(a1,a2,eta(1))
-    IF( ABS(xi(1)).LE.1.0) THEN!.LT.BezierClipHit)THEN
-      ! compute alpha only with valid xi and eta
-      t(1) = ComputeSurfaceDistance2(SideNormVec(1:3,SideID),BiLinearCoeff,xi(1),eta(1),PartTrajectory,PartID)
-      IF (PRESENT(alpha2)) THEN
-        IF (alpha2.GT.-1.0) THEN
-          IF (ALMOSTEQUAL(t(1),alpha2)) THEN
-            t(1)=-1.0
-#if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-              IF(PartID.EQ.PARTOUT)THEN
-                WRITE(UNIT_stdout,'(A)') 'changed t1'
-              END IF
-            END IF
-#endif /*CODE_ANALYZE*/
+        CASE(BILINEAR_YNORMAL)
+          xi(1) = ComputeXi(BILINEAR_TYPE,eta(1),A1=A1,PartTrajectory=PartTrajectory,LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
+
+        CASE(BILINEAR_ZNORMAL)
+          xi(1) = ComputeXi(BILINEAR_TYPE,eta(1),A3=A3,PartTrajectory=PartTrajectory,LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
+
+        CASE(BILINEAR_FULL)
+          xi(1) = ComputeXi(BILINEAR_TYPE,eta(1),A1=A1,A2=A2)
+      END SELECT
+
+      IF (Xi(1).EQ.HUGE(1.)) IPWRITE(*,*) 'Warning: Both denominators zero in ComputeXi'
+
+      IF( ABS(xi(1)).LE.1.0) THEN
+        ! compute alpha only with valid xi and eta
+        t(1) = ComputeSurfaceDistance2(SideNormVec(1:3,SideID),BiLinearCoeff,xi(1),eta(1),PartTrajectory,PartID)
+
+        IF (PRESENT(alpha2)) THEN
+          IF (alpha2.GT.-1.0 .AND. ALMOSTEQUAL(t(1),alpha2)) THEN
+            t(1) = -1.0
           END IF
         END IF
-      END IF
-      alphaNorm=t(1)/lengthPartTrajectory
-#if CODE_ANALYZE
-      IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-        IF (PartID.EQ.PARTOUT) THEN
-          WRITE(UNIT_stdout,'(A,G0,A,G0,A,G0)') '     | xi: ',xi(1),' | t: ',t(1),' | alphaNorm: ',alphaNorm
+
+        ! Normalize alpha to unitLength
+        alphaNorm = t(1)/lengthPartTrajectory
+
+        IF ((alphaNorm.LE.1.0) .AND.(alphaNorm.GE.0.)) THEN
+          alpha   = t(1)
+          xitild  = xi(1)
+          etatild = eta(1)
+          isHit   = .TRUE.
+          ! This is the only possible intersection, so we are done
+          RETURN
+        ELSE ! t is not in range
+          RETURN
         END IF
-      END IF
-#endif /*CODE_ANALYZE*/
-      IF ((alphaNorm.LE.1.0) .AND.(alphaNorm.GE.0.)) THEN!.GT.-epsilontol))THEN
-        alpha   = t(1)!/LengthPartTrajectory
-        xitild  = xi(1)
-        etatild = eta(1)
-        isHit   = .TRUE.
-#if CODE_ANALYZE
-      IF( PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-        IF (PartID.EQ.PARTOUT) THEN
-          WRITE(UNIT_stdout,'(A,G0,A,G0)') '     | alphanorm: ',alphaNorm,' | epsilonTolerance: ',epsilontol
-        END IF
-      END IF
-#endif /*CODE_ANALYZE*/
+      ELSE ! xi not in range
         RETURN
-      ELSE ! t is not in range
-        RETURN
-      END IF
-    ELSE ! xi not in range
+      END IF ! xi .lt. OnePlusEps
+    ELSE ! eta not in range
       RETURN
-    END IF ! xi .lt. OnePlusEps
-  ELSE ! eta not in reange
-    RETURN
-  END IF ! eta .lt. OnePlusEps
-ELSE
-  InterType = 0
-  t(:) = -1.
+    END IF ! eta .lt. OnePlusEps
 
-#if CODE_ANALYZE
-  IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-    IF (PartID.EQ.PARTOUT) THEN
-      WRITE(UNIT_stdout,'(A)') '     | nRoot = 2 '
-    END IF
-  END IF
-#endif /*CODE_ANALYZE*/
+  CASE(2)
+    InterType = 0
+    t(:)      =-1.
 
-  ! check if intersection is possible
-  ! t(1) has to be nullified if intersection is NOT possible
-  ! else, the selection scheme is WRONG
-  IF (ABS(eta(1)).LE.1.0) THEN!.LT.BezierClipHit)THEN
-    ! check for Xi only, if eta is possible
-    xi(1) = ComputeXi(a1,a2,eta(1))
-    IF (ABS(xi(1)).LE.1.0) THEN!.LT.BezierCliphit)THEN
-      ! compute alpha only with valid xi and eta
-      t(1) = ComputeSurfaceDistance2(SideNormVec(1:3,SideID),BiLinearCoeff,xi(1),eta(1),PartTrajectory,PartID)
-      IF (PRESENT(alpha2)) THEN
-        IF (alpha2.GT.-1.0) THEN
-          IF (ALMOSTEQUAL(t(1),alpha2)) THEN
-            t(1)=-1.0
-#if CODE_ANALYZE
-            IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-              IF (PartID.EQ.PARTOUT) THEN
-                WRITE(UNIT_stdout,'(A)') 'changed t1'
-              END IF
-            END IF
-#endif /*CODE_ANALYZE*/
+    ! Check if eta(1)) is valid
+    IF (ABS(eta(1)).LE.1.0) THEN
+      ! check for Xi only, if eta is possible
+      SELECT CASE(BILINEAR_TYPE)
+        CASE(BILINEAR_XPARALLEL,BILINEAR_YPARALLEL,BILINEAR_ZPARALLEL)
+          xi(1) = ComputeXi(BILINEAR_TYPE,eta(1),LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
+
+        CASE(BILINEAR_XNORMAL)
+          xi(1) = ComputeXi(BILINEAR_TYPE,eta(1),A2=A2,PartTrajectory=PartTrajectory,LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
+
+        CASE(BILINEAR_YNORMAL)
+          xi(1) = ComputeXi(BILINEAR_TYPE,eta(1),A1=A1,PartTrajectory=PartTrajectory,LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
+
+        CASE(BILINEAR_ZNORMAL)
+          xi(1) = ComputeXi(BILINEAR_TYPE,eta(1),A3=A3,PartTrajectory=PartTrajectory,LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
+
+        CASE(BILINEAR_FULL)
+          xi(1) = ComputeXi(BILINEAR_TYPE,eta(1),A1=A1,A2=A2)
+      END SELECT
+
+      IF (Xi(1).EQ.HUGE(1.)) IPWRITE(*,*) 'Warning: Both denominators zero in ComputeXi'
+
+      IF( ABS(xi(1)).LE.1.0) THEN
+        ! compute alpha only with valid xi and eta
+        t(1) = ComputeSurfaceDistance2(SideNormVec(1:3,SideID),BiLinearCoeff,xi(1),eta(1),PartTrajectory,PartID)
+
+        IF (PRESENT(alpha2)) THEN
+          IF (alpha2.GT.-1.0 .AND. ALMOSTEQUAL(t(1),alpha2)) THEN
+            t(1) = -1.0
           END IF
         END IF
-      END IF
-      alphaNorm=t(1)/lengthPartTrajectory
-#if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-        IF(PartID.EQ.PARTOUT)THEN
-          WRITE(UNIT_stdout,'(A,G0,A,G0,A,G0)') '     | xi: ',xi(1),' | t: ',t(1),' | alphaNorm: ',alphaNorm
-        END IF
-      END IF
-#endif /*CODE_ANALYZE*/
-      IF((alphaNorm.LE.1.0) .AND.(alphaNorm.GE.0.))THEN!.GT.-epsilontol))THEN
-        InterType=InterType+1
-        isHit=.TRUE.
-#if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-        IF(PartID.EQ.PARTOUT)THEN
-          WRITE(UNIT_stdout,'(A,E15.8,A,E15.8)') '     | alphanorm1: ',alphaNorm,' | epsilonTolerance: ',epsilontol
-        END IF
-      END IF
-#endif /*CODE_ANALYZE*/
-      END IF
-    END IF
-  END IF ! eta(1)
 
+        ! Normalize alpha to unitLength
+        alphaNorm = t(1)/lengthPartTrajectory
 
-  ! check if intersection is possible
-  ! t(2) has to be nullified if intersection is NOT possible
-  ! else, the selection scheme is WRONG
-  IF(ABS(eta(2)).LE.1.0) THEN!.LT.BezierClipHit)THEN
-    ! check for Xi only, if eta is possible
-    xi(2)=ComputeXi(a1,a2,eta(2))
-    IF(ABS(xi(2)).LE.1.0) THEN!.LT.BezierClipHit)THEN
-      ! compute alpha only with valid xi and eta
-      t(2)=ComputeSurfaceDistance2(SideNormVec(1:3,SideID),BiLinearCoeff,xi(2),eta(2),PartTrajectory,PartID)
-      IF (PRESENT(alpha2)) THEN
-        IF (alpha2.GT.-1.0) THEN
-          IF (ALMOSTEQUAL(t(2),alpha2)) THEN
-            t(2)=-1.0
-#if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-              IF(PartID.EQ.PARTOUT)THEN
-                WRITE(UNIT_stdout,'(A)') 'changed t2'
-              END IF
-            END IF
-#endif /*CODE_ANALYZE*/
+        IF ((alphaNorm.LE.1.0) .AND.(alphaNorm.GE.0.)) THEN
+          InterType = InterType+1
+          isHit     = .TRUE.
+        END IF
+      END IF ! xi .lt. OnePlusEps
+    END IF ! eta .lt. OnePlusEps
+
+    ! Check if eta(2) is valid
+    IF (ABS(eta(2)).LE.1.0) THEN
+      ! check for Xi only, if eta is possible
+      SELECT CASE(BILINEAR_TYPE)
+        CASE(BILINEAR_XPARALLEL,BILINEAR_YPARALLEL,BILINEAR_ZPARALLEL)
+          xi(2) = ComputeXi(BILINEAR_TYPE,eta(2),LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
+
+        CASE(BILINEAR_XNORMAL)
+          xi(2) = ComputeXi(BILINEAR_TYPE,eta(2),A2=A2,PartTrajectory=PartTrajectory,LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
+
+        CASE(BILINEAR_YNORMAL)
+          xi(2) = ComputeXi(BILINEAR_TYPE,eta(2),A1=A1,PartTrajectory=PartTrajectory,LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
+
+        CASE(BILINEAR_ZNORMAL)
+          xi(2) = ComputeXi(BILINEAR_TYPE,eta(2),A3=A3,PartTrajectory=PartTrajectory,LastPartPos=LastPartPos(:,PartID),BiLinearCoeff=BiLinearCoeff)
+
+        CASE(BILINEAR_FULL)
+          xi(2) = ComputeXi(BILINEAR_TYPE,eta(2),A1=A1,A2=A2)
+      END SELECT
+
+      IF (Xi(2).EQ.HUGE(1.)) IPWRITE(*,*) 'Warning: Both denominators zero in ComputeXi'
+
+      IF( ABS(xi(2)).LE.1.0) THEN
+        ! compute alpha only with valid xi and eta
+        t(2) = ComputeSurfaceDistance2(SideNormVec(1:3,SideID),BiLinearCoeff,xi(2),eta(2),PartTrajectory,PartID)
+
+        IF (PRESENT(alpha2)) THEN
+          IF (alpha2.GT.-1.0 .AND. ALMOSTEQUAL(t(2),alpha2)) THEN
+            t(2) = -1.0
           END IF
         END IF
-      END IF
-      alphaNorm=t(2)/lengthPartTrajectory
-#if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-        IF(PartID.EQ.PARTOUT)THEN
-          WRITE(UNIT_stdout,'(A,G0,A,G0,A,G0)') '     | xi: ',xi(2),' | t: ',t(2),' | alphaNorm: ',alphaNorm
-        END IF
-      END IF
-#endif /*CODE_ANALYZE*/
-      IF((alphaNorm.LT.1.0) .AND.(alphaNorm.GE.0.))THEN!.GT.-epsilontol))THEN
-        ! Two solutions can be correspond to one unique intersection (?!)
-        IF(InterType.EQ.1)THEN
-          IF(.NOT.ALMOSTEQUALRELATIVE(t(2),t(1),1e-8))THEN
-            isHit=.TRUE.
-            InterType=InterType+2
-          END IF
-        ELSE
-          isHit=.TRUE.
-          InterType=InterType+2
-        END IF
-#if CODE_ANALYZE
-        IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-          IF(PartID.EQ.PARTOUT)THEN
-            WRITE(UNIT_stdout,'(A,E15.8,A,E15.8)') '     | alphanorm2: ',alphaNorm,' | epsilonTolerance: ',epsilontol
-          END IF
-        END IF
-#endif /*CODE_ANALYZE*/
-      END IF
-    END IF
-  END IF
 
-  IF(InterType.EQ.0) THEN
-    RETURN
-  END IF
-  isHit=.TRUE.
-  IF(TrackingMethod.EQ.REFMAPPING) THEN
+        ! Normalize alpha to unitLength
+        alphaNorm = t(2)/lengthPartTrajectory
+
+        IF ((alphaNorm.LE.1.0) .AND.(alphaNorm.GE.0.)) THEN
+          InterType = InterType+2
+          isHit     = .TRUE.
+        END IF
+      END IF ! xi .lt. OnePlusEps
+    END IF ! eta .lt. OnePlusEps
+
     SELECT CASE(InterType)
-    CASE(1)
-      alpha  =t  (1)
-      xitild =xi (1)
-      etatild=eta(1)
-    CASE(2)
-       alpha  =t  (2)
-       xitild =xi (2)
-       etatild=eta(2)
-    CASE DEFAULT
-     ! two intersections
-      IF(t(1).LT.t(2))THEN
+      ! No intersection found, return
+      CASE(0)
+        RETURN
+
+      ! First intersection is only hit
+      CASE(1)
         alpha  =t  (1)
         xitild =xi (1)
         etatild=eta(1)
-      ELSE
+
+      ! Second intersection is only hit
+      CASE(2)
         alpha  =t  (2)
         xitild =xi (2)
         etatild=eta(2)
-      END IF
-    END SELECT
-    RETURN
-  END IF
 
-  ! no refmapping
-  ! take closest
-  SELECT CASE(InterType)
-    CASE(1)
-      alpha=t(1)
-      xitild=xi(1)
-      etatild=eta(1)
-    CASE(2)
-      alpha=t(2)
-      xitild=xi(2)
-      etatild=eta(2)
-    CASE(3)
-      ElemCheck = .FALSE.
-      IF(PRESENT(ElemCheck_Opt))THEN
-        ElemCheck = ElemCheck_Opt
-      END IF
-      IF(ElemCheck)THEN
-        alpha=-1
-        xitild=-2
-        etatild=-2
-      ELSE
-        IF(ABS(t(1)).LT.ABS(t(2)))THEN
-          alpha=t(1)
-          xitild=xi(1)
-          etatild=eta(1)
-        ELSE
-          alpha=t(2)
-          xitild=xi(2)
-          etatild=eta(2)
-        END IF
-      END IF
-  END SELECT
-END IF ! nRoot
+      ! Two intersections found, decide on the correct one
+      CASE(3)
+        SELECT CASE(TrackingMethod)
+          ! Take the one encountered first
+          CASE(REFMAPPING)
+            IF(t(1).LT.t(2))THEN
+              alpha  =t  (1)
+              xitild =xi (1)
+              etatild=eta(1)
+            ELSE
+              alpha  =t  (2)
+              xitild =xi (2)
+              etatild=eta(2)
+            END IF
+
+          CASE(TRACING)
+            ! Check if the element is supposed to be checked
+            ElemCheck = .FALSE.
+            IF(PRESENT(ElemCheck_Opt))THEN
+              ElemCheck = ElemCheck_Opt
+            END IF
+
+            IF(ElemCheck)THEN
+              alpha  =-1
+              xitild =-2
+              etatild=-2
+            ELSE
+              ! Apparently we don't care about the direction of the PartTrajectory
+              IF(ABS(t(1)).LT.ABS(t(2)))THEN
+                alpha=t(1)
+                xitild=xi(1)
+                etatild=eta(1)
+              ELSE
+                alpha=t(2)
+                xitild=xi(2)
+                etatild=eta(2)
+              END IF
+            END IF
+        END SELECT ! TrackingMethod
+    END SELECT ! InterType
+END SELECT ! nRoot
 
 END SUBROUTINE ComputeBiLinearIntersection
 
@@ -1960,7 +1910,11 @@ END IF
 END SUBROUTINE QuadraticSolver
 
 
+#if CODE_ANALYZE
 FUNCTION ComputeSurfaceDistance2(SideNormVec,BiLinearCoeff,xi,eta,PartTrajectory,PartID)
+#else
+PURE FUNCTION ComputeSurfaceDistance2(SideNormVec,BiLinearCoeff,xi,eta,PartTrajectory,PartID)
+#endif
 !================================================================================================================================
 ! compute the required vector length to intersection
 ! ramsey paper algorithm 3.4
@@ -1971,7 +1925,7 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Surfaces_Vars,   ONLY:epsilontol
 USE MOD_Particle_Vars,            ONLY:LastPartPos
 #if CODE_ANALYZE
-USE MOD_Particle_Tracking_Vars,      ONLY:PartOut,MPIRankOut
+USE MOD_Particle_Tracking_Vars,   ONLY:PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -2100,64 +2054,135 @@ ComputeSurfaceDistance2=t
 END FUNCTION ComputeSurfaceDistance2
 
 
-#if CODE_ANALYZE
-FUNCTION ComputeXi(A1,A2,eta)
-#else
-PURE FUNCTION ComputeXi(A1,A2,eta)
-#endif
+PURE FUNCTION ComputeXi(BILINEAR_TYPE,eta,A1,A2,A3,PartTrajectory,LastPartPos,BiLinearCoeff)
 !================================================================================================================================
 ! compute the xi value with algorithm 3.3 of Ramsey paper
 !================================================================================================================================
+USE MOD_Particle_Globals                    ,ONLY: ALMOSTZERO
 ! IMPLICIT VARIABLE HANDLING
-#if CODE_ANALYZE
-USE MOD_Globals, ONLY: abort,MyRank
-#endif /*CODE_ANALYZE*/
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,DIMENSION(4),INTENT(IN)         :: A1,A2
-REAL,INTENT(IN)                      :: eta
+INTEGER,INTENT(IN)                          :: BILINEAR_TYPE
+REAL,INTENT(IN)                             :: eta
+REAL,DIMENSION(4),INTENT(IN),OPTIONAL       :: A1,A2,A3
+REAL,DIMENSION(1:3),INTENT(IN),OPTIONAL     :: PartTrajectory
+REAL,DIMENSION(3),INTENT(IN),OPTIONAL       :: LastPartPos
+REAL,DIMENSION(1:3,1:4),INTENT(IN),OPTIONAL :: BiLinearCoeff
 !--------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL                                 :: ComputeXi
+REAL                                        :: ComputeXi
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                 :: a,b
+REAL                                        :: a,b
 !================================================================================================================================
 
-a=eta*A2(1)+A2(2)
-b=eta*(A2(1)-A1(1))+A2(2)-A1(2)
+! Case defined according to the BilinearMüll python script
+SELECT CASE(BILINEAR_TYPE)
+  CASE(BILINEAR_XPARALLEL) ! Case 5
+    a = eta* BiLinearCoeff(2,1) + BiLinearCoeff(2,2)
+    b = eta*(BiLinearCoeff(2,1) - BiLinearCoeff(3,1)) + BiLinearCoeff(2,2) - BiLinearCoeff(3,2)
+    IF (ABS(B).GE.ABS(A)) THEN
+      ! Both denominators are zero, no possible methods to calculate xi left
+      IF (ALMOSTZERO(ABS(B))) THEN
+        ComputeXi = HUGE(1.)
+        RETURN
+      END IF
+      ComputeXi = (eta*(BiLinearCoeff(3,3)-BiLinearCoeff(2,3))-BiLinearCoeff(2,4)+BiLinearCoeff(3,4)+LastPartPos(2)-LastPartPos(3))/b
+    ELSE
+      ComputeXi =(-eta* BiLinearCoeff(2,3)-BiLinearCoeff(2,4) +LastPartPos(2))/a
+    END IF
 
-IF(ABS(B).GE.ABS(A))THEN
-  IF(ABS(B).LE.0.)THEN
-#if CODE_ANALYZE
-    IPWRITE(*,*) 'eta',eta
-    IPWRITE(*,*) 'A',a2(1)*a1(3)-a1(1)*a2(3)
-    IPWRITE(*,*) 'B',a2(1)*a1(4)-a1(1)*a2(4)+a2(2)*a1(3)-a1(2)*a2(3)
-    IPWRITE(*,*) 'C', a1(4)*a2(2)-a1(2)*a2(4)
-    IPWRITE(*,*) 'a1', a1(:)
-    IPWRITE(*,*) 'a2', a2(:)
-    IPWRITE(*,*) A2(1),A2(2)
-    IPWRITE(*,*) A1(1),A1(2)
-    CALL abort(&
-    __STAMP__&
-    ,' Division by zero. Invalid b')
-#else
-  ComputeXi=10
-  RETURN
-#endif /*CODE_ANALYZE*/
-  END IF
-  ComputeXi=(-eta*(A2(3)-A1(3))-(A2(4)-A1(4)))/b
-ELSE
-#if CODE_ANALYZE
-  IF(ABS(A).LE.0.)THEN
-    CALL abort(&
-    __STAMP__&
-    ,' Division by zero. Invalid a')
-  END IF
-#endif /*CODE_ANALYZE*/
-  ComputeXi=(-eta*A2(3)-A2(4))/a
-END IF
+  CASE(BILINEAR_YPARALLEL) ! Case 6
+    a = eta* BiLinearCoeff(1,1) + BiLinearCoeff(1,2)
+    b = eta*(BiLinearCoeff(1,1) - BiLinearCoeff(3,1)) + BiLinearCoeff(1,2) - BiLinearCoeff(3,2)
+    IF (ABS(B).GE.ABS(A)) THEN
+      ! Both denominators are zero, no possible methods to calculate xi left
+      IF (ALMOSTZERO(ABS(B))) THEN
+        ComputeXi = HUGE(1.)
+        RETURN
+      END IF
+      ComputeXi = (eta*(BiLinearCoeff(3,3)-BiLinearCoeff(1,3))-BiLinearCoeff(1,4)+BiLinearCoeff(3,4)+LastPartPos(1)-LastPartPos(3))/b
+    ELSE
+      ComputeXi =(-eta* BiLinearCoeff(1,3)-BiLinearCoeff(1,4) +LastPartPos(1))/a
+    END IF
+
+  CASE(BILINEAR_ZPARALLEL) ! Case 4
+    a = eta* BiLinearCoeff(1,1) + BiLinearCoeff(1,2)
+    b = eta*(BiLinearCoeff(1,1) - BiLinearCoeff(2,1)) + BiLinearCoeff(1,2) - BiLinearCoeff(2,2)
+    IF (ABS(B).GE.ABS(A)) THEN
+      ! Both denominators are zero, no possible methods to calculate xi left
+      IF (ALMOSTZERO(ABS(B))) THEN
+        ComputeXi = HUGE(1.)
+        RETURN
+      END IF
+      ComputeXi = (eta*(BiLinearCoeff(2,3)-BiLinearCoeff(1,3))-BiLinearCoeff(1,4)+BiLinearCoeff(2,4)+LastPartPos(1)-LastPartPos(2))/b
+    ELSE
+      ComputeXi =(-eta* BiLinearCoeff(1,3)-BiLinearCoeff(1,4) +LastPartPos(1))/a
+    END IF
+
+  CASE(BILINEAR_XNORMAL) ! Case 1
+    a = eta* A2(1)+A2(2)
+    b = eta*(BiLinearCoeff(1,1)*PartTrajectory(2)*PartTrajectory(3) + A2(1)) &
+           + BiLinearCoeff(1,2)*PartTrajectory(2)*PartTrajectory(3) + A2(2)
+    IF (ABS(B).GE.ABS(A)) THEN
+      ! Both denominators are zero, no possible methods to calculate xi left
+      IF (ALMOSTZERO(ABS(B))) THEN
+        ComputeXi = HUGE(1.)
+        RETURN
+      END IF
+      ComputeXi =(eta*(-BiLinearCoeff(1,3)*PartTrajectory(2)*PartTrajectory(3) - A2(3)) &
+                + PartTrajectory(2)*PartTrajectory(3)*(LastPartPos(1)-BiLinearCoeff(1,4)) - A2(4))/b
+    ELSE
+      ComputeXi = (-eta* A2(3)-A2(4))/a
+    END IF
+
+  CASE(BILINEAR_YNORMAL) ! Case 2
+    a = eta* A1(1)+A1(2)
+    b = eta*(BiLinearCoeff(1,1)*PartTrajectory(1)*PartTrajectory(3) + A1(1)) &
+           + BiLinearCoeff(1,2)*PartTrajectory(1)*PartTrajectory(3) + A1(2)
+    IF (ABS(B).GE.ABS(A)) THEN
+      ! Both denominators are zero, no possible methods to calculate xi left
+      IF (ALMOSTZERO(ABS(B))) THEN
+        ComputeXi = HUGE(1.)
+        RETURN
+      END IF
+      ComputeXi =(eta*(-BiLinearCoeff(2,3)*PartTrajectory(1)*PartTrajectory(3) - A1(3)) &
+                + PartTrajectory(1)*PartTrajectory(3)*(LastPartPos(2)-BiLinearCoeff(2,4)) - A1(4))/b
+    ELSE
+      ComputeXi = (-eta* A1(3)-A1(4))/a
+    END IF
+
+  CASE(BILINEAR_ZNORMAL) ! Case 3
+    a = eta* A3(1)+A3(2)
+    b = eta*(BiLinearCoeff(3,1)*PartTrajectory(1)*PartTrajectory(2) + A3(1)) &
+           + BiLinearCoeff(3,2)*PartTrajectory(1)*PartTrajectory(2) + A3(2)
+    IF (ABS(B).GE.ABS(A)) THEN
+      ! Both denominators are zero, no possible methods to calculate xi left
+      IF (ALMOSTZERO(ABS(B))) THEN
+        ComputeXi = HUGE(1.)
+        RETURN
+      END IF
+      ComputeXi =(eta*(-BiLinearCoeff(1,3)*PartTrajectory(1)*PartTrajectory(2) - A3(3)) &
+                + PartTrajectory(1)*PartTrajectory(2)*(LastPartPos(3)-BiLinearCoeff(3,4)) - A3(4))/b
+    ELSE
+      ComputeXi = (-eta* A3(3)-A3(4))/a
+    END IF
+
+  CASE(BILINEAR_FULL)
+    a = eta* A2(1)+A2(2)
+    b = eta*(A2(1)-A1(1))+A2(2)-A1(2)
+    IF (ABS(B).GE.ABS(A)) THEN
+      ! Both denominators are zero, no possible methods to calculate xi left
+      IF (ALMOSTZERO(ABS(B))) THEN
+        ComputeXi = HUGE(1.)
+        RETURN
+      END IF
+      ComputeXi = (-eta*(A2(3)-A1(3))-(A2(4)-A1(4)))/b
+    ELSE
+      ComputeXi = (-eta* A2(3)-A2(4))/a
+    END IF
+END SELECT
 
 END FUNCTION ComputeXi
 

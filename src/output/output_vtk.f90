@@ -61,6 +61,12 @@ INTERFACE WriteDataToVTKPart
 END INTERFACE
 #endif
 
+#if USE_MPI
+INTERFACE WriteParallelVTK
+  MODULE PROCEDURE WriteParallelVTK
+END INTERFACE
+#endif
+
 PUBLIC::WriteDataToVTK
 PUBLIC::WriteVTKMultiBlockDataSet
 PUBLIC::WriteCoordsToVTK_array
@@ -69,6 +75,9 @@ PUBLIC::WriteVarnamesToVTK_array
 #if USE_PARTICLES
 PUBLIC::WriteDataToVTKPart
 PUBLIC::WritePartDataToVTK_array
+#endif
+#if USE_MPI
+PUBLIC::WriteParallelVTK
 #endif
 PUBLIC::CARRAY
 !===================================================================================================================================
@@ -159,41 +168,40 @@ USE MOD_Globals
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: nVal                 !< Number of nodal output variables
-INTEGER,INTENT(IN)          :: NVisu                !< Number of output points .EQ. NAnalyze
-INTEGER,INTENT(IN)          :: nElems               !< Number of output elements
-INTEGER,INTENT(IN)          :: dim                  !< dimension: 2 or 3
-REAL,INTENT(IN)             :: Coord(1:3,0:NVisu,0:NVisu*(MERGE(1,0,dim.GT.1)),0:NVisu*(MERGE(1,0,dim.GT.2)),nElems)     !< CoordsVector
-CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables that will be written out
-REAL,INTENT(IN)             :: Value(:,:,:,:,:)     !< Statevector
-CHARACTER(LEN=*),INTENT(IN) :: FileString           !< Output file name
-INTEGER,OPTIONAL,INTENT(IN) :: DGFV                 !< flag indicating DG = 0 or FV =1 data
-LOGICAL,OPTIONAL,INTENT(IN) :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
-LOGICAL,OPTIONAL,INTENT(IN) :: PostiParallel        !< if TRUE, nVal is stored in the last index of value
+INTEGER,INTENT(IN)                    :: nVal                 !< Number of nodal output variables
+INTEGER,INTENT(IN)                    :: NVisu                !< Number of output points .EQ. NAnalyze
+INTEGER,INTENT(IN)                    :: nElems               !< Number of output elements
+INTEGER,INTENT(IN)                    :: dim                  !< dimension: 2 or 3
+REAL,INTENT(IN)                       :: Coord(1:3,0:NVisu,0:NVisu*(MERGE(1,0,dim.GT.1)),0:NVisu*(MERGE(1,0,dim.GT.2)),nElems)     !< CoordsVector
+CHARACTER(LEN=*),INTENT(IN)           :: VarNames(nVal)       !< Names of all variables that will be written out
+REAL,INTENT(IN)                       :: Value(:,:,:,:,:)     !< Statevector
+CHARACTER(LEN=*),INTENT(IN)           :: FileString           !< Output file name
+INTEGER,OPTIONAL,INTENT(IN)           :: DGFV                 !< flag indicating DG = 0 or FV =1 data
+LOGICAL,OPTIONAL,INTENT(IN)           :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
+LOGICAL,OPTIONAL,INTENT(IN)           :: PostiParallel        !< if TRUE, nVal is stored in the last index of value
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: iVal,ivtk
-INTEGER                     :: nElems_glob(0:nProcessors-1)
-INTEGER                     :: NVisu_elem,nVTKPoints,nVTKCells
-INTEGER                     :: nTotalElems
-INTEGER                     :: nBytes,Offset
-INTEGER                     :: INTdummy
-REAL(KIND=4)                :: FLOATdummy
-CHARACTER(LEN=35)           :: StrOffset,TempStr1,TempStr2
-CHARACTER(LEN=200)          :: Buffer
-CHARACTER(LEN=1)            :: lf
-INTEGER                     :: ElemType,iElem
-INTEGER,ALLOCATABLE,TARGET  :: nodeids(:)
-INTEGER                     :: NVisu_k,NVisu_j,PointsPerVTKCell
+INTEGER                               :: iVal,ivtk
+INTEGER                               :: nElems_glob(0:nProcessors-1)
+INTEGER                               :: NVisu_elem,nVTKPoints,nVTKCells
+INTEGER                               :: nTotalElems
+INTEGER                               :: nBytes,Offset
+INTEGER                               :: INTdummy
+REAL(KIND=4)                          :: FLOATdummy
+CHARACTER(LEN=35)                     :: StrOffset,TempStr1,TempStr2
+CHARACTER(LEN=200)                    :: Buffer
+CHARACTER(LEN=1)                      :: lf
+INTEGER                               :: ElemType,iElem
+INTEGER,ALLOCATABLE,TARGET            :: nodeids(:)
+INTEGER                               :: NVisu_k,NVisu_j,PointsPerVTKCell
 #if USE_MPI
-INTEGER                     :: iProc,nElems_proc,nElemsMax
-REAL,ALLOCATABLE            :: buf(:,:,:,:), buf2(:,:,:,:,:)
+INTEGER                               :: iProc,nElems_proc,nElemsMax
+REAL,ALLOCATABLE                      :: buf(:,:,:,:), buf2(:,:,:,:,:)
 #endif /*USE_MPI*/
-INTEGER                     :: DGFV_loc
-LOGICAL                     :: nValAtLastDimension_loc
-LOGICAL                     :: PostiParallel_loc
-CHARACTER(LEN=255)          :: FileString_loc
-CHARACTER(LEN=35)           :: StrmyRank
+INTEGER                               :: DGFV_loc
+LOGICAL                               :: nValAtLastDimension_loc
+LOGICAL                               :: PostiParallel_loc
+CHARACTER(LEN=255)                    :: FileString_loc
 !===================================================================================================================================
 IF (PRESENT(DGFV)) THEN
   DGFV_loc = DGFV
@@ -208,8 +216,7 @@ END IF
 IF (PRESENT(PostiParallel)) THEN
   IF(nProcessors.GT.1)THEN
     PostiParallel_loc=.TRUE.
-    WRITE(StrmyRank,'(I16)') myRank
-    FileString_loc=TRIM(FileString)//'_'//TRIM(ADJUSTL(StrmyRank))//'.vtu'
+    FileString_loc='visu/'//TRIM(INTSTAMP(TRIM(FileString),myRank))//'.vtu'
   ELSE
     PostiParallel_loc = .FALSE.
     FileString_loc=TRIM(FileString)//'.vtu'
@@ -408,7 +415,7 @@ END IF
 #endif
 
 ! Connectivity and footer
-IF((.NOT.PostiParallel_loc.AND.MPI_Root.GT.0).OR.PostiParallel_loc)THEN
+IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
   CALL CreateConnectivity(NVisu,nTotalElems,nodeids,dim,DGFV_loc)
 
   nBytes = PointsPerVTKCell*nVTKCells*SIZEOF_F(INTdummy)
@@ -438,9 +445,12 @@ IF((.NOT.PostiParallel_loc.AND.MPI_Root.GT.0).OR.PostiParallel_loc)THEN
   CLOSE(ivtk)
 ENDIF
 
-IF(PostiParallel_loc)THEN
+#if USE_MPI
+IF(PostiParallel_loc.AND.MPIRoot)THEN
   CALL WriteParallelVTK(FileString,nVal,VarNames)
-END IF
+ENDIF
+#endif
+
 
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteDataToVTK
@@ -464,20 +474,33 @@ CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf
 !===================================================================================================================================
 IF (MPIRoot) THEN
-  ! write multiblock file
-  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
-  ! Line feed character
-  lf = char(10)
-  Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
-  WRITE(ivtk) TRIM(BUFFER)
-  Buffer='  <vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'.vtu">'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    <DataSet index="1" name="FV" file="'//TRIM(FileString_FV)//'.vtu">'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='  </vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  CLOSE(ivtk)
+  IF(nProcessors.GT.1)THEN
+    ! write '.vtu">'//multiblock file
+    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.pvd' ,ACCESS='STREAM')
+    ! Line feed character
+    lf = char(10)
+    Buffer='<VTKFile type="Collection" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
+    WRITE(ivtk) TRIM(BUFFER)
+    Buffer='  <Collection>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='    <DataSet part="0" name="DG" file="'//TRIM(FileString_DG)//'.pvtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='    <DataSet part="1" name="FV" file="'//TRIM(FileString_FV)//'.pvtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='  </Collection>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    CLOSE(ivtk)
+  ELSE
+    ! write '.vtu">'//multiblock file
+    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.vtm' ,ACCESS='STREAM')
+    ! Line feed character
+    lf = char(10)
+    Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
+    WRITE(ivtk) TRIM(BUFFER)
+    Buffer='  <vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'.vtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='    <DataSet index="0" name="FV" file="'//TRIM(FileString_FV)//'.vtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='  </vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    CLOSE(ivtk)
+  ENDIF
 ENDIF
 END SUBROUTINE WriteVTKMultiBlockDataSet
 
@@ -531,7 +554,7 @@ IF (MPIRoot) THEN
   Buffer='    </PCells>'//lf;WRITE(ivtk) TRIM(Buffer)
   DO iProc=0,nProcessors-1
     WRITE(StrProc,'(I16)')iProc
-    Buffer='    <Piece Source="'//TRIM(FileString)//'_'//TRIM(ADJUSTL(StrProc))//'.vtu"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='    <Piece Source="visu/'//TRIM(INTSTAMP(TRIM(FileString),iProc))//'.vtu"/>'//lf;WRITE(ivtk) TRIM(Buffer)
   END DO
   Buffer='  </PUnstructuredGrid>'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)

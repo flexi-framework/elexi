@@ -131,7 +131,7 @@ INTEGER                        :: firstHaloElem,lastHaloElem
 ! FIBGMToProc
 INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize
 INTEGER                        :: BGMiminglob,BGMimaxglob,BGMjminglob,BGMjmaxglob,BGMkminglob,BGMkmaxglob
-LOGICAL,ALLOCATABLE            :: FIBGMToProcLoc(:,:,:,:)
+LOGICAL,ALLOCATABLE            :: FIBGMToProcTmp(:,:,:,:)
 #else
 REAL                           :: halo_eps
 #endif
@@ -716,9 +716,7 @@ ELSE
     END IF
   END DO
 END IF
-#endif  /*USE_MPI*/
 
-#if USE_MPI
 ! Loop over all elements and build a global FIBGM to processor mapping. This is required to identify potential emission procs
 BGMiminglob = 0 + moveBGMindex
 BGMimaxglob = FLOOR((GEO%xmaxglob-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
@@ -738,8 +736,8 @@ firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProces
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
 
 ! Flag each FIBGM element proc positive
-ALLOCATE(FIBGMToProcLoc(BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob,0:nProcessors_Global-1))
-FIBGMToProcLoc = .FALSE.
+ALLOCATE(FIBGMToProcTmp(BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob,0:nProcessors_Global-1))
+FIBGMToProcTmp = .FALSE.
 
 DO iElem = firstElem,lastElem
   ProcRank = ElemInfo_Shared(ELEM_RANK,iElem)
@@ -747,7 +745,7 @@ DO iElem = firstElem,lastElem
   DO kBGM = ElemToBGM_Shared(5,iElem),ElemToBGM_Shared(6,iElem)
     DO jBGM = ElemToBGM_Shared(3,iElem),ElemToBGM_Shared(4,iElem)
       DO iBGM = ElemToBGM_Shared(1,iElem),ElemToBGM_Shared(2,iElem)
-        FIBGMToProcLoc(iBGM,jBGM,kBGM,ProcRank) = .TRUE.
+        FIBGMToProcTmp(iBGM,jBGM,kBGM,ProcRank) = .TRUE.
       END DO
     END DO
   END DO
@@ -756,10 +754,10 @@ END DO
 ! Perform logical OR and place data on CN root
 MessageSize = (BGMimaxglob-BGMiminglob+1)*(BGMjmaxglob-BGMjminglob+1)*(BGMkmaxglob-BGMkminglob+1)*nProcessors_Global
 IF (myComputeNodeRank.EQ.0) THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE  ,FIBGMToProcLoc,MessageSize,MPI_LOGICAL,MPI_LOR,0,MPI_COMM_SHARED,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE  ,FIBGMToProcTmp,MessageSize,MPI_LOGICAL,MPI_LOR,0,MPI_COMM_SHARED,iError)
 ELSE
-  CALL MPI_REDUCE(FIBGMToProcLoc,FIBGMToProcLoc,MessageSize,MPI_LOGICAL,MPI_LOR,0,MPI_COMM_SHARED,iError)
-  DEALLOCATE(FIBGMToProcLoc)
+  CALL MPI_REDUCE(FIBGMToProcTmp,FIBGMToProcTmp,MessageSize,MPI_LOGICAL,MPI_LOR,0,MPI_COMM_SHARED,iError)
+  DEALLOCATE(FIBGMToProcTmp)
 END IF
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
@@ -789,7 +787,7 @@ IF (myComputeNodeRank.EQ.0) THEN
         ! Save number of procs per FIBGM element
         DO iProc = 0,nProcessors_Global-1
           ! Proc belongs to current FIBGM cell
-          IF (FIBGMToProcLoc(iBGM,jBGM,kBGM,iProc)) THEN
+          IF (FIBGMToProcTmp(iBGM,jBGM,kBGM,iProc)) THEN
             nFIBGMToProc = nFIBGMToProc + 1
             FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM) = FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM) + 1
           END IF
@@ -802,7 +800,7 @@ END IF
 ! Synchronize array and communicate the information to other procs on CN node
 CALL MPI_WIN_SYNC(FIBGMToProc_Shared_Win,IERROR)
 CALL MPI_BCAST(nFIBGMToProc,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+!CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
 ! Allocate shared array to hold the proc information
 MPISharedSize = INT(nFIBGMToProc,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
@@ -826,7 +824,7 @@ IF (myComputeNodeRank.EQ.0) THEN
         ! Save proc ID
         DO iProc = 0,nProcessors_Global-1
           ! Proc belongs to current FIBGM cell
-          IF (FIBGMToProcLoc(iBGM,jBGM,kBGM,iProc)) THEN
+          IF (FIBGMToProcTmp(iBGM,jBGM,kBGM,iProc)) THEN
             nFIBGMToProc = nFIBGMToProc + 1
             FIBGMProcs(nFIBGMToProc) = iProc
           END IF
@@ -835,12 +833,12 @@ IF (myComputeNodeRank.EQ.0) THEN
     END DO
   END DO
 
-  DEALLOCATE(FIBGMToProcLoc)
+  DEALLOCATE(FIBGMToProcTmp)
 END IF
 
 CALL MPI_WIN_SYNC(FIBGMProcs_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
-#endif
+#endif /*USE_MPI*/
 
 ! and get max number of bgm-elems
 ALLOCATE(Distance    (1:MAXVAL(FIBGM_nElems)) &

@@ -496,6 +496,10 @@ ALLOCATE( PartMPIInsert%nPartsSend  (2,0:PartMPI%InitGroup(InitGroup)%nProcs-1) 
 IF (ALLOCSTAT.NE.0) &
   CALL ABORT(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
 
+PartMPIInsert%nPartsSend=0
+PartMPIInsert%nPartsRecv=0
+
+! Inter-CN communication
 ALLOCATE( PartMPILocate%nPartsSend (2,0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
         , PartMPILocate%nPartsRecv (1,0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
         , PartMPILocate%SendRequest(2,0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
@@ -506,8 +510,8 @@ ALLOCATE( PartMPILocate%nPartsSend (2,0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
 IF (ALLOCSTAT.NE.0) &
   CALL ABORT(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
 
-PartMPIInsert%nPartsSend=0
-PartMPIInsert%nPartsRecv=0
+PartMPILocate%nPartsSend=0
+PartMPILocate%nPartsRecv=0
 
 ! Arrays for communication of particles located in final element. Reuse particle_mpi infrastructure wherever possible
 PartCommSize   = 0
@@ -515,9 +519,6 @@ PartCommSize   = PartCommSize + 3                              ! Emission positi
 IF(TrackingMethod.EQ.REFMAPPING) PartCommSize = PartCommSize+3 ! Emission position (reference space)
 !PartCommSize   = PartCommSize + 1                             ! Species-ID
 PartCommSize   = PartCommSize + 1                              ! ID of element
-
-PartMPILocate%nPartsSend=0
-PartMPILocate%nPartsRecv=0
 
 ! Temporary array to hold ElemID of located particles
 ALLOCATE( chunkState(PartCommSize,chunkSize)                                                &
@@ -540,6 +541,8 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
                 , PartMPI%InitGroup(InitGroup)%COMM                           &
                 , PartMPIInsert%RecvRequest(1,iProc)                          &
                 , IERROR)
+
+  ! Inter-CN communication
   CALL MPI_IRECV( PartMPILocate%nPartsRecv(:,iProc)                           &
                 , 1                                                           &
                 , MPI_INTEGER                                                 &
@@ -592,6 +595,7 @@ END DO ! i = 1, chunkSize
 !--- Find non-local particles for sending to other nodes
 DO i = 1, chunkSize
   IF(.NOT.InsideMyBGM(i)) THEN
+    ! Inter-CN communication
     ASSOCIATE(iBGM => ijkBGM(1,i), &
               jBGM => ijkBGM(2,i), &
               kBGM => ijkBGM(3,i))
@@ -647,9 +651,10 @@ END DO
 PartMPIInsert%nPartsSend(2,:)=0
 DO i = 1, chunkSize
   IF(.NOT.InsideMyBGM(i)) THEN
-        ASSOCIATE(iBGM => ijkBGM(1,i), &
-              jBGM => ijkBGM(2,i), &
-              kBGM => ijkBGM(3,i))
+    ! Inter-CN communication
+    ASSOCIATE(iBGM => ijkBGM(1,i), &
+          jBGM => ijkBGM(2,i), &
+          kBGM => ijkBGM(3,i))
 
     ! Sanity check if the emission is within the global FIBGM region
     IF (iBGM.LT.GEO%FIBGMiminglob .OR. iBGM.GT.GEO%FIBGMimaxglob .OR. &
@@ -692,6 +697,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
 END DO
 
 ! recvPartPos holds particles from ALL procs
+! Inter-CN communication
 ALLOCATE(recvPartPos(1:SUM(PartMPIInsert%nPartsRecv(1,:)*DimSend)), STAT=ALLOCSTAT)
 TotalNbrOfRecvParts = 0
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
@@ -780,6 +786,7 @@ DO i = 1, chunkSize
 END DO ! i = 1, chunkSize
 
 !---  /  Send number of located particles
+! Inter-CN communication
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 

@@ -330,7 +330,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
 USE MOD_Particle_Mesh_Vars,      ONLY:RefMappingEps
-USE MOD_Particle_Vars,           ONLY:PartState
+USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -465,6 +465,7 @@ DO WHILE((deltaXi2.GT.RefMappingEps).AND.(NewtonIter.LT.100))
       IPWRITE(UNIT_StdOut,*) ' Newton-Iter:   ', NewtonIter
       IPWRITE(UNIT_stdOut,*) ' xi:            ', xi(1:3)
       IPWRITE(UNIT_stdOut,*) ' PartPos (phys):', X_in
+      IPWRITE(UNIT_stdOut,*) ' LastPos (phys):', LastPartPos(:,PartID)
       IPWRITE(UNIT_stdOut,*) ' PartVel:       ', PartState(4:6,PartID),'abs:',SQRT(SUM(PartState(4:6,PartID)**2))
       IPWRITE(UNIT_stdOut,*) ' ElemID:        ', ElemID
       IF(PRESENT(PartID)) IPWRITE(UNIT_stdOut,*) ' PartID:        ', PartID

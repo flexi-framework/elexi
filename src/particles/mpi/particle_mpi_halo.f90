@@ -266,7 +266,7 @@ END DO
 !>>> Check the bounding box of each element in compute-nodes' halo domain against the bounding boxes of the elements of the
 !>>> MPI-surface (local proc MPI sides)
 
-! if running on one node, halo_eps is meaningless. Get a representative BC_halo_eps for BC side identification
+! if running on one node, halo_eps is meaningless. Get a representative MPI_halo_eps for MPI proc identification
 fullMesh = .FALSE.
 IF (halo_eps.EQ.0) THEN
   ! reconstruct halo_eps_velo

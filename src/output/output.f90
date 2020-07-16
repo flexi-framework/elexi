@@ -288,7 +288,7 @@ IF(MPIroot)THEN
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV '
 #endif
   IF (PRESENT(doPrintETA_opt)) THEN
-    IF (mins.LT.1) THEN
+    IF (mins.LT.1 .AND. hours.EQ.0 .AND. days.EQ.0) THEN
       WRITE(UNIT_stdOut,'(A,A4,A,A1,A,A3,F6.2,A3)',ADVANCE='YES')                                                                 &
       ' ETA [d:h:m]:   <1 min remaining','|',                                                                                     &
           REPEAT('=',MAX(CEILING(percent/1.754385964912281)-1,0)),'>',REPEAT(' ',56-MAX(CEILING(percent/1.754385964912281)-1,0)), &

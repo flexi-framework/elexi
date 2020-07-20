@@ -590,20 +590,18 @@ ALLOCATE(ExchangeProcToGlobalProc(2,0:nExchangeProcessors-1))
 !END DO
 !nExchangeProcessors = nComputeNodeProcessors
 
-nExchangeProcessors = 0
 DO iProc = 0,nProcessors_Global-1
   IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).GT.0) THEN
     ! Find it the other proc is on the same compute node
     ExchangeProcLeader = INT(GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,iProc)/nComputeNodeProcessors)
     IF (ExchangeProcLeader.EQ.myLeaderGroupRank) THEN
       GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc) = 1
-      ExchangeProcToGlobalProc(EXCHANGE_PROC_TYPE,nExchangeProcessors) = 1
-      ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,nExchangeProcessors) = iProc
+      ExchangeProcToGlobalProc(EXCHANGE_PROC_TYPE,GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,iProc)) = 1
+      ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,iProc)) = iProc
     ELSE
-      ExchangeProcToGlobalProc(EXCHANGE_PROC_TYPE,nExchangeProcessors) = 2
-      ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,nExchangeProcessors) = iProc
+      ExchangeProcToGlobalProc(EXCHANGE_PROC_TYPE,GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,iProc)) = 2
+      ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,iProc)) = iProc
     END IF
-    nExchangeProcessors = nExchangeProcessors + 1
   END IF
 END DO
 

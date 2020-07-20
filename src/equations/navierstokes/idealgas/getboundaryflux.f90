@@ -521,7 +521,6 @@ CASE(3,4,9,91,23,24,25,27)
       UPrim_boundary(4,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
       UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
     END DO; END DO !p,q
-    STOP
   END SELECT
 
   ! rotate state back to physical system

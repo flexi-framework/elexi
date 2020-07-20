@@ -455,7 +455,7 @@ USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 USE MOD_Particle_Globals            ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Intersection       ,ONLY: OutputTrajectory
 USE MOD_Particle_Tracking_Vars      ,ONLY: PartOut,MPIRankOut
-USE MOD_Particle_Mesh_Vars          ,ONLY: GEO,ElemBaryNGeo
+USE MOD_Particle_Mesh_Vars          ,ONLY: GEO,ElemBaryNGeo,ElemEpsOneCell
 USE MOD_TimeDisc_Vars               ,ONLY: currentStage
 #endif /*CODE_ANALYZE*/
 #if USE_LOADBALANCE
@@ -534,7 +534,8 @@ DO iPart=1,PDM%ParticleVecLength
     ElemID   = PEM%lastElement(iPart)
     CNElemID = GetCNElemID(ElemID)
     CALL GetPositionInRefElem(LastPartPos(1:3,iPart),RefPos,ElemID)
-    IF (MAXVAL(ABS(RefPos)).LE.1.0+1e-4) foundHit=.TRUE.
+!    IF (MAXVAL(ABS(RefPos)).LE.1.0+1e-4) foundHit=.TRUE.
+    IF (MAXVAL(ABS(RefPos)).LE.ElemEpsOneCell(GetCNElemID(ElemID))) foundHit=.TRUE.
     IF(.NOT.foundHit)THEN  ! particle not inside
       IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
       IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
@@ -758,8 +759,7 @@ DO iPart=1,PDM%ParticleVecLength
         END IF !UseAuxBCs
       END IF
 
-! -- 5. Loop over all intersections in pointer list and check intersection type: inner side, BC, auxBC or MacroSphere
-!       and calculate interaction
+! -- 5. Loop over all intersections in pointer list and check intersection type: inner side, BC or auxBC and calculate interaction
 #if CODE_ANALYZE
       nIntersections = 0
 #endif /*CODE_ANALYZE*/
@@ -977,11 +977,12 @@ DO iPart=1,PDM%ParticleVecLength
     ! caution: reuse of variable, foundHit=TRUE == inside
     ElemID=PEM%Element(iPart)
     CALL GetPositionInRefElem(PartState(1:3,iPart),RefPos,ElemID)
-    IF (MAXVAL(ABS(RefPos)).LE.1.0+1e-4) foundHit = .TRUE.
+!    IF (MAXVAL(ABS(RefPos)).LE.1.0+1e-4) foundHit = .TRUE.
+    IF (MAXVAL(ABS(RefPos)).LE.ElemEpsOneCell(GetCNElemID(ElemID))) foundHit = .TRUE.
     IF (.NOT.foundHit) THEN  ! particle not inside
      IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
-     IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' gloabal ElemID ', ElemID
+     IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' global ElemID  ', ElemID
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,ElemID)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)

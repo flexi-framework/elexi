@@ -533,10 +533,12 @@ SUBROUTINE ComputeBiLinearIntersection(isHit,PartTrajectory,lengthPartTrajectory
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Particle_Vars,           ONLY:LastPartPos
-USE MOD_Particle_Surfaces_Vars  ,ONLY:BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,BaseVectorsScale,SideNormVec
+USE MOD_Particle_Boundary_Vars,  ONLY:PartBound
+USE MOD_Particle_Mesh_Vars,      ONLY:SideInfo_Shared
+USE MOD_Particle_Surfaces_Vars,  ONLY:BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,BaseVectorsScale,SideNormVec
 USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBilinear
 USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
+USE MOD_Particle_Vars,           ONLY:LastPartPos
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D,epsilonTol
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -865,43 +867,52 @@ SELECT CASE(nRoot)
 
       ! Two intersections found, decide on the correct one
       CASE(3)
-        SELECT CASE(TrackingMethod)
-          ! Take the one encountered first
-          CASE(REFMAPPING)
-            IF(t(1).LT.t(2))THEN
-              alpha  =t  (1)
-              xitild =xi (1)
-              etatild=eta(1)
-            ELSE
-              alpha  =t  (2)
-              xitild =xi (2)
-              etatild=eta(2)
-            END IF
-
-          CASE(TRACING)
-            ! Check if the element is supposed to be checked
-            ElemCheck = .FALSE.
-            IF(PRESENT(ElemCheck_Opt))THEN
-              ElemCheck = ElemCheck_Opt
-            END IF
-
-            IF(ElemCheck)THEN
-              alpha  =-1
-              xitild =-2
-              etatild=-2
-            ELSE
-              ! Apparently we don't care about the direction of the PartTrajectory
-              IF(ABS(t(1)).LT.ABS(t(2)))THEN
-                alpha=t(1)
-                xitild=xi(1)
+        ! If side is a BC side, take only the intersection encountered first
+        IF (SideInfo_Shared(SIDE_BCID,SideID).NE.0) THEN
+          SELECT CASE(TrackingMethod)
+            ! Take the one encountered first
+            CASE(REFMAPPING)
+              IF(t(1).LT.t(2))THEN
+                alpha  =t  (1)
+                xitild =xi (1)
                 etatild=eta(1)
               ELSE
-                alpha=t(2)
-                xitild=xi(2)
+                alpha  =t  (2)
+                xitild =xi (2)
                 etatild=eta(2)
               END IF
-            END IF
-        END SELECT ! TrackingMethod
+
+            CASE(TRACING)
+              ! Check if the element is supposed to be checked
+              ElemCheck = .FALSE.
+              IF(PRESENT(ElemCheck_Opt))THEN
+                ElemCheck = ElemCheck_Opt
+              END IF
+
+              IF(ElemCheck)THEN
+                alpha  =-1
+                xitild =-2
+                etatild=-2
+              ELSE
+                ! Apparently we don't care about the direction of the PartTrajectory
+                IF(ABS(t(1)).LT.ABS(t(2)))THEN
+                  alpha=t(1)
+                  xitild=xi(1)
+                  etatild=eta(1)
+                ELSE
+                  alpha=t(2)
+                  xitild=xi(2)
+                  etatild=eta(2)
+                END IF
+              END IF
+          END SELECT ! TrackingMethod
+        ! Inner side with double intersection, particle leaves and entries element
+        ELSE
+          alpha  =-1
+          xitild = 0.
+          etatild= 0.
+          isHit  = .FALSE.
+        END IF
     END SELECT ! InterType
 END SELECT ! nRoot
 
@@ -1945,7 +1956,7 @@ REAL                                 :: t
 !================================================================================================================================
 
 #if CODE_ANALYZE
-  t =xi*eta*BiLinearCoeff(1,1)+xi*BilinearCoeff(1,2)+eta*BilinearCoeff(1,3)+BilinearCoeff(1,4) -lastPartPos(1,PartID)
+  t =xi*eta*BiLinearCoeff(1,1)+xi*BilinearCoeff(1,2)+eta*BilinearCoeff(1,3)+BilinearCoeff(1,4) -LastPartPos(1,PartID)
   IF (PartTrajectory(1).EQ.0.) THEN
     t=SIGN(HUGE(t),t)
   ELSE
@@ -1956,7 +1967,7 @@ REAL                                 :: t
       WRITE(UNIT_stdout,'(2(A,E15.8))') '     -- t1: ',t
    END IF
   END IF
-  t =xi*eta*BilinearCoeff(2,1)+xi*BilinearCoeff(2,2)+eta*BilinearCoeff(2,3)+BilinearCoeff(2,4) -lastPartPos(2,PartID)
+  t =xi*eta*BilinearCoeff(2,1)+xi*BilinearCoeff(2,2)+eta*BilinearCoeff(2,3)+BilinearCoeff(2,4) -LastPartPos(2,PartID)
   IF (PartTrajectory(2).EQ.0.) THEN
     t=SIGN(HUGE(t),t)
   ELSE
@@ -1967,7 +1978,7 @@ REAL                                 :: t
       WRITE(UNIT_stdout,'(2(A,E15.8))') '     -- t2: ',t
     END IF
   END IF
-  t =xi*eta*BilinearCoeff(3,1)+xi*BilinearCoeff(3,2)+eta*BilinearCoeff(3,3)+BilinearCoeff(3,4) -lastPartPos(3,PartID)
+  t =xi*eta*BilinearCoeff(3,1)+xi*BilinearCoeff(3,2)+eta*BilinearCoeff(3,3)+BilinearCoeff(3,4) -LastPartPos(3,PartID)
   IF (PartTrajectory(3).EQ.0.) THEN
     t=SIGN(HUGE(t),t)
   ELSE
@@ -1986,7 +1997,7 @@ REAL                                 :: t
 !  .AND. .NOT.ALMOSTZERO(PartTrajectory(1)))THEN
 IF((ABS(SideNormVec(1)).GE.ABS(SideNormVec(2))) .AND.(ABS(SideNormVec(1)).GE.ABS(SideNormVec(3))) &
   .AND. .NOT.ALMOSTZERO(PartTrajectory(1)))THEN
-  t =xi*eta*BiLinearCoeff(1,1)+xi*BilinearCoeff(1,2)+eta*BilinearCoeff(1,3)+BilinearCoeff(1,4) -lastPartPos(1,PartID)
+  t =xi*eta*BiLinearCoeff(1,1)+xi*BilinearCoeff(1,2)+eta*BilinearCoeff(1,3)+BilinearCoeff(1,4) -LastPartPos(1,PartID)
   t = t/ PartTrajectory(1)-epsilontol
 #if CODE_ANALYZE
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
@@ -1997,7 +2008,7 @@ IF((ABS(SideNormVec(1)).GE.ABS(SideNormVec(2))) .AND.(ABS(SideNormVec(1)).GE.ABS
 #endif /*CODE_ANALYZE*/
 ELSE IF(ABS(SideNormVec(2)).GE.ABS(SideNormVec(3)) &
   .AND. .NOT.ALMOSTZERO(PartTrajectory(2)))THEN
-  t =xi*eta*BilinearCoeff(2,1)+xi*BilinearCoeff(2,2)+eta*BilinearCoeff(2,3)+BilinearCoeff(2,4) -lastPartPos(2,PartID)
+  t =xi*eta*BilinearCoeff(2,1)+xi*BilinearCoeff(2,2)+eta*BilinearCoeff(2,3)+BilinearCoeff(2,4) -LastPartPos(2,PartID)
   t = t/ PartTrajectory(2)-epsilontol
 #if CODE_ANALYZE
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
@@ -2007,7 +2018,7 @@ ELSE IF(ABS(SideNormVec(2)).GE.ABS(SideNormVec(3)) &
         END IF
 #endif /*CODE_ANALYZE*/
 ELSE IF(.NOT.ALMOSTZERO(PartTrajectory(3)))THEN
-  t =xi*eta*BilinearCoeff(3,1)+xi*BilinearCoeff(3,2)+eta*BilinearCoeff(3,3)+BilinearCoeff(3,4) -lastPartPos(3,PartID)
+  t =xi*eta*BilinearCoeff(3,1)+xi*BilinearCoeff(3,2)+eta*BilinearCoeff(3,3)+BilinearCoeff(3,4) -LastPartPos(3,PartID)
   t = t/ PartTrajectory(3)-epsilontol
 #if CODE_ANALYZE
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
@@ -2018,7 +2029,7 @@ ELSE IF(.NOT.ALMOSTZERO(PartTrajectory(3)))THEN
 #endif /*CODE_ANALYZE*/
 !if PartTrajectory should be zero in largest component of SideNormVec, decide based on original check:
 ELSE IF((ABS(PartTrajectory(1)).GE.ABS(PartTrajectory(2))).AND.(ABS(PartTrajectory(1)).GE.ABS(PartTrajectory(3))))THEN
-  t =xi*eta*BiLinearCoeff(1,1)+xi*BilinearCoeff(1,2)+eta*BilinearCoeff(1,3)+BilinearCoeff(1,4) -lastPartPos(1,PartID)
+  t =xi*eta*BiLinearCoeff(1,1)+xi*BilinearCoeff(1,2)+eta*BilinearCoeff(1,3)+BilinearCoeff(1,4) -LastPartPos(1,PartID)
   t = t/ PartTrajectory(1)-epsilontol
 #if CODE_ANALYZE
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
@@ -2028,7 +2039,7 @@ ELSE IF((ABS(PartTrajectory(1)).GE.ABS(PartTrajectory(2))).AND.(ABS(PartTrajecto
         END IF
 #endif /*CODE_ANALYZE*/
 ELSE IF(ABS(PartTrajectory(2)).GE.ABS(PartTrajectory(3)))THEN
-  t =xi*eta*BilinearCoeff(2,1)+xi*BilinearCoeff(2,2)+eta*BilinearCoeff(2,3)+BilinearCoeff(2,4) -lastPartPos(2,PartID)
+  t =xi*eta*BilinearCoeff(2,1)+xi*BilinearCoeff(2,2)+eta*BilinearCoeff(2,3)+BilinearCoeff(2,4) -LastPartPos(2,PartID)
   t = t/ PartTrajectory(2)-epsilontol
 #if CODE_ANALYZE
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
@@ -2038,7 +2049,7 @@ ELSE IF(ABS(PartTrajectory(2)).GE.ABS(PartTrajectory(3)))THEN
         END IF
 #endif /*CODE_ANALYZE*/
 ELSE
-  t =xi*eta*BilinearCoeff(3,1)+xi*BilinearCoeff(3,2)+eta*BilinearCoeff(3,3)+BilinearCoeff(3,4) -lastPartPos(3,PartID)
+  t =xi*eta*BilinearCoeff(3,1)+xi*BilinearCoeff(3,2)+eta*BilinearCoeff(3,3)+BilinearCoeff(3,4) -LastPartPos(3,PartID)
   t = t/ PartTrajectory(3)-epsilontol
 #if CODE_ANALYZE
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN

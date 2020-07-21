@@ -452,7 +452,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMProcs
 !USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
+!USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI,PartMPIInsert,PartMPILocate
 USE MOD_Particle_MPI_Vars      ,ONLY: EmissionSendBuf,EmissionRecvBuf
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef,Species
@@ -473,8 +473,8 @@ INTEGER,INTENT(OUT)           :: mySumOfMatchedParticles
 INTEGER                       :: i,iPos,iProc,iDir,ElemID,ProcID
 ! BGM
 INTEGER                       :: ijkBGM(3,chunkSize)
-INTEGER                       :: iBGMElem,nBGMElems,TotalNbrOfRecvParts
-LOGICAL                       :: InsideMyBGM(chunkSize)
+INTEGER                       :: TotalNbrOfRecvParts!iBGMElem,nBGMElems,
+LOGICAL                       :: InsideMyBGM(2,chunkSize)
 ! Temporary state arrays
 REAL,ALLOCATABLE              :: chunkState(:,:)
 ! MPI Communication
@@ -564,37 +564,36 @@ DO i=1,chunkSize
     END DO ! iDir = 1, 3
 
     ! Check BGM cell index
-    InsideMyBGM(i)=.TRUE.
+    InsideMyBGM(:,i)=.TRUE.
     DO iDir = 1, 3
       IF(ijkBGM(iDir,i).LT.BGMMin(iDir)) THEN
-        InsideMyBGM(i)=.FALSE.
+        InsideMyBGM(1,i)=.FALSE.
         EXIT
       END IF
       IF(ijkBGM(iDir,i).GT.BGMMax(iDir)) THEN
-        InsideMyBGM(i)=.FALSE.
+        InsideMyBGM(1,i)=.FALSE.
         EXIT
       END IF
     END DO ! iDir = 1, 3
   END ASSOCIATE
 
-  IF(InsideMyBGM(i)) THEN
-    !--- check all cells associated with this background mesh cell
-    nBGMElems = FIBGM_nElems(ijkBGM(1,i),ijkBGM(2,i),ijkBGM(3,i))
+  IF (InsideMyBGM(1,i)) THEN
+    ASSOCIATE(iBGM => ijkBGM(1,i), &
+              jBGM => ijkBGM(2,i), &
+              kBGM => ijkBGM(3,i))
 
-    DO iBGMElem = 1, nBGMElems
-      ElemID = FIBGM_Element(FIBGM_offsetElem(ijkBGM(1,i),ijkBGM(2,i),ijkBGM(3,i))+iBGMElem)
-
-      ! Check if element is on node (or halo region of node)
-      IF(ElemInfo_Shared(ELEM_HALOFLAG,ElemID).EQ.0) THEN ! it is 0 or 2
-        InsideMyBGM(i) = .FALSE.
-      END IF ! ElemInfo_Shared(ELEM_HALOFLAG,ElemID).NE.1
-    END DO ! iBGMElem = 1, nBGMElems
+    !--- check if BGM cell contains procs not within the halo region
+    IF (FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM).NE.FIBGMToProc(FIBGM_HPROCS,iBGM,jBGM,kBGM)) THEN
+      !--- if any elements are found, communicate particle to all procs
+      InsideMyBGM(2,i) = .FALSE.
+    END IF ! FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM).NE.FIBGMToProc(FIBGM_HPROCS,iBGM,jBGM,kBGM)
+    END ASSOCIATE
   END IF ! InsideMyBGM(i)
 END DO ! i = 1, chunkSize
 
 !--- Find non-local particles for sending to other nodes
 DO i = 1, chunkSize
-  IF(.NOT.InsideMyBGM(i)) THEN
+  IF(ANY(.NOT.InsideMyBGM(:,i))) THEN
     ! Inter-CN communication
     ASSOCIATE(iBGM => ijkBGM(1,i), &
               jBGM => ijkBGM(2,i), &
@@ -612,8 +611,9 @@ DO i = 1, chunkSize
     DO iProc = FIBGMToProc(FIBGM_FIRSTPROCIND,iBGM,jBGM,kBGM)+1, &
                FIBGMToProc(FIBGM_FIRSTPROCIND,iBGM,jBGM,kBGM)+FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM)
       ProcID = FIBGMProcs(iProc)
+      IF (ProcID.EQ.myRank) CYCLE
 
-      tProc=PartMPI%InitGroup(InitGroup)%CommToGroup(ProcID)
+      tProc = PartMPI%InitGroup(InitGroup)%CommToGroup(ProcID)
       ! Processor is not on emission communicator
       IF(tProc.EQ.-1) CYCLE
 
@@ -639,7 +639,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
                 , PartMPIInsert%SendRequest(1,iProc)                          &
                 , IERROR)
   IF (PartMPIInsert%nPartsSend(1,iProc).GT.0) THEN
-    MessageSize = DimSend*PartMPIInsert%nPartsSend(1,iProc)*DimSend
+    MessageSize = DimSend*PartMPIInsert%nPartsSend(1,iProc)
     ALLOCATE( PartMPIInsert%send_message(iProc)%content(MessageSize), STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
       CALL ABORT(__STAMP__,'  Cannot allocate emission PartSendBuf, local ProcId, ALLOCSTAT',iProc,REAL(ALLOCSTAT))
@@ -650,11 +650,11 @@ END DO
 !--- 3/4 Send actual non-located particles
 PartMPIInsert%nPartsSend(2,:)=0
 DO i = 1, chunkSize
-  IF(.NOT.InsideMyBGM(i)) THEN
+  IF(ANY(.NOT.InsideMyBGM(:,i))) THEN
     ! Inter-CN communication
     ASSOCIATE(iBGM => ijkBGM(1,i), &
-          jBGM => ijkBGM(2,i), &
-          kBGM => ijkBGM(3,i))
+              jBGM => ijkBGM(2,i), &
+              kBGM => ijkBGM(3,i))
 
     ! Sanity check if the emission is within the global FIBGM region
     IF (iBGM.LT.GEO%FIBGMiminglob .OR. iBGM.GT.GEO%FIBGMimaxglob .OR. &
@@ -668,6 +668,7 @@ DO i = 1, chunkSize
     DO iProc = FIBGMToProc(FIBGM_FIRSTPROCIND,iBGM,jBGM,kBGM)+1, &
                FIBGMToProc(FIBGM_FIRSTPROCIND,iBGM,jBGM,kBGM)+FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM)
       ProcID = FIBGMProcs(iProc)
+      IF (ProcID.EQ.myRank) CYCLE
 
       tProc=PartMPI%InitGroup(InitGroup)%CommToGroup(ProcID)
       ! Processor is not on emission communicator
@@ -733,7 +734,7 @@ ParticleIndexNbr        = 1
 
 !--- Locate local (node or halo of node) particles
 DO i = 1, chunkSize
-  IF(InsideMyBGM(i))THEN
+  IF(InsideMyBGM(1,i))THEN
     ! We cannot call LocateParticleInElement because we do not know the final PartID yet. Locate the position and fill PartState
     ! manually if we got a hit
     ElemID = SinglePointToElement(particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+3),doHALO=.TRUE.)
@@ -745,6 +746,9 @@ DO i = 1, chunkSize
     ! velocity)
     ProcID = ElemInfo_Shared(ELEM_RANK,ElemID)
     IF (ProcID.NE.myRank) THEN
+      ! Particle was sent to every potential proc, so trust the other proc to find it and do not send it again
+      IF (.NOT.InsideMyBGM(2,i)) CYCLE
+
       ! ProcID on emission communicator
       tProc=PartMPI%InitGroup(InitGroup)%CommToGroup(ProcID)
       ! Processor is not on emission communicator
@@ -840,7 +844,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
 END DO
 
-DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
+DO iProc = 0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
   ! Allocate receive array and open receive buffer if expecting particles from iProc

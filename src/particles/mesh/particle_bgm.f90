@@ -129,9 +129,9 @@ REAL,ALLOCATABLE               :: BoundsOfElemCenter(:),MPISideBoundsOfElemCente
 LOGICAL                        :: ElemInsideHalo
 INTEGER                        :: firstHaloElem,lastHaloElem
 ! FIBGMToProc
-INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize
+INTEGER                        :: iProc,ProcRank,nFIBGMToProc,hFIBGMToProc,MessageSize
 INTEGER                        :: BGMiminglob,BGMimaxglob,BGMjminglob,BGMjmaxglob,BGMkminglob,BGMkmaxglob
-LOGICAL,ALLOCATABLE            :: FIBGMToProcTmp(:,:,:,:)
+LOGICAL,ALLOCATABLE            :: FIBGMToProcTmp(:,:,:,:,:)
 #else
 REAL                           :: halo_eps
 #endif
@@ -378,12 +378,12 @@ ELSE
   DO iSide = 1, nMPISidesShared
     SideID = offsetMPISideShared(iSide)
     ElemID = SideInfo_Shared(SIDE_ELEMID,SideID)
-    MPISideBoundsOfElemCenter(1:3,iSide) = (/ SUM(BoundsOfElem_Shared(1:2,1,ElemID)), &
-                                              SUM(BoundsOfElem_Shared(1:2,2,ElemID)), &
-                                              SUM(BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
-    MPISideBoundsOfElemCenter(4,iSide) = VECNORM ((/ BoundsOfElem_Shared(2,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID), &
-                                                     BoundsOfElem_Shared(2,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID), &
-                                                     BoundsOfElem_Shared(2,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
+    MPISideBoundsOfElemCenter(1:3,iSide) = (/    SUM(BoundsOfElem_Shared(1:2,1,ElemID)), &
+                                                 SUM(BoundsOfElem_Shared(1:2,2,ElemID)), &
+                                                 SUM(BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
+    MPISideBoundsOfElemCenter(4,iSide) = VECNORM ((/ BoundsOfElem_Shared(2  ,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID), &
+                                                     BoundsOfElem_Shared(2  ,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID), &
+                                                     BoundsOfElem_Shared(2  ,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
   END DO
 
   ! do refined check: (refined halo region reduction)
@@ -393,12 +393,12 @@ ELSE
   DO iElem = firstHaloElem, lastHaloElem
     ElemID = offsetCNHalo2GlobalElem(iElem)
     ElemInsideHalo = .FALSE.
-    BoundsOfElemCenter(1:3) = (/ SUM(BoundsOfElem_Shared(1:2,1,ElemID)), &
-                                 SUM(BoundsOfElem_Shared(1:2,2,ElemID)), &
-                                 SUM(BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
-    BoundsOfElemCenter(4) = VECNORM ((/ BoundsOfElem_Shared(2,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID), &
-                                        BoundsOfElem_Shared(2,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID), &
-                                        BoundsOfElem_Shared(2,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
+    BoundsOfElemCenter(1:3) = (/    SUM(BoundsOfElem_Shared(1:2,1,ElemID)), &
+                                    SUM(BoundsOfElem_Shared(1:2,2,ElemID)), &
+                                    SUM(BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
+    BoundsOfElemCenter(4) = VECNORM ((/ BoundsOfElem_Shared(2  ,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID), &
+                                        BoundsOfElem_Shared(2  ,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID), &
+                                        BoundsOfElem_Shared(2  ,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
     DO iSide = 1, nMPISidesShared
       ! compare distance of centers with sum of element outer radii+halo_eps
       IF (VECNORM(BoundsOfElemCenter(1:3)-MPISideBoundsOfElemCenter(1:3,iSide)) &
@@ -736,7 +736,7 @@ firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProces
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
 
 ! Flag each FIBGM element proc positive
-ALLOCATE(FIBGMToProcTmp(BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob,0:nProcessors_Global-1))
+ALLOCATE(FIBGMToProcTmp(2,BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob,0:nProcessors_Global-1))
 FIBGMToProcTmp = .FALSE.
 
 DO iElem = firstElem,lastElem
@@ -745,14 +745,17 @@ DO iElem = firstElem,lastElem
   DO kBGM = ElemToBGM_Shared(5,iElem),ElemToBGM_Shared(6,iElem)
     DO jBGM = ElemToBGM_Shared(3,iElem),ElemToBGM_Shared(4,iElem)
       DO iBGM = ElemToBGM_Shared(1,iElem),ElemToBGM_Shared(2,iElem)
-        FIBGMToProcTmp(iBGM,jBGM,kBGM,ProcRank) = .TRUE.
+        FIBGMToProcTmp(1,iBGM,jBGM,kBGM,ProcRank) = .TRUE.
+        IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.0) THEN
+          FIBGMToProcTmp(2,iBGM,jBGM,kBGM,ProcRank) = .TRUE.
+        END IF
       END DO
     END DO
   END DO
 END DO
 
 ! Perform logical OR and place data on CN root
-MessageSize = (BGMimaxglob-BGMiminglob+1)*(BGMjmaxglob-BGMjminglob+1)*(BGMkmaxglob-BGMkminglob+1)*nProcessors_Global
+MessageSize = 2*(BGMimaxglob-BGMiminglob+1)*(BGMjmaxglob-BGMjminglob+1)*(BGMkmaxglob-BGMkminglob+1)*nProcessors_Global
 IF (myComputeNodeRank.EQ.0) THEN
   CALL MPI_REDUCE(MPI_IN_PLACE  ,FIBGMToProcTmp,MessageSize,MPI_LOGICAL,MPI_LOR,0,MPI_COMM_SHARED,iError)
 ELSE
@@ -762,9 +765,9 @@ END IF
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
 ! Allocate shared array to hold the mapping
-MPISharedSize = INT(2*(BGMimaxglob-BGMiminglob+1)*(BGMjmaxglob-BGMjminglob+1)*(BGMkmaxglob-BGMkminglob+1),MPI_ADDRESS_KIND)&
+MPISharedSize = INT(3*(BGMimaxglob-BGMiminglob+1)*(BGMjmaxglob-BGMjminglob+1)*(BGMkmaxglob-BGMkminglob+1),MPI_ADDRESS_KIND)&
                                                                                                          *MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/2,BGMimaxglob-BGMiminglob+1,BGMjmaxglob-BGMjminglob+1,BGMkmaxglob-BGMkminglob+1/), &
+CALL Allocate_Shared(MPISharedSize,(/3,BGMimaxglob-BGMiminglob+1,BGMjmaxglob-BGMjminglob+1,BGMkmaxglob-BGMkminglob+1/), &
                                     FIBGMToProc_Shared_Win,FIBGMToProc_Shared)
 CALL MPI_WIN_LOCK_ALL(0,FIBGMToProc_Shared_Win,IERROR)
 FIBGMToProc => FIBGMToProc_Shared
@@ -778,6 +781,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 ! CN root build the mapping to avoid further communication
 IF (myComputeNodeRank.EQ.0) THEN
   nFIBGMToProc = 0
+  hFIBGMToProc = 0
 
   DO kBGM = BGMkminglob,BGMkmaxglob
     DO jBGM = BGMjminglob,BGMjmaxglob
@@ -787,9 +791,14 @@ IF (myComputeNodeRank.EQ.0) THEN
         ! Save number of procs per FIBGM element
         DO iProc = 0,nProcessors_Global-1
           ! Proc belongs to current FIBGM cell
-          IF (FIBGMToProcTmp(iBGM,jBGM,kBGM,iProc)) THEN
+          IF (FIBGMToProcTmp(1,iBGM,jBGM,kBGM,iProc)) THEN
             nFIBGMToProc = nFIBGMToProc + 1
             FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM) = FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM) + 1
+          END IF
+          ! Proc belongs to current FIBGM cell but FIBGM cell contains elements which are not in the halo region
+          IF (FIBGMToProcTmp(2,iBGM,jBGM,kBGM,iProc)) THEN
+            hFIBGMToProc = hFIBGMToProc + 1
+            FIBGMToProc(FIBGM_HPROCS,iBGM,jBGM,kBGM) = FIBGMToProc(FIBGM_HPROCS,iBGM,jBGM,kBGM) + 1
           END IF
         END DO
       END DO
@@ -824,7 +833,7 @@ IF (myComputeNodeRank.EQ.0) THEN
         ! Save proc ID
         DO iProc = 0,nProcessors_Global-1
           ! Proc belongs to current FIBGM cell
-          IF (FIBGMToProcTmp(iBGM,jBGM,kBGM,iProc)) THEN
+          IF (FIBGMToProcTmp(1,iBGM,jBGM,kBGM,iProc)) THEN
             nFIBGMToProc = nFIBGMToProc + 1
             FIBGMProcs(nFIBGMToProc) = iProc
           END IF

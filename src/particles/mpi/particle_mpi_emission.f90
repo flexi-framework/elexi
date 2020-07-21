@@ -453,6 +453,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMProcs
 !USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID
 !USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_nTotalElems
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI,PartMPIInsert,PartMPILocate
 USE MOD_Particle_MPI_Vars      ,ONLY: EmissionSendBuf,EmissionRecvBuf
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef,Species
@@ -473,7 +474,7 @@ INTEGER,INTENT(OUT)           :: mySumOfMatchedParticles
 INTEGER                       :: i,iPos,iProc,iDir,ElemID,ProcID
 ! BGM
 INTEGER                       :: ijkBGM(3,chunkSize)
-INTEGER                       :: TotalNbrOfRecvParts!iBGMElem,nBGMElems,
+INTEGER                       :: TotalNbrOfRecvParts!,iBGMElem,nBGMElems
 LOGICAL                       :: InsideMyBGM(2,chunkSize)
 ! Temporary state arrays
 REAL,ALLOCATABLE              :: chunkState(:,:)
@@ -582,11 +583,11 @@ DO i=1,chunkSize
               jBGM => ijkBGM(2,i), &
               kBGM => ijkBGM(3,i))
 
-    !--- check if BGM cell contains procs not within the halo region
-    IF (FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM).NE.FIBGMToProc(FIBGM_HPROCS,iBGM,jBGM,kBGM)) THEN
+    !--- check if BGM cell contains elements not within the halo region
+    IF (FIBGM_nElems(iBGM,jBGM,kBGM).NE.FIBGM_nTotalElems(iBGM,jBGM,kBGM)) THEN
       !--- if any elements are found, communicate particle to all procs
       InsideMyBGM(2,i) = .FALSE.
-    END IF ! FIBGMToProc(FIBGM_NPROCS,iBGM,jBGM,kBGM).NE.FIBGMToProc(FIBGM_HPROCS,iBGM,jBGM,kBGM)
+    END IF ! (FIBGM_nElems(iBGM,jBGM,kBGM).NE.FIBGM_nTotalElems(iBGM,jBGM,kBGM))
     END ASSOCIATE
   END IF ! InsideMyBGM(i)
 END DO ! i = 1, chunkSize
@@ -914,7 +915,7 @@ DO i = 1,TotalNbrOfRecvParts
   ParticleIndexNbr = PDM%nextFreePosition(mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
    IF (ParticleIndexNbr.NE.0) THEN
      ! Fill the PartState manually to avoid a second localization
-     PartState(1:DimSend,ParticleIndexNbr) = recvPartPos(DimSend*(i-1)+1:DimSend*(i-1)+3)
+     PartState(1:3,ParticleIndexNbr) = recvPartPos(DimSend*(i-1)+1:DimSend*(i-1)+3)
      PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
      IF (TrackingMethod.EQ.REFMAPPING) THEN
        CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),ElemID)
@@ -954,8 +955,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
       IF (TrackingMethod.EQ.REFMAPPING) THEN
         PartPosRef(1:3,ParticleIndexNbr) = EmissionRecvBuf(iProc)%content(PartCommSize*(i-1)+4:PartCommSize*(i-1)+6)
       END IF ! TrackingMethod.EQ.REFMAPPING
-      PEM%Element(ParticleIndexNbr)    = INT(EmissionRecvBuf(iProc)%content(PartCommSize*(i)),KIND=4)
-!      WRITE(*,*) ParticleIndexNbr,PEM%Element(ParticleIndexNbr)
+      PEM%Element(ParticleIndexNbr) = INT(EmissionRecvBuf(iProc)%content(PartCommSize*(i)),KIND=4)
 
       PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
 !      IF (TrackingMethod.EQ.REFMAPPING) THEN

@@ -130,7 +130,7 @@ REAL,ALLOCATABLE               :: BoundsOfElemCenter(:),MPISideBoundsOfElemCente
 LOGICAL                        :: ElemInsideHalo
 INTEGER                        :: firstHaloElem,lastHaloElem
 ! FIBGMToProc
-INTEGER                        :: iProc,ProcRank,nFIBGMToProc,hFIBGMToProc,MessageSize
+INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize
 INTEGER                        :: BGMiminglob,BGMimaxglob,BGMjminglob,BGMjmaxglob,BGMkminglob,BGMkmaxglob
 LOGICAL,ALLOCATABLE            :: FIBGMToProcTmp(:,:,:,:)
 INTEGER,ALLOCATABLE            :: FIBGM_nTotalElemsTmp(:,:,:)
@@ -792,7 +792,6 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 ! CN root build the mapping to avoid further communication
 IF (myComputeNodeRank.EQ.0) THEN
   nFIBGMToProc = 0
-  hFIBGMToProc = 0
 
   DO kBGM = BGMkminglob,BGMkmaxglob
     DO jBGM = BGMjminglob,BGMjmaxglob
@@ -899,6 +898,8 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 !CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(BoundsOfElem_Shared_Win,iError)
 CALL MPI_WIN_FREE(BoundsOfElem_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(FIBGM_nTotalElems_Shared_Win,iError)
+CALL MPI_WIN_FREE(FIBGM_nTotalElems_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(FIBGM_nElems_Shared_Win,iError)
 CALL MPI_WIN_FREE(FIBGM_nElems_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(FIBGM_offsetElem_Shared_Win,iError)
@@ -919,6 +920,7 @@ SDEALLOCATE(GlobalElem2CNTotalElem)
 
 !MDEALLOCATE(ElemToBGM_Shared)
 MDEALLOCATE(BoundsOfElem_Shared)
+MDEALLOCATE(FIBGM_nTotalElems_Shared)
 MDEALLOCATE(FIBGM_nElems_Shared)
 MDEALLOCATE(FIBGM_offsetElem_Shared)
 MDEALLOCATE(FIBGM_Element_Shared)

@@ -455,7 +455,7 @@ USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 USE MOD_Particle_Globals            ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Intersection       ,ONLY: OutputTrajectory
 USE MOD_Particle_Tracking_Vars      ,ONLY: PartOut,MPIRankOut
-USE MOD_Particle_Mesh_Vars          ,ONLY: GEO,ElemBaryNGeo,ElemEpsOneCell
+USE MOD_Particle_Mesh_Vars          ,ONLY: GEO,ElemBaryNGeo
 USE MOD_TimeDisc_Vars               ,ONLY: currentStage
 #endif /*CODE_ANALYZE*/
 #if USE_LOADBALANCE
@@ -534,8 +534,11 @@ DO iPart=1,PDM%ParticleVecLength
     ElemID   = PEM%lastElement(iPart)
     CNElemID = GetCNElemID(ElemID)
     CALL GetPositionInRefElem(LastPartPos(1:3,iPart),RefPos,ElemID)
-!    IF (MAXVAL(ABS(RefPos)).LE.1.0+1e-4) foundHit=.TRUE.
-    IF (MAXVAL(ABS(RefPos)).LE.ElemEpsOneCell(GetCNElemID(ElemID))) foundHit=.TRUE.
+    IF (MAXVAL(ABS(RefPos)).LE.1.0+1e-4) THEN
+      foundHit = .TRUE.
+    ELSE
+      foundHit = .FALSE.
+    END IF
     IF(.NOT.foundHit)THEN  ! particle not inside
       IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
       IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
@@ -945,7 +948,7 @@ DO iPart=1,PDM%ParticleVecLength
 
 #if USE_LOADBALANCE
     IF (PEM%Element(iPart).GE.offsetElem+1.AND.PEM%Element(iPart).GE.offsetElem+PP_nElems) &
-      CALL LBElemPauseTime(PEM%Element(iPart),tLBStart)
+      CALL LBElemPauseTime(PEM%Element(iPart)-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
   END IF ! Part inside
 END DO ! iPart
@@ -977,8 +980,11 @@ DO iPart=1,PDM%ParticleVecLength
     ! caution: reuse of variable, foundHit=TRUE == inside
     ElemID=PEM%Element(iPart)
     CALL GetPositionInRefElem(PartState(1:3,iPart),RefPos,ElemID)
-!    IF (MAXVAL(ABS(RefPos)).LE.1.0+1e-4) foundHit = .TRUE.
-    IF (MAXVAL(ABS(RefPos)).LE.ElemEpsOneCell(GetCNElemID(ElemID))) foundHit = .TRUE.
+    IF (MAXVAL(ABS(RefPos)).LE.1.0+1e-4) THEN
+      foundHit = .TRUE.
+    ELSE
+      foundHit = .FALSE.
+    END IF
     IF (.NOT.foundHit) THEN  ! particle not inside
      IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart

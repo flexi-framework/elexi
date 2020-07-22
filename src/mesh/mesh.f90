@@ -323,12 +323,7 @@ IF (meshMode.GT.0) THEN
   ! fill ElemToSide, SideToElem,BC
   ALLOCATE(ElemToSide(2,6,nElems))
   ALLOCATE(SideToElem(5,nSides))
-!  Particles need BC allocated for ALL sides, not just BC sides
-#if USE_PARTICLES
-  ALLOCATE(BC(1:nSides))
-#else
   ALLOCATE(BC(1:nBCSides))
-#endif
   ALLOCATE(AnalyzeSide(1:nSides))
   ElemToSide  = 0
   SideToElem  = -1   !mapping side to elem, sorted by side ID (for surfint)
@@ -338,21 +333,14 @@ IF (meshMode.GT.0) THEN
   !NOTE: nMortarSides=nMortarInnerSides+nMortarMPISides
   ALLOCATE(MortarType(2,1:nSides))              ! 1: Type, 2: Index in MortarInfo
   ALLOCATE(MortarInfo(MI_FLIP,4,nMortarSides)) ! [1]: 1: Neighbour sides, 2: Flip, [2]: small sides
-
-#if USE_PARTICLES
-! Particles need this changed to -1 to follow PICLAS assumptions
-  MortarType=-1
-#else
   MortarType=0
-#endif
   MortarInfo=-1
 
   SWRITE(UNIT_stdOut,'(A)') " NOW CALLING fillMeshInfo..."
   CALL fillMeshInfo()
 
 #if !USE_PARTICLES
-! keep pointers for particle mesh
-  ! deallocate pointers
+  ! keep pointers for particle mesh, otherwise deallocate pointers
   SWRITE(UNIT_stdOut,'(A)') " NOW CALLING deleteMeshPointer..."
   CALL deleteMeshPointer()
 #endif
@@ -368,7 +356,6 @@ IF (meshMode.GT.0) THEN
 
   ! Build necessary mappings
   CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M,dim=PP_dim)
-
 END IF
 
 IF (meshMode.GT.1) THEN

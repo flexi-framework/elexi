@@ -365,15 +365,9 @@ DO iElem=FirstElemInd,LastElemInd
       aSide%Ind=ABS(SideInfo(SIDE_ID,iSide))
       IF(oriented)THEN !oriented side
         aSide%flip=0
-#if USE_PARTICLES
-        aSide%BC_Alpha=99
-#endif /*PARTICLES*/
       ELSE !not oriented
         aSide%flip=MOD(Sideinfo(SIDE_Flip,iSide),10)
         IF((aSide%flip.LT.0).OR.(aSide%flip.GT.4)) STOP 'NodeID doesnt belong to side'
-#if USE_PARTICLES
-        aSide%BC_Alpha=-99
-#endif /*PARTICLES*/
       END IF
     ELSE ! side is a big Mortar side
       DO iMortar=1,aSide%nMortars ! iterate over virtual small Mortar sides
@@ -382,9 +376,6 @@ DO iElem=FirstElemInd,LastElemInd
         IF(SideInfo(SIDE_ID,iSide).LT.0) STOP 'Problem in Mortar readin,should be flip=0'
         aSide%mortarSide(iMortar)%sp%flip=0
         aSide%mortarSide(iMortar)%sp%Ind =ABS(SideInfo(SIDE_ID,iSide))
-#if USE_PARTICLES
-        aSide%BC_Alpha=99
-#endif /*PARTICLES*/
       END DO !iMortar
     END IF
   END DO !i=1,locnSides
@@ -426,9 +417,6 @@ DO iElem=FirstElemInd,LastElemInd
         IF((BoundaryType(aSide%BCindex,BC_TYPE).NE.1).AND.&
            (BoundaryType(aSide%BCindex,BC_TYPE).NE.100))THEN
           aSide%flip  =0
-#if USE_PARTICLES
-          aSide%BC_Alpha=0
-#endif /*PARTICLES*/
           IF(iMortar.EQ.0) aSide%mortarType  = 0
           IF(iMortar.EQ.0) aSide%nMortars    = 0
           CYCLE

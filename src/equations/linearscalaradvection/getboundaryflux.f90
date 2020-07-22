@@ -50,12 +50,6 @@ END INTERFACE
 PUBLIC :: Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
 
-#if USE_PARTICLES
-INTERFACE GetBoundaryState
-  MODULE PROCEDURE GetBoundaryState
-END INTERFACE
-#endif /*USE_PARTICLES*/
-
 PUBLIC :: InitBC
 PUBLIC :: GetBoundaryFlux
 #if FV_ENABLED
@@ -63,9 +57,6 @@ PUBLIC :: GetBoundaryFlux
 PUBLIC :: GetBoundaryFVgradient
 #endif
 #endif
-#if USE_PARTICLES
-PUBLIC :: GetBoundaryState
-#endif /*USE_PARTICLES*/
 PUBLIC :: FinalizeBC
 !==================================================================================================================================
 

@@ -12,9 +12,9 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#if USE_PARTICLES
+#if USE_LOADBALANCE
 #include "particle.h"
-#endif /*USE_PARTICLES*/
+#endif /*USE_LOADBALANCE*/
 
 !==================================================================================================================================
 !> \brief Computes the DGSEM spatial operator and updates residual Ut

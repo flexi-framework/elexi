@@ -63,18 +63,11 @@ USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 USE MOD_MPI,               ONLY:InitMPIvars
 #endif
 #if USE_PARTICLES
-USE MOD_ErosionPoints,     ONLY:DefineParametersErosionPoints
-USE MOD_Particle_Analyze,  ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
-USE MOD_Particle_Boundary_Sampling,ONLY:DefineParametersParticleBoundarySampling,RestartParticleBoundarySampling
 USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticleGlobals,InitParticles
-USE MOD_Particle_Interpolation,ONLY:DefineParametersParticleInterpolation
-USE MOD_Particle_Mesh,     ONLY:DefineparametersParticleMesh,InitParticleMesh
-USE MOD_Particle_Restart
-USE MOD_Particle_Surfaces, ONLY:InitParticleSurfaces
 #if USE_MPI
 USE MOD_Particle_MPI,      ONLY:InitParticleMPI
-USE MOD_LoadBalance,       ONLY:DefineParametersLoadBalance,InitLoadBalance
-USE MOD_Particle_MPI_Shared,ONLY:DefineParametersMPIShared,InitMPIShared
+USE MOD_LoadBalance,       ONLY:InitLoadBalance
+USE MOD_Particle_MPI_Shared,ONLY:InitMPIShared
 #if USE_LOADBALANCE
 USE MOD_Restart_Vars,      ONLY:DoRestart
 #endif /*LOADBALANCE*/
@@ -161,15 +154,6 @@ CALL DefineParametersAnalyze()
 CALL DefineParametersRecordPoints()
 #if USE_PARTICLES
 CALL DefineParametersParticles()
-CALL DefineParametersParticleMesh()
-CALL DefineParametersParticleInterpolation()
-CALL DefineParametersParticleAnalyze()
-CALL DefineParametersParticleBoundarySampling()
-CALL DefineParametersErosionPoints()
-#if USE_MPI
-CALL DefineParametersLoadBalance()
-CALL DefineParametersMPIShared()
-#endif /*USE_MPI*/
 #endif /*PARTICLES*/
 
 ! check for command line argument --help or --markdown
@@ -253,10 +237,7 @@ CALL Restart()
 #if USE_MPI
 CALL InitParticleMPI()
 #endif /*USE_MPI*/
-CALL InitParticleSurfaces()
-CALL InitParticleAnalyze()
 CALL InitParticles()
-CALL RestartParticleBoundarySampling()
 #endif /*USE_PARTICLES*/
 CALL IgnoredParameters()
 
@@ -300,10 +281,7 @@ USE MOD_FV_Basis,          ONLY:FinalizeFV_Basis
 USE MOD_Indicator,         ONLY:FinalizeIndicator
 USE MOD_ReadInTools,       ONLY:FinalizeParameters
 #if USE_PARTICLES
-USE MOD_Particle_Analyze,  ONLY:FinalizeParticleAnalyze
 USE MOD_Particle_Init,     ONLY:FinalizeParticles
-USE MOD_Particle_Mesh,     ONLY:FinalizeParticleMesh
-USE MOD_Particle_Surfaces, ONLY:FinalizeParticleSurfaces
 #if USE_MPI
 USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
 USE MOD_Particle_MPI,      ONLY:FinalizeParticleMPI
@@ -347,9 +325,6 @@ CALL FinalizeParticleMPI()
 CALL FinalizeLoadBalance()
 #endif /*USE_LOADBALANCE*/
 CALL FinalizeParticles()
-CALL FinalizeParticleAnalyze()
-CALL FinalizeParticleSurfaces()
-CALL FinalizeParticleMesh()
 #if USE_MPI
 ! Must be called last because MPI3 shared windows are deallocated on MPI_COMM_SHARED
 CALL FinalizeMPIShared()

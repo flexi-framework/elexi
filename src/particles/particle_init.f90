@@ -62,8 +62,17 @@ CONTAINS
 SUBROUTINE DefineParametersParticles()
 ! MODULES
 USE MOD_ReadInTools
-USE MOD_Particle_Vars
+USE MOD_ErosionPoints,              ONLY:DefineParametersErosionPoints
+USE MOD_Particle_Analyze,           ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
+USE MOD_Particle_Boundary_Sampling, ONLY:DefineParametersParticleBoundarySampling
 USE Mod_Particle_Globals
+USE MOD_Particle_Interpolation,     ONLY:DefineParametersParticleInterpolation
+USE MOD_Particle_Mesh,              ONLY:DefineParametersParticleMesh
+USE MOD_Particle_Vars
+#if USE_MPI
+USE MOD_LoadBalance,                ONLY:DefineParametersLoadBalance
+USE MOD_Particle_MPI_Shared,        ONLY:DefineParametersMPIShared
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -460,6 +469,17 @@ CALL prms%CreateRealOption(         'Part-Boundary[$]-AmbientDens', 'Ambient den
 CALL prms%CreateRealOption(         'Part-Boundary[$]-AmbientDynamicVisc' , 'Ambient dynamic viscosity'                            &
                                                                             , numberedmulti=.TRUE.)
 
+! Call every other DefineParametersParticle routine
+CALL DefineParametersParticleMesh()
+CALL DefineParametersParticleInterpolation()
+CALL DefineParametersParticleAnalyze()
+CALL DefineParametersParticleBoundarySampling()
+CALL DefineParametersErosionPoints()
+#if USE_MPI
+CALL DefineParametersLoadBalance()
+CALL DefineParametersMPIShared()
+#endif /*USE_MPI*/
+
 END SUBROUTINE DefineParametersParticles
 
 
@@ -541,10 +561,14 @@ USE Mod_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_IO_HDF5,                    ONLY: AddToElemData
 USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
+USE MOD_Particle_Analyze,           ONLY: InitParticleAnalyze
+USE MOD_Particle_Boundary_Sampling, ONLY: RestartParticleBoundarySampling
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_SGS,               ONLY: ParticleSGS
+USE MOD_Particle_Surfaces,          ONLY: InitParticleSurfaces
 USE MOD_Particle_Surface_Flux,      ONLY: InitializeParticleSurfaceflux
+USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
@@ -571,6 +595,10 @@ END IF
 !SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES...'
 
+IF(TrackingMethod.NE.TRIATRACKING) THEN
+  CALL InitParticleSurfaces()
+END IF
+
 !CALL InitializeVariables(ManualTimeStep_opt)
 CALL InitializeVariables()
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
@@ -579,6 +607,9 @@ CALL ParticleInitRandomWalk()
 #endif
 ! InitSGS must be called after InitRandomWalk and will abort FLEXI if an RW model is defined
 CALL ParticleInitSGS()
+
+! Requires information about initialized variables
+CALL InitParticleAnalyze()
 
 ! Restart particles here, otherwise we can not know if we need to have an initial emission
 IF (PRESENT(doLoadBalance_opt)) THEN
@@ -594,7 +625,11 @@ CALL InitializeParticleSurfaceFlux()
 #if USE_MPI
 ! has to be called AFTER InitializeVariables because we need to read the parameter file to know the CommSize
 CALL InitParticleCommSize()
+
 #endif
+
+! Rebuild previous sampling on surfMesh
+CALL RestartParticleBoundarySampling()
 
 ParticlesInitIsDone=.TRUE.
 
@@ -1564,10 +1599,13 @@ SUBROUTINE FinalizeParticles()
 ! MODULES
 USE MOD_Globals
 USE MOD_ErosionPoints,              ONLY: FinalizeErosionPoints
+USE MOD_Particle_Analyze,           ONLY: FinalizeParticleAnalyze
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Sampling, ONLY: FinalizeParticleBoundarySampling
 USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
+USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
 USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
+USE MOD_Particle_Surfaces,          ONLY: FinalizeParticleSurfaces
 USE MOD_Particle_Vars
 #if USE_MPI
 USE MOD_Particle_MPI_Emission,      ONLY: FinalizeEmissionComm
@@ -1659,6 +1697,10 @@ CALL FinalizeParticleBoundarySampling()
 ! particle MPI halo exchange
 CALL FinalizePartExchangeProcs()
 #endif
+
+CALL FinalizeParticleAnalyze()
+CALL FinalizeParticleSurfaces()
+CALL FinalizeParticleMesh()
 
 ParticlesInitIsDone = .FALSE.
 

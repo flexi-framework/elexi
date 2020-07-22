@@ -62,7 +62,6 @@ INTERFACE CGNS_SideToVol2
 END INTERFACE
 #endif
 
-
 PUBLIC::BuildMappings
 PUBLIC::Flip_S2M
 PUBLIC::Flip_M2S

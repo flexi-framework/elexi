@@ -76,68 +76,58 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray( PRODUCT(nVal))
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if USE_MPI
-INTEGER                        :: Color, OutPutCOMM,nOutPutProcs,MyOutputRank
-LOGICAL                        :: DataOnProc, DoNotSplit
+INTEGER                        :: color,OutPutCOMM,nOutPutProcs
+LOGICAL                        :: DataOnProc,DoNotSplit,OutputCollective,OutputSingle
 !===================================================================================================================================
 
-DataOnProc=.FALSE.
-IF(nVal(offSetDim).GT.0) DataOnProc=.TRUE.
-CALL MPI_ALLREDUCE(DataOnProc,DoNotSplit, 1, MPI_LOGICAL, MPI_LAND, COMMUNICATOR, IERROR)
+! 1: check if every proc of given communicator has data
+DataOnProc = MERGE(.TRUE.,.FALSE.,nVal(offSetDim).GT.0)
+CALL MPI_ALLREDUCE(DataOnProc,DoNotSplit,1,MPI_LOGICAL,MPI_LAND,COMMUNICATOR,IERROR)
 
+! 2: if any proc has no data, split the communicator and write only with the new communicator
+IF (.NOT.DoNotSplit) THEN
+  color = MERGE(87,MPI_UNDEFINED,DataOnProc)
+  CALL MPI_COMM_SPLIT(COMMUNICATOR,color,MPI_INFO_NULL,OutputCOMM,iError)
 
-IF(.NOT.DoNotSplit)THEN
-  color=MPI_UNDEFINED
-  IF(DataOnProc) color=87
-  MyOutputRank=0
-
-  CALL MPI_COMM_SPLIT(COMMUNICATOR, color, MyOutputRank, OutputCOMM,iError)
   IF(DataOnProc) THEN
-    CALL MPI_COMM_SIZE(OutputCOMM, nOutPutProcs,iError)
-    IF(nOutPutProcs.EQ.1)THEN
-      CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.,communicatorOpt=OutputCOMM)
-      IF(PRESENT(RealArray)) CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
-                                                   offset,collective=.FALSE.,RealArray=RealArray)
-      IF(PRESENT(IntArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
-                                                   offset,collective=.FALSE.,IntArray =IntArray)
-      IF(PRESENT(StrArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
-                                                   offset,collective=.FALSE.,StrArray =StrArray)
-      CALL CloseDataFile()
-    ELSE
-      CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.,communicatorOpt=OutputCOMM)
-      IF(PRESENT(RealArray)) CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
-                                                   offset,collective,RealArray=RealArray)
-      IF(PRESENT(IntArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
-                                                   offset,collective,IntArray =IntArray)
-      IF(PRESENT(StrArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
-                                                   offset,collective,StrArray =StrArray)
-      CALL CloseDataFile()
-    END IF
-    CALL MPI_BARRIER(OutputCOMM,IERROR)
+    CALL MPI_COMM_SIZE(OutputCOMM,nOutPutProcs,iError)
+
+    OutputCollective = MERGE(.FALSE.,collective,nOutPutProcs.EQ.1)
+    OutputSingle     = MERGE(.TRUE.,.FALSE.    ,nOutPutProcs.EQ.1)
+
+    CALL OpenDataFile(FileName,create=.FALSE.,single=OutputSingle,readOnly=.FALSE.,communicatorOpt=OutputCOMM)
+    IF(PRESENT(RealArray)) CALL WriteArray( DataSetName,rank,nValGlobal,nVal,                        &
+                                            offset,collective=OutputCollective,RealArray=RealArray)
+    IF(PRESENT(IntArray))  CALL WriteArray( DataSetName,rank,nValGlobal,nVal,                        &
+                                            offset,collective=OutputCollective,IntArray =IntArray)
+    IF(PRESENT(StrArray))  CALL WriteArray( DataSetName,rank,nValGlobal,nVal,                        &
+                                            offset,collective=OutputCollective,StrArray =StrArray)
+    CALL CloseDataFile()
+    CALL MPI_BARRIER  (OutputCOMM,IERROR)
     CALL MPI_COMM_FREE(OutputCOMM,iERROR)
   END IF
-  ! MPI Barrier is requried, that the other procs don't open the datafile while this procs are still writring
+  ! MPI Barrier is required so procs don't open the datafile while the output procs are still writing
   CALL MPI_BARRIER(COMMUNICATOR,IERROR)
-  OutputCOMM=MPI_UNDEFINED
+  ! Communicator was realized, also nullify variable
+  OutputCOMM = MPI_UNDEFINED
+
+! 3: else write with all procs of the given communicator
+! communicator_opt has to be the given communicator or else procs that are not in the given communicator might block the write out
+! e.g. surface communicator contains only procs with physical surface and MPI_COMM_WORLD contains every proc
+!      Consequently, MPI_COMM_WORLD would block communication
 ELSE
   CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
-#else
-!  CALL OpenDataFile(FileName,create=.FALSE.,readOnly=.FALSE.)
-  CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
-#endif
-  IF(PRESENT(RealArray)) CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
-                                               offset,collective,RealArray=RealArray)
-  IF(PRESENT(IntArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
-                                               offset,collective,IntArray =IntArray)
-  IF(PRESENT(StrArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
-                                               offset,collective,StrArray =StrArray)
+  IF(PRESENT(RealArray)) CALL WriteArray( DataSetName,rank,nValGlobal,nVal,                          &
+                                          offset,collective,RealArray=RealArray)
+  IF(PRESENT(IntArray))  CALL WriteArray( DataSetName,rank,nValGlobal,nVal,                          &
+                                          offset,collective,IntArray =IntArray)
+  IF(PRESENT(StrArray))  CALL WriteArray( DataSetName,rank,nValGlobal,nVal,                          &
+                                          offset,collective,StrArray =StrArray)
   CALL CloseDataFile()
-#if USE_MPI
 END IF
-#endif
 
 END SUBROUTINE DistributedWriteArray
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 
 #if USE_LOADBALANCE

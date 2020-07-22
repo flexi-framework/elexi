@@ -75,9 +75,7 @@ INTEGER                         :: nInitRegions
 LOGICAL                         :: RegionOnProc
 REAL                            :: xCoords(3,8),lineVector(3),radius,height
 REAL                            :: xlen,ylen,zlen
-INTEGER                         :: color,iProc
-INTEGER                         :: noInitRank,InitRank
-LOGICAL                         :: hasRegion
+INTEGER                         :: color
 !===================================================================================================================================
 
 ! get number of total init regions
@@ -319,71 +317,60 @@ DO iSpec=1,nSpecies
          ylen = abs(GEO%ymaxglob  - GEO%yminglob)
          zlen = abs(GEO%zmaxglob  - GEO%zminglob)
          xCoords(1:3,1) = (/GEO%xminglob,GEO%yminglob,GEO%zminglob/)
-         xCoords(1:3,2) = xCoords(1:3,1) + (/xlen,0.,0./)
-         xCoords(1:3,3) = xCoords(1:3,1) + (/0.,ylen,0./)
-         xCoords(1:3,4) = xCoords(1:3,1) + (/xlen,ylen,0./)
-         xCoords(1:3,5) = xCoords(1:3,1) + (/0.,0.,zlen/)
-         xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.,0./)
-         xCoords(1:3,7) = xCoords(1:3,5) + (/0.,ylen,0./)
-         xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
+         xCoords(1:3,2) = xCoords(1:3,1) + (/xlen,0.  ,0.  /)
+         xCoords(1:3,3) = xCoords(1:3,1) + (/0.  ,ylen,0.  /)
+         xCoords(1:3,4) = xCoords(1:3,1) + (/xlen,ylen,0.  /)
+         xCoords(1:3,5) = xCoords(1:3,1) + (/0.  ,0.  ,zlen/)
+         xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.  ,0.  /)
+         xCoords(1:3,7) = xCoords(1:3,5) + (/0.  ,ylen,0.  /)
+         xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0.  /)
          RegionOnProc = BoxInProc(xCoords,8)
 
       CASE DEFAULT
         CALL ABORT(__STAMP__,'ERROR: Given SpaceIC is not implemented!')
 
     END SELECT
-    ! create new communicator
-    color=MPI_UNDEFINED
-    IF(RegionOnProc) color=nInitRegions!+1
-    ! set communicator id
-    Species(iSpec)%Init(iInit)%InitComm=nInitRegions
 
-    ! create ranks for RP communicator
-    IF(PartMPI%MPIRoot) THEN
-      InitRank=-1
-      noInitRank=-1
-      iRank=0
-      PartMPI%InitGroup(nInitRegions)%MyRank=0
-      IF(RegionOnProc) THEN
-        InitRank=0
-      ELSE
-        noInitRank=0
+    ! create new communicator
+    color = MERGE(nInitRegions,MPI_UNDEFINED,RegionOnProc)
+
+    ! set communicator id
+    Species(iSpec)%Init(iInit)%InitComm = nInitRegions
+    ! create new emission communicator for emission communication. Pass MPI_INFO_NULL as rank to follow the original ordering
+    CALL MPI_COMM_SPLIT(PartMPI%COMM,color,MPI_INFO_NULL,PartMPI%InitGroup(nInitRegions)%COMM,iError)
+
+    ! Find my rank on the shared communicator, comm size and proc name
+    IF (RegionOnProc) THEN
+      CALL MPI_COMM_RANK(PartMPI%InitGroup(nInitRegions)%COMM, PartMPI%InitGroup(nInitRegions)%MyRank,iError)
+      CALL MPI_COMM_SIZE(PartMPI%InitGroup(nInitRegions)%COMM, PartMPI%InitGroup(nInitRegions)%nProcs,iError)
+
+      ! inform about size of emission communicator
+      IF (PartMPI%InitGroup(nInitRegions)%MyRank.EQ.0) THEN
+        WRITE(UNIT_StdOut,'(A,I0,A,I0,A)') 'Emission-Region ',nInitRegions,', started Emission-Communicator with ', &
+                                           PartMPI%InitGroup(nInitRegions)%nProcs,' procs'
       END IF
-      DO iProc=1,PartMPI%nProcs-1
-        CALL MPI_RECV(hasRegion,1,MPI_LOGICAL,iProc,0,PartMPI%COMM,MPIstatus,iError)
-        IF(hasRegion) THEN
-          InitRank=InitRank+1
-          CALL MPI_SEND(InitRank,1,MPI_INTEGER,iProc,0,PartMPI%COMM,iError)
-        ELSE
-          noInitRank=noInitRank+1
-          CALL MPI_SEND(noInitRank,1,MPI_INTEGER,iProc,0,PartMPI%COMM,iError)
-        END IF
-      END DO
-    ELSE
-      CALL MPI_SEND(RegionOnProc,1,MPI_LOGICAL,0,0,PartMPI%COMM,iError)
-      CALL MPI_RECV(PartMPI%InitGroup(nInitRegions)%MyRank,1,MPI_INTEGER,0,0,PartMPI%COMM,MPIstatus,iError)
     END IF
 
-    ! create new emission communicator
-    CALL MPI_COMM_SPLIT(PartMPI%COMM, color, PartMPI%InitGroup(nInitRegions)%MyRank, PartMPI%InitGroup(nInitRegions)%COMM,iError)
-    IF(RegionOnProc) CALL MPI_COMM_SIZE(PartMPI%InitGroup(nInitRegions)%COMM,PartMPI%InitGroup(nInitRegions)%nProcs ,iError)
-    IF(PartMPI%InitGroup(nInitRegions)%MyRank.EQ.0 .AND. RegionOnProc) &
-    WRITE(UNIT_StdOut,*) 'Emission-Region,Emission-Communicator:',nInitRegions,PartMPI%InitGroup(nInitRegions)%nProcs,' procs'
-    IF(PartMPI%InitGroup(nInitRegions)%COMM.NE.MPI_COMM_NULL) THEN
-      IF(PartMPI%InitGroup(nInitRegions)%MyRank.EQ.0) THEN
-        PartMPI%InitGroup(nInitRegions)%MPIRoot=.TRUE.
-      ELSE
-        PartMPI%InitGroup(nInitRegions)%MPIRoot=.FALSE.
-      END IF
+    ! build mapping for procs on emission communicator
+    IF (PartMPI%InitGroup(nInitRegions)%COMM.NE.MPI_COMM_NULL) THEN
+      PartMPI%InitGroup(nInitRegions)%MPIRoot = MERGE(.TRUE.,.FALSE.,PartMPI%InitGroup(nInitRegions)%MyRank.EQ.0)
+
       ALLOCATE(PartMPI%InitGroup(nInitRegions)%GroupToComm(0:PartMPI%InitGroup(nInitRegions)%nProcs-1))
-      PartMPI%InitGroup(nInitRegions)%GroupToComm(PartMPI%InitGroup(nInitRegions)%MyRank)= PartMPI%MyRank
-      CALL MPI_ALLGATHER(PartMPI%MyRank,1,MPI_INTEGER&
-                        ,PartMPI%InitGroup(nInitRegions)%GroupToComm(0:PartMPI%InitGroup(nInitRegions)%nProcs-1)&
-                       ,1,MPI_INTEGER,PartMPI%InitGroup(nInitRegions)%COMM,iERROR)
+      PartMPI%InitGroup(nInitRegions)%GroupToComm(PartMPI%InitGroup(nInitRegions)%MyRank) = PartMPI%MyRank
+      CALL MPI_ALLGATHER( PartMPI%MyRank                                                                            &
+                        , 1                                                                                         &
+                        , MPI_INTEGER                                                                               &
+                        , PartMPI%InitGroup(nInitRegions)%GroupToComm(0:PartMPI%InitGroup(nInitRegions)%nProcs-1)   &
+                        , 1                                                                                         &
+                        , MPI_INTEGER                                                                               &
+                        , PartMPI%InitGroup(nInitRegions)%COMM                                                      &
+                        , iERROR)
+
+      ! reverse mapping
       ALLOCATE(PartMPI%InitGroup(nInitRegions)%CommToGroup(0:PartMPI%nProcs-1))
-      PartMPI%InitGroup(nInitRegions)%CommToGroup(0:PartMPI%nProcs-1)=-1
-      DO iRank=0,PartMPI%InitGroup(nInitRegions)%nProcs-1
-        PartMPI%InitGroup(nInitRegions)%CommToGroup(PartMPI%InitGroup(nInitRegions)%GroupToComm(iRank))=iRank
+      PartMPI%InitGroup(nInitRegions)%CommToGroup(0:PartMPI%nProcs-1) = -1
+      DO iRank = 0,PartMPI%InitGroup(nInitRegions)%nProcs-1
+        PartMPI%InitGroup(nInitRegions)%CommToGroup(PartMPI%InitGroup(nInitRegions)%GroupToComm(iRank)) = iRank
       END DO ! iRank
     END IF
   END DO ! iniT

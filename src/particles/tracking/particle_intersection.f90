@@ -107,9 +107,9 @@ REAL                             :: Vector1(1:3),Vector2(1:3)
 
 CNElemID = GetCNElemID(Element)
 
-PoldX = lastPartPos(1,iPart)
-PoldY = lastPartPos(2,iPart)
-PoldZ = lastPartPos(3,iPart)
+PoldX = LastPartPos(1,iPart)
+PoldY = LastPartPos(2,iPart)
+PoldZ = LastPartPos(3,iPart)
 PnewX = PartState(1,iPart)
 PnewY = PartState(2,iPart)
 PnewZ = PartState(3,iPart)
@@ -226,9 +226,9 @@ LOGICAL                           :: CriticalParallelInSide
       WRITE(UNIT_stdout,'(110("-"))')
       WRITE(UNIT_stdout,'(A,I0)')      '     | Output of planar face constants for Side: ',SideID
       WRITE(UNIT_stdout,'(A,3(X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,SideID)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
+      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0   ,0   ,SideID)
+      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0   ,SideID)
+      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0   ,NGeo,SideID)
       WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
     END IF
   END IF
@@ -365,9 +365,6 @@ USE MOD_Particle_Utils,          ONLY:InsertionSort
 USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:rBoundingBoxChecks
-#if USE_MPI
-USE MOD_Globals,                 ONLY:myRank
-#endif /*USE_MPI*/
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -399,7 +396,7 @@ REAL                                     :: PartFaceAngle
 !===================================================================================================================================
 
 ! set alpha to minus 1, assume no intersection
-alpha=-1.0
+alpha =-1.0
 xi    = 2.0
 eta   = 2.0
 isHit=.FALSE.
@@ -539,7 +536,7 @@ USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBilinear
 USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
 USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos,PEM
 #if CODE_ANALYZE
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D,epsilonTol
+USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 USE MOD_Mesh_Vars,               ONLY:NGeo
 #endif /*CODE_ANALYZE*/
@@ -951,22 +948,23 @@ SUBROUTINE ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,a
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Mesh_Vars,               ONLY:NGeo,BC
-USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos
+USE MOD_Mesh_Vars,               ONLY:NGeo
+USE MOD_Particle_Mesh_Vars,      ONLY:SideInfo_Shared
+USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,BezierNewtonAngle
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Particle_Surfaces_Vars,  ONLY:locXi,locEta,locAlpha
 USE MOD_Particle_Surfaces_Vars,  ONLY:BoundingBoxIsEmpty
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideSlabNormals
-USE MOD_Particle_Utils,          ONLY:InsertionSort
-USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipTolerance,BezierClipLocalTol
-USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBezier
+USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
+USE MOD_Particle_Utils,          ONLY:InsertionSort
+USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos
 #if CODE_ANALYZE
 USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
-USE MOD_Particle_Surfaces_Vars,  ONLY:rBoundingBoxChecks,rPerformBezierClip,rPerformBezierNewton
 USE MOD_Particle_Surfaces,       ONLY:OutputBezierControlPoints
+USE MOD_Particle_Surfaces_Vars,  ONLY:rBoundingBoxChecks,rPerformBezierClip,rPerformBezierNewton
+USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1244,7 +1242,7 @@ CASE DEFAULT
        END IF
      END IF
 #endif /*CODE_ANALYZE*/
-    IF(BC(SideID).GT.0)THEN
+    IF(SideInfo_Shared(SIDE_BCID,SideID).GT.0)THEN
       IF(PRESENT(ElemCheck_Opt))THEN
         IF(ElemCheck_Opt)THEN
           IF(MOD(realNInter,2).EQ.0) THEN

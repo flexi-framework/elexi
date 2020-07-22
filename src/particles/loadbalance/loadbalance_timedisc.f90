@@ -109,13 +109,10 @@ USE MOD_Mesh_Vars                  ,ONLY: nElems
 USE MOD_MPI                        ,ONLY: InitMPIVars,FinalizeMPI
 USE MOD_Output_Vars                ,ONLY: ProjectName
 USE MOD_Overintegration            ,ONLY: InitOverintegration,FinalizeOverintegration
-USE MOD_Particle_Boundary_Sampling ,ONLY: RestartParticleBoundarySampling
-USE MOD_Particle_Analyze           ,ONLY: InitParticleAnalyze,FinalizeParticleAnalyze
 USE MOD_Particle_Globals           ,ONLY: InitializationWallTime
 USE MOD_Particle_Init              ,ONLY: InitParticles,FinalizeParticles
-USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh,FinalizeParticleMesh
+USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
 USE MOD_Particle_MPI               ,ONLY: InitParticleMPI,FinalizeParticleMPI
-USE MOD_Particle_Surfaces          ,ONLY: InitParticleSurfaces,FinalizeParticleSurfaces
 USE MOD_RecordPoints               ,ONLY: InitRecordPoints,FinalizeRecordPoints
 USE MOD_ReadInTools                ,ONLY: prms
 USE MOD_Restart                    ,ONLY: InitRestart,FinalizeRestart,Restart
@@ -183,9 +180,6 @@ CALL FinalizeFilter()
 CALL FinalizeIndicator()
 CALL FinalizeParticleMPI()
 CALL FinalizeParticles()
-CALL FinalizeParticleAnalyze()
-CALL FinalizeParticleSurfaces()
-CALL FinalizeParticleMesh()
 CALL FinalizeMPI()
 
 !-- Set removed flag to false
@@ -218,10 +212,7 @@ CALL InitAnalyze()
 CALL InitRecordpoints()
 CALL Restart()
 CALL InitParticleMPI()
-CALL InitParticleSurfaces()
-CALL InitParticleAnalyze()
 CALL InitParticles(doLoadBalance_opt=.TRUE.)
-CALL RestartParticleBoundarySampling()
 
 ! zero ElemTime, the measurement starts again
 ElemTime = 0.

@@ -602,8 +602,10 @@ ALLOCATE(GEO%PeriodicVectors(1:3,GEO%nPeriodicVectors))
 GEO%PeriodicVectors = 0.
 
 DO ElemID = firstElem,lastElem
+  ! Every periodic vector already found
+  IF (ALL(SUM(ABS(GEO%PeriodicVectors(:,:)),1).NE.0)) EXIT
+
   DO SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
-!    SideID = GetGlobalNonUniqueSideID(GetGlobalElemID(ElemID),iLocSide)
     IF (SideInfo_Shared(SIDE_BCID,SideID).EQ.0) CYCLE
 
     ! Boundary is a periodic boundary
@@ -611,31 +613,28 @@ DO ElemID = firstElem,lastElem
 
     ! Check if side is master side
     BCALPHA = BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)
+
     IF (BCALPHA.GT.0) THEN
+      IF (ANY(GEO%PeriodicVectors(:,BCALPHA).NE.0)) CYCLE
 
       ! Periodic slave side has same ID, but negative sign
       GlobalSideID = SideInfo_Shared(SIDE_ID,SideID)
-      DO iNbSide = 1,nNonUniqueGlobalSides
+SideLoop: DO iNbSide = 1,nNonUniqueGlobalSides
         IF (SideInfo_Shared(SIDE_ID,iNbSide).EQ.-GlobalSideID) THEN
           NbElemID      = SideInfo_Shared(SIDE_ELEMID,iNbSide)
           localSideID   = SideInfo_Shared(SIDE_LOCALID,SideID)
           localSideNbID = SideInfo_Shared(SIDE_LOCALID,iNbSide)
-          nStart = MERGE(0,MAX(0,MOD(SideInfo_Shared(SIDE_FLIP,iNbSide),10)-1),SideInfo_Shared(SIDE_ID,iNbSide).GT.0)
+          nStart        = MAX(0,MOD(SideInfo_Shared(SIDE_FLIP,iNbSide),10)-1)
 
           DO iNode = 1,4
-            MasterCoords = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)  +NodeMap(iNode,localSideID))
-            SlaveCoords  = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,NbElemID)+NodeMap(MOD(nStart+iNode-1,4)+1,localSideNbID))
+            MasterCoords = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)  +NodeMap(iNode                  ,localSideID))
+            SlaveCoords  = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,NbElemID)+NodeMap(MOD(nStart+5-iNode,4)+1,localSideNbID))
             PeriodicTmp  = SlaveCoords - MasterCoords
-            IF (VECNORM(GEO%PeriodicVectors(:,BCALPHA)).GT.0) THEN
-              IF (VECNORM(PeriodicTmp).LT.VECNORM(GEO%PeriodicVectors(:,BCALPHA))) THEN
-                GEO%PeriodicVectors(:,BCALPHA) = PeriodicTmp
-              END IF
-            ELSE
-              GEO%PeriodicVectors(:,BCALPHA) = PeriodicTmp
-            END IF
+            GEO%PeriodicVectors(:,BCALPHA) = PeriodicTmp
+            EXIT SideLoop
           END DO
         END IF
-      END DO
+      END DO SideLoop
     END IF
   END DO
 END DO

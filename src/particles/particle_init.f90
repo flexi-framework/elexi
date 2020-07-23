@@ -1209,7 +1209,7 @@ END DO
 !  tmpStringBC(iPartBound) = TRIM(GETSTR('Part-BoundaryName'))
 !END DO
 
-GEO%nPeriodicVectors = 0
+!GEO%nPeriodicVectors = 0
 
 DO iBC = 1,nBCs
   IF (BoundaryType(iBC,1).EQ.0) THEN
@@ -1221,7 +1221,7 @@ DO iBC = 1,nBCs
   SELECT CASE (BoundaryType(iBC, BC_TYPE))
    CASE(1)
      tmpString = 'periodic'
-     GEO%nPeriodicVectors = GEO%nPeriodicVectors+1
+!     GEO%nPeriodicVectors = GEO%nPeriodicVectors+1
 !   CASE(2,12,22)
 !     tmpString='open'
    CASE(3,4)
@@ -1292,7 +1292,7 @@ DO iBC = 1,nBCs
   END SELECT
 END DO
 
-GEO%nPeriodicVectors = GEO%nPeriodicVectors/2
+!GEO%nPeriodicVectors = GEO%nPeriodicVectors/2
 
 SDEALLOCATE(tmpStringBC)
 

@@ -346,8 +346,8 @@ DO iSpec=1,nSpecies
 
       ! inform about size of emission communicator
       IF (PartMPI%InitGroup(nInitRegions)%MyRank.EQ.0) THEN
-        WRITE(UNIT_StdOut,'(A,I0,A,I0,A)') 'Emission-Region ',nInitRegions,', started Emission-Communicator with ', &
-                                           PartMPI%InitGroup(nInitRegions)%nProcs,' procs'
+        WRITE(UNIT_StdOut,'(A,I0,A,I0,A)') ' Emission-Region ',nInitRegions,' has started Emission-Communicator with ' &
+                                           , PartMPI%InitGroup(nInitRegions)%nProcs,' procs'
       END IF
     END IF
 

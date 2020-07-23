@@ -412,8 +412,8 @@ SUBROUTINE ParticleTracing()
 !> - Loop over all particles, which are in own proc --> PDM%ParticleInside(1:PDM%ParticleVecLength)
 !> -- 1. Initialize particle path and tracking info
 !> -- 2. Track particle vector up to final particle position
-!> -- 3. special check if some double check has to be performed (only necessary for bilinear sides and macrospheres)
-!> -- 4. Check if particle intersected a side and also which side (also MacroSpheres and AuxBCs)
+!> -- 3. special check if some double check has to be performed (only necessary for bilinear sides)
+!> -- 4. Check if particle intersected a side and also which side (also AuxBCs)
 !>         For each side only one intersection is chosen, but particle might insersect more than one side. Assign pointer list
 !> -- 5. Loop over all intersections in pointer list and check intersection type: inner side, BC, auxBC or MacroSphere
 !>       and calculate interaction
@@ -1189,7 +1189,9 @@ DO iPart=1,PDM%ParticleVecLength
         END IF
       END IF
 
-      CALL GetPositionInRefElem(PartState(1:3,iPart),PartPosRef(1:3,iPart),ElemID,DoReUseMap=.TRUE.)
+      ! Not sure if RefNewtonStart value can be reused at this point. Might be safer to start over new
+!      CALL GetPositionInRefElem(PartState(1:3,iPart),PartPosRef(1:3,iPart),ElemID,DoReUseMap=.TRUE.)
+      CALL GetPositionInRefElem(PartState(1:3,iPart),PartPosRef(1:3,iPart),ElemID)
 
       ! Position in reference space smaller unity, particle inside
       IF(MAXVAL(ABS(PartPosRef(1:3,iPart))).LT.1.0) THEN
@@ -1238,7 +1240,7 @@ DO iPart=1,PDM%ParticleVecLength
       DO iBGMElem = 1, nBGMElems
         ElemID   = FIBGM_Element(FIBGM_offsetElem(CellX,CellY,CellZ)+iBGMElem)
         CNElemID = GetCNElemID(FIBGM_Element(FIBGM_offsetElem(CellX,CellY,CellZ)+iBGMElem))
-        ListDistance(iBGMElem) = CNElemID
+        ListDistance(iBGMElem) = ElemID
 
         ! no element associated with BGM elelemt
         IF (ElemID.EQ.-1) &
@@ -1263,7 +1265,7 @@ DO iPart=1,PDM%ParticleVecLength
     ! Only one potential cell found in BGM. No Need to sort
     ELSE IF(nBGMElems.EQ.1)THEN
       Distance(1)     = 0.
-      ListDistance(1) = GetCNElemID(FIBGM_Element(FIBGM_offsetElem(CellX,CellY,CellZ)+1))
+      ListDistance(1) = FIBGM_Element(FIBGM_offsetElem(CellX,CellY,CellZ)+1)
     END IF
 
     OldXi     = PartPosRef(1:3,iPart)
@@ -1275,7 +1277,7 @@ DO iPart=1,PDM%ParticleVecLength
       ! ignore old element and elements out of range
       IF(ALMOSTEQUAL(Distance(iBGMELem),-1.0)) CYCLE
 
-      ElemID = GetGlobalElemID(ListDistance(iBGMElem))
+      ElemID = ListDistance(iBGMElem)
 #if USE_LOADBALANCE
       ! Cell is on current proc, assign load to new cell
       IF (ElemID.GT.offsetElem+1.AND.ElemID.LE.offsetElem+PP_nElems) THEN

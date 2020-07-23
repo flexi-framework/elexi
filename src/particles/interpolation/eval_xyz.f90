@@ -47,7 +47,8 @@ PUBLIC :: EvaluateFieldAtRefPos
 
 CONTAINS
 
-SUBROUTINE GetPositionInRefElem(x_in,xi,ElemID,DoReUseMap,ForceMode)
+!SUBROUTINE GetPositionInRefElem(x_in,xi,ElemID,DoReUseMap,ForceMode)
+SUBROUTINE GetPositionInRefElem(x_in,xi,ElemID,ForceMode)
 !===================================================================================================================================
 !> Get Position within reference element (x_in -> xi=[-1,1])
 !===================================================================================================================================
@@ -71,7 +72,7 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)          :: ElemID                                 !< element index
 REAL,INTENT(IN)             :: x_in(3)                                !< position in physical space
-LOGICAL,INTENT(IN),OPTIONAL :: DoReUseMap                             !< flag if start values for Newton elem mapping already exists
+!LOGICAL,INTENT(IN),OPTIONAL :: DoReUseMap                             !< flag if start values for Newton elem mapping already exists
 LOGICAL,INTENT(IN),OPTIONAL :: ForceMode                              !< flag for mode change in RefElemNewton
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -92,9 +93,9 @@ ASSOCIATE(ElemID     => GetCNElemID(ElemID) &
 
 iMode=2
 IF(PRESENT(ForceMode)) iMode=1
-IF(.NOT.PRESENT(DoReUseMap))THEN
+!IF(.NOT.PRESENT(DoReUseMap))THEN
   CALL GetRefNewtonStartValue(X_in,Xi,ElemID)
-END IF
+!END IF
 
 IF(ElemCurved(ElemID))THEN
   CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID),NGeo,ElemID,Mode=iMode)

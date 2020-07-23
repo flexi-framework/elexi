@@ -111,7 +111,6 @@ USE MOD_Output_Vars                ,ONLY: ProjectName
 USE MOD_Overintegration            ,ONLY: InitOverintegration,FinalizeOverintegration
 USE MOD_Particle_Globals           ,ONLY: InitializationWallTime
 USE MOD_Particle_Init              ,ONLY: InitParticles,FinalizeParticles
-USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
 USE MOD_Particle_MPI               ,ONLY: InitParticleMPI,FinalizeParticleMPI
 USE MOD_RecordPoints               ,ONLY: InitRecordPoints,FinalizeRecordPoints
 USE MOD_ReadInTools                ,ONLY: prms

@@ -93,6 +93,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Preproc
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
+USE MOD_Mesh_Vars              ,ONLY: offsetElem
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: Geo
@@ -136,18 +137,16 @@ Distance=-1.
 
 ListDistance=0
 DO iBGMElem = 1, nBGMElems
-  CNElemID  = GetCNElemID(FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iBGMElem))
+  ElemID   = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iBGMElem)
+  CNElemID = GetCNElemID(ElemID)
 
   Distance2 = (Pos3D(1)-ElemBaryNGeo(1,CNElemID))*(Pos3D(1)-ElemBaryNGeo(1,CNElemID)) &
             + (Pos3D(2)-ElemBaryNGeo(2,CNElemID))*(Pos3D(2)-ElemBaryNGeo(2,CNElemID)) &
             + (Pos3D(3)-ElemBaryNGeo(3,CNElemID))*(Pos3D(3)-ElemBaryNGeo(3,CNElemID))
 
-  IF (Distance2.GT.ElemRadius2NGeo(CNElemID)) THEN
-    Distance(iBGMElem) = -1.
-  ELSE
-    Distance(iBGMElem) = Distance2
-  END IF
-  ListDistance(iBGMElem) = CNElemID
+  ! element in range
+  Distance(iBGMElem)     = MERGE(Distance2,-1.,Distance2.LE.ElemRadius2NGeo(CNElemID))
+  ListDistance(iBGMElem) = ElemID
 END DO ! nBGMElems
 
 IF (ALMOSTEQUAL(MAXVAL(Distance),-1.)) THEN
@@ -163,11 +162,10 @@ DO iBGMElem = 1,nBGMElems
   ! Element is out of range
   IF (ALMOSTEQUAL(Distance(iBGMElem),-1.)) CYCLE
 
-  ElemID = GetGlobalElemID(ListDistance(iBGMElem))
+  ElemID = ListDistance(iBGMElem)
 
   IF (.NOT.DoHALO) THEN
-    ! TODO: THIS NEEDS TO BE ADJUSTED FOR MPI3-SHARED
-    ! IF (ElemID.GT.PP_nElems) CYCLE
+    IF (ElemID.LT.offsetElem+1 .OR. ElemID.GT.offsetElem+PP_nElems) CYCLE
   END IF
 
   IF (TrackingMethod.EQ.TRIATRACKING) THEN
@@ -197,7 +195,7 @@ SUBROUTINE PartInElemCheck(PartPos_In,PartID,ElemID,FoundInElem,IntersectPoint_O
 ! Checks if particle is in Element
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Globals       ,ONLY: ALMOSTZERO
+USE MOD_Particle_Globals       ,ONLY: ALMOSTZERO,VECNORM
 USE MOD_Particle_Intersection  ,ONLY: ComputePlanarRectIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputeBiLinearIntersection
@@ -252,9 +250,7 @@ PartPos(1:3)            = PartPos_In(1:3)
 
 ! get trajectory from element barycenter to current position
 PartTrajectory          = PartPos - LastPartPos(1:3,PartID)
-lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                             + PartTrajectory(2)*PartTrajectory(2) &
-                             + PartTrajectory(3)*PartTrajectory(3))
+lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
 
 ! output the part trajectory
 #if CODE_ANALYZE
@@ -391,7 +387,7 @@ SUBROUTINE ParticleInsideQuad3D(PartStateLoc,ElemID,InElementCheck,Det)
 !===================================================================================================================================
 !> Checks if particle is inside of a linear element with triangulated faces, compatible with mortars
 !> Regular element: The determinant of a 3x3 matrix, where the three vectors point from the particle to the nodes of a triangle, is
-!>                  is used to determine whether the particle is inside the element. The geometric equivalent is the triple product
+!>                  used to determine whether the particle is inside the element. The geometric equivalent is the triple product
 !>                  A*(B x C), spanning a signed volume. If the volume/determinant is positive, then the particle is inside.
 !> Element with neighbouring mortar elements: Additional checks of the smaller sides are required if the particle is in not in the
 !>                                       concave part of the element but in the convex. Analogous procedure using the determinants.

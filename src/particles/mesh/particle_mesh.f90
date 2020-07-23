@@ -273,9 +273,11 @@ USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif /* USE_MPI */
-#if !USE_LOADBALANCE
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
+#else
 USE MOD_LoadBalance_Vars       ,ONLY: ElemTime
-#endif /*!USE_LOADBALANCE*/
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -303,6 +305,12 @@ IF(ParticleMeshInitIsDone) CALL ABORT(__STAMP__, ' Particle-Mesh is already init
 ! Collect particle variables that are not initialized somewhere else
 !===================================================================================================================================
 PP_nElems = nElems
+
+# if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+  CALL ComputePeriodicVec()
+END IF
+#endif
 
 ! ElemTime already set in loadbalance.f90
 #if !USE_LOADBALANCE
@@ -525,6 +533,133 @@ SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MESH DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleMesh
+
+
+SUBROUTINE ComputePeriodicVec()
+!===================================================================================================================================
+! Init of Particle mesh
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_Mesh_Vars
+USE MOD_Particle_Boundary_Vars
+USE MOD_Particle_Globals
+USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Mesh_Tools
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars, ONLY: myComputeNodeRank,nComputeNodeProcessors,MPI_COMM_SHARED
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                        :: firstElem,lastElem,iNbSide,iNode,iVec,BCALPHA
+INTEGER                        :: SideID,ElemID,GlobalSideID,NbElemID,localSideID,localSideNbID,nStart
+INTEGER                        :: CornerNodeIDswitch(8),NodeMap(4,6)
+REAL,DIMENSION(3)              :: MasterCoords,SlaveCoords,PeriodicTmp
+#if USE_MPI
+REAL,ALLOCATABLE               :: sendbuf(:,:)
+#endif
+!-----------------------------------------------------------------------------------------------------------------------------------
+#if USE_MPI
+firstElem = INT(REAL( myComputeNodeRank*   nGlobalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
+#else
+firstElem = 1
+lastElem  = nElems
+#endif /*USE_MPI*/
+
+! the cornernodes are not the first 8 entries (for Ngeo>1) of nodeinfo array so mapping is built
+CornerNodeIDswitch(1)=1
+CornerNodeIDswitch(2)=(Ngeo+1)
+CornerNodeIDswitch(3)=(Ngeo+1)**2
+CornerNodeIDswitch(4)=(Ngeo+1)*Ngeo+1
+CornerNodeIDswitch(5)=(Ngeo+1)**2*Ngeo+1
+CornerNodeIDswitch(6)=(Ngeo+1)**2*Ngeo+(Ngeo+1)
+CornerNodeIDswitch(7)=(Ngeo+1)**2*Ngeo+(Ngeo+1)**2
+CornerNodeIDswitch(8)=(Ngeo+1)**2*Ngeo+(Ngeo+1)*Ngeo+1
+
+! Corner node switch to order HOPR coordinates in CGNS format
+ASSOCIATE(CNS => CornerNodeIDswitch )
+! CGNS Mapping
+NodeMap(:,1)=(/CNS(1),CNS(4),CNS(3),CNS(2)/)
+NodeMap(:,2)=(/CNS(1),CNS(2),CNS(6),CNS(5)/)
+NodeMap(:,3)=(/CNS(2),CNS(3),CNS(7),CNS(6)/)
+NodeMap(:,4)=(/CNS(3),CNS(4),CNS(8),CNS(7)/)
+NodeMap(:,5)=(/CNS(1),CNS(5),CNS(8),CNS(4)/)
+NodeMap(:,6)=(/CNS(5),CNS(6),CNS(7),CNS(8)/)
+
+! Find number of periodic vectors
+GEO%nPeriodicVectors = MAXVAL(BoundaryType(:,BC_ALPHA))
+IF (GEO%nPeriodicVectors.EQ.0) RETURN
+
+ALLOCATE(GEO%PeriodicVectors(1:3,GEO%nPeriodicVectors))
+GEO%PeriodicVectors = 0.
+
+DO ElemID = firstElem,lastElem
+  DO SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
+!    SideID = GetGlobalNonUniqueSideID(GetGlobalElemID(ElemID),iLocSide)
+    IF (SideInfo_Shared(SIDE_BCID,SideID).EQ.0) CYCLE
+
+    ! Boundary is a periodic boundary
+    IF (PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,SideID)).NE.3) CYCLE
+
+    ! Check if side is master side
+    BCALPHA = BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)
+    IF (BCALPHA.GT.0) THEN
+
+      ! Periodic slave side has same ID, but negative sign
+      GlobalSideID = SideInfo_Shared(SIDE_ID,SideID)
+      DO iNbSide = 1,nNonUniqueGlobalSides
+        IF (SideInfo_Shared(SIDE_ID,iNbSide).EQ.-GlobalSideID) THEN
+          NbElemID      = SideInfo_Shared(SIDE_ELEMID,iNbSide)
+          localSideID   = SideInfo_Shared(SIDE_LOCALID,SideID)
+          localSideNbID = SideInfo_Shared(SIDE_LOCALID,iNbSide)
+          nStart = MERGE(0,MAX(0,MOD(SideInfo_Shared(SIDE_FLIP,iNbSide),10)-1),SideInfo_Shared(SIDE_ID,iNbSide).GT.0)
+
+          DO iNode = 1,4
+            MasterCoords = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)  +NodeMap(iNode,localSideID))
+            SlaveCoords  = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,NbElemID)+NodeMap(MOD(nStart+iNode-1,4)+1,localSideNbID))
+            PeriodicTmp  = SlaveCoords - MasterCoords
+            IF (VECNORM(GEO%PeriodicVectors(:,BCALPHA)).GT.0) THEN
+              IF (VECNORM(PeriodicTmp).LT.VECNORM(GEO%PeriodicVectors(:,BCALPHA))) THEN
+                GEO%PeriodicVectors(:,BCALPHA) = PeriodicTmp
+              END IF
+            ELSE
+              GEO%PeriodicVectors(:,BCALPHA) = PeriodicTmp
+            END IF
+          END DO
+        END IF
+      END DO
+    END IF
+  END DO
+END DO
+
+END ASSOCIATE
+
+#if USE_MPI
+ALLOCATE(sendbuf(2,GEO%nPeriodicVectors))
+
+DO iVec = 1,GEO%nPeriodicVectors
+  sendbuf(1,iVec) = MERGE(VECNORM(GEO%PeriodicVectors(:,iVec)),HUGE(1.),VECNORM(GEO%PeriodicVectors(:,iVec)).GT.0)
+  sendbuf(2,iVec) = myRank
+END DO
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,sendbuf,GEO%nPeriodicVectors,MPI_2DOUBLE_PRECISION,MPI_MINLOC,MPI_COMM_SHARED,iERROR)
+
+DO iVec = 1,GEO%nPeriodicVectors
+  CALL MPI_BCAST(GEO%PeriodicVectors(:,iVec),3,MPI_DOUBLE_PRECISION,INT(sendbuf(2,iVec)),MPI_COMM_SHARED,iError)
+END DO
+DEALLOCATE(sendbuf)
+#endif
+
+SWRITE(UNIT_StdOut,'(A,I0,A)') ' | Found ',GEO%nPeriodicVectors,' periodic vectors for particle tracking'
+
+END SUBROUTINE ComputePeriodicVec
 
 
 SUBROUTINE CalcParticleMeshMetrics()

@@ -59,7 +59,7 @@ CHARACTER(32)          :: hilf
 LOGICAL                :: hasPeriodic
 !===================================================================================================================================
 
-GEO%nPeriodicVectors       = GETINT('Part-nPeriodicVectors','0')
+!GEO%nPeriodicVectors       = GETINT('Part-nPeriodicVectors','0')
 
 ! sanity check with DG. Both must be either periodic or non-periodic.
 hasPeriodic = .FALSE.
@@ -73,11 +73,11 @@ DO iVec = 1, SIZE(PartBound%TargetBoundCond)
 END DO
 
 ! read-in periodic-vectors for particles
-ALLOCATE(GEO%PeriodicVectors(1:3,1:GEO%nPeriodicVectors))
-DO iVec = 1, GEO%nPeriodicVectors
-  WRITE(UNIT=hilf,FMT='(I0)') iVec
-  GEO%PeriodicVectors(1:3,iVec) = GETREALARRAY('Part-PeriodicVector'//TRIM(hilf),3,'1.,0.,0.')
-END DO
+!ALLOCATE(GEO%PeriodicVectors(1:3,1:GEO%nPeriodicVectors))
+!DO iVec = 1, GEO%nPeriodicVectors
+!  WRITE(UNIT=hilf,FMT='(I0)') iVec
+!  GEO%PeriodicVectors(1:3,iVec) = GETREALARRAY('Part-PeriodicVector'//TRIM(hilf),3,'1.,0.,0.')
+!END DO
 
 CALL GetPeriodicVectors()
 

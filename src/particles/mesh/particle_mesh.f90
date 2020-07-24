@@ -3435,7 +3435,10 @@ USE MOD_Particle_Surfaces_Vars
 USE MOD_Particle_Tracking_Vars      ,ONLY: TrackingMethod,Distance,ListDistance
 #if USE_MPI
 USE MOD_Particle_MPI_Shared_vars    ,ONLY: MPI_COMM_SHARED
-#endif
+#endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars            ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -3762,7 +3765,11 @@ SELECT CASE(TrackingMethod)
 END SELECT
 
 ! Background mesh
-SDEALLOCATE(GEO%PeriodicVectors)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+  SDEALLOCATE(GEO%PeriodicVectors)
+END IF
+#endif /*USE_LOADBALANCE*/
 SDEALLOCATE(GEO%FIBGM)
 
 ! Tracking Vars

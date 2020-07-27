@@ -308,9 +308,11 @@ PP_nElems = nElems
 
 # if USE_LOADBALANCE
 IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
   CALL ComputePeriodicVec()
+#if USE_LOADBALANCE
 END IF
-#endif
+#endif /*USE_LOADBALANCE*/
 
 ! ElemTime already set in loadbalance.f90
 #if !USE_LOADBALANCE
@@ -680,7 +682,7 @@ ALLOCATE(sendbuf(2,GEO%nPeriodicVectors))
 
 DO iVec = 1,GEO%nPeriodicVectors
   sendbuf(1,iVec) = MERGE(VECNORM(GEO%PeriodicVectors(:,iVec)),HUGE(1.),VECNORM(GEO%PeriodicVectors(:,iVec)).GT.0)
-  sendbuf(2,iVec) = myRank
+  sendbuf(2,iVec) = myComputeNodeRank
 END DO
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,sendbuf,GEO%nPeriodicVectors,MPI_2DOUBLE_PRECISION,MPI_MINLOC,MPI_COMM_SHARED,iERROR)
 
@@ -693,7 +695,7 @@ DEALLOCATE(sendbuf)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 CALL MPI_WIN_UNLOCK_ALL(PeriodicFound_Win,iError)
 CALL MPI_WIN_FREE(      PeriodicFound_Win,iError)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
 #endif /*USE_MPI*/
 MDEALLOCATE(PeriodicFound)
 

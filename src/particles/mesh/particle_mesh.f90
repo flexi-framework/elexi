@@ -690,9 +690,8 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 CALL MPI_WIN_UNLOCK_ALL(PeriodicFound_Win,iError)
 CALL MPI_WIN_FREE(      PeriodicFound_Win,iError)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
-#else
-DEALLOCATE(PeriodicFound)
-#endif
+#endif /*USE_MPI*/
+MDEALLOCATE(PeriodicFound)
 
 SWRITE(UNIT_StdOut,'(A,I0,A)') ' | Found ',GEO%nPeriodicVectors,' periodic vectors for particle tracking'
 

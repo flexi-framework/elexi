@@ -1610,7 +1610,7 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iElem,SideID
+INTEGER                        :: iElem,ElemID,SideID
 INTEGER                        :: i,j,k,ilocSide
 INTEGER                        :: iDir
 REAL                           :: Xi(3,6),xPos(3),Radius
@@ -1676,6 +1676,7 @@ Xi(:,6) = (/ 0.0 , 0.0  , -1.0/) ! zeta minus
 
 ! iElem is CN elem
 DO iElem = firstElem,lastElem
+  ElemID = GetGlobalElemID(iElem)
   ! get point on each side
   DO iDir = 1, 6
     CALL LagrangeInterpolationPolys(Xi(1,iDir),NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(1,:))
@@ -1684,7 +1685,7 @@ DO iElem = firstElem,lastElem
 
     xPos = 0.
     DO k = 0,NGeo; DO j = 0,NGeo; DO i = 0,NGeo
-      xPos = xPos + XCL_NGeo(:,i,j,k,iElem)*Lag(1,i)*Lag(2,j)*Lag(3,k)
+      xPos = xPos + XCL_NGeo(:,i,j,k,ElemID)*Lag(1,i)*Lag(2,j)*Lag(3,k)
     END DO; END DO; END DO
 
     XiEtaZetaBasis(1:3,iDir,iElem) = xPos
@@ -1828,6 +1829,7 @@ USE MOD_Particle_Mesh_Vars      ,ONLY: ElemCurved
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Vars      ,ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars      ,ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis
+USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemCurved_Shared,ElemCurved_Shared_Win
@@ -1849,7 +1851,7 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iElem,iDir
+INTEGER                        :: iElem,ElemID,iDir
 INTEGER                        :: i,j,k
 REAL                           :: xPos(3)
 REAL                           :: Xi(3,6),Lag(1:3,0:NGeo)
@@ -1910,6 +1912,7 @@ Xi(:,5) = (/ 0.0 , -1.0 ,  0.0/) ! eta minus
 Xi(:,6) = (/ 0.0 , 0.0  , -1.0/) ! zeta minus
 
 DO iElem = firstElem,lastElem
+  ElemID = GetGlobalElemID(iElem)
   ! get point on each side
   DO iDir = 1, 6
     CALL LagrangeInterpolationPolys(Xi(1,iDir),NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(1,:))
@@ -1918,7 +1921,7 @@ DO iElem = firstElem,lastElem
 
     xPos = 0.
     DO k = 0,NGeo; DO j = 0,NGeo; DO i = 0,NGeo
-      xPos = xPos+XCL_NGeo(:,i,j,k,iElem)*Lag(1,i)*Lag(2,j)*Lag(3,k)
+      xPos = xPos+XCL_NGeo(:,i,j,k,ElemID)*Lag(1,i)*Lag(2,j)*Lag(3,k)
     END DO; END DO; END DO
 
     XiEtaZetaBasis(1:3,iDir,iElem) = xPos
@@ -1980,14 +1983,15 @@ SUBROUTINE BuildElementOriginShared()
 !================================================================================================================================
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
-USE MOD_Mesh_Vars          ,ONLY: NGeo
-USE MOD_Particle_Mesh_Vars ,ONLY: wBaryCL_NGeo,XiCL_NGeo
-USE MOD_Particle_Mesh_Vars ,ONLY: ElemBaryNGeo
+USE MOD_Basis                   ,ONLY: LagrangeInterpolationPolys
+USE MOD_Mesh_Vars               ,ONLY: NGeo
+USE MOD_Particle_Mesh_Vars      ,ONLY: wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo
+USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID
 #if USE_MPI
-USE MOD_Particle_Mesh_Vars ,ONLY: XCL_NGeo_Shared
-USE MOD_Particle_Mesh_Vars, ONLY: ElemBaryNGeo_Shared,ElemBaryNGeo_Shared_Win
-USE MOD_Particle_MPI_Shared,ONLY: Allocate_Shared
+USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo_Shared
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo_Shared,ElemBaryNGeo_Shared_Win
+USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
@@ -2004,7 +2008,7 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iElem,i,j,k
+INTEGER                        :: iElem,ElemID,i,j,k
 REAL                           :: XPos(3),buf
 REAL                           :: Lag(1:3,0:NGeo)
 INTEGER                        :: firstElem,lastElem
@@ -2046,13 +2050,14 @@ CALL LagrangeInterpolationPolys(0.0,NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(2,:))
 CALL LagrangeInterpolationPolys(0.0,NGeo,XiCL_NGeo,wBaryCL_NGeo,Lag(3,:))
 
 DO iElem = firstElem,lastElem
+  ElemID = GetGlobalElemID(iElem)
   xPos = 0.
 
   DO k = 0,NGeo
     DO j = 0,NGeo
       buf = Lag(2,j)*Lag(3,k)
       DO i = 0,NGeo
-        xPos = xPos + XCL_NGeo(1:3,i,j,k,iElem)*Lag(1,i)*buf
+        xPos = xPos + XCL_NGeo(1:3,i,j,k,ElemID)*Lag(1,i)*buf
       END DO ! i = 0,NGeo
     END DO ! j = 0,NGeo
   END DO ! k = 0,NGeo

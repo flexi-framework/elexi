@@ -1330,7 +1330,7 @@ DO iPart=1,PDM%ParticleVecLength
           ! ausgabe
           IPWRITE(UNIT_stdOut,'(I0,A)') ' Tolerance Issue with internal element '
           IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' xi                     ', PartPosRef(1:3,iPart)
-          IPWRITE(UNIT_stdOut,'(I0,A,X,E15.8)') ' epsOneCell             ', epsElement
+          IPWRITE(UNIT_stdOut,'(I0,A,X,E15.8)')    ' epsOneCell             ', epsElement
           IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' oldxi                  ', oldXi
           IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' newxi                  ', newXi
           IPWRITE(UNIT_stdOut,'(I0,A)')             ' PartPos:           '
@@ -1473,20 +1473,21 @@ RECURSIVE SUBROUTINE ParticleBCTracking(lengthPartTrajectory0 &
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Particle_Vars               ,ONLY: PEM,PDM
-USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
-USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
-USE MOD_Particle_Mesh_Vars          ,ONLY: SideBCMetrics,ElemToBCSides
 USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteraction
+USE MOD_Particle_Globals            ,ONLY: VECNORM
+USE MOD_Particle_Mesh_Vars          ,ONLY: SideBCMetrics,ElemToBCSides
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars          ,ONLY: GEO,ElemRadiusNGeo
 USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID
-USE MOD_Particle_Utils              ,ONLY: InsertionSort
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectInterSection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
+USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
 USE MOD_Particle_Tracking_Vars      ,ONLY: CartesianPeriodic
+USE MOD_Particle_Utils              ,ONLY: InsertionSort
+USE MOD_Particle_Vars               ,ONLY: PEM,PDM
+USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 #if CODE_ANALYZE
 USE MOD_Particle_Tracking_Vars,      ONLY:PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
@@ -1524,10 +1525,8 @@ LOGICAL                       :: isHit,doubleCheck
 !===================================================================================================================================
 
 ! Calculate particle trajectory
-PartTrajectory = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
-lengthPartTrajectory = SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                          + PartTrajectory(2)*PartTrajectory(2) &
-                          + PartTrajectory(3)*PartTrajectory(3) )
+PartTrajectory       = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
+lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
 
 CNElemID   = GetCNElemID(ElemID)
 ! Check if the particle moved at all. If not, tracking is done

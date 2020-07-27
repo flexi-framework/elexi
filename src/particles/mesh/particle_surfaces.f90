@@ -192,7 +192,10 @@ SUBROUTINE FinalizeParticleSurfaces()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Surfaces_vars
+USE MOD_Particle_Surfaces_Vars
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars            ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -213,8 +216,14 @@ SDEALLOCATE(SideBoundingBoxVolume)
 #endif
 
 ! CalcBezierControlPoints (MPI3 shared freed in FinalizeParticleMesh)
-MDEALLOCATE(BezierControlPoints3D)
-MDEALLOCATE(BezierControlPoints3DElevated)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  MDEALLOCATE(BezierControlPoints3D)
+  MDEALLOCATE(BezierControlPoints3DElevated)
+#if USE_LOADBALANCE
+END IF !PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 
 ! GetSideSlabNormalsAndIntervals (MPI3 shared freed in FinalizeParticleMesh)
 MDEALLOCATE(SideSlabNormals)

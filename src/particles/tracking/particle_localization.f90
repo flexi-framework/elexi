@@ -139,10 +139,7 @@ ListDistance=0
 DO iBGMElem = 1, nBGMElems
   ElemID   = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iBGMElem)
   CNElemID = GetCNElemID(ElemID)
-
-  Distance2 = (Pos3D(1)-ElemBaryNGeo(1,CNElemID))*(Pos3D(1)-ElemBaryNGeo(1,CNElemID)) &
-            + (Pos3D(2)-ElemBaryNGeo(2,CNElemID))*(Pos3D(2)-ElemBaryNGeo(2,CNElemID)) &
-            + (Pos3D(3)-ElemBaryNGeo(3,CNElemID))*(Pos3D(3)-ElemBaryNGeo(3,CNElemID))
+ Distance2 = SUM((Pos3D(1:3)-ElemBaryNGeo(1:3,CNElemID))**2.)
 
   ! element in range
   Distance(iBGMElem)     = MERGE(Distance2,-1.,Distance2.LE.ElemRadius2NGeo(CNElemID))
@@ -250,7 +247,7 @@ PartPos(1:3)            = PartPos_In(1:3)
 
 ! get trajectory from element barycenter to current position
 PartTrajectory          = PartPos - LastPartPos(1:3,PartID)
-lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
+lengthPartTrajectory    = VECNORM(PartTrajectory(1:3))
 
 ! output the part trajectory
 #if CODE_ANALYZE

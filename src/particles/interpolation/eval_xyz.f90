@@ -70,7 +70,7 @@ USE MOD_Particle_Mesh_Vars,      ONLY: dXCL_NGeo,XCL_NGeo
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)          :: ElemID                                 !< element index
+INTEGER,INTENT(IN)          :: ElemID                                 !< Global element index
 REAL,INTENT(IN)             :: x_in(3)                                !< position in physical space
 !LOGICAL,INTENT(IN),OPTIONAL :: DoReUseMap                             !< flag if start values for Newton elem mapping already exists
 LOGICAL,INTENT(IN),OPTIONAL :: ForceMode                              !< flag for mode change in RefElemNewton
@@ -79,25 +79,25 @@ LOGICAL,INTENT(IN),OPTIONAL :: ForceMode                              !< flag fo
 REAL,INTENT(INOUT)          :: xi(1:3)                                !< position in reference element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                    :: iMode
+INTEGER                    :: CNElemID,iMode
 REAL                       :: XCL_NGeo1(1:3,0:1,0:1,0:1)
 REAL                       :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
 !===================================================================================================================================
 
 #if USE_MPI
-ASSOCIATE(ElemID     => GetCNElemID(ElemID) &
-!ASSOCIATE( XCL_NGeo  => XCL_NGeo_Shared     &
-         , XCL_NGeo  => XCL_NGeo_Shared     &
+ASSOCIATE( XCL_NGeo  => XCL_NGeo_Shared     &
          ,dXCL_NGeo  => dXCL_NGeo_Shared)
 #endif
 
-iMode=2
-IF(PRESENT(ForceMode)) iMode=1
-!IF(.NOT.PRESENT(DoReUseMap))THEN
+iMode = MERGE(1,2,PRESENT(ForceMode))
+
+!IF (.NOT.PRESENT(DoReUseMap)) THEN
   CALL GetRefNewtonStartValue(X_in,Xi,ElemID)
 !END IF
 
-IF(ElemCurved(ElemID))THEN
+CNElemID = GetCNElemID(ElemID)
+
+IF (ElemCurved(CNElemID)) THEN
   CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID),NGeo,ElemID,Mode=iMode)
 ELSE
   ! fill dummy XCL_NGeo1
@@ -213,24 +213,24 @@ INTEGER,INTENT(IN)        :: PartID                                        !< pa
 REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at physical position x_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: i,j,k
+INTEGER                   :: CNElemID,i,j,k
 REAL                      :: xi(3)
 REAL                      :: L_xi(3,0:PP_N), L_eta_zeta
 REAL                      :: XCL_NGeo1(1:3,0:1,0:1,0:1)
 REAL                      :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
-REAL, PARAMETER           :: EPSONE=1.00000001
 !===================================================================================================================================
 
 #if USE_MPI
-ASSOCIATE(ElemID     => GetCNElemID(ElemID) &
-         , XCL_NGeo  =>  XCL_NGeo_Shared    &
-!ASSOCIATE( XCL_NGeo  =>  XCL_NGeo_Shared    &
+ASSOCIATE( XCL_NGeo  =>  XCL_NGeo_Shared    &
          ,dXCL_NGeo  => dXCL_NGeo_Shared)
 #endif /*USE_MPI*/
+
 CALL GetRefNewtonStartValue(X_in,Xi,ElemID)
 
+CNElemID = GetCNElemID(ElemID)
+
 ! If the element is curved, all Gauss points are required
-IF (ElemCurved(ElemID)) THEN
+IF (ElemCurved(CNElemID)) THEN
   CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID) &
                     ,NGeo,ElemID,Mode=1,PartID=PartID)
 ! If the element is not curved, only the corner nodes are required
@@ -532,7 +532,7 @@ getInv(3,3) = ( Mat(1,1) * Mat(2,2) - Mat(1,2) * Mat(2,1) ) * sdet
 END FUNCTION getInv
 
 
-PPURE SUBROUTINE GetRefNewtonStartValue(X_in,Xi,CNElemID)
+PPURE SUBROUTINE GetRefNewtonStartValue(X_in,Xi,ElemID)
 !===================================================================================================================================
 !> Returns the initial value/ guess for the Newton's algorithm
 !===================================================================================================================================
@@ -548,11 +548,12 @@ USE MOD_Particle_Mesh_Vars,      ONLY: RefMappingGuess,RefMappingEps
 USE MOD_Particle_Mesh_Vars,      ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis
 USE MOD_Particle_Mesh_Vars,      ONLY: XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,      ONLY: XCL_NGeo_Shared,Elem_xGP_Shared
+USE MOD_Particle_Mesh_Tools,     ONLY: GetCNElemID
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)             :: CNElemID
+INTEGER,INTENT(IN)             :: ElemID
 REAL,INTENT(IN)                :: X_in(1:3)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -562,8 +563,7 @@ REAL,INTENT(INOUT)             :: Xi(1:3)
 REAL                          :: Ptild(1:3),XiLinear(1:6)
 REAL                          :: Winner_Dist,Dist
 REAL                          :: epsOne
-INTEGER                       :: iDir
-INTEGER                       :: i,j,k
+INTEGER                       :: CNElemID,iDir,i,j,k
 REAL                          :: dX,dY,dZ
 INTEGER                       :: RefMappingGuessLoc
 !===================================================================================================================================
@@ -574,6 +574,7 @@ RefMappingGuessLoc = RefMappingGuess
 SELECT CASE(RefMappingGuessLoc)
 
   CASE(1)
+  CNElemID = GetCNElemID(ElemID)
     Ptild = X_in - ElemBaryNGeo(:,CNElemID)
     ! plus coord system (1-3) and minus coord system (4-6)
     DO iDir = 1,6
@@ -588,14 +589,14 @@ SELECT CASE(RefMappingGuessLoc)
 
   CASE(2)
     ! compute distance on Gauss Points
-    Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP_Shared(:,0,0,0,CNElemID)),(x_in(:)-Elem_xGP_Shared(:,0,0,0,CNElemID))))
+    Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID)),(x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID))))
     Xi(:) = (/xGP(0),xGP(0),xGP(0)/) ! start value
     DO i = 0,PP_N; DO j = 0,PP_N; DO k = 0,PP_N
-      dX = ABS(X_in(1) - Elem_xGP_Shared(1,i,j,k,CNElemID))
+      dX = ABS(X_in(1) - Elem_xGP_Shared(1,i,j,k,ElemID))
       IF(dX.GT.Winner_Dist) CYCLE
-      dY = ABS(X_in(2) - Elem_xGP_Shared(2,i,j,k,CNElemID))
+      dY = ABS(X_in(2) - Elem_xGP_Shared(2,i,j,k,ElemID))
       IF(dY.GT.Winner_Dist) CYCLE
-      dZ = ABS(X_in(3) - Elem_xGP_Shared(3,i,j,k,CNElemID))
+      dZ = ABS(X_in(3) - Elem_xGP_Shared(3,i,j,k,ElemID))
       IF(dZ.GT.Winner_Dist) CYCLE
       Dist = SQRT(dX*dX+dY*dY+dZ*dZ)
       IF (Dist.LT.Winner_Dist) THEN
@@ -606,14 +607,14 @@ SELECT CASE(RefMappingGuessLoc)
 
   CASE(3)
     ! compute distance on XCL Points
-    Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-XCL_NGeo_Shared(:,0,0,0,CNElemID)),(x_in(:)-XCL_NGeo_Shared(:,0,0,0,CNElemID))))
+    Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID)),(x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID))))
     Xi(:) = (/XiCL_NGeo(0),XiCL_NGeo(0),XiCL_NGeo(0)/) ! start value
     DO i = 0,NGeo; DO j = 0,NGeo; DO k = 0,NGeo
-      dX = ABS(X_in(1) - XCL_NGeo_Shared(1,i,j,k,CNElemID))
+      dX = ABS(X_in(1) - XCL_NGeo_Shared(1,i,j,k,ElemID))
       IF (dX.GT.Winner_Dist) CYCLE
-      dY = ABS(X_in(2) - XCL_NGeo_Shared(2,i,j,k,CNElemID))
+      dY = ABS(X_in(2) - XCL_NGeo_Shared(2,i,j,k,ElemID))
       IF (dY.GT.Winner_Dist) CYCLE
-      dZ = ABS(X_in(3) - XCL_NGeo_Shared(3,i,j,k,CNElemID))
+      dZ = ABS(X_in(3) - XCL_NGeo_Shared(3,i,j,k,ElemID))
       IF (dZ.GT.Winner_Dist) CYCLE
       Dist = SQRT(dX*dX+dY*dY+dZ*dZ)
       IF (Dist.LT.Winner_Dist) THEN

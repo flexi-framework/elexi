@@ -25,35 +25,35 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Global variables
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL,ALLOCPOINT,DIMENSION(:,:,:,:)     :: BezierControlPoints3D         ! Bezier basis control points of degree equal to NGeo
-REAL,ALLOCPOINT,DIMENSION(:,:,:,:)     :: BezierControlPoints3DElevated ! Bezier basis control points of degree equal to NGeoElevated
+REAL,ALLOCPOINT,DIMENSION(:,:,:,:)      :: BezierControlPoints3D        ! Bezier basis control points of degree equal to NGeo
+REAL,ALLOCPOINT,DIMENSION(:,:,:,:)      :: BezierControlPoints3DElevated! Bezier basis control points of degree equal to NGeoElevated
 
 REAL,ALLOCATABLE,DIMENSION(:,:,:)       :: BiLinearCoeff                ! contains the bi-linear coefficients for each side
-REAL,ALLOCPOINT,DIMENSION(:,:)         :: BaseVectors0                 ! vectors for building intersectionsurfaces for particle
+REAL,ALLOCPOINT,DIMENSION(:,:)          :: BaseVectors0                 ! vectors for building intersectionsurfaces for particle
                                                                         ! from Bezierpoints (1:3,1:nBCSurfaces)
-REAL,ALLOCPOINT,DIMENSION(:,:)         :: BaseVectors1                 ! vectors for building intersectionsurfaces for particle
+REAL,ALLOCPOINT,DIMENSION(:,:)          :: BaseVectors1                 ! vectors for building intersectionsurfaces for particle
                                                                         ! from Bezierpoints (1:3,1:nBCSurfaces)
-REAL,ALLOCPOINT,DIMENSION(:,:)         :: BaseVectors2                 ! vectors for building intersectionsurfaces for particle
+REAL,ALLOCPOINT,DIMENSION(:,:)          :: BaseVectors2                 ! vectors for building intersectionsurfaces for particle
                                                                         ! from Bezierpoints (1:3,1:nBCSurfaces)
-REAL,ALLOCPOINT,DIMENSION(:,:)         :: BaseVectors3                 ! additional vector for bilinear intersection
+REAL,ALLOCPOINT,DIMENSION(:,:)          :: BaseVectors3                 ! additional vector for bilinear intersection
                                                                         ! from Bezierpoints (1:3,1:nBCSurfaces)
-REAL,ALLOCPOINT,DIMENSION(:)           :: BaseVectorsScale             ! approx. size of face for bilinear intersection
+REAL,ALLOCPOINT,DIMENSION(:)            :: BaseVectorsScale             ! approx. size of face for bilinear intersection
                                                                         ! from Bezierpoints (1:nBCSurfaces)
 
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: ElevationMatrix              ! array for binomial coefficients used for Bezier Elevation
 
-REAL,ALLOCPOINT,DIMENSION(:,:,:)       :: SideSlabNormals              ! normal vectors of bounding slab box (Sides)
-REAL,ALLOCPOINT,DIMENSION(:,:)         :: SideSlabIntervals            ! intervalls beta1, beta2, beta3 (Sides)
-LOGICAL,ALLOCPOINT,DIMENSION(:)        :: BoundingBoxIsEmpty           ! logical if Side bounding box is empty
+REAL,ALLOCPOINT,DIMENSION(:,:,:)        :: SideSlabNormals              ! normal vectors of bounding slab box (Sides)
+REAL,ALLOCPOINT,DIMENSION(:,:)          :: SideSlabIntervals            ! intervalls beta1, beta2, beta3 (Sides)
+LOGICAL,ALLOCPOINT,DIMENSION(:)         :: BoundingBoxIsEmpty           ! logical if Side bounding box is empty
 
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: Vdm_Bezier,sVdm_Bezier       ! Vdm from/to Bezier Polynomial from BC representation
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: D_Bezier                     ! D-Matrix of Bezier Polynomial from BC representation
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: arrayNchooseK                ! array for binomial coefficients
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: FacNchooseK                  ! array for binomial coefficients times prefactor
 
-INTEGER,ALLOCPOINT,DIMENSION(:)        :: SideType                     ! integer array with side type - planar - bilinear - curved
-REAL,ALLOCPOINT,DIMENSION(:,:)         :: SideNormVec                  ! normal Vector of planar sides
-REAL,ALLOCPOINT,DIMENSION(:)           :: SideDistance                 ! distance of planar base from origin
+INTEGER,ALLOCPOINT,DIMENSION(:)         :: SideType                     ! integer array with side type - planar - bilinear - curved
+REAL,ALLOCPOINT,DIMENSION(:,:)          :: SideNormVec                  ! normal Vector of planar sides
+REAL,ALLOCPOINT,DIMENSION(:)            :: SideDistance                 ! distance of planar base from origin
 
 INTEGER,ALLOCATABLE,DIMENSION(:)        :: gElemBCSides                 ! number of BC-Sides of element
 REAL                                    :: epsilontol                   ! epsilon for setting the tolerance
@@ -101,30 +101,30 @@ LOGICAL                                 :: TriaSurfaceFlux, WriteTriaSurfaceFlux
 
 REAL,ALLOCATABLE,DIMENSION(:)           :: SurfMeshSideAreas            ! areas of of sides of surface mesh (1:nBCSides)
 TYPE tSurfMeshSubSideData
-  REAL                                   :: vec_nIn(3)                  ! inward directed normal of sub-sides of surface mesh
-  REAL                                   :: vec_t1(3)                   ! first orth. vector in sub-sides of surface mesh
-  REAL                                   :: vec_t2(3)                   ! second orth. vector in sub-sides of surface mesh
-  REAL                                   :: area                        ! area of sub-sides of surface mesh
+  REAL                                  :: vec_nIn(3)                  ! inward directed normal of sub-sides of surface mesh
+  REAL                                  :: vec_t1(3)                   ! first orth. vector in sub-sides of surface mesh
+  REAL                                  :: vec_t2(3)                   ! second orth. vector in sub-sides of surface mesh
+  REAL                                  :: area                        ! area of sub-sides of surface mesh
 END TYPE tSurfMeshSubSideData
-TYPE(tSurfMeshSubSideData),ALLOCATABLE   :: SurfMeshSubSideData(:,:,:)  ! geodata of sub-sides of surface mesh (:,:,1:nBCSides)
+TYPE(tSurfMeshSubSideData),ALLOCATABLE  :: SurfMeshSubSideData(:,:,:)  ! geodata of sub-sides of surface mesh (:,:,1:nBCSides)
 
 TYPE tTriaSwapGeo
-  REAL                                   :: midpoint(3)                 ! midpoint for tria swapping in parallelogram
-  REAL                                   :: ndist(3)                    ! normal vector for tria swapping in parallelogram
+  REAL                                  :: midpoint(3)                 ! midpoint for tria swapping in parallelogram
+  REAL                                  :: ndist(3)                    ! normal vector for tria swapping in parallelogram
 END TYPE tTriaSwapGeo
 TYPE tTriaSideGeo
-  REAL                                   :: xyzNod(3)                   ! first corner
-  REAL                                   :: Vectors(3,3)                ! vectors from xyzNod to the 3 other corners of side
+  REAL                                  :: xyzNod(3)                   ! first corner
+  REAL                                  :: Vectors(3,3)                ! vectors from xyzNod to the 3 other corners of side
 END TYPE tTriaSideGeo
 
 TYPE tBCdata_auxSF
-  INTEGER                                :: SideNumber                  ! Number of Particles in Sides in SurfacefluxBC
-  REAL                                   :: GlobalArea, LocalArea       ! Sum of global and local tria-areas
-  INTEGER                , ALLOCATABLE   :: SideList(:)                 ! List of Sides in BC (1:SideNumber)
-  TYPE(tTriaSwapGeo)     , ALLOCATABLE   :: TriaSwapGeo(:,:,:)          ! data for tria-swapping in surfflux (:,:,1:SideNumber)
-  TYPE(tTriaSideGeo)     , ALLOCATABLE   :: TriaSideGeo(:)              ! data for trias in surfflux (1:SideNumber)
+  INTEGER                               :: SideNumber                  ! Number of Particles in Sides in SurfacefluxBC
+  REAL                                  :: GlobalArea, LocalArea       ! Sum of global and local tria-areas
+  INTEGER                , ALLOCATABLE  :: SideList(:)                 ! List of Sides in BC (1:SideNumber)
+  TYPE(tTriaSwapGeo)     , ALLOCATABLE  :: TriaSwapGeo(:,:,:)          ! data for tria-swapping in surfflux (:,:,1:SideNumber)
+  TYPE(tTriaSideGeo)     , ALLOCATABLE  :: TriaSideGeo(:)              ! data for trias in surfflux (1:SideNumber)
 END TYPE tBCdata_auxSF
-TYPE(tBCdata_auxSF),ALLOCATABLE          :: BCdata_auxSF(:)             !aux. data of BCs for surfacefluxes, (1:nBCs) (!!!)
+TYPE(tBCdata_auxSF),ALLOCATABLE         :: BCdata_auxSF(:)             ! aux. data of BCs for surfacefluxes, (1:nBCs) (!!!)
 
 
 !===================================================================================================================================

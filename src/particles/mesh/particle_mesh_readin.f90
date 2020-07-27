@@ -534,11 +534,6 @@ INTEGER                        :: iLocSide,jLocSide,nlocSides,nlocSidesNb,NbSide
 #if USE_MPI
 INTEGER                        :: iProc
 INTEGER                        :: nNodeIDs,offsetNodeID
-INTEGER,ALLOCATABLE            :: displsCN(:),recvcountCN(:)
-INTEGER,ALLOCATABLE            :: displsElem(:),recvcountElem(:)
-INTEGER,ALLOCATABLE            :: displsSide(:),recvcountSide(:)
-INTEGER,ALLOCATABLE            :: displsNode(:),recvcountNode(:)
-INTEGER,ALLOCATABLE            :: displsTree(:),recvcountTree(:)
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
@@ -564,7 +559,7 @@ nSideIDs     = ElemInfo_Shared(ELEM_LASTSIDEIND,LastElemInd)-ElemInfo(ELEM_FIRST
 
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) THEN
-  ! Update mappings with new information
+  ! Update SideInfo with new information
   SideInfo_Shared(SIDEINFOSIZE+1,offsetSideID+1:offsetSideID+nSideIDs) = SideInfo_Shared_tmp
   DEALLOCATE(SideInfo_Shared_tmp)
 
@@ -572,15 +567,15 @@ IF (PerformLoadBalance) THEN
     SWRITE(UNIT_stdOut,'(A)') ' Updating mesh on shared memory...'
 
     ! Arrays for the compute-node to communicate their offsets
-    ALLOCATE(displsCN(0:nLeaderGroupProcs-1))
-    ALLOCATE(recvcountCN(0:nLeaderGroupProcs-1))
+    ALLOCATE(displsCN(   0:nLeaderGroupProcs-1),&
+             recvcountCN(0:nLeaderGroupProcs-1))
     DO iProc=0,nLeaderGroupProcs-1
       displsCN(iProc) = iProc
     END DO
     recvcountCN(:) = 1
     ! Arrays for the compute node to hold the elem offsets
-    ALLOCATE(displsElem(0:nLeaderGroupProcs-1))
-    ALLOCATE(recvcountElem(0:nLeaderGroupProcs-1))
+    ALLOCATE(displsElem(   0:nLeaderGroupProcs-1),&
+             recvcountElem(0:nLeaderGroupProcs-1))
     displsElem(myLeaderGroupRank) = offsetComputeNodeElem
     CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsElem,recvcountCN,displsCN  &
           ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
@@ -596,8 +591,8 @@ IF (PerformLoadBalance) THEN
 
   IF (myComputeNodeRank.EQ.0) THEN
     ! Arrays for the compute node to hold the side offsets
-    ALLOCATE(displsSide(0:nLeaderGroupProcs-1))
-    ALLOCATE(recvcountSide(0:nLeaderGroupProcs-1))
+    ALLOCATE(displsSide(   0:nLeaderGroupProcs-1),&
+             recvcountSide(0:nLeaderGroupProcs-1))
     displsSide(myLeaderGroupRank) = offsetComputeNodeSide
     CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsSide,recvcountCN,displsCN &
           ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
@@ -626,15 +621,15 @@ SWRITE(UNIT_stdOut,'(A)') ' Communicating mesh on shared memory...'
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) THEN
   ! Arrays for the compute-node to communicate their offsets
-  ALLOCATE(displsCN   (0:nLeaderGroupProcs-1))
-  ALLOCATE(recvcountCN(0:nLeaderGroupProcs-1))
+  ALLOCATE(displsCN(   0:nLeaderGroupProcs-1),&
+           recvcountCN(0:nLeaderGroupProcs-1))
   DO iProc=0,nLeaderGroupProcs-1
     displsCN(iProc) = iProc
   END DO
   recvcountCN(:) = 1
   ! Arrays for the compute node to hold the elem offsets
-  ALLOCATE(displsElem   (0:nLeaderGroupProcs-1))
-  ALLOCATE(recvcountElem(0:nLeaderGroupProcs-1))
+  ALLOCATE(displsElem(   0:nLeaderGroupProcs-1),&
+           recvcountElem(0:nLeaderGroupProcs-1))
   displsElem(myLeaderGroupRank) = offsetComputeNodeElem
   CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsElem,recvcountCN,displsCN,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
   DO iProc=1,nLeaderGroupProcs-1
@@ -649,8 +644,8 @@ CALL MPI_BCAST(offsetComputeNodeSide,1, MPI_INTEGER,0,MPI_COMM_SHARED,iERROR)
 
 IF (myComputeNodeRank.EQ.0) THEN
   ! Arrays for the compute node to hold the side offsets
-  ALLOCATE(displsSide   (0:nLeaderGroupProcs-1))
-  ALLOCATE(recvcountSide(0:nLeaderGroupProcs-1))
+  ALLOCATE(displsSide(   0:nLeaderGroupProcs-1),&
+           recvcountSide(0:nLeaderGroupProcs-1))
   displsSide(myLeaderGroupRank) = offsetComputeNodeSide
   CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsSide,recvcountCN,displsCN,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
   DO iProc=1,nLeaderGroupProcs-1
@@ -665,8 +660,8 @@ CALL MPI_BCAST(offsetComputeNodeNode,1, MPI_INTEGER,0,MPI_COMM_SHARED,iERROR)
 
 IF (myComputeNodeRank.EQ.0) THEN
   ! Arrays for the compute node to hold the node offsets
-  ALLOCATE(displsNode(0:nLeaderGroupProcs-1))
-  ALLOCATE(recvcountNode(0:nLeaderGroupProcs-1))
+  ALLOCATE(displsNode(   0:nLeaderGroupProcs-1),&
+           recvcountNode(0:nLeaderGroupProcs-1))
   displsNode(myLeaderGroupRank) = offsetComputeNodeNode
   CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsNode,recvcountCN,displsCN,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
   DO iProc=1,nLeaderGroupProcs-1
@@ -681,8 +676,8 @@ CALL MPI_BCAST(offsetComputeNodeTree,1, MPI_INTEGER,0,MPI_COMM_SHARED,iERROR)
 
 IF (myComputeNodeRank.EQ.0) THEN
   ! Arrays for the compute node to hold the node offsets
-  ALLOCATE(displsTree(0:nLeaderGroupProcs-1))
-  ALLOCATE(recvcountTree(0:nLeaderGroupProcs-1))
+  ALLOCATE(displsTree(   0:nLeaderGroupProcs-1),&
+           recvcountTree(0:nLeaderGroupProcs-1))
   displsTree(myLeaderGroupRank) = offsetComputeNodeTree
   CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsTree,recvcountCN,displsCN,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
   DO iProc=1,nLeaderGroupProcs-1
@@ -820,6 +815,14 @@ IMPLICIT NONE
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
+! Free communication arrays
+SDEALLOCATE(displsCN)
+SDEALLOCATE(recvcountCN)
+SDEALLOCATE(displsElem)
+SDEALLOCATE(recvcountElem)
+SDEALLOCATE(displsSide)
+SDEALLOCATE(recvcountSide)
+
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) THEN
   CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
@@ -855,6 +858,12 @@ MDEALLOCATE(SideInfo_Shared)
 !MDEALLOCATE(NodeInfo_Shared)
 MDEALLOCATE(NodeCoords_Shared)
 MDEALLOCATE(TreeCoords_Shared)
+
+! Free communication arrays
+SDEALLOCATE(displsNode)
+SDEALLOCATE(recvcountNode)
+SDEALLOCATE(displsTree)
+SDEALLOCATE(recvcountTree)
 
 END SUBROUTINE FinalizeMeshReadin
 

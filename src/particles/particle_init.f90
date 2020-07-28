@@ -676,7 +676,6 @@ CALL InitializeVariablesRandomNumbers()
 ! gravitational acceleration
 PartGravity             = GETREALARRAY('Part-Gravity'          ,3  ,'0. , 0. , 0.')
 
-
 ! Number of species
 nSpecies                = GETINT(     'Part-nSpecies','1')
 ! Abort if running particle code without any species

@@ -865,7 +865,6 @@ END IF
 ! Synchronize array and communicate the information to other procs on CN node
 CALL MPI_WIN_SYNC(FIBGMToProc_Shared_Win,IERROR)
 CALL MPI_BCAST(nFIBGMToProc,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
-!CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
 ! Allocate shared array to hold the proc information
 MPISharedSize = INT(nFIBGMToProc,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND

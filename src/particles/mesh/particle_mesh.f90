@@ -574,7 +574,7 @@ INTEGER                        :: CornerNodeIDswitch(8),NodeMap(4,6)
 REAL,DIMENSION(3)              :: MasterCoords,SlaveCoords,PeriodicTmp
 LOGICAL,ALLOCPOINT             :: PeriodicFound(:)
 #if USE_MPI
-REAL,ALLOCATABLE               :: sendbuf(:,:)
+REAL,ALLOCATABLE               :: sendbuf(:),recvbuf(:,:)
 INTEGER                        :: PeriodicFound_Win
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
@@ -613,6 +613,7 @@ MPISharedSize = INT(GEO%nPeriodicVectors,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
 NULLIFY(PeriodicFound)
 CALL Allocate_Shared(MPISharedSize,(/GEO%nPeriodicVectors/),PeriodicFound_Win,PeriodicFound)
 CALL MPI_WIN_LOCK_ALL(0,PeriodicFound_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #else
 firstElem = 1
 lastElem  = nElems
@@ -667,7 +668,7 @@ DO ElemID = firstElem,lastElem
             PeriodicTmp  = SlaveCoords - MasterCoords
             GEO%PeriodicVectors(:,BCALPHA) = PeriodicTmp
             PeriodicFound(BCALPHA) = .TRUE.
-!            EXIT
+            EXIT
 !          END DO
         END IF
       END DO
@@ -678,24 +679,29 @@ END DO
 END ASSOCIATE
 
 #if USE_MPI
-ALLOCATE(sendbuf(2,GEO%nPeriodicVectors))
+ALLOCATE(sendbuf(GEO%nPeriodicVectors)                           ,&
+         recvbuf(GEO%nPeriodicVectors,0:nComputeNodeProcessors-1))
+sendbuf = 0.
+recvbuf = 0.
 
 DO iVec = 1,GEO%nPeriodicVectors
-  sendbuf(1,iVec) = MERGE(VECNORM(GEO%PeriodicVectors(:,iVec)),HUGE(1.),VECNORM(GEO%PeriodicVectors(:,iVec)).GT.0)
-  sendbuf(2,iVec) = myComputeNodeRank
+  sendbuf(iVec) = MERGE(VECNORM(GEO%PeriodicVectors(:,iVec)),HUGE(1.),VECNORM(GEO%PeriodicVectors(:,iVec)).GT.0)
 END DO
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,sendbuf,GEO%nPeriodicVectors,MPI_2DOUBLE_PRECISION,MPI_MINLOC,MPI_COMM_SHARED,iERROR)
 
+! Do it by hand, MPI_ALLREDUCE seems problematic with MPI_2DOUBLE_PRECISION and MPI_MINLOC
+! https://stackoverflow.com/questions/56307320/mpi-allreduce-not-synchronizing-properly
+!CALL MPI_ALLREDUCE(MPI_IN_PLACE,sendbuf,GEO%nPeriodicVectors,MPI_2DOUBLE_PRECISION,MPI_MINLOC,MPI_COMM_SHARED,iERROR)
 DO iVec = 1,GEO%nPeriodicVectors
-  CALL MPI_BCAST(GEO%PeriodicVectors(:,iVec),3,MPI_DOUBLE_PRECISION,INT(sendbuf(2,iVec)),MPI_COMM_SHARED,iError)
+  CALL MPI_ALLGATHER(sendbuf(iVec),1,MPI_DOUBLE_PRECISION,recvbuf(iVec,:),1,MPI_DOUBLE_PRECISION,MPI_COMM_SHARED,iERROR)
+  CALL MPI_BCAST(GEO%PeriodicVectors(:,iVec),3,MPI_DOUBLE_PRECISION,MINLOC(recvbuf(iVec,:),1),MPI_COMM_SHARED,iError)
 END DO
-DEALLOCATE(sendbuf)
+DEALLOCATE(sendbuf,recvbuf)
 
 ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 CALL MPI_WIN_UNLOCK_ALL(PeriodicFound_Win,iError)
 CALL MPI_WIN_FREE(      PeriodicFound_Win,iError)
-CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 #endif /*USE_MPI*/
 MDEALLOCATE(PeriodicFound)
 
@@ -779,6 +785,7 @@ CALL Allocate_Shared(MPISharedSize,(/3*3*(NGeo+1)*(NGeo+1)*(NGeo+1)*nGlobalElems
 CALL MPI_WIN_LOCK_ALL(0,XCL_NGeo_Shared_Win,IERROR)
 CALL MPI_WIN_LOCK_ALL(0,Elem_xGP_Shared_Win,IERROR)
 CALL MPI_WIN_LOCK_ALL(0,dXCL_NGeo_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 XCL_NGeo_Shared (1:3    ,0:NGeo,0:NGeo,0:NGeo,1:nGlobalElems) => XCL_NGeo_Array
 Elem_xGP_Shared (1:3    ,0:PP_N,0:PP_N,0:PP_N,1:nGlobalElems) => Elem_xGP_Array
 dXCL_NGeo_Shared(1:3,1:3,0:NGeo,0:NGeo,0:NGeo,1:nGlobalElems) => dXCL_NGeo_Array
@@ -814,6 +821,7 @@ IF (nComputeNodeProcessors.NE.nProcessors_Global .AND. myComputeNodeRank.EQ.0) T
                      , MPI_DOUBLE_PRECISION          &
                      , MPI_COMM_LEADERS_SHARED       &
                      , IERROR)
+!  CALL MPI_ALLREDUCE(MPI_IN_PLACE,XCL_NGeo_Shared,3*(NGeo+1)**3*4096,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,IERROR)
 
   CALL MPI_ALLGATHERV( MPI_IN_PLACE                  &
                      , 0                             &
@@ -824,6 +832,7 @@ IF (nComputeNodeProcessors.NE.nProcessors_Global .AND. myComputeNodeRank.EQ.0) T
                      , MPI_DOUBLE_PRECISION          &
                      , MPI_COMM_LEADERS_SHARED       &
                      , IERROR)
+!  CALL MPI_ALLREDUCE(MPI_IN_PLACE,Elem_xGP_Array,3*(PP_N+1)**3*4096,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,IERROR)
 
   CALL MPI_ALLGATHERV( MPI_IN_PLACE                  &
                      , 0                             &
@@ -834,6 +843,7 @@ IF (nComputeNodeProcessors.NE.nProcessors_Global .AND. myComputeNodeRank.EQ.0) T
                      , MPI_DOUBLE_PRECISION          &
                      , MPI_COMM_LEADERS_SHARED       &
                      , IERROR)
+!  CALL MPI_ALLREDUCE(MPI_IN_PLACE,dXCL_NGeo_Shared,3*3*(NGeo+1)**3*4096,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,IERROR)
 END IF
 
 !nComputeNodeHaloElems = nComputeNodeTotalElems - nComputeNodeElems
@@ -2018,6 +2028,7 @@ INTEGER                        :: firstElem,lastElem
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif /*USE_MPI*/
 !================================================================================================================================
+
 #if USE_MPI
 MPISharedSize = INT((3*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
 CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeTotalElems/),ElemBaryNGeo_Shared_Win,ElemBaryNGeo_Shared)

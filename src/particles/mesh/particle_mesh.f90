@@ -693,12 +693,14 @@ END DO
 !CALL MPI_ALLREDUCE(MPI_IN_PLACE,sendbuf,GEO%nPeriodicVectors,MPI_2DOUBLE_PRECISION,MPI_MINLOC,MPI_COMM_SHARED,iERROR)
 DO iVec = 1,GEO%nPeriodicVectors
   CALL MPI_ALLGATHER(sendbuf(iVec),1,MPI_DOUBLE_PRECISION,recvbuf(iVec,:),1,MPI_DOUBLE_PRECISION,MPI_COMM_SHARED,iERROR)
-  CALL MPI_BCAST(GEO%PeriodicVectors(:,iVec),3,MPI_DOUBLE_PRECISION,MINLOC(recvbuf(iVec,:),1),MPI_COMM_SHARED,iError)
+  ! MINLOC does not follow array bounds, so root rank = 1
+  CALL MPI_BCAST(GEO%PeriodicVectors(:,iVec),3,MPI_DOUBLE_PRECISION,MINLOC(recvbuf(iVec,:),1)-1,MPI_COMM_SHARED,iError)
 END DO
-DEALLOCATE(sendbuf,recvbuf)
 
 ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+! Deallocate only after MPI_BCAST safely returned
+DEALLOCATE(sendbuf,recvbuf)
 CALL MPI_WIN_UNLOCK_ALL(PeriodicFound_Win,iError)
 CALL MPI_WIN_FREE(      PeriodicFound_Win,iError)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)

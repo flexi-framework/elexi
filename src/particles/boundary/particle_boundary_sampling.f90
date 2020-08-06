@@ -139,7 +139,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                :: iBC
+INTEGER                                :: iBC,iSpecies,nShift
 INTEGER                                :: iSide,firstSide,lastSide
 INTEGER                                :: nSurfSidesProc,nSurfSidesTmp
 INTEGER                                :: offsetSurfTotalSidesProc
@@ -461,13 +461,27 @@ CALL Allocate_Shared(MPISharedSize,(/SurfSampSize,nSurfSample,nSurfSample,nCompu
 CALL MPI_WIN_LOCK_ALL(0,SampWallState_Shared_Win,IERROR)
 #else
 ALLOCATE(SampWallState_Shared(1:SurfSampSize,1:nSurfSample,1:nSurfSample,1:nComputeNodeSurfTotalSides))
-SampWallState_Shared = 0.
 #endif /*USE_MPI*/
 
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) THEN
 #endif /*USE_MPI*/
   SampWallState_Shared = 0.
+  ! MIN/MAX values can not use zero, otherwise they will be frozen there
+  SampWallState(3,:,:,:)        = HUGE(1.)
+  SampWallState(4,:,:,:)        =-HUGE(1.)
+  SampWallState(8,:,:,:)        = HUGE(1.)
+  SampWallState(9,:,:,:)        =-HUGE(1.)
+
+  IF (nSpecies.GT.1) THEN
+    DO iSpecies = 1,nSpecies
+      nShift = iSpecies * nImpactVars
+      SampWallState(3+nShift,:,:,:) = HUGE(1.)
+      SampWallState(4+nShift,:,:,:) =-HUGE(1.)
+      SampWallState(8+nShift,:,:,:) = HUGE(1.)
+      SampWallState(9+nShift,:,:,:) =-HUGE(1.)
+    END DO
+  END IF
 #if USE_MPI
 END IF
 CALL MPI_WIN_SYNC(SampWallState_Shared_Win,IERROR)
@@ -501,7 +515,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 ! get interpolation points and weights
 ALLOCATE( Xi_NGeo( 0:NGeo)  &
-        , wGP_NGeo(0:NGeo) )
+        , wGP_NGeo(0:NGeo))
 CALL LegendreGaussNodesAndWeights(NGeo,Xi_NGeo,wGP_NGeo)
 
 ! compute area of sub-faces
@@ -690,9 +704,8 @@ SUBROUTINE RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAn
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Vars,          ONLY:Species,PartSpecies,nSpecies
+USE MOD_Particle_Boundary_Vars ,ONLY: SampWallState,nImpactVars
+USE MOD_Particle_Vars          ,ONLY: Species,PartSpecies,nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -735,24 +748,12 @@ END IF
 !    delta2 = newValue - mean
 !    M2 = M2 + delta * delta2
 
-!   Record first impact, otherwise min will be frozen at zero
-    IF (SampWallState(1,p,q,surfSideID).EQ.1) THEN
-!        SampWallState(2,p,q,surfSideID)        = e_kin
-        SampWallState(3,p,q,surfSideID)        = e_kin
-        SampWallState(4,p,q,surfSideID)        = e_kin
-    END IF
-
-!   All subsequent impacts
     delta                                      = e_kin - SampWallState(2,p,q,surfSideID)
 !   Update mean
     SampWallState(2,p,q,surfSideID)            = SampWallState(2,p,q,surfSideID) + delta / SampWallState(1,p,q,surfSideID)
 !    Find min/max of distribution
-    IF (e_kin.LT.SampWallState(3,p,q,surfSideID)) THEN
-        SampWallState(3,p,q,surfSideID)        = e_kin
-    END IF
-    IF (e_kin.GT.SampWallState(4,p,q,surfSideID)) THEN
-        SampWallState(4,p,q,surfSideID)        = e_kin
-    END IF
+    SampWallState(3,p,q,surfSideID)            = MIN(SampWallState(3,p,q,surfSideID),e_kin)
+    SampWallState(4,p,q,surfSideID)            = MAX(SampWallState(4,p,q,surfSideID),e_kin)
 !   delta2 = newValue - mean
     delta2                                     = e_kin - SampWallState(2,p,q,surfSideID)
 !   M2 = M2 + delta * delta2
@@ -762,26 +763,13 @@ END IF
     SampWallState(6,p,q,surfSideID)            = SampWallState(5,p,q,surfSideID)/SampWallState(1,p,q,surfSideID)
 !<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 IF (nSpecies.GT.1) THEN
-
-!   Record first impact, otherwise min will be frozen at zero
-    IF (SampWallState(1+nShift,p,q,surfSideID).EQ.1) THEN
-!        SampWallState(2+nShift,p,q,surfSideID) = e_kin
-        SampWallState(3+nShift,p,q,surfSideID) = e_kin
-        SampWallState(4+nShift,p,q,surfSideID) = e_kin
-    END IF
-
-!   All subsequent impacts
     delta                                      = e_kin - SampWallState(2+nShift,p,q,surfSideID)
 !   Update mean
     SampWallState(2+nShift,p,q,surfSideID)     = SampWallState(2+nShift,p,q,surfSideID) + delta /                                  &
                                                  SampWallState(1+nShift,p,q,surfSideID)
 !   Find min/max of distribution
-    IF (e_kin.LT.SampWallState(3+nShift,p,q,surfSideID)) THEN
-        SampWallState(3+nShift,p,q,surfSideID) = e_kin
-    END IF
-    IF (e_kin.GT.SampWallState(4+nShift,p,q,surfSideID)) THEN
-        SampWallState(4+nShift,p,q,surfSideID) = e_kin
-    END IF
+    SampWallState(3+nShift,p,q,surfSideID)     = MIN(SampWallState(3+nShift,p,q,surfSideID),e_kin)
+    SampWallState(4+nShift,p,q,surfSideID)     = MAX(SampWallState(4+nShift,p,q,surfSideID),e_kin)
 !   delta2 = newValue - mean
     delta2                                     = e_kin - SampWallState(2+nShift,p,q,surfSideID)
 !   M2 = M2 + delta * delta2
@@ -792,25 +780,13 @@ IF (nSpecies.GT.1) THEN
 END IF
 
 !-- 7. - 11 / Impact angle (mean, min, max, M2, variance)
-!   Record first impact, otherwise min will be frozen at zero
-    IF (SampWallState(1,p,q,surfSideID).EQ.1) THEN
-!        SampWallState(7,p,q,surfSideID)        = PartFaceAngle
-        SampWallState(8,p,q,surfSideID)        = PartFaceAngle
-        SampWallState(9,p,q,surfSideID)        = PartFaceAngle
-    END IF
-
-!   All subsequent impacts
     delta                                      = PartFaceAngle - SampWallState(7,p,q,surfSideID)
 !   Update mean
     SampWallState(7,p,q,surfSideID)            = SampWallState(7,p,q,surfSideID) + delta /                                         &
                                                  SampWallState(1,p,q,surfSideID)
 !    Find min/max of distribution
-    IF (PartFaceAngle.LT.SampWallState(8,p,q,surfSideID)) THEN
-        SampWallState(8,p,q,surfSideID)        = PartFaceAngle
-    END IF
-    IF (PartFaceAngle.GT.SampWallState(9,p,q,surfSideID)) THEN
-        SampWallState(9,p,q,surfSideID)        = PartFaceAngle
-    END IF
+    SampWallState(8,p,q,surfSideID)            = MIN(SampWallState(8,p,q,surfSideID),PartFaceAngle)
+    SampWallState(9,p,q,surfSideID)            = MAX(SampWallState(9,p,q,surfSideID),PartFaceAngle)
 !   delta2 = newValue - mean
     delta2                                     = PartFaceAngle - SampWallState(7,p,q,surfSideID)
 !   M2 = M2 + delta * delta2
@@ -820,26 +796,13 @@ END IF
     SampWallState(11,p,q,surfSideID)           = SampWallState(10,p,q,surfSideID)/SampWallState(1,p,q,surfSideID)
 !<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 IF (nSpecies.GT.1) THEN
-
-!   Record first impact, otherwise min will be frozen at zero
-    IF (SampWallState(1+nShift,p,q,surfSideID).EQ.1) THEN
-!        SampWallState(7+nShift,p,q,surfSideID) = PartFaceAngle
-        SampWallState(8+nShift,p,q,surfSideID) = PartFaceAngle
-        SampWallState(9+nShift,p,q,surfSideID) = PartFaceAngle
-    END IF
-
-!   All subsequent impacts
     delta                                      = PartFaceAngle - SampWallState(7+nShift,p,q,surfSideID)
 !   Update mean
     SampWallState(7+nShift,p,q,surfSideID)     = SampWallState(7+nShift,p,q,surfSideID) + delta /                                  &
                                                  SampWallState(1+nShift,p,q,surfSideID)
 !   Find min/max of distribution
-    IF (PartFaceAngle.LT.SampWallState(8+nShift,p,q,surfSideID)) THEN
-        SampWallState(8+nShift,p,q,surfSideID) = PartFaceAngle
-    END IF
-    IF (PartFaceAngle.GT.SampWallState(9+nShift,p,q,surfSideID)) THEN
-        SampWallState(9+nShift,p,q,surfSideID) = PartFaceAngle
-    END IF
+    SampWallState(8+nShift,p,q,surfSideID)     = MIN(SampWallState(8+nShift,p,q,surfSideID),PartFaceAngle)
+    SampWallState(9+nShift,p,q,surfSideID)     = MAX(SampWallState(9+nShift,p,q,surfSideID),PartFaceAngle)
 !   delta2 = newValue - mean
     delta2                                     = PartFaceAngle - SampWallState(7+nShift,p,q,surfSideID)
 !   M2 = M2 + delta * delta2

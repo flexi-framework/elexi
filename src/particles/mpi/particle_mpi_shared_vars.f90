@@ -79,12 +79,15 @@ INTEGER,ALLOCATABLE,DIMENSION(:,:):: nSurfSidesLeader       !> number of surf si
                                                             !> 1 - sides from local leader to other leader
                                                             !> 2 - sides from other leader to local leader
 
-INTEGER, ALLOCATABLE :: CNTotalElem2GlobalElem(:)           !> Compute Nodes mapping 1:nTotal -> 1:nGlobal
-INTEGER, ALLOCATABLE :: GlobalElem2CNTotalElem(:)           !> Reverse Mapping
+INTEGER,ALLOCATABLE :: CNTotalElem2GlobalElem(:)            !> Compute Nodes mapping 1:nTotal -> 1:nGlobal
+INTEGER,ALLOCATABLE :: GlobalElem2CNTotalElem(:)            !> Reverse Mapping
 
 !> Solution
-REAL,POINTER       :: U_Shared(:,:,:,:,:)             !> DG solution on current node
-INTEGER            :: U_Shared_Win                    !> Pointer to shared memory window
+REAL,POINTER       :: U_Shared(:,:,:,:,:)                   !> DG solution on current node
+INTEGER            :: U_Shared_Win                          !> Pointer to shared memory window
+
+INTEGER            :: MPI_INFO_SHARED_LOOSE                 !> MPI_INFO object allowing for re-ordering of same origin atomic RMA operations
+!INTEGER            :: MPI_INFO_SHARED_STRICT                !> MPI_INFO object not allowing for re-ordering of same origin atomic RMA operations
 
 !> Other variables in particle_mesh_vars.f90
 #endif /* USE_MPI */

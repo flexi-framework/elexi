@@ -570,8 +570,7 @@ IF (PerformLoadBalance) THEN
     ALLOCATE(displsElem(   0:nLeaderGroupProcs-1),&
              recvcountElem(0:nLeaderGroupProcs-1))
     displsElem(myLeaderGroupRank) = offsetComputeNodeElem
-    CALL MPI_ALLGATHER(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsElem,1  &
-          ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
+    CALL MPI_ALLGATHER(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsElem,1,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
     DO iProc=1,nLeaderGroupProcs-1
       recvcountElem(iProc-1) = displsElem(iProc)-displsElem(iProc-1)
     END DO
@@ -587,8 +586,7 @@ IF (PerformLoadBalance) THEN
     ALLOCATE(displsSide(   0:nLeaderGroupProcs-1),&
              recvcountSide(0:nLeaderGroupProcs-1))
     displsSide(myLeaderGroupRank) = offsetComputeNodeSide
-    CALL MPI_ALLGATHER(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsSide,1 &
-          ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
+    CALL MPI_ALLGATHER(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsSide,1,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
     DO iProc=1,nLeaderGroupProcs-1
       recvcountSide(iProc-1) = displsSide(iProc)-displsSide(iProc-1)
     END DO

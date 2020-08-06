@@ -453,6 +453,21 @@ IF(.NOT.SurfOnNode) RETURN
 !>>> Pointer structure type ruins possibility of ALLREDUCE, need separate arrays for everything
 ALLOCATE(SampWallState(1:SurfSampSize,1:nSurfSample,1:nSurfSample,1:nComputeNodeSurfTotalSides))
 SampWallState = 0.
+! MIN/MAX values can not use zero, otherwise they will be frozen there
+SampWallState(3,:,:,:)        = HUGE(1.)
+SampWallState(4,:,:,:)        =-HUGE(1.)
+SampWallState(8,:,:,:)        = HUGE(1.)
+SampWallState(9,:,:,:)        =-HUGE(1.)
+
+IF (nSpecies.GT.1) THEN
+  DO iSpecies = 1,nSpecies
+    nShift = iSpecies * nImpactVars
+    SampWallState(3+nShift,:,:,:) = HUGE(1.)
+    SampWallState(4+nShift,:,:,:) =-HUGE(1.)
+    SampWallState(8+nShift,:,:,:) = HUGE(1.)
+    SampWallState(9+nShift,:,:,:) =-HUGE(1.)
+  END DO
+END IF
 
 #if USE_MPI
 !> Then shared arrays for boundary sampling
@@ -467,21 +482,6 @@ ALLOCATE(SampWallState_Shared(1:SurfSampSize,1:nSurfSample,1:nSurfSample,1:nComp
 IF (myComputeNodeRank.EQ.0) THEN
 #endif /*USE_MPI*/
   SampWallState_Shared = 0.
-  ! MIN/MAX values can not use zero, otherwise they will be frozen there
-  SampWallState(3,:,:,:)        = HUGE(1.)
-  SampWallState(4,:,:,:)        =-HUGE(1.)
-  SampWallState(8,:,:,:)        = HUGE(1.)
-  SampWallState(9,:,:,:)        =-HUGE(1.)
-
-  IF (nSpecies.GT.1) THEN
-    DO iSpecies = 1,nSpecies
-      nShift = iSpecies * nImpactVars
-      SampWallState(3+nShift,:,:,:) = HUGE(1.)
-      SampWallState(4+nShift,:,:,:) =-HUGE(1.)
-      SampWallState(8+nShift,:,:,:) = HUGE(1.)
-      SampWallState(9+nShift,:,:,:) =-HUGE(1.)
-    END DO
-  END IF
 #if USE_MPI
 END IF
 CALL MPI_WIN_SYNC(SampWallState_Shared_Win,IERROR)

@@ -116,26 +116,33 @@ MacroSurfaceSpecVal= 0.
 
 !> Erosion tracking
 iSpec = 1
+
+#if USE_MPI
+ASSOCIATE(SampWallState => SampWallState_Shared)
+#endif /*USE_MPI*/
 !---- Only one species. Only total values necessary
 !===================================================================================================================================
 DO iSurfSide = 1,nComputeNodeSurfSides; DO q = 1,nSurfSample; DO p = 1,nSurfSample
   !---- 1. - .. / Impact Counter
-  MacroSurfaceVal(1    ,p,q,iSurfSide) = SampWallState_Shared(1      ,p,q,iSurfSide)
-  MacroSurfaceSpecVal(1,p,q,iSurfSide,iSpec) = SampWallState_Shared(1,p,q,iSurfSide) / TimeSample
+  MacroSurfaceVal(1    ,p,q,iSurfSide) =       SampWallState(1 ,p,q,iSurfSide)
   !---- 2. - .. / Impact Counter per AREA
-  MacroSurfaceVal(2    ,p,q,iSurfSide) = SampWallState_Shared(1      ,p,q,iSurfSide) / SurfSideArea(p,q,iSurfSide)
+  MacroSurfaceVal(2    ,p,q,iSurfSide) =       SampWallState(1 ,p,q,iSurfSide) / SurfSideArea(p,q,iSurfSide)
   !---- 3. - 6. / Kinetic energy on impact (mean, min, max, variance)
-  MacroSurfaceVal(3:5  ,p,q,iSurfSide) = SampWallState_Shared(2:4    ,p,q,iSurfSide)
-  MacroSurfaceVal(6    ,p,q,iSurfSide) = SampWallState_Shared(6      ,p,q,iSurfSide)
+  MacroSurfaceVal(3    ,p,q,iSurfSide) =       SampWallState(2 ,p,q,iSurfSide)
+  MacroSurfaceVal(4    ,p,q,iSurfSide) = MERGE(SampWallState(3 ,p,q,iSurfSide),0.,SampWallState(3,p,q,iSurfSide).LT. HUGE(1.))
+  MacroSurfaceVal(5    ,p,q,iSurfSide) = MERGE(SampWallState(4 ,p,q,iSurfSide),0.,SampWallState(4,p,q,iSurfSide).GT.-HUGE(1.))
+  MacroSurfaceVal(6    ,p,q,iSurfSide) =       SampWallState(6 ,p,q,iSurfSide)
   !---- 7. - 10 / Impact angle (mean, min, max, variance)
-  MacroSurfaceVal(7:9  ,p,q,iSurfSide) = SampWallState_Shared(7:9    ,p,q,iSurfSide)
-  MacroSurfaceVal(10   ,p,q,iSurfSide) = SampWallState_Shared(11     ,p,q,iSurfSide)
+  MacroSurfaceVal(7    ,p,q,iSurfSide) =       SampWallState(7 ,p,q,iSurfSide)
+  MacroSurfaceVal(8    ,p,q,iSurfSide) = MERGE(SampWallState(8 ,p,q,iSurfSide),0.,SampWallState(3,p,q,iSurfSide).LT. HUGE(1.))
+  MacroSurfaceVal(9    ,p,q,iSurfSide) = MERGE(SampWallState(9 ,p,q,iSurfSide),0.,SampWallState(4,p,q,iSurfSide).GT.-HUGE(1.))
+  MacroSurfaceVal(10   ,p,q,iSurfSide) =       SampWallState(11,p,q,iSurfSide)
   !---- 11 - 13 / Sampling Current Forces at walls
-  MacroSurfaceVal(11:13,p,q,iSurfSide) = SampWallState_Shared(12:14,p,q,iSurfSide) / (SurfSideArea(p,q,iSurfSide) * TimeSample)
+  MacroSurfaceVal(11:13,p,q,iSurfSide) =       SampWallState(12:14,p,q,iSurfSide) / (SurfSideArea(p,q,iSurfSide) * TimeSample)
   !>> Set current forces to zero for new sampling run <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-!        SampWall(iSurfSide)%State(12:14,p,q) = 0.
+!  SampWall(iSurfSide)%State(12:14,p,q) = 0.
   !---- 14 - 16 / Sampling Average Forces at walls
-  MacroSurfaceVal(14:16,p,q,iSurfSide) = SampWallState_Shared(15:17,p,q,iSurfSide) / (SurfSideArea(p,q,iSurfSide) * t)
+  MacroSurfaceVal(14:16,p,q,iSurfSide) =       SampWallState(15:17,p,q,iSurfSide) / (SurfSideArea(p,q,iSurfSide) * t)
 END DO; END DO; END DO
 
 !---- Multiple species. All Variables are saved DOUBLE. First Total, then per SPECIES
@@ -145,28 +152,40 @@ IF (nSpecies.GT.1) THEN
     nShift    = iSpec * (nImpactVars-1)
     nShiftRHS = iSpec *  nImpactVars
     !---- 1. - .. / Impact Counter
-    MacroSurfaceVal(1+nShift         ,p,q,iSurfSide) = SampWallState_Shared(1+nShiftRHS,p,q,iSurfSide)
-    MacroSurfaceSpecVal(1            ,p,q,iSurfSide,iSpec)= SampWallState_Shared(1+nShiftRHS,p,q,iSurfSide) / TimeSample
+    MacroSurfaceVal(1+nShift ,p,q,iSurfSide) =       SampWallState(1 +nShiftRHS,p,q,iSurfSide)
+    MacroSurfaceSpecVal(1    ,p,q,iSurfSide,iSpec) = SampWallState(1 +nShiftRHS,p,q,iSurfSide) / TimeSample
     !---- 2. - .. / Impact Counter per AREA
-    MacroSurfaceVal(2+nShift         ,p,q,iSurfSide) = SampWallState_Shared(1+nShiftRHS,p,q,iSurfSide) / SurfSideArea(p,q,iSurfSide)
+    MacroSurfaceVal(2+nShift ,p,q,iSurfSide) =       SampWallState(1 +nShiftRHS,p,q,iSurfSide) / SurfSideArea(p,q,iSurfSide)
     !---- 3. - 6. / Kinetic energy on impact (mean, min, max, variance)
-    MacroSurfaceVal(3+nShift:5+nShift,p,q,iSurfSide) = SampWallState_Shared(2+nShiftRHS:4+nShiftRHS,p,q,iSurfSide)
-    MacroSurfaceVal(6+nShift         ,p,q,iSurfSide) = SampWallState_Shared(6+nShiftRHS,p,q,iSurfSide)
+    MacroSurfaceVal(3+nShift ,p,q,iSurfSide) =       SampWallState(2 +nShiftRHS,p,q,iSurfSide)
+    MacroSurfaceVal(4+nShift ,p,q,iSurfSide) = MERGE(SampWallState(3 +nShiftRHS,p,q,iSurfSide),0.,SampWallState(3+nShiftRHS,p,q,iSurfSide).LT. HUGE(1.))
+    MacroSurfaceVal(5+nShift ,p,q,iSurfSide) = MERGE(SampWallState(4 +nShiftRHS,p,q,iSurfSide),0.,SampWallState(4+nShiftRHS,p,q,iSurfSide).GT.-HUGE(1.))
+    MacroSurfaceVal(6+nShift ,p,q,iSurfSide) =       SampWallState(6 +nShiftRHS,p,q,iSurfSide)
     !---- 7. - 10 / Impact angle (mean, min, max, variance)
-    MacroSurfaceVal(7+nShift:9+nShift,p,q,iSurfSide) = SampWallState_Shared(7+nShiftRHS:9+nShiftRHS,p,q,iSurfSide)
-    MacroSurfaceVal(10+nShift        ,p,q,iSurfSide) = SampWallState_Shared(11+nShiftRHS,p,q,iSurfSide)
+    MacroSurfaceVal(7+nShift ,p,q,iSurfSide) =       SampWallState(7 +nShiftRHS,p,q,iSurfSide)
+    MacroSurfaceVal(8+nShift ,p,q,iSurfSide) = MERGE(SampWallState(8 +nShiftRHS,p,q,iSurfSide),0.,SampWallState(8+nShiftRHS,p,q,iSurfSide).LT. HUGE(1.))
+    MacroSurfaceVal(9+nShift ,p,q,iSurfSide) = MERGE(SampWallState(9 +nShiftRHS,p,q,iSurfSide),0.,SampWallState(9+nShiftRHS,p,q,iSurfSide).GT.-HUGE(1.))
+    MacroSurfaceVal(10+nShift,p,q,iSurfSide) =       SampWallState(11+nShiftRHS,p,q,iSurfSide)
     !---- 11 - 13 / Sampling Current Forces at walls
-    MacroSurfaceVal(11+nShift:13+nShift,p,q,iSurfSide) = SampWallState_Shared(12+nShiftRHS:14+nShiftRHS,p,q,iSurfSide)             &
+    MacroSurfaceVal(11+nShift:13+nShift,p,q,iSurfSide) = SampWallState(12+nShiftRHS:14+nShiftRHS,p,q,iSurfSide)             &
                                                        / (SurfSideArea(p,q,iSurfSide) * TimeSample)
     !>> Set current forces to zero for new sampling run <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-  !        SampWall(iSurfSide)%State(12+nShiftRHS,p,q) = 0.
-  !        SampWall(iSurfSide)%State(13+nShiftRHS,p,q) = 0.
-  !        SampWall(iSurfSide)%State(14+nShiftRHS,p,q) = 0.
+!    SampWall(iSurfSide)%State(12+nShiftRHS,p,q) = 0.
+!     SampWall(iSurfSide)%State(13+nShiftRHS,p,q) = 0.
+!     SampWall(iSurfSide)%State(14+nShiftRHS,p,q) = 0.
     !---- 14 - 16 / Sampling Average Forces at walls
-    MacroSurfaceVal(14+nShift:16+nShift,p,q,iSurfSide) = SampWallState_Shared(15+nShiftRHS:17+nShiftRHS,p,q,iSurfSide)             &
+    MacroSurfaceVal(14+nShift:16+nShift,p,q,iSurfSide) = SampWallState(15+nShiftRHS:17+nShiftRHS,p,q,iSurfSide)             &
                                                        / (SurfSideArea(p,q,iSurfSide) * TimeSample)
   END DO; END DO; END DO; END DO
+ELSE
+  DO iSurfSide = 1,nComputeNodeSurfSides; DO q = 1,nSurfSample; DO p = 1,nSurfSample
+    !---- 1. - .. / Impact Counter
+    MacroSurfaceSpecVal(1,p,q,iSurfSide,iSpec) = SampWallState(1,p,q,iSurfSide) / TimeSample
+  END DO; END DO; END DO
 END IF
+#if USE_MPI
+END ASSOCIATE
+#endif /*USE_MPI*/
 
 CALL WriteSurfSample(TRIM(MeshFile),ActualTime,remap_opt)
 

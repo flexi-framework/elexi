@@ -51,7 +51,7 @@ SUBROUTINE InitSurfCommunication()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_SURF
-!USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeProcessors,myComputeNoderank
+!USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPIRankSharedLeader,MPIRankSurfLeader
 USE MOD_Particle_MPI_Shared_Vars,ONLY: mySurfRank,nSurfLeaders!,nSurfCommProc
@@ -300,7 +300,7 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState,SampWallState_Shared,SampWa
 USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars
 USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nSurfLeaders,myComputeNodeRank,mySurfRank
+USE MOD_Particle_MPI_Shared_Vars,ONLY: nSurfLeaders,myComputeNodeRank,mySurfRank,nComputeNodeProcessors
 USE MOD_Particle_Vars           ,ONLY: nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -315,15 +315,242 @@ INTEGER                         :: iPos,p,q
 INTEGER                         :: iSpec,nShift
 INTEGER                         :: MessageSize,iSurfSide,SurfSideID
 INTEGER                         :: nValues
-INTEGER                         :: RecvRequest(0:nSurfLeaders-1),SendRequest(0:nSurfLeaders-1)
+INTEGER                         :: RecvRequestLeader(0:nSurfLeaders-1),SendRequestLeader(0:nSurfLeaders-1)
+INTEGER                         :: RecvRequestShared(1:nComputeNodeProcessors-1),SendRequestShared!,ReduceRequestShared(6)
 REAL                            :: SampWallTmp(1:SurfSampSize)
+REAL,ALLOCATABLE                :: SampWallStateTmp(:,:,:,:,:)
 !===================================================================================================================================
 ! nodes without sampling surfaces do not take part in this routine
 IF (.NOT.SurfOnNode) RETURN
 
-! collect the information from the proc-local shadow arrays in the compute-node shared array
+!! collect the information from the proc-local shadow arrays in the compute-node shared array. Differentiate between sums, MIN/MAX and
+!! mean calculations
+!MessageSize = nSurfSample*nSurfSample*nComputeNodeSurfTotalSides
+!! Mean
+!IF (myComputeNodeRank.EQ.0) THEN
+!  ALLOCATE(SampWallStateTmp(3,nSurfSample,nSurfSample,nComputeNodeSurfTotalSides,nComputeNodeProcessors))
+!
+!  ! Root is always excluded
+!  DO iProc=1,nComputeNodeProcessors-1
+!    CALL MPI_IRECV( SampWallStateTmp(1:2,:,:,:,iProc)              &
+!                  , MessageSize                                    &
+!                  , MPI_DOUBLE_PRECISION                           &
+!                  , iProc                                          &
+!                  , 1212                                           &
+!                  , MPI_COMM_SHARED                                &
+!                  , RecvRequestShared(1,iProc)                     &
+!                  , IERROR)
+!    CALL MPI_IRECV( SampWallStateTmp(3,:,:,:,iProc)                &
+!                  , MessageSize                                    &
+!                  , MPI_DOUBLE_PRECISION                           &
+!                  , iProc                                          &
+!                  , 1213                                           &
+!                  , MPI_COMM_SHARED                                &
+!                  , RecvRequestShared(2,iProc)                     &
+!                  , IERROR)
+!
+!  END DO
+!ELSE
+!  CALL MPI_ISEND( SampWallState(1:2,:,:,:)                         &
+!                , MessageSize                                      &
+!                , MPI_DOUBLE_PRECISION                             &
+!                , 0                                                &
+!                , 1212                                             &
+!                , MPI_COMM_SHARED                                  &
+!                , SendRequestShared(1)                             &
+!                , IERROR)
+!  CALL MPI_ISEND( SampWallState(7,:,:,:)                           &
+!                , MessageSize                                      &
+!                , MPI_DOUBLE_PRECISION                             &
+!                , 0                                                &
+!                , 1213                                             &
+!                , MPI_COMM_SHARED                                  &
+!                , SendRequestShared(2)                             &
+!                , IERROR)
+!END IF ! myComputeNodeRank.EQ.0
+!
+!!! MPI_SUM
+!!! Difference is needed for online mean calculation, sum it manually
+!!CALL MPI_REDUCE(SampWallState(1,:,:,:),SampWallState_Shared(1,:,:,:),MessageSize,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_SHARED,ReduceRequestShared(1),IERROR)
+!CALL MPI_IREDUCE(SampWallState(12:17,:,:,:),SampWallState_Shared(12:17,:,:,:),MessageSize,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_SHARED,ReduceRequestShared(2),IERROR)
+!! MPI_MIN/MPI_MAX
+!CALL MPI_IREDUCE(SampWallState(3,:,:,:),SampWallState_Shared(3,:,:,:),MessageSize,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_SHARED,ReduceRequestShared(3),IERROR)
+!CALL MPI_IREDUCE(SampWallState(4,:,:,:),SampWallState_Shared(4,:,:,:),MessageSize,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_SHARED,ReduceRequestShared(4),IERROR)
+!CALL MPI_IREDUCE(SampWallState(8,:,:,:),SampWallState_Shared(8,:,:,:),MessageSize,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_SHARED,ReduceRequestShared(5),IERROR)
+!CALL MPI_IREDUCE(SampWallState(9,:,:,:),SampWallState_Shared(9,:,:,:),MessageSize,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_SHARED,ReduceRequestShared(6),IERROR)
+!! Calculate variance only on proc-local side
+!! TODO
+!
+!IF (myComputeNodeRank.EQ.0) THEN
+!  ! First, add own data
+!  SampWallState_Shared(1:9,:,:,:) =
+!
+!  ! Then, add contribution from other procs
+!  DO iProc=1,nComputeNodeProcessors-1
+!    CALL MPI_WAITALL(2,RecvRequestShared(:,iProc),MPI_STATUSES_IGNORE,IERROR)
+!
+!    ! Whole proc can be ignored
+!    IF (ALL(SampWallStateTmp(1,:,:,:,iProc).EQ.0)) CYCLE
+!
+!    DO iSurfSide = 1,nComputeNodeSurfTotalSides; DO q=1,nSurfSample; DO p=1,nSurfSample
+!      ! Subface can be ignored
+!      IF (SampWallStateTmp(1,p,q,iSurfSide,iProc).EQ.0) CYCLE
+!
+!      SampWallState_Shared(1,p,q,iSurfSide) = SampWallState_Shared(1,p,q,iSurfSide) + SampWallStateTmp(1,p,q,iSurfSide,iProc)
+!      SampWallState_Shared(2,p,q,iSurfSide) = (SampWallState_Shared(2,p,q,iSurfSide)                                               &
+!                                             *(SampWallState_Shared(1,p,q,iSurfSide)                                               &
+!                                             - SampWallStateTmp(1,p,q,iSurfSide,iProc)) + SampWallStateTmp(2,p,q,iSurfSide,iProc)  &
+!                                             * SampWallStateTmp(1,p,q,iSurfSide,iProc))                                            &
+!                                             / SampWallState_Shared(1,p,q,iSurfSide)
+!      SampWallState_Shared(7,p,q,iSurfSide) = (SampWallState_Shared(7,p,q,iSurfSide)                                               &
+!                                             *(SampWallState_Shared(1,p,q,iSurfSide)                                               &
+!                                             - SampWallStateTmp(1,p,q,iSurfSide,iProc)) + SampWallStateTmp(3,p,q,iSurfSide,iProc)  &
+!                                             * SampWallStateTmp(1,p,q,iSurfSide,iProc))                                            &
+!                                             / SampWallState_Shared(1,p,q,iSurfSide)
+!  END DO; END DO; END DO; END DO
+!  DEALLOCATE(SampWallStateTmp)
+!  CALL MPI_WAITALL(6,ReduceRequestShared,MPI_STATUSES_IGNORE,IERROR)
+!ELSE
+!  CALL MPI_WAITALL(6,ReduceRequestShared,MPI_STATUSES_IGNORE,IERROR)
+!  CALL MPI_WAITALL(2,SendRequestShared  ,MPI_STATUSES_IGNORE,IERROR)
+!END IF ! myComputeNodeRank.EQ.0
+!
+!CALL MPI_WIN_SYNC(SampWallState_Shared_Win       ,IERROR)
+!CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+
+! First, collect all the CN-local data
 MessageSize = SurfSampSize*nSurfSample*nSurfSample*nComputeNodeSurfTotalSides
-CALL MPI_REDUCE(SampWallState       ,SampWallState_Shared       ,MessageSize,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_SHARED,IERROR)
+IF (myComputeNodeRank.EQ.0) THEN
+  ALLOCATE(SampWallStateTmp(SurfSampSize,nSurfSample,nSurfSample,nComputeNodeSurfTotalSides,nComputeNodeProcessors))
+
+  ! Root is always excluded
+  DO iProc=1,nComputeNodeProcessors-1
+    CALL MPI_IRECV( SampWallStateTmp(:,:,:,:,iProc)                &
+                  , MessageSize                                    &
+                  , MPI_DOUBLE_PRECISION                           &
+                  , iProc                                          &
+                  , 1212                                           &
+                  , MPI_COMM_SHARED                                &
+                  , RecvRequestShared(iProc)                       &
+                  , IERROR)
+
+  END DO
+ELSE
+  CALL MPI_ISEND( SampWallState(:,:,:,:)                           &
+                , MessageSize                                      &
+                , MPI_DOUBLE_PRECISION                             &
+                , 0                                                &
+                , 1212                                             &
+                , MPI_COMM_SHARED                                  &
+                , SendRequestShared                                &
+                , IERROR)
+END IF ! myComputeNodeRank.EQ.0
+
+! Finish communication
+IF (myComputeNodeRank.EQ.0) THEN
+  CALL MPI_WAITALL(nComputeNodeProcessors-1,RecvRequestShared,MPI_STATUSES_IGNORE,IERROR)
+ELSE
+  CALL MPI_WAIT(SendRequestShared,MPI_STATUS_IGNORE,IERROR)
+END IF
+
+! Sort data into SampWallState_Shared
+IF (myComputeNodeRank.EQ.0) THEN
+  ! First, fill local data
+  SampWallState_Shared(:,:,:,:) = SampWallState(:,:,:,:)
+
+  ! Then, add contributions from other procs
+  DO iProc = 1,nComputeNodeProcessors-1
+    ! Whole proc can be ignored
+    IF (ALL(SampWallStateTmp(1,:,:,:,iProc).EQ.0)) CYCLE
+
+    DO iSurfSide = 1,nComputeNodeSurfTotalSides; DO q=1,nSurfSample; DO p=1,nSurfSample
+      ! Subface can be ignored
+      IF (SampWallStateTmp(1,p,q,iSurfSide,iProc).EQ.0) CYCLE
+
+      ! All Variables are saved DOUBLE. First Total, then per SPECIES
+      !-- 1. - .. / Impact Counter
+      SampWallState_Shared(1,p,q,iSurfSide) = SampWallState_Shared(1,p,q,iSurfSide) + SampWallStateTmp(1,p,q,iSurfSide,iProc)
+
+      ! Avoid division by zero
+      IF (SampWallState_Shared(1,p,q,iSurfSide).EQ.0) CYCLE
+
+      !-- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
+      SampWallState_Shared(2,p,q,iSurfSide) = ( SampWallState_Shared(2,p,q,iSurfSide)                                              &
+                                              *(SampWallState_Shared(1,p,q,iSurfSide)                                              &
+                                              - SampWallStateTmp(1,p,q,iSurfSide,iProc)) + SampWallStateTmp(2,p,q,iSurfSide,iProc) &
+                                              * SampWallStateTmp(1,p,q,iSurfSide,iProc))                                           &
+                                              / SampWallState_Shared(1,p,q,iSurfSide)
+      IF (SampWallStateTmp(3,p,q,iSurfSide,iProc).LT.SampWallState_Shared(3,p,q,iSurfSide))                                        &
+        SampWallState_Shared(3,p,q,iSurfSide) = SampWallStateTmp(3,p,q,iSurfSide,iProc)
+      IF (SampWallStateTmp(4,p,q,iSurfSide,iProc).GT.SampWallState_Shared(4,p,q,iSurfSide))                                        &
+        SampWallState_Shared(4,p,q,iSurfSide) = SampWallStateTmp(4,p,q,iSurfSide,iProc)
+      !-- 5-6 are M2 and variance. Nothing to be done about those as we need data after each particle impact
+      !>>
+      !-- 7. - 11 / Impact angle (mean, min, max, M2, variance)
+      SampWallState_Shared(7,p,q,iSurfSide) = ( SampWallState_Shared(7,p,q,iSurfSide)                                              &
+                                              *(SampWallState_Shared(1,p,q,iSurfSide)                                              &
+                                              - SampWallStateTmp(1,p,q,iSurfSide,iProc)) + SampWallStateTmp(7,p,q,iSurfSide,iProc) &
+                                              * SampWallStateTmp(1,p,q,iSurfSide,iProc))                                           &
+                                              / SampWallState_Shared(1,p,q,iSurfSide)
+      IF (SampWallStateTmp(8,p,q,iSurfSide,iProc).LT.SampWallState_Shared(8,p,q,iSurfSide))                                        &
+        SampWallState_Shared(8,p,q,iSurfSide) = SampWallStateTmp(8,p,q,iSurfSide,iProc)
+      IF (SampWallStateTmp(9,p,q,iSurfSide,iProc).GT.SampWallState_Shared(9,p,q,iSurfSide))                                        &
+        SampWallState_Shared(9,p,q,iSurfSide) = SampWallStateTmp(9,p,q,iSurfSide,iProc)
+      !-- 10-11 are M2 and variance. Nothing to be done about those as we need data after each particle impact
+      !>>
+      !-- 12 - 14 / Sampling Current Forces at walls - we can simply add those
+      SampWallState_Shared(12:14,p,q,iSurfSide)=SampWallState_Shared(12:14,p,q,iSurfSide)+SampWallStateTmp(12:14,p,q,iSurfSide,iProc)
+      !-- 15 - 17 / Sampling Average Forces at walls  - we can simply add those
+      SampWallState_Shared(15:17,p,q,iSurfSide)=SampWallState_Shared(15:17,p,q,iSurfSide)+SampWallStateTmp(15:17,p,q,iSurfSide,iProc)
+      !<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      IF (nSpecies.GT.1) THEN
+        DO iSpec = 1,nSpecies
+          nShift = iSpec * nImpactVars
+          !-- 1. - .. / Impact Counter
+          SampWallState_Shared(1+nShift,p,q,iSurfSide) = SampWallState_Shared(1+nShift,p,q,iSurfSide) + SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc)
+
+          ! Avoid division by zero
+          IF (SampWallState_Shared(1+nShift,p,q,iSurfSide).EQ.0) CYCLE
+
+          !-- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
+          SampWallState_Shared(2+nShift,p,q,iSurfSide) = ( SampWallState_Shared(2+nShift,p,q,iSurfSide)                            &
+                                                          *(SampWallState_Shared(1+nShift,p,q,iSurfSide)                           &
+                                                          - SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
+                                                          + SampWallStateTmp(2+nShift,p,q,iSurfSide,iProc)                         &
+                                                          * SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
+                                                          / SampWallState_Shared(1+nShift,p,q,iSurfSide)
+          IF (SampWallStateTmp(3+nShift,p,q,iSurfSide,iProc).LT.SampWallState_Shared(3+nShift,p,q,iSurfSide))                      &
+              SampWallState_Shared(3+nShift,p,q,iSurfSide) = SampWallStateTmp(3+nShift,p,q,iSurfSide,iProc)
+          IF (SampWallStateTmp(4+nShift,p,q,iSurfSide,iProc).GT.SampWallState_Shared(4+nShift,p,q,iSurfSide))                      &
+              SampWallState_Shared(4+nShift,p,q,iSurfSide) = SampWallStateTmp(4+nShift,p,q,iSurfSide,iProc)
+          !-- 5-6 are M2 and variance. Nothing to be done about those as we need data after each particle impact
+          !>>
+          !-- 7. - 11 / Impact angle (mean, min, max, M2, variance)
+          SampWallState_Shared(7+nShift,p,q,iSurfSide) = ( SampWallState_Shared(7+nShift,p,q,iSurfSide)                            &
+                                                          *(SampWallState_Shared(1+nShift,p,q,iSurfSide)                           &
+                                                          - SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
+                                                          + SampWallStateTmp(7+nShift,p,q,iSurfSide,iProc)                         &
+                                                          * SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
+                                                          / SampWallState_Shared(1+nShift,p,q,iSurfSide)
+          IF (SampWallStateTmp(8+nShift,p,q,iSurfSide,iProc).LT.SampWallState_Shared(8+nShift,p,q,iSurfSide))                      &
+              SampWallState_Shared(8+nShift,p,q,iSurfSide) = SampWallStateTmp(8+nShift,p,q,iSurfSide,iProc)
+          IF (SampWallStateTmp(9+nShift,p,q,iSurfSide,iProc).GT.SampWallState_Shared(9+nShift,p,q,iSurfSide))                      &
+              SampWallState_Shared(9+nShift,p,q,iSurfSide) = SampWallStateTmp(9+nShift,p,q,iSurfSide,iProc)
+          !-- 10-11 are M2 and variance. Nothing to be done about those as we need data after each particle impact
+          !>>
+          !-- 12 - 14 / Sampling Current Forces at walls - we can simply add those
+          SampWallState_Shared(12+nShift:14+nShift,p,q,iSurfSide) = SampWallState_Shared(12+nShift:14+nShift,p,q,iSurfSide)        &
+                                                                   + SampWallStateTmp   (12+nShift:14+nShift,p,q,iSurfSide,iProc)
+          !-- 15 - 17 / Sampling Average Forces at walls  - we can simply add those
+          SampWallState_Shared(15+nShift:17+nShift,p,q,iSurfSide) = SampWallState_Shared(15+nShift:17+nShift,p,q,iSurfSide)        &
+                                                                   + SampWallStateTmp   (15+nShift:17+nShift,p,q,iSurfSide,iProc)
+        END DO ! iSpec = 1,nSpecies
+      END IF ! nSpecies.GT.1
+    END DO; END DO; END DO ! p, q, iSurfSide
+  END DO ! iProc
+DEALLOCATE(SampWallStateTmp)
+END IF ! myComputeNodeRank.EQ.0
+
 CALL MPI_WIN_SYNC(SampWallState_Shared_Win       ,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
@@ -350,7 +577,7 @@ IF (myComputeNodeRank.EQ.0) THEN
                   , iProc                                        &
                   , 1209                                         &
                   , MPI_COMM_LEADERS_SURF                        &
-                  , RecvRequest(iProc)                           &
+                  , RecvRequestLeader(iProc)                     &
                   , IERROR)
   END DO ! iProc
 
@@ -398,7 +625,7 @@ IF (myComputeNodeRank.EQ.0) THEN
                   , iProc                                        &
                   , 1209                                         &
                   , MPI_COMM_LEADERS_SURF                        &
-                  , SendRequest(iProc)                           &
+                  , SendRequestLeader(iProc)                     &
                   , IERROR)
   END DO ! iProc
 
@@ -408,12 +635,12 @@ IF (myComputeNodeRank.EQ.0) THEN
     IF (iProc.EQ.mySurfRank) CYCLE
 
     IF (SurfMapping(iProc)%nSendSurfSides.NE.0) THEN
-      CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
+      CALL MPI_WAIT(SendRequestLeader(iProc),MPIStatus,IERROR)
       IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error',IERROR)
     END IF
 
     IF (SurfMapping(iProc)%nRecvSurfSides.NE.0) THEN
-      CALL MPI_WAIT(RecvRequest(iProc),MPIStatus,IERROR)
+      CALL MPI_WAIT(RecvRequestLeader(iProc),MPIStatus,IERROR)
       IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error',IERROR)
     END IF
   END DO ! iProc

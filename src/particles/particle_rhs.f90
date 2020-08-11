@@ -313,7 +313,7 @@ ENDIF
 Pt      = Fd/Species(PartSpecies(PartID))%MassIC
 
 CASE DEFAULT
-  CALL ABORT(__STAMP__, 'No valid RHS method given.')
+  CALL ABORT(__STAMP__, 'No valid RHS method given. Species',IntInfo=PartSpecies(PartID))
 
 END SELECT
 

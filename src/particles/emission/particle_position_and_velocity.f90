@@ -237,12 +237,9 @@ IF (PartMPI%InitGroup(InitGroup)%nProcs.GT.1) THEN
 ELSE
 #endif /*USE_MPI*/
   mySumOfMatchedParticles = 0
-  ParticleIndexNbr        = 1
   DO i=1,chunkSize
     ! Find a free position in the PDM array
-    IF ((i.EQ.1).OR.PDM%ParticleInside(ParticleIndexNbr)) THEN
-      ParticleIndexNbr = PDM%nextFreePosition(mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
-    END IF
+    ParticleIndexNbr = PDM%nextFreePosition(mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
     IF (ParticleIndexNbr.NE.0) THEN
       PartState(1:DimSend,ParticleIndexNbr) = particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+DimSend)
       PDM%ParticleInside( ParticleIndexNbr) = .TRUE.

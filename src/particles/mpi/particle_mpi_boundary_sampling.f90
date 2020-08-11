@@ -312,7 +312,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                         :: iProc,SideID
 INTEGER                         :: iPos,p,q
-INTEGER                         :: iSpec,nShift
+INTEGER                         :: iSpec,nShift,firstSpecies,lastSpecies
 INTEGER                         :: MessageSize,iSurfSide,SurfSideID
 INTEGER                         :: nValues
 INTEGER                         :: RecvRequestLeader(0:nSurfLeaders-1),SendRequestLeader(0:nSurfLeaders-1)
@@ -322,6 +322,9 @@ REAL,ALLOCATABLE                :: SampWallStateTmp(:,:,:,:,:)
 !===================================================================================================================================
 ! nodes without sampling surfaces do not take part in this routine
 IF (.NOT.SurfOnNode) RETURN
+
+firstSpecies = 0
+lastSpecies  = MERGE(0,nSpecies,nSpecies.EQ.1)
 
 !! collect the information from the proc-local shadow arrays in the compute-node shared array. Differentiate between sums, MIN/MAX and
 !! mean calculations
@@ -464,88 +467,51 @@ IF (myComputeNodeRank.EQ.0) THEN
     IF (ALL(SampWallStateTmp(1,:,:,:,iProc).EQ.0)) CYCLE
 
     DO iSurfSide = 1,nComputeNodeSurfTotalSides; DO q=1,nSurfSample; DO p=1,nSurfSample
-      ! Subface can be ignored
+      ! No impacts from any species, Subface can be ignored
       IF (SampWallStateTmp(1,p,q,iSurfSide,iProc).EQ.0) CYCLE
 
-      ! All Variables are saved DOUBLE. First Total, then per SPECIES
-      !-- 1. - .. / Impact Counter
-      SampWallState_Shared(1,p,q,iSurfSide) = SampWallState_Shared(1,p,q,iSurfSide) + SampWallStateTmp(1,p,q,iSurfSide,iProc)
+      DO iSpec = firstSpecies,lastSpecies
+        ! All Variables are saved DOUBLE. First Total, then per SPECIES
+        nShift = iSpec * nImpactVars
+        !-- 1. - .. / Impact Counter
+        SampWallState_Shared(1+nShift,p,q,iSurfSide) = SampWallState_Shared(1+nShift,p,q,iSurfSide) + SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc)
 
-      ! Avoid division by zero
-      IF (SampWallState_Shared(1,p,q,iSurfSide).EQ.0) CYCLE
+        ! Avoid division by zero
+        IF (SampWallState_Shared(1+nShift,p,q,iSurfSide).EQ.0) CYCLE
 
-      !-- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
-      SampWallState_Shared(2,p,q,iSurfSide) = ( SampWallState_Shared(2,p,q,iSurfSide)                                              &
-                                              *(SampWallState_Shared(1,p,q,iSurfSide)                                              &
-                                              - SampWallStateTmp(1,p,q,iSurfSide,iProc)) + SampWallStateTmp(2,p,q,iSurfSide,iProc) &
-                                              * SampWallStateTmp(1,p,q,iSurfSide,iProc))                                           &
-                                              / SampWallState_Shared(1,p,q,iSurfSide)
-      IF (SampWallStateTmp(3,p,q,iSurfSide,iProc).LT.SampWallState_Shared(3,p,q,iSurfSide))                                        &
-        SampWallState_Shared(3,p,q,iSurfSide) = SampWallStateTmp(3,p,q,iSurfSide,iProc)
-      IF (SampWallStateTmp(4,p,q,iSurfSide,iProc).GT.SampWallState_Shared(4,p,q,iSurfSide))                                        &
-        SampWallState_Shared(4,p,q,iSurfSide) = SampWallStateTmp(4,p,q,iSurfSide,iProc)
-      !-- 5-6 are M2 and variance. Nothing to be done about those as we need data after each particle impact
-      !>>
-      !-- 7. - 11 / Impact angle (mean, min, max, M2, variance)
-      SampWallState_Shared(7,p,q,iSurfSide) = ( SampWallState_Shared(7,p,q,iSurfSide)                                              &
-                                              *(SampWallState_Shared(1,p,q,iSurfSide)                                              &
-                                              - SampWallStateTmp(1,p,q,iSurfSide,iProc)) + SampWallStateTmp(7,p,q,iSurfSide,iProc) &
-                                              * SampWallStateTmp(1,p,q,iSurfSide,iProc))                                           &
-                                              / SampWallState_Shared(1,p,q,iSurfSide)
-      IF (SampWallStateTmp(8,p,q,iSurfSide,iProc).LT.SampWallState_Shared(8,p,q,iSurfSide))                                        &
-        SampWallState_Shared(8,p,q,iSurfSide) = SampWallStateTmp(8,p,q,iSurfSide,iProc)
-      IF (SampWallStateTmp(9,p,q,iSurfSide,iProc).GT.SampWallState_Shared(9,p,q,iSurfSide))                                        &
-        SampWallState_Shared(9,p,q,iSurfSide) = SampWallStateTmp(9,p,q,iSurfSide,iProc)
-      !-- 10-11 are M2 and variance. Nothing to be done about those as we need data after each particle impact
-      !>>
-      !-- 12 - 14 / Sampling Current Forces at walls - we can simply add those
-      SampWallState_Shared(12:14,p,q,iSurfSide)=SampWallState_Shared(12:14,p,q,iSurfSide)+SampWallStateTmp(12:14,p,q,iSurfSide,iProc)
-      !-- 15 - 17 / Sampling Average Forces at walls  - we can simply add those
-      SampWallState_Shared(15:17,p,q,iSurfSide)=SampWallState_Shared(15:17,p,q,iSurfSide)+SampWallStateTmp(15:17,p,q,iSurfSide,iProc)
-      !<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-      IF (nSpecies.GT.1) THEN
-        DO iSpec = 1,nSpecies
-          nShift = iSpec * nImpactVars
-          !-- 1. - .. / Impact Counter
-          SampWallState_Shared(1+nShift,p,q,iSurfSide) = SampWallState_Shared(1+nShift,p,q,iSurfSide) + SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc)
-
-          ! Avoid division by zero
-          IF (SampWallState_Shared(1+nShift,p,q,iSurfSide).EQ.0) CYCLE
-
-          !-- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
-          SampWallState_Shared(2+nShift,p,q,iSurfSide) = ( SampWallState_Shared(2+nShift,p,q,iSurfSide)                            &
-                                                          *(SampWallState_Shared(1+nShift,p,q,iSurfSide)                           &
-                                                          - SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
-                                                          + SampWallStateTmp(2+nShift,p,q,iSurfSide,iProc)                         &
-                                                          * SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
-                                                          / SampWallState_Shared(1+nShift,p,q,iSurfSide)
-          IF (SampWallStateTmp(3+nShift,p,q,iSurfSide,iProc).LT.SampWallState_Shared(3+nShift,p,q,iSurfSide))                      &
-              SampWallState_Shared(3+nShift,p,q,iSurfSide) = SampWallStateTmp(3+nShift,p,q,iSurfSide,iProc)
-          IF (SampWallStateTmp(4+nShift,p,q,iSurfSide,iProc).GT.SampWallState_Shared(4+nShift,p,q,iSurfSide))                      &
-              SampWallState_Shared(4+nShift,p,q,iSurfSide) = SampWallStateTmp(4+nShift,p,q,iSurfSide,iProc)
-          !-- 5-6 are M2 and variance. Nothing to be done about those as we need data after each particle impact
-          !>>
-          !-- 7. - 11 / Impact angle (mean, min, max, M2, variance)
-          SampWallState_Shared(7+nShift,p,q,iSurfSide) = ( SampWallState_Shared(7+nShift,p,q,iSurfSide)                            &
-                                                          *(SampWallState_Shared(1+nShift,p,q,iSurfSide)                           &
-                                                          - SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
-                                                          + SampWallStateTmp(7+nShift,p,q,iSurfSide,iProc)                         &
-                                                          * SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
-                                                          / SampWallState_Shared(1+nShift,p,q,iSurfSide)
-          IF (SampWallStateTmp(8+nShift,p,q,iSurfSide,iProc).LT.SampWallState_Shared(8+nShift,p,q,iSurfSide))                      &
-              SampWallState_Shared(8+nShift,p,q,iSurfSide) = SampWallStateTmp(8+nShift,p,q,iSurfSide,iProc)
-          IF (SampWallStateTmp(9+nShift,p,q,iSurfSide,iProc).GT.SampWallState_Shared(9+nShift,p,q,iSurfSide))                      &
-              SampWallState_Shared(9+nShift,p,q,iSurfSide) = SampWallStateTmp(9+nShift,p,q,iSurfSide,iProc)
-          !-- 10-11 are M2 and variance. Nothing to be done about those as we need data after each particle impact
-          !>>
-          !-- 12 - 14 / Sampling Current Forces at walls - we can simply add those
-          SampWallState_Shared(12+nShift:14+nShift,p,q,iSurfSide) = SampWallState_Shared(12+nShift:14+nShift,p,q,iSurfSide)        &
-                                                                   + SampWallStateTmp   (12+nShift:14+nShift,p,q,iSurfSide,iProc)
-          !-- 15 - 17 / Sampling Average Forces at walls  - we can simply add those
-          SampWallState_Shared(15+nShift:17+nShift,p,q,iSurfSide) = SampWallState_Shared(15+nShift:17+nShift,p,q,iSurfSide)        &
-                                                                   + SampWallStateTmp   (15+nShift:17+nShift,p,q,iSurfSide,iProc)
-        END DO ! iSpec = 1,nSpecies
-      END IF ! nSpecies.GT.1
+        !-- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
+        SampWallState_Shared(2+nShift,p,q,iSurfSide) = (  SampWallState_Shared(2+nShift,p,q,iSurfSide)                           &
+                                                        *(SampWallState_Shared(1+nShift,p,q,iSurfSide)                           &
+                                                        - SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
+                                                        + SampWallStateTmp(2+nShift,p,q,iSurfSide,iProc)                         &
+                                                        * SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
+                                                        / SampWallState_Shared(1+nShift,p,q,iSurfSide)
+        IF (SampWallStateTmp(3+nShift,p,q,iSurfSide,iProc).LT.SampWallState_Shared(3+nShift,p,q,iSurfSide))                      &
+            SampWallState_Shared(3+nShift,p,q,iSurfSide) = SampWallStateTmp(3+nShift,p,q,iSurfSide,iProc)
+        IF (SampWallStateTmp(4+nShift,p,q,iSurfSide,iProc).GT.SampWallState_Shared(4+nShift,p,q,iSurfSide))                      &
+            SampWallState_Shared(4+nShift,p,q,iSurfSide) = SampWallStateTmp(4+nShift,p,q,iSurfSide,iProc)
+        !-- 5-6 are M2 and variance. Nothing to be done about those as we need data after each particle impact
+        !>>
+        !-- 7. - 11 / Impact angle (mean, min, max, M2, variance)
+        SampWallState_Shared(7+nShift,p,q,iSurfSide) = (  SampWallState_Shared(7+nShift,p,q,iSurfSide)                           &
+                                                        *(SampWallState_Shared(1+nShift,p,q,iSurfSide)                           &
+                                                        - SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
+                                                        + SampWallStateTmp(7+nShift,p,q,iSurfSide,iProc)                         &
+                                                        * SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
+                                                        / SampWallState_Shared(1+nShift,p,q,iSurfSide)
+        IF (SampWallStateTmp(8+nShift,p,q,iSurfSide,iProc).LT.SampWallState_Shared(8+nShift,p,q,iSurfSide))                      &
+            SampWallState_Shared(8+nShift,p,q,iSurfSide) = SampWallStateTmp(8+nShift,p,q,iSurfSide,iProc)
+        IF (SampWallStateTmp(9+nShift,p,q,iSurfSide,iProc).GT.SampWallState_Shared(9+nShift,p,q,iSurfSide))                      &
+            SampWallState_Shared(9+nShift,p,q,iSurfSide) = SampWallStateTmp(9+nShift,p,q,iSurfSide,iProc)
+        !-- 10-11 are M2 and variance. Nothing to be done about those as we need data after each particle impact
+        !>>
+        !-- 12 - 14 / Sampling Current Forces at walls - we can simply add those
+        SampWallState_Shared(12+nShift:14+nShift,p,q,iSurfSide) = SampWallState_Shared(12+nShift:14+nShift,p,q,iSurfSide)        &
+                                                                 + SampWallStateTmp   (12+nShift:14+nShift,p,q,iSurfSide,iProc)
+        !-- 15 - 17 / Sampling Average Forces at walls  - we can simply add those
+        SampWallState_Shared(15+nShift:17+nShift,p,q,iSurfSide) = SampWallState_Shared(15+nShift:17+nShift,p,q,iSurfSide)        &
+                                                                 + SampWallStateTmp   (15+nShift:17+nShift,p,q,iSurfSide,iProc)
+      END DO ! iSpec = 1,nSpecies
     END DO; END DO; END DO ! p, q, iSurfSide
   END DO ! iProc
 DEALLOCATE(SampWallStateTmp)
@@ -561,7 +527,7 @@ SampWallState        = 0.
 IF (myComputeNodeRank.EQ.0) THEN
   nValues = SurfSampSize*nSurfSample**2
 
-! open receive buffer
+  ! open receive buffer
   DO iProc = 0,nSurfLeaders-1
     ! ignore myself
     IF (iProc.EQ.mySurfRank) CYCLE
@@ -658,89 +624,55 @@ IF (myComputeNodeRank.EQ.0) THEN
       SideID     = SurfMapping(iProc)%RecvSurfGlobalID(iSurfSide)
       SurfSideID = GlobalSide2SurfSide(SURF_SIDEID,SideID)
 
-      DO q=1,nSurfSample
-        DO p=1,nSurfSample
-          ! Treat each variable individual, depending on if they can be added
-          SampWallTmp(:)                    = SurfRecvBuf(iProc)%content(iPos+1:iPos+SurfSampSize)
+      DO q=1,nSurfSample; DO p=1,nSurfSample
+        ! Treat each variable individual, depending on if they can be added
+        SampWallTmp(:)                    = SurfRecvBuf(iProc)%content(iPos+1:iPos+SurfSampSize)
 
-          ! All Variables are saved DOUBLE. First Total, then per SPECIES
+        ! No impacts from any species, Subface can be ignored
+        IF (SampWallTmp(1).EQ.0) CYCLE
+
+        ! All Variables are saved DOUBLE. First Total, then per SPECIES
+        DO iSpec = firstSpecies,lastSpecies
+          nShift = iSpec * nImpactVars
           !-- 1. - .. / Impact Counter
-          SampWallState_Shared(1,p,q,SurfSideID) = SampWallState_Shared(1,p,q,SurfSideID) + SampWallTmp(1)
+          SampWallState_Shared(1+nShift,p,q,SurfSideID) = SampWallState_Shared(1+nShift,p,q,SurfSideID) + SampWallTmp(1+nShift)
 
           ! Avoid division by zero
-          IF (SampWallState_Shared(1,p,q,SurfSideID).EQ.0) CYCLE
+          IF (SampWallState_Shared(1+nShift,p,q,SurfSideID).EQ.0) CYCLE
 
           !-- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
-          SampWallState_Shared(2,p,q,SurfSideID) = ( SampWallState_Shared(2,p,q,SurfSideID)                                        &
-                                                   *(SampWallState_Shared(1,p,q,SurfSideID)                                        &
-                                                   - SampWallTmp(1)) + SampWallTmp(2)*SampWallTmp(1))                              &
-                                                   / SampWallState_Shared(1,p,q,SurfSideID)
-          IF (SampWallTmp(3).LT.SampWallState_Shared(3,p,q,SurfSideID))                                                            &
-            SampWallState_Shared(3,p,q,SurfSideID) = SampWallTmp(3)
-          IF (SampWallTmp(4).GT.SampWallState_Shared(4,p,q,SurfSideID))                                                            &
-            SampWallState_Shared(4,p,q,SurfSideID) = SampWallTmp(4)
+          SampWallState_Shared(2+nShift,p,q,SurfSideID) = ( SampWallState_Shared(2+nShift,p,q,SurfSideID)                      &
+                                                          *(SampWallState_Shared(1+nShift,p,q,SurfSideID)                      &
+                                                          - SampWallTmp(1+nShift))                                             &
+                                                          + SampWallTmp(2+nShift)*SampWallTmp(1+nShift))                       &
+                                                          / SampWallState_Shared(1+nShift,p,q,SurfSideID)
+          IF (SampWallTmp(3+nShift).LT.SampWallState_Shared(3+nShift,p,q,SurfSideID))                                          &
+              SampWallState_Shared(3+nShift,p,q,SurfSideID) = SampWallTmp(3+nShift)
+          IF (SampWallTmp(4+nShift).GT.SampWallState_Shared(4+nShift,p,q,SurfSideID))                                          &
+              SampWallState_Shared(4+nShift,p,q,SurfSideID) = SampWallTmp(4+nShift)
           !-- 5-6 are M2 and variance. Nothing to be done about those as we need data after each particle impact
           !>>
           !-- 7. - 11 / Impact angle (mean, min, max, M2, variance)
-          SampWallState_Shared(7,p,q,SurfSideID) = ( SampWallState_Shared(7,p,q,SurfSideID)                                        &
-                                                   *(SampWallState_Shared(1,p,q,SurfSideID)                                        &
-                                                   - SampWallTmp(1)) + SampWallTmp(7)*SampWallTmp(1))                              &
-                                                   / SampWallState_Shared(1,p,q,SurfSideID)
-          IF (SampWallTmp(8).LT.SampWallState_Shared(8,p,q,SurfSideID))                                                            &
-            SampWallState_Shared(3,p,q,SurfSideID) = SampWallTmp(8)
-          IF (SampWallTmp(9).GT.SampWallState_Shared(9,p,q,SurfSideID))                                                            &
-            SampWallState_Shared(4,p,q,SurfSideID) = SampWallTmp(9)
+          SampWallState_Shared(7+nShift,p,q,SurfSideID) = (SampWallState_Shared(7+nShift,p,q,SurfSideID)                       &
+                                                         *(SampWallState_Shared(1+nShift,p,q,SurfSideID)                       &
+                                                         - SampWallTmp(1+nShift))                                              &
+                                                         + SampWallTmp(7+nShift)*SampWallTmp(1+nShift))                        &
+                                                         / SampWallState_Shared(1+nShift,p,q,SurfSideID)
+          IF (SampWallTmp(8+nShift).LT.SampWallState_Shared(8+nShift,p,q,SurfSideID))                                          &
+              SampWallState_Shared(8+nShift,p,q,SurfSideID) = SampWallTmp(8+nShift)
+          IF (SampWallTmp(9+nShift).GT.SampWallState_Shared(9+nShift,p,q,SurfSideID))                                          &
+              SampWallState_Shared(9+nShift,p,q,SurfSideID) = SampWallTmp(9+nShift)
           !-- 10-11 are M2 and variance. Nothing to be done about those as we need data after each particle impact
           !>>
           !-- 12 - 14 / Sampling Current Forces at walls - we can simply add those
-          SampWallState_Shared(12:14,p,q,SurfSideID) = SampWallState_Shared(12:14,p,q,SurfSideID) + SampWallTmp(12:14)
+          SampWallState_Shared(12+nShift:14+nShift,p,q,SurfSideID) = SampWallState_Shared(12+nShift:14+nShift,p,q,SurfSideID)  &
+                                                                   + SampWallTmp         (12+nShift:14+nShift)
           !-- 15 - 17 / Sampling Average Forces at walls  - we can simply add those
-          SampWallState_Shared(15:17,p,q,SurfSideID) = SampWallState_Shared(15:17,p,q,SurfSideID) + SampWallTmp(15:17)
-          !<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-          IF (nSpecies.GT.1) THEN
-            DO iSpec = 1,nSpecies
-              nShift = iSpec * nImpactVars
-              !-- 1. - .. / Impact Counter
-              SampWallState_Shared(1+nShift,p,q,SurfSideID) = SampWallState_Shared(1+nShift,p,q,SurfSideID) + SampWallTmp(1+nShift)
-
-              ! Avoid division by zero
-              IF (SampWallState_Shared(1+nShift,p,q,SurfSideID).EQ.0) CYCLE
-
-              !-- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
-              SampWallState_Shared(2+nShift,p,q,SurfSideID) = ( SampWallState_Shared(2+nShift,p,q,SurfSideID)                      &
-                                                              *(SampWallState_Shared(1+nShift,p,q,SurfSideID)                      &
-                                                              - SampWallTmp(1+nShift))                                             &
-                                                              + SampWallTmp(2+nShift)*SampWallTmp(1+nShift))                       &
-                                                              / SampWallState_Shared(1+nShift,p,q,SurfSideID)
-              IF (SampWallTmp(3+nShift).LT.SampWallState_Shared(3+nShift,p,q,SurfSideID))                                          &
-                  SampWallState_Shared(3+nShift,p,q,SurfSideID) = SampWallTmp(3+nShift)
-              IF (SampWallTmp(4+nShift).GT.SampWallState_Shared(4+nShift,p,q,SurfSideID))                                          &
-                  SampWallState_Shared(4+nShift,p,q,SurfSideID) = SampWallTmp(4+nShift)
-              !-- 5-6 are M2 and variance. Nothing to be done about those as we need data after each particle impact
-              !>>
-              !-- 7. - 11 / Impact angle (mean, min, max, M2, variance)
-              SampWallState_Shared(7+nShift,p,q,SurfSideID) = (SampWallState_Shared(7+nShift,p,q,SurfSideID)                       &
-                                                             *(SampWallState_Shared(1+nShift,p,q,SurfSideID)                       &
-                                                             - SampWallTmp(1+nShift))                                              &
-                                                             + SampWallTmp(7+nShift)*SampWallTmp(1+nShift))                        &
-                                                             / SampWallState_Shared(1+nShift,p,q,SurfSideID)
-              IF (SampWallTmp(8+nShift).LT.SampWallState_Shared(8+nShift,p,q,SurfSideID))                                          &
-                  SampWallState_Shared(8+nShift,p,q,SurfSideID) = SampWallTmp(8+nShift)
-              IF (SampWallTmp(9+nShift).GT.SampWallState_Shared(9+nShift,p,q,SurfSideID))                                          &
-                  SampWallState_Shared(9+nShift,p,q,SurfSideID) = SampWallTmp(9+nShift)
-              !-- 10-11 are M2 and variance. Nothing to be done about those as we need data after each particle impact
-              !>>
-              !-- 12 - 14 / Sampling Current Forces at walls - we can simply add those
-              SampWallState_Shared(12+nShift:14+nShift,p,q,SurfSideID) = SampWallState_Shared(12+nShift:14+nShift,p,q,SurfSideID)  &
-                                                                       + SampWallTmp         (12+nShift:14+nShift)
-              !-- 15 - 17 / Sampling Average Forces at walls  - we can simply add those
-              SampWallState_Shared(15+nShift:17+nShift,p,q,SurfSideID) = SampWallState_Shared(15+nShift:17+nShift,p,q,SurfSideID)  &
-                                                                       + SampWallTmp         (15+nShift:17+nShift)
-            END DO ! iSpec = 1,nSpecies
-          END IF ! nSpecies.GT.1
-          iPos = iPos + SurfSampSize
-        END DO ! p = 0,nSurfSample
-      END DO ! q = 0,nSurfSample
+          SampWallState_Shared(15+nShift:17+nShift,p,q,SurfSideID) = SampWallState_Shared(15+nShift:17+nShift,p,q,SurfSideID)  &
+                                                                   + SampWallTmp         (15+nShift:17+nShift)
+        END DO ! iSpec = 1,nSpecies
+        iPos = iPos + SurfSampSize
+      END DO; END DO ! p = 0,nSurfSample,q = 0,nSurfSample
     END DO ! iSurfSide = 1,SurfMapping(iProc)%nRecvSurfSides
 
      ! Nullify buffer

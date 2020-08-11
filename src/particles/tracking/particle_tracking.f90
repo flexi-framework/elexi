@@ -1526,11 +1526,12 @@ REAL                          :: alphaOld
 LOGICAL                       :: isHit,doubleCheck
 !===================================================================================================================================
 
+CNElemID   = GetCNElemID(ElemID)
+
 ! Calculate particle trajectory
 PartTrajectory       = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
 lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
 
-CNElemID   = GetCNElemID(ElemID)
 ! Check if the particle moved at all. If not, tracking is done
 IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID))) THEN
   PEM%Element(PartID) = ElemID
@@ -1538,12 +1539,12 @@ IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID))) THEN
   RETURN
 END IF
 
-PartTrajectory = PartTrajectory/lengthPartTrajectory
+PartTrajectory        = PartTrajectory/lengthPartTrajectory
+lengthPartTrajectory0 = MAX(lengthPartTrajectory0,lengthPartTrajectory)
 
 ! Init variables. Double check if LastPartPos is close to side and first intersection is found for this position (negative alpha)
 PartisMoved = .FALSE.
 DoTracing   = .TRUE.
-lengthPartTrajectory0 = MAX(lengthPartTrajectory0,lengthPartTrajectory)
 doubleCheck = .FALSE.
 alphaOld    = -1.0
 
@@ -1554,10 +1555,9 @@ DO WHILE(DoTracing)
     ! Position and trajectory has to be recomputed after periodic displacement
     IF (PeriMoved) THEN
       IF (GEO%nPeriodicVectors.EQ.3) CYCLE
-      PartTrajectory=PartState(1:3,PartID) - LastPartPos(1:3,PartID)
-      lengthPartTrajectory=SQRT(PartTrajectory(1)*PartTrajectory(1)  &
-                               +PartTrajectory(2)*PartTrajectory(2)  &
-                               +PartTrajectory(3)*PartTrajectory(3))
+
+      PartTrajectory       = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
+      lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
     ELSE
       IF (GEO%nPeriodicVectors.EQ.3) RETURN
     END IF

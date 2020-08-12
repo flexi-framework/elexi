@@ -465,20 +465,7 @@ ELSE
       ! Only add element to BGM if inside halo region on node.
       ! THIS IS WRONG. WE ARE WORKING ON THE CN HALO REGION. IF WE OMIT THE
       ! ELEMENT HERE, WE LOOSE IT. IF WE KEEP IT, WE BREAK AT 589. YOUR CALL.
-      BGMCellXmin = MAX(ElemToBGM_Shared(1,ElemID),BGMimin)
-      BGMCellXmax = MIN(ElemToBGM_Shared(2,ElemID),BGMimax)
-      BGMCellYmin = MAX(ElemToBGM_Shared(3,ElemID),BGMjmin)
-      BGMCellYmax = MIN(ElemToBGM_Shared(4,ElemID),BGMjmax)
-      BGMCellZmin = MAX(ElemToBGM_Shared(5,ElemID),BGMkmin)
-      BGMCellZmax = MIN(ElemToBGM_Shared(6,ElemID),BGMkmax)
-      ! add current element to number of BGM-elems
-      DO iBGM = BGMCellXmin,BGMCellXmax
-        DO jBGM = BGMCellYmin,BGMCellYmax
-          DO kBGM = BGMCellZmin,BGMCellZmax
-            GEO%FIBGM(iBGM,jBGM,kBGM)%nElem = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem + 1
-          END DO ! kBGM
-        END DO ! jBGM
-      END DO ! iBGM
+      CALL AddElementToFIBGM(ElemID)
     END IF
   END DO ! iElem = firstHaloElem, lastHaloElem
 END IF ! nComputeNodeProcessors.EQ.nProcessors_Global
@@ -1131,6 +1118,7 @@ DO iElem = firstElem,lastElem
                 .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
           ! add element back to halo region
           ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 2
+          CALL AddElementToFIBGM(iElem)
         END IF
 
       CASE(2)
@@ -1149,6 +1137,7 @@ DO iElem = firstElem,lastElem
                     .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
             ! add element back to halo region
             ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 2
+            CALL AddElementToFIBGM(iElem)
             EXIT
           END IF
 
@@ -1164,6 +1153,7 @@ DO iElem = firstElem,lastElem
                     .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
               ! add element back to halo region
               ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 2
+              CALL AddElementToFIBGM(iElem)
               EXIT
             END IF
           END DO
@@ -1183,6 +1173,7 @@ DO iElem = firstElem,lastElem
                     .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
             ! add element back to halo region
             ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 2
+            CALL AddElementToFIBGM(iElem)
             EXIT
           END IF
 
@@ -1197,6 +1188,7 @@ DO iElem = firstElem,lastElem
                     .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
               ! add element back to halo region
               ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 2
+              CALL AddElementToFIBGM(iElem)
               EXIT
             END IF
 
@@ -1212,6 +1204,7 @@ DO iElem = firstElem,lastElem
                 .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
           ! add element back to halo region
           ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 2
+          CALL AddElementToFIBGM(iElem)
         END IF
 
       CASE DEFAULT
@@ -1221,6 +1214,46 @@ DO iElem = firstElem,lastElem
 END DO
 
 END SUBROUTINE CheckPeriodicSides
+
+
+SUBROUTINE AddElementToFIBGM(ElemID)
+!===================================================================================================================================
+!> adds an element to all corresponding FIBGM cells and ensures correct bounds
+!===================================================================================================================================
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBGM_Shared
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+INTEGER,INTENT(IN)             :: ElemID
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                        :: iBGM,jBGM,kBGM
+INTEGER                        :: BGMCellXmax,BGMCellXmin,BGMCellYmax,BGMCellYmin,BGMCellZmax,BGMCellZmin
+!===================================================================================================================================
+
+BGMCellXmin = MAX(ElemToBGM_Shared(1,ElemID),GEO%FIBGMimin)
+BGMCellXmax = MIN(ElemToBGM_Shared(2,ElemID),GEO%FIBGMimax)
+BGMCellYmin = MAX(ElemToBGM_Shared(3,ElemID),GEO%FIBGMjmin)
+BGMCellYmax = MIN(ElemToBGM_Shared(4,ElemID),GEO%FIBGMjmax)
+BGMCellZmin = MAX(ElemToBGM_Shared(5,ElemID),GEO%FIBGMkmin)
+BGMCellZmax = MIN(ElemToBGM_Shared(6,ElemID),GEO%FIBGMkmax)
+
+! add current element to number of BGM-elems
+DO iBGM = BGMCellXmin,BGMCellXmax
+  DO jBGM = BGMCellYmin,BGMCellYmax
+    DO kBGM = BGMCellZmin,BGMCellZmax
+      GEO%FIBGM(iBGM,jBGM,kBGM)%nElem = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem + 1
+    END DO ! kBGM
+  END DO ! jBGM
+END DO ! iBGM
+
+END SUBROUTINE
 
 
 #if GCC_VERSION < 90000

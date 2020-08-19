@@ -186,11 +186,13 @@ CALL prms%CreateIntOption(          'Part-nSpecies'             , 'Number of spe
                                                                 , '1')
 CALL prms%CreateIntOption(          'Part-Species[$]-nInits'    , 'Number of different initial particle placements for Species [$]'&
                                                                 , '0'        , numberedmulti=.TRUE.)
-CALL prms%CreateStringOption(       'Part-Species[$]-RHSMethod' , 'Particle model used for forces calculation.\n'                //&
+CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for forces calculation.\n'                //&
                                                                   ' - Wang\n'                                                    //&
                                                                   ' - Jacobs\n'                                                  //&
                                                                   ' - Vinkovic'                                                    &
                                                                 , 'none'     , numberedmulti=.TRUE.)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'none',            RHS_NONE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'tracer',          RHS_TRACER)
 CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle Mass of species [$] [kg]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'                       &
@@ -274,15 +276,17 @@ CALL prms%CreateIntOption(          'Part-Species[$]-NumberOfExcludeRegions', 'N
 
 CALL prms%SetSection("Particle Species nInits")
 ! if nInit > 0 some variables have to be defined twice
-CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-RHSMethod' , 'Particle model used for forces calculation.\n'        //&
-                                                                  ' - Wang\n'                                                    //&
-                                                                  ' - Jacobs\n'                                                  //&
-                                                                  ' - Vinkovic'                                                    &
-                                                                , 'none'     , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-MassIC'    , 'Particle Mass of species [$] [kg]'                      &
-                                                                , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'               &
-                                                                , '0.'      , numberedmulti=.TRUE.)
+!CALL prms%CreateIntFromStringOption('Part-Species[$]-Init[$]-RHSMethod' , 'Particle model used for forces calculation.\n'        //&
+!                                                                  ' - Wang\n'                                                    //&
+!                                                                  ' - Jacobs\n'                                                  //&
+!                                                                  ' - Vinkovic'                                                    &
+!                                                                , 'none'     , numberedmulti=.TRUE.)
+!CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod','none',            RHS_NONE)
+!CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod','tracer',          RHS_TRACER)
+!CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-MassIC'    , 'Particle Mass of species [$] [kg]'                      &
+!                                                                , '0.'       , numberedmulti=.TRUE.)
+!CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'               &
+!                                                                , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-velocityDistribution', 'Used velocity distribution.\n'              //&
                                                                   ' - constant: all particles have the same velocity defined in' //&
                                                                   ' VeloVecIC\n'                                                 //&
@@ -880,11 +884,11 @@ DO iSpec = 1, nSpecies
     ! get species values // only once
     !--> General Species Values
     SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec,'-Init',iInit
-    Species(iSpec)%RHSMethod             = TRIM(GETSTR('Part-Species'//TRIM(tmpStr2)//'-RHSMethod'        ,'none'))
-    Species(iSpec)%MassIC                = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-MassIC'           ,'0.')
-    Species(iSpec)%DensityIC             = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-DensityIC'        ,'0.')
-    Species(iSpec)%LowVeloThreshold      = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-LowVeloThreshold' ,'0.')
-    Species(iSpec)%HighVeloThreshold     = GETREAL(    'Part-Species'//TRIM(tmpStr2)//'-HighVeloThreshold','0.')
+    Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(tmpStr2)//'-RHSMethod'             )
+    Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-MassIC'           ,'0.')
+    Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-DensityIC'        ,'0.')
+    Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-LowVeloThreshold' ,'0.')
+    Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-HighVeloThreshold','0.')
 
     !--> Bons particle rebound model
     SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading rebound  particle properties for Species',iSpec,'-Init',iInit

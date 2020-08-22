@@ -173,14 +173,14 @@ DO iArg=1+skipArgs,nArgs
     IF (doSurfVisu) THEN
       ! Surface data
 #if FV_ENABLED
-      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))//'.vtu'
+      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
 #else
-      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))//'.vtu'
+      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
 #endif
       CALL WriteDataToVTK(nVarSurfVisuAll,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
         FileString_SurfDG,dim=PP_dim-1,DGFV=0,nValAtLastDimension=.TRUE.)
 #if FV_ENABLED
-      FileString_SurfFV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))//'.vtu'
+      FileString_SurfFV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
       CALL WriteDataToVTK(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
           FileString_SurfFV,dim=PP_dim-1,DGFV=1,nValAtLastDimension=.TRUE.)
 

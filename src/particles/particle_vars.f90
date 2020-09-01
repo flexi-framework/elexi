@@ -153,7 +153,7 @@ END TYPE
 TYPE tSpecies                                                                ! Particle Data for each Species
   !General Species Values
   TYPE(tInit), ALLOCATABLE               :: Init(:)  !     =>NULL()          ! Particle Data for each Initialisation
-  CHARACTER(40)                          :: RHSMethod                        ! specifying Keyword for RHS method
+  INTEGER                                :: RHSMethod                        ! specifying Keyword for RHS method
   REAL                                   :: MassIC                           ! Particle Mass (without MPF)
   REAL                                   :: DensityIC                        ! Particle Density (without MPF)
   INTEGER                                :: NumberOfInits                    ! Number of different initial particle placements

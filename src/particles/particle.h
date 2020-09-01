@@ -114,6 +114,15 @@
 #define TRACING       2
 #define TRIATRACKING  3
 
+! RHS method
+#define RHS_NONE         1
+#define RHS_TRACER       2
+#define RHS_CONVERGENCE  3
+#define RHS_WANG         4
+#define RHS_VINKOVIC     5
+#define RHS_JACOBS       6
+#define RHS_JACOBSHIGHRE 7
+
 ! formats
 ! print to std out like  "    1.41421356237310E+000   -1.41421356237310E+000   -1.41421356237310E+000"
 ! (looks good and prevents the first digit of being a zero)

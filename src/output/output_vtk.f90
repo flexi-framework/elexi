@@ -496,7 +496,7 @@ IF (MPIRoot) THEN
     WRITE(ivtk) TRIM(BUFFER)
     Buffer='  <vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
     Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'.vtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
-    Buffer='    <DataSet index="0" name="FV" file="'//TRIM(FileString_FV)//'.vtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='    <DataSet index="1" name="FV" file="'//TRIM(FileString_FV)//'.vtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
     Buffer='  </vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
     Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)
     CLOSE(ivtk)

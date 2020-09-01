@@ -141,7 +141,7 @@ IF (t.GE.DelayTime) THEN
   DO iPart=1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(iPart)) THEN
       !-- Tracer Particles
-      IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
+      IF (Species(PartSpecies(iPart))%RHSMethod.EQ.RHS_TRACER) THEN
         PartState(1:3,iPart) = PartState(1:3,iPart) + PartState(4:6,iPart)*dt
         PartState(4:6,iPart) = Pt       (1:3,iPart)
       !-- Normal particles
@@ -347,7 +347,7 @@ IF (t.GE.DelayTime) THEN
       ! Pt is always known at this position, change isNewPart to false
       PDM%IsNewPart(iPart) = .FALSE.
 
-      IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
+      IF (Species(PartSpecies(iPart))%RHSMethod.EQ.RHS_TRACER)THEN
         Pt_temp  (1:3,iPart) = PartState(4:6,iPart)
         PartState(4:6,iPart) = Pt(       1:3,iPart)
 
@@ -564,7 +564,7 @@ IF (t.GE.DelayTime) THEN
     IF (PDM%ParticleInside(iPart)) THEN
       ! "normal" particles are pushed with whole timestep
       IF (.NOT.PDM%IsNewPart(iPart)) THEN
-        IF (TRIM(Species(PartSpecies(iPart))%RHSMethod).EQ.'Tracer') THEN
+        IF (Species(PartSpecies(iPart))%RHSMethod.EQ.RHS_TRACER) THEN
           Pt_temp(1:3,iPart) = PartState(4:6,iPart) - RKA(iStage) * Pt_temp(1:3,iPart)
 
           PartState(1:3,iPart) = PartState(1:3,iPart) + Pt_temp(1:3,iPart)*b_dt(iStage)

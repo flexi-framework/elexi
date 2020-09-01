@@ -97,6 +97,7 @@ CALL prms%CreateRealArrayOption(    'IniAxis',      "Shu Vortex CASE(7) (x,y,z)"
 CALL prms%CreateRealOption(         'IniAmplitude', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'JetRadius',    "Roundjet CASE(5/31)", '1.0')
+CALL prms%CreateRealOption(         'Ramping',      "Subsonic mass inflow CASE(28)", '1.0')
 #if PARABOLIC
 CALL prms%CreateRealOption(         'delta99_in',   "Blasius boundary layer CASE(1338)")
 CALL prms%CreateRealArrayOption(    'x_in',         "Blasius boundary layer CASE(1338)")
@@ -152,9 +153,9 @@ CASE(33) ! Roundjet
   RoundjetInitDone =.TRUE.
 #if PARABOLIC
 CASE(1338) ! Blasius boundary layer solution
-  delta99_in      = GETREAL('delta99_in')
-  x_in            = GETREALARRAY('x_in',2,'(/0.,0./)')
-  BlasiusInitDone = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
+  delta99_in       = GETREAL('delta99_in')
+  x_in             = GETREALARRAY('x_in',2,'(/0.,0./)')
+  BlasiusInitDone  = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
 #endif
 CASE DEFAULT
 END SELECT ! IniExactFunc
@@ -487,7 +488,7 @@ CASE(33) !Roundjet, x-axis is jet axis
   ! Jet inflow (from x=0)
   ! Initial jet radius: JetRadius
   ! Momentum thickness: delta_theta0=0.05=1/20
-  r_len=SQRT((x(2)*x(2)+x(3)*x(3)))
+  r_len=SQRT(x(2)*x(2)+x(3)*x(3))
   prim(2)=RefStatePrim(2,RefState)*0.5*(1.+TANH((JetRadius-r_len)/JetRadius*10.))
   CALL RANDOM_NUMBER(random)
   ! Random disturbance +-5%; uniform distribution between -1,1
@@ -652,6 +653,8 @@ CASE(1338) ! blasius
   x_offset(2)=-x_in(2)
   x_offset(3)=0.
   x_eff=x+x_offset
+  ! blasius BL for pipes
+!  x_eff(2)=JetRadius-SQRT(x(2)**2+x(3)**2)+x_offset(2)
   IF(x_eff(2).GT.0 .AND. x_eff(1).GT.0) THEN
     ! scale bl position in physical space to reference space, eta=5 is ~99% bl thickness
     eta=x_eff(2)*(prim(1)*prim(2)/(mu0*x_eff(1)))**0.5

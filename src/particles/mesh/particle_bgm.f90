@@ -138,7 +138,10 @@ LOGICAL,ALLOCATABLE            :: FIBGMToProcTmp(:,:,:,:)
 INTEGER,ALLOCATABLE            :: FIBGM_nTotalElemsTmp(:,:,:)
 #else
 REAL                           :: halo_eps
-#endif
+#endif /*USE_MPI*/
+#if CODE_ANALYZE
+INTEGER,ALLOCATABLE            :: NumberOfElements(:)
+#endif /*CODE_ANALYZE*/
 !===================================================================================================================================
 
 ! Read parameter for FastInitBackgroundMesh (FIBGM)
@@ -346,9 +349,9 @@ END DO ! iBGM
 ! and which element is outside of compute-node domain (0)
 ! first do coarse check with BGM
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
-  ElemInfo_Shared(ELEM_HALOFLAG,firstElem:lastElem)=1
+  ElemInfo_Shared(ELEM_HALOFLAG,firstElem:lastElem) = 1
 ELSE
-  ElemInfo_Shared(ELEM_HALOFLAG,firstElem:lastElem)=0
+  ElemInfo_Shared(ELEM_HALOFLAG,firstElem:lastElem) = 0
   DO iElem = firstElem, lastElem
     BGMCellXmin = ElemToBGM_Shared(1,iElem)
     BGMCellXmax = ElemToBGM_Shared(2,iElem)
@@ -369,10 +372,10 @@ ELSE
           IF(kBGM.LT.BGMkmin) CYCLE
           IF(kBGM.GT.BGMkmax) CYCLE
           !GEO%FIBGM(iBGM,jBGM,kBGM)%nElem = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem + 1
-          IF(iElem.GE.offsetComputeNodeElem+1 .AND. iElem.LE.offsetComputeNodeElem+nComputeNodeElems) THEN
-            ElemInfo_Shared(ELEM_HALOFLAG,iElem)=1 ! compute-node element
+          IF (iElem.GE.offsetComputeNodeElem+1 .AND. iElem.LE.offsetComputeNodeElem+nComputeNodeElems) THEN
+            ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 1 ! compute-node element
           ELSE
-            ElemInfo_Shared(ELEM_HALOFLAG,iElem)=2 ! halo element
+            ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 2 ! halo element
           END IF
         END DO ! kBGM
       END DO ! jBGM
@@ -460,7 +463,7 @@ ELSE
       EXIT
     END DO ! iSide = 1, nMPISidesShared
     IF (.NOT.ElemInsideHalo) THEN
-      ElemInfo_Shared(ELEM_HALOFLAG,ElemID)=0
+      ElemInfo_Shared(ELEM_HALOFLAG,ElemID) = 0
     ELSE
       ! Only add element to BGM if inside halo region on node.
       ! THIS IS WRONG. WE ARE WORKING ON THE CN HALO REGION. IF WE OMIT THE
@@ -521,21 +524,26 @@ ALLOCATE(recvbuf(BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax))
 DO iBGM = BGMimin,BGMimax
   DO jBGM = BGMjmin,BGMjmax
     DO kBGM = BGMkmin,BGMkmax
-      sendbuf(iBGM,jBGM,kBGM)=GEO%FIBGM(iBGM,jBGM,kBGM)%nElem
-      recvbuf(iBGM,jBGM,kBGM)=0
+      sendbuf(iBGM,jBGM,kBGM) = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem
+      recvbuf(iBGM,jBGM,kBGM) = 0
     END DO ! kBGM
   END DO ! jBGM
 END DO ! iBGM
 
+BGMiDelta = BGMimax - BGMimin
+BGMjDelta = BGMjmax - BGMjmin
+BGMkDelta = BGMkmax - BGMkmin
+! allocated shared memory for nElems per BGM cell
+! MPI shared memory is continuous, beginning from 1. All shared arrays have to
+! be shifted to BGM[i]min with pointers
 ALLOCATE(offsetElemsInBGMCell(BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax))
-CALL MPI_EXSCAN(sendbuf(:,:,:),recvbuf(:,:,:),((BGMimax-BGMimin)+1)*((BGMjmax-BGMjmin)+1)*((BGMkmax-BGMkmin)+1) &
-                ,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,iError)
+CALL MPI_EXSCAN(sendbuf(:,:,:),recvbuf(:,:,:),(BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1),MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,iError)
 offsetElemsInBGMCell = recvbuf
 DEALLOCATE(recvbuf)
 
 ! last proc of compute-node calculates total number of elements in each BGM-cell
 ! after this loop sendbuf of last proc contains nElems per BGM cell
-IF(myComputeNodeRank.EQ.nComputeNodeProcessors-1)THEN
+IF (myComputeNodeRank.EQ.nComputeNodeProcessors-1) THEN
   DO iBGM = BGMimin,BGMimax
     DO jBGM = BGMjmin,BGMjmax
       DO kBGM = BGMkmin,BGMkmax
@@ -548,12 +556,6 @@ END IF
 ! allocated shared memory for nElems per BGM cell
 ! MPI shared memory is continuous, beginning from 1. All shared arrays have to
 ! be shifted to BGM[i]min with pointers
-#endif /*USE_MPI*/
-BGMiDelta = BGMimax - BGMimin
-BGMjDelta = BGMjmax - BGMjmin
-BGMkDelta = BGMkmax - BGMkmin
-
-#if USE_MPI
 MPISharedSize = INT((BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
 CALL Allocate_Shared(MPISharedSize,(/(BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1)/) &
                     ,FIBGM_nElems_Shared_Win,FIBGM_nElems_Shared)
@@ -567,7 +569,7 @@ FIBGM_nElems     (BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax) => FIBGM_nEle
 FIBGM_offsetElem (BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax) => FIBGM_offsetElem_Shared
 
 ! last proc of compute-node writes into shared memory to make nElems per BGM accessible for every proc
-IF(myComputeNodeRank.EQ.nComputeNodeProcessors-1)THEN
+IF (myComputeNodeRank.EQ.nComputeNodeProcessors-1) THEN
   currentOffset = 0
   DO iBGM = BGMimin,BGMimax
     DO jBGM = BGMjmin,BGMjmax
@@ -588,9 +590,9 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 ALLOCATE( FIBGM_nElems    (BGMimin:BGMimax,BGMjmin:BGMjmax,BGMjmin:BGMjmax))
 ALLOCATE( FIBGM_offsetElem(BGMimin:BGMimax,BGMjmin:BGMjmax,BGMjmin:BGMjmax))
 currentOffset = 0
-  DO iBGM = BGMimin,BGMimax
-    DO jBGM = BGMjmin,BGMjmax
-      DO kBGM = BGMkmin,BGMkmax
+DO iBGM = BGMimin,BGMimax
+  DO jBGM = BGMjmin,BGMjmax
+    DO kBGM = BGMkmin,BGMkmax
       FIBGM_nElems(iBGM,jBGM,kBGM)     = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem
       FIBGM_offsetElem(iBGM,jBGM,kBGM) = currentOffset
       currentOffset = currentoffset    + GEO%FIBGM(iBGM,jBGM,kBGM)%nElem
@@ -601,7 +603,7 @@ END DO ! iBGM
 
 #if USE_MPI
 ! allocate 1D array for mapping of BGM cell to Element indeces
-MPISharedSize = INT((FIBGM_offsetElem(BGMimax,BGMjmax,BGMkmax) + FIBGM_nElems    (BGMimax,BGMjmax,BGMkmax))  &
+MPISharedSize = INT((FIBGM_offsetElem(BGMimax,BGMjmax,BGMkmax) + FIBGM_nElems(BGMimax,BGMjmax,BGMkmax))  &
                     ,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
 CALL Allocate_Shared(MPISharedSize,(/FIBGM_offsetElem(BGMimax,BGMjmax,BGMkmax)   + &
                                      FIBGM_nElems    (BGMimax,BGMjmax,BGMkmax)/)   &
@@ -620,6 +622,8 @@ IF (myComputeNodeRank.EQ.0) THEN
 #if USE_MPI
 END IF
 #endif /*USE_MPI*/
+CALL MPI_WIN_SYNC(FIBGM_Element_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
 DO iBGM = BGMimin,BGMimax
   DO jBGM = BGMjmin,BGMjmax
@@ -631,12 +635,11 @@ END DO ! iBGM
 
 #if USE_MPI
 ! We might need to expand the halo BGM region
-
-
 IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
+  ! Only add non-peri halo elems
   DO iElem = firstHaloElem, lastHaloElem
     ElemID = offsetCNHalo2GlobalElem(iElem)
-    IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).EQ.0) CYCLE
+    IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).NE.2) CYCLE
 
     BGMCellXmin = MAX(ElemToBGM_Shared(1,ElemID),BGMimin)
     BGMCellXmax = MIN(ElemToBGM_Shared(2,ElemID),BGMimax)
@@ -653,43 +656,16 @@ IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
           FIBGM_Element( FIBGM_offsetElem    (iBGM,jBGM,kBGM)        & ! offset of BGM cell in 1D array
                        + offsetElemsInBGMCell(iBGM,jBGM,kBGM)        & ! offset of BGM nElems in local proc
                        + GEO%FIBGM           (iBGM,jBGM,kBGM)%nElem) = ElemID
-                     IF (FIBGM_offsetElem(iBGM,jBGM,kBGM).EQ.116645) IPWRITE(*,*) 'halo', ElemID,offsetElemsInBGMCell(iBGM,jBGM,kBGM),iBGM,jBGM,kBGM
         END DO ! kBGM
       END DO ! jBGM
     END DO ! iBGM
   END DO ! iElem = firstHaloElem, lastHaloElem
-
-  ! Also add the periodic elements found on the same proc
-  IF (GEO%nPeriodicVectors.GT.0) THEN
-    DO ElemID = firstElem, lastElem
-      IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).NE.3) CYCLE
-
-      BGMCellXmin = MAX(ElemToBGM_Shared(1,ElemID),BGMimin)
-      BGMCellXmax = MIN(ElemToBGM_Shared(2,ElemID),BGMimax)
-      BGMCellYmin = MAX(ElemToBGM_Shared(3,ElemID),BGMjmin)
-      BGMCellYmax = MIN(ElemToBGM_Shared(4,ElemID),BGMjmax)
-      BGMCellZmin = MAX(ElemToBGM_Shared(5,ElemID),BGMkmin)
-      BGMCellZmax = MIN(ElemToBGM_Shared(6,ElemID),BGMkmax)
-
-      ! add current Element to BGM-Elem
-      DO kBGM = BGMCellZmin,BGMCellZmax
-        DO jBGM = BGMCellYmin,BGMCellYmax
-          DO iBGM = BGMCellXmin,BGMCellXmax
-            GEO%FIBGM(iBGM,jBGM,kBGM)%nElem = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem + 1
-            FIBGM_Element( FIBGM_offsetElem    (iBGM,jBGM,kBGM)        & ! offset of BGM cell in 1D array
-                         + offsetElemsInBGMCell(iBGM,jBGM,kBGM)        & ! offset of BGM nElems in local proc
-                         + GEO%FIBGM           (iBGM,jBGM,kBGM)%nElem) = ElemID
-                       IF (FIBGM_offsetElem(iBGM,jBGM,kBGM).EQ.116645) IPWRITE(*,*) 'halo', ElemID,offsetElemsInBGMCell(iBGM,jBGM,kBGM),iBGM,jBGM,kBGM
-          END DO ! kBGM
-        END DO ! jBGM
-      END DO ! iBGM
-    END DO ! iElem = firstHaloElem, lastHaloElem
   END IF
-END IF
 #endif  /*USE_MPI*/
 
+! Add local elements
 DO iElem = offsetElem+1, offsetElem+nElems
-
+  ! find element extent on BGM
   BGMCellXmin = MAX(ElemToBGM_Shared(1,iElem),BGMimin)
   BGMCellXmax = MIN(ElemToBGM_Shared(2,iElem),BGMimax)
   BGMCellYmin = MAX(ElemToBGM_Shared(3,iElem),BGMjmin)
@@ -697,7 +673,7 @@ DO iElem = offsetElem+1, offsetElem+nElems
   BGMCellZmin = MAX(ElemToBGM_Shared(5,iElem),BGMkmin)
   BGMCellZmax = MIN(ElemToBGM_Shared(6,iElem),BGMkmax)
 
-  ! add current Element to BGM-Elem
+  ! add current element to BGM-Elem
   DO kBGM = BGMCellZmin,BGMCellZmax
     DO jBGM = BGMCellYmin,BGMCellYmax
       DO iBGM = BGMCellXmin,BGMCellXmax
@@ -707,7 +683,6 @@ DO iElem = offsetElem+1, offsetElem+nElems
                      + offsetElemsInBGMCell(iBGM,jBGM,kBGM)        & ! offset of BGM nElems in local proc
 #endif  /*USE_MPI*/
                      + GEO%FIBGM           (iBGM,jBGM,kBGM)%nElem) = iElem
-        IF (FIBGM_offsetElem(iBGM,jBGM,kBGM).EQ.116645) IPWRITE(*,*) 'loca', iElem,offsetElemsInBGMCell(iBGM,jBGM,kBGM)
       END DO ! kBGM
     END DO ! jBGM
   END DO ! iBGM
@@ -743,6 +718,9 @@ DEALLOCATE(offsetElemsInBGMCell)
 CALL MPI_WIN_SYNC(FIBGM_Element_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
+! Abort if FIBGM_Element still contains unfilled entries
+IF (ANY(FIBGM_Element.EQ.-1)) CALL ABORT(__STAMP__,'Error while filling FIBGM element array')
+
 ! sum up Number of all elements on current compute-node (including halo region)
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
   nComputeNodeTotalElems = nGlobalElems
@@ -753,7 +731,7 @@ ELSE
   nComputeNodeTotalSides = 0
   nComputeNodeTotalNodes = 0
   DO iElem = 1, nGlobalElems
-    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.2 .OR. ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.1) THEN
+    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).NE.0) THEN
       nComputeNodeTotalElems = nComputeNodeTotalElems + 1
     END IF
   END DO
@@ -762,6 +740,7 @@ ELSE
   nComputeNodeTotalElems = 0
   nComputeNodeTotalElems = 0
   GlobalElem2CNTotalElem(1:nGlobalElems) = -1
+  ! CN-local elements
   DO iElem = 1,nGlobalElems
     IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.1) THEN
       nComputeNodeTotalElems = nComputeNodeTotalElems + 1
@@ -773,6 +752,7 @@ ELSE
                              + (ElemInfo_Shared(ELEM_LASTNODEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem))
     END IF
   END DO
+  ! CN-halo elements (non-periodic)
   DO iElem = 1,nGlobalElems
     IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.2) THEN
       nComputeNodeTotalElems = nComputeNodeTotalElems + 1
@@ -784,7 +764,59 @@ ELSE
                              + (ElemInfo_Shared(ELEM_LASTNODEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem))
     END IF
   END DO
+  ! CN-halo elements (periodic)
+  DO iElem = 1,nGlobalElems
+    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.3) THEN
+      nComputeNodeTotalElems = nComputeNodeTotalElems + 1
+      CNTotalElem2GlobalElem(nComputeNodeTotalElems) = iElem
+      GlobalElem2CNTotalElem(iElem) = nComputeNodeTotalElems
+      nComputeNodeTotalSides = nComputeNodeTotalSides &
+                             + (ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem))
+      nComputeNodeTotalNodes = nComputeNodeTotalNodes &
+                             + (ElemInfo_Shared(ELEM_LASTNODEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem))
+    END IF
+  END DO
 END IF
+
+#if CODE_ANALYZE
+! Sanity checks
+IF (  SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)  ,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.1).NE.nComputeNodeElems) &
+  CALL ABORT(__STAMP__,'Error with number of local elements on compute node')
+
+IF ((SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)  ,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.1) &
+    +SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)/2,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.2) &
+    +SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)/3,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.3)).NE.nComputeNodeTotalElems) &
+  CALL ABORT(__STAMP__,'Error with number of halo elements on compute node')
+
+! Debug output
+IF (myRank.EQ.0) THEN
+  SWRITE(Unit_StdOut,'(A)') ' DETERMINED compute-node (CN) halo region ...
+  SWRITE(Unit_StdOut,'(A)') ' | CN Rank | Local Elements | Halo Elements (non-peri) | Halo Elements (peri) |'
+  CALL FLUSH(UNIT_stdOut)
+  ALLOCATE(NumberOfElements(3*nLeaderGroupProcs))
+END IF
+
+IF (myComputeNodeRank.EQ.0) THEN
+  CALL MPI_GATHER((/ SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)  ,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.1),  &
+                     SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)/2,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.2),  &
+                     SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)/3,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.3)/) &
+                 , 3 , MPI_INTEGER                                                                        &
+                 , NumberOfElements                                                                       &
+                 , 3 , MPI_INTEGER                                                                        &
+                 , 0 , MPI_COMM_LEADERS_SHARED ,iError)
+END IF
+
+IF (myRank.EQ.0) THEN
+  DO iProc = 0,nLeaderGroupProcs-1
+    WRITE(Unit_StdOut,'(A,I7,A,I15,A,I25,A,I21,A)')  &
+                                      ' |>',iProc, &
+                                      ' |'  ,NumberOfElements(iProc*3+1), &
+                                      ' |'  ,NumberOfElements(iProc*3+2), &
+                                      ' |'  ,NumberOfElements(iProc*3+3), ' |'
+  END DO
+END IF
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+#endif /*CODE_ANALYZE*/
 
 ! Loop over all elements and build a global FIBGM to processor mapping. This is required to identify potential emission procs
 BGMiminglob = 0 + moveBGMindex
@@ -1147,7 +1179,7 @@ DO iElem = firstElem,lastElem
                 .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
           ! add element back to halo region
           ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
-          CALL AddElementToFIBGM(iElem)
+!          CALL AddElementToFIBGM(iElem)
         END IF
 
       CASE(2)
@@ -1166,7 +1198,7 @@ DO iElem = firstElem,lastElem
                     .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
             ! add element back to halo region
             ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
-            CALL AddElementToFIBGM(iElem)
+!            CALL AddElementToFIBGM(iElem)
             EXIT
           END IF
 
@@ -1182,7 +1214,7 @@ DO iElem = firstElem,lastElem
                     .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
               ! add element back to halo region
               ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
-              CALL AddElementToFIBGM(iElem)
+!              CALL AddElementToFIBGM(iElem)
               EXIT
             END IF
           END DO
@@ -1202,7 +1234,7 @@ DO iElem = firstElem,lastElem
                     .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
             ! add element back to halo region
             ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
-            CALL AddElementToFIBGM(iElem)
+!            CALL AddElementToFIBGM(iElem)
             EXIT
           END IF
 
@@ -1217,7 +1249,7 @@ DO iElem = firstElem,lastElem
                     .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
               ! add element back to halo region
               ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
-              CALL AddElementToFIBGM(iElem)
+!              CALL AddElementToFIBGM(iElem)
               EXIT
             END IF
 
@@ -1233,7 +1265,7 @@ DO iElem = firstElem,lastElem
                 .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
           ! add element back to halo region
           ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
-          CALL AddElementToFIBGM(iElem)
+!          CALL AddElementToFIBGM(iElem)
         END IF
 
       CASE DEFAULT

@@ -193,6 +193,11 @@ CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle mode
                                                                 , 'none'     , numberedmulti=.TRUE.)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'none',            RHS_NONE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'tracer',          RHS_TRACER)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'convergence',     RHS_CONVERGENCE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Wang',            RHS_WANG)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Jacobs-highRe',   RHS_JACOBSHIGHRE)
 CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle Mass of species [$] [kg]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'                       &
@@ -276,17 +281,22 @@ CALL prms%CreateIntOption(          'Part-Species[$]-NumberOfExcludeRegions', 'N
 
 CALL prms%SetSection("Particle Species nInits")
 ! if nInit > 0 some variables have to be defined twice
-!CALL prms%CreateIntFromStringOption('Part-Species[$]-Init[$]-RHSMethod' , 'Particle model used for forces calculation.\n'        //&
-!                                                                  ' - Wang\n'                                                    //&
-!                                                                  ' - Jacobs\n'                                                  //&
-!                                                                  ' - Vinkovic'                                                    &
-!                                                                , 'none'     , numberedmulti=.TRUE.)
-!CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod','none',            RHS_NONE)
-!CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod','tracer',          RHS_TRACER)
-!CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-MassIC'    , 'Particle Mass of species [$] [kg]'                      &
-!                                                                , '0.'       , numberedmulti=.TRUE.)
-!CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'               &
-!                                                                , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateIntFromStringOption('Part-Species[$]-Init[$]-RHSMethod' , 'Particle model used for forces calculation.\n'        //&
+                                                                  ' - Wang\n'                                                    //&
+                                                                  ' - Jacobs\n'                                                  //&
+                                                                  ' - Vinkovic'                                                    &
+                                                                , 'none'     , numberedmulti=.TRUE.)
+CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'none',            RHS_NONE)
+CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'tracer',          RHS_TRACER)
+CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'convergence',     RHS_CONVERGENCE)
+CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Wang',            RHS_WANG)
+CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
+CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
+CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Jacobs-highRe',   RHS_JACOBSHIGHRE)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-MassIC'    , 'Particle Mass of species [$] [kg]'                      &
+                                                                , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'               &
+                                                                , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-velocityDistribution', 'Used velocity distribution.\n'              //&
                                                                   ' - constant: all particles have the same velocity defined in' //&
                                                                   ' VeloVecIC\n'                                                 //&
@@ -1139,7 +1149,7 @@ SUBROUTINE InitializeVariablesPartBoundary()
 USE MOD_Globals
 USE MOD_Mesh_Vars              ,ONLY: BoundaryName,BoundaryType,nBCs
 USE MOD_Particle_Boundary_Vars ,ONLY: PartBound,nPartBound
-USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
+!USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
 USE MOD_Particle_Surfaces_Vars ,ONLY: BCdata_auxSF
 USE MOD_Particle_Vars
 USE MOD_ReadInTools

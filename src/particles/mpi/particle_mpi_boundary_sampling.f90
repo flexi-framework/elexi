@@ -133,8 +133,7 @@ DO iProc = 0,nLeaderGroupProcs-1
 END DO
 
 !--- Split communicator from MPI_COMM_LEADER_SHARED
-color = MPI_UNDEFINED
-IF (SurfOnNode) color = 1201
+color = MERGE(1201,MPI_UNDEFINED,SurfOnNode)
 
 ! create new SurfMesh communicator for SurfMesh communication. Pass MPI_INFO_NULL as rank to follow the original ordering
 CALL MPI_COMM_SPLIT(MPI_COMM_LEADERS_SHARED, color, MPI_INFO_NULL, MPI_COMM_LEADERS_SURF, IERROR)
@@ -156,7 +155,7 @@ CALL MPI_COMM_GROUP(MPI_COMM_LEADERS_SURF  ,surfGroup   ,IERROR)
 
 ! Finally translate global rank to local rank
 CALL MPI_GROUP_TRANSLATE_RANKS(leadersGroup,nLeaderGroupProcs,MPIRankSharedLeader,surfGroup,MPIRankSurfLeader,IERROR)
-SWRITE(UNIT_stdOUt,'(A,I0,A)') ' Starting surface communication between ', nSurfLeaders, ' compute nodes...'
+IF (SurfOnNode .AND. mySurfRank.EQ.0) WRITE(UNIT_stdOUt,'(A,I0,A)') ' Starting surface communication between ', nSurfLeaders, ' compute nodes...'
 
 !!--- Count all communicated sides and build mapping for other leaders
 !ALLOCATE(nSurfSidesLeader(1:2,0:nSurfLeaders-1))

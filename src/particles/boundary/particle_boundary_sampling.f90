@@ -706,6 +706,9 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars ,ONLY: SampWallState,nImpactVars
 USE MOD_Particle_Vars          ,ONLY: Species,PartSpecies,nSpecies
+!#if USE_MPI
+!USE MOD_Particle_Boundary_Vars ,ONLY: SampWallState_Shared,SampWallState_Shared
+!#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -719,6 +722,9 @@ REAL                              :: delta2                         ! Reusable v
 INTEGER                           :: nShift                         ! Shift amount for species tracking
 REAL                              :: v_magnitude
 REAL                              :: e_kin
+!#if USE_MPI
+!REAL                              :: increment = 1.
+!#endif
 !===================================================================================================================================
 nShift        = PartSpecies(PartID) * nImpactVars
 
@@ -730,6 +736,19 @@ nShift        = PartSpecies(PartID) * nImpactVars
 v_magnitude = SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
 e_kin       = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude**2.
 
+
+!#if USE_MPI
+!ASSOCIATE(SampWallState     => SampWallState_Shared,&
+!          SampWallState_Win => SampWallState_Shared_Win)
+!! All Variables are saved DOUBLE. First Total, then per SPECIES
+!!-- 1. - .. / Impact Counter
+!CALL MPI_GET_ACCUMULATE(increment                                 ,1,MPI_DOUBLE_PRECISION, &
+!                        SampWallState(1,p,q,surfSideID)           ,1,MPI_DOUBLE_PRECISION, &
+!                        0,INT(1*p*q*surfSideID-1,MPI_ADDRESS_KIND),1,MPI_DOUBLE_PRECISION, &
+!                        MPI_SUM,SampWallState_Win,iError)
+!
+!END ASSOCIATE
+!#else
 ! All Variables are saved DOUBLE. First Total, then per SPECIES
 !-- 1. - .. / Impact Counter
     SampWallState(1,p,q,surfSideID)            = SampWallState(1,p,q,surfSideID) + 1
@@ -840,6 +859,7 @@ IF (nSpecies.GT.1) THEN
     SampWallState(17+nShift,p,q,surfSideID) = SampWallState(17+nShift,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC        &
                                         * (v_old(3))
 END IF
+!#endif /*USE_MPI*/
 
 END SUBROUTINE RecordParticleBoundarySampling
 
@@ -1160,27 +1180,27 @@ IF (mySurfRank.EQ.0) THEN
   Str2DVarNames(nVarCount+16)='AverageForceZ'
 
   IF (nSpecies.GT.1) THEN
-      DO iSpec=1,nSpecies
-          WRITE(SpecID,'(I3.3)') iSpec
-          nShift = iSpec * (nImpactVars - 1)
+    DO iSpec=1,nSpecies
+      WRITE(SpecID,'(I3.3)') iSpec
+      nShift = iSpec * (nImpactVars - 1)
 
-          Str2DVarNames(nVarCount+nShift+1) ='Species'//TRIM(SpecID)//'_Impacts'
-          Str2DVarNames(nVarCount+nShift+2) ='Species'//TRIM(SpecID)//'_ImpactsPerArea'
-          Str2DVarNames(nVarCount+nShift+3) ='Species'//TRIM(SpecID)//'_E_kin(mean)'
-          Str2DVarNames(nVarCount+nShift+4) ='Species'//TRIM(SpecID)//'_E_kin(min)'
-          Str2DVarNames(nVarCount+nShift+5) ='Species'//TRIM(SpecID)//'_E_kin(max)'
-          Str2DVarNames(nVarCount+nShift+6) ='Species'//TRIM(SpecID)//'_E_kin(variance)'
-          Str2DVarNames(nVarCount+nShift+7) ='Species'//TRIM(SpecID)//'_ImpactAngle(mean)'
-          Str2DVarNames(nVarCount+nShift+8) ='Species'//TRIM(SpecID)//'_ImpactAngle(min)'
-          Str2DVarNames(nVarCount+nShift+9) ='Species'//TRIM(SpecID)//'_ImpactAngle(max)'
-          Str2DVarNames(nVarCount+nShift+10)='Species'//TRIM(SpecID)//'_ImpactAngle(variance)'
-          Str2DVarNames(nVarCount+nShift+11)='Species'//TRIM(SpecID)//'_CurrentForceX'
-          Str2DVarNames(nVarCount+nShift+12)='Species'//TRIM(SpecID)//'_CurrentForceY'
-          Str2DVarNames(nVarCount+nShift+13)='Species'//TRIM(SpecID)//'_CurrentForceZ'
-          Str2DVarNames(nVarCount+nShift+14)='Species'//TRIM(SpecID)//'_AverageForceX'
-          Str2DVarNames(nVarCount+nShift+15)='Species'//TRIM(SpecID)//'_AverageForceY'
-          Str2DVarNames(nVarCount+nShift+16)='Species'//TRIM(SpecID)//'_AverageForceZ'
-      END DO
+      Str2DVarNames(nVarCount+nShift+1) ='Species'//TRIM(SpecID)//'_Impacts'
+      Str2DVarNames(nVarCount+nShift+2) ='Species'//TRIM(SpecID)//'_ImpactsPerArea'
+      Str2DVarNames(nVarCount+nShift+3) ='Species'//TRIM(SpecID)//'_E_kin(mean)'
+      Str2DVarNames(nVarCount+nShift+4) ='Species'//TRIM(SpecID)//'_E_kin(min)'
+      Str2DVarNames(nVarCount+nShift+5) ='Species'//TRIM(SpecID)//'_E_kin(max)'
+      Str2DVarNames(nVarCount+nShift+6) ='Species'//TRIM(SpecID)//'_E_kin(variance)'
+      Str2DVarNames(nVarCount+nShift+7) ='Species'//TRIM(SpecID)//'_ImpactAngle(mean)'
+      Str2DVarNames(nVarCount+nShift+8) ='Species'//TRIM(SpecID)//'_ImpactAngle(min)'
+      Str2DVarNames(nVarCount+nShift+9) ='Species'//TRIM(SpecID)//'_ImpactAngle(max)'
+      Str2DVarNames(nVarCount+nShift+10)='Species'//TRIM(SpecID)//'_ImpactAngle(variance)'
+      Str2DVarNames(nVarCount+nShift+11)='Species'//TRIM(SpecID)//'_CurrentForceX'
+      Str2DVarNames(nVarCount+nShift+12)='Species'//TRIM(SpecID)//'_CurrentForceY'
+      Str2DVarNames(nVarCount+nShift+13)='Species'//TRIM(SpecID)//'_CurrentForceZ'
+      Str2DVarNames(nVarCount+nShift+14)='Species'//TRIM(SpecID)//'_AverageForceX'
+      Str2DVarNames(nVarCount+nShift+15)='Species'//TRIM(SpecID)//'_AverageForceY'
+      Str2DVarNames(nVarCount+nShift+16)='Species'//TRIM(SpecID)//'_AverageForceZ'
+    END DO
   END IF
 
   CALL WriteAttribute(File_ID,'VarNamesSurface',nVar2D_Total,StrArray=Str2DVarNames)
@@ -1204,14 +1224,14 @@ ASSOCIATE (&
       offsetSurfSide       => offsetComputeNodeSurfSide)
 
 DO iSpec = 1,nSpecies
-    CALL WriteArray(DataSetName = H5_Name                                                 , &
-                    rank        = 4                                                       , &
-                    nValGlobal  = (/nVar2D_Total,nSurfSample,nSurfSample,nGlobalSides  /) , &
-                    nVal        = (/nVar2D_Spec ,nSurfSample,nSurfSample,nLocalSides   /) , &
-                    offset      = (/nVarCount   ,          0,          0,offsetSurfSide/) , &
-                    collective  = .TRUE.                                                  , &
+  CALL WriteArray(DataSetName = H5_Name                                                 , &
+                  rank        = 4                                                       , &
+                  nValGlobal  = (/nVar2D_Total,nSurfSample,nSurfSample,nGlobalSides  /) , &
+                  nVal        = (/nVar2D_Spec ,nSurfSample,nSurfSample,nLocalSides   /) , &
+                  offset      = (/nVarCount   ,          0,          0,offsetSurfSide/) , &
+                  collective  = .TRUE.                                                  , &
                     RealArray   = MacroSurfaceSpecVal(1:nVar2D_Spec,1:nSurfSample,1:nSurfSample,1:nLocalSides,iSpec))
-    nVarCount = nVarCount + nVar2D_Spec
+  nVarCount = nVarCount + nVar2D_Spec
 END DO
 
 CALL WriteArray(    DataSetName = H5_Name                                                 , &
@@ -1238,7 +1258,7 @@ END IF
 CALL MPI_BARRIER(MPI_COMM_LEADERS_SURF,iERROR)
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.,communicatorOpt=MPI_COMM_LEADERS_SURF)
 #else
-CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
+CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
 #endif /*MPI*/
 
 ! This array is purely for restart

@@ -728,9 +728,8 @@ SELECT CASE(nRoot)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-!        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:       ', PartState  (1:3,PartID),PEM%Element(PartiD)
-        IPWRITE(UNIT_stdOut,*) ' PartPos:       ', PartState  (1:3,PartID),PEM%Element(PartiD)
+        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
+        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
         CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
       END IF
 
@@ -793,8 +792,8 @@ SELECT CASE(nRoot)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
+        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
         CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
       END IF
 
@@ -843,8 +842,8 @@ SELECT CASE(nRoot)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
+        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
         CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
       END IF
 

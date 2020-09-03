@@ -140,9 +140,7 @@ CASE(RHS_WANG)
 !===================================================================================================================================
 ! Calculation according to Wang [1996]
 !===================================================================================================================================
-IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
-  __STAMP__&
-  ,'Particle tracking with Wang [1996] requires mu0 to be set!')
+IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL ABORT(__STAMP__,'Particle tracking with Wang [1996] requires mu0 to be set!')
 
 ! Assume spherical particles for now
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
@@ -154,7 +152,7 @@ ELSE
   udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
 END IF
 
-Rep     = SQRT(SUM(udiff(1:3)**2.))*(2.*r)/(mu0/FieldAtParticle(1))
+Rep     = VECNORM(udiff(1:3))*(2.*r)/(mu0/FieldAtParticle(1))
 
 ! Fix for zero Reynolds number
 IF(Rep.GT.0)THEN
@@ -172,10 +170,10 @@ IF(Rep.GT.40) THEN
 ENDIF
 
 IF (ALLOCATED(TurbPartState)) THEN
-  Pt      = - FieldAtParticle(1)/Species(PartSpecies(PartID))%DensityIC * 3./4. * Cd/(2.*r) * SQRT(SUM(udiff(1:3)**2)) &
+  Pt      = - FieldAtParticle(1)/Species(PartSpecies(PartID))%DensityIC * 3./4. * Cd/(2.*r) * VECNORM(udiff(1:3)) &
             * (PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)))
 ELSE
-  Pt      = - FieldAtParticle(1)/Species(PartSpecies(PartID))%DensityIC * 3./4. * Cd/(2.*r) * SQRT(SUM(udiff(1:3)**2)) &
+  Pt      = - FieldAtParticle(1)/Species(PartSpecies(PartID))%DensityIC * 3./4. * Cd/(2.*r) * VECNORM(udiff(1:3)) &
             * (PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1)))
 END IF
 
@@ -188,9 +186,7 @@ CASE(RHS_VINKOVIC)
 !===================================================================================================================================
 ! Calculation according to Vinkovic [2006]
 !===================================================================================================================================
-IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
-  __STAMP__&
-  ,'Particle tracking with Vinkovic [2006] requires mu0 to be set!')
+IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL ABORT(__STAMP__,'Particle tracking with Vinkovic [2006] requires mu0 to be set!')
 
 ! Assume spherical particles for now
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
@@ -205,7 +201,7 @@ ELSE
   udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
 END IF
 
-Rep     = 2.*r*SQRT(SUM(udiff(1:3)**2))/nu
+Rep     = 2.*r*VECNORM(udiff(1:3))/nu
 
 ! Empirical relation of nonlinear drag from Clift et al. (1978)
 IF (Rep .LT. 1) THEN
@@ -231,9 +227,7 @@ CASE(RHS_JACOBS)
 !===================================================================================================================================
 ! Calculation according to Jacobs [2003]
 !===================================================================================================================================
-IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
-  __STAMP__&
-  ,'Particle tracking with Jacobs [2003] requires mu0 to be set!')
+IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL ABORT(__STAMP__,'Particle tracking with Jacobs [2003] requires mu0 to be set!')
 
 ! Assume spherical particles for now
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
@@ -244,7 +238,8 @@ IF(ALLOCATED(TurbPartState)) THEN
 ELSE
   udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
 END IF
-Rep     = 2.*FieldAtParticle(1)*r*SQRT(SUM(udiff(1:3)**2.))
+
+Rep     = 2.*FieldAtParticle(1)*r*VECNORM(udiff(1:3))
 Cd      = 1. + (Rep**2./3.)/6.
 
 IF(Rep.LT.1) THEN
@@ -281,9 +276,7 @@ CASE(RHS_JACOBSHIGHRE)
 !===================================================================================================================================
 ! Calculation according to Jacobs [2003]
 !===================================================================================================================================
-IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL abort(&
-  __STAMP__&
-  ,'Particle tracking with Jacobs [2003] requires mu0 to be set!')
+IF(ISNAN(mu0) .OR. (mu0.EQ.0)) CALL ABORT(__STAMP__,'Particle tracking with Jacobs [2003] requires mu0 to be set!')
 
 ! Assume spherical particles for now
 Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
@@ -294,14 +287,14 @@ IF(ALLOCATED(TurbPartState)) THEN
 ELSE
   udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1))
 END IF
-Rep     = 2.*FieldAtParticle(1)*r*SQRT(SUM(udiff(1:3)**2.))
+Rep     = 2.*FieldAtParticle(1)*r*VECNORM(udiff(1:3))
 Cd      = 1. + (Rep**2./3.)/6.
 
 IF (ALLOCATED(TurbPartState)) THEN
   Fstokes = .5*FieldAtParticle(1) * Cd * pi * r**2. * ((FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID)) &
-                                                                                                - PartState(4:6,PartID)) * SQRT(SUM(udiff(1:3)**2.))
+                                                                                                - PartState(4:6,PartID)) * VECNORM(udiff(1:3))
 ELSE
-  Fstokes = .5*FieldAtParticle(1) * Cd * pi * r**2. * ((FieldAtParticle(2:4)/FieldAtParticle(1)) - PartState(4:6,PartID)) * SQRT(SUM(udiff(1:3)**2.))
+  Fstokes = .5*FieldAtParticle(1) * Cd * pi * r**2. * ((FieldAtParticle(2:4)/FieldAtParticle(1)) - PartState(4:6,PartID)) * VECNORM(udiff(1:3))
 END IF
 
 ! Add gravity if required

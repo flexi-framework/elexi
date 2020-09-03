@@ -85,8 +85,8 @@ IMPLICIT NONE
 !#endif /*USE_MPI*/
 !===================================================================================================================================
 
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MPI... '
+!SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MPI... '
 IF(ParticleMPIInitIsDone) &
   CALL ABORT(__STAMP__,' Particle MPI already initialized!')
 
@@ -106,8 +106,8 @@ PartMPI%MPIRoot=.TRUE.
 #endif  /*MPI*/
 
 ParticleMPIInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MPI DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MPI DONE!'
+!SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleMPI
 
@@ -450,10 +450,10 @@ PartMPIExchange%nMPIParticles=SUM(PartMPIExchange%nPartsRecv(1,:))
 DO iPart=1,PDM%ParticleVecLength
   IF(PartTargetProc(iPart).EQ.-1) CYCLE
   PartState(1:6,iPart) = 0.
-  PartSpecies(iPart)   = 0
-  Pt_temp(1:6,iPart)   = 0.
+  PartSpecies(  iPart) = 0
+  Pt_temp(  1:6,iPart) = 0.
   IF (doParticleReflectionTrack) PartReflCount(  iPart) = 0
-  IF (doParticleDispersionTrack) PartPath(    :,iPart) = 0.
+  IF (doParticleDispersionTrack) PartPath(     :,iPart) = 0.
   IF (ALLOCATED(TurbPartState))  TurbPartState(:,iPart) = 0.
 END DO ! iPart=1,PDM%ParticleVecLength
 

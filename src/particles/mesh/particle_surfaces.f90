@@ -235,7 +235,7 @@ MDEALLOCATE(BaseVectors0)
 MDEALLOCATE(BaseVectors1)
 MDEALLOCATE(BaseVectors2)
 MDEALLOCATE(BaseVectors3)
-MDEALLOCATE(BaseVectorsScale)
+!MDEALLOCATE(BaseVectorsScale)
 
 ! BuildBezierVdm
 SDEALLOCATE(arrayNChooseK)

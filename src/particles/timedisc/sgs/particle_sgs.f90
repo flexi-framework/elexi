@@ -506,7 +506,7 @@ DO iPart = 1,PDM%ParticleVecLength
                              + (sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(1,iPart)))                                                   &
                              -  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
           ELSE
-            E_SGS(i,j,iPart) =                          (exp(-dt/tauL(1,iPart)) - exp(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+            E_SGS(i,j,iPart) =                          (EXP(-dt/tauL(1,iPart)) - EXP(-dt/tauL(2,iPart)))*urel(i)*urel(j)
             W_SGS(i,j,iPart) = (sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(1,iPart)))                                                   &
                              -  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
           END IF

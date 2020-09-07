@@ -37,8 +37,8 @@ REAL,ALLOCPOINT,DIMENSION(:,:)          :: BaseVectors2                 ! vector
                                                                         ! from Bezierpoints (1:3,1:nBCSurfaces)
 REAL,ALLOCPOINT,DIMENSION(:,:)          :: BaseVectors3                 ! additional vector for bilinear intersection
                                                                         ! from Bezierpoints (1:3,1:nBCSurfaces)
-REAL,ALLOCPOINT,DIMENSION(:)            :: BaseVectorsScale             ! approx. size of face for bilinear intersection
-                                                                        ! from Bezierpoints (1:nBCSurfaces)
+!REAL,ALLOCPOINT,DIMENSION(:)            :: BaseVectorsScale             ! approx. size of face for bilinear intersection
+!                                                                        ! from Bezierpoints (1:nBCSurfaces)
 
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: ElevationMatrix              ! array for binomial coefficients used for Bezier Elevation
 

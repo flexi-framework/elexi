@@ -146,7 +146,7 @@ REAL,ALLOCPOINT    :: BaseVectors0_Shared(:,:)
 REAL,ALLOCPOINT    :: BaseVectors1_Shared(:,:)
 REAL,ALLOCPOINT    :: BaseVectors2_Shared(:,:)
 REAL,ALLOCPOINT    :: BaseVectors3_Shared(:,:)
-REAL,ALLOCPOINT    :: BaseVectorsScale_Shared(:)
+!REAL,ALLOCPOINT    :: BaseVectorsScale_Shared(:)
 
 ! Boundary sides
 INTEGER,ALLOCPOINT :: BCSide2SideID_Shared(:)
@@ -217,7 +217,7 @@ INTEGER           :: BaseVectors0_Shared_Win
 INTEGER           :: BaseVectors1_Shared_Win
 INTEGER           :: BaseVectors2_Shared_Win
 INTEGER           :: BaseVectors3_Shared_Win
-INTEGER           :: BaseVectorsScale_Shared_Win
+!INTEGER           :: BaseVectorsScale_Shared_Win
 
 ! Boundary sides
 INTEGER           :: BCSide2SideID_Shared_Win

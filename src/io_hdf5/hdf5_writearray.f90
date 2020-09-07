@@ -19,6 +19,7 @@
 MODULE MOD_HDF5_WriteArray
 ! MODULES
 USE MOD_IO_HDF5
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------

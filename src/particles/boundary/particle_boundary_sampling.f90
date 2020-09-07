@@ -1230,6 +1230,7 @@ DO iSpec = 1,nSpecies
                   nVal        = (/nVar2D_Spec ,nSurfSample,nSurfSample,nLocalSides   /) , &
                   offset      = (/nVarCount   ,          0,          0,offsetSurfSide/) , &
                   collective  = .TRUE.                                                  , &
+                  RealArray   = MacroSurfaceSpecVal(1:nVar2D_Spec,1:nSurfSample,1:nSurfSample,1:nLocalSides,iSpec))
                     RealArray   = MacroSurfaceSpecVal(1:nVar2D_Spec,1:nSurfSample,1:nSurfSample,1:nLocalSides,iSpec))
   nVarCount = nVarCount + nVar2D_Spec
 END DO
@@ -1241,6 +1242,12 @@ CALL WriteArray(    DataSetName = H5_Name                                       
                     offset      = (/nVarCount   ,          0,          0,offsetSurfSide/) , &
                     collective  = .TRUE.                                                  , &
                     RealArray   = MacroSurfaceVal(1:nVar2D,1:nSurfSample,1:nSurfSample,1:nLocalSides))
+                  rank        = 4                                                       , &
+                  nValGlobal  = (/NVar2D_Total,nSurfSample,nSurfSample,nGlobalSides  /) , &
+                  nVal        = (/nVar2D      ,nSurfSample,nSurfSample,nLocalSides   /) , &
+                  offset      = (/nVarCount   ,          0,          0,offsetSurfSide/) , &
+                  collective  = .TRUE.                                                  , &
+                  RealArray   = MacroSurfaceVal(1:nVar2D,1:nSurfSample,1:nSurfSample,1:nLocalSides))
 CALL CloseDataFile()
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)

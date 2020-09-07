@@ -3370,12 +3370,12 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: NGeoElevated
 USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierElevation
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D,BezierControlPoints3DElevated
-USE MOD_Particle_Surfaces_Vars   ,ONLY: BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,BaseVectorsScale
+USE MOD_Particle_Surfaces_Vars   ,ONLY: BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3!,BaseVectorsScale
 #if USE_MPI
 USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
-USE MOD_Particle_Mesh_Vars       ,ONLY: BaseVectorsScale_Shared,BaseVectorsScale_Shared_Win
+!USE MOD_Particle_Mesh_Vars       ,ONLY: BaseVectorsScale_Shared,BaseVectorsScale_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: BaseVectors0_Shared,BaseVectors1_Shared,BaseVectors2_Shared,BaseVectors3_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: BaseVectors0_Shared_Win,BaseVectors1_Shared_Win,BaseVectors2_Shared_Win,BaseVectors3_Shared_Win
 #endif /* USE_MPI */
@@ -3388,7 +3388,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iSide,firstSide,lastSide
-REAL                           :: crossVec(3)
+!REAL                           :: crossVec(3)
 #if USE_MPI
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif /*USE_MPI*/
@@ -3405,14 +3405,14 @@ CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalSides/),BaseVectors2_Shar
 CALL MPI_WIN_LOCK_ALL(0,BaseVectors2_Shared_Win,IERROR)
 CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalSides/),BaseVectors3_Shared_Win,BaseVectors3_Shared)
 CALL MPI_WIN_LOCK_ALL(0,BaseVectors3_Shared_Win,IERROR)
-MPISharedSize = INT((nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/nNonUniqueGlobalSides/),BaseVectorsScale_Shared_Win,BaseVectorsScale_Shared)
-CALL MPI_WIN_LOCK_ALL(0,BaseVectorsScale_Shared_Win,IERROR)
+!MPISharedSize = INT((nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+!CALL Allocate_Shared(MPISharedSize,(/nNonUniqueGlobalSides/),BaseVectorsScale_Shared_Win,BaseVectorsScale_Shared)
+!CALL MPI_WIN_LOCK_ALL(0,BaseVectorsScale_Shared_Win,IERROR)
 BaseVectors0 => BaseVectors0_Shared
 BaseVectors1 => BaseVectors1_Shared
 BaseVectors2 => BaseVectors2_Shared
 BaseVectors3 => BaseVectors3_Shared
-BaseVectorsScale => BaseVectorsScale_Shared
+!BaseVectorsScale => BaseVectorsScale_Shared
 
 firstSide = INT(REAL (myComputeNodeRank   *nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
 lastSide  = INT(REAL((myComputeNodeRank+1)*nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
@@ -3420,8 +3420,8 @@ lastSide  = INT(REAL((myComputeNodeRank+1)*nNonUniqueGlobalSides)/REAL(nComputeN
 ALLOCATE( BaseVectors0(1:3,1:nNonUniqueGlobalSides),&
           BaseVectors1(1:3,1:nNonUniqueGlobalSides),&
           BaseVectors2(1:3,1:nNonUniqueGlobalSides),&
-          BaseVectors3(1:3,1:nNonUniqueGlobalSides),&
-          BaseVectorsScale(1:nNonUniqueGlobalSides))
+          BaseVectors3(1:3,1:nNonUniqueGlobalSides)),&
+!          BaseVectorsScale(1:nNonUniqueGlobalSides))
 
 firstSide = 1
 lastSide  = nNonUniqueGlobalSides
@@ -3437,8 +3437,8 @@ IF (BezierElevation.GT.0) THEN
                              +BezierControlPoints3DElevated(:,0,NGeoElevated,iSide)+BezierControlPoints3DElevated(:,NGeoElevated,NGeoElevated,iSide) )
     BaseVectors3(:,iSide) = (+BezierControlPoints3DElevated(:,0,0           ,iSide)-BezierControlPoints3DElevated(:,NGeoElevated,0           ,iSide)   &
                              -BezierControlPoints3DElevated(:,0,NGeoElevated,iSide)+BezierControlPoints3DElevated(:,NGeoElevated,NGeoElevated,iSide) )
-    crossVec = CROSS(BaseVectors1(:,iSide),BaseVectors2(:,iSide)) !vector with length of approx. 4x area (BV12 have double length)
-    BaseVectorsScale(iSide) = 0.25*SQRT(DOT_PRODUCT(crossVec,crossVec))
+!    crossVec = CROSS(BaseVectors1(:,iSide),BaseVectors2(:,iSide)) !vector with length of approx. 4x area (BV12 have double length)
+!    BaseVectorsScale(iSide) = 0.25*SQRT(DOT_PRODUCT(crossVec,crossVec))
   END DO ! iSide
 ELSE
   DO iSide=firstSide,lastSide
@@ -3450,8 +3450,8 @@ ELSE
                              +BezierControlPoints3D(:,0,NGeo,iSide)+BezierControlPoints3D(:,NGeo,NGeo,iSide) )
     BaseVectors3(:,iSide) = (+BezierControlPoints3D(:,0,0   ,iSide)-BezierControlPoints3D(:,NGeo,0   ,iSide)   &
                              -BezierControlPoints3D(:,0,NGeo,iSide)+BezierControlPoints3D(:,NGeo,NGeo,iSide) )
-    crossVec = CROSS(BaseVectors1(:,iSide),BaseVectors2(:,iSide)) !vector with length of approx. 4x area (BV12 have double length)
-    BaseVectorsScale(iSide) = 0.25*SQRT(DOT_PRODUCT(crossVec,crossVec))
+!    crossVec = CROSS(BaseVectors1(:,iSide),BaseVectors2(:,iSide)) !vector with length of approx. 4x area (BV12 have double length)
+!    BaseVectorsScale(iSide) = 0.25*SQRT(DOT_PRODUCT(crossVec,crossVec))
   END DO ! iSide
 END IF
 
@@ -3460,7 +3460,7 @@ CALL MPI_WIN_SYNC(BaseVectors0_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(BaseVectors1_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(BaseVectors2_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(BaseVectors3_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(BaseVectorsScale_Shared_Win,IERROR)
+!CALL MPI_WIN_SYNC(BaseVectorsScale_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /* USE_MPI */
 
@@ -3689,8 +3689,8 @@ SELECT CASE(TrackingMethod)
     CALL MPI_WIN_FREE(      BaseVectors2_Shared_Win         ,iError)
     CALL MPI_WIN_UNLOCK_ALL(BaseVectors3_Shared_Win         ,iError)
     CALL MPI_WIN_FREE(      BaseVectors3_Shared_Win         ,iError)
-    CALL MPI_WIN_UNLOCK_ALL(BaseVectorsScale_Shared_Win     ,iError)
-    CALL MPI_WIN_FREE(      BaseVectorsScale_Shared_Win     ,iError)
+!    CALL MPI_WIN_UNLOCK_ALL(BaseVectorsScale_Shared_Win     ,iError)
+!    CALL MPI_WIN_FREE(      BaseVectorsScale_Shared_Win     ,iError)
 
     ! BuildBCElemDistance
     IF (TrackingMethod.EQ.REFMAPPING) THEN
@@ -3792,8 +3792,8 @@ SELECT CASE(TrackingMethod)
     MDEALLOCATE(BaseVectors2_Shared)
     MDEALLOCATE(BaseVectors3)
     MDEALLOCATE(BaseVectors3_Shared)
-    MDEALLOCATE(BaseVectorsScale)
-    MDEALLOCATE(BaseVectorsScale_Shared)
+!    MDEALLOCATE(BaseVectorsScale)
+!    MDEALLOCATE(BaseVectorsScale_Shared)
 
     ! BuildBCElemDistance
     IF (TrackingMethod.EQ.REFMAPPING) THEN

@@ -1844,7 +1844,6 @@ ComputeSurfaceDistance2 = t
 END FUNCTION ComputeSurfaceDistance2
 
 
-PURE FUNCTION ComputeXi(BILINEAR_TYPE,eta,A1,A2,A3,LastPartPos,BiLinearCoeff)
 PURE FUNCTION ComputeXi(eta,A1,A2)
 !================================================================================================================================
 ! compute the xi value with algorithm 3.3 of Ramsey paper

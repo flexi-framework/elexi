@@ -434,11 +434,6 @@ DO iPart = 1,PDM%ParticleVecLength
   ! Relative velocity
   udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
 
-  !!! HARD CODED
-  udiff=1.
-  sigmaSGS(iPart)=1.
-  kSGSPart(iPart)=3./2.
-
   ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
   ElemID   = PEM%Element(iPart) - offsetElem
 

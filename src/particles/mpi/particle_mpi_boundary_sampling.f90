@@ -138,6 +138,9 @@ color = MERGE(1201,MPI_UNDEFINED,SurfOnNode)
 ! create new SurfMesh communicator for SurfMesh communication. Pass MPI_INFO_NULL as rank to follow the original ordering
 CALL MPI_COMM_SPLIT(MPI_COMM_LEADERS_SHARED, color, MPI_INFO_NULL, MPI_COMM_LEADERS_SURF, IERROR)
 
+! Do not participate in remainder of communication if no surf sides on node
+IF (.NOT.SurfOnNode) RETURN
+
 ! Find my rank on the shared communicator, comm size and proc name
 CALL MPI_COMM_RANK(MPI_COMM_LEADERS_SURF, mySurfRank  , IERROR)
 CALL MPI_COMM_SIZE(MPI_COMM_LEADERS_SURF, nSurfLeaders, IERROR)
@@ -155,7 +158,7 @@ CALL MPI_COMM_GROUP(MPI_COMM_LEADERS_SURF  ,surfGroup   ,IERROR)
 
 ! Finally translate global rank to local rank
 CALL MPI_GROUP_TRANSLATE_RANKS(leadersGroup,nLeaderGroupProcs,MPIRankSharedLeader,surfGroup,MPIRankSurfLeader,IERROR)
-IF (SurfOnNode .AND. mySurfRank.EQ.0) WRITE(UNIT_stdOUt,'(A,I0,A)') ' Starting surface communication between ', nSurfLeaders, ' compute nodes...'
+IF (mySurfRank.EQ.0) WRITE(UNIT_stdOUt,'(A,I0,A)') ' Starting surface communication between ', nSurfLeaders, ' compute nodes...'
 
 !!--- Count all communicated sides and build mapping for other leaders
 !ALLOCATE(nSurfSidesLeader(1:2,0:nSurfLeaders-1))
@@ -179,62 +182,71 @@ ALLOCATE(SurfMapping(0:nSurfLeaders-1))
 SurfMapping(:)%nRecvSurfSides = 0
 SurfMapping(:)%nSendSurfSides = 0
 
-DO iProc = 0,nSurfLeaders-1
+DO iProc = 0,nLeaderGroupProcs-1
+  ! Ignore compute-nodes without sampling surfaces
+  IF (MPIRankSurfLeader(iProc).EQ.MPI_UNDEFINED) CYCLE
+
   ! Ignore myself
-  IF (iProc .EQ. mySurfRank) CYCLE
+  IF (iProc .EQ. myLeaderGroupRank) CYCLE
 
   ! Save number of send and recv sides
-  SurfMapping(iProc)%nRecvSurfSides = nRecvSurfSidesTmp(MPIRankSurfLeader(iProc))
-  SurfMapping(iProc)%nSendSurfSides = nSendSurfSidesTmp(MPIRankSurfLeader(iProc))
+  SurfMapping(MPIRankSurfLeader(iProc))%nRecvSurfSides = nRecvSurfSidesTmp(iProc)
+  SurfMapping(MPIRankSurfLeader(iProc))%nSendSurfSides = nSendSurfSidesTmp(iProc)
 
   ! Only open recv buffer if we are expecting sides from this leader node
-  IF (nRecvSurfSidesTmp(MPIRankSurfLeader(iProc)).EQ.0) CYCLE
+  IF (nRecvSurfSidesTmp(iProc).EQ.0) CYCLE
 
-  ALLOCATE(SurfMapping(iProc)%RecvSurfGlobalID(1:nRecvSurfSidesTmp(MPIRankSurfLeader(iProc))))
+  ALLOCATE(SurfMapping(MPIRankSurfLeader(iProc))%RecvSurfGlobalID(1:nRecvSurfSidesTmp(iProc)))
 
-  CALL MPI_IRECV( SurfMapping(iProc)%RecvSurfGlobalID                         &
-                , nRecvSurfSidesTmp(MPIRankSurfLeader(iProc))                 &
+  CALL MPI_IRECV( SurfMapping(MPIRankSurfLeader(iProc))%RecvSurfGlobalID      &
+                , nRecvSurfSidesTmp(iProc)                                    &
                 , MPI_INTEGER                                                 &
-                , iProc                                                       &
+                , MPIRankSurfLeader(iProc)                                    &
                 , 1211                                                        &
                 , MPI_COMM_LEADERS_SURF                                       &
-                , RecvRequest(iProc)                                          &
+                , RecvRequest(MPIRankSurfLeader(iProc))                       &
                 , IERROR)
 END DO
 
-DO iProc = 0,nSurfLeaders-1
+DO iProc = 0,nLeaderGroupProcs-1
+  ! Ignore compute-nodes without sampling surfaces
+  IF (MPIRankSurfLeader(iProc).EQ.MPI_UNDEFINED) CYCLE
+
   ! Ignore myself
-  IF (iProc .EQ. mySurfRank) CYCLE
+  IF (iProc .EQ. myLeaderGroupRank) CYCLE
 
   ! Only open send buffer if we are expecting sides from this leader node
-  IF (nSendSurfSidesTmp(MPIRankSurfLeader(iProc)).EQ.0) CYCLE
+  IF (nSendSurfSidesTmp(iProc).EQ.0) CYCLE
 
-  ALLOCATE(SurfMapping(iProc)%SendSurfGlobalID(1:nSendSurfSidesTmp(MPIRankSurfLeader(iProc))))
+  ALLOCATE(SurfMapping(MPIRankSurfLeader(iProc))%SendSurfGlobalID(1:nSendSurfSidesTmp(iProc)))
 
-  SurfMapping(iProc)%SendSurfGlobalID = SendSurfGlobalID(MPIRankSurfLeader(iProc),1:nSendSurfSidesTmp(MPIRankSurfLeader(iProc)))
+  SurfMapping(MPIRankSurfLeader(iProc))%SendSurfGlobalID = SendSurfGlobalID(iProc,1:nSendSurfSidesTmp(iProc))
 
-  CALL MPI_ISEND( SurfMapping(iProc)%SendSurfGlobalID                         &
-                , nSendSurfSidesTmp(MPIRankSurfLeader(iProc))                 &
+  CALL MPI_ISEND( SurfMapping(MPIRankSurfLeader(iProc))%SendSurfGlobalID      &
+                , nSendSurfSidesTmp(iProc)                                    &
                 , MPI_INTEGER                                                 &
-                , iProc                                                       &
+                , MPIRankSurfLeader(iProc)                                    &
                 , 1211                                                        &
                 , MPI_COMM_LEADERS_SURF                                       &
-                , SendRequest(iProc)                                          &
+                , SendRequest(MPIRankSurfLeader(iProc))                       &
                 , IERROR)
 END DO
 
 !--- Finish communication
-DO iProc = 0,nSurfLeaders-1
-  ! Ignore myself
-  IF (iProc .EQ. mySurfRank) CYCLE
+DO iProc = 0,nLeaderGroupProcs-1
+  ! Ignore compute-nodes without sampling surfaces
+  IF (MPIRankSurfLeader(iProc).EQ.MPI_UNDEFINED) CYCLE
 
-  IF (nSendSurfSidesTmp(MPIRankSurfLeader(iProc)).NE.0) THEN
-    CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
+  ! Ignore myself
+  IF (iProc .EQ. myLeaderGroupRank) CYCLE
+
+  IF (nSendSurfSidesTmp(iProc).NE.0) THEN
+    CALL MPI_WAIT(SendRequest(MPIRankSurfLeader(iProc)),MPIStatus,IERROR)
     IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
   END IF
 
-  IF (nRecvSurfSidesTmp(MPIRankSurfLeader(iProc)).NE.0) THEN
-    CALL MPI_WAIT(RecvRequest(iProc),MPIStatus,IERROR)
+  IF (nRecvSurfSidesTmp(iProc).NE.0) THEN
+    CALL MPI_WAIT(RecvRequest(MPIRankSurfLeader(iProc)),MPIStatus,IERROR)
     IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
   END IF
 END DO
@@ -261,20 +273,18 @@ DO iProc = 0,nSurfLeaders-1
 END DO ! iProc
 
 !--- Save number of total surf sides
-IF (surfOnNode) THEN
-  IF (nSurfLeaders.EQ.1) THEN
-    offsetComputeNodeSurfSide = 0
-    nSurfTotalSides           = nComputeNodeSurfSides
-  ELSE
-    sendbuf = nComputeNodeSurfSides
-    recvbuf = 0
-    CALL MPI_EXSCAN(sendbuf,recvbuf,1,MPI_INTEGER,MPI_SUM,MPI_COMM_LEADERS_SURF,iError)
-    offsetComputeNodeSurfSide = recvbuf
-    ! last proc knows CN total number of BC elems
-    sendbuf = offsetComputeNodeSurfSide + nComputeNodeSurfSides
-    CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nSurfLeaders-1  ,MPI_COMM_LEADERS_SURF,iError)
-    nSurfTotalSides = sendbuf
-  END IF
+IF (nSurfLeaders.EQ.1) THEN
+  offsetComputeNodeSurfSide = 0
+  nSurfTotalSides           = nComputeNodeSurfSides
+ELSE
+  sendbuf = nComputeNodeSurfSides
+  recvbuf = 0
+  CALL MPI_EXSCAN(sendbuf,recvbuf,1,MPI_INTEGER,MPI_SUM,MPI_COMM_LEADERS_SURF,iError)
+  offsetComputeNodeSurfSide = recvbuf
+  ! last proc knows CN total number of BC elems
+  sendbuf = offsetComputeNodeSurfSide + nComputeNodeSurfSides
+  CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nSurfLeaders-1  ,MPI_COMM_LEADERS_SURF,iError)
+  nSurfTotalSides = sendbuf
 END IF
 
 END SUBROUTINE InitSurfCommunication

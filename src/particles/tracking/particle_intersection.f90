@@ -706,8 +706,6 @@ SELECT CASE(nRoot)
     ! Check if eta(2) is valid
     IF (ABS(eta(2)).LE.1.0) THEN
       ! check for Xi only, if eta is possible
-
-
       xi(2) = ComputeXi(eta(2),A1=A1,A2=A2)
 
       IF (Xi(2).EQ.HUGE(1.)) THEN

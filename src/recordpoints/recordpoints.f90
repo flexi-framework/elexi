@@ -345,7 +345,7 @@ USE MOD_RecordPoints_Vars     ,ONLY: l_zeta_RP
 #endif
 #if FV_ENABLED
 USE MOD_FV_Vars               ,ONLY: FV_Elems
-USE MOD_Timedisc_Vars         ,ONLY: FV_RP_ijk
+USE MOD_RecordPoints_Vars     ,ONLY: FV_RP_ijk
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

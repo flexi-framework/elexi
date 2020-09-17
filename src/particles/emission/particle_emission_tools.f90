@@ -445,7 +445,8 @@ SUBROUTINE SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
 !===================================================================================================================================
 ! Set particle position
 !===================================================================================================================================
-! modules
+! Modules
+USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -471,12 +472,7 @@ INTEGER                 :: i
       Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
                (RandVec(1) * lineVector + RandVec(2) *lineVector2)
 
-      radius = SQRT( (Particle_pos(1)-Species(FractNbr)%Init(iInit)%BasePointIC(1)) * &
-                     (Particle_pos(1)-Species(FractNbr)%Init(iInit)%BasePointIC(1)) + &
-                     (Particle_pos(2)-Species(FractNbr)%Init(iInit)%BasePointIC(2)) * &
-                     (Particle_pos(2)-Species(FractNbr)%Init(iInit)%BasePointIC(2)) + &
-                     (Particle_pos(3)-Species(FractNbr)%Init(iInit)%BasePointIC(3)) * &
-                     (Particle_pos(3)-Species(FractNbr)%Init(iInit)%BasePointIC(3)) )
+      radius = VECNORM((Particle_pos(1:3)-Species(FractNbr)%Init(iInit)%BasePointIC(1:3)))
    END DO
    particle_positions(i*3-2) = Particle_pos(1)
    particle_positions(i*3-1) = Particle_pos(2)

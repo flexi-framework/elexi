@@ -461,13 +461,6 @@ CASE('radial_constant')
 ! Emission with local fluid velocity. Currently untested for MPI
 !===================================================================================================================================
 CASE('fluid')
-#if USE_MPI
-!  CALL abort(&
-!       __STAMP__&
-!       , 'ERROR: Fluid velocity distribution unstable for MPI case!')
-  SWRITE(*,*) 'Emission with local fluid velocity currently untested for MPI case.'
-#endif
-
   ! null field vector
   field = 0.
   i     = 1

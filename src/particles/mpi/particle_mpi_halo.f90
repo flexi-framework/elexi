@@ -19,6 +19,7 @@
 !===================================================================================================================================
 MODULE MOD_Particle_MPI_Halo
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -782,10 +783,10 @@ SELECT CASE(nPeriodicVectors)
                                            + PeriodicVectors(1,3) * DirPeriodicVector(kPeriodicDir)
           xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,1) * DirPeriodicVector(iPeriodicDir) &
                                            + PeriodicVectors(2,2) * DirPeriodicVector(jPeriodicDir) &
-                                           + PeriodicVectors(1,3) * DirPeriodicVector(kPeriodicDir)
+                                           + PeriodicVectors(2,3) * DirPeriodicVector(kPeriodicDir)
           xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,1) * DirPeriodicVector(iPeriodicDir) &
                                            + PeriodicVectors(3,2) * DirPeriodicVector(jPeriodicDir) &
-                                           + PeriodicVectors(1,3) * DirPeriodicVector(kPeriodicDir)
+                                           + PeriodicVectors(3,3) * DirPeriodicVector(kPeriodicDir)
 
           ! Check whether the bounding boxes intersect
           IF (   ((xCordsPeri(1).LE.CartProc(2)+halo_eps).AND.(xCordsPeri(2).GE.CartProc(1)-halo_eps))  &

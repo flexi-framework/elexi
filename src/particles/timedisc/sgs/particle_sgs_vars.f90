@@ -41,5 +41,6 @@ REAL,ALLOCATABLE                       :: E_SGS(:,:,:)                        ! 
 REAL,ALLOCATABLE                       :: G_SGS(:,:,:)                        ! Drift matrix
 REAL,ALLOCATABLE                       :: W_SGS(:,:,:)                        ! Covariance matrix
 REAL,ALLOCATABLE                       :: ElemVolN(:)                         ! ElemVol**(1./3.)/(PP_N+1)
+REAL                                   :: randomVar
 !===================================================================================================================================
 END MODULE MOD_Particle_SGS_Vars

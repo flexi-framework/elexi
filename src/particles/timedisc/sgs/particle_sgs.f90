@@ -408,7 +408,7 @@ CASE('Breuer-Analytic')
 !===================================================================================================================================
 
 ! Time integration in first RK stage (p. 26)
-IF (iStage.NE.1) RETURN
+IF (iStage.EQ.1) randomVar=RandNormal()
 
 ! Filter the velocity field (low-pass)
 USGS = U
@@ -443,6 +443,7 @@ DO iPart = 1,PDM%ParticleVecLength
     urel = 0.
   END IF
 
+
   ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(sigmaSGS(iPart))) THEN
     ! We ASSUME that these are the correct matrix indices
@@ -457,9 +458,9 @@ DO iPart = 1,PDM%ParticleVecLength
       DO i = 1,3
         DO j = 1,3
           IF (i.EQ.j) THEN
-            E_SGS(i,j,iPart) = EXP(-dt/tauL(2,iPart)) + (EXP(-dt/tauL(1,iPart)) - EXP(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+            E_SGS(i,j,iPart) = EXP(-b_dt/tauL(2,iPart)) + (EXP(-b_dt/tauL(1,iPart)) - EXP(-b_dt/tauL(2,iPart)))*urel(i)*urel(j)
           ELSE
-            E_SGS(i,j,iPart) =                          (exp(-dt/tauL(1,iPart)) - exp(-dt/tauL(2,iPart)))*urel(i)*urel(j)
+            E_SGS(i,j,iPart) =                          (exp(-b_dt/tauL(1,iPart)) - exp(-b_dt/tauL(2,iPart)))*urel(i)*urel(j)
           END IF
         END DO
       END DO
@@ -487,8 +488,8 @@ DO iPart = 1,PDM%ParticleVecLength
       ! Calculate drift and diffusion matrix
       E_SGS(:,:,iPart) = 0.
       DO i = 1,3
-        E_SGS(i,i,iPart) = EXP(-dt/tauL(2,iPart))
-        W_SGS(i,j,iPart) = sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart)))
+        E_SGS(i,i,iPart) = EXP(-b_dt/tauL(2,iPart))
+        W_SGS(i,j,iPart) = sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(2,iPart)))
       END DO
 
     ELSE
@@ -501,14 +502,14 @@ DO iPart = 1,PDM%ParticleVecLength
       DO i = 1,3
         DO j = 1,3
           IF (i.EQ.j) THEN
-            E_SGS(i,j,iPart) = EXP(-dt/tauL(2,iPart)) + (EXP(-dt/tauL(1,iPart)) - EXP(-dt/tauL(2,iPart)))*urel(i)*urel(j)
-            W_SGS(i,j,iPart) =  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart)))                                                   &
-                             + (sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(1,iPart)))                                                   &
-                             -  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
+            E_SGS(i,j,iPart) = EXP(-b_dt/tauL(2,iPart)) + (EXP(-b_dt/tauL(1,iPart)) - EXP(-b_dt/tauL(2,iPart)))*urel(i)*urel(j)
+            W_SGS(i,j,iPart) =  sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(2,iPart)))                                                   &
+                             + (sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(1,iPart)))                                                   &
+                             -  sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(2,iPart))))                        *urel(i)*urel(j)
           ELSE
-            E_SGS(i,j,iPart) =                          (EXP(-dt/tauL(1,iPart)) - EXP(-dt/tauL(2,iPart)))*urel(i)*urel(j)
-            W_SGS(i,j,iPart) = (sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(1,iPart)))                                                   &
-                             -  sigmaSGS(iPart)*SQRT(1-EXP(-2*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
+            E_SGS(i,j,iPart) =                          (exp(-b_dt/tauL(1,iPart)) - exp(-b_dt/tauL(2,iPart)))*urel(i)*urel(j)
+            W_SGS(i,j,iPart) = (sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(1,iPart)))                                                   &
+                             -  sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(2,iPart))))                        *urel(i)*urel(j)
           END IF
         END DO
       END DO
@@ -517,7 +518,7 @@ DO iPart = 1,PDM%ParticleVecLength
     ! Sum up turbulent contributions
     Pt(1:3) = 0.
     DO j = 1,3
-      Pt(1:3) = Pt(1:3) + E_SGS(1:3,j,iPart)*TurbPartState(j,iPart) + W_SGS(1:3,j,iPart)*RandNormal()
+      Pt(1:3) = Pt(1:3) + E_SGS(1:3,j,iPart)*TurbPartState(j,iPart) + W_SGS(1:3,j,iPart)*randomVar
     END DO
   END IF
 

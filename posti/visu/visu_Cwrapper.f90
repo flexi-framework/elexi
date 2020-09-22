@@ -232,13 +232,13 @@ IF (MeshFileMode) THEN
   valuesSurfFV_out%len  = 0
   nodeidsSurfFV_out%len = 0
   varnamesSurf_out%len  = 0
-  coordsPart_out%len    = 0  
+  coordsPart_out%len    = 0
   coordsPart_out%dim    = 0
   valuesPart_out%len    = 0
   nodeidsPart_out%len   = 0
   varnamesPart_out%len  = 0
   componentsPart_out%len  = 0
-  coordsErosion_out%len    = 0  
+  coordsErosion_out%len    = 0
   coordsErosion_out%dim    = 0
   valuesErosion_out%len    = 0
   nodeidsErosion_out%len   = 0
@@ -270,6 +270,7 @@ IF(ALLOCATED(PD%PartData_HDF5))THEN
   PD%Part_Pos_visu=PD%PartData_HDF5(1:3,:)
   PD%Part_visu=PD%PartData_HDF5(4:,:)
 END IF
+
 CALL WritePartDataToVTK_array(PD%nPart_visu,PD%nPartVar_visu,coordsPart_out,valuesPart_out,nodeidsPart_out,varnamesPart_out,&
                               componentsPart_out,PD%Part_Pos_visu,PD%Part_visu,PD%PartIds_Visu,PD%VarNamePartCombine,&
                               PD%VarNamePartCombineLen,PD%VarNamePartVisu,PD%PartCPointers_allocated)

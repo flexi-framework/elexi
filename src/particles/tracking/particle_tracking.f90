@@ -77,6 +77,7 @@ USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteraction
 USE MOD_Particle_Boundary_Vars      ,ONLY: PartBound
 USE MOD_Particle_Localization       ,ONLY: ParticleInsideQuad3D
 USE MOD_Particle_Intersection       ,ONLY: IntersectionWithWall
+USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars          ,ONLY: ElemInfo_Shared,SideInfo_Shared
 USE MOD_Particle_Tracking_Vars      ,ONLY: TrackInfo !CountNbOfLostParts,NbrOfLostParticles
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM,PartSpecies
@@ -96,7 +97,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                          :: i,NblocSideID,NbElemID,ind,nbSideID,nMortarElems,BCType
-INTEGER                          :: ElemID,flip,OldElemID,nlocSides
+INTEGER                          :: ElemID,CNElemID,flip,OldElemID,nlocSides
 INTEGER                          :: LocalSide
 INTEGER                          :: NrOfThroughSides, ind2
 INTEGER                          :: SideID,TempSideID,iLocSide, localSideID
@@ -383,14 +384,16 @@ DO i = 1,PDM%ParticleVecLength
           DoneLastElem(4,1) = SideID
           IF (oldElemIsMortar) THEN
             ElemID = SideInfo_Shared(SIDE_ELEMID,SideID)
-            ELSE
+          ELSE
             ElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
-            END IF
-          END IF  ! SideInfo_Shared(SIDE_BCID,SideID).GT./.LE. 0
-        IF (ElemID.LT.1) THEN
+          END IF
+        END IF  ! SideInfo_Shared(SIDE_BCID,SideID).GT./.LE. 0
+        CNElemID = GetCNElemID(ElemID)
+
+        IF (CNElemID.LT.1) THEN
           IPWRITE(UNIT_stdout,*) 'Particle Velocity: ',SQRT(DOTPRODUCT(PartState(4:6,i)))
           CALL ABORT(__STAMP__,'ERROR: Element not defined! Please increase the size of the halo region (HaloEpsVelo)!')
-          END IF
+        END IF
         TrackInfo%CurrElem = ElemID
       END IF  ! InElementCheck = T/F
     END DO  ! .NOT.PartisDone

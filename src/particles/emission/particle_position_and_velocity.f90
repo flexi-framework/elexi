@@ -514,6 +514,7 @@ CASE('fluid')
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
     END IF
+    i=i+1
   END DO
 
 CASE DEFAULT

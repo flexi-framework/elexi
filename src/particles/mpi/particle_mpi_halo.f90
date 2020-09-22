@@ -57,9 +57,9 @@ USE MOD_Particle_Mesh_Vars      ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: BoundsOfElem_Shared
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
-USE MOD_Particle_MPI_Vars       ,ONLY: halo_eps,halo_eps_velo
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputenodeProcessors,nProcessors_Global,myLeaderGroupRank!,ComputeNodeRootRank
+USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputenodeProcessors,nProcessors_Global,myLeaderGroupRank
+USE MOD_Particle_MPI_Vars       ,ONLY: SafetyFactor,halo_eps,halo_eps_velo
 USE MOD_Particle_MPI_Vars       ,ONLY: nExchangeProcessors,ExchangeProcToGlobalProc,GlobalProcToExchangeProc
 USE MOD_Particle_Timedisc_Vars  ,ONLY: ManualTimeStep
 USE MOD_TimeDisc_Vars           ,ONLY: nRKStages,RKc
@@ -293,7 +293,7 @@ IF (halo_eps.EQ.0) THEN
     MPI_halo_eps = MAX(MPI_halo_eps,RKc(iStage+1)-RKc(iStage))
   END DO
   MPI_halo_eps = MAX(MPI_halo_eps,1.-RKc(nRKStages))
-  MPI_halo_eps = MPI_halo_eps*MPI_halo_eps*deltaT
+  MPI_halo_eps = MPI_halo_eps*MPI_halo_eps*deltaT*SafetyFactor
 
   vec(1)   = GEO%xmaxglob-GEO%xminglob
   vec(2)   = GEO%ymaxglob-GEO%yminglob

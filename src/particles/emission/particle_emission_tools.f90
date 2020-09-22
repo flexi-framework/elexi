@@ -794,7 +794,7 @@ DO i=1,chunkSize
   ! z = mu + std*x, mu=0.0
   pdf = norm_pdf * Species(FractNbr)%Init(iInit)%BaseVariance
   argumentTheta = 2.*PI*RandVal(3)
-  radius = MIN(pdf*Species(FractNbr)%Init(iInit)%RadiusIC,Species(FractNbr)%Init(iInit)%RadiusIC)
+  radius = MIN(ABS(pdf*Species(FractNbr)%Init(iInit)%RadiusIC),Species(FractNbr)%Init(iInit)%RadiusIC)
   radius = MAX(0.,radius)-MIN(0.,radius)
   ! position particle at random angle
   Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC +  &

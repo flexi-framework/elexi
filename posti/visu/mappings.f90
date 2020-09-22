@@ -254,15 +254,16 @@ DO iVar=1,nVarIni
   DO iVar2=1,PD%nPartVar_HDF5
     IF (STRICMP(VarName, PD%VarNamesPart_HDF5(iVar2)))THEN
       PD%nPartVar_Visu = PD%nPartVar_Visu + 1
-      PD%VarNamePartDummy(PD%nPartVar_Visu)=PD%VarNamesPart_HDF5(iVar2)
-      PD%mapAllVarsToVisuVars(iVar2)=1
+      PD%VarNamePartDummy(iVar2)=PD%VarNamesPart_HDF5(iVar2)
+      PD%mapAllVarsToVisuVars(iVar2)=PD%nPartVar_Visu
     END IF
-  END DO 
+  END DO
   IF(iVar.EQ.nVarIni)THEN
     SDEALLOCATE(PD%VarNamePartVisu)
     ALLOCATE(PD%VarNamePartVisu(1:PD%nPartVar_Visu))
-    DO iVar2=1,PD%nPartVar_Visu
-      PD%VarNamePartVisu(iVar2)=PD%VarNamePartDummy(iVar2)
+    DO iVar2=1,PD%nPartVar_HDF5
+      IF(PD%mapAllVarsToVisuVars(iVar2).GT.0) &
+        PD%VarNamePartVisu(PD%mapAllVarsToVisuVars(iVar2))=PD%VarNamePartDummy(iVar2)
     END DO
     SDEALLOCATE(PD%VarNamePartDummy)
   END IF
@@ -270,15 +271,16 @@ DO iVar=1,nVarIni
   DO iVar2=1,PDE%nPartVar_HDF5
     IF (STRICMP(VarName, PDE%VarNamesPart_HDF5(iVar2)))THEN
       PDE%nPartVar_visu = PDE%nPartVar_visu + 1
-      PDE%VarNamePartDummy(PDE%nPartVar_visu)=PDE%VarNamesPart_HDF5(iVar2)
-      PDE%mapAllVarsToVisuVars(iVar2)=1
+      PDE%VarNamePartDummy(iVar2)=PDE%VarNamesPart_HDF5(iVar2)
+      PDE%mapAllVarsToVisuVars(iVar2)=PDE%nPartVar_Visu
     END IF
-  END DO 
+  END DO
   IF(iVar.EQ.nVarIni)THEN
     SDEALLOCATE(PDE%VarNamePartVisu)
     ALLOCATE(PDE%VarNamePartVisu(1:PDE%nPartVar_Visu))
     DO iVar2=1,PDE%nPartVar_Visu
-      PDE%VarNamePartVisu(iVar2)=PDE%VarNamePartDummy(iVar2)
+      IF(PDE%mapAllVarsToVisuVars(iVar2).GT.0) &
+        PDE%VarNamePartVisu(PDE%mapAllVarsToVisuVars(iVar2))=PDE%VarNamePartDummy(iVar2)
     END DO
     SDEALLOCATE(PDE%VarNamePartDummy)
   END IF

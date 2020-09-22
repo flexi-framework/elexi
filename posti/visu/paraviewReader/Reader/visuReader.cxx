@@ -320,12 +320,12 @@ int visuReader::RequestData(
 	 if (outInfoPart->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoPart->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
-			timestepToLoad = FindClosestTimeStep(requestedTimeValue);
+/*			timestepToLoad = FindClosestTimeStep(requestedTimeValue);*/
    }
 	 if (outInfoErosion->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoErosion->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
-			timestepToLoad = FindClosestTimeStep(requestedTimeValue);
+/*		timestepToLoad = FindClosestTimeStep(requestedTimeValue);*/
    }
 #endif
 
@@ -703,7 +703,7 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
         	for (long i = 0; i < components->data[iVar]; ++i)
         	{
         	   *ptr++ = values->data[dataPos+i+j*nVar];
-	//      			std::cout << "Data " << values->data[dataPos+i+j*nVar] << "\n";
+//	      			std::cout << "Data " << values->data[dataPos+i+j*nVar] << "\n";
           }
         }
         dataPos += components->data[iVar];

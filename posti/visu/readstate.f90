@@ -241,6 +241,9 @@ USE MOD_HDF5_Input,          ONLY: OpenDataFile,ReadArray,CloseDataFile
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS
 USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+#if USE_PARTICLES
+USE MOD_Particle_Init,       ONLY: DefineParametersParticles
+#endif
 #if FV_ENABLED
 USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
@@ -289,6 +292,9 @@ CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()
 CALL DefineParametersMesh()
 CALL DefineParametersEOS()
+#if USE_PARTICLES
+CALL DefineParametersParticles()
+#endif /*PARTICLES*/
 CALL prms%read_options(prmfile)
 
 ! Initialization of I/O routines

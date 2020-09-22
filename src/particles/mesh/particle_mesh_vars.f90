@@ -91,6 +91,10 @@ INTEGER,ALLOCPOINT,DIMENSION(:)          :: NodeInfo_Shared
 REAL,ALLOCPOINT,DIMENSION(:,:)           :: NodeCoords_Shared
 REAL,ALLOCPOINT,DIMENSION(:,:,:,:,:)     :: TreeCoords_Shared
 
+! Shared arrays for halo debug information
+INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: ElemHaloInfo_Shared
+INTEGER,ALLOCPOINT,DIMENSION(:)          :: ElemHaloInfo_Array
+
 REAL,ALLOCPOINT    :: xiMinMax_Shared(:,:,:)
 
 INTEGER,ALLOCPOINT :: ElemToBCSides_Shared(:,:)                !> Mapping from elem to BC sides within halo eps
@@ -168,6 +172,9 @@ INTEGER           :: SideInfo_Shared_Win
 INTEGER           :: NodeInfo_Shared_Win
 INTEGER           :: NodeCoords_Shared_Win
 INTEGER           :: TreeCoords_Shared_Win
+
+LOGICAL           :: CalcHaloInfo                          !> Output halo element information to ElemData
+INTEGER           :: ElemHaloInfo_Shared_Win
 
 INTEGER           :: xiMinMax_Shared_Win
 

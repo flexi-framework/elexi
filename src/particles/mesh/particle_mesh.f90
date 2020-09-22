@@ -270,6 +270,7 @@ USE MOD_Particle_Surfaces_Vars ,ONLY: SideBoundingBoxVolume
 USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 #if USE_MPI
+USE MOD_Particle_BGM           ,ONLY: WriteHaloInfo
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif /* USE_MPI */
@@ -332,7 +333,14 @@ END IF
 ! Build BGM to Element mapping and identify which of the elements, sides and nodes are in the compute-node local and halo region
 CALL BuildBGMAndIdentifyHaloRegion()
 
-! Initialize mapping function: GetGlobalElemID()
+#if USE_MPI
+CalcHaloInfo = GETLOGICAL('CalcHaloInfo') 
+IF (CalcHaloInfo) THEN
+  CALL WriteHaloInfo
+END IF
+#endif /*USE_MPI*/
+
+! Initialize mapping function: GetGlobalElemID(1:nComputeNodeTotalElems)
 CALL InitGetGlobalElemID()
 
 ! Initialize mapping function: GetCNElemID()
@@ -3556,7 +3564,7 @@ USE MOD_Particle_Tracking_Vars      ,ONLY: TrackingMethod,Distance,ListDistance
 USE MOD_Particle_MPI_Shared_vars    ,ONLY: MPI_COMM_SHARED
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Vars            ,ONLY: PerformLoadBalance
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

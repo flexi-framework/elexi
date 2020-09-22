@@ -421,16 +421,11 @@ DEALLOCATE(GlobalSide2SurfSideProc)
 DEALLOCATE(SurfSide2GlobalSideProc)
 
 ! flag if there is at least one surf side on the node (sides in halo region do also count)
-SurfOnNode = .FALSE.
-IF (nComputeNodeSurfTotalSides.GT.0) SurfOnNode = .TRUE.
+SurfOnNode = MERGE(.TRUE.,.FALSE.,nComputeNodeSurfTotalSides.GT.0)
 
 ! Set size of erosion sampling array
-nImpactVars        = 17
-IF (nSpecies.EQ.1) THEN
-    SurfSampSize   = nImpactVars
-ELSE
-    SurfSampSize   = nImpactVars*(nSpecies+1)
-END IF
+nImpactVars  = 17
+SurfSampSize = MERGE(nImpactVars,nImpactVars*(nSpecies+1),nSpecies.EQ.1)
 
 !> Leader communication
 #if USE_MPI
@@ -584,7 +579,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #endif /*USE_MPI*/
 
 ! get the full area of all surface sides
-area=0.
+area = 0.
 
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) THEN

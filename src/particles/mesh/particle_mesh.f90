@@ -85,7 +85,7 @@ CALL prms%CreateRealOption(         'Part-SafetyFactor'         , 'Factor to sca
                                                                 , '1.')
 CALL prms%CreateRealOption(         'Part-HaloEpsVelo'          , 'Maximum velocity to be considered for halo region'              &
                                                                 , '0.')
-
+CALL prms%CreateLogicalOption(      'CalcHaloInfo'              , 'Output halo info to ElemData','.FALSE.')
 ! Background mesh init variables
 CALL prms%CreateRealArrayOption(    'Part-FIBGMdeltas'          , 'Define the deltas for the cartesian Fast-Init-Background-Mesh.'//&
                                                                   ' They should be of the similar size as the smallest cells of' //&
@@ -334,7 +334,7 @@ END IF
 CALL BuildBGMAndIdentifyHaloRegion()
 
 #if USE_MPI
-CalcHaloInfo = GETLOGICAL('CalcHaloInfo') 
+CalcHaloInfo = GETLOGICAL('CalcHaloInfo')
 IF (CalcHaloInfo) THEN
   CALL WriteHaloInfo
 END IF

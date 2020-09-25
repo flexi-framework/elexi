@@ -18,7 +18,7 @@
 !> * Mapping that contains the distribution of DG and FV elements
 !> * Mappings from all available variables to the ones that should be calculated and visualized for volume and surface
 !> * Mappings from the available boundaries to the ones that should be visualized
-!===================================================================================================================================
+!===================================3================================================================================================
 MODULE MOD_Posti_Mappings
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
@@ -314,11 +314,11 @@ IF (StateFileMode) CALL AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc_
 #endif
 
 ! print the mappings
-WRITE(format,'(I3)') nVarAll
-SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc             ",mapDepToCalc
-SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc_FV          ",mapDepToCalc_FV
-SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars
-SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
+WRITE(format,'(I0)') nVarAll
+SWRITE (*,'(A,'//format//'I0)') "mapDepToCalc             ",mapDepToCalc
+SWRITE (*,'(A,'//format//'I0)') "mapDepToCalc_FV          ",mapDepToCalc_FV
+SWRITE (*,'(A,'//format//'I0)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars
+SWRITE (*,'(A,'//format//'I0)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
 
 
 !---------------------- Surface visualization ----------------------------!
@@ -355,7 +355,7 @@ ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesAll))
 mapAllBCNamesToVisuBCNames_old = mapAllBCNamesToVisuBCNames
 
 
-SWRITE (*,'(A,'//format//'I3)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
+SWRITE (*,'(A,'//format//'I0)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
 
 END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
 

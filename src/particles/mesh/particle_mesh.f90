@@ -334,7 +334,7 @@ END IF
 CALL BuildBGMAndIdentifyHaloRegion()
 
 #if USE_MPI
-CalcHaloInfo = GETLOGICAL('CalcHaloInfo')
+CalcHaloInfo = GETLOGICAL('CalcHaloInfo',".FALSE.")
 IF (CalcHaloInfo) THEN
   CALL WriteHaloInfo
 END IF

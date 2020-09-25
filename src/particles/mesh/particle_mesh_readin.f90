@@ -126,6 +126,9 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
 !===================================================================================================================================
 
+! do not build particle mesh information in posti mode
+IF (postiMode) RETURN
+
 #if USE_MPI
 ! allocate shared array for ElemInfo
 CALL MPI_ALLREDUCE(nElems,nComputeNodeElems,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IERROR)
@@ -193,6 +196,9 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
+! do not build particle mesh information in posti mode
+IF (postiMode) RETURN
+
 FirstElemInd = offsetElem+1
 LastElemInd  = offsetElem+nElems
 offsetSideID = ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
@@ -246,6 +252,9 @@ INTEGER,INTENT(IN)             :: SideID
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
+! do not build particle mesh information in posti mode
+IF (postiMode) RETURN
+
 #if USE_MPI
 IF (ElemID.LE.offsetComputeNodeElem+1 .OR. ElemID.GT.offsetComputeNodeElem+nComputeNodeElems) THEN
   ! neighbour element is outside of compute-node
@@ -298,6 +307,9 @@ REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:),NodeCoordsNew(:,:,:,:)
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
 !===================================================================================================================================
+
+! do not build particle mesh information in posti mode
+IF (postiMode) RETURN
 
 ! calculate all offsets
 FirstElemInd = offsetElem+1
@@ -471,6 +483,9 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
 !===================================================================================================================================
 
+! do not build particle mesh information in posti mode
+IF (postiMode) RETURN
+
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) RETURN
 #endif /*USE_LOADBALANCE*/
@@ -540,6 +555,9 @@ INTEGER                        :: iProc
 INTEGER                        :: nNodeIDs,offsetNodeID
 #endif /*USE_MPI*/
 !===================================================================================================================================
+
+! do not build particle mesh information in posti mode
+IF (postiMode) RETURN
 
 #if USE_MPI
 ! MPISharedInitIsDone is not set if this routine is called from posti

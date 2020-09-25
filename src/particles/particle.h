@@ -54,7 +54,7 @@
 
 ! number of entries in each line of SideInfo
 #define SIDEINFOSIZE_H5   5
-#define SIDEINFOSIZE      7
+#define SIDEINFOSIZE      8
 #define SIDE_TYPE         1
 #define SIDE_ID           2
 #define SIDE_NBELEMID     3
@@ -63,6 +63,7 @@
 #define SIDE_ELEMID       6
 #define SIDE_LOCALID      7
 #define SIDE_NBSIDEID     8
+#define SIDE_NBELEMTYPE   9
 
 ! Entry position in ElemBCSides
 #define ELEM_NBR_BCSIDES   1

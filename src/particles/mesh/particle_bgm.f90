@@ -417,7 +417,7 @@ ELSE
   ! sum all MPI-side of compute-node and create correct offset mapping in SideInfo_Shared
   nMPISidesShared = 0
   DO iSide = 1, nNonUniqueGlobalSides
-    IF (SideInfo_Shared(SIDEINFOSIZE+1,iSide).EQ.2) THEN
+    IF (SideInfo_Shared(SIDE_NBELEMTYPE,iSide).EQ.2) THEN
       nMPISidesShared = nMPISidesShared + 1
     END IF
   END DO
@@ -425,7 +425,7 @@ ELSE
 
   nMPISidesShared = 0
   DO iSide = 1, nNonUniqueGlobalSides
-    IF (SideInfo_Shared(SIDEINFOSIZE+1,iSide).EQ.2) THEN
+    IF (SideInfo_Shared(SIDE_NBELEMTYPE,iSide).EQ.2) THEN
       nMPISidesShared = nMPISidesShared + 1
       offsetMPISideShared(nMPISidesShared) = iSide
     END IF

@@ -125,7 +125,8 @@ IMPLICIT NONE
 INTEGER                        :: iElem,iLocSide,SideID
 INTEGER                        :: FirstElem,LastElem
 INTEGER                        :: firstNodeID,lastNodeID
-INTEGER                        :: offsetNodeID,nNodeIDs,currentOffset,moveBGMindex
+INTEGER                        :: offsetNodeID,nNodeIDs,currentOffset
+INTEGER,PARAMETER              :: moveBGMindex=1
 REAL                           :: xmin,xmax,ymin,ymax,zmin,zmax
 INTEGER                        :: iBGM,jBGM,kBGM
 INTEGER                        :: BGMimax,BGMimin,BGMjmax,BGMjmin,BGMkmax,BGMkmin
@@ -136,7 +137,7 @@ INTEGER                        :: errType,iStage
 INTEGER                        :: iSide
 INTEGER                        :: ElemID
 REAL                           :: deltaT
-REAL                           :: globalDiag
+REAL                           :: globalDiag,maxCellRadius
 INTEGER,ALLOCATABLE            :: sendbuf(:,:,:),recvbuf(:,:,:)
 INTEGER,ALLOCATABLE            :: offsetElemsInBGMCell(:,:,:)
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
@@ -163,6 +164,24 @@ GEO%FIBGMdeltas(1:3) = GETREALARRAY('Part-FIBGMdeltas',3,'1. , 1. , 1.')
 GEO%FactorFIBGM(1:3) = GETREALARRAY('Part-FactorFIBGM',3,'1. , 1. , 1.')
 GEO%FIBGMdeltas(1:3) = 1./GEO%FactorFIBGM(1:3) * GEO%FIBGMdeltas(1:3)
 
+! Ensure BGM does not protrude beyond mesh when divisible by FIBGMdeltas
+BGMiminglob = 0 + moveBGMindex
+BGMimaxglob = FLOOR((GEO%xmaxglob-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
+BGMimaxglob = MERGE(BGMimaxglob,BGMimaxglob-1,MODULO(GEO%xmaxglob-GEO%xminglob,GEO%FIBGMdeltas(1)).NE.0)
+BGMjminglob = 0 + moveBGMindex
+BGMjmaxglob = FLOOR((GEO%ymaxglob-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
+BGMjmaxglob = MERGE(BGMjmaxglob,BGMjmaxglob-1,MODULO(GEO%ymaxglob-GEO%yminglob,GEO%FIBGMdeltas(2)).NE.0)
+BGMkminglob = 0 + moveBGMindex
+BGMkmaxglob = FLOOR((GEO%zmaxglob-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
+BGMkmaxglob = MERGE(BGMkmaxglob,BGMkmaxglob-1,MODULO(GEO%zmaxglob-GEO%zminglob,GEO%FIBGMdeltas(3)).NE.0)
+
+GEO%FIBGMiminglob = BGMiminglob
+GEO%FIBGMimaxglob = BGMimaxglob
+GEO%FIBGMjminglob = BGMjminglob
+GEO%FIBGMjmaxglob = BGMjmaxglob
+GEO%FIBGMkminglob = BGMkminglob
+GEO%FIBGMkmaxglob = BGMkmaxglob
+
 ! Read periodic vectors from parameter file
 CALL InitPeriodicBC()
 
@@ -182,8 +201,6 @@ ALLOCATE(BoundsOfElem_Shared(1:2,1:3,1:nElems)) ! 1-2: Min, Max value; 1-3: x,y,
 firstElem = 1
 lastElem  = nElems
 #endif  /*USE_MPI*/
-
-moveBGMindex = 1 ! BGM indices must be >1 --> move by 1
 
 ! Use NodeCoords only for TriaTracking since Tracing and RefMapping have potentially curved elements, only BezierControlPoints form
 ! convec hull
@@ -210,12 +227,12 @@ SELECT CASE(TrackingMethod)
       BoundsOfElem_Shared(2,3,iElem) = zmax
 
       ! BGM indices must be >0 --> move by 1
-      ElemToBGM_Shared(1,iElem) = FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
-      ElemToBGM_Shared(2,iElem) = FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
-      ElemToBGM_Shared(3,iElem) = FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
-      ElemToBGM_Shared(4,iElem) = FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
-      ElemToBGM_Shared(5,iElem) = FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
-      ElemToBGM_Shared(6,iElem) = FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
+      ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
+      ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
+      ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
+      ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
+      ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
+      ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
     END DO ! iElem = firstElem, lastElem
 
   CASE(TRACING,REFMAPPING)
@@ -253,12 +270,12 @@ SELECT CASE(TrackingMethod)
       BoundsOfElem_Shared(2,3,iElem) = zmax
 
       ! BGM indices must be >0 --> move by 1
-      ElemToBGM_Shared(1,iElem) = FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
-      ElemToBGM_Shared(2,iElem) = FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
-      ElemToBGM_Shared(3,iElem) = FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
-      ElemToBGM_Shared(4,iElem) = FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
-      ElemToBGM_Shared(5,iElem) = FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
-      ElemToBGM_Shared(6,iElem) = FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
+      ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
+      ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
+      ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
+      ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
+      ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
+      ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
     END DO ! iElem = firstElem, lastElem
 END SELECT
 
@@ -323,14 +340,28 @@ ELSE
 END IF
 #endif /*USE_MPI*/
 
-moveBGMindex = 1 ! BGM indices must be >0 --> move by 1
+! find radius of largest cell
+maxCellRadius = 0
+DO iElem = firstElem, lastElem
+  maxCellRadius = MAX(maxCellRadius,VECNORM((/ BoundsOfElem_Shared(2,1,iElem)-BoundsOfElem_Shared(1,1,iElem), &
+                                               BoundsOfElem_Shared(2,2,iElem)-BoundsOfElem_Shared(1,2,iElem), &
+                                               BoundsOfElem_Shared(2,3,iElem)-BoundsOfElem_Shared(1,3,iElem)/)/2.))
+END DO
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,maxCellRadius,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_SHARED,iError)
+IF (maxCellRadius.LE.halo_eps) THEN
+  SWRITE(UNIT_stdOut,'(A,E15.7,A)') ' | Found max. cell radius as', maxCellRadius, ', building halo BGM with halo_eps ...'
+ELSE
+  SWRITE(UNIT_stdOut,'(A,E15.7,A)') ' | Found max. cell radius as', maxCellRadius, ', temporarily increasing radius for building halo BGM ...'
+END IF
+
 ! enlarge BGM with halo region (all element outside of this region will be cut off)
-BGMimin = FLOOR((MAX(GEO%CNxmin-halo_eps,GEO%xminglob)-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
-BGMimax = FLOOR((MIN(GEO%CNxmax+halo_eps,GEO%xmaxglob)-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
-BGMjmin = FLOOR((MAX(GEO%CNymin-halo_eps,GEO%yminglob)-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
-BGMjmax = FLOOR((MIN(GEO%CNymax+halo_eps,GEO%ymaxglob)-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
-BGMkmin = FLOOR((MAX(GEO%CNzmin-halo_eps,GEO%zminglob)-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
-BGMkmax = FLOOR((MIN(GEO%CNzmax+halo_eps,GEO%zmaxglob)-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
+BGMimin = MAX(FLOOR((GEO%CNxmin-MAX(halo_eps,maxCellRadius)-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
+BGMimax = MIN(FLOOR((GEO%CNxmax+MAX(halo_eps,maxCellRadius)-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
+BGMjmin = MAX(FLOOR((GEO%CNymin-MAX(halo_eps,maxCellRadius)-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
+BGMjmax = MIN(FLOOR((GEO%CNymax+MAX(halo_eps,maxCellRadius)-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
+BGMkmin = MAX(FLOOR((GEO%CNzmin-MAX(halo_eps,maxCellRadius)-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
+BGMkmax = MIN(FLOOR((GEO%CNzmax+MAX(halo_eps,maxCellRadius)-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
+
 ! write function-local BGM indices into global variables
 GEO%FIBGMimin = BGMimin
 GEO%FIBGMimax = BGMimax
@@ -338,13 +369,6 @@ GEO%FIBGMjmin = BGMjmin
 GEO%FIBGMjmax = BGMjmax
 GEO%FIBGMkmin = BGMkmin
 GEO%FIBGMkmax = BGMkmax
-! initialize BGM min/max indices using GEO min/max distances
-!GEO%FIBGMimax = INT((GEO%xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))+1  + moveBGMindex
-!GEO%FIBGMimin = INT((GEO%xmin-GEO%xminglob)/GEO%FIBGMdeltas(1))-1  + moveBGMindex
-!GEO%FIBGMjmax = INT((GEO%ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))+1  + moveBGMindex
-!GEO%FIBGMjmin = INT((GEO%ymin-GEO%yminglob)/GEO%FIBGMdeltas(2))-1  + moveBGMindex
-!GEO%FIBGMkmax = INT((GEO%zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))+1  + moveBGMindex
-!GEO%FIBGMkmin = INT((GEO%zmin-GEO%zminglob)/GEO%FIBGMdeltas(3))-1  + moveBGMindex
 
 ALLOCATE(GEO%FIBGM(BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax))
 
@@ -833,19 +857,6 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif /*CODE_ANALYZE*/
 
 ! Loop over all elements and build a global FIBGM to processor mapping. This is required to identify potential emission procs
-BGMiminglob = 0 + moveBGMindex
-BGMimaxglob = FLOOR((GEO%xmaxglob-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
-BGMjminglob = 0 + moveBGMindex
-BGMjmaxglob = FLOOR((GEO%ymaxglob-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
-BGMkminglob = 0 + moveBGMindex
-BGMkmaxglob = FLOOR((GEO%zmaxglob-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
-
-GEO%FIBGMiminglob = BGMiminglob
-GEO%FIBGMimaxglob = BGMimaxglob
-GEO%FIBGMjminglob = BGMjminglob
-GEO%FIBGMjmaxglob = BGMjmaxglob
-GEO%FIBGMkminglob = BGMkminglob
-GEO%FIBGMkmaxglob = BGMkmaxglob
 
 firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
@@ -1114,6 +1125,7 @@ DO iElem = 1,PP_nElems
   ElemHaloID(iElem) = offsetElem+iElem
 END DO
 CALL AddToElemData(ElementOut,'ElemID',IntArray=ElemHaloID)
+
 END SUBROUTINE WriteHaloInfo
 
 

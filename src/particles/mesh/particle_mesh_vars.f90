@@ -239,6 +239,10 @@ INTEGER           :: ElemCharLengthX_Shared_Win
 INTEGER           :: ElemCharLengthY_Shared_Win
 INTEGER           :: ElemCharLengthZ_Shared_Win
 #endif
+
+! ElemID for WriteHaloInfo
+INTEGER,ALLOCATABLE                      :: ElemHaloID(:)
+
 ! ====================================================================
 LOGICAL,ALLOCATABLE :: ElemHasAuxBCs(:,:)
 

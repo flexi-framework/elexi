@@ -1316,6 +1316,9 @@ INTEGER                           :: iError
 ! Return if nothing was allocated
 IF (.NOT.WriteMacroSurfaceValues) RETURN
 
+! Return if no sampling surfaces on node
+IF (.NOT.SurfOnNode) RETURN
+
 ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)

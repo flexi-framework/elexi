@@ -187,9 +187,6 @@ CALL InitRestart(statefile)
 ! TODO: what todo with vars that are set in InitOutput, that normally is executed here.
 
 IF (changedMeshFile.OR.changedWithDGOperator) THEN
-#if USE_PARTICLES
-  CALL FinalizeParticleMesh()
-#endif
   CALL FinalizeMesh()
   CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 END IF
@@ -228,21 +225,21 @@ SUBROUTINE ReadStateWithoutGradients(prmfile,statefile,Nin)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
-USE MOD_MPI,                 ONLY: DefineParametersMPI
+USE MOD_MPI                 ,ONLY: DefineParametersMPI
 #if USE_MPI
-USE MOD_MPI,                 ONLY: FinalizeMPI
+USE MOD_MPI                 ,ONLY: FinalizeMPI
 #endif
-USE MOD_IO_HDF5,             ONLY: DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_IO_HDF5             ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_ReadInTools         ,ONLY: prms
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters
 USE MOD_Mesh_Vars           ,ONLY: nElems,offsetElem
-USE MOD_HDF5_Input,          ONLY: OpenDataFile,ReadArray,CloseDataFile
+USE MOD_HDF5_Input          ,ONLY: OpenDataFile,ReadArray,CloseDataFile
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS
 USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 #if USE_PARTICLES
-USE MOD_Particle_Init,       ONLY: DefineParametersParticles
+USE MOD_Particle_Init       ,ONLY: DefineParametersParticles
 #endif
 #if FV_ENABLED
 USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis

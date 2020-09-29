@@ -453,15 +453,15 @@ DO iElem=FirstElemInd,LastElemInd
           aSide%connection%flip= aSide%flip
           aSide%connection%Elem=>GETNEWELEM()
           aSide%NbProc = ELEMIPROC(nbElemID)
-#if USE_PARTICLES
-          CALL ReadMeshSideNeighbors(nbElemID,iSide)
-#endif
 #else
           CALL abort(__STAMP__, &
             ' ElemID of neighbor not in global Elem list ')
 #endif
         END IF
       END IF
+#if USE_PARTICLES
+      CALL ReadMeshSideNeighbors(nbElemID,iSide)
+#endif
     END DO !iMortar
   END DO !iLocSide
 END DO !iElem

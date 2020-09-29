@@ -217,7 +217,7 @@ USE MOD_Particle_Interpolation      ,ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars ,ONLY: FieldAtParticle
 USE MOD_Particle_Vars               ,ONLY: TurbPartState,PDM,PEM,PartState
 !USE MOD_Particle_Vars               ,ONLY: TurbPt_Temp
-!USE MOD_TimeDisc_Vars               ,ONLY: RKA
+USE MOD_TimeDisc_Vars               ,ONLY: nRKStages, RKC
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -235,6 +235,7 @@ REAL                          :: udiff(3)
 REAL                          :: urel(3)    ! Normalized relative velocity vector
 INTEGER                       :: ElemID, i, j, iPart
 REAL                          :: Pt(1:3)
+REAL                          :: RKdtFrac
 !===================================================================================================================================
 
 SELECT CASE(SGSModel)
@@ -408,7 +409,16 @@ CASE('Breuer-Analytic')
 !===================================================================================================================================
 
 ! Time integration in first RK stage (p. 26)
-IF (iStage.EQ.1) randomVar=RandNormal()
+IF (iStage.EQ.1) THEN
+  RKdtFrac      = RKC(2)
+  randomVar=RandNormal()
+ELSE
+  IF (iStage.NE.nRKStages) THEN
+    RKdtFrac      = RKC(iStage+1)-RKC(iStage)
+  ELSE
+    RKdtFrac      = 1.-RKC(nRKStages)
+  END IF
+END IF
 
 ! Filter the velocity field (low-pass)
 USGS = U
@@ -443,7 +453,6 @@ DO iPart = 1,PDM%ParticleVecLength
     urel = 0.
   END IF
 
-
   ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(sigmaSGS(iPart))) THEN
     ! We ASSUME that these are the correct matrix indices
@@ -458,9 +467,11 @@ DO iPart = 1,PDM%ParticleVecLength
       DO i = 1,3
         DO j = 1,3
           IF (i.EQ.j) THEN
-            E_SGS(i,j,iPart) = EXP(-b_dt/tauL(2,iPart)) + (EXP(-b_dt/tauL(1,iPart)) - EXP(-b_dt/tauL(2,iPart)))*urel(i)*urel(j)
+            E_SGS(i,j,iPart) = EXP(-RKdtFrac*dt/tauL(2,iPart)) + (EXP(-RKdtFrac*dt/tauL(1,iPart))&
+              - EXP(-RKdtFrac*dt/tauL(2,iPart)))*urel(i)*urel(j)
           ELSE
-            E_SGS(i,j,iPart) =                          (exp(-b_dt/tauL(1,iPart)) - exp(-b_dt/tauL(2,iPart)))*urel(i)*urel(j)
+            E_SGS(i,j,iPart) =                                   (EXP(-RKdtFrac*dt/tauL(1,iPart))&
+              - EXP(-RKdtFrac*dt/tauL(2,iPart)))*urel(i)*urel(j)
           END IF
         END DO
       END DO
@@ -488,8 +499,8 @@ DO iPart = 1,PDM%ParticleVecLength
       ! Calculate drift and diffusion matrix
       E_SGS(:,:,iPart) = 0.
       DO i = 1,3
-        E_SGS(i,i,iPart) = EXP(-b_dt/tauL(2,iPart))
-        W_SGS(i,j,iPart) = sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(2,iPart)))
+        E_SGS(i,i,iPart) = EXP(-RKdtFrac*dt/tauL(2,iPart))
+        W_SGS(i,j,iPart) = sigmaSGS(iPart)*SQRT(1-EXP(-2*RKdtFrac*dt/tauL(2,iPart)))
       END DO
 
     ELSE
@@ -502,14 +513,16 @@ DO iPart = 1,PDM%ParticleVecLength
       DO i = 1,3
         DO j = 1,3
           IF (i.EQ.j) THEN
-            E_SGS(i,j,iPart) = EXP(-b_dt/tauL(2,iPart)) + (EXP(-b_dt/tauL(1,iPart)) - EXP(-b_dt/tauL(2,iPart)))*urel(i)*urel(j)
-            W_SGS(i,j,iPart) =  sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(2,iPart)))                                                   &
-                             + (sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(1,iPart)))                                                   &
-                             -  sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(2,iPart))))                        *urel(i)*urel(j)
+            E_SGS(i,j,iPart) = EXP(-RKdtFrac*dt/tauL(2,iPart)) + (EXP(-RKdtFrac*dt/tauL(1,iPart))&
+              - EXP(-RKdtFrac*dt/tauL(2,iPart)))*urel(i)*urel(j)
+            W_SGS(i,j,iPart) =  sigmaSGS(iPart)*SQRT(1-EXP(-2*RKdtFrac*dt/tauL(2,iPart)))                                                   &
+                             + (sigmaSGS(iPart)*SQRT(1-EXP(-2*RKdtFrac*dt/tauL(1,iPart)))                                                   &
+                             -  sigmaSGS(iPart)*SQRT(1-EXP(-2*RKdtFrac*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
           ELSE
-            E_SGS(i,j,iPart) =                          (exp(-b_dt/tauL(1,iPart)) - exp(-b_dt/tauL(2,iPart)))*urel(i)*urel(j)
-            W_SGS(i,j,iPart) = (sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(1,iPart)))                                                   &
-                             -  sigmaSGS(iPart)*SQRT(1-EXP(-2*b_dt/tauL(2,iPart))))                        *urel(i)*urel(j)
+            E_SGS(i,j,iPart) =                                   (EXP(-RKdtFrac*dt/tauL(1,iPart))&
+              - EXP(-RKdtFrac*dt/tauL(2,iPart)))*urel(i)*urel(j)
+            W_SGS(i,j,iPart) = (sigmaSGS(iPart)*SQRT(1-EXP(-2*RKdtFrac*dt/tauL(1,iPart)))                                                   &
+                             -  sigmaSGS(iPart)*SQRT(1-EXP(-2*RKdtFrac*dt/tauL(2,iPart))))                        *urel(i)*urel(j)
           END IF
         END DO
       END DO

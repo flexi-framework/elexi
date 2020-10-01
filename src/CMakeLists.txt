@@ -196,6 +196,8 @@ ENDIF()
 OPTION(PARTICLES "Enable particle tracking" OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_CODE_ANALYZE "Output code analyze messages"         OFF
                                               "PARTICLES"                            OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_DEBUG_MEMORY "Output shared memory window sizes"    OFF
+                                              "PARTICLES"                            OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_LOADBALANCE  "Use LoadBalance timemeasurement"      OFF
                                               "PARTICLES;LIBS_USE_MPI"               OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_RW           "Use random walk model for particles"  OFF
@@ -283,6 +285,13 @@ IF(PARTICLES)
     ADD_DEFINITIONS(-DUSE_INTKIND8=1)
   ELSE()
     ADD_DEFINITIONS(-DUSE_INTKIND8=0)
+  ENDIF()
+
+  # Shared memory debug flags
+  IF (PARTICLES_DEBUG_MEMORY)
+    ADD_DEFINITIONS(-DDEBUG_MEMORY=1)
+  ELSE()
+    ADD_DEFINITIONS(-DDEBUG_MEMORY=0)
   ENDIF()
 
   IF (PARTICLES_FAXEN_CORR)

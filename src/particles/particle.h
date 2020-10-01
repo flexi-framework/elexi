@@ -42,6 +42,16 @@
 #define MDEALLOCATE(A) IF(ALLOCATED(A)) DEALLOCATE(A)
 #endif
 
+! Debug memory
+#if DEBUG_MEMORY
+#define Allocate_Shared(a,b,c)   Allocate_Shared_DEBUG(a,b,c,'b')
+#endif
+#if USE_MPI
+#define LWRITE IF(myComputeNodeRank.EQ.0) WRITE
+#else
+#define LWRITE WRITE
+#endif
+
 ! Boundaries for Particles
 #define PLANAR_RECT    0
 #define PLANAR_NONRECT 1

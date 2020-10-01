@@ -272,7 +272,7 @@ USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 #if USE_MPI
 USE MOD_Particle_BGM           ,ONLY: WriteHaloInfo
-USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif /* USE_MPI */
 #if USE_LOADBALANCE

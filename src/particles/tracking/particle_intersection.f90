@@ -22,14 +22,6 @@ MODULE MOD_Particle_InterSection
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-!> Named parameters for bilinear intersection
-!INTEGER,PARAMETER    :: BILINEAR_XNORMAL   = 1
-!INTEGER,PARAMETER    :: BILINEAR_YNORMAL   = 2
-!INTEGER,PARAMETER    :: BILINEAR_ZNORMAL   = 3
-!INTEGER,PARAMETER    :: BILINEAR_XPARALLEL = 4
-!INTEGER,PARAMETER    :: BILINEAR_YPARALLEL = 5
-!INTEGER,PARAMETER    :: BILINEAR_ZPARALLEL = 6
-!INTEGER,PARAMETER    :: BILINEAR_FULL      = 7
 
 INTERFACE IntersectionWithWall
   MODULE PROCEDURE IntersectionWithWall
@@ -348,7 +340,7 @@ SUBROUTINE ComputePlanarCurvedIntersection(isHit                        &
                                            ,PartID                      &
                                            ,flip                        &
                                            ,SideID                      &
-                                           ,opt_CriticalParllelInSide)
+                                           ,opt_CriticalParallelInSide)
 !===================================================================================================================================
 ! Compute the intersection with a planar non rectangular face
 ! particle path = LastPartPos+lengthPartTrajectory*PartTrajectory
@@ -378,7 +370,7 @@ INTEGER,INTENT(IN)                       :: flip
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                         :: alpha,xi,eta
 LOGICAL,INTENT(OUT)                      :: isHit
-LOGICAL,INTENT(OUT),OPTIONAL             :: opt_CriticalParllelInSide
+LOGICAL,INTENT(OUT),OPTIONAL             :: opt_CriticalParallelInSide
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                     :: n1(3),n2(3)
@@ -489,12 +481,12 @@ ELSE
 END IF
 
 ! return critical parallel movement, if possible
-IF (PRESENT(opt_CriticalParllelInSide)) THEN
-  opt_CriticalParllelInSide = .FALSE.
+IF (PRESENT(opt_CriticalParallelInSide)) THEN
+  opt_CriticalParallelInSide = .FALSE.
 
   IF(CriticalParallelInSide) THEN
     IF (ALMOSTZERO(locAlpha(1))) THEN
-    opt_CriticalParllelInSide = .TRUE.
+    opt_CriticalParallelInSide = .TRUE.
     END IF
   END IF
 END IF
@@ -567,7 +559,7 @@ INTEGER                           :: InterType,nRoot
 LOGICAL                           :: ElemCheck
 !===================================================================================================================================
 
-! set alpha to minus 1, assume no intersection
+! set alpha to minus one // no intersection
 alpha   = -1.0
 xitild  = -2.0
 etatild = -2.0
@@ -625,13 +617,15 @@ SELECT CASE(nRoot)
       xi(1) = ComputeXi(eta(1),A1=A1,A2=A2)
 
       IF (Xi(1).EQ.HUGE(1.)) THEN
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Both denominators zero when calculating Xi in bilinear intersection'
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
-        CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Both denominators zero when calculating Xi in bilinear intersection'
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
+        IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
+        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,SideID)
       END IF
 
       IF( ABS(xi(1)).LE.1.0) THEN
@@ -674,13 +668,15 @@ SELECT CASE(nRoot)
       xi(1) = ComputeXi(eta(1),A1=A1,A2=A2)
 
       IF (Xi(1).EQ.HUGE(1.)) THEN
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Both denominators zero when calculating Xi in bilinear intersection'
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
-        CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Both denominators zero when calculating Xi in bilinear intersection'
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
+        IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
+        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,SideID)
       END IF
 
       IF( ABS(xi(1)).LE.1.0) THEN
@@ -708,14 +704,18 @@ SELECT CASE(nRoot)
       ! check for Xi only, if eta is possible
       xi(2) = ComputeXi(eta(2),A1=A1,A2=A2)
 
+      ! Bilinear algorith does not give a valid result, fallback to robust 
       IF (Xi(2).EQ.HUGE(1.)) THEN
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Both denominators zero when calculating Xi in bilinear intersection'
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
-        IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
-        CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A)')    ' Both denominators zero when calculating Xi in bilinear intersection'
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
+        ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
+        IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
+        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,SideID)
+        RETURN
       END IF
 
       IF( ABS(xi(2)).LE.1.0) THEN
@@ -810,7 +810,7 @@ END SUBROUTINE ComputeBiLinearIntersection
 
 
 SUBROUTINE ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID &
-                ,SideID,opt_CriticalParllelInSide,ElemCheck_Opt)
+                ,SideID,opt_CriticalParallelInSide,ElemCheck_Opt)
 !===================================================================================================================================
 ! Compute the intersection with a Bezier surface
 ! particle path = LastPartPos+lengthPartTrajectory*PartTrajectory
@@ -849,7 +849,7 @@ LOGICAL,INTENT(IN),OPTIONAL              :: ElemCheck_Opt
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                         :: alpha,xi,eta
 LOGICAL,INTENT(OUT)                      :: isHit
-LOGICAL,INTENT(OUT),OPTIONAL             :: opt_CriticalParllelInSide
+LOGICAL,INTENT(OUT),OPTIONAL             :: opt_CriticalParallelInSide
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                     :: n1(3),n2(3)
@@ -1053,10 +1053,10 @@ CASE(1)
   xi =locXi (1)
   eta=loceta(1)
   isHit=.TRUE.
-  IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.FALSE.
+  IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.FALSE.
   IF(CriticalParallelInSide)THEN
     IF(ALMOSTZERO(alpha))THEN
-      IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.TRUE.
+      IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.TRUE.
     END IF
   END IF
   RETURN
@@ -1129,10 +1129,10 @@ CASE DEFAULT
       DEALLOCATE(locID)
       DEALLOCATE(realInterID)
       isHit=.TRUE.
-      IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.FALSE.
+      IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.FALSE.
       IF(CriticalParallelInSide)THEN
         IF(ALMOSTZERO(alpha))THEN
-          IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.TRUE.
+          IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.TRUE.
         END IF
       END IF
       RETURN
@@ -1144,10 +1144,10 @@ CASE DEFAULT
         DEALLOCATE(realInterID)
         alpha=-1.0
         isHit=.FALSE.
-        IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.FALSE.
+        IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.FALSE.
         IF(CriticalParallelInSide)THEN
           IF(ALMOSTZERO(alpha))THEN
-            IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.TRUE.
+            IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.TRUE.
           END IF
         END IF
         RETURN
@@ -1159,10 +1159,10 @@ CASE DEFAULT
         isHit=.TRUE.
         DEALLOCATE(locID)
         DEALLOCATE(realInterID)
-        IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.FALSE.
+        IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.FALSE.
         IF(CriticalParallelInSide)THEN
           IF(ALMOSTZERO(alpha))THEN
-            IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.TRUE.
+            IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.TRUE.
           END IF
         END IF
         RETURN
@@ -3065,7 +3065,7 @@ SUBROUTINE ComputeAuxBCIntersection     (isHit                       &
                                         ,AuxBCIdx                    &
                                         ,alpha                       &
                                         ,iPart                       &
-                                        ,opt_CriticalParllelInSide   )
+                                        ,opt_CriticalParallelInSide   )
 !===================================================================================================================================
 ! Compute the Intersection with auxBC. (based partly on PlanarRect)
 ! Implemtented types:
@@ -3092,7 +3092,7 @@ INTEGER,INTENT(IN)                :: AuxBCIdx,iPart
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                  :: alpha
 LOGICAL,INTENT(OUT)               :: isHit
-LOGICAL,INTENT(OUT),OPTIONAL      :: opt_CriticalParllelInSide
+LOGICAL,INTENT(OUT),OPTIONAL      :: opt_CriticalParallelInSide
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                              :: r_vec(3),n_vec(3),locSideDistance,coeffA,alphaNorm,radius,lmin,lmax,halfangle
@@ -3114,16 +3114,16 @@ CASE ('plane')
   locSideDistance = DOT_PRODUCT(n_vec,r_vec) - DOT_PRODUCT(LastPartPos(1:3,iPart),n_vec)
   IF(CriticalParallelInSide)THEN ! particle parallel to side
     IF(ALMOSTZERO(locSideDistance))THEN ! particle on/in side
-      IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.TRUE.
+      IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.TRUE.
       ! move particle eps into interior (?!)
       alpha=-1.
   RETURN
 END IF
-    IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.FALSE.
+    IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.FALSE.
     alpha=-1.
     RETURN
   ELSE
-    IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.FALSE.
+    IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.FALSE.
     alpha=locSideDistance/coeffA
        END IF
   alphaNorm=alpha/lengthPartTrajectory
@@ -3147,7 +3147,7 @@ END IF
 !  END IF
   isHit=.TRUE.
 CASE ('cylinder','cone','parabol')
-  IF(PRESENT(opt_CriticalParllelInSide)) opt_CriticalParllelInSide=.FALSE. !not used for cylinder and cone
+  IF(PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.FALSE. !not used for cylinder and cone
   IF (TRIM(AuxBCType(AuxBCIdx)).EQ.'cylinder') THEN
     r_vec=AuxBC_cylinder(AuxBCMap(AuxBCIdx))%r_vec
     axis=AuxBC_cylinder(AuxBCMap(AuxBCIdx))%axis

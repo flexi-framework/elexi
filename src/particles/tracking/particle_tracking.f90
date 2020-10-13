@@ -1791,7 +1791,7 @@ LOGICAL                           :: isHit
 INTEGER                           :: iMortar,nMortarElems
 INTEGER                           :: NbElemID,NbSideID
 INTEGER                           :: iLocalSide
-INTEGER                           :: locFlip
+!INTEGER                           :: locFlip
 REAL                              :: locAlpha,locXi,locEta
 REAL                              :: n_loc(3)
 #if CODE_ANALYZE
@@ -1864,18 +1864,19 @@ ELSE
       IF (NbElemID.LT.1) CALL ABORT(__STAMP__,'Small mortar element not defined!',ElemID)
 
       ! BezierControlPoints are now built in cell local system. We are checking mortar sides, so everything is reversed
-      locFlip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,nbSideID),10),SideInfo_Shared(SIDE_ID,nbSideID).GT.0)
+      ! locFlip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,nbSideID),10),SideInfo_Shared(SIDE_ID,nbSideID).GT.0)
+      ! Small mortar sides are always master side, hence flip = 0
 
       SELECT CASE(SideType(NbSideID))
         CASE(PLANAR_RECT)
           CALL ComputePlanarRectIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha &
-                                            ,  locXi,locEta,PartID,locFlip,NbSideID)
+                                            ,  locXi,locEta,PartID,0      ,NbSideID)
         CASE(BILINEAR,PLANAR_NONRECT)
           CALL ComputeBiLinearIntersection(    isHit,PartTrajectory,lengthPartTrajectory,locAlpha &
                                           ,    locXi,locEta,PartID,        NbSideID)
         CASE(PLANAR_CURVED)
           CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha &
-                                          ,    locXi,locEta,PartID,locFlip,NbSideID)
+                                          ,    locXi,locEta,PartID,0      ,NbSideID)
         CASE(CURVED)
           CALL ComputeCurvedIntersection(      isHit,PartTrajectory,lengthPartTrajectory,locAlpha &
                                         ,      locXi,locEta,PartID,        NbSideID)

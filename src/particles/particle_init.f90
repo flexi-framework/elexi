@@ -704,13 +704,10 @@ LowVeloRemove     = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 nAuxBCs=GETINT('Part-nAuxBCs','0')
 CALL InitializeVariablesAuxBC()
 
-! calculate cartesian borders of node local and global mesh
-CALL GetMeshMinMax()
-
-!CALL InitializeVariablesTimeStep(ManualTimeStep_opt)
+! CALL InitializeVariablesTimeStep(ManualTimeStep_opt)
 CALL InitializeVariablesTimeStep()
 
-!-- Build BGM and halo region
+! Build BGM and initialize particle mesh
 CALL InitParticleMesh()
 #if USE_MPI
 !-- Build MPI communication

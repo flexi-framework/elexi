@@ -283,12 +283,13 @@ USE MOD_Globals        ,ONLY: Abort
 USE MOD_Mesh_Vars      ,ONLY: BoundaryType,BC
 USE MOD_EOS            ,ONLY: ConsToPrim,PrimtoCons
 USE MOD_EOS            ,ONLY: PRESSURE_RIEMANN
-USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,Mach,cp,mu0
+USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,Mach,cp
 USE MOD_ExactFunc      ,ONLY: ExactFunc
 USE MOD_ExactFunc_Vars ,ONLY: JetRadius, Ramping
 USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
 #if PARABOLIC
-USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in
+USE MOD_EOS_Vars       ,ONLY: mu0
+USE MOD_Exactfunc_Vars ,ONLY: delta99_in,x_in
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! insert modules here

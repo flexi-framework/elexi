@@ -236,8 +236,8 @@ SUBROUTINE ReadMeshSideNeighbors(ElemID,SideID)
 ! Fills temporary array to add side neighbors to SideInfo(_Shared)
 !===================================================================================================================================
 ! MODULES
-#if USE_MPI
 USE MOD_Globals
+#if USE_MPI
 USE MOD_Mesh_Vars
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_MPI_Shared
@@ -880,10 +880,12 @@ MDEALLOCATE(NodeCoords_Shared)
 MDEALLOCATE(TreeCoords_Shared)
 
 ! Free communication arrays
+#if USE_MPI
 SDEALLOCATE(displsNode)
 SDEALLOCATE(recvcountNode)
 SDEALLOCATE(displsTree)
 SDEALLOCATE(recvcountTree)
+#endif /*USE_MPI*/
 
 END SUBROUTINE FinalizeMeshReadin
 

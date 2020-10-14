@@ -324,8 +324,8 @@ INTEGER                                  :: NGeoElevated                      !<
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE                         :: XiCL_NGeo(:)
 REAL,ALLOCATABLE                         :: XiCL_NGeo1(:)
-REAL,ALLOCATABLE                         :: XCL_NGeo(:,:,:,:,:)               !> mapping X(xi) P\in Ngeo
-REAL,ALLOCATABLE                         :: dXCL_NGeo(:,:,:,:,:,:)            !> Jacobi matrix of the mapping P\in NGeo
+REAL,POINTER                             :: XCL_NGeo(:,:,:,:,:)               !> mapping X(xi) P\in Ngeo
+REAL,POINTER                             :: dXCL_NGeo(:,:,:,:,:,:)            !> Jacobi matrix of the mapping P\in NGeo
 REAL,ALLOCATABLE                         :: wBaryCL_NGeo(:)
 REAL,ALLOCATABLE                         :: wBaryCL_NGeo1(:)
 REAL,ALLOCATABLE                         :: DCL_NGeo(:,:)

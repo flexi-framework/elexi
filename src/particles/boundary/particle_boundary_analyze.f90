@@ -117,10 +117,7 @@ MacroSurfaceSpecVal= 0.
 !> Erosion tracking
 iSpec = 1
 
-#if USE_MPI
 ASSOCIATE(SampWallState => SampWallState_Shared)
-#endif /*USE_MPI*/
-!---- Only one species. Only total values necessary
 !===================================================================================================================================
 DO iSurfSide = 1,nComputeNodeSurfSides; DO q = 1,nSurfSample; DO p = 1,nSurfSample
   !---- 1. - .. / Impact Counter
@@ -183,9 +180,7 @@ ELSE
     MacroSurfaceSpecVal(1,p,q,iSurfSide,iSpec) = SampWallState(1,p,q,iSurfSide) / TimeSample
   END DO; END DO; END DO
 END IF
-#if USE_MPI
 END ASSOCIATE
-#endif /*USE_MPI*/
 
 CALL WriteSurfSample(TRIM(MeshFile),ActualTime,remap_opt)
 

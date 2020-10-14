@@ -90,15 +90,13 @@ USE MOD_Preproc
 USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
 USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Periodic_BC   ,ONLY: InitPeriodicBC
-USE MOD_Particle_Mesh_Vars     ,ONLY: GEO,nNonUniqueGlobalSides,nNonUniqueGlobalNodes,offsetComputeNodeElem,nComputeNodeElems
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,ElemInfo_Shared_Win,SideInfo_Shared,NodeCoords_Shared
-USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared,BoundsOfElem_Shared_Win,ElemToBGM_Shared,ElemToBGM_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nTotalElems,FIBGM_nTotalElems_Shared,FIBGM_nTotalElems_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_nElems_Shared,FIBGM_nElems_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element,FIBGM_Element_Shared,FIBGM_Element_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem,FIBGM_offsetElem_Shared,FIBGM_offsetElem_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMToProc_Shared,FIBGMToProc_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMProcs,FIBGMProcs_Shared,FIBGMProcs_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBGM_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,Distance,ListDistance
@@ -107,6 +105,15 @@ USE MOD_DG                     ,ONLY: DGTimeDerivative_weakForm
 USE MOD_CalcTimeStep           ,ONLY: CalcTimeStep
 #if USE_MPI
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
+USE MOD_Particle_Mesh_Vars     ,ONLY: nComputeNodeElems,offsetComputeNodeElem,nNonUniqueGlobalSides,nNonUniqueGlobalNodes
+USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared,ElemInfo_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared_Win,ElemToBGM_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nTotalElems,FIBGM_nTotalElems_Shared,FIBGM_nTotalElems_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems_Shared,FIBGM_nElems_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element_Shared,FIBGM_Element_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem_Shared,FIBGM_offsetElem_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMToProc_Shared,FIBGMToProc_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMProcs,FIBGMProcs_Shared,FIBGMProcs_Shared_Win
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
@@ -130,8 +137,8 @@ INTEGER,PARAMETER              :: moveBGMindex=1
 REAL                           :: xmin,xmax,ymin,ymax,zmin,zmax
 INTEGER                        :: iBGM,jBGM,kBGM
 INTEGER                        :: BGMimax,BGMimin,BGMjmax,BGMjmin,BGMkmax,BGMkmin
-INTEGER                        :: BGMiDelta,BGMjDelta,BGMkDelta
 INTEGER                        :: BGMCellXmax,BGMCellXmin,BGMCellYmax,BGMCellYmin,BGMCellZmax,BGMCellZmin
+INTEGER                        :: BGMiminglob,BGMimaxglob,BGMjminglob,BGMjmaxglob,BGMkminglob,BGMkmaxglob
 #if USE_MPI
 INTEGER                        :: errType,iStage
 INTEGER                        :: iSide
@@ -148,7 +155,7 @@ LOGICAL                        :: ElemInsideHalo
 INTEGER                        :: firstHaloElem,lastHaloElem
 ! FIBGMToProc
 INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize
-INTEGER                        :: BGMiminglob,BGMimaxglob,BGMjminglob,BGMjmaxglob,BGMkminglob,BGMkmaxglob
+INTEGER                        :: BGMiDelta,BGMjDelta,BGMkDelta
 LOGICAL,ALLOCATABLE            :: FIBGMToProcTmp(:,:,:,:)
 INTEGER,ALLOCATABLE            :: FIBGM_nTotalElemsTmp(:,:,:)
 #else
@@ -338,7 +345,6 @@ ELSE
   halo_eps2=halo_eps*halo_eps
   SWRITE(UNIT_StdOut,'(A,E24.12)') ' | halo distance                   ', halo_eps
 END IF
-#endif /*USE_MPI*/
 
 ! find radius of largest cell
 maxCellRadius = 0
@@ -369,6 +375,22 @@ GEO%FIBGMjmin = BGMjmin
 GEO%FIBGMjmax = BGMjmax
 GEO%FIBGMkmin = BGMkmin
 GEO%FIBGMkmax = BGMkmax
+#else
+BGMimin = BGMiminglob
+BGMimax = BGMimaxglob
+BGMjmin = BGMjminglob
+BGMjmax = BGMjmaxglob
+BGMkmin = BGMkminglob
+BGMkmax = BGMkmaxglob
+
+GEO%FIBGMimin = BGMimin
+GEO%FIBGMimax = BGMimax
+GEO%FIBGMjmin = BGMjmin
+GEO%FIBGMjmax = BGMjmax
+GEO%FIBGMkmin = BGMkmin
+GEO%FIBGMkmax = BGMkmax
+#endif /*USE_MPI*/
+
 
 ALLOCATE(GEO%FIBGM(BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax))
 
@@ -659,9 +681,9 @@ IF (myComputeNodeRank.EQ.0) THEN
   FIBGM_Element = -1
 #if USE_MPI
 END IF
-#endif /*USE_MPI*/
 CALL MPI_WIN_SYNC(FIBGM_Element_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+#endif /*USE_MPI*/
 
 DO iBGM = BGMimin,BGMimax
   DO jBGM = BGMjmin,BGMjmax

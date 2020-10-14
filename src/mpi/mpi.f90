@@ -60,8 +60,10 @@ END INTERFACE
 INTERFACE FinalizeMPI
   MODULE PROCEDURE FinalizeMPI
 END INTERFACE
+#endif /*USE_MPI*/
 
 PUBLIC::DefineParametersMPI
+#if USE_MPI
 PUBLIC::InitMPIvars
 PUBLIC::StartReceiveMPIData
 PUBLIC::StartSendMPIData

@@ -57,11 +57,11 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Basis,                   ONLY: LagrangeInterpolationPolys
 USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Particle_Mesh_Tools,     ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,      ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,      ONLY: wBaryCL_NGeo1,XiCL_NGeo1
 USE MOD_Particle_Mesh_Vars,      ONLY: ElemCurved
 #if USE_MPI
-USE MOD_Particle_Mesh_Tools,     ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,      ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
 USE MOD_Particle_Mesh_Vars,      ONLY: dXCL_NGeo,XCL_NGeo
@@ -186,11 +186,10 @@ USE MOD_Preproc
 USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
 USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
 USE MOD_Mesh_Vars,             ONLY: NGeo
+USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,    ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: ElemCurved,wBaryCL_NGeo1,XiCL_NGeo1
-!USE MOD_Particle_Tracking_Vars,ONLY: TrackingMethod
 #if USE_MPI
-USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo,dXCL_NGeo

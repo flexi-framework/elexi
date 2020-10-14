@@ -629,7 +629,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 firstElem = 1
 lastElem  = nElems
 
-ALLOCATE(PeriodicFound(1:GEO%nPeriodicVectors)
+ALLOCATE(PeriodicFound(1:GEO%nPeriodicVectors))
 #endif /*USE_MPI*/
 
 ! Only root nullifies
@@ -737,12 +737,14 @@ USE MOD_Interpolation            ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars       ,ONLY: NodeType,NodeTypeCL,NodeTypeVISU
 USE MOD_Mesh_Vars                ,ONLY: NGeo
 USE MOD_Mesh_Vars                ,ONLY: nElems,nGlobalElems
+USE MOD_Mesh_Vars                ,ONLY: Elem_xGP
+USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo,dXCL_NGeo
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID
 #if USE_MPI
 USE MOD_PreProc                  ,ONLY: N
-USE MOD_Mesh_Vars                ,ONLY: Elem_xGP,offsetElem
+USE MOD_Mesh_Vars                ,ONLY: offsetElem
 !USE MOD_Mesh_Vars                ,ONLY: InterpolateFromTree
 !USE MOD_Mesh_Vars                ,ONLY: UseCurveds
 USE MOD_Metrics                  ,ONLY: BuildCoords
@@ -752,7 +754,7 @@ USE MOD_Metrics                  ,ONLY: BuildCoords
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo_Array,dXCL_NGeo_Array
 USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Array
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo_Shared_Win,dXCL_NGeo_Shared_Win
-USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Shared,Elem_xGP_Shared_Win
+USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Shared_Win
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID
 USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared
 !USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
@@ -3431,7 +3433,7 @@ lastSide  = INT(REAL((myComputeNodeRank+1)*nNonUniqueGlobalSides)/REAL(nComputeN
 ALLOCATE( BaseVectors0(1:3,1:nNonUniqueGlobalSides),&
           BaseVectors1(1:3,1:nNonUniqueGlobalSides),&
           BaseVectors2(1:3,1:nNonUniqueGlobalSides),&
-          BaseVectors3(1:3,1:nNonUniqueGlobalSides)),&
+          BaseVectors3(1:3,1:nNonUniqueGlobalSides)) !,&
 !          BaseVectorsScale(1:nNonUniqueGlobalSides))
 
 firstSide = 1
@@ -3642,8 +3644,10 @@ SDEALLOCATE(XiCL_NGeo)
 SDEALLOCATE(XiCL_NGeo1)
 SDEALLOCATE(DCL_NGeo)
 SDEALLOCATE(D_Bezier)
-SDEALLOCATE(XCL_NGeo)
-SDEALLOCATE(dXCL_NGeo)
+
+! These are always pointers
+MNULLIFY(XCL_NGeo)
+MNULLIFY(dXCL_NGeo)
 
 SELECT CASE(TrackingMethod)
 

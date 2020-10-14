@@ -239,6 +239,8 @@ CALL prms%CreateIntOption(          'Part-Species[$]-ParticleEmissionType', 'Def
                                                                 , '2'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-ParticleEmission', 'Emission rate in part/s or part/iteration.'               &
                                                                 , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-ParticleEmissionTime', 'Scale emission time for EmissionType==1.'             &
+                                                                , '1.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-PartDensity', 'PartDensity (real particles per m^3) or (vpi_)cub./cyl.'     //&
                                                                    'as alternative to Part.Emis. in Type1 '                        &
                                                                  , '0.'     , numberedmulti=.TRUE.)
@@ -334,6 +336,8 @@ CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-ParticleEmissionTyp
                                                                 , '2'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-ParticleEmission', 'Emission rate in part/s or part/iteration.'       &
                                                                 , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-ParticleEmissionTime', 'Scale emission time for EmissionType==1.'     &
+                                                                , '1.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-PartDensity', 'PartDensity (real particles per m^3) or (vpi_)cub./cyl.' //&
                                                                    'as alternative to Part.Emis. in Type1 '                        &
                                                                  , '0.'     , numberedmulti=.TRUE.)
@@ -910,6 +914,7 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%initialParticleNumber = GETINT(      'Part-Species'//TRIM(tmpStr2)//'-initialParticleNumber' ,'0')
     Species(iSpec)%Init(iInit)%ParticleEmissionType  = GETINT(      'Part-Species'//TRIM(tmpStr2)//'-ParticleEmissionType'  ,'1')
     Species(iSpec)%Init(iInit)%ParticleEmission      = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-ParticleEmission'      ,'0.')
+    Species(iSpec)%Init(iInit)%ParticleEmissionTime  = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-ParticleEmissionTime'  ,'1.')
     Species(iSpec)%Init(iInit)%PartDensity           = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-PartDensity'           ,'0.')
     Species(iSpec)%Init(iInit)%SpaceIC               = TRIM(GETSTR( 'Part-Species'//TRIM(tmpStr2)//'-SpaceIC'               ,'cuboid'))
     Species(iSpec)%Init(iInit)%VeloVecIC             = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-VeloVecIC'           ,3,'0. , 0. , 0.')

@@ -382,7 +382,8 @@ IF (doParticleImpactTrack) THEN
                          ,v_old           = v_old                         &
                          ,PartFaceAngle_old =PartFaceAngle_old            &
                          ,PartReflCount   = PartReflCount(PartID)         &
-                         ,alpha           = alpha)
+                         ,alpha           = alpha                         &
+                         ,n_loc           = n_loc)
 END IF
 
 ! Increase reflection counter
@@ -463,7 +464,7 @@ REAL                              :: eps_n, eps_t
 REAL                              :: tang1(1:3),tang2(1:3)
 ! Bons particle rebound model
 REAL                              :: E_eff
-REAL                              :: Vol,r,w,w_crit,sigma_y
+REAL                              :: Vol,r,d,w,w_crit,sigma_y
 !===================================================================================================================================
 
 ! check if reflected on AuxBC
@@ -530,26 +531,26 @@ SELECT CASE(WallCoeffModel)
   CASE('Bons2017')
     ! Assume spherical particles for now
     Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
-    r       = (3.*Vol/4./PI)**(1./3.)
-
-    ! Calculate deformation of cylindrical model particle
-    w       = 4./3. * r * SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (Species(PartSpecies(PartID))%DensityIC &
-                                                                       /Species(PartSpecies(PartID))%YoungIC   )**0.5;
+    d       = (6.*Vol/PI)**(1./3.)
 
     ! Find composite elastic modulus
     E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
                (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))            **2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID))               )**(-1.)
 
+    ! Calculate deformation of cylindrical model particle
+    w       = 4*SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (Species(PartSpecies(PartID))%DensityIC &
+                                                          /(E_eff*3*d)   )**0.5;
+
     ! Find critical deformation
-    sigma_y = Species(PartSpecies(PartID))%YieldCoeff*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
-    w_crit  = sigma_y * 4./3. * r / E_eff
+    sigma_y = Species(PartSpecies(PartID))%YieldCoeff*E_eff !SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
+    w_crit  = sigma_y * 2./3. * d / E_eff
 
     ! Normal coefficient of restitution
-    IF (w .LT. w_crit) THEN
+    IF (w .GT. w_crit) THEN
       eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *(sigma_y**2. / (Species(PartSpecies(PartID))%DensityIC &
-                                                                          *  Species(PartSpecies(PartID))%YoungIC   ))**0.5
+                                                                          *  E_eff   ))**0.5
     ELSE
-      eps_n = 1.;
+      eps_n = 1.
     END IF
 
     !> Do not account for adhesion for now <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -558,8 +559,8 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    eps_t   = 1. - FieldAtParticle(PartID,1) / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * (eps_n * &
-                                               SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))) * (1/(eps_n)+1)*COS(PartFaceAngle)**2.
+    eps_t   = 1. - 0.3 / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * &
+                       SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (1/(eps_n)+1)*COS(PartFaceAngle)**2.
 
   !=================================================================================================================================
   ! Fong, W.; Amili, O.; Coletti, F.: Velocity and spatial distribution of intertial particles in a turbulent channel flow
@@ -627,13 +628,14 @@ WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity (CoR):       
 IF (doParticleImpactTrack) THEN
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
-  CALL RecordErosionPoint(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID),                                   &
+  CALL RecordErosionPoint(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID),            &
                           PartID          = PartID,                                       &
                           PartFaceAngle   = PartFaceAngle,                                &
                           v_old           = v_old,                                        &
                           PartFaceAngle_old =PartFaceAngle_old,                           &
                           PartReflCount   = PartReflCount(PartID),                        &
-                          alpha           = alpha)
+                          alpha           = alpha,                                        &
+                          n_loc           = n_loc)
 END IF
 
 ! increase reflection counter

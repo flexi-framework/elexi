@@ -178,7 +178,7 @@ END SUBROUTINE InitEPCommunicator
 #endif /*USE_MPI*/
 
 
-SUBROUTINE RecordErosionPoint(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_old,PartReflCount,alpha)
+SUBROUTINE RecordErosionPoint(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_old,PartReflCount,alpha,n_loc)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Combined routine to add erosion impacts to tracking array
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -199,10 +199,11 @@ REAL,INTENT(IN)                   :: PartFaceAngle, v_old(1:3)
 REAL,INTENT(IN)                   :: PartFaceAngle_old
 REAL,INTENT(IN)                   :: alpha
 INTEGER,INTENT(IN)                :: BCSideID,PartID,PartReflCount
+REAL,INTENT(IN)                   :: n_loc(1:3)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                              :: v_magnitude_old,v_magnitude_new
-REAL                              :: e_kin_old,e_kin_new
+REAL                              :: e_kin_old,e_kin_new,v_norm(3)!,v_tang(3)
 REAL                              :: t_loc
 !===================================================================================================================================
 
@@ -212,6 +213,8 @@ v_magnitude_new   = SQRT(DOT_PRODUCT(PartState(4:6,PartID),PartState(4:6,PartID)
 e_kin_old         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_old**2.
 e_kin_new         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_new**2.
 !e_kin_loss        = e_kin_old-e_kin_new
+v_norm            = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
+!v_tang            = PartState(4:6,PartID) - v_norm
 
 !IF ((e_kin_new.GT.e_kin_old).AND.(.NOT.ALMOSTEQUAL(e_kin_new,e_kin_old))) THEN
 !    CALL abort(&
@@ -246,6 +249,7 @@ EP_Data(11,EP_Impacts)  = e_kin_old
 EP_Data(12,EP_Impacts)  = e_kin_new
 EP_Data(13,EP_Impacts)  = PartFaceAngle_old
 EP_Data(14,EP_Impacts)  = PartFaceAngle
+EP_Data(15:17,EP_Impacts)  = v_norm
 
 END SUBROUTINE RecordErosionPoint
 
@@ -399,6 +403,9 @@ StrVarNames(11)='E_kin_impact'
 StrVarNames(12)='E_kin_reflected'
 StrVarNames(13)='Alpha_impact'
 StrVarNames(14)='Alpha_reflected'
+StrVarNames(15)='v_normx'
+StrVarNames(16)='v_normy'
+StrVarNames(17)='v_normz'
 
 ! Regenerate state file skeleton
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',OutputTime))

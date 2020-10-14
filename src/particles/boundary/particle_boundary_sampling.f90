@@ -141,10 +141,9 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                                :: iBC,iSpecies,nShift
 INTEGER                                :: iSide,firstSide,lastSide
-INTEGER                                :: nSurfSidesProc,nSurfSidesTmp
+INTEGER                                :: nSurfSidesProc
 INTEGER                                :: offsetSurfTotalSidesProc
 INTEGER,ALLOCATABLE                    :: GlobalSide2SurfSideProc(:,:)
-INTEGER,ALLOCATABLE                    :: SurfSide2GlobalSideProc(:,:)
 ! user defined sampling surfaces
 LOGICAL                                :: DoSide
 INTEGER                                :: iSurfBC,nSurfSampleBC
@@ -160,7 +159,7 @@ REAL,DIMENSION(:),ALLOCATABLE          :: Xi_NGeo,wGP_NGeo
 REAL                                   :: XiOut(1:2),E,F,G,D,tmp1,tmpI2,tmpJ2
 REAL                                   :: xNod, zNod, yNod, Vector1(3), Vector2(3), nx, ny, nz
 #if USE_MPI
-INTEGER                                :: offsetSurfSidesProc
+INTEGER                                :: offsetSurfSidesProc,nSurfSidesTmp
 INTEGER                                :: GlobalElemID,GlobalElemRank
 INTEGER(KIND=MPI_ADDRESS_KIND)         :: MPISharedSize
 INTEGER                                :: sendbuf,recvbuf
@@ -272,17 +271,14 @@ DEALLOCATE(BCName)
 ! NO HALO REGION REDUCTION
 firstSide = INT(REAL( myComputeNodeRank   *nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
 lastSide  = INT(REAL((myComputeNodeRank+1)*nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
-ALLOCATE(GlobalSide2SurfSideProc(1:3,firstSide:lastSide) &
-        ,SurfSide2GlobalSideProc(1:3,1:INT(nNonUniqueGlobalSides/REAL(nComputeNodeProcessors))))
+ALLOCATE(GlobalSide2SurfSideProc(1:3,firstSide:lastSide))
 #else
 firstSide = 1
 lastSide  = nComputeNodeSides
-ALLOCATE(GlobalSide2SurfSideProc(1:3,1:nComputeNodeSides) &
-        ,SurfSide2GlobalSideProc(1:3,1:nComputeNodeSides))
+ALLOCATE(GlobalSide2SurfSideProc(1:3,1:nComputeNodeSides))
 #endif /*USE_MPI*/
 
 GlobalSide2SurfSideProc    = -1
-SurfSide2GlobalSideProc    = -1
 nComputeNodeSurfSides      = 0
 nSurfSidesProc             = 0
 
@@ -400,6 +396,9 @@ MPISharedSize = INT((3*nComputeNodeSurfTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS
 CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeSurfTotalSides/),SurfSide2GlobalSide_Shared_Win,SurfSide2GlobalSide_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SurfSide2GlobalSide_Shared_Win,IERROR)
 SurfSide2GlobalSide => SurfSide2GlobalSide_Shared
+#else
+ALLOCATE(SurfSide2GlobalSide(1:3,1:nComputeNodeSurfTotalSides))
+#endif /*USE_MPI*/
 
 DO iSide = firstSide,lastSide
   IF (GlobalSide2SurfSideProc(SURF_SIDEID,iSide).EQ.-1) CYCLE
@@ -408,17 +407,14 @@ DO iSide = firstSide,lastSide
   SurfSide2GlobalSide(SURF_SIDEID,GlobalSide2SurfSide(SURF_SIDEID,iSide)) = iSide
 END DO
 
+#if USE_MPI
 CALL MPI_WIN_SYNC(GlobalSide2SurfSide_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(SurfSide2GlobalSide_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
-#else
-ALLOCATE(SurfSide2GlobalSide(1:3,1:nComputeNodeSurfTotalSides))
-SurfSide2GlobalSide = SurfSide2GlobalSideProc(:,1:nComputeNodeSurfTotalSides)
 #endif /*USE_MPI*/
 
 ! free temporary arrays
 DEALLOCATE(GlobalSide2SurfSideProc)
-DEALLOCATE(SurfSide2GlobalSideProc)
 
 ! flag if there is at least one surf side on the node (sides in halo region do also count)
 SurfOnNode = MERGE(.TRUE.,.FALSE.,nComputeNodeSurfTotalSides.GT.0)

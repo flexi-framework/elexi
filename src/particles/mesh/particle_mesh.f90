@@ -2023,9 +2023,9 @@ USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
 #else
-USE MOD_Mesh_Vars          ,ONLY: nElems
-USE MOD_Particle_Mesh_Vars ,ONLY: nComputeNodeElems
-USE MOD_Particle_Mesh_Vars ,ONLY: XCL_NGeo
+USE MOD_Mesh_Vars               ,ONLY: nElems
+USE MOD_Particle_Mesh_Vars      ,ONLY: nComputeNodeElems
+USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -3644,10 +3644,8 @@ SDEALLOCATE(XiCL_NGeo)
 SDEALLOCATE(XiCL_NGeo1)
 SDEALLOCATE(DCL_NGeo)
 SDEALLOCATE(D_Bezier)
-
-! These are always pointers
-MNULLIFY(XCL_NGeo)
-MNULLIFY(dXCL_NGeo)
+SDEALLOCATE(XCL_NGeo)
+SDEALLOCATE(dXCL_NGeo)
 
 SELECT CASE(TrackingMethod)
 

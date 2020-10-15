@@ -120,6 +120,9 @@ USE MOD_ReadInTools         ,ONLY: FinalizeParameters
 USE MOD_Restart_Vars        ,ONLY: RestartTime
 #if USE_PARTICLES
 USE MOD_Particle_Mesh       ,ONLY: DefineParametersParticleMesh,FinalizeParticleMesh
+#if USE_LOADBALANCE
+USE MOD_LoadBalance         ,ONLY: DefineParametersLoadBalance
+#endif
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -171,6 +174,9 @@ CALL DefineParametersLifting()
 #endif
 #if USE_PARTICLES
 CALL DefineParametersParticleMesh()
+#if USE_LOADBALANCE
+CALL DefineParametersLoadBalance()
+#endif
 #endif
 CALL prms%read_options(prmfile)
 

@@ -317,6 +317,7 @@ USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,FieldAtParticle,externalField
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount
+USE MOD_Mesh_Vars,               ONLY: offsetElem
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Restart_Vars,            ONLY: RestartTurb
@@ -458,7 +459,7 @@ CASE('radial_constant')
   END DO
 
 !===================================================================================================================================
-! Emission with local fluid velocity. Currently untested for MPI
+! Emission with local fluid velocity.
 !===================================================================================================================================
 CASE('fluid')
   ! null field vector
@@ -482,8 +483,7 @@ CASE('fluid')
     ! Return if no interpolation is wanted
     IF (.NOT.DoInterpolation) RETURN
 
-      iElem = PEM%Element(PositionNbr)
-      iElem = PEM%Element(PositionNbr)
+      iElem = PEM%Element(PositionNbr) - offsetElem
 
       ! RefMapping, evaluate in reference space
       IF (TrackingMethod.EQ.REFMAPPING) THEN

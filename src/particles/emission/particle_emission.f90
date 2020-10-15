@@ -206,16 +206,16 @@ DO i = 1,nSpecies
         CASE(1)
           IF (.NOT.DoPoissonRounding .AND. .NOT.DoTimeDepInflow) THEN
             ! requested particles during time-slab
-            PartIns=Species(i)%Init(iInit)%ParticleEmission * dt*RKdtFrac
+            PartIns=Species(i)%Init(iInit)%ParticleEmission * dt*RKdtFrac * 1/Species(i)%Init(iInit)%ParticleEmissionTime
             ! integer number of particles to be inserted
             inserted_Particle_iter = INT(PartIns,8)
 
             ! Attention: FLEXI uses a different definition for elapsed time due to restart capability!
             IF ((RestartTime.GT.0).AND.(.NOT.PartDataExists)) THEN
               ! total number of emitted particles over simulation
-              PartIns=Species(i)%Init(iInit)%ParticleEmission * (t-RestartTime + dt*RKdtFracTotal)
+              PartIns=Species(i)%Init(iInit)%ParticleEmission * (t-RestartTime + dt*RKdtFracTotal) * 1/Species(i)%Init(iInit)%ParticleEmissionTime
             ELSE
-              PartIns=Species(i)%Init(iInit)%ParticleEmission * (t + dt*RKdtFracTotal)
+              PartIns=Species(i)%Init(iInit)%ParticleEmission * (t + dt*RKdtFracTotal) * 1/Species(i)%Init(iInit)%ParticleEmissionTime
             END IF
 
             !-- random-round the inserted_Particle_time for preventing periodicity

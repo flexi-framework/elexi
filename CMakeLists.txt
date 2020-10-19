@@ -21,9 +21,6 @@ SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 INCLUDE(ExternalProject)
 INCLUDE(CMakeDependentOption)
 
-# Required to build visuReader with ParaView >= 5.7
-INCLUDE(GNUInstallDirs)
-
 # =========================================================================
 # Check whether we are on Github or at IAG
 # =========================================================================
@@ -68,6 +65,9 @@ ENDIF()
 # =========================================================================
 PROJECT(Flexi)
 ENABLE_LANGUAGE(Fortran C)
+
+# Required to build visuReader with ParaView >= 5.7
+INCLUDE(GNUInstallDirs)
 
 # Check IPO support:
 # we need to have languages enabled and compilers defined for this
@@ -529,7 +529,7 @@ FUNCTION(add_lib_shared target)
                                              LINKER_LANGUAGE Fortran)
   INSTALL(TARGETS ${target} LIBRARY PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                                                 GROUP_READ GROUP_EXECUTE
-                                                WORLD_READ WORLD_EXECUTE 
+                                                WORLD_READ WORLD_EXECUTE
                             DESTINATION lib)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")

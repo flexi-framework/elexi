@@ -457,9 +457,9 @@ CALL prms%CreateRealOption(         'Part-Boundary[$]-Poisson'  , "Poisson ratio
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-CoR'      , "Coefficent of restitution for normal velocity component"        &
                                                                 , '1.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-YoungIC'   , "Young's modulus defining stiffness of particle material"        &
+CALL prms%CreateRealOption(         'Part-Species[$]-YoungIC'   , "Young's modulus of particle defining stiffness of particle material"        &
                                                                 , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC' , "Poisson ratio defining relation of transverse to axial strain"  &
+CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC' , "Poisson ratio of particle defining relation of transverse to axial strain"  &
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff', "Yield strength defining elastic deformation"                    &
                                                                 ,'0.'       , numberedmulti=.TRUE.)
@@ -1281,7 +1281,7 @@ DO iBC = 1,nBCs
               PartBound%CoR(iBC)          = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-CoR'                ,'1.')
 
             ! Different CoR per direction
-!            CASE()
+            CASE('Tabakoff1981','Grant1975')
 !              PartBound%CoR(1:2iBC)       = GETREALARRAY( 'Part-Boundary'//TRIM(tmpStr)//'-CoR'                ,'1., 1.')
 
             CASE DEFAULT

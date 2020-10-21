@@ -554,6 +554,15 @@ ELSE IF (nTrackingMethod.EQ.0) THEN
   END IF
 ELSE
   CALL COLLECTIVESTOP(__STAMP__,'Invalid number of tracking methods given!')
+SELECT CASE(TrackingMethod)
+  CASE(TRIATRACKING,TRACING,REFMAPPING)
+    ! Valid tracking method, do nothing
+  CASE DEFAULT
+    SWRITE(UNIT_stdOut,'(A)')' TrackingMethod not implemented! Select refmapping (1), tracing (2) or triatracking (3).'
+    CALL abort(&
+    __STAMP__&
+    ,'TrackingMethod not implemented! TrackingMethod=',IntInfoOpt=TrackingMethod)
+END SELECT
 END IF
 
 DoInterpolation       = GETLOGICAL('Part-DoInterpolation','.TRUE.')

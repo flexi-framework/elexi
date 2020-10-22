@@ -514,7 +514,6 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: nTrackingMethod
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS...'
@@ -529,9 +528,8 @@ SELECT CASE(TrackingMethod)
     ! Valid tracking method, do nothing
   CASE DEFAULT
     SWRITE(UNIT_stdOut,'(A)')' TrackingMethod not implemented! Select refmapping (1), tracing (2) or triatracking (3).'
-    CALL abort(__STAMP__,'TrackingMethod not implemented! TrackingMethod=',IntInfoOpt=TrackingMethod)
+    CALL CollectiveStop(__STAMP__,'TrackingMethod not implemented! TrackingMethod=',IntInfo=TrackingMethod)
 END SELECT
-END IF
 
 DoInterpolation       = GETLOGICAL('Part-DoInterpolation','.TRUE.')
 IF (.NOT.DoInterpolation) &

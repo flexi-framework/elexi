@@ -82,26 +82,19 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('Tracking')
 
-CALL prms%CreateIntFromStringOption('TrackingMethod', "Define Method that is used for tracking of particles:\n"//&
-                                                      "refmapping (1): reference mapping of particle position"//&
-                                                      " with (bi-)linear and bezier (curved) description of sides.\n"//&
-                                                      "tracing (2): tracing of particle path "//&
-                                                      "with (bi-)linear and bezier (curved) description of sides.\n"//&
-                                                      "triatracking (3): tracing of particle path "//&
-                                                      "with triangle-aproximation of (bi-)linear sides.\n", &
+CALL prms%CreateIntFromStringOption('TrackingMethod', "Define Method that is used for tracking of particles:\n"                  //&
+                                                      "refmapping   (1): reference mapping of particle position with (bi-)linear\n"//&
+                                                      "                  and bezier (curved) description of sides.\n"            //&
+                                                      "tracing      (2): tracing of particle path with (bi-)linear and bezier\n" //&
+                                                      "                  (curved) description of sides.\n"                       //&
+                                                      "triatracking (3): tracing of particle path with triangle-aproximation\n"  //&
+                                                      "                  of (bi-)linear sides.\n",                                 &
                                                       "triatracking")
 CALL addStrListEntry(               'TrackingMethod', 'refmapping'      ,REFMAPPING)
 CALL addStrListEntry(               'TrackingMethod', 'tracing'         ,TRACING)
 CALL addStrListEntry(               'TrackingMethod', 'triatracking'    ,TRIATRACKING)
 CALL addStrListEntry(               'TrackingMethod', 'default'         ,TRIATRACKING)
 
-CALL prms%CreateLogicalOption(      'DoRefMapping'  , 'Refmapping [T] or Tracing [F] algorithms are used for tracking of particles.'&
-                                                    , '.TRUE.')
-
-CALL prms%CreateLogicalOption(      'TriaTracking'  , 'Using Triangle-aproximation [T] or (bi-)linear and bezier (curved) '      //&
-                                                      'description [F] of sides for tracing algorithms.'                         //&
-                                                      ' Requires .NOT.REFMAPPING'                                                  &
-                                                    , '.FALSE.')
 CALL prms%CreateLogicalOption(      'TriaSurfaceFlux','Using Triangle-aproximation [T] or (bi-)linear and bezier (curved) '      //&
                                                       'description [F] of sides for surfaceflux.'                                  &
                                                     , '.TRUE.')
@@ -522,46 +515,21 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: nTrackingMethod
-LOGICAL                        :: DoRefMapping,TriaTracking
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS...'
 
 PDM%maxParticleNumber = GETINT('Part-maxParticleNumber','1')
-PI=ACOS(-1.0D0)
+PI                    = ACOS(-1.0D0)
 
 ! Find tracking method immediately, a lot of the later variables depend on it
-nTrackingMethod = CountOption('TrackingMethod')
-IF (nTrackingMethod.EQ.1) THEN
-  ! New selection setting DoRefMapping and TriaTracking for compatibility
-  TrackingMethod  = GETINTFROMSTR('TrackingMethod')
-ELSE IF (nTrackingMethod.EQ.0) THEN
-  ! Old selection explicitly stating DoRefMapping and TriaTracking
-  DoRefMapping = GETLOGICAL('DoRefMapping','.TRUE.')
-  TriaTracking = GETLOGICAL('TriaTracking','.FALSE.')
-  IF (DoRefMapping) THEN
-    IF (TriaTracking) THEN
-      CALL COLLECTIVESTOP(__STAMP__,'DoRefMapping and TriaTracking are mutually exclusive!')
-    ELSE
-      TrackingMethod = REFMAPPING
-    END IF
-  ELSE
-    IF (TriaTracking) THEN
-      TrackingMethod = TRIATRACKING
-    ELSE
-      TrackingMethod = TRACING
-    END IF
-  END IF
-ELSE
-  CALL COLLECTIVESTOP(__STAMP__,'Invalid number of tracking methods given!')
+TrackingMethod  = GETINTFROMSTR('TrackingMethod')
 SELECT CASE(TrackingMethod)
   CASE(TRIATRACKING,TRACING,REFMAPPING)
     ! Valid tracking method, do nothing
   CASE DEFAULT
     SWRITE(UNIT_stdOut,'(A)')' TrackingMethod not implemented! Select refmapping (1), tracing (2) or triatracking (3).'
-    CALL abort(&
-    __STAMP__&
-    ,'TrackingMethod not implemented! TrackingMethod=',IntInfoOpt=TrackingMethod)
+    CALL abort(__STAMP__,'TrackingMethod not implemented! TrackingMethod=',IntInfoOpt=TrackingMethod)
 END SELECT
 END IF
 

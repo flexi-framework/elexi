@@ -522,7 +522,7 @@ SELECT CASE(WallCoeffModel)
 
     ! Compute cubic polynomials for coefficient of restitution
     eps_n = 1.    - 0.0211 * PartFaceAngleDeg  + 0.000228 * PartFaceAngleDeg**2. - 0.000000876 * PartFaceAngleDeg**3.
-    eps_t = 0.953                              - 0.00446  * PartFaceAngleDeg**2. + 0.000000648 * PartFaceAngleDeg**3.
+    eps_t = 0.953                              - 0.000446 * PartFaceAngleDeg**2. + 0.00000648  * PartFaceAngleDeg**3.
 
   !===================================================================================================================================
   ! Bons, J., Prenter, R., Whitaker, S.: A Simple Physics-Based Model for Particle Rebound and Deposition in Turbomachinery

@@ -579,6 +579,12 @@ ENDIF()
 # PARTICLES
 # =========================================================================
 IF(FLEXI_PARTICLES)
+  IF(FLEXI_2D)
+    MESSAGE(SEND_ERROR "FLEXI_PARTICLES only works on FLEXI_2D=OFF")
+  ENDIF()
+  IF(FLEXI_FV)
+    MESSAGE(SEND_ERROR "FLEXI_PARTICLES only works on FLEXI_FV=OFF")
+  ENDIF()
   ADD_DEFINITIONS(-DUSE_PARTICLES=1)
 ELSE()
   ADD_DEFINITIONS(-DUSE_PARTICLES=0)
@@ -654,7 +660,7 @@ FUNCTION(add_lib_shared target)
                                              LINKER_LANGUAGE Fortran)
   INSTALL(TARGETS ${target} LIBRARY PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                                                 GROUP_READ GROUP_EXECUTE
-                                                WORLD_READ WORLD_EXECUTE 
+                                                WORLD_READ WORLD_EXECUTE
                             DESTINATION lib)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")

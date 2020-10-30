@@ -124,6 +124,8 @@ USE MOD_Particle_Mesh       ,ONLY: DefineParametersParticleMesh,FinalizeParticle
 USE MOD_LoadBalance         ,ONLY: DefineParametersLoadBalance
 #endif
 #endif
+USE MOD_Mesh_Vars           ,ONLY: nElems
+USE MOD_Visu_Vars           ,ONLY: mapDGElemsToAllElems, nElems_DG
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -131,6 +133,7 @@ CHARACTER(LEN=255),INTENT(IN):: prmfile       !< FLEXI parameter file, used if D
 CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                    :: iElem
 !===================================================================================================================================
 CALL FinalizeInterpolation()
 #if FV_ENABLED
@@ -220,6 +223,14 @@ CALL DGTimeDerivative_weakForm(RestartTime)
 SWRITE(*,*) "  DONE"
 
 CALL FinalizeParameters()
+
+!! TODO: doesnt account for FV!!
+nElems_DG=nElems
+SDEALLOCATE(mapDGElemsToAllElems)
+ALLOCATE(mapDGElemsToAllElems(1:nElems))
+DO iElem=1,nElems
+  mapDGElemsToAllElems(iElem) = iElem
+END DO
 END SUBROUTINE ReadStateAndGradients
 
 

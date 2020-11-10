@@ -223,13 +223,15 @@ END IF
 WeightSum   = SUM(ElemGlobalTime(:))
 
 ! No historical data and no particles in restart file
-IF (.NOT.ElemTimeExists .AND. ALL(PartsInElem(:).EQ.0)) THEN
+IF (.NOT.ElemTimeExists .AND. ALL(PartsInElem(:).EQ.0) .AND. .NOT.postiMode) THEN
   ! Check if distribution method is ideal for pure DG FLEXI
   WeightDistributionMethod = GETINT('WeightDistributionMethod','-1')
   !> -1 is optimum distri for const. elem-weight
   IF (WeightDistributionMethod.NE.-1) THEN
     SWRITE(*,*) 'WARNING: WeightDistributionMethod other than -1 with neither particles nor ElemTimes!'
   END IF
+ELSEIF (postiMode) THEN
+  WeightDistributionMethod = -1
 ELSE
   WeightDistributionMethod = GETINT('WeightDistributionMethod','1')
 END IF

@@ -381,7 +381,6 @@ lastSpecies  = MERGE(0,nSpecies,nSpecies.EQ.1)
 !                , IERROR)
 !END IF ! myComputeNodeRank.EQ.0
 !
-!!! MPI_SUM
 !!! Difference is needed for online mean calculation, sum it manually
 !!CALL MPI_REDUCE(SampWallState(1,:,:,:),SampWallState_Shared(1,:,:,:),MessageSize,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_SHARED,ReduceRequestShared(1),IERROR)
 !CALL MPI_IREDUCE(SampWallState(12:17,:,:,:),SampWallState_Shared(12:17,:,:,:),MessageSize,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_SHARED,ReduceRequestShared(2),IERROR)

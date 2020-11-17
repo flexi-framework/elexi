@@ -691,20 +691,20 @@ DO iSide=1,nBCSides
     ! include any information about curvature!!!!
     SELECT CASE(locSideID)
     CASE(XI_MINUS,XI_PLUS)
-     yVec(:)   = NodeCoords(:,NGeo,0,0,ElemID)- NodeCoords(:,0,0,,ElemID0)
-     tVec(:,1) = NodeCoords(:,0,NGeo,0,ElemID)- NodeCoords(:,0,0,,ElemID0)
+     yVec(:)   = NodeCoords(:,NGeo,0,0,ElemID)- NodeCoords(:,0,0,0,ElemID)
+     tVec(:,1) = NodeCoords(:,0,NGeo,0,ElemID)- NodeCoords(:,0,0,0,ElemID)
 #if PP_dim==3
-     tVec(:,2) = NodeCoords(:,0,0,NGeo,ElemID)- NodeCoords(:,0,0,,ElemID0)
+     tVec(:,2) = NodeCoords(:,0,0,NGeo,ElemID)- NodeCoords(:,0,0,0,ElemID)
 #endif
     CASE(ETA_MINUS,ETA_PLUS)
-     yVec(:)   = NodeCoords(:,0,NGeo,0,ElemID)- NodeCoords(:,0,0,,ElemID0)
-     tVec(:,1) = NodeCoords(:,NGeo,0,0,ElemID)- NodeCoords(:,0,0,,ElemID0)
+     yVec(:)   = NodeCoords(:,0,NGeo,0,ElemID)- NodeCoords(:,0,0,0,ElemID)
+     tVec(:,1) = NodeCoords(:,NGeo,0,0,ElemID)- NodeCoords(:,0,0,0,ElemID)
 #if PP_dim==3
-     tVec(:,2) = NodeCoords(:,0,0,NGeo,ElemID)- NodeCoords(:,0,0,,ElemID0)
+     tVec(:,2) = NodeCoords(:,0,0,NGeo,ElemID)- NodeCoords(:,0,0,0,ElemID)
     CASE(ZETA_MINUS,ZETA_PLUS)
-     yVec(:)   = NodeCoords(:,0,0,NGeo,ElemID)- NodeCoords(:,0,0,,ElemID0)
-     tVec(:,1) = NodeCoords(:,NGeo,0,0,ElemID)- NodeCoords(:,0,0,,ElemID0)
-     tVec(:,2) = NodeCoords(:,0,NGeo,0,ElemID)- NodeCoords(:,0,0,,ElemID0)
+     yVec(:)   = NodeCoords(:,0,0,NGeo,ElemID)- NodeCoords(:,0,0,0,ElemID)
+     tVec(:,1) = NodeCoords(:,NGeo,0,0,ElemID)- NodeCoords(:,0,0,0,ElemID)
+     tVec(:,2) = NodeCoords(:,0,NGeo,0,ElemID)- NodeCoords(:,0,0,0,ElemID)
 #endif
     END SELECT
 

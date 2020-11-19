@@ -184,6 +184,10 @@ USE MOD_Particle_RandomWalk_Vars,    ONLY: RWModel,RWTime
 USE MOD_Particle_Vars,               ONLY: TurbPartState
 USE MOD_TimeDisc_Vars,               ONLY: t
 #endif /*USE_RW*/
+#if FV_ENABLED
+USE MOD_Eval_xyz,                    ONLY: EvaluateFieldAtRefPos_FV
+USE MOD_FV_Vars,                     ONLY: FV_Elems
+#endif /* FV_ENABLED */
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -251,7 +255,15 @@ IF (InterpolationElemLoop) THEN
 
         ! RefMapping, evaluate in reference space
         IF (TrackingMethod.EQ.REFMAPPING) THEN
-          CALL EvaluateFieldAtRefPos(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field)
+#if FV_ENABLED
+          IF (FV_Elems(ElemID-offsetElem).EQ.0) THEN ! DG Element
+#endif /*FV_ENABLED*/
+            CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field)
+#if FV_ENABLED
+          ELSE
+            CALL EvaluateFieldAtRefPos_FV(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field)
+          END IF
+#endif /* FV_ENABLED */
         ! Not RefMapping, evaluate at physical position
         ELSE
           CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,iElem,iPart)
@@ -296,6 +308,10 @@ USE MOD_Mesh_Vars,               ONLY: offsetElem,nElems
 !USE MOD_Particle_Interpolation_Vars,   ONLY: useExternalField,externalField
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PEM
+#if FV_ENABLED
+USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtRefPos_FV
+USE MOD_FV_Vars,                 ONLY: FV_Elems
+#endif /* FV_ENABLED */
 !----------------------------------------------------------------------------------------------------------------------------------
   IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -326,7 +342,16 @@ IF ((ElemID.LT.offsetElem+1).OR.(ElemID.GT.offsetElem+nElems)) RETURN
 
 ! RefMapping, evaluate in reference space
 IF (TrackingMethod.EQ.REFMAPPING) THEN
-  CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field)
+#if FV_ENABLED
+  IF (FV_Elems(ElemID-offsetElem).EQ.0) THEN ! DG Element
+#endif /*FV_ENABLED*/
+    CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field)
+#if FV_ENABLED
+  ELSE
+    CALL EvaluateFieldAtRefPos_FV(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field)
+  END IF
+#endif /* FV_ENABLED */
+
 ! Not RefMapping, evaluate at physical position
 ELSE
   CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID,PartID)

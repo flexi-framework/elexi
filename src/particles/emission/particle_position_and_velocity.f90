@@ -324,6 +324,10 @@ USE MOD_Restart_Vars,            ONLY: RestartTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
 USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
 #endif /* USE_RW */
+#if FV_ENABLED
+USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtRefPos_FV
+USE MOD_FV_Vars,                 ONLY: FV_Elems
+#endif /* FV_ENABLED */
 !IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !!-----------------------------------------------------------------------------------------------------------------------------------
@@ -487,17 +491,25 @@ CASE('fluid')
 
       ! RefMapping, evaluate in reference space
       IF (TrackingMethod.EQ.REFMAPPING) THEN
-        CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar))
+#if FV_ENABLED
+        IF (FV_Elems(iElem).EQ.0) THEN
+#endif /* FV_ENABLED */
+          CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar))
+#if FV_ENABLED
+        ELSE
+          CALL EvaluateFieldAtRefPos_FV(PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar))
+        END IF
+#endif /* FV_ENABLED */
 #if USE_RW
-        IF (RestartTurb) CALL &
-             EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbfield(1:nVarTurb))
+        IF (RestartTurb) &
+         CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbfield(1:nVarTurb))
 #endif
       ! not RefMapping, evaluate in physical space
       ELSE
         CALL EvaluateFieldAtPhysPos(PartState    (1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar) ,iElem,PositionNbr)
 #if USE_RW
-        IF (RestartTurb) CALL &
-             EvaluateFieldAtPhysPos(TurbPartState(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb),iElem,PositionNbr)
+        IF (RestartTurb) &
+          CALL EvaluateFieldAtPhysPos(TurbPartState(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb),iElem,PositionNbr)
 #endif
       END IF ! RefMapping
 

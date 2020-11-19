@@ -39,10 +39,19 @@ INTERFACE EvaluateFieldAtRefPos
   MODULE PROCEDURE EvaluateFieldAtRefPos
 END INTERFACE
 
+#if FV_ENABLED
+INTERFACE EvaluateFieldAtRefPos_FV
+  MODULE PROCEDURE EvaluateFieldAtRefPos_FV
+END INTERFACE
+#endif /* FV_ENABLED */
+
 PUBLIC :: GetPositionInRefElem
 PUBLIC :: TensorProductInterpolation
 PUBLIC :: EvaluateFieldAtPhysPos
 PUBLIC :: EvaluateFieldAtRefPos
+#if FV_ENABLED
+PUBLIC :: EvaluateFieldAtRefPos_FV
+#endif /* FV_ENABLED */
 !===================================================================================================================================
 
 CONTAINS
@@ -318,7 +327,45 @@ DO k=0,N_in
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In
+
 END SUBROUTINE EvaluateFieldAtRefPos
+
+
+#if FV_ENABLED
+PPURE SUBROUTINE EvaluateFieldAtRefPos_FV(Xi_in,NVar,N_in,U_In,U_Out)
+!===================================================================================================================================
+!> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
+!> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
+!===================================================================================================================================
+! MODULES
+USE MOD_PreProc
+! USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
+! USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)           :: Xi_in(3)                                      !< position in reference element
+INTEGER,INTENT(IN)        :: NVar                                          !< 5 (rho,u_x,u_y,u_z,e)
+INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
+! INTEGER,INTENT(IN)        :: iElem                                         !< DG element of particle
+REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at reference position xi_in
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+! INTEGER                   :: i,j,k
+! REAL                      :: L_xi(3,0:N_in), L_eta_zeta
+INTEGER                   :: IJK(3)
+!===================================================================================================================================
+
+! Perform first order approximation
+IJK(1:3) = INT((Xi_in(1:3)+1.)/2*(PP_N+1))
+U_out(:) = U_in(:,IJK(1),IJK(2),IJK(3))
+
+END SUBROUTINE
+#endif /*FV_ENABLED*/
 
 
 SUBROUTINE RefElemNewton(Xi,X_In,wBaryCL_N_In,XiCL_N_In,XCL_N_In,dXCL_N_In,N_In,ElemID,Mode,PartID)

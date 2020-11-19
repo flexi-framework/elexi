@@ -254,7 +254,7 @@ IF (InterpolationElemLoop) THEN
         ElemID = iElem - offsetElem
 
 #if FV_ENABLED
-        IF (FV_Elems(ElemID-offsetElem).EQ.1) THEN ! FV Element
+        IF (FV_Elems(ElemID).EQ.1) THEN ! FV Element
           CALL EvaluateField_FV(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,ElemID)
         ELSE
 #endif /*FV_ENABLED*/
@@ -342,7 +342,7 @@ IF ((ElemID.LT.offsetElem+1).OR.(ElemID.GT.offsetElem+nElems)) RETURN
 
 #if FV_ENABLED
 IF (FV_Elems(ElemID-offsetElem).EQ.1) THEN ! FV Element
-  CALL EvaluateField_FV(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID)
+  CALL EvaluateField_FV(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID-offsetElem)
 ELSE
 #endif /*FV_ENABLED*/
   ! RefMapping, evaluate in reference space

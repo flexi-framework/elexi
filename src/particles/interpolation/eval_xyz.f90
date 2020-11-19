@@ -286,6 +286,7 @@ END ASSOCIATE
 
 END SUBROUTINE EvaluateFieldAtPhysPos
 
+
 #if FV_ENABLED
 SUBROUTINE EvaluateField_FV(x_in,NVar,N_in,U_In,U_Out,ElemID)
 !===================================================================================================================================
@@ -343,7 +344,7 @@ DO i = 1,3
 END DO
 
 ! Transform to physical space
-distance(:) = distance_ref(:)*sJ(IJK(1),IJK(2),IJK(3),ElemID,1)
+distance(:) = distance_ref(:)/sJ(IJK(1),IJK(2),IJK(3),ElemID,1)
 
 ! Get reconstructed solution at particle position
 UPrim_out = U_Prim(:,IJK(1),IJK(2),IJK(3)) + gradUxi  (:,IJK(1),IJK(2),IJK(3),ElemID) * distance(1)&
@@ -355,9 +356,9 @@ CALL PrimToCons(UPrim_out,U_out)
 U_out(:) = U_in(:,IJK(1),IJK(2),IJK(3))
 #endif
 
-
 END SUBROUTINE EvaluateField_FV
 #endif /*FV_ENABLED*/
+
 
 PPURE SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out)
 !===================================================================================================================================

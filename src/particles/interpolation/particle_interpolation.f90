@@ -255,7 +255,11 @@ IF (InterpolationElemLoop) THEN
 
 #if FV_ENABLED
         IF (FV_Elems(ElemID).EQ.1) THEN ! FV Element
-          CALL EvaluateField_FV(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,ElemID)
+          IF (TrackingMethod.EQ.REFMAPPING) THEN
+            CALL EvaluateField_FV(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,ElemID)
+          ELSE
+            CALL EvaluateField_FV(PartState (1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,ElemID)
+          END IF
         ELSE
 #endif /*FV_ENABLED*/
           ! RefMapping, evaluate in reference space
@@ -342,7 +346,11 @@ IF ((ElemID.LT.offsetElem+1).OR.(ElemID.GT.offsetElem+nElems)) RETURN
 
 #if FV_ENABLED
 IF (FV_Elems(ElemID-offsetElem).EQ.1) THEN ! FV Element
-  CALL EvaluateField_FV(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID-offsetElem)
+  IF (TrackingMethod.EQ.REFMAPPING) THEN
+    CALL EvaluateField_FV(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID-offsetElem)
+  ELSE
+    CALL EvaluateField_FV(PartState (1:3,PartID) ,nVar,PP_N,U    (:,:,:,:),field,ElemID-offsetElem)
+  END IF
 ELSE
 #endif /*FV_ENABLED*/
   ! RefMapping, evaluate in reference space

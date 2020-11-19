@@ -491,7 +491,11 @@ CASE('fluid')
 
 #if FV_ENABLED
       IF (FV_Elems(iElem).EQ.1) THEN ! FV Element
-        CALL EvaluateField_FV(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (:,:,:,:,iElem),field,iElem)
+        IF (TrackingMethod.EQ.REFMAPPING) THEN
+          CALL EvaluateField_FV(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (:,:,:,:,iElem),field,iElem)
+        ELSE
+          CALL EvaluateField_FV(PartState (1:3,PositionNbr),PP_nVar,PP_N,U    (:,:,:,:,iElem),field,iElem)
+        END IF
       ELSE
 #endif /*FV_ENABLED*/
         ! RefMapping, evaluate in reference space

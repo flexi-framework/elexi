@@ -354,7 +354,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(INOUT) ::  U_In(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)      !< state vector to be switched from DG to FV representation
-REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point 
+REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k
@@ -390,7 +390,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(INOUT) ::  U_In(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)      !< state vector to be switched from FV to DG representation
-REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point 
+REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k
@@ -473,7 +473,7 @@ REAL,ALLOCATABLE       :: xx(:,:,:,:)
 REAL                   :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                   :: Elem_xFV(1:3,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
-! initial call of indicator
+! initial call of indicato
 CALL CalcIndicator(U,0.)
 FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)

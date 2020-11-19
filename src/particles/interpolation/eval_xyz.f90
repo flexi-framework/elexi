@@ -40,8 +40,8 @@ INTERFACE EvaluateFieldAtRefPos
 END INTERFACE
 
 #if FV_ENABLED
-INTERFACE EvaluateFieldAtRefPos_FV
-  MODULE PROCEDURE EvaluateFieldAtRefPos_FV
+INTERFACE EvaluateField_FV
+  MODULE PROCEDURE EvaluateField_FV
 END INTERFACE
 #endif /* FV_ENABLED */
 
@@ -50,7 +50,7 @@ PUBLIC :: TensorProductInterpolation
 PUBLIC :: EvaluateFieldAtPhysPos
 PUBLIC :: EvaluateFieldAtRefPos
 #if FV_ENABLED
-PUBLIC :: EvaluateFieldAtRefPos_FV
+PUBLIC :: EvaluateField_FV
 #endif /* FV_ENABLED */
 !===================================================================================================================================
 
@@ -286,6 +286,78 @@ END ASSOCIATE
 
 END SUBROUTINE EvaluateFieldAtPhysPos
 
+#if FV_ENABLED
+SUBROUTINE EvaluateField_FV(x_in,NVar,N_in,U_In,U_Out,ElemID)
+!===================================================================================================================================
+!> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
+!> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
+!> 3) interpolate backgroundfield to position ( U_Out -> U_Out(x_in)+BG_field(x_in) )
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_FV_Vars               ,ONLY: gradUxi,gradUeta, gradUzeta
+USE MOD_FV_Vars               ,ONLY: FV_X
+USE MOD_Eos                   ,ONLY: ConsToPrim, PrimToCons
+USE MOD_Mesh_Vars             ,ONLY: sJ,offsetElem
+USE MOD_Particle_Tracking_Vars,ONLY: TrackingMethod
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)           :: x_in(3)                                       !< position in physical/reference space
+INTEGER,INTENT(IN)        :: NVar                                          !< 5 (rho,u_x,u_y,u_z,e)
+INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
+INTEGER,INTENT(IN)        :: ElemID                                        !< Element index
+REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at physical position x_in
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                   :: i,j,k
+REAL                      :: U_Prim(1:PP_nVarPrim,0:N_In,0:N_In,0:N_In)
+REAL                      :: UPrim_out(1:PP_nVarPrim)
+REAL                      :: xi(3)
+INTEGER                   :: IJK(3)
+REAL                      :: distance_ref(3), distance(3)
+!===================================================================================================================================
+
+! If the element is curved, all Gauss points are required
+IF (TrackingMethod .NE. REFMAPPING) THEN
+  CALL GetPositionInRefElem(x_in,xi,ElemID+offsetElem)
+ELSE
+  xi = x_in
+END IF
+IJK(1:3) = INT((xi(1:3)+1.)/2*(PP_N+1))
+
+#if FV_RECONSTRUCT
+! Transform to primitve variables
+DO k=0,ZDIM(N_In); DO j=0,N_In; DO i=0,N_In
+  CALL ConsToPrim(U_Prim(:,i,j,k),U_In(:,i,j,k))
+END DO; END DO; END DO! i,j,k=0,Nloc
+
+! Get distance to fv subcell mid point in reference space
+DO i = 1,3
+  distance_ref(i) = xi(i) - FV_X(IJK(i))
+END DO
+
+! Transform to physical space
+distance(:) = distance_ref(:)*sJ(IJK(1),IJK(2),IJK(3),ElemID,1)
+
+! Get reconstructed solution at particle position
+UPrim_out = U_Prim(:,IJK(1),IJK(2),IJK(3)) + gradUxi  (:,IJK(1),IJK(2),IJK(3),ElemID) * distance(1)&
+                                           + gradUeta (:,IJK(1),IJK(2),IJK(3),ElemID) * distance(2)&
+                                           + gradUzeta(:,IJK(1),IJK(2),IJK(3),ElemID) * distance(3)
+! Transform to conservative variables
+CALL PrimToCons(UPrim_out,U_out)
+#else
+U_out(:) = U_in(:,IJK(1),IJK(2),IJK(3))
+#endif
+
+
+END SUBROUTINE EvaluateField_FV
+#endif /*FV_ENABLED*/
 
 PPURE SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out)
 !===================================================================================================================================
@@ -329,43 +401,6 @@ DO k=0,N_in
 END DO ! k=0,N_In
 
 END SUBROUTINE EvaluateFieldAtRefPos
-
-
-#if FV_ENABLED
-PPURE SUBROUTINE EvaluateFieldAtRefPos_FV(Xi_in,NVar,N_in,U_In,U_Out)
-!===================================================================================================================================
-!> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
-!> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
-!===================================================================================================================================
-! MODULES
-USE MOD_PreProc
-! USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
-! USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN)           :: Xi_in(3)                                      !< position in reference element
-INTEGER,INTENT(IN)        :: NVar                                          !< 5 (rho,u_x,u_y,u_z,e)
-INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
-! INTEGER,INTENT(IN)        :: iElem                                         !< DG element of particle
-REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at reference position xi_in
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-! INTEGER                   :: i,j,k
-! REAL                      :: L_xi(3,0:N_in), L_eta_zeta
-INTEGER                   :: IJK(3)
-!===================================================================================================================================
-
-! Perform first order approximation
-IJK(1:3) = INT((Xi_in(1:3)+1.)/2*(PP_N+1))
-U_out(:) = U_in(:,IJK(1),IJK(2),IJK(3))
-
-END SUBROUTINE
-#endif /*FV_ENABLED*/
 
 
 SUBROUTINE RefElemNewton(Xi,X_In,wBaryCL_N_In,XiCL_N_In,XCL_N_In,dXCL_N_In,N_In,ElemID,Mode,PartID)

@@ -325,7 +325,7 @@ USE MOD_Equation_Vars,           ONLY: nVarTurb
 USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
 #endif /* USE_RW */
 #if FV_ENABLED
-USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtRefPos_FV
+USE MOD_Eval_xyz,                ONLY: EvaluateField_FV
 USE MOD_FV_Vars,                 ONLY: FV_Elems
 #endif /* FV_ENABLED */
 !IMPLICIT VARIABLE HANDLING
@@ -484,35 +484,34 @@ CASE('fluid')
     ! Valid particle which got recently position
     IF (PositionNbr .NE. 0) THEN
 
-    ! Return if no interpolation is wanted
-    IF (.NOT.DoInterpolation) RETURN
+      ! Return if no interpolation is wanted
+      IF (.NOT.DoInterpolation) RETURN
 
       iElem = PEM%Element(PositionNbr) - offsetElem
 
-      ! RefMapping, evaluate in reference space
-      IF (TrackingMethod.EQ.REFMAPPING) THEN
 #if FV_ENABLED
-        IF (FV_Elems(iElem).EQ.0) THEN
-#endif /* FV_ENABLED */
-          CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar))
-#if FV_ENABLED
-        ELSE
-          CALL EvaluateFieldAtRefPos_FV(PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar))
-        END IF
-#endif /* FV_ENABLED */
-#if USE_RW
-        IF (RestartTurb) &
-         CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbfield(1:nVarTurb))
-#endif
-      ! not RefMapping, evaluate in physical space
+      IF (FV_Elems(iElem).EQ.1) THEN ! FV Element
+        CALL EvaluateField_FV(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (:,:,:,:,iElem),field,iElem)
       ELSE
-        CALL EvaluateFieldAtPhysPos(PartState    (1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar) ,iElem,PositionNbr)
+#endif /*FV_ENABLED*/
+        ! RefMapping, evaluate in reference space
+        IF (TrackingMethod.EQ.REFMAPPING) THEN
+          CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar))
 #if USE_RW
-        IF (RestartTurb) &
-          CALL EvaluateFieldAtPhysPos(TurbPartState(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb),iElem,PositionNbr)
+          IF (RestartTurb) &
+           CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbfield(1:nVarTurb))
 #endif
-      END IF ! RefMapping
-
+        ! not RefMapping, evaluate in physical space
+        ELSE
+           CALL EvaluateFieldAtPhysPos(PartState(1:3,PositionNbr),PP_nVar,PP_N,U    (:,:,:,:,iElem),field,PEM%Element(PositionNbr),PositionNbr)
+#if USE_RW
+          IF (RestartTurb) &
+            CALL EvaluateFieldAtPhysPos(TurbPartState(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb),PEM%Element(PositionNbr),PositionNbr)
+#endif
+        END IF ! TrackingMethod.EQ.REFMAPPING
+#if FV_ENABLED
+      END IF
+#endif /* FV_ENABLED */
 
       ! Add the interpolated field to the background field
       FieldAtParticle(    1:PP_nVar, PositionNbr) = FieldAtParticle(1:PP_nVar,PositionNbr) + field(1:PP_nVar)

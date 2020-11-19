@@ -78,6 +78,13 @@ CHE_particle:
         - cd build_gnu
         - python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/CHE -j 6
 
+FV_particle:
+    <<: *defaults_gnu
+    stage: reggie_particle
+    script:
+        - cd build_gnu
+        - python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/FV -j 6
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
 #                         - build all specified compile options in "run_basic" with BUILD_HDF5=ON

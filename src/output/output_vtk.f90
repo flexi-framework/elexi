@@ -178,7 +178,7 @@ REAL,INTENT(IN)                       :: Value(:,:,:,:,:)     !< Statevector
 CHARACTER(LEN=*),INTENT(IN)           :: FileString           !< Output file name
 INTEGER,OPTIONAL,INTENT(IN)           :: DGFV                 !< flag indicating DG = 0 or FV =1 data
 LOGICAL,OPTIONAL,INTENT(IN)           :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
-LOGICAL,OPTIONAL,INTENT(IN)           :: PostiParallel        !< if TRUE, nVal is stored in the last index of value
+LOGICAL,OPTIONAL,INTENT(IN)           :: PostiParallel        !< if TRUE, posti runs parallel
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                               :: iVal,ivtk

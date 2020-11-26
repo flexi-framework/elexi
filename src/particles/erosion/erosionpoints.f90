@@ -190,7 +190,7 @@ USE MOD_TimeDisc_Vars,           ONLY: t,CurrentStage,dt,RKc
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Vars
 USE MOD_ErosionPoints_Vars
-USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos
+USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos,PartIndex
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -249,7 +249,7 @@ EP_Data(11,EP_Impacts)  = e_kin_old
 EP_Data(12,EP_Impacts)  = e_kin_new
 EP_Data(13,EP_Impacts)  = PartFaceAngle_old
 EP_Data(14,EP_Impacts)  = PartFaceAngle
-EP_Data(15:17,EP_Impacts)  = v_norm
+EP_Data(15,EP_Impacts)  = PartIndex(PartID)
 
 END SUBROUTINE RecordErosionPoint
 
@@ -403,9 +403,7 @@ StrVarNames(11)='E_kin_impact'
 StrVarNames(12)='E_kin_reflected'
 StrVarNames(13)='Alpha_impact'
 StrVarNames(14)='Alpha_reflected'
-StrVarNames(15)='v_normx'
-StrVarNames(16)='v_normy'
-StrVarNames(17)='v_normz'
+StrVarNames(15)='Index'
 
 ! Regenerate state file skeleton
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',OutputTime))

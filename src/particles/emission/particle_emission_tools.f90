@@ -440,8 +440,60 @@ INTEGER                 :: i
   END DO
 END SUBROUTINE SetParticlePositionLine
 
+!SUBROUTINE SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+!!===================================================================================================================================
+!! Set particle position
+!!===================================================================================================================================
+!! Modules
+!USE MOD_Particle_Globals       ,ONLY: VECNORM
+!USE MOD_Particle_Vars          ,ONLY: Species
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT VARIABLES
+!INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! OUTPUT VARIABLES
+!REAL, INTENT(OUT)       :: particle_positions(:)
+!INTEGER, INTENT(OUT)    :: particle_count(:)
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!REAL                    :: Particle_pos(3), RandVec, lineVector(3), lineVector2(3), frac
+!INTEGER                 :: i
+!!===================================================================================================================================
+!  CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+!  CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+!
+!  ! first particle is at (0,0)
+!  frac=1./(chunkSize*0.5-1.)
+!
+!  DO i=1,chunkSize
+!    IF(i.LE.chunkSize*0.5)THEN
+!      RandVec=2.*(i-1.)*frac-1.
+!    ELSE
+!      RandVec=2.*(i-chunkSize*0.5-1.)*frac-1.
+!    END IF
+!    IF(i.LE.chunkSize*0.5)THEN
+!      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
+!               (RandVec * lineVector)
+!    ELSE
+!      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
+!               (RandVec * lineVector2)
+!    END IF
+!
+!   particle_positions(i*3-2) = Particle_pos(1)
+!   particle_positions(i*3-1) = Particle_pos(2)
+!   particle_positions(i*3  ) = Particle_pos(3)
+!
+!   Species(FractNbr)%Init(iInit)%CountIndex=i
+!   particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
+!  END DO
+!
+!END SUBROUTINE SetParticlePositionDisk
 
-SUBROUTINE SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
+
+SUBROUTINE SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions,particle_count)
 !===================================================================================================================================
 ! Set particle position
 !===================================================================================================================================
@@ -457,6 +509,7 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL, INTENT(OUT)       :: particle_positions(:)
+INTEGER, INTENT(OUT)    :: particle_count(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Particle_pos(3), RandVec(2), lineVector(3), lineVector2(3), radius
@@ -464,6 +517,7 @@ INTEGER                 :: i
 !===================================================================================================================================
   CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
   CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+
   DO i=1,chunkSize
    radius = Species(FractNbr)%Init(iInit)%RadiusIC + 1.
    DO WHILE(radius.GT.Species(FractNbr)%Init(iInit)%RadiusIC)
@@ -474,10 +528,16 @@ INTEGER                 :: i
 
       radius = VECNORM((Particle_pos(1:3)-Species(FractNbr)%Init(iInit)%BasePointIC(1:3)))
    END DO
+
    particle_positions(i*3-2) = Particle_pos(1)
    particle_positions(i*3-1) = Particle_pos(2)
    particle_positions(i*3  ) = Particle_pos(3)
+
+   ! Each particle has an unique index
+   Species(FractNbr)%Init(iInit)%CountIndex=i+Species(FractNbr)%Init(iInit)%CountIndex
+   particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
   END DO
+
 END SUBROUTINE SetParticlePositionDisk
 
 

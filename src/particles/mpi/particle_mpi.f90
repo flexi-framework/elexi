@@ -152,6 +152,8 @@ PartCommSize   = PartCommSize + nRWVars
 IF(TrackingMethod.EQ.REFMAPPING) PartCommSize=PartCommSize+3
 ! Species-ID
 PartCommSize   = PartCommSize + 1
+! Index
+PartCommSize   = PartCommSize + 1
 ! id of element
 PartCommSize   = PartCommSize + 1
 
@@ -319,7 +321,7 @@ USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,PartCommSize,PartSendBuf,PartRecvBuf,PartTargetProc
 USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors,ExchangeProcToGlobalProc
-USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef
+USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
 USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
 USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
@@ -397,6 +399,9 @@ DO iProc=0,nExchangeProcessors-1
       !>> particles species
       PartSendBuf(iProc)%content(1+jPos) = REAL(PartSpecies(iPart),KIND=8)
       jPos=jPos+1
+      !>> particles index
+      PartSendBuf(iProc)%content(1+jPos) = REAL(PartIndex(iPart),KIND=8)
+      jPos=jPos+1
       !>> Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
       PartSendBuf(iProc)%content(1+jPos:6+jPos) = Pt_temp(1:6,iPart)
       jPos=jPos+6
@@ -451,6 +456,7 @@ DO iPart=1,PDM%ParticleVecLength
   IF(PartTargetProc(iPart).EQ.-1) CYCLE
   PartState(1:6,iPart) = 0.
   PartSpecies(  iPart) = 0
+  PartIndex(    iPart) = 0
   Pt_temp(  1:6,iPart) = 0.
   IF (doParticleReflectionTrack) PartReflCount(  iPart) = 0
   IF (doParticleDispersionTrack) PartPath(     :,iPart) = 0.
@@ -528,7 +534,7 @@ USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPIExchange,PartCommSize,PartRecvBuf,PartSendBuf!,PartMPI
 USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors
-USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef
+USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
 USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
 USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
@@ -615,6 +621,9 @@ DO iProc=0,nExchangeProcessors-1
     END IF
     !>> particles species
     PartSpecies(PartID)      = INT(PartRecvBuf(iProc)%content(1+jPos),KIND=4)
+    jPos=jPos+1
+    !>> particles index
+    PartIndex(PartID)        = INT(PartRecvBuf(iProc)%content(1+jPos),KIND=4)
     jPos=jPos+1
     !>> Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
     Pt_temp(1:6,PartID)      = PartRecvBuf(iProc)%content(1+jPos:6+jPos)

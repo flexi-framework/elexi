@@ -998,7 +998,7 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Analyze_Vars, ONLY: PartPath,doParticleDispersionTrack
 USE MOD_Particle_Boundary_Vars,ONLY: doParticleReflectionTrack
 USE MOD_Particle_HDF5_Output
-USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount
+USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex
 USE MOD_Particle_Vars,         ONLY: useLinkedList
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
@@ -1042,7 +1042,7 @@ REAL,ALLOCATABLE               :: TurbPartData(:,:)
 !===================================================================================================================================
 
 ! Size and location of particle data
-PartDataSize = 7
+PartDataSize = 8
 varShift     = 0
 
 ! Increase size if reflections are tracked
@@ -1120,8 +1120,9 @@ DO iElem = offsetElem+1,offsetElem+PP_nElems
     DO iPart = PartInt(1,iElem)+1,PartInt(2,iElem)
       PartData(1:6,iPart) = PartState(1:6,pcount)
       PartData(7  ,iPart) = REAL(PartSpecies(pcount))
-      IF (doParticleReflectionTrack) PartData(8,iPart) = REAL(PartReflCount(pcount))
-      IF (doParticleDispersionTrack) PartData(8+varShift:10+varShift,iPart) = PartPath(1:3,pcount)
+      PartData(8  ,iPart) = REAL(PartIndex(pcount))
+      IF (doParticleReflectionTrack) PartData(9,iPart) = REAL(PartReflCount(pcount))
+      IF (doParticleDispersionTrack) PartData(9+varShift:11+varShift,iPart) = PartPath(1:3,pcount)
 
       ! Turbulent particle properties
       IF (ALLOCATED(TurbPartState))  TurbPartData(:,iPart)=TurbPartState(:,pcount)
@@ -1181,10 +1182,11 @@ ASSOCIATE (&
   StrVarNames(1:3) = (/'ParticlePositionX','ParticlePositionY','ParticlePositionZ'/)
   StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityZ'        /)
   StrVarNames(7)   = 'Species'
+  StrVarNames(8)   = 'Index'
   IF (doParticleReflectionTrack) &
-    StrVarNames(8) = 'ReflectionCount'
+    StrVarNames(9) = 'ReflectionCount'
   IF (doParticleDispersionTrack) &
-    StrVarNames(8+varShift:10+varShift)=(/'PartPathX','PartPathY','PartPathZ'/)
+    StrVarNames(9+varShift:11+varShift)=(/'PartPathX','PartPathY','PartPathZ'/)
 
   IF(MPIRoot)THEN
     CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)

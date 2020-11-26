@@ -115,7 +115,6 @@ USE MOD_Exactfunc_Vars    ,ONLY: JetRadius, RoundJetInitDone, Ramping
 USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
 #endif
 USE MOD_EOS               ,ONLY: ConsToPrim
-USE MOD_EOS_Vars          ,ONLY: Mach
 USE MOD_ExactFunc         ,ONLY: ExactFunc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -224,7 +223,7 @@ DO i=1,nBCs
   locType =BoundaryType(i,BC_TYPE)
   locState=BoundaryType(i,BC_STATE)
   SELECT CASE (locType)
-  CASE(12) ! State File Boundary condition
+  CASE(12,31) ! State File Boundary condition
     IF(.NOT.readBCdone) CALL ReadBCFlow(BCStateFile)
     readBCdone=.TRUE.
   CASE(27) ! Subsonic inflow
@@ -283,10 +282,10 @@ USE MOD_Globals        ,ONLY: Abort
 USE MOD_Mesh_Vars      ,ONLY: BoundaryType,BC
 USE MOD_EOS            ,ONLY: ConsToPrim,PrimtoCons
 USE MOD_EOS            ,ONLY: PRESSURE_RIEMANN
-USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,Mach,cp
+USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,cp
 USE MOD_ExactFunc      ,ONLY: ExactFunc
 USE MOD_ExactFunc_Vars ,ONLY: JetRadius, Ramping
-USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
+USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,BCData,RefStatePrim,nRefState
 #if PARABOLIC
 USE MOD_EOS_Vars       ,ONLY: mu0
 USE MOD_Exactfunc_Vars ,ONLY: delta99_in,x_in
@@ -317,12 +316,6 @@ REAL                    :: MaOut
 REAL                    :: c,vmag,Ma,cb,pt,pb,m,mramp,Tb1,area ! for BCType==23,24,25,28
 REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rminus,nv(3) ! for BCType==27
 REAL                    :: random ! for BCType==31
-#if PARABOLIC
-! needed for blasius BL
-INTEGER                         :: nSteps,i,j
-REAL                            :: eta,deta,deta2,f,fp,fpp,fppp,fbar,fpbar,fppbar,fpppbar
-REAL                            :: x_eff(3),x_offset(3)
-#endif
 !===================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
@@ -349,7 +342,7 @@ CASE(22) ! exact BC = Dirichlet BC !!
     CALL ExactFunc(BCState,t,Face_xGP(:,p,q),Cons)
     CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
   END DO; END DO
-CASE(31) ! Subsonic, round inflow and outside an isothermal wall
+CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from file
 
   ! Initialize boundary state with rotated inner state
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
@@ -362,12 +355,13 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall
   END DO; END DO !p,q
 
   ! Subsonic inflow
-  Tt=RefStatePrim(1,BCState)
   nv=RefStatePrim(2:4,BCState)
-  pt=RefStatePrim(5,BCState)
 
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
     IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).LE.JetRadius)THEN
+      Tt=BCData(4,p,q,SideID)
+      pt=BCData(5,p,q,SideID)
+
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
       A=SUM(nv(1:3)*(-1.)*NormVec(1:3,p,q))
       ! sound speed from inner state
@@ -389,41 +383,28 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall
       ! is the physical one...not 100% clear why
       ! compute static T  at bc from c
       Tb=cb**2/(Kappa*R)
-      Ma=SQRT(2./KappaM1*(Tt/Tb-1.))
+      Ma=MAX(SQRT(2./KappaM1*(Tt/Tb-1.)),0.)
       pb=pt*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1)
 
-!      IF(UPrim_boundary(5,p,q).GT.pb)THEN !subsonic outflow
-        ! check if sub / supersonic (squared quantities)
-!        c=kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q)
-!        vmag=SUM(UPrim_boundary(2:4,p,q)*UPrim_boundary(2:4,p,q))
-!        ! if supersonic use total pressure to compute density
-!        pb        = MERGE(UPrim_boundary(5,p,q)+0.5*UPrim_boundary(1,p,q)*vmag,RefStatePrim(5,BCState),vmag>=c)
-!        UPrim_boundary(1,p,q)   = kappa*pb/c
-!        UPrim_boundary(2:4,p,q) = -ABS(UPrim_boundary(2:4,p,q))
-!        UPrim_boundary(5,p,q)   = pt*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1) ! always outflow pressure
-!        UPrim_boundary(6,p,q)   = UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
-!      ELSE                                !subsonic inflow
-        ! tanh profile for axial jet velocity: tmp1=Uj, tmp2=r
-        tmp1=Ma*SQRT(Kappa*R*Tb)
-        tmp2=SQRT(Face_xGP(2,p,q)*Face_xGP(2,p,q)+Face_xGP(3,p,q)*Face_xGP(3,p,q))
-        tmp3=tmp1*0.5*(1+TANH(0.5*20*(JetRadius-tmp2)/JetRadius))
-        U = tmp3+0.05*random
+      U=Ma*SQRT(Kappa*R*Tb)
+!      tanh profile for axial jet velocity: tmp1=Uj, tmp2=r
+!      tmp3=tmp1*0.5*(1+TANH(0.5*20*(JetRadius-tmp2)/JetRadius))
+!      U = tmp1+0.05*random
 
-        UPrim_boundary(1,p,q) = pb/(R*Tb)
-        UPrim_boundary(5,p,q) = pb
+      UPrim_boundary(1,p,q) = pb/(R*Tb)
+      UPrim_boundary(5,p,q) = pb
 
-        ! we need the state in the global system for the diff fluxes
-        UPrim_boundary(2,p,q)=SUM(U*nv(1:3)*Normvec( 1:3,p,q))
-        UPrim_boundary(3,p,q)=SUM(U*nv(1:3)*Tangvec1(1:3,p,q))
-        UPrim_boundary(4,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
-        UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))!+0.35*random ! standard devation:
-!      END IF
+      ! we need the state in the global system for the diff fluxes
+      UPrim_boundary(2,p,q)=SUM(U*nv(1:3)*Normvec( 1:3,p,q))
+      UPrim_boundary(3,p,q)=SUM(U*nv(1:3)*Tangvec1(1:3,p,q))
+      UPrim_boundary(4,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
+      UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))!+0.35*random ! standard devation:
 
     ELSE ! Isothermal wall
 
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
       UPrim_boundary(2:4,p,q)= 0. ! no slip
-      UPrim_boundary(6,p,q) = RefStatePrim(6,BCState) ! temperature from RefState
+      UPrim_boundary(6,p,q) = RefStatePrim(6,1) ! temperature from RefState
       ! set density via ideal gas equation, consistent to pressure and temperature
       UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
 
@@ -632,51 +613,6 @@ CASE(3,4,9,91,23,24,25,27,28)
       UPrim_boundary(4,p,q)=SUM(U*Tangvec2(1:3,p,q))
       UPrim_boundary(6,p,q)=Tb
 
-      ! calculate equivalent x for Blasius flat plate to have delta99_in at x_in
-!      x_offset(1)=(delta99_in/5)**2*UPrim_boundary(1,p,q)*U/mu0-x_in(1)
-!      x_offset(2)=-x_in(2)
-!      x_offset(3)=0.
-!      x_eff=Face_xGP(:,p,q)+x_offset
-!      x_eff(2)=JetRadius-SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2)+x_offset(2)
-!      IF(x_eff(2).GT.0 .AND. x_eff(1).GT.0) THEN
-!        ! scale bl position in physical space to reference space, eta=5 is ~99% bl thickness
-!        eta=x_eff(2)*(UPrim_boundary(1,p,q)*U/(mu0*x_eff(1)))**0.5
-!
-!        deta=0.02 ! step size
-!        nSteps=CEILING(eta/deta)
-!        deta =eta/nSteps
-!        deta2=0.5*deta
-!
-!        f=0.
-!        fp=0.
-!        fpp=0.332 ! default literature value, don't change if you don't know what you're doing
-!        fppp=0.
-!        !Blasius boundary layer
-!        DO i=1,nSteps
-!          ! predictor
-!          fbar    = f   + deta * fp
-!          fpbar   = fp  + deta * fpp
-!          fppbar  = fpp + deta * fppp
-!          fpppbar = -0.5*fbar*fppbar
-!          ! corrector
-!          f       = f   + deta2 * (fp   + fpbar)
-!          fp      = fp  + deta2 * (fpp  + fppbar)
-!          fpp     = fpp + deta2 * (fppp + fpppbar)
-!          fppp    = -0.5*f*fpp
-!        END DO
-!        UPrim_boundary(3,p,q)=0.5*(mu0*U/UPrim_boundary(1,p,q)/x_eff(1))**0.5*(fp*eta-f)
-!        UPrim_boundary(2,p,q)=U*fp
-!      ELSE
-!        IF(x_eff(2).LE.0) THEN
-!          UPrim_boundary(2,p,q)=0.
-!        END IF
-!      END IF
-!
-!      ! we need the state in the global system for the diff fluxes
-!      UPrim_boundary(2:4,p,q) = UPrim_boundary(2,p,q)*NormVec( :,p,q) &
-!                               +UPrim_boundary(3,p,q)*TangVec1(:,p,q) &
-!                               +UPrim_boundary(4,p,q)*TangVec2(:,p,q)
-!
     END DO; END DO !p,q
 
   END SELECT

@@ -93,7 +93,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1,KappaP1,cp,cv
-USE MOD_EOS_Vars      ,ONLY: R,sKappaM1,sKappaP1,Mach
+USE MOD_EOS_Vars      ,ONLY: R,sKappaM1,sKappaP1
 #if PARABOLIC
 USE MOD_EOS_Vars      ,ONLY: mu0,Pr,KappaSpr
 #if PP_VISC == 1
@@ -175,8 +175,6 @@ ExpoSuth=GETREAL('ExpoSuth')
 mu0     =mu0/Tref**ExpoSuth
 #endif
 #endif /*PARABOLIC*/
-! Mach number (for BC 28)
-Mach = GETREAL('Ma')
 
 SWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')

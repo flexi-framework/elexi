@@ -131,7 +131,7 @@ END IF ! doRestart
 
 !--- set last element to current element (needed when ParticlePush is not executed, e.g. "delay")
 DO i = 1,PDM%ParticleVecLength
-    PEM%lastElement(i) = PEM%Element(i)
+  PEM%lastElement(i) = PEM%Element(i)
 END DO
 
 SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING DONE '
@@ -315,6 +315,20 @@ DO i = 1,nSpecies
           ! insert in last stage only, so that no reconstruction is necessary and number/iter matches
           IF (RKdtFracTotal .EQ. 1.) THEN
             NbrOfParticle = INT(Species(i)%Init(iInit)%ParticleEmission)
+          ELSE
+            NbrOfParticle = 0
+          END IF
+
+        ! Emission Type: Particles at time x
+        CASE(3)
+          ! insert in last stage only, so that no reconstruction is necessary and number/iter matches
+          IF (RKdtFracTotal .EQ. 1..AND.(t-RestartTime).GT.0) THEN
+!            print *, 't', 'MOD', t-RestartTime,dt, MOD((t-RestartTime),Species(i)%Init(iInit)%ParticleEmissionTime)
+            IF(MOD((t-RestartTime),Species(i)%Init(iInit)%ParticleEmissionTime).LT.dt)THEN
+              NbrOfParticle = INT(Species(i)%Init(iInit)%ParticleEmission)
+            ELSE
+              NbrOfParticle = 0
+            END IF
           ELSE
             NbrOfParticle = 0
           END IF

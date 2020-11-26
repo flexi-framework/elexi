@@ -207,7 +207,7 @@ USE MOD_DG_Vars,            ONLY: U
 USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
 USE MOD_Mesh_Vars,          ONLY: nElems,nGlobalElems
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
-USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetArrayAndName
+USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetArrayAndName,GetVarNames
 USE MOD_HDF5_Output,        ONLY: FlushFiles
 USE MOD_Interpolation,      ONLY: GetVandermonde
 USE MOD_ApplyJacobianCons,  ONLY: ApplyJacobianCons
@@ -229,6 +229,7 @@ USE MOD_HDF5_Input,         ONLY: GetDataSize
 USE MOD_DG_Vars,            ONLY: Uturb
 USE MOD_Equation_Vars,      ONLY: nVarTurb
 #endif
+USE MOD_EOS,                ONLY: PrimToCons
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -259,6 +260,8 @@ REAL,ALLOCATABLE   :: Jac_local2(:,:,:,:,:)
 LOGICAL            :: foundJac
 INTEGER            :: HSize_procJac(5)
 #endif
+LOGICAL            :: VarNamesExist
+CHARACTER(LEN=255),ALLOCATABLE  :: varnames_tmp(:)
 !==================================================================================================================================
 IF (PRESENT(doFlushFiles)) THEN
   doFlushFiles_loc = doFlushFiles
@@ -294,7 +297,7 @@ IF(DoRestart)THEN
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
   IF (RestartMean.AND..NOT.postiMode) THEN
     SWRITE(UNIT_stdOut,'(A)') 'Trying to restart from a mean file...'
-    SWRITE(UNIT_StdOut,'(A)') 'WARNING: Make absolutely sure the mean file has ALL conservative variables available!'
+    SWRITE(UNIT_StdOut,'(A)') 'WARNING: Make absolutely sure the mean file has ALL conservative or primitve variables available!'
     SWRITE(UNIT_StdOut,'(132("-"))')
     CALL GetDataSize(File_ID,'Mean',nDims,HSize)
   ELSE
@@ -323,37 +326,49 @@ IF(DoRestart)THEN
   ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
   IF (RestartMean.AND..NOT.postiMode) THEN
-    CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
+    VarNamesExist=.FALSE.
+    SDEALLOCATE(varnames_tmp)
+    CALL GetVarNames("VarNames_Mean",varnames_tmp,VarNamesExist)
+    IF((TRIM(varnames_tmp(2)).NE.'VelocityX').AND.(TRIM(varnames_tmp(2)).NE.'MomentumX'))THEN
+      CALL Abort(__STAMP__,"Mean file has not all primitve and conservative variables.")
+    ELSE
+      CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
+    END IF
   ELSE
     CALL ReadArray('DG_Solution',5,HSize_proc,OffsetElem,5,RealArray=U_local)
   END IF
 
   ! Truncate the solution if we read a restart file from a different equation system or from a time-averaged file
   IF (PP_nVar.LT.nVar_Restart) THEN
-    ALLOCATE(U_localNVar(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
-    U_localNVar(1:PP_nVar,:,:,:,:) = U_local(1:PP_nVar,:,:,:,:)
+    ALLOCATE(U_localNVar(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
+!    U_localNVar(1:PP_nVar,:,:,:,:) = U_local(1:PP_nVar,:,:,:,:)
+    IF(TRIM(varnames_tmp(2)).NE.'MomentumX')THEN
+      CALL PrimToCons(HSize_proc(2)-1,U_local(1:PP_nVarPrim,:,:,:,:),U_localNVar(1:PP_nVar,:,:,:,:))
+    ELSE
+      U_localNVar(1:PP_nVar,:,:,:,:) = U_local(1:PP_nVar,:,:,:,:)
+    END IF
 #if USE_RW
     IF (RestartTurb) THEN
-      ALLOCATE(Uturb(nVarTurb,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+      ALLOCATE(Uturb(nVarTurb,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
       Uturb(1:nVarTurb,:,:,:,:) = U_local(PP_nVar+1:PP_nVar+nVarTurb,:,:,:,:)
     END IF
 #endif
     DEALLOCATE(U_local)
-    ALLOCATE(U_local(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+    ALLOCATE(U_local(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
     U_local = U_localNVar
     DEALLOCATE(U_localNVar)
   END IF
 
   ! Expand the solution if we read a restart file from a different equation system (RANS --> Navier-Stokes)
   IF (PP_nVar.GT.nVar_Restart) THEN
-    ALLOCATE(U_localNVar(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+    ALLOCATE(U_localNVar(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
     U_localNVar(1:nVar_Restart,:,:,:,:) = U_local(1:nVar_Restart,:,:,:,:)
 #if EQNSYSNR == 3
     ! Plugging in the constant mu_tilda
     U_localNVar(PP_nVar,:,:,:,:)   = MuTilda
 #endif
     DEALLOCATE(U_local)
-    ALLOCATE(U_local(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+    ALLOCATE(U_local(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
     U_local = U_localNVar
     DEALLOCATE(U_localNVar)
   END IF
@@ -362,7 +377,7 @@ IF(DoRestart)THEN
   IF(.NOT. InterpolateSolution)THEN
     ! No interpolation needed, read solution directly from file
 #if PP_dim == 3
-    IF (HSize(4).EQ.1) THEN
+    IF (HSize_proc(4).EQ.1) THEN
       ! FLEXI compiled 3D, but data is 2D => expand third space dimension
       CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),4,PP_N+1,U_local,U)
     ELSE
@@ -370,7 +385,7 @@ IF(DoRestart)THEN
       U = U_local
     END IF
 #else
-    IF (HSize(4).EQ.1) THEN
+    IF (HSize_proc(4).EQ.1) THEN
       ! FLEXI compiled 2D + data 2D
       U = U_local
     ELSE
@@ -412,7 +427,7 @@ IF(DoRestart)THEN
                         Vdm_3Ngeo_NRestart, modal=.TRUE.)
 
 #if PP_dim == 3
-    IF (HSize(4).EQ.1) THEN
+    IF (HSize_proc(4).EQ.1) THEN
       ! FLEXI compiled 3D, but data is 2D => expand third space dimension
       ! use temporary array 'U_local2' to store 3D data
       ALLOCATE(U_local2(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
@@ -424,7 +439,7 @@ IF(DoRestart)THEN
       DEALLOCATE(U_local2)
     END IF
 #else
-    IF (HSize(4).NE.1) THEN
+    IF (HSize_proc(4).NE.1) THEN
       ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
       CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,N_Restart,N_Restart,N_Restart,nElems/),4,U_local)
     END IF

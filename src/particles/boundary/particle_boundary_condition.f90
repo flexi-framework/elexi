@@ -464,7 +464,7 @@ REAL                              :: eps_n, eps_t
 REAL                              :: tang1(1:3),tang2(1:3)
 ! Bons particle rebound model
 REAL                              :: E_eff
-REAL                              :: Vol,r,d,w,w_crit,sigma_y
+REAL                              :: Vol,d,w,w_crit,sigma_y
 !===================================================================================================================================
 
 ! check if reflected on AuxBC
@@ -538,29 +538,73 @@ SELECT CASE(WallCoeffModel)
                (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))            **2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID))               )**(-1.)
 
     ! Calculate deformation of cylindrical model particle
-    w       = 4*SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (Species(PartSpecies(PartID))%DensityIC &
+    w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC &
                                                           /(E_eff*3*d)   )**0.5;
 
     ! Find critical deformation
-    sigma_y = Species(PartSpecies(PartID))%YieldCoeff*E_eff !SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
+    sigma_y = Species(PartSpecies(PartID))%YieldCoeff
     w_crit  = sigma_y * 2./3. * d / E_eff
 
     ! Normal coefficient of restitution
     IF (w .GT. w_crit) THEN
-      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *(sigma_y**2. / (Species(PartSpecies(PartID))%DensityIC &
+      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *sigma_y*(1/ (Species(PartSpecies(PartID))%DensityIC &
                                                                           *  E_eff   ))**0.5
     ELSE
       eps_n = 1.
     END IF
 
-    !> Do not account for adhesion for now <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    ! Tangential coefficient of restitution
-
+    ! Tangential coefficient of restitution not considering adhesion
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
+    PartFaceAngleDeg = PartFaceAngle * 180/PI
     eps_t   = 1. - 0.3 / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * &
-                       SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (1/(eps_n)+1)*COS(PartFaceAngle)**2.
+                       SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngleDeg)**2.
+
+
+  !===================================================================================================================================
+  ! Whitaker, S., Bons, J.: An improved particle impact model by accounting for rate of strain and stochastic rebound, 2018
+  !===================================================================================================================================
+  CASE('Whitaker2018')
+    ! Assume spherical particles for now
+    Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
+    d       = (6.*Vol/PI)**(1./3.)
+
+    ! Find composite elastic modulus
+    E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
+               (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))            **2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID))               )**(-1.)
+
+    ! Calculate deformation of cylindrical model particle
+    w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC &
+                                                          /(E_eff*3*d)   )**0.5;
+
+    ! Find critical deformation
+    sigma_y = Species(PartSpecies(PartID))%YieldCoeff*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
+    w_crit  = sigma_y * 2./3. * d / E_eff
+
+    ! Normal coefficient of restitution
+    IF (w .GT. w_crit) THEN
+      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *sigma_y*(1/ (Species(PartSpecies(PartID))%DensityIC &
+                                                                          *  E_eff   ))**0.5
+    ELSE
+      eps_n = 1.
+    END IF
+
+    ! Tangential coefficient of restitution not considering adhesion
+    !> Assume change in density from last particle position to wall position to be negligible
+    ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
+    !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
+    PartFaceAngleDeg = PartFaceAngle * 180/PI
+    eps_t   = 1. - 0.63 / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * &
+                       SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngleDeg)**2.
+
+!    print *, 'v_n  ', SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))
+!    print *, 'PartFaceAngle', PartFaceAngleDeg
+!    print *, 'w_el ', w
+!    print *, 'w_cri', w_crit
+!    print *, 'E_eff', E_eff
+!    print *, 'eps_n', eps_n
+!    print *, 'eps_t', eps_t
 
   !=================================================================================================================================
   ! Fong, W.; Amili, O.; Coletti, F.: Velocity and spatial distribution of intertial particles in a turbulent channel flow

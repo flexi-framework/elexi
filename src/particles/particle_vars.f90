@@ -38,10 +38,17 @@ REAL    , ALLOCATABLE :: TurbPt_temp(:,:)                                    ! L
                                                                              ! (1:3,1:NParts) with 2nd index: vx',vy',vz'
 REAL    , ALLOCATABLE :: LastPartPos(:,:)                                    ! (1:3,1:NParts) with 2nd index: x,y,z
 INTEGER , ALLOCATABLE :: PartSpecies(:)                                      ! (1:NParts)
+INTEGER , ALLOCATABLE :: PartIndex(:)                                        ! (1:NParts)
 INTEGER               :: PartRHSMethod
 REAL                  :: PartGravity(3)
 INTEGER               :: nrSeeds                                             ! Number of Seeds for Random Number Generator
 INTEGER , ALLOCATABLE :: seeds(:)                        !        =>NULL()   ! Seeds for Random Number Generator
+
+REAL, ALLOCATABLE     :: RP_Data(:,:)
+INTEGER               :: RP_MaxBufferSize
+INTEGER               :: RP_Records
+INTEGER               :: RP_Threshold
+LOGICAL               :: RecordPart
 
 TYPE tExcludeRegion
   CHARACTER(40)                          :: SpaceIC                          ! specifying Keyword for Particle Space condition
@@ -97,6 +104,7 @@ TYPE tInit                                                                   ! P
   REAL                                   :: Alpha                            ! WaveNumber for sin-deviation initiation.
   REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3)
   INTEGER                                :: ParticleEmissionType             ! Emission Type 1 = emission rate in 1/s,
+  INTEGER                                :: CountIndex
                                                                              !               2 = emission rate 1/iteration
   REAL                                   :: ParticleEmission                 ! Emission in [1/s] or [1/Iteration]
   REAL                                   :: ParticleEmissionTime             ! Scale emission time for emission type 1
@@ -155,8 +163,9 @@ TYPE tSpecies                                                                ! P
   !General Species Values
   TYPE(tInit), ALLOCATABLE               :: Init(:)  !     =>NULL()          ! Particle Data for each Initialisation
   INTEGER                                :: RHSMethod                        ! specifying Keyword for RHS method
-  REAL                                   :: MassIC                           ! Particle Mass (without MPF)
-  REAL                                   :: DensityIC                        ! Particle Density (without MPF)
+  REAL                                   :: MassIC                           ! Particle mass (without MPF)
+  REAL                                   :: DiameterIC                       ! Particle diameter (without MPF)
+  REAL                                   :: DensityIC                        ! Particle density (without MPF)
   INTEGER                                :: NumberOfInits                    ! Number of different initial particle placements
   TYPE(typeSurfaceflux),ALLOCATABLE      :: Surfaceflux(:)                   ! Particle Data for each SurfaceFlux emission
   INTEGER                                :: nSurfacefluxBCs                  ! Number of SF emissions
@@ -168,6 +177,7 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: YoungIC                          ! Young's modulus
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
+  INTEGER                                :: CountIndex
 END TYPE
 
 INTEGER                                  :: nSpecies                         ! number of species

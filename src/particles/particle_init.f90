@@ -141,7 +141,12 @@ CALL prms%CreateIntOption(          'MPIRankOut'               , 'If compiled wi
                                                                  ' tracking information for the defined PartOut.'
                                                                , '0')
 #endif /*CODE_ANALYZE*/
-
+CALL prms%CreateLogicalOption(      'Part-RecordPart'          , 'Record particles at given record plane'  &
+                                                               , '.FALSE.')
+CALL prms%CreateIntOption(          'Part-RecordMemory'        , 'Record particles memory'  &
+                                                               , '100')
+CALL prms%CreateRealOption(         'Part-RPThreshold'         , 'Record particles threshold'  &
+                                                               , '0.0')
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
 !===================================================================================================================================
@@ -191,7 +196,9 @@ CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Wang',        
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Jacobs-highRe',   RHS_JACOBSHIGHRE)
-CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle Mass of species [$] [kg]'                              &
+CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle mass of species [$] [kg]'                              &
+                                                                , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'                       &
                                                                 , '0.'      , numberedmulti=.TRUE.)
@@ -288,7 +295,9 @@ CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Wang',
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Jacobs-highRe',   RHS_JACOBSHIGHRE)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-MassIC'    , 'Particle Mass of species [$] [kg]'                      &
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-MassIC'    , 'Particle mass of species [$] [kg]'                      &
+                                                                , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DiameterIC', 'Particle diameter of species [$] [m]'                      &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'               &
                                                                 , '0.'      , numberedmulti=.TRUE.)
@@ -659,6 +668,7 @@ USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER               :: RP_maxMemory
 !===================================================================================================================================
 CALL AllocateParticleArrays()
 CALL InitializeVariablesRandomNumbers()
@@ -677,7 +687,16 @@ CALL InitializeVariablesSpeciesInits()
 
 CALL InitializeVariablesPartBoundary()
 ! Flag if low velocity particles should be removed
-LowVeloRemove     = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
+LowVeloRemove      = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
+
+RecordPart         = GETLOGICAL('Part-RecordPart','.FALSE.')
+IF (RecordPart) THEN
+  RP_maxMemory     = GETINT('Part-RecordMemory','100')           ! Max buffer (100MB)
+  RP_MaxBufferSize = RP_MaxMemory*131072/6    != size in bytes/(real*EPDataSize)
+  ALLOCATE(RP_Data(7,RP_MaxBufferSize))
+  RP_Data=0.
+  RP_Threshold     = GETREAL('Part-RPThreshold','0.0')
+END IF
 
 ! AuxBCs
 nAuxBCs=GETINT('Part-nAuxBCs','0')
@@ -738,6 +757,7 @@ ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
          LastPartPos(     1:3,1:PDM%maxParticleNumber),    &
          PartPosRef(      1:3,1:PDM%MaxParticleNumber),    &
          PartSpecies(         1:PDM%maxParticleNumber),    &
+         PartIndex(           1:PDM%maxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
          Pt(              1:3,1:PDM%maxParticleNumber),    &
          Pt_temp(         1:6,1:PDM%maxParticleNumber),    &
@@ -759,6 +779,7 @@ PartState                                    = 0.
 PartReflCount                                = 0.
 Pt                                           = 0.
 PartSpecies                                  = 0
+PartIndex                                    = 0
 PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
 Pt_temp                                      = 0
 PartPosRef                                   =-888.
@@ -872,7 +893,12 @@ DO iSpec = 1, nSpecies
     SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec,'-Init',iInit
     Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(tmpStr2)//'-RHSMethod'             )
     Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-MassIC'           ,'0.')
+    Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-DiameterIC'       ,'0.')
     Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-DensityIC'        ,'0.')
+    IF (Species(iSpec)%MassIC .EQ. 0.) THEN
+      Species(iSpec)%MassIC=Species(iSpec)%DensityIC*PI/6*Species(iSpec)%DiameterIC**3
+      SWRITE(UNIT_StdOut,'(A,I0,A,F16.5)') ' | Mass of species (spherical) ', iSpec, ' = ', Species(iSpec)%MassIC
+    END IF
     Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-LowVeloThreshold' ,'0.')
     Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-HighVeloThreshold','0.')
 
@@ -1623,6 +1649,7 @@ SDEALLOCATE(PartReflCount)
 SDEALLOCATE(LastPartPos)
 SDEALLOCATE(PartPosRef)
 SDEALLOCATE(PartSpecies)
+SDEALLOCATE(PartIndex)
 
 ! Runge-Kutta time stepping
 SDEALLOCATE(Pt)

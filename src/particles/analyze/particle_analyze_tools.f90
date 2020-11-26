@@ -27,7 +27,12 @@ INTERFACE CalcEkinPart
   MODULE PROCEDURE CalcEkinPart
 END INTERFACE
 
+INTERFACE ParticleRecord
+  MODULE PROCEDURE ParticleRecord
+END INTERFACE
+
 PUBLIC :: CalcEkinPart
+PUBLIC :: ParticleRecord
 !===================================================================================================================================
 
 CONTAINS
@@ -60,5 +65,96 @@ partV2 = PartState(4,iPart) * PartState(4,iPart) &
 CalcEkinPart = 0.5*Species(PartSpecies(iPart))%MassIC*partV2
 
 END FUNCTION CalcEkinPart
+
+
+SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartIndex,RP_Data
+USE MOD_Particle_Vars,           ONLY: RP_MaxBufferSize,RP_Records,PartSpecies,nSpecies
+USE MOD_io_bin,                  ONLY: prt_bin!,load_bin
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)             :: OutputTime
+LOGICAL,OPTIONAL,INTENT(IN) :: writeToBinary
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                     :: iPart,iElem,ElemID,RP_glob
+!REAL,ALLOCATABLE            :: buffOuttmp(:,:)
+CHARACTER(LEN=200)          :: FileName_loc, FileString_loc        ! FileName with data type extension
+#if USE_MPI
+INTEGER,ALLOCATABLE         :: displacement(:), nRPRecords_per_proc(:)
+INTEGER                     :: i
+REAL,ALLOCATABLE            :: RP_Data_glob(:,:)
+#endif
+!===================================================================================================================================
+
+DO iPart=1,PDM%ParticleVecLength
+  IF (PartState(1,iPart).GE.0.0001 .AND. LastPartPos(1,iPart).LT.0.0001) THEN
+    RP_Records=RP_Records+1
+    RP_Data(1:6,RP_Records) = PartState(1:6,iPart)
+    RP_Data(7,RP_Records)   = PartSpecies(iPart)
+  END IF
+END DO
+
+IF((RP_Records .GE. RP_MaxBufferSize .OR. PRESENT(writeToBinary)))THEN
+  !>> Sum up particles from the other procs
+#if USE_MPI
+  IF(MPIRoot)THEN
+    ALLOCATE(nRPRecords_per_proc(0:nProcessors-1))
+  ELSE
+    ALLOCATE(nRPRecords_per_proc(1))
+  END IF
+  CALL MPI_GATHER(RP_Records, 1, MPI_INTEGER, nRPRecords_per_proc,&
+    1, MPI_INTEGER, 0, MPI_COMM_FLEXI, iERROR)
+
+  !>> Gather data to root
+  IF (MPIRoot) THEN
+    ALLOCATE(displacement(1:nProcessors))
+    displacement(1)=0
+    DO i=2,nProcessors
+      displacement(i)=SUM(7*nRPRecords_per_proc(0:i-2))
+    END DO
+    ALLOCATE(RP_Data_glob(1:7,1:SUM(nRPRecords_per_proc)))
+  ELSE
+    ALLOCATE(displacement(1))
+    ALLOCATE(RP_Data_glob(1,1))
+  END IF
+
+  CALL MPI_GATHERV(RP_Data(:,1:RP_Records),RP_Records*7,MPI_DOUBLE_PRECISION,RP_Data_glob,nRPRecords_per_proc*7,displacement,&
+    MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+#endif
+
+#if USE_MPI
+  IF(MPIRoot .AND. SUM(nRPRecords_per_proc).GT.0)THEN
+#endif
+    ! Write to binary file
+    FileName_loc = TRIM(TIMESTAMP('recordpoints_part_',OutputTime))
+    FileString_loc=TRIM(FileName_loc)//'.dat'
+    SWRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileString_loc)
+    SWRITE(UNIT_stdOut,*)' Number of particles ',SUM(nRPRecords_per_proc)
+
+#if USE_MPI
+    CALL prt_bin(RP_Data_glob, FileString_loc)
+#else
+    CALL prt_bin(RP_Data, FileString_loc)
+#endif
+!    CALL load_bin(FileName_loc,buffOuttmp)
+
+    RP_Data=0.0
+
+    SWRITE(UNIT_stdOut,'(A)') ' WRITE STATE TO BINARY... DONE'
+    SWRITE(UNIT_StdOut,'(132("-"))')
+    DEALLOCATE(RP_Data_glob)
+    DEALLOCATE(displacement,nRPRecords_per_proc)
+#if USE_MPI
+  END IF
+#endif
+  RP_Records=0
+END IF
+
+END SUBROUTINE ParticleRecord
 
 END MODULE MOD_Particle_Analyze_Tools

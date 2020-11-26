@@ -131,7 +131,7 @@ SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
-USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState
+USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,PartIndex
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition,SetParticlePositionPoint
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine,SetParticlePositionDisk
@@ -155,6 +155,7 @@ INTEGER,INTENT(INOUT)                    :: NbrOfParticle
 !!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE                         :: particle_positions(:)
+INTEGER,ALLOCATABLE                      :: particle_count(:),nPartsPerProc(:),displacement(:)
 INTEGER                                  :: i,ParticleIndexNbr,allocStat,nChunks, chunkSize
 INTEGER                                  :: mySumOfMatchedParticles, sumOfMatchedParticles, DimSend
 #if USE_MPI
@@ -201,6 +202,7 @@ END IF
 IF (PartMPI%InitGroup(InitGroup)%MPIROOT.OR.nChunks.GT.1) THEN
 #endif
   ALLOCATE( particle_positions(1:chunkSize*DimSend), STAT=allocStat )
+  ALLOCATE( particle_count    (1:chunkSize),         STAT=allocStat )
   IF (allocStat .NE. 0) &
     CALL abort(__STAMP__,'ERROR in SetParticlePosition: cannot allocate particle_positions!')
 
@@ -215,7 +217,7 @@ IF (PartMPI%InitGroup(InitGroup)%MPIROOT.OR.nChunks.GT.1) THEN
   CASE ('Gaussian')
     CALL SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions)
   CASE('disc')
-    CALL SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions,particle_count)
   CASE('circle', 'circle_equidistant')
     CALL SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions)
   CASE('cuboid','cylinder')
@@ -262,9 +264,38 @@ END IF
 ! check the sum of the matched particles: did each particle find its "home"-CPU?
 CALL MPI_ALLREDUCE( mySumOfMatchedParticles, sumOfMatchedParticles, 1, MPI_INTEGER, MPI_SUM &
                   , PartMPI%InitGroup(InitGroup)%COMM, IERROR)
+
+IF(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'disc')THEN
+  ! Communicate PartIndex
+  ALLOCATE(nPartsPerProc(0:PartMPI%InitGroup(InitGroup)%nProcs-1))
+  CALL MPI_ALLGATHER(mySumOfMatchedParticles, 1, MPI_INTEGER, nPartsPerProc(0:PartMPI%InitGroup(InitGroup)%nProcs-1),&
+    1, MPI_INTEGER, PartMPI%InitGroup(InitGroup)%COMM, iERROR)
+
+  ! Calculate displacement
+  ALLOCATE(displacement(1:PartMPI%InitGroup(InitGroup)%nProcs))
+  displacement(1)=0
+  DO i=2,PartMPI%InitGroup(InitGroup)%nProcs
+    displacement(i)=SUM(nPartsPerProc(0:i-2))
+  END DO
+
+  IF(PDM%ParticleVecLength.EQ.0)THEN
+    CALL MPI_SCATTERV(particle_count,nPartsPerProc,displacement,MPI_INTEGER,PartIndex(PDM%ParticleVecLength+1:PDM%ParticleVecLength+mySumOfMatchedParticles), &
+                      mySumOfMatchedParticles, MPI_INTEGER, 0, PartMPI%InitGroup(InitGroup)%COMM, IERROR)
+  ELSE
+    CALL MPI_SCATTERV(particle_count,nPartsPerProc,displacement,MPI_INTEGER,PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength+mySumOfMatchedParticles-1), &
+                      mySumOfMatchedParticles, MPI_INTEGER, 0, PartMPI%InitGroup(InitGroup)%COMM, IERROR)
+  END IF
+!  IPWRITE(*,*) mySumOfMatchedParticles, PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength+mySumOfMatchedParticles-1)
+
+  DEALLOCATE(displacement, nPartsPerProc)
+END IF
 #else
 ! in the seriell case, particles are only emitted on the current proc
 sumOfMatchedParticles = mySumOfMatchedParticles
+! Assign PartIndex
+IF(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'disc')THEN
+  PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength+mySumOfMatchedParticles)=particle_count
+END IF
 #endif
 
 #if USE_MPI
@@ -316,7 +347,7 @@ USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRef
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,FieldAtParticle,externalField
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
-USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount
+USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount,PartSpecies
 USE MOD_Mesh_Vars,               ONLY: offsetElem
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
@@ -328,6 +359,7 @@ USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
 USE MOD_Eval_xyz,                ONLY: EvaluateField_FV
 USE MOD_FV_Vars,                 ONLY: FV_Elems
 #endif /* FV_ENABLED */
+USE MOD_io_bin,                  ONLY: load_bin
 !IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !!-----------------------------------------------------------------------------------------------------------------------------------
@@ -340,7 +372,7 @@ INTEGER,INTENT(IN)               :: init_or_sf
 INTEGER,INTENT(INOUT)            :: NbrOfParticle
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                          :: PositionNbr,i,iElem,j
+INTEGER                          :: PositionNbr,i,iElem,j,iParttmp,size_of(2)
 REAL                             :: field(PP_nVar)
 REAL                             :: Radius(3)
 REAL                             :: RandVal(3)
@@ -355,6 +387,10 @@ REAL                             :: Alpha                            ! WaveNumbe
 #if USE_RW
 REAL                             :: turbField(nVarTurb)
 #endif
+REAL                             :: diffr, totaldiffr
+REAL,ALLOCATABLE                 :: PartStatetmp(:,:)
+CHARACTER(200)                   :: filename_loc             ! specifying keyword for velocity distribution
+LOGICAL                          :: foundPart
 !===================================================================================================================================
 ! Abort if we don't have any/too many particles
 IF(NbrOfParticle.LT.1) RETURN
@@ -465,6 +501,41 @@ CASE('radial_constant')
 !===================================================================================================================================
 ! Emission with local fluid velocity.
 !===================================================================================================================================
+CASE('load_from_file')
+  FileName_loc = "recordpoints_part.dat"
+  CALL load_bin(filename_loc, PartStatetmp)
+  size_of=SHAPE(PartStatetmp)
+  i = 1
+  DO WHILE (i .le. NbrOfParticle)
+    PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
+    IF (PositionNbr .ne. 0) THEN
+      ! calculate distance to each particle in binary file
+      totaldiffr = 0.
+      foundpart=.FALSE.
+      PartState(4:6,PositionNbr) = 0.
+      DO iParttmp=1,size_of(2)
+        IF(PartSpecies(PositionNbr) .NE. PartStatetmp(7,iParttmp)) CYCLE
+        diffr=SQRT((PartStatetmp(1,iParttmp)-PartState(1,PositionNbr))**2+(PartStatetmp(2,iParttmp)-PartState(2,PositionNbr))**2+(PartStatetmp(3,iParttmp)-PartState(3,PositionNbr))**2)
+!        print *, 'diffr', diffr
+        IF (diffr.LT.0.01) THEN
+           PartState(4:6,PositionNbr) = PartState(4:6,PositionNbr) + PartStatetmp(4:6,iParttmp)/diffr
+           totaldiffr = totaldiffr + 1./diffr
+!           print *, 'totaldiffr', totaldiffr
+           foundpart=.TRUE.
+        END IF
+      END DO
+      ! Unity radius
+      IF(foundPart) PartState(4:6,PositionNbr) = PartState(4:6,PositionNbr)/totaldiffr
+      ! New particles have not been reflected
+      PartReflCount(PositionNbr) = 0
+!      print *, 'PartState', PartState(4:6,PositionNbr)
+    END IF
+    i = i + 1
+  END DO
+
+!===================================================================================================================================
+! Emission with local fluid velocity.
+!===================================================================================================================================
 CASE('fluid')
   ! null field vector
   field = 0.
@@ -525,6 +596,7 @@ CASE('fluid')
 
       ! Calculate velocity from momentum and density
       PartState(4:6,PositionNbr) = FieldAtParticle(2:4,PositionNbr)/FieldAtParticle(1,PositionNbr)
+      PartState(4:6,PositionNbr) = PartState(4:6,PositionNbr) * VeloIC
 
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0

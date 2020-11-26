@@ -400,7 +400,7 @@ IF (meshMode.GT.1) THEN
   CALL InitFV_Metrics()  ! FV metrics
 #endif
   ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
-  CALL WriteDebugMesh(GETINT('debugmesh','0'))
+!  CALL WriteDebugMesh(GETINT('debugmesh','0'))
 END IF
 
 IF (meshMode.GT.0) THEN

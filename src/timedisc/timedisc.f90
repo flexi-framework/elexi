@@ -175,7 +175,7 @@ SUBROUTINE TimeDisc()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
-USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage
+USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage,dtElem
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
@@ -208,6 +208,8 @@ USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues,MacroValSampTim
 USE MOD_ErosionPoints             ,ONLY: WriteEP
 USE MOD_ErosionPoints_Vars        ,ONLY: doParticleImpactTrack
 USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimestep,ManualTimestep
+USE MOD_Particle_Vars             ,ONLY: RecordPart
+USE MOD_Particle_Analyze_Tools    ,ONLY: ParticleRecord
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
@@ -215,10 +217,12 @@ USE MOD_LoadBalance_Timedisc,ONLY: LoadBalance,InitialAutoRestart
 USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,PerformLoadBalance
 USE MOD_LoadBalance_Vars    ,ONLY: RestartWallTime,LoadBalanceSample
 #endif /*LOADBALANCE*/
+USE MOD_Debugmesh           ,ONLY: WriteDebugMesh
 !#if USE_MPI_SHARED
 !USE MOD_Particle_MPI_Shared ,ONLY: UpdateDGShared
 !#endif
 use MOD_IO_HDF5
+USE MOD_ReadInTools         ,ONLY: GETINT
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -323,6 +327,9 @@ ELSE
   errType = 0
 END IF
 #endif
+
+! Write Debugmesh
+CALL WriteDebugMesh(GETINT('debugmesh','0'),dtElem)
 
 #if USE_LOADBALANCE
 CALL InitialAutoRestart(t,dt,dt_min,tend,tAnalyze,Analyze_dt,tmp_LoadBalanceSample,tmp_DoLoadBalance)
@@ -500,6 +507,7 @@ DO
 #if USE_PARTICLES
       ! Write individual particle surface impact data
       IF(doParticleImpactTrack)  CALL WriteEP(OutputTime=t,resetCounters=.TRUE.)
+      IF(RecordPart)             CALL ParticleRecord(t,writeToBinary=.TRUE.)
 #endif /*USE_PARTICLES*/
       ! Visualize data
       CALL Visualize(t,U)

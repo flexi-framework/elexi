@@ -141,12 +141,15 @@ CALL prms%CreateIntOption(          'MPIRankOut'               , 'If compiled wi
                                                                  ' tracking information for the defined PartOut.'
                                                                , '0')
 #endif /*CODE_ANALYZE*/
+CALL prms%CreateStringOption(       'Part-RecordType'          , 'Type of record plane.\n'                                       //&
+                                                                 ' - plane\n'                                                      &
+                                                               , 'none')
 CALL prms%CreateLogicalOption(      'Part-RecordPart'          , 'Record particles at given record plane'  &
                                                                , '.FALSE.')
 CALL prms%CreateIntOption(          'Part-RecordMemory'        , 'Record particles memory'  &
                                                                , '100')
-CALL prms%CreateRealOption(         'Part-RPThreshold'         , 'Record particles threshold'  &
-                                                               , '0.0')
+CALL prms%CreateRealArrayOption(    'Part-RPThresholds'        , 'Record particles threshold'  &
+                                                               , '0.,0.,0.,0.,0.,0.')
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
 !===================================================================================================================================
@@ -707,7 +710,7 @@ IF (RecordPart) THEN
     CASE('plane')
       ALLOCATE(RPP_Plane%RPP_Data(7,RPP_MaxBufferSize))
       RPP_Plane%RPP_Data = 0.
-      x_dummy(1:6) = GETREALARRAY('Part_RPThresholds',6)
+      x_dummy(1:6) = GETREALARRAY('Part-RPThresholds',6)
       DO iP=1,3
         RPP_Plane%x(1:2,iP)=x_dummy(1+2*(iP-1):2+2*(iP-1))
       END DO ! iPoint

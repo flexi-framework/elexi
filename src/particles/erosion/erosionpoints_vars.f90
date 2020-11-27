@@ -32,7 +32,7 @@ INTEGER            :: EP_Impacts              !< Impacts on current proc
 INTEGER            :: offsetEP                !< offset for each proc in global EP list
 INTEGER,ALLOCATABLE:: EP_ElemID(:)            !< mapping from EP->Elem (nEP)
 REAL,ALLOCATABLE   :: EP_Data(:,:)            !< solution evaluated at EPs (nvar,nEP,nSamples)
-INTEGER            :: EPDataSize = 15
+INTEGER            :: EPDataSize
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MPI Communicator for EPs
 !----------------------------------------------------------------------------------------------------------------------------------

@@ -70,8 +70,8 @@ END FUNCTION CalcEkinPart
 SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartIndex,RP_Data
-USE MOD_Particle_Vars,           ONLY: RP_MaxBufferSize,RP_Records,PartSpecies,nSpecies
+USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies,nSpecies
+USE MOD_Particle_Analyze_Vars,   ONLY: RPP_MaxBufferSize,RPP_Plane,RPP_Type
 USE MOD_io_bin,                  ONLY: prt_bin!,load_bin
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -87,19 +87,21 @@ CHARACTER(LEN=200)          :: FileName_loc, FileString_loc        ! FileName wi
 #if USE_MPI
 INTEGER,ALLOCATABLE         :: displacement(:), nRPRecords_per_proc(:)
 INTEGER                     :: i
-REAL,ALLOCATABLE            :: RP_Data_glob(:,:)
+REAL,ALLOCATABLE            :: RPP_Data_glob(:,:)
 #endif
 !===================================================================================================================================
 
-DO iPart=1,PDM%ParticleVecLength
-  IF (PartState(1,iPart).GE.0.0001 .AND. LastPartPos(1,iPart).LT.0.0001) THEN
-    RP_Records=RP_Records+1
-    RP_Data(1:6,RP_Records) = PartState(1:6,iPart)
-    RP_Data(7,RP_Records)   = PartSpecies(iPart)
-  END IF
-END DO
+IF(RPP_Type.EQ.'plane')THEN
+  DO iPart=1,PDM%ParticleVecLength
+    IF ((PartState(1,iPart).GE.RPP_Plane%x(1,1)) .AND. (LastPartPos(1,iPart).LT.RPP_Plane%x(1,1)))THEN
+      RPP_Plane%RPP_Records=RPP_Plane%RPP_Records+1
+      RPP_Plane%RPP_Data(1:6,RPP_Plane%RPP_Records) = PartState(1:6,iPart)
+      RPP_Plane%RPP_Data(7,RPP_Plane%RPP_Records)   = PartSpecies(iPart)
+    END IF
+  END DO
+END IF
 
-IF((RP_Records .GE. RP_MaxBufferSize .OR. PRESENT(writeToBinary)))THEN
+IF((RPP_Plane%RPP_Records .GE. RPP_MaxBufferSize .OR. PRESENT(writeToBinary)))THEN
   !>> Sum up particles from the other procs
 #if USE_MPI
   IF(MPIRoot)THEN
@@ -107,7 +109,7 @@ IF((RP_Records .GE. RP_MaxBufferSize .OR. PRESENT(writeToBinary)))THEN
   ELSE
     ALLOCATE(nRPRecords_per_proc(1))
   END IF
-  CALL MPI_GATHER(RP_Records, 1, MPI_INTEGER, nRPRecords_per_proc,&
+  CALL MPI_GATHER(RPP_Plane%RPP_Records, 1, MPI_INTEGER, nRPRecords_per_proc,&
     1, MPI_INTEGER, 0, MPI_COMM_FLEXI, iERROR)
 
   !>> Gather data to root
@@ -117,13 +119,13 @@ IF((RP_Records .GE. RP_MaxBufferSize .OR. PRESENT(writeToBinary)))THEN
     DO i=2,nProcessors
       displacement(i)=SUM(7*nRPRecords_per_proc(0:i-2))
     END DO
-    ALLOCATE(RP_Data_glob(1:7,1:SUM(nRPRecords_per_proc)))
+    ALLOCATE(RPP_Data_glob(1:7,1:SUM(nRPRecords_per_proc)))
   ELSE
     ALLOCATE(displacement(1))
-    ALLOCATE(RP_Data_glob(1,1))
+    ALLOCATE(RPP_Data_glob(1,1))
   END IF
 
-  CALL MPI_GATHERV(RP_Data(:,1:RP_Records),RP_Records*7,MPI_DOUBLE_PRECISION,RP_Data_glob,nRPRecords_per_proc*7,displacement,&
+  CALL MPI_GATHERV(RPP_Plane%RPP_Data(:,1:RPP_Plane%RPP_Records),RPP_Plane%RPP_Records*7,MPI_DOUBLE_PRECISION,RPP_Data_glob,nRPRecords_per_proc*7,displacement,&
     MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
 #endif
 
@@ -137,22 +139,23 @@ IF((RP_Records .GE. RP_MaxBufferSize .OR. PRESENT(writeToBinary)))THEN
     SWRITE(UNIT_stdOut,*)' Number of particles ',SUM(nRPRecords_per_proc)
 
 #if USE_MPI
-    CALL prt_bin(RP_Data_glob, FileString_loc)
+    CALL prt_bin(RPP_Data_glob, FileString_loc)
 #else
-    CALL prt_bin(RP_Data, FileString_loc)
+    CALL prt_bin(RPP_Plane%RPP_Data, FileString_loc)
 #endif
 !    CALL load_bin(FileName_loc,buffOuttmp)
+!    print *, buffOuttmp
 
-    RP_Data=0.0
+    RPP_Plane%RPP_Data=0.0
 
     SWRITE(UNIT_stdOut,'(A)') ' WRITE STATE TO BINARY... DONE'
     SWRITE(UNIT_StdOut,'(132("-"))')
-    DEALLOCATE(RP_Data_glob)
+    DEALLOCATE(RPP_Data_glob)
     DEALLOCATE(displacement,nRPRecords_per_proc)
 #if USE_MPI
   END IF
 #endif
-  RP_Records=0
+  RPP_Plane%RPP_Records=0
 END IF
 
 END SUBROUTINE ParticleRecord

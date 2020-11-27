@@ -311,7 +311,7 @@ USE MOD_FV_Vars,                 ONLY: FV_toDGinRK
 #endif
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
-USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
+USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack,RecordPart
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos,PartSpecies,Species
@@ -321,6 +321,7 @@ USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIPa
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
+USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -371,6 +372,8 @@ IF (t.GE.DelayTime) THEN
       IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
     END DO
   END IF
+
+  IF (RecordPart) CALL ParticleRecord(t)
 
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_PUSH,tLBStart)
@@ -516,11 +519,11 @@ USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
-USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
+USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack,RecordPart
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
-USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos,PartSpecies,Species,RecordPart
+USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos,PartSpecies,Species
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/

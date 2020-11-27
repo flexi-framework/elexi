@@ -203,12 +203,11 @@ USE MOD_FV
 #if USE_PARTICLES
 USE MOD_Particle_Globals          ,ONLY: ALMOSTZERO
 USE MOD_Particle_Analyze          ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars     ,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
+USE MOD_Particle_Analyze_Vars     ,ONLY: doParticlePositionTrack,doParticleConvergenceTrack,RecordPart
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_ErosionPoints             ,ONLY: WriteEP
 USE MOD_ErosionPoints_Vars        ,ONLY: doParticleImpactTrack
 USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimestep,ManualTimestep
-USE MOD_Particle_Vars             ,ONLY: RecordPart
 USE MOD_Particle_Analyze_Tools    ,ONLY: ParticleRecord
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE

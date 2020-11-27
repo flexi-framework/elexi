@@ -221,7 +221,7 @@ ELSE
 END IF
 
 ! Check if we need to interpolate the restart file to our current polynomial degree and node type
-IF(DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(NodeType))))THEN
+IF (DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(NodeType))))THEN
   InterpolateSolution=.TRUE.
   IF(MIN(N_Restart,PP_N).LT.NGeo) &
     CALL PrintWarning('The geometry is or was underresolved and will potentially change on restart!')
@@ -257,34 +257,34 @@ SUBROUTINE Restart(doFlushFiles)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Restart_Vars
-USE MOD_DG_Vars,            ONLY: U
-USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
-USE MOD_Mesh_Vars,          ONLY: nElems,nGlobalElems
+USE MOD_ApplyJacobianCons,  ONLY: ApplyJacobianCons
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
-USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetArrayAndName,GetVarNames
+USE MOD_DG_Vars,            ONLY: U
+USE MOD_EOS,                ONLY: PrimToCons
+USE MOD_HDF5_Input,         ONLY: GetDataSize
+USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetArrayAndName
 USE MOD_HDF5_Output,        ONLY: FlushFiles
 USE MOD_Interpolation,      ONLY: GetVandermonde
-USE MOD_ApplyJacobianCons,  ONLY: ApplyJacobianCons
 USE MOD_Interpolation_Vars, ONLY: NodeType
+USE MOD_IO_HDF5
+USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
+USE MOD_Mesh_Vars,          ONLY: nElems,nGlobalElems
+USE MOD_Restart_Vars
 #if FV_ENABLED
 USE MOD_FV,                 ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars,            ONLY: FV_Elems
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
-#endif
+#endif /*FV_ENABLED*/
 #if PP_dim == 3
 USE MOD_2D,                 ONLY: ExpandArrayTo3D
 #else
 USE MOD_2D,                 ONLY: to2D_rank5
-#endif
-USE MOD_IO_HDF5
-USE MOD_HDF5_Input,         ONLY: GetDataSize
+#endif /*PP_dim == 3*/
 #if USE_RW
 USE MOD_DG_Vars,            ONLY: Uturb
 USE MOD_Equation_Vars,      ONLY: nVarTurb
-#endif
-USE MOD_EOS,                ONLY: PrimToCons
+#endif /*USE_RW*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -306,15 +306,15 @@ LOGICAL            :: doFlushFiles_loc
 INTEGER            :: nVal(15),iVar
 REAL,ALLOCATABLE   :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
-#endif
+#endif /*FV_ENABLED*/
 #if GCL
 REAL,ALLOCATABLE   :: Jac_local(:,:,:,:,:)
 #if PP_dim == 3
 REAL,ALLOCATABLE   :: Jac_local2(:,:,:,:,:)
-#endif
+#endif /*PP_dim == 3*/
 LOGICAL            :: foundJac
 INTEGER            :: HSize_procJac(5)
-#endif
+#endif /*GCL*/
 !==================================================================================================================================
 IF (PRESENT(doFlushFiles)) THEN
   doFlushFiles_loc = doFlushFiles
@@ -469,7 +469,8 @@ IF(DoRestart)THEN
   ELSE ! InterpolateSolution
     IF (RestartTurb) CALL CollectiveStop(__STAMP__,'Interpolation not supported for turbulent quantities. Non-linear operation!')
     ! We need to interpolate the solution to the new computational grid
-    SWRITE(UNIT_stdOut,*)'Interpolating solution from restart grid with N=',N_restart,' to computational grid with N=',PP_N
+    SWRITE(UNIT_stdOut,'(A,I0,3A,I0,3A)') ' | Interpolating solution from restart grid with N=',N_restart,' (',TRIM(NodeType_Restart), &
+                                          ') to computational grid with N='                   ,PP_N     ,' (',TRIM(NodeType),')'
 
     CALL GetVandermonde(N_Restart, NodeType_Restart,PP_N,      NodeType,         &
                         Vdm_NRestart_N,     modal=.TRUE.)
@@ -545,7 +546,6 @@ IF(DoRestart)THEN
     END IF
 
     DEALLOCATE(U_local)
-    SWRITE(UNIT_stdOut,*)'DONE!'
   END IF
   CALL CloseDataFile()
 

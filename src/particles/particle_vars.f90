@@ -44,11 +44,7 @@ REAL                  :: PartGravity(3)
 INTEGER               :: nrSeeds                                             ! Number of Seeds for Random Number Generator
 INTEGER , ALLOCATABLE :: seeds(:)                        !        =>NULL()   ! Seeds for Random Number Generator
 
-REAL, ALLOCATABLE     :: RP_Data(:,:)
-INTEGER               :: RP_MaxBufferSize
-INTEGER               :: RP_Records
-INTEGER               :: RP_Threshold
-LOGICAL               :: RecordPart
+LOGICAL               :: doPartIndex                                         ! Flag to give particles an unique (or not) index
 
 TYPE tExcludeRegion
   CHARACTER(40)                          :: SpaceIC                          ! specifying Keyword for Particle Space condition
@@ -177,7 +173,7 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: YoungIC                          ! Young's modulus
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
-  INTEGER                                :: CountIndex
+  INTEGER                                :: CountIndex                       ! Count number of particles
 END TYPE
 
 INTEGER                                  :: nSpecies                         ! number of species

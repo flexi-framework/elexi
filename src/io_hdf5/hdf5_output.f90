@@ -999,7 +999,7 @@ USE MOD_Particle_Analyze_Vars, ONLY: PartPath,doParticleDispersionTrack
 USE MOD_Particle_Boundary_Vars,ONLY: doParticleReflectionTrack
 USE MOD_Particle_HDF5_Output
 USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex
-USE MOD_Particle_Vars,         ONLY: useLinkedList
+USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
 #endif /*MPI*/
@@ -1035,14 +1035,20 @@ INTEGER,ALLOCATABLE            :: PartInt(:,:)
 REAL,ALLOCATABLE               :: PartData(:,:)
 INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
 INTEGER                        :: PartDataSize       !number of entries in each line of PartData
-INTEGER                        :: locnPart_max
+INTEGER                        :: locnPart_max, tmpIndex
 ! Particle turbulence models
 INTEGER                        :: TurbPartDataSize
 REAL,ALLOCATABLE               :: TurbPartData(:,:)
 !===================================================================================================================================
 
 ! Size and location of particle data
-PartDataSize = 8
+IF (doPartIndex) THEN
+  PartDataSize = 8
+  tmpIndex=9
+ELSE
+  PartDataSize = 7
+  tmpIndex=8
+END IF
 varShift     = 0
 
 ! Increase size if reflections are tracked
@@ -1120,9 +1126,9 @@ DO iElem = offsetElem+1,offsetElem+PP_nElems
     DO iPart = PartInt(1,iElem)+1,PartInt(2,iElem)
       PartData(1:6,iPart) = PartState(1:6,pcount)
       PartData(7  ,iPart) = REAL(PartSpecies(pcount))
-      PartData(8  ,iPart) = REAL(PartIndex(pcount))
-      IF (doParticleReflectionTrack) PartData(9,iPart) = REAL(PartReflCount(pcount))
-      IF (doParticleDispersionTrack) PartData(9+varShift:11+varShift,iPart) = PartPath(1:3,pcount)
+      IF (doPartIndex) PartData(8,iPart) = REAL(PartIndex(pcount))
+      IF (doParticleReflectionTrack) PartData(tmpIndex,iPart) = REAL(PartReflCount(pcount))
+      IF (doParticleDispersionTrack) PartData(tmpIndex+varShift:tmpIndex+2+varShift,iPart) = PartPath(1:3,pcount)
 
       ! Turbulent particle properties
       IF (ALLOCATED(TurbPartState))  TurbPartData(:,iPart)=TurbPartState(:,pcount)
@@ -1182,11 +1188,11 @@ ASSOCIATE (&
   StrVarNames(1:3) = (/'ParticlePositionX','ParticlePositionY','ParticlePositionZ'/)
   StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityZ'        /)
   StrVarNames(7)   = 'Species'
-  StrVarNames(8)   = 'Index'
+  IF(doPartIndex) StrVarNames(8)   = 'Index'
   IF (doParticleReflectionTrack) &
-    StrVarNames(9) = 'ReflectionCount'
+    StrVarNames(tmpIndex) = 'ReflectionCount'
   IF (doParticleDispersionTrack) &
-    StrVarNames(9+varShift:11+varShift)=(/'PartPathX','PartPathY','PartPathZ'/)
+    StrVarNames(tmpIndex+varShift:tmpIndex+2+varShift)=(/'PartPathX','PartPathY','PartPathZ'/)
 
   IF(MPIRoot)THEN
     CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)

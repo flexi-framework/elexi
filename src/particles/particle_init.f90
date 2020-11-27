@@ -422,6 +422,8 @@ CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-ARM_DmaxSamp
 
 CALL prms%CreateLogicalOption(      'OutputSurfaceFluxLinked'         , 'Flag to print the SurfaceFlux-linked Info'                &
                                                                       , '.FALSE.')
+CALL prms%CreateLogicalOption(      'doPartIndex'                     , 'Flag to write out unique part index'                &
+                                                                      , '.FALSE.')
 
 !===================================================================================================================================
 ! > Boundaries
@@ -659,6 +661,7 @@ USE MOD_Particle_MPI_Emission  ,ONLY: InitEmissionComm
 USE MOD_Particle_MPI_Halo      ,ONLY: IdentifyPartExchangeProcs
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*USE_MPI*/
+USE MOD_Particle_Analyze_Vars  ,ONLY: RPP_Type, RPP_MaxBufferSize, RPP_Plane, RecordPart
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -668,8 +671,10 @@ USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: RP_maxMemory
+INTEGER               :: RPP_maxMemory, iP
+REAL                  :: x_dummy(6)
 !===================================================================================================================================
+doPartIndex             = GETLOGICAL('doPartIndex','.FALSE.')
 CALL AllocateParticleArrays()
 CALL InitializeVariablesRandomNumbers()
 
@@ -687,15 +692,29 @@ CALL InitializeVariablesSpeciesInits()
 
 CALL InitializeVariablesPartBoundary()
 ! Flag if low velocity particles should be removed
-LowVeloRemove      = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
+LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 
-RecordPart         = GETLOGICAL('Part-RecordPart','.FALSE.')
+! Initialize record plane of particles
+RecordPart          = GETLOGICAL('Part-RecordPart','.FALSE.')
 IF (RecordPart) THEN
-  RP_maxMemory     = GETINT('Part-RecordMemory','100')           ! Max buffer (100MB)
-  RP_MaxBufferSize = RP_MaxMemory*131072/6    != size in bytes/(real*EPDataSize)
-  ALLOCATE(RP_Data(7,RP_MaxBufferSize))
-  RP_Data=0.
-  RP_Threshold     = GETREAL('Part-RPThreshold','0.0')
+  ! Get type of record plane
+  RPP_Type          = GETSTR('Part-RecordType','plane')
+  ! Get size of buffer array
+  RPP_maxMemory     = GETINT('Part-RecordMemory','100')           ! Max buffer (100MB)
+  RPP_MaxBufferSize = RPP_MaxMemory*131072/6    != size in bytes/(real*RPP_maxMemory)
+
+  SELECT CASE(RPP_Type)
+    CASE('plane')
+      ALLOCATE(RPP_Plane%RPP_Data(7,RPP_MaxBufferSize))
+      RPP_Plane%RPP_Data = 0.
+      x_dummy(1:6) = GETREALARRAY('Part_RPThresholds',6)
+      DO iP=1,3
+        RPP_Plane%x(1:2,iP)=x_dummy(1+2*(iP-1):2+2*(iP-1))
+      END DO ! iPoint
+      RPP_Plane%RPP_Records=0.
+    CASE DEFAULT
+      CALL abort(__STAMP__,'ERROR: Specified record plane does not exist!')
+  END SELECT
 END IF
 
 ! AuxBCs
@@ -757,7 +776,6 @@ ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
          LastPartPos(     1:3,1:PDM%maxParticleNumber),    &
          PartPosRef(      1:3,1:PDM%MaxParticleNumber),    &
          PartSpecies(         1:PDM%maxParticleNumber),    &
-         PartIndex(           1:PDM%maxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
          Pt(              1:3,1:PDM%maxParticleNumber),    &
          Pt_temp(         1:6,1:PDM%maxParticleNumber),    &
@@ -769,6 +787,7 @@ ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
          PEM%Element(         1:PDM%maxParticleNumber),    &
          PEM%lastElement(     1:PDM%maxParticleNumber),    &
          STAT=ALLOCSTAT)
+IF(doPartIndex) ALLOCATE(PartIndex(           1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
   CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
 
@@ -779,7 +798,7 @@ PartState                                    = 0.
 PartReflCount                                = 0.
 Pt                                           = 0.
 PartSpecies                                  = 0
-PartIndex                                    = 0
+IF(doPartIndex) PartIndex                    = 0
 PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
 Pt_temp                                      = 0
 PartPosRef                                   =-888.
@@ -928,6 +947,9 @@ DO iSpec = 1, nSpecies
     !> Read only emission properties required for SpaceIC
     !>>> Parameters must be set to false to allow conformity checks afterwards
     Species(iSpec)%Init(iInit)%CalcHeightFromDt = .FALSE.
+
+    ! Set unique part index
+    IF (doPartIndex) Species(iSpec)%Init(iInit)%CountIndex = 0.
 
     SELECT CASE(Species(iSpec)%Init(iInit)%SpaceIC)
       CASE('point')

@@ -131,7 +131,7 @@ SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
-USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,PartIndex
+USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,PartIndex,doPartIndex
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition,SetParticlePositionPoint
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine,SetParticlePositionDisk
@@ -202,28 +202,33 @@ END IF
 IF (PartMPI%InitGroup(InitGroup)%MPIROOT.OR.nChunks.GT.1) THEN
 #endif
   ALLOCATE( particle_positions(1:chunkSize*DimSend), STAT=allocStat )
-  ALLOCATE( particle_count    (1:chunkSize),         STAT=allocStat )
+  IF (doPartIndex) THEN
+    ALLOCATE(particle_count(1:chunkSize))
+  ELSE
+    ! dummy
+    ALLOCATE(particle_count(1))
+  END IF
   IF (allocStat .NE. 0) &
     CALL abort(__STAMP__,'ERROR in SetParticlePosition: cannot allocate particle_positions!')
 
   !------------------SpaceIC-cases: start-----------------------------------------------------------!
   SELECT CASE(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC))
   CASE ('point')
-    CALL SetParticlePositionPoint(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionPoint(FractNbr,iInit,chunkSize,particle_positions,particle_count)
   CASE ('line_with_equidistant_distribution')
-    CALL SetParticlePositionEquidistLine(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionEquidistLine(FractNbr,iInit,chunkSize,particle_positions,particle_count)
   CASE ('line')
-    CALL SetParticlePositionLine(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionLine(FractNbr,iInit,chunkSize,particle_positions,particle_count)
   CASE ('Gaussian')
-    CALL SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions,particle_count)
   CASE('disc')
     CALL SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions,particle_count)
   CASE('circle', 'circle_equidistant')
-    CALL SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions,particle_count)
   CASE('cuboid','cylinder')
-    CALL SetParticlePositionCuboidCylinder(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionCuboidCylinder(FractNbr,iInit,chunkSize,particle_positions,particle_count)
   CASE('sphere')
-    CALL SetParticlePositionSphere(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionSphere(FractNbr,iInit,chunkSize,particle_positions,particle_count)
 !  CASE('sin_deviation')
 !    CALL SetParticlePositionSinDeviation(FractNbr,iInit,chunkSize,particle_positions)
   END SELECT
@@ -265,7 +270,7 @@ END IF
 CALL MPI_ALLREDUCE( mySumOfMatchedParticles, sumOfMatchedParticles, 1, MPI_INTEGER, MPI_SUM &
                   , PartMPI%InitGroup(InitGroup)%COMM, IERROR)
 
-IF(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'disc')THEN
+IF (doPartIndex) THEN
   ! Communicate PartIndex
   ALLOCATE(nPartsPerProc(0:PartMPI%InitGroup(InitGroup)%nProcs-1))
   CALL MPI_ALLGATHER(mySumOfMatchedParticles, 1, MPI_INTEGER, nPartsPerProc(0:PartMPI%InitGroup(InitGroup)%nProcs-1),&
@@ -293,7 +298,7 @@ END IF
 ! in the seriell case, particles are only emitted on the current proc
 sumOfMatchedParticles = mySumOfMatchedParticles
 ! Assign PartIndex
-IF(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'disc')THEN
+IF (doPartIndex) THEN
   PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength+mySumOfMatchedParticles)=particle_count
 END IF
 #endif

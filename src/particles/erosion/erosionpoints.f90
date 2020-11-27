@@ -87,6 +87,7 @@ USE MOD_ErosionPoints_Vars     ,ONLY: EP_Data,EPDataSize,EP_Impacts
 USE MOD_ErosionPoints_Vars     ,ONLY: EP_onProc,nEP_Procs,EP_MaxBufferSize
 USE MOD_ErosionPoints_Vars,     ONLY: ErosionPointsInitIsDone
 USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides,doParticleImpactSample
+USE MOD_Particle_Vars          ,ONLY: doPartIndex
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -113,6 +114,12 @@ END IF
 ! surfaces sides are determined in particle_boundary_sampling.f90!
 IF (.NOT.doParticleImpactSample) &
  CALL COLLECTIVESTOP(__STAMP__,'Impact tracking only available with Part-SurfaceSampling=T!')
+
+IF (doPartIndex) THEN
+  EPDataSize = 15
+ELSE
+  EPDataSize = 14
+END IF
 
 EP_maxMemory     = GETINT('Part-TrackImpactsMemory','100')           ! Max buffer (100MB)
 EP_MaxBufferSize = EP_MaxMemory*131072/EPDataSize    != size in bytes/(real*EPDataSize)
@@ -190,7 +197,7 @@ USE MOD_TimeDisc_Vars,           ONLY: t,CurrentStage,dt,RKc
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Vars
 USE MOD_ErosionPoints_Vars
-USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos,PartIndex
+USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos,PartIndex,doPartIndex
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -249,7 +256,7 @@ EP_Data(11,EP_Impacts)  = e_kin_old
 EP_Data(12,EP_Impacts)  = e_kin_new
 EP_Data(13,EP_Impacts)  = PartFaceAngle_old
 EP_Data(14,EP_Impacts)  = PartFaceAngle
-EP_Data(15,EP_Impacts)  = PartIndex(PartID)
+IF(doPartIndex) EP_Data(15,EP_Impacts)  = PartIndex(PartID)
 
 END SUBROUTINE RecordErosionPoint
 
@@ -333,6 +340,7 @@ USE MOD_HDF5_Output           ,ONLY: WriteAttribute,MarkWriteSuccessfull
 USE MOD_HDF5_WriteArray       ,ONLY: WriteArray
 USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars           ,ONLY: ProjectName
+USE MOD_Particle_Vars         ,ONLY: doPartIndex
 #if USE_MPI
 USE MOD_Erosionpoints_Vars    ,ONLY: EP_COMM
 USE MOD_Particle_HDF5_output  ,ONLY: DistributedWriteArray
@@ -403,7 +411,7 @@ StrVarNames(11)='E_kin_impact'
 StrVarNames(12)='E_kin_reflected'
 StrVarNames(13)='Alpha_impact'
 StrVarNames(14)='Alpha_reflected'
-StrVarNames(15)='Index'
+IF (doPartIndex) StrVarNames(15)='Index'
 
 ! Regenerate state file skeleton
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',OutputTime))

@@ -54,8 +54,7 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Restart")
 CALL prms%CreateLogicalOption('ResetTime',      "Override solution time to t=0 on restart.", '.FALSE.')
-CALL prms%CreateLogicalOption('RestartMean',    "Flag to denote restart from time-averaged file.", '.FALSE.')
-CALL prms%CreateLogicalOption('RestartTurb',    "Flag to denote restart from time-averaged filecontaining turbulent quantities.", '.FALSE.')
+CALL prms%CreateLogicalOption('RestartTurb',    "Flag to denote restart from time-averaged file containing turbulent quantities.", '.FALSE.')
 #if EQNSYSNR == 3
 CALL prms%CreateRealOption(   'RestartMuTilda', "Constant mu_tilda to be applied throughout the domain.", '0.')
 #endif
@@ -88,7 +87,7 @@ USE MOD_Restart_Vars
 USE MOD_StringTools,        ONLY: INTTOSTR
 USE MOD_ReadInTools,        ONLY: GETINT
 #endif
-USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE
+USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE,GetVarNames,DatasetExists
 USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
 USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL,GETREALARRAY
@@ -100,6 +99,9 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RestartFile_in !< state file to restar
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL            :: ResetTime,validHDF5
+LOGICAl            :: RestartMean,VarNamesExist
+INTEGER            :: iVar
+CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_tmp(:)
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.RestartInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,'InitRestart not ready to be called or already called.')
@@ -121,14 +123,20 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   DoRestart = .TRUE.
   ! Read in parameters of restart solution
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-  ! Read this here because we need to change array names in case of a mean file
-  RestartTurb=GETLOGICAL('RestartTurb','.FALSE.')
-  IF (.NOT.RestartTurb.OR.postiMode) RestartMean=GETLOGICAL('RestartMean','.FALSE.')
+  ! Check if the file is a time-averaged file
+  CALL DatasetExists(File_ID,'Mean',RestartMean)
+  ! ! Read this here because we need to change array names in case of a mean file
+  ! RestartTurb=GETLOGICAL('RestartTurb','.FALSE.')
   ! Read in attributes
   IF (.NOT.RestartMean.OR.postiMode) THEN
     CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart)
+    RestartMode = 1
   ELSE
     CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart,'Mean')
+    ! Get the VarNames to compare later
+    VarNamesExist = .FALSE.
+    SDEALLOCATE(VarNames_tmp)
+    CALL GetVarNames('VarNames_Mean',VarNames_tmp,VarNamesExist)
   END IF
   ! Read in time from restart file
   CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
@@ -140,25 +148,72 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   IF(ResetTime) RestartTime=0.
   CALL CloseDataFile()
 
+  ! Check if number of elements match
   IF (nElems_Restart.NE.nGlobalElems) THEN
     CALL CollectiveStop(__STAMP__, "Restart File has different number of elements!")
   END IF
-  IF (nVar_Restart.GT.PP_nVar) THEN
-    IF (RestartMean.AND..NOT.postiMode) THEN
-#if EQNSYSNR == 3
-      SWRITE(UNIT_StdOut,'(A)') ' Restart from mean file. Parameter for mu_tilda required!'
-#endif
-    ELSEIF(RestartTurb.AND.(nVar_Restart.NE.PP_nVar+2)) THEN
-      CALL CollectiveStop(__STAMP__, "Restart File has wrong number of variables for restart with turbulent quantities!")
+
+  ! Check if restart file contains all necessary variables
+  IF (RestartMean.AND..NOT.postiMode) THEN
+    ! Check if variables match
+    RestartCons = -1
+    RestartPrim = -1
+    DO iVar = 1,nVar_Restart
+      SELECT CASE(VarNames_tmp(iVar))
+        CASE('Density')
+          RestartCons(1) = iVar
+          RestartPrim(1) = iVar
+        CASE('MomentumX')
+          RestartCons(2) = iVar
+        CASE('MomentumY')
+          RestartCons(3) = iVar
+        CASE('MomentumZ')
+          RestartCons(4) = iVar
+        CASE('EnergyStagnationDensity')
+          RestartCons(5) = iVar
+        CASE('VelocityX')
+          RestartPrim(2) = iVar
+        CASE('VelocityY')
+          RestartPrim(3) = iVar
+        CASE('VelocityZ')
+          RestartPrim(4) = iVar
+        CASE('Pressure')
+          RestartPrim(5) = iVar
+        CASE('Temperature')
+          RestartPrim(6) = iVar
+      END SELECT
+    END DO
+    ! Use conservative variables available
+    IF (ALL(RestartCons.NE.-1)) THEN
+      RestartMode = 2
+      SWRITE(UNIT_StdOut,'(A)') ' | Restarting from time-averaged file using conservative variables ...'
+    ELSE IF (ALL(RestartPrim.NE.-1)) THEN
+      RestartMode = 3
+      SWRITE(UNIT_StdOut,'(A)') ' | Restarting from time-averaged file using primitive variables ...'
     ELSE
-      SWRITE(UNIT_StdOut,'(A)') ' Restart file has more variables than current equation system, will be truncated!'
+      CALL CollectiveStop(__STAMP__,'Time-averaged file for restart has not all conservative/primitive variables available!')
+    END IF
+  ! IF (nVar_Restart.GT.PP_nVar) THEN
+  !   IF (RestartMean.AND..NOT.postiMode) THEN
+! #if EQNSYSNR == 3
+  !     SWRITE(UNIT_StdOut,'(A)') ' Restart from mean file. Parameter for mu_tilda required!'
+! #endif
+  !   ELSEIF(RestartTurb.AND.(nVar_Restart.NE.PP_nVar+2)) THEN
+  !     CALL CollectiveStop(__STAMP__, "Restart File has wrong number of variables for restart with turbulent quantities!")
+
+  ! Restart from state-file
+  ELSE
+    IF (nVar_Restart.GT.PP_nVar) THEN
+      SWRITE(UNIT_StdOut,'(A)') 'Restart file has more variables than current equation system, will be truncated!'
+    ELSE IF (nVar_Restart.LT.PP_nVar) THEN
+      CALL CollectiveStop(__STAMP__,'Restart file has less variables than current equation system!')
     END IF
   END IF
-  IF (nVar_Restart.LT.PP_nVar) THEN
-#if EQNSYSNR == 3
-    SWRITE(UNIT_StdOut,'(A)') ' Restart file has less variables than current equation system. Parameter for mu_tilda required!'
-#endif
-  END IF
+  ! IF (nVar_Restart.LT.PP_nVar) THEN
+! #if EQNSYSNR == 3
+  !   SWRITE(UNIT_StdOut,'(A)') ' Restart file has less variables than current equation system. Parameter for mu_tilda required!'
+! #endif
+  ! END IF
 ELSE
   ! No restart
   RestartTime = 0.
@@ -260,8 +315,6 @@ REAL,ALLOCATABLE   :: Jac_local2(:,:,:,:,:)
 LOGICAL            :: foundJac
 INTEGER            :: HSize_procJac(5)
 #endif
-LOGICAL            :: VarNamesExist
-CHARACTER(LEN=255),ALLOCATABLE  :: varnames_tmp(:)
 !==================================================================================================================================
 IF (PRESENT(doFlushFiles)) THEN
   doFlushFiles_loc = doFlushFiles
@@ -295,22 +348,16 @@ IF(DoRestart)THEN
 #endif
 
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
-  IF (RestartMean.AND..NOT.postiMode) THEN
-    SWRITE(UNIT_stdOut,'(A)') 'Trying to restart from a mean file...'
-    SWRITE(UNIT_StdOut,'(A)') 'WARNING: Make absolutely sure the mean file has ALL conservative or primitve variables available!'
-    SWRITE(UNIT_StdOut,'(132("-"))')
+  IF (RestartMode.GT.1 .AND. .NOT.postiMode) THEN
     CALL GetDataSize(File_ID,'Mean',nDims,HSize)
   ELSE
     CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
   END IF
-! Sanity check
-!  IF ((HSize(1).LT.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
-!    CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
-!  END IF
+! Sanity check, number of elements
   IF ((HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
     CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
   END IF
-! Allow restart from LES to RANS solution
+! Sanity check, number of variables
   IF ((HSize(1).LT.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
 #if EQNSYSNR == 3
     IF (MuTilda.NE.0) THEN
@@ -320,20 +367,14 @@ IF(DoRestart)THEN
     END IF
 #endif
   END IF
-  HSize_proc = INT(HSize)
+
+  HSize_proc    = INT(HSize)
   HSize_proc(5) = nElems
-  ! Allocate larger array for restart with turbulent quantitites
+  ! Allocate array to hold the restart data
   ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
-  IF (RestartMean.AND..NOT.postiMode) THEN
-    VarNamesExist=.FALSE.
-    SDEALLOCATE(varnames_tmp)
-    CALL GetVarNames("VarNames_Mean",varnames_tmp,VarNamesExist)
-    IF((TRIM(varnames_tmp(2)).NE.'VelocityX').AND.(TRIM(varnames_tmp(2)).NE.'MomentumX'))THEN
-      CALL Abort(__STAMP__,"Mean file has not all primitve and conservative variables.")
-    ELSE
-      CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
-    END IF
+  IF (RestartMode.GT.1 .AND. .NOT.postiMode) THEN
+    CALL ReadArray('Mean'       ,5,HSize_proc,OffsetElem,5,RealArray=U_local)
   ELSE
     CALL ReadArray('DG_Solution',5,HSize_proc,OffsetElem,5,RealArray=U_local)
   END IF
@@ -341,37 +382,46 @@ IF(DoRestart)THEN
   ! Truncate the solution if we read a restart file from a different equation system or from a time-averaged file
   IF (PP_nVar.LT.nVar_Restart) THEN
     ALLOCATE(U_localNVar(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
-!    U_localNVar(1:PP_nVar,:,:,:,:) = U_local(1:PP_nVar,:,:,:,:)
-    IF(TRIM(varnames_tmp(2)).NE.'MomentumX')THEN
-      CALL PrimToCons(HSize_proc(2)-1,U_local(1:PP_nVarPrim,:,:,:,:),U_localNVar(1:PP_nVar,:,:,:,:))
-    ELSE
-      U_localNVar(1:PP_nVar,:,:,:,:) = U_local(1:PP_nVar,:,:,:,:)
-    END IF
+    ! Pass to corresponding variables from the time-averaged file
+    SELECT CASE(RestartMode)
+      ! Conservative Variables, truncated
+      CASE(1)
+        U_localNVar(1:PP_nVar,:,:,:,:) = U_local(1:PP_nVar                            ,:,:,:,:)
+      ! Conservative Variables, time-averaged
+      CASE(2)
+        U_localNVar(1:PP_nVar,:,:,:,:) = U_local(RestartCons(1):RestartCons(1)+PP_nVar-1,:,:,:,:)
+      ! Primitive Variables, time-averaged
+      CASE(3)
+        CALL PrimToCons(HSize_proc(2)-1,U_local(1:PP_nVarPrim,:,:,:,:),U_localNVar(RestartCons(1):RestartCons(1)+PP_nVar,:,:,:,:))
+    END SELECT
+
 #if USE_RW
     IF (RestartTurb) THEN
       ALLOCATE(Uturb(nVarTurb,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
       Uturb(1:nVarTurb,:,:,:,:) = U_local(PP_nVar+1:PP_nVar+nVarTurb,:,:,:,:)
     END IF
 #endif
+
+    ! Write truncated array back to U_local
     DEALLOCATE(U_local)
     ALLOCATE(U_local(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
     U_local = U_localNVar
     DEALLOCATE(U_localNVar)
   END IF
 
-  ! Expand the solution if we read a restart file from a different equation system (RANS --> Navier-Stokes)
-  IF (PP_nVar.GT.nVar_Restart) THEN
-    ALLOCATE(U_localNVar(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
-    U_localNVar(1:nVar_Restart,:,:,:,:) = U_local(1:nVar_Restart,:,:,:,:)
-#if EQNSYSNR == 3
-    ! Plugging in the constant mu_tilda
-    U_localNVar(PP_nVar,:,:,:,:)   = MuTilda
-#endif
-    DEALLOCATE(U_local)
-    ALLOCATE(U_local(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
-    U_local = U_localNVar
-    DEALLOCATE(U_localNVar)
-  END IF
+  ! ! Expand the solution if we read a restart file from a different equation system (RANS --> Navier-Stokes)
+  ! IF (PP_nVar.GT.nVar_Restart) THEN
+  !   ALLOCATE(U_localNVar(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
+  !   U_localNVar(1:nVar_Restart,:,:,:,:) = U_local(1:nVar_Restart,:,:,:,:)
+! #if EQNSYSNR == 3
+  !   ! Plugging in the constant mu_tilda
+  !   U_localNVar(PP_nVar,:,:,:,:)   = MuTilda
+! #endif
+  !   DEALLOCATE(U_local)
+  !   ALLOCATE(U_local(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
+  !   U_local = U_localNVar
+  !   DEALLOCATE(U_localNVar)
+  ! END IF
 
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
@@ -499,8 +549,10 @@ IF(DoRestart)THEN
   END IF
   CALL CloseDataFile()
 
-  IF (RestartMean.AND..NOT.postiMode) THEN
-    SWRITE(UNIT_stdOut,'(A)') 'Restart from mean file successful.'
+  IF (RestartMode.GT.1 .AND. .NOT.postiMode) THEN
+    SWRITE(UNIT_stdOut,'(A,ES13.7)') ' | Restart from time-averaged file successful t = ',RestartTime
+  ELSE
+    SWRITE(UNIT_stdOut,'(A,ES13.7)') ' | Restart from state file successful at t = '     ,RestartTime
   END IF
 
 #if !(USE_PARTICLES)

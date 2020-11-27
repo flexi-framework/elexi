@@ -393,7 +393,7 @@ SWRITE(UNIT_stdOut,'(A)')' DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE GetDataProps
 
-SUBROUTINE GetVarnames(AttribName,VarNames,AttribExists)
+SUBROUTINE GetVarNames(AttribName,VarNames,AttribExists)
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)                :: AttribName
@@ -415,7 +415,7 @@ IF (AttribExists) THEN
   ! read variable names
   CALL ReadAttribute(File_ID,TRIM(AttribName),nVal,StrArray=VarNames)
 END IF
-END SUBROUTINE GetVarnames
+END SUBROUTINE GetVarNames
 
 !===================================================================================================================================
 !> High level wrapper to ReadArray and ReadAttrib. Check if array exists and directly

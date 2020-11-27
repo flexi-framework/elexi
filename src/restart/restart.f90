@@ -392,7 +392,7 @@ IF(DoRestart)THEN
         U_localNVar(1:PP_nVar,:,:,:,:) = U_local(RestartCons(1):RestartCons(1)+PP_nVar-1,:,:,:,:)
       ! Primitive Variables, time-averaged
       CASE(3)
-        CALL PrimToCons(HSize_proc(2)-1,U_local(1:PP_nVarPrim,:,:,:,:),U_localNVar(RestartCons(1):RestartCons(1)+PP_nVar,:,:,:,:))
+        CALL PrimToCons(HSize_proc(2)-1,U_local(1:PP_nVarPrim,:,:,:,:),U_localNVar(RestartCons(1):RestartCons(1)+PP_nVar-1,:,:,:,:))
     END SELECT
 
 #if USE_RW

@@ -126,7 +126,7 @@ USE MOD_Particle_Boundary_Vars,   ONLY:doParticleReflectionTrack
 USE MOD_Particle_MPI_Vars
 USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
 USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
-USE MOD_Particle_Vars,            ONLY:PDM
+USE MOD_Particle_Vars,            ONLY:PDM,doPartIndex
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #endif
@@ -153,7 +153,7 @@ IF(TrackingMethod.EQ.REFMAPPING) PartCommSize=PartCommSize+3
 ! Species-ID
 PartCommSize   = PartCommSize + 1
 ! Index
-PartCommSize   = PartCommSize + 1
+IF(doPartIndex) PartCommSize   = PartCommSize + 1
 ! id of element
 PartCommSize   = PartCommSize + 1
 

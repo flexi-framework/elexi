@@ -708,7 +708,7 @@ IF (RecordPart) THEN
 
   SELECT CASE(RPP_Type)
     CASE('plane')
-      ALLOCATE(RPP_Plane%RPP_Data(7,RPP_MaxBufferSize))
+      ALLOCATE(RPP_Plane%RPP_Data(8,RPP_MaxBufferSize))
       RPP_Plane%RPP_Data = 0.
       x_dummy(1:6) = GETREALARRAY('Part-RPThresholds',6)
       DO iP=1,3

@@ -70,9 +70,14 @@ END FUNCTION CalcEkinPart
 SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies,nSpecies
+USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies,nSpecies,PartIndex
 USE MOD_Particle_Analyze_Vars,   ONLY: RPP_MaxBufferSize,RPP_Plane,RPP_Type
 USE MOD_io_bin,                  ONLY: prt_bin!,load_bin
+USE MOD_HDF5_Output             ,ONLY: WriteAttribute
+USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
+#if USE_MPI
+USE MOD_Particle_HDF5_output    ,ONLY: DistributedWriteArray
+#endif /*MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -81,13 +86,17 @@ REAL,INTENT(IN)             :: OutputTime
 LOGICAL,OPTIONAL,INTENT(IN) :: writeToBinary
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: iPart,iElem,ElemID,RP_glob
+INTEGER                     :: iPart,RP_glob
 !REAL,ALLOCATABLE            :: buffOuttmp(:,:)
-CHARACTER(LEN=200)          :: FileName_loc, FileString_loc        ! FileName with data type extension
+CHARACTER(LEN=200)          :: FileName_loc     ! FileName with data type extension
+CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
+INTEGER, DIMENSION(2)       :: M_shape
+INTEGER, PARAMETER          :: type_label = 8
+INTEGER, PARAMETER          :: RPPDataSize = 8
+INTEGER                     :: locRPP,RPP_glob,offsetRPP
 #if USE_MPI
-INTEGER,ALLOCATABLE         :: displacement(:), nRPRecords_per_proc(:)
-INTEGER                     :: i
-REAL,ALLOCATABLE            :: RPP_Data_glob(:,:)
+INTEGER                     :: sendbuf(2),recvbuf(2)
+INTEGER                     :: nRecords(0:nProcessors-1)
 #endif
 !===================================================================================================================================
 
@@ -97,64 +106,84 @@ IF(RPP_Type.EQ.'plane')THEN
       RPP_Plane%RPP_Records=RPP_Plane%RPP_Records+1
       RPP_Plane%RPP_Data(1:6,RPP_Plane%RPP_Records) = PartState(1:6,iPart)
       RPP_Plane%RPP_Data(7,RPP_Plane%RPP_Records)   = PartSpecies(iPart)
+      RPP_Plane%RPP_Data(8,RPP_Plane%RPP_Records)   = PartIndex(iPart)
     END IF
   END DO
 END IF
 
 IF((RPP_Plane%RPP_Records .GE. RPP_MaxBufferSize .OR. PRESENT(writeToBinary)))THEN
+
+  locRPP    = RPP_Plane%RPP_Records
+  RPP_glob  = 0
+
   !>> Sum up particles from the other procs
 #if USE_MPI
-  IF(MPIRoot)THEN
-    ALLOCATE(nRPRecords_per_proc(0:nProcessors-1))
-  ELSE
-    ALLOCATE(nRPRecords_per_proc(1))
-  END IF
-  CALL MPI_GATHER(RPP_Plane%RPP_Records, 1, MPI_INTEGER, nRPRecords_per_proc,&
-    1, MPI_INTEGER, 0, MPI_COMM_FLEXI, iERROR)
-
-  !>> Gather data to root
-  IF (MPIRoot) THEN
-    ALLOCATE(displacement(1:nProcessors))
-    displacement(1)=0
-    DO i=2,nProcessors
-      displacement(i)=SUM(7*nRPRecords_per_proc(0:i-2))
-    END DO
-    ALLOCATE(RPP_Data_glob(1:7,1:SUM(nRPRecords_per_proc)))
-  ELSE
-    ALLOCATE(displacement(1))
-    ALLOCATE(RPP_Data_glob(1,1))
-  END IF
-
-  CALL MPI_GATHERV(RPP_Plane%RPP_Data(:,1:RPP_Plane%RPP_Records),RPP_Plane%RPP_Records*7,MPI_DOUBLE_PRECISION,RPP_Data_glob,nRPRecords_per_proc*7,displacement,&
-    MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
-#endif
-
-#if USE_MPI
-  IF(MPIRoot .AND. SUM(nRPRecords_per_proc).GT.0)THEN
-#endif
-    ! Write to binary file
-    FileName_loc = TRIM(TIMESTAMP('recordpoints_part_',OutputTime))
-    FileString_loc=TRIM(FileName_loc)//'.dat'
-    SWRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileString_loc)
-    SWRITE(UNIT_stdOut,*)' Number of particles ',SUM(nRPRecords_per_proc)
-
-#if USE_MPI
-    CALL prt_bin(RPP_Data_glob, FileString_loc)
+  sendbuf(1) = locRPP
+  recvbuf    = 0
+  CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+  !>> Offset of each proc is the sum of the particles on the previous procs
+  offsetRPP  = recvbuf(1)
+  sendbuf(1) = recvbuf(1)+locRPP
+  !>> Last proc knows the global number
+  CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
+  !>> Gather the global number and communicate to root (MPIRank.EQ.0)
+  RPP_glob    = sendbuf(1)
+  CALL MPI_GATHER(locRPP,1,MPI_INTEGER,nRecords,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 #else
-    CALL prt_bin(RPP_Plane%RPP_Data, FileString_loc)
+  offsetRPP  = 0
+  RPP_glob   = locRPP
 #endif
-!    CALL load_bin(FileName_loc,buffOuttmp)
-!    print *, buffOuttmp
 
-    RPP_Plane%RPP_Data=0.0
+  IF(RPP_glob.EQ.0) RETURN
 
-    SWRITE(UNIT_stdOut,'(A)') ' WRITE STATE TO BINARY... DONE'
-    SWRITE(UNIT_StdOut,'(132("-"))')
-    DEALLOCATE(RPP_Data_glob)
-    DEALLOCATE(displacement,nRPRecords_per_proc)
-#if USE_MPI
+  ALLOCATE(StrVarNames(RPPDataSize))
+  StrVarNames(1) ='ParticlePositionX'
+  StrVarNames(2) ='ParticlePositionY'
+  StrVarNames(3) ='ParticlePositionZ'
+  StrVarNames(4) ='VelocityX'
+  StrVarNames(5) ='VelocityY'
+  StrVarNames(6) ='VelocityZ'
+  StrVarNames(7) ='Species'
+  StrVarNames(8) ='Index'
+
+  FileName_loc = TRIM(TIMESTAMP('recordpoints_part',OutputTime))//'.h5'
+  SWRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileName_loc)
+  IF(MPIRoot)THEN
+    CALL OpenDataFile(FileName_loc,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
+    CALL WriteAttribute(File_ID,'VarNamesPart',RPPDataSize,StrArray=StrVarNames)
+    CALL CloseDataFile()
   END IF
-#endif
+
+#if USE_MPI
+  CALL DistributedWriteArray(FileName_loc                                  ,&
+                             DataSetName  = 'RecordData'                   ,&
+                             rank         = 2                              ,&
+                             nValGlobal   = (/RPPDataSize ,RPP_glob  /)    ,&
+                             nVal         = (/RPPDataSize ,locRPP    /)    ,&
+                             offset       = (/0           ,offsetRPP/)     ,&
+                             collective   = .FALSE.                        ,&
+                             offSetDim=2                                   ,&
+                             communicator = MPI_COMM_FLEXI                 ,&
+                             RealArray    = RPP_Plane%RPP_Data(1:RPPDataSize,1:locRPP))
+!CALL MPI_BARRIER(PartMPI%COMM,iERROR)
+#else
+  CALL OpenDataFile(FileName_loc,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteArray(           DataSetName  = 'RecordData'                   ,&
+                             rank         = 2                              ,&
+                             nValGlobal   = (/RPPDataSize ,RPP_glob  /)    ,&
+                             nVal         = (/RPPDataSize ,locRPP    /)    ,&
+                             offset       = (/0           ,offsetRPP/)     ,&
+                             collective   = .TRUE.                         ,&
+                             RealArray    = RPP_Plane%RPP_Data(1:RPPDataSize,1:locRPP))
+  CALL CloseDataFile()
+#endif /*MPI*/
+
+  RPP_Plane%RPP_Data=0.0
+
+  SWRITE(UNIT_stdOut,'(A)') ' WRITE STATE TO BINARY... DONE'
+  SWRITE(UNIT_StdOut,'(132("-"))')
+  DEALLOCATE(StrVarNames)
+
   RPP_Plane%RPP_Records=0
 END IF
 

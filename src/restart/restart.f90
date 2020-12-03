@@ -260,7 +260,6 @@ USE MOD_PreProc
 USE MOD_ApplyJacobianCons,  ONLY: ApplyJacobianCons
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
 USE MOD_DG_Vars,            ONLY: U
-USE MOD_EOS,                ONLY: PrimToCons
 USE MOD_HDF5_Input,         ONLY: GetDataSize
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetArrayAndName
 USE MOD_HDF5_Output,        ONLY: FlushFiles
@@ -270,6 +269,9 @@ USE MOD_IO_HDF5
 USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
 USE MOD_Mesh_Vars,          ONLY: nElems,nGlobalElems
 USE MOD_Restart_Vars
+#if EQNSYSNR == 2 || EQNSYSNR == 3
+USE MOD_EOS,                ONLY: PrimToCons
+#endif /*EQNSYSNR == 2 || EQNSYSNR == 3*/
 #if FV_ENABLED
 USE MOD_FV,                 ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars,            ONLY: FV_Elems
@@ -388,11 +390,15 @@ IF(DoRestart)THEN
       CASE(1)
         U_localNVar(1:PP_nVar,:,:,:,:) = U_local(1:PP_nVar                            ,:,:,:,:)
       ! Conservative Variables, time-averaged
+#if EQNSYSNR == 2 || EQNSYSNR == 3
       CASE(2)
         U_localNVar(1:PP_nVar,:,:,:,:) = U_local(RestartCons(1):RestartCons(1)+PP_nVar-1,:,:,:,:)
       ! Primitive Variables, time-averaged
       CASE(3)
         CALL PrimToCons(HSize_proc(2)-1,U_local(1:PP_nVarPrim,:,:,:,:),U_localNVar(RestartCons(1):RestartCons(1)+PP_nVar-1,:,:,:,:))
+#endif /*EQNSYSNR == 2 || EQNSYSNR == 3*/
+      CASE DEFAULT
+        CALL CollectiveStop(__STAMP__,'Restart from file type not supported for this equation system!')
     END SELECT
 
 #if USE_RW

@@ -593,7 +593,7 @@ IF(FLEXI_PARTICLES)
   ADD_DEFINITIONS(-DUSE_PARTICLES=1)
 
   # Shared Memory
-  SET(FLEXI_SHARED_MEMORY "MPI_COMM_TYPE_SHARED" CACHE STRING "Split type for creating new communicators based on colors and keys.")
+  SET(FLEXI_SHARED_MEMORY "MPI_COMM_TYPE_SHARED" CACHE STRING "Split type for creating new communicators based on colors and keys  (requires MPI 3 or higher). Options with the prefix OMPI_ are specific to Open MPI.")
   SET_PROPERTY(CACHE FLEXI_SHARED_MEMORY PROPERTY STRINGS MPI_COMM_TYPE_SHARED
                                                           OMPI_COMM_TYPE_CORE)
 

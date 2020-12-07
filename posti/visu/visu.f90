@@ -277,7 +277,7 @@ VisuPart          = GETLOGICAL("VisuPart")
 
 ! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
 Meshfile          =  GETSTR("MeshFile",MeshFile_state)
-IF (.NOT.FILEEXISTS(MeshFile)) THEN
+IF (.NOT.FILEEXISTS(MeshFile) .OR. (Meshfile(1:1) .NE. "/") .OR. (Meshfile(1:1) .NE. "~") .OR. (Meshfile(1:1) .NE. ".")) THEN
   !!!!!!
   ! WARNING: GETCWD is a GNU extension to the Fortran standard and will probably not work on other compilers
   CALL GETCWD(cwd)

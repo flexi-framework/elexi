@@ -198,10 +198,13 @@ END IF
 !---  Emission at time step (initial emission see particle_init.f90: InitializeParticleEmission)
 DO i = 1,nSpecies
   DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
+    ! Reset the number of particles per species AND init region
+    NbrOfParticle = 0
+
     ! species to be used for init
     IF (Species(i)%Init(iInit)%UseForEmission) THEN
-      SELECT CASE(Species(i)%Init(iInit)%ParticleEmissionType)
 
+      SELECT CASE(Species(i)%Init(iInit)%ParticleEmissionType)
         ! Emission Type: Particles per second
         CASE(1)
           IF (.NOT.DoPoissonRounding .AND. .NOT.DoTimeDepInflow) THEN
@@ -359,13 +362,43 @@ DO i = 1,nSpecies
                 IF (PositionNbr .NE. 0) PartEkinIn(PartSpecies(PositionNbr)) = PartEkinIn(PartSpecies(PositionNbr)) +      &
                                                                                CalcEkinPart(PositionNbr)
             END DO ! iPart
-        END IF
-        ! alter history, dirty hack for balance calculation
-        PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
-      END IF ! CalcPartBalance
+          END IF
+          ! alter history, dirty hack for balance calculation
+          PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
+        END IF ! CalcPartBalance
+
+        ! Complete check if all particles were emitted successfully
+#if USE_MPI
+        InitGroup=Species(i)%Init(iInit)%InitCOMM
+        IF(PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL) THEN
+          CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%Request, MPI_STATUS_IGNORE, iError)
+
+          IF(PartMPI%InitGroup(InitGroup)%MPIRoot) THEN
+#endif
+          ! add number of matching error to particle emission to fit
+          ! number of added particles
+        Species(i)%Init(iInit)%InsertedParticleMisMatch = Species(i)%Init(iInit)%sumOfRequestedParticles - Species(i)%Init(iInit)%sumOfMatchedParticles
+          IF (Species(i)%Init(iInit)%sumOfRequestedParticles.GT. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
+            SWRITE(UNIT_StdOut,'(A)')      'WARNING in ParticleEmission_parallel:'
+            SWRITE(UNIT_StdOut,'(A,I0)')   'Fraction Nbr: '  , i
+            SWRITE(UNIT_StdOut,'(A,I0,A)') 'matched only '   , Species(i)%Init(iInit)%sumOfMatchedParticles  , ' particles'
+            SWRITE(UNIT_StdOut,'(A,I0,A)') 'when '           , Species(i)%Init(iInit)%sumOfRequestedParticles, ' particles were required!'
+          ELSE IF (Species(i)%Init(iInit)%sumOfRequestedParticles.LT. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
+            SWRITE(UNIT_StdOut,'(A)')      'ERROR in ParticleEmission_parallel:'
+            SWRITE(UNIT_StdOut,'(A,I0)')   'Fraction Nbr: '  , i
+            SWRITE(UNIT_StdOut,'(A,I0,A)') 'matched '        , Species(i)%Init(iInit)%sumOfMatchedParticles  , ' particles'
+            SWRITE(UNIT_StdOut,'(A,I0,A)') 'when '           , Species(i)%Init(iInit)%sumOfRequestedParticles, ' particles were required!'
+          ! ELSE IF (nbrOfParticle .EQ. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
+          !  WRITE(UNIT_stdOut,'(A,I0)')   'Fraction Nbr: '  , FractNbr
+          !  WRITE(UNIT_stdOut,'(A,I0,A)') 'ParticleEmission_parallel: matched all (',NbrOfParticle,') particles!'
+          END IF
+#if USE_MPI
+        END IF ! PartMPI%iProc.EQ.0
+      END IF
+#endif
     END IF ! UseForEmission
-  END DO
-END DO
+  END DO ! iInit
+END DO ! i=1,nSpecies
 
 END SUBROUTINE ParticleInserting
 

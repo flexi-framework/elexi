@@ -157,7 +157,7 @@ INTEGER,INTENT(INOUT)                    :: NbrOfParticle
 REAL,ALLOCATABLE                         :: particle_positions(:)
 INTEGER,ALLOCATABLE                      :: particle_count(:),nPartsPerProc(:),displacement(:)
 INTEGER                                  :: i,ParticleIndexNbr,allocStat,nChunks, chunkSize
-INTEGER                                  :: mySumOfMatchedParticles, sumOfMatchedParticles, DimSend
+INTEGER                                  :: DimSend
 #if USE_MPI
 INTEGER                                  :: InitGroup
 #endif
@@ -166,10 +166,11 @@ IF (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'cell_local') THEN
   CALL SetParticlePositionCellLocal(FractNbr,iInit,NbrOfParticle)
   RETURN
 END IF
-IF ( (NbrOfParticle .LE. 0).AND. (ABS(Species(FractNbr)%Init(iInit)%PartDensity).LE.0.) ) RETURN
 
-! emission group communicator for the current iInit
+IF ((NbrOfParticle .LE. 0).AND. (ABS(Species(FractNbr)%Init(iInit)%PartDensity).LE.0.)) RETURN
+
 #if USE_MPI
+! emission group communicator for the current iInit
 InitGroup = Species(FractNbr)%Init(iInit)%InitCOMM
 IF(PartMPI%InitGroup(InitGroup)%COMM.EQ.MPI_COMM_NULL) THEN
   NbrofParticle=0
@@ -177,11 +178,13 @@ IF(PartMPI%InitGroup(InitGroup)%COMM.EQ.MPI_COMM_NULL) THEN
 END IF
 #endif /*USE_MPI*/
 
-DimSend      = 3            !save (and send) only positions
-nChunks      = 1
-sumOfMatchedParticles   = 0
-mySumOfMatchedParticles = 0
-chunkSize    = nbrOfParticle
+DimSend  = 3                   !save (and send) only positions
+nChunks  = 1                   ! Standard: Nicht-MPI
+Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles = 0
+Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   = 0
+Species(FractNbr)%Init(iInit)%sumOfRequestedParticles = NbrOfParticle
+chunkSize = NbrOfParticle
+
 ! process myRank=0 generates the complete list of random positions for all emitted particles
 #if USE_MPI
 IF ( (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'circle_equidistant'                 ) .OR.  &
@@ -196,7 +199,7 @@ ELSE
 END IF
 chunkSize = INT(nbrOfParticle/nChunks)
 IF (PartMPI%InitGroup(InitGroup)%MPIROOT) THEN
-  chunkSize = chunkSize + ( nbrOfParticle - (nChunks*chunkSize) )
+  chunkSize = chunkSize*(1-nChunks) + nbrOfParticle
 END IF
 ! all proc taking part in particle inserting
 IF (PartMPI%InitGroup(InitGroup)%MPIROOT.OR.nChunks.GT.1) THEN
@@ -235,24 +238,24 @@ IF (PartMPI%InitGroup(InitGroup)%MPIROOT.OR.nChunks.GT.1) THEN
   !------------------SpaceIC-cases: end-------------------------------------------------------------------------------------------
 #if USE_MPI
 ELSE !no mpi root, nchunks=1
-  chunkSize=0
+  chunkSize = 0
 END IF
 ! Need to open MPI communication regardless of the chunk number. Make it only dependent on the number of procs
 IF (PartMPI%InitGroup(InitGroup)%nProcs.GT.1) THEN
-  CALL SendEmissionParticlesToProcs(chunkSize,DimSend,FractNbr,iInit,mySumOfMatchedParticles,particle_positions)
+  CALL SendEmissionParticlesToProcs(chunkSize,DimSend,FractNbr,iInit,Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles,particle_positions)
 ! Finish emission on local proc
 ELSE
 #endif /*USE_MPI*/
-  mySumOfMatchedParticles = 0
+  Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles = 0
   DO i=1,chunkSize
     ! Find a free position in the PDM array
-    ParticleIndexNbr = PDM%nextFreePosition(mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
+    ParticleIndexNbr = PDM%nextFreePosition(Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
     IF (ParticleIndexNbr.NE.0) THEN
       PartState(1:DimSend,ParticleIndexNbr) = particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+DimSend)
       PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
       CALL LocateParticleInElement(ParticleIndexNbr,doHALO=.FALSE.)
       IF (PDM%ParticleInside(ParticleIndexNbr)) THEN
-        mySumOfMatchedParticles = mySumOfMatchedParticles + 1
+        Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles = Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles + 1
         PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
       END IF
     ELSE
@@ -264,71 +267,74 @@ END IF
 #endif /*USE_MPI*/
 
 #if USE_MPI
-! we want always warnings to know if the emission has failed. if a timedisc does not require this, this
-! timedisc has to be handled separately
-! check the sum of the matched particles: did each particle find its "home"-CPU?
-CALL MPI_ALLREDUCE( mySumOfMatchedParticles, sumOfMatchedParticles, 1, MPI_INTEGER, MPI_SUM &
-                  , PartMPI%InitGroup(InitGroup)%COMM, IERROR)
+! Start communicating matched particles. This routine is finished in particle_emission.f90
+CALL MPI_IREDUCE( Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles &
+                , Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   &
+                , 1                                                     &
+                , MPI_INTEGER                                           &
+                , MPI_SUM                                               &
+                , 0                                                     &
+                , PartMPI%InitGroup(InitGroup)%COMM                     &
+                , PartMPI%InitGroup(InitGroup)%Request                  &
+                , IERROR)
 
 IF (doPartIndex) THEN
   ! Communicate PartIndex
   ALLOCATE(nPartsPerProc(0:PartMPI%InitGroup(InitGroup)%nProcs-1))
-  CALL MPI_ALLGATHER(mySumOfMatchedParticles, 1, MPI_INTEGER, nPartsPerProc(0:PartMPI%InitGroup(InitGroup)%nProcs-1),&
-    1, MPI_INTEGER, PartMPI%InitGroup(InitGroup)%COMM, iERROR)
+  CALL MPI_ALLGATHER( Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles   &
+                    , 1                                                       &
+                    , MPI_INTEGER                                             &
+                    , nPartsPerProc(0:PartMPI%InitGroup(InitGroup)%nProcs-1)  &
+                    , 1                                                       &
+                    , MPI_INTEGER                                             &
+                    , PartMPI%InitGroup(InitGroup)%COMM                       &
+                    , iERROR)
 
   ! Calculate displacement
   ALLOCATE(displacement(1:PartMPI%InitGroup(InitGroup)%nProcs))
-  displacement(1)=0
-  DO i=2,PartMPI%InitGroup(InitGroup)%nProcs
-    displacement(i)=SUM(nPartsPerProc(0:i-2))
+  displacement(1) = 0
+  DO i = 2,PartMPI%InitGroup(InitGroup)%nProcs
+    displacement(i) = SUM(nPartsPerProc(0:i-2))
   END DO
 
   IF(PDM%ParticleVecLength.EQ.0)THEN
-    CALL MPI_SCATTERV(particle_count,nPartsPerProc,displacement,MPI_INTEGER,PartIndex(PDM%ParticleVecLength+1:PDM%ParticleVecLength+mySumOfMatchedParticles), &
-                      mySumOfMatchedParticles, MPI_INTEGER, 0, PartMPI%InitGroup(InitGroup)%COMM, IERROR)
+    CALL MPI_SCATTERV( particle_count                                                                   &
+                     , nPartsPerProc                                                                    &
+                     , displacement                                                                     &
+                     , MPI_INTEGER                                                                      &
+                     , PartIndex(PDM%ParticleVecLength+1:PDM%ParticleVecLength+Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles) &
+                     , Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles                            &
+                     , MPI_INTEGER                                                                      &
+                     , 0                                                                                &
+                     , PartMPI%InitGroup(InitGroup)%COMM                                                &
+                     , IERROR)
   ELSE
-    CALL MPI_SCATTERV(particle_count,nPartsPerProc,displacement,MPI_INTEGER,PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength+mySumOfMatchedParticles-1), &
-                      mySumOfMatchedParticles, MPI_INTEGER, 0, PartMPI%InitGroup(InitGroup)%COMM, IERROR)
+    CALL MPI_SCATTERV( particle_count                                                                   &
+                     , nPartsPerProc                                                                    &
+                     , displacement                                                                     &
+                     , MPI_INTEGER                                                                      &
+                     , PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength+Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles-1) &
+                     , Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles                                                          &
+                     , MPI_INTEGER                                                                      &
+                     , 0                                                                                &
+                     , PartMPI%InitGroup(InitGroup)%COMM                                                &
+                     , IERROR)
   END IF
-!  IPWRITE(*,*) mySumOfMatchedParticles, PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength+mySumOfMatchedParticles-1)
-
   DEALLOCATE(displacement, nPartsPerProc)
 END IF
+
 #else
 ! in the seriell case, particles are only emitted on the current proc
-sumOfMatchedParticles = mySumOfMatchedParticles
+Species(FractNbr)%Init(iInit)%sumOfMatchedParticles = Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles
 ! Assign PartIndex
 IF (doPartIndex) THEN
-  PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength+mySumOfMatchedParticles)=particle_count
+  PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength + Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles) = particle_count
 END IF
-#endif
+#endif /*USE_MPI*/
 
-#if USE_MPI
-IF(PartMPI%InitGroup(InitGroup)%MPIRoot) THEN
-#endif
-  ! add number of matching error to particle emission to fit
-  ! number of added particles
-  Species(FractNbr)%Init(iInit)%InsertedParticleMisMatch = nbrOfParticle  - sumOfMatchedParticles
-  IF (nbrOfParticle .GT. sumOfMatchedParticles) THEN
-    SWRITE(UNIT_StdOut,'(A)')'WARNING in ParticleEmission_parallel:'
-    SWRITE(UNIT_StdOut,'(A,I0)')'Fraction Nbr: ', FractNbr
-    SWRITE(UNIT_StdOut,'(A,I0,A)')'matched only ', sumOfMatchedParticles, ' particles'
-    SWRITE(UNIT_StdOut,'(A,I0,A)')'when ', NbrOfParticle, ' particles were required!'
-  ELSE IF (nbrOfParticle .LT. sumOfMatchedParticles) THEN
-        SWRITE(UNIT_StdOut,'(A)')'ERROR in ParticleEmission_parallel:'
-        SWRITE(UNIT_StdOut,'(A,I0)')'Fraction Nbr: ', FractNbr
-        SWRITE(UNIT_StdOut,'(A,I0,A)')'matched ', sumOfMatchedParticles, ' particles'
-        SWRITE(UNIT_StdOut,'(A,I0,A)')'when ', NbrOfParticle, ' particles were required!'
-  ELSE IF (nbrOfParticle .EQ. sumOfMatchedParticles) THEN
-  !  WRITE(UNIT_stdOut,'(A,I0)')'Fraction Nbr: ', FractNbr
-  !  WRITE(UNIT_stdOut,'(A,I0,A)')'ParticleEmission_parallel: matched all (',NbrOfParticle,') particles!'
-  END IF
-#if USE_MPI
-END IF ! PartMPI%iProc.EQ.0
-#endif
 ! Return the *local* NbrOfParticle so that the following Routines only fill in
 ! the values for the local particles
-NbrOfParticle = mySumOfMatchedParticles
+NbrOfParticle = Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles
 
 IF (chunkSize.GT.0) THEN
   DEALLOCATE(particle_positions, STAT=allocStat)

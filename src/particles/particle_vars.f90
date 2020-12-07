@@ -110,8 +110,11 @@ TYPE tInit                                                                   ! P
   INTEGER                                :: NumberOfExcludeRegions           ! Number of different regions to be excluded
   TYPE(tExcludeRegion), ALLOCATABLE      :: ExcludeRegion(:)
 #if USE_MPI
-  INTEGER                                :: InitComm                          ! number of init-communicator
-#endif /*MPI*/
+  INTEGER                                :: InitComm                         ! number of init-communicator
+#endif /*USE_MPI*/
+  INTEGER                                :: sumOfMatchedParticles            ! Sum of matched particles on all procs
+  INTEGER                                :: sumOfRequestedParticles          ! Sum of requested particles on all procs
+  INTEGER                                :: mySumOfMatchedParticles          ! Sum of matched particles on current proc
 END TYPE tInit
 
 TYPE tSurfFluxSubSideData

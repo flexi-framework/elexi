@@ -32,6 +32,7 @@ LOGICAL                                  :: ParticleMPIInitIsDone=.FALSE.
 
 TYPE tPartMPIGROUP
   INTEGER                                :: COMM                             ! MPI communicator for PIC GTS region
+  INTEGER                                :: Request                          ! MPI request for asynchronous communication
   INTEGER                                :: nProcs                           ! number of MPI processes for particles
   INTEGER                                :: MyRank                           ! MyRank of PartMPIVAR%COMM
   LOGICAL                                :: MPIRoot                          ! Root, MPIRank=0

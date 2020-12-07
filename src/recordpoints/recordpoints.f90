@@ -153,11 +153,14 @@ color = MERGE(2,MPI_UNDEFINED,RP_onProc)
 ! create new RP communicator for RP output. Pass MPI_INFO_NULL as rank to follow the original ordering
 CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI, color, MPI_INFO_NULL, RP_COMM, iError)
 
+! return if proc not on RP_COMM
+IF (.NOT. RP_onProc) RETURN
+
 ! Find my rank on the RP communicator, comm size and proc name
 CALL MPI_COMM_RANK(RP_COMM, myRPrank , iError)
 CALL MPI_COMM_SIZE(RP_COMM, nRP_Procs, iError)
 
-IF (RP_onProc .AND. myRPrank.EQ.0) WRITE(UNIT_stdOUt,'(A,I0,A)') 'RP COMM: ',nRP_Procs,' procs'
+IF (myRPrank.EQ.0) WRITE(UNIT_stdOUt,'(A,I0,A)') 'RP COMM: ',nRP_Procs,' procs'
 
 END SUBROUTINE InitRPCommunicator
 #endif /*USE_MPI*/

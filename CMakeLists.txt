@@ -34,16 +34,17 @@ IF (HOMERUN GREATER -1)
   ELSE()
     SET(FLEXI_DLPATH "https://gitlabext.iag.uni-stuttgart.de/")
   ENDIF()
-  SET (HDF5DOWNLOAD ${FLEXI_DLPATH}libs/hdf5.git )
+  # SET (HDF5DOWNLOAD ${FLEXI_DLPATH}libs/hdf5.git )
+  SET (HDF5DOWNLOAD https://github.com/HDFGroup/hdf5.git )
 ELSE()
   IF(USESSH EQUAL 0)
     SET(FLEXI_DLPATH "git@github.com:flexi-framework")
   ELSE()
     SET(FLEXI_DLPATH "https://github.com/flexi-framework")
   ENDIF()
-  SET (HDF5DOWNLOAD https://bitbucket.hdfgroup.org/scm/hdffv/hdf5.git )
+  SET (HDF5DOWNLOAD https://github.com/HDFGroup/hdf5.git )
 ENDIF()
-SET (HDF5TAG "hdf5-1_10_4" CACHE STRING "HDF5 version tag")
+SET (HDF5TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
 
 # =========================================================================
 # Detect machine environements
@@ -494,6 +495,7 @@ ELSE()
     ExternalProject_Add(HDF5
       GIT_REPOSITORY ${HDF5DOWNLOAD}
       GIT_TAG ${HDF5TAG}
+      GIT_PROGRESS TRUE
       ${${GITSHALLOW}}
       PREFIX ${FLEXI_HDF5_DIR}
       UPDATE_COMMAND ""

@@ -167,6 +167,7 @@ IF (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'cell_local') THEN
   RETURN
 END IF
 
+Species(FractNbr)%Init(iInit)%sumOfRequestedParticles = NbrOfParticle
 IF ((NbrOfParticle .LE. 0).AND. (ABS(Species(FractNbr)%Init(iInit)%PartDensity).LE.0.)) RETURN
 
 #if USE_MPI
@@ -179,10 +180,9 @@ END IF
 #endif /*USE_MPI*/
 
 DimSend  = 3                   !save (and send) only positions
-nChunks  = 1                   ! Standard: Nicht-MPI
+nChunks  = 1                   ! Standard: non-MPI
 Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles = 0
 Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   = 0
-Species(FractNbr)%Init(iInit)%sumOfRequestedParticles = NbrOfParticle
 chunkSize = NbrOfParticle
 
 ! process myRank=0 generates the complete list of random positions for all emitted particles

@@ -632,12 +632,12 @@ ENDIF()
 # Shared memory split type
 # =========================================================================
 IF(FLEXI_PARTICLES)
+  ADD_DEFINITIONS(-DSHARED_MEMORY_METHOD=${FLEXI_SHARED_MEMORY})
   IF(FLEXI_SHARED_MEMORY STREQUAL "MPI_COMM_TYPE_SHARED")
-  ADD_DEFINITIONS(-DSharedMemoryMethod=0)
-  MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
-ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
-  ADD_DEFINITIONS(-DSharedMemoryMethod=1)
-  MESSAGE(STATUS "Shared memory split type for subcommunicators set to the same core/processing unit")
+    MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
+  ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
+    MESSAGE(STATUS "Shared memory split type for subcommunicators set to the same core/processing unit")
+  ENDIF()
 ENDIF()
 
 # =========================================================================

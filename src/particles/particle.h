@@ -27,13 +27,6 @@
 #define MDEALLOCATE(A) IF(ALLOCATED(A)) DEALLOCATE(A)
 #endif
 
-! Shared Memory Debug
-#if (SharedMemoryMethod==0)
-#define MPI_FLEXI MPI_COMM_TYPE_SHARED
-#elif (SharedMemoryMethod==1)
-#define MPI_FLEXI OMPI_COMM_TYPE_CORE
-#endif
-
 ! Boundaries for Particles
 #define PLANAR_RECT    0
 #define PLANAR_NONRECT 1

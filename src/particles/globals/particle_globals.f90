@@ -72,7 +72,6 @@ INTERFACE OrthoNormVec
   MODULE PROCEDURE OrthoNormVec
 END INTERFACE OrthoNormVec
 
-
 INTERFACE GETFREEUNIT
   MODULE PROCEDURE GETFREEUNIT
 END INTERFACE GETFREEUNIT
@@ -80,6 +79,11 @@ END INTERFACE GETFREEUNIT
 INTERFACE RandNormal
   MODULE PROCEDURE RandNormal
 END INTERFACE
+
+INTERFACE StringBeginsWith
+  MODULE PROCEDURE StringBeginsWith
+END INTERFACE
+
 
 PUBLIC :: PI
 PUBLIC :: CROSSNORM
@@ -89,6 +93,7 @@ PUBLIC :: AlmostEqual
 PUBLIC :: DOTPRODUCT
 PUBLIC :: UnitVector
 PUBLIC :: RandNormal
+PUBLIC :: StringBeginsWith
 !===================================================================================================================================
 
 CONTAINS
@@ -351,5 +356,26 @@ theta      = 2. * PI * random(2)
 RandNormal = mean + deviation*r*COS(THETA)
 
 END FUNCTION RandNormal
+
+
+PURE LOGICAL FUNCTION StringBeginsWith(MainString,SubString)
+!===================================================================================================================================
+! re-open log file (used by preprocessor LOGWRITE_BARRIER) to be sure that all logwrites are written to file
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN) :: MainString !< String in which the substring is looked for
+CHARACTER(LEN=*),INTENT(IN) :: SubString  !< String which might be in MainString
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+StringBeginsWith = TRIM(MainString(1:MIN(14,LEN(TRIM(ADJUSTL(MainString)))))).EQ.TRIM(ADJUSTL(SubString))
+END FUNCTION StringBeginsWith
+
 
 END MODULE MOD_Particle_Globals

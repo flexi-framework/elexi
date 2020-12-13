@@ -314,7 +314,7 @@ INTEGER                 :: BCType,BCState
 REAL,DIMENSION(PP_nVar) :: Cons
 REAL                    :: MaOut
 REAL                    :: c,vmag,Ma,cb,pt,pb,m,mramp,Tb1,area ! for BCType==23,24,25,28
-REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rminus,nv(3) ! for BCType==27
+REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rminus,nv(3),Tt_fluc,pt_fluc ! for BCType==27
 REAL                    :: random ! for BCType==31
 !===================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
@@ -359,8 +359,10 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
 
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
     IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).LE.JetRadius)THEN
-      Tt=BCData(4,p,q,SideID)
-      pt=BCData(5,p,q,SideID)
+      Tt=BCData(2,p,q,SideID)
+      pt=BCData(3,p,q,SideID)
+      Tt_fluc=SQRT(ABS(BCData(4,p,q,SideID)-BCData(2,p,q,SideID)**2))
+      pt_fluc=SQRT(ABS(BCData(5,p,q,SideID)-BCData(3,p,q,SideID)**2))
 
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
       A=SUM(nv(1:3)*(-1.)*NormVec(1:3,p,q))
@@ -383,8 +385,8 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
       ! is the physical one...not 100% clear why
       ! compute static T  at bc from c
       Tb=cb**2/(Kappa*R)
-      Ma=MAX(SQRT(2./KappaM1*(Tt/Tb-1.)),0.)
-      pb=pt*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1)
+      Ma=MAX(SQRT(2./KappaM1*((Tt+random*Tt_fluc)/Tb-1.)),0.)
+      pb=(pt)*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1)
 
       U=Ma*SQRT(Kappa*R*Tb)
 !      tanh profile for axial jet velocity: tmp1=Uj, tmp2=r
@@ -398,7 +400,7 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
       UPrim_boundary(2,p,q)=SUM(U*nv(1:3)*Normvec( 1:3,p,q))
       UPrim_boundary(3,p,q)=SUM(U*nv(1:3)*Tangvec1(1:3,p,q))
       UPrim_boundary(4,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
-      UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))!+0.35*random ! standard devation:
+      UPrim_boundary(6,p,q)=Tb
 
     ELSE ! Isothermal wall
 

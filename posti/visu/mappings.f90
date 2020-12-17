@@ -18,7 +18,7 @@
 !> * Mapping that contains the distribution of DG and FV elements
 !> * Mappings from all available variables to the ones that should be calculated and visualized for volume and surface
 !> * Mappings from the available boundaries to the ones that should be visualized
-!===================================3================================================================================================
+!===================================================================================================================================
 MODULE MOD_Posti_Mappings
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING

@@ -154,7 +154,7 @@ gnu_channelRANS:
   <<: *defaults_gnu
   stage: reggie_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6; fi
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi 
 
 WEK_particle:
   <<: *defaults_gnu

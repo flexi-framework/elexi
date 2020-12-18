@@ -258,6 +258,7 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Mesh_Tools    ,ONLY: InitGetGlobalElemID,InitGetCNElemID,GetCNElemID
+USE MOD_Particle_Mesh_Tools    ,ONLY: InitGetGlobalSideID,InitGetCNSideID
 USE MOD_Particle_Surfaces      ,ONLY: GetSideSlabNormalsAndIntervals
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation,BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
@@ -348,6 +349,12 @@ CALL InitGetGlobalElemID()
 
 ! Initialize mapping function: GetCNElemID()
 CALL InitGetCNElemID()
+
+! Initialize mapping function: GetGlobalSideID(1:nComputeNodeTotalSides)
+CALL InitGetGlobalSideID()
+
+! Initialize mapping function: GetCNSideID(1:GlobalSideID)
+CALL InitGetCNSideID()
 
 CountNbOfLostParts      = GETLOGICAL('CountNbOfLostParts',".FALSE.")
 IF (CountNbOfLostParts) THEN

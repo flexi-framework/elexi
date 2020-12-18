@@ -79,8 +79,10 @@ INTEGER,ALLOCATABLE,DIMENSION(:,:):: nSurfSidesLeader       !> number of surf si
                                                             !> 1 - sides from local leader to other leader
                                                             !> 2 - sides from other leader to local leader
 
-INTEGER,ALLOCATABLE :: CNTotalElem2GlobalElem(:)            !> Compute Nodes mapping 1:nTotal -> 1:nGlobal
-INTEGER,ALLOCATABLE :: GlobalElem2CNTotalElem(:)            !> Reverse Mapping
+INTEGER, ALLOCATABLE :: CNTotalElem2GlobalElem(:)           !> Compute Nodes mapping 1:nTotal -> 1:nGlobal
+INTEGER, ALLOCATABLE :: GlobalElem2CNTotalElem(:)           !> Reverse Mapping
+INTEGER, ALLOCATABLE :: CNTotalSide2GlobalSide(:)           !> Compute Nodes mapping 1:nTotal -> 1:nGlobal
+INTEGER, ALLOCATABLE :: GlobalSide2CNTotalSide(:)           !> Reverse Mapping
 
 !> Solution
 REAL,POINTER       :: U_Shared(:,:,:,:,:)                   !> DG solution on current node

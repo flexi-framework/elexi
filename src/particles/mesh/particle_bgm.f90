@@ -781,7 +781,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 ! Abort if FIBGM_Element still contains unfilled entries
 IF (ANY(FIBGM_Element.EQ.-1)) CALL ABORT(__STAMP__,'Error while filling FIBGM element array')
 
-! sum up Number of all elements on current compute-node (including halo region)
+! Locally sum up Number of all elements on current compute-node (including halo region)
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
   nComputeNodeTotalElems = nGlobalElems
   nComputeNodeTotalSides = nNonUniqueGlobalSides
@@ -797,7 +797,6 @@ ELSE
   END DO
   ALLOCATE(CNTotalElem2GlobalElem(1:nComputeNodeTotalElems))
   ALLOCATE(GlobalElem2CNTotalElem(1:nGlobalElems))
-  nComputeNodeTotalElems = 0
   nComputeNodeTotalElems = 0
   GlobalElem2CNTotalElem(1:nGlobalElems) = -1
   ! CN-local elements
@@ -879,7 +878,6 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif /*CODE_ANALYZE*/
 
 ! Loop over all elements and build a global FIBGM to processor mapping. This is required to identify potential emission procs
-
 firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
 
@@ -1012,8 +1010,50 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 ALLOCATE(Distance    (1:MAXVAL(FIBGM_nElems)) &
         ,ListDistance(1:MAXVAL(FIBGM_nElems)) )
 
-! ElemToBGM is only used during init. First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 #if USE_MPI
+! Build a local nNonUniqueSides to nComputeNodeSides/nComputeNodeTotalSides mapping
+ALLOCATE(CNTotalSide2GlobalSide(1:nComputeNodeTotalSides))
+ALLOCATE(GlobalSide2CNTotalSide(1:nNonUniqueGlobalSides))
+
+! Use MessageSize to store temporally store the previous value
+MessageSize = nComputeNodeTotalSides
+nComputeNodeSides      = 0
+nComputeNodeTotalSides = 0
+GlobalSide2CNTotalSide(1:nGlobalElems) = -1
+
+! CN-local elements
+DO iElem = 1,nComputeNodeElems
+  ElemID = iElem + offsetComputeNodeElem
+
+  ! Loop over all sides
+  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
+    nComputeNodeSides             = nComputeNodeSides      + 1
+    nComputeNodeTotalSides        = nComputeNodeTotalSides + 1
+    CNTotalSide2GlobalSide(nComputeNodeTotalSides) = iSide
+    GlobalSide2CNTotalSide(iSide) = nComputeNodeTotalSides
+  END DO
+END DO
+
+! CN-halo elements
+Do iElem = nComputeNodeElems + 1,nComputeNodeTotalElems
+  ElemID = CNTotalElem2GlobalElem(iElem)
+
+  ! Loop over all sides
+  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
+    nComputeNodeTotalSides        = nComputeNodeTotalSides + 1
+    CNTotalSide2GlobalSide(nComputeNodeTotalSides) = iSide
+    GlobalSide2CNTotalSide(iSide) = nComputeNodeTotalSides
+  END DO
+END DO
+
+! Sanity check
+IF (nComputeNodeSides.NE.ElemInfo_Shared(ELEM_LASTSIDEIND,offsetComputeNodeElem+nComputeNodeElems)-ElemInfo_Shared(ELEM_FIRSTSIDEIND,offsetComputeNodeElem+1)) &
+  CALL ABORT(__STAMP__,'Error with number of local sides on compute node')
+
+IF (nComputeNodeTotalSides.NE.MessageSize) &
+  CALL ABORT(__STAMP__,'Error with number of halo sides on compute node')
+
+! ElemToBGM is only used during init. First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
 CALL MPI_WIN_UNLOCK_ALL(ElemToBGM_Shared_Win,iError)
@@ -1070,6 +1110,8 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 ! Then, free the pointers or arrays
 SDEALLOCATE(CNTotalElem2GlobalElem)
 SDEALLOCATE(GlobalElem2CNTotalElem)
+SDEALLOCATE(CNTotalSide2GlobalSide)
+SDEALLOCATE(GlobalSide2CNTotalSide)
 #endif /*USE_MPI*/
 
 !MDEALLOCATE(ElemToBGM_Shared)

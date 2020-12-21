@@ -353,11 +353,13 @@ CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Speci
                                                                   ' - point\n'                                                   //&
                                                                   ' - line_with_equidistant_distribution\n'                      //&
                                                                   ' - line\n'                                                    //&
+                                                                  ' - Gaussian'                                                  //&
                                                                   ' - disc\n'                                                    //&
+                                                                  ' - circle\n'                                                  //&
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
                                                                   ' - cylinder\n'                                                //&
-                                                                  ' - Gaussian'                                                    &
+                                                                  ' - sphere\n'                                                    &
                                                                 , 'cuboid'  , numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BasePointIC','Base point for IC cuboid and IC sphere'                 &
                                                                  , '0. , 0. , 0.', numberedmulti=.TRUE.)

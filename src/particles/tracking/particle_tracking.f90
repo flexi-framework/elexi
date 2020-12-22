@@ -447,7 +447,7 @@ USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectInterSection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeAuxBCIntersection
-USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID,GetCNElemID,GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID,GetCNElemID,GetCNSideID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars          ,ONLY: ElemRadiusNGeo,ElemHasAuxBCs
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
@@ -477,7 +477,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                       :: iPart
 INTEGER                       :: ElemID,CNElemID,OldElemID,firstElem
-INTEGER                       :: ilocSide,SideID,flip,iAuxBC
+INTEGER                       :: ilocSide,SideID,CNSideID,flip,iAuxBC
 LOGICAL                       :: dolocSide(1:6)
 LOGICAL                       :: PartisDone,foundHit,markTol,crossedBC,SwitchedElement,isCriticalParallelInFace
 REAL                          :: localpha,xi,eta
@@ -614,8 +614,9 @@ DO iPart=1,PDM%ParticleVecLength
 #endif /*CODE_ANALYZE*/
         currentIntersect => lastIntersect%prev
         IF (currentIntersect%IntersectCase.EQ.1) THEN
-          iLocSide=currentIntersect%Side
-          SideID = GetGlobalNonUniqueSideID(ElemID,iLocSide)
+          iLocSide = currentIntersect%Side
+          SideID   = GetGlobalNonUniqueSideID(ElemID,iLocSide)
+          CNSideID = GetCNSideID(SideID)
           CALL ComputeBiLinearIntersection(foundHit,PartTrajectory,lengthPartTrajectory,locAlpha,xi,eta,iPart,SideID &
               ,alpha2=currentIntersect%alpha)
           currentIntersect%alpha         = HUGE(1.)
@@ -631,7 +632,7 @@ DO iPart=1,PDM%ParticleVecLength
           WRITE(UNIT_stdout,'(30("-"))')
           WRITE(UNIT_stdout,'(A)')             '     | Output after compute intersection (tracing double check): '
           IF (currentIntersect%IntersectCase.EQ.1) THEN
-            WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(SideID),' | SideID: ',SideID,' | Hit: ',foundHit
+            WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
             WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi,eta
             WRITE(UNIT_stdout,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
           ELSE IF (currentIntersect%IntersectCase.EQ.3) THEN
@@ -667,7 +668,8 @@ DO iPart=1,PDM%ParticleVecLength
         DO ilocSide = 1,6
           locAlpha = -1.
           IF(.NOT.dolocSide(ilocSide)) CYCLE
-          SideID = GetGlobalNonUniqueSideID(ElemID,iLocSide)
+          SideID   = GetGlobalNonUniqueSideID(ElemID,iLocSide)
+          CNSideID = GetCNSideID(SideID)
           ! If the side is positive, then the element has the actual side
           ! and neighbour element has the negative one which has to be flipped
 
@@ -676,7 +678,7 @@ DO iPart=1,PDM%ParticleVecLength
 
           isCriticalParallelInFace = .FALSE.
 
-          SELECT CASE(SideType(SideID))
+          SELECT CASE(SideType(CNSideID))
             CASE(PLANAR_RECT)
               CALL ComputePlanarRectInterSection(   foundHit,PartTrajectory,lengthPartTrajectory,locAlpha,xi,eta,iPart,flip,SideID  &
                                                                                             ,isCriticalParallelInFace)
@@ -697,7 +699,7 @@ DO iPart=1,PDM%ParticleVecLength
           IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
             WRITE(UNIT_stdout,'(30("-"))')
             WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (particle tracing): '
-            WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(SideID),' | SideID: ',SideID,' | Hit: ',foundHit
+            WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
             WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ', lengthPartTrajectory
             WRITE(UNIT_stdout,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
             WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi,eta
@@ -814,7 +816,7 @@ DO iPart=1,PDM%ParticleVecLength
                                        , currentIntersect%alpha       &
                                        , iPart                        &
                                        , SideID                       &
-                                       , SideType(SideID)             &
+                                       , SideType(CNSideID)           &
                                        , ElemID)
 
             IF (ElemID.NE.OldElemID) THEN
@@ -877,11 +879,12 @@ DO iPart=1,PDM%ParticleVecLength
           SELECT CASE (currentIntersect%intersectCase)
             CASE(1)
               SideID = GetGlobalNonUniqueSideID(OldElemID,currentIntersect%Side)
-              ! missing!!! : mapping from GlobalNonUnique to CNtotalsides
+              CNSideID = GetCNSideID(SideID)
+
               SELECT CASE(SideType(SideID))
                 CASE(BILINEAR,PLANAR_NONRECT)
                   moveList=.TRUE.
-              END SELECT
+             END SELECT
           END SELECT
           IF (moveList) THEN
             lastIntersect%alpha  = currentIntersect%alpha
@@ -1474,7 +1477,7 @@ USE MOD_Particle_Globals            ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideBCMetrics,ElemToBCSides
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars          ,ONLY: GEO,ElemRadiusNGeo
-USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID
+USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID,GetCNSideID
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectInterSection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
@@ -1509,7 +1512,7 @@ INTEGER                       :: nInter
 INTEGER                       :: OldElemID
 INTEGER                       :: CNElemID,CNOldElemID
 ! Sides
-INTEGER                       :: SideID,flip
+INTEGER                       :: SideID,CNSideID,flip
 ! Particles
 REAL                          :: PartTrajectory(1:3),lengthPartTrajectory
 LOGICAL                       :: DoTracing,PeriMoved,Reflected
@@ -1570,6 +1573,7 @@ DO WHILE(DoTracing)
 
     ! side potentially in range (halo_eps)
     SideID   = INT(SideBCMetrics(BCSIDE_SIDEID,ilocSide))
+    CNSideID = GetCNSideID(SideID)
     locSideList(ilocSide) = ilocSide
 
     ! BezierControlPoints are now built in cell local system. Hence, sides have always the flip from the shared SideInfo
@@ -1585,7 +1589,7 @@ DO WHILE(DoTracing)
         END IF
       END IF
 #endif /*CODE_ANALYZE*/
-      SELECT CASE(SideType(SideID))
+      SELECT CASE(SideType(CNSideID))
         CASE(PLANAR_RECT)
           CALL ComputePlanarRectInterSection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                             ,  xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
@@ -1606,8 +1610,8 @@ DO WHILE(DoTracing)
         IF(PartID.EQ.PARTOUT)THEN
           WRITE(UNIT_stdout,'(30("-"))')
           WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (DoubleCheck REFMAPPING): '
-          WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(SideID),' | SideID: ',SideID,' | Hit: ',isHit
-          WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide),' | LengthPartTrajectory: ', lengthPartTrajectory
+          WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
+          WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
           WRITE(UNIT_stdout,'((A,G0))')      '     | AlphaOld: ',alphaOld
           WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
         END IF
@@ -1616,7 +1620,7 @@ DO WHILE(DoTracing)
 
     ! not double check
     ELSE
-      SELECT CASE(SideType(SideID))
+      SELECT CASE(SideType(CNSideID))
         CASE(PLANAR_RECT)
           CALL ComputePlanarRectInterSection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                             ,  xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
@@ -1636,8 +1640,8 @@ DO WHILE(DoTracing)
         IF(PartID.EQ.PARTOUT)THEN
           WRITE(UNIT_stdout,'(30("-"))')
           WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (REFMAPPING, BCTracing): '
-          WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(SideID),' | SideID: ',SideID,' | Hit: ',isHit
-          WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide),' | LengthPartTrajectory: ', lengthPartTrajectory
+          WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
+          WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
           WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
         END IF
       END IF
@@ -1753,7 +1757,7 @@ USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectInterSection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
-USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalNonUniqueSideID,GetCNSideID
 USE MOD_Particle_Surfaces           ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars,      ONLY: SideNormVec
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
@@ -1789,7 +1793,7 @@ REAL,INTENT(INOUT)                :: lengthPartTrajectory     !< length of parti
 ! LOCAL VARIABLES
 LOGICAL                           :: isHit
 INTEGER                           :: iMortar,nMortarElems
-INTEGER                           :: NbElemID,NbSideID
+INTEGER                           :: NbElemID,NbSideID,NbCNSideID
 INTEGER                           :: iLocalSide
 !INTEGER                           :: locFlip
 REAL                              :: locAlpha,locXi,locEta
@@ -1853,7 +1857,8 @@ ELSE
   nMortarElems = MERGE(4,2,SideInfo_Shared(SIDE_NBELEMID,SideID).EQ.-1)
 
     DO iMortar = 1,nMortarElems
-      NbSideID = SideInfo_Shared(SIDE_NBSIDEID,SideID + iMortar)
+      NbSideID   = SideInfo_Shared(SIDE_NBSIDEID,SideID + iMortar)
+      NbCNSideID = GetCNSideID(NbSideID)
       ! If small mortar element not defined, abort. Every available information on the compute-node is kept in shared memory, so
       ! no way to recover it during runtime
       IF (NbSideID.LT.1) CALL ABORT(__STAMP__,'Small mortar side not defined!',SideID + iMortar)
@@ -1867,7 +1872,7 @@ ELSE
       ! locFlip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,nbSideID),10),SideInfo_Shared(SIDE_ID,nbSideID).GT.0)
       ! Small mortar sides are always slave sides, hence check with flip = 0
 
-      SELECT CASE(SideType(NbSideID))
+      SELECT CASE(SideType(NbCNSideID))
         CASE(PLANAR_RECT)
           CALL ComputePlanarRectIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha &
                                             ,  locXi,locEta,PartID,0      ,NbSideID)
@@ -2219,7 +2224,7 @@ USE MOD_Particle_Intersection,       ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Mesh_Vars,          ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars,          ONLY: SideBCMetrics
 USE MOD_Particle_Mesh_Vars,          ONLY: ElemBaryNGeo
-USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID
+USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID,GetCNSideID
 USE MOD_Particle_Surfaces_Vars,      ONLY: SideType
 USE MOD_Particle_Utils,              ONLY: InsertionSort
 USE MOD_Particle_Vars,               ONLY: PDM,PartState,LastPartPos
@@ -2231,7 +2236,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)            :: PartID,ElemID,firstSide,LastSide,nlocSides
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                       :: ilocSide,SideID, locSideList(firstSide:lastSide), hitlocSide
+INTEGER                       :: ilocSide,SideID,CNSideID,locSideList(firstSide:lastSide),hitlocSide
 LOGICAL                       :: dolocSide(firstSide:lastSide)
 LOGICAL                       :: ishit
 REAL                          :: localpha(firstSide:lastSide),xi(firstSide:lastSide),eta(firstSide:lastSide)
@@ -2260,10 +2265,11 @@ dolocSide = .TRUE.
 DO iLocSide=firstSide,LastSide
   ! track particle vector until the final particle position is achieved
   SideID   = INT(SideBCMetrics(BCSIDE_SIDEID,ilocSide))
+  CNSideID = GetCNSideID(SideID)
   locSideList(ilocSide) = ilocSide
   flip     = MERGE(0, MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
 
-  SELECT CASE(SideType(SideID))
+  SELECT CASE(SideType(CNSideID))
     CASE(PLANAR_RECT)
       CALL ComputePlanarRectInterSection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                         ,  xi(ilocSide),eta(ilocSide),PartID,flip,SideID)

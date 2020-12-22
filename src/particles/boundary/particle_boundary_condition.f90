@@ -52,6 +52,7 @@ USE MOD_Globals                    ,ONLY: ABORT
 USE MOD_Particle_Surfaces          ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Tracking_Vars     ,ONLY: TrackingMethod
 USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Mesh_Tools        ,ONLY: TGetCNSideID
 USE MOD_Particle_Boundary_Sampling ,ONLY: SideErosion
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound
 USE MOD_Particle_Boundary_Vars
@@ -78,6 +79,7 @@ REAL,INTENT(INOUT)                   :: alpha,PartTrajectory(1:3),lengthPartTraj
 LOGICAL,INTENT(OUT)                  :: crossedBC
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                              :: CNSideID
 REAL                                 :: n_loc(1:3)
 #if CODE_ANALYZE
 REAL                                 :: v1(3),v2(3)
@@ -90,7 +92,9 @@ SELECT CASE(TrackingMethod)
   CASE(REFMAPPING,TRACING)
     ! set BCSideID for normal vector calculation call with (curvi-)linear side description
     ! IF (TrackingMethod.EQ.RefMapping) BCSideID=PartBCSideList(SideID)
-    SELECT CASE(SideType(SideID))
+    CNSideID = GetCNSideID(SideID)
+
+    SELECT CASE(SideType(CNSideID))
       CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
         n_loc=SideNormVec(1:3,SideID)
       CASE(BILINEAR)

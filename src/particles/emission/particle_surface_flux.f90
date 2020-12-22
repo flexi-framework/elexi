@@ -308,7 +308,7 @@ SUBROUTINE CreateSideListAndFinalizeAreasSurfFlux(nDataBC)
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars              ,ONLY: nBCs,nBCSides,offsetElem,BC,SideToElem
-USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID,GetCNSideID
 USE MOD_Particle_Surfaces      ,ONLY: CalcNormAndTangTriangle
 USE MOD_Particle_Surfaces_Vars ,ONLY: BCdata_auxSF,SurfMeshSubSideData,SurfFluxSideSize,TriaSurfaceFlux
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideType
@@ -330,7 +330,7 @@ INTEGER, INTENT(IN)                           :: nDataBC
 INTEGER               :: TmpMapToBC(1:nDataBC),TmpSideStart(1:nDataBC),TmpSideNumber(1:nDataBC),TmpSideEnd(1:nDataBC)
 ! Next: Sides of diff. BCs ar not overlapping!
 INTEGER               :: TmpSideNext(1:nBCSides)
-INTEGER               :: countDataBC,iBC,BCSideID,currentBC,iSF,ElemID,iCount,iLocSide,SideID,iPartBound
+INTEGER               :: countDataBC,iBC,BCSideID,currentBC,iSF,ElemID,iCount,iLocSide,SideID,CNSideID,iPartBound
 INTEGER               :: iSample, jSample, iSpec
 REAL, ALLOCATABLE     :: areasLoc(:),areasGlob(:)
 LOGICAL               :: OutputSurfaceFluxLinked
@@ -431,11 +431,12 @@ DO iBC = 1,countDataBC
       END IF
 
       ! Get global SideID from local SideID
-      SideID = GetGlobalNonUniqueSideID(offsetElem+ElemID,iLocSide)
+      SideID   = GetGlobalNonUniqueSideID(offsetElem+ElemID,iLocSide)
+      CNSideID = GetCNSideID(SideID)
 
       !check that all sides are planar if TriaSurfaceFlux is used for Tracing or RefMapping
       IF (.NOT.TrackingMethod.EQ.TRIATRACKING) THEN
-        IF (SideType(SideID).NE.PLANAR_RECT .AND. SideType(SideID).NE.PLANAR_NONRECT) &
+        IF (SideType(CNSideID).NE.PLANAR_RECT .AND. SideType(CNSideID).NE.PLANAR_NONRECT) &
           CALL ABORT(__STAMP__,'Every surfaceflux-sides must be planar if TriaSurfaceFlux is used for Tracing or RefMapping!')
       END IF !.NOT.TrackingMethod.EQ.TRIATRACKING
 

@@ -197,7 +197,7 @@ USE MOD_Particle_Intersection  ,ONLY: ComputePlanarRectIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputeCurvedIntersection
-USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID,GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID,GetCNSideID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared
 USE MOD_Particle_Surfaces      ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBezier
@@ -229,7 +229,7 @@ REAL,INTENT(OUT),OPTIONAL                :: Tol_Opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                  :: CNElemID
-INTEGER                                  :: ilocSide,flip,SideID
+INTEGER                                  :: ilocSide,flip,SideID,CNSideID
 REAL                                     :: PartTrajectory(1:3),NormVec(1:3)
 REAL                                     :: lengthPartTrajectory,PartPos(1:3),LastPosTmp(1:3)
 LOGICAL                                  :: isHit
@@ -275,10 +275,12 @@ isHit = .FALSE.
 alpha = -1.
 
 DO ilocSide = 1,6
-  SideID = GetGlobalNonUniqueSideID(ElemID,iLocSide)
-  flip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
+<<<<<<< HEAD
+  SideID   = GetGlobalNonUniqueSideID(ElemID,iLocSide)
+  CNSideID = GetCNSideID(SideID)
+  flip     = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
 
-  SELECT CASE(SideType(SideID))
+  SELECT CASE(SideType(CNSideID))
     CASE(PLANAR_RECT)
       CALL ComputePlanarRectIntersection(  ishit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,flip,SideID)
     CASE(PLANAR_CURVED)
@@ -293,10 +295,10 @@ DO ilocSide = 1,6
   IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
       WRITE(UNIT_stdout,'(15("="))')
-      WRITE(UNIT_stdout,'(A)') '     | Output after compute intersection (PartInElemCheck): '
-      WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(SideID),' | SideID: ',SideID,'| Hit: ',isHit
-      WRITE(UNIT_stdout,'(2(A,G0))')  '     | LengthPT: ',LengthPartTrajectory,' | Alpha: ',Alpha
-      WRITE(UNIT_stdout,'(A,2(X,G0))') '     | Intersection xi/eta: ',xi,eta
+      WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (PartInElemCheck): '
+      WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID)  ,' | SideID: ',SideID,'| Hit: ',isHit
+      WRITE(UNIT_stdout,'(2(A,G0))')     '     | LengthPT: ',LengthPartTrajectory,' | Alpha: ',Alpha
+      WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi,eta
     END IF
   END IF
 
@@ -330,7 +332,7 @@ DO ilocSide = 1,6
   ! found an intersection with a side, but we might be moving into this element from the boundary. Get side normal vector and
   ! intersection point to check.
   IF (alpha.GT.-1) THEN
-    SELECT CASE(SideType(SideID))
+    SELECT CASE(SideType(CNSideID))
       CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
         NormVec = SideNormVec(1:3,SideID)
       CASE(BILINEAR)

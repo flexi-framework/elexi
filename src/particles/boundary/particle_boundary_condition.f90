@@ -52,7 +52,7 @@ USE MOD_Globals                    ,ONLY: ABORT
 USE MOD_Particle_Surfaces          ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Tracking_Vars     ,ONLY: TrackingMethod
 USE MOD_Particle_Mesh_Vars
-USE MOD_Particle_Mesh_Tools        ,ONLY: TGetCNSideID
+USE MOD_Particle_Mesh_Tools        ,ONLY: GetCNSideID
 USE MOD_Particle_Boundary_Sampling ,ONLY: SideErosion
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound
 USE MOD_Particle_Boundary_Vars

@@ -275,7 +275,6 @@ isHit = .FALSE.
 alpha = -1.
 
 DO ilocSide = 1,6
-<<<<<<< HEAD
   SideID   = GetGlobalNonUniqueSideID(ElemID,iLocSide)
   CNSideID = GetCNSideID(SideID)
   flip     = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)

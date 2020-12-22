@@ -490,6 +490,7 @@ ELSE
     END IF
   END IF
 
+  ! Get centers and radii of all CN elements connected to MPI sides for distance check with the halo elements assigned to the proc
   ALLOCATE(MPISideBoundsOfElemCenter(1:4,1:nMPISidesShared))
   DO iSide = 1, nMPISidesShared
     SideID = offsetMPISideShared(iSide)
@@ -512,6 +513,7 @@ ELSE
     BoundsOfElemCenter(1:3) = (/    SUM(BoundsOfElem_Shared(1:2,1,ElemID)), &
                                     SUM(BoundsOfElem_Shared(1:2,2,ElemID)), &
                                     SUM(BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
+    ! Calculate halo element outer radius
     BoundsOfElemCenter(4) = VECNORM ((/ BoundsOfElem_Shared(2  ,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID), &
                                         BoundsOfElem_Shared(2  ,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID), &
                                         BoundsOfElem_Shared(2  ,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)

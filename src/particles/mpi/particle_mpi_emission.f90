@@ -305,26 +305,20 @@ DO iSpec=1,nSpecies
          xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
          RegionOnProc = BoxInProc(xCoords,8)
 
-      CASE('sin_deviation')
-         IF(Species(iSpec)%Init(iInit)%initialParticleNumber.NE. &
-              (Species(iSpec)%Init(iInit)%maxParticleNumberX * Species(iSpec)%Init(iInit)%maxParticleNumberY &
-              * Species(iSpec)%Init(iInit)%maxParticleNumberZ)) THEN
-           SWRITE(*,*) 'for species ',iSpec,' does not match number of particles in each direction!'
-           CALL ABORT(__STAMP__,'ERROR: Number of particles in init / emission region',iInit)
-         END IF
-
-         xlen = abs(GEO%xmaxglob  - GEO%xminglob)
-         ylen = abs(GEO%ymaxglob  - GEO%yminglob)
-         zlen = abs(GEO%zmaxglob  - GEO%zminglob)
-         xCoords(1:3,1) = (/GEO%xminglob,GEO%yminglob,GEO%zminglob/)
-         xCoords(1:3,2) = xCoords(1:3,1) + (/xlen,0.  ,0.  /)
-         xCoords(1:3,3) = xCoords(1:3,1) + (/0.  ,ylen,0.  /)
-         xCoords(1:3,4) = xCoords(1:3,1) + (/xlen,ylen,0.  /)
-         xCoords(1:3,5) = xCoords(1:3,1) + (/0.  ,0.  ,zlen/)
-         xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.  ,0.  /)
-         xCoords(1:3,7) = xCoords(1:3,5) + (/0.  ,ylen,0.  /)
-         xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0.  /)
-         RegionOnProc = BoxInProc(xCoords,8)
+      CASE('sphere')
+        xlen=Species(iSpec)%Init(iInit)%RadiusIC
+        ylen=Species(iSpec)%Init(iInit)%RadiusIC
+        zlen=Species(iSpec)%Init(iInit)%RadiusIC
+        ! all 8 edges
+        xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,-zlen/)
+        xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,-zlen/)
+        xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,-zlen/)
+        xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,-zlen/)
+        xCoords(1:3,5) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,-ylen,+zlen/)
+        xCoords(1:3,6) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,-ylen,+zlen/)
+        xCoords(1:3,7) = Species(iSpec)%Init(iInit)%BasePointIC+(/-xlen,+ylen,+zlen/)
+        xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
+        RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE DEFAULT
         CALL ABORT(__STAMP__,'ERROR: Given SpaceIC is not implemented!')

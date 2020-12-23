@@ -208,7 +208,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Logical1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -251,7 +255,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Logical1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -294,7 +302,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Int1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -338,7 +350,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Int2) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -382,7 +398,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Int3) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -426,7 +446,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Int3) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -470,7 +494,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Real1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -514,7 +542,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Real2) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -558,7 +590,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Real3) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -602,7 +638,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Real4) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -646,7 +686,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Real5) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -690,7 +734,11 @@ __STAMP__&
 ,'ERROR: Datapointer (Real6) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+IF (myComputeNodeRank.EQ.0) THEN
+  WIN_SIZE  = datasize_byte
+ELSE
+  WIN_SIZE  = 0
+END IF
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window

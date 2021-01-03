@@ -136,7 +136,7 @@ USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition,SetParticlePositionPoint
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine,SetParticlePositionDisk
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionCuboidCylinder,SetParticlePositionCircle
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionSphere
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionSphere,SetParticlePositionCross
 !USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionSinDeviation
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionGaussian
 #if USE_MPI
@@ -155,7 +155,6 @@ INTEGER,INTENT(INOUT)                    :: NbrOfParticle
 !!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE                         :: particle_positions(:)
-INTEGER,ALLOCATABLE                      :: particle_count(:),nPartsPerProc(:),displacement(:)
 INTEGER                                  :: i,ParticleIndexNbr,allocStat,nChunks, chunkSize
 INTEGER                                  :: DimSend
 #if USE_MPI
@@ -168,6 +167,8 @@ IF (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'cell_local') THEN
 END IF
 
 Species(FractNbr)%Init(iInit)%sumOfRequestedParticles = NbrOfParticle
+Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles = 0
+Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   = 0
 IF ((NbrOfParticle .LE. 0).AND. (ABS(Species(FractNbr)%Init(iInit)%PartDensity).LE.0.)) RETURN
 
 #if USE_MPI
@@ -181,8 +182,8 @@ END IF
 
 DimSend  = 3                   !save (and send) only positions
 nChunks  = 1                   ! Standard: non-MPI
-Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles = 0
-Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   = 0
+!Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles = 0
+!Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   = 0
 chunkSize = NbrOfParticle
 
 ! process myRank=0 generates the complete list of random positions for all emitted particles
@@ -205,33 +206,29 @@ END IF
 IF (PartMPI%InitGroup(InitGroup)%MPIROOT.OR.nChunks.GT.1) THEN
 #endif
   ALLOCATE( particle_positions(1:chunkSize*DimSend), STAT=allocStat )
-  IF (doPartIndex) THEN
-    ALLOCATE(particle_count(1:chunkSize))
-  ELSE
-    ! dummy
-    ALLOCATE(particle_count(1))
-  END IF
   IF (allocStat .NE. 0) &
     CALL abort(__STAMP__,'ERROR in SetParticlePosition: cannot allocate particle_positions!')
 
   !------------------SpaceIC-cases: start-----------------------------------------------------------!
   SELECT CASE(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC))
   CASE ('point')
-    CALL SetParticlePositionPoint(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+    CALL SetParticlePositionPoint(FractNbr,iInit,chunkSize,particle_positions)
   CASE ('line_with_equidistant_distribution')
-    CALL SetParticlePositionEquidistLine(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+    CALL SetParticlePositionEquidistLine(FractNbr,iInit,chunkSize,particle_positions)
   CASE ('line')
-    CALL SetParticlePositionLine(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+    CALL SetParticlePositionLine(FractNbr,iInit,chunkSize,particle_positions)
   CASE ('Gaussian')
-    CALL SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+    CALL SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions)
   CASE('disc')
-    CALL SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+    CALL SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
+  CASE('cross')
+    CALL SetParticlePositionCross(FractNbr,iInit,chunkSize,particle_positions)
   CASE('circle', 'circle_equidistant')
-    CALL SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+    CALL SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions)
   CASE('cuboid','cylinder')
-    CALL SetParticlePositionCuboidCylinder(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+    CALL SetParticlePositionCuboidCylinder(FractNbr,iInit,chunkSize,particle_positions)
   CASE('sphere')
-    CALL SetParticlePositionSphere(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+    CALL SetParticlePositionSphere(FractNbr,iInit,chunkSize,particle_positions)
 !  CASE('sin_deviation')
 !    CALL SetParticlePositionSinDeviation(FractNbr,iInit,chunkSize,particle_positions)
   END SELECT
@@ -268,68 +265,32 @@ END IF
 
 #if USE_MPI
 ! Start communicating matched particles. This routine is finished in particle_emission.f90
-CALL MPI_IREDUCE( Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles &
+CALL MPI_IALLREDUCE( Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles &
                 , Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   &
                 , 1                                                     &
                 , MPI_INTEGER                                           &
                 , MPI_SUM                                               &
-                , 0                                                     &
+!                , 0                                                     &
                 , PartMPI%InitGroup(InitGroup)%COMM                     &
                 , PartMPI%InitGroup(InitGroup)%Request                  &
                 , IERROR)
 
 IF (doPartIndex) THEN
-  ! Communicate PartIndex
-  ALLOCATE(nPartsPerProc(0:PartMPI%InitGroup(InitGroup)%nProcs-1))
-  CALL MPI_ALLGATHER( Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles   &
-                    , 1                                                       &
-                    , MPI_INTEGER                                             &
-                    , nPartsPerProc(0:PartMPI%InitGroup(InitGroup)%nProcs-1)  &
-                    , 1                                                       &
-                    , MPI_INTEGER                                             &
-                    , PartMPI%InitGroup(InitGroup)%COMM                       &
-                    , iERROR)
-
-  ! Calculate displacement
-  ALLOCATE(displacement(1:PartMPI%InitGroup(InitGroup)%nProcs))
-  displacement(1) = 0
-  DO i = 2,PartMPI%InitGroup(InitGroup)%nProcs
-    displacement(i) = SUM(nPartsPerProc(0:i-2))
-  END DO
-
-  IF(PDM%ParticleVecLength.EQ.0)THEN
-    CALL MPI_SCATTERV( particle_count                                                                   &
-                     , nPartsPerProc                                                                    &
-                     , displacement                                                                     &
-                     , MPI_INTEGER                                                                      &
-                     , PartIndex(PDM%ParticleVecLength+1:PDM%ParticleVecLength+Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles) &
-                     , Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles                            &
-                     , MPI_INTEGER                                                                      &
-                     , 0                                                                                &
-                     , PartMPI%InitGroup(InitGroup)%COMM                                                &
-                     , IERROR)
-  ELSE
-    CALL MPI_SCATTERV( particle_count                                                                   &
-                     , nPartsPerProc                                                                    &
-                     , displacement                                                                     &
-                     , MPI_INTEGER                                                                      &
-                     , PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength+Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles-1) &
-                     , Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles                                                          &
-                     , MPI_INTEGER                                                                      &
-                     , 0                                                                                &
-                     , PartMPI%InitGroup(InitGroup)%COMM                                                &
-                     , IERROR)
-  END IF
-  DEALLOCATE(displacement, nPartsPerProc)
+  Species(FractNbr)%Init(iInit)%nPartsPerProc=0
+  CALL MPI_IEXSCAN( Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles &
+                  , Species(FractNbr)%Init(iInit)%nPartsPerProc           &
+                  , 1                                                     &
+                  , MPI_INTEGER                                           &
+                  , MPI_SUM                                               &
+                  , PartMPI%InitGroup(InitGroup)%COMM                     &
+                  , PartMPI%InitGroup(InitGroup)%RequestIndex             &
+                  , IERROR)
 END IF
-
 #else
 ! in the seriell case, particles are only emitted on the current proc
 Species(FractNbr)%Init(iInit)%sumOfMatchedParticles = Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles
 ! Assign PartIndex
-IF (doPartIndex) THEN
-  PartIndex(PDM%ParticleVecLength:PDM%ParticleVecLength + Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles) = particle_count
-END IF
+IF (doPartIndex) Species(FractNbr)%Init(iInit)%nPartsPerProc = 0
 #endif /*USE_MPI*/
 
 ! Return the *local* NbrOfParticle so that the following Routines only fill in
@@ -370,7 +331,7 @@ USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
 USE MOD_Eval_xyz,                ONLY: EvaluateField_FV
 USE MOD_FV_Vars,                 ONLY: FV_Elems
 #endif /* FV_ENABLED */
-USE MOD_io_bin,                  ONLY: load_bin
+USE MOD_StringTools             ,ONLY: STRICMP
 !IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !!-----------------------------------------------------------------------------------------------------------------------------------
@@ -383,7 +344,7 @@ INTEGER,INTENT(IN)               :: init_or_sf
 INTEGER,INTENT(INOUT)            :: NbrOfParticle
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                          :: PositionNbr,i,iElem,j,iParttmp,size_of(2)
+INTEGER                          :: PositionNbr,i,iElem,j,iParttmp
 REAL                             :: field(PP_nVar)
 REAL                             :: Radius(3)
 REAL                             :: RandVal(3)
@@ -398,10 +359,8 @@ REAL                             :: Alpha                            ! WaveNumbe
 #if USE_RW
 REAL                             :: turbField(nVarTurb)
 #endif
-REAL                             :: diffr, totaldiffr
-REAL,ALLOCATABLE                 :: PartStatetmp(:,:)
 CHARACTER(200)                   :: filename_loc             ! specifying keyword for velocity distribution
-LOGICAL                          :: foundPart
+REAL,ALLOCATABLE                 :: PartFieldtmp(:)
 !===================================================================================================================================
 ! Abort if we don't have any/too many particles
 IF(NbrOfParticle.LT.1) RETURN
@@ -513,33 +472,36 @@ CASE('radial_constant')
 ! Emission with local fluid velocity.
 !===================================================================================================================================
 CASE('load_from_file')
-  FileName_loc = "recordpoints_part.dat"
-  CALL load_bin(filename_loc, PartStatetmp)
-  size_of=SHAPE(PartStatetmp)
   i = 1
+  ! load from binary file
+  IF (.NOT.ALLOCATED(Species(FractNbr)%Init(iInit)%PartField)) THEN
+    IF(STRICMP(Species(i)%Init(iInit)%velocityDistribution,'load_from_file'))THEN
+      WRITE(FileName_loc,"(A16,I1,A4)") "data/recordpart_", FractNbr-1, ".dat"
+      ALLOCATE(PartFieldTmp(30000))
+      OPEN(33, FILE=TRIM(FileName_loc),FORM="UNFORMATTED", STATUS="UNKNOWN", ACTION="READ", ACCESS='STREAM')
+      READ(33) PartFieldtmp
+      ALLOCATE(Species(FractNbr)%Init(iInit)%PartField(100,100,3))
+      Species(FractNbr)%Init(iInit)%PartField = RESHAPE(PartFieldtmp,(/100,100,3/))
+      DEALLOCATE(PartFieldtmp)
+    END IF
+  END IF
   DO WHILE (i .le. NbrOfParticle)
     PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
     IF (PositionNbr .ne. 0) THEN
       ! calculate distance to each particle in binary file
-      totaldiffr = 0.
-      foundpart=.FALSE.
-      PartState(4:6,PositionNbr) = 0.
-      DO iParttmp=1,size_of(2)
-        IF(PartSpecies(PositionNbr) .NE. PartStatetmp(7,iParttmp)) CYCLE
-        diffr=SQRT((PartStatetmp(1,iParttmp)-PartState(1,PositionNbr))**2+(PartStatetmp(2,iParttmp)-PartState(2,PositionNbr))**2+(PartStatetmp(3,iParttmp)-PartState(3,PositionNbr))**2)
-!        print *, 'diffr', diffr
-        IF (diffr.LT.0.01) THEN
-           PartState(4:6,PositionNbr) = PartState(4:6,PositionNbr) + PartStatetmp(4:6,iParttmp)/diffr
-           totaldiffr = totaldiffr + 1./diffr
-!           print *, 'totaldiffr', totaldiffr
-           foundpart=.TRUE.
-        END IF
-      END DO
-      ! Unity radius
-      IF(foundPart) PartState(4:6,PositionNbr) = PartState(4:6,PositionNbr)/totaldiffr
+      ! 1e-2/1e+2 = 1e-4
+      PartState(4,PositionNbr) = &
+      Species(FractNbr)%Init(iInit)%PartField(50+INT(PartState(2,PositionNbr)*1e4),INT(50+PartState(3,PositionNbr)*1e4),1)!/&
+!        MAXVAL(Species(FractNbr)%Init(iInit)%PartField(:,:,1))*VeloVecIC(1)
+      PartState(5,PositionNbr) = &
+      Species(FractNbr)%Init(iInit)%PartField(50+INT(PartState(2,PositionNbr)*1e4),INT(50+PartState(3,PositionNbr)*1e4),2)
+      PartState(6,PositionNbr) = &
+      Species(FractNbr)%Init(iInit)%PartField(50+INT(PartState(2,PositionNbr)*1e4),INT(50+PartState(3,PositionNbr)*1e4),3)
+      IF (ANY(ISNAN(PartState(:,PositionNbr)))) THEN
+        PartState(4:6,PositionNbr) = 0.
+      END IF
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
-!      print *, 'PartState', PartState(4:6,PositionNbr)
     END IF
     i = i + 1
   END DO

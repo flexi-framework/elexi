@@ -904,6 +904,7 @@ DO i = 1,TotalNbrOfRecvParts
     CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
   END IF
   mySumOfMatchedParticles = mySumOfMatchedParticles + 1
+  PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
 END DO
 
 !--- 7/4 Finish communication of actual non-located particles
@@ -944,6 +945,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
       CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
     END IF
     mySumOfMatchedParticles = mySumOfMatchedParticles + 1
+    PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
   END DO
 END DO
 

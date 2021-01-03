@@ -53,6 +53,7 @@ PUBLIC :: SetParticlePositionPoint
 PUBLIC :: SetParticlePositionEquidistLine
 PUBLIC :: SetParticlePositionLine
 PUBLIC :: SetParticlePositionDisk
+PUBLIC :: SetParticlePositionCross
 PUBLIC :: SetParticlePositionCircle
 PUBLIC :: SetParticlePositionCuboidCylinder
 PUBLIC :: SetParticlePositionSphere
@@ -348,12 +349,12 @@ chunkSize = ichunkSize - 1
 END SUBROUTINE SetCellLocalParticlePosition
 
 
-SUBROUTINE SetParticlePositionPoint(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+SUBROUTINE SetParticlePositionPoint(FractNbr,iInit,chunkSize,particle_positions)
 !===================================================================================================================================
 ! Set particle position
 !===================================================================================================================================
 ! modules
-USE MOD_Particle_Vars          ,ONLY: Species,doPartIndex
+USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -363,7 +364,6 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL, INTENT(OUT)       :: particle_positions(:)
-INTEGER, INTENT(OUT)    :: particle_count(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Particle_pos(3)
@@ -374,22 +374,16 @@ INTEGER                 :: i
     particle_positions(i*3-2) = Particle_pos(1)
     particle_positions(i*3-1) = Particle_pos(2)
     particle_positions(i*3  ) = Particle_pos(3)
-
-    ! Each particle has an unique index
-    IF (doPartIndex) THEN
-      Species(FractNbr)%Init(iInit)%CountIndex=1+Species(FractNbr)%Init(iInit)%CountIndex
-      particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
-    END IF
  END DO
 END SUBROUTINE SetParticlePositionPoint
 
 
-SUBROUTINE SetParticlePositionEquidistLine(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+SUBROUTINE SetParticlePositionEquidistLine(FractNbr,iInit,chunkSize,particle_positions)
 !===================================================================================================================================
 ! Set particle position
 !===================================================================================================================================
 ! modules
-USE MOD_Particle_Vars          ,ONLY: Species,doPartIndex
+USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -399,7 +393,6 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL, INTENT(OUT)       :: particle_positions(:)
-INTEGER, INTENT(OUT)    :: particle_count(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Particle_pos(3), VectorGap(3)
@@ -407,12 +400,6 @@ INTEGER                 :: i
 !===================================================================================================================================
   IF(chunkSize.EQ.1)THEN
     Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + 0.5 * Species(FractNbr)%Init(iInit)%BaseVector1IC
-
-    ! Each particle has an unique index
-    IF (doPartIndex) THEN
-      Species(FractNbr)%Init(iInit)%CountIndex=1+Species(FractNbr)%Init(iInit)%CountIndex
-      particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
-    END IF
   ELSE
     VectorGap = Species(FractNbr)%Init(iInit)%BaseVector1IC/(REAL(chunkSize)-1.)
     DO i=1,chunkSize
@@ -420,23 +407,17 @@ INTEGER                 :: i
       particle_positions(i*3-2) = Particle_pos(1)
       particle_positions(i*3-1) = Particle_pos(2)
       particle_positions(i*3  ) = Particle_pos(3)
-
-      ! Each particle has an unique index
-      IF (doPartIndex) THEN
-        Species(FractNbr)%Init(iInit)%CountIndex=1+Species(FractNbr)%Init(iInit)%CountIndex
-        particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
-      END IF
     END DO
   END IF
 END SUBROUTINE SetParticlePositionEquidistLine
 
 
-SUBROUTINE SetParticlePositionLine(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+SUBROUTINE SetParticlePositionLine(FractNbr,iInit,chunkSize,particle_positions)
 !===================================================================================================================================
 ! Set particle position
 !===================================================================================================================================
 ! modules
-USE MOD_Particle_Vars          ,ONLY: Species,doPartIndex
+USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -446,7 +427,6 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL, INTENT(OUT)       :: particle_positions(:)
-INTEGER, INTENT(OUT)    :: particle_count(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Particle_pos(3), iRan
@@ -459,76 +439,17 @@ DO i=1,chunkSize
   particle_positions(i*3-1) = Particle_pos(2)
   particle_positions(i*3  ) = Particle_pos(3)
 
-  ! Each particle has an unique index
-  IF (doPartIndex) THEN
-    Species(FractNbr)%Init(iInit)%CountIndex=1+Species(FractNbr)%Init(iInit)%CountIndex
-    particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
-  END IF
 END DO
 END SUBROUTINE SetParticlePositionLine
 
-!SUBROUTINE SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions,particle_count)
-!!===================================================================================================================================
-!! Set particle position
-!!===================================================================================================================================
-!! Modules
-!USE MOD_Particle_Globals       ,ONLY: VECNORM
-!USE MOD_Particle_Vars          ,ONLY: Species,doPartIndex
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT VARIABLES
-!INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! OUTPUT VARIABLES
-!REAL, INTENT(OUT)       :: particle_positions(:)
-!INTEGER, INTENT(OUT)    :: particle_count(:)
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!REAL                    :: Particle_pos(3), RandVec, lineVector(3), lineVector2(3), frac
-!INTEGER                 :: i
-!!===================================================================================================================================
-!  CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
-!  CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
-!
-!  ! first particle is at (0,0)
-!  frac=1./(chunkSize*0.5-1.)
-!
-!  DO i=1,chunkSize
-!    IF(i.LE.chunkSize*0.5)THEN
-!      RandVec=2.*(i-1.)*frac-1.
-!    ELSE
-!      RandVec=2.*(i-chunkSize*0.5-1.)*frac-1.
-!    END IF
-!    IF(i.LE.chunkSize*0.5)THEN
-!      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
-!               (RandVec * lineVector)
-!    ELSE
-!      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
-!               (RandVec * lineVector2)
-!    END IF
-!
-!   particle_positions(i*3-2) = Particle_pos(1)
-!   particle_positions(i*3-1) = Particle_pos(2)
-!   particle_positions(i*3  ) = Particle_pos(3)
-!
-!   IF (doPartIndex) THEN
-!     Species(FractNbr)%Init(iInit)%CountIndex=i
-!     particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
-!   END IF
-!  END DO
-!
-!END SUBROUTINE SetParticlePositionDisk
 
-
-SUBROUTINE SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+SUBROUTINE SetParticlePositionCross(FractNbr,iInit,chunkSize,particle_positions)
 !===================================================================================================================================
 ! Set particle position
 !===================================================================================================================================
 ! Modules
 USE MOD_Particle_Globals       ,ONLY: VECNORM
-USE MOD_Particle_Vars          ,ONLY: Species,doPartIndex
+USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -538,7 +459,55 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL, INTENT(OUT)       :: particle_positions(:)
-INTEGER, INTENT(OUT)    :: particle_count(:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                    :: Particle_pos(3), RandVec, lineVector(3), lineVector2(3), frac
+INTEGER                 :: i
+!===================================================================================================================================
+  CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+  CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+
+  ! first particle is at (0,0)
+  frac=1./(chunkSize*0.5-1.)
+
+  DO i=1,chunkSize
+    IF(i.LE.chunkSize*0.5)THEN
+      RandVec=2.*(i-1.)*frac-1.
+    ELSE
+      RandVec=2.*(i-chunkSize*0.5-1.)*frac-1.
+    END IF
+    IF(i.LE.chunkSize*0.5)THEN
+      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
+               (RandVec * lineVector)
+    ELSE
+      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
+               (RandVec * lineVector2)
+    END IF
+
+   particle_positions(i*3-2) = Particle_pos(1)
+   particle_positions(i*3-1) = Particle_pos(2)
+   particle_positions(i*3  ) = Particle_pos(3)
+
+  END DO
+
+END SUBROUTINE SetParticlePositionCross
+
+
+SUBROUTINE SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
+!===================================================================================================================================
+! Set particle position
+!===================================================================================================================================
+! Modules
+USE MOD_Particle_Globals       ,ONLY: VECNORM
+USE MOD_Particle_Vars          ,ONLY: Species
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL, INTENT(OUT)       :: particle_positions(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Particle_pos(3), RandVec(2), lineVector(3), lineVector2(3), radius
@@ -561,24 +530,18 @@ INTEGER                 :: i
    particle_positions(i*3-2) = Particle_pos(1)
    particle_positions(i*3-1) = Particle_pos(2)
    particle_positions(i*3  ) = Particle_pos(3)
-
-   ! Each particle has an unique index
-   IF (doPartIndex) THEN
-     Species(FractNbr)%Init(iInit)%CountIndex=1+Species(FractNbr)%Init(iInit)%CountIndex
-     particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
-   END IF
   END DO
 
 END SUBROUTINE SetParticlePositionDisk
 
 
-SUBROUTINE SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+SUBROUTINE SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions)
 !===================================================================================================================================
 ! Set particle position
 !===================================================================================================================================
 ! modules
 USE MOD_Particle_Globals       ,ONLY: Pi
-USE MOD_Particle_Vars          ,ONLY: Species,doPartIndex
+USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -588,7 +551,6 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL, INTENT(OUT)       :: particle_positions(:)
-INTEGER, INTENT(OUT)    :: particle_count(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Particle_pos(3), iRan, lineVector(3), lineVector2(3), radius, Phi
@@ -611,23 +573,18 @@ INTEGER                 :: i
     particle_positions(i*3-1) = Particle_pos(2)
     particle_positions(i*3  ) = Particle_pos(3)
 
-    ! Each particle has an unique index
-    IF (doPartIndex) THEN
-      Species(FractNbr)%Init(iInit)%CountIndex=1+Species(FractNbr)%Init(iInit)%CountIndex
-      particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
-    END IF
   END DO
 END SUBROUTINE SetParticlePositionCircle
 
 
-SUBROUTINE SetParticlePositionCuboidCylinder(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+SUBROUTINE SetParticlePositionCuboidCylinder(FractNbr,iInit,chunkSize,particle_positions)
 !===================================================================================================================================
 ! Set particle position
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
 USE MOD_Particle_Timedisc_Vars ,ONLY: RKdtFrac
-USE MOD_Particle_Vars          ,ONLY: Species,doPartIndex
+USE MOD_Particle_Vars          ,ONLY: Species
 USE MOD_Timedisc_Vars          ,ONLY: dt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -639,7 +596,6 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit
 ! OUTPUT VARIABLES
 INTEGER, INTENT(INOUT)  :: chunkSize
 REAL, INTENT(OUT)       :: particle_positions(:)
-INTEGER, INTENT(OUT)    :: particle_count(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Particle_pos(3), RandVal(3), lineVector(3), radius
@@ -701,17 +657,12 @@ LOGICAL                 :: insideExcludeRegion
     i=i+1
     chunkSize2=chunkSize2+1
 
-    ! Each particle has an unique index
-    IF (doPartIndex) THEN
-      Species(FractNbr)%Init(iInit)%CountIndex=1+Species(FractNbr)%Init(iInit)%CountIndex
-      particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
-    END IF
   END DO
   chunkSize = chunkSize2
 END SUBROUTINE SetParticlePositionCuboidCylinder
 
 
-SUBROUTINE SetParticlePositionSphere(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+SUBROUTINE SetParticlePositionSphere(FractNbr,iInit,chunkSize,particle_positions)
 !===================================================================================================================================
 ! Set particle position
 !===================================================================================================================================
@@ -728,7 +679,6 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit
 ! OUTPUT VARIABLES
 INTEGER, INTENT(INOUT)  :: chunkSize
 REAL,INTENT(OUT)        :: particle_positions(:)
-INTEGER, INTENT(OUT)    :: particle_count(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Particle_pos(3),iRan,radius
@@ -753,12 +703,6 @@ DO WHILE (i .LE. chunkSize)
   particle_positions((chunkSize2+1)*3  ) = Particle_pos(3)
   i=i+1
   chunkSize2=chunkSize2+1
-
-  ! Each particle has an unique index
-  IF (doPartIndex) THEN
-    Species(FractNbr)%Init(iInit)%CountIndex=1+Species(FractNbr)%Init(iInit)%CountIndex
-    particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
-  END IF
 END DO
 chunkSize = chunkSize2
 
@@ -820,14 +764,14 @@ END SUBROUTINE SetParticlePositionSphere
 !END SUBROUTINE SetParticlePositionSinDeviation
 
 
-SUBROUTINE SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions,particle_count)
+SUBROUTINE SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions)
 !===================================================================================================================================
 ! position particle along line by drawing it from a Gaussian distribution
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
 USE MOD_Particle_Globals       ,ONLY: Pi
-USE MOD_Particle_Vars          ,ONLY: Species,doPartIndex
+USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -837,7 +781,6 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL, INTENT(OUT)       :: particle_positions(:)
-INTEGER, INTENT(OUT)    :: particle_count(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Particle_pos(3),RandVal(3),lineVector(3),lineVector2(3),radius
@@ -917,11 +860,6 @@ DO i=1,chunkSize
   particle_positions(i*3-1) = Particle_pos(2)
   particle_positions(i*3  ) = Particle_pos(3)
 
-  ! Each particle has an unique index
-  IF (doPartIndex) THEN
-    Species(FractNbr)%Init(iInit)%CountIndex=1+Species(FractNbr)%Init(iInit)%CountIndex
-    particle_count(i)=Species(FractNbr)%Init(iInit)%CountIndex
-  END IF
 END DO
 
 END SUBROUTINE SetParticlePositionGaussian

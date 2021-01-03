@@ -38,7 +38,8 @@ REAL    , ALLOCATABLE :: TurbPt_temp(:,:)                                    ! L
                                                                              ! (1:3,1:NParts) with 2nd index: vx',vy',vz'
 REAL    , ALLOCATABLE :: LastPartPos(:,:)                                    ! (1:3,1:NParts) with 2nd index: x,y,z
 INTEGER , ALLOCATABLE :: PartSpecies(:)                                      ! (1:NParts)
-INTEGER , ALLOCATABLE :: PartIndex(:)                                        ! (1:NParts)
+INTEGER(KIND=8), ALLOCATABLE :: PartIndex(:)                                 ! (1:NParts)
+INTEGER               :: sumOfMatchedParticlesSpecies                        ! previous sumOfMatchedParticles for all species
 INTEGER               :: PartRHSMethod
 REAL                  :: PartGravity(3)
 INTEGER               :: nrSeeds                                             ! Number of Seeds for Random Number Generator
@@ -115,6 +116,8 @@ TYPE tInit                                                                   ! P
   INTEGER                                :: sumOfMatchedParticles            ! Sum of matched particles on all procs
   INTEGER                                :: sumOfRequestedParticles          ! Sum of requested particles on all procs
   INTEGER                                :: mySumOfMatchedParticles          ! Sum of matched particles on current proc
+  INTEGER                                :: nPartsPerProc                    ! Particle displacement on current proc
+  REAL, ALLOCATABLE                      :: PartField(:,:,:)
 END TYPE tInit
 
 TYPE tSurfFluxSubSideData

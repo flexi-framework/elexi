@@ -513,8 +513,8 @@ SELECT CASE(WallCoeffModel)
     PartFaceAngleDeg = PartFaceAngle * 180/PI
 
     ! Compute cubic polynomials for coefficient of restitution
-    eps_n = 1.    - 0.4159 * PartFaceAngleDeg  + 0.4994 * PartFaceAngleDeg**2. - 0.292 * PartFaceAngleDeg**3.
-    eps_t = 1.    - 2.12   * PartFaceAngleDeg  + 3.0775 * PartFaceAngleDeg**2. - 1.1   * PartFaceAngleDeg**3.
+    eps_n = 9.9288e-01 - 3.0708e-02 * PartFaceAngleDeg  + 4.7389e-04 * PartFaceAngleDeg**2. - 2.5845e-06 * PartFaceAngleDeg**3.
+    eps_t = 9.8723e-01 - 3.0354e-02 * PartFaceAngleDeg  + 7.1913e-04 * PartFaceAngleDeg**2. - 4.2979e-06 * PartFaceAngleDeg**3.
 
   !=================================================================================================================================
   ! Tabaoff, W.; Wakeman, T.: Basic Erosion Investigation in Small Turbomachinery. / Cincinnati Univ. OH, 1981
@@ -543,7 +543,7 @@ SELECT CASE(WallCoeffModel)
 
     ! Calculate deformation of cylindrical model particle
     w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC &
-                                                          /(E_eff*3*d)   )**0.5;
+                                                          /(E_eff*3*d)   )**0.5
 
     ! Find critical deformation
     sigma_y = Species(PartSpecies(PartID))%YieldCoeff
@@ -561,9 +561,8 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    PartFaceAngleDeg = PartFaceAngle * 180/PI
     eps_t   = 1. - 0.3 / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * &
-                       SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngleDeg)**2.
+                       SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
 
 
   !===================================================================================================================================
@@ -580,7 +579,7 @@ SELECT CASE(WallCoeffModel)
 
     ! Calculate deformation of cylindrical model particle
     w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC &
-                                                          /(E_eff*3*d)   )**0.5;
+                                                          /(E_eff*3*d)   )**0.5
 
     ! Find critical deformation
     sigma_y = Species(PartSpecies(PartID))%YieldCoeff*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
@@ -598,17 +597,8 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    PartFaceAngleDeg = PartFaceAngle * 180/PI
     eps_t   = 1. - 0.63 / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * &
-                       SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngleDeg)**2.
-
-!    print *, 'v_n  ', SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))
-!    print *, 'PartFaceAngle', PartFaceAngleDeg
-!    print *, 'w_el ', w
-!    print *, 'w_cri', w_crit
-!    print *, 'E_eff', E_eff
-!    print *, 'eps_n', eps_n
-!    print *, 'eps_t', eps_t
+                       SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
 
   !=================================================================================================================================
   ! Fong, W.; Amili, O.; Coletti, F.: Velocity and spatial distribution of intertial particles in a turbulent channel flow

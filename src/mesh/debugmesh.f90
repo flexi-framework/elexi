@@ -136,7 +136,7 @@ CASE(2)
 CASE(3)
   X_NVisu_p => X_NVisu
   debugVisu_p => debugVisu
-  CALL WriteDataToVTK(7,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh',dim=PP_dim,PostiParallel=.TRUE.)
+  CALL WriteDataToVTK(7,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh',dim=PP_dim)
 END SELECT
 
 DEALLOCATE(X_NVisu)

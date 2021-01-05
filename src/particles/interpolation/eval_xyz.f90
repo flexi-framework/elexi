@@ -542,7 +542,8 @@ DO WHILE((deltaXi2.GT.RefMappingEps).AND.(NewtonIter.LT.100))
   END DO ! Armijo iteration
 
   ! check xi value for plausibility
-  IF (ANY(ABS(Xi).GT.1.5)) THEN
+!  IF (ANY(ABS(Xi).GT.1.5)) THEN
+  IF (ANY(ABS(Xi).GT.1.5).AND.NewtonIter.GT.2) THEN
     IF (Mode.EQ.1) THEN
       IPWRITE(UNIT_stdOut,*) ' Particle not inside of element, strict mode enabled!'
       IPWRITE(UNIT_StdOut,*) ' Newton-Iter:   ', NewtonIter

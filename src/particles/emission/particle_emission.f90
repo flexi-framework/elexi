@@ -43,7 +43,7 @@ SUBROUTINE InitializeParticleEmission()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars,      ONLY: Species,nSpecies,PDM,PEM
+USE MOD_Particle_Vars,      ONLY: Species,nSpecies,PDM,PEM,doPartIndex,PartIndex,sumOfMatchedParticlesSpecies
 USE MOD_Part_Emission_Tools,ONLY: SetParticleMass
 USE MOD_Part_Pos_and_Velo,  ONLY: SetParticlePosition,SetParticleVelocity
 USE MOD_Part_Tools,         ONLY: UpdateNextFreePosition
@@ -59,9 +59,12 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: i,NbrOfParticle,iInit
+INTEGER               :: i,k,NbrOfParticle,iInit
 INTEGER               :: insertParticles
-INTEGER               :: ParticleVecLengthGlob
+INTEGER               :: ParticleVecLengthGlob,particle_count
+#if USE_MPI
+INTEGER               :: InitGroup
+#endif
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(132("-"))')
@@ -124,7 +127,26 @@ IF (.NOT.DoRestart .OR. (ParticleVecLengthGlob.EQ.0)) THEN
         ! update number of particles on proc and find next free position in particle array
         PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfParticle
         CALL UpdateNextFreePosition()
-      END IF
+
+#if USE_MPI
+        InitGroup = Species(i)%Init(iInit)%InitCOMM
+        IF (PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL .AND. Species(i)%Init(iInit)%sumOfRequestedParticles.GT.0) THEN
+          CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%Request, MPI_STATUS_IGNORE, iError)
+          IF(doPartIndex) CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%RequestIndex, MPI_STATUS_IGNORE, iError)
+        END IF
+#endif
+
+        IF (doPartIndex) THEN
+          sumOfMatchedParticlesSpecies = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%sumOfMatchedParticles
+          particle_count = 0
+          DO k=1,PDM%ParticleVecLength
+            IF(PDM%IsNewPart(k) .EQV. .TRUE.)THEN
+              particle_count = particle_count + 1
+              PartIndex(k) = Species(i)%Init(iInit)%nPartsPerProc + particle_count
+            END IF
+          END DO
+        END IF ! doPartIndex
+      END IF ! UseForInit
     END DO ! inits
   END DO ! species
 END IF ! doRestart
@@ -159,7 +181,8 @@ USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
 USE MOD_Particle_Globals       ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists
 USE MOD_Particle_Timedisc_Vars ,ONLY: RKdtFrac,RKdtFracTotal
-USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PartSpecies,PDM,DelayTime,DoPoissonRounding,DoTimeDepInflow
+USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PartSpecies,PDM,DelayTime,sumOfMatchedParticlesSpecies
+USE MOD_Particle_Vars          ,ONLY: DoPoissonRounding,DoTimeDepInflow,doPartIndex,PartIndex
 USE MOD_Timedisc_Vars          ,ONLY: dt,t,RKc,nRKStages,currentStage
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -169,7 +192,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 ! Local variable declaration
-INTEGER                          :: i,iPart,PositionNbr,iInit,IntSample
+INTEGER                          :: i,k,iPart,PositionNbr,iInit,IntSample,particle_count
 INTEGER                , SAVE    :: NbrOfParticle=0
 INTEGER(KIND=8)                  :: inserted_Particle_iter,inserted_Particle_time
 INTEGER(KIND=8)                  :: inserted_Particle_diff
@@ -325,8 +348,7 @@ DO i = 1,nSpecies
         ! Emission Type: Particles at time x
         CASE(3)
           ! insert in last stage only, so that no reconstruction is necessary and number/iter matches
-          IF (RKdtFracTotal .EQ. 1..AND.(t-RestartTime).GT.0) THEN
-!            print *, 't', 'MOD', t-RestartTime,dt, MOD((t-RestartTime),Species(i)%Init(iInit)%ParticleEmissionTime)
+          IF (RKdtFracTotal .EQ. 1..AND.(t-RestartTime).GT.dt) THEN
             IF (MOD((t-RestartTime),Species(i)%Init(iInit)%ParticleEmissionTime).LT.dt) THEN
               NbrOfParticle = INT(Species(i)%Init(iInit)%ParticleEmission)
             ELSE
@@ -372,6 +394,7 @@ DO i = 1,nSpecies
       InitGroup = Species(i)%Init(iInit)%InitCOMM
       IF (PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL .AND. Species(i)%Init(iInit)%sumOfRequestedParticles.GT.0) THEN
         CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%Request, MPI_STATUS_IGNORE, iError)
+        IF (doPartIndex) CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%RequestIndex, MPI_STATUS_IGNORE, iError)
 
         IF (PartMPI%InitGroup(InitGroup)%MPIRoot) THEN
 #endif
@@ -396,6 +419,16 @@ DO i = 1,nSpecies
         END IF ! PartMPI%InitGroup(InitGroup)%MPIRoot
       END IF ! PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL
 #endif
+      IF (doPartIndex.AND.(NbrOfParticle.GT.0)) THEN
+        particle_count = 0
+        DO k=1,PDM%ParticleVecLength
+          IF ((PDM%IsNewPart(k) .EQV. .TRUE.) .AND. (PartSpecies(k).EQ.i)) THEN
+            particle_count = particle_count + 1
+            PartIndex(k) = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%nPartsPerProc + particle_count
+          END IF
+        END DO
+      END IF ! doPartIndex
+      IF (doPartIndex) sumOfMatchedParticlesSpecies = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%sumOfMatchedParticles
     END IF ! UseForEmission
   END DO ! iInit
 END DO ! i=1,nSpecies

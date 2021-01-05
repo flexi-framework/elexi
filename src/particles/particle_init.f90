@@ -458,6 +458,7 @@ CALL prms%CreateStringOption(       'Part-Boundary[$]-WallModel', 'Wall model to
 CALL prms%CreateStringOption(       'Part-Boundary[$]-WallCoeffModel', 'Coefficients to be used. Options:.\n'                    //&
                                                                   ' - Tabakoff1981\n'                                            //&
                                                                   ' - Bons2017\n'                                                //&
+                                                                  ' - Whitaker2018\n'                                            //&
                                                                   ' - Fong2019'                                                    &
                                                                             , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-Young'    , "Young's modulus defining stiffness of wall material"            &
@@ -680,6 +681,7 @@ INTEGER               :: RPP_maxMemory, iP
 REAL                  :: x_dummy(6)
 !===================================================================================================================================
 doPartIndex             = GETLOGICAL('doPartIndex','.FALSE.')
+IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
 CALL AllocateParticleArrays()
 CALL InitializeVariablesRandomNumbers()
 
@@ -792,7 +794,7 @@ ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
          PEM%Element(         1:PDM%maxParticleNumber),    &
          PEM%lastElement(     1:PDM%maxParticleNumber),    &
          STAT=ALLOCSTAT)
-IF(doPartIndex) ALLOCATE(PartIndex(           1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+IF(doPartIndex) ALLOCATE(PartIndex(1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
   CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
 
@@ -1300,7 +1302,7 @@ DO iBC = 1,nBCs
 
           SELECT CASE(PartBound%WallCoeffModel(iBC))
             ! Bons particle rebound model
-            CASE ('Bons2017')
+            CASE ('Bons2017','Whitaker2018')
               PartBound%Young(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Young')
               PartBound%Poisson(iBC)      = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Poisson')
 
@@ -1310,7 +1312,7 @@ DO iBC = 1,nBCs
 
             ! Different CoR per direction
             CASE('Tabakoff1981','Grant1975')
-!              PartBound%CoR(1:2iBC)       = GETREALARRAY( 'Part-Boundary'//TRIM(tmpStr)//'-CoR'                ,'1., 1.')
+              ! nothing to reading
 
             CASE DEFAULT
               CALL CollectiveSTOP(__STAMP__,'Unknown wall model given!')

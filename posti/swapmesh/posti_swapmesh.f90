@@ -71,7 +71,7 @@ CALL prms%CreateLogicalOption(  "useCurvedsOld"      , "Controls usage of high-o
 CALL prms%CreateLogicalOption(  "useCurvedsNew"      , "Controls usage of high-order information in new mesh. Turn off to discard "//&
                                                        "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
 CALL prms%CreateIntOption(      "NInter"             , "Polynomial degree used for interpolation on new mesh (should be equal or  "//&
-                                                       "higher than NNew) - the state will be interpolated to this degree and then "//& 
+                                                       "higher than NNew) - the state will be interpolated to this degree and then "//&
                                                        "projected down to NNew")
 CALL prms%CreateIntOption(      "NNew"               , "Polynomial degree used in new state files")
 CALL prms%CreateIntOption(      "NSuper"             , "Polynomial degree used for supersampling on the old mesh, used to get an "//&
@@ -85,6 +85,7 @@ CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide
                                                        "RefState is given")
 CALL prms%CreateLogicalOption(  "ExtrudeTo3D"        , "Perform an extrusion of a one-layer mesh to the 3D version",'.FALSE.')
 CALL prms%CreateIntOption(      "ExtrudeK"           , "Layer which is used in extrusion")
+CALL prms%CreateStringOption(   "StrVarNamesIni"     , "Variables to be swapped", multiple=.TRUE.)
 
 ! Parse parameters
 ! check for command line argument --help or --markdown

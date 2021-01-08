@@ -49,6 +49,7 @@ LOGICAL             :: useCurvedsNew             !< Should the new mesh use a cu
 REAL,ALLOCATABLE    :: RefState(:)               !< Optional reference state used for points that can not be fond
 INTEGER             :: nVar_State                !< Number of variables in DG_Solution array
 REAL                :: Time_State                !< Output time of the current state file
+CHARACTER(LEN=255)  :: StrVarNamesIni(5)         !< Variables which should be read from the statefile/time-averaged file
 
 ! Vandermonde matrices
 REAL,ALLOCATABLE    :: Vdm_CLNGeo_EquiNSuper(:,:) !< Vandermonde from CL mesh points to equdistant mesh points in supersampling

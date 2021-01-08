@@ -71,12 +71,13 @@ USE MOD_SMParametricCoordinates, ONLY: GetParametricCoordinates
 USE MOD_Interpolation,           ONLY: InitInterpolation
 USE MOD_Output_Vars,             ONLY: NOut,ProjectName
 USE MOD_Mesh_Vars,               ONLY: nElems,OffsetElem,nGlobalElems
+USE MOD_Equation_Vars,           ONLY: StrVarNames
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i
+INTEGER             :: i,nStrVarNamesIni
 CHARACTER(LEN=255)  :: MeshFile_state
 INTEGER             :: nElems_State
 REAL                :: Time
@@ -97,6 +98,17 @@ MeshFileOld = GETSTR('MeshFileOld',TRIM(MeshFile_state))
 
 ! New mesh file, the state will be interpolated to this one
 MeshFileNew = GETSTR('MeshFileNew')
+
+! Reading variable names
+nStrVarNamesIni = CountOption('StrVarNamesIni')
+IF (nStrVarNamesIni.GT.0) THEN
+  IF(nStrVarNamesIni.NE.5) CALL ABORT(__STAMP__,'5 variables for StrVarNamesIni have to be provided!')
+  DO i=1,nStrVarNamesIni
+    StrVarNamesIni(i) = GETSTR('StrVarNamesIni')
+  END DO
+ELSE
+  StrVarNamesIni = StrVarNames
+END IF
 
 ! Curved meshes or not
 useCurvedsOld = GETLOGICAL("useCurvedsOld")
@@ -119,7 +131,7 @@ maxTol = 1. + GETREAL('maxTolerance','5.e-2')
 IF (CountOption('RefState').GE.1) THEN
   ! If a reference state is given in the parameter file, it will be used whenever a gauss point can not be found.
   ! This means the program will never abort, so the abort tolerance will be set to a huge number!
-  RefState = GETREALARRAY('RefState',nVar_State)
+  RefState = GETREALARRAY('RefState',5)
   abortTol = HUGE(1.)
 ELSE
   ! Set the abort tolerance, standard is the same as "overshoot tolerance"
@@ -337,11 +349,10 @@ SUBROUTINE ReadOldStateFile(StateFile)
 USE MOD_Globals,       ONLY: abort
 USE MOD_HDF5_Input,    ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataSize
 USE MOD_IO_HDF5,       ONLY: File_ID,HSize
-USE MOD_Swapmesh_Vars, ONLY: nVar_State,NState,nElemsOld,Time_State,UOld,NNew,nElemsNew
+USE MOD_Swapmesh_Vars, ONLY: nVar_State,NState,nElemsOld,Time_State,UOld,NNew,nElemsNew,StrVarNamesIni
 USE MOD_ReadInTools,   ONLY: ExtractParameterFile
 USE MOD_Output_Vars,   ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Output,        ONLY: insert_userblock
-USE MOD_Equation_Vars, ONLY: StrVarNames
 USE MOD_DG_Vars,       ONLY: U
 USE ISO_C_BINDING,     ONLY: C_NULL_CHAR
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -353,11 +364,13 @@ CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 CHARACTER(LEN=255)               :: FileType
-CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg(:) !< List of varnames in TimeAvg-File 
-INTEGER                          :: iVar,nVarsFound,i,j,k,iElem
-REAL,ALLOCATABLE                 :: UMean(:,:,:,:,:)      !> Solution from old state
+CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg(:) !< List of varnames in TimeAvg-File
+INTEGER                          :: iVar,nVarsFound,i,j,k,iElem,jVar
+REAL,ALLOCATABLE                 :: UMean(:,:,:,:,:)   !> Solution from old state
 INTEGER                          :: nDim
+CHARACTER(LEN=255),DIMENSION(5)  :: StrVarNamestmp
 !===================================================================================================================================
+StrVarNamestmp=StrVarNamesIni(1:5)
 ! Open the data file
 CALL OpenDataFile(StateFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
@@ -368,10 +381,12 @@ CASE('State')
   CALL ReadArray('DG_Solution',5,&
                  (/nVar_State,NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UOld)
 CASE('TimeAvg')
+  ! Read the time-averaged data and store in UNew
   CALL GetDataSize(File_ID,'Mean',nDim,HSize)
-  nVar_State=SIZE(StrVarNames)
+  nVar_State=SIZE(StrVarNamestmp)
   ALLOCATE(VarNames_TimeAvg(INT(HSize(1))))
   CALL ReadAttribute(File_ID,'VarNames_Mean',INT(HSize(1)),StrArray=VarNames_TimeAvg)
+  ! Reading solution
   SDEALLOCATE(UOld)
   ALLOCATE(UOld(nVar_State,0:NState,0:NState,0:NState,nElemsOld))
   ALLOCATE(UMean(INT(HSize(1)),0:NState,0:NState,0:NState,nElemsOld))
@@ -380,15 +395,18 @@ CASE('TimeAvg')
   CALL ReadArray('Mean',5,&
                 (/INT(HSize(1)),NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UMean)
   nVarsFound=0
-  DO iVar=1,SIZE(StrVarNames)
-    IF (TRIM(VarNames_TimeAvg(iVar)) .EQ. TRIM(StrVarNames(nVarsFound+1))) THEN
-      nVarsFound = nVarsFound+1
-      DO iElem=1,nElemsOld; DO k=0,NState; DO j=0,NState; DO i=0,NState
-        UOld(nVarsFound,i,j,k,iElem)=UMean(iVar,i,j,k,iElem)
-      END DO; END DO; END DO; END DO
-    END IF
+  DO jVar=1,INT(HSize(1))
+    DO iVar=1,SIZE(StrVarNamestmp)!-2
+      IF (TRIM(VarNames_TimeAvg(jVar)) .EQ. TRIM(StrVarNamestmp(iVar))) THEN
+        nVarsFound = nVarsFound+1
+        DO iElem=1,nElemsOld; DO k=0,NState; DO j=0,NState; DO i=0,NState
+          UOld(nVarsFound,i,j,k,iElem)=UMean(jVar,i,j,k,iElem)
+        END DO; END DO; END DO; END DO
+        CONTINUE
+      END IF
+    END DO
   END DO
-  IF(nVarsFound .NE. SIZE(StrVarNames) ) CALL abort(__STAMP__,&
+  IF(nVarsFound .NE. SIZE(StrVarNamestmp) ) CALL abort(__STAMP__,&
     'TimeAvg file does not contain all necessary variables for converting to state')
 END SELECT
 
@@ -406,6 +424,7 @@ INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 CALL CloseDataFile()
 SDEALLOCATE(VarNames_TimeAvg)
 SDEALLOCATE(UMean)
+!SDEALLOCATE(UFluc)
 END SUBROUTINE ReadOldStateFile
 
 !===================================================================================================================================

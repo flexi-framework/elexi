@@ -755,6 +755,9 @@ INTEGER                        :: iSide,sideCount
 INTEGER                        :: iLocSide,jLocSide,nlocSides,nlocSidesNb,NbSideID
 !===================================================================================================================================
 
+! do not build particle mesh information in posti mode
+IF (postiMode) RETURN
+
 #if USE_MPI
 ! calculate all offsets
 FirstElemInd = offsetElem+1

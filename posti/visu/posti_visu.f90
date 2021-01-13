@@ -57,7 +57,6 @@ CHARACTER(LEN=255)             :: FileString_multiblock
 #if USE_PARTICLES
 CHARACTER(LEN=255)             :: FileString_Part
 CHARACTER(LEN=255)             :: FileString_Erosion
-CHARACTER(LEN=255)             :: FileString_multiblock
 #endif
 #if !USE_MPI
 INTEGER                        :: MPI_COMM_WORLD = 0

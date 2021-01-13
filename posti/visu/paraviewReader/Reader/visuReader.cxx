@@ -14,10 +14,10 @@
 !=================================================================================================================================
 */
 
-#include "visuReader.h"
-#include "../../plugin_visu.h"
+#include <visuReader.h>
+#include <../../plugin_visu.h>
 
-#include "hdf5.h"
+#include <hdf5.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
 #include <vtkDoubleArray.h>
@@ -29,8 +29,10 @@
 #include <vtkObjectFactory.h>
 #include <vtkPointData.h>
 #include <vtkStreamingDemandDrivenPipeline.h>
-#include "vtkMultiBlockDataSet.h"
+#include <vtkMultiBlockDataSet.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkPolyData.h>
+#include <vtkVertex.h>
 
 
 #include <libgen.h>
@@ -113,10 +115,10 @@ int visuReader::RequestInformation(vtkInformation *,
       mpiComm = *(communicator->GetMPIComm()->GetHandle());
    }
    // get the info object of the output ports
-   vtkSmartPointer<vtkInformation> outInfoVolume = outputVector->GetInformationObject(0);
+   vtkSmartPointer<vtkInformation> outInfoVolume  = outputVector->GetInformationObject(0);
    vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
 #if USE_PARTICLES
-   vtkSmartPointer<vtkInformation> outInfoPart = outputVector->GetInformationObject(2);
+   vtkSmartPointer<vtkInformation> outInfoPart    = outputVector->GetInformationObject(2);
    vtkSmartPointer<vtkInformation> outInfoErosion = outputVector->GetInformationObject(3);
 #endif
 
@@ -504,34 +506,38 @@ int visuReader::RequestData(
 #if USE_PARTICLES
 	 // write PartData
 	 if  (coords_Part.len > 0) {
-	 		vtkMultiBlockDataSet* mb_part = vtkMultiBlockDataSet::SafeDownCast(outInfoPart->Get(vtkDataObject::DATA_OBJECT()));
-   		if (!mb_part) {
-   		   std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
-   		   return 0;
-   		}
+      /* vtkPolyData* mb_part = vtkPolyData::SafeDownCast(outInfoPart->Get(vtkDataObject::DATA_OBJECT())); */
+      vtkMultiBlockDataSet* mb_part = vtkMultiBlockDataSet::SafeDownCast(outInfoPart->Get(vtkDataObject::DATA_OBJECT()));
+      if (!mb_part) {
+         std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
+         return 0;
+      }
 
-   		SWRITE("Number of Blocks in MultiBlockDataset : " << mb_part->GetNumberOfBlocks())
-	 		if (mb_part->GetNumberOfBlocks() < 2) {
-   			SWRITE("Create new part output Block");
-   			mb_part->SetBlock(0, vtkUnstructuredGrid::New());
-   		}
+      SWRITE("Number of Blocks in MultiBlockDataset : " << mb_part->GetNumberOfBlocks())
+      if (mb_part->GetNumberOfBlocks() < 2) {
+        SWRITE("Create new part output Block");
+        /* mb_part->SetBlock(0, vtkUnstructuredGrid::New()); */
+        mb_part->SetBlock(0, vtkPolyData::New());
+      }
 
-   		InsertPartData(mb_part,0, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
+      InsertPartData(mb_part,0, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
 	 }
 	 if  (coords_Erosion.len > 0) {
-	 		vtkMultiBlockDataSet* mb_erosion = vtkMultiBlockDataSet::SafeDownCast(outInfoErosion->Get(vtkDataObject::DATA_OBJECT()));
-   		if (!mb_erosion) {
-   		   std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
-   		   return 0;
-   		}
+      /* vtkMultiBlockDataSet* mb_erosion = vtkMultiBlockDataSet::SafeDownCast(outInfoErosion->Get(vtkDataObject::DATA_OBJECT())); */
+      vtkMultiBlockDataSet* mb_erosion = vtkMultiBlockDataSet::SafeDownCast(outInfoErosion->Get(vtkDataObject::DATA_OBJECT()));
+      if (!mb_erosion) {
+         std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
+         return 0;
+      }
 
-   		SWRITE("Number of Blocks in MultiBlockDataset : " << mb_erosion->GetNumberOfBlocks())
-	 		if (mb_erosion->GetNumberOfBlocks() < 2) {
-   			SWRITE("Create new erosion output Block");
-   			mb_erosion->SetBlock(0, vtkUnstructuredGrid::New());
-   		}
+      SWRITE("Number of Blocks in MultiBlockDataset : " << mb_erosion->GetNumberOfBlocks())
+      if (mb_erosion->GetNumberOfBlocks() < 2) {
+        SWRITE("Create new erosion output Block");
+        /* mb_erosion->SetBlock(0, vtkUnstructuredGrid::New()); */
+        mb_erosion->SetBlock(0, vtkPolyData::New());
+      }
 
-   		InsertPartData(mb_erosion,0, &coords_Erosion, &values_Erosion, &nodeids_Erosion, &varnames_Erosion, &components_Erosion);
+      InsertPartData(mb_erosion,0, &coords_Erosion, &values_Erosion, &nodeids_Erosion, &varnames_Erosion, &components_Erosion);
 	 }
 #endif
 
@@ -660,10 +666,13 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
 /*
  * This function inserts the data, loaded by the Posti tool, into a ouput
  */
+/* void visuReader::InsertPartData(vtkPolyData* mb_part, int blockno, struct DoubleARRAY* coords, */
+/*     struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) { */
 void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , struct DoubleARRAY* coords,
     struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) {
    SWRITE("Insert particle data \n");
-	 vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb_part->GetBlock(blockno));
+	 /* vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb_part->GetBlock(blockno)); */
+   vtkSmartPointer<vtkPolyData> output = vtkPolyData::SafeDownCast(mb_part->GetBlock(blockno));
 
    // create points(array)
    vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
@@ -681,6 +690,17 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
    points->SetData(pdata);
    output->SetPoints(points);
 
+   vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
+   vtkSmartPointer<vtkVertex>    vertex    = vtkSmartPointer<vtkVertex>::New();
+      // Use the nodeids to build vertices (a cell that represents a 3D point)
+      // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
+      // loop over all nodeids
+      for (int i=0; i<nodeids->len; i++) {
+         vertex   ->GetPointIds()->SetId(0,nodeids->data[i]);
+         cellarray->InsertNextCell(vertex);
+      }
+      output->SetVerts(cellarray);
+
    // assign the actual data, loaded by the Posti tool, to the output
    unsigned int nVarCombine = varnames->len/255;
    unsigned int nVar = 0;
@@ -693,17 +713,17 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
 	   int dataPos = 0;
 	   // loop over all loaded variables
 	   for (unsigned int iVar = 0; iVar < nVarCombine; iVar++) {
-		 		vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
+        vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
         vdata->SetNumberOfComponents(components->data[iVar]);
         vdata->SetNumberOfTuples(sizePerVar);
         // copy coordinates
         double* ptr = vdata->GetPointer(0);
 				for (long j = 0; j < sizePerVar; ++j)
 				{
-        	for (long i = 0; i < components->data[iVar]; ++i)
-        	{
-        	   *ptr++ = values->data[dataPos+i+j*nVar];
-//	      			std::cout << "Data " << values->data[dataPos+i+j*nVar] << "\n";
+          for (long i = 0; i < components->data[iVar]; ++i)
+          {
+            *ptr++ = values->data[dataPos+i+j*nVar];
+//            std::cout << "Data " << values->data[dataPos+i+j*nVar] << "\n";
           }
         }
         dataPos += components->data[iVar];

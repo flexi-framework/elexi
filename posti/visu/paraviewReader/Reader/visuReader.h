@@ -38,6 +38,8 @@
 #include "vtkIOParallelModule.h" // For export macro
 #include "vtkMultiBlockDataSetAlgorithm.h"
 
+/* #include <vtkPolyData.h> */
+
 // MPI
 class vtkMultiProcessController;
 // MPI
@@ -127,6 +129,8 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       void InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
             struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames);
 #if USE_PARTICLES
+      /* virtual void InsertPartData(vtkPolyData* mb_part, int blockno, struct DoubleARRAY* coords,
+            struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components); */
 			virtual void InsertPartData(vtkMultiBlockDataSet* mb_part, int blockno, struct DoubleARRAY* coords,
             struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components);
 #endif

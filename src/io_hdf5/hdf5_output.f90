@@ -565,8 +565,8 @@ INTEGER,INTENT(IN)             :: nVarFluc                                     !
 INTEGER,INTENT(IN)             :: nVal(3)                                      !< Dimension of UAvg
 INTEGER,INTENT(IN)             :: FV_Elems_In(nElems)                          !< Array with custom FV_Elem information
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName                                 !< Name of mesh file
-CHARACTER(LEN=*),INTENT(IN)    :: VarNamesAvg(nVarAvg)                         !< Average variable names
-CHARACTER(LEN=*),INTENT(IN)    :: VarNamesFluc(nVarFluc)                       !< Average variable names
+CHARACTER(LEN=255),INTENT(IN)  :: VarNamesAvg(nVarAvg)                         !< Average variable names
+CHARACTER(LEN=255),INTENT(IN)  :: VarNamesFluc(nVarFluc)                       !< Average variable names
 REAL,INTENT(IN)                :: OutputTime                                   !< Time of output
 REAL,INTENT(IN)                :: dtAvg                                        !< Timestep of averaging
 REAL,INTENT(IN),TARGET         :: UAvg(nVarAvg,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution
@@ -683,7 +683,7 @@ CHARACTER(LEN=*),INTENT(IN)    :: FileName           !< Name of file to create
 CHARACTER(LEN=*),INTENT(IN)    :: TypeString         !< Type of file to be created (state,timeaverage etc.)
 INTEGER,INTENT(IN)             :: nVar               !< Number of variables
 INTEGER,INTENT(IN)             :: NData              !< Polynomial degree of data
-CHARACTER(LEN=*)               :: StrVarNames(nVar)  !< Variabel names
+CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)  !< Variabel names
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
 REAL,INTENT(IN)                :: OutputTime         !< Time of output
 REAL,INTENT(IN),OPTIONAL       :: FutureTime         !< Time of next output
@@ -730,7 +730,7 @@ CALL H5DCREATE_F(File_ID,TRIM(Dataset_Str), HDF5DataType, FileSpace, DSet_ID, iE
 ! Close the filespace and the dataset
 CALL H5DCLOSE_F(Dset_id, iError)
 CALL H5SCLOSE_F(FileSpace, iError)
-CALL WriteAttribute(File_ID,TRIM(Varname_Str),nVar,StrArray=StrVarNames)
+CALL WriteAttribute(File_ID,TRIM(Varname_Str),nVar,StrArray=StrVarNames(1:nVar))
 
 ! Write default attributes only if file is created
 IF(create_loc)THEN
@@ -890,17 +890,17 @@ USE,INTRINSIC :: ISO_C_BINDING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(HID_T)    ,INTENT(IN)           :: Loc_ID_in              !< Dataset ID (only if already open)
-CHARACTER(LEN=*)  ,INTENT(IN)           :: AttribName             !< name of the attribute to be written
-INTEGER           ,INTENT(IN)           :: nVal                   !< number of array entries if array is written
-CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL  :: DatasetName            !< name of the dataset created
+INTEGER(HID_T)    ,INTENT(IN)                 :: Loc_ID_in        !< Dataset ID (only if already open)
+CHARACTER(LEN=*)  ,INTENT(IN)                 :: AttribName       !< name of the attribute to be written
+INTEGER           ,INTENT(IN)                 :: nVal             !< number of array entries if array is written
+CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL        :: DatasetName      !< name of the dataset created
 REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealScalar       !< real scalar
 INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntScalar        !< integer scalar
 CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL,TARGET :: StrScalar(1)     !< scalar string
 LOGICAL           ,INTENT(IN),OPTIONAL        :: LogicalScalar    !< logical scalar
 REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealArray(nVal)  !< real array of length nVal
 INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray(nVal)   !< integer array of length nVal
-CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL,TARGET :: StrArray(nVal)   !< string array of length nVal
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(nVal)   !< string array of length nVal
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: Rank

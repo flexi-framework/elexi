@@ -907,28 +907,32 @@ DO iSpec = 1, nSpecies
   ! get species values // only once
   !--> General Species Values
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec,'-Init',iInit
-  Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(tmpStr2)//'-RHSMethod'             )
-  Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-MassIC'           ,'0.')
-  Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-DiameterIC'       ,'0.')
-  Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-DensityIC'        ,'0.')
+  Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'             )
+  Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'           ,'0.')
+  Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'       ,'0.')
+  Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'        ,'0.')
   IF (Species(iSpec)%MassIC .EQ. 0.) THEN
     Species(iSpec)%MassIC=Species(iSpec)%DensityIC*PI/6*Species(iSpec)%DiameterIC**3
     SWRITE(UNIT_StdOut,'(A,I0,A,F16.5)') ' | Mass of species (spherical) ', iSpec, ' = ', Species(iSpec)%MassIC
   END IF
-  Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-LowVeloThreshold' ,'0.')
-  Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-HighVeloThreshold','0.')
+  Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold' ,'0.')
+  Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-HighVeloThreshold','0.')
 
   !--> Bons particle rebound model
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading rebound  particle properties for Species',iSpec,'-Init',iInit
-  Species(iSpec)%YoungIC               = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-YoungIC'          ,'0.')
-  Species(iSpec)%PoissonIC             = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-PoissonIC'        ,'0.')
-  Species(iSpec)%YieldCoeff            = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-YieldCoeff'       ,'0.')
+  Species(iSpec)%YoungIC               = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YoungIC'          ,'0.')
+  Species(iSpec)%PoissonIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PoissonIC'        ,'0.')
+  Species(iSpec)%YieldCoeff            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YieldCoeff'       ,'0.')
 
   !-- Check if particles have valid mass/density
-  IF (Species(iSpec)%MassIC .LE. 0.) &
+  IF (Species(iSpec)%MassIC .LE. 0.    .AND..NOT.(Species(iSpec)%RHSMethod.EQ.RHS_NONE          &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TRACER        &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_CONVERGENCE)) &
     CALL CollectiveStop(__STAMP__, 'Invalid particle mass given, Species=',IntInfo=iSpec)
 
-  IF (Species(iSpec)%DensityIC .LE. 0.) &
+  IF (Species(iSpec)%DensityIC .LE. 0. .AND..NOT.(Species(iSpec)%RHSMethod.EQ.RHS_NONE          &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TRACER        &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_CONVERGENCE)) &
     CALL CollectiveStop(__STAMP__, 'Invalid particle density given, Species=',IntInfo=iSpec)
 
   ! Loop over all inits and get requested data

@@ -1794,7 +1794,7 @@ REAL,INTENT(INOUT)                :: lengthPartTrajectory     !< length of parti
 ! LOCAL VARIABLES
 LOGICAL                           :: isHit
 INTEGER                           :: iMortar,nMortarElems
-INTEGER                           :: NbElemID,NbSideID,NbCNSideID
+INTEGER                           :: CNSideID,NbElemID,NbSideID,NbCNSideID
 INTEGER                           :: iLocalSide
 !INTEGER                           :: locFlip
 REAL                              :: locAlpha,locXi,locEta
@@ -1814,8 +1814,9 @@ IF (SideInfo_Shared(SIDE_BCID,SideID).GT.0) THEN
 ELSE
   ! get side normal vector. Must be calculated with current point if the side is bilinear or curved
   SELECT CASE(hitSideType)
-      CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
-        n_loc=SideNormVec(1:3,SideID)
+    CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
+      CNSideID = GetCNSideID(SideID)
+      n_loc    = SideNormVec(1:3,CNSideID)
       ! BezierControlPoints are now built in cell local system. Hence, side always have the flip from the shared SideInfo
       IF (flip.NE.0) n_loc = -n_loc
 

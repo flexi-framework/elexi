@@ -89,36 +89,36 @@ crossedBC = .FALSE.
 
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(TrackingMethod)
-  CASE(REFMAPPING,TRACING)
-    ! set BCSideID for normal vector calculation call with (curvi-)linear side description
-    ! IF (TrackingMethod.EQ.RefMapping) BCSideID=PartBCSideList(SideID)
-    CNSideID = GetCNSideID(SideID)
+CASE(REFMAPPING,TRACING)
+  ! set BCSideID for normal vector calculation call with (curvi-)linear side description
+  ! IF (TrackingMethod.EQ.RefMapping) BCSideID=PartBCSideList(SideID)
+  CNSideID = GetCNSideID(SideID)
 
-    SELECT CASE(SideType(CNSideID))
-      CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
-        n_loc=SideNormVec(1:3,SideID)
-      CASE(BILINEAR)
-        CALL CalcNormAndTangBilinear(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
-      CASE(CURVED)
-        CALL CalcNormAndTangBezier(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
-    END SELECT
+  SELECT CASE(SideType(CNSideID))
+    CASE(PLANAR_RECT,PLANAR_NONRECT,PLANAR_CURVED)
+      n_loc = SideNormVec(1:3,CNSideID)
+    CASE(BILINEAR)
+      CALL CalcNormAndTangBilinear(nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
+    CASE(CURVED)
+      CALL CalcNormAndTangBezier(  nVec=n_loc,xi=xi,eta=eta,SideID=SideID)
+  END SELECT
 
-    ! Flip side orientation if not on the master side
-    IF(flip.NE.0) n_loc=-n_loc
+  ! Flip side orientation if not on the master side
+  IF(flip.NE.0) n_loc=-n_loc
 
 #if CODE_ANALYZE
-    ! check if normal vector points outwards
-    v1 = 0.25*(BezierControlPoints3D(:,0   ,0   ,SideID)  &
-             + BezierControlPoints3D(:,NGeo,0   ,SideID)  &
-             + BezierControlPoints3D(:,0   ,NGeo,SideID)  &
-             + BezierControlPoints3D(:,NGeo,NGeo,SideID))
-    v2 = v1  - ElemBaryNGeo(:,GetCNElemID(ElemID))
+  ! check if normal vector points outwards
+  v1 = 0.25*(BezierControlPoints3D(:,0   ,0   ,SideID)  &
+           + BezierControlPoints3D(:,NGeo,0   ,SideID)  &
+           + BezierControlPoints3D(:,0   ,NGeo,SideID)  &
+           + BezierControlPoints3D(:,NGeo,NGeo,SideID))
+  v2 = v1  - ElemBaryNGeo(:,GetCNElemID(ElemID))
 
-    IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
-      IPWRITE(UNIT_stdout,*) 'Obtained wrong side orientation from flip. flip:',flip,'PartID:',iPart
-      IPWRITE(UNIT_stdout,*) 'n_loc (flip)', n_loc,'n_loc (estimated):',v2
-      CALL ABORT(__STAMP__,'SideID',SideID)
-    END IF
+  IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
+    IPWRITE(UNIT_stdout,*) 'Obtained wrong side orientation from flip. flip:',flip,'PartID:',iPart
+    IPWRITE(UNIT_stdout,*) 'n_loc (flip)', n_loc,'n_loc (estimated):',v2
+    CALL ABORT(__STAMP__,'SideID',SideID)
+  END IF
 #endif /* CODE_ANALYZE */
 
     ! Inserted particles are "pushed" inside the domain and registered as passing through the BC side. If they are very close to the

@@ -78,6 +78,13 @@ CHE_particle:
         - cd build_gnu
         - python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/CHE -j 6
 
+CN_particle:
+    <<: *defaults_gnu
+    stage: reggie_particle
+    script:
+        - cd build_gnu
+        - python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/CN -j 6
+
 FV_particle:
     <<: *defaults_gnu
     stage: reggie_particle
@@ -154,7 +161,7 @@ gnu_channelRANS:
   <<: *defaults_gnu
   stage: reggie_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi 
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi
 
 WEK_particle:
   <<: *defaults_gnu

@@ -591,6 +591,12 @@ IF(FLEXI_PARTICLES)
     MESSAGE(SEND_ERROR "FLEXI_PARTICLES_RW does not work with FLEXI_FV=ON")
   ENDIF()
   ADD_DEFINITIONS(-DUSE_PARTICLES=1)
+
+  # Shared Memory
+  SET(FLEXI_SHARED_MEMORY "MPI_COMM_TYPE_SHARED" CACHE STRING "Split type for creating new communicators based on colors and keys.")
+  SET_PROPERTY(CACHE FLEXI_SHARED_MEMORY PROPERTY STRINGS MPI_COMM_TYPE_SHARED
+                                                          OMPI_COMM_TYPE_CORE)
+
 ELSE()
   ADD_DEFINITIONS(-DUSE_PARTICLES=0)
 ENDIF()
@@ -620,6 +626,18 @@ IF(FLEXI_PARTICLES)
   ENDIF()
 ELSE()
   ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
+ENDIF()
+
+# =========================================================================
+# Shared memory split type
+# =========================================================================
+IF(FLEXI_PARTICLES)
+  IF(FLEXI_SHARED_MEMORY STREQUAL "MPI_COMM_TYPE_SHARED")
+  ADD_DEFINITIONS(-DSharedMemoryMethod=0)
+  MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
+ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
+  ADD_DEFINITIONS(-DSharedMemoryMethod=1)
+  MESSAGE(STATUS "Shared memory split type for subcommunicators set to the same core/processing unit")
 ENDIF()
 
 # =========================================================================

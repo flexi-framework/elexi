@@ -512,7 +512,7 @@ CALL MPI_WIN_LOCK_ALL(0,ElemToTree_Shared_Win,IERROR)
 ElemToTree_Shared(offsetElem+1:offsetElem+nElems) = ElemToTree(:)
 ! allocate shared array for TreeCoords
 CALL MPI_ALLREDUCE(nTrees,nNonUniqueGlobalTrees,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,IERROR)
-MPISharedSize = INT((NGeoTree+1)**3*nNonUniqueGlobalTrees,MPI_ADDRESS_KIND)*MPI_DOUBLE
+MPISharedSize = INT(3*(NGeoTree+1)**3*nNonUniqueGlobalTrees,MPI_ADDRESS_KIND)*MPI_DOUBLE
 CALL Allocate_Shared(MPISharedSize,(/3,nGeoTree+1,nGeoTree+1,nGeoTree+1,nNonUniqueGlobalTrees/),TreeCoords_Shared_Win,TreeCoords_Shared)
 CALL MPI_WIN_LOCK_ALL(0,TreeCoords_Shared_Win,IERROR)
 TreeCoords_Shared(:,:,:,:,offsetTree:offsetTree+nTrees) = TreeCoords(:,:,:,:,:)

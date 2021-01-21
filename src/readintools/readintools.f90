@@ -229,6 +229,10 @@ SUBROUTINE CreateOption(this, opt, name, description, value, multiple      &
                                                            , numberedmulti &
 #endif /*USE_PARTICLES*/
                                                            )
+! MODULES
+USE MOD_StringTools ,ONLY: LowCase
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)       :: this             !< CLASS(Parameters)
 CLASS(OPTION),INTENT(INOUT)           :: opt              !< option class
@@ -241,6 +245,8 @@ LOGICAL,INTENT(IN),OPTIONAL           :: numberedmulti    !< marker if numbered 
 #endif /*USE_PARTICLES*/
 ! LOCAL VARIABLES
 CLASS(link), POINTER :: newLink
+TYPE(Varying_String) :: aStr
+INTEGER              :: ind
 !==================================================================================================================================
 opt%hasDefault = PRESENT(value)
 IF (opt%hasDefault) THEN
@@ -256,11 +262,29 @@ END IF
 
 #if USE_PARTICLES
 opt%numberedmulti = .FALSE.
-IF (PRESENT(numberedmulti)) opt%numberedmulti = numberedmulti
+IF (PRESENT(numberedmulti)) THEN
+  ! Remove/Replace $ occurrences in variable name
+  IF(opt%numberedmulti)THEN
+    aStr = Var_Str(TRIM(name))
+    aStr = Replace(aStr,"[]"  ,"$",Every = .true.)
+    aStr = Replace(aStr,"[$]" ,"$",Every = .true.)
+    aStr = Replace(aStr,"[$$]","$",Every = .true.)
+    CALL LowCase(CHAR(aStr),opt%name)
+    ind = INDEX(TRIM(opt%name),"$")
+    IF(ind.LE.0)THEN
+      CALL abort(&
+      __STAMP__&
+      ,'[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(opt%name)//']')
+    END IF ! ind.LE.0
+  ELSE
+    opt%name = name
+  END IF ! opt%numberedmulti
+END IF ! PRESENT(numberedmulti)
+#else
+opt%name = name
 #endif /*USE_PARTICLES*/
 
 opt%isSet = .FALSE.
-opt%name = name
 opt%description = description
 opt%section = this%actualSection
 opt%isRemoved = .FALSE.
@@ -1118,7 +1142,7 @@ DO WHILE (associated(current))
 END DO
 
 #if USE_PARTICLES
-! iterate over all options and compare reduced (all numberes removed) names with numberedmulti options
+! iterate over all options and compare reduced (all numbers removed) names with numberedmulti options
 current => prms%firstLink
 DO WHILE (associated(current))
   IF (.NOT.current%opt%numberedmulti) THEN
@@ -1139,7 +1163,7 @@ DO WHILE (associated(current))
         ! no proposal, no default and also not set in parameter file => abort
         IF ((.NOT.newopt%hasDefault).AND.(.NOT.newopt%isSet)) THEN
           CALL ABORT(__STAMP__, &
-              "Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
+              "[numberedmulti] Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
           RETURN
         END IF
       END IF

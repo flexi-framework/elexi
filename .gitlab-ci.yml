@@ -32,7 +32,7 @@ stages:
     paths:
       - build_gnu
     policy: pull
-    allow_failure: true
+  allow_failure: true
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "build": Build with intel/gnu on check-in

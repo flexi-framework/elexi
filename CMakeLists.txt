@@ -331,7 +331,7 @@ IF (NOT CMAKE_BUILD_TYPE)
   SET (CMAKE_BUILD_TYPE Release CACHE STRING
       "Choose the type of build, options are: Debug Release Profile."
       FORCE)
-  SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
+  SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile Sani)
 ENDIF (NOT CMAKE_BUILD_TYPE)
 
 
@@ -390,6 +390,7 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   ENDIF()
   SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -finit-real=snan -fbacktrace  -Wall")
+  SET (CMAKE_Fortran_FLAGS_SANI    "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -finit-real=snan -fbacktrace  -Wall -fsanitize=address,undefined,leak -fno-omit-frame-pointer -Wc-binding-type -Wuninitialized -pedantic")
   # add flags only for compiling not linking!
   SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
 

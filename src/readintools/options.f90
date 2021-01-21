@@ -37,7 +37,7 @@ MODULE MOD_Options
     LOGICAL               :: numberedmulti!< default .FALSE. Indicates if option that occurs multiple times in ini file is numbered
                                           !< example: part-species[$]-surfaceflux[$]-BC --> numberedmulti = .TRUE.
 #endif
-    
+
   CONTAINS
     PROCEDURE :: print                    !< function used to print option for a default parameter file
     PROCEDURE :: printValue               !< function used to print the value
@@ -169,7 +169,7 @@ IMPLICIT NONE
 CLASS(OPTION),INTENT(IN)    :: this !< CLASS(OPTION)
 CHARACTER(LEN=*),INTENT(IN) :: name !< incoming name, which is compared with the name of this option
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 LOGICAL               :: NAMEEQUALSNUMBERED
 INTEGER               :: i,ind,ind2,ind3
 CHARACTER(LEN=255)    :: thisname,testname
@@ -192,8 +192,13 @@ DO WHILE(ind.GT.0)
         END DO ! i = 1, LEN(testname)
       ELSE
         ind2 = INDEX(TRIM(testname), TRIM(thisname))
-        testname = TRIM(testname(MIN(ind2,LEN(testname)):))
-        NAMEEQUALSNUMBERED = STRICMP(thisname, testname)
+        IF(ind2.EQ.0)THEN
+          ind=0
+          NAMEEQUALSNUMBERED=.FALSE.
+        ELSE
+          testname = TRIM(testname(MIN(ind2,LEN(testname)):))
+          NAMEEQUALSNUMBERED = STRICMP(thisname, testname)
+        END IF
       END IF ! TRIM(thisname).EQ.""
     END IF ! ind.EQ.0
   ELSE

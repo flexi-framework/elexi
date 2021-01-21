@@ -65,6 +65,7 @@ TYPE,PUBLIC :: Parameters
 CONTAINS
   PROCEDURE :: SetSection                 !< routine to set 'actualSection'
   PROCEDURE :: CreateOption               !< general routine to create a option and insert it into the linked list
+                                          !< also checks if option is already created in the linked list
   PROCEDURE :: CreateIntOption            !< routine to generate an integer option
   PROCEDURE :: CreateIntFromStringOption  !< routine to generate an integer option with a optional string representation
   PROCEDURE :: CreateLogicalOption        !< routine to generate an logical option
@@ -262,26 +263,25 @@ END IF
 
 #if USE_PARTICLES
 opt%numberedmulti = .FALSE.
-IF (PRESENT(numberedmulti)) THEN
-  ! Remove/Replace $ occurrences in variable name
-  IF(opt%numberedmulti)THEN
-    aStr = Var_Str(TRIM(name))
-    aStr = Replace(aStr,"[]"  ,"$",Every = .true.)
-    aStr = Replace(aStr,"[$]" ,"$",Every = .true.)
-    aStr = Replace(aStr,"[$$]","$",Every = .true.)
-    CALL LowCase(CHAR(aStr),opt%name)
-    ind = INDEX(TRIM(opt%name),"$")
-    IF(ind.LE.0)THEN
-      CALL abort(&
-      __STAMP__&
-      ,'[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(opt%name)//']')
-    END IF ! ind.LE.0
-  ELSE
-    opt%name = name
-  END IF ! opt%numberedmulti
-END IF ! PRESENT(numberedmulti)
-#else
-opt%name = name
+IF (PRESENT(numberedmulti)) opt%numberedmulti = numberedmulti
+! Remove/Replace $ occurrences in variable name
+IF(opt%numberedmulti)THEN
+  aStr = Var_Str(TRIM(name))
+  aStr = Replace(aStr,"[]"  ,"$",Every = .true.)
+  aStr = Replace(aStr,"[$]" ,"$",Every = .true.)
+  aStr = Replace(aStr,"[$$]","$",Every = .true.)
+  CALL LowCase(CHAR(aStr),opt%name)
+  ind = INDEX(TRIM(opt%name),"$")
+  IF(ind.LE.0)THEN
+    CALL abort(&
+    __STAMP__&
+    ,'[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(opt%name)//']')
+  END IF ! ind.LE.0
+ELSE
+#endif /*USE_PARTICLES*/
+  opt%name = name
+#if USE_PARTICLES
+END IF ! opt%numberedmulti
 #endif /*USE_PARTICLES*/
 
 opt%isSet = .FALSE.
@@ -1636,6 +1636,65 @@ DO WHILE (associated(current))
   END IF
   current => current%next
 END DO
+
+#if USE_PARTICLES
+! iterate over all options and compare reduced (all numberes removed) names with numberedmulti options
+current => prms%firstLink
+DO WHILE (associated(current))
+  IF (.NOT.current%opt%numberedmulti) THEN
+    current => current%next
+  ELSE
+    ! compare reduced name with reduced option name
+    IF (current%opt%NAMEEQUALSNUMBERED(name)) THEN
+      opt => current%opt
+      SELECT TYPE (opt)
+      CLASS IS (IntFromStringOption)
+        ! Check if the arrays containing the string and integer values are already allocated
+        IF (.NOT.(ALLOCATED(opt%strList))) THEN
+          ! This is the first call to addEntry, allocate the arrays with dimension one
+          ALLOCATE(opt%strList(1))
+          ALLOCATE(opt%intList(1))
+          ! Store the values in the lists
+          opt%strList(1) = TRIM(string_in)
+          opt%intList(1) = int_in
+          ! Save biggest length of string entry
+          opt%maxLength = LEN_TRIM(string_in)+4+INT(LOG10(REAL(ABS(int_in))+EPSILON(0.0)))
+        ELSE
+          ! Subsequent call to addEntry, re-allocate the lists with one additional entry
+          listSize = SIZE(opt%strList)    ! opt size of the list
+          ! store opt values in temporary arrays
+          ALLOCATE(strListTmp(listSize))
+          ALLOCATE(intListTmp(listSize))
+          strListTmp = opt%strList
+          intListTmp = opt%intList
+          ! Deallocate and re-allocate the list arrays
+          SDEALLOCATE(opt%strList)
+          SDEALLOCATE(opt%intList)
+          ALLOCATE(opt%strList(listSize+1))
+          ALLOCATE(opt%intList(listSize+1))
+          ! Re-write the old values
+          opt%strList(1:listSize) = strListTmp
+          opt%intList(1:listSize) = intListTmp
+          ! Deallocate temp arrays
+          SDEALLOCATE(strListTmp)
+          SDEALLOCATE(intListTmp)
+          ! Now save the actual new entry in the list
+          opt%strList(listSize+1) = TRIM(string_in)
+          opt%intList(listSize+1) = int_in
+          ! Save biggest length of string entry
+          opt%maxLength = MAX(opt%maxLength,LEN_TRIM(string_in)+4+INT(LOG10(REAL(ABS(int_in))+EPSILON(0.0))))
+        END IF
+        RETURN
+      CLASS DEFAULT
+        CALL Abort(__STAMP__,&
+          "Option is not of type IntFromString: "//TRIM(name))
+      END SELECT
+    END IF
+    current => current%next
+  END IF
+END DO
+#endif /*USE_PARTICLES*/
+
 CALL Abort(__STAMP__,&
     "Option not yet set: "//TRIM(name))
 

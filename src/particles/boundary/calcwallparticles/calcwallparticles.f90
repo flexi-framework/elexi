@@ -42,7 +42,7 @@ USE MOD_Preproc
 USE MOD_AnalyzeEquation_Vars     ,ONLY: isWall
 USE MOD_Mesh_Vars                ,ONLY: nBCs
 USE MOD_Particle_Analyze_Vars    ,ONLY: TimeSample
-USE MOD_Particle_Boundary_Vars   ,ONLY: nComputeNodeSurfSides
+USE MOD_Particle_Boundary_Vars   ,ONLY: SurfOnNode,nComputeNodeSurfSides
 USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSideArea,nSurfSample
 USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSide2GlobalSide
 USE MOD_Particle_Boundary_Vars   ,ONLY: MacroSurfaceVal
@@ -69,6 +69,9 @@ INTEGER                        :: BCID,iSurfSide,SideID,p,q
 REAL,ALLOCATABLE               :: SideArea(:)
 REAL                           :: tmpForce,tmpForceX,tmpForceY,tmpForceZ
 !==================================================================================================================================
+
+! Do not try to record impacts if there are no walls on the current compute-node
+IF(.NOT.SurfOnNode) RETURN
 
 #if USE_MPI
 ! Only compute-node roots reduce the information

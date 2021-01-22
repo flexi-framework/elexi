@@ -368,12 +368,12 @@ INTEGER                        :: nImpacts(0:nProcessors-1)
 locEP   = EP_Impacts
 EP_glob = 0
 
-IF(MPIroot)THEN
+! IF(MPIroot)THEN
 !  WRITE(UNIT_StdOut,'(132("-"))')
 !  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='NO')' WRITE EROSION IMPACTS STATE TO HDF5 FILE...'
 !  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,'/',EP_Buffersize,' impacts.'
-  GETTIME(startT)
-END IF
+  ! GETTIME(startT)
+! END IF
 
 !>> Sum up particles from the other procs
 #if USE_MPI
@@ -392,6 +392,18 @@ CALL MPI_GATHER(locEP,1,MPI_INTEGER,nImpacts,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iErr
 offsetEP   = 0
 EP_glob    = locEP
 #endif
+
+!>> No impacts recorded
+IF (EP_glob.LE.0) THEN
+  ! IF(MPIroot)THEN
+  !  ! CALL MarkWriteSuccessfull(FileName)
+  !  GETTIME(EndT)
+  !  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s]'
+  !  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,' impacts local / ',EP_Buffersize,' impacts global.'
+  !  WRITE(UNIT_StdOut,'(132("-"))')
+  ! END IF
+  RETURN
+END IF
 
 EP_Buffersize = EP_glob
 
@@ -458,13 +470,13 @@ IF (resetCounters) THEN
   EP_Data    = 0.
 END IF
 
-IF(MPIroot)THEN
+! IF(MPIroot)THEN
 !  CALL MarkWriteSuccessfull(FileName)
-  GETTIME(EndT)
+!  GETTIME(EndT)
 !  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s]'
 !  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,' impacts local / ',EP_Buffersize,' impacts global.'
 !  WRITE(UNIT_StdOut,'(132("-"))')
-END IF
+! END IF
 END SUBROUTINE WriteEP
 
 

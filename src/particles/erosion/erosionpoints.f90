@@ -128,6 +128,9 @@ IF(nSurfTotalSides.NE.0) THEN
   EP_onProc        = .TRUE.
 END IF
 
+EP_onProc = MERGE(.TRUE.,.FALSE.,nSurfTotalSides.NE.0)
+CALL MPI_ALLREDUCE(EP_onProc,doParticleImpactTrack,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
+
 ! Initialize impact tracking communicator (needed for output)
 #if USE_MPI
 CALL InitEPCommunicator()
@@ -438,7 +441,7 @@ CALL DistributedWriteArray(FileString                                    ,&
                            nVal         = (/EPDataSize  ,locEP    /)     ,&
                            offset       = (/0           ,offsetEP /)     ,&
                            collective   = .FALSE.                        ,&
-                           offSetDim=2                                   ,&
+                           offSetDim    = 2                              ,&
                            communicator = EP_COMM                        ,&
                            RealArray    = EP_Data(1:EPDataSize,1:locEP))
 !CALL MPI_BARRIER(PartMPI%COMM,iERROR)

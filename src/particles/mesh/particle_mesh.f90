@@ -833,6 +833,10 @@ dXCL_NGeo_Shared(1:3,1:3,0:NGeo,0:NGeo,0:NGeo,1:nGlobalElems) => dXCL_NGeo_Array
 !  END DO ! iElem = 1, nElems
 !END IF
 
+! XCL_NGeo\dXCL_NGeo can be deallocated in MPI case
+DEALLOCATE(XCL_Ngeo)
+DEALLOCATE(dXCL_Ngeo)
+
 ! Communicate XCL and dXCL between compute node rootss instead of calculating globally
 CALL MPI_WIN_SYNC(XCL_NGeo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(Elem_xGP_Shared_Win,IERROR)

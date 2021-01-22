@@ -228,6 +228,7 @@ nSurfSampleBC  = CountOption('Part-SurfSampleBC')
 ALLOCATE(SurfSampleBCs(nSurfSampleBC))
 DO iSurfBC=1,nSurfSampleBC
   SurfSampleBCs(iSurfBC) = TRIM(GETSTR('Part-SurfSampleBC'))
+  CALL LowCase(SurfSampleBCs(iSurfBC),SurfSampleBCs(iSurfBC))
 END DO
 
 ! compare BCs against requested BCs

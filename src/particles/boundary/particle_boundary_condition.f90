@@ -721,13 +721,18 @@ SUBROUTINE PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,PartID,SideID,El
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+! USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem,TensorProductInterpolation
 USE MOD_Mesh_Vars              ,ONLY: BoundaryType
-!USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
+! USE MOD_Mesh_Vars              ,ONLY: NGeo
+USE MOD_Particle_Vars          ,ONLY: PartState,LastPartPos
+! USE MOD_Particle_Vars          ,ONLY: PartPosRef
+! USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
-USE MOD_Particle_Vars          ,ONLY: PartState,LastPartPos!,PEM
 USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared
+! USE MOD_Particle_Mesh_Vars     ,ONLY: XiCL_NGeo,wBaryCL_NGeo,XCL_NGeo_Shared,ElemEpsOneCell
+! USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,DoPeriodicCheck,DoPeriodicFix
 #if CODE_ANALYZE
-USE MOD_Particle_Tracking_Vars ,ONLY:PartOut,MPIRankOut
+USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -741,7 +746,8 @@ INTEGER,INTENT(INOUT),OPTIONAL    :: ElemID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                           :: PVID
-!INTEGER                           :: moved(2),locSideID
+! INTEGER                           :: CNElemID
+! REAL                              :: PartStateOld(1:3),Displacement(1:3)
 !===================================================================================================================================
 
 PVID = BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)
@@ -749,7 +755,8 @@ PVID = BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)
 #if CODE_ANALYZE
 IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
   IF(PartID.EQ.PARTOUT)THEN
-    IPWRITE(UNIT_stdout,'(I0,A)') '     PeriodicBC: '
+    IPWRITE(UNIT_stdout,'(I0,A,I0)')      ' PeriodicBC:      ', SideInfo_Shared(SIDE_BCID,SideID)
+    IPWRITE(UNIT_stdout,'(I0,A,I0)')      ' PartID:          ', PartID
     IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' ParticlePosition: ',PartState(1:3,PartID)
     IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' LastPartPos:      ',LastPartPos(1:3,PartID)
   END IF
@@ -767,7 +774,6 @@ lengthPartTrajectory    = lengthPartTrajectory - alpha
 #if CODE_ANALYZE
 IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
   IF(PartID.EQ.PARTOUT)THEN
-    IPWRITE(UNIT_stdout,'(I0,A)') '     PeriodicBC: '
     IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' ParticlePosition-pp: ',PartState(1:3,PartID)
     IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' LastPartPo-pp:       ',LastPartPos(1:3,PartID)
   END IF
@@ -776,20 +782,49 @@ END IF
 
 ! refmapping and tracing
 ! move particle from old element to new element
-ElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
+ElemID   = SideInfo_Shared(SIDE_NBELEMID,SideID)
 
+! ! check if particle is correctly inside the new element
+! IF (DoPeriodicCheck) THEN
+!   SELECT CASE(TrackingMethod)
+!     CASE (REFMAPPING,TRACING)
+!       CNElemID = GetCNElemID(ElemID)
+!       CALL GetPositionInRefElem(PartState(1:3,PartID),PartPosRef(1:3,PartID),ElemID)
+!       ! Position outside of tolerance
+!       ! IF(MAXVAL(ABS(PartPosRef(1:3,PartID))).GT.ElemEpsOneCell(CNElemID)) THEN
+!       IF(MAXVAL(ABS(PartPosRef(1:3,PartID))).GT.1.) THEN
+!         IPWRITE(UNIT_stdOut,'(I0,A)') ' Tolerance Issue with periodic element '
+!         IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' PartPos                ', PartState(1:3,PartID)
+!         IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' xi                     ', PartPosRef(1:3,PartID)
+!         IPWRITE(UNIT_stdOut,'(I0,A,X,E15.8)')    ' epsOneCell             ', ElemEpsOneCell(CNElemID)
+!         ! Fix particle position or abort
+!         IF (DoPeriodicFix) THEN
+!           ! Save the old PartState
+!           PartStateOld = PartState(1:3,PartID)
+!           ! Restrict particle position in reference space
+!           PartPosRef(1:3,PartID) = MIN(PartPosRef(1:3,PartID), 1.)
+!           PartPosRef(1:3,PartID) = MAX(PartPosRef(1:3,PartID),-1.)
+!           ! Get the physical coordinates that correspond to the reference coordinates
+!           CALL TensorProductInterpolation( PartPosRef(1:3,PartID)                           &
+!                                          , 3                                                &
+!                                          , NGeo                                             &
+!                                          , XiCL_NGeo                                        &
+!                                          , wBaryCL_NGeo                                     &
+!                                          , XCL_NGeo_Shared(1:3,0:NGeo,0:NGeo,0:NGeo,ElemID) &
+!                                          , PartState(1:3,PartID))
+!           ! Calculate required displacement and adjust LastPartPos
+!           Displacement = PartState(1:3,PartID) - PartStateOld
+!           LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + Displacement
+!           IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Particle relocated by  ', Displacement
+!         ELSE
+!           CALL ABORT(__STAMP__,'Particle not inside of element, PartID'
+!       END IF
 
-!locSideID = PartSideToElem(S2E_LOC_SIDE_ID,SideID)
-!Moved     = PARTSWITCHELEMENT(xi,eta,locSideID,SideID,ElemID)
-!ElemID    = Moved(1)
-!#if USE_MPI
-!IF(ElemID.EQ.-1)THEN
-!  CALL abort(&
-!__STAMP__&
-!,' Halo region to small. Neighbor element is missing!')
-!END IF
-!#endif /*USE_MPI*/
-!IF (TrackingMethod.EQ.REFMAPPING) PEM%LastElement(PartID) = 0
+!     CASE(TRIATRACKING)
+!       ! Currently not available
+
+!     END SELECT
+! END IF
 
 END SUBROUTINE PeriodicBC
 

@@ -36,8 +36,10 @@ INTEGER                                 :: nCurrentParts                 ! curre
 LOGICAL                                 :: MeasureTrackTime              ! switch, if tracking time is measure
 LOGICAL                                 :: FastPeriodic                  ! moves the particle along whole periodic vector,
                                                                          ! neglecting possible reflexions
-LOGICAL                                 :: CountNbOfLostParts            ! logical, to count the lost particles
 LOGICAL                                 :: CartesianPeriodic             ! old periodic for refmapping and ALL bcs periocic
+! LOGICAL                                 :: DoPeriodicCheck               ! flag for reference elem checking after periodic push
+! LOGICAL                                 :: DoPeriodicFix                 ! flag for reference elem fixing after periodic push
+LOGICAL                                 :: CountNbOfLostParts            ! logical, to count the lost particles
 INTEGER                                 :: NbrOfLostParticles            ! Counter for lost particle
 INTEGER                                 :: NbrOfLostParticlesTotal       ! Counter for lost particles across all processes
 REAL,ALLOCATABLE                        :: Distance(:)                   ! list of distance between particle and element-origin

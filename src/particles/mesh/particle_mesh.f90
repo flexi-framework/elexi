@@ -95,17 +95,21 @@ CALL prms%CreateRealArrayOption(    'Part-FactorFIBGM'          , 'Factor with w
                                                                 , '1. , 1. , 1.')
 
 ! Periodic vectors
-CALL prms%CreateIntOption(          'Part-nPeriodicVectors'     , 'Number of the periodic vectors j=1,...,n.'                    //&
-                                                                  ' Value has to be the same as defined in preprog.ini'            &
-                                                                , '0')
-CALL prms%CreateLogicalOption(      'CartesianPeriodic'         , ' Simplified treatment for periodic box with Refmapping. Not'  //&
+! CALL prms%CreateIntOption(          'Part-nPeriodicVectors'     , 'Number of the periodic vectors j=1,...,n.'                    //&
+!                                                                   ' Value has to be the same as defined in preprog.ini'            &
+!                                                                 , '0')
+CALL prms%CreateLogicalOption(      'Part-CartesianPeriodic'    , ' Simplified treatment for periodic box with Refmapping. Not'  //&
                                                                   ' computation of intersection points at periodic BCs.'           &
                                                                 , '.FALSE.')
-CALL prms%CreateLogicalOption(      'FastPeriodic'              , ' Further simplification by directly moving particle into'     //&
+CALL prms%CreateLogicalOption(      'Part-FastPeriodic'           , ' Further simplification by directly moving particle into'     //&
                                                                   ' grid. Instead of moving the particle several times the'      //&
                                                                   ' periodic displacements, the particle is mapped directly back'//&
                                                                   ' into the domain.'                                              &
                                                                 , '.FALSE.')
+! CALL prms%CreateLogicalOption(      'Part-DoPeriodicCheck'      , ' Check position in reference element after periodic displacement'&
+!                                                                 , '.FALSE.')
+! CALL prms%CreateLogicalOption(      'Part-DoPeriodicFix'        , ' Fix position in reference element after periodic displacement' &
+!                                                                 , '.FALSE.')
 
 ! RefMapping
 CALL prms%CreateIntOption(          'RefMappingGuess'           , ' Initial guess of the Newton for mapping the particle into'   //&
@@ -265,6 +269,7 @@ USE MOD_Particle_Surfaces_Vars ,ONLY: SideSlabNormals,SideSlabIntervals,Bounding
 USE MOD_Particle_Tracking_Vars ,ONLY: FastPeriodic,CountNbOfLostParts,NbrOfLostParticles,NbrOfLostParticlesTotal,CartesianPeriodic
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierSampleN,BezierSampleXi,SurfFluxSideSize,TriaSurfaceFlux
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
+! USE MOD_Particle_Tracking_Vars ,ONLY: DoPeriodicCheck,DoPeriodicFix
 USE MOD_ReadInTools            ,ONLY: GETREAL,GETINT,GETLOGICAL,GetRealArray
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideBoundingBoxVolume
@@ -368,8 +373,19 @@ PARTOUT            = GETINT('PartOut','0')
 MPIRankOut         = GETINT('MPIRankOut','0')
 #endif /*CODE_ANALYZE*/
 
-CartesianPeriodic = GETLOGICAL('CartesianPeriodic','.FALSE.')
-IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('FastPeriodic','.FALSE.')
+! DoPeriodicCheck   = GETLOGICAL('Part-DoPeriodicCheck')
+! IF (DoPeriodicCheck) THEN
+!   SELECT CASE(TrackingMethod)
+!     CASE(REFMAPPING,TRACING)
+!       DoPeriodicFix   = GETLOGICAL('Part-DoPeriodicFix')
+!     CASE(TRIATRACKING)
+!       SWRITE(UNIt_stdOut,'(A)') 'Part-DoPeriodicCheck currently only available with TrackingMethods REFMAPPING and TRACING. Disabling'
+!       DoPeriodicCheck = .FALSE.
+!   END SELECT
+! END IF
+
+CartesianPeriodic = GETLOGICAL('Part-CartesianPeriodic','.FALSE.')
+IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('Part-FastPeriodic','.FALSE.')
 
 IF (UseCurveds) THEN ! don't use RefMappingGuess=1, because RefMappingGuess is only best for linear cubical elements
   ! curved elements can be stronger deformed, hence, a better guess can be used
@@ -3365,6 +3381,11 @@ END DO ! iElem = firstElem,lastElem
 CALL MPI_WIN_SYNC(ElemEpsOneCell_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /* USE_MPI*/
+
+IF (ANY(ElemepsOneCell.EQ.-1)) THEN
+  IPWRITE(*,*) 'We goofed'
+  stop
+END IF
 
 !IF(CalcMeshInfo)THEN
 !  CALL AddToElemData(ElementOut,'epsOneCell',RealArray=epsOneCell(1:nElems))

@@ -2216,7 +2216,6 @@ SUBROUTINE FallBackFaceIntersection(ElemID,firstSide,LastSide,nlocSides,PartID)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Eval_xyz,                    ONLY: TensorProductInterpolation
 USE MOD_Particle_Boundary_Condition, ONLY: GetBoundaryInteraction
 USE MOD_Particle_Localization,       ONLY: LocateParticleInElement
 USE MOD_Particle_Intersection,       ONLY: ComputeCurvedIntersection

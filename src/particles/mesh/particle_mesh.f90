@@ -1157,7 +1157,7 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems,offsetComputeNodeElem
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemVolume_Shared_Win
 USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1167,9 +1167,10 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER            :: iElem,CNElemID
 INTEGER            :: i,j,k
-INTEGER            :: iElem
 REAL               :: J_N(1,0:PP_N,0:PP_N,0:PP_N)
+REAL               :: CNVolume                       ! Total CN volume
 INTEGER            :: offsetElemCNProc
 #if USE_MPI
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
@@ -1218,13 +1219,14 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 ! Calculate element volumes and characteristic lengths
 DO iElem = 1,nElems
+  CNElemID=iElem+offsetElemCNProc
   !--- Calculate and save volume of element iElem
   J_N(1,0:PP_N,0:PP_N,0:PP_N) = 1./sJ(:,:,:,iElem,0)
   DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-    ElemVolume_Shared(iElem+offsetElemCNProc) = ElemVolume_Shared(iElem+offsetElemCNProc) + wGP(i)*wGP(j)*wGP(k)*J_N(1,i,j,k)
+    ElemVolume_Shared(CNElemID) = ElemVolume_Shared(CNElemID) + wGP(i)*wGP(j)*wGP(k)*J_N(1,i,j,k)
   END DO; END DO; END DO
 !  !---- Calculate characteristic cell length: V^(1/3)
-!  ElemCharLength_Shared(iElem+offsetElemCNProc) = ElemVolume_Shared(iElem+offsetElemCNProc)**(1./3.)
+!  ElemCharLength_Shared(CNElemID) = ElemVolume_Shared(CNElemID)**(1./3.)
 END DO
 
 #if USE_MPI
@@ -1234,7 +1236,19 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #endif
 
 LocalVolume = SUM(ElemVolume_Shared(offsetElemCNProc+1:offsetElemCNProc+nElems))
-MeshVolume  = SUM(ElemVolume_Shared(:))
+
+#if USE_MPI
+! Compute-node mesh volume
+CNVolume = SUM(ElemVolume_Shared(:))
+IF (myComputeNodeRank.EQ.0) THEN
+  ! All-reduce between node leaders
+  CALL MPI_ALLREDUCE(CNVolume,MeshVolume,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,IERROR)
+END IF
+! Broadcast from node leaders to other processors on the same node
+CALL MPI_BCAST(MeshVolume,1, MPI_DOUBLE_PRECISION,0,MPI_COMM_SHARED,iERROR)
+#else
+MeshVolume = LocalVolume
+#endif /*USE_MPI*/
 
 SWRITE(UNIT_StdOut,'(A,E18.8)') ' | Total MESH Volume: ', MeshVolume
 END SUBROUTINE InitElemVolumes
@@ -3373,7 +3387,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 maxScaleJ = 0.
 DO iElem = firstElem,lastElem
   scaleJ = MAXVAL(ElemsJ(:,:,:,iElem))/MINVAL(ElemsJ(:,:,:,iElem))
-  ElemepsOneCell(iElem) = 1.0 + SQRT(3.0*scaleJ*RefMappingEps)
+  ElemEpsOneCell(iElem) = 1.0 + SQRT(3.0*scaleJ*RefMappingEps)
   maxScaleJ  =MAX(scaleJ,maxScaleJ)
 END DO ! iElem = firstElem,lastElem
 

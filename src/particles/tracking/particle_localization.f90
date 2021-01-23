@@ -95,9 +95,9 @@ USE MOD_Preproc
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 USE MOD_Mesh_Vars              ,ONLY: offsetElem
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo,ElemEpsOneCell
 USE MOD_Particle_Mesh_Vars     ,ONLY: Geo
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_offsetElem,FIBGM_Element
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID,GetCNElemID
 USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance,TrackingMethod
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
@@ -129,7 +129,7 @@ jBGM = MAX(MIN(GEO%FIBGMjmax,jBGM),GEO%FIBGMjmin)
 kBGM = CEILING((Pos3D(3)-GEO%zminglob)/GEO%FIBGMdeltas(3))
 kBGM = MAX(MIN(GEO%FIBGMkmax,kBGM),GEO%FIBGMkmin)
 
-!--- check all cells associated with this beckground mesh cell
+!--- check all cells associated with this background mesh cell
 nBGMElems = FIBGM_nElems(iBGM,jBGM,kBGM)
 
 ! get closest element barycenter
@@ -165,12 +165,22 @@ DO iBGMElem = 1,nBGMElems
     IF (ElemID.LT.offsetElem+1 .OR. ElemID.GT.offsetElem+PP_nElems) CYCLE
   END IF
 
-  IF (TrackingMethod.EQ.TRIATRACKING) THEN
-    CALL ParticleInsideQuad3D(Pos3D(1:3),ElemID,InElementCheck,Det)
-  ELSE
-    CALL GetPositionInRefElem(Pos3D(1:3),RefPos,ElemID)
-    IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck=.TRUE.
-  END IF
+  SELECT CASE(TrackingMethod)
+    CASE(TRIATRACKING)
+      CALL ParticleInsideQuad3D(Pos3D(1:3),ElemID,InElementCheck,Det)
+
+    ! CASE(TRACING)
+    !   CALL GetPositionInRefElem(Pos3D(1:3),RefPos,ElemID)
+    !   IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck = .TRUE.
+
+    ! FLEXI has ElemEpsOneCell also with TRACING
+    ! CASE(REFMAPPING)
+    CASE(TRACING,REFMAPPING)
+      CNElemID = GetCNElemID(ElemID)
+      CALL GetPositionInRefElem(Pos3D(1:3),RefPos,ElemID)
+      IF (MAXVAL(ABS(RefPos)).LE.ElemEpsOneCell(CNElemID)) InElementCheck = .TRUE.
+
+  END SELECT
 
   IF (InElementCheck) THEN
     SinglePointToElement = ElemID

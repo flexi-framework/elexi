@@ -418,7 +418,7 @@ USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos
 IMPLICIT NONE
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)               :: N_In
-INTEGER,INTENT(IN)               :: ElemID                   !> ElemID on compute node, not global ID
+INTEGER,INTENT(IN)               :: ElemID                   !> global ID
 INTEGER,INTENT(IN)               :: Mode
 INTEGER,INTENT(IN),OPTIONAL      :: PartID
 REAL,INTENT(IN)                  :: X_in(3)                  !> position in physical space
@@ -488,13 +488,13 @@ DO WHILE((deltaXi2.GT.RefMappingEps).AND.(NewtonIter.LT.100))
   ELSE !shit
    ! Newton has not converged !?!?
    IF (Mode.EQ.1) THEN
-    IPWRITE(UNIT_stdOut,*) ' Particle not inside of element!'
-    IPWRITE(UNIT_stdOut,*) ' sdetJac     ', sdetJac
-    IPWRITE(UNIT_stdOut,*) ' Newton-Iter ', NewtonIter
-    IPWRITE(UNIT_stdOut,*) ' xi          ', xi(1:3)
-    IPWRITE(UNIT_stdOut,*) ' PartPos     ', X_in
-    IPWRITE(UNIT_stdOut,*) ' ElemID      ', ElemID
-    CALL ABORT(__STAMP__, 'Newton in FindXiForPartPos singular. iter,sdetJac',NewtonIter,sDetJac)
+     IPWRITE(UNIT_stdOut,*) ' Particle not inside of element!'
+     IPWRITE(UNIT_stdOut,*) ' sdetJac     ', sdetJac
+     IPWRITE(UNIT_stdOut,*) ' Newton-Iter ', NewtonIter
+     IPWRITE(UNIT_stdOut,*) ' xi          ', xi(1:3)
+     IPWRITE(UNIT_stdOut,*) ' PartPos     ', X_in
+     IPWRITE(UNIT_stdOut,*) ' ElemID      ', ElemID
+     CALL ABORT(__STAMP__, 'Newton in FindXiForPartPos singular. iter,sdetJac',NewtonIter,sDetJac)
    ELSE
      Xi(1)=HUGE(1.0)
      Xi(2)=Xi(1)

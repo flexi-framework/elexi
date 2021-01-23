@@ -247,7 +247,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       CNElemID = GetCNElemID(PEM%Element(i))
 
       SELECT CASE(TrackingMethod)
-        CASE(REFMAPPING)
+        ! CASE(REFMAPPING)
+        CASE(TRACING,REFMAPPING)
           IF(ALL(ABS(Xi).LE.ElemEpsOneCell(CNElemID))) THEN
             InElementCheck=.TRUE.
             PartPosRef(1:3,i)=Xi
@@ -255,7 +256,9 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
             InElementCheck=.FALSE.
           END IF
 
-        CASE(TRACING,TRIATRACKING)
+        ! FLEXI has ElemEpsOneCell also with TRACING
+        ! CASE(TRACING,TRIATRACKING)
+        CASE(TRIATRACKING)
           IF(ALL(ABS(Xi).LE.1.0)) THEN ! particle inside
             InElementCheck=.TRUE.
             IF(ALLOCATED(PartPosRef)) PartPosRef(1:3,i)=Xi

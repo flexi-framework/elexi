@@ -452,6 +452,7 @@ ELSE
     END IF
   END DO
   ALLOCATE(offsetCNHalo2GlobalElem(1:nHaloElems))
+  offsetCNHalo2GlobalElem=-1
   nHaloElems = 0
   DO iElem = 1, nGlobalElems
     IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.2) THEN

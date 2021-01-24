@@ -900,7 +900,6 @@ DO iSpec = 1, nSpecies
   WRITE(UNIT=tmpStr,FMT='(I2)') iSpec
 
   ! Get number of requested inits
-  CALL prms%CreateIntOption('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-nInits',"")
   Species(iSpec)%NumberOfInits         = GETINT('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-nInits','0')
   ALLOCATE(Species(iSpec)%Init(0:Species(iSpec)%NumberOfInits))
 

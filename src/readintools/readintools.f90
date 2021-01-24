@@ -193,6 +193,7 @@ CHARACTER(LEN=*),INTENT(IN)     :: section                !< section to set
 this%actualSection = section
 END SUBROUTINE SetSection
 
+
 #if USE_LOADBALANCE
 !==================================================================================================================================
 !> Resets all parameters defined in THIS linked list.
@@ -1800,7 +1801,7 @@ IMPLICIT NONE
 CLASS(link), POINTER         :: current, tmp
 !===================================================================================================================================
 
-if(associated(prms%firstlink))then
+IF(ASSOCIATED(prms%firstlink))THEN
   current => prms%firstLink
   DO WHILE (associated(current%next))
     DEALLOCATE(current%opt)
@@ -1810,7 +1811,7 @@ if(associated(prms%firstlink))then
     NULLIFY(current)
     current => tmp
   END DO
-end if
+END IF
 prms%firstLink => null()
 prms%lastLink  => null()
 END SUBROUTINE FinalizeParameters

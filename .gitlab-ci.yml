@@ -47,7 +47,9 @@ build_gnu:
     - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-# Stage "reggie_checkin": Run most simple reggie with previous builds on check-in
+# Stage "reggie_checkin":
+# - Run most simple reggie with previous builds on check-in
+# - Build with sanitize options and check for missing initialization, memory leaks and use-after free
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 gnu:
   <<: *defaults_gnu
@@ -55,6 +57,13 @@ gnu:
   script:
     - cd build_gnu
     - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
+
+gnu_sanitize:
+  <<: *defaults_gnu
+  stage: reggie_checkin
+  script:
+    - cd build_gnu
+    - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_sanitize/freestream_3D -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_particle": Run basic particle regression checks

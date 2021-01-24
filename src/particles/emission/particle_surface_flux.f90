@@ -1047,7 +1047,7 @@ END IF
 !-- evaluate inserted_Particle_time and inserted_Particle_iter
 inserted_Particle_diff = inserted_Particle_time - Species(iSpec)%Surfaceflux(iSF)%InsertedParticle &
                        - inserted_Particle_iter - Species(iSpec)%Surfaceflux(iSF)%InsertedParticleSurplus
-Species(iSpec)%Surfaceflux(iSF)%InsertedParticleSurplus = ABS(MIN(inserted_Particle_iter + inserted_Particle_diff,0))
+Species(iSpec)%Surfaceflux(iSF)%InsertedParticleSurplus = ABS(MIN(inserted_Particle_iter + inserted_Particle_diff,INT(0,KIND=8)))
 PartInsSF = MAX(INT(inserted_Particle_iter + inserted_Particle_diff,4),0)
 Species(iSpec)%Surfaceflux(iSF)%InsertedParticle = Species(iSpec)%Surfaceflux(iSF)%InsertedParticle + INT(PartInsSF,8)
 
@@ -1468,7 +1468,7 @@ DO
 
     ! arbitrary warning threshold
     IF (D .GT. 1.01) THEN
-      IPWRITE(*,'(I4,x,A28,I0,A9,I0,A22,I0)') 'WARNING: ARM of SurfaceFlux ',iSF,' of Spec ',iSpec,' has inaccurate Dmax! ',D
+      IPWRITE(*,'(I4,1X,A28,I0,A9,I0,A22,I0)') ' WARNING: ARM of SurfaceFlux ',iSF,' of Spec ',iSpec,' has inaccurate Dmax! ',D
     END IF
 
     CALL RANDOM_NUMBER(RandVal1)
@@ -1478,8 +1478,8 @@ DO
     ELSE
       ! arbitrary warning threshold
       IF (MOD(iLoop,100).EQ.0) THEN
-        IPWRITE(*,'(I4,x,A28,I0,A9,I0,A18,I0)') 'WARNING: ARM of SurfaceFlux ',iSF,' of Spec ',iSpec,' has reached loop ',iLoop
-        IPWRITE(*,'(I4,x,A19,2(x,E16.8))')      '         R, D/Dmax:',RandVal1,D
+        IPWRITE(*,'(I4,1X,A28,I0,A9,I0,A18,I0)') ' WARNING: ARM of SurfaceFlux ',iSF,' of Spec ',iSpec,' has reached loop ',iLoop
+        IPWRITE(*,'(I4,1X,A19,2(1X,E16.8))')     '         R, D/Dmax:',RandVal1,D
       END IF
     END IF
 

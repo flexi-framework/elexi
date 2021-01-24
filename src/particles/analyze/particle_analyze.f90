@@ -175,7 +175,11 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticleAnalyze
 
 
-SUBROUTINE ParticleAnalyze(iter)
+SUBROUTINE ParticleAnalyze(&
+#if USE_LOADBALANCE
+  iter &
+#endif /* USE_LOADBALANCE */
+  )
 !==================================================================================================================================
 !> Controls particle analysis routines and is called at analyze time levels
 !> - calls erosion impcat output
@@ -196,7 +200,9 @@ USE MOD_LoadDistribution          ,ONLY: WriteElemTimeStatistics
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+#if USE_LOADBALANCE
 INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
+#endif /* USE_LOADBALANCE */
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -423,7 +429,7 @@ IF (printDiff) THEN
       diffPos  = diffPos+(printDiffVec(iPartState)-PartState(1,iPartState))**2
       diffVelo = diffVelo+(printDiffVec(iPartState+3)-PartState(1,iPartState+3))**2
     END DO
-    WRITE(*,'(A,e24.14,x,e24.14)') 'L2-norm from printDiffVec: ',SQRT(diffPos),SQRT(diffVelo)
+    WRITE(*,'(A,E24.14,1X,E24.14)') 'L2-norm from printDiffVec: ',SQRT(diffPos),SQRT(diffVelo)
   END IF
 END IF
 104    FORMAT (e25.14)

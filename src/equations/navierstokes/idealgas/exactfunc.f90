@@ -225,7 +225,7 @@ REAL                            :: pi_loc,phi,radius       ! needed for cylinder
 REAL                            :: h,sRT,pexit,pentry      ! needed for Couette-Poiseuille
 #if PARABOLIC
 ! needed for blasius BL
-INTEGER                         :: nSteps,i,j
+INTEGER                         :: nSteps,i
 REAL                            :: eta,deta,deta2,f,fp,fpp,fppp,fbar,fpbar,fppbar,fpppbar
 REAL                            :: x_eff(3),x_offset(3)
 #endif

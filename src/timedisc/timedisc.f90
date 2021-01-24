@@ -459,7 +459,7 @@ DO
   IF(doAnalyze) CALL DGTimeDerivative_weakForm(t)
 
   ! Call your Analysis Routine for your Testcase here.
-  IF((MOD(iter,nAnalyzeTestCase).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
+  IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
   ! evaluate recordpoints
   IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,doAnalyze)
 
@@ -605,7 +605,7 @@ tStage=t
 #if USE_PARTICLES
 SELECT CASE (TRIM(ParticleTimeDiscMethod))
   CASE('Runge-Kutta')
-    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt,b_dt)
+    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt)! ,b_dt)
   CASE('Euler')
     CALL Particle_TimeStepByEuler(dt)
   CASE DEFAULT
@@ -646,7 +646,7 @@ DO iStage=2,nRKStages
 #if USE_PARTICLES
   SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt,b_dt)
+      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt)! ,b_dt)
     CASE('Euler')
       ! Do nothing
     CASE DEFAULT
@@ -743,7 +743,7 @@ CurrentStage=1
 tStage=t
 
 #if USE_PARTICLES
-CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt,b_dt)
+CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt)! ,b_dt)
 
 ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
 IF (doParticlePositionTrack) THEN
@@ -765,7 +765,7 @@ DO iStage=2,nRKStages
   tStage=t+dt*RKc(iStage)
 
 #if USE_PARTICLES
-  CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt,b_dt)
+  CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt)! ,b_dt)
 
   ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
   IF (doParticlePositionTrack) THEN
@@ -841,7 +841,7 @@ END IF
 
 SELECT CASE (TRIM(ParticleTimeDiscMethod))
   CASE('Runge-Kutta')
-    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt,b_dt)
+    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt) !,b_dt)
     CALL Particle_TimeStepByLSERK(t,b_dt)
 
     ! Following steps
@@ -849,7 +849,7 @@ SELECT CASE (TRIM(ParticleTimeDiscMethod))
       CurrentStage = iStage
       tStage       = t+dt*RKc(iStage)
 
-      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt,b_dt)
+      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt) !,b_dt)
 
       ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
       IF (doParticlePositionTrack) THEN

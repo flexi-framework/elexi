@@ -220,12 +220,12 @@ CNSideID = GetCNSideID(SideID)
   IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
       WRITE(UNIT_stdout,'(110("-"))')
-      WRITE(UNIT_stdout,'(A,I0)')      '     | Output of planar face constants for Side: ',SideID
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,CNSideID)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
+      WRITE(UNIT_stdout,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,CNSideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
@@ -532,7 +532,8 @@ USE MOD_Particle_Mesh_Vars,      ONLY:SideInfo_Shared
 USE MOD_Particle_Surfaces_Vars,  ONLY:BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,SideNormVec,epsilonTol!,BaseVectorsScale
 USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBilinear
 USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
-USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos!,PEM
+USE MOD_Particle_Vars,           ONLY:LastPartPos
+! USE MOD_Particle_Vars,           ONLY:PartState,PEM
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -581,15 +582,15 @@ BiLinearCoeff(:,4) = 0.25*BaseVectors0(:,SideID)
   IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
       WRITE(UNIT_stdout,'(110("-"))')
-      WRITE(UNIT_stdout,'(A)') '     | Output of bilinear intersection equation constants: '
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,CNSideID)
-      WRITE(UNIT_stdout,'(A,4(X,G0))') '     | BilinearCoeff: ',BilinearCoeff(1,1:4)
-      WRITE(UNIT_stdout,'(A,4(X,G0))') '     | BilinearCoeff: ',BilinearCoeff(2,1:4)
-      WRITE(UNIT_stdout,'(A,4(X,G0))') '     | BilinearCoeff: ',BilinearCoeff(3,1:4)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
-      WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
+      WRITE(UNIT_stdout,'(A)')          '     | Output of bilinear intersection equation constants: '
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,CNSideID)
+      WRITE(UNIT_stdout,'(A,4(1X,G0))') '     | BilinearCoeff: ',BilinearCoeff(1,1:4)
+      WRITE(UNIT_stdout,'(A,4(1X,G0))') '     | BilinearCoeff: ',BilinearCoeff(2,1:4)
+      WRITE(UNIT_stdout,'(A,4(1X,G0))') '     | BilinearCoeff: ',BilinearCoeff(3,1:4)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
@@ -644,8 +645,8 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
         ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
         CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,SideID)
@@ -695,8 +696,8 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
         ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
         CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,SideID)
@@ -727,14 +728,14 @@ SELECT CASE(nRoot)
       ! check for Xi only, if eta is possible
       xi(2) = ComputeXi(eta(2),A1=A1,A2=A2)
 
-      ! Bilinear algorith does not give a valid result, fallback to robust 
+      ! Bilinear algorith does not give a valid result, fallback to robust
       IF (Xi(2).EQ.HUGE(1.)) THEN
         ! IPWRITE(UNIT_stdOut,'(I0,A)')    ' Both denominators zero when calculating Xi in bilinear intersection'
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
         ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
         CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,SideID)
@@ -1273,7 +1274,7 @@ DO WHILE(iClipIter.LE.BezierClipMaxIter)
 #if CODE_ANALYZE
   IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
-      WRITE(UNIT_stdout,'(A,I0,X,I0)') ' iClipIter,ClipMode ', iClipIter, ClipMode
+      WRITE(UNIT_stdout,'(A,I0,1X,I0)') ' iClipIter,ClipMode ', iClipIter, ClipMode
       !read*
     END IF
   END IF
@@ -2068,11 +2069,10 @@ IF((alphaNorm.LE.1.0).AND.(alphaNorm.GT.-epsilontol))THEN
     IPWRITE(UNIT_stdout,'(I0,A,I0)') ' SideID ', SideID
     IPWRITE(UNIT_stdout,'(I0,A,E24.12)') ' BezierClipTolerance  ', BezierClipTolerance
     IPWRITE(UNIT_stdout,'(I0,A,E24.12)') ' BezierClipLocalTol ', BezierClipLocalTol
-    IPWRITE(UNIT_stdout,'(I0,A,E18.12,x,E18.12)') ' critical error! ',alpha,alphaNorm
-    IPWRITE(UNIT_stdout,'(I0,A,E18.12,x,E18.12)') ' critical error! ',alpha,alphaNorm
+    IPWRITE(UNIT_stdout,'(I0,A,E18.12,1X,E18.12)') ' critical error! ',alpha,alphaNorm
     IPWRITE(UNIT_stdout,'(I0,A)') ' locAlpha, locXi,locEta ' !/ lengthPartTrajectory '
     DO iInter=1,nInterSections
-      WRITE(UNIT_stdout,'(I0,3(X,E18.12))') iInter,locAlpha(iInter),locXi(iInter),locEta(iInter)
+      WRITE(UNIT_stdout,'(I0,3(1X,E18.12))') iInter,locAlpha(iInter),locXi(iInter),locEta(iInter)
     END DO
     STOP
     RETURN

@@ -827,7 +827,7 @@ CHARACTER(LEN=255) :: VarNameString
 REAL(KIND=4)       :: FLOATdummy
 INTEGER            :: nParts_glob(1:nProcessors)
 #if USE_MPI
-INTEGER            :: i,j,k,iProc,nMaxParts
+INTEGER            :: iProc,nMaxParts
 INTEGER            :: nParts_proc
 REAL,ALLOCATABLE   :: buf(:), buf2(:,:)
 #endif

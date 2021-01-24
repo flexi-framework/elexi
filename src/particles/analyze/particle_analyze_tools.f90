@@ -70,7 +70,7 @@ END FUNCTION CalcEkinPart
 SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies,nSpecies,PartIndex
+USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies,PartIndex
 USE MOD_Particle_Analyze_Vars,   ONLY: RPP_MaxBufferSize,RPP_Plane,RPP_Type
 USE MOD_HDF5_Output             ,ONLY: WriteAttribute
 USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
@@ -86,11 +86,10 @@ REAL,INTENT(IN)             :: OutputTime
 LOGICAL,OPTIONAL,INTENT(IN) :: writeToBinary
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: iPart,RP_glob
+INTEGER                     :: iPart
 !REAL,ALLOCATABLE            :: buffOuttmp(:,:)
 CHARACTER(LEN=200)          :: FileName_loc     ! FileName with data type extension
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
-INTEGER, DIMENSION(2)       :: M_shape
 INTEGER, PARAMETER          :: type_label = 8
 INTEGER, PARAMETER          :: RPPDataSize = 8
 INTEGER                     :: locRPP,RPP_glob,offsetRPP

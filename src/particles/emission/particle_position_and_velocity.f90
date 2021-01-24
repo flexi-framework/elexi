@@ -131,7 +131,7 @@ SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
-USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,PartIndex,doPartIndex
+USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,doPartIndex
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition,SetParticlePositionPoint
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine,SetParticlePositionDisk
@@ -319,7 +319,7 @@ USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRef
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,FieldAtParticle,externalField
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
-USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount,PartSpecies
+USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount
 USE MOD_Mesh_Vars,               ONLY: offsetElem
 #if USE_RW
 USE MOD_DG_Vars,                 ONLY: UTurb
@@ -344,7 +344,7 @@ INTEGER,INTENT(IN)               :: init_or_sf
 INTEGER,INTENT(INOUT)            :: NbrOfParticle
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                          :: PositionNbr,i,iElem,j,iParttmp
+INTEGER                          :: PositionNbr,i,iElem,j
 REAL                             :: field(PP_nVar)
 REAL                             :: Radius(3)
 REAL                             :: RandVal(3)

@@ -60,7 +60,6 @@ SUBROUTINE InitEmissionComm()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Mesh_Vars,     ONLY: GEO
 USE MOD_Particle_MPI_Vars,      ONLY: PartMPI
 USE MOD_Particle_MPI_Vars,      ONLY: halo_eps
 USE MOD_Particle_Vars,          ONLY: Species,nSpecies
@@ -1054,8 +1053,8 @@ USE MOD_Particle_Mesh_Vars,       ONLY:GEO
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)   :: CartNodes(1:3,1:nNodes)
 INTEGER,INTENT(IN):: nNodes
+REAL,INTENT(IN)   :: CartNodes(1:3,1:nNodes)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 LOGICAL           :: BoxInProc

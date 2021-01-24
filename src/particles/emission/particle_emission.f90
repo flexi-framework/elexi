@@ -271,7 +271,7 @@ DO i = 1,nSpecies
                                    - inserted_Particle_iter - Species(i)%Init(iInit)%InsertedParticleSurplus &
                                    + Species(i)%Init(iInit)%InsertedParticleMisMatch
 
-            Species(i)%Init(iInit)%InsertedParticleSurplus = ABS(MIN(inserted_Particle_iter + inserted_Particle_diff,0))
+            Species(i)%Init(iInit)%InsertedParticleSurplus = ABS(MIN(inserted_Particle_iter + inserted_Particle_diff,INT(0,KIND=8)))
             NbrOfParticle = MAX(INT(inserted_Particle_iter + inserted_Particle_diff,4),0)
 
           ELSE IF (DoPoissonRounding .AND. .NOT.DoTimeDepInflow) THEN

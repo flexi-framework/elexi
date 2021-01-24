@@ -130,7 +130,7 @@ IF (t.GE.DelayTime) THEN
   CALL ParticleRandomWalk(t)
 #endif
   CALL CalcPartRHS()
-  IF (SGSinUse) CALL ParticleSGS(1,dt,dt)
+  IF (SGSinUse) CALL ParticleSGS(1,dt) !,dt)
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -212,7 +212,7 @@ END SUBROUTINE Particle_TimeStepByEuler
 !> Low-Storage Runge-Kutta integration: 2 register version
 !> Calculate the right hand side before updating the field solution. Can be used to hide sending of number of particles.
 !===================================================================================================================================
-SUBROUTINE Particle_TimeStepByLSERK_RHS(t,iStage,dt,b_dt)
+SUBROUTINE Particle_TimeStepByLSERK_RHS(t,iStage,dt)! ,b_dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_DG_Vars,                 ONLY: U
@@ -223,7 +223,7 @@ USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
 USE MOD_Particle_SGS_Vars,       ONLY: SGSinUse
 USE MOD_Particle_Surface_Flux,   ONLY: ParticleSurfaceflux
-USE MOD_Timedisc_Vars,           ONLY: nRKStages
+! USE MOD_Timedisc_Vars,           ONLY: nRKStages
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
@@ -246,7 +246,7 @@ IMPLICIT NONE
 REAL,INTENT(IN)               :: t
 INTEGER,INTENT(IN)            :: iStage
 REAL,INTENT(IN)               :: dt
-REAL,INTENT(IN)               :: b_dt(1:nRKStages)
+! REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 #if USE_LOADBALANCE
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
@@ -282,7 +282,7 @@ CALL InterpolateFieldToParticle(PP_nVar,U     ,FieldAtParticle)
 #endif
   !--> Calculate the particle right hand side and push
   CALL CalcPartRHS()
-  IF (SGSinUse) CALL ParticleSGS(iStage,dt,b_dt(iStage))
+  IF (SGSinUse) CALL ParticleSGS(iStage,dt) !,b_dt(iStage))
 #if USE_LOADBALANCE
   CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -423,7 +423,7 @@ END SUBROUTINE Particle_TimeStepByLSERK
 !> Low-Storage Runge-Kutta integration: 2 register version
 !> Calculate the right hand side before updating the field solution. Can be used to hide sending of number of particles.
 !===================================================================================================================================
-SUBROUTINE Particle_TimeStepByLSERK_RK_RHS(t,iStage,dt,b_dt)
+SUBROUTINE Particle_TimeStepByLSERK_RK_RHS(t,iStage,dt)! ,b_dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_DG_Vars,                 ONLY: U
@@ -434,7 +434,7 @@ USE MOD_Particle_Vars,           ONLY: PartState,DelayTime,LastPartPos,PDM,PEM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
 USE MOD_Particle_SGS_Vars,       ONLY: SGSinUse
 USE MOD_Particle_Surface_Flux,   ONLY: ParticleSurfaceflux
-USE MOD_Timedisc_Vars,           ONLY: nRKStages
+! USE MOD_Timedisc_Vars,           ONLY: nRKStages
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
@@ -457,7 +457,7 @@ IMPLICIT NONE
 REAL,INTENT(IN)               :: t
 INTEGER,INTENT(IN)            :: iStage
 REAL,INTENT(IN)               :: dt
-REAL,INTENT(IN)               :: b_dt(1:nRKStages)
+! REAL,INTENT(IN)               :: b_dt(1:nRKStages)
 #if USE_LOADBALANCE
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
@@ -495,7 +495,7 @@ IF (t.GE.DelayTime) THEN
 #endif
   !--> Calculate the particle right hand side and push
   CALL CalcPartRHS()
-  IF (SGSinUse) CALL ParticleSGS(iStage,dt,b_dt(iStage))
+  IF (SGSinUse) CALL ParticleSGS(iStage,dt) !,b_dt(iStage))
 #if USE_LOADBALANCE
   CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/

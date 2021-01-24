@@ -527,10 +527,10 @@ DO iPart=1,PDM%ParticleVecLength
         .OR.(LastPartPos(3,iPart).LT.GEO%zminglob).AND. .NOT.ALMOSTEQUAL(LastPartPos(3,iPart),GEO%zminglob) ) THEN
         IPWRITE(UNIt_stdOut,'(I0,A18,L)')                            ' ParticleInside ', PDM%ParticleInside(iPart)
         IPWRITE(UNIt_stdOut,'(I0,A18,L)')                            ' PDM%IsNewPart ', PDM%IsNewPart(iPart)
-        IPWRITE(UNIt_stdOut,'(I0,A18,x,A18,x,A18)')                  '    min ', ' value ', ' max '
-        IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' x', GEO%xminglob, LastPartPos(1,iPart), GEO%xmaxglob
-        IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' y', GEO%yminglob, LastPartPos(2,iPart), GEO%ymaxglob
-        IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' z', GEO%zminglob, LastPartPos(3,iPart), GEO%zmaxglob
+        IPWRITE(UNIt_stdOut,'(I0,A18,1X,A18,1X,A18)')                '    min ', ' value ', ' max '
+        IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' x', GEO%xminglob, LastPartPos(1,iPart), GEO%xmaxglob
+        IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' y', GEO%yminglob, LastPartPos(2,iPart), GEO%ymaxglob
+        IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' z', GEO%zminglob, LastPartPos(3,iPart), GEO%zmaxglob
         CALL ABORT(__STAMP__,' LastPartPos outside of mesh. iPart=, currentStage',iPart,REAL(currentStage))
       END IF
     END IF
@@ -547,12 +547,12 @@ DO iPart=1,PDM%ParticleVecLength
       IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
       IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
       IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' global ElemID  ', ElemID
-      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,CNElemID)
-      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
-      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)
-      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartRefPos:        ', RefPos(1:3)
-      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' Velocity:          ', PartState(4:6,iPart)
-      IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartTrajectory:    ', PartState(1:3,iPart) - LastPartPos(1:3,iPart)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,CNElemID)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' PartRefPos:        ', RefPos(1:3)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' Velocity:          ', PartState(4:6,iPart)
+      IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' PartTrajectory:    ', PartState(1:3,iPart) - LastPartPos(1:3,iPart)
       IPWRITE(UNIT_stdOut,'(I0,A,ES25.14E3)')      ' lengthPT:          ', SQRT(DOT_PRODUCT(PartTrajectory,PartTrajectory))
       CALL ABORT(__STAMP__,'ERROR: Lastpartpos in wrong element. PartID:',iPart)
     END IF
@@ -633,7 +633,7 @@ DO iPart=1,PDM%ParticleVecLength
           WRITE(UNIT_stdout,'(A)')             '     | Output after compute intersection (tracing double check): '
           IF (currentIntersect%IntersectCase.EQ.1) THEN
             WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
-            WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi,eta
+            WRITE(UNIT_stdout,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi,eta
             WRITE(UNIT_stdout,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
           ELSE IF (currentIntersect%IntersectCase.EQ.3) THEN
             WRITE(UNIT_stdout,'(A,I0,A,L)')    '     | MaroPartID: ',iMB,' | Hit: ',foundHit
@@ -702,7 +702,7 @@ DO iPart=1,PDM%ParticleVecLength
             WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
             WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ', lengthPartTrajectory
             WRITE(UNIT_stdout,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
-            WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi,eta
+            WRITE(UNIT_stdout,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi,eta
           END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
@@ -920,18 +920,18 @@ DO iPart=1,PDM%ParticleVecLength
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
       IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
         WRITE(UNIT_stdout,'(128("="))')
-        WRITE(UNIT_stdout,'(A)')            '     | Output of tracking information after the check of number of intersections: '
-        WRITE(UNIT_stdout,'(4(A,L))')       '     | crossed Side: ',crossedBC,' switched Element: ',SwitchedElement,&
+        WRITE(UNIT_stdout,'(A)')             '     | Output of tracking information after the check of number of intersections: '
+        WRITE(UNIT_stdout,'(4(A,L))')        '     | crossed Side: ',crossedBC,' switched Element: ',SwitchedElement,&
           ' Particle tracking done: ',PartisDone,' Particle is double checked: ',PartDoubleCheck
           IF(SwitchedElement) THEN
-            WRITE(UNIT_stdout,'(A,I0,A,I0)') '     | First_ElemID: ',PEM%LastElement(iPart),' | new Element: ',ElemID
-          WRITE(UNIT_stdOut,'(A,I0)')        '     | first global ElemID     ', PEM%LastElement(iPart)
-          WRITE(UNIT_stdOut,'(A,I0)')        '     | new global ElemID       ', ElemID
+            WRITE(UNIT_stdout,'(A,I0,A,I0)')  '     | First_ElemID: ',PEM%LastElement(iPart),' | new Element: ',ElemID
+          WRITE(UNIT_stdOut,'(A,I0)')         '     | first global ElemID     ', PEM%LastElement(iPart)
+          WRITE(UNIT_stdOut,'(A,I0)')         '     | new global ElemID       ', ElemID
             END IF
           IF( crossedBC) THEN
-            WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Last    PartPos:        ',lastPartPos(1:3,iPart)
-            WRITE(UNIT_stdout,'(A,3(X,G0))') '     | Current PartPos:        ',PartState(1:3,iPart)
-            WRITE(UNIT_stdout,'(A,3(X,G0))') '     | PartTrajectory:         ',PartTrajectory(1:3)
+            WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Last    PartPos:        ',lastPartPos(1:3,iPart)
+            WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Current PartPos:        ',PartState(1:3,iPart)
+            WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | PartTrajectory:         ',PartTrajectory(1:3)
             WRITE(UNIT_stdout,'(A,(G0))')    '     | Length PartTrajectory:  ',lengthPartTrajectory
           END IF
         WRITE(UNIT_stdout,'(128("="))')
@@ -977,12 +977,12 @@ DO iPart=1,PDM%ParticleVecLength
     .OR.(PartState(3,iPart).GT.GEO%zmaxglob) &
     .OR.(PartState(3,iPart).LT.GEO%zminglob) ) THEN
       IPWRITE(UNIt_stdOut,'(I0,A18,L)')                            ' PDM%IsNewPart ', PDM%IsNewPart(iPart)
-      IPWRITE(UNIt_stdOut,'(I0,A18,3(X,E27.16))')                  ' LastPosition   ', LastPartPos(1:3,iPart)
-      IPWRITE(UNIt_stdOut,'(I0,A18,3(X,E27.16))')                  ' Velocity       ', PartState  (4:6,iPart)
-      IPWRITE(UNIt_stdOut,'(I0,A18,x,A18,x,A18)')                  '    min ', ' value ', ' max '
-      IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
-      IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
-      IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
+      IPWRITE(UNIt_stdOut,'(I0,A18,3(1X,E27.16))')                 ' LastPosition   ', LastPartPos(1:3,iPart)
+      IPWRITE(UNIt_stdOut,'(I0,A18,3(1X,E27.16))')                 ' Velocity       ', PartState  (4:6,iPart)
+      IPWRITE(UNIt_stdOut,'(I0,A18,1X,A18,1X,A18)')                '    min ', ' value ', ' max '
+      IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
+      IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
+      IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
       CALL ABORT(__STAMP__,' PartPos outside of mesh AFTER tracking. iPart= ,currentStage= ',iPart,REAL(currentStage))
     END IF
 
@@ -998,11 +998,11 @@ DO iPart=1,PDM%ParticleVecLength
      IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' global ElemID  ', ElemID
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,ElemID)
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartRefPos:        ', RefPos(1:3)
-     IPWRITE(UNIT_stdOut,'(I0,A,3(X,ES25.14E3))') ' PartTrajectory:    ', PartTrajectory
+     IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,ElemID)
+     IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
+     IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)
+     IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' PartRefPos:        ', RefPos(1:3)
+     IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' PartTrajectory:    ', PartTrajectory
      IPWRITE(UNIT_stdOut,'(I0,A,ES25.14E3)')      ' lengthPT:          ', lengthPartTrajectory
      CALL ABORT(__STAMP__,'iPart=. ',iPart)
      END IF
@@ -1329,20 +1329,20 @@ DO iPart=1,PDM%ParticleVecLength
         IF (ElemToBCSides(ELEM_NBR_BCSIDES,CNTestElem).LE.0) THEN
           ! ausgabe
           IPWRITE(UNIT_stdOut,'(I0,A)') ' Tolerance Issue with internal element '
-          IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' xi                     ', PartPosRef(1:3,iPart)
-          IPWRITE(UNIT_stdOut,'(I0,A,X,E15.8)')    ' epsOneCell             ', epsElement
-          IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' oldxi                  ', oldXi
-          IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' newxi                  ', newXi
+          IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' xi                     ', PartPosRef(1:3,iPart)
+          IPWRITE(UNIT_stdOut,'(I0,A,1X,E15.8)')    ' epsOneCell             ', epsElement
+          IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' oldxi                  ', oldXi
+          IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' newxi                  ', newXi
           IPWRITE(UNIT_stdOut,'(I0,A)')             ' PartPos:           '
-          IPWRITE(UNIt_stdOut,'(I0,A18,x,A18,x,A18)')                  '    min ', ' value ', ' max '
-          IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
-          IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
-          IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
-          IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' LastPartPos            ', LastPartPos(1:3,iPart)
-          IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Velocity               ', PartState(4:6,iPart)
-          IF (ALLOCATED(TurbPartState)) IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Velocity (SGS)         ', TurbPartState(1:3,iPart)
+          IPWRITE(UNIt_stdOut,'(I0,A18,1X,A18,1X,A18)')                '    min ', ' value ', ' max '
+          IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
+          IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
+          IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
+          IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' LastPartPos            ', LastPartPos(1:3,iPart)
+          IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' Velocity               ', PartState(4:6,iPart)
+          IF (ALLOCATED(TurbPartState)) IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' Velocity (SGS)         ', TurbPartState(1:3,iPart)
           Vec=PartState(1:3,iPart)-LastPartPos(1:3,iPart)
-          IPWRITE(UNIT_stdOut,'(I0,A,X,E15.8)') ' displacement /halo_eps ', DOT_PRODUCT(Vec,Vec)/halo_eps2
+          IPWRITE(UNIT_stdOut,'(I0,A,1X,E15.8)') ' displacement /halo_eps ', DOT_PRODUCT(Vec,Vec)/halo_eps2
 #if USE_MPI
           InElem=PEM%Element(iPart)
           IF(InElem.LE.PP_nElems)THEN
@@ -1372,8 +1372,8 @@ DO iPart=1,PDM%ParticleVecLength
           IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartSpecies  ', PartSpecies(iPart)
           CALL ABORT(__STAMP__,'Particle not inside of Element, ipart',iPart)
         ELSE ! BCElem
-          IPWRITE(UNIT_stdOut,'(I0,A,X,I0,A,X,I0)')' Fallback for Particle ', iPart, ' in Element', TestElem
-          IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' ParticlePos          ' , PartState(1:3,iPart)
+          IPWRITE(UNIT_stdOut,'(I0,A,1X,I0,A,1X,I0)') ' Fallback for Particle ', iPart, ' in Element', TestElem
+          IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))')   ' ParticlePos          ' , PartState(1:3,iPart)
           Vec = PartState(1:3,iPart)-LastPartPos(1:3,iPart)
 
           ! Tracking on curved meshes with NGeo>1. Check if the particle intersected with face and left the element
@@ -1410,21 +1410,21 @@ DO iPart=1,PDM%ParticleVecLength
             ! Re-localization to a new element failed
             IF(.NOT.PDM%ParticleInside(iPart)) THEN
               IPWRITE(UNIT_stdOut,'(I0,A)') ' Tolerance Issue with BC element '
-              IPWRITE(UNIT_stdOut,'(I0,A,3(X,I0))')    ' iPart                  ', ipart
-              IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' xi                     ', partposref(1:3,ipart)
-              IPWRITE(UNIT_stdOut,'(I0,A,1(X,E15.8))') ' EpsOneCell             ', ElemEpsOneCell(CNTestElem)
-              IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' oldxi                  ', oldxi
-              IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' newxi                  ', newxi
-              IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' LastPartPos            ', LastPartPos(1:3,iPart)
+              IPWRITE(UNIT_stdOut,'(I0,A,3(1X,I0))')    ' iPart                  ', ipart
+              IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' xi                     ', partposref(1:3,ipart)
+              IPWRITE(UNIT_stdOut,'(I0,A,1(1X,E15.8))') ' EpsOneCell             ', ElemEpsOneCell(CNTestElem)
+              IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' oldxi                  ', oldxi
+              IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' newxi                  ', newxi
+              IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' LastPartPos            ', LastPartPos(1:3,iPart)
               IPWRITE(UNIT_stdOut,'(I0,A)')             ' PartPos:           '
-              IPWRITE(UNIt_stdOut,'(I0,A18,x,A18,x,A18)')                  '    min ', ' value ', ' max '
-              IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
-              IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
-              IPWRITE(UNIt_stdOut,'(I0,A2,x,E27.16,x,E27.16,x,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
-              IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Velocity               ', PartState(4:6,iPart)
-              IF (ALLOCATED(TurbPartState)) IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Velocity (SGS)         ', TurbPartState(1:3,iPart)
+              IPWRITE(UNIt_stdOut,'(I0,A18,1X,A18,1X,A18)')                '    min ', ' value ', ' max '
+              IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
+              IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
+              IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
+              IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' Velocity               ', PartState(4:6,iPart)
+              IF (ALLOCATED(TurbPartState)) IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' Velocity (SGS)         ', TurbPartState(1:3,iPart)
               Vec=PartState(1:3,iPart)-LastPartPos(1:3,iPart)
-              IPWRITE(UNIT_stdOut,'(I0,A,X,E15.8)') ' displacement /halo_eps ', DOT_PRODUCT(Vec,Vec)/halo_eps2
+              IPWRITE(UNIT_stdOut,'(I0,A,1X,E15.8)') ' displacement /halo_eps ', DOT_PRODUCT(Vec,Vec)/halo_eps2
 !#if USE_MPI
 !              inelem=PEM%Element(ipart)
 !              IF(inelem.LE.PP_nElems)THEN
@@ -1614,7 +1614,7 @@ DO WHILE(DoTracing)
           WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
           WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
           WRITE(UNIT_stdout,'((A,G0))')      '     | AlphaOld: ',alphaOld
-          WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
+          WRITE(UNIT_stdout,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
         END IF
       END IF
 #endif /*CODE_ANALYZE*/
@@ -1643,7 +1643,7 @@ DO WHILE(DoTracing)
           WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (REFMAPPING, BCTracing): '
           WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
           WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
-          WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
+          WRITE(UNIT_stdout,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
         END IF
       END IF
 #endif /*CODE_ANALYZE*/
@@ -1684,7 +1684,7 @@ DO WHILE(DoTracing)
         IF (ElemID.NE.OldElemID) THEN
           ! Try to recursively calculate the intersection 1000 times. Threshold might be changed...
           IF (iCount.GE.1000 .AND. MOD(iCount,1000).EQ.0) THEN
-            IPWRITE(*,'(I4,A,I0,A,3(x,I0))') ' WARNING: proc has called BCTracking ',iCount  &
+            IPWRITE(*,'(I4,A,I0,A,3(1X,I0))') ' WARNING: proc has called BCTracking ',iCount  &
               ,'x recursively! Part, Side, Elem:',PartId,SideID,ElemID
           END IF
 

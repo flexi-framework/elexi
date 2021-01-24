@@ -2724,13 +2724,12 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: ElemInfo_Shared,SideInfo_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides,SideBCMetrics
 USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID,SideID2BCSide,BCSideMetrics
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemBaryNGeo,ElemRadiusNGeo
-USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides,nUniqueBCSides
+USE MOD_Particle_Mesh_Vars       ,ONLY: nUniqueBCSides
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID,GetCNElemID,GetCNElemID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Utils           ,ONLY: InsertionSort
 #if USE_MPI
 USE MOD_CalcTimeStep             ,ONLY: CalcTimeStep
-USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides_Shared,SideBCMetrics_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides_Shared_Win,SideBCMetrics_Shared_Win
 USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared
@@ -3252,7 +3251,6 @@ USE MOD_Interpolation            ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars       ,ONLY: NodeTypeCL,NodeType
 USE MOD_Mesh_Vars                ,ONLY: sJ
 USE MOD_Mesh_Vars                ,ONLY: nElems
-USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemsJ,ElemEpsOneCell
 USE MOD_Particle_Mesh_Vars       ,ONLY: RefMappingEps
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID
@@ -3266,6 +3264,8 @@ USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
 USE MOD_Particle_Mesh_Vars       ,ONLY: dXCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemsJ_Shared,ElemEpsOneCell_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemsJ_Shared_Win,ElemEpsOneCell_Shared_Win
+#else
+USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

@@ -63,7 +63,7 @@ gnu_sanitize:
   stage: reggie_checkin
   script:
     - cd build_gnu
-    - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_sanitize/freestream_3D -j 6
+    - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_sanitize -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_particle": Run basic particle regression checks

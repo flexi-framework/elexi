@@ -147,7 +147,7 @@ SELECT CASE(PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,SideID)))
 CASE(1) !PartBound%OpenBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
   ! Sample on surface if requested
-  CALL SideErosion(PartTrajectory,n_loc,xi,eta,iPart,SideID,alpha)
+  CALL SideErosion(PartTrajectory,n_loc,xi,eta,iPart,SideID)! ,alpha)
   ! Recording of individual particle impacts
   IF (doParticleImpactTrack) THEN
     PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
@@ -373,7 +373,7 @@ END IF
 
 ! Sample on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
-  CALL SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID,alpha)
+  CALL SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
 END IF !.NOT.IsAuxBC
 
 ! Update particle velocity
@@ -511,7 +511,7 @@ v_old   = PartState(4:6,PartID)
 
 ! Sample on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
-  CALL SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID,alpha)
+  CALL SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
 END IF
 
 ! Calculate wall normal and tangential velocity, impact angle

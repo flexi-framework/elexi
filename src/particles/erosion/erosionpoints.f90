@@ -129,11 +129,12 @@ IF(nSurfTotalSides.NE.0) THEN
 END IF
 
 EP_onProc = MERGE(.TRUE.,.FALSE.,nSurfTotalSides.NE.0)
-CALL MPI_ALLREDUCE(EP_onProc,doParticleImpactTrack,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
-
-! Initialize impact tracking communicator (needed for output)
 #if USE_MPI
+CALL MPI_ALLREDUCE(EP_onProc,doParticleImpactTrack,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
+! Initialize impact tracking communicator (needed for output)
 CALL InitEPCommunicator()
+#else
+doParticleImpactTrack = EP_onProc
 #endif /*USE_MPI*/
 
 ! Allocate and nullify impact tracking arrays

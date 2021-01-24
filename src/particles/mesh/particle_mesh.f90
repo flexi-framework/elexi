@@ -608,13 +608,14 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER,PARAMETER              :: iNode=1
-INTEGER                        :: firstElem,lastElem,iNbSide,iVec,BCALPHA
+INTEGER                        :: firstElem,lastElem,iNbSide,BCALPHA
 INTEGER                        :: SideID,ElemID,GlobalSideID,NbElemID,localSideID,localSideNbID,nStart
 INTEGER                        :: CornerNodeIDswitch(8),NodeMap(4,6)
 REAL,DIMENSION(3)              :: MasterCoords,SlaveCoords,PeriodicTmp
 LOGICAL,ALLOCPOINT             :: PeriodicFound(:)
 #if USE_MPI
 REAL,ALLOCATABLE               :: sendbuf(:),recvbuf(:,:)
+INTEGER                        :: iVec
 INTEGER                        :: PeriodicFound_Win
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
@@ -764,8 +765,6 @@ USE MOD_ChangeBasis              ,ONLY: ChangeBasis3D
 USE MOD_Interpolation            ,ONLY: GetDerivativeMatrix
 USE MOD_Interpolation            ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars       ,ONLY: NodeType,NodeTypeCL,NodeTypeVISU
-USE MOD_Mesh_Vars                ,ONLY: NGeo
-USE MOD_Mesh_Vars                ,ONLY: nElems,nGlobalElems
 USE MOD_Mesh_Vars                ,ONLY: Elem_xGP
 USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo,dXCL_NGeo
@@ -773,7 +772,8 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID
 #if USE_MPI
 USE MOD_PreProc                  ,ONLY: N
-USE MOD_Mesh_Vars                ,ONLY: offsetElem
+USE MOD_Mesh_Vars                ,ONLY: NGeo
+USE MOD_Mesh_Vars                ,ONLY: nElems,nGlobalElems,offsetElem
 !USE MOD_Mesh_Vars                ,ONLY: InterpolateFromTree
 !USE MOD_Mesh_Vars                ,ONLY: UseCurveds
 USE MOD_Metrics                  ,ONLY: BuildCoords
@@ -1170,9 +1170,9 @@ IMPLICIT NONE
 INTEGER            :: iElem,CNElemID
 INTEGER            :: i,j,k
 REAL               :: J_N(1,0:PP_N,0:PP_N,0:PP_N)
-REAL               :: CNVolume                       ! Total CN volume
 INTEGER            :: offsetElemCNProc
 #if USE_MPI
+REAL               :: CNVolume                       ! Total CN volume
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
 !===================================================================================================================================

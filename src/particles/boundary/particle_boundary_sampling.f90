@@ -109,7 +109,7 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSampleBCs
 USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars,doParticleImpactSample,WriteMacroSurfaceValues
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetCNElemID
-USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars      ,ONLY: SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemSideNodeID_Shared
 USE MOD_Particle_Surfaces       ,ONLY: EvaluateBezierPolynomialAndGradient
 USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D
@@ -118,6 +118,7 @@ USE MOD_Particle_Vars           ,ONLY: nSpecies
 USE MOD_ReadInTools             ,ONLY: GETINT,GETLOGICAL,GETINTARRAY,GETSTR,COUNTOPTION
 USE MOD_StringTools             ,ONLY: LowCase
 #if USE_MPI
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,nLeaderGroupProcs
@@ -616,7 +617,7 @@ END IF
 END SUBROUTINE InitParticleBoundarySampling
 
 
-SUBROUTINE SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID,alpha)
+SUBROUTINE SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID) !,alpha)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Tracks erosion on designated sides other than reflective wall
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -638,7 +639,8 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 REAL,INTENT(IN)                   :: PartTrajectory(1:3)
 REAL,INTENT(IN)                   :: n_loc(1:3)
-REAL,INTENT(IN)                   :: xi,eta,alpha
+REAL,INTENT(IN)                   :: xi,eta
+! REAL,INTENT(IN)                   :: alpha
 INTEGER,INTENT(IN)                :: PartID,SideID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

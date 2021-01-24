@@ -332,8 +332,10 @@ INTEGER               :: TmpMapToBC(1:nDataBC),TmpSideStart(1:nDataBC),TmpSideNu
 INTEGER               :: TmpSideNext(1:nBCSides)
 INTEGER               :: countDataBC,iBC,BCSideID,currentBC,iSF,ElemID,iCount,iLocSide,SideID,CNSideID,iPartBound
 INTEGER               :: iSample, jSample, iSpec
-REAL, ALLOCATABLE     :: areasLoc(:),areasGlob(:)
 LOGICAL               :: OutputSurfaceFluxLinked
+#if USE_MPI
+REAL, ALLOCATABLE     :: areasLoc(:),areasGlob(:)
+#endif /* USE_MPI */
 !===================================================================================================================================
 
 !-- 2.: create Side lists for applicable BCs
@@ -804,11 +806,12 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
 USE MOD_Particle_Surfaces_Vars ,ONLY: BCdata_auxSF,BezierSampleN,SurfMeshSubSideData,SurfMeshSideAreas
 USE MOD_Particle_Surfaces_Vars ,ONLY: SurfFluxSideSize,TriaSurfaceFlux
 USE MOD_Particle_Surfaces      ,ONLY: GetBezierSampledAreas,GetSideBoundingBox,CalcNormAndTangTriangle
-USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,DoSurfaceFlux,DoPoissonRounding,DoTimeDepInflow
+USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,DoSurfaceFlux
 USE MOD_Particle_Vars          ,ONLY: UseCircularInflow
 USE MOD_ReadInTools
 USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
 #if USE_MPI
+USE MOD_Particle_Vars          ,ONLY: DoPoissonRounding,DoTimeDepInflow
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING

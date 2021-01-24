@@ -250,6 +250,14 @@ CLASS(link), POINTER :: newLink
 TYPE(Varying_String) :: aStr
 INTEGER              :: ind
 !==================================================================================================================================
+
+!#if USE_PARTICLES
+!IF(this%check_options(name)) THEN
+!  CALL Abort(__STAMP__, &
+!      'Option "'//TRIM(name)//'" is already defined, can not be defined with the same name twice!')
+!END IF
+!#endif /*USE_PARTICLES*/
+
 opt%hasDefault = PRESENT(value)
 IF (opt%hasDefault) THEN
   CALL opt%parse(value)
@@ -579,7 +587,7 @@ END DO
 END FUNCTION  CountOption_
 
 !==================================================================================================================================
-!> Insert a option in front of option with same name in the 'prms' linked list.
+!> Insert an option in front of option with same name in the 'prms' linked list.
 !==================================================================================================================================
 SUBROUTINE insertOption(first, opt)
 ! MODULES
@@ -814,7 +822,7 @@ DO WHILE (associated(current))
   END IF
   current => current%next
 #if USE_PARTICLES
-  END IF
+  END IF ! current%opt%numberedmulti
 #endif /*USE_PARTICLES*/
 END DO
 
@@ -871,13 +879,13 @@ SWRITE(UNIT_StdOut,'(100("!"))')
 SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
 DO WHILE (associated(current))
   IF (.NOT.current%opt%isRemoved) THEN
-#if USE_PARTICLES
-    ! Do not output the dummy string for numberedmulti
-    IF (current%opt%numberedmulti) THEN
-      current => current%next
-      CYCLE
-    END IF
-#endif /*USE_PARTICLES*/
+!#if USE_PARTICLES
+!    ! Do not output the dummy string for numberedmulti
+!    IF (current%opt%numberedmulti) THEN
+!      current => current%next
+!      CYCLE
+!    END IF
+!#endif /*USE_PARTICLES*/
     SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
   END IF
   current => current%next
@@ -1096,48 +1104,50 @@ CLASS(OPTION),ALLOCATABLE    :: newopt
 current => prms%firstLink
 DO WHILE (associated(current))
   ! if name matches option
-  IF (current%opt%NAMEEQUALS(name).AND.(.NOT.current%opt%isRemoved)) THEN
-    opt => current%opt
-    ! if proposal is present and the option is not set due to the parameter file, then return the proposal
-    IF ((PRESENT(proposal)).AND.(.NOT.opt%isSet)) THEN
-      proposal_loc = TRIM(proposal)
-      CALL opt%parse(proposal_loc)
-    ELSE
-      ! no proposal, no default and also not set in parameter file => abort
-      IF ((.NOT.opt%hasDefault).AND.(.NOT.opt%isSet)) THEN
-        CALL ABORT(__STAMP__, &
-            "Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
-        RETURN
+  IF (.NOT.current%opt%isRemoved) THEN
+    IF (current%opt%NAMEEQUALS(name)) THEN
+      opt => current%opt
+      ! if proposal is present and the option is not set due to the parameter file, then return the proposal
+      IF ((PRESENT(proposal)).AND.(.NOT.opt%isSet)) THEN
+        proposal_loc = TRIM(proposal)
+        CALL opt%parse(proposal_loc)
+      ELSE
+        ! no proposal, no default and also not set in parameter file => abort
+        IF ((.NOT.opt%hasDefault).AND.(.NOT.opt%isSet)) THEN
+          CALL ABORT(__STAMP__, &
+              "Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
+          RETURN
+        END IF
       END IF
+      ! copy value from option to result variable
+      SELECT TYPE (opt)
+      CLASS IS (IntOption)
+        SELECT TYPE(value)
+        TYPE IS (INTEGER)
+          value = opt%value
+        END SELECT
+      CLASS IS (RealOption)
+        SELECT TYPE(value)
+        TYPE IS (REAL)
+          value = opt%value
+        END SELECT
+      CLASS IS (LogicalOption)
+        SELECT TYPE(value)
+        TYPE IS (LOGICAL)
+          value = opt%value
+        END SELECT
+      CLASS IS (StringOption)
+        SELECT TYPE(value)
+        TYPE IS (STR255)
+          value%chars = opt%value
+        END SELECT
+      END SELECT
+      ! print option and value to stdout
+      CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+      ! remove the option from the linked list of all parameters
+      IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
+      RETURN
     END IF
-    ! copy value from option to result variable
-    SELECT TYPE (opt)
-    CLASS IS (IntOption)
-      SELECT TYPE(value)
-      TYPE IS (INTEGER)
-        value = opt%value
-      END SELECT
-    CLASS IS (RealOption)
-      SELECT TYPE(value)
-      TYPE IS (REAL)
-        value = opt%value
-      END SELECT
-    CLASS IS (LogicalOption)
-      SELECT TYPE(value)
-      TYPE IS (LOGICAL)
-        value = opt%value
-      END SELECT
-    CLASS IS (StringOption)
-      SELECT TYPE(value)
-      TYPE IS (STR255)
-        value%chars = opt%value
-      END SELECT
-    END SELECT
-    ! print option and value to stdout
-    CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
-    ! remove the option from the linked list of all parameters
-    IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
-    RETURN
   END IF
   current => current%next
 END DO

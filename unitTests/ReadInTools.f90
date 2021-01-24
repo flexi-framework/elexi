@@ -64,8 +64,6 @@ IF (nArgs.GT.0) THEN
   STOP -1
 END IF
 
-CALL prms%CreateLogicalOption('ColoredOutput',"dummy","F")
-
 CALL prms%SetSection("UnitTest")
 CALL prms%CreateIntOption('intOpt'        , "Description IntOpt")
 CALL prms%CreateIntOption('intOpt_def'    , "Description IntOpt with default value", '-1')

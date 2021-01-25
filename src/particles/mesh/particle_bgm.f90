@@ -1275,7 +1275,7 @@ lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProces
 nPeriodicElems = 0
 DO iElem = 1,nGlobalElems
   ! only consider elements within the DG region
-  IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.0) CYCLE
+  IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).LE.0) CYCLE
 
   firstSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem) + 1
   lastSide  = ElemInfo_Shared(ELEM_LASTSIDEIND ,iElem)
@@ -1307,7 +1307,7 @@ nPeriodicVectorsPerElem = 0
 ! synchronized. The communication overhead would most likely exceed the calculation effort.
 DO iElem = 1,nGlobalElems
   ! only consider elements within the DG or halo region
-  IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.0) CYCLE
+  IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).LE.0) CYCLE
 
   firstSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem) + 1
   lastSide  = ElemInfo_Shared(ELEM_LASTSIDEIND ,iElem)
@@ -1350,7 +1350,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 ! this approach is again preferred compared to the communication overhead.
 DO iElem = firstElem,lastElem
   ! only consider elements that are not already flagged
-  IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).NE.0) CYCLE
+  IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).GT.0) CYCLE
 
   BoundsOfElemCenter(1:3) = (/    SUM(BoundsOfElem_Shared(1:2,1,iElem)),                                                      &
                                   SUM(BoundsOfElem_Shared(1:2,2,iElem)),                                                      &
@@ -1359,9 +1359,10 @@ DO iElem = firstElem,lastElem
                                       BoundsOfElem_Shared(2,2,iElem)-BoundsOfElem_Shared(1,2,iElem),                       &
                                       BoundsOfElem_Shared(2,3,iElem)-BoundsOfElem_Shared(1,3,iElem) /) / 2.)
 
-  DO iPeriodicElem = 1,nPeriodicElems
+! Use a named loop so the entire element can be cycled
+ElemLoop: DO iPeriodicElem = 1,nPeriodicElems
     ! element might be already added back
-    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).NE.0) EXIT
+    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).GT.0) EXIT ElemLoop
 
     SELECT CASE(SUM(ABS(nPeriodicVectorsPerElem(:,iPeriodicElem))))
 
@@ -1378,6 +1379,7 @@ DO iElem = firstElem,lastElem
           ! add element back to halo region
           ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
 !          CALL AddElementToFIBGM(iElem)
+          EXIT ElemLoop
         END IF
 
       CASE(2)
@@ -1385,7 +1387,7 @@ DO iElem = firstElem,lastElem
         ! the first periodic vector with the other. Finally check the second periodic vector, i.e. 1, 1+2, 2
         DO iPeriodicVector = 1,3
           ! element might be already added back
-          IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).NE.0) EXIT
+          IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).GT.0) EXIT ElemLoop
 
           IF (nPeriodicVectorsPerElem(iPeriodicVector,iPeriodicElem).EQ.0) CYCLE
 
@@ -1397,7 +1399,7 @@ DO iElem = firstElem,lastElem
             ! add element back to halo region
             ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
 !            CALL AddElementToFIBGM(iElem)
-            EXIT
+            EXIT ElemLoop
           END IF
 
           DO jPeriodicVector = 1,3
@@ -1413,7 +1415,7 @@ DO iElem = firstElem,lastElem
               ! add element back to halo region
               ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
 !              CALL AddElementToFIBGM(iElem)
-              EXIT
+              EXIT ElemLoop
             END IF
           END DO
         END DO
@@ -1423,7 +1425,7 @@ DO iElem = firstElem,lastElem
         ! the first periodic vector with the others. Then check the other combinations, i.e. 1, 1+2, 1+3, 2, 2+3, 3, 1+2+3
         DO iPeriodicVector = 1,3
           ! element might be already added back
-          IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).NE.0) EXIT
+          IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).GT.0) EXIT ElemLoop
 
           ! check if element is within halo_eps of periodically displaced element
           IF (VECNORM( BoundsOfElemCenter(1:3)                                                                             &
@@ -1433,7 +1435,7 @@ DO iElem = firstElem,lastElem
             ! add element back to halo region
             ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
 !            CALL AddElementToFIBGM(iElem)
-            EXIT
+            EXIT ElemLoop
           END IF
 
           DO jPeriodicVector = 1,3
@@ -1448,7 +1450,7 @@ DO iElem = firstElem,lastElem
               ! add element back to halo region
               ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
 !              CALL AddElementToFIBGM(iElem)
-              EXIT
+              EXIT ElemLoop
             END IF
 
           END DO
@@ -1464,12 +1466,13 @@ DO iElem = firstElem,lastElem
           ! add element back to halo region
           ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
 !          CALL AddElementToFIBGM(iElem)
+          EXIT ElemLoop
         END IF
 
       CASE DEFAULT
         CALL ABORT(__STAMP__,'Periodic vectors .LT.1 or .GT.3!')
       END SELECT
-  END DO
+  END DO ElemLoop
 END DO
 
 END SUBROUTINE CheckPeriodicSides

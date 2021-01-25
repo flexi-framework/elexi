@@ -425,12 +425,13 @@ USE MOD_HDF5_WriteArray       ,ONLY: WriteArray
 USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Mesh_Vars             ,ONLY: MeshFile
 USE MOD_Output_Vars           ,ONLY: ProjectName
-USE MOD_RecordPoints_Vars     ,ONLY: myRPrank,lastSample
+USE MOD_RecordPoints_Vars     ,ONLY: lastSample
 USE MOD_RecordPoints_Vars     ,ONLY: RPDefFile,RP_Data,iSample,nSamples
 USE MOD_RecordPoints_Vars     ,ONLY: offsetRP,nRP,nGlobalRP
 USE MOD_RecordPoints_Vars     ,ONLY: RP_Buffersize,RP_Maxbuffersize,RP_fileExists,chunkSamples
 #if USE_MPI
 USE MOD_RecordPoints_Vars     ,ONLY: RP_COMM
+USE MOD_RecordPoints_Vars     ,ONLY: myRPrank
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -446,16 +447,22 @@ CHARACTER(LEN=255)             :: FileString
 REAL                           :: startT,endT
 !==================================================================================================================================
 
+#if USE_MPI
 IF (myRPrank.EQ.0) THEN
+#endif /* USE_MPI */
   WRITE(UNIT_stdOut,'(a)')           ' WRITE RECORDPOINT DATA TO HDF5 FILE...'
   WRITE(UNIT_stdOut,'(a,I4,a,I4,a)') ' RP Buffer  : ',iSample,'/',RP_Buffersize,' samples.'
   GETTIME(startT)
+#if USE_MPI
 END IF
+#endif /* USE_MPI */
 
 FileString = TRIM(TIMESTAMP(TRIM(ProjectName)//'_RP',OutputTime))//'.h5'
 
 ! init file or just update time
+#if USE_MPI
 IF (myRPrank.EQ.0) THEN
+#endif /* USE_MPI */
   CALL OpenDataFile(Filestring,create=.NOT.RP_fileExists,single=.TRUE.,readOnly=.FALSE.)
   IF (.NOT.RP_fileExists) THEN
     ! Create dataset attributes
@@ -467,14 +474,16 @@ IF (myRPrank.EQ.0) THEN
     CALL WriteAttribute(File_ID,'Time'       ,1,RealScalar=OutputTime)
   END IF
   CALL CloseDataFile()
+#if USE_MPI
 END IF
+#endif /* USE_MPI */
 
 #if USE_MPI
 CALL MPI_BARRIER(RP_COMM,iError)
 CALL OpenDataFile(Filestring,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.,communicatorOpt=RP_COMM)
 #else
 CALL OpenDataFile(Filestring,create=.FALSE.,single=.TRUE. ,readOnly=.FALSE.)
-#endif
+#endif /* USE_MPI */
 
 IF (iSample.GT.0) THEN
   IF (.NOT.RP_fileExists) chunkSamples = iSample
@@ -514,11 +523,15 @@ IF (resetCounters) THEN
 END IF
 CALL CloseDataFile()
 
+#if USE_MPI
 IF (myRPrank.EQ.0) THEN
+#endif /* USE_MPI */
   CALL MarkWriteSuccessfull(Filestring)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE  [',EndT-StartT,'s]'
+#if USE_MPI
 END IF
+#endif /* USE_MPI */
 
 END SUBROUTINE WriteRP
 

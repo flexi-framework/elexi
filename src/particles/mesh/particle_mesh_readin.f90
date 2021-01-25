@@ -82,6 +82,7 @@ SUBROUTINE ReadMeshBasics()
 ! MODULES
 USE MOD_Globals
 USE MOD_HDF5_Input                ,ONLY: File_ID,ReadAttribute
+USE MOD_Mesh_Vars                 ,ONLY: NGeo,nGlobalElems
 USE MOD_Particle_Mesh_Vars        ,ONLY: nNonUniqueGlobalSides,nNonUniqueGlobalNodes
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
@@ -97,6 +98,9 @@ IMPLICIT NONE
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) RETURN
 #endif /*USE_LOADBALANCE*/
+
+! INTEGER KIND=4 check for number of nodes
+CHECKSAFEINT((NGeo+1)**3.*INT(nGlobalElems,8),4)
 
 !CALL ReadAttribute(File_ID,'nUniqueSides',1,IntScalar=nGlobalUniqueSidesFromMesh)
 CALL ReadAttribute(File_ID,'nSides'      ,1,IntScalar=nNonUniqueGlobalSides)

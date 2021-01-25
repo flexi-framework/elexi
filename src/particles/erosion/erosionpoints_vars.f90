@@ -16,6 +16,10 @@
 !==================================================================================================================================
 MODULE MOD_ErosionPoints_Vars
 ! MODULES
+#if USE_MPI
+USE mpi
+#endif
+
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -33,11 +37,14 @@ INTEGER            :: offsetEP                !< offset for each proc in global 
 INTEGER,ALLOCATABLE:: EP_ElemID(:)            !< mapping from EP->Elem (nEP)
 REAL,ALLOCATABLE   :: EP_Data(:,:)            !< solution evaluated at EPs (nvar,nEP,nSamples)
 INTEGER            :: EPDataSize
+
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MPI Communicator for EPs
 !----------------------------------------------------------------------------------------------------------------------------------
+#if USE_MPI
 INTEGER            :: myEPrank                !< rank within EP communicator
-INTEGER            :: EP_COMM                 !< MPI EP communicator
+INTEGER            :: EP_COMM=MPI_COMM_NULL   !< MPI EP communicator
 INTEGER            :: nEP_Procs               !< number of procs with EPs
+#endif /* USE_MPI */
 
 END MODULE MOD_erosionPoints_Vars

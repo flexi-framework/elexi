@@ -40,8 +40,8 @@ INTEGER,ALLOCATABLE:: MPIRankLeader(:)                      !> Array of size nLe
 INTEGER            :: nComputeNodeProcessors                !> Number of procs on current compute-node
 INTEGER            :: nLeaderGroupProcs                     !> Number of nodes
 INTEGER            :: nProcessors_Global                    !> Number of total procs
-INTEGER            :: MPI_COMM_SHARED                       !> Communicator on current compute-node
-INTEGER            :: MPI_COMM_LEADERS_SHARED               !> Communicator compute-node roots (my_rank_shared=0)
+INTEGER            :: MPI_COMM_SHARED        =MPI_COMM_NULL !> Communicator on current compute-node
+INTEGER            :: MPI_COMM_LEADERS_SHARED=MPI_COMM_NULL !> Communicator compute-node roots (my_rank_shared=0)
 INTEGER,ALLOCATABLE:: MPI_COMM_LEADERS_REQUEST(:)           !> Request handle for non-blocking communication
 INTEGER            :: MPI_COMM_LEADERS_REQUEST_SIZE         !> Size of request handle for non-blocking communication
 

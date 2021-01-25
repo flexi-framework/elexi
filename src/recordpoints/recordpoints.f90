@@ -545,8 +545,8 @@ SDEALLOCATE(FV_RP_ijk)
 #endif
 
 #if USE_MPI
-  ! Free MPI communicator
-  IF(RP_COMM.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(RP_COMM, IERROR)
+! Free MPI communicator
+IF(RP_COMM.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(RP_COMM, IERROR)
 #endif /* USE_MPI */
 
 RecordPointsInitIsDone = .FALSE.

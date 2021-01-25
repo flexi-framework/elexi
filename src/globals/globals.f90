@@ -38,7 +38,7 @@ INTEGER           ::iError                                                    !<
 REAL              ::StartTime                                                 !< start time of the simulation
 INTEGER           ::myRank,myLocalRank,myLeaderRank,myWorkerRank
 INTEGER           ::nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
-INTEGER           ::MPI_COMM_FLEXI !< Flexi MPI communicator
+INTEGER           ::MPI_COMM_FLEXI                                            !< Flexi MPI communicator
 INTEGER           ::MPI_COMM_NODE                                             !< local node subgroup
 INTEGER           ::MPI_COMM_LEADERS                                          !< all node masters
 INTEGER           ::MPI_COMM_WORKERS                                          !< all non-master nodes

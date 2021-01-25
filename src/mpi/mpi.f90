@@ -35,8 +35,8 @@ END INTERFACE
 PUBLIC::InitMPI
 
 #if USE_MPI
-INTERFACE InitMPIvars
-  MODULE PROCEDURE InitMPIvars
+INTERFACE InitMPIVars
+  MODULE PROCEDURE InitMPIVars
 END INTERFACE
 
 !INTERFACE StartReceiveMPIData
@@ -373,6 +373,7 @@ END SUBROUTINE FinishExchangeMPIData
 !==================================================================================================================================
 SUBROUTINE FinalizeMPI()
 ! MODULES
+USE MOD_Globals
 USE MOD_MPI_Vars
 IMPLICIT NONE
 !==================================================================================================================================
@@ -399,8 +400,12 @@ SDEALLOCATE(nMPISides_send)
 SDEALLOCATE(nMPISides_rec)
 SDEALLOCATE(OffsetMPISides_send)
 SDEALLOCATE(OffsetMPISides_rec)
-END SUBROUTINE FinalizeMPI
 
+! Free MPI communicators
+IF(MPI_COMM_WORKERS.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_WORKERS,IERROR)
+IF(MPI_COMM_LEADERS.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS,IERROR)
+
+END SUBROUTINE FinalizeMPI
 #endif /*USE_MPI*/
 
 END MODULE MOD_MPI

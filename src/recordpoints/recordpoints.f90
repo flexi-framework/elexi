@@ -528,6 +528,7 @@ END SUBROUTINE WriteRP
 !==================================================================================================================================
 SUBROUTINE FinalizeRecordPoints()
 ! MODULES
+USE MOD_Globals!,                 ONLY: iERROR
 USE MOD_RecordPoints_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -542,6 +543,11 @@ SDEALLOCATE(lastSample)
 #if FV_ENABLED
 SDEALLOCATE(FV_RP_ijk)
 #endif
+
+#if USE_MPI
+  ! Free MPI communicator
+  IF(RP_COMM.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(RP_COMM, IERROR)
+#endif /* USE_MPI */
 
 RecordPointsInitIsDone = .FALSE.
 

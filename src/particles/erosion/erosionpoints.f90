@@ -485,11 +485,17 @@ END SUBROUTINE WriteEP
 !==================================================================================================================================
 SUBROUTINE FinalizeErosionPoints()
 ! MODULES
+USE MOD_Globals,                 ONLY: iERROR
 USE MOD_ErosionPoints_Vars
 IMPLICIT NONE
 !==================================================================================================================================
 
 SDEALLOCATE(EP_Data)
+
+#if USE_MPI
+  ! Free MPI communicator
+  IF(RP_COMM.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(RP_COMM, IERROR)
+#endif /* USE_MPI */
 
 ErosionPointsInitIsDone = .FALSE.
 

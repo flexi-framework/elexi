@@ -68,7 +68,7 @@ FileName=TRIM(ProjectName)//'_RPSet'
 FileString=TRIM(FileName)//'.h5'
 CALL OpenDataFile(TRIM(Filestring),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 
-CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/'RecordPoints'/))
+CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/CHARACTER(LEN=255)::'RecordPoints'/))
 CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
 CALL WriteAttribute(File_ID,'NGeo',1,IntScalar=NGeo)
 CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))

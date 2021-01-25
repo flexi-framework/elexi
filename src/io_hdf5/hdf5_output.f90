@@ -896,7 +896,7 @@ INTEGER           ,INTENT(IN)                 :: nVal             !< number of a
 CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL        :: DatasetName      !< name of the dataset created
 REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealScalar       !< real scalar
 INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntScalar        !< integer scalar
-CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL,TARGET :: StrScalar(1)     !< scalar string
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrScalar(1)     !< scalar string
 LOGICAL           ,INTENT(IN),OPTIONAL        :: LogicalScalar    !< logical scalar
 REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealArray(nVal)  !< real array of length nVal
 INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray(nVal)   !< integer array of length nVal

@@ -466,7 +466,7 @@ IF (myRPrank.EQ.0) THEN
   CALL OpenDataFile(Filestring,create=.NOT.RP_fileExists,single=.TRUE.,readOnly=.FALSE.)
   IF (.NOT.RP_fileExists) THEN
     ! Create dataset attributes
-    CALL WriteAttribute(File_ID,'File_Type'  ,1,StrScalar=(/'RecordPoints_Data'/))
+    CALL WriteAttribute(File_ID,'File_Type'  ,1,StrScalar=(/CHARACTER(LEN=255)::'RecordPoints_Data'/))
     CALL WriteAttribute(File_ID,'MeshFile'   ,1,StrScalar=(/MeshFile/))
     CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/ProjectName/))
     CALL WriteAttribute(File_ID,'RPDefFile'  ,1,StrScalar=(/RPDefFile/))

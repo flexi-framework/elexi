@@ -147,6 +147,7 @@ IF (PerformLoadBalance) THEN
   ! Only update the mapping of element to rank
   ElemInfo_Shared(ELEM_RANK        ,offsetElem+1:offsetElem+nElems) = myRank
   CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
+  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 ELSE
 #endif /*USE_LOADBALANCE*/
   ! allocate shared array for ElemInfo
@@ -157,6 +158,7 @@ ELSE
   ElemInfo_Shared(1:ELEMINFOSIZE_H5,offsetElem+1:offsetElem+nElems) = ElemInfo(:,:)
   ElemInfo_Shared(ELEM_RANK        ,offsetElem+1:offsetElem+nElems) = myRank
   CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
+  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/
@@ -463,6 +465,7 @@ IF (ABS(meshScale-1.).GT.1e-14) THEN
 END IF
 
 #if USE_MPI
+CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(NodeCoords_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #endif  /*USE_MPI*/
@@ -628,11 +631,15 @@ IF (PerformLoadBalance) THEN
     recvcountSide(nLeaderGroupProcs-1) = nNonUniqueGlobalSides - displsSide(nLeaderGroupProcs-1)
 
     ! Gather mesh information in a non-blocking way
-    ALLOCATE(MPI_COMM_LEADERS_REQUEST(1:2))
-    CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,ElemInfo_Shared(ELEM_RANK,:),recvcountElem  &
-                        ,displsElem,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(1),IERROR)
-    CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,SideInfo_Shared(SIDEINFOSIZE+1,:),recvcountSide  &
-                        ,displsSide,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(2),IERROR)
+    ! ALLOCATE(MPI_COMM_LEADERS_REQUEST(1:2))
+    ! CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,ElemInfo_Shared(ELEM_RANK,:),recvcountElem  &
+    !                     ,displsElem,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(1),IERROR)
+    ! CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,SideInfo_Shared(SIDEINFOSIZE+1,:),recvcountSide  &
+    !                     ,displsSide,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(2),IERROR)
+    CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,ElemInfo_Shared(ELEM_RANK,:),recvcountElem  &
+                        ,displsElem,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
+    CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,SideInfo_Shared(SIDEINFOSIZE+1,:),recvcountSide  &
+                        ,displsSide,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
   END IF
 
   ! Broadcast compute node node offset on node
@@ -707,22 +714,37 @@ IF (myComputeNodeRank.EQ.0) THEN
 
   ! Gather mesh information in a non-blocking way
   MPI_COMM_LEADERS_REQUEST_SIZE = MERGE(6,3,isMortarMesh)
-  ALLOCATE(MPI_COMM_LEADERS_REQUEST(1:MPI_COMM_LEADERS_REQUEST_SIZE))
-  CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,ElemInfo_Shared,ELEMINFOSIZE       *recvcountElem  &
-      ,ELEMINFOSIZE*displsElem     ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(1),IERROR)
-  CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,SideInfo_Shared,(SIDEINFOSIZE+1)   *recvcountSide  &
-      ,(SIDEINFOSIZE+1)*displsSide ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(2),IERROR)
-!  CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,NodeInfo_Shared,                    recvcountNode  &
-!      ,displsNode                  ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(3),IERROR)
-  CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,NodeCoords_Shared,3                *recvcountNode  &
-      ,3*displsNode                ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(3),IERROR)
+  ! ALLOCATE(MPI_COMM_LEADERS_REQUEST(1:MPI_COMM_LEADERS_REQUEST_SIZE))
+  ! CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,ElemInfo_Shared,ELEMINFOSIZE       *recvcountElem  &
+  !     ,ELEMINFOSIZE*displsElem     ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(1),IERROR)
+  ! CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,SideInfo_Shared,(SIDEINFOSIZE+1)   *recvcountSide  &
+  !     ,(SIDEINFOSIZE+1)*displsSide ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(2),IERROR)
+! !  CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,NodeInfo_Shared,                    recvcountNode  &
+! !      ,displsNode                  ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(3),IERROR)
+  ! CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,NodeCoords_Shared,3                *recvcountNode  &
+  !     ,3*displsNode                ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(3),IERROR)
+  ! IF(isMortarMesh)THEN
+  !   CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,xiMinMax_Shared,3*2              *recvcountElem  &
+  !       ,3*2*displsElem            ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(4),IERROR)
+  !   CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,ElemToTree_Shared ,               recvcountElem  &
+  !       ,displsElem                ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(5),IERROR)
+  !   CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,TreeCoords_Shared ,(NGeoTree+1)**3*recvcountTree &
+  !       ,displsTree                ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(6),IERROR)
+  CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,ElemInfo_Shared,ELEMINFOSIZE       *recvcountElem  &
+      ,ELEMINFOSIZE*displsElem     ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
+  CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,SideInfo_Shared,(SIDEINFOSIZE+1)   *recvcountSide  &
+      ,(SIDEINFOSIZE+1)*displsSide ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
+!  CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,NodeInfo_Shared,                    recvcountNode  &
+!      ,displsNode                  ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
+  CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,NodeCoords_Shared,3                *recvcountNode  &
+      ,3*displsNode                ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,IERROR)
   IF(isMortarMesh)THEN
-    CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,xiMinMax_Shared,3*2              *recvcountElem  &
-        ,3*2*displsElem            ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(4),IERROR)
-    CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,ElemToTree_Shared ,               recvcountElem  &
-        ,displsElem                ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(5),IERROR)
-    CALL MPI_IALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,TreeCoords_Shared ,(NGeoTree+1)**3*recvcountTree &
-        ,displsTree                ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(6),IERROR)
+    CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,xiMinMax_Shared,3*2              *recvcountElem  &
+        ,3*2*displsElem            ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,IERROR)
+    CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,ElemToTree_Shared ,               recvcountElem  &
+        ,displsElem                ,MPI_INTEGER         ,MPI_COMM_LEADERS_SHARED,IERROR)
+    CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,TreeCoords_Shared ,(NGeoTree+1)**3*recvcountTree &
+        ,displsTree                ,MPI_DOUBLE_PRECISION,MPI_COMM_LEADERS_SHARED,IERROR)
   END IF
 END IF
 #endif /*USE_MPI*/
@@ -762,26 +784,13 @@ INTEGER                        :: iLocSide,jLocSide,nlocSides,nlocSidesNb,NbSide
 ! do not build particle mesh information in posti mode
 IF (postiMode) RETURN
 
-#if USE_MPI
-! calculate all offsets
-FirstElemInd = offsetElem+1
-LastElemInd  = offsetElem+nElems
-offsetSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
-nSideIDs     = ElemInfo_Shared(ELEM_LASTSIDEIND ,LastElemInd) - ElemInfo_Shared(ELEM_FIRSTSIDEIND,FirstElemInd)
-#else
-FirstElemInd = 1
-LastElemInd  = nElems
-offsetSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
-nSideIDs     = ElemInfo_Shared(ELEM_LASTSIDEIND,LastElemInd)-ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd)
-#endif /*USE_MPI*/
-
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) THEN
-  ! Finish non-blocking mesh communication
-  IF (myComputeNodeRank.EQ.0) THEN
-    CALL MPI_WAITALL(2,MPI_COMM_LEADERS_REQUEST,MPI_STATUSES_IGNORE,IERROR)
-    DEALLOCATE(MPI_COMM_LEADERS_REQUEST)
-  END IF
+  ! ! Finish non-blocking mesh communication
+  ! IF (myComputeNodeRank.EQ.0) THEN
+  !   CALL MPI_WAITALL(2,MPI_COMM_LEADERS_REQUEST,MPI_STATUSES_IGNORE,IERROR)
+  !   DEALLOCATE(MPI_COMM_LEADERS_REQUEST)
+  ! END IF
 
   ! final sync of all mesh shared arrays
   CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
@@ -795,17 +804,28 @@ END IF
 
 #if USE_MPI
 ! Finish non-blocking mesh communication
-IF (myComputeNodeRank.EQ.0) THEN
-  CALL MPI_WAITALL(MPI_COMM_LEADERS_REQUEST_SIZE,MPI_COMM_LEADERS_REQUEST,MPI_STATUSES_IGNORE,IERROR)
-  DEALLOCATE(MPI_COMM_LEADERS_REQUEST)
-END IF
+! IF (myComputeNodeRank.EQ.0) THEN
+!   CALL MPI_WAITALL(MPI_COMM_LEADERS_REQUEST_SIZE,MPI_COMM_LEADERS_REQUEST,MPI_STATUSES_IGNORE,IERROR)
+!   DEALLOCATE(MPI_COMM_LEADERS_REQUEST)
+! END IF
 
 ! Ensure communication for determination of SIDE_LOCALID
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
-#endif  /*USE_MPI*/
+
+! calculate all offsets
+FirstElemInd = offsetElem+1
+LastElemInd  = offsetElem+nElems
+offsetSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
+nSideIDs     = ElemInfo_Shared(ELEM_LASTSIDEIND ,LastElemInd) - ElemInfo_Shared(ELEM_FIRSTSIDEIND,FirstElemInd)
+#else
+FirstElemInd = 1
+LastElemInd  = nElems
+offsetSideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,FirstElemInd) ! hdf5 array starts at 0-> -1
+nSideIDs     = ElemInfo_Shared(ELEM_LASTSIDEIND,LastElemInd)-ElemInfo(ELEM_FIRSTSIDEIND,FirstElemInd)
+#endif /*USE_MPI*/
 
 ! fill the SIDE_LOCALID. Basically, this array contains the 1:6 local sides of an element. ! If an element has hanging nodes (i.e.
 ! has a big mortar side), the big side has negative index (-1,-2 or -3) and the next 2 (-2, -3) or 4 (-1) sides are the subsides.

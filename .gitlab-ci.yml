@@ -44,7 +44,7 @@ build_gnu:
   script:
     - mkdir -p build_gnu ; cd build_gnu
     - git clone git@gitlab.com:reggie2.0/reggie2.0.git
-    - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j 6
+    - cmake .. -DLIBS_BUILD_HDF5=OFF ; make -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_checkin":
@@ -91,7 +91,7 @@ FV_particle:
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
-#                         - build all specified compile options in "run_basic" with BUILD_HDF5=ON
+#                         - build all specified compile options in "run_basic" with LIBS_BUILD_HDF5=ON
 #                         - h-p-convtests
 #                         - parabolic testcases
 #                         - riemann solver tests

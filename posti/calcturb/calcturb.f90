@@ -228,7 +228,7 @@ END FUNCTION ALMOSTEQUAL
 !    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
 !      Good luck and God speed."
 !===================================================================================================================================
-FUNCTION ALMOSTZERO(Num)
+PURE FUNCTION ALMOSTZERO(Num)
 ! MODULES
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING

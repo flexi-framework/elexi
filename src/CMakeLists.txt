@@ -163,15 +163,12 @@ ENDIF()
 # Particle tracking
 # =========================================================================
 OPTION(PARTICLES "Enable particle tracking" OFF)
-# code development
-CMAKE_DEPENDENT_OPTION(PARTICLES_CODE_ANALYZE "Code Analyze"                        OFF
+CMAKE_DEPENDENT_OPTION(PARTICLES_CODE_ANALYZE "Output code analyze messages"        OFF
                                               "PARTICLES"                           ON )
 CMAKE_DEPENDENT_OPTION(PARTICLES_LOADBALANCE  "Use LoadBalance timemeasurement"     OFF
-                                           "PARTICLES;LIBS_USE_MPI"                 OFF)
+                                              "PARTICLES;LIBS_USE_MPI"              OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_RW           "Use random walk model for particles" OFF
-                                           "PARTICLES;LIBS_USE_MPI"                 OFF)
-
-# >> GENERAL PARTICLE SETTING
+                                              "PARTICLES;LIBS_USE_MPI"              OFF)
 IF(PARTICLES)
   IF(FLEXI_2D)
     MESSAGE(SEND_ERROR "PARTICLES only works on FLEXI_2D=OFF")
@@ -184,47 +181,43 @@ IF(PARTICLES)
   ENDIF()
   ADD_DEFINITIONS(-DUSE_PARTICLES=1)
 
-  # Shared Memory
+  # Shared memory split type
   SET(FLEXI_SHARED_MEMORY "MPI_COMM_TYPE_SHARED" CACHE STRING "Split type for creating new communicators based on colors and keys  (requires MPI 3 or higher). Options with the prefix OMPI_ are specific to Open MPI.")
   SET_PROPERTY(CACHE FLEXI_SHARED_MEMORY PROPERTY STRINGS MPI_COMM_TYPE_SHARED
                                                           OMPI_COMM_TYPE_CORE)
-
-ELSE()
-  ADD_DEFINITIONS(-DUSE_PARTICLES=0)
-ENDIF()
-
-
-# >> RANDOM WALK
-IF(PARTICLES)
-	IF(PARTICLES_RW)
-		ADD_DEFINITIONS(-DUSE_RW=1)
-  ELSE()
-		ADD_DEFINITIONS(-DUSE_RW=0)
-  ENDIF()
-ELSE()
-	ADD_DEFINITIONS(-DUSE_RW=0)
-ENDIF()
-
-# >> LOAD BALANCE
-IF(PARTICLES)
-  IF(PARTICLES_LOADBALANCE)
-    MESSAGE(STATUS "Building Flexi with LoadBalance")
-    ADD_DEFINITIONS(-DUSE_LOADBALANCE=1)
-  ELSE()
-    ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
-  ENDIF()
-ELSE()
-  ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
-ENDIF()
-
-# >> SHARED MEMORY SPLIT TYPE
-IF(PARTICLES)
   ADD_DEFINITIONS(-DSHARED_MEMORY_METHOD=${FLEXI_SHARED_MEMORY})
   IF(FLEXI_SHARED_MEMORY STREQUAL "MPI_COMM_TYPE_SHARED")
     MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
   ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
     MESSAGE(STATUS "Shared memory split type for subcommunicators set to the same core/processing unit")
   ENDIF()
+
+  # Code Analyze
+  IF(PARTICLES_CODE_ANALYZE)
+    ADD_DEFINITIONS(-DCODE_ANALYZE=1)
+  ELSE()
+    ADD_DEFINITIONS(-DCODE_ANALYZE=0)
+  ENDIF()
+
+  # Load Balance
+  IF(PARTICLES_LOADBALANCE)
+    MESSAGE(STATUS "Building Flexi with LoadBalance")
+    ADD_DEFINITIONS(-DUSE_LOADBALANCE=1)
+  ELSE()
+    ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
+  ENDIF()
+
+  # Random Walk
+	IF(PARTICLES_RW)
+		ADD_DEFINITIONS(-DUSE_RW=1)
+  ELSE()
+		ADD_DEFINITIONS(-DUSE_RW=0)
+  ENDIF()
+ELSE()
+  ADD_DEFINITIONS(-DUSE_PARTICLES=0)
+  ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
+  ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
+	ADD_DEFINITIONS(-DUSE_RW=0)
 ENDIF()
 
 # =========================================================================

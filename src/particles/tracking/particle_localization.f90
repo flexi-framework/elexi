@@ -176,9 +176,8 @@ DO iBGMElem = 1,nBGMElems
     ! FLEXI has ElemEpsOneCell also with TRACING
     ! CASE(REFMAPPING)
     CASE(TRACING,REFMAPPING)
-      CNElemID = GetCNElemID(ElemID)
       CALL GetPositionInRefElem(Pos3D(1:3),RefPos,ElemID)
-      IF (MAXVAL(ABS(RefPos)).LE.ElemEpsOneCell(CNElemID)) InElementCheck = .TRUE.
+      IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck=.TRUE.
 
   END SELECT
 

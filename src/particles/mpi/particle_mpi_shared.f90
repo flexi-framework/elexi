@@ -107,7 +107,11 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT MPI SHARED COMMUNICATION...'
 nProcessors_Global = nProcessors
 
 ! Split the node communicator (shared memory) from the global communicator
-CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_FLEXI, SHARED_MEMORY_METHOD, myRank, MPI_INFO_NULL, MPI_COMM_SHARED,IERROR)
+IF(SHARED_MEMORY_METHOD.EQ.OMPI_COMM_TYPE_CORE)THEN
+  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,myRank,0,MPI_COMM_SHARED,iError)
+ELSE
+  CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_FLEXI, SHARED_MEMORY_METHOD, myRank, MPI_INFO_NULL, MPI_COMM_SHARED,IERROR)
+END IF ! SharedMemoryMethod.EQ.
 
 ! Find my rank on the shared communicator, comm size and proc name
 CALL MPI_COMM_RANK(MPI_COMM_SHARED, myComputeNodeRank,IERROR)

@@ -1251,9 +1251,7 @@ DO iPart=1,PDM%ParticleVecLength
         IF (ElemID.EQ.OldElemID) THEN
           Distance(iBGMElem) = -1.0
         ELSE
-          Distance(iBGMElem) = ( (PartState(1,iPart)-ElemBaryNGeo(1,CNElemID))*(PartState(1,iPart)-ElemBaryNGeo(1,CNElemID)) &
-                               + (PartState(2,iPart)-ElemBaryNGeo(2,CNElemID))*(PartState(2,iPart)-ElemBaryNGeo(2,CNElemID)) &
-                               + (PartState(3,iPart)-ElemBaryNGeo(3,CNElemID))*(PartState(3,iPart)-ElemBaryNGeo(3,CNElemID)))
+          Distance(iBGMElem) = SUM((PartState(1:3,iPart)-ElemBaryNGeo(1:3,CNElemID))**2)
 
           ! Do not consider the element if it is too far away
           IF(Distance(iBGMElem).GT.ElemRadius2NGeo(CNElemID))THEN
@@ -2070,33 +2068,33 @@ IF(FastPeriodic)THEN
   ! x direction
   IF(GEO%directions(1)) THEN
     IF(PartState(1,PartID).GT.GEO%xmaxglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(PartID,:)
+      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside x+, PartID',PartID)
     END IF
     IF(PartState(1,PartID).LT.GEO%xminglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(PartID,:)
+      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside x-, PartID',PartID)
     END IF
   END IF
   ! y direction
   IF(GEO%directions(2)) THEN
     IF(PartState(2,PartID).GT.GEO%ymaxglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(PartID,:)
+      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside y+, PartID',PartID)
     END IF
     IF(PartState(2,PartID).LT.GEO%yminglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(PartID,:)
+      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside y-, PartID',PartID)
     END IF
   END IF
   ! z direction
   IF(GEO%directions(3)) THEN
     IF(PartState(3,PartID).GT.GEO%zmaxglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(PartID,:)
+      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside z+, PartID',PartID)
     END IF
     IF(PartState(3,PartID).LT.GEO%zminglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(PartID,:)
+      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__ ,' particle outside z-, PartID',PartID)
     END IF
   END IF
@@ -2253,9 +2251,7 @@ tmpVec                  = PartTrajectory
 LastPartPos(1:3,PartID) = ElemBaryNGeo(:,GetCNElemID(ElemID))
 
 PartTrajectory       = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
-lengthPartTrajectory = SQRT(PartTrajectory(1)*PartTrajectory(1) &
-                          + PartTrajectory(2)*PartTrajectory(2) &
-                          + PartTrajectory(3)*PartTrajectory(3))
+lengthPartTrajectory = SQRT(SUM(PartTrajectory(1:3)**2.))
 IF (lengthPartTrajectory.GT.0) PartTrajectory = PartTrajectory/lengthPartTrajectory
 
 locAlpha  = -1.0
@@ -2294,13 +2290,13 @@ END DO ! ilocSide
 IF(nInter.EQ.0) THEN
   PartState(  1:3,PartID) = tmpPos
   LastPartPos(1:3,PartID) = tmpLastPartPos(1:3)
-  IF(PartPosRef(1,PartID).GT. 1.) PartPosRef(1,PartID)= 0.99
-  IF(PartPosRef(1,PartID).LT.-1.) PartPosRef(1,PartID)=-0.99
-  IF(PartPosRef(2,PartID).GT. 1.) PartPosRef(2,PartID)= 0.99
-  IF(PartPosRef(2,PartID).LT.-1.) PartPosRef(2,PartID)=-0.99
-  IF(PartPosRef(3,PartID).GT. 1.) PartPosRef(3,PartID)= 0.99
-  IF(PartPosRef(3,PartID).LT.-1.) PartPosRef(3,PartID)=-0.99
-  CALL LocateParticleInElement(PartID,doHalo=.FALSE.)
+!  IF(PartPosRef(1,PartID).GT. 1.) PartPosRef(1,PartID)= 0.99
+!  IF(PartPosRef(1,PartID).LT.-1.) PartPosRef(1,PartID)=-0.99
+!  IF(PartPosRef(2,PartID).GT. 1.) PartPosRef(2,PartID)= 0.99
+!  IF(PartPosRef(2,PartID).LT.-1.) PartPosRef(2,PartID)=-0.99
+!  IF(PartPosRef(3,PartID).GT. 1.) PartPosRef(3,PartID)= 0.99
+!  IF(PartPosRef(3,PartID).LT.-1.) PartPosRef(3,PartID)=-0.99
+  CALL LocateParticleInElement(PartID,doHalo=.TRUE.)
 
   ! particle successfully located
   IF (PDM%ParticleInside(PartID)) THEN
@@ -2359,10 +2355,9 @@ REAL                             :: Px, Py, Pz
 REAL                             :: Vx, Vy, Vz
 REAL                             :: xNode(3), yNode(3), zNode(3), Ax(3), Ay(3), Az(3)
 REAL                             :: det(3)
-REAL                             :: eps
+REAL,PARAMETER                   :: eps = 0.
 !===================================================================================================================================
 
-eps      = 0.
 CNElemID = GetCNElemID(Element)
 
 ThroughSide = .FALSE.

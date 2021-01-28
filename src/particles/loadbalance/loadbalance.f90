@@ -322,8 +322,7 @@ CALL ComputeImbalance()
 CALL WriteElemTimeStatistics(WriteHeader=.FALSE.,time=t)
 
 ! only check if imbalance is > a given threshold
-PerformLoadBalance = .FALSE.
-IF(CurrentImbalance.GT.DeviationThreshold) PerformLoadBalance=.TRUE.
+PerformLoadBalance = MERGE(.TRUE.,.FALSE.,CurrentImbalance.GT.DeviationThreshold)
 
 ! Reset counters
 nTracksPerElem       = 0

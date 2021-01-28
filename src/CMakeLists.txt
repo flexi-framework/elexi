@@ -169,6 +169,8 @@ CMAKE_DEPENDENT_OPTION(PARTICLES_LOADBALANCE  "Use LoadBalance timemeasurement" 
                                               "PARTICLES;LIBS_USE_MPI"              OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_RW           "Use random walk model for particles" OFF
                                               "PARTICLES;LIBS_USE_MPI"              OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_INTKIND8     "Enable particle numbers larger standard integer size" OFF
+                                              "PARTICLES"                           OFF)
 IF(PARTICLES)
   IF(FLEXI_2D)
     MESSAGE(SEND_ERROR "PARTICLES only works on FLEXI_2D=OFF")
@@ -213,9 +215,17 @@ IF(PARTICLES)
   ELSE()
 		ADD_DEFINITIONS(-DUSE_RW=0)
   ENDIF()
+
+  # INTEGER(KIND=8=
+  IF (PARTICLES_INTKIND8)
+    ADD_DEFINITIONS(-DUSE_INTKIND8=1)
+  ELSE()
+    ADD_DEFINITIONS(-DUSE_INTKIND8=0)
+  ENDIF()
 ELSE()
   ADD_DEFINITIONS(-DUSE_PARTICLES=0)
-  ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
+  ADD_DEFINITIONS(-DCODE_ANALYZE=0)
+  ADD_DEFINITIONS(-DUSE_INTKIND8=0)
   ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
 	ADD_DEFINITIONS(-DUSE_RW=0)
 ENDIF()

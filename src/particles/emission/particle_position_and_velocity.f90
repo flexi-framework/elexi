@@ -369,28 +369,28 @@ IF(NbrOfParticle.GT.PDM%maxParticleNumber) &
 
 SELECT CASE (init_or_sf)
   CASE(1) !iInit
-  ! Collect velocity parameters for current Init
-  velocityDistribution  = Species(FractNbr)%Init(iInit)%velocityDistribution
-  VeloVecIC             = Species(FractNbr)%Init(iInit)%VeloVecIC(1:3)
-  VeloIC                = Species(FractNbr)%Init(iInit)%VeloIC
-  VeloTurbIC            = Species(FractNbr)%Init(iInit)%VeloTurbIC
-  BasePointIC           = Species(FractNbr)%Init(iInit)%BasePointIC(1:3)
-  NormalIC              = Species(FractNbr)%Init(iInit)%NormalIC(1:3)
-  RadiusIC              = Species(FractNbr)%Init(iInit)%RadiusIC
-  Alpha                 = Species(FractNbr)%Init(iInit)%alpha
-CASE(2) !SurfaceFlux
-  ! TODO
-  CALL ABORT(__STAMP__,'surface flux not yet implemented in FLEXI')
+    ! Collect velocity parameters for current Init
+    velocityDistribution  = Species(FractNbr)%Init(iInit)%velocityDistribution
+    VeloVecIC             = Species(FractNbr)%Init(iInit)%VeloVecIC(1:3)
+    VeloIC                = Species(FractNbr)%Init(iInit)%VeloIC
+    VeloTurbIC            = Species(FractNbr)%Init(iInit)%VeloTurbIC
+    BasePointIC           = Species(FractNbr)%Init(iInit)%BasePointIC(1:3)
+    NormalIC              = Species(FractNbr)%Init(iInit)%NormalIC(1:3)
+    RadiusIC              = Species(FractNbr)%Init(iInit)%RadiusIC
+    Alpha                 = Species(FractNbr)%Init(iInit)%alpha
+  CASE(2) !SurfaceFlux
+    ! TODO
+    CALL ABORT(__STAMP__,'surface flux not yet implemented in FLEXI')
 
-  IF (TRIM(Species(FractNbr)%Surfaceflux(iInit)%velocityDistribution).EQ.'constant') THEN
-    velocityDistribution=Species(FractNbr)%Surfaceflux(iInit)%velocityDistribution
-  ELSE
-    CALL ABORT(__STAMP__,'only constant velo-distri implemented in SetParticleVelocity for surfaceflux!')
-  END IF
-  VeloVecIC             = Species(FractNbr)%Surfaceflux(iInit)%VeloVecIC(1:3)
-  VeloIC                = Species(FractNbr)%Surfaceflux(iInit)%VeloIC
-CASE DEFAULT
-  CALL ABORT(__STAMP__,'neither iInit nor Surfaceflux defined as reference!')
+    IF (TRIM(Species(FractNbr)%Surfaceflux(iInit)%velocityDistribution).EQ.'constant') THEN
+      velocityDistribution=Species(FractNbr)%Surfaceflux(iInit)%velocityDistribution
+    ELSE
+      CALL ABORT(__STAMP__,'only constant velo-distri implemented in SetParticleVelocity for surfaceflux!')
+    END IF
+    VeloVecIC             = Species(FractNbr)%Surfaceflux(iInit)%VeloVecIC(1:3)
+    VeloIC                = Species(FractNbr)%Surfaceflux(iInit)%VeloIC
+  CASE DEFAULT
+    CALL ABORT(__STAMP__,'neither iInit nor Surfaceflux defined as reference!')
 END SELECT
 
 ! Set velocity according to velocityDistribution

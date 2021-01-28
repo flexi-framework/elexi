@@ -1013,13 +1013,13 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%InsertedParticleSurplus = 0
 
     ! Get absolute value of particle velocity vector and normalize the VeloVecIC vector
-    IF (Species(iSpec)%Init(iInit)%VeloIC.EQ.0) THEN
+    IF (Species(iSpec)%Init(iInit)%VeloIC.EQ.0.) THEN
       Species(iSpec)%Init(iInit)%VeloIC                = VECNORM(Species(iSpec)%Init(iInit)%VeloVecIC(1:3))
     END IF
 
     ! Only normalize if the vector does not have zero length. If it has, our job is done
-    IF (Species(iSpec)%Init(iInit)%VeloIC.NE.0) THEN
-      Species(iSpec)%Init(iInit)%VeloVecIC             = Species(iSpec)%Init(iInit)%VeloVecIC/Species(iSpec)%Init(iInit)%VeloIC
+    IF (VECNORM(Species(iSpec)%Init(iInit)%VeloVecIC(1:3)).NE.0) THEN
+      Species(iSpec)%Init(iInit)%VeloVecIC             = Species(iSpec)%Init(iInit)%VeloVecIC/VECNORM(Species(iSpec)%Init(iInit)%VeloVecIC(1:3))
     END IF
 
     !----------- various checks/calculations after read-in of Species(i)%Init(iInit)%-data ----------------------------------!

@@ -68,7 +68,7 @@ CALL prms%SetSection('BGM')
 
 ! Background mesh init variables
 CALL prms%CreateRealArrayOption('Part-FIBGMdeltas'&
-  , 'Define the deltas for the cartesian Fast-Init-Background-Mesh.'//&
+  , 'Define the deltas for the Cartesian Fast-Init-Background-Mesh.'//&
   ' They should be of the similar size as the smallest cells of the used mesh for simulation.'&
   , '1. , 1. , 1.')
 CALL prms%CreateRealArrayOption('Part-FactorFIBGM'&
@@ -499,6 +499,7 @@ ELSE
     MPISideBoundsOfElemCenter(1:3,iSide) = (/    SUM(BoundsOfElem_Shared(1:2,1,ElemID)), &
                                                  SUM(BoundsOfElem_Shared(1:2,2,ElemID)), &
                                                  SUM(BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
+    ! Calculate outer radius of the element on my compute node
     MPISideBoundsOfElemCenter(4,iSide) = VECNORM ((/ BoundsOfElem_Shared(2  ,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID), &
                                                      BoundsOfElem_Shared(2  ,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID), &
                                                      BoundsOfElem_Shared(2  ,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
@@ -859,13 +860,16 @@ IF (myRank.EQ.0) THEN
 END IF
 
 IF (myComputeNodeRank.EQ.0) THEN
-  CALL MPI_GATHER((/ SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)  ,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.1),  &
+  ASSOCIATE( sendBuf => (/ &
+        SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)  ,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.1),  &
                      SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)/2,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.2),  &
-                     SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)/3,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.3)/) &
-                 , 3 , MPI_INTEGER                                                                        &
-                 , NumberOfElements                                                                       &
-                 , 3 , MPI_INTEGER                                                                        &
-                 , 0 , MPI_COMM_LEADERS_SHARED ,iError)
+        SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)/3,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.3)/) )
+    IF (myRank.EQ.0) THEN
+      CALL MPI_GATHER(sendBuf , 3 , MPI_INTEGER , NumberOfElements , 3 , MPI_INTEGER , 0 , MPI_COMM_LEADERS_SHARED , iError)
+    ELSE
+      CALL MPI_GATHER(sendBuf , 3 , MPI_INTEGER , MPI_IN_PLACE     , 3 , MPI_INTEGER , 0 , MPI_COMM_LEADERS_SHARED , iError)
+    END IF
+  END ASSOCIATE
 END IF
 
 IF (myRank.EQ.0) THEN

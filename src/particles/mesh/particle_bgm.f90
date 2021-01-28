@@ -391,7 +391,6 @@ GEO%FIBGMkmin = BGMkmin
 GEO%FIBGMkmax = BGMkmax
 #endif /*USE_MPI*/
 
-
 ALLOCATE(GEO%FIBGM(BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax))
 
 ! null number of element per BGM cell

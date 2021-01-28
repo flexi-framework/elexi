@@ -1081,7 +1081,7 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: remap_opt       !routine was called from
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)                  :: FileName,FileString,Statedummy
 CHARACTER(LEN=255)                  :: H5_Name
-CHARACTER(LEN=255)                  :: NodeTypeTemp
+CHARACTER(LEN=255)                  :: NodeTypeTemp,tmp255
 CHARACTER(LEN=255)                  :: SpecID
 CHARACTER(LEN=255),ALLOCATABLE      :: Str2DVarNames(:)
 INTEGER                             :: nVar2D, nVar2D_Spec, nVar2D_Total, nVarCount, iSpec, nShift
@@ -1142,7 +1142,8 @@ IF (mySurfRank.EQ.0) THEN
   CALL WriteHeader(Statedummy,File_ID)
   CALL WriteAttribute(File_ID,'DSMC_nSurfSample',1       ,IntScalar =nSurfSample)
   CALL WriteAttribute(File_ID,'DSMC_nSpecies'   ,1       ,IntScalar =nSpecies)
-  CALL WriteAttribute(File_ID,'MeshFile'        ,1       ,StrScalar =(/MeshFileName/))
+  tmp255=TRIM(MeshFileName)
+  CALL WriteAttribute(File_ID,'MeshFile'        ,1       ,StrScalar =(/tmp255/))
   CALL WriteAttribute(File_ID,'Time'            ,1       ,RealScalar=OutputTime)
   CALL WriteAttribute(File_ID,'BC_Surf'         ,nSurfBC ,StrArray  =SurfBCName)
   CALL WriteAttribute(File_ID,'N'               ,1       ,IntScalar =nSurfSample)

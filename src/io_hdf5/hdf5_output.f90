@@ -695,6 +695,7 @@ LOGICAL,INTENT(IN),OPTIONAL    :: withUserblock      !< specify whether userbloc
 INTEGER(HID_T)                 :: DSet_ID,FileSpace,HDF5DataType
 INTEGER(HSIZE_T)               :: Dimsf(5)
 CHARACTER(LEN=255)             :: MeshFile255
+CHARACTER(LEN=255)             :: tmp255
 CHARACTER(LEN=255)             :: Dataset_Str,Varname_Str
 #if FV_ENABLED
 REAL                           :: FV_w_array(0:PP_N)
@@ -742,12 +743,14 @@ IF(create_loc)THEN
   CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
   CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
   CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
+  tmp255=TRIM(MeshFileName)
+  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/tmp255/))
   IF(PRESENT(FutureTime))THEN
     MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),FutureTime))//'.h5'
     CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
   END IF
-  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
+  tmp255=TRIM(NodeType)
+  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/tmp255/))
 #if FV_ENABLED
   CALL WriteAttribute(File_ID,'FV_Type',1,IntScalar=2)
   CALL WriteAttribute(File_ID,'FV_X',PP_N+1,RealArray=FV_X)
@@ -862,16 +865,16 @@ CHARACTER(LEN=*),INTENT(IN)              :: FileType_in   !< Type of file (e.g. 
 INTEGER(HID_T),INTENT(IN)                :: File_ID       !< HDF5 file id
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=123) :: test
-CHARACTER(LEN=16) :: test2(1)
+CHARACTER(LEN=255) :: tmp255
 !==================================================================================================================================
-test = "asdasd                 "
-test2 = (/TRIM(test)/)
 ! Write a small file header to identify a Flexi HDF5 files
 ! Attributes are program name, file type identifier, project name and version number
-CALL WriteAttribute(File_ID,'Program'     ,1,StrScalar=(/ProgramName/))
-CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/FileType_in/))
-CALL WriteAttribute(File_ID,'Project_Name',1,StrScalar=(/ProjectName/))
+tmp255=TRIM(ProgramName)
+CALL WriteAttribute(File_ID,'Program'     ,1,StrScalar=(/tmp255/))
+tmp255=TRIM(FileType_in)
+CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/tmp255/))
+tmp255=TRIM(ProjectName)
+CALL WriteAttribute(File_ID,'Project_Name',1,StrScalar=(/tmp255/))
 CALL WriteAttribute(File_ID,'File_Version',1,RealScalar=FileVersion)
 END SUBROUTINE WriteHeader
 
@@ -903,7 +906,7 @@ INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray(nVal)   !< integer arr
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(nVal)   !< string array of length nVal
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: Rank
+INTEGER                        :: Rank,i
 INTEGER(HID_T)                 :: DataSpace,Attr_ID,Loc_ID,Type_ID
 INTEGER(HSIZE_T), DIMENSION(1) :: Dimsf
 INTEGER(SIZE_T)                :: AttrLen
@@ -936,12 +939,12 @@ END IF
 ! Create character string datatype for the attribute.
 ! For a attribute character, we have to build our own type with corresponding attribute length
 IF(PRESENT(StrScalar))THEN
-  AttrLen=LEN(TRIM(StrScalar(1)))
+  AttrLen=LEN_TRIM(StrScalar(1))
   CALL H5TCOPY_F(H5T_NATIVE_CHARACTER, Type_ID, iError)
   CALL H5TSET_SIZE_F(Type_ID, AttrLen, iError)
 END IF
 IF(PRESENT(StrArray))THEN
-  AttrLen=LEN(StrArray(1))
+  AttrLen=MAXVAL( (/( LEN_TRIM(StrArray(i)),i=1,SIZE(StrArray(:)) )/) )
   CALL H5TCOPY_F(H5T_NATIVE_CHARACTER, Type_ID, iError)
   CALL H5TSET_SIZE_F(Type_ID, AttrLen, iError)
 ENDIF

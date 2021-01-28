@@ -2894,7 +2894,7 @@ IF (fullMesh) THEN
       BCElemID = SideInfo_Shared(SIDE_ELEMID,BCSideID)
 
       ! Ignore the same element
-      IF (BCElemID.EQ.iElem) CYCLE
+      IF (BCElemID.EQ.ElemID) CYCLE
 
       nBCSidesElem = nBCSidesElem + 1
       nBCSidesProc = nBCSidesProc + 1
@@ -2936,7 +2936,7 @@ ELSE
         IF (BCCNElemID.EQ.-1) CYCLE
 
         ! Ignore the same element
-        IF (BCElemID.EQ.iElem) CYCLE
+        IF (BCElemID.EQ.ElemID) CYCLE
 
         ! Check if barycenter of element is in range
         IF (VECNORM(ElemBaryNGeo(:,iElem) - ElemBaryNGeo(:,BCCNElemID)) &
@@ -3067,7 +3067,7 @@ IF (fullMesh) THEN
       BCElemID = SideInfo_Shared(SIDE_ELEMID,BCSideID)
 
       ! Ignore the same element
-      IF (BCElemID.EQ.iElem) CYCLE
+      IF (BCElemID.EQ.ElemID) CYCLE
 
       nBCSidesProc = nBCSidesProc + 1
       SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(BCSideID)
@@ -3105,7 +3105,7 @@ ELSE
       IF (BCCNElemID.EQ.-1) CYCLE
 
       ! Ignore the same element
-      IF (BCElemID.EQ.iElem) CYCLE
+      IF (BCElemID.EQ.ElemID) CYCLE
 
       ! Check if barycenter of element is in range
       IF (VECNORM(ElemBaryNGeo(:,iElem) - ElemBaryNGeo(:,BCCNElemID)) &

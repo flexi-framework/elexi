@@ -58,12 +58,12 @@ gnu:
     - cd build_gnu
     - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
 
-gnu_sanitize:
-  <<: *defaults_gnu
-  stage: reggie_checkin
-  script:
-    - cd build_gnu
-    - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_sanitize -j 6
+# gnu_sanitize:
+#   <<: *defaults_gnu
+#   stage: reggie_checkin
+#   script:
+#     - cd build_gnu
+#     - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_sanitize -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_particle": Run basic particle regression checks

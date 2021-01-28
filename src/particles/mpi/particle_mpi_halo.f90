@@ -295,7 +295,7 @@ IF (halo_eps.EQ.0) THEN
     MPI_halo_eps = MAX(MPI_halo_eps,RKc(iStage+1)-RKc(iStage))
   END DO
   MPI_halo_eps = MAX(MPI_halo_eps,1.-RKc(nRKStages))
-  MPI_halo_eps = MPI_halo_eps*MPI_halo_eps*deltaT*SafetyFactor
+  MPI_halo_eps = MPI_halo_eps*MPI_halo_eps_velo*deltaT*SafetyFactor
 
   vec(1)   = GEO%xmaxglob-GEO%xminglob
   vec(2)   = GEO%ymaxglob-GEO%yminglob

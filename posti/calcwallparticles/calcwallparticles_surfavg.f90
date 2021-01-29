@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -36,7 +36,7 @@ END INTERFACE
 INTERFACE FinalizeCalcWallParticles_SurfAvg
   MODULE PROCEDURE FinalizeCalcWallParticles_SurfAvg
 END INTERFACE
-    
+
 PUBLIC :: InitCalcWallParticles_SurfAvg, CalcWallParticles_SurfAvg, FinalizeCalcWallParticles_SurfAvg, WriteAvgSampleToHDF5
 !==================================================================================================================================
 
@@ -57,7 +57,7 @@ USE MOD_Posti_CalcWallParticles_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -119,7 +119,7 @@ DO iSide=1,nTotalSides
     SurfSideID=SurfMesh%SideIDToSurfID(iSide)
     ! Not a surfMesh side
     IF(SurfSideID.EQ.-1) CYCLE
-  
+
     ElemID    = PartSideToElem(S2E_ELEM_ID,iSide)
     LocSideID = PartSideToElem(S2E_LOC_SIDE_ID,iSide)
 
@@ -133,13 +133,13 @@ DO iSide=1,nTotalSides
     SurfSideID=SurfMesh%SideIDToSurfID(iSide)
     ! Not a surfMesh side
     IF(SurfSideID.EQ.-1) CYCLE
-    
+
     ElemID = PartSideToElem(S2E_ELEM_ID,iSide)
     LocSideID = PartSideToElem(S2E_LOC_SIDE_ID,iSide)
-    
+
     xSide(1) = MINVAL(GEO%NodeCoords(surfAvgVecDir(1),GEO%ElemSideNodeID(:,LocSideID,ElemID)))
     xSide(2) = MINVAL(GEO%NodeCoords(surfAvgVecDir(2),GEO%ElemSideNodeID(:,LocSideID,ElemID)))
-    
+
     IF (.NOT.ALMOSTEQUAL(MINVAL(GEO%NodeCoords(surfAvgVecDir(3),GEO%ElemSideNodeID(:,LocSideID,ElemID))),minDir)) THEN
         ! Loop till we found the corresponding minimum side
         DO iMinSide=1,nTotalSides
@@ -148,13 +148,13 @@ DO iSide=1,nTotalSides
             IF(SurfMinSideID.EQ.-1) CYCLE
             ! Same side always matches but we do not want this side
             IF(SurfMinSideID.EQ.SurfSideID) CYCLE
-            
+
             ElemMinID    = PartSideToElem(S2E_ELEM_ID,iMinSide)
             LocSideMinID = PartSideToElem(S2E_LOC_SIDE_ID,iMinSide)
-            
+
             xMin(1) = MINVAL(GEO%NodeCoords(surfAvgVecDir(1),GEO%ElemSideNodeID(:,LocSideMinID,ElemMinID)))
             xMin(2) = MINVAL(GEO%NodeCoords(surfAvgVecDir(2),GEO%ElemSideNodeID(:,LocSideMinID,ElemMinID)))
-            
+
             IF(ALMOSTEQUAL(xSide(1),xMin(1)).AND.ALMOSTEQUAL(xSide(2),xMin(2))) THEN
                 ! Make sure we actually found the minimum side
                 IF(ALMOSTEQUAL(MINVAL(GEO%NodeCoords(surfAvgVecDir(3),GEO%ElemSideNodeID(:,LocSideMinID,ElemMinID))),minDir)) THEN
@@ -165,7 +165,7 @@ DO iSide=1,nTotalSides
                     EXIT
                 END IF
             END IF
-            
+
         END DO
     END IF
 END DO
@@ -193,7 +193,7 @@ USE MOD_Posti_CalcWallParticles_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -213,7 +213,7 @@ DO iSide=1,nTotalSides
     IF(SurfSideID.EQ.-1) CYCLE
     ! Already a minimum side
     IF(SurfSideIDtoSurfAvgID(SurfSideID).EQ.-1) CYCLE
-    
+
     SurfMinSideID = SurfSideIDtoSurfAvgID(SurfSideID)
     ! Sanity check SurfMinSideID
     IF (SurfMinSideID.EQ.SurfSideID) THEN
@@ -221,7 +221,7 @@ DO iSide=1,nTotalSides
       __STAMP__,&
       'Error finding corresponding minimum side. This should not happen.')
     END IF
-    
+
 !---- Only one species. Only total values necessary
 !===================================================================================================================================
     DO q=1,nSurfSample
@@ -267,7 +267,7 @@ DO iSide=1,nTotalSides
                                                                   MacroSurfaceVal(1+nShift,p,q,SurfSideID)
 !-------------------! Ignore faces with no impacts. We can only be sure after we check both faces !--------------------------------!
                     IF (MacroSurfaceVal(1+nShift,p,q,SurfMinSideID).EQ.0) CYCLE
-                                                                  
+
                     !---- 2. - .. / Impact Counter per AREA
                     MacroSurfaceVal(2+nShift,p,q,SurfMinSideID) = MacroSurfaceVal(2+nShift,p,q,SurfMinSideID) + &
                                                                   MacroSurfaceVal(2+nShift,p,q,SurfSideID)
@@ -277,7 +277,7 @@ DO iSide=1,nTotalSides
                                                                   MacroSurfaceVal(1+nShift,p,q,SurfSideID))   / &
                                                                   MacroSurfaceVal(1+nShift,p,q,SurfMinSideID) + &
                                                                   MacroSurfaceVal(3+nShift,p,q,SurfSideID)    * &
-                                                                  MacroSurfaceVal(1+nShift,p,q,SurfSideID)    / & 
+                                                                  MacroSurfaceVal(1+nShift,p,q,SurfSideID)    / &
                                                                   MacroSurfaceVal(1+nShift,p,q,SurfMinSideID)
                     MacroSurfaceVal(4+nShift,p,q,SurfMinSideID) = MIN(MacroSurfaceVal(4+nShift,p,q,SurfMinSideID), &
                                                                       MacroSurfaceVal(4+nShift,p,q,SurfSideID))
@@ -290,7 +290,7 @@ DO iSide=1,nTotalSides
                                                                   MacroSurfaceVal(1+nShift,p,q,SurfSideID))   / &
                                                                   MacroSurfaceVal(1+nShift,p,q,SurfMinSideID) + &
                                                                   MacroSurfaceVal(7+nShift,p,q,SurfSideID)    * &
-                                                                  MacroSurfaceVal(1+nShift,p,q,SurfSideID)    / & 
+                                                                  MacroSurfaceVal(1+nShift,p,q,SurfSideID)    / &
                                                                   MacroSurfaceVal(1+nShift,p,q,SurfMinSideID)
                     MacroSurfaceVal(8+nShift,p,q,SurfMinSideID) = MIN(MacroSurfaceVal(8+nShift,p,q,SurfMinSideID), &
                                                                       MacroSurfaceVal(8+nShift,p,q,SurfSideID))
@@ -314,7 +314,7 @@ DO iSide=1,nTotalSides
     IF(SurfSideID.EQ.-1) CYCLE
     ! Already a minimum side
     IF(SurfSideIDtoSurfAvgID(SurfSideID).EQ.-1) CYCLE
-    
+
     SurfMinSideID = SurfSideIDtoSurfAvgID(SurfSideID)
     ! Sanity check SurfMinSideID
     IF (SurfMinSideID.EQ.SurfSideID) THEN
@@ -341,13 +341,13 @@ IF (nSurfSample.GT.1) THEN
         SurfSideID=SurfMesh%SideIDToSurfID(iSide)
         ! Not a surfMesh side
         IF(SurfSideID.EQ.-1) CYCLE
-        ! Already a minimum side    
- 
+        ! Already a minimum side
+
         DO q=1,nSurfSample
             DO p=1,nSurfSample
                 !< Find averaging direction by first testing xi-direction
                 surfSideVec = Face_xGP(:,PP_N,0,0,iSide) - Face_xGP(:,0,0,0,iSide)
-                
+
                 IF(.NOT.ALMOSTZERO(DOT_PRODUCT(surfSideVec,surfAvgDir))) THEN
                     ! xi-direction works
                     ptemp          = 1
@@ -358,7 +358,7 @@ IF (nSurfSample.GT.1) THEN
                     IF (p.EQ.1) CYCLE
                 ELSE
                     surfSideVec = Face_xGP(:,0,PP_NZ,0,iSide) - Face_xGP(:,0,0,0,iSide)
-                    
+
                     IF(.NOT.ALMOSTZERO(DOT_PRODUCT(surfSideVec,surfAvgDir))) THEN
                         ! eta-direction works
                         ptemp          = p
@@ -374,7 +374,7 @@ IF (nSurfSample.GT.1) THEN
                         'Invalid averaging direction.')
                     END IF
                 END IF
-                
+
 !---- Only one species. Only total values necessary
 !===================================================================================================================================
         !---- 1. - .. / Impact Counter
@@ -400,7 +400,7 @@ IF (nSurfSample.GT.1) THEN
                                                    (MacroSurfaceVal(1,ptemp,qtemp,SurfSideID)  - &
                                                     MacroSurfaceVal(1,p,q,SurfSideID))         / &
                                                     MacroSurfaceVal(1,ptemp,qtemp,SurfSideID)  + &
-                                                    MacroSurfaceVal(7,p,q,SurfSideID)          * & 
+                                                    MacroSurfaceVal(7,p,q,SurfSideID)          * &
                                                     MacroSurfaceVal(1,p,q,SurfSideID)          / &
                                                     MacroSurfaceVal(1,ptemp,qtemp,SurfSideID)
         MacroSurfaceVal(8,ptemp,qtemp,SurfSideID) = MIN(MacroSurfaceVal(8,ptemp,qtemp,SurfSideID),MacroSurfaceVal(8,p,q,SurfSideID))
@@ -420,7 +420,7 @@ IF (nSurfSample.GT.1) THEN
                                                                MacroSurfaceVal(1+nShift,p,q,SurfSideID)
 !-----------! Ignore faces with no impacts. We can only be sure after we check both faces !--------------------------------!
             IF (MacroSurfaceVal(1+nShift,ptemp,qtemp,SurfSideID).EQ.0) CYCLE
-                                                                 
+
             !---- 2. - .. / Impact Counter per AREA
             MacroSurfaceVal(2+nShift,ptemp,qtemp,SurfSideID) = MacroSurfaceVal(2+nShift,ptemp,qtemp,SurfSideID) + &
                                                                MacroSurfaceVal(2+nShift,p,q,SurfSideID)
@@ -430,7 +430,7 @@ IF (nSurfSample.GT.1) THEN
                                                                MacroSurfaceVal(1+nShift,p,q,SurfSideID))         / &
                                                                MacroSurfaceVal(1+nShift,ptemp,qtemp,SurfSideID)  + &
                                                                MacroSurfaceVal(3+nShift,p,q,SurfSideID)          * &
-                                                               MacroSurfaceVal(1+nShift,p,q,SurfSideID)          / & 
+                                                               MacroSurfaceVal(1+nShift,p,q,SurfSideID)          / &
                                                                MacroSurfaceVal(1+nShift,ptemp,qtemp,SurfSideID)
             MacroSurfaceVal(4+nShift,ptemp,qtemp,SurfSideID) = MIN(MacroSurfaceVal(4+nShift,ptemp,qtemp,SurfSideID), &
                                                                    MacroSurfaceVal(4+nShift,p,q,SurfSideID))
@@ -443,7 +443,7 @@ IF (nSurfSample.GT.1) THEN
                                                                MacroSurfaceVal(1+nShift,p,q,SurfSideID))         / &
                                                                MacroSurfaceVal(1+nShift,ptemp,qtemp,SurfSideID)  + &
                                                                MacroSurfaceVal(7+nShift,p,q,SurfSideID)          * &
-                                                               MacroSurfaceVal(1+nShift,p,q,SurfSideID)          / & 
+                                                               MacroSurfaceVal(1+nShift,p,q,SurfSideID)          / &
                                                                MacroSurfaceVal(1+nShift,ptemp,qtemp,SurfSideID)
             MacroSurfaceVal(8+nShift,ptemp,qtemp,SurfSideID) = MIN(MacroSurfaceVal(8+nShift,ptemp,qtemp,SurfSideID), &
                                                                    MacroSurfaceVal(8+nShift,p,q,SurfSideID))
@@ -457,9 +457,9 @@ IF (nSurfSample.GT.1) THEN
                 END DO ! iSpec
             END Do ! p
         END DO ! q
-        
+
 !===================================================================================================================================
-! Write values back so we have them on the entire surface       
+! Write values back so we have them on the entire surface
         IF (surfSideAvgDir.EQ.1) THEN
             DO p=2,nSurfSample
                     MacroSurfaceVal(:,p,:,SurfSideID) = MacroSurfaceVal(:,1,:,SurfSideID)
@@ -474,7 +474,7 @@ END IF
 
 SWRITE(UNIT_stdOut,'(A,I5,A,I5,A)') '| Found corresponding xi/eta direction for ', &
                                      pcount/nSurfSample**2,'/',qcount/nSurfSample**2,' sides'
-    
+
 END SUBROUTINE CalcWallParticles_SurfAvg
 
 SUBROUTINE WriteAvgSampleToHDF5(MeshFileName,OutputTime)
@@ -497,7 +497,7 @@ USE MOD_Particle_HDF5_output,       ONLY:WriteAttributeToHDF5,WriteArrayToHDF5,W
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: MeshFileName
 REAL,INTENT(IN)                      :: OutputTime
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -508,6 +508,7 @@ CHARACTER(LEN=255)                  :: FileName,FileString,Statedummy
 CHARACTER(LEN=255)                  :: H5_Name
 CHARACTER(LEN=255)                  :: NodeTypeTemp
 CHARACTER(LEN=255)                  :: SpecID
+CHARACTER(LEN=255)                  :: tmp255
 CHARACTER(LEN=255),ALLOCATABLE      :: Str2DVarNames(:)
 INTEGER                             :: nVar2D, nVar2D_Spec, nVar2D_Total, nVarCount, iSpec, nShift
 !===================================================================================================================================
@@ -540,7 +541,8 @@ IF(SurfCOMM%MPIOutputRoot)THEN
   CALL WriteAttributeToHDF5(File_ID,'DSMC_nSurfSample',1,IntegerScalar=nSurfSample)
   CALL WriteAttributeToHDF5(File_ID,'DSMC_nSpecies',1,IntegerScalar=nSpecies)
   CALL WriteAttributeToHDF5(File_ID,'DSMC_CollisMode',1,IntegerScalar=CollisMode)
-  CALL WriteAttributeToHDF5(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
+  tmp255=TRIM(MeshFileName)
+  CALL WriteAttributeToHDF5(File_ID,'MeshFile',1,StrScalar=(/tmp255/))
   CALL WriteAttributeToHDF5(File_ID,'Time',1,RealScalar=OutputTime)
   CALL WriteAttributeToHDF5(File_ID,'BC_Surf',nSurfBC,StrArray=SurfBCName)
   CALL WriteAttributeToHDF5(File_ID,'N',1,IntegerScalar=nSurfSample)
@@ -549,7 +551,7 @@ IF(SurfCOMM%MPIOutputRoot)THEN
 
   ALLOCATE(Str2DVarNames(1:nVar2D_Total))
   nVarCount=0
-  
+
   DO iSpec=1,nSpecies
     WRITE(SpecID,'(I3.3)') iSpec
     Str2DVarNames(nVarCount+1) ='Spec'//TRIM(SpecID)//'_Counter'
@@ -573,12 +575,12 @@ IF(SurfCOMM%MPIOutputRoot)THEN
   Str2DVarNames(nVarCount+14)='AverageForceX'
   Str2DVarNames(nVarCount+15)='AverageForceY'
   Str2DVarNames(nVarCount+16)='AverageForceZ'
-  
+
   IF (nSpecies.GT.1) THEN
       DO iSpec=1,nSpecies
           WRITE(SpecID,'(I3.3)') iSpec
           nShift = iSpec * (nErosionVars - 1)
-          
+
           Str2DVarNames(nVarCount+nShift+1) ='Species'//TRIM(SpecID)//'_Impacts'
           Str2DVarNames(nVarCount+nShift+2) ='Species'//TRIM(SpecID)//'_ImpactsPerArea'
           Str2DVarNames(nVarCount+nShift+3) ='Species'//TRIM(SpecID)//'_E_kin(mean)'
@@ -626,8 +628,8 @@ CALL WriteArrayToHDF5(DataSetName=H5_Name, rank=4,&
                     nValGlobal=(/NVar2D_Total,nSurfSample,nSurfSample,SurfMesh%nGlobalSides/),&
                     nVal=      (/nVar2D      ,nSurfSample,nSurfSample,SurfMesh%nSides/),&
                     offset=    (/nVarCount   ,          0,          0,offsetSurfSide/),&
-                    collective=.TRUE., RealArray=MacroSurfaceVal)   
-                    
+                    collective=.TRUE., RealArray=MacroSurfaceVal)
+
 CALL CloseDataFile()
 
 ! Finaly deallocate Macrosurfaces we couldn't deallocate earlier
@@ -637,7 +639,7 @@ SDEALLOCATE(MacroSurfaceSpecVal)
 END SUBROUTINE WriteAvgSampleToHDF5
 
 
-SUBROUTINE FinalizeCalcWallParticles_SurfAvg() 
+SUBROUTINE FinalizeCalcWallParticles_SurfAvg()
 !===================================================================================================================================
 ! deallocate everything
 !===================================================================================================================================
@@ -647,7 +649,7 @@ USE MOD_Posti_CalcWallParticles_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES 
+! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------

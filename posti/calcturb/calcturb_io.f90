@@ -263,6 +263,7 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Dataset      !< Name of the dataset
 INTEGER(HID_T)                 :: DSet_ID,FileSpace,HDF5DataType
 INTEGER(HSIZE_T)               :: Dimsf(5)
 CHARACTER(LEN=255)             :: Dataset_Str,Varname_Str
+CHARACTER(LEN=255)             :: tmp255
 LOGICAL                        :: withUserblock_loc,create_loc
 !==================================================================================================================================
 ! Create file
@@ -304,8 +305,10 @@ IF(create_loc)THEN
   CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
   CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
   CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
-  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
+  tmp255=TRIM(MeshFileName)
+  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/tmp255/))
+  tmp255=TRIM(NodeType)
+  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/tmp255/))
   CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
 END IF
 

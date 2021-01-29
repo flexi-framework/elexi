@@ -444,6 +444,7 @@ LOGICAL,INTENT(IN)             :: resetCounters         !< flag to reset sample 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileString
+CHARACTER(LEN=255)             :: tmp255
 REAL                           :: startT,endT
 !==================================================================================================================================
 
@@ -467,9 +468,12 @@ IF (myRPrank.EQ.0) THEN
   IF (.NOT.RP_fileExists) THEN
     ! Create dataset attributes
     CALL WriteAttribute(File_ID,'File_Type'  ,1,StrScalar=(/CHARACTER(LEN=255)::'RecordPoints_Data'/))
-    CALL WriteAttribute(File_ID,'MeshFile'   ,1,StrScalar=(/MeshFile/))
-    CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/ProjectName/))
-    CALL WriteAttribute(File_ID,'RPDefFile'  ,1,StrScalar=(/RPDefFile/))
+    tmp255=TRIM(MeshFile)
+    CALL WriteAttribute(File_ID,'MeshFile'   ,1,StrScalar=(/tmp255/))
+    tmp255=TRIM(ProjectName)
+    CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/tmp255/))
+    tmp255=TRIM(RPDefFile)
+    CALL WriteAttribute(File_ID,'RPDefFile'  ,1,StrScalar=(/tmp255/))
     CALL WriteAttribute(File_ID,'VarNames'   ,nVar,StrArray=StrVarNames)
     CALL WriteAttribute(File_ID,'Time'       ,1,RealScalar=OutputTime)
   END IF

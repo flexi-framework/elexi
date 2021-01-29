@@ -666,7 +666,7 @@ END DO ! iProc
 PDM%ParticleVecLength       = PDM%ParticleVecLength + PartMPIExchange%nMPIParticles
 PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + PartMPIExchange%nMPIParticles
 IF(PDM%ParticleVecLength.GT.PDM%MaxParticleNumber) &
-  CALL ABORT(__STAMP__,' ParticleVecLegnth>MaxParticleNumber due to MPI-communication!')
+  CALL ABORT(__STAMP__,' ParticleVecLength > MaxParticleNumber due to MPI-communication!')
 
 ! deallocate send,receive buffer
 DO iProc=0,nExchangeProcessors-1

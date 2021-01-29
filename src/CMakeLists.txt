@@ -191,7 +191,7 @@ IF(PARTICLES)
   IF(FLEXI_SHARED_MEMORY STREQUAL "MPI_COMM_TYPE_SHARED")
     MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
   ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
-    MESSAGE(STATUS "Shared memory split type for subcommunicators set to the same core/processing unit")
+    MESSAGE(STATUS "Shared memory split type for subcommunicators set to core-level")
   ENDIF()
 
   # Code Analyze
@@ -240,7 +240,12 @@ SET_PROPERTY(CACHE FLEXI_TESTCASE PROPERTY STRINGS ${TESTCASES})
 # =========================================================================
 # Unit test at end of compilation
 # =========================================================================
-OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON)
+IF (CMAKE_BUILD_TYPE MATCHES "Sanitize")
+  MESSAGE(STATUS "Unit tests automatically disabled with CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
+  OPTION(FLEXI_UNITTESTS "Enable unit tests after build" OFF)
+ELSE()
+  OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON)
+ENDIF()
 MARK_AS_ADVANCED(FORCE FLEXI_UNITTESTS)
 IF(FLEXI_UNITTESTS)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/unitTests/CMakeLists.txt)

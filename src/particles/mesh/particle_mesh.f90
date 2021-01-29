@@ -2736,7 +2736,7 @@ USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
-USE MOD_Particle_MPI_Vars        ,ONLY: halo_eps,halo_eps_velo
+USE MOD_Particle_MPI_Vars        ,ONLY: halo_eps,halo_eps_velo,SafetyFactor
 USE MOD_Particle_Timedisc_Vars   ,ONLY: ManualTimeStep
 USE MOD_TimeDisc_Vars            ,ONLY: nRKStages,RKc
 #else
@@ -2828,7 +2828,7 @@ IF (halo_eps.EQ.0) THEN
     BC_halo_eps = MAX(BC_halo_eps,RKc(iStage+1)-RKc(iStage))
   END DO
   BC_halo_eps = MAX(BC_halo_eps,1.-RKc(nRKStages))
-  BC_halo_eps = BC_halo_eps*BC_halo_eps_velo*deltaT
+  BC_halo_eps = BC_halo_eps*BC_halo_eps_velo*deltaT*SafetyFactor
 
   vec(1)   = GEO%xmaxglob-GEO%xminglob
   vec(2)   = GEO%ymaxglob-GEO%yminglob

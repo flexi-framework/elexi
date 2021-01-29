@@ -2717,7 +2717,6 @@ SUBROUTINE BuildBCElemDistance()
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_Mesh_Vars                ,ONLY: NGeo
 USE MOD_Particle_Globals         ,ONLY: ALMOSTZERO,VECNORM
 USE MOD_Particle_Mesh_Vars       ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemInfo_Shared,SideInfo_Shared
@@ -2726,7 +2725,6 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID,SideID2BCSide,BCSideMetric
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemBaryNGeo,ElemRadiusNGeo
 USE MOD_Particle_Mesh_Vars       ,ONLY: nUniqueBCSides
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID,GetCNElemID,GetCNElemID,GetGlobalNonUniqueSideID
-USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Utils           ,ONLY: InsertionSort
 #if USE_MPI
 USE MOD_CalcTimeStep             ,ONLY: CalcTimeStep
@@ -2751,16 +2749,14 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: p,q,r,s
-INTEGER                        :: firstBezierPoint,lastBezierPoint
+INTEGER                        :: p
 INTEGER                        :: ElemID,SideID
 INTEGER                        :: iElem,firstElem,lastElem
-INTEGER                        :: iSide,firstSide,lastSide,iLocSide
+INTEGER                        :: iSide,firstSide,lastSide
 INTEGER                        :: nComputeNodeBCSides
 INTEGER                        :: nBCSidesElem,nBCSidesProc,offsetBCSidesProc,offsetBCSides
 INTEGER                        :: iBCSide,BCElemID,BCSideID
 INTEGER                        :: CNElemID,BCCNElemID
-REAL                           :: dX,dY,dZ
 REAL                           :: origin(1:3),vec(1:3)
 REAL                           :: BC_halo_eps
 LOGICAL                        :: fullMesh

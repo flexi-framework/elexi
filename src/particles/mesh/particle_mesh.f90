@@ -2905,9 +2905,9 @@ IF (fullMesh) THEN
       ElemToBCSides(ELEM_NBR_BCSIDES ,iElem) = nBCSidesElem
       ElemToBCSides(ELEM_FIRST_BCSIDE,iElem) = offsetBCSides
     END IF
-  END DO ! iElem
 
-  offsetBCSides = nBCSidesProc
+    offsetBCSides = nBCSidesProc
+  END DO ! iElem
 
 ! .NOT. fullMesh
 ELSE
@@ -2925,71 +2925,29 @@ ELSE
       nBCSidesProc = nBCSidesProc + 1
     END DO
 
-      ! loop over all sides. Check distance from every local side to total sides.
-      DO iBCSide = 1,nUniqueBCSides
+    ! loop over all sides. Check distance from every local side to total sides.
+    DO iBCSide = 1,nUniqueBCSides
 
-        BCSideID   = BCSide2SideID(iBCSide)
-        BCElemID   = SideInfo_Shared(SIDE_ELEMID,BCSideID)
-        BCCNElemID = GetCNElemID(BCElemID)
+      BCSideID   = BCSide2SideID(iBCSide)
+      BCElemID   = SideInfo_Shared(SIDE_ELEMID,BCSideID)
+      BCCNElemID = GetCNElemID(BCElemID)
 
-        ! Ignore elements not on the compute node
-        IF (BCCNElemID.EQ.-1) CYCLE
+      ! Ignore elements not on the compute node
+      IF (BCCNElemID.EQ.-1) CYCLE
 
-        ! Ignore the same element
-        IF (BCElemID.EQ.ElemID) CYCLE
+      ! Ignore the same element
+      IF (BCElemID.EQ.ElemID) CYCLE
 
-        ! Check if barycenter of element is in range
-        IF (VECNORM(ElemBaryNGeo(:,iElem) - ElemBaryNGeo(:,BCCNElemID)) &
-          .GT. (BC_halo_eps + ElemRadiusNGeo(iElem) + ElemRadiusNGeo(BCCNElemID))) CYCLE
+      ! Check if barycenter of element is in range
+      IF (VECNORM(ElemBaryNGeo(:,iElem) - ElemBaryNGeo(:,BCCNElemID)) &
+        .GT. (BC_halo_eps + ElemRadiusNGeo(iElem) + ElemRadiusNGeo(BCCNElemID))) CYCLE
 
-      ! loop over all local sides of the element. Use a named loop so the entire element can be cycled
-Check1: DO ilocSide = 1,6
-          SideID = GetGlobalNonUniqueSideID(ElemID,ilocSide)
-
-          ! compare all nodes between local and BC side to check if within BC_halo_eps. Once one node pair is in range, flag the entire
-          ! side and stop checking. First, get BezierControlPoints for local side. BezierControlPoints3D available for ALL sides in shared memory
-          SELECT CASE(ilocSide)
-            CASE(XI_MINUS,XI_PLUS)
-              firstBezierPoint = 0
-              lastBezierPoint  = NGeo
-            CASE DEFAULT
-              firstBezierPoint = 1
-              lastBezierPoint  = NGeo-1
-          END SELECT
-
-            ! finally compare the node coords
-          DO q = firstBezierPoint,lastBezierPoint
-            DO p = firstBezierPoint,lastBezierPoint
-!           ! get all nodes for BC side
-!           NodeBCSide(:) = BezierControlPoints3D(:,p,q,BCSideID)
-            ! finally compare the node coords
-            DO s = firstBezierPoint,lastBezierPoint
-              DO r = firstBezierPoint,lastBezierPoint
-                  dX = ABS(BezierControlPoints3D(1,r,s,SideID)-BezierControlPoints3D(1,p,q,BCSideID))
-                IF (dX.GT.BC_halo_eps) CYCLE
-                  dY = ABS(BezierControlPoints3D(2,r,s,SideID)-BezierControlPoints3D(2,p,q,BCSideID))
-                IF (dY.GT.BC_halo_eps) CYCLE
-                  dZ = ABS(BezierControlPoints3D(3,r,s,SideID)-BezierControlPoints3D(3,p,q,BCSideID))
-                IF (dZ.GT.BC_halo_eps) CYCLE
-
-                IF (SQRT(dX*dX+dY*dY+dZ*dZ).LE.BC_halo_eps) THEN
-                  nBCSidesElem = nBCSidesElem + 1
-                  nBCSidesProc = nBCSidesProc + 1
-                  EXIT Check1
-                END IF
-              END DO ! r
-            END DO ! s
-          END DO ! p
-        END DO ! q
-      END DO Check1 ! ilocSide
-
-!      ! Compare distance of element center to side center while also taking the radii into account
-!      !-- This approach gives almost triple the amount of BCSides of the method above!
-!      IF (VECNORM(ElemBaryNGeo(:,iElem) - BCSideMetrics(1:3,iBCSide)) &
-!        .LE. (BC_halo_eps + ElemRadiusNGeo(iElem) + BCSideMetrics(4,iBCSide))) THEN
-!        nBCSidesElem = nBCSidesElem + 1
-!        nBCSidesProc = nBCSidesProc + 1
-!      END IF
+      ! loop over all local sides of the element
+      IF (VECNORM(ElemBaryNGeo(:,iElem) - BCSideMetrics(1:3,iBCSide)) &
+        .LE. (BC_halo_eps + ElemRadiusNGeo(iElem) + BCSideMetrics(4,iBCSide))) THEN
+           nBCSidesElem = nBCSidesElem + 1
+           nBCSidesProc = nBCSidesProc + 1
+      END IF
     END DO ! iBCSide
 
     ! Write local mapping from Elem to BC sides. The number is already correct, the offset must be corrected later
@@ -3059,7 +3017,7 @@ IF (fullMesh) THEN
 
       nBCSidesProc = nBCSidesProc + 1
       SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(iSide)
-      SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(iElem)
+      SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(ElemID)
     END DO
 
     DO iBCSide = 1,nUniqueBCSides
@@ -3071,7 +3029,7 @@ IF (fullMesh) THEN
 
       nBCSidesProc = nBCSidesProc + 1
       SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(BCSideID)
-      SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(BCElemID)
+      SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(ElemID)
     END DO ! iBCSide
   END DO ! iElem
 
@@ -3111,56 +3069,13 @@ ELSE
       IF (VECNORM(ElemBaryNGeo(:,iElem) - ElemBaryNGeo(:,BCCNElemID)) &
         .GT. (BC_halo_eps + ElemRadiusNGeo(iElem) + ElemRadiusNGeo(BCCNElemID))) CYCLE
 
-      ! loop over all local sides of the element. Use a named loop so the entire element can be cycled
-Check2: DO ilocSide = 1,6
-    SideID = GetGlobalNonUniqueSideID(ElemID,ilocSide)
-
-        ! compare all nodes between local and BC side to check if within BC_halo_eps. Once one node pair is in range, flag the entire
-        ! side and stop checking. First, get BezierControlPoints for local side. BezierControlPoints3D available for ALL sides in shared memory
-      SELECT CASE(ilocSide)
-        CASE(XI_MINUS,XI_PLUS)
-          firstBezierPoint = 0
-          lastBezierPoint  = NGeo
-        CASE DEFAULT
-          firstBezierPoint = 1
-          lastBezierPoint  = NGeo-1
-      END SELECT
-
-        ! finally compare the node coords
-        DO q = firstBezierPoint,lastBezierPoint
-          DO p = firstBezierPoint,lastBezierPoint
-!           ! get all nodes for BC side
-!           NodeBCSide(:) = BezierControlPoints3D(:,p,q,BCSideID)
-            ! finally compare the node coords
-            DO s = firstBezierPoint,lastBezierPoint
-              DO r = firstBezierPoint,lastBezierPoint
-                dX = ABS(BezierControlPoints3D(1,r,s,SideID)-BezierControlPoints3D(1,p,q,BCSideID))
-                IF (dX.GT.BC_halo_eps) CYCLE
-                dY = ABS(BezierControlPoints3D(2,r,s,SideID)-BezierControlPoints3D(2,p,q,BCSideID))
-                IF (dY.GT.BC_halo_eps) CYCLE
-                dZ = ABS(BezierControlPoints3D(3,r,s,SideID)-BezierControlPoints3D(3,p,q,BCSideID))
-                IF (dZ.GT.BC_halo_eps) CYCLE
-
-                IF (SQRT(dX*dX+dY*dY+dZ*dZ).LE.BC_halo_eps) THEN
-                  nBCSidesProc = nBCSidesProc + 1
-                  SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(BCSideID)
-                  SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(BCElemID)
-                  EXIT Check2
-                END IF
-              END DO ! r
-            END DO ! s
-          END DO ! p
-        END DO ! q
-      END DO Check2 ! ilocSide
-
-!      ! Compare distance of element center to side center while also taking the radii into account
-!      !-- This approach gives almost triple the amount of BCSides of the method above!
-!      IF (VECNORM(ElemBaryNGeo(:,iElem) - BCSideMetrics(1:3,iBCSide)) &
-!        .LE. (BC_halo_eps + ElemRadiusNGeo(iElem) + BCSideMetrics(4,iBCSide))) THEN
-!        nBCSidesProc = nBCSidesProc + 1
-!        SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(BCSideID)
-!        SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(BCElemID)
-!      END IF
+      ! loop over all local sides of the element
+      IF (VECNORM(ElemBaryNGeo(:,iElem) - BCSideMetrics(1:3,iBCSide)) &
+        .LE. (BC_halo_eps + ElemRadiusNGeo(iElem) + BCSideMetrics(4,iBCSide))) THEN
+          nBCSidesProc = nBCSidesProc + 1
+          SideBCMetrics(BCSIDE_SIDEID,nBCSidesProc+offsetBCSidesProc) = REAL(BCSideID)
+          SideBCMetrics(BCSIDE_ELEMID,nBCSidesProc+offsetBCSidesProc) = REAL(ElemID)
+      END IF
     END DO ! iBCSide
   END DO ! iElem
 END IF ! fullMesh
@@ -3188,8 +3103,8 @@ DO iSide = firstSide,lastSide
 
   !> build side distance
   origin(1:3) = ElemBaryNGeo(1:3,CNElemID)
-  vec(1:3)    = origin(1:3) - SideBCMetrics(5:7,iSide)
-  SideBCMetrics(BCSIDE_DISTANCE,iSide) = SQRT(DOT_PRODUCT(vec,vec))-ElemRadiusNGeo(CNElemID)-SideBCMetrics(BCSIDE_RADIUS,iSide)
+  vec(1:3)    = origin(1:3) - BCSideMetrics(1:3,BCSideID)
+  SideBCMetrics(BCSIDE_DISTANCE,iSide) = SQRT(DOT_PRODUCT(vec,vec))-ElemRadiusNGeo(CNElemID)-BCSideMetrics(4,BCSideID)
 END DO ! iSide
 
 #if USE_MPI

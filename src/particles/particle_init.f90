@@ -660,7 +660,6 @@ USE MOD_Particle_Boundary_Vars ,ONLY: LowVeloRemove
 USE MOD_Particle_Boundary_Vars ,ONLY: nAuxBCs
 USE MOD_ErosionPoints          ,ONLY: InitErosionPoints
 USE MOD_Particle_Interpolation ,ONLY: InitParticleInterpolation
-USE MOD_Particle_Mesh          ,ONLY: GetMeshMinMax
 USE MOD_Particle_Mesh          ,ONLY: InitParticleMesh
 #if USE_MPI
 USE MOD_Particle_MPI_Emission  ,ONLY: InitEmissionComm
@@ -1358,10 +1357,10 @@ SUBROUTINE InitializeVariablesAuxBC()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools
-USE MOD_Particle_Globals       ,ONLY: PI,ALMOSTZERO
-USE MOD_Particle_Boundary_Vars ,ONLY: PartAuxBC
-USE MOD_Particle_Boundary_Vars ,ONLY: nAuxBCs,AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone,AuxBC_parabol,UseAuxBCs
-USE MOD_Particle_Mesh          ,ONLY: MarkAuxBCElems
+USE MOD_Particle_Globals        ,ONLY: PI,ALMOSTZERO
+USE MOD_Particle_Boundary_Tools ,ONLY: MarkAuxBCElems
+USE MOD_Particle_Boundary_Vars  ,ONLY: PartAuxBC
+USE MOD_Particle_Boundary_Vars  ,ONLY: nAuxBCs,AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone,AuxBC_parabol,UseAuxBCs
 USE MOD_Particle_Vars
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE

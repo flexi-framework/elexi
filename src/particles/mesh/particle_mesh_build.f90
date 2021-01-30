@@ -18,20 +18,91 @@
 ! Contains all build routines required for particle mesh
 !===================================================================================================================================
 MODULE MOD_Particle_Mesh_Build
-!===================================================================================================================================
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-PUBLIC :: ComputePeriodicVec,InitElemVolumes,IdentifyElemAndSideType
-PUBLIC :: CalcParticleMeshMetrics,InitParticleGeometry,CalcBezierControlPoints
-PUBLIC :: BuildElementRadiusTria,BuildElemTypeAndBasisTria,BuildEpsOneCell,BuildBCElemDistance
-PUBLIC :: BuildElementOriginShared,BuildElementBasisAndRadius
-PUBLIC :: BuildSideOriginAndRadius,BuildLinearSideBaseVectors
-PUBLIC :: MapRegionToElem
+INTERFACE BuildBCElemDistance
+  MODULE PROCEDURE BuildBCElemDistance
+END INTERFACE
+
+INTERFACE BuildElementBasisAndRadius
+  MODULE PROCEDURE BuildElementBasisAndRadius
+END INTERFACE
+
+INTERFACE BuildElementOriginShared
+  MODULE PROCEDURE BuildElementOriginShared
+END INTERFACE
+
+INTERFACE BuildElementRadiusTria
+  MODULE PROCEDURE BuildElementRadiusTria
+END INTERFACE
+
+INTERFACE BuildElemTypeAndBasisTria
+  MODULE PROCEDURE BuildElemTypeAndBasisTria
+END INTERFACE
+
+INTERFACE BuildEpsOneCell
+  MODULE PROCEDURE BuildEpsOneCell
+END INTERFACE
+
+INTERFACE BuildLinearSideBaseVectors
+  MODULE PROCEDURE BuildLinearSideBaseVectors
+END INTERFACE
+
+INTERFACE BuildSideOriginAndRadius
+  MODULE PROCEDURE BuildSideOriginAndRadius
+END INTERFACE
+
+INTERFACE CalcBezierControlPoints
+  MODULE PROCEDURE CalcBezierControlPoints
+END INTERFACE
+
+INTERFACE CalcParticleMeshMetrics
+  MODULE PROCEDURE CalcParticleMeshMetrics
+END INTERFACE
+
+INTERFACE ComputePeriodicVec
+  MODULE PROCEDURE ComputePeriodicVec
+END INTERFACE
+
+INTERFACE GetMeshMinMax
+  MODULE PROCEDURE GetMeshMinMax
+END INTERFACE
+
+INTERFACE IdentifyElemAndSideType
+  MODULE PROCEDURE IdentifyElemAndSideType
+END INTERFACE
+
+INTERFACE InitElemVolumes
+  MODULE PROCEDURE InitElemVolumes
+END INTERFACE
+
+INTERFACE InitParticleGeometry
+  MODULE PROCEDURE InitParticleGeometry
+END INTERFACE
+
+INTERFACE MapRegionToElem
+  MODULE PROCEDURE MapRegionToElem
+END INTERFACE
+
+PUBLIC :: BuildBCElemDistance
+PUBLIC :: BuildElementBasisAndRadius
+PUBLIC :: BuildElementOriginShared
+PUBLIC :: BuildElementRadiusTria
+PUBLIC :: BuildElemTypeAndBasisTria
+PUBLIC :: BuildEpsOneCell
+PUBLIC :: BuildLinearSideBaseVectors
+PUBLIC :: BuildSideOriginAndRadius
+PUBLIC :: CalcBezierControlPoints
+PUBLIC :: CalcParticleMeshMetrics
+PUBLIC :: ComputePeriodicVec
 PUBLIC :: GetMeshMinMax
+PUBLIC :: IdentifyElemAndSideType
+PUBLIC :: InitElemVolumes
+PUBLIC :: InitParticleGeometry
+PUBLIC :: MapRegionToElem
 !===================================================================================================================================
 
 CONTAINS

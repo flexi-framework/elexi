@@ -23,6 +23,10 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
+INTERFACE DefineParametersParticleMesh
+    MODULE PROCEDURE DefineParametersParticleMesh
+END INTERFACE
+
 INTERFACE InitParticleMeshBasis
     MODULE PROCEDURE InitParticleMeshBasis
 END INTERFACE

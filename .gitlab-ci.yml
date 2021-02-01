@@ -6,6 +6,10 @@ stages:
   - reggie_weekly
   - deploy
 
+variables:
+  DO_NIGHTLY: "$DO_NIGHTLY"
+  DO_WEEKLY:  "$DO_WEEKLY"
+  DO_DEPLOY:  "$DO_DEPLOY"
 
 .template: &defaults_gnu
   tags:

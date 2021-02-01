@@ -6,16 +6,6 @@ stages:
   - reggie_weekly
   - deploy
 
-variables:
-  DO_NIGHTLY:
-    value:       "0"
-    description: "Run the nightly reggression checks"
-  DO_WEEKLY:
-    value:       "0"
-    description: "Run the weekly reggression checks"
-  DO_DEPLOY:
-    value:       "0"
-    description: "Deploy to Github repository"
 
 .template: &defaults_gnu
   tags:

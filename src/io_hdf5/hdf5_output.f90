@@ -906,7 +906,7 @@ INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray(nVal)   !< integer arr
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(nVal)   !< string array of length nVal
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: Rank,i
+INTEGER                        :: Rank
 INTEGER(HID_T)                 :: DataSpace,Attr_ID,Loc_ID,Type_ID
 INTEGER(HSIZE_T), DIMENSION(1) :: Dimsf
 INTEGER(SIZE_T)                :: AttrLen
@@ -944,7 +944,7 @@ IF(PRESENT(StrScalar))THEN
   CALL H5TSET_SIZE_F(Type_ID, AttrLen, iError)
 END IF
 IF(PRESENT(StrArray))THEN
-  AttrLen=MAXVAL( (/( LEN_TRIM(StrArray(i)),i=1,SIZE(StrArray(:)) )/) )
+  AttrLen=255
   CALL H5TCOPY_F(H5T_NATIVE_CHARACTER, Type_ID, iError)
   CALL H5TSET_SIZE_F(Type_ID, AttrLen, iError)
 ENDIF

@@ -7,13 +7,13 @@ stages:
   - deploy
 
 variables:
-  DO_NIGHTLY:    "$DO_NIGHTLY"
+  DO_NIGHTLY:
     value:       "0"
     description: "Run the nightly reggression checks"
-  DO_WEEKLY:  "$DO_WEEKLY"
+  DO_WEEKLY:
     value:       "0"
     description: "Run the weekly reggression checks"
-  DO_DEPLOY:  "$DO_DEPLOY"
+  DO_DEPLOY:
     value:       "0"
     description: "Deploy to Github repository"
 

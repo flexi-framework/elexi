@@ -39,9 +39,9 @@ REAL              ::StartTime                                                 !<
 INTEGER           ::myRank,myLocalRank,myLeaderRank,myWorkerRank
 INTEGER           ::nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
 INTEGER           ::MPI_COMM_FLEXI                                            !< Flexi MPI communicator
-INTEGER           ::MPI_COMM_NODE                                             !< local node subgroup
-INTEGER           ::MPI_COMM_LEADERS                                          !< all node masters
-INTEGER           ::MPI_COMM_WORKERS                                          !< all non-master nodes
+INTEGER           ::MPI_COMM_NODE=MPI_COMM_NULL                               !< local node subgroup
+INTEGER           ::MPI_COMM_LEADERS=MPI_COMM_NULL                            !< all node masters
+INTEGER           ::MPI_COMM_WORKERS=MPI_COMM_NULL                            !< all non-master nodes
 LOGICAL           ::MPIRoot                                                   !< flag whether process is MPI root process
 LOGICAL           ::MPILocalRoot                                              !< flag whether process is root of MPI subgroup
 #if USE_MPI

@@ -548,6 +548,7 @@ CASE(3,4,9,91,23,24,25,27,28)
     Tt=RefStatePrim(1,BCState)
     nv=RefStatePrim(2:4,BCState)
     pt=RefStatePrim(5,BCState)
+
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
 
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
@@ -571,8 +572,6 @@ CASE(3,4,9,91,23,24,25,27,28)
       Ma=SQRT(2./KappaM1*(Tt/Tb-1.))
       pb=pt*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1)
       U=Ma*SQRT(Kappa*R*Tb)
-      !tmp2=SQRT(Face_xGP(2,p,q)*Face_xGP(2,p,q)+Face_xGP(3,p,q)*Face_xGP(3,p,q))
-      !U=tmp1*0.5*(1+TANH(0.5*20*(JetRadius-tmp2)/JetRadius))
 
       UPrim_boundary(1,p,q) = pb/(R*Tb)
       UPrim_boundary(5,p,q) = pb
@@ -581,7 +580,7 @@ CASE(3,4,9,91,23,24,25,27,28)
       UPrim_boundary(2,p,q)=SUM(U*nv(1:3)*Normvec( 1:3,p,q))
       UPrim_boundary(3,p,q)=SUM(U*nv(1:3)*Tangvec1(1:3,p,q))
       UPrim_boundary(4,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
-      UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
+      UPrim_boundary(6,p,q)=Tb
 
     END DO; END DO !p,q
 
@@ -593,27 +592,23 @@ CASE(3,4,9,91,23,24,25,27,28)
     area=3.141593*JetRadius**2
 
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
-!      UPrim_boundary(2:4,p,q)=0.
-
       tmp1 = 0.5*(m*R/(UPrim_boundary(5,p,q)*area))**2
       tmp2 = cp
       tmp3 = -cp*Tt
 
-      Tb=(-tmp2+SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)   !
-      Tb1=(-tmp2-SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)   ! dummy
-      Tb=MAX(Tb,Tb1)                                   ! Following the FUN3D Paper, the max. of the two is the phys. one
+      Tb   = (-tmp2+SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)   !
+      Tb1  = (-tmp2-SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)   !
+      Tb   = MAX(Tb,Tb1)                                  ! Following the FUN3D Paper, the max. of the two is the phys. one
 
       mramp=MIN(m,t/Ramping*m)
 
       U=(mramp*R*Tb)/(area*UPrim_boundary(5,p,q))
-!      tmp2=SQRT(Face_xGP(2,p,q)*Face_xGP(2,p,q)+Face_xGP(3,p,q)*Face_xGP(3,p,q))
-!      U=tmp1*0.5*(1+TANH(0.5*20*(JetRadius-tmp2)/JetRadius))
 
       UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q)/(R*Tb)
-      UPrim_boundary(2,p,q)=SUM(U*Normvec( 1:3,p,q))
-      UPrim_boundary(3,p,q)=SUM(U*Tangvec1(1:3,p,q))
-      UPrim_boundary(4,p,q)=SUM(U*Tangvec2(1:3,p,q))
-      UPrim_boundary(6,p,q)=Tb
+      UPrim_boundary(2,p,q) = SUM(U*Normvec( 1:3,p,q))
+      UPrim_boundary(3,p,q) = SUM(U*Tangvec1(1:3,p,q))
+      UPrim_boundary(4,p,q) = SUM(U*Tangvec2(1:3,p,q))
+      UPrim_boundary(6,p,q) = Tb
 
     END DO; END DO !p,q
 

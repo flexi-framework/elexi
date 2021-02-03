@@ -51,6 +51,7 @@ INTEGER          :: nTrees                     !< Local number of trees in mesh
 INTEGER          :: nGlobalTrees               !< Global number of trees in mesh
 INTEGER          :: offsetTree                 !< Tree offset (for MPI)
 INTEGER,ALLOCATABLE :: ElemToTree(:)           !< Index of the tree corresponding to an element
+INTEGER,ALLOCATABLE :: Crashed_Elems(:)        !< current distribution of crashed elems
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Metrics on GaussPoints
 !----------------------------------------------------------------------------------------------------------------------------------

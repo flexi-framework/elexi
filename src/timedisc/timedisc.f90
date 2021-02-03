@@ -81,7 +81,7 @@ USE MOD_ReadInTools         ,ONLY:GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY:LowCase,StripSpaces
 USE MOD_Overintegration_Vars,ONLY:NUnder
 USE MOD_Filter_Vars         ,ONLY:NFilter,FilterType
-USE MOD_Mesh_Vars           ,ONLY:nElems
+USE MOD_Mesh_Vars           ,ONLY:nElems,Crashed_Elems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
 #if USE_PARTICLES
 USE MOD_ReadInTools               ,ONLY:GETLOGICAL
@@ -159,6 +159,10 @@ dtElem=0.
 
 CALL AddToElemData(ElementOut,'dt',dtElem)
 
+ALLOCATE(Crashed_Elems(nElems))
+Crashed_Elems=0
+CALL AddToElemData(ElementOut,'Crashed',IntArray=Crashed_Elems)
+
 TimediscInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT TIMEDISC DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -197,6 +201,7 @@ USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
 USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
+USE MOD_Mesh_Vars           ,ONLY: nElems,Crashed_Elems
 #if FV_ENABLED
 USE MOD_FV
 #endif /*FV_ENABLED*/
@@ -238,6 +243,7 @@ LOGICAL                      :: doAnalyze,doFinalize
 INTEGER                      :: tmp_LoadBalanceSample    !> loadbalance sample saved until initial autorestart ist finished
 LOGICAL                      :: tmp_DoLoadBalance        !> loadbalance flag saved until initial autorestart ist finished
 #endif /*USE_LOADBALANCE*/
+INTEGER                      :: iElem
 !==================================================================================================================================
 
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -393,6 +399,9 @@ DO
       nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
       dt_MinOld=dt_Min
       IF(errType.NE.0)THEN
+        DO iElem=1,nElems
+          IF(ANY(ISNAN(U(1,:,:,:,iElem)))) Crashed_Elems(iElem)=1
+        END DO
         CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                               FutureTime=tWriteData,isErrorFile=.TRUE.)
         CALL abort(__STAMP__,&

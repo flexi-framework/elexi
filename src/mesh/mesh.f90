@@ -451,6 +451,7 @@ SDEALLOCATE(ElemToSide)
 SDEALLOCATE(SideToElem)
 SDEALLOCATE(BC)
 SDEALLOCATE(AnalyzeSide)
+SDEALLOCATE(Crashed_Elems)
 
 ! mortars
 SDEALLOCATE(MortarType)

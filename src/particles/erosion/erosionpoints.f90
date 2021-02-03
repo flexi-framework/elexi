@@ -84,10 +84,13 @@ USE MOD_ReadInTools            ,ONLY: GETSTR,GETINT,GETLOGICAL,GETREAL
 USE MOD_Interpolation_Vars     ,ONLY: InterpolationInitIsDone
 USE MOD_ErosionPoints_Vars     ,ONLY: doParticleImpactTrack
 USE MOD_ErosionPoints_Vars     ,ONLY: EP_Data,EPDataSize,EP_Impacts
-USE MOD_ErosionPoints_Vars     ,ONLY: EP_onProc,nEP_Procs,EP_MaxBufferSize
+USE MOD_ErosionPoints_Vars     ,ONLY: EP_onProc,EP_MaxBufferSize
 USE MOD_ErosionPoints_Vars,     ONLY: ErosionPointsInitIsDone
 USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides,doParticleImpactSample
 USE MOD_Particle_Vars          ,ONLY: doPartIndex
+#if USE_MPI
+USE MOD_ErosionPoints_Vars     ,ONLY: nEP_Procs
+#endif /*USE_MPI*/
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -95,6 +98,9 @@ USE MOD_Particle_Vars          ,ONLY: doPartIndex
 ! LOCAL VARIABLES
 INTEGER               :: EP_maxMemory
 INTEGER(KIND=8)       :: EP_maxBufferSize_glob
+#if !USE_MPI
+INTEGER,PARAMETER     :: nEP_Procs=1
+#endif /*!USE_MPI*/
 !==================================================================================================================================
 
 IF((.NOT.InterpolationInitIsDone) .OR. ErosionPointsInitIsDone)THEN

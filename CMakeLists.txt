@@ -134,7 +134,7 @@ INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/src/CMakeLists.txt)
 # =========================================================================
 # Posti
 # =========================================================================
-OPTION(POSTI "Build POSTI toolset" ON)
+OPTION(POSTI "Build POSTI toolset" OFF)
 IF(POSTI)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/CMakeLists.txt)
 ELSE()

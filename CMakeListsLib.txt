@@ -71,7 +71,7 @@ ENDIF()
 # =========================================================================
 # HDF5 library
 # =========================================================================
-SET(LIBS_BUILD_HDF5 ON CACHE BOOL "Compile and build hdf5 library")
+SET(LIBS_BUILD_HDF5 OFF CACHE BOOL "Compile and build hdf5 library")
 
 # Set type of library to look up, STATIC/SHARED
 SET(LIB_TYPE STATIC)

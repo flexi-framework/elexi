@@ -36,27 +36,43 @@ ADD_DEPENDENCIES(     posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared)
 # Posti visu plugin for Paraview
 CMAKE_DEPENDENT_OPTION(POSTI_USE_PARAVIEW "Build the Paraview visualization plugin for Posti." OFF "POSTI_BUILD_VISU" OFF)
 IF (POSTI_USE_PARAVIEW)
-   # OSPRay causes developer warnings because of duplicate 'optimized' flag. CMake fixes itself, so suppress it for the time being
-   # Unfortunately, we have to suppress them before actually finding Paraview since the find itself causes the warnings
-   MARK_AS_ADVANCED(FORCE CMAKE_SUPPRESS_DEVELOPER_WARNINGS)
-   SET(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON CACHE BOOL "Suppress warnings that are meant for the author of the CMakeLists.txt files" FORCE)
-   FIND_PACKAGE(ParaView)
+  # OSPRay causes developer warnings because of duplicate 'optimized' flag. CMake fixes itself, so suppress it for the time being
+  # Unfortunately, we have to suppress them before actually finding Paraview since the find itself causes the warnings
+  MARK_AS_ADVANCED(FORCE CMAKE_SUPPRESS_DEVELOPER_WARNINGS)
+  SET(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON CACHE BOOL "Suppress warnings that are meant for the author of the CMakeLists.txt files" FORCE)
+
+  # Required to build visuReader with ParaView >= 5.7
+  INCLUDE(GNUInstallDirs)
+
+  # If ParaView is compiled with Ospray, it must be found first
+  FIND_PACKAGE(TBB QUIET)
+  IF(TBB_FOUND)
+    MESSAGE(STATUS "Found TBB version ${TBB_VERSION}")
+
+    # ParaView cannot find the correct path to TBB, so give it some help
+    FIND_PATH (TBB_ROOT_DIR
+      NAMES include/tbb/tbb.h
+      PATHS ENV TBBROOT
+            ENV TBB40_INSTALL_DIR
+            ENV TBB30_INSTALL_DIR
+            ENV TBB22_INSTALL_DIR
+            ENV TBB21_INSTALL_DIR
+            ENV TBB_ROOT_DIR
+      DOC "TBB root directory")
+
+    SET(TBB_ROOT ${TBB_ROOT_DIR})
+  ENDIF()
+
+  FIND_PACKAGE(ospray QUIET)
+  IF(ospray_FOUND)
+    TARGET_LINK_LIBRARIES(${client_target} ospray::ospray)
+    MESSAGE(STATUS "Found Ospray version ${OSPRAY_VERSION}")
+  ENDIF()
+
+  FIND_PACKAGE(ParaView)
 ENDIF()
 IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
    MESSAGE(STATUS "Found ParaView version ${ParaView_VERSION}")
-   # If Paraview is compiled with OSPRay, we need to include the TBB_ROOT for Paraview <=5.7. Assume TBB is installed if we detect OSPRay
-   # since it is needed for OSPRay anyways.
-   IF(${ParaView_VERSION} VERSION_LESS "5.7")
-     FIND_PACKAGE(OSPRAY QUIET)
-     IF(ospray_FOUND)
-       # Find TBB and TBB library. Now hard requirement because of OSPRay
-       FIND_PACKAGE(TBB REQUIRED)
-       IF (TBB_FOUND)
-         FIND_LIBRARY(TBB_LIBRARY tbb)
-       ENDIF()
-       TARGET_LINK_LIBRARIES(${client_target} ospray::ospray)
-     ENDIF()
-   ENDIF()
 
    SET(POSTI_PV_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
    # For Paraview >= 5.7, we need to stash the files on directory deeper

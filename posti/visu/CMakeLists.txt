@@ -36,7 +36,6 @@ ADD_DEPENDENCIES(     posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared)
 
 # Posti visu plugin for Paraview
 CMAKE_DEPENDENT_OPTION(POSTI_VISU_PARAVIEW "Build the Paraview visualization plugin for Posti." OFF "POSTI_VISU" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_VISU_OSPRAY   "Build the Paraview plugin with Ospray support." OFF "POSTI_VISU_PARAVIEW" OFF)
 IF (POSTI_VISU_PARAVIEW)
   # OSPRay causes developer warnings because of duplicate 'optimized' flag. CMake fixes itself, so suppress it for the time being
   # Unfortunately, we have to suppress them before actually finding Paraview since the find itself causes the warnings
@@ -46,27 +45,35 @@ IF (POSTI_VISU_PARAVIEW)
   # Required to build visuReader with ParaView >= 5.7
   INCLUDE(GNUInstallDirs)
 
+  # If ParaView is compiled with Ospray, it must be found first
+  FIND_PACKAGE(TBB QUIET)
+  IF(TBB_FOUND)
+    MESSAGE(STATUS "Found TBB version ${TBB_VERSION}")
+
+    # ParaView cannot find the correct path to TBB, so give it some help
+    FIND_PATH (TBB_ROOT_DIR
+      NAMES include/tbb/tbb.h
+      PATHS ENV TBBROOT
+            ENV TBB40_INSTALL_DIR
+            ENV TBB30_INSTALL_DIR
+            ENV TBB22_INSTALL_DIR
+            ENV TBB21_INSTALL_DIR
+            ENV TBB_ROOT_DIR
+      DOC "TBB root directory")
+
+    SET(TBB_ROOT ${TBB_ROOT_DIR})
+  ENDIF()
+
+  FIND_PACKAGE(ospray QUIET)
+  IF(ospray_FOUND)
+    TARGET_LINK_LIBRARIES(${client_target} ospray::ospray)
+    MESSAGE(STATUS "Found Ospray version ${OSPRAY_VERSION}")
+  ENDIF()
+
   FIND_PACKAGE(ParaView)
 ENDIF()
 IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
   MESSAGE(STATUS "Found ParaView version ${ParaView_VERSION}")
-  # Needed for Paraview compiled with Ospray
-  IF(${ParaView_VERSION} VERSION_LESS "5.7")
-    IF(POSTI_VISU_OSPRAY)
-      FIND_PACKAGE(TBB REQUIRED tbb)
-      IF (TBB_FOUND)
-        FIND_LIBRARY(TBB_LIBRARY tbb)
-        # Gives warning but fixes itself, so supress it for the time being
-        SET(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON CACHE BOOL
-        "Suppress Warnings that are meant for the author of the CMakeLists.txt files"
-        FORCE)
-      ENDIF()
-      # Find ospray::ospray
-      FIND_PACKAGE(ospray REQUIRED)
-      target_link_libraries(${client_target} ospray::ospray)
-      # Finally compiles against ParaView 5.6.2 on Arch Linux
-    ENDIF()
-  ENDIF()
 
   SET(POSTI_VISU_PARAVIEW_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
   IF(${ParaView_VERSION} VERSION_LESS "5.7")

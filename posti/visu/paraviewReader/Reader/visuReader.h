@@ -1,10 +1,10 @@
 /*
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -55,6 +55,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       vtkSetStringMacro(MeshFileOverwrite);
       vtkSetMacro(NVisu,int);
       vtkSetMacro(NCalc,int);
+      vtkSetMacro(NGhosts,int);
       vtkSetStringMacro(NodeTypeVisu);
       vtkSetMacro(Avg2d,int);
       vtkSetMacro(DGonly,int);
@@ -88,7 +89,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
 
       void ConvertToFortran(char* fstring, const char* cstring);
 
-      // struct to exchange arrays between fortran and C      
+      // struct to exchange arrays between fortran and C
       struct DoubleARRAY coords_DG;
       struct DoubleARRAY values_DG;
       struct IntARRAY  nodeids_DG;
@@ -124,6 +125,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       char* FileName;
       int   NVisu;
       int   NCalc;
+      int   NGhosts;
       char* NodeTypeVisu;
       int   Avg2d;
       int   DGonly;

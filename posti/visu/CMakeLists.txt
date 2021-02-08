@@ -34,8 +34,8 @@ TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared)
 ADD_DEPENDENCIES(     posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared)
 
 # Posti visu plugin for Paraview
-CMAKE_DEPENDENT_OPTION(POSTI_USE_PARAVIEW "Build the Paraview visualization plugin for Posti." OFF "POSTI_BUILD_VISU" OFF)
-IF (POSTI_USE_PARAVIEW)
+CMAKE_DEPENDENT_OPTION(POSTI_VISU_PARAVIEW "Build the Paraview visualization plugin for Posti." OFF "POSTI_VISU" OFF)
+IF (POSTI_VISU_PARAVIEW)
   # OSPRay causes developer warnings because of duplicate 'optimized' flag. CMake fixes itself, so suppress it for the time being
   # Unfortunately, we have to suppress them before actually finding Paraview since the find itself causes the warnings
   MARK_AS_ADVANCED(FORCE CMAKE_SUPPRESS_DEVELOPER_WARNINGS)
@@ -71,19 +71,19 @@ IF (POSTI_USE_PARAVIEW)
 
   FIND_PACKAGE(ParaView)
 ENDIF()
-IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
+IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
    MESSAGE(STATUS "Found ParaView version ${ParaView_VERSION}")
 
-   SET(POSTI_PV_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
+   SET(POSTI_VISU_PARAVIEW_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
    # For Paraview >= 5.7, we need to stash the files on directory deeper
    IF(${ParaView_VERSION} VERSION_LESS "5.7")
-     IF(POSTI_PV_SUFFIX STREQUAL "")
+     IF(POSTI_VISU_PARAVIEW_SUFFIX STREQUAL "")
        SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader/Reader/)
      ELSE()
        SET(TOOL_DIR_PV ${CMAKE_CURRENT_BINARY_DIR})
-       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.h      "")
-       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.cxx    "")
-       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.xml    "")
+       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.h      "")
+       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.cxx    "")
+       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.xml    "")
      ENDIF()
    ELSE()
      SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader)
@@ -102,25 +102,25 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
 
    # Changed beginning form Paraview 5.7
    IF(${ParaView_VERSION} VERSION_LESS "5.7")
-     ADD_PARAVIEW_PLUGIN(visuReader${POSTI_PV_SUFFIX} "1.0"
-       SERVER_MANAGER_XML     ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.xml
-       SERVER_MANAGER_SOURCES ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.cxx
+     ADD_PARAVIEW_PLUGIN(visuReader${POSTI_VISU_PARAVIEW_SUFFIX} "1.0"
+       SERVER_MANAGER_XML     ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.xml
+       SERVER_MANAGER_SOURCES ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.cxx
        REQUIRED_ON_SERVER
-       DEPENDS                "${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.h"
+       DEPENDS                "${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.h"
        )
 
-     IF(NOT POSTI_PV_SUFFIX STREQUAL "")
+     IF(NOT POSTI_VISU_PARAVIEW_SUFFIX STREQUAL "")
        SET(EXTENSIONS "h" "xml" "cxx")
        FOREACH(EX ${EXTENSIONS})
          SET(OLDFILE ${TOOL_DIR}/paraviewReader/visuReader.${EX})
-         SET(NEWFILE ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.${EX})
+         SET(NEWFILE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.${EX})
          ADD_CUSTOM_TARGET(
            ${EX}_COPY
            COMMAND ${CMAKE_COMMAND} -E copy ${OLDFILE} ${NEWFILE}
-           COMMAND sed -i 's/visuReader/visuReader${POSTI_PV_SUFFIX}/g' ${NEWFILE}
-           COMMAND sed -i 's/2 Posti Visu/2 Posti Visu ${POSTI_PV_SUFFIX}/g' ${NEWFILE}
+           COMMAND sed -i 's/visuReader/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}/g' ${NEWFILE}
+           COMMAND sed -i 's/2 Posti Visu/2 Posti Visu ${POSTI_VISU_PARAVIEW_SUFFIX}/g' ${NEWFILE}
            )
-         ADD_DEPENDENCIES(visuReader${POSTI_PV_SUFFIX} ${EX}_COPY)
+         ADD_DEPENDENCIES(visuReader${POSTI_VISU_PARAVIEW_SUFFIX} ${EX}_COPY)
        ENDFOREACH()
      ENDIF()
 
@@ -138,6 +138,6 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
    ENDIF()
 
 
-   ADD_DEPENDENCIES(     visuReader${POSTI_PV_SUFFIX} ${TOOL_NAME}lib libflexishared)
-   TARGET_LINK_LIBRARIES(visuReader${POSTI_PV_SUFFIX} PUBLIC ${TOOL_NAME}lib libflexishared)
+   ADD_DEPENDENCIES(     visuReader${POSTI_VISU_PARAVIEW_SUFFIX} ${TOOL_NAME}lib libflexishared)
+   TARGET_LINK_LIBRARIES(visuReader${POSTI_VISU_PARAVIEW_SUFFIX} PUBLIC ${TOOL_NAME}lib libflexishared)
 ENDIF()

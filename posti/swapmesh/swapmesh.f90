@@ -359,7 +359,7 @@ USE MOD_Globals,       ONLY: abort
 USE MOD_HDF5_Input,    ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataSize
 USE MOD_IO_HDF5,       ONLY: File_ID,HSize
 USE MOD_Swapmesh_Vars, ONLY: nVar_State,NState,nElemsOld,Time_State,UOld,NNew,nElemsNew,StrVarNamesIni
-USE MOD_ReadInTools,   ONLY: ExtractParameterFile
+USE MOD_ReadInTools,   ONLY: ExtractParameterFile,ModifyParameterFile
 USE MOD_Output_Vars,   ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Output,        ONLY: insert_userblock
 USE MOD_DG_Vars,       ONLY: U
@@ -448,6 +448,8 @@ CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_State)
 
 ! Extract parameter file from userblock (if found)
 CALL ExtractParameterFile(StateFile,TRIM(prmfile),userblockFound)
+! Modify the polynomial degree in the parameterfile to NNew
+CALL ModifyParameterFile(TRIM(prmfile),'N',NNew,userblockFound)
 ! prepare userblock file
 CALL insert_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(prmfile)//C_NULL_CHAR)
 INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)

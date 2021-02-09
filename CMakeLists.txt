@@ -11,6 +11,11 @@ ENDIF()
 IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.12.0"))
   CMAKE_POLICY(SET CMP0074 NEW)
 ENDIF()
+# Required to link visulib against visuReader
+IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.13.0"))
+  CMAKE_POLICY(SET CMP0079 NEW)
+ENDIF()
+
 # Folder for custom CMake source files
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -53,9 +58,7 @@ ENDIF()
 # =========================================================================
 # make sure that the default is a RELEASE
 IF (NOT CMAKE_BUILD_TYPE)
-  SET (CMAKE_BUILD_TYPE Release CACHE STRING
-      "Choose the type of build, options are: Debug Release Profile."
-      FORCE)
+  SET (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: Debug Release Profile."  FORCE)
   SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
 ENDIF (NOT CMAKE_BUILD_TYPE)
 

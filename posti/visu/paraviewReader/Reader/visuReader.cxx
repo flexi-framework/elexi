@@ -14,10 +14,10 @@
 !=================================================================================================================================
 */
 
-#include "visuReader.h"
-#include "../../plugin_visu.h"
+#include <visuReader.h>
+#include <../../plugin_visu.h>
 
-#include "hdf5.h"
+#include <hdf5.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
 #include <vtkDoubleArray.h>
@@ -29,7 +29,7 @@
 #include <vtkObjectFactory.h>
 #include <vtkPointData.h>
 #include <vtkStreamingDemandDrivenPipeline.h>
-#include "vtkMultiBlockDataSet.h"
+#include <vtkMultiBlockDataSet.h>
 #include <vtkUnstructuredGrid.h>
 #if USE_MPI
 #include <vtkDistributedDataFilter.h>
@@ -417,14 +417,16 @@ int visuReader::RequestData(
    InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames);
 
 #if USE_MPI
-   // Apply D3 filter to create ghost cells
-   SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
+   if (Controller->GetNumberOfProcesses() > 1) {
+     // Apply D3 filter to create ghost cells
+     SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
 
-   // Distribute DG data and create ghost cells
-   DistributeData(mb, 0);
+     // Distribute DG data and create ghost cells
+     DistributeData(mb, 0);
 
-   // Distribute FV data and create ghost cells
-   DistributeData(mb, 1);
+     // Distribute FV data and create ghost cells
+     DistributeData(mb, 1);
+   }
 #endif /* USE_MPI */
 
    // get the MultiBlockDataset
@@ -541,6 +543,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
 
    // assign the actual data, loaded by the Posti tool, to the output
    unsigned int nVar = varnames->len/255;
+
    if (nVar > 0) {
       unsigned int sizePerVar = values->len/nVar;
       int dataPos = 0;

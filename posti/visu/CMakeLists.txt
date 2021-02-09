@@ -75,10 +75,10 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
    MESSAGE(STATUS "Found ParaView version ${ParaView_VERSION}")
 
    SET(POSTI_VISU_PARAVIEW_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
-   # For Paraview >= 5.7, we need to stash the files on directory deeper
+   # For Paraview >= 5.7, we need to stash the files one directory deeper
    IF(${ParaView_VERSION} VERSION_LESS "5.7")
      IF(POSTI_VISU_PARAVIEW_SUFFIX STREQUAL "")
-       SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader/Reader/)
+      SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader/Reader)
      ELSE()
        SET(TOOL_DIR_PV ${CMAKE_CURRENT_BINARY_DIR})
        FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.h      "")
@@ -94,6 +94,9 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
      INCLUDE(${PARAVIEW_USE_FILE})
      MESSAGE(STATUS ${PARAVIEW_USE_FILE})
    ELSE()
+     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
+     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+     SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
      SET(BUILD_SHARED_LIBS ON)
    ENDIF()
 
@@ -128,6 +131,7 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
      PARAVIEW_PLUGIN_SCAN(
        PLUGIN_FILES "${TOOL_DIR_PV}/visuReader.plugin"
        PROVIDES_PLUGINS plugins
+       REQUIRES_MODULES	 required_modules
        ENABLE_BY_DEFAULT ON)
 
      PARAVIEW_PLUGIN_BUILD(
@@ -137,7 +141,10 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
        PLUGINS ${plugins})
    ENDIF()
 
-
    ADD_DEPENDENCIES(     visuReader${POSTI_VISU_PARAVIEW_SUFFIX} ${TOOL_NAME}lib libflexishared)
    TARGET_LINK_LIBRARIES(visuReader${POSTI_VISU_PARAVIEW_SUFFIX} PUBLIC ${TOOL_NAME}lib libflexishared)
+
+  MARK_AS_ADVANCED([CLEAR|FORCE] ParaView_DIR)
+  MARK_AS_ADVANCED([CLEAR|FORCE] QT_IMPORTS_DIR)
+  MARK_AS_ADVANCED([CLEAR|FORCE] QT_QMAKE_EXECUTABLE)
 ENDIF()

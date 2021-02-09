@@ -1,16 +1,20 @@
-set(classes
+SET(classes
   visuReader)
   
-set(headers
+SET(headers
   ../../plugin_visu.h
   ../../pluginTypes_visu.h)
 
-vtk_module_add_module(visuReaderModule
+SET(private_headers
+  visuReader.h)
+
+VTK_MODULE_ADD_MODULE(visuReaderModule
   CLASSES ${classes}
-  HEADERS ${headers})
+  HEADERS ${headers}
+  PRIVATE_HEADERS ${private_headers})
   
-vtk_module_link(
+VTK_MODULE_LINK(
   visuReaderModule PUBLIC ${TOOL_NAME}lib libflexishared)
   
-paraview_add_server_manager_xmls(
+PARAVIEW_ADD_SERVER_MANAGER_XMLS(
   XMLS  visuReader.xml)

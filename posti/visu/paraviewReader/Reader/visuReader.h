@@ -111,6 +111,8 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       void InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
             struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames);
 
+      void DistributeData(vtkMultiBlockDataSet* mb, int blockno);
+
       vtkDataArraySelection* VarDataArraySelection;
       vtkDataArraySelection* BCDataArraySelection;
 

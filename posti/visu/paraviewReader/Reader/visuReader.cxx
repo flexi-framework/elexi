@@ -403,46 +403,28 @@ int visuReader::RequestData(
    // adjust the number of Blocks in the MultiBlockDataset to 4 (DG and FV)
    SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
    if (mb->GetNumberOfBlocks() < 2) {
-      SWRITE("Create new DG and FV output Blocks");
+      SWRITE("Create new DG and FV output blocks");
       mb->SetBlock(0, vtkUnstructuredGrid::New());
       mb->SetBlock(1, vtkUnstructuredGrid::New());
       //mb->SetBlock(2, vtkUnstructuredGrid::New());
       //mb->SetBlock(3, vtkUnstructuredGrid::New());
    }
 
-    // Insert DG data into output
+   // Insert DG data into output
    InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &varnames);
 
-#if USE_MPI
-   // Apply D3 filter to create ghost cells
-   vtkDistributedDataFilter * d3DG = vtkDistributedDataFilter::New();
-   d3DG->SetInputData(mb->GetBlock(0));
-   d3DG->SetMinimumGhostLevel(this->NGhosts);
-   SWRITE("spoooooky" << outInfoVolume ->Get(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS()));
-
-   // Information must be duplicated on all procs, ASSIGN_TO_ALL_INTERSECTING_REGIONS = 1
-   d3DG->SetBoundaryMode(1);
-   d3DG->Update();
-
-   // Copy information pointer back
-   mb->GetBlock(0)->ShallowCopy(d3DG->GetOutput());
-#endif /* USE_MPI */
-
-    // Insert FV data into output
+   // Insert FV data into output
    InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames);
 
 #if USE_MPI
    // Apply D3 filter to create ghost cells
-   vtkDistributedDataFilter * d3FV = vtkDistributedDataFilter::New();
-   d3FV->SetInputData(mb->GetBlock(1));
-   d3FV->SetMinimumGhostLevel(this->NGhosts);
+   SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
 
-   // Information must be duplicated on all procs, ASSIGN_TO_ALL_INTERSECTING_REGIONS = 1
-   d3FV->SetBoundaryMode(1);
-   d3FV->Update();
+   // Distribute DG data and create ghost cells
+   DistributeData(mb, 0);
 
-   // Copy information pointer back
-   mb->GetBlock(1)->ShallowCopy(d3FV->GetOutput());
+   // Distribute FV data and create ghost cells
+   DistributeData(mb, 1);
 #endif /* USE_MPI */
 
    // get the MultiBlockDataset
@@ -453,7 +435,7 @@ int visuReader::RequestData(
    }
 
    // adjust the number of Blocks in the MultiBlockDataset to 4 (DG and FV)
-   SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
+   SWRITE("Number of blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
    if (mb->GetNumberOfBlocks() < 2) {
       SWRITE("Create new DG and FV output Blocks");
       mb->SetBlock(0, vtkUnstructuredGrid::New());
@@ -588,6 +570,24 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
       }
    }
 }
+
+
+#if USE_MPI
+void visuReader::DistributeData(vtkMultiBlockDataSet* mb, int blockno) {
+   // Apply D3 filter to create ghost cells
+   vtkDistributedDataFilter * d3 = vtkDistributedDataFilter::New();
+   d3->SetInputData(mb->GetBlock(blockno));
+   d3->SetMinimumGhostLevel(this->NGhosts);
+
+   // Information must be duplicated on all procs, ASSIGN_TO_ALL_INTERSECTING_REGIONS = 1
+   d3->SetBoundaryMode(1);
+   d3->Update();
+
+   // Copy information pointer back
+   mb->GetBlock(blockno)->ShallowCopy(d3->GetOutput());
+}
+#endif /* USE_MPI */
+
 
 visuReader::~visuReader(){
    SWRITE("~visuReader");

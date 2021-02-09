@@ -194,6 +194,8 @@ IF(PARTICLES)
     ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
       MESSAGE(STATUS "Shared memory split type for subcommunicators set to core-level")
     ENDIF()
+  ELSE()
+    ADD_DEFINITIONS(-DSHARED_MEMORY_METHOD="MPI_COMM_TYPE_SHARED")
   ENDIF()
 
   # Code Analyze

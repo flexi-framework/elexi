@@ -493,14 +493,16 @@ int visuReader::RequestData(
    InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames);
 
 #if USE_MPI
-   // Apply D3 filter to create ghost cells
-   SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
+   if (Controller->GetNumberOfProcesses() > 1) {
+     // Apply D3 filter to create ghost cells
+     SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
 
-   // Distribute DG data and create ghost cells
-   DistributeData(mb, 0);
+     // Distribute DG data and create ghost cells
+     DistributeData(mb, 0);
 
-   // Distribute FV data and create ghost cells
-   DistributeData(mb, 1);
+     // Distribute FV data and create ghost cells
+     DistributeData(mb, 1);
+   }
 #endif /* USE_MPI */
 
    // get the MultiBlockDataset

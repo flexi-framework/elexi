@@ -122,6 +122,9 @@ USE MOD_TimeDisc_Vars              ,ONLY: dtElem
 #if PARABOLIC
 USE MOD_Lifting                    ,ONLY: InitLifting
 #endif /*PARABOLIC*/
+#if FV_ENABLED
+USE MOD_FV                         ,ONLY: InitFV,FinalizeFV
+#endif /* FV_ENABLED */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

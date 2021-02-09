@@ -33,6 +33,9 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkPolyData.h>
 #include <vtkVertex.h>
+#if USE_MPI
+#include <vtkDistributedDataFilter.h>
+#endif /* USE_MPI */
 
 
 #include <libgen.h>
@@ -56,6 +59,9 @@ visuReader::visuReader()
    this->FileName = NULL;
    this->NVisu = 0;
    this->NCalc = 0;
+#if USE_MPI
+   this->NGhosts = 0;
+#endif /* USE_MPI */
    this->NodeTypeVisu = NULL;
    this->Avg2d = 0;
    this->DGonly = 0;
@@ -78,11 +84,11 @@ visuReader::visuReader()
    this->SelectionObserver->SetClientData(this);
    // create array for state,primitive and derived quantities
    this->VarDataArraySelection = vtkDataArraySelection::New();
-   this->BCDataArraySelection = vtkDataArraySelection::New();
+   this->BCDataArraySelection  = vtkDataArraySelection::New();
    this->VarParticleDataArraySelection = vtkDataArraySelection::New();
    // add an observer
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
-   this->BCDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
+   this->BCDataArraySelection ->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
    this->VarParticleDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
 
 }
@@ -123,7 +129,7 @@ int visuReader::RequestInformation(vtkInformation *,
 #endif
 
    // sets the number of pieces to the number of processsors
-   outInfoVolume->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+   outInfoVolume ->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
    outInfoSurface->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 #if USE_PARTICLES
    outInfoPart->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
@@ -141,7 +147,7 @@ int visuReader::RequestInformation(vtkInformation *,
    // if we have more then one file loaded at once (timeseries)
    // we have to set the number and range of the timesteps
    double timeRange[2] = {Timesteps[0], Timesteps[Timesteps.size()-1]};
-   outInfoVolume->Set (vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
+   outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
    outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
 #if USE_PARTICLES
    outInfoPart->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
@@ -301,10 +307,10 @@ int visuReader::RequestData(
    // get the index of the timestep to load
    int timestepToLoad = 0;
    std::string FileToLoad;
-   vtkSmartPointer<vtkInformation> outInfoVolume = outputVector->GetInformationObject(0);
+   vtkSmartPointer<vtkInformation> outInfoVolume  = outputVector->GetInformationObject(0);
    vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
 #if USE_PARTICLES
-   vtkSmartPointer<vtkInformation> outInfoPart = outputVector->GetInformationObject(2);
+   vtkSmartPointer<vtkInformation> outInfoPart    = outputVector->GetInformationObject(2);
    vtkSmartPointer<vtkInformation> outInfoErosion = outputVector->GetInformationObject(3);
 #endif
    if (outInfoVolume->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
@@ -447,11 +453,21 @@ int visuReader::RequestData(
          &coords_FV,&values_FV,&nodeids_FV,&varnames,
          &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
          &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf,
-	 &coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,
-	 &coords_Erosion,&values_Erosion,&nodeids_Erosion,&varnames_Erosion,&components_Erosion);
+         &coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,
+         &coords_Erosion,&values_Erosion,&nodeids_Erosion,&varnames_Erosion,&components_Erosion);
 
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 
+#if USE_MPI
+   // sets the distribution for D3 and ghost cells
+   outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_PIECE_NUMBER(),     Controller->GetLocalProcessId());
+   outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_PIECES(), Controller->GetNumberOfProcesses());
+   outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), this->NGhosts);
+   outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::EXACT_EXTENT(),1);
+   outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_PIECE_NUMBER(),    Controller->GetLocalProcessId());
+   outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_PIECES(),Controller->GetNumberOfProcesses());
+   outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), this->NGhosts);
+#endif /* USE_MPI */
 
    // get the MultiBlockDataset
    vtkMultiBlockDataSet* mb = vtkMultiBlockDataSet::SafeDownCast(outInfoVolume->Get(vtkDataObject::DATA_OBJECT()));
@@ -463,20 +479,29 @@ int visuReader::RequestData(
    // adjust the number of Blocks in the MultiBlockDataset to 4 (DG and FV)
    SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
    if (mb->GetNumberOfBlocks() < 2) {
-      SWRITE("Create new DG and FV output Blocks");
+      SWRITE("Create new DG and FV output blocks");
       mb->SetBlock(0, vtkUnstructuredGrid::New());
       mb->SetBlock(1, vtkUnstructuredGrid::New());
       //mb->SetBlock(2, vtkUnstructuredGrid::New());
       //mb->SetBlock(3, vtkUnstructuredGrid::New());
    }
 
-    // Insert DG data into output
+   // Insert DG data into output
    InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &varnames);
 
-    // Insert FV data into output
+   // Insert FV data into output
    InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames);
 
+#if USE_MPI
+   // Apply D3 filter to create ghost cells
+   SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
 
+   // Distribute DG data and create ghost cells
+   DistributeData(mb, 0);
+
+   // Distribute FV data and create ghost cells
+   DistributeData(mb, 1);
+#endif /* USE_MPI */
 
    // get the MultiBlockDataset
    mb = vtkMultiBlockDataSet::SafeDownCast(outInfoSurface->Get(vtkDataObject::DATA_OBJECT()));
@@ -486,7 +511,7 @@ int visuReader::RequestData(
    }
 
    // adjust the number of Blocks in the MultiBlockDataset to 4 (DG and FV)
-   SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks())
+   SWRITE("Number of blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
    if (mb->GetNumberOfBlocks() < 2) {
       SWRITE("Create new DG and FV output Blocks");
       mb->SetBlock(0, vtkUnstructuredGrid::New());
@@ -740,6 +765,23 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
    }
 }
 #endif
+
+#if USE_MPI
+void visuReader::DistributeData(vtkMultiBlockDataSet* mb, int blockno) {
+   // Apply D3 filter to create ghost cells
+   vtkDistributedDataFilter * d3 = vtkDistributedDataFilter::New();
+   d3->SetInputData(mb->GetBlock(blockno));
+   d3->SetMinimumGhostLevel(this->NGhosts);
+
+   // Information must be duplicated on all procs, ASSIGN_TO_ALL_INTERSECTING_REGIONS = 1
+   d3->SetBoundaryMode(1);
+   d3->Update();
+
+   // Copy information pointer back
+   mb->GetBlock(blockno)->ShallowCopy(d3->GetOutput());
+}
+#endif /* USE_MPI */
+
 
 visuReader::~visuReader(){
    SWRITE("~visuReader");

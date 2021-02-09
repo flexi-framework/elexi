@@ -1,7 +1,9 @@
 <ServerManagerConfiguration>
    <ProxyGroup name="sources">
       <!-- ================================================================== -->
-      <SourceProxy name="visuReader" class="visuReader" label="visuReader">
+     <SourceProxy name="visuReader"
+                  class="visuReader"
+                  label="visuReader">
          <Documentation
             long_help="Read a Flexi state or mesh file ( h5 file )."
             short_help="Read a Flexi state or mesh file ( h5 file ).">
@@ -26,7 +28,7 @@
             animateable="0"
             name="NVisu"
             number_of_elements="1"
-            label="Polynomial degree for Supersampling">
+            label="Polynomial Degree for Supersampling">
             <IntRangeDomain name="range" />
             <Documentation>
                This property sets the polynomial degree of the
@@ -63,7 +65,7 @@
                </RequiredProperties>
             </StringListDomain>
             <Documentation>
-               User-defined NodeType at which to visualize. 
+               User-defined NodeType at which to visualize.
             </Documentation>
          </StringVectorProperty>
 #if PP_dim == 3
@@ -79,7 +81,7 @@
            Average solution in z-direction.
            </Documentation>
          </IntVectorProperty>
-#endif         
+#endif
          <IntVectorProperty command="SetDGonly"
            default_values="0"
            animateable="0"
@@ -116,6 +118,19 @@
            Mesh file, that overwrites the one stored in the parameter file from the USERBLOCK of the state file.
            </Documentation>
          </StringVectorProperty>
+#if USE_MPI
+         <IntVectorProperty command="SetNGhosts"
+            default_values="1"
+            animateable="0"
+            name="NGhosts"
+            number_of_elements="1"
+            label="Minimum Levels of Ghost Cells">
+            <IntRangeDomain name="range" />
+            <Documentation>
+               This property sets the minimum levels of ghost cells for parallel rendering.
+            </Documentation>
+         </IntVectorProperty>
+#endif
       <!-- ================================================================== -->
          <StringVectorProperty name="VarArrayInfo"
             information_only="1">

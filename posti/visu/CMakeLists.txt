@@ -21,7 +21,7 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d.f90
                           ${TOOL_DIR}/visu.f90
                           ${TOOL_DIR}/visumesh.f90
                           ${TOOL_DIR}/visu_vars.f90
-			  ${TOOL_DIR}/visu_part.f90)
+                          ${TOOL_DIR}/visu_part.f90)
 
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
@@ -73,71 +73,74 @@ IF (POSTI_VISU_PARAVIEW)
   FIND_PACKAGE(ParaView)
 ENDIF()
 IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
-  MESSAGE(STATUS "Found ParaView version ${ParaView_VERSION}")
+   MESSAGE(STATUS "Found ParaView version ${ParaView_VERSION}")
 
-  SET(POSTI_VISU_PARAVIEW_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
-  IF(${ParaView_VERSION} VERSION_LESS "5.7")
-    IF(POSTI_VISU_PARAVIEW_SUFFIX STREQUAL "")
+   SET(POSTI_VISU_PARAVIEW_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
+   # For Paraview >= 5.7, we need to stash the files one directory deeper
+   IF(${ParaView_VERSION} VERSION_LESS "5.7")
+     IF(POSTI_VISU_PARAVIEW_SUFFIX STREQUAL "")
       SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader/Reader)
-    ELSE()
-      SET(TOOL_DIR_PV ${CMAKE_CURRENT_BINARY_DIR})
-      FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.h   "")
-      FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.cxx "")
-      FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.xml "")
-    ENDIF()
-  ELSE()
-    SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader)
-  ENDIF()
+     ELSE()
+       SET(TOOL_DIR_PV ${CMAKE_CURRENT_BINARY_DIR})
+       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.h      "")
+       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.cxx    "")
+       FILE(WRITE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.xml    "")
+     ENDIF()
+   ELSE()
+     SET(TOOL_DIR_PV ${TOOL_DIR}/paraviewReader)
+   ENDIF()
 
-  IF(${ParaView_VERSION} VERSION_LESS "5.7")
-    INCLUDE(${PARAVIEW_USE_FILE})
-    MESSAGE(STATUS ${PARAVIEW_USE_FILE})
-  ELSE()
-    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
-    SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
-    SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
-    SET(BUILD_SHARED_LIBS ON)
-  ENDIF()
+   # Only required for ParaView <= 5.6
+   IF(${ParaView_VERSION} VERSION_LESS "5.7")
+     INCLUDE(${PARAVIEW_USE_FILE})
+     MESSAGE(STATUS ${PARAVIEW_USE_FILE})
+   ELSE()
+     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
+     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+     SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+     SET(BUILD_SHARED_LIBS ON)
+   ENDIF()
 
-  SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-  INCLUDE_DIRECTORIES(${TOOL_DIR}/paraviewReader/Reader/)
+   SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+   INCLUDE_DIRECTORIES(${TOOL_DIR}/paraviewReader/Reader/)
 
-  IF(${ParaView_VERSION} VERSION_LESS "5.7")
-    ADD_PARAVIEW_PLUGIN(visuReader${POSTI_PV_SUFFIX} "1.0"
-      SERVER_MANAGER_XML     ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.xml
-      SERVER_MANAGER_SOURCES ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.cxx
-      REQUIRED_ON_SERVER
-      DEPENDS                ${TOOL_DIR_PV}/visuReader${POSTI_PV_SUFFIX}.h
-      )
+   # Changed beginning form Paraview 5.7
+   IF(${ParaView_VERSION} VERSION_LESS "5.7")
+     ADD_PARAVIEW_PLUGIN(visuReader${POSTI_VISU_PARAVIEW_SUFFIX} "1.0"
+       SERVER_MANAGER_XML     ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.xml
+       SERVER_MANAGER_SOURCES ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.cxx
+       REQUIRED_ON_SERVER
+       DEPENDS                "${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.h"
+       )
 
-   IF(NOT POSTI_VISU_PARAVIEW_SUFFIX STREQUAL "")
-      SET(EXTENSIONS "h" "xml" "cxx")
-      FOREACH(EX ${EXTENSIONS})
-        SET(OLDFILE ${TOOL_DIR}/paraviewReader/visuReader.${EX})
-        SET(NEWFILE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.${EX})
-        ADD_CUSTOM_TARGET(
-          ${EX}_COPY
-          COMMAND ${CMAKE_COMMAND} -E copy ${OLDFILE} ${NEWFILE}
-          COMMAND sed -i 's/visuReader/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}/g' ${NEWFILE}
-          COMMAND sed -i 's/2 Posti Visu/2 Posti Visu ${POSTI_VISU_PARAVIEW_SUFFIX}/g' ${NEWFILE}
-          )
-        ADD_DEPENDENCIES(visuReader${POSTI_VISU_PARAVIEW_SUFFIX} ${EX}_COPY)
-      ENDFOREACH()
-    ENDIF()
-  ELSE()
-#    SET("_paraview_plugin_default_${CMAKE_PROJECT_NAME}" ON)
-    PARAVIEW_PLUGIN_SCAN(
-      PLUGIN_FILES		${TOOL_DIR_PV}/visuReader.plugin
-      PROVIDES_PLUGINS		plugins
-      REQUIRES_MODULES		required_modules
-      ENABLE_BY_DEFAULT	ON)
+     IF(NOT POSTI_VISU_PARAVIEW_SUFFIX STREQUAL "")
+       SET(EXTENSIONS "h" "xml" "cxx")
+       FOREACH(EX ${EXTENSIONS})
+         SET(OLDFILE ${TOOL_DIR}/paraviewReader/visuReader.${EX})
+         SET(NEWFILE ${TOOL_DIR_PV}/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}.${EX})
+         ADD_CUSTOM_TARGET(
+           ${EX}_COPY
+           COMMAND ${CMAKE_COMMAND} -E copy ${OLDFILE} ${NEWFILE}
+           COMMAND sed -i 's/visuReader/visuReader${POSTI_VISU_PARAVIEW_SUFFIX}/g' ${NEWFILE}
+           COMMAND sed -i 's/2 Posti Visu/2 Posti Visu ${POSTI_VISU_PARAVIEW_SUFFIX}/g' ${NEWFILE}
+           )
+         ADD_DEPENDENCIES(visuReader${POSTI_VISU_PARAVIEW_SUFFIX} ${EX}_COPY)
+       ENDFOREACH()
+     ENDIF()
 
-    PARAVIEW_PLUGIN_BUILD(
-      PLUGINS ${plugins})
-  ENDIF()
+   ELSE()
+     PARAVIEW_PLUGIN_SCAN(
+       PLUGIN_FILES      "${TOOL_DIR_PV}/visuReader.plugin"
+       PROVIDES_PLUGINS  plugins
+       REQUIRES_MODULES	 required_modules
+       ENABLE_BY_DEFAULT ON)
 
-  ADD_DEPENDENCIES(     visuReader${POSTI_VISU_PARAVIEW_SUFFIX} ${TOOL_NAME}lib libflexishared)
-  TARGET_LINK_LIBRARIES(visuReader${POSTI_VISU_PARAVIEW_SUFFIX} PUBLIC ${TOOL_NAME}lib libflexishared)
+     PARAVIEW_PLUGIN_BUILD(
+       PLUGINS ${plugins})
+   ENDIF()
+
+   ADD_DEPENDENCIES(     visuReader${POSTI_VISU_PARAVIEW_SUFFIX} ${TOOL_NAME}lib libflexishared)
+   TARGET_LINK_LIBRARIES(visuReader${POSTI_VISU_PARAVIEW_SUFFIX} PUBLIC ${TOOL_NAME}lib libflexishared)
 
   MARK_AS_ADVANCED([CLEAR|FORCE] ParaView_DIR)
   MARK_AS_ADVANCED([CLEAR|FORCE] QT_IMPORTS_DIR)

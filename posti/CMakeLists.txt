@@ -17,6 +17,7 @@ CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"
 CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_AVG1D                 "Build the 1D average tool"                          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_INIT_HIT              "Build HIT initialization tool"                      OFF "POSTI" OFF)
+
 OPTION(ENABLE_OPENMP "Enable OpenMP" OFF)
 IF(ENABLE_OPENMP)
   IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
@@ -29,12 +30,6 @@ IF(ENABLE_OPENMP)
   SET (CMAKE_CXX_FLAGS_RELEASE     "${CMAKE_CXX_FLAGS_RELEASE}     ${OpenMP_CXX_FLAGS}")
   SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
 ENDIF()
-
-
-SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
-                        "Used equation system (navierstokes)")
-SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
-                        "Used equation of state (idealgas)")
 
 IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_INIT_HIT)
   # =========================================================================

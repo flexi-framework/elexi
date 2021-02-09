@@ -183,15 +183,17 @@ IF(PARTICLES)
   ENDIF()
   ADD_DEFINITIONS(-DUSE_PARTICLES=1)
 
-  # Shared memory split type
-  SET(FLEXI_SHARED_MEMORY "MPI_COMM_TYPE_SHARED" CACHE STRING "Split type for creating new communicators based on colors and keys  (requires MPI 3 or higher). Options with the prefix OMPI_ are specific to Open MPI.")
-  SET_PROPERTY(CACHE FLEXI_SHARED_MEMORY PROPERTY STRINGS MPI_COMM_TYPE_SHARED
-                                                          OMPI_COMM_TYPE_CORE)
-  ADD_DEFINITIONS(-DSHARED_MEMORY_METHOD=${FLEXI_SHARED_MEMORY})
-  IF(FLEXI_SHARED_MEMORY STREQUAL "MPI_COMM_TYPE_SHARED")
-    MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
-  ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
-    MESSAGE(STATUS "Shared memory split type for subcommunicators set to core-level")
+  # Shared memory split type. Only available with OpenMPI
+  IF(NOT "${MPI_Fortran_COMPILER}" MATCHES "mpt")
+    SET(FLEXI_SHARED_MEMORY "MPI_COMM_TYPE_SHARED" CACHE STRING "Split type for creating new communicators based on colors and keys  (requires MPI 3 or higher). Options with the prefix OMPI_ are specific to Open MPI.")
+    SET_PROPERTY(CACHE FLEXI_SHARED_MEMORY PROPERTY STRINGS MPI_COMM_TYPE_SHARED
+                                                            OMPI_COMM_TYPE_CORE)
+    ADD_DEFINITIONS(-DSHARED_MEMORY_METHOD=${FLEXI_SHARED_MEMORY})
+    IF(FLEXI_SHARED_MEMORY STREQUAL "MPI_COMM_TYPE_SHARED")
+      MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
+    ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
+      MESSAGE(STATUS "Shared memory split type for subcommunicators set to core-level")
+    ENDIF()
   ENDIF()
 
   # Code Analyze

@@ -85,7 +85,8 @@ USE MOD_Interpolation_Vars     ,ONLY: InterpolationInitIsDone
 USE MOD_ErosionPoints_Vars     ,ONLY: doParticleImpactTrack
 USE MOD_ErosionPoints_Vars     ,ONLY: EP_Data,EPDataSize,EP_Impacts
 USE MOD_ErosionPoints_Vars     ,ONLY: EP_onProc,EP_MaxBufferSize
-USE MOD_ErosionPoints_Vars,     ONLY: ErosionPointsInitIsDone
+USE MOD_ErosionPoints_Vars     ,ONLY: ErosionPointsInitIsDone
+USE MOD_Particle_Analyze_Vars  ,ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides,doParticleImpactSample
 USE MOD_Particle_Vars          ,ONLY: doPartIndex
 #if USE_MPI
@@ -121,11 +122,10 @@ END IF
 IF (.NOT.doParticleImpactSample) &
  CALL COLLECTIVESTOP(__STAMP__,'Impact tracking only available with Part-SurfaceSampling=T!')
 
-IF (doPartIndex) THEN
-  EPDataSize = 15
-ELSE
-  EPDataSize = 14
-END IF
+
+EPDataSize = 14
+IF (doPartIndex)                                      EPDataSize = EPDataSize + 1
+IF (doParticleDispersionTrack.OR.doParticlePathTrack) EPDataSize = EPDataSize + 3
 
 EP_maxMemory     = GETINT('Part-TrackImpactsMemory','100')           ! Max buffer (100MB)
 EP_MaxBufferSize = EP_MaxMemory*131072/EPDataSize    != size in bytes/(real*EPDataSize)
@@ -202,12 +202,12 @@ SUBROUTINE RecordErosionPoint(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_TimeDisc_Vars,           ONLY: t,CurrentStage,dt,RKc
-USE MOD_Particle_Boundary_Vars
-USE MOD_Particle_Boundary_Vars
 USE MOD_ErosionPoints_Vars
+USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
+! USE MOD_Particle_Globals
+! USE MOD_Particle_Boundary_Vars,  ONLY:
 USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos,PartIndex,doPartIndex
+USE MOD_TimeDisc_Vars,           ONLY: t,CurrentStage,dt,RKc
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -239,7 +239,7 @@ v_norm            = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
 !      ,'Increase in kinetic energy upon reflection! Aborting ...')
 !END IF
 
-! LastParPos is set to impact location!
+! LastPartPos is set to impact location!
 
 ! Calculate exact impact time
 IF (CurrentStage.EQ.1) THEN
@@ -258,15 +258,16 @@ EP_Impacts = EP_Impacts + 1
 
 EP_Data(1:3,EP_Impacts) = LastPartPos(1:3,PartID)
 EP_Data(4:6,EP_Impacts) = v_old(1:3)
-EP_Data(7,EP_Impacts)   = REAL(PartSpecies(PartID))
-EP_Data(8,EP_Impacts)   = REAL(BCSideID)
-EP_Data(9,EP_Impacts)   = t_loc
-EP_Data(10,EP_Impacts)  = REAL(PartReflCount)
-EP_Data(11,EP_Impacts)  = e_kin_old
-EP_Data(12,EP_Impacts)  = e_kin_new
-EP_Data(13,EP_Impacts)  = PartFaceAngle_old
-EP_Data(14,EP_Impacts)  = PartFaceAngle
-IF(doPartIndex) EP_Data(15,EP_Impacts)  = PartIndex(PartID)
+EP_Data(7  ,EP_Impacts) = REAL(PartSpecies(PartID))
+EP_Data(8  ,EP_Impacts) = REAL(BCSideID)
+EP_Data(9  ,EP_Impacts) = t_loc
+EP_Data(10 ,EP_Impacts) = REAL(PartReflCount)
+EP_Data(11 ,EP_Impacts) = e_kin_old
+EP_Data(12 ,EP_Impacts) = e_kin_new
+EP_Data(13 ,EP_Impacts) = PartFaceAngle_old
+EP_Data(14 ,EP_Impacts) = PartFaceAngle
+IF(doPartIndex)                                      EP_Data(15                     ,EP_Impacts) = PartIndex(   PartID)
+IF(doParticleDispersionTrack.OR.doParticlePathTrack) EP_Data(EPDataSize-2:EPDataSize,EP_Impacts) = PartPath(1:3,PartID)
 
 END SUBROUTINE RecordErosionPoint
 
@@ -350,6 +351,7 @@ USE MOD_HDF5_Output           ,ONLY: WriteAttribute,MarkWriteSuccessfull
 USE MOD_HDF5_WriteArray       ,ONLY: WriteArray
 USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars           ,ONLY: ProjectName
+USE MOD_Particle_Analyze_Vars ,ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Vars         ,ONLY: doPartIndex
 #if USE_MPI
 USE MOD_Erosionpoints_Vars    ,ONLY: EP_COMM
@@ -429,6 +431,16 @@ StrVarNames(12)='E_kin_reflected'
 StrVarNames(13)='Alpha_impact'
 StrVarNames(14)='Alpha_reflected'
 IF (doPartIndex) StrVarNames(15)='Index'
+IF (doParticleDispersionTrack) THEN
+  StrVarNames(EPDataSize-2)='PartPathAbsX'
+  StrVarNames(EPDataSize-1)='PartPathAbsY'
+  StrVarNames(EPDataSize  )='PartPathAbsZ'
+END IF
+IF (doParticlePathTrack) THEN
+  StrVarNames(EPDataSize-2)='PartPathX'
+  StrVarNames(EPDataSize-1)='PartPathY'
+  StrVarNames(EPDataSize  )='PartPathZ'
+END IF
 
 ! Regenerate state file skeleton
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',OutputTime))

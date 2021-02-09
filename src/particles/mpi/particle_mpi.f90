@@ -121,7 +121,7 @@ SUBROUTINE InitParticleCommSize()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Analyze_Vars,    ONLY:doParticleDispersionTrack
+USE MOD_Particle_Analyze_Vars,    ONLY:doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars,   ONLY:doParticleReflectionTrack
 USE MOD_Particle_MPI_Vars
 USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
@@ -167,10 +167,10 @@ PartCommSize   = PartCommSize + 6
 PartCommSize   = PartCommSize + 1
 
 ! Include reflection counter
-IF(doParticleReflectionTrack) PartCommSize = PartCommSize + 1
+IF(doParticleReflectionTrack)                        PartCommSize = PartCommSize + 1
 
 ! Include dispersion path
-IF(doParticleDispersionTrack) PartCommSize = PartCommSize + 3
+IF(doParticleDispersionTrack.OR.doParticlePathTrack) PartCommSize = PartCommSize + 3
 
 ! additional stuff for full RK schemes, e.g. implicit and imex RK
 ! if iStage=0, then the PartStateN is not communicated
@@ -318,7 +318,7 @@ SUBROUTINE MPIParticleSend()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack
+USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,PartCommSize,PartSendBuf,PartRecvBuf,PartTargetProc
 USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors,ExchangeProcToGlobalProc
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex,doPartIndex
@@ -392,7 +392,7 @@ DO iProc=0,nExchangeProcessors-1
         jPos=jPos+1
       END IF
       !>> absolute particle path
-      IF (doParticleDispersionTrack) THEN
+      IF (doParticleDispersionTrack.OR.doParticlePathTrack) THEN
         PartSendBuf(iProc)%content(1+jPos:3+jPos) = PartPath(1:3,iPart)
         jPos=jPos+3
       END IF
@@ -460,9 +460,9 @@ DO iPart=1,PDM%ParticleVecLength
   PartSpecies(  iPart) = 0
   IF (doPartIndex) PartIndex(    iPart) = 0
   Pt_temp(  1:6,iPart) = 0.
-  IF (doParticleReflectionTrack) PartReflCount(  iPart) = 0
-  IF (doParticleDispersionTrack) PartPath(     :,iPart) = 0.
-  IF (ALLOCATED(TurbPartState))  TurbPartState(:,iPart) = 0.
+  IF (doParticleReflectionTrack)                        PartReflCount(  iPart) = 0
+  IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartPath(     :,iPart) = 0.
+  IF (ALLOCATED(TurbPartState))                         TurbPartState(:,iPart) = 0.
 END DO ! iPart=1,PDM%ParticleVecLength
 
 ! 5) Allocate received buffer and open MPI_IRECV
@@ -533,7 +533,7 @@ SUBROUTINE MPIParticleRecv()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack
+USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPIExchange,PartCommSize,PartRecvBuf,PartSendBuf!,PartMPI
 USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex,doPartIndex
@@ -617,7 +617,7 @@ DO iProc=0,nExchangeProcessors-1
       jpos=jpos+1
     END IF
     !>> absolute particle path
-    IF (doParticleDispersionTrack) THEN
+    IF (doParticleDispersionTrack.OR.doParticlePathTrack) THEN
       PartPath(1:3,PartID)   = PartRecvBuf(iProc)%content(1+jPos:3+jPos)
       jPos=jPos+3
     END IF

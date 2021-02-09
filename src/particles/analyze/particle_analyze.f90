@@ -47,6 +47,10 @@ INTERFACE TrackingParticlePosition
   MODULE PROCEDURE TrackingParticlePosition
 END INTERFACE
 
+INTERFACE TrackingParticlePath
+  MODULE PROCEDURE TrackingParticlePath
+END INTERFACE
+
 PUBLIC :: InitParticleAnalyze
 PUBLIC :: ParticleAnalyze
 PUBLIC :: ParticleInformation
@@ -54,6 +58,7 @@ PUBLIC :: FinalizeParticleAnalyze
 PUBLIC :: DefineParametersParticleAnalyze
 PUBLIC :: CalcKineticEnergy
 PUBLIC :: TrackingParticlePosition
+PUBLIC :: TrackingParticlePath
 !==================================================================================================================================
 
 CONTAINS
@@ -69,16 +74,17 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Particle Analyze")
 
-CALL prms%CreateIntOption(      'Part-AnalyzeStep'      , 'Analyze is performed each Nth time step','1')
-CALL prms%CreateLogicalOption(  'CalcKineticEnergy'     , 'Calculate Kinetic Energy. ','.FALSE.')
-CALL prms%CreateLogicalOption(  'CalcPartBalance'       , 'Calculate the Particle Kinetic Energy Balance'//&
-                                                          '- input and outflow kinetic energy of all particles','.FALSE.')
-CALL prms%CreateLogicalOption(  'Part-TrackPosition'    , 'Track particle position','.FALSE.')
-CALL prms%CreateLogicalOption(  'Part-TrackConvergence' , 'Track particle convergence (i.e. final position)','.FALSE.')
-CALL prms%CreateLogicalOption(  'Part-TrackDispersion'  , 'Track particle convergence radius (i.e. absolute path)','.FALSE.')
-CALL prms%CreateLogicalOption(  'printDiff'             , '.FALSE.')
-CALL prms%CreateRealOption(     'PrintDiffTime'         , '12')
-CALL prms%CreateRealArrayOption('printDiffVec'          , '0. , 0. , 0. , 0. , 0. , 0.')
+CALL prms%CreateIntOption(      'Part-AnalyzeStep'        , 'Analyze is performed each Nth time step','1')
+CALL prms%CreateLogicalOption(  'CalcKineticEnergy'       , 'Calculate Kinetic Energy. ','.FALSE.')
+CALL prms%CreateLogicalOption(  'CalcPartBalance'         , 'Calculate the Particle Kinetic Energy Balance'//&
+                                                            '- input and outflow kinetic energy of all particles','.FALSE.')
+CALL prms%CreateLogicalOption(  'Part-TrackPosition'      , 'Track particle position','.FALSE.')
+CALL prms%CreateLogicalOption(  'Part-TrackConvergence'   , 'Track particle convergence (i.e. final position)','.FALSE.')
+CALL prms%CreateLogicalOption(  'Part-TrackDispersion'    , 'Track particle convergence radius (i.e. absolute path)','.FALSE.')
+CALL prms%CreateLogicalOption(  'Part-TrackPath'          , 'Track particle path (i.e. relative path)','.FALSE.')
+CALL prms%CreateLogicalOption(  'printDiff'               , '.FALSE.')
+CALL prms%CreateRealOption(     'PrintDiffTime'           , '12')
+CALL prms%CreateRealArrayOption('printDiffVec'            , '0. , 0. , 0. , 0. , 0. , 0.')
 
 END SUBROUTINE DefineParametersParticleAnalyze
 
@@ -161,8 +167,12 @@ IF(doParticlePositionTrack) THEN
   END IF
 END IF
 
-doParticleDispersionTrack = GETLOGICAL('Part-TrackDispersion','.FALSE.')
-IF(doParticleDispersionTrack) THEN
+doParticleDispersionTrack    = GETLOGICAL('Part-TrackDispersion','.FALSE.')
+doParticlePathTrack          = GETLOGICAL('Part-TrackPath'      ,'.FALSE.')
+IF (doParticleDispersionTrack .AND. doParticlePathTrack) &
+  CALL CollectiveStop(__STAMP__,'doParticleDispersionTrack and doParticlePathTrack cannot be enabled at the same time!')
+
+IF(doParticleDispersionTrack .OR. doParticlePathTrack) THEN
   ALLOCATE(PartPath(1:3,PDM%maxParticleNumber))
   PartPath = 0.
 END IF
@@ -435,6 +445,39 @@ END IF
 104    FORMAT (e25.14)
 
 END SUBROUTINE TrackingParticlePosition
+
+
+SUBROUTINE TrackingParticlePath()
+!===================================================================================================================================
+! Outputs the particle position and velocity at every time step. Use only for debugging purposes
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Vars,          ONLY: PartState,PDM,LastPartPos
+USE MOD_Particle_Analyze_Vars,  ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: iPart
+!===================================================================================================================================
+
+! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
+IF (doParticleDispersionTrack) THEN
+  DO iPart = 1,PDM%ParticleVecLength
+    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+  END DO
+ELSEIF (doParticlePathTrack) THEN
+  DO iPart = 1,PDM%ParticleVecLength
+    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) +    (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+  END DO
+END IF
+
+END SUBROUTINE TrackingParticlePath
+
 
 
 SUBROUTINE FinalizeParticleAnalyze()

@@ -385,7 +385,7 @@ IF (alpha.GT.-1) THEN
   IF(PRESENT(IntersectPoint_Opt)) IntersectPoint_Opt = IntersectPoint
 END IF
 
-! reset the LastParPos to its original value
+! reset the LastPartPos to its original value
 LastPartPos(1:3,PartID) = LastPosTmp(1:3)
 
 END SUBROUTINE PartInElemCheck

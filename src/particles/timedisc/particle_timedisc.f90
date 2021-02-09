@@ -66,7 +66,8 @@ USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
-USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack
+USE MOD_Particle_Analyze,        ONLY: TrackingParticlePath
+USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
@@ -154,11 +155,7 @@ IF (t.GE.DelayTime) THEN
 END IF
 
 ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
-IF (doParticleDispersionTrack) THEN
-  DO iPart=1,PDM%ParticleVecLength
-    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
-  END DO
-END IF
+IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath
 
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_PUSH,tLBStart)
@@ -311,7 +308,8 @@ USE MOD_FV_Vars,                 ONLY: FV_toDGinRK
 #endif
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
-USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack,RecordPart
+USE MOD_Particle_Analyze,        ONLY: TrackingParticlePath
+USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,LastPartPos,PartSpecies,Species
@@ -364,14 +362,7 @@ IF (t.GE.DelayTime) THEN
   END DO
 
   ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
-  IF (doParticleDispersionTrack) THEN
-    DO iPart = 1,PDM%ParticleVecLength
-      ! Cycle since PDM does not need to be filled
-      IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
-
-      IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
-    END DO
-  END IF
+  IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath
 
   IF (RecordPart) CALL ParticleRecord(t)
 
@@ -519,7 +510,8 @@ USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
-USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack,RecordPart
+USE MOD_Particle_Analyze,        ONLY: TrackingParticlePath
+USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Tracking,       ONLY: ParticleTracing,ParticleRefTracking,ParticleTriaTracking
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
@@ -614,14 +606,7 @@ IF (t.GE.DelayTime) THEN
   END DO
 
   ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
-  IF (doParticleDispersionTrack) THEN
-    DO iPart = 1,PDM%ParticleVecLength
-      ! Cycle since PDM does not need to be filled
-      IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
-
-      IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
-    END DO
-  END IF
+  IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath()
 
   IF (RecordPart) CALL ParticleRecord(t)
 

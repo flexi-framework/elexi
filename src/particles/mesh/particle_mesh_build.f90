@@ -2374,7 +2374,16 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 #endif /*USE_MPI*/
 MDEALLOCATE(PeriodicFound)
 
-SWRITE(UNIT_StdOut,'(A,I0,A)') ' | Found ',GEO%nPeriodicVectors,' periodic vectors for particle tracking'
+#if USE_MPI
+IF (myRank.EQ.0) THEN
+#endif /*USE_MPI*/
+  WRITE(UNIT_StdOut,'(A,I0,A)') ' Found ',GEO%nPeriodicVectors,' periodic vectors for particle tracking'
+  DO iVec = 1,GEO%nPeriodicVectors
+    WRITE(UNIT_stdOut,'(A,I1,A,F12.5,2(", ",F12.5))') ' | Periodic vector ',iVec,': ', GEO%PeriodicVectors(:,iVec)
+  END DO
+#if USE_MPI
+END IF
+#endif /*USE_MPI*/
 
 END SUBROUTINE ComputePeriodicVec
 

@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -224,19 +224,16 @@ REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:,:)
 #if PP_dim == 2
 INTEGER                        :: BCindex
 #endif
-INTEGER                        :: iElem,nbElemID
-INTEGER                        :: nNodes
-INTEGER                        :: ReduceData(10)
-#if USE_MPI
-INTEGER                        :: ReduceData_glob(10)
-#endif
+INTEGER                        :: iElem,nbElemID,nNodes
 INTEGER                        :: iLocSide,nbLocSide
 INTEGER                        :: iSide
 INTEGER                        :: FirstSideInd,LastSideInd,FirstElemInd,LastElemInd
 INTEGER                        :: nPeriodicSides,nMPIPeriodics
+INTEGER                        :: ReduceData(10)
 INTEGER                        :: nSideIDs,offsetSideID
 INTEGER                        :: iMortar,jMortar,nMortars
 #if USE_MPI
+INTEGER                        :: ReduceData_glob(10)
 INTEGER                        :: iNbProc
 INTEGER                        :: iProc
 INTEGER,ALLOCATABLE            :: MPISideCount(:)

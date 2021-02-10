@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -42,9 +42,9 @@ IMPLICIT NONE
 CALL prms%SetSection("EddyViscParameters")
 ! Smagorinksy model parameters
 CALL prms%CreateIntFromStringOption('eddyViscType', "(0) none: No eddy viscosity, (1) Smagorinsky",'none')
-CALL addStrListEntry(               'eddyViscType','none',0)
+CALL addStrListEntry(               'eddyViscType','none'       ,0)
 CALL addStrListEntry(               'eddyViscType','smagorinsky',1)
-CALL addStrListEntry(               'eddyViscType','vreman',2)
+CALL addStrListEntry(               'eddyViscType','vreman'     ,2)
 CALL prms%CreateRealOption(         'CS',          "EddyViscParameters constant")
 CALL prms%CreateRealOption(         'PrSGS',       "Turbulent Prandtl number",'0.7')
 CALL prms%CreateLogicalOption(      'VanDriest',   "Van Driest damping, only for channel flow!", '.FALSE.')

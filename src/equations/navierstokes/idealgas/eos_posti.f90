@@ -556,7 +556,7 @@ END FUNCTION FillQcriterion
 !==================================================================================================================================
 !> Calculate the wall friction in direction dir.
 !==================================================================================================================================
-FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallFriction)
+PURE FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallFriction)
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Viscosity

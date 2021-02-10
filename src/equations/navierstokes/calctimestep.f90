@@ -64,6 +64,15 @@ REAL                         :: KappasPr_max
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 
+#if USE_PARTICLES
+! Currently these arrays do not get correctly deallocated when running in Release mode. Working fine in Debug. As a workaround, just
+! deallocate them here if they are still allocated
+SDEALLOCATE(MetricsAdv)
+#if PARABOLIC
+SDEALLOCATE(MetricsVisc)
+#endif
+#endif /* USE_PARTICLES */
+
 ALLOCATE(MetricsAdv(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
 DO FVE=0,FV_ENABLED
   DO iElem=1,nElems

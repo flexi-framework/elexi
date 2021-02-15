@@ -275,6 +275,7 @@ USE MOD_EOS,                ONLY: PrimToCons
 #if FV_ENABLED
 USE MOD_FV,                 ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars,            ONLY: FV_Elems
+USE MOD_HDF5_Input,         ONLY: DatasetExists
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
 #endif /*FV_ENABLED*/
@@ -305,6 +306,7 @@ REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
 LOGICAL            :: doFlushFiles_loc
 #if FV_ENABLED
+LOGICAL            :: RestartFV
 INTEGER            :: nVal(15),iVar
 REAL,ALLOCATABLE   :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
@@ -331,21 +333,24 @@ IF(DoRestart)THEN
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 #if FV_ENABLED
   ! Read FV element distribution and indicator values from elem data array if possible
-  CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData)
-  ALLOCATE(ElemData(nVal(1),nVal(2)))
-  ElemData = RESHAPE(tmp,(/nVal(1),nVal(2)/))
-  ! search for FV_Elems and IndValue
-  FV_Elems=0
-  IndValue=0.
-  DO iVar=1,nVal(1)
-    IF (STRICMP(VarNamesElemData(iVar),"FV_Elems")) THEN
-      FV_Elems = INT(ElemData(iVar,:))
-    END IF
-    IF (STRICMP(VarNamesElemData(iVar),"IndValue")) THEN
-      IndValue = ElemData(iVar,:)
-    END IF
-  END DO
-  DEALLOCATE(ElemData,VarNamesElemData,tmp)
+  CALL DatasetExists(File_ID,'ElemData',RestartFV)
+  IF (RestartFV) THEN
+    CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData)
+    ALLOCATE(ElemData(nVal(1),nVal(2)))
+    ElemData = RESHAPE(tmp,(/nVal(1),nVal(2)/))
+    ! search for FV_Elems and IndValue
+    FV_Elems=0
+    IndValue=0.
+    DO iVar=1,nVal(1)
+      IF (STRICMP(VarNamesElemData(iVar),"FV_Elems")) THEN
+        FV_Elems = INT(ElemData(iVar,:))
+      END IF
+      IF (STRICMP(VarNamesElemData(iVar),"IndValue")) THEN
+        IndValue = ElemData(iVar,:)
+      END IF
+    END DO
+    DEALLOCATE(ElemData,VarNamesElemData,tmp)
+  END IF
   CALL FV_ProlongFVElemsToFace()
 #endif
 

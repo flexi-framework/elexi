@@ -87,7 +87,7 @@ END SUBROUTINE LocateParticleInElement
 !> This function maps a 3D point to an element
 !> returns elementID or -1 in case no element was found
 !===================================================================================================================================
-INTEGER FUNCTION SinglePointToElement(Pos3D,doHALO)
+INTEGER FUNCTION SinglePointToElement(Pos3D,doHALO,doEmission_opt)
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
@@ -108,6 +108,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,INTENT(IN)                   :: Pos3D(1:3)
 LOGICAL,INTENT(IN)                :: doHalo
+LOGICAL,INTENT(IN),OPTIONAL       :: doEmission_opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -116,7 +117,7 @@ LOGICAL,INTENT(IN)                :: doHalo
 INTEGER                           :: iBGMElem,nBGMElems,ElemID,CNElemID, iBGM,jBGM,kBGM
 REAL                              :: Distance2, RefPos(1:3)
 REAL                              :: Det(6,2)
-LOGICAL                           :: InElementCheck
+LOGICAL                           :: InElementCheck,doEmission
 !===================================================================================================================================
 
 SinglePointToElement = -1
@@ -169,16 +170,18 @@ DO iBGMElem = 1,nBGMElems
     CASE(TRIATRACKING)
       CALL ParticleInsideQuad3D(Pos3D(1:3),ElemID,InElementCheck,Det)
 
-    ! CASE(TRACING)
-    !   CALL GetPositionInRefElem(Pos3D(1:3),RefPos,ElemID)
-    !   IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck = .TRUE.
-
-    ! FLEXI has ElemEpsOneCell also with TRACING
-    ! CASE(REFMAPPING)
-    CASE(TRACING,REFMAPPING)
+    CASE(TRACING)
       CALL GetPositionInRefElem(Pos3D(1:3),RefPos,ElemID)
-      IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck=.TRUE.
+      IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck = .TRUE.
 
+    CASE(REFMAPPING)
+      CALL GetPositionInRefElem(Pos3D(1:3),RefPos,ElemID)
+      doEmission = MERGE(doEmission_opt,.FALSE.,PRESENT(doEmission_opt))
+      IF(doEmission) THEN
+        IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck = .TRUE.
+      ELSE
+        IF (MAXVAL(ABS(RefPos)).LE.ElemEpsOneCell(CNElemID)) InElementCheck = .TRUE.
+      END IF
   END SELECT
 
   IF (InElementCheck) THEN

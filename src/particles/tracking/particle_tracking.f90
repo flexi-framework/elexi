@@ -1093,7 +1093,7 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
-USE MOD_Mesh_Vars              ,ONLY: OffSetElem,useCurveds,NGeo
+USE MOD_Mesh_Vars              ,ONLY: nElems,OffSetElem,useCurveds,NGeo
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Particle_Localization  ,ONLY: PartInElemCheck
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
@@ -1279,7 +1279,7 @@ DO iPart=1,PDM%ParticleVecLength
       ElemID = ListDistance(iBGMElem)
 #if USE_LOADBALANCE
       ! Cell is on current proc, assign load to new cell
-      IF (ElemID.GT.offsetElem+1 .AND. ElemID.LE.offsetElem+PP_nElems) &
+      IF (ElemID.GT.offsetElem+1 .AND. ElemID.LE.offsetElem+nElems) &
         nTracksPerElem(ElemID-offsetElem)=nTracksPerElem(ElemID-offsetElem)+1
 #endif /*USE_LOADBALANCE*/
       CALL GetPositionInRefElem(PartState(1:3,iPart),PartPosRef(1:3,iPart),ElemID)
@@ -2215,6 +2215,7 @@ SUBROUTINE FallBackFaceIntersection(ElemID,firstSide,LastSide,nlocSides,PartID)
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Particle_Boundary_Condition, ONLY: GetBoundaryInteraction
+USE MOD_Particle_Globals,            ONLY: VECNORM
 USE MOD_Particle_Localization,       ONLY: LocateParticleInElement
 USE MOD_Particle_Intersection,       ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Intersection,       ONLY: ComputePlanarCurvedIntersection
@@ -2251,7 +2252,7 @@ tmpVec                  = PartTrajectory
 LastPartPos(1:3,PartID) = ElemBaryNGeo(:,GetCNElemID(ElemID))
 
 PartTrajectory       = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
-lengthPartTrajectory = SQRT(SUM(PartTrajectory(1:3)**2.))
+lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
 IF (lengthPartTrajectory.GT.0) PartTrajectory = PartTrajectory/lengthPartTrajectory
 
 locAlpha  = -1.0

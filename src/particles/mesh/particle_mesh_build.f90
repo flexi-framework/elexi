@@ -184,7 +184,7 @@ DO iElem = firstElem,lastElem
   DO iNode = 1,8
     xPos = xPos + NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)+iNode)
   END DO
-    ElemBaryNGeo(:,iElem) = xPos/8.
+  ElemBaryNGeo(:,iElem) = xPos/8.
   DO iNode = 1,8
     xPos   = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)+iNode) - ElemBaryNGeo(:,iElem)
     Radius = MAX(Radius,VECNORM(xPos))
@@ -486,11 +486,6 @@ END DO ! iElem = firstElem,lastElem
 CALL MPI_WIN_SYNC(ElemEpsOneCell_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /* USE_MPI*/
-
-IF (ANY(ElemepsOneCell.EQ.-1)) THEN
-  IPWRITE(*,*) 'We goofed'
-  stop
-END IF
 
 !IF(CalcMeshInfo)THEN
 !  CALL AddToElemData(ElementOut,'epsOneCell',RealArray=epsOneCell(1:nElems))
@@ -1700,6 +1695,7 @@ lastElem  = nElems
 
 DO iElem = firstElem,lastElem
   ElemID = GetGlobalElemID(iElem)
+
   XCL_NGeoLoc = XCL_NGeo_Shared(1:3,0:NGeo,0:NGeo,0:NGeo,ElemID)
   ! 1) check if elem is curved
   !   a) get the coordinates of the eight nodes of the hexahedral
@@ -1716,8 +1712,7 @@ DO iElem = firstElem,lastElem
   !     Compare the bi-linear mapping with the used mapping
   !     For NGeo=1, this should always be true, because the mappings are identical
   CALL ChangeBasis3D(3,1,NGeo,Vdm_CLNGeo1_CLNGeo,XCL_NGeo1,XCL_NGeoNew)
-  ! check the coordinates of all Chebychev-Lobatto geometry points between the bi-linear and used
-  ! mapping
+  ! check the coordinates of all Chebychev-Lobatto geometry points between the bi-linear and used mapping
   CALL PointsEqual(NGeo3,XCL_NGeoNew,XCL_NGeoLoc(1:3,0:NGeo,0:NGeo,0:NGeo),ElemCurved(iElem))
 
   ! 2) check sides
@@ -2488,7 +2483,7 @@ dXCL_NGeo_Shared(1:3,1:3,0:NGeo,0:NGeo,0:NGeo,1:nGlobalElems) => dXCL_NGeo_Array
 DEALLOCATE(XCL_Ngeo)
 DEALLOCATE(dXCL_Ngeo)
 
-! Communicate XCL and dXCL between compute node rootss instead of calculating globally
+! Communicate XCL and dXCL between compute node roots instead of calculating globally
 CALL MPI_WIN_SYNC(XCL_NGeo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(Elem_xGP_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(dXCL_NGeo_Shared_Win,IERROR)
@@ -2812,7 +2807,7 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif
 !===================================================================================================================================
 #if USE_MPI
-! J_N is only build for local DG elements. Therefore, array is only filled for elements on the same compute node
+! J_N is only built for local DG elements. Therefore, array is only filled for elements on the same compute node
 offsetElemCNProc = offsetElem - offsetComputeNodeElem
 #else
 offsetElemCNProc = 0

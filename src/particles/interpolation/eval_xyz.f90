@@ -657,7 +657,7 @@ RefMappingGuessLoc = RefMappingGuess
 SELECT CASE(RefMappingGuessLoc)
 
   CASE(1)
-  CNElemID = GetCNElemID(ElemID)
+    CNElemID = GetCNElemID(ElemID)
     Ptild = X_in - ElemBaryNGeo(:,CNElemID)
     ! plus coord system (1-3) and minus coord system (4-6)
     DO iDir = 1,6

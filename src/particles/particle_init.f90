@@ -549,8 +549,8 @@ SELECT CASE(TrackingMethod)
 END SELECT
 
 DoInterpolation       = GETLOGICAL('Part-DoInterpolation','.TRUE.')
-IF (.NOT.DoInterpolation) &
-  CALL CollectiveStop(__STAMP__,'Simulation without particle interpolation currently not supported!')
+! IF (.NOT.DoInterpolation) &
+!   CALL CollectiveStop(__STAMP__,'Simulation without particle interpolation currently not supported!')
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS DONE'
 

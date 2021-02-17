@@ -43,33 +43,34 @@ SUBROUTINE ParticleRestart(doFlushFiles)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ErosionPoints,           ONLY: RestartErosionPoint
-USE MOD_ErosionPoints_Vars,      ONLY: doParticleImpactTrack
-USE MOD_Eval_XYZ,                ONLY: GetPositionInRefElem
+USE MOD_ErosionPoints,              ONLY: RestartErosionPoint
+USE MOD_ErosionPoints_Vars,         ONLY: doParticleImpactTrack
+USE MOD_Eval_XYZ,                   ONLY: GetPositionInRefElem
 USE MOD_HDF5_Input
-USE MOD_HDF5_Output,             ONLY: FlushFiles
-USE MOD_Mesh_Vars,               ONLY: offsetElem
-USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
-USE MOD_Particle_Boundary_Analyze,ONLY:CalcSurfaceValues
-USE MOD_Particle_Boundary_Vars,  ONLY: ImpactRestart,doParticleReflectionTrack
+USE MOD_HDF5_Output,                ONLY: FlushFiles
+USE MOD_Mesh_Vars,                  ONLY: offsetElem
+USE MOD_Part_Tools,                 ONLY: UpdateNextFreePosition
+USE MOD_Particle_Boundary_Analyze,  ONLY:CalcSurfaceValues
+USE MOD_Particle_Boundary_Vars,     ONLY: ImpactRestart,doParticleReflectionTrack
 USE MOD_Particle_Globals
-USE MOD_Particle_Localization,   ONLY: LocateParticleInElement
-USE MOD_Particle_Mesh_Vars,      ONLY: ElemEpsOneCell
-USE MOD_Particle_Mesh_Tools,     ONLY: GetCNElemID
+USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
+USE MOD_Particle_Localization,      ONLY: LocateParticleInElement,ParticleInsideQuad3D
+USE MOD_Particle_Mesh_Vars,         ONLY: ElemEpsOneCell
+USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
 USE MOD_Particle_Restart_Vars
-USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
-USE MOD_Particle_Vars,           ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies,PartPosRef,PartReflCount
-USE MOD_Restart_Vars,            ONLY: RestartTime,RestartFile
+USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
+USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies,PartPosRef,PartReflCount
+USE MOD_Restart_Vars,               ONLY: RestartTime,RestartFile
 #if USE_MPI
-USE MOD_Mesh_Vars,               ONLY: nGlobalElems
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Vars,       ONLY: PartMPI
+USE MOD_Mesh_Vars,                  ONLY: nGlobalElems
+USE MOD_Particle_MPI_Shared_Vars,   ONLY: nComputeNodeTotalElems
+USE MOD_Particle_MPI_Vars,          ONLY: PartMPI
 #endif /*MPI*/
 ! Particle turbulence models
-USE MOD_Particle_Vars,           ONLY: TurbPartState
-USE MOD_Particle_SGS_Vars,       ONLY: nSGSVars
+USE MOD_Particle_Vars,              ONLY: TurbPartState
+USE MOD_Particle_SGS_Vars,          ONLY: nSGSVars
 #if USE_RW
-USE MOD_Particle_RandomWalk_Vars,ONLY: nRWVars
+USE MOD_Particle_RandomWalk_Vars,   ONLY: nRWVars
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -89,7 +90,7 @@ INTEGER                  :: locnPart,offsetnPart
 INTEGER,PARAMETER        :: ELEM_FirstPartInd=1
 INTEGER,PARAMETER        :: ELEM_LastPartInd=2
 REAL,ALLOCATABLE         :: PartData(:,:)
-REAL                     :: xi(3)
+REAL                     :: xi(3),det(6,2)
 LOGICAL                  :: InElementCheck
 INTEGER                  :: COUNTER, COUNTER2
 #if USE_MPI
@@ -242,13 +243,14 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     COUNTER2 = 0
 
     DO i = 1,PDM%ParticleVecLength
-      CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
-      ! Particle already inside the correct element
-      CNElemID = GetCNElemID(PEM%Element(i))
 
       SELECT CASE(TrackingMethod)
-        ! CASE(REFMAPPING)
+        ! FLEXI has ElemEpsOneCell also with TRACING
         CASE(TRACING,REFMAPPING)
+          CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
+          CNElemID = GetCNElemID(PEM%Element(i))
+
+          ! Particle already inside the correct element
           IF(ALL(ABS(Xi).LE.ElemEpsOneCell(CNElemID))) THEN
             InElementCheck=.TRUE.
             PartPosRef(1:3,i)=Xi
@@ -256,15 +258,21 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
             InElementCheck=.FALSE.
           END IF
 
-        ! FLEXI has ElemEpsOneCell also with TRACING
-        ! CASE(TRACING,TRIATRACKING)
         CASE(TRIATRACKING)
-          IF(ALL(ABS(Xi).LE.1.0)) THEN ! particle inside
-            InElementCheck=.TRUE.
-            IF(ALLOCATED(PartPosRef)) PartPosRef(1:3,i)=Xi
+          IF (DoInterpolation) THEN
+            CALL GetPositionInRefElem(PartState(1:3,i),Xi,PEM%Element(i))
+            CNElemID = GetCNElemID(PEM%Element(i))
+
+            ! Particle already inside the correct element
+            IF(ALL(ABS(Xi).LE.1.0)) THEN
+              InElementCheck=.TRUE.
+              IF(ALLOCATED(PartPosRef)) PartPosRef(1:3,i)=Xi
+            ELSE
+              InElementCheck=.FALSE.
+            END IF
           ELSE
-            InElementCheck=.FALSE.
-          END IF
+            CALL ParticleInsideQuad3D(PartState(1:3,i),PEM%Element(i),InElementCheck,Det)
+          END IF ! DoInterpolation
       END SELECT
 
       ! Particle not inside the correct element, try to find them within the current proc

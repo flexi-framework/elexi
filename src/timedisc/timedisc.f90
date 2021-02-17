@@ -298,6 +298,12 @@ END IF
 CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                       FutureTime=tWriteData,isErrorFile=.FALSE.)
 
+#if USE_PARTICLES
+      ! Write individual particle surface impact data in rewritten state file after restart
+      IF(doParticleImpactTrack)  CALL WriteEP(OutputTime=t,resetCounters=.TRUE.)
+      IF(RecordPart)             CALL ParticleRecord(t,writeToBinary=.TRUE.)
+#endif /* USE_PARTICLES */
+
 CALL Visualize(t,U)
 
 ! No computation needed if tEnd=tStart!

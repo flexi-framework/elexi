@@ -38,9 +38,9 @@ INTERFACE RecordErosionPoint
   MODULE PROCEDURE RecordErosionPoint
 END INTERFACE
 
-!INTERFACE RestartErosionPoint
-!  MODULE PROCEDURE RestartErosionPoint
-!END INTERFACE
+INTERFACE RestartErosionPoint
+  MODULE PROCEDURE RestartErosionPoint
+END INTERFACE
 
 INTERFACE FinalizeErosionPoints
   MODULE PROCEDURE FinalizeErosionPoints
@@ -50,7 +50,7 @@ PUBLIC :: DefineParametersErosionPoints
 PUBLIC :: InitErosionPoints
 PUBLIC :: FinalizeErosionPoints
 PUBLIC :: RecordErosionPoint
-!PUBLIC :: RestartErosionPoint
+PUBLIC :: RestartErosionPoint
 PUBLIC :: WriteEP
 !==================================================================================================================================
 
@@ -272,69 +272,85 @@ IF(doParticleDispersionTrack.OR.doParticlePathTrack) EP_Data(EPDataSize-2:EPData
 END SUBROUTINE RecordErosionPoint
 
 
-! TODO: A state file only contains the impacts between the outputtime and the last write out. No need to restart this!
-!SUBROUTINE RestartErosionPoint
-!!==================================================================================================================================
-!!> Restarts the impact tracking. Needed before files are flushed
-!!==================================================================================================================================
-!USE MOD_Globals
-!USE MOD_IO_HDF5
-!USE MOD_HDF5_Input
-!USE MOD_HDF5_Output
-!USE MOD_Restart_Vars,               ONLY: RestartFile
-!USE MOD_Particle_Boundary_Vars
-!USE MOD_Erosionpoints_Vars
-!!----------------------------------------------------------------------------------------------------------------------------------!
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT/OUTPUT VARIABLES
-!
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!LOGICAL                        :: ImpactDataExists
-!INTEGER                        :: EP_glob
-!INTEGER                        :: ImpactDim              !dummy for rank of ImpactData
-!!==================================================================================================================================
-!!#if USE_MPI
-!! Ignore procs without erosion surfaces on them
-!!IF(SurfMesh%nSides.EQ.0) RETURN
-!!#endif
-!SWRITE(UNIT_stdOut,'(A,F0.3,A)')' RESTARTING PARTICLE IMPACT RECORDING FROM HDF5 FILE...'
-!
-!EP_Impacts = 0
-!
-!! Open the restart file and search for ImpactData
-!IF (MPIRoot) THEN
-!  CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
-!  CALL DatasetExists(File_ID,'ImpactData',ImpactDataExists)
-!
-!  IF (ImpactDataExists) THEN
-!    CALL GetDataSize(File_ID,'ImpactData',ImpactDim,HSize)
-!    CHECKSAFEINT(HSize(2),4)
-!    EP_glob    = INT(HSize(2))
-!    WRITE(UNIT_StdOut,'(A,I8)') ' | Number of impacts:                      ', EP_glob
-!    ! We lost the impact <-> proc association, so fill the entire array
-!    CALL ReadArray(ArrayName  = 'ImpactData'          , &
-!                   rank       = 2                      , &
-!                   nVal       = (/EPDataSize,EP_glob/) , &
-!                   offset_in  = 0                      , &
-!                   offset_dim = 2                      , &
-!                   RealArray  = EP_Data(1:EPDataSize,1:EP_glob))
-!  END IF
-!END IF
-!
-!! Root has significantly more load here, keep everything in sync
-!CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
-!
-!! Pretend all impacts happened on MPI_ROOT, so we can write out in the next state file write-out
-!IF(MPIRoot) THEN
-!  EP_Impacts = EP_glob
-!  WRITE(UNIT_stdOut,'(A,F0.3,A)')' RESTARTING PARTICLE IMPACT RECORDING FROM HDF5 FILE DONE'
-!  WRITE(UNIT_StdOut,'(132("-"))')
-!END IF
-!
-!END SUBROUTINE RestartErosionPoint
+SUBROUTINE RestartErosionPoint
+!==================================================================================================================================
+!> Restarts the impact tracking. Needed before files are flushed
+!==================================================================================================================================
+USE MOD_Globals
+USE MOD_Particle_Boundary_Vars
+USE MOD_Erosionpoints_Vars
+USE MOD_HDF5_Input                 ,ONLY: OpenDataFile,CloseDataFile,DatasetExists,GetDataSize
+USE MOD_HDF5_Input                 ,ONLY: ReadArray,File_ID,HSize
+USE MOD_Restart_Vars               ,ONLY: RestartFile
+!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+LOGICAL                        :: ImpactDataExists
+INTEGER                        :: EP_glob
+INTEGER                        :: ImpactDim              !dummy for rank of ImpactData
+#if USE_MPI
+INTEGER                        :: iProc
+INTEGER                        :: EP_iImpacts,offsetImpacts(0:nProcessors),offsetImpact
+#endif /* USE_MPI */
+!==================================================================================================================================
+
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' READING PARTICLE IMPACT DATA FROM HDF5 FILE...'
+
+EP_Impacts = 0
+
+! Open the restart file and search for ImpactData
+CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL DatasetExists(File_ID,'ImpactData',ImpactDataExists)
+
+IF (ImpactDataExists) THEN
+  CALL GetDataSize(File_ID,'ImpactData',ImpactDim,HSize)
+  CHECKSAFEINT(HSize(2),4)
+  EP_glob    = INT(HSize(2))
+
+#if USE_MPI
+  ! Distribute impacts between procs
+  offsetImpacts = 0
+  EP_Impacts    = EP_glob/nProcessors
+  EP_iImpacts   = EP_glob-EP_Impacts*nProcessors
+  DO iProc = 0,nProcessors-1
+    offsetImpacts(iProc) = EP_Impacts*iProc+MIN(iProc,EP_iImpacts)
+  END DO
+  offsetImpacts(nProcessors) = EP_glob
+
+  ! local impacts and offset
+  EP_Impacts    = offsetImpacts(myRank+1)-offsetImpacts(myRank)
+  offsetImpact  = offsetImpacts(myRank)
+#else
+  EP_Impacts    = EP_glob
+  offsetImpacts = 0
+#endif /* USE_MPI */
+
+  ! We lost the impact <-> proc association, so read in according to calculated distribution
+  CALL ReadArray(ArrayName  = 'ImpactData'              , &
+                 rank       = 2                         , &
+                 nVal       = (/EPDataSize,EP_Impacts/) , &
+                 offset_in  = offsetImpact              , &
+                 offset_dim = 2                         , &
+                 RealArray  = EP_Data(1:EPDataSize,1:EP_Impacts))
+END IF
+
+CALL CloseDataFile()
+
+! Keep everything in sync
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
+
+! Write out in the next state file write-out
+IF(MPIRoot) THEN
+  WRITE(UNIT_StdOut,'(A,I0,A)')  ' | ',EP_Impacts,' impact read from restart file'
+  WRITE(UNIT_StdOut,'(A,F0.3,A)')' READING PARTICLE IMPACT DATA FROM HDF5 FILE DONE'
+  WRITE(UNIT_StdOut,'(132("-"))')
+END IF
+
+END SUBROUTINE RestartErosionPoint
 
 
 !==================================================================================================================================

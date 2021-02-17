@@ -56,7 +56,7 @@ stages:
     policy: pull
   allow_failure: true
   rules:
-    - if: '$DO_NIGHTLY'
+    - if: '$DO_WEEKLY'
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "build": Build with intel/gnu on check-in

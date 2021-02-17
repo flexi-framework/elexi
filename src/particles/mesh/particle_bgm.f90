@@ -155,7 +155,8 @@ REAL,ALLOCATABLE               :: BoundsOfElemCenter(:),MPISideBoundsOfElemCente
 LOGICAL                        :: ElemInsideHalo
 INTEGER                        :: firstHaloElem,lastHaloElem
 ! FIBGMToProc
-INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize,dummy
+LOGICAL                        :: dummyLog
+INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize,dummyInt
 INTEGER                        :: BGMiDelta,BGMjDelta,BGMkDelta
 INTEGER                        :: BGMiglobDelta,BGMjglobDelta,BGMkglobDelta
 ! Periodic FIBGM
@@ -949,9 +950,9 @@ DO iElem = firstElem,lastElem
                   posRank => ProcRank*(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1) + (kBGM-1)*(BGMiglobDelta+1)*(BGMjglobDelta+1) + (jBGM-1)*(BGMiglobDelta+1) + (iBGM-1))
 
           ! Increment number of elements on FIBGM cell
-          CALL MPI_FETCH_AND_OP(increment,dummy,MPI_INTEGER,0,INT(4*posElem,MPI_ADDRESS_KIND),MPI_SUM,FIBGM_nTotalElems_Shared_Win,IERROR)
+          CALL MPI_FETCH_AND_OP(increment,dummyInt,MPI_INTEGER,0,INT(4*posElem,MPI_ADDRESS_KIND),MPI_SUM,FIBGM_nTotalElems_Shared_Win,IERROR)
           ! Perform logical OR and place data on CN root
-          CALL MPI_FETCH_AND_OP(.TRUE.   ,dummy,MPI_LOGICAL,0,INT(4*posRank,MPI_ADDRESS_KIND),MPI_LOR,FIBGMToProcFlag_Shared_Win  ,IERROR)
+          CALL MPI_FETCH_AND_OP(.TRUE.   ,dummyLog,MPI_LOGICAL,0,INT(4*posRank,MPI_ADDRESS_KIND),MPI_LOR,FIBGMToProcFlag_Shared_Win  ,IERROR)
         END ASSOCIATE
       END DO
     END DO

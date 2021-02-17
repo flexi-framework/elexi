@@ -195,13 +195,6 @@ nSurfSample             = GETINT    ('Part-nSurfSample',TRIM(tmpStr))
 IF((nSurfSample.GT.1).AND.(TrackingMethod.EQ.TRIATRACKING)) &
   CALL abort(__STAMP__,'nSurfSample cannot be >1 if TriaTracking=T')
 
-! Calculate equidistant surface points
-ALLOCATE(XiEQ_SurfSample(0:nSurfSample))
-dXiEQ_SurfSample =2./REAL(nSurfSample)
-DO q=0,nSurfSample
-  XiEQ_SurfSample(q) = dXiEQ_SurfSample * REAL(q) - 1.
-END DO
-
 ! Allocate shared array for surf sides
 #if USE_MPI
 MPISharedSize = INT((3*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
@@ -508,6 +501,13 @@ END IF
 CALL MPI_WIN_SYNC(SurfSideArea_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #endif /*USE_MPI*/
+
+! Calculate equidistant surface points
+ALLOCATE(XiEQ_SurfSample(0:nSurfSample))
+dXiEQ_SurfSample =2./REAL(nSurfSample)
+DO q=0,nSurfSample
+  XiEQ_SurfSample(q) = dXiEQ_SurfSample * REAL(q) - 1.
+END DO
 
 ! get interpolation points and weights
 ALLOCATE( Xi_NGeo( 0:NGeo)  &

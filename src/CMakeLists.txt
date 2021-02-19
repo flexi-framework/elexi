@@ -354,6 +354,10 @@ IF (PARTICLES)
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/particles)
   FILE(GLOB_RECURSE particlesF90 ./src/particles/*.f90)
   LIST(APPEND flexiF90 ${particlesF90})
+
+  ADD_LIBRARY(memusagelib STATIC ./src/particles/globals/processmemusage.cxx)
+  SET_TARGET_PROPERTIES(memusagelib PROPERTIES LINKER_LANGUAGE CXX
+                                               COMPILE_FLAGS "-fPIC")
 ENDIF()
 
 

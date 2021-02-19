@@ -84,6 +84,14 @@ INTERFACE StringBeginsWith
   MODULE PROCEDURE StringBeginsWith
 END INTERFACE
 
+INTERFACE
+  SUBROUTINE processmemusage(memUsed,memAvail,memTotal) BIND(C, name='processmemusage')
+    USE ISO_C_BINDING,   ONLY : c_double
+    real(c_double) :: memUsed
+    real(c_double) :: memAvail
+    real(c_double) :: memTotal
+  END SUBROUTINE processmemusage
+END INTERFACE
 
 PUBLIC :: PI
 PUBLIC :: CROSSNORM
@@ -94,6 +102,7 @@ PUBLIC :: DOTPRODUCT
 PUBLIC :: UnitVector
 PUBLIC :: RandNormal
 PUBLIC :: StringBeginsWith
+PUBLIC :: processmemusage
 !===================================================================================================================================
 
 CONTAINS

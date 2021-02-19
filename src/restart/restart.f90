@@ -558,6 +558,7 @@ IF(DoRestart)THEN
 
     DEALLOCATE(U_local)
   END IF
+  DEALLOCATE(HSize)
   CALL CloseDataFile()
 
   IF (RestartMode.GT.1 .AND. .NOT.postiMode) THEN

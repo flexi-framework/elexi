@@ -640,6 +640,7 @@ END SUBROUTINE CalcMeanFlux
 SUBROUTINE FinalizeAnalyzeEquation()
 ! MODULES
 USE MOD_AnalyzeEquation_Vars
+USE MOD_TimeAverage,        ONLY: FinalizeTimeAverage
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -649,6 +650,8 @@ SDEALLOCATE(FileName_BodyForce)
 SDEALLOCATE(FileName_WallVel)
 SDEALLOCATE(FileName_MeanFlux)
 SDEALLOCATE(FileName_TotalStates)
+
+IF (doCalcTimeAverage) CALL FinalizeTimeAverage()
 END SUBROUTINE FinalizeAnalyzeEquation
 
 END MODULE MOD_AnalyzeEquation

@@ -606,7 +606,7 @@ END SUBROUTINE CalcMetrics
 SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
 ! MODULES
 USE MOD_Mathtools        ,ONLY: CROSS
-USE MOD_Mesh_Vars        ,ONLY: ElemToSide,MortarType,nSides
+USE MOD_Mesh_Vars        ,ONLY: ElemToSide,nSides,isMortarMesh,MortarType
 #if PP_dim == 2
 USE MOD_Mesh_Vars        ,ONLY: MortarInfo
 #endif
@@ -640,11 +640,14 @@ INTEGER            :: nMortars,tmp_MI(1:2),SideID_Mortar
 INTEGER            :: NormalDir,TangDir
 REAL               :: NormalSign
 REAL               :: Ja_Face_l(3,3,0:Nloc,0:ZDIM(Nloc))
-REAL               :: Mortar_Ja(3,3,0:Nloc,0:ZDIM(Nloc),4)
 REAL               :: Mortar_xGP( 3,0:Nloc,0:ZDIM(Nloc),4)
 REAL               :: tmp(        3,0:Nloc,0:ZDIM(Nloc))
 REAL               :: tmp2(       3,0:Nloc,0:ZDIM(Nloc))
+! Mortars
+REAL,ALLOCATABLE   :: Mortar_Ja(:,:,:,:,:)
 !==================================================================================================================================
+
+IF (isMortarMesh) ALLOCATE(Mortar_Ja(3,3,0:Nloc,0:ZDIM(Nloc),4))
 
 #if PP_dim == 3
 DO iLocSide=1,6
@@ -734,9 +737,10 @@ DO iLocSide=2,5
                              NormVec(:,:,:,0,SideID2),TangVec1(:,:,:,0,SideID2),&
                              TangVec2(:,:,:,0,SideID2),SurfElem(:,:,0,SideID2))
     END DO
-
   END IF
 END DO
+
+IF (isMortarMesh) DEALLOCATE(Mortar_Ja)
 
 END SUBROUTINE CalcSurfMetrics
 

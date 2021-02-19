@@ -265,6 +265,7 @@ USE MOD_DG,                ONLY:FinalizeDG
 USE MOD_Lifting,           ONLY:FinalizeLifting
 #endif /*PARABOLIC*/
 USE MOD_Filter,            ONLY:FinalizeFilter
+USE MOD_IO_HDF5,           ONLY:FinalizeIOHDF5
 USE MOD_Overintegration,   ONLY:FinalizeOverintegration
 USE MOD_Output,            ONLY:FinalizeOutput
 USE MOD_Analyze,           ONLY:FinalizeAnalyze
@@ -294,6 +295,7 @@ IMPLICIT NONE
 REAL                    :: Time                              !< Used to measure simulation time
 !==================================================================================================================================
 !Finalize
+CALL FinalizeIOHDF5()
 CALL FinalizeOutput()
 CALL FinalizeRecordPoints()
 CALL FinalizeAnalyze()

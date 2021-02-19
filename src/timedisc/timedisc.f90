@@ -362,9 +362,6 @@ CALL Analyze(t,iter,tend)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
-! This call gets overwritten by the following output
-!CALL PrintStatusLine(t,dt,tStart,tEnd)
-
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A,ES16.7)')'Initial Timestep  : ', dt
 IF(ViscousTimeStep)THEN
@@ -395,7 +392,12 @@ DO
   ! Only calculate time step if not running in stationary mode
   IF (.NOT.UseManualTimestep) THEN
 #endif
-    CALL DGTimeDerivative_weakForm(t)
+    ! If the previous step was an analyze routine, the fluxes are already calculated
+    IF (doAnalyze) THEN
+      doAnalyze=.FALSE.
+    ELSE
+      CALL DGTimeDerivative_weakForm(t)
+    END IF ! doAnalyze
 !#if USE_PARTICLES
 !    IF (.NOT.UseManualTimestep.AND.nCalcTimestep.LT.1) THEN
 !#else
@@ -533,7 +535,6 @@ DO
     iter_loc  = 0
     CalcTimeStart = FLEXITIME()
     tAnalyze  = MIN(tAnalyze+Analyze_dt,  tEnd)
-    doAnalyze = .FALSE.
   END IF !ANALYZE
 
 #if USE_LOADBALANCE

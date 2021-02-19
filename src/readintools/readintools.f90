@@ -177,6 +177,7 @@ PUBLIC :: prms
      private
      character(LEN=255) :: chars
   end type STR255
+
 !==================================================================================================================================
 
 CONTAINS
@@ -1910,9 +1911,15 @@ IF(ASSOCIATED(prms%firstlink))THEN
     NULLIFY(current)
     current => tmp
   END DO
+  ! Also nullify the last entry
+  DEALLOCATE(current%opt)
+  NULLIFY(current%opt)
+  DEALLOCATE(current)
+  NULLIFY(current)
 END IF
-prms%firstLink => null()
-prms%lastLink  => null()
+NULLIFY(prms%firstLink)
+NULLIFY(prms%lastLink)
+
 END SUBROUTINE FinalizeParameters
 
 END MODULE MOD_ReadInTools

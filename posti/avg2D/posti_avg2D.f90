@@ -192,7 +192,6 @@ END DO ! iDataset = 1, SIZE(tmpDatasetNames)
 SDEALLOCATE(tmpDatasetNames)
 SDEALLOCATE(Elem_IJK)
 
-
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &

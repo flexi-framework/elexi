@@ -535,6 +535,7 @@ DO
     iter_loc  = 0
     CalcTimeStart = FLEXITIME()
     tAnalyze  = MIN(tAnalyze+Analyze_dt,  tEnd)
+    doAnalyze=.FALSE.
   END IF !ANALYZE
 
 #if USE_LOADBALANCE

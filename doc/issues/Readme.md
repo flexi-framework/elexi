@@ -7,9 +7,17 @@ Random walk is not walking (working).
 # Subgrid-Scale
 Sometimes gives infinite pushes. Also lacks proper high-order accurate time integration (Anna, Marcel say it might be okay).
 
+# RefMapping
+Random crashes on Hawk when running huge grids.<br/>
+```
+Tolerance Issue with internal element
+halo-elem = T
+```
+
 # ParaView
 ## Parallel VTU
-Parallel VTUs can only be read with a number of processors smaller than the number of corresponding .vtu files. Otherwise, random gradients appear messed up.
+Distributed Data Filter does not correctly find the global node IDs and crashes due to missing points. We need to build the unique global node IDs and give them to ParaView. Current idea is to modify CreateConnectivity, so MPI root builds the global IDs and distributes them to the procs.
+
 ## Surface Visu
 Currently, SurfStates can only be visualized with paraviewposti.<br/>
 - Step 1: Move SurfState to normal state file.<br/>

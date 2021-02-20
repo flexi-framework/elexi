@@ -1093,7 +1093,7 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
-USE MOD_Mesh_Vars              ,ONLY: nElems,OffSetElem,useCurveds,NGeo
+USE MOD_Mesh_Vars              ,ONLY: OffSetElem,useCurveds,NGeo
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Particle_Localization  ,ONLY: PartInElemCheck
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
@@ -1107,6 +1107,7 @@ USE MOD_Particle_Tracking_Vars ,ONLY: nTracks,Distance,ListDistance,CartesianPer
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,TurbPartState,PartPosRef,LastPartPos,PartSpecies
 #if USE_LOADBALANCE
+USE MOD_Mesh_Vars              ,ONLY: nElems
 USE MOD_LoadBalance_Vars       ,ONLY: nTracksPerElem
 USE MOD_LoadBalance_Timers     ,ONLY: LBStartTime, LBElemPauseTime, LBPauseTime
 #endif /*USE_LOADBALANCE*/
@@ -2228,7 +2229,7 @@ USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID,GetCNSideID
 USE MOD_Particle_Surfaces_Vars,      ONLY: SideType
 USE MOD_Particle_Utils,              ONLY: InsertionSort
 USE MOD_Particle_Vars,               ONLY: PDM,PartState,LastPartPos
-USE MOD_Particle_Vars,               ONLY: PartPosRef
+! USE MOD_Particle_Vars,               ONLY: PartPosRef
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

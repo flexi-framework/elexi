@@ -586,7 +586,9 @@ USE MOD_Particle_Tracking_Vars      ,ONLY: TrackingMethod,Distance,ListDistance
 USE MOD_Particle_MPI_Shared_vars    ,ONLY: MPI_COMM_SHARED
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
+USE MOD_LoadBalance_Vars            ,ONLY: PerformLoadBalance
+#else
+USE MOD_LoadBalance_Vars            ,ONLY: ElemTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -948,6 +950,11 @@ SDEALLOCATE(GEO%FIBGM)
 ! Tracking Vars
 SDEALLOCATE(Distance)
 SDEALLOCATE(ListDistance)
+
+! Load Balance
+#if !USE_LOADBALANCE
+SDEALLOCATE(ElemTime)
+#endif /* !USE_LOADBALANCE */
 
 ParticleMeshInitIsDone=.FALSE.
 

@@ -2229,6 +2229,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER,PARAMETER              :: iNode=1
+INTEGER                        :: iVec
 INTEGER                        :: firstElem,lastElem,iNbSide,BCALPHA
 INTEGER                        :: SideID,ElemID,GlobalSideID,NbElemID,localSideID,localSideNbID,nStart
 INTEGER                        :: CornerNodeIDswitch(8),NodeMap(4,6)
@@ -2236,7 +2237,6 @@ REAL,DIMENSION(3)              :: MasterCoords,SlaveCoords,PeriodicTmp
 LOGICAL,ALLOCPOINT             :: PeriodicFound(:)
 #if USE_MPI
 REAL,ALLOCATABLE               :: sendbuf(:),recvbuf(:,:)
-INTEGER                        :: iVec
 INTEGER                        :: PeriodicFound_Win
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif

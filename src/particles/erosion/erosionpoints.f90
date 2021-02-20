@@ -290,11 +290,11 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                        :: ImpactDataExists
-INTEGER                        :: EP_glob
+INTEGER                        :: EP_glob,offsetImpact
 INTEGER                        :: ImpactDim              !dummy for rank of ImpactData
 #if USE_MPI
 INTEGER                        :: iProc
-INTEGER                        :: EP_iImpacts,offsetImpacts(0:nProcessors),offsetImpact
+INTEGER                        :: EP_iImpacts,offsetImpacts(0:nProcessors)
 #endif /* USE_MPI */
 !==================================================================================================================================
 
@@ -326,7 +326,7 @@ IF (ImpactDataExists) THEN
   offsetImpact  = offsetImpacts(myRank)
 #else
   EP_Impacts    = EP_glob
-  offsetImpacts = 0
+  offsetImpact  = 0
 #endif /* USE_MPI */
 
   ! We lost the impact <-> proc association, so read in according to calculated distribution

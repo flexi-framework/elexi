@@ -2616,6 +2616,9 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides,SideInfo_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: NGeoElevated,XCL_NGeo_Shared
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalNonUniqueSideID!,GetGlobalElemID
 USE MOD_Particle_Surfaces        ,ONLY: GetBezierControlPoints3DElevated
+USE MOD_Particle_Surfaces_Vars   ,ONLY: XiBuf,MinMax,XiUp,XiDown
+USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints1D
+USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints2D,BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D,sVdm_Bezier
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3DElevated,BezierElevation
 #if USE_MPI
@@ -2630,7 +2633,7 @@ USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
 USE MOD_Mesh_Vars                ,ONLY: nElems
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
+USE MOD_LoadBalance_Vars         ,ONLY: PerformLoadBalance
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -2659,6 +2662,16 @@ IF (PerformLoadBalance) RETURN
 #endif
 
 SWRITE(UNIT_stdOut,'(A)') ' CALCULATING BezierControlPoints...'
+
+! BezierControlPoints1D and BezierControlPoints2D are only need on NGeo but see lots of memory churn in particle_intersection.f90
+ALLOCATE(XiBuf(0:NGeo,0:NGeo))
+ALLOCATE(MinMax(1:2,0:NGeo))
+ALLOCATE(xiup  (0:NGeo))
+ALLOCATE(xiDown(0:NGeo))
+ALLOCATE(BezierControlPoints1D(0:NGeo,0:NGeo))
+ALLOCATE(BezierControlPoints2D(2,0:NGeo,0:NGeo))
+ALLOCATE(BezierControlPoints2D_temp(2,0:NGeo,0:NGeo))
+ALLOCATE(BezierControlPoints2D_temp2(2,0:NGeo,0:NGeo))
 
 ! Build BezierControlPoints3D (compute-node local+halo)
 #if USE_MPI

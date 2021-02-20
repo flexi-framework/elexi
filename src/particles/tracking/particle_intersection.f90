@@ -355,7 +355,7 @@ USE MOD_Particle_Globals
 USE MOD_Mesh_Vars,               ONLY:NGeo
 USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,SideSlabNormals
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
+USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D,BezierControlPoints3D
 USE MOD_Particle_Surfaces_Vars,  ONLY:locXi,locEta,locAlpha,SideDistance
 USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
 USE MOD_Particle_Utils,          ONLY:InsertionSort
@@ -380,7 +380,6 @@ LOGICAL,INTENT(OUT),OPTIONAL             :: opt_CriticalParallelInSide
 ! LOCAL VARIABLES
 REAL                                     :: n1(3),n2(3)
 INTEGER                                  :: CNSideID,nInterSections,p,q
-REAL                                     :: BezierControlPoints2D(2,0:NGeo,0:NGeo)
 LOGICAL                                  :: CriticalParallelInSide
 REAL                                     :: XiNewton(2)
 REAL                                     :: coeffA,locSideDistance
@@ -847,7 +846,7 @@ USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
 USE MOD_Particle_Mesh_Vars,      ONLY:SideInfo_Shared
 USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,BezierNewtonAngle
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
+USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D,BezierControlPoints3D
 USE MOD_Particle_Surfaces_Vars,  ONLY:locXi,locEta,locAlpha
 USE MOD_Particle_Surfaces_Vars,  ONLY:BoundingBoxIsEmpty
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideSlabNormals
@@ -880,7 +879,6 @@ LOGICAL,INTENT(OUT),OPTIONAL             :: opt_CriticalParallelInSide
 REAL                                     :: n1(3),n2(3)
 INTEGER                                  :: CNSideID,nInterSections,iInter,p,q
 INTEGER                                  :: iClipIter,nXiClip,nEtaClip
-REAL                                     :: BezierControlPoints2D(2,0:NGeo,0:NGeo)
 #if CODE_ANALYZE
 REAL                                     :: BezierControlPoints2D_tmp(2,0:NGeo,0:NGeo)
 #endif /*CODE_ANALYZE*/
@@ -2132,9 +2130,10 @@ SUBROUTINE CheckXiClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory
 !   year = {2002},
 !================================================================================================================================
 USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Surfaces_Vars,  ONLY:XiArray
+USE MOD_Particle_Surfaces_Vars,  ONLY:XiArray,XiBuf,MinMax,XiUp,XiDown
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipLocalTol,FacNchooseK
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierSplitLimit
+USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints1D,BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
 #if CODE_ANALYZE
 USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
@@ -2157,16 +2156,10 @@ INTEGER(KIND=2),INTENT(INOUT)          :: ClipMode
 REAL,DIMENSION(2,2),INTENT(INOUT)      :: LineNormVec
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(0:NGeo,0:NGeo)        :: BezierControlPoints1D
-REAL                                 :: minmax(1:2,0:NGeo)
-REAL                                 :: BezierControlPoints2D_temp(2,0:NGeo,0:NGeo)
-REAL                                 :: BezierControlPoints2D_temp2(2,0:NGeo,0:NGeo)
 INTEGER                              :: p,q,l
 REAL                                 :: XiMin,XiMax,XiSplit,XiTmp
 REAL                                 :: PlusXi,MinusXi
 INTEGER                              :: tmpnClip,tmpnXi,tmpnEta
-REAL                                 :: xiup(0:NGeo),xidown(0:NGeo)
-REAL                                 :: XiBuf(0:NGeo,0:NGeo)
 REAL                                 :: dmin,dmax
 INTEGER(KIND=2)                      :: tmpClipMode
 REAL,DIMENSION(2,2)                  :: tmpLineNormVec
@@ -2528,6 +2521,8 @@ USE MOD_Mesh_Vars,               ONLY:NGeo
 USE MOD_Particle_Surfaces_Vars,  ONLY:EtaArray
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipLocalTol,FacNchooseK
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierSplitLimit
+USE MOD_Particle_Surfaces_Vars,  ONLY:MinMax,XiUp,XiDown,XiBuf
+USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
 #if CODE_ANALYZE
 USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
@@ -2551,19 +2546,18 @@ REAL,DIMENSION(2,2),INTENT(INOUT)      :: LineNormVec
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(0:NGeo,0:NGeo)        :: BezierControlPoints1D
-REAL                                 :: minmax(1:2,0:NGeo)
-REAL                                 :: BezierControlPoints2D_temp(2,0:NGeo,0:NGeo)
-REAL                                 :: BezierControlPoints2D_temp2(2,0:NGeo,0:NGeo)
 INTEGER                              :: p,q,l
 REAL                                 :: EtaMin,EtaMax,EtaSplit,EtaTmp
 REAL                                 :: PlusEta,MinusEta
 INTEGER                              :: tmpnClip,tmpnXi,tmpnEta
-REAL                                 :: etaup(0:NGeo),etadown(0:NGeo)
-REAL                                 :: EtaBuf(0:NGeo,0:NGeo)
 REAL                                 :: dmin,dmax
 INTEGER(KIND=2)                      :: tmpClipMode
 REAL,DIMENSION(2,2)                  :: tmpLineNormVec
 !================================================================================================================================
+
+ASSOCIATE(EtaUp   => XiUp   &
+         ,EtaDown => XiDown &
+         ,EtaBuf  => XiBuf)
 
 ! Bezier Clip (and Split) in eta
 DO q=0,NGeo
@@ -2897,6 +2891,8 @@ ELSE  ! no split necessary, only a clip
   END IF
   ! after recursive steps, we are done!
 END IF ! decision between Clip or Split
+
+END ASSOCIATE
 
 END SUBROUTINE CheckEtaClip
 

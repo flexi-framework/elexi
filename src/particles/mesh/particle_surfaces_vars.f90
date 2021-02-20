@@ -25,6 +25,14 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Global variables
 !-----------------------------------------------------------------------------------------------------------------------------------
+REAL,ALLOCATABLE,DIMENSION(:,:)         :: XiBuf
+REAL,ALLOCATABLE,DIMENSION(:,:)         :: minmax
+REAL,ALLOCATABLE,DIMENSION(:)           :: xiup
+REAL,ALLOCATABLE,DIMENSION(:)           :: xidown
+REAL,ALLOCATABLE,DIMENSION(:,:)         :: BezierControlPoints1D
+REAL,ALLOCATABLE,DIMENSION(:,:,:)       :: BezierControlPoints2D        ! Bezier basis control points of degree equal to NGeo
+REAL,ALLOCATABLE,DIMENSION(:,:,:)       :: BezierControlPoints2D_temp
+REAL,ALLOCATABLE,DIMENSION(:,:,:)       :: BezierControlPoints2D_temp2
 REAL,ALLOCPOINT,DIMENSION(:,:,:,:)      :: BezierControlPoints3D        ! Bezier basis control points of degree equal to NGeo
 REAL,ALLOCPOINT,DIMENSION(:,:,:,:)      :: BezierControlPoints3DElevated! Bezier basis control points of degree equal to NGeoElevated
 

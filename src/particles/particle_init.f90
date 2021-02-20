@@ -1619,7 +1619,9 @@ SUBROUTINE InitializeVariablesTimeStep()
 USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
-!USE MOD_Particle_Timedisc_Vars,   ONLY: useManualTimeStep,ManualTimeStep
+! USE MOD_Particle_Timedisc_Vars,  ONLY: useManualTimeStep,ManualTimeStep
+USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
+USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1629,12 +1631,28 @@ USE MOD_Particle_Vars
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                       :: iStage_loc
 !===================================================================================================================================
 !!--- Read Manual Time Step
 !useManualTimeStep = .FALSE.
 !!> ManualTimeStep_opt only gets passed when running Posti. InitTimedisc was not called, so get information here
 !IF (.NOT.PRESENT(ManualTimeStep_opt)) ManualTimeStep    = GETREAL('Part-ManualTimeStep', '0.0')
 !IF (ManualTimeStep.GT.0.0)            useManualTimeStep = .TRUE.
+
+! Rebuild Pt_tmp-coefficients assuming F=const. (value at wall) in previous stages
+ALLOCATE(Pa_rebuilt_coeff(1:nRKStages) &
+        ,Pa_rebuilt  (1:3,1:nRKStages) &
+        ,Pv_rebuilt  (1:3,1:nRKStages) &
+        ,v_rebuilt   (1:3,0:nRKStages-1))
+
+DO iStage_loc=1,nRKStages
+  IF (iStage_loc.EQ.1) THEN
+    Pa_rebuilt_coeff(iStage_loc) = 1.
+  ELSE
+    Pa_rebuilt_coeff(iStage_loc) = 1. - RKA(iStage_loc)*Pa_rebuilt_coeff(iStage_loc-1)
+  END IF
+END DO
+
 
 ! Time delay before initial particle inserting
 DelayTime         = GETREAL(   'Part-DelayTime'    ,'0.')
@@ -1657,6 +1675,7 @@ USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
 USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
 USE MOD_Particle_Surfaces,          ONLY: FinalizeParticleSurfaces
+USE MOD_Particle_TimeDisc_Vars,     ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
 USE MOD_Particle_Vars
 #if USE_MPI
 USE MOD_Particle_MPI_Emission,      ONLY: FinalizeEmissionComm
@@ -1692,6 +1711,10 @@ SDEALLOCATE(PartIndex)
 ! Runge-Kutta time stepping
 SDEALLOCATE(Pt)
 SDEALLOCATE(Pt_temp)
+SDEALLOCATE(Pa_rebuilt)
+SDEALLOCATE(Pa_rebuilt_coeff)
+SDEALLOCATE(Pv_rebuilt)
+SDEALLOCATE(v_rebuilt)
 
 ! particle position in reference coordinates
 SDEALLOCATE(PDM%ParticleInside)

@@ -164,7 +164,7 @@ ENDIF()
 # =========================================================================
 OPTION(PARTICLES "Enable particle tracking" OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_CODE_ANALYZE "Output code analyze messages"        OFF
-                                              "PARTICLES"                           ON )
+                                              "PARTICLES"                           OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_LOADBALANCE  "Use LoadBalance timemeasurement"     OFF
                                               "PARTICLES;LIBS_USE_MPI"              OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_RW           "Use random walk model for particles" OFF

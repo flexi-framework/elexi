@@ -29,5 +29,10 @@ LOGICAL           :: useManualTimeStep               !< Logical Flag for manual 
 CHARACTER(LEN=255):: ParticleTimeDiscMethod          !< name of specific time discretization scheme
 REAL              :: RKdtFrac
 REAL              :: RKdtFracTotal
+
+REAL,ALLOCATABLE  :: Pa_rebuilt_coeff(:)
+REAL,ALLOCATABLE  :: Pa_rebuilt(:,:)
+REAL,ALLOCATABLE  :: Pv_rebuilt(:,:)
+REAL,ALLOCATABLE  :: v_rebuilt(:,:)
 !===================================================================================================================================
 END MODULE MOD_Particle_TimeDisc_Vars

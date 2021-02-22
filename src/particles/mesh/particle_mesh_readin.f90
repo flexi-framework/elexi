@@ -871,10 +871,12 @@ END IF
 ! Write compute-node local SIDE_NBELEMTYPE
 CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+#endif  /*USE_MPI*/
 
 SideInfo_Shared(SIDE_NBELEMTYPE,offsetSideID+1:offsetSideID+nSideIDs) = SideInfo_Shared_tmp
 DEALLOCATE(SideInfo_Shared_tmp)
 
+#if USE_MPI
 ! final sync of all mesh shared arrays
 CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
 CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)

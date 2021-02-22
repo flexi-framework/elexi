@@ -1135,9 +1135,9 @@ CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
 
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
+#endif /*USE_MPI*/
 ! Then, free the pointers or arrays
 MDEALLOCATE(ElemToBGM_Shared)
-#endif /*USE_MPI*/
 
 END SUBROUTINE BuildBGMAndIdentifyHaloRegion
 
@@ -1162,8 +1162,6 @@ USE MOD_Particle_MPI_Shared_Vars
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
-!CALL MPI_WIN_UNLOCK_ALL(ElemToBGM_Shared_Win,iError)
-!CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(BoundsOfElem_Shared_Win,iError)
 CALL MPI_WIN_FREE(BoundsOfElem_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(FIBGM_nTotalElems_Shared_Win,iError)
@@ -1188,7 +1186,9 @@ SDEALLOCATE(CNTotalSide2GlobalSide)
 SDEALLOCATE(GlobalSide2CNTotalSide)
 #endif /*USE_MPI*/
 
-!MDEALLOCATE(ElemToBGM_Shared)
+MDEALLOCATE(FIBGM_nElems)
+MDEALLOCATE(FIBGM_offsetElem)
+MDEALLOCATE(FIBGM_Element)
 MDEALLOCATE(BoundsOfElem_Shared)
 MDEALLOCATE(FIBGM_nTotalElems_Shared)
 MDEALLOCATE(FIBGM_nElems_Shared)

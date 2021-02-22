@@ -216,6 +216,14 @@ SDEALLOCATE(SideBoundingBoxVolume)
 #endif
 
 ! CalcBezierControlPoints (MPI3 shared freed in FinalizeParticleMesh)
+SDEALLOCATE(XiBuf)
+SDEALLOCATE(MinMax)
+SDEALLOCATE(XiUp)
+SDEALLOCATE(XiDown)
+SDEALLOCATE(BezierControlPoints1D)
+SDEALLOCATE(BezierControlPoints2D)
+SDEALLOCATE(BezierControlPoints2D_temp)
+SDEALLOCATE(BezierControlPoints2D_temp2)
 #if USE_LOADBALANCE
 IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
@@ -657,10 +665,10 @@ IF (ALL(SideSlabNormals(:,1).EQ.0)) &
 
 SideSlabNormals(:,1)=SideSlabNormals(:,1)/SQRT(DOT_PRODUCT(SideSlabNormals(:,1),SideSlabNormals(:,1)))
 ! n_2=n_1 x (U_1+U_2) (U: corner vectors in eta-direction)
-SideSlabNormals(:,2)=BezierControlPoints3D(:,0,NGeoElevated)                      &
-                           -BezierControlPoints3D(:,0,0)                                         &
-                           +BezierControlPoints3D(:,NGeoElevated,NGeoElevated)   &
-                           -BezierControlPoints3D(:,NGeoElevated,0)
+SideSlabNormals(:,2) = BezierControlPoints3D(:,0,NGeoElevated)                      &
+                     - BezierControlPoints3D(:,0,0)                                         &
+                     + BezierControlPoints3D(:,NGeoElevated,NGeoElevated)   &
+                     - BezierControlPoints3D(:,NGeoElevated,0)
 
 !fehlt das?
 SideSlabNormals(:,2)=CROSSNORM(SideSlabNormals(:,1),SideSlabNormals(:,2))

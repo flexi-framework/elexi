@@ -449,10 +449,10 @@ int visuReader::RequestData(
          &strlen_prm, ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
-         &coords_DG,&values_DG,&nodeids_DG,
-         &coords_FV,&values_FV,&nodeids_FV,&varnames,
-         &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
-         &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf,
+         &coords_DG,&values_DG,&nodeids_DG,&globalnodeids_DG,
+         &coords_FV,&values_FV,&nodeids_FV,&globalnodeids_FV,&varnames,
+         &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,&globalnodeidsSurf_DG,
+         &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&globalnodeidsSurf_FV,&varnamesSurf,
          &coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,
          &coords_Erosion,&values_Erosion,&nodeids_Erosion,&varnames_Erosion,&components_Erosion);
 
@@ -487,10 +487,10 @@ int visuReader::RequestData(
    }
 
    // Insert DG data into output
-   InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &varnames);
+   InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &globalnodeids_DG, &varnames);
 
    // Insert FV data into output
-   InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames);
+   InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &globalnodeids_FV, &varnames);
 
 #if USE_MPI
    if (Controller->GetNumberOfProcesses() > 1) {
@@ -524,10 +524,10 @@ int visuReader::RequestData(
 
 
     // Insert Surface DG data into output
-   InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &varnamesSurf);
+   InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &globalnodeidsSurf_DG, &varnamesSurf);
 
     // Insert Surface FV data into output
-   InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
+   InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &globalnodeidsSurf_FV, &varnamesSurf);
 
 
 #if USE_PARTICLES
@@ -583,7 +583,7 @@ int visuReader::RequestData(
  * This function inserts the data, loaded by the Posti tool, into a ouput
  */
 void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
-      struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames) {
+      struct DoubleARRAY* values, struct IntARRAY* nodeids, struct IntARRAY* globalnodeids, struct CharARRAY* varnames) {
    vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(blockno));
 
    // create a 3D double array (must be 3D even we use a 2D Posti tool, since paraview holds the data in 3D)
@@ -652,9 +652,63 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
          cellarray->InsertNextCell(hex);
       }
       output->SetCells({VTK_HEXAHEDRON}, cellarray);
+
    } else {
       exit(1);
    }
+
+   // Insert the global node ids
+   vtkSmartPointer <vtkIntArray> gnodeids = vtkSmartPointer<vtkIntArray>::New();
+   gnodeids->SetNumberOfComponents(1);
+   gnodeids->SetNumberOfTuples(nodeids->len);
+   gnodeids->SetName("Global Node ID");
+   output->GetPointData()->AddArray(gnodeids);
+   // copy ids
+   int* gptr = gnodeids->GetPointer(0);
+   for (long i = 0; i < nodeids->len; ++i)
+   {
+     *gptr++ = globalnodeids->data[i];
+   }
+   /* output->GetPointData()->SetGlobalIds(gnodeids); */
+   /* printf("Node ID length     = %d\n", nodeids->len); // insert NVisu */
+   /* printf("Global node offset = %d\n", globalnodeids->data[0]); // insert NCalc */
+
+   // Insert the global cell Ids
+   /* vtkSmartPointer <vtkIntArray> gcellids = vtkSmartPointer<vtkIntArray>::New(); */
+   /* gcellids->SetNumberOfComponents(1); */
+   /* gcellids->SetName("Global Cell ID"); */
+   /* output->GetPointData()->AddArray(gcellids); */
+   /* // */
+   /* if (coords->dim == 1) { */
+   /*   gcellids->SetNumberOfTuples(nodeids->len/2); */
+   /*   // copy ids */
+   /*   int* cptr = gcellids->GetPointer(0); */
+   /*   for (long i = 0; i < nodeids->len/2; ++i) */
+   /*   { */
+   /*     *cptr++ = globalnodeids->data[i]/2+i-1; */
+   /*   } */
+   /* } else if (coords->dim == 2) { */
+   /*   gcellids->SetNumberOfTuples(nodeids->len/4); */
+   /*   // copy ids */
+   /*   int* cptr = gcellids->GetPointer(0); */
+   /*   for (long i = 0; i < nodeids->len/4; ++i) */
+   /*   { */
+   /*     *cptr++ = globalnodeids->data[i]/4+i-1; */
+   /*   } */
+   /* } else if (coords->dim == 3) { */
+   /*   unsigned int ncells = nodeids->len/8; */
+   /*   gcellids->SetNumberOfTuples(ncells); */
+   /*   // copy ids */
+   /*   int* cptr = gcellids->GetPointer(0); */
+   /*   for (long i = 0; i < ncells; ++i) */
+   /*   { */
+   /*     SWRITE("Node ID" << i); */
+   /*     *cptr++ = globalnodeids->data[8*i]/8 + i - 1; */
+   /*   } */
+   /* } else { */
+   /*   exit(1); */
+   /* } */
+   /* output->GetCellData()->SetGlobalIds(gcellids); */
 
    // assign the actual data, loaded by the Posti tool, to the output
    unsigned int nVar = varnames->len/255;

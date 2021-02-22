@@ -84,14 +84,16 @@ PUBLIC::CARRAY
 
 CONTAINS
 
-SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV)
+SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,globalnodeids,dim,DGFV)
 USE ISO_C_BINDING
 USE MOD_Globals
+USE MOD_Mesh_Vars,                      ONLY: offsetElem
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                       :: NVisu
 INTEGER,INTENT(IN)                       :: nElems
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)        !< stores the connectivity
+INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT),OPTIONAL :: globalnodeids(:)        !< stores the connectivity
 INTEGER,INTENT(IN)                       :: dim               !< 3 = 3d connectivity, 2 = 2d connectivity
 INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating DG = 0 or FV = 1 data
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -120,8 +122,8 @@ NVisu_p1_2 = (NVisu+1)**2
 
 nVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim*nElems
 SDEALLOCATE(nodeids)
+SDEALLOCATE(globalnodeids)
 ALLOCATE(nodeids((2**dim)*nVTKCells))
-
 
 ! create connectivity
 NodeID = 0
@@ -157,6 +159,12 @@ DO iElem=1,nElems
   END DO
   NodeIDElem=NodeIDElem+NVisu_elem
 END DO
+
+IF (PRESENT(globalnodeids)) THEN
+  ALLOCATE(globalnodeids((2**dim)*nVTKCells))
+  globalnodeids = nodeids + ((NVisu+DGFV)/(1+DGFV))**dim*offsetElem
+END IF
+
 END SUBROUTINE CreateConnectivity
 
 !===================================================================================================================================
@@ -416,7 +424,7 @@ END IF
 
 ! Connectivity and footer
 IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
-  CALL CreateConnectivity(NVisu,nTotalElems,nodeids,dim,DGFV_loc)
+  CALL CreateConnectivity(NVisu=NVisu,nElems=nTotalElems,nodeids=nodeids,dim=dim,DGFV=DGFV_loc)
 
   nBytes = PointsPerVTKCell*nVTKCells*SIZEOF_F(INTdummy)
   WRITE(ivtk) nBytes
@@ -567,7 +575,7 @@ END SUBROUTINE WriteParallelVTK
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D coordinates to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteCoordsToVTK_array(NVisu,nElems,coords_out,nodeids_out,coords,nodeids,dim,DGFV)
+SUBROUTINE WriteCoordsToVTK_array(NVisu,nElems,coords_out,nodeids_out,globalnodeids_out,coords,nodeids,globalnodeids,dim,DGFV)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
@@ -583,33 +591,41 @@ REAL,ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing c
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)
+INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: globalnodeids(:)
 TYPE (CARRAY), INTENT(INOUT)         :: coords_out
 TYPE (CARRAY), INTENT(INOUT)         :: nodeids_out
+TYPE (CARRAY), INTENT(INOUT)         :: globalnodeids_out
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
 coords_out%dim  = dim
+
 IF (nElems.EQ.0) THEN
-  coords_out%len  = 0
-  nodeids_out%len = 0
+  coords_out%len        = 0
+  nodeids_out%len       = 0
+  globalnodeids_out%len = 0
   RETURN
 END IF
+
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D COORDS TO VTX XML BINARY (VTU) ARRAY..."
 ! values and coords are already in the correct structure of VTK/Paraview
 
 ! create connectivity
-CALL CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV)
+CALL CreateConnectivity(NVisu=NVisu,nElems=nElems,nodeids=nodeids,globalnodeids=globalnodeids,dim=dim,DGFV=DGFV)
 
 ! set the sizes of the arrays
 coords_out%len = 3*(NVisu+1)**dim*nElems
 nodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
+globalnodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
 
 ! assign data to the arrays (no copy!!!)
 coords_out%data = C_LOC(Coords(1,0,0,0,1))
 nodeids_out%data = C_LOC(nodeids(1))
+globalnodeids_out%data = C_LOC(globalnodeids(1))
 
 SWRITE(UNIT_stdOut,'(A)')" Done!"
+
 END SUBROUTINE WriteCoordsToVTK_array
 
 !===================================================================================================================================

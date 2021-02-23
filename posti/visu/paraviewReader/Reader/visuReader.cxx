@@ -669,9 +669,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
    {
      *gptr++ = globalnodeids->data[i];
    }
-   /* output->GetPointData()->SetGlobalIds(gnodeids); */
-   /* printf("Node ID length     = %d\n", nodeids->len); // insert NVisu */
-   /* printf("Global node offset = %d\n", globalnodeids->data[0]); // insert NCalc */
+   output->GetPointData()->SetGlobalIds(gnodeids);
 
    // Insert the global cell Ids
    /* vtkSmartPointer <vtkIntArray> gcellids = vtkSmartPointer<vtkIntArray>::New(); */

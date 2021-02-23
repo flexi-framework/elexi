@@ -101,7 +101,7 @@ INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating
 INTEGER           :: i,j,k,iElem
 INTEGER           :: NodeID,NodeIDElem
 INTEGER           :: NVisu_k, NVisu_j, NVisu_elem, NVisu_p1_2
-INTEGER           :: nVTKCells
+INTEGER           :: nVTKCells, fVTKCells
 !===================================================================================================================================
 IF (dim.EQ.3) THEN
   NVisu_k = NVisu
@@ -120,7 +120,8 @@ END IF
 NVisu_elem = (NVisu+1)**dim
 NVisu_p1_2 = (NVisu+1)**2
 
-nVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim*nElems
+fVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim
+nVTKCells  = fVTKCells*nElems
 SDEALLOCATE(nodeids)
 SDEALLOCATE(globalnodeids)
 ALLOCATE(nodeids((2**dim)*nVTKCells))
@@ -162,7 +163,7 @@ END DO
 
 IF (PRESENT(globalnodeids)) THEN
   ALLOCATE(globalnodeids((2**dim)*nVTKCells))
-  globalnodeids = nodeids + ((NVisu+DGFV)/(1+DGFV))**dim*offsetElem
+  globalnodeids = nodeids + (2**dim)*fVTKCells*offsetElem
 END IF
 
 END SUBROUTINE CreateConnectivity

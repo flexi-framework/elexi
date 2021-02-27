@@ -711,13 +711,13 @@ ReduceData(10)=nMPIPeriodics
 CALL FinishCommunicateMeshReadin()
 #endif /*USE_PARTICLES*/
 
-#if USE_MPI
-CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-ReduceData=ReduceData_glob
-#endif /*USE_MPI*/
-
 ! Store information if mesh has mortars, independent of existence of trees
 meshHasMortars = MERGE(.TRUE.,.FALSE.,ReduceData(9).GT.0)
+
+#if USE_MPI
+CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+IF(MPIRoot) ReduceData=ReduceData_glob
+#endif /*USE_MPI*/
 
 IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nElems               | ',ReduceData(1) !nElems

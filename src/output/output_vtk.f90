@@ -123,7 +123,7 @@ NVisu_p1_2 = (NVisu+1)**2
 fVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim
 nVTKCells  = fVTKCells*nElems
 SDEALLOCATE(nodeids)
-SDEALLOCATE(globalnodeids)
+PDEALLOCATE(globalnodeids)
 ALLOCATE(nodeids((2**dim)*nVTKCells))
 
 ! create connectivity

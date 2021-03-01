@@ -127,7 +127,7 @@ INTEGER                          :: iPart
 ! Iterate over all particles and add random walk to mean push
 DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
-    CALL ParticleRandomWalkPush(iPart,t,FieldAtParticle(1:PP_nVar,iPart))
+    CALL ParticleRandomWalkPush(iPart,t,FieldAtParticle(1:PP_nVarPrim,iPart))
   END IF
 END DO
 
@@ -150,7 +150,7 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)  :: PartID
 REAL,INTENT(IN)     :: t
-REAL,INTENT(IN)     :: FieldAtParticle(1:PP_nVar)
+REAL,INTENT(IN)     :: FieldAtParticle(1:PP_nVarPrim)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -162,7 +162,7 @@ REAL,PARAMETER      :: C_L = 0.3                                                
 REAL                :: ReP
 REAL                :: Cd
 REAL                :: lambda(3)
-REAL                :: rho_p,Vol,r
+REAL                :: rho_p,d
 REAL                :: nu
 INTEGER             :: i
 !===================================================================================================================================
@@ -204,8 +204,7 @@ CASE('Gosman')
   C_mu    = betaStar
 
   ! Assume spherical particles for now
-  Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
-  r       = (3.*Vol/4./pi)**(1./3.)
+  d       = Species(PartSpecies(PartID))%DiameterIC
   rho_p   = Species(PartSpecies(PartID))%DensityIC
 
   ! Turbulent velocity fluctuation
@@ -223,12 +222,12 @@ CASE('Gosman')
     TurbPartState(1:3,PartID) = lambda(1:3)*udash(1:3)
 
     ! Droplet relaxation time
-    udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
+    udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4) + TurbPartState(1:3,PartID))
 
     ! Get nu to stay in same equation format
     nu      = mu0/FieldAtParticle(1)
 
-    Rep     = 2.*r*SQRT(SUM(udiff(1:3)**2.))/nu
+    Rep     = d*SQRT(SUM(udiff(1:3)**2.))/nu
     ! Empirical relation of nonlinear drag from Clift et al. (1978)
   !    IF (Rep .LT. 1) THEN
   !      Cd  = 1.
@@ -238,7 +237,7 @@ CASE('Gosman')
 
     ! Division by zero if particle velocity equal fluid velocity. Avoid this!
     IF (ANY(udiff.NE.0)) THEN
-      tau     = (4./3.)*rho_p*(2.*r)/(FieldAtParticle(1)*Cd*SQRT(SUM(udiff(1:3)**2.)))
+      tau     = (4./3.)*rho_p*d/(FieldAtParticle(1)*Cd*SQRT(SUM(udiff(1:3)**2.)))
     ELSE
       tau     = HUGE(1.)
     END IF
@@ -303,8 +302,7 @@ CASE('Mofakham')
     C_mu    = betaStar
 
     ! Assume spherical particles for now
-    Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
-    r       = (3.*Vol/4./pi)**(1./3.)
+    d       = Species(PartSpecies(PartID))%DiameterIC
     rho_p   = Species(PartSpecies(PartID))%DensityIC
 
     ! Turbulent velocity fluctuation
@@ -322,12 +320,12 @@ CASE('Mofakham')
       TurbPartState(1:3,PartID) = lambda(1:3)*udash(1:3)
 
       ! Droplet relaxation time
-      udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4)/FieldAtParticle(1) + TurbPartState(1:3,PartID))
+      udiff(1:3) = PartState(4:6,PartID) - (FieldAtParticle(2:4) + TurbPartState(1:3,PartID))
 
       ! Get nu to stay in same equation format
       nu      = mu0/FieldAtParticle(1)
 
-      Rep     = 2.*r*SQRT(SUM(udiff(1:3)**2.))/nu
+      Rep     = d*SQRT(SUM(udiff(1:3)**2.))/nu
       ! Empirical relation of nonlinear drag from Clift et al. (1978)
 !    IF (Rep .LT. 1) THEN
 !      Cd  = 1.
@@ -337,7 +335,7 @@ CASE('Mofakham')
 
       ! Division by zero if particle velocity equal fluid velocity. Avoid this!
       IF (ANY(udiff.NE.0)) THEN
-        tau     = (4./3.)*rho_p*(2.*r)/(FieldAtParticle(1)*Cd*SQRT(SUM(udiff(1:3)**2.)))
+        tau     = (4./3.)*rho_p*d/(FieldAtParticle(1)*Cd*SQRT(SUM(udiff(1:3)**2.)))
       ELSE
         WRITE(*,*) 'No velocity fluctuation in random walk. Mitigating...'
         tau     = HUGE(1.)

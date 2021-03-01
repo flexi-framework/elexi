@@ -209,7 +209,8 @@ ELSE ! N_in > 1
   Lder_Nm1=1.
   DO iLegendre=2,N_in
     L=(REAL(2*iLegendre-1)*x*L_Nm1 - REAL(iLegendre-1)*L_Nm2)/REAL(iLegendre)
-    Lder=Lder_Nm2 + REAL(2*iLegendre-1)*L_Nm1
+    !Lder=Lder_Nm2 + REAL(2*iLegendre-1)*L_Nm1
+    Lder=iLegendre*L_Nm1 + x*Lder_Nm1
     L_Nm2=L_Nm1
     L_Nm1=L
     Lder_Nm2=Lder_Nm1
@@ -346,6 +347,7 @@ INTEGER                   :: iGP,iter
 REAL                      :: L_Np1,Lder_Np1    ! L_{N_in+1},Lder_{N_in+1}
 REAL                      :: dx                ! Newton step
 REAL                      :: cheb_tmp          ! temporary variable for evaluation of chebychev node positions
+! REAL                      :: xGPtemp(0:N_in)
 !==================================================================================================================================
 IF(N_in .EQ. 0) THEN
   xGP=0.
@@ -359,13 +361,19 @@ ELSEIF(N_in.EQ.1)THEN
 ELSE ! N_in>1
   cheb_tmp=2.*atan(1.)/REAL(N_in+1) ! pi/(2N+2)
   DO iGP=0,(N_in+1)/2-1 !since points are symmetric, only left side is computed
-    xGP(iGP)=-cos(cheb_tmp*REAL(2*iGP+1)) !initial guess
+    xGP(iGP)=-COS(cheb_tmp*REAL(2*iGP+1)) !initial guess
+    ! xGPtemp(iGP)=cheb_tmp*REAL(2*iGP+1) !initial guess
     ! Newton iteration
     DO iter=0,nIter
+      ! CALL LegendrePolynomialAndDerivative(N_in+1,-COS(xGPtemp(iGP)),L_Np1,Lder_Np1)
       CALL LegendrePolynomialAndDerivative(N_in+1,xGP(iGP),L_Np1,Lder_Np1)
+      ! dx=-L_Np1/(SIN(xGPtemp(iGP))*Lder_Np1)
       dx=-L_Np1/Lder_Np1
       xGP(iGP)=xGP(iGP)+dx
+      ! xGPtemp(iGP)=xGPtemp(iGP)+dx
+      ! xGP(iGP) = -COS(xGPtemp(iGP))
       IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
+      ! IF(abs(dx).LT.Tol) EXIT
     END DO ! iter
     IF(iter.GT.nIter) THEN
       SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for Legendre Gausspoint'
@@ -386,6 +394,7 @@ ELSE ! N_in>1
     IF(PRESENT(wGP))THEN
       !wGP(iGP)=2./((1.-xGP(iGP)*xGP(iGP))*Lder_Np1*Lder_Np1) !if Legendre not normalized
       wGP(iGP)=(2.*N_in+3)/((1.-xGP(iGP)*xGP(iGP))*Lder_Np1*Lder_Np1)
+      ! wGP(iGP)=(2.*N_in+3.)/(SIN(xGPtemp(iGP))*Lder_Np1)**2
       wGP(N_in-iGP)=wGP(iGP)
     END IF
   END DO !iGP
@@ -394,7 +403,7 @@ IF(mod(N_in,2) .EQ. 0) THEN
   xGP(N_in/2)=0.
   CALL LegendrePolynomialAndDerivative(N_in+1,xGP(N_in/2),L_Np1,Lder_Np1)
   !IF(PRESENT(wGP))wGP(N_in/2)=2./(Lder_Np1*Lder_Np1) !if Legendre not normalized
-  IF(PRESENT(wGP))wGP(N_in/2)=(2.*N_in+3)/(Lder_Np1*Lder_Np1)
+  IF(PRESENT(wGP)) wGP(N_in/2)=(2.*N_in+3)/(Lder_Np1*Lder_Np1)
 END IF ! (mod(N_in,2) .EQ. 0)
 END SUBROUTINE LegendreGaussNodesAndWeights
 

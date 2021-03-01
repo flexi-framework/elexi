@@ -2374,7 +2374,7 @@ IF (myRank.EQ.0) THEN
 #endif /*USE_MPI*/
   WRITE(UNIT_StdOut,'(A,I0,A)') ' Found ',GEO%nPeriodicVectors,' periodic vectors for particle tracking'
   DO iVec = 1,GEO%nPeriodicVectors
-    WRITE(UNIT_stdOut,'(A,I1,A,F12.5,2(", ",F12.5))') ' | Periodic vector ',iVec,': ', GEO%PeriodicVectors(:,iVec)
+    WRITE(UNIT_stdOut,'(A,I1,A,F12.8,2(", ",F12.8))') ' | Periodic vector ',iVec,': ', GEO%PeriodicVectors(:,iVec)
   END DO
 #if USE_MPI
 END IF

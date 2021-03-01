@@ -88,7 +88,11 @@ INTERFACE ProlongToFace1
   MODULE PROCEDURE ProlongToFace
 END INTERFACE
 
-PUBLIC::ProlongToFace1
+INTERFACE ProlongToFace1_DG
+  MODULE PROCEDURE ProlongToFace_DG
+END INTERFACE
+
+PUBLIC::ProlongToFace1, ProlongToFace1_DG
 
 CONTAINS
 #include "prolongtoface.t90"

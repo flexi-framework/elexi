@@ -165,7 +165,7 @@ CASE(RHS_CONVERGENCE)
 !===================================================================================================================================
 ! Special case, drag force only active in x-direction, fixed differential. Gravity in y-direction. Used for convergence tests
 !===================================================================================================================================
-Fdm(1)      = FieldAtParticle(VEL1) - PartState(VEL1,PartID)
+Fdm(1)      = FieldAtParticle(VEL1) - PartState(PART_VEL1,PartID)
 
 ! Gravity fixed to -3
 Fdm(2)      = -3.

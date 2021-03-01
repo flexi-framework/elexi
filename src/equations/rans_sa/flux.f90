@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -336,20 +336,20 @@ REAL                :: UE(PP_2Var)      ! auxiliary variables
 ! auxiliary variables
 ! TODO: ATTENTION: Temperature of UE not filled!!!
 UE(CONS)=U
-UE(SRHO)=1./UE(DENS)
-UE(VELV)=VELOCITY_HE(UE)
-UE(PRES)=PRESSURE_HE(UE)
+UE(EXT_SRHO)=1./UE(EXT_DENS)
+UE(EXT_VELV)=VELOCITY_HE(UE)
+UE(EXT_PRES)=PRESSURE_HE(UE)
 ! Euler fluxes x-direction
-F(1)= U(MOM1)                     ! rho*u
-F(2)= U(MOM1)*UE(VEL1)+UE(PRES)   ! rho*u²+p
-F(3)= U(MOM1)*UE(VEL2)            ! rho*u*v
+F(DENS)= U(MOM1)                             ! rho*u
+F(MOM1)= U(MOM1)*UE(EXT_VEL1)+UE(EXT_PRES)   ! rho*u²+p
+F(MOM2)= U(MOM1)*UE(EXT_VEL2)                ! rho*u*v
 #if PP_dim==3
-F(4)= U(MOM1)*UE(VEL3)            ! rho*u*w
+F(MOM3)=U(MOM1)*UE(EXT_VEL3)                 ! rho*u*w
 #else
-F(4)=0.
+F(MOM3)=0.
 #endif
-F(5)=(U(ENER)+UE(PRES))*UE(VEL1)  ! (rho*e+p)*u
-F(6)=(U(MUSA)*UE(VEL1))           ! muTilde*u
+F(ENER)=(U(ENER)+UE(EXT_PRES))*UE(EXT_VEL1)  ! (rho*e+p)*u
+F(MUSA)=(U(MUSA)*UE(EXT_VEL1))               ! muTilde*u
 END SUBROUTINE EvalEulerFlux1D
 
 !==================================================================================================================================
@@ -366,18 +366,16 @@ REAL,INTENT(OUT)    :: F(PP_nVar) !< Cartesian flux in "x" direction
 ! LOCAL VARIABLES
 !==================================================================================================================================
 ! Euler fluxes x-direction
-F(1)= U(MOM1)                 ! rho*u
-F(2)= U(MOM1)*U(VEL1)+U(PRES) ! rho*u²+p
-F(3)= U(MOM1)*U(VEL2)         ! rho*u*v
+F(DENS)= U(EXT_MOM1)                         ! rho*u
+F(MOM1)= U(EXT_MOM1)*U(EXT_VEL1)+U(EXT_PRES) ! rho*u²+p
+F(MOM2)= U(EXT_MOM1)*U(EXT_VEL2)             ! rho*u*v
 #if PP_dim==3
-F(4)= U(MOM1)*U(VEL3)         ! rho*u*w
+F(MOM3)= U(EXT_MOM1)*U(EXT_VEL3)             ! rho*u*w
 #else
-F(4)= 0.
+F(MOM3)= 0.
 #endif
-F(5)=(U(ENER)+U(PRES))*U(VEL1)! (rho*e+p)*u
-F(6)=(U(MUSA)*U(VEL1))        ! muTilde*u
+F(ENER)=(U(EXT_ENER)+U(EXT_PRES))*U(EXT_VEL1)! (rho*e+p)*u
+F(MUSA)=(U(EXT_MUSA)*U(EXT_VEL1))            ! muTilde*u
 END SUBROUTINE EvalEulerFlux1D_fast
-
-
 
 END MODULE MOD_Flux

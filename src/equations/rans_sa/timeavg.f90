@@ -416,8 +416,8 @@ DO iElem=1,nElems
   IF(CalcAvg(11))THEN !'VelocitySound'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(1,i,j,k)
       tmpVars(iAvg(11),i,j,k)=SPEEDOFSOUND_HE(UE)
     END DO; END DO; END DO
   END IF
@@ -425,8 +425,8 @@ DO iElem=1,nElems
   IF(CalcAvg(12))THEN !'Mach'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(1,i,j,k)
       tmpVars(iAvg(12),i,j,k)=SQRT(SUM(prim(2:4,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
     END DO; END DO; END DO
   END IF
@@ -440,20 +440,20 @@ DO iElem=1,nElems
   IF(CalcAvg(14))THEN !'TotalTemperature'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(1,i,j,k)
       Mach=SQRT(SUM(prim(2:4,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
-      tmpVars(iAvg(14),i,j,k)=TOTAL_TEMPERATURE_H(UE(TEMP),Mach)
+      tmpVars(iAvg(14),i,j,k)=TOTAL_TEMPERATURE_H(UE(EXT_TEMP),Mach)
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(15))THEN !'TotalPressure
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(1,i,j,k)
       Mach=SQRT(SUM(prim(2:4,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
-      tmpVars(iAvg(15),i,j,k)=TOTAL_PRESSURE_H(UE(PRES),Mach)
+      tmpVars(iAvg(15),i,j,k)=TOTAL_PRESSURE_H(UE(EXT_PRES),Mach)
     END DO; END DO; END DO
   END IF
 

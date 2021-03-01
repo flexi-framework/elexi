@@ -333,19 +333,19 @@ REAL                :: UE(PP_2Var)      ! auxiliary variables
 ! auxiliary variables
 ! TODO: ATTENTION: Temperature of UE not filled!!!
 UE(CONS)=U
-UE(SRHO)=1./UE(DENS)
-UE(VELV)=VELOCITY_HE(UE)
-UE(PRES)=PRESSURE_HE(UE)
+UE(EXT_SRHO)=1./UE(EXT_DENS)
+UE(EXT_VELV)=VELOCITY_HE(UE)
+UE(EXT_PRES)=PRESSURE_HE(UE)
 ! Euler fluxes x-direction
 F(1)= U(MOM1)                     ! rho*u
-F(2)= U(MOM1)*UE(VEL1)+UE(PRES)   ! rho*u²+p
-F(3)= U(MOM1)*UE(VEL2)            ! rho*u*v
+F(2)= U(MOM1)*UE(EXT_VEL1)+UE(EXT_PRES)   ! rho*u²+p
+F(3)= U(MOM1)*UE(EXT_VEL2)            ! rho*u*v
 #if PP_dim==3
-F(4)= U(MOM1)*UE(VEL3)            ! rho*u*w
+F(4)= U(MOM1)*UE(EXT_VEL3)            ! rho*u*w
 #else
 F(4)=0.
 #endif
-F(5)=(U(ENER)+UE(PRES))*UE(VEL1)  ! (rho*e+p)*u
+F(5)=(U(ENER)+UE(EXT_PRES))*UE(EXT_VEL1)  ! (rho*e+p)*u
 END SUBROUTINE EvalEulerFlux1D
 
 !==================================================================================================================================
@@ -362,15 +362,15 @@ REAL,INTENT(OUT)    :: F(PP_nVar) !< Cartesian flux in "x" direction
 ! LOCAL VARIABLES
 !==================================================================================================================================
 ! Euler fluxes x-direction
-F(1)= U(MOM1)                 ! rho*u
-F(2)= U(MOM1)*U(VEL1)+U(PRES) ! rho*u²+p
-F(3)= U(MOM1)*U(VEL2)         ! rho*u*v
+F(1)= U(EXT_MOM1)                 ! rho*u
+F(2)= U(EXT_MOM1)*U(EXT_VEL1)+U(EXT_PRES) ! rho*u²+p
+F(3)= U(EXT_MOM1)*U(EXT_VEL2)         ! rho*u*v
 #if PP_dim==3
-F(4)= U(MOM1)*U(VEL3)         ! rho*u*w
+F(4)= U(EXT_MOM1)*U(EXT_VEL3)         ! rho*u*w
 #else
 F(4)= 0.
 #endif
-F(5)=(U(ENER)+U(PRES))*U(VEL1)! (rho*e+p)*u
+F(5)=(U(EXT_ENER)+U(EXT_PRES))*U(EXT_VEL1)! (rho*e+p)*u
 END SUBROUTINE EvalEulerFlux1D_fast
 
 END MODULE MOD_Flux

@@ -1,12 +1,12 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
 ! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
-! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo) 
+! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo)
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -91,7 +91,7 @@ CALL addStrListEntry('SplitDG','ch',           PRM_SPLITDG_CH)
 END SUBROUTINE DefineParametersSplitDG
 
 !==================================================================================================================================!
-!> Initialize function pointers for the specific split version in use 
+!> Initialize function pointers for the specific split version in use
 !==================================================================================================================================!
 SUBROUTINE InitSplitDG()
 ! MODULES
@@ -220,15 +220,15 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 ! LOCAL VARIABLES
 !==================================================================================================================================
 
-F(1)= 0.5*(U_LL(MOM1)+U_RR(MOM1))                                                ! {rho*u}
-F(2)= 0.5*(U_LL(MOM1)*U_LL(VEL1)+U_LL(PRES)+U_RR(MOM1)*U_RR(VEL1)+U_RR(PRES))    ! {rho*u²}+{p}
-F(3)= 0.5*(U_LL(MOM1)*U_LL(VEL2)+U_RR(MOM1)*U_RR(VEL2))                          ! {rho*u*v}
+F(1)= 0.5*(U_LL(EXT_MOM1)+U_RR(EXT_MOM1))                                                ! {rho*u}
+F(2)= 0.5*(U_LL(EXT_MOM1)*U_LL(EXT_VEL1)+U_LL(EXT_PRES)+U_RR(EXT_MOM1)*U_RR(EXT_VEL1)+U_RR(EXT_PRES))    ! {rho*u²}+{p}
+F(3)= 0.5*(U_LL(EXT_MOM1)*U_LL(EXT_VEL2)+U_RR(EXT_MOM1)*U_RR(EXT_VEL2))                          ! {rho*u*v}
 #if PP_dim == 3
-F(4)= 0.5*(U_LL(MOM1)*U_LL(VEL3)+U_RR(MOM1)*U_RR(VEL3))                          ! {rho*u*w}
+F(4)= 0.5*(U_LL(EXT_MOM1)*U_LL(EXT_VEL3)+U_RR(EXT_MOM1)*U_RR(EXT_VEL3))                          ! {rho*u*w}
 #else
 F(4)= 0.
 #endif
-F(5)= 0.5*((U_LL(ENER)+U_LL(PRES))*U_LL(VEL1)+(U_RR(ENER)+U_RR(PRES))*U_RR(VEL1))! {(rho*e+p)*u}
+F(5)= 0.5*((U_LL(EXT_ENER)+U_LL(EXT_PRES))*U_LL(EXT_VEL1)+(U_RR(EXT_ENER)+U_RR(EXT_PRES))*U_RR(EXT_VEL1))! {(rho*e+p)*u}
 
 END SUBROUTINE SplitSurfaceFluxSD
 
@@ -310,15 +310,15 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-F(1)= 0.25*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))                               ! {rho}*{u}
-F(2)= 0.25*(U_LL(MOM1)+U_RR(MOM1))*(U_LL(VEL1)+U_RR(VEL1)) + 0.5*(U_LL(PRES)+U_RR(PRES)) ! {rho*u}*{u}+{p}
-F(3)= 0.25*(U_LL(MOM2)+U_RR(MOM2))*(U_LL(VEL1)+U_RR(VEL1))                               ! {rho*v}*{u}
+F(1)= 0.25*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))                                       ! {rho}*{u}
+F(2)= 0.25*(U_LL(EXT_MOM1)+U_RR(EXT_MOM1))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1)) + 0.5*(U_LL(EXT_PRES)+U_RR(EXT_PRES)) ! {rho*u}*{u}+{p}
+F(3)= 0.25*(U_LL(EXT_MOM2)+U_RR(EXT_MOM2))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))                                       ! {rho*v}*{u}
 #if PP_dim == 3
-F(4)= 0.25*(U_LL(MOM3)+U_RR(MOM3))*(U_LL(VEL1)+U_RR(VEL1))                               ! {rho*w}*{u}
+F(4)= 0.25*(U_LL(EXT_MOM3)+U_RR(EXT_MOM3))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))                                       ! {rho*w}*{u}
 #else
 F(4)= 0.
 #endif
-F(5)= 0.25*(U_LL(ENER)+U_RR(ENER)+U_LL(PRES)+U_RR(PRES))*(U_LL(VEL1)+U_RR(VEL1))         ! ({rho*e}+{p})*{u}
+F(5)= 0.25*(U_LL(EXT_ENER)+U_RR(EXT_ENER)+U_LL(EXT_PRES)+U_RR(EXT_PRES))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))         ! ({rho*e}+{p})*{u}
 
 END SUBROUTINE SplitSurfaceFluxDU
 
@@ -410,19 +410,19 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 REAL                                :: e_LL,e_RR ! auxiliary variables for the specific energy
 !==================================================================================================================================
 ! specific energy
-e_LL = U_LL(ENER)/U_LL(DENS)
-e_RR = U_RR(ENER)/U_RR(DENS)
+e_LL = U_LL(EXT_ENER)/U_LL(EXT_DENS)
+e_RR = U_RR(EXT_ENER)/U_RR(EXT_DENS)
 !compute flux
-F(1)= 0.25* (U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))                                  ! {rho}*{u}
-F(2)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))**2 + 0.5*(U_LL(PRES)+U_RR(PRES)) ! {rho}*{u}²+{p}
-F(3)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))*(U_LL(VEL2)+U_RR(VEL2))          ! {rho}*{u}*{v}
+F(1)= 0.25* (U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))                                          ! {rho}*{u}
+F(2)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))**2 + 0.5*(U_LL(EXT_PRES)+U_RR(EXT_PRES)) ! {rho}*{u}²+{p}
+F(3)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))*(U_LL(EXT_VEL2)+U_RR(EXT_VEL2))          ! {rho}*{u}*{v}
 #if PP_dim == 3
-F(4)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))*(U_LL(VEL3)+U_RR(VEL3))          ! {rho}*{u}*{w}
+F(4)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))*(U_LL(EXT_VEL3)+U_RR(EXT_VEL3))          ! {rho}*{u}*{w}
 #else
 F(4)= 0.
 #endif
-F(5)= 0.125*(U_LL(DENS)+U_RR(DENS))*(e_LL+e_RR)*(U_LL(VEL1)+U_RR(VEL1)) + &
-      0.25 *(U_LL(PRES)+U_RR(PRES))*(U_LL(VEL1)+U_RR(VEL1))                                  ! {rho}*{e}*{u}+{p}*{u}
+F(5)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(e_LL+e_RR)*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1)) + &
+      0.25 *(U_LL(EXT_PRES)+U_RR(EXT_PRES))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))                                          ! {rho}*{e}*{u}+{p}*{u}
 
 END SUBROUTINE SplitSurfaceFluxKG
 
@@ -529,25 +529,25 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F    !< resulting flux
 REAL                                :: Ep_LL,Ep_RR
 !==================================================================================================================================
 ! internal energy + pressure
-Ep_LL = U_LL(ENER)-0.5*U_LL(DENS)*(U_LL(VEL1)**2+U_LL(VEL2)**2+U_LL(VEL3)**2)+U_LL(PRES)
-Ep_RR = U_RR(ENER)-0.5*U_RR(DENS)*(U_RR(VEL1)**2+U_RR(VEL2)**2+U_RR(VEL3)**2)+U_RR(PRES)
+Ep_LL = U_LL(EXT_ENER)-0.5*U_LL(EXT_DENS)*(U_LL(EXT_VEL1)**2+U_LL(EXT_VEL2)**2+U_LL(EXT_VEL3)**2)+U_LL(EXT_PRES)
+Ep_RR = U_RR(EXT_ENER)-0.5*U_RR(EXT_DENS)*(U_RR(EXT_VEL1)**2+U_RR(EXT_VEL2)**2+U_RR(EXT_VEL3)**2)+U_RR(EXT_PRES)
 
 ! compute flux
-F(1)= 0.5 *(U_LL(MOM1)+U_RR(MOM1))                                                       ! {rho*u}
-F(2)= 0.25*(U_LL(MOM1)+U_RR(MOM1))*(U_LL(VEL1)+U_RR(VEL1)) + 0.5*(U_LL(PRES)+U_RR(PRES)) ! {rho*u}*{u}+{p}
-F(3)= 0.25*(U_LL(MOM1)+U_RR(MOM1))*(U_LL(VEL2)+U_RR(VEL2))                               ! {rho*u}*{v}
+F(1)= 0.5 *(U_LL(EXT_MOM1)+U_RR(EXT_MOM1))                                                                       ! {rho*u}
+F(2)= 0.25*(U_LL(EXT_MOM1)+U_RR(EXT_MOM1))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1)) + 0.5*(U_LL(EXT_PRES)+U_RR(EXT_PRES)) ! {rho*u}*{u}+{p}
+F(3)= 0.25*(U_LL(EXT_MOM1)+U_RR(EXT_MOM1))*(U_LL(EXT_VEL2)+U_RR(EXT_VEL2))                                       ! {rho*u}*{v}
 #if PP_dim == 3
-F(4)= 0.25*(U_LL(MOM1)+U_RR(MOM1))*(U_LL(VEL3)+U_RR(VEL3))                               ! {rho*u}*{w}
+F(4)= 0.25*(U_LL(EXT_MOM1)+U_RR(EXT_MOM1))*(U_LL(EXT_VEL3)+U_RR(EXT_VEL3))                                       ! {rho*u}*{w}
 #else
 F(4)= 0.
 #endif
 F(5)= 0.5 *(Ep_LL*U_LL(VEL1)+Ep_RR*U_RR(VEL1)) +  &                                      !{(rho*e_int+p)*u} +
-      0.25*(U_LL(MOM1)*U_LL(VEL1)+U_RR(MOM1)*U_RR(VEL1))*(U_LL(VEL1)+U_RR(VEL1)) + &     !{rho*u²}*{u} +
-      0.25*(U_LL(MOM1)*U_LL(VEL2)+U_RR(MOM1)*U_RR(VEL2))*(U_LL(VEL2)+U_RR(VEL2)) + &     !{rho*u*v}*{v} +
-      0.25*(U_LL(MOM1)*U_LL(VEL3)+U_RR(MOM1)*U_RR(VEL3))*(U_LL(VEL3)+U_RR(VEL3)) - &     !{rho*u*w}*{w} -
-      0.25*(U_LL(MOM1)*U_LL(VEL1)*U_LL(VEL1)+U_RR(MOM1)*U_RR(VEL1)*U_RR(VEL1)) - &       !1/2*({rho*u³} +
-      0.25*(U_LL(MOM1)*U_LL(VEL2)*U_LL(VEL2)+U_RR(MOM1)*U_RR(VEL2)*U_RR(VEL2)) - &       !{rho*u*v²} +
-      0.25*(U_LL(MOM1)*U_LL(VEL3)*U_LL(VEL3)+U_RR(MOM1)*U_RR(VEL3)*U_RR(VEL3))           !{rho*u*w²})
+      0.25*(U_LL(EXT_MOM1)*U_LL(EXT_VEL1)+U_RR(EXT_MOM1)*U_RR(EXT_VEL1))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1)) + &     !{rho*u²}*{u} +
+      0.25*(U_LL(EXT_MOM1)*U_LL(EXT_VEL2)+U_RR(EXT_MOM1)*U_RR(EXT_VEL2))*(U_LL(EXT_VEL2)+U_RR(EXT_VEL2)) + &     !{rho*u*v}*{v} +
+      0.25*(U_LL(EXT_MOM1)*U_LL(EXT_VEL3)+U_RR(EXT_MOM1)*U_RR(EXT_VEL3))*(U_LL(EXT_VEL3)+U_RR(EXT_VEL3)) - &     !{rho*u*w}*{w} -
+      0.25*(U_LL(EXT_MOM1)*U_LL(EXT_VEL1)*U_LL(EXT_VEL1)+U_RR(EXT_MOM1)  *U_RR(EXT_VEL1)*U_RR(EXT_VEL1)) - &     !1/2*({rho*u³} +
+      0.25*(U_LL(EXT_MOM1)*U_LL(EXT_VEL2)*U_LL(EXT_VEL2)+U_RR(EXT_MOM1)  *U_RR(EXT_VEL2)*U_RR(EXT_VEL2)) - &     !{rho*u*v²} +
+      0.25*(U_LL(EXT_MOM1)*U_LL(EXT_VEL3)*U_LL(EXT_VEL3)+U_RR(EXT_MOM1)  *U_RR(EXT_VEL3)*U_RR(EXT_VEL3))         !{rho*u*w²})
 
 END SUBROUTINE SplitSurfaceFluxMO
 
@@ -636,18 +636,18 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 REAL                                :: e_LL,e_RR ! auxiliary variables for the specific energy
 !==================================================================================================================================
 ! specific energy
-e_LL = (U_LL(ENER)+U_LL(PRES))/U_LL(DENS)
-e_RR = (U_RR(ENER)+U_RR(PRES))/U_RR(DENS)
+e_LL = (U_LL(EXT_ENER)+U_LL(EXT_PRES))/U_LL(EXT_DENS)
+e_RR = (U_RR(EXT_ENER)+U_RR(EXT_PRES))/U_RR(EXT_DENS)
 !compute flux
-F(1)= 0.25* (U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))                                  ! {rho}*{u}
-F(2)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))**2 + 0.5*(U_LL(PRES)+U_RR(PRES)) ! {rho}*{u}²+{p}
-F(3)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))*(U_LL(VEL2)+U_RR(VEL2))          ! {rho}*{u}*{v}
+F(1)= 0.25* (U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))                                          ! {rho}*{u}
+F(2)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))**2 + 0.5*(U_LL(EXT_PRES)+U_RR(EXT_PRES)) ! {rho}*{u}²+{p}
+F(3)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))*(U_LL(EXT_VEL2)+U_RR(EXT_VEL2))          ! {rho}*{u}*{v}
 #if PP_dim == 3
-F(4)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))*(U_LL(VEL3)+U_RR(VEL3))          ! {rho}*{u}*{w}
+F(4)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))*(U_LL(EXT_VEL3)+U_RR(EXT_VEL3))          ! {rho}*{u}*{w}
 #else
 F(4)= 0.
 #endif
-F(5)= 0.125*(U_LL(DENS)+U_RR(DENS))*(e_LL+e_RR)*(U_LL(VEL1)+U_RR(VEL1))                      ! {rho}*{h}*{u}
+F(5)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(e_LL+e_RR)*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))                              ! {rho}*{h}*{u}
 
 END SUBROUTINE SplitSurfaceFluxPI
 
@@ -758,22 +758,22 @@ REAL                                :: uMean,vMean,wMean      ! auxiliary variab
 REAL                                :: rhoLogMean,betaLogMean ! auxiliary variable for the logarithmic mean
 !==================================================================================================================================
 ! average velocities
-uMean = 0.5*(U_LL(VEL1) + U_RR(VEL1))
-vMean = 0.5*(U_LL(VEL2) + U_RR(VEL2))
-wMean = 0.5*(U_LL(VEL3) + U_RR(VEL3))
+uMean = 0.5*(U_LL(EXT_VEL1) + U_RR(EXT_VEL1))
+vMean = 0.5*(U_LL(EXT_VEL2) + U_RR(EXT_VEL2))
+wMean = 0.5*(U_LL(EXT_VEL3) + U_RR(EXT_VEL3))
 
 ! inverse temperature
-beta_LL = 0.5*U_LL(DENS)/U_LL(PRES)
-beta_RR = 0.5*U_RR(DENS)/U_RR(PRES)
+beta_LL = 0.5*U_LL(EXT_DENS)/U_LL(EXT_PRES)
+beta_RR = 0.5*U_RR(EXT_DENS)/U_RR(EXT_PRES)
 
 ! average pressure, enthalpy, density and inverse temperature
 ! logarithmic mean
-CALL GetLogMean(U_LL(DENS),U_RR(DENS),rhoLogMean)
+CALL GetLogMean(U_LL(EXT_DENS),U_RR(EXT_DENS),rhoLogMean)
 CALL GetLogMean(beta_LL,beta_RR,betaLogMean)
 ! "standard" average
-pMean = 0.5*(U_LL(DENS)+U_RR(DENS))/(beta_LL+beta_RR)
+pMean = 0.5*(U_LL(EXT_DENS)+U_RR(EXT_DENS))/(beta_LL+beta_RR)
 hMean = 0.5*sKappaM1/betaLogMean + pMean/rhoLogMean + &
-       0.5*(U_LL(VEL1)*U_RR(VEL1) + U_LL(VEL2)*U_RR(VEL2) + U_LL(VEL3)*U_RR(VEL3))
+       0.5*(U_LL(EXT_VEL1)*U_RR(EXT_VEL1) + U_LL(EXT_VEL2)*U_RR(EXT_VEL2) + U_LL(EXT_VEL3)*U_RR(EXT_VEL3))
 
 !compute flux
 F(1) = rhoLogMean*uMean

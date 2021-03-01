@@ -286,10 +286,6 @@ USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,cp
 USE MOD_ExactFunc      ,ONLY: ExactFunc
 USE MOD_ExactFunc_Vars ,ONLY: JetRadius, Ramping
 USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,BCData,RefStatePrim,nRefState
-#if PARABOLIC
-USE MOD_EOS_Vars       ,ONLY: mu0
-USE MOD_Exactfunc_Vars ,ONLY: delta99_in,x_in
-#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -313,8 +309,7 @@ INTEGER                 :: BCType,BCState
 REAL,DIMENSION(PP_nVar) :: Cons
 REAL                    :: MaOut
 REAL                    :: c,vmag,Ma,cb,pt,pb,m,mramp,Tb1,area ! for BCType==23,24,25,28
-REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rminus,nv(3),Tt_fluc,pt_fluc ! for BCType==27
-REAL                    :: random ! for BCType==31
+REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rminus,nv(3) ! for BCType==27
 !===================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
@@ -360,8 +355,6 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
     IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).LE.JetRadius)THEN
       Tt=BCData(2,p,q,SideID)
       pt=BCData(3,p,q,SideID)
-      Tt_fluc=SQRT(ABS(BCData(4,p,q,SideID)-BCData(2,p,q,SideID)**2))
-      pt_fluc=SQRT(ABS(BCData(5,p,q,SideID)-BCData(3,p,q,SideID)**2))
 
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
       A=SUM(nv(1:3)*(-1.)*NormVec(1:3,p,q))
@@ -378,19 +371,13 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
       cb=(-tmp2+SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)   !
       c=(-tmp2-SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)    ! dummy
       cb=MAX(cb,c)                                    ! Following the FUN3D Paper, the max. of the two
-      CALL RANDOM_NUMBER(random)
-      ! Random disturbance +-5%; uniform distribution between -1,1
-      random=2.*(random-0.5)
       ! is the physical one...not 100% clear why
       ! compute static T  at bc from c
       Tb=cb**2/(Kappa*R)
-      Ma=MAX(SQRT(2./KappaM1*((Tt+random*Tt_fluc)/Tb-1.)),0.)
-      pb=(pt)*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1)
+      Ma=MAX(SQRT(2./KappaM1*(Tt/Tb-1.)),0.)
+      pb=pt*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1)
 
       U=Ma*SQRT(Kappa*R*Tb)
-!      tanh profile for axial jet velocity: tmp1=Uj, tmp2=r
-!      tmp3=tmp1*0.5*(1+TANH(0.5*20*(JetRadius-tmp2)/JetRadius))
-!      U = tmp1+0.05*random
 
       UPrim_boundary(1,p,q) = pb/(R*Tb)
       UPrim_boundary(5,p,q) = pb
@@ -498,7 +485,7 @@ CASE(3,4,9,91,23,24,25,27,28)
       UPrim_boundary(1,p,q)=pb/(R*tb)
       UPrim_boundary(2:4,p,q)=UPrim_boundary(2:4,p,q)
       UPrim_boundary(5,p,q)=pb
-      UPrim_boundary(6,p,q)=tb
+      UPrim_boundary(6,p,q)=Tb
     END DO; END DO !p,q
   CASE(24) ! Pressure outflow BC
     DO q=0,ZDIM(Nloc); DO p=0,Nloc

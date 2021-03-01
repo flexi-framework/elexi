@@ -206,7 +206,7 @@ prim(4)=cons(4)*sRho
 prim(4)=0.
 #endif
 ! pressure
-prim(5)=KappaM1*(cons(5)-0.5*SUM(cons(2:4)*prim(2:4)))
+prim(5)=KappaM1*(cons(5)-0.5*DOT_PRODUCT(cons(2:4),prim(2:4)))
 ! temperature
 prim(6) = prim(5)*sRho / R
 END SUBROUTINE ConsToPrim

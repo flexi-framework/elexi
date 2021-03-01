@@ -609,9 +609,9 @@ SDEALLOCATE(RefStateCons)
 ALLOCATE(RefStateCons(PP_nVar,4))
 DO i=1,4
   ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
-  UE(SRHO) = 1./RefStatePrim(1,i)
-  UE(PRES) = RefStatePrim(5,i)
-  RefStatePrim(6,i) = TEMPERATURE_HE(UE)
+  UE(EXT_SRHO) = 1./RefStatePrim(DENS,i)
+  UE(EXT_PRES) = RefStatePrim(PRES,i)
+  RefStatePrim(TEMP,i) = TEMPERATURE_HE(UE)
   CALL PrimToCons(RefStatePrim(:,i), RefStateCons(:,i))
 END DO
 END SUBROUTINE CalcIniStates

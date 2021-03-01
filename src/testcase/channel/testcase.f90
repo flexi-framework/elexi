@@ -160,8 +160,8 @@ bulkMach = GETREAL('ChannelMach','0.1')
 pressure = (uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa
 RefStatePrim(5,IniRefState) = pressure
 ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
-UE(SRHO) = 1./RefStatePrim(1,IniRefState)
-UE(PRES) = RefStatePrim(5,IniRefState)
+UE(EXT_SRHO) = 1./RefStatePrim(1,IniRefState)
+UE(EXT_PRES) = RefStatePrim(5,IniRefState)
 RefStatePrim(6,IniRefState) = TEMPERATURE_HE(UE)
 CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 

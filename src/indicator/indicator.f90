@@ -336,8 +336,8 @@ CASE(1:PP_nVar)
 CASE(6)
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     UE(CONS)=U(:,i,j,k)
-    UE(SRHO)=1./UE(DENS)
-    UE(VELV)=VELOCITY_HE(UE)
+    UE(EXT_SRHO)=1./UE(EXT_DENS)
+    UE(EXT_VELV)=VELOCITY_HE(UE)
     U_loc(i,j,k)=PRESSURE_HE(UE)
   END DO; END DO; END DO! i,j,k=0,PP_N
 #endif /* NAVIER-STOKES */
@@ -368,15 +368,15 @@ IndValue=TINY(0.)
 DO iDeg=0,nModes
   ! Build maximum of 1D indicators
   ! Xi
-  IndValue=MAX(IndValue,SUM(U_Modal(PP_N-iDeg:PP_N-iDeg,:,:))**2 /  &
-                        (SUM(U_Modal(0:PP_N-iDeg,:,:))**2+EPSILON(0.)))
+  IndValue=MAX(IndValue,SUM(U_Modal(PP_N-iDeg:PP_N-iDeg,:,:)**2) /  &
+                        (SUM(U_Modal(0:PP_N-iDeg,:,:)**2)+EPSILON(0.)))
   ! Eta
-  IndValue=MAX(IndValue,SUM(U_Modal(:,PP_N-iDeg:PP_N-iDeg,:))**2 /  &
-                        (SUM(U_Modal(:,0:PP_N-iDeg,:))**2+EPSILON(0.)))
+  IndValue=MAX(IndValue,SUM(U_Modal(:,PP_N-iDeg:PP_N-iDeg,:)**2) /  &
+                        (SUM(U_Modal(:,0:PP_N-iDeg,:)**2)+EPSILON(0.)))
 #if PP_dim == 3
   ! Zeta
-  IndValue=MAX(IndValue,SUM(U_Modal(:,:,PP_N-iDeg:PP_N-iDeg))**2 /  &
-                        (SUM(U_Modal(:,:,0:PP_N-iDeg))**2+EPSILON(0.)))
+  IndValue=MAX(IndValue,SUM(U_Modal(:,:,PP_N-iDeg:PP_N-iDeg)**2) /  &
+                        (SUM(U_Modal(:,:,0:PP_N-iDeg)**2)+EPSILON(0.)))
 #endif
 END DO
 ! Normalize indicator value
@@ -499,8 +499,8 @@ CASE(6)
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(CONS)=U(:,i,j,k,iElem)
-      UE(SRHO)=1./UE(DENS)
-      UE(VELV)=VELOCITY_HE(UE)
+      UE(EXT_SRHO)=1./UE(EXT_DENS)
+      UE(EXT_VELV)=VELOCITY_HE(UE)
       UJameson(1,i,j,k,iElem)=PRESSURE_HE(UE)
     END DO; END DO; END DO! i,j,k=0,PP_N
   END DO ! iElem

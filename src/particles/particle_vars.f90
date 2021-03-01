@@ -47,6 +47,13 @@ INTEGER , ALLOCATABLE :: seeds(:)                        !        =>NULL()   ! S
 
 LOGICAL               :: doPartIndex                                         ! Flag to give particles an unique (or not) index
 
+#if USE_BASSETFORCE
+REAL    , ALLOCATABLE :: durdt(:,:)                                          ! Old dur/dt for Basset force
+INTEGER               :: N_Basset                                            ! Number of old dur/dt terms used for the Basset force
+INTEGER               :: bIter
+INTEGER               :: nBassetVars
+#endif
+
 TYPE tExcludeRegion
   CHARACTER(40)                          :: SpaceIC                          ! specifying Keyword for Particle Space condition
   REAL                                   :: RadiusIC                         ! Radius for IC circle
@@ -175,6 +182,7 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: LowVeloThreshold                 ! Threshold value for removal of low velocity particles
   REAL                                   :: HighVeloThreshold                ! Threshold value for removal of high velocity particle
   INTEGER                                :: LowVeloCounter                   ! Counter how many low velocity particles were removed
+  REAL                                   :: SphericityIC                     ! Particle sphericity
   ! Bons particle rebound model
   REAL                                   :: YoungIC                          ! Young's modulus
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp

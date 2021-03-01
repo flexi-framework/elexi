@@ -198,7 +198,8 @@ CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'convergence', 
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Wang',            RHS_WANG)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Jacobs-highRe',   RHS_JACOBSHIGHRE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Haider',          RHS_HAIDER)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Hoelzer',         RHS_HOELZER)
 CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle mass of species [$] [kg]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                              &
@@ -222,6 +223,8 @@ CALL prms%CreateRealOption(         'Part-Species[$]-LowVeloThreshold', 'Thresho
 CALL prms%CreateRealOption(         'Part-Species[$]-HighVeloThreshold', 'Threshold velocity of particles in the entire field.'  //&
                                                                   ' Faster particles are deleted [$] [m/s]'                        &
                                                                 , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-SphericityIC', 'Particle sphericity of species [$] [m]'                       &
+                                                                , '1.'       , numberedmulti=.TRUE.)
 
 
 ! emission time
@@ -297,7 +300,8 @@ CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'conver
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Wang',            RHS_WANG)
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Jacobs-highRe',   RHS_JACOBSHIGHRE)
+CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Haider',          RHS_HAIDER)
+CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Hoelzer',         RHS_HOELZER)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-MassIC'    , 'Particle mass of species [$] [kg]'                      &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DiameterIC', 'Particle diameter of species [$] [m]'                      &
@@ -321,6 +325,8 @@ CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-LowVeloThreshold', 
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-HighVeloThreshold', 'Threshold velocity of particles in the entire field.' //&
                                                                   ' Faster particles are deleted [$] [m/s]'                        &
                                                                 , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-SphericityIC', 'Particle sphericity of species [$] [m]'               &
+                                                                , '1.'       , numberedmulti=.TRUE.)
 
 
 ! emission time
@@ -809,6 +815,15 @@ PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
 Pt_temp                                      = 0
 PartPosRef                                   =-888.
 
+! Basset force
+#if USE_BASSETFORCE
+N_Basset = 20
+nBassetVars = INT(N_Basset * 3)
+ALLOCATE(durdt(nBassetVars,1:PDM%maxParticleNumber))
+durdt = 0.
+bIter = 0.
+#endif /* USE_BASSETFORCE */
+
 END SUBROUTINE AllocateParticleArrays
 
 
@@ -910,11 +925,15 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'       ,'0.')
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'        ,'0.')
   IF (Species(iSpec)%MassIC .EQ. 0.) THEN
-    Species(iSpec)%MassIC=Species(iSpec)%DensityIC*PI/6*Species(iSpec)%DiameterIC**3
+    Species(iSpec)%MassIC=Species(iSpec)%DensityIC*PI/6.*Species(iSpec)%DiameterIC**3
     SWRITE(UNIT_StdOut,'(A,I0,A,F16.5)') ' | Mass of species (spherical) ', iSpec, ' = ', Species(iSpec)%MassIC
+  ELSEIF (Species(iSpec)%DiameterIC .EQ. 0.) THEN
+    Species(iSpec)%DiameterIC=(Species(iSpec)%MassIC/Species(iSpec)%DensityIC*6./PI)**(1./3.)
+    SWRITE(UNIT_StdOut,'(A,I0,A,F16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
   END IF
   Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold' ,'0.')
   Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-HighVeloThreshold','0.')
+  Species(iSpec)%SphericityIC          = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-SphericityIC'     ,'1.')
 
   !--> Bons particle rebound model
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading rebound  particle properties for Species',iSpec
@@ -1747,6 +1766,11 @@ SDEALLOCATE(PEM%pStart)
 SDEALLOCATE(PEM%pNumber)
 SDEALLOCATE(PEM%pEnd)
 SDEALLOCATE(PEM%pNext)
+
+! Basset force
+#if USE_BASSETFORCE
+SDEALLOCATE(durdt)
+#endif /* USE_BASSETFORCE */
 
 ! interpolation
 CALL FinalizeParticleInterpolation

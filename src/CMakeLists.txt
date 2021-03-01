@@ -171,6 +171,17 @@ CMAKE_DEPENDENT_OPTION(PARTICLES_RW           "Use random walk model for particl
                                               "PARTICLES;LIBS_USE_MPI"              OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_INTKIND8     "Enable particle numbers larger standard integer size" OFF
                                               "PARTICLES"                           OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_EXTEND_RHS   "Use extended RHS for particles"      OFF
+                                              "PARTICLES;FLEXI_PARABOLIC"           OFF)
+# Extend RHS options
+CMAKE_DEPENDENT_OPTION(PARTICLES_UNDISTFLOW   "Use viscous stresses and pressure gradient in RHS for particles" OFF
+                                              "PARTICLES_EXTEND_RHS"                OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_VIRTUALMASS  "Use virtual mass force in RHS for particles" OFF
+                                              "PARTICLES_EXTEND_RHS"                OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_BASSETFORCE  "Use Basset force in RHS for particles" OFF
+                                              "PARTICLES_EXTEND_RHS"                OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_LIFTFORCE    "Use lift force in RHS for particles" OFF
+                                              "PARTICLES_EXTEND_RHS"                OFF)
 IF(PARTICLES)
   IF(FLEXI_2D)
     MESSAGE(SEND_ERROR "PARTICLES only works on FLEXI_2D=OFF")
@@ -214,10 +225,10 @@ IF(PARTICLES)
   ENDIF()
 
   # Random Walk
-	IF(PARTICLES_RW)
-		ADD_DEFINITIONS(-DUSE_RW=1)
+  IF(PARTICLES_RW)
+    ADD_DEFINITIONS(-DUSE_RW=1)
   ELSE()
-		ADD_DEFINITIONS(-DUSE_RW=0)
+    ADD_DEFINITIONS(-DUSE_RW=0)
   ENDIF()
 
   # INTEGER(KIND=8=
@@ -226,12 +237,48 @@ IF(PARTICLES)
   ELSE()
     ADD_DEFINITIONS(-DUSE_INTKIND8=0)
   ENDIF()
+
+  IF (PARTICLES_EXTEND_RHS)
+    ADD_DEFINITIONS(-DUSE_EXTEND_RHS=1)
+    # Undisturbed flow
+    IF (PARTICLES_UNDISTFLOW)
+      ADD_DEFINITIONS(-DUSE_UNDISTFLOW=1)
+    ELSE()
+      ADD_DEFINITIONS(-DUSE_UNDISTFLOW=0)
+    ENDIF()
+    # Virtual mass
+    IF (PARTICLES_VIRTUALMASS)
+      ADD_DEFINITIONS(-DUSE_VIRTUALMASS=1)
+    ELSE()
+      ADD_DEFINITIONS(-DUSE_VIRTUALMASS=0)
+    ENDIF()
+    # Basset force
+    IF (PARTICLES_BASSETFORCE)
+      ADD_DEFINITIONS(-DUSE_BASSETFORCE=1)
+    ELSE()
+      ADD_DEFINITIONS(-DUSE_BASSETFORCE=0)
+    ENDIF()
+    # Lift force
+    IF (PARTICLES_LIFTFORCE)
+      ADD_DEFINITIONS(-DUSE_LIFTFORCE=1)
+    ELSE()
+      ADD_DEFINITIONS(-DUSE_LIFTFORCE=0)
+    ENDIF()
+  ELSE()
+    ADD_DEFINITIONS(-DUSE_EXTEND_RHS=0)
+    ADD_DEFINITIONS(-DUSE_UNDISTFLOW=0)
+    ADD_DEFINITIONS(-DUSE_VIRTUALMASS=0)
+    ADD_DEFINITIONS(-DUSE_BASSETFORCE=0)
+    ADD_DEFINITIONS(-DUSE_LIFTFORCE=0)
+  ENDIF()
+
 ELSE()
   ADD_DEFINITIONS(-DUSE_PARTICLES=0)
   ADD_DEFINITIONS(-DCODE_ANALYZE=0)
   ADD_DEFINITIONS(-DUSE_INTKIND8=0)
   ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
-	ADD_DEFINITIONS(-DUSE_RW=0)
+  ADD_DEFINITIONS(-DUSE_RW=0)
+  ADD_DEFINITIONS(-DUSE_EXTEND_RHS=0)
 ENDIF()
 
 # =========================================================================

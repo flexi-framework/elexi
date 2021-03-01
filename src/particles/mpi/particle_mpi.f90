@@ -130,6 +130,9 @@ USE MOD_Particle_Vars,            ONLY:PDM,doPartIndex
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #endif
+#if USE_BASSETFORCE
+USE MOD_Particle_Vars,            ONLY:nBassetVars
+#endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -153,7 +156,11 @@ IF(TrackingMethod.EQ.REFMAPPING) PartCommSize=PartCommSize+3
 ! Species-ID
 PartCommSize   = PartCommSize + 1
 ! Index
-IF(doPartIndex) PartCommSize   = PartCommSize + 1
+IF(doPartIndex)  PartCommSize = PartCommSize + 1
+#if USE_BASSETFORCE
+! Extended RHS: Basset force
+PartCommSize   = PartCommSize + nBassetVars
+#endif /* USE_BASSETFORCE */
 ! id of element
 PartCommSize   = PartCommSize + 1
 
@@ -334,6 +341,9 @@ USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
 ! Variables for RW model
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #endif
+#if USE_BASSETFORCE
+USE MOD_Particle_Vars,            ONLY:durdt,N_Basset,nBassetVars
+#endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -404,6 +414,11 @@ DO iProc=0,nExchangeProcessors-1
         PartSendBuf(iProc)%content(1+jPos) = REAL(PartIndex(iPart),KIND=8)
         jPos=jPos+1
       END IF
+#if USE_BASSETFORCE
+      !>> Basset force
+      PartSendBuf(iProc)%content(1+jPos:nBassetVars+jPos) = durdt(1:nBassetVars,iPart)
+      jPos=jPos+nBassetVars
+#endif /* USE_BASSETFORCE */
       !>> Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
       PartSendBuf(iProc)%content(1+jPos:6+jPos) = Pt_temp(1:6,iPart)
       jPos=jPos+6
@@ -459,6 +474,9 @@ DO iPart=1,PDM%ParticleVecLength
   PartState(1:6,iPart) = 0.
   PartSpecies(  iPart) = 0
   IF (doPartIndex) PartIndex(    iPart) = 0
+#if USE_BASSETFORCE
+  durdt(:,iPart)     = 0.
+#endif
   Pt_temp(  1:6,iPart) = 0.
   IF (doParticleReflectionTrack)                        PartReflCount(  iPart) = 0
   IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartPath(     :,iPart) = 0.
@@ -549,6 +567,9 @@ USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
 ! Variables for RW model
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #endif
+#if USE_BASSETFORCE
+USE MOD_Particle_Vars,            ONLY:durdt,N_Basset,nBassetVars
+#endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -629,6 +650,11 @@ DO iProc=0,nExchangeProcessors-1
       PartIndex(PartID)        = INT(PartRecvBuf(iProc)%content(1+jPos),KIND=4)
       jPos=jPos+1
     END IF
+#if USE_BASSETFORCE
+    !>> Basset force
+    durdt(1:nBassetVars,PartID) = PartRecvBuf(iProc)%content(1+jPos:nBassetVars+jPos)
+    jPos=jPos+nBassetVars
+#endif /* USE_BASSETFORCE */
     !>> Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
     Pt_temp(1:6,PartID)      = PartRecvBuf(iProc)%content(1+jPos:6+jPos)
     jpos=jpos+6

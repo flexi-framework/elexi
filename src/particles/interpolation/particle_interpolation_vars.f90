@@ -27,13 +27,13 @@ SAVE
 LOGICAL                               :: PartInterpolationInitIsDone=.FALSE.
 LOGICAL                               :: DoInterpolation          ! Flag for interpolation
 LOGICAL                               :: InterpolationElemLoop    ! Interpolate with outer iElem-loop (not for many Elems per proc!)
-REAL,ALLOCATABLE                      :: FieldAtParticle(:,:)     ! (PDM%maxParticleNumber,5) 2nd index: rho,u_x,u_y,u_z,e
+REAL,ALLOCATABLE                      :: FieldAtParticle(:,:)     ! (6,PDM%maxParticleNumber) 1nd index: rho,u_x,u_y,u_z,p,T
+#if USE_EXTEND_RHS
+REAL,ALLOCATABLE                      :: GradAtParticle(:,:,:)    ! (3,3,PDM%maxParticleNumber) 1nd index: rho*(u_x,u_y,u_z)
+REAL,ALLOCATABLE                      :: TimeDerivAtParticle(:,:) ! (3,PDM%maxParticleNumber) 1nd index: rho*(u_x,u_y,u_z)
+#endif
 #if USE_RW
 REAL,ALLOCATABLE                      :: turbFieldAtParticle(:,:) ! (PDM%maxParticleNumber,2) 2nd index: k,epsilon
 #endif
-
-
-LOGICAL                               :: useExternalField          ! Flag for external field
-REAL                                  :: externalField(PP_nVar)   ! ext field is added to the maxwell-solver-field
 !===================================================================================================================================
 END MODULE MOD_Particle_Interpolation_Vars

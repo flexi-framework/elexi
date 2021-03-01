@@ -122,7 +122,26 @@
 #define RHS_WANG         4
 #define RHS_VINKOVIC     5
 #define RHS_JACOBS       6
-#define RHS_JACOBSHIGHRE 7
+#define RHS_HAIDER       7
+#define RHS_HOELZER      8
+
+! Velocity and pressure for extended RHS
+!#if USE_RHS_LIFTCONS
+!#define RHS_LIFTVARS   	1:3
+!#else
+#define RHS_LIFTVARS    (/DENS,VEL1,VEL2,VEL3/)
+!#endif
+#define RHS_TIMEVARS    (/DENS,MOM1,MOM2,MOM3/)
+#define RHS_LIFT        4
+#define RHS_DERIVATIVE  4
+
+#define PART_POS1       1
+#define PART_POS2       2
+#define PART_POS3       3
+#define PART_VEL1       4
+#define PART_VEL2       5
+#define PART_VEL3       6
+#define PART_VELV       PART_VEL1:PART_VEL3
 
 ! formats
 ! print to std out like  "    1.41421356237310E+000   -1.41421356237310E+000   -1.41421356237310E+000"

@@ -316,8 +316,7 @@ USE MOD_PreProc
 USE MOD_Particle_Globals,        ONLY: RandNormal
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
-USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
-USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,FieldAtParticle,externalField
+USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,FieldAtParticle
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount
 USE MOD_Mesh_Vars,               ONLY: offsetElem
@@ -345,7 +344,7 @@ INTEGER,INTENT(INOUT)            :: NbrOfParticle
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                          :: PositionNbr,i,iElem,j
-REAL                             :: field(PP_nVar)
+REAL                             :: field(PP_nVarPrim)
 REAL                             :: Radius(3)
 REAL                             :: RandVal(3)
 CHARACTER(30)                    :: velocityDistribution             ! specifying keyword for velocity distribution
@@ -516,11 +515,6 @@ CASE('fluid')
 
   ! Get background field
   FieldAtParticle(:,:) = 0.
-  FieldAtParticle(1,:) = externalField(1)
-  FieldAtParticle(2,:) = externalField(2)
-  FieldAtParticle(3,:) = externalField(3)
-  FieldAtParticle(4,:) = externalField(4)
-  FieldAtParticle(5,:) = externalField(5)
 
   ! Interpolate fluid and field to particle
   DO WHILE (i .LE. NbrOfParticle)
@@ -536,25 +530,25 @@ CASE('fluid')
 #if FV_ENABLED
       IF (FV_Elems(iElem).EQ.1) THEN ! FV Element
         IF (TrackingMethod.EQ.REFMAPPING) THEN
-          CALL EvaluateField_FV(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U    (:,:,:,:,iElem),field,iElem)
+          CALL EvaluateField_FV(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U(:,:,:,:,iElem),PP_nVarPrim,field,iElem)
         ELSE
-          CALL EvaluateField_FV(PartState (1:3,PositionNbr),PP_nVar,PP_N,U    (:,:,:,:,iElem),field,iElem)
+          CALL EvaluateField_FV(PartState (1:3,PositionNbr),PP_nVar,PP_N,U(:,:,:,:,iElem),PP_nVarPrim,field,iElem)
         END IF
       ELSE
 #endif /*FV_ENABLED*/
         ! RefMapping, evaluate in reference space
         IF (TrackingMethod.EQ.REFMAPPING) THEN
-          CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U    (1:PP_nVar ,:,:,:,iElem),field    (1:PP_nVar))
+          CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U(1:PP_nVar ,:,:,:,iElem),PP_nVarPrim,field    (1:PP_nVar))
 #if USE_RW
           IF (RestartTurb) &
-           CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbfield(1:nVarTurb))
+           CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),nVarTurb,turbfield(1:nVarTurb))
 #endif
         ! not RefMapping, evaluate in physical space
         ELSE
-           CALL EvaluateFieldAtPhysPos(PartState(1:3,PositionNbr),PP_nVar,PP_N,U    (:,:,:,:,iElem),field,PEM%Element(PositionNbr),PositionNbr)
+           CALL EvaluateFieldAtPhysPos(PartState(1:3,PositionNbr),PP_nVar,PP_N,U(:,:,:,:,iElem),PP_nVarPrim,field,PEM%Element(PositionNbr),PositionNbr)
 #if USE_RW
           IF (RestartTurb) &
-            CALL EvaluateFieldAtPhysPos(TurbPartState(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),turbField(1:nVarTurb),PEM%Element(PositionNbr),PositionNbr)
+            CALL EvaluateFieldAtPhysPos(TurbPartState(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),nVarTurb,turbField(1:nVarTurb),PEM%Element(PositionNbr),PositionNbr)
 #endif
         END IF ! TrackingMethod.EQ.REFMAPPING
 #if FV_ENABLED
@@ -562,13 +556,13 @@ CASE('fluid')
 #endif /* FV_ENABLED */
 
       ! Add the interpolated field to the background field
-      FieldAtParticle(    1:PP_nVar, PositionNbr) = FieldAtParticle(1:PP_nVar,PositionNbr) + field(1:PP_nVar)
-#if USE_RW
-      TurbFieldAtParticle(1:nVarTurb,PositionNbr) = turbfield(      1:nVarTurb)
-#endif
+      FieldAtParticle(    1:PP_nVarPrim, PositionNbr) = FieldAtParticle(1:PP_nVarPrim,PositionNbr) + field(1:PP_nVarPrim)
+!#if USE_RW
+!      TurbFieldAtParticle(1:nVarTurb,PositionNbr) = turbfield(      1:nVarTurb)
+!#endif
 
       ! Calculate velocity from momentum and density
-      PartState(4:6,PositionNbr) = FieldAtParticle(2:4,PositionNbr)/FieldAtParticle(1,PositionNbr)
+      PartState(4:6,PositionNbr) = FieldAtParticle(2:4,PositionNbr)
       PartState(4:6,PositionNbr) = PartState(4:6,PositionNbr) * VeloIC
 
       ! New particles have not been reflected

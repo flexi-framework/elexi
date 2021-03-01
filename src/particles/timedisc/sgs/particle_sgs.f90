@@ -266,7 +266,7 @@ CALL Filter_Pointer(USGS,FilterMat)
 USGS = U - USGS
 
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),USGSPart)
+CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),4,USGSPart)
 
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
@@ -281,7 +281,7 @@ DO iPart = 1,PDM%ParticleVecLength
   ElemID   = PEM%Element(iPart) - offsetElem
 
   ! Relative velocity
-  udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
+  udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart) + TurbPartState(1:3,iPart))
 
   IF (ANY(udiff.NE.0)) THEN
     urel = udiff/SQRT(SUM(udiff**2))
@@ -430,7 +430,7 @@ CALL Filter_Pointer(USGS,FilterMat)
 USGS = U - USGS
 
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),USGSPart)
+CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),4,USGSPart)
 
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
@@ -442,7 +442,7 @@ DO iPart = 1,PDM%ParticleVecLength
   sigmaSGS(iPart) = SQRT(2./3.*kSGSPart(iPart))
 
   ! Relative velocity
-  udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart)/FieldAtParticle(1,iPart) + TurbPartState(1:3,iPart))
+  udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart) + TurbPartState(1:3,iPart))
 
   ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
   ElemID   = PEM%Element(iPart) - offsetElem

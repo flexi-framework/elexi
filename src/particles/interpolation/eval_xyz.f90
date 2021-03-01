@@ -39,6 +39,16 @@ INTERFACE EvaluateFieldAtRefPos
   MODULE PROCEDURE EvaluateFieldAtRefPos
 END INTERFACE
 
+#if USE_EXTEND_RHS
+INTERFACE EvaluateFieldAndGradAtPhysPos
+  MODULE PROCEDURE EvaluateFieldAndGradAtPhysPos
+END INTERFACE
+
+INTERFACE EvaluateFieldAndGradAtRefPos
+  MODULE PROCEDURE EvaluateFieldAndGradAtRefPos
+END INTERFACE
+#endif /* USE_EXTEND_RHS */
+
 #if FV_ENABLED
 INTERFACE EvaluateField_FV
   MODULE PROCEDURE EvaluateField_FV
@@ -49,6 +59,10 @@ PUBLIC :: GetPositionInRefElem
 PUBLIC :: TensorProductInterpolation
 PUBLIC :: EvaluateFieldAtPhysPos
 PUBLIC :: EvaluateFieldAtRefPos
+#if USE_EXTEND_RHS
+PUBLIC :: EvaluateFieldAndGradAtPhysPos
+PUBLIC :: EvaluateFieldAndGradAtRefPos
+#endif /* USE_EXTEND_RHS */
 #if FV_ENABLED
 PUBLIC :: EvaluateField_FV
 #endif /* FV_ENABLED */
@@ -183,7 +197,7 @@ END DO ! k=0,N_In
 END SUBROUTINE TensorProductInterpolation
 
 
-SUBROUTINE EvaluateFieldAtPhysPos(x_in,NVar,N_in,U_In,U_Out,ElemID,PartID)
+SUBROUTINE EvaluateFieldAtPhysPos(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID,PartID)
 !===================================================================================================================================
 !> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
 !> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
@@ -206,6 +220,7 @@ USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo,dXCL_NGeo
 #if USE_RW
 USE MOD_Equation_Vars,         ONLY: nVarTurb
 #endif /*USE_RW*/
+USE MOD_Eos,                   ONLY: ConsToPrim
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -216,9 +231,10 @@ INTEGER,INTENT(IN)        :: N_In                                          !< us
 INTEGER,INTENT(IN)        :: ElemID                                        !< Element index
 REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
 INTEGER,INTENT(IN)        :: PartID                                        !< particle ID
+INTEGER,INTENT(IN)        :: NVar_out                                      !< 6 (rho,u_x,u_y,u_z,p,T)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at physical position x_in
+REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                             !< Interpolated state at physical position x_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: CNElemID,i,j,k
@@ -226,6 +242,7 @@ REAL                      :: xi(3)
 REAL                      :: L_xi(3,0:PP_N), L_eta_zeta
 REAL                      :: XCL_NGeo1(1:3,0:1,0:1,0:1)
 REAL                      :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
+REAL                      :: Utmp(1:nVar)
 !===================================================================================================================================
 
 #if USE_MPI
@@ -270,12 +287,12 @@ CALL LagrangeInterpolationPolys(xi(2),N_in,xGP,wBary,L_xi(2,:))
 CALL LagrangeInterpolationPolys(xi(3),N_in,xGP,wBary,L_xi(3,:))
 
 ! "more efficient" - Quote Thomas B.
-U_out(:)=0
+Utmp(:)=0.
 DO k=0,N_in
   DO j=0,N_in
     L_eta_zeta=L_xi(2,j)*L_xi(3,k)
     DO i=0,N_in
-      U_out = U_out + U_IN(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      Utmp = Utmp + U_IN(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In
@@ -284,11 +301,14 @@ END DO ! k=0,N_In
 END ASSOCIATE
 #endif
 
+! Convert to primitve variables
+IF(NVar_out.NE.NVar) CALL ConsToPrim(U_out,Utmp)
+
 END SUBROUTINE EvaluateFieldAtPhysPos
 
 
 #if FV_ENABLED
-SUBROUTINE EvaluateField_FV(x_in,NVar,N_in,U_In,U_Out,ElemID)
+SUBROUTINE EvaluateField_FV(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID)
 !===================================================================================================================================
 !> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
 !> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
@@ -311,14 +331,14 @@ INTEGER,INTENT(IN)        :: NVar                                          !< 5 
 INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
 INTEGER,INTENT(IN)        :: ElemID                                        !< Element index
 REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
+INTEGER,INTENT(IN)        :: NVar_out                                      !< 6 (rho,u_x,u_y,u_z,p,T)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at physical position x_in
+REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                             !< Interpolated state at physical position x_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: i,j,k
-REAL                      :: U_Prim(1:PP_nVarPrim,0:N_In,0:N_In,0:N_In)
-REAL                      :: UPrim_out(1:PP_nVarPrim)
+REAL                      :: U_Prim(1:nVar_out,0:N_In,0:N_In,0:N_In)
 REAL                      :: xi(3)
 INTEGER                   :: IJK(3)
 REAL                      :: distance_ref(3), distance(3)
@@ -347,20 +367,19 @@ END DO
 distance(:) = distance_ref(:)/sJ(IJK(1),IJK(2),IJK(3),ElemID,1)
 
 ! Get reconstructed solution at particle position
-UPrim_out = U_Prim(:,IJK(1),IJK(2),IJK(3)) + gradUxi  (:,IJK(1),IJK(2),IJK(3),ElemID) * distance(1)&
-                                           + gradUeta (:,IJK(1),IJK(2),IJK(3),ElemID) * distance(2)&
-                                           + gradUzeta(:,IJK(1),IJK(2),IJK(3),ElemID) * distance(3)
-! Transform to conservative variables
-CALL PrimToCons(UPrim_out,U_out)
+U_out = U_Prim(:,IJK(1),IJK(2),IJK(3)) + gradUxi  (:,IJK(1),IJK(2),IJK(3),ElemID) * distance(1)&
+                                       + gradUeta (:,IJK(1),IJK(2),IJK(3),ElemID) * distance(2)&
+                                       + gradUzeta(:,IJK(1),IJK(2),IJK(3),ElemID) * distance(3)
 #else
-U_out(:) = U_in(:,IJK(1),IJK(2),IJK(3))
+! Transform to primitve variables
+CALL ConsToPrim(U_out,U_in(:,IJK(1),IJK(2),IJK(3)))
 #endif
 
 END SUBROUTINE EvaluateField_FV
 #endif /*FV_ENABLED*/
 
 
-PPURE SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out)
+PPURE SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,NVar_out,U_Out)
 !===================================================================================================================================
 !> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
 !> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
@@ -368,6 +387,7 @@ PPURE SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,U_Out)
 ! MODULES
 USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
 USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
+USE MOD_Eos,                   ONLY: ConsToPrim
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -376,13 +396,15 @@ REAL,INTENT(IN)           :: Xi_in(3)                                      !< po
 INTEGER,INTENT(IN)        :: NVar                                          !< 5 (rho,u_x,u_y,u_z,e)
 INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
 REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
+INTEGER,INTENT(IN)        :: NVar_out                                      !< 6 (rho,u_x,u_y,u_z,p,T)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)          :: U_Out(1:NVar)                                 !< Interpolated state at reference position xi_in
+REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                             !< Interpolated state at reference position xi_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: i,j,k
 REAL                      :: L_xi(3,0:N_in), L_eta_zeta
+REAL                      :: Utmp(1:nVar)
 !===================================================================================================================================
 
 ! 2.1) get "Vandermonde" vectors
@@ -391,18 +413,204 @@ CALL LagrangeInterpolationPolys(xi_in(2),N_in,xGP,wBary,L_xi(2,:))
 CALL LagrangeInterpolationPolys(xi_in(3),N_in,xGP,wBary,L_xi(3,:))
 
 ! "more efficient" - Quote Thomas B.
-U_out(:)=0
+Utmp(:)=0
 DO k=0,N_in
   DO j=0,N_in
     L_eta_zeta=L_xi(2,j)*L_xi(3,k)
     DO i=0,N_in
-      U_out = U_out + U_IN(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      Utmp = Utmp + U_IN(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In
 
+! Convert to primitve variables
+IF(NVar_out.NE.NVar) CALL ConsToPrim(U_out,Utmp)
+
 END SUBROUTINE EvaluateFieldAtRefPos
 
+#if USE_EXTEND_RHS
+SUBROUTINE EvaluateFieldAndGradAtPhysPos(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID,PartID,gradUx,gradUy,gradUz,UGrad_Out,Ut,Ut_out)
+!===================================================================================================================================
+!> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
+!> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
+!> 3) interpolate backgroundfield to position ( U_Out -> U_Out(x_in)+BG_field(x_in) )
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
+USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
+USE MOD_Mesh_Vars,             ONLY: NGeo
+USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
+USE MOD_Particle_Mesh_Vars,    ONLY: wBaryCL_NGeo,XiCL_NGeo
+USE MOD_Particle_Mesh_Vars,    ONLY: ElemCurved,wBaryCL_NGeo1,XiCL_NGeo1
+#if USE_MPI
+USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
+#else
+USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo,dXCL_NGeo
+#endif /*USE_MPI*/
+#if USE_RW
+USE MOD_Equation_Vars,         ONLY: nVarTurb
+#endif /*USE_RW*/
+USE MOD_Eos,                   ONLY: ConsToPrim
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)           :: x_in(3)                                       !< position in physical space
+INTEGER,INTENT(IN)        :: NVar                                          !< 5 (rho,u_x,u_y,u_z,e)
+INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
+INTEGER,INTENT(IN)        :: ElemID                                        !< Element index
+REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
+INTEGER,INTENT(IN)        :: PartID                                        !< particle ID
+INTEGER,INTENT(IN)        :: NVar_out                                      !< 6 (rho,u_x,u_y,u_z,p,T)
+REAL,INTENT(IN)           :: gradUx(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in x direction
+REAL,INTENT(IN)           :: gradUy(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in y direction
+REAL,INTENT(IN)           :: gradUz(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in z direction
+REAL,INTENT(IN)           :: Ut(RHS_DERIVATIVE,0:N_in,0:N_in,0:ZDIM(N_in)) !< Time derivative of momentum
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                             !< Interpolated state at physical position x_in
+REAL,INTENT(OUT)          :: UGrad_Out(RHS_LIFT,3)                          !< Interpolated gradient at physical position x_in
+REAL,INTENT(OUT)          :: Ut_Out(RHS_DERIVATIVE)                         !< Interpolated time derivative at physical position x_in
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                   :: CNElemID,i,j,k
+REAL                      :: xi(3)
+REAL                      :: L_xi(3,0:PP_N), L_eta_zeta
+REAL                      :: XCL_NGeo1(1:3,0:1,0:1,0:1)
+REAL                      :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
+REAL                      :: Utmp(1:nVar)
+!===================================================================================================================================
+
+#if USE_MPI
+ASSOCIATE( XCL_NGeo  =>  XCL_NGeo_Shared    &
+         ,dXCL_NGeo  => dXCL_NGeo_Shared)
+#endif /*USE_MPI*/
+
+CALL GetRefNewtonStartValue(X_in,Xi,ElemID)
+
+CNElemID = GetCNElemID(ElemID)
+
+! If the element is curved, all Gauss points are required
+IF (ElemCurved(CNElemID)) THEN
+  CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID) &
+                    ,NGeo,ElemID,Mode=1,PartID=PartID)
+! If the element is not curved, only the corner nodes are required
+ELSE
+  ! fill dummy XCL_NGeo1
+  XCL_NGeo1 (1:3,    0,0,0) = XCL_NGeo (1:3,     0  , 0  , 0  ,ElemID)
+  XCL_NGeo1 (1:3,    1,0,0) = XCL_NGeo (1:3,    NGeo, 0  , 0  ,ElemID)
+  XCL_NGeo1 (1:3,    0,1,0) = XCL_NGeo (1:3,     0  ,NGeo, 0  ,ElemID)
+  XCL_NGeo1 (1:3,    1,1,0) = XCL_NGeo (1:3,    NGeo,NGeo, 0  ,ElemID)
+  XCL_NGeo1 (1:3,    0,0,1) = XCL_NGeo (1:3,     0  , 0  ,NGeo,ElemID)
+  XCL_NGeo1 (1:3,    1,0,1) = XCL_NGeo (1:3,    NGeo, 0  ,NGeo,ElemID)
+  XCL_NGeo1 (1:3,    0,1,1) = XCL_NGeo (1:3,     0  ,NGeo,NGeo,ElemID)
+  XCL_NGeo1 (1:3,    1,1,1) = XCL_NGeo (1:3,    NGeo,NGeo,NGeo,ElemID)
+  ! fill dummy dXCL_NGeo1
+  dXCL_NGeo1(1:3,1:3,0,0,0) = dXCL_NGeo(1:3,1:3, 0  , 0  , 0  ,ElemID)
+  dXCL_NGeo1(1:3,1:3,1,0,0) = dXCL_NGeo(1:3,1:3,NGeo, 0  , 0  ,ElemID)
+  dXCL_NGeo1(1:3,1:3,0,1,0) = dXCL_NGeo(1:3,1:3, 0  ,NGeo, 0  ,ElemID)
+  dXCL_NGeo1(1:3,1:3,1,1,0) = dXCL_NGeo(1:3,1:3,NGeo,NGeo, 0  ,ElemID)
+  dXCL_NGeo1(1:3,1:3,0,0,1) = dXCL_NGeo(1:3,1:3, 0  , 0  ,NGeo,ElemID)
+  dXCL_NGeo1(1:3,1:3,1,0,1) = dXCL_NGeo(1:3,1:3,NGeo, 0  ,NGeo,ElemID)
+  dXCL_NGeo1(1:3,1:3,0,1,1) = dXCL_NGeo(1:3,1:3, 0  ,NGeo,NGeo,ElemID)
+  dXCL_NGeo1(1:3,1:3,1,1,1) = dXCL_NGeo(1:3,1:3,NGeo,NGeo,NGeo,ElemID)
+  CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo1,XiCL_NGeo1,XCL_NGeo1,dXCL_NGeo1,1,ElemID,Mode=1,PartID=PartID)
+END IF
+
+! 2.1) get "Vandermonde" vectors
+CALL LagrangeInterpolationPolys(xi(1),N_in,xGP,wBary,L_xi(1,:))
+CALL LagrangeInterpolationPolys(xi(2),N_in,xGP,wBary,L_xi(2,:))
+CALL LagrangeInterpolationPolys(xi(3),N_in,xGP,wBary,L_xi(3,:))
+
+! "more efficient" - Quote Thomas B.
+Utmp(:)       = 0.
+UGrad_Out(:,:)= 0.
+Ut_Out(:)     = 0.
+DO k=0,N_in
+  DO j=0,N_in
+    L_eta_zeta=L_xi(2,j)*L_xi(3,k)
+    DO i=0,N_in
+      Utmp           = Utmp           + U_IN(:,i,j,k)  *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(:,1) = UGrad_out(:,1) + gradUx(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(:,2) = UGrad_out(:,2) + gradUy(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(:,3) = UGrad_out(:,3) + gradUz(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      Ut_out(:)      = Ut_out(:)      + Ut(:,i,j,k)    *L_xi(1,i)*L_Eta_Zeta
+    END DO ! i=0,N_In
+  END DO ! j=0,N_In
+END DO ! k=0,N_In
+
+#if USE_MPI
+END ASSOCIATE
+#endif
+
+! Convert to primitve variables
+IF(NVar_out.NE.NVar) CALL ConsToPrim(U_out,Utmp)
+
+END SUBROUTINE EvaluateFieldAndGradAtPhysPos
+
+PPURE SUBROUTINE EvaluateFieldAndGradAtRefPos(Xi_in,NVar,N_in,U_In,NVar_out,U_Out,gradUx,gradUy,gradUz,UGrad_Out,Ut,Ut_out)
+!===================================================================================================================================
+!> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
+!> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
+!===================================================================================================================================
+! MODULES
+USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
+USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
+USE MOD_Eos,                   ONLY: ConsToPrim
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)           :: Xi_in(3)                                       !< position in reference element
+INTEGER,INTENT(IN)        :: NVar                                           !< 5 (rho,u_x,u_y,u_z,e)
+INTEGER,INTENT(IN)        :: N_In                                           !< usually PP_N
+REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)              !< State in Element
+INTEGER,INTENT(IN)        :: NVar_out                                       !< 6 (rho,u_x,u_y,u_z,p,T)
+REAL,INTENT(IN)           :: gradUx(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in x direction
+REAL,INTENT(IN)           :: gradUy(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in y direction
+REAL,INTENT(IN)           :: gradUz(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in z direction
+REAL,INTENT(IN)           :: Ut(RHS_DERIVATIVE,0:N_in,0:N_in,0:ZDIM(N_in))  !< Time derivative of momentum
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                              !< Interpolated state at reference position xi_in
+REAL,INTENT(OUT)          :: UGrad_Out(RHS_LIFT,3)                          !< Interpolated gradient at reference position x_in
+REAL,INTENT(OUT)          :: Ut_Out(RHS_DERIVATIVE)                         !< Interpolated time derivative at reference position x_in
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                   :: i,j,k
+REAL                      :: L_xi(3,0:N_in), L_eta_zeta
+REAL                      :: Utmp(1:nVar)
+!===================================================================================================================================
+
+! 2.1) get "Vandermonde" vectors
+CALL LagrangeInterpolationPolys(xi_in(1),N_in,xGP,wBary,L_xi(1,:))
+CALL LagrangeInterpolationPolys(xi_in(2),N_in,xGP,wBary,L_xi(2,:))
+CALL LagrangeInterpolationPolys(xi_in(3),N_in,xGP,wBary,L_xi(3,:))
+
+! "more efficient" - Quote Thomas B.
+Utmp(:)       = 0.
+UGrad_Out(:,:)= 0.
+Ut_Out(:)     = 0.
+DO k=0,N_in
+  DO j=0,N_in
+    L_eta_zeta=L_xi(2,j)*L_xi(3,k)
+    DO i=0,N_in
+      Utmp           = Utmp           + U_IN(:,i,j,k)  *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(:,1) = UGrad_out(:,1) + gradUx(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(:,2) = UGrad_out(:,2) + gradUy(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(:,3) = UGrad_out(:,3) + gradUz(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      Ut_out(:)      = Ut_out(:)      + Ut(:,i,j,k)    *L_xi(1,i)*L_Eta_Zeta
+    END DO ! i=0,N_In
+  END DO ! j=0,N_In
+END DO ! k=0,N_In
+
+! Convert to primitve variables
+IF(NVar_out.NE.NVar) CALL ConsToPrim(U_out,Utmp)
+
+END SUBROUTINE EvaluateFieldAndGradAtRefPos
+#endif
 
 SUBROUTINE RefElemNewton(Xi,X_In,wBaryCL_N_In,XiCL_N_In,XCL_N_In,dXCL_N_In,N_In,ElemID,Mode,PartID)
 !=================================================================================================================================

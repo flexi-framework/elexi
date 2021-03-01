@@ -66,10 +66,6 @@ CALL prms%SetSection("Particle Interpolation")
 CALL prms%CreateLogicalOption(  'Part-DoInterpolation'         , "Compute the DG solution field's influence on the Particle", '.TRUE.')
 CALL prms%CreateLogicalOption(  'Part-InterpolationElemLoop'   , 'Interpolate with outer iElem-loop (not'                         //&
                                                                 'for many Elems per proc!)', '.TRUE.')
-CALL prms%CreateRealArrayOption('Part-externalField'           , 'External field is added to the'                                 //&
-                                                                'maxwell-solver-field', '0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0')
-CALL prms%CreateRealOption(     'Part-scaleexternalField'      , 'Scale the provided external field', '1.0')
-
 END SUBROUTINE DefineParametersParticleInterpolation
 
 
@@ -98,7 +94,6 @@ USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: ALLOCSTAT,LoopDisabled,LoopDisabledGlob
-REAL                      :: scaleExternalField
 !===================================================================================================================================
 IF (PartInterpolationInitIsDone) THEN
    SWRITE(*,*) "InitParticleInterpolation already called."
@@ -131,32 +126,28 @@ LoopDisabledGlob = LoopDisabled
 WRITE(UNIT_StdOut,'(A)')          ' InterpolationElemLoop disabled due to high number of elements'
 #endif
 
-! Size of external field depends on the equations system. Distinguish here between LES and RANS-SA
-#if EQNSYSNR == 3   /*Spalart-Allmaras*/
-externalField(1:PP_nVar)= GETREALARRAY('Part-externalField',PP_nVar,'0.,0.,0.,0.,0.,0.')
-#else               /*Navier-Stokes*/
-externalField(1:PP_nVar)= GETREALARRAY('Part-externalField',PP_nVar,'0.,0.,0.,0.,0.')
-#endif
-
-! Only consider the external field if it is not equal to zero
-IF (ANY(externalField.NE.0)) THEN
-  useExternalField   = .TRUE.
-  scaleexternalField = GETREAL('Part-scaleexternalField','1.0')
-  externalField      = externalField*ScaleExternalField
-ELSE
-  useExternalField   = .FALSE.
-END IF
-
 !--- Allocate arrays for interpolation of fields to particles
 SDEALLOCATE(FieldAtParticle)
-! Allocate array for rho,u_x,u_y,u_z,e
-ALLOCATE(FieldAtParticle    (1:PP_nVar, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+! Allocate array for rho,u_x,u_y,u_z,p
+ALLOCATE(FieldAtParticle    (1:PP_nVarPrim, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+FieldAtParticle(:,:) = 0.
 #if USE_RW
 SDEALLOCATE(TurbFieldAtParticle)
 ! Allocate array for TKE,epsilson
 ALLOCATE(TurbFieldAtParticle(1:nVarTurb,1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 #endif
 IF (ALLOCSTAT.NE.0) CALL abort(__STAMP__,'ERROR in Part_interpolation.f90: Cannot allocate FieldAtParticle array!',ALLOCSTAT)
+
+#if USE_EXTEND_RHS
+SDEALLOCATE(GradAtParticle)
+! Allocate array for rho*(u_x,u_y,u_z)
+ALLOCATE(GradAtParticle    (RHS_LIFT, 1:3, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+GradAtParticle(:,:,:) = 0.
+SDEALLOCATE(TimeDerivAtParticle)
+! Allocate array for rho*(u_x,u_y,u_z)
+ALLOCATE(TimeDerivAtParticle(RHS_DERIVATIVE, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+GradAtParticle(:,:,:) = 0.
+#endif
 
 PartInterpolationInitIsDone=.TRUE.
 
@@ -166,7 +157,12 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticleInterpolation
 
 
-SUBROUTINE InterpolateFieldToParticle(nVar,U,FieldAtParticle)
+SUBROUTINE InterpolateFieldToParticle(nVar,U,nVar_out,FieldAtParticle&
+#if USE_EXTEND_RHS
+    ,gradUx,gradUy,gradUz,GradAtParticle,Ut,TimeDerivAtParticle)
+#else
+    )
+#endif
 !===================================================================================================================================
 ! interpolates field to particles
 !===================================================================================================================================
@@ -174,8 +170,10 @@ SUBROUTINE InterpolateFieldToParticle(nVar,U,FieldAtParticle)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Eval_xyz,                    ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
+#if USE_EXTEND_RHS
+USE MOD_Eval_xyz,                    ONLY: EvaluateFieldAndGradAtPhysPos,EvaluateFieldAndGradAtRefPos
+#endif /* USE_EXTEND_RHS */
 USE MOD_Mesh_Vars,                   ONLY: nElems,offsetElem
-!USE MOD_Particle_Interpolation_Vars, ONLY: useExternalField,externalField
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
 USE MOD_Particle_Tracking_Vars,      ONLY: TrackingMethod
 USE MOD_Particle_Vars,               ONLY: PartPosRef,PartState,PDM,PEM
@@ -192,16 +190,31 @@ USE MOD_FV_Vars,                     ONLY: FV_Elems
   IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                  :: nVar
-REAL,INTENT(IN)                     :: U(1:nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
+INTEGER,INTENT(IN)               :: nVar
+REAL,INTENT(IN)                  :: U(1:nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
+INTEGER,INTENT(IN)               :: nVar_out
+#if USE_EXTEND_RHS
+REAL,INTENT(IN),OPTIONAL         :: gradUx(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in x direction
+REAL,INTENT(IN),OPTIONAL         :: gradUy(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in y direction
+REAL,INTENT(IN),OPTIONAL         :: gradUz(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in z direction
+REAL,INTENT(IN),OPTIONAL         :: Ut(RHS_DERIVATIVE,0:PP_N,0:PP_N,0:PP_NZ,nElems)     !< Time derivative of momentum
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                    :: FieldAtParticle(1:nVar,1:PDM%maxParticleNumber)
+REAL,INTENT(OUT)                 :: FieldAtParticle(1:nVar_out,1:PDM%maxParticleNumber)
+#if USE_EXTEND_RHS
+REAL,INTENT(OUT),OPTIONAL        :: GradAtParticle(RHS_LIFT,3,1:PDM%maxParticleNumber)
+REAL,INTENT(OUT),OPTIONAL        :: TimeDerivAtParticle(RHS_DERIVATIVE,1:PDM%maxParticleNumber)
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                          :: firstElem,lastElem,ElemID
 INTEGER                          :: firstPart,lastPart
-REAL                             :: field(nVar)
+REAL                             :: field(nVar_out)
+#if USE_EXTEND_RHS
+REAL                             :: grad(RHS_LIFT,3)
+REAL                             :: tfield(RHS_DERIVATIVE)
+#endif
 INTEGER                          :: iPart,iElem!,iVar
 !===================================================================================================================================
 
@@ -210,6 +223,9 @@ IF (.NOT.DoInterpolation) RETURN
 
 ! Null field vector
 field     = 0.
+#if USE_EXTEND_RHS
+grad      = 0.
+#endif
 
 ! Loop variables
 firstPart = 1
@@ -221,11 +237,10 @@ IF(firstPart.GT.lastPart) RETURN
 ! InterpolationElemLoop is true, so initialize everything for it
 IF (InterpolationElemLoop) THEN
   FieldAtParticle(:,firstPart:lastPart)   = 0.
-!  IF (useExternalField) THEN
-!    DO iVar = 1,PP_nVar
-!      FieldAtParticle(iVar,firstPart:lastPart) = externalField(iVar)
-!    END DO
-!  END IF
+#if USE_EXTEND_RHS
+  IF (PRESENT(GradAtParticle)) GradAtParticle(:,:,firstPart:lastPart) = 0.
+#endif
+
 
   ! Loop first over all elements, then over all particles within the element. Ideally, this reduces cache misses as the interpolation
   ! happens with the same element metrics
@@ -256,18 +271,38 @@ IF (InterpolationElemLoop) THEN
 #if FV_ENABLED
         IF (FV_Elems(ElemID).EQ.1) THEN ! FV Element
           IF (TrackingMethod.EQ.REFMAPPING) THEN
-            CALL EvaluateField_FV(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,ElemID)
+            CALL EvaluateField_FV(PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field,ElemID)
           ELSE
-            CALL EvaluateField_FV(PartState (1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,ElemID)
+            CALL EvaluateField_FV(PartState (1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field,ElemID)
           END IF
         ELSE
 #endif /*FV_ENABLED*/
           ! RefMapping, evaluate in reference space
           IF (TrackingMethod.EQ.REFMAPPING) THEN
-            CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field)
+#if USE_EXTEND_RHS
+            IF (PRESENT(GradAtParticle)) THEN
+              CALL EvaluateFieldAndGradAtRefPos   (PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field&
+                                                  ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),grad&
+                                                  ,Ut(:,:,:,:,ElemID),tfield)
+            ELSE
+              CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field)
+            END IF
+#else
+            CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field)
+#endif
           ! Not RefMapping, evaluate at physical position
           ELSE
-            CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),field,iElem,iPart)
+#if USE_EXTEND_RHS
+            IF (PRESENT(GradAtParticle)) THEN
+              CALL EvaluateFieldAndGradAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field,iElem,iPart&
+                                                ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),grad&
+                                                ,Ut(:,:,:,:,ElemID),tfield)
+            ELSE
+              CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field,iElem,iPart)
+            END IF
+#else
+            CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field,iElem,iPart)
+#endif
           END IF ! TrackingMethod.EQ.REFMAPPING
 #if FV_ENABLED
         END IF
@@ -275,6 +310,10 @@ IF (InterpolationElemLoop) THEN
 
         ! Add the interpolated field to the background field
         FieldAtParticle(:,iPart) = FieldAtParticle(:,iPart) + field(:)
+#if USE_EXTEND_RHS
+        IF (PRESENT(GradAtParticle)) GradAtParticle(:,:,iPart)         = GradAtParticle(:,:,iPart)    + grad(:,:)
+        IF (PRESENT(TimeDerivAtParticle)) TimeDerivAtParticle(:,iPart) = TimeDerivAtParticle(:,iPart) + tfield(:)
+#endif
       END IF ! Element(iPart).EQ.iElem
     END DO ! iPart
   END DO ! iElem=1,PP_N
@@ -292,14 +331,25 @@ ELSE
     !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
     IF ((RWModel.EQ.'Gosman') .AND. (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 #endif
-    CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,ElemID),FieldAtParticle(:,iPart))
+    CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,ElemID),nVar_out,FieldAtParticle(:,iPart)&
+#if USE_EXTEND_RHS
+                                          ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),GradAtParticle(:,:,iPart)&
+                                          ,Ut(:,:,:,:,ElemID),TimeDerivAtParticle(:,iPart))
+#else
+                                          )
+#endif
   END DO
 END IF
 
 END SUBROUTINE InterpolateFieldToParticle
 
 
-SUBROUTINE InterpolateFieldToSingleParticle(PartID,nVar,U,FieldAtParticle)
+SUBROUTINE InterpolateFieldToSingleParticle(PartID,nVar,U,nVar_out,FieldAtParticle&
+#if USE_EXTEND_RHS
+    ,gradUx,gradUy,gradUz,GradAtParticle,Ut,TimeDerivAtParticle)
+#else
+    )
+#endif
 !===================================================================================================================================
 ! interpolates field to particles
 !===================================================================================================================================
@@ -308,8 +358,11 @@ USE MOD_Globals
 USE MOD_PreProc
 !USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
+#if USE_EXTEND_RHS
+USE MOD_Eval_xyz,                ONLY: EvaluateFieldAndGradAtPhysPos,EvaluateFieldAndGradAtRefPos
+#endif /* USE_EXTEND_RHS */
+USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
 USE MOD_Mesh_Vars,               ONLY: offsetElem,nElems
-!USE MOD_Particle_Interpolation_Vars,   ONLY: useExternalField,externalField
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
 USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PEM
 #if FV_ENABLED
@@ -324,20 +377,34 @@ USE MOD_FV_Vars,                 ONLY: FV_Elems
 INTEGER,INTENT(IN)               :: PartID
 INTEGER,INTENT(IN)               :: nVar
 REAL,INTENT(IN)                  :: U(1:nVar,0:PP_N,0:PP_N,0:PP_NZ)
+INTEGER,INTENT(IN)               :: nVar_out
+#if USE_EXTEND_RHS
+REAL,INTENT(IN),OPTIONAL         :: gradUx(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)       !< Gradient in x direction
+REAL,INTENT(IN),OPTIONAL         :: gradUy(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)       !< Gradient in y direction
+REAL,INTENT(IN),OPTIONAL         :: gradUz(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)       !< Gradient in z direction
+REAL,INTENT(IN),OPTIONAL         :: Ut(RHS_DERIVATIVE,0:PP_N,0:PP_N,0:PP_NZ)     !< Time derivative of momentum
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                 :: FieldAtParticle(1:nVar)
+REAL,INTENT(OUT)                 :: FieldAtParticle(1:nVar_out)
+#if USE_EXTEND_RHS
+REAL,INTENT(OUT),OPTIONAL        :: GradAtParticle(RHS_LIFT,3)
+REAL,INTENT(OUT),OPTIONAL        :: TimeDerivAtParticle(RHS_DERIVATIVE)
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                             :: field(1:nVar)
+REAL                             :: field(1:nVar_out)
 INTEGER                          :: ElemID
+#if USE_EXTEND_RHS
+REAL                             :: grad(RHS_LIFT,3)
+REAL                             :: tfield(RHS_DERIVATIVE)
+#endif
 !===================================================================================================================================
 
 FieldAtParticle(:)   = 0.
-
-!IF (useExternalField) THEN
-!  FieldAtParticle(:) = externalField(:)
-!END IF
+#if USE_EXTEND_RHS
+IF (PRESENT(GradAtParticle)) GradAtParticle(:,:) = 0.
+#endif
 
 ElemID=PEM%Element(PartID)
 ! No solution available in the halo region (yet), so return for particles there
@@ -347,18 +414,37 @@ IF ((ElemID.LT.offsetElem+1).OR.(ElemID.GT.offsetElem+nElems)) RETURN
 #if FV_ENABLED
 IF (FV_Elems(ElemID-offsetElem).EQ.1) THEN ! FV Element
   IF (TrackingMethod.EQ.REFMAPPING) THEN
-    CALL EvaluateField_FV(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID-offsetElem)
+    CALL EvaluateField_FV(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID-offsetElem)
   ELSE
-    CALL EvaluateField_FV(PartState (1:3,PartID) ,nVar,PP_N,U    (:,:,:,:),field,ElemID-offsetElem)
+    CALL EvaluateField_FV(PartState (1:3,PartID) ,nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID-offsetElem)
   END IF
 ELSE
 #endif /*FV_ENABLED*/
   ! RefMapping, evaluate in reference space
   IF (TrackingMethod.EQ.REFMAPPING) THEN
-    CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field)
+#if USE_EXTEND_RHS
+    IF (PRESENT(GradAtParticle)) THEN
+      CALL EvaluateFieldAndGradAtRefPos   (PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field&
+                                          ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),grad,Ut(:,:,:,:),tfield)
+
+    ELSE
+      CALL EvaluateFieldAtRefPos          (PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field)
+    END IF
+#else
+    CALL EvaluateFieldAtRefPos            (PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field)
+#endif
   ! Not RefMapping, evaluate at physical position
   ELSE
-    CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),field,ElemID,PartID)
+#if USE_EXTEND_RHS
+    IF (PRESENT(GradAtParticle)) THEN
+      CALL EvaluateFieldAndGradAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID,PartID&
+                                        ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),grad,Ut(:,:,:,:),tfield)
+    ELSE
+      CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID,PartID)
+    END IF
+#else
+    CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID,PartID)
+#endif
   END IF ! TrackingMethod.EQ.REFMAPPING
 #if FV_ENABLED
 END IF
@@ -366,6 +452,10 @@ END IF
 
 ! Add the interpolated field to the background field
 FieldAtParticle(:)        = FieldAtParticle(:)  + field(:)
+#if USE_EXTEND_RHS
+IF (PRESENT(GradAtParticle))      GradAtParticle(:,:)    = GradAtParticle(:,:)    + grad(:,:)
+IF (PRESENT(TimeDerivAtParticle)) TimeDerivAtParticle(:) = TimeDerivAtParticle(:) + tfield(:)
+#endif
 
 END SUBROUTINE InterpolateFieldToSingleParticle
 

@@ -52,6 +52,7 @@ USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,s
 USE MOD_Mesh_Vars          ,ONLY: NGeoRef,DetJac_Ref,MortarType,MortarInfo
 USE MOD_Mesh_Vars          ,ONLY: NormalDirs,TangDirs,NormalSigns,SideToElem
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
+USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis1D,ChangeBasis2D,ChangeBasis3D
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf,ChangeBasisVolume
 USE MOD_Metrics            ,ONLY: SurfMetricsFromJa
@@ -202,6 +203,8 @@ DO iSide=1,nSides
   CALL SurfMetricsFromJa(PP_N,NormalDir,TangDir,NormalSign,FV_Ja_Face,&
                          NormVec( :,:,:,1,iSide),TangVec1(:,:,:,1,iSide),&
                          TangVec2(:,:,:,1,iSide),SurfElem(  :,:,1,iSide))
+  CALL ChangeBasisSurf(1,PP_N,PP_N,FV_Vdm,sJ_master(:,0:PP_N,0:PP_NZ,iSide,0),sJ_master(:,0:PP_N,0:PP_NZ,iSide,1))
+  CALL ChangeBasisSurf(1,PP_N,PP_N,FV_Vdm,sJ_slave (:,0:PP_N,0:PP_NZ,iSide,0),sJ_slave (:,0:PP_N,0:PP_NZ,iSide,1))
 
   IF(MortarType(1,iSide).LE.0) CYCLE ! no mortars
   DO iMortar=1,MERGE(4,2,MortarType(1,iSide).EQ.1)
@@ -214,6 +217,8 @@ DO iSide=1,nSides
     CALL SurfMetricsFromJa(PP_N,NormalDir,TangDir,NormalSign,FV_Ja_Face,&
                            NormVec( :,:,:,1,SideID),TangVec1(:,:,:,1,SideID),&
                            TangVec2(:,:,:,1,SideID),SurfElem(  :,:,1,SideID))
+    CALL ChangeBasisSurf(1,PP_N,PP_N,FV_Vdm,sJ_master(:,0:PP_N,0:PP_NZ,SideID,0),sJ_master(:,0:PP_N,0:PP_NZ,SideID,1))
+    CALL ChangeBasisSurf(1,PP_N,PP_N,FV_Vdm,sJ_slave (:,0:PP_N,0:PP_NZ,SideID,0),sJ_slave (:,0:PP_N,0:PP_NZ,SideID,1))
   END DO
 END DO
 

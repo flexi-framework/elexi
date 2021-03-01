@@ -458,8 +458,6 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: SideInfo_Shared
 USE MOD_Particle_Surfaces        ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Vars            ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars            ,ONLY: PDM
-! Bons particle rebound model
-! USE MOD_Particle_Interpolation_Vars,ONLY:FieldAtParticle
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!

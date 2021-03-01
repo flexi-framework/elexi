@@ -377,6 +377,11 @@ IF (meshMode.GT.1) THEN
   ALLOCATE(      SurfElem(  0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
   ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ,             1:nSides)) ! temp
 
+  ! NOTE: initialize with 1 and not with 0
+  ALLOCATE(sJ_master(1,0:PP_N,0:PP_NZ,1:nSides,0:FV_ENABLED))
+  ALLOCATE(sJ_slave( 1,0:PP_N,0:PP_NZ,1:nSides,0:FV_ENABLED))
+  sJ_master = 1.
+  sJ_slave  = 1.
 
   ! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
   ! assign 1/detJ (sJ)
@@ -469,6 +474,8 @@ SDEALLOCATE(Metrics_hTilde)
 SDEALLOCATE(sJ)
 SDEALLOCATE(scaledJac)
 SDEALLOCATE(DetJac_Ref)
+SDEALLOCATE(sJ_master)
+SDEALLOCATE(sJ_slave)
 
 ! surface
 SDEALLOCATE(Face_xGP)

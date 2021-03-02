@@ -426,22 +426,16 @@ REAL,INTENT(OUT)   :: qder                            !< \f$ \partial/\partial\x
 ! LOCAL VARIABLES
 INTEGER            :: iLegendre
 REAL               :: L_Nm1,L_Nm2                     ! L_{N_in-2},L_{N_in-1}
-REAL               :: Lder,Lder_Nm1,Lder_Nm2          ! Lder_{N_in-2},Lder_{N_in-1}
 !==================================================================================================================================
 L_Nm2=1.
 L_Nm1=x
-Lder_Nm2=0.
-Lder_Nm1=1.
 DO iLegendre=2,N_in
   L=(REAL(2*iLegendre-1)*x*L_Nm1 - REAL(iLegendre-1)*L_Nm2)/REAL(iLegendre)
-  Lder=Lder_Nm2 + REAL(2*iLegendre-1)*L_Nm1
   L_Nm2=L_Nm1
   L_Nm1=L
-  Lder_Nm2=Lder_Nm1
-  Lder_Nm1=Lder
 END DO ! iLegendre
 q=REAL(2*N_in+1)/REAL(N_in+1)*(x*L -L_Nm2) !L_{N_in+1}-L_{N_in-1} !L_Nm2 is L_Nm1, L_Nm1 was overwritten!
-qder= REAL(2*N_in+1)*L                  !Lder_{N_in+1}-Lder_{N_in-1}
+qder= REAL(2*N_in+1)*L                     !Lder_{N_in+1}-Lder_{N_in-1}=L*(2N+1)
 END SUBROUTINE qAndLEvaluation
 
 

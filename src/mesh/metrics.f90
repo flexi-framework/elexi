@@ -182,7 +182,10 @@ USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,Ja_Face
 USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
 USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
-USE MOD_Mesh_Vars          ,ONLY: scaledJac,sJ_master,sJ_slave
+USE MOD_Mesh_Vars          ,ONLY: scaledJac
+#if FV_ENABLED
+USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
+#endif
 USE MOD_FillMortar1        ,ONLY: U_Mortar1
 USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1_DG
 USE MOD_Interpolation_Vars
@@ -596,6 +599,7 @@ TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(8:10,:,:,:,first
 DEALLOCATE(Geo)
 #endif /*MPI*/
 
+#if FV_ENABLED
 #if USE_MPI
 MPIRequest_Geo=MPI_REQUEST_NULL
 CALL StartReceiveMPIData(sJ_slave(:,:,:,:,0),(PP_N+1)*(PP_NZ+1),1,nSides,MPIRequest_Geo(:,SEND),SendID=2)
@@ -610,6 +614,7 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
 #endif
 sJ_slave(:,:,:,:,0) =1./sJ_slave(:,:,:,:,0)
 sJ_master(:,:,:,:,0)=1./sJ_master(:,:,:,:,0)
+#endif /* FV_ENABLED */
 
 END SUBROUTINE CalcMetrics
 

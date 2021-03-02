@@ -115,7 +115,7 @@ USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_FV_Basis
 USE MOD_Basis               ,ONLY: InitializeVandermonde
-USE MOD_Indicator           ,ONLY: doCalcIndicator
+USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
 USE MOD_Mesh_Vars           ,ONLY: nElems,nSides
 #if FV_RECONSTRUCT
@@ -125,6 +125,8 @@ USE MOD_ReadInTools
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Filter_Vars         ,ONLY: NFilter
+USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
+USE MOD_DG_Vars             ,ONLY: U
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -245,6 +247,13 @@ gradUzeta_central=0.
 ! Options for initial solution
 FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
 IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
+
+! initial call of indicator
+IF(doCalcIndicator) CALL CalcIndicator(U,MERGE(RestartTime,0.,doRestart))
+FV_Elems = 0
+! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
+CALL FV_Switch(U,AllowToDG=.FALSE.)
+IF(.NOT.DoRestart) CALL FV_FillIni()
 
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
@@ -420,6 +429,7 @@ SUBROUTINE FV_Info(iter)
 USE MOD_Globals
 USE MOD_Mesh_Vars    ,ONLY: nGlobalElems
 USE MOD_Analyze_Vars ,ONLY: totalFV_nElems
+USE MOD_FV_Vars     , ONLY: FV_Elems
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -428,6 +438,7 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
+IF (iter.EQ.1_8) totalFV_nElems = totalFV_nElems + SUM(FV_Elems) ! counter for output of FV amount during analyze
 #if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
@@ -474,10 +485,10 @@ REAL                   :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                   :: Elem_xFV(1:3,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
 ! initial call of indicator
-CALL CalcIndicator(U,0.)
-FV_Elems = 0
+!CALL CalcIndicator(U,0.)
+!FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
-CALL FV_Switch(U,AllowToDG=.FALSE.)
+!CALL FV_Switch(U,AllowToDG=.FALSE.)
 
 IF (.NOT.FV_IniSharp) THEN
   ! Super sample initial solution of all FV elements. Necessary if already initial DG solution contains oscillations, which
@@ -540,6 +551,39 @@ ELSE
 END IF
 END SUBROUTINE FV_FillIni
 
+!!==================================================================================================================================
+!!> Switch DG solution at faces between a DG element and a FV sub-cells element to Finite Volume.
+!!==================================================================================================================================
+!SUBROUTINE FV_DGtoFV(nVar,U_master,U_slave)
+!! MODULES
+!USE MOD_PreProc
+!USE MOD_Globals
+!USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
+!USE MOD_FV_Vars
+!USE MOD_Mesh_Vars   ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT / OUTPUT VARIABLES
+!INTEGER,INTENT(IN) :: nVar                                   !< number of solution variables
+!REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+!REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!INTEGER     :: firstSideID,lastSideID,SideID
+!!==================================================================================================================================
+!firstSideID = firstInnerSide
+!lastSideID  = lastMPISide_MINE
+!
+!DO SideID=firstSideID,lastSideID
+!  IF (FV_Elems_Sum(SideID).EQ.2) THEN
+!    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
+!  ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
+!    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_slave (:,:,:,SideID))
+!  END IF
+!END DO
+!
+!END SUBROUTINE FV_DGtoFV
 !==================================================================================================================================
 !> Switch DG solution at faces between a DG element and a FV sub-cells element to Finite Volume.
 !==================================================================================================================================
@@ -549,7 +593,8 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
 USE MOD_FV_Vars
-USE MOD_Mesh_Vars   ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+USE MOD_Mesh_Vars        ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+USE MOD_Mesh_Vars        ,ONLY: sJ_master,sJ_slave
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -559,18 +604,46 @@ REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on mast
 REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER     :: firstSideID,lastSideID,SideID
+INTEGER            :: firstSideID,lastSideID,SideID,p,q
 !==================================================================================================================================
 firstSideID = firstInnerSide
 lastSideID  = lastMPISide_MINE
 
-DO SideID=firstSideID,lastSideID
-  IF (FV_Elems_Sum(SideID).EQ.2) THEN
-    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
-  ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
-    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_slave (:,:,:,SideID))
-  END IF
-END DO
+IF (switchConservative) THEN
+  DO SideID=firstSideID,lastSideID
+    IF (FV_Elems_Sum(SideID).EQ.2) THEN
+      ! Transform the DG solution into the reference element
+      DO q=0,PP_NZ; DO p=0,PP_N
+        U_master(:,p,q,SideID)=U_master(:,p,q,SideID)/sJ_master(1,p,q,SideID,0)
+      END DO; END DO
+      ! Perform interpolation from DG to FV
+      CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
+      ! Transform back to physical space
+      DO q=0,PP_NZ; DO p=0,PP_N
+        U_master(:,p,q,SideID)=U_master(:,p,q,SideID)*sJ_master(1,p,q,SideID,1)
+      END DO; END DO
+    ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
+      ! Transform the DG solution into the reference element
+      DO q=0,PP_NZ; DO p=0,PP_N
+        U_slave(:,p,q,SideID)=U_slave(:,p,q,SideID)/sJ_slave(1,p,q,SideID,0)
+      END DO; END DO
+      ! Perform interpolation from DG to FV
+      CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_slave(:,:,:,SideID))
+      ! Transform back to physical space
+      DO q=0,PP_NZ; DO p=0,PP_N
+        U_slave(:,p,q,SideID)=U_slave(:,p,q,SideID)*sJ_slave(1,p,q,SideID,1)
+      END DO; END DO
+    END IF
+  END DO
+ELSE
+  DO SideID=firstSideID,lastSideID
+    IF (FV_Elems_Sum(SideID).EQ.2) THEN
+      CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
+    ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
+      CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_slave (:,:,:,SideID))
+    END IF
+  END DO
+END IF
 
 END SUBROUTINE FV_DGtoFV
 

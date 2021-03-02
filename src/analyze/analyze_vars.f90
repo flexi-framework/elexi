@@ -41,6 +41,7 @@ REAL                 :: Vol                               !< volume of the domai
 ! Analyze features
 LOGICAL              :: doCalcErrorNorms  =.FALSE.        !< marks whether error norms should be computed
 LOGICAL              :: doAnalyzeToFile   =.FALSE.        !< marks whether error norms should be written to a file
+LOGICAL              :: doAnalyzeEquation =.FALSE.        !< marks whether the dgtimeder. should be called or not
 
 ! Analyze to file
 REAL                 :: iterRestart=0                     !< contains iteration count of previous computation in case a restart is

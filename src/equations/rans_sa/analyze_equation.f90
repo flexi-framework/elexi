@@ -146,59 +146,80 @@ END IF
 
 ! Initialize eval routines
 IF(MPIRoot)THEN
-  IF(doCalcBodyForces.AND.doWriteBodyForces)THEN
-    ALLOCATE(Filename_BodyForce(nBCs))
-    DO i=1,nBCs
-      IF(.NOT.isWall(i)) CYCLE
-      FileName_BodyForce(i) = TRIM(ProjectName)//'_BodyForces_'//TRIM(BoundaryName(i))
-      CALL InitOutputToFile(FileName_BodyForce(i),TRIM(BoundaryName(i)),9,&
-           [CHARACTER(7) :: "x-Force","y-Force","z-Force","Fp_x","Fp_y","Fp_z","Fv_x","Fv_y","Fv_z"])
-    END DO
+  IF(doCalcBodyForces)THEN
+    doAnalyzeEquation = .TRUE.
+    IF(doWriteBodyForces)THEN
+      ALLOCATE(Filename_BodyForce(nBCs))
+      DO i=1,nBCs
+        IF(.NOT.isWall(i)) CYCLE
+        FileName_BodyForce(i) = TRIM(ProjectName)//'_BodyForces_'//TRIM(BoundaryName(i))
+        CALL InitOutputToFile(FileName_BodyForce(i),TRIM(BoundaryName(i)),9,&
+             [CHARACTER(7) :: "x-Force","y-Force","z-Force","Fp_x","Fp_y","Fp_z","Fv_x","Fv_y","Fv_z"])
+      END DO
+    END IF
   END IF
-  IF(doCalcWallVelocity.AND.doWriteWallVelocity)THEN
-    ALLOCATE(Filename_WallVel(nBCs))
-    DO i=1,nBCs
-      IF(.NOT.isWall(i)) CYCLE
-      FileName_WallVel(i) = TRIM(ProjectName)//'_WallVel_'//TRIM(BoundaryName(i))
-      CALL InitOutputToFile(FileName_WallVel(i),TRIM(BoundaryName(i)),3,&
-           [CHARACTER(7) :: "MeanVel","MinVel","MaxVel"])! gfortran hates mixed length arrays
-    END DO
+  IF(doCalcWallVelocity)THEN
+    doAnalyzeEquation = .TRUE.
+    IF(doWriteWallVelocity)THEN
+      ALLOCATE(Filename_WallVel(nBCs))
+      DO i=1,nBCs
+        IF(.NOT.isWall(i)) CYCLE
+        FileName_WallVel(i) = TRIM(ProjectName)//'_WallVel_'//TRIM(BoundaryName(i))
+        CALL InitOutputToFile(FileName_WallVel(i),TRIM(BoundaryName(i)),3,&
+             [CHARACTER(7) :: "MeanVel","MinVel","MaxVel"])! gfortran hates mixed length arrays
+      END DO
+    END IF
   END IF
-  IF(doCalcTotalStates.AND.doWriteTotalStates)THEN
-    ALLOCATE(Filename_TotalStates(nBCs))
-    DO i=1,nBCs
-      IF(BoundaryType(i,BC_TYPE).EQ.1) CYCLE
-      FileName_TotalStates(i) = TRIM(ProjectName)//'_TotalStates_'//TRIM(BoundaryName(i))
-      CALL InitOutputToFile(FileName_TotalStates(i),TRIM(BoundaryName(i)),4,&
-           [CHARACTER(4) :: "pt","p","Tt","Mach"])
-    END DO
+  IF(doCalcTotalStates)THEN
+    doAnalyzeEquation = .TRUE.
+    IF(doWriteTotalStates)THEN
+      ALLOCATE(Filename_TotalStates(nBCs))
+      DO i=1,nBCs
+        IF(BoundaryType(i,BC_TYPE).EQ.1) CYCLE
+        FileName_TotalStates(i) = TRIM(ProjectName)//'_TotalStates_'//TRIM(BoundaryName(i))
+        CALL InitOutputToFile(FileName_TotalStates(i),TRIM(BoundaryName(i)),4,&
+             [CHARACTER(4) :: "pt","p","Tt","Mach"])
+      END DO
+    END IF
   END IF
-  IF(doCalcBulkState.AND.doWriteBulkState)THEN
-    FileName_Bulk  = TRIM(ProjectName)//'_Bulk'
-    CALL InitOutputToFile(FileName_Bulk,'Bulk',2*PP_nVar-1,[StrVarNamesPrim,StrVarNames(2:PP_nVar)])
+  IF(doCalcBulkState)THEN
+    doAnalyzeEquation = .TRUE.
+    IF(doWriteBulkState)THEN
+      FileName_Bulk  = TRIM(ProjectName)//'_Bulk'
+      CALL InitOutputToFile(FileName_Bulk,'Bulk',2*PP_nVar-1,[StrVarNamesPrim,StrVarNames(2:PP_nVar)])
+    END IF
   END IF
-  IF(doCalcMeanFlux.AND.doWriteMeanFlux)THEN
-    ALLOCATE(Filename_MeanFlux(nBCs))
-    DO i=1,nBCs
-      IF((BoundaryType(i,BC_TYPE).EQ.1).AND.(BoundaryType(i,BC_ALPHA).LE.0)) CYCLE
-      FileName_MeanFlux(i) = TRIM(ProjectName)//'_MeanFlux_'//TRIM(BoundaryName(i))
-      CALL InitOutputToFile(FileName_MeanFlux(i),TRIM(BoundaryName(i)),PP_nVar,StrVarNames)
-    END DO
+  IF(doCalcMeanFlux)THEN
+    doAnalyzeEquation = .TRUE.
+    IF(doWriteMeanFlux)THEN
+      ALLOCATE(Filename_MeanFlux(nBCs))
+      DO i=1,nBCs
+        IF((BoundaryType(i,BC_TYPE).EQ.1).AND.(BoundaryType(i,BC_ALPHA).LE.0)) CYCLE
+        FileName_MeanFlux(i) = TRIM(ProjectName)//'_MeanFlux_'//TRIM(BoundaryName(i))
+        CALL InitOutputToFile(FileName_MeanFlux(i),TRIM(BoundaryName(i)),PP_nVar,StrVarNames)
+      END DO
+    END IF
   END IF
-  IF(doCalcResiduals.AND.doWriteResiduals)THEN
-    FileName_Residuals = TRIM(ProjectName)//'_Residuals'
-    CALL InitOutputToFile(FileName_Residuals,'Residuals',PP_nVar,StrVarNames)
+  IF(doCalcResiduals)THEN
+    doAnalyzeEquation = .TRUE.
+    IF(doWriteResiduals)THEN
+      FileName_Residuals = TRIM(ProjectName)//'_Residuals'
+      CALL InitOutputToFile(FileName_Residuals,'Residuals',PP_nVar,StrVarNames)
+    END IF
   END IF
 
 #if USE_PARTICLES
-  IF(doCalcWallParticles.AND.doWriteWallParticles)THEN
-    ALLOCATE(Filename_WallPart(nBCs))
-    DO i=1,nBCs
-      IF(.NOT.isWall(i)) CYCLE
-      FileName_WallPart(i) = TRIM(ProjectName)//'_WallPart_'//TRIM(BoundaryName(i))
-      CALL InitOutputToFile(FileName_WallPart(i),TRIM(BoundaryName(i)),6,&
-           [CHARACTER(9) :: "AlphaMean","AlphaVar","EkinMean","EkinVar","PartForce","MaxForce"])! gfortran hates mixed length arrays
-    END DO
+  IF(doCalcWallParticles)THEN
+    doAnalyzeEquation = .TRUE.
+    IF(doWriteWallParticles)THEN
+      ALLOCATE(Filename_WallPart(nBCs))
+      DO i=1,nBCs
+        IF(.NOT.isWall(i)) CYCLE
+        FileName_WallPart(i) = TRIM(ProjectName)//'_WallPart_'//TRIM(BoundaryName(i))
+        CALL InitOutputToFile(FileName_WallPart(i),TRIM(BoundaryName(i)),6,&
+             [CHARACTER(9) :: "AlphaMean","AlphaVar","EkinMean","EkinVar","PartForce","MaxForce"])! gfortran hates mixed length arrays
+      END DO
+    END IF
   END IF
 #endif
 
@@ -401,7 +422,6 @@ USE MOD_PreProc
 USE MOD_Analyze_Vars,       ONLY: wGPVol,Vol
 USE MOD_Mesh_Vars,          ONLY: sJ,nElems
 USE MOD_DG_Vars,            ONLY: U,UPrim
-USE MOD_EOS,                ONLY: ConsToPrim
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
 #endif

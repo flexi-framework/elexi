@@ -551,39 +551,6 @@ ELSE
 END IF
 END SUBROUTINE FV_FillIni
 
-!!==================================================================================================================================
-!!> Switch DG solution at faces between a DG element and a FV sub-cells element to Finite Volume.
-!!==================================================================================================================================
-!SUBROUTINE FV_DGtoFV(nVar,U_master,U_slave)
-!! MODULES
-!USE MOD_PreProc
-!USE MOD_Globals
-!USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
-!USE MOD_FV_Vars
-!USE MOD_Mesh_Vars   ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT / OUTPUT VARIABLES
-!INTEGER,INTENT(IN) :: nVar                                   !< number of solution variables
-!REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
-!REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!INTEGER     :: firstSideID,lastSideID,SideID
-!!==================================================================================================================================
-!firstSideID = firstInnerSide
-!lastSideID  = lastMPISide_MINE
-!
-!DO SideID=firstSideID,lastSideID
-!  IF (FV_Elems_Sum(SideID).EQ.2) THEN
-!    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
-!  ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
-!    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_slave (:,:,:,SideID))
-!  END IF
-!END DO
-!
-!END SUBROUTINE FV_DGtoFV
 !==================================================================================================================================
 !> Switch DG solution at faces between a DG element and a FV sub-cells element to Finite Volume.
 !==================================================================================================================================

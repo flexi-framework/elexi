@@ -180,8 +180,8 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
 USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage,dtElem
-USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData
-USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
+USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData,doAnalyzeEquation
+USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage,doCalcTotalStates
 USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
@@ -193,7 +193,7 @@ USE MOD_Output              ,ONLY: Visualize,PrintStatusLine
 USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
 USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
-USE MOD_DG_Vars             ,ONLY: U
+USE MOD_DG_Vars             ,ONLY: U,UPrim
 USE MOD_Overintegration     ,ONLY: Overintegration
 USE MOD_Overintegration_Vars,ONLY: OverintegrationType
 USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
@@ -277,15 +277,17 @@ END SELECT
 
 ! Do first RK stage of first timestep to fill gradients
 CurrentStage=1
-CALL DGTimeDerivative_weakForm(t)
-IF(doCalcIndicator) CALL CalcIndicator(U,t)
+! Call if an Analyze_Equation routine is called
+IF(doAnalyzeEquation) CALL DGTimeDerivative_weakForm(t)
+!IF(doCalcIndicator) CALL CalcIndicator(U,t)
 
-#if FV_ENABLED
-! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
-IF(.NOT.DoRestart)THEN
-  CALL FV_FillIni()
-END IF
-#endif
+!#if FV_ENABLED
+!! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
+!IF(.NOT.DoRestart)THEN
+!  CALL CalcIndicator(U,t)
+!  CALL FV_FillIni()
+!END IF
+!#endif
 
 IF(.NOT.DoRestart)THEN
   SWRITE(UNIT_StdOut,*)'WRITING INITIAL SOLUTION:'
@@ -299,9 +301,9 @@ CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                       FutureTime=tWriteData,isErrorFile=.FALSE.)
 
 #if USE_PARTICLES
-      ! Write individual particle surface impact data in rewritten state file after restart
-      IF(doParticleImpactTrack)  CALL WriteEP(OutputTime=t,resetCounters=.TRUE.)
-      IF(RecordPart)             CALL ParticleRecord(t,writeToBinary=.TRUE.)
+! Write individual particle surface impact data in rewritten state file after restart
+IF(doParticleImpactTrack)  CALL WriteEP(OutputTime=t,resetCounters=.TRUE.)
+IF(RecordPart)             CALL ParticleRecord(t,writeToBinary=.TRUE.)
 #endif /* USE_PARTICLES */
 
 CALL Visualize(t,U)

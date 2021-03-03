@@ -485,7 +485,7 @@ CHARACTER(LEN=1)   :: lf
 IF (MPIRoot) THEN
   IF(nProcessors.GT.1)THEN
     ! write '.vtu">'//multiblock file
-    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.pvd' ,ACCESS='STREAM')
+    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
     ! Line feed character
     lf = char(10)
     Buffer='<VTKFile type="Collection" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
@@ -498,7 +498,7 @@ IF (MPIRoot) THEN
     CLOSE(ivtk)
   ELSE
     ! write '.vtu">'//multiblock file
-    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.vtm' ,ACCESS='STREAM')
+    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.vtm',STATUS='REPLACE',ACCESS='STREAM')
     ! Line feed character
     lf = char(10)
     Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
@@ -535,7 +535,7 @@ CHARACTER(LEN=35)  :: StrProc
 !===================================================================================================================================
 IF (MPIRoot) THEN
   ! write multiblock file
-  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.pvtu',ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
   ! Line feed character
   lf = char(10)
   Buffer='<VTKFile type="PUnstructuredGrid" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf

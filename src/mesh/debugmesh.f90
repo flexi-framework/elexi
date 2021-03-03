@@ -38,7 +38,7 @@ CONTAINS
 !> information, which is built during the (parallel) mesh preprocessing phase. The supersampled mesh data is then output into
 !> a visualization file.
 !==================================================================================================================================
-SUBROUTINE WriteDebugMesh(debugMesh,dtElem)
+SUBROUTINE WriteDebugMesh(debugMesh)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -51,11 +51,10 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN):: debugMesh      !< file type to be used: 1-2: Tecplot format (deprecated), 3: Paraview format
-REAL,INTENT(IN)   :: dtElem(nElems) !< time step
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                  :: iElem,iLocSide,SideID,bcindex_loc
-CHARACTER(LEN=32)        :: VarNames(7)
+CHARACTER(LEN=32)        :: VarNames(6)
 REAL,ALLOCATABLE,TARGET  :: debugVisu(:,:,:,:,:)
 REAL,POINTER             :: debugVisu_p(:,:,:,:,:)
 REAL,ALLOCATABLE,TARGET  :: X_NVisu(:,:,:,:,:)
@@ -77,13 +76,11 @@ VarNames(3)='FLIP'
 VarNames(4)='iLocSide'
 VarNames(5)='BCIndex'
 VarNames(6)='Rank'
-VarNames(7)='dt'
 ALLOCATE(debugVisu(7,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
 debugVisu=-1.
 DO iElem=1,nElems
   debugVisu(1,:,:,:,iElem)=REAL(iElem)
   debugVisu(6,:,:,:,iElem)=REAL(myRank)
-  debugVisu(7,:,:,:,iElem)=REAL(dtElem(iElem))
 #if (PP_dim == 3)
   DO iLocSide=1,6
 #else
@@ -136,7 +133,7 @@ CASE(2)
 CASE(3)
   X_NVisu_p => X_NVisu
   debugVisu_p => debugVisu
-  CALL WriteDataToVTK(7,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh',dim=PP_dim)
+  CALL WriteDataToVTK(6,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh',dim=PP_dim)
 END SELECT
 
 DEALLOCATE(X_NVisu)

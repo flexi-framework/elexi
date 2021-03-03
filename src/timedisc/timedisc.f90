@@ -341,9 +341,6 @@ ELSE
 END IF
 #endif
 
-! Write Debugmesh
-CALL WriteDebugMesh(GETINT('debugmesh','0'),dtElem)
-
 #if USE_LOADBALANCE
 CALL InitialAutoRestart(t,dt,dt_min,tend,tAnalyze,Analyze_dt,tmp_LoadBalanceSample,tmp_DoLoadBalance)
 #endif

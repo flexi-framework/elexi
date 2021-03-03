@@ -117,6 +117,7 @@ USE MOD_EOS_Vars,          ONLY : mu0
 USE MOD_Particle_Vars,     ONLY : Species, PartSpecies, PartGravity
 USE MOD_Particle_Vars,     ONLY : PartState, RepWarn
 USE MOD_Particle_Vars,     ONLY : TurbPartState
+USE MOD_Viscosity
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -333,6 +334,7 @@ USE MOD_Particle_Vars,          ONLY: PartState
 USE MOD_Particle_Vars,          ONLY: TurbPartState
 USE MOD_PreProc,                ONLY: PP_pi
 USE MOD_Equation_Vars,          ONLY: s43
+USE MOD_Viscosity
 #if USE_BASSETFORCE
 USE MOD_Particle_Vars,          ONLY: durdt, N_Basset, bIter
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
@@ -403,7 +405,7 @@ facp = 1.
 !===================================================================================================================================
 #if USE_LIFTFORCE
 ! Calculate the factor
-facm = 9.69./(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
+facm = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
 ! Calculate the rotation: \nabla x u
 rotu     = (/GradAtParticle(3,2)-GradAtParticle(2,3),&
              GradAtParticle(1,3)-GradAtParticle(3,1),&

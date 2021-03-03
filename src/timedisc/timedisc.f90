@@ -278,7 +278,11 @@ END SELECT
 ! Do first RK stage of first timestep to fill gradients
 CurrentStage=1
 ! Call if an Analyze_Equation routine is called
+#if !USE_EXTEND_RHS
 IF(doAnalyzeEquation) CALL DGTimeDerivative_weakForm(t)
+#else
+CALL DGTimeDerivative_weakForm(t)
+#endif /* USE_EXTEND_RHS */
 !IF(doCalcIndicator) CALL CalcIndicator(U,t)
 
 !#if FV_ENABLED
@@ -858,7 +862,7 @@ END IF
 
 SELECT CASE (TRIM(ParticleTimeDiscMethod))
   CASE('Runge-Kutta')
-    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt) !,b_dt)
+    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt)
     CALL Particle_TimeStepByLSERK(t,b_dt)
 
     ! Following steps
@@ -866,7 +870,7 @@ SELECT CASE (TRIM(ParticleTimeDiscMethod))
       CurrentStage = iStage
       tStage       = t+dt*RKc(iStage)
 
-      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt) !,b_dt)
+      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt)
 
       ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
       IF (doParticlePositionTrack) THEN

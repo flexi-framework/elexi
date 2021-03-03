@@ -249,6 +249,9 @@ INTEGER            :: nElems_loc,Nloc,nDOF,nDims
 #if PARABOLIC
 INTEGER            :: iVorM,iWFriX,iWFriY,iWFriZ,iWFriMag
 #endif
+#if USE_EXTEND_RHS
+INTEGER            :: iGradX1,iGradX2,iGradX3,iGradY1,iGradY2,iGradY3,iGradZ1,iGradZ2,iGradZ3
+#endif
 LOGICAL            :: withGradients
 LOGICAL            :: withVectors
 !===================================================================================================================================
@@ -288,6 +291,17 @@ iWFriX = KEYVALUE(DepNames,mapDepToCalc,"wallfrictionx")
 iWFriY = KEYVALUE(DepNames,mapDepToCalc,"wallfrictiony")
 iWFriZ = KEYVALUE(DepNames,mapDepToCalc,"wallfrictionz")
 iWFriMag = KEYVALUE(DepNames,mapDepToCalc,"wallfrictionmagnitude")
+#endif
+#if USE_EXTEND_RHS
+iGradX1 = KEYVALUE(DepNames,mapDepToCalc,"gradux")
+iGradX2 = KEYVALUE(DepNames,mapDepToCalc,"gradvx")
+iGradX3 = KEYVALUE(DepNames,mapDepToCalc,"gradwx")
+iGradY1 = KEYVALUE(DepNames,mapDepToCalc,"graduy")
+iGradY2 = KEYVALUE(DepNames,mapDepToCalc,"gradvy")
+iGradY3 = KEYVALUE(DepNames,mapDepToCalc,"gradwy")
+iGradZ1 = KEYVALUE(DepNames,mapDepToCalc,"graduz")
+iGradZ2 = KEYVALUE(DepNames,mapDepToCalc,"gradvz")
+iGradZ3 = KEYVALUE(DepNames,mapDepToCalc,"gradwz")
 #endif
 
 CALL LowCase(DepName,DepName_low)
@@ -375,6 +389,26 @@ SELECT CASE(DepName_low)
     UCalc(:,iVarCalc) = FillQcriterion(nVal,gradUx,gradUy,gradUz)
   CASE("schlieren")
     UCalc(:,iVarCalc) = LOG10(SQRT(gradUx(1,:)**2 + gradUy(1,:)**2 + gradUz(1,:)**2)+1.0)
+#if USE_EXTEND_RHS
+  CASE("gradux")
+    UCalc(:,iVarCalc) = gradUx(VEL1,:)
+  CASE("gradvx")
+    UCalc(:,iVarCalc) = gradUx(VEL2,:)
+  CASE("gradwx")
+    UCalc(:,iVarCalc) = gradUx(VEL3,:)
+  CASE("graduy")
+    UCalc(:,iVarCalc) = gradUy(VEL1,:)
+  CASE("gradvy")
+    UCalc(:,iVarCalc) = gradUy(VEL2,:)
+  CASE("gradwy")
+    UCalc(:,iVarCalc) = gradUy(VEL3,:)
+  CASE("graduz")
+    UCalc(:,iVarCalc) = gradUz(VEL1,:)
+  CASE("gradvz")
+    UCalc(:,iVarCalc) = gradUz(VEL2,:)
+  CASE("gradwz")
+    UCalc(:,iVarCalc) = gradUz(VEL3,:)
+#endif
 #endif
 END SELECT
 IF (withVectors) THEN

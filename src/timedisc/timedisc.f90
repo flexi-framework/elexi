@@ -181,7 +181,7 @@ USE MOD_PreProc
 USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
 USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage,dtElem
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData,doAnalyzeEquation
-USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage,doCalcTotalStates
+USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing

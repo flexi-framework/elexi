@@ -94,14 +94,7 @@ USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 #endif
 #if USE_EXTEND_RHS
 USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle,TimeDerivAtParticle
-!#if USE_RHS_LIFTCONS
-!USE MOD_PreProc
-!USE MOD_Mesh_Vars,               ONLY: nElems
-!USE MOD_Lifting_VolInt,          ONLY: Lifting_VolInt
-!USE MOD_ApplyJacobianPart,       ONLY: ApplyJacobianPart
-!#else
 USE MOD_Lifting_Vars,            ONLY: gradUx,gradUy,gradUz
-!#endif /* USE_RHS_LIFTCONS */
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -115,9 +108,6 @@ INTEGER                       :: iPart
 #if USE_LOADBALANCE
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
-!#if USE_RHS_LIFTCONS
-!REAL,DIMENSION(1:RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)  :: gradUx, gradUy, gradUz
-!#endif /* USE_RHS_LIFTCONS */
 !===================================================================================================================================
 #if USE_MPI
 #if USE_LOADBALANCE
@@ -140,16 +130,6 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-!#if USE_RHS_LIFTCONS
-!  CALL Lifting_VolInt(RHS_LIFT,1,U,gradUx)
-!  CALL Lifting_VolInt(RHS_LIFT,2,U,gradUy)
-!  CALL ApplyJacobianPart(gradUx,toPhysical=.TRUE.,FVE=0)
-!  CALL ApplyJacobianPart(gradUy,toPhysical=.TRUE.,FVE=0)
-!#if (PP_dim==3)
-!  CALL Lifting_VolInt(RHS_LIFT,3,U,gradUz)
-!  CALL ApplyJacobianPart(gradUz,toPhysical=.TRUE.,FVE=0)
-!#endif
-!#endif /* USE_RHS_LIFTCONS */
   CALL InterpolateFieldToParticle(PP_nVar,U     ,PP_nVarPrim,FieldAtParticle&
 #if  USE_EXTEND_RHS
     ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),GradAtParticle&
@@ -274,14 +254,7 @@ USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 #endif
 #if USE_EXTEND_RHS
 USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle, TimeDerivAtParticle
-!#if USE_RHS_LIFTCONS
-!USE MOD_PreProc
-!USE MOD_Mesh_Vars,               ONLY: nElems
-!USE MOD_Lifting_VolInt,          ONLY: Lifting_VolInt
-!USE MOD_ApplyJacobianPart,       ONLY: ApplyJacobianPart
-!#else
 USE MOD_Lifting_Vars,            ONLY: gradUx,gradUy,gradUz
-!#endif /* USE_RHS_LIFTCONS */
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -293,9 +266,6 @@ REAL,INTENT(IN)               :: dt
 #if USE_LOADBALANCE
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
-!#if USE_RHS_LIFTCONS
-!REAL,DIMENSION(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)  :: gradUx, gradUy, gradUz
-!#endif /* USE_RHS_LIFTCONS */
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if USE_MPI
 #if USE_LOADBALANCE
@@ -317,19 +287,6 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-  ! forces on particle
-  ! can be used to hide sending of number of particles
-  !--> Interpolate fluid field to particle position
-!#if USE_RHS_LIFTCONS
-!  CALL Lifting_VolInt(RHS_LIFT,1,U,gradUx)
-!  CALL Lifting_VolInt(RHS_LIFT,2,U,gradUy)
-!  CALL ApplyJacobianPart(gradUx,toPhysical=.TRUE.,FVE=0)
-!  CALL ApplyJacobianPart(gradUy,toPhysical=.TRUE.,FVE=0)
-!#if (PP_dim==3)
-!  CALL Lifting_VolInt(RHS_LIFT,3,U,gradUz)
-!  CALL ApplyJacobianPart(gradUz,toPhysical=.TRUE.,FVE=0)
-!#endif
-!#endif /* USE_RHS_LIFTCONS */
 CALL InterpolateFieldToParticle(PP_nVar,U,PP_nVarPrim,FieldAtParticle&
 #if USE_EXTEND_RHS
     ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),GradAtParticle&
@@ -513,14 +470,7 @@ USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
 #if USE_EXTEND_RHS
 USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle, TimeDerivAtParticle
-!#if USE_RHS_LIFTCONS
-!USE MOD_PreProc
-!USE MOD_Mesh_Vars,               ONLY: nElems
-!USE MOD_Lifting_VolInt,          ONLY: Lifting_VolInt
-!USE MOD_ApplyJacobianPart,       ONLY: ApplyJacobianPart
-!#else
 USE MOD_Lifting_Vars,            ONLY: gradUx,gradUy,gradUz
-!#endif /* USE_RHS_LIFTCONS */
 #endif /* USE_EXTEND_RHS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -532,9 +482,6 @@ REAL,INTENT(IN)                                         :: dt
 #if USE_LOADBALANCE
 REAL                                                    :: tLBStart
 #endif /*USE_LOADBALANCE*/
-!#if USE_RHS_LIFTCONS
-!REAL,DIMENSION(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)   :: gradUx, gradUy, gradUz
-!#endif /* USE_RHS_LIFTCONS */
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -559,19 +506,6 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-  ! forces on particle
-  ! can be used to hide sending of number of particles
-  !--> Interpolate fluid field to particle position
-!#if USE_RHS_LIFTCONS
-!  CALL Lifting_VolInt(RHS_LIFT,1,U,gradUx)
-!  CALL Lifting_VolInt(RHS_LIFT,2,U,gradUy)
-!  CALL ApplyJacobianPart(gradUx,toPhysical=.TRUE.,FVE=0)
-!  CALL ApplyJacobianPart(gradUy,toPhysical=.TRUE.,FVE=0)
-!#if (PP_dim==3)
-!  CALL Lifting_VolInt(RHS_LIFT,3,U,gradUz)
-!  CALL ApplyJacobianPart(gradUz,toPhysical=.TRUE.,FVE=0)
-!#endif
-!#endif /* USE_RHS_LIFTCONS */
   CALL InterpolateFieldToParticle(PP_nVar,U,PP_nVarPrim,FieldAtParticle&
 #if USE_EXTEND_RHS
     ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),GradAtParticle&

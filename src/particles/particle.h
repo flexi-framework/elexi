@@ -126,13 +126,9 @@
 #define RHS_HOELZER      8
 
 ! Velocity and pressure for extended RHS
-!#if USE_RHS_LIFTCONS
-!#define RHS_LIFTVARS   	1:3
-!#else
 #define RHS_LIFTVARS    (/DENS,VEL1,VEL2,VEL3/)
-!#endif
-#define RHS_TIMEVARS    (/DENS,MOM1,MOM2,MOM3/)
 #define RHS_LIFT        4
+#define RHS_TIMEVARS    (/DENS,MOM1,MOM2,MOM3/)
 #define RHS_DERIVATIVE  4
 
 #define PART_POS1       1

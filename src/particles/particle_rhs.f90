@@ -91,7 +91,7 @@ DO iPart = 1,PDM%ParticleVecLength
     IF(UseManualTimestep) TimeDerivAtParticle(1:RHS_DERIVATIVE,iPart) = 0.
     ! Calculate other RHS forces and add all forces to compute the particle push
     Pt(1:3,iPart) = ParticlePushExtend(iPart,FieldAtParticle(PRIM,iPart),&
-                                       GradAtParticle(1:RHS_LIFT,3,iPart),TimeDerivAtParticle(1:RHS_DERIVATIVE,iPart),Fd&
+                                       GradAtParticle(1:RHS_LIFT,1:3,iPart),TimeDerivAtParticle(1:RHS_DERIVATIVE,iPart),Fd&
 #if USE_BASSETFORCE
                                       ,dt,iStage)
 #else
@@ -407,20 +407,20 @@ facp = 1.
 ! Calculate the factor
 facm = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
 ! Calculate the rotation: \nabla x u
-rotu     = (/GradAtParticle(3,2)-GradAtParticle(2,3),&
-             GradAtParticle(1,3)-GradAtParticle(3,1),&
-             GradAtParticle(2,1)-GradAtParticle(1,2)/)
+rotu     = (/GradAtParticle(VEL3,2)-GradAtParticle(VEL2,3),&
+             GradAtParticle(VEL1,3)-GradAtParticle(VEL3,1),&
+             GradAtParticle(VEL2,1)-GradAtParticle(VEL1,2)/)
 ! Calculate the rotation: (\nabla x u) x udiff
 rotudiff = (/rotu(2)*udiff(3)-rotu(3)*udiff(2),&
              rotu(3)*udiff(1)-rotu(1)*udiff(3),&
              rotu(1)*udiff(2)-rotu(2)*udiff(1)/)
 
-dotp    = MAX(DOT_PRODUCT(rotu(:),rotu(:)),0.001)
-Flm(:)  = SQRT(2*FieldAtParticle(DENS)*mu) * 1./dotp*rotudiff(:)
+dotp    = MAX(SQRT(DOT_PRODUCT(rotu(:),rotu(:))),0.001)
+Flm(:)  = SQRT(2*FieldAtParticle(DENS)*mu * 1./dotp)*rotudiff(:)
 
 Pt(1:3) = Pt(1:3) + facm*Flm(1:3)
 
-!WRITE(*,*) 'LIFTFORCE', (facm*Flm(1:3))/Fd*100
+!WRITE(*,*) 'LIFTFORCE', facm*Flm(1:3)
 
 #endif /* USE_LIFTFORCE */
 
@@ -440,7 +440,7 @@ DuDt(3) = TimeDerivAtParticle(MOM3) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldA
                                 + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
 
 Pt(1:3)  = Pt(1:3) + facm * DuDt(1:3)
-!WRITE (*, *) 'UNDISTFLOW:', (facm * DuDt(1:3))/Fd*100
+!WRITE (*, *) 'UNDISTFLOW:', facm * DuDt(1:3)
 #endif /* USE_UNDISTFLOW */
 
 !===================================================================================================================================
@@ -462,7 +462,7 @@ DuDt(3) = TimeDerivAtParticle(MOM3) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldA
 Pt(1:3)  = Pt(1:3) + 0.5 * facm * DuDt(1:3) - 0.5 * facm * PartState(PART_VELV,PartID) * TimeDerivAtParticle(DENS)
 
 facp     = facp + 0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
-!WRITE (*, *) 'VIRTUALMASS:', (0.5 * facm * DuDt(1:3)- 0.5 * facm * PartState(PART_VELV,PartID) * TimeDerivAtParticle(DENS))/Fd*100
+!WRITE (*, *) 'VIRTUALMASS:', 0.5 * facm * DuDt(1:3)- 0.5 * facm * PartState(PART_VELV,PartID) * TimeDerivAtParticle(DENS)
 #endif /* USE_VIRTUALMASS */
 
 !===================================================================================================================================
@@ -488,8 +488,8 @@ ELSE
   RKdtFrac = dt
 END IF
 
-facm = 9. * 1./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
-          * SQRT(mu/(FieldAtParticle(DENS)*PP_pi)) * SQRT(RKdtFrac*dt)
+facm = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
+          * SQRT(mu/(FieldAtParticle(DENS)*PP_pi)) * SQRT(RKdtFrac)
 
 #if !(USE_UNDISTFLOW || USE_VIRTUALMASS)
 ! Material derivative Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
@@ -527,7 +527,7 @@ END DO
 facp     = facp + s43 * facm * FieldAtParticle(DENS)
 
 Pt(1:3)  = Pt(1:3) + facm * Fbm
-!WRITE (*, *) 'BASSET_FORCE:', (facm * Fbm)/Fd*100
+!WRITE (*, *) 'BASSET_FORCE:', facm * Fbm
 
 ! Correct durdt with particle push
 durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * (Pt(1:3) + Fd(1:3)) * 1./facp

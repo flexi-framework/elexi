@@ -185,9 +185,9 @@ USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Mesh_Vars          ,ONLY: scaledJac
 #if FV_ENABLED
 USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
-#endif
-USE MOD_FillMortar1        ,ONLY: U_Mortar1
 USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1_DG
+USE MOD_FillMortar1        ,ONLY: U_Mortar1
+#endif
 USE MOD_Interpolation_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
 #if (PP_dim == 3)

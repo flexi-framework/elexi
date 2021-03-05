@@ -279,9 +279,9 @@ END SELECT
 CurrentStage=1
 ! Call if an Analyze_Equation routine is called
 #if !USE_EXTEND_RHS
-IF(doAnalyzeEquation) CALL DGTimeDerivative_weakForm(t)
+IF (doAnalyzeEquation) CALL DGTimeDerivative_weakForm(t)
 #else
-CALL DGTimeDerivative_weakForm(t)
+IF (UseManualTimestep) CALL DGTimeDerivative_weakForm(t)
 #endif /* USE_EXTEND_RHS */
 !IF(doCalcIndicator) CALL CalcIndicator(U,t)
 

@@ -317,6 +317,7 @@ SUBROUTINE WriteTimeAverageByCopy(filename_in,filename_out,filetype_out,f,uavg,a
 ! MODULES
 USE MOD_HDF5_Output,     ONLY: WriteAttribute
 USE MOD_HDF5_WriteArray, ONLY: WriteArray
+USE MOD_StringTools,     ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -357,9 +358,12 @@ DO i=1,f%nDataSets
   CALL WriteArray(TRIM(f%DataSetNames(i)),n,globsize(1:n),locsize(1:n),offset2,&
                           collective=.TRUE.,&
                           RealArray=UAvg(startInd:endInd))
-  IF(PRESENT(UFluc)) CALL WriteArray(TRIM(f%DataSetNames(i))//'_Fluc',n,globsize(1:n),locsize(1:n),offset2,&
-                          collective=.TRUE.,&
-                          RealArray=UFluc(startInd:endInd))
+  IF(PRESENT(UFluc))THEN
+    IF(STRICMP(f%DatasetNames(i),"DG_Solution")) &
+      CALL WriteArray('MeanSquare',n,globsize(1:n),locsize(1:n),offset2,&
+                      collective=.TRUE.,&
+                      RealArray=UFluc(startInd:endInd))
+  END IF
   offset=endInd
   DEALLOCATE(offset2)
 END DO

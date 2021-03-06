@@ -39,7 +39,7 @@ INTEGER                              :: iArg
 CHARACTER(LEN=255)                   :: InputFile,LastInputFile
 CHARACTER(LEN=255)                   :: DataSet=''
 CHARACTER(LEN=255)                   :: FilenameOut,FileTypeOut,tmp,arg
-REAL,ALLOCATABLE                     :: UAvg(:),Uloc(:,:),UFluc(:)
+REAL,ALLOCATABLE                     :: UAvg(:),Uloc(:,:),UFluc(:),Utmp(:,:)
 LOGICAL                              :: isTimeAvg,doFluc
 REAL                                 :: AvgStarttime,Time,TimeStart,AvgEndTime
 INTEGER                              :: StartArgs,nFiles,iFile
@@ -145,7 +145,10 @@ END SELECT
 
 ALLOCATE(UAvg(ref%totalsize))
 ALLOCATE(Uloc(ref%totalsize,nFiles))
-IF(doFluc) ALLOCATE(UFluc(ref%totalsize))
+IF(doFluc)THEN
+  ALLOCATE(UFluc(ref%totalsize))
+  ALLOCATE(Utmp(1:5,INT(ref%totalsize/5)))
+END IF
 ALLOCATE(AvgTime(nFiles))
 
 ! Start the averaging
@@ -241,9 +244,15 @@ END DO
 
 IF(doFluc)THEN
   DO iFile=1,nFiles
-    !Perform time averaging
-    UFluc         = UFluc        + AvgTime(iFile)*Uloc(:,iFile)*Uloc(:,iFile)
     TotalAvgTime  = TotalAvgTime + AvgTime(iFile)
+    !Perform time averaging
+    Utmp(:,:)     = RESHAPE(Uloc(:loc%totalsize,iFile),(/5,INT(loc%totalsize/5)/))
+    Utmp(1,:)     = Utmp(1,:)    + AvgTime(iFile)*Utmp(1,:)*Utmp(1,:)
+    Utmp(2,:)     = Utmp(2,:)    + AvgTime(iFile)*Utmp(2,:)/MAX(Utmp(1,:),0.001)*Utmp(2,:)/MAX(Utmp(1,:),0.001)
+    Utmp(3,:)     = Utmp(3,:)    + AvgTime(iFile)*Utmp(3,:)/MAX(Utmp(1,:),0.001)*Utmp(3,:)/MAX(Utmp(1,:),0.001)
+    Utmp(4,:)     = Utmp(4,:)    + AvgTime(iFile)*Utmp(4,:)/MAX(Utmp(1,:),0.001)*Utmp(4,:)/MAX(Utmp(1,:),0.001)
+
+    UFluc(:loc%totalsize) = RESHAPE(Utmp,(/loc%totalsize/))
 
     IF(iFile.EQ.nFiles)THEN
       UFluc=UFluc/TotalAvgTime
@@ -262,6 +271,7 @@ SDEALLOCATE(UAvg)
 SDEALLOCATE(Uloc)
 SDEALLOCATE(AvgTime)
 SDEALLOCATE(Ufluc)
+SDEALLOCATE(Utmp)
 
 #if USE_MPI
 CALL MPI_FINALIZE(iError)

@@ -33,13 +33,14 @@ END TYPE
 TYPE(tFileSet)                       :: ref,loc
 
 ! LOCAL VARIABLES
-REAL                                 :: AvgTime,TotalAvgTime,TotalAvgTimeGlobal
+REAL                                 :: TotalAvgTime,TotalAvgTimeGlobal
+REAL,ALLOCATABLE                     :: AvgTime(:)
 INTEGER                              :: iArg
 CHARACTER(LEN=255)                   :: InputFile,LastInputFile
 CHARACTER(LEN=255)                   :: DataSet=''
 CHARACTER(LEN=255)                   :: FilenameOut,FileTypeOut,tmp,arg
-REAL,ALLOCATABLE                     :: UAvg(:),Uloc(:)
-LOGICAL                              :: isTimeAvg
+REAL,ALLOCATABLE                     :: UAvg(:),Uloc(:,:),UFluc(:)
+LOGICAL                              :: isTimeAvg,doFluc
 REAL                                 :: AvgStarttime,Time,TimeStart,AvgEndTime
 INTEGER                              :: StartArgs,nFiles,iFile
 INTEGER                              :: coarsenFac,iCoarse
@@ -59,7 +60,7 @@ CALL ParseCommandlineArguments()
 ! Check if the number of arguments is correct
 IF (nArgs.LT.2) THEN
   ! Print out error message containing valid syntax
-  SWRITE(UNIT_stdOut,*) "Please use: timeavg --start=<starttime> --end=<endtime> --coarsen=<factor> FILE1 FILE2 .. FILEN"
+  SWRITE(UNIT_stdOut,*) "Please use: timeavg --start=<starttime> --end=<endtime> --coarsen=<factor> --fluc FILE1 FILE2 .. FILEN"
   SWRITE(UNIT_stdOut,*) "At least two files are required for merging."
   STOP
 END IF
@@ -91,6 +92,10 @@ DO iArg=1,MIN(nArgs,3)
     READ(tmp,*) coarsenFac
     SWRITE(UNIT_stdOut,'(132("="))')
     SWRITE(UNIT_stdOut,'(A28,F16.6)') ' Coarsening factor is ',coarsenFac
+  ELSEIF (STRICMP(arg(1:6), "--fluc")) THEN
+    StartArgs=StartArgs+1
+    doFluc=.TRUE.
+    SWRITE(UNIT_stdOut,'(A35,F16.6)') ' The fluctuations are calculated!'
   END IF
 
 END DO
@@ -139,7 +144,9 @@ CASE DEFAULT
 END SELECT
 
 ALLOCATE(UAvg(ref%totalsize))
-ALLOCATE(Uloc(ref%totalsize))
+ALLOCATE(Uloc(ref%totalsize,nFiles))
+IF(doFluc) ALLOCATE(UFluc(ref%totalsize))
+ALLOCATE(AvgTime(nFiles))
 
 ! Start the averaging
 SWRITE(UNIT_stdOut,'(132("="))')
@@ -188,10 +195,10 @@ DO iFile=1,nFiles
   SWRITE(UNIT_stdOut,'(132("="))')
 
   ! Read AvgTime and Data
-  avgTime=1.
+  avgTime(iFile)=1.
   CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   IF(isTimeAvg)THEN
-    CALL ReadAttribute(File_ID,'AvgTime',1,TRIM(DataSet),RealScalar=avgTime)
+    CALL ReadAttribute(File_ID,'AvgTime',1,TRIM(DataSet),RealScalar=avgTime(iFile))
     SWRITE(UNIT_stdOut,'(A,F10.5)') ' Time averaged file, averaging time is: ',avgTime
   ELSE
     SWRITE(UNIT_stdOut,'(A,A)')     ' Normal state file, each file will be weighted identically.'
@@ -205,14 +212,14 @@ DO iFile=1,nFiles
     startind=offset+1
     endind  =offset+PRODUCT(locsize(1:n))
     CALL ReadArray(TRIM(ref%DatasetNames(i)),n,locsize(1:n),offsetMPI,n,&
-                   RealArray=Uloc(startInd:endInd))
+      RealArray=Uloc(startInd:endInd,iFile))
     offset=endInd
   END DO
   CALL CloseDataFile()
 
   !Perform time averaging
-  UAvg         = UAvg         + AvgTime*Uloc
-  TotalAvgTime = TotalAvgTime + AvgTime
+  UAvg         = UAvg         + AvgTime(iFile)*Uloc(:,iFile)
+  TotalAvgTime = TotalAvgTime + AvgTime(iFile)
 
   lastInputFile=Inputfile ! we need the last input file for variable names, time etc in the write timeavg to hdf5 routine
 
@@ -220,15 +227,31 @@ DO iFile=1,nFiles
   IF((iCoarse.EQ.coarsenFac).OR.(iFile.EQ.nFiles).OR.(ABS(Time-AvgEndTime).LT.dt.AND.Time+dt.GT.AvgEndTime))THEN
     ! Compute total average and write file
     UAvg=UAvg/TotalAvgTime
-    FileNameOut=TRIM(TIMESTAMP(TRIM(ref%ProjectName)//'_'//TRIM(FileTypeOut)//'_Merged',Time,TimeStart))//'.h5'
-    CALL WriteTimeAverageByCopy(InputFile,FileNameOut,FileTypeOut,ref,UAvg,TotalAvgTime)
+    IF(.NOT.doFluc)THEN
+      FileNameOut=TRIM(TIMESTAMP(TRIM(ref%ProjectName)//'_'//TRIM(FileTypeOut)//'_Merged',Time,TimeStart))//'.h5'
+      CALL WriteTimeAverageByCopy(InputFile,FileNameOut,FileTypeOut,ref,UAvg,TotalAvgTime)
+      UAvg=0.
+    END IF
     iCoarse=0
-    UAvg=0.
 
     TotalAvgTimeGlobal=TotalAvgTimeGlobal+TotalAvgTime
     TotalAvgTime=0.
   END IF
 END DO
+
+IF(doFluc)THEN
+  DO iFile=1,nFiles
+    !Perform time averaging
+    UFluc         = UFluc        + AvgTime(iFile)*Uloc(:,iFile)*Uloc(:,iFile)
+    TotalAvgTime  = TotalAvgTime + AvgTime(iFile)
+
+    IF(iFile.EQ.nFiles)THEN
+      UFluc=UFluc/TotalAvgTime
+      FileNameOut=TRIM(TIMESTAMP(TRIM(ref%ProjectName)//'_'//TRIM(FileTypeOut)//'_Merged',Time,TimeStart))//'.h5'
+      CALL WriteTimeAverageByCopy(InputFile,FileNameOut,FileTypeOut,ref,UAvg,TotalAvgTime,Ufluc)
+    END IF
+  END DO
+END IF
 
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,I5,A,I5,A,F10.5)') "Merging DONE: ",nFiles-nSkipped," of ",nFiles, &
@@ -237,6 +260,8 @@ SWRITE(UNIT_stdOut,'(132("="))')
 
 SDEALLOCATE(UAvg)
 SDEALLOCATE(Uloc)
+SDEALLOCATE(AvgTime)
+SDEALLOCATE(Ufluc)
 
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
@@ -288,7 +313,7 @@ END SUBROUTINE
 !> This ensures that all relevant information is contained in the merged file without too
 !> much coding overhead.
 !===================================================================================================================================
-SUBROUTINE WriteTimeAverageByCopy(filename_in,filename_out,filetype_out,f,uavg,avgTime)
+SUBROUTINE WriteTimeAverageByCopy(filename_in,filename_out,filetype_out,f,uavg,avgTime,ufluc)
 ! MODULES
 USE MOD_HDF5_Output,     ONLY: WriteAttribute
 USE MOD_HDF5_WriteArray, ONLY: WriteArray
@@ -301,6 +326,7 @@ CHARACTER(LEN=*),INTENT(IN) :: filetype_out !< filetype of HDF5
 TYPE(tFileSet),INTENT(IN)   :: f            !< type with header and dataset information
 REAL,INTENT(IN)             :: UAvg(f%totalsize) !< merged data (1D array with data for all datasets)
 REAL,INTENT(IN)             :: avgTime      !< averaged time
+REAL,INTENT(IN),OPTIONAL    :: UFluc(f%totalsize) !< merged data (1D array with data for all datasets)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: globsize(1:maxDim)
@@ -331,6 +357,9 @@ DO i=1,f%nDataSets
   CALL WriteArray(TRIM(f%DataSetNames(i)),n,globsize(1:n),locsize(1:n),offset2,&
                           collective=.TRUE.,&
                           RealArray=UAvg(startInd:endInd))
+  IF(PRESENT(UFluc)) CALL WriteArray(TRIM(f%DataSetNames(i))//'_Fluc',n,globsize(1:n),locsize(1:n),offset2,&
+                          collective=.TRUE.,&
+                          RealArray=UFluc(startInd:endInd))
   offset=endInd
   DEALLOCATE(offset2)
 END DO

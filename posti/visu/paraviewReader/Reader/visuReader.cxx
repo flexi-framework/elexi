@@ -150,10 +150,11 @@ int visuReader::RequestInformation(vtkInformation *,
    outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
    outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
 #if USE_PARTICLES
-   outInfoPart->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
+   outInfoPart   ->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
    outInfoErosion->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
 #endif
-   outInfoVolume->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
+   outInfoVolume ->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
+   outInfoSurface->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
    char* dir = strdup(FileNames[0].c_str());
@@ -318,24 +319,25 @@ int visuReader::RequestData(
       double requestedTimeValue = outInfoVolume->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
       timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
-   FileToLoad = FileNames[timestepToLoad];
-   SWRITE("File to load "<<FileToLoad);
-   if (outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
+   if (timestepToLoad==0 && outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoSurface->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+      timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
 #if USE_PARTICLES
-	 if (outInfoPart->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
+   if (timestepToLoad==0 && outInfoPart->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoPart->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
-/*			timestepToLoad = FindClosestTimeStep(requestedTimeValue);*/
+      timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
-	 if (outInfoErosion->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
+   if (timestepToLoad==0 && outInfoErosion->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoErosion->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
-/*		timestepToLoad = FindClosestTimeStep(requestedTimeValue);*/
+      timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
 #endif
+   FileToLoad = FileNames[timestepToLoad];
+   SWRITE("File to load "<<FileToLoad);
 
 
    // convert the MPI communicator to a fortran communicator

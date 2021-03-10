@@ -179,8 +179,11 @@ SUBROUTINE TimeDisc()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
-USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage,dtElem
-USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData,doAnalyzeEquation
+USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage
+USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData
+#if !USE_EXTEND_RHS
+USE MOD_Analyze_Vars        ,ONLY: doAnalyzeEquation
+#endif
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
@@ -193,7 +196,7 @@ USE MOD_Output              ,ONLY: Visualize,PrintStatusLine
 USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
 USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
-USE MOD_DG_Vars             ,ONLY: U,UPrim
+USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Overintegration     ,ONLY: Overintegration
 USE MOD_Overintegration_Vars,ONLY: OverintegrationType
 USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons

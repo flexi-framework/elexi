@@ -285,7 +285,7 @@ USE MOD_EOS            ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,cp
 USE MOD_ExactFunc      ,ONLY: ExactFunc
 USE MOD_ExactFunc_Vars ,ONLY: JetRadius, Ramping
-USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,BCData,RefStatePrim,nRefState
+USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,BCData,RefStatePrim
 !----------------------------------------------------------------------------------------------------------------------------------
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -349,12 +349,14 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
   END DO; END DO !p,q
 
   ! Subsonic inflow
+  Tt=RefStatePrim(1,BCState)
   nv=RefStatePrim(2:4,BCState)
+  pt=RefStatePrim(5,BCState)
 
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
     IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).LE.JetRadius)THEN
-      Tt=BCData(2,p,q,SideID)
-      pt=BCData(3,p,q,SideID)
+!      Tt=BCData(2,p,q,SideID)
+!      pt=BCData(3,p,q,SideID)
 
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
       A=SUM(nv(1:3)*(-1.)*NormVec(1:3,p,q))

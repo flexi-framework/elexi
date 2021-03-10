@@ -342,7 +342,7 @@ USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #endif
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,            ONLY:durdt,N_Basset,nBassetVars
+USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars
 #endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -568,7 +568,7 @@ USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #endif
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,            ONLY:durdt,N_Basset,nBassetVars
+USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars
 #endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

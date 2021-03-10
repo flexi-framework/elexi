@@ -838,6 +838,7 @@ SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX...'
 ALLOCATE(SurfMeshSubSideData(SurfFluxSideSize(1),SurfFluxSideSize(2),1:nBCSides), &
          SurfMeshSideAreas  (1:nBCSides))
 SurfMeshSideAreas = 0.
+ALLOCATE(tmp_BezierControlPoints2D(1:2,0:NGeo,0:NGeo,1:BezierSampleN,1:BezierSampleN))
 
 ! global calculations for sampling the faces for area and vector calculations (checks the integration with CODE_ANALYZE)
 CALL BCSurfMeshSideAreasandNormals()
@@ -981,6 +982,8 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,DoSurfaceFlux,1,MPI_LOGICAL,MPI_LOR,PartMPI%COMM
 IF (.NOT.DoSurfaceFlux) THEN
   SWRITE(UNIT_StdOut,'(A)') ' | WARNING: No sides for SurfaceFluxBCs found! SurfaceFlux is now disabled!'
 END IF
+
+SDEALLOCATE(tmp_BezierControlPoints2D)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX DONE'
 SWRITE(UNIT_stdOut,'(132("-"))')

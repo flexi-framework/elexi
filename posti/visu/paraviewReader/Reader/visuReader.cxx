@@ -659,6 +659,14 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
       exit(1);
    }
 
+   int buffer[NumProcesses];
+   MPI_Allgather(&nodeids->len,1,MPI_INT,buffer,1,MPI_INT,mpiComm);
+   int gsum = 0;
+   for (int i=0; i<ProcessId; i++) {
+     gsum += buffer[i];
+   }
+   buffer[0] = 0;
+
    // Insert the global node ids
    vtkSmartPointer <vtkIntArray> gnodeids = vtkSmartPointer<vtkIntArray>::New();
    gnodeids->SetNumberOfComponents(1);
@@ -669,7 +677,8 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
    int* gptr = gnodeids->GetPointer(0);
    for (long i = 0; i < nodeids->len; ++i)
    {
-     *gptr++ = globalnodeids->data[i];
+     *gptr++ = gsum+i;
+//     *gptr++ = globalnodeids->data[i];
    }
    output->GetPointData()->SetGlobalIds(gnodeids);
 

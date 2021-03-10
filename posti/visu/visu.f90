@@ -734,7 +734,7 @@ REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG1D(nVarVisu)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName!,FileType
-INTEGER                        :: iElem,iVar,k
+INTEGER                        :: iElem,iVar!,k
 REAL,POINTER                   :: UOut(:,:,:,:,:),UOut2D(:,:,:,:)
 INTEGER,ALLOCATABLE            :: nVal(:),nValGlobal(:),offset(:)
 #if USE_MPI

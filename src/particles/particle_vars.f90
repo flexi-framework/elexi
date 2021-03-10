@@ -239,5 +239,11 @@ LOGICAL                                  :: DoPoissonRounding                ! P
 LOGICAL                                  :: DoTimeDepInflow                  ! Insertion and SurfaceFlux w simple random rounding
 LOGICAL                                  :: RepWarn = .FALSE.                ! Warning for Reynolds limit of particle model
 
+#if USE_EXTEND_RHS && ANALYZE_RHS
+REAL                                     :: tWriteRHS
+REAL                                     :: dtWriteRHS
+CHARACTER(LEN=255)                       :: Filename_RHS
+#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
+
 !===================================================================================================================================
 END MODULE MOD_Particle_Vars

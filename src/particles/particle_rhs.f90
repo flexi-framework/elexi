@@ -113,7 +113,6 @@ FUNCTION ParticlePush(PartID,FieldAtParticle)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Globals
-USE MOD_EOS_Vars,          ONLY : mu0
 USE MOD_Particle_Vars,     ONLY : Species, PartSpecies, PartGravity
 USE MOD_Particle_Vars,     ONLY : PartState, RepWarn
 USE MOD_Particle_Vars,     ONLY : TurbPartState
@@ -317,7 +316,7 @@ ParticlePush = Fdm
 END FUNCTION ParticlePush
 
 #if USE_EXTEND_RHS
-FUNCTION ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,TimeDerivAtParticle,Fd&
+FUNCTION ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,TimeDerivAtParticle,Fdm&
 #if USE_BASSETFORCE
   ,dt,iStage)
 #else
@@ -328,10 +327,13 @@ FUNCTION ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,TimeDerivAtPar
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Globals
-USE MOD_EOS_Vars,               ONLY: mu0
 USE MOD_Particle_Vars,          ONLY: Species, PartSpecies
-USE MOD_Particle_Vars,          ONLY: PartState
-USE MOD_Particle_Vars,          ONLY: TurbPartState
+USE MOD_Particle_Vars,          ONLY: PartState, TurbPartState
+#if ANALYZE_RHS
+USE MOD_Particle_Vars,          ONLY: tWriteRHS,FileName_RHS,dtWriteRHS
+USE MOD_TimeDisc_Vars,          ONLY: t
+USE MOD_Output,                 ONLY: OutputToFile
+#endif /* ANALYZE_RHS */
 USE MOD_PreProc,                ONLY: PP_pi
 USE MOD_Equation_Vars,          ONLY: s43
 USE MOD_Viscosity
@@ -339,6 +341,7 @@ USE MOD_Viscosity
 USE MOD_Particle_Vars,          ONLY: durdt, N_Basset, bIter
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
 #endif /* USE_BASSETFORCE */
+USE MOD_TimeDisc_Vars,          ONLY: t
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -347,7 +350,7 @@ INTEGER,INTENT(IN)          :: PartID
 REAL,INTENT(IN)             :: FieldAtParticle(PRIM)
 REAL,INTENT(IN)             :: GradAtParticle(1:RHS_LIFT,1:3)
 REAL,INTENT(IN)             :: TimeDerivAtParticle(1:RHS_DERIVATIVE)
-REAL,INTENT(IN)             :: Fd(1:3)
+REAL,INTENT(IN)             :: Fdm(1:3)
 #if USE_BASSETFORCE
 REAL,INTENT(IN)             :: dt
 INTEGER,INTENT(IN),OPTIONAL :: iStage
@@ -357,7 +360,7 @@ INTEGER,INTENT(IN),OPTIONAL :: iStage
 REAL                     :: ParticlePushExtend(1:3)     ! The stamp
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: Pt(1:3)                     ! Particle push divided by the particle mass
+REAL                     :: Pt(1:3)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: facm,facp                   ! factor divided by the particle mass
@@ -366,6 +369,12 @@ REAL                     :: Flm(1:3)                    ! lift force divided by 
 REAL                     :: rotu(3), rotudiff(3)        ! curl product of velocity and velocity difference
 REAL                     :: dotp                        ! dot_product
 #endif /* USE_LIFTFORCE */
+#if USE_UNDISTFLOW
+REAL                     :: Fum(1:3)
+#endif /* USE_UNDISTFLOW */
+#if USE_VIRTUALMASS
+REAL                     :: Fvm(1:3)
+#endif /* USE_VIRTUALMASS */
 #if (USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE)
 REAL                     :: DuDt(1:3)                   ! viscous and pressure forces divided by the particle mass
 #endif
@@ -380,7 +389,7 @@ REAL                     :: dufdt(1:3)
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
 CASE(RHS_NONE,RHS_CONVERGENCE,RHS_TRACER)
-  ParticlePushExtend = Fd
+  ParticlePushExtend = Fdm
   RETURN
 END SELECT
 
@@ -418,10 +427,8 @@ rotudiff = (/rotu(2)*udiff(3)-rotu(3)*udiff(2),&
 dotp    = MAX(SQRT(DOT_PRODUCT(rotu(:),rotu(:))),0.001)
 Flm(:)  = SQRT(2*FieldAtParticle(DENS)*mu * 1./dotp)*rotudiff(:)
 
-Pt(1:3) = Pt(1:3) + facm*Flm(1:3)
-
-!WRITE(*,*) 'LIFTFORCE', facm*Flm(1:3)
-
+Flm     = Flm * facm
+!WRITE(*,*) 'LIFTFORCE', Flm(1:3)
 #endif /* USE_LIFTFORCE */
 
 !===================================================================================================================================
@@ -432,15 +439,15 @@ Pt(1:3) = Pt(1:3) + facm*Flm(1:3)
 
 facm = 1./Species(PartSpecies(PartID))%DensityIC
 ! Material derivative Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
-DuDt(1) = TimeDerivAtParticle(MOM1) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))&
-                             + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(2) = TimeDerivAtParticle(MOM2) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))&
-                             + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(3) = TimeDerivAtParticle(MOM3) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))&
-                                + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(1)  = TimeDerivAtParticle(MOM1) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))&
+                              + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(2)  = TimeDerivAtParticle(MOM2) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))&
+                              + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(3)  = TimeDerivAtParticle(MOM3) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))&
+                              + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
 
-Pt(1:3)  = Pt(1:3) + facm * DuDt(1:3)
-!WRITE (*, *) 'UNDISTFLOW:', facm * DuDt(1:3)
+Fum(1:3) = facm * DuDt(1:3)
+!WRITE (*, *) 'UNDISTFLOW:', Fum(1:3)
 #endif /* USE_UNDISTFLOW */
 
 !===================================================================================================================================
@@ -451,18 +458,19 @@ Pt(1:3)  = Pt(1:3) + facm * DuDt(1:3)
 
 #if !USE_UNDISTFLOW
 ! Material derivative Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
-DuDt(1) = TimeDerivAtParticle(MOM1) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))&
-                                    + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(2) = TimeDerivAtParticle(MOM2) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))&
-                                    + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(3) = TimeDerivAtParticle(MOM3) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))&
-                                    + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(1)  = TimeDerivAtParticle(MOM1) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))&
+                                     + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(2)  = TimeDerivAtParticle(MOM2) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))&
+                                     + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(3)  = TimeDerivAtParticle(MOM3) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))&
+                                     + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
 #endif
 
-Pt(1:3)  = Pt(1:3) + 0.5 * facm * DuDt(1:3) - 0.5 * facm * PartState(PART_VELV,PartID) * TimeDerivAtParticle(DENS)
+Fvm(1:3) = 0.5 * facm * DuDt(1:3) - 0.5 * facm * PartState(PART_VELV,PartID) * TimeDerivAtParticle(DENS)
+!WRITE (*, *) 'VIRTUALMASS:',  Fvm(1:3)
 
+! Add to global scaling factor
 facp     = facp + 0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
-!WRITE (*, *) 'VIRTUALMASS:', 0.5 * facm * DuDt(1:3)- 0.5 * facm * PartState(PART_VELV,PartID) * TimeDerivAtParticle(DENS)
 #endif /* USE_VIRTUALMASS */
 
 !===================================================================================================================================
@@ -488,6 +496,7 @@ ELSE
   RKdtFrac = dt
 END IF
 
+! Scaling factor
 facm = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
           * SQRT(mu/(FieldAtParticle(DENS)*PP_pi)) * SQRT(RKdtFrac)
 
@@ -502,12 +511,11 @@ DuDt(3) = TimeDerivAtParticle(MOM3) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldA
                                     + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
 #endif
 
-!WRITE (*, *) 'TimeDerivAtParticle(DENS:MOM3):', TimeDerivAtParticle(DENS:MOM3)
 
 ! Index for previous data
 kIndex = INT(MIN(N_Basset, bIter)*3)
 ! copy previous data
-IF(bIter.GT.N_Basset) durdt(1:kIndex-2,PartID) = durdt(4:kIndex,PartID)
+IF(bIter.GT.N_Basset) durdt(1:kIndex-3,PartID) = durdt(4:kIndex,PartID)
 ! d(\rho u)/dt = D(\rho u)/Dt - udiff * (\rho \nabla(u) + u \nabla(\rho))
 dufdt(1) = DuDt(1) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(VEL1,:))&
                    - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL1)*GradAtParticle(DENS,:))
@@ -526,16 +534,33 @@ END DO
 
 facp     = facp + s43 * facm * FieldAtParticle(DENS)
 
-Pt(1:3)  = Pt(1:3) + facm * Fbm
-!WRITE (*, *) 'BASSET_FORCE:', facm * Fbm
+Fbm(1:3) = facm * Fbm(1:3)
+!WRITE (*, *) 'BASSET_FORCE:', Fbm(1:3)
 
 ! Correct durdt with particle push
-durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * (Pt(1:3) + Fd(1:3)) * 1./facp
+durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * (Flm + Fum + Fvm + Fbm + Fdm) * 1./facp
 #endif /* USE_BASSETFORCE */
 
-ParticlePushExtend(1:3) = (Pt(1:3) + Fd(1:3)) * 1./facp
+Pt = (Flm + Fum + Fvm + Fbm + Fdm) * 1./facp
+
+#if USE_BASSETFORCE
+! Correct durdt with particle push
+durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * Pt
+#endif /* USE_BASSETFORCE */
+
+! Output RHS to file
+#if ANALYZE_RHS
+IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
+  CALL OutputToFile(FileName_RHS,(/t/),(/16,1/),(/REAL(PartSpecies(PartID)),Fdm(1:3),Flm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3)/))
+  tWriteRHS = tWriteRHS + dtWriteRHS
+END IF
+#endif
+
+ParticlePushExtend(1:3) = Pt
 
 END FUNCTION ParticlePushExtend
-#endif
+#endif /* USE_EXTEND_RHS */
+
+
 
 END MODULE MOD_part_RHS

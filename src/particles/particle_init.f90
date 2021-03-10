@@ -502,6 +502,9 @@ CALL prms%CreateRealOption(         'Part-Boundary[$]-AmbientDens', 'Ambient den
                                                                             , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-AmbientDynamicVisc' , 'Ambient dynamic viscosity'                            &
                                                                             , numberedmulti=.TRUE.)
+#if USE_EXTEND_RHS && ANALYZE_RHS
+CALL prms%CreateRealOption(         'Part-tWriteRHS'              , 'Output time for RHS', '0.'                                    )
+#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 ! Call every other DefineParametersParticle routine
 CALL DefineParametersParticleMesh()
@@ -673,6 +676,12 @@ USE MOD_Particle_MPI_Halo      ,ONLY: IdentifyPartExchangeProcs
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*USE_MPI*/
 USE MOD_Particle_Analyze_Vars  ,ONLY: RPP_Type, RPP_MaxBufferSize, RPP_Plane, RecordPart
+#if USE_EXTEND_RHS && ANALYZE_RHS
+USE MOD_Output_Vars            ,ONLY: ProjectName
+USE MOD_Output                 ,ONLY: InitOutputToFile
+USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
+USE MOD_Timedisc_Vars          ,ONLY: tAnalyze
+#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -684,6 +693,9 @@ USE MOD_Particle_Analyze_Vars  ,ONLY: RPP_Type, RPP_MaxBufferSize, RPP_Plane, Re
 ! LOCAL VARIABLES
 INTEGER               :: RPP_maxMemory, iP
 REAL                  :: x_dummy(6)
+#if USE_EXTEND_RHS && ANALYZE_RHS
+CHARACTER(30)         :: tmp
+#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 !===================================================================================================================================
 doPartIndex             = GETLOGICAL('doPartIndex','.FALSE.')
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
@@ -710,7 +722,7 @@ LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 RecordPart          = GETLOGICAL('Part-RecordPart','.FALSE.')
 IF (RecordPart) THEN
   ! Get type of record plane
-  RPP_Type          = GETSTR('Part-RecordType','plane')
+  RPP_Type          = TRIM(GETSTR('Part-RecordType','plane'))
   ! Get size of buffer array
   RPP_maxMemory     = GETINT('Part-RecordMemory','100')           ! Max buffer (100MB)
   RPP_MaxBufferSize = RPP_MaxMemory*131072/6    != size in bytes/(real*RPP_maxMemory)
@@ -758,6 +770,19 @@ CALL InitParticleInterpolation()
 CALL InitEmissionComm()
 CALL MPI_BARRIER(PartMPI%COMM,IERROR)
 #endif /*MPI*/
+
+#if USE_EXTEND_RHS && ANALYZE_RHS
+FileName_RHS = TRIM(ProjectName)//'_RHS'
+WRITE(tmp,*) tAnalyze
+dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(tmp))
+IF(doRestart)THEN
+  tWriteRHS    =  dtWriteRHS + RestartTime
+ELSE
+  tWriteRHS    =  dtWriteRHS
+END IF
+CALL InitOutputToFile(FileName_RHS,'RHS',16,&
+  [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
+#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 SWRITE(UNIT_StdOut,'(132("-"))')
 

@@ -182,6 +182,8 @@ CMAKE_DEPENDENT_OPTION(PARTICLES_BASSETFORCE  "Use Basset force in RHS for parti
                                               "PARTICLES_EXTEND_RHS"                OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_LIFTFORCE    "Use lift force in RHS for particles" OFF
                                               "PARTICLES_EXTEND_RHS"                OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_ANALYZE_RHS  "Write rhs to file for particles"     OFF
+                                              "PARTICLES_EXTEND_RHS"                OFF)
 IF(PARTICLES)
   IF(FLEXI_2D)
     MESSAGE(SEND_ERROR "PARTICLES only works on FLEXI_2D=OFF")
@@ -264,12 +266,19 @@ IF(PARTICLES)
     ELSE()
       ADD_DEFINITIONS(-DUSE_LIFTFORCE=0)
     ENDIF()
+    # Write RHS to file for analyze
+    IF (PARTICLES_ANALYZE_RHS)
+      ADD_DEFINITIONS(-DANALYZE_RHS=1)
+    ELSE()
+      ADD_DEFINITIONS(-DANALYZE_RHS=0)
+    ENDIF()
   ELSE()
     ADD_DEFINITIONS(-DUSE_EXTEND_RHS=0)
     ADD_DEFINITIONS(-DUSE_UNDISTFLOW=0)
     ADD_DEFINITIONS(-DUSE_VIRTUALMASS=0)
     ADD_DEFINITIONS(-DUSE_BASSETFORCE=0)
     ADD_DEFINITIONS(-DUSE_LIFTFORCE=0)
+    ADD_DEFINITIONS(-DANALYZE_RHS=0)
   ENDIF()
 
 ELSE()

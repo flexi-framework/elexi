@@ -202,7 +202,7 @@ DO iFile=1,nFiles
   CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   IF(isTimeAvg)THEN
     CALL ReadAttribute(File_ID,'AvgTime',1,TRIM(DataSet),RealScalar=avgTime(iFile))
-    SWRITE(UNIT_stdOut,'(A,F10.5)') ' Time averaged file, averaging time is: ',avgTime
+    SWRITE(UNIT_stdOut,'(A,F10.5)') ' Time averaged file, averaging time is: ',avgTime(iFile)
   ELSE
     SWRITE(UNIT_stdOut,'(A,A)')     ' Normal state file, each file will be weighted identically.'
   END IF

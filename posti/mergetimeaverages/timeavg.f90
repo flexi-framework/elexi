@@ -70,6 +70,7 @@ StartArgs=1
 AvgStarttime=-HUGE(1.)
 AvgEndtime=HUGE(1.)
 coarsenFac=999999999
+doFluc=.FALSE.
 DO iArg=1,MIN(nArgs,3)
   arg = Args(iArg)
 
@@ -95,7 +96,7 @@ DO iArg=1,MIN(nArgs,3)
   ELSEIF (STRICMP(arg(1:6), "--fluc")) THEN
     StartArgs=StartArgs+1
     doFluc=.TRUE.
-    SWRITE(UNIT_stdOut,'(A35,F16.6)') ' The fluctuations are calculated!'
+    SWRITE(UNIT_stdOut,'(A35,F16.6)') ' The fluctuations are calculated! FOR STATEFILES ONLY!'
   END IF
 
 END DO
@@ -136,9 +137,11 @@ CASE('State')
 CASE('TimeAvg')
   isTimeAvg=.TRUE.
   FileTypeOut='TimeAvg'
+  IF(doFluc) CALL CollectiveStop(__STAMP__,'ONLY STATE FILES')
 CASE('Fluc')
   isTimeAvg=.TRUE.  ! since we have time-averaged correlations
   FileTypeOut='Fluc'
+  IF(doFluc) CALL CollectiveStop(__STAMP__,'ONLY STATE FILES')
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,'Unknown file type: '//TRIM(ref%FileType))
 END SELECT
@@ -147,7 +150,6 @@ ALLOCATE(UAvg(ref%totalsize))
 ALLOCATE(Uloc(ref%totalsize,nFiles))
 IF(doFluc)THEN
   ALLOCATE(UFluc(ref%totalsize))
-  ALLOCATE(Utmp(1:5,INT(ref%totalsize/5)))
 END IF
 ALLOCATE(AvgTime(nFiles))
 
@@ -244,15 +246,30 @@ END DO
 
 IF(doFluc)THEN
   DO iFile=1,nFiles
-    TotalAvgTime  = TotalAvgTime + AvgTime(iFile)
-    !Perform time averaging
-    Utmp(:,:)     = RESHAPE(Uloc(:loc%totalsize,iFile),(/5,INT(loc%totalsize/5)/))
-    Utmp(1,:)     = Utmp(1,:)    + AvgTime(iFile)*Utmp(1,:)*Utmp(1,:)
-    Utmp(2,:)     = Utmp(2,:)    + AvgTime(iFile)*Utmp(2,:)/MAX(Utmp(1,:),0.001)*Utmp(2,:)/MAX(Utmp(1,:),0.001)
-    Utmp(3,:)     = Utmp(3,:)    + AvgTime(iFile)*Utmp(3,:)/MAX(Utmp(1,:),0.001)*Utmp(3,:)/MAX(Utmp(1,:),0.001)
-    Utmp(4,:)     = Utmp(4,:)    + AvgTime(iFile)*Utmp(4,:)/MAX(Utmp(1,:),0.001)*Utmp(4,:)/MAX(Utmp(1,:),0.001)
+    offset=0
+    DO i=1,ref%nDataSets
+      TotalAvgTime  = TotalAvgTime + AvgTime(iFile)
+      !Perform time averaging
+      n=ref%nDims(i)
+      locsize(1:n)=ref%nVal(1:n,i)
+      locsize(n) = nElems
+      startind=offset+1
+      endind  =offset+PRODUCT(locsize(1:n))
 
-    UFluc(:loc%totalsize) = RESHAPE(Utmp,(/loc%totalsize/))
+      IF(TRIM(ref%DatasetNames(i)).NE.'DG_Solution')THEN; offset=endInd; CYCLE; END IF
+
+      ALLOCATE(Utmp(locsize(1),SUM(locsize(1:n))))
+      Utmp(:,:)     = RESHAPE(Uloc(startInd:endInd,iFile),(/ref%nVal(1,i),INT((startind-endind)/ref%nVal(1,i))/))
+      Utmp(1,:)     = Utmp(1,:)    + AvgTime(iFile)*Utmp(1,:)*Utmp(1,:)
+      Utmp(2,:)     = Utmp(2,:)    + AvgTime(iFile)*Utmp(2,:)/MAX(Utmp(1,:),0.001)*Utmp(2,:)/MAX(Utmp(1,:),0.001)
+      Utmp(3,:)     = Utmp(3,:)    + AvgTime(iFile)*Utmp(3,:)/MAX(Utmp(1,:),0.001)*Utmp(3,:)/MAX(Utmp(1,:),0.001)
+      Utmp(4,:)     = Utmp(4,:)    + AvgTime(iFile)*Utmp(4,:)/MAX(Utmp(1,:),0.001)*Utmp(4,:)/MAX(Utmp(1,:),0.001)
+      stop
+
+      UFluc(:loc%totalsize) = RESHAPE(Utmp,(/loc%totalsize/))
+      offset=endInd
+      DEALLOCATE(Utmp)
+    END DO
 
     IF(iFile.EQ.nFiles)THEN
       UFluc=UFluc/TotalAvgTime

@@ -364,22 +364,18 @@ REAL                     :: Pt(1:3)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: facm,facp                   ! factor divided by the particle mass
-#if USE_LIFTFORCE
 REAL                     :: Flm(1:3)                    ! lift force divided by the particle mass
+#if USE_LIFTFORCE
 REAL                     :: rotu(3), rotudiff(3)        ! curl product of velocity and velocity difference
 REAL                     :: dotp                        ! dot_product
 #endif /* USE_LIFTFORCE */
-#if USE_UNDISTFLOW
 REAL                     :: Fum(1:3)
-#endif /* USE_UNDISTFLOW */
-#if USE_VIRTUALMASS
 REAL                     :: Fvm(1:3)
-#endif /* USE_VIRTUALMASS */
+REAL                     :: Fbm(1:3)                    ! Basset force
 #if (USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE)
 REAL                     :: DuDt(1:3)                   ! viscous and pressure forces divided by the particle mass
 #endif
 #if USE_BASSETFORCE
-REAL                     :: Fbm(1:3)                    ! Basset force
 REAL,PARAMETER           :: s32=3./2.
 REAL                     :: RKdtFrac
 INTEGER                  :: k,kIndex
@@ -406,6 +402,8 @@ END IF
 Pt(1:3) = 0.
 ! factor before left hand side
 facp = 1.
+
+Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.
 
 !===================================================================================================================================
 ! Calculate the Saffman lift force:
@@ -439,12 +437,15 @@ Flm     = Flm * facm
 
 facm = 1./Species(PartSpecies(PartID))%DensityIC
 ! Material derivative Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
-DuDt(1)  = TimeDerivAtParticle(MOM1) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))&
-                              + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(2)  = TimeDerivAtParticle(MOM2) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))&
-                              + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(3)  = TimeDerivAtParticle(MOM3) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))&
-                              + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(1)  = (TimeDerivAtParticle(MOM1)-FieldAtParticle(VEL1)*TimeDerivAtParticle(DENS)) +&
+                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))
+!                              + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(2)  = (TimeDerivAtParticle(MOM2)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
+                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))
+!                              + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(3)  = (TimeDerivAtParticle(MOM3)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
+                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))
+!                              + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
 
 Fum(1:3) = facm * DuDt(1:3)
 !WRITE (*, *) 'UNDISTFLOW:', Fum(1:3)
@@ -458,15 +459,18 @@ Fum(1:3) = facm * DuDt(1:3)
 
 #if !USE_UNDISTFLOW
 ! Material derivative Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
-DuDt(1)  = TimeDerivAtParticle(MOM1) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))&
-                                     + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(2)  = TimeDerivAtParticle(MOM2) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))&
-                                     + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(3)  = TimeDerivAtParticle(MOM3) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))&
-                                     + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(1)  = (TimeDerivAtParticle(MOM1)-FieldAtParticle(VEL1)*TimeDerivAtParticle(DENS)) +&
+                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))
+!                              + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(2)  = (TimeDerivAtParticle(MOM2)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
+                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))
+!                              + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(3)  = (TimeDerivAtParticle(MOM3)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
+                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))
+!                              + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
 #endif
 
-Fvm(1:3) = 0.5 * facm * DuDt(1:3) - 0.5 * facm * PartState(PART_VELV,PartID) * TimeDerivAtParticle(DENS)
+Fvm(1:3) = 0.5 * facm * DuDt(1:3)
 !WRITE (*, *) 'VIRTUALMASS:',  Fvm(1:3)
 
 ! Add to global scaling factor
@@ -503,12 +507,15 @@ facm = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%
 #if !(USE_UNDISTFLOW || USE_VIRTUALMASS)
 ! Material derivative Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
 ! D(\rho u)/Dt = \partial(\rho u) / \partial(t) + (\rho u) \cdot \nabla(u) + u \cdot (\nabla(rho) u)
-DuDt(1) = TimeDerivAtParticle(MOM1) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))&
-                                    + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(2) = TimeDerivAtParticle(MOM2) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))&
-                                    + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(3) = TimeDerivAtParticle(MOM3) + FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))&
-                                    + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(1)  = (TimeDerivAtParticle(MOM1)-FieldAtParticle(VEL1)*TimeDerivAtParticle(DENS)) +&
+                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))
+!                              + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(2)  = (TimeDerivAtParticle(MOM2)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
+                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))
+!                              + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
+DuDt(3)  = (TimeDerivAtParticle(MOM3)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
+                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))
+!                              + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
 #endif
 
 
@@ -517,15 +524,15 @@ kIndex = INT(MIN(N_Basset, bIter)*3)
 ! copy previous data
 IF(bIter.GT.N_Basset) durdt(1:kIndex-3,PartID) = durdt(4:kIndex,PartID)
 ! d(\rho u)/dt = D(\rho u)/Dt - udiff * (\rho \nabla(u) + u \nabla(\rho))
-dufdt(1) = DuDt(1) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(VEL1,:))&
-                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL1)*GradAtParticle(DENS,:))
-dufdt(2) = DuDt(2) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(VEL2,:))&
-                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL2)*GradAtParticle(DENS,:))
-dufdt(3) = DuDt(3) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(VEL3,:))&
-                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL3)*GradAtParticle(DENS,:))
+dufdt(1) = DuDt(1) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(VEL1,:))
+!                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL1)*GradAtParticle(DENS,:))
+dufdt(2) = DuDt(2) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(VEL2,:))
+!                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL2)*GradAtParticle(DENS,:))
+dufdt(3) = DuDt(3) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(VEL3,:))
+!                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL3)*GradAtParticle(DENS,:))
 
 ! d(\rho udiff)/dt = d(\rho u)/dt - \rho (dv_p/dt) - v_p (d\rho/dt)
-durdt(kIndex-2:kIndex,PartID) = dufdt(:) - PartState(PART_VELV,PartID) * TimeDerivAtParticle(DENS)
+durdt(kIndex-2:kIndex,PartID) = dufdt(:) !- PartState(PART_VELV,PartID) * TimeDerivAtParticle(DENS)
 
 Fbm = s43 * durdt(kIndex-2:kIndex,PartID) + durdt(1:3,PartID) * (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
 DO k=3,kIndex-3,3

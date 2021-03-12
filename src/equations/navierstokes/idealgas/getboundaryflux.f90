@@ -223,9 +223,11 @@ DO i=1,nBCs
   locType =BoundaryType(i,BC_TYPE)
   locState=BoundaryType(i,BC_STATE)
   SELECT CASE (locType)
-  CASE(12,31) ! State File Boundary condition
+  CASE(12) ! State File Boundary condition
     IF(.NOT.readBCdone) CALL ReadBCFlow(BCStateFile)
     readBCdone=.TRUE.
+  CASE(31) ! State File Boundary condition
+    IF(.NOT.readBCdone) CALL ReadBCFlowCsv(BCStateFile)
   CASE(27) ! Subsonic inflow
     talpha=TAN(ACOS(-1.)/180.*RefStatePrim(2,locState))
     tbeta =TAN(ACOS(-1.)/180.*RefStatePrim(3,locState))
@@ -285,7 +287,7 @@ USE MOD_EOS            ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,cp
 USE MOD_ExactFunc      ,ONLY: ExactFunc
 USE MOD_ExactFunc_Vars ,ONLY: JetRadius, Ramping
-USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,BCData,RefStatePrim
+USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,BCData
 !----------------------------------------------------------------------------------------------------------------------------------
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -336,7 +338,7 @@ CASE(22) ! exact BC = Dirichlet BC !!
     CALL ExactFunc(BCState,t,Face_xGP(:,p,q),Cons)
     CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
   END DO; END DO
-CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from file
+CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from csv file
 
   ! Initialize boundary state with rotated inner state
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
@@ -349,14 +351,12 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
   END DO; END DO !p,q
 
   ! Subsonic inflow
-  Tt=RefStatePrim(1,BCState)
   nv=RefStatePrim(2:4,BCState)
-  pt=RefStatePrim(5,BCState)
 
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
     IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).LE.JetRadius)THEN
-!      Tt=BCData(2,p,q,SideID)
-!      pt=BCData(3,p,q,SideID)
+      pt = BCData(2,p,q,SideID)
+      Tt = BCData(1,p,q,SideID)
 
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
       A=SUM(nv(1:3)*(-1.)*NormVec(1:3,p,q))
@@ -1222,6 +1222,108 @@ SWRITE(UNIT_stdOut,'(A)')'  done initializing BC state!'
 END SUBROUTINE ReadBCFlow
 
 
+!==================================================================================================================================
+!> Read in a csv file containing the state for a boundary. Used in BC Type 31.
+!==================================================================================================================================
+SUBROUTINE ReadBCFlowCsv(FileName)
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Equation_Vars        ,ONLY: BCData
+USE MOD_EoS_Vars             ,ONLY: kappa,R
+USE MOD_Mesh_Vars            ,ONLY: Face_xGP,nBCSides,BoundaryType,BC
+ IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN) :: FileName       !< name of file BC data is read from
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=200)            :: line
+INTEGER                       :: num_lines, nlines(2)
+INTEGER                       :: OpenStat,i,SideID,p,q
+INTEGER                       :: MPIRequest_BC
+REAL,ALLOCATABLE              :: ploc(:),Tloc(:),U_local(:,:)
+REAL                          :: minval(2)
+REAL,PARAMETER                :: epsilonBC=1.e-3
+!==================================================================================================================================
+SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',FileName
+
+MPIRequest_BC = MPI_REQUEST_NULL
+
+! Read data from csv file and write to array
+IF(MPIROOT)THEN
+  ! count number of rows and columns
+  OPEN(UNIT=UNIT_logOut, FILE=filename, ACCESS="sequential",IOSTAT=OpenStat)
+  ! read the header
+  READ (UNIT_logOut,'(A)') line
+  nlines(2) = COUNT([(line(i:i),i=1,LEN(line))].eq.',')+1
+  num_lines = 1
+  DO
+    READ (UNIT_logOut,'(A)',IOSTAT=OpenStat) line
+    IF(OpenStat.NE.0) EXIT
+    num_lines = num_lines + 1
+  END DO
+  CLOSE(UNIT_logOut)
+
+  nlines(1) = num_lines
+!  ALLOCATE(BCDataSingle(1:nlines(2),1:nlines(1)))
+  ALLOCATE(U_local(1:nlines(2),1:nlines(1)))
+END IF
+
+! Communicate size
+CALL MPI_IBCAST(nlines(1:2),2,MPI_INTEGER,0,MPI_COMM_FLEXI,MPIRequest_BC,IERROR)
+
+IF(MPIROOT)THEN
+  ! read actual data
+  ! 1: \rho, 2: M, 3: p_t, 4: x, 5: y, 6: z
+  OPEN(UNIT=UNIT_logOut, FILE=filename, ACCESS="sequential",IOSTAT=OpenStat)
+  ! read the header
+  READ (UNIT_logOut,'(A)') line
+  num_lines = 1
+  DO WHILE(num_lines.LE.nlines(1))
+    READ (UNIT_logOut,'(A)',IOSTAT=OpenStat) line
+    READ (line,*) U_local(:,num_lines)
+    num_lines = num_lines + 1
+  END DO
+  CLOSE(UNIT_logOut)
+
+  ! Calculate total temperature
+  ALLOCATE(ploc(nlines(1)),Tloc(nlines(1)))
+  ploc(:)           = U_local(3,:)*(1.+(kappa-1.)*0.5*U_local(2,:)**2.)**(-kappa/(kappa-1.))
+  Tloc(:)           = ploc(:)/(R*U_local(1,:))
+  ! Overwrite density with total temperature
+  U_local (1,:) = Tloc(:)*(1.+(kappa-1.)*0.5*U_local(2,:)**2.)
+  DEALLOCATE(ploc,Tloc)
+END IF
+
+CALL MPI_WAIT(MPIRequest_BC,MPI_STATUS_IGNORE,IERROR)
+IF(.NOT.MPIROOT) ALLOCATE(U_local(1:nlines(2),1:nlines(1)))
+CALL MPI_BCAST(U_local,nlines(1)*nlines(2),MPI_DOUBLE,0,MPI_COMM_FLEXI,IERROR)
+
+! Sort
+DO SideID=1,nBCSides
+  IF (Boundarytype(BC(SideID),BC_TYPE).NE.31) CYCLE
+  DO q=0,PP_N
+    DO p=0,PP_N
+      minval = epsilonBC
+      DO i=1,nlines(1)
+        IF (ABS(U_local(5,i)-Face_xGP(2,p,q,0,SideID)).LT.minval(1) .AND. &
+            ABS(U_local(6,i)-Face_xGP(3,p,q,0,SideID)).LT.minval(2)) THEN
+          minval(1)=ABS(U_local(5,i)-Face_xGP(2,p,q,0,SideID))
+          minval(2)=ABS(U_local(5,i)-Face_xGP(2,p,q,0,SideID))
+          BCData(1,p,q,SideID) = U_local(1,i) ! Tt
+          BCData(2,p,q,SideID) = U_local(3,i) ! pt
+        END IF
+      END DO
+    END DO
+  END DO
+END DO
+
+DEALLOCATE(U_local)
+
+SWRITE(UNIT_stdOut,'(A)')'  done initializing BC state!'
+
+END SUBROUTINE ReadBCFlowCsv
 
 !==================================================================================================================================
 !> Finalize arrays used for boundary conditions.

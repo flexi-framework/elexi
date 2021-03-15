@@ -96,9 +96,8 @@ DO iArg=1,MIN(nArgs,3)
   ELSEIF (STRICMP(arg(1:6), "--fluc")) THEN
     StartArgs=StartArgs+1
     doFluc=.TRUE.
-    SWRITE(UNIT_stdOut,'(A35,F16.6)') ' The fluctuations are calculated! FOR STATEFILES ONLY!'
+    SWRITE(UNIT_stdOut,'(A60)') ' The fluctuations are calculated! FOR STATEFILES ONLY!'
   END IF
-
 END DO
 
 ! check if at least 2 timeavg files are there
@@ -255,18 +254,18 @@ IF(doFluc)THEN
       locsize(n) = nElems
       startind=offset+1
       endind  =offset+PRODUCT(locsize(1:n))
+      Ufluc(startind:endind) = 0.
 
       IF(TRIM(ref%DatasetNames(i)).NE.'DG_Solution')THEN; offset=endInd; CYCLE; END IF
 
-      ALLOCATE(Utmp(locsize(1),SUM(locsize(1:n))))
-      Utmp(:,:)     = RESHAPE(Uloc(startInd:endInd,iFile),(/ref%nVal(1,i),INT((startind-endind)/ref%nVal(1,i))/))
+      ALLOCATE(Utmp(locsize(1),PRODUCT(locsize(2:n))))
+      Utmp(:,:)     = RESHAPE(Uloc(startInd:endInd,iFile),(/ref%nVal(1,i),PRODUCT(locsize(2:n))/))
       Utmp(1,:)     = Utmp(1,:)    + AvgTime(iFile)*Utmp(1,:)*Utmp(1,:)
       Utmp(2,:)     = Utmp(2,:)    + AvgTime(iFile)*Utmp(2,:)/MAX(Utmp(1,:),0.001)*Utmp(2,:)/MAX(Utmp(1,:),0.001)
       Utmp(3,:)     = Utmp(3,:)    + AvgTime(iFile)*Utmp(3,:)/MAX(Utmp(1,:),0.001)*Utmp(3,:)/MAX(Utmp(1,:),0.001)
       Utmp(4,:)     = Utmp(4,:)    + AvgTime(iFile)*Utmp(4,:)/MAX(Utmp(1,:),0.001)*Utmp(4,:)/MAX(Utmp(1,:),0.001)
-      stop
 
-      UFluc(:loc%totalsize) = RESHAPE(Utmp,(/loc%totalsize/))
+      UFluc(startind:endind) = RESHAPE(Utmp,(/PRODUCT(locsize(1:n))/))
       offset=endInd
       DEALLOCATE(Utmp)
     END DO

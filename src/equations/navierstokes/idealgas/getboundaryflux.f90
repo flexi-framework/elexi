@@ -228,6 +228,7 @@ DO i=1,nBCs
     readBCdone=.TRUE.
   CASE(31) ! State File Boundary condition
     IF(.NOT.readBCdone) CALL ReadBCFlowCsv(BCStateFile)
+    readBCdone=.TRUE.
   CASE(27) ! Subsonic inflow
     talpha=TAN(ACOS(-1.)/180.*RefStatePrim(2,locState))
     tbeta =TAN(ACOS(-1.)/180.*RefStatePrim(3,locState))
@@ -351,10 +352,12 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
   END DO; END DO !p,q
 
   ! Subsonic inflow
+!  Tt=RefStatePrim(1,BCState)
   nv=RefStatePrim(2:4,BCState)
+!  pt=RefStatePrim(5,BCState)
 
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
-    IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).LE.JetRadius)THEN
+!    IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).LE.JetRadius)THEN
       pt = BCData(2,p,q,SideID)
       Tt = BCData(1,p,q,SideID)
 
@@ -390,15 +393,15 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
       UPrim_boundary(4,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
       UPrim_boundary(6,p,q)=Tb
 
-    ELSE ! Isothermal wall
-
-      UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
-      UPrim_boundary(2:4,p,q)= 0. ! no slip
-      UPrim_boundary(6,p,q) = RefStatePrim(6,1) ! temperature from RefState
-      ! set density via ideal gas equation, consistent to pressure and temperature
-      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
-
-    END IF
+!    ELSE ! Isothermal wall
+!
+!      UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
+!      UPrim_boundary(2:4,p,q)= 0. ! no slip
+!      UPrim_boundary(6,p,q) = RefStatePrim(6,1) ! temperature from RefState
+!      ! set density via ideal gas equation, consistent to pressure and temperature
+!      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
+!
+!    END IF
   END DO; END DO
 
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
@@ -1243,7 +1246,7 @@ INTEGER                       :: num_lines, nlines(2)
 INTEGER                       :: OpenStat,i,SideID,p,q
 INTEGER                       :: MPIRequest_BC
 REAL,ALLOCATABLE              :: ploc(:),Tloc(:),U_local(:,:)
-REAL                          :: minval(2)
+REAL                          :: minr,r1,r2
 REAL,PARAMETER                :: epsilonBC=1.e-3
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',FileName
@@ -1287,12 +1290,15 @@ IF(MPIROOT)THEN
   END DO
   CLOSE(UNIT_logOut)
 
+  ! Sort U_local in y direction
+!  CALL QuickSort(U_local,nLines,1,nLines(1),5)
+
   ! Calculate total temperature
   ALLOCATE(ploc(nlines(1)),Tloc(nlines(1)))
   ploc(:)           = U_local(3,:)*(1.+(kappa-1.)*0.5*U_local(2,:)**2.)**(-kappa/(kappa-1.))
   Tloc(:)           = ploc(:)/(R*U_local(1,:))
   ! Overwrite density with total temperature
-  U_local (1,:) = Tloc(:)*(1.+(kappa-1.)*0.5*U_local(2,:)**2.)
+  U_local (1,:)     = Tloc(:)*(1.+(kappa-1.)*0.5*U_local(2,:)**2.)
   DEALLOCATE(ploc,Tloc)
 END IF
 
@@ -1305,12 +1311,13 @@ DO SideID=1,nBCSides
   IF (Boundarytype(BC(SideID),BC_TYPE).NE.31) CYCLE
   DO q=0,PP_N
     DO p=0,PP_N
-      minval = epsilonBC
-      DO i=1,nlines(1)
-        IF (ABS(U_local(5,i)-Face_xGP(2,p,q,0,SideID)).LT.minval(1) .AND. &
-            ABS(U_local(6,i)-Face_xGP(3,p,q,0,SideID)).LT.minval(2)) THEN
-          minval(1)=ABS(U_local(5,i)-Face_xGP(2,p,q,0,SideID))
-          minval(2)=ABS(U_local(5,i)-Face_xGP(2,p,q,0,SideID))
+      r1 = SQRT(Face_xGP(2,p,q,0,SideID)**2+Face_xGP(3,p,q,0,SideID)**2)
+      minr = epsilonBC
+      DO i=2,nlines(1)
+        r2 = ABS(SQRT(U_local(5,i)**2+U_local(6,i)**2) - r1)
+        IF(r2.LT.minr .AND. SIGN(1.,Face_xGP(2,p,q,0,SideID)).EQ.SIGN(1.,U_local(5,i)) .AND. &
+           SIGN(1.,Face_xGP(3,p,q,0,SideID)).EQ.SIGN(1.,U_local(6,i))) THEN
+          minr=r2
           BCData(1,p,q,SideID) = U_local(1,i) ! Tt
           BCData(2,p,q,SideID) = U_local(3,i) ! pt
         END IF
@@ -1324,6 +1331,54 @@ DEALLOCATE(U_local)
 SWRITE(UNIT_stdOut,'(A)')'  done initializing BC state!'
 
 END SUBROUTINE ReadBCFlowCsv
+
+
+!==================================================================================================================================
+!> Fast recursive sorting algorithm for real arrays
+!==================================================================================================================================
+RECURSIVE SUBROUTINE QuickSort(A,nLines,first,last,ind)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)    :: nLines(2)              !< size of array to be sorted
+REAL,INTENT(INOUT)    :: A(nLines(2),nLines(1)) !< array to be sorted
+INTEGER,INTENT(IN)    :: first
+INTEGER,INTENT(IN)    :: last
+INTEGER,INTENT(IN)    :: ind
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER               :: i,j
+REAL                  :: tmp(nLines(2)),x(nLines(2))
+!==================================================================================================================================
+IF(nLines(2).LT.2) RETURN
+IF(nLines(2).EQ.2)THEN
+  IF(A(ind,1).GT.A(ind,2))THEN
+    tmp  = A(:,1)
+    A(:,1) = A(:,2)
+    A(:,2) = tmp
+  ENDIF
+  RETURN
+ENDIF
+x = A(:,INT((first + last)*0.5))
+i = first
+j = last
+DO
+  DO WHILE(A(ind,i).LT.x(ind))
+    i = i+1
+  END DO
+  DO WHILE(x(ind).LT.A(ind,j))
+    j = j-1
+  END DO
+  IF(i.GE.j) EXIT
+  tmp = A(:,i); A(:,i) = A(:,j); A(:,j) = tmp
+  i = i+1
+  j = j-1
+END DO
+IF(first .LT. i-1) CALL QuickSort(A,nLines,first,i-1,ind)
+IF(j+1 .LT. last) CALL QuickSort(A,nLines,j+1,last,ind)
+END SUBROUTINE QuickSort
+
 
 !==================================================================================================================================
 !> Finalize arrays used for boundary conditions.

@@ -80,7 +80,6 @@
 #define VISCOSITY_TEMPERATURE(T)       mu0*T**ExpoSuth
 #endif
 
-
 #define EXT_CONS    1:PP_nVar                  /* all ext cons variables */
 #define EXT_PRIM    PP_nVarPrim:PP_2Var        /* all ext prim variables */
 ! conservative (extended) variables
@@ -98,3 +97,26 @@
 #define EXT_VELV    EXT_VEL1:EXT_VEL3          /* velocity range */
 #define EXT_PRES    PP_nVar+PRES               /* pressure */
 #define EXT_TEMP    PP_nVar+TEMP               /* temperature */
+
+! lifting variables
+#if PP_OPTLIFT == 0
+#define PP_nVarLifting               6
+#define LIFT_DENS                    1
+#define LIFT_VEL1                    2
+#define LIFT_VEL2                    3
+#define LIFT_VEL3                    4
+#define LIFT_PRES                    5
+#define LIFT_TEMP                    6
+#define LIFT_VELV                    LIFT_VEL1:LIFT_VEL3
+#define LIFT_VARS                    (/LIFT_DENS,LIFT_VEL1,LIFT_VEL2,LIFT_VEL3,LIFT,PRES,LIFT_TEMP/)
+#define PRIM_LIFT                    (/1,2,3,4,5,6/) /* density velocity range pressure and temperature */
+#else
+#define PP_nVarLifting               4
+#define LIFT_VEL1                    1
+#define LIFT_VEL2                    2
+#define LIFT_VEL3                    3
+#define LIFT_TEMP                    4
+#define LIFT_VELV                    LIFT_VEL1:LIFT_VEL3
+#define LIFT_VARS                    (/LIFT_VEL1,LIFT_VEL2,LIFT_VEL3,LIFT_TEMP/)
+#define PRIM_LIFT                    (/2,3,4,6/) /* velocity range and temperature */
+#endif

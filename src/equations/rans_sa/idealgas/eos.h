@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -102,3 +102,15 @@
 #define EXT_PRES    PP_nVar+PRES               /* pressure */
 #define EXT_TEMP    PP_nVar+TEMP               /* temperature */
 #define EXT_NUSA    PP_nVar+MUSA               /* turbulent nu */
+
+! lifting variables
+#define PP_nVarLifting               6
+#define LIFT_DENS                    1
+#define LIFT_VEL1                    2
+#define LIFT_VEL2                    3
+#define LIFT_VEL3                    4
+#define LIFT_TEMP                    5
+#define LIFT_NUSA                    6
+#define LIFT_VELV                    LIFT_VEL1:LIFT_VEL3
+#define LIFT_VARS                    (/LIFT_DENS,LIFT_VEL1,LIFT_VEL2,LIFT_VEL3,LIFT_TEMP,LIFT_NUSA/)
+#define PRIM_LIFT                    (/1,2,3,4,6,7/) /* density, velocity range, temperature, nu_sa */

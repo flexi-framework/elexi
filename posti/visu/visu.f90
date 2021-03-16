@@ -385,7 +385,11 @@ CALL Build_mapDepToCalc_mapAllVarsToVisuVars()
 
 IF (Avg2D) THEN
   CALL InitAverage2D()
-  CALL BuildVandermonds_Avg2D(NCalc,NCalc_FV)
+  CALL BuildVandermonds_Avg2D(NCalc&
+#if FV_ENABLED
+    ,NCalc_FV&
+#endif
+    )
 END IF
 
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)

@@ -80,7 +80,10 @@ USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI        ,ONLY: InitMPI
-USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll,PartNamesAll
+#if USE_PARTICLES
+USE MOD_Visu_Vars  ,ONLY: PartNamesAll
+#endif
+USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll
 USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
 USE MOD_VTK        ,ONLY: CARRAY
 USE MOD_IO_HDF5    ,ONLY: InitMPIInfo
@@ -101,7 +104,9 @@ CHARACTER(LEN=255)                    :: statefile
 CHARACTER(LEN=255)                    :: meshfile
 CHARACTER(LEN=255),POINTER            :: varnames_pointer(:)
 CHARACTER(LEN=255),POINTER            :: bcnames_pointer(:)
+#if USE_PARTICLES
 CHARACTER(LEN=255),POINTER            :: partnames_pointer(:)
+#endif
 !===================================================================================================================================
 statefile = cstrToChar255(statefile_IN, strlen_state)
 meshfile  = cstrToChar255(meshfile_IN , strlen_mesh)

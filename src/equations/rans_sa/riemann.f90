@@ -142,19 +142,19 @@ USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                          :: Nloc       !< local polynomial degree
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+INTEGER,INTENT(IN)                                   :: Nloc       !< local polynomial degree
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
 !> normal vector and tangential vectors at side
-REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
-LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
+REAL,DIMENSION(   3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
+LOGICAL,INTENT(IN)                                   :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
-REAL,DIMENSION(PP_nVar) :: F_L,F_R,F
+REAL,DIMENSION(CONS)    :: F_L,F_R,F
 REAL,DIMENSION(PP_2Var) :: U_LL,U_RR
 PROCEDURE(RiemannInt),POINTER :: Riemann_loc !< pointer defining the standard inner Riemann solver
 !==================================================================================================================================
@@ -237,7 +237,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                         :: Nloc     !< local polynomial degree
                                                            !> solution in primitive variables at left/right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
+REAL,DIMENSION(PRIM       ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: UPrim_L,UPrim_R
                                                            !> solution gradients in x/y/z-direction left/right of the interface
 REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
@@ -246,9 +246,9 @@ REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                              :: p,q
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))          :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))          :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+INTEGER                                                   :: p,q
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                  :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                  :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
@@ -277,8 +277,8 @@ IMPLICIT NONE
                                                 !> extended solution vector on the left/right side of the interface
 REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
                                                 !> advection fluxes on the left/right side of the interface
-REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
-REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
+REAL,DIMENSION(CONS),INTENT(IN)    :: F_L,F_R
+REAL,DIMENSION(CONS),INTENT(OUT)   :: F         !< resulting Riemann flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -287,7 +287,7 @@ REAL    :: LambdaMax
 !==================================================================================================================================
 ! Lax-Friedrichs
 LambdaMax = MAX( ABS(U_RR(EXT_VEL1)),ABS(U_LL(EXT_VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
-F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(CONS) - U_LL(CONS)))
+F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(EXT_CONS) - U_LL(EXT_CONS)))
 
 END SUBROUTINE Riemann_LF
 
@@ -308,8 +308,8 @@ IMPLICIT NONE
                                                !> extended solution vector on the left/right side of the interface
 REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
                                                !> advection fluxes on the left/right side of the interface
-REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
-REAL,DIMENSION(PP_nVar),INTENT(OUT):: F        !< resulting Riemann flux
+REAL,DIMENSION(CONS   ),INTENT(IN) :: F_L,F_R
+REAL,DIMENSION(CONS   ),INTENT(OUT):: F        !< resulting Riemann flux
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: iVar

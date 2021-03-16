@@ -245,10 +245,10 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                          :: Nloc       !< local polynomial degree
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+REAL,DIMENSION(CONS    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)     :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(CONS    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)     :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)         :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)         :: UPrim_R    !< primitive solution at right side of the interface
 !> normal vector and tangential vectors at side
 REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
 LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
@@ -345,22 +345,22 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                         :: Nloc     !< local polynomial degree
                                                            !> solution in primitive variables at left/right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)        :: UPrim_L,UPrim_R
                                                            !> solution gradients in x/y/z-direction left/right of the interface
 REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
 #if EDDYVISCOSITY
                                                            !> eddy viscosity left/right of the interface
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)             :: muSGS_L,muSGS_R
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)           :: muSGS_L,muSGS_R
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                              :: p,q
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))          :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))          :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+INTEGER                                                    :: p,q
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                   :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                   :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
@@ -378,9 +378,9 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))          :: diffFluxX_R,diffFluxY_R,
       )
 ! BR1 uses arithmetic mean of the fluxes
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
-  F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(1:5,p,q)+diffFluxX_R(1:5,p,q)) &
-               +nv(2,p,q)*(diffFluxY_L(1:5,p,q)+diffFluxY_R(1:5,p,q)) &
-               +nv(3,p,q)*(diffFluxZ_L(1:5,p,q)+diffFluxZ_R(1:5,p,q)))
+  F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(CONS,p,q)+diffFluxX_R(CONS,p,q)) &
+               +nv(2,p,q)*(diffFluxY_L(CONS,p,q)+diffFluxY_R(CONS,p,q)) &
+               +nv(3,p,q)*(diffFluxZ_L(CONS,p,q)+diffFluxZ_R(CONS,p,q)))
 END DO; END DO
 END SUBROUTINE ViscousFlux
 #endif /* PARABOLIC */
@@ -469,7 +469,7 @@ SqrtRho_R = SQRT(U_RR(EXT_DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
 RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
-RoeH      = (SqrtRho_R*H_R        + SqrtRho_L*H_L       ) * sSqrtRho
+RoeH      = (SqrtRho_R*H_R            + SqrtRho_L*H_L       )     * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 Roec      = SQRT(KappaM1*(RoeH-0.5*absVel))
 Ssl = RoeVel(1) - Roec
@@ -621,9 +621,9 @@ RoeDens   = SQRT(U_LL(EXT_DENS)*U_RR(EXT_DENS))
 ! Roe+Pike version of Roe Riemann solver
 
 ! calculate jump
-Delta_U(1)   = U_RR(EXT_DENS) - U_LL(EXT_DENS)
-Delta_U(2:4) = U_RR(EXT_VELV) - U_LL(EXT_VELV)
-Delta_U(5)   = U_RR(EXT_PRES) - U_LL(EXT_PRES)
+Delta_U(DENS)   = U_RR(EXT_DENS) - U_LL(EXT_DENS)
+Delta_U(VELV)   = U_RR(EXT_VELV) - U_LL(EXT_VELV)
+Delta_U(PRES)   = U_RR(EXT_PRES) - U_LL(EXT_PRES)
 
 ! mean eigenvalues and eigenvectors
 a  = (/ RoeVel(1)-Roec, RoeVel(1), RoeVel(1), RoeVel(1), RoeVel(1)+Roec      /)
@@ -867,7 +867,7 @@ ELSEIF(Ssr .LE. 0.)THEN
   F=F_R
 ! subsonic case
 ELSE
-  F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(CONS)-U_LL(CONS)))/(Ssr-Ssl)
+  F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(EXT_CONS)-U_LL(EXT_CONS)))/(Ssr-Ssl)
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLE
 
@@ -931,7 +931,7 @@ ELSE
   r4 = (/ 0., 0.,        0.,        1.,        RoeVel(3)  /)
 
   F=(Ssr*F_L-Ssl*F_R + Ssl*Ssr* &
-     (U_RR(CONS)-U_LL(CONS) - delta*(r2*Alpha(2)+r3*Alpha(3)+r4*Alpha(4))))/(Ssr-Ssl)
+     (U_RR(EXT_CONS)-U_LL(EXT_CONS) - delta*(r2*Alpha(2)+r3*Alpha(3)+r4*Alpha(4))))/(Ssr-Ssl)
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLEM
 

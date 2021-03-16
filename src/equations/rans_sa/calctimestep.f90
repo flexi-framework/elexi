@@ -144,13 +144,13 @@ DO iElem=1,nElems
 #endif /*PARABOLIC*/
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     ! TODO: ATTENTION: Temperature of UE not filled!!!
-    UE(CONS)=U(:,i,j,k,iElem)
+    UE(EXT_CONS)=U(:,i,j,k,iElem)
     UE(EXT_SRHO)=1./UE(EXT_DENS)
     UE(EXT_VELV)=VELOCITY_HE(UE)
     UE(EXT_PRES)=PRESSURE_HE(UE)
     UE(EXT_TEMP)=TEMPERATURE_HE(UE)
     ! Convective Eigenvalues
-    IF(IEEE_IS_NAN(UE(DENS)))THEN
+    IF(IEEE_IS_NAN(UE(EXT_DENS)))THEN
       ERRWRITE(*,'(A,3ES16.7)')'Density NaN, Position= ',Elem_xGP(:,i,j,k,iElem)
       errType=1
     END IF
@@ -169,7 +169,7 @@ DO iElem=1,nElems
     prim = UE(EXT_PRIM)
     mu=VISCOSITY_PRIM(prim)
     ! Add turbulent viscosity
-    muTilde = U(6,i,j,k,iElem)
+    muTilde = U(MUSA,i,j,k,iElem)
     IF(IEEE_IS_NAN(muTilde))THEN
       ERRWRITE(*,'(A,3ES16.7)')'muTilde NaN, Position= ',Elem_xGP(:,i,j,k,iElem)
       errType=4

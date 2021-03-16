@@ -151,13 +151,13 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
+REAL,DIMENSION(CONS),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(CONS),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(CONS),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: rhoEpRef,rhoEp ! auxiliary variable for (rho*E+p)
@@ -167,36 +167,36 @@ REAL,DIMENSION(PP_nVar)                 :: hTilde         ! flux in physical spa
 #endif
 !==================================================================================================================================
 ! compute auxiliary variables, total energy density plus pressure
-rhoEpRef = URef(5) + UPrimRef(5)
-rhoEp    = U(5) + UPrim(5)
+rhoEpRef = URef(ENER) + UPrimRef(PRES)
+rhoEp    = U(ENER) + UPrim(PRES)
 
 ! local Euler fluxes x-direction
-fTilde(1) = (URef(2) + U(2))                                           ! {rho*u}
-fTilde(2) = (URef(2)*UPrimRef(2)+UPrimRef(5) + U(2)*UPrim(2)+UPrim(5)) ! {rho*u²}+{p}
-fTilde(3) = (URef(2)*UPrimRef(3) + U(2)*UPrim(3))                      ! {rho*u*v}
+fTilde(DENS) = (URef(MOM1) + U(MOM1))                                                       ! {rho*u}
+fTilde(MOM1) = (URef(MOM1)*UPrimRef(VEL1)+UPrimRef(PRES) + U(MOM1)*UPrim(VEL1)+UPrim(PRES)) ! {rho*u²}+{p}
+fTilde(MOM2) = (URef(MOM1)*UPrimRef(VEL2) + U(MOM1)*UPrim(VEL2))                            ! {rho*u*v}
 #if PP_dim == 3
-fTilde(4) = (URef(2)*UPrimRef(4) + U(2)*UPrim(4))                      ! {rho*u*w}
+fTilde(MOM3) = (URef(MOM1)*UPrimRef(VEL3) + U(MOM1)*UPrim(VEL3))                            ! {rho*u*w}
 #else
-fTilde(4) = 0.
+fTilde(MOM3) = 0.
 #endif
-fTilde(5) = (rhoEpRef*UPrimRef(2) + rhoEp*UPrim(2))                    ! {(rho*E+p)*u}
+fTilde(ENER) = (rhoEpRef*UPrimRef(VEL1) + rhoEp*UPrim(VEL1))                                ! {(rho*E+p)*u}
 ! local Euler fluxes y-direction
-gTilde(1) = (URef(3) + U(3))                                           ! {rho*v}
-gTilde(2) = (URef(2)*UPrimRef(3) + U(2)*UPrim(3))                      ! {rho*u*v}
-gTilde(3) = (URef(3)*UPrimRef(3)+UPrimRef(5) + U(3)*UPrim(3)+UPrim(5)) ! {rho*v²}+{p}
+gTilde(DENS) = (URef(MOM2) + U(MOM2))                                                       ! {rho*v}
+gTilde(MOM1) = (URef(MOM1)*UPrimRef(VEL2) + U(MOM1)*UPrim(VEL2))                            ! {rho*u*v}
+gTilde(MOM2) = (URef(MOM2)*UPrimRef(VEL2)+UPrimRef(PRES) + U(MOM2)*UPrim(VEL2)+UPrim(PRES)) ! {rho*v²}+{p}
 #if PP_dim == 3
-gTilde(4) = (URef(3)*UPrimRef(4) + U(3)*UPrim(4))                      ! {rho*v*w}
+gTilde(MOM3) = (URef(MOM2)*UPrimRef(VEL3) + U(MOM2)*UPrim(VEL3))                            ! {rho*v*w}
 #else
-gTilde(4) = 0.
+gTilde(MOM3) = 0.
 #endif
-gTilde(5) = (rhoEpRef*UPrimRef(3) + rhoEp*UPrim(3))                    ! {(rho*E+p)*v}
+gTilde(ENER) = (rhoEpRef*UPrimRef(VEL2) + rhoEp*UPrim(VEL2))                                ! {(rho*E+p)*v}
 #if PP_dim == 3
 ! local Euler fluxes z-direction
-hTilde(1) = (URef(4) + U(4))                                           ! {rho*w}
-hTilde(2) = (URef(2)*UPrimRef(4) + U(2)*UPrim(4))                      ! {rho*u*w}
-hTilde(3) = (URef(3)*UPrimRef(4) + U(3)*UPrim(4))                      ! {rho*v*w}
-hTilde(4) = (URef(4)*UPrimRef(4)+UPrimRef(5) + U(4)*UPrim(4)+UPrim(5)) ! {rho*v²+p}
-hTilde(5) = (rhoEpRef*UPrimRef(4) + rhoEp*UPrim(4))                    ! {(rho*E+p)*w}
+hTilde(DENS) = (URef(MOM3) + U(MOM3))                                                       ! {rho*w}
+hTilde(MOM1) = (URef(MOM1)*UPrimRef(VEL3) + U(MOM1)*UPrim(VEL3))                            ! {rho*u*w}
+hTilde(MOM2) = (URef(MOM2)*UPrimRef(VEL3) + U(MOM2)*UPrim(VEL3))                            ! {rho*v*w}
+hTilde(MOM3) = (URef(MOM3)*UPrimRef(VEL3)+UPrimRef(PRES) + U(MOM3)*UPrim(VEL3)+UPrim(PRES)) ! {rho*v²+p}
+hTilde(ENER) = (rhoEpRef*UPrimRef(VEL3) + rhoEp*UPrim(VEL3))                                ! {(rho*E+p)*w}
 #endif
 
 ! transform into reference space
@@ -219,16 +219,16 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
+REAL,DIMENSION(CONS   ),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
 
-F(DENS)= 0.5*(U_LL(EXT_MOM1)+U_RR(EXT_MOM1))                                                                     ! {rho*u}
-F(MOM1)= 0.5*(U_LL(EXT_MOM1)*U_LL(EXT_VEL1)+U_LL(EXT_PRES)+U_RR(EXT_MOM1)*U_RR(EXT_VEL1)+U_RR(EXT_PRES))             ! {rho*u²}+{p}
-F(MOM2)= 0.5*(U_LL(EXT_MOM1)*U_LL(EXT_VEL2)+U_RR(EXT_MOM1)*U_RR(EXT_VEL2))                                       ! {rho*u*v}
+F(DENS)= 0.5*(U_LL(EXT_MOM1)+U_RR(EXT_MOM1))                                                                 ! {rho*u}
+F(MOM1)= 0.5*(U_LL(EXT_MOM1)*U_LL(EXT_VEL1)+U_LL(EXT_PRES)+U_RR(EXT_MOM1)*U_RR(EXT_VEL1)+U_RR(EXT_PRES))     ! {rho*u²}+{p}
+F(MOM2)= 0.5*(U_LL(EXT_MOM1)*U_LL(EXT_VEL2)+U_RR(EXT_MOM1)*U_RR(EXT_VEL2))                                   ! {rho*u*v}
 #if PP_dim == 3
-F(MOM3)= 0.5*(U_LL(EXT_MOM1)*U_LL(EXT_VEL3)+U_RR(EXT_MOM1)*U_RR(EXT_VEL3))                                       ! {rho*u*w}
+F(MOM3)= 0.5*(U_LL(EXT_MOM1)*U_LL(EXT_VEL3)+U_RR(EXT_MOM1)*U_RR(EXT_VEL3))                                   ! {rho*u*w}
 #else
 F(MOM3)= 0.
 #endif
@@ -249,13 +249,13 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
+REAL,DIMENSION(CONS),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(CONS),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(CONS),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVar)             :: fTilde,gTilde     ! flux in physical space
@@ -265,32 +265,32 @@ REAL,DIMENSION(PP_nVar)             :: hTilde            ! flux in physical spac
 !==================================================================================================================================
 
 ! local Euler fluxes x-direction
-fTilde(1) = 0.5*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))                          ! {rho}*{u}
-fTilde(2) = 0.5*(URef(2)+U(2))*(UPrimRef(2)+UPrim(2)) + (UPrimRef(5)+UPrim(5)) ! {rho*u}*{u}+{p}
-fTilde(3) = 0.5*(URef(3)+U(3))*(UPrimRef(2)+UPrim(2))                          ! {rho*v}*{u}
+fTilde(DENS) = 0.5*(URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))                                ! {rho}*{u}
+fTilde(MOM1) = 0.5*(URef(MOM1)+U(MOM1))*(UPrimRef(VEL1)+UPrim(VEL1)) + (UPrimRef(PRES)+UPrim(PRES)) ! {rho*u}*{u}+{p}
+fTilde(MOM2) = 0.5*(URef(MOM2)+U(MOM2))*(UPrimRef(VEL1)+UPrim(VEL1))                                ! {rho*v}*{u}
 #if PP_dim == 3
-fTilde(4) = 0.5*(URef(4)+U(4))*(UPrimRef(2)+UPrim(2))                          ! {rho*w}*{u}
+fTilde(MOM3) = 0.5*(URef(MOM3)+U(MOM3))*(UPrimRef(VEL1)+UPrim(VEL1))                                ! {rho*w}*{u}
 #else
-fTilde(4) = 0.
+fTilde(MOM3) = 0.
 #endif
-fTilde(5) = 0.5*(URef(5)+U(5)+UPrimRef(5)+UPrim(5))*(UPrimRef(2)+UPrim(2))     ! ({rho*E}+{p})*{u}
+fTilde(ENER) = 0.5*(URef(ENER)+U(ENER)+UPrimRef(PRES)+UPrim(PRES))*(UPrimRef(VEL1)+UPrim(VEL1))     ! ({rho*E}+{p})*{u}
 ! local Euler fluxes y-direction
-gTilde(1) = 0.5*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))                          ! {rho}*{v}
-gTilde(2) = 0.5*(URef(2)+U(2))*(UPrimRef(3)+UPrim(3))                          ! {rho*u}*{v}
-gTilde(3) = 0.5*(URef(3)+U(3))*(UPrimRef(3)+UPrim(3)) + (UPrimRef(5)+UPrim(5)) ! {rho*v}*{v}+{p}
+gTilde(DENS) = 0.5*(URef(DENS)+U(DENS))*(UPrimRef(VEL2)+UPrim(VEL2))                                ! {rho}*{v}
+gTilde(MOM1) = 0.5*(URef(MOM1)+U(MOM1))*(UPrimRef(VEL2)+UPrim(VEL2))                                ! {rho*u}*{v}
+gTilde(MOM2) = 0.5*(URef(MOM2)+U(MOM2))*(UPrimRef(VEL2)+UPrim(VEL2)) + (UPrimRef(PRES)+UPrim(PRES)) ! {rho*v}*{v}+{p}
 #if PP_dim == 3
-gTilde(4) = 0.5*(URef(4)+U(4))*(UPrimRef(3)+UPrim(3))                          ! {rho*w}*{v}
+gTilde(MOM3) = 0.5*(URef(MOM3)+U(MOM3))*(UPrimRef(VEL2)+UPrim(VEL2))                                ! {rho*w}*{v}
 #else
-gTilde(4) = 0.
+gTilde(MOM3) = 0.
 #endif
-gTilde(5) = 0.5*(URef(5)+U(5)+UPrimRef(5)+UPrim(5))*(UPrimRef(3)+UPrim(3))     ! ({rho*E}+{p})*{v}
+gTilde(ENER) = 0.5*(URef(ENER)+U(ENER)+UPrimRef(PRES)+UPrim(PRES))*(UPrimRef(VEL2)+UPrim(VEL2))     ! ({rho*E}+{p})*{v}
 #if PP_dim == 3
 ! local Euler fluxes z-direction
-hTilde(1) = 0.5*(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))                          ! {rho}*{w}
-hTilde(2) = 0.5*(URef(2)+U(2))*(UPrimRef(4)+UPrim(4))                          ! {rho*u}*{w}
-hTilde(3) = 0.5*(URef(3)+U(3))*(UPrimRef(4)+UPrim(4))                          ! {rho*v}*{w}
-hTilde(4) = 0.5*(URef(4)+U(4))*(UPrimRef(4)+UPrim(4)) + (UPrimRef(5)+UPrim(5)) ! {rho*w}*{w}+{p}
-hTilde(5) = 0.5*(URef(5)+U(5)+UPrimRef(5)+UPrim(5))*(UPrimRef(4)+UPrim(4))     ! ({rho*E}+{p})*{w}
+hTilde(DENS) = 0.5*(URef(DENS)+U(DENS))*(UPrimRef(VEL3)+UPrim(VEL3))                                ! {rho}*{w}
+hTilde(MOM1) = 0.5*(URef(MOM1)+U(MOM1))*(UPrimRef(VEL3)+UPrim(VEL3))                                ! {rho*u}*{w}
+hTilde(MOM2) = 0.5*(URef(MOM2)+U(MOM2))*(UPrimRef(VEL3)+UPrim(VEL3))                                ! {rho*v}*{w}
+hTilde(MOM3) = 0.5*(URef(MOM3)+U(MOM3))*(UPrimRef(VEL3)+UPrim(VEL3)) + (UPrimRef(PRES)+UPrim(PRES)) ! {rho*w}*{w}+{p}
+hTilde(ENER) = 0.5*(URef(ENER)+U(ENER)+UPrimRef(PRES)+UPrim(PRES))*(UPrimRef(VEL3)+UPrim(VEL3))     ! ({rho*E}+{p})*{w}
 #endif
 
 ! transform into reference space
@@ -313,7 +313,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
+REAL,DIMENSION(CONS   ),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -342,13 +342,13 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
+REAL,DIMENSION(CONS),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(CONS),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(CONS),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: E,ERef        ! auxiliary variables for the specific total energy
@@ -359,39 +359,39 @@ REAL,DIMENSION(PP_nVar)                 :: hTilde        ! flux in physical spac
 !==================================================================================================================================
 
 ! specific total energy
-ERef = URef(5)/URef(1)
-E    = U(5)/U(1)
+ERef = URef(ENER)/URef(DENS)
+E    = U(ENER)/U(DENS)
 
 ! local Euler fluxes x-direction
-fTilde(1) = 0.5* (URef(1)+U(1))*(UPrimRef(2)+UPrim(2))                             ! {rho}*{u}
-fTilde(2) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{u}²+{p}
-fTilde(3) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(UPrimRef(3)+UPrim(3))      ! {rho}*{u}*{v}
+fTilde(DENS) = 0.5* (URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))                                   ! {rho}*{u}
+fTilde(MOM1) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))**2 + (UPrimRef(PRES)+UPrim(PRES)) ! {rho}*{u}²+{p}
+fTilde(MOM2) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))*(UPrimRef(VEL2)+UPrim(VEL2))      ! {rho}*{u}*{v}
 #if PP_dim == 3
-fTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(UPrimRef(4)+UPrim(4))      ! {rho}*{u}*{w}
+fTilde(MOM3) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))*(UPrimRef(VEL3)+UPrim(VEL3))      ! {rho}*{u}*{w}
 #else
-fTilde(4) = 0.
+fTilde(MOM3) = 0.
 #endif
-fTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(eRef+e) + &
-            0.5* (UPrimRef(5)+UPrim(5))*(UPrimRef(2)+UPrim(2))                     ! {rho}*{E}*{u}+{p}*{u}
+fTilde(ENER) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))*(eRef+e) + &
+               0.5* (UPrimRef(PRES)+UPrim(PRES))*(UPrimRef(VEL1)+UPrim(VEL1))                           ! {rho}*{E}*{u}+{p}*{u}
 ! local Euler fluxes y-direction
-gTilde(1) = 0.5 *(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))                             ! {rho}*{v}
-gTilde(2) = fTilde(3)                                                              ! {rho}*{v}*{u}
-gTilde(3) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{v}²+{p}
+gTilde(DENS) = 0.5 *(URef(DENS)+U(DENS))*(UPrimRef(VEL2)+UPrim(VEL2))                                   ! {rho}*{v}
+gTilde(MOM1) = fTilde(MOM2)                                                                             ! {rho}*{v}*{u}
+gTilde(MOM2) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL2)+UPrim(VEL2))**2 + (UPrimRef(PRES)+UPrim(PRES)) ! {rho}*{v}²+{p}
 #if PP_dim == 3
-gTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))*(UPrimRef(4)+UPrim(4))      ! {rho}*{v}*{w}
+gTilde(MOM3) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL2)+UPrim(VEL2))*(UPrimRef(VEL3)+UPrim(VEL3))      ! {rho}*{v}*{w}
 #else
-gTilde(4) = 0.
+gTilde(MOM3) = 0.
 #endif
-gTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))*(eRef+e) + &
-            0.5* (UPrimRef(5)+UPrim(5))*(UPrimRef(3)+UPrim(3))                     ! {rho}*{E}*{v}+{p}*{v}
+gTilde(ENER) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL2)+UPrim(VEL2))*(eRef+e) + &
+               0.5* (UPrimRef(PRES)+UPrim(PRES))*(UPrimRef(VEL2)+UPrim(VEL2))                           ! {rho}*{E}*{v}+{p}*{v}
 #if PP_dim == 3
 ! local Euler fluxes z-direction
-hTilde(1) = 0.5 *(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))                             ! {rho}*{w}
-hTilde(2) = fTilde(4)                                                              ! {rho}*{w}*{u}
-hTilde(3) = gTilde(4)                                                              ! {rho}*{w}*{v}
-hTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{w}²+{p}
-hTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))*(eRef+e) + &
-            0.5 *(UPrimRef(5)+UPrim(5))*(UPrimRef(4)+UPrim(4))                     ! {rho}*{E}*{w}+{p}*{w}
+hTilde(DENS) = 0.5 *(URef(DENS)+U(DENS))*(UPrimRef(VEL3)+UPrim(VEL3))                                   ! {rho}*{w}
+hTilde(MOM1) = fTilde(MOM3)                                                                             ! {rho}*{w}*{u}
+hTilde(MOM2) = gTilde(MOM3)                                                                             ! {rho}*{w}*{v}
+hTilde(MOM3) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL3)+UPrim(VEL3))**2 + (UPrimRef(PRES)+UPrim(PRES)) ! {rho}*{w}²+{p}
+hTilde(ENER) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL3)+UPrim(VEL3))*(eRef+e) + &
+               0.5 *(UPrimRef(PRES)+UPrim(PRES))*(UPrimRef(VEL3)+UPrim(VEL3))                           ! {rho}*{E}*{w}+{p}*{w}
 #endif
 
 ! transform into reference space
@@ -414,7 +414,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
+REAL,DIMENSION(CONS   ),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                :: E_LL,E_RR ! auxiliary variables for the specific total energy
@@ -423,11 +423,11 @@ REAL                                :: E_LL,E_RR ! auxiliary variables for the s
 E_LL = U_LL(EXT_ENER)/U_LL(EXT_DENS)
 E_RR = U_RR(EXT_ENER)/U_RR(EXT_DENS)
 !compute flux
-F(DENS)= 0.25* (U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))                                      ! {rho}*{u}
+F(DENS)= 0.25* (U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))                                          ! {rho}*{u}
 F(MOM1)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))**2 + 0.5*(U_LL(EXT_PRES)+U_RR(EXT_PRES)) ! {rho}*{u}²+{p}
-F(MOM2)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))*(U_LL(EXT_VEL2)+U_RR(EXT_VEL2))      ! {rho}*{u}*{v}
+F(MOM2)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))*(U_LL(EXT_VEL2)+U_RR(EXT_VEL2))          ! {rho}*{u}*{v}
 #if PP_dim == 3
-F(MOM3)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))*(U_LL(EXT_VEL3)+U_RR(EXT_VEL3))      ! {rho}*{u}*{w}
+F(MOM3)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(U_LL(EXT_VEL1)+U_RR(EXT_VEL1))*(U_LL(EXT_VEL3)+U_RR(EXT_VEL3))          ! {rho}*{u}*{w}
 #else
 F(MOM3)= 0.
 #endif
@@ -450,13 +450,13 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
+REAL,DIMENSION(CONS),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(CONS),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(CONS),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: rhoepRef,rhoep ! auxiliary variable for rho*inner energy + pressure
@@ -467,54 +467,54 @@ REAL,DIMENSION(PP_nVar)                 :: hTilde         ! flux in physical spa
 !==================================================================================================================================
 
 ! rho*internal energy + pressure
-rhoepRef = URef(5)-0.5*URef(1)*(UPrimRef(2)**2+UPrimRef(3)**2+UPrimRef(4)**2)+UPrimRef(5)
-rhoep    = U(5)-0.5*U(1)*(UPrim(2)**2+UPrim(3)**2+UPrim(4)**2)+UPrim(5)
+rhoepRef = URef(ENER)-0.5*URef(DENS)*(UPrimRef(VEL1)**2+UPrimRef(VEL2)**2+UPrimRef(VEL3)**2)+UPrimRef(PRES)
+rhoep    = U(ENER)-0.5*U(DENS)*(UPrim(VEL1)**2+UPrim(VEL2)**2+UPrim(VEL3)**2)+UPrim(PRES)
 
 ! local Euler fluxes x-direction
-fTilde(1) =     (URef(2)+U(2))                                                 ! {rho*u}
-fTilde(2) = 0.5*(URef(2)+U(2))*(UPrimRef(2)+UPrim(2)) + (UPrimRef(5)+UPrim(5)) ! {rho*u}*{u}+{p}
-fTilde(3) = 0.5*(Uref(2)+U(2))*(UPrimRef(3)+UPrim(3))                          ! {rho*u}*{v}
+fTilde(DENS) =     (URef(MOM1)+U(MOM1))                                                             ! {rho*u}
+fTilde(MOM1) = 0.5*(URef(MOM1)+U(MOM1))*(UPrimRef(VEL1)+UPrim(VEL1)) + (UPrimRef(PRES)+UPrim(PRES)) ! {rho*u}*{u}+{p}
+fTilde(MOM2) = 0.5*(URef(MOM1)+U(MOM1))*(UPrimRef(VEL2)+UPrim(VEL2))                                ! {rho*u}*{v}
 #if PP_dim == 3
-fTilde(4) = 0.5*(URef(2)+U(2))*(UPrimRef(4)+UPrim(4))                          ! {rho*u}*{w}
+fTilde(MOM3) = 0.5*(URef(MOM1)+U(MOM1))*(UPrimRef(VEL3)+UPrim(VEL3))                                ! {rho*u}*{w}
 #else
-fTilde(4) = 0.
+fTilde(MOM3) = 0.
 #endif
-fTilde(5) = (rhoepRef*UPrimRef(2)+rhoep*UPrim(2)) + &                          !{(rho*e+p)*u} +
-            0.5*(URef(2)*UPrimRef(2)+U(2)*UPrim(2))*(UPrimRef(2)+UPrim(2)) + & !{rho*u²}*{u} +
-            0.5*(URef(2)*UPrimRef(3)+U(2)*UPrim(3))*(UPrimRef(3)+UPrim(3)) + & !{rho*u*v}*{v} +
-            0.5*(URef(2)*UPrimRef(4)+U(2)*UPrim(4))*(UPrimRef(4)+UPrim(4)) - & !{rho*u*w}*{w} -
-            0.5*(URef(2)*UPrimRef(2)*UPrimRef(2)+U(2)*UPrim(2)*UPrim(2))   - & !1/2*({rho*u³} +
-            0.5*(URef(2)*UPrimRef(3)*UPrimRef(3)+U(2)*UPrim(3)*UPrim(3))   - & !{rho*u*v²} +
-            0.5*(URef(2)*UPrimRef(4)*UPrimRef(4)+U(2)*UPrim(4)*UPrim(4))       !{rho*u*w²})
+fTilde(ENER) = (rhoepRef*UPrimRef(VEL1)+rhoep*UPrim(VEL1)) + &                                      !{(rho*e+p)*u} +
+            0.5*(URef(MOM1)*UPrimRef(VEL1)+U(MOM1)*UPrim(VEL1))*(UPrimRef(VEL1)+UPrim(VEL1)) + &    !{rho*u²}*{u} +
+            0.5*(URef(MOM1)*UPrimRef(VEL2)+U(MOM1)*UPrim(VEL2))*(UPrimRef(VEL2)+UPrim(VEL2)) + &    !{rho*u*v}*{v} +
+            0.5*(URef(MOM1)*UPrimRef(VEL3)+U(MOM1)*UPrim(VEL3))*(UPrimRef(VEL3)+UPrim(VEL3)) - &    !{rho*u*w}*{w} -
+            0.5*(URef(MOM1)*UPrimRef(VEL1)*UPrimRef(VEL1)+U(MOM1)*UPrim(VEL1)*UPrim(VEL1))   - &    !1/2*({rho*u³} +
+            0.5*(URef(MOM1)*UPrimRef(VEL2)*UPrimRef(VEL2)+U(MOM1)*UPrim(VEL2)*UPrim(VEL2))   - &    !{rho*u*v²} +
+            0.5*(URef(MOM1)*UPrimRef(VEL3)*UPrimRef(VEL3)+U(MOM1)*UPrim(VEL3)*UPrim(VEL3))          !{rho*u*w²})
 ! local Euler fluxes y-direction
-gTilde(1) =     (URef(3)+U(3))                                                 ! {rho*v}
-gTilde(2) = 0.5*(Uref(3)+U(3))*(UPrimRef(2)+UPrim(2))                          ! {rho*v}*{u}
-gTilde(3) = 0.5*(URef(3)+U(3))*(UPrimRef(3)+UPrim(3)) + (UPrimRef(5)+UPrim(5)) ! {rho*v}*{v}+{p}
+gTilde(DENS) =     (URef(MOM2)+U(MOM2))                                                             ! {rho*v}
+gTilde(MOM1) = 0.5*(URef(MOM2)+U(MOM2))*(UPrimRef(VEL1)+UPrim(VEL1))                                ! {rho*v}*{u}
+gTilde(MOM2) = 0.5*(URef(MOM2)+U(MOM2))*(UPrimRef(VEL2)+UPrim(VEL2)) + (UPrimRef(PRES)+UPrim(PRES)) ! {rho*v}*{v}+{p}
 #if PP_dim == 3
-gTilde(4) = 0.5*(URef(3)+U(3))*(UPrimRef(4)+UPrim(4))                          ! {rho*v}*{w}
+gTilde(MOM3) = 0.5*(URef(MOM2)+U(MOM2))*(UPrimRef(VEL3)+UPrim(VEL3))                                ! {rho*v}*{w}
 #else
-gTilde(4) = 0.
+gTilde(MOM3) = 0.
 #endif
-gTilde(5) = (rhoepRef*UPrimRef(3)+rhoep*UPrim(3)) + &                          !{(rho*e+p)*v} +
-            0.5*(URef(3)*UPrimRef(2)+U(3)*UPrim(2))*(UPrimRef(2)+UPrim(2)) + & !{rho*v*u}*{u} +
-            0.5*(URef(3)*UPrimRef(3)+U(3)*UPrim(3))*(UPrimRef(3)+UPrim(3)) + & !{rho*v²}*{v} +
-            0.5*(URef(3)*UPrimRef(4)+U(3)*UPrim(4))*(UPrimRef(4)+UPrim(4)) - & !{rho*v*w}*{w} -
-            0.5*(URef(3)*UPrimRef(2)*UPrimRef(2)+U(3)*UPrim(2)*UPrim(2))   - & !1/2*({rho*v*u²} +
-            0.5*(URef(3)*UPrimRef(3)*UPrimRef(3)+U(3)*UPrim(3)*UPrim(3))   - & !{rho*v³} +
-            0.5*(URef(3)*UPrimRef(4)*UPrimRef(4)+U(3)*UPrim(4)*UPrim(4))       !{rho*v*w²})
+gTilde(ENER) = (rhoepRef*UPrimRef(VEL2)+rhoep*UPrim(VEL2)) + &                                      !{(rho*e+p)*v} +
+            0.5*(URef(MOM2)*UPrimRef(VEL1)+U(MOM2)*UPrim(VEL1))*(UPrimRef(VEL1)+UPrim(VEL1)) + &    !{rho*v*u}*{u} +
+            0.5*(URef(MOM2)*UPrimRef(VEL2)+U(MOM2)*UPrim(VEL2))*(UPrimRef(VEL2)+UPrim(VEL2)) + &    !{rho*v²}*{v} +
+            0.5*(URef(MOM2)*UPrimRef(VEL3)+U(MOM2)*UPrim(VEL3))*(UPrimRef(VEL3)+UPrim(VEL3)) - &    !{rho*v*w}*{w} -
+            0.5*(URef(MOM2)*UPrimRef(VEL1)*UPrimRef(VEL1)+U(MOM2)*UPrim(VEL1)*UPrim(VEL1))   - &    !1/2*({rho*v*u²} +
+            0.5*(URef(MOM2)*UPrimRef(VEL2)*UPrimRef(VEL2)+U(MOM2)*UPrim(VEL2)*UPrim(VEL2))   - &    !{rho*v³} +
+            0.5*(URef(MOM2)*UPrimRef(VEL3)*UPrimRef(VEL3)+U(MOM2)*UPrim(VEL3)*UPrim(VEL3))          !{rho*v*w²})
 #if PP_dim == 3
 ! local Euler fluxes z-direction
-hTilde(1) =     (URef(4)+U(4))                                                 ! {rho*w}
-hTilde(2) = 0.5*(Uref(4)+U(4))*(UPrimRef(2)+UPrim(2))                          ! {rho*w}*{u}
-hTilde(3) = 0.5*(URef(4)+U(4))*(UPrimRef(3)+UPrim(3))                          ! {rho*w}*{v}
-hTilde(4) = 0.5*(URef(4)+U(4))*(UPrimRef(4)+UPrim(4)) + (UPrimRef(5)+UPrim(5)) ! {rho*w}*{w}+{p}
-hTilde(5) = (rhoepRef*UPrimRef(4)+rhoep*UPrim(4)) + &                          !{(rho*e+p)*w} +
-            0.5*(URef(4)*UPrimRef(2)+U(4)*UPrim(2))*(UPrimRef(2)+UPrim(2)) + & !{rho*w*u}*{u} +
-            0.5*(URef(4)*UPrimRef(3)+U(4)*UPrim(3))*(UPrimRef(3)+UPrim(3)) + & !{rho*w*v}*{v} +
-            0.5*(URef(4)*UPrimRef(4)+U(4)*UPrim(4))*(UPrimRef(4)+UPrim(4)) - & !{rho*w²}*{w} -
-            0.5*(URef(4)*UPrimRef(2)*UPrimRef(2)+U(4)*UPrim(2)*UPrim(2))   - & !1/2*({rho*w*u²} +
-            0.5*(URef(4)*UPrimRef(3)*UPrimRef(3)+U(4)*UPrim(3)*UPrim(3))   - & !{rho*w*v²} +
-            0.5*(URef(4)*UPrimRef(4)*UPrimRef(4)+U(4)*UPrim(4)*UPrim(4))       !{rho*w³})
+hTilde(DENS) =     (URef(MOM3)+U(MOM3))                                                             ! {rho*w}
+hTilde(MOM1) = 0.5*(URef(MOM3)+U(MOM3))*(UPrimRef(VEL1)+UPrim(VEL1))                                ! {rho*w}*{u}
+hTilde(MOM2) = 0.5*(URef(MOM3)+U(MOM3))*(UPrimRef(VEL2)+UPrim(VEL2))                                ! {rho*w}*{v}
+hTilde(MOM3) = 0.5*(URef(MOM3)+U(MOM3))*(UPrimRef(VEL3)+UPrim(VEL3)) + (UPrimRef(PRES)+UPrim(PRES)) ! {rho*w}*{w}+{p}
+hTilde(ENER) = (rhoepRef*UPrimRef(VEL3)+rhoep*UPrim(VEL3)) + &                                      !{(rho*e+p)*w} +
+            0.5*(URef(MOM3)*UPrimRef(VEL1)+U(MOM3)*UPrim(VEL1))*(UPrimRef(VEL1)+UPrim(VEL1)) + &    !{rho*w*u}*{u} +
+            0.5*(URef(MOM3)*UPrimRef(VEL2)+U(MOM3)*UPrim(VEL2))*(UPrimRef(VEL2)+UPrim(VEL2)) + &    !{rho*w*v}*{v} +
+            0.5*(URef(MOM3)*UPrimRef(VEL3)+U(MOM3)*UPrim(VEL3))*(UPrimRef(VEL3)+UPrim(VEL3)) - &    !{rho*w²}*{w} -
+            0.5*(URef(MOM3)*UPrimRef(VEL1)*UPrimRef(VEL1)+U(MOM3)*UPrim(VEL1)*UPrim(VEL1))   - &    !1/2*({rho*w*u²} +
+            0.5*(URef(MOM3)*UPrimRef(VEL2)*UPrimRef(VEL2)+U(MOM3)*UPrim(VEL2)*UPrim(VEL2))   - &    !{rho*w*v²} +
+            0.5*(URef(MOM3)*UPrimRef(VEL3)*UPrimRef(VEL3)+U(MOM3)*UPrim(VEL3)*UPrim(VEL3))          !{rho*w³})
 #endif
 
 ! transform into reference space
@@ -537,7 +537,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL !< variables at the left surfaces
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR !< variables at the right surfaces
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F    !< resulting flux
+REAL,DIMENSION(CONS   ),INTENT(OUT) :: F    !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                :: rhoep_LL,rhoep_RR
@@ -578,13 +578,13 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
+REAL,DIMENSION(CONS),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(CONS),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(CONS),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: H,HRef        ! auxiliary variables for the specific enthalpy
@@ -595,36 +595,36 @@ REAL,DIMENSION(PP_nVar)                 :: hTilde        ! flux in physical spac
 !==================================================================================================================================
 
 ! specific enthalpy, H=E+p/rho=(rhoE+p)/rho
-HRef = (URef(5)+UPrimRef(5))/URef(1)
-H    = (U(5)+UPrim(5))/U(1)
+HRef = (URef(ENER)+UPrimRef(PRES))/URef(DENS)
+H    = (U(ENER)+UPrim(PRES))/U(DENS)
 
 ! local Euler fluxes x-direction
-fTilde(1) = 0.5 *(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))                             ! {rho}*{u}
-fTilde(2) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{u}²+{p}
-fTilde(3) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(UPrimRef(3)+UPrim(3))      ! {rho}*{u}*{v}
+fTilde(DENS) = 0.5 *(URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))                                   ! {rho}*{u}
+fTilde(MOM1) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))**2 + (UPrimRef(PRES)+UPrim(PRES)) ! {rho}*{u}²+{p}
+fTilde(MOM2) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))*(UPrimRef(VEL2)+UPrim(VEL2))      ! {rho}*{u}*{v}
 #if PP_dim == 3
-fTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(UPrimRef(4)+UPrim(4))      ! {rho}*{u}*{w}
+fTilde(MOM3) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))*(UPrimRef(VEL3)+UPrim(VEL3))      ! {rho}*{u}*{w}
 #else
-fTilde(4) = 0.
+fTilde(MOM3) = 0.
 #endif
-fTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(HRef+H)                    ! {rho}*{H}*{u}
+fTilde(ENER) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL1)+UPrim(VEL1))*(HRef+H)                          ! {rho}*{H}*{u}
 ! local Euler fluxes y-direction
-gTilde(1) = 0.5 *(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))                             ! {rho}*{v}
-gTilde(2) = fTilde(3)                                                              ! {rho}*{v}*{u}
-gTilde(3) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{v}²+{p}
+gTilde(DENS) = 0.5 *(URef(DENS)+U(DENS))*(UPrimRef(VEL2)+UPrim(VEL2))                                   ! {rho}*{v}
+gTilde(MOM1) = fTilde(MOM2)                                                                             ! {rho}*{v}*{u}
+gTilde(MOM2) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL2)+UPrim(VEL2))**2 + (UPrimRef(PRES)+UPrim(PRES)) ! {rho}*{v}²+{p}
 #if PP_dim == 3
-gTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))*(UPrimRef(4)+UPrim(4))      ! {rho}*{v}*{w}
+gTilde(MOM3) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL2)+UPrim(VEL2))*(UPrimRef(VEL3)+UPrim(VEL3))      ! {rho}*{v}*{w}
 #else
-gTilde(4) = 0.
+gTilde(MOM3) = 0.
 #endif
-gTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))*(HRef+H)                    ! {rho}*{H}*{v}
+gTilde(ENER) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL2)+UPrim(VEL2))*(HRef+H)                          ! {rho}*{H}*{v}
 #if PP_dim == 3
 ! local Euler fluxes z-direction
-hTilde(1) = 0.5 *(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))                             ! {rho}*{w}
-hTilde(2) = fTilde(4)                                                              ! {rho}*{w}*{u}
-hTilde(3) = gTilde(4)                                                              ! {rho}*{w}*{v}
-hTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{w}²+{p}
-hTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))*(HRef+H)                    ! {rho}*{H}*{w}
+hTilde(DENS) = 0.5 *(URef(DENS)+U(DENS))*(UPrimRef(VEL3)+UPrim(VEL3))                                   ! {rho}*{w}
+hTilde(MOM1) = fTilde(MOM3)                                                                             ! {rho}*{w}*{u}
+hTilde(MOM2) = gTilde(MOM3)                                                                             ! {rho}*{w}*{v}
+hTilde(MOM3) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL3)+UPrim(VEL3))**2 + (UPrimRef(PRES)+UPrim(PRES)) ! {rho}*{w}²+{p}
+hTilde(ENER) = 0.25*(URef(DENS)+U(DENS))*(UPrimRef(VEL3)+UPrim(VEL3))*(HRef+H)                          ! {rho}*{H}*{w}
 #endif
 
 ! transform into reference space
@@ -647,7 +647,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
+REAL,DIMENSION(CONS   ),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                :: H_LL,H_RR ! auxiliary variables for the specific energy
@@ -683,69 +683,68 @@ USE MOD_EOS_Vars, ONLY:sKappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef     !< conserved variables
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U        !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef !< primitive variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim    !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef     !< metric terms
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: M        !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux     !< flux in reverence space
+REAL,DIMENSION(CONS),INTENT(IN)  :: URef     !< conserved variables
+REAL,DIMENSION(CONS),INTENT(IN)  :: U        !< conserved variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrimRef !< primitive variables
+REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrim    !< primitive variables
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: MRef     !< metric terms
+REAL,DIMENSION(1:3 ),INTENT(IN)  :: M        !< metric terms
+REAL,DIMENSION(CONS),INTENT(OUT) :: Flux     !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: beta,betaRef            ! auxiliary variables for the inverse Temperature
 REAL                                    :: pHatMean,HMean          ! auxiliary variable for the mean pressure and specific enthalpy
 REAL                                    :: uMean,vMean,wMean       ! auxiliary variable for the average velocities
 REAL                                    :: rhoLogMean,betaLogMean  ! auxiliary variable for the logarithmic means
-! REAL                                    :: rhoMean                 ! auxiliary variable for the mean density
 REAL,DIMENSION(PP_nVar)                 :: fTilde,gTilde           ! flux in physical space
 #if PP_dim == 3
 REAL,DIMENSION(PP_nVar)                 :: hTilde                  ! flux in physical space
 #endif
 !==================================================================================================================================
 ! average velocities
-uMean = 0.5*(UPrimRef(2) + UPrim(2))
-vMean = 0.5*(UPrimRef(3) + UPrim(3))
-wMean = 0.5*(UPrimRef(4) + UPrim(4))
+uMean = 0.5*(UPrimRef(VEL1) + UPrim(VEL1))
+vMean = 0.5*(UPrimRef(VEL2) + UPrim(VEL2))
+wMean = 0.5*(UPrimRef(VEL3) + UPrim(VEL3))
 
 ! inverse temperature
-betaRef  = 0.5*URef(1)/UPrimRef(5)
-beta     = 0.5*U(1)/UPrim(5)
+betaRef  = 0.5*URef(DENS)/UPrimRef(PRES)
+beta     = 0.5*U(DENS)/UPrim(PRES)
 
 ! Density and inverse temperature logarithmic average
-CALL GetLogMean(URef(1),U(1),rhoLogMean)
+CALL GetLogMean(URef(DENS),U(DENS),rhoLogMean)
 CALL GetLogMean(betaRef,beta,betaLogMean)
 ! Average of pressure and specific enthalpy
-pHatMean = 0.5*(URef(1)+U(1))/(betaRef+beta)
+pHatMean = 0.5*(URef(DENS)+U(DENS))/(betaRef+beta)
 HMean    = 0.5*sKappaM1/betaLogMean + pHatMean/rhoLogMean + &
-           0.5*(UPrimRef(2)*UPrim(2) + UPrimRef(3)*UPrim(3) + UPrimRef(4)*UPrim(4))
+           0.5*DOT_PRODUCT(UPrimRef(VELV),UPrim(VELV))
 
 ! local Euler fluxes x-direction
-fTilde(1) = rhoLogMean*uMean                                                       ! {rho}_log*{u}
-fTilde(2) = rhoLogMean*uMean**2 + pHatMean                                         ! {rho}_log*{u}²+{pHat}
-fTilde(3) = rhoLogMean*uMean*vMean                                                 ! {rho}_log*{u}*{v}
+fTilde(DENS) = rhoLogMean*uMean                                      ! {rho}_log*{u}
+fTilde(MOM1) = rhoLogMean*uMean**2 + pHatMean                        ! {rho}_log*{u}²+{pHat}
+fTilde(MOM2) = rhoLogMean*uMean*vMean                                ! {rho}_log*{u}*{v}
 #if PP_dim == 3
-fTilde(4) = rhoLogMean*uMean*wMean                                                 ! {rho}_log*{u}*{w}
+fTilde(MOM3) = rhoLogMean*uMean*wMean                                ! {rho}_log*{u}*{w}
 #else
-fTilde(4) = 0.
+fTilde(MOM3) = 0.
 #endif
-fTilde(5) = rhoLogMean*HMean*uMean                                                 ! {rho}_log*{H}*{u}
+fTilde(ENER) = rhoLogMean*HMean*uMean                                ! {rho}_log*{H}*{u}
 ! local Euler fluxes y-direction
-gTilde(1) = rhoLogMean*vMean                                                       ! {rho}_log*{v}
-gTilde(2) = rhoLogMean*vMean*uMean                                                 ! {rho}_log*{v}*{u}
-gTilde(3) = rhoLogMean*vMean**2 +pHatMean                                          ! {rho}_log*{v}²+{pHat}
+gTilde(DENS) = rhoLogMean*vMean                                      ! {rho}_log*{v}
+gTilde(MOM1) = rhoLogMean*vMean*uMean                                ! {rho}_log*{v}*{u}
+gTilde(MOM2) = rhoLogMean*vMean**2 +pHatMean                         ! {rho}_log*{v}²+{pHat}
 #if PP_dim == 3
-gTilde(4) = rhoLogMean*vMean*wMean                                                 ! {rho}_log*{v}*{w}
+gTilde(MOM3) = rhoLogMean*vMean*wMean                                ! {rho}_log*{v}*{w}
 #else
-gTilde(4) = 0.
+gTilde(MOM3) = 0.
 #endif
-gTilde(5) = rhoLogMean*HMean*vMean                                                 ! {rho}_log*{H}*{v}
+gTilde(ENER) = rhoLogMean*HMean*vMean                                ! {rho}_log*{H}*{v}
 #if PP_dim == 3
 ! local Euler fluxes z-direction
-hTilde(1) = rhoLogMean*wMean                                                       ! {rho}_log*{w}
-hTilde(2) = rhoLogMean*wMean*uMean                                                 ! {rho}_log*{w}*{u}
-hTilde(3) = rhoLogMean*wMean*vMean                                                 ! {rho}_log*{w}*{v}
-hTilde(4) = rhoLogMean*wMean**2 + pHatMean                                         ! {rho}_log*{w}²+{pHat}
-hTilde(5) = rhoLogMean*HMean*wMean                                                 ! {rho}_log*{H}*{w}
+hTilde(DENS) = rhoLogMean*wMean                                      ! {rho}_log*{w}
+hTilde(MOM1) = rhoLogMean*wMean*uMean                                ! {rho}_log*{w}*{u}
+hTilde(MOM2) = rhoLogMean*wMean*vMean                                ! {rho}_log*{w}*{v}
+hTilde(MOM3) = rhoLogMean*wMean**2 + pHatMean                        ! {rho}_log*{w}²+{pHat}
+hTilde(ENER) = rhoLogMean*HMean*wMean                                ! {rho}_log*{H}*{w}
 #endif
 
 ! transform into reference space
@@ -774,7 +773,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL !< variables at the left surfaces
 REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR !< variables at the right surfaces
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F    !< resulting flux
+REAL,DIMENSION(CONS   ),INTENT(OUT) :: F    !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                :: beta_LL,beta_RR        ! auxiliary variables for the inverse Temperature

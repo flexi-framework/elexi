@@ -444,7 +444,7 @@ DO SideID=1,nBCSides
 
   DO j=0,PP_NZ; DO i=0,PP_N
     ! TODO: ATTENTION: Temperature of UE not filled!!!
-    UE(CONS)=U_master(1:5,i,j,SideID)
+    UE(EXT_CONS)=U_master(CONS,i,j,SideID)
     UE(EXT_SRHO)=1./UE(EXT_DENS)
     UE(EXT_VELV)=VELOCITY_HE(UE)
     UE(EXT_PRES)=PRESSURE_HE(UE)

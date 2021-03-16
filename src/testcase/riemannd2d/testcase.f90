@@ -598,15 +598,15 @@ END SELECT
 
 nRefState = 4
 SDEALLOCATE(RefStatePrim)
-ALLOCATE(RefStatePrim(PP_nVarPrim,4))
-RefStatePrim(1,:) = rho
-RefStatePrim(2,:) = u
-RefStatePrim(3,:) = v
-RefStatePrim(4,:) = 0.
-RefStatePrim(5,:) = p
+ALLOCATE(RefStatePrim(PRIM,4))
+RefStatePrim(DENS,:) = rho
+RefStatePrim(VEL1,:) = u
+RefStatePrim(VEL2,:) = v
+RefStatePrim(VEL3,:) = 0.
+RefStatePrim(PRES,:) = p
 
 SDEALLOCATE(RefStateCons)
-ALLOCATE(RefStateCons(PP_nVar,4))
+ALLOCATE(RefStateCons(CONS,4))
 DO i=1,4
   ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
   UE(EXT_SRHO) = 1./RefStatePrim(DENS,i)

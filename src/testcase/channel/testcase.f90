@@ -157,16 +157,16 @@ ENDIF
 
 ! Set the background pressure according to chosen bulk Mach number
 bulkMach = GETREAL('ChannelMach','0.1')
-pressure = (uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa
-RefStatePrim(5,IniRefState) = pressure
+pressure = (uBulk/bulkMach)**2*RefStatePrim(DENS,IniRefState)/kappa
+RefStatePrim(PRES,IniRefState) = pressure
 ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
-UE(EXT_SRHO) = 1./RefStatePrim(1,IniRefState)
-UE(EXT_PRES) = RefStatePrim(5,IniRefState)
-RefStatePrim(6,IniRefState) = TEMPERATURE_HE(UE)
+UE(EXT_SRHO) = 1./RefStatePrim(DENS,IniRefState)
+UE(EXT_PRES) = RefStatePrim(PRES,IniRefState)
+RefStatePrim(TEMP,IniRefState) = TEMPERATURE_HE(UE)
 CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 
 IF (customChannel) THEN
-  rho      = RefStatePrim(1,IniRefState)
+  rho      = RefStatePrim(DENS,IniRefState)
   delta    = GETREAL('Part-ChannelDelta','0.')
   uBulkScale  = 1./(uBulk*rho)
 
@@ -235,9 +235,9 @@ ELSE
   END IF
 ENDIF
 !Prim(2)=uPlus
-Prim(2) = uBulkScale*(1./0.41*log(1+0.41*yPlus)+7.8*(1-exp(-yPlus/11.)-yPlus/11.*exp(-yPlus/3.)))
+Prim(VEL1) = uBulkScale*(1./0.41*log(1+0.41*yPlus)+7.8*(1-exp(-yPlus/11.)-yPlus/11.*exp(-yPlus/3.)))
 !Prim(5)=(uBulk*sqrt(kappa*Prim(5)/Prim(1)))**2*Prim(1)/kappa ! Pressure such that Ma=1/sqrt(kappa*p/rho)
-Amplitude = 0.1*Prim(2)
+Amplitude = 0.1*Prim(VEL1)
 
 #if EQNSYSNR == 2
 IF (customChannel) THEN
@@ -245,47 +245,47 @@ IF (customChannel) THEN
   x_int(2) = x(2)/delta
   x_int(3) = x(3)/delta
 
-  Prim(2)=Prim(2)+sin(20.0*PP_PI*(x_int(2)/(2.0)))*sin(20.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-  Prim(2)=Prim(2)+sin(30.0*PP_PI*(x_int(2)/(2.0)))*sin(30.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-  Prim(2)=Prim(2)+sin(35.0*PP_PI*(x_int(2)/(2.0)))*sin(35.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-  Prim(2)=Prim(2)+sin(40.0*PP_PI*(x_int(2)/(2.0)))*sin(40.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-  Prim(2)=Prim(2)+sin(45.0*PP_PI*(x_int(2)/(2.0)))*sin(45.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-  Prim(2)=Prim(2)+sin(50.0*PP_PI*(x_int(2)/(2.0)))*sin(50.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(20.0*PP_PI*(x_int(2)/(2.0)))*sin(20.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(30.0*PP_PI*(x_int(2)/(2.0)))*sin(30.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(35.0*PP_PI*(x_int(2)/(2.0)))*sin(35.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(40.0*PP_PI*(x_int(2)/(2.0)))*sin(40.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(45.0*PP_PI*(x_int(2)/(2.0)))*sin(45.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(50.0*PP_PI*(x_int(2)/(2.0)))*sin(50.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
 
-  Prim(3)=Prim(3)+sin(30.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-  Prim(3)=Prim(3)+sin(35.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-  Prim(3)=Prim(3)+sin(40.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-  Prim(3)=Prim(3)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
-  Prim(3)=Prim(3)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL2)=Prim(VEL2)+sin(30.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL2)=Prim(VEL2)+sin(35.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL2)=Prim(VEL2)+sin(40.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL2)=Prim(VEL2)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL2)=Prim(VEL2)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(3)/(2*PP_PI)))*Amplitude
 
-  Prim(4)=Prim(4)+sin(30.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
-  Prim(4)=Prim(4)+sin(35.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
-  Prim(4)=Prim(4)+sin(40.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
-  Prim(4)=Prim(4)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
-  Prim(4)=Prim(4)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+  Prim(VEL3)=Prim(VEL3)+sin(30.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+  Prim(VEL3)=Prim(VEL3)+sin(35.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+  Prim(VEL3)=Prim(VEL3)+sin(40.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+  Prim(VEL3)=Prim(VEL3)+sin(45.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
+  Prim(VEL3)=Prim(VEL3)+sin(50.0*PP_PI*(x_int(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x_int(2)/(2.0)))*Amplitude
 ELSE
-  Prim(2)=Prim(2)+sin(20.0*PP_PI*(x(2)/(2.0)))*sin(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-  Prim(2)=Prim(2)+sin(30.0*PP_PI*(x(2)/(2.0)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-  Prim(2)=Prim(2)+sin(35.0*PP_PI*(x(2)/(2.0)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-  Prim(2)=Prim(2)+sin(40.0*PP_PI*(x(2)/(2.0)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-  Prim(2)=Prim(2)+sin(45.0*PP_PI*(x(2)/(2.0)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-  Prim(2)=Prim(2)+sin(50.0*PP_PI*(x(2)/(2.0)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(20.0*PP_PI*(x(2)/(2.0)))*sin(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(30.0*PP_PI*(x(2)/(2.0)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(35.0*PP_PI*(x(2)/(2.0)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(40.0*PP_PI*(x(2)/(2.0)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(45.0*PP_PI*(x(2)/(2.0)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL1)=Prim(VEL1)+sin(50.0*PP_PI*(x(2)/(2.0)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
 
-  Prim(3)=Prim(3)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-  Prim(3)=Prim(3)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-  Prim(3)=Prim(3)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-  Prim(3)=Prim(3)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-  Prim(3)=Prim(3)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL2)=Prim(VEL2)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL2)=Prim(VEL2)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL2)=Prim(VEL2)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL2)=Prim(VEL2)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+  Prim(VEL2)=Prim(VEL2)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
 
-  Prim(4)=Prim(4)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(2)/(2.0)))*Amplitude
-  Prim(4)=Prim(4)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(2)/(2.0)))*Amplitude
-  Prim(4)=Prim(4)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
-  Prim(4)=Prim(4)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
-  Prim(4)=Prim(4)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
+  Prim(VEL3)=Prim(VEL3)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(2)/(2.0)))*Amplitude
+  Prim(VEL3)=Prim(VEL3)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(2)/(2.0)))*Amplitude
+  Prim(VEL3)=Prim(VEL3)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
+  Prim(VEL3)=Prim(VEL3)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
+  Prim(VEL3)=Prim(VEL3)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
 ENDIF
 #endif
 
-Prim(6) = 0. ! T does not matter for prim to cons
+Prim(TEMP) = 0. ! T does not matter for prim to cons
 CALL PrimToCons(prim,Resu)
 
 Resu_t =0.
@@ -320,7 +320,7 @@ INTEGER                         :: i,j,k,iElem
 BulkVel =0.
 DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    BulkVel = BulkVel+U(2,i,j,k,iElem)/U(1,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
+    BulkVel = BulkVel+U(MOM1,i,j,k,iElem)/U(DENS,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
 END DO
 
@@ -342,7 +342,7 @@ USE MOD_Mesh_Vars, ONLY:sJ,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)              :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution time derivative
+REAL,INTENT(INOUT)              :: Ut(CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: i,j,k,iElem
@@ -350,8 +350,8 @@ INTEGER                         :: i,j,k,iElem
 ! Apply forcing with the pressure gradient
 DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    Ut(2,i,j,k,iElem)=Ut(2,i,j,k,iElem) -dpdx/sJ(i,j,k,iElem,0)
-    Ut(5,i,j,k,iElem)=Ut(5,i,j,k,iElem) -dpdx*BulkVel/sJ(i,j,k,iElem,0)
+    Ut(MOM1,i,j,k,iElem)=Ut(MOM1,i,j,k,iElem) -dpdx/sJ(i,j,k,iElem,0)
+    Ut(ENER,i,j,k,iElem)=Ut(ENER,i,j,k,iElem) -dpdx*BulkVel/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
 END DO
 END SUBROUTINE TestcaseSource

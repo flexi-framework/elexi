@@ -521,7 +521,7 @@ DO SideID=1,nBCSides
 
   DO j=0,PP_NZ; DO i=0,PP_N
     ! TODO: ATTENTION: Temperature of UE not filled!!!
-    UE(CONS)=U_master(CONS,i,j,SideID)
+    UE(EXT_CONS)=U_master(CONS,i,j,SideID)
     UE(EXT_SRHO)=1./UE(EXT_DENS)
     UE(EXT_VELV)=VELOCITY_HE(UE)
     UE(EXT_PRES)=PRESSURE_HE(UE)
@@ -659,7 +659,7 @@ END IF
 #endif
 DO iBC=1,nBCs
   IF(.NOT.isWall(iBC)) CYCLE
-    MeanV(iBC)=MeanV(iBC)/Surf(iBC)
+  MeanV(iBC)=MeanV(iBC)/Surf(iBC)
 END DO
 
 END SUBROUTINE CalcWallVelocity

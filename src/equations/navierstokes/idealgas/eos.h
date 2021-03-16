@@ -35,6 +35,7 @@
 #define VELV  VEL1:VEL3       	/* velocity range */
 #define PRES  5               	/* pressure */
 #define TEMP  6               	/* temperature */
+#define VELVTEMP (/VEL1,VEL2,VEL3,TEMP/) /* velocity range and temperature */
 
 ! routines to compute physical quantities
 #define KAPPASPR_MAX_TIMESTEP_H()      (MAX(4./3.,KappasPr))
@@ -79,6 +80,7 @@
 #elif PP_VISC == 2
 #define VISCOSITY_TEMPERATURE(T)       mu0*T**ExpoSuth
 #endif
+
 
 #define EXT_CONS    1:PP_nVar                  /* all ext cons variables */
 #define EXT_PRIM    PP_nVarPrim:PP_2Var        /* all ext prim variables */

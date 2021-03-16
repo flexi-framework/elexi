@@ -1131,10 +1131,15 @@ ELSE
     Flux=0.5*(UPrim_master(PRIM_LIFT,:,:)  + UPrim_boundary(PRIM_LIFT,:,:))
     DO q=0,PP_NZ; DO p=0,PP_N
       IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).GT.JetRadius)THEN
-        Flux(1  ,p,q) = UPrim_Boundary(1,p,q)
-        Flux(2:4,p,q) = 0.
-        Flux(5  ,p,q) = UPrim_Boundary(5,p,q)
-        Flux(6  ,p,q) = UPrim_Boundary(6,p,q)
+#if PP_OPTLIFT == 0
+        Flux(LIFT_DENS,p,q) = UPrim_Boundary(1,p,q)
+        Flux(LIFT_VELV,p,q) = 0.
+        Flux(LIFT_PRES,p,q) = UPrim_Boundary(5,p,q)
+        Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+#else
+        Flux(LIFT_VELV,p,q) = 0.
+        Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+#endif
       END IF
     END DO; END DO !p,q
   CASE(3,4) ! No-slip wall BCs

@@ -366,11 +366,12 @@ IF(ANY(CalcAvg(6:nMaxVarAvg))) getPrims=.TRUE.
 
 DO iElem=1,nElems
 
+! Always change FV to DG
 #if FV_ENABLED
-  IF(FV_Elems(iElem).EQ.0) THEN ! DG Element
-    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),UFV)
-    Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => UFV
-  ELSE ! already FV
+  IF(FV_Elems(iElem).EQ.1) THEN ! FV Element
+    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),UDG)
+    Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => UDG
+  ELSE ! already DG
     Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
   END IF
 #else

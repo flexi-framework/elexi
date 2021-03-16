@@ -247,8 +247,8 @@ REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                              :: p,q
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))          :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))          :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux

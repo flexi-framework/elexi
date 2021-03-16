@@ -35,6 +35,7 @@
 !>  INFLOW BCs:
 !>  * 27  : Subsonic inflow BC, WARNING: REFSTATE is different: Tt,alpha,beta,<empty>,pT (4th entry ignored!!), angles in DEG
 !>  * 28  : Subsonic inflow BC, WARNING: REFSTATE is different: Tt,<empty>,<empty>,<empty>,mass flux (4th entry ignored!!)
+!>  * 29  : Subsonic inflow BC, WARNING: REFSTATE is different: x,alpha,beta,<empty>,x, Tt, pt are read from csv, angles in DEG
 !>  * 31  : Roundjet: exact function BC in jet and wall BC apart from the jet
 !==================================================================================================================================
 !==================================================================================================================================
@@ -156,6 +157,9 @@ DO iSide=1,nBCSides
   IF((locType.EQ.28).AND.(locState.LT.1))&
     CALL abort(__STAMP__,&
                'No inflow refstate (Tt,x,x,x,mass flux) in refstate defined for BC_TYPE',locType)
+  IF((locType.EQ.29).AND.(locState.LT.1))&
+    CALL abort(__STAMP__,&
+               'No inflow refstate (Tt,alpha,beta,empty,pT) in refstate defined for BC_TYPE',locType)
   IF((locType.EQ.121).AND.(locState.LT.1))&
     CALL abort(__STAMP__,&
                'No exactfunc defined for BC_TYPE',locType)
@@ -230,6 +234,16 @@ DO i=1,nBCs
     IF(.NOT.readBCdone) CALL ReadBCFlowCsv(BCStateFile)
     readBCdone=.TRUE.
   CASE(27) ! Subsonic inflow
+    talpha=TAN(ACOS(-1.)/180.*RefStatePrim(2,locState))
+    tbeta =TAN(ACOS(-1.)/180.*RefStatePrim(3,locState))
+    ! Compute vector a(1:3) from paper, the projection of the direction normal to the face normal
+    ! Multiplication of velocity magnitude by NORM2(a) gives contribution in face normal dir
+    RefStatePrim(VEL1,locState)=1.    /SQRT((1.+talpha**2+tbeta**2))
+    RefStatePrim(VEL2,locState)=talpha/SQRT((1.+talpha**2+tbeta**2))
+    RefStatePrim(VEL3,locState)=tbeta /SQRT((1.+talpha**2+tbeta**2))
+  CASE(29) ! Subsonic inflow
+    IF(.NOT.readBCdone) CALL ReadBCFlowCsv(BCStateFile)
+    readBCdone=.TRUE.
     talpha=TAN(ACOS(-1.)/180.*RefStatePrim(2,locState))
     tbeta =TAN(ACOS(-1.)/180.*RefStatePrim(3,locState))
     ! Compute vector a(1:3) from paper, the projection of the direction normal to the face normal
@@ -312,7 +326,7 @@ INTEGER                 :: BCType,BCState
 REAL,DIMENSION(PP_nVar) :: Cons
 REAL                    :: MaOut
 REAL                    :: c,vmag,Ma,cb,pt,pb,m,mramp,Tb1,area ! for BCType==23,24,25,28
-REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rminus,nv(3) ! for BCType==27
+REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rminus,nv(3) ! for BCType==27,29
 !===================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
@@ -357,7 +371,7 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
 !  pt=RefStatePrim(5,BCState)
 
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
-!    IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).LE.JetRadius)THEN
+    IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).LE.JetRadius)THEN
       pt = BCData(2,p,q,SideID)
       Tt = BCData(1,p,q,SideID)
 
@@ -393,15 +407,15 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
       UPrim_boundary(4,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
       UPrim_boundary(6,p,q)=Tb
 
-!    ELSE ! Isothermal wall
-!
-!      UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
-!      UPrim_boundary(2:4,p,q)= 0. ! no slip
-!      UPrim_boundary(6,p,q) = RefStatePrim(6,1) ! temperature from RefState
-!      ! set density via ideal gas equation, consistent to pressure and temperature
-!      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
-!
-!    END IF
+    ELSE ! Isothermal wall
+
+      UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
+      UPrim_boundary(2:4,p,q)= 0. ! no slip
+      UPrim_boundary(6,p,q) = RefStatePrim(6,1) ! temperature from RefState
+      ! set density via ideal gas equation, consistent to pressure and temperature
+      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
+
+    END IF
   END DO; END DO
 
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
@@ -411,7 +425,7 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
                              +UPrim_boundary(4,p,q)*TangVec2(:,p,q)
   END DO; END DO
 
-CASE(3,4,9,91,23,24,25,27,28)
+CASE(3,4,9,91,23,24,25,27,28,29)
   ! Initialize boundary state with rotated inner state
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
     ! transform state into normal system
@@ -574,6 +588,45 @@ CASE(3,4,9,91,23,24,25,27,28)
       UPrim_boundary(TEMP,p,q)=Tb
     END DO; END DO !p,q
 
+  CASE(29) ! Subsonic inflow BC, stagnation T and p and inflow angles are prescribed (typical *internal* inflow BC)
+    nv=RefStatePrim(2:4,BCState)
+
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
+      pt = BCData(2,p,q,SideID)
+      Tt = BCData(1,p,q,SideID)
+
+      ! Term A from paper with normal vector defined into the domain, dependent on p,q
+      A=SUM(nv(1:3)*(-1.)*NormVec(1:3,p,q))
+      ! sound speed from inner state
+      c=SQRT(kappa*UPrim_boundary(PRES,p,q)/UPrim_boundary(DENS,p,q))
+      ! 1D Riemann invariant: Rminus = Ui-2ci /kappamM1, Rminus = Ubc-2cb /kappaM1, normal component only!
+      Rminus=-UPrim_boundary(VEL1,p,q)-2./KappaM1*c
+      ! The Newton iteration for the T_b in the paper can be avoided by rewriting EQ 5 from the  paper
+      ! not in T, but in sound speed -> quadratic equation, solve with PQ Formel (Mitternachtsformel is
+      ! FORBIDDEN)
+      tmp1=(A**2*KappaM1+2.)/(Kappa*R*A**2*KappaM1)   !a
+      tmp2=2*Rminus/(Kappa*R*A**2)                    !b
+      tmp3=KappaM1*Rminus*Rminus/(2.*Kappa*R*A**2)-Tt !c
+      cb=(-tmp2+SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)   !
+      c=(-tmp2-SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)    ! dummy
+      cb=MAX(cb,c)                                    ! Following the FUN3D Paper, the max. of the two
+      ! is the physical one...not 100% clear why
+      ! compute static T  at bc from c
+      Tb=cb**2/(Kappa*R)
+      Ma=SQRT(2./KappaM1*(Tt/Tb-1.))
+      pb=pt*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1)
+      U=Ma*SQRT(Kappa*R*Tb)
+
+      UPrim_boundary(DENS,p,q) = pb/(R*Tb)
+      UPrim_boundary(PRES,p,q) = pb
+
+      ! we need the state in the global system for the diff fluxes
+      UPrim_boundary(VEL1,p,q)=SUM(U*nv(1:3)*Normvec( 1:3,p,q))
+      UPrim_boundary(VEL2,p,q)=SUM(U*nv(1:3)*Tangvec1(1:3,p,q))
+      UPrim_boundary(VEL3,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
+      UPrim_boundary(TEMP,p,q)=Tb
+    END DO; END DO !p,q
+
   CASE(28) ! Subsonic inflow BC, stagnation T and mass flow m are prescribed
     ! BC from FUN3D Paper by JR Carlson
     Tt=RefStatePrim(1,BCState)
@@ -702,7 +755,7 @@ ELSE
       NormVec,TangVec1,TangVec2,Face_xGP)
 
   SELECT CASE(BCType)
-  CASE(2,12,121,22,23,24,25,27,28) ! Riemann-Type BCs
+  CASE(2,12,121,22,23,24,25,27,28,29) ! Riemann-Type BCs
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
       CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q))
       CALL PrimToCons(UPrim_boundary(:,p,q),      UCons_boundary(:,p,q))
@@ -1018,7 +1071,7 @@ ELSE
   CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary,UPrim_master,&
       NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
-  CASE(2,3,4,9,91,12,121,22,23,24,25,27,28,31)
+  CASE(2,3,4,9,91,12,121,22,23,24,25,27,28,29,31)
     DO q=0,PP_NZ; DO p=0,PP_N
       gradU(:,p,q) = (UPrim_master(:,p,q) - UPrim_boundary(:,p,q)) * sdx_Face(p,q,3)
     END DO; END DO ! p,q=0,PP_N
@@ -1072,7 +1125,7 @@ ELSE
   CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary,UPrim_master,&
                         NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
-  CASE(2,12,121,22,23,24,25,27,28) ! Riemann solver based BCs
+  CASE(2,12,121,22,23,24,25,27,28,29) ! Riemann solver based BCs
     Flux=0.5*(UPrim_master(PRIM_LIFT,:,:)  + UPrim_boundary(PRIM_LIFT,:,:))
   CASE(31)
     Flux=0.5*(UPrim_master(PRIM_LIFT,:,:)  + UPrim_boundary(PRIM_LIFT,:,:))

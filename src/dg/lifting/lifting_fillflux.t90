@@ -87,10 +87,10 @@ DO SideID=firstSideID,lastSideID
     Flux(:,:,:,SideID) = sig*UPrimface_master(PRIM_LIFT,:,:,SideID) + UPrimface_slave(PRIM_LIFT,:,:,SideID)
 #if FV_ENABLED
   CASE(1) ! master=FV, slave=DG
-    CALL ChangeBasisSurf(PP_nVarLifting,PP_N,PP_N,FV_sVdm,UPrimface_master(:,:,:,SideID),UPrim_glob)
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_master(:,:,:,SideID),UPrim_glob)
     Flux(:,:,:,SideID) = sig*UPrim_glob(PRIM_LIFT,:,:) + UPrimface_slave(PRIM_LIFT,:,:,SideID)
   CASE(2) ! master=DG, slave=FV
-    CALL ChangeBasisSurf(PP_nVarLifting,PP_N,PP_N,FV_sVdm,UPrimface_slave(:,:,:,SideID),UPrim_glob)
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_slave(:,:,:,SideID),UPrim_glob)
     Flux(:,:,:,SideID) = sig*UPrimface_master(PRIM_LIFT,:,:,SideID) + UPrim_glob(PRIM_LIFT,:,:)
   CASE(3) ! both FV
     CYCLE
@@ -153,7 +153,9 @@ REAL                        :: Flux_loc(PP_nVarLifting,0:PP_N,0:PP_NZ)       !< 
 !==================================================================================================================================
 
 DO SideID=1,nBCSides
+#if FV_ENABLED
   IF (FV_Elems_master(SideID).GT.0) CYCLE
+#endif
   CALL Lifting_GetBoundaryFlux(SideID,t,UPrim_master(:,:,:,SideID),Flux_loc(:,:,:),&
        NormVec(:,:,:,0,SideID),TangVec1(:,:,:,0,SideID),TangVec2(:,:,:,0,SideID),Face_xGP(:,:,:,0,SideID),SurfElem(:,:,0,SideID))
   IF(PRESENT(Flux))THEN

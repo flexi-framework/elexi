@@ -1296,20 +1296,20 @@ CHARACTER(LEN=255),INTENT(IN) :: FileName       !< name of file BC data is read 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=200)            :: line
-INTEGER                       :: num_lines, nlines(2)
+INTEGER                       :: num_lines, nlines(1:2)
 INTEGER                       :: OpenStat,i,SideID,p,q
-#if USE_MPI
-INTEGER                       :: MPIRequest_BC
-#endif
+!#if USE_MPI
+!INTEGER                       :: MPIRequest_BC
+!#endif
 REAL,ALLOCATABLE              :: ploc(:),Tloc(:),U_local(:,:)
 REAL                          :: minr,r1,r2
 REAL,PARAMETER                :: epsilonBC=1.e-3
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',FileName
 
-#if USE_MPI
-MPIRequest_BC = MPI_REQUEST_NULL
-#endif /* USE_MPI */
+!#if USE_MPI
+!MPIRequest_BC = MPI_REQUEST_NULL
+!#endif /* USE_MPI */
 
 ! Read data from csv file and write to array
 IF(MPIROOT)THEN
@@ -1333,7 +1333,8 @@ END IF
 
 ! Communicate size
 #if USE_MPI
-CALL MPI_IBCAST(nlines(1:2),2,MPI_INTEGER,0,MPI_COMM_FLEXI,MPIRequest_BC,IERROR)
+!CALL MPI_IBCAST(nlines(1:2),2,MPI_INTEGER,0,MPI_COMM_FLEXI,MPIRequest_BC,IERROR)
+CALL MPI_BCAST(nlines(1:2),2,MPI_INTEGER,0,MPI_COMM_FLEXI,IERROR)
 #endif /* USE_MPI */
 
 IF(MPIROOT)THEN
@@ -1363,9 +1364,8 @@ IF(MPIROOT)THEN
 END IF
 
 #if USE_MPI
-CALL MPI_WAIT(MPIRequest_BC,MPI_STATUS_IGNORE,IERROR)
-IF(.NOT.MPIROOT) ALLOCATE(U_local(1:nlines(2),1:nlines(1)))
-CALL MPI_BCAST(U_local,nlines(1)*nlines(2),MPI_DOUBLE,0,MPI_COMM_FLEXI,IERROR)
+!CALL MPI_WAIT(MPIRequest_BC,MPI_STATUS_IGNORE,IERROR)
+CALL MPI_BCAST(U_local,nlines(1)*nlines(2),MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,IERROR)
 #endif /* USE_MPI */
 
 ! Sort

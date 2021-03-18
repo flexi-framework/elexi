@@ -951,10 +951,10 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'        ,'0.')
   IF (Species(iSpec)%MassIC .EQ. 0.) THEN
     Species(iSpec)%MassIC=Species(iSpec)%DensityIC*PI/6.*Species(iSpec)%DiameterIC**3
-    SWRITE(UNIT_StdOut,'(A,I0,A,F16.5)') ' | Mass of species (spherical) ', iSpec, ' = ', Species(iSpec)%MassIC
+    SWRITE(UNIT_StdOut,'(A,I0,A,F5.16)') ' | Mass of species (spherical) ', iSpec, ' = ', Species(iSpec)%MassIC
   ELSEIF (Species(iSpec)%DiameterIC .EQ. 0.) THEN
     Species(iSpec)%DiameterIC=(Species(iSpec)%MassIC/Species(iSpec)%DensityIC*6./PI)**(1./3.)
-    SWRITE(UNIT_StdOut,'(A,I0,A,F16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
+    SWRITE(UNIT_StdOut,'(A,I0,A,F5.16)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
   END IF
   Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold' ,'0.')
   Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-HighVeloThreshold','0.')

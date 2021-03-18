@@ -111,6 +111,7 @@ END DO
 
 END SUBROUTINE ProlongToFace
 
+#if FV_ENABLED
 !==================================================================================================================================
 !> PURE DG
 !> Interpolates the interior volume data (stored at the Gauss or Gauss-Lobatto points) to the surface
@@ -206,6 +207,7 @@ DO SideID=firstSideID,lastSideID
 END DO
 
 END SUBROUTINE ProlongToFace_DG
+#endif
 
 
 !==================================================================================================================================

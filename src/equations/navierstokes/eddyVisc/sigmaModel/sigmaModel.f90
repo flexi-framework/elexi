@@ -158,7 +158,7 @@ INTEGER             :: i,j,k,iElem
 DO iElem = 1,nElems
   DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
     CALL SigmaModel_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                                 U(DENS,i,j,k,iElem),        deltaS(iElem),  muSGS(1,i,j,k,iElem))
+                                 U(DENS,i,j,k,iElem), CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE SigmaModel_Volume

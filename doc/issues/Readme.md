@@ -22,3 +22,6 @@ Distributed Data Filter does not correctly find the global node IDs and crashes 
 Currently, SurfStates can only be visualized with paraviewposti.<br/>
 - Step 1: Move SurfState to normal state file.<br/>
 - Step 2: Create a multiblock reader for the supersampled surface faces.<br/>
+
+# Extended RHS
+No additional lifting if the lift force is caluclated only!

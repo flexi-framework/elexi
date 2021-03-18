@@ -159,7 +159,6 @@ DO iElem=1,nElems
   muSGSMax = MAXVAL(muSGS(1,:,:,:,iElem))
 #endif
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    ! TODO: ATTENTION: Temperature of UE not filled!!!
     UE(EXT_CONS)=U(:,i,j,k,iElem)
     UE(EXT_SRHO)=1./UE(EXT_DENS)
     UE(EXT_VELV)=VELOCITY_HE(UE)

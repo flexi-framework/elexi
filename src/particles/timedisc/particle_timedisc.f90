@@ -62,7 +62,8 @@ SUBROUTINE Particle_TimeStepByEuler(t,dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_DG_Vars,                 ONLY: U,Ut
+USE MOD_Mesh_Vars,               ONLY: nElems
+USE MOD_DG_Vars,                 ONLY: U
 USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
@@ -93,9 +94,10 @@ USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 #endif
 #if USE_EXTEND_RHS
-USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle,TimeDerivAtParticle
+USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle
 USE MOD_Lifting_Vars,            ONLY: gradUx,gradUy,gradUz
-#endif
+USE MOD_Part_RHS,                ONLY: tauRHS
+#endif /* USE_EXTEND_RHS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -108,6 +110,10 @@ INTEGER                       :: iPart
 #if USE_LOADBALANCE
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
+#if USE_EXTEND_RHS
+REAL                          :: divtau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL                          :: gradp( 1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+#endif /* USE_EXTEND_RHS */
 !===================================================================================================================================
 #if USE_MPI
 #if USE_LOADBALANCE
@@ -130,13 +136,15 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
+#if  USE_EXTEND_RHS
+  ! Calculate tau
+  CALL tauRHS(U(PRES,:,:,:,:),divtau,gradp)
+#endif
   CALL InterpolateFieldToParticle(PP_nVar,U     ,PP_nVarPrim,FieldAtParticle&
 #if  USE_EXTEND_RHS
-    ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),GradAtParticle&
-    ,Ut(RHS_TIMEVARS,:,:,:,:),TimeDerivAtParticle)
-#else
-    )
+    ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),divtau,gradp,GradAtParticle&
 #endif
+    )
 #if USE_RW
   IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,nVarTurb,TurbFieldAtParticle)
   CALL ParticleRandomWalk(t)
@@ -228,7 +236,9 @@ END SUBROUTINE Particle_TimeStepByEuler
 SUBROUTINE Particle_TimeStepByLSERK_RHS(t,iStage,dt)
 ! MODULES
 USE MOD_Globals
-USE MOD_DG_Vars,                 ONLY: U,Ut
+USE MOD_PreProc
+USE MOD_Mesh_Vars,               ONLY: nElems
+USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
@@ -253,8 +263,9 @@ USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime
 USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 #endif
 #if USE_EXTEND_RHS
-USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle, TimeDerivAtParticle
+USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle
 USE MOD_Lifting_Vars,            ONLY: gradUx,gradUy,gradUz
+USE MOD_Part_RHS,                ONLY: tauRHS
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -266,6 +277,10 @@ REAL,INTENT(IN)               :: dt
 #if USE_LOADBALANCE
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
+#if USE_EXTEND_RHS
+REAL                          :: divtau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL                          :: gradp( 1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+#endif /* USE_EXTEND_RHS */
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if USE_MPI
 #if USE_LOADBALANCE
@@ -287,13 +302,15 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-CALL InterpolateFieldToParticle(PP_nVar,U,PP_nVarPrim,FieldAtParticle&
 #if USE_EXTEND_RHS
-    ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),GradAtParticle&
-    ,Ut(RHS_TIMEVARS,:,:,:,:),TimeDerivAtParticle)
-#else
-  )
+  ! Calculate tau
+  CALL tauRHS(U(PRES,:,:,:,:),divtau,gradp)
+#endif /* USE_EXTEND_RHS */
+  CALL InterpolateFieldToParticle(PP_nVar,U,PP_nVarPrim,FieldAtParticle&
+#if USE_EXTEND_RHS
+    ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),divtau,gradp,GradAtParticle&
 #endif
+  )
 #if USE_RW
   IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,nVarTurb,TurbFieldAtParticle)
   !--> Calculate the random walk push
@@ -444,7 +461,9 @@ END SUBROUTINE Particle_TimeStepByLSERK
 SUBROUTINE Particle_TimeStepByLSERK_RK_RHS(t,iStage,dt)
 ! MODULES
 USE MOD_Globals
-USE MOD_DG_Vars,                 ONLY: U,Ut
+USE MOD_PreProc
+USE MOD_Mesh_Vars,               ONLY: nElems
+USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
@@ -469,21 +488,26 @@ USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
 #if USE_EXTEND_RHS
-USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle, TimeDerivAtParticle
+USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle
 USE MOD_Lifting_Vars,            ONLY: gradUx,gradUy,gradUz
+USE MOD_Part_RHS,                ONLY: tauRHS
 #endif /* USE_EXTEND_RHS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)                                         :: t
-INTEGER,INTENT(IN)                                      :: iStage
-REAL,INTENT(IN)                                         :: dt
+REAL,INTENT(IN)                   :: t
+INTEGER,INTENT(IN)                :: iStage
+REAL,INTENT(IN)                   :: dt
 #if USE_LOADBALANCE
-REAL                                                    :: tLBStart
+REAL                              :: tLBStart
 #endif /*USE_LOADBALANCE*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#if USE_EXTEND_RHS
+REAL                              :: divtau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL                              :: gradp( 1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+#endif /* USE_EXTEND_RHS */
 !===================================================================================================================================
 
 #if USE_MPI
@@ -506,13 +530,15 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
+#if USE_EXTEND_RHS
+  ! Calculate tau
+  CALL tauRHS(U(PRES,:,:,:,:),divtau,gradp)
+#endif /* USE_EXTEND_RHS */
   CALL InterpolateFieldToParticle(PP_nVar,U,PP_nVarPrim,FieldAtParticle&
 #if USE_EXTEND_RHS
-    ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),GradAtParticle&
-    ,Ut(RHS_TIMEVARS,:,:,:,:),TimeDerivAtParticle)
-#else
-    )
+    ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),divtau,gradp,GradAtParticle&
 #endif /* USE_EXTEND_RHS */
+    )
 #if USE_RW
   IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,nVarTurb,TurbFieldAtParticle)
   CALL ParticleRandomWalk(t)

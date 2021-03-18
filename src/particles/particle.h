@@ -125,11 +125,19 @@
 #define RHS_HAIDER       7
 #define RHS_HOELZER      8
 
+#if USE_EXTEND_RHS
 ! Velocity and pressure for extended RHS
-#define RHS_LIFTVARS    (/DENS,VEL1,VEL2,VEL3/)
-#define RHS_LIFT        4
-#define RHS_TIMEVARS    (/DENS,MOM1,MOM2,MOM3/)
-#define RHS_DERIVATIVE  4
+#define RHS_LIFTVARS    (/LIFT_VEL1,LIFT_VEL2,LIFT_VEL3/)
+#define RHS_LIFT        3
+#define RHS_GRADVEL1    1
+#define RHS_GRADVEL2    2
+#define RHS_GRADVEL3    3
+#define RHS_GRADVELV    RHS_GRADVEL1:RHS_GRADVEL3
+#define RHS_GRADPRES    4
+#define RHS_GRADTAU     5
+#define RHS_GRADVARS    (/1,2,3,4,5/)
+#define RHS_GRAD        5
+#endif
 
 #define PART_POS1       1
 #define PART_POS2       2

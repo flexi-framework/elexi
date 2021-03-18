@@ -30,7 +30,6 @@ LOGICAL                               :: InterpolationElemLoop    ! Interpolate 
 REAL,ALLOCATABLE                      :: FieldAtParticle(:,:)     ! (6,PDM%maxParticleNumber) 1nd index: rho,u_x,u_y,u_z,p,T
 #if USE_EXTEND_RHS
 REAL,ALLOCATABLE                      :: GradAtParticle(:,:,:)    ! (3,3,PDM%maxParticleNumber) 1nd index: rho*(u_x,u_y,u_z)
-REAL,ALLOCATABLE                      :: TimeDerivAtParticle(:,:) ! (3,PDM%maxParticleNumber) 1nd index: rho*(u_x,u_y,u_z)
 #endif
 #if USE_RW
 REAL,ALLOCATABLE                      :: turbFieldAtParticle(:,:) ! (PDM%maxParticleNumber,2) 2nd index: k,epsilon

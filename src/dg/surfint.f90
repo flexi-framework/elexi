@@ -91,6 +91,30 @@ END MODULE MOD_SurfIntLifting
 !==================================================================================================================================
 !> Contains the surface integral for primitive quantities
 !==================================================================================================================================
+MODULE MOD_SurfIntLifting_gen
+IMPLICIT NONE
+PRIVATE
+
+#undef WITHnVars
+INTEGER,PARAMETER :: TP_nVar = 3
+
+INTERFACE SurfIntLifting_gen
+  MODULE PROCEDURE SurfInt
+END INTERFACE
+
+INTERFACE DoSurfIntLifting_gen
+  MODULE PROCEDURE DoSurfInt
+END INTERFACE
+
+PUBLIC::SurfIntLifting_gen,DoSurfIntLifting_gen
+
+CONTAINS
+#include "surfint.t90"
+END MODULE MOD_SurfIntLifting_gen
+
+!==================================================================================================================================
+!> Contains the surface integral for primitive quantities
+!==================================================================================================================================
 MODULE MOD_SurfIntPrim
 IMPLICIT NONE
 PRIVATE

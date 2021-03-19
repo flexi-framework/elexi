@@ -13,6 +13,7 @@
 !=================================================================================================================================
 #if PARABOLIC
 #include "flexi.h"
+#include "eos.h"
 
 MODULE MOD_Lifting_VolInt_gen
 IMPLICIT NONE

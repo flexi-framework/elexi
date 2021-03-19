@@ -425,10 +425,12 @@ DO
         'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
 #endif
       END IF
-#if USE_PARTICLES
     END IF
-#endif
+#if USE_PARTICLES
+  ELSE
+    doAnalyze = .FALSE.
   END IF
+#endif
   nCalcTimestep=nCalcTimestep-1
 
   dt=dt_Min
@@ -541,7 +543,6 @@ DO
     iter_loc  = 0
     CalcTimeStart = FLEXITIME()
     tAnalyze  = MIN(tAnalyze+Analyze_dt,  tEnd)
-!    doAnalyze=.FALSE.
   END IF !ANALYZE
 
 #if USE_LOADBALANCE

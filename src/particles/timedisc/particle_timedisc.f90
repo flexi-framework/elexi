@@ -62,7 +62,6 @@ SUBROUTINE Particle_TimeStepByEuler(t,dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars,               ONLY: nElems
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
 USE MOD_Part_Emission,           ONLY: ParticleInserting
@@ -97,6 +96,7 @@ USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle
 USE MOD_Lifting_Vars,            ONLY: gradUx,gradUy,gradUz
 USE MOD_Part_RHS,                ONLY: tauRHS
+USE MOD_Mesh_Vars,               ONLY: nElems
 #endif /* USE_EXTEND_RHS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -138,7 +138,7 @@ IF (t.GE.DelayTime) THEN
 #endif /*USE_LOADBALANCE*/
 #if  USE_EXTEND_RHS
   ! Calculate tau
-  CALL tauRHS(U(PRES,:,:,:,:),divtau,gradp)
+  CALL tauRHS(U,divtau,gradp)
 #endif
   CALL InterpolateFieldToParticle(PP_nVar,U     ,PP_nVarPrim,FieldAtParticle&
 #if  USE_EXTEND_RHS
@@ -237,7 +237,6 @@ SUBROUTINE Particle_TimeStepByLSERK_RHS(t,iStage,dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars,               ONLY: nElems
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
@@ -266,6 +265,7 @@ USE MOD_Particle_Localization,   ONLY: CountPartsPerElem
 USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle
 USE MOD_Lifting_Vars,            ONLY: gradUx,gradUy,gradUz
 USE MOD_Part_RHS,                ONLY: tauRHS
+USE MOD_Mesh_Vars,               ONLY: nElems
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -304,7 +304,7 @@ IF (t.GE.DelayTime) THEN
 #endif /*USE_LOADBALANCE*/
 #if USE_EXTEND_RHS
   ! Calculate tau
-  CALL tauRHS(U(PRES,:,:,:,:),divtau,gradp)
+  CALL tauRHS(U,divtau,gradp)
 #endif /* USE_EXTEND_RHS */
   CALL InterpolateFieldToParticle(PP_nVar,U,PP_nVarPrim,FieldAtParticle&
 #if USE_EXTEND_RHS
@@ -348,7 +348,6 @@ USE MOD_PruettDamping,           ONLY: TempFilterTimeDeriv
 USE MOD_TimeDisc_Vars,           ONLY: nRKStages
 #if FV_ENABLED
 USE MOD_FV,                      ONLY: FV_Switch
-USE MOD_FV_Vars,                 ONLY: FV_toDGinRK
 #endif
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
@@ -462,7 +461,6 @@ SUBROUTINE Particle_TimeStepByLSERK_RK_RHS(t,iStage,dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars,               ONLY: nElems
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
@@ -491,6 +489,7 @@ USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 USE MOD_Particle_Interpolation_Vars,ONLY: GradAtParticle
 USE MOD_Lifting_Vars,            ONLY: gradUx,gradUy,gradUz
 USE MOD_Part_RHS,                ONLY: tauRHS
+USE MOD_Mesh_Vars,               ONLY: nElems
 #endif /* USE_EXTEND_RHS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -532,7 +531,7 @@ IF (t.GE.DelayTime) THEN
 #endif /*USE_LOADBALANCE*/
 #if USE_EXTEND_RHS
   ! Calculate tau
-  CALL tauRHS(U(PRES,:,:,:,:),divtau,gradp)
+  CALL tauRHS(U,divtau,gradp)
 #endif /* USE_EXTEND_RHS */
   CALL InterpolateFieldToParticle(PP_nVar,U,PP_nVarPrim,FieldAtParticle&
 #if USE_EXTEND_RHS

@@ -554,13 +554,14 @@ USE MOD_Lifting_Vars,       ONLY: gradUy_master,gradUy_slave
 USE MOD_Lifting_Vars,       ONLY: gradUz_master,gradUz_slave
 USE MOD_Lifting_BR1_gen,    ONLY: Lifting_BR1_gen
 USE MOD_Mesh_Vars,          ONLY: nElems,nSides
+USE MOD_EoS,                ONLY: ConsToPrim
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(IN)             :: U(0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(IN)             :: U(CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL,INTENT(OUT)            :: divtau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL,INTENT(OUT)            :: gradp(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -571,6 +572,7 @@ REAL,ALLOCATABLE            :: gradUy_master_loc(:,:,:,:), gradUy_slave_loc(:,:,
 REAL,ALLOCATABLE            :: gradUz_master_loc(:,:,:,:), gradUz_slave_loc(:,:,:,:)
 REAL,ALLOCATABLE            :: U_local(:,:,:,:,:)
 REAL,ALLOCATABLE            :: gradp_local(:,:,:,:,:,:)
+INTEGER                     :: i,j,k,iElem
 !===================================================================================================================================
 ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(gradUy2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
@@ -623,12 +625,14 @@ DEALLOCATE(gradUy_master_loc,gradUy_slave_loc)
 DEALLOCATE(gradUz_master_loc,gradUz_slave_loc)
 
 ! Calculate pressure gradient
-ALLOCATE(U_local(1,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(U_local(PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(gradp_local(1,3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 
-U_local(1,:,:,:,:) = U
+DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+  CALL ConsToPrim(U_local(:,i,j,k,iElem),U(:,i,j,k,iElem))
+END DO; END DO; END DO; END DO
 
-CALL Lifting_BR1_gen(1,1,U_local(:,:,:,:,:),gradp_local(:,1,:,:,:,:),gradp_local(:,2,:,:,:,:),gradp_local(:,3,:,:,:,:))
+CALL Lifting_BR1_gen(1,1,U_local(PRES:PRES,:,:,:,:),gradp_local(:,1,:,:,:,:),gradp_local(:,2,:,:,:,:),gradp_local(:,3,:,:,:,:))
 gradp = gradp_local(1,:,:,:,:,:)
 
 DEALLOCATE(U_local,gradp_local)

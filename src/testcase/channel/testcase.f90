@@ -402,8 +402,7 @@ SUBROUTINE FinalizeTestcase()
 USE MOD_Globals
 IMPLICIT NONE
 !==================================================================================================================================
-IF(MPIRoot) CALL WriteStats()
-IF(MPIRoot) DEALLOCATE(writeBuf)
+IF(MPIRoot.AND.ALLOCATED(writeBuf))THEN; CALL WriteStats(); DEALLOCATE(writeBuf); END IF
 END SUBROUTINE
 
 

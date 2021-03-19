@@ -413,13 +413,9 @@ FILE(GLOB dgF90            ./src/dg/*.f90)
 
 # >> append F90 files of lifting to 'dgF90'-list
 IF (FLEXI_PARABOLIC)
-  IF (PARTICLES)
-    IF (PARTICLES_EXTEND_RHS)
-      FILE(GLOB liftingF90     ./src/dg/lifting/*.f90
-                               ./src/particles/lifting_gen/*.f90)
-    ELSE()
-      FILE(GLOB liftingF90     ./src/dg/lifting/*.f90)
-    ENDIF()
+  IF (PARTICLES_EXTEND_RHS)
+    FILE(GLOB liftingF90     ./src/dg/lifting/*.f90
+                             ./src/lifting_gen/*.f90)
   ELSE()
     FILE(GLOB liftingF90     ./src/dg/lifting/*.f90)
   ENDIF()

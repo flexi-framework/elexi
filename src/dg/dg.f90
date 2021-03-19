@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 #if USE_LOADBALANCE
 #include "particle.h"
 #endif /*USE_LOADBALANCE*/
@@ -557,9 +558,9 @@ CALL LBSplitTime(LB_DGCOMM,tLBStart)
 #if FV_ENABLED
 ! 10.1)
 #if PARABOLIC
-CALL FV_DGtoFV(PP_nVarPrim,gradUx_master,gradUx_slave)
-CALL FV_DGtoFV(PP_nVarPrim,gradUy_master,gradUy_slave)
-CALL FV_DGtoFV(PP_nVarPrim,gradUz_master,gradUz_slave)
+CALL FV_DGtoFV(PP_nVarLifting,gradUx_master,gradUx_slave)
+CALL FV_DGtoFV(PP_nVarLifting,gradUy_master,gradUy_slave)
+CALL FV_DGtoFV(PP_nVarLifting,gradUz_master,gradUz_slave)
 #endif
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )
 CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )

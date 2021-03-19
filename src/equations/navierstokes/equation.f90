@@ -115,6 +115,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT NAVIER-STOKES...'
 
 s43=4./3.
 s23=2./3.
+s13=1./3.
 
 ! Always set docalcsource true, set false by calcsource itself on first run if not needed
 doCalcSource=.TRUE.

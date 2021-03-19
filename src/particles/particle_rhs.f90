@@ -29,7 +29,16 @@ INTERFACE CalcPartRHS
   MODULE PROCEDURE CalcPartRHS
 END INTERFACE
 
+#if USE_EXTEND_RHS
+INTERFACE tauRHS
+  MODULE PROCEDURE tauRHS
+END INTERFACE
+#endif /* USE_EXTEND_RHS */
+
 PUBLIC :: CalcPartRHS
+#if USE_EXTEND_RHS
+PUBLIC :: tauRHS
+#endif /* USE_EXTEND_RHS */
 !==================================================================================================================================
 
 CONTAINS
@@ -48,8 +57,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 #if USE_EXTEND_RHS
-USE MOD_Particle_Interpolation_Vars,  ONLY: GradAtParticle,TimeDerivAtParticle
-USE MOD_Particle_TimeDisc_Vars,       ONLY: UseManualTimestep
+USE MOD_Particle_Interpolation_Vars,  ONLY: GradAtParticle
 #endif
 USE MOD_Particle_Vars,                ONLY: PDM, Pt
 !#if USE_RW
@@ -87,11 +95,9 @@ DO iPart = 1,PDM%ParticleVecLength
 #if USE_EXTEND_RHS
     ! Calculate the drag (and gravity) force
     Fd(1:3)       = ParticlePush(iPart,FieldAtParticle(PRIM,iPart))
-    ! nullify time derivative if steady state computation
-    IF(UseManualTimestep) TimeDerivAtParticle(1:RHS_DERIVATIVE,iPart) = 0.
     ! Calculate other RHS forces and add all forces to compute the particle push
     Pt(1:3,iPart) = ParticlePushExtend(iPart,FieldAtParticle(PRIM,iPart),&
-                                       GradAtParticle(1:RHS_LIFT,1:3,iPart),TimeDerivAtParticle(1:RHS_DERIVATIVE,iPart),Fd&
+                                       GradAtParticle(1:RHS_GRAD,1:3,iPart),Fd&
 #if USE_BASSETFORCE
                                       ,dt,iStage)
 #else
@@ -316,7 +322,7 @@ ParticlePush = Fdm
 END FUNCTION ParticlePush
 
 #if USE_EXTEND_RHS
-FUNCTION ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,TimeDerivAtParticle,Fdm&
+FUNCTION ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,Fdm&
 #if USE_BASSETFORCE
   ,dt,iStage)
 #else
@@ -341,15 +347,13 @@ USE MOD_Viscosity
 USE MOD_Particle_Vars,          ONLY: durdt, N_Basset, bIter
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
 #endif /* USE_BASSETFORCE */
-USE MOD_TimeDisc_Vars,          ONLY: t
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)          :: PartID
 REAL,INTENT(IN)             :: FieldAtParticle(PRIM)
-REAL,INTENT(IN)             :: GradAtParticle(1:RHS_LIFT,1:3)
-REAL,INTENT(IN)             :: TimeDerivAtParticle(1:RHS_DERIVATIVE)
+REAL,INTENT(IN)             :: GradAtParticle(1:RHS_GRAD,1:3)
 REAL,INTENT(IN)             :: Fdm(1:3)
 #if USE_BASSETFORCE
 REAL,INTENT(IN)             :: dt
@@ -365,6 +369,7 @@ REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: facm,facp                   ! factor divided by the particle mass
 REAL                     :: Flm(1:3)                    ! lift force divided by the particle mass
+REAL                     :: divv
 #if USE_LIFTFORCE
 REAL                     :: rotu(3), rotudiff(3)        ! curl product of velocity and velocity difference
 REAL                     :: dotp                        ! dot_product
@@ -400,10 +405,9 @@ ELSE
 END IF
 
 Pt(1:3) = 0.
+Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.
 ! factor before left hand side
 facp = 1.
-
-Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.
 
 !===================================================================================================================================
 ! Calculate the Saffman lift force:
@@ -414,9 +418,9 @@ Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.
 ! Calculate the factor
 facm = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
 ! Calculate the rotation: \nabla x u
-rotu     = (/GradAtParticle(VEL3,2)-GradAtParticle(VEL2,3),&
-             GradAtParticle(VEL1,3)-GradAtParticle(VEL3,1),&
-             GradAtParticle(VEL2,1)-GradAtParticle(VEL1,2)/)
+rotu     = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
+             GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
+             GradAtParticle(RHS_GRADVEL2,1)-GradAtParticle(RHS_GRADVEL1,2)/)
 ! Calculate the rotation: (\nabla x u) x udiff
 rotudiff = (/rotu(2)*udiff(3)-rotu(3)*udiff(2),&
              rotu(3)*udiff(1)-rotu(1)*udiff(3),&
@@ -429,25 +433,22 @@ Flm     = Flm * facm
 !WRITE(*,*) 'LIFTFORCE', Flm(1:3)
 #endif /* USE_LIFTFORCE */
 
+#if USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE
+! Material derivative D(\rho u_i)/Dt = - \nabla p + \nabla \cdot \tau - (\nabla \cdot u) \rho u
+divv = GradAtParticle(RHS_GRADVEL1,1) + GradAtParticle(RHS_GRADVEL2,2) + GradAtParticle(RHS_GRADVEL3,3)
+DuDt(1)  = - GradAtParticle(RHS_GRADPRES,1) + mu*GradAtParticle(RHS_GRADTAU,1)! - divv * FieldAtParticle(DENS) * FieldAtParticle(VEL1)
+DuDt(2)  = - GradAtParticle(RHS_GRADPRES,2) + mu*GradAtParticle(RHS_GRADTAU,2)! - divv * FieldAtParticle(DENS) * FieldAtParticle(VEL2)
+DuDt(3)  = - GradAtParticle(RHS_GRADPRES,3) + mu*GradAtParticle(RHS_GRADTAU,3)! - divv * FieldAtParticle(DENS) * FieldAtParticle(VEL3)
+#endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
+
 !===================================================================================================================================
 ! Calculate the viscous and pressure forces:
 ! 1/\rho_p Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
 !===================================================================================================================================
 #if USE_UNDISTFLOW
-
 facm = 1./Species(PartSpecies(PartID))%DensityIC
-! Material derivative Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
-DuDt(1)  = (TimeDerivAtParticle(MOM1)-FieldAtParticle(VEL1)*TimeDerivAtParticle(DENS)) +&
-                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))
-!                              + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(2)  = (TimeDerivAtParticle(MOM2)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
-                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))
-!                              + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(3)  = (TimeDerivAtParticle(MOM3)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
-                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))
-!                              + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
 
-Fum(1:3) = facm * DuDt(1:3)
+Fum(1:3) = facm * DuDt(1:3) * FieldAtParticle(DENS)
 !WRITE (*, *) 'UNDISTFLOW:', Fum(1:3)
 #endif /* USE_UNDISTFLOW */
 
@@ -456,25 +457,13 @@ Fum(1:3) = facm * DuDt(1:3)
 ! 1/\rho_p Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
 !===================================================================================================================================
 #if USE_VIRTUALMASS
+facm = 1./Species(PartSpecies(PartID))%DensityIC
 
-#if !USE_UNDISTFLOW
-! Material derivative Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
-DuDt(1)  = (TimeDerivAtParticle(MOM1)-FieldAtParticle(VEL1)*TimeDerivAtParticle(DENS)) +&
-                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))
-!                              + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(2)  = (TimeDerivAtParticle(MOM2)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
-                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))
-!                              + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(3)  = (TimeDerivAtParticle(MOM3)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
-                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))
-!                              + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-#endif
-
-Fvm(1:3) = 0.5 * facm * DuDt(1:3)
+Fvm(1:3) = 0.5 * facm * DuDt(1:3) * FieldAtParticle(DENS)
 !WRITE (*, *) 'VIRTUALMASS:',  Fvm(1:3)
 
 ! Add to global scaling factor
-facp     = facp + 0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
+facp     = facp + 0.5*facm*FieldAtParticle(DENS)
 #endif /* USE_VIRTUALMASS */
 
 !===================================================================================================================================
@@ -504,35 +493,20 @@ END IF
 facm = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
           * SQRT(mu/(FieldAtParticle(DENS)*PP_pi)) * SQRT(RKdtFrac)
 
-#if !(USE_UNDISTFLOW || USE_VIRTUALMASS)
-! Material derivative Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
-! D(\rho u)/Dt = \partial(\rho u) / \partial(t) + (\rho u) \cdot \nabla(u) + u \cdot (\nabla(rho) u)
-DuDt(1)  = (TimeDerivAtParticle(MOM1)-FieldAtParticle(VEL1)*TimeDerivAtParticle(DENS)) +&
-                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL1,:))
-!                              + FieldAtParticle(VEL1) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(2)  = (TimeDerivAtParticle(MOM2)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
-                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL2,:))
-!                              + FieldAtParticle(VEL2) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-DuDt(3)  = (TimeDerivAtParticle(MOM3)-FieldAtParticle(VEL3)*TimeDerivAtParticle(DENS)) +&
-                                 FieldAtParticle(DENS) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(VEL3,:))
-!                              + FieldAtParticle(VEL3) * DOT_PRODUCT(FieldAtParticle(VELV),GradAtParticle(DENS,:))
-#endif
-
-
 ! Index for previous data
 kIndex = INT(MIN(N_Basset, bIter)*3)
 ! copy previous data
 IF(bIter.GT.N_Basset) durdt(1:kIndex-3,PartID) = durdt(4:kIndex,PartID)
 ! d(\rho u)/dt = D(\rho u)/Dt - udiff * (\rho \nabla(u) + u \nabla(\rho))
-dufdt(1) = DuDt(1) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(VEL1,:))
+dufdt(1) = DuDt(1) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL1,:))
 !                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL1)*GradAtParticle(DENS,:))
-dufdt(2) = DuDt(2) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(VEL2,:))
+dufdt(2) = DuDt(2) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL2,:))
 !                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL2)*GradAtParticle(DENS,:))
-dufdt(3) = DuDt(3) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(VEL3,:))
+dufdt(3) = DuDt(3) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL3,:))
 !                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL3)*GradAtParticle(DENS,:))
 
 ! d(\rho udiff)/dt = d(\rho u)/dt - \rho (dv_p/dt) - v_p (d\rho/dt)
-durdt(kIndex-2:kIndex,PartID) = dufdt(:) !- PartState(PART_VELV,PartID) * TimeDerivAtParticle(DENS)
+durdt(kIndex-2:kIndex,PartID) = dufdt(:)
 
 Fbm = s43 * durdt(kIndex-2:kIndex,PartID) + durdt(1:3,PartID) * (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
 DO k=3,kIndex-3,3
@@ -566,6 +540,100 @@ END IF
 ParticlePushExtend(1:3) = Pt
 
 END FUNCTION ParticlePushExtend
+
+SUBROUTINE tauRHS(U,divtau,gradp)
+!===================================================================================================================================
+! Compute tau
+!===================================================================================================================================
+! MODULES
+USE MOD_PreProc
+USE MOD_Equation_Vars,      ONLY: s13
+USE MOD_Lifting_Vars,       ONLY: gradUx,gradUy,gradUz
+USE MOD_Lifting_Vars,       ONLY: gradUx_master,gradUx_slave
+USE MOD_Lifting_Vars,       ONLY: gradUy_master,gradUy_slave
+USE MOD_Lifting_Vars,       ONLY: gradUz_master,gradUz_slave
+USE MOD_Lifting_BR1_gen,    ONLY: Lifting_BR1_gen
+USE MOD_Mesh_Vars,          ONLY: nElems,nSides
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(IN)             :: U(0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(OUT)            :: divtau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(OUT)            :: gradp(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,ALLOCATABLE            :: gradUx2(:,:,:,:,:,:),gradUy2(:,:,:,:,:,:),gradUz2(:,:,:,:,:,:)
+REAL,ALLOCATABLE            :: gradUx_master_loc(:,:,:,:), gradUx_slave_loc(:,:,:,:)
+REAL,ALLOCATABLE            :: gradUy_master_loc(:,:,:,:), gradUy_slave_loc(:,:,:,:)
+REAL,ALLOCATABLE            :: gradUz_master_loc(:,:,:,:), gradUz_slave_loc(:,:,:,:)
+REAL,ALLOCATABLE            :: U_local(:,:,:,:,:)
+REAL,ALLOCATABLE            :: gradp_local(:,:,:,:,:,:)
+!===================================================================================================================================
+ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(gradUy2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(gradUz2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+gradUx2 = 0.
+gradUy2 = 0.
+gradUz2 = 0.
+ALLOCATE(gradUx_master_loc(1:3,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUx_slave_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUy_master_loc(1:3,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUy_slave_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUz_master_loc(1:3,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUz_slave_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides))
+
+gradUx_master_loc = gradUx_master(LIFT_VELV,:,:,:)
+gradUx_slave_loc  = gradUx_slave(LIFT_VELV,:,:,:)
+gradUy_master_loc = gradUy_master(LIFT_VELV,:,:,:)
+gradUy_slave_loc  = gradUy_slave(LIFT_VELV,:,:,:)
+gradUz_master_loc = gradUz_master(LIFT_VELV,:,:,:)
+gradUz_slave_loc  = gradUz_slave(LIFT_VELV,:,:,:)
+
+
+! Calculate the second gradient of the velocity and output \nabla \cdot tau
+CALL Lifting_BR1_gen(3,3,gradUx(LIFT_VELV,:,:,:,:),gradUx_master_loc,gradUx_slave_loc,&
+                    gradUx2(1,:,:,:,:,:),gradUx2(2,:,:,:,:,:),gradUx2(3,:,:,:,:,:))
+CALL Lifting_BR1_gen(3,3,gradUy(LIFT_VELV,:,:,:,:),gradUy_master_loc,gradUy_slave_loc,&
+                    gradUy2(1,:,:,:,:,:),gradUy2(2,:,:,:,:,:),gradUy2(3,:,:,:,:,:))
+CALL Lifting_BR1_gen(3,3,gradUz(LIFT_VELV,:,:,:,:),gradUz_master_loc,gradUz_slave_loc,&
+                    gradUz2(1,:,:,:,:,:),gradUz2(2,:,:,:,:,:),gradUz2(3,:,:,:,:,:))
+
+! u_xx + u_yy + u_zz + 1/3 * (u_xx+v_yx+w_zx)
+!divtau(1,:,:,:,:) = gradUx2(1,LIFT_VEL1,:,:,:,:) + gradUy2(2,LIFT_VEL1,:,:,:,:) + gradUz2(3,LIFT_VEL1,:,:,:,:) + &
+!                    s13 * (gradUx2(1,LIFT_VEL1,:,:,:,:) + gradUy2(1,LIFT_VEL2,:,:,:,:) + gradUz2(1,LIFT_VEL3,:,:,:,:))
+divtau(1,:,:,:,:) = gradUx2(1,1,:,:,:,:) + gradUy2(2,1,:,:,:,:) + gradUz2(3,1,:,:,:,:) + &
+                    s13 * (gradUx2(1,1,:,:,:,:) + gradUy2(1,2,:,:,:,:) + gradUz2(1,3,:,:,:,:))
+! v_xx + v_yy + v_zz + 1/3 * (u_xy+v_yy+w_zy)
+!divtau(2,:,:,:,:) = gradUx2(1,LIFT_VEL2,:,:,:,:) + gradUy2(2,LIFT_VEL2,:,:,:,:) + gradUz2(3,LIFT_VEL2,:,:,:,:) + &
+!                    s13 * (gradUx2(2,LIFT_VEL1,:,:,:,:) + gradUy2(2,LIFT_VEL2,:,:,:,:) + gradUz2(2,LIFT_VEL3,:,:,:,:))
+divtau(2,:,:,:,:) = gradUx2(1,2,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(3,2,:,:,:,:) + &
+                    s13 * (gradUx2(2,1,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(2,3,:,:,:,:))
+! w_xx + w_yy + w_zz + 1/3 * (u_xy+v_yy+w_zy)
+!divtau(3,:,:,:,:) = gradUx2(1,LIFT_VEL3,:,:,:,:) + gradUy2(2,LIFT_VEL3,:,:,:,:) + gradUz2(3,LIFT_VEL3,:,:,:,:) + &
+!                    s13 * (gradUx2(3,LIFT_VEL1,:,:,:,:) + gradUy2(3,LIFT_VEL2,:,:,:,:) + gradUz2(3,LIFT_VEL3,:,:,:,:))
+divtau(3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + gradUz2(3,3,:,:,:,:) + &
+                    s13 * (gradUx2(3,1,:,:,:,:) + gradUy2(3,2,:,:,:,:) + gradUz2(3,3,:,:,:,:))
+
+DEALLOCATE(gradUx2,gradUy2,gradUz2)
+DEALLOCATE(gradUx_master_loc,gradUx_slave_loc)
+DEALLOCATE(gradUy_master_loc,gradUy_slave_loc)
+DEALLOCATE(gradUz_master_loc,gradUz_slave_loc)
+
+! Calculate pressure gradient
+ALLOCATE(U_local(1,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(gradp_local(1,3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+
+U_local(1,:,:,:,:) = U
+
+CALL Lifting_BR1_gen(1,1,U_local(:,:,:,:,:),gradp_local(:,1,:,:,:,:),gradp_local(:,2,:,:,:,:),gradp_local(:,3,:,:,:,:))
+gradp = gradp_local(1,:,:,:,:,:)
+
+DEALLOCATE(U_local,gradp_local)
+
+END SUBROUTINE tauRHS
 #endif /* USE_EXTEND_RHS */
 
 

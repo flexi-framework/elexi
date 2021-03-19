@@ -1134,7 +1134,6 @@ ELSE
 #if PP_OPTLIFT == 0
         Flux(LIFT_DENS,p,q) = UPrim_Boundary(1,p,q)
         Flux(LIFT_VELV,p,q) = 0.
-        Flux(LIFT_PRES,p,q) = UPrim_Boundary(5,p,q)
         Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
 #else
         Flux(LIFT_VELV,p,q) = 0.
@@ -1147,8 +1146,7 @@ ELSE
 #if PP_OPTLIFT == 0
       Flux(LIFT_DENS,p,q) = UPrim_Boundary(1,p,q)
       Flux(LIFT_VELV,p,q) = 0.
-      Flux(LIFT_PRES,p,q) = UPrim_Boundary(5,p,q)
-      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(5,p,q)
 #else
       Flux(LIFT_VELV,p,q) = 0.
       Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
@@ -1160,9 +1158,9 @@ ELSE
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
 #if PP_OPTLIFT == 0
-      Flux(LIFT_DENS              ,p,q) = UPrim_master(1,p,q)
-      Flux(LIFT_VELV              ,p,q) = UPrim_boundary(2:4,p,q)
-      Flux((/LIFT_PRES,LIFT_TEMP/),p,q) = UPrim_master(5:6,p,q)
+      Flux(LIFT_DENS,p,q) = UPrim_master(1,p,q)
+      Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(5,p,q)
 #else
       Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
       Flux(LIFT_TEMP,p,q) = UPrim_master(6,p,q)
@@ -1296,20 +1294,20 @@ CHARACTER(LEN=255),INTENT(IN) :: FileName       !< name of file BC data is read 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=200)            :: line
-INTEGER                       :: num_lines, nlines(2)
+INTEGER                       :: num_lines, nlines(1:2)
 INTEGER                       :: OpenStat,i,SideID,p,q
-#if USE_MPI
-INTEGER                       :: MPIRequest_BC
-#endif
+!#if USE_MPI
+!INTEGER                       :: MPIRequest_BC
+!#endif
 REAL,ALLOCATABLE              :: ploc(:),Tloc(:),U_local(:,:)
 REAL                          :: minr,r1,r2
 REAL,PARAMETER                :: epsilonBC=1.e-3
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',FileName
 
-#if USE_MPI
-MPIRequest_BC = MPI_REQUEST_NULL
-#endif /* USE_MPI */
+!#if USE_MPI
+!MPIRequest_BC = MPI_REQUEST_NULL
+!#endif /* USE_MPI */
 
 ! Read data from csv file and write to array
 IF(MPIROOT)THEN
@@ -1327,13 +1325,13 @@ IF(MPIROOT)THEN
   CLOSE(UNIT_logOut)
 
   nlines(1) = num_lines
-!  ALLOCATE(BCDataSingle(1:nlines(2),1:nlines(1)))
   ALLOCATE(U_local(1:nlines(2),1:nlines(1)))
 END IF
 
 ! Communicate size
 #if USE_MPI
-CALL MPI_IBCAST(nlines(1:2),2,MPI_INTEGER,0,MPI_COMM_FLEXI,MPIRequest_BC,IERROR)
+!CALL MPI_IBCAST(nlines(1:2),2,MPI_INTEGER,0,MPI_COMM_FLEXI,MPIRequest_BC,IERROR)
+CALL MPI_BCAST(nlines(1:2),2,MPI_INTEGER,0,MPI_COMM_FLEXI,IERROR)
 #endif /* USE_MPI */
 
 IF(MPIROOT)THEN
@@ -1363,14 +1361,14 @@ IF(MPIROOT)THEN
 END IF
 
 #if USE_MPI
-CALL MPI_WAIT(MPIRequest_BC,MPI_STATUS_IGNORE,IERROR)
-IF(.NOT.MPIROOT) ALLOCATE(U_local(1:nlines(2),1:nlines(1)))
-CALL MPI_BCAST(U_local,nlines(1)*nlines(2),MPI_DOUBLE,0,MPI_COMM_FLEXI,IERROR)
+!CALL MPI_WAIT(MPIRequest_BC,MPI_STATUS_IGNORE,IERROR)
+IF(.NOT.MPIRoot) ALLOCATE(U_local(1:nlines(2),1:nlines(1)))
+CALL MPI_BCAST(U_local,nlines(1)*nlines(2),MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,IERROR)
 #endif /* USE_MPI */
 
 ! Sort
 DO SideID=1,nBCSides
-  IF (Boundarytype(BC(SideID),BC_TYPE).NE.31) CYCLE
+  IF ((Boundarytype(BC(SideID),BC_TYPE).NE.29) .AND. (Boundarytype(BC(SideID),BC_TYPE).NE.31)) CYCLE
   DO q=0,PP_N
     DO p=0,PP_N
       r1 = SQRT(Face_xGP(2,p,q,0,SideID)**2+Face_xGP(3,p,q,0,SideID)**2)

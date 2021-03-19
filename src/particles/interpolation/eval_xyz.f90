@@ -429,7 +429,7 @@ IF(NVar_out.NE.NVar) CALL ConsToPrim(U_out,Utmp)
 END SUBROUTINE EvaluateFieldAtRefPos
 
 #if USE_EXTEND_RHS
-SUBROUTINE EvaluateFieldAndGradAtPhysPos(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID,PartID,gradUx,gradUy,gradUz,UGrad_Out,Ut,Ut_out)
+SUBROUTINE EvaluateFieldAndGradAtPhysPos(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID,PartID,gradUx,gradUy,gradUz,divtau,gradp,UGrad_Out)
 !===================================================================================================================================
 !> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
 !> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
@@ -467,12 +467,12 @@ INTEGER,INTENT(IN)        :: NVar_out                                      !< 6 
 REAL,INTENT(IN)           :: gradUx(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in x direction
 REAL,INTENT(IN)           :: gradUy(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in y direction
 REAL,INTENT(IN)           :: gradUz(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in z direction
-REAL,INTENT(IN)           :: Ut(RHS_DERIVATIVE,0:N_in,0:N_in,0:ZDIM(N_in)) !< Time derivative of momentum
+REAL,INTENT(IN)           :: divtau(1:3     ,0:N_in,0:N_in,0:ZDIM(N_in))   !< \nabla \cdot \tau
+REAL,INTENT(IN)           :: gradp( 1:3     ,0:N_in,0:N_in,0:ZDIM(N_in))   !< \nabla p
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                             !< Interpolated state at physical position x_in
-REAL,INTENT(OUT)          :: UGrad_Out(RHS_LIFT,3)                          !< Interpolated gradient at physical position x_in
-REAL,INTENT(OUT)          :: Ut_Out(RHS_DERIVATIVE)                         !< Interpolated time derivative at physical position x_in
+REAL,INTENT(OUT)          :: UGrad_Out(RHS_GRAD,3)                         !< Interpolated gradient at physical position x_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: CNElemID,i,j,k
@@ -527,16 +527,20 @@ CALL LagrangeInterpolationPolys(xi(3),N_in,xGP,wBary,L_xi(3,:))
 ! "more efficient" - Quote Thomas B.
 Utmp(:)       = 0.
 UGrad_Out(:,:)= 0.
-Ut_Out(:)     = 0.
 DO k=0,N_in
   DO j=0,N_in
     L_eta_zeta=L_xi(2,j)*L_xi(3,k)
     DO i=0,N_in
-      Utmp           = Utmp           + U_IN(:,i,j,k)  *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(:,1) = UGrad_out(:,1) + gradUx(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(:,2) = UGrad_out(:,2) + gradUy(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(:,3) = UGrad_out(:,3) + gradUz(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      Ut_out(:)      = Ut_out(:)      + Ut(:,i,j,k)    *L_xi(1,i)*L_Eta_Zeta
+      Utmp                      = Utmp                      + U_IN(:,i,j,k)  *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADTAU,1)  = UGrad_out(RHS_GRADTAU,1)  + divtau(1,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADTAU,2)  = UGrad_out(RHS_GRADTAU,2)  + divtau(2,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADTAU,3)  = UGrad_out(RHS_GRADTAU,3)  + divtau(3,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADPRES,1) = UGrad_out(RHS_GRADPRES,1) + gradp(1,i,j,k) *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADPRES,2) = UGrad_out(RHS_GRADPRES,2) + gradp(2,i,j,k) *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADPRES,3) = UGrad_out(RHS_GRADPRES,3) + gradp(3,i,j,k) *L_xi(1,i)*L_Eta_Zeta
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In
@@ -550,7 +554,7 @@ IF(NVar_out.NE.NVar) CALL ConsToPrim(U_out,Utmp)
 
 END SUBROUTINE EvaluateFieldAndGradAtPhysPos
 
-PPURE SUBROUTINE EvaluateFieldAndGradAtRefPos(Xi_in,NVar,N_in,U_In,NVar_out,U_Out,gradUx,gradUy,gradUz,UGrad_Out,Ut,Ut_out)
+PPURE SUBROUTINE EvaluateFieldAndGradAtRefPos(Xi_in,NVar,N_in,U_In,NVar_out,U_Out,gradUx,gradUy,gradUz,divtau,gradp,UGrad_Out)
 !===================================================================================================================================
 !> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
 !> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
@@ -571,17 +575,18 @@ INTEGER,INTENT(IN)        :: NVar_out                                       !< 6
 REAL,INTENT(IN)           :: gradUx(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in x direction
 REAL,INTENT(IN)           :: gradUy(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in y direction
 REAL,INTENT(IN)           :: gradUz(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in z direction
-REAL,INTENT(IN)           :: Ut(RHS_DERIVATIVE,0:N_in,0:N_in,0:ZDIM(N_in))  !< Time derivative of momentum
+REAL,INTENT(IN)           :: divtau(1:3     ,0:N_in,0:N_in,0:ZDIM(N_in))    !< \nabla \cdot \tau
+REAL,INTENT(IN)           :: gradp( 1:3     ,0:N_in,0:N_in,0:ZDIM(N_in))    !< \nabla p
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                              !< Interpolated state at reference position xi_in
-REAL,INTENT(OUT)          :: UGrad_Out(RHS_LIFT,3)                          !< Interpolated gradient at reference position x_in
-REAL,INTENT(OUT)          :: Ut_Out(RHS_DERIVATIVE)                         !< Interpolated time derivative at reference position x_in
+REAL,INTENT(OUT)          :: UGrad_Out(RHS_GRAD,3)                          !< Interpolated gradient at reference position x_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: i,j,k
 REAL                      :: L_xi(3,0:N_in), L_eta_zeta
 REAL                      :: Utmp(1:nVar)
+REAL          :: U_Int(1:NVar,0:N_In,0:N_In,0:N_In)              !< State in Element
 !===================================================================================================================================
 
 ! 2.1) get "Vandermonde" vectors
@@ -592,16 +597,20 @@ CALL LagrangeInterpolationPolys(xi_in(3),N_in,xGP,wBary,L_xi(3,:))
 ! "more efficient" - Quote Thomas B.
 Utmp(:)       = 0.
 UGrad_Out(:,:)= 0.
-Ut_Out(:)     = 0.
 DO k=0,N_in
   DO j=0,N_in
     L_eta_zeta=L_xi(2,j)*L_xi(3,k)
     DO i=0,N_in
-      Utmp           = Utmp           + U_IN(:,i,j,k)  *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(:,1) = UGrad_out(:,1) + gradUx(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(:,2) = UGrad_out(:,2) + gradUy(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(:,3) = UGrad_out(:,3) + gradUz(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      Ut_out(:)      = Ut_out(:)      + Ut(:,i,j,k)    *L_xi(1,i)*L_Eta_Zeta
+      Utmp                      = Utmp                      + U_IN(:,i,j,k)  *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADTAU,1)  = UGrad_out(RHS_GRADTAU,1)  + divtau(1,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADTAU,2)  = UGrad_out(RHS_GRADTAU,2)  + divtau(2,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADTAU,3)  = UGrad_out(RHS_GRADTAU,3)  + divtau(3,i,j,k)*L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADPRES,1) = UGrad_out(RHS_GRADPRES,1) + gradp(1,i,j,k) *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADPRES,2) = UGrad_out(RHS_GRADPRES,2) + gradp(2,i,j,k) *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADPRES,3) = UGrad_out(RHS_GRADPRES,3) + gradp(3,i,j,k) *L_xi(1,i)*L_Eta_Zeta
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In

@@ -141,11 +141,7 @@ IF (ALLOCSTAT.NE.0) CALL abort(__STAMP__,'ERROR in Part_interpolation.f90: Canno
 #if USE_EXTEND_RHS
 SDEALLOCATE(GradAtParticle)
 ! Allocate array for rho*(u_x,u_y,u_z)
-ALLOCATE(GradAtParticle    (RHS_LIFT, 1:3, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
-GradAtParticle(:,:,:) = 0.
-SDEALLOCATE(TimeDerivAtParticle)
-! Allocate array for rho*(u_x,u_y,u_z)
-ALLOCATE(TimeDerivAtParticle(RHS_DERIVATIVE, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+ALLOCATE(GradAtParticle    (RHS_GRAD, 1:3, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 GradAtParticle(:,:,:) = 0.
 #endif
 
@@ -159,7 +155,7 @@ END SUBROUTINE InitParticleInterpolation
 
 SUBROUTINE InterpolateFieldToParticle(nVar,U,nVar_out,FieldAtParticle&
 #if USE_EXTEND_RHS
-    ,gradUx,gradUy,gradUz,GradAtParticle,Ut,TimeDerivAtParticle)
+    ,gradUx,gradUy,gradUz,divtau,gradp,GradAtParticle)
 #else
     )
 #endif
@@ -197,14 +193,14 @@ INTEGER,INTENT(IN)               :: nVar_out
 REAL,INTENT(IN),OPTIONAL         :: gradUx(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in x direction
 REAL,INTENT(IN),OPTIONAL         :: gradUy(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in y direction
 REAL,INTENT(IN),OPTIONAL         :: gradUz(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in z direction
-REAL,INTENT(IN),OPTIONAL         :: Ut(RHS_DERIVATIVE,0:PP_N,0:PP_N,0:PP_NZ,nElems)     !< Time derivative of momentum
+REAL,INTENT(IN),OPTIONAL         :: divtau(1:3     ,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< \nabla \cdot \tau
+REAL,INTENT(IN),OPTIONAL         :: gradp( 1:3     ,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< \nabla p
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                 :: FieldAtParticle(1:nVar_out,1:PDM%maxParticleNumber)
 #if USE_EXTEND_RHS
-REAL,INTENT(OUT),OPTIONAL        :: GradAtParticle(RHS_LIFT,3,1:PDM%maxParticleNumber)
-REAL,INTENT(OUT),OPTIONAL        :: TimeDerivAtParticle(RHS_DERIVATIVE,1:PDM%maxParticleNumber)
+REAL,INTENT(OUT),OPTIONAL        :: GradAtParticle(RHS_GRAD,3,1:PDM%maxParticleNumber)
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -212,8 +208,7 @@ INTEGER                          :: firstElem,lastElem,ElemID
 INTEGER                          :: firstPart,lastPart
 REAL                             :: field(nVar_out)
 #if USE_EXTEND_RHS
-REAL                             :: grad(RHS_LIFT,3)
-REAL                             :: tfield(RHS_DERIVATIVE)
+REAL                             :: grad(RHS_GRAD,3)
 #endif
 INTEGER                          :: iPart,iElem!,iVar
 !===================================================================================================================================
@@ -282,8 +277,8 @@ IF (InterpolationElemLoop) THEN
 #if USE_EXTEND_RHS
             IF (PRESENT(GradAtParticle)) THEN
               CALL EvaluateFieldAndGradAtRefPos   (PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field&
-                                                  ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),grad&
-                                                  ,Ut(:,:,:,:,ElemID),tfield)
+                      ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID)&
+                      ,divtau(:,:,:,:,ElemID),gradp(:,:,:,:,ElemID),grad)
             ELSE
               CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field)
             END IF
@@ -295,8 +290,8 @@ IF (InterpolationElemLoop) THEN
 #if USE_EXTEND_RHS
             IF (PRESENT(GradAtParticle)) THEN
               CALL EvaluateFieldAndGradAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field,iElem,iPart&
-                                                ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),grad&
-                                                ,Ut(:,:,:,:,ElemID),tfield)
+                      ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID)&
+                      ,divtau(:,:,:,:,ElemID),gradp(:,:,:,:,ElemID),grad)
             ELSE
               CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field,iElem,iPart)
             END IF
@@ -312,7 +307,6 @@ IF (InterpolationElemLoop) THEN
         FieldAtParticle(:,iPart) = FieldAtParticle(:,iPart) + field(:)
 #if USE_EXTEND_RHS
         IF (PRESENT(GradAtParticle)) GradAtParticle(:,:,iPart)         = GradAtParticle(:,:,iPart)    + grad(:,:)
-        IF (PRESENT(TimeDerivAtParticle)) TimeDerivAtParticle(:,iPart) = TimeDerivAtParticle(:,iPart) + tfield(:)
 #endif
       END IF ! Element(iPart).EQ.iElem
     END DO ! iPart
@@ -333,11 +327,10 @@ ELSE
 #endif
     CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,ElemID),nVar_out,FieldAtParticle(:,iPart)&
 #if USE_EXTEND_RHS
-                                          ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),GradAtParticle(:,:,iPart)&
-                                          ,Ut(:,:,:,:,ElemID),TimeDerivAtParticle(:,iPart))
-#else
-                                          )
+                  ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID)&
+                  ,divtau(:,:,:,:,ElemID),gradp(:,:,:,:,ElemID),GradAtParticle(:,:,iPart)&
 #endif
+                )
   END DO
 END IF
 
@@ -346,7 +339,7 @@ END SUBROUTINE InterpolateFieldToParticle
 
 SUBROUTINE InterpolateFieldToSingleParticle(PartID,nVar,U,nVar_out,FieldAtParticle&
 #if USE_EXTEND_RHS
-    ,gradUx,gradUy,gradUz,GradAtParticle,Ut,TimeDerivAtParticle)
+    ,gradUx,gradUy,gradUz,divtau,gradp,GradAtParticle)
 #else
     )
 #endif
@@ -382,22 +375,21 @@ INTEGER,INTENT(IN)               :: nVar_out
 REAL,INTENT(IN),OPTIONAL         :: gradUx(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)       !< Gradient in x direction
 REAL,INTENT(IN),OPTIONAL         :: gradUy(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)       !< Gradient in y direction
 REAL,INTENT(IN),OPTIONAL         :: gradUz(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)       !< Gradient in z direction
-REAL,INTENT(IN),OPTIONAL         :: Ut(RHS_DERIVATIVE,0:PP_N,0:PP_N,0:PP_NZ)     !< Time derivative of momentum
+REAL,INTENT(IN),OPTIONAL         :: divtau(1:3     ,0:PP_N,0:PP_N,0:PP_NZ)       !< \nabla \cdot \tau
+REAL,INTENT(IN),OPTIONAL         :: gradp( 1:3     ,0:PP_N,0:PP_N,0:PP_NZ)       !< \nabla p
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                 :: FieldAtParticle(1:nVar_out)
 #if USE_EXTEND_RHS
-REAL,INTENT(OUT),OPTIONAL        :: GradAtParticle(RHS_LIFT,3)
-REAL,INTENT(OUT),OPTIONAL        :: TimeDerivAtParticle(RHS_DERIVATIVE)
+REAL,INTENT(OUT),OPTIONAL        :: GradAtParticle(RHS_GRAD,3)
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                             :: field(1:nVar_out)
 INTEGER                          :: ElemID
 #if USE_EXTEND_RHS
-REAL                             :: grad(RHS_LIFT,3)
-REAL                             :: tfield(RHS_DERIVATIVE)
+REAL                             :: grad(RHS_GRAD,3)
 #endif
 !===================================================================================================================================
 
@@ -425,7 +417,7 @@ ELSE
 #if USE_EXTEND_RHS
     IF (PRESENT(GradAtParticle)) THEN
       CALL EvaluateFieldAndGradAtRefPos   (PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field&
-                                          ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),grad,Ut(:,:,:,:),tfield)
+                                          ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),divtau(:,:,:,:),gradp,grad)
 
     ELSE
       CALL EvaluateFieldAtRefPos          (PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field)
@@ -438,7 +430,7 @@ ELSE
 #if USE_EXTEND_RHS
     IF (PRESENT(GradAtParticle)) THEN
       CALL EvaluateFieldAndGradAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID,PartID&
-                                        ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),grad,Ut(:,:,:,:),tfield)
+                                        ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),divtau(:,:,:,:),gradp,grad)
     ELSE
       CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID,PartID)
     END IF
@@ -454,7 +446,6 @@ END IF
 FieldAtParticle(:)        = FieldAtParticle(:)  + field(:)
 #if USE_EXTEND_RHS
 IF (PRESENT(GradAtParticle))      GradAtParticle(:,:)    = GradAtParticle(:,:)    + grad(:,:)
-IF (PRESENT(TimeDerivAtParticle)) TimeDerivAtParticle(:) = TimeDerivAtParticle(:) + tfield(:)
 #endif
 
 END SUBROUTINE InterpolateFieldToSingleParticle

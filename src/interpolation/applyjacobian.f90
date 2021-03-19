@@ -116,3 +116,29 @@ PUBLIC::ApplyJacobianLifting
 CONTAINS
 #include "applyjacobian.t90"
 END MODULE MOD_ApplyJacobianLifting
+
+!==================================================================================================================================
+!> \brief Module containing routines that change primitive solution representation between physical and reference coordinates
+!> Depending on interface parameters it distinguishes between:
+!> - Conversion with separate input and output variables
+!> - Conversion where input will be overwritten by the transformed output
+!> - Selective conversion only of DG elements where the input will be overwritten by the transformed output
+!==================================================================================================================================
+MODULE MOD_ApplyJacobianLifting_gen
+IMPLICIT NONE
+PRIVATE
+
+#undef WITHnVar
+INTEGER,PARAMETER :: TP_nVar = 3
+
+INTERFACE ApplyJacobianLifting_gen
+   MODULE PROCEDURE ApplyJacobian
+   MODULE PROCEDURE ApplyJacobian_local
+   MODULE PROCEDURE ApplyJacobian_select
+END INTERFACE
+
+PUBLIC::ApplyJacobianLifting_gen
+
+CONTAINS
+#include "applyjacobian.t90"
+END MODULE MOD_ApplyJacobianLifting_gen

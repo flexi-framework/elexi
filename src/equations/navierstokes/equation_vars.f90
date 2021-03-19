@@ -45,6 +45,7 @@ INTEGER,ALLOCATABLE  :: BCSideID(:,:)  !< array storing side IDs of sides with d
 
 REAL                 :: s43            !< precomputed 4./3.
 REAL                 :: s23            !< precomputed 2./3.
+REAL                 :: s13            !< precomputed 1./3.
 
 #if USE_RW
 CHARACTER(LEN=255),DIMENSION(7),PARAMETER :: StrVarNames =&

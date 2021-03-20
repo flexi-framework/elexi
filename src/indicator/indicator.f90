@@ -487,7 +487,9 @@ REAL                      :: UE(1:PP_2Var)
 INTEGER                   :: TMP(1:nElems)
 INTEGER                   :: TMP_master(1:nSides)
 INTEGER                   :: TMP_slave( 1:nSides)
+#if USE_MPI
 INTEGER                   :: DataSizeSide_loc
+#endif
 INTEGER                   :: firstMortarSideID,lastMortarSideID
 INTEGER                   :: MortarSideID,tf
 !==================================================================================================================================

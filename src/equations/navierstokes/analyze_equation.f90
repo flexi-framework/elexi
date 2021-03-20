@@ -214,7 +214,9 @@ IF(MPIRoot)THEN
 
 END IF
 
+#if USE_MPI
 CALL MPI_BCAST(doAnalyzeEquation,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,IERROR)
+#endif
 
 IF(doCalcTimeAverage)  CALL InitCalcTimeAverage()
 

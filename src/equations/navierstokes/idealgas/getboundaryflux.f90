@@ -1132,24 +1132,24 @@ ELSE
     DO q=0,PP_NZ; DO p=0,PP_N
       IF(SQRT(Face_xGP(2,p,q)**2+Face_xGP(3,p,q)**2).GT.JetRadius)THEN
 #if PP_OPTLIFT == 0
-        Flux(LIFT_DENS,p,q) = UPrim_Boundary(1,p,q)
+        Flux(LIFT_DENS,p,q) = UPrim_Boundary(DENS,p,q)
         Flux(LIFT_VELV,p,q) = 0.
-        Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+        Flux(LIFT_TEMP,p,q) = UPrim_Boundary(TEMP,p,q)
 #else
         Flux(LIFT_VELV,p,q) = 0.
-        Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+        Flux(LIFT_TEMP,p,q) = UPrim_Boundary(TEMP,p,q)
 #endif
       END IF
     END DO; END DO !p,q
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
 #if PP_OPTLIFT == 0
-      Flux(LIFT_DENS,p,q) = UPrim_Boundary(1,p,q)
+      Flux(LIFT_DENS,p,q) = UPrim_Boundary(DENS,p,q)
       Flux(LIFT_VELV,p,q) = 0.
-      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(5,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(TEMP,p,q)
 #else
       Flux(LIFT_VELV,p,q) = 0.
-      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(TEMP,p,q)
 #endif
     END DO; END DO !p,q
   CASE(9,91)
@@ -1158,12 +1158,12 @@ ELSE
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
 #if PP_OPTLIFT == 0
-      Flux(LIFT_DENS,p,q) = UPrim_master(1,p,q)
-      Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
-      Flux(LIFT_TEMP,p,q) = UPrim_master(5,p,q)
+      Flux(LIFT_DENS,p,q) = UPrim_master(DENS,p,q)
+      Flux(LIFT_VELV,p,q) = UPrim_boundary(VELV,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(TEMP,p,q)
 #else
-      Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
-      Flux(LIFT_TEMP,p,q) = UPrim_master(6,p,q)
+      Flux(LIFT_VELV,p,q) = UPrim_boundary(VELV,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(TEMP,p,q)
 #endif
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
@@ -1336,7 +1336,7 @@ CALL MPI_BCAST(nlines(1:2),2,MPI_INTEGER,0,MPI_COMM_FLEXI,IERROR)
 
 IF(MPIROOT)THEN
   ! read actual data
-  ! 1: \rho, 2: M, 3: p_t, 4: x, 5: y, 6: z
+  ! 1: \rho, 2: M, 3: p_t, 4: vx, 5: vy, 6: vz, 7: x, 8: y, 9: z
   OPEN(UNIT=UNIT_logOut, FILE=filename, ACCESS="sequential",IOSTAT=OpenStat)
   ! read the header
   READ (UNIT_logOut,'(A)') line
@@ -1374,9 +1374,9 @@ DO SideID=1,nBCSides
       r1 = SQRT(Face_xGP(2,p,q,0,SideID)**2+Face_xGP(3,p,q,0,SideID)**2)
       minr = epsilonBC
       DO i=2,nlines(1)
-        r2 = ABS(SQRT(U_local(5,i)**2+U_local(6,i)**2) - r1)
-        IF(r2.LT.minr .AND. SIGN(1.,Face_xGP(2,p,q,0,SideID)).EQ.SIGN(1.,U_local(5,i)) .AND. &
-           SIGN(1.,Face_xGP(3,p,q,0,SideID)).EQ.SIGN(1.,U_local(6,i))) THEN
+        r2 = ABS(SQRT(U_local(8,i)**2+U_local(9,i)**2) - r1)
+        IF(r2.LT.minr .AND. SIGN(1.,Face_xGP(2,p,q,0,SideID)).EQ.SIGN(1.,U_local(8,i)) .AND. &
+           SIGN(1.,Face_xGP(3,p,q,0,SideID)).EQ.SIGN(1.,U_local(9,i))) THEN
           minr=r2
           BCData(1,p,q,SideID) = U_local(1,i) ! Tt
           BCData(2,p,q,SideID) = U_local(3,i) ! pt

@@ -443,7 +443,7 @@ END IF
 #endif /* FV_ENABLED */
 
 ! Add the interpolated field to the background field
-FieldAtParticle(:)                                       = FieldAtParticle(:)     + field(:)
+FieldAtParticle(:)        = FieldAtParticle(:)  + field(:)
 #if USE_EXTEND_RHS
 IF (PRESENT(GradAtParticle))      GradAtParticle(:,:)    = GradAtParticle(:,:)    + grad(:,:)
 #endif

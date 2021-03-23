@@ -407,7 +407,7 @@ IF (t.GE.DelayTime) THEN
   ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
   IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath
 
-  IF (RecordPart) CALL ParticleRecord(t)
+  IF (RecordPart.GT.0) CALL ParticleRecord(t)
 
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_PUSH,tLBStart)
@@ -660,7 +660,7 @@ IF (t.GE.DelayTime) THEN
   ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
   IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath()
 
-  IF (RecordPart) CALL ParticleRecord(t)
+  IF (RecordPart.GT.0) CALL ParticleRecord(t)
 
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_PUSH,tLBStart)

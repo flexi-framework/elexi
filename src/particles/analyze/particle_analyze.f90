@@ -501,8 +501,10 @@ SDEALLOCATE(nPartOut)
 SDEALLOCATE(PartEkinIn)
 SDEALLOCATE(PartEkinOut)
 
-SDEALLOCATE( nPartInTmp)
-SDEALLOCATE( PartEkinInTmp)
+SDEALLOCATE(nPartInTmp)
+SDEALLOCATE(PartEkinInTmp)
+
+SDEALLOCATE(RPP_Plane)
 
 ParticleAnalyzeInitIsDone = .FALSE.
 

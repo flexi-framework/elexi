@@ -302,7 +302,7 @@ END ASSOCIATE
 #endif
 
 ! Convert to primitve variables
-IF (NVar_out.NE.PP_nVarPrim) THEN
+IF (NVar_out.EQ.PP_nVarPrim) THEN
   CALL ConsToPrim(U_out,Utmp)
 ELSE
   U_out = Utmp
@@ -428,7 +428,7 @@ DO k=0,N_in
 END DO ! k=0,N_In
 
 ! Convert to primitve variables
-IF (NVar_out.NE.PP_nVarPrim) THEN
+IF (NVar_out.EQ.PP_nVarPrim) THEN
   CALL ConsToPrim(U_out,Utmp)
 ELSE
   U_out = Utmp
@@ -558,7 +558,7 @@ END ASSOCIATE
 #endif
 
 ! Convert to primitve variables
-IF (NVar_out.NE.PP_nVarPrim) THEN
+IF (NVar_out.EQ.PP_nVarPrim) THEN
   CALL ConsToPrim(U_out,Utmp)
 ELSE
   U_out = Utmp
@@ -628,7 +628,7 @@ DO k=0,N_in
 END DO ! k=0,N_In
 
 ! Convert to primitve variables
-IF (NVar_out.NE.PP_nVarPrim) THEN
+IF (NVar_out.EQ.PP_nVarPrim) THEN
   CALL ConsToPrim(U_out,Utmp)
 ELSE
   U_out = Utmp

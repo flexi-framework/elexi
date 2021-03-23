@@ -141,15 +141,15 @@ CALL prms%CreateIntOption(          'MPIRankOut'               , 'If compiled wi
                                                                  ' tracking information for the defined PartOut.'
                                                                , '0')
 #endif /*CODE_ANALYZE*/
-CALL prms%CreateStringOption(       'Part-RecordType'          , 'Type of record plane.\n'                                       //&
-                                                                 ' - plane\n'                                                      &
-                                                               , 'none')
-CALL prms%CreateLogicalOption(      'Part-RecordPart'          , 'Record particles at given record plane'  &
-                                                               , '.FALSE.')
+CALL prms%CreateIntOption(          'Part-RecordPart'          , 'Record particles at given record plane'  &
+                                                               , '0')
 CALL prms%CreateIntOption(          'Part-RecordMemory'        , 'Record particles memory'  &
                                                                , '100')
-CALL prms%CreateRealArrayOption(    'Part-RPThresholds'        , 'Record particles threshold'  &
-                                                               , '0.,0.,0.,0.,0.,0.')
+!CALL prms%CreateStringOption(       'Part-RecordType[$]'       , 'Type of record plane.\n'                                       //&
+!                                                                 ' - plane\n'                                                      &
+!                                                               , 'none', numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption(    'Part-RPThresholds[$]'     , 'Record particles threshold'  &
+                                                               , '0.,0.,0.,0.,0.,0.', numberedmulti=.TRUE.)
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
 !===================================================================================================================================
@@ -225,6 +225,16 @@ CALL prms%CreateRealOption(         'Part-Species[$]-HighVeloThreshold', 'Thresh
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-SphericityIC', 'Particle sphericity of species [$] [m]'                       &
                                                                 , '1.'       , numberedmulti=.TRUE.)
+#if USE_EXTEND_RHS
+CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcLiftForce', 'Flag to calculate the lift force'                            &
+                                                                , '.FALSE.' , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcVirtualMass', 'Flag to calculate the virtual mass force'                  &
+                                                                , '.FALSE.' , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcUndisturbedFlow', 'Flag to calculate the undisturbed flow force'          &
+                                                                , '.FALSE.' , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcBassetForce', 'Flag to calculate the (famous) Basset force'               &
+                                                                , '.FALSE.' , numberedmulti=.TRUE.)
+#endif /* USE_EXTEND_RHS */
 
 
 ! emission time
@@ -675,7 +685,7 @@ USE MOD_Particle_MPI_Emission  ,ONLY: InitEmissionComm
 USE MOD_Particle_MPI_Halo      ,ONLY: IdentifyPartExchangeProcs
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*USE_MPI*/
-USE MOD_Particle_Analyze_Vars  ,ONLY: RPP_Type, RPP_MaxBufferSize, RPP_Plane, RecordPart
+USE MOD_Particle_Analyze_Vars  ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart!, RPP_Type
 #if USE_EXTEND_RHS && ANALYZE_RHS
 USE MOD_Output_Vars            ,ONLY: ProjectName
 USE MOD_Output                 ,ONLY: InitOutputToFile
@@ -691,11 +701,9 @@ USE MOD_Timedisc_Vars          ,ONLY: tAnalyze
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: RPP_maxMemory, iP
+INTEGER               :: RPP_maxMemory, iP, jP
 REAL                  :: x_dummy(6)
-#if USE_EXTEND_RHS && ANALYZE_RHS
-CHARACTER(30)         :: tmp
-#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
+CHARACTER(30)         :: tmpStr
 !===================================================================================================================================
 doPartIndex             = GETLOGICAL('doPartIndex','.FALSE.')
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
@@ -719,26 +727,30 @@ CALL InitializeVariablesPartBoundary()
 LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 
 ! Initialize record plane of particles
-RecordPart          = GETLOGICAL('Part-RecordPart','.FALSE.')
-IF (RecordPart) THEN
-  ! Get type of record plane
-  RPP_Type          = TRIM(GETSTR('Part-RecordType','plane'))
+RecordPart          = GETINT('Part-RecordPart','0')
+IF (RecordPart.GT.0) THEN
   ! Get size of buffer array
   RPP_maxMemory     = GETINT('Part-RecordMemory','100')           ! Max buffer (100MB)
   RPP_MaxBufferSize = RPP_MaxMemory*131072/6    != size in bytes/(real*RPP_maxMemory)
 
-  SELECT CASE(RPP_Type)
-    CASE('plane')
-      ALLOCATE(RPP_Plane%RPP_Data(8,RPP_MaxBufferSize))
-      RPP_Plane%RPP_Data = 0.
-      x_dummy(1:6) = GETREALARRAY('Part-RPThresholds',6)
-      DO iP=1,3
-        RPP_Plane%x(1:2,iP)=x_dummy(1+2*(iP-1):2+2*(iP-1))
-      END DO ! iPoint
-      RPP_Plane%RPP_Records=0.
-    CASE DEFAULT
-      CALL abort(__STAMP__,'ERROR: Specified record plane does not exist!')
-  END SELECT
+  ALLOCATE(RPP_Plane(RecordPart))
+  DO jP = 1,RecordPart
+    WRITE(UNIT=tmpStr,FMT='(I2)') jP
+    ! Get type of record plane
+!    RPP_Type          = TRIM(GETSTR('Part-RecordType//TRIM(ADJUSTL(tmpStr))','plane'))
+!    SELECT CASE(RPP_Type)
+!      CASE('plane')
+    ALLOCATE(RPP_Plane(jP)%RPP_Data(8,RPP_MaxBufferSize))
+    RPP_Plane(jP)%RPP_Data = 0.
+    x_dummy(1:6) = GETREALARRAY('Part-RPThresholds'//TRIM(ADJUSTL(tmpStr)),6)
+    DO iP=1,3
+      RPP_Plane(jP)%x(1:2,iP)=x_dummy(1+2*(iP-1):2+2*(iP-1))
+    END DO ! iPoint
+    RPP_Plane(jP)%RPP_Records=0.
+!      CASE DEFAULT
+!        CALL abort(__STAMP__,'ERROR: Specified record plane does not exist!')
+!    END SELECT
+  END DO
 END IF
 
 ! AuxBCs
@@ -773,8 +785,8 @@ CALL MPI_BARRIER(PartMPI%COMM,IERROR)
 
 #if USE_EXTEND_RHS && ANALYZE_RHS
 FileName_RHS = TRIM(ProjectName)//'_RHS'
-WRITE(tmp,*) tAnalyze
-dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(tmp))
+WRITE(tmpStr,*) tAnalyze
+dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(ADJUSTL(tmpStr)))
 IF(doRestart)THEN
   tWriteRHS    =  dtWriteRHS + RestartTime
 ELSE
@@ -945,10 +957,10 @@ DO iSpec = 1, nSpecies
   ! get species values // only once
   !--> General Species Values
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec
-  Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'             )
-  Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'           ,'0.')
-  Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'       ,'0.')
-  Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'        ,'0.')
+  Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'               )
+  Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'             ,'0.')
+  Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'         ,'0.')
+  Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'          ,'0.')
   IF (Species(iSpec)%MassIC .EQ. 0.) THEN
     Species(iSpec)%MassIC=Species(iSpec)%DensityIC*PI/6.*Species(iSpec)%DiameterIC**3
     SWRITE(UNIT_StdOut,'(A,I0,A,E16.5)') ' | Mass of species (spherical) ', iSpec, ' = ', Species(iSpec)%MassIC
@@ -956,15 +968,21 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%DiameterIC=(Species(iSpec)%MassIC/Species(iSpec)%DensityIC*6./PI)**(1./3.)
     SWRITE(UNIT_StdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
   END IF
-  Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold' ,'0.')
-  Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-HighVeloThreshold','0.')
-  Species(iSpec)%SphericityIC          = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-SphericityIC'     ,'1.')
+  Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold'   ,'0.')
+  Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-HighVeloThreshold'  ,'0.')
+  Species(iSpec)%SphericityIC          = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-SphericityIC'       ,'1.')
+#if USE_EXTEND_RHS
+  Species(iSpec)%CalcLiftForce         = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcLiftForce'      ,'.FALSE.')
+  Species(iSpec)%CalcVirtualMass       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcVirtualMass'    ,'.FALSE.')
+  Species(iSpec)%CalcUndisturbedFlow   = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcUndisturbedFlow','.FALSE.')
+  Species(iSpec)%CalcBassetForce       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcBassetForce    ','.FALSE.')
+#endif
 
   !--> Bons particle rebound model
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading rebound  particle properties for Species',iSpec
-  Species(iSpec)%YoungIC               = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YoungIC'          ,'0.')
-  Species(iSpec)%PoissonIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PoissonIC'        ,'0.')
-  Species(iSpec)%YieldCoeff            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YieldCoeff'       ,'0.')
+  Species(iSpec)%YoungIC               = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YoungIC'            ,'0.')
+  Species(iSpec)%PoissonIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PoissonIC'          ,'0.')
+  Species(iSpec)%YieldCoeff            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YieldCoeff'         ,'0.')
 
   !-- Check if particles have valid mass/density
   IF (Species(iSpec)%MassIC .LE. 0.    .AND..NOT.(Species(iSpec)%RHSMethod.EQ.RHS_NONE          &

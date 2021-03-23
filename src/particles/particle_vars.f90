@@ -23,35 +23,35 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL               :: useLinkedList                                       ! Flag to trigger the start of the linked list for output tools
+LOGICAL                       :: useLinkedList                               ! Flag to trigger the start of the linked list for output tools
 
-REAL    , ALLOCATABLE :: PartState(:,:)                                      ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz
-REAL    , ALLOCATABLE :: TurbPartState(:,:)                                  ! (1:4,1:NParts) with 2nd index vx',vy',vz',t_remaining
-REAL    , ALLOCATABLE :: PartPosRef(:,:)                                     ! (1:3,1:NParts) particles pos mapped to -1|1 space
-INTEGER , ALLOCATABLE :: PartPosGauss(:,:)                                   ! (1:3,1:NParts) Gauss point localization of particles
-REAL    , ALLOCATABLE :: Pt(:,:)                                             ! Derivative of PartState (vx,xy,vz) only
-INTEGER , ALLOCATABLE :: PartReflCount(:)                                    ! Counter of number of reflections
+REAL    , ALLOCATABLE         :: PartState(:,:)                              ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz
+REAL    , ALLOCATABLE         :: TurbPartState(:,:)                          ! (1:4,1:NParts) with 2nd index vx',vy',vz',t_remaining
+REAL    , ALLOCATABLE         :: PartPosRef(:,:)                             ! (1:3,1:NParts) particles pos mapped to -1|1 space
+INTEGER , ALLOCATABLE         :: PartPosGauss(:,:)                           ! (1:3,1:NParts) Gauss point localization of particles
+REAL    , ALLOCATABLE         :: Pt(:,:)                                     ! Derivative of PartState (vx,xy,vz) only
+INTEGER , ALLOCATABLE         :: PartReflCount(:)                            ! Counter of number of reflections
 
-REAL    , ALLOCATABLE :: Pt_temp(:,:)                                        ! LSERK4 additional derivative of PartState
+REAL    , ALLOCATABLE         :: Pt_temp(:,:)                                ! LSERK4 additional derivative of PartState
                                                                              ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz
-REAL    , ALLOCATABLE :: TurbPt_temp(:,:)                                    ! LSERK4 additional derivative of TurbPartState
+REAL    , ALLOCATABLE         :: TurbPt_temp(:,:)                            ! LSERK4 additional derivative of TurbPartState
                                                                              ! (1:3,1:NParts) with 2nd index: vx',vy',vz'
-REAL    , ALLOCATABLE :: LastPartPos(:,:)                                    ! (1:3,1:NParts) with 2nd index: x,y,z
-INTEGER , ALLOCATABLE :: PartSpecies(:)                                      ! (1:NParts)
-INTEGER(KIND=8), ALLOCATABLE :: PartIndex(:)                                 ! (1:NParts)
-INTEGER               :: sumOfMatchedParticlesSpecies                        ! previous sumOfMatchedParticles for all species
-INTEGER               :: PartRHSMethod
-REAL                  :: PartGravity(3)
-INTEGER               :: nrSeeds                                             ! Number of Seeds for Random Number Generator
-INTEGER , ALLOCATABLE :: seeds(:)                        !        =>NULL()   ! Seeds for Random Number Generator
+REAL    , ALLOCATABLE         :: LastPartPos(:,:)                            ! (1:3,1:NParts) with 2nd index: x,y,z
+INTEGER , ALLOCATABLE         :: PartSpecies(:)                              ! (1:NParts)
+INTEGER(KIND=8), ALLOCATABLE  :: PartIndex(:)                                ! (1:NParts)
+INTEGER                       :: sumOfMatchedParticlesSpecies                ! previous sumOfMatchedParticles for all species
+INTEGER                       :: PartRHSMethod
+REAL                          :: PartGravity(3)
+INTEGER                       :: nrSeeds                                     ! Number of Seeds for Random Number Generator
+INTEGER , ALLOCATABLE         :: seeds(:)                                    ! =>NULL()   ! Seeds for Random Number Generator
 
-LOGICAL               :: doPartIndex                                         ! Flag to give particles an unique (or not) index
+LOGICAL                       :: doPartIndex                                 ! Flag to give particles an unique (or not) index
 
 #if USE_BASSETFORCE
-REAL    , ALLOCATABLE :: durdt(:,:)                                          ! Old dur/dt for Basset force
-INTEGER               :: N_Basset                                            ! Number of old dur/dt terms used for the Basset force
-INTEGER               :: bIter
-INTEGER               :: nBassetVars
+REAL    , ALLOCATABLE         :: durdt(:,:)                                  ! Old dur/dt for Basset force
+INTEGER                       :: N_Basset                                    ! Number of old dur/dt terms used for the Basset force
+INTEGER                       :: bIter
+INTEGER                       :: nBassetVars
 #endif
 
 TYPE tExcludeRegion
@@ -188,6 +188,12 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
   INTEGER                                :: CountIndex                       ! Count number of particles
+#if USE_EXTEND_RHS
+  LOGICAL                                :: CalcLiftForce                    ! Calculate the lift (Saffman) force
+  LOGICAL                                :: CalcUndisturbedFlow              ! Calculate the undisturbed flow force
+  LOGICAL                                :: CalcVirtualMass                  ! Calculate the virtual mass force
+  LOGICAL                                :: CalcBassetForce                  ! Calculate the Basset force
+#endif /* USE_EXTEND_RHS */
 END TYPE
 
 INTEGER                                  :: nSpecies                         ! number of species

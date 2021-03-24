@@ -112,7 +112,7 @@ IF (Avg2D) THEN
 #else
   ALLOCATE(Elem_xGP_glob(1:3,0:PP_N,0:PP_N,0:PP_NZ,nGlobalElems))
   Elem_xGP_glob = Elem_xGP
-#endif /* MPI */
+#endif /* USE_MPI */
 
   IF (MPIRoot) THEN
     SDEALLOCATE(CoordsVisu_DG)

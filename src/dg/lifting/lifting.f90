@@ -176,6 +176,19 @@ gradUx=0.
 gradUy=0.
 gradUz=0.
 
+ALLOCATE(diffFluxX_L(PP_nVar,0:PP_N,0:PP_NZ))
+ALLOCATE(diffFluxX_R(PP_nVar,0:PP_N,0:PP_NZ))
+ALLOCATE(diffFluxY_L(PP_nVar,0:PP_N,0:PP_NZ))
+ALLOCATE(diffFluxY_R(PP_nVar,0:PP_N,0:PP_NZ))
+ALLOCATE(diffFluxZ_L(PP_nVar,0:PP_N,0:PP_NZ))
+ALLOCATE(diffFluxZ_R(PP_nVar,0:PP_N,0:PP_NZ))
+diffFluxX_L=0.
+diffFluxX_R=0.
+diffFluxY_L=0.
+diffFluxY_R=0.
+diffFluxZ_L=0.
+diffFluxZ_R=0.
+
 LiftingInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LIFTING DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -203,6 +216,12 @@ SDEALLOCATE(FluxX)
 SDEALLOCATE(FluxY)
 SDEALLOCATE(FluxZ)
 #endif
+SDEALLOCATE(diffFluxX_L)
+SDEALLOCATE(diffFluxX_R)
+SDEALLOCATE(diffFluxY_L)
+SDEALLOCATE(diffFluxY_R)
+SDEALLOCATE(diffFluxZ_L)
+SDEALLOCATE(diffFluxZ_R)
 LiftingInitIsDone = .FALSE.
 END SUBROUTINE FinalizeLifting
 

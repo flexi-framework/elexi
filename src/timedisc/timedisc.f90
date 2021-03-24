@@ -368,6 +368,8 @@ CALL Analyze(t,iter,tend)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
+CALL PrintStatusLine(t,dt,tStart,tEnd)
+
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A,ES16.7)')'Initial Timestep  : ', dt
 IF(ViscousTimeStep)THEN
@@ -484,7 +486,7 @@ DO
   IF (doAnalyze) THEN
     IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-    CALL FV_Switch(U,AllowToDG=.FALSE.)
+    CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif
     CALL DGTimeDerivative_weakForm(t)
   END IF

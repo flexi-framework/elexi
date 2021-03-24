@@ -143,8 +143,8 @@ END DO
 
 ! Check which variables have to be calculated and create mappings to global variable index (1:nVarout)
 ! CalcAvgTmp(1,:) for normal variables, CalcAvgTmp(2,:) for fluctuations
-ALLOCATE(CalcAvg (nMaxVarAvg)  &
-        ,CalcFluc(nMaxVarFluc))
+ALLOCATE(CalcAvg (nMaxVarAvg ))
+ALLOCATE(CalcFluc(nMaxVarFluc))
 CalcAvg  = .FALSE.
 CalcFluc = .FALSE.
 
@@ -295,6 +295,7 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN)    :: VarName                 !< string to be compared
 INTEGER,INTENT(IN)             :: nVarList                !< length of list
 CHARACTER(LEN=*),INTENT(IN)    :: VarNameList(nVarList)   !< list of strings to be searched
+INTEGER,INTENT(IN)             :: nVarList                !< length of list
 INTEGER                        :: GETMAPBYNAME            !< index of VarName in VarNameList
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

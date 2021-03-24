@@ -210,6 +210,7 @@ ELSE ! N_in > 1
   DO iLegendre=2,N_in
     L=(REAL(2*iLegendre-1)*x*L_Nm1 - REAL(iLegendre-1)*L_Nm2)/REAL(iLegendre)
     !Lder=Lder_Nm2 + REAL(2*iLegendre-1)*L_Nm1
+    ! Higher accuracy, see https://en.wikipedia.org/wiki/Legendre_polynomials (Recurrence relations)
     Lder=iLegendre*L_Nm1 + x*Lder_Nm1
     L_Nm2=L_Nm1
     L_Nm1=L
@@ -434,8 +435,8 @@ DO iLegendre=2,N_in
   L_Nm2=L_Nm1
   L_Nm1=L
 END DO ! iLegendre
-q=REAL(2*N_in+1)/REAL(N_in+1)*(x*L -L_Nm2) !L_{N_in+1}-L_{N_in-1} !L_Nm2 is L_Nm1, L_Nm1 was overwritten!
-qder= REAL(2*N_in+1)*L                     !Lder_{N_in+1}-Lder_{N_in-1}=L*(2N+1)
+q    = REAL(2*N_in+1)/REAL(N_in+1)*(x*L -L_Nm2) !L_{N_in+1}-L_{N_in-1} !L_Nm2 is L_Nm1, L_Nm1 was overwritten!
+qder = REAL(2*N_in+1)*L                         !Lder_{N_in+1}-Lder_{N_in-1} = (2N+1)*L
 END SUBROUTINE qAndLEvaluation
 
 

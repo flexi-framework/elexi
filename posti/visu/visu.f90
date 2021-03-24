@@ -371,7 +371,7 @@ IF (changedStateFile.OR.changedMeshFile.OR.changedDGonly) THEN
 #if FV_ENABLED
     statefile&
 #endif
-      )
+    )
 END IF
 
 ! reset withDGOperator flag and check if it is needed due to existing FV elements

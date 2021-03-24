@@ -295,7 +295,6 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN)    :: VarName                 !< string to be compared
 INTEGER,INTENT(IN)             :: nVarList                !< length of list
 CHARACTER(LEN=*),INTENT(IN)    :: VarNameList(nVarList)   !< list of strings to be searched
-INTEGER,INTENT(IN)             :: nVarList                !< length of list
 INTEGER                        :: GETMAPBYNAME            !< index of VarName in VarNameList
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

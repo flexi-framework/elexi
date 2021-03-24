@@ -302,7 +302,11 @@ END ASSOCIATE
 #endif
 
 ! Convert to primitve variables
-IF(NVar_out.NE.NVar) CALL ConsToPrim(U_out,Utmp)
+IF (NVar_out.EQ.PP_nVarPrim) THEN
+  CALL ConsToPrim(U_out,Utmp)
+ELSE
+  U_out = Utmp
+END IF
 
 END SUBROUTINE EvaluateFieldAtPhysPos
 
@@ -424,7 +428,11 @@ DO k=0,N_in
 END DO ! k=0,N_In
 
 ! Convert to primitve variables
-IF(NVar_out.NE.NVar) CALL ConsToPrim(U_out,Utmp)
+IF (NVar_out.EQ.PP_nVarPrim) THEN
+  CALL ConsToPrim(U_out,Utmp)
+ELSE
+  U_out = Utmp
+END IF
 
 END SUBROUTINE EvaluateFieldAtRefPos
 
@@ -550,7 +558,11 @@ END ASSOCIATE
 #endif
 
 ! Convert to primitve variables
-IF(NVar_out.NE.NVar) CALL ConsToPrim(U_out,Utmp)
+IF (NVar_out.EQ.PP_nVarPrim) THEN
+  CALL ConsToPrim(U_out,Utmp)
+ELSE
+  U_out = Utmp
+END IF
 
 END SUBROUTINE EvaluateFieldAndGradAtPhysPos
 
@@ -615,7 +627,11 @@ DO k=0,N_in
 END DO ! k=0,N_In
 
 ! Convert to primitve variables
-IF(NVar_out.NE.NVar) CALL ConsToPrim(U_out,Utmp)
+IF (NVar_out.EQ.PP_nVarPrim) THEN
+  CALL ConsToPrim(U_out,Utmp)
+ELSE
+  U_out = Utmp
+END IF
 
 END SUBROUTINE EvaluateFieldAndGradAtRefPos
 #endif

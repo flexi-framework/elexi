@@ -40,6 +40,7 @@ INTEGER,ALLOCATABLE  :: BCSideID(:,:)  !< array storing side IDs of sides with d
 
 REAL                 :: s43            !< precomputed 4./3.
 REAL                 :: s23            !< precomputed 2./3.
+REAL                 :: s13            !< precomputed 1./3.
 
 ! SA-specific variables and parameters
 REAL              :: PrTurb            !< Turbulent Prandtl number

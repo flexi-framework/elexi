@@ -167,7 +167,6 @@ END IF
 ! Momentum has to be rotated using the normal system individual for each
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
   ! left state: U_L
-<<<<<<< HEAD
   U_LL(EXT_DENS)=U_L(DENS,i,j)
   U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
   U_LL(EXT_ENER)=U_L(ENER,i,j)
@@ -178,18 +177,6 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_LL(EXT_VEL2)=DOT_PRODUCT(UPrim_L(VELV,i,j),t1(:,i,j))
   U_LL(EXT_MOM1)=U_LL(EXT_DENS)*U_LL(EXT_VEL1)
   U_LL(EXT_MOM2)=U_LL(EXT_DENS)*U_LL(EXT_VEL2)
-=======
-  U_LL(DENS)=U_L(DENS,i,j)
-  U_LL(SRHO)=1./U_LL(DENS)
-  U_LL(ENER)=U_L(5,i,j)
-  U_LL(PRES)=UPrim_L(5,i,j)
-  U_LL(MUSA)=U_L(6,i,j)
-  ! rotate velocity in normal and tangential direction
-  U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4,i,j),nv(:,i,j))
-  U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4,i,j),t1(:,i,j))
-  U_LL(MOM1)=U_LL(DENS)*U_LL(VEL1)
-  U_LL(MOM2)=U_LL(DENS)*U_LL(VEL2)
->>>>>>> origin/improvement.memoryleaks
 #if PP_dim==3
   U_LL(EXT_VEL3)=DOT_PRODUCT(UPrim_L(VELV,i,j),t2(:,i,j))
   U_LL(EXT_MOM3)=U_LL(EXT_DENS)*U_LL(EXT_VEL3)
@@ -198,7 +185,6 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_LL(EXT_MOM3)=0.
 #endif
   ! right state: U_R
-<<<<<<< HEAD
   U_RR(EXT_DENS)=U_R(DENS,i,j)
   U_RR(EXT_SRHO)=1./U_RR(EXT_DENS)
   U_RR(EXT_ENER)=U_R(ENER,i,j)
@@ -209,18 +195,6 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_RR(EXT_VEL2)=DOT_PRODUCT(UPRIM_R(VELV,i,j),t1(:,i,j))
   U_RR(EXT_MOM1)=U_RR(EXT_DENS)*U_RR(EXT_VEL1)
   U_RR(EXT_MOM2)=U_RR(EXT_DENS)*U_RR(EXT_VEL2)
-=======
-  U_RR(DENS)=U_R(DENS,i,j)
-  U_RR(SRHO)=1./U_RR(DENS)
-  U_RR(ENER)=U_R(5,i,j)
-  U_RR(PRES)=UPrim_R(5,i,j)
-  U_RR(MUSA)=U_R(6,i,j)
-  ! rotate momentum in normal and tangential direction
-  U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4,i,j),nv(:,i,j))
-  U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t1(:,i,j))
-  U_RR(MOM1)=U_RR(DENS)*U_RR(VEL1)
-  U_RR(MOM2)=U_RR(DENS)*U_RR(VEL2)
->>>>>>> origin/improvement.memoryleaks
 #if PP_dim==3
   U_RR(EXT_VEL3)=DOT_PRODUCT(UPRIM_R(VELV,i,j),t2(:,i,j))
   U_RR(EXT_MOM3)=U_RR(EXT_DENS)*U_RR(EXT_VEL3)
@@ -419,13 +393,8 @@ F(1:5)=0.5*((F_L(1:5)+F_R(1:5)) - &
                Alpha(5)*a(5)*r5)
 
 ! Revert to LF for the RANS SA equations
-<<<<<<< HEAD
 LambdaMax = MAX( ABS(U_RR(EXT_VEL1)),ABS(U_LL(EXT_VEL1)) ) + MAX(c_L,c_R)
 F(MUSA) = 0.5*((F_L(MUSA)+F_R(MUSA)) - LambdaMax*(U_RR(EXT_MUSA) - U_LL(EXT_MUSA)))
-=======
-LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX(c_L,c_R)
-F(6) = 0.5*((F_L(6)+F_R(6)) - LambdaMax*(U_RR(6) - U_LL(6)))
->>>>>>> origin/improvement.memoryleaks
 END SUBROUTINE Riemann_RoeEntropyFix
 
 !==================================================================================================================================

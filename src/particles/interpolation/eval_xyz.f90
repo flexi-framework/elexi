@@ -586,7 +586,6 @@ REAL,INTENT(OUT)          :: UGrad_Out(RHS_GRAD,3)                          !< I
 INTEGER                   :: i,j,k
 REAL                      :: L_xi(3,0:N_in), L_eta_zeta
 REAL                      :: Utmp(1:nVar)
-REAL          :: U_Int(1:NVar,0:N_In,0:N_In,0:N_In)              !< State in Element
 !===================================================================================================================================
 
 ! 2.1) get "Vandermonde" vectors

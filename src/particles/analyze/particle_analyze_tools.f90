@@ -70,7 +70,7 @@ END FUNCTION CalcEkinPart
 SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies,PartIndex
+USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies!,PartIndex
 USE MOD_Particle_Analyze_Vars,   ONLY: RPP_MaxBufferSize,RPP_Plane,RecordPart!,RPP_Type
 USE MOD_HDF5_Output             ,ONLY: WriteAttribute
 USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
@@ -90,8 +90,7 @@ INTEGER                     :: iPart,iRecord
 !REAL,ALLOCATABLE            :: buffOuttmp(:,:)
 CHARACTER(LEN=200)          :: FileName_loc     ! FileName with data type extension
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
-INTEGER, PARAMETER          :: type_label = 8
-INTEGER, PARAMETER          :: RPPDataSize = 8
+INTEGER, PARAMETER          :: RPPDataSize = 7
 INTEGER                     :: locRPP,RPP_glob,offsetRPP
 #if USE_MPI
 INTEGER                     :: sendbuf(2),recvbuf(2)
@@ -107,7 +106,7 @@ DO iRecord = 1,RecordPart
       RPP_Plane(iRecord)%RPP_Records=RPP_Plane(iRecord)%RPP_Records+1
       RPP_Plane(iRecord)%RPP_Data(1:6,RPP_Plane(iRecord)%RPP_Records) = PartState(1:6,iPart)
       RPP_Plane(iRecord)%RPP_Data(7,RPP_Plane(iRecord)%RPP_Records)   = PartSpecies(iPart)
-      RPP_Plane(iRecord)%RPP_Data(8,RPP_Plane(iRecord)%RPP_Records)   = PartIndex(iPart)
+!      RPP_Plane(iRecord)%RPP_Data(8,RPP_Plane(iRecord)%RPP_Records)   = PartIndex(iPart)
     END IF
   END DO
 !END IF
@@ -145,10 +144,10 @@ DO iRecord = 1,RecordPart
     StrVarNames(5) ='VelocityY'
     StrVarNames(6) ='VelocityZ'
     StrVarNames(7) ='Species'
-    StrVarNames(8) ='Index'
+!    StrVarNames(8) ='Index'
 
     WRITE(UNIT=tmpStr,FMT='(I0)') iRecord
-    FileName_loc = TRIM(TIMESTAMP('recordpoints_part',OutputTime))//TRIM(ADJUSTL(tmpStr))//'.h5'
+    FileName_loc = TRIM(TIMESTAMP('recordpoints_part'//TRIM(ADJUSTL(tmpStr)),OutputTime))//'.h5'
     SWRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileName_loc)
     IF(MPIRoot)THEN
       CALL OpenDataFile(FileName_loc,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)

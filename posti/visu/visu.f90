@@ -252,7 +252,7 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
-INTEGER                          :: nElems_State
+INTEGER                          :: nElems_State,N_State
 CHARACTER(LEN=255)               :: NodeType_State, cwd
 !===================================================================================================================================
 IF (STRICMP(fileType,'Mesh')) THEN
@@ -266,7 +266,11 @@ CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ! read the meshfile attribute from statefile
 CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
 ! get properties
+#if PP_N==N
 CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
+#else
+CALL GetDataProps(nVar_State,N_State,nElems_State,NodeType_State)
+#endif
 
 ! read options from posti parameter file
 CALL prms%read_options(postifile)
@@ -664,7 +668,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 #endif
 
-  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
+  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NodeType,OutputTime,MeshFile_state,UVisu_DG&
+#if FV_ENABLED
+    ,NVisu_FV,UVisu_FV&
+#endif /* FV_ENABLED */
+    )
 
 #if USE_MPI
    IF ((.NOT.MPIRoot).AND.(Avg2d)) THEN

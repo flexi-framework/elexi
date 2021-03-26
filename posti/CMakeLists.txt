@@ -31,6 +31,14 @@ IF(ENABLE_OPENMP)
   SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
 ENDIF()
 
+# =========================================================================
+# Build vtk structured output library
+# =========================================================================
+ADD_LIBRARY(vtklib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/vtkOutput/vtkStructuredOutput.f90)
+SET_TARGET_PROPERTIES(vtklib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+TARGET_LINK_LIBRARIES(vtklib libflexishared)
+ADD_DEPENDENCIES(vtklib libflexishared)
+
 IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_INIT_HIT)
   # =========================================================================
   # FFTW (FFT tool)
@@ -63,6 +71,11 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_INIT_HIT)
     SET(FFTW_LIBRARY     ${FFTW_LIBRARIES})
   ENDIF()
 
+  # Build static FFTW library to be included in each POSTI tool
+  ADD_LIBRARY(fftwlib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/fftw/fftw.f90)
+  SET_TARGET_PROPERTIES(fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+  TARGET_LINK_LIBRARIES(fftwlib ${FFTW_LIBRARIES})
+  TARGET_INCLUDE_DIRECTORIES(fftwlib PRIVATE ${FFTW_INCLUDE_DIR})
 ENDIF()
 
 

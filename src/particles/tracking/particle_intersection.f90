@@ -212,7 +212,7 @@ REAL,DIMENSION(1:3)               :: P0,P1,P2
 REAL                              :: NormVec(1:3),locDistance,Inter1(1:3), alphaNorm
 REAL                              :: a1,a2,b1,b2,c1,c2
 REAL                              :: coeffA,locSideDistance
-REAL                              :: det
+REAL                              :: sdet
 REAL                              :: epsLoc
 LOGICAL                           :: CriticalParallelInSide
 INTEGER                           :: CNSideID
@@ -313,21 +313,21 @@ A2=B1
 B2=P2(1)*P2(1)+P2(2)*P2(2)+P2(3)*P2(3)
 C2=P2(1)*P0(1)+P2(2)*P0(2)+P2(3)*P0(3)
 
-det=A1*B2-A2*B1
-IF (ABS(det).EQ.0) &
-  CALL abort(__STAMP__,' ABS(det).EQ.0!')
+sdet=A1*B2-A2*B1
+IF (ABS(sdet).EQ.0) &
+  CALL abort(__STAMP__,' ABS(sdet).EQ.0!')
 
-!det=1.0/det
-epsLoc=det+100.*epsMach
+sdet=1.0/sdet
+epsLoc=(1.+100.*epsMach)
 
-xi=(B2*C1-B1*C2)!*det
+xi=(B2*C1-B1*C2)*sdet
 ! xi outside of reference element, no intersection
 IF (ABS(xi).GT.epsLoc) THEN
   alpha=-1.0
   RETURN
 END IF
 
-eta=(-A2*C1+A1*C2)!*det
+eta=(-A2*C1+A1*C2)*sdet
 ! eta outside of reference element, no intersection
 IF (ABS(eta).GT.epsLoc) THEN
   alpha=-1.0

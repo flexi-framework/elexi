@@ -1746,17 +1746,18 @@ DO iElem = firstElem,lastElem
           IF(DOT_PRODUCT(v2,SideNormVec(:,CNSideID)).GT.0) SideNormVec(:,CNSideID)=-SideNormVec(:,CNSideID)
         END IF
         SideDistance(CNSideID)=DOT_PRODUCT(v1,SideNormVec(:,CNSideID))
-        ! check if it is rectangular
+        ! check if it is rectangular, only 3 angles need to be checked!
         isRectangular=.TRUE.
         v1=UNITVECTOR(BezierControlPoints_loc(:,0   ,NGeo)-BezierControlPoints_loc(:,0   ,0   ))
         v2=UNITVECTOR(BezierControlPoints_loc(:,NGeo,0   )-BezierControlPoints_loc(:,0   ,0   ))
         v3=UNITVECTOR(BezierControlPoints_loc(:,NGeo,NGeo)-BezierControlPoints_loc(:,0   ,NGeo))
         IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
-        IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
+!        IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
         IF(isRectangular)THEN
+          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
           v1=UNITVECTOR(BezierControlPoints_loc(:,NGeo,NGeo)-BezierControlPoints_loc(:,NGeo,0))
           IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
-          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
+!          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
         END IF
         IF(isRectangular)THEN
           SideType(CNSideID)=PLANAR_RECT
@@ -1839,21 +1840,22 @@ DO iElem = firstElem,lastElem
             IF(DOT_PRODUCT(v2,SideNormVec(:,CNSideID)).GT.0) SideNormVec(:,CNSideID)=-SideNormVec(:,CNSideID)
           END IF
           SideDistance(CNSideID)=DOT_PRODUCT(v1,SideNormVec(:,CNSideID))
-          ! check if it is rectangular
+          ! check if it is rectangular, only 3 angles need to be checked!
           isRectangular=.TRUE.
           v1=UNITVECTOR(BezierControlPoints_loc(:,0   ,NGeo)-BezierControlPoints_loc(:,0   ,0   ))
           v2=UNITVECTOR(BezierControlPoints_loc(:,NGeo,0   )-BezierControlPoints_loc(:,0   ,0   ))
           v3=UNITVECTOR(BezierControlPoints_loc(:,NGeo,NGeo)-BezierControlPoints_loc(:,0   ,NGeo))
 !          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
 !          IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
-          IF(DOT_PRODUCT(v1,v2).GT.1E-14) isRectangular=.FALSE.
-          IF(DOT_PRODUCT(v1,v3).GT.1E-14) isRectangular=.FALSE.
+          IF(ABS(DOT_PRODUCT(v1,v2)).GT.1E-14) isRectangular=.FALSE.
+!          IF(ABS(DOT_PRODUCT(v1,v3)).GT.1E-14) isRectangular=.FALSE.
           IF(isRectangular)THEN
+            IF(ABS(DOT_PRODUCT(v1,v3)).GT.1E-14) isRectangular=.FALSE.
             v1=UNITVECTOR(BezierControlPoints_loc(:,NGeo,NGeo)-BezierControlPoints_loc(:,NGeo,0))
 !            IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v2))) isRectangular=.FALSE.
 !            IF(.NOT.ALMOSTZERO(DOT_PRODUCT(v1,v3))) isRectangular=.FALSE.
-            IF(DOT_PRODUCT(v1,v2).GT.1E-14) isRectangular=.FALSE.
-            IF(DOT_PRODUCT(v1,v3).GT.1E-14) isRectangular=.FALSE.
+            IF(ABS(DOT_PRODUCT(v1,v2)).GT.1E-14) isRectangular=.FALSE.
+!            IF(ABS(DOT_PRODUCT(v1,v3)).GT.1E-14) isRectangular=.FALSE.
           END IF
           IF(isRectangular)THEN
             SideType(CNSideID)=PLANAR_RECT

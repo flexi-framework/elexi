@@ -736,7 +736,7 @@ r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
 r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate differences
-Delta_U(1:5) = U_RR(CONS) - U_LL(CONS)
+Delta_U(1:5) = U_RR(EXT_CONS) - U_LL(EXT_CONS)
 Delta_U(6)   = Delta_U(5)-(Delta_U(3)-RoeVel(2)*Delta_U(1))*RoeVel(2) - (Delta_U(4)-RoeVel(3)*Delta_U(1))*RoeVel(3)
 
 ! low Mach-Number fix
@@ -817,7 +817,7 @@ ELSEIF(Ssr .LE. 0.)THEN
   F=F_R
 ! subsonic case
 ELSE
-  F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(CONS)-U_LL(CONS)))/(Ssr-Ssl)
+  F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(EXT_CONS)-U_LL(EXT_CONS)))/(Ssr-Ssl)
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLL
 

@@ -486,16 +486,14 @@ C1=P1(1)*P0(1)+P1(2)*P0(2)+P1(3)*P0(3)
 B2=P2(1)*P2(1)+P2(2)*P2(2)+P2(3)*P2(3)
 C2=P2(1)*P0(1)+P2(2)*P0(2)+P2(3)*P0(3)
 
-sdet=A1*B2-A2*B1
-sdet=1./sdet
-
-xi=(B2*C1-B1*C2)*sdet
+xi=(B2*C1-B1*C2)
 IF (xi .GT. 0.) THEN
   A1=P1(1)*P1(1)+P1(2)*P1(2)+P1(3)*P1(3)
   A2=B1
-  eta=(-A2*C1+A1*C2)*sdet
+  eta=(-A2*C1+A1*C2)
   IF (eta .GT. 0.) THEN
-    IF (xi+eta .LT. 1.0+100.*epsMach) THEN; isHit=.TRUE.; RETURN; END IF
+    sdet=A1*B2-A2*B1
+    IF (xi+eta .LT. ABS(sdet)) THEN; isHit=.TRUE.; RETURN; END IF
   END IF
 END IF
 
@@ -508,13 +506,14 @@ B1=P2(1)*P1(1)+P2(2)*P1(2)+P2(3)*P1(3)
 C1=P1(1)*P0(1)+P1(2)*P0(2)+P1(3)*P0(3)
 C2=P2(1)*P0(1)+P2(2)*P0(2)+P2(3)*P0(3)
 
-xi=(B2*C1-B1*C2)*sdet
+xi=(B2*C1-B1*C2)
 IF (xi .GT. 0.) THEN
   A1=P1(1)*P1(1)+P1(2)*P1(2)+P1(3)*P1(3)
   A2=B1
-  eta=(-A2*C1+A1*C2)*sdet
+  eta=(-A2*C1+A1*C2)
   IF (eta .GT. 0.) THEN
-    IF (xi+eta .LT. 1.0+100.*epsMach) THEN; isHit=.TRUE.; RETURN; END IF
+    sdet=A1*B2-A2*B1
+    IF (xi+eta .LT. ABS(sdet)) THEN; isHit=.TRUE.; RETURN; END IF
   END IF
 END IF
 

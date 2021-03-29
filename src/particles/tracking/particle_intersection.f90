@@ -31,8 +31,12 @@ INTERFACE ComputePlanarCurvedIntersection
   MODULE PROCEDURE ComputePlanarCurvedIntersection
 END INTERFACE
 
-INTERFACE ComputePlanarRectInterSection
-  MODULE PROCEDURE ComputePlanarRectInterSection
+INTERFACE ComputePlanarRectIntersection
+  MODULE PROCEDURE ComputePlanarRectIntersection
+END INTERFACE
+
+INTERFACE ComputePlanarNonRectIntersection
+  MODULE PROCEDURE ComputePlanarNonRectIntersection
 END INTERFACE
 
 INTERFACE ComputeBilinearIntersection
@@ -54,7 +58,8 @@ END INTERFACE
 #endif /*CODE_ANALYZE*/
 
 PUBLIC :: IntersectionWithWall
-PUBLIC :: ComputePlanarRectInterSection
+PUBLIC :: ComputePlanarRectIntersection
+PUBLIC :: ComputePlanarNonRectIntersection
 PUBLIC :: ComputePlanarCurvedIntersection
 PUBLIC :: ComputeBilinearIntersection
 PUBLIC :: ComputeCurvedIntersection
@@ -181,7 +186,7 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,epsilontol,SideDistance
 USE MOD_Particle_Surfaces_Vars,  ONLY:BaseVectors0,BaseVectors1,BaseVectors2
-USE MOD_Particle_Vars,           ONLY:LastPartPos
+USE MOD_Particle_Vars,           ONLY:LastPartPos,PartState,PEM
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -207,7 +212,7 @@ REAL,DIMENSION(1:3)               :: P0,P1,P2
 REAL                              :: NormVec(1:3),locDistance,Inter1(1:3), alphaNorm
 REAL                              :: a1,a2,b1,b2,c1,c2
 REAL                              :: coeffA,locSideDistance
-REAL                              :: sdet
+REAL                              :: det
 REAL                              :: epsLoc
 LOGICAL                           :: CriticalParallelInSide
 INTEGER                           :: CNSideID
@@ -221,7 +226,7 @@ CNSideID = GetCNSideID(SideID)
     IF(PartID.EQ.PARTOUT)THEN
       WRITE(UNIT_stdout,'(110("-"))')
       WRITE(UNIT_stdout,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,CNSideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec        : ',SideNormVec(1:3,CNSideID)
       WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
       WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
       WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
@@ -279,7 +284,7 @@ END IF
 
 ! particle is located outside of the element, but distance is within machine precision. Move particle back inside
 IF(locSideDistance.LT.-100*epsMach)THEN
-  alpha = -1.
+  alpha = -1.0
   isHit = .FALSE.
   RETURN
 END IF
@@ -308,21 +313,21 @@ A2=B1
 B2=P2(1)*P2(1)+P2(2)*P2(2)+P2(3)*P2(3)
 C2=P2(1)*P0(1)+P2(2)*P0(2)+P2(3)*P0(3)
 
-sdet=A1*B2-A2*B1
-IF (ABS(sdet).EQ.0) &
-  CALL abort(__STAMP__,' ABS(sdet).EQ.0!')
+det=A1*B2-A2*B1
+IF (ABS(det).EQ.0) &
+  CALL abort(__STAMP__,' ABS(det).EQ.0!')
 
-sdet=1.0/sdet
-epsLoc=1.0+100.*epsMach
+!det=1.0/det
+epsLoc=det+100.*epsMach
 
-xi=(B2*C1-B1*C2)*sdet
+xi=(B2*C1-B1*C2)!*det
 ! xi outside of reference element, no intersection
 IF (ABS(xi).GT.epsLoc) THEN
   alpha=-1.0
   RETURN
 END IF
 
-eta=(-A2*C1+A1*C2)*sdet
+eta=(-A2*C1+A1*C2)!*det
 ! eta outside of reference element, no intersection
 IF (ABS(eta).GT.epsLoc) THEN
   alpha=-1.0
@@ -334,6 +339,187 @@ isHit=.TRUE.
 
 END SUBROUTINE ComputePlanarRectIntersection
 
+SUBROUTINE ComputePlanarNonRectIntersection(isHit                       &
+                                           ,PartTrajectory              &
+                                           ,lengthPartTrajectory        &
+                                           ,alpha                       &
+                                           ,xi                          &
+                                           ,eta                         &
+                                           ,PartID                      &
+                                           ,flip                        &
+                                           ,SideID                      &
+                                           ,opt_CriticalParallelInSide  )
+!===================================================================================================================================
+! Compute the Intersection with planar surface
+! equation of plane: P1*xi + P2*eta+P0
+! equation to solve intersection point with plane
+! P1*xi+P2*eta+P0-LastPartPos-alpha*PartTrajectory
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Globals
+USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
+USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,epsilontol,SideDistance
+USE MOD_Particle_Vars,           ONLY:LastPartPos,PartState,PEM
+USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
+USE MOD_Mesh_Vars,               ONLY:NGeo
+#if CODE_ANALYZE
+USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
+#endif /*CODE_ANALYZE*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
+REAL,INTENT(IN)                   :: lengthPartTrajectory
+INTEGER,INTENT(IN)                :: PartID,SideID
+INTEGER,INTENT(IN)                :: flip
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)                  :: alpha,xi,eta
+LOGICAL,INTENT(OUT)               :: isHit
+LOGICAL,INTENT(OUT),OPTIONAL      :: opt_CriticalParallelInSide
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,DIMENSION(1:3)               :: P0,P1,P2
+REAL                              :: NormVec(1:3),locDistance,Inter1(1:3), alphaNorm
+REAL                              :: a1,a2,b1,b2,c1,c2
+REAL                              :: coeffA,locSideDistance
+REAL                              :: sdet
+LOGICAL                           :: CriticalParallelInSide
+INTEGER                           :: CNSideID
+!INTEGER                           :: flip
+!===================================================================================================================================
+
+CNSideID = GetCNSideID(SideID)
+
+#if CODE_ANALYZE
+  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
+    IF(PartID.EQ.PARTOUT)THEN
+      WRITE(UNIT_stdout,'(110("-"))')
+      WRITE(UNIT_stdout,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec        : ',SideNormVec(1:3,CNSideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
+      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
+    END IF
+  END IF
+#endif /*CODE_ANALYZE*/
+
+! set alpha to minus 1, assume no intersection
+alpha    = -1.0
+xi       = -2.
+eta      = -2.
+isHit    = .FALSE.
+
+! new with flip
+IF(flip.EQ.0)THEN
+  NormVec     =  SideNormVec(1:3,CNSideID)
+  locDistance =  SideDistance(CNSideID)
+ELSE
+  NormVec     = -SideNormVec(1:3,CNSideID)
+  locDistance = -SideDistance(CNSideID)
+END IF
+
+coeffA = DOT_PRODUCT(NormVec,PartTrajectory)
+
+! check if particle is critically moving critically parallel to the wall, corresponding to particle starting in plane. Interaction
+! should be computed in last step
+IF (ALMOSTZERO(coeffA)) THEN
+  CriticalParallelInSide = .TRUE.
+ELSE
+CriticalParallelInSide = .FALSE.
+END IF
+
+! difference between SideDistance (distance from origin to side) and the dot product is the distance of the particle to the side
+locSideDistance = locDistance-DOT_PRODUCT(LastPartPos(1:3,PartID),NormVec)
+
+! particle moving parallel to side
+IF (CriticalParallelInSide) THEN
+  ! particle on/in side
+  IF (ALMOSTZERO(locSideDistance)) THEN
+    IF (PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.TRUE.
+    ! move particle eps into interior
+    alpha=-1.
+    RETURN
+  END IF
+  IF (PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.FALSE.
+  alpha=-1.
+  RETURN
+! regular particle movement
+ELSE
+  IF (PRESENT(opt_CriticalParallelInSide)) opt_CriticalParallelInSide=.FALSE.
+  ! length of particle vector until side intersection in physical space
+  alpha = locSideDistance/coeffA
+END IF
+
+! particle is located outside of the element, but distance is within machine precision. Move particle back inside
+IF(locSideDistance.LT.-100*epsMach)THEN
+  alpha = -1.0
+  isHit = .FALSE.
+  RETURN
+END IF
+
+! calculate normalized alpha, i.e. length of particle vector until intersection in reference element
+alphaNorm=alpha/lengthPartTrajectory
+
+! found intersection further than normalized alpha or within negative machine accuracy. Move particle back inside
+IF((alphaNorm.GT.1.0) .OR.(alphaNorm.LT.-epsilontol))THEN
+  alpha = -1.0
+  ishit = .FALSE.
+  RETURN
+END IF
+
+! Calculate intersection point and initial base vectors
+Inter1=LastPartPos(1:3,PartID)+alpha*PartTrajectory
+
+! Least square
+! 1. triangle
+P0 = -BezierControlPoints3D(:,0,0,SideID)+Inter1
+P1 = BezierControlPoints3D(:,NGeo,0,SideID)-BezierControlPoints3D(:,0,0,SideID)
+P2 = BezierControlPoints3D(:,NGeo,NGeo,SideID)-BezierControlPoints3D(:,0,0,SideID)
+
+B1=P2(1)*P1(1)+P2(2)*P1(2)+P2(3)*P1(3)
+C1=P1(1)*P0(1)+P1(2)*P0(2)+P1(3)*P0(3)
+B2=P2(1)*P2(1)+P2(2)*P2(2)+P2(3)*P2(3)
+C2=P2(1)*P0(1)+P2(2)*P0(2)+P2(3)*P0(3)
+
+xi=(B2*C1-B1*C2)
+IF (xi .GT. 0.) THEN
+  A1=P1(1)*P1(1)+P1(2)*P1(2)+P1(3)*P1(3)
+  A2=B1
+  eta=(-A2*C1+A1*C2)
+  IF (eta .GT. 0.) THEN
+    sdet=A1*B2-A2*B1
+    IF (xi+eta .LT. ABS(sdet)) THEN; isHit=.TRUE.; RETURN; END IF
+  END IF
+END IF
+
+! 2. triangle
+P0 = -BezierControlPoints3D(:,NGeo,NGeo,SideID)+Inter1
+P1 = BezierControlPoints3D(:,0,NGeo,SideID)-BezierControlPoints3D(:,NGeo,NGeo,SideID)
+P2 = -P2
+
+B1=P2(1)*P1(1)+P2(2)*P1(2)+P2(3)*P1(3)
+C1=P1(1)*P0(1)+P1(2)*P0(2)+P1(3)*P0(3)
+C2=P2(1)*P0(1)+P2(2)*P0(2)+P2(3)*P0(3)
+
+xi=(B2*C1-B1*C2)
+IF (xi .GT. 0.) THEN
+  A1=P1(1)*P1(1)+P1(2)*P1(2)+P1(3)*P1(3)
+  A2=B1
+  eta=(-A2*C1+A1*C2)
+  IF (eta .GT. 0.) THEN
+    sdet=A1*B2-A2*B1
+    IF (xi+eta .LT. ABS(sdet)) THEN; isHit=.TRUE.; RETURN; END IF
+  END IF
+END IF
+
+IF (.NOT. isHit) THEN; alpha = -1.0; isHit = .FALSE.; RETURN; END IF
+
+END SUBROUTINE ComputePlanarNonRectIntersection
 
 SUBROUTINE ComputePlanarCurvedIntersection(isHit                        &
                                            ,PartTrajectory              &

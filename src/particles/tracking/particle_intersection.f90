@@ -194,7 +194,6 @@ USE MOD_Mesh_Vars,               ONLY:NGeo
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
@@ -360,7 +359,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,epsilontol,SideDistance
-USE MOD_Particle_Vars,           ONLY:LastPartPos,PartState,PEM
+USE MOD_Particle_Vars,           ONLY:LastPartPos,PartState
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Mesh_Vars,               ONLY:NGeo
 #if CODE_ANALYZE
@@ -368,7 +367,6 @@ USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory

@@ -444,7 +444,6 @@ USE MOD_Particle_Localization       ,ONLY: LocateParticleInElement
 USE MOD_Particle_Localization       ,ONLY: PartInElemCheck
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectIntersection
-USE MOD_Particle_Intersection       ,ONLY: ComputePlanarNonRectIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeAuxBCIntersection
@@ -683,10 +682,7 @@ DO iPart=1,PDM%ParticleVecLength
             CASE(PLANAR_RECT)
               CALL ComputePlanarRectIntersection(   foundHit,PartTrajectory,lengthPartTrajectory,locAlpha,xi,eta,iPart,flip,SideID  &
                                                                                             ,isCriticalParallelInFace)
-            CASE(PLANAR_NONRECT)
-              CALL ComputePlanarNonRectIntersection(foundHit,PartTrajectory,lengthPartTrajectory,locAlpha,xi,eta,iPart,flip,SideID  &
-                                                                                            ,isCriticalParallelInFace)
-            CASE(BILINEAR)
+            CASE(BILINEAR,PLANAR_NONRECT)
               CALL ComputeBiLinearIntersection(     foundHit,PartTrajectory,lengthPartTrajectory,locAlpha,xi,eta,iPart,     SideID)
             CASE(PLANAR_CURVED)
               CALL ComputePlanarCurvedIntersection( foundHit,PartTrajectory,lengthPartTrajectory,locAlpha,xi,eta,iPart,flip,SideID  &
@@ -719,15 +715,15 @@ DO iPart=1,PDM%ParticleVecLength
           IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles + 1
           EXIT
         END IF
-          IF(foundHit) THEN
-            currentIntersect => lastIntersect
-            CALL AssignListPosition(currentIntersect,locAlpha,iLocSide,1,xi_IN=xi,eta_IN=eta)
-            currentIntersect => lastIntersect
-            lastIntersect    => currentIntersect%next
-            lastIntersect%prev => currentIntersect
-            IF((ABS(xi).GE.0.99).OR.(ABS(eta).GE.0.99)) markTol=.TRUE.
-            !IF(ALMOSTZERO(locAlpha)) markTol=.TRUE.
-            !IF(locAlpha/lengthPartTrajectory.GE.0.99 .OR. locAlpha/lengthPartTrajectory.LT.0.01) markTol=.TRUE.
+        IF(foundHit) THEN
+          currentIntersect => lastIntersect
+          CALL AssignListPosition(currentIntersect,locAlpha,iLocSide,1,xi_IN=xi,eta_IN=eta)
+          currentIntersect => lastIntersect
+          lastIntersect    => currentIntersect%next
+          lastIntersect%prev => currentIntersect
+          IF((ABS(xi).GE.0.99).OR.(ABS(eta).GE.0.99)) markTol=.TRUE.
+          !IF(ALMOSTZERO(locAlpha)) markTol=.TRUE.
+          !IF(locAlpha/lengthPartTrajectory.GE.0.99 .OR. locAlpha/lengthPartTrajectory.LT.0.01) markTol=.TRUE.
         END IF
 
       END DO ! ilocSide
@@ -1484,7 +1480,6 @@ USE MOD_Particle_Mesh_Vars          ,ONLY: GEO,ElemRadiusNGeo
 USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID,GetCNSideID
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectIntersection
-USE MOD_Particle_Intersection       ,ONLY: ComputePlanarNonRectIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
@@ -1598,18 +1593,15 @@ DO WHILE(DoTracing)
         CASE(PLANAR_RECT)
           CALL ComputePlanarRectIntersection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                             ,  xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
-        CASE(PLANAR_NONRECT)
-          CALL ComputePlanarNonRectIntersection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
-                                                ,  xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
-        CASE(BILINEAR)
+        CASE(BILINEAR,PLANAR_NONRECT)
           CALL ComputeBiLinearIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                           ,    xi (ilocSide),eta(ilocSide),PartID,    SideID                &
                                                                                       ,alpha2=alphaOld)
-          CASE(PLANAR_CURVED)
-            CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
-                                          ,    xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
-          CASE(CURVED)
-            CALL ComputeCurvedIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
+        CASE(PLANAR_CURVED)
+          CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
+                                        ,    xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
+        CASE(CURVED)
+          CALL ComputeCurvedIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                         ,      xi(ilocSide),eta(ilocSide),PartID,     SideID)
       END SELECT
 
@@ -1632,10 +1624,7 @@ DO WHILE(DoTracing)
         CASE(PLANAR_RECT)
           CALL ComputePlanarRectIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                             ,  xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
-        CASE(PLANAR_NONRECT)
-          CALL ComputePlanarNonRectIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
-                                               ,  xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
-        CASE(BILINEAR)
+        CASE(BILINEAR,PLANAR_NONRECT)
           CALL ComputeBiLinearIntersection(    isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
                                           ,    xi(ilocSide),eta(ilocSide),PartID,     SideID)
         CASE(PLANAR_CURVED)

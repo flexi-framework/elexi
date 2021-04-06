@@ -27,11 +27,16 @@ INTERFACE INVERSE
    MODULE PROCEDURE INVERSE
 END INTERFACE
 
+INTERFACE INVERSE_LU
+  MODULE PROCEDURE INVERSE_LU
+END INTERFACE
+
 INTERFACE CROSS
   MODULE PROCEDURE CROSS
 END INTERFACE CROSS
 
 PUBLIC::INVERSE
+PUBLIC::INVERSE_LU
 PUBLIC::CROSS
 !==================================================================================================================================
 
@@ -102,47 +107,228 @@ END IF
 END FUNCTION INVERSE
 
 
+!==================================================================================================================================
+!> Computes matrix inverse using Doolittle LU factorization for Ax=b
+!> Input matrix should be a square matrix
+!==================================================================================================================================
+FUNCTION INVERSE_LU(A) RESULT(AINV)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)  :: A(:,:)                      !< Input matrix
+REAL             :: AINV(SIZE(A,1),SIZE(A,2))   !< Result: inverse of A
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL, DIMENSION(SIZE(A,1),SIZE(A,2)) :: U,L,A2  !< Upper and Lower part of A and copy
+REAL, DIMENSION(SIZE(A,1))           :: b,d,x   !< RHS and aux vectors
+INTEGER                              :: i,j,k   !< Loop indices
+INTEGER                              :: n       !< Size of first dimension of A, assume that A is a square matirx
+REAL                                 :: c       !< Auxiliary coefficient
+!==================================================================================================================================
+n = size(A,1)
+
+IF (n.LE.3) THEN
+  ! Call other routine that calculates the exact inverse
+  AINV = INVERSE(A)
+ELSE
+  ! 0.) Store A in A2 to prevent it from being overwritten
+  ! and init lower and upper matrices L and U and RHS b
+  A2 = A
+  L  = 0.
+  U  = 0.
+  b  = 0.
+
+  ! 1.) Forward elimination
+  DO k=1, n-1
+    DO i=k+1,n
+      c      = A2(i,k)/A2(k,k)
+      L(i,k) = c
+      DO j=k+1,n
+        A2(i,j) = A2(i,j)-c*A2(k,j)
+      END DO
+    END DO
+  END DO
+
+  ! 2.) Set lower L and upper U matrices
+  ! L matrix: A2 matrix of the elimination coefficient and diagonal elements are unity
+  DO i=1,n
+    L(i,i) = 1.
+  END DO
+
+  ! U matrix: Upper part of A2
+  DO j=1,n
+    DO i=1,j
+      U(i,j) = A2(i,j)
+    END DO
+  END DO
+
+  ! 3.) Columns of the inverse matrix AINV
+  DO k=1,n
+    b(k)=1.
+    d(1) = b(1)
+
+    ! 4.) Forward substitution: Solve L*d = b
+    DO i=2,n
+      d(i)=b(i)
+      DO j=1,i-1
+        d(i) = d(i) - L(i,j)*d(j)
+      END DO
+    END DO
+
+    ! 5.) Backward substitution: Solve U*x = d
+    x(n)=d(n)/U(n,n)
+    DO i = n-1,1,-1
+      x(i) = d(i)
+      DO j=n,i+1,-1
+        x(i)=x(i)-U(i,j)*x(j)
+      END DO
+      x(i) = x(i)/u(i,i)
+    END DO
+
+    ! 6.) Copy x into AINV
+    DO i=1,n
+      AINV(i,k) = x(i)
+    END DO
+    b(k)=0.
+  END DO
+END IF
+END FUNCTION INVERSE_LU
+
+
+!FUNCTION INV(A) RESULT(AINV)
 !!===================================================================================================================================
-!!> Bruce Dawson quote:
-!!> "There is no silver bullet. You have to choose wisely."
-!!>    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless.
-!!>      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs
-!!>      to your calculation. Maybe."
-!!>    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
-!!>      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs.
-!!>      An absolute epsilon could be used if you knew exactly what number you were comparing against."
-!!>    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
-!!>      Good luck and God speed."
-!!>
-!!>      NOTE: The functions below are implemented as preprocessor macros, which are by definition
-!!>            inlined and are thus beneficial in terms of performance and accuracy as they do not
-!!>            depend on the data type.
-!!>
+!! Computes matrix inverse using lapack
 !!===================================================================================================================================
-!PURE FUNCTION ALMOSTEQUALRELATIVE(x,y,tol)
 !! MODULES
+!USE MOD_Globals
+!! IMPLICIT VARIABLE HANDLING
 !IMPLICIT NONE
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT/OUTPUT VARIABLES
-!REAL,INTENT(IN) :: x                !< (IN)  first scalar to be compared
-!REAL,INTENT(IN) :: y                !< (IN)  second scalar to be compared
-!REAL,INTENT(IN) :: tol              !< (IN) relative epsilon value as input
-!LOGICAL         :: ALMOSTEQUALRELATIVE
-!!==================================================================================================================================
-!ALMOSTEQUALRELATIVE=(ABS(x-y).LE.MAX(ABS(x),ABS(y))*tol)
-!END FUNCTION ALMOSTEQUALRELATIVE
-!PURE FUNCTION ALMOSTEQUALABSOLUTE(x,y,tol)
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT VARIABLES
+!REAL,INTENT(IN)  :: A(:,:)
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! OUTPUT VARIABLES
+!REAL             :: AINV(SIZE(A,1),SIZE(A,2))
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! External procedures defined in LAPACK
+!EXTERNAL DGETRF
+!EXTERNAL DGETRI
+!! LOCAL VARIABLES
+!REAL    :: work(SIZE(A,1))  ! work array for lapack
+!INTEGER :: ipiv(SIZE(A,1))  ! pivot indices
+!INTEGER :: n,info
+!!===================================================================================================================================
+!! Store A in Ainv to prevent it from being overwritten by LAPACK
+!Ainv = A
+!n = size(A,1)
+
+!! DGETRF computes an LU factorization of a general M-by-N matrix A
+!! using partial pivoting with row interchanges.
+!CALL DGETRF(n, n, Ainv, n, ipiv, info)
+
+!IF(info.NE.0)THEN
+!    CALL abort(&
+!__STAMP__&
+!,' Matrix is numerically singular!')
+!END IF
+
+!! DGETRI computes the inverse of a matrix using the LU factorization
+!! computed by DGETRF.
+!CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
+
+!IF(info.NE.0)THEN
+!    CALL abort(&
+!__STAMP__&
+!,' Matrix inversion failed!')
+!END IF
+!END FUNCTION INV
+
+!SUBROUTINE INV33(M,MInv,detM)
+!!===================================================================================================================================
+!! Computes the inverse of a 3x3 matrix
+!!===================================================================================================================================
 !! MODULES
+!! IMPLICIT VARIABLE HANDLING
 !IMPLICIT NONE
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT/OUTPUT VARIABLES
-!REAL,INTENT(IN) :: x                !< (IN)  first scalar to be compared
-!REAL,INTENT(IN) :: y                !< (IN)  second scalar to be compared
-!REAL,INTENT(IN) :: tol              !< (IN) relative epsilon value as input
-!LOGICAL         :: ALMOSTEQUALABSOLUTE
-!!==================================================================================================================================
-!ALMOSTEQUALRELATIVE=(ABS(x-y).LE.tol)
-!END FUNCTION ALMOSTEQUALABSOLUTE
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT VARIABLES
+!REAL,INTENT(IN)     :: M(3,3)  ! ?
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! OUTPUT VARIABLES
+!REAL,INTENT(OUT)    :: MInv(3,3),detM  ! ?
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!!===================================================================================================================================
+!detM =   M(1,1)*M(2,2)*M(3,3)  &
+!       - M(1,1)*M(2,3)*M(3,2)  &
+!       - M(1,2)*M(2,1)*M(3,3)  &
+!       + M(1,2)*M(2,3)*M(3,1)  &
+!       + M(1,3)*M(2,1)*M(3,2)  &
+!       - M(1,3)*M(2,2)*M(3,1)
+
+!IF(ABS(detM).LE.1.E-12*SUM(ABS(M)))THEN
+!   MInv=0.
+!   detM=0.
+!   RETURN
+!END IF
+
+!MInv(1,1) =  (M(2,2)*M(3,3)-M(2,3)*M(3,2))
+!MInv(2,1) = -(M(2,1)*M(3,3)-M(2,3)*M(3,1))
+!MInv(3,1) =  (M(2,1)*M(3,2)-M(2,2)*M(3,1))
+!MInv(1,2) = -(M(1,2)*M(3,3)-M(1,3)*M(3,2))
+!MInv(2,2) =  (M(1,1)*M(3,3)-M(1,3)*M(3,1))
+!MInv(3,2) = -(M(1,1)*M(3,2)-M(1,2)*M(3,1))
+!MInv(1,3) =  (M(1,2)*M(2,3)-M(1,3)*M(2,2))
+!MInv(2,3) = -(M(1,1)*M(2,3)-M(1,3)*M(2,1))
+!MInv(3,3) =  (M(1,1)*M(2,2)-M(1,2)*M(2,1))
+!MInv=MInv/detM
+
+!END SUBROUTINE INV33
+
+
+! !===================================================================================================================================
+! !> Bruce Dawson quote:
+! !> "There is no silver bullet. You have to choose wisely."
+! !>    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless.
+! !>      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs
+! !>      to your calculation. Maybe."
+! !>    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
+! !>      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs.
+! !>      An absolute epsilon could be used if you knew exactly what number you were comparing against."
+! !>    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
+! !>      Good luck and God speed."
+! !>
+! !>      NOTE: The functions below are implemented as preprocessor macros, which are by definition
+! !>            inlined and are thus beneficial in terms of performance and accuracy as they do not
+! !>            depend on the data type.
+! !>
+! !===================================================================================================================================
+! PURE FUNCTION ALMOSTEQUALRELATIVE(x,y,tol)
+! ! MODULES
+! IMPLICIT NONE
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT/OUTPUT VARIABLES
+! REAL,INTENT(IN) :: x                !< (IN)  first scalar to be compared
+! REAL,INTENT(IN) :: y                !< (IN)  second scalar to be compared
+! REAL,INTENT(IN) :: tol              !< (IN) relative epsilon value as input
+! LOGICAL         :: ALMOSTEQUALRELATIVE
+! !==================================================================================================================================
+! ALMOSTEQUALRELATIVE=(ABS(x-y).LE.MAX(ABS(x),ABS(y))*tol)
+! END FUNCTION ALMOSTEQUALRELATIVE
+! PURE FUNCTION ALMOSTEQUALABSOLUTE(x,y,tol)
+! ! MODULES
+! IMPLICIT NONE
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT/OUTPUT VARIABLES
+! REAL,INTENT(IN) :: x                !< (IN)  first scalar to be compared
+! REAL,INTENT(IN) :: y                !< (IN)  second scalar to be compared
+! REAL,INTENT(IN) :: tol              !< (IN) relative epsilon value as input
+! LOGICAL         :: ALMOSTEQUALABSOLUTE
+! !==================================================================================================================================
+! ALMOSTEQUALRELATIVE=(ABS(x-y).LE.tol)
+!
+! END FUNCTION ALMOSTEQUALABSOLUTE
 
 
 !==================================================================================================================================

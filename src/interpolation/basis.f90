@@ -121,7 +121,7 @@ END DO; END DO !j
 ! Alternative to matrix inversion: Compute inverse Vandermonde directly
 ! Direct inversion has an error around 4e-16 (Lapack: err=0) and is 2 orders of magnitude faster than Lapack
 ! see: Hindenlang: Mesh curving techniques for high order parallel simulations on unstructured meshes, 2014, p.27.
-CALL BarycentricWeights(N_In,xi_in,wBary_loc)
+CALL BarycentricWeights(N_In,xi_In,wBary_loc)
 ! Compute first the inverse (by projection)
 CALL LegendreGaussNodesAndWeights(N_In,xGauss,wGauss)
 !Vandermonde on xGauss
@@ -137,7 +137,7 @@ CALL InitializeVandermonde(N_In,N_In,wBary_Loc,xi_In,xGauss,Vdm_Lag)
 sVdm_Leg=MATMUL(Vdm_Leg_Gauss,Vdm_Lag)
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
 IF(dummy.GT.15.*PP_RealTolerance) CALL abort(__STAMP__,&
-                                         'problems in MODAL<->NODAL Vandermonde ',999,dummy)
+                                         'buildLegendreVdm: problems in MODAL<->NODAL Vandermonde ',999,dummy)
 #else
 ! Lapack
 sVdm_Leg=INVERSE(Vdm_Leg)
@@ -145,7 +145,7 @@ sVdm_Leg=INVERSE(Vdm_Leg)
 !check (Vdm_Leg)^(-1)*Vdm_Leg := I
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
 IF(dummy.GT.10.*PP_RealTolerance) CALL abort(__STAMP__,&
-                                         'problems in MODAL<->NODAL Vandermonde ',999,dummy)
+                                         'problems in Legendre Vandermonde ',999,dummy)
 #endif
 END SUBROUTINE buildLegendreVdm
 

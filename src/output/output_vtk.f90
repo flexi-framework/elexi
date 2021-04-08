@@ -848,7 +848,7 @@ INTEGER            :: nParts_glob(1:nProcessors)
 #if USE_MPI
 INTEGER            :: iProc,nMaxParts
 INTEGER            :: nParts_proc
-REAL,ALLOCATABLE   :: buf(:), buf2(:,:)
+REAL,ALLOCATABLE   :: buf(:), buf2(:,:), buf3(:,:)
 #endif
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PART/EROSION DATA TO VTX XML BINARY (VTU) FILE..."
@@ -945,7 +945,10 @@ IF(MPIroot)THEN
   !ALLOCATE buffer for Root
   nMaxParts=MAXVAL(nParts_glob)
   ALLOCATE(buf(nMaxParts))
+  ALLOCATE(buf3(MAXVAL(VarNamePartCombineLen(:)),nMaxParts))
 END IF
+ALLOCATE(buf2(nParts_glob(myRank+1),nVal))
+buf2=TRANSPOSE(Value)
 #endif
 
 ! Write binary raw data into append section
@@ -955,28 +958,42 @@ DO iVar=1,nVal
     nBytes = nVTKElems*SIZEOF_F(FLOATdummy)
     IF (VarNamePartCombine(iVar).EQ.0) THEN
       WRITE(ivtk) nBytes,REAL(Value(iVar,:),4)
-    ELSEIF(VarNamePartCombine(iVar).EQ.1) THEN
-      WRITE(ivtk) nBytes*VarNamePartCombineLen(iVar),REAL(Value(iVar:iVar+VarNamePartCombineLen(iVar)-1,:),4)
-    END IF
 #if USE_MPI
-    DO iProc=1,nProcessors-1
-      nParts_proc=nParts_glob(iProc+1)
-      IF (nParts_proc.GT.0) THEN
+      DO iProc=1,nProcessors-1
+        nParts_proc=nParts_glob(iProc+1)
+        IF (nParts_proc.EQ.0) CYCLE
         CALL MPI_RECV(buf(1:nParts_proc),nParts_proc,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
         WRITE(ivtk) REAL(buf(1:nParts_proc),4)
-      END IF
-    END DO !iProc
+      END DO !iProc
+#endif /*USE_MPI*/
+    ELSEIF(VarNamePartCombine(iVar).EQ.1) THEN
+      WRITE(ivtk) nBytes*VarNamePartCombineLen(iVar),REAL(Value(iVar:iVar+VarNamePartCombineLen(iVar)-1,:),4)
+#if USE_MPI
+      DO iProc=1,nProcessors-1
+        nParts_proc=nParts_glob(iProc+1)
+        IF (nParts_proc.EQ.0) CYCLE
+        CALL MPI_RECV(buf3(1:VarNamePartCombineLen(iVar),1:nParts_proc),nParts_proc*VarNamePartCombineLen(iVar),MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
+        WRITE(ivtk) REAL(buf3(1:VarNamePartCombineLen(iVar),1:nParts_proc),4)
+      END DO !iProc
+#endif /*USE_MPI*/
+    END IF
   ELSE
-    IF (nParts.GT.0) THEN
-      CALL MPI_SEND(Value(iVar,:),nParts,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
+    IF (nParts.EQ.0) CYCLE
+#if USE_MPI
+    IF (VarNamePartCombine(iVar).EQ.0) THEN
+      CALL MPI_SEND(buf2(:,iVar),nParts,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
+    ELSEIF(VarNamePartCombine(iVar).EQ.1) THEN
+      CALL MPI_SEND(Value(iVar:iVar+VarNamePartCombineLen(iVar)-1,:),nParts*VarNamePartCombineLen(iVar),MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
     END IF
 #endif /*USE_MPI*/
   END IF
 END DO
 
 #if USE_MPI
+SDEALLOCATE(buf2)
 IF(MPIroot)THEN
   SDEALLOCATE(buf)
+  SDEALLOCATE(buf3)
   nMaxParts=MAXVAL(nParts_glob)
   ALLOCATE(buf2(3,nMaxParts))
 END IF

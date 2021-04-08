@@ -142,10 +142,12 @@ customChannel    = GETLOGICAL('Part-CustomChannel','.FALSE.')
 IF (customChannel) THEN
   uBulk       = GETREAL('Part-ChannelUBulk','0.')
   uTau        = GETREAL('Part-ChannelUtau', '0.')
-!  uBulkScale  = 1./uBulk
   Re_tau      = GETREAL('Part-ChannelReTau','0.')
   SWRITE(Unit_STDOUT,'(A)') ' | Warning: Channel Init based on Moser. Initial state might be inaccurate!'
-! Non-dimensional case with given Re_tau according to Moser
+  ! Scale initial velocity distribution to new UBulk
+  c1          = 2.4390244
+  uBulkScale  = uBulk / (mu0 * (c1 * ((1/mu0+c1)*LOG(1/mu0+c1) + 1.3064019*(1/mu0 + 29.627395*EXP(-1./11.*1/mu0) + 0.66762137*(1/mu0+3) &
+                * EXP(-1/mu0/3.))) - 97.4857927165))
 ELSE
   uBulkScale  = 1.
   Re_tau      = 1/mu0
@@ -166,22 +168,22 @@ RefStatePrim(TEMP,IniRefState) = TEMPERATURE_HE(UE)
 CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 
 IF (customChannel) THEN
-  rho      = RefStatePrim(DENS,IniRefState)
-  delta    = GETREAL('Part-ChannelDelta','0.')
-  uBulkScale  = 1./(uBulk*rho)
+  rho        = RefStatePrim(DENS,IniRefState)
+  delta      = GETREAL('Part-ChannelDelta','0.')
 
-  ! Calculate new forcing pressure
+  ! Calculate new forcing pressure from wall friction magnitude u_tau
   dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho
 
   ! Tell the user the calculated variables to check
-  SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Bulk velocity given. uBulk =',uBulk
-  SWRITE(Unit_STDOUT,'(A,F6.2,A)') ' | Associated pressure gradient. -dp/dx=:', dpdx, 'Pa s'
+  SWRITE(Unit_STDOUT,'(A,F8.4,A)'       ) ' | Bulk velocity given.          uBulk  =',uBulk,' m/s'
+  SWRITE(Unit_STDOUT,'(A,F8.4,A)'       ) ' | Associated pressure gradient. -dp/dx =', dpdx,' Pa s'
+  SWRITE(Unit_STDOUT,'(A,F6.2,A,F7.1,A)') ' | Associated pressure for Mach=',bulkMach,' is ',(uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa,' Pa'
 ELSE
   ! Re_tau^2*rho*nu^2/delta^3
   dpdx = -1.
 
-  SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Bulk velocity based on initial velocity profile =',uBulk
-  SWRITE(Unit_STDOUT,'(A,F6.2)')   ' | Associated pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
+  SWRITE(Unit_STDOUT,'(A,F6.2)')          ' | Bulk velocity based on initial velocity profile =',uBulk
+  SWRITE(Unit_STDOUT,'(A,F6.2)')          ' | Associated pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
 ENDIF
 
 IF(.NOT.MPIRoot) RETURN
@@ -234,9 +236,11 @@ ELSE
     yPlus = (1.-x(2))*Re_tau ! Re_tau=590
   END IF
 ENDIF
-!Prim(2)=uPlus
+
+! Integral of (...) is 29.89, hence scale it to fit UBulk
+! Prim(VEL1) = uPlus
 Prim(VEL1) = uBulkScale*(1./0.41*log(1+0.41*yPlus)+7.8*(1-exp(-yPlus/11.)-yPlus/11.*exp(-yPlus/3.)))
-!Prim(5)=(uBulk*sqrt(kappa*Prim(5)/Prim(1)))**2*Prim(1)/kappa ! Pressure such that Ma=1/sqrt(kappa*p/rho)
+! Prim(PRES) = (uBulk*sqrt(kappa*Prim(5)/Prim(1)))**2*Prim(1)/kappa ! Pressure such that Ma=1/sqrt(kappa*p/rho)
 Amplitude = 0.1*Prim(VEL1)
 
 #if EQNSYSNR == 2

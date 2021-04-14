@@ -111,9 +111,10 @@ CALL prms%CreateIntOption(          'Part-nAuxBCs'  , 'Number of auxillary BCs t
                                                     , '0')
 
 
-CALL prms%CreateRealOption(         'Part-MaxParticleNumber'   , 'Maximum number of Particles per proc (used for array init). '  //&
+CALL prms%CreateRealOption(         'Part-MaxParticleNumber'   , 'Maximum number of Particles for the whole simulation. '        //&
                                                                  'Note that this property is a global value and will be divided '//&
-                                                                 'by the number of processors.'                                    &
+                                                                 'by the number of processors before it is used for '            //&
+                                                                 'processor-local array allocation sizes during initialization.'   &
                                                                , '1.')
 CALL prms%CreateIntOption(          'Part-NumberOfRandomSeeds' , 'Number of random seeds for particle random number generator'     &
                                                                , '0')

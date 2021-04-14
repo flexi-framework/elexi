@@ -38,7 +38,7 @@ USE MOD_Mesh,               ONLY:DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,          ONLY:MeshFile
 USE MOD_Mortar,             ONLY:InitMortar,FinalizeMortar
 #if FV_ENABLED
-USE MOD_FV_Basis,           ONLY:InitFV_Basis
+USE MOD_FV_Basis,           ONLY:InitFV_Basis,FinalizeFV_Basis
 #endif
 ! Recordpoints
 USE MOD_RPSet
@@ -115,6 +115,9 @@ CALL FinalizeOutput()
 CALL FinalizeInterpolation()
 CALL FinalizeMesh()
 CALL FinalizeMortar()
+#if FV_ENABLED
+CALL FinalizeFV_Basis()
+#endif
 CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
 

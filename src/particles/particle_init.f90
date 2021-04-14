@@ -540,7 +540,7 @@ SUBROUTINE InitParticleGlobals()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ReadInTools,                ONLY: GETINT,GETLOGICAL,GETINTFROMSTR,CountOption
+USE MOD_ReadInTools,                ONLY: GETREAL,GETLOGICAL,GETINTFROMSTR,CountOption
 USE MOD_Particle_Globals,           ONLY: PI
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
@@ -559,9 +559,10 @@ REAL              :: maxParticleNumberGlobal ! temporary variable
 ! Read basic particle parameter
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS...'
 
-maxParticleNumberGlobal = GETREAL('Part-MaxParticleNumber')                ! Read global number of particles (real allows numbers
-                                                                           ! like 5e6)
-PDM%maxParticleNumber   = MAX(INT(maxParticleNumberGlobal/nProcessors), 1) ! Divide by number of processors, but use at least 1
+! Read global number of particles as datatype real to allow number inputs in the format of, e.g., 5e6
+maxParticleNumberGlobal = GETREAL('Part-MaxParticleNumber')
+! Divide by number of processors, but use at least 2 (at least one next free position in the case of MPI)
+PDM%maxParticleNumber   = MAX(INT(maxParticleNumberGlobal/nProcessors), 2)
 PI                      = ACOS(-1.0D0)
 
 ! Find tracking method immediately, a lot of the later variables depend on it

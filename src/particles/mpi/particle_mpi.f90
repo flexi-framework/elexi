@@ -691,8 +691,14 @@ END DO ! iProc
 
 PDM%ParticleVecLength       = PDM%ParticleVecLength + PartMPIExchange%nMPIParticles
 PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + PartMPIExchange%nMPIParticles
-IF(PDM%ParticleVecLength.GT.PDM%MaxParticleNumber) &
-  CALL ABORT(__STAMP__,' ParticleVecLength > MaxParticleNumber due to MPI-communication!')
+IF(PDM%ParticleVecLength.GT.PDM%MaxParticleNumber)THEN
+  WRITE(*,*) ""
+  IPWRITE(UNIT_StdOut,'(I0,A,I0)')        " PDM%ParticleVecLength = ", PDM%ParticleVecLength
+  IPWRITE(UNIT_StdOut,'(I0,A,I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for each processor (",&
+                                                    PDM%MaxParticleNumber*nProcessors," in total)"
+  IPWRITE(UNIT_StdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
+  CALL ABORT(__STAMP__,' ParticleVecLegnth > MaxParticleNumber due to MPI-communication!')
+END IF
 
 ! deallocate send,receive buffer
 DO iProc=0,nExchangeProcessors-1

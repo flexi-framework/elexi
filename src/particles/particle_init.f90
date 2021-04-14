@@ -111,8 +111,10 @@ CALL prms%CreateIntOption(          'Part-nAuxBCs'  , 'Number of auxillary BCs t
                                                     , '0')
 
 
-CALL prms%CreateIntOption(          'Part-maxParticleNumber'   , 'Max number of particles in processor domain'                     &
-                                                               , '1')
+CALL prms%CreateRealOption(         'Part-MaxParticleNumber'   , 'Maximum number of Particles per proc (used for array init). '  //&
+                                                                 'Note that this property is a global value and will be divided '//&
+                                                                 'by the number of processors.'                                    &
+                                                               , '1.')
 CALL prms%CreateIntOption(          'Part-NumberOfRandomSeeds' , 'Number of random seeds for particle random number generator'     &
                                                                , '0')
 CALL prms%CreateIntOption(          'Part-RandomSeed[$]'       , 'Seed [$] for Random Number Generator'                            &
@@ -550,12 +552,16 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL              :: maxParticleNumberGlobal ! temporary variable
 !===================================================================================================================================
 
+! Read basic particle parameter
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS...'
 
-PDM%maxParticleNumber = GETINT('Part-maxParticleNumber','1')
-PI                    = ACOS(-1.0D0)
+maxParticleNumberGlobal = GETREAL('Part-MaxParticleNumber')                ! Read global number of particles (real allows numbers
+                                                                           ! like 5e6)
+PDM%maxParticleNumber   = MAX(INT(maxParticleNumberGlobal/nProcessors), 1) ! Divide by number of processors, but use at least 1
+PI                      = ACOS(-1.0D0)
 
 ! Find tracking method immediately, a lot of the later variables depend on it
 TrackingMethod  = GETINTFROMSTR('TrackingMethod')

@@ -75,15 +75,16 @@ SUBROUTINE InitParticleInterpolation()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals,       ONLY:PP_nElems
+USE MOD_Particle_Globals,       ONLY: PP_nElems
+USE MOD_Particle_Memory,        ONLY: Allocate_Safe
 USE MOD_ReadInTools
-USE MOD_Particle_Vars,          ONLY:PDM
+USE MOD_Particle_Vars,          ONLY: PDM
 USE MOD_Particle_Interpolation_Vars
 #if USE_RW
-USE MOD_Equation_Vars,          ONLY:nVarTurb
+USE MOD_Equation_Vars,          ONLY: nVarTurb
 #endif
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
+USE MOD_Particle_MPI_Vars,      ONLY: PartMPI
 #endif
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -141,7 +142,9 @@ IF (ALLOCSTAT.NE.0) CALL abort(__STAMP__,'ERROR in Part_interpolation.f90: Canno
 #if USE_EXTEND_RHS
 SDEALLOCATE(GradAtParticle)
 ! Allocate array for rho*(u_x,u_y,u_z)
-ALLOCATE(GradAtParticle    (RHS_GRAD, 1:3, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+! ALLOCATE(GradAtParticle    (RHS_GRAD, 1:3, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
+! SALLOCATE(GradAtParticle,(/RHS_GRAD,3,PDM%maxParticleNumber/))
+CALL Allocate_Safe(GradAtParticle,(/RHS_GRAD,3,PDM%maxParticleNumber/), STAT=ALLOCSTAT)
 GradAtParticle(:,:,:) = 0.
 #endif
 

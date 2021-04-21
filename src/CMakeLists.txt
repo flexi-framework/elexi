@@ -340,7 +340,7 @@ ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)
   ADD_LIBRARY(          ${target} SHARED ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o libflexistatic userblocklib stacksizelib ${linkedlibs})
+  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o libflexistatic userblocklib stacksizelib ${linkedlibs} ${particlelibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
                                              COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
                                              LINKER_LANGUAGE Fortran)
@@ -440,6 +440,7 @@ IF (PARTICLES)
   ADD_LIBRARY(memusagelib STATIC ./src/particles/globals/processmemusage.cxx)
   SET_TARGET_PROPERTIES(memusagelib PROPERTIES LINKER_LANGUAGE CXX
                                                COMPILE_FLAGS "-fPIC")
+  LIST(APPEND particlelibs memusagelib)
 ENDIF()
 
 

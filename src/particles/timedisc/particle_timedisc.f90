@@ -450,6 +450,8 @@ IF (t.GE.DelayTime) THEN
 #endif
 END IF
 
+CALL UpdateNextFreePosition()
+
 END SUBROUTINE Particle_TimeStepByLSERK
 
 
@@ -703,10 +705,7 @@ IF (t.GE.DelayTime) THEN
 #endif
 END IF
 
-! This >MIGHT< be only needed at the last RK stage ...
-!IF (iStage.EQ.nRKStages) THEN
 CALL UpdateNextFreePosition()
-!END IF
 
 END SUBROUTINE Particle_TimeStepByLSERK_RK
 

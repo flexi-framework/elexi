@@ -186,7 +186,7 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,epsilontol,SideDistance
 USE MOD_Particle_Surfaces_Vars,  ONLY:BaseVectors0,BaseVectors1,BaseVectors2
-USE MOD_Particle_Vars,           ONLY:LastPartPos,PartState,PEM
+USE MOD_Particle_Vars,           ONLY:LastPartPos
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -359,7 +359,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,epsilontol,SideDistance
-USE MOD_Particle_Vars,           ONLY:LastPartPos,PartState
+USE MOD_Particle_Vars,           ONLY:LastPartPos
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Mesh_Vars,               ONLY:NGeo
 #if CODE_ANALYZE

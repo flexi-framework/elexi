@@ -368,9 +368,8 @@ REAL                     :: ParticlePushExtend(1:3)     ! The stamp
 REAL                     :: Pt(1:3)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
-REAL                     :: facm,facp                   ! factor divided by the particle mass
+REAL                     :: prefactor,globalfactor                   ! factor divided by the particle mass
 REAL                     :: Flm(1:3)                    ! lift force divided by the particle mass
-REAL                     :: divv
 #if USE_LIFTFORCE
 REAL                     :: rotu(3), rotudiff(3)        ! curl product of velocity and velocity difference
 REAL                     :: dotp                        ! dot_product
@@ -408,7 +407,7 @@ END IF
 Pt(1:3) = 0.
 Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.
 ! factor before left hand side
-facp = 1.
+globalfactor = 1.
 
 !===================================================================================================================================
 ! Calculate the Saffman lift force:
@@ -418,7 +417,7 @@ facp = 1.
 #if USE_LIFTFORCE
 IF (Species(PartSpecies(PartID))%CalcLiftForce) THEN
   ! Calculate the factor
-  facm = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
+  prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
   ! Calculate the rotation: \nabla x u
   rotu     = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
                GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
@@ -431,19 +430,17 @@ IF (Species(PartSpecies(PartID))%CalcLiftForce) THEN
   dotp    = MAX(SQRT(DOT_PRODUCT(rotu(:),rotu(:))),0.001)
   Flm(:)  = SQRT(2*FieldAtParticle(DENS)*mu * 1./dotp)*rotudiff(:)
 
-  Flm     = Flm * facm
-!  WRITE(*,*) 'LIFTFORCE', Flm(1:3)
+  Flm     = Flm * prefactor
 END IF
 #endif /* USE_LIFTFORCE */
 
 #if USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE
 IF (Species(PartSpecies(PartID))%CalcUndisturbedFlow.OR.Species(PartSpecies(PartID))%CalcVirtualMass.OR.&
     Species(PartSpecies(PartID))%CalcBassetForce) THEN
-  ! Material derivative D(\rho u_i)/Dt = - \nabla p + \nabla \cdot \tau - (\nabla \cdot u) \rho u
-  divv = GradAtParticle(RHS_GRADVEL1,1) + GradAtParticle(RHS_GRADVEL2,2) + GradAtParticle(RHS_GRADVEL3,3)
-  DuDt(1)  = - GradAtParticle(RHS_GRADPRES,1) + mu*GradAtParticle(RHS_GRADTAU,1)! - divv * FieldAtParticle(DENS) * FieldAtParticle(VEL1)
-  DuDt(2)  = - GradAtParticle(RHS_GRADPRES,2) + mu*GradAtParticle(RHS_GRADTAU,2)! - divv * FieldAtParticle(DENS) * FieldAtParticle(VEL2)
-  DuDt(3)  = - GradAtParticle(RHS_GRADPRES,3) + mu*GradAtParticle(RHS_GRADTAU,3)! - divv * FieldAtParticle(DENS) * FieldAtParticle(VEL3)
+  ! Material derivative \rho D(u_i)/Dt = - \nabla p + \nabla \cdot \tau
+  DuDt(1)  = - GradAtParticle(RHS_GRADPRES,1) + mu*GradAtParticle(RHS_GRADTAU,1)
+  DuDt(2)  = - GradAtParticle(RHS_GRADPRES,2) + mu*GradAtParticle(RHS_GRADTAU,2)
+  DuDt(3)  = - GradAtParticle(RHS_GRADPRES,3) + mu*GradAtParticle(RHS_GRADTAU,3)
 END IF
 #endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
 
@@ -453,10 +450,9 @@ END IF
 !===================================================================================================================================
 #if USE_UNDISTFLOW
 IF (Species(PartSpecies(PartID))%CalcUndisturbedFlow) THEN
-  facm = 1./Species(PartSpecies(PartID))%DensityIC
+  prefactor = 1./Species(PartSpecies(PartID))%DensityIC
 
-  Fum(1:3) = facm * DuDt(1:3)! * FieldAtParticle(DENS)
-!  WRITE (*, *) 'UNDISTFLOW:', Fum(1:3)
+  Fum(1:3) = prefactor * DuDt(1:3)
 END IF
 #endif /* USE_UNDISTFLOW */
 
@@ -466,13 +462,12 @@ END IF
 !===================================================================================================================================
 #if USE_VIRTUALMASS
 IF (Species(PartSpecies(PartID))%CalcVirtualMass) THEN
-  facm = 1./Species(PartSpecies(PartID))%DensityIC
+  prefactor = 0.5/Species(PartSpecies(PartID))%DensityIC
 
-  Fvm(1:3) = 0.5 * facm * DuDt(1:3)! * FieldAtParticle(DENS)
-!  WRITE (*, *) 'VIRTUALMASS:',  Fvm(1:3)
+  Fvm(1:3) = prefactor * DuDt(1:3)
 
   ! Add to global scaling factor
-  facp     = facp + 0.5*facm*FieldAtParticle(DENS)
+  globalfactor     = globalfactor + prefactor*FieldAtParticle(DENS)
 END IF
 #endif /* USE_VIRTUALMASS */
 
@@ -501,22 +496,19 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   END IF
 
   ! Scaling factor
-  facm = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
+  prefactor = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
             * SQRT(mu/(FieldAtParticle(DENS)*PP_pi)) * SQRT(RKdtFrac)
 
   ! Index for previous data
   kIndex = INT(MIN(N_Basset, bIter)*3)
   ! copy previous data
   IF(bIter.GT.N_Basset) durdt(1:kIndex-3,PartID) = durdt(4:kIndex,PartID)
-  ! \rho d(u)/dt = \rho D(u)/Dt - udiff * (\rho \nabla(u))! + u \nabla(\rho))
-  dufdt(1) = DuDt(1) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL1,:))!&
-  !                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL1)*GradAtParticle(DENS,:))
-  dufdt(2) = DuDt(2) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL2,:))!&
-  !                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL2)*GradAtParticle(DENS,:))
-  dufdt(3) = DuDt(3) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL3,:))!&
-  !                   - DOT_PRODUCT(udiff(:),FieldAtParticle(VEL3)*GradAtParticle(DENS,:))
+  ! \rho d(u)/dt = \rho D(u)/Dt - udiff * (\rho \nabla(u))
+  dufdt(1) = DuDt(1) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL1,:))
+  dufdt(2) = DuDt(2) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL2,:))
+  dufdt(3) = DuDt(3) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL3,:))
 
-  ! \rho d(udiff)/dt = \rho d(u)/dt - \rho (dv_p/dt)! - v_p (d\rho/dt)
+  ! \rho d(udiff)/dt = \rho d(u)/dt - \rho (dv_p/dt)
   durdt(kIndex-2:kIndex,PartID) = dufdt(:)
 
   Fbm = s43 * durdt(kIndex-2:kIndex,PartID) + durdt(1:3,PartID) * (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
@@ -524,21 +516,20 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
     Fbm = Fbm + durdt(kIndex-2-k:kIndex-k,PartID) * ((k+s43)/((k+1)*SQRT(REAL(k+1))+(k+s32)*SQRT(REAL(k)))+(k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k))))
   END DO
 
-  facp     = facp + s43 * facm * FieldAtParticle(DENS)
+  globalfactor     = globalfactor + s43 * prefactor * FieldAtParticle(DENS)
 
-  Fbm(1:3) = facm * Fbm(1:3)
-!  WRITE (*, *) 'BASSET_FORCE:', Fbm(1:3)
+  Fbm(1:3) = prefactor * Fbm(1:3)
 
   ! Correct durdt with particle push
-  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * (Flm + Fum + Fvm + Fbm + Fdm) * 1./facp
+  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * (Flm + Fum + Fvm + Fbm + Fdm) * 1./globalfactor
 
-  Pt = (Flm + Fum + Fvm + Fbm + Fdm) * 1./facp
+  Pt = (Flm + Fum + Fvm + Fbm + Fdm) * 1./globalfactor
 
   ! Correct durdt with particle push
   durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * Pt
 ELSE
 #endif /* USE_BASSETFORCE */
-  Pt = (Flm + Fum + Fvm + Fbm + Fdm) * 1./facp
+  Pt = (Flm + Fum + Fvm + Fbm + Fdm) * 1./globalfactor
 #if USE_BASSETFORCE
 END IF
 #endif /* USE_BASSETFORCE */

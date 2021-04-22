@@ -155,7 +155,7 @@ IF (t.GE.DelayTime) THEN
 #else
     )
 #endif /* USE_BASSETFORCE */
-  IF (SGSinUse) CALL ParticleSGS(1,dt)
+  IF (SGSinUse) CALL ParticleSGS(dt)
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -323,7 +323,7 @@ IF (t.GE.DelayTime) THEN
 #else
   )
 #endif /* USE_BASSETFORCE */
-  IF (SGSinUse) CALL ParticleSGS(iStage,dt)
+  IF (SGSinUse) CALL ParticleSGS(dt,iStage)
 #if USE_LOADBALANCE
   CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -551,7 +551,7 @@ IF (t.GE.DelayTime) THEN
 #else
   )
 #endif /* USE_BASSETFORCE */
-  IF (SGSinUse) CALL ParticleSGS(iStage,dt)
+  IF (SGSinUse) CALL ParticleSGS(dt,iStage)
 #if USE_LOADBALANCE
   CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/

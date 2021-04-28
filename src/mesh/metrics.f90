@@ -301,12 +301,9 @@ detJac_Ref=0.
 dXCL_N=0.
 DO iElem=1,nElems
 #if USE_PARTICLES
-  ! point to correct element. The shift is needed because the associate always casts to 1:nVar
+  ! Point to correct element
   ASSOCIATE( XCL_NGeo =>  XCL_Ngeo(:  ,:,:,:,iElem)  &
-           ,dXCL_NGeo => dXCL_NGeo(:,:,:,:,:,iElem)  &
-           ,shift     => 1)
-#else
-  ASSOCIATE(shift     => 0)
+           ,dXCL_NGeo => dXCL_NGeo(:,:,:,:,:,iElem))
 #endif
 
   !1.a) Transform from EQUI_NGeo to CL points on NGeo and N
@@ -327,11 +324,19 @@ DO iElem=1,nElems
   DO k=0,ZDIM(NGeo); DO j=0,NGeo; DO i=0,NGeo
     ! Matrix-vector multiplication
     DO ll=0,NGeo
-      dXCL_NGeo(1,1:PP_dim,i+shift,j+shift,k+shift)=dXCL_NGeo(1,1:PP_dim,i+shift,j+shift,k+shift) + DCL_NGeo(i,ll)*XCL_NGeo(1:PP_dim,ll+shift,j+shift,k+shift)
-      dXCL_NGeo(2,1:PP_dim,i+shift,j+shift,k+shift)=dXCL_NGeo(2,1:PP_dim,i+shift,j+shift,k+shift) + DCL_NGeo(j,ll)*XCL_NGeo(1:PP_dim,i+shift,ll+shift,k+shift)
+#if USE_PARTICLES
+      ! Shift of DCL_NGeo and loop variables is needed because the previous associate always casts to 1:nVar
+      ASSOCIATE( DCL_NGeo => DCL_NGeo(:,:)               &
+               , i => i+1, j => j+1, k => k+1, ll => ll+1)
+#endif /* USE_PARTICLES */
+      dXCL_NGeo(1,1:PP_dim,i,j,k)=dXCL_NGeo(1,1:PP_dim,i,j,k) + DCL_NGeo(i,ll)*XCL_NGeo(1:PP_dim,ll,j,k)
+      dXCL_NGeo(2,1:PP_dim,i,j,k)=dXCL_NGeo(2,1:PP_dim,i,j,k) + DCL_NGeo(j,ll)*XCL_NGeo(1:PP_dim,i,ll,k)
 #if (PP_dim == 3)
-      dXCL_NGeo(3,:,i+shift,j+shift,k+shift)=dXCL_NGeo(3,:,i+shift,j+shift,k+shift) + DCL_NGeo(k,ll)*XCL_NGeo(:,i+shift,j+shift,ll+shift)
+      dXCL_NGeo(3,:,i,j,k)=dXCL_NGeo(3,:,i,j,k) + DCL_NGeo(k,ll)*XCL_NGeo(:,i,j,ll)
 #endif
+#if USE_PARTICLES
+      END ASSOCIATE
+#endif /* USE_PARTICLES */
     END DO !l=0,N
   END DO; END DO; END DO !i,j,k=0,NGeo
 
@@ -517,12 +522,12 @@ DO iElem=1,nElems
   ENDIF
 
 #if USE_PARTICLES
-    IF(interpolateFromTree)THEN
-        CALL ABORT(__STAMP__,'InterpolateFromTree currently not supported with particles')
-    END IF
+  IF(interpolateFromTree)THEN
+    CALL ABORT(__STAMP__,'InterpolateFromTree currently not supported with particles')
+  END IF
 #endif
 
-    IF(interpolateFromTree)THEN
+  IF(interpolateFromTree)THEN
 #if (PP_dim == 3)
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(2,:,:,:,:),Metrics_gTilde(:,:,:,:,iElem,0))
@@ -577,7 +582,9 @@ DO iElem=1,nElems
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   END IF
 
+#if USE_PARTICLES
   END ASSOCIATE
+#endif /* USE_PARTICLES */
 END DO !iElem=1,nElems
 
 #if USE_MPI

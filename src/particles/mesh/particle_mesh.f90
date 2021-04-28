@@ -312,6 +312,13 @@ ELemTime = 0.
 #endif /*!USE_LOADBALANCE*/
 !===================================================================================================================================
 
+! Initialize Vandermonde for Bezier basis surface representation (particle tracking with curved elements)
+BezierElevation = GETINT('BezierElevation','0')
+NGeoElevated    = NGeo + BezierElevation
+
+CALL BuildBezierVdm              (NGeo,XiCL_NGeo,Vdm_Bezier,sVdm_Bezier)
+CALL BuildBezierDMat             (NGeo,Xi_NGeo,D_Bezier)
+
 ! Potentially curved elements. FIBGM needs to be built on BezierControlPoints rather than NodeCoords to avoid missing elements
 IF (TrackingMethod.EQ.TRACING .OR. TrackingMethod.EQ.REFMAPPING) THEN
   CALL CalcParticleMeshMetrics()
@@ -464,13 +471,6 @@ SELECT CASE(TrackingMethod)
 #if CODE_ANALYZE
     ALLOCATE(SideBoundingBoxVolume(nSides))
 #endif /*CODE_ANALYZE*/
-
-    ! initialize Vandermonde for Bezier basis surface representation (particle tracking with curved elements)
-    BezierElevation = GETINT('BezierElevation','0')
-    NGeoElevated    = NGeo + BezierElevation
-
-    CALL BuildBezierVdm              (NGeo,XiCL_NGeo,Vdm_Bezier,sVdm_Bezier)
-    CALL BuildBezierDMat             (NGeo,Xi_NGeo,D_Bezier)
 
     IF (BezierElevation.GT.0) THEN
       DO iSide = firstSide,LastSide

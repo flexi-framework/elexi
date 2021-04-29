@@ -173,7 +173,7 @@ SUBROUTINE CalcMetrics()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ReadInTools        ,ONLY: GETLOGICAL
-USE MOD_Mesh_Vars          ,ONLY: NGeo,NGeoRef,nElems,offsetElem
+USE MOD_Mesh_Vars          ,ONLY: NGeo,NGeoRef,nElems,nGlobalElems,offsetElem
 #if PP_dim == 3
 USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
 #endif
@@ -264,7 +264,9 @@ REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
 
 LOGICAL            :: meshCheckRef
 REAL,ALLOCATABLE   :: scaledJacRef(:,:,:)
-!==================================================================================================================================
+REAL               :: SmallestscaledJacRef
+REAL,PARAMETER     :: scaledJacRefTol=0.01
+!===================================================================================================================================
 ! Prerequisites
 Metrics_fTilde=0.
 Metrics_gTilde=0.
@@ -297,8 +299,10 @@ CALL GetVandermonde(    PP_N   , NodeTypeCL  , PP_N    , NodeType,   Vdm_CLN_N  
 CALL GetNodesAndWeights(PP_N   , NodeTypeCL  , xiCL_N  , wIPBary=wBaryCL_N)
 
 ! Outer loop over all elements
-detJac_Ref=0.
-dXCL_N=0.
+detJac_Ref = 0.
+dXCL_N     = 0.
+SmallestscaledJacRef = HUGE(1.)
+
 DO iElem=1,nElems
 #if USE_PARTICLES
   ! Point to correct element
@@ -386,7 +390,8 @@ DO iElem=1,nElems
     ALLOCATE(scaledJacRef(0:NGeoRef,0:NGeoRef,0:ZDIM(NGeoRef)))
     DO k=0,ZDIM(NGeoRef); DO j=0,NGeoRef; DO i=0,NGeoRef
       scaledJacRef(i,j,k)=detJac_ref(1,i,j,k,iElem)/MAXVAL(detJac_ref(1,:,:,:,iElem))
-      IF(scaledJacRef(i,j,k).LT.0.01) THEN
+      SmallestscaledJacRef=MIN(SmallestscaledJacRef,scaledJacRef(i,j,k))
+      IF(scaledJacRef(i,j,k).LT.scaledJacRefTol) THEN
         WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJacRef(i,j,k)
         WRITE(Unit_StdOut,*) 'Coords near:', Elem_xGP(:,INT(PP_N/2),INT(PP_N/2),INT(PP_NZ/2),iElem)
         WRITE(Unit_StdOut,*) 'This check is optional. You can disable it by setting meshCheckRef = F'
@@ -604,7 +609,17 @@ NormVec (:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,:,first
 TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(8:10,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 DEALLOCATE(Geo)
-#endif /*MPI*/
+
+! Communicate smallest ref. Jacobian and display
+IF(MPIroot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE , SmallestscaledJacRef , 1 , MPI_DOUBLE_PRECISION , MPI_MIN , 0 , MPI_COMM_WORLD , iError)
+ELSE
+  CALL MPI_REDUCE(SmallestscaledJacRef   , 0          , 1 , MPI_DOUBLE_PRECISION , MPI_MIN , 0 , MPI_COMM_WORLD , iError)
+END IF
+#endif /*USE_MPI*/
+
+SWRITE (*,'(A,ES18.10E3,A,I0,A,ES13.5E3)') " Smallest scaled Jacobian in reference system: ",SmallestscaledJacRef,&
+    " (",nGlobalElems," global elements). Abort threshold is set to:", scaledJacRefTol
 
 #if FV_ENABLED
 #if USE_MPI

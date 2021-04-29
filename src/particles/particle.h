@@ -122,11 +122,13 @@
 #define RHS_NONE         1
 #define RHS_TRACER       2
 #define RHS_CONVERGENCE  3
-#define RHS_WANG         4
-#define RHS_VINKOVIC     5
-#define RHS_JACOBS       6
-#define RHS_HAIDER       7
-#define RHS_HOELZER      8
+#define RHS_LI           4
+#define RHS_WANG         5
+#define RHS_VINKOVIC     6
+#define RHS_JACOBS       7
+#define RHS_HAIDER       8
+#define RHS_HOELZER      9
+
 
 #if USE_EXTEND_RHS
 ! Velocity and pressure for extended RHS

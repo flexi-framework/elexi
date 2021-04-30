@@ -582,7 +582,6 @@ IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
 
           ! Element not previously flagged
           IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).LT.1) THEN
-            IPWRITE(*,*) 'ElemID:', ElemID
             ASSOCIATE(posElem => (ElemID-1)*ELEMINFOSIZE + (ELEM_HALOFLAG-1))
               CALL MPI_FETCH_AND_OP(haloChange,dummyInt,MPI_INTEGER,0,INT(4*posElem,MPI_ADDRESS_KIND),MPI_REPLACE,ElemInfo_Shared_Win,IERROR)
             END ASSOCIATE
@@ -1137,7 +1136,7 @@ DO iElem = 1,nComputeNodeElems
   ! Loop over all sides
   DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
     ! Check if side was already added
-    IF (GlobalSide2CNTotalSide(iSide).NE.-1) CYCLE
+    ! IF (GlobalSide2CNTotalSide(iSide).NE.-1) CYCLE
 
     nComputeNodeSides             = nComputeNodeSides      + 1
     nComputeNodeTotalSides        = nComputeNodeTotalSides + 1
@@ -1153,8 +1152,7 @@ Do iElem = nComputeNodeElems + 1,nComputeNodeTotalElems
   ! Loop over all sides
   DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
     ! Check if side was already added
-    IF (GlobalSide2CNTotalSide(iSide).NE.-1) CYCLE
-    IF(ElemID.EQ.2) IPWRITE(*,*) 'iSide:', iSide
+    ! IF (GlobalSide2CNTotalSide(iSide).NE.-1) CYCLE
 
     nComputeNodeTotalSides        = nComputeNodeTotalSides + 1
     CNTotalSide2GlobalSide(nComputeNodeTotalSides) = iSide

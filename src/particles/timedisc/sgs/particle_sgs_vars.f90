@@ -42,5 +42,27 @@ REAL,ALLOCATABLE                       :: G_SGS(:,:,:)                        ! 
 REAL,ALLOCATABLE                       :: W_SGS(:,:,:)                        ! Covariance matrix
 REAL,ALLOCATABLE                       :: ElemVolN(:)                         ! ElemVol**(1./3.)/(PP_N+1)
 REAL                                   :: randomVar
+!! JIN SGS model
+REAL,ALLOCATABLE                       :: deltaT_L(:)                         ! lagrangian time scale
+REAL,ALLOCATABLE                       :: k_cf(:)                             ! cutoff wave number
+REAL,ALLOCATABLE                       :: deltaT_E(:)                         ! Eulerian integral timescale (Fede & Simonin,2006)
+REAL,ALLOCATABLE                       :: beta_Jin(:)                         ! ratio between lagrangian and eulerian time scale
+REAL,ALLOCATABLE                       :: taup_Jin(:)                         ! Particle relaxation time
+REAL,ALLOCATABLE                       :: St_Jin(:)                           ! Stokes number
+REAL,ALLOCATABLE                       :: deltaT_L_p(:)                       ! SGS autocorrelation time seen by a particle
+!! FUKAGATA SGS model
+REAL,ALLOCATABLE                       :: taup_Fuka(:)                        ! Particle relaxation time
+REAL,ALLOCATABLE                       :: Sc_Fuka(:)                          ! Schmidt number of the particles in fluid
+!REAL,ALLOCATABLE                       :: ni_B(:)                             ! Brownian force
+REAL,ALLOCATABLE                       :: gradUxPart(:,:)                     ! gradient in x-dir interpolate to the particle position
+REAL,ALLOCATABLE                       :: gradUyPart(:,:)                     ! gradient in y-dir interpolate to the particle position
+REAL,ALLOCATABLE                       :: gradUzPart(:,:)                     ! gradient in z-dir interpolate to the particle position
+REAL,ALLOCATABLE                       :: T_f_p(:)                            ! Integral time scale of fluid velocity along a particle trajectory
+REAL,ALLOCATABLE                       :: U_M(:)                              ! representative SGS velocity
+REAL,ALLOCATABLE                       :: alpha_Fuka(:)                       ! ratio between dt and taup_Fuka 
+REAL,ALLOCATABLE                       :: beta_Fuka(:)                        ! ratio between taup_Fuka and dt
+REAL,ALLOCATABLE                       :: sigmaS_Fuka(:)                      ! standard deviation of particle velocity due to SGS velocity
+REAL,ALLOCATABLE                       :: ni_SGS(:,:)                         ! SGS fluid velocity by Fukagata
+REAL,ALLOCATABLE                       :: ni_Fuka(:,:)                        ! stochastic term sum of ni_B and ni_SGS
 !===================================================================================================================================
 END MODULE MOD_Particle_SGS_Vars

@@ -1856,7 +1856,7 @@ ELSE
 #endif /* CODE_ANALYZE */
 
   IF (NbElemID.LT.0) THEN ! Mortar side
-  nMortarElems = MERGE(4,2,SideInfo_Shared(SIDE_NBELEMID,SideID).EQ.-1)
+    nMortarElems = MERGE(4,2,SideInfo_Shared(SIDE_NBELEMID,SideID).EQ.-1)
 
     DO iMortar = 1,nMortarElems
       NbSideID   = SideInfo_Shared(SIDE_NBSIDEID,SideID + iMortar)

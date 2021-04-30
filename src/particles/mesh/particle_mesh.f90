@@ -157,7 +157,6 @@ USE MOD_PreProc                ,ONLY: N
 USE MOD_Basis
 USE MOD_Interpolation_Vars     ,ONLY: xGP
 USE MOD_Mesh_Vars
-USE MOD_Particle_Basis
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Surfaces_Vars
 USE MOD_ReadInTools            ,ONLY: GETINT
@@ -217,13 +216,6 @@ CALL ChebyGaussLobNodesAndWeights(1                 ,XiCL_NGeo1)
 CALL BarycentricWeights          (1                 ,XiCL_NGeo1,wBaryCL_NGeo1)
 CALL InitializeVandermonde       (1, NGeo,wBaryCL_NGeo1,XiCL_NGeo1,XiCL_NGeo ,Vdm_CLNGeo1_CLNGeo)
 
-! initialize Vandermonde for Bezier basis surface representation (particle tracking with curved elements)
-BezierElevation = GETINT('BezierElevation','0')
-NGeoElevated    = NGeo + BezierElevation
-
-CALL BuildBezierVdm              (NGeo,XiCL_NGeo,Vdm_Bezier,sVdm_Bezier)
-CALL BuildBezierDMat             (NGeo,Xi_NGeo,D_Bezier)
-
 ! allocate Chebyshev-Lobatto physical coordinates
 ALLOCATE( XCL_NGeo(1:3,    0:NGeo,0:NGeo,0:ZDIM(NGeo),1:nElems)   &
         ,dXCL_NGeo(1:3,1:3,0:NGeo,0:NGeo,0:ZDIM(NGeo),1:nElems))
@@ -241,6 +233,7 @@ SUBROUTINE InitParticleMesh()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Mesh_Vars              ,ONLY: NGeo,nElems,useCurveds
+USE MOD_Particle_Basis         ,ONLY: BuildBezierVdm,BuildBezierDMat
 USE MOD_Particle_BGM           ,ONLY: BuildBGMAndIdentifyHaloRegion
 USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation
@@ -255,6 +248,7 @@ USE MOD_Particle_Mesh_Tools    ,ONLY: InitGetGlobalSideID,InitGetCNSideID,GetGlo
 USE MOD_Particle_Surfaces      ,ONLY: GetSideSlabNormalsAndIntervals
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation,BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
+USE MOD_Particle_Surfaces_Vars ,ONLY: D_Bezier,Vdm_Bezier,sVdm_Bezier
 USE MOD_Particle_Tracking_Vars ,ONLY: FastPeriodic,CountNbOfLostParts,NbrOfLostParticles,NbrOfLostParticlesTotal,CartesianPeriodic
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierSampleN,BezierSampleXi,SurfFluxSideSize,TriaSurfaceFlux
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
@@ -317,6 +311,13 @@ ALLOCATE(ElemTime(1:nElems))
 ELemTime = 0.
 #endif /*!USE_LOADBALANCE*/
 !===================================================================================================================================
+
+! Initialize Vandermonde for Bezier basis surface representation (particle tracking with curved elements)
+BezierElevation = GETINT('BezierElevation','0')
+NGeoElevated    = NGeo + BezierElevation
+
+CALL BuildBezierVdm              (NGeo,XiCL_NGeo,Vdm_Bezier,sVdm_Bezier)
+CALL BuildBezierDMat             (NGeo,Xi_NGeo,D_Bezier)
 
 ! Potentially curved elements. FIBGM needs to be built on BezierControlPoints rather than NodeCoords to avoid missing elements
 IF (TrackingMethod.EQ.TRACING .OR. TrackingMethod.EQ.REFMAPPING) THEN

@@ -178,6 +178,42 @@ Fdm(1)      = FieldAtParticle(VEL1) - PartState(PART_VEL1,PartID)
 Fdm(2)      = -3.
 Fdm(3)      = 0.
 
+CASE(RHS_LI)
+!===================================================================================================================================
+! Calculation according to AMY LI and GOODARZ AHMADI [1993]
+!===================================================================================================================================
+IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Particle tracking with Wang [1996] or Vinkovic [2006] requires mu to be set!')
+
+
+! Assume spherical particles for now
+  udiff(1:3) = FieldAtParticle(VELV) - PartState(PART_VELV,PartID)
+
+Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
+
+! Warn when outside valid range of Wang model
+IF(Rep.GT.800) THEN
+  IF (RepWarn.EQV..FALSE.) THEN
+    SWRITE(UNIT_StdOut,*) 'WARNING: Rep',Rep,'> 800, drag coefficient may not be accurate.'
+    RepWarn=.TRUE.
+  ENDIF
+ENDIF
+
+! Particle relaxation time
+staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
+
+! Adding sgs term
+IF(ALLOCATED(TurbPartState)) THEN
+Fdm      = udiff * staup + TurbPartState(1:3,PartID)
+ELSE
+Fdm      = udiff * staup
+END IF
+
+! Add gravity if required
+IF(ANY(PartGravity.NE.0)) THEN
+  Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
+ENDIF
+
+
 CASE(RHS_VINKOVIC,RHS_WANG)
 !===================================================================================================================================
 ! Calculation according to Vinkovic [2006] or Wang [1996]

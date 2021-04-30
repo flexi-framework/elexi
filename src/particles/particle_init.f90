@@ -191,6 +191,7 @@ CALL prms%CreateIntOption(          'Part-nSpecies'             , 'Number of spe
 CALL prms%CreateIntOption(          'Part-Species[$]-nInits'    , 'Number of different initial particle placements for Species [$]'&
                                                                 , '0'        , numberedmulti=.TRUE.)
 CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for forces calculation.\n'                //&
+                                                                  ' - Li\n'                                                      //&
                                                                   ' - Wang\n'                                                    //&
                                                                   ' - Jacobs\n'                                                  //&
                                                                   ' - Vinkovic'                                                    &
@@ -198,6 +199,7 @@ CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle mode
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'none',            RHS_NONE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'tracer',          RHS_TRACER)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'convergence',     RHS_CONVERGENCE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Li',       	    RHS_LI)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Wang',            RHS_WANG)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
@@ -303,6 +305,7 @@ CALL prms%CreateIntOption(          'Part-Species[$]-NumberOfExcludeRegions', 'N
 CALL prms%SetSection("Particle Species nInits")
 ! if nInit > 0 some variables have to be defined twice
 CALL prms%CreateIntFromStringOption('Part-Species[$]-Init[$]-RHSMethod' , 'Particle model used for forces calculation.\n'        //&
+                                                                  ' - Li\n'                                                      //&
                                                                   ' - Wang\n'                                                    //&
                                                                   ' - Jacobs\n'                                                  //&
                                                                   ' - Vinkovic'                                                    &
@@ -310,6 +313,7 @@ CALL prms%CreateIntFromStringOption('Part-Species[$]-Init[$]-RHSMethod' , 'Parti
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'none',            RHS_NONE)
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'tracer',          RHS_TRACER)
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'convergence',     RHS_CONVERGENCE)
+CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Li',       	    RHS_LI)
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Wang',            RHS_WANG)
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
 CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)

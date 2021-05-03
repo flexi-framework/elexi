@@ -341,7 +341,9 @@ END IF
 CALL CloseDataFile()
 
 ! Keep everything in sync
+#if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
+#endif /* USE_MPI */
 
 ! Write out in the next state file write-out
 IF(MPIRoot) THEN

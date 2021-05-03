@@ -202,7 +202,7 @@ IF(GroupSize.LT.1)THEN ! group procs by node
 #else
   ! Note that using SharedMemoryMethod=OMPI_COMM_TYPE_CORE somehow does not work in every case (intel/amd processors)
   ! Also note that OMPI_COMM_TYPE_CORE is undefined when not using OpenMPI
-  CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_FLEXI,SharedMemoryMethod,0,MPI_INFO_NULL,MPI_COMM_NODE,IERROR)
+  CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_FLEXI,MPI_COMM_TYPE_SHARED,0,MPI_INFO_NULL,MPI_COMM_NODE,IERROR)
 #endif
 ELSE ! use groupsize
   color=myRank/GroupSize

@@ -328,7 +328,7 @@ DO iSpec=1,nSpecies
     color = MERGE(nInitRegions,MPI_UNDEFINED,RegionOnProc)
 
     ! set communicator id
-    Species(iSpec)%Init(iInit)%InitComm = nInitRegions
+    Species(iSpec)%Init(iInit)%InitCOMM = nInitRegions
     ! create new emission communicator for emission communication. Pass MPI_INFO_NULL as rank to follow the original ordering
     CALL MPI_COMM_SPLIT(PartMPI%COMM,color,MPI_INFO_NULL,PartMPI%InitGroup(nInitRegions)%COMM,iError)
 

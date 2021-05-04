@@ -107,6 +107,13 @@ gnu:
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "particle_checkin": Run basic particle regression checks
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
+FV_particle:
+    <<: *defaults_gnu
+    stage: particle_checkin
+    script:
+        - cd build_gnu
+        - python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/FV -j 6
+
 CHE_particle:
     <<: *defaults_gnu
     stage: particle_checkin
@@ -120,13 +127,6 @@ CN_particle:
     script:
         - cd build_gnu
         - python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/CN -j 6
-
-FV_particle:
-    <<: *defaults_gnu
-    stage: particle_checkin
-    script:
-        - cd build_gnu
-        - python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/FV -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "dg_nightly": Build and run
@@ -172,19 +172,19 @@ gnu_riemann:
 #                         - particle mortar tests
 #                         - particle sanitize tests
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-NIG_particle:
-  <<: *defaults_nightly
-  stage: particle_nightly
-  allow_failure: true
-  script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/NIG -j 6; fi
-
 SANI_particle:
   <<: *defaults_nightly
   stage: particle_nightly
   allow_failure: true
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/SANI -j 6; fi
+
+NIG_particle:
+  <<: *defaults_nightly
+  stage: particle_nightly
+  allow_failure: true
+  script:
+    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/NIG -j 6; fi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "dg_weekly": Build and run more complex tests, basically complete simulatons

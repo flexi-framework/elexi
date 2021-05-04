@@ -61,6 +61,8 @@ REAL,ALLOCATABLE               :: WeightSum_proc(:)
 INTEGER                        :: iProc
 INTEGER                        :: iElem
 !===================================================================================================================================
+SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(UNIT_stdOut,'(A)')' DOMAIN DECOMPOSITION ...'
 
 SDEALLOCATE(offsetElemMPI)
 ALLOCATE(offsetElemMPI(0:nProcessors))
@@ -164,6 +166,8 @@ END IF
 
 ! Re-open mesh file to continue readin. Meshfile is not set if this routine is called from posti
 IF (INDEX(MeshFile,'h5').NE.0)  CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+
+SWRITE(UNIT_stdOut,'(A)')' DOMAIN DECOMPOSITION DONE!'
 
 END SUBROUTINE DomainDecomposition
 

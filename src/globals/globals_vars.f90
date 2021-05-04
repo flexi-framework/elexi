@@ -41,7 +41,7 @@ REAL                       :: DomainDecompositionWallTime          !> Wall time 
 REAL                       :: CommMeshReadinWallTime               !> Shared memory mesh communication
 REAL                       :: SimulationEfficiency                 !> relates the simulated time to the used CPUh (SIMULATION TIME PER
                                                                    !> CALCULATION in [s]/[CPUh])
-! REAL                       :: StartT                               !> Timer start
+REAL                       :: StartT                               !> Timer start
 REAL                       :: PID                                  !> Performance index: (CalcTimeEnd-CalcTimeStart)*nProcessors/
                                                                    !> (nGlobalElems*(PP_N+1)**3*iter_loc)
 !===================================================================================================================================

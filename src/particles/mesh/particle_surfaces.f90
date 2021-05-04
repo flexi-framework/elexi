@@ -336,8 +336,8 @@ nz = -nz / nVal
 IF (.NOT.TrackingMethod.EQ.TRIATRACKING) THEN
   CNSideID = GetCNSideID(SideID)
   IF ((SideType(CNSideID).EQ.PLANAR_RECT .OR. SideType(CNSideID).EQ.PLANAR_NONRECT)) THEN
-    !if surfflux-side are planar, TriaSurfaceflux can be also used for tracing or Refmapping (for which SideNormVec exists)!
-    !warning: these values go into SurfMeshSubSideData and if TriaSurfaceflux they should be used only for planar_rect/_nonrect sides
+    !if surfflux-side are planar, TriaSurfaceFlux can be also used for tracing or Refmapping (for which SideNormVec exists)!
+    !warning: these values go into SurfMeshSubSideData and if TriaSurfaceFlux they should be used only for planar_rect/_nonrect sides
     dotpr = DOT_PRODUCT(SideNormVec(1:3,CNSideID),(/nx,ny,nz/))
     IF ( .NOT.ALMOSTEQUALRELATIVE(dotpr,1.,1.0E-2) ) &
       CALL abort(__STAMP__, 'SideNormVec is not identical with V1xV2!')

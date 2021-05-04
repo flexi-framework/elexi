@@ -2053,7 +2053,7 @@ SUBROUTINE WeirdElementCheck()
 ! Fixing the problem would involve defining the bilinear edge between nodes 2 and 4
 ! (instead of 1 and 3). This information would need to be stored and used throughout
 ! the particle treatment. Additionally, since the edge would need to be changed
-! for both neighboring elements, it is possible that both element might have the problem
+! for both neighboring elements, it is possible that both elements might have the problem
 ! hence no solution exists.
 ! tl;dr: Hard/maybe impossible to fix, hence only a warning is given so the user can decide
 !===================================================================================================================================
@@ -2063,6 +2063,7 @@ USE MOD_Globals
 USE MOD_Particle_Mesh_Vars        ,ONLY: NodeCoords_Shared,ConcaveElemSide_Shared,ElemSideNodeID_Shared
 USE MOD_Particle_Mesh_Vars        ,ONLY: WeirdElems
 USE MOD_Particle_Mesh_Tools       ,ONLY: GetGlobalElemID
+USE MOD_ReadInTools               ,ONLY: GETLOGICAL
 #if USE_MPI
 USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeTotalElems,nComputeNodeProcessors,myComputeNodeRank
 #else
@@ -2079,11 +2080,15 @@ IMPLICIT NONE
 INTEGER             :: iElem, iLocSide, kLocSide, iNode
 INTEGER,ALLOCATABLE :: WeirdElemNbrs(:)
 REAL                :: vec(1:3), Node(1:3,1:4),det(1:3)
+LOGICAL             :: meshCheckWeirdElements
 LOGICAL             :: WEIRD, TRICHECK, TRIABSCHECK
 INTEGER             :: firstElem,lastElem
 !===================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' CHECKING FOR WEIRD ELEMENTS...'
+
+meshCheckWeirdElements = GETLOGICAL('meshCheckWeirdElements')
+IF (.NOT.meshCheckWeirdElements) RETURN
+
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' Checking for weird elements ...'
 
 #if USE_MPI
 firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
@@ -2189,14 +2194,16 @@ DO iElem = firstElem,lastElem
 END DO
 
 IF(WeirdElems.GT.0) THEN
-  IPWRITE(UNIT_stdOut,*)' FOUND', WeirdElems, 'ELEMENTS!'
-  IPWRITE(UNIT_stdOut,*)' WEIRD ELEM NUMBERS:'
+  IPWRITE(UNIT_stdOut,'(A,I0,A)') ' FOUND', WeirdElems, 'ELEMENTS!'
+  IPWRITE(UNIT_stdOut,'(A)')      ' WEIRD ELEM NUMBERS:'
   DO iElem = 1,WeirdElems
-    IPWRITE(UNIT_stdOut,*) WeirdElemNbrs(iElem)
+    IPWRITE(UNIT_stdOut,'(I0)') WeirdElemNbrs(iElem)
   END DO
+  IPWRITE(Unit_StdOut,'(A)')      ' This check is optional. You can disable it by setting meshCheckWeirdElements = F'
+  CALL ABORT(__STAMP__,           'Weird elements found: it means that part of the element is turned inside-out')
 END IF
 
-SWRITE(UNIT_stdOut,'(A)')' CHECKING FOR WEIRD ELEMENTS DONE!'
+SWRITE(UNIT_stdOut,'(A)') ' DONE!'
 
 DEALLOCATE(WeirdElemNbrs)
 

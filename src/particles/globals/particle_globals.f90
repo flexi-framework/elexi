@@ -29,24 +29,12 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL                                  :: PI
+REAL                                  :: PI         = ACOS(-1.0D0)
 REAL                                  :: epsMach    = epsilon(0.)
 REAL                                  :: TwoEpsMach = 2.d0 * epsilon(0.)
 
 ! Keep nElems and PP_nElems separate for now
 INTEGER                               :: PP_nElems
-
-!- LOADBALANCE ---------------------------------------------------------------------------------------------------------------------
-REAL                         :: WallTime                              !> Wall time needed by a simulation (is not reset by
-                                                                      !> performing a load balance step, only by user restart)
-REAL                         :: InitializationWallTime                !> Wall time needed to initialize a simulation (or
-                                                                      !> re-initialize a simulation by performing a load balance
-                                                                      !>  step)
-REAL                         :: SimulationEfficiency                  !> relates the simulated time to the used CPUh (SIMULATION
-                                                                      !> TIME PER CALCULATION in [s]/[CPUh])
-REAL                         :: PID                                   !> Performance index: (CalcTimeEnd-CalcTimeStart)*nProcessors/
-                                                                      !> (nGlobalElems*(PP_N+1)**3*iter_loc)
-
 !=================================================================================================================================
 
 INTERFACE CROSSNORM

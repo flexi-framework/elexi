@@ -85,7 +85,7 @@ CALL prms%CreateRealArrayOption(    'Part-FactorFIBGM'          , 'Factor with w
 CALL prms%CreateLogicalOption(      'Part-CartesianPeriodic'    , ' Simplified treatment for periodic box with Refmapping. Not'  //&
                                                                   ' computation of intersection points at periodic BCs.'           &
                                                                 , '.FALSE.')
-CALL prms%CreateLogicalOption(      'Part-FastPeriodic'           , ' Further simplification by directly moving particle into'     //&
+CALL prms%CreateLogicalOption(      'Part-FastPeriodic'           , ' Further simplification by directly moving particle into'   //&
                                                                   ' grid. Instead of moving the particle several times the'      //&
                                                                   ' periodic displacements, the particle is mapped directly back'//&
                                                                   ' into the domain.'                                              &
@@ -94,6 +94,11 @@ CALL prms%CreateLogicalOption(      'Part-FastPeriodic'           , ' Further si
 !                                                                 , '.FALSE.')
 ! CALL prms%CreateLogicalOption(      'Part-DoPeriodicFix'        , ' Fix position in reference element after periodic displacement' &
 !                                                                 , '.FALSE.')
+
+! Mesh checking
+CALL prms%CreateLogicalOption(      'meshCheckWeirdElements'    , 'Abort when weird elements are found: it means that part of'   //&
+                                                                  ' the element is turned inside-out. '                            &
+                                                                , '.TRUE.')
 
 ! RefMapping
 CALL prms%CreateIntOption(          'RefMappingGuess'           , ' Initial guess of the Newton for mapping the particle into'   //&
@@ -433,7 +438,7 @@ SELECT CASE(TrackingMethod)
     END IF
 
   CASE(TRACING,REFMAPPING)
-    ! TriaSurfaceFlux needs ElemNodeID_Shared
+    ! TriaSurfaceFlux needs ElemMidPoint_Shared
     IF (TriaSurfaceFlux) THEN
       CALL InitParticleGeometry()
     END IF

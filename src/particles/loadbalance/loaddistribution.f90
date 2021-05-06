@@ -1065,12 +1065,17 @@ END SUBROUTINE freeList
 !===================================================================================================================================
 SUBROUTINE WriteElemTimeStatistics(WriteHeader,time,iter)
 ! MODULES
+USE MOD_Globals          ,ONLY: MPIRoot,FILEEXISTS,unit_stdout,abort,nProcessors,nProcessors
+USE MOD_Globals_Vars     ,ONLY: SimulationEfficiency,PID,WallTime,InitializationWallTime,ReadMeshWallTime
+USE MOD_Globals_Vars     ,ONLY: DomainDecompositionWallTime,CommMeshReadinWallTime
 USE MOD_LoadBalance_Vars ,ONLY: TargetWeight,nLoadBalanceSteps,CurrentImbalance,MinWeight,MaxWeight,WeightSum
-USE MOD_Globals          ,ONLY: MPIRoot,FILEEXISTS,unit_stdout
-USE MOD_Particle_Globals ,ONLY: SimulationEfficiency,PID,WallTime,InitializationWallTime
 USE MOD_Restart_Vars     ,ONLY: DoRestart
-USE MOD_Globals          ,ONLY: abort
-USE MOD_Globals          ,ONLY: nProcessors
+USE MOD_Particle_Memory  ,ONLY: ProcessMemUsage
+#if USE_MPI
+USE MOD_Globals
+USE MOD_Particle_MPI_Shared_Vars  ,ONLY: myComputeNodeRank,myLeaderGroupRank
+USE MOD_Particle_MPI_Shared_Vars  ,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_SHARED
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1083,26 +1088,87 @@ INTEGER(KIND=8),INTENT(IN),OPTIONAL     :: iter
 REAL                                     :: time_loc
 CHARACTER(LEN=22),PARAMETER              :: outfile='ElemTimeStatistics.csv'
 INTEGER                                  :: ioUnit,I
-CHARACTER(LEN=50)                        :: formatStr
-INTEGER,PARAMETER                        :: nOutputVar=12
+CHARACTER(LEN=255)                       :: formatStr
+INTEGER,PARAMETER                        :: nOutputVar=18 !21
 CHARACTER(LEN=255),DIMENSION(nOutputVar) :: StrVarNames(nOutputVar)=(/ CHARACTER(LEN=255) :: &
-    'time',                &
-    'Procs',               &
-    'MinWeight',           &
-    'MaxWeight',           &
-    'CurrentImbalance',    &
-    'TargetWeight (mean)', &
-    'nLoadBalanceSteps',   &
-    'WeightSum',           &
-    'SimulationEfficiency',&
-    'PID',                 &
-    'SimulationWallTime',  &
-    'InitializationWallTime'/)
+    'time'                   , &
+    'Procs'                  , &
+    'MinWeight'              , &
+    'MaxWeight'              , &
+    'CurrentImbalance'       , &
+    'TargetWeight (mean)'    , &
+    'nLoadBalanceSteps'      , &
+    'WeightSum'              , &
+    'SimulationEfficiency'   , &
+    'PID'                    , &
+    'SimulationWallTime'     , &
+    'DomainDecompositionWallTime', &
+    'CommMeshReadinWallTime' , &
+    'ReadMeshWallTime'       , &
+    'InitializationWallTime' , &
+    'MemoryUsed'             , &
+    'MemoryAvailable'        , &
+    'MemoryTotal'              &
+    ! '#Particles'             , &
+    ! 'FieldTime'              , &
+    ! 'PartTime'               , &
+    ! 'FieldTimePercent'       , &
+    ! 'PartTimePercent'          &
+    /)
 CHARACTER(LEN=255),DIMENSION(nOutputVar) :: tmpStr ! needed because PerformAnalyze is called mutiple times at the beginning
 CHARACTER(LEN=1000)                      :: tmpStr2
 CHARACTER(LEN=1),PARAMETER               :: delimiter=","
+REAL                                     :: memory(1:3)       ! used, available and total
+REAL                                     :: memoryGlobal(1:3) ! Globally used, available (only node roots) and total (also only node roots) memory
+#if USE_MPI
+REAL                                     :: ProcMemoryUsed    ! Used memory on a single proc
+REAL                                     :: NodeMemoryUsed    ! Sum of used memory across one compute node
+#endif /*USE_MPI*/
 !===================================================================================================================================
+
+! Get process memory info
+CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal
+
+! only CN roots communicate available and total memory info (count once per node)
+#if USE_MPI
+IF(nProcessors.EQ.1)THEN
+  memoryGlobal = memory
+ELSE
+  ! Collect data on node roots
+  ProcMemoryUsed = memory(1)
+  IF (myComputeNodeRank.EQ.0) THEN
+    CALL MPI_REDUCE(ProcMemoryUsed , NodeMemoryUsed , 1 , MPI_DOUBLE_PRECISION , MPI_SUM , 0 , MPI_COMM_SHARED , IERROR)
+    memory(1) = NodeMemoryUsed
+  ELSE
+    CALL MPI_REDUCE(ProcMemoryUsed , 0              , 1 , MPI_DOUBLE_PRECISION , MPI_SUM , 0 , MPI_COMM_SHARED , IERROR)
+  END IF
+
+  ! collect data from node roots on first root node
+  IF (myComputeNodeRank.EQ.0) THEN ! only leaders
+    IF (myLeaderGroupRank.EQ.0) THEN ! first node leader MUST be MPIRoot
+      CALL MPI_REDUCE(MPI_IN_PLACE , memory , 3 , MPI_DOUBLE_PRECISION , MPI_SUM , 0 , MPI_COMM_LEADERS_SHARED , IERROR)
+    ELSE
+      CALL MPI_REDUCE(memory       , 0      , 3 , MPI_DOUBLE_PRECISION , MPI_SUM , 0 , MPI_COMM_LEADERS_SHARED , IERROR)
+    END IF ! myLeaderGroupRank.EQ.0
+  END IF ! myComputeNodeRank.EQ.0
+
+END IF ! nProcessors.EQ.1
+#else
+memoryGlobal = memory
+#endif /*USE_MPI*/
+
+! --------------------------------------------------
+! Only MPI root outputs the data to file
+! --------------------------------------------------
 IF(.NOT.MPIRoot)RETURN
+
+! Convert kB to GB
+memory=memory/1048576.
+#if USE_CORE_SPLIT
+  ! When core-level splitting is used, it is not clear how many cores are on the same physical compute node.
+  ! Therefore, the values are set to -1.
+  memory(2:3) = -1.
+#endif /*USE_CORE_SPLIT*/
 
 ! Either create new file or add info to existing file
 !> create new file
@@ -1114,26 +1180,26 @@ IF (WriteHeader) THEN
   !                                                ! assume continued simulation and old load balance data is still needed
 
   OPEN(NEWUNIT=ioUnit,FILE=TRIM(outfile),STATUS="UNKNOWN")
-  tmpStr = ""
+  tmpStr = ''
 
   DO I = 1,nOutputVar
-    WRITE(tmpStr(I),'(A)')delimiter//'"'//TRIM(StrVarNames(I))//'"'
+    WRITE(tmpStr(I),'(A)') delimiter//'"'//TRIM(StrVarNames(I))//'"'
   END DO
 
-  WRITE(formatStr,'(A1)')'('
+  WRITE(formatStr,'(A1)') '('
 
   DO I = 1,nOutputVar
     ! skip writing "," and the end of the line
     IF (I.EQ.nOutputVar) THEN
-      WRITE(formatStr,'(A,A1,I2)')TRIM(formatStr),'A',LEN_TRIM(tmpStr(I))
+      WRITE(formatStr,'(A,A1,I2)')    TRIM(formatStr),'A',LEN_TRIM(tmpStr(I))
     ELSE
-      WRITE(formatStr,'(A,A1,I2,A1)')TRIM(formatStr),'A',LEN_TRIM(tmpStr(I)),','
+      WRITE(formatStr,'(A,A1,I2,A1)') TRIM(formatStr),'A',LEN_TRIM(tmpStr(I)),','
     END IF
   END DO
 
   WRITE(formatStr,'(A,A1)')TRIM(formatStr),')' ! finish the format
   WRITE(tmpStr2,formatStr)tmpStr               ! use the format and write the header names to a temporary string
-  tmpStr2(1:1) = " "                           ! remove possible relimiter at the beginning (e.g. a comma)
+  tmpStr2(1:1) = ' '                           ! remove possible delimiter at the beginning (e.g. a comma)
   WRITE(ioUnit,'(A)')TRIM(ADJUSTL(tmpStr2))    ! clip away the front and rear white spaces of the temporary string
 
   CLOSE(ioUnit)
@@ -1143,6 +1209,16 @@ ELSE !
   ELSE
     time_loc = time
   END IF
+
+!  ! Calculate elem time proportions for field and particle routines
+!  SumElemTime=ElemTimeField+ElemTimePart
+!  IF(SumElemTime.LE.0.)THEN
+!    ElemTimeFieldPercent = 0.
+!    ElemTimePartPercent  = 0.
+!  ELSE
+!    ElemTimeFieldPercent = 100. * ElemTimeField / SumElemTime
+!    ElemTimePartPercent  = 100. * ElemTimePart / SumElemTime
+!  END IF ! ElemTimeField+ElemTimePart.LE.0.
 
   IF (FILEEXISTS(outfile)) THEN
     OPEN(NEWUNIT=ioUnit,FILE=TRIM(outfile),POSITION="APPEND",STATUS="OLD")
@@ -1159,7 +1235,19 @@ ELSE !
         delimiter,SimulationEfficiency,    &
         delimiter,PID,                     &
         delimiter,WallTime,                &
-        delimiter,InitializationWallTime
+        delimiter,DomainDecompositionWallTime,&
+        delimiter,CommMeshReadinWallTime  ,&
+        delimiter,ReadMeshWallTime        ,&
+        delimiter,InitializationWallTime  ,&
+        delimiter,memory(1)               ,&
+        delimiter,memory(2)               ,&
+        delimiter,memory(3)                &
+        ! delimiter,REAL(nGlobalNbrOfParticles)
+        ! delimiter,ElemTimeField              ,&
+        ! delimiter,ElemTimePart               ,&
+        ! delimiter,ElemTimeFieldPercent       ,&
+        ! delimiter,ElemTimePartPercent
+    ; ! this is required for terminating the "&" when particles=off
     WRITE(ioUnit,'(A)')TRIM(ADJUSTL(tmpStr2)) ! clip away the front and rear white spaces of the data line
     CLOSE(ioUnit)
   ELSE

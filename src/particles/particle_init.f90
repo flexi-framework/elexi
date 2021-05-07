@@ -153,6 +153,9 @@ CALL prms%CreateIntOption(          'Part-RecordMemory'        , 'Record particl
 !                                                               , 'none', numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-RPThresholds[$]'     , 'Record particles threshold'  &
                                                                , '0.,0.,0.,0.,0.,0.', numberedmulti=.TRUE.)
+
+CALL prms%CreateStringOption(       'Part-FilenameRecordPart'  , 'Specifying filename for load_from_file init.'           &
+                                                                , 'data/recordplane_')
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
 !===================================================================================================================================
@@ -274,7 +277,8 @@ CALL prms%CreateStringOption(       'Part-Species[$]-SpaceIC'   , 'Specifying Ke
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
                                                                   ' - cylinder\n'                                                //&
-                                                                  ' - Gaussian\n'                                                  &
+                                                                  ' - Gaussian\n'                                                //&
+                                                                  ' - load_from_file\n'                                            &
                                                                 , 'cuboid'  , numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-Species[$]-BasePointIC','Base point for IC cuboid and IC sphere'                         &
                                                                  , '0. , 0. , 0.', numberedmulti=.TRUE.)
@@ -378,7 +382,8 @@ CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Speci
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
                                                                   ' - cylinder\n'                                                //&
-                                                                  ' - sphere\n'                                                    &
+                                                                  ' - sphere\n'                                                  //&
+                                                                  ' - load_from_file\n'                                            &
                                                                 , 'cuboid'  , numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BasePointIC','Base point for IC cuboid and IC sphere'                 &
                                                                  , '0. , 0. , 0.', numberedmulti=.TRUE.)
@@ -718,6 +723,7 @@ CALL InitializeVariablesRandomNumbers()
 
 ! gravitational acceleration
 PartGravity             = GETREALARRAY('Part-Gravity'          ,3  ,'0. , 0. , 0.')
+FilenameRecordPart      = GETSTR('Part-FilenameRecordPart'     ,'data/recordplane_')
 
 ! Number of species
 nSpecies                = GETINT(     'Part-nSpecies','1')
@@ -735,6 +741,7 @@ LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 ! Initialize record plane of particles
 RecordPart          = GETINT('Part-RecordPart','0')
 IF (RecordPart.GT.0) THEN
+  CALL SYSTEM('mkdir -p recordpoints')
   ! Get size of buffer array
   RPP_maxMemory     = GETINT('Part-RecordMemory','100')           ! Max buffer (100MB)
   RPP_MaxBufferSize = RPP_MaxMemory*131072/6    != size in bytes/(real*RPP_maxMemory)
@@ -940,6 +947,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
+USE MOD_ISO_VARYING_STRING
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -948,8 +956,10 @@ USE MOD_Particle_Vars
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: iSpec,iInit,iExclude
+INTEGER               :: iSpec,iInit,iExclude,j
 CHARACTER(32)         :: tmpStr,tmpStr2,tmpStr3
+CHARACTER(200)        :: Filename_loc             ! specifying keyword for velocity distribution
+INTEGER               :: PartField_shape(2)
 !===================================================================================================================================
 ! Loop over all species and get requested data
 DO iSpec = 1, nSpecies
@@ -1070,6 +1080,27 @@ DO iSpec = 1, nSpecies
         Species(iSpec)%Init(iInit)%BaseVariance      = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-BaseVariance'    ,'1.')
         Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'        ,'1.')
         Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3,'0. , 0. , 1.')
+      CASE('load_from_file')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'        ,'1.')
+        Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3,'0. , 0. , 1.')
+        ! load from binary file
+        IF (MPIRoot) THEN
+          WRITE(FileName_loc,"(A30,I2,A4)") FilenameRecordPart, iSpec-1, ".dat"
+          Filename_loc = TRIM(REPLACE(Filename_loc," ","",Every=.TRUE.))
+          OPEN(33, FILE=TRIM(FileName_loc),FORM="UNFORMATTED", STATUS="UNKNOWN", ACTION="READ", ACCESS='STREAM')
+          READ(33) PartField_shape
+          ALLOCATE(Species(iSpec)%Init(iInit)%PartField(PartField_shape(1), PartField_shape(2)))
+          READ(33) Species(iSpec)%Init(iInit)%PartField(:,:)
+          CLOSE(33)
+        END IF
+#if USE_MPI
+        CALL MPI_BCAST(PartField_shape,2,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+        Species(iSpec)%Init(iInit)%nPartField = PartField_shape(1)
+        IF(.NOT.ALLOCATED(Species(iSpec)%Init(iInit)%PartField))&
+          ALLOCATE(Species(iSpec)%Init(iInit)%PartField(PartField_shape(1), PartField_shape(2)))
+        CALL MPI_BCAST(Species(iSpec)%Init(iInit)%PartField,PartField_shape(1)*PartField_shape(2),MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+#endif
 !      CASE('sin_deviation')
         ! Currently not implemented
       CASE DEFAULT

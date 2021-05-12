@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 
 !===================================================================================================================================
@@ -70,7 +71,7 @@ END FUNCTION CalcEkinPart
 SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies!,PartIndex
+USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies,Species,nSpecies!,PartIndex
 USE MOD_Particle_Analyze_Vars,   ONLY: RPP_MaxBufferSize,RPP_Plane,RecordPart!,RPP_Type
 USE MOD_HDF5_Output             ,ONLY: WriteAttribute
 USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
@@ -86,9 +87,8 @@ REAL,INTENT(IN)             :: OutputTime
 LOGICAL,OPTIONAL,INTENT(IN) :: writeToBinary
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: iPart,iRecord
-!REAL,ALLOCATABLE            :: buffOuttmp(:,:)
-CHARACTER(LEN=200)          :: FileName_loc     ! FileName with data type extension
+INTEGER                        :: iPart,iRecord,iSpecies
+CHARACTER(LEN=200)             :: FileName_loc
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
 INTEGER, PARAMETER          :: RPPDataSize = 7
 INTEGER                     :: locRPP,RPP_glob,offsetRPP
@@ -96,15 +96,23 @@ INTEGER                     :: locRPP,RPP_glob,offsetRPP
 INTEGER                     :: sendbuf(2),recvbuf(2)
 INTEGER                     :: nRecords(0:nProcessors-1)
 #endif
-CHARACTER(LEN=32)           :: tmpStr     ! FileName with data type extension
+CHARACTER(LEN=32)              :: tmpStr
+REAL                           :: DiameterIC(nSpecies), SphericityIC(nSpecies)
+#if USE_EXTEND_RHS
+INTEGER                        :: ForceIC(5,nSpecies)
+#else
+INTEGER                        :: ForceIC(1,nSpecies)
+#endif
 !===================================================================================================================================
 
 !IF(RPP_Type.EQ.'plane')THEN
 DO iRecord = 1,RecordPart
   DO iPart=1,PDM%ParticleVecLength
-    IF ((PartState(1,iPart).GE.RPP_Plane(iRecord)%x(1,1)) .AND. (LastPartPos(1,iPart).LT.RPP_Plane(iRecord)%x(1,1)))THEN
+    IF ((PartState(PART_POS1,iPart).GE.RPP_Plane(iRecord)%x(1,1)) .AND. (LastPartPos(PART_POS1,iPart).LT.RPP_Plane(iRecord)%x(1,1)))THEN
       RPP_Plane(iRecord)%RPP_Records=RPP_Plane(iRecord)%RPP_Records+1
+      ! Part pos and vel
       RPP_Plane(iRecord)%RPP_Data(1:6,RPP_Plane(iRecord)%RPP_Records) = PartState(1:6,iPart)
+      ! Species
       RPP_Plane(iRecord)%RPP_Data(7,RPP_Plane(iRecord)%RPP_Records)   = PartSpecies(iPart)
 !      RPP_Plane(iRecord)%RPP_Data(8,RPP_Plane(iRecord)%RPP_Records)   = PartIndex(iPart)
     END IF
@@ -137,21 +145,43 @@ DO iRecord = 1,RecordPart
     IF(RPP_glob.EQ.0) RETURN
 
     ALLOCATE(StrVarNames(RPPDataSize))
-    StrVarNames(1) ='ParticlePositionX'
-    StrVarNames(2) ='ParticlePositionY'
-    StrVarNames(3) ='ParticlePositionZ'
+    StrVarNames(1) ='PartPosX'
+    StrVarNames(2) ='PartPosY'
+    StrVarNames(3) ='PartPosZ'
     StrVarNames(4) ='VelocityX'
     StrVarNames(5) ='VelocityY'
     StrVarNames(6) ='VelocityZ'
     StrVarNames(7) ='Species'
-!    StrVarNames(8) ='Index'
+
+    ForceIC = 0
 
     WRITE(UNIT=tmpStr,FMT='(I0)') iRecord
-    FileName_loc = TRIM(TIMESTAMP('recordpoints_part'//TRIM(ADJUSTL(tmpStr)),OutputTime))//'.h5'
+    FileName_loc = TRIM(TIMESTAMP('recordpoints/recordpoints_part'//TRIM(ADJUSTL(tmpStr)),OutputTime))//'.h5'
     SWRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileName_loc)
     IF(MPIRoot)THEN
       CALL OpenDataFile(FileName_loc,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
       CALL WriteAttribute(File_ID,'VarNamesPart',RPPDataSize,StrArray=StrVarNames)
+      CALL WriteAttribute(File_ID,'nSpecies',1,IntScalar=nSpecies)
+      DO iSpecies=1,nSpecies
+        SphericityIC(iSpecies) = Species(iSpecies)%SphericityIC
+        DiameterIC(iSpecies)   = Species(iSpecies)%DiameterIC
+        ForceIC(1,iSpecies)    = 1
+#if USE_EXTEND_RHS
+        IF(Species(iSpecies)%CalcLiftForce)       ForceIC(2,iSpecies) = 1
+        IF(Species(iSpecies)%CalcBassetForce)     ForceIC(3,iSpecies) = 1
+        IF(Species(iSpecies)%CalcVirtualMass)     ForceIC(4,iSpecies) = 1
+        IF(Species(iSpecies)%CalcUndisturbedFlow) ForceIC(5,iSpecies) = 1
+#endif
+      END DO
+      CALL WriteAttribute(File_ID,'SphericityIC',nSpecies,RealArray=SphericityIC)
+      CALL WriteAttribute(File_ID,'DiameterIC'  ,nSpecies,RealArray=DiameterIC)
+      CALL WriteAttribute(File_ID,'DragForce'   ,nSpecies,IntArray=ForceIC(1,:))
+#if USE_EXTEND_RHS
+      CALL WriteAttribute(File_ID,'LiftForce'   ,nSpecies,IntArray=ForceIC(2,:))
+      CALL WriteAttribute(File_ID,'BassForce'   ,nSpecies,IntArray=ForceIC(3,:))
+      CALL WriteAttribute(File_ID,'VirtForce'   ,nSpecies,IntArray=ForceIC(4,:))
+      CALL WriteAttribute(File_ID,'UndiForce'   ,nSpecies,IntArray=ForceIC(5,:))
+#endif
       CALL CloseDataFile()
     END IF
 

@@ -60,6 +60,7 @@ PUBLIC :: SetParticlePositionCuboidCylinder
 PUBLIC :: SetParticlePositionSphere
 !PUBLIC :: SetParticlePositionSinDeviation
 PUBLIC :: SetParticlePositionGaussian
+PUBLIC :: SetParticlePositionFromFile
 PUBLIC :: SamplePoissonDistri
 !===================================================================================================================================
 CONTAINS
@@ -904,6 +905,54 @@ DO i=1,chunkSize
 END DO
 
 END SUBROUTINE SetParticlePositionGaussian
+
+
+SUBROUTINE SetParticlePositionFromFile(FractNbr,iInit,chunkSize,particle_positions)
+!===================================================================================================================================
+! position particle along line by drawing it from a Gaussian distribution
+!===================================================================================================================================
+! modules
+USE MOD_Globals
+USE MOD_Particle_Globals       ,ONLY: Pi
+USE MOD_Particle_Vars          ,ONLY: Species
+!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL, INTENT(OUT)       :: particle_positions(:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                    :: Particle_pos(3),RandVal(2),lineVector(3),lineVector2(3),radius
+REAL                    :: argumentTheta
+INTEGER                 :: argumentIndex
+INTEGER                 :: i
+!===================================================================================================================================
+CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+
+DO i=1,chunkSize
+  CALL RANDOM_NUMBER(RandVal)
+  ! expand RandVal from [0,1] to [0,2PI]
+  argumentTheta = RandVal(1) * 2.*PI
+  ! expand RandVal from [0,1] to [0,nPartField]
+  argumentIndex = 1 + FLOOR(RandVal(2)*Species(FractNbr)%Init(iInit)%nPartField)
+  ! Calculate radius
+  radius = SQRT((Species(FractNbr)%Init(iInit)%PartField(argumentIndex,1)-Species(FractNbr)%Init(iInit)%BasePointIC(2))**2+&
+                (Species(FractNbr)%Init(iInit)%PartField(argumentIndex,2)-Species(FractNbr)%Init(iInit)%BasePointIC(3))**2)
+
+  Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC +  &
+                 linevector   * COS(argumentTheta) * radius +  &
+                 linevector2  * SIN(argumentTheta) * radius
+  particle_positions(i*3-2) = Particle_pos(1)
+  particle_positions(i*3-1) = Particle_pos(2)
+  particle_positions(i*3  ) = Particle_pos(3)
+END DO
+
+END SUBROUTINE SetParticlePositionFromFile
 
 
 SUBROUTINE InsideExcludeRegionCheck(FractNbr, iInit, Particle_pos, insideExcludeRegion)

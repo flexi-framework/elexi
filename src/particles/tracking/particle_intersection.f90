@@ -1108,23 +1108,16 @@ END IF
 ! 2.) Bezier intersection: transformation of bezier patch 3D->2D
 ! PartTrajectoryOrig = PartTrajectory
 ! PartTrajectory     = PartTrajectory + epsilontol !move minimal in arb. dir. for preventing collapsing BezierControlPoints2D
-IF (ABS(PartTrajectory(3)).LT.0.) THEN
-  n1=(/-PartTrajectory(2) - PartTrajectory(3), PartTrajectory(1),  PartTrajectory(1) /)
-ELSE
-  n1=(/ PartTrajectory(3),  PartTrajectory(3),-PartTrajectory(1) - PartTrajectory(2) /)
-END IF
+!IF (ABS(PartTrajectory(3)).LT.0.) THEN
+!  n1=(/-PartTrajectory(2) - PartTrajectory(3), PartTrajectory(1),  PartTrajectory(1) /)
+!ELSE
+!  n1=(/ PartTrajectory(3),  PartTrajectory(3),-PartTrajectory(1) - PartTrajectory(2) /)
+!END IF
+n1 = (/-PartTrajectory(2), PartTrajectory(1), 0. /)
 
 ! check angle to boundingbox (height normal vector)
 PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,SideSlabNormals(:,2,CNSideID))))
-IF (ALMOSTZERO(PartFaceAngle*180/ACOS(-1.))) THEN
-  n1 = n1 ! +epsilontol
-END IF
 
-! n1=n1/SQRT(DOT_PRODUCT(n1,n1))
-! n2(:)=(/ PartTrajectory(2)*n1(3)-PartTrajectory(3)*n1(2) &
-!        , PartTrajectory(3)*n1(1)-PartTrajectory(1)*n1(3) &
-!        , PartTrajectory(1)*n1(2)-PartTrajectory(2)*n1(1) /)
-! n2=n2/SQRT(DOT_PRODUCT(n2,n2))
 n1 = UNITVECTOR(n1)
 n2 = CROSSNORM(PartTrajectory,n1)
 !PartTrajectory = PartTrajectoryOrig !set back for preventing angles > 90 deg (0.5pi+eps)
@@ -2319,6 +2312,7 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipLocalTol,FacNchooseK
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierSplitLimit
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints1D,BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
+USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
 #if CODE_ANALYZE
 USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -2708,6 +2702,7 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:BezierSplitLimit
 USE MOD_Particle_Surfaces_Vars,  ONLY:MinMax,XiUp,XiDown,XiBuf
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
+USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
 #if CODE_ANALYZE
 USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -3121,7 +3116,7 @@ END SUBROUTINE OutputTrajectory
 #endif /*CODE_ANALYZE*/
 
 
-SUBROUTINE calcLineNormVec3(BezierControlPoints2D,LineNormVec)
+SUBROUTINE CalcLineNormVec3(BezierControlPoints2D,LineNormVec)
 !================================================================================================================================
 ! Calculate the normal vector for the line Ls (with which the distance of a point to the line Ls is determined)
 ! Ls is the search direction. Ls is constructed via the combination of the left and right bounding vector
@@ -3146,52 +3141,32 @@ REAL,INTENT(INOUT)                   :: LineNormVec(1:2,1:2)
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                 :: Length,doPro
-REAL,DIMENSION(2)                    :: LXi, Leta,Mbar,Mbar2
+REAL,DIMENSION(2)                    :: Lxi,Leta
 !================================================================================================================================
 
 ! compute Lxi vector
 ! 1) the initial Lxi vector is the combination of the two bounding vectors  which point in eta direction
 !     to get the 1D distances of each point via scalar product, we have to right-rotate the vector
-LXi=(BezierControlPoints2D(:,   0,NGeo)-BezierControlPoints2D(:,   0,   0)) + &
+Lxi=(BezierControlPoints2D(:,   0,NGeo)-BezierControlPoints2D(:,   0,   0))+&
     (BezierControlPoints2D(:,NGeo,NGeo)-BezierControlPoints2D(:,NGeo,   0))
-
-Mbar =(BezierControlPoints2D(:,   0,NGeo)-BezierControlPoints2D(:,   0,   0))
-MBar2=(BezierControlPoints2D(:,NGeo,NGeo)-BezierControlPoints2D(:,NGeo,   0))
+! Dcrease the angle between Lxi and Leta about a little bit
+Lxi(1) = (1-1e-4)*Lxi(1)
 
 ! 2) normalization
-Length=SQRT(DOT_PRODUCT(LXi,LXi))
-IF(Length.EQ.0.)THEN
-  print*,'AAARG'
-  STOP
-  LXi=(/0.,1./)
-ELSE
-  LXi=LXi/Length
-END IF
-
-!print*,'Lxi',Lxi
+Length=SQRT(DOT_PRODUCT(Lxi,Lxi))
+Lxi = MERGE((/1.,0./),Lxi/Length,Length.EQ.0)
 
 ! compute Leta vector
 ! 1) the initial Leta vector is the combination of the two bounding vectors  which point in xi direction
 !    to get the 1D distances of each point via scalar product, we have to right-rotate the vector
 Leta=(BezierControlPoints2D(:,NGeo,   0)-BezierControlPoints2D(:,0,   0))+&
      (BezierControlPoints2D(:,NGeo,NGeo)-BezierControlPoints2D(:,0,NGeo))
-
-
-Mbar =(BezierControlPoints2D(:,Ngeo,   0)-BezierControlPoints2D(:,   0,   0))
-MBar2=(BezierControlPoints2D(:,NGeo,NGeo)-BezierControlPoints2D(:,   0,NGeo))
-!print*,'DoProEta',DOT_PRODUCT(MBar,MBar2)
+! Dcrease the angle between Lxi and Leta about a little bit
+Leta(1) = (1+1e-4)*Leta(1)
 
 ! 2) normalization
 Length=SQRT(DOT_PRODUCT(Leta,Leta))
-IF(Length.EQ.0)THEN
-  LXi=(/1.,0./)
-  print*,'BBBBRG'
-  STOP
-ELSE
-  Leta=Leta/Length
-END IF
-
-doPro=DOT_PRODUCT(Lxi,Leta)
+Leta = MERGE((/0.,1./),Leta/Length,Length.EQ.0)
 
 ! 3) rotate  both vectors by -90 degree
 LineNormVec(1,1) =-LXi (2)
@@ -3199,7 +3174,7 @@ LineNormVec(2,1) = LXi (1)
 LineNormVec(1,2) =-Leta(2) ! stephen meint minus1
 LineNormVec(2,2) = Leta(1)
 
-END SUBROUTINE calcLineNormVec3
+END SUBROUTINE CalcLineNormVec3
 
 
 SUBROUTINE CalcSminSmax2(minmax,Smin,Smax,iter)

@@ -706,27 +706,27 @@ DO iPart=1,PDM%ParticleVecLength
           END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
-        ! Particle detected inside of face and PartTrajectory parallel to face
-        IF (isCriticalParallelInFace) THEN
-          IPWRITE(UNIT_stdOut,'(I0,A)')    ' Warning: Particle located inside of face and moves parallel to side. Undefined position.'
-          IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Removing particle with id: ',iPart
-          PartIsDone                = .TRUE.
-          PDM%ParticleInside(iPart) = .FALSE.
-          IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles + 1
-          EXIT
-        END IF
-        IF(foundHit) THEN
-          currentIntersect => lastIntersect
-          CALL AssignListPosition(currentIntersect,locAlpha,iLocSide,1,xi_IN=xi,eta_IN=eta)
-          currentIntersect => lastIntersect
-          lastIntersect    => currentIntersect%next
-          lastIntersect%prev => currentIntersect
-          IF((ABS(xi).GE.0.99).OR.(ABS(eta).GE.0.99)) markTol=.TRUE.
-          !IF(ALMOSTZERO(locAlpha)) markTol=.TRUE.
-          !IF(locAlpha/lengthPartTrajectory.GE.0.99 .OR. locAlpha/lengthPartTrajectory.LT.0.01) markTol=.TRUE.
-        END IF
+          ! Particle detected inside of face and PartTrajectory parallel to face
+          IF (isCriticalParallelInFace) THEN
+            IPWRITE(UNIT_stdOut,'(I0,A)')    ' Warning: Particle located inside of face and moves parallel to side. Undefined position.'
+            IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Removing particle with id: ',iPart
+            PartIsDone                = .TRUE.
+            PDM%ParticleInside(iPart) = .FALSE.
+            IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles + 1
+            EXIT
+          END IF
+          IF(foundHit) THEN
+            currentIntersect => lastIntersect
+            CALL AssignListPosition(currentIntersect,locAlpha,iLocSide,1,xi_IN=xi,eta_IN=eta)
+            currentIntersect => lastIntersect
+            lastIntersect    => currentIntersect%next
+            lastIntersect%prev => currentIntersect
+            IF((ABS(xi).GE.0.99).OR.(ABS(eta).GE.0.99)) markTol=.TRUE.
+            !IF(ALMOSTZERO(locAlpha)) markTol=.TRUE.
+            !IF(locAlpha/lengthPartTrajectory.GE.0.99 .OR. locAlpha/lengthPartTrajectory.LT.0.01) markTol=.TRUE.
+          END IF
+        END DO ! ilocSide
 
-      END DO ! ilocSide
         IF (UseAuxBCs) THEN
           DO iAuxBC=1,nAuxBCs
             locAlpha=-1

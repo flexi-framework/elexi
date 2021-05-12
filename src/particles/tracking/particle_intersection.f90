@@ -1106,21 +1106,12 @@ ELSE
 END IF
 
 ! 2.) Bezier intersection: transformation of bezier patch 3D->2D
-! PartTrajectoryOrig = PartTrajectory
-! PartTrajectory     = PartTrajectory + epsilontol !move minimal in arb. dir. for preventing collapsing BezierControlPoints2D
-!IF (ABS(PartTrajectory(3)).LT.0.) THEN
-!  n1=(/-PartTrajectory(2) - PartTrajectory(3), PartTrajectory(1),  PartTrajectory(1) /)
-!ELSE
-!  n1=(/ PartTrajectory(3),  PartTrajectory(3),-PartTrajectory(1) - PartTrajectory(2) /)
-!END IF
-n1 = (/-PartTrajectory(2), PartTrajectory(1), 0. /)
+CALL Find2DIndependentVectors(PartTrajectory,n1,n2)
+n1 = UNITVECTOR(n1)
+n2 = UNITVECTOR(n2)
 
 ! check angle to boundingbox (height normal vector)
 PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,SideSlabNormals(:,2,CNSideID))))
-
-n1 = UNITVECTOR(n1)
-n2 = CROSSNORM(PartTrajectory,n1)
-!PartTrajectory = PartTrajectoryOrig !set back for preventing angles > 90 deg (0.5pi+eps)
 
 ! projection like Nishita
 ! plane 1 with n1 becomes y-axis and plane 2 with n2 becomes the x-axis

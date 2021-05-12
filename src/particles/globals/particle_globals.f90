@@ -53,13 +53,21 @@ INTERFACE DOTPRODUCT
   MODULE PROCEDURE DOTPRODUCT
 END INTERFACE DOTPRODUCT
 
+INTERFACE OrthoNormVec
+  MODULE PROCEDURE OrthoNormVec
+END INTERFACE OrthoNormVec
+
 INTERFACE UnitVector
   MODULE PROCEDURE UnitVector
 END INTERFACE UnitVector
 
-INTERFACE OrthoNormVec
-  MODULE PROCEDURE OrthoNormVec
-END INTERFACE OrthoNormVec
+INTERFACE FindLinIndependentVectors
+  MODULE PROCEDURE FindLinIndependentVectors
+END INTERFACE FindLinIndependentVectors
+
+INTERFACE Find2DIndependentVectors
+  MODULE PROCEDURE Find2DIndependentVectors
+END INTERFACE Find2DIndependentVectors
 
 INTERFACE GETFREEUNIT
   MODULE PROCEDURE GETFREEUNIT
@@ -80,6 +88,9 @@ PUBLIC :: AlmostZero
 PUBLIC :: AlmostEqual
 PUBLIC :: DOTPRODUCT
 PUBLIC :: UnitVector
+PUBLIC :: OrthoNormVec
+PUBLIC :: FindLinIndependentVectors
+PUBLIC :: Find2DIndependentVectors
 PUBLIC :: RandNormal
 PUBLIC :: StringBeginsWith
 !===================================================================================================================================
@@ -252,7 +263,7 @@ PURE FUNCTION UNITVECTOR(v1)
 ! compute  a unit vector from a given vector
 !===================================================================================================================================
 ! MODULES
-USE Mod_Globals
+USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -269,6 +280,86 @@ invL=SQRT(v1(1)*v1(1)+v1(2)*v1(2)+v1(3)*v1(3))
 invL=1./invL
 UNITVECTOR=v1*invL
 END FUNCTION UNITVECTOR
+
+
+SUBROUTINE FindLinIndependentVectors(NormalVector, Vector1, Vector2)
+!===================================================================================================================================
+!> Finds two linear vectors of a normal vector around a base point
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL, INTENT(IN) :: NormalVector(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL, INTENT(OUT) :: Vector1(3), Vector2(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! Find the second vector which is in the normal plane
+IF (NormalVector(1).NE.0) THEN
+  Vector1(1) = (0 - NormalVector(2) - NormalVector(3)) / NormalVector(1)
+  Vector1(2) = 1
+  Vector1(3) = 1
+ELSE IF (NormalVector(2).NE.0) THEN
+  Vector1(1) = 1
+  Vector1(2) = (0 - NormalVector(1) - NormalVector(3)) / NormalVector(2)
+  Vector1(3) = 1
+ELSE IF (NormalVector(3).NE.0) THEN
+  Vector1(1) = 1
+  Vector1(2) = 1
+  Vector1(3) = (0 - NormalVector(1) - NormalVector(2)) / NormalVector(3)
+ELSE
+  CALL abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
+END IF
+
+! Find the third vecord vector with the cross product
+Vector2(1) = NormalVector(2)*Vector1(3) - NormalVector(3)*Vector1(2)
+Vector2(2) = NormalVector(3)*Vector1(1) - NormalVector(1)*Vector1(3)
+Vector2(3) = NormalVector(1)*Vector1(2) - NormalVector(2)*Vector1(1)
+END SUBROUTINE FindLinIndependentVectors
+
+
+SUBROUTINE Find2DIndependentVectors(NormalVector, Vector1, Vector2)
+!===================================================================================================================================
+!> Finds two linear vectors of a normal vector around a base point
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL, INTENT(IN) :: NormalVector(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL, INTENT(OUT) :: Vector1(3),Vector2(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! Find the second vector which is in the normal plane
+IF (NormalVector(1).NE.0) THEN
+  Vector1 = (/-NormalVector(2), NormalVector(1) , 0.             /)
+  Vector2 = (/              0.,-NormalVector(3) , NormalVector(1)/)
+
+ELSE IF (NormalVector(2).NE.0) THEN
+  Vector1 = (/-NormalVector(2), NormalVector(1) , 0.             /)
+  Vector2 = (/              0.,-NormalVector(3) , NormalVector(2)/)
+
+ELSE IF (NormalVector(3).NE.0) THEN
+  Vector1 = (/-NormalVector(3),               0., NormalVector(1)/)
+  Vector2 = (/              0.,-NormalVector(3) , NormalVector(2)/)
+
+ELSE
+  CALL abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
+END IF
+END SUBROUTINE Find2DIndependentVectors
+
 
 FUNCTION GETFREEUNIT()
 !===================================================================================================================================

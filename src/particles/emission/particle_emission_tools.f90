@@ -436,7 +436,7 @@ SUBROUTINE SetParticlePositionCross(FractNbr,iInit,chunkSize,particle_positions)
 ! Set particle position
 !===================================================================================================================================
 ! Modules
-USE MOD_Particle_Globals       ,ONLY: VECNORM
+USE MOD_Particle_Globals       ,ONLY: VECNORM,FindLinIndependentVectors
 USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -523,7 +523,7 @@ SUBROUTINE SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
 ! Set particle position
 !===================================================================================================================================
 ! Modules
-USE MOD_Particle_Globals       ,ONLY: VECNORM
+USE MOD_Particle_Globals       ,ONLY: VECNORM,FindLinIndependentVectors
 USE MOD_Particle_Vars          ,ONLY: Species
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -566,7 +566,7 @@ SUBROUTINE SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions
 ! Set particle position
 !===================================================================================================================================
 ! modules
-USE MOD_Particle_Globals       ,ONLY: Pi
+USE MOD_Particle_Globals       ,ONLY: Pi,FindLinIndependentVectors
 USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -911,7 +911,7 @@ SUBROUTINE SetParticlePositionFromFile(FractNbr,iInit,chunkSize,particle_positio
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
-USE MOD_Particle_Globals       ,ONLY: Pi
+USE MOD_Particle_Globals       ,ONLY: Pi,FindLinIndependentVectors
 USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -929,6 +929,7 @@ REAL                    :: argumentTheta
 INTEGER                 :: argumentIndex
 INTEGER                 :: i
 !===================================================================================================================================
+
 CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
 CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
 
@@ -1055,49 +1056,6 @@ DO iExclude=1,Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions
 END DO
 
 END SUBROUTINE InsideExcludeRegionCheck
-
-
-SUBROUTINE FindLinIndependentVectors(NormalVector, Vector1, Vector2)
-!===================================================================================================================================
-!> Finds two linear vectors of a normal vector around a base point
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL, INTENT(IN) :: NormalVector(3)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL, INTENT(OUT) :: Vector1(3), Vector2(3)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-
-! Find the second vector which is in the normal plane
-IF (NormalVector(1).NE.0) THEN
-  Vector1(1) = (0 - NormalVector(2) - NormalVector(3)) / NormalVector(1)
-  Vector1(2) = 1
-  Vector1(3) = 1
-ELSE IF (NormalVector(2).NE.0) THEN
-  Vector1(1) = 1
-  Vector1(2) = (0 - NormalVector(1) - NormalVector(3)) / NormalVector(2)
-  Vector1(3) = 1
-ELSE IF (NormalVector(3).NE.0) THEN
-  Vector1(1) = 1
-  Vector1(2) = 1
-  Vector1(3) = (0 - NormalVector(1) - NormalVector(2)) / NormalVector(3)
-ELSE
-  CALL abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
-END IF
-
-! Find the third vecord vector with the cross product
-Vector2(1) = NormalVector(2)*Vector1(3) - NormalVector(3)*Vector1(2)
-Vector2(2) = NormalVector(3)*Vector1(1) - NormalVector(1)*Vector1(3)
-Vector2(3) = NormalVector(1)*Vector1(2) - NormalVector(2)*Vector1(1)
-
-END SUBROUTINE FindLinIndependentVectors
 
 
 PURE SUBROUTINE GramSchmidtAlgo(Vector1, Vector2, Vector3)

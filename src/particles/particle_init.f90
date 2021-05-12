@@ -485,6 +485,12 @@ CALL prms%CreateStringOption(       'Part-Boundary[$]-WallCoeffModel', 'Coeffici
                                                                   ' - Whitaker2018\n'                                            //&
                                                                   ' - Fong2019'                                                    &
                                                                             , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Boundary[$]-RoughWall'  ,'Rough wall modelling is used.'                                 &
+                                                                  ,'.FALSE.', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-RoughMeanIC', 'Mean of Gaussian dist..'                                      &
+                                                                  ,'0.0', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-RoughVarianceIC', 'Mean of Gaussian dist..'                                  &
+                                                                  ,'1.0', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-Young'    , "Young's modulus defining stiffness of wall material"            &
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-Poisson'  , "Poisson ratio defining relation of transverse to axial strain"  &
@@ -497,6 +503,8 @@ CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC' , "Poisson ratio
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff', "Yield strength defining elastic deformation"                    &
                                                                 ,'0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-RoughWall' , "Enables rough wall modelling"                                   &
+                                                                ,'.TRUE.'   , numberedmulti=.TRUE.)
 ! if nInit > 0 some variables have to be defined twice
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-YoungIC'   , "Young's modulus defining stiffness of particle material"&
                                                                 , '0.'      , numberedmulti=.TRUE.)
@@ -504,6 +512,8 @@ CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-PoissonIC' , "Poiss
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-YieldCoeff', "Yield strength defining elastic deformation"            &
                                                                 ,'0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-RoughWall',  "Enables rough wall modelling"                           &
+                                                                ,'.TRUE.'   , numberedmulti=.TRUE.)
 
 ! Ambient condition ================================================================================================================
 CALL prms%CreateLogicalOption(      'Part-Boundary[$]-AmbientCondition', 'Use ambient condition (condition "behind" boundary).'    &
@@ -999,7 +1009,10 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%PoissonIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PoissonIC'          ,'0.')
   Species(iSpec)%YieldCoeff            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YieldCoeff'         ,'0.')
 
-  !-- Check if particles have valid mass/density
+  !--> Rough wall modelling
+  Species(iSpec)%doRoughWallModelling  = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RoughWall'          ,'.TRUE.')
+
+  !--> Check if particles have valid mass/density
   IF (Species(iSpec)%MassIC .LE. 0.    .AND..NOT.(Species(iSpec)%RHSMethod.EQ.RHS_NONE          &
                                        .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TRACER        &
                                        .OR.       Species(iSpec)%RHSMethod.EQ.RHS_CONVERGENCE)) &
@@ -1325,13 +1338,16 @@ SWRITE(UNIT_StdOut,'(132("."))')
 SWRITE(UNIT_StdOut,'(A)') ' | Reading particle boundary properties'
 
 ! Allocate arrays for particle boundaries
-ALLOCATE(PartBound%SourceBoundName    (1:nBCs))
-ALLOCATE(PartBound%SourceBoundType    (1:nBCs))
-ALLOCATE(PartBound%TargetBoundCond    (1:nBCs))
-ALLOCATE(PartBound%WallTemp           (1:nBCs))
-ALLOCATE(PartBound%WallVelo       (1:3,1:nBCs))
-ALLOCATE(PartBound%WallModel          (1:nBCs))
-ALLOCATE(PartBound%WallCoeffModel     (1:nBCs))
+ALLOCATE(PartBound%SourceBoundName     (1:nBCs))
+ALLOCATE(PartBound%SourceBoundType     (1:nBCs))
+ALLOCATE(PartBound%TargetBoundCond     (1:nBCs))
+ALLOCATE(PartBound%WallTemp            (1:nBCs))
+ALLOCATE(PartBound%WallVelo        (1:3,1:nBCs))
+ALLOCATE(PartBound%WallModel           (1:nBCs))
+ALLOCATE(PartBound%WallCoeffModel      (1:nBCs))
+ALLOCATE(PartBound%doRoughWallModelling(1:nBCs))
+ALLOCATE(PartBound%RoughMeanIC         (1:nBCs))
+ALLOCATE(PartBound%RoughVarianceIC     (1:nBCs))
 !ALLOCATE(PartBound%AmbientCondition   (1:nBCs))
 !ALLOCATE(PartBound%AmbientConditionFix(1:nBCs))
 !ALLOCATE(PartBound%AmbientTemp        (1:nBCs))
@@ -1340,15 +1356,15 @@ ALLOCATE(PartBound%WallCoeffModel     (1:nBCs))
 !ALLOCATE(PartBound%AmbientDynamicVisc (1:nBCs))
 
 ! Bons particle rebound model
-ALLOCATE(PartBound%Young              (1:nBCs))
-ALLOCATE(PartBound%Poisson            (1:nBCs))
+ALLOCATE(PartBound%Young               (1:nBCs))
+ALLOCATE(PartBound%Poisson             (1:nBCs))
 
 ! Fong coefficent of restitution
-ALLOCATE(PartBound%CoR                (1:nBCs))
-ALLOCATE(tmpStringBC                  (1:nBCs))
+ALLOCATE(PartBound%CoR                 (1:nBCs))
+ALLOCATE(tmpStringBC                   (1:nBCs))
 
 ! Surface Flux
-ALLOCATE(BCdata_auxSF                 (1:nBCs))
+ALLOCATE(BCdata_auxSF                  (1:nBCs))
 DO iBC=1,nBCs
   ! init value when not used
   BCdata_auxSF(iBC)%SideNumber = -1
@@ -1406,6 +1422,13 @@ DO iBC = 1,nBCs
       PartBound%WallVelo(1:3,iBC)         = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-WallVelo'         ,3,'0. , 0. , 0.')
       PartBound%WallModel(iBC)            = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallModel'          ,'perfRef')
 
+      ! Rough wall modelling
+      PartBound%doRoughWallModelling(iBC) = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-RoughWall'          ,'.FALSE.')
+      IF (PartBound%doRoughWallModelling(iBC)) THEN
+        PartBound%RoughMeanIC(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughMeanIC'        ,'0.0')
+        ! Variance in degree, default 20 degree
+        PartBound%RoughVarianceIC(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughVarianceIC'    ,'5.0')
+      END IF
       ! Non-perfect reflection
       IF (PartBound%WallModel(iBC).EQ.'coeffRes') THEN
           PartBound%WallCoeffModel(iBC)   = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallCoeffModel'     ,'Tabakoff1981')

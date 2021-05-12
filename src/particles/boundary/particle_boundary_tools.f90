@@ -151,7 +151,7 @@ DO iAuxBC=1,nAuxBCs
         IF (n_vec(3).LT.0.) backwards = .TRUE.
       ELSE
         cartesian=.FALSE.
-        SWRITE(*,*) 'WARNING in MarkAuxBCElems: all Elems are set to ElemHasAuxBCs=.TRUE. for AuxBC:',iAuxBC
+        SWRITE(UNIT_stdOut,'(A,I0)') 'WARNING in MarkAuxBCElems: all Elems are set to ElemHasAuxBCs=.TRUE. for AuxBC:',iAuxBC
         ElemHasAuxBCs(:,iAuxBC) = .TRUE. !actual intersection with box check to-be implemented!!!
       END IF
 
@@ -215,7 +215,7 @@ DO iAuxBC=1,nAuxBCs
       ElemHasAuxBCs(:,iAuxBC) = .TRUE.
 
     CASE DEFAULT
-      SWRITE(*,*) ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
+      SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
       CALL abort(__STAMP__,'AuxBC does not exist')
   END SELECT
 END DO

@@ -488,9 +488,7 @@ SUBROUTINE SetParticlePositionPlane(FractNbr,iInit,chunkSize,particle_positions)
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
-USE MOD_Particle_Timedisc_Vars ,ONLY: RKdtFrac
 USE MOD_Particle_Vars          ,ONLY: Species
-USE MOD_Timedisc_Vars          ,ONLY: dt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -775,7 +773,7 @@ END SUBROUTINE SetParticlePositionSphere
 !  IF(Species(FractNbr)%Init(iInit)%initialParticleNumber.NE. &
 !      (Species(FractNbr)%Init(iInit)%maxParticleNumberX * Species(FractNbr)%Init(iInit)%maxParticleNumberY &
 !      * Species(FractNbr)%Init(iInit)%maxParticleNumberZ)) THEN
-!   SWRITE(*,*) 'for species ',FractNbr,' does not match number of particles in each direction!'
+!   SWRITE(Unit_stdOut,'(A,I0,A)') 'for species ',FractNbr,' does not match number of particles in each direction!'
 !   CALL abort(__STAMP__,'ERROR: Number of particles in init / emission region',iInit)
 !  END IF
 !  xlen = ABS(GEO%xmaxglob  - GEO%xminglob)

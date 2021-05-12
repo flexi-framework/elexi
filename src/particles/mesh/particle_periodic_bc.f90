@@ -120,7 +120,7 @@ IMPLICIT NONE
 REAL                   :: eps(1:3)!,dummy
 !===================================================================================================================================
 
-LOGWRITE(*,*) 'nPeriodicVectors = ',GEO%nPeriodicVectors
+LOGWRITE(Unit_stdOut,'(A,I0)') ' nPeriodicVectors = ',GEO%nPeriodicVectors
 IF ((GEO%nPeriodicVectors.GT.3).OR.(GEO%nPeriodicVectors.LT.0)) &
   CALL abort(__STAMP__,'nPeriodicVectors must be >= 0 and <= 3!',GEO%nPeriodicVectors,999.)
 

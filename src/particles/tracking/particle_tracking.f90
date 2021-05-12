@@ -230,12 +230,12 @@ DO i = 1,PDM%ParticleVecLength
           ! the determinants
           IF (NrOfThroughSides.EQ.0) THEN
             ! Particle appears to have not crossed any of the checked sides. Deleted!
-            IPWRITE(*,*) 'Error in Particle TriaTracking! Particle Number',i,'lost. Element:', ElemID,'(species:',PartSpecies(i),')'
-            IPWRITE(*,*) 'LastPos: ', LastPartPos(1:3,i)
-            IPWRITE(*,*) 'Pos:     ', PartState(1:3,i)
-            IPWRITE(*,*) 'Velo:    ', PartState(4:6,i)
-            ! Halo branch of PICLas does not loose particles anymore, so try to abort instead of just warn
-!            IPWRITE(*,*) 'Particle deleted!'
+            IPWRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' Error in Particle TriaTracking! Particle Number',i,'lost. Element:', ElemID,'(species:',PartSpecies(i),')'
+            IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' LastPos: ', LastPartPos(1:3,i)
+            IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' Pos:     ', PartState(1:3,i)
+            IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' Velo:    ', PartState(4:6,i)
+            ! PICLas v2.0 does not loose particles anymore, so try to abort instead of just warn
+!            IPWRITE(Unit_stdOut,'(A)') 'Particle deleted!'
             CALL ABORT(__STAMP__,'Lost particle detected during TriaTracking!')
 !            PDM%ParticleInside(i) = .FALSE.
 !            IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
@@ -332,12 +332,13 @@ DO i = 1,PDM%ParticleVecLength
 
             ! Particle that went through multiple sides first, but did not cross any sides during the second check -> Deleted!
             IF (SecondNrOfThroughSides.EQ.0) THEN
-              IPWRITE(*,*) 'Error in Particle TriaTracking! Particle Number',i,'lost. Element:', ElemID,'(species:',PartSpecies(i),')'
-              IPWRITE(*,*) 'LastPos: ', LastPartPos(1:3,i)
-              IPWRITE(*,*) 'Pos:     ', PartState(1:3,i)
-              IPWRITE(*,*) 'Velo:    ', PartState(4:6,i)
-              ! Halo branch of PICLas does not loose particles anymore, so try to abort instead of just warn
-!              IPWRITE(*,*) 'Particle deleted!'
+              ! Particle appears to have not crossed any of the checked sides. Deleted!
+              IPWRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' Error in Particle TriaTracking! Particle Number',i,'lost. Element:', ElemID,'(species:',PartSpecies(i),')'
+              IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' LastPos: ', LastPartPos(1:3,i)
+              IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' Pos:     ', PartState(1:3,i)
+              IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' Velo:    ', PartState(4:6,i)
+              ! PICLas v2.0 does not loose particles anymore, so try to abort instead of just warn
+!              IPWRITE(Unit_stdOut,'(A)') 'Particle deleted!'
               CALL ABORT(__STAMP__,'Lost particle detected during TriaTracking!')
 !              PDM%ParticleInside(i) = .FALSE.
 !              IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
@@ -391,7 +392,7 @@ DO i = 1,PDM%ParticleVecLength
         CNElemID = GetCNElemID(ElemID)
 
         IF (CNElemID.LT.1) THEN
-          IPWRITE(UNIT_stdout,*) 'Particle Velocity: ',SQRT(DOTPRODUCT(PartState(4:6,i)))
+          IPWRITE(UNIT_stdout,'(A,F12.6)') 'Particle Velocity: ',SQRT(DOTPRODUCT(PartState(4:6,i)))
           CALL ABORT(__STAMP__,'ERROR: Element not defined! Please increase the size of the halo region (HaloEpsVelo)!')
         END IF
         TrackInfo%CurrElem = ElemID
@@ -544,9 +545,9 @@ DO iPart=1,PDM%ParticleVecLength
       foundHit = .FALSE.
     END IF
     IF(.NOT.foundHit)THEN  ! particle not inside
-      IPWRITE(UNIT_stdOut,'(I0,A)') ' PartPos not inside of element! '
-      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' PartID         ', iPart
-      IPWRITE(UNIT_stdOut,'(I0,A,I0)')  ' global ElemID  ', ElemID
+      IPWRITE(UNIT_stdOut,'(I0,A)')                 ' PartPos not inside of element! '
+      IPWRITE(UNIT_stdOut,'(I0,A,I0)')              ' PartID             ', iPart
+      IPWRITE(UNIT_stdOut,'(I0,A,I0)')              ' global ElemID      ', ElemID
       IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' ElemBaryNGeo:      ', ElemBaryNGeo(1:3,CNElemID)
       IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' LastPartPos:       ', LastPartPos(1:3,iPart)
       IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' PartPos:           ', PartState(1:3,iPart)
@@ -923,17 +924,17 @@ DO iPart=1,PDM%ParticleVecLength
         WRITE(UNIT_stdout,'(A)')             '     | Output of tracking information after the check of number of intersections: '
         WRITE(UNIT_stdout,'(4(A,L))')        '     | crossed Side: ',crossedBC,' switched Element: ',SwitchedElement,&
           ' Particle tracking done: ',PartisDone,' Particle is double checked: ',PartDoubleCheck
-          IF(SwitchedElement) THEN
-            WRITE(UNIT_stdout,'(A,I0,A,I0)')  '     | First_ElemID: ',PEM%LastElement(iPart),' | new Element: ',ElemID
+        IF(SwitchedElement) THEN
+          WRITE(UNIT_stdout,'(A,I0,A,I0)')  '     | First_ElemID: ',PEM%LastElement(iPart),' | new Element: ',ElemID
           WRITE(UNIT_stdOut,'(A,I0)')         '     | first global ElemID     ', PEM%LastElement(iPart)
           WRITE(UNIT_stdOut,'(A,I0)')         '     | new global ElemID       ', ElemID
-            END IF
-          IF( crossedBC) THEN
-            WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Last    PartPos:        ',lastPartPos(1:3,iPart)
-            WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Current PartPos:        ',PartState(1:3,iPart)
-            WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | PartTrajectory:         ',PartTrajectory(1:3)
-            WRITE(UNIT_stdout,'(A,(G0))')    '     | Length PartTrajectory:  ',lengthPartTrajectory
-          END IF
+        END IF
+        IF( crossedBC) THEN
+          WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Last    PartPos:        ',lastPartPos(1:3,iPart)
+          WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Current PartPos:        ',PartState(1:3,iPart)
+          WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | PartTrajectory:         ',PartTrajectory(1:3)
+          WRITE(UNIT_stdout,'(A,(G0))')    '     | Length PartTrajectory:  ',lengthPartTrajectory
+        END IF
         WRITE(UNIT_stdout,'(128("="))')
       END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
@@ -1345,10 +1346,10 @@ DO iPart=1,PDM%ParticleVecLength
 #if USE_MPI
           InElem=PEM%Element(iPart)
           IF(InElem.LE.PP_nElems)THEN
-            IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = F'
+            IPWRITE(UNIT_stdout,'(I0,A)')    ' halo-elem = F'
             IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' ElemID                ', InElem+offSetElem
           ELSE
-            IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = T'
+            IPWRITE(UNIT_stdout,'(I0,A)')    ' halo-elem = T'
 !            IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' ElemID       ', offSetElemMPI(PartHaloElemToProc(NATIVE_PROC_ID,InElem)) &
 !                                                   + PartHaloElemToProc(NATIVE_ELEM_ID,InElem)
           END IF
@@ -1683,7 +1684,7 @@ DO WHILE(DoTracing)
         IF (ElemID.NE.OldElemID) THEN
           ! Try to recursively calculate the intersection 1000 times. Threshold might be changed...
           IF (iCount.GE.1000 .AND. MOD(iCount,1000).EQ.0) THEN
-            IPWRITE(*,'(I4,A,I0,A,3(1X,I0))') ' WARNING: proc has called BCTracking ',iCount  &
+            IPWRITE(Unit_stdOut,'(I4,A,I0,A,3(1X,I0))') ' WARNING: proc has called BCTracking ',iCount  &
               ,'x recursively! Part, Side, Elem:',PartId,SideID,ElemID
           END IF
 
@@ -1837,8 +1838,8 @@ ELSE
   v2 = v1  - ElemBaryNGeo(:,ElemID)
 
   IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
-    IPWRITE(UNIT_stdout,*) 'Obtained wrong side orientation from flip. SideID:',SideID,'flip:',flip,'PartID:',PartID
-    IPWRITE(UNIT_stdout,*) 'n_loc (flip)', n_loc,'n_loc (estimated):',v2
+    IPWRITE(UNIT_stdout,'(A,I0,A,I0,A,I0)') ' Obtained wrong side orientation from flip. SideID:',SideID,'flip:',flip,'PartID:',PartID
+    IPWRITE(UNIT_stdout,'(A,I0,A,3F12.6)')  ' n_loc (flip)', n_loc,'n_loc (estimated):',v2
     CALL ABORT(__STAMP__,'SideID',SideID)
   END IF
 #endif /* CODE_ANALYZE */
@@ -1851,8 +1852,8 @@ ELSE
 
 #if CODE_ANALYZE
   WRITE(UNIT_stdout,'(30("-"))')
-  WRITE(UNIT_stdout,*) 'ElemID:',ElemID,'PartID',PartID,'SideID:',SideID,'Move rel. to Side:',DOT_PRODUCT(n_loc,PartTrajectory),'NbElemID:',NbElemID, 'PartElem (w/o refl.)', SinglePointToElement(PartState(1:3,PartID),doHalo=.TRUE.)
-  WRITE(UNIT_stdout,*) 'PartPos',PartState(1:3,PartID), 'PartVel:',PartState(4:6,PartID)
+  WRITE(UNIT_stdout,'(A,I0,A,I0,A,F12.6,A,I0,A,I0)') ' ElemID:',ElemID,'PartID',PartID,'SideID:',SideID,'Move rel. to Side:',DOT_PRODUCT(n_loc,PartTrajectory),'NbElemID:',NbElemID, 'PartElem (w/o refl.)', SinglePointToElement(PartState(1:3,PartID),doHalo=.TRUE.)
+  WRITE(UNIT_stdout,'(A,3F12.6,A,3F12.6)')           ' PartPos',PartState(1:3,PartID), 'PartVel:',PartState(4:6,PartID)
 #endif /* CODE_ANALYZE */
 
   IF (NbElemID.LT.0) THEN ! Mortar side
@@ -1909,7 +1910,7 @@ ELSE
     END DO
 
     ! passed none of the mortar elements. Keep particle inside current element and warn
-    IPWRITE(UNIT_stdOut,*) 'Boundary issue with inner mortar element', ElemID
+    IPWRITE(UNIT_stdOut,'(A,I0)') 'Boundary issue with inner mortar element', ElemID
 
   ! regular side
   ELSE
@@ -2073,33 +2074,33 @@ IF(FastPeriodic)THEN
   ! x direction
   IF(GEO%directions(1)) THEN
     IF(PartState(1,PartID).GT.GEO%xmaxglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
+      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside x+, PartID',PartID)
     END IF
     IF(PartState(1,PartID).LT.GEO%xminglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
+      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside x-, PartID',PartID)
     END IF
   END IF
   ! y direction
   IF(GEO%directions(2)) THEN
     IF(PartState(2,PartID).GT.GEO%ymaxglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
+      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside y+, PartID',PartID)
     END IF
     IF(PartState(2,PartID).LT.GEO%yminglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
+      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside y-, PartID',PartID)
     END IF
   END IF
   ! z direction
   IF(GEO%directions(3)) THEN
     IF(PartState(3,PartID).GT.GEO%zmaxglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
+      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside z+, PartID',PartID)
     END IF
     IF(PartState(3,PartID).LT.GEO%zminglob) THEN
-      IPWRITE(*,*) 'PartPos', PartState(:,PartID)
+      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__ ,' particle outside z-, PartID',PartID)
     END IF
   END IF

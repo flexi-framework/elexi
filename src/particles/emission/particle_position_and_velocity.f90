@@ -133,10 +133,11 @@ SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
 USE MOD_Globals
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,doPartIndex
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
-USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition,SetParticlePositionPoint
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine,SetParticlePositionDisk
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionCuboidCylinder,SetParticlePositionCircle
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionSphere,SetParticlePositionCross
+USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionPoint
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionPlane,SetParticlePositionDisk,SetParticlePositionCross,SetParticlePositionCircle
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionCuboidCylinder,SetParticlePositionSphere
 !USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionSinDeviation
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionGaussian
 #if USE_MPI
@@ -212,23 +213,25 @@ IF (PartMPI%InitGroup(InitGroup)%MPIROOT.OR.nChunks.GT.1) THEN
   !------------------SpaceIC-cases: start-----------------------------------------------------------!
   SELECT CASE(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC))
   CASE ('point')
-    CALL SetParticlePositionPoint(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionPoint(         FractNbr,iInit,chunkSize,particle_positions)
   CASE ('line_with_equidistant_distribution')
-    CALL SetParticlePositionEquidistLine(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionEquidistLine(  FractNbr,iInit,chunkSize,particle_positions)
   CASE ('line')
-    CALL SetParticlePositionLine(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionLine(          FractNbr,iInit,chunkSize,particle_positions)
   CASE ('Gaussian')
-    CALL SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionGaussian(      FractNbr,iInit,chunkSize,particle_positions)
+  CASE('plane')
+    CALL SetParticlePositionPlane(         FractNbr,iInit,chunkSize,particle_positions)
   CASE('disc')
-    CALL SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionDisk(          FractNbr,iInit,chunkSize,particle_positions)
   CASE('cross')
-    CALL SetParticlePositionCross(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionCross(         FractNbr,iInit,chunkSize,particle_positions)
   CASE('circle', 'circle_equidistant')
-    CALL SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionCircle(        FractNbr,iInit,chunkSize,particle_positions)
   CASE('cuboid','cylinder')
     CALL SetParticlePositionCuboidCylinder(FractNbr,iInit,chunkSize,particle_positions)
   CASE('sphere')
-    CALL SetParticlePositionSphere(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionSphere(        FractNbr,iInit,chunkSize,particle_positions)
 !  CASE('sin_deviation')
 !    CALL SetParticlePositionSinDeviation(FractNbr,iInit,chunkSize,particle_positions)
   END SELECT

@@ -125,6 +125,12 @@ DO iSpec=1,nSpecies
         xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
         RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
+      CASE ('plane')
+        xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
+        xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC
+        xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector2IC
+        RegionOnProc = BoxInProc(xCoords(1:3,1:3),3)
+
       CASE('disc')
         xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
              SQRT(1.0 - Species(iSpec)%Init(iInit)%NormalIC(1)*Species(iSpec)%Init(iInit)%NormalIC(1))
@@ -181,11 +187,11 @@ DO iSpec=1,nSpecies
 
       CASE('cuboid')
         lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(3) - &
-          Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(2)
+                        Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(2)
         lineVector(2) = Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(1) - &
-          Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(3)
+                        Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(3)
         lineVector(3) = Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(2) - &
-          Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
+                        Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
         IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
            CALL ABORT(__STAMP__,'BaseVectors are parallel!')
         ELSE
@@ -198,12 +204,8 @@ DO iSpec=1,nSpecies
         xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC + Species(iSpec)%Init(iInit)%BaseVector1IC &
                                                                 + Species(iSpec)%Init(iInit)%BaseVector2IC
 
-        ! directly calculated by timestep
-        IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
-          height = halo_eps
-        ELSE
-          height = Species(iSpec)%Init(iInit)%CuboidHeightIC
-        END IF
+        ! Height directly calculated by timestep
+        height = MERGE(halo_eps,Species(iSpec)%Init(iInit)%CuboidHeightIC,Species(iSpec)%Init(iInit)%CalcHeightFromDt)
 
         DO iNode=1,4
           xCoords(1:3,iNode+4) = xCoords(1:3,iNode)+lineVector*height
@@ -212,11 +214,11 @@ DO iSpec=1,nSpecies
 
       CASE('cylinder')
         lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(3) - &
-          Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(2)
+                        Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(2)
         lineVector(2) = Species(iSpec)%Init(iInit)%BaseVector1IC(3) * Species(iSpec)%Init(iInit)%BaseVector2IC(1) - &
-          Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(3)
+                        Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(3)
         lineVector(3) = Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(2) - &
-          Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
+                        Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
         IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
            CALL ABORT(__STAMP__,'BaseVectors are parallel!')
         ELSE
@@ -230,14 +232,12 @@ DO iSpec=1,nSpecies
 
         xCoords(1:3,2) = xCoords(1:3,1) + 2.0*Species(iSpec)%Init(iInit)%BaseVector1IC
         xCoords(1:3,3) = xCoords(1:3,1) + 2.0*Species(iSpec)%Init(iInit)%BaseVector2IC
-        xCoords(1:3,4) = xCoords(1:3,1) + 2.0*Species(iSpec)%Init(iInit)%BaseVector1IC&
+        xCoords(1:3,4) = xCoords(1:3,1) + 2.0*Species(iSpec)%Init(iInit)%BaseVector1IC &
                                         + 2.0*Species(iSpec)%Init(iInit)%BaseVector2IC
 
-        IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN !directly calculated by timestep
-          height = halo_eps
-        ELSE
-          height= Species(iSpec)%Init(iInit)%CylinderHeightIC
-        END IF
+        ! Height directly calculated by timestep
+        height = MERGE(halo_eps,Species(iSpec)%Init(iInit)%CylinderHeightIC,Species(iSpec)%Init(iInit)%CalcHeightFromDt)
+
         DO iNode=1,4
           xCoords(1:3,iNode+4)=xCoords(1:3,iNode)+lineVector*height
         END DO ! iNode
@@ -246,11 +246,11 @@ DO iSpec=1,nSpecies
 
       CASE('cuboid_equal')
          xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &
-              + Species(iSpec)%Init(iInit)%BaseVector1IC(2)**2 &
-              + Species(iSpec)%Init(iInit)%BaseVector1IC(3)**2 )
+              +      Species(iSpec)%Init(iInit)%BaseVector1IC(2)**2 &
+              +      Species(iSpec)%Init(iInit)%BaseVector1IC(3)**2 )
          ylen = SQRT(Species(iSpec)%Init(iInit)%BaseVector2IC(1)**2 &
-              + Species(iSpec)%Init(iInit)%BaseVector2IC(2)**2 &
-              + Species(iSpec)%Init(iInit)%BaseVector2IC(3)**2 )
+              +      Species(iSpec)%Init(iInit)%BaseVector2IC(2)**2 &
+              +      Species(iSpec)%Init(iInit)%BaseVector2IC(3)**2 )
          zlen = ABS(Species(iSpec)%Init(iInit)%CuboidHeightIC)
 
          ! make sure the vectors correspond to x,y,z-dir
@@ -276,11 +276,11 @@ DO iSpec=1,nSpecies
 
       CASE ('cuboid_with_equidistant_distribution')
          xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &
-              + Species(iSpec)%Init(iInit)%BaseVector1IC(2)**2 &
-              + Species(iSpec)%Init(iInit)%BaseVector1IC(3)**2 )
+              +      Species(iSpec)%Init(iInit)%BaseVector1IC(2)**2 &
+              +      Species(iSpec)%Init(iInit)%BaseVector1IC(3)**2 )
          ylen = SQRT(Species(iSpec)%Init(iInit)%BaseVector2IC(1)**2 &
-              + Species(iSpec)%Init(iInit)%BaseVector2IC(2)**2 &
-              + Species(iSpec)%Init(iInit)%BaseVector2IC(3)**2 )
+              +      Species(iSpec)%Init(iInit)%BaseVector2IC(2)**2 &
+              +      Species(iSpec)%Init(iInit)%BaseVector2IC(3)**2 )
          zlen = ABS(Species(iSpec)%Init(iInit)%CuboidHeightIC)
 
          ! make sure the vectors correspond to x,y,z-dir

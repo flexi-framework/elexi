@@ -52,6 +52,7 @@ PUBLIC :: SetCellLocalParticlePosition
 PUBLIC :: SetParticlePositionPoint
 PUBLIC :: SetParticlePositionEquidistLine
 PUBLIC :: SetParticlePositionLine
+PUBLIC :: SetParticlePositionPlane
 PUBLIC :: SetParticlePositionDisk
 PUBLIC :: SetParticlePositionCross
 PUBLIC :: SetParticlePositionCircle
@@ -85,43 +86,42 @@ INTEGER         :: iN, iRan, Nitemp, Nrest, Ntot0
 REAL            :: Atot, Bi(0:length), RandVal1, A2i(1:length), A2tot !,Error,Nrel(1:length),Arel(1:length)
 !===================================================================================================================================
 
-IF(Ntot.EQ.0) RETURN
+IF (Ntot.EQ.0) RETURN
 
-Atot=0.
-Ntot0=0
-DO iN=1,length
-  Atot=Atot+Ai(iN)
-  Ntot0=Ntot0+Ni(iN)
+Atot  = 0.
+Ntot0 = 0
+DO iN = 1,length
+  Atot  = Atot +Ai(iN)
+  Ntot0 = Ntot0+Ni(iN)
 END DO
-!print*,Ai/Atot
 
 !-- divide into INT-parts
-Nrest=Ntot
-A2tot=0.
-Bi(:)=0.
-DO iN=1,length
-  Nitemp=INT(REAL(Ai(iN))/REAL(Atot)*Ntot) !INT-part
-  Ni(iN)=Ni(iN)+Nitemp
-  Nrest=Nrest-Nitemp !remaining number
-  A2i(iN)=REAL(Ai(iN))/REAL(Atot)*Ntot - Nitemp !elem weight for remaining number
-  A2tot=A2tot+A2i(iN)
-  Bi(iN)=A2tot !elem upper limit for remaining number
+Nrest = Ntot
+A2tot = 0.
+Bi(:) = 0.
+
+DO iN = 1,length
+  Nitemp  = INT(REAL(Ai(iN))/REAL(Atot)*Ntot)     ! INT-part
+  Ni(iN)  = Ni(iN) + Nitemp
+  Nrest   = Nrest  - Nitemp                       ! remaining number
+  A2i(iN) = REAL(Ai(iN))/REAL(Atot)*Ntot - Nitemp ! elem weight for remaining number
+  A2tot   = A2tot + A2i(iN)
+  Bi(iN)  = A2tot                                 ! elem upper limit for remaining number
 END DO
 
 !-- distribute remaining number
-IF (Nrest.LT.0) THEN
-  CALL abort(&
-__STAMP__&
-,'ERROR 1 in IntegerDivide!')
-ELSE IF (Nrest.GT.0) THEN
-  DO iN=1,length
-    Bi(iN)=Bi(iN)/A2tot !normalized upper limit
+IF (Nrest.LT.0) CALL abort(__STAMP__,'ERROR 1 in IntegerDivide!')
+
+IF (Nrest.GT.0) THEN
+  DO iN = 1,length
+    Bi(iN) = Bi(iN)/A2tot                         ! normalized upper limit
   END DO
-  DO iRan=1,Nrest
+
+  DO iRan = 1,Nrest
     CALL RANDOM_NUMBER(RandVal1)
-    DO iN=1,length
-      IF( Bi(iN-1).LT.RandVal1 .AND. RandVal1.LE.Bi(iN) ) THEN
-        Ni(iN)=Ni(iN)+1
+    DO iN = 1,length
+      IF (Bi(iN-1).LT.RandVal1 .AND. RandVal1.LE.Bi(iN) ) THEN
+        Ni(iN) = Ni(iN)+1
         EXIT
       END IF
     END DO
@@ -129,26 +129,17 @@ ELSE IF (Nrest.GT.0) THEN
 END IF
 
 !-- test if remaining number was distributed
-Nrest=Ntot+Ntot0
-DO iN=1,length
-  Nrest=Nrest-Ni(iN)
+Nrest = Ntot + Ntot0
+DO iN = 1,length
+  Nrest = Nrest-Ni(iN)
 END DO
-IF (Nrest.NE.0) THEN
-  IPWRITE(*,*) 'Ntot: ',Ntot
-  IPWRITE(*,*) 'Ntot0: ',Ntot0
-  IPWRITE(*,*) 'Nrest: ',Nrest
-  CALL abort(&
-__STAMP__&
-,'ERROR 2 in IntegerDivide!')
-END IF
 
-!Error=0
-!DO iN=1,length
-!  Nrel(iN)=REAL(Ni(iN))/REAL(Ntot)
-!  Arel(iN)=Ai(iN)      /Atot
-!  Error=Error+(Nrel(iN)-Arel(iN))**2
-!END DO
-!IPWRITE(*,*)'Error=',Error
+IF (Nrest.NE.0) THEN
+  IPWRITE(UNIT_stdOut,'(A,I0)') 'Ntot:  ',Ntot
+  IPWRITE(UNIT_stdOut,'(A,I0)') 'Ntot0: ',Ntot0
+  IPWRITE(UNIT_stdOut,'(A,I0)') 'Nrest: ',Nrest
+  CALL abort(__STAMP__,'ERROR 2 in IntegerDivide!')
+END IF
 
 END SUBROUTINE IntegerDivide
 
@@ -173,16 +164,11 @@ INTEGER,INTENT(INOUT)                    :: NbrOfParticle
 INTEGER                                  :: i,PositionNbr
 !===================================================================================================================================
 
-IF(NbrOfParticle.GT.PDM%maxParticleNumber) THEN
-    NbrOfParticle = PDM%maxParticleNumber
-END IF
-i = 1
-DO WHILE (i .LE. NbrOfParticle)
+IF(NbrOfParticle.GT.PDM%maxParticleNumber) NbrOfParticle = PDM%maxParticleNumber
+
+DO i = 1,NbrOfParticle
   PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
-  IF (PositionNbr .NE. 0) THEN
-      PartSpecies(PositionNbr) = FractNbr
-  END IF
-  i = i + 1
+  IF (PositionNbr.NE.0) PartSpecies(PositionNbr) = FractNbr
 END DO
 
 END SUBROUTINE SetParticleMass
@@ -210,27 +196,22 @@ INTEGER         :: Npois
 REAL            :: Tpois, RandVal1
 !===================================================================================================================================
 
-IF (PRESENT(Flag_opt)) THEN
-  Flag=Flag_opt
-ELSE
-  Flag=.FALSE.
-END IF
-
-Npois=0
-Tpois=1.0
+Flag  =  MERGE(Flag_opt,.FALSE.,PRESENT(Flag_opt))
+Npois = 0
+Tpois = 1.0
 CALL RANDOM_NUMBER(RandVal1)
 
 ! Continue looping until found a valid sample or ran into an error
 DO
-  Tpois=RandVal1*Tpois
+  Tpois = RandVal1*Tpois
   IF (Tpois.LT.TINY(Tpois)) THEN
-    !Turn off Poisson Sampling and "sample" by random-rounding
+    ! Turn off Poisson Sampling and "sample" by random-rounding
     IF (Flag) THEN
-      IPWRITE(*,*)'WARNING: target is too large for poisson sampling: switching now to Random rounding...'
+      IPWRITE(UNIT_stdOut,'(A)') ' WARNING: target is too large for poisson sampling: switching now to Random rounding...'
       IntSample = INT(RealTarget + RandVal1)
-      Flag = .FALSE.
+      Flag      = .FALSE.
       EXIT
-    !Turning off not allowed: abort (RealTarget must be decreased ot PoissonSampling turned off manually)
+    ! Turning off not allowed: abort (RealTarget must be decreased ot PoissonSampling turned off manually)
     ELSE
       CALL abort(__STAMP__,'ERROR in SamplePoissonDistri: RealTarget (e.g. flux) is too large for poisson sampling!')
     END IF
@@ -238,13 +219,12 @@ DO
 
   ! Invalid randVal draw, try again
   IF (Tpois.GT.EXP(-RealTarget)) THEN
-    Npois=Npois+1
+    Npois = Npois+1
     CALL RANDOM_NUMBER(RandVal1)
   ELSE
     IntSample = Npois
     EXIT
   END IF
-
 END DO
 
 END SUBROUTINE SamplePoissonDistri
@@ -285,12 +265,13 @@ REAL                             :: RefPos(1:3)
 INTEGER                          :: CellChunkSize(1:nElems)
 INTEGER                          :: chunkSize_tmp, ParticleIndexNbr
 !-----------------------------------------------------------------------------------------------------------------------------------
+
 IF (UseExactPartNum) THEN
   IF(chunkSize.GE.PDM%maxParticleNumber) &
     CALL ABORT(__STAMP__, &
                'ERROR in SetCellLocalParticlePosition: Maximum particle number reached! max. particles needed: ',chunksize)
 
-  CellChunkSize(:)=0
+  CellChunkSize(:) = 0
   CALL IntegerDivide(chunkSize,nElems,ElemVolume_Shared(:),CellChunkSize(:))
 ELSE
   ! numerical PartDensity is needed
@@ -369,12 +350,14 @@ REAL, INTENT(OUT)       :: particle_positions(:)
 REAL                    :: Particle_pos(3)
 INTEGER                 :: i
 !===================================================================================================================================
- Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC
- DO i=1,chunkSize
-    particle_positions(i*3-2) = Particle_pos(1)
-    particle_positions(i*3-1) = Particle_pos(2)
-    particle_positions(i*3  ) = Particle_pos(3)
- END DO
+
+Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC
+DO i=1,chunkSize
+   particle_positions(i*3-2) = Particle_pos(1)
+   particle_positions(i*3-1) = Particle_pos(2)
+   particle_positions(i*3  ) = Particle_pos(3)
+END DO
+
 END SUBROUTINE SetParticlePositionPoint
 
 
@@ -395,20 +378,22 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 REAL, INTENT(OUT)       :: particle_positions(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Particle_pos(3), VectorGap(3)
+REAL                    :: Particle_pos(3),VectorGap(3)
 INTEGER                 :: i
 !===================================================================================================================================
-  IF(chunkSize.EQ.1)THEN
-    Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + 0.5 * Species(FractNbr)%Init(iInit)%BaseVector1IC
-  ELSE
-    VectorGap = Species(FractNbr)%Init(iInit)%BaseVector1IC/(REAL(chunkSize)-1.)
-    DO i=1,chunkSize
-      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + (i-1)*VectorGap
-      particle_positions(i*3-2) = Particle_pos(1)
-      particle_positions(i*3-1) = Particle_pos(2)
-      particle_positions(i*3  ) = Particle_pos(3)
-    END DO
-  END IF
+
+IF(chunkSize.EQ.1)THEN
+  Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + 0.5 * Species(FractNbr)%Init(iInit)%BaseVector1IC
+ELSE
+  VectorGap = Species(FractNbr)%Init(iInit)%BaseVector1IC/(REAL(chunkSize)-1.)
+  DO i=1,chunkSize
+    Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + (i-1)*VectorGap
+    particle_positions(i*3-2) = Particle_pos(1)
+    particle_positions(i*3-1) = Particle_pos(2)
+    particle_positions(i*3  ) = Particle_pos(3)
+  END DO
+END IF
+
 END SUBROUTINE SetParticlePositionEquidistLine
 
 
@@ -429,17 +414,19 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 REAL, INTENT(OUT)       :: particle_positions(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Particle_pos(3), iRan
+REAL                    :: Particle_pos(3),RandVal
 INTEGER                 :: i
 !===================================================================================================================================
-DO i=1,chunkSize
-  CALL RANDOM_NUMBER(iRan)
-  Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%BaseVector1IC*iRan
+
+DO i = 1,chunkSize
+  CALL RANDOM_NUMBER(RandVal)
+  Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%BaseVector1IC*RandVal
+
   particle_positions(i*3-2) = Particle_pos(1)
   particle_positions(i*3-1) = Particle_pos(2)
   particle_positions(i*3  ) = Particle_pos(3)
-
 END DO
+
 END SUBROUTINE SetParticlePositionLine
 
 
@@ -461,36 +448,75 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 REAL, INTENT(OUT)       :: particle_positions(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Particle_pos(3), RandVec, lineVector(3), lineVector2(3), frac
+REAL                    :: Particle_pos(3),RandVec,lineVector(3),lineVector2(3),frac
 INTEGER                 :: i
 !===================================================================================================================================
-  CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
-  CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
 
-  ! first particle is at (0,0)
-  frac=1./(chunkSize*0.5-1.)
+CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
 
-  DO i=1,chunkSize
-    IF(i.LE.chunkSize*0.5)THEN
-      RandVec=2.*(i-1.)*frac-1.
-    ELSE
-      RandVec=2.*(i-chunkSize*0.5-1.)*frac-1.
-    END IF
-    IF(i.LE.chunkSize*0.5)THEN
-      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
-               (RandVec * lineVector)
-    ELSE
-      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
-               (RandVec * lineVector2)
-    END IF
+! first particle is at (0,0)
+frac=1./(chunkSize*0.5-1.)
 
-   particle_positions(i*3-2) = Particle_pos(1)
-   particle_positions(i*3-1) = Particle_pos(2)
-   particle_positions(i*3  ) = Particle_pos(3)
+DO i=1,chunkSize
+  IF(i.LE.chunkSize*0.5)THEN
+    RandVec=2.*(i-1.)*frac-1.
+  ELSE
+    RandVec=2.*(i-chunkSize*0.5-1.)*frac-1.
+  END IF
+  IF(i.LE.chunkSize*0.5)THEN
+    Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
+             (RandVec * lineVector)
+  ELSE
+    Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
+             (RandVec * lineVector2)
+  END IF
 
-  END DO
+ particle_positions(i*3-2) = Particle_pos(1)
+ particle_positions(i*3-1) = Particle_pos(2)
+ particle_positions(i*3  ) = Particle_pos(3)
+
+END DO
 
 END SUBROUTINE SetParticlePositionCross
+
+
+SUBROUTINE SetParticlePositionPlane(FractNbr,iInit,chunkSize,particle_positions)
+!===================================================================================================================================
+! Set particle position
+!===================================================================================================================================
+! modules
+USE MOD_Globals
+USE MOD_Particle_Timedisc_Vars ,ONLY: RKdtFrac
+USE MOD_Particle_Vars          ,ONLY: Species
+USE MOD_Timedisc_Vars          ,ONLY: dt
+!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER, INTENT(IN)     :: FractNbr, iInit
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+INTEGER, INTENT(INOUT)  :: chunkSize
+REAL, INTENT(OUT)       :: particle_positions(:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                    :: Particle_pos(3),RandVal(2)
+INTEGER                 :: i
+!===================================================================================================================================
+
+DO i = 1,chunkSize
+  CALL RANDOM_NUMBER(RandVal)
+  Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%BaseVector1IC * RandVal(1)
+  Particle_pos = Particle_pos                              + Species(FractNbr)%Init(iInit)%BaseVector2IC * RandVal(2)
+
+  particle_positions(i*3-2) = Particle_pos(1)
+  particle_positions(i*3-1) = Particle_pos(2)
+  particle_positions(i*3  ) = Particle_pos(3)
+END DO
+
+END SUBROUTINE SetParticlePositionPlane
 
 
 SUBROUTINE SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
@@ -510,27 +536,28 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 REAL, INTENT(OUT)       :: particle_positions(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Particle_pos(3), RandVec(2), lineVector(3), lineVector2(3), radius
+REAL                    :: Particle_pos(3),RandVec(2),lineVector(3),lineVector2(3),radius
 INTEGER                 :: i
 !===================================================================================================================================
-  CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
-  CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
 
-  DO i=1,chunkSize
-   radius = Species(FractNbr)%Init(iInit)%RadiusIC + 1.
-   DO WHILE(radius.GT.Species(FractNbr)%Init(iInit)%RadiusIC)
-      CALL RANDOM_NUMBER(RandVec)
-      RandVec = RandVec * 2. - 1.
-      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
-               (RandVec(1) * lineVector + RandVec(2) *lineVector2)
+CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
 
-      radius = VECNORM((Particle_pos(1:3)-Species(FractNbr)%Init(iInit)%BasePointIC(1:3)))
-   END DO
+DO i = 1,chunkSize
+ radius = Species(FractNbr)%Init(iInit)%RadiusIC + 1.
+ DO WHILE(radius.GT.Species(FractNbr)%Init(iInit)%RadiusIC)
+    CALL RANDOM_NUMBER(RandVec)
+    RandVec      = RandVec * 2. - 1.
+    Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
+                  (RandVec(1) * lineVector + RandVec(2) *lineVector2)
 
-   particle_positions(i*3-2) = Particle_pos(1)
-   particle_positions(i*3-1) = Particle_pos(2)
-   particle_positions(i*3  ) = Particle_pos(3)
-  END DO
+    radius = VECNORM((Particle_pos(1:3)-Species(FractNbr)%Init(iInit)%BasePointIC(1:3)))
+ END DO
+
+ particle_positions(i*3-2) = Particle_pos(1)
+ particle_positions(i*3-1) = Particle_pos(2)
+ particle_positions(i*3  ) = Particle_pos(3)
+END DO
 
 END SUBROUTINE SetParticlePositionDisk
 
@@ -553,27 +580,30 @@ INTEGER, INTENT(IN)     :: FractNbr, iInit, chunkSize
 REAL, INTENT(OUT)       :: particle_positions(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Particle_pos(3), iRan, lineVector(3), lineVector2(3), radius, Phi
+REAL                    :: Particle_pos(3),RandVal,lineVector(3),lineVector2(3),radius,Phi
 INTEGER                 :: i
 !===================================================================================================================================
-  CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
-  CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
-  radius = Species(FractNbr)%Init(iInit)%RadiusIC
-  DO i=1,chunkSize
-    IF(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'circle') THEN
-      CALL RANDOM_NUMBER(iRan)
-      Phi = 2.*Pi*iRan
-    ELSE
-      Phi = 2.*Pi*REAL(i)/ REAL(chunkSize)
-    END IF
-    Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC +        &
-                  linevector * COS(Phi) * radius +  &
-                  linevector2 * SIN(Phi) * radius
-    particle_positions(i*3-2) = Particle_pos(1)
-    particle_positions(i*3-1) = Particle_pos(2)
-    particle_positions(i*3  ) = Particle_pos(3)
 
-  END DO
+CALL FindLinIndependentVectors(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+CALL GramSchmidtAlgo(Species(FractNbr)%Init(iInit)%NormalIC(1:3), lineVector(1:3), lineVector2(1:3))
+radius = Species(FractNbr)%Init(iInit)%RadiusIC
+
+DO i = 1,chunkSize
+  IF(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'circle') THEN
+    CALL RANDOM_NUMBER(RandVal)
+    Phi = 2.*Pi*RandVal
+  ELSE
+    Phi = 2.*Pi*REAL(i)/ REAL(chunkSize)
+  END IF
+  Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + &
+                linevector  * COS(Phi) * radius            + &
+                linevector2 * SIN(Phi) * radius
+  particle_positions(i*3-2) = Particle_pos(1)
+  particle_positions(i*3-1) = Particle_pos(2)
+  particle_positions(i*3  ) = Particle_pos(3)
+
+END DO
+
 END SUBROUTINE SetParticlePositionCircle
 
 
@@ -598,38 +628,42 @@ INTEGER, INTENT(INOUT)  :: chunkSize
 REAL, INTENT(OUT)       :: particle_positions(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Particle_pos(3), RandVal(3), lineVector(3), radius
+REAL                    :: Particle_pos(3),RandVal(3),lineVector(3),radius
 INTEGER                 :: i,chunkSize2
 LOGICAL                 :: insideExcludeRegion
 !===================================================================================================================================
-  lineVector(1) = Species(FractNbr)%Init(iInit)%BaseVector1IC(2) * Species(FractNbr)%Init(iInit)%BaseVector2IC(3) - &
-    Species(FractNbr)%Init(iInit)%BaseVector1IC(3) * Species(FractNbr)%Init(iInit)%BaseVector2IC(2)
-  lineVector(2) = Species(FractNbr)%Init(iInit)%BaseVector1IC(3) * Species(FractNbr)%Init(iInit)%BaseVector2IC(1) - &
-    Species(FractNbr)%Init(iInit)%BaseVector1IC(1) * Species(FractNbr)%Init(iInit)%BaseVector2IC(3)
-  lineVector(3) = Species(FractNbr)%Init(iInit)%BaseVector1IC(1) * Species(FractNbr)%Init(iInit)%BaseVector2IC(2) - &
-    Species(FractNbr)%Init(iInit)%BaseVector1IC(2) * Species(FractNbr)%Init(iInit)%BaseVector2IC(1)
-  IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
-    CALL abort(__STAMP__,'BaseVectors are parallel!')
-  ELSE
-    lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + &
-      lineVector(3) * lineVector(3))
-  END IF
-  i=1
-  chunkSize2=0
-  DO WHILE (i .LE. chunkSize)
-    SELECT CASE (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC))
+
+lineVector(1) = Species(FractNbr)%Init(iInit)%BaseVector1IC(2) * Species(FractNbr)%Init(iInit)%BaseVector2IC(3) - &
+                Species(FractNbr)%Init(iInit)%BaseVector1IC(3) * Species(FractNbr)%Init(iInit)%BaseVector2IC(2)
+lineVector(2) = Species(FractNbr)%Init(iInit)%BaseVector1IC(3) * Species(FractNbr)%Init(iInit)%BaseVector2IC(1) - &
+                Species(FractNbr)%Init(iInit)%BaseVector1IC(1) * Species(FractNbr)%Init(iInit)%BaseVector2IC(3)
+lineVector(3) = Species(FractNbr)%Init(iInit)%BaseVector1IC(1) * Species(FractNbr)%Init(iInit)%BaseVector2IC(2) - &
+                Species(FractNbr)%Init(iInit)%BaseVector1IC(2) * Species(FractNbr)%Init(iInit)%BaseVector2IC(1)
+
+! Sanity check line vectors
+IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
+  CALL abort(__STAMP__,'BaseVectors are parallel!')
+ELSE
+  lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + lineVector(3) * lineVector(3))
+END IF
+
+chunkSize2 = 0
+DO i = 1,chunkSize
+  SELECT CASE (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC))
     CASE ('cuboid')
       CALL RANDOM_NUMBER(RandVal)
       Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%BaseVector1IC * RandVal(1)
       Particle_pos = Particle_pos + Species(FractNbr)%Init(iInit)%BaseVector2IC * RandVal(2)
-      IF (Species(FractNbr)%Init(iInit)%CalcHeightFromDt) THEN !directly calculated by timestep
+      ! Height directly calculated by timestep
+      IF (Species(FractNbr)%Init(iInit)%CalcHeightFromDt) THEN
         Particle_pos = Particle_pos + lineVector * Species(FractNbr)%Init(iInit)%VeloIC * dt*RKdtFrac * RandVal(3)
       ELSE
-        Particle_pos = Particle_pos + lineVector * Species(FractNbr)%Init(iInit)%CuboidHeightIC * RandVal(3)
+        Particle_pos = Particle_pos + lineVector * Species(FractNbr)%Init(iInit)%CuboidHeightIC       * RandVal(3)
       END IF
+
     CASE ('cylinder')
       radius = Species(FractNbr)%Init(iInit)%RadiusIC + 1.
-      DO WHILE((radius.GT.Species(FractNbr)%Init(iInit)%RadiusIC) .OR.(radius.LT.Species(FractNbr)%Init(iInit)%Radius2IC))
+      DO WHILE((radius.GT.Species(FractNbr)%Init(iInit)%RadiusIC).OR.(radius.LT.Species(FractNbr)%Init(iInit)%Radius2IC))
          CALL RANDOM_NUMBER(RandVal)
          Particle_pos = Species(FractNbr)%Init(iInit)%BaseVector1IC * (RandVal(1)*2.-1.) &
                       + Species(FractNbr)%Init(iInit)%BaseVector2IC * (RandVal(2)*2.-1.)
@@ -638,27 +672,30 @@ LOGICAL                 :: insideExcludeRegion
                         Particle_pos(3) * Particle_pos(3) )
       END DO
       Particle_pos = Particle_pos + Species(FractNbr)%Init(iInit)%BasePointIC
-      IF (Species(FractNbr)%Init(iInit)%CalcHeightFromDt) THEN !directly calculated by timestep
+      ! Height directly calculated by timestep
+      IF (Species(FractNbr)%Init(iInit)%CalcHeightFromDt) THEN
         Particle_pos = Particle_pos + lineVector * Species(FractNbr)%Init(iInit)%VeloIC * dt*RKdtFrac * RandVal(3)
       ELSE
         Particle_pos = Particle_pos + lineVector * Species(FractNbr)%Init(iInit)%CylinderHeightIC * RandVal(3)
       END IF
-    END SELECT
-    IF (Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions.GT.0) THEN
-      CALL InsideExcludeRegionCheck(FractNbr, iInit, Particle_pos, insideExcludeRegion)
-      IF (insideExcludeRegion) THEN
-        i=i+1
-        CYCLE !particle is in excluded region
-      END IF
-    END IF
-    particle_positions((chunkSize2+1)*3-2) = Particle_pos(1)
-    particle_positions((chunkSize2+1)*3-1) = Particle_pos(2)
-    particle_positions((chunkSize2+1)*3  ) = Particle_pos(3)
-    i=i+1
-    chunkSize2=chunkSize2+1
+  END SELECT
 
-  END DO
-  chunkSize = chunkSize2
+  ! Check if emission was inside an exclude region
+  IF (Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions.GT.0) THEN
+    CALL InsideExcludeRegionCheck(FractNbr, iInit, Particle_pos, insideExcludeRegion)
+    ! Particle is in excluded region
+    IF (insideExcludeRegion) CYCLE
+  END IF
+
+  particle_positions((chunkSize2+1)*3-2) = Particle_pos(1)
+  particle_positions((chunkSize2+1)*3-1) = Particle_pos(2)
+  particle_positions((chunkSize2+1)*3  ) = Particle_pos(3)
+
+  chunkSize2 = chunkSize2 + 1
+END DO
+
+chunkSize = chunkSize2
+
 END SUBROUTINE SetParticlePositionCuboidCylinder
 
 
@@ -681,29 +718,31 @@ INTEGER, INTENT(INOUT)  :: chunkSize
 REAL,INTENT(OUT)        :: particle_positions(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Particle_pos(3),iRan,radius
+REAL                    :: Particle_pos(3),RandVal,radius
 INTEGER                 :: i,chunkSize2
 LOGICAL                 :: insideExcludeRegion
 !===================================================================================================================================
-i=1
-chunkSize2=0
-DO WHILE (i .LE. chunkSize)
-  CALL RANDOM_NUMBER(iRan)
-  radius = Species(FractNbr)%Init(iInit)%RadiusIC*iRan**(1./3.)
+
+chunkSize2 = 0
+DO i = 1,chunkSize
+  CALL RANDOM_NUMBER(RandVal)
+  radius       = Species(FractNbr)%Init(iInit)%RadiusIC*RandVal**(1./3.)
   Particle_pos = DICEUNITVECTOR()*radius + Species(FractNbr)%Init(iInit)%BasePointIC
+
+  ! Check if emission was inside an exclude region
   IF (Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions.GT.0) THEN
     CALL InsideExcludeRegionCheck(FractNbr, iInit, Particle_pos, insideExcludeRegion)
-    IF (insideExcludeRegion) THEN
-      i=i+1
-      CYCLE !particle is in excluded region
-    END IF
+    ! Particle is in excluded region
+    IF (insideExcludeRegion) CYCLE
   END IF
+
   particle_positions((chunkSize2+1)*3-2) = Particle_pos(1)
   particle_positions((chunkSize2+1)*3-1) = Particle_pos(2)
   particle_positions((chunkSize2+1)*3  ) = Particle_pos(3)
-  i=i+1
-  chunkSize2=chunkSize2+1
+
+  chunkSize2=chunkSize2 + 1
 END DO
+
 chunkSize = chunkSize2
 
 END SUBROUTINE SetParticlePositionSphere
@@ -787,20 +826,21 @@ REAL                    :: Particle_pos(3),RandVal(3),lineVector(3),lineVector2(
 REAL                    :: argumentTheta,pdf,norm_pdf
 INTEGER                 :: i
 !===================================================================================================================================
-! find normal vector direction and length.
+
+! Find normal vector direction and length.
 IF (Species(FractNbr)%Init(iInit)%NormalIC(1).EQ.0.) THEN
   IF (Species(FractNbr)%Init(iInit)%NormalIC(2).EQ.0.) THEN
     IF (Species(FractNbr)%Init(iInit)%NormalIC(3).EQ.0.) &
       CALL abort(__STAMP__,'Error in SetParticlePosition, NormalIC should not be zero')
-    lineVector(1:2) = 1.0
-    lineVector(3) = 0.0
+    lineVector(1:2)   = 1.0
+    lineVector(3)     = 0.0
   ELSE
     IF (Species(FractNbr)%Init(iInit)%NormalIC(3).EQ.0.) THEN
-      lineVector(1) = 1.0
-      lineVector(3) = 1.0
-      lineVector(2) = 0.0
+      lineVector(1)   = 1.0
+      lineVector(3)   = 1.0
+      lineVector(2)   = 0.0
     ELSE
-      lineVector(1) = 1.0
+      lineVector(1)   = 1.0
       lineVector(2:3) = 0.0
     END IF
   END IF
@@ -808,39 +848,39 @@ ELSE
   IF (Species(FractNbr)%Init(iInit)%NormalIC(2).EQ.0.) THEN
     IF (Species(FractNbr)%Init(iInit)%NormalIC(3).EQ.0.) THEN
       lineVector(2:3) = 1.0
-      lineVector(1) = 0.0
+      lineVector(1)   = 0.0
     ELSE
-      lineVector(2) = 1.0
-      lineVector(1) = 0.0
-      lineVector(3) = 0.0
+      lineVector(2)   = 1.0
+      lineVector(1)   = 0.0
+      lineVector(3)   = 0.0
     END IF
   ELSE
     IF (Species(FractNbr)%Init(iInit)%NormalIC(3).EQ.0.) THEN
-      lineVector(3) = 1.0
+      lineVector(3)   = 1.0
       lineVector(1:2) = 0.0
     ELSE
-       lineVector(2) = 0.0
-       lineVector(3) = -Species(FractNbr)%Init(iInit)%NormalIC(1)
-       lineVector(1) = Species(FractNbr)%Init(iInit)%NormalIC(3)
+       lineVector(2)  = 0.0
+       lineVector(3)  = -Species(FractNbr)%Init(iInit)%NormalIC(1)
+       lineVector(1)  = Species(FractNbr)%Init(iInit)%NormalIC(3)
     END IF
   END IF
 END IF
 
-! normalize lineVector to unit length
+! Normalize lineVector to unit length
 lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * &
              lineVector(2) + lineVector(3) * lineVector(3))
 
 ! calculate lineVector cross product with normal vector initial condition
 lineVector2(1) = Species(FractNbr)%Init(iInit)%NormalIC(2) * lineVector(3) - &
-     Species(FractNbr)%Init(iInit)%NormalIC(3) * lineVector(2)
+                 Species(FractNbr)%Init(iInit)%NormalIC(3) * lineVector(2)
 lineVector2(2) = Species(FractNbr)%Init(iInit)%NormalIC(3) * lineVector(1) - &
-     Species(FractNbr)%Init(iInit)%NormalIC(1) * lineVector(3)
+                 Species(FractNbr)%Init(iInit)%NormalIC(1) * lineVector(3)
 lineVector2(3) = Species(FractNbr)%Init(iInit)%NormalIC(1) * lineVector(2) - &
-     Species(FractNbr)%Init(iInit)%NormalIC(2) * lineVector(1)
+                 Species(FractNbr)%Init(iInit)%NormalIC(2) * lineVector(1)
 
-! normalize lineVector2 to unit length
+! Normalize lineVector2 to unit length
 lineVector2 = lineVector2 / SQRT(lineVector2(1) * lineVector2(1) + lineVector2(2) * &
-     lineVector2(2) + lineVector2(3) * lineVector2(3))
+              lineVector2(2) + lineVector2(3) * lineVector2(3))
 
 DO i=1,chunkSize
   CALL RANDOM_NUMBER(RandVal)
@@ -852,14 +892,15 @@ DO i=1,chunkSize
   argumentTheta = 2.*PI*RandVal(3)
   radius = MIN(ABS(pdf*Species(FractNbr)%Init(iInit)%RadiusIC),Species(FractNbr)%Init(iInit)%RadiusIC)
   radius = MAX(0.,radius)-MIN(0.,radius)
+
   ! position particle at random angle
   Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC +  &
                  linevector  * cos(argumentTheta) * radius +  &
                  linevector2 * sin(argumentTheta) * radius
+
   particle_positions(i*3-2) = Particle_pos(1)
   particle_positions(i*3-1) = Particle_pos(2)
   particle_positions(i*3  ) = Particle_pos(3)
-
 END DO
 
 END SUBROUTINE SetParticlePositionGaussian
@@ -898,6 +939,7 @@ DO iExclude=1,Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions
       DistExclude = VecExclude(1)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(1) &
                   + VecExclude(2)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(2) &
                   + VecExclude(3)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(3)
+      ! Particle is inside current ExcludeRegion based an normal dimensions
       IF ( (DistExclude .LE. Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%CuboidHeightIC) &
       .AND.(DistExclude .GE. 0.) ) THEN
         insideExcludeRegion = .TRUE.
@@ -910,6 +952,7 @@ DO iExclude=1,Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions
       DistExclude = VecExclude(1)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(1) &
                   + VecExclude(2)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(2) &
                   + VecExclude(3)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector1IC(3)
+      ! Particle is inside current ExcludeRegion based an BV1 dimensions
       IF ( (DistExclude .LE. Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%ExcludeBV_lenghts(1)**2) &
       .AND.(DistExclude .GE. 0.) ) THEN
         insideExcludeRegion = .TRUE.
@@ -922,10 +965,11 @@ DO iExclude=1,Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions
       DistExclude = VecExclude(1)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(1) &
                   + VecExclude(2)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(2) &
                   + VecExclude(3)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(3)
+      ! Particle is inside current ExcludeRegion based an all dimensions
       IF ( (DistExclude .LE. Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%ExcludeBV_lenghts(2)**2) &
       .AND.(DistExclude .GE. 0.) ) THEN
         insideExcludeRegion = .TRUE.
-        RETURN !particle is inside current ExcludeRegion based an all dimensions
+        RETURN
       ELSE
         insideExcludeRegion = .FALSE.
         CYCLE
@@ -936,6 +980,7 @@ DO iExclude=1,Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions
       DistExclude = VecExclude(1)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(1) &
                   + VecExclude(2)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(2) &
                   + VecExclude(3)*Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(3)
+      ! Particle is inside current ExcludeRegion based an normal dimensions
       IF ( (DistExclude .LE. Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%CylinderHeightIC) &
       .AND.(DistExclude .GE. 0.) ) THEN
         insideExcludeRegion = .TRUE.
@@ -946,19 +991,18 @@ DO iExclude=1,Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions
 
       !--check radial direction
       DistExclude = SQRT( VecExclude(1)**2 + VecExclude(2)**2 + VecExclude(3)**2 - DistExclude**2 )
+      ! Particle is inside current ExcludeRegion based an all dimensions
       IF ( (DistExclude .LE. Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%RadiusIC) &
       .AND.(DistExclude .GE. Species(FractNbr)%Init(iInit)%ExcludeRegion(iExclude)%Radius2IC) ) THEN
         insideExcludeRegion = .TRUE.
-        RETURN !particle is inside current ExcludeRegion based an all dimensions
+        RETURN
       ELSE
         insideExcludeRegion = .FALSE.
         CYCLE
       END IF
 
     CASE DEFAULT
-        CALL abort(&
-        __STAMP__&
-        ,'wrong SpaceIC for ExcludeRegion!')
+        CALL abort(__STAMP__,'Wrong SpaceIC for ExcludeRegion!')
 
   END SELECT
 END DO
@@ -998,8 +1042,7 @@ ELSE IF (NormalVector(3).NE.0) THEN
   Vector1(2) = 1
   Vector1(3) = (0 - NormalVector(1) - NormalVector(2)) / NormalVector(3)
 ELSE
-  CALL abort(__STAMP__&
-      ,'The normal direction vector can not be (0,0,0)')
+  CALL abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
 END IF
 
 ! Find the third vecord vector with the cross product

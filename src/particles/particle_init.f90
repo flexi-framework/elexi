@@ -153,6 +153,9 @@ CALL prms%CreateIntOption(          'Part-RecordMemory'        , 'Record particl
 !                                                               , 'none', numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-RPThresholds[$]'     , 'Record particles threshold'  &
                                                                , '0.,0.,0.,0.,0.,0.', numberedmulti=.TRUE.)
+
+CALL prms%CreateStringOption(       'Part-FilenameRecordPart'  , 'Specifying filename for load_from_file init.'           &
+                                                                , 'data/recordplane_')
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
 !===================================================================================================================================
@@ -276,7 +279,8 @@ CALL prms%CreateStringOption(       'Part-Species[$]-SpaceIC'   , 'Specifying Ke
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
                                                                   ' - cylinder\n'                                                //&
-                                                                  ' - Gaussian\n'                                                  &
+                                                                  ' - Gaussian\n'                                                //&
+                                                                  ' - load_from_file\n'                                            &
                                                                 , 'cuboid'  , numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-Species[$]-BasePointIC','Base point for IC cuboid and IC sphere'                         &
                                                                  , '0. , 0. , 0.', numberedmulti=.TRUE.)
@@ -382,7 +386,8 @@ CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Speci
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
                                                                   ' - cylinder\n'                                                //&
-                                                                  ' - sphere\n'                                                    &
+                                                                  ' - sphere\n'                                                  //&
+                                                                  ' - load_from_file\n'                                            &
                                                                 , 'cuboid'  , numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BasePointIC','Base point for IC cuboid and IC sphere'                 &
                                                                  , '0. , 0. , 0.', numberedmulti=.TRUE.)
@@ -545,7 +550,6 @@ SUBROUTINE InitParticleGlobals()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ReadInTools,                ONLY: GETREAL,GETLOGICAL,GETINTFROMSTR,CountOption
-USE MOD_Particle_Globals,           ONLY: PI
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
 USE MOD_Particle_Vars,              ONLY: PDM
@@ -567,7 +571,6 @@ SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS...'
 maxParticleNumberGlobal = GETREAL('Part-MaxParticleNumber')
 ! Divide by number of processors, but use at least 2 (at least one next free position in the case of MPI)
 PDM%maxParticleNumber   = MAX(INT(maxParticleNumberGlobal/nProcessors), 2)
-PI                      = ACOS(-1.0D0)
 
 ! Find tracking method immediately, a lot of the later variables depend on it
 TrackingMethod  = GETINTFROMSTR('TrackingMethod')
@@ -627,7 +630,7 @@ LOGICAL,INTENT(IN),OPTIONAL      :: doLoadBalance_opt
 ! LOCAL VARIABLES
 !===================================================================================================================================
 IF(ParticlesInitIsDone)THEN
-   SWRITE(*,*) "InitParticles already called."
+   SWRITE(UNIT_stdOut,'(A)') "InitParticles already called."
    RETURN
 END IF
 !SWRITE(UNIT_StdOut,'(132("-"))')
@@ -724,6 +727,7 @@ CALL InitializeVariablesRandomNumbers()
 
 ! gravitational acceleration
 PartGravity             = GETREALARRAY('Part-Gravity'          ,3  ,'0. , 0. , 0.')
+FilenameRecordPart      = GETSTR('Part-FilenameRecordPart'     ,'data/recordplane_')
 
 ! Number of species
 nSpecies                = GETINT(     'Part-nSpecies','1')
@@ -741,6 +745,7 @@ LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 ! Initialize record plane of particles
 RecordPart          = GETINT('Part-RecordPart','0')
 IF (RecordPart.GT.0) THEN
+  CALL SYSTEM('mkdir -p recordpoints')
   ! Get size of buffer array
   RPP_maxMemory     = GETINT('Part-RecordMemory','100')           ! Max buffer (100MB)
   RPP_MaxBufferSize = RPP_MaxMemory*131072/6    != size in bytes/(real*RPP_maxMemory)
@@ -797,13 +802,10 @@ CALL MPI_BARRIER(PartMPI%COMM,IERROR)
 
 #if USE_EXTEND_RHS && ANALYZE_RHS
 FileName_RHS = TRIM(ProjectName)//'_RHS'
-WRITE(tmpStr,*) tAnalyze
+WRITE(tmpStr,'(A)') tAnalyze
 dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(ADJUSTL(tmpStr)))
-IF(doRestart)THEN
-  tWriteRHS    =  dtWriteRHS + RestartTime
-ELSE
-  tWriteRHS    =  dtWriteRHS
-END IF
+tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
+
 CALL InitOutputToFile(FileName_RHS,'RHS',16,&
   [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
@@ -927,11 +929,11 @@ ELSE IF(nRandomSeeds.GT.0) THEN
   IF (ALL(Seeds(:).EQ.0)) CALL ABORT(__STAMP__,'Not all seeds can be set to zero ')
   CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
 ELSE
-  SWRITE (*,*) 'Error: nRandomSeeds not defined.'//&
-  'Choose nRandomSeeds'//&
-  '=-1    pseudo random'//&
-  '= 0    hard-coded deterministic numbers'//&
-  '> 0    numbers from ini. Expected ',SeedSize,'seeds.'
+  SWRITE (UNIT_stdOut,'(A)') ' Error: nRandomSeeds not defined.'        //&
+                             ' Choose nRandomSeeds'                     //&
+                             ' =-1    pseudo random'                    //&
+                             ' = 0    hard-coded deterministic numbers' //&
+                             ' > 0    numbers from ini. Expected ',SeedSize,'seeds.'
 END IF
 
 END SUBROUTINE InitializeVariablesRandomNumbers
@@ -946,6 +948,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
+USE MOD_ISO_VARYING_STRING
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -954,8 +957,10 @@ USE MOD_Particle_Vars
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: iSpec,iInit,iExclude
+INTEGER               :: iSpec,iInit,iExclude,j
 CHARACTER(32)         :: tmpStr,tmpStr2,tmpStr3
+CHARACTER(200)        :: Filename_loc             ! specifying keyword for velocity distribution
+INTEGER               :: PartField_shape(2)
 !===================================================================================================================================
 ! Loop over all species and get requested data
 DO iSpec = 1, nSpecies
@@ -1049,6 +1054,10 @@ DO iSpec = 1, nSpecies
       CASE('line','line_with_equidistant_distribution')
         Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
         Species(iSpec)%Init(iInit)%BaseVector1IC     = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector1IC' ,3,'1. , 0. , 0.')
+      CASE('plane')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%BaseVector1IC     = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector1IC' ,3,'1. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%BaseVector2IC     = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BaseVector2IC' ,3,'0. , 1. , 0.')
       CASE('disc')
         Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
         Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'      ,'1.')
@@ -1076,15 +1085,35 @@ DO iSpec = 1, nSpecies
         Species(iSpec)%Init(iInit)%BaseVariance      = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-BaseVariance'    ,'1.')
         Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'        ,'1.')
         Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3,'0. , 0. , 1.')
+      CASE('load_from_file')
+        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
+        Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'        ,'1.')
+        Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3,'0. , 0. , 1.')
+        ! load from binary file
+        IF (MPIRoot) THEN
+          WRITE(FileName_loc,"(A30,I2,A4)") FilenameRecordPart, iSpec-1, ".dat"
+          Filename_loc = TRIM(REPLACE(Filename_loc," ","",Every=.TRUE.))
+          OPEN(33, FILE=TRIM(FileName_loc),FORM="UNFORMATTED", STATUS="UNKNOWN", ACTION="READ", ACCESS='STREAM')
+          READ(33) PartField_shape
+          ALLOCATE(Species(iSpec)%Init(iInit)%PartField(PartField_shape(1), PartField_shape(2)))
+          READ(33) Species(iSpec)%Init(iInit)%PartField(:,:)
+          CLOSE(33)
+        END IF
+#if USE_MPI
+        CALL MPI_BCAST(PartField_shape,2,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+        Species(iSpec)%Init(iInit)%nPartField = PartField_shape(1)
+        IF(.NOT.ALLOCATED(Species(iSpec)%Init(iInit)%PartField))&
+          ALLOCATE(Species(iSpec)%Init(iInit)%PartField(PartField_shape(1), PartField_shape(2)))
+        CALL MPI_BCAST(Species(iSpec)%Init(iInit)%PartField,PartField_shape(1)*PartField_shape(2),MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+#endif
 !      CASE('sin_deviation')
         ! Currently not implemented
       CASE DEFAULT
         CALL ABORT(__STAMP__,'Unknown particle emission type')
     END SELECT
 
-
     ! Nullify additional init data here
-    Species(iSpec)%Init(iInit)%InsertedParticle      = 0
+    Species(iSpec)%Init(iInit)%InsertedParticle        = 0
     Species(iSpec)%Init(iInit)%InsertedParticleSurplus = 0
 
     ! Get absolute value of particle velocity vector and normalize the VeloVecIC vector
@@ -1121,7 +1150,7 @@ DO iSpec = 1, nSpecies
         IF (.NOT.Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
           IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CuboidHeightIC,-1.)) THEN
             Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
-            SWRITE(*,*) "WARNING: Cuboid height will be calculated from v and dt!"
+            SWRITE(UNIT_stdOut,'(A)') " | WARNING: Cuboid height will be calculated from v and dt!"
           END IF
         END IF
 
@@ -1129,19 +1158,19 @@ DO iSpec = 1, nSpecies
         IF (.NOT.Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
           IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CylinderHeightIC,-1.)) THEN
             Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
-            SWRITE(*,*) "WARNING: Cylinder height will be calculated from v and dt!"
+            SWRITE(UNIT_stdOut,'(A)') " | WARNING: Cylinder height will be calculated from v and dt!"
           END IF
         END IF
 
       CASE DEFAULT
         IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
-          CALL abort(__STAMP__,' Calculating height from v and dt is only supported for cuboid or cylinder!')
+          CALL ABORT(__STAMP__,' Calculating height from v and dt is only supported for cuboid or cylinder!')
         END IF
     END SELECT
 
     IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
       IF (Species(iSpec)%Init(iInit)%UseForInit) THEN
-        CALL abort(__STAMP__,' Calculating height from v and dt is not supported for initial ParticleInserting!')
+        CALL ABORT(__STAMP__,' Calculating height from v and dt is not supported for initial ParticleInserting!')
       END IF
     END IF
 
@@ -1341,7 +1370,7 @@ END DO
 DO iBC = 1,nBCs
   IF (BoundaryType(iBC,1).EQ.0) THEN
     PartBound%TargetBoundCond(iBC) = -1
-    SWRITE(*,*)"... PartBound",iBC,"is internal bound, no mapping needed"
+    SWRITE(UNIT_stdOut,'(A,I0,A)') " ... PartBound",iBC,"is internal bound, no mapping needed"
     CYCLE
   END IF
 
@@ -1414,7 +1443,7 @@ DO iBC = 1,nBCs
 
     ! Invalid boundary option
     CASE DEFAULT
-      SWRITE(*,*) ' Boundary does not exists: ', TRIM(PartBound%SourceBoundType(iBC))
+      SWRITE(UNIT_stdOut,'(A,A)') ' Boundary does not exists: ', TRIM(PartBound%SourceBoundType(iBC))
       CALL abort(__STAMP__,'Particle Boundary Condition does not exist')
   END SELECT
 END DO
@@ -1488,7 +1517,7 @@ IF (nAuxBCs.GT.0) THEN
 
     ! Unknown auxiliary boundary type
     CASE DEFAULT
-      SWRITE(*,*) ' AuxBC Condition does not exists: ', TRIM(tmpString)
+      SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC Condition does not exists: ', TRIM(tmpString)
       CALL abort(__STAMP__,'AuxBC Condition does not exist')
 
     END SELECT
@@ -1523,7 +1552,7 @@ IF (nAuxBCs.GT.0) THEN
       AuxBCMap(iAuxBC) = nAuxBCparabols
 
     CASE DEFAULT
-      SWRITE(*,*) ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
+      SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
       CALL abort(__STAMP__,'AuxBC does not exist')
     END SELECT
   END DO
@@ -1670,7 +1699,7 @@ IF (nAuxBCs.GT.0) THEN
       AuxBC_parabol(AuxBCMap(iAuxBC))%geomatrix4(4,3) = -0.5*AuxBC_parabol(AuxBCMap(iAuxBC))%zfac
 
     CASE DEFAULT
-      SWRITE(*,*) ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
+      SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
       CALL abort(__STAMP__,'AuxBC does not exist for AuxBC',iAuxBC)
 
     END SELECT

@@ -257,7 +257,7 @@ CNElemID = GetCNElemID(ElemID)
 ! If the element is curved, all Gauss points are required
 IF (ElemCurved(CNElemID)) THEN
   CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID) &
-                    ,NGeo,ElemID,Mode=1,PartID=PartID)
+                    ,NGeo,ElemID,Mode=3,PartID=PartID)
 ! If the element is not curved, only the corner nodes are required
 ELSE
   ! fill dummy XCL_NGeo1
@@ -503,7 +503,7 @@ CNElemID = GetCNElemID(ElemID)
 ! If the element is curved, all Gauss points are required
 IF (ElemCurved(CNElemID)) THEN
   CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID) &
-                    ,NGeo,ElemID,Mode=1,PartID=PartID)
+                    ,NGeo,ElemID,Mode=3,PartID=PartID)
 ! If the element is not curved, only the corner nodes are required
 ELSE
   ! fill dummy XCL_NGeo1
@@ -645,7 +645,8 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys
 USE MOD_Particle_Mesh_Vars,      ONLY:RefMappingEps
-USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos
+USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos,PDM
+USE MOD_Particle_Tracking_Vars,  ONLY:CountNbOfLostParts,NbrOfLostParticles
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -781,11 +782,22 @@ DO WHILE((deltaXi2.GT.RefMappingEps).AND.(NewtonIter.LT.100))
       IPWRITE(UNIT_StdOut,*) ' Newton-Iter:   ', NewtonIter
       IPWRITE(UNIT_stdOut,*) ' xi:            ', xi(1:3)
       IPWRITE(UNIT_stdOut,*) ' PartPos (phys):', X_in
+      IF (PRESENT(PartID)) THEN
+        IPWRITE(UNIT_stdOut,*) ' LastPos (phys):', LastPartPos(:,PartID)
+        IPWRITE(UNIT_stdOut,*) ' PartVel:       ', PartState(4:6,PartID),'abs:',SQRT(SUM(PartState(4:6,PartID)**2))
+        IPWRITE(UNIT_stdOut,*) ' ElemID:        ', ElemID
+        IPWRITE(UNIT_stdOut,*) ' PartID:        ', PartID
+        CALL abort(__STAMP__,'Particle not inside of Element, ElemID,',ElemID)
+      END IF
+    ELSEIF (Mode.EQ.3) THEN
+      IPWRITE(UNIT_stdOut,*) 'WARNING: Particle not inside of element! Particle ', PartID, 'in Elem ', ElemID, 'will be deleted'
+      IPWRITE(UNIT_stdOut,*) ' xi:            ', xi(1:3)
+      IPWRITE(UNIT_stdOut,*) ' PartPos (phys):', X_in
       IPWRITE(UNIT_stdOut,*) ' LastPos (phys):', LastPartPos(:,PartID)
       IPWRITE(UNIT_stdOut,*) ' PartVel:       ', PartState(4:6,PartID),'abs:',SQRT(SUM(PartState(4:6,PartID)**2))
-      IPWRITE(UNIT_stdOut,*) ' ElemID:        ', ElemID
-      IF(PRESENT(PartID)) IPWRITE(UNIT_stdOut,*) ' PartID:        ', PartID
-      CALL abort(__STAMP__,'Particle not inside of Element, ElemID,',ElemID)
+      PDM%ParticleInside(PartID) = .FALSE.
+      IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
+      EXIT
     ELSE
       EXIT
     END IF

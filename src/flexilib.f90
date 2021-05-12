@@ -82,7 +82,7 @@ USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
 USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,ExtractParameterFile
 USE MOD_Restart_Vars,      ONLY:RestartFile
 USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
-USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData        
+USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

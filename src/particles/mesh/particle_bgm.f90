@@ -134,7 +134,7 @@ INTEGER                        :: iElem,iLocSide,SideID
 INTEGER                        :: FirstElem,LastElem
 INTEGER                        :: firstNodeID,lastNodeID
 INTEGER                        :: offsetNodeID,nNodeIDs,currentOffset
-INTEGER,PARAMETER              :: moveBGMindex=1,increment=1
+INTEGER,PARAMETER              :: moveBGMindex=1,increment=1,haloChange=3
 REAL                           :: xmin,xmax,ymin,ymax,zmin,zmax
 INTEGER                        :: iBGM,jBGM,kBGM
 INTEGER                        :: BGMimax,BGMimin,BGMjmax,BGMjmin,BGMkmax,BGMkmin
@@ -162,6 +162,8 @@ INTEGER                        :: BGMiglobDelta,BGMjglobDelta,BGMkglobDelta
 ! Periodic FIBGM
 LOGICAL                        :: PeriodicComponent(1:3)
 INTEGER                        :: iPeriodicVector,iPeriodicComponent
+! Mortar
+INTEGER                        :: iMortar,NbElemID,NbSideID,nMortarElems
 #else
 REAL                           :: halo_eps
 #endif /*USE_MPI*/
@@ -559,6 +561,37 @@ CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
 IF (GEO%nPeriodicVectors.GT.0) CALL CheckPeriodicSides()
+CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+
+! Mortar sides
+IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
+  DO iElem = firstElem, lastElem
+    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).LT.1) CYCLE
+
+    ! Loop over all sides and check for mortar sides
+    DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,iElem)
+      NbElemID = SideInfo_Shared(SIDE_NBELEMID,iSide)
+      ! Mortar side
+      IF (NbElemID.LT.0) THEN
+        nMortarElems = MERGE(4,2,SideInfo_Shared(SIDE_NBELEMID,iSide).EQ.-1)
+
+        DO iMortar = 1,nMortarElems
+          NbSideID   = SideInfo_Shared(SIDE_NBSIDEID,iSide + iMortar)
+          ElemID     = SideInfo_Shared(SIDE_ELEMID  ,NbSideID)
+
+          ! Element not previously flagged
+          IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).LT.1) THEN
+            ASSOCIATE(posElem => (ElemID-1)*ELEMINFOSIZE + (ELEM_HALOFLAG-1))
+              CALL MPI_FETCH_AND_OP(haloChange,dummyInt,MPI_INTEGER,0,INT(4*posElem,MPI_ADDRESS_KIND),MPI_REPLACE,ElemInfo_Shared_Win,IERROR)
+            END ASSOCIATE
+          END IF
+        END DO
+      END IF
+    END DO
+  END DO
+END IF
+
 CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #else
@@ -1089,11 +1122,12 @@ ALLOCATE(Distance    (1:MAXVAL(FIBGM_nElems)) &
 ALLOCATE(CNTotalSide2GlobalSide(1:nComputeNodeTotalSides))
 ALLOCATE(GlobalSide2CNTotalSide(1:nNonUniqueGlobalSides))
 
-! Use MessageSize to store temporally store the previous value
+! Use MessageSize to temporally store the previous value
 MessageSize = nComputeNodeTotalSides
 nComputeNodeSides      = 0
 nComputeNodeTotalSides = 0
-GlobalSide2CNTotalSide(1:nGlobalElems) = -1
+GlobalSide2CNTotalSide(:) = -1
+CNTotalSide2GlobalSide(:) = -1
 
 ! CN-local elements
 DO iElem = 1,nComputeNodeElems
@@ -1101,6 +1135,9 @@ DO iElem = 1,nComputeNodeElems
 
   ! Loop over all sides
   DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
+    ! Check if side was already added
+    ! IF (GlobalSide2CNTotalSide(iSide).NE.-1) CYCLE
+
     nComputeNodeSides             = nComputeNodeSides      + 1
     nComputeNodeTotalSides        = nComputeNodeTotalSides + 1
     CNTotalSide2GlobalSide(nComputeNodeTotalSides) = iSide
@@ -1114,6 +1151,9 @@ Do iElem = nComputeNodeElems + 1,nComputeNodeTotalElems
 
   ! Loop over all sides
   DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
+    ! Check if side was already added
+    ! IF (GlobalSide2CNTotalSide(iSide).NE.-1) CYCLE
+
     nComputeNodeTotalSides        = nComputeNodeTotalSides + 1
     CNTotalSide2GlobalSide(nComputeNodeTotalSides) = iSide
     GlobalSide2CNTotalSide(iSide) = nComputeNodeTotalSides

@@ -43,6 +43,7 @@ SUBROUTINE DomainDecomposition()
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+USE MOD_Globals_Vars         ,ONLY: DomainDecompositionWallTime
 USE MOD_LoadDistribution     ,ONLY: ApplyWeightDistributionMethod
 USE MOD_LoadBalance_Vars     ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,PartDistri,TargetWeight,ElemTime
 USE MOD_HDF5_Input           ,ONLY: OpenDataFile
@@ -60,7 +61,16 @@ LOGICAL                        :: ElemTimeExists
 REAL,ALLOCATABLE               :: WeightSum_proc(:)
 INTEGER                        :: iProc
 INTEGER                        :: iElem
+REAL                           :: StartT,EndT
 !===================================================================================================================================
+SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(UNIT_stdOut,'(A)')' DOMAIN DECOMPOSITION ...'
+
+#if USE_MPI
+StartT=MPI_WTIME()
+#else
+CALL CPU_TIME(StartT)
+#endif
 
 SDEALLOCATE(offsetElemMPI)
 ALLOCATE(offsetElemMPI(0:nProcessors))
@@ -164,6 +174,10 @@ END IF
 
 ! Re-open mesh file to continue readin. Meshfile is not set if this routine is called from posti
 IF (INDEX(MeshFile,'h5').NE.0)  CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+
+EndT                        = FLEXITIME()
+DomainDecompositionWallTime = EndT-StartT
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DOMAIN DECOMPOSITION ... DONE  [',DomainDecompositionWallTime,'s]'
 
 END SUBROUTINE DomainDecomposition
 

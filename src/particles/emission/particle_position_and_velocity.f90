@@ -133,12 +133,13 @@ SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
 USE MOD_Globals
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,doPartIndex
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
-USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition,SetParticlePositionPoint
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine,SetParticlePositionDisk
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionCuboidCylinder,SetParticlePositionCircle
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionSphere,SetParticlePositionCross
+USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionPoint
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionPlane,SetParticlePositionDisk,SetParticlePositionCross,SetParticlePositionCircle
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionCuboidCylinder,SetParticlePositionSphere
 !USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionSinDeviation
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionGaussian
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionGaussian,SetParticlePositionFromFile
 #if USE_MPI
 USE MOD_Particle_MPI_Emission  ,ONLY: SendEmissionParticlesToProcs
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
@@ -212,23 +213,27 @@ IF (PartMPI%InitGroup(InitGroup)%MPIROOT.OR.nChunks.GT.1) THEN
   !------------------SpaceIC-cases: start-----------------------------------------------------------!
   SELECT CASE(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC))
   CASE ('point')
-    CALL SetParticlePositionPoint(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionPoint(         FractNbr,iInit,chunkSize,particle_positions)
   CASE ('line_with_equidistant_distribution')
-    CALL SetParticlePositionEquidistLine(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionEquidistLine(  FractNbr,iInit,chunkSize,particle_positions)
   CASE ('line')
-    CALL SetParticlePositionLine(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionLine(          FractNbr,iInit,chunkSize,particle_positions)
   CASE ('Gaussian')
-    CALL SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionGaussian(      FractNbr,iInit,chunkSize,particle_positions)
+  CASE('plane')
+    CALL SetParticlePositionPlane(         FractNbr,iInit,chunkSize,particle_positions)
   CASE('disc')
-    CALL SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionDisk(          FractNbr,iInit,chunkSize,particle_positions)
   CASE('cross')
-    CALL SetParticlePositionCross(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionCross(         FractNbr,iInit,chunkSize,particle_positions)
   CASE('circle', 'circle_equidistant')
-    CALL SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionCircle(        FractNbr,iInit,chunkSize,particle_positions)
   CASE('cuboid','cylinder')
     CALL SetParticlePositionCuboidCylinder(FractNbr,iInit,chunkSize,particle_positions)
   CASE('sphere')
-    CALL SetParticlePositionSphere(FractNbr,iInit,chunkSize,particle_positions)
+    CALL SetParticlePositionSphere(        FractNbr,iInit,chunkSize,particle_positions)
+  CASE('load_from_file')
+    CALL SetParticlePositionFromFile(      FractNbr,iInit,chunkSize,particle_positions)
 !  CASE('sin_deviation')
 !    CALL SetParticlePositionSinDeviation(FractNbr,iInit,chunkSize,particle_positions)
   END SELECT
@@ -358,8 +363,7 @@ REAL                             :: Alpha                            ! WaveNumbe
 #if USE_RW
 REAL                             :: turbField(nVarTurb)
 #endif
-CHARACTER(200)                   :: filename_loc             ! specifying keyword for velocity distribution
-REAL,ALLOCATABLE                 :: PartFieldtmp(:)
+REAL                             :: minDistance,globminDistance
 !===================================================================================================================================
 ! Abort if we don't have any/too many particles
 IF(NbrOfParticle.LT.1) RETURN
@@ -472,33 +476,24 @@ CASE('radial_constant')
 !===================================================================================================================================
 CASE('load_from_file')
   i = 1
-  ! load from binary file
-  IF (.NOT.ALLOCATED(Species(FractNbr)%Init(iInit)%PartField)) THEN
-    IF(STRICMP(Species(i)%Init(iInit)%velocityDistribution,'load_from_file'))THEN
-      WRITE(FileName_loc,"(A16,I1,A4)") "data/recordpart_", FractNbr-1, ".dat"
-      ALLOCATE(PartFieldTmp(30000))
-      OPEN(33, FILE=TRIM(FileName_loc),FORM="UNFORMATTED", STATUS="UNKNOWN", ACTION="READ", ACCESS='STREAM')
-      READ(33) PartFieldtmp
-      ALLOCATE(Species(FractNbr)%Init(iInit)%PartField(100,100,3))
-      Species(FractNbr)%Init(iInit)%PartField = RESHAPE(PartFieldtmp,(/100,100,3/))
-      DEALLOCATE(PartFieldtmp)
-    END IF
-  END IF
-  DO WHILE (i .le. NbrOfParticle)
+  DO WHILE (i .LE. NbrOfParticle)
     PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
-    IF (PositionNbr .ne. 0) THEN
-      ! calculate distance to each particle in binary file
-      ! 1e-2/1e+2 = 1e-4
-      PartState(4,PositionNbr) = &
-      Species(FractNbr)%Init(iInit)%PartField(50+INT(PartState(2,PositionNbr)*1e4),INT(50+PartState(3,PositionNbr)*1e4),1)!/&
-!        MAXVAL(Species(FractNbr)%Init(iInit)%PartField(:,:,1))*VeloVecIC(1)
-      PartState(5,PositionNbr) = &
-      Species(FractNbr)%Init(iInit)%PartField(50+INT(PartState(2,PositionNbr)*1e4),INT(50+PartState(3,PositionNbr)*1e4),2)
-      PartState(6,PositionNbr) = &
-      Species(FractNbr)%Init(iInit)%PartField(50+INT(PartState(2,PositionNbr)*1e4),INT(50+PartState(3,PositionNbr)*1e4),3)
-      IF (ANY(ISNAN(PartState(:,PositionNbr)))) THEN
-        PartState(4:6,PositionNbr) = 0.
+    IF (PositionNbr .NE. 0) THEN
+      globminDistance = 1.e-3
+      Radius(1) = SQRT((PartState(2,PositionNbr)-BasePointIC(2))**2 + (PartState(3,PositionNbr)-BasePointIC(3))**2)
+      DO j=1,Species(FractNbr)%Init(iInit)%nPartField
+!        IF(SIGN(1,Species(FractNbr)%Init(iInit)%PartField(j,1)).NE.SIGN(1,PartState(2,PositionNbr))) CYCLE
+!        IF(SIGN(1,Species(FractNbr)%Init(iInit)%PartField(j,2)).NE.SIGN(1,PartState(3,PositionNbr))) CYCLE
+        Radius(2) = SQRT(Species(FractNbr)%Init(iInit)%PartField(j,1)**2 + Species(FractNbr)%Init(iInit)%PartField(j,2)**2)
+        minDistance = ABS(Radius(1)-Radius(2))
+        IF(minDistance.LT.globminDistance)THEN
+          globminDistance = minDistance
+          PartState(4:6,PositionNbr) = Species(FractNbr)%Init(iInit)%PartField(j,3:5)
       END IF
+      END DO
+!      IF (ANY(ISNAN(PartState(:,PositionNbr)))) THEN
+!        PartState(4:6,PositionNbr) = 0.
+!      END IF
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
     END IF

@@ -29,24 +29,12 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL                                  :: PI
+REAL                                  :: PI         = ACOS(-1.0D0)
 REAL                                  :: epsMach    = epsilon(0.)
 REAL                                  :: TwoEpsMach = 2.d0 * epsilon(0.)
 
 ! Keep nElems and PP_nElems separate for now
 INTEGER                               :: PP_nElems
-
-!- LOADBALANCE ---------------------------------------------------------------------------------------------------------------------
-REAL                         :: WallTime                              !> Wall time needed by a simulation (is not reset by
-                                                                      !> performing a load balance step, only by user restart)
-REAL                         :: InitializationWallTime                !> Wall time needed to initialize a simulation (or
-                                                                      !> re-initialize a simulation by performing a load balance
-                                                                      !>  step)
-REAL                         :: SimulationEfficiency                  !> relates the simulated time to the used CPUh (SIMULATION
-                                                                      !> TIME PER CALCULATION in [s]/[CPUh])
-REAL                         :: PID                                   !> Performance index: (CalcTimeEnd-CalcTimeStart)*nProcessors/
-                                                                      !> (nGlobalElems*(PP_N+1)**3*iter_loc)
-
 !=================================================================================================================================
 
 INTERFACE CROSSNORM
@@ -65,13 +53,21 @@ INTERFACE DOTPRODUCT
   MODULE PROCEDURE DOTPRODUCT
 END INTERFACE DOTPRODUCT
 
+INTERFACE OrthoNormVec
+  MODULE PROCEDURE OrthoNormVec
+END INTERFACE OrthoNormVec
+
 INTERFACE UnitVector
   MODULE PROCEDURE UnitVector
 END INTERFACE UnitVector
 
-INTERFACE OrthoNormVec
-  MODULE PROCEDURE OrthoNormVec
-END INTERFACE OrthoNormVec
+INTERFACE FindLinIndependentVectors
+  MODULE PROCEDURE FindLinIndependentVectors
+END INTERFACE FindLinIndependentVectors
+
+INTERFACE Find2DNormIndependentVectors
+  MODULE PROCEDURE Find2DNormIndependentVectors
+END INTERFACE Find2DNormIndependentVectors
 
 INTERFACE GETFREEUNIT
   MODULE PROCEDURE GETFREEUNIT
@@ -92,6 +88,9 @@ PUBLIC :: AlmostZero
 PUBLIC :: AlmostEqual
 PUBLIC :: DOTPRODUCT
 PUBLIC :: UnitVector
+PUBLIC :: OrthoNormVec
+PUBLIC :: FindLinIndependentVectors
+PUBLIC :: Find2DNormIndependentVectors
 PUBLIC :: RandNormal
 PUBLIC :: StringBeginsWith
 !===================================================================================================================================
@@ -264,7 +263,7 @@ PURE FUNCTION UNITVECTOR(v1)
 ! compute  a unit vector from a given vector
 !===================================================================================================================================
 ! MODULES
-USE Mod_Globals
+USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -281,6 +280,88 @@ invL=SQRT(v1(1)*v1(1)+v1(2)*v1(2)+v1(3)*v1(3))
 invL=1./invL
 UNITVECTOR=v1*invL
 END FUNCTION UNITVECTOR
+
+
+SUBROUTINE FindLinIndependentVectors(NormalVector, Vector1, Vector2)
+!===================================================================================================================================
+!> Finds two linear vectors of a normal vector around a base point
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL, INTENT(IN) :: NormalVector(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL, INTENT(OUT) :: Vector1(3), Vector2(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! Find the second vector which is in the normal plane
+IF (NormalVector(1).NE.0) THEN
+  Vector1(1) = (0 - NormalVector(2) - NormalVector(3)) / NormalVector(1)
+  Vector1(2) = 1
+  Vector1(3) = 1
+ELSE IF (NormalVector(2).NE.0) THEN
+  Vector1(1) = 1
+  Vector1(2) = (0 - NormalVector(1) - NormalVector(3)) / NormalVector(2)
+  Vector1(3) = 1
+ELSE IF (NormalVector(3).NE.0) THEN
+  Vector1(1) = 1
+  Vector1(2) = 1
+  Vector1(3) = (0 - NormalVector(1) - NormalVector(2)) / NormalVector(3)
+ELSE
+  CALL abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
+END IF
+
+! Find the third vecord vector with the cross product
+Vector2(1) = NormalVector(2)*Vector1(3) - NormalVector(3)*Vector1(2)
+Vector2(2) = NormalVector(3)*Vector1(1) - NormalVector(1)*Vector1(3)
+Vector2(3) = NormalVector(1)*Vector1(2) - NormalVector(2)*Vector1(1)
+END SUBROUTINE FindLinIndependentVectors
+
+
+SUBROUTINE Find2DNormIndependentVectors(NormalVector, Vector1, Vector2)
+!===================================================================================================================================
+!> Finds two linear vectors of a normal vector around a base point
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL, INTENT(IN) :: NormalVector(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL, INTENT(OUT) :: Vector1(3),Vector2(3)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! Find the first vector which is in the normal plane
+IF (NormalVector(1).NE.0) THEN
+  Vector1 = (/-NormalVector(2), NormalVector(1) , 0.             /)
+
+ELSE IF (NormalVector(2).NE.0) THEN
+  Vector1 = (/-NormalVector(2), NormalVector(1) , 0.             /)
+
+ELSE IF (NormalVector(3).NE.0) THEN
+  Vector1 = (/-NormalVector(3),               0., NormalVector(1)/)
+
+ELSE
+  CALL abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
+END IF
+
+Vector1 = UNITVECTOR(Vector1)
+!  The second vector has to be perpendicular to the first vector and the NormalVector
+Vector2 = CROSSNORM(NormalVector,Vector1)
+
+END SUBROUTINE Find2DNormIndependentVectors
+
 
 FUNCTION GETFREEUNIT()
 !===================================================================================================================================

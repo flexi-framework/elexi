@@ -1106,9 +1106,7 @@ ELSE
 END IF
 
 ! 2.) Bezier intersection: transformation of bezier patch 3D->2D
-CALL Find2DIndependentVectors(PartTrajectory,n1,n2)
-n1 = UNITVECTOR(n1)
-n2 = UNITVECTOR(n2)
+CALL Find2DNormIndependentVectors(PartTrajectory,n1,n2)
 
 ! check angle to boundingbox (height normal vector)
 PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,SideSlabNormals(:,2,CNSideID))))

@@ -65,9 +65,9 @@ INTERFACE FindLinIndependentVectors
   MODULE PROCEDURE FindLinIndependentVectors
 END INTERFACE FindLinIndependentVectors
 
-INTERFACE Find2DIndependentVectors
-  MODULE PROCEDURE Find2DIndependentVectors
-END INTERFACE Find2DIndependentVectors
+INTERFACE Find2DNormIndependentVectors
+  MODULE PROCEDURE Find2DNormIndependentVectors
+END INTERFACE Find2DNormIndependentVectors
 
 INTERFACE GETFREEUNIT
   MODULE PROCEDURE GETFREEUNIT
@@ -90,7 +90,7 @@ PUBLIC :: DOTPRODUCT
 PUBLIC :: UnitVector
 PUBLIC :: OrthoNormVec
 PUBLIC :: FindLinIndependentVectors
-PUBLIC :: Find2DIndependentVectors
+PUBLIC :: Find2DNormIndependentVectors
 PUBLIC :: RandNormal
 PUBLIC :: StringBeginsWith
 !===================================================================================================================================
@@ -324,7 +324,7 @@ Vector2(3) = NormalVector(1)*Vector1(2) - NormalVector(2)*Vector1(1)
 END SUBROUTINE FindLinIndependentVectors
 
 
-SUBROUTINE Find2DIndependentVectors(NormalVector, Vector1, Vector2)
+SUBROUTINE Find2DNormIndependentVectors(NormalVector, Vector1, Vector2)
 !===================================================================================================================================
 !> Finds two linear vectors of a normal vector around a base point
 !===================================================================================================================================
@@ -342,23 +342,25 @@ REAL, INTENT(OUT) :: Vector1(3),Vector2(3)
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-! Find the second vector which is in the normal plane
+! Find the first vector which is in the normal plane
 IF (NormalVector(1).NE.0) THEN
   Vector1 = (/-NormalVector(2), NormalVector(1) , 0.             /)
-  Vector2 = (/              0.,-NormalVector(3) , NormalVector(1)/)
 
 ELSE IF (NormalVector(2).NE.0) THEN
   Vector1 = (/-NormalVector(2), NormalVector(1) , 0.             /)
-  Vector2 = (/              0.,-NormalVector(3) , NormalVector(2)/)
 
 ELSE IF (NormalVector(3).NE.0) THEN
   Vector1 = (/-NormalVector(3),               0., NormalVector(1)/)
-  Vector2 = (/              0.,-NormalVector(3) , NormalVector(2)/)
 
 ELSE
   CALL abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
 END IF
-END SUBROUTINE Find2DIndependentVectors
+
+Vector1 = UNITVECTOR(Vector1)
+!  The second vector has to be perpendicular to the first vector and the NormalVector
+Vector2 = CROSSNORM(NormalVector,Vector1)
+
+END SUBROUTINE Find2DNormIndependentVectors
 
 
 FUNCTION GETFREEUNIT()

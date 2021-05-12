@@ -66,42 +66,42 @@ DO iSpec = 1,nSpecies
   WRITE(UNIT=tmpStr,FMT='(I0)') iSpec
   Species(iSpec)%nSurfacefluxBCs = GETINT('Part-Species'//TRIM(tmpStr)//'-nSurfacefluxBCs','0')
 
-  IF (Species(iSpec)%nSurfacefluxBCs.EQ.0) THEN
-    CYCLE
-  ELSE
-    ! Initialize SurfaceFlux to BC mapping
-    ALLOCATE(Species(iSpec)%Surfaceflux(1:Species(iSpec)%nSurfacefluxBCs))
-    Species(iSpec)%Surfaceflux(:)%BC = -1
+  ! Ignore species with no SurfaceFlux BC
+  IF (Species(iSpec)%nSurfacefluxBCs.EQ.0) CYCLE
 
-    DO iSF = 1,Species(iSpec)%nSurfacefluxBCs
-      WRITE(UNIT=tmpStr2,FMT='(I0)') iSF
-      tmpStr2 = TRIM(tmpStr)//'-Surfaceflux'//TRIM(tmpStr2)
-      Species(iSpec)%Surfaceflux(iSF)%BC = GETINT('Part-Species'//TRIM(tmpStr2)//'-BC','0')
-    END DO
-  END IF
+  ! Initialize SurfaceFlux to BC mapping
+  ALLOCATE(Species(iSpec)%Surfaceflux(1:Species(iSpec)%nSurfacefluxBCs))
+  Species(iSpec)%Surfaceflux(:)%BC = -1
+
+  DO iSF = 1,Species(iSpec)%nSurfacefluxBCs
+    WRITE(UNIT=tmpStr2,FMT='(I0)') iSF
+    tmpStr2 = TRIM(tmpStr)//'-Surfaceflux'//TRIM(tmpStr2)
+    Species(iSpec)%Surfaceflux(iSF)%BC = GETINT('Part-Species'//TRIM(tmpStr2)//'-BC','0')
+
+    ! Sanity check user input
+    IF ((Species(iSpec)%Surfaceflux(iSF)%BC.LT.1) .OR. Species(iSpec)%Surfaceflux(iSF)%BC.GT.nBCs) &
+      CALL abort(__STAMP__, 'SurfacefluxBCs must be between 1 and nBCs!')
+  END DO
 
   ! Increase global counter of SurfaceFluxBC
   MaxSurfacefluxBCs = MAX(MaxSurfacefluxBCs,Species(iSpec)%nSurfacefluxBCs)
 
   DO iSF = 1,Species(iSpec)%nSurfacefluxBCs
-    WRITE(UNIT=tmpStr2,FMT='(I0)') iSF
-    tmpStr2 = TRIM(tmpStr)//'-Surfaceflux'//TRIM(tmpStr2)
+    ! Allocate SurfaceFlux variables
     Species(iSpec)%Surfaceflux(iSF)%InsertedParticle        = 0
     Species(iSpec)%Surfaceflux(iSF)%InsertedParticleSurplus = 0
     Species(iSpec)%Surfaceflux(iSF)%VFR_total               = 0
     Species(iSpec)%Surfaceflux(iSF)%VFR_total_allProcsTotal = 0
 
-    ! Get SurfaceFlux data
-    IF ((Species(iSpec)%Surfaceflux(iSF)%BC.LT.1) .OR. Species(iSpec)%Surfaceflux(iSF)%BC.GT.nBCs) THEN
-      CALL abort(__STAMP__, 'SurfacefluxBCs must be between 1 and nBCs!')
-
     ! SurfaceFlux data not yet set
-    ELSE IF (BCdata_auxSF(Species(iSpec)%Surfaceflux(iSF)%BC)%SideNumber.EQ.-1) THEN
+    IF (BCdata_auxSF(Species(iSpec)%Surfaceflux(iSF)%BC)%SideNumber.EQ.-1) THEN
       BCdata_auxSF(Species(iSpec)%Surfaceflux(iSF)%BC)%SideNumber = 0
       nDataBC = nDataBC + 1
     END IF
 
     ! Get SurfaceFlux velocity distribution
+    WRITE(UNIT=tmpStr2,FMT='(I0)') iSF
+    tmpStr2 = TRIM(tmpStr)//'-Surfaceflux'//TRIM(tmpStr2)
     Species(iSpec)%Surfaceflux(iSF)%velocityDistribution  = &
         TRIM(GETSTR('Part-Species'//TRIM(tmpStr2)//'-velocityDistribution','constant'))
 
@@ -126,11 +126,12 @@ DO iSpec = 1,nSpecies
       Species(iSpec)%Surfaceflux(iSF)%VeloVecIC           = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-VeloVecIC'          ,3)
       Species(iSpec)%Surfaceflux(iSF)%CircularInflow      = GETLOGICAL(  'Part-Species'//TRIM(tmpStr2)//'-CircularInflow'       )
 
-      !
+      ! Circular inflow
       IF(Species(iSpec)%Surfaceflux(iSF)%CircularInflow) THEN
         UseCircularInflow = .TRUE.
-        Species(iSpec)%Surfaceflux(iSF)%dir(1)   = GETINT('Part-Species'//TRIM(tmpStr2)//'-axialDir')
 
+        ! Set axial and tangential direction
+        Species(iSpec)%Surfaceflux(iSF)%dir(1)   = GETINT('Part-Species'//TRIM(tmpStr2)//'-axialDir')
         IF (Species(iSpec)%Surfaceflux(iSF)%dir(1).EQ.1) THEN
           Species(iSpec)%Surfaceflux(iSF)%dir(2) = 2
           Species(iSpec)%Surfaceflux(iSF)%dir(3) = 3
@@ -145,7 +146,7 @@ DO iSpec = 1,nSpecies
         END IF
 
         IF ( Species(iSpec)%Surfaceflux(iSF)%VeloVecIC(Species(iSpec)%Surfaceflux(iSF)%dir(2)).NE.0. .OR. &
-             Species(iSpec)%Surfaceflux(iSF)%VeloVecIC(Species(iSpec)%Surfaceflux(iSF)%dir(3)).NE.0. ) &
+             Species(iSpec)%Surfaceflux(iSF)%VeloVecIC(Species(iSpec)%Surfaceflux(iSF)%dir(3)).NE.0. )    &
           CALL abort(__STAMP__,'ERROR in init: axialDir for SFradial do not correspond to VeloVecIC!')
 
         Species(iSpec)%Surfaceflux(iSF)%origin   = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-origin',2,'0. , 0.')
@@ -155,7 +156,7 @@ DO iSpec = 1,nSpecies
       END IF
     END IF !.NOT.VeloIsNormal
 
-    !--- normalize VeloVecIC
+    ! Normalize VeloVecIC
     IF (.NOT.Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal) THEN
       IF (.NOT. ALL(Species(iSpec)%Surfaceflux(iSF)%VeloVecIC(:).EQ.0.)) THEN
         Species(iSpec)%Surfaceflux(iSF)%VeloVecIC =                   Species(iSpec)%Surfaceflux(iSF)%VeloVecIC  &
@@ -165,17 +166,20 @@ DO iSpec = 1,nSpecies
     END IF
 
     Species(iSpec)%Surfaceflux(iSF)%PartDensity  = GETREAL(   'Part-Species'//TRIM(tmpStr2)//'-PartDensity'  ,'0.'     )
-    Species(iSpec)%Surfaceflux(iSF)%ReduceNoise  = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-ReduceNoise'  ,'.FALSE.')
 
-    IF (DoPoissonRounding .AND. Species(iSpec)%Surfaceflux(iSF)%ReduceNoise) THEN
-      SWRITE(UNIT_StdOut,'(A)') ' WARNING: Poisson sampling not possible for noise reduction of surfacefluxes:'
-      SWRITE(UNIT_StdOut,'(A)') ' switching now to Random rounding...'
-      DoPoissonRounding   = .FALSE.
-    END IF
-    IF (DoTimeDepInflow   .AND. Species(iSpec)%Surfaceflux(iSF)%ReduceNoise) THEN
-      SWRITE(UNIT_StdOut,'(A)') ' WARNING: Time-dependent inflow is not possible for noise reduction of surfacefluxes:'
-      SWRITE(UNIT_StdOut,'(A)') ' switching now to Random rounding...'
-      DoTimeDepInflow   = .FALSE.
+    ! Reduce noise
+    Species(iSpec)%Surfaceflux(iSF)%ReduceNoise  = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-ReduceNoise'  ,'.FALSE.')
+    IF (Species(iSpec)%Surfaceflux(iSF)%ReduceNoise) THEN
+      IF (DoPoissonRounding) THEN
+        SWRITE(UNIT_StdOut,'(A)') ' WARNING: Poisson sampling not possible for noise reduction of surfacefluxes:'
+        SWRITE(UNIT_StdOut,'(A)') ' switching now to Random rounding...'
+        DoPoissonRounding   = .FALSE.
+      END IF
+      IF (DoTimeDepInflow) THEN
+        SWRITE(UNIT_StdOut,'(A)') ' WARNING: Time-dependent inflow is not possible for noise reduction of surfacefluxes:'
+        SWRITE(UNIT_StdOut,'(A)') ' switching now to Random rounding...'
+        DoTimeDepInflow   = .FALSE.
+      END IF
     END IF
 
     ! TriaSurfaceFlux
@@ -223,8 +227,8 @@ USE MOD_Particle_Surfaces      ,ONLY: GetBezierSampledAreas, CalcNormAndTangTria
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: totalArea
 INTEGER                 :: BCSideID, ElemID, iLocSide, SideID, jSample, iSample
+REAL                    :: totalArea
 REAL                    :: tmp_SubSideAreas(SurfFluxSideSize(1),SurfFluxSideSize(2))
 REAL                    :: tmp_Vec_nOut(3,SurfFluxSideSize(1),SurfFluxSideSize(2))
 REAL                    :: tmp_Vec_t1(3,SurfFluxSideSize(1),SurfFluxSideSize(2))
@@ -236,20 +240,20 @@ totalArea = 0.
 
 DO BCSideID = 1,nBCSides
   ! SideToElem is coming from DG and available for local elems
-  ElemID = SideToElem(1,BCSideID)
+  ElemID = SideToElem(S2E_ELEM_ID,BCSideID)
 
   ! mortar elements MIGHT need to be treated differently. Take the side pointing back
   IF (ElemID.LT.1) THEN
-    ElemID   = SideToElem(2,BCSideID)
-    iLocSide = SideToElem(4,BCSideID)
+    ElemID   = SideToElem(S2E_NB_ELEM_ID    ,BCSideID)
+    iLocSide = SideToElem(S2E_NB_LOC_SIDE_ID,BCSideID)
   ELSE
-    iLocSide = SideToElem(3,BCSideID)
+    iLocSide = SideToElem(S2E_LOC_SIDE_ID   ,BCSideID)
   END IF
 
   ! Get global SideID from local SideID
   SideID = GetGlobalNonUniqueSideID(offsetElem+ElemID,iLocSide)
 
-  !
+  ! SurfMeshSideArea based on trias
   IF (TriaSurfaceFlux) THEN
     IF (SurfFluxSideSize(1).NE.1 .OR. SurfFluxSideSize(2).NE.2) &
       CALL ABORT(__STAMP__, 'SurfFluxSideSize must be 1,2 for TriaSurfaceFlux!')
@@ -265,7 +269,6 @@ DO BCSideID = 1,nBCSides
 
       SurfMeshSideAreas(BCSideID) = SurfMeshSideAreas(BCSideID) + tmp_SubSideAreas(iSample,jSample)
     END DO; END DO
-
   ELSE
     IF (ANY(SurfFluxSideSize.NE.BezierSampleN)) &
       CALL ABORT(__STAMP__, 'SurfFluxSideSize must be BezierSampleN,BezierSampleN for .NOT.TriaSurfaceFlux!')
@@ -277,7 +280,7 @@ DO BCSideID = 1,nBCSides
                               , SurfMeshSubSideVec_nOut_opt = tmp_Vec_nOut                  &
                               , SurfMeshSubSideVec_t1_opt   = tmp_Vec_t1                    &
                               , SurfMeshSubSideVec_t2_opt   = tmp_Vec_t2)
-  END IF
+  END IF ! TriaSurfaceFlux
 
   ! Sum up total area
   totalArea = totalArea + SurfMeshSideAreas(BCSideID)
@@ -292,10 +295,10 @@ DO BCSideID = 1,nBCSides
 END DO
 
 #if CODE_ANALYZE
-IPWRITE(*,*)" ===== TOTAL AREA (all BCsides) ====="
-IPWRITE(*,*)" totalArea      = ",totalArea
-IPWRITE(*,*)" totalArea/(pi) = ",totalArea/(ACOS(-1.))
-IPWRITE(*,*)" ===== TOTAL AREA (all BCsides) ====="
+IPWRITE(UNIT_stdOut,'(A)')       " ===== TOTAL AREA (all BCsides) ====="
+IPWRITE(UNIT_stdOut,'(A,F12.6)') " totalArea      = ",totalArea
+IPWRITE(UNIT_stdOut,'(A,F12.6)') " totalArea/(pi) = ",totalArea/(ACOS(-1.))
+IPWRITE(UNIT_stdOut,'(A)')       " ===== TOTAL AREA (all BCsides) ====="
 #endif /*CODE_ANALYZE*/
 
 END SUBROUTINE BCSurfMeshSideAreasandNormals
@@ -415,28 +418,29 @@ DO iBC = 1,countDataBC
   BCSideID = TmpSideStart(iBC)
   iCount   = 0
 
-  ! follow BCSideID list seq. with iCount
+  ! Follow BCSideID list seq. with iCount
   DO
     iCount = iCount+1
     BCdata_auxSF(TmpMapToBC(iBC))%SideList(iCount) = BCSideID
 
+    ! Store additional information for TriaSurfaceFlux
     IF (TriaSurfaceFlux) THEN
       ! SideToElem is coming from DG and available for local elems
-      ElemID = SideToElem(1,BCSideID)
+      ElemID = SideToElem(S2E_ELEM_ID,BCSideID)
 
       ! mortar elements MIGHT need to be treated differently. Take the side pointing back
       IF (ElemID.LT.1) THEN
-        ElemID   = SideToElem(2,BCSideID)
-        iLocSide = SideToElem(4,BCSideID)
+        ElemID   = SideToElem(S2E_NB_ELEM_ID    ,BCSideID)
+        iLocSide = SideToElem(S2E_NB_LOC_SIDE_ID,BCSideID)
       ELSE
-        iLocSide = SideToElem(3,BCSideID)
+        iLocSide = SideToElem(S2E_LOC_SIDE_ID   ,BCSideID)
       END IF
 
       ! Get global SideID from local SideID
       SideID   = GetGlobalNonUniqueSideID(offsetElem+ElemID,iLocSide)
       CNSideID = GetCNSideID(SideID)
 
-      !check that all sides are planar if TriaSurfaceFlux is used for Tracing or RefMapping
+      ! Check that all sides are planar if TriaSurfaceFlux is used for Tracing or RefMapping
       IF (.NOT.TrackingMethod.EQ.TRIATRACKING) THEN
         IF (SideType(CNSideID).NE.PLANAR_RECT .AND. SideType(CNSideID).NE.PLANAR_NONRECT) &
           CALL ABORT(__STAMP__,'Every surfaceflux-sides must be planar if TriaSurfaceFlux is used for Tracing or RefMapping!')
@@ -457,21 +461,19 @@ DO iBC = 1,countDataBC
     ! sum up total area
     DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
       BCdata_auxSF(TmpMapToBC(iBC))%LocalArea = BCdata_auxSF(TmpMapToBC(iBC))%LocalArea &
-        + SurfMeshSubSideData(iSample,jSample,BCSideID)%area
+                                              + SurfMeshSubSideData(iSample,jSample,BCSideID)%area
     END DO; END DO
 
     !-- next Side
     IF (BCSideID .EQ. TmpSideEnd(iBC)) THEN
-      IF (TmpSideNumber(iBC).NE.iCount) THEN
+      IF (TmpSideNumber(iBC).NE.iCount) &
         CALL ABORT(__STAMP__,'Someting is wrong with TmpSideNumber of iBC',iBC,999.)
-      ELSE
-        IF (OutputSurfaceFluxLinked) THEN
-          IPWRITE(*,'(I4,I7,A53,I0)') iCount,' Sides have been found for Surfaceflux-linked PartBC ',TmpMapToBC(iBC)
-        END IF
 
-        DoSurfaceFlux = .TRUE.
-        EXIT
-      END IF
+      IF (OutputSurfaceFluxLinked)      &
+          IPWRITE(UNIT_stdOut,'(I4,I7,A53,I0)') iCount,' Sides have been found for Surfaceflux-linked PartBC ',TmpMapToBC(iBC)
+
+      DoSurfaceFlux = .TRUE.
+      EXIT
     END IF
 
     BCSideID = TmpSideNext(BCSideID)
@@ -529,10 +531,10 @@ INTEGER, INTENT(IN)   :: iSpec, iSF, iSide
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                  :: BoundingBox(1:3,1:8), origin(2), Vector1(3), Vector2(3), Vector3(3), xyzNod(3), VecBoundingBox(3)
-REAL                  :: corner(3), corners(2,4), radiusCorner(2,4), rmax, rmin, point(2), vec(2)
-LOGICAL               :: r0inside, intersecExists(2,2)
-INTEGER               :: dir(3), iNode, currentBC, BCSideID, ElemID, iLocSide, SideID
+REAL                  :: BoundingBox(1:3,1:8),origin(2),Vector1(3),Vector2(3),Vector3(3),xyzNod(3),VecBoundingBox(3)
+REAL                  :: corner(3),corners(2,4),radiusCorner(2,4),rmax,rmin,point(2),vec(2)
+LOGICAL               :: r0inside,intersecExists(2,2)
+INTEGER               :: dir(3),iNode,currentBC,BCSideID,ElemID,iLocSide,SideID
 !===================================================================================================================================
 
 !-- check where the sides are located relative to rmax (based on corner nodes of bounding box)
@@ -541,14 +543,16 @@ INTEGER               :: dir(3), iNode, currentBC, BCSideID, ElemID, iLocSide, S
 !- RejectType=2 : side is partly inside valid bounds
 currentBC = Species(iSpec)%Surfaceflux(iSF)%BC
 BCSideID  = BCdata_auxSF(currentBC)%SideList(iSide)
-ElemID    = SideToElem(1,BCSideID)
+
+! SideToElem is coming from DG and available for local elems
+ElemID = SideToElem(S2E_ELEM_ID,BCSideID)
 
 ! mortar elements MIGHT need to be treated differently. Take the side pointing back
 IF (ElemID.LT.1) THEN
-  ElemID   = SideToElem(2,BCSideID)
-  iLocSide = SideToElem(4,BCSideID)
+  ElemID   = SideToElem(S2E_NB_ELEM_ID    ,BCSideID)
+  iLocSide = SideToElem(S2E_NB_LOC_SIDE_ID,BCSideID)
 ELSE
-  iLocSide = SideToElem(3,BCSideID)
+  iLocSide = SideToElem(S2E_LOC_SIDE_ID   ,BCSideID)
 END IF
 
 ! Get global SideID from local SideID
@@ -603,16 +607,16 @@ rmax=MAXVAL(radiusCorner(1,1:4))
 DO iNode = 1,4
   SELECT CASE(iNode)
     CASE(1)
-      point = (/xyzNod(dir(2)),xyzNod(dir(3))/)-origin
-      vec   = (/Vector1(dir(2)),Vector1(dir(3))/)
+      point = (/ xyzNod( dir(2)), xyzNod( dir(3))/)-origin
+      vec   = (/ Vector1(dir(2)), Vector1(dir(3))/)
     CASE(2)
-      point = (/xyzNod(dir(2)),xyzNod(dir(3))/)-origin
-      vec   = (/Vector3(dir(2)),Vector3(dir(3))/)
+      point = (/ xyzNod( dir(2)), xyzNod( dir(3))/)-origin
+      vec   = (/ Vector3(dir(2)), Vector3(dir(3))/)
     CASE(3)
-      point = (/xyzNod(dir(2)),xyzNod(dir(3))/)+(/Vector2(dir(2)),Vector2(dir(3))/)-origin
+      point = (/ xyzNod( dir(2)), xyzNod( dir(3))/)+(/Vector2(dir(2)),Vector2(dir(3))/)-origin
       vec   = (/-Vector1(dir(2)),-Vector1(dir(3))/)
     CASE(4)
-      point = (/xyzNod(dir(2)),xyzNod(dir(3))/)+(/Vector2(dir(2)),Vector2(dir(3))/)-origin
+      point = (/ xyzNod( dir(2)), xyzNod( dir(3))/)+(/Vector2(dir(2)),Vector2(dir(3))/)-origin
       vec   = (/-Vector3(dir(2)),-Vector3(dir(3))/)
   END SELECT
 
@@ -628,31 +632,27 @@ IF ((origin(1) .GE. MINVAL(BoundingBox(Species(iSpec)%Surfaceflux(iSF)%dir(2),:)
    r0inside = .TRUE.
 END IF
 
-IF (r0inside) THEN
-  rmin = 0.
-ELSE
-  rmin = MINVAL(radiusCorner(2,1:4))
-END IF
+rmin = MERGE(0.,MINVAL(radiusCorner(2,1:4)),r0inside)
 
 ! define RejectType
 IF ( (rmin .GT. Species(iSpec)%Surfaceflux(iSF)%rmax) .OR. (rmax .LT. Species(iSpec)%Surfaceflux(iSF)%rmin) ) THEN
   Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide) = 1
 
 #if CODE_ANALYZE
-  CountCircInflowType(2,iSF,iSpec)=CountCircInflowType(2,iSF,iSpec)+1
+  CountCircInflowType(2,iSF,iSpec) = CountCircInflowType(2,iSF,iSpec)+1
 #endif
 
 ELSE IF ( (rmax .LE. Species(iSpec)%Surfaceflux(iSF)%rmax) .AND. (rmin .GE. Species(iSpec)%Surfaceflux(iSF)%rmin) ) THEN
   Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide) = 0
 
 #if CODE_ANALYZE
-  CountCircInflowType(1,iSF,iSpec)=CountCircInflowType(1,iSF,iSpec)+1
+  CountCircInflowType(1,iSF,iSpec) = CountCircInflowType(1,iSF,iSpec)+1
 #endif
 
 ELSE
   Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide) = 2
 #ifdef CODE_ANALYZE
-  CountCircInflowType(3,iSF,iSpec)=CountCircInflowType(3,iSF,iSpec)+1
+  CountCircInflowType(3,iSF,iSpec) = CountCircInflowType(3,iSF,iSpec)+1
 #endif
 END IF !  (rmin > Surfaceflux-rmax) .OR. (rmax < Surfaceflux-rmin)
 
@@ -681,11 +681,11 @@ REAL, INTENT(IN)      :: tmp_SubSideAreas(SurfFluxSideSize(1),SurfFluxSideSize(2
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: jSample, iSample, currentBC, BCSideID, BCType
-REAL                  :: vec_nIn(3), nVFR, vec_t1(3), vec_t2(3), projFak, a, vSF
+INTEGER               :: jSample,iSample,currentBC,BCSideID,BCType
+REAL                  :: vec_nIn(3),nVFR,vec_t1(3),vec_t2(3),projFak,a,vSF
 REAL                  :: UPrim_BC   (PP_nVarPrim,1,1)
 REAL,PARAMETER        :: UPrim_dummy(PP_nVarPrim,1,1) = 0.
-REAL,PARAMETER        :: Face_xGP (3,1,1) = 0.
+REAL,PARAMETER        :: Face_xGP(3,1,1) = 0.
 REAL                  :: fluid_nIn(3,1,1),fluid_t1(3,1,1),fluid_t2(3,1,1)
 !===================================================================================================================================
 
@@ -698,11 +698,7 @@ DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
   vec_t2  = SurfMeshSubSideData(iSample,jSample,BCSideID)%vec_t2
 
   ! VeloVecIC projected to inwards normal
-  IF (.NOT.Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal) THEN
-    projFak = DOT_PRODUCT(vec_nIn,Species(iSpec)%Surfaceflux(iSF)%VeloVecIC)
-  ELSE
-    projFak = 1.
-  END IF
+  projFak = MERGE(1.,DOT_PRODUCT(vec_nIn,Species(iSpec)%Surfaceflux(iSF)%VeloVecIC),Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal)
 
   ! dummy for projected speed ratio in constant v-distri
   a = 0
@@ -761,9 +757,7 @@ DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
   ! check rmax-rejection
   IF (Species(iSpec)%Surfaceflux(iSF)%CircularInflow) THEN
     ! complete side is outside of valid bounds
-    IF (Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide).EQ.1) THEN
-      nVFR = 0.
-    END IF
+    IF (Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide).EQ.1) nVFR = 0.
   END IF
 
   Species(iSpec)%Surfaceflux(iSF)%VFR_total = Species(iSpec)%Surfaceflux(iSF)%VFR_total + nVFR
@@ -876,15 +870,18 @@ DO iSpec = 1,nSpecies
       DO iSide = 1,BCdata_auxSF(currentBC)%SideNumber
         ! BCSideID is local SideID on current proc. SideToElem is coming from DG
         BCSideID = BCdata_auxSF(currentBC)%SideList(iSide)
-        ElemID   = SideToElem(1,BCSideID)
+
+        ! SideToElem is coming from DG and available for local elems
+        ElemID = SideToElem(S2E_ELEM_ID,BCSideID)
 
         ! mortar elements MIGHT need to be treated differently. Take the side pointing back
         IF (ElemID.LT.1) THEN
-          ElemID = SideToElem(2,BCSideID)
-          iLocSide = SideToElem(4,BCSideID)
+          ElemID   = SideToElem(S2E_NB_ELEM_ID    ,BCSideID)
+          iLocSide = SideToElem(S2E_NB_LOC_SIDE_ID,BCSideID)
         ELSE
-          iLocSide = SideToElem(3,BCSideID)
+          iLocSide = SideToElem(S2E_LOC_SIDE_ID   ,BCSideID)
         END IF
+
         ! Get global SideID from local SideID
         SideID = GetGlobalNonUniqueSideID(offsetElem+ElemID,iLocSide)
 
@@ -961,12 +958,9 @@ IF (DoRestart) THEN
 
     DO iSF = 1, Species(iSpec)%nSurfacefluxBCs
       ! proc global total (for non-root: dummy!)
-      IF (Species(iSpec)%Surfaceflux(iSF)%ReduceNoise) THEN
-        VFR_total = Species(iSpec)%Surfaceflux(iSF)%VFR_total_allProcsTotal
-      ! proc local total
-      ELSE
-        VFR_total = Species(iSpec)%Surfaceflux(iSF)%VFR_total
-      END IF
+      VFR_total = MERGE(Species(iSpec)%Surfaceflux(iSF)%VFR_total_allProcsTotal, &
+                        Species(iSpec)%Surfaceflux(iSF)%VFR_total,               &
+                        Species(iSpec)%Surfaceflux(iSF)%ReduceNoise)
 
       Species(iSpec)%Surfaceflux(iSF)%InsertedParticle = INT(Species(iSpec)%Surfaceflux(iSF)%PartDensity*RestartTime*VFR_total,8)
     END DO
@@ -1157,32 +1151,31 @@ DO iSpec = 1,nSpecies
     IF ((.NOT.DoPoissonRounding).AND.(.NOT. DoTimeDepInflow)) CALL CalcPartInsSubSidesStandardCase(iSpec,iSF, PartInsSubSides)
 
     !----- 0.: go through (sub)sides if present in proc
-    IF (BCdata_auxSF(currentBC)%SideNumber.EQ.0) THEN
-      CYCLE
-    ELSE IF (BCdata_auxSF(currentBC)%SideNumber.EQ.-1) THEN
+    IF (BCdata_auxSF(currentBC)%SideNumber.EQ.0) CYCLE
+
+    IF (BCdata_auxSF(currentBC)%SideNumber.EQ.-1) &
       CALL ABORT(__STAMP__,'ERROR in ParticleSurfaceflux: Someting is wrong with SideNumber of BC ',currentBC)
-    END IF
 
 #if USE_LOADBALANCE
     CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
 
     DO iSide=1,BCdata_auxSF(currentBC)%SideNumber
-
       !
       IF (Species(iSpec)%Surfaceflux(iSF)%CircularInflow) THEN
         IF(Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide).EQ.1) CYCLE
       END IF
 
       BCSideID = BCdata_auxSF(currentBC)%SideList(iSide)
-      ElemID   = SideToElem(1,BCSideID)
+      ! SideToElem is coming from DG and available for local elems
+      ElemID = SideToElem(S2E_ELEM_ID,BCSideID)
 
       ! mortar elements MIGHT need to be treated differently. Take the side pointing back
       IF (ElemID.LT.1) THEN
-        ElemID   = SideToElem(2,BCSideID)
-        iLocSide = SideToElem(4,BCSideID)
+        ElemID   = SideToElem(S2E_NB_ELEM_ID    ,BCSideID)
+        iLocSide = SideToElem(S2E_NB_LOC_SIDE_ID,BCSideID)
       ELSE
-        iLocSide = SideToElem(3,BCSideID)
+        iLocSide = SideToElem(S2E_LOC_SIDE_ID   ,BCSideID)
       END IF
 
       !  Get global ElemID and SideID from local SideID
@@ -1205,23 +1198,24 @@ DO iSpec = 1,nSpecies
 
         !----- 1.: set positions
         !-- compute number of to be inserted particles
-        IF (.NOT.DoPoissonRounding .AND. .NOT.DoTimeDepInflow) THEN
-          PartInsSubSide = PartInsSubSides(iSample,jSample,iSide)
-
-        ELSE IF (DoPoissonRounding .AND. .NOT.DoTimeDepInflow) THEN
-              CALL CalcPartInsPoissonDistr(iSpec, iSF, iSample, jSample, iSide, PartInsSubSide)
-        ELSE ! DoTimeDepInflow
+        IF (DoTimeDepInflow) THEN
           CALL RANDOM_NUMBER(RandVal1)
-          PartInsSubSide = INT(Species(iSpec)%Surfaceflux(iSF)%PartDensity * dt*RKdtFrac                                           &
+          PartInsSubSide = INT(Species(iSpec)%Surfaceflux(iSF)%PartDensity * dt*RKdtFrac                             &
                          * Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%nVFR+RandVal1)
-        END IF ! DoPoissonRounding
+        ELSE
+          IF (DoPoissonRounding) THEN
+            CALL CalcPartInsPoissonDistr(iSpec,iSF,iSample,jSample,iSide,PartInsSubSide)
+          ELSE
+            PartInsSubSide = PartInsSubSides(iSample,jSample,iSide)
+          END IF
+        END IF
 
         !-- proceed with calculated to be inserted particles
-        IF (PartInsSubSide.LT.0) THEN
+        IF (PartInsSubSide.LT.0) &
           CALL ABORT(__STAMP__,'ERROR in ParticleSurfaceflux: PartInsSubSide.LT.0!')
-        ELSE IF (PartInsSubSide.LE.0) THEN
-          CYCLE
-        END IF
+
+        ! -- cycle if no particles are to be inserted through subside
+        IF (PartInsSubSide.LE.0) CYCLE
 
         NbrOfParticle  = PartInsSubSide + NbrOfParticle
         ALLOCATE( particle_positions(1:PartInsSubSide*3))
@@ -1237,15 +1231,16 @@ DO iSpec = 1,nSpecies
 
         DO WHILE (iPart+allowedRejections .LE. PartInsSubSide)
           IF (TriaSurfaceFlux) THEN
-            Particle_pos(1:3) = CalcPartPosTriaSurface(xyzNod, Vector1, Vector2, ndist, midpoint)
+            Particle_pos(1:3) = CalcPartPosTriaSurface(xyzNod,Vector1,Vector2,ndist,midpoint)
           ! .NOT.TriaSurfaceFlux
           ELSE
             Particle_pos(1:3) = CalcPartPosBezier(iSpec,iSF,iSample,jSample,iSide,SideID,xi)
           END IF !TriaSurfaceFlux
 
-          AcceptPos=.TRUE.
-          IF (Species(iSpec)%Surfaceflux(iSF)%CircularInflow) THEN !check rmax-rejection
-            IF (.NOT.InSideCircularInflow(iSpec, iSF, iSide, Particle_pos)) AcceptPos=.FALSE.
+          AcceptPos = .TRUE.
+          ! check rmax-rejection
+          IF (Species(iSpec)%Surfaceflux(iSF)%CircularInflow) THEN
+            IF (.NOT.InSideCircularInflow(iSpec, iSF, iSide, Particle_pos)) AcceptPos = .FALSE.
           END IF ! CircularInflow
 
           !-- save position if accepted:
@@ -1257,15 +1252,15 @@ DO iSpec = 1,nSpecies
               particle_xis(iPart*2-1) = xi(1)
               particle_xis(iPart*2  ) = xi(2)
             END IF !VeloIsNormal
-            iPart=iPart+1
+            iPart = iPart+1
           ELSE
-            nReject=nReject+1
+            nReject = nReject+1
             ! check rmax-rejection
             IF (Species(iSpec)%Surfaceflux(iSF)%CircularInflow) THEN
               allowedRejections = allowedRejections+1
             END IF
           END IF
-        END DO !put particles in subside: WHILE(iPart+allowedRejections .LE. PartInsSubSide)
+        END DO ! put particles in subside: WHILE(iPart+allowedRejections .LE. PartInsSubSide)
 
         PartInsSubSide = PartInsSubSide - allowedRejections
         NbrOfParticle  = NbrOfParticle  - allowedRejections
@@ -1273,6 +1268,7 @@ DO iSpec = 1,nSpecies
         !-- Fill Particle Informations (PartState, Partelem, etc.)
         ParticleIndexNbr = 1
         DO iPart = 1,PartInsSubSide
+          ! Get free PDM postion
           IF ((iPart.EQ.1).OR.PDM%ParticleInside(ParticleIndexNbr)) &
               ParticleIndexNbr = PDM%nextFreePosition(iPartTotal + 1 + PDM%CurrentNextFreePosition)
 
@@ -1285,12 +1281,12 @@ DO iSpec = 1,nSpecies
             END IF
 
             ! shift LastPartPos minimal into cell for fail-safe tracking
-            LastPartPos(1:3,ParticleIndexNbr)    = PartState(1:3,ParticleIndexNbr)
+            LastPartPos(   1:3,ParticleIndexNbr) = PartState(1:3,ParticleIndexNbr)
             PDM%ParticleInside(ParticleIndexNbr) = .TRUE.
             PDM%IsNewPart(     ParticleIndexNbr) = .TRUE.
-            PEM%Element(ParticleIndexNbr)        = globElemID
+            PEM%Element(       ParticleIndexNbr) = globElemID
             ! needed when ParticlePush is not executed, e.g. "delay"
-            PEM%LastElement(ParticleIndexNbr)    = globElemID
+            PEM%LastElement(   ParticleIndexNbr) = globElemID
             iPartTotal = iPartTotal + 1
 
 #if CODE_ANALYZE
@@ -1304,14 +1300,14 @@ DO iSpec = 1,nSpecies
         DEALLOCATE(particle_positions)
 
         IF (Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal .AND. .NOT.TriaSurfaceFlux) DEALLOCATE(particle_xis)
-!----- 2a.: set velocities if special for each subside
+        !----- 2a.: set velocities if special for each subside
         CALL SetSurfacefluxVelocities(iSpec,iSF,iSample,jSample,BCSideID,SideID,NbrOfParticle,PartInsSubSide)
 
         PartsEmitted = PartsEmitted + PartInsSubSide
 
 #if USE_LOADBALANCE
         ! used for calculating LoadBalance of tCurrent(LB_SURFFLUX) ==> "2b.: set remaining properties"
-        nSurfacefluxPerElem(ElemID)=nSurfacefluxPerElem(ElemID)+PartInsSubSide
+        nSurfacefluxPerElem(ElemID) = nSurfacefluxPerElem(ElemID)+PartInsSubSide
 #endif /*USE_LOADBALANCE*/
 
       END DO; END DO !jSample=1,SurfFluxSideSize(2); iSample=1,SurfFluxSideSize(1)
@@ -1326,11 +1322,11 @@ DO iSpec = 1,nSpecies
     CALL SetParticleMass(iSpec,NbrOfParticle)
 
     ! Compute number of input particles and energy
-    IF(CalcPartBalance) THEN
-      nPartIn(iSpec)=nPartIn(iSpec) + NbrOfParticle
-      DO iPart=1,NbrOfParticle
+    IF (CalcPartBalance) THEN
+      nPartIn(iSpec) = nPartIn(iSpec) + NbrOfParticle
+      DO iPart = 1,NbrOfParticle
         PositionNbr = PDM%nextFreePosition(iPart + PDM%CurrentNextFreePosition)
-        IF (PositionNbr.NE.0) PartEkinIn(PartSpecies(PositionNbr))= PartEkinIn(PartSpecies(PositionNbr))+CalcEkinPart(PositionNbr)
+        IF (PositionNbr.NE.0) PartEkinIn(PartSpecies(PositionNbr)) =  PartEkinIn(PartSpecies(PositionNbr)) + CalcEkinPart(PositionNbr)
       END DO ! iPart
     END IF ! CalcPartBalance
 
@@ -1347,8 +1343,8 @@ DO iSpec = 1,nSpecies
       CALL ABORT(__STAMP__,'ERROR in ParticleSurfaceflux: NbrOfParticle.NE.PartsEmitted')
     END IF
 
-  END DO !iSF
-END DO !iSpec
+  END DO ! iSF
+END DO ! iSpec
 
 END SUBROUTINE ParticleSurfaceflux
 
@@ -1383,6 +1379,8 @@ SELECT CASE(Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide))
 
   !- RejectType=1 : complete side is outside of valid bounds
   CASE(1)
+    ! Work around -Wuninitialized
+    InSideCircularInflow = .FALSE.
     CALL ABORT(__STAMP__, 'Side outside of valid bounds was considered although nVFR=0...?!')
 
   !- RejectType=2 : side is partly inside valid bounds
@@ -1397,6 +1395,8 @@ SELECT CASE(Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide))
     END IF
 
   CASE DEFAULT
+    ! Work around -Wuninitialized
+    InSideCircularInflow = .FALSE.
     CALL ABORT(__STAMP__, 'Wrong SurfFluxSideRejectType!')
 END SELECT ! SurfFluxSideRejectType
 
@@ -1474,7 +1474,7 @@ DO
 
     ! arbitrary warning threshold
     IF (D .GT. 1.01) THEN
-      IPWRITE(*,'(I4,1X,A28,I0,A9,I0,A22,I0)') ' WARNING: ARM of SurfaceFlux ',iSF,' of Spec ',iSpec,' has inaccurate Dmax! ',D
+      IPWRITE(UNIT_stdOut,'(I4,1X,A28,I0,A9,I0,A22,I0)') ' WARNING: ARM of SurfaceFlux ',iSF,' of Spec ',iSpec,' has inaccurate Dmax! ',D
     END IF
 
     CALL RANDOM_NUMBER(RandVal1)
@@ -1484,8 +1484,8 @@ DO
     ELSE
       ! arbitrary warning threshold
       IF (MOD(iLoop,100).EQ.0) THEN
-        IPWRITE(*,'(I4,1X,A28,I0,A9,I0,A18,I0)') ' WARNING: ARM of SurfaceFlux ',iSF,' of Spec ',iSpec,' has reached loop ',iLoop
-        IPWRITE(*,'(I4,1X,A19,2(1X,E16.8))')     '         R, D/Dmax:',RandVal1,D
+        IPWRITE(UNIT_stdOut,'(I4,1X,A28,I0,A9,I0,A18,I0)') ' WARNING: ARM of SurfaceFlux ',iSF,' of Spec ',iSpec,' has reached loop ',iLoop
+        IPWRITE(UNIT_stdOut,'(I4,1X,A19,2(1X,E16.8))')     '         R, D/Dmax:',RandVal1,D
       END IF
     END IF
 

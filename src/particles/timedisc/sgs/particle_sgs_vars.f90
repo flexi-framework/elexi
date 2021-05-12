@@ -64,5 +64,12 @@ REAL,ALLOCATABLE                       :: beta_Fuka(:)                        ! 
 REAL,ALLOCATABLE                       :: sigmaS_Fuka(:)                      ! standard deviation of particle velocity due to SGS velocity
 REAL,ALLOCATABLE                       :: ni_SGS(:,:)                         ! SGS fluid velocity by Fukagata
 REAL,ALLOCATABLE                       :: ni_Fuka(:,:)                        ! stochastic term sum of ni_B and ni_SGS
+!! AMIRI SGS MODEL
+REAL,ALLOCATABLE                       :: taup_Amiri(:)                       ! Particle relaxation time
+REAL,ALLOCATABLE                       :: U_square(:,:)                       ! representative SGS velocity
+REAL,ALLOCATABLE                       :: alpha_Amiri(:)                      ! ratio between dt and taup_Fuka 
+REAL,ALLOCATABLE                       :: beta_Amiri(:)                       ! ratio between taup_Fuka and dt
+REAL,ALLOCATABLE                       :: sigmaS_Amiri(:,:)                   ! standard deviation of particle velocity due to SGS velocity
+REAL,ALLOCATABLE                       :: ni_SGS_Amiri(:,:)                   ! SGS fluid velocity by Fukagata
 !===================================================================================================================================
 END MODULE MOD_Particle_SGS_Vars

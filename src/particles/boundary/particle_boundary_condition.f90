@@ -394,7 +394,6 @@ LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !--> flip trajectory and move the remainder of the particle push
 PartTrajectory(1:3)     = PartTrajectory(1:3)-2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
 PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
-WRITE (*, *) 'PartID,PartState(1:3,PartID),LastPartPos(1:3,PartID):', PartID,PartState(1:3,PartID),LastPartPos(1:3,PartID)
 
 ! compute moved particle || rest of movement
 PartTrajectory          = PartState(1:3,PartID) - LastPartPos(1:3,PartID)

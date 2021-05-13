@@ -1073,6 +1073,7 @@ INTEGER                                  :: realnInter,isInter
 REAL                                     :: XiNewton(2)
 REAL                                     :: PartFaceAngle,dXi,dEta
 LOGICAL                                  :: CriticalParallelInSide,failed
+INTEGER                                  :: InsideBoxLastPos,InsideBoxPartPos
 !REAL                                     :: Interval1D,dInterVal1D
 !===================================================================================================================================
 ! set alpha to minus 1, asume no intersection
@@ -1097,11 +1098,13 @@ IF (BoundingBoxIsEmpty(CNSideID)) THEN
                                                                                                   ! bounding box
 ELSE
   ! 1.) Check if LastPartPos or PartState are within the bounding box. If yes then compute a Bezier intersection problem
-  IF (.NOT.InsideBoundingBox(LastPartPos(1:3,PartID),SideID)) THEN ! the old particle position is not inside the bounding box
-    IF (.NOT.InsideBoundingBox(PartState(1:3,PartID),SideID)) THEN ! the new particle position is not inside the bounding box
-      IF (.NOT.BoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,SideID)) RETURN ! the particle does not intersect the
-                                                                                                  ! bounding box
-    END IF
+  InsideBoxLastPos = InsideBoundingBox(LastPartPos(1:3,PartID),SideID)
+  InsideBoxPartPos = InsideBoundingBox(PartState(1:3,PartID),SideID)
+  IF ((InsideBoxLastPos.NE.0).AND.(InsideBoxPartPos.NE.0)) THEN
+    ! the new and old particle positions are not inside the bounding box
+    IF (InsideBoxLastPos.EQ.InsideBoxPartPos) RETURN
+    ! the particle does not intersect the bounding box
+    IF (.NOT.BoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,SideID)) RETURN
   END IF
 END IF
 
@@ -1760,7 +1763,7 @@ REAL,DIMENSION(3),INTENT(IN)         :: ParticlePosition
 INTEGER,INTENT(IN)                   :: SideID
 !--------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-LOGICAL                              :: InsideBoundingBox
+INTEGER                              :: InsideBoundingBox
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: CNSideID
@@ -1772,24 +1775,33 @@ P = ParticlePosition - BezierControlPoints3D(1:3,0,0,SideID)
 
 ! y is perpendicular to xi & eta directions --> check first, smallest interval
 y = DOT_PRODUCT(P,SideSlabNormals(:,2,CNSideID))
-IF ((y.LT.SideSlabIntervals(3,CNSideID)-100.*epsMach).OR.(y.GT.SideSlabIntervals(4,CNSideID)+100.*epsMach)) THEN
-  InsideBoundingBox = .FALSE.
+IF (y.LT.SideSlabIntervals(3,CNSideID)-100.*epsMach) THEN
+  InsideBoundingBox = -2
+  RETURN
+ELSEIF (y.GT.SideSlabIntervals(4,CNSideID)+100.*epsMach) THEN
+  InsideBoundingBox = 2
   RETURN
 END IF
 ! than xi
 x = DOT_PRODUCT(P,SideSlabNormals(:,1,CNSideID))
-IF ((x.LT.SideSlabIntervals(1,CNSideID)-100.*epsMach).OR.(x.GT.SideSlabIntervals(2,CNSideID)+100.*epsMach)) THEN
-  InsideBoundingBox = .FALSE.
+IF (x.LT.SideSlabIntervals(1,CNSideID)-100.*epsMach) THEN
+  InsideBoundingBox = -1
+  RETURN
+ELSEIF (x.GT.SideSlabIntervals(2,CNSideID)+100.*epsMach) THEN
+  InsideBoundingBox = 1
   RETURN
 END IF
 ! than eta
 z = DOT_PRODUCT(P,SideSlabNormals(:,3,CNSideID))
-IF ((z.LT.SideSlabIntervals(5,CNSideID)-100.*epsMach).OR.(z.GT.SideSlabIntervals(6,CNSideID)+100.*epsMach)) THEN
-  InsideBoundingBox = .FALSE.
+IF (z.LT.SideSlabIntervals(5,CNSideID)-100.*epsMach) THEN
+  InsideBoundingBox = -3
+  RETURN
+ELSEIF (z.GT.SideSlabIntervals(6,CNSideID)+100.*epsMach) THEN
+  InsideBoundingBox = 3
   RETURN
 END IF
 
-InsideBoundingBox = .TRUE.
+InsideBoundingBox = 0
 
 END FUNCTION InsideBoundingBox
 
@@ -2301,7 +2313,6 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipLocalTol,FacNchooseK
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierSplitLimit
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints1D,BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
-USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
 #if CODE_ANALYZE
 USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -2691,7 +2702,6 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:BezierSplitLimit
 USE MOD_Particle_Surfaces_Vars,  ONLY:MinMax,XiUp,XiDown,XiBuf
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
-USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
 #if CODE_ANALYZE
 USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -3129,7 +3139,7 @@ REAL,INTENT(IN)                      :: BezierControlPoints2D(2,0:NGeo,0:NGeo)
 REAL,INTENT(INOUT)                   :: LineNormVec(1:2,1:2)
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                 :: Length,doPro
+REAL                                 :: Length
 REAL,DIMENSION(2)                    :: Lxi,Leta
 !================================================================================================================================
 
@@ -3356,23 +3366,22 @@ CASE ('cylinder','cone','parabol')
       tang1(1) = 1.0
       tang1(2) = 1.0
       tang1(3) = -(axis(1)+axis(2))/axis(3)
-  ELSE
+    ELSE
       IF (axis(2).NE.0.) THEN
         tang1(1) = 1.0
         tang1(3) = 1.0
         tang1(2) = -(axis(1)+axis(3))/axis(2)
-  ELSE
+      ELSE
         IF (axis(1).NE.0.) THEN
           tang1(2) = 1.0
           tang1(3) = 1.0
           tang1(1) = -(axis(2)+axis(3))/axis(1)
         ELSE
-          CALL abort(&
-__STAMP__&
-,'Error in ComputeAuxBCIntersection, axis is zero for AuxBC',AuxBCIdx)
-  END IF
+          CALL abort(__STAMP__&
+            ,'Error in ComputeAuxBCIntersection, axis is zero for AuxBC',AuxBCIdx)
         END IF
       END IF
+    END IF
     tang1=UNITVECTOR(tang1)
     tang2=CROSSNORM(axis,tang1)
     radius=AuxBC_cylinder(AuxBCMap(AuxBCIdx))%radius
@@ -3429,9 +3438,7 @@ __STAMP__&
     !- solve quadratic equation from trajectory inserted in parabol-equation
     CALL QuadraticSolver(A(1,1),B(1,1),C(1,1),nRoot,roots(1),roots(2))
   ELSE
-    CALL abort(&
-      __STAMP__&
-      ,'AuxBC does not exist')
+    CALL abort(__STAMP__,'AuxBC does not exist')
   END IF !cylinder, cone, or paraboloid
   SELECT CASE (nRoot)
   CASE (1)
@@ -3447,41 +3454,39 @@ __STAMP__&
     ELSE IF (TRIM(AuxBCType(AuxBCIdx)).EQ.'parabol') THEN
       n_vec = intersec - ( r_vec + axis*(origindist(1)+0.5*zfac) )
     ELSE
-      CALL abort(&
-        __STAMP__&
-        ,'AuxBC does not exist')
-  END IF
+      CALL abort(__STAMP__,'AuxBC does not exist')
+    END IF
     IF (.NOT.inwards) n_vec=-n_vec
     IF(DOT_PRODUCT(n_vec,PartTrajectory).LT.0.)THEN
       ishit=.FALSE.
       alpha=-1.0
       RETURN
-        END IF
+    END IF
     !- check for lmin and lmax
     IF (origindist(1).LT.lmin .OR. origindist(1).GT.lmax) THEN
       ishit=.FALSE.
       alpha=-1.0
-  RETURN
-END IF
+      RETURN
+    END IF
   CASE (2)
     !- 2 roots: check for smallest alpha>-eps
     IF (roots(1).LT.roots(2)) THEN
       IF (roots(1).GE.-epsilontol*lengthPartTrajectory) THEN
         alpha=roots(1)
-  ELSE
+      ELSE
         alpha=roots(2)
         roots(2)=roots(1)
         roots(1)=alpha
-  END IF
-  ELSE
+      END IF
+    ELSE
       IF (roots(2).GE.-epsilontol*lengthPartTrajectory) THEN
         alpha=roots(2)
         roots(2)=roots(1)
         roots(1)=alpha
       ELSE
         alpha=roots(1)
-  END IF
-        END IF
+      END IF
+    END IF
     !- check for lmin and lmax of cylinder and normal vec / trajectory direction
     ! (already here since no inner auxBCs possible (can happen due to tolerances)
     intersec = LastPartPos(1:3,iPart) + roots(1)*PartTrajectory
@@ -3492,11 +3497,9 @@ END IF
       n_vec = intersec - ( r_vec + axis*origindist(1)*cos2inv )
     ELSE IF (TRIM(AuxBCType(AuxBCIdx)).EQ.'parabol') THEN
       n_vec = intersec - ( r_vec + axis*(origindist(1)+0.5*zfac) )
-  ELSE
-      CALL abort(&
-        __STAMP__&
-        ,'AuxBC does not exist')
-  END IF
+    ELSE
+      CALL abort(__STAMP__,'AuxBC does not exist')
+    END IF
     alphadir(1)=DOT_PRODUCT(n_vec,PartTrajectory)
     intersec = LastPartPos(1:3,iPart) + roots(2)*PartTrajectory
     origindist(2) = DOT_PRODUCT(intersec-r_vec,axis)
@@ -3506,22 +3509,20 @@ END IF
       n_vec = intersec - ( r_vec + axis*origindist(2)*cos2inv )
     ELSE IF (TRIM(AuxBCType(AuxBCIdx)).EQ.'parabol') THEN
       n_vec = intersec - ( r_vec + axis*(origindist(2)+0.5*zfac) )
-ELSE
-      CALL abort(&
-        __STAMP__&
-        ,'AuxBC does not exist')
-END IF
+    ELSE
+      CALL abort(__STAMP__,'AuxBC does not exist')
+    END IF
     alphadir(2)=DOT_PRODUCT(n_vec,PartTrajectory)
     IF (.NOT.inwards) alphadir=-alphadir
     IF (alphadir(1).GE.0. .AND. origindist(1).GE.lmin .AND. origindist(1).LE.lmax) THEN
       ! alpha stays alpha
     ELSE IF (alphadir(2).GE.0. .AND. origindist(2).GE.lmin .AND. origindist(2).LE.lmax) THEN
       alpha=roots(2)
-ELSE
+    ELSE
       ishit=.FALSE.
       alpha=-1.0
       RETURN
-END IF
+    END IF
   CASE DEFAULT
     ishit=.FALSE.
     alpha=-1.0
@@ -3532,7 +3533,7 @@ END IF
     ishit=.FALSE.
     alpha=-1.0
     RETURN
-END IF
+  END IF
   isHit=.TRUE.
 CASE DEFAULT
   SWRITE(*,*) ' AuxBC does not exist: ', TRIM(AuxBCType(AuxBCIdx))

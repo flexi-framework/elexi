@@ -808,12 +808,14 @@ CALL MPI_BARRIER(PartMPI%COMM,IERROR)
 
 #if USE_EXTEND_RHS && ANALYZE_RHS
 FileName_RHS = TRIM(ProjectName)//'_RHS'
-WRITE(tmpStr,'(A)') tAnalyze
+WRITE(tmpStr,FMT='(F10.2)') tAnalyze
 dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(ADJUSTL(tmpStr)))
-tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
+IF(dtWriteRHS.GT.0.0)THEN
+  tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
 
-CALL InitOutputToFile(FileName_RHS,'RHS',16,&
-  [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
+  CALL InitOutputToFile(FileName_RHS,'RHS',16,&
+    [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
+END IF
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 SWRITE(UNIT_StdOut,'(132("-"))')

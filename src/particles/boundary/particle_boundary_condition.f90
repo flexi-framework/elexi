@@ -394,7 +394,7 @@ LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !--> flip trajectory and move the remainder of the particle push
 PartTrajectory(1:3)     = PartTrajectory(1:3)-2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
 PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
-!WRITE (*, *) 'PartID,PartState(1:3,PartID),LastPartPos(1:3,PartID):', PartID,PartState(1:3,PartID),LastPartPos(1:3,PartID)
+WRITE (*, *) 'PartID,PartState(1:3,PartID),LastPartPos(1:3,PartID):', PartID,PartState(1:3,PartID),LastPartPos(1:3,PartID)
 
 ! compute moved particle || rest of movement
 PartTrajectory          = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
@@ -839,7 +839,7 @@ ElemID   = SideInfo_Shared(SIDE_NBELEMID,SideID)
 
 END SUBROUTINE PeriodicBC
 
-RECURSIVE FUNCTION RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory) RESULT (n_out)
+FUNCTION RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory) RESULT (n_out)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Rough wall modelling without multiple rebounds, where the roughness is drawn from a Gaussian distribution with a mean of zero and
 ! a standard deviation equal to an assumed or experimental wall roughness.
@@ -899,7 +899,7 @@ n_out = n_out*COS(random_angle(2))+(/crossv(2,2)*n_out(3)  - crossv(2,3)*n_out(2
 !WRITE (*, *) 'tang1: n_out,a(PartTrajectory,tang2),a(PartTrajectory,n_out): ', n_out,(ACOS(DOT_PRODUCT(PartTrajectory,tang2)))*180/PI ,(ACOS(DOT_PRODUCT(PartTrajectory,n_out)))*180/PI
 
 ! Check if the final particle trajectory shows in the right direction and the particle does not leave the domain...
-IF(ABS(ACOS(DOT_PRODUCT(PartTrajectory,n_out))).GT.angle) n_out = RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory)
+!IF(ABS(ACOS(DOT_PRODUCT(PartTrajectory,n_out))).GT.MAX(angle,PI*0.5-angle)) n_out = RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory)
 END FUNCTION RoughWall
 
 

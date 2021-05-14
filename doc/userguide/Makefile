@@ -10,18 +10,17 @@ ifneq ($(BUILDALL),)
 endif
 SRC += references.md
 
-# Pandoc changed citeproc in 2.11
+# GNU Make can only perform numerical comparison, split and compare by parts
 PANDOCVERSION := $(shell pandoc --version | grep ^pandoc | sed 's/^.* //g')
 PANDOCMAJOR   := $(shell echo $(PANDOCVERSION) | cut -f1 -d.)
 PANDOCMINOR   := $(shell echo $(PANDOCVERSION) | cut -f2 -d.)
-ifeq ($(shell expr $(PANDOCMAJOR) \= 2), 0)
-  $(error No or unkown version of pandoc. Please use pandoc v2.x to build this documentation.)
-endif
 
-ifeq ($(shell expr $(PANDOCMINOR) \>= 11), 1)
-  PANDOCFILTER=--citeproc
-else
-  PANDOCFILTER=--filter pandoc-citeproc
+# Pandoc changed citeproc in 2.11
+PANDOCFILTER=--filter pandoc-citeproc
+ifeq ($(shell expr $(PANDOCMAJOR) \= 1), 2)
+  ifeq ($(shell expr $(PANDOCMINOR) \>= 11), 1)
+    PANDOCFILTER=--filter pandoc-citeproc
+  endif
 endif
 
 # Update template to current version if possible

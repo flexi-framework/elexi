@@ -16,11 +16,11 @@ PANDOCMAJOR   := $(shell echo $(PANDOCVERSION) | cut -f1 -d.)
 PANDOCMINOR   := $(shell echo $(PANDOCVERSION) | cut -f2 -d.)
 
 # Pandoc changed citeproc in 2.11
-PANDOCFILTER=--filter pandoc-citeproc
-ifeq ($(shell expr $(PANDOCMAJOR) \= 1), 2)
-  ifeq ($(shell expr $(PANDOCMINOR) \>= 11), 1)
-    PANDOCFILTER=--filter pandoc-citeproc
-  endif
+PANDOCFILTER:=--filter pandoc-citeproc
+ifeq ($(shell expr $(PANDOCMAJOR) \= 2), 1)
+ifeq ($(shell expr $(PANDOCMINOR) \>= 11), 1)
+PANDOCFILTER:=--citeproc
+endif
 endif
 
 # Update template to current version if possible

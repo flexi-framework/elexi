@@ -582,6 +582,9 @@ IF (MeshHasPeriodic) THEN
   CALL MPI_WIN_UNLOCK_ALL(DistanceOfElemCenter_Shared_Win,iError)
   CALL MPI_WIN_FREE(DistanceOfElemCenter_Shared_Win,iError)
   CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+  ! Then, free the pointers or arrays
+  MDEALLOCATE(DistanceOfElemCenter_Shared)
 END IF
 
 ! Mortar sides

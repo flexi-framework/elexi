@@ -312,8 +312,8 @@ END IF
 #endif /*USE_LOADBALANCE*/
 
 #if USE_MPI
-SafetyFactor  =GETREAL('Part-SafetyFactor','1.0')
-halo_eps_velo =GETREAL('Part-HaloEpsVelo' ,'0')
+SafetyFactor  = GETREAL('Part-SafetyFactor')
+halo_eps_velo = GETREAL('Part-HaloEpsVelo')
 
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
 #endif /*USE_MPI*/
@@ -464,14 +464,10 @@ ELSE
   CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
 
   ! sum up potential halo elements and create correct offset mapping via ElemInfo_Shared
-  nHaloElems = 0
-  DO iElem = 1, nGlobalElems
-    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.2) THEN
-      nHaloElems = nHaloElems + 1
-    END IF
-  END DO
+  nHaloElems = COUNT(ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.2)
+
   ALLOCATE(offsetCNHalo2GlobalElem(1:nHaloElems))
-  offsetCNHalo2GlobalElem=-1
+  offsetCNHalo2GlobalElem = -1
   nHaloElems = 0
   DO iElem = 1, nGlobalElems
     IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.2) THEN
@@ -479,14 +475,11 @@ ELSE
       offsetCNHalo2GlobalElem(nHaloElems) = iElem
     END IF
   END DO
+  ! The code below changes ElemInfo_Shared, identification of halo elements must complete before
+  CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
   ! sum all MPI-side of compute-node and create correct offset mapping in SideInfo_Shared
-  nMPISidesShared = 0
-  DO iSide = 1, nNonUniqueGlobalSides
-    IF (SideInfo_Shared(SIDE_NBELEMTYPE,iSide).EQ.2) THEN
-      nMPISidesShared = nMPISidesShared + 1
-    END IF
-  END DO
+  nMPISidesShared = COUNT(SideInfo_Shared(SIDE_NBELEMTYPE,:).EQ.2)
   ALLOCATE(offsetMPISideShared(nMPISidesShared))
 
   nMPISidesShared = 0

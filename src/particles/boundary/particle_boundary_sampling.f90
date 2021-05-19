@@ -120,7 +120,7 @@ USE MOD_StringTools             ,ONLY: LowCase
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: nNonUniqueGlobalSides
-USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
+USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
@@ -213,8 +213,7 @@ IF (myComputeNodeRank.EQ.0) THEN
 #if USE_MPI
 END IF
 
-CALL MPI_WIN_SYNC(GlobalSide2SurfSide_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(GlobalSide2SurfSide_Shared_Win,MPI_COMM_SHARED)
 #endif /* USE_MPI*/
 
 ! create boundary name mapping for surfaces SurfaceBC number mapping
@@ -406,9 +405,8 @@ DO iSide = firstSide,lastSide
 END DO
 
 #if USE_MPI
-CALL MPI_WIN_SYNC(GlobalSide2SurfSide_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(SurfSide2GlobalSide_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(GlobalSide2SurfSide_Shared_Win,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(SurfSide2GlobalSide_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
 
 ! free temporary arrays
@@ -473,7 +471,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   SampWallState_Shared = 0.
 #if USE_MPI
 END IF
-CALL MPI_WIN_SYNC(SampWallState_Shared_Win,IERROR)
+CALL BARRIER_AND_SYNC(SampWallState_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
 
 ! Surf sides are shared, array calculation can be distributed
@@ -498,8 +496,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   SurfSideArea=0.
 #if USE_MPI
 END IF
-CALL MPI_WIN_SYNC(SurfSideArea_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL BARRIER_AND_SYNC(SurfSideArea_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
 
 ! Calculate equidistant surface points
@@ -575,8 +572,7 @@ DO iSide = firstSide,LastSide
 END DO ! iSide = firstSide,lastSide
 
 #if USE_MPI
-CALL MPI_WIN_SYNC(SurfSideArea_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL BARRIER_AND_SYNC(SurfSideArea_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
 
 ! get the full area of all surface sides
@@ -876,10 +872,11 @@ USE MOD_Restart_Vars               ,ONLY: RestartTime
 USE MOD_Particle_Vars              ,ONLY: nSpecies
 USE MOD_Particle_Boundary_Vars     ,ONLY: SurfOnNode
 USE MOD_Particle_Boundary_Vars     ,ONLY: nSurfSample,offsetComputeNodeSurfSide,nComputeNodeSurfSides
-USE MOD_Particle_Boundary_Vars,     ONLY: SampWallState_Shared
+USE MOD_Particle_Boundary_Vars     ,ONLY: SampWallState_Shared
 USE MOD_Particle_Boundary_Vars
 #if USE_MPI
-USE MOD_Particle_Boundary_Vars,     ONLY: SampWallState_Shared_Win
+USE MOD_Particle_Boundary_Vars     ,ONLY: SampWallState_Shared_Win
+USE MOD_Particle_MPI_Shared        ,ONLY: BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars   ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
 USE MOD_Particle_MPI_Shared_Vars   ,ONLY: myComputeNodeRank,mySurfRank
 #else
@@ -1039,8 +1036,7 @@ END IF ! myComputeNodeRank.EQ.0
 
 ! Synchronize data on the compute node
 #if USE_MPI
-CALL MPI_WIN_SYNC(SampWallState_Shared_Win,iError)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(SampWallState_Shared_Win,MPI_COMM_SHARED)
 #endif
 
 END SUBROUTINE RestartParticleBoundarySampling

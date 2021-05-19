@@ -116,8 +116,8 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem_Shared,FIBGM_offsetElem_S
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMToProc_Shared,FIBGMToProc_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMProcs,FIBGMProcs_Shared,FIBGMProcs_Shared_Win
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
+USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars
-USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
 USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
 USE MOD_TimeDisc_Vars          ,ONLY: t
@@ -293,9 +293,8 @@ SELECT CASE(TrackingMethod)
 END SELECT
 
 #if USE_MPI
-CALL MPI_WIN_SYNC(ElemToBGM_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(BoundsOfElem_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL BARRIER_AND_SYNC(ElemToBGM_Shared_Win   ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(BoundsOfElem_Shared_Win,MPI_COMM_SHARED)
 #endif  /*USE_MPI*/
 
 ! deallocate stuff // required for dynamic load balance
@@ -462,8 +461,7 @@ ELSE
       END DO ! jBGM
     END DO ! iBGM
   END DO ! iElem
-  CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
-  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+  CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
 
   ! sum up potential halo elements and create correct offset mapping via ElemInfo_Shared
   nHaloElems = 0
@@ -557,12 +555,10 @@ ELSE
     END IF
   END DO ! iElem = firstHaloElem, lastHaloElem
 END IF ! nComputeNodeProcessors.EQ.nProcessors_Global
-CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win            ,MPI_COMM_SHARED)
 
 IF (GEO%nPeriodicVectors.GT.0) CALL CheckPeriodicSides()
-CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
 
 ! Mortar sides
 IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
@@ -592,8 +588,7 @@ IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
   END DO
 END IF
 
-CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
 #else
 ElemInfo_Shared(ELEM_HALOFLAG,:) = 1
 #endif  /*USE_MPI*/
@@ -701,9 +696,8 @@ IF (myComputeNodeRank.EQ.nComputeNodeProcessors-1) THEN
   END DO ! iBGM
 END IF
 DEALLOCATE(sendbuf)
-CALL MPI_WIN_SYNC(FIBGM_nElems_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(FIBGM_offsetElem_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(FIBGM_nElems_Shared_Win    ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(FIBGM_offsetElem_Shared_Win,MPI_COMM_SHARED)
 #else /*NOT USE_MPI*/
 ALLOCATE(FIBGM_nElems    (BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax))
 ALLOCATE(FIBGM_offsetElem(BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax))
@@ -739,8 +733,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   FIBGM_Element = -1
 #if USE_MPI
 END IF
-CALL MPI_WIN_SYNC(FIBGM_Element_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(FIBGM_Element_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
 
 DO iBGM = BGMimin,BGMimax
@@ -865,8 +858,7 @@ END DO ! iElem
 #if USE_MPI
 DEALLOCATE(offsetElemsInBGMCell)
 
-CALL MPI_WIN_SYNC(FIBGM_Element_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(FIBGM_Element_Shared_Win,MPI_COMM_SHARED)
 
 ! Abort if FIBGM_Element still contains unfilled entries
 IF (ANY(FIBGM_Element.EQ.-1)) CALL ABORT(__STAMP__,'Error while filling FIBGM element array')
@@ -997,9 +989,8 @@ IF (myComputeNodeRank.EQ.0) THEN
   FIBGM_nTotalElems = 0
 END IF
 
-CALL MPI_WIN_SYNC(FIBGM_nTotalElems_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(FIBGMToProcFlag_Shared_Win  ,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
 
 ! Count number of global elements
 DO iElem = firstElem,lastElem
@@ -1021,9 +1012,8 @@ DO iElem = firstElem,lastElem
   END DO
 END DO
 
-CALL MPI_WIN_SYNC(FIBGMToProcFlag_Shared_Win  ,IERROR)
-CALL MPI_WIN_SYNC(FIBGM_nTotalElems_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
 
 ! Allocate shared array to hold the mapping
 MPISharedSize = INT(3*(BGMimaxglob-BGMiminglob+1)*(BGMjmaxglob-BGMjminglob+1)*(BGMkmaxglob-BGMkminglob+1),MPI_ADDRESS_KIND)&
@@ -1036,8 +1026,7 @@ FIBGMToProc => FIBGMToProc_Shared
 IF (myComputeNodeRank.EQ.0) THEN
   FIBGMToProc = 0
 END IF
-CALL MPI_WIN_SYNC(FIBGMToProc_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(FIBGMToProc_Shared_Win,MPI_COMM_SHARED)
 
 ! CN root build the mapping to avoid further communication
 IF (myComputeNodeRank.EQ.0) THEN
@@ -1062,7 +1051,7 @@ IF (myComputeNodeRank.EQ.0) THEN
 END IF
 
 ! Synchronize array and communicate the information to other procs on CN node
-CALL MPI_WIN_SYNC(FIBGMToProc_Shared_Win,IERROR)
+CALL BARRIER_AND_SYNC(FIBGMToProc_Shared_Win,MPI_COMM_SHARED)
 CALL MPI_BCAST(nFIBGMToProc,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
 
 ! Allocate shared array to hold the proc information
@@ -1074,8 +1063,7 @@ FIBGMProcs => FIBGMProcs_Shared
 IF (myComputeNodeRank.EQ.0) THEN
   FIBGMProcs= -1
 END IF
-CALL MPI_WIN_SYNC(FIBGMProcs_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(FIBGMProcs_Shared_Win,MPI_COMM_SHARED)
 
 ! CN root fills the information
 IF (myComputeNodeRank.EQ.0) THEN
@@ -1109,8 +1097,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 MDEALLOCATE(FIBGMToProcFlag_Shared)
 MDEALLOCATE(FIBGMToProcFlag)
 
-CALL MPI_WIN_SYNC(FIBGMProcs_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(FIBGMProcs_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
 
 ! and get max number of bgm-elems
@@ -1257,7 +1244,7 @@ USE MOD_Preproc
 USE MOD_IO_HDF5                 ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars               ,ONLY: nGlobalElems,offsetElem
 USE MOD_Particle_Globals        ,ONLY: PP_nElems
-USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared
+USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemHaloID
@@ -1292,8 +1279,7 @@ IF (myComputeNodeRank.EQ.0) THEN
 END IF
 
 ! Synchronize information on each compute-node
-CALL MPI_WIN_SYNC(ElemHaloInfo_Shared_Win,iERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+CALL BARRIER_AND_SYNC(ElemHaloInfo_Shared_Win,MPI_COMM_SHARED)
 
 ! Add ElemInfo halo information to ElemData
 DO iRank = 0,nLeaderGroupProcs-1
@@ -1407,7 +1393,7 @@ END DO
 ! return if there are no periodic elements on the compute node or inside the halo region
 IF (nPeriodicElems.EQ.0) RETURN
 
-ALLOCATE(PeriodicSideBoundsOfElemCenter(1:4,1:nPeriodicElems))
+ALLOCATE(PeriodicSideBoundsOfElemCenter(1:5,1:nPeriodicElems))
 ALLOCATE(nPeriodicVectorsPerElem       (1:3,1:nPeriodicElems))
 
 nPeriodicElems = 0

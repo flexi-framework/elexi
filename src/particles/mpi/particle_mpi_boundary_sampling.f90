@@ -308,6 +308,7 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState,SampWallState_Shared,SampWallState_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars
 USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
+USE MOD_Particle_MPI_Shared     ,ONLY: BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nSurfLeaders,myComputeNodeRank,mySurfRank,nComputeNodeProcessors
 USE MOD_Particle_Vars           ,ONLY: nSpecies
@@ -426,8 +427,7 @@ lastSpecies  = MERGE(0,nSpecies,nSpecies.EQ.1)
 !  CALL MPI_WAITALL(2,SendRequestShared  ,MPI_STATUSES_IGNORE,IERROR)
 !END IF ! myComputeNodeRank.EQ.0
 !
-!CALL MPI_WIN_SYNC(SampWallState_Shared_Win       ,IERROR)
-!CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+!CALL BARRIER_AND_SYNC(SampWallState_Shared_Win       ,MPI_COMM_SHARED)
 
 ! First, collect all the CN-local data
 MessageSize = SurfSampSize*nSurfSample*nSurfSample*nComputeNodeSurfTotalSides
@@ -525,8 +525,7 @@ IF (myComputeNodeRank.EQ.0) THEN
 DEALLOCATE(SampWallStateTmp)
 END IF ! myComputeNodeRank.EQ.0
 
-CALL MPI_WIN_SYNC(SampWallState_Shared_Win       ,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL BARRIER_AND_SYNC(SampWallState_Shared_Win       ,MPI_COMM_SHARED)
 
 ! now the shadow arrays can be nullified
 SampWallState        = 0.
@@ -689,8 +688,7 @@ IF (myComputeNodeRank.EQ.0) THEN
 END IF
 
 ! ensure synchronization on compute node
-CALL MPI_WIN_SYNC(SampWallState_Shared_Win       ,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL BARRIER_AND_SYNC(SampWallState_Shared_Win       ,MPI_COMM_SHARED)
 
 END SUBROUTINE ExchangeSurfData
 

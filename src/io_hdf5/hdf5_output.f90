@@ -1270,6 +1270,4 @@ DEALLOCATE( StrVarNames  &
 END SUBROUTINE WriteParticle
 #endif /*PARTICLES*/
 
-
-
 END MODULE MOD_HDF5_output

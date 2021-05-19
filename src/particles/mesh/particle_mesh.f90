@@ -265,7 +265,7 @@ USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 #if USE_MPI
 USE MOD_Particle_BGM           ,ONLY: WriteHaloInfo
-USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
+USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars
 #endif /* USE_MPI */
 #if USE_LOADBALANCE
@@ -511,9 +511,9 @@ SELECT CASE(TrackingMethod)
       END DO
     END IF
 #if USE_MPI
-    CALL MPI_WIN_SYNC(SideSlabNormals_Shared_Win,IERROR)
-    CALL MPI_WIN_SYNC(SideSlabIntervals_Shared_Win,IERROR)
-    CALL MPI_WIN_SYNC(BoundingBoxIsEmpty_Shared_Win,IERROR)
+    CALL BARRIER_AND_SYNC(SideSlabNormals_Shared_Win   ,MPI_COMM_SHARED)
+    CALL BARRIER_AND_SYNC(SideSlabIntervals_Shared_Win ,MPI_COMM_SHARED)
+    CALL BARRIER_AND_SYNC(BoundingBoxIsEmpty_Shared_Win,MPI_COMM_SHARED)
     CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /* USE_MPI */
 #if CODE_ANALYZE

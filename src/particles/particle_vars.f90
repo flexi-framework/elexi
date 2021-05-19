@@ -54,6 +54,8 @@ INTEGER                       :: bIter
 INTEGER                       :: nBassetVars
 #endif
 
+CHARACTER(255)                :: FilenameRecordPart
+
 TYPE tExcludeRegion
   CHARACTER(40)                          :: SpaceIC                          ! specifying Keyword for Particle Space condition
   REAL                                   :: RadiusIC                         ! Radius for IC circle
@@ -124,7 +126,8 @@ TYPE tInit                                                                   ! P
   INTEGER                                :: sumOfRequestedParticles          ! Sum of requested particles on all procs
   INTEGER                                :: mySumOfMatchedParticles          ! Sum of matched particles on current proc
   INTEGER                                :: nPartsPerProc                    ! Particle displacement on current proc
-  REAL, ALLOCATABLE                      :: PartField(:,:,:)
+  REAL, ALLOCATABLE                      :: PartField(:,:)
+  INTEGER                                :: nPartField
 END TYPE tInit
 
 TYPE tSurfFluxSubSideData
@@ -188,6 +191,7 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
   INTEGER                                :: CountIndex                       ! Count number of particles
+  LOGICAL                                :: doRoughWallModelling
 #if USE_EXTEND_RHS
   LOGICAL                                :: CalcLiftForce                    ! Calculate the lift (Saffman) force
   LOGICAL                                :: CalcUndisturbedFlow              ! Calculate the undisturbed flow force

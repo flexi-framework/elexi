@@ -132,19 +132,23 @@ TYPE tPartBoundary
   CHARACTER(LEN=255),ALLOCATABLE         :: WallModel(:)
   CHARACTER(LEN=255),ALLOCATABLE         :: WallCoeffModel(:)
   ! Bons particle rebound model
-  REAL    , ALLOCATABLE                  :: Young(:)              ! Young's modulus
-  REAL    , ALLOCATABLE                  :: Poisson(:)            ! Poisson's ration for transverse strain under axial compression
+  REAL    , ALLOCATABLE                  :: Young(:)                ! Young's modulus
+  REAL    , ALLOCATABLE                  :: Poisson(:)              ! Poisson's ration for transverse strain under axial compression
   ! Fong coefficient of restitution
-  REAL    , ALLOCATABLE                  :: CoR(:)                ! Coefficient of restitution for normal velocity component
+  REAL    , ALLOCATABLE                  :: CoR(:)                  ! Coefficient of restitution for normal velocity component
+  ! Rough wall modelling
+  LOGICAL , ALLOCATABLE                  :: doRoughWallModelling(:) ! Flag if walls are modelled as rough walls
+  REAL    , ALLOCATABLE                  :: RoughMeanIC(:)          ! Mean of the Gaussian distribution
+  REAL    , ALLOCATABLE                  :: RoughVarianceIC(:)      ! Standard deviation of the Gaussian distribution
 END TYPE
 
-INTEGER                                  :: nPartBound            ! number of particle boundaries
-TYPE(tPartBoundary)                      :: PartBound             ! Boundary Data for Particles
+INTEGER                                  :: nPartBound              ! number of particle boundaries
+TYPE(tPartBoundary)                      :: PartBound               ! Boundary Data for Particles
 
-INTEGER                                  :: nAuxBCs               ! number of aux. BCs that are checked during tracing
-LOGICAL                                  :: UseAuxBCs             ! number of aux. BCs that are checked during tracing
-CHARACTER(LEN=200), ALLOCATABLE          :: AuxBCType(:)          ! type of BC (plane, ...)
-INTEGER           , ALLOCATABLE          :: AuxBCMap(:)           ! index of AuxBC in respective Type
+INTEGER                                  :: nAuxBCs                 ! number of aux. BCs that are checked during tracing
+LOGICAL                                  :: UseAuxBCs               ! number of aux. BCs that are checked during tracing
+CHARACTER(LEN=200), ALLOCATABLE          :: AuxBCType(:)            ! type of BC (plane, ...)
+INTEGER           , ALLOCATABLE          :: AuxBCMap(:)             ! index of AuxBC in respective Type
 
 TYPE tAuxBC_plane
   REAL                                   :: r_vec(3)

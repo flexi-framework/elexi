@@ -536,9 +536,11 @@ END IF
 
 ! Output RHS to file
 #if ANALYZE_RHS
-IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
-  CALL OutputToFile(FileName_RHS,(/t/),(/16,1/),(/REAL(PartSpecies(PartID)),Fdm(1:3),Flm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3)/))
-  tWriteRHS = tWriteRHS + dtWriteRHS
+IF(dtWriteRHS.GT.0.0)THEN
+  IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
+    CALL OutputToFile(FileName_RHS,(/t/),(/16,1/),(/REAL(PartSpecies(PartID)),Fdm(1:3),Flm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3)/))
+    tWriteRHS = tWriteRHS + dtWriteRHS
+  END IF
 END IF
 #endif
 

@@ -110,6 +110,7 @@ IF (OutputPoints) THEN
     ALLOCATE(RPPoints%Val(   nVal,nPointsOutput))
   END IF
 ELSE
+  nPointsOutput = 0
   RPPoints%nRPs = 0
 END IF
 
@@ -409,6 +410,7 @@ IF (OutputPoints) THEN
     ALLOCATE(RPPoints%Val(nValLoc,nPointsOutput))
   END IF
 ELSE
+  nPointsOutput = 0
   RPPoints%nRPs = 0
 END IF
 

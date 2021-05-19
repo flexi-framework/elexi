@@ -570,11 +570,19 @@ ELSE
     END IF
   END DO ! iElem = firstHaloElem, lastHaloElem
 END IF ! nComputeNodeProcessors.EQ.nProcessors_Global
-CALL BARRIER_AND_SYNC(DistanceOfElemCenter_Shared_Win,MPI_COMM_SHARED)
+IF (MeshHasPeriodic) CALL BARRIER_AND_SYNC(DistanceOfElemCenter_Shared_Win,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win            ,MPI_COMM_SHARED)
 
 IF (MeshHasPeriodic)    CALL CheckPeriodicSides()
 CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
+
+! Free distance array for periodic sides
+IF (MeshHasPeriodic) THEN
+  CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+  CALL MPI_WIN_UNLOCK_ALL(DistanceOfElemCenter_Shared_Win,iError)
+  CALL MPI_WIN_FREE(DistanceOfElemCenter_Shared_Win,iError)
+  CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+END IF
 
 ! Mortar sides
 IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
@@ -1103,10 +1111,8 @@ END IF
 
 ! De-allocate FLAG array
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
-
 CALL MPI_WIN_UNLOCK_ALL(FIBGMToProcFlag_Shared_Win,iError)
 CALL MPI_WIN_FREE(FIBGMToProcFlag_Shared_Win,iError)
-
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
 ! Then, free the pointers or arrays

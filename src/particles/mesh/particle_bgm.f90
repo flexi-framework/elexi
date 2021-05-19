@@ -23,6 +23,9 @@ MODULE MOD_Particle_BGM
 IMPLICIT NONE
 PRIVATE
 
+! VARIABLES
+REAL,POINTER :: DistanceOfElemCenter_Shared(:)
+
 INTERFACE DefineParametersParticleBGM
     MODULE PROCEDURE DefineParametersParticleBGM
 END INTERFACE
@@ -160,6 +163,8 @@ INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize,dummyI
 INTEGER                        :: BGMiDelta,BGMjDelta,BGMkDelta
 INTEGER                        :: BGMiglobDelta,BGMjglobDelta,BGMkglobDelta
 ! Periodic FIBGM
+LOGICAL                        :: MeshHasPeriodic
+INTEGER                        :: DistanceOfElemCenter_Shared_Win
 LOGICAL                        :: PeriodicComponent(1:3)
 INTEGER                        :: iPeriodicVector,iPeriodicComponent
 ! Mortar
@@ -206,6 +211,17 @@ CALL MPI_WIN_LOCK_ALL(0,ElemToBGM_Shared_Win,IERROR)
 CALL MPI_WIN_LOCK_ALL(0,BoundsOfElem_Shared_Win,IERROR)
 firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
+! Periodic Sides
+MeshHasPeriodic    = MERGE(.TRUE.,.FALSE.,GEO%nPeriodicVectors.GT.0)
+IF (MeshHasPeriodic) THEN
+  MPISharedSize   = INT(nGlobalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+  CALL Allocate_Shared(MPISharedSize,(/nGlobalElems/),DistanceOfElemCenter_Shared_Win,DistanceOfElemCenter_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,DistanceOfElemCenter_Shared_Win,IERROR)
+  IF (myComputeNodeRank.EQ.0) THEN
+    DistanceOfElemCenter_Shared = HUGE(1.)
+  END IF
+  CALL BARRIER_AND_SYNC(DistanceOfElemCenter_Shared_Win,MPI_COMM_SHARED)
+END IF
 #else
 ! In order to use only one type of variables VarName_Shared in code structure such as tracking etc. for NON_MPI
 ! the same variables are allocated on the single proc and used from mesh_vars instead of mpi_shared_vars
@@ -536,7 +552,13 @@ ELSE
       IF (VECNORM(BoundsOfElemCenter(1:3)-MPISideBoundsOfElemCenter(1:3,iSide)) &
           .GT. halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide) ) CYCLE
       ElemInsideHalo = .TRUE.
-      EXIT
+      IF (MeshHasPeriodic) THEN
+        DistanceOfElemCenter_Shared(ElemID) =      &
+          MIN(DistanceOfElemCenter_Shared(ElemID), &
+          VECNORM(BoundsOfElemCenter(1:3)-MPISideBoundsOfElemCenter(1:3,iSide))) ! -(BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide)))
+      ELSE
+        EXIT
+      END IF
     END DO ! iSide = 1, nMPISidesShared
     IF (.NOT.ElemInsideHalo) THEN
       ElemInfo_Shared(ELEM_HALOFLAG,ElemID) = 0
@@ -548,9 +570,10 @@ ELSE
     END IF
   END DO ! iElem = firstHaloElem, lastHaloElem
 END IF ! nComputeNodeProcessors.EQ.nProcessors_Global
+CALL BARRIER_AND_SYNC(DistanceOfElemCenter_Shared_Win,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win            ,MPI_COMM_SHARED)
 
-IF (GEO%nPeriodicVectors.GT.0) CALL CheckPeriodicSides()
+IF (MeshHasPeriodic)    CALL CheckPeriodicSides()
 CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
 
 ! Mortar sides
@@ -1340,9 +1363,9 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,SideInfo_Shared,BoundsOfEl
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_MPI_Vars      ,ONLY: halo_eps
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -1432,6 +1455,8 @@ DO iElem = 1,nGlobalElems
     PeriodicSideBoundsOfElemCenter(4,nPeriodicElems) = VECNORM ((/ BoundsOfElem_Shared(2,1,iElem)-BoundsOfElem_Shared(1,1,iElem), &
                                                                    BoundsOfElem_Shared(2,2,iElem)-BoundsOfElem_Shared(1,2,iElem), &
                                                                    BoundsOfElem_Shared(2,3,iElem)-BoundsOfElem_Shared(1,3,iElem) /) / 2.)
+    ! Element is in halo region, reduce considered range
+    PeriodicSideBoundsOfElemCenter(5,nPeriodicElems) = MERGE(0.,ABS(DistanceOfElemCenter_Shared(iElem)),ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.1)
   END IF
 END DO
 
@@ -1467,7 +1492,8 @@ ElemLoop: DO iPeriodicElem = 1,nPeriodicElems
         IF (VECNORM( BoundsOfElemCenter(1:3)                                                                               &
                    + GEO%PeriodicVectors(1:3,iPeriodicVector) * nPeriodicVectorsPerElem(iPeriodicVector,iPeriodicElem)     &
                    - PeriodicSideBoundsOfElemCenter(1:3,iPeriodicElem))                                                    &
-                .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
+                .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem)                        &
+                                                   -PeriodicSideBoundsOfElemCenter(5,iPeriodicElem)) THEN
           ! add element back to halo region
           ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
           IF (TrackingMethod.EQ.REFMAPPING) CALL AddElementToFIBGM(iElem)
@@ -1487,7 +1513,8 @@ ElemLoop: DO iPeriodicElem = 1,nPeriodicElems
           IF (VECNORM( BoundsOfElemCenter(1:3)                                                                             &
                      + GEO%PeriodicVectors(1:3,iPeriodicVector) * nPeriodicVectorsPerElem(iPeriodicVector,iPeriodicElem)   &
                      - PeriodicSideBoundsOfElemCenter(1:3,iPeriodicElem))                                                  &
-                    .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
+                    .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem)                    &
+                                                       -PeriodicSideBoundsOfElemCenter(5,iPeriodicElem)) THEN
             ! add element back to halo region
             ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
             IF (TrackingMethod.EQ.REFMAPPING) CALL AddElementToFIBGM(iElem)
@@ -1503,7 +1530,8 @@ ElemLoop: DO iPeriodicElem = 1,nPeriodicElems
                        + GEO%PeriodicVectors(1:3,iPeriodicVector) * nPeriodicVectorsPerElem(iPeriodicVector,iPeriodicElem) &
                        + GEO%PeriodicVectors(1:3,jPeriodicVector) * nPeriodicVectorsPerElem(jPeriodicVector,iPeriodicElem) &
                        - PeriodicSideBoundsOfElemCenter(1:3,iPeriodicElem))                                                &
-                    .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
+                    .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem)                    &
+                                                       -PeriodicSideBoundsOfElemCenter(5,iPeriodicElem)) THEN
               ! add element back to halo region
               ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
               IF (TrackingMethod.EQ.REFMAPPING) CALL AddElementToFIBGM(iElem)
@@ -1523,7 +1551,8 @@ ElemLoop: DO iPeriodicElem = 1,nPeriodicElems
           IF (VECNORM( BoundsOfElemCenter(1:3)                                                                             &
                      + GEO%PeriodicVectors(1:3,iPeriodicVector) * nPeriodicVectorsPerElem(iPeriodicVector,iPeriodicElem)   &
                      - PeriodicSideBoundsOfElemCenter(1:3,iPeriodicElem))                                                  &
-                    .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
+                    .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem)                    &
+                                                       -PeriodicSideBoundsOfElemCenter(5,iPeriodicElem)) THEN
             ! add element back to halo region
             ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
             IF (TrackingMethod.EQ.REFMAPPING) CALL AddElementToFIBGM(iElem)
@@ -1538,7 +1567,8 @@ ElemLoop: DO iPeriodicElem = 1,nPeriodicElems
                        + GEO%PeriodicVectors(1:3,iPeriodicVector) * nPeriodicVectorsPerElem(iPeriodicVector,iPeriodicElem) &
                        + GEO%PeriodicVectors(1:3,jPeriodicVector) * nPeriodicVectorsPerElem(jPeriodicVector,iPeriodicElem) &
                        - PeriodicSideBoundsOfElemCenter(1:3,iPeriodicElem))                                                &
-                    .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
+                    .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem)                    &
+                                                       -PeriodicSideBoundsOfElemCenter(5,iPeriodicElem)) THEN
               ! add element back to halo region
               ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
               IF (TrackingMethod.EQ.REFMAPPING) CALL AddElementToFIBGM(iElem)
@@ -1554,7 +1584,8 @@ ElemLoop: DO iPeriodicElem = 1,nPeriodicElems
                    + GEO%PeriodicVectors(1:3,2) * nPeriodicVectorsPerElem(2,iPeriodicElem)                                 &
                    + GEO%PeriodicVectors(1:3,3) * nPeriodicVectorsPerElem(3,iPeriodicElem)                                 &
                    - PeriodicSideBoundsOfElemCenter(1:3,iPeriodicElem))                                                    &
-                .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem) ) THEN
+                .LE. halo_eps+BoundsOfElemCenter(4)+PeriodicSideBoundsOfElemCenter(4,iPeriodicElem)                        &
+                                                   -PeriodicSideBoundsOfElemCenter(5,iPeriodicElem)) THEN
           ! add element back to halo region
           ElemInfo_Shared(ELEM_HALOFLAG,iElem) = 3
           IF (TrackingMethod.EQ.REFMAPPING) CALL AddElementToFIBGM(iElem)

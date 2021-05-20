@@ -23,9 +23,6 @@ MODULE MOD_Particle_BGM
 IMPLICIT NONE
 PRIVATE
 
-! VARIABLES
-REAL,POINTER :: DistanceOfElemCenter_Shared(:)
-
 INTERFACE DefineParametersParticleBGM
     MODULE PROCEDURE DefineParametersParticleBGM
 END INTERFACE
@@ -124,6 +121,7 @@ USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
 USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
 USE MOD_TimeDisc_Vars          ,ONLY: t
+USE MOD_Particle_Mesh_Vars     ,ONLY: MeshHasPeriodic,DistanceOfElemCenter_Shared,DistanceOfElemCenter_Shared_Win
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
@@ -163,8 +161,6 @@ INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize,dummyI
 INTEGER                        :: BGMiDelta,BGMjDelta,BGMkDelta
 INTEGER                        :: BGMiglobDelta,BGMjglobDelta,BGMkglobDelta
 ! Periodic FIBGM
-LOGICAL                        :: MeshHasPeriodic
-INTEGER                        :: DistanceOfElemCenter_Shared_Win
 LOGICAL                        :: PeriodicComponent(1:3)
 INTEGER                        :: iPeriodicVector,iPeriodicComponent
 ! Mortar
@@ -575,17 +571,6 @@ CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win            ,MPI_COMM_SHARED)
 
 IF (MeshHasPeriodic)    CALL CheckPeriodicSides()
 CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
-
-! Free distance array for periodic sides
-IF (MeshHasPeriodic) THEN
-  CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
-  CALL MPI_WIN_UNLOCK_ALL(DistanceOfElemCenter_Shared_Win,iError)
-  CALL MPI_WIN_FREE(DistanceOfElemCenter_Shared_Win,iError)
-  CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
-
-  ! Then, free the pointers or arrays
-  MDEALLOCATE(DistanceOfElemCenter_Shared)
-END IF
 
 ! Mortar sides
 IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
@@ -1369,6 +1354,7 @@ USE MOD_Particle_Boundary_Vars ,ONLY: PartBound
 USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,SideInfo_Shared,BoundsOfElem_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: DistanceOfElemCenter_Shared
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_MPI_Vars      ,ONLY: halo_eps
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod

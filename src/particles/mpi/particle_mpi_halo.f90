@@ -56,6 +56,7 @@ USE MOD_Particle_Globals        ,ONLY: VECNORM,ALMOSTZERO
 USE MOD_Particle_Mesh_Vars      ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: BoundsOfElem_Shared
+USE MOD_Particle_Mesh_Vars      ,ONLY: MeshHasPeriodic,DistanceOfElemCenter_Shared
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputenodeProcessors,nProcessors_Global,myLeaderGroupRank
@@ -409,6 +410,7 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
   BoundsOfElemCenter(4) = VECNORM ((/ BoundsOfElem_Shared(2  ,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID), &
                                       BoundsOfElem_Shared(2  ,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID), &
                                       BoundsOfElem_Shared(2  ,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
+  BoundsOfElemCenter(5)   = MERGE(0.,ABS(DistanceOfElemCenter_Shared(ElemID)),ElemInfo_Shared(ELEM_HALOFLAG,ElemID).EQ.1)
   DO iSide = 1, nExchangeSides
     ! compare distance of centers with sum of element outer radii+halo_eps
     IF (VECNORM(BoundsOfElemCenter(1:3)-MPISideBoundsOfElemCenter(1:3,iSide)) &
@@ -423,7 +425,8 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
             IF (VECNORM( BoundsOfElemCenter(1:3)                                                       &
                        + GEO%PeriodicVectors(1:3,1) * DirPeriodicVector(iPeriodicDir)                  &
                        - MPISideBoundsOfElemCenter(1:3,iSide))                                         &
-              .LE. MPI_halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide) ) THEN
+              .LE. MPI_halo_eps+BoundsOfElemCenter(4)-BoundsOfElemCenter(5)                            &
+                        +MPISideBoundsOfElemCenter(4,iSide) ) THEN
                 ! flag the proc as exchange proc (in halo region)
                 GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                 GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -440,7 +443,8 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
               IF (VECNORM( BoundsOfElemCenter(1:3)                                                    &
                          + GEO%PeriodicVectors(1:3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir) &
                          - MPISideBoundsOfElemCenter(1:3,iSide))                                      &
-                        .LE. MPI_halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide) ) THEN
+                        .LE. MPI_halo_eps+BoundsOfElemCenter(4)-BoundsOfElemCenter(5)                 &
+                                  +MPISideBoundsOfElemCenter(4,iSide)) THEN
                 ! flag the proc as exchange proc (in halo region)
                 GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                 GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -457,7 +461,8 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
                          + GEO%PeriodicVectors(1:3,1) * DirPeriodicVector(iPeriodicDir) &
                          + GEO%PeriodicVectors(1:3,2) * DirPeriodicVector(jPeriodicDir) &
                          - MPISideBoundsOfElemCenter(1:3,iSide))                                      &
-                      .LE. MPI_halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide) ) THEN
+                      .LE. MPI_halo_eps+BoundsOfElemCenter(4)-BoundsOfElemCenter(5)                 &
+                                +MPISideBoundsOfElemCenter(4,iSide)) THEN
                 ! flag the proc as exchange proc (in halo region)
                 GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                 GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -478,7 +483,8 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
               IF (VECNORM( BoundsOfElemCenter(1:3)                                                      &
                          + GEO%PeriodicVectors(1:3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir)   &
                          - MPISideBoundsOfElemCenter(1:3,iSide))                                        &
-                        .LE. MPI_halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide) ) THEN
+                        .LE. MPI_halo_eps+BoundsOfElemCenter(4)-BoundsOfElemCenter(5)                   &
+                                  +MPISideBoundsOfElemCenter(4,iSide)) THEN
                 ! flag the proc as exchange proc (in halo region)
                 GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                 GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -495,7 +501,8 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
                              + GEO%PeriodicVectors(1:3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir) &
                              + GEO%PeriodicVectors(1:3,jPeriodicVector) * DirPeriodicVector(jPeriodicDir) &
                              - MPISideBoundsOfElemCenter(1:3,iSide))                                      &
-                          .LE. MPI_halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide) ) THEN
+                          .LE. MPI_halo_eps+BoundsOfElemCenter(4)-BoundsOfElemCenter(5)                     &
+                                    +MPISideBoundsOfElemCenter(4,iSide)) THEN
                     ! flag the proc as exchange proc (in halo region)
                     GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                     GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -516,7 +523,8 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
                            + GEO%PeriodicVectors(1:3,2) * DirPeriodicVector(jPeriodicDir)                   &
                            + GEO%PeriodicVectors(1:3,3) * DirPeriodicVector(kPeriodicDir)                   &
                            - MPISideBoundsOfElemCenter(1:3,iSide))                                          &
-                        .LE. MPI_halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide) ) THEN
+                        .LE. MPI_halo_eps+BoundsOfElemCenter(4)-BoundsOfElemCenter(5)                       &
+                        +MPISideBoundsOfElemCenter(4,iSide) ) THEN
                   ! flag the proc as exchange proc (in halo region)
                   GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                   GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors

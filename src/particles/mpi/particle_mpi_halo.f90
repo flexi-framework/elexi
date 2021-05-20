@@ -253,7 +253,7 @@ DO iElem = firstElem,lastElem
 END DO
 
 !> Build metrics for all MPI sides on current proc
-ALLOCATE(BoundsOfElemCenter(1:4))
+ALLOCATE(BoundsOfElemCenter(1:5))
 ALLOCATE(MPISideBoundsOfElemCenter(1:4,1:nExchangeSides))
 
 DO iSide = 1, nExchangeSides

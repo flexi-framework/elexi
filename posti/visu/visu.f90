@@ -252,7 +252,7 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
-INTEGER                          :: nElems_State,N_State
+INTEGER                          :: nElems_State!N_State
 CHARACTER(LEN=255)               :: NodeType_State, cwd
 !===================================================================================================================================
 IF (STRICMP(fileType,'Mesh')) THEN
@@ -572,6 +572,8 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   nVar_State    = 0
   withDGOperator = .FALSE.
   doSurfVisu     = .FALSE.
+  CALL visu_getVarNamesAndFileType(MeshFile,"",VarNamesAll,BCNamesAll)
+
   CALL VisualizeMesh(postifile,MeshFile)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE(*,*) "State Mode"

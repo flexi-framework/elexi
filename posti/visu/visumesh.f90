@@ -263,7 +263,6 @@ SUBROUTINE VisualizeMesh(postifile,meshfile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Visu          ,ONLY: visu_getVarNamesAndFileType
 USE MOD_Visu_Vars
 USE MOD_ReadInTools   ,ONLY: prms,GETINT,GETSTR,CountOption
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
@@ -307,8 +306,6 @@ ELSE
   NVisu = 2*NGeo ! TODO: correct?
 END IF
 NVisu_FV = 1
-
-CALL visu_getVarNamesAndFileType(MeshFile_IN,"",VarNamesAll,BCNamesAll)
 
 ! read mesh, depending if we should visualize the Jacobian or not different mesh modes are needed (calculate metrics or not)
 nVarIni=CountOption("VarName")

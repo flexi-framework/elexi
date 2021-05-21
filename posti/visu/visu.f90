@@ -60,7 +60,7 @@ CONTAINS
 !> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
 !> Also a list of all available boundary names is created for surface visualization.
 !===================================================================================================================================
-SUBROUTINE visu_getVarNamesAndFileType(statefile,meshfile,varnames_loc, bcnames_loc)
+SUBROUTINE visu_getVarNamesAndFileType(statefile,meshfile,varnames_loc,bcnames_loc)
 USE MOD_Globals
 USE MOD_Visu_Vars         ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
 USE MOD_HDF5_Input        ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
@@ -571,6 +571,7 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   MeshFile      = statefile
   nVar_State    = 0
   withDGOperator = .FALSE.
+  doSurfVisu     = .FALSE.
   CALL VisualizeMesh(postifile,MeshFile)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE(*,*) "State Mode"

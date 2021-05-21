@@ -263,6 +263,7 @@ SUBROUTINE VisualizeMesh(postifile,meshfile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Visu          ,ONLY: visu_getVarNamesAndFileType
 USE MOD_Visu_Vars
 USE MOD_ReadInTools   ,ONLY: prms,GETINT,GETSTR,CountOption
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
@@ -307,6 +308,8 @@ ELSE
 END IF
 NVisu_FV = 1
 
+CALL visu_getVarNamesAndFileType(MeshFile_IN,"",VarNamesAll,BCNamesAll)
+
 ! read mesh, depending if we should visualize the Jacobian or not different mesh modes are needed (calculate metrics or not)
 nVarIni=CountOption("VarName")
 meshModeLoc = 0
@@ -334,11 +337,14 @@ IF (nVarIni.GT.0) THEN
   nVarAll = 2
   SDEALLOCATE(mapDepToCalc)
   SDEALLOCATE(mapAllVarsToVisuVars)
+  SDEALLOCATE(mapAllVarsToSurfVisuVars)
   ALLOCATE(mapDepToCalc(nVarDep))
   mapDepToCalc(1) = 1
   mapDepToCalc(2) = 2
   ALLOCATE(mapAllVarsToVisuVars(nVarAll))
   mapAllVarsToVisuVars = 0
+  ALLOCATE(mapAllVarsToSurfVisuVars(1:nVarAll))
+  mapAllVarsToSurfVisuVars = 0
   iVarVisu = 1
   DO iVar = 1, nVarIni
     VarName = GETSTR("VarName")

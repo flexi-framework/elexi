@@ -213,6 +213,42 @@ IF(ANY(PartGravity.NE.0)) THEN
   Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 ENDIF
 
+CASE(RHS_MINIER)
+!===================================================================================================================================
+! Calculation according to Jean-Pierre Minier & Eric Peirano [2001]
+!===================================================================================================================================
+IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Particle tracking with Wang [1996] or Vinkovic [2006] requires mu to be set!')
+
+! Assume spherical particles for now
+IF(ALLOCATED(TurbPartState)) THEN
+  udiff(1:3) = TurbPartState(1:3,PartID) - PartState(PART_VELV,PartID)   !In Minier case, TurbPartState it's the FULL  fluid velocity
+ELSE
+  udiff(1:3) = FieldAtParticle(VELV)     - PartState(PART_VELV,PartID)
+END IF
+
+Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
+
+! Empirical relation of nonlinear drag from Clift et al. (1978)
+Cd  = 1. + 0.15*Rep**0.687
+IF((Species(PartSpecies(PartID))%RHSMethod.EQ.RHS_VINKOVIC).AND.(Rep .LT. epsilonRHS)) Cd  = 1.
+
+! Warn when outside valid range of Wang model
+IF(Rep.GT.800) THEN
+  IF (RepWarn.EQV..FALSE.) THEN
+    SWRITE(UNIT_StdOut,*) 'WARNING: Rep',Rep,'> 800, drag coefficient may not be accurate.'
+    RepWarn=.TRUE.
+  ENDIF
+ENDIF
+
+! Particle relaxation time
+staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
+
+Fdm      = udiff * staup * Cd
+
+! Add gravity if required
+IF(ANY(PartGravity.NE.0)) THEN
+  Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
+ENDIF
 
 CASE(RHS_VINKOVIC,RHS_WANG)
 !===================================================================================================================================

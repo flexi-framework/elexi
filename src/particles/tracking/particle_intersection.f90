@@ -1114,7 +1114,7 @@ CALL Find2DNormIndependentVectors(PartTrajectory,n1,n2)
 ! check angle to boundingbox (height normal vector)
 PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,SideSlabNormals(:,2,CNSideID))))
 
-! projection like NisHita
+! projection like Nishita
 ! plane 1 with n1 becomes y-axis and plane 2 with n2 becomes the x-axis
 DO q = 0,NGeo
   DO p = 0,NGeo
@@ -1393,7 +1393,7 @@ RECURSIVE SUBROUTINE BezierClipRecursive(ClipMode,BezierControlPoints2D,LineNorm
 !================================================================================================================================
 ! Performes the de-Casteljau alogrithm with Clipping to find the intersection between trajectory and surface
 ! original article:
-!   author = {NisHita, Tomoyuki and Sederberg, Thomas W. and Kakimoto, Masanori},
+!   author = {Nishita, Tomoyuki and Sederberg, Thomas W. and Kakimoto, Masanori},
 !   title = {Ray Tracing Trimmed Rational Surface Patches},
 !   year = {1990},
 ! book:
@@ -2299,7 +2299,7 @@ SUBROUTINE CheckXiClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory
 !================================================================================================================================
 ! Performes the de-Casteljau alogrithm with Clipping to find the intersection between trajectory and surface
 ! original article:
-!   author = {NisHita, Tomoyuki and Sederberg, Thomas W. and Kakimoto, Masanori},
+!   author = {Nishita, Tomoyuki and Sederberg, Thomas W. and Kakimoto, Masanori},
 !   title = {Ray Tracing Trimmed Rational Surface Patches},
 !   year = {1990},
 ! book:
@@ -2687,7 +2687,7 @@ SUBROUTINE CheckEtaClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajector
 !================================================================================================================================
 ! Performes the de-Casteljau alogrithm with Clipping to find the intersection between trajectory and surface
 ! original article:
-!   author = {NisHita, Tomoyuki and Sederberg, Thomas W. and Kakimoto, Masanori},
+!   author = {Nishita, Tomoyuki and Sederberg, Thomas W. and Kakimoto, Masanori},
 !   title = {Ray Tracing Trimmed Rational Surface Patches},
 !   year = {1990},
 ! book:

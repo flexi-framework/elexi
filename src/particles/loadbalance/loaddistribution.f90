@@ -998,7 +998,7 @@ identical = .FALSE.
 
 DO WHILE(ASSOCIATED(tmpData))
 #if CODE_ANALYZE
-  SWRITE(UNIT_stdOut,'(A)') 'stored:',tmpData%offSetElemMPI
+  SWRITE(UNIT_stdOut,'(A,I0)') 'stored:',tmpData%offSetElemMPI
 #endif /*CODE_ANALYZE*/
 
   ! first access
@@ -1012,8 +1012,8 @@ DO WHILE(ASSOCIATED(tmpData))
 END DO
 
 #if CODE_ANALYZE
-SWRITE(UNIT_stdOut,'(A)') 'current:  ',offSetElemMPI
-SWRITE(UNIT_stdOut,'(A)') 'identical:',identical
+SWRITE(UNIT_stdOut,'(A,I0)') 'current:  ',offSetElemMPI
+SWRITE(UNIT_stdOut,'(A,I0)') 'identical:',identical
 #endif /*CODE_ANALYZE*/
 
 ! read*

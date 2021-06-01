@@ -23,6 +23,12 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
+#if USE_MPI
+INTERFACE DefineParticleMPI
+  MODULE PROCEDURE DefineParticleMPI
+END INTERFACE
+#endif /*USE_MPI*/
+
 INTERFACE InitParticleMPI
   MODULE PROCEDURE InitParticleMPI
 END INTERFACE
@@ -52,6 +58,9 @@ INTERFACE MPIParticleRecv
   MODULE PROCEDURE MPIParticleRecv
 END INTERFACE
 
+#if USE_MPI
+PUBLIC :: DefineParticleMPI
+#endif /*USE_MPI*/
 PUBLIC :: InitParticleMPI
 PUBLIC :: InitParticleCommSize
 PUBLIC :: SendNbOfParticles
@@ -66,6 +75,26 @@ PUBLIC :: InitParticleMPI
 
 CONTAINS
 
+#if USE_MPI
+SUBROUTINE DefineParticleMPI
+!===================================================================================================================================
+! read required parameters
+!===================================================================================================================================
+! MODULES
+USE MOD_ReadInTools              ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+CALL prms%CreateLogicalOption('CheckExchangeProcs' , 'Check if proc communication of particle info is non-symmetric', '.TRUE.')
+
+END SUBROUTINE DefineParticleMPI
+#endif /*USE_MPI*/
+
+
 SUBROUTINE InitParticleMPI()
 !===================================================================================================================================
 ! read required parameters
@@ -74,6 +103,9 @@ SUBROUTINE InitParticleMPI()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Particle_MPI_Vars
+#if USE_MPI
+USE MOD_ReadInTools              ,ONLY: GETLOGICAL
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -87,16 +119,17 @@ IMPLICIT NONE
 
 !SWRITE(UNIT_StdOut,'(132("-"))')
 !SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MPI... '
-IF(ParticleMPIInitIsDone) &
-  CALL ABORT(__STAMP__,' Particle MPI already initialized!')
+IF(ParticleMPIInitIsDone) CALL ABORT(__STAMP__,' Particle MPI already initialized!')
 
 #if USE_MPI
+! Get flag for ignoring the abort if the number of global exchange procs is non-symmetric
+CheckExchangeProcs = GETLOGICAL('CheckExchangeProcs')
+
 ! Duplicate particle communicator from MPI_COMM_FLEXI
 CALL MPI_COMM_DUP (MPI_COMM_FLEXI,PartMPI%COMM,iError)
 CALL MPI_COMM_RANK(PartMPI%COMM,PartMPI%myRank,iError)
 CALL MPI_COMM_SIZE(PartMPI%COMM,PartMPI%nProcs,iError)
 
-!IF(PartMPI%nProcs.NE.nProcessors) CALL ABORT(__STAMP__,' MPI Communicater-size does not match!', IERROR)
 PartCommSize    = 0
 PartMPI%MPIRoot = MERGE(.TRUE.,.FALSE.,PartMPI%MyRank.EQ.0)
 #else

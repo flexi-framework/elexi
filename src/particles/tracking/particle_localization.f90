@@ -43,11 +43,16 @@ INTERFACE CountPartsPerElem
   MODULE PROCEDURE CountPartsPerElem
 END INTERFACE
 
+INTERFACE PARTHASMOVED
+  MODULE PROCEDURE PARTHASMOVED
+END INTERFACE
+
 PUBLIC:: SinglePointToElement
 PUBLIC:: LocateParticleInElement
 PUBLIC:: PartInElemCheck
 PUBLIC:: ParticleInsideQuad3D
 PUBLIC:: CountPartsPerElem
+PUBLIC:: PARTHASMOVED
 !===================================================================================================================================
 
 CONTAINS
@@ -421,8 +426,8 @@ INTEGER,INTENT(IN)            :: ElemID
 REAL   ,INTENT(IN)            :: PartStateLoc(3)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL   ,INTENT(OUT)           :: Det(6,2)
 LOGICAL,INTENT(OUT)           :: InElementCheck
+REAL   ,INTENT(OUT),OPTIONAL  :: Det(6,2)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: NbElemID,CNElemID
@@ -764,5 +769,30 @@ ELSE
 END IF
 
 END FUNCTION CalcDetOfTrias
+
+
+PURE FUNCTION PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo)
+!================================================================================================================================
+! check if particle has moved significantly within an element
+!================================================================================================================================
+USE MOD_Particle_Globals,           ONLY:ALMOSTZERO
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!--------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)                      :: lengthPartTrajectory
+REAL,INTENT(IN)                      :: ElemRadiusNGeo
+!--------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+LOGICAL                              :: PARTHASMOVED
+!================================================================================================================================
+
+IF(ALMOSTZERO(lengthPartTrajectory/ElemRadiusNGeo))THEN
+  PARTHASMOVED=.FALSE.
+ELSE
+  PARTHASMOVED=.TRUE.
+END IF
+
+END FUNCTION PARTHASMOVED
 
 END MODULE MOD_Particle_Localization

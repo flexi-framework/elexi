@@ -242,12 +242,9 @@ SUBROUTINE SetCellLocalParticlePosition(chunkSize,iSpec,iInit,UseExactPartNum)
 USE MOD_Globals
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
-USE MOD_Particle_Localization  ,ONLY: ParticleInsideQuad3D
-USE MOD_Particle_Localization  ,ONLY: PartInElemCheck
 USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemEpsOneCell !,GEO
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared,ElemVolume_Shared
-USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
+USE MOD_Particle_Tracking      ,ONLY: ParticleInsideCheck
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PEM,PartState
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -264,8 +261,6 @@ INTEGER                          :: iPart, nPart
 REAL                             :: iRan, RandomPos(3)
 REAL                             :: PartDens
 LOGICAL                          :: InsideFlag
-REAL                             :: Det(6,2)
-REAL                             :: RefPos(1:3)
 INTEGER                          :: CellChunkSize(1:nElems)
 INTEGER                          :: chunkSize_tmp, ParticleIndexNbr
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -305,20 +300,10 @@ DO iElem = offsetElem+1, offsetElem+nElems
 
         DO WHILE(.NOT.InsideFlag)
           CALL RANDOM_NUMBER(RandomPos)
-          RandomPos = Bounds(1,:) + RandomPos*(Bounds(2,:)-Bounds(1,:))
-
-          SELECT CASE(TrackingMethod)
-            CASE(REFMAPPING)
-              CALL GetPositionInRefElem(RandomPos,RefPos,iElem)
-              IF (MAXVAL(ABS(RefPos)).GT.ElemEpsOneCell(iElem)) InsideFlag=.TRUE.
-
-            CASE(TRACING)
-              CALL PartInElemCheck(RandomPos,iPart,iElem,InsideFlag)
-
-            CASE(TRIATRACKING)
-              CALL ParticleInsideQuad3D(RandomPos,iElem,InsideFlag,Det)
-          END SELECT
+          RandomPos  = Bounds(1,:) + RandomPos*(Bounds(2,:)-Bounds(1,:))
+          InsideFlag = ParticleInsideCheck(RandomPos,iPart,iElem)
         END DO
+
         PartState(     1:3,ParticleIndexNbr) = RandomPos(1:3)
         PDM%ParticleInside(ParticleIndexNbr) = .TRUE.
         PDM%IsNewPart(     ParticleIndexNbr) = .TRUE.

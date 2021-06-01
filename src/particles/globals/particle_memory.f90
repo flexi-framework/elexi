@@ -75,11 +75,10 @@ CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal 
 !> For now, assume KIND=4 reals
 IF (PRODUCT(nVal)*4*nProcessors .LT. memory(2)*1024) THEN
   ALLOCATE(Array(nVal(1),nVal(2),nVal(3)),STAT=ALLOCSTAT)
+  IF (PRESENT(STAT)) STAT=ALLOCSTAT
 ELSE
   CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
 END IF
-
-IF (PRESENT(STAT)) STAT=ALLOCSTAT
 
 END SUBROUTINE Allocate_Safe_Real_3
 

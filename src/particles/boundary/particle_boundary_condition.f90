@@ -345,28 +345,20 @@ REAL                              :: tang1(1:3),tang2(1:3)
 !===================================================================================================================================
 
 ! Check if reflected on AuxBC
-IF (PRESENT(AuxBCIdx)) THEN
-  IsAuxBC=.TRUE.
-ELSE
-  IsAuxBC=.FALSE.
-END IF
-
-! Reflected on AuxBC
-IF (IsAuxBC) THEN
-  WallVelo=PartAuxBC%WallVelo(1:3,AuxBCIdx)
+IsAuxBC = MERGE(.TRUE.,.FALSE.,PRESENT(AuxBCIdx))
 
 ! Normal BC
-ELSE
-  locBCID    = SideInfo_Shared(SIDE_BCID,SideID)
+IF (.NOT.IsAuxBC) THEN
+  locBCID   = SideInfo_Shared(SIDE_BCID,SideID)
   ! Get wall velo and BCID
   WallVelo  = PartBound%WallVelo(1:3,locBCID)
+  Symmetry  = MERGE(opt_Symmetry,.FALSE.,PRESENT(opt_Symmetry))
 
-  IF(PRESENT(opt_Symmetry)) THEN
-    Symmetry = opt_Symmetry
-  ELSE
-    Symmetry = .FALSE.
-  END IF
-END IF !IsAuxBC
+! Reflected on AuxBC
+ELSE
+  WallVelo = PartAuxBC%WallVelo(1:3,AuxBCIdx)
+  Symmetry  = MERGE(opt_Symmetry,.FALSE.,PRESENT(opt_Symmetry))
+END IF ! .NOT.IsAuxBC
 
 ! Rough wall modelling
 IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doRoughWallModelling) THEN

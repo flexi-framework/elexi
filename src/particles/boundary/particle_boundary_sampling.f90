@@ -919,7 +919,7 @@ IF (myComputeNodeRank.EQ.0) THEN
       RestartVarCount = (nImpactVars*(nSpecies+1))
   END IF
 
-  ! Allocate array for restart on ALL procs
+  ! Allocate array for restart on ALL nodes
   IF (nSpecies.EQ.1) THEN
     ALLOCATE(RestartArray (nImpactVars              ,1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides))
   ELSE
@@ -1020,7 +1020,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   ! We got the array, close the file
   CALL CloseDataFile()
 
-  ! Only loop over sides on current proc (meaningless in single core case)
+  ! Only loop over sides on current node (meaningless in single core case)
   SampWallState_Shared(:,:,:,1:nComputeNodeSurfSides) = RestartArray(:,:,:,:)
 
   IF (mySurfRank.EQ.0) THEN

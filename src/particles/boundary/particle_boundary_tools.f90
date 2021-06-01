@@ -243,9 +243,9 @@ INTEGER,INTENT(IN)        :: dir(3)
 INTEGER,INTENT(OUT)       :: positiontype
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: iDir1, iDir2, iDir3, iPoint
-REAL                      :: BoundingBox(1:3,1:8), point(2), pointRadius
-LOGICAL                   :: done, insideBound
+INTEGER                   :: iDir1,iDir2,iDir3,iPoint
+REAL                      :: BoundingBox(1:3,1:8),point(2),pointRadius
+LOGICAL                   :: done,insideBound
 !===================================================================================================================================
 !-- convert minmax-values to bb-points
 DO iDir1 = 0,1
@@ -259,7 +259,9 @@ DO iDir1 = 0,1
 END DO
 
 !-- check where the points are located relative to radius
-done = .FALSE.
+done        = .FALSE.
+insideBound = .FALSE.
+
 DO iDir1 = 0,1
   IF(done) EXIT
 
@@ -273,28 +275,26 @@ DO iDir1 = 0,1
       point(2) = BoundingBox(dir(3),iPoint)-origin(2)
       pointRadius = SQRT( (point(1))**2+(point(2))**2 )
 
+      ! First point
       IF (iPoint.EQ.1) THEN
-        IF (pointRadius.LE.radius) THEN
-          insideBound=.TRUE.
-        ELSE !outside
-          insideBound=.FALSE.
-        END IF !in-/outside?
+        ! in-/outside?
+        insideBound = MERGE(.TRUE.,.FALSE.,pointRadius.LE.radius)
 
       ! iPoint.GT.1: type must be 2 if state of point if different from last point
       ELSE
         IF (pointRadius.LE.radius) THEN
           ! different from last point
           IF (.NOT.insideBound) THEN
-            positiontype=2
-            done=.TRUE.
+            positiontype = 2
+            done         = .TRUE.
             EXIT
           END IF
         ! outside
         ELSE
           ! different from last point
           IF (insideBound) THEN
-            positiontype=2
-            done=.TRUE.
+            positiontype = 2
+            done         = .TRUE.
             EXIT
           END IF
         END IF !in-/outside?
@@ -305,17 +305,17 @@ END DO !iDir1
 
 IF (.NOT.done) THEN
   IF (insideBound) THEN
-    positiontype=0
+    positiontype = 0
   ELSE
     ! all points are outside of radius, but when radius is smaller than box, it can intersect it:
     IF ( origin(1) + radius .GE. Bounds(1,dir(2)) .AND. &
          origin(1) - radius .LE. Bounds(2,dir(2)) .AND. &
          origin(2) + radius .GE. Bounds(1,dir(3)) .AND. &
-         origin(2) - radius .LE. Bounds(2,dir(3)) ) THEN !circle completely or partly inside box
+         origin(2) - radius .LE. Bounds(2,dir(3)) ) THEN ! circle completely or partly inside box
       positiontype=2
     ! points are really outside
     ELSE
-      positiontype=1
+      positiontype = 1
     END IF
   END IF
 END IF

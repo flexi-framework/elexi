@@ -442,6 +442,9 @@ END DO ! iBGM
 ! first do coarse check with BGM
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
   ElemInfo_Shared(ELEM_HALOFLAG,firstElem:lastElem) = 1
+  ! initial values to eliminate compiler warnings
+  firstHaloElem = -1
+  lastHaloElem  = -1
 ELSE
   ElemInfo_Shared(ELEM_HALOFLAG,firstElem:lastElem) = 0
   DO iElem = firstElem, lastElem
@@ -533,7 +536,7 @@ ELSE
   ! check the bounding box of each element in compute-nodes' halo domain
   ! against the bounding boxes of the elements of the MPI-surface (inter compute-node MPI sides)
   ALLOCATE(BoundsOfElemCenter(1:4))
-  DO iElem = firstHaloElem, lastHaloElem
+  DO iElem = firstHaloElem,lastHaloElem
     ElemID = offsetCNHalo2GlobalElem(iElem)
     ElemInsideHalo = .FALSE.
     BoundsOfElemCenter(1:3) = (/    SUM(BoundsOfElem_Shared(1:2,1,ElemID)), &
@@ -759,7 +762,7 @@ END DO ! iBGM
 #if USE_MPI
 ! We might need to expand the halo BGM region
 IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
-  DO iElem = firstHaloElem, lastHaloElem
+  DO iElem = firstHaloElem,lastHaloElem
     ElemID = offsetCNHalo2GlobalElem(iElem)
 
     ! Only add non-peri halo elems
@@ -783,7 +786,7 @@ IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
         END DO ! kBGM
       END DO ! jBGM
     END DO ! iBGM
-  END DO ! iElem = firstHaloElem, lastHaloElem
+  END DO ! iElem = firstHaloElem,lastHaloElem
 
   IF (TrackingMethod.EQ.REFMAPPING .AND. GEO%nPeriodicVectors.GT.0) THEN
     firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1

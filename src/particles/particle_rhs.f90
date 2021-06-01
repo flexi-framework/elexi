@@ -12,8 +12,8 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "particle.h"
 #include "eos.h"
+#include "particle.h"
 
 !===================================================================================================================================
 ! Subroutine to compute the particle right hand side, therefore the acceleration due to the Lorentz-force with
@@ -617,9 +617,6 @@ divtau(3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + gradUz2(3,3,:,
                     s13 * (gradUx2(3,1,:,:,:,:) + gradUy2(3,2,:,:,:,:) + gradUz2(3,3,:,:,:,:))
 
 ! Calculate pressure gradient
-ALLOCATE(U_local(PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-ALLOCATE(gradp_local(1,3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-
 DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
   CALL ConsToPrim(U_local(:,i,j,k,iElem),U(:,i,j,k,iElem))
 END DO; END DO; END DO; END DO

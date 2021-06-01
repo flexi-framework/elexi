@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 #include "particle.h"
 
 !==================================================================================================================================
@@ -885,6 +886,8 @@ END IF
 ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUy2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUz2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+         U_local   (PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+         gradp_local(1,3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUx_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &
          gradUx_slave_loc(  1:3,0:PP_N,0:PP_NZ,1:nSides),  &
          gradUy_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &

@@ -11,7 +11,6 @@ CMAKE_DEPENDENT_OPTION(POSTI_RP_EVALUATE           "Build the Record Point apost
 CMAKE_DEPENDENT_OPTION(POSTI_SWAPMESH              "Build the Swapmesh tool"                            OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_CHANNEL_FFT           "Build the channel FFT tool"                         OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_WALLDISTANCE          "Build the walldistance tool"                        OFF "POSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_WALLPARTICLES         "Build the wallparticles tool"                       OFF "POSTI;PARTICLES" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_TURBULENCE            "Build the turbulence tool"                          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"                        OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
@@ -120,10 +119,6 @@ ENDIF()
 
 IF(POSTI_WALLDISTANCE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/walldistance/CMakeLists.txt)
-ENDIF()
-
-IF(POSTI_WALLPARTICLES)
-  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/calcwallparticles/CMakeLists.txt)
 ENDIF()
 
 IF(POSTI_TURBULENCE)

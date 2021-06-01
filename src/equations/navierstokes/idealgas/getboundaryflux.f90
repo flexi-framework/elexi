@@ -238,9 +238,12 @@ DO i=1,nBCs
     tbeta =TAN(ACOS(-1.)/180.*RefStatePrim(3,locState))
     ! Compute vector a(1:3) from paper, the projection of the direction normal to the face normal
     ! Multiplication of velocity magnitude by NORM2(a) gives contribution in face normal dir
-    RefStatePrim(VEL1,locState)=1.    /SQRT((1.+talpha**2+tbeta**2))
+   ! RefStatePrim(VEL1,locState)=1.    /SQRT((1.+talpha**2+tbeta**2))
+   ! RefStatePrim(VEL2,locState)=talpha/SQRT((1.+talpha**2+tbeta**2))
+   ! RefStatePrim(VEL3,locState)=tbeta /SQRT((1.+talpha**2+tbeta**2))
+    RefStatePrim(VEL3,locState)=1.    /SQRT((1.+talpha**2+tbeta**2)) ! changes in order to set Z as the the main flow direction
     RefStatePrim(VEL2,locState)=talpha/SQRT((1.+talpha**2+tbeta**2))
-    RefStatePrim(VEL3,locState)=tbeta /SQRT((1.+talpha**2+tbeta**2))
+    RefStatePrim(VEL1,locState)=tbeta /SQRT((1.+talpha**2+tbeta**2))
   CASE(29) ! Subsonic inflow
     IF(.NOT.readBCdone) CALL ReadBCFlowCsv(BCStateFile)
     readBCdone=.TRUE.

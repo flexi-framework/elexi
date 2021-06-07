@@ -326,9 +326,9 @@ CALL AnalyzeEquation(Time)
 CALL Benchmarking()
 
 #if USE_PARTICLES
-CALL ParticleAnalyze(time,&
+CALL ParticleAnalyze(time &
 #if USE_LOADBALANCE
-  iter &
+                    ,iter &
 #endif /* USE_LOADBALANCE */
   )
 #endif /*USE_PARTICLES*/

@@ -211,12 +211,9 @@ USE MOD_FV
 #if USE_PARTICLES
 USE MOD_Particle_Globals          ,ONLY: ALMOSTZERO
 USE MOD_Particle_Analyze          ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars     ,ONLY: doParticlePositionTrack,doParticleConvergenceTrack,RecordPart
+USE MOD_Particle_Analyze_Vars     ,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
-USE MOD_ErosionPoints             ,ONLY: WriteEP
-USE MOD_ErosionPoints_Vars        ,ONLY: doParticleImpactTrack
 USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimestep,ManualTimestep
-USE MOD_Particle_Analyze_Tools    ,ONLY: ParticleRecord
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
@@ -297,9 +294,9 @@ IF (UseManualTimestep) CALL DGTimeDerivative_weakForm(t)
 !#endif
 
 IF(.NOT.DoRestart)THEN
-  SWRITE(UNIT_StdOut,*)'WRITING INITIAL SOLUTION:'
+  SWRITE(UNIT_StdOut,'(A)')' WRITING INITIAL SOLUTION:'
 ELSE
-  SWRITE(UNIT_StdOut,*)'REWRITING SOLUTION:'
+  SWRITE(UNIT_StdOut,'(A)')' REWRITING SOLUTION:'
 END IF
 
 ! TODO: Should this be done before or after Overintegration? (see above) For FV we need it after DGTimeDerivative_weakForm!
@@ -307,25 +304,18 @@ END IF
 CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                       FutureTime=tWriteData,isErrorFile=.FALSE.)
 
-#if USE_PARTICLES
-! Write individual particle surface impact data in rewritten state file after restart
-IF(doParticleImpactTrack)  CALL WriteEP(OutputTime=t,resetCounters=.TRUE.)
-IF(RecordPart.GT.0)        CALL ParticleRecord(t,writeToBinary=.TRUE.)
-#endif /* USE_PARTICLES */
-
 CALL Visualize(t,U)
 
 ! No computation needed if tEnd=tStart!
 IF((t.GE.tEnd).OR.maxIter.EQ.0) RETURN
 
-
-tStart = t
-iter=0
-iter_loc=0
-writeCounter=0
-writeTCounter=0
-doAnalyze=.FALSE.
-doFinalize=.FALSE.
+tStart     =  t
+iter       = 0
+iter_loc   = 0
+writeCounter  = 0
+writeTCounter = 0
+doAnalyze  = .FALSE.
+doFinalize = .FALSE.
 
 ! compute initial timestep
 #if USE_PARTICLES
@@ -379,12 +369,12 @@ END IF
 CALL FV_Info(1_8)
 #endif
 
-!! Update the initial solution in the MPI-3 shared memory array
-!#if USE_MPI_SHARED
-!CALL UpdateDGShared(U)
-!#endif /*MPI_SHARED*/
+! ! Update the initial solution in the MPI-3 shared memory array
+! #if USE_MPI_SHARED
+! CALL UpdateDGShared(U)
+! #endif /*MPI_SHARED*/
 
-SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
+SWRITE(UNIT_StdOut,'(A)')' CALCULATION RUNNING...'
 
 
 ! Run computation
@@ -536,11 +526,6 @@ DO
       tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
       CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                             FutureTime=tWriteData,isErrorFile=.FALSE.)
-#if USE_PARTICLES
-      ! Write individual particle surface impact data
-      IF(doParticleImpactTrack)  CALL WriteEP(OutputTime=t,resetCounters=.TRUE.)
-      IF(RecordPart.GT.0)        CALL ParticleRecord(t,writeToBinary=.TRUE.)
-#endif /*USE_PARTICLES*/
       ! Visualize data
       CALL Visualize(t,U)
       writeCounter=0

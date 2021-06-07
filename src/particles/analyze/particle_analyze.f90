@@ -185,9 +185,9 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticleAnalyze
 
 
-SUBROUTINE ParticleAnalyze(&
+SUBROUTINE ParticleAnalyze(t    &
 #if USE_LOADBALANCE
-  iter &
+                          ,iter &
 #endif /* USE_LOADBALANCE */
   )
 !==================================================================================================================================
@@ -210,6 +210,7 @@ USE MOD_LoadDistribution          ,ONLY: WriteElemTimeStatistics
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)                 :: t                      !< current simulation time
 #if USE_LOADBALANCE
 INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
 #endif /* USE_LOADBALANCE */
@@ -220,6 +221,12 @@ INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
 ! Calculate particle surface erosion data
 IF (WriteMacroSurfaceValues) THEN
   CALL CalcSurfaceValues
+END IF
+
+
+! Write individual particle record plane data
+IF (RecordPart.GT.0) THEN
+  CALL ParticleRecord(t,writeToBinary=.TRUE.)
 END IF
 
 ! Write information to console output

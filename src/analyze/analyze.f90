@@ -303,7 +303,7 @@ REAL                            :: L_Inf_Error(PP_nVar),L_2_Error(PP_nVar)
 !==================================================================================================================================
 
 #if USE_PARTICLES
-CALL ParticleAnalyze(&
+CALL ParticleAnalyze(time,&
 #if USE_LOADBALANCE
   iter &
 #endif /* USE_LOADBALANCE */

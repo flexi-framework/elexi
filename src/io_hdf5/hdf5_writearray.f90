@@ -162,7 +162,7 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(PRODUCT(nVal))  !< num
 ! LOCAL VARIABLES
 INTEGER(HID_T)                 :: PList_ID,DSet_ID,MemSpace,FileSpace,Type_ID,dsetparams
 INTEGER(HSIZE_T)               :: Dimsf(Rank),OffsetHDF(Rank),nValMax(Rank)
-INTEGER(SIZE_T)                :: SizeSet=255
+INTEGER(SIZE_T),PARAMETER      :: SizeSet=255
 LOGICAL                        :: chunky
 TYPE(C_PTR)                    :: buf
 !==================================================================================================================================
@@ -239,14 +239,20 @@ END IF
 IF(PRESENT(IntArray))  buf=C_LOC(IntArray)
 IF(PRESENT(RealArray)) buf=C_LOC(RealArray)
 IF(PRESENT(StrArray))  buf=C_LOC(StrArray(1))
-CALL H5DWRITE_F(DSet_ID,Type_ID,buf,iError,file_space_id=filespace,mem_space_id=memspace,xfer_prp=PList_ID)
+IF(ANY(Dimsf.EQ.0)) THEN
+  CALL H5DWRITE_F(DSet_ID,Type_ID,C_NULL_PTR,iError,file_space_id=filespace,mem_space_id=memspace,xfer_prp=PList_ID)
+ELSE
+  CALL H5DWRITE_F(DSet_ID,Type_ID,buf,iError,file_space_id=filespace,mem_space_id=memspace,xfer_prp=PList_ID)
+END IF
 
 IF(PRESENT(StrArray)) CALL H5TCLOSE_F(Type_ID, iError)
 ! Close the property list, dataspaces and dataset.
 CALL H5PCLOSE_F(dsetparams, iError)
 CALL H5PCLOSE_F(PList_ID, iError)
+! Close dataspaces
 CALL H5SCLOSE_F(FileSpace, iError)
 CALL H5SCLOSE_F(MemSpace, iError)
+! Close the dataset
 CALL H5DCLOSE_F(DSet_ID, iError)
 
 LOGWRITE(*,*)'...DONE!'

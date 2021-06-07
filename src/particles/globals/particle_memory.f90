@@ -26,6 +26,7 @@ USE MPI
 IMPLICIT NONE
 
 INTERFACE Allocate_Safe
+  MODULE PROCEDURE Allocate_Safe_Real_2
   MODULE PROCEDURE Allocate_Safe_Real_3
 END INTERFACE Allocate_Safe
 
@@ -43,6 +44,45 @@ PUBLIC :: processmemusage
 !===================================================================================================================================
 
 CONTAINS
+
+!==================================================================================================================================
+!> Allocate data after checking for available memory
+!> CAVE: Currently assumes each rank is calling with the same size
+!==================================================================================================================================
+SUBROUTINE Allocate_Safe_Real_2(Array,nVal,STAT)
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,ALLOCATABLE,INTENT(OUT)              :: Array(:,:)               !> Array to be allocated
+INTEGER,INTENT(IN)                        :: nVal(2)                  !> Number of variables in each rank
+INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocation status
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                   :: ALLOCSTAT                !> Base pointer, translated to DataPointer later
+! INTEGER                                   :: WIN_SIZE                 !> Size of the allocated memory window
+REAL                                      :: memory(3)
+!==================================================================================================================================
+
+! Check if array is already allocated
+IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+
+! Find memory usage and requirements
+CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+
+! Compare requested size against available memory
+!> For now, assume KIND=4 reals
+IF (PRODUCT(nVal)*4*nProcessors .LT. memory(2)*1024) THEN
+  ALLOCATE(Array(nVal(1),nVal(2)),STAT=ALLOCSTAT)
+  IF (PRESENT(STAT)) STAT=ALLOCSTAT
+ELSE
+  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+END IF
+
+END SUBROUTINE Allocate_Safe_Real_2
+
 
 !==================================================================================================================================
 !> Allocate data after checking for available memory

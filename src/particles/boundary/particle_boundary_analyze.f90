@@ -313,21 +313,22 @@ IF (MPIRoot) THEN
   CALL CloseDataFile()
 END IF
 
-IF (ImpactnGlob.EQ.0) THEN ! zero particles present: write empty dummy container to .h5 file (required for subsequent file access)
-  IF (MPIRoot) THEN ! only root writes the container
-    CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteArray(         DataSetName = 'PartData'                      ,&
-                             rank        = 2                               ,&
-                             nValGlobal  = (/ImpactDataSize,ImpactnGlob/)  ,&
-                             nVal        = (/ImpactDataSize,ImpactnLoc /)  ,&
-                             offset      = (/ 0             , 0        /)  ,&
-                             collective  = .FALSE.                         ,&
-                             RealArray   = PartStateBoundary(1:ImpactDataSize,1:ImpactnLoc))
-    CALL CloseDataFile()
-    GETTIME(EndT)
-    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s] [NO IMPACTS WRITTEN]'
-  END IF ! MPIRoot
-ELSE
+!> Writing empty arrays can cause problems with HDF5
+! IF (ImpactnGlob.EQ.0) THEN ! zero particles present: write empty dummy container to .h5 file (required for subsequent file access)
+!   IF (MPIRoot) THEN ! only root writes the container
+!     CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+!     CALL WriteArray(         DataSetName = 'PartData'                      ,&
+!                              rank        = 2                               ,&
+!                              nValGlobal  = (/ImpactDataSize,ImpactnGlob/)  ,&
+!                              nVal        = (/ImpactDataSize,ImpactnLoc /)  ,&
+!                              offset      = (/ 0             , 0        /)  ,&
+!                              collective  = .FALSE.                         ,&
+!                              RealArray   = PartStateBoundary(1:ImpactDataSize,1:ImpactnLoc))
+!     CALL CloseDataFile()
+!     GETTIME(EndT)
+!     WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s] [NO IMPACTS WRITTEN]'
+!   END IF ! MPIRoot
+! ELSE
 #if USE_MPI
   CALL DistributedWriteArray(FileString                                    ,&
                              DataSetName  = 'ImpactData'                   ,&
@@ -350,7 +351,7 @@ ELSE
                              RealArray    = PartStateBoundary(1:ImpactDataSize,1:ImpactnLoc))
   CALL CloseDataFile()
 #endif /*USE_MPI*/
-END IF ! ImpactnGlob.EQ.0
+! END IF ! ImpactnGlob.EQ.0
 
 ! reswitch
 IF (reSwitch) gatheredWrite = .TRUE.

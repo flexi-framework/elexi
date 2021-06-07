@@ -43,15 +43,15 @@ SUBROUTINE ParticleRestart(doFlushFiles)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ErosionPoints,              ONLY: RestartErosionPoint
-USE MOD_ErosionPoints_Vars,         ONLY: doParticleImpactTrack
 USE MOD_Eval_XYZ,                   ONLY: GetPositionInRefElem
 USE MOD_HDF5_Input
 USE MOD_HDF5_Output,                ONLY: FlushFiles
 USE MOD_Mesh_Vars,                  ONLY: offsetElem
 USE MOD_Part_Tools,                 ONLY: UpdateNextFreePosition
-USE MOD_Particle_Boundary_Analyze,  ONLY:CalcSurfaceValues
+USE MOD_Particle_Boundary_Analyze,  ONLY: CalcSurfaceValues
+USE MOD_Particle_Boundary_Tracking, ONLY: RestartParticleBoundaryTracking
 USE MOD_Particle_Boundary_Vars,     ONLY: ImpactRestart,doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars,     ONLY: doParticleImpactTrack
 USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Localization,      ONLY: LocateParticleInElement,ParticleInsideQuad3D
@@ -381,7 +381,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 CALL CloseDataFile()
 
   ! Get individual impact data
-  IF (doParticleImpactTrack) CALL RestartErosionPoint
+  IF (doParticleImpactTrack) CALL RestartParticleBoundaryTracking
 
   ! Delete all files that will be rewritten --> moved from restart.f90 since we need it here
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)

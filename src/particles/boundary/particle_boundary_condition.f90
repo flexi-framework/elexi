@@ -50,12 +50,10 @@ SUBROUTINE GetBoundaryInteraction(PartTrajectory,lengthPartTrajectory,alpha,xi,e
 USE MOD_PreProc
 USE MOD_Globals                    ,ONLY: ABORT
 USE MOD_Particle_Globals           ,ONLY: PI
-USE MOD_Particle_Boundary_Sampling ,ONLY: SideErosion
-USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound
-USE MOD_Particle_Boundary_Vars
-USE MOD_ErosionPoints              ,ONLY: RecordErosionPoint
-USE MOD_ErosionPoints_Vars         ,ONLY: doParticleImpactTrack
-USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
+USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,doParticleImpactTrack
+USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
+USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Tools        ,ONLY: GetCNSideID
 USE MOD_Particle_Surfaces          ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars     ,ONLY: SideNormVec,SideType
@@ -147,19 +145,19 @@ SELECT CASE(PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,SideID)))
 CASE(1) !PartBound%OpenBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
   ! Sample on surface if requested
-  CALL SideErosion(PartTrajectory,n_loc,xi,eta,iPart,SideID)! ,alpha)
+  CALL RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,iPart,SideID)! ,alpha)
   ! Recording of individual particle impacts
   IF (doParticleImpactTrack) THEN
     PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
-    CALL RecordErosionPoint(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID) &
-                           ,PartID          = iPart                         &
-                           ,PartFaceAngle   = PartFaceAngle                 &
-                           ,v_old           = PartState(4:6,iPart)          &
-                           ,PartFaceAngle_old =PartFaceAngle                &
-                           ,PartReflCount   = PartReflCount(iPart)          &
-                           ,alpha           = alpha                         &
-                           ,n_loc           = n_loc)
+    CALL StoreBoundaryParticleProperties(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID) &
+                                        ,PartID          = iPart                             &
+                                        ,PartFaceAngle   = PartFaceAngle                     &
+                                        ,v_old           = PartState(4:6,iPart)              &
+                                        ,PartFaceAngle_old =PartFaceAngle                    &
+                                        ,PartReflCount   = PartReflCount(iPart)              &
+                                        ,alpha           = alpha                             &
+                                        ,n_loc           = n_loc)
   END IF
   CALL RemoveParticle(iPart,alpha=alpha)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -216,7 +214,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars              ,ONLY: PDM
-USE MOD_Particle_Boundary_Sampling ,ONLY: SideErosion
+USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartAuxBC
 USE MOD_Particle_Boundary_Vars     ,ONLY: AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone,AuxBC_parabol
 USE MOD_Particle_Vars              ,ONLY: LastPartPos
@@ -284,7 +282,7 @@ SELECT CASE(PartAuxBC%TargetBoundCond(AuxBCIdx))
 CASE(1) !PartAuxBC%OpenBC
 !-----------------------------------------------------------------------------------------------------------------------------------
   ! Sampling on aux surfaces currently not supported
-  ! CALL SideErosion(PartTrajectory,n_loc,xi,eta,iPart,SideID,alpha)
+  ! CALL RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,iPart,SideID,alpha)
   CALL RemoveParticle(iPart,alpha=alpha)
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(2) !PartAuxBC%ReflectiveBC)
@@ -311,11 +309,10 @@ SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_ErosionPoints              ,ONLY: RecordErosionPoint
-USE MOD_ErosionPoints_Vars         ,ONLY: doParticleImpactTrack
-USE MOD_Particle_Boundary_Sampling ,ONLY: SideErosion
+USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
+USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC
-USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack,doParticleImpactTrack
 USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
 USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
@@ -374,7 +371,7 @@ END IF
 
 ! Sample on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
-  CALL SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
+  CALL RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
 END IF !.NOT.IsAuxBC
 
 ! Update particle velocity
@@ -398,14 +395,14 @@ PartTrajectory          = PartTrajectory/lengthPartTrajectory
 IF (doParticleImpactTrack) THEN
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
-  CALL RecordErosionPoint(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID) &
-                         ,PartID          = PartID                        &
-                         ,PartFaceAngle   = PartFaceAngle                 &
-                         ,v_old           = v_old                         &
-                         ,PartFaceAngle_old =PartFaceAngle_old            &
-                         ,PartReflCount   = PartReflCount(PartID)         &
-                         ,alpha           = alpha                         &
-                         ,n_loc           = n_loc)
+  CALL StoreBoundaryParticleProperties(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID) &
+                                      ,PartID          = PartID                            &
+                                      ,PartFaceAngle   = PartFaceAngle                     &
+                                      ,v_old           = v_old                             &
+                                      ,PartFaceAngle_old =PartFaceAngle_old                &
+                                      ,PartReflCount   = PartReflCount(PartID)             &
+                                      ,alpha           = alpha                             &
+                                      ,n_loc           = n_loc)
 END IF
 
 ! Increase reflection counter
@@ -447,18 +444,18 @@ SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_ErosionPoints             ,ONLY: RecordErosionPoint
-USE MOD_ErosionPoints_Vars        ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Globals
-USE MOD_Particle_Boundary_Vars    ,ONLY: PartBound,PartAuxBC
-USE MOD_Particle_Boundary_Sampling,ONLY: SideErosion
-USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues
-USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleReflectionTrack
-USE MOD_Particle_Boundary_Vars    ,ONLY: LowVeloRemove
-USE MOD_Particle_Mesh_Vars        ,ONLY: SideInfo_Shared
-USE MOD_Particle_Surfaces         ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
-USE MOD_Particle_Vars             ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
-USE MOD_Particle_Vars             ,ONLY: PDM
+USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
+USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC
+USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues
+USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack
+USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
+USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleImpactTrack
+USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
+USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
+USE MOD_Particle_Surfaces          ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
+USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
+USE MOD_Particle_Vars              ,ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -513,7 +510,7 @@ END IF
 
 ! Sample on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
-  CALL SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
+  CALL RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
 END IF
 
 ! Calculate wall normal and tangential velocity, impact angle
@@ -685,14 +682,14 @@ WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity (CoR):       
 IF (doParticleImpactTrack) THEN
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
-  CALL RecordErosionPoint(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID),            &
-                          PartID          = PartID,                                       &
-                          PartFaceAngle   = PartFaceAngle,                                &
-                          v_old           = v_old,                                        &
-                          PartFaceAngle_old =PartFaceAngle_old,                           &
-                          PartReflCount   = PartReflCount(PartID),                        &
-                          alpha           = alpha,                                        &
-                          n_loc           = n_loc)
+  CALL StoreBoundaryParticleProperties(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID)             &
+                                      ,PartID          = PartID                                        &
+                                      ,PartFaceAngle   = PartFaceAngle                                 &
+                                      ,v_old           = v_old                                         &
+                                      ,PartFaceAngle_old =PartFaceAngle_old                            &
+                                      ,PartReflCount   = PartReflCount(PartID)                         &
+                                      ,alpha           = alpha                                         &
+                                      ,n_loc           = n_loc)
 END IF
 
 ! increase reflection counter

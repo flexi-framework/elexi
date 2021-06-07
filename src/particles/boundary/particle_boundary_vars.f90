@@ -51,6 +51,25 @@ REAL,ALLOCATABLE,DIMENSION(:,:,:,:)     :: SampWallState                 !> 1   
 REAL,ALLOCPOINT,DIMENSION(:,:,:,:)      :: SampWallState_Shared
 
 ! ====================================================================
+! Impact tracking
+LOGICAL                                 :: ImpactTrackInitIsDone  = .FALSE. !< mark if impact tracking init routine is finished
+LOGICAL                                 :: doParticleImpactTrack  = .FALSE. !< mark if impacts tracking should be performed during computation
+LOGICAL                                 :: ImpactSideOnProc       = .FALSE. !< marks if current proc has impact tracking side
+INTEGER                                 :: PartStateBoundaryVecLength    !< Impacts on current proc
+REAL,ALLOCATABLE,DIMENSION(:,:)         :: PartStateBoundary             !< solution evaluated at EPs (nvar,nEP,nSamples)
+INTEGER                                 :: ImpactDataSize                !< number of variables stored per impact
+INTEGER                                 :: ImpactnGlob                   !< Global number of occured impacts
+
+!----------------------------------------------------------------------------------------------------------------------------------
+! MPI Communicator for EPs
+!----------------------------------------------------------------------------------------------------------------------------------
+#if USE_MPI
+INTEGER                                 :: myImpactRank                  !< rank within impact tracking communicator
+INTEGER                                 :: MPI_COMM_IMPACT=MPI_COMM_NULL !< MPI impact tracking communicator
+INTEGER                                 :: nImpactProcs                  !< number of procs with impact tracking
+#endif /* USE_MPI */
+
+! ====================================================================
 ! MPI3 shared variables
 INTEGER,ALLOCPOINT,DIMENSION(:,:)       :: GlobalSide2SurfSide           ! Mapping Global Side ID to Surf Side ID
                                                                          !> 1 - Surf SideID

@@ -50,7 +50,6 @@ PUBLIC :: WriteElemTime
 
 CONTAINS
 
-
 #if USE_MPI
 SUBROUTINE DistributedWriteArray(FileName,DataSetName,rank,nValGlobal,nVal,offset,collective,&
                                  offSetDim,communicator,RealArray,IntArray,StrArray)

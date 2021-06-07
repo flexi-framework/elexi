@@ -76,7 +76,6 @@ PUBLIC :: WriteAttribute,WriteAdditionalElemData,MarkWriteSuccessfull
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Subroutine to write the solution U to HDF5 format
 !> Is used for postprocessing and for restart

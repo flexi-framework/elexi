@@ -63,9 +63,9 @@ CONTAINS
 SUBROUTINE DefineParametersParticles()
 ! MODULES
 USE MOD_ReadInTools
-USE MOD_ErosionPoints,              ONLY:DefineParametersErosionPoints
 USE MOD_Particle_Analyze,           ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling, ONLY:DefineParametersParticleBoundarySampling
+USE MOD_Particle_Boundary_Tracking, ONLY:DefineParametersParticleBoundaryTracking
 USE Mod_Particle_Globals
 USE MOD_Particle_Interpolation,     ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY:DefineParametersParticleMesh
@@ -540,7 +540,7 @@ CALL DefineParametersParticleMesh()
 CALL DefineParametersParticleInterpolation()
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
-CALL DefineParametersErosionPoints()
+CALL DefineParametersParticleBoundaryTracking()
 #if USE_MPI
 CALL DefineParametersLoadBalance()
 CALL DefineParametersMPIShared()
@@ -695,25 +695,25 @@ SUBROUTINE InitializeVariables()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_ErosionPoints          ,ONLY: InitErosionPoints
 USE MOD_Particle_Vars
-USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
-USE MOD_Particle_Boundary_Vars ,ONLY: LowVeloRemove
-USE MOD_Particle_Boundary_Vars ,ONLY: nAuxBCs
-USE MOD_Particle_Interpolation ,ONLY: InitParticleInterpolation
-USE MOD_Particle_Mesh          ,ONLY: InitParticleMesh
+USE MOD_Particle_Boundary_Sampling ,ONLY: InitParticleBoundarySampling
+USE MOD_Particle_Boundary_Tracking ,ONLY: InitParticleBoundaryTracking
+USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
+USE MOD_Particle_Boundary_Vars     ,ONLY: nAuxBCs
+USE MOD_Particle_Interpolation     ,ONLY: InitParticleInterpolation
+USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
 USE MOD_ReadInTools
 #if USE_MPI
-USE MOD_Particle_MPI_Emission  ,ONLY: InitEmissionComm
-USE MOD_Particle_MPI_Halo      ,ONLY: IdentifyPartExchangeProcs
-USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
+USE MOD_Particle_MPI_Emission      ,ONLY: InitEmissionComm
+USE MOD_Particle_MPI_Halo          ,ONLY: IdentifyPartExchangeProcs
+USE MOD_Particle_MPI_Vars          ,ONLY: PartMPI
 #endif /*USE_MPI*/
-USE MOD_Particle_Analyze_Vars  ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart!, RPP_Type
+USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart!, RPP_Type
 #if USE_EXTEND_RHS && ANALYZE_RHS
-USE MOD_Output_Vars            ,ONLY: ProjectName
-USE MOD_Output                 ,ONLY: InitOutputToFile
-USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
-USE MOD_Timedisc_Vars          ,ONLY: tAnalyze
+USE MOD_Output_Vars                ,ONLY: ProjectName
+USE MOD_Output                     ,ONLY: InitOutputToFile
+USE MOD_Restart_Vars               ,ONLY: DoRestart,RestartTime
+USE MOD_Timedisc_Vars              ,ONLY: tAnalyze
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -796,7 +796,7 @@ CALL IdentifyPartExchangeProcs()
 CALL InitParticleBoundarySampling()
 
 ! Initialize impact recording
-CALL InitErosionPoints()
+CALL InitParticleBoundaryTracking()
 
 ! Initialize interpolation and particle-in-cell for field -> particle coupling
 !--> Could not be called earlier because a halo region has to be build depending on the given BCs
@@ -1807,10 +1807,10 @@ END SUBROUTINE InitializeVariablesTimeStep
 SUBROUTINE FinalizeParticles()
 ! MODULES
 USE MOD_Globals
-USE MOD_ErosionPoints,              ONLY: FinalizeErosionPoints
 USE MOD_Particle_Analyze,           ONLY: FinalizeParticleAnalyze
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Sampling, ONLY: FinalizeParticleBoundarySampling
+USE MOD_Particle_Boundary_Tracking, ONLY: FinalizeParticleBoundaryTracking
 USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
 USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
@@ -1920,7 +1920,7 @@ SDEALLOCATE(Seeds)
 CALL ParticleFinalizeSGS()
 
 ! particle impact tracking
-CALL FinalizeErosionPoints()
+CALL FinalizeParticleBoundaryTracking()
 
 ! particle surface sampling
 CALL FinalizeParticleBoundarySampling()

@@ -38,8 +38,8 @@ INTERFACE RecordParticleBoundarySampling
   MODULE PROCEDURE RecordParticleBoundarySampling
 END INTERFACE
 
-INTERFACE SideErosion
-  MODULE PROCEDURE SideErosion
+INTERFACE RecordParticleBoundaryImpact
+  MODULE PROCEDURE RecordParticleBoundaryImpact
 END INTERFACE
 
 INTERFACE FinalizeParticleBoundarySampling
@@ -54,7 +54,7 @@ PUBLIC :: DefineParametersParticleBoundarySampling
 PUBLIC :: InitParticleBoundarySampling
 PUBLIC :: RestartParticleBoundarySampling
 PUBLIC :: RecordParticleBoundarySampling
-PUBLIC :: SideErosion
+PUBLIC :: RecordParticleBoundaryImpact
 PUBLIC :: FinalizeParticleBoundarySampling
 PUBLIC :: WriteSurfSample
 !===================================================================================================================================
@@ -613,7 +613,7 @@ END IF
 END SUBROUTINE InitParticleBoundarySampling
 
 
-SUBROUTINE SideErosion(PartTrajectory,n_loc,xi,eta,PartID,SideID) !,alpha)
+SUBROUTINE RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,PartID,SideID) !,alpha)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Tracks erosion on designated sides other than reflective wall
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -686,7 +686,7 @@ END IF
 !                                      PartReflCount   = PartReflCount(PartID),            &
 !                                      alpha           = alpha)
 
-END SUBROUTINE SideErosion
+END SUBROUTINE RecordParticleBoundaryImpact
 
 
 SUBROUTINE RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
@@ -1098,7 +1098,7 @@ IF (nSurfTotalSides      .EQ.0) RETURN
 #endif /*USE_MPI*/
 
 IF (mySurfRank.EQ.0) THEN
-  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE EROSION SURFACE STATE TO HDF5 FILE...'
+  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE PARTICLE SURFACE STATE TO HDF5 FILE...'
   GETTIME(startT)
 END IF
 

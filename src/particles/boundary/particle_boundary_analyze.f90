@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-! Module for erosion sampling and output
+! Module for particle analysis and output
 !===================================================================================================================================
 MODULE MOD_Particle_Boundary_Analyze
 ! MODULES
@@ -119,7 +119,7 @@ ALLOCATE(MacroSurfaceSpecVal(1,1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides
 MacroSurfaceVal    = 0.
 MacroSurfaceSpecVal= 0.
 
-!> Erosion tracking
+!> Impact sampling
 iSpec = 1
 
 ASSOCIATE(SampWallState => SampWallState_Shared)
@@ -309,19 +309,19 @@ END IF
 
 IF (MPIRoot) THEN
   CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-  CALL WriteAttribute(File_ID,'VarNamesImpactData',ImpactDataSize,StrArray=StrVarNames)
+  CALL WriteAttribute(File_ID,'VarNamesImpactTracking',ImpactDataSize,StrArray=StrVarNames)
   CALL CloseDataFile()
 END IF
 
 IF (ImpactnGlob.EQ.0) THEN ! zero particles present: write empty dummy container to .h5 file (required for subsequent file access)
   IF (MPIRoot) THEN ! only root writes the container
     CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteArray(         DataSetName = 'PartData'                    ,&
-                             rank        = 2                             ,&
-                             nValGlobal  = (/ImpactDataSize,ImpactnGlob/),&
-                             nVal        = (/ImpactDataSize,ImpactnLoc /),&
-                             offset      = (/ 0             , 0        /),&
-                             collective  = .FALSE.                       ,&
+    CALL WriteArray(         DataSetName = 'PartData'                      ,&
+                             rank        = 2                               ,&
+                             nValGlobal  = (/ImpactDataSize,ImpactnGlob/)  ,&
+                             nVal        = (/ImpactDataSize,ImpactnLoc /)  ,&
+                             offset      = (/ 0             , 0        /)  ,&
+                             collective  = .FALSE.                         ,&
                              RealArray   = PartStateBoundary(1:ImpactDataSize,1:ImpactnLoc))
     CALL CloseDataFile()
     GETTIME(EndT)

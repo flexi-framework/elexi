@@ -106,7 +106,7 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT IMPACT TRACKING...'
 
-! check if erosionpoints are activated
+! Check if impact tracking is activated
 doParticleImpactTrack = GETLOGICAL('Part-TrackImpacts','.FALSE.')
 IF (.NOT.doParticleImpactTrack) THEN
   SWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
@@ -380,7 +380,7 @@ END SUBROUTINE StoreBoundaryParticleProperties
 
 
 !==================================================================================================================================
-!> Deallocate erosionpoint arrays
+!> Deallocate impact tracking arrays
 !==================================================================================================================================
 SUBROUTINE FinalizeParticleBoundaryTracking()
 ! MODULES

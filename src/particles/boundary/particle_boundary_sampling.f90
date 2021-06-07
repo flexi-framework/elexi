@@ -177,7 +177,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING...'
 doParticleImpactSample   = GETLOGICAL('Part-SurfaceSampling','F')
 WriteMacroSurfaceValues  = GETLOGICAL('Part-WriteMacroSurfaceValues','.FALSE.')
 !
-!! Switch surface macro values flag to .TRUE. for erosion tracking
+!! Switch surface macro values flag to .TRUE. for impact tracking
 IF (doParticleImpactSample.OR.WriteMacroSurfaceValues) THEN
   WriteMacroSurfaceValues = .TRUE.
   doParticleImpactSample  = .TRUE.
@@ -415,7 +415,7 @@ DEALLOCATE(GlobalSide2SurfSideProc)
 ! flag if there is at least one surf side on the node (sides in halo region do also count)
 SurfOnNode = MERGE(.TRUE.,.FALSE.,nComputeNodeSurfTotalSides.GT.0)
 
-! Set size of erosion sampling array
+! Set size of impact sampling array
 nImpactVars  = 17
 SurfSampSize = MERGE(nImpactVars,nImpactVars*(nSpecies+1),nSpecies.EQ.1)
 
@@ -615,20 +615,15 @@ END SUBROUTINE InitParticleBoundarySampling
 
 SUBROUTINE RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,PartID,SideID) !,alpha)
 !----------------------------------------------------------------------------------------------------------------------------------!
-! Tracks erosion on designated sides other than reflective wall
+! Tracks particle impact on designated sides other than reflective wall
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-!USE MOD_ErosionPoints,          ONLY:RecordErosionPoint
-!USE MOD_ErosionPoints_Vars,     ONLY:doParticleImpactTrack
-!USE MOD_Mesh_Vars,              ONLY:BC
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Tracking_Vars, ONLY:TrackingMethod
-!USE MOD_Particle_Vars,          ONLY:PartReflCount
 USE MOD_Particle_Vars,          ONLY:PartState
-!USE MOD_Particle_Vars,          ONLY:WriteMacroSurfaceValues
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -678,20 +673,12 @@ IF (WriteMacroSurfaceValues) THEN
                                      ,PartFaceAngle)
 END IF
 
-!IF (doParticleImpactTrack) CALL RecordErosionPoint(BCSideID        = BC(SideID),                       &
-!                                      PartID          = PartID,                           &
-!                                      PartFaceAngle   = PartFaceAngle,                    &
-!                                      v_old           = v_old,                            &
-!                                      PartFaceAngle_old = PartFaceAngle,                  &
-!                                      PartReflCount   = PartReflCount(PartID),            &
-!                                      alpha           = alpha)
-
 END SUBROUTINE RecordParticleBoundaryImpact
 
 
 SUBROUTINE RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAngle)
 !----------------------------------------------------------------------------------------------------------------------------------!
-! Combined routine to add calculated erosion variables to tracking array
+! Combined routine to add calculated impact sampling variables to tracking array
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -910,9 +897,9 @@ END IF
 
 IF (myComputeNodeRank.EQ.0) THEN
 #endif /*USE_MPI*/
-  IF (mySurfRank.EQ.0) WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING EROSION TRACKING FROM HDF5 FILE...'
+  IF (mySurfRank.EQ.0) WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE...'
 
-  ! Get number of required erosion vars
+  ! Get number of required impact sampling vars
   IF (nSpecies.EQ.1) THEN
       RestartVarCount =  nImpactVars
   ELSE
@@ -927,7 +914,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   END IF
   RestartArray = 0.
 
-  ! Open restart array in general erosion file
+  ! Open restart array in general impact sampling file
   IF (PRESENT(remap_opt)) THEN
       FileString=remap_opt
   ELSE
@@ -940,8 +927,8 @@ END IF
 
 ! Return if the file was not found. This can happen quite often, so it's generally no reason to abort
 IF ((mySurfRank.EQ.0).AND..NOT.FILEEXISTS(FileString)) THEN
-  WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | Erosion File does not exist for current time. Aborting erosion restart ...'
-  WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING EROSION TRACKING FROM HDF5 FILE DONE'
+  WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | Impact sampling file does not exist for current time. Aborting impact sampling restart ...'
+  WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
   WRITE(UNIT_StdOut,'(132("-"))')
 ELSE
   ! Set flag to take restart time into account
@@ -964,7 +951,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
 #endif /*USE_MPI*/
 
-  ! Check if erosion file has restart data
+  ! Check if surface sampling file has restart data
   CALL DatasetExists(File_ID,'RestartData',ImpactDataExists)
 
   IF (ImpactDataExists) THEN
@@ -972,8 +959,8 @@ IF (myComputeNodeRank.EQ.0) THEN
     CALL ReadAttribute(File_ID,'NRestart',1,IntScalar=NRestartFile)
     IF (NRestartFile.NE.RestartVarCount) THEN
       IF (mySurfRank.EQ.0) THEN
-        WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | Number of variables in erosion file does not match. Aborting erosion restart ...'
-        WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING EROSION TRACKING FROM HDF5 FILE DONE'
+        WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | Number of variables in surface sampling file does not match. Aborting surface sampling restart ...'
+        WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
         WRITE(UNIT_StdOut,'(132("-"))')
       END IF
       ImpactRestart = .FALSE.
@@ -981,8 +968,8 @@ IF (myComputeNodeRank.EQ.0) THEN
     END IF
   ELSE
     IF (mySurfRank.EQ.0) THEN
-      WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | RestartData does not exists in erosion tracking file.'
-      WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING EROSION TRACKING FROM HDF5 FILE DONE'
+      WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | RestartData does not exists in surface sampling tracking file.'
+      WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
       WRITE(UNIT_StdOut,'(132("-"))')
     END IF
     ImpactRestart = .FALSE.
@@ -1024,8 +1011,8 @@ IF (myComputeNodeRank.EQ.0) THEN
   SampWallState_Shared(:,:,:,1:nComputeNodeSurfSides) = RestartArray(:,:,:,:)
 
   IF (mySurfRank.EQ.0) THEN
-    WRITE(UNIT_stdOut,'(a,E11.3)',ADVANCE='YES')' | Erosion tracking restart successful at t =',RestartTime
-    WRITE(UNIT_stdOut,'(a)'      ,ADVANCE='YES')' RESTARTING EROSION TRACKING FROM HDF5 FILE DONE'
+    WRITE(UNIT_stdOut,'(a,E11.3)',ADVANCE='YES')' | Surface sampling restart successful at t =',RestartTime
+    WRITE(UNIT_stdOut,'(a)'      ,ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
     WRITE(UNIT_StdOut,'(132("-"))')
   END IF
 

@@ -851,7 +851,7 @@ INTEGER            :: nParts_proc
 REAL,ALLOCATABLE   :: buf(:), buf2(:,:), buf3(:,:)
 #endif
 !===================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PART/EROSION DATA TO VTX XML BINARY (VTU) FILE..."
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PARTICLE/IMPACT DATA TO VTX XML BINARY (VTU) FILE..."
 
 ! collect number of particles on each proc
 #if USE_MPI

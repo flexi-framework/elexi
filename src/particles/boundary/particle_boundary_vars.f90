@@ -111,7 +111,7 @@ LOGICAL                                 :: doParticleReflectionTrack = .TRUE.   
 LOGICAL                                 :: doParticleImpactSample                  ! Flag if impact data should be tracked
 LOGICAL                                 :: WriteMacroSurfaceValues   = .FALSE.     ! Output of macroscopic values on surface
 REAL                                    :: MacroValSampTime                        ! Sampling time for WriteMacroVal
-LOGICAL                                 :: ImpactRestart                           ! Flag if we are restarting erosion tracking
+LOGICAL                                 :: ImpactRestart                           ! Flag if we are restarting surface sampling
 
 INTEGER                                 :: nImpactVars                             ! Number of Vars = nImpactVars * (nSpecies + 1)
 

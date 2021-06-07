@@ -197,9 +197,11 @@ SUBROUTINE ParticleAnalyze(t    &
   )
 !==================================================================================================================================
 !> Controls particle analysis routines and is called at analyze time levels
-!> - calls erosion impcat output
-!> - informs about lost particles
 !> - writes load balancing statistics
+!> - calls impact sampling output
+!> - calls impact tracking output
+!> - informs about lost particles
+!> - calls kinetic energy balance
 !==================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -236,12 +238,12 @@ IF (doParticleAnalyze) THEN
   SWRITE(UNIT_StdOut,'(132("-"))')
 END IF
 
-! Calculate particle surface erosion data
+! Calculate cumulative particle surface impact sampling data
 IF (WriteMacroSurfaceValues) THEN
   CALL CalcSurfaceValues
 END IF
 
-! Write individual particle surface impact data
+! Write individual particle surface impact tracking data
 IF (doParticleImpactTrack) THEN
   CALL WriteBoundaryParticleToHDF5(OutputTime=t)
 END IF

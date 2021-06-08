@@ -252,8 +252,11 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
-INTEGER                          :: nElems_State!N_State
+INTEGER                          :: nElems_State
 CHARACTER(LEN=255)               :: NodeType_State, cwd
+#if PP_N!=N
+INTEGER                          :: N_State
+#endif
 !===================================================================================================================================
 IF (STRICMP(fileType,'Mesh')) THEN
     CALL CollectiveStop(__STAMP__, &

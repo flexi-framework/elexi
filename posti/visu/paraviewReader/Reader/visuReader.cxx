@@ -282,12 +282,13 @@ int visuReader::RequestData(
       double requestedTimeValue = outInfoVolume->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
       timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
-   FileToLoad = FileNames[timestepToLoad];
-   SWRITE("File to load "<<FileToLoad);
-   if (outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
+   if (timestepToLoad==0 && outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoSurface->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+      timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
+   FileToLoad = FileNames[timestepToLoad];
+   SWRITE("File to load "<<FileToLoad);
 
 
    // convert the MPI communicator to a fortran communicator
@@ -336,8 +337,10 @@ int visuReader::RequestData(
    dprintf(posti_unit, "NodeTypeVisu = %s\n", NodeTypeVisu); // insert NodeType
    dprintf(posti_unit, "Avg2D = %s\n", (this->Avg2d ? "T" : "F"));
    dprintf(posti_unit, "DGonly = %s\n", (this->DGonly ? "T" : "F"));
-   if (strlen(MeshFileOverwrite) > 0) {
-      dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
+   if (MeshFileOverwrite != NULL ) {
+     if (strlen(MeshFileOverwrite) > 0) {
+        dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
+     }
    }
 
    // write selected state varnames to the parameter file
@@ -352,7 +355,7 @@ int visuReader::RequestData(
       }
    }
    if (noVisuVars) {
-      dprintf(posti_unit, "noVisuVars = T") ;
+      dprintf(posti_unit, "noVisuVars = T\n") ;
    }
    for (int i = 0; i< nBCs; ++i)
    {
@@ -368,15 +371,20 @@ int visuReader::RequestData(
    // call Posti tool (Fortran code)
    // the arrays coords_*, values_* and nodeids_* are allocated in the Posti tool
    // and contain the vtk data
-   int strlen_prm = strlen(ParameterFileOverwrite);
+   int strlen_prm;
+   if (ParameterFileOverwrite == NULL) {
+     strlen_prm = 0;
+   } else {
+     strlen_prm = strlen(ParameterFileOverwrite);
+   }
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str());
    __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm,
-         &strlen_prm, ParameterFileOverwrite,
+         &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
-         &coords_DG,&values_DG,&nodeids_DG,
-         &coords_FV,&values_FV,&nodeids_FV,&varnames,
+         &coords_DG    ,&values_DG,&nodeids_DG,
+         &coords_FV    ,&values_FV,&nodeids_FV,&varnames,
          &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
          &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf);
 
@@ -422,10 +430,10 @@ int visuReader::RequestData(
      SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
 
      // Distribute DG data and create ghost cells
-     DistributeData(mb, 0);
+     /* DistributeData(mb, 0); */
 
      // Distribute FV data and create ghost cells
-     DistributeData(mb, 1);
+     /* DistributeData(mb, 1); */
    }
 #endif /* USE_MPI */
 

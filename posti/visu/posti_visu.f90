@@ -113,7 +113,6 @@ DO iArg=1+skipArgs,nArgs
 #endif
   END IF
 
-
   ALLOCATE(varnames_loc(nVarVisu))
   ALLOCATE(varnamesSurf_loc(nVarSurfVisuAll))
   DO iVar=1,nVarAll
@@ -216,5 +215,5 @@ CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
-END PROGRAM 
+END PROGRAM
 

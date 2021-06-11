@@ -254,7 +254,6 @@ meshMode_loc = 0 ! Minimal mesh init
 IF (doSurfVisu)  meshMode_loc = MAX(meshMode_loc,2)
 IF (hasFV_Elems) meshMode_loc = MAX(meshMode_loc,2)
 
-
 #if FV_ENABLED
 ! For FV and higher mesh modes the FV basis is needed
 IF (meshMode_loc.EQ.2)THEN
@@ -265,7 +264,6 @@ END IF
 
 ! check if the mesh mode has changed from the last time
 changedMeshMode = (meshMode_loc.NE.meshMode_old)
-
 
 #if USE_MPI
 IF ((changedMeshFile).OR.(changedMeshMode)) THEN

@@ -461,6 +461,19 @@ int visuReader::RequestData(
     // Insert Surface FV data into output
    InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
 
+#if USE_MPI
+   if (Controller->GetNumberOfProcesses() > 1) {
+     // Apply D3 filter to create ghost cells
+     SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
+
+     // Distribute DG data and create ghost cells
+     /* DistributeData(mb, 0); */
+
+     // Distribute FV data and create ghost cells
+     /* DistributeData(mb, 1); */
+   }
+#endif /* USE_MPI */
+
    __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
 
    // tell paraview to render data
@@ -589,6 +602,7 @@ void visuReader::DistributeData(vtkMultiBlockDataSet* mb, int blockno) {
    vtkDistributedDataFilter * d3 = vtkDistributedDataFilter::New();
    d3->SetInputData(mb->GetBlock(blockno));
    d3->SetMinimumGhostLevel(this->NGhosts);
+   /* d3->SetUseMinimalMemory(1); */
 
    // Information must be duplicated on all procs, ASSIGN_TO_ALL_INTERSECTING_REGIONS = 1
    d3->SetBoundaryMode(1);

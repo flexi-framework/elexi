@@ -141,7 +141,7 @@ ELSE
   END IF
 
   CALL MPI_GATHERV(NodeCoords     ,nNodesPerProc(myRank)    ,MPI_DOUBLE_PRECISION                          ,&
-            NodeCoords_Glob,nNodesPerProc,offsetNodes,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+                   NodeCoords_Glob,nNodesPerProc,offsetNodes,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
 #else
   NodeCoords_Glob => NodeCoords
 #endif /* USE_MPI */

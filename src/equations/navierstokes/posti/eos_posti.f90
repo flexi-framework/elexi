@@ -181,7 +181,7 @@ INTEGER,INTENT(IN)                                              :: mapCalcMeshTo
 INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
 INTEGER,INTENT(IN)                                              :: maskCalc(nVarDepEOS)
 REAL,INTENT(OUT)                                                :: UCalc(PRODUCT(nVal),1:nVarCalc)
-REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
+REAL,DIMENSION(1:PP_nVarLifting,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -238,11 +238,11 @@ INTEGER,INTENT(IN)                                              :: nVal(:)
 INTEGER,INTENT(IN)                                              :: mapCalcMeshToGlobalMesh(:)
 INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
 REAL,INTENT(INOUT)                                              :: UCalc(PRODUCT(nVal),1:nVarCalc)
-REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
+REAL,DIMENSION(1:PP_nVarLifting,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp,inuT,imuT
+INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp
 CHARACTER(LEN=255) :: DepName_low
 REAL               :: UE(PP_2Var)
 INTEGER            :: nElems_loc,Nloc,nDOF,nDims
@@ -273,12 +273,10 @@ iDens = KEYVALUE(DepNames,mapDepToCalc,"density"    )
 iMom1 = KEYVALUE(DepNames,mapDepToCalc,'momentumx')
 iMom2 = KEYVALUE(DepNames,mapDepToCalc,'momentumy')
 iMom3 = KEYVALUE(DepNames,mapDepToCalc,'momentumz')
-imuT  = KEYVALUE(DepNames,mapDepToCalc,'mutilde')
 iVel1 = KEYVALUE(DepNames,mapDepToCalc,"velocityx"  )
 iVel2 = KEYVALUE(DepNames,mapDepToCalc,"velocityy"  )
 iVel3 = KEYVALUE(DepNames,mapDepToCalc,"velocityz"  )
 iPres = KEYVALUE(DepNames,mapDepToCalc,"pressure"   )
-inuT  = KEYVALUE(DepNames,mapDepToCalc,'nutilde')
 iEner = KEYVALUE(DepNames,mapDepToCalc,'energystagnationdensity')
 iVelM = KEYVALUE(DepNames,mapDepToCalc,"velocitymagnitude")
 iTemp = KEYVALUE(DepNames,mapDepToCalc,"temperature")
@@ -304,8 +302,6 @@ SELECT CASE(DepName_low)
     ! TODO: use a function from eos.f90
     UCalc(:,iVarCalc) = sKappaM1*UCalc(:,iPres) + 0.5*UCalc(:,iDens)* &
                         (UCalc(:,iVel1)**2 + UCalc(:,iVel2)**2 + UCalc(:,iVel3)**2)
-  CASE("mutilde")
-    UCalc(:,iVarCalc) = UCalc(:,iDens)*UCalc(:,inuT)
   CASE("velocityx")
     UCalc(:,iVarCalc) = UCalc(:,iMom1) / UCalc(:,iDens)
   CASE("velocityy")
@@ -328,8 +324,6 @@ SELECT CASE(DepName_low)
       UE(PRES) =    UCalc(i,iPres)
       UCalc(i,iVarCalc) = TEMPERATURE_HE(UE)
     END DO
-  CASE("nutilde")
-    UCalc(:,iVarCalc) = UCalc(:,imuT) / UCalc(:,iDens)
   CASE("velocitymagnitude")
     UCalc(:,iVarCalc) = SQRT((UCalc(:,iMom1)/UCalc(:,iDens))**2 &
                            + (UCalc(:,iMom2)/UCalc(:,iDens))**2 &
@@ -375,11 +369,11 @@ SELECT CASE(DepName_low)
   CASE("lambda2")
     UCalc(:,iVarCalc) = FillLambda2(nVal,gradUx,gradUy,gradUz)
   CASE("dilatation")
-    UCalc(:,iVarCalc) = gradUx(2,:) + gradUy(3,:) + gradUz(4,:)
+    UCalc(:,iVarCalc) = gradUx(LIFT_VEL1,:) + gradUy(LIFT_VEL2,:) + gradUz(LIFT_VEL3,:)
   CASE("qcriterion")
     UCalc(:,iVarCalc) = FillQcriterion(nVal,gradUx,gradUy,gradUz)
   CASE("schlieren")
-    UCalc(:,iVarCalc) = LOG10(SQRT(gradUx(1,:)**2 + gradUy(1,:)**2 + gradUz(1,:)**2)+1.0)
+    UCalc(:,iVarCalc) = LOG10(SQRT(gradUx(LIFT_DENS,:)**2 + gradUy(LIFT_DENS,:)**2 + gradUz(LIFT_DENS,:)**2)+1.0)
 #endif
 END SELECT
 IF (withVectors) THEN
@@ -472,16 +466,16 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: dir
 INTEGER,INTENT(IN) :: nVal(:)
-REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Vorticity(PRODUCT(nVal))
 !==================================================================================================================================
 SELECT CASE (dir)
 CASE(1) ! VorticityX = dw/dy-dv/dz
-  Vorticity = gradUy(4,:) - gradUz(3,:)
+  Vorticity = gradUy(LIFT_VEL3,:) - gradUz(LIFT_VEL2,:)
 CASE(2) ! VorticityY = du/dz-dw/dx
-  Vorticity = gradUz(2,:) - gradUx(4,:)
+  Vorticity = gradUz(LIFT_VEL1,:) - gradUx(LIFT_VEL3,:)
 CASE(3) ! VorticityZ = dv/dx-du/dy
-  Vorticity = gradUx(3,:) - gradUy(2,:)
+  Vorticity = gradUx(LIFT_VEL2,:) - gradUy(LIFT_VEL1,:)
 END SELECT
 END FUNCTION FillVorticity
 
@@ -500,7 +494,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nVal(:)
-REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Lambda2(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -512,9 +506,9 @@ REAL,DIMENSION(3)  :: Lambda
 REAL,DIMENSION(16) :: WORK
 !==================================================================================================================================
 DO i=1,PRODUCT(nVal)
-  gradUmat(:,1)= gradUx(2:4,i)
-  gradUmat(:,2)= gradUy(2:4,i)
-  gradUmat(:,3)= gradUz(2:4,i)
+  gradUmat(:,1)= gradUx(LIFT_VELV,i)
+  gradUmat(:,2)= gradUy(LIFT_VELV,i)
+  gradUmat(:,3)= gradUz(LIFT_VELV,i)
   gradUmat=MATMUL(0.5*(gradUmat+TRANSPOSE(gradUmat)),0.5*(gradUmat+TRANSPOSE(gradUmat))) & ! S^2
           +MATMUL(0.5*(gradUmat-TRANSPOSE(gradUmat)),0.5*(gradUmat-TRANSPOSE(gradUmat)))   ! Omega^2
   ! Jacobi-Subroutine used from LAPACK
@@ -533,7 +527,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nVal(:)
-REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Qcriterion(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -541,9 +535,9 @@ INTEGER            :: i,m,l
 REAL               :: gradUmat(3,3),Q_loc,S,Rot
 !==================================================================================================================================
 DO i=1,PRODUCT(nVal)
-  gradUmat(:,1)= gradUx(2:4,i)
-  gradUmat(:,2)= gradUy(2:4,i)
-  gradUmat(:,3)= gradUz(2:4,i)
+  gradUmat(:,1)= gradUx(LIFT_VELV,i)
+  gradUmat(:,2)= gradUy(LIFT_VELV,i)
+  gradUmat(:,3)= gradUz(LIFT_VELV,i)
   Q_loc=0.
   DO m=1,3
     DO l=1,3
@@ -570,7 +564,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                   :: dir,nVal(:)
 REAL,DIMENSION(PRODUCT(nVal)),INTENT(IN)             :: Temperature
-REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN)         :: NormVec
 REAL                                                 :: WallFriction(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -585,9 +579,9 @@ INTEGER           :: i
 DO i=1,PRODUCT(nVal)
   temp=Temperature(i)
   mu=VISCOSITY_TEMPERATURE(temp)
-  GradV(1:3,1)=gradUx(2:4,i)
-  GradV(1:3,2)=gradUy(2:4,i)
-  GradV(1:3,3)=gradUz(2:4,i)
+  GradV(1:3,1)=gradUx(LIFT_VELV,i)
+  GradV(1:3,2)=gradUy(LIFT_VELV,i)
+  GradV(1:3,3)=gradUz(LIFT_VELV,i)
   ! Velocity divergence
   DivV=GradV(1,1)+GradV(2,2)+GradV(3,3)
   ! Calculate shear stress tensor
@@ -613,7 +607,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                   :: nVal(:)
 REAL,DIMENSION(PRODUCT(nVal)),INTENT(IN)             :: Temperature
-REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN)         :: NormVec
 REAL                                                 :: WallHeatTransfer(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -628,9 +622,9 @@ DO i=1,PRODUCT(nVal)
   temp=Temperature(i)
   mu=VISCOSITY_TEMPERATURE(temp)
   ! Calculate temperature gradient in wall normal direction
-  GradTn = gradUx(6,i)*NormVec(1,i) &
-         + gradUy(6,i)*NormVec(2,i) &
-         + gradUz(6,i)*NormVec(3,i)
+  GradTn = gradUx(LIFT_TEMP,i)*NormVec(1,i) &
+         + gradUy(LIFT_TEMP,i)*NormVec(2,i) &
+         + gradUz(LIFT_TEMP,i)*NormVec(3,i)
   ! Calculate wall heat transfer
   WallHeatTransfer(i) = -1.*mu*Kappa*sKappaM1*R/Pr*gradTn
 END DO
@@ -741,10 +735,10 @@ DO iSide=1,nBCSides
 #endif
 
     ! Calculate lengths of the cell = lengths of the edge vectors
-    yloc(1)=NORM2(xVec)
-    yloc(2)=NORM2(yVec)
+    yloc(1)=SQRT(DOT_PRODUCT(xVec,xVec))
+    yloc(2)=SQRT(DOT_PRODUCT(yVec,yVec))
 #if PP_dim==3
-    yloc(3)=NORM2(zVec)
+    yloc(3)=SQRT(DOT_PRODUCT(zVec,zVec))
 #endif
 
     ! Normalize the distances with the number of points per direction per cell

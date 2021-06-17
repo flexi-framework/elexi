@@ -289,6 +289,10 @@ IF (FLEXI_FV)
   LIST(APPEND flexiF90 ${fvF90})
 ENDIF()
 
+# >> collect F90 files of 'hash' directory (non-recursive) and append to 'flexiF90' list
+FILE(GLOB   hashF90 ./src/hash/*.f90)
+LIST(APPEND flexiF90 ${hashF90})
+
 # define libs
 ADD_LIBRARY(          libflexistaticF90 OBJECT ${flexiF90})
 SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})

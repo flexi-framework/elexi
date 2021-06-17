@@ -623,7 +623,7 @@ CALL FinalizeParameters()
 END SUBROUTINE VisualizeMesh
 
 
-#if GCC_VERSION < 100000
+#if GCC_VERSION < 100000 && !FV_ENABLED
 PURE FUNCTION FINDLOC(Array,Value,Dim)
 !===================================================================================================================================
 !> Implements a subset of the intrinsic FINDLOC function for Fortran < 2008
@@ -655,6 +655,6 @@ END DO
 FINDLOC = -1
 
 END FUNCTION FINDLOC
-#endif /*GCC_VERSION < 100000*/
+#endif /*GCC_VERSION < 100000 && !FV_ENABLED*/
 
 END MODULE MOD_Posti_VisuMesh

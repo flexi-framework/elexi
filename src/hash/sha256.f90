@@ -124,10 +124,10 @@ INTEGER(KIND=C_INT32_T) :: w0(64)
 !==================================================================================================================================
 
 ! Set the initial data.
-data (h0_ref(i),i=1,8)/&
+DATA (h0_ref(i),i=1,8)/&
      & z'6a09e667', z'bb67ae85', z'3c6ef372', z'a54ff53a', z'510e527f', z'9b05688c', z'1f83d9ab', z'5be0cd19'/
 
-data (k0_ref(i), i=1,64)/&
+DATA (k0_ref(i), i=1,64)/&
      & z'428a2f98', z'71374491', z'b5c0fbcf', z'e9b5dba5', z'3956c25b', z'59f111f1', z'923f82a4', z'ab1c5ed5',&
      & z'd807aa98', z'12835b01', z'243185be', z'550c7dc3', z'72be5d74', z'80deb1fe', z'9bdc06a7', z'c19bf174',&
      & z'e49b69c1', z'efbe4786', z'0fc19dc6', z'240ca1cc', z'2de92c6f', z'4a7484aa', z'5cb0a9dc', z'76f988da',&

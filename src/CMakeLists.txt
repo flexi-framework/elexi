@@ -292,6 +292,13 @@ ENDIF()
 # >> collect F90 files of 'hash' directory (non-recursive) and append to 'flexiF90' list
 FILE(GLOB   hashF90 ./src/hash/*.f90)
 LIST(APPEND flexiF90 ${hashF90})
+# GCC<10 has incorrect handling of typeless constants as per https://gcc.gnu.org/gcc-10/changes.html
+IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  IF(CMAKE_Fortran_COMPILER_VERSION VERSION_LESS "10.0.0")
+    MESSAGE (STATUS "GFortran v${CMAKE_Fortran_COMPILER_VERSION} with invalid handling of typeless constants detected, setting -fno-range-check")
+    SET_SOURCE_FILES_PROPERTIES(./src/hash/sha256.f90 PROPERTIES COMPILE_FLAGS "${CMAKE_Fortran_FLAGS} -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays -fno-range-check -Wno-conversion")
+  ENDIF()
+ENDIF()
 
 # define libs
 ADD_LIBRARY(          libflexistaticF90 OBJECT ${flexiF90})

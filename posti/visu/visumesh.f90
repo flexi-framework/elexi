@@ -12,6 +12,8 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+! Calculate GCC version
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 
 !=================================================================================================================================
 !> Routines to build the mesh for visualization.
@@ -32,6 +34,8 @@ TYPE, BIND(C) :: CARRAY
   INTEGER (C_INT) :: dim
   TYPE (C_PTR)    :: data
 END TYPE CARRAY
+
+INTEGER,PARAMETER :: SHA256_LENGTH=64
 #endif
 
 INTERFACE BuildVisuCoords
@@ -356,7 +360,6 @@ INTEGER           :: i,j,k,iElem
 INTEGER           :: NodeID
 INTEGER           :: NVisu_k,NVisu_j
 INTEGER           :: fVTKCells!,nVTKCells
-INTEGER,PARAMETER :: SHA256_LENGTH=64
 INTEGER           :: iProc
 INTEGER           :: nUniqueNodeHashes
 INTEGER           :: nUniqueNodeHashesProc(0:nProcessors-1),offsetUniqueHashesProc(0:nProcessors-1)
@@ -618,5 +621,40 @@ END IF
 CALL FinalizeInterpolation()
 CALL FinalizeParameters()
 END SUBROUTINE VisualizeMesh
+
+
+#if GCC_VERSION < 100000
+PURE FUNCTION FINDLOC(Array,Value,Dim)
+!===================================================================================================================================
+!> Implements a subset of the intrinsic FINDLOC function for Fortran < 2008
+!===================================================================================================================================
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+CHARACTER(LEN=SHA256_LENGTH),INTENT(IN) :: Array(:)
+CHARACTER(LEN=SHA256_LENGTH),INTENT(IN) :: Value
+INTEGER,INTENT(IN)                      :: Dim
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+INTEGER                        :: FINDLOC
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                        :: iVar
+!===================================================================================================================================
+DO iVar = 1,SIZE(ARRAY,1)
+  IF (Array(iVar).EQ.Value) THEN
+    FINDLOC = iVar
+    RETURN
+  END IF
+END DO
+
+! Return error code -1 if the value was not found
+FINDLOC = -1
+
+END FUNCTION FINDLOC
+#endif /*GCC_VERSION < 100000*/
 
 END MODULE MOD_Posti_VisuMesh

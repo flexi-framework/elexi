@@ -17,11 +17,22 @@
 !> Routines to build the mesh for visualization.
 !=================================================================================================================================
 MODULE MOD_Posti_VisuMesh
+#if !FV_ENABLED
+USE ISO_C_BINDING
+#endif
+! MODULES
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+#if !FV_ENABLED
+TYPE, BIND(C) :: CARRAY
+  INTEGER (C_INT) :: len
+  INTEGER (C_INT) :: dim
+  TYPE (C_PTR)    :: data
+END TYPE CARRAY
+#endif
 
 INTERFACE BuildVisuCoords
   MODULE PROCEDURE BuildVisuCoords
@@ -35,9 +46,18 @@ INTERFACE VisualizeMesh
   MODULE PROCEDURE VisualizeMesh
 END INTERFACE
 
+#if !FV_ENABLED
+INTERFACE WriteGlobalNodeIDsToVTK_array
+  MODULE PROCEDURE WriteGlobalNodeIDsToVTK_array
+END INTERFACE
+#endif
+
 PUBLIC:: BuildVisuCoords
 PUBLIC:: BuildSurfVisuCoords
 PUBLIC:: VisualizeMesh
+#if !FV_ENABLED
+PUBLIC:: WriteGlobalNodeIDsToVTK_array
+#endif
 
 CONTAINS
 
@@ -51,7 +71,9 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
-USE MOD_Mesh_Vars          ,ONLY: NGeo,NodeCoords,nGlobalElems
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeVISUFVEqui,NodeType
+USE MOD_Interpolation      ,ONLY: GetVandermonde
+USE MOD_Mesh_Vars          ,ONLY: nGlobalElems,NodeCoords,NGeo
 USE MOD_Visu_Vars          ,ONLY: CoordsVisu_DG
 USE MOD_Visu_Vars          ,ONLY: NodeTypeVisuPosti
 USE MOD_Visu_Vars          ,ONLY: NVisu,nElems_DG,mapDGElemsToAllElems
@@ -66,6 +88,9 @@ USE MOD_MPI_Vars           ,ONLY: offsetElemMPI
 USE MOD_Visu_Vars          ,ONLY: FVAmountAvg2D,mapElemIJToFVElemAvg2D,nElemsAvg2D_FV
 USE MOD_Visu_Vars          ,ONLY: NVisu_FV,nElems_FV,mapFVElemsToAllElems,hasFV_Elems
 USE MOD_Visu_Vars          ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems,changedAvg2D
+#endif
+#if USE_MPI
+USE MOD_MPI_Vars           ,ONLY: offsetElemMPI
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -265,6 +290,216 @@ END IF
 #endif
 
 END SUBROUTINE BuildSurfVisuCoords
+
+
+#if !FV_ENABLED
+!===================================================================================================================================
+!> Subroutine to write 2D or 3D coordinates to VTK format
+!===================================================================================================================================
+SUBROUTINE WriteGlobalNodeIDsToVTK_array(NVisu,nElems,globalnodeids_out,globalnodeids,dim,DGFV)
+USE ISO_C_BINDING
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                   :: NVisu                        !< Polynomial degree for visualization
+INTEGER,INTENT(IN)                   :: nElems                       !< Number of elements
+INTEGER,INTENT(IN)                   :: dim                          !< Spacial dimension (2D or 3D)
+INTEGER,INTENT(IN)                   :: DGFV                         !< flag indicating DG = 0 or FV =1 data
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: globalnodeids(:)
+TYPE (CARRAY), INTENT(INOUT)             :: globalnodeids_out
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+IF (nElems.EQ.0) THEN
+  globalnodeids_out%len = 0
+  RETURN
+END IF
+
+! create global node ID
+CALL BuildGlobalNodeIDs(NVisu=NVisu,nElems=nElems,globalnodeids=globalnodeids,dim=dim,DGFV=DGFV)
+
+! set the sizes of the arrays
+! globalnodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
+globalnodeids_out%len = (nVisu+1)**dim*nElems
+
+! assign data to the arrays (no copy!!!)
+globalnodeids_out%data = C_LOC(globalnodeids(1))
+
+END SUBROUTINE WriteGlobalNodeIDsToVTK_array
+
+
+!=================================================================================================================================
+!> Calculates the global node ID for VTK D3 filter
+!=================================================================================================================================
+SUBROUTINE BuildGlobalNodeIDs(NVisu,nElems,globalnodeids,dim,DGFV)
+! MODULES
+USE MOD_Globals
+USE MOD_Visu_Vars    ,ONLY: CoordsVisu_DG
+USE MOD_SHA256       ,ONLY: SHA256
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)                       :: NVisu
+INTEGER,INTENT(IN)                       :: nElems
+INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: globalnodeids(:)  !< stores the unique global node ID
+INTEGER,INTENT(IN)                       :: dim               !< 3 = 3d connectivity, 2 = 2d connectivity
+INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating DG = 0 or FV = 1 data
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: i,j,k,iElem
+INTEGER           :: NodeID
+INTEGER           :: NVisu_k,NVisu_j
+INTEGER           :: fVTKCells!,nVTKCells
+INTEGER,PARAMETER :: SHA256_LENGTH=64
+INTEGER           :: iProc
+INTEGER           :: nUniqueNodeHashes
+INTEGER           :: nUniqueNodeHashesProc(0:nProcessors-1),offsetUniqueHashesProc(0:nProcessors-1)
+CHARACTER(LEN=48) :: NodePosChar48
+CHARACTER(LEN=SHA256_LENGTH),ALLOCATABLE :: NodeHash(:,:,:,:),NodeHashGlob(:),unique(:),sorted(:)
+CHARACTER(LEN=SHA256_LENGTH)             :: min_val,max_val
+
+!=================================================================================================================================
+
+SELECT CASE(dim)
+  CASE(3)
+    NVisu_k = NVisu
+    NVisu_j = NVisu
+  CASE(2)
+    NVisu_k = 1
+    NVisu_j = NVisu
+  CASE(1)
+    NVisu_k = 1
+    NVisu_j = 1
+  CASE DEFAULT
+    ! Dummy variables to make GCC happy
+    NVisu_k = -1
+    NVisu_j = -1
+    CALL Abort(__STAMP__, "Only 2D and 3D connectivity can be created. dim must be 2 or 3.")
+END SELECT
+
+fVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim
+! nVTKCells  = fVTKCells*nElems
+SDEALLOCATE(globalnodeids)
+
+! Reuse the existing elem distribution
+ALLOCATE(NodeHash(0:NVisu,0:NVisu_j,0:NVisu_k,nElems))
+
+! Transfer node coordinates to continous data string and compute hash
+DO iElem = 1,nElems
+  DO k = 0,NVisu_k!,(DGFV+1)
+    DO j = 0,NVisu_j!,(DGFV+1)
+      DO i = 0,NVisu!,(DGFV+1)
+        ! Just write the coordinates into the string without space
+        WRITE(NodePosChar48,"(3E16.10)") CoordsVisu_DG(1:3,i,j,k,iElem)
+
+        ! Hash the string (strictly we don't even need to hash it?)
+        !> SHA256 is definitely overkill but Mikael Leetmaa provided a library
+        !> Keep it allocated because we need it again when assigning unique global node IDs
+        NodeHash(i,j,k,iElem) = SHA256(NodePosChar48)
+      END DO
+    END DO
+  END DO
+END DO
+
+! Sort the NodeHash array
+ALLOCATE(unique((nElems)*(2**dim)*fVTKCells))
+min_val = MINVAL(NodeHash)
+max_val = MAXVAL(NodeHash)
+
+! Initialize
+nUniqueNodeHashes         = 1
+unique(nUniqueNodeHashes) = min_val
+
+DO WHILE(LLT(min_val,max_val))
+  nUniqueNodeHashes = nUniqueNodeHashes+1
+  min_val = minval(NodeHash, mask=LGT(NodeHash,min_val))
+  unique(nUniqueNodeHashes) = min_val
+END DO
+
+! Write the sorted values back
+ALLOCATE(sorted(nUniqueNodeHashes))
+sorted = unique(1:nUniqueNodeHashes)
+DEALLOCATE(unique)
+
+#if USE_MPI
+! Communicate the size of the unique nodes to the root
+CALL MPI_GATHER(nUniqueNodeHashes,1,MPI_INTEGER,nUniqueNodeHashesProc,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+! CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+! Allocate recv buffer on the root
+IF (MPIRoot) THEN
+  ALLOCATE(NodeHashGlob(SUM(nUniqueNodeHashesProc)))
+  ! Calculate offsets for procs
+  offsetUniqueHashesProc(0) = 0
+  DO iProc = 1,nProcessors-1
+    offsetUniqueHashesProc(iProc) = nUniqueNodeHashesProc(iProc-1) + offsetUniqueHashesProc(iProc-1)
+  END DO
+END IF
+
+CALL MPI_GATHERV(sorted                ,nUniqueNodeHashes    *SHA256_LENGTH                                     ,MPI_CHARACTER ,&
+                 NodeHashGlob          ,nUniqueNodeHashesProc*SHA256_LENGTH,offsetUniqueHashesProc*SHA256_LENGTH,MPI_CHARACTER ,&
+                 0,MPI_COMM_FLEXI,iError)
+
+! Root sort the unique hashes from the nodes
+IF (MPIRoot) THEN
+  ALLOCATE(unique(SUM(nUniqueNodeHashesProc)))
+  min_val = MINVAL(NodeHashGlob)
+  max_val = MAXVAL(NodeHashGlob)
+
+  nUniqueNodeHashes         = 1
+  unique(nUniqueNodeHashes) = min_val
+  DO WHILE(LLT(min_val,max_val))
+    nUniqueNodeHashes = nUniqueNodeHashes+1
+    min_val = minval(NodeHashGlob, mask=LGT(NodeHashGlob,min_val))
+    unique(nUniqueNodeHashes) = min_val
+  END DO
+  DEALLOCATE(NodeHashGlob)
+END IF
+
+! Send the information back to the procs
+SWRITE(UNIT_stdOut,'(A,I0)') ' Number of unique visu nodes: ',nUniqueNodeHashes
+CALL MPI_BCAST(nUniqueNodeHashes,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+ALLOCATE(NodeHashGlob(nUniqueNodeHashes))
+
+! Write the sorted values back
+IF (MPIRoot) THEN
+  NodeHashGlob = unique(1:nUniqueNodeHashes)
+  DEALLOCATE(unique)
+END IF
+
+CALL MPI_BCAST(NodeHashGlob,nUniqueNodeHashes*SHA256_LENGTH,MPI_CHARACTER,0,MPI_COMM_FLEXI,iError)
+#else
+ALLOCATE(NodeHashGlob(nUniqueNodeHashes))
+NodeHashGlob = sorted
+#endif
+DEALLOCATE(sorted)
+
+ALLOCATE(GlobalNodeIDs((nVisu+1)**dim*nElems))
+GlobalNodeIDs = -1
+NodeID = 0
+
+! Finally, the unique node ID is just the position in the sorted NodeHashGlob array
+DO iElem = 1,nElems
+  DO k = 0,NVisu_k!,(DGFV+1)
+    DO j = 0,NVisu_j!,(DGFV+1)
+      DO i = 0,NVisu!,(DGFV+1)
+        NodeID = NodeID + 1
+        GlobalNodeIDs(NodeID) = FINDLOC(NodeHashGlob,NodeHash(i,j,k,iElem),1)
+      END DO
+    END DO
+  END DO
+END DO
+
+DEALLOCATE(NodeHash)
+DEALLOCATE(NodeHashGlob)
+
+END SUBROUTINE BuildGlobalNodeIDs
+#endif
 
 
 !=================================================================================================================================

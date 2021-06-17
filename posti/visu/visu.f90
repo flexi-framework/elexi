@@ -536,6 +536,8 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   MeshFile      = statefile
   nVar_State    = 0
   withDGOperator = .FALSE.
+  doSurfVisu     = .FALSE.
+  CALL visu_getVarNamesAndFileType(MeshFile,'',VarNamesAll,BCNamesAll)
   CALL VisualizeMesh(postifile,MeshFile)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE(*,*) "State Mode"
@@ -709,18 +711,20 @@ IF(MPIRoot)THEN
     CLOSE(31, STATUS='delete')
   END IF
 END IF
-prmfile_old = ''
-statefile_old = ''
-MeshFile = ''
-MeshFile_old = ''
+
+! Reset all strings and variables
+prmfile_old       = ''
+statefile_old     = ''
+MeshFile          = ''
+MeshFile_old      = ''
 NodeTypeVisuPosti = 'VISU'
 NodeTypeVisuPosti_old = ''
-NVisu     = -1
-NVisu_old = -1
-nVar_State_old = -1
-NState_old = -1
-withDGOperator_old = .FALSE.
-hasFV_Elems = .FALSE.
+NVisu             = -1
+NVisu_old         = -1
+nVar_State_old    = -1
+NState_old        = -1
+withDGOperator_old    = .FALSE.
+hasFV_Elems       = .FALSE.
 
 SDEALLOCATE(mapDepToCalc)
 #if FV_ENABLED && FV_RECONSTRUCT

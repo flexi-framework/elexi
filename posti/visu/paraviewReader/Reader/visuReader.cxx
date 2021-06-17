@@ -58,7 +58,7 @@ visuReader::visuReader()
    this->NVisu = 0;
    this->NCalc = 0;
 #if USE_MPI
-   this->NGhosts = 0;
+   this->UseD3 = 0;
 #endif /* USE_MPI */
    this->NodeTypeVisu = NULL;
    this->Avg2d = 0;
@@ -383,10 +383,10 @@ int visuReader::RequestData(
          &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
-         &coords_DG    ,&values_DG,&nodeids_DG,
-         &coords_FV    ,&values_FV,&nodeids_FV,&varnames,
-         &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
-         &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf);
+         &coords_DG,&values_DG,&nodeids_DG,&globalnodeids_DG,
+         &coords_FV,&values_FV,&nodeids_FV,&globalnodeids_FV,&varnames,
+         &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,&globalnodeidsSurf_DG,
+         &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&globalnodeidsSurf_FV,&varnamesSurf);
 
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 
@@ -394,11 +394,11 @@ int visuReader::RequestData(
    // sets the distribution for D3 and ghost cells
    outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_PIECE_NUMBER(),     Controller->GetLocalProcessId());
    outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_PIECES(), Controller->GetNumberOfProcesses());
-   outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), this->NGhosts);
+   outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 1);
    outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::EXACT_EXTENT(),1);
    outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_PIECE_NUMBER(),    Controller->GetLocalProcessId());
    outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_PIECES(),Controller->GetNumberOfProcesses());
-   outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), this->NGhosts);
+   outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 1);
 #endif /* USE_MPI */
 
    // get the MultiBlockDataset
@@ -419,18 +419,18 @@ int visuReader::RequestData(
    }
 
    // Insert DG data into output
-   InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &varnames);
+   InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &globalnodeids_DG, &varnames);
 
    // Insert FV data into output
-   InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames);
+   InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &globalnodeids_FV, &varnames);
 
 #if USE_MPI
-   if (Controller->GetNumberOfProcesses() > 1) {
+   if (Controller->GetNumberOfProcesses() > 1 && this->UseD3) {
      // Apply D3 filter to create ghost cells
-     SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
+     SWRITE("Distributing data with minimum level of ghost cells : 1");
 
      // Distribute DG data and create ghost cells
-     /* DistributeData(mb, 0); */
+     DistributeData(mb, 0);
 
      // Distribute FV data and create ghost cells
      /* DistributeData(mb, 1); */
@@ -456,18 +456,18 @@ int visuReader::RequestData(
 
 
     // Insert Surface DG data into output
-   InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &varnamesSurf);
+   InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &globalnodeidsSurf_DG, &varnamesSurf);
 
     // Insert Surface FV data into output
-   InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
+   InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &globalnodeidsSurf_FV, &varnamesSurf);
 
 #if USE_MPI
    if (Controller->GetNumberOfProcesses() > 1) {
      // Apply D3 filter to create ghost cells
-     SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
+     SWRITE("Distributing data with minimum level of ghost cells : 1");
 
      // Distribute DG data and create ghost cells
-     /* DistributeData(mb, 0); */
+     DistributeData(mb, 0);
 
      // Distribute FV data and create ghost cells
      /* DistributeData(mb, 1); */
@@ -489,7 +489,7 @@ int visuReader::RequestData(
  * This function inserts the data, loaded by the Posti tool, into a ouput
  */
 void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
-      struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames) {
+      struct DoubleARRAY* values, struct IntARRAY* nodeids, struct IntARRAY* globalnodeids, struct CharARRAY* varnames) {
    vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(blockno));
 
    // create a 3D double array (must be 3D even we use a 2D Posti tool, since paraview holds the data in 3D)
@@ -562,6 +562,25 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
       exit(1);
    }
 
+#if !FV_ENABLED
+   /* Insert the global elem ids */
+   if (this->UseD3) {
+     vtkSmartPointer <vtkIntArray> gnodeids = vtkSmartPointer<vtkIntArray>::New();
+     gnodeids->SetNumberOfComponents(1);
+     gnodeids->SetNumberOfTuples(nodeids->len);
+     gnodeids->SetName("Global Node ID");
+     output->GetPointData()->AddArray(gnodeids);
+     // copy ids */
+     int* gptr = gnodeids->GetPointer(0);
+     for (long i = 0; i < nodeids->len; ++i)
+     {
+       /* *gptr++ = gsum+i; */
+       *gptr++ = globalnodeids->data[i];
+     }
+     output->GetPointData()->SetGlobalIds(gnodeids);
+   }
+#endif
+
    // assign the actual data, loaded by the Posti tool, to the output
    unsigned int nVar = varnames->len/255;
 
@@ -601,7 +620,7 @@ void visuReader::DistributeData(vtkMultiBlockDataSet* mb, int blockno) {
    // Apply D3 filter to create ghost cells
    vtkDistributedDataFilter * d3 = vtkDistributedDataFilter::New();
    d3->SetInputData(mb->GetBlock(blockno));
-   d3->SetMinimumGhostLevel(this->NGhosts);
+   d3->SetMinimumGhostLevel(1);
    /* d3->SetUseMinimalMemory(1); */
 
    // Information must be duplicated on all procs, ASSIGN_TO_ALL_INTERSECTING_REGIONS = 1

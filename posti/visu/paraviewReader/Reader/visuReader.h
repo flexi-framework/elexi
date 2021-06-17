@@ -55,7 +55,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       vtkSetStringMacro(MeshFileOverwrite);
       vtkSetMacro(NVisu,int);
       vtkSetMacro(NCalc,int);
-      vtkSetMacro(NGhosts,int);
+      vtkSetMacro(UseD3,int);
       vtkSetStringMacro(NodeTypeVisu);
       vtkSetMacro(Avg2d,int);
       vtkSetMacro(DGonly,int);
@@ -93,23 +93,27 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       struct DoubleARRAY coords_DG;
       struct DoubleARRAY values_DG;
       struct IntARRAY  nodeids_DG;
+      struct IntARRAY  globalnodeids_DG;
       struct DoubleARRAY coords_FV;
       struct DoubleARRAY values_FV;
       struct IntARRAY  nodeids_FV;
+      struct IntARRAY  globalnodeids_FV;
       struct CharARRAY varnames;
       struct DoubleARRAY coordsSurf_DG;
       struct DoubleARRAY valuesSurf_DG;
       struct IntARRAY  nodeidsSurf_DG;
+      struct IntARRAY  globalnodeidsSurf_DG;
       struct DoubleARRAY coordsSurf_FV;
       struct DoubleARRAY valuesSurf_FV;
       struct IntARRAY  nodeidsSurf_FV;
+      struct IntARRAY  globalnodeidsSurf_FV;
       struct CharARRAY varnamesSurf;
 
       int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
       int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
 
       void InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
-            struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames);
+            struct DoubleARRAY* values, struct IntARRAY* nodeids, struct IntARRAY* globalnodeids, struct CharARRAY* varnames);
 
       void DistributeData(vtkMultiBlockDataSet* mb, int blockno);
 
@@ -127,7 +131,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       char* FileName;
       int   NVisu;
       int   NCalc;
-      int   NGhosts;
+      int   UseD3;
       char* NodeTypeVisu;
       int   Avg2d;
       int   DGonly;
@@ -152,6 +156,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       ~visuReader();
 
       virtual int FillOutputPortInformation(int port, vtkInformation* info);
+
    private:
       // MPI
       vtkMultiProcessController *Controller;

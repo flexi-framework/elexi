@@ -431,6 +431,9 @@ IF (FLEXI_FV)
   LIST(APPEND flexiF90 ${fvF90})
 ENDIF()
 
+FILE(GLOB   hashF90 ./src/hash/*.f90)
+LIST(APPEND flexiF90 ${hashF90})
+
 # collect F90 files of 'particle' directory (recursive) in new list 'particlesF90'
 IF (PARTICLES)
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/particles)

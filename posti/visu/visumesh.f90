@@ -366,7 +366,6 @@ INTEGER           :: nUniqueNodeHashesProc(0:nProcessors-1),offsetUniqueHashesPr
 CHARACTER(LEN=48) :: NodePosChar48
 CHARACTER(LEN=SHA256_LENGTH),ALLOCATABLE :: NodeHash(:,:,:,:),NodeHashGlob(:),unique(:),sorted(:)
 CHARACTER(LEN=SHA256_LENGTH)             :: min_val,max_val
-
 !=================================================================================================================================
 
 SELECT CASE(dim)
@@ -410,10 +409,16 @@ DO iElem = 1,nElems
   END DO
 END DO
 
+
 ! Sort the NodeHash array
 ALLOCATE(unique((nElems)*(2**dim)*fVTKCells))
+#if GCC_VERSION < 80000
+min_val = MINVAL_CHAR(RESHAPE(NodeHash,(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)))
+max_val = MAXVAL_CHAR(RESHAPE(NodeHash,(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)))
+#else
 min_val = MINVAL(NodeHash)
 max_val = MAXVAL(NodeHash)
+#endif /*GCC_VERSION < 80000*/
 
 ! Initialize
 nUniqueNodeHashes         = 1
@@ -421,7 +426,12 @@ unique(nUniqueNodeHashes) = min_val
 
 DO WHILE(LLT(min_val,max_val))
   nUniqueNodeHashes = nUniqueNodeHashes+1
-  min_val = minval(NodeHash, mask=LGT(NodeHash,min_val))
+#if GCC_VERSION < 80000
+  min_val = MINVAL_CHAR(RESHAPE(NodeHash,(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)) &
+                  ,mask=RESHAPE(LGT(NodeHash,min_val),(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)))
+#else
+  min_val = MINVAL(             NodeHash,mask=LGT(NodeHash,min_val))
+#endif /*GCC_VERSION < 80000*/
   unique(nUniqueNodeHashes) = min_val
 END DO
 
@@ -451,14 +461,23 @@ CALL MPI_GATHERV(sorted                ,nUniqueNodeHashes    *SHA256_LENGTH     
 ! Root sort the unique hashes from the nodes
 IF (MPIRoot) THEN
   ALLOCATE(unique(SUM(nUniqueNodeHashesProc)))
+#if GCC_VERSION < 80000
+  min_val = MINVAL_CHAR(NodeHashGlob)
+  max_val = MAXVAL_CHAR(NodeHashGlob)
+#else
   min_val = MINVAL(NodeHashGlob)
   max_val = MAXVAL(NodeHashGlob)
+#endif /*GCC_VERSION < 80000*/
 
   nUniqueNodeHashes         = 1
   unique(nUniqueNodeHashes) = min_val
   DO WHILE(LLT(min_val,max_val))
     nUniqueNodeHashes = nUniqueNodeHashes+1
-    min_val = minval(NodeHashGlob, mask=LGT(NodeHashGlob,min_val))
+#if GCC_VERSION < 80000
+    min_val = MINVAL_CHAR(NodeHashGlob, mask=LGT(NodeHashGlob,min_val))
+#else
+    min_val = MINVAL(     NodeHashGlob, mask=LGT(NodeHashGlob,min_val))
+#endif /*GCC_VERSION < 80000*/
     unique(nUniqueNodeHashes) = min_val
   END DO
   DEALLOCATE(NodeHashGlob)
@@ -623,7 +642,78 @@ CALL FinalizeParameters()
 END SUBROUTINE VisualizeMesh
 
 
-#if GCC_VERSION < 100000 && !FV_ENABLED
+#if !FV_ENABLED
+#if GCC_VERSION < 80000
+PURE FUNCTION MINVAL_CHAR(array,mask)
+!===================================================================================================================================
+!> Implements the character subset of the intrinsic MINVAL function for Fortran < 2003
+!===================================================================================================================================
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+CHARACTER(LEN=SHA256_LENGTH),INTENT(IN)  :: array(:)
+LOGICAL,INTENT(IN),OPTIONAL              :: mask(:)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+CHARACTER(LEN=SHA256_LENGTH)             :: MINVAL_CHAR
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                      :: iVar
+!===================================================================================================================================
+
+MINVAL_CHAR = Array(1)
+DO iVar = 2,SIZE(Array)
+  IF (PRESENT(mask)) THEN
+    IF (.NOT.mask(iVar)) CYCLE
+  END IF
+
+  IF (LLT(Array(iVar),MINVAL_CHAR)) THEN
+    MINVAL_CHAR = Array(iVar)
+  END IF
+END DO
+
+END FUNCTION MINVAL_CHAR
+
+
+PURE FUNCTION MAXVAL_CHAR(array,mask)
+!===================================================================================================================================
+!> Implements the character subset of the intrinsic MAXVAL function for Fortran < 2003
+!===================================================================================================================================
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+CHARACTER(LEN=SHA256_LENGTH),INTENT(IN)  :: array(:)
+LOGICAL,INTENT(IN),OPTIONAL              :: mask(:)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+CHARACTER(LEN=SHA256_LENGTH)             :: MAXVAL_CHAR
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                      :: iVar
+!===================================================================================================================================
+
+MAXVAL_CHAR = Array(1)
+DO iVar = 2,SIZE(Array)
+  IF (PRESENT(mask)) THEN
+    IF (.NOT.mask(iVar)) CYCLE
+  END IF
+
+  IF (LGT(Array(iVar),MAXVAL_CHAR)) THEN
+    MAXVAL_CHAR = Array(iVar)
+  END IF
+END DO
+
+END FUNCTION MAXVAL_CHAR
+#endif /*GCC_VERSION < 80000*/
+
+
+#if GCC_VERSION < 100000
 PURE FUNCTION FINDLOC(Array,Value,Dim)
 !===================================================================================================================================
 !> Implements a subset of the intrinsic FINDLOC function for Fortran < 2008
@@ -655,6 +745,7 @@ END DO
 FINDLOC = -1
 
 END FUNCTION FINDLOC
-#endif /*GCC_VERSION < 100000 && !FV_ENABLED*/
+#endif /*GCC_VERSION < 100000*/
+#endif /*!FV_ENABLED*/
 
 END MODULE MOD_Posti_VisuMesh

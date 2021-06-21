@@ -90,7 +90,6 @@ visuReader::visuReader()
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
    this->BCDataArraySelection ->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
    this->VarParticleDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
-
 }
 
 /*
@@ -448,7 +447,10 @@ int visuReader::RequestData(
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str());
    __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm,
-         &strlen_prm, ParameterFileOverwrite,
+#if USE_MPI
+         &this->UseD3,
+#endif
+         &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
          &coords_DG,&values_DG,&nodeids_DG,&globalnodeids_DG,
@@ -503,7 +505,7 @@ int visuReader::RequestData(
      DistributeData(mb, 0);
 
      // Distribute FV data and create ghost cells
-     DistributeData(mb, 1);
+     /* DistributeData(mb, 1); */
    }
 #endif /* USE_MPI */
 
@@ -530,6 +532,20 @@ int visuReader::RequestData(
 
     // Insert Surface FV data into output
    InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &globalnodeidsSurf_FV, &varnamesSurf);
+
+
+#if USE_MPI
+   if (Controller->GetNumberOfProcesses() > 1 && this->UseD3) {
+     // Apply D3 filter to create ghost cells
+     SWRITE("Distributing data with minimum level of ghost cells : 1");
+
+     // Distribute DG data and create ghost cells
+     DistributeData(mb, 0);
+
+     // Distribute FV data and create ghost cells
+     /* DistributeData(mb, 1); */
+   }
+#endif /* USE_MPI */
 
 
 #if USE_PARTICLES
@@ -796,6 +812,7 @@ void visuReader::DistributeData(vtkMultiBlockDataSet* mb, int blockno) {
    vtkDistributedDataFilter * d3 = vtkDistributedDataFilter::New();
    d3->SetInputData(mb->GetBlock(blockno));
    d3->SetMinimumGhostLevel(1);
+   /* d3->SetUseMinimalMemory(1); */
 
    // Information must be duplicated on all procs, ASSIGN_TO_ALL_INTERSECTING_REGIONS = 1
    /* d3->SetBoundaryMode(1); */

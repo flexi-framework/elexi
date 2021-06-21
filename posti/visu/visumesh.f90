@@ -36,6 +36,7 @@ TYPE, BIND(C) :: CARRAY
 END TYPE CARRAY
 
 INTEGER,PARAMETER :: SHA256_LENGTH=64
+INTEGER,PARAMETER :: INPUT_LENGTH =192
 #endif
 
 INTERFACE BuildVisuCoords
@@ -77,12 +78,17 @@ USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeVISUFVEqui,NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_Mesh_Vars          ,ONLY: Elem_xGP,nGlobalElems,NodeCoords,NGeo
+USE MOD_Mesh_Vars          ,ONLY: nGlobalElems,NodeCoords,NGeo
 USE MOD_Visu_Vars          ,ONLY: CoordsVisu_DG
 USE MOD_Visu_Vars          ,ONLY: NodeTypeVisuPosti
 USE MOD_Visu_Vars          ,ONLY: NVisu,nElems_DG,mapDGElemsToAllElems
 USE MOD_Visu_Vars          ,ONLY: nElemsAvg2D_DG,Avg2D
 USE MOD_Visu_Vars          ,ONLY: Elem_IJK_glob,mapElemIJToDGElemAvg2D
+USE MOD_Interpolation      ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeVISUFVEqui,NodeType
+#if USE_MPI
+USE MOD_MPI_Vars           ,ONLY: offsetElemMPI
+#endif
 #if FV_ENABLED
 USE MOD_Visu_Vars          ,ONLY: FVAmountAvg2D,mapElemIJToFVElemAvg2D,nElemsAvg2D_FV
 USE MOD_Visu_Vars          ,ONLY: NVisu_FV,nElems_FV,mapFVElemsToAllElems,hasFV_Elems
@@ -94,53 +100,83 @@ USE MOD_MPI_Vars           ,ONLY: offsetElemMPI
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem, iElem_DG
-REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)
+INTEGER            :: iElem,iElem_DG
+REAL,ALLOCATABLE   :: Vdm_NGeo_NVisu(:,:)
 #if FV_ENABLED
 INTEGER            :: iElem_FV
-REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)
+REAL,ALLOCATABLE   :: Vdm_NGeo_NVisu_FV(:,:)
 #endif
 INTEGER            :: iElemAvg,ii,jj,kk
-REAL,ALLOCATABLE   :: Elem_xGP_glob(:,:,:,:,:)
 #if USE_MPI
-INTEGER            :: nDOFPerProc(0:nProcessors-1),offsetDOF(0:nProcessors-1)
+INTEGER            :: nNodesPerProc(0:nProcessors-1),offsetNodes(0:nProcessors-1)
 INTEGER            :: iProc
+REAL,ALLOCATABLE   :: NodeCoords_Glob(:,:,:,:,:)
+#else
+REAL,POINTER       :: NodeCoords_Glob(:,:,:,:,:)
 #endif
 !===================================================================================================================================
 
 ! Convert coordinates to visu grid
-SWRITE (*,*) "[MESH] Convert coordinates to visu grid (DG)"
+SWRITE (Unit_stdOut,'(A)') ' [MESH] Convert coordinates to visu grid (DG)'
 
-ALLOCATE(Vdm_N_NVisu(0:NVisu,0:NGeo))
-CALL GetVandermonde(NGeo,NodeTypeVISU,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu   ,modal=.FALSE.)
+! Convert from NodeCoords to create consistent meshes
+ALLOCATE(Vdm_NGeo_NVisu(0:NVisu,0:NGeo))
+CALL GetVandermonde(NGeo,NodeTypeVisu,NVisu   ,NodeTypeVisuPosti ,Vdm_NGeo_NVisu   ,modal=.FALSE.)
 #if FV_ENABLED
-ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
+ALLOCATE(Vdm_NGeo_NVisu_FV(0:NVisu_FV,0:NGeo))
+CALL GetVandermonde(NGeo,NodeTypeVisu,NVisu_FV,NodeTypeVISUFVEqui,Vdm_NGeo_NVisu_FV,modal=.FALSE.)
+#endif
+
+! Standard visualization
+IF (.NOT.Avg2D) THEN
+  ! convert coords of DG elements
+  SDEALLOCATE(CoordsVisu_DG)
+  ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems_DG))
+  DO iElem_DG = 1,nElems_DG
+    iElem = mapDGElemsToAllElems(iElem_DG)
+    CALL ChangeBasisVolume(3,NGeo,NVisu,Vdm_NGeo_NVisu,NodeCoords(:,:,:,:,iElem),CoordsVisu_DG(:,:,:,:,iElem_DG))
+  END DO
+
+#if FV_ENABLED
+  IF (hasFV_Elems) THEN
+    SWRITE (Unit_stdOut,'(A)') ' [MESH] Convert coordinates to visu grid (FV)'
+    ! only NVisu changed, but NVisu_FV is independent of NVisu
+    IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedAvg2D)) RETURN
+    ! convert coords of FV elements
+    SDEALLOCATE(CoordsVisu_FV)
+    ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV))
+    DO iElem_FV = 1,nElems_FV
+      iElem = mapFVElemsToAllElems(iElem_FV)
+      CALL ChangeBasisVolume(3,NGeo,NVisu_FV,Vdm_NGeo_NVisu_FV,NodeCoords(:,:,:,:,iElem),CoordsVisu_FV(:,:,:,:,iElem_FV))
+    END DO
+    SDEALLOCATE(Vdm_NGeo_NVisu_FV)
+  END IF
 #endif
 
 ! convert coords of DG elements
-IF (Avg2D) THEN
+ELSE
+  ! For parallel averaging, the root will gather the whole mesh and convert the first layer to the  visu grid.
 #if USE_MPI
-  ! For parallel averaging, the root will gather the whole mesh and convert the first layer to the
-  ! visu grid.
   ! For the gather operation, we need to know the number of DOFs per processor
   DO iProc = 0, nProcessors-1
-    nDOFPerProc(iProc) = (offsetElemMPI(iProc+1) - offsetElemMPI(iProc)) * 3*(PP_N+1)**(PP_dim)
+    nNodesPerProc(iProc) = (offsetElemMPI(iProc+1) - offsetElemMPI(iProc)) * 3*(NGeo+1)**(PP_dim)
   END DO ! iProc = 1, nProcessors
+
+  ! On the root, we need the receive array
   IF (MPIRoot) THEN
-    ! On the root, we need the recieve array and the offset for each proc
-    ALLOCATE(Elem_xGP_glob(1:3,0:PP_N,0:PP_N,0:PP_NZ,nGlobalElems))
+    ALLOCATE(NodeCoords_Glob(1:3,0:NGeo,0:NGeo,0:ZDIM(NGeo),nGlobalElems))
     DO iProc = 0, nProcessors-1
-      offsetDOF(iProc) = offsetElemMPI(iProc) * 3*(PP_N+1)**(PP_dim)
+      offsetNodes(iProc) = offsetElemMPI(iProc) * 3*(NGeo+1)**(PP_dim)
     END DO ! iProc = 1, nProcessors
   END IF
-  CALL MPI_GATHERV(Elem_xGP,nDOFPerProc(myRank),MPI_DOUBLE_PRECISION,&
-                   Elem_xGP_glob,nDOFPerProc,offsetDOF,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+
+  CALL MPI_GATHERV(NodeCoords     ,nNodesPerProc(myRank)    ,MPI_DOUBLE_PRECISION                          ,&
+                   NodeCoords_Glob,nNodesPerProc,offsetNodes,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
 #else
-  ALLOCATE(Elem_xGP_glob(1:3,0:PP_N,0:PP_N,0:PP_NZ,nGlobalElems))
-  Elem_xGP_glob = Elem_xGP
+  NodeCoords_Glob => NodeCoords
 #endif /* USE_MPI */
 
+  ! Now, the root can build the Avg2D mesh
   IF (MPIRoot) THEN
     SDEALLOCATE(CoordsVisu_DG)
     ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG))
@@ -157,54 +193,36 @@ IF (Avg2D) THEN
         IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN ! DG
 #endif
           iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
-          CALL ChangeBasis2D(3,PP_N,NVisu,Vdm_N_NVisu,Elem_xGP_glob(:,:,:,0,iElem),CoordsVisu_DG(:,:,:,0,iElemAvg))
+          CALL ChangeBasis2D(3,NGeo,NVisu   ,Vdm_NGeo_NVisu   ,NodeCoords_Glob(:,:,:,0,iElem),CoordsVisu_DG(:,:,:,0,iElemAvg))
 #if FV_ENABLED
         ELSE ! FV
           iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
-          CALL ChangeBasis2D(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,Elem_xGP_glob(:,:,:,0,iElem),CoordsVisu_FV(:,:,:,0,iElemAvg))
+          CALL ChangeBasis2D(3,NGeo,NVisu_FV,Vdm_NGeo_NVisu_FV,NodeCoords_Glob(:,:,:,0,iElem),CoordsVisu_FV(:,:,:,0,iElemAvg))
         END IF
 #endif
       END IF
     END DO
-    DEALLOCATE(Elem_xGP_glob)
-  ELSE ! MPIRoot
+#if USE_MPI
+    DEALLOCATE(NodeCoords_Glob)
+#endif /*USE_MPI*/
+
+  ! .NOT. MPIRoot
+  ELSE
     ! All other procs will have 0 average elements
     SDEALLOCATE(CoordsVisu_DG)
-    ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG))
+    ALLOCATE(CoordsVisu_DG(3,0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG))
 #if FV_ENABLED
     SDEALLOCATE(CoordsVisu_FV)
     ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV))
 #endif
   END IF ! MPIRoot
-ELSE
-  SDEALLOCATE(CoordsVisu_DG)
-  ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems_DG))
-  DO iElem_DG = 1,nElems_DG
-    iElem = mapDGElemsToAllElems(iElem_DG)
-    ! CALL ChangeBasisVolume(3,PP_N,NVisu,Vdm_N_NVisu,Elem_xGP(:,:,:,:,iElem),CoordsVisu_DG(:,:,:,:,iElem_DG))
-    CALL ChangeBasisVolume(3,NGeo,NVisu,Vdm_N_NVisu,NodeCoords(:,:,:,:,iElem),CoordsVisu_DG(:,:,:,:,iElem_DG))
-  END DO
 
-#if FV_ENABLED
-  IF (hasFV_Elems) THEN
-    SWRITE (*,*) "[MESH] Convert coordinates to visu grid (FV)"
-    ! only NVisu changed, but NVisu_FV is independent of NVisu
-    IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedAvg2D)) RETURN
-    !ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
-    !CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
-    ! convert coords of FV elements
-    SDEALLOCATE(CoordsVisu_FV)
-    ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV))
-    DO iElem_FV = 1,nElems_FV
-      iElem = mapFVElemsToAllElems(iElem_FV)
-      CALL ChangeBasisVolume(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,Elem_xGP(:,:,:,:,iElem),CoordsVisu_FV(:,:,:,:,iElem_FV))
-    END DO
-    SDEALLOCATE(Vdm_N_NVisu_FV)
-  END IF
-#endif
-
+#if !USE_MPI
+  NULLIFY(NodeCoords_Glob )
+#endif /*!USE_MPI*/
 END IF
-SDEALLOCATE(Vdm_N_NVisu)
+
+SDEALLOCATE(Vdm_NGeo_NVisu)
 
 END SUBROUTINE BuildVisuCoords
 
@@ -346,13 +364,25 @@ INTEGER           :: NVisu_k,NVisu_j
 INTEGER           :: fVTKCells!,nVTKCells
 INTEGER           :: iProc
 INTEGER           :: nUniqueNodeHashes
-INTEGER           :: nUniqueNodeHashesProc(0:nProcessors-1),offsetUniqueHashesProc(0:nProcessors-1)
-CHARACTER(LEN=48) :: NodePosChar48
-CHARACTER(LEN=SHA256_LENGTH),ALLOCATABLE :: NodeHash(:,:,:,:),NodeHashGlob(:),unique(:),sorted(:)
-CHARACTER(LEN=SHA256_LENGTH)             :: min_val,max_val
-
+CHARACTER(LEN=20)           :: format
+CHARACTER(LEN=INPUT_LENGTH) :: NodePosChar
+CHARACTER(LEN=SHA256_LENGTH),ALLOCATABLE :: NodeHash(:,:,:,:),NodeHashGlob(:),sorted(:)
+#if USE_MPI
+INTEGER           :: color
+INTEGER,ALLOCATABLE :: nUniqueNodeHashesProc(:),offsetUniqueHashesProc(:)
+INTEGER           :: MPI_COMM_SHARED        =MPI_COMM_NULL !> Communicator on current compute-node
+INTEGER           :: MPI_COMM_LEADERS_SHARED=MPI_COMM_NULL !> Communicator compute-node roots (my_rank_shared=0)
+INTEGER           :: myComputeNodeRank                     !> Rank of current proc on current compute-node
+INTEGER           :: nComputeNodeProcessors                !> Number of procs on current compute-node
+INTEGER           :: nLeaderGroupProcs                     !> Number of nodes
+! Custom data type
+INTEGER           :: MPI_LENGTH(1),MPI_TYPE(1),MPI_STRUCT
+INTEGER(KIND=MPI_ADDRESS_KIND) :: MPI_DISPLACEMENT(1)
+! CHARACTER(LEN=SHA256_LENGTH)   :: MPI_SIZE
+#endif
 !=================================================================================================================================
 
+SWRITE(UNIT_stdOut,'(A,I0)',ADVANCE='NO') ' Determing number of unique visu nodes: '
 SELECT CASE(dim)
   CASE(3)
     NVisu_k = NVisu
@@ -382,89 +412,124 @@ DO iElem = 1,nElems
   DO k = 0,NVisu_k!,(DGFV+1)
     DO j = 0,NVisu_j!,(DGFV+1)
       DO i = 0,NVisu!,(DGFV+1)
-        ! Just write the coordinates into the string without space
-        WRITE(NodePosChar48,"(3E16.10)") CoordsVisu_DG(1:3,i,j,k,iElem)
+      ! Just write the coordinates into the string without space. Padding is added if required
+        WRITE(format,'(A,I0,A,I0)') '3E',INT(INPUT_LENGTH/3.),'.',INT((INPUT_LENGTH/3.)-6)
+        WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i,j,k,iElem)
 
         ! Hash the string (strictly we don't even need to hash it?)
         !> SHA256 is definitely overkill but Mikael Leetmaa provided a library
         !> Keep it allocated because we need it again when assigning unique global node IDs
-        NodeHash(i,j,k,iElem) = SHA256(NodePosChar48)
+        NodeHash(i,j,k,iElem) = SHA256(NodePosChar)
       END DO
     END DO
   END DO
 END DO
 
-! Sort the NodeHash array
-ALLOCATE(unique((nElems)*(2**dim)*fVTKCells))
-min_val = MINVAL(NodeHash)
-max_val = MAXVAL(NodeHash)
-
-! Initialize
-nUniqueNodeHashes         = 1
-unique(nUniqueNodeHashes) = min_val
-
-DO WHILE(LLT(min_val,max_val))
-  nUniqueNodeHashes = nUniqueNodeHashes+1
-  min_val = minval(NodeHash, mask=LGT(NodeHash,min_val))
-  unique(nUniqueNodeHashes) = min_val
-END DO
-
-! Write the sorted values back
-ALLOCATE(sorted(nUniqueNodeHashes))
-sorted = unique(1:nUniqueNodeHashes)
-DEALLOCATE(unique)
+CALL Unique(RESHAPE(NodeHash,(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)),sorted,nUniqueNodeHashes)
 
 #if USE_MPI
-! Communicate the size of the unique nodes to the root
-CALL MPI_GATHER(nUniqueNodeHashes,1,MPI_INTEGER,nUniqueNodeHashesProc,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
-! CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-! Allocate recv buffer on the root
-IF (MPIRoot) THEN
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+! Split a compute-node communicator
+CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_FLEXI,MPI_COMM_TYPE_SHARED,0,MPI_INFO_NULL,MPI_COMM_SHARED,IERROR)
+! Find my rank on the shared communicator, comm size and proc name
+CALL MPI_COMM_RANK(MPI_COMM_SHARED, myComputeNodeRank,IERROR)
+CALL MPI_COMM_SIZE(MPI_COMM_SHARED, nComputeNodeProcessors,IERROR)
+! now split global communicator into small group leaders and the others
+color = MERGE(101,MPI_UNDEFINED,myComputeNodeRank.EQ.0)
+CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,0,MPI_COMM_LEADERS_SHARED,IERROR)
+IF(myComputeNodeRank.EQ.0)THEN
+  CALL MPI_COMM_SIZE(MPI_COMM_LEADERS_SHARED,nLeaderGroupProcs,IERROR)
+END IF
+
+! Create a custom datatype to help MPI with the array size
+MPI_LENGTH       = SHA256_LENGTH
+MPI_DISPLACEMENT = 0  ! 0*SIZEOF(MPI_SIZE)
+MPI_TYPE         = MPI_CHARACTER
+CALL MPI_TYPE_CREATE_STRUCT(1,MPI_LENGTH,MPI_DISPLACEMENT,MPI_TYPE,MPI_STRUCT,iError)
+CALL MPI_TYPE_COMMIT(MPI_STRUCT,iError)
+
+! Stricly only root needs it, but otherwise MPI_GATHERV would need dummy arrays
+ALLOCATE(nUniqueNodeHashesProc (0:nComputeNodeProcessors-1))
+ALLOCATE(offsetUniqueHashesProc(0:nComputeNodeProcessors-1))
+
+! Communicate the size of the unique nodes to the compute-node root
+CALL MPI_ALLGATHER(nUniqueNodeHashes,1,MPI_INTEGER,nUniqueNodeHashesProc,1,MPI_INTEGER,MPI_COMM_SHARED,iError)
+
+! Allocate recv buffer
   ALLOCATE(NodeHashGlob(SUM(nUniqueNodeHashesProc)))
   ! Calculate offsets for procs
   offsetUniqueHashesProc(0) = 0
-  DO iProc = 1,nProcessors-1
+DO iProc = 1,nComputeNodeProcessors-1
     offsetUniqueHashesProc(iProc) = nUniqueNodeHashesProc(iProc-1) + offsetUniqueHashesProc(iProc-1)
   END DO
-END IF
 
-CALL MPI_GATHERV(sorted                ,nUniqueNodeHashes    *SHA256_LENGTH                                     ,MPI_CHARACTER ,&
-                 NodeHashGlob          ,nUniqueNodeHashesProc*SHA256_LENGTH,offsetUniqueHashesProc*SHA256_LENGTH,MPI_CHARACTER ,&
-                 0,MPI_COMM_FLEXI,iError)
+CALL MPI_GATHERV(sorted                ,nUniqueNodeHashes                           ,MPI_STRUCT ,&
+                 NodeHashGlob          ,nUniqueNodeHashesProc,offsetUniqueHashesProc,MPI_STRUCT ,&
+                 0,MPI_COMM_SHARED,iError)
+DEALLOCATE(sorted)
 
-! Root sort the unique hashes from the nodes
-IF (MPIRoot) THEN
-  ALLOCATE(unique(SUM(nUniqueNodeHashesProc)))
-  min_val = MINVAL(NodeHashGlob)
-  max_val = MAXVAL(NodeHashGlob)
+! Compute-node roots sort the unique hashes from the nodes
+IF (nLeaderGroupProcs.GT.1 .AND. myComputeNodeRank.EQ.0) THEN
+  ! CALL RemoveDuplicates(NodeHashGlob,sorted,nUniqueNodeHashes)
+  CALL Unique(NodeHashGlob,sorted,nUniqueNodeHashes)
 
-  nUniqueNodeHashes         = 1
-  unique(nUniqueNodeHashes) = min_val
-  DO WHILE(LLT(min_val,max_val))
-    nUniqueNodeHashes = nUniqueNodeHashes+1
-    min_val = minval(NodeHashGlob, mask=LGT(NodeHashGlob,min_val))
-    unique(nUniqueNodeHashes) = min_val
-  END DO
+  ! Stricly only root needs it, but otherwise MPI_GATHERV would need dummy arrays
+  DEALLOCATE(nUniqueNodeHashesProc)
+  DEALLOCATE(offsetUniqueHashesProc)
+  ALLOCATE(nUniqueNodeHashesProc (0:nLeaderGroupProcs-1))
+  ALLOCATE(offsetUniqueHashesProc(0:nLeaderGroupProcs-1))
+
+  ! Communicate the size of the unique nodes to the compute-node root
+  CALL MPI_ALLGATHER(nUniqueNodeHashes,1,MPI_INTEGER,nUniqueNodeHashesProc,1,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,iError)
+
+  ! Allocate recv buffer
   DEALLOCATE(NodeHashGlob)
+  ALLOCATE(NodeHashGlob(SUM(nUniqueNodeHashesProc)))
+  ! Calculate offsets for procs
+  offsetUniqueHashesProc(0) = 0
+  DO iProc = 1,nLeaderGroupProcs-1
+    offsetUniqueHashesProc(iProc) = nUniqueNodeHashesProc(iProc-1) + offsetUniqueHashesProc(iProc-1)
+  END DO
+
+  CALL MPI_GATHERV(sorted                ,nUniqueNodeHashes                           ,MPI_STRUCT ,&
+                   NodeHashGlob          ,nUniqueNodeHashesProc,offsetUniqueHashesProc,MPI_STRUCT ,&
+                   0,MPI_COMM_LEADERS_SHARED,iError)
+  DEALLOCATE(sorted)
 END IF
+
+SDEALLOCATE(nUniqueNodeHashesProc)
+SDEALLOCATE(offsetUniqueHashesProc)
+
+! Finally, the actual root sorts the array one last time
+! IF (MPIRoot) CALL RemoveDuplicates(NodeHashGlob,sorted,nUniqueNodeHashes)
+IF (MPIRoot) CALL Unique(NodeHashGlob,sorted,nUniqueNodeHashes)
 
 ! Send the information back to the procs
-SWRITE(UNIT_stdOut,'(A,I0)') ' Number of unique visu nodes: ',nUniqueNodeHashes
 CALL MPI_BCAST(nUniqueNodeHashes,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+
+! Make sure every proc has an array to recv
+SDEALLOCATE(NodeHashGlob)
 ALLOCATE(NodeHashGlob(nUniqueNodeHashes))
 
 ! Write the sorted values back
-IF (MPIRoot) THEN
-  NodeHashGlob = unique(1:nUniqueNodeHashes)
-  DEALLOCATE(unique)
-END IF
+IF (MPIRoot) NodeHashGlob = sorted
+SDEALLOCATE(sorted)
 
-CALL MPI_BCAST(NodeHashGlob,nUniqueNodeHashes*SHA256_LENGTH,MPI_CHARACTER,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(NodeHashGlob,nUniqueNodeHashes,MPI_STRUCT,0,MPI_COMM_FLEXI,iError)
+
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+IF (MPI_COMM_SHARED        .NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_SHARED        ,iError)
+IF (MPI_COMM_LEADERS_SHARED.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS_SHARED,iError)
+MPI_COMM_SHARED         = MPI_COMM_NULL
+MPI_COMM_LEADERS_SHARED = MPI_COMM_NULL
+CALL MPI_TYPE_FREE(MPI_STRUCT,iError)
+
+! not MPI case
 #else
 ALLOCATE(NodeHashGlob(nUniqueNodeHashes))
 NodeHashGlob = sorted
-#endif
 DEALLOCATE(sorted)
+#endif
 
 ALLOCATE(GlobalNodeIDs((nVisu+1)**dim*nElems))
 GlobalNodeIDs = -1
@@ -476,11 +541,12 @@ DO iElem = 1,nElems
     DO j = 0,NVisu_j!,(DGFV+1)
       DO i = 0,NVisu!,(DGFV+1)
         NodeID = NodeID + 1
-        GlobalNodeIDs(NodeID) = FINDLOC(NodeHashGlob,NodeHash(i,j,k,iElem),1)
+        GlobalNodeIDs(NodeID) = BinarySearch(NodeHashGlob,NodeHash(i,j,k,iElem))
       END DO
     END DO
   END DO
 END DO
+SWRITE(UNIT_stdOut,'(I0)') nUniqueNodeHashes
 
 DEALLOCATE(NodeHash)
 DEALLOCATE(NodeHashGlob)
@@ -607,10 +673,131 @@ CALL FinalizeParameters()
 END SUBROUTINE VisualizeMesh
 
 
-#if GCC_VERSION < 100000
-PURE FUNCTION FINDLOC(Array,Value,Dim)
+#if !FV_ENABLED
+!==================================================================================================================================
+!> Fast recursive sorting algorithm for integer arrays
+!==================================================================================================================================
+RECURSIVE SUBROUTINE MergeSort(A,nTotal,StrLength)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nTotal    !< size of array to be sorted
+INTEGER,INTENT(IN)             :: StrLength !< length of character string
+CHARACTER(LEN=StrLength),INTENT(INOUT) :: A(nTotal) !< array to be sorted
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                  :: nA,nB
+CHARACTER(LEN=StrLength) :: tmp
+!==================================================================================================================================
+
+! consider one element as sorted
+IF (nTotal.LT.2) RETURN
+! on the lowest sort level, performing sorting
+IF (nTotal.EQ.2) THEN
+  IF (A(1).GT.A(2)) THEN
+    tmp  = A(1)
+    A(1) = A(2)
+    A(2) = tmp
+  END IF
+  RETURN
+END IF
+! higher levels split the array recursively
+nA = (nTotal+1)/2
+CALL MergeSort(A,nA,StrLength)
+nB = nTotal-nA
+CALL MergeSort(A(nA+1:nTotal),nB,StrLength)
+! Performed first on lowest level
+IF (A(nA).GT.A(nA+1)) CALL MergeRoutine(A,nA,nB,StrLength)
+
+END SUBROUTINE MergeSort
+
+
+!==================================================================================================================================
+!> Merge subarrays (part of mergesort)
+!==================================================================================================================================
+SUBROUTINE MergeRoutine(A,nA,nB,StrLength)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nA        !< number of items in A
+INTEGER,INTENT(IN)             :: nB        !< number of items in B
+INTEGER,INTENT(IN)             :: StrLength !< length of character string
+CHARACTER(LEN=StrLength),INTENT(INOUT) :: A(nA+nB)  !< subarray to be merged
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                  :: i,j,k
+CHARACTER(LEN=StrLength) :: part1(nA),part2(nB)
+!==================================================================================================================================
+
+part1(1:nA) = A(1:nA)
+part2(1:nB) = A(nA+1:nA+nB)
+i=1; j=1; k=1;
+
+DO WHILE ((i.LE.nA).AND.(j.LE.nB))
+  IF (part1(i).LE.part2(j)) THEN
+    A(k) = part1(i)
+    i    = i+1
+  ELSE
+    A(k) = part2(j)
+    j    = j+1
+  ENDIF
+  k = k+1
+END DO
+
+j = nA-i
+A(k:k+nA-i) = part1(i:nA)
+
+END SUBROUTINE MergeRoutine
+
+
 !===================================================================================================================================
-!> Implements a subset of the intrinsic FINDLOC function for Fortran < 2008
+!> Creates a uniques array
+!> Modified version of code published at: https://stackoverflow.com/questions/44198212/a-fortran-equivalent-to-unique
+!===================================================================================================================================
+SUBROUTINE Unique(array,sorted,nUnique)
+!===================================================================================================================================
+! MODULES                                                                                                                          !
+! USE MOD_Globals
+!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=SHA256_LENGTH),INTENT(IN)                :: array(:)    !< array to be made unique
+CHARACTER(LEN=SHA256_LENGTH),INTENT(INOUT),ALLOCATABLE :: sorted(:)    !< array with unique entries
+INTEGER,INTENT(OUT)                                    :: nUnique
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=SHA256_LENGTH),ALLOCATABLE :: work(:)
+LOGICAL,ALLOCATABLE :: mask(:)
+INTEGER             :: N
+!===================================================================================================================================
+
+! sort
+N    = SIZE(array)
+work = array
+CALL MergeSort(work,N,StrLength=SHA256_LENGTH)
+
+! cull duplicate indices
+ALLOCATE(mask(N));
+mask = .FALSE.
+mask(1:N-1) = (work(1:N-1) .EQ. work(2:N))
+sorted  = PACK(work,.NOT.mask)
+nUnique = SIZE(sorted)
+
+! check if array was correctly sorted
+! DO N = 2,nUnique
+!   IF (LGT(sorted(N-1),sorted(N))) CALL ABORT(__STAMP__,'Error during MergeSort')
+! END DO
+
+END SUBROUTINE Unique
+
+
+PURE FUNCTION BinarySearch(Array,Value) RESULT (i)
+!===================================================================================================================================
+!> Implements a binary search algorithm
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -618,27 +805,32 @@ PURE FUNCTION FINDLOC(Array,Value,Dim)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-CHARACTER(LEN=SHA256_LENGTH),INTENT(IN) :: Array(:)
-CHARACTER(LEN=SHA256_LENGTH),INTENT(IN) :: Value
-INTEGER,INTENT(IN)                      :: Dim
+CHARACTER(LEN=SHA256_LENGTH),INTENT(IN) :: array(:)
+CHARACTER(LEN=SHA256_LENGTH),INTENT(IN) :: value
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
-INTEGER                        :: FINDLOC
+INTEGER                        :: i
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iVar
+INTEGER                        :: i0,i1
 !===================================================================================================================================
-DO iVar = 1,SIZE(ARRAY,1)
-  IF (Array(iVar).EQ.Value) THEN
-    FINDLOC = iVar
+
+i  = -1
+i0 = 1
+i1 = SIZE(array)
+
+DO WHILE(i0 .LE. i1)
+  i = (i1 + i0) / 2
+  IF (array(i) .GT. value) THEN
+    i1 = i - 1
+  ELSE IF (array(i) .LT. value) THEN
+    i0 = i + 1
+  ELSE
     RETURN
   END IF
 END DO
 
-! Return error code -1 if the value was not found
-FINDLOC = -1
-
-END FUNCTION FINDLOC
-#endif /*GCC_VERSION < 100000*/
+END FUNCTION BinarySearch
+#endif /*!FV_ENABLED*/
 
 END MODULE MOD_Posti_VisuMesh

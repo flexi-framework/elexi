@@ -36,6 +36,7 @@ TYPE, BIND(C) :: CARRAY
 END TYPE CARRAY
 
 INTEGER,PARAMETER :: SHA256_LENGTH=64
+INTEGER,PARAMETER :: INPUT_LENGTH =192
 #endif
 
 INTERFACE BuildVisuCoords
@@ -362,12 +363,25 @@ INTEGER           :: NVisu_k,NVisu_j
 INTEGER           :: fVTKCells!,nVTKCells
 INTEGER           :: iProc
 INTEGER           :: nUniqueNodeHashes
-INTEGER           :: nUniqueNodeHashesProc(0:nProcessors-1),offsetUniqueHashesProc(0:nProcessors-1)
-CHARACTER(LEN=48) :: NodePosChar48
-CHARACTER(LEN=SHA256_LENGTH),ALLOCATABLE :: NodeHash(:,:,:,:),NodeHashGlob(:),unique(:),sorted(:)
-CHARACTER(LEN=SHA256_LENGTH)             :: min_val,max_val
+CHARACTER(LEN=20)           :: format
+CHARACTER(LEN=INPUT_LENGTH) :: NodePosChar
+CHARACTER(LEN=SHA256_LENGTH),ALLOCATABLE :: NodeHash(:,:,:,:),NodeHashGlob(:),sorted(:)
+#if USE_MPI
+INTEGER           :: color
+INTEGER,ALLOCATABLE :: nUniqueNodeHashesProc(:),offsetUniqueHashesProc(:)
+INTEGER           :: MPI_COMM_SHARED        =MPI_COMM_NULL !> Communicator on current compute-node
+INTEGER           :: MPI_COMM_LEADERS_SHARED=MPI_COMM_NULL !> Communicator compute-node roots (my_rank_shared=0)
+INTEGER           :: myComputeNodeRank                     !> Rank of current proc on current compute-node
+INTEGER           :: nComputeNodeProcessors                !> Number of procs on current compute-node
+INTEGER           :: nLeaderGroupProcs                     !> Number of nodes
+! Custom data type
+INTEGER           :: MPI_LENGTH(1),MPI_TYPE(1),MPI_STRUCT
+INTEGER(KIND=MPI_ADDRESS_KIND) :: MPI_DISPLACEMENT(1)
+! CHARACTER(LEN=SHA256_LENGTH)   :: MPI_SIZE
+#endif
 !=================================================================================================================================
 
+SWRITE(UNIT_stdOut,'(A,I0)',ADVANCE='NO') ' Determing number of unique visu nodes: '
 SELECT CASE(dim)
   CASE(3)
     NVisu_k = NVisu
@@ -397,109 +411,124 @@ DO iElem = 1,nElems
   DO k = 0,NVisu_k!,(DGFV+1)
     DO j = 0,NVisu_j!,(DGFV+1)
       DO i = 0,NVisu!,(DGFV+1)
-        ! Just write the coordinates into the string without space
-        WRITE(NodePosChar48,"(3E16.10)") CoordsVisu_DG(1:3,i,j,k,iElem)
+      ! Just write the coordinates into the string without space. Padding is added if required
+        WRITE(format,'(A,I0,A,I0)') '3E',INT(INPUT_LENGTH/3.),'.',INT((INPUT_LENGTH/3.)-6)
+        WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i,j,k,iElem)
 
         ! Hash the string (strictly we don't even need to hash it?)
         !> SHA256 is definitely overkill but Mikael Leetmaa provided a library
         !> Keep it allocated because we need it again when assigning unique global node IDs
-        NodeHash(i,j,k,iElem) = SHA256(NodePosChar48)
+        NodeHash(i,j,k,iElem) = SHA256(NodePosChar)
       END DO
     END DO
   END DO
 END DO
 
-
-! Sort the NodeHash array
-ALLOCATE(unique((nElems)*(2**dim)*fVTKCells))
-#if GCC_VERSION < 80000
-min_val = MINVAL_CHAR(RESHAPE(NodeHash,(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)))
-max_val = MAXVAL_CHAR(RESHAPE(NodeHash,(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)))
-#else
-min_val = MINVAL(NodeHash)
-max_val = MAXVAL(NodeHash)
-#endif /*GCC_VERSION < 80000*/
-
-! Initialize
-nUniqueNodeHashes         = 1
-unique(nUniqueNodeHashes) = min_val
-
-DO WHILE(LLT(min_val,max_val))
-  nUniqueNodeHashes = nUniqueNodeHashes+1
-#if GCC_VERSION < 80000
-  min_val = MINVAL_CHAR(RESHAPE(NodeHash,(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)) &
-                  ,mask=RESHAPE(LGT(NodeHash,min_val),(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)))
-#else
-  min_val = MINVAL(             NodeHash,mask=LGT(NodeHash,min_val))
-#endif /*GCC_VERSION < 80000*/
-  unique(nUniqueNodeHashes) = min_val
-END DO
-
-! Write the sorted values back
-ALLOCATE(sorted(nUniqueNodeHashes))
-sorted = unique(1:nUniqueNodeHashes)
-DEALLOCATE(unique)
+CALL Unique(RESHAPE(NodeHash,(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)),sorted,nUniqueNodeHashes)
 
 #if USE_MPI
-! Communicate the size of the unique nodes to the root
-CALL MPI_GATHER(nUniqueNodeHashes,1,MPI_INTEGER,nUniqueNodeHashesProc,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
-! CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-! Allocate recv buffer on the root
-IF (MPIRoot) THEN
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+! Split a compute-node communicator
+CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_FLEXI,MPI_COMM_TYPE_SHARED,0,MPI_INFO_NULL,MPI_COMM_SHARED,IERROR)
+! Find my rank on the shared communicator, comm size and proc name
+CALL MPI_COMM_RANK(MPI_COMM_SHARED, myComputeNodeRank,IERROR)
+CALL MPI_COMM_SIZE(MPI_COMM_SHARED, nComputeNodeProcessors,IERROR)
+! now split global communicator into small group leaders and the others
+color = MERGE(101,MPI_UNDEFINED,myComputeNodeRank.EQ.0)
+CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,0,MPI_COMM_LEADERS_SHARED,IERROR)
+IF(myComputeNodeRank.EQ.0)THEN
+  CALL MPI_COMM_SIZE(MPI_COMM_LEADERS_SHARED,nLeaderGroupProcs,IERROR)
+END IF
+
+! Create a custom datatype to help MPI with the array size
+MPI_LENGTH       = SHA256_LENGTH
+MPI_DISPLACEMENT = 0  ! 0*SIZEOF(MPI_SIZE)
+MPI_TYPE         = MPI_CHARACTER
+CALL MPI_TYPE_CREATE_STRUCT(1,MPI_LENGTH,MPI_DISPLACEMENT,MPI_TYPE,MPI_STRUCT,iError)
+CALL MPI_TYPE_COMMIT(MPI_STRUCT,iError)
+
+! Stricly only root needs it, but otherwise MPI_GATHERV would need dummy arrays
+ALLOCATE(nUniqueNodeHashesProc (0:nComputeNodeProcessors-1))
+ALLOCATE(offsetUniqueHashesProc(0:nComputeNodeProcessors-1))
+
+! Communicate the size of the unique nodes to the compute-node root
+CALL MPI_ALLGATHER(nUniqueNodeHashes,1,MPI_INTEGER,nUniqueNodeHashesProc,1,MPI_INTEGER,MPI_COMM_SHARED,iError)
+
+! Allocate recv buffer
   ALLOCATE(NodeHashGlob(SUM(nUniqueNodeHashesProc)))
   ! Calculate offsets for procs
   offsetUniqueHashesProc(0) = 0
-  DO iProc = 1,nProcessors-1
+DO iProc = 1,nComputeNodeProcessors-1
     offsetUniqueHashesProc(iProc) = nUniqueNodeHashesProc(iProc-1) + offsetUniqueHashesProc(iProc-1)
   END DO
-END IF
 
-CALL MPI_GATHERV(sorted                ,nUniqueNodeHashes    *SHA256_LENGTH                                     ,MPI_CHARACTER ,&
-                 NodeHashGlob          ,nUniqueNodeHashesProc*SHA256_LENGTH,offsetUniqueHashesProc*SHA256_LENGTH,MPI_CHARACTER ,&
-                 0,MPI_COMM_FLEXI,iError)
+CALL MPI_GATHERV(sorted                ,nUniqueNodeHashes                           ,MPI_STRUCT ,&
+                 NodeHashGlob          ,nUniqueNodeHashesProc,offsetUniqueHashesProc,MPI_STRUCT ,&
+                 0,MPI_COMM_SHARED,iError)
+DEALLOCATE(sorted)
 
-! Root sort the unique hashes from the nodes
-IF (MPIRoot) THEN
-  ALLOCATE(unique(SUM(nUniqueNodeHashesProc)))
-#if GCC_VERSION < 80000
-  min_val = MINVAL_CHAR(NodeHashGlob)
-  max_val = MAXVAL_CHAR(NodeHashGlob)
-#else
-  min_val = MINVAL(NodeHashGlob)
-  max_val = MAXVAL(NodeHashGlob)
-#endif /*GCC_VERSION < 80000*/
+! Compute-node roots sort the unique hashes from the nodes
+IF (nLeaderGroupProcs.GT.1 .AND. myComputeNodeRank.EQ.0) THEN
+  ! CALL RemoveDuplicates(NodeHashGlob,sorted,nUniqueNodeHashes)
+  CALL Unique(NodeHashGlob,sorted,nUniqueNodeHashes)
 
-  nUniqueNodeHashes         = 1
-  unique(nUniqueNodeHashes) = min_val
-  DO WHILE(LLT(min_val,max_val))
-    nUniqueNodeHashes = nUniqueNodeHashes+1
-#if GCC_VERSION < 80000
-    min_val = MINVAL_CHAR(NodeHashGlob, mask=LGT(NodeHashGlob,min_val))
-#else
-    min_val = MINVAL(     NodeHashGlob, mask=LGT(NodeHashGlob,min_val))
-#endif /*GCC_VERSION < 80000*/
-    unique(nUniqueNodeHashes) = min_val
-  END DO
+  ! Stricly only root needs it, but otherwise MPI_GATHERV would need dummy arrays
+  DEALLOCATE(nUniqueNodeHashesProc)
+  DEALLOCATE(offsetUniqueHashesProc)
+  ALLOCATE(nUniqueNodeHashesProc (0:nLeaderGroupProcs-1))
+  ALLOCATE(offsetUniqueHashesProc(0:nLeaderGroupProcs-1))
+
+  ! Communicate the size of the unique nodes to the compute-node root
+  CALL MPI_ALLGATHER(nUniqueNodeHashes,1,MPI_INTEGER,nUniqueNodeHashesProc,1,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,iError)
+
+  ! Allocate recv buffer
   DEALLOCATE(NodeHashGlob)
+  ALLOCATE(NodeHashGlob(SUM(nUniqueNodeHashesProc)))
+  ! Calculate offsets for procs
+  offsetUniqueHashesProc(0) = 0
+  DO iProc = 1,nLeaderGroupProcs-1
+    offsetUniqueHashesProc(iProc) = nUniqueNodeHashesProc(iProc-1) + offsetUniqueHashesProc(iProc-1)
+  END DO
+
+  CALL MPI_GATHERV(sorted                ,nUniqueNodeHashes                           ,MPI_STRUCT ,&
+                   NodeHashGlob          ,nUniqueNodeHashesProc,offsetUniqueHashesProc,MPI_STRUCT ,&
+                   0,MPI_COMM_LEADERS_SHARED,iError)
+  DEALLOCATE(sorted)
 END IF
+
+SDEALLOCATE(nUniqueNodeHashesProc)
+SDEALLOCATE(offsetUniqueHashesProc)
+
+! Finally, the actual root sorts the array one last time
+! IF (MPIRoot) CALL RemoveDuplicates(NodeHashGlob,sorted,nUniqueNodeHashes)
+IF (MPIRoot) CALL Unique(NodeHashGlob,sorted,nUniqueNodeHashes)
 
 ! Send the information back to the procs
-SWRITE(UNIT_stdOut,'(A,I0)') ' Number of unique visu nodes: ',nUniqueNodeHashes
 CALL MPI_BCAST(nUniqueNodeHashes,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+
+! Make sure every proc has an array to recv
+SDEALLOCATE(NodeHashGlob)
 ALLOCATE(NodeHashGlob(nUniqueNodeHashes))
 
 ! Write the sorted values back
-IF (MPIRoot) THEN
-  NodeHashGlob = unique(1:nUniqueNodeHashes)
-  DEALLOCATE(unique)
-END IF
+IF (MPIRoot) NodeHashGlob = sorted
+SDEALLOCATE(sorted)
 
-CALL MPI_BCAST(NodeHashGlob,nUniqueNodeHashes*SHA256_LENGTH,MPI_CHARACTER,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(NodeHashGlob,nUniqueNodeHashes,MPI_STRUCT,0,MPI_COMM_FLEXI,iError)
+
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+IF (MPI_COMM_SHARED        .NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_SHARED        ,iError)
+IF (MPI_COMM_LEADERS_SHARED.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS_SHARED,iError)
+MPI_COMM_SHARED         = MPI_COMM_NULL
+MPI_COMM_LEADERS_SHARED = MPI_COMM_NULL
+CALL MPI_TYPE_FREE(MPI_STRUCT,iError)
+
+! not MPI case
 #else
 ALLOCATE(NodeHashGlob(nUniqueNodeHashes))
 NodeHashGlob = sorted
-#endif
 DEALLOCATE(sorted)
+#endif
 
 ALLOCATE(GlobalNodeIDs((nVisu+1)**dim*nElems))
 GlobalNodeIDs = -1
@@ -511,11 +540,12 @@ DO iElem = 1,nElems
     DO j = 0,NVisu_j!,(DGFV+1)
       DO i = 0,NVisu!,(DGFV+1)
         NodeID = NodeID + 1
-        GlobalNodeIDs(NodeID) = FINDLOC(NodeHashGlob,NodeHash(i,j,k,iElem),1)
+        GlobalNodeIDs(NodeID) = BinarySearch(NodeHashGlob,NodeHash(i,j,k,iElem))
       END DO
     END DO
   END DO
 END DO
+SWRITE(UNIT_stdOut,'(I0)') nUniqueNodeHashes
 
 DEALLOCATE(NodeHash)
 DEALLOCATE(NodeHashGlob)
@@ -643,44 +673,130 @@ END SUBROUTINE VisualizeMesh
 
 
 #if !FV_ENABLED
-#if GCC_VERSION < 80000
-PURE FUNCTION MINVAL_CHAR(array,mask)
-!===================================================================================================================================
-!> Implements the character subset of the intrinsic MINVAL function for Fortran < 2003
-!===================================================================================================================================
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-! IMPLICIT VARIABLE HANDLING
+!==================================================================================================================================
+!> Fast recursive sorting algorithm for integer arrays
+!==================================================================================================================================
+RECURSIVE SUBROUTINE MergeSort(A,nTotal,StrLength)
+! MODULES
 IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT VARIABLES
-CHARACTER(LEN=SHA256_LENGTH),INTENT(IN)  :: array(:)
-LOGICAL,INTENT(IN),OPTIONAL              :: mask(:)
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-CHARACTER(LEN=SHA256_LENGTH)             :: MINVAL_CHAR
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nTotal    !< size of array to be sorted
+INTEGER,INTENT(IN)             :: StrLength !< length of character string
+CHARACTER(LEN=StrLength),INTENT(INOUT) :: A(nTotal) !< array to be sorted
+!----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                      :: iVar
-!===================================================================================================================================
+INTEGER                  :: nA,nB
+CHARACTER(LEN=StrLength) :: tmp
+!==================================================================================================================================
 
-MINVAL_CHAR = Array(1)
-DO iVar = 2,SIZE(Array)
-  IF (PRESENT(mask)) THEN
-    IF (.NOT.mask(iVar)) CYCLE
+! consider one element as sorted
+IF (nTotal.LT.2) RETURN
+! on the lowest sort level, performing sorting
+IF (nTotal.EQ.2) THEN
+  IF (A(1).GT.A(2)) THEN
+    tmp  = A(1)
+    A(1) = A(2)
+    A(2) = tmp
   END IF
+  RETURN
+END IF
+! higher levels split the array recursively
+nA = (nTotal+1)/2
+CALL MergeSort(A,nA,StrLength)
+nB = nTotal-nA
+CALL MergeSort(A(nA+1:nTotal),nB,StrLength)
+! Performed first on lowest level
+IF (A(nA).GT.A(nA+1)) CALL MergeRoutine(A,nA,nB,StrLength)
 
-  IF (LLT(Array(iVar),MINVAL_CHAR)) THEN
-    MINVAL_CHAR = Array(iVar)
-  END IF
+END SUBROUTINE MergeSort
+
+
+!==================================================================================================================================
+!> Merge subarrays (part of mergesort)
+!==================================================================================================================================
+SUBROUTINE MergeRoutine(A,nA,nB,StrLength)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nA        !< number of items in A
+INTEGER,INTENT(IN)             :: nB        !< number of items in B
+INTEGER,INTENT(IN)             :: StrLength !< length of character string
+CHARACTER(LEN=StrLength),INTENT(INOUT) :: A(nA+nB)  !< subarray to be merged
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                  :: i,j,k
+CHARACTER(LEN=StrLength) :: part1(nA),part2(nB)
+!==================================================================================================================================
+
+part1(1:nA) = A(1:nA)
+part2(1:nB) = A(nA+1:nA+nB)
+i=1; j=1; k=1;
+
+DO WHILE ((i.LE.nA).AND.(j.LE.nB))
+  IF (part1(i).LE.part2(j)) THEN
+    A(k) = part1(i)
+    i    = i+1
+  ELSE
+    A(k) = part2(j)
+    j    = j+1
+  ENDIF
+  k = k+1
 END DO
 
-END FUNCTION MINVAL_CHAR
+j = nA-i
+A(k:k+nA-i) = part1(i:nA)
+
+END SUBROUTINE MergeRoutine
 
 
-PURE FUNCTION MAXVAL_CHAR(array,mask)
 !===================================================================================================================================
-!> Implements the character subset of the intrinsic MAXVAL function for Fortran < 2003
+!> Creates a uniques array
+!> Modified version of code published at: https://stackoverflow.com/questions/44198212/a-fortran-equivalent-to-unique
+!===================================================================================================================================
+SUBROUTINE Unique(array,sorted,nUnique)
+!===================================================================================================================================
+! MODULES                                                                                                                          !
+! USE MOD_Globals
+!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=SHA256_LENGTH),INTENT(IN)                :: array(:)    !< array to be made unique
+CHARACTER(LEN=SHA256_LENGTH),INTENT(INOUT),ALLOCATABLE :: sorted(:)    !< array with unique entries
+INTEGER,INTENT(OUT)                                    :: nUnique
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=SHA256_LENGTH),ALLOCATABLE :: work(:)
+LOGICAL,ALLOCATABLE :: mask(:)
+INTEGER             :: N
+!===================================================================================================================================
+
+! sort
+N    = SIZE(array)
+work = array
+CALL MergeSort(work,N,StrLength=SHA256_LENGTH)
+
+! cull duplicate indices
+ALLOCATE(mask(N));
+mask = .FALSE.
+mask(1:N-1) = (work(1:N-1) .EQ. work(2:N))
+sorted  = PACK(work,.NOT.mask)
+nUnique = SIZE(sorted)
+
+! check if array was correctly sorted
+! DO N = 2,nUnique
+!   IF (LGT(sorted(N-1),sorted(N))) CALL ABORT(__STAMP__,'Error during MergeSort')
+! END DO
+
+END SUBROUTINE Unique
+
+
+PURE FUNCTION BinarySearch(Array,Value) RESULT (i)
+!===================================================================================================================================
+!> Implements a binary search algorithm
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -688,64 +804,32 @@ PURE FUNCTION MAXVAL_CHAR(array,mask)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-CHARACTER(LEN=SHA256_LENGTH),INTENT(IN)  :: array(:)
-LOGICAL,INTENT(IN),OPTIONAL              :: mask(:)
+CHARACTER(LEN=SHA256_LENGTH),INTENT(IN) :: array(:)
+CHARACTER(LEN=SHA256_LENGTH),INTENT(IN) :: value
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
-CHARACTER(LEN=SHA256_LENGTH)             :: MAXVAL_CHAR
+INTEGER                        :: i
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                      :: iVar
+INTEGER                        :: i0,i1
 !===================================================================================================================================
 
-MAXVAL_CHAR = Array(1)
-DO iVar = 2,SIZE(Array)
-  IF (PRESENT(mask)) THEN
-    IF (.NOT.mask(iVar)) CYCLE
-  END IF
+i  = -1
+i0 = 1
+i1 = SIZE(array)
 
-  IF (LGT(Array(iVar),MAXVAL_CHAR)) THEN
-    MAXVAL_CHAR = Array(iVar)
-  END IF
-END DO
-
-END FUNCTION MAXVAL_CHAR
-#endif /*GCC_VERSION < 80000*/
-
-
-#if GCC_VERSION < 100000
-PURE FUNCTION FINDLOC(Array,Value,Dim)
-!===================================================================================================================================
-!> Implements a subset of the intrinsic FINDLOC function for Fortran < 2008
-!===================================================================================================================================
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT VARIABLES
-CHARACTER(LEN=SHA256_LENGTH),INTENT(IN) :: Array(:)
-CHARACTER(LEN=SHA256_LENGTH),INTENT(IN) :: Value
-INTEGER,INTENT(IN)                      :: Dim
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-INTEGER                        :: FINDLOC
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER                        :: iVar
-!===================================================================================================================================
-DO iVar = 1,SIZE(ARRAY,1)
-  IF (Array(iVar).EQ.Value) THEN
-    FINDLOC = iVar
+DO WHILE(i0 .LE. i1)
+  i = (i1 + i0) / 2
+  IF (array(i) .GT. value) THEN
+    i1 = i - 1
+  ELSE IF (array(i) .LT. value) THEN
+    i0 = i + 1
+  ELSE
     RETURN
   END IF
 END DO
 
-! Return error code -1 if the value was not found
-FINDLOC = -1
-
-END FUNCTION FINDLOC
-#endif /*GCC_VERSION < 100000*/
+END FUNCTION BinarySearch
 #endif /*!FV_ENABLED*/
 
 END MODULE MOD_Posti_VisuMesh

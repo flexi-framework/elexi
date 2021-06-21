@@ -82,7 +82,6 @@ visuReader::visuReader()
    // add an observer
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
    this->BCDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
-
 }
 
 /*
@@ -380,6 +379,9 @@ int visuReader::RequestData(
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str());
    __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm,
+#if USE_MPI
+         &this->UseD3,
+#endif
          &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
@@ -462,7 +464,7 @@ int visuReader::RequestData(
    InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &globalnodeidsSurf_FV, &varnamesSurf);
 
 #if USE_MPI
-   if (Controller->GetNumberOfProcesses() > 1) {
+   if (Controller->GetNumberOfProcesses() > 1 && this->UseD3) {
      // Apply D3 filter to create ghost cells
      SWRITE("Distributing data with minimum level of ghost cells : 1");
 

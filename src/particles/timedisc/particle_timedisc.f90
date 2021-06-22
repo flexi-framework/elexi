@@ -63,7 +63,6 @@ SUBROUTINE Particle_TimeStepByEuler(t,dt)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars,                 ONLY: U
-USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_RHS,                ONLY: CalcPartRHS
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
@@ -72,12 +71,12 @@ USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathT
 USE MOD_Particle_Interpolation,  ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
-USE MOD_Particle_Vars,           ONLY: Species, PartSpecies, PartState, Pt, LastPartPos, DelayTime, PEM, PDM
+USE MOD_Particle_Vars,           ONLY: Species, PartSpecies,PartState,Pt,LastPartPos,DelayTime,PEM,PDM
 USE MOD_Particle_SGS,            ONLY: ParticleSGS
 USE MOD_Particle_SGS_Vars,       ONLY: SGSinUse
 USE MOD_Particle_Surface_Flux,   ONLY: ParticleSurfaceflux
 #if USE_MPI
-USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
+USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 USE MOD_Particle_MPI_Vars,       ONLY: PartMPIExchange
 #endif /*MPI*/
 #if USE_RW
@@ -334,26 +333,20 @@ SUBROUTINE Particle_TimeStepByLSERK(t,b_dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Vector
-USE MOD_DG,                      ONLY: DGTimeDerivative_weakForm
-USE MOD_PruettDamping,           ONLY: TempFilterTimeDeriv
-USE MOD_TimeDisc_Vars,           ONLY: nRKStages
-#if FV_ENABLED
-USE MOD_FV,                      ONLY: FV_Switch
-#endif
+USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Part_Tools,              ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze,        ONLY: TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,PartSpecies,Species
+USE MOD_TimeDisc_Vars,           ONLY: nRKStages
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles, MPIParticleSend,MPIParticleRecv,SendNbOfparticles
 #endif /*MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
-USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

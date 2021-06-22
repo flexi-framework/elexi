@@ -69,6 +69,7 @@ USE MOD_Particle_Boundary_Tracking, ONLY:DefineParametersParticleBoundaryTrackin
 USE Mod_Particle_Globals
 USE MOD_Particle_Interpolation,     ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY:DefineParametersParticleMesh
+USE MOD_Particle_Surface_Flux,      ONLY:DefineParametersParticleSurfaceFlux
 USE MOD_Particle_Vars
 #if USE_MPI
 USE MOD_LoadBalance,                ONLY:DefineParametersLoadBalance
@@ -411,44 +412,6 @@ CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-NumberOfExcludeRegi
                                                                 , '0'       , numberedmulti=.TRUE.)
 
 ! Surface Flux
-CALL prms%SetSection("Particle Surface Flux")
-CALL prms%CreateIntOption(          'Part-Species[$]-nSurfacefluxBCs'  ,  'Number of SF emissions'                                 &
-                                                                       , '0'       , numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-BC',  'PartBound to be emitted from'                           &
-                                                                       , '0'       , numberedmulti=.TRUE.)
-CALL prms%CreateStringOption(       'Part-Species[$]-Surfaceflux[$]-velocityDistribution', 'Specifying keyword for velocity distribution\n' //&
-                                                                       ' - constant\n'                                           //&
-                                                                       ' - fluid'                                                  &
-                                                                       , 'constant', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-VeloIC', 'Velocity for inital Data'                            &
-                                                                       , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-VeloIsNormal', 'VeloIC is in Surf-Normal instead of VeloVecIC' &
-                                                                       , '.FALSE.' , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Surfaceflux[$]-VeloVecIC','Normalized velocity vector'                        &
-                                                                       , '0.0 , 0.0 , 0.0', numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-CircularInflow', 'Enables the utilization of a circular'     //&
-                                                                         'region as a surface flux on the selected boundary. '   //&
-                                                                         'Only possible on surfaces, which are in xy, xz, and '  //&
-                                                                         'yz-planes.'                                              &
-                                                                       , '.FALSE.' , numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-axialDir', 'Axial direction of coordinates in polar system'    &
-                                                                                   , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Surfaceflux[$]-origin'  , 'Origin in orth(ogonal?) coordinates of polar system' &
-                                                                      , '0.0 , 0.0', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-rmax', ' Max radius of to-be inserted particles'               &
-                                                                      , '1E21'     , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-rmin', 'Min radius of to-be inserted particles'                &
-                                                                      , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-PartDensity','PartDensity (real particles per m^3) or cub./' //&
-                                                                        'cyl. as alternative  to Part.Emis. in Type1'              &
-                                                                      , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-ReduceNoise','Reduce stat. noise by global calc. of PartIns',  &
-                                                                      '.FALSE.'    , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-AcceptReject',' Perform ARM for skewness of RefMap-positioning'&
-                                                                      , '.TRUE.'   , numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-ARM_DmaxSampleN', 'Number of sample intervals in xi/eta for '//&
-                                                                        'Dmax-calc.'                                               &
-                                                                      , '1'        , numberedmulti=.TRUE.)
 
 CALL prms%CreateLogicalOption(      'OutputSurfaceFluxLinked'         , 'Flag to print the SurfaceFlux-linked Info'                &
                                                                       , '.FALSE.')
@@ -536,11 +499,12 @@ CALL prms%CreateRealOption(         'Part-tWriteRHS'              , 'Output time
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 ! Call every other DefineParametersParticle routine
-CALL DefineParametersParticleMesh()
-CALL DefineParametersParticleInterpolation()
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
 CALL DefineParametersParticleBoundaryTracking()
+CALL DefineParametersParticleInterpolation()
+CALL DefineParametersParticleMesh()
+CALL DefineParametersParticleSurfaceFlux()
 #if USE_MPI
 CALL DefineParametersLoadBalance()
 CALL DefineParametersMPIShared()

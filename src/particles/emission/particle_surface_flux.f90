@@ -23,6 +23,9 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
+INTERFACE DefineParametersParticleSurfaceFlux
+  MODULE PROCEDURE DefineParametersParticleSurfaceFlux
+END INTERFACE
 INTERFACE InitializeParticleSurfaceflux
   MODULE PROCEDURE InitializeParticleSurfaceflux
 END INTERFACE
@@ -31,12 +34,70 @@ INTERFACE ParticleSurfaceflux
   MODULE PROCEDURE ParticleSurfaceflux
 END INTERFACE
 
+PUBLIC :: DefineParametersParticleSurfaceFlux
 PUBLIC :: InitializeParticleSurfaceflux
 PUBLIC :: ParticleSurfaceflux
 !===================================================================================================================================
 
 CONTAINS
 
+!==================================================================================================================================
+!> Define parameters
+!==================================================================================================================================
+SUBROUTINE DefineParametersParticleSurfaceFlux()
+! MODULES
+USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!==================================================================================================================================
+
+CALL prms%SetSection("Particle Surface Flux")
+CALL prms%CreateIntOption(          'Part-Species[$]-nSurfacefluxBCs'  ,  'Number of SF emissions'                                 &
+                                                                       , '0'       , numberedmulti=.TRUE.)
+CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-BC',  'PartBound to be emitted from'                           &
+                                                                       , '0'       , numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(       'Part-Species[$]-Surfaceflux[$]-velocityDistribution', 'Specifying keyword for velocity distribution\n' //&
+                                                                       ' - constant\n'                                           //&
+                                                                       ' - fluid'                                                  &
+                                                                       , 'constant', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-VeloIC', 'Velocity for inital Data'                            &
+                                                                       , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-VeloIsNormal', 'VeloIC is in Surf-Normal instead of VeloVecIC' &
+                                                                       , '.FALSE.' , numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Surfaceflux[$]-VeloVecIC','Normalized velocity vector'                        &
+                                                                       , '0.0 , 0.0 , 0.0', numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-CircularInflow', 'Enables the utilization of a circular '    //&
+                                                                         'region as a surface flux on the selected boundary. '   //&
+                                                                         'Only possible on surfaces, which are in xy, xz, and '  //&
+                                                                         'yz-planes.'                                              &
+                                                                       , '.FALSE.' , numberedmulti=.TRUE.)
+CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-axialDir', 'Axial direction of coordinates in polar system'    &
+                                                                                   , numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Surfaceflux[$]-origin'  , 'Origin in orth(ogonal?) coordinates of polar system' &
+                                                                      , '0.0 , 0.0', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-rmax', ' Max radius of to-be inserted particles'               &
+                                                                      , '1E21'     , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-rmin', 'Min radius of to-be inserted particles'                &
+                                                                      , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-PartDensity','PartDensity (real particles per m^3) or cub./' //&
+                                                                        'cyl. as alternative  to Part.Emis. in Type1'              &
+                                                                      , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Particles-DoPoissonRounding'     , 'Flag to perform Poisson sampling instead of random '    //&
+                                                                        'rounding'                                                 &
+                                                                      , '.FALSE.')
+CALL prms%CreateLogicalOption(      'Particles-DoTimeDepInflow'       , 'Insertion and SurfaceFlux with simple random rounding.' //&
+                                                                        'Linearly ramping of inflow-number-of-particles is only '//&
+                                                                        'possible with PoissonRounding or DoTimeDepInflow'         &
+                                                                      , '.FALSE.')
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-ReduceNoise','Reduce stat. noise by global calc. of PartIns',  &
+                                                                      '.FALSE.'    , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-AcceptReject',' Perform ARM for skewness of RefMap-positioning'&
+                                                                      , '.TRUE.'   , numberedmulti=.TRUE.)
+CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-ARM_DmaxSampleN', 'Number of sample intervals in xi/eta for '//&
+                                                                        'Dmax-calc.'                                               &
+                                                                      , '1'        , numberedmulti=.TRUE.)
+
+END SUBROUTINE DefineParametersParticleSurfaceFlux
 !===================================================================================================================================
 ! Initialize the variables first
 !===================================================================================================================================

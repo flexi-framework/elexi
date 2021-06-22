@@ -146,8 +146,7 @@ CALL MPI_ALLREDUCE(nElems,nComputeNodeElems,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARE
 IF (PerformLoadBalance) THEN
   ! Only update the mapping of element to rank
   ElemInfo_Shared(ELEM_RANK        ,offsetElem+1:offsetElem+nElems) = myRank
-  CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
-  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+  CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
 ELSE
 #endif /*USE_LOADBALANCE*/
   ! allocate shared array for ElemInfo
@@ -157,8 +156,7 @@ ELSE
 
   ElemInfo_Shared(1:ELEMINFOSIZE_H5,offsetElem+1:offsetElem+nElems) = ElemInfo(:,:)
   ElemInfo_Shared(ELEM_RANK        ,offsetElem+1:offsetElem+nElems) = myRank
-  CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
-  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+  CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/
@@ -231,8 +229,7 @@ CALL Allocate_Shared(MPISharedSize,(/SIDEINFOSIZE+1,nNonUniqueGlobalSides/),Side
 CALL MPI_WIN_LOCK_ALL(0,SideInfo_Shared_Win,IERROR)
 SideInfo_Shared(1                :SIDEINFOSIZE_H5,offsetSideID+1:offsetSideID+nSideIDs) = SideInfo(:,:)
 SideInfo_Shared(SIDEINFOSIZE_H5+1:SIDEINFOSIZE+1 ,offsetSideID+1:offsetSideID+nSideIDs) = 0
-CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL BARRIER_AND_SYNC(SideInfo_Shared_Win,MPI_COMM_SHARED)
 #else
 nComputeNodeSides = nSideIDs
 ALLOCATE(SideInfo_Shared(1:SIDEINFOSIZE+1,1:nSideIDs))
@@ -361,7 +358,7 @@ IF (NGeoOverride.LE.0 .AND. (useCurveds.OR.NGeo.EQ.1)) THEN
 !  CALL Allocate_Shared(MPISharedSize,(/nNonUniqueGlobalNodes/),NodeInfo_Shared_Win,NodeInfo_Shared)
 !  CALL MPI_WIN_LOCK_ALL(0,NodeInfo_Shared_Win,IERROR)
 !  NodeInfo_Shared(offsetNodeID+1:offsetNodeID+nNodeIDs) = NodeInfo(:)
-!  CALL MPI_WIN_SYNC(NodeInfo_Shared_Win,IERROR)
+!  CALL BARRIER_AND_SYNC(NodeInfo_Shared_Win,MPI_COMM_SHARED)
 
   MPISharedSize = INT(3*nNonUniqueGlobalNodes,MPI_ADDRESS_KIND)*MPI_DOUBLE
   CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalNodes/),NodeCoords_Shared_Win,NodeCoords_Shared)
@@ -466,9 +463,8 @@ IF (ABS(meshScale-1.).GT.1e-14) THEN
 END IF
 
 #if USE_MPI
-CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(NodeCoords_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win  ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(NodeCoords_Shared_Win,MPI_COMM_SHARED)
 #endif  /*USE_MPI*/
 
 DEALLOCATE(NodeInfo,NodeCoords_indx)
@@ -525,10 +521,9 @@ CALL Allocate_Shared(MPISharedSize,(/3,nGeoTree+1,nGeoTree+1,nGeoTree+1,nNonUniq
 CALL MPI_WIN_LOCK_ALL(0,TreeCoords_Shared_Win,IERROR)
 TreeCoords_Shared(:,:,:,:,offsetTree:offsetTree+nTrees) = TreeCoords(:,:,:,:,:)
 
-CALL MPI_WIN_SYNC(xiMinMax_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(ElemToTree_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(TreeCoords_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL BARRIER_AND_SYNC(xiMinMax_Shared_Win  ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(ElemToTree_Shared_Win,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(TreeCoords_Shared_Win,MPI_COMM_SHARED)
 #else
 nNonUniqueGlobalTrees = nTrees
 ALLOCATE(xiMinMax_Shared(3,2,nElems))
@@ -572,7 +567,6 @@ INTEGER                        :: offsetNodeID!,nNodeIDs
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
-
 ! do not build particle mesh information in posti mode
 IF (postiMode) RETURN
 
@@ -608,8 +602,7 @@ IF (PerformLoadBalance) THEN
   ! Update SideInfo with new information
   SideInfo_Shared(SIDE_NBELEMTYPE,offsetSideID+1:offsetSideID+nSideIDs) = SideInfo_Shared_tmp
   DEALLOCATE(SideInfo_Shared_tmp)
-  CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
-  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+  CALL BARRIER_AND_SYNC(SideInfo_Shared_Win,MPI_COMM_SHARED)
 
   IF (myComputeNodeRank.EQ.0) THEN
     SWRITE(UNIT_stdOut,'(A)',ADVANCE="NO") ' Updating mesh on shared memory...'
@@ -786,9 +779,8 @@ IF (PerformLoadBalance) THEN
 
   ! final sync of all mesh shared arrays
   CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
-  CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
-  CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
-  CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+  CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
+  CALL BARRIER_AND_SYNC(SideInfo_Shared_Win,MPI_COMM_SHARED)
 
   RETURN
 END IF
@@ -803,9 +795,8 @@ END IF
 
 ! Ensure communication for determination of SIDE_LOCALID
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
-CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(SideInfo_Shared_Win,MPI_COMM_SHARED)
 
 ! calculate all offsets
 FirstElemInd = offsetElem+1
@@ -870,8 +861,7 @@ END DO
 
 #if USE_MPI
 ! Perform second communication step to distribute updated SIDE_LOCALID
-CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL BARRIER_AND_SYNC(SideInfo_Shared_Win,MPI_COMM_SHARED)
 
 IF (myComputeNodeRank.EQ.0) THEN
   CALL MPI_ALLGATHERV(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,SideInfo_Shared,(SIDEINFOSIZE+1)   *recvcountSide  &
@@ -879,8 +869,7 @@ IF (myComputeNodeRank.EQ.0) THEN
 END IF
 
 ! Write compute-node local SIDE_NBELEMTYPE
-CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL BARRIER_AND_SYNC(SideInfo_Shared_Win,MPI_COMM_SHARED)
 #endif  /*USE_MPI*/
 
 SideInfo_Shared(SIDE_NBELEMTYPE,offsetSideID+1:offsetSideID+nSideIDs) = SideInfo_Shared_tmp
@@ -888,17 +877,15 @@ DEALLOCATE(SideInfo_Shared_tmp)
 
 #if USE_MPI
 ! final sync of all mesh shared arrays
-CALL MPI_WIN_SYNC(ElemInfo_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(SideInfo_Shared_Win,IERROR)
-!CALL MPI_WIN_SYNC(NodeInfo_Shared_Win,IERROR)
-CALL MPI_WIN_SYNC(NodeCoords_Shared_Win,IERROR)
+CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win  ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(SideInfo_Shared_Win  ,MPI_COMM_SHARED)
+! CALL BARRIER_AND_SYNC(NodeInfo_Shared_Win  ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(NodeCoords_Shared_Win,MPI_COMM_SHARED)
 IF (isMortarMesh) THEN
-  CALL MPI_WIN_SYNC(xiMinMax_Shared_Win,IERROR)
-  CALL MPI_WIN_SYNC(ElemToTree_Shared_Win,IERROR)
-  CALL MPI_WIN_SYNC(TreeCoords_Shared_Win,IERROR)
+  CALL BARRIER_AND_SYNC(xiMinMax_Shared_Win  ,MPI_COMM_SHARED)
+  CALL BARRIER_AND_SYNC(ElemToTree_Shared_Win,MPI_COMM_SHARED)
+  CALL BARRIER_AND_SYNC(TreeCoords_Shared_Win,MPI_COMM_SHARED)
 END IF
-
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 #endif  /*USE_MPI*/
 
 EndT                   = FLEXITIME()

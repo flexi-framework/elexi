@@ -18,7 +18,7 @@
 !> * Mapping that contains the distribution of DG and FV elements
 !> * Mappings from all available variables to the ones that should be calculated and visualized for volume and surface
 !> * Mappings from the available boundaries to the ones that should be visualized
-!===================================3================================================================================================
+!===================================================================================================================================
 MODULE MOD_Posti_Mappings
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
@@ -173,11 +173,12 @@ hasFV_Elems = (nElems_FV_glob.GT.0)
 
 END SUBROUTINE Build_FV_DG_distribution
 
+
 !===================================================================================================================================
 !> This routine builds the mappings from the total number of variables available for visualization to number of calculation
 !> and visualization variables.
 !>  1. Read 'VarName' options from the parameter file. This are the quantities that will be visualized.
-!>  2. Initialize the dependecy table
+!>  2. Initialize the dependency table
 !>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the
 !>     dependecies of the primitive quantities (the primitive quantities are available directly, since the DGTimeDerivative_weakForm
 !>     will be executed.

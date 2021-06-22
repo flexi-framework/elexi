@@ -89,15 +89,15 @@ IF (.NOT.DoRestart .OR. (ParticleVecLengthGlob.EQ.0)) THEN
 
   ! Get number of particles to be inserted. Divide it between MPI procs if required.
   DO i=1,nSpecies
-      DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
-          IF ((TRIM(Species(i)%Init(iInit)%SpaceIC).EQ.'cuboid') .OR.(TRIM(Species(i)%Init(iInit)%SpaceIC).EQ.'cylinder')) THEN
+    DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
+      IF ((TRIM(Species(i)%Init(iInit)%SpaceIC).EQ.'cuboid') .OR.(TRIM(Species(i)%Init(iInit)%SpaceIC).EQ.'cylinder')) THEN
 #if USE_MPI
-            insertParticles = insertParticles + INT(REAL(Species(i)%Init(iInit)%initialParticleNumber)/PartMPI%nProcs)
+        insertParticles = insertParticles + INT(REAL(Species(i)%Init(iInit)%initialParticleNumber)/PartMPI%nProcs)
 #else
-            insertParticles = insertParticles + INT(Species(i)%Init(iInit)%initialParticleNumber)
+        insertParticles = insertParticles + INT(     Species(i)%Init(iInit)%initialParticleNumber)
 #endif
-          END IF
-      END DO
+      END IF
+    END DO
   END DO
 
   ! Check if requested to insert more particles than the particle array can hold
@@ -110,43 +110,43 @@ IF (.NOT.DoRestart .OR. (ParticleVecLengthGlob.EQ.0)) THEN
   DO i = 1,nSpecies
     DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
       ! no special emissiontype to be used
-      IF (Species(i)%Init(iInit)%UseForInit) THEN
-        ! initial particle number too large to handle
-        IF(Species(i)%Init(iInit)%initialParticleNumber.GT.HUGE(1)) &
-          CALL abort(__STAMP__,' Integer for initialParticleNumber too large!')
+      IF (.NOT.Species(i)%Init(iInit)%UseForInit) CYCLE
 
-        NbrOfParticle = INT(Species(i)%Init(iInit)%initialParticleNumber,4)
-        SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle position for species ',i,' ... '
-        CALL SetParticlePosition(i,iInit,NbrOfParticle)
-        ! give the particles their correct velocity
-        SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle velocities for species ',i,' ... '
-        CALL SetParticleVelocity(i,iInit,NbrOfParticle,1)
-        ! give the particles their correct (species) mass
-        SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle mass for species ',i,' ... '
-        CALL SetParticleMass(i,NbrOfParticle)
-        ! update number of particles on proc and find next free position in particle array
-        PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfParticle
-        CALL UpdateNextFreePosition()
+      ! initial particle number too large to handle
+      IF(Species(i)%Init(iInit)%initialParticleNumber.GT.HUGE(1)) &
+        CALL abort(__STAMP__,' Integer for initialParticleNumber too large!')
+
+      NbrOfParticle = INT(Species(i)%Init(iInit)%initialParticleNumber,4)
+      SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle position for species ',i,' ... '
+      CALL SetParticlePosition(i,iInit,NbrOfParticle)
+      ! give the particles their correct velocity
+      SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle velocities for species ',i,' ... '
+      CALL SetParticleVelocity(i,iInit,NbrOfParticle,1)
+      ! give the particles their correct (species) mass
+      SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle mass for species ',i,' ... '
+      CALL SetParticleMass(i,NbrOfParticle)
+      ! update number of particles on proc and find next free position in particle array
+      PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfParticle
+      CALL UpdateNextFreePosition()
 
 #if USE_MPI
-        InitGroup = Species(i)%Init(iInit)%InitCOMM
-        IF (PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL .AND. Species(i)%Init(iInit)%sumOfRequestedParticles.GT.0) THEN
-          CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%Request, MPI_STATUS_IGNORE, iError)
-          IF(doPartIndex) CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%RequestIndex, MPI_STATUS_IGNORE, iError)
-        END IF
+      InitGroup = Species(i)%Init(iInit)%InitCOMM
+      IF (PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL .AND. Species(i)%Init(iInit)%sumOfRequestedParticles.GT.0) THEN
+        CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%Request, MPI_STATUS_IGNORE, iError)
+        IF(doPartIndex) CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%RequestIndex, MPI_STATUS_IGNORE, iError)
+      END IF
 #endif
 
-        IF (doPartIndex) THEN
-          sumOfMatchedParticlesSpecies = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%sumOfMatchedParticles
-          particle_count = 0
-          DO k=1,PDM%ParticleVecLength
-            IF(PDM%IsNewPart(k) .EQV. .TRUE.)THEN
-              particle_count = particle_count + 1
-              PartIndex(k) = Species(i)%Init(iInit)%nPartsPerProc + particle_count
-            END IF
-          END DO
-        END IF ! doPartIndex
-      END IF ! UseForInit
+      IF (doPartIndex) THEN
+        sumOfMatchedParticlesSpecies = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%sumOfMatchedParticles
+        particle_count = 0
+        DO k = 1,PDM%ParticleVecLength
+          IF (.NOT.PDM%IsNewPart(k)) CYCLE
+
+          particle_count = particle_count + 1
+          PartIndex(k)   = Species(i)%Init(iInit)%nPartsPerProc + particle_count
+        END DO
+      END IF ! doPartIndex
     END DO ! inits
   END DO ! species
 END IF ! doRestart
@@ -225,14 +225,15 @@ DO i = 1,nSpecies
     NbrOfParticle = 0
 
     ! species to be used for init
-    IF (Species(i)%Init(iInit)%UseForEmission) THEN
+    IF (.NOT.Species(i)%Init(iInit)%UseForEmission) CYCLE
 
-      SELECT CASE(Species(i)%Init(iInit)%ParticleEmissionType)
-        ! Emission Type: Particles per second
-        CASE(1)
-          IF (.NOT.DoPoissonRounding .AND. .NOT.DoTimeDepInflow) THEN
+    SELECT CASE(Species(i)%Init(iInit)%ParticleEmissionType)
+      ! Emission Type: Particles per second
+      CASE(1)
+        IF (.NOT.DoTimeDepInflow) THEN
+          IF (.NOT.DoPoissonRounding) THEN
             ! requested particles during time-slab
-            PartIns = Species(i)%Init(iInit)%ParticleEmission * dt*RKdtFrac * 1/Species(i)%Init(iInit)%ParticleEmissionTime
+            PartIns = Species(i)%Init(iInit)%ParticleEmission * dt*RKdtFrac /Species(i)%Init(iInit)%ParticleEmissionTime
             ! integer number of particles to be inserted
             inserted_Particle_iter = INT(PartIns,8)
 
@@ -246,6 +247,7 @@ DO i = 1,nSpecies
 
             !-- random-round the inserted_Particle_time for preventing periodicity
             CALL RANDOM_NUMBER(RandVal1)
+
             !-- repeat if inserting multiple particles
             IF (inserted_Particle_iter.GE.1) THEN
               CALL RANDOM_NUMBER(RandVal1)
@@ -258,9 +260,9 @@ DO i = 1,nSpecies
               IF (ALMOSTEQUAL(PartIns,0.)) THEN !dummy
                 inserted_Particle_time = INT(PartIns,8)
               ELSE
-                !poisson-distri of PartIns-INT(PartIns)
-                CALL SamplePoissonDistri( PartIns-INT(PartIns) , IntSample )
-              inserted_Particle_time = INT(INT(PartIns)+IntSample,8)
+                ! poisson-distri of PartIns-INT(PartIns)
+                CALL SamplePoissonDistri(PartIns-INT(PartIns),IntSample)
+                inserted_Particle_time = INT(INT(PartIns) + IntSample,8)
               END IF
             ELSE !dummy
               inserted_Particle_time = INT(PartIns,8)
@@ -274,17 +276,13 @@ DO i = 1,nSpecies
             Species(i)%Init(iInit)%InsertedParticleSurplus = ABS(MIN(inserted_Particle_iter + inserted_Particle_diff,INT(0,KIND=8)))
             NbrOfParticle = MAX(INT(inserted_Particle_iter + inserted_Particle_diff,4),0)
 
-          ELSE IF (DoPoissonRounding .AND. .NOT.DoTimeDepInflow) THEN
+          ELSE ! DoPoissonRounding
             ! linear rise of inflow
             RiseTime = Species(i)%Init(iInit)%InflowRiseTime
 
             ! ramp up the particle insertion by increasing the RiseFactor depending on time
-            IF (RiseTime.GT.0.) THEN
-              IF (t-DelayTime.LT.RiseTime) THEN
-                  RiseFactor = (t-DelayTime)/RiseTime
-              ELSE
-                  RiseFactor = 1.
-              END IF
+            IF (RiseTime.GT.0. .AND. t-DelayTime.LT.RiseTime) THEN
+              RiseFactor = (t-DelayTime)/RiseTime
             ELSE
               RiseFactor = 1.
             END IF
@@ -294,147 +292,139 @@ DO i = 1,nSpecies
             CALL RANDOM_NUMBER(RandVal1)
 
             IF (EXP(-PartIns).LE.TINY(PartIns)) THEN
-              IPWRITE(UNIT_StdOut,'(A)') ' WARNING: target is too large for poisson sampling: switching now to Random rounding...'
+              IPWRITE(UNIT_StdOut,'(A)') ' WARNING: target is too large for poisson sampling: switching now to random rounding...'
               NbrOfParticle     = INT(PartIns + RandVal1)
               DoPoissonRounding = .FALSE.
             ELSE
-              !poisson-sampling instead of random rounding (reduces numerical non-equlibrium effects)
+              ! poisson-sampling instead of random rounding (reduces numerical non-equilibrium effects)
               !> [Tysanner and Garcia 2004]
               CALL SamplePoissonDistri( PartIns , NbrOfParticle , DoPoissonRounding)
             END IF
+          END IF ! .NOT. DoPoissonRounding
 
-          ! DoTimeDepInflow
+        ! DoTimeDepInflow
+        ELSE
+          ! linear rise of inflow
+          RiseTime = Species(i)%Init(iInit)%InflowRiseTime
+          IF (RiseTime.GT.0. .AND. t-DelayTime.LT.RiseTime) THEN
+            RiseFactor = (t-DelayTime)/RiseTime
           ELSE
-            ! linear rise of inflow
-            RiseTime = Species(i)%Init(iInit)%InflowRiseTime
-            IF (RiseTime.GT.0.) THEN
-              IF (t-DelayTime .LT. RiseTime) THEN
-                RiseFactor = (t-DelayTime)/RiseTime
-              ELSE
-                RiseFactor = 1.
-              END IF
-            ELSE
-               RiseFactor = 1.
-            END IF
-
-            ! emitted particles during time-slab
-            PartIns = Species(i)%Init(iInit)%ParticleEmission * dt*RKdtFrac * RiseFactor &
-                    + Species(i)%Init(iInit)%InsertedParticleMisMatch
-            CALL RANDOM_NUMBER(RandVal1)
-            NbrOfParticle = INT(PartIns + RandVal1)
+            RiseFactor = 1.
           END IF
+
+          ! emitted particles during time-slab
+          PartIns = Species(i)%Init(iInit)%ParticleEmission * dt*RKdtFrac * RiseFactor &
+                  + Species(i)%Init(iInit)%InsertedParticleMisMatch
+          CALL RANDOM_NUMBER(RandVal1)
+          NbrOfParticle = INT(PartIns + RandVal1)
+        END IF ! DoTimeDepInflow
+
 #if USE_MPI
-          ! communicate number of particles with all procs in the same init group
-          InitGroup = Species(i)%Init(iInit)%InitCOMM
-          IF (PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL) THEN
-            ! only procs which are part of group take part in the communication
-            ! NbrOfParticle based on RandVals!
-            CALL MPI_BCAST(NbrOfParticle, 1, MPI_INTEGER,0,PartMPI%InitGroup(InitGroup)%COMM,IERROR)
-          ELSE
-            NbrOfParticle = 0
-          END IF
-#endif
-          Species(i)%Init(iInit)%InsertedParticle = Species(i)%Init(iInit)%InsertedParticle + INT(NbrOfParticle,8)
-
-        ! Emission Type: Particles per Iteration
-        CASE(2)
-          ! insert in last stage only, so that no reconstruction is necessary and number/iter matches
-          IF (RKdtFracTotal .EQ. 1.) THEN
-            NbrOfParticle = INT(Species(i)%Init(iInit)%ParticleEmission)
-          ELSE
-            NbrOfParticle = 0
-          END IF
-
-        ! Emission Type: Particles at time x
-        CASE(3)
-          ! insert in last stage only, so that no reconstruction is necessary and number/iter matches
-          IF (RKdtFracTotal .EQ. 1..AND.(t-RestartTime).GT.dt) THEN
-            IF (MOD((t-RestartTime),Species(i)%Init(iInit)%ParticleEmissionTime).LT.dt) THEN
-              NbrOfParticle = INT(Species(i)%Init(iInit)%ParticleEmission)
-            ELSE
-              NbrOfParticle = 0
-            END IF
-          ELSE
-            NbrOfParticle = 0
-          END IF
-
-        CASE DEFAULT
-          CALL ABORT(__STAMP__,'Unknown particle emission type')
-          ! Line below not required anymore, but might want to change back to silent fail later
-          ! NbrOfParticle = 0
-      END SELECT
-
-      CALL SetParticlePosition(i,iInit,NbrOfParticle)
-      CALL SetParticleVelocity(i,iInit,NbrOfParticle,1)
-      CALL SetParticleMass(    i      ,NbrOfParticle)
-
-      ! instead of UpdateNextfreePosition we update the particleVecLength only and doing it later, after CalcPartBalance
-      PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
-      PDM%ParticleVecLength       = PDM%ParticleVecLength       + NbrOfParticle
-      !CALL UpdateNextFreePosition()
-
-      ! Compute number of input particles and energy
-      IF (CalcPartBalance) THEN
-        ! Alter history, dirty hack for balance calculation
-        PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition - NbrOfParticle
-        IF(NbrOfParticle.GT.0) THEN
-          nPartIn(i) = nPartIn(i) + NBrofParticle
-          DO iPart = 1,NbrOfparticle
-              PositionNbr = PDM%nextFreePosition(iPart+PDM%CurrentNextFreePosition)
-              IF (PositionNbr .NE. 0) PartEkinIn(PartSpecies(PositionNbr)) = PartEkinIn(PartSpecies(PositionNbr)) + &
-                                                                             CalcEkinPart(PositionNbr)
-          END DO ! iPart
+        ! communicate number of particles with all procs in the same init group
+        InitGroup = Species(i)%Init(iInit)%InitCOMM
+        IF (PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL) THEN
+          ! only procs which are part of group take part in the communication
+          ! NbrOfParticle based on RandVals!
+          CALL MPI_BCAST(NbrOfParticle,1, MPI_INTEGER,0,PartMPI%InitGroup(InitGroup)%COMM,IERROR)
+        ELSE
+          NbrOfParticle = 0
         END IF
-        ! alter history, dirty hack for balance calculation
-        PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
-      END IF ! CalcPartBalance
-
-      ! Complete check if all particles were emitted successfully
-#if USE_MPI
-      InitGroup = Species(i)%Init(iInit)%InitCOMM
-      IF (PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL .AND. Species(i)%Init(iInit)%sumOfRequestedParticles.GT.0) THEN
-        CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%Request, MPI_STATUS_IGNORE, iError)
-        IF (doPartIndex) CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%RequestIndex, MPI_STATUS_IGNORE, iError)
-
-        IF (PartMPI%InitGroup(InitGroup)%MPIRoot) THEN
 #endif
-          ! add number of matching error to particle emission to fit
-          ! number of added particles
-          Species(i)%Init(iInit)%InsertedParticleMisMatch = Species(i)%Init(iInit)%sumOfRequestedParticles - Species(i)%Init(iInit)%sumOfMatchedParticles
-          IF (Species(i)%Init(iInit)%sumOfRequestedParticles .GT. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
-            WRITE(UNIT_StdOut,'(A)')      'WARNING in ParticleEmission_parallel:'
-            WRITE(UNIT_StdOut,'(A,I0)')   'Fraction Nbr: '  , i
-            WRITE(UNIT_StdOut,'(A,I0,A)') 'matched only '   , Species(i)%Init(iInit)%sumOfMatchedParticles  , ' particles'
-            WRITE(UNIT_StdOut,'(A,I0,A)') 'when '           , Species(i)%Init(iInit)%sumOfRequestedParticles, ' particles were required!'
-          ELSE IF (Species(i)%Init(iInit)%sumOfRequestedParticles .LT. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
-            WRITE(UNIT_StdOut,'(A)')      'ERROR in ParticleEmission_parallel:'
-            WRITE(UNIT_StdOut,'(A,I0)')   'Fraction Nbr: '  , i
-            WRITE(UNIT_StdOut,'(A,I0,A)') 'matched '        , Species(i)%Init(iInit)%sumOfMatchedParticles  , ' particles'
-            WRITE(UNIT_StdOut,'(A,I0,A)') 'when '           , Species(i)%Init(iInit)%sumOfRequestedParticles, ' particles were required!'
-          ! ELSE IF (nbrOfParticle .EQ. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
-          !  WRITE(UNIT_stdOut,'(A,I0)')   'Fraction Nbr: '  , FractNbr
-          !  WRITE(UNIT_stdOut,'(A,I0,A)') 'ParticleEmission_parallel: matched all (',NbrOfParticle,') particles!'
-          END IF
+        Species(i)%Init(iInit)%InsertedParticle = Species(i)%Init(iInit)%InsertedParticle + INT(NbrOfParticle,8)
+
+      ! Emission Type: Particles per Iteration
+      CASE(2)
+        ! insert in last stage only, so that no reconstruction is necessary and number/iter matches
+        NbrOfParticle = MERGE(INT(Species(i)%Init(iInit)%ParticleEmission),0,RKdtFracTotal.EQ.1.)
+
+      ! Emission Type: Particles at time x
+      CASE(3)
+        ! insert in last stage only, so that no reconstruction is necessary and number/iter matches
+        IF (RKdtFracTotal.EQ.1. .AND. (t-RestartTime).GT.dt .AND. &
+            MOD((t-RestartTime),Species(i)%Init(iInit)%ParticleEmissionTime).LT.dt) THEN
+          NbrOfParticle = INT(Species(i)%Init(iInit)%ParticleEmission)
+        ELSE
+          NbrOfParticle = 0
+        END IF
+
+      CASE DEFAULT
+        CALL ABORT(__STAMP__,'Unknown particle emission type')
+        ! Line below not required anymore, but might want to change back to silent fail later
+        ! NbrOfParticle = 0
+    END SELECT
+
+    CALL SetParticlePosition(i,iInit,NbrOfParticle)
+    CALL SetParticleVelocity(i,iInit,NbrOfParticle,1)
+    CALL SetParticleMass(    i      ,NbrOfParticle)
+
+    ! instead of UpdateNextfreePosition we update the particleVecLength only and doing it later, after CalcPartBalance
+    PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
+    PDM%ParticleVecLength       = PDM%ParticleVecLength       + NbrOfParticle
+    !CALL UpdateNextFreePosition()
+
+    ! Compute number of input particles and energy
+    IF (CalcPartBalance) THEN
+      ! Alter history, dirty hack for balance calculation
+      PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition - NbrOfParticle
+      IF (NbrOfParticle.GT.0) THEN
+        nPartIn(i) = nPartIn(i) + NbrOfParticle
+        DO iPart = 1,NbrOfParticle
+            PositionNbr = PDM%nextFreePosition(iPart+PDM%CurrentNextFreePosition)
+            IF (PositionNbr.NE.0) PartEkinIn(PartSpecies(PositionNbr)) = PartEkinIn(PartSpecies(PositionNbr)) + &
+                                                                         CalcEkinPart(PositionNbr)
+        END DO ! iPart
+      END IF ! NbrOfParticle.GT.0
+      ! alter history, dirty hack for balance calculation
+      PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
+    END IF ! CalcPartBalance
+
+    ! Complete check if all particles were emitted successfully
 #if USE_MPI
-        END IF ! PartMPI%InitGroup(InitGroup)%MPIRoot
-      END IF ! PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL
+    InitGroup = Species(i)%Init(iInit)%InitCOMM
+    IF (PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL .AND. Species(i)%Init(iInit)%sumOfRequestedParticles.GT.0) THEN
+      CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%Request,MPI_STATUS_IGNORE,iError)
+      IF (doPartIndex) CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%RequestIndex,MPI_STATUS_IGNORE,iError)
+
+      IF (PartMPI%InitGroup(InitGroup)%MPIRoot) THEN
 #endif
-      IF (doPartIndex.AND.(NbrOfParticle.GT.0)) THEN
+        ! add number of matching error to particle emission to fit
+        ! number of added particles
+        Species(i)%Init(iInit)%InsertedParticleMisMatch = Species(i)%Init(iInit)%sumOfRequestedParticles - Species(i)%Init(iInit)%sumOfMatchedParticles
+        IF (Species(i)%Init(iInit)%sumOfRequestedParticles .GT. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
+          WRITE(UNIT_StdOut,'(A)')      'WARNING in ParticleEmission_parallel:'
+          WRITE(UNIT_StdOut,'(A,I0)')   'Fraction Nbr: '  , i
+          WRITE(UNIT_StdOut,'(A,I0,A)') 'matched only '   , Species(i)%Init(iInit)%sumOfMatchedParticles  , ' particles'
+          WRITE(UNIT_StdOut,'(A,I0,A)') 'when '           , Species(i)%Init(iInit)%sumOfRequestedParticles, ' particles were required!'
+        ELSE IF (Species(i)%Init(iInit)%sumOfRequestedParticles .LT. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
+          WRITE(UNIT_StdOut,'(A)')      'ERROR in ParticleEmission_parallel:'
+          WRITE(UNIT_StdOut,'(A,I0)')   'Fraction Nbr: '  , i
+          WRITE(UNIT_StdOut,'(A,I0,A)') 'matched '        , Species(i)%Init(iInit)%sumOfMatchedParticles  , ' particles'
+          WRITE(UNIT_StdOut,'(A,I0,A)') 'when '           , Species(i)%Init(iInit)%sumOfRequestedParticles, ' particles were required!'
+        ! ELSE IF (NbrOfParticle .EQ. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
+        !  WRITE(UNIT_stdOut,'(A,I0)')   'Fraction Nbr: '  , FractNbr
+        !  WRITE(UNIT_stdOut,'(A,I0,A)') 'ParticleEmission_parallel: matched all (',NbrOfParticle,') particles!'
+        END IF
+#if USE_MPI
+      END IF ! PartMPI%InitGroup(InitGroup)%MPIRoot
+    END IF ! PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL
+#endif
+
+    IF (doPartIndex) THEN
+      IF (NbrOfParticle.GT.0) THEN
         particle_count = 0
-        DO k=1,PDM%ParticleVecLength
+        DO k = 1,PDM%ParticleVecLength
           IF ((PDM%IsNewPart(k) .EQV. .TRUE.) .AND. (PartSpecies(k).EQ.i)) THEN
             particle_count = particle_count + 1
-            PartIndex(k) = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%nPartsPerProc + particle_count
+            PartIndex(k)   = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%nPartsPerProc + particle_count
           END IF
         END DO
-      END IF ! doPartIndex
-      IF (doPartIndex) sumOfMatchedParticlesSpecies = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%sumOfMatchedParticles
-    END IF ! UseForEmission
+      END IF ! NbrOfParticle.GT.0
+      sumOfMatchedParticlesSpecies = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%sumOfMatchedParticles
+    END IF ! doPartIndex
   END DO ! iInit
 END DO ! i=1,nSpecies
 
 END SUBROUTINE ParticleInserting
-
 
 
 END MODULE MOD_Part_Emission

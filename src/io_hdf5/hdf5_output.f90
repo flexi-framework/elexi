@@ -76,7 +76,6 @@ PUBLIC :: WriteAttribute,WriteAdditionalElemData,MarkWriteSuccessfull
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Subroutine to write the solution U to HDF5 format
 !> Is used for postprocessing and for restart
@@ -1269,7 +1268,5 @@ DEALLOCATE( StrVarNames  &
 
 END SUBROUTINE WriteParticle
 #endif /*PARTICLES*/
-
-
 
 END MODULE MOD_HDF5_output

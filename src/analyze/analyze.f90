@@ -302,14 +302,6 @@ REAL                            :: CalcTime,RunTime
 REAL                            :: L_Inf_Error(PP_nVar),L_2_Error(PP_nVar)
 !==================================================================================================================================
 
-#if USE_PARTICLES
-CALL ParticleAnalyze(&
-#if USE_LOADBALANCE
-  iter &
-#endif /* USE_LOADBALANCE */
-  )
-#endif /*USE_PARTICLES*/
-
 ! Graphical output
 CalcTime = FLEXITIME()
 RunTime  = CalcTime-StartTime
@@ -332,6 +324,14 @@ END IF  ! ErrorNorms
 
 CALL AnalyzeEquation(Time)
 CALL Benchmarking()
+
+#if USE_PARTICLES
+CALL ParticleAnalyze(time &
+#if USE_LOADBALANCE
+                    ,iter &
+#endif /* USE_LOADBALANCE */
+  )
+#endif /*USE_PARTICLES*/
 
 #if USE_PARTICLES
 CALL ParticleInformation()

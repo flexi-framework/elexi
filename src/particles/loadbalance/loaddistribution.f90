@@ -993,11 +993,12 @@ INTEGER,INTENT(OUT)::numOfCalls
 TYPE(tdata), POINTER :: newData, tmpData
 !===================================================================================================================================
 tmpData   => firstData
+newData   => tmpData
 identical = .FALSE.
 
 DO WHILE(ASSOCIATED(tmpData))
 #if CODE_ANALYZE
-  SWRITE(*,*) 'stored:',tmpData%offSetElemMPI
+  SWRITE(UNIT_stdOut,'(A,I0)') 'stored:',tmpData%offSetElemMPI
 #endif /*CODE_ANALYZE*/
 
   ! first access
@@ -1011,8 +1012,8 @@ DO WHILE(ASSOCIATED(tmpData))
 END DO
 
 #if CODE_ANALYZE
-SWRITE(*,*) 'current:',offSetElemMPI
-SWRITE(*,*) 'identical:',identical
+SWRITE(UNIT_stdOut,'(A,I0)') 'current:  ',offSetElemMPI
+SWRITE(UNIT_stdOut,'(A,I0)') 'identical:',identical
 #endif /*CODE_ANALYZE*/
 
 ! read*
@@ -1020,7 +1021,7 @@ IF (.NOT.identical) THEN
   ALLOCATE(newData)
   ALLOCATE(newData%offSetElemMPI(0:nProcessors))
   newData%offSetElemMPI = offSetElemMPI
-  newData%numOfCalls = 1
+  newData%numOfCalls    = 1
   !insert at beginning of list
   IF (.NOT. ASSOCIATED(firstData)) then
     firstData => newData
@@ -1030,6 +1031,7 @@ IF (.NOT.identical) THEN
     firstData%nextData => tmpData
   END IF
 END IF
+
 numOfCalls = newData%numOfCalls
 
 END SUBROUTINE checkList

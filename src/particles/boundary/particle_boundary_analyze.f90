@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-! Module for erosion sampling and output
+! Module for particle analysis and output
 !===================================================================================================================================
 MODULE MOD_Particle_Boundary_Analyze
 ! MODULES
@@ -26,7 +26,12 @@ INTERFACE CalcSurfaceValues
   MODULE PROCEDURE CalcSurfaceValues
 END INTERFACE
 
+INTERFACE WriteBoundaryParticleToHDF5
+  MODULE PROCEDURE WriteBoundaryParticleToHDF5
+END INTERFACE
+
 PUBLIC :: CalcSurfaceValues
+PUBLIC :: WriteBoundaryParticleToHDF5
 !===================================================================================================================================
 
 CONTAINS
@@ -114,7 +119,7 @@ ALLOCATE(MacroSurfaceSpecVal(1,1:nSurfSample,1:nSurfSample,nComputeNodeSurfSides
 MacroSurfaceVal    = 0.
 MacroSurfaceSpecVal= 0.
 
-!> Erosion tracking
+!> Impact sampling
 iSpec = 1
 
 ASSOCIATE(SampWallState => SampWallState_Shared)
@@ -192,5 +197,185 @@ ELSE
 END IF
 
 END SUBROUTINE CalcSurfaceValues
+
+
+SUBROUTINE WriteBoundaryParticleToHDF5(OutputTime)
+!===================================================================================================================================
+! Write data of impacting particles on specific boundary conditions of .h5 file (position, velocity, species ID, kinetic energy, time of impact, impact obliqueness angle)
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! USE MOD_PreProc
+USE MOD_HDF5_WriteArray        ,ONLY: WriteArray,GatheredWriteArray
+USE MOD_HDF5_Output            ,ONLY: WriteAttribute
+USE MOD_IO_HDF5                ,ONLY: GatheredWrite
+USE MOD_IO_HDF5                ,ONLY: File_ID,OpenDataFile,CloseDataFile
+USE MOD_Output_Vars            ,ONLY: ProjectName
+USE MOD_Particle_Analyze_Vars  ,ONLY: doParticleDispersionTrack,doParticlePathTrack
+USE MOD_Particle_Boundary_Vars ,ONLY: PartStateBoundary,PartStateBoundaryVecLength
+USE MOD_Particle_Boundary_Vars ,ONLY: ImpactDataSize,ImpactnGlob
+USE MOD_Particle_Vars          ,ONLY: doPartIndex
+#if USE_MPI
+! USE MOD_Particle_Boundary_Vars ,ONLY: MPI_COMM_IMPACT
+USE MOD_Particle_HDF5_Output   ,ONLY: DistributedWriteArray
+USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
+#endif /*MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,   INTENT(IN)             :: OutputTime            !< time
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=255)             :: FileName,FileString
+CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
+LOGICAL                        :: reSwitch
+REAL                           :: startT,endT
+INTEGER                        :: ImpactnLoc,ImpactnLocMax
+INTEGER                        :: ImpactOffset
+#if USE_MPI
+INTEGER                        :: sendbuf(2),recvbuf(2)
+! INTEGER                        :: nImpacts(0:nProcessors-1)
+#endif
+!===================================================================================================================================
+
+! Find amount of recorded impacts on current proc
+ImpactnLoc  = PartStateBoundaryVecLength
+
+IF (MPIroot) THEN
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='NO')' WRITE PARTICLE IMPACTS STATE TO HDF5 FILE...'
+!  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,'/',EP_Buffersize,' impacts.'
+  GETTIME(startT)
+END IF
+
+!>> Sum up particles from the other procs
+#if USE_MPI
+sendbuf(1) = ImpactnLoc
+recvbuf    = 0
+CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+!>> Offset of each proc is the sum of the particles on the previous procs
+ImpactOffset = recvbuf(1)
+sendbuf(1)   = recvbuf(1) + ImpactnLoc
+!>> Last proc knows the global number
+CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
+!>> Gather the global number and communicate to root (MPIRank.EQ.0)
+ImpactnGlob  = sendbuf(1)
+! CALL MPI_GATHER(locEP,1,MPI_INTEGER,nImpacts,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+CALL MPI_GATHER(ImpactnLoc,1,MPI_INTEGER,ImpactnLocMax,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+#else
+ImpactOffset   = 0
+ImpactnGlob    = PartStateBoundaryVecLength
+#endif
+
+! Regenerate state file skeleton
+FileName   = TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',OutputTime))
+FileString = TRIM(FileName)//'.h5'
+
+reSwitch = .FALSE.
+IF (gatheredWrite) THEN
+  ! gatheredwrite not working with distributed particles
+  ! particles require own routine for which the communicator has to be build each time
+  reSwitch      = .TRUE.
+  gatheredWrite = .FALSE.
+END IF
+
+! Array for impact tracking variable
+ALLOCATE(StrVarNames(ImpactDataSize))
+StrVarNames(1)  = 'ParticlePositionX'
+StrVarNames(2)  = 'ParticlePositionY'
+StrVarNames(3)  = 'ParticlePositionZ'
+StrVarNames(4)  = 'VelocityX'
+StrVarNames(5)  = 'VelocityY'
+StrVarNames(6)  = 'VelocityZ'
+StrVarNames(7)  = 'Species'
+StrVarNames(8)  = 'BoundaryNumber'
+StrVarNames(9)  = 'ImpactTime'
+StrVarNames(10) = 'ReflectionCount'
+StrVarNames(11) = 'E_kin_impact'
+StrVarNames(12) = 'E_kin_reflected'
+StrVarNames(13) = 'Alpha_impact'
+StrVarNames(14) = 'Alpha_reflected'
+IF (doPartIndex) StrVarNames(15)= 'Index'
+IF (doParticleDispersionTrack) THEN
+  StrVarNames(ImpactDataSize-2) = 'PartPathAbsX'
+  StrVarNames(ImpactDataSize-1) = 'PartPathAbsY'
+  StrVarNames(ImpactDataSize  ) = 'PartPathAbsZ'
+END IF
+IF (doParticlePathTrack) THEN
+  StrVarNames(ImpactDataSize-2) = 'PartPathX'
+  StrVarNames(ImpactDataSize-1) = 'PartPathY'
+  StrVarNames(ImpactDataSize  ) = 'PartPathZ'
+END IF
+
+IF (MPIRoot) THEN
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteAttribute(File_ID,'VarNamesImpactTracking',ImpactDataSize,StrArray=StrVarNames)
+  CALL CloseDataFile()
+END IF
+
+!> Writing empty arrays can cause problems with HDF5
+! IF (ImpactnGlob.EQ.0) THEN ! zero particles present: write empty dummy container to .h5 file (required for subsequent file access)
+!   IF (MPIRoot) THEN ! only root writes the container
+!     CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+!     CALL WriteArray(         DataSetName = 'PartData'                      ,&
+!                              rank        = 2                               ,&
+!                              nValGlobal  = (/ImpactDataSize,ImpactnGlob/)  ,&
+!                              nVal        = (/ImpactDataSize,ImpactnLoc /)  ,&
+!                              offset      = (/ 0             , 0        /)  ,&
+!                              collective  = .FALSE.                         ,&
+!                              RealArray   = PartStateBoundary(1:ImpactDataSize,1:ImpactnLoc))
+!     CALL CloseDataFile()
+!     GETTIME(EndT)
+!     WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s] [NO IMPACTS WRITTEN]'
+!   END IF ! MPIRoot
+! ELSE
+#if USE_MPI
+  CALL DistributedWriteArray(FileString                                    ,&
+                             DataSetName  = 'ImpactData'                   ,&
+                             rank         = 2                              ,&
+                             nValGlobal   = (/ImpactDataSize,ImpactnGlob /),&
+                             nVal         = (/ImpactDataSize,ImpactnLoc  /),&
+                             offset       = (/0             ,ImpactOffset/),&
+                             collective   = .FALSE.                        ,&
+                             offSetDim    = 2                              ,&
+                             communicator = PartMPI%COMM                   ,&
+                             RealArray    = PartStateBoundary(1:ImpactDataSize,1:ImpactnLoc))
+#else
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteArray(           DataSetName  = 'ImpactData'                   ,&
+                             rank         = 2                              ,&
+                             nValGlobal   = (/ImpactDataSize,ImpactnLoc/)  ,&
+                             nVal         = (/ImpactDataSize,ImpactnLoc/)  ,&
+                             offset       = (/0             ,0         /)  ,&
+                             collective   = .TRUE.                         ,&
+                             RealArray    = PartStateBoundary(1:ImpactDataSize,1:ImpactnLoc))
+  CALL CloseDataFile()
+#endif /*USE_MPI*/
+! END IF ! ImpactnGlob.EQ.0
+
+! reswitch
+IF (reSwitch) gatheredWrite = .TRUE.
+
+DEALLOCATE(StrVarNames)
+
+IF (ImpactnGlob.NE.0 .AND. MPIROOT) THEN
+!  CALL MarkWriteSuccessfull(FileString)
+  GETTIME(EndT)
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s]'
+  ! WRITE(UNIT_stdOut,'(A,I4,A)')' IMPACT TRACKING: ',ImpactnGlob,' impacts written'
+!  WRITE(UNIT_StdOut,'(132("-"))')
+END IF
+
+
+! Nullify and reset boundary parts container after write out
+PartStateBoundaryVecLength = 0
+
+! Re-allocate PartStateBoundary for a small number of particles and double the array size each time the
+! maximum is reached
+DEALLOCATE(PartStateBoundary)
+ALLOCATE(PartStateBoundary(1:ImpactDataSize,1:10))
+PartStateBoundary = 0.
+
+END SUBROUTINE WriteBoundaryParticleToHDF5
 
 END MODULE MOD_Particle_Boundary_Analyze

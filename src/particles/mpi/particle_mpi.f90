@@ -332,7 +332,7 @@ USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex,
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
 USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
 USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
-! Variables for erosion tracking
+! Variables for impact tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Boundary_Vars
 ! Variables for SGS model
@@ -558,7 +558,7 @@ USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex,
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
 USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
 USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
-! variables for erosion tracking
+! variables for impact tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Boundary_Vars
 ! Variables for SGS model

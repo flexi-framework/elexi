@@ -60,7 +60,7 @@ CONTAINS
 !> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
 !> Also a list of all available boundary names is created for surface visualization.
 !===================================================================================================================================
-SUBROUTINE visu_getVarNamesAndFileType(statefile,meshfile,varnames_loc, bcnames_loc)
+SUBROUTINE visu_getVarNamesAndFileType(statefile,meshfile,varnames_loc,bcnames_loc)
 USE MOD_Globals
 USE MOD_Visu_Vars         ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
 USE MOD_HDF5_Input        ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
@@ -252,8 +252,11 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
-INTEGER                          :: nElems_State,N_State
+INTEGER                          :: nElems_State
 CHARACTER(LEN=255)               :: NodeType_State, cwd
+#if PP_N!=N
+INTEGER                          :: N_State
+#endif
 !===================================================================================================================================
 IF (STRICMP(fileType,'Mesh')) THEN
     CALL CollectiveStop(__STAMP__, &
@@ -299,7 +302,7 @@ NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
 DGonly            = GETLOGICAL('DGonly')
 CALL CloseDataFile()
 
-CALL visu_getVarNamesAndFileType(statefile,"",VarnamesAll,BCNamesAll)
+CALL visu_getVarNamesAndFileType(statefile,'',VarnamesAll,BCNamesAll)
 
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
@@ -571,6 +574,9 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   MeshFile      = statefile
   nVar_State    = 0
   withDGOperator = .FALSE.
+  doSurfVisu     = .FALSE.
+  CALL visu_getVarNamesAndFileType(MeshFile,'',VarNamesAll,BCNamesAll)
+
   CALL VisualizeMesh(postifile,MeshFile)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE(*,*) "State Mode"
@@ -656,7 +662,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
-  ! convert part/erosion data to visu grid
+  ! convert part/impact data to visu grid
 #if USE_PARTICLES
   IF (changedStateFile.OR.PD%changedPartVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     DataArray='PartData'
@@ -950,33 +956,37 @@ USE MOD_FV_Basis             ,ONLY: FinalizeFV_Basis
 USE MOD_MPI                  ,ONLY: FinalizeMPI
 #endif /* USE_MPI */
 #if USE_PARTICLES
-USE MOD_Posti_Part_Tools   ,ONLY: FinalizeReadPartStateFile
+USE MOD_Posti_Part_Tools     ,ONLY: FinalizeReadPartStateFile
 #endif
 IMPLICIT NONE
 !===================================================================================================================================
-SWRITE (*,*) "VISU FINALIZE"
+
+SWRITE (Unit_stdOut,'(A)') 'VISU FINALIZE'
+
 IF(MPIRoot)THEN
-  IF(FILEEXISTS(".posti.ini"))THEN
-    OPEN(UNIT=31, FILE=".posti.ini", STATUS='old')
+  IF(FILEEXISTS('.posti.ini'))THEN
+    OPEN(UNIT=31, FILE='.posti.ini', STATUS='old')
     CLOSE(31, STATUS='delete')
   END IF
-  IF(FILEEXISTS(".flexi.ini"))THEN
-    OPEN(UNIT=31, FILE=".flexi.ini", STATUS='old')
+  IF(FILEEXISTS('.flexi.ini'))THEN
+    OPEN(UNIT=31, FILE='.flexi.ini', STATUS='old')
     CLOSE(31, STATUS='delete')
   END IF
 END IF
-prmfile_old = ""
-statefile_old = ""
-MeshFile = ""
-MeshFile_old = ""
-NodeTypeVisuPosti = "VISU"
-NodeTypeVisuPosti_old = ""
-NVisu     = -1
-NVisu_old = -1
-nVar_State_old = -1
-NState_old = -1
-withDGOperator_old = .FALSE.
-hasFV_Elems = .FALSE.
+
+! Reset all strings and variables
+prmfile_old       = ''
+statefile_old     = ''
+MeshFile          = ''
+MeshFile_old      = ''
+NodeTypeVisuPosti = 'VISU'
+NodeTypeVisuPosti_old = ''
+NVisu             = -1
+NVisu_old         = -1
+nVar_State_old    = -1
+NState_old        = -1
+withDGOperator_old    = .FALSE.
+hasFV_Elems       = .FALSE.
 
 SDEALLOCATE(mapDepToCalc)
 #if FV_ENABLED && FV_RECONSTRUCT

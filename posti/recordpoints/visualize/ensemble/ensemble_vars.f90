@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -11,27 +11,21 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-
 !===================================================================================================================================
-!> Global variables for the calcwallparticles tool
+! Contains global variables provided by spectral analysis routines
 !===================================================================================================================================
-MODULE MOD_Posti_CalcWallParticles_Vars
-! IMPLICIT VARIABLE HANDLING
+MODULE MOD_EnsembleRP_Vars
+! MODULES
 IMPLICIT NONE
 PUBLIC
 SAVE
-
-! Variables for spatial averaging
-INTEGER, ALLOCATABLE    :: SurfSideIDtoSurfAvgID(:)
-!INTEGER, ALLOCATABLE    :: SurfAvgIDtoSurfSideID(:)
-LOGICAL                 :: postiAvg                         !< Flag if an averaged statistics should be written
-LOGICAL                 :: surfAvg                          !< Flag if an averaged surfState should be written
-REAL,DIMENSION(3)       :: surfAvgDir                       !< Vector for averaging direction
-LOGICAL                 :: surfRemap                        !< Flag if an surfState should be recalculated from impact files
-REAL                    :: dt_remap                         !< Time step used for erosion remapping
-INTEGER                 :: surfReflCount                    !< If passed, only particles with matching reflections will be counted
-
-! User-defined parameters
-CHARACTER(LEN=255)      :: AnalyzeString                    !< Method for integral calculation
-
-END MODULE MOD_Posti_CalcWallParticles_Vars
+!-----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+INTEGER                       :: enSamples                   !> Number of ensemble samples
+INTEGER                       :: nVar_ensTurb                !> Variable names for turbulent ensemble averages
+REAL,ALLOCATABLE              :: RPData_ens(:,:,:)
+REAL,ALLOCATABLE              :: RPData_turb(:,:,:)
+REAL,ALLOCATABLE              :: RPData_freqEns(:)
+!===================================================================================================================================
+END MODULE MOD_EnsembleRP_Vars

@@ -12,8 +12,8 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "particle.h"
 #include "eos.h"
+#include "particle.h"
 
 !===================================================================================================================================
 ! Subroutine to compute the particle right hand side, therefore the acceleration due to the Lorentz-force with
@@ -60,11 +60,11 @@ USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: GradAtParticle
 #endif
 USE MOD_Particle_Vars,                ONLY: PDM, Pt
-!#if USE_RW
-!USE MOD_Particle_RandomWalk_Vars,     ONLY: RWTime
-!USE MOD_Particle_Vars,                ONLY: Species,PartSpecies,TurbPartState
-!USE_MOD_Timedisc_Vars,                ONLY: t
-!#endif
+! #if USE_RW
+! USE MOD_Particle_RandomWalk_Vars,     ONLY: RWTime
+! USE MOD_Particle_Vars,                ONLY: Species,PartSpecies,TurbPartState
+! USE_MOD_Timedisc_Vars,                ONLY: t
+! #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -96,8 +96,8 @@ DO iPart = 1,PDM%ParticleVecLength
     ! Calculate the drag (and gravity) force
     Fd(1:3)       = ParticlePush(iPart,FieldAtParticle(PRIM,iPart))
     ! Calculate other RHS forces and add all forces to compute the particle push
-    Pt(1:3,iPart) = ParticlePushExtend(iPart,FieldAtParticle(PRIM,iPart),&
-                                       GradAtParticle(1:RHS_GRAD,1:3,iPart),Fd&
+    Pt(1:3,iPart) = ParticlePushExtend(iPart,FieldAtParticle(PRIM          ,iPart)    ,&
+                                             GradAtParticle (1:RHS_GRAD,1:3,iPart),Fd  &
 #if USE_BASSETFORCE
                                       ,dt,iStage)
 #else
@@ -461,9 +461,9 @@ REAL                     :: dufdt(1:3)
 !===================================================================================================================================
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
-CASE(RHS_NONE,RHS_CONVERGENCE,RHS_TRACER)
-  ParticlePushExtend = Fdm
-  RETURN
+  CASE(RHS_NONE,RHS_CONVERGENCE,RHS_TRACER)
+    ParticlePushExtend = Fdm
+    RETURN
 END SELECT
 
 ! Calculate the dyn. viscosity
@@ -608,9 +608,11 @@ END IF
 
 ! Output RHS to file
 #if ANALYZE_RHS
-IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
-  CALL OutputToFile(FileName_RHS,(/t/),(/16,1/),(/REAL(PartSpecies(PartID)),Fdm(1:3),Flm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3)/))
-  tWriteRHS = tWriteRHS + dtWriteRHS
+IF(dtWriteRHS.GT.0.0)THEN
+  IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
+    CALL OutputToFile(FileName_RHS,(/t/),(/16,1/),(/REAL(PartSpecies(PartID)),Fdm(1:3),Flm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3)/))
+    tWriteRHS = tWriteRHS + dtWriteRHS
+  END IF
 END IF
 #endif
 
@@ -618,58 +620,48 @@ ParticlePushExtend(1:3) = Pt
 
 END FUNCTION ParticlePushExtend
 
+
 SUBROUTINE tauRHS(U,divtau,gradp)
 !===================================================================================================================================
 ! Compute tau
 !===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
+USE MOD_EoS,                ONLY: ConsToPrim
 USE MOD_Equation_Vars,      ONLY: s13
 USE MOD_Lifting_Vars,       ONLY: gradUx,gradUy,gradUz
 USE MOD_Lifting_Vars,       ONLY: gradUx_master,gradUx_slave
 USE MOD_Lifting_Vars,       ONLY: gradUy_master,gradUy_slave
 USE MOD_Lifting_Vars,       ONLY: gradUz_master,gradUz_slave
 USE MOD_Lifting_BR1_gen,    ONLY: Lifting_BR1_gen
-USE MOD_Mesh_Vars,          ONLY: nElems,nSides
-USE MOD_EoS,                ONLY: ConsToPrim
+USE MOD_Mesh_Vars,          ONLY: nElems
+USE MOD_Particle_Vars,      ONLY: gradUx2,gradUy2,gradUz2
+USE MOD_Particle_Vars,      ONLY: gradUx_master_loc,gradUx_slave_loc
+USE MOD_Particle_Vars,      ONLY: gradUy_master_loc,gradUy_slave_loc
+USE MOD_Particle_Vars,      ONLY: gradUz_master_loc,gradUz_slave_loc
+USE MOD_Particle_Vars,      ONLY: U_local,gradp_local
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(IN)             :: U(CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(IN)             :: U(    CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL,INTENT(OUT)            :: divtau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL,INTENT(OUT)            :: gradp(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(OUT)            :: gradp( 1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,ALLOCATABLE            :: gradUx2(:,:,:,:,:,:),gradUy2(:,:,:,:,:,:),gradUz2(:,:,:,:,:,:)
-REAL,ALLOCATABLE            :: gradUx_master_loc(:,:,:,:), gradUx_slave_loc(:,:,:,:)
-REAL,ALLOCATABLE            :: gradUy_master_loc(:,:,:,:), gradUy_slave_loc(:,:,:,:)
-REAL,ALLOCATABLE            :: gradUz_master_loc(:,:,:,:), gradUz_slave_loc(:,:,:,:)
-REAL,ALLOCATABLE            :: U_local(:,:,:,:,:)
-REAL,ALLOCATABLE            :: gradp_local(:,:,:,:,:,:)
 INTEGER                     :: i,j,k,iElem
 !===================================================================================================================================
-ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-ALLOCATE(gradUy2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-ALLOCATE(gradUz2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-gradUx2 = 0.
-gradUy2 = 0.
-gradUz2 = 0.
-ALLOCATE(gradUx_master_loc(1:3,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(gradUx_slave_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(gradUy_master_loc(1:3,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(gradUy_slave_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(gradUz_master_loc(1:3,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(gradUz_slave_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides))
-
+gradUx2           = 0.
+gradUy2           = 0.
+gradUz2           = 0.
 gradUx_master_loc = gradUx_master(LIFT_VELV,:,:,:)
-gradUx_slave_loc  = gradUx_slave(LIFT_VELV,:,:,:)
+gradUx_slave_loc  = gradUx_slave( LIFT_VELV,:,:,:)
 gradUy_master_loc = gradUy_master(LIFT_VELV,:,:,:)
-gradUy_slave_loc  = gradUy_slave(LIFT_VELV,:,:,:)
+gradUy_slave_loc  = gradUy_slave( LIFT_VELV,:,:,:)
 gradUz_master_loc = gradUz_master(LIFT_VELV,:,:,:)
-gradUz_slave_loc  = gradUz_slave(LIFT_VELV,:,:,:)
+gradUz_slave_loc  = gradUz_slave( LIFT_VELV,:,:,:)
 
 
 ! Calculate the second gradient of the velocity and output \nabla \cdot tau
@@ -696,15 +688,7 @@ divtau(2,:,:,:,:) = gradUx2(1,2,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(3,2,:,
 divtau(3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + gradUz2(3,3,:,:,:,:) + &
                     s13 * (gradUx2(3,1,:,:,:,:) + gradUy2(3,2,:,:,:,:) + gradUz2(3,3,:,:,:,:))
 
-DEALLOCATE(gradUx2,gradUy2,gradUz2)
-DEALLOCATE(gradUx_master_loc,gradUx_slave_loc)
-DEALLOCATE(gradUy_master_loc,gradUy_slave_loc)
-DEALLOCATE(gradUz_master_loc,gradUz_slave_loc)
-
 ! Calculate pressure gradient
-ALLOCATE(U_local(PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-ALLOCATE(gradp_local(1,3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-
 DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
   CALL ConsToPrim(U_local(:,i,j,k,iElem),U(:,i,j,k,iElem))
 END DO; END DO; END DO; END DO
@@ -712,11 +696,7 @@ END DO; END DO; END DO; END DO
 CALL Lifting_BR1_gen(1,1,U_local(PRES:PRES,:,:,:,:),gradp_local(:,1,:,:,:,:),gradp_local(:,2,:,:,:,:),gradp_local(:,3,:,:,:,:))
 gradp = gradp_local(1,:,:,:,:,:)
 
-DEALLOCATE(U_local,gradp_local)
-
 END SUBROUTINE tauRHS
 #endif /* USE_EXTEND_RHS */
-
-
 
 END MODULE MOD_part_RHS

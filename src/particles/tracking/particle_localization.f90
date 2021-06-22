@@ -43,11 +43,16 @@ INTERFACE CountPartsPerElem
   MODULE PROCEDURE CountPartsPerElem
 END INTERFACE
 
+INTERFACE PARTHASMOVED
+  MODULE PROCEDURE PARTHASMOVED
+END INTERFACE
+
 PUBLIC:: SinglePointToElement
 PUBLIC:: LocateParticleInElement
 PUBLIC:: PartInElemCheck
 PUBLIC:: ParticleInsideQuad3D
 PUBLIC:: CountPartsPerElem
+PUBLIC:: PARTHASMOVED
 !===================================================================================================================================
 
 CONTAINS
@@ -138,9 +143,9 @@ Distance=-1.
 
 ListDistance=0
 DO iBGMElem = 1, nBGMElems
-  ElemID   = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iBGMElem)
-  CNElemID = GetCNElemID(ElemID)
- Distance2 = SUM((Pos3D(1:3)-ElemBaryNGeo(1:3,CNElemID))**2.)
+  ElemID    = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iBGMElem)
+  CNElemID  = GetCNElemID(ElemID)
+  Distance2 = SUM((Pos3D(1:3)-ElemBaryNGeo(1:3,CNElemID))**2.)
 
   ! element in range
   Distance(iBGMElem)     = MERGE(Distance2,-1.,Distance2.LE.ElemRadius2NGeo(CNElemID))
@@ -160,7 +165,7 @@ DO iBGMElem = 1,nBGMElems
   ! Element is out of range
   IF (ALMOSTEQUAL(Distance(iBGMElem),-1.)) CYCLE
 
-  ElemID = ListDistance(iBGMElem)
+  ElemID    = ListDistance(iBGMElem)
 
   IF (.NOT.DoHALO) THEN
     IF (ElemID.LT.offsetElem+1 .OR. ElemID.GT.offsetElem+PP_nElems) CYCLE
@@ -180,6 +185,7 @@ DO iBGMElem = 1,nBGMElems
       IF(doEmission) THEN
         IF (MAXVAL(ABS(RefPos)).LE.1.0) InElementCheck = .TRUE.
       ELSE
+        CNElemID  = GetCNElemID(ElemID)
         IF (MAXVAL(ABS(RefPos)).LE.ElemEpsOneCell(CNElemID)) InElementCheck = .TRUE.
       END IF
   END SELECT
@@ -420,8 +426,8 @@ INTEGER,INTENT(IN)            :: ElemID
 REAL   ,INTENT(IN)            :: PartStateLoc(3)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL   ,INTENT(OUT)           :: Det(6,2)
 LOGICAL,INTENT(OUT)           :: InElementCheck
+REAL   ,INTENT(OUT),OPTIONAL  :: Det(6,2)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: NbElemID,CNElemID
@@ -763,5 +769,30 @@ ELSE
 END IF
 
 END FUNCTION CalcDetOfTrias
+
+
+PURE FUNCTION PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo)
+!================================================================================================================================
+! check if particle has moved significantly within an element
+!================================================================================================================================
+USE MOD_Particle_Globals,           ONLY:ALMOSTZERO
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!--------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)                      :: lengthPartTrajectory
+REAL,INTENT(IN)                      :: ElemRadiusNGeo
+!--------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+LOGICAL                              :: PARTHASMOVED
+!================================================================================================================================
+
+IF(ALMOSTZERO(lengthPartTrajectory/ElemRadiusNGeo))THEN
+  PARTHASMOVED=.FALSE.
+ELSE
+  PARTHASMOVED=.TRUE.
+END IF
+
+END FUNCTION PARTHASMOVED
 
 END MODULE MOD_Particle_Localization

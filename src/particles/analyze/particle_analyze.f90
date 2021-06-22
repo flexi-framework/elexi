@@ -97,8 +97,11 @@ SUBROUTINE InitParticleAnalyze()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars
-USE MOD_ReadInTools             ,ONLY: GETLOGICAL, GETINT, GETSTR, GETINTARRAY, GETREALARRAY, GETREAL
+USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleImpactTrack
+USE MOD_Particle_Boundary_Vars  ,ONLY: WriteMacroSurfaceValues
+USE MOD_Particle_Tracking_Vars  ,ONLY: CountNbOfLostParts
 USE MOD_Particle_Vars           ,ONLY: nSpecies,PDM
+USE MOD_ReadInTools             ,ONLY: GETLOGICAL,GETINT,GETSTR,GETINTARRAY,GETREALARRAY,GETREAL
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -106,6 +109,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+
 IF (ParticleAnalyzeInitIsDone) THEN
   CALL abort(__STAMP__,'InitParticleAnalyse already called.',999,999.)
   RETURN
@@ -114,13 +118,14 @@ END IF
 !SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A)') ' INIT PARTICLE ANALYZE...'
 
-DoAnalyze = .FALSE.
-
-IF(nSpecies.GT.1) THEN
-  nSpecAnalyze = nSpecies + 1
+IF (WriteMacroSurfaceValues .OR. doParticleImpactTrack .OR. RecordPart.GT.0 .OR. CountNbOfLostParts .OR. CalcEkin .OR. DoAnalyze) THEN
+  doParticleAnalyze = .TRUE.
 ELSE
-  nSpecAnalyze = 1
+  doParticleAnalyze = .FALSE.
 END IF
+
+DoAnalyze    = .FALSE.
+nSpecAnalyze = MERGE(nSpecies + 1,1,nSpecies.GT.1)
 
 CalcEkin = GETLOGICAL('CalcKineticEnergy','.FALSE.')
 IF (CalcEkin) THEN
@@ -160,7 +165,7 @@ doParticlePositionTrack    = GETLOGICAL('Part-TrackPosition',   '.FALSE.')
 doParticleConvergenceTrack = GETLOGICAL('Part-TrackConvergence','.FALSE.')
 
 IF(doParticlePositionTrack) THEN
-  printDiff=GETLOGICAL('printDiff','.FALSE.')
+  printDiff = GETLOGICAL('printDiff','.FALSE.')
   IF(printDiff) THEN
     printDiffTime = GETREAL(     'printDiffTime','12.')
     printDiffVec  = GETREALARRAY('printDiffVec',6,'0.,0.,0.,0.,0.,0.')
@@ -177,7 +182,7 @@ IF(doParticleDispersionTrack .OR. doParticlePathTrack) THEN
   PartPath = 0.
 END IF
 
-ParticleAnalyzeInitIsDone=.TRUE.
+ParticleAnalyzeInitIsDone = .TRUE.
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTCILE ANALYZE DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -185,24 +190,29 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticleAnalyze
 
 
-SUBROUTINE ParticleAnalyze(&
+SUBROUTINE ParticleAnalyze(t    &
 #if USE_LOADBALANCE
-  iter &
+                          ,iter &
 #endif /* USE_LOADBALANCE */
   )
 !==================================================================================================================================
 !> Controls particle analysis routines and is called at analyze time levels
-!> - calls erosion impcat output
-!> - informs about lost particles
 !> - writes load balancing statistics
+!> - calls impact sampling output
+!> - calls impact tracking output
+!> - informs about lost particles
+!> - calls kinetic energy balance
 !==================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Analyze_Vars     ,ONLY: DoAnalyze,CalcEkin
+USE MOD_Particle_Analyze_Tools    ,ONLY: ParticleRecord
+USE MOD_Particle_Analyze_Vars     ,ONLY: DoAnalyze,DoParticleAnalyze,CalcEkin
+USE MOD_Particle_Analyze_Vars     ,ONLY: RecordPart
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues
-USE MOD_Particle_Boundary_Analyze ,ONLY: CalcSurfaceValues
-USE MOD_Particle_Tracking_Vars    ,ONLY: CountNbOfLostParts
+USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack
+USE MOD_Particle_Boundary_Analyze ,ONLY: CalcSurfaceValues,WriteBoundaryParticleToHDF5
 USE MOD_Particle_Output           ,ONLY: WriteParticleAnalyze,WriteInfoStdOut
+USE MOD_Particle_Tracking_Vars    ,ONLY: CountNbOfLostParts
 #if USE_LOADBALANCE
 USE MOD_LoadDistribution          ,ONLY: WriteElemTimeStatistics
 #endif /*LOADBALANCE*/
@@ -210,6 +220,7 @@ USE MOD_LoadDistribution          ,ONLY: WriteElemTimeStatistics
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)                 :: t                      !< current simulation time
 #if USE_LOADBALANCE
 INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
 #endif /* USE_LOADBALANCE */
@@ -217,9 +228,29 @@ INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
 ! LOCAL VARIABLES
 !==================================================================================================================================
 
-! Calculate particle surface erosion data
+#if USE_LOADBALANCE
+! Create .csv file for performance analysis and load balance: write header line
+CALL WriteElemTimeStatistics(WriteHeader=.TRUE.,iter=iter)
+#endif /*LOADBALANCE*/
+
+! Prettify output
+IF (doParticleAnalyze) THEN
+  SWRITE(UNIT_StdOut,'(132("-"))')
+END IF
+
+! Calculate cumulative particle surface impact sampling data
 IF (WriteMacroSurfaceValues) THEN
   CALL CalcSurfaceValues
+END IF
+
+! Write individual particle surface impact tracking data
+IF (doParticleImpactTrack) THEN
+  CALL WriteBoundaryParticleToHDF5(OutputTime=t)
+END IF
+
+! Write individual particle record plane data
+IF (RecordPart.GT.0) THEN
+  CALL ParticleRecord(t,writeToBinary=.TRUE.)
 END IF
 
 ! Write information to console output
@@ -235,11 +266,6 @@ IF (DoAnalyze) THEN
   CALL WriteParticleAnalyze()
 END IF
 
-#if USE_LOADBALANCE
-! Create .csv file for performance analysis and load balance: write header line
-CALL WriteElemTimeStatistics(WriteHeader=.TRUE.,iter=iter)
-#endif /*LOADBALANCE*/
-
 END SUBROUTINE ParticleAnalyze
 
 
@@ -249,7 +275,7 @@ SUBROUTINE ParticleInformation()
 !==================================================================================================================================
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Erosionpoints_Vars        ,ONLY: doParticleImpactTrack,EP_Buffersize
+USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack,ImpactnGlob
 USE MOD_Particle_Vars             ,ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -277,7 +303,7 @@ nParticleInDomain = nParticleOnProc
 !SWRITE(UNIT_StdOut,'(132("."))')
 SWRITE(UNIT_StdOut,'(A14,I16)')' # Particle : ', nParticleInDomain
 IF (doParticleImpactTrack) THEN
-SWRITE(UNIT_StdOut,'(A14,I16)')' # Impacts  : ', EP_Buffersize
+SWRITE(UNIT_StdOut,'(A14,I16)')' # Impacts  : ', ImpactnGlob
 END IF
 
 END SUBROUTINE ParticleInformation

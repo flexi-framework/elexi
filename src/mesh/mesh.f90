@@ -422,7 +422,6 @@ IF (meshMode.GT.0) THEN
   END DO ! iElem
 END IF
 
-SDEALLOCATE(NodeCoords)
 SDEALLOCATE(dXCL_N)
 SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
@@ -466,7 +465,6 @@ SDEALLOCATE(MortarInfo)
 SDEALLOCATE(NodeCoords)
 SDEALLOCATE(BoundaryName)
 SDEALLOCATE(BoundaryType)
-
 
 ! Volume
 SDEALLOCATE(Elem_xGP)

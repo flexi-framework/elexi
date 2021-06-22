@@ -51,6 +51,25 @@ REAL,ALLOCATABLE,DIMENSION(:,:,:,:)     :: SampWallState                 !> 1   
 REAL,ALLOCPOINT,DIMENSION(:,:,:,:)      :: SampWallState_Shared
 
 ! ====================================================================
+! Impact tracking
+LOGICAL                                 :: ImpactTrackInitIsDone  = .FALSE. !< mark if impact tracking init routine is finished
+LOGICAL                                 :: doParticleImpactTrack  = .FALSE. !< mark if impacts tracking should be performed during computation
+LOGICAL                                 :: ImpactSideOnProc       = .FALSE. !< marks if current proc has impact tracking side
+INTEGER                                 :: PartStateBoundaryVecLength    !< Impacts on current proc
+REAL,ALLOCATABLE,DIMENSION(:,:)         :: PartStateBoundary             !< solution evaluated at EPs (nvar,nEP,nSamples)
+INTEGER                                 :: ImpactDataSize                !< number of variables stored per impact
+INTEGER                                 :: ImpactnGlob                   !< Global number of occured impacts
+
+!----------------------------------------------------------------------------------------------------------------------------------
+! MPI Communicator for EPs
+!----------------------------------------------------------------------------------------------------------------------------------
+#if USE_MPI
+INTEGER                                 :: myImpactRank                  !< rank within impact tracking communicator
+INTEGER                                 :: MPI_COMM_IMPACT=MPI_COMM_NULL !< MPI impact tracking communicator
+INTEGER                                 :: nImpactProcs                  !< number of procs with impact tracking
+#endif /* USE_MPI */
+
+! ====================================================================
 ! MPI3 shared variables
 INTEGER,ALLOCPOINT,DIMENSION(:,:)       :: GlobalSide2SurfSide           ! Mapping Global Side ID to Surf Side ID
                                                                          !> 1 - Surf SideID
@@ -92,7 +111,7 @@ LOGICAL                                 :: doParticleReflectionTrack = .TRUE.   
 LOGICAL                                 :: doParticleImpactSample                  ! Flag if impact data should be tracked
 LOGICAL                                 :: WriteMacroSurfaceValues   = .FALSE.     ! Output of macroscopic values on surface
 REAL                                    :: MacroValSampTime                        ! Sampling time for WriteMacroVal
-LOGICAL                                 :: ImpactRestart                           ! Flag if we are restarting erosion tracking
+LOGICAL                                 :: ImpactRestart                           ! Flag if we are restarting surface sampling
 
 INTEGER                                 :: nImpactVars                             ! Number of Vars = nImpactVars * (nSpecies + 1)
 
@@ -132,19 +151,23 @@ TYPE tPartBoundary
   CHARACTER(LEN=255),ALLOCATABLE         :: WallModel(:)
   CHARACTER(LEN=255),ALLOCATABLE         :: WallCoeffModel(:)
   ! Bons particle rebound model
-  REAL    , ALLOCATABLE                  :: Young(:)              ! Young's modulus
-  REAL    , ALLOCATABLE                  :: Poisson(:)            ! Poisson's ration for transverse strain under axial compression
+  REAL    , ALLOCATABLE                  :: Young(:)                ! Young's modulus
+  REAL    , ALLOCATABLE                  :: Poisson(:)              ! Poisson's ration for transverse strain under axial compression
   ! Fong coefficient of restitution
-  REAL    , ALLOCATABLE                  :: CoR(:)                ! Coefficient of restitution for normal velocity component
+  REAL    , ALLOCATABLE                  :: CoR(:)                  ! Coefficient of restitution for normal velocity component
+  ! Rough wall modelling
+  LOGICAL , ALLOCATABLE                  :: doRoughWallModelling(:) ! Flag if walls are modelled as rough walls
+  REAL    , ALLOCATABLE                  :: RoughMeanIC(:)          ! Mean of the Gaussian distribution
+  REAL    , ALLOCATABLE                  :: RoughVarianceIC(:)      ! Standard deviation of the Gaussian distribution
 END TYPE
 
-INTEGER                                  :: nPartBound            ! number of particle boundaries
-TYPE(tPartBoundary)                      :: PartBound             ! Boundary Data for Particles
+INTEGER                                  :: nPartBound              ! number of particle boundaries
+TYPE(tPartBoundary)                      :: PartBound               ! Boundary Data for Particles
 
-INTEGER                                  :: nAuxBCs               ! number of aux. BCs that are checked during tracing
-LOGICAL                                  :: UseAuxBCs             ! number of aux. BCs that are checked during tracing
-CHARACTER(LEN=200), ALLOCATABLE          :: AuxBCType(:)          ! type of BC (plane, ...)
-INTEGER           , ALLOCATABLE          :: AuxBCMap(:)           ! index of AuxBC in respective Type
+INTEGER                                  :: nAuxBCs                 ! number of aux. BCs that are checked during tracing
+LOGICAL                                  :: UseAuxBCs               ! number of aux. BCs that are checked during tracing
+CHARACTER(LEN=200), ALLOCATABLE          :: AuxBCType(:)            ! type of BC (plane, ...)
+INTEGER           , ALLOCATABLE          :: AuxBCMap(:)             ! index of AuxBC in respective Type
 
 TYPE tAuxBC_plane
   REAL                                   :: r_vec(3)

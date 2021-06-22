@@ -60,7 +60,7 @@ visuReader::visuReader()
    this->NVisu = 0;
    this->NCalc = 0;
 #if USE_MPI
-   this->NGhosts = 0;
+   this->UseD3 = 0;
 #endif /* USE_MPI */
    this->NodeTypeVisu = NULL;
    this->Avg2d = 0;
@@ -90,7 +90,6 @@ visuReader::visuReader()
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
    this->BCDataArraySelection ->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
    this->VarParticleDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
-
 }
 
 /*
@@ -448,7 +447,10 @@ int visuReader::RequestData(
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str());
    __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm,
-         &strlen_prm, ParameterFileOverwrite,
+#if USE_MPI
+         &this->UseD3,
+#endif
+         &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
          &coords_DG,&values_DG,&nodeids_DG,&globalnodeids_DG,
@@ -464,11 +466,11 @@ int visuReader::RequestData(
    // sets the distribution for D3 and ghost cells
    outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_PIECE_NUMBER(),     Controller->GetLocalProcessId());
    outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_PIECES(), Controller->GetNumberOfProcesses());
-   outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), this->NGhosts);
+   outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 1);
    outInfoVolume ->Set(vtkStreamingDemandDrivenPipeline::EXACT_EXTENT(),1);
    outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_PIECE_NUMBER(),    Controller->GetLocalProcessId());
    outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_PIECES(),Controller->GetNumberOfProcesses());
-   outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), this->NGhosts);
+   outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 1);
 #endif /* USE_MPI */
 
    // get the MultiBlockDataset
@@ -495,15 +497,15 @@ int visuReader::RequestData(
    InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &globalnodeids_FV, &varnames);
 
 #if USE_MPI
-   if (Controller->GetNumberOfProcesses() > 1) {
+   if (Controller->GetNumberOfProcesses() > 1 && this->UseD3) {
      // Apply D3 filter to create ghost cells
-     SWRITE("Distributing data with minimum level of ghost cells : " << this->NGhosts);
+     SWRITE("Distributing data with minimum level of ghost cells : 1");
 
      // Distribute DG data and create ghost cells
      DistributeData(mb, 0);
 
      // Distribute FV data and create ghost cells
-     DistributeData(mb, 1);
+     /* DistributeData(mb, 1); */
    }
 #endif /* USE_MPI */
 
@@ -530,6 +532,20 @@ int visuReader::RequestData(
 
     // Insert Surface FV data into output
    InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &globalnodeidsSurf_FV, &varnamesSurf);
+
+
+#if USE_MPI
+   if (Controller->GetNumberOfProcesses() > 1 && this->UseD3) {
+     // Apply D3 filter to create ghost cells
+     SWRITE("Distributing data with minimum level of ghost cells : 1");
+
+     // Distribute DG data and create ghost cells
+     DistributeData(mb, 0);
+
+     // Distribute FV data and create ghost cells
+     /* DistributeData(mb, 1); */
+   }
+#endif /* USE_MPI */
 
 
 #if USE_PARTICLES
@@ -659,65 +675,24 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
       exit(1);
    }
 
-   int buffer[NumProcesses];
-   MPI_Allgather(&nodeids->len,1,MPI_INT,buffer,1,MPI_INT,mpiComm);
-   int gsum = 0;
-   for (int i=0; i<ProcessId; i++) {
-     gsum += buffer[i];
+#if !FV_ENABLED
+   /* Insert the global elem ids */
+   if (this->UseD3) {
+     vtkSmartPointer <vtkIntArray> gnodeids = vtkSmartPointer<vtkIntArray>::New();
+     gnodeids->SetNumberOfComponents(1);
+     gnodeids->SetNumberOfTuples(nodeids->len);
+     gnodeids->SetName("Global Node ID");
+     output->GetPointData()->AddArray(gnodeids);
+     // copy ids */
+     int* gptr = gnodeids->GetPointer(0);
+     for (long i = 0; i < nodeids->len; ++i)
+     {
+       /* *gptr++ = gsum+i; */
+       *gptr++ = globalnodeids->data[i];
+     }
+     output->GetPointData()->SetGlobalIds(gnodeids);
    }
-   buffer[0] = 0;
-
-   // Insert the global node ids
-   vtkSmartPointer <vtkIntArray> gnodeids = vtkSmartPointer<vtkIntArray>::New();
-   gnodeids->SetNumberOfComponents(1);
-   gnodeids->SetNumberOfTuples(nodeids->len);
-   gnodeids->SetName("Global Node ID");
-   output->GetPointData()->AddArray(gnodeids);
-   // copy ids
-   int* gptr = gnodeids->GetPointer(0);
-   for (long i = 0; i < nodeids->len; ++i)
-   {
-     *gptr++ = gsum+i;
-//     *gptr++ = globalnodeids->data[i];
-   }
-   output->GetPointData()->SetGlobalIds(gnodeids);
-
-   // Insert the global cell Ids
-   /* vtkSmartPointer <vtkIntArray> gcellids = vtkSmartPointer<vtkIntArray>::New(); */
-   /* gcellids->SetNumberOfComponents(1); */
-   /* gcellids->SetName("Global Cell ID"); */
-   /* output->GetPointData()->AddArray(gcellids); */
-   /* // */
-   /* if (coords->dim == 1) { */
-   /*   gcellids->SetNumberOfTuples(nodeids->len/2); */
-   /*   // copy ids */
-   /*   int* cptr = gcellids->GetPointer(0); */
-   /*   for (long i = 0; i < nodeids->len/2; ++i) */
-   /*   { */
-   /*     *cptr++ = globalnodeids->data[i]/2+i-1; */
-   /*   } */
-   /* } else if (coords->dim == 2) { */
-   /*   gcellids->SetNumberOfTuples(nodeids->len/4); */
-   /*   // copy ids */
-   /*   int* cptr = gcellids->GetPointer(0); */
-   /*   for (long i = 0; i < nodeids->len/4; ++i) */
-   /*   { */
-   /*     *cptr++ = globalnodeids->data[i]/4+i-1; */
-   /*   } */
-   /* } else if (coords->dim == 3) { */
-   /*   unsigned int ncells = nodeids->len/8; */
-   /*   gcellids->SetNumberOfTuples(ncells); */
-   /*   // copy ids */
-   /*   int* cptr = gcellids->GetPointer(0); */
-   /*   for (long i = 0; i < ncells; ++i) */
-   /*   { */
-   /*     SWRITE("Node ID" << i); */
-   /*     *cptr++ = globalnodeids->data[8*i]/8 + i - 1; */
-   /*   } */
-   /* } else { */
-   /*   exit(1); */
-   /* } */
-   /* output->GetCellData()->SetGlobalIds(gcellids); */
+#endif
 
    // assign the actual data, loaded by the Posti tool, to the output
    unsigned int nVar = varnames->len/255;
@@ -836,9 +811,11 @@ void visuReader::DistributeData(vtkMultiBlockDataSet* mb, int blockno) {
    // Apply D3 filter to create ghost cells
    vtkDistributedDataFilter * d3 = vtkDistributedDataFilter::New();
    d3->SetInputData(mb->GetBlock(blockno));
-   d3->SetMinimumGhostLevel(this->NGhosts);
+   d3->SetMinimumGhostLevel(1);
+   /* d3->SetUseMinimalMemory(1); */
 
    // Information must be duplicated on all procs, ASSIGN_TO_ALL_INTERSECTING_REGIONS = 1
+   /* d3->SetBoundaryMode(1); */
    d3->SetBoundaryMode(1);
    d3->Update();
 

@@ -2108,7 +2108,7 @@ PRINT *, 'urel:  ', urel
       E_SGS(:,:,iPart) = 0.
       DO i = 1,3
         E_SGS(i,i,iPart) = EXP(-RKdtFrac/tauL(2,iPart))
-        W_SGS(i,j,iPart) = sigmaSGS(iPart)*SQRT(1-EXP(-2*RKdtFrac/tauL(2,iPart)))
+        W_SGS(i,i,iPart) = sigmaSGS(iPart)*SQRT(1-EXP(-2*RKdtFrac/tauL(2,iPart)))
       END DO
 
     ELSE

@@ -84,16 +84,16 @@ PUBLIC::CARRAY
 
 CONTAINS
 
-SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,globalnodeids,dim,DGFV)
+SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV)
 USE ISO_C_BINDING
 USE MOD_Globals
-USE MOD_Mesh_Vars,                      ONLY: offsetElem
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                       :: NVisu
 INTEGER,INTENT(IN)                       :: nElems
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)        !< stores the connectivity
-INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT),OPTIONAL :: globalnodeids(:)        !< stores the connectivity
 INTEGER,INTENT(IN)                       :: dim               !< 3 = 3d connectivity, 2 = 2d connectivity
 INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating DG = 0 or FV = 1 data
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -103,19 +103,23 @@ INTEGER           :: NodeID,NodeIDElem
 INTEGER           :: NVisu_k, NVisu_j, NVisu_elem, NVisu_p1_2
 INTEGER           :: nVTKCells, fVTKCells
 !===================================================================================================================================
-IF (dim.EQ.3) THEN
-  NVisu_k = NVisu
-  NVisu_j = NVisu
-ELSE IF (dim.EQ.2) THEN
-  NVisu_k = 1
-  NVisu_j = NVisu
-ELSE IF (dim.EQ.1) THEN
-  NVisu_k = 1
-  NVisu_j = 1
-ELSE
-  CALL Abort(__STAMP__, &
-      "Only 2D and 3D connectivity can be created. dim must be 2 or 3.")
-END IF
+
+SELECT CASE(dim)
+  CASE(3)
+    NVisu_k = NVisu
+    NVisu_j = NVisu
+  CASE(2)
+    NVisu_k = 1
+    NVisu_j = NVisu
+  CASE(1)
+    NVisu_k = 1
+    NVisu_j = 1
+  CASE DEFAULT
+    ! Dummy variables to make GCC happy
+    NVisu_k = -1
+    NVisu_j = -1
+    CALL ABORT(__STAMP__, "Only 2D and 3D connectivity can be created. dim must be 2 or 3.")
+END SELECT
 
 NVisu_elem = (NVisu+1)**dim
 NVisu_p1_2 = (NVisu+1)**2
@@ -123,7 +127,6 @@ NVisu_p1_2 = (NVisu+1)**2
 fVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim
 nVTKCells  = fVTKCells*nElems
 SDEALLOCATE(nodeids)
-PDEALLOCATE(globalnodeids)
 ALLOCATE(nodeids((2**dim)*nVTKCells))
 
 ! create connectivity
@@ -158,13 +161,8 @@ DO iElem=1,nElems
       END DO
     END DO
   END DO
-  NodeIDElem=NodeIDElem+NVisu_elem
+  NodeIDElem = NodeIDElem+NVisu_elem
 END DO
-
-IF (PRESENT(globalnodeids)) THEN
-  ALLOCATE(globalnodeids((2**dim)*nVTKCells))
-  globalnodeids = nodeids + (2**dim)*fVTKCells*offsetElem
-END IF
 
 END SUBROUTINE CreateConnectivity
 
@@ -252,7 +250,7 @@ ELSE
       "Only 2D and 3D connectivity can be created. dim must be 1, 2 or 3.")
 END IF
 
-SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) FILE..."
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) FILE..."
 
 ! get total number of elements on all processors
 #if USE_MPI
@@ -576,7 +574,7 @@ END SUBROUTINE WriteParallelVTK
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D coordinates to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteCoordsToVTK_array(NVisu,nElems,coords_out,nodeids_out,globalnodeids_out,coords,nodeids,globalnodeids,dim,DGFV)
+SUBROUTINE WriteCoordsToVTK_array(NVisu,nElems,coords_out,nodeids_out,coords,nodeids,dim,DGFV)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
@@ -588,15 +586,12 @@ INTEGER,INTENT(IN)                   :: NVisu                        !< Polynomi
 INTEGER,INTENT(IN)                   :: nElems                       !< Number of elements
 INTEGER,INTENT(IN)                   :: dim                          !< Spacial dimension (2D or 3D)
 INTEGER,INTENT(IN)                   :: DGFV                         !< flag indicating DG = 0 or FV =1 data
-REAL,ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing coordinates
+REAL,ALLOCATABLE,TARGET,INTENT(IN)   :: coords(:,:,:,:,:)            !< Array containing coordinates
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)
-INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: globalnodeids(:)
 TYPE (CARRAY), INTENT(INOUT)         :: coords_out
 TYPE (CARRAY), INTENT(INOUT)         :: nodeids_out
-TYPE (CARRAY), INTENT(INOUT)         :: globalnodeids_out
-
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -605,25 +600,22 @@ coords_out%dim  = dim
 IF (nElems.EQ.0) THEN
   coords_out%len        = 0
   nodeids_out%len       = 0
-  globalnodeids_out%len = 0
   RETURN
 END IF
 
-SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D COORDS TO VTX XML BINARY (VTU) ARRAY..."
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D COORDS TO VTX XML BINARY (VTU) ARRAY..."
 ! values and coords are already in the correct structure of VTK/Paraview
 
 ! create connectivity
-CALL CreateConnectivity(NVisu=NVisu,nElems=nElems,nodeids=nodeids,globalnodeids=globalnodeids,dim=dim,DGFV=DGFV)
+CALL CreateConnectivity(NVisu=NVisu,nElems=nElems,nodeids=nodeids,dim=dim,DGFV=DGFV)
 
 ! set the sizes of the arrays
 coords_out%len = 3*(NVisu+1)**dim*nElems
 nodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
-globalnodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
 
 ! assign data to the arrays (no copy!!!)
 coords_out%data = C_LOC(Coords(1,0,0,0,1))
 nodeids_out%data = C_LOC(nodeids(1))
-globalnodeids_out%data = C_LOC(globalnodeids(1))
 
 SWRITE(UNIT_stdOut,'(A)')" Done!"
 
@@ -647,7 +639,7 @@ INTEGER,INTENT(IN)                :: dim                          !> Spacial dim
 REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN) :: values(:,:,:,:,:) !> Array containing the points values
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-TYPE (CARRAY), INTENT(INOUT)      :: values_out
+TYPE (CARRAY), INTENT(INOUT)      :: Values_out
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -657,7 +649,7 @@ IF (nElems.EQ.0) THEN
   values_out%len  = 0
   RETURN
 END IF
-SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) ARRAY..."
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) ARRAY..."
 
 ! values and coords are already in the correct structure of VTK/Paraview
 ! set the sizes of the arrays
@@ -751,7 +743,7 @@ IF(nVar_out.EQ.0)THEN
   coords_out%len=0
   RETURN
 END IF
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PARTICEL DATA TO VTX XML BINARY (VTU) ARRAY..."
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" WRITE PARTICEL DATA TO VTX XML BINARY (VTU) ARRAY..."
 
 PartCPointers_allocated=.TRUE.
 ! values and coords are already in the correct structure of VTK/Paraview
@@ -851,7 +843,7 @@ INTEGER            :: nParts_proc
 REAL,ALLOCATABLE   :: buf(:), buf2(:,:), buf3(:,:)
 #endif
 !===================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE PART/EROSION DATA TO VTX XML BINARY (VTU) FILE..."
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" WRITE PARTICLE/IMPACT DATA TO VTX XML BINARY (VTU) FILE..."
 
 ! collect number of particles on each proc
 #if USE_MPI

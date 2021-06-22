@@ -292,10 +292,12 @@ REAL,INTENT(OUT),OPTIONAL              :: tang1(3), tang2(3), area, midpoint(3),
 REAL,INTENT(INOUT),OPTIONAL            :: xyzNod(3) ,Vectors(3,3)
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                :: CNElemID,CNSideID,LocSideID
-INTEGER                                :: Node1, Node2
-REAL                                   :: xNod, zNod, yNod, Vector1(3), Vector2(3)
-REAL                                   :: nVal, ndistVal, nx, ny, nz, dotpr
+INTEGER                                :: CNSideID
+INTEGER                                :: CNElemID =-1                              ! Initial value to eliminate compiler warning
+INTEGER                                :: LocSideID=-1                              ! Initial value to eliminate compiler warning
+INTEGER                                :: Node1,Node2
+REAL                                   :: xNod,zNod,yNod,Vector1(3),Vector2(3)
+REAL                                   :: nVal,ndistVal,nx,ny,nz,dotpr
 !================================================================================================================================
 
 IF (PRESENT(ElemID_opt).AND.PRESENT(LocSideID_opt)) THEN
@@ -933,177 +935,168 @@ REAL,DIMENSION(0:BezierSampleN)        :: BezierSampleXi
 REAL,DIMENSION(1:3,1:BezierSampleN,1:BezierSampleN) :: SurfMeshSubSideVec_nOut,SurfMeshSubSideVec_t1,SurfMeshSubSideVec_t2
 REAL,DIMENSION(1:BezierSampleN,1:BezierSampleN) :: Dmax
 !===================================================================================================================================
-IF (PRESENT(BezierSurfFluxProjection_opt)) THEN
-  BezierSurfFluxProjection=BezierSurfFluxProjection_opt
-ELSE
-  BezierSurfFluxProjection=.FALSE.
-END IF
+
+BezierSurfFluxProjection = MERGE(BezierSurfFluxProjection_opt,.FALSE.,PRESENT(BezierSurfFluxProjection_opt))
+CalcDmax = .FALSE.
+
 IF (PRESENT(Dmax_opt)) THEN
-  IF (PRESENT(DmaxSampleN_opt)) THEN
-    IF (DmaxSampleN_opt.GT.0) THEN
-      DmaxSampleN=DmaxSampleN_opt
-      CalcDmax=.TRUE.
-    ELSE ! 0 is value for AcceptReject=.FALSE.
-      CalcDmax=.FALSE.
-    END IF
+  IF (PRESENT(DmaxSampleN_opt) .AND. DmaxSampleN_opt.GT.0) THEN
+    DmaxSampleN = DmaxSampleN_opt
+    CalcDmax    = .TRUE.
   ELSE
-    CALL Abort(&
-      __STAMP__&
-      ,'DmaxSampleN not defined in GetBezierSampledAreas!')
+    CALL ABORT(__STAMP__,'DmaxSampleN not defined in GetBezierSampledAreas!')
   END IF
-ELSE
-  CalcDmax=.FALSE.
 END IF
 
-Xi(1) =-SQRT(1./3.)
-Xi(2) = SQRT(1./3.)
-deltaXi=2.0/BezierSampleN
-tmp1=deltaXi/2.0 !(b-a)/2
-DO jSample=0,BezierSampleN
-  BezierSampleXi(jSample)=-1.+deltaXi*jSample
+Xi(1)   =-SQRT(1./3.)
+Xi(2)   = SQRT(1./3.)
+deltaXi = 2.0/BezierSampleN
+tmp1    = deltaXi/2.0 !(b-a)/2
+DO jSample = 0,BezierSampleN
+  BezierSampleXi(jSample) = -1.+deltaXi*jSample
 END DO
 
 !===================================================================================================================================
 
-SurfMeshSubSideAreas=0.
-SurfMeshSubSideVec_nOut=0.
-SurfMeshSubSideVec_t1=0.
-SurfMeshSubSideVec_t2=0.
+SurfMeshSubSideAreas    = 0.
+SurfMeshSubSideVec_nOut = 0.
+SurfMeshSubSideVec_t1   = 0.
+SurfMeshSubSideVec_t2   = 0.
 Dmax=1. !dummy
 
 ALLOCATE(Xi_NGeo( 0:NGeo)  &
         ,wGP_NGeo(0:NGeo) )
 CALL LegendreGaussNodesAndWeights(NGeo,Xi_NGeo,wGP_NGeo)
 
-areaTotal=0.
-areaTotalAbs=0.
-DO jSample=1,BezierSampleN; DO iSample=1,BezierSampleN !loop through Sub-Elements
+areaTotal    = 0.
+areaTotalAbs = 0.
 
-  area=0.
-  tmpI2=(BezierSampleXi(iSample-1)+BezierSampleXi(iSample))/2. ! (a+b)/2
-  tmpJ2=(BezierSampleXi(jSample-1)+BezierSampleXi(jSample))/2. ! (a+b)/2
+! loop through Sub-Elements
+DO jSample = 1,BezierSampleN; DO iSample = 1,BezierSampleN
 
-  IF (BezierSurfFluxProjection .OR. &
+  area  = 0.
+  tmpI2 = (BezierSampleXi(iSample-1)+BezierSampleXi(iSample))/2. ! (a+b)/2
+  tmpJ2 = (BezierSampleXi(jSample-1)+BezierSampleXi(jSample))/2. ! (a+b)/2
+
+  IF (BezierSurfFluxProjection             .OR. &
       PRESENT(SurfMeshSubSideVec_nOut_opt) .OR. &
-      PRESENT(SurfMeshSubSideVec_t1_opt) .OR. &
-      PRESENT(SurfMeshSubSideVec_t2_opt) ) THEN
+      PRESENT(SurfMeshSubSideVec_t1_opt)   .OR. &
+      PRESENT(SurfMeshSubSideVec_t2_opt))  THEN
     CALL CalcNormAndTangBezier( nVec=SurfMeshSubSideVec_nOut(:,iSample,jSample) &
-                              ,tang1=SurfMeshSubSideVec_t1(:,iSample,jSample) &
-                              ,tang2=SurfMeshSubSideVec_t2(:,iSample,jSample) &
+                              ,tang1=SurfMeshSubSideVec_t1(  :,iSample,jSample) &
+                              ,tang2=SurfMeshSubSideVec_t2(  :,iSample,jSample) &
                               ,xi=tmpI2,eta=tmpJ2,SideID=SideID )
   END IF
 
-  IF(BezierSurfFluxProjection)THEN
-    ProjectionVector(1:3)=-SurfMeshSubSideVec_nOut(1:3,iSample,jSample) !inwards normal is ProjVec
+  IF (BezierSurfFluxProjection) THEN
+    ! inwards normal is ProjVec
+    ProjectionVector(1:3) = -SurfMeshSubSideVec_nOut(1:3,iSample,jSample)
+
     ! transformation of bezier patch 3D->2D
     IF(ABS(ProjectionVector(3)).LT.epsilontol)THEN
-      n1=(/ -ProjectionVector(2)-ProjectionVector(3)  , &
-        ProjectionVector(1),ProjectionVector(1) /)
+      n1 = (/ -ProjectionVector(2)-ProjectionVector(3) ,&
+               ProjectionVector(1),ProjectionVector(1) /)
     ELSE
-      n1=(/ ProjectionVector(3),ProjectionVector(3) ,&
-        -ProjectionVector(1)-ProjectionVector(2) /)
+      n1 = (/  ProjectionVector(3),ProjectionVector(3) ,&
+              -ProjectionVector(1)-ProjectionVector(2) /)
     END IF
-    n1=n1/SQRT(DOT_PRODUCT(n1,n1))
-    n2(:)=CROSSNORM(ProjectionVector,n1)
-    DO q=0,NGeo; DO p=0,NGeo
-      BezierControlPoints2D(1,p,q,iSample,jSample)=DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID),n1)
+
+    n1    = n1/SQRT(DOT_PRODUCT(n1,n1))
+    n2(:) = CROSSNORM(ProjectionVector,n1)
+
+    DO q = 0,NGeo; DO p = 0,NGeo
+      BezierControlPoints2D(1,p,q,iSample,jSample) = DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID),n1)
       ! origin is (0,0,0)^T
-      BezierControlPoints2D(2,p,q,iSample,jSample)=DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID),n2)
+      BezierControlPoints2D(2,p,q,iSample,jSample) = DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID),n2)
       ! origin is (0,0,0)^T
     END DO; END DO
-  END IF!(BezierSurfFluxProjection)THEN
+  END IF ! BezierSurfFluxProjection
 
-
-  ! ---------------------------------------
   ! calc integral
-  DO I=0,NGeo; DO J=0,NGeo
-    XiOut(1)=tmp1*Xi_NGeo(I)+tmpI2
-    XiOut(2)=tmp1*Xi_NGeo(J)+tmpJ2
-    IF(BezierSurfFluxProjection)THEN
+  DO I = 0,NGeo; DO J = 0,NGeo
+    XiOut(1) = tmp1*Xi_NGeo(I)+tmpI2
+    XiOut(2) = tmp1*Xi_NGeo(J)+tmpJ2
+
+    IF (BezierSurfFluxProjection) THEN
       ! get gradients
       CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,2,BezierControlPoints2D(1:2,0:NGeo,0:NGeo,iSample,jSample) &
         ,Gradient=gradXiEta2D)
       ! calculate first fundamental form
-      E=DOT_PRODUCT(gradXiEta2D(1,1:2),gradXiEta2D(1,1:2))
-      F=DOT_PRODUCT(gradXiEta2D(1,1:2),gradXiEta2D(2,1:2))
-      G=DOT_PRODUCT(gradXiEta2D(2,1:2),gradXiEta2D(2,1:2))
+      E = DOT_PRODUCT(gradXiEta2D(1,1:2),gradXiEta2D(1,1:2))
+      F = DOT_PRODUCT(gradXiEta2D(1,1:2),gradXiEta2D(2,1:2))
+      G = DOT_PRODUCT(gradXiEta2D(2,1:2),gradXiEta2D(2,1:2))
     ELSE
       CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,3,BezierControlPoints3D(:,:,:,SideID) &
                                               ,Gradient=gradXiEta3D)
       ! calculate first fundamental form
-      E=DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(1,1:3))
-      F=DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(2,1:3))
-      G=DOT_PRODUCT(gradXiEta3D(2,1:3),gradXiEta3D(2,1:3))
+      E = DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(1,1:3))
+      F = DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(2,1:3))
+      G = DOT_PRODUCT(gradXiEta3D(2,1:3),gradXiEta3D(2,1:3))
     END IF
-    D=SQRT(E*G-F*F)
-    area=area+tmp1*tmp1*D*wGP_NGeo(i)*wGP_NGeo(j)
-  END DO; END DO
+
+    D    = SQRT(E*G-F*F)
+    area = area+tmp1*tmp1*D*wGP_NGeo(i)*wGP_NGeo(j)
+  END DO; END DO ! I,J
+
   ! calc Dmax
-  IF (PRESENT(Dmax_opt).AND.CalcDmax) THEN
-    Dmax(iSample,jSample)=-1.
-    DO I=0,DmaxSampleN; DO J=0,DmaxSampleN
-      xiab(1,1:2)=(/BezierSampleXi(ISample-1),BezierSampleXi(ISample)/) !correct order?!?
-      xiab(2,1:2)=(/BezierSampleXi(JSample-1),BezierSampleXi(JSample)/) !correct order?!?
+  IF (PRESENT(Dmax_opt) .AND. CalcDmax) THEN
+    Dmax(iSample,jSample) = -1.
+
+    DO I = 0,DmaxSampleN; DO J = 0,DmaxSampleN
+      xiab(1,1:2) = (/BezierSampleXi(ISample-1),BezierSampleXi(ISample)/) !correct order?!?
+      xiab(2,1:2) = (/BezierSampleXi(JSample-1),BezierSampleXi(JSample)/) !correct order?!?
       XiOut = (xiab(:,2)-xiab(:,1))*(/ REAL(J) , REAL(I) /)/REAL(DmaxSampleN) + xiab(:,1)
-      IF(BezierSurfFluxProjection)THEN
+
+      IF (BezierSurfFluxProjection) THEN
         ! get gradients
         CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,2,BezierControlPoints2D(1:2,0:NGeo,0:NGeo,iSample,jSample) &
           ,Gradient=gradXiEta2D)
         ! calculate first fundamental form
-        E=DOT_PRODUCT(gradXiEta2D(1,1:2),gradXiEta2D(1,1:2))
-        F=DOT_PRODUCT(gradXiEta2D(1,1:2),gradXiEta2D(2,1:2))
-        G=DOT_PRODUCT(gradXiEta2D(2,1:2),gradXiEta2D(2,1:2))
+        E = DOT_PRODUCT(gradXiEta2D(1,1:2),gradXiEta2D(1,1:2))
+        F = DOT_PRODUCT(gradXiEta2D(1,1:2),gradXiEta2D(2,1:2))
+        G = DOT_PRODUCT(gradXiEta2D(2,1:2),gradXiEta2D(2,1:2))
       ELSE
         CALL EvaluateBezierPolynomialAndGradient(XiOut,NGeo,3,BezierControlPoints3D(:,:,:,SideID) &
           ,Gradient=gradXiEta3D)
         ! calculate first fundamental form
-        E=DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(1,1:3))
-        F=DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(2,1:3))
-        G=DOT_PRODUCT(gradXiEta3D(2,1:3),gradXiEta3D(2,1:3))
+        E = DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(1,1:3))
+        F = DOT_PRODUCT(gradXiEta3D(1,1:3),gradXiEta3D(2,1:3))
+        G = DOT_PRODUCT(gradXiEta3D(2,1:3),gradXiEta3D(2,1:3))
       END IF
-      D=SQRT(E*G-F*F)
-      Dmax(iSample,jSample)=MAX(Dmax(iSample,jSample),D)
-    END DO; END DO !I,J
-    IF (Dmax(iSample,jSample).LT.0.) THEN
-      CALL abort(&
-__STAMP__&
-        ,'ERROR in GetBezierSampledAreas: No Dmax found!?')
-    END IF
+
+      D = SQRT(E*G-F*F)
+      Dmax(iSample,jSample) = MAX(Dmax(iSample,jSample),D)
+    END DO; END DO ! I,J
+
+    IF (Dmax(iSample,jSample).LT.0.) CALL ABORT(__STAMP__,'ERROR in GetBezierSampledAreas: No Dmax found!?')
   END IF
-  ! ---------------------------------------
-  IF(BezierSurfFluxProjection)THEN
+
+  IF (BezierSurfFluxProjection) THEN
     ! add facing sides and substract non-facing sides
     SurfMeshSubSideAreas(iSample,jSample) = SIGN(area,-DOT_PRODUCT(ProjectionVector,SurfMeshSubSideVec_nOut(:,iSample,jSample)))
-    !!!IPWRITE(*,*)'sign-area', SurfMeshSubSideAreas(iSample,jSample)
   ELSE
     SurfMeshSubSideAreas(iSample,jSample) = area
   END IF
-  areaTotal=areaTotal+SurfMeshSubSideAreas(iSample,jSample)
-  areaTotalAbs=areaTotalAbs+area
-  !!!IPWRITE(*,*)"areaTotal",areaTotal
-  !!!IPWRITE(*,*)"areaTotalAbs",areaTotalAbs
-END DO; END DO !jSample=1,BezierSampleN;iSample=1,BezierSampleN: loop through Sub-Elements
+  areaTotal    = areaTotal+SurfMeshSubSideAreas(iSample,jSample)
+  areaTotalAbs = areaTotalAbs+area
+END DO; END DO ! jSample=1,BezierSampleN;iSample=1,BezierSampleN: loop through Sub-Elements
 
 DEALLOCATE(Xi_NGeo,wGP_NGeo)
 
-IF (PRESENT(SurfMeshSideArea_opt)) SurfMeshSideArea_opt=areaTotal
-IF (PRESENT(SurfMeshSubSideVec_nOut_opt)) SurfMeshSubSideVec_nOut_opt=SurfMeshSubSideVec_nOut
-IF (PRESENT(SurfMeshSubSideVec_t1_opt)) SurfMeshSubSideVec_t1_opt=SurfMeshSubSideVec_t1
-IF (PRESENT(SurfMeshSubSideVec_t2_opt)) SurfMeshSubSideVec_t2_opt=SurfMeshSubSideVec_t2
-IF (PRESENT(Dmax_opt)) Dmax_opt=Dmax
+IF (PRESENT(SurfMeshSideArea_opt))        SurfMeshSideArea_opt        =areaTotal
+IF (PRESENT(SurfMeshSubSideVec_nOut_opt)) SurfMeshSubSideVec_nOut_opt =SurfMeshSubSideVec_nOut
+IF (PRESENT(SurfMeshSubSideVec_t1_opt))   SurfMeshSubSideVec_t1_opt   =SurfMeshSubSideVec_t1
+IF (PRESENT(SurfMeshSubSideVec_t2_opt))   SurfMeshSubSideVec_t2_opt   =SurfMeshSubSideVec_t2
+IF (PRESENT(Dmax_opt))                    Dmax_opt                    =Dmax
 IF (PRESENT(BezierControlPoints2D_opt)) THEN
-  IF(BezierSurfFluxProjection)THEN
-    BezierControlPoints2D_opt=BezierControlPoints2D
-  ELSE
-    BezierControlPoints2D_opt=1. !dummy
-  END IF
+  BezierControlPoints2D_opt = MERGE(BezierControlPoints2D,1.,BezierSurfFluxProjection)
 END IF
 
 #if CODE_ANALYZE
-IPWRITE(*,*)" ===== SINGLE AREA ====="
-IPWRITE(*,*)"SideID:",SideID,"areaTotal   =",areaTotal
-IPWRITE(*,*)"SideID:",SideID,"areaTotalAbs=",areaTotalAbs
-IPWRITE(*,*)" ============================"
+IPWRITE(UNIT_stdOut,'(A)')            ' ===== SINGLE AREA ====='
+IPWRITE(UNIT_stdOut,'(A,I0,A,F16.7)') 'SideID:',SideID,'areaTotal   =',areaTotal
+IPWRITE(UNIT_stdOut,'(A,I0,A,F16.7)') 'SideID:',SideID,'areaTotalAbs=',areaTotalAbs
+IPWRITE(UNIT_stdOut,'(A)')            ' ============================'
 #endif /*CODE_ANALYZE*/
 
 END SUBROUTINE GetBezierSampledAreas

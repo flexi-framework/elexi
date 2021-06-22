@@ -119,17 +119,20 @@
            </Documentation>
          </StringVectorProperty>
 #if USE_MPI
-         <IntVectorProperty command="SetNGhosts"
-            default_values="1"
+#if !FV_ENABLED
+         <IntVectorProperty command="SetUseD3"
+            default_values="0"
             animateable="0"
-            name="NGhosts"
+            name="UseD3"
             number_of_elements="1"
-            label="Minimum Levels of Ghost Cells">
-            <IntRangeDomain name="range" />
+            label="Create halo region to improve interpolation"
+            panel_visibility="advanced">
+            <BooleanDomain name="bool"/>
             <Documentation>
-               This property sets the minimum levels of ghost cells for parallel rendering.
+               This property calculates unique visu node ids and enables the D3 filter to improve interpolation over MPI boundaries.
             </Documentation>
          </IntVectorProperty>
+#endif
 #endif
       <!-- ================================================================== -->
          <StringVectorProperty name="VarArrayInfo"

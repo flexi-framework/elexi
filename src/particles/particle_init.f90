@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 #include "particle.h"
 
 !==================================================================================================================================
@@ -62,9 +63,9 @@ CONTAINS
 SUBROUTINE DefineParametersParticles()
 ! MODULES
 USE MOD_ReadInTools
-USE MOD_ErosionPoints,              ONLY:DefineParametersErosionPoints
 USE MOD_Particle_Analyze,           ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling, ONLY:DefineParametersParticleBoundarySampling
+USE MOD_Particle_Boundary_Tracking, ONLY:DefineParametersParticleBoundaryTracking
 USE Mod_Particle_Globals
 USE MOD_Particle_Interpolation,     ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY:DefineParametersParticleMesh
@@ -493,6 +494,12 @@ CALL prms%CreateStringOption(       'Part-Boundary[$]-WallCoeffModel', 'Coeffici
                                                                   ' - Whitaker2018\n'                                            //&
                                                                   ' - Fong2019'                                                    &
                                                                             , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Boundary[$]-RoughWall'  ,'Rough wall modelling is used.'                                 &
+                                                                  ,'.FALSE.', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-RoughMeanIC', 'Mean of Gaussian dist..'                                      &
+                                                                  ,'0.0', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-RoughVarianceIC', 'Mean of Gaussian dist..'                                  &
+                                                                  ,'1.0', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-Young'    , "Young's modulus defining stiffness of wall material"            &
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-Poisson'  , "Poisson ratio defining relation of transverse to axial strain"  &
@@ -505,6 +512,8 @@ CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC' , "Poisson ratio
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff', "Yield strength defining elastic deformation"                    &
                                                                 ,'0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-RoughWall' , "Enables rough wall modelling"                                   &
+                                                                ,'.TRUE.'   , numberedmulti=.TRUE.)
 ! if nInit > 0 some variables have to be defined twice
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-YoungIC'   , "Young's modulus defining stiffness of particle material"&
                                                                 , '0.'      , numberedmulti=.TRUE.)
@@ -512,6 +521,8 @@ CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-PoissonIC' , "Poiss
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-YieldCoeff', "Yield strength defining elastic deformation"            &
                                                                 ,'0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-RoughWall',  "Enables rough wall modelling"                           &
+                                                                ,'.TRUE.'   , numberedmulti=.TRUE.)
 
 ! Ambient condition ================================================================================================================
 CALL prms%CreateLogicalOption(      'Part-Boundary[$]-AmbientCondition', 'Use ambient condition (condition "behind" boundary).'    &
@@ -537,7 +548,7 @@ CALL DefineParametersParticleMesh()
 CALL DefineParametersParticleInterpolation()
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
-CALL DefineParametersErosionPoints()
+CALL DefineParametersParticleBoundaryTracking()
 #if USE_MPI
 CALL DefineParametersLoadBalance()
 CALL DefineParametersMPIShared()
@@ -633,11 +644,12 @@ LOGICAL,INTENT(IN),OPTIONAL      :: doLoadBalance_opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+
 IF(ParticlesInitIsDone)THEN
    SWRITE(UNIT_stdOut,'(A)') "InitParticles already called."
    RETURN
 END IF
-!SWRITE(UNIT_StdOut,'(132("-"))')
+
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES...'
 
 IF(TrackingMethod.NE.TRIATRACKING) THEN
@@ -691,25 +703,25 @@ SUBROUTINE InitializeVariables()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_ReadInTools
 USE MOD_Particle_Vars
-USE MOD_Particle_Boundary_Sampling, ONLY: InitParticleBoundarySampling
-USE MOD_Particle_Boundary_Vars ,ONLY: LowVeloRemove
-USE MOD_Particle_Boundary_Vars ,ONLY: nAuxBCs
-USE MOD_ErosionPoints          ,ONLY: InitErosionPoints
-USE MOD_Particle_Interpolation ,ONLY: InitParticleInterpolation
-USE MOD_Particle_Mesh          ,ONLY: InitParticleMesh
+USE MOD_Particle_Boundary_Sampling ,ONLY: InitParticleBoundarySampling
+USE MOD_Particle_Boundary_Tracking ,ONLY: InitParticleBoundaryTracking
+USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
+USE MOD_Particle_Boundary_Vars     ,ONLY: nAuxBCs
+USE MOD_Particle_Interpolation     ,ONLY: InitParticleInterpolation
+USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
+USE MOD_ReadInTools
 #if USE_MPI
-USE MOD_Particle_MPI_Emission  ,ONLY: InitEmissionComm
-USE MOD_Particle_MPI_Halo      ,ONLY: IdentifyPartExchangeProcs
-USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
+USE MOD_Particle_MPI_Emission      ,ONLY: InitEmissionComm
+USE MOD_Particle_MPI_Halo          ,ONLY: IdentifyPartExchangeProcs
+USE MOD_Particle_MPI_Vars          ,ONLY: PartMPI
 #endif /*USE_MPI*/
-USE MOD_Particle_Analyze_Vars  ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart!, RPP_Type
+USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart!, RPP_Type
 #if USE_EXTEND_RHS && ANALYZE_RHS
-USE MOD_Output_Vars            ,ONLY: ProjectName
-USE MOD_Output                 ,ONLY: InitOutputToFile
-USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
-USE MOD_Timedisc_Vars          ,ONLY: tAnalyze
+USE MOD_Output_Vars                ,ONLY: ProjectName
+USE MOD_Output                     ,ONLY: InitOutputToFile
+USE MOD_Restart_Vars               ,ONLY: DoRestart,RestartTime
+USE MOD_Timedisc_Vars              ,ONLY: tAnalyze
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -737,7 +749,7 @@ FilenameRecordPart      = GETSTR('Part-FilenameRecordPart'     ,'data/recordplan
 nSpecies                = GETINT(     'Part-nSpecies','1')
 ! Abort if running particle code without any species
 IF (nSpecies.LE.0) &
-  CALL abort(__STAMP__,'ERROR: nSpecies .LE. 0:', nSpecies)
+  CALL ABORT(__STAMP__,'ERROR: nSpecies .LE. 0:', nSpecies)
 ! Allocate species array
 ALLOCATE(Species(1:nSpecies))
 CALL InitializeVariablesSpeciesInits()
@@ -769,7 +781,7 @@ IF (RecordPart.GT.0) THEN
     END DO ! iPoint
     RPP_Plane(jP)%RPP_Records=0.
 !      CASE DEFAULT
-!        CALL abort(__STAMP__,'ERROR: Specified record plane does not exist!')
+!        CALL ABORT(__STAMP__,'ERROR: Specified record plane does not exist!')
 !    END SELECT
   END DO
 END IF
@@ -792,7 +804,7 @@ CALL IdentifyPartExchangeProcs()
 CALL InitParticleBoundarySampling()
 
 ! Initialize impact recording
-CALL InitErosionPoints()
+CALL InitParticleBoundaryTracking()
 
 ! Initialize interpolation and particle-in-cell for field -> particle coupling
 !--> Could not be called earlier because a halo region has to be build depending on the given BCs
@@ -806,12 +818,14 @@ CALL MPI_BARRIER(PartMPI%COMM,IERROR)
 
 #if USE_EXTEND_RHS && ANALYZE_RHS
 FileName_RHS = TRIM(ProjectName)//'_RHS'
-WRITE(tmpStr,'(A)') tAnalyze
+WRITE(tmpStr,FMT='(F10.2)') tAnalyze
 dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(ADJUSTL(tmpStr)))
-tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
+IF(dtWriteRHS.GT.0.0)THEN
+  tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
 
-CALL InitOutputToFile(FileName_RHS,'RHS',16,&
-  [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
+  CALL InitOutputToFile(FileName_RHS,'RHS',16,&
+    [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
+END IF
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -825,6 +839,8 @@ SUBROUTINE AllocateParticleArrays()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
 ! IMPLICIT VARIABLE HANDLING
@@ -854,9 +870,8 @@ ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
          PEM%Element(         1:PDM%maxParticleNumber),    &
          PEM%lastElement(     1:PDM%maxParticleNumber),    &
          STAT=ALLOCSTAT)
-IF(doPartIndex) ALLOCATE(PartIndex(1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
-  CALL abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
+  CALL ABORT(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
 
 PDM%ParticleInside(1:PDM%maxParticleNumber)  = .FALSE.
 PDM%IsNewPart(     1:PDM%maxParticleNumber)  = .FALSE.
@@ -865,14 +880,36 @@ PartState                                    = 0.
 PartReflCount                                = 0.
 Pt                                           = 0.
 PartSpecies                                  = 0
-IF(doPartIndex) PartIndex                    = 0
 PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
 Pt_temp                                      = 0
 PartPosRef                                   =-888.
 
+IF(doPartIndex) THEN
+  ALLOCATE(PartIndex(1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
+  PartIndex                                  = 0
+END IF
+
+! Extended RHS
+#if USE_EXTEND_RHS
+ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+         gradUy2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+         gradUz2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+         U_local   (PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+         gradp_local(1,3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+         gradUx_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &
+         gradUx_slave_loc(  1:3,0:PP_N,0:PP_NZ,1:nSides),  &
+         gradUy_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &
+         gradUy_slave_loc(  1:3,0:PP_N,0:PP_NZ,1:nSides),  &
+         gradUz_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &
+         gradUz_slave_loc(  1:3,0:PP_N,0:PP_NZ,1:nSides),  &
+         STAT=ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) &
+  CALL ABORT(__STAMP__,'ERROR in particle_init.f90: Cannot allocate extended particle arrays!')
+#endif /* USE_EXTEND_RHS */
+
 ! Basset force
 #if USE_BASSETFORCE
-N_Basset = 20
+N_Basset    = 20
 nBassetVars = INT(N_Basset * 3)
 ALLOCATE(durdt(nBassetVars,1:PDM%maxParticleNumber))
 durdt = 0.
@@ -909,36 +946,42 @@ CALL RANDOM_SEED(Size = SeedSize)
 
 ALLOCATE(Seeds(SeedSize))
 ! to ensure a solid run when an unfitting number of seeds is provided in ini
-Seeds(:)=1
-IF(nRandomSeeds.EQ.-1) THEN
-  ! ensures different random numbers through irreproducable random seeds (via System_clock)
-  CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
-ELSE IF(nRandomSeeds.EQ.0) THEN
- !   IF (Restart) THEN
- !   CALL !numbers from state file
- ! ELSE IF (.NOT.Restart) THEN
-  CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
-ELSE IF(nRandomSeeds.GT.0) THEN
-  ! read in numbers from ini
-  IF(nRandomSeeds.NE.SeedSize) THEN
-    SWRITE (UNIT_StdOut,'(A,I0,A,I0,A)') ' | Expected ',SeedSize,' seeds. Provided ', nRandomSeeds ,&
-                                         '. Computer uses default value for all unset values.'
-  END IF
+Seeds(:) = 1
+SELECT CASE(nRandomSeeds)
+  CASE(-1)
+    ! ensures different random numbers through irreproducable random seeds (via System_clock)
+    CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
 
-  DO iSeed=1,MIN(SeedSize,nRandomSeeds)
-    WRITE(UNIT=hilf,FMT='(I0)') iSeed
-    Seeds(iSeed)= GETINT('Part-RandomSeed'//TRIM(hilf))
-  END DO
+  CASE(0)
+    ! IF (Restart) THEN
+    !   CALL !numbers from state file
+    ! ELSE IF (.NOT.Restart) THEN
+    CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
+    ! END IF
 
-  IF (ALL(Seeds(:).EQ.0)) CALL ABORT(__STAMP__,'Not all seeds can be set to zero ')
-  CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
-ELSE
-  SWRITE (UNIT_stdOut,'(A)') ' Error: nRandomSeeds not defined.'        //&
-                             ' Choose nRandomSeeds'                     //&
-                             ' =-1    pseudo random'                    //&
-                             ' = 0    hard-coded deterministic numbers' //&
-                             ' > 0    numbers from ini. Expected ',SeedSize,'seeds.'
-END IF
+  CASE(1 :)
+    ! read in numbers from ini
+    IF (nRandomSeeds.NE.SeedSize) THEN
+      SWRITE (UNIT_StdOut,'(A,I0,A,I0,A)') ' | Expected ',SeedSize,' seeds. Provided ', nRandomSeeds ,&
+                                           '. Computer uses default value for all unset values.'
+    END IF
+
+    DO iSeed = 1,MIN(SeedSize,nRandomSeeds)
+      WRITE(UNIT=hilf,FMT='(I0)') iSeed
+      Seeds(iSeed) = GETINT('Part-RandomSeed'//TRIM(hilf))
+    END DO
+
+    IF (ALL(Seeds(:).EQ.0)) CALL ABORT(__STAMP__,'Not all seeds can be set to zero ')
+    CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
+
+  CASE DEFAULT
+    SWRITE (UNIT_stdOut,'(A)') ' Error: nRandomSeeds not defined.'        //&
+                               ' Choose nRandomSeeds'                     //&
+                               ' =-1    pseudo random'                    //&
+                               ' = 0    hard-coded deterministic numbers' //&
+                               ' > 0    numbers from ini. Expected ',SeedSize,'seeds.'
+
+END SELECT
 
 END SUBROUTINE InitializeVariablesRandomNumbers
 
@@ -961,7 +1004,7 @@ USE MOD_ISO_VARYING_STRING
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: iSpec,iInit,iExclude,j
+INTEGER               :: iSpec,iInit,iExclude
 CHARACTER(32)         :: tmpStr,tmpStr2,tmpStr3
 CHARACTER(200)        :: Filename_loc             ! specifying keyword for velocity distribution
 INTEGER               :: PartField_shape(2)
@@ -1007,7 +1050,10 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%PoissonIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PoissonIC'          ,'0.')
   Species(iSpec)%YieldCoeff            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YieldCoeff'         ,'0.')
 
-  !-- Check if particles have valid mass/density
+  !--> Rough wall modelling
+  Species(iSpec)%doRoughWallModelling  = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RoughWall'          ,'.TRUE.')
+
+  !--> Check if particles have valid mass/density
   IF (Species(iSpec)%MassIC .LE. 0.    .AND..NOT.(Species(iSpec)%RHSMethod.EQ.RHS_NONE          &
                                        .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TRACER        &
                                        .OR.       Species(iSpec)%RHSMethod.EQ.RHS_CONVERGENCE)) &
@@ -1238,7 +1284,7 @@ DO iSpec = 1, nSpecies
               * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(1)
           ELSE IF ( (TRIM(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%SpaceIC).NE.'cuboid')    .AND. &
                     (TRIM(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%SpaceIC).NE.'cylinder')) THEN
-            CALL abort(__STAMP__,'Error in ParticleInit, ExcludeRegions must be cuboid or cylinder!')
+            CALL ABORT(__STAMP__,'Error in ParticleInit, ExcludeRegions must be cuboid or cylinder!')
           END IF
 
           IF (Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(1)**2 +           &
@@ -1258,13 +1304,13 @@ DO iSpec = 1, nSpecies
               + Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(2)**2      &
               + Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(3)**2)
           ELSE
-            CALL abort(__STAMP__,'Error in ParticleInit, NormalIC Vector must not be zero!')
+            CALL ABORT(__STAMP__,'Error in ParticleInit, NormalIC Vector must not be zero!')
           END IF
         END DO !iExclude
 
       ! invalid combination of SpaceIC and exclude region
       ELSE
-        CALL abort(__STAMP__,'Error in ParticleInit, ExcludeRegions are currently only implemented for the SpaceIC cuboid or cylinder!')
+        CALL ABORT(__STAMP__,'Error in ParticleInit, ExcludeRegions are currently only implemented for the SpaceIC cuboid or cylinder!')
       END IF
     END IF
 
@@ -1293,7 +1339,7 @@ END SUBROUTINE InitializeVariablesSpeciesInits
 
 SUBROUTINE InitializeVariablesPartBoundary()
 !===================================================================================================================================
-! Initialize the variables first
+! Read in boundary parameters
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -1314,13 +1360,7 @@ USE MOD_ReadInTools
 INTEGER               :: iBC
 CHARACTER(32)         :: tmpStr
 CHARACTER(200)        :: tmpString
-!INTEGER               :: ALLOCSTAT
-CHARACTER(200), ALLOCATABLE :: tmpStringBC(:)
 !===================================================================================================================================
-! Read in boundary parameters
-! Leave out this check in FLEXI even though we should probably do it
-!dummy_int  = CountOption('Part-nBounds')       ! check if Part-nBounds is present in .ini file
-
 ! get number of particle boundaries
 nPartBound = CountOption('Part-BoundaryName')
 
@@ -1333,13 +1373,16 @@ SWRITE(UNIT_StdOut,'(132("."))')
 SWRITE(UNIT_StdOut,'(A)') ' | Reading particle boundary properties'
 
 ! Allocate arrays for particle boundaries
-ALLOCATE(PartBound%SourceBoundName    (1:nBCs))
-ALLOCATE(PartBound%SourceBoundType    (1:nBCs))
-ALLOCATE(PartBound%TargetBoundCond    (1:nBCs))
-ALLOCATE(PartBound%WallTemp           (1:nBCs))
-ALLOCATE(PartBound%WallVelo       (1:3,1:nBCs))
-ALLOCATE(PartBound%WallModel          (1:nBCs))
-ALLOCATE(PartBound%WallCoeffModel     (1:nBCs))
+ALLOCATE(PartBound%SourceBoundName     (1:nBCs))
+ALLOCATE(PartBound%SourceBoundType     (1:nBCs))
+ALLOCATE(PartBound%TargetBoundCond     (1:nBCs))
+ALLOCATE(PartBound%WallTemp            (1:nBCs))
+ALLOCATE(PartBound%WallVelo        (1:3,1:nBCs))
+ALLOCATE(PartBound%WallModel           (1:nBCs))
+ALLOCATE(PartBound%WallCoeffModel      (1:nBCs))
+ALLOCATE(PartBound%doRoughWallModelling(1:nBCs))
+ALLOCATE(PartBound%RoughMeanIC         (1:nBCs))
+ALLOCATE(PartBound%RoughVarianceIC     (1:nBCs))
 !ALLOCATE(PartBound%AmbientCondition   (1:nBCs))
 !ALLOCATE(PartBound%AmbientConditionFix(1:nBCs))
 !ALLOCATE(PartBound%AmbientTemp        (1:nBCs))
@@ -1348,15 +1391,14 @@ ALLOCATE(PartBound%WallCoeffModel     (1:nBCs))
 !ALLOCATE(PartBound%AmbientDynamicVisc (1:nBCs))
 
 ! Bons particle rebound model
-ALLOCATE(PartBound%Young              (1:nBCs))
-ALLOCATE(PartBound%Poisson            (1:nBCs))
+ALLOCATE(PartBound%Young               (1:nBCs))
+ALLOCATE(PartBound%Poisson             (1:nBCs))
 
 ! Fong coefficent of restitution
-ALLOCATE(PartBound%CoR                (1:nBCs))
-ALLOCATE(tmpStringBC                  (1:nBCs))
+ALLOCATE(PartBound%CoR                 (1:nBCs))
 
 ! Surface Flux
-ALLOCATE(BCdata_auxSF                 (1:nBCs))
+ALLOCATE(BCdata_auxSF                  (1:nBCs))
 DO iBC=1,nBCs
   ! init value when not used
   BCdata_auxSF(iBC)%SideNumber = -1
@@ -1364,13 +1406,7 @@ DO iBC=1,nBCs
   BCdata_auxSF(iBC)%LocalArea  = 0.
 END DO
 
-! Loop over all particle boundaries and get information
-!DO iPartBound=1,nPartBound
-!  tmpStringBC(iPartBound) = TRIM(GETSTR('Part-BoundaryName'))
-!END DO
-
-!GEO%nPeriodicVectors = 0
-
+! Loop over all boundaries and get information
 DO iBC = 1,nBCs
   IF (BoundaryType(iBC,1).EQ.0) THEN
     PartBound%TargetBoundCond(iBC) = -1
@@ -1378,12 +1414,12 @@ DO iBC = 1,nBCs
     CYCLE
   END IF
 
+  ! Set DG boundary as default input
   SELECT CASE (BoundaryType(iBC, BC_TYPE))
    CASE(1)
      tmpString = 'periodic'
-!     GEO%nPeriodicVectors = GEO%nPeriodicVectors+1
-!   CASE(2,12,22)
-!     tmpString='open'
+  ! CASE(2,12,22)
+  !   tmpString='open'
    CASE(3,4)
      tmpString = 'reflective'
    CASE(9)
@@ -1392,9 +1428,10 @@ DO iBC = 1,nBCs
      tmpString = 'open'
   END SELECT
 
+  ! Check if boundary is overwritten for particles
   WRITE(UNIT=tmpStr,FMT='(I0)') iBC
   PartBound%SourceBoundType(iBC) = TRIM(GETSTR('Part-Boundary'//TRIM(tmpStr)//'-Type', tmpString))
-  PartBound%SourceBoundName(iBC) = TRIM(GETSTR('Part-Boundary'//TRIM(tmpStr)//'-Name', BoundaryName(iBC))) !tmpStringBC(iPartBound)
+  PartBound%SourceBoundName(iBC) = TRIM(GETSTR('Part-Boundary'//TRIM(tmpStr)//'-Name', BoundaryName(iBC)))
   ! Select boundary condition for particles
   SELECT CASE (PartBound%SourceBoundType(iBC))
     ! Inflow / outflow
@@ -1414,6 +1451,13 @@ DO iBC = 1,nBCs
       PartBound%WallVelo(1:3,iBC)         = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-WallVelo'         ,3,'0. , 0. , 0.')
       PartBound%WallModel(iBC)            = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallModel'          ,'perfRef')
 
+      ! Rough wall modelling
+      PartBound%doRoughWallModelling(iBC) = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-RoughWall'          ,'.FALSE.')
+      IF (PartBound%doRoughWallModelling(iBC)) THEN
+        PartBound%RoughMeanIC(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughMeanIC'        ,'0.0')
+        ! Variance in degree, default 20 degree
+        PartBound%RoughVarianceIC(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughVarianceIC'    ,'5.0')
+      END IF
       ! Non-perfect reflection
       IF (PartBound%WallModel(iBC).EQ.'coeffRes') THEN
           PartBound%WallCoeffModel(iBC)   = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallCoeffModel'     ,'Tabakoff1981')
@@ -1430,7 +1474,7 @@ DO iBC = 1,nBCs
 
             ! Different CoR per direction
             CASE('Tabakoff1981','Grant1975')
-              ! nothing to reading
+              ! nothing to readin
 
             CASE DEFAULT
               CALL CollectiveSTOP(__STAMP__,'Unknown wall model given!')
@@ -1448,13 +1492,9 @@ DO iBC = 1,nBCs
     ! Invalid boundary option
     CASE DEFAULT
       SWRITE(UNIT_stdOut,'(A,A)') ' Boundary does not exists: ', TRIM(PartBound%SourceBoundType(iBC))
-      CALL abort(__STAMP__,'Particle Boundary Condition does not exist')
+      CALL ABORT(__STAMP__,'Particle Boundary Condition does not exist')
   END SELECT
 END DO
-
-!GEO%nPeriodicVectors = GEO%nPeriodicVectors/2
-
-SDEALLOCATE(tmpStringBC)
 
 END SUBROUTINE InitializeVariablesPartBoundary
 
@@ -1522,7 +1562,7 @@ IF (nAuxBCs.GT.0) THEN
     ! Unknown auxiliary boundary type
     CASE DEFAULT
       SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC Condition does not exists: ', TRIM(tmpString)
-      CALL abort(__STAMP__,'AuxBC Condition does not exist')
+      CALL ABORT(__STAMP__,'AuxBC Condition does not exist')
 
     END SELECT
   END DO
@@ -1557,7 +1597,7 @@ IF (nAuxBCs.GT.0) THEN
 
     CASE DEFAULT
       SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
-      CALL abort(__STAMP__,'AuxBC does not exist')
+      CALL ABORT(__STAMP__,'AuxBC does not exist')
     END SELECT
   END DO
 
@@ -1590,7 +1630,7 @@ IF (nAuxBCs.GT.0) THEN
       n_vec                               = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-n_vec',3,'1. , 0. , 0.')
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL abort(__STAMP__,'Part-AuxBC-n_vec is zero for AuxBC',iAuxBC)
+        CALL ABORT(__STAMP__,'Part-AuxBC-n_vec is zero for AuxBC',iAuxBC)
       ! If not, scale vector
       ELSE
         AuxBC_plane(AuxBCMap(iAuxBC))%n_vec = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
@@ -1601,7 +1641,7 @@ IF (nAuxBCs.GT.0) THEN
       n_vec                                  = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3,'1. , 0. , 0.')
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL abort(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
+        CALL ABORT(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
       ! If not, scale vector
       ELSE
         AuxBC_cylinder(AuxBCMap(iAuxBC))%axis = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
@@ -1619,7 +1659,7 @@ IF (nAuxBCs.GT.0) THEN
       n_vec                                  = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3,'1. , 0. , 0.')
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL abort(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
+        CALL ABORT(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
       ! If not, scale vector
       ELSE
         AuxBC_cone(AuxBCMap(iAuxBC))%axis = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
@@ -1627,7 +1667,7 @@ IF (nAuxBCs.GT.0) THEN
 
       AuxBC_cone(AuxBCMap(iAuxBC))%lmin  = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-lmin','0.')
       IF (AuxBC_cone(AuxBCMap(iAuxBC))%lmin.LT.0.) &
-        CALL abort(__STAMP__,'Part-AuxBC-lminis .lt. zero for AuxBC',iAuxBC)
+        CALL ABORT(__STAMP__,'Part-AuxBC-lminis .lt. zero for AuxBC',iAuxBC)
 
       WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_cone(AuxBCMap(iAuxBC))%lmin)
       AuxBC_cone(AuxBCMap(iAuxBC))%lmax  = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-lmax',TRIM(tmpStr2))
@@ -1641,7 +1681,7 @@ IF (nAuxBCs.GT.0) THEN
       END IF
 
       IF (AuxBC_cone(AuxBCMap(iAuxBC))%halfangle.LE.0.) &
-        CALL abort(__STAMP__,'Part-AuxBC-halfangle is .le. zero for AuxBC',iAuxBC)
+        CALL ABORT(__STAMP__,'Part-AuxBC-halfangle is .le. zero for AuxBC',iAuxBC)
 
       AuxBC_cone(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards','.TRUE.')
       cos2 = COS(AuxBC_cone(AuxBCMap(iAuxBC))%halfangle)**2
@@ -1657,7 +1697,7 @@ IF (nAuxBCs.GT.0) THEN
       n_vec                                 = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3,'1. , 0. , 0.')
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL abort(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
+        CALL ABORT(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
       ! If not, scale vector
       ELSE
         AuxBC_parabol(AuxBCMap(iAuxBC))%axis = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
@@ -1665,7 +1705,7 @@ IF (nAuxBCs.GT.0) THEN
 
       AuxBC_parabol(AuxBCMap(iAuxBC))%lmin  = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-lmin','0.')
       IF (AuxBC_parabol(AuxBCMap(iAuxBC))%lmin.LT.0.) &
-        CALL abort(__STAMP__,'Part-AuxBC-lmin is .lt. zero for AuxBC',iAuxBC)
+        CALL ABORT(__STAMP__,'Part-AuxBC-lmin is .lt. zero for AuxBC',iAuxBC)
 
       WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_parabol(AuxBCMap(iAuxBC))%lmin)
       AuxBC_parabol(AuxBCMap(iAuxBC))%lmax  = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-lmax',TRIM(tmpStr2))
@@ -1691,7 +1731,7 @@ IF (nAuxBCs.GT.0) THEN
         CALL rotx(rot2,alpha2)
         n2     = MATMUL(rot2,n1)
       ELSE
-        CALL abort(__STAMP__,'Vector is collinear with x-axis. this should not be possible... AuxBC:',iAuxBC)
+        CALL ABORT(__STAMP__,'Vector is collinear with x-axis. this should not be possible... AuxBC:',iAuxBC)
       END IF
 
       AuxBC_parabol(AuxBCMap(iAuxBC))%rotmatrix(:,:)  = MATMUL(rot2,rot1)
@@ -1704,7 +1744,7 @@ IF (nAuxBCs.GT.0) THEN
 
     CASE DEFAULT
       SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
-      CALL abort(__STAMP__,'AuxBC does not exist for AuxBC',iAuxBC)
+      CALL ABORT(__STAMP__,'AuxBC does not exist for AuxBC',iAuxBC)
 
     END SELECT
   END DO
@@ -1769,17 +1809,16 @@ DelayTime         = GETREAL(   'Part-DelayTime'    ,'0.')
 END SUBROUTINE InitializeVariablesTimeStep
 
 
-
 !===================================================================================================================================
 ! finalize particle variables
 !===================================================================================================================================
 SUBROUTINE FinalizeParticles()
 ! MODULES
 USE MOD_Globals
-USE MOD_ErosionPoints,              ONLY: FinalizeErosionPoints
 USE MOD_Particle_Analyze,           ONLY: FinalizeParticleAnalyze
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Sampling, ONLY: FinalizeParticleBoundarySampling
+USE MOD_Particle_Boundary_Tracking, ONLY: FinalizeParticleBoundaryTracking
 USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
 USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
@@ -1845,6 +1884,9 @@ SDEALLOCATE(PartBound%WallVelo)
 !SDEALLOCATE(PartBound%AmbientDynamicVisc)
 SDEALLOCATE(PartBound%WallModel)
 SDEALLOCATE(PartBound%WallCoeffModel)
+SDEALLOCATE(PartBound%doRoughWallModelling)
+SDEALLOCATE(PartBound%RoughMeanIC)
+SDEALLOCATE(PartBound%RoughVarianceIC)
 SDEALLOCATE(PartBound%Young)
 SDEALLOCATE(PartBound%Poisson)
 SDEALLOCATE(PartBound%CoR)
@@ -1856,6 +1898,15 @@ SDEALLOCATE(PEM%pStart)
 SDEALLOCATE(PEM%pNumber)
 SDEALLOCATE(PEM%pEnd)
 SDEALLOCATE(PEM%pNext)
+
+! Extended RHS
+#if USE_EXTENDED_RHS
+SDEALLOCATE(gradUx2,gradUy2,gradUz2)
+SDEALLOCATE(gradUx_master_loc,gradUx_slave_loc)
+SDEALLOCATE(gradUy_master_loc,gradUy_slave_loc)
+SDEALLOCATE(gradUz_master_loc,gradUz_slave_loc)
+SDEALLOCATE(U_local,gradp_local)
+#endif /* USE_EXTENDED_RHS */
 
 ! Basset force
 #if USE_BASSETFORCE
@@ -1877,7 +1928,7 @@ SDEALLOCATE(Seeds)
 CALL ParticleFinalizeSGS()
 
 ! particle impact tracking
-CALL FinalizeErosionPoints()
+CALL FinalizeParticleBoundaryTracking()
 
 ! particle surface sampling
 CALL FinalizeParticleBoundarySampling()
@@ -1947,7 +1998,6 @@ IMPLICIT NONE
 REAL, INTENT(OUT), DIMENSION(3,3) :: mat
 INTEGER                           :: j
 !===================================================================================================================================
-
 mat                      = 0.
 FORALL(j = 1:3) mat(j,j) = 1.
 END SUBROUTINE
@@ -2005,6 +2055,7 @@ ELSE
     ProcessID = GetPID_C()
   END IF
 END IF
+
 IF(.NOT. uRandomExists) THEN
   Clock = IEOR(Clock, INT(ProcessID, KIND(Clock)))
   AuxilaryClock=Clock

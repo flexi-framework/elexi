@@ -796,9 +796,11 @@ SUBROUTINE AllocateParticleArrays()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
+#if USE_EXTEND_RHS
+USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
+#endif /* USE_EXTEND_RHS */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

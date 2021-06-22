@@ -581,47 +581,52 @@ lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nCompute
 ! if running on one node, halo_eps is meaningless. Get a representative BC_halo_eps for BC side identification
 fullMesh = .FALSE.
 IF (halo_eps.EQ.0) THEN
-  ! reconstruct halo_eps_velo
-  IF (halo_eps_velo.EQ.0) THEN
-    ! Set to speed of sound
-    BC_halo_eps_velo = 343
-  ELSE
-    BC_halo_eps_velo = halo_eps_velo
-  END IF
+  IF (nProcessors.GT.1) THEN
+    ! reconstruct halo_eps_velo
+    IF (halo_eps_velo.EQ.0) THEN
+      ! Set to speed of sound
+      BC_halo_eps_velo = 343
+    ELSE
+      BC_halo_eps_velo = halo_eps_velo
+    END IF
 
-  ! reconstruct deltaT
-  deltaT = 0.
-  IF (ManualTimeStep.GT.0.) THEN
-    deltaT    = ManualTimeStep
-  ELSE
-    deltaT    = CalcTimeStep(errType)
-  END IF
+    ! reconstruct deltaT
+    deltaT = 0.
+    IF (ManualTimeStep.GT.0.) THEN
+      deltaT    = ManualTimeStep
+    ELSE
+      deltaT    = CalcTimeStep(errType)
+    END IF
 
-  ! calculate halo_eps
-  BC_halo_eps = RKc(2)
-  DO iStage=2,nRKStages-1
-    BC_halo_eps = MAX(BC_halo_eps,RKc(iStage+1)-RKc(iStage))
-  END DO
-  BC_halo_eps = MAX(BC_halo_eps,1.-RKc(nRKStages))
-  BC_halo_eps = BC_halo_eps*BC_halo_eps_velo*deltaT*SafetyFactor
+    ! calculate halo_eps
+    BC_halo_eps = RKc(2)
+    DO iStage=2,nRKStages-1
+      BC_halo_eps = MAX(BC_halo_eps,RKc(iStage+1)-RKc(iStage))
+    END DO
+    BC_halo_eps = MAX(BC_halo_eps,1.-RKc(nRKStages))
+    BC_halo_eps = BC_halo_eps*BC_halo_eps_velo*deltaT*SafetyFactor
 
-  vec(1)   = GEO%xmaxglob-GEO%xminglob
-  vec(2)   = GEO%ymaxglob-GEO%yminglob
-  vec(3)   = GEO%zmaxglob-GEO%zminglob
-  BC_halo_diag = VECNORM(vec)
+    vec(1)   = GEO%xmaxglob-GEO%xminglob
+    vec(2)   = GEO%ymaxglob-GEO%yminglob
+    vec(3)   = GEO%zmaxglob-GEO%zminglob
+    BC_halo_diag = VECNORM(vec)
 
-  ! compare halo_eps against global diagonal and reduce if necessary
-  IF (.NOT.ALMOSTZERO(BC_halo_eps).AND.(BC_halo_diag.GE.BC_halo_eps)) THEN
-    SWRITE(UNIT_stdOUt,'(A,E11.3)') ' | No halo_eps given. Reconstructed to ',BC_halo_eps
-  ELSEIF (.NOT.ALMOSTZERO(BC_halo_eps).AND.(BC_halo_diag.LT.BC_halo_eps)) THEN
+    ! compare halo_eps against global diagonal and reduce if necessary
+    IF (.NOT.ALMOSTZERO(BC_halo_eps).AND.(BC_halo_diag.GE.BC_halo_eps)) THEN
+      SWRITE(UNIT_stdOUt,'(A,E11.3)') ' | No halo_eps given. Reconstructed to ',BC_halo_eps
+    ELSEIF (.NOT.ALMOSTZERO(BC_halo_eps).AND.(BC_halo_diag.LT.BC_halo_eps)) THEN
+      fullMesh = .TRUE.
+      BC_halo_eps = BC_halo_diag
+      SWRITE(UNIT_stdOUt,'(A,E11.3)') ' | No halo_eps given. Reconstructed to global diag with ',BC_halo_eps
+    ! halo_eps still at zero. Set it to global diagonal
+    ELSE
+      fullMesh = .TRUE.
+      BC_halo_eps = BC_halo_diag
+      SWRITE(UNIT_stdOUt,'(A,F11.3)') ' | No halo_eps given and could not be reconstructed. Using global diag with ',BC_halo_eps
+    END IF
+  ElSE
     fullMesh = .TRUE.
-    BC_halo_eps = BC_halo_diag
-    SWRITE(UNIT_stdOUt,'(A,E11.3)') ' | No halo_eps given. Reconstructed to global diag with ',BC_halo_eps
-  ! halo_eps still at zero. Set it to global diagonal
-  ELSE
-    fullMesh = .TRUE.
-    BC_halo_eps = BC_halo_diag
-    SWRITE(UNIT_stdOUt,'(A,F11.3)') ' | No halo_eps given and could not be reconstructed. Using global diag with ',BC_halo_eps
+    SWRITE(UNIT_stdOut,'(A)') ' | Running on one processor. Calculating side metrics for full mesh.'
   END IF
 ELSE
   vec(1)   = GEO%xmaxglob-GEO%xminglob

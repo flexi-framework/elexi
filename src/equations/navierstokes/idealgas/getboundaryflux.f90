@@ -46,6 +46,7 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+REAL,ALLOCATABLE :: UPrim_Blasius(:,:,:,:)
 
 INTERFACE InitBC
   MODULE PROCEDURE InitBC
@@ -299,7 +300,7 @@ SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,Ta
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals        ,ONLY: Abort
-USE MOD_Mesh_Vars      ,ONLY: BoundaryType,BC
+USE MOD_Mesh_Vars      ,ONLY: BoundaryType,BC,nBCSides
 USE MOD_EOS            ,ONLY: ConsToPrim,PrimtoCons
 USE MOD_EOS            ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,cp
@@ -335,11 +336,17 @@ BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
 SELECT CASE(BCType)
 CASE(2) !Exact function or refstate
-  IF(BCState.EQ.0)THEN
-    DO q=0,ZDIM(Nloc); DO p=0,Nloc
-      CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),Cons)
-      CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
-    END DO; END DO
+  IF(BCState.EQ.0) THEN
+    IF (.NOT.ALLOCATED(UPrim_Blasius)) THEN
+      ALLOCATE(UPrim_Blasius(PRIM,0:Nloc,0:ZDIM(Nloc),nBCSides))
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
+        CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),Cons)
+        CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
+        UPrim_Blasius(:,p,q,SideID) = UPrim_boundary(:,p,q)
+      END DO; END DO
+    ELSE
+      UPrim_boundary(:,p,q) = UPrim_Blasius(:,p,q,SideID)
+    END IF
   ELSE
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
       UPrim_boundary(:,p,q) = RefStatePrim(:,BCState)
@@ -1459,6 +1466,7 @@ SDEALLOCATE(BCData)
 SDEALLOCATE(BCDataPrim)
 SDEALLOCATE(nBCByType)
 SDEALLOCATE(BCSideID)
+SDEALLOCATE(UPrim_Blasius)
 END SUBROUTINE FinalizeBC
 
 END MODULE MOD_GetBoundaryFlux

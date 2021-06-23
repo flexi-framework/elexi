@@ -339,12 +339,22 @@ CASE(2) !Exact function or refstate
   IF(BCState.EQ.0) THEN
     IF (.NOT.ALLOCATED(UPrim_Blasius)) THEN
       ALLOCATE(UPrim_Blasius(PRIM,0:Nloc,0:ZDIM(Nloc),nBCSides))
+      ! Initialize
+      UPrim_Blasius = 0.
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
+        CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),Cons)
+        CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
+        UPrim_Blasius(:,p,q,SideID) = UPrim_boundary(:,p,q)
+      END DO; END DO
+    ELSEIF (ALL(UPrim_Blasius(:,:,:,SideID).EQ.0.)) THEN
+      ! Continue filling
       DO q=0,ZDIM(Nloc); DO p=0,Nloc
         CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),Cons)
         CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
         UPrim_Blasius(:,p,q,SideID) = UPrim_boundary(:,p,q)
       END DO; END DO
     ELSE
+      ! All filled
       UPrim_boundary(:,p,q) = UPrim_Blasius(:,p,q,SideID)
     END IF
   ELSE

@@ -500,7 +500,7 @@ int visuReader::RequestData(
 #if USE_MPI
    if (this->UseD3) {
      // Distribute DG data and create ghost cells
-     DistributeData(mb, 0);
+     /* DistributeData(mb, 0); */
 
      // Distribute FV data and create ghost cells
      DistributeData(mb, 1);
@@ -639,15 +639,19 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
     vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
 
     int CellLength;
+    int CellType;
     if (coords->dim == 1) {
       // Use the nodeids to build lines
       CellLength = 2;
+      CellType   = VTK_LINE;
     } else if (coords->dim == 2) {
       // Use the nodeids to build quads
       CellLength = 4;
+      CellType   = VTK_QUAD;
     } else if (coords->dim == 3) {
       // Use the nodeids to build hexas
       CellLength = 8;
+      CellType   = VTK_HEXAHEDRON;
     } else {
       exit(1);
     }
@@ -672,16 +676,8 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
       }
     }
 
-    if (coords->dim == 1) {
-      // Use the nodeids to build lines
-      output->SetCells({VTK_LINE}, cellarray);
-    } else if (coords->dim == 2) {
-      // Use the nodeids to build quads
-      output->SetCells({VTK_QUAD}, cellarray);
-    } else if (coords->dim == 3) {
-      // Use the nodeids to build hexas
-      output->SetCells({VTK_HEXAHEDRON}, cellarray);
-    }
+    // Use the nodeids to build all cells at once
+    output->SetCells(CellType,cellarray);
 
 #if !FV_ENABLED
     if (this->UseD3) {

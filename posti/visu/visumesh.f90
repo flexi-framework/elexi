@@ -333,7 +333,7 @@ END SUBROUTINE BuildSurfVisuCoords
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D coordinates to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteGlobalNodeIDsToVTK_array(NVisu,nElems,Coords,globalnodeids_out,globalnodeids,dim,DGFV,surf)
+SUBROUTINE WriteGlobalNodeIDsToVTK_array(NVisu,nElems,Coords,GlobalNodeIDs_out,GlobalNodeIDs,GlobalCellIDs_out,GlobalCellIDs,dim,DGFV,surf)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
@@ -349,27 +349,31 @@ INTEGER,INTENT(IN)                   :: DGFV                         !< flag ind
 INTEGER,INTENT(IN)                   :: surf                         !< flag indicating volume = 0  or surface = 1 data
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: globalnodeids(:)
-TYPE (CARRAY), INTENT(INOUT)             :: globalnodeids_out
+INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: GlobalNodeIDs(:)
+INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: GlobalCellIDs(:)
+TYPE (CARRAY), INTENT(INOUT)             :: GlobalNodeIDs_out
+TYPE (CARRAY), INTENT(INOUT)             :: GlobalCellIDs_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
 ! create global node ID. Must be called by all procs
 !> Coords are currently not precise enough (call by value?), so we do not pass them
-CALL BuildGlobalNodeIDs(NVisu=NVisu,nElems=nElems,globalnodeids=globalnodeids,dim=dim,DGFV=DGFV,surf=surf)
+CALL BuildGlobalNodeIDs(NVisu=NVisu,nElems=nElems,GlobalNodeIDs=GlobalNodeIDs,GlobalCellIDs=GlobalCellIDs,dim=dim,DGFV=DGFV,surf=surf)
 
 IF (nElems.EQ.0) THEN
-  globalnodeids_out%len = 0
+  GlobalNodeIDs_out%len = 0
+  GlobalCellIDs_out%len = 0
   RETURN
 END IF
 
 ! set the sizes of the arrays
-! globalnodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
-globalnodeids_out%len = (nVisu+1)**dim*nElems
+GlobalNodeIDs_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
+GlobalCellIDs_out%len =          ((NVisu+DGFV)/(1+DGFV))**dim*nElems
 
 ! assign data to the arrays (no copy!!!)
-globalnodeids_out%data = C_LOC(globalnodeids(1))
+GlobalNodeIDs_out%data = C_LOC(GlobalNodeIDs(1))
+GlobalCellIDs_out%data = C_LOC(GlobalCellIDs(1))
 
 END SUBROUTINE WriteGlobalNodeIDsToVTK_array
 
@@ -377,7 +381,7 @@ END SUBROUTINE WriteGlobalNodeIDsToVTK_array
 !=================================================================================================================================
 !> Calculates the global node ID for VTK D3 filter
 !=================================================================================================================================
-SUBROUTINE BuildGlobalNodeIDs(NVisu,nElems,globalnodeids,dim,DGFV,surf)
+SUBROUTINE BuildGlobalNodeIDs(NVisu,nElems,GlobalNodeIDs,GlobalCellIDs,dim,DGFV,surf)
 ! MODULES
 USE MOD_Globals
 USE MOD_Visu_Vars    ,ONLY: CoordsVisu_DG,CoordsSurfVisu_DG
@@ -388,20 +392,22 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                       :: NVisu
 INTEGER,INTENT(IN)                       :: nElems
-INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: globalnodeids(:)  !< stores the unique global node ID
+INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: GlobalNodeIDs(:)  !< stores the unique global node ID
+INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: GlobalCellIDs(:)  !< stores the unique global node ID
 INTEGER,INTENT(IN)                       :: dim               !< 3 = 3d connectivity, 2 = 2d connectivity
 INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating DG = 0 or FV = 1 data
 INTEGER,INTENT(IN)                       :: surf                         !< flag indicating volume = 0  or surface = 1 data
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: i,j,k,iElem
-INTEGER           :: NodeID
-INTEGER           :: NVisu_k,NVisu_j
+INTEGER           :: NodeID,NodeIDElem,offsetCellID
+INTEGER           :: NVisu_k,NVisu_j,NVisu_elem
+INTEGER           :: nVTKCells
 INTEGER           :: iProc
 INTEGER           :: nUniqueNodeHashes
 CHARACTER(LEN=20)           :: format
 CHARACTER(LEN=INPUT_LENGTH) :: NodePosChar
-CHARACTER(LEN=SHA256_LENGTH),ALLOCATABLE :: NodeHash(:,:,:,:),NodeHashGlob(:),sorted(:)
+CHARACTER(LEN=SHA256_LENGTH),ALLOCATABLE :: NodeHash(:),NodeHashGlob(:),sorted(:)
 #if USE_MPI
 INTEGER           :: color
 INTEGER,ALLOCATABLE :: nUniqueNodeHashesProc(:),offsetUniqueHashesProc(:)
@@ -423,8 +429,8 @@ SELECT CASE(dim)
     NVisu_k = NVisu
     NVisu_j = NVisu
   CASE(2)
-    NVisu_k = MERGE(1    ,0          ,surf.EQ.0)
-    NVisu_j = MERGE(NVisu,ZDIM(NVisu),surf.EQ.0)
+    NVisu_k = 1
+    NVisu_j = NVisu
 !  CASE(1)
 !    NVisu_k = 1
 !    NVisu_j = 1
@@ -435,39 +441,100 @@ SELECT CASE(dim)
     CALL Abort(__STAMP__, "Only 2D and 3D connectivity can be created. dim must be 2 or 3.")
 END SELECT
 
-SDEALLOCATE(globalnodeids)
+nVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim*nElems
+SDEALLOCATE(GlobalNodeIDs)
 
 ! Reuse the existing elem distribution
-ALLOCATE(NodeHash(0:NVisu,0:NVisu_j,0:NVisu_k,nElems))
+ALLOCATE(NodeHash(0:(2**dim)*nVTKCells-1))
 
 ! Transfer node coordinates to continous data string and compute hash
-DO iElem = 1,nElems
-  DO k = 0,NVisu_k,(DGFV+1)
-    DO j = 0,NVisu_j,(DGFV+1)
-      DO i = 0,NVisu,(DGFV+1)
-      ! Just write the coordinates into the string without space. Padding is added if required
-      WRITE(format,'(A,I0,A,I0)') '3E',INT(INPUT_LENGTH/3.),'.',INT((INPUT_LENGTH/3.)-6)
-        SELECT CASE(dim)
-          CASE(3)
+WRITE(format,'(A,I0,A,I0)') '3E',INT(INPUT_LENGTH/3.),'.',INT((INPUT_LENGTH/3.)-6)
+
+NodeID     = 0
+NodeIDElem = 0
+NVisu_elem = (NVisu+1)**dim
+
+SELECT CASE(dim)
+  CASE(3)
+    DO iElem=1,nElems
+      DO k=0,NVisu_k-1,(DGFV+1)
+        DO j=0,NVisu_j-1,(DGFV+1)
+          DO i=0,NVisu-1,(DGFV+1)
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i  ,j+1,k  ,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P8
             WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i,j,k,iElem)
-          CASE(2)
-            IF (surf.EQ.0) THEN
-              WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i,j,k,iElem)
-            ELSE
-              WRITE(NodePosChar,'('//format//')') CoordsSurfVisu_DG(1:3,i,j,k,iElem)
-            END IF
-        END SELECT
-
-        ! Hash the string (strictly we don't even need to hash it?)
-        !> SHA256 is definitely overkill but Mikael Leetmaa provided a library
-        !> Keep it allocated because we need it again when assigning unique global node IDs
-        NodeHash(i,j,k,iElem) = SHA256(NodePosChar)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P1
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i+1,j  ,k  ,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P2
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i+1,j+1,k  ,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P3
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i  ,j+1,k+1,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P8
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i  ,j  ,k+1,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P5
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i+1,j  ,k+1,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P6
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i+1,j+1,k+1,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P7
+          END DO
+        END DO
       END DO
+      NodeIDElem = NodeIDElem+NVisu_elem
     END DO
-  END DO
-END DO
+  CASE(2)
+    k = 0
+    IF (Surf.EQ.0) THEN
+      DO iElem=1,nElems
+        DO j=0,NVisu_j-1,(DGFV+1)
+          DO i=0,NVisu-1,(DGFV+1)
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i  ,j+1,k  ,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P8
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i,j,k,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P1
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i+1,j  ,k  ,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P2
+            WRITE(NodePosChar,'('//format//')') CoordsVisu_DG(1:3,i+1,j+1,k  ,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P3
+          END DO
+        END DO
+        NodeIDElem = NodeIDElem+NVisu_elem
+      END DO
+    ELSE
+      DO iElem=1,nElems
+        DO j=0,NVisu_j-1,(DGFV+1)
+          DO i=0,NVisu-1,(DGFV+1)
+            WRITE(NodePosChar,'('//format//')') CoordsSurfVisu_DG(1:3,i  ,j+1,k  ,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P8
+            WRITE(NodePosChar,'('//format//')') CoordsSurfVisu_DG(1:3,i,j,k,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P1
+            WRITE(NodePosChar,'('//format//')') CoordsSurfVisu_DG(1:3,i+1,j  ,k  ,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P2
+            WRITE(NodePosChar,'('//format//')') CoordsSurfVisu_DG(1:3,i+1,j+1,k  ,iElem)
+            NodeHash(NodeID) = SHA256(NodePosChar)
+            NodeID=NodeID+1 !P3
+          END DO
+        END DO
+        NodeIDElem = NodeIDElem+NVisu_elem
+      END DO
+    END IF
+END SELECT
 
-CALL Unique(RESHAPE(NodeHash,(/(NVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems/)),sorted,nUniqueNodeHashes)
+CALL Unique(NodeHash,sorted,nUniqueNodeHashes)
 
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
@@ -573,20 +640,30 @@ NodeHashGlob = sorted
 DEALLOCATE(sorted)
 #endif
 
-ALLOCATE(GlobalNodeIDs((nVisu+1)*(NVisu_j+1)*(NVisu_k+1)*nElems))
+SDEALLOCATE(GlobalNodeIDs)
+SDEALLOCATE(GlobalCellIDs)
+ALLOCATE(GlobalNodeIDs((2**dim)*nVTKCells))
+ALLOCATE(GlobalCellIDs(         nVTKCells))
+! ALLOCATE(GlobalNodeIDs((NVisu+1)**dim*nElems))
 GlobalNodeIDs = -1
+GlobalCellIDs = -1
 NodeID = 0
 
-! Finally, the unique node ID is just the position in the sorted NodeHashGlob array
-DO iElem = 1,nElems
-  DO k = 0,NVisu_k!,(DGFV+1)
-    DO j = 0,NVisu_j!,(DGFV+1)
-      DO i = 0,NVisu!,(DGFV+1)
-        NodeID = NodeID + 1
-        GlobalNodeIDs(NodeID) = BinarySearch(NodeHashGlob,NodeHash(i,j,k,iElem))
+#if USE_MPI
+! Sum up cells from the other procs
+offsetCellID = 0
+CALL MPI_EXSCAN(nVTKCells,offsetCellID,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+#else
+offsetCellID = 0
+#endif
+
+DO NodeID = 0,nVTKCells-1
+  GlobalCellIDs(NodeID+1) = NodeID + offsetCellID
       END DO
-    END DO
-  END DO
+
+! Finally, the unique node ID is just the position in the sorted NodeHashGlob array
+DO NodeID = 0,(2**dim)*nVTKCells-1
+  GlobalNodeIDs(NodeID+1) = BinarySearch(NodeHashGlob,NodeHash(NodeID)) - 1
 END DO
 SWRITE(UNIT_stdOut,'(I0)') nUniqueNodeHashes
 

@@ -614,7 +614,7 @@ coords_out%len = 3*(NVisu+1)**dim*nElems
 nodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
 
 ! assign data to the arrays (no copy!!!)
-coords_out%data = C_LOC(Coords(1,0,0,0,1))
+coords_out%data  = C_LOC(coords(1,0,0,0,1))
 nodeids_out%data = C_LOC(nodeids(1))
 
 SWRITE(UNIT_stdOut,'(A)')" Done!"

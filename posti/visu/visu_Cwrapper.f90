@@ -152,10 +152,12 @@ SUBROUTINE visu_CWrapper(mpi_comm_IN,  &
     UseD3,                                                          &
 #endif
     strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
-    coordsDG_out,valuesDG_out,nodeidsDG_out,globalnodeidsDG_out, &
-    coordsFV_out,valuesFV_out,nodeidsFV_out,globalnodeidsFV_out,varnames_out, &
-    coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out,globalnodeidsSurfDG_out, &
-    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,globalnodeidsSurfFV_out,varnamesSurf_out,&
+    coordsDG_out    ,valuesDG_out    ,nodeidsDG_out    ,globalnodeidsDG_out,              globalcellidsDG_out,      &
+    coordsFV_out    ,valuesFV_out    ,nodeidsFV_out    ,globalnodeidsFV_out,              globalcellidsFV_out,      &
+    varnames_out,                                                                                                   &
+    coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out,globalnodeidsSurfDG_out,          globalcellidsSurfDG_out,  &
+    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,globalnodeidsSurfFV_out,          globalcellidsSurfFV_out,  &
+    varnamesSurf_out,&
     coordsPart_out   ,valuesPart_out   ,nodeidsPart_out,   varnamesPart_out,   componentsPart_out,   &
     coordsErosion_out,valuesErosion_out,nodeidsErosion_out,varnamesErosion_out,componentsErosion_out)
 ! MODULES
@@ -187,19 +189,23 @@ TYPE (CARRAY), INTENT(INOUT)            :: coordsDG_out
 TYPE (CARRAY), INTENT(INOUT)            :: valuesDG_out
 TYPE (CARRAY), INTENT(INOUT)            :: nodeidsDG_out
 TYPE (CARRAY), INTENT(INOUT)            :: globalnodeidsDG_out
+TYPE (CARRAY), INTENT(INOUT)            :: globalcellidsDG_out
 TYPE (CARRAY), INTENT(INOUT)            :: coordsFV_out
 TYPE (CARRAY), INTENT(INOUT)            :: valuesFV_out
 TYPE (CARRAY), INTENT(INOUT)            :: nodeidsFV_out
 TYPE (CARRAY), INTENT(INOUT)            :: globalnodeidsFV_out
+TYPE (CARRAY), INTENT(INOUT)            :: globalcellidsFV_out
 TYPE (CARRAY), INTENT(INOUT)            :: varnames_out
 TYPE (CARRAY), INTENT(INOUT)            :: coordsSurfDG_out
 TYPE (CARRAY), INTENT(INOUT)            :: valuesSurfDG_out
 TYPE (CARRAY), INTENT(INOUT)            :: nodeidsSurfDG_out
 TYPE (CARRAY), INTENT(INOUT)            :: globalnodeidsSurfDG_out
+TYPE (CARRAY), INTENT(INOUT)            :: globalcellidsSurfDG_out
 TYPE (CARRAY), INTENT(INOUT)            :: coordsSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)            :: valuesSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)            :: nodeidsSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)            :: globalnodeidsSurfFV_out
+TYPE (CARRAY), INTENT(INOUT)            :: globalcellidsSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)            :: varnamesSurf_out
 TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: coordsPart_out
 TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: valuesPart_out
@@ -228,7 +234,10 @@ IF (MeshFileMode) THEN
   CALL WriteCoordsToVTK_array       (NVisu,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0)
 #if USE_MPI && !FV_ENABLED
   ! GlobalNodeIDs are only required once. Do it here only if just the mesh is required
-  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG,globalnodeidsDG_out,globalnodeids_DG,dim=PP_dim,DGFV=0,surf=0)
+  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG        &
+                                                    ,globalnodeidsDG_out,globalnodeids_DG &
+                                                    ,globalcellidsDG_out,globalcellids_DG &
+                                                    ,dim=PP_dim,DGFV=0,surf=0)
 #endif
   ! We may visualize the scaled Jacobian for debug purposes
   IF (nVarVisu.GT.0) THEN
@@ -246,16 +255,19 @@ IF (MeshFileMode) THEN
   valuesFV_out%len      = 0
   nodeidsFV_out%len     = 0
   globalnodeidsFV_out%len     = 0
+  globalcellidsFV_out%len     = 0
   coordsSurfDG_out%dim  = 2
   coordsSurfDG_out%len  = 0
   valuesSurfDG_out%len  = 0
   nodeidsSurfDG_out%len = 0
   globalnodeidsSurfDG_out%len = 0
+  globalcellidsSurfDG_out%len = 0
   coordsSurfFV_out%dim  = 2
   coordsSurfFV_out%len  = 0
   valuesSurfFV_out%len  = 0
   nodeidsSurfFV_out%len = 0
   globalnodeidsSurfFV_out%len = 0
+  globalcellidsSurfFV_out%len = 0
   varnamesSurf_out%len  = 0
   coordsPart_out%len    = 0
   coordsPart_out%dim    = 0
@@ -273,6 +285,9 @@ IF (MeshFileMode) THEN
   RETURN
 END IF
 
+globalcellidsFV_out%len     = 0
+globalcellidsSurfFV_out%len = 0
+
 ! write UVisu to VTK 2D / 3D arrays (must be done always!)
 ! write coords, UVisu to VTK  2D / 3D arrays (must be done always!)
 IF (Avg2D) THEN
@@ -281,7 +296,10 @@ IF (Avg2D) THEN
   CALL WriteCoordsToVTK_array(NVisu   ,nElemsAvg2D_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=2,DGFV=0)
   CALL WriteCoordsToVTK_array(NVisu_FV,nElemsAvg2D_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=2,DGFV=1)
 #if USE_MPI && !FV_ENABLED
-  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG,globalnodeidsDG_out,globalnodeids_DG,dim=2,DGFV=0,surf=0)
+  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG         &
+                                                    ,globalnodeidsDG_out,globalnodeids_DG  &
+                                                    ,globalcellidsDG_out,globalcellids_DG  &
+                                                    ,dim=2,DGFV=0,surf=0)
 #endif
 ELSE
   CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,PP_dim)
@@ -289,7 +307,10 @@ ELSE
   CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0)
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=PP_dim,DGFV=1)
 #if USE_MPI && !FV_ENABLED
-  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG,globalnodeidsDG_out,globalnodeids_DG,dim=PP_dim,DGFV=0,surf=0)
+  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG         &
+                                                    ,globalnodeidsDG_out,globalnodeids_DG  &
+                                                    ,globalcellidsDG_out,globalcellids_DG  &
+                                                    ,dim=PP_dim,DGFV=0,surf=0)
 #endif
 END IF
 
@@ -330,7 +351,10 @@ CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSur
 CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
     CoordsSurfVisu_FV,nodeidsSurf_FV,dim=PP_dim-1,DGFV=1)
 #if USE_MPI && !FV_ENABLED
-  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nBCSidesVisu_DG,CoordsSurfVisu_DG,globalnodeidsSurfDG_out,globalnodeidsSurf_DG,dim=PP_dim-1,DGFV=0,surf=1)
+  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nBCSidesVisu_DG,CoordsSurfVisu_DG      &
+                                                    ,globalnodeidsSurfDG_out,globalnodeidsSurf_DG &
+                                                    ,globalcellidsSurfDG_out,globalcellidsSurf_DG &
+                                                    ,dim=PP_dim-1,DGFV=0,surf=1)
 #endif
 
 CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,VarnamesAll,nVarSurfVisuAll)

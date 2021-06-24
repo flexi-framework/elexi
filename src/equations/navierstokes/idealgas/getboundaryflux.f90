@@ -355,7 +355,7 @@ CASE(2) !Exact function or refstate
       END DO; END DO
     ELSE
       ! All filled
-      UPrim_boundary(:,p,q) = UPrim_Blasius(:,p,q,SideID)
+      UPrim_boundary(:,:,:) = UPrim_Blasius(:,:,:,SideID)
     END IF
   ELSE
     DO q=0,ZDIM(Nloc); DO p=0,Nloc

@@ -650,6 +650,7 @@ NodeID = 0
 
 #if USE_MPI
 ! Sum up cells from the other procs
+offsetCellID = 0
 CALL MPI_EXSCAN(nVTKCells,offsetCellID,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
 #else
 offsetCellID = 0
@@ -661,7 +662,7 @@ DO NodeID = 0,nVTKCells-1
 
 ! Finally, the unique node ID is just the position in the sorted NodeHashGlob array
 DO NodeID = 0,(2**dim)*nVTKCells-1
-  GlobalNodeIDs(NodeID+1) = BinarySearch(NodeHashGlob,NodeHash(NodeID))
+  GlobalNodeIDs(NodeID+1) = BinarySearch(NodeHashGlob,NodeHash(NodeID)) - 1
 END DO
 SWRITE(UNIT_stdOut,'(I0)') nUniqueNodeHashes
 

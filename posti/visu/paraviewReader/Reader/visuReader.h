@@ -94,27 +94,34 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       struct DoubleARRAY values_DG;
       struct IntARRAY  nodeids_DG;
       struct IntARRAY  globalnodeids_DG;
+      struct IntARRAY  globalcellids_DG;
       struct DoubleARRAY coords_FV;
       struct DoubleARRAY values_FV;
       struct IntARRAY  nodeids_FV;
       struct IntARRAY  globalnodeids_FV;
+      struct IntARRAY  globalcellids_FV;
       struct CharARRAY varnames;
       struct DoubleARRAY coordsSurf_DG;
       struct DoubleARRAY valuesSurf_DG;
       struct IntARRAY  nodeidsSurf_DG;
       struct IntARRAY  globalnodeidsSurf_DG;
+      struct IntARRAY  globalcellidsSurf_DG;
       struct DoubleARRAY coordsSurf_FV;
       struct DoubleARRAY valuesSurf_FV;
       struct IntARRAY  nodeidsSurf_FV;
       struct IntARRAY  globalnodeidsSurf_FV;
+      struct IntARRAY  globalcellidsSurf_FV;
       struct CharARRAY varnamesSurf;
 
       int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
       int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
 
-      void InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
-            struct DoubleARRAY* values, struct IntARRAY* nodeids, struct IntARRAY* globalnodeids, struct CharARRAY* varnames);
+      void InsertData  (vtkMultiBlockDataSet* mb,          int blockno
+                      , struct DoubleARRAY* coords,        struct DoubleARRAY* values
+                      , struct IntARRAY*    nodeids,       struct IntARRAY* globalnodeids
+                      , struct IntARRAY*    globalcellids, struct CharARRAY* varnames);
 
+      void ReDistributeData(vtkMultiBlockDataSet* mb, int blockno);
       void DistributeData(vtkMultiBlockDataSet* mb, int blockno);
 
       vtkDataArraySelection* VarDataArraySelection;

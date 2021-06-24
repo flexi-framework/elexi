@@ -32,13 +32,11 @@ extern "C" {
         int* strlen_prm,   const char* prmfile_IN,
         int* strlen_posti, const char* postifile_IN,
         int* strlen_state, const char* statefile_IN,
-        struct DoubleARRAY* coords_out,  struct DoubleARRAY* values_out,
-        struct IntARRAY* nodeids_out,    struct IntARRAY* globalnodeids_out,    struct DoubleARRAY* coordsFV_out,
-        struct DoubleARRAY* valuesFV_out,struct IntARRAY* nodeidsFV_out,        struct IntARRAY* globalnodeidsFV_out,
+        struct DoubleARRAY* coords_out,       struct DoubleARRAY* values_out,        struct IntARRAY* nodeids_out,       struct IntARRAY* globalnodeids_out,        struct IntARRAY* globalcellids_out,
+        struct DoubleARRAY* coordsFV_out,     struct DoubleARRAY* valuesFV_out,      struct IntARRAY* nodeidsFV_out,     struct IntARRAY* globalnodeidsFV_out,      struct IntARRAY* globalcellidsFV_out,
         struct CharARRAY* varnames_out,
-        struct DoubleARRAY* coordsSurf_out,  struct DoubleARRAY* valuesSurf_out,
-                struct IntARRAY* nodeidsSurf_out,    struct IntARRAY* globalnodeidsSurf_out,    struct DoubleARRAY* coordsSurfFV_out,
-        struct DoubleARRAY* valuesSurfFV_out,struct IntARRAY* nodeidsSurfFV_out,        struct IntARRAY* globalnodeidsSurfFV_out,
+        struct DoubleARRAY* coordsSurf_out,   struct DoubleARRAY* valuesSurf_out,    struct IntARRAY* nodeidsSurf_out,   struct IntARRAY* globalnodeidsSurf_out,    struct IntARRAY* globalcellidsSurf_out,
+        struct DoubleARRAY* coordsSurfFV_out, struct DoubleARRAY* valuesSurfFV_out,  struct IntARRAY* nodeidsSurfFV_out, struct IntARRAY* globalnodeidsSurfFV_out,  struct IntARRAY* globalcellidsSurfFV_out,
         struct CharARRAY* varnamesSurf_out);
 }
 

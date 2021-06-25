@@ -116,11 +116,11 @@ USE MOD_Particle_Surfaces_Vars ,ONLY: BCdata_auxSF,BezierSampleN,SurfMeshSubSide
 USE MOD_Particle_Surfaces_Vars ,ONLY: SurfFluxSideSize,TriaSurfaceFlux
 USE MOD_Particle_Surfaces      ,ONLY: GetBezierSampledAreas,GetSideBoundingBox,CalcNormAndTangTriangle
 USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,DoSurfaceFlux
+USE MOD_Particle_Vars          ,ONLY: DoPoissonRounding,DoTimeDepInflow
 USE MOD_Particle_Vars          ,ONLY: UseCircularInflow
 USE MOD_ReadInTools
 USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
 #if USE_MPI
-USE MOD_Particle_Vars          ,ONLY: DoPoissonRounding,DoTimeDepInflow
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING

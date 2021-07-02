@@ -189,8 +189,8 @@ LOGICAL            :: withGradients
 LOGICAL            :: withVectors
 INTEGER            :: iVar,iVarCalc
 !===================================================================================================================================
-withGradients=(PRESENT(gradUx).AND.PRESENT(gradUy).AND.PRESENT(gradUz))
-withVectors=(PRESENT(NormVec).AND.PRESENT(TangVec1).AND.PRESENT(TangVec2))
+withGradients = (PRESENT(gradUx) .AND.PRESENT(gradUy)  .AND.PRESENT(gradUz))
+withVectors   = (PRESENT(NormVec).AND.PRESENT(TangVec1).AND.PRESENT(TangVec2))
 
 DO iVar=1,nVarDepEOS
   iVarCalc = mapDepToCalc(iVar)

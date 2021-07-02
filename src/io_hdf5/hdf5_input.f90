@@ -155,6 +155,7 @@ ELSE
   ! Close FORTRAN predefined datatypes
   CALL H5CLOSE_F(iError)
 END IF
+
 END FUNCTION ISVALIDHDF5FILE
 
 !==================================================================================================================================
@@ -311,10 +312,10 @@ END IF
 IF(attrib_loc)THEN
   CALL H5AOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
   CALL H5ACLOSE_F(DSet_ID, iError)
-ELSE
-  CALL H5DOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
-  CALL H5DCLOSE_F(DSet_ID, iError)
-END IF
+  ELSE
+    CALL H5DOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
+    CALL H5DCLOSE_F(DSet_ID, iError)
+  END IF
 Exists=.TRUE.
 IF(iError.LT.0) Exists=.FALSE.
 ! auto error messages on
@@ -354,8 +355,8 @@ ELSE
 END IF
 
 ! Read in attributes
+! Open the dataset with default properties.
 CALL H5DOPEN_F(File_ID, ArrayName, Dset_ID, iError)
-
 ! Get the data space of the dataset.
 CALL H5DGET_SPACE_F(Dset_ID, FileSpace, iError)
 ! Get number of dimensions of data space
@@ -393,6 +394,7 @@ SWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','GeometricnElems',' | ',nElems_HD
 SWRITE(UNIT_stdOut,'(A)')' DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE GetDataProps
+
 
 SUBROUTINE GetVarNames(AttribName,VarNames,AttribExists)
 IMPLICIT NONE

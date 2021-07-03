@@ -197,7 +197,7 @@ Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtPar
 Cd  = 1. + 0.15*Rep**0.687
 IF((Species(PartSpecies(PartID))%RHSMethod.EQ.RHS_VINKOVIC).AND.(Rep .LT. epsilonRHS)) Cd  = 1.
 
-! Warn when outside valid range of Wang model
+! Warn when outside valid range of Naumann model
 IF(Rep.GT.800) THEN
   IF (RepWarn.EQV..FALSE.) THEN
     SWRITE(UNIT_StdOut,*) 'WARNING: Rep',Rep,'> 800, drag coefficient may not be accurate.'

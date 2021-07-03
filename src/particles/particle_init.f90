@@ -146,18 +146,19 @@ CALL prms%CreateIntOption(          'MPIRankOut'               , 'If compiled wi
                                                                  ' tracking information for the defined PartOut.'
                                                                , '0')
 #endif /*CODE_ANALYZE*/
-CALL prms%CreateIntOption(          'Part-RecordPart'          , 'Record particles at given record plane'  &
+CALL prms%CreateIntOption(          'Part-nRPs'                , 'Number of record planes'                                          &
                                                                , '0')
-CALL prms%CreateIntOption(          'Part-RecordMemory'        , 'Record particles memory'  &
+CALL prms%CreateIntOption(          'Part-RPMemory'            , 'Record particles memory'                                          &
                                                                , '100')
 !CALL prms%CreateStringOption(       'Part-RecordType[$]'       , 'Type of record plane.\n'                                       //&
 !                                                                 ' - plane\n'                                                      &
 !                                                               , 'none', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-RPThresholds[$]'     , 'Record particles threshold'  &
-                                                               , '0.,0.,0.,0.,0.,0.', numberedmulti=.TRUE.)
-
-CALL prms%CreateStringOption(       'Part-FilenameRecordPart'  , 'Specifying filename for load_from_file init.'           &
-                                                                , 'data/recordplane_')
+CALL prms%CreateIntOption(          'Part-RPDirection[$]'      , 'Direction of the normal vector of the record plane'               &
+                                                               , '1', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-RPPosition[$]'       , 'Position of the record plane in RPDirection.'                     &
+                                                               , '0.', numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(       'Part-FilenameRecordPart'  , 'Specifying filename for load_from_file init.'                     &
+                                                               , 'data/recordplane_')
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
 !===================================================================================================================================
@@ -200,14 +201,14 @@ CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle mode
                                                                   ' - Jacobs\n'                                                  //&
                                                                   ' - Vinkovic'                                                    &
                                                                 , 'none'     , numberedmulti=.TRUE.)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'none',            RHS_NONE)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'tracer',          RHS_TRACER)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'convergence',     RHS_CONVERGENCE)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Wang',            RHS_WANG)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Haider',          RHS_HAIDER)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Hoelzer',         RHS_HOELZER)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'none',            RHS_NONE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tracer',          RHS_TRACER)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'convergence',     RHS_CONVERGENCE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Wang',            RHS_WANG)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Vinkovic',        RHS_VINKOVIC)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Jacobs',          RHS_JACOBS)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Haider',          RHS_HAIDER)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Hoelzer',         RHS_HOELZER)
 CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle mass of species [$] [kg]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                              &
@@ -672,7 +673,7 @@ USE MOD_Particle_MPI_Emission      ,ONLY: InitEmissionComm
 USE MOD_Particle_MPI_Halo          ,ONLY: IdentifyPartExchangeProcs
 USE MOD_Particle_MPI_Vars          ,ONLY: PartMPI
 #endif /*USE_MPI*/
-USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart!, RPP_Type
+USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart, RPP_nVarNames
 #if USE_EXTEND_RHS && ANALYZE_RHS
 USE MOD_Output_Vars                ,ONLY: ProjectName
 USE MOD_Output                     ,ONLY: InitOutputToFile
@@ -688,8 +689,7 @@ USE MOD_Timedisc_Vars              ,ONLY: tAnalyze
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: RPP_maxMemory, iP, jP
-REAL                  :: x_dummy(6)
+INTEGER               :: RPP_maxMemory, jP
 CHARACTER(30)         :: tmpStr
 !===================================================================================================================================
 doPartIndex             = GETLOGICAL('doPartIndex','.FALSE.')
@@ -715,30 +715,21 @@ CALL InitializeVariablesPartBoundary()
 LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 
 ! Initialize record plane of particles
-RecordPart          = GETINT('Part-RecordPart','0')
+RecordPart          = GETINT('Part-nRPs','0')
 IF (RecordPart.GT.0) THEN
   CALL SYSTEM('mkdir -p recordpoints')
   ! Get size of buffer array
-  RPP_maxMemory     = GETINT('Part-RecordMemory','100')           ! Max buffer (100MB)
-  RPP_MaxBufferSize = RPP_MaxMemory*131072/6    != size in bytes/(real*RPP_maxMemory)
-
+  RPP_maxMemory     = GETINT('Part-RPMemory','100') ! Max buffer (100MB)
+  RPP_MaxBufferSize = RPP_MaxMemory*131072/6        != size in bytes/(real*RPP_maxMemory)
+  ! Readin record planes
   ALLOCATE(RPP_Plane(RecordPart))
   DO jP = 1,RecordPart
     WRITE(UNIT=tmpStr,FMT='(I2)') jP
-    ! Get type of record plane
-!    RPP_Type          = TRIM(GETSTR('Part-RecordType//TRIM(ADJUSTL(tmpStr))','plane'))
-!    SELECT CASE(RPP_Type)
-!      CASE('plane')
-    ALLOCATE(RPP_Plane(jP)%RPP_Data(8,RPP_MaxBufferSize))
+    ALLOCATE(RPP_Plane(jP)%RPP_Data(RPP_nVarNames,RPP_MaxBufferSize))
     RPP_Plane(jP)%RPP_Data = 0.
-    x_dummy(1:6) = GETREALARRAY('Part-RPThresholds'//TRIM(ADJUSTL(tmpStr)),6)
-    DO iP=1,3
-      RPP_Plane(jP)%x(1:2,iP)=x_dummy(1+2*(iP-1):2+2*(iP-1))
-    END DO ! iPoint
-    RPP_Plane(jP)%RPP_Records=0.
-!      CASE DEFAULT
-!        CALL ABORT(__STAMP__,'ERROR: Specified record plane does not exist!')
-!    END SELECT
+    RPP_Plane(jP)%pos = GETREAL('Part-RPPosition'//TRIM(ADJUSTL(tmpStr)),'1.')
+    RPP_Plane(jP)%dir = GETINT('Part-RPDirection'//TRIM(ADJUSTL(tmpStr)),'0')
+    RPP_Plane(jP)%RPP_Records = 0.
   END DO
 END IF
 

@@ -203,18 +203,6 @@ CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle mode
                                                                   ' - Jacobs\n'                                                  //&
                                                                   ' - Vinkovic'                                                    &
                                                                 , 'none'     , numberedmulti=.TRUE.)
-<<<<<<< HEAD
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'none',            RHS_NONE)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'tracer',          RHS_TRACER)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'convergence',     RHS_CONVERGENCE)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Li',       	    RHS_LI)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Minier',          RHS_MINIER)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Wang',            RHS_WANG)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Haider',          RHS_HAIDER)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Hoelzer',         RHS_HOELZER)
-=======
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'none',            RHS_NONE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tracer',          RHS_TRACER)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'convergence',     RHS_CONVERGENCE)
@@ -223,7 +211,6 @@ CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Vinkovic',   
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Jacobs',          RHS_JACOBS)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Haider',          RHS_HAIDER)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Hoelzer',         RHS_HOELZER)
->>>>>>> origin/particle.dev
 CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle mass of species [$] [kg]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                              &

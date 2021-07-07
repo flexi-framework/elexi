@@ -169,17 +169,19 @@ TYPE typeSurfaceflux
                                                                              ! insert the right amount of particles
   REAL                                   :: SampledMassflow                  ! Actual mass flow rate through a surface flux boundary
   REAL, ALLOCATABLE                      :: nVFRSub(:,:)                     ! normal volume flow rate through subsubside
+  REAL                                   :: DGMeanPrimState(1:PP_nVarPrim)   ! mean DG flux through boundary
 END TYPE
 
 TYPE tSpecies                                                                ! Particle Data for each Species
-  !General Species Values
+  ! General Species Values
   TYPE(tInit), ALLOCATABLE               :: Init(:)  !     =>NULL()          ! Particle Data for each Initialisation
   INTEGER                                :: RHSMethod                        ! specifying Keyword for RHS method
   REAL                                   :: MassIC                           ! Particle mass (without MPF)
   REAL                                   :: DiameterIC                       ! Particle diameter (without MPF)
   REAL                                   :: DensityIC                        ! Particle density (without MPF)
   INTEGER                                :: NumberOfInits                    ! Number of different initial particle placements
-  TYPE(typeSurfaceflux),ALLOCATABLE      :: Surfaceflux(:)                   ! Particle Data for each SurfaceFlux emission
+  ! SurfaceFlux
+  TYPE(typeSurfaceflux),ALLOCATABLE      :: SurfaceFlux(:)                   ! Particle Data for each SurfaceFlux emission
   INTEGER                                :: nSurfacefluxBCs                  ! Number of SF emissions
   INTEGER                                :: StartnumberOfInits               ! 0 if old emit defined (array is copied into 0. entry)
   REAL                                   :: LowVeloThreshold                 ! Threshold value for removal of low velocity particles

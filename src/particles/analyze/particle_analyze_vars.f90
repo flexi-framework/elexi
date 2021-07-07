@@ -50,15 +50,14 @@ REAL                          :: printDiffVec(6)
 REAL                          :: TimeSample
 
 INTEGER                       :: RPP_MaxBufferSize
-!CHARACTER(30)                 :: RPP_Type
 INTEGER                       :: RecordPart
-
 TYPE tPPlane                                    !< Data type representing a single plane
-  REAL                        :: x(2,3)         !< 4 corner points of the plane
+  REAL                        :: pos            !< position of the plane
+  INTEGER                     :: dir            !< direction of the normal vector of the plane
   REAL, ALLOCATABLE           :: RPP_Data(:,:)  !< PartState and PartSpecies
   INTEGER                     :: RPP_Records
 END TYPE tPPlane
-
 TYPE(tPPlane),ALLOCATABLE     :: RPP_Plane(:)
+INTEGER                       :: RPP_nVarNames = 7
 
 END MODULE MOD_Particle_Analyze_Vars

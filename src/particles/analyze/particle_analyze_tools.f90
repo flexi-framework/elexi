@@ -72,7 +72,7 @@ SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies,Species,nSpecies!,PartIndex
-USE MOD_Particle_Analyze_Vars,   ONLY: RPP_MaxBufferSize,RPP_Plane,RecordPart!,RPP_Type
+USE MOD_Particle_Analyze_Vars,   ONLY: RPP_MaxBufferSize,RPP_Plane,RecordPart,RPP_nVarNames
 USE MOD_HDF5_Output             ,ONLY: WriteAttribute
 USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_HDF5_WriteArray         ,ONLY: WriteArray
@@ -90,11 +90,10 @@ LOGICAL,OPTIONAL,INTENT(IN) :: writeToBinary
 INTEGER                        :: iPart,iRecord,iSpecies
 CHARACTER(LEN=200)             :: FileName_loc
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
-INTEGER, PARAMETER          :: RPPDataSize = 7
-INTEGER                     :: locRPP,RPP_glob,offsetRPP
+INTEGER                        :: locRPP,RPP_glob,offsetRPP
 #if USE_MPI
-INTEGER                     :: sendbuf(2),recvbuf(2)
-INTEGER                     :: nRecords(0:nProcessors-1)
+INTEGER                        :: sendbuf(2),recvbuf(2)
+INTEGER                        :: nRecords(0:nProcessors-1)
 #endif
 CHARACTER(LEN=32)              :: tmpStr
 REAL                           :: DiameterIC(nSpecies), SphericityIC(nSpecies)
@@ -108,8 +107,9 @@ INTEGER                        :: ForceIC(1,nSpecies)
 !IF(RPP_Type.EQ.'plane')THEN
 DO iRecord = 1,RecordPart
   DO iPart=1,PDM%ParticleVecLength
-    IF ((PartState(PART_POS1,iPart).GE.RPP_Plane(iRecord)%x(1,1)) .AND. (LastPartPos(PART_POS1,iPart).LT.RPP_Plane(iRecord)%x(1,1)))THEN
-      RPP_Plane(iRecord)%RPP_Records=RPP_Plane(iRecord)%RPP_Records+1
+    IF ((PartState(RPP_Plane(iRecord)%dir,iPart).GE.RPP_Plane(iRecord)%pos) .AND. &
+    (LastPartPos(RPP_Plane(iRecord)%dir,iPart).LT.RPP_Plane(iRecord)%pos))THEN
+      RPP_Plane(iRecord)%RPP_Records = RPP_Plane(iRecord)%RPP_Records+1
       ! Part pos and vel
       RPP_Plane(iRecord)%RPP_Data(1:6,RPP_Plane(iRecord)%RPP_Records) = PartState(1:6,iPart)
       ! Species
@@ -144,7 +144,7 @@ DO iRecord = 1,RecordPart
 
     IF(RPP_glob.EQ.0) RETURN
 
-    ALLOCATE(StrVarNames(RPPDataSize))
+    ALLOCATE(StrVarNames(RPP_nVarNames))
     StrVarNames(1) ='PartPosX'
     StrVarNames(2) ='PartPosY'
     StrVarNames(3) ='PartPosZ'
@@ -160,12 +160,12 @@ DO iRecord = 1,RecordPart
     SWRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileName_loc)
     IF(MPIRoot)THEN
       CALL OpenDataFile(FileName_loc,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
-      CALL WriteAttribute(File_ID,'VarNamesPart',RPPDataSize,StrArray=StrVarNames)
+      CALL WriteAttribute(File_ID,'VarNamesPart',RPP_nVarNames,StrArray=StrVarNames)
       CALL WriteAttribute(File_ID,'nSpecies',1,IntScalar=nSpecies)
       DO iSpecies=1,nSpecies
         SphericityIC(iSpecies) = Species(iSpecies)%SphericityIC
         DiameterIC(iSpecies)   = Species(iSpecies)%DiameterIC
-        ForceIC(1,iSpecies)    = 1
+        IF(Species(iSpecies)%RHSMethod .NE. RHS_TRACER) ForceIC(1,iSpecies)    = 1
 #if USE_EXTEND_RHS
         IF(Species(iSpecies)%CalcLiftForce)       ForceIC(2,iSpecies) = 1
         IF(Species(iSpecies)%CalcBassetForce)     ForceIC(3,iSpecies) = 1
@@ -189,29 +189,29 @@ DO iRecord = 1,RecordPart
     CALL DistributedWriteArray(FileName_loc                                  ,&
                                DataSetName  = 'RecordData'                   ,&
                                rank         = 2                              ,&
-                               nValGlobal   = (/RPPDataSize ,RPP_glob  /)    ,&
-                               nVal         = (/RPPDataSize ,locRPP    /)    ,&
+                               nValGlobal   = (/RPP_nVarNames ,RPP_glob  /)    ,&
+                               nVal         = (/RPP_nVarNames ,locRPP    /)    ,&
                                offset       = (/0           ,offsetRPP/)     ,&
                                collective   = .FALSE.                        ,&
                                offSetDim=2                                   ,&
                                communicator = MPI_COMM_FLEXI                 ,&
-                               RealArray    = RPP_Plane(iRecord)%RPP_Data(1:RPPDataSize,1:locRPP))
+                               RealArray    = RPP_Plane(iRecord)%RPP_Data(1:RPP_nVarNames,1:locRPP))
   !CALL MPI_BARRIER(PartMPI%COMM,iERROR)
 #else
     CALL OpenDataFile(FileName_loc,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
     CALL WriteArray(           DataSetName  = 'RecordData'                   ,&
                                rank         = 2                              ,&
-                               nValGlobal   = (/RPPDataSize ,RPP_glob  /)    ,&
-                               nVal         = (/RPPDataSize ,locRPP    /)    ,&
+                               nValGlobal   = (/RPP_nVarNames ,RPP_glob  /)    ,&
+                               nVal         = (/RPP_nVarNames ,locRPP    /)    ,&
                                offset       = (/0           ,offsetRPP/)     ,&
                                collective   = .TRUE.                         ,&
-                               RealArray    = RPP_Plane(iRecord)%RPP_Data(1:RPPDataSize,1:locRPP))
+                               RealArray    = RPP_Plane(iRecord)%RPP_Data(1:RPP_nVarNames,1:locRPP))
     CALL CloseDataFile()
 #endif /*MPI*/
 
     RPP_Plane(iRecord)%RPP_Data=0.0
 
-    SWRITE(UNIT_stdOut,'(A)') ' WRITE STATE TO BINARY... DONE'
+    SWRITE(UNIT_stdOut,'(A)') ' WRITE PARTICLE RECORD PLANE TO HDF5 ... DONE'
     SWRITE(UNIT_StdOut,'(132("-"))')
     DEALLOCATE(StrVarNames)
 

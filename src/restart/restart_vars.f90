@@ -29,19 +29,20 @@ LOGICAl            :: RestartInitIsDone   = .FALSE.   !< flag if restart routine
 LOGICAl            :: DoRestart           = .FALSE.   !< flag whether a restart should actually be performed
 LOGICAL            :: InterpolateSolution = .FALSE.   !< flag whether restart solution should be interpolated
                                                       !< if node type or polynomial degree are different
-CHARACTER(LEN=300) :: RestartFile =""                 !< name of restart file
+CHARACTER(LEN=255) :: RestartFile = ''                !< name of restart file
 CHARACTER(LEN=255) :: NodeType_Restart                !< node type of restart file
 REAL               :: RestartTime                     !< time at which computation is resumed
-INTEGER            :: RestartMode         = 1         !< 1) restart from State file
-                                                      !< 2) restart from timeAvg file, conservative variables
-                                                      !< 3) restart from timeAvg file, primitive variables
-INTEGER            :: RestartCons(5)                  !< position of conservative variables in restart file
-INTEGER            :: RestartPrim(6)                  !< position of primitive variables in restart file
-
+INTEGER            :: RestartMode         = -1        !< -1) Initial value, routines default to state file mode
+                                                      !<  1) restart from State file
+                                                      !<  2) restart from timeAvg file, conservative variables
+                                                      !<  3) restart from timeAvg file, primitive variables
+INTEGER            :: RestartCons(PP_nVar)            !< position of conservative variables in restart file
+INTEGER            :: RestartPrim(PP_nVarPrim)        !< position of primitive variables in restart file
 #if EQNSYSNR==3
 REAL               :: MuTilda
 #endif /*EQNSYSNR==3*/
 LOGICAL            :: RestartTurb         = .FALSE.
+
 #if FV_ENABLED
 INTEGER            :: NFVRestartSuper                 !< Polynomial degree for equidistant supersampling of FV subcells
 #endif

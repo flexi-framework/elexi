@@ -209,17 +209,18 @@ CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ! compare mesh file names
 CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile_RPList)
 IF (TRIM(MeshFile_RPList).NE.TRIM(MeshFile)) THEN
-  SWRITE(UNIT_stdOut,*) ' WARNING: MeshFileName from RPList differs from Mesh File specified in parameterfile!'
+  SWRITE(UNIT_stdOut,'(/)') ! Print empty line to break the ADVANCE=NO
+  SWRITE(UNIT_stdOut,'(A)') ' WARNING: MeshFileName from RPList differs from Mesh File specified in parameterfile!'
 END IF
 
 ! Readin OffsetRP
 CALL GetDataSize(File_ID,'OffsetRP',nDims,HSize)
 CHECKSAFEINT(HSize(2),4)
-nGlobalElems_RPList = INT(HSize(2),4) !global number of elements
+nGlobalElems_RPList = INT(HSize(2),4) ! global number of elements
 DEALLOCATE(HSize)
 
 IF (nGlobalElems_RPList.NE.nGlobalElems) &
-  CALL abort(__STAMP__,'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
+  CALL ABORT(__STAMP__,'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
 
 CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntArray=OffsetRPArray)
 
@@ -233,7 +234,7 @@ offsetRP = OffsetRPArray(1,1)
 ! Read in RP reference coordinates
 CALL GetDataSize(File_ID,'xi_RP',nDims,HSize)
 CHECKSAFEINT(HSize(2),4)
-nGlobalRP = INT(HSize(2),4) !global number of RecordPoints
+nGlobalRP = INT(HSize(2),4) ! global number of RecordPoints
 DEALLOCATE(HSize)
 
 ALLOCATE(xi_RP(3,nRP))
@@ -292,7 +293,7 @@ IF (RP_onProc) THEN
 END IF
 DEALLOCATE(xi_RP)
 
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' done.'
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' DONE.'
 
 END SUBROUTINE ReadRPList
 
@@ -451,8 +452,8 @@ REAL                           :: startT,endT
 #if USE_MPI
 IF (myRPrank.EQ.0) THEN
 #endif /* USE_MPI */
-  WRITE(UNIT_stdOut,'(a)')           ' WRITE RECORDPOINT DATA TO HDF5 FILE...'
-  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)') ' RP Buffer  : ',iSample,'/',RP_Buffersize,' samples.'
+  WRITE(UNIT_stdOut,'(A)')           ' WRITE RECORDPOINT DATA TO HDF5 FILE...'
+  WRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' RP Buffer  : ',iSample,'/',RP_Buffersize,' samples.'
   GETTIME(startT)
 #if USE_MPI
 END IF

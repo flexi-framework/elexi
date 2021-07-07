@@ -69,6 +69,7 @@ USE MOD_Particle_Boundary_Tracking, ONLY:DefineParametersParticleBoundaryTrackin
 USE Mod_Particle_Globals
 USE MOD_Particle_Interpolation,     ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY:DefineParametersParticleMesh
+USE MOD_Particle_Surface_Flux,      ONLY:DefineParametersParticleSurfaceFlux
 USE MOD_Particle_Vars
 #if USE_MPI
 USE MOD_LoadBalance,                ONLY:DefineParametersLoadBalance
@@ -145,18 +146,19 @@ CALL prms%CreateIntOption(          'MPIRankOut'               , 'If compiled wi
                                                                  ' tracking information for the defined PartOut.'
                                                                , '0')
 #endif /*CODE_ANALYZE*/
-CALL prms%CreateIntOption(          'Part-RecordPart'          , 'Record particles at given record plane'  &
+CALL prms%CreateIntOption(          'Part-nRPs'                , 'Number of record planes'                                          &
                                                                , '0')
-CALL prms%CreateIntOption(          'Part-RecordMemory'        , 'Record particles memory'  &
+CALL prms%CreateIntOption(          'Part-RPMemory'            , 'Record particles memory'                                          &
                                                                , '100')
 !CALL prms%CreateStringOption(       'Part-RecordType[$]'       , 'Type of record plane.\n'                                       //&
 !                                                                 ' - plane\n'                                                      &
 !                                                               , 'none', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-RPThresholds[$]'     , 'Record particles threshold'  &
-                                                               , '0.,0.,0.,0.,0.,0.', numberedmulti=.TRUE.)
-
-CALL prms%CreateStringOption(       'Part-FilenameRecordPart'  , 'Specifying filename for load_from_file init.'           &
-                                                                , 'data/recordplane_')
+CALL prms%CreateIntOption(          'Part-RPDirection[$]'      , 'Direction of the normal vector of the record plane'               &
+                                                               , '1', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-RPPosition[$]'       , 'Position of the record plane in RPDirection.'                     &
+                                                               , '0.', numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(       'Part-FilenameRecordPart'  , 'Specifying filename for load_from_file init.'                     &
+                                                               , 'data/recordplane_')
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
 !===================================================================================================================================
@@ -201,6 +203,7 @@ CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle mode
                                                                   ' - Jacobs\n'                                                  //&
                                                                   ' - Vinkovic'                                                    &
                                                                 , 'none'     , numberedmulti=.TRUE.)
+<<<<<<< HEAD
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'none',            RHS_NONE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'tracer',          RHS_TRACER)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'convergence',     RHS_CONVERGENCE)
@@ -211,6 +214,16 @@ CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Vinkovic',    
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Haider',          RHS_HAIDER)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' ,'Hoelzer',         RHS_HOELZER)
+=======
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'none',            RHS_NONE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tracer',          RHS_TRACER)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'convergence',     RHS_CONVERGENCE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Wang',            RHS_WANG)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Vinkovic',        RHS_VINKOVIC)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Jacobs',          RHS_JACOBS)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Haider',          RHS_HAIDER)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Hoelzer',         RHS_HOELZER)
+>>>>>>> origin/particle.dev
 CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle mass of species [$] [kg]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                              &
@@ -419,44 +432,6 @@ CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-NumberOfExcludeRegi
                                                                 , '0'       , numberedmulti=.TRUE.)
 
 ! Surface Flux
-CALL prms%SetSection("Particle Surface Flux")
-CALL prms%CreateIntOption(          'Part-Species[$]-nSurfacefluxBCs'  ,  'Number of SF emissions'                                 &
-                                                                       , '0'       , numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-BC',  'PartBound to be emitted from'                           &
-                                                                       , '0'       , numberedmulti=.TRUE.)
-CALL prms%CreateStringOption(       'Part-Species[$]-Surfaceflux[$]-velocityDistribution', 'Specifying keyword for velocity distribution\n' //&
-                                                                       ' - constant\n'                                           //&
-                                                                       ' - fluid'                                                  &
-                                                                       , 'constant', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-VeloIC', 'Velocity for inital Data'                            &
-                                                                       , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-VeloIsNormal', 'VeloIC is in Surf-Normal instead of VeloVecIC' &
-                                                                       , '.FALSE.' , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Surfaceflux[$]-VeloVecIC','Normalized velocity vector'                        &
-                                                                       , '0.0 , 0.0 , 0.0', numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-CircularInflow', 'Enables the utilization of a circular'     //&
-                                                                         'region as a surface flux on the selected boundary. '   //&
-                                                                         'Only possible on surfaces, which are in xy, xz, and '  //&
-                                                                         'yz-planes.'                                              &
-                                                                       , '.FALSE.' , numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-axialDir', 'Axial direction of coordinates in polar system'    &
-                                                                                   , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Surfaceflux[$]-origin'  , 'Origin in orth(ogonal?) coordinates of polar system' &
-                                                                      , '0.0 , 0.0', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-rmax', ' Max radius of to-be inserted particles'               &
-                                                                      , '1E21'     , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-rmin', 'Min radius of to-be inserted particles'                &
-                                                                      , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Surfaceflux[$]-PartDensity','PartDensity (real particles per m^3) or cub./' //&
-                                                                        'cyl. as alternative  to Part.Emis. in Type1'              &
-                                                                      , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-ReduceNoise','Reduce stat. noise by global calc. of PartIns',  &
-                                                                      '.FALSE.'    , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-Surfaceflux[$]-AcceptReject',' Perform ARM for skewness of RefMap-positioning'&
-                                                                      , '.TRUE.'   , numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(          'Part-Species[$]-Surfaceflux[$]-ARM_DmaxSampleN', 'Number of sample intervals in xi/eta for '//&
-                                                                        'Dmax-calc.'                                               &
-                                                                      , '1'        , numberedmulti=.TRUE.)
 
 CALL prms%CreateLogicalOption(      'OutputSurfaceFluxLinked'         , 'Flag to print the SurfaceFlux-linked Info'                &
                                                                       , '.FALSE.')
@@ -544,11 +519,12 @@ CALL prms%CreateRealOption(         'Part-tWriteRHS'              , 'Output time
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 ! Call every other DefineParametersParticle routine
-CALL DefineParametersParticleMesh()
-CALL DefineParametersParticleInterpolation()
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
 CALL DefineParametersParticleBoundaryTracking()
+CALL DefineParametersParticleInterpolation()
+CALL DefineParametersParticleMesh()
+CALL DefineParametersParticleSurfaceFlux()
 #if USE_MPI
 CALL DefineParametersLoadBalance()
 CALL DefineParametersMPIShared()
@@ -716,7 +692,7 @@ USE MOD_Particle_MPI_Emission      ,ONLY: InitEmissionComm
 USE MOD_Particle_MPI_Halo          ,ONLY: IdentifyPartExchangeProcs
 USE MOD_Particle_MPI_Vars          ,ONLY: PartMPI
 #endif /*USE_MPI*/
-USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart!, RPP_Type
+USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart, RPP_nVarNames
 #if USE_EXTEND_RHS && ANALYZE_RHS
 USE MOD_Output_Vars                ,ONLY: ProjectName
 USE MOD_Output                     ,ONLY: InitOutputToFile
@@ -732,8 +708,7 @@ USE MOD_Timedisc_Vars              ,ONLY: tAnalyze
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: RPP_maxMemory, iP, jP
-REAL                  :: x_dummy(6)
+INTEGER               :: RPP_maxMemory, jP
 CHARACTER(30)         :: tmpStr
 !===================================================================================================================================
 doPartIndex             = GETLOGICAL('doPartIndex','.FALSE.')
@@ -759,30 +734,21 @@ CALL InitializeVariablesPartBoundary()
 LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 
 ! Initialize record plane of particles
-RecordPart          = GETINT('Part-RecordPart','0')
+RecordPart          = GETINT('Part-nRPs','0')
 IF (RecordPart.GT.0) THEN
   CALL SYSTEM('mkdir -p recordpoints')
   ! Get size of buffer array
-  RPP_maxMemory     = GETINT('Part-RecordMemory','100')           ! Max buffer (100MB)
-  RPP_MaxBufferSize = RPP_MaxMemory*131072/6    != size in bytes/(real*RPP_maxMemory)
-
+  RPP_maxMemory     = GETINT('Part-RPMemory','100') ! Max buffer (100MB)
+  RPP_MaxBufferSize = RPP_MaxMemory*131072/6        != size in bytes/(real*RPP_maxMemory)
+  ! Readin record planes
   ALLOCATE(RPP_Plane(RecordPart))
   DO jP = 1,RecordPart
     WRITE(UNIT=tmpStr,FMT='(I2)') jP
-    ! Get type of record plane
-!    RPP_Type          = TRIM(GETSTR('Part-RecordType//TRIM(ADJUSTL(tmpStr))','plane'))
-!    SELECT CASE(RPP_Type)
-!      CASE('plane')
-    ALLOCATE(RPP_Plane(jP)%RPP_Data(8,RPP_MaxBufferSize))
+    ALLOCATE(RPP_Plane(jP)%RPP_Data(RPP_nVarNames,RPP_MaxBufferSize))
     RPP_Plane(jP)%RPP_Data = 0.
-    x_dummy(1:6) = GETREALARRAY('Part-RPThresholds'//TRIM(ADJUSTL(tmpStr)),6)
-    DO iP=1,3
-      RPP_Plane(jP)%x(1:2,iP)=x_dummy(1+2*(iP-1):2+2*(iP-1))
-    END DO ! iPoint
-    RPP_Plane(jP)%RPP_Records=0.
-!      CASE DEFAULT
-!        CALL ABORT(__STAMP__,'ERROR: Specified record plane does not exist!')
-!    END SELECT
+    RPP_Plane(jP)%pos = GETREAL('Part-RPPosition'//TRIM(ADJUSTL(tmpStr)),'1.')
+    RPP_Plane(jP)%dir = GETINT('Part-RPDirection'//TRIM(ADJUSTL(tmpStr)),'0')
+    RPP_Plane(jP)%RPP_Records = 0.
   END DO
 END IF
 
@@ -840,9 +806,11 @@ SUBROUTINE AllocateParticleArrays()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
+#if USE_EXTEND_RHS
+USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
+#endif /* USE_EXTEND_RHS */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

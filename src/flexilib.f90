@@ -61,18 +61,18 @@ USE MOD_TimeDisc,          ONLY:DefineParametersTimedisc,InitTimeDisc
 USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
-#endif
+#endif /*USE_MPI*/
 #if USE_PARTICLES
 USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticleGlobals,InitParticles
 #if USE_MPI
-USE MOD_Particle_MPI,      ONLY:InitParticleMPI
+USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
 USE MOD_LoadBalance,       ONLY:InitLoadBalance
 USE MOD_Particle_MPI_Shared,ONLY:InitMPIShared
 #if USE_LOADBALANCE
 USE MOD_Restart_Vars,      ONLY:DoRestart
-#endif /*LOADBALANCE*/
-#endif /*MPI*/
-#endif /*PARTICLES*/
+#endif /*USE_LOADBALANCE*/
+#endif /*USE_MPI*/
+#endif /*USE_PARTICLES*/
 USE MOD_Sponge,            ONLY:DefineParametersSponge,InitSponge
 #if FV_ENABLED
 USE MOD_FV,                ONLY:DefineParametersFV,InitFV
@@ -154,6 +154,9 @@ CALL DefineParametersTimedisc()
 CALL DefineParametersAnalyze()
 CALL DefineParametersRecordPoints()
 #if USE_PARTICLES
+#if USE_MPI
+CALL DefineParticleMPI
+#endif /* USE_MPI */
 CALL DefineParametersParticles()
 #endif /*PARTICLES*/
 

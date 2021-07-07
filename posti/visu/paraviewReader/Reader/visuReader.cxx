@@ -34,9 +34,8 @@
 #include <vtkPolyData.h>
 #include <vtkVertex.h>
 #if USE_MPI
-#include <vtkDistributedDataFilter.h>
+#include <vtkPDistributedDataFilter.h>
 #endif /* USE_MPI */
-
 
 #include <libgen.h>
 #include <unistd.h>
@@ -453,10 +452,12 @@ int visuReader::RequestData(
          &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
-         &coords_DG,&values_DG,&nodeids_DG,&globalnodeids_DG,
-         &coords_FV,&values_FV,&nodeids_FV,&globalnodeids_FV,&varnames,
-         &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,&globalnodeidsSurf_DG,
-         &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&globalnodeidsSurf_FV,&varnamesSurf,
+         &coords_DG    ,&values_DG    ,&nodeids_DG    ,&globalnodeids_DG    ,&globalcellids_DG,
+         &coords_FV    ,&values_FV    ,&nodeids_FV    ,&globalnodeids_FV    ,&globalcellids_FV,
+         &varnames,
+         &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,&globalnodeidsSurf_DG,&globalcellidsSurf_DG,
+         &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&globalnodeidsSurf_FV,&globalcellidsSurf_FV,
+         &varnamesSurf,
          &coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,
          &coords_Erosion,&values_Erosion,&nodeids_Erosion,&varnames_Erosion,&components_Erosion);
 
@@ -491,21 +492,18 @@ int visuReader::RequestData(
    }
 
    // Insert DG data into output
-   InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &globalnodeids_DG, &varnames);
+   InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &globalnodeids_DG, &globalcellids_DG, &varnames);
 
    // Insert FV data into output
-   InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &globalnodeids_FV, &varnames);
+   InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &globalnodeids_FV, &globalcellids_FV, &varnames);
 
 #if USE_MPI
-   if (Controller->GetNumberOfProcesses() > 1 && this->UseD3) {
-     // Apply D3 filter to create ghost cells
-     SWRITE("Distributing data with minimum level of ghost cells : 1");
-
+   if (this->UseD3) {
      // Distribute DG data and create ghost cells
-     DistributeData(mb, 0);
+     /* DistributeData(mb, 0); */
 
      // Distribute FV data and create ghost cells
-     /* DistributeData(mb, 1); */
+     DistributeData(mb, 1);
    }
 #endif /* USE_MPI */
 
@@ -528,22 +526,19 @@ int visuReader::RequestData(
 
 
     // Insert Surface DG data into output
-   InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &globalnodeidsSurf_DG, &varnamesSurf);
+   InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &globalnodeidsSurf_DG, &globalcellidsSurf_DG, &varnamesSurf);
 
     // Insert Surface FV data into output
-   InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &globalnodeidsSurf_FV, &varnamesSurf);
+   InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &globalnodeidsSurf_FV, &globalcellidsSurf_FV, &varnamesSurf);
 
 
 #if USE_MPI
-   if (Controller->GetNumberOfProcesses() > 1 && this->UseD3) {
-     // Apply D3 filter to create ghost cells
-     SWRITE("Distributing data with minimum level of ghost cells : 1");
-
+   if (this->UseD3) {
      // Distribute DG data and create ghost cells
      DistributeData(mb, 0);
 
      // Distribute FV data and create ghost cells
-     /* DistributeData(mb, 1); */
+     DistributeData(mb, 1);
    }
 #endif /* USE_MPI */
 
@@ -600,129 +595,171 @@ int visuReader::RequestData(
 /*
  * This function inserts the data, loaded by the Posti tool, into a ouput
  */
-void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
-      struct DoubleARRAY* values, struct IntARRAY* nodeids, struct IntARRAY* globalnodeids, struct CharARRAY* varnames) {
-   vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(blockno));
+void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
+                           ,struct DoubleARRAY* coords  ,struct DoubleARRAY* values
+                           ,struct IntARRAY*    nodeids ,struct IntARRAY*    globalnodeids
+                           ,struct IntARRAY*    globalcellids
+                           ,struct CharARRAY* varnames) {
+    vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(blockno));
 
-   // create a 3D double array (must be 3D even we use a 2D Posti tool, since paraview holds the data in 3D)
-   vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
-   pdata->SetNumberOfComponents(3); // 3D
-   pdata->SetNumberOfTuples(coords->len/3);
-   // copy coordinates
-   double* ptr = pdata->GetPointer(0);
-   for (long i = 0; i < coords->len; ++i)
-   {
-      *ptr++ = coords->data[i];
-   }
-
-   // create points array to be used for the output
-   vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-   points->SetData(pdata);
-   output->SetPoints(points);
-
-   // create cellarray
-   vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
-   if (coords->dim == 1) {
-      vtkSmartPointer<vtkLine> line = vtkSmartPointer<vtkLine>::New();
-      // Use the nodeids to build quads
-      // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
-      int gi = 0;
-      // loop over all Quads
-      for (int iQuad=0; iQuad<nodeids->len/2; iQuad++) {
-         // each Line has 2 points
-         for (int i=0; i<2; i++) {
-            line->GetPointIds()->SetId(i, nodeids->data[gi]);
-            gi++;
-         }
-         // insert the line into the cellarray
-         cellarray->InsertNextCell(line);
-      }
-      output->SetCells({VTK_LINE}, cellarray);
-   } else if (coords->dim == 2) {
-      vtkSmartPointer<vtkQuad> quad = vtkSmartPointer<vtkQuad>::New();
-      // Use the nodeids to build quads
-      // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
-      int gi = 0;
-      // loop over all Quads
-      for (int iQuad=0; iQuad<nodeids->len/4; iQuad++) {
-         // each Quad has 4 points
-         for (int i=0; i<4; i++) {
-            quad->GetPointIds()->SetId(i, nodeids->data[gi]);
-            gi++;
-         }
-         // insert the quad into the cellarray
-         cellarray->InsertNextCell(quad);
-      }
-      output->SetCells({VTK_QUAD}, cellarray);
-   } else if (coords->dim == 3) {
-      vtkSmartPointer<vtkHexahedron> hex = vtkSmartPointer<vtkHexahedron>::New();
-      // Use the nodeids to build hexas
-      // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
-      int gi = 0;
-      // loop over all Hexas
-      for (int iHex=0; iHex<nodeids->len/8; iHex++) {
-         // each Hex has 8 points
-         for (int i=0; i<8; i++) {
-            hex->GetPointIds()->SetId(i, nodeids->data[gi]);
-            gi++;
-         }
-         // insert the hex into the cellarray
-         cellarray->InsertNextCell(hex);
-      }
-      output->SetCells({VTK_HEXAHEDRON}, cellarray);
-
-   } else {
-      exit(1);
-   }
+    // create a 3D double array (must be 3D even we use a 2D Posti tool, since paraview holds the data in 3D)
+    vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
+    pdata->SetNumberOfComponents(3); // 3D
 
 #if !FV_ENABLED
-   /* Insert the global elem ids */
-   if (this->UseD3) {
-     vtkSmartPointer <vtkIntArray> gnodeids = vtkSmartPointer<vtkIntArray>::New();
-     gnodeids->SetNumberOfComponents(1);
-     gnodeids->SetNumberOfTuples(nodeids->len);
-     gnodeids->SetName("Global Node ID");
-     output->GetPointData()->AddArray(gnodeids);
-     // copy ids */
-     int* gptr = gnodeids->GetPointer(0);
-     for (long i = 0; i < nodeids->len; ++i)
-     {
-       /* *gptr++ = gsum+i; */
-       *gptr++ = globalnodeids->data[i];
-     }
-     output->GetPointData()->SetGlobalIds(gnodeids);
-   }
+    // D3 requires GlobalNodeIDs with for every point. Extend coords to point size
+    if (this->UseD3) {
+      pdata->SetNumberOfTuples(nodeids->len);
+      // copy coordinates
+      double* ptr = pdata->GetPointer(0);
+      for (long i = 0; i < nodeids->len; ++i) { for (long j = 3*nodeids->data[i]; j < 3*nodeids->data[i] + 3; ++j)
+        {
+          *ptr++ = coords->data[j];
+        } }
+    }
+    else {
+#endif
+      pdata->SetNumberOfTuples(coords->len/3);
+      // copy coordinates
+      double* ptr = pdata->GetPointer(0);
+      for (long i = 0; i < coords->len; ++i)
+      {
+        *ptr++ = coords->data[i];
+      }
+#if !FV_ENABLED
+    }
 #endif
 
-   // assign the actual data, loaded by the Posti tool, to the output
-   unsigned int nVar = varnames->len/255;
+    // create points array to be used for the output
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    points->SetData(pdata);
+    output->SetPoints(points);
 
-   if (nVar > 0) {
+    // create cellarray
+    vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
+
+    int CellLength;
+    int CellType;
+    if (coords->dim == 1) {
+      // Use the nodeids to build lines
+      CellLength = 2;
+      CellType   = VTK_LINE;
+    } else if (coords->dim == 2) {
+      // Use the nodeids to build quads
+      CellLength = 4;
+      CellType   = VTK_QUAD;
+    } else if (coords->dim == 3) {
+      // Use the nodeids to build hexas
+      CellLength = 8;
+      CellType   = VTK_HEXAHEDRON;
+    } else {
+      exit(1);
+    }
+
+    // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
+    int gi = 0;
+    // loop over all cells
+    for (int iCell=0; iCell<nodeids->len/CellLength; iCell++) {
+      cellarray->InsertNextCell(CellLength);
+      for (int i=0; i<CellLength; i++) {
+#if !FV_ENABLED
+        if (this->UseD3) {
+          cellarray->InsertCellPoint(gi);
+        }
+        else {
+#endif
+          cellarray->InsertCellPoint(nodeids->data[gi]);
+#if !FV_ENABLED
+        }
+#endif
+        gi++;
+      }
+    }
+
+    // Use the nodeids to build all cells at once
+    output->SetCells(CellType,cellarray);
+
+#if !FV_ENABLED
+    if (this->UseD3) {
+      /* Insert the global cell ids */
+      vtkSmartPointer <vtkIntArray> gcellids = vtkSmartPointer<vtkIntArray>::New();
+      gcellids->SetNumberOfComponents(1);
+      gcellids->SetNumberOfTuples(globalcellids->len);
+      gcellids->SetName("GlobalCellIds");
+      output->GetCellData()->AddArray(gcellids);
+      // copy ids */
+      int* cptr = gcellids->GetPointer(0);
+      for (long i = 0; i < globalcellids->len; ++i)
+      {
+        *cptr++ = globalcellids->data[i];
+      }
+      output->GetCellData()->SetGlobalIds(gcellids);
+      /* output->GetCellData()->CopyGlobalIdsOn(); */
+      /* output->GetCellData()->SetActiveGlobalIds("GlobalCellIds"); */
+
+      /* Insert the global node ids */
+      vtkSmartPointer <vtkIntArray> gnodeids = vtkSmartPointer<vtkIntArray>::New();
+      gnodeids->SetNumberOfComponents(1);
+      gnodeids->SetNumberOfTuples(nodeids->len);
+      gnodeids->SetName("GlobalNodeIds");
+      output->GetPointData()->AddArray(gnodeids);
+      // copy ids */
+      int* gptr = gnodeids->GetPointer(0);
+      for (long i = 0; i < nodeids->len; ++i)
+      {
+        *gptr++ = globalnodeids->data[i];
+      }
+      output->GetPointData()->SetGlobalIds(gnodeids);
+      /* output->GetPointData()->CopyGlobalIdsOn(); */
+      /* output->GetPointData()->SetActiveGlobalIds("GlobalNodeIds"); */
+    }
+#endif
+
+    // assign the actual data, loaded by the Posti tool, to the output
+    unsigned int nVar = varnames->len/255;
+
+    if (nVar > 0) {
       unsigned int sizePerVar = values->len/nVar;
-      int dataPos = 0;
+      int          dataPos    = 0;
       // loop over all loaded variables
       for (unsigned int iVar = 0; iVar < nVar; iVar++) {
-         // For each variable, create a new array and set the number of components to 1
-         // Each variable is loaded separately.
-         // One might implement vector variables (velocity), but then must set number of componenets to 2/3
-         vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
-         vdata->SetNumberOfComponents(1);
-         vdata->SetNumberOfTuples(sizePerVar);
-         // copy coordinates
-         double* ptr = vdata->GetPointer(0);
-         for (long i = 0; i < sizePerVar; ++i)
-         {
+        // For each variable, create a new array and set the number of components to 1
+        // Each variable is loaded separately.
+        // One might implement vector variables (velocity), but then must set number of componenets to 2/3
+        vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
+        vdata->SetNumberOfComponents(1);
+
+#if !FV_ENABLED
+        if (this->UseD3) {
+          vdata->SetNumberOfTuples(nodeids->len);
+          // copy values
+          double* ptr = vdata->GetPointer(0);
+          for (long i = 0; i < nodeids->len; ++i)
+          {
+            *ptr++ = values->data[dataPos+nodeids->data[i]];
+          }
+        }
+        else {
+#endif
+          vdata->SetNumberOfTuples(sizePerVar);
+          // copy values
+          double* ptr = vdata->GetPointer(0);
+          for (long i = 0; i < sizePerVar; ++i)
+          {
             *ptr++ = values->data[dataPos+i];
-         }
-         dataPos += sizePerVar;
-         // set name of variable
-         char tmps[255];
-         strncpy(tmps, varnames->data+iVar*255, 255);
-         std::string varname(tmps);
-         varname = varname.substr(0,varname.find(" "));
-         vdata->SetName(varname.c_str());
-         // insert array of variable into the output
-         output->GetPointData()->AddArray(vdata);
+          }
+#if !FV_ENABLED
+        }
+#endif
+        dataPos += sizePerVar;
+        // set name of variable
+        char tmps[255];
+        strncpy(tmps, varnames->data+iVar*255, 255);
+        std::string varname(tmps);
+        varname = varname.substr(0,varname.find(" "));
+        vdata->SetName(varname.c_str());
+        // insert array of variable into the output
+        output->GetPointData()->AddArray(vdata);
       }
    }
 }
@@ -808,19 +845,33 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
 
 #if USE_MPI
 void visuReader::DistributeData(vtkMultiBlockDataSet* mb, int blockno) {
-   // Apply D3 filter to create ghost cells
-   vtkDistributedDataFilter * d3 = vtkDistributedDataFilter::New();
-   d3->SetInputData(mb->GetBlock(blockno));
-   d3->SetMinimumGhostLevel(1);
-   /* d3->SetUseMinimalMemory(1); */
+    // Check if there are Cells in the DataSet
+    vtkSmartPointer<vtkUnstructuredGrid> grid = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(blockno));
+    if (grid->GetNumberOfCells() == 0) {
+      return;
+    }
 
-   // Information must be duplicated on all procs, ASSIGN_TO_ALL_INTERSECTING_REGIONS = 1
-   /* d3->SetBoundaryMode(1); */
-   d3->SetBoundaryMode(1);
-   d3->Update();
+    int nGhosts = 1;
 
-   // Copy information pointer back
-   mb->GetBlock(blockno)->ShallowCopy(d3->GetOutput());
+    // Apply D3 filter to create ghost cells
+    SWRITE("Distributing data with minimum level of ghost cells : " << nGhosts);
+
+    // Apply D3 filter to create ghost cells
+    vtkPDistributedDataFilter * d3 = vtkPDistributedDataFilter::New();
+    d3->SetInputData(mb->GetBlock(blockno));
+    d3->SetMinimumGhostLevel(nGhosts);
+    d3->SetUseMinimalMemory(false);
+    d3->SetIncludeAllIntersectingCells(true);
+    d3->SetRetainKdtree(true);
+    d3->SetClipCells(false);
+
+    // Information must be duplicated on all procs, ASSIGN_TO_ALL_INTERSECTING_REGIONS = 1
+    d3->SetBoundaryMode(1);
+    d3->Update();
+
+    // Copy information pointer back
+    mb->GetBlock(blockno)->ShallowCopy(d3->GetOutput());
+    d3->Delete();
 }
 #endif /* USE_MPI */
 

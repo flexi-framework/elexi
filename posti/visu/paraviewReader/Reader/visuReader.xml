@@ -130,6 +130,8 @@
             <BooleanDomain name="bool"/>
             <Documentation>
                This property calculates unique visu node ids and enables the D3 filter to improve interpolation over MPI boundaries.
+
+               WARNING: This makes data continuous even at DG element boundaries!
             </Documentation>
          </IntVectorProperty>
 #endif

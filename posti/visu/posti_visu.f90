@@ -22,16 +22,16 @@
 !===================================================================================================================================
 PROGRAM Posti_Visu
 USE ISO_C_BINDING
-USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Visu_Vars
+USE MOD_PreProc
 USE MOD_Commandline_Arguments
-USE MOD_Visu
 USE MOD_ISO_VARYING_STRING
 USE MOD_MPI                   ,ONLY: InitMPI
-USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
 USE MOD_Output_Vars           ,ONLY: ProjectName
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
+USE MOD_Visu
+USE MOD_Visu_Vars
+USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
 #if USE_MPI
 USE MOD_MPI                   ,ONLY: FinalizeMPI
 USE MOD_VTK                   ,ONLY: WriteParallelVTK

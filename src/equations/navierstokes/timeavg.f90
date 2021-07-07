@@ -78,7 +78,7 @@ IF((nVarAvg.EQ.0).AND.(nVarFluc.EQ.0))THEN
     'No quantities for time averaging have been specified. Please specify quantities or disable time averaging!')
 END IF
 #if FV_ENABLED
-SWRITE(UNIT_StdOut,*) 'Warning: If FV is enabled, time averaging is performed on DG representation.'
+SWRITE(UNIT_StdOut,'(A)') 'Warning: If FV is enabled, time averaging is performed on DG representation.'
 #endif
 
 ! Define variables to be averaged

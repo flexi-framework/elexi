@@ -268,16 +268,12 @@ IF (opt%hasDefault) THEN
   CALL opt%parse(value)
 END IF
 
-opt%multiple   = .FALSE.
-IF (PRESENT(multiple)) opt%multiple = multiple
-IF (opt%multiple.AND.opt%hasDefault) THEN
-  CALL Abort(__STAMP__, &
+opt%multiple   = MERGE(multiple,.FALSE.,PRESENT(multiple))
+IF (opt%multiple .AND. opt%hasDefault) CALL Abort(__STAMP__, &
       "A default value can not be given, when multiple=.TRUE. in creation of option: '"//TRIM(name)//"'")
-END IF
 
 #if USE_PARTICLES
-opt%numberedmulti = .FALSE.
-IF (PRESENT(numberedmulti)) opt%numberedmulti = numberedmulti
+opt%numberedmulti = MERGE(numberedmulti,.FALSE.,PRESENT(numberedmulti))
 ! Remove/Replace $ occurrences in variable name
 IF(opt%numberedmulti)THEN
   aStr = Var_Str(TRIM(name))
@@ -286,11 +282,8 @@ IF(opt%numberedmulti)THEN
   aStr = Replace(aStr,"[$$]","$",Every = .true.)
   CALL LowCase(CHAR(aStr),opt%name)
   ind = INDEX(TRIM(opt%name),"$")
-  IF(ind.LE.0)THEN
-    CALL abort(&
-    __STAMP__&
-    ,'[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(opt%name)//']')
-  END IF ! ind.LE.0
+  IF (ind.LE.0) CALL ABORT(__STAMP__, &
+      '[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(opt%name)//']')
 ELSE
 #endif /*USE_PARTICLES*/
   opt%name = name
@@ -298,13 +291,13 @@ ELSE
 END IF ! opt%numberedmulti
 #endif /*USE_PARTICLES*/
 
-opt%isSet = .FALSE.
+opt%isSet       = .FALSE.
 opt%description = description
-opt%section = this%actualSection
-opt%isRemoved = .FALSE.
+opt%section     = this%actualSection
+opt%isRemoved   = .FALSE.
 
 ! insert option into linked list
-IF (.not. associated(this%firstLink)) then
+IF (.NOT. associated(this%firstLink)) then
   this%firstLink => constructor_Link(opt, this%firstLink)
   this%lastLink => this%firstLink
 ELSE
@@ -647,10 +640,8 @@ CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for com
 IF(MPIROOT)THEN
   ! Get name of ini file
   WRITE(UNIT_StdOut,*)'| Reading from file "',TRIM(filename),'":'
-  IF (.NOT.FILEEXISTS(filename)) THEN
-    CALL Abort(__STAMP__,&
-        "Ini file does not exist.")
-  END IF
+  IF (.NOT.FILEEXISTS(filename)) CALL Abort(__STAMP__,"Ini file does not exist.")
+
   ! Check if first argument is the ini-file
   IF(.NOT.(STRICMP(GetFileExtension(filename),'ini'))) THEN
     SWRITE(*,*) "Usage: flexi parameter.ini [restart.h5] [keyword arguments]"
@@ -665,18 +656,15 @@ IF(MPIROOT)THEN
        ACTION = 'READ',         &
        ACCESS = 'SEQUENTIAL',   &
        IOSTAT = stat)
-  IF(stat.NE.0)THEN
-    CALL abort(__STAMP__,&
-      "Could not open ini file.")
-  END IF
+  IF (stat.NE.0) CALL ABORT(__STAMP__,"Could not open ini file.")
 
   ! parallel IO: ROOT reads file and sends it to all other procs
-  nLines=0
-  stat=0
+  nLines = 0
+  stat   = 0
   DO
-    READ(iniunit,"(A)",IOSTAT=stat)tmpChar
-    IF(stat.NE.0)EXIT
-    nLines=nLines+1
+    READ (iniunit,"(A)",IOSTAT=stat)tmpChar
+    IF (stat.NE.0) EXIT
+    nLines = nLines+1
   END DO
 END IF
 
@@ -1106,6 +1094,7 @@ CLASS(OPTION),ALLOCATABLE    :: newopt
 !==================================================================================================================================
 
 ! iterate over all options
+!>> This includes numberedmulti options that are defined in the parameter file
 current => prms%firstLink
 DO WHILE (associated(current))
   ! if name matches option
@@ -1126,26 +1115,26 @@ DO WHILE (associated(current))
       END IF
       ! copy value from option to result variable
       SELECT TYPE (opt)
-      CLASS IS (IntOption)
-        SELECT TYPE(value)
-        TYPE IS (INTEGER)
-          value = opt%value
-        END SELECT
-      CLASS IS (RealOption)
-        SELECT TYPE(value)
-        TYPE IS (REAL)
-          value = opt%value
-        END SELECT
-      CLASS IS (LogicalOption)
-        SELECT TYPE(value)
-        TYPE IS (LOGICAL)
-          value = opt%value
-        END SELECT
-      CLASS IS (StringOption)
-        SELECT TYPE(value)
-        TYPE IS (STR255)
-          value%chars = opt%value
-        END SELECT
+        CLASS IS (IntOption)
+          SELECT TYPE(value)
+            TYPE IS (INTEGER)
+              value = opt%value
+          END SELECT
+        CLASS IS (RealOption)
+          SELECT TYPE(value)
+            TYPE IS (REAL)
+              value = opt%value
+          END SELECT
+        CLASS IS (LogicalOption)
+          SELECT TYPE(value)
+            TYPE IS (LOGICAL)
+              value = opt%value
+          END SELECT
+        CLASS IS (StringOption)
+          SELECT TYPE(value)
+            TYPE IS (STR255)
+              value%chars = opt%value
+          END SELECT
       END SELECT
       ! print option and value to stdout
       CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
@@ -1185,26 +1174,26 @@ DO WHILE (associated(current))
       END IF
       ! copy value from option to result variable
       SELECT TYPE (newopt)
-      CLASS IS (IntOption)
-        SELECT TYPE(value)
-        TYPE IS (INTEGER)
-          value = newopt%value
-        END SELECT
-      CLASS IS (RealOption)
-        SELECT TYPE(value)
-        TYPE IS (REAL)
-          value = newopt%value
-        END SELECT
-      CLASS IS (LogicalOption)
-        SELECT TYPE(value)
-        TYPE IS (LOGICAL)
-          value = newopt%value
-        END SELECT
-      CLASS IS (StringOption)
-        SELECT TYPE(value)
-        TYPE IS (STR255)
-          value%chars = newopt%value
-        END SELECT
+        CLASS IS (IntOption)
+          SELECT TYPE(value)
+            TYPE IS (INTEGER)
+              value = newopt%value
+          END SELECT
+        CLASS IS (RealOption)
+          SELECT TYPE(value)
+            TYPE IS (REAL)
+              value = newopt%value
+          END SELECT
+        CLASS IS (LogicalOption)
+          SELECT TYPE(value)
+            TYPE IS (LOGICAL)
+              value = newopt%value
+          END SELECT
+        CLASS IS (StringOption)
+          SELECT TYPE(value)
+            TYPE IS (STR255)
+              value%chars = newopt%value
+          END SELECT
       END SELECT
       ! print option and value to stdout
       CALL newopt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
@@ -1304,7 +1293,7 @@ DO WHILE (associated(current))
 END DO
 
 #if USE_PARTICLES
-! iterate over all options and compare reduced (all numberes removed) names with numberedmulti options
+! iterate over all options and compare reduced (all numbers removed) names with numberedmulti options
 current => prms%firstLink
 DO WHILE (associated(current))
   IF (.NOT.current%opt%numberedmulti) THEN

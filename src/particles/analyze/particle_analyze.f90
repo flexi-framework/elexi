@@ -86,6 +86,30 @@ CALL prms%CreateLogicalOption(  'printDiff'               , '.FALSE.')
 CALL prms%CreateRealOption(     'PrintDiffTime'           , '12')
 CALL prms%CreateRealArrayOption('printDiffVec'            , '0. , 0. , 0. , 0. , 0. , 0.')
 
+#if CODE_ANALYZE
+CALL prms%CreateIntOption(      'PartOut'                 , 'If compiled with CODE_ANALYZE flag: For This particle number'   //&
+                                                            ' every tracking information is written as STDOUT.'                &
+                                                          , '0')
+CALL prms%CreateIntOption(      'MPIRankOut'              , 'If compiled with CODE_ANALYZE flag: This MPI-Proc writes the'   //&
+                                                            ' tracking information for the defined PartOut.'
+                                                          , '0')
+#endif /*CODE_ANALYZE*/
+CALL prms%CreateIntOption(      'Part-nRPs'               , 'Number of record planes'                                          &
+                                                          , '0')
+CALL prms%CreateIntOption(      'Part-RPMemory'           , 'Record particles memory'                                          &
+                                                          , '100')
+!CALL prms%CreateStringOption(  'Part-RecordType[$]'        , 'Type of record plane.\n'                                        //&
+!                                                             ' - plane\n'                                                       &
+!                                                           , 'none', numberedmulti=.TRUE.)
+CALL prms%CreateIntOption(      'Part-RPDirection[$]'     , 'Direction of the normal vector of the record plane'               &
+                                                          , '1', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(     'Part-RPPosition[$]'      , 'Position of the record plane in RPDirection.'                     &
+                                                          , '0.', numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(   'Part-FilenameRecordPart' , 'Specifying filename for load_from_file init.'                     &
+                                                          , 'data/recordplane_')
+CALL prms%CreateLogicalOption(  'doPartIndex'             , 'Flag to write out unique part index'                              &
+                                                          , '.FALSE.')
+
 END SUBROUTINE DefineParametersParticleAnalyze
 
 

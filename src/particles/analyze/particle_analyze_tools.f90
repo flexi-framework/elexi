@@ -107,8 +107,8 @@ INTEGER                        :: ForceIC(1,nSpecies)
 !IF(RPP_Type.EQ.'plane')THEN
 DO iRecord = 1,RecordPart
   DO iPart=1,PDM%ParticleVecLength
-    IF ((PartState(RPP_Plane(iRecord)%dir,iPart).GE.RPP_Plane(iRecord)%pos) .AND. &
-    (LastPartPos(RPP_Plane(iRecord)%dir,iPart).LT.RPP_Plane(iRecord)%pos))THEN
+    IF ((PartState(  RPP_Plane(iRecord)%dir,iPart).GE.RPP_Plane(iRecord)%pos) .AND. &
+        (LastPartPos(RPP_Plane(iRecord)%dir,iPart).LT.RPP_Plane(iRecord)%pos)) THEN
       RPP_Plane(iRecord)%RPP_Records = RPP_Plane(iRecord)%RPP_Records+1
       ! Part pos and vel
       RPP_Plane(iRecord)%RPP_Data(1:6,RPP_Plane(iRecord)%RPP_Records) = PartState(1:6,iPart)

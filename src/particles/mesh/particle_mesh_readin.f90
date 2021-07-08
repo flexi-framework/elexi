@@ -349,7 +349,7 @@ ALLOCATE(NodeCoords_indx(3,nNodeIDs))
 CALL ReadArray('NodeCoords',2,(/3,nNodeIDs/),offsetNodeID,2,RealArray=NodeCoords_indx)
 
 ! Keep all nodes if elements are curved and not interpolated
-IF (NGeoOverride.LE.0 .AND. (useCurveds.OR.NGeo.EQ.1)) THEN
+IF (NGeoOverride.LE.0 .AND. (useCurveds.OR.NGeo.EQ.1) .OR. NGeoOverride.EQ.NGeo) THEN
 
 #if USE_MPI
 !  ! allocate shared array for NodeInfo

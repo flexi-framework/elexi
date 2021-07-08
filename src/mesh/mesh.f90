@@ -170,6 +170,10 @@ ENDIF
 
 #if USE_PARTICLES
 NGeoOverride = GETINT ('NGeoOverride','-1' )
+IF (.NOT.UseCurveds) THEN
+  SWRITE(Unit_stdOut,'(A)') 'NGeoOverride set but UseCurveds = F, setting NGeoOverride = -1'
+  NGeoOverride = -1
+END IF
 meshScale    = GETREAL('meshScale'   ,'1.0')
 #endif /*USE_PARTICLES*/
 CALL ReadMesh(MeshFile) !set nElems

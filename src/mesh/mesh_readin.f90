@@ -173,6 +173,7 @@ DO iBC=1,nBCs
 END DO
 SWRITE(UNIT_StdOut,'(132("."))')
 DEALLOCATE(BCNames,BCType,BCMapping)
+
 END SUBROUTINE ReadBCs
 
 

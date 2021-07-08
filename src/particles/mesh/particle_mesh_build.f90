@@ -2205,7 +2205,8 @@ USE MOD_Preproc
 USE MOD_Mesh_Vars                ,ONLY: NGeo,BoundaryType
 USE MOD_Particle_Boundary_Vars   ,ONLY: PartBound
 USE MOD_Particle_Globals         ,ONLY: VECNORM
-USE MOD_Particle_Mesh_Vars       ,ONLY: GEO,ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared,nNonUniqueGlobalSides
+USE MOD_Particle_Mesh_Vars       ,ONLY: GEO,ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalNonUniqueSideID
 #if USE_MPI
 USE MOD_Mesh_Vars                ,ONLY: nGlobalElems
 USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
@@ -2223,10 +2224,10 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER,PARAMETER              :: iNode=1
 INTEGER                        :: iVec
-INTEGER                        :: firstElem,lastElem,iNbSide,BCALPHA
-INTEGER                        :: SideID,ElemID,GlobalSideID,NbElemID,localSideID,localSideNbID,nStart
+INTEGER                        :: firstElem,lastElem,NbSideID,BCALPHA,flip
+INTEGER                        :: SideID,ElemID,NbElemID,localSideID,localSideNbID,nStart
 INTEGER                        :: CornerNodeIDswitch(8),NodeMap(4,6)
-REAL,DIMENSION(3)              :: MasterCoords,SlaveCoords,PeriodicTmp
+REAL,DIMENSION(3)              :: MasterCoords,SlaveCoords
 LOGICAL,ALLOCPOINT             :: PeriodicFound(:)
 #if USE_MPI
 REAL,ALLOCATABLE               :: sendbuf(:),recvbuf(:,:)
@@ -2237,13 +2238,13 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 
 ! the cornernodes are not the first 8 entries (for Ngeo>1) of nodeinfo array so mapping is built
 CornerNodeIDswitch(1)=1
-CornerNodeIDswitch(2)=(Ngeo+1)
-CornerNodeIDswitch(3)=(Ngeo+1)**2
-CornerNodeIDswitch(4)=(Ngeo+1)*Ngeo+1
-CornerNodeIDswitch(5)=(Ngeo+1)**2*Ngeo+1
-CornerNodeIDswitch(6)=(Ngeo+1)**2*Ngeo+(Ngeo+1)
-CornerNodeIDswitch(7)=(Ngeo+1)**2*Ngeo+(Ngeo+1)**2
-CornerNodeIDswitch(8)=(Ngeo+1)**2*Ngeo+(Ngeo+1)*Ngeo+1
+CornerNodeIDswitch(2)=(NGeo+1)
+CornerNodeIDswitch(3)=(NGeo+1)**2
+CornerNodeIDswitch(4)=(NGeo+1)*NGeo+1
+CornerNodeIDswitch(5)=(NGeo+1)**2*NGeo+1
+CornerNodeIDswitch(6)=(NGeo+1)**2*NGeo+(NGeo+1)
+CornerNodeIDswitch(7)=(NGeo+1)**2*NGeo+(NGeo+1)**2
+CornerNodeIDswitch(8)=(NGeo+1)**2*NGeo+(NGeo+1)*NGeo+1
 
 ! Corner node switch to order HOPR coordinates in CGNS format
 ASSOCIATE(CNS => CornerNodeIDswitch )
@@ -2307,25 +2308,18 @@ DO ElemID = firstElem,lastElem
       IF (PeriodicFound(BCALPHA)) CYCLE
 
       ! Periodic slave side has same ID, but negative sign
-      GlobalSideID = SideInfo_Shared(SIDE_ID,SideID)
-      DO iNbSide = 1,nNonUniqueGlobalSides
-        IF (SideInfo_Shared(SIDE_ID,iNbSide).EQ.-GlobalSideID) THEN
-          NbElemID      = SideInfo_Shared(SIDE_ELEMID,iNbSide)
-          localSideID   = SideInfo_Shared(SIDE_LOCALID,SideID)
-          localSideNbID = SideInfo_Shared(SIDE_LOCALID,iNbSide)
-          nStart        = MAX(0,MOD(SideInfo_Shared(SIDE_FLIP,iNbSide),10)-1)
+      flip          = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
+      NbElemID      = SideInfo_Shared(SIDE_NBELEMID,SideID)
+      localSideID   = SideInfo_Shared(SIDE_LOCALID,SideID)
+      localSideNbID = (SideInfo_Shared(SIDE_FLIP,SideID)-flip)/10
+      NbSideID      = GetGlobalNonUniqueSideID(NbElemID,localSideNbID)
+      nStart        = MAX(0,MOD(SideInfo_Shared(SIDE_FLIP,NbSideID),10)-1)
 
-          ! Only take the first node into account, no benefit in accuracy if running over others as well
-!          DO iNode = 1,4
-            MasterCoords = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)  +NodeMap(iNode                  ,localSideID))
-            SlaveCoords  = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,NbElemID)+NodeMap(MOD(nStart+5-iNode,4)+1,localSideNbID))
-            PeriodicTmp  = SlaveCoords - MasterCoords
-            GEO%PeriodicVectors(:,BCALPHA) = PeriodicTmp
-            PeriodicFound(BCALPHA) = .TRUE.
-            EXIT
-!          END DO
-        END IF
-      END DO
+      ! Only take the first node into account, no benefit in accuracy if running over others as well
+      MasterCoords = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)  +NodeMap(iNode                  ,localSideID))
+      SlaveCoords  = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,NbElemID)+NodeMap(MOD(nStart+5-iNode,4)+1,localSideNbID))
+      GEO%PeriodicVectors(:,BCALPHA) = SlaveCoords - MasterCoords
+      PeriodicFound(BCALPHA) = .TRUE.
     END IF
   END DO
 END DO

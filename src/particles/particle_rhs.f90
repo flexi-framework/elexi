@@ -35,13 +35,43 @@ INTERFACE tauRHS
 END INTERFACE
 #endif /* USE_EXTEND_RHS */
 
-PUBLIC :: CalcPartRHS
+PUBLIC :: CalcPartRHS, InitRHS
 #if USE_EXTEND_RHS
 PUBLIC :: tauRHS
 #endif /* USE_EXTEND_RHS */
 !==================================================================================================================================
 
 CONTAINS
+
+SUBROUTINE InitRHS(drag_factor, FD_Pointer)
+!===================================================================================================================================
+! Init RHS
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Vars, ONLY:type_F
+!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)          :: drag_factor
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+TYPE(type_F),INTENT(INOUT)  :: FD_Pointer
+!-----------------------------------------------------------------------------------------------------------------------------------
+
+SELECT CASE(drag_factor)
+  CASE(DF_PART_SCHILLER)
+    FD_Pointer%op => DF_SchillerAndNaumann
+  CASE(DF_PART_PUTNAM)
+    FD_Pointer%op => DF_Putnam
+  CASE(DF_PART_HAIDER)
+    FD_Pointer%op => DF_Haider
+  CASE(DF_PART_HOELZER)
+    FD_Pointer%op => DF_Hoelzer
+END SELECT
+
+END SUBROUTINE InitRHS
 
 SUBROUTINE CalcPartRHS(&
 #if USE_BASSETFORCE
@@ -120,10 +150,9 @@ FUNCTION ParticlePush(PartID,FieldAtParticle)
 ! MODULES
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars,     ONLY : Species, PartSpecies, PartGravity
-USE MOD_Particle_Vars,     ONLY : PartState, RepWarn
+USE MOD_Particle_Vars,     ONLY : PartState
 USE MOD_Particle_Vars,     ONLY : TurbPartState
 USE MOD_Viscosity
-USE MOD_Equation_Vars,     ONLY : s13,s23
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -140,11 +169,9 @@ REAL                :: Rep                         ! Reynolds and Mach number of
 !REAL                :: velosqp                    ! v^2 particle
 !REAL                :: velosqf                    ! v^2 fluid
 REAL                :: udiff(3)
-REAL                :: Cd                          ! Drag coefficient
+REAL                :: f                           ! Drag factor
 REAL                :: staup                       ! Inverse of the particle relaxation time
-REAL                :: k1,k2,k3
 REAL                :: mu                          ! viscosity
-REAL,PARAMETER      :: epsilonRHS=1.0
 !===================================================================================================================================
 
 ! Calculate the dyn. viscosity
@@ -178,11 +205,11 @@ Fdm(1)      = FieldAtParticle(VEL1) - PartState(PART_VEL1,PartID)
 Fdm(2)      = -3.
 Fdm(3)      = 0.
 
-CASE(RHS_VINKOVIC,RHS_WANG)
+CASE(RHS_INERTIA)
 !===================================================================================================================================
-! Calculation according to Vinkovic [2006] or Wang [1996]
+! Calculation according to Maxey and Riley
 !===================================================================================================================================
-IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Particle tracking with Wang [1996] or Vinkovic [2006] requires mu to be set!')
+IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Tracking of intertial particles requires mu to be set!')
 
 ! Assume spherical particles for now
 IF(ALLOCATED(TurbPartState)) THEN
@@ -193,124 +220,18 @@ END IF
 
 Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
 
-! Empirical relation of nonlinear drag from Clift et al. (1978)
-Cd  = 1. + 0.15*Rep**0.687
-IF((Species(PartSpecies(PartID))%RHSMethod.EQ.RHS_VINKOVIC).AND.(Rep .LT. epsilonRHS)) Cd  = 1.
-
-! Warn when outside valid range of Naumann model
-IF(Rep.GT.800) THEN
-  IF (RepWarn.EQV..FALSE.) THEN
-    SWRITE(UNIT_StdOut,*) 'WARNING: Rep',Rep,'> 800, drag coefficient may not be accurate.'
-    RepWarn=.TRUE.
-  ENDIF
-ENDIF
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, 0.)
 
 ! Particle relaxation time
 staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
 
-Fdm      = udiff * staup * Cd
+Fdm      = udiff * staup * f
 
-! Add gravity if required
-IF(ANY(PartGravity.NE.0)) THEN
-  Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
-ENDIF
-
-CASE(RHS_JACOBS)
-!===================================================================================================================================
-! Calculation according to Jacobs [2003]
-!===================================================================================================================================
-IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Particle tracking with Jacobs [2003] requires mu to be set!')
-
-! Assume spherical particles for now
-IF(ALLOCATED(TurbPartState)) THEN
-  udiff(1:3) = FieldAtParticle(VELV) + TurbPartState(1:3,PartID) - PartState(PART_VELV,PartID)
-ELSE
-  udiff(1:3) = FieldAtParticle(VELV)                             - PartState(PART_VELV,PartID)
-END IF
-
-Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
-
-! Drag coefficient according to Putnam (1961)
-Cd = 1. + (Rep**2./3.)/6.
-! High Re correction according to Putnam et al. (1961)
-IF(Rep .GT. 1000) Cd = 0.0183*Rep
-
-! Particle relaxation time
-staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
-
-Fdm       = udiff*staup * Cd
-
-! Add gravity if required
+! Add gravity and bouyancy if required
 IF(ANY(PartGravity.NE.0)) THEN
   Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 END IF
 
-CASE(RHS_HAIDER)
-!===================================================================================================================================
-! Calculation according to Haider and Levenspiel [1989]
-!===================================================================================================================================
-IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Particle tracking with Haider [1989] requires mu to be set!')
-
-! Assume spherical particles for now
-IF(ALLOCATED(TurbPartState)) THEN
-  udiff(1:3) = FieldAtParticle(VELV) + TurbPartState(1:3,PartID) - PartState(PART_VELV,PartID)
-ELSE
-  udiff(1:3) = FieldAtParticle(VELV)                             - PartState(PART_VELV,PartID)
-END IF
-
-Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
-
-! Empirical relation from Haider and Levenspiel (1989) valid for Rep<2.6e5
-k1 = EXP(2.3288-6.4581*Species(PartSpecies(PartID))%SphericityIC+2.4486*Species(PartSpecies(PartID))%SphericityIC**2)
-k2 = EXP(4.905-13.8944*Species(PartSpecies(PartID))%SphericityIC+18.4222*Species(PartSpecies(PartID))%SphericityIC**2-&
-  10.2599*Species(PartSpecies(PartID))%SphericityIC**3)
-k3 = EXP(1.4681+12.2584*Species(PartSpecies(PartID))%SphericityIC-20.7322*Species(PartSpecies(PartID))%SphericityIC**2+&
-  15.8855*Species(PartSpecies(PartID))%SphericityIC**3)
-Cd = (1+k1*Rep**(0.0964+0.5565*Species(PartSpecies(PartID))%SphericityIC))+Rep**2*1./24*k2/(Rep+k3)
-
-! Warn when outside valid range of Haider model
-IF(Species(PartSpecies(PartID))%SphericityIC.LT.0.670) THEN
-  SWRITE(UNIT_StdOut,*) 'WARNING: SphericityIC',Species(PartSpecies(PartID))%SphericityIC,'< 0.670, drag coefficient may not be accurate.'
-ENDIF
-
-! Particle relaxation time
-staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
-
-Fdm       = udiff*staup * Cd
-
-! Add gravity if required
-IF(ANY(PartGravity.NE.0)) THEN
-    Fdm  = Fdm + PartGravity * (1-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
-ENDIF
-
-CASE(RHS_HOELZER)
-!===================================================================================================================================
-! Calculation according to Hoelzer [2008]
-!===================================================================================================================================
-IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Particle tracking with Hoelzer [2008] requires mu to be set!')
-
-! Assume spherical particles for now
-IF(ALLOCATED(TurbPartState)) THEN
-  udiff(1:3) = FieldAtParticle(VELV) + TurbPartState(1:3,PartID) - PartState(PART_VELV,PartID)
-ELSE
-  udiff(1:3) = FieldAtParticle(VELV)                             - PartState(PART_VELV,PartID)
-END IF
-
-Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
-
-Cd    =  s13 * 1./SQRT(Species(PartSpecies(PartID))%SphericityIC) + s23 * 1./SQRT(Species(PartSpecies(PartID))%SphericityIC)+&
-         SQRT(Rep)/8. * 1./(Species(PartSpecies(PartID))%SphericityIC**(3./4.)) +&
-         Rep/24. * 0.4210**(0.4*(-LOG(Species(PartSpecies(PartID))%SphericityIC))**0.2) *1./Species(PartSpecies(PartID))%SphericityIC
-
-! Particle relaxation time
-staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
-
-Fdm       = udiff*staup * Cd
-
-! Add gravity if required
-IF(ANY(PartGravity.NE.0)) THEN
-    Fdm  = Fdm + PartGravity * (1-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
-ENDIF
 
 CASE DEFAULT
   CALL ABORT(__STAMP__, 'No valid RHS method given. Species',IntInfo=PartSpecies(PartID))
@@ -318,7 +239,6 @@ CASE DEFAULT
 END SELECT
 
 ParticlePush = Fdm
-!WRITE (*, *) 'Fdm:', Fdm
 
 END FUNCTION ParticlePush
 
@@ -572,9 +492,9 @@ USE MOD_Particle_Vars,      ONLY: U_local,gradp_local
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+REAL,INTENT(IN)             :: U(    CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(IN)             :: U(    CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL,INTENT(OUT)            :: divtau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL,INTENT(OUT)            :: gradp( 1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -626,5 +546,94 @@ gradp = gradp_local(1,:,:,:,:,:)
 
 END SUBROUTINE tauRHS
 #endif /* USE_EXTEND_RHS */
+
+
+FUNCTION DF_SchillerAndNaumann(Rep, SphericityIC, Mp) RESULT(f)
+!===================================================================================================================================
+! Compute the drag factor according to Schiller and Naumann
+!===================================================================================================================================
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                        :: f
+!-----------------------------------------------------------------------------------------------------------------------------------
+f  = 1. + 0.15*Rep**0.687
+END FUNCTION DF_SchillerAndNaumann
+
+FUNCTION DF_Putnam(Rep, SphericityIC, Mp) RESULT(f)
+!===================================================================================================================================
+! Compute the drag factor according to Putnam et al. (1961)
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Vars,     ONLY : RepWarn
+USE MOD_Globals,           ONLY : MPIRoot, UNIT_StdOut
+!-----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                        :: f
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Warn when outside valid range of Naumann model
+IF(Rep.GT.800) THEN
+  IF (RepWarn.EQV..FALSE.) THEN
+    SWRITE(UNIT_StdOut,*) 'WARNING: Rep',Rep,'> 800, drag coefficient may not be accurate.'
+    RepWarn=.TRUE.
+  ENDIF
+ENDIF
+f = 1. + (Rep**2./3.)/6.
+! High Re correction according to Putnam et al. (1961)
+IF(Rep .GT. 1000) f = 0.0183*Rep
+END FUNCTION DF_Putnam
+
+FUNCTION DF_Haider(Rep, SphericityIC, Mp) RESULT(f)
+!===================================================================================================================================
+! Compute the drag factor according to Haider and Levenspiel (1989) valid for Rep<2.6e5
+!===================================================================================================================================
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                        :: f
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                        :: k1, k2, k3
+!-----------------------------------------------------------------------------------------------------------------------------------
+k1 = EXP(2.3288-6.4581*SphericityIC+2.4486*SphericityIC**2)
+k2 = EXP(4.905-13.8944*SphericityIC+18.4222*SphericityIC**2-10.2599*SphericityIC**3)
+k3 = EXP(1.4681+12.2584*SphericityIC-20.7322*SphericityIC**2+15.8855*SphericityIC**3)
+f = (1+k1*Rep**(0.0964+0.5565*SphericityIC))+Rep**2*1./24*k2/(Rep+k3)
+END FUNCTION DF_Haider
+
+FUNCTION DF_Hoelzer(Rep, SphericityIC, Mp) RESULT(f)
+!===================================================================================================================================
+! Compute the drag factor according to Hoelzer et al. (2008)
+!===================================================================================================================================
+! MODULES
+USE MOD_Equation_Vars,      ONLY: s13,s23
+!-----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                        :: f
+!-----------------------------------------------------------------------------------------------------------------------------------
+f =  s13 * 1./SQRT(SphericityIC) + s23 * 1./SQRT(SphericityIC)+&
+     SQRT(Rep)/8. * 1./(SphericityIC**(3./4.)) +&
+     Rep/24. * 0.4210**(0.4*(-LOG(SphericityIC))**0.2) *1./SphericityIC
+END FUNCTION DF_Hoelzer
 
 END MODULE MOD_part_RHS

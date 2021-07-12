@@ -82,10 +82,6 @@ CALL prms%CreateLogicalOption(  'Part-TrackPosition'      , 'Track particle posi
 CALL prms%CreateLogicalOption(  'Part-TrackConvergence'   , 'Track particle convergence (i.e. final position)','.FALSE.')
 CALL prms%CreateLogicalOption(  'Part-TrackDispersion'    , 'Track particle convergence radius (i.e. absolute path)','.FALSE.')
 CALL prms%CreateLogicalOption(  'Part-TrackPath'          , 'Track particle path (i.e. relative path)','.FALSE.')
-CALL prms%CreateLogicalOption(  'printDiff'               , '.FALSE.')
-CALL prms%CreateRealOption(     'PrintDiffTime'           , '12')
-CALL prms%CreateRealArrayOption('printDiffVec'            , '0. , 0. , 0. , 0. , 0. , 0.')
-
 #if CODE_ANALYZE
 CALL prms%CreateIntOption(      'PartOut'                 , 'If compiled with CODE_ANALYZE flag: For This particle number'   //&
                                                             ' every tracking information is written as STDOUT.'                &
@@ -187,14 +183,6 @@ END IF
 ! Track and write position of each particle. Primarily intended for debug purposes
 doParticlePositionTrack    = GETLOGICAL('Part-TrackPosition',   '.FALSE.')
 doParticleConvergenceTrack = GETLOGICAL('Part-TrackConvergence','.FALSE.')
-
-IF(doParticlePositionTrack) THEN
-  printDiff = GETLOGICAL('printDiff','.FALSE.')
-  IF(printDiff) THEN
-    printDiffTime = GETREAL(     'printDiffTime','12.')
-    printDiffVec  = GETREALARRAY('printDiffVec',6,'0.,0.,0.,0.,0.,0.')
-  END IF
-END IF
 
 doParticleDispersionTrack    = GETLOGICAL('Part-TrackDispersion','.FALSE.')
 doParticlePathTrack          = GETLOGICAL('Part-TrackPath'      ,'.FALSE.')
@@ -401,7 +389,6 @@ USE MOD_Particle_Vars,          ONLY:PartState, PDM, PEM
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
 #endif
-USE MOD_Particle_Analyze_Vars,  ONLY:printDiff,printDiffVec,printDiffTime
 USE MOD_Particle_Globals,       ONLY:GETFREEUNIT
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -480,18 +467,6 @@ IF(fexist) THEN
   CLOSE(iunit)
 END IF
 
-IF (printDiff) THEN
-  diffPos=0.
-  diffVelo=0.
-  IF (time.GE.printDiffTime) THEN
-    printDiff=.FALSE.
-    DO iPartState=1,3
-      diffPos  = diffPos+(printDiffVec(iPartState)-PartState(1,iPartState))**2
-      diffVelo = diffVelo+(printDiffVec(iPartState+3)-PartState(1,iPartState+3))**2
-    END DO
-    WRITE(*,'(A,E24.14,1X,E24.14)') 'L2-norm from printDiffVec: ',SQRT(diffPos),SQRT(diffVelo)
-  END IF
-END IF
 104    FORMAT (e25.14)
 
 END SUBROUTINE TrackingParticlePosition

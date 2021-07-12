@@ -43,9 +43,6 @@ REAL,ALLOCATABLE              :: PartEkinIn(:)                         ! kinetic
 REAL,ALLOCATABLE              :: PartEkinOut(:)                        ! kinetic energy of outflow particle
 REAL,ALLOCATABLE              :: PartEKinInTmp(:)                      ! kinetic energy of input particle (tmp)
 REAL,ALLOCATABLE              :: PartPath(:,:)                         ! absolute particle path (used for dispersion calculation)
-LOGICAL                       :: printDiff
-REAL                          :: printDiffTime
-REAL                          :: printDiffVec(6)
 
 REAL                          :: TimeSample
 

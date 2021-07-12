@@ -268,16 +268,12 @@ IF (opt%hasDefault) THEN
   CALL opt%parse(value)
 END IF
 
-opt%multiple   = .FALSE.
-IF (PRESENT(multiple)) opt%multiple = multiple
-IF (opt%multiple.AND.opt%hasDefault) THEN
-  CALL Abort(__STAMP__, &
+opt%multiple   = MERGE(multiple,.FALSE.,PRESENT(multiple))
+IF (opt%multiple .AND. opt%hasDefault) CALL Abort(__STAMP__, &
       "A default value can not be given, when multiple=.TRUE. in creation of option: '"//TRIM(name)//"'")
-END IF
 
 #if USE_PARTICLES
-opt%numberedmulti = .FALSE.
-IF (PRESENT(numberedmulti)) opt%numberedmulti = numberedmulti
+opt%numberedmulti = MERGE(numberedmulti,.FALSE.,PRESENT(numberedmulti))
 ! Remove/Replace $ occurrences in variable name
 IF(opt%numberedmulti)THEN
   aStr = Var_Str(TRIM(name))
@@ -286,11 +282,8 @@ IF(opt%numberedmulti)THEN
   aStr = Replace(aStr,"[$$]","$",Every = .true.)
   CALL LowCase(CHAR(aStr),opt%name)
   ind = INDEX(TRIM(opt%name),"$")
-  IF(ind.LE.0)THEN
-    CALL abort(&
-    __STAMP__&
-    ,'[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(opt%name)//']')
-  END IF ! ind.LE.0
+  IF (ind.LE.0) CALL ABORT(__STAMP__, &
+      '[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(opt%name)//']')
 ELSE
 #endif /*USE_PARTICLES*/
   opt%name = name
@@ -298,13 +291,13 @@ ELSE
 END IF ! opt%numberedmulti
 #endif /*USE_PARTICLES*/
 
-opt%isSet = .FALSE.
+opt%isSet       = .FALSE.
 opt%description = description
-opt%section = this%actualSection
-opt%isRemoved = .FALSE.
+opt%section     = this%actualSection
+opt%isRemoved   = .FALSE.
 
 ! insert option into linked list
-IF (.not. associated(this%firstLink)) then
+IF (.NOT. associated(this%firstLink)) then
   this%firstLink => constructor_Link(opt, this%firstLink)
   this%lastLink => this%firstLink
 ELSE
@@ -647,10 +640,8 @@ CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for com
 IF(MPIROOT)THEN
   ! Get name of ini file
   WRITE(UNIT_StdOut,*)'| Reading from file "',TRIM(filename),'":'
-  IF (.NOT.FILEEXISTS(filename)) THEN
-    CALL Abort(__STAMP__,&
-        "Ini file does not exist.")
-  END IF
+  IF (.NOT.FILEEXISTS(filename)) CALL Abort(__STAMP__,"Ini file does not exist.")
+
   ! Check if first argument is the ini-file
   IF(.NOT.(STRICMP(GetFileExtension(filename),'ini'))) THEN
     SWRITE(*,*) "Usage: flexi parameter.ini [restart.h5] [keyword arguments]"
@@ -665,18 +656,15 @@ IF(MPIROOT)THEN
        ACTION = 'READ',         &
        ACCESS = 'SEQUENTIAL',   &
        IOSTAT = stat)
-  IF(stat.NE.0)THEN
-    CALL abort(__STAMP__,&
-      "Could not open ini file.")
-  END IF
+  IF (stat.NE.0) CALL ABORT(__STAMP__,"Could not open ini file.")
 
   ! parallel IO: ROOT reads file and sends it to all other procs
-  nLines=0
-  stat=0
+  nLines = 0
+  stat   = 0
   DO
-    READ(iniunit,"(A)",IOSTAT=stat)tmpChar
-    IF(stat.NE.0)EXIT
-    nLines=nLines+1
+    READ (iniunit,"(A)",IOSTAT=stat)tmpChar
+    IF (stat.NE.0) EXIT
+    nLines = nLines+1
   END DO
 END IF
 
@@ -1101,11 +1089,17 @@ CLASS(link),POINTER   :: current
 CLASS(Option),POINTER :: opt
 CHARACTER(LEN=255)    :: proposal_loc
 #if USE_PARTICLES
+CLASS(link),POINTER          :: check
+CLASS(Option),POINTER        :: multi
 CLASS(OPTION),ALLOCATABLE    :: newopt
+CHARACTER(LEN=:),ALLOCATABLE :: testname
+INTEGER                      :: i
+CHARACTER(LEN=20)            :: fmtName
 #endif /*USE_PARTICLES*/
 !==================================================================================================================================
 
 ! iterate over all options
+!>> This includes numberedmulti options that are defined in the parameter file
 current => prms%firstLink
 DO WHILE (associated(current))
   ! if name matches option
@@ -1126,26 +1120,26 @@ DO WHILE (associated(current))
       END IF
       ! copy value from option to result variable
       SELECT TYPE (opt)
-      CLASS IS (IntOption)
-        SELECT TYPE(value)
-        TYPE IS (INTEGER)
-          value = opt%value
-        END SELECT
-      CLASS IS (RealOption)
-        SELECT TYPE(value)
-        TYPE IS (REAL)
-          value = opt%value
-        END SELECT
-      CLASS IS (LogicalOption)
-        SELECT TYPE(value)
-        TYPE IS (LOGICAL)
-          value = opt%value
-        END SELECT
-      CLASS IS (StringOption)
-        SELECT TYPE(value)
-        TYPE IS (STR255)
-          value%chars = opt%value
-        END SELECT
+        CLASS IS (IntOption)
+          SELECT TYPE(value)
+            TYPE IS (INTEGER)
+              value = opt%value
+          END SELECT
+        CLASS IS (RealOption)
+          SELECT TYPE(value)
+            TYPE IS (REAL)
+              value = opt%value
+          END SELECT
+        CLASS IS (LogicalOption)
+          SELECT TYPE(value)
+            TYPE IS (LOGICAL)
+              value = opt%value
+          END SELECT
+        CLASS IS (StringOption)
+          SELECT TYPE(value)
+            TYPE IS (STR255)
+              value%chars = opt%value
+          END SELECT
       END SELECT
       ! print option and value to stdout
       CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
@@ -1172,6 +1166,60 @@ DO WHILE (associated(current))
       newopt%name = name
       newopt%numberedmulti = .FALSE.
       newopt%isSet = .FALSE.
+      ! Check if we can find a general option, applying to all numberedmulti
+      testname = name
+      DO i = 1, LEN(name)
+        ! Start replacing the index from the left
+        IF(INDEX('0123456789',name(i:i)).GT.0) THEN
+          testname(i:i) = '$'
+          ! Check if we can find this name
+          check => prms%firstLink
+          DO WHILE (associated(check))
+            IF (check%opt%NAMEEQUALS(testname) .AND. check%opt%isSet) THEN
+              multi => check%opt
+              ! copy value from option to result variable
+              SELECT TYPE (multi)
+                CLASS IS (IntOption)
+                  SELECT TYPE(value)
+                    TYPE IS (INTEGER)
+                      value = multi%value
+                  END SELECT
+                CLASS IS (RealOption)
+                  SELECT TYPE(value)
+                    TYPE IS (REAL)
+                      value = multi%value
+                  END SELECT
+                CLASS IS (LogicalOption)
+                  SELECT TYPE(value)
+                    TYPE IS (LOGICAL)
+                      value = multi%value
+                  END SELECT
+                CLASS IS (StringOption)
+                  SELECT TYPE(value)
+                    TYPE IS (STR255)
+                      value%chars = multi%value
+                  END SELECT
+              END SELECT
+              ! print option and value to stdout. Custom print, so do it here
+              WRITE(fmtName,*) prms%maxNameLen
+              SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+              CALL set_formatting("blue")
+              SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(name)
+              CALL clear_formatting()
+              SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+              CALL multi%printValue(prms%maxValueLen)
+              SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
+              CALL set_formatting("blue")
+              SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
+              CALL clear_formatting()
+              SWRITE(UNIT_stdOut,"(a3)") ' | '
+              RETURN
+            END IF
+            check => check%next
+          END DO
+        END IF
+      END DO
+      ! No catchall option, check if we can find a proposal
       IF ((PRESENT(proposal)).AND.(.NOT. newopt%isSet)) THEN
         proposal_loc = TRIM(proposal)
         CALL newopt%parse(proposal_loc)
@@ -1185,26 +1233,26 @@ DO WHILE (associated(current))
       END IF
       ! copy value from option to result variable
       SELECT TYPE (newopt)
-      CLASS IS (IntOption)
-        SELECT TYPE(value)
-        TYPE IS (INTEGER)
-          value = newopt%value
-        END SELECT
-      CLASS IS (RealOption)
-        SELECT TYPE(value)
-        TYPE IS (REAL)
-          value = newopt%value
-        END SELECT
-      CLASS IS (LogicalOption)
-        SELECT TYPE(value)
-        TYPE IS (LOGICAL)
-          value = newopt%value
-        END SELECT
-      CLASS IS (StringOption)
-        SELECT TYPE(value)
-        TYPE IS (STR255)
-          value%chars = newopt%value
-        END SELECT
+        CLASS IS (IntOption)
+          SELECT TYPE(value)
+            TYPE IS (INTEGER)
+              value = newopt%value
+          END SELECT
+        CLASS IS (RealOption)
+          SELECT TYPE(value)
+            TYPE IS (REAL)
+              value = newopt%value
+          END SELECT
+        CLASS IS (LogicalOption)
+          SELECT TYPE(value)
+            TYPE IS (LOGICAL)
+              value = newopt%value
+          END SELECT
+        CLASS IS (StringOption)
+          SELECT TYPE(value)
+            TYPE IS (STR255)
+              value%chars = newopt%value
+          END SELECT
       END SELECT
       ! print option and value to stdout
       CALL newopt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
@@ -1242,9 +1290,13 @@ CLASS(link),POINTER   :: current
 CLASS(Option),POINTER :: opt
 CHARACTER(LEN=255)    :: proposal_loc
 #if USE_PARTICLES
+CLASS(link),POINTER          :: check
+CLASS(Option),POINTER        :: multi
 CLASS(OPTION),ALLOCATABLE    :: newopt
+CHARACTER(LEN=:),ALLOCATABLE :: testname
+INTEGER                      :: i
+CHARACTER(LEN=20)            :: fmtName
 #endif /*USE_PARTICLES*/
-!INTEGER               :: i
 !==================================================================================================================================
 
 ! iterate over all options
@@ -1304,7 +1356,7 @@ DO WHILE (associated(current))
 END DO
 
 #if USE_PARTICLES
-! iterate over all options and compare reduced (all numberes removed) names with numberedmulti options
+! iterate over all options and compare reduced (all numbers removed) names with numberedmulti options
 current => prms%firstLink
 DO WHILE (associated(current))
   IF (.NOT.current%opt%numberedmulti) THEN
@@ -1318,6 +1370,58 @@ DO WHILE (associated(current))
       newopt%name = name
       newopt%numberedmulti = .FALSE.
       newopt%isSet = .FALSE.
+      ! Check if we can find a general option, applying to all numberedmulti
+      testname = name
+      DO i = 1, LEN(name)
+        ! Start replacing the index from the left
+        IF(INDEX('0123456789',name(i:i)).GT.0) THEN
+          testname(i:i) = '$'
+          ! Check if we can find this name
+          check => prms%firstLink
+          DO WHILE (associated(check))
+            IF (check%opt%NAMEEQUALS(testname) .AND. check%opt%isSet) THEN
+              multi => check%opt
+              ! copy value from option to result variable
+              SELECT TYPE (newopt)
+                CLASS IS (IntArrayOption)
+                  IF (SIZE(newopt%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
+                  SELECT TYPE(value)
+                    TYPE IS (INTEGER)
+                    value = newopt%value
+                  END SELECT
+                CLASS IS (RealArrayOption)
+                  IF (SIZE(newopt%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
+                  SELECT TYPE(value)
+                    TYPE IS (REAL)
+                    value = newopt%value
+                  END SELECT
+                CLASS IS (LogicalArrayOption)
+                  IF (SIZE(newopt%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
+                  SELECT TYPE(value)
+                    TYPE IS (LOGICAL)
+                    value = newopt%value
+                  END SELECT
+              END SELECT
+              ! print option and value to stdout. Custom print, so do it here
+              WRITE(fmtName,*) prms%maxNameLen
+              SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+              CALL set_formatting("blue")
+              SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(name)
+              CALL clear_formatting()
+              SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+              CALL multi%printValue(prms%maxValueLen)
+              SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
+              CALL set_formatting("blue")
+              SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
+              CALL clear_formatting()
+              SWRITE(UNIT_stdOut,"(a3)") ' | '
+              RETURN
+            END IF
+            check => check%next
+          END DO
+        END IF
+      END DO
+      ! No catchall option, check if we can find a proposal
       IF ((PRESENT(proposal)).AND.(.NOT. newopt%isSet)) THEN
         proposal_loc = TRIM(proposal)
         CALL newopt%parse(proposal_loc)
@@ -1349,14 +1453,6 @@ DO WHILE (associated(current))
         TYPE IS (LOGICAL)
           value = newopt%value
         END SELECT
-      !CLASS IS (StringArrayOption)
-        !IF (SIZE(opt%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
-        !SELECT TYPE(value)
-        !TYPE IS (STR255)
-          !DO i=1,no
-            !value(i)%chars = opt%value(i)
-          !END DO
-        !END SELECT
       END SELECT
       ! print option and value to stdout
       CALL newopt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
@@ -1528,6 +1624,14 @@ CLASS(Option),POINTER         :: opt
 INTEGER                       :: i
 LOGICAL                       :: found
 INTEGER                       :: listSize         ! current size of list
+#if USE_PARTICLES
+CLASS(link),POINTER           :: check
+CLASS(Option),POINTER         :: multi
+CLASS(OPTION),ALLOCATABLE     :: newopt
+CHARACTER(LEN=:),ALLOCATABLE  :: testname
+INTEGER                       :: iChar
+CHARACTER(LEN=20)             :: fmtName
+#endif /*USE_PARTICLES*/
 !==================================================================================================================================
 ! iterate over all options and compare names
 current => prms%firstLink
@@ -1580,6 +1684,107 @@ DO WHILE (associated(current))
   END IF
   current => current%next
 END DO
+
+#if USE_PARTICLES
+! iterate over all options and compare reduced (all numbers removed) names with numberedmulti options
+current => prms%firstLink
+DO WHILE (associated(current))
+  IF (.NOT.current%opt%numberedmulti) THEN
+    current => current%next
+  ELSE
+    ! compare reduced name with reduced option name
+    IF (current%opt%NAMEEQUALSNUMBERED(name).AND.(.NOT.current%opt%isRemoved)) THEN
+      ! create new instance of multiple option
+      ALLOCATE(newopt, source=current%opt)
+      ! set name of new option like name in read line and set it being not multiple numbered
+      newopt%name = name
+      newopt%numberedmulti = .FALSE.
+      newopt%isSet = .FALSE.
+      ! Check if we can find a general option, applying to all numberedmulti
+      testname = name
+      DO iChar = 1, LEN(name)
+        ! Start replacing the index from the left
+        IF(INDEX('0123456789',name(iChar:iChar)).GT.0) THEN
+          testname(iChar:iChar) = '$'
+          ! Check if we can find this name
+          check => prms%firstLink
+          DO WHILE (associated(check))
+            IF (check%opt%NAMEEQUALS(testname) .AND. check%opt%isSet) THEN
+              multi => check%opt
+              ! copy value from option to result variable
+              SELECT TYPE (multi)
+                CLASS IS (IntFromStringOption)
+                  ! Set flag indicating the given option has an entry in the mapping
+                  multi%foundInList = .TRUE.
+                  ! Size of list with string-integer pairs
+                  listSize = SIZE(multi%strList)
+                  ! Check if an integer has been specified directly
+                  IF (ISINT(multi%value)) THEN
+                    READ(multi%value,*) value
+                    found=.FALSE.
+                    ! Check if the integer is present in the list of possible integers
+                    DO i=1,listSize
+                      IF (multi%intList(i).EQ.value)THEN
+                        found=.TRUE.
+                        multi%listIndex = i ! Store index of the mapping
+                        EXIT
+                      END IF
+                    END DO
+                    ! If it is not found, print a warning and set the flag to later use the correct output format
+                    IF(.NOT.found)THEN
+                      CALL PrintWarning("No named option for parameter " //TRIM(name)// " exists for this number, please ensure your input is correct.")
+                      multi%foundInList = .FALSE.
+                    END IF
+                    ! print option and value to stdout. Custom print, so do it here
+                    WRITE(fmtName,*) prms%maxNameLen
+                    SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+                    CALL set_formatting("blue")
+                    SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(name)
+                    CALL clear_formatting()
+                    SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+                    CALL multi%printValue(prms%maxValueLen)
+                    SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
+                    CALL set_formatting("blue")
+                    SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
+                    CALL clear_formatting()
+                    SWRITE(UNIT_stdOut,"(a3)") ' | '
+                    RETURN
+                  END IF
+                  ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
+                  ! mapping
+                  DO i=1,listSize
+                    IF (STRICMP(multi%strList(i), multi%value)) THEN
+                      value = multi%intList(i)
+                      multi%listIndex = i ! Store index of the mapping
+                      ! print option and value to stdout. Custom print, so do it here
+                      WRITE(fmtName,*) prms%maxNameLen
+                      SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+                      CALL set_formatting("blue")
+                      SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(name)
+                      CALL clear_formatting()
+                      SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+                      CALL multi%printValue(prms%maxValueLen)
+                      SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
+                      CALL set_formatting("blue")
+                      SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
+                      CALL clear_formatting()
+                      SWRITE(UNIT_stdOut,"(a3)") ' | '
+                      RETURN
+                    END IF
+                  END DO
+                  CALL Abort(__STAMP__,"Unknown value for option: "//TRIM(name))
+              END SELECT
+            END IF
+            check => check%next
+          END DO
+        END IF
+      END DO
+    END IF
+    current => current%next
+  END IF
+END DO
+#endif /*USE_PARTICLES*/
+
 CALL Abort(__STAMP__,&
     "Unknown option: "//TRIM(name)//" or already read (use GET... routine only for multiple options more than once).")
 END FUNCTION GETINTFROMSTR

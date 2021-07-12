@@ -146,10 +146,10 @@ REAL,OPTIONAL                     :: RealInfo        !< Error info (real)
 ! LOCAL VARIABLES
 CHARACTER(LEN=50)                 :: IntString,RealString
 !==================================================================================================================================
-IntString = ""
-RealString = ""
+IntString  = ''
+RealString = ''
 
-IF (PRESENT(IntInfo))  WRITE(IntString,"(A,I0)")  "\nIntInfo:  ", IntInfo
+IF (PRESENT(IntInfo))  WRITE(IntString,"(A,I0)")      "\nIntInfo:  ", IntInfo
 IF (PRESENT(RealInfo)) WRITE(RealString,"(A,F24.19)") "\nRealInfo: ", RealInfo
 
 SWRITE(UNIT_stdOut,*) '_____________________________________________________________________________\n', &
@@ -161,6 +161,7 @@ SWRITE(UNIT_stdOut,*) '_________________________________________________________
 
 CALL FLUSH(UNIT_stdOut)
 #if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 CALL MPI_FINALIZE(iError)
 #endif
 ERROR STOP 1

@@ -96,6 +96,7 @@ DO FVE=0,FV_ENABLED
   END DO
 END DO
 #endif /*PARABOLIC*/
+
 END SUBROUTINE
 
 
@@ -106,26 +107,28 @@ FUNCTION CALCTIMESTEP(errType)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_DG_Vars      ,ONLY:U
+USE MOD_EOS_Vars
+USE MOD_IO_HDF5      ,ONLY:AddToElemData,ElementOut
+USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems,ElemNaN
+USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem
 #ifndef GNU
 USE, INTRINSIC :: IEEE_ARITHMETIC,ONLY:IEEE_IS_NAN
 #endif
-USE MOD_DG_Vars      ,ONLY:U
-USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems
 #if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY:Metrics_hTilde
 #endif
-USE MOD_EOS_Vars
 #if PARABOLIC
 USE MOD_TimeDisc_Vars,ONLY:DFLScale
 USE MOD_Viscosity
 #endif /*PARABOLIC*/
-USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars, ONLY: muSGS
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -144,6 +147,7 @@ REAL                         :: muSGSmax
 REAL                         :: Max_Lambda_v(3),mu,prim(PP_nVarPrim)
 #endif /*PARABOLIC*/
 INTEGER                      :: FVE
+LOGICAL                      :: firstRun = .TRUE.
 !==================================================================================================================================
 errType=0
 
@@ -165,7 +169,14 @@ DO iElem=1,nElems
     UE(EXT_PRES)=PRESSURE_HE(UE)
     UE(EXT_TEMP)=TEMPERATURE_HE(UE)
     ! Convective Eigenvalues
-    IF(IEEE_IS_NAN(UE(EXT_DENS)))THEN
+    IF (ANY(IEEE_IS_NAN(UE(EXT_CONS)))) THEN
+      IF (firstRun) THEN
+        ALLOCATE(ElemNaN(1:nElems))
+        ElemNaN(:) = 0
+        firstRun = .FALSE.
+        CALL AddToElemData(ElementOut,'ElemIsNaN',IntArray=ElemNaN)
+      END IF
+      ElemNaN(iElem) = 1
       ERRWRITE(*,'(A,3ES16.7)')'Density NaN, Position= ',Elem_xGP(:,i,j,k,iElem)
       errType=1
     END IF
@@ -193,6 +204,13 @@ DO iElem=1,nElems
   dtElem(iElem)=CFLScale(FVE)*2./SUM(Max_Lambda)
   TimeStepConv=MIN(TimeStepConv,dtElem(iElem))
   IF(IEEE_IS_NAN(TimeStepConv))THEN
+    IF (firstRun) THEN
+      ALLOCATE(ElemNaN(1:nElems))
+      ElemNaN(:) = 0
+      firstRun = .FALSE.
+      CALL AddToElemData(ElementOut,'ElemIsNaN',IntArray=ElemNaN)
+    END IF
+    ElemNaN(iElem) = 2
     ERRWRITE(*,'(A,I0,A,I0)')'Convective timestep NaN on proc',myRank,' for element: ',iElem
     ERRWRITE(*,'(A,3ES16.7)')'Position: Elem_xGP(:1,1,1,iElem)=',Elem_xGP(:,1,1,1,iElem)
     ERRWRITE(*,*)'dt_conv=',TimeStepConv,' dt_visc=',TimeStepVisc
@@ -205,6 +223,13 @@ DO iElem=1,nElems
     TimeStepVisc= MIN(TimeStepVisc, DFLScale(FVE)*4./SUM(Max_Lambda_v))
   END IF
   IF(IEEE_IS_NAN(TimeStepVisc))THEN
+    IF (firstRun) THEN
+      ALLOCATE(ElemNaN(1:nElems))
+      ElemNaN(:) = 0
+      firstRun = .FALSE.
+      CALL AddToElemData(ElementOut,'ElemIsNaN',IntArray=ElemNaN)
+    END IF
+    ElemNaN(iElem) = 3
     ERRWRITE(*,'(A,I0,A,I0)')'Viscous timestep NaN on proc ',myRank,' for element: ', iElem
     ERRWRITE(*,'(A,3ES16.7)')'Position: Elem_xGP(:1,1,1,iElem)=',Elem_xGP(:,1,1,1,iElem)
     ERRWRITE(*,*)'dt_visc=',TimeStepVisc,' dt_conv=',TimeStepConv
@@ -223,6 +248,7 @@ errType=INT(-TimeStep(3))
 #endif /*USE_MPI*/
 ViscousTimeStep=(TimeStep(2) .LT. TimeStep(1))
 CalcTimeStep=MINVAL(TimeStep(1:2))
+
 END FUNCTION CALCTIMESTEP
 
 

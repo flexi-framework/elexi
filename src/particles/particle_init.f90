@@ -97,20 +97,20 @@ CALL addStrListEntry(               'TrackingMethod', 'tracing'         ,TRACING
 CALL addStrListEntry(               'TrackingMethod', 'triatracking'    ,TRIATRACKING)
 CALL addStrListEntry(               'TrackingMethod', 'default'         ,TRIATRACKING)
 
-CALL prms%CreateLogicalOption(      'TriaSurfaceFlux','Using Triangle-aproximation [T] or (bi-)linear and bezier (curved) '      //&
-                                                      'description [F] of sides for surfaceflux.'                                  &
-                                                    , '.TRUE.')
+CALL prms%CreateLogicalOption(      'TriaSurfaceFlux'         , 'Using Triangle-aproximation [T] or (bi-)linear and bezier '     //&
+                                                                '(curved) description [F] of sides for surfaceflux.'               &
+                                                              , '.TRUE.')
 
-CALL prms%CreateLogicalOption(      'CountNbOfLostParts'      , 'Count number of lost particles during tracking that can not be '//&
-                                                                'found with fallbacks.'                                            &
-                                                              , '.FALSE.')
+CALL prms%CreateLogicalOption(      'CountNbOfLostParts'       , 'Count number of lost particles during tracking that can not '  //&
+                                                                 'be found with fallbacks.'                                        &
+                                                               , '.FALSE.')
 
-CALL prms%CreateIntOption(          'BezierClipLineVectorMethod',''                                                               &
-                                                    , '2')
-CALL prms%CreateIntOption(          'NbrOfRegions'  , 'Number of regions to be mapped to Elements'                                 &
-                                                    , '0')
-CALL prms%CreateIntOption(          'Part-nAuxBCs'  , 'Number of auxillary BCs that are checked during tracing'                    &
-                                                    , '0')
+CALL prms%CreateIntOption(          'BezierClipLineVectorMethod','TODO-DEFINE-PARAMETER'                                           &
+                                                               , '2')
+CALL prms%CreateIntOption(          'NbrOfRegions'             , 'Number of regions to be mapped to Elements'                      &
+                                                               , '0')
+CALL prms%CreateIntOption(          'Part-nAuxBCs'             , 'Number of auxillary BCs that are checked during tracing'         &
+                                                               , '0')
 
 
 CALL prms%CreateRealOption(         'Part-MaxParticleNumber'   , 'Maximum number of Particles for the whole simulation. '        //&
@@ -138,27 +138,6 @@ CALL prms%CreateRealOption(         'Part-DelayTime'           , "During delay t
 CALL prms%CreateRealArrayOption(    'Part-Gravity'             , 'Gravitational acceleration as vector'                            &
                                                                , '0. , 0. , 0.')
 
-#if CODE_ANALYZE
-CALL prms%CreateIntOption(          'PartOut'                  , 'If compiled with CODE_ANALYZE flag: For This particle number'  //&
-                                                                 ' every tracking information is written as STDOUT.'               &
-                                                               , '0')
-CALL prms%CreateIntOption(          'MPIRankOut'               , 'If compiled with CODE_ANALYZE flag: This MPI-Proc writes the'  //&
-                                                                 ' tracking information for the defined PartOut.'
-                                                               , '0')
-#endif /*CODE_ANALYZE*/
-CALL prms%CreateIntOption(          'Part-nRPs'                , 'Number of record planes'                                          &
-                                                               , '0')
-CALL prms%CreateIntOption(          'Part-RPMemory'            , 'Record particles memory'                                          &
-                                                               , '100')
-!CALL prms%CreateStringOption(       'Part-RecordType[$]'       , 'Type of record plane.\n'                                       //&
-!                                                                 ' - plane\n'                                                      &
-!                                                               , 'none', numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(          'Part-RPDirection[$]'      , 'Direction of the normal vector of the record plane'               &
-                                                               , '1', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-RPPosition[$]'       , 'Position of the record plane in RPDirection.'                     &
-                                                               , '0.', numberedmulti=.TRUE.)
-CALL prms%CreateStringOption(       'Part-FilenameRecordPart'  , 'Specifying filename for load_from_file init.'                     &
-                                                               , 'data/recordplane_')
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
 !===================================================================================================================================
@@ -278,6 +257,8 @@ CALL prms%CreateStringOption(       'Part-Species[$]-SpaceIC'   , 'Specifying Ke
                                                                   ' - point\n'                                                   //&
                                                                   ' - line_with_equidistant_distribution\n'                      //&
                                                                   ' - line\n'                                                    //&
+                                                                  ' - cross\n'                                                   //&
+                                                                  ' - plane\n'                                                   //&
                                                                   ' - disc\n'                                                    //&
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
@@ -421,8 +402,6 @@ CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-NumberOfExcludeRegi
 ! Surface Flux
 
 CALL prms%CreateLogicalOption(      'OutputSurfaceFluxLinked'         , 'Flag to print the SurfaceFlux-linked Info'                &
-                                                                      , '.FALSE.')
-CALL prms%CreateLogicalOption(      'doPartIndex'                     , 'Flag to write out unique part index'                &
                                                                       , '.FALSE.')
 
 !===================================================================================================================================

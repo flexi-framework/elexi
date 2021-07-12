@@ -2,6 +2,8 @@
 # Detect machine environements
 # =========================================================================
 
+CMAKE_HOST_SYSTEM_INFORMATION(RESULT CMAKE_FQDN_HOST QUERY FQDN)
+MARK_AS_ADVANCED(FORCE CMAKE_FQDN_HOST)
 MARK_AS_ADVANCED(FORCE CMAKE_HOSTNAME)
 SITE_NAME(CMAKE_HOSTNAME)
 
@@ -87,6 +89,11 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
   # Work around MPI-IO issue 4446 on machines mountng storage via NFS
   ADD_DEFINITIONS(-DNFS)
+
+ELSEIF ("${CMAKE_FQDN_HOST}" MATCHES "gitlab.ila.uni-stuttgart.de")
+  MESSAGE(STATUS "Compiling on ILA Gitlab")
+  ADD_DEFINITIONS(-DVDM_ANALYTICAL)
+  SET(FLEXI_INSTRUCTION "-march=native")
 
 ELSE()
   # Set compiler target architecture

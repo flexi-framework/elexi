@@ -21,20 +21,20 @@
 #define PP_2Var PP_nVar+PP_nVarPrim
 
 ! conservative variables
-#define DENS  1           	/* density */
-#define MOM1  2           	/* momentum x */
-#define MOM2  3           	/* momentum y */
-#define MOM3  4           	/* momentum z */
-#define MOMV  MOM1:MOM3         /* momentum vector */
-#define ENER  5           	/* energy */
+#define DENS  1             /* density */
+#define MOM1  2             /* momentum x */
+#define MOM2  3             /* momentum y */
+#define MOM3  4             /* momentum z */
+#define MOMV  MOM1:MOM3     /* momentum vector */
+#define ENER  5             /* energy */
 
 ! primitive variables
-#define VEL1  2               	/* velocity x */
-#define VEL2  3               	/* velocity y */
-#define VEL3  4               	/* velocity z */
-#define VELV  VEL1:VEL3       	/* velocity range */
-#define PRES  5               	/* pressure */
-#define TEMP  6               	/* temperature */
+#define VEL1  2             /* velocity x */
+#define VEL2  3             /* velocity y */
+#define VEL3  4             /* velocity z */
+#define VELV  VEL1:VEL3     /* velocity range */
+#define PRES  5             /* pressure */
+#define TEMP  6             /* temperature */
 #define VELVTEMP (/VEL1,VEL2,VEL3,TEMP/) /* velocity range and temperature */
 
 ! routines to compute physical quantities

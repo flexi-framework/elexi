@@ -310,7 +310,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem,iNode,i,j,k
-INTEGER                        :: FirstElemInd,LastElemInd
+INTEGER                        :: FirstElemInd,LastElemInd,LocElemID
 INTEGER                        :: FirstNodeInd,LastNodeInd
 INTEGER                        :: nNodeIDs,offsetNodeID
 INTEGER,ALLOCATABLE            :: NodeInfo(:)
@@ -349,7 +349,7 @@ ALLOCATE(NodeCoords_indx(3,nNodeIDs))
 CALL ReadArray('NodeCoords',2,(/3,nNodeIDs/),offsetNodeID,2,RealArray=NodeCoords_indx)
 
 ! Keep all nodes if elements are curved and not interpolated
-IF (NGeoOverride.LE.0 .AND. (useCurveds.OR.NGeo.EQ.1)) THEN
+IF (NGeoOverride.LE.0 .AND. (useCurveds.OR.NGeo.EQ.1) .OR. NGeoOverride.EQ.NGeo) THEN
 
 #if USE_MPI
 !  ! allocate shared array for NodeInfo
@@ -416,28 +416,27 @@ ELSE
   ALLOCATE(Vdm_EQNGeo_EQNGeoOverride(0:NGeoOverride,0:NGeo))
   CALL GetVandermonde(NGeo,NodeTypeVISU,NGeoOverride,NodeTypeVISU,Vdm_EQNGeo_EQNGeoOverride,modal=.FALSE.)
 
-  nComputeNodeNodes = (NGeoOverride+1)**2 * nComputeNodeElems
+  nComputeNodeNodes = (NGeoOverride+1)**3 * nComputeNodeElems
 
 #if USE_MPI
-  MPISharedSize = INT(3*(NGeoOverride+1)**2*nGlobalElems,MPI_ADDRESS_KIND)*MPI_DOUBLE
-  CALL Allocate_Shared(MPISharedSize,(/3,(NGeoOverride+1)**2*nGlobalElems/),NodeCoords_Shared_Win,NodeCoords_Shared)
+  MPISharedSize = INT(3*(NGeoOverride+1)**3*nGlobalElems,MPI_ADDRESS_KIND)*MPI_DOUBLE
+  CALL Allocate_Shared(MPISharedSize,(/3,(NGeoOverride+1)**3*nGlobalElems/),NodeCoords_Shared_Win,NodeCoords_Shared)
   CALL MPI_WIN_LOCK_ALL(0,NodeCoords_Shared_Win,IERROR)
 #else
-  ALLOCATE(NodeCoords_Shared(3,(NGeoOverride+1)**2*nGlobalElems))
+  ALLOCATE(NodeCoords_Shared(3,(NGeoOverride+1)**3*nGlobalElems))
 #endif  /*USE_MPI*/
 
   ALLOCATE( NodeCoordsTmp(1:3,0:NGeo        ,0:NGeo        ,0:NGeo)                                                                &
           , NodeCoordsNew(1:3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride))
 
   DO iElem=FirstElemInd,LastElemInd
-!    FirstNodeInd = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) + 1
-!    LastNodeInd  = ElemInfo_Shared(ELEM_LASTNODEIND ,iElem)
+    LocElemID = iElem - offsetElem
     ! change ElemInfo_Shared to reflect new NodeCoords
-    ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) = (NGeoOverride+1)**2*(iElem-1)
-    ElemInfo_Shared(ELEM_LASTNODEIND ,iElem) = (NGeoOverride+1)**2*(iElem)
+    ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) = (NGeoOverride+1)**3*(iElem-1)
+    ElemInfo_Shared(ELEM_LASTNODEIND ,iElem) = (NGeoOverride+1)**3*(iElem)
 
     DO k = 0,NGeo; DO j = 0,NGeo; DO i = 0,NGeo
-      NodeCoordsTmp(:,i,j,k) = NodeCoords_indx(:,k*(NGeo+1)**2 + j*(NGeo+1) + i)
+      NodeCoordsTmp(:,i,j,k) = NodeCoords_indx(:,(LocElemID-1)*(NGeo+1)**3 + k*(NGeo+1)**2 + j*(NGeo+1) + i + 1)
     END DO; END DO; END DO
 
     ! interpolate NodeCoords to new NGeo
@@ -445,8 +444,8 @@ ELSE
                           ,NodeCoordsTmp                                                                                           &
                           ,NodeCoordsNew)
 
-    DO k = 0,NGeo; DO j = 0,NGeo; DO i = 0,NGeo
-      NodeCoords_Shared(:,ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) + k*(NGeo+1)**2 + j*(NGeo+1) + i + 1) = NodeCoordsNew(:,i,j,k)
+    DO k = 0,NGeoOverride; DO j = 0,NGeoOverride; DO i = 0,NGeoOverride
+      NodeCoords_Shared(:,ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) + k*(NGeoOverride+1)**2 + j*(NGeoOverride+1) + i + 1) = NodeCoordsNew(:,i,j,k)
     END DO; END DO; END DO
   END DO
 END IF

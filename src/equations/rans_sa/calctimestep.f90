@@ -64,6 +64,15 @@ REAL                         :: KappasPr_max
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 
+#if USE_PARTICLES
+! Currently these arrays do not get correctly deallocated when running in Release mode. Working fine in Debug. As a workaround, just
+! deallocate them here if they are still allocated
+SDEALLOCATE(MetricsAdv)
+#if PARABOLIC
+SDEALLOCATE(MetricsVisc)
+#endif
+#endif /* USE_PARTICLES */
+
 ALLOCATE(MetricsAdv(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
 DO FVE=0,FV_ENABLED
   DO iElem=1,nElems
@@ -87,6 +96,7 @@ DO FVE=0,FV_ENABLED
   END DO
 END DO
 #endif /*PARABOLIC*/
+
 END SUBROUTINE
 
 
@@ -100,7 +110,7 @@ USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY:U
 USE MOD_EOS_Vars
 USE MOD_IO_HDF5      ,ONLY:AddToElemData,ElementOut
-USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems,ElemIsNaN
+USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems,ElemNaN
 USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem
 #ifndef GNU
 USE, INTRINSIC :: IEEE_ARITHMETIC,ONLY:IEEE_IS_NAN
@@ -152,7 +162,7 @@ DO iElem=1,nElems
     UE(EXT_PRES)=PRESSURE_HE(UE)
     UE(EXT_TEMP)=TEMPERATURE_HE(UE)
     ! Convective Eigenvalues
-    IF(IEEE_IS_NAN(UE(EXT_DENS)))THEN
+    IF (ANY(IEEE_IS_NAN(UE(EXT_CONS)))) THEN
       IF (firstRun) THEN
         ALLOCATE(ElemNaN(1:nElems))
         ElemNaN(:) = 0

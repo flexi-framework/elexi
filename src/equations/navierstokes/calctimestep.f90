@@ -169,7 +169,7 @@ DO iElem=1,nElems
     UE(EXT_PRES)=PRESSURE_HE(UE)
     UE(EXT_TEMP)=TEMPERATURE_HE(UE)
     ! Convective Eigenvalues
-    IF(IEEE_IS_NAN(UE(EXT_DENS)))THEN
+    IF (ANY(IEEE_IS_NAN(UE(EXT_CONS)))) THEN
       IF (firstRun) THEN
         ALLOCATE(ElemNaN(1:nElems))
         ElemNaN(:) = 0

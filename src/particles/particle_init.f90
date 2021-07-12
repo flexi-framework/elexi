@@ -175,22 +175,21 @@ CALL prms%CreateIntOption(          'Part-nSpecies'             , 'Number of spe
                                                                 , '1')
 CALL prms%CreateIntOption(          'Part-Species[$]-nInits'    , 'Number of different initial particle placements for Species [$]'&
                                                                 , '0'        , numberedmulti=.TRUE.)
-CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for forces calculation.\n'                //&
-                                                                  ' - Wang\n'                                                    //&
-                                                                  ' - Jacobs\n'                                                  //&
-                                                                  ' - Vinkovic'                                                    &
+CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for calculation of the drag force.\n'       &
                                                                 , 'none'     , numberedmulti=.TRUE.)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'none',            RHS_NONE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tracer',          RHS_TRACER)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'convergence',     RHS_CONVERGENCE)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Wang',            RHS_WANG)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Vinkovic',        RHS_VINKOVIC)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Jacobs',          RHS_JACOBS)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Haider',          RHS_HAIDER)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Hoelzer',         RHS_HOELZER)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'inertia',         RHS_INERTIA)
+CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle model used for calculation of the drag factor.\n'      &
+                                                                , 'none'     , numberedmulti=.TRUE.)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'schiller',        DF_PART_SCHILLER)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'putnam',          DF_PART_PUTNAM)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'haider',          DF_PART_HAIDER)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'hoelzer',         DF_PART_HOELZER)
 CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle mass of species [$] [kg]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                              &
+CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                           &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'                       &
                                                                 , '0.'      , numberedmulti=.TRUE.)
@@ -290,25 +289,6 @@ CALL prms%CreateIntOption(          'Part-Species[$]-NumberOfExcludeRegions', 'N
 
 CALL prms%SetSection("Particle Species nInits")
 ! if nInit > 0 some variables have to be defined twice
-CALL prms%CreateIntFromStringOption('Part-Species[$]-Init[$]-RHSMethod' , 'Particle model used for forces calculation.\n'        //&
-                                                                  ' - Wang\n'                                                    //&
-                                                                  ' - Jacobs\n'                                                  //&
-                                                                  ' - Vinkovic'                                                    &
-                                                                , 'none'     , numberedmulti=.TRUE.)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'none',            RHS_NONE)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'tracer',          RHS_TRACER)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'convergence',     RHS_CONVERGENCE)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Wang',            RHS_WANG)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Haider',          RHS_HAIDER)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Hoelzer',         RHS_HOELZER)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-MassIC'    , 'Particle mass of species [$] [kg]'                      &
-                                                                , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DiameterIC', 'Particle diameter of species [$] [m]'                      &
-                                                                , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'               &
-                                                                , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-velocityDistribution', 'Used velocity distribution.\n'              //&
                                                                   ' - constant: all particles have the same velocity defined in' //&
                                                                   ' VeloVecIC\n'                                                 //&
@@ -320,15 +300,6 @@ CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-VeloVecIC ', 'Veloc
                                                                 , '0. , 0. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloTurbIC', 'Turbulent fluctuation of initial velocity. (ensemble velocity) '&
                                                                 , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-LowVeloThreshold', 'Threshold velocity of particles after reflection.' //&
-                                                                  ' Slower particles are deleted [$] [m/s]'                        &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-HighVeloThreshold', 'Threshold velocity of particles in the entire field.' //&
-                                                                  ' Faster particles are deleted [$] [m/s]'                        &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-SphericityIC', 'Particle sphericity of species [$] [m]'               &
-                                                                , '1.'       , numberedmulti=.TRUE.)
-
 
 ! emission time
 CALL prms%SetSection('Particle Species Ninits Emission')
@@ -924,6 +895,7 @@ USE MOD_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
 USE MOD_ISO_VARYING_STRING
+USE MOD_Part_RHS, ONLY: InitRHS
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -936,6 +908,7 @@ INTEGER               :: iSpec,iInit,iExclude
 CHARACTER(32)         :: tmpStr,tmpStr2,tmpStr3
 CHARACTER(200)        :: Filename_loc             ! specifying keyword for velocity distribution
 INTEGER               :: PartField_shape(2)
+INTEGER               :: drag_factor
 !===================================================================================================================================
 ! Loop over all species and get requested data
 DO iSpec = 1, nSpecies
@@ -950,6 +923,10 @@ DO iSpec = 1, nSpecies
   !--> General Species Values
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec
   Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'               )
+  IF (Species(iSpec)%RHSMethod .EQ. RHS_INERTIA) THEN
+    drag_factor                        = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'              )
+    CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
+  END IF
   Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'             ,'0.')
   Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'         ,'0.')
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'          ,'0.')
@@ -965,6 +942,12 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold'   ,'0.')
   Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-HighVeloThreshold'  ,'0.')
   Species(iSpec)%SphericityIC          = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-SphericityIC'       ,'1.')
+  IF (drag_factor .EQ. DF_PART_HAIDER) THEN
+    ! Warn when outside valid range of Haider model
+    IF (Species(iSpec)%SphericityIC .LT. 0.670) THEN
+      SWRITE(UNIT_StdOut,*) 'WARNING: SphericityIC ', Species(iSpec)%SphericityIC,'< 0.670, drag coefficient may not be accurate.'
+    END IF
+  END IF
 #if USE_EXTEND_RHS
   Species(iSpec)%CalcLiftForce         = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcLiftForce'      ,'.FALSE.')
   Species(iSpec)%CalcVirtualMass       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcVirtualMass'    ,'.FALSE.')

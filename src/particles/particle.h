@@ -122,11 +122,13 @@
 #define RHS_NONE         1
 #define RHS_TRACER       2
 #define RHS_CONVERGENCE  3
-#define RHS_WANG         4
-#define RHS_VINKOVIC     5
-#define RHS_JACOBS       6
-#define RHS_HAIDER       7
-#define RHS_HOELZER      8
+#define RHS_INERTIA      4
+
+! Drag factor model
+#define DF_PART_SCHILLER  1
+#define DF_PART_PUTNAM    2
+#define DF_PART_HAIDER    3
+#define DF_PART_HOELZER   4
 
 #if USE_EXTEND_RHS
 ! Velocity and pressure for extended RHS

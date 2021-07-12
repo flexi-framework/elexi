@@ -54,6 +54,7 @@ LOGICAL          :: fullBoundaryOrder=.FALSE. !< temporal order degradation, occ
                                               !< using 3 stage 3rd order RK schemes (no others!)
 LOGICAL          :: ViscousTimeStep=.FALSE.   !< Info wether we have convection of viscous dominated timestep
 LOGICAL          :: TimediscInitIsDone=.FALSE.!< Indicate wheter InitTimeDisc routine has been run
+INTEGER,ALLOCATABLE :: ElemNan(:)             !< Indicate whether the element contains NaNs
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! TIME INTEGRATION: RUNGE_KUTTA COEFFICIENTS AND STABILITY NUMBERS

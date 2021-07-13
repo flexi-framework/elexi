@@ -182,7 +182,7 @@ ERRWRITE(*,*)'GEO%FIBGMDeltas(1)          =',GEO%FIBGMDeltas(1)
 ERRWRITE(*,*)'1.E-9*(FIBGMDeltas(1))      =',eps(1)
 ERRWRITE(*,*)'ABS(SUM-NINT(SUM/D(1))*D(1))=',ABS(SUM(GEO%PeriodicVectors(1,:))-&
                                             NINT(SUM(GEO%PeriodicVectors(1,:))/GEO%FIBGMDeltas(1))*GEO%FIBGMDeltas(1))
-CALL abort(__STAMP__,'Periodic Vector in x-direction is not a multiple of FIBGMDeltas!',999, &
+CALL ABORT(__STAMP__,'Periodic Vector in x-direction is not a multiple of FIBGMDeltas!',999, &
   ABS(SUM(GEO%PeriodicVectors(1,:))-NINT(SUM(GEO%PeriodicVectors(1,:))/GEO%FIBGMDeltas(1))*GEO%FIBGMDeltas(1)))
 ELSE IF (ABS(SUM(GEO%PeriodicVectors(2,:))-NINT(SUM(GEO%PeriodicVectors(2,:))/GEO%FIBGMDeltas(2))*GEO%FIBGMDeltas(2)) &
        .GT.eps(2)) THEN
@@ -191,7 +191,7 @@ ERRWRITE(*,*)'GEO%FIBGMDeltas(2)          =',GEO%FIBGMDeltas(2)
 ERRWRITE(*,*)'1.E-9*(FIBGMDeltas(2))      =',eps(2)
 ERRWRITE(*,*)'ABS(SUM-NINT(SUM/D(2))*D(2))=',ABS(SUM(GEO%PeriodicVectors(2,:))-&
                                             NINT(SUM(GEO%PeriodicVectors(2,:))/GEO%FIBGMDeltas(2))*GEO%FIBGMDeltas(2))
-CALL abort(__STAMP__,'Periodic Vector in y-direction is not a multiple of FIBGMDeltas!',999, &
+CALL ABORT(__STAMP__,'Periodic Vector in y-direction is not a multiple of FIBGMDeltas!',999, &
   ABS(SUM(GEO%PeriodicVectors(2,:))-NINT(SUM(GEO%PeriodicVectors(2,:))/GEO%FIBGMDeltas(2))*GEO%FIBGMDeltas(2)))
 ELSE IF (ABS(SUM(GEO%PeriodicVectors(3,:))-NINT(SUM(GEO%PeriodicVectors(3,:))/GEO%FIBGMDeltas(3))*GEO%FIBGMDeltas(3)) &
        .GT.eps(3)) THEN
@@ -200,7 +200,7 @@ ERRWRITE(*,*)'GEO%FIBGMDeltas(3)          =',GEO%FIBGMDeltas(3)
 ERRWRITE(*,*)'1.E-9*(FIBGMDeltas(3))      =',eps(3)
 ERRWRITE(*,*)'ABS(SUM-NINT(SUM/D(3))*D(3))=',ABS(SUM(GEO%PeriodicVectors(3,:))-&
                                             NINT(SUM(GEO%PeriodicVectors(3,:))/GEO%FIBGMDeltas(3))*GEO%FIBGMDeltas(3))
-CALL abort(__STAMP__,'Periodic Vector in z-direction is not a multiple of FIBGMDeltas!',999,&
+CALL ABORT(__STAMP__,'Periodic Vector in z-direction is not a multiple of FIBGMDeltas!',999,&
   ABS(SUM(GEO%PeriodicVectors(3,:))-NINT(SUM(GEO%PeriodicVectors(3,:))/GEO%FIBGMDeltas(3))*GEO%FIBGMDeltas(3)))
 END IF
 

@@ -1440,6 +1440,7 @@ SUBROUTINE GetMeshMinMax()
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Globals
 USE MOD_Mesh_Vars               ,ONLY: offsetElem,nElems
 USE MOD_Particle_Mesh_Vars      ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,NodeCoords_Shared
@@ -1543,6 +1544,17 @@ GEO%ymaxglob = GEO%ymax
 GEO%zminglob = GEO%zmin
 GEO%zmaxglob = GEO%zmax
 #endif /*USE_MPI*/
+
+SWRITE(UNIT_StdOut,'(A,E18.8,A,E18.8,A,E18.8)') ' | Total MESH   Dim (x,y,z): '                                     &
+                                                , MAXVAL(NodeCoords_Shared(1,:))-MINVAL(NodeCoords_Shared(1,:)),', '&
+                                                , MAXVAL(NodeCoords_Shared(2,:))-MINVAL(NodeCoords_Shared(2,:)),', '&
+                                                , MAXVAL(NodeCoords_Shared(3,:))-MINVAL(NodeCoords_Shared(3,:))
+IF (TrackingMethod.EQ.REFMAPPING .OR. TrackingMethod.EQ. TRACING) THEN
+  SWRITE(UNIT_StdOut,'(A,E18.8,A,E18.8,A,E18.8)') ' | Total BEZIER Dim (x,y,z): '                                   &
+                                                  , GEO%xmaxglob-GEO%xminglob,', '                                  &
+                                                  , GEO%ymaxglob-GEO%yminglob,', '                                  &
+                                                  , GEO%zmaxglob-GEO%zminglob
+END IF
 
 END SUBROUTINE GetMeshMinMax
 
@@ -2871,7 +2883,8 @@ CALL MPI_BCAST(MeshVolume,1, MPI_DOUBLE_PRECISION,0,MPI_COMM_SHARED,iERROR)
 MeshVolume = LocalVolume
 #endif /*USE_MPI*/
 
-SWRITE(UNIT_StdOut,'(A,E18.8)') ' | Total MESH Volume: ', MeshVolume
+SWRITE(UNIT_StdOut,'(A,E18.8)') ' | Total MESH Volume:        ', MeshVolume
+
 END SUBROUTINE InitElemVolumes
 
 

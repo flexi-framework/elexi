@@ -172,10 +172,22 @@ TYPE typeSurfaceflux
   REAL                                   :: DGMeanPrimState(1:PP_nVarPrim)   ! mean DG flux through boundary
 END TYPE
 
+ABSTRACT INTERFACE
+  FUNCTION DragFactorInt(Rep,SphericityIC,Mp) RESULT(f)
+    REAL,INTENT(IN) :: Rep,SphericityIC,Mp
+    REAL            :: f
+  END FUNCTION
+END INTERFACE
+
+TYPE type_F
+  PROCEDURE(DragFactorInt),POINTER,NOPASS:: op
+END TYPE
+
 TYPE tSpecies                                                                ! Particle Data for each Species
   ! General Species Values
   TYPE(tInit), ALLOCATABLE               :: Init(:)  !     =>NULL()          ! Particle Data for each Initialisation
   INTEGER                                :: RHSMethod                        ! specifying Keyword for RHS method
+  TYPE(type_F)                           :: DragFactor_pointer               ! Pointer defining the drag factor
   REAL                                   :: MassIC                           ! Particle mass (without MPF)
   REAL                                   :: DiameterIC                       ! Particle diameter (without MPF)
   REAL                                   :: DensityIC                        ! Particle density (without MPF)

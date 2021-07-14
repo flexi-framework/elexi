@@ -165,7 +165,7 @@ CALL prms%SetSection('Visualize Record Points')
 CALL prms%CreateStringOption( 'ProjectName'        ,"Name of the project")
 CALL prms%CreateStringOption( 'GroupName'          ,"Name(s) of the group(s) to visualize, must be equal to the name given in&
                                                      & preparerecordpoints tool",multiple=.TRUE.)
-CALL prms%CreateStringOption( 'GroupOrtho'         ,"Flag if the group is orthogonal to the mean flow",multiple=.TRUE.)
+CALL prms%CreateLogicalOption('GroupOrtho'         ,"Flag if the group is orthogonal to the mean flow",multiple=.TRUE.)
 CALL prms%CreateStringOption( 'VarName'            ,"Variable name to visualize",multiple=.TRUE.)
 CALL prms%CreateStringOption( 'RP_DefFile'         ,"Path to the *RPset.h5 file")
 

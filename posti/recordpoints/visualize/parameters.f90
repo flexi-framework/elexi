@@ -28,6 +28,7 @@ LOGICAL                             :: justVisualizeState      !< If no output v
 CHARACTER(len=255)                  :: ProjectName             !<  Name of the project
 CHARACTER(len=255)                  :: RP_DefFile              !< Path to the *RPset.h5 file
 CHARACTER(len=255),ALLOCATABLE      :: GroupNames_visu(:)      !< Name(s) of the group(s) to visualize
+LOGICAL,ALLOCATABLE                 :: GroupOrtho(:)           !< Flag if the group is orthogonal to the mean flow
 INTEGER                             :: nGroups_visu            !< Number of groups to visualize
 LOGICAL                             :: OutputTimeData          !< Should the time series be written?
 LOGICAL                             :: doFluctuations          !< Should the fluctuations be computed and written?

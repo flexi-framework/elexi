@@ -30,6 +30,7 @@ INTEGER                         :: nLines                  !< Number of lines fo
 INTEGER                         :: nPoints                 !< Number of points for output
 INTEGER                         :: nPlanes                 !< Number of planes for output
 LOGICAL,ALLOCATABLE             :: OutputGroup(:)          !< Indicating groups for output
+LOGICAL,ALLOCATABLE             :: OutputOrtho(:)          !< Indicating orthogonal groups for output
 INTEGER,ALLOCATABLE             :: Points_IDlist(:)        !< IDs of all points for output
 INTEGER,ALLOCATABLE             :: Points_GroupIDlist(:)   !< List of group IDs of all points for output
 REAL,ALLOCATABLE                :: x_RP(:,:)               !< Coodinates of record points (may be local)
@@ -50,6 +51,7 @@ TYPE tPlane !< Type used to organize a plane set
   CHARACTER(LEN=255)            :: Name                    !< Name of the line
   INTEGER                       :: GroupID                 !< ID of the group the line belongs to
   INTEGER                       :: Type=0                  !< 0 - standard, 1 - sphere, 2 - BLPlane
+  LOGICAL                       :: Ortho=.FALSE.           !< BLPlane is orthogonal to flow velocity
   INTEGER                       :: nRP(2)                  !< Number of RPs in the two plane directions
   INTEGER,ALLOCATABLE           :: IDlist(:,:)             !< List of IDs of the RPs that make up the line
   REAL,ALLOCATABLE              :: NormVec(:,:)            !< Normal vector

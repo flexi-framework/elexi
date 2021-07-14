@@ -543,7 +543,7 @@ END IF
 ! Write to VTK
 CALL WriteStructuredDataToVTK(FileName,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nValLoc,VarNamesLoc)
 
-WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
+WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')" DONE"
 END SUBROUTINE WriteTimeAvgDataToVTK
 
 !===================================================================================================================================
@@ -631,7 +631,7 @@ RPPoints%nRPs = 0
 ALLOCATE(RPPlanes(0))
 CALL WriteStructuredDataToVTK(FileString,nPlanesOutput,0,RPPoints,RPLines,RPPlanes,.TRUE.,nBLProps+3,VarNamesLoc)
 
-WRITE(UNIT_stdOut,'(A)')"DONE"
+WRITE(UNIT_stdOut,'(A)')" DONE"
 
 END SUBROUTINE WriteBLPropsToVTK
 

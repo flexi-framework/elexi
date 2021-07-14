@@ -49,7 +49,7 @@ SUBROUTINE InitRPSet(RP_DefFile_in)
 USE MOD_Globals
 USE MOD_HDF5_Input
 USE MOD_ParametersVisu   ,ONLY: Line_LocalCoords,Line_LocalVel,Plane_LocalCoords
-USE MOD_ParametersVisu   ,ONLY: nGroups_visu,GroupNames_visu
+USE MOD_ParametersVisu   ,ONLY: nGroups_visu,GroupNames_visu,GroupOrtho
 USE MOD_RPSetVisuVisu_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -81,7 +81,7 @@ END IF
 #endif /*MPI*/
 WRITE(UNIT_StdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINT SET...'
-WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'" ...'
+WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'"...'
 
 ! Open data file
 CALL OpenDataFile(RP_DefFile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -93,27 +93,32 @@ DEALLOCATE(HSize)
 ALLOCATE(GroupNames(1:nGroups))
 CALL ReadArray(TRIM('GroupNames'),1,(/nGroups/),0,1,StrArray=GroupNames)
 
-
 ! generate output map for groups
-ALLOCATE(OutputGroup(nGroups))
+ALLOCATE(OutputGroup(nGroups), &
+         OutputOrtho(nGroups))
+
 IF(nGroups_visu.LT.1) THEN
-  OutputGroup=.TRUE.
+  OutputGroup    = .TRUE.
+  OutputOrtho(1) = GroupOrtho(1)
 ELSE
-  found(:)=.FALSE.
-  OutputGroup=.FALSE.
-  DO iGr1=1,nGroups
-    DO iGr2=1,nGroups_visu
-      IF(TRIM(GroupNames(iGr1)).EQ.TRIM(GroupNames_visu(iGr2)))THEN
-        OutputGroup(iGr1)=.TRUE.
-        found(iGr2)=.TRUE.
+  found(:)    = .FALSE.
+  OutputGroup = .FALSE.
+  OutputOrtho = .FALSE.
+  DO iGr1 = 1,nGroups
+    DO iGr2 = 1,nGroups_visu
+      IF (TRIM(GroupNames(iGr1)).EQ.TRIM(GroupNames_visu(iGr2))) THEN
+        OutputGroup(iGr1) = .TRUE.
+        OutputOrtho(iGr1) = GroupOrtho(iGr2)
+        found(iGr2)       = .TRUE.
       END IF
-    END DO
-  END DO !iGr1
-  IF(.NOT.ALL(found)) THEN
-    WRITE(UNIT_stdOut,'(A)') 'One or more of the required Groups are not in this RPSet file!'; STOP
+    END DO ! iGr2
+  END DO ! iGr1
+  IF (.NOT.ALL(found)) THEN
+    WRITE(UNIT_stdOut,'(A)') 'One or more of the required Groups are not in this RPSet file!'
+    STOP
   END IF
-END IF! (nGroups_visu.LT.1)
-nRP_output=0
+END IF ! (nGroups_visu.LT.1)
+nRP_output = 0
 
 ! Readin coordinates
 CALL GetDataSize(File_ID,'xF_RP',nDims,HSize)
@@ -246,8 +251,10 @@ IF(DSexists) THEN
   DO iPlane=1,nPlanes_tmp
     Plane=>Planes_tmp(iPlane)
     IF(OutputGroup(Plane%GroupID)) THEN
-      iPlane2=iPlane2+1
-      Planes(iPlane2)=Planes_tmp(iPlane)
+      iPlane2               = iPlane2+1
+      Planes(iPlane2)       = Planes_tmp(iPlane)
+      ! Flag if the plane stands orthogonal
+      Planes(iPlane2)%Ortho = OutputOrtho(Plane%GroupID)
     END IF
   END DO
   DEALLOCATE(Planes_tmp)
@@ -443,7 +450,8 @@ DO iLine=1,nLines
                                +NORM2(xF_RP(:,aLine%IDlist(iPoint)) - xF_RP(:,aLine%IDlist(iPoint-1)))
     END DO !iPoint
   ELSE
-    WRITE(UNIT_StdOut,'(A,A,A)')' The type of Line "',LineType,'" is not known!'; STOP
+    WRITE(UNIT_StdOut,'(A,A,A)')' The type of Line "',LineType,'" is not known!'
+    STOP
   END IF
 END DO !iLine
 END SUBROUTINE CalcLine_LocalCoords

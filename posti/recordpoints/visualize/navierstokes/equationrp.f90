@@ -321,18 +321,32 @@ INTEGER              :: iPlane,i,j,iSample,iVec
 REAL                 :: Tmat(3,3)
 TYPE(tPlane),POINTER :: Plane
 !===================================================================================================================================
-WRITE(UNIT_stdOut,'(A)')" coordinate transform of velocity along Plane coordinates.."
+
+WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Coordinate transform of velocity along Plane coordinates..."
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
   IF(Plane%Type.EQ.2) THEN ! BLPlane
     DO i=1,Plane%nRP(1)
-      ! T1= tangential vector
-      Tmat(1,1:3) = Plane%TangVec(:,i)
-      ! T2= normalized Line Vector
-      Tmat(2,1:3) = Plane%NormVec(:,i)
-      ! T3= crossprod to guarantee right hand system
-      Tmat(3,1:3) = CROSS(Tmat(1,1:3),Tmat(2,1:3))
-      Tmat(3,1:3) = Tmat(3,:)/NORM2(Tmat(3,:))
+      ! Standard plane orientation
+      IF (.NOT.Plane%Ortho) THEN
+        ! T1= tangential vector
+        Tmat(1,1:3) = Plane%TangVec(:,i)
+        ! T2= normalized Line Vector
+        Tmat(2,1:3) = Plane%NormVec(:,i)
+        ! T3= crossprod to guarantee right hand system
+        Tmat(3,1:3) = CROSS(Tmat(1,1:3),Tmat(2,1:3))
+        Tmat(3,1:3) = Tmat(3,:)/NORM2(Tmat(3,:))
+      ! Plane stands orthogonal to flow direction
+      ELSE
+        ! T3= tangential vector
+        Tmat(3,1:3) = Plane%TangVec(:,i)
+        ! T2= normalized Line Vector
+        Tmat(2,1:3) = Plane%NormVec(:,i)
+        ! T1= crossprod to guarantee right hand system
+        Tmat(1,1:3) = CROSS(Tmat(3,1:3),Tmat(2,1:3))
+        Tmat(1,1:3) = Tmat(1,:)/NORM2(Tmat(1,:))
+      END IF
+
       DO iVec=1,nVecTrans
         IF(.NOT.is2D(iVec))THEN
           DO j=1,Plane%nRP(2)
@@ -354,6 +368,7 @@ DO iPlane=1,nPlanes
   END IF!(Plane%Type.EQ.2) THEN ! BLPlane
 END DO !iPlane
 WRITE(UNIT_stdOut,'(A)')" done!"
+
 END SUBROUTINE Plane_TransformVel
 
 
@@ -381,17 +396,19 @@ REAL                 :: u_delta,delta99,delta1,theta,u_r,tau_W,u_tau
 REAL,ALLOCATABLE     :: u_loc(:),y_loc(:),u_star(:)
 TYPE(tPlane),POINTER :: Plane
 !===================================================================================================================================
+
 WRITE(UNIT_stdOut,'(A)')" Calculate integral boundary layer properties"
 SELECT CASE(Plane_BLvelScaling)
-CASE(0) ! do nothing
-WRITE(UNIT_stdOut,'(A)')" Velocity profiles are not scaled."
-CASE(1) ! laminar scaling
-WRITE(UNIT_stdOut,'(A)')" Velocity profiles are scaled with boundary layer edge velocity, PlaneY with BL thickness."
-CASE(2) ! turbulent scaling
-WRITE(UNIT_stdOut,'(A)')" Velocity profiles and PlaneY are scaled with friction velocity (= u+ over y+)."
+  CASE(0) ! do nothing
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Velocity profiles are not scaled."
+  CASE(1) ! laminar scaling
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Velocity profiles are scaled with boundary layer edge velocity, PlaneY with BL thickness."
+  CASE(2) ! turbulent scaling
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Velocity profiles and PlaneY are scaled with friction velocity (= u+ over y+)."
 END SELECT
-ndim=3
-IF(is2D(1)) ndim=2
+
+ndim = MERGE(3,2,.NOT.is2D(1))
+
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
   IF(Plane%Type.EQ.2) THEN ! BLPlane
@@ -444,48 +461,6 @@ DO iPlane=1,nPlanes
           EXIT
         END IF
       END DO !j=1,Plane%nRP(2)
-!      jj=Plane%nRP(2)
-!      uu=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,jj))
-!      yy=Plane%LocalCoord(2,i,jj)
-!      ! find local maximum in VelocityX
-!      u_max=0.
-!      DO j=1,jj
-!       IF(RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j)).GT.u_max) THEN
-!          u_max=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j))
-!          y_max=Plane%LocalCoord(2,i,j)
-!          j_max=j
-!        END IF
-!      END DO !j=1,Plane%nRP(2)
-!      ! find point with u=0.995*u_max ala Wuerz
-!      ! define this as delta99 and u_delta
-!      DO j=1,jj ! loop starting from wall (j=1)
-!        IF(y_max.LT.yy) THEN
-!          ! interpolate linearly between uppermost point and maximum
-!          u_int=uu + (u_max-uu)/(y_max-yy)*(Plane%LocalCoord(2,i,j)-yy)
-!        ELSE
-!          ! if the maximum is at the edge of the discretization, use a vertical line
-!          u_int=u_max
-!        END IF
-!        diffu1=(u_int-RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j)))/u_max
-!        IF(diffu1.LT.0.01) THEN
-!          y1=Plane%LocalCoord(2,i,j)
-!          y2=Plane%LocalCoord(2,i,j-1)
-!          u1=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j))
-!          u2=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j-1))
-!          rho1=RPDataTimeAvg_out(1,Plane%IDlist(i,j))
-!          rho2=RPDataTimeAvg_out(1,Plane%IDlist(i,j-1))
-!          diffu2=(u_int-RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j-1)))/u_max
-!          ! interpolate linearly between two closest points around u/u_int=0.99 to get
-!          ! delta99 and u_delta
-!          delta99=y1+(y2-y1)/(diffu2-diffu1)*(0.01-diffu1)   ! delta99
-!!          u_delta=u1+(u2-u1)/(diffu2-diffu1)*(0.01-diffu1)   ! u_delta
-!          u_delta=u_max
-!          rho_delta=rho1+(rho2-rho1)/(diffu2-diffu1)*(0.01-diffu1)   ! rho_delta
-!!          u_delta(i)=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j))
-!!          delta99(i)=Plane%LocalCoord(2,i,j)
-!          EXIT
-!        END IF
-!      END DO !j=1,Plane%nRP(2)
       ! scale the velocity with the local u_delta,wall distance with delta99
       DO j=1,jj
         u_loc(j)= &
@@ -522,25 +497,25 @@ DO iPlane=1,nPlanes
       IF(iPressure.GT.0)  Plane%BLProps(12,i)=(RPDataTimeAvg_out(iPressure,Plane%IDlist(i,1))-pInf)/(0.5*rhoInf*uInf**2) !c_p
       ! perform scaling if required
       SELECT CASE(Plane_BLvelScaling)
-      CASE(0) ! do nothing
-      CASE(1) ! laminar scaling
-        DO j=1,jj
-          RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j)) = &
-            RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j))/u_delta
-          Plane%LocalCoord(2,i,j)=Plane%LocalCoord(2,i,j)/delta99
-        END DO
-      CASE(2) ! turbulent scaling
-        u_tau=SQRT(ABS(tau_w)/rho_delta)
-        DO j=1,jj
-          RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j)) = &
-            RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j))/u_tau
-          Plane%LocalCoord(2,i,j)=Plane%LocalCoord(2,i,j)*u_tau*rho_delta/mu0
-        END DO
-      CASE(3) ! testing
-        DO j=1,jj
-          RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j)) = &
-            u_star(j)/u_max
-        END DO
+        CASE(0) ! do nothing
+        CASE(1) ! laminar scaling
+          DO j=1,jj
+            RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j)) = &
+              RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j))/u_delta
+            Plane%LocalCoord(2,i,j)=Plane%LocalCoord(2,i,j)/delta99
+          END DO
+        CASE(2) ! turbulent scaling
+          u_tau=SQRT(ABS(tau_w)/rho_delta)
+          DO j=1,jj
+            RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j)) = &
+              RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j))/u_tau
+            Plane%LocalCoord(2,i,j)=Plane%LocalCoord(2,i,j)*u_tau*rho_delta/mu0
+          END DO
+        CASE(3) ! testing
+          DO j=1,jj
+            RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j)) = &
+              u_star(j)/u_max
+          END DO
       END SELECT
     END DO !i
     DEALLOCATE(u_loc,y_loc,u_star)
@@ -593,7 +568,8 @@ IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(TransMap)
 SDEALLOCATE(is2D)
-WRITE(UNIT_stdOut,'(A)') '  EquationRP FINALIZED'
+WRITE(UNIT_stdOut,'(A)') ' EquationRP FINALIZED'
+
 END SUBROUTINE FinalizeEquationRP
 
 END MODULE MOD_EquationRP

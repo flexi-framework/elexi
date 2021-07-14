@@ -134,7 +134,7 @@ IF (stateFileMode) THEN
   ALLOCATE(StrVarNames_loc(PP_nVar))
   StrVarNames_loc = StrVarNames
 ELSE
-  ! We need to specify the name of the dataset to evaluate for non-state files. 
+  ! We need to specify the name of the dataset to evaluate for non-state files.
   DataSetName = GETSTR('RecordpointsDataSetName','DG_Solution')
   ! Determine the size of the data set
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -263,15 +263,15 @@ CALL FinalizeOutput()
 CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
 
-#if USE_MPI
-CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) &
-  CALL abort(__STAMP__,'MPI finalize error',iError)
-  CALL FinalizeMPI()
-#endif
-
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') ' EVALREC TOOL FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
+
+#if USE_MPI
+CALL FinalizeMPI()
+CALL MPI_FINALIZE(iError)
+IF (iError.NE.0) &
+  CALL ABORT(__STAMP__,'MPI finalize error',iError)
+#endif
 
 END PROGRAM evalrec

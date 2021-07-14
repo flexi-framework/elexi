@@ -209,8 +209,9 @@ CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ! compare mesh file names
 CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile_RPList)
 IF (TRIM(MeshFile_RPList).NE.TRIM(MeshFile)) THEN
-  SWRITE(UNIT_stdOut,'(/)') ! Print empty line to break the ADVANCE=NO
-  SWRITE(UNIT_stdOut,'(A)') ' WARNING: MeshFileName from RPList differs from Mesh File specified in parameterfile!'
+  ! Print empty line to break the ADVANCE=NO
+  SWRITE(UNIT_stdOut,'(/,A,A,A)') ' WARNING: MeshFileName ',TRIM(MeshFile_RPList), &
+                                  ' from RPList differs from Mesh File specified in parameterfile!'
 END IF
 
 ! Readin OffsetRP

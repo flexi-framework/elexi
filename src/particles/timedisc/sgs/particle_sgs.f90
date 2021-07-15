@@ -629,14 +629,14 @@ DO iPart = 1,PDM%ParticleVecLength
   kSGSPart(iPart) = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(1,iPart))**2.) 
 !PRINT *, 'kSGSPart:  ', kSGSPart(iPart)
 
+  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
+  ElemID   = PEM%Element(iPart) - offsetElem
+
   ! Calculate dissipation energy according to  Babak Shotorban & Farzad Mashayek (2006) A stochastic model for particle
   ! motion in large-eddy simulation, Journal of Turbulence, 7, N18, DOI: 10.1080/14685240600595685
   epsilonSGS(iPart) = C_eps_Shotorban/ElemVolN(ElemID) * (kSGSPart(iPart)**(3./2)) 
   !epsilonSGS(iPart) = C_eps_Shotorban/filterwidth * (kSGSPart(iPart)**(3./2))  ! to validate the implementation
 !PRINT *, 'epsilonSGS:  ', epsilonSGS(iPart)
-
-  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
-  ElemID   = PEM%Element(iPart) - offsetElem
   
   ! Relative velocity
   udiff(1:3) = PartState(4:6,iPart) - FieldAtParticle(2:4,iPart) !+ TurbPartState(1:3,iPart) ! only mean velocity

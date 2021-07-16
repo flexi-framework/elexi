@@ -55,6 +55,10 @@ INTERFACE GetBoundaryFlux
   MODULE PROCEDURE GetBoundaryFlux
 END INTERFACE
 
+INTERFACE GetBoundaryState
+  MODULE PROCEDURE GetBoundaryState
+END INTERFACE
+
 INTERFACE FinalizeBC
   MODULE PROCEDURE FinalizeBC
 END INTERFACE
@@ -74,23 +78,15 @@ END INTERFACE
 PUBLIC :: Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
 
-#if USE_PARTICLES
-INTERFACE GetBoundaryState
-  MODULE PROCEDURE GetBoundaryState
-END INTERFACE
-#endif /*USE_PARTICLES*/
-
 PUBLIC :: InitBC
 PUBLIC :: GetBoundaryFlux
 PUBLIC :: FinalizeBC
+PUBLIC :: GetBoundaryState
 #if FV_ENABLED
 #if FV_RECONSTRUCT
 PUBLIC :: GetBoundaryFVgradient
 #endif
 #endif
-#if USE_PARTICLES
-PUBLIC :: GetBoundaryState
-#endif /*USE_PARTICLES*/
 !==================================================================================================================================
 
 CONTAINS
@@ -675,7 +671,7 @@ END SELECT ! BCType
 END SUBROUTINE GetBoundaryState
 
 !==================================================================================================================================
-!> Computes the boundary fluxes for a given Cartesian mesh face (defined by SideID).
+!> Computes the boundary fluxes for a given face (defined by SideID).
 !> Calls GetBoundaryState an directly uses the returned vales for all Riemann-type BCs.
 !> For other types of BCs, we directly compute the flux on the interface.
 !==================================================================================================================================

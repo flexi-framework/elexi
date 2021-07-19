@@ -387,11 +387,11 @@ DO i=1,nDOF_loc
 #if PP_dim==3
   ! derivatives of diffusive flux in x-direction
   fJacQx(1,1:7,i) = 0.
-  fJacQx(2,1:7,i) = (/ 0.,           -muS*s43,                 0.,                 0., 0.,      0., 0.           /)
-  fJacQx(3,1:7,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0., 0.           /)
-  fJacQx(4,1:7,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0., 0.           /)
-  fJacQx(5,1:7,i) = (/ 0., -muS*s43*UPrim(2,i),   -muS*UPrim(3,i),    -muS*UPrim(4,i), 0., -lambda, 0.           /)
-  fJacQx(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,        , -1./sigma*muTmp/)
+  fJacQx(2,1:7,i) = (/ 0.,           -muS*s43,                 0.,                 0., 0.,      0., 0.             /)
+  fJacQx(3,1:7,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0., 0.             /)
+  fJacQx(4,1:7,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0., 0.             /)
+  fJacQx(5,1:7,i) = (/ 0., -muS*s43*UPrim(2,i),   -muS*UPrim(3,i),    -muS*UPrim(4,i), 0., -lambda, 0.             /)
+  fJacQx(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,      0., -1./sigma*muTmp/)
 
   fJacQy(1,1:7,i) = 0.
   fJacQy(2,1:7,i) = (/ 0.,                 0.,            muS*s23,                 0., 0.,      0., 0.           /)
@@ -417,11 +417,11 @@ DO i=1,nDOF_loc
   gJacQx(6,1:7,i) = 0.
 
   gJacQy(1,1:7,i) = 0.
-  gJacQy(2,1:7,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0., 0.           /)
-  gJacQy(3,1:7,i) = (/ 0.,                 0.,           -muS*s43,                 0., 0.,      0., 0.           /)
-  gJacQy(4,1:7,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0., 0.           /)
-  gJacQy(5,1:7,i) = (/ 0.,    -muS*UPrim(2,i),-muS*s43*UPrim(3,i),    -muS*UPrim(4,i), 0., -lambda, 0.           /)
-  gJacQy(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,        , -1./sigma*muTmp/)
+  gJacQy(2,1:7,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0., 0.             /)
+  gJacQy(3,1:7,i) = (/ 0.,                 0.,           -muS*s43,                 0., 0.,      0., 0.             /)
+  gJacQy(4,1:7,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0., 0.             /)
+  gJacQy(5,1:7,i) = (/ 0.,    -muS*UPrim(2,i),-muS*s43*UPrim(3,i),    -muS*UPrim(4,i), 0., -lambda, 0.             /)
+  gJacQy(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,      0., -1./sigma*muTmp/)
 
   gJacQz(1,1:7,i) = 0.
   gJacQz(2,1:7,i) = 0.
@@ -446,11 +446,11 @@ DO i=1,nDOF_loc
   hJacQy(6,1:7,i) = 0.
 
   hJacQz(1,1:7,i) = 0.
-  hJacQz(2,1:7,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0., 0.           /)
-  hJacQz(3,1:7,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0., 0.           /)
-  hJacQz(4,1:7,i) = (/ 0.,                 0.,                 0.,           -muS*s43, 0.,      0., 0.           /)
-  hJacQz(5,1:7,i) = (/ 0.,    -muS*UPrim(2,i),    -muS*UPrim(3,i),-muS*s43*UPrim(4,i), 0., -lambda, 0.           /)
-  hJacQz(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,        , -1./sigma*muTmp/)
+  hJacQz(2,1:7,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0., 0.             /)
+  hJacQz(3,1:7,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0., 0.             /)
+  hJacQz(4,1:7,i) = (/ 0.,                 0.,                 0.,           -muS*s43, 0.,      0., 0.             /)
+  hJacQz(5,1:7,i) = (/ 0.,    -muS*UPrim(2,i),    -muS*UPrim(3,i),-muS*s43*UPrim(4,i), 0., -lambda, 0.             /)
+  hJacQz(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,      0., -1./sigma*muTmp/)
 #else
   ! derivatives of diffusive flux in x-direction
   fJacQx(1,1:7,i) = 0.
@@ -521,7 +521,7 @@ UE(EXT_SRHO) = 1./UE(EXT_DENS)
 
 dpdrho = KappaM1*0.5*SUM(UE(EXT_VELV)*UE(EXT_VELV))
 #if PP_dim == 3
-dedrho = (UE(EXT_VEL1)**2+UE(EXT_VEL2)**2+UE(EXT_EXT_VEL3)**2) - dpdrho / KappaM1
+dedrho = (UE(EXT_VEL1)**2+UE(EXT_VEL2)**2+UE(EXT_VEL3)**2) - dpdrho / KappaM1
 #else
 dedrho = (UE(EXT_VEL1)**2+UE(EXT_VEL2)**2            ) - dpdrho / KappaM1
 #endif

@@ -91,7 +91,7 @@ INTEGER,PARAMETER        :: ELEM_FirstPartInd=1
 INTEGER,PARAMETER        :: ELEM_LastPartInd=2
 REAL,ALLOCATABLE         :: PartData(:,:)
 REAL                     :: xi(3),det(6,2)
-LOGICAL                  :: InElementCheck
+LOGICAL                  :: InElementCheck,EmissionTimeExists
 INTEGER                  :: COUNTER, COUNTER2
 #if USE_MPI
 REAL, ALLOCATABLE        :: SendBuff(:),RecvBuff(:)
@@ -113,13 +113,22 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE...'
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
+  ! Read the emission time
+  CALL DatasetExists(File_ID,'EmissionTime',EmissionTimeExists,attrib=.TRUE.)
+  IF (EmissionTimeExists) THEN
+    CALL ReadAttribute(File_ID,'EmissionTime',1,RealScalar=EmissionTime)
+    SWRITE(UNIT_stdOut,'(A,F16.6)')' | Resuming particle emission from time    ',EmissionTime
+  ELSE
+    EmissionTime = 0.
+  END IF
+
   ! Read the first/last ElemID on the local proc
   FirstElemInd = offsetElem+1
   LastElemInd  = offsetElem+PP_nElems
 
   ! Check if file contains particle information
   CALL DatasetExists(File_ID,'PartData',PartDataExists)
-  IF(PartDataExists)THEN
+  IF (PartDataExists) THEN
     ! PartInt contains the indices of the particles in each element
     ALLOCATE(PartInt(PartIntSize,FirstElemInd:LastElemInd))
 
@@ -186,7 +195,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
       ! Compare number of turbulent properties of current run against HDF5
       IF ((TurbPartDataSize.EQ.0).AND.(TurbPartSize.NE.0)) THEN
-        SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data but current run in DNS mode. Ignoring...'
+        SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data but current run in DNS mode. Ignoring...'
       ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.NE.TurbPartSize)) THEN
         CALL abort(__STAMP__,' Number of turbulent variables in HDF5 does not match requested SGS/RW model!')
       ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.EQ.TurbPartSize)) THEN
@@ -211,8 +220,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     ! No turbulent particle properties in HDF5
     ELSE
       IF (TurbPartDataSize.NE.0) THEN
-        SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES') ' | HDF5 state file not containing SGS/RW data but model active in current run.'
-        SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES') ' | SGS/RW model will start without history...'
+        SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' | HDF5 state file not containing SGS/RW data but model active in current run.'
+        SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' | SGS/RW model will start without history...'
       END IF
     END IF
 
@@ -221,7 +230,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     PDM%ParticleVecLength = PDM%ParticleVecLength + locnPart
     CALL UpdateNextFreePosition()
 
-    SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE DONE!'
+    SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE DONE!'
     SWRITE(UNIT_StdOut,'(132("-"))')
 
     ! Reconstruct the number of particles inserted before restart from the emission rate

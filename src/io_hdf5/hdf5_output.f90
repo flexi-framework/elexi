@@ -208,7 +208,6 @@ ELSE ! write state on same polynomial degree as the solution
 #endif
 END IF ! (NOut.NE.PP_N)
 
-
 ! Reopen file and write DG solution
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
@@ -249,7 +248,6 @@ CALL WriteElemTime(FileName)
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
 
-
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessfull(FileName)
   GETTIME(EndT)
@@ -261,6 +259,7 @@ END IF
 ! with everything or we might end up with a non-valid error state file
 IF (isErrorFile) CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
+
 END SUBROUTINE WriteState
 
 
@@ -1002,6 +1001,7 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Analyze_Vars, ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars,ONLY: doParticleReflectionTrack
 USE MOD_Particle_HDF5_Output
+USE MOD_Particle_Restart_Vars, ONLY: EmissionTime
 USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex
 USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex
 #if USE_MPI
@@ -1102,7 +1102,7 @@ locnPart_max = locnPart
 #endif
 
 ! Allocate data arrays for mean particle quantities
-ALLOCATE(PartInt( PartIntSize ,offsetElem+1 :offsetElem+PP_nElems))
+ALLOCATE(PartInt( PartIntSize ,offsetElem +1:offsetElem +PP_nElems))
 ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
 ! Allocate data arrays for turbulent particle quantities
 IF (ALLOCATED(TurbPartState)) ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
@@ -1134,7 +1134,7 @@ DO iElem = offsetElem+1,offsetElem+PP_nElems
       IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartData(tmpIndex+varShift:tmpIndex+2+varShift,iPart) = PartPath(1:3,pcount)
 
       ! Turbulent particle properties
-      IF (ALLOCATED(TurbPartState))  TurbPartData(:,iPart)=TurbPartState(:,pcount)
+      IF (ALLOCATED(TurbPartState))  TurbPartData(:,iPart) = TurbPartState(:,pcount)
 
       ! Set the index to the next particle
       pcount = PEM%pNext(pcount)
@@ -1153,9 +1153,12 @@ ALLOCATE(StrVarNames(nVar))
 StrVarNames(1)='FirstPartID'
 StrVarNames(2)='LastPartID'
 
-IF(MPIRoot)THEN
+IF (MPIRoot) THEN
   CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   CALL WriteAttribute(File_ID,'VarNamesPartInt',nVar,StrArray=StrVarNames)
+  ! Write the beginning of the emission for restart from fluid solution
+  IF (EmissionTime .NE. 0) &
+    CALL WriteAttribute(File_ID,'EmissionTime',1,RealScalar=EmissionTime)
   CALL CloseDataFile()
 END IF
 
@@ -1248,7 +1251,7 @@ ASSOCIATE (&
                                nVal         = (/TurbPartDataSize,locnPart/)    ,&
                                offset       = (/0               ,offsetnPart/) ,&
                                collective   = .TRUE.                           ,&
-                               RealArray    = PartData)
+                               RealArray    = TurbPartData)
     CALL CloseDataFile()
   END IF
 #endif /*MPI*/

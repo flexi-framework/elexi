@@ -179,7 +179,7 @@ REAL                :: chi,muTurb,muTilde,SAfn,muEff
 !==================================================================================================================================
 ! Viscous part
 ! ideal gas law
-muS   =VISCOSITY_PRIM(prim)
+muS   =VISCOSITY_PRIM(UPrim)
 lambda=THERMAL_CONDUCTIVITY_H(muS)
 ! Add turbulent viscosity
 muTilde = UPrim(NUSA)*UPrim(DENS)

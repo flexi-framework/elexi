@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -82,7 +82,7 @@ USE MOD_EOS_Vars          ,ONLY:Kappa,KappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------  
+!----------------------------------------------------------------------------------------------------------------------------------
 REAL,DIMENSION(PP_nVar),INTENT(IN)              :: U               !< Conservative solution
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)          :: UPrim           !< Primitive solution
 REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: fJac,gJac,hJac  !< Derivative of the physical fluxes (iVar,i,j,k)
@@ -180,8 +180,8 @@ USE MOD_Viscosity
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------  
-!----------------------------------------------------------------------------------------------------------------------------------  
+!----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,INTENT(IN)                                   :: nDOF_loc             !< number of degrees of freedom
 REAL,DIMENSION(PP_nVar        ,nDOF_loc),INTENT(IN)  :: U                    !< solution in conservative variables
 REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: UPrim                !< solution in primitive variables
@@ -216,7 +216,7 @@ DO i=1,nDOF_loc
   chi = muTilde/muS
   muTurb = muTilde*fv1(chi)
   muEff = MAX(muS,muS+muTurb)  ! Ignore muTurb < 0
-  ! Derivatives of SA helper functions 
+  ! Derivatives of SA helper functions
   ! fv1 = chi**3/(chi**3 + cv1**3), dfv1_dmuTilde = dfv1_dchi * dchi_dmuTilde = dfv1_dchi * 1/mu
   dfv1_dmuTilde = 1./muS * ( (3.*cv1**3*chi**2) / (cv1**3+chi**3)**2 )
   IF (chi.GT.0) THEN
@@ -225,7 +225,7 @@ DO i=1,nDOF_loc
     dfn_dchi = 0.
   ELSE
     dmuTurb_dmuTilde = 0.
-    ! fvn = (cn1+chi**3) / (cn1-chi**3), 
+    ! fvn = (cn1+chi**3) / (cn1-chi**3),
     dfn_dchi = (6.*cn1*chi**2) / ((cn1 - chi**3)**2)
   END IF
 
@@ -295,7 +295,7 @@ DO i=1,nDOF_loc
   gJac(5,1,i) = gJac(5,1,i)/ U(1,i) * muEff
   gJac(5,2,i) = -tau(2,1)  / U(1,i) * muEff
   gJac(5,3,i) = -tau(2,2)  / U(1,i) * muEff
-#if PP_dim==3                               
+#if PP_dim==3
   gJac(5,4,i) = -tau(2,3)  / U(1,i) * muEff
   ! The energy equation depends on the SA working variable through both the effective viscosity and the effective thermal
   ! conductivity
@@ -514,34 +514,34 @@ REAL,DIMENSION(PP_nVar,PP_nVarPrim),INTENT(OUT) :: Jac      !< cons to prim Jaco
 ! LOCAL VARIABLES
 REAL                                            :: UE(PP_2Var),dpdrho,dedrho
 !===================================================================================================================================
-UE(PRIM) = UPrim
-UE(DENS) = UPrim(1)
-UE(SRHO) = 1./UE(DENS)
+UE(EXT_PRIM) = UPrim
+UE(EXT_DENS) = UPrim(1)
+UE(EXT_SRHO) = 1./UE(EXT_DENS)
 
 
-dpdrho = KappaM1*0.5*SUM(UE(VELV)*UE(VELV))
+dpdrho = KappaM1*0.5*SUM(UE(EXT_VELV)*UE(EXT_VELV))
 #if PP_dim == 3
-dedrho = (UE(VEL1)**2+UE(VEL2)**2+UE(VEL3)**2) - dpdrho / KappaM1
+dedrho = (UE(EXT_VEL1)**2+UE(EXT_VEL2)**2+UE(EXT_EXT_VEL3)**2) - dpdrho / KappaM1
 #else
-dedrho = (UE(VEL1)**2+UE(VEL2)**2            ) - dpdrho / KappaM1
+dedrho = (UE(EXT_VEL1)**2+UE(EXT_VEL2)**2            ) - dpdrho / KappaM1
 #endif
 
 Jac(1,1:5)= (/      1.,                0.,                0.,                0.,         0. /)
-Jac(2,1:5)= (/UE(VEL1),          UE(DENS),                0.,                0.,         0. /)
-Jac(3,1:5)= (/UE(VEL2),                0.,          UE(DENS),                0.,         0. /)
+Jac(2,1:5)= (/UE(EXT_VEL1),          UE(EXT_DENS),                0.,                0.,         0. /)
+Jac(3,1:5)= (/UE(EXT_VEL2),                0.,          UE(EXT_DENS),                0.,         0. /)
 #if PP_dim == 3
-Jac(4,1:5)= (/UE(VEL3),                0.,                0.,          UE(DENS),         0. /)
-Jac(5,1:5)= (/  dedrho, UE(DENS)*UE(VEL1), UE(DENS)*UE(VEL2), UE(DENS)*UE(VEL3), 1./KappaM1 /)
+Jac(4,1:5)= (/UE(EXT_VEL3),                0.,                0.,          UE(EXT_DENS),         0. /)
+Jac(5,1:5)= (/  dedrho, UE(EXT_DENS)*UE(EXT_VEL1), UE(EXT_DENS)*UE(EXT_VEL2), UE(EXT_DENS)*UE(EXT_VEL3), 1./KappaM1 /)
 #else
 Jac(4,1:5)= 0.
-Jac(5,1:5)= (/  dedrho, UE(DENS)*UE(VEL1), UE(DENS)*UE(VEL2),                0., 1./KappaM1 /)
+Jac(5,1:5)= (/  dedrho, UE(EXT_DENS)*UE(EXT_VEL1), UE(EXT_DENS)*UE(EXT_VEL2),                0., 1./KappaM1 /)
 #endif
 ! dependency on temperature
 Jac(1:5,6) = 0.
 ! dependency on kinematic  SA viscosity (=> "primitive" variable)
 Jac(1:5,7) = 0.
 ! dependency of the dynamic SA viscosity (=> conservative variable)
-Jac(6,:)   = (/UE(NUSA),               0.,                0.,               0.,          0., 0.,  UE(DENS)/)
+Jac(6,:)   = (/UE(EXT_NUSA),               0.,                0.,               0.,          0., 0.,  UE(EXT_DENS)/)
 END SUBROUTINE dConsdPrim
 
 !===================================================================================================================================
@@ -564,18 +564,18 @@ REAL,DIMENSION(PP_nVarPrim,PP_nVar),INTENT(OUT) :: Jac      !< prim to cons Jaco
 REAL                                            :: UE(PP_2Var)
 REAL                                            :: sRhoR,dpdU(5)
 !===================================================================================================================================
-UE(PRIM) = UPrim
-UE(SRHO) = 1./UPrim(1)
+UE(EXT_PRIM) = UPrim
+UE(EXT_SRHO) = 1./UPrim(1)
 
 Jac(1,1:5)= (/                                1.,                0.,                0.,                0.,      0. /)
-Jac(2,1:5)= (/                -UE(VEL1)*UE(SRHO),          UE(SRHO),                0.,                0.,      0. /)
-Jac(3,1:5)= (/                -UE(VEL2)*UE(SRHO),                0.,          UE(SRHO),                0.,      0. /)
+Jac(2,1:5)= (/                -UE(EXT_VEL1)*UE(EXT_SRHO),          UE(EXT_SRHO),                0.,                0.,      0. /)
+Jac(3,1:5)= (/                -UE(EXT_VEL2)*UE(EXT_SRHO),                0.,          UE(EXT_SRHO),                0.,      0. /)
 #if PP_dim == 3
-Jac(4,1:5)= (/                -UE(VEL3)*UE(SRHO),                0.,                0.,          UE(SRHO),      0. /)
-Jac(5,1:5)= (/KappaM1*0.5*SUM(UE(VELV)*UE(VELV)), -UE(VEL1)*KappaM1, -UE(VEL2)*KappaM1, -UE(VEL3)*KappaM1, KappaM1 /)
+Jac(4,1:5)= (/                -UE(EXT_VEL3)*UE(EXT_SRHO),                0.,                0.,          UE(EXT_SRHO),      0. /)
+Jac(5,1:5)= (/KappaM1*0.5*SUM(UE(EXT_VELV)*UE(EXT_VELV)), -UE(EXT_VEL1)*KappaM1, -UE(EXT_VEL2)*KappaM1, -UE(EXT_VEL3)*KappaM1, KappaM1 /)
 #else
 Jac(4,1:5)= 0.
-Jac(5,1:5)= (/KappaM1*0.5*SUM(UE(VELV)*UE(VELV)), -UE(VEL1)*KappaM1, -UE(VEL2)*KappaM1,                0., KappaM1 /)
+Jac(5,1:5)= (/KappaM1*0.5*SUM(UE(EXT_VELV)*UE(EXT_VELV)), -UE(EXT_VEL1)*KappaM1, -UE(EXT_VEL2)*KappaM1,                0., KappaM1 /)
 #endif
 
 ! fill jacobian of transformation to temperature
@@ -594,9 +594,9 @@ Jac(6,5)   = dpdU(5  )*sRhoR
 
 ! kinematic SA viscosity
 Jac(1:6,6) = 0.
-Jac(7,1)   = -UE(NUSA) * UE(SRHO)
+Jac(7,1)   = -UE(EXT_NUSA) * UE(EXT_SRHO)
 Jac(7,2:5) = 0.
-Jac(7,6)   = UE(SRHO)
+Jac(7,6)   = UE(EXT_SRHO)
 END SUBROUTINE dPrimdCons
 
 END MODULE MOD_Jacobian

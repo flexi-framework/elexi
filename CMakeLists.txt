@@ -23,6 +23,11 @@ INCLUDE(ExternalProject)
 INCLUDE(CMakeDependentOption)
 
 # =========================================================================
+# Performance mode
+# =========================================================================
+OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
+
+# =========================================================================
 # Machine environment
 # =========================================================================
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMakeListsMachine.txt)

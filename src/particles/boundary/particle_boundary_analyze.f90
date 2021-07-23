@@ -231,7 +231,7 @@ CHARACTER(LEN=255)             :: FileName,FileString
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
 LOGICAL                        :: reSwitch
 REAL                           :: startT,endT
-INTEGER                        :: ImpactnLoc,ImpactnLocMax
+INTEGER                        :: ImpactnLoc
 INTEGER                        :: ImpactOffset
 #if USE_MPI
 INTEGER                        :: sendbuf(2),recvbuf(2)
@@ -260,8 +260,6 @@ sendbuf(1)   = recvbuf(1) + ImpactnLoc
 CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
 !>> Gather the global number and communicate to root (MPIRank.EQ.0)
 ImpactnGlob  = sendbuf(1)
-! CALL MPI_GATHER(locEP,1,MPI_INTEGER,nImpacts,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
-CALL MPI_GATHER(ImpactnLoc,1,MPI_INTEGER,ImpactnLocMax,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 #else
 ImpactOffset   = 0
 ImpactnGlob    = PartStateBoundaryVecLength

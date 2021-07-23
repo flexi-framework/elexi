@@ -119,7 +119,7 @@ USE MOD_Particle_Mesh_Tools       ,ONLY: GetGlobalElemID
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo_Shared,ElemRadius2NGeo_Shared
 USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo_Shared_Win,ElemRadius2NGeo_Shared_Win
-USE MOD_Particle_MPI_Shared       ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared       ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars  ,ONLY: myComputeNodeRank,nComputeNodeProcessors
 USE MOD_Particle_MPI_Shared_Vars  ,ONLY: MPI_COMM_SHARED
@@ -143,10 +143,10 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 !================================================================================================================================
 
 #if USE_MPI
-MPISharedSize = INT((3*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*nComputeNodeTotalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeTotalElems/),ElemBaryNGeo_Shared_Win,ElemBaryNGeo_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemBaryNGeo_Shared_Win,IERROR)
-MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((nComputeNodeTotalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemRadius2NGeo_Shared_Win,ElemRadius2NGEO_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemRadius2NGeo_Shared_Win,IERROR)
 ElemRadius2NGeo    => ElemRadius2NGeo_Shared
@@ -219,7 +219,7 @@ USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemCurved_Shared,ElemCurved_Shared_Win
 USE MOD_Particle_Mesh_Vars      ,ONLY: XiEtaZetaBasis_Shared,XiEtaZetaBasis_Shared_Win
 USE MOD_Particle_Mesh_Vars      ,ONLY: slenXiEtaZetaBasis_Shared,slenXiEtaZetaBasis_Shared_Win
-USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
@@ -250,13 +250,13 @@ SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curv
 
 ! elements
 #if USE_MPI
-MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((nComputeNodeTotalElems),SIZE_LOG)
 CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemCurved_Shared_Win,ElemCurved_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemCurved_Shared_Win,IERROR)
-MPISharedSize = INT((3*6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*6*nComputeNodeTotalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3,6,nComputeNodeTotalElems/),XiEtaZetaBasis_Shared_Win,XiEtaZetaBasis_Shared)
 CALL MPI_WIN_LOCK_ALL(0,XiEtaZetaBasis_Shared_Win,IERROR)
-MPISharedSize = INT((6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((6*nComputeNodeTotalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/6,nComputeNodeTotalElems/),slenXiEtaZetaBasis_Shared_Win,slenXiEtaZetaBasis_Shared)
 CALL MPI_WIN_LOCK_ALL(0,slenXiEtaZetaBasis_Shared_Win,IERROR)
 ElemCurved         => ElemCurved_Shared
@@ -345,7 +345,7 @@ USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID
 #if USE_MPI
 USE MOD_Mesh_Vars                ,ONLY: offsetElem
 USE MOD_Mesh_Vars                ,ONLY: NGeo,NGeoRef
-USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
@@ -387,7 +387,7 @@ SWRITE(UNIT_StdOut,'(A)') ' Building EpsOneCell for all elements...'
 
 ! build sJ for all elements not on local proc
 #if USE_MPI
-MPISharedSize = INT(((PP_N+1)*(PP_N+1)*(PP_N+1)*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE(((PP_N+1)*(PP_N+1)*(PP_N+1)*nComputeNodeTotalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/(PP_N+1)*(PP_N+1)*(PP_N+1)*nComputeNodeTotalElems/),ElemsJ_Shared_Win,ElemsJ_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemsJ_Shared_Win,IERROR)
 ElemsJ(0:PP_N,0:PP_N,0:PP_N,1:nComputeNodeTotalElems) => ElemsJ_Shared
@@ -450,7 +450,7 @@ ElemsJ = sJ(:,:,:,:,0)
 
 ! allocate epsOneCell
 #if USE_MPI
-MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((nComputeNodeTotalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemEpsOneCell_Shared_Win,ElemEpsOneCell_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemEpsOneCell_Shared_Win,IERROR)
 ElemEpsOneCell => ElemEpsOneCell_Shared
@@ -510,7 +510,7 @@ USE MOD_Particle_Utils           ,ONLY: InsertionSort
 USE MOD_CalcTimeStep             ,ONLY: CalcTimeStep
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides_Shared,SideBCMetrics_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides_Shared_Win,SideBCMetrics_Shared_Win
-USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
@@ -557,7 +557,7 @@ SWRITE(UNIT_StdOut,'(A)') ' Identifying BC sides and calculating side metrics...
 
 ! elements
 #if USE_MPI
-MPISharedSize = INT((2*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((2*nComputeNodeTotalElems),SIZE_INT)
 CALL Allocate_Shared(MPISharedSize,(/2,nComputeNodeTotalElems/),ElemToBCSides_Shared_Win,ElemToBCSides_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemToBCSides_Shared_Win,IERROR)
 ElemToBCSides => ElemToBCSides_Shared
@@ -759,7 +759,7 @@ nComputeNodeBCSides = nBCSidesProc
 
 ! Allocate shared array for BC sides
 #if USE_MPI
-MPISharedSize = INT((7*nComputeNodeBCSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((7*nComputeNodeBCSides),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/7,nComputeNodeBCSides/),SideBCMetrics_Shared_Win,SideBCMetrics_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SideBCMetrics_Shared_Win,IERROR)
 SideBCMetrics => SideBCMetrics_Shared
@@ -943,7 +943,7 @@ USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo_Shared,ElemBaryNGeo_Shared_Win
-USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
@@ -970,7 +970,7 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 !================================================================================================================================
 
 #if USE_MPI
-MPISharedSize = INT((3*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*nComputeNodeTotalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeTotalElems/),ElemBaryNGeo_Shared_Win,ElemBaryNGeo_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemBaryNGeo_Shared_Win,IERROR)
 ElemBaryNGeo => ElemBaryNGeo_Shared
@@ -1041,7 +1041,7 @@ USE MOD_Particle_Mesh_Vars        ,ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis,ElemR
 USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Tools       ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
 #if USE_MPI
-USE MOD_Particle_MPI_Shared       ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared       ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars  ,ONLY: MPI_COMM_SHARED
@@ -1073,15 +1073,15 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 #endif /*USE_MPI*/
 !================================================================================================================================
 #if USE_MPI
-MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((nComputeNodeTotalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemRadiusNGeo_Shared_Win,ElemRadiusNGeo_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemRadiusNGeo_Shared_Win,IERROR)
 CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemRadius2NGeo_Shared_Win,ElemRadius2NGeo_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemRadius2NGeo_Shared_Win,IERROR)
-MPISharedSize = INT((3*6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*6*nComputeNodeTotalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3,6,nComputeNodeTotalElems/),XiEtaZetaBasis_Shared_Win,XiEtaZetaBasis_Shared)
 CALL MPI_WIN_LOCK_ALL(0,XiEtaZetaBasis_Shared_Win,IERROR)
-MPISharedSize = INT((6*nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((6*nComputeNodeTotalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/6,nComputeNodeTotalElems/),slenXiEtaZetaBasis_Shared_Win,slenXiEtaZetaBasis_Shared)
 CALL MPI_WIN_LOCK_ALL(0,slenXiEtaZetaBasis_Shared_Win,IERROR)
 ElemRadiusNGeo     => ElemRadiusNGeo_Shared
@@ -1188,7 +1188,7 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID,SideID2BCSide,BCSideMetric
 USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides,nUniqueBCSides
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D
 #if USE_MPI
-USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
 USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID_Shared,SideID2BCSide_Shared,BCSideMetrics_Shared
@@ -1243,17 +1243,17 @@ sendbuf = offsetUniqueBCSidesProc + nUniqueBCSidesProc
 CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nComputeNodeProcessors-1,MPI_COMM_SHARED,iError)
 nUniqueBCSides = sendbuf
 
-MPISharedSize = INT((nUniqueBCSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((nUniqueBCSides),SIZE_INT)
 CALL Allocate_Shared(MPISharedSize,(/nUniqueBCSides/),BCSide2SideID_Shared_Win,BCSide2SideID_Shared)
 CALL MPI_WIN_LOCK_ALL(0,BCSide2SideID_Shared_Win,IERROR)
-MPISharedSize = INT((nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((nNonUniqueGlobalSides),SIZE_INT)
 CALL Allocate_Shared(MPISharedSize,(/nNonUniqueGlobalSides/),SideID2BCSide_Shared_Win,SideID2BCSide_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SideID2BCSide_Shared_Win,IERROR)
 BCSide2SideID => BCSide2SideID_Shared
 SideID2BCSide => SideID2BCSide_Shared
 
 ! Also allocate array to hold BC Side metrics
-MPISharedSize = INT((4*nUniqueBCSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((4*nUniqueBCSides),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/4,nUniqueBCSides/),BCSideMetrics_Shared_Win,BCSideMetrics_Shared)
 CALL MPI_WIN_LOCK_ALL(0,BCSideMetrics_Shared_Win,IERROR)
 BCSideMetrics => BCSideMetrics_Shared
@@ -1338,7 +1338,7 @@ USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierElevation
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3!,BaseVectorsScale
 #if USE_MPI
-USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
 !USE MOD_Particle_Mesh_Vars       ,ONLY: BaseVectorsScale_Shared,BaseVectorsScale_Shared_Win
@@ -1362,7 +1362,7 @@ INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' GET LINEAR SIDE BASEVECTORS...'
 #if USE_MPI
-MPISharedSize = INT((3*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*nNonUniqueGlobalSides),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalSides/),BaseVectors0_Shared_Win,BaseVectors0_Shared)
 CALL MPI_WIN_LOCK_ALL(0,BaseVectors0_Shared_Win,IERROR)
 CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalSides/),BaseVectors1_Shared_Win,BaseVectors1_Shared)
@@ -1371,7 +1371,7 @@ CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalSides/),BaseVectors2_Shar
 CALL MPI_WIN_LOCK_ALL(0,BaseVectors2_Shared_Win,IERROR)
 CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalSides/),BaseVectors3_Shared_Win,BaseVectors3_Shared)
 CALL MPI_WIN_LOCK_ALL(0,BaseVectors3_Shared_Win,IERROR)
-!MPISharedSize = INT((nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+!MPISharedSize = MPI_SIZE((nNonUniqueGlobalSides),SIZE_REAL)
 !CALL Allocate_Shared(MPISharedSize,(/nNonUniqueGlobalSides/),BaseVectorsScale_Shared_Win,BaseVectorsScale_Shared)
 !CALL MPI_WIN_LOCK_ALL(0,BaseVectorsScale_Shared_Win,IERROR)
 BaseVectors0 => BaseVectors0_Shared
@@ -1585,7 +1585,7 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: ElemCurved_Shared,ElemCurved_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: SideDistance_Shared,SideDistance_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: SideType_Shared,SideType_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: SideNormVec_Shared,SideNormVec_Shared_Win
-USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems,nComputeNodeTotalSides
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
@@ -1630,7 +1630,7 @@ SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curv
 
 ! elements
 #if USE_MPI
-MPISharedSize = INT((nComputeNodeTotalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((nComputeNodeTotalElems),SIZE_LOG)
 CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalElems/),ElemCurved_Shared_Win,ElemCurved_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemCurved_Shared_Win,IERROR)
 ElemCurved => ElemCurved_Shared
@@ -1640,14 +1640,14 @@ ALLOCATE(ElemCurved(1:nComputeNodeElems))
 
 ! sides
 #if USE_MPI
-MPISharedSize = INT((nComputeNodeTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((nComputeNodeTotalSides),SIZE_INT)
 CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalSides/),  SideType_Shared_Win,    SideType_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SideType_Shared_Win,IERROR)
 SideType => SideType_Shared
 CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalSides/),  SideDistance_Shared_Win,SideDistance_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SideDistance_Shared_Win,IERROR)
 SideDistance => SideDistance_Shared
-MPISharedSize = INT((3*nComputeNodeTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*nComputeNodeTotalSides),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeTotalSides/),SideNormVec_Shared_Win, SideNormVec_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SideNormVec_Shared_Win,IERROR)
 SideNormVec => SideNormVec_Shared
@@ -2221,7 +2221,7 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: GEO,ElemInfo_Shared,SideInfo_Shared,Node
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalNonUniqueSideID
 #if USE_MPI
 USE MOD_Mesh_Vars                ,ONLY: nGlobalElems
-USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: myComputeNodeRank,nComputeNodeProcessors,MPI_COMM_SHARED
 #else
 USE MOD_Mesh_Vars                ,ONLY: nElems
@@ -2276,7 +2276,7 @@ IF (GEO%nPeriodicVectors.EQ.0) RETURN
 firstElem = INT(REAL( myComputeNodeRank*   nGlobalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
 
-MPISharedSize = INT(GEO%nPeriodicVectors,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE(GEO%nPeriodicVectors,SIZE_LOG)
 ! Somehow the pointer is associated at this point, nullify it
 NULLIFY(PeriodicFound)
 CALL Allocate_Shared(MPISharedSize,(/GEO%nPeriodicVectors/),PeriodicFound_Win,PeriodicFound)
@@ -2413,7 +2413,7 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Array
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo_Shared_Win,dXCL_NGeo_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Shared_Win
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID
-USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 !USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,nProcessors_Global,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED,displsElem,recvcountelem
@@ -2448,11 +2448,11 @@ IF (PerformLoadBalance) RETURN
 
 #if USE_MPI
 ! This is a trick. Allocate as 1D array and then set a pointer with the proper array bounds
-MPISharedSize = INT((3*(NGeo+1)**3*nGlobalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*(NGeo+1)**3*nGlobalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3*  (NGeo+1)*(NGeo+1)*(NGeo+1)*nGlobalElems/), XCL_NGeo_Shared_Win,XCL_NGeo_Array)
-MPISharedSize = INT((3*(PP_N+1)**3*nGlobalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*(PP_N+1)**3*nGlobalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3*  (PP_N+1)*(PP_N+1)*(PP_N+1)*nGlobalElems/), Elem_xGP_Shared_Win,Elem_xGP_Array)
-MPISharedSize = INT((3*3*(NGeo+1)**3*nGlobalElems),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*3*(NGeo+1)**3*nGlobalElems),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3*3*(NGeo+1)*(NGeo+1)*(NGeo+1)*nGlobalElems/),dXCL_NGeo_Shared_Win,dXCL_NGeo_Array)
 CALL MPI_WIN_LOCK_ALL(0,XCL_NGeo_Shared_Win,IERROR)
 CALL MPI_WIN_LOCK_ALL(0,Elem_xGP_Shared_Win,IERROR)
@@ -2621,7 +2621,7 @@ USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3DElevated,BezierElev
 USE MOD_Mesh_Vars                ,ONLY: nGlobalElems
 USE MOD_Particle_Mesh_Vars       ,ONLY: BezierControlPoints3D_Shared,BezierControlPoints3D_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: BezierControlPoints3DElevated_Shared,BezierControlPoints3DElevated_Shared_Win
-USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 !USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: myComputeNodeRank,nComputeNodeProcessors
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
@@ -2671,7 +2671,7 @@ ALLOCATE(BezierControlPoints2D_temp2(2,0:NGeo,0:NGeo))
 
 ! Build BezierControlPoints3D (compute-node local+halo)
 #if USE_MPI
-MPISharedSize = INT((3*(NGeo+1)**2*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*(NGeo+1)**2*nNonUniqueGlobalSides),SIZE_REAL)
 ! This is a trick. Allocate as 1D array and then set a pointer with the proper array bounds
 CALL Allocate_Shared(MPISharedSize,(/3*(NGeo+1)*(NGeo+1)*nNonUniqueGlobalSides/),BezierControlPoints3D_Shared_Win,BezierControlPoints3D_Shared)
 CALL MPI_WIN_LOCK_ALL(0,BezierControlPoints3D_Shared_Win,IERROR)
@@ -2680,7 +2680,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   BezierControlPoints3D         = 0.
 END IF
 IF (BezierElevation.GT.0) THEN
-  MPISharedSize = INT((3*(NGeoElevated+1)**2*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+  MPISharedSize = MPI_SIZE((3*(NGeoElevated+1)**2*nNonUniqueGlobalSides),SIZE_REAL)
   CALL Allocate_Shared(MPISharedSize,(/3*(NGeoElevated+1)*(NGeoElevated+1)*nNonUniqueGlobalSides/), &
                                       BezierControlPoints3DElevated_Shared_Win,BezierControlPoints3DElevated_Shared)
   CALL MPI_WIN_LOCK_ALL(0,BezierControlPoints3DElevated_Shared_Win,IERROR)
@@ -2791,7 +2791,7 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: ElemVolume_Shared
 USE MOD_Mesh_Vars                ,ONLY: offsetElem
 USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems,offsetComputeNodeElem
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemVolume_Shared_Win
-USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 #endif /*USE_MPI*/
@@ -2820,7 +2820,7 @@ offsetElemCNProc = 0
 #endif  /*USE_MPI*/
 
 #if USE_MPI
-MPISharedSize = INT(nComputeNodeElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE(nComputeNodeElems,SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/nComputeNodeElems/),ElemVolume_Shared_Win,ElemVolume_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemVolume_Shared_Win,IERROR)
 !CALL Allocate_Shared(MPISharedSize,(/nComputeNodeElems/),ElemCharLength_Shared_Win,ElemCharLength_Shared)
@@ -2903,7 +2903,7 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: ElemSideNodeID_Shared,ElemMidPoint_Share
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars       ,ONLY: ConcaveElemSide_Shared_Win,ElemNodeID_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemSideNodeID_Shared_Win,ElemMidPoint_Shared_Win
-USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared      ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
@@ -2954,21 +2954,21 @@ NodeMap(:,5)=(/CNS(1),CNS(5),CNS(8),CNS(4)/)
 NodeMap(:,6)=(/CNS(5),CNS(6),CNS(7),CNS(8)/)
 
 #if USE_MPI
-MPISharedSize = INT(6*nComputeNodeTotalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE(6*nComputeNodeTotalElems,SIZE_LOG)
 CALL Allocate_Shared(MPISharedSize,(/6,nComputeNodeTotalElems/),ConcaveElemSide_Shared_Win,ConcaveElemSide_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ConcaveElemSide_Shared_Win,IERROR)
 firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 
-MPISharedSize = INT(8*nComputeNodeTotalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE(8*nComputeNodeTotalElems,SIZE_INT)
 CALL Allocate_Shared(MPISharedSize,(/8,nComputeNodeTotalElems/),ElemNodeID_Shared_Win,ElemNodeID_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemNodeID_Shared_Win,IERROR)
 
-MPISharedSize = INT(4*6*nComputeNodeTotalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE(4*6*nComputeNodeTotalElems,SIZE_INT)
 CALL Allocate_Shared(MPISharedSize,(/4,6,nComputeNodeTotalElems/),ElemSideNodeID_Shared_Win,ElemSideNodeID_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemSideNodeID_Shared_Win,IERROR)
 
-MPISharedSize = INT(3*nComputeNodeTotalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE(3*nComputeNodeTotalElems,SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeTotalElems/),ElemMidPoint_Shared_Win,ElemMidPoint_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemMidPoint_Shared_Win,IERROR)
 #else

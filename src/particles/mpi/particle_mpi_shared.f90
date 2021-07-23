@@ -58,12 +58,17 @@ INTERFACE BARRIER_AND_SYNC
   MODULE PROCEDURE BARRIER_AND_SYNC
 END INTERFACE
 
+INTERFACE MPI_SIZE
+  MODULE PROCEDURE MPI_SIZE
+END INTERFACE
+
 PUBLIC :: DefineParametersMPIShared
 PUBLIC :: InitMPIShared
 PUBLIC :: FinalizeMPIShared
 PUBLIC :: Allocate_Shared
 !PUBLIC :: UpdateDGShared
 PUBLIC :: BARRIER_AND_SYNC
+PUBLIC :: MPI_SIZE
 !==================================================================================================================================
 
 CONTAINS
@@ -814,6 +819,34 @@ END SUBROUTINE FinalizeMPIShared
 !CALL BARRIER_AND_SYNC(U_Shared_Win,IERROR)
 !
 !END SUBROUTINE UpdateDGShared
+
+
+!===================================================================================================================================
+!
+!===================================================================================================================================
+FUNCTION MPI_SIZE(nVal,VarSize)
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN) :: nVal
+INTEGER,INTENT(IN) :: VarSize
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+INTEGER(KIND=MPI_ADDRESS_KIND) :: MPI_SIZE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+IF (INT(nVal*VarSize,KIND=16).LT.INT(HUGE(INT(1,KIND=MPI_ADDRESS_KIND)),KIND=16)) THEN
+  MPI_SIZE = nVal * VarSize
+ELSE
+  CALL ABORT(__STAMP__,'MPI_SIZE for shared array too large!')
+END IF
+
+END FUNCTION MPI_SIZE
 #endif /* USE_MPI */
 
 END MODULE MOD_Particle_MPI_Shared

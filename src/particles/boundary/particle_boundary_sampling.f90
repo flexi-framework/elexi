@@ -120,7 +120,7 @@ USE MOD_StringTools             ,ONLY: LowCase
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: nNonUniqueGlobalSides
-USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
@@ -197,7 +197,7 @@ IF((nSurfSample.GT.1).AND.(TrackingMethod.EQ.TRIATRACKING)) &
 
 ! Allocate shared array for surf sides
 #if USE_MPI
-MPISharedSize = INT((3*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*nNonUniqueGlobalSides),SIZE_INT)
 CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalSides/),GlobalSide2SurfSide_Shared_Win,GlobalSide2SurfSide_Shared)
 CALL MPI_WIN_LOCK_ALL(0,GlobalSide2SurfSide_Shared_Win,IERROR)
 GlobalSide2SurfSide => GlobalSide2SurfSide_Shared
@@ -389,7 +389,7 @@ GlobalSide2SurfSide(:,firstSide:lastSide) = GlobalSide2SurfSideProc(:,firstSide:
 
 ! Build inverse mapping
 #if USE_MPI
-MPISharedSize = INT((3*nComputeNodeSurfTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((3*nComputeNodeSurfTotalSides),SIZE_INT)
 CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeSurfTotalSides/),SurfSide2GlobalSide_Shared_Win,SurfSide2GlobalSide_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SurfSide2GlobalSide_Shared_Win,IERROR)
 SurfSide2GlobalSide => SurfSide2GlobalSide_Shared
@@ -458,7 +458,7 @@ END IF
 
 #if USE_MPI
 !> Then shared arrays for boundary sampling
-MPISharedSize = INT((SurfSampSize*nSurfSample*nSurfSample*nComputeNodeSurfTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((SurfSampSize*nSurfSample*nSurfSample*nComputeNodeSurfTotalSides),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/SurfSampSize,nSurfSample,nSurfSample,nComputeNodeSurfTotalSides/),SampWallState_Shared_Win,SampWallState_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SampWallState_Shared_Win,IERROR)
 #else
@@ -476,7 +476,7 @@ CALL BARRIER_AND_SYNC(SampWallState_Shared_Win,MPI_COMM_SHARED)
 
 ! Surf sides are shared, array calculation can be distributed
 #if USE_MPI
-MPISharedSize = INT((nSurfSample*nSurfSample*nComputeNodeSurfTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((nSurfSample*nSurfSample*nComputeNodeSurfTotalSides),SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/nSurfSample,nSurfSample,nComputeNodeSurfTotalSides/),SurfSideArea_Shared_Win,SurfSideArea_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SurfSideArea_Shared_Win,IERROR)
 SurfSideArea => SurfSideArea_Shared

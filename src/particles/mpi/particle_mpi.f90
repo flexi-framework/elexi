@@ -27,13 +27,11 @@ PRIVATE
 INTERFACE DefineParticleMPI
   MODULE PROCEDURE DefineParticleMPI
 END INTERFACE
-#endif /*USE_MPI*/
 
 INTERFACE InitParticleMPI
   MODULE PROCEDURE InitParticleMPI
 END INTERFACE
 
-#if USE_MPI
 INTERFACE InitParticleCommSize
   MODULE PROCEDURE InitParticleCommSize
 END INTERFACE
@@ -58,9 +56,7 @@ INTERFACE MPIParticleRecv
   MODULE PROCEDURE MPIParticleRecv
 END INTERFACE
 
-#if USE_MPI
 PUBLIC :: DefineParticleMPI
-#endif /*USE_MPI*/
 PUBLIC :: InitParticleMPI
 PUBLIC :: InitParticleCommSize
 PUBLIC :: SendNbOfParticles
@@ -68,8 +64,6 @@ PUBLIC :: IRecvNbOfParticles
 PUBLIC :: MPIParticleSend
 PUBLIC :: MPIParticleRecv
 PUBLIC :: FinalizeParticleMPI
-#else
-PUBLIC :: InitParticleMPI
 #endif /*USE_MPI*/
 !===================================================================================================================================
 

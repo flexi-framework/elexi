@@ -150,7 +150,7 @@ IF (PerformLoadBalance) THEN
 ELSE
 #endif /*USE_LOADBALANCE*/
   ! allocate shared array for ElemInfo
-  MPISharedSize = INT((ELEMINFOSIZE)*nGlobalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+  MPISharedSize = MPI_SIZE((ELEMINFOSIZE)*nGlobalElems,SIZE_INT)
   CALL Allocate_Shared(MPISharedSize,(/ELEMINFOSIZE,nGlobalElems/),ElemInfo_Shared_Win,ElemInfo_Shared)
   CALL MPI_WIN_LOCK_ALL(0,ElemInfo_Shared_Win,IERROR)
 
@@ -224,7 +224,7 @@ CALL MPI_ALLREDUCE(nSideIDs,nComputeNodeSides,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHA
 IF (PerformLoadBalance) RETURN
 #endif /*USE_LOADBALANCE*/
 
-MPISharedSize = INT((SIDEINFOSIZE+1)*nNonUniqueGlobalSides,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE((SIDEINFOSIZE+1)*nNonUniqueGlobalSides,SIZE_INT)
 CALL Allocate_Shared(MPISharedSize,(/SIDEINFOSIZE+1,nNonUniqueGlobalSides/),SideInfo_Shared_Win,SideInfo_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SideInfo_Shared_Win,IERROR)
 SideInfo_Shared(1                :SIDEINFOSIZE_H5,offsetSideID+1:offsetSideID+nSideIDs) = SideInfo(:,:)
@@ -354,13 +354,13 @@ IF (NGeoOverride.LE.0 .AND. (useCurveds.OR.NGeo.EQ.1) .OR. NGeoOverride.EQ.NGeo)
 #if USE_MPI
 !  ! allocate shared array for NodeInfo
   CALL MPI_ALLREDUCE(nNodeIDs,nComputeNodeNodes,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IERROR)
-!  MPISharedSize = INT(nNonUniqueGlobalNodes,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+!  MPISharedSize = MPI_SIZE(nNonUniqueGlobalNodes,SIZE_INT)
 !  CALL Allocate_Shared(MPISharedSize,(/nNonUniqueGlobalNodes/),NodeInfo_Shared_Win,NodeInfo_Shared)
 !  CALL MPI_WIN_LOCK_ALL(0,NodeInfo_Shared_Win,IERROR)
 !  NodeInfo_Shared(offsetNodeID+1:offsetNodeID+nNodeIDs) = NodeInfo(:)
 !  CALL BARRIER_AND_SYNC(NodeInfo_Shared_Win,MPI_COMM_SHARED)
 
-  MPISharedSize = INT(3*nNonUniqueGlobalNodes,MPI_ADDRESS_KIND)*MPI_DOUBLE
+  MPISharedSize = MPI_SIZE(3*nNonUniqueGlobalNodes,SIZE_REAL)
   CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalNodes/),NodeCoords_Shared_Win,NodeCoords_Shared)
   CALL MPI_WIN_LOCK_ALL(0,NodeCoords_Shared_Win,IERROR)
   NodeCoords_Shared(:,offsetNodeID+1:offsetNodeID+nNodeIDs) = NodeCoords_indx(:,:)
@@ -390,7 +390,7 @@ ELSE IF (NGeoOverride.LE.0 .AND. .NOT.useCurveds .AND. NGeo.GT.1) THEN
   nComputeNodeNodes = 8*nComputeNodeElems
 
 #if USE_MPI
-  MPISharedSize = INT(3*8*nGlobalElems,MPI_ADDRESS_KIND)*MPI_DOUBLE
+  MPISharedSize = MPI_SIZE(3*8*nGlobalElems,SIZE_REAL)
   CALL Allocate_Shared(MPISharedSize,(/3,8*nGlobalElems/),NodeCoords_Shared_Win,NodeCoords_Shared)
   CALL MPI_WIN_LOCK_ALL(0,NodeCoords_Shared_Win,IERROR)
 #else
@@ -419,7 +419,7 @@ ELSE
   nComputeNodeNodes = (NGeoOverride+1)**3 * nComputeNodeElems
 
 #if USE_MPI
-  MPISharedSize = INT(3*(NGeoOverride+1)**3*nGlobalElems,MPI_ADDRESS_KIND)*MPI_DOUBLE
+  MPISharedSize = MPI_SIZE(3*(NGeoOverride+1)**3*nGlobalElems,SIZE_REAL)
   CALL Allocate_Shared(MPISharedSize,(/3,(NGeoOverride+1)**3*nGlobalElems/),NodeCoords_Shared_Win,NodeCoords_Shared)
   CALL MPI_WIN_LOCK_ALL(0,NodeCoords_Shared_Win,IERROR)
 #else
@@ -505,17 +505,17 @@ IF (PerformLoadBalance) RETURN
 #endif /*USE_LOADBALANCE*/
 
 #if USE_MPI
-MPISharedSize = INT(3*2*nGlobalElems,MPI_ADDRESS_KIND)*MPI_DOUBLE
+MPISharedSize = MPI_SIZE(3*2*nGlobalElems,SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3,2,nGlobalElems/),xiMinMax_Shared_Win,xiMinMax_Shared)
 CALL MPI_WIN_LOCK_ALL(0,xiMinMax_Shared_Win,IERROR)
 xiMinMax_Shared(:,:,offsetElem+1:offsetElem+nElems) = xiMinMax(:,:,:)
-MPISharedSize = INT(nGlobalElems,MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
+MPISharedSize = MPI_SIZE(nGlobalElems,SIZE_INT)
 CALL Allocate_Shared(MPISharedSize,(/nGlobalElems/),ElemToTree_Shared_Win,ElemToTree_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemToTree_Shared_Win,IERROR)
 ElemToTree_Shared(offsetElem+1:offsetElem+nElems) = ElemToTree(:)
 ! allocate shared array for TreeCoords
 CALL MPI_ALLREDUCE(nTrees,nNonUniqueGlobalTrees,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,IERROR)
-MPISharedSize = INT(3*(NGeoTree+1)**3*nNonUniqueGlobalTrees,MPI_ADDRESS_KIND)*MPI_DOUBLE
+MPISharedSize = MPI_SIZE(3*(NGeoTree+1)**3*nNonUniqueGlobalTrees,SIZE_REAL)
 CALL Allocate_Shared(MPISharedSize,(/3,nGeoTree+1,nGeoTree+1,nGeoTree+1,nNonUniqueGlobalTrees/),TreeCoords_Shared_Win,TreeCoords_Shared)
 CALL MPI_WIN_LOCK_ALL(0,TreeCoords_Shared_Win,IERROR)
 TreeCoords_Shared(:,:,:,:,offsetTree:offsetTree+nTrees) = TreeCoords(:,:,:,:,:)

@@ -83,7 +83,7 @@ USE MOD_MPI        ,ONLY: InitMPI
 #if USE_PARTICLES
 USE MOD_Visu_Vars  ,ONLY: PartNamesAll
 #endif
-USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll
+USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll,nVarIni
 USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
 USE MOD_VTK        ,ONLY: CARRAY
 USE MOD_IO_HDF5    ,ONLY: InitMPIInfo
@@ -110,6 +110,9 @@ CHARACTER(LEN=255),POINTER            :: partnames_pointer(:)
 !===================================================================================================================================
 statefile = cstrToChar255(statefile_IN, strlen_state)
 meshfile  = cstrToChar255(meshfile_IN , strlen_mesh)
+
+! Set dummy value to force visu to read the actual values
+nVarIni = -1
 
 CALL InitMPIInfo()
 CALL InitMPI(mpi_comm_IN)

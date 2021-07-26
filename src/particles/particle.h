@@ -24,8 +24,8 @@
 ! Size of data types
 #define SIZE_LOG  KIND(.TRUE.)
 #define SIZE_INT  KIND(INT(1))
-#define SIZE_INT4 KIND(INT(1,KIND=4))
-#define SIZE_INT8 KIND(INT(1,KIND=8))
+#define SIZE_INT4 4
+#define SIZE_INT8 8
 #define SIZE_REAL KIND(REAL(1))
 #define SIZE_CHAR KIND('a')
 

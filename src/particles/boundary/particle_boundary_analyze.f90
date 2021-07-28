@@ -207,7 +207,7 @@ SUBROUTINE WriteBoundaryParticleToHDF5(OutputTime)
 USE MOD_Globals
 ! USE MOD_PreProc
 USE MOD_HDF5_WriteArray        ,ONLY: WriteArray,GatheredWriteArray
-USE MOD_HDF5_Output            ,ONLY: WriteAttribute
+USE MOD_HDF5_Output            ,ONLY: WriteAttribute,WriteStateFiles
 USE MOD_IO_HDF5                ,ONLY: GatheredWrite
 USE MOD_IO_HDF5                ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars            ,ONLY: ProjectName
@@ -238,6 +238,7 @@ INTEGER                        :: sendbuf(2),recvbuf(2)
 ! INTEGER                        :: nImpacts(0:nProcessors-1)
 #endif
 !===================================================================================================================================
+IF (.NOT.WriteStateFiles) RETURN
 
 ! Find amount of recorded impacts on current proc
 ImpactnLoc  = PartStateBoundaryVecLength

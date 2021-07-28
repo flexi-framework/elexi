@@ -76,7 +76,7 @@ SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 USE MOD_Globals
 USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies,Species,nSpecies!,PartIndex
 USE MOD_Particle_Analyze_Vars,   ONLY: RPP_MaxBufferSize,RPP_Plane,RecordPart,RPP_nVarNames
-USE MOD_HDF5_Output             ,ONLY: WriteAttribute
+USE MOD_HDF5_Output             ,ONLY: WriteAttribute,WriteStateFiles
 USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_HDF5_WriteArray         ,ONLY: WriteArray
 #if USE_MPI
@@ -106,6 +106,7 @@ INTEGER                        :: ForceIC(5,nSpecies)
 INTEGER                        :: ForceIC(1,nSpecies)
 #endif
 !===================================================================================================================================
+IF (.NOT.WriteStateFiles) RETURN
 
 !IF(RPP_Type.EQ.'plane')THEN
 DO iRecord = 1,RecordPart

@@ -221,8 +221,8 @@ INTEGER                           :: CNSideID
 CNSideID = GetCNSideID(SideID)
 
 #if CODE_ANALYZE
-  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-    IF(PartID.EQ.PARTOUT)THEN
+  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+    IF(PartID.EQ.PartOut)THEN
       WRITE(UNIT_stdout,'(110("-"))')
       WRITE(UNIT_stdout,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
       WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec        : ',SideNormVec(1:3,CNSideID)
@@ -393,8 +393,8 @@ INTEGER                           :: CNSideID
 CNSideID = GetCNSideID(SideID)
 
 #if CODE_ANALYZE
-  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-    IF(PartID.EQ.PARTOUT)THEN
+  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+    IF(PartID.EQ.PartOut)THEN
       WRITE(UNIT_stdout,'(110("-"))')
       WRITE(UNIT_stdout,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
       WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec        : ',SideNormVec(1:3,CNSideID)
@@ -762,8 +762,8 @@ BiLinearCoeff(:,3) = 0.25*BaseVectors2(:,SideID)
 BiLinearCoeff(:,4) = 0.25*BaseVectors0(:,SideID)
 
 #if CODE_ANALYZE
-  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-    IF(PartID.EQ.PARTOUT)THEN
+  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+    IF(PartID.EQ.PartOut)THEN
       WRITE(UNIT_stdout,'(110("-"))')
       WRITE(UNIT_stdout,'(A)')          '     | Output of bilinear intersection equation constants: '
       WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,CNSideID)
@@ -1150,8 +1150,8 @@ rPerformBezierClip = rPerformBezierClip+1.
   LineNormVec = 0.
   ! CALL recursive Bezier clipping algorithm
 #if CODE_ANALYZE
-  IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-    IF (PartID.EQ.PARTOUT) THEN
+  IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
+    IF (PartID.EQ.PartOut) THEN
       IPWRITE(UNIT_stdout,*) ' --------------------------------------------- '
       IPWRITE(UNIT_stdout,*) ' clipping '
       IPWRITE(UNIT_stdout,*) ' BezierClipTolerance   ', BezierClipTolerance
@@ -1229,10 +1229,10 @@ IF (PRESENT(ElemCheck_Opt)) THEN
 END IF
 
 #if CODE_ANALYZE
-IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-  IF (PartID.EQ.PARTOUT) THEN
+IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
+  IF (PartID.EQ.PartOut) THEN
     IPWRITE(UNIT_stdout,*)'----------------------------------------------'
-    IPWRITE(UNIT_stdout,*)' PARTOUT        = ',PARTOUT
+    IPWRITE(UNIT_stdout,*)' PartOut        = ',PartOut
     IPWRITE(UNIT_stdout,*)' nInterSections = ',nInterSections
   END IF
 END IF
@@ -1266,8 +1266,8 @@ SELECT CASE(nInterSections)
     ! sort intersection distance
     CALL InsertionSort(locAlpha(1:nIntersections),locID,nIntersections)
 #if CODE_ANALYZE
-    IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-      IF (PartID.EQ.PARTOUT) THEN
+    IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
+      IF (PartID.EQ.PartOut) THEN
         IPWRITE(UNIT_stdout,*) ' locAlpha-sorted ',locAlpha(1:nIntersections)
       END IF
     END IF
@@ -1304,8 +1304,8 @@ SELECT CASE(nInterSections)
         END IF
       END DO ! iInter=2,nInterSections
 #if CODE_ANALYZE
-       IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN
-         IF (PartID.EQ.PARTOUT) THEN
+       IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
+         IF (PartID.EQ.PartOut) THEN
            IPWRITE(UNIT_stdout,*) ' realnInter ',realnInter
          END IF
        END IF
@@ -1439,8 +1439,8 @@ DO WHILE(iClipIter.LE.BezierClipMaxIter)
   END IF
   iClipIter=iClipIter+1
 #if CODE_ANALYZE
-  IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-    IF(PartID.EQ.PARTOUT)THEN
+  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+    IF(PartID.EQ.PartOut)THEN
       WRITE(UNIT_stdout,'(A,I0,1X,I0)') ' iClipIter,ClipMode ', iClipIter, ClipMode
       !read*
     END IF
@@ -1564,8 +1564,8 @@ DO l=1,2
 END DO ! l=1,2
 
 #if CODE_ANALYZE
-IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-  IF(PartID.EQ.PARTOUT)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+  IF(PartID.EQ.PartOut)THEN
     IPWRITE(UNIT_stdout,*) ' Can intersect? ', hasInter
   END IF
 END IF
@@ -1615,8 +1615,8 @@ __STAMP__ &
 END SELECT
 
 #if CODE_ANALYZE
-IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-  IF(PartID.EQ.PARTOUT)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+  IF(PartID.EQ.PartOut)THEN
     IPWRITE(UNIT_stdout,*) ' Initial-guess in BezierNewton ', Xi
   END IF
 END IF
@@ -1704,8 +1704,8 @@ DO WHILE((dXi2.GT.BezierNewtonTolerance2).AND.(nIter.LE.BezierNewtonMaxIter))
 END DO
 
 #if CODE_ANALYZE
-IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-  IF(PartID.EQ.PARTOUT)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+  IF(PartID.EQ.PartOut)THEN
     IPWRITE(UNIT_stdout,*) ' Newton converget to ', Xi
     IPWRITE(UNIT_stdout,*) ' Tolarance Vaule ', BezierNewtonHit
     IPWRITE(UNIT_stdout,*) ' Check if it is a zero: ',P
@@ -1732,8 +1732,8 @@ alpha=DOT_PRODUCT(IntersectionVector,PartTrajectory)
 alphaNorm=alpha/lengthPartTrajectory
 
 #if CODE_ANALYZE
-IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-  IF(PartID.EQ.PARTOUT)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+  IF(PartID.EQ.PartOut)THEN
     IPWRITE(UNIT_stdout,*) ' Intersection Point ', InterP
     IPWRITE(UNIT_stdout,*) ' alphanorm  ',alphaNorm
   END IF
@@ -2186,8 +2186,8 @@ Xi=0.5*(Xi+1)
 Eta=0.5*(Eta+1)
 
 #if CODE_ANALYZE
-IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-  IF(PartID.EQ.PARTOUT)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+  IF(PartID.EQ.PartOut)THEN
     IPWRITE(UNIT_stdout,*) ' xi,eta ',xi,eta
   END IF
 END IF
@@ -2226,8 +2226,8 @@ alpha=DOT_PRODUCT(IntersectionVector,PartTrajectory)
 alphaNorm=alpha/lengthPartTrajectory
 
 #if CODE_ANALYZE
-IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-  IF(PartID.EQ.PARTOUT)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+  IF(PartID.EQ.PartOut)THEN
     CALL CalcNormAndTangBezier(nVec=IntersectionVector,xi=tmpXi,eta=tmpeta,SideID=SideID)
     IPWRITE(UNIT_stdout,*) ' nVec   ',IntersectionVector
     IPWRITE(UNIT_stdout,*) ' PartTrajectory   ',PartTrajectory
@@ -2273,8 +2273,8 @@ IF((alphaNorm.LE.1.0).AND.(alphaNorm.GT.-epsilontol))THEN
      !IF((locAlpha(iInter)-alpha).LT.SQRT(BezierClipTolerance)) isNewIntersection=.FALSE.
      !IF(ALMOSTEQUALRELATIVE(locAlpha(iInter),alpha,SQRT(BezierClipTolerance))) isNewIntersection=.FALSE.
 #if CODE_ANALYZE
-     IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-       IF(PartID.EQ.PARTOUT)THEN
+     IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+       IF(PartID.EQ.PartOut)THEN
          IPWRITE(UNIT_stdout,*) ' locAlpha,alpha,tol ', locAlpha(iInter),alpha,SQRT(BezierClipTolerance)
          IPWRITE(UNIT_stdout,*) ' locXi,ETa,,...    ,', locXi(iInter),locEta(iInter),tmpXi,tmpEta
        END IF
@@ -2356,8 +2356,8 @@ END DO ! l
 dmin=MINVAL(minmax(1,:))
 dmax=MAXVAL(minmax(2,:))
 #if CODE_ANALYZE
- IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-   IF(iPart.EQ.PARTOUT)THEN
+ IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+   IF(iPart.EQ.PartOut)THEN
      IPWRITE(UNIT_stdOut,*) ' minval-xi',minmax(1,:)
      IPWRITE(UNIT_stdOut,*) ' maxval-xi',minmax(2,:)
      IPWRITE(UNIT_stdout,*) ' dmax-dmin-xi ',(dmax-dmin)
@@ -2393,8 +2393,8 @@ END IF
 ! calc Smin and Smax and check boundaries
 CALL CalcSminSmax2(minmax,XiMin,XiMax,nXiClip)
 #if CODE_ANALYZE
- IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-   IF(iPart.EQ.PARTOUT)THEN
+ IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+   IF(iPart.EQ.PartOut)THEN
      IPWRITE(UNIT_stdout,*) ' XiMin,XiMax ',XiMin,XiMax,nXiClip
    END IF
  END IF
@@ -2499,8 +2499,8 @@ IF((XiMax-XiMin).GT.BezierSplitLimit)THEN ! two possible intersections: split th
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-        IF(iPart.EQ.PARTOUT)THEN
+      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+        IF(iPart.EQ.PartOut)THEN
           IPWRITE(UNIT_stdout,*) ' --------------------------------------- '
           IPWRITE(UNIT_stdout,*) ' split xi-upper '
           IPWRITE(UNIT_stdout,*) ' XiMin,XiMax ',XiArray(:,nXiClip)
@@ -2590,8 +2590,8 @@ IF((XiMax-XiMin).GT.BezierSplitLimit)THEN ! two possible intersections: split th
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-        IF(iPart.EQ.PARTOUT)THEN
+      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+        IF(iPart.EQ.PartOut)THEN
           IPWRITE(UNIT_stdout,*) ' --------------------------------------- '
           IPWRITE(UNIT_stdout,*) ' split xi-lower '
           IPWRITE(UNIT_stdout,*) ' XiMin,XiMax ',XiArray(:,nXiClip)
@@ -2750,8 +2750,8 @@ END DO ! l
 dmin=MINVAL(minmax(1,:))
 dmax=MAXVAL(minmax(2,:))
 #if CODE_ANALYZE
- IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-   IF(iPart.EQ.PARTOUT)THEN
+ IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+   IF(iPart.EQ.PartOut)THEN
      IPWRITE(UNIT_stdOut,*) ' minval-eta',minmax(1,:)
      IPWRITE(UNIT_stdOut,*) ' maxval-eta',minmax(2,:)
      IPWRITE(UNIT_stdout,*) ' dmax-dmin-eta ',(dmax-dmin)
@@ -2787,8 +2787,8 @@ END IF
 ! calc Smin and Smax and check boundaries
 CALL CalcSminSmax2(minmax,Etamin,Etamax,nEtaClip)
 #if CODE_ANALYZE
- IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-   IF(iPart.EQ.PARTOUT)THEN
+ IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+   IF(iPart.EQ.PartOut)THEN
      IPWRITE(UNIT_stdout,*) ' EtaMin,EtaMax ',EtaMin,EtaMax,nEtaClip
    END IF
  END IF
@@ -2889,8 +2889,8 @@ IF((EtaMax-EtaMin).GT.BezierSplitLimit)THEN ! two possible intersections: split 
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-        IF(iPart.EQ.PARTOUT)THEN
+      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+        IF(iPart.EQ.PartOut)THEN
           IPWRITE(UNIT_stdout,*) ' --------------------------------------- '
           IPWRITE(UNIT_stdout,*) ' split eta-upper '
           IPWRITE(UNIT_stdout,*) ' EtaMin,EtaMax ',EtaArray(:,nEtaClip)
@@ -2983,8 +2983,8 @@ IF((EtaMax-EtaMin).GT.BezierSplitLimit)THEN ! two possible intersections: split 
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
-      IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
-        IF(iPart.EQ.PARTOUT)THEN
+      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+        IF(iPart.EQ.PartOut)THEN
           IPWRITE(UNIT_stdout,*) ' --------------------------------------- '
           IPWRITE(UNIT_stdout,*) ' split eta-lower '
           IPWRITE(UNIT_stdout,*) ' EtaMin,EtaMax ',EtaArray(:,nEtaClip)

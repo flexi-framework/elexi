@@ -977,7 +977,7 @@ SUBROUTINE checkList(offSetElemMPI,identical,numOfCalls)
 USE MOD_LoadBalance_Vars
 USE MOD_Globals          ,ONLY: nProcessors
 #if CODE_ANALYZE
-USE MOD_Globals          ,ONLY: mpiroot
+USE MOD_Globals          ,ONLY: MPIRoot,UNIT_stdOut
 #endif /* CODE_ANALYZE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

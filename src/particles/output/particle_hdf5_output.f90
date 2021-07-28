@@ -60,6 +60,7 @@ SUBROUTINE DistributedWriteArray(FileName,DataSetName,rank,nValGlobal,nVal,offse
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Output_Vars,       ONLY: WriteStateFiles
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -78,6 +79,7 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray( PRODUCT(nVal))
 INTEGER                        :: color,OutPutCOMM,nOutPutProcs
 LOGICAL                        :: DataOnProc,DoNotSplit,OutputCollective,OutputSingle
 !===================================================================================================================================
+IF (.NOT.WriteStateFiles) RETURN
 
 ! 1: check if every proc of given communicator has data
 DataOnProc = MERGE(.TRUE.,.FALSE.,nVal(offSetDim).GT.0)

@@ -1035,7 +1035,7 @@ USE MOD_Globals
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output             ,ONLY: WriteHeader,WriteAttribute
 USE MOD_HDF5_WriteArray         ,ONLY: WriteArray
-USE MOD_Output_Vars             ,ONLY: ProjectName
+USE MOD_Output_Vars             ,ONLY: ProjectName,WriteStateFiles
 USE MOD_Particle_Vars           ,ONLY: nSpecies
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfBC,SurfBCName
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfSample,offSetSurfSide
@@ -1069,6 +1069,7 @@ INTEGER                             :: OutputVarCount
 REAL,ALLOCATABLE                    :: OutputArray(:,:,:,:)
 REAL                                :: startT,endT
 !===================================================================================================================================
+IF (.NOT.WriteStateFiles) RETURN
 
 #if USE_MPI
 ! Return if not a sampling leader

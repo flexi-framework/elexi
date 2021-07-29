@@ -276,7 +276,7 @@ SDEALLOCATE(CountCircInflowType)
 IF (DoRestart) THEN
   DO iSpec = 1,nSpecies
     DO iSF = 1,Species(iSpec)%NumberOfInits
-      Species(iSpec)%Init(iSF)%InsertedParticle = INT(Species(iSpec)%Init(iSF)%ParticleEmission * RestartTime,8)
+      Species(iSpec)%Init(iSF)%InsertedParticle = INT(Species(iSpec)%Init(iSF)%ParticleEmission * RestartTime / Species(iSpec)%Init(iSF)%ParticleEmissionTime,8)
     END DO
 
     DO iSF = 1, Species(iSpec)%nSurfacefluxBCs

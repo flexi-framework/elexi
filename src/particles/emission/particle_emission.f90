@@ -240,9 +240,9 @@ DO i = 1,nSpecies
             ! Attention: FLEXI uses a different definition for elapsed time due to restart capability!
             IF ((RestartTime.GT.0) .AND. (.NOT.PartDataExists)) THEN
               ! total number of emitted particles over simulation
-              PartIns = Species(i)%Init(iInit)%ParticleEmission * (t-RestartTime + dt*RKdtFracTotal) * 1/Species(i)%Init(iInit)%ParticleEmissionTime
+              PartIns = Species(i)%Init(iInit)%ParticleEmission * (t-RestartTime + dt*RKdtFracTotal) / Species(i)%Init(iInit)%ParticleEmissionTime
             ELSE
-              PartIns = Species(i)%Init(iInit)%ParticleEmission * (t             + dt*RKdtFracTotal) * 1/Species(i)%Init(iInit)%ParticleEmissionTime
+              PartIns = Species(i)%Init(iInit)%ParticleEmission * (t             + dt*RKdtFracTotal) / Species(i)%Init(iInit)%ParticleEmissionTime
             END IF
 
             !-- random-round the inserted_Particle_time for preventing periodicity

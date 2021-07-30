@@ -1,5 +1,5 @@
 # =========================================================================
-# Detect machine environements
+# Detect machine environments
 # =========================================================================
 
 CMAKE_HOST_SYSTEM_INFORMATION(RESULT CMAKE_FQDN_HOST QUERY FQDN)

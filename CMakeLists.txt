@@ -127,7 +127,7 @@ FOREACH (_var IN LISTS flexiVars)
 ENDFOREACH()
 
 # =========================================================================
-# Generall options neede e.g. for dependend options
+# General options needed e.g. for dependent options
 # =========================================================================
 OPTION(POSTI "Build POSTI toolset" ON)
 

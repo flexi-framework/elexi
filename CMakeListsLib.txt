@@ -147,7 +147,7 @@ ELSE()
   # Set HDF5 build dir
   SET(LIBS_HDF5_DIR  ${LIBS_EXTERNAL_LIB_DIR}/HDF5/build)
 
-  # Check if HDF5 was already build
+  # Check if HDF5 was already built
   IF (NOT EXISTS "${LIBS_HDF5_DIR}/lib/libhdf5.a")
     # Set if HDF5 should be built in parallel
     IF(LIBS_USE_MPI)

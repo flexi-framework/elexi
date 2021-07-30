@@ -173,7 +173,7 @@ ENDIF()
 # =========================================================================
 # Profile-Guided Optimization (PGO)
 # =========================================================================
-CMAKE_DEPENDENT_OPTION(USE_PGO "Enable performance-guided optimization (Only GNU Compiler supported)" OFF
+CMAKE_DEPENDENT_OPTION(USE_PGO "Enable profile-guided optimization (Only GNU Compiler supported)" OFF
                                "FLEXI_PERFORMANCE" OFF)
 IF (USE_PGO)
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")

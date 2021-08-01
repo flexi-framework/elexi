@@ -184,6 +184,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
 USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage,TimeDiscType
+USE MOD_TimeDisc_Vars       ,ONLY: doFinalize,writeCounter
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData
 #if !USE_EXTEND_RHS
 USE MOD_Analyze_Vars        ,ONLY: doAnalyzeEquation
@@ -242,8 +243,8 @@ REAL                         :: dt_MinOld,dtAnalyze,dtEnd,tStart
 INTEGER(KIND=8)              :: iter,iter_loc
 REAL                         :: CalcTimeStart,CalcTimeEnd
 INTEGER                      :: TimeArray(8)              !< Array for system time
-INTEGER                      :: errType,nCalcTimestep,writeCounter,writeTCounter
-LOGICAL                      :: doAnalyze,doFinalize
+INTEGER                      :: errType,nCalcTimestep,writeTCounter
+LOGICAL                      :: doAnalyze
 #if USE_LOADBALANCE
 INTEGER                      :: tmp_LoadBalanceSample    !> loadbalance sample saved until initial autorestart ist finished
 LOGICAL                      :: tmp_DoLoadBalance        !> loadbalance flag saved until initial autorestart ist finished

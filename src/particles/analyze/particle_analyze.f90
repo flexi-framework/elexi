@@ -217,6 +217,7 @@ SUBROUTINE ParticleAnalyze(t    &
 !==================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Analyze_Vars              ,ONLY: nWriteData
 USE MOD_Particle_Analyze_Tools    ,ONLY: ParticleRecord
 USE MOD_Particle_Analyze_Vars     ,ONLY: DoAnalyze,DoParticleAnalyze,CalcEkin
 USE MOD_Particle_Analyze_Vars     ,ONLY: RecordPart
@@ -224,6 +225,7 @@ USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Analyze ,ONLY: CalcSurfaceValues,WriteBoundaryParticleToHDF5
 USE MOD_Particle_Output           ,ONLY: WriteParticleAnalyze,WriteInfoStdOut
+USE MOD_TimeDisc_Vars             ,ONLY: doFinalize,writeCounter
 USE MOD_Particle_Tracking_Vars    ,ONLY: CountNbOfLostParts
 #if USE_LOADBALANCE
 USE MOD_LoadDistribution          ,ONLY: WriteElemTimeStatistics
@@ -405,7 +407,6 @@ REAL,INTENT(IN)                :: time
 INTEGER            :: i,iunit,iPartState
 CHARACTER(LEN=60)  :: TrackingFilename
 LOGICAL            :: fexist
-REAL               :: diffPos,diffVelo
 !===================================================================================================================================
 
 iunit=GETFREEUNIT()

@@ -57,7 +57,10 @@ LOGICAL          :: fullBoundaryOrder=.FALSE.     !< temporal order degradation,
                                                   !< time-dependant BCs, can easily be fixed when
                                                   !< using 3 stage 3rd order RK schemes (no others!)
 LOGICAL          :: ViscousTimeStep=.FALSE.       !< Info wether we have convection of viscous dominated timestep
-LOGICAL          :: TimediscInitIsDone=.FALSE.    !< Indicate wheter InitTimeDisc routine has been run
+LOGICAL          :: TimediscInitIsDone=.FALSE.    !< Indicate whether InitTimeDisc routine has been run
+
+LOGICAL          :: doFinalize                    !< Indicate whether the current iter is the final one
+INTEGER          :: writeCounter                  !< Count the number of analyze steps until nWriteData
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! TIME INTEGRATION: RUNGE_KUTTA COEFFICIENTS AND STABILITY NUMBERS

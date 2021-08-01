@@ -250,6 +250,22 @@ IF (doParticleAnalyze) THEN
   SWRITE(UNIT_StdOut,'(132("-"))')
 END IF
 
+! Write information to console output
+IF (CountNbOfLostParts) THEN
+  CALL WriteInfoStdOut()
+END IF
+
+IF (CalcEkin) THEN
+  CALL CalcKineticEnergy()
+END IF
+
+IF (DoAnalyze) THEN
+  CALL WriteParticleAnalyze()
+END IF
+
+! Keep DG and particle output synchronous for nWriteData > 1
+IF ((writeCounter.NE.nWriteData) .AND. .NOT.doFinalize) RETURN
+
 ! Calculate cumulative particle surface impact sampling data
 IF (WriteMacroSurfaceValues) THEN
   CALL CalcSurfaceValues
@@ -263,19 +279,6 @@ END IF
 ! Write individual particle record plane data
 IF (RecordPart.GT.0) THEN
   CALL ParticleRecord(t,writeToBinary=.TRUE.)
-END IF
-
-! Write information to console output
-IF (CountNbOfLostParts) THEN
-  CALL WriteInfoStdOut()
-END IF
-
-IF (CalcEkin) THEN
-  CALL CalcKineticEnergy()
-END IF
-
-IF (DoAnalyze) THEN
-  CALL WriteParticleAnalyze()
 END IF
 
 END SUBROUTINE ParticleAnalyze

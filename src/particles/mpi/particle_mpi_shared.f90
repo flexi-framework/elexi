@@ -815,6 +815,8 @@ END SUBROUTINE FinalizeMPIShared
 FUNCTION MPI_SIZE(nVal,VarSize)
 ! MODULES
 USE MOD_Globals
+USE MOD_Particle_Memory              ,ONLY: ProcessMemUsage
+USE MOD_Particle_MPI_Shared_Vars     ,ONLY: myComputeNodeRank
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -826,12 +828,26 @@ INTEGER,INTENT(IN)         :: VarSize
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPI_SIZE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL                                      :: memory(3)
+INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
 !===================================================================================================================================
 
 IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).LT.INT(HUGE(INT(1,KIND=MPI_ADDRESS_KIND)),KIND=8)) THEN
+  ! Compute node root also checks available memory
+  IF (myComputeNodeRank.EQ.0) THEN
+    ! Find memory usage and requirements
+    CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+
+    ! Compare requested size against available memory
+    IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).GT.memory(2)*kByte) &
+      CALL ABORT(__STAMP__,'Trying to allocate shared array larger than available memory!')
+  END IF
+
   MPI_SIZE = INT(nVal,KIND=MPI_ADDRESS_KIND) * INT(VarSize,KIND=MPI_ADDRESS_KIND)
 ELSE
   CALL ABORT(__STAMP__,'MPI_SIZE for shared array too large!')
+  ! Avoid compiler warnings
+  MPI_SIZE = -1
 END IF
 
 END FUNCTION MPI_SIZE

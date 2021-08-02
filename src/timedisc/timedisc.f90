@@ -451,6 +451,7 @@ DO
 #if USE_LOADBALANCE
   IF ((dtAnalyze.LE.LoadBalanceSample*dt                                      & ! all iterations in LoadbalanceSample interval
        .OR. (ALMOSTEQUALRELATIVE(dtAnalyze,LoadBalanceSample*dt,1e-5)))       & ! make sure to get the first iteration in interval
+       .AND. (writeCounter+1.EQ.nWriteData)                                   & ! next timestep will perform a write-out
        .AND. DoLoadBalance) THEN
     PerformLoadBalance = .TRUE.                                                 ! make sure Loadbalancing is enabled
   END IF

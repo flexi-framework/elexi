@@ -303,7 +303,7 @@ REAL                     :: DuDt(1:3)                   ! viscous and pressure f
 #if USE_BASSETFORCE
 REAL,PARAMETER           :: s32=3./2.
 REAL                     :: RKdtFrac
-INTEGER                  :: k,kIndex
+INTEGER                  :: k,kIndex,nIndex
 REAL                     :: dufdt(1:3)
 #endif /* USE_BASSETFORCE */
 !===================================================================================================================================
@@ -432,8 +432,9 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   durdt(kIndex-2:kIndex,PartID) = dufdt(:)
 
   Fbm = s43 * durdt(kIndex-2:kIndex,PartID) + durdt(1:3,PartID) * (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
-  DO k=3,kIndex-3,3
-    Fbm = Fbm + durdt(kIndex-2-k:kIndex-k,PartID) * ((k+s43)/((k+1)*SQRT(REAL(k+1))+(k+s32)*SQRT(REAL(k)))+(k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k))))
+  nIndex = INT(MIN(N_Basset, bIter))
+  DO k=1,nIndex-1
+    Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * ((k+s43)/((k+1)*SQRT(REAL(k+1))+(k+s32)*SQRT(REAL(k)))+(k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k))))
   END DO
 
   globalfactor     = globalfactor + s43 * prefactor * FieldAtParticle(DENS)

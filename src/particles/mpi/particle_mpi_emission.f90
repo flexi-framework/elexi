@@ -126,12 +126,15 @@ DO iSpec = 1,nSpecies
         RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE ('plane')
-        lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC
-        lineVector(2) = Species(iSpec)%Init(iInit)%BaseVector2IC
+        ASSOCIATE(BaseVector1 => Species(iSpec)%Init(iInit)%BaseVector1IC, &
+                  BaseVector2 => Species(iSpec)%Init(iInit)%BaseVector2IC)
+
         xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC
-        xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+lineVector(1)
-        xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+lineVector(2)
-        xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+lineVector(1)+lineVector(2)
+        xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+BaseVector1
+        xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+BaseVector2
+        xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+BaseVector1+BaseVector2
+
+        END ASSOCIATE
         RegionOnProc = BoxInProc(xCoords(1:3,1:4),4)
 
       CASE('disc')

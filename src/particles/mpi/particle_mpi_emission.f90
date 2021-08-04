@@ -126,12 +126,12 @@ DO iSpec = 1,nSpecies
         RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE ('plane')
-        xlen = Species(iSpec)%Init(iInit)%BaseVector1IC
-        ylen = Species(iSpec)%Init(iInit)%BaseVector2IC
-        xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
-        xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+xlen
-        xCoords(1:3,3)=Species(iSpec)%Init(iInit)%BasePointIC     +ylen
-        xCoords(1:3,4)=Species(iSpec)%Init(iInit)%BasePointIC+xlen+ylen
+        lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC
+        lineVector(2) = Species(iSpec)%Init(iInit)%BaseVector2IC
+        xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC
+        xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+lineVector(1)
+        xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+lineVector(2)
+        xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+lineVector(1)+lineVector(2)
         RegionOnProc = BoxInProc(xCoords(1:3,1:4),4)
 
       CASE('disc')

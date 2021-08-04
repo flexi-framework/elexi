@@ -254,24 +254,26 @@ CALL prms%CreateStringOption(       'Part-Species[$]-SpaceIC'   , 'Specifying Ke
                                                                   ' - point\n'                                                   //&
                                                                   ' - line_with_equidistant_distribution\n'                      //&
                                                                   ' - line\n'                                                    //&
-                                                                  ' - cross\n'                                                   //&
+                                                                  ' - Gaussian\n'                                                //&
                                                                   ' - plane\n'                                                   //&
                                                                   ' - disc\n'                                                    //&
+                                                                  ' - cross\n'                                                   //&
+                                                                  ' - circle\n'                                                  //&
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
                                                                   ' - cylinder\n'                                                //&
-                                                                  ' - Gaussian\n'                                                //&
+                                                                  ' - sphere\n'                                                  //&
                                                                   ' - load_from_file\n'                                            &
                                                                 , 'cuboid'  , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-BasePointIC','Base point for IC cuboid and IC sphere'                         &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-BasePointIC','Base point for IC'                                              &
                                                                  , '0. , 0. , 0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-BaseVector1IC','First base vector for IC cuboid'                              &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-BaseVector1IC','First base vector for IC'                                     &
                                                                  , '1. , 0. , 0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-BaseVector2IC', 'Second base vector for IC cuboid'                            &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-BaseVector2IC', 'Second base vector for IC'                                   &
                                                                  , '0. , 1. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-BaseVariance','Variance for Gaussian distribtution'                           &
                                                                  ,'1.'           , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-NormalIC'   , 'Normal orientation of circle.'                                 &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-NormalIC'   , 'Normal orientation of IC.'                                     &
                                                                  , '0. , 0. , 1.', numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcHeightFromDt', 'Calculated cuboid/cylinder height from v and dt'          &
                                                                 , '.FALSE.'  , numberedmulti=.TRUE.)
@@ -280,7 +282,7 @@ CALL prms%CreateRealOption(         'Part-Species[$]-CuboidHeightIC'  , 'Height 
 CALL prms%CreateRealOption(         'Part-Species[$]-CylinderHeightIC', 'Third measure of cylinder  (set 0 for flat rectangle),' //&
                                                                   ' negative value = opposite direction'                           &
                                                                 , '1.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-RadiusIC'  , 'Radius for IC circle'                                           &
+CALL prms%CreateRealOption(         'Part-Species[$]-RadiusIC'  , 'Radius for IC'                                                  &
                                                                 , '1.'       , numberedmulti=.TRUE.)
 
 ! Exclude regions
@@ -331,8 +333,10 @@ CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Speci
                                                                   ' - point\n'                                                   //&
                                                                   ' - line_with_equidistant_distribution\n'                      //&
                                                                   ' - line\n'                                                    //&
-                                                                  ' - Gaussian'                                                  //&
+                                                                  ' - Gaussian\n'                                                //&
+                                                                  ' - plane\n'                                                   //&
                                                                   ' - disc\n'                                                    //&
+                                                                  ' - cross\n'                                                   //&
                                                                   ' - circle\n'                                                  //&
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
@@ -340,15 +344,15 @@ CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Speci
                                                                   ' - sphere\n'                                                  //&
                                                                   ' - load_from_file\n'                                            &
                                                                 , 'cuboid'  , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BasePointIC','Base point for IC cuboid and IC sphere'                 &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BasePointIC','Base point for IC'                                      &
                                                                  , '0. , 0. , 0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BaseVector1IC','First base vector for IC cuboid'                      &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BaseVector1IC','First base vector for IC'                             &
                                                                  , '1. , 0. , 0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BaseVector2IC', 'Second base vector for IC cuboid'                    &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BaseVector2IC', 'Second base vector for IC'                           &
                                                                  , '0. , 1. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-BaseVariance','Variance for Gaussian distribtution'                   &
                                                                  ,'1.'           , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-NormalIC'   , 'Normal orientation of circle.'                         &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-NormalIC'   , 'Normal orientation of IC.'                             &
                                                                  , '0. , 0. , 1.', numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-CalcHeightFromDt', 'Calculated cuboid/cylinder height from v and dt'  &
                                                                 , '.FALSE.'  , numberedmulti=.TRUE.)
@@ -357,7 +361,7 @@ CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-CuboidHeightIC'  , 
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-CylinderHeightIC', 'Third measure of cylinder  (set 0 for flat rectangle),' //&
                                                                   ' negative value = opposite direction'                           &
                                                                 , '1.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-RadiusIC'  , 'Radius for IC circle'                                   &
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-RadiusIC'  , 'Radius for IC'                                          &
                                                                 , '1.'       , numberedmulti=.TRUE.)
 
 ! Exclude regions

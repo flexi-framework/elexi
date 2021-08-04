@@ -240,7 +240,7 @@ DO i = 1,nSpecies
         IF (.NOT.DoTimeDepInflow) THEN
           IF (.NOT.DoPoissonRounding) THEN
             ! requested particles during time-slab
-            PartIns = Species(i)%Init(iInit)%ParticleEmission * dt*RKdtFrac /Species(i)%Init(iInit)%ParticleEmissionTime
+            PartIns = Species(i)%Init(iInit)%ParticleEmission * dt*RKdtFrac / Species(i)%Init(iInit)%ParticleEmissionTime
             ! integer number of particles to be inserted
             inserted_Particle_iter = INT(PartIns,8)
 

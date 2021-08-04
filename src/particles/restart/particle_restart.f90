@@ -115,7 +115,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
   ! Read the emission time
   CALL DatasetExists(File_ID,'EmissionTime',EmissionTimeExists,attrib=.TRUE.)
-  IF (EmissionTimeExists) THEN
+  ! Reset EmissionTime for ResetTime
+  IF (EmissionTimeExists .AND. RestartTime.GT.0) THEN
     CALL ReadAttribute(File_ID,'EmissionTime',1,RealScalar=EmissionTime)
     SWRITE(UNIT_stdOut,'(A,F16.6)')' | Resuming particle emission from time    ',EmissionTime
   ELSE

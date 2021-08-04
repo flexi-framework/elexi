@@ -78,20 +78,20 @@ INTEGER                         :: color
 !===================================================================================================================================
 
 ! get number of total init regions
-nInitRegions=0
-DO iSpec=1,nSpecies
-  nInitRegions=nInitRegions+Species(iSpec)%NumberOfInits+(1-Species(iSpec)%StartnumberOfInits)
+nInitRegions = 0
+DO iSpec = 1,nSpecies
+  nInitRegions = nInitRegions + Species(iSpec)%NumberOfInits + (1-Species(iSpec)%StartnumberOfInits)
 END DO ! iSpec
-IF(nInitRegions.EQ.0) RETURN
+IF (nInitRegions.EQ.0) RETURN
 
 ! allocate communicators
 ALLOCATE( PartMPI%InitGroup(1:nInitRegions))
 
-nInitRegions=0
-DO iSpec=1,nSpecies
-  RegionOnProc=.FALSE.
-  DO iInit=Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
-    nInitRegions=nInitRegions+1
+nInitRegions = 0
+DO iSpec = 1,nSpecies
+  RegionOnProc = .FALSE.
+  DO iInit = Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
+    nInitRegions = nInitRegions+1
     SELECT CASE(TRIM(Species(iSpec)%Init(iInit)%SpaceIC))
       CASE ('point')
          xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
@@ -126,10 +126,13 @@ DO iSpec=1,nSpecies
         RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE ('plane')
+        xlen = Species(iSpec)%Init(iInit)%BaseVector1IC
+        ylen = Species(iSpec)%Init(iInit)%BaseVector2IC
         xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
-        xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC
-        xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector2IC
-        RegionOnProc = BoxInProc(xCoords(1:3,1:2),2)
+        xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+xlen
+        xCoords(1:3,3)=Species(iSpec)%Init(iInit)%BasePointIC     +ylen
+        xCoords(1:3,4)=Species(iSpec)%Init(iInit)%BasePointIC+xlen+ylen
+        RegionOnProc = BoxInProc(xCoords(1:3,1:4),4)
 
       CASE('disc')
         xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
@@ -210,7 +213,7 @@ DO iSpec=1,nSpecies
         DO iNode=1,4
           xCoords(1:3,iNode+4) = xCoords(1:3,iNode)+lineVector*height
         END DO ! iNode
-        RegionOnProc = BoxInProc(xCoords,8)
+        RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE('cylinder')
         lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(3) - &
@@ -242,7 +245,7 @@ DO iSpec=1,nSpecies
           xCoords(1:3,iNode+4)=xCoords(1:3,iNode)+lineVector*height
         END DO ! iNode
 
-        RegionOnProc = BoxInProc(xCoords,8)
+        RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE('cuboid_equal')
          xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &
@@ -272,7 +275,7 @@ DO iSpec=1,nSpecies
          xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.,0./)
          xCoords(1:3,7) = xCoords(1:3,5) + (/0.,ylen,0./)
          xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
-         RegionOnProc = BoxInProc(xCoords,8)
+         RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE ('cuboid_with_equidistant_distribution')
          xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &

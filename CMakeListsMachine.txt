@@ -101,6 +101,7 @@ ELSE()
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
     SET(FLEXI_INSTRUCTION "-xHost")
   ENDIF()
+  MESSAGE(STATUS "Compiling on a generic machine using ${FLEXI_INSTRUCTION}")
 ENDIF()
 
 
@@ -109,31 +110,30 @@ ENDIF()
 # > This option must be called before ENABLE_LANGUAGE, thus is only available
 # > through -DMACHINE_USE_SCOREP=ON
 # =========================================================================
-IF (MACHINE_USE_SCOREP)
-  FIND_PROGRAM(SCOREP_C_COMPILER scorep-${CMAKE_C_COMPILER})
-  MARK_AS_ADVANCED(FORCE SCOREP_C_COMPILER )
-  IF (SCOREP_C_COMPILER MATCHES "NOTFOUND")
-    MESSAGE (FATAL_ERROR "Score-P not available in PATH. Did you load the module?")
-  ENDIF()
-
-  # Set default build type to profile
-  IF (NOT CMAKE_BUILD_TYPE)
-    SET (CMAKE_BUILD_TYPE Profile CACHE STRING "Choose the type of build, options are: Debug Release Profile Sanitize." FORCE)
-  ENDIF (NOT CMAKE_BUILD_TYPE)
-
-  SET(CMAKE_C_COMPILER       "scorep-${CMAKE_C_COMPILER}")
-  SET(CMAKE_CXX_COMPILER     "scorep-${CMAKE_CXX_COMPILER}")
-  SET(CMAKE_Fortran_COMPILER "scorep-${CMAKE_Fortran_COMPILER}")
-  IF (CMAKE_BUILD_TYPE MATCHES "Release")
-    MESSAGE (WARNING "Score-P requires debug compile flags which are not available with BUILD_TYPE='Release'")
-  ENDIF()
-ENDIF()
+# IF (MACHINE_USE_SCOREP)
+#   FIND_PROGRAM(SCOREP_C_COMPILER scorep-${CMAKE_C_COMPILER})
+#   MARK_AS_ADVANCED(FORCE SCOREP_C_COMPILER )
+#   IF (SCOREP_C_COMPILER MATCHES "NOTFOUND")
+#     MESSAGE (FATAL_ERROR "Score-P not available in PATH. Did you load the module?")
+#   ENDIF()
+# 
+#   # Set default build type to profile
+#   IF (NOT CMAKE_BUILD_TYPE)
+#     SET (CMAKE_BUILD_TYPE Profile CACHE STRING "Choose the type of build, options are: Debug Release Profile Sanitize." FORCE)
+#   ENDIF (NOT CMAKE_BUILD_TYPE)
+# 
+#   SET(CMAKE_C_COMPILER       "scorep-${CMAKE_C_COMPILER}")
+# SET(CMAKE_CXX_COMPILER     "scorep-${CMAKE_CXX_COMPILER}")
+#   SET(CMAKE_Fortran_COMPILER "scorep-${CMAKE_Fortran_COMPILER}")
+#   IF (CMAKE_BUILD_TYPE MATCHES "Release")
+#     MESSAGE (WARNING "Score-P requires debug compile flags which are not available with BUILD_TYPE='Release'")
+#   ENDIF()
+# ENDIF()
 
 
 # =========================================================================
 # COMPILER FLAGS
 # =========================================================================
-ENABLE_LANGUAGE(Fortran C)
 
 # FFLAGS depend on the compiler
 GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)

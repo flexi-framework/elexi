@@ -101,6 +101,7 @@ ELSE()
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
     SET(FLEXI_INSTRUCTION "-xHost")
   ENDIF()
+  MESSAGE(STATUS "Compiling on a generic machine using ${FLEXI_INSTRUCTION}")
 ENDIF()
 
 
@@ -133,8 +134,6 @@ ENDIF()
 # =========================================================================
 # COMPILER FLAGS
 # =========================================================================
-ENABLE_LANGUAGE(Fortran C)
-
 # FFLAGS depend on the compiler
 GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 

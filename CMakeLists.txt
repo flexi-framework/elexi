@@ -15,7 +15,7 @@ ENDIF()
 # =========================================================================
 # Project definition
 # =========================================================================
-PROJECT(Flexi Fortran C CXX)
+# PROJECT(Flexi Fortran C CXX)
 
 # Folder for custom CMake source files
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -32,6 +32,9 @@ OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
 # Machine environment
 # =========================================================================
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMakeListsMachine.txt)
+
+# Hawk requires this after specifiying CMAKE_COMPILER
+PROJECT(Flexi)
 
 # =========================================================================
 # Store the current commit information

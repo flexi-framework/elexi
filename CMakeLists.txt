@@ -91,19 +91,30 @@ ELSE()
   IF (HASIPO)
     # enable IPO globally (IPO branding: Intel => IPO, GNU => LTO, PGI => IPA)
     IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-      # Do not use the standard CMake LTO option for GNU (-flto -fno-fat-lto-objects), as it does not allow speed-up during linking
-      SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
-      # Static libraries require either fat LTO objects (increases compilation time) or the use of linker plugins (per default enabled); the jobserver option reduces linking time
-      # More information at: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#Optimize-Options
-      SET(CMAKE_Fortran_FLAGS  "${CMAKE_Fortran_FLAGS} -flto=jobserver -fuse-linker-plugin")
-      # Use the GCC wrapper for the complete toolchain to provide the path to the linker plugin (this might be the problem with using the CMAKE IPO)
-      # SET(CMAKE_AR  "gcc-ar")
-      # set(CMAKE_Fortran_COMPILER_AR "${CMAKE_AR}")
-      # set(CMAKE_Fortran_COMPILER_RANLIB "${CMAKE_RANLIB}")
-      # SET(CMAKE_Fortran_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
-      # SET(CMAKE_Fortran_ARCHIVE_FINISH TRUE)
-      # SET(CMAKE_NM  "gcc-nm")
-      # SET(CMAKE_RANLIB  "gcc-ranlib")
+      # Check existence of the gold linker
+      EXECUTE_PROCESS(COMMAND ld.gold --version COMMAND grep "^GNU gold" COMMAND sed "s/^.* //g" OUTPUT_VARIABLE GNU_GOLD_VERSION)
+      IF (DEFINED GNU_GOLD_VERSION  AND NOT "${GNU_GOLD_VERSION}" STREQUAL "")
+        STRING(STRIP "${GNU_GOLD_VERSION}" GNU_GOLD_VERSION)
+        MESSAGE(STATUS "Setting linker to gold v${GNU_GOLD_VERSION}")
+        # Do not use the standard CMake LTO option for GNU (-flto -fno-fat-lto-objects), as it does not allow speed-up during linking
+        SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
+        # Shift responsibility of driving the final stages of compilation from collect2 to gold via the linker plugin
+        # More information at: https://gcc.gnu.org/wiki/LinkTimeOptimization
+        SET (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold")
+        # Static libraries require either fat LTO objects (increases compilation time) or the use of linker plugins (per default enabled); the jobserver option reduces linking time
+        # More information at: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#Optimize-Options
+        SET(CMAKE_Fortran_FLAGS  "${CMAKE_Fortran_FLAGS} -flto=jobserver -fuse-linker-plugin")
+        # Use the GCC wrapper for the complete toolchain to provide the path to the linker plugin (this might be the problem with using the CMAKE IPO)
+        # SET(CMAKE_AR  "gcc-ar")
+        # set(CMAKE_Fortran_COMPILER_AR "${CMAKE_AR}")
+        # set(CMAKE_Fortran_COMPILER_RANLIB "${CMAKE_RANLIB}")
+        # SET(CMAKE_Fortran_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
+        # SET(CMAKE_Fortran_ARCHIVE_FINISH TRUE)
+        # SET(CMAKE_NM  "gcc-nm")
+        # SET(CMAKE_RANLIB  "gcc-ranlib")
+      ELSE()
+        SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
+      ENDIF()
     ELSE()
       SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
     ENDIF()

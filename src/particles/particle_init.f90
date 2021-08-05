@@ -213,7 +213,9 @@ CALL prms%CreateRealOption(         'Part-Species[$]-HighVeloThreshold', 'Thresh
 CALL prms%CreateRealOption(         'Part-Species[$]-SphericityIC', 'Particle sphericity of species [$] [m]'                       &
                                                                 , '1.'       , numberedmulti=.TRUE.)
 #if USE_EXTEND_RHS
-CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcLiftForce', 'Flag to calculate the lift force'                            &
+CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcSaffmanForce', 'Flag to calculate the Saffman lift force'                 &
+                                                                , '.FALSE.' , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcMagnusForce', 'Flag to calculate the Magnus force'                        &
                                                                 , '.FALSE.' , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcVirtualMass', 'Flag to calculate the virtual mass force'                  &
                                                                 , '.FALSE.' , numberedmulti=.TRUE.)
@@ -757,21 +759,21 @@ USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 INTEGER               :: ALLOCSTAT
 !===================================================================================================================================
 ! Allocate array to hold particle properties
-ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
-         PartReflCount(       1:PDM%maxParticleNumber),    &
-         LastPartPos(     1:3,1:PDM%maxParticleNumber),    &
-         PartPosRef(      1:3,1:PDM%MaxParticleNumber),    &
-         PartSpecies(         1:PDM%maxParticleNumber),    &
+ALLOCATE(PartState(1:PP_nVarPart,1:PDM%maxParticleNumber),    &
+         PartReflCount(          1:PDM%maxParticleNumber),    &
+         LastPartPos(        1:3,1:PDM%maxParticleNumber),    &
+         PartPosRef(         1:3,1:PDM%MaxParticleNumber),    &
+         PartSpecies(            1:PDM%maxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
-         Pt(              1:3,1:PDM%maxParticleNumber),    &
-         Pt_temp(         1:6,1:PDM%maxParticleNumber),    &
+         Pt(    1:PP_nVarPartRHS,1:PDM%maxParticleNumber),    &
+         Pt_temp(  1:PP_nVarPart,1:PDM%maxParticleNumber),    &
 ! Allocate array for particle position in reference coordinates
-         PDM%ParticleInside(  1:PDM%maxParticleNumber),    &
-         PDM%nextFreePosition(1:PDM%maxParticleNumber),    &
-         PDM%IsNewPart(       1:PDM%maxParticleNumber),    &
+         PDM%ParticleInside(     1:PDM%maxParticleNumber),    &
+         PDM%nextFreePosition(   1:PDM%maxParticleNumber),    &
+         PDM%IsNewPart(          1:PDM%maxParticleNumber),    &
 ! Allocate particle-to-element-mapping (PEM) arrays
-         PEM%Element(         1:PDM%maxParticleNumber),    &
-         PEM%lastElement(     1:PDM%maxParticleNumber),    &
+         PEM%Element(            1:PDM%maxParticleNumber),    &
+         PEM%lastElement(        1:PDM%maxParticleNumber),    &
          STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
   CALL ABORT(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
@@ -953,7 +955,8 @@ DO iSpec = 1, nSpecies
     END IF
   END IF
 #if USE_EXTEND_RHS
-  Species(iSpec)%CalcLiftForce         = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcLiftForce'      ,'.FALSE.')
+  Species(iSpec)%CalcSaffmanForce      = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcSaffmanForce'   ,'.FALSE.')
+  Species(iSpec)%CalcMagnusForce       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcMagnusForce'    ,'.FALSE.')
   Species(iSpec)%CalcVirtualMass       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcVirtualMass'    ,'.FALSE.')
   Species(iSpec)%CalcUndisturbedFlow   = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcUndisturbedFlow','.FALSE.')
   Species(iSpec)%CalcBassetForce       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcBassetForce    ','.FALSE.')
@@ -1371,7 +1374,7 @@ DO iBC = 1,nBCs
       IF (PartBound%doRoughWallModelling(iBC)) THEN
         PartBound%RoughMeanIC(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughMeanIC'        ,'0.0')
         ! Variance in degree, default 20 degree
-        PartBound%RoughVarianceIC(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughVarianceIC'    ,'5.0')
+        PartBound%RoughVarianceIC(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughVarianceIC'    ,'0.035')
       END IF
       ! Non-perfect reflection
       IF (PartBound%WallModel(iBC).EQ.'coeffRes') THEN
@@ -1705,7 +1708,7 @@ INTEGER                       :: iStage_loc
 
 ! Rebuild Pt_tmp-coefficients assuming F=const. (value at wall) in previous stages
 ALLOCATE(Pa_rebuilt_coeff(1:nRKStages) &
-        ,Pa_rebuilt  (1:3,1:nRKStages) &
+        ,Pa_rebuilt  (1:PP_nVarPartRHS,1:nRKStages) &
         ,Pv_rebuilt  (1:3,1:nRKStages) &
         ,v_rebuilt   (1:3,0:nRKStages-1))
 

@@ -107,14 +107,17 @@ INTEGER,INTENT(IN),OPTIONAL      :: iStage
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLE
 INTEGER                          :: iPart
-#if USE_EXTEND_RHS
-REAL                             :: Fd(1:3)
-#endif
+#if USE_BASSETFORCE
+INTEGER                          :: increaseIter
+#endif /* USE_BASSETFORCE */
 !===================================================================================================================================
 
 ! Drag force
 Pt(:,1:PDM%ParticleVecLength)=0.
 
+#if USE_BASSETFORCE
+increaseIter = 1
+#endif /* USE_BASSETFORCE */
 DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
 !#if USE_RW
@@ -124,14 +127,15 @@ DO iPart = 1,PDM%ParticleVecLength
 !#endif
 #if USE_EXTEND_RHS
     ! Calculate the drag (and gravity) force
-    Fd(1:3)       = ParticlePush(iPart,FieldAtParticle(PRIM,iPart))
+    Pt(1:3,iPart) = ParticlePush(iPart,FieldAtParticle(PRIM,iPart))
     ! Calculate other RHS forces and add all forces to compute the particle push
-    Pt(1:3,iPart) = ParticlePushExtend(iPart,FieldAtParticle(PRIM          ,iPart)    ,&
-                                             GradAtParticle (1:RHS_GRAD,1:3,iPart),Fd  &
+    CALL ParticlePushExtend(iPart,FieldAtParticle(PRIM,iPart)                                     ,&
+                                  GradAtParticle (1:RHS_GRAD,1:3,iPart),Pt(1:PP_nVarPartRHS,iPart) &
 #if USE_BASSETFORCE
-                                      ,dt,iStage)
+                                  ,dt,increaseIter,iStage)
+    increaseIter = 0
 #else
-                                      )
+                                  )
 #endif /* USE_BASSETFORCE */
 #else
     ! Calculate the drag (and gravity) force
@@ -165,7 +169,7 @@ REAL                :: ParticlePush(1:3)           ! The stamp
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: Fdm(1:3)
-REAL                :: Rep                         ! Reynolds and Mach number of particle
+REAL                :: Rep                         ! Particle Reynolds number
 !REAL                :: velosqp                    ! v^2 particle
 !REAL                :: velosqf                    ! v^2 fluid
 REAL                :: udiff(3)
@@ -207,9 +211,9 @@ Fdm(3)      = 0.
 
 CASE(RHS_INERTIA)
 !===================================================================================================================================
-! Calculation according to Maxey and Riley
+! Calculation according to Maxey and Riley (1983)
 !===================================================================================================================================
-IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Tracking of intertial particles requires mu to be set!')
+IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Tracking of inertial particles requires mu to be set!')
 
 ! Assume spherical particles for now
 IF(ALLOCATED(TurbPartState)) THEN
@@ -238,14 +242,45 @@ CASE DEFAULT
 
 END SELECT
 
-ParticlePush = Fdm
+ParticlePush(1:3) = Fdm
 
 END FUNCTION ParticlePush
 
+
+#if PP_nVarPartRHS == 6
+FUNCTION ParticlePushRot(PartID,FieldAtParticle,Omega,Rew)
+!===================================================================================================================================
+! Push due to Stoke's drag and source terms (gravity)
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Globals
+USE MOD_Particle_Vars,     ONLY : Species, PartSpecies
+USE MOD_Viscosity
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)  :: PartID
+REAL,INTENT(IN)     :: FieldAtParticle(PRIM)
+REAL,INTENT(IN)     :: Omega(1:3),Rew
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                :: ParticlePushRot(1:3)        ! The stamp
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                :: Cw        ! angular relative fluid-particle velocity
+!===================================================================================================================================
+IF(ALL(Omega.EQ.0)) RETURN
+Cw = 6.45/SQRT(Rew) + 32.1/SQRT(Rew)
+ParticlePushRot(1:3) = FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC * Cw * 15/16 * 1./PI * Omega * VECNORM(Omega)
+END FUNCTION ParticlePushRot
+#endif
+
+
 #if USE_EXTEND_RHS
-FUNCTION ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,Fdm&
+SUBROUTINE ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,Pt_in&
 #if USE_BASSETFORCE
-  ,dt,iStage)
+  ,dt,increaseIter,iStage)
 #else
   )
 #endif
@@ -254,6 +289,7 @@ FUNCTION ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,Fdm&
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Globals
+USE MOD_Mathtools,              ONLY: CROSS
 USE MOD_Particle_Vars,          ONLY: Species, PartSpecies
 USE MOD_Particle_Vars,          ONLY: PartState, TurbPartState
 #if ANALYZE_RHS
@@ -262,9 +298,10 @@ USE MOD_TimeDisc_Vars,          ONLY: t
 USE MOD_Output,                 ONLY: OutputToFile
 #endif /* ANALYZE_RHS */
 USE MOD_PreProc,                ONLY: PP_pi
-USE MOD_Equation_Vars,          ONLY: s43
 USE MOD_Viscosity
+USE MOD_Lifting_BR1_gen,        ONLY: Lifting_BR1_gen
 #if USE_BASSETFORCE
+USE MOD_Equation_Vars,          ONLY: s43
 USE MOD_Particle_Vars,          ONLY: durdt, N_Basset, bIter
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
 #endif /* USE_BASSETFORCE */
@@ -275,25 +312,25 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)          :: PartID
 REAL,INTENT(IN)             :: FieldAtParticle(PRIM)
 REAL,INTENT(IN)             :: GradAtParticle(1:RHS_GRAD,1:3)
-REAL,INTENT(IN)             :: Fdm(1:3)
+REAL,INTENT(INOUT)          :: Pt_in(1:PP_nVarPartRHS)
 #if USE_BASSETFORCE
 REAL,INTENT(IN)             :: dt
+INTEGER,INTENT(IN)          :: increaseIter
 INTEGER,INTENT(IN),OPTIONAL :: iStage
 #endif /* USE_BASSETFORCE */
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL                     :: ParticlePushExtend(1:3)     ! The stamp
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                     :: Pt(1:3)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
-REAL                     :: prefactor,globalfactor                   ! factor divided by the particle mass
-REAL                     :: Flm(1:3)                    ! lift force divided by the particle mass
+REAL                     :: globalfactor                ! factor divided by the particle mass
 #if USE_LIFTFORCE
-REAL                     :: rotu(3), rotudiff(3)        ! curl product of velocity and velocity difference
 REAL                     :: dotp                        ! dot_product
 #endif /* USE_LIFTFORCE */
+REAL                     :: Flm(1:3)                    ! lift force divided by the particle mass
+REAL                     :: Fmm(1:3)                    ! Magnus force
 REAL                     :: Fum(1:3)
 REAL                     :: Fvm(1:3)
 REAL                     :: Fbm(1:3)                    ! Basset force
@@ -306,11 +343,17 @@ REAL                     :: RKdtFrac
 INTEGER                  :: k,kIndex,nIndex
 REAL                     :: dufdt(1:3)
 #endif /* USE_BASSETFORCE */
+#if PP_nVarPartRHS == 6
+REAL                     :: Omega(3),Rew,Rep,C_M
+#endif
+REAL                     :: prefactor                   ! factor divided by the particle mass
+#if USE_LIFTFORCE || PP_nVarPartRHS == 6
+REAL                     :: rotu(3),rotudiff(3)         ! curl product of the velocity and the velocity difference
+#endif
 !===================================================================================================================================
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
   CASE(RHS_NONE,RHS_CONVERGENCE,RHS_TRACER)
-    ParticlePushExtend = Fdm
     RETURN
 END SELECT
 
@@ -325,7 +368,7 @@ ELSE
 END IF
 
 Pt(1:3) = 0.
-Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.
+Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.; Fmm=0.
 ! factor before left hand side
 globalfactor = 1.
 
@@ -335,7 +378,7 @@ globalfactor = 1.
 ! pp. 385–400, 1965. 10.1017/S0022112065000824.
 !===================================================================================================================================
 #if USE_LIFTFORCE
-IF (Species(PartSpecies(PartID))%CalcLiftForce) THEN
+IF (Species(PartSpecies(PartID))%CalcSaffmanForce) THEN
   ! Calculate the factor
   prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
   ! Calculate the rotation: \nabla x u
@@ -343,16 +386,32 @@ IF (Species(PartSpecies(PartID))%CalcLiftForce) THEN
                GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
                GradAtParticle(RHS_GRADVEL2,1)-GradAtParticle(RHS_GRADVEL1,2)/)
   ! Calculate the rotation: (\nabla x u) x udiff
-  rotudiff = (/rotu(2)*udiff(3)-rotu(3)*udiff(2),&
-               rotu(3)*udiff(1)-rotu(1)*udiff(3),&
-               rotu(1)*udiff(2)-rotu(2)*udiff(1)/)
-
+  rotudiff = CROSS(rotu, udiff)
   dotp    = MAX(SQRT(DOT_PRODUCT(rotu(:),rotu(:))),0.001)
   Flm(:)  = SQRT(2*FieldAtParticle(DENS)*mu * 1./dotp)*rotudiff(:)
 
   Flm     = Flm * prefactor
 END IF
 #endif /* USE_LIFTFORCE */
+
+#if PP_nVarPartRHS == 6
+IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
+  rotu     = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
+               GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
+               GradAtParticle(RHS_GRADVEL2,1)-GradAtParticle(RHS_GRADVEL1,2)/)
+  Omega = 0.5 * rotu - PartState(PART_AMOMV,PartID)
+  ! Calculate the rotation: (\nabla x u_p) x udiff
+  rotudiff = CROSS(Omega, udiff)
+  ! Oesterle and Bui Dinh
+  Rew = FieldAtParticle(DENS) * VECNORM(Omega) * Species(PartSpecies(PartID))%DiameterIC**2 / (4*mu)
+  Rep = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
+  C_M = 0.45 + (4*Rew/Rep-0.45)*EXP(0.05684*Rew**0.4*Rep**0.7)
+  Fmm = PP_PI/8 * C_M * Species(PartSpecies(PartID))%DiameterIC**3 * FieldAtParticle(DENS) * rotudiff
+
+  ! Calculate the RHS of the rotation
+  Pt_in(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
+END IF
+#endif /* PP_nVarPartRHS */
 
 #if USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE
 IF (Species(PartSpecies(PartID))%CalcUndisturbedFlow.OR.Species(PartSpecies(PartID))%CalcVirtualMass.OR.&
@@ -377,7 +436,7 @@ END IF
 #endif /* USE_UNDISTFLOW */
 
 !===================================================================================================================================
-! Calculate the viscous and pressure forces:
+! Calculate the added mass force:
 ! 1/\rho_p Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
 !===================================================================================================================================
 #if USE_VIRTUALMASS
@@ -399,7 +458,7 @@ END IF
 !===================================================================================================================================
 #if USE_BASSETFORCE
 IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
-  bIter = bIter + 1
+  bIter = bIter + increaseIter
   ! Time integration in first RK stage (p. 26)
   IF(PRESENT(iStage))THEN
     IF (iStage.EQ.1) THEN
@@ -441,16 +500,13 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
 
   Fbm(1:3) = prefactor * Fbm(1:3)
 
-  ! Correct durdt with particle push
-  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * (Flm + Fum + Fvm + Fbm + Fdm) * 1./globalfactor
-
-  Pt = (Flm + Fum + Fvm + Fbm + Fdm) * 1./globalfactor
+  Pt = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
 
   ! Correct durdt with particle push
   durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * Pt
 ELSE
 #endif /* USE_BASSETFORCE */
-  Pt = (Flm + Fum + Fvm + Fbm + Fdm) * 1./globalfactor
+  Pt = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
 #if USE_BASSETFORCE
 END IF
 #endif /* USE_BASSETFORCE */
@@ -459,15 +515,15 @@ END IF
 #if ANALYZE_RHS
 IF(dtWriteRHS.GT.0.0)THEN
   IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
-    CALL OutputToFile(FileName_RHS,(/t/),(/16,1/),(/REAL(PartSpecies(PartID)),Fdm(1:3),Flm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3)/))
+    CALL OutputToFile(FileName_RHS,(/t/),(/16,1/),(/REAL(PartSpecies(PartID)),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3)/))
     tWriteRHS = tWriteRHS + dtWriteRHS
   END IF
 END IF
 #endif
 
-ParticlePushExtend(1:3) = Pt
+Pt_in(1:3) = Pt_in(1:3) + Pt
 
-END FUNCTION ParticlePushExtend
+END SUBROUTINE ParticlePushExtend
 
 
 SUBROUTINE tauRHS(U,divtau,gradp)
@@ -553,22 +609,6 @@ FUNCTION DF_SchillerAndNaumann(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
 ! Compute the drag factor according to Schiller and Naumann
 !===================================================================================================================================
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL                        :: f
-!-----------------------------------------------------------------------------------------------------------------------------------
-f  = 1. + 0.15*Rep**0.687
-END FUNCTION DF_SchillerAndNaumann
-
-FUNCTION DF_Putnam(Rep, SphericityIC, Mp) RESULT(f)
-!===================================================================================================================================
-! Compute the drag factor according to Putnam et al. (1961)
-!===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Vars,     ONLY : RepWarn
 USE MOD_Globals,           ONLY : MPIRoot, UNIT_StdOut
@@ -589,6 +629,24 @@ IF(Rep.GT.800) THEN
     RepWarn=.TRUE.
   ENDIF
 ENDIF
+f  = 1. + 0.15*Rep**0.687
+END FUNCTION DF_SchillerAndNaumann
+
+FUNCTION DF_Putnam(Rep, SphericityIC, Mp) RESULT(f)
+!===================================================================================================================================
+! Compute the drag factor according to Putnam et al. (1961)
+!===================================================================================================================================
+! MODULES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                        :: f
+!-----------------------------------------------------------------------------------------------------------------------------------
 f = 1. + (Rep**2./3.)/6.
 ! High Re correction according to Putnam et al. (1961)
 IF(Rep .GT. 1000) f = 0.0183*Rep

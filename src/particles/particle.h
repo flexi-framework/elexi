@@ -159,6 +159,12 @@
 #define PART_VEL2       5
 #define PART_VEL3       6
 #define PART_VELV       PART_VEL1:PART_VEL3
+#if PP_nVarPart == 9
+#define PART_AMOM1      7
+#define PART_AMOM2      8
+#define PART_AMOM3      9
+#define PART_AMOMV      PART_AMOM1:PART_AMOM3
+#endif
 
 ! formats
 ! print to std out like  "    1.41421356237310E+000   -1.41421356237310E+000   -1.41421356237310E+000"

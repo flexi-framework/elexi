@@ -207,7 +207,8 @@ TYPE tSpecies                                                                ! P
   INTEGER                                :: CountIndex                       ! Count number of particles
   LOGICAL                                :: doRoughWallModelling
 #if USE_EXTEND_RHS
-  LOGICAL                                :: CalcLiftForce                    ! Calculate the lift (Saffman) force
+  LOGICAL                                :: CalcSaffmanForce                 ! Calculate the lift (Saffman) force
+  LOGICAL                                :: CalcMagnusForce                  ! Calculate the Magnus force
   LOGICAL                                :: CalcUndisturbedFlow              ! Calculate the undisturbed flow force
   LOGICAL                                :: CalcVirtualMass                  ! Calculate the virtual mass force
   LOGICAL                                :: CalcBassetForce                  ! Calculate the Basset force

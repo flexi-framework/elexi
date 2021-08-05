@@ -102,7 +102,7 @@ INTEGER                        :: nRecords(0:nProcessors-1)
 CHARACTER(LEN=32)              :: tmpStr
 REAL                           :: DiameterIC(nSpecies), SphericityIC(nSpecies)
 #if USE_EXTEND_RHS
-INTEGER                        :: ForceIC(5,nSpecies)
+INTEGER                        :: ForceIC(6,nSpecies)
 #else
 INTEGER                        :: ForceIC(1,nSpecies)
 #endif
@@ -172,20 +172,22 @@ DO iRecord = 1,RecordPart
         DiameterIC(iSpecies)   = Species(iSpecies)%DiameterIC
         IF(Species(iSpecies)%RHSMethod .NE. RHS_TRACER) ForceIC(1,iSpecies)    = 1
 #if USE_EXTEND_RHS
-        IF(Species(iSpecies)%CalcLiftForce)       ForceIC(2,iSpecies) = 1
+        IF(Species(iSpecies)%CalcSaffmanForce)    ForceIC(2,iSpecies) = 1
         IF(Species(iSpecies)%CalcBassetForce)     ForceIC(3,iSpecies) = 1
         IF(Species(iSpecies)%CalcVirtualMass)     ForceIC(4,iSpecies) = 1
         IF(Species(iSpecies)%CalcUndisturbedFlow) ForceIC(5,iSpecies) = 1
+        IF(Species(iSpecies)%CalcMagnusForce)     ForceIC(6,iSpecies) = 1
 #endif
       END DO
       CALL WriteAttribute(File_ID,'SphericityIC',nSpecies,RealArray=SphericityIC)
       CALL WriteAttribute(File_ID,'DiameterIC'  ,nSpecies,RealArray=DiameterIC)
       CALL WriteAttribute(File_ID,'DragForce'   ,nSpecies,IntArray=ForceIC(1,:))
 #if USE_EXTEND_RHS
-      CALL WriteAttribute(File_ID,'LiftForce'   ,nSpecies,IntArray=ForceIC(2,:))
+      CALL WriteAttribute(File_ID,'SaffmanForce',nSpecies,IntArray=ForceIC(2,:))
       CALL WriteAttribute(File_ID,'BassForce'   ,nSpecies,IntArray=ForceIC(3,:))
       CALL WriteAttribute(File_ID,'VirtForce'   ,nSpecies,IntArray=ForceIC(4,:))
       CALL WriteAttribute(File_ID,'UndiForce'   ,nSpecies,IntArray=ForceIC(5,:))
+      CALL WriteAttribute(File_ID,'MagnusForce' ,nSpecies,IntArray=ForceIC(6,:))
 #endif
       CALL CloseDataFile()
     END IF

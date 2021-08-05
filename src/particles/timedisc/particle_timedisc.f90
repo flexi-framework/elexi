@@ -169,8 +169,8 @@ IF (t.GE.DelayTime) THEN
         PartState(4:6,iPart) = Pt       (1:3,iPart)
       !-- Normal particles
       ELSE
-        PartState(1:3,iPart) = PartState(1:3,iPart) + PartState(4:6,iPart)*dt
-        PartState(4:6,iPart) = PartState(4:6,iPart) + Pt       (1:3,iPart)*dt
+        PartState(1:3,iPart)           = PartState(1:3,iPart)           + PartState(4:6,iPart)*dt
+        PartState(4:PP_nVarPart,iPart) = PartState(4:PP_nVarPart,iPart) + Pt       (1:PP_nVarPartRHS,iPart)*dt
       ENDIF !< Tracer
     ENDIF !< ParticleInside
   END DO
@@ -379,11 +379,11 @@ IF (t.GE.DelayTime) THEN
 
         PartState(1:3,iPart) = PartState(1:3,iPart) + PartState(4:6,iPart)*b_dt(1)
       ELSE
-        Pt_temp  (1:3,iPart) = PartState(4:6,iPart)
-        Pt_temp  (4:6,iPart) = Pt       (1:3,iPart)
+        Pt_temp  (1:3,iPart)           = PartState(4:6,iPart)
+        Pt_temp  (4:PP_nVarPart,iPart) = Pt       (1:PP_nVarPartRHS,iPart)
 
-        PartState(1:3,iPart) = PartState(1:3,iPart) + PartState(4:6,iPart)*b_dt(1)
-        PartState(4:6,iPart) = PartState(4:6,iPart) + Pt       (1:3,iPart)*b_dt(1)
+        PartState(1:3,iPart)           = PartState(1:3,iPart)           + PartState(4:6,iPart)*b_dt(1)
+        PartState(4:PP_nVarPart,iPart) = PartState(4:PP_nVarPart,iPart) + Pt       (1:PP_nVarPartRHS,iPart)*b_dt(1)
       END IF
     END IF
   END DO
@@ -596,17 +596,17 @@ IF (t.GE.DelayTime) THEN
           PartState(1:3,iPart) = PartState(1:3,iPart) + Pt_temp(1:3,iPart)*b_dt(iStage)
           PartState(4:6,iPart) = Pt(       1:3,iPart)
         ELSE
-          Pt_temp(1:3,iPart) = PartState(4:6,iPart) - RKA(iStage) * Pt_temp(1:3,iPart)
-          Pt_temp(4:6,iPart) = Pt       (1:3,iPart) - RKA(iStage) * Pt_temp(4:6,iPart)
+          Pt_temp(1:3,iPart)           = PartState(4:6,iPart)              - RKA(iStage) * Pt_temp(1:3,iPart)
+          Pt_temp(4:PP_nVarPart,iPart) = Pt       (1:PP_nVarPartRHS,iPart) - RKA(iStage) * Pt_temp(4:PP_nVarPart,iPart)
 
-          PartState(1:6,iPart) = PartState(1:6,iPart) + Pt_temp(1:6,iPart)*b_dt(iStage)
+          PartState(1:PP_nVarPart,iPart) = PartState(1:PP_nVarPart,iPart) + Pt_temp(1:PP_nVarPart,iPart)*b_dt(iStage)
         END IF
 
       !IsNewPart: no Pt_temp history available. Either because of emissionType = 1 or because of reflection with almost zero wallVelo
       ELSE
         Pa_rebuilt(:,:) = 0.
         DO iStage_loc=1,iStage
-          Pa_rebuilt(1:3,iStage_loc)=Pa_rebuilt_coeff(iStage_loc)*Pt(1:3,iPart)
+          Pa_rebuilt(1:PP_nVarPartRHS,iStage_loc) = Pa_rebuilt_coeff(iStage_loc)*Pt(1:PP_nVarPartRHS,iPart)
         END DO
         v_rebuilt(:,:)=0.
         DO iStage_loc=iStage-1,0,-1
@@ -626,9 +626,9 @@ IF (t.GE.DelayTime) THEN
         END DO
 
         ! Pt_temp is rebuilt, do particle push
-        Pt_temp  (1:3,iPart) = Pv_rebuilt(1:3,iStage)
-        Pt_temp  (4:6,iPart) = Pa_rebuilt(1:3,iStage)
-        PartState(1:6,iPart) = PartState( 1:6,iPart) + Pt_temp(1:6,iPart)*b_dt(iStage)*RandVal
+        Pt_temp  (1:3,iPart)           = Pv_rebuilt(1:3,iStage)
+        Pt_temp  (4:PP_nVarPart,iPart) = Pa_rebuilt(1:PP_nVarPartRHS,iStage)
+        PartState(1:PP_nVarPart,iPart) = PartState( 1:PP_nVarPart,iPart) + Pt_temp(1:PP_nVarPart,iPart)*b_dt(iStage)*RandVal
 
         PDM%IsNewPart(iPart) = .FALSE. !change to false: Pt_temp is now rebuilt...
       END IF !IsNewPart

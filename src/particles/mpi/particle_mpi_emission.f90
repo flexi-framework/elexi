@@ -71,7 +71,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                         :: iSpec,iInit,iNode,iRank
 INTEGER                         :: nInitRegions
-LOGICAL                         :: RegionOnProc
+LOGICAL                         :: RegionOnProc,RegionExists
 REAL                            :: xCoords(3,8),lineVector(3),radius,height
 REAL                            :: xlen,ylen,zlen
 INTEGER                         :: color
@@ -329,6 +329,13 @@ DO iSpec = 1,nSpecies
         CALL ABORT(__STAMP__,'ERROR: Given SpaceIC is not implemented!')
 
     END SELECT
+
+    ! Sanity check if at least one proc will be on the new emission communicator
+    CALL MPI_ALLREDUCE(RegionOnProc,RegionExists,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
+    IF (.NOT. RegionExists) THEN
+      SWRITE(UNIT_stdOut,'(A,I0,A,I0)') 'Species',iSpec,'-Init',iInit
+      CALL CollectiveStop(__STAMP__,'No processor in range!')
+    END IF
 
     ! create new communicator
     color = MERGE(nInitRegions,MPI_UNDEFINED,RegionOnProc)

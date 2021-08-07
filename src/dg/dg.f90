@@ -288,6 +288,10 @@ USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif /*USE_LOADBALANCE*/
+#if USE_PARTICLES
+USE MOD_Part_RHS            ,ONLY: CalcSourcePart
+USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart
+#endif /* USE_PARTICLES */
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -622,6 +626,9 @@ Ut=-Ut
 
 ! 12. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
 IF(doCalcSource) CALL CalcSource(Ut,t)
+#if USE_PARTICLES
+IF(doCalcSourcePart) CALL CalcSourcePart(Ut)
+#endif /* USE_PARTICLES */
 IF(doSponge)     CALL Sponge(Ut)
 IF(doTCSource)   CALL TestcaseSource(Ut)
 

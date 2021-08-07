@@ -35,10 +35,15 @@ INTERFACE tauRHS
 END INTERFACE
 #endif /* USE_EXTEND_RHS */
 
+INTERFACE CalcSourcePart
+  MODULE PROCEDURE CalcSourcePart
+END INTERFACE
+
 PUBLIC :: CalcPartRHS, InitRHS
 #if USE_EXTEND_RHS
 PUBLIC :: tauRHS
 #endif /* USE_EXTEND_RHS */
+PUBLIC :: CalcSourcePart
 !==================================================================================================================================
 
 CONTAINS
@@ -694,5 +699,61 @@ f =  s13 * 1./SQRT(SphericityIC) + s23 * 1./SQRT(SphericityIC)+&
      SQRT(Rep)/8. * 1./(SphericityIC**(3./4.)) +&
      Rep/24. * 0.4210**(0.4*(-LOG(SphericityIC))**0.2) *1./SphericityIC
 END FUNCTION DF_Hoelzer
+
+!==================================================================================================================================
+!> Compute source terms for particles
+!==================================================================================================================================
+SUBROUTINE CalcSourcePart(Ut)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mesh_Vars        ,ONLY: Elem_xGP,sJ,nElems,offsetElem
+#if FV_ENABLED
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
+USE MOD_FV_Vars          ,ONLY: FV_Vdm,FV_Elems
+#endif
+USE MOD_Particle_Vars    ,ONLY: Species,PartSpecies,PartState,Pt,PEM,PDM
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time derivative
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: i,j,k,iElem,iPart
+REAL                :: Ut_src(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                :: Fp(3)
+#if FV_ENABLED
+REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+#endif
+!==================================================================================================================================
+
+DO iPart = 1,PDM%ParticleVecLength
+  IF (PDM%ParticleInside(iPart)) THEN
+    ! Calculate particle force
+    Fp(1:3) = Pt(1:3,iPart)*Species(PartSpecies(iPart))%MassIC
+    ! Determine nearest DOF
+    iElem = PEM%Element(iPart)-offsetElem
+    i = MINLOC(ABS(Elem_xGP(1,:,0,0,iElem)-PartState(1,iPart)),DIM=1)-1
+    j = MINLOC(ABS(Elem_xGP(2,0,:,0,iElem)-PartState(2,iPart)),DIM=1)-1
+    k = MINLOC(ABS(Elem_xGP(3,0,0,:,iElem)-PartState(3,iPart)),DIM=1)-1
+    ! Add source term
+    Ut_src(DENS     ,i,j,k) = 0.
+    Ut_src(MOM1:MOM3,i,j,k) = Fp
+    Ut_src(ENER     ,i,j,k) = DOT_PRODUCT(Fp,PartState(4:6,iPart))
+#if FV_ENABLED
+    IF (FV_Elems(iElem).GT.0) THEN ! FV elem
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
+    ELSE
+#endif
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
+#if FV_ENABLED
+    END IF
+#endif
+  END IF
+END DO ! iPart
+
+END SUBROUTINE CalcSourcePart
+
 
 END MODULE MOD_part_RHS

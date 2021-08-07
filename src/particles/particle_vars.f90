@@ -46,6 +46,7 @@ INTEGER                       :: nrSeeds                                     ! N
 INTEGER , ALLOCATABLE         :: seeds(:)                                    ! =>NULL()   ! Seeds for Random Number Generator
 
 LOGICAL                       :: doPartIndex                                 ! Flag to give particles an unique (or not) index
+LOGICAL                       :: doCalcSourcePart                            ! Flag to enable two-way coupling (NN)
 
 #if USE_BASSETFORCE
 REAL    , ALLOCATABLE         :: durdt(:,:)                                  ! Old dur/dt for Basset force

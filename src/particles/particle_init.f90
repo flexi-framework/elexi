@@ -130,6 +130,10 @@ CALL prms%CreateRealOption(         'Part-ManualTimestep'      , 'Manual time st
                                                                , '0.')
 CALL prms%CreateLogicalOption(      'Part-LowVeloRemove'       , 'Flag if low velocity particles should be removed'                &
                                                                , '.FALSE.')
+CALL prms%CreateLogicalOption(      'Part-PartIndex'           , 'Flag to give each particle an unique index'                      &
+                                                               , '.FALSE.')
+CALL prms%CreateLogicalOption(      'Part-CalcSource'          , 'Flag to enable two-way coupling'                                 &
+                                                               , '.FALSE.')
 
 CALL prms%CreateRealOption(         'Part-DelayTime'           , "During delay time the particles won't be moved so the fluid "  //&
                                                                  'field can be evolved'                                            &
@@ -648,8 +652,9 @@ USE MOD_Timedisc_Vars              ,ONLY: tAnalyze
 INTEGER               :: RPP_maxMemory, jP
 CHARACTER(30)         :: tmpStr
 !===================================================================================================================================
-doPartIndex             = GETLOGICAL('doPartIndex','.FALSE.')
+doPartIndex             = GETLOGICAL('Part-PartIndex','.FALSE.')
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
+doCalcSourcePart        = GETLOGICAL('Part-CalcSource','.FALSE.')
 CALL AllocateParticleArrays()
 CALL InitializeVariablesRandomNumbers()
 

@@ -103,8 +103,8 @@ CALL prms%CreateRealOption(     'Part-RPPosition[$]'      , 'Position of the rec
                                                           , '0.', numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(   'Part-FilenameRecordPart' , 'Specifying filename for load_from_file init.'                     &
                                                           , 'data/recordplane_')
-CALL prms%CreateLogicalOption(  'doPartIndex'             , 'Flag to write out unique part index'                              &
-                                                          , '.FALSE.')
+CALL prms%CreateLogicalOption(  'Part-PartIndex'          , 'Flag to give each particle an unique index'                      &
+                                                               , '.FALSE.')
 
 END SUBROUTINE DefineParametersParticleAnalyze
 

@@ -660,6 +660,7 @@ SELECT CASE(TrackingMethod)
     END IF
 
 #if USE_LOADBALANCE
+    ! BezierControlPoints are global and do not change during load balance
     IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
       ! CalcParticleMeshMetrics

@@ -215,18 +215,20 @@ SDEALLOCATE(BezierSampleXi)
 SDEALLOCATE(SideBoundingBoxVolume)
 #endif
 
-! CalcBezierControlPoints (MPI3 shared freed in FinalizeParticleMesh)
-SDEALLOCATE(XiBuf)
-SDEALLOCATE(MinMax)
-SDEALLOCATE(XiUp)
-SDEALLOCATE(XiDown)
-SDEALLOCATE(BezierControlPoints1D)
-SDEALLOCATE(BezierControlPoints2D)
-SDEALLOCATE(BezierControlPoints2D_temp)
-SDEALLOCATE(BezierControlPoints2D_temp2)
 #if USE_LOADBALANCE
+! BezierControlPoints are global and do not change during load balance
 IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
+  ! CalcBezierControlPoints (MPI3 shared freed in FinalizeParticleMesh)
+  SDEALLOCATE(XiBuf)
+  SDEALLOCATE(MinMax)
+  SDEALLOCATE(XiUp)
+  SDEALLOCATE(XiDown)
+  SDEALLOCATE(BezierControlPoints1D)
+  SDEALLOCATE(BezierControlPoints2D)
+  SDEALLOCATE(BezierControlPoints2D_temp)
+  SDEALLOCATE(BezierControlPoints2D_temp2)
+
   MDEALLOCATE(BezierControlPoints3D)
   MDEALLOCATE(BezierControlPoints3DElevated)
 #if USE_LOADBALANCE

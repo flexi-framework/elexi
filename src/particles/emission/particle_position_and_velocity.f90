@@ -536,11 +536,11 @@ CASE('fluid')
           CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U(1:PP_nVar ,:,:,:,iElem),PP_nVarPrim,field    (1:PP_nVar))
 #if USE_RW
           IF (RestartTurb) &
-           CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),nVarTurb,turbfield(1:nVarTurb))
+            CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),nVarTurb,turbfield(1:nVarTurb))
 #endif
         ! not RefMapping, evaluate in physical space
         ELSE
-           CALL EvaluateFieldAtPhysPos(PartState(1:3,PositionNbr),PP_nVar,PP_N,U(:,:,:,:,iElem),PP_nVarPrim,field,PEM%Element(PositionNbr),PositionNbr)
+          CALL EvaluateFieldAtPhysPos(PartState(1:3,PositionNbr),PP_nVar,PP_N,U(:,:,:,:,iElem),PP_nVarPrim,field,PEM%Element(PositionNbr),PositionNbr)
 #if USE_RW
           IF (RestartTurb) &
             CALL EvaluateFieldAtPhysPos(TurbPartState(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),nVarTurb,turbField(1:nVarTurb),PEM%Element(PositionNbr),PositionNbr)
@@ -558,7 +558,6 @@ CASE('fluid')
 
       ! Calculate velocity from momentum and density
       PartState(4:6,PositionNbr) = FieldAtParticle(2:4,PositionNbr)
-      PartState(4:6,PositionNbr) = PartState(4:6,PositionNbr) * VeloIC
 
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0

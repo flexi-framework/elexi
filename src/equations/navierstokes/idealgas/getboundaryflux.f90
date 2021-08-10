@@ -1214,7 +1214,7 @@ INTEGER                       :: p,q,SideID,ElemID,locSide
 CHARACTER(LEN=255)            :: NodeType_HDF5
 LOGICAL                       :: InterpolateSolution
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',FileName
+SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 
@@ -1299,7 +1299,7 @@ REAL,ALLOCATABLE              :: ploc(:),Tloc(:),U_local(:,:)
 REAL                          :: minr,r1,r2
 REAL,PARAMETER                :: epsilonBC=1.e-3
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',FileName
+SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
 
 !#if USE_MPI
 !MPIRequest_BC = MPI_REQUEST_NULL

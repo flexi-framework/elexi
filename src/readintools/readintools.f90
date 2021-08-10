@@ -1218,7 +1218,7 @@ DO WHILE (associated(current))
               CALL set_formatting("blue")
               SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
               CALL clear_formatting()
-              SWRITE(UNIT_stdOut,"(a3)") ' | '
+              SWRITE(UNIT_stdOut,"(a3)") ' |'
               RETURN
             END IF
             check => check%next
@@ -1765,7 +1765,7 @@ DO WHILE (associated(current))
                     CALL set_formatting("blue")
                     SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
                     CALL clear_formatting()
-                    SWRITE(UNIT_stdOut,"(a3)") ' | '
+                    SWRITE(UNIT_stdOut,"(a3)") ' |'
                     RETURN
                   END IF
                   ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
@@ -1786,7 +1786,7 @@ DO WHILE (associated(current))
                       CALL set_formatting("blue")
                       SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
                       CALL clear_formatting()
-                      SWRITE(UNIT_stdOut,"(a3)") ' | '
+                      SWRITE(UNIT_stdOut,"(a3)") ' |'
                       RETURN
                     END IF
                   END DO

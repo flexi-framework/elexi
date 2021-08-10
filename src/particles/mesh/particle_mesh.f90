@@ -254,9 +254,11 @@ USE MOD_Particle_Surfaces      ,ONLY: GetSideSlabNormalsAndIntervals
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation,BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
 USE MOD_Particle_Surfaces_Vars ,ONLY: D_Bezier,Vdm_Bezier,sVdm_Bezier
-USE MOD_Particle_Tracking_Vars ,ONLY: FastPeriodic,CountNbOfLostParts,NbrOfLostParticles,NbrOfLostParticlesTotal,CartesianPeriodic
+USE MOD_Particle_Tracking_Vars ,ONLY: FastPeriodic,CartesianPeriodic,CountNbOfLostParts
+USE MOD_Particle_Tracking_Vars ,ONLY: NbrOfLostParticles,NbrOfLostParticlesTotal,NbrOfLostParticlesTotal_old
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierSampleN,BezierSampleXi,SurfFluxSideSize,TriaSurfaceFlux
-USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod, DisplayLostParticles
+USE MOD_Particle_Tracking_Vars ,ONLY: PartStateLostVecLength,PartStateLost,PartLostDataSize
 ! USE MOD_Particle_Tracking_Vars ,ONLY: DoPeriodicCheck,DoPeriodicFix
 USE MOD_ReadInTools            ,ONLY: GETREAL,GETINT,GETLOGICAL,GetRealArray
 #if CODE_ANALYZE
@@ -356,10 +358,25 @@ CALL InitGetCNSideID()
 
 CountNbOfLostParts      = GETLOGICAL('CountNbOfLostParts',".FALSE.")
 IF (CountNbOfLostParts) THEN
-  NbrOfLostParticles      = 0
+  ! Nullify and reset lost parts container after write out
+  PartStateLostVecLength = 0
+
+  ! Allocate PartStateLost for a small number of particles and double the array size each time the
+  ! maximum is reached
+  ALLOCATE(PartStateLost(1:PartLostDataSize,1:10))
+  PartStateLost=0.
+END IF ! CountNbrOfLostParts
+NbrOfLostParticles      = 0
+#if USE_LOADBALANCE
+! Nullify only once at the beginning of a simulation (not during load balance steps!)
+IF(.NOT.PerformLoadBalance)THEN
+#endif
   NbrOfLostParticlesTotal = 0
-!  DisplayLostParticles    = GETLOGICAL('DisplayLostParticles')
+  NbrOfLostParticlesTotal_old = 0
+#if USE_LOADBALANCE
 END IF
+#endif
+DisplayLostParticles    = GETLOGICAL('DisplayLostParticles')
 
 #if CODE_ANALYZE
 PARTOUT            = GETINT('PartOut','0')

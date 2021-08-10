@@ -480,7 +480,6 @@ PartTrajectory       = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
 lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
 
 ! Check if the particle moved at all. If not, tracking is done
-!print *, lengthPartTrajectory, ElemRadiusNGeo(CNElemID)
 IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID))) THEN
   PEM%Element(PartID) = ElemID
   PartisDone = .TRUE.

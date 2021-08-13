@@ -213,7 +213,7 @@ USE MOD_IO_HDF5                ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars            ,ONLY: ProjectName,WriteStateFiles
 USE MOD_Particle_Analyze_Vars  ,ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars ,ONLY: PartStateBoundary,PartStateBoundaryVecLength
-USE MOD_Particle_Boundary_Vars ,ONLY: ImpactDataSize,ImpactnGlob
+USE MOD_Particle_Boundary_Vars ,ONLY: ImpactDataSize,ImpactnGlob,ImpactnLoc,ImpactOffset
 USE MOD_Particle_Vars          ,ONLY: doPartIndex
 #if USE_MPI
 ! USE MOD_Particle_Boundary_Vars ,ONLY: MPI_COMM_IMPACT
@@ -231,33 +231,9 @@ CHARACTER(LEN=255)             :: FileName,FileString
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
 LOGICAL                        :: reSwitch
 REAL                           :: startT,endT
-INTEGER                        :: ImpactnLoc,ImpactOffset,dims(2)
-#if USE_MPI
-INTEGER                        :: sendbuf(2),recvbuf(2)
-! INTEGER                        :: nImpacts(0:nProcessors-1)
-#endif
+INTEGER                        :: dims(2)
 !===================================================================================================================================
 IF (.NOT.WriteStateFiles) RETURN
-
-! Find amount of recorded impacts on current proc
-ImpactnLoc  = PartStateBoundaryVecLength
-
-!>> Sum up particles from the other procs
-#if USE_MPI
-sendbuf(1) = ImpactnLoc
-recvbuf    = 0
-CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
-!>> Offset of each proc is the sum of the particles on the previous procs
-ImpactOffset = recvbuf(1)
-sendbuf(1)   = recvbuf(1) + ImpactnLoc
-!>> Last proc knows the global number
-CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
-!>> Gather the global number and communicate to root (MPIRank.EQ.0)
-ImpactnGlob  = sendbuf(1)
-#else
-ImpactOffset   = 0
-ImpactnGlob    = PartStateBoundaryVecLength
-#endif
 
 IF (MPIRoot) THEN
   IF (ImpactnGlob.NE.0) THEN

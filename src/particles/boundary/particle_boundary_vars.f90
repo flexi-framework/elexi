@@ -59,6 +59,8 @@ INTEGER                                 :: PartStateBoundaryVecLength    !< Impa
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: PartStateBoundary             !< solution evaluated at EPs (nvar,nEP,nSamples)
 INTEGER                                 :: ImpactDataSize                !< number of variables stored per impact
 INTEGER                                 :: ImpactnGlob                   !< Global number of occured impacts
+INTEGER                                 :: ImpactnLoc                    !< Local  number of occured impacts
+INTEGER                                 :: ImpactOffset                  !< Offset number of occured impacts
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MPI Communicator for EPs

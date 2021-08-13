@@ -24,8 +24,7 @@ SAVE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                       :: ParticleAnalyzeInitIsDone = .FALSE.
-LOGICAL                       :: DoAnalyze                             ! perform analyze
-LOGICAL                       :: DoParticleAnalyze                     ! flag if any particle analyze routine is called
+LOGICAL                       :: doParticleAnalyze                     ! perform analyze
 LOGICAL                       :: CalcPartBalance                       ! Particle Power Balance - input and outflow energy of all
                                                                        ! particles
 LOGICAL                       :: CalcEkin                              ! Compute the kinetic energy of each species

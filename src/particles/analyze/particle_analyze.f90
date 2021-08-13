@@ -116,10 +116,11 @@ SUBROUTINE InitParticleAnalyze()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Analyze_Vars
-USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleImpactTrack
-USE MOD_Particle_Boundary_Vars  ,ONLY: WriteMacroSurfaceValues
-USE MOD_Particle_Tracking_Vars  ,ONLY: CountNbOfLostParts
+USE MOD_Particle_Analyze_Vars   ,ONLY: doParticleAnalyze,doParticlePositionTrack,doParticleConvergenceTrack
+USE MOD_Particle_Analyze_Vars   ,ONLY: doParticleDispersionTrack,doParticlePathTrack
+USE MOD_Particle_Analyze_Vars   ,ONLY: CalcEkin,CalcPartBalance
+USE MOD_Particle_Analyze_Vars   ,ONLY: ParticleAnalyzeInitIsDone,nSpecAnalyze
+USE MOD_Particle_Analyze_Vars   ,ONLY: nPartIn,nPartOut,PartPath,PartEkin,PartEkinOut,PartEkinIn,nPartInTmp,PartEkinInTmp
 USE MOD_Particle_Vars           ,ONLY: nSpecies,PDM
 USE MOD_ReadInTools             ,ONLY: GETLOGICAL,GETINT,GETSTR,GETINTARRAY,GETREALARRAY,GETREAL
 ! IMPLICIT VARIABLE HANDLING
@@ -138,18 +139,12 @@ END IF
 !SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A)') ' INIT PARTICLE ANALYZE...'
 
-IF (WriteMacroSurfaceValues .OR. doParticleImpactTrack .OR. RecordPart.GT.0 .OR. CountNbOfLostParts .OR. CalcEkin .OR. DoAnalyze) THEN
-  doParticleAnalyze = .TRUE.
-ELSE
-  doParticleAnalyze = .FALSE.
-END IF
-
-DoAnalyze    = .FALSE.
+doParticleAnalyze    = .FALSE.
 nSpecAnalyze = MERGE(nSpecies + 1,1,nSpecies.GT.1)
 
 CalcEkin = GETLOGICAL('CalcKineticEnergy','.FALSE.')
 IF (CalcEkin) THEN
-  DoAnalyze = .TRUE.
+  doParticleAnalyze = .TRUE.
   SDEALLOCATE(PartEkin)
   ALLOCATE( PartEkin (nSpecAnalyze))
   PartEkin = 0.
@@ -158,7 +153,7 @@ END IF
 ! Calculate number and kinetic energy of particles entering / leaving the domain
 CalcPartBalance = GETLOGICAL('CalcPartBalance','.FALSE.')
 IF (CalcPartBalance) THEN
-  DoAnalyze = .TRUE.
+  doParticleAnalyze = .TRUE.
   SDEALLOCATE(nPartIn)
   SDEALLOCATE(nPartOut)
   SDEALLOCATE(PartEkinIn)
@@ -219,7 +214,7 @@ SUBROUTINE ParticleAnalyze(t    &
 USE MOD_Globals
 USE MOD_Analyze_Vars              ,ONLY: nWriteData
 USE MOD_Particle_Analyze_Tools    ,ONLY: ParticleRecord
-USE MOD_Particle_Analyze_Vars     ,ONLY: DoAnalyze,DoParticleAnalyze,CalcEkin
+USE MOD_Particle_Analyze_Vars     ,ONLY: doParticleAnalyze,CalcEkin
 USE MOD_Particle_Analyze_Vars     ,ONLY: RecordPart
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack
@@ -247,11 +242,6 @@ INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
 CALL WriteElemTimeStatistics(WriteHeader=.TRUE.,iter=iter)
 #endif /*LOADBALANCE*/
 
-! Prettify output
-IF (doParticleAnalyze) THEN
-  SWRITE(UNIT_StdOut,'(132("-"))')
-END IF
-
 ! Write information to console output
 IF (CountNbOfLostParts) THEN
   CALL WriteInfoStdOut()
@@ -261,7 +251,7 @@ IF (CalcEkin) THEN
   CALL CalcKineticEnergy()
 END IF
 
-IF (DoAnalyze) THEN
+IF (doParticleAnalyze) THEN
   CALL WriteParticleAnalyze()
 END IF
 
@@ -292,7 +282,9 @@ SUBROUTINE ParticleInformation()
 !==================================================================================================================================
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack,ImpactnGlob
+USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack
+USE MOD_Particle_Boundary_Vars    ,ONLY: PartStateBoundaryVecLength
+USE MOD_Particle_Boundary_Vars    ,ONLY: ImpactnGlob,ImpactnLoc,ImpactOffset
 USE MOD_Particle_Vars             ,ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -300,8 +292,11 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: nParticleOnProc,iPart
-INTEGER :: nParticleInDomain
+INTEGER                        :: nParticleOnProc,iPart
+INTEGER                        :: nParticleInDomain
+#if USE_MPI
+INTEGER                        :: sendbuf(2),recvbuf(2)
+#endif
 !==================================================================================================================================
 
 ! Count number of particles on local proc
@@ -316,8 +311,28 @@ CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_CO
 nParticleInDomain = nParticleOnProc
 #endif
 
+! Find amount of recorded impacts on current proc
+ImpactnLoc  = PartStateBoundaryVecLength
+
+!>> Sum up particles from the other procs
+#if USE_MPI
+sendbuf(1) = ImpactnLoc
+recvbuf    = 0
+CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+!>> Offset of each proc is the sum of the particles on the previous procs
+ImpactOffset = recvbuf(1)
+sendbuf(1)   = recvbuf(1) + ImpactnLoc
+!>> Last proc knows the global number
+CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
+!>> Gather the global number and communicate to root (MPIRank.EQ.0)
+ImpactnGlob  = sendbuf(1)
+#else
+ImpactOffset   = 0
+ImpactnGlob    = PartStateBoundaryVecLength
+#endif
+
 ! Output particle and impact information
-!SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A14,I16)')' # Particle : ', nParticleInDomain
 IF (doParticleImpactTrack) THEN
 SWRITE(UNIT_StdOut,'(A14,I16)')' # Impacts  : ', ImpactnGlob

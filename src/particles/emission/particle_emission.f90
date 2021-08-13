@@ -69,7 +69,7 @@ INTEGER               :: InitGroup
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING... '
+SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING...'
 
 ! Update next free position in particle array to get insertion position
 CALL UpdateNextFreePosition()
@@ -163,7 +163,7 @@ DO i = 1,PDM%ParticleVecLength
   PEM%lastElement(i) = PEM%Element(i)
 END DO
 
-SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING DONE '
+SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING DONE'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitializeParticleEmission

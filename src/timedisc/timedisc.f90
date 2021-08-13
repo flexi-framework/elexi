@@ -521,34 +521,38 @@ DO
 #endif
 
     ! Visualize data and write time average solution
-    writeTCounter=writeTCounter+1
-    IF((writeTCounter.EQ.nTimeAvgData).OR.doFinalize)THEN
-      IF(doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
-      writeTCounter=0
+    writeTCounter = writeTCounter+1
+    IF (writeTCounter.EQ.nTimeAvgData .OR. doFinalize) THEN
+      IF (doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
+      writeTCounter = 0
     END IF
 
     ! Visualize data and write solution
     writeCounter=writeCounter+1
-    IF((writeCounter.EQ.nWriteData).OR.doFinalize)THEN
+    IF (writeCounter.EQ.nWriteData .OR. doFinalize) THEN
       ! Write various derived data
-      IF(RP_onProc)         CALL WriteRP(PP_nVar,StrVarNames,t,.TRUE.)
-      IF(CalcPruettDamping) CALL WriteBaseflow(TRIM(MeshFile),t)
+      IF (RP_onProc)         CALL WriteRP(PP_nVar,StrVarNames,t,.TRUE.)
+      IF (CalcPruettDamping) CALL WriteBaseflow(TRIM(MeshFile),t)
       ! Write state file
       ! NOTE: this should be last in the series, so we know all previous data
       ! has been written correctly when the state file is present
-      tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
-      CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
-                            FutureTime=tWriteData,isErrorFile=.FALSE.)
+      tWriteData = MIN(tAnalyze+WriteData_dt,tEnd)
+      CALL WriteState(MeshFileName = TRIM(MeshFile) &
+                     ,OutputTime   = t              &
+                     ,FutureTime   = tWriteData     &
+                     ,isErrorFile  = .FALSE.)
       ! Visualize data
       CALL Visualize(t,U)
-      writeCounter=0
     END IF
 
     ! do analysis
     CALL Analyze(t,iter,tend,tStart_opt=tStart,dt_opt=dt,doPrintETA_opt=.TRUE.)
-    iter_loc  = 0
+    ! Overwrite WriteCounter after Analyze to keep particle analysis synchronous
+    IF((writeCounter.EQ.nWriteData).OR.doFinalize) writeCounter=0
+
+    iter_loc      = 0
     CalcTimeStart = FLEXITIME()
-    tAnalyze  = MIN(tAnalyze+Analyze_dt,  tEnd)
+    tAnalyze      = MIN(tAnalyze+Analyze_dt,  tEnd)
   END IF !ANALYZE
 
 #if USE_LOADBALANCE

@@ -231,8 +231,7 @@ CHARACTER(LEN=255)             :: FileName,FileString
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
 LOGICAL                        :: reSwitch
 REAL                           :: startT,endT
-INTEGER                        :: ImpactnLoc
-INTEGER                        :: ImpactOffset
+INTEGER                        :: ImpactnLoc,ImpactOffset,dims(2)
 #if USE_MPI
 INTEGER                        :: sendbuf(2),recvbuf(2)
 ! INTEGER                        :: nImpacts(0:nProcessors-1)
@@ -242,12 +241,6 @@ IF (.NOT.WriteStateFiles) RETURN
 
 ! Find amount of recorded impacts on current proc
 ImpactnLoc  = PartStateBoundaryVecLength
-
-IF (MPIroot) THEN
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='NO')' WRITE PARTICLE IMPACTS STATE TO HDF5 FILE...'
-!  WRITE(UNIT_stdOut,'(a,I4,a,I4,a)')' EP Buffer  : ',locEP,'/',EP_Buffersize,' impacts.'
-  GETTIME(startT)
-END IF
 
 !>> Sum up particles from the other procs
 #if USE_MPI
@@ -265,6 +258,16 @@ ImpactnGlob  = sendbuf(1)
 ImpactOffset   = 0
 ImpactnGlob    = PartStateBoundaryVecLength
 #endif
+
+IF (MPIRoot) THEN
+  IF (ImpactnGlob.NE.0) THEN
+    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='NO')' WRITE PARTICLE IMPACTS STATE TO HDF5 FILE...'
+    GETTIME(startT)
+  ELSE
+    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='NO')' SKIP  PARTICLE IMPACTS STATE TO HDF5 FILE...'
+    GETTIME(startT)
+  END IF
+END IF
 
 ! Regenerate state file skeleton
 FileName   = TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',OutputTime))
@@ -357,23 +360,24 @@ IF (reSwitch) gatheredWrite = .TRUE.
 
 DEALLOCATE(StrVarNames)
 
-IF (ImpactnGlob.NE.0 .AND. MPIROOT) THEN
-!  CALL MarkWriteSuccessfull(FileString)
-  GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s]'
-  ! WRITE(UNIT_stdOut,'(A,I4,A)')' IMPACT TRACKING: ',ImpactnGlob,' impacts written'
-!  WRITE(UNIT_StdOut,'(132("-"))')
+! Check if PartStateBoundary was grown beyond initial size
+dims = SHAPE(PartStateBoundary)
+! Re-allocate PartStateBoundary for a small number of particles and double the array size each time the
+! maximum is reached
+IF (dims(2).GT.10) THEN
+  DEALLOCATE(PartStateBoundary)
+  ALLOCATE(PartStateBoundary(1:ImpactDataSize,1:10))
 END IF
-
 
 ! Nullify and reset boundary parts container after write out
 PartStateBoundaryVecLength = 0
+PartStateBoundary          = 0.
 
-! Re-allocate PartStateBoundary for a small number of particles and double the array size each time the
-! maximum is reached
-DEALLOCATE(PartStateBoundary)
-ALLOCATE(PartStateBoundary(1:ImpactDataSize,1:10))
-PartStateBoundary = 0.
+IF (MPIROOT) THEN
+!  CALL MarkWriteSuccessfull(FileString)
+  GETTIME(EndT)
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s]'
+END IF
 
 END SUBROUTINE WriteBoundaryParticleToHDF5
 

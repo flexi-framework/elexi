@@ -1298,6 +1298,24 @@ INTEGER                           :: iError
 ! Return if nothing was allocated
 IF (.NOT.WriteMacroSurfaceValues) RETURN
 
+! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+CALL MPI_WIN_UNLOCK_ALL(SurfSide2GlobalSide_Shared_Win,iError)
+CALL MPI_WIN_FREE(      SurfSide2GlobalSide_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(GlobalSide2SurfSide_Shared_Win,iError)
+CALL MPI_WIN_FREE(      GlobalSide2SurfSide_Shared_Win,iError)
+
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+#endif /*USE_MPI*/
+
+! Then, free the pointers or arrays
+SDEALLOCATE(SurfBCName)
+SDEALLOCATE(SurfSampleBCs)
+MDEALLOCATE(GlobalSide2SurfSide)
+MDEALLOCATE(SurfSide2GlobalSide)
+
 ! Return if no sampling surfaces on node
 IF (.NOT.SurfOnNode) RETURN
 
@@ -1307,10 +1325,6 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
 CALL MPI_WIN_UNLOCK_ALL(SampWallState_Shared_Win      ,iError)
 CALL MPI_WIN_FREE(      SampWallState_Shared_Win      ,iError)
-CALL MPI_WIN_UNLOCK_ALL(GlobalSide2SurfSide_Shared_Win,iError)
-CALL MPI_WIN_FREE(      GlobalSide2SurfSide_Shared_Win,iError)
-CALL MPI_WIN_UNLOCK_ALL(SurfSide2GlobalSide_Shared_Win,iError)
-CALL MPI_WIN_FREE(      SurfSide2GlobalSide_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(SurfSideArea_Shared_Win       ,iError)
 CALL MPI_WIN_FREE(      SurfSideArea_Shared_Win       ,iError)
 
@@ -1328,13 +1342,9 @@ MDEALLOCATE(SurfSide2GlobalSide_Shared)
 
 ! Then, free the pointers or arrays
 SDEALLOCATE(XiEQ_SurfSample)
-SDEALLOCATE(SurfBCName)
-SDEALLOCATE(SurfSampleBCs)
 SDEALLOCATE(SampWallState)
 MDEALLOCATE(SampWallState_Shared)
 MDEALLOCATE(SurfSideArea)
-MDEALLOCATE(GlobalSide2SurfSide)
-MDEALLOCATE(SurfSide2GlobalSide)
 
 END SUBROUTINE FinalizeParticleBoundarySampling
 

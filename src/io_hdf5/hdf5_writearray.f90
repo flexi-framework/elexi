@@ -163,7 +163,7 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(PRODUCT(nVal))  !< num
 INTEGER(HID_T)                 :: PList_ID,DSet_ID,MemSpace,FileSpace,Type_ID,dsetparams
 INTEGER(HSIZE_T)               :: Dimsf(Rank),OffsetHDF(Rank),nValMax(Rank)
 INTEGER(SIZE_T)                :: SizeSet=255
-LOGICAL                        :: chunky
+LOGICAL                        :: chunky,exists
 TYPE(C_PTR)                    :: buf
 !==================================================================================================================================
 LOGWRITE(*,'(A,I1.1,A,A,A)')' WRITE ',Rank,'D ARRAY "',TRIM(DataSetName),'" TO HDF5 FILE...'
@@ -195,21 +195,22 @@ IF(PRESENT(StrArray))THEN
 END IF
 
 Dimsf = nValGlobal ! we need the global array size
-CALL H5ESET_AUTO_F(0,iError)
-CALL H5DOPEN_F(File_ID, TRIM(DatasetName),DSet_ID, iError)
-IF(iError.NE.0)THEN ! does not exist
+! Check data set. Data sets can be checked by determining the existence of the corresponding link
+CALL H5LEXISTS_F(File_ID, TRIM(DataSetName), exists, iError)
+IF (.NOT. exists) THEN
   ! Create the data space for the  dataset.
   CALL H5SCREATE_SIMPLE_F(Rank, Dimsf, FileSpace, iError, nValMax)
   CALL H5DCREATE_F(File_ID, TRIM(DataSetName), Type_ID, FileSpace, DSet_ID,iError,dsetparams)
   CALL H5SCLOSE_F(FileSpace, iError)
+ELSE
+  CALL H5DOPEN_F(File_ID, TRIM(DatasetName),DSet_ID, iError)
 END IF
-CALL H5ESET_AUTO_F(1,iError)
 IF(chunky)THEN
   CALL H5DSET_EXTENT_F(DSet_ID,Dimsf,iError) ! if resizable then dataset may need to be extended
 END IF
 
 ! Each process defines dataset in memory and writes it to the hyperslab in the file.
-Dimsf=nVal  ! Now we need the local array size
+Dimsf     = nVal  ! Now we need the local array size
 OffsetHDF = Offset
 ! Create the data space in the memory
 IF(ANY(Dimsf.EQ.0))THEN
@@ -250,6 +251,7 @@ CALL H5SCLOSE_F(MemSpace, iError)
 CALL H5DCLOSE_F(DSet_ID, iError)
 
 LOGWRITE(*,*)'...DONE!'
+
 END SUBROUTINE WriteArray
 
 END MODULE MOD_HDF5_WriteArray

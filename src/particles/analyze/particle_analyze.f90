@@ -220,6 +220,7 @@ USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Analyze ,ONLY: CalcSurfaceValues,WriteBoundaryParticleToHDF5
 USE MOD_Particle_Output           ,ONLY: WriteParticleAnalyze,WriteInfoStdOut
+USE MOD_Restart_Vars              ,ONLY: RestartTime
 USE MOD_TimeDisc_Vars             ,ONLY: doFinalize,writeCounter
 USE MOD_Particle_Tracking_Vars    ,ONLY: CountNbOfLostParts
 #if USE_LOADBALANCE
@@ -256,7 +257,7 @@ IF (doParticleAnalyze) THEN
 END IF
 
 ! Keep DG and particle output synchronous for nWriteData > 1
-IF ((writeCounter.NE.nWriteData) .AND. .NOT.doFinalize) RETURN
+IF ((writeCounter.NE.nWriteData) .AND. .NOT.doFinalize .AND. t.NE.RestartTime) RETURN
 
 ! Calculate cumulative particle surface impact sampling data
 IF (WriteMacroSurfaceValues) THEN

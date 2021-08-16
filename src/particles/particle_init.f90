@@ -413,7 +413,7 @@ CALL prms%CreateLogicalOption(      'Part-Boundary[$]-RoughWall'  ,'Rough wall m
 CALL prms%CreateRealOption(         'Part-Boundary[$]-RoughMeanIC', 'Mean of Gaussian dist..'                                      &
                                                                   ,'0.0', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-RoughVarianceIC', 'Mean of Gaussian dist..'                                  &
-                                                                  ,'1.0', numberedmulti=.TRUE.)
+                                                                  ,'0.04', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-Young'    , "Young's modulus defining stiffness of wall material"            &
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-Poisson'  , "Poisson ratio defining relation of transverse to axial strain"  &

@@ -826,7 +826,7 @@ ElemID   = SideInfo_Shared(SIDE_NBELEMID,SideID)
 
 END SUBROUTINE PeriodicBC
 
-FUNCTION RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory) RESULT (n_out)
+RECURSIVE FUNCTION RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory) RESULT (n_out)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Rough wall modelling without multiple rebounds, where the roughness is drawn from a Gaussian distribution with a mean of zero and
 ! a standard deviation equal to an assumed or experimental wall roughness.
@@ -849,50 +849,63 @@ REAL,INTENT(IN)                   :: PartTrajectory(1:3)
 REAL                              :: n_out(3)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                              :: RandNum(2),random_angle(2),crossv(2,3),angle
+REAL                              :: RandNum(3),random_angle(2),crossv(2,3),angle
 !===================================================================================================================================
 
-crossv(1,:) = CROSSNORM(n_in,tang1)
-crossv(2,:) = CROSSNORM(n_in,tang2)
+crossv(1,:) = tang2 !CROSSNORM(n_in,tang1)
+crossv(2,:) = tang1 !CROSSNORM(n_in,tang2)
 
 ! Rough wall modelling
 CALL RANDOM_NUMBER(RandNum)
+!WRITE (*, *) 'RandNum:', RandNum
 angle = ACOS(DOT_PRODUCT(PartTrajectory,n_in))
 ! [0,1] -> [0,+/-angle]
 ! If angle(PartTrajectory,tang1) > 90 degree, rotate n counterclockwise (-), vice versa otherwise (+).
-RandNum(1) = SIGN(1.,PI*0.5-ACOS(DOT_PRODUCT(PartTrajectory,tang1)))*RandNum(1)
-RandNum(2) = SIGN(1.,PI*0.5-ACOS(DOT_PRODUCT(PartTrajectory,tang2)))*RandNum(2)
+!RandNum(1) = SIGN(1.,PI*0.5-ACOS(DOT_PRODUCT(PartTrajectory,tang1)))*RandNum(1)
+!RandNum(2) = SIGN(1.,PI*0.5-ACOS(DOT_PRODUCT(PartTrajectory,tang2)))*RandNum(2)
 
-RandNum(:) = MERGE(RandNum(:), PI*0.5-angle + RandNum(:), angle .GT. PI*0.4 .OR. angle .LT. PI*0.1)
-WRITE (*, *) 'RandNum:', RandNum
+!WRITE (*, *) 'RandNum:', RandNum
+RandNum(3) = 1 - RandNum(3) * 0.5
+IF (angle .GT. PI*0.4) THEN
+  RandNum(1:2) =  RandNum(1:2)
+  RandNum(3)   = RandNum(3)+1
+ELSE IF (angle .LT. PI*0.1) THEN
+  RandNum(1:2) = -RandNum(1:2)
+ELSE
+  RandNum(1:2) = 2*RandNum(1:2)-1
+END IF
+!WRITE (*, *) 'RandNum:', RandNum
 
 ! If angle is GT 40 degree, the normal vector is moved in one direction only
-IF(angle.LT.4*PI/18)THEN
-  RandNum(1)   = RandNum(1)*2.-SIGN(1.,RandNum(1))
-  RandNum(2)   = RandNum(2)*2.-SIGN(1.,RandNum(2))
-END IF
+!IF(angle.LT.4*PI/18)THEN
+!  RandNum(1)   = RandNum(1)*2.-SIGN(1.,RandNum(1))
+!  RandNum(2)   = RandNum(2)*2.-SIGN(1.,RandNum(2))
+!END IF
+!WRITE (*, *) 'RandNum:', RandNum
 ! random_angle = mu + std*x
-random_angle = PartBound%RoughMeanIC(locBCID) + PartBound%RoughVarianceIC(locBCID)*RandNum
-WRITE (*, *) 'random_angle*180/np.pi:', random_angle*180/PI
-random_angle = MERGE(PI*0.5-angle + random_angle, angle + random_angle, angle .GT. PI*0.4 .OR. angle .LT. PI*0.1)
-WRITE (*, *) 'random_angle,a(PartTrajectory,n_in)                                             :', random_angle*180/PI,angle*180/PI
+random_angle = PartBound%RoughMeanIC(locBCID) + PartBound%RoughVarianceIC(locBCID)*RandNum(1:2)
+!WRITE (*, *) 'random_angle*180/np.pi:', random_angle*180/PI
+random_angle = MERGE((PI*0.5-angle)*RandNum(3) + random_angle, random_angle, angle .GT. PI*0.4 .OR. angle .LT. PI*0.1)
+!WRITE (*, *) 'random_angle,a(PartTrajectory,n_in)                         :', random_angle*180/PI,angle*180/PI
 
 ! Adjust the impact angle as well as the tangential and normal components
-! by a rotation of the normal vector around tang1 and tang2
+! by a rotation of the normal vector around tang1 and tang2 according to Rodrigues' rotation formula:
+! v * cos(\theta) + (k x v) sin(\theta) + k (k \cdot v) (1 - cos(\theta))
+! v: vector, k: unit vector describing the axis of rotation, \theta: angle of rotation
 n_out = n_in*COS(random_angle(1))+(/crossv(1,2)*n_in(3)   - crossv(1,3)*n_in(2),&
                                     crossv(1,3)*n_in(1)   - crossv(1,1)*n_in(3),&
                                     crossv(1,1)*n_in(2)   - crossv(1,2)*n_in(1)/)*SIN(random_angle(1))+&
                                     crossv(1,:)*DOT_PRODUCT(crossv(1,:),n_in)*(1.-COS(random_angle(1)))
-WRITE (*, *) 'tang1: n_out,a(PartTrajectory,tang1),a(PartTrajectory,n_out): ', n_out,(ACOS(DOT_PRODUCT(PartTrajectory,tang1)))*180/PI ,(ACOS(DOT_PRODUCT(PartTrajectory,n_out)))*180/PI
+!WRITE (*, *) 'tang1: n_out,a(PartTrajectory,tang1),a(PartTrajectory,n_out): ', n_out,(ACOS(DOT_PRODUCT(PartTrajectory,tang1)))*180/PI ,(ACOS(DOT_PRODUCT(PartTrajectory,n_out)))*180/PI
 n_out = n_out*COS(random_angle(2))+(/crossv(2,2)*n_out(3)  - crossv(2,3)*n_out(2),&
                                      crossv(2,3)*n_out(1)  - crossv(2,1)*n_out(3),&
                                      crossv(2,1)*n_out(2)  - crossv(2,2)*n_out(1)/)*SIN(random_angle(2))+&
                                      crossv(2,:)*DOT_PRODUCT(crossv(2,:),n_out)*(1.-COS(random_angle(2)))
-WRITE (*, *) 'tang1: n_out,a(PartTrajectory,tang2),a(PartTrajectory,n_out): ', n_out,(ACOS(DOT_PRODUCT(PartTrajectory,tang2)))*180/PI ,(ACOS(DOT_PRODUCT(PartTrajectory,n_out)))*180/PI
-read *,
+!WRITE (*, *) 'tang2: n_out,a(PartTrajectory,tang2),a(PartTrajectory,n_out): ', n_out,(ACOS(DOT_PRODUCT(PartTrajectory,tang2)))*180/PI ,(ACOS(DOT_PRODUCT(PartTrajectory,n_out)))*180/PI
+!read *,
 
 ! Check if the final particle trajectory shows in the right direction and the particle does not leave the domain...
-!IF(ABS(ACOS(DOT_PRODUCT(PartTrajectory,n_out))).GT.MAX(angle,PI*0.5-angle)) n_out = RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory)
+IF(ABS(ACOS(DOT_PRODUCT(PartTrajectory,n_out))) .GT. PI*0.5) n_out = RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory)
 END FUNCTION RoughWall
 
 

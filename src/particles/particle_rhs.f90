@@ -79,11 +79,11 @@ END SELECT
 END SUBROUTINE InitRHS
 
 SUBROUTINE CalcPartRHS(&
-#if USE_BASSETFORCE
+#if USE_BASSETFORCE || ANALYZE_RHS
   dt,iStage)
 #else
   )
-#endif /* USE_BASSETFORCE */
+#endif /* USE_BASSETFORCE || ANALYZE_RHS */
 !===================================================================================================================================
 ! Computes the acceleration from the drag force with respect to the species data and velocity
 !===================================================================================================================================
@@ -95,9 +95,15 @@ USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: GradAtParticle
 #endif
 USE MOD_Particle_Vars,                ONLY: PDM, Pt
+#if ANALYZE_RHS
+USE MOD_Particle_Vars,                ONLY: tWriteRHS,dtWriteRHS
+USE MOD_TimeDisc_Vars,                ONLY: t
+#endif /* ANALYZE_RHS */
 ! #if USE_RW
 ! USE MOD_Particle_RandomWalk_Vars,     ONLY: RWTime
-! USE MOD_Particle_Vars,                ONLY: Species,PartSpecies,TurbPartState
+#if USE_BASSETFORCE
+USE MOD_Particle_Vars,                ONLY: Species,PartSpecies
+#endif /* USE_BASSETFORCE */
 ! USE_MOD_Timedisc_Vars,                ONLY: t
 ! #endif
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -136,18 +142,22 @@ DO iPart = 1,PDM%ParticleVecLength
     ! Calculate other RHS forces and add all forces to compute the particle push
     CALL ParticlePushExtend(iPart,FieldAtParticle(PRIM,iPart)                                     ,&
                                   GradAtParticle (1:RHS_GRAD,1:3,iPart),Pt(1:PP_nVarPartRHS,iPart) &
-#if USE_BASSETFORCE
+#if USE_BASSETFORCE || ANALYZE_RHS
                                   ,dt,increaseIter,iStage)
-    increaseIter = 0
+    IF (Species(PartSpecies(iPart))%CalcBassetForce) increaseIter = 0
 #else
                                   )
-#endif /* USE_BASSETFORCE */
+#endif /* USE_BASSETFORCE || ANALYZE_RHS */
 #else
     ! Calculate the drag (and gravity) force
     Pt(1:3,iPart) = ParticlePush(iPart,FieldAtParticle(PRIM,iPart))
 #endif
   END IF
 END DO
+
+#if ANALYZE_RHS
+IF((dtWriteRHS .GT. 0.0) .AND. (tWriteRHS-t .LE. dt*(1.+1.E-4))) tWriteRHS = tWriteRHS + dtWriteRHS
+#endif /* ANALYZE_RHS */
 
 END SUBROUTINE CalcPartRHS
 
@@ -284,7 +294,7 @@ END FUNCTION ParticlePushRot
 
 #if USE_EXTEND_RHS
 SUBROUTINE ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,Pt_in&
-#if USE_BASSETFORCE
+#if USE_BASSETFORCE || ANALYZE_RHS
   ,dt,increaseIter,iStage)
 #else
   )
@@ -330,28 +340,29 @@ INTEGER,INTENT(IN),OPTIONAL :: iStage
 REAL                     :: Pt(1:3)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
-REAL                     :: globalfactor                ! factor divided by the particle mass
+REAL                     :: globalfactor                ! prefactor of LHS divided by the particle mass
+REAL                     :: prefactor                   ! factor divided by the particle mass
+REAL                     :: Rep                         ! particle Reynolds number
 #if USE_LIFTFORCE
-REAL                     :: dotp                        ! dot_product
+REAL                     :: dotp,beta                   ! dot_product, beta=dp*|\omega|/(2*udiff)
 #endif /* USE_LIFTFORCE */
-REAL                     :: Flm(1:3)                    ! lift force divided by the particle mass
-REAL                     :: Fmm(1:3)                    ! Magnus force
-REAL                     :: Fum(1:3)
-REAL                     :: Fvm(1:3)
-REAL                     :: Fbm(1:3)                    ! Basset force
+REAL                     :: Flm(1:3)                    ! Saffman force divided by the particle mass
+REAL                     :: Fmm(1:3)                    ! Magnus force divided by the particle mass
+REAL                     :: Fum(1:3)                    ! undisturbed flow force divided by the particle mass
+REAL                     :: Fvm(1:3)                    ! virtual mass force divided by the particle mass
+REAL                     :: Fbm(1:3)                    ! Basset force divided by the particle mass
 #if (USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE)
 REAL                     :: DuDt(1:3)                   ! viscous and pressure forces divided by the particle mass
 #endif
 #if USE_BASSETFORCE
 REAL,PARAMETER           :: s32=3./2.
-REAL                     :: RKdtFrac
+REAL                     :: RKdtFrac                    ! Runge-Kutta time step
 INTEGER                  :: k,kIndex,nIndex
-REAL                     :: dufdt(1:3)
+REAL                     :: dufdt(1:3)                  ! partial derivative of the fluid velocity
 #endif /* USE_BASSETFORCE */
 #if PP_nVarPartRHS == 6
-REAL                     :: Omega(3),Rew,Rep,C_M
+REAL                     :: Omega(3),Rew                ! relative fluid-particle Angular velocity, rotational Reynolds number
 #endif
-REAL                     :: prefactor                   ! factor divided by the particle mass
 #if USE_LIFTFORCE || PP_nVarPartRHS == 6
 REAL                     :: rotu(3),rotudiff(3)         ! curl product of the velocity and the velocity difference
 #endif
@@ -376,6 +387,8 @@ Pt(1:3) = 0.
 Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.; Fmm=0.
 ! factor before left hand side to add all dv_p/dt terms of the RHS
 globalfactor = 1.
+! Calculate the Re number
+Rep = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
 
 !===================================================================================================================================
 ! Calculate the Saffman lift force:
@@ -386,6 +399,12 @@ globalfactor = 1.
 IF (Species(PartSpecies(PartID))%CalcSaffmanForce) THEN
   ! Calculate the factor
   prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
+  beta = Species(PartSpecies(PartID))%DiameterIC * VECNORM(PartState(PART_AMOMV,PartID)) * 0.5 / VECNORM(udiff)
+  IF (Rep .LE. 40) THEN
+    prefactor = prefactor * (1-0.3314*SQRT(beta)*EXP(-0.1*Rep)+0.3314*SQRT(beta))
+  ELSE
+    prefactor = prefactor * 0.0524*SQRT(beta*Rep)
+  END IF
   ! Calculate the rotation: \nabla x u
   rotu     = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
                GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
@@ -393,9 +412,7 @@ IF (Species(PartSpecies(PartID))%CalcSaffmanForce) THEN
   ! Calculate the rotation: (\nabla x u) x udiff
   rotudiff = CROSS(rotu, udiff)
   dotp    = MAX(SQRT(DOT_PRODUCT(rotu(:),rotu(:))),0.001)
-  Flm(:)  = SQRT(2*FieldAtParticle(DENS)*mu * 1./dotp)*rotudiff(:)
-
-  Flm     = Flm * prefactor
+  Flm(:)  = SQRT(2*FieldAtParticle(DENS)*mu * 1./dotp)*rotudiff(:) * prefactor
 END IF
 #endif /* USE_LIFTFORCE */
 
@@ -404,14 +421,14 @@ IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
   rotu     = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
                GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
                GradAtParticle(RHS_GRADVEL2,1)-GradAtParticle(RHS_GRADVEL1,2)/)
+  ! Relative fluid-particle Angular velocity
   Omega = 0.5 * rotu - PartState(PART_AMOMV,PartID)
   ! Calculate the rotation: (\nabla x u_p) x udiff
-  rotudiff = CROSS(Omega, udiff)
-  ! Oesterle and Bui Dinh
+  rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
+  ! Prefactor according to Oesterle and Bui Dinh
   Rew = FieldAtParticle(DENS) * VECNORM(Omega) * Species(PartSpecies(PartID))%DiameterIC**2 / (4*mu)
-  Rep = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
-  C_M = 0.45 + (4*Rew/Rep-0.45)*EXP(0.05684*Rew**0.4*Rep**0.7)
-  Fmm = PP_PI/8 * C_M * Species(PartSpecies(PartID))%DiameterIC**3 * FieldAtParticle(DENS) * rotudiff
+  prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(0.05684*Rew**0.4*Rep**0.7)
+  Fmm = PP_PI/8 * prefactor * Species(PartSpecies(PartID))%DiameterIC**3 * FieldAtParticle(DENS) * rotudiff
 
   ! Calculate the RHS of the rotation
   Pt_in(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
@@ -521,8 +538,7 @@ END IF
 #if ANALYZE_RHS
 IF(dtWriteRHS.GT.0.0)THEN
   IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
-    CALL OutputToFile(FileName_RHS,(/t/),(/16,1/),(/REAL(PartSpecies(PartID)),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3)/))
-    tWriteRHS = tWriteRHS + dtWriteRHS
+    CALL OutputToFile(FileName_RHS,(/t/),(/19,1/),(/REAL(PartSpecies(PartID)),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3)/))
   END IF
 END IF
 #endif

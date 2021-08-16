@@ -148,11 +148,11 @@ IF (t.GE.DelayTime) THEN
   CALL ParticleRandomWalk(t)
 #endif
   CALL CalcPartRHS(&
-#if USE_BASSETFORCE
+#if USE_BASSETFORCE || ANALYZE_RHS
     dt)
 #else
     )
-#endif /* USE_BASSETFORCE */
+#endif /* USE_BASSETFORCE || ANALYZE_RHS */
   IF (SGSinUse) CALL ParticleSGS(dt)
 #if USE_LOADBALANCE
   CALL LBSplitTime(LB_INTERPOLATION,tLBStart)
@@ -309,11 +309,11 @@ IF (t.GE.DelayTime) THEN
 #endif
   !--> Calculate the particle right hand side and push
   CALL CalcPartRHS(&
-#if USE_BASSETFORCE
+#if USE_BASSETFORCE || ANALYZE_RHS
   dt,iStage)
 #else
   )
-#endif /* USE_BASSETFORCE */
+#endif /* USE_BASSETFORCE || ANALYZE_RHS */
   IF (SGSinUse) CALL ParticleSGS(dt,iStage)
 #if USE_LOADBALANCE
   CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
@@ -523,11 +523,11 @@ IF (t.GE.DelayTime) THEN
 #endif
   !--> Calculate the particle right hand side and push
   CALL CalcPartRHS(&
-#if USE_BASSETFORCE
+#if USE_BASSETFORCE || ANALYZE_RHS
   dt,iStage)
 #else
   )
-#endif /* USE_BASSETFORCE */
+#endif /* USE_BASSETFORCE || ANALYZE_RHS */
   IF (SGSinUse) CALL ParticleSGS(dt,iStage)
 #if USE_LOADBALANCE
   CALL LBPauseTime(LB_INTERPOLATION,tLBStart)

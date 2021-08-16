@@ -428,15 +428,6 @@ CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff', "Yield strengt
                                                                 ,'0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-RoughWall' , "Enables rough wall modelling"                                   &
                                                                 ,'.TRUE.'   , numberedmulti=.TRUE.)
-! if nInit > 0 some variables have to be defined twice
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-YoungIC'   , "Young's modulus defining stiffness of particle material"&
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-PoissonIC' , "Poisson ratio defining relation of transverse to axial strain" &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-YieldCoeff', "Yield strength defining elastic deformation"            &
-                                                                ,'0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-RoughWall',  "Enables rough wall modelling"                           &
-                                                                ,'.TRUE.'   , numberedmulti=.TRUE.)
 
 ! Ambient condition ================================================================================================================
 CALL prms%CreateLogicalOption(      'Part-Boundary[$]-AmbientCondition', 'Use ambient condition (condition "behind" boundary).'    &
@@ -636,7 +627,7 @@ USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPa
 USE MOD_Output_Vars                ,ONLY: ProjectName
 USE MOD_Output                     ,ONLY: InitOutputToFile
 USE MOD_Restart_Vars               ,ONLY: DoRestart,RestartTime
-USE MOD_Timedisc_Vars              ,ONLY: tAnalyze
+USE MOD_Analyze_Vars               ,ONLY: Analyze_dt
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -724,13 +715,14 @@ CALL MPI_BARRIER(PartMPI%COMM,IERROR)
 
 #if USE_EXTEND_RHS && ANALYZE_RHS
 FileName_RHS = TRIM(ProjectName)//'_RHS'
-WRITE(tmpStr,FMT='(F10.2)') tAnalyze
+WRITE(tmpStr,FMT='(E8.2)') Analyze_dt
 dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(ADJUSTL(tmpStr)))
 IF(dtWriteRHS.GT.0.0)THEN
   tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
 
-  CALL InitOutputToFile(FileName_RHS,'RHS',16,&
-    [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
+  CALL InitOutputToFile(FileName_RHS,'RHS',19,&
+    [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fmmx","Fmmy","Fmmz",&
+                   "Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
 END IF
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 

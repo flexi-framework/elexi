@@ -1218,7 +1218,7 @@ DO WHILE (associated(current))
               CALL set_formatting("blue")
               SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
               CALL clear_formatting()
-              SWRITE(UNIT_stdOut,"(a3)") ' |'
+              SWRITE(UNIT_stdOut,"(a3)") ' | '
               RETURN
             END IF
             check => check%next
@@ -1416,11 +1416,11 @@ DO WHILE (associated(current))
               END SELECT
               ! print option and value to stdout. Custom print, so do it here
               WRITE(fmtName,*) prms%maxNameLen
-              SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+              SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO') ' | '
               CALL set_formatting("blue")
               SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(name)
               CALL clear_formatting()
-              SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+              SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO') ' | '
               CALL multi%printValue(prms%maxValueLen)
               SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
               CALL set_formatting("blue")
@@ -1765,7 +1765,7 @@ DO WHILE (associated(current))
                     CALL set_formatting("blue")
                     SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
                     CALL clear_formatting()
-                    SWRITE(UNIT_stdOut,"(a3)") ' |'
+                    SWRITE(UNIT_stdOut,"(a3)") ' | '
                     RETURN
                   END IF
                   ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
@@ -1786,7 +1786,7 @@ DO WHILE (associated(current))
                       CALL set_formatting("blue")
                       SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
                       CALL clear_formatting()
-                      SWRITE(UNIT_stdOut,"(a3)") ' |'
+                      SWRITE(UNIT_stdOut,"(a3)") ' | '
                       RETURN
                     END IF
                   END DO

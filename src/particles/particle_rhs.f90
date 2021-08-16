@@ -701,12 +701,13 @@ f =  s13 * 1./SQRT(SphericityIC) + s23 * 1./SQRT(SphericityIC)+&
 END FUNCTION DF_Hoelzer
 
 !==================================================================================================================================
-!> Compute source terms for particles
+!> Compute source terms for particles and add them to the nearest DOF
 !==================================================================================================================================
 SUBROUTINE CalcSourcePart(Ut)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Particle_Globals ,ONLY: VECNORM
 USE MOD_Mesh_Vars        ,ONLY: Elem_xGP,sJ,nElems,offsetElem
 #if FV_ENABLED
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
@@ -719,12 +720,13 @@ IMPLICIT NONE
 REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k,iElem,iPart
+INTEGER             :: i,j,k,iElem,iPart,ijk(3)
 REAL                :: Ut_src(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                :: Fp(3)
 #if FV_ENABLED
 REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
+REAL                :: min_distance_glob,min_distance_loc
 !==================================================================================================================================
 
 DO iPart = 1,PDM%ParticleVecLength
@@ -733,20 +735,25 @@ DO iPart = 1,PDM%ParticleVecLength
     Fp(1:3) = Pt(1:3,iPart)*Species(PartSpecies(iPart))%MassIC
     ! Determine nearest DOF
     iElem = PEM%Element(iPart)-offsetElem
-    i = MINLOC(ABS(Elem_xGP(1,:,0,0,iElem)-PartState(1,iPart)),DIM=1)-1
-    j = MINLOC(ABS(Elem_xGP(2,0,:,0,iElem)-PartState(2,iPart)),DIM=1)-1
-    k = MINLOC(ABS(Elem_xGP(3,0,0,:,iElem)-PartState(3,iPart)),DIM=1)-1
+    min_distance_glob = VECNORM(Elem_xGP(:,0,0,0,iElem)-PartState(1:3,iPart))
+    ijk(:) = 0
+    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      min_distance_loc = VECNORM(Elem_xGP(:,i,j,k,iElem)-PartState(1:3,iPart))
+      IF (min_distance_loc .LT. min_distance_glob) THEN; ijk(:) = (/i,j,k/); min_distance_glob = min_distance_loc; END IF
+    END DO; END DO; END DO
     ! Add source term
-    Ut_src(DENS     ,i,j,k) = 0.
-    Ut_src(MOM1:MOM3,i,j,k) = Fp
-    Ut_src(ENER     ,i,j,k) = DOT_PRODUCT(Fp,PartState(4:6,iPart))
+    Ut_src(DENS     ,ijk(1),ijk(2),ijk(3)) = 0.
+    Ut_src(MOM1:MOM3,ijk(1),ijk(2),ijk(3)) = Fp
+    Ut_src(ENER     ,ijk(1),ijk(2),ijk(3)) = DOT_PRODUCT(Fp,PartState(4:6,iPart))
 #if FV_ENABLED
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
-      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
+      Ut(:,ijk(1),ijk(2),ijk(3),iElem) = Ut(:,ijk(1),ijk(2),ijk(3),iElem)+&
+                                         Ut_src2(:,ijk(1),ijk(2),ijk(3))/sJ(ijk(1),ijk(2),ijk(3),iElem,1)
     ELSE
 #endif
-      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
+      Ut(:,ijk(1),ijk(2),ijk(3),iElem) = Ut(:,ijk(1),ijk(2),ijk(3),iElem)+&
+                                         Ut_src(:,ijk(1),ijk(2),ijk(3))/sJ(ijk(1),ijk(2),ijk(3),iElem,0)
 #if FV_ENABLED
     END IF
 #endif

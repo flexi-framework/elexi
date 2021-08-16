@@ -374,7 +374,7 @@ END IF
 
 Pt(1:3) = 0.
 Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.; Fmm=0.
-! factor before left hand side
+! factor before left hand side to add all dv_p/dt terms of the RHS
 globalfactor = 1.
 
 !===================================================================================================================================
@@ -450,7 +450,7 @@ IF (Species(PartSpecies(PartID))%CalcVirtualMass) THEN
 
   Fvm(1:3) = prefactor * DuDt(1:3)
 
-  ! Add to global scaling factor
+  ! Add to global scaling factor as 0.5*\rho/\rho_p*dv_p/dt is on RHS
   globalfactor     = globalfactor + prefactor*FieldAtParticle(DENS)
 END IF
 #endif /* USE_VIRTUALMASS */
@@ -501,6 +501,7 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
     Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * ((k+s43)/((k+1)*SQRT(REAL(k+1))+(k+s32)*SQRT(REAL(k)))+(k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k))))
   END DO
 
+  ! Add to global scaling factor as s43*\rho*prefactor*dv_p/dt is on RHS
   globalfactor     = globalfactor + s43 * prefactor * FieldAtParticle(DENS)
 
   Fbm(1:3) = prefactor * Fbm(1:3)

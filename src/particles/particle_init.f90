@@ -1261,6 +1261,7 @@ USE MOD_Particle_Boundary_Vars ,ONLY: PartBound,nPartBound
 !USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
 USE MOD_Particle_Surfaces_Vars ,ONLY: BCdata_auxSF
 USE MOD_Particle_Vars
+USE MOD_Mesh_Vars              ,ONLY: useCurveds
 USE MOD_ReadInTools
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -1367,6 +1368,9 @@ DO iBC = 1,nBCs
       ! Rough wall modelling
       PartBound%doRoughWallModelling(iBC) = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-RoughWall'          ,'.FALSE.')
       IF (PartBound%doRoughWallModelling(iBC)) THEN
+        IF (useCurveds) THEN
+          SWRITE(UNIT_StdOut,'(A)') ' | ATTENTION: You may lose particles when the faces are curved!'
+        END IF
         PartBound%RoughMeanIC(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughMeanIC'        ,'0.0')
         ! Variance in degree, default 20 degree
         PartBound%RoughVarianceIC(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughVarianceIC'    ,'0.035')

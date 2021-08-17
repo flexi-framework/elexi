@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021 Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -147,20 +147,20 @@ USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                          :: Nloc       !< local polynomial degree
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+INTEGER,INTENT(IN)                                   :: Nloc       !< local polynomial degree
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
 !> normal vector and tangential vectors at side
-REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
-LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
+REAL,DIMENSION(   3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
+LOGICAL,INTENT(IN)                                   :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                       :: i,j
-REAL,DIMENSION(CONS)          :: F_L,F_R,F
-REAL,DIMENSION(PP_2Var)       :: U_LL,U_RR
+INTEGER                 :: i,j
+REAL,DIMENSION(CONS)    :: F_L,F_R,F
+REAL,DIMENSION(PP_2Var) :: U_LL,U_RR
 PROCEDURE(RiemannInt),POINTER :: Riemann_loc !< pointer defining the standard inner Riemann solver
 !==================================================================================================================================
 IF (doBC) THEN
@@ -332,7 +332,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                            :: Nloc     !< local polynomial degree
                                                               !> solution in primitive variables at left/right side of the interface
-REAL,DIMENSION(PRIM       ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)    :: UPrim_L,UPrim_R
+REAL,DIMENSION(PRIM          ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: UPrim_L,UPrim_R
                                                               !> solution gradients in x/y/z-direction left/right of the interface
 REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,INTENT(IN)                                               :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector

@@ -342,10 +342,6 @@ REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: globalfactor                ! prefactor of LHS divided by the particle mass
 REAL                     :: prefactor                   ! factor divided by the particle mass
-REAL                     :: Rep                         ! particle Reynolds number
-#if USE_LIFTFORCE
-REAL                     :: dotp,beta                   ! dot_product, beta=dp*|\omega|/(2*udiff)
-#endif /* USE_LIFTFORCE */
 REAL                     :: Flm(1:3)                    ! Saffman force divided by the particle mass
 REAL                     :: Fmm(1:3)                    ! Magnus force divided by the particle mass
 REAL                     :: Fum(1:3)                    ! undisturbed flow force divided by the particle mass
@@ -361,11 +357,11 @@ INTEGER                  :: k,kIndex,nIndex
 REAL                     :: dufdt(1:3)                  ! partial derivative of the fluid velocity
 #endif /* USE_BASSETFORCE */
 #if PP_nVarPartRHS == 6
+REAL                     :: Rep                         ! particle Reynolds number
 REAL                     :: Omega(3),Rew                ! relative fluid-particle Angular velocity, rotational Reynolds number
-#endif
-#if USE_LIFTFORCE || PP_nVarPartRHS == 6
 REAL                     :: rotu(3),rotudiff(3)         ! curl product of the velocity and the velocity difference
-#endif
+REAL                     :: dotp,beta                   ! dot_product, beta=dp*|\omega|/(2*udiff)
+#endif /* PP_nVarPartRHS == 6 */
 !===================================================================================================================================
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
@@ -387,15 +383,15 @@ Pt(1:3) = 0.
 Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.; Fmm=0.
 ! factor before left hand side to add all dv_p/dt terms of the RHS
 globalfactor = 1.
-! Calculate the Re number
-Rep = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
 
 !===================================================================================================================================
-! Calculate the Saffman lift force:
+! Calculate the Saffman lift force according to:
 ! Saffman, P.G.: The lift on a small sphere in a slow shear flow. Journal of Fluid Mechanics,
 ! pp. 385–400, 1965. 10.1017/S0022112065000824.
 !===================================================================================================================================
-#if USE_LIFTFORCE
+#if PP_nVarPartRHS == 6
+! Calculate the Re number
+Rep = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
 IF (Species(PartSpecies(PartID))%CalcSaffmanForce) THEN
   ! Calculate the factor
   prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
@@ -414,9 +410,12 @@ IF (Species(PartSpecies(PartID))%CalcSaffmanForce) THEN
   dotp    = MAX(SQRT(DOT_PRODUCT(rotu(:),rotu(:))),0.001)
   Flm(:)  = SQRT(2*FieldAtParticle(DENS)*mu * 1./dotp)*rotudiff(:) * prefactor
 END IF
-#endif /* USE_LIFTFORCE */
 
-#if PP_nVarPartRHS == 6
+!===================================================================================================================================
+! Calculate the Magnus force according to:
+! Rubinow, S.I., Keller, J.B.: The transverse force on a spinning sphere moving in a viscous
+! fluid. Journal of Fluid Mechanics, pp. 447–459, 1961. 10.1017/S0022112061000640.
+!===================================================================================================================================
 IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
   rotu     = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
                GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
@@ -446,7 +445,7 @@ END IF
 #endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
 
 !===================================================================================================================================
-! Calculate the viscous and pressure forces:
+! Calculate the viscous and pressure forces (non-conservative compressible form of the NSE):
 ! 1/\rho_p Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
 !===================================================================================================================================
 #if USE_UNDISTFLOW
@@ -458,7 +457,11 @@ END IF
 #endif /* USE_UNDISTFLOW */
 
 !===================================================================================================================================
-! Calculate the added mass force:
+! Calculate the added mass force according to:
+! Auton, T.R., Hunt, J.C., Prud’Homme, M.: The force exerted on a body in invis-
+! cid unsteady non-uniform rotational flow. Journal of Fluid Mechanics, pp. 241–257, 1988.
+! DOI: 10.1017/S0022112088003246.
+! Non-conservative compressible form of the NSE:
 ! 1/\rho_p Du_i/Dt = \partial \rho u_i / \partial t + u_j \partial \rho u_i / \partial x_j
 !===================================================================================================================================
 #if USE_VIRTUALMASS
@@ -473,7 +476,7 @@ END IF
 #endif /* USE_VIRTUALMASS */
 
 !===================================================================================================================================
-! Calculate the Basset force / history terms:
+! Calculate the Basset force / history terms following:
 ! van Hinsberg, M.A., ten Thije Boonkkamp, J.H., Clercx, H.J.: An efficient, second or-
 ! der method for the approximation of the Basset history force. Journal of Computational Physics,
 ! pp. 1465–1478, 2011. 10.1016/j.jcp.2010.11.014.
@@ -574,12 +577,14 @@ IMPLICIT NONE
 REAL,INTENT(IN)             :: U(    CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)            :: divtau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL,INTENT(OUT)            :: gradp( 1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(OUT)            :: divtau(    1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(OUT)            :: gradp(     1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: i,j,k,iElem
 !===================================================================================================================================
+
+#if USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE
 gradUx2           = 0.
 gradUy2           = 0.
 gradUz2           = 0.
@@ -622,6 +627,10 @@ END DO; END DO; END DO; END DO
 
 CALL Lifting_BR1_gen(1,1,U_local(PRES:PRES,:,:,:,:),gradp_local(:,1,:,:,:,:),gradp_local(:,2,:,:,:,:),gradp_local(:,3,:,:,:,:))
 gradp = gradp_local(1,:,:,:,:,:)
+#else
+divtau = 0.
+gradp = 0.
+#endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
 
 END SUBROUTINE tauRHS
 #endif /* USE_EXTEND_RHS */

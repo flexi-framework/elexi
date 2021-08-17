@@ -182,8 +182,6 @@ CMAKE_DEPENDENT_OPTION(PARTICLES_VIRTUALMASS  "Use virtual mass force in RHS for
                                               "PARTICLES_EXTEND_RHS"                OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_BASSETFORCE  "Use Basset force in RHS for particles" OFF
                                               "PARTICLES_EXTEND_RHS"                OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_LIFTFORCE    "Use lift force in RHS for particles" OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_ROTATION     "Consider rotation of particles"      OFF
                                               "PARTICLES_EXTEND_RHS"                OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_ANALYZE_RHS  "Write rhs to file for particles"     OFF
@@ -264,12 +262,6 @@ IF(PARTICLES)
     ELSE()
       ADD_DEFINITIONS(-DUSE_BASSETFORCE=0)
     ENDIF()
-    # Lift force
-    IF (PARTICLES_LIFTFORCE)
-      ADD_DEFINITIONS(-DUSE_LIFTFORCE=1)
-    ELSE()
-      ADD_DEFINITIONS(-DUSE_LIFTFORCE=0)
-    ENDIF()
     IF (PARTICLES_ROTATION)
       ADD_DEFINITIONS(-DPP_nVarPart=9)
       ADD_DEFINITIONS(-DPP_nVarPartRHS=6)
@@ -290,7 +282,6 @@ IF(PARTICLES)
     ADD_DEFINITIONS(-DUSE_UNDISTFLOW=0)
     ADD_DEFINITIONS(-DUSE_VIRTUALMASS=0)
     ADD_DEFINITIONS(-DUSE_BASSETFORCE=0)
-    ADD_DEFINITIONS(-DUSE_LIFTFORCE=0)
     ADD_DEFINITIONS(-DANALYZE_RHS=0)
   ENDIF()
 

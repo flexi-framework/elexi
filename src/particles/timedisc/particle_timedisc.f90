@@ -134,12 +134,12 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-#if  USE_EXTEND_RHS
+#if USE_EXTEND_RHS
   ! Calculate tau
   CALL tauRHS(U,divtau,gradp)
 #endif
   CALL InterpolateFieldToParticle(PP_nVar,U     ,PP_nVarPrim,FieldAtParticle&
-#if  USE_EXTEND_RHS
+#if USE_EXTEND_RHS
     ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),divtau,gradp,GradAtParticle&
 #endif
     )

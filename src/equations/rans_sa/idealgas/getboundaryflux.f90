@@ -535,8 +535,8 @@ REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))              !< result
 ! LOCAL VARIABLES
 INTEGER                              :: p,q
 INTEGER                              :: BCType,BCState
-REAL                                 :: UCons_boundary(PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
-REAL                                 :: UCons_master  (PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: UCons_boundary(CONS,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: UCons_master  (CONS,0:Nloc,0:ZDIM(Nloc))
 #if PARABOLIC
 INTEGER                              :: iVar
 REAL                                 :: nv(3),tv1(3),tv2(3)

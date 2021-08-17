@@ -343,9 +343,6 @@ REAL                     :: mu                          ! viscosity
 REAL                     :: globalfactor                ! prefactor of LHS divided by the particle mass
 REAL                     :: prefactor                   ! factor divided by the particle mass
 REAL                     :: Rep                         ! particle Reynolds number
-#if USE_LIFTFORCE
-REAL                     :: dotp,beta                   ! dot_product, beta=dp*|\omega|/(2*udiff)
-#endif /* USE_LIFTFORCE */
 REAL                     :: Flm(1:3)                    ! Saffman force divided by the particle mass
 REAL                     :: Fmm(1:3)                    ! Magnus force divided by the particle mass
 REAL                     :: Fum(1:3)                    ! undisturbed flow force divided by the particle mass
@@ -362,10 +359,9 @@ REAL                     :: dufdt(1:3)                  ! partial derivative of 
 #endif /* USE_BASSETFORCE */
 #if PP_nVarPartRHS == 6
 REAL                     :: Omega(3),Rew                ! relative fluid-particle Angular velocity, rotational Reynolds number
-#endif
-#if USE_LIFTFORCE || PP_nVarPartRHS == 6
 REAL                     :: rotu(3),rotudiff(3)         ! curl product of the velocity and the velocity difference
-#endif
+REAL                     :: dotp,beta                   ! dot_product, beta=dp*|\omega|/(2*udiff)
+#endif /* PP_nVarPartRHS == 6 */
 !===================================================================================================================================
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
@@ -395,7 +391,7 @@ Rep = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticl
 ! Saffman, P.G.: The lift on a small sphere in a slow shear flow. Journal of Fluid Mechanics,
 ! pp. 385–400, 1965. 10.1017/S0022112065000824.
 !===================================================================================================================================
-#if USE_LIFTFORCE
+#if PP_nVarPartRHS == 6
 IF (Species(PartSpecies(PartID))%CalcSaffmanForce) THEN
   ! Calculate the factor
   prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
@@ -414,9 +410,7 @@ IF (Species(PartSpecies(PartID))%CalcSaffmanForce) THEN
   dotp    = MAX(SQRT(DOT_PRODUCT(rotu(:),rotu(:))),0.001)
   Flm(:)  = SQRT(2*FieldAtParticle(DENS)*mu * 1./dotp)*rotudiff(:) * prefactor
 END IF
-#endif /* USE_LIFTFORCE */
 
-#if PP_nVarPartRHS == 6
 IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
   rotu     = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
                GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&

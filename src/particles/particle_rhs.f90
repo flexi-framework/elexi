@@ -577,12 +577,14 @@ IMPLICIT NONE
 REAL,INTENT(IN)             :: U(    CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)            :: divtau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL,INTENT(OUT)            :: gradp( 1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(OUT)            :: divtau(    1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(OUT)            :: gradp(     1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: i,j,k,iElem
 !===================================================================================================================================
+
+#if USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE
 gradUx2           = 0.
 gradUy2           = 0.
 gradUz2           = 0.
@@ -625,6 +627,10 @@ END DO; END DO; END DO; END DO
 
 CALL Lifting_BR1_gen(1,1,U_local(PRES:PRES,:,:,:,:),gradp_local(:,1,:,:,:,:),gradp_local(:,2,:,:,:,:),gradp_local(:,3,:,:,:,:))
 gradp = gradp_local(1,:,:,:,:,:)
+#else
+divtau = 0.
+gradp = 0.
+#endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
 
 END SUBROUTINE tauRHS
 #endif /* USE_EXTEND_RHS */

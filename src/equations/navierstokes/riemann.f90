@@ -364,17 +364,17 @@ END IF
 ! left state: U_L
 U_LL(EXT_DENS)=U_L(DENS)
 U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
-U_LL(EXT_ENER)=U_L(5)
-U_LL(EXT_PRES)=UPrim_L(5)
+U_LL(EXT_ENER)=U_L(ENER)
+U_LL(EXT_PRES)=UPrim_L(PRES)
 
 
 ! rotate velocity in normal and tangential direction
-U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(2:4),nv(:))
-U_LL(EXT_VEL2)=DOT_PRODUCT(UPrim_L(2:4),t1(:))
+U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV),nv(:))
+U_LL(EXT_VEL2)=DOT_PRODUCT(UPrim_L(VELV),t1(:))
 U_LL(EXT_MOM1)=U_LL(EXT_DENS)*U_LL(EXT_VEL1)
 U_LL(EXT_MOM2)=U_LL(EXT_DENS)*U_LL(EXT_VEL2)
 #if PP_dim==3
-U_LL(EXT_VEL3)=DOT_PRODUCT(UPrim_L(2:4),t2(:))
+U_LL(EXT_VEL3)=DOT_PRODUCT(UPrim_L(VELV),t2(:))
 U_LL(EXT_MOM3)=U_LL(EXT_DENS)*U_LL(EXT_VEL3)
 #else
 U_LL(EXT_VEL3)=0.
@@ -383,15 +383,15 @@ U_LL(EXT_MOM3)=0.
 ! right state: U_R
 U_RR(EXT_DENS)=U_R(DENS)
 U_RR(EXT_SRHO)=1./U_RR(EXT_DENS)
-U_RR(EXT_ENER)=U_R(5)
-U_RR(EXT_PRES)=UPrim_R(5)
+U_RR(EXT_ENER)=U_R(ENER)
+U_RR(EXT_PRES)=UPrim_R(PRES)
 ! rotate momentum in normal and tangential direction
-U_RR(EXT_VEL1)=DOT_PRODUCT(UPRIM_R(2:4),nv(:))
-U_RR(EXT_VEL2)=DOT_PRODUCT(UPRIM_R(2:4),t1(:))
+U_RR(EXT_VEL1)=DOT_PRODUCT(UPRIM_R(VELV),nv(:))
+U_RR(EXT_VEL2)=DOT_PRODUCT(UPRIM_R(VELV),t1(:))
 U_RR(EXT_MOM1)=U_RR(EXT_DENS)*U_RR(EXT_VEL1)
 U_RR(EXT_MOM2)=U_RR(EXT_DENS)*U_RR(EXT_VEL2)
 #if PP_dim==3
-U_RR(EXT_VEL3)=DOT_PRODUCT(UPRIM_R(2:4),t2(:))
+U_RR(EXT_VEL3)=DOT_PRODUCT(UPRIM_R(VELV),t2(:))
 U_RR(EXT_MOM3)=U_RR(EXT_DENS)*U_RR(EXT_VEL3)
 #else
 U_RR(EXT_VEL3)=0.
@@ -430,6 +430,8 @@ SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
                       )
 ! MODULES
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -449,8 +451,6 @@ REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)              :: muSGS_L,muSGS_R
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                                       :: p,q
-REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                      :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                      :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux

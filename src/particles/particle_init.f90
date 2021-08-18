@@ -924,7 +924,10 @@ DO iSpec = 1, nSpecies
   !--> General Species Values
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec
   Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'               )
-  drag_factor                          = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'              )
+  IF (Species(iSpec)%RHSMethod .EQ. RHS_INERTIA) THEN
+    drag_factor                        = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'              )
+    CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
+  END IF
   Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'             ,'0.')
   Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'         ,'0.')
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'          ,'0.')
@@ -947,8 +950,8 @@ DO iSpec = 1, nSpecies
   IF ((drag_factor .EQ. DF_PART_HOELZER) .AND. (Species(iSpec)%SphericityIC .EQ. 1.0)) THEN
     SWRITE(UNIT_StdOut,*) 'INFO: SphericityIC ', Species(iSpec)%SphericityIC,'== 1, drag coefficient of Schiller and Naumann is used.'
     drag_factor = DF_PART_SCHILLER
+    CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
   END IF
-  IF (Species(iSpec)%RHSMethod .EQ. RHS_INERTIA) CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
 #if USE_EXTEND_RHS
   Species(iSpec)%CalcSaffmanForce      = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcSaffmanForce'   ,'.FALSE.')
   Species(iSpec)%CalcMagnusForce       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcMagnusForce'    ,'.FALSE.')

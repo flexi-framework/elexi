@@ -546,7 +546,7 @@ IF(dtWriteRHS.GT.0.0)THEN
 END IF
 #endif
 
-Pt_in(1:3) = Pt_in(1:3) + Pt
+Pt_in(1:3) = Pt
 
 END SUBROUTINE ParticlePushExtend
 

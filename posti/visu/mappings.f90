@@ -279,7 +279,7 @@ DO iVar=1,nVarIni
     END DO
     SDEALLOCATE(PD%VarNamePartDummy)
   END IF
-  ! PartErosion
+  ! PartImpact
   DO iVar2=1,PDE%nPartVar_HDF5
     IF (STRICMP(VarName, PDE%VarNamesPart_HDF5(iVar2)))THEN
       PDE%nPartVar_visu = PDE%nPartVar_visu + 1

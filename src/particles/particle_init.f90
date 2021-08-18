@@ -677,8 +677,8 @@ IF (RecordPart.GT.0) THEN
     WRITE(UNIT=tmpStr,FMT='(I2)') jP
     ALLOCATE(RPP_Plane(jP)%RPP_Data(RPP_nVarNames,RPP_MaxBufferSize))
     RPP_Plane(jP)%RPP_Data = 0.
-    RPP_Plane(jP)%pos = GETREAL('Part-RPPosition'//TRIM(ADJUSTL(tmpStr)),'1.')
-    RPP_Plane(jP)%dir = GETINT('Part-RPDirection'//TRIM(ADJUSTL(tmpStr)),'0')
+    RPP_Plane(jP)%pos = GETREAL('Part-RPPosition'//TRIM(ADJUSTL(tmpStr)),'0.')
+    RPP_Plane(jP)%dir = GETINT('Part-RPDirection'//TRIM(ADJUSTL(tmpStr)),'1')
     RPP_Plane(jP)%RPP_Records = 0.
   END DO
 END IF
@@ -924,10 +924,7 @@ DO iSpec = 1, nSpecies
   !--> General Species Values
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec
   Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'               )
-  IF (Species(iSpec)%RHSMethod .EQ. RHS_INERTIA) THEN
-    drag_factor                        = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'              )
-    CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
-  END IF
+  drag_factor                          = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'              )
   Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'             ,'0.')
   Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'         ,'0.')
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'          ,'0.')
@@ -943,12 +940,15 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold'   ,'0.')
   Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-HighVeloThreshold'  ,'0.')
   Species(iSpec)%SphericityIC          = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-SphericityIC'       ,'1.')
-  IF (drag_factor .EQ. DF_PART_HAIDER) THEN
-    ! Warn when outside valid range of Haider model
-    IF (Species(iSpec)%SphericityIC .LT. 0.670) THEN
-      SWRITE(UNIT_StdOut,*) 'WARNING: SphericityIC ', Species(iSpec)%SphericityIC,'< 0.670, drag coefficient may not be accurate.'
-    END IF
+  ! Warn when outside valid range of Haider model
+  IF ((drag_factor .EQ. DF_PART_HAIDER) .AND. (Species(iSpec)%SphericityIC .LT. 0.670)) THEN
+    SWRITE(UNIT_StdOut,*) 'WARNING: SphericityIC ', Species(iSpec)%SphericityIC,'< 0.670, drag coefficient may not be accurate.'
   END IF
+  IF ((drag_factor .EQ. DF_PART_HOELZER) .AND. (Species(iSpec)%SphericityIC .EQ. 1.0)) THEN
+    SWRITE(UNIT_StdOut,*) 'INFO: SphericityIC ', Species(iSpec)%SphericityIC,'== 1, drag coefficient of Schiller and Naumann is used.'
+    drag_factor = DF_PART_SCHILLER
+  END IF
+  IF (Species(iSpec)%RHSMethod .EQ. RHS_INERTIA) CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
 #if USE_EXTEND_RHS
   Species(iSpec)%CalcSaffmanForce      = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcSaffmanForce'   ,'.FALSE.')
   Species(iSpec)%CalcMagnusForce       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcMagnusForce'    ,'.FALSE.')

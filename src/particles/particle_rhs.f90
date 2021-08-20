@@ -102,7 +102,7 @@ USE MOD_TimeDisc_Vars,                ONLY: t
 ! #if USE_RW
 ! USE MOD_Particle_RandomWalk_Vars,     ONLY: RWTime
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,                ONLY: Species,PartSpecies
+USE MOD_Particle_Vars,                ONLY: Species,PartSpecies,bIter,N_Basset
 #endif /* USE_BASSETFORCE */
 ! USE_MOD_Timedisc_Vars,                ONLY: t
 ! #endif
@@ -118,16 +118,21 @@ INTEGER,INTENT(IN),OPTIONAL      :: iStage
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLE
 INTEGER                          :: iPart
-#if USE_BASSETFORCE
-INTEGER                          :: increaseIter
-#endif /* USE_BASSETFORCE */
+#if USE_MPI && USE_BASSETFORCE
+INTEGER                          :: MPIRequest_FB
+#endif
 !===================================================================================================================================
 
 ! Drag force
 Pt(:,1:PDM%ParticleVecLength)=0.
 
 #if USE_BASSETFORCE
-increaseIter = 1
+bIter = MIN(bIter + 1,N_Basset + 1)
+! Communicate bIter to all other processors (same effect as blocking comm...)
+#if USE_MPI
+MPIRequest_FB = MPI_REQUEST_NULL
+CALL MPI_IBCAST(bIter,1,MPI_INTEGER,0,MPI_COMM_FLEXI,MPIRequest_FB,IERROR)
+#endif /* USE_MPI */
 #endif /* USE_BASSETFORCE */
 DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
@@ -143,8 +148,7 @@ DO iPart = 1,PDM%ParticleVecLength
     CALL ParticlePushExtend(iPart,FieldAtParticle(PRIM,iPart)                                     ,&
                                   GradAtParticle (1:RHS_GRAD,1:3,iPart),Pt(1:PP_nVarPartRHS,iPart) &
 #if USE_BASSETFORCE || ANALYZE_RHS
-                                  ,dt,increaseIter,iStage)
-    IF (Species(PartSpecies(iPart))%CalcBassetForce) increaseIter = 0
+                                  ,dt,iStage)
 #else
                                   )
 #endif /* USE_BASSETFORCE || ANALYZE_RHS */
@@ -154,6 +158,10 @@ DO iPart = 1,PDM%ParticleVecLength
 #endif
   END IF
 END DO
+
+#if USE_BASSETFORCE && USE_MPI
+CALL MPI_WAIT(MPIRequest_FB,MPI_STATUS_IGNORE,IERROR)
+#endif
 
 #if ANALYZE_RHS
 IF((dtWriteRHS .GT. 0.0) .AND. (tWriteRHS-t .LE. dt*(1.+1.E-4))) tWriteRHS = tWriteRHS + dtWriteRHS
@@ -295,7 +303,7 @@ END FUNCTION ParticlePushRot
 #if USE_EXTEND_RHS
 SUBROUTINE ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,Pt_in&
 #if USE_BASSETFORCE || ANALYZE_RHS
-  ,dt,increaseIter,iStage)
+  ,dt,iStage)
 #else
   )
 #endif
@@ -330,7 +338,6 @@ REAL,INTENT(IN)             :: GradAtParticle(1:RHS_GRAD,1:3)
 REAL,INTENT(INOUT)          :: Pt_in(1:PP_nVarPartRHS)
 #if USE_BASSETFORCE
 REAL,INTENT(IN)             :: dt
-INTEGER,INTENT(IN)          :: increaseIter
 INTEGER,INTENT(IN),OPTIONAL :: iStage
 #endif /* USE_BASSETFORCE */
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -483,7 +490,6 @@ END IF
 !===================================================================================================================================
 #if USE_BASSETFORCE
 IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
-  bIter = bIter + increaseIter
   ! Time integration in first RK stage (p. 26)
   IF(PRESENT(iStage))THEN
     IF (iStage.EQ.1) THEN
@@ -504,7 +510,8 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
             * SQRT(mu/(FieldAtParticle(DENS)*PP_pi)) * SQRT(RKdtFrac)
 
   ! Index for previous data
-  kIndex = INT(MIN(N_Basset, bIter)*3)
+  nIndex = MIN(N_Basset, bIter)
+  kIndex = INT(nIndex*3)
   ! copy previous data
   IF(bIter.GT.N_Basset) durdt(1:kIndex-3,PartID) = durdt(4:kIndex,PartID)
   ! \rho d(u)/dt = \rho D(u)/Dt - udiff * (\rho \nabla(u))
@@ -516,7 +523,6 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   durdt(kIndex-2:kIndex,PartID) = dufdt(:)
 
   Fbm = s43 * durdt(kIndex-2:kIndex,PartID) + durdt(1:3,PartID) * (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
-  nIndex = INT(MIN(N_Basset, bIter))
   DO k=1,nIndex-1
     Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * ((k+s43)/((k+1)*SQRT(REAL(k+1))+(k+s32)*SQRT(REAL(k)))+(k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k))))
   END DO

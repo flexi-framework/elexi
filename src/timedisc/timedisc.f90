@@ -465,7 +465,9 @@ DO
 #if FV_ENABLED
       CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif
+#if USE_PARTICLES
       PreviousTime = t
+#endif
       CALL DGTimeDerivative_weakForm(t)
     END IF
 #if USE_PARTICLES

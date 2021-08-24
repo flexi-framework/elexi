@@ -529,7 +529,7 @@ USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_SGS,               ONLY: ParticleSGS
 USE MOD_Particle_Surfaces,          ONLY: InitParticleSurfaces
-USE MOD_Particle_Surface_Flux,      ONLY: InitializeParticleSurfaceflux
+USE MOD_Particle_TimeDisc,          ONLY: Particle_InitTimeDisc
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone
 #if USE_MPI
@@ -562,8 +562,11 @@ IF(TrackingMethod.NE.TRIATRACKING) THEN
   CALL InitParticleSurfaces()
 END IF
 
+! Set particle timedisc pointer
+CALL Particle_InitTimeDisc()
 !CALL InitializeVariables(ManualTimeStep_opt)
 CALL InitializeVariables()
+
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
 #if USE_RW
 CALL ParticleInitRandomWalk()
@@ -582,8 +585,6 @@ ELSE
 END IF
 ! Initialize emission. If no particles are present, assume restart from pure fluid and perform initial inserting
 CALL InitializeParticleEmission()
-! Initialize surface flux
-CALL InitializeParticleSurfaceFlux()
 
 #if USE_MPI
 ! has to be called AFTER InitializeVariables because we need to read the parameter file to know the CommSize
@@ -1743,6 +1744,7 @@ USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
 USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
 USE MOD_Particle_Surfaces,          ONLY: FinalizeParticleSurfaces
+USE MOD_Particle_TimeDisc,          ONLY: Particle_FinalizeTimeDisk
 USE MOD_Particle_TimeDisc_Vars,     ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
 USE MOD_Particle_Vars
 #if USE_MPI
@@ -1840,6 +1842,9 @@ CALL FinalizeParticleInterpolation
 #if USE_RW
 CALL ParticleFinalizeRandomWalk()
 #endif /*USE_RW*/
+
+! time disk
+CALL Particle_FinalizeTimeDisk()
 
 !
 SDEALLOCATE(Seeds)

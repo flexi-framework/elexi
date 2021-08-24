@@ -86,9 +86,7 @@ USE MOD_Filter_Vars         ,ONLY:NFilter,FilterType
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
 #if USE_PARTICLES
-USE MOD_ReadInTools               ,ONLY:GETLOGICAL
-USE MOD_Particle_TimeDisc
-USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimestep,ManualTimestep
+USE MOD_Particle_TimeDisc_Vars,ONLY:ManualTimestep
 #endif
 USE MOD_Predictor           ,ONLY:InitPredictor
 IMPLICIT NONE
@@ -101,42 +99,22 @@ INTEGER           :: NEff
 !==================================================================================================================================
 TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
 
-#if USE_PARTICLES
-ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
-! Check if we are running a steady state tracking
-SWRITE(UNIT_StdOut,'(66("-"))')
-!--- Read Manual Time Step
-useManualTimeStep = GETLOGICAL('Part-SteadyState'   ,'F')
-ManualTimeStep    = GETREAL   ('Part-ManualTimeStep','0.0')
-IF (ManualTimeStep.GT.0.) THEN
-  useManualTimeStep = .TRUE.
-END IF
-#endif
-
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
 
 CALL SetTimeDiscCoefs(TimeDiscMethod)
 
-#if USE_PARTICLES
-IF (UseManualTimestep) THEN
-  TimeStep=>TimeStepSteadyState
-ELSE
-#endif
-  SELECT CASE(TimeDiscType)
-    CASE('LSERKW2')
-      TimeStep=>TimeStepByLSERKW2
-    CASE('LSERKK3')
-      TimeStep=>TimeStepByLSERKK3
-    CASE('ESDIRK')
-      ! Implicit time integration
-      TimeStep=>TimeStepByESDIRK
-      ! Predictor for Newton
-      CALL InitPredictor(TimeDiscMethod)
-  END SELECT
-#if USE_PARTICLES
-END IF
-#endif
+SELECT CASE(TimeDiscType)
+  CASE('LSERKW2')
+    TimeStep=>TimeStepByLSERKW2
+  CASE('LSERKK3')
+    TimeStep=>TimeStepByLSERKK3
+  CASE('ESDIRK')
+    ! Implicit time integration
+    TimeStep=>TimeStepByESDIRK
+    ! Predictor for Newton
+    CALL InitPredictor(TimeDiscMethod)
+END SELECT
 
 IF(TimeDiscInitIsDone)THEN
    SWRITE(*,*) "InitTimeDisc already called."
@@ -219,7 +197,8 @@ USE MOD_Particle_Globals          ,ONLY: ALMOSTZERO
 USE MOD_Particle_Analyze          ,ONLY: TrackingParticlePosition
 USE MOD_Particle_Analyze_Vars     ,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
-USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimestep,ManualTimestep
+USE MOD_Particle_Surface_Flux     ,ONLY: InitializeParticleSurfaceFlux
+USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimestep,ManualTimeStep,PreviousTime
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
@@ -282,13 +261,16 @@ END SELECT
 
 ! Do first RK stage of first timestep to fill gradients
 CurrentStage=1
-! Call if an Analyze_Equation routine is called
-#if !USE_EXTEND_RHS
-IF (doAnalyzeEquation) CALL DGTimeDerivative_weakForm(t)
+#if USE_PARTICLES
+PreviousTime = t
+#endif /* USE_PARTICLES */
+#if USE_PARTICLES
+CALL DGTimeDerivative_weakForm(t)
+! Initialize surface flux
+CALL InitializeParticleSurfaceFlux()
 #else
-IF (UseManualTimestep) CALL DGTimeDerivative_weakForm(t)
-#endif /* USE_EXTEND_RHS */
-!IF(doCalcIndicator) CALL CalcIndicator(U,t)
+IF(doAnalyzeEquation) CALL DGTimeDerivative_weakForm(t)
+#endif /* USE_PARTICLES */
 
 !#if FV_ENABLED
 !! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
@@ -427,7 +409,7 @@ DO
 #if USE_PARTICLES
   ELSE
     doAnalyze = .FALSE.
-  END IF
+  END IF ! UseManualTimestep
 #endif
   nCalcTimestep=nCalcTimestep-1
 
@@ -480,13 +462,19 @@ DO
   END IF
 
   ! Call DG operator to fill face data, fluxes, gradients for analyze
-  IF (doAnalyze) THEN
-    IF(doCalcIndicator) CALL CalcIndicator(U,t)
-#if FV_ENABLED
-    CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+#if USE_PARTICLES
+  IF (.NOT.UseManualTimestep) THEN
 #endif
-    CALL DGTimeDerivative_weakForm(t)
+    IF (doAnalyze) THEN
+      IF(doCalcIndicator) CALL CalcIndicator(U,t)
+#if FV_ENABLED
+      CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+#endif
+      CALL DGTimeDerivative_weakForm(t)
+    END IF
+#if USE_PARTICLES
   END IF
+#endif
 
   ! Call your Analysis Routine for your Testcase here.
   IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
@@ -606,12 +594,8 @@ USE MOD_FV                    ,ONLY: FV_Switch
 USE MOD_FV_Vars               ,ONLY: FV_toDGinRK
 #endif /* FV */
 #if USE_PARTICLES
+USE MOD_Particle_Timedisc_Vars,ONLY: b_dt
 USE MOD_Globals               ,ONLY: CollectiveStop
-USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
-USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByEuler,Particle_TimeStepByLSERK_RHS,Particle_TimeStepByLSERK
-USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByLSERK_RK_RHS,Particle_TimeStepByLSERK_RK
-USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
 #endif /* PARTICLES */
 !#if USE_MPI_SHARED
 !USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
@@ -623,8 +607,11 @@ REAL,INTENT(INOUT)  :: t                                     !< current simulati
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL     :: Ut_temp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) ! temporal variable for Ut
-REAL     :: tStage,b_dt(1:nRKStages)
+REAL     :: tStage
 INTEGER  :: iStage
+#if !USE_PARTICLES
+REAL     :: b_dt(1:nRKStages)
+#endif
 !===================================================================================================================================
 
 ! Premultiply with dt
@@ -636,23 +623,6 @@ IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 CurrentStage=1
 tStage=t
 
-#if USE_PARTICLES
-SELECT CASE (TRIM(ParticleTimeDiscMethod))
-  CASE('Runge-Kutta')
-    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt)
-  CASE('Euler')
-    CALL Particle_TimeStepByEuler(t,dt)
-  CASE DEFAULT
-    CALL CollectiveStop(__STAMP__,&
-                    'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-END SELECT
-
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-IF (doParticlePositionTrack) THEN
-  CALL TrackingParticlePosition(t)
-END IF
-#endif /* PARTICLES */
-
 !CALL DGTimeDerivative_weakForm(tStage)      !allready called in timedisc
 CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
@@ -660,18 +630,6 @@ CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 !#if USE_MPI_SHARED
 !  CALL UpdateDGShared(U)
 !#endif /*MPI_SHARED*/
-
-#if USE_PARTICLES
-  SELECT CASE (TRIM(ParticleTimeDiscMethod))
-    CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK(t,b_dt)
-    CASE('Euler')
-      ! Do nothing
-    CASE DEFAULT
-      CALL CollectiveStop(__STAMP__,&
-                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-  END SELECT
-#endif /* PARTICLES */
 
 ! Following steps
 DO iStage=2,nRKStages
@@ -683,34 +641,6 @@ DO iStage=2,nRKStages
   CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
 #endif /* FV */
   CALL DGTimeDerivative_weakForm(tStage)
-#if USE_PARTICLES
-  SELECT CASE (TRIM(ParticleTimeDiscMethod))
-    CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt)! ,b_dt)
-    CASE('Euler')
-      ! Do nothing
-    CASE DEFAULT
-      CALL CollectiveStop(__STAMP__,&
-                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-  END SELECT
-
-  ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (doParticlePositionTrack) THEN
-    CALL TrackingParticlePosition(tStage)
-  END IF
-#endif /* PARTICLES */
-
-#if USE_PARTICLES
-  SELECT CASE (TRIM(ParticleTimeDiscMethod))
-    CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
-    CASE('Euler')
-      ! Do nothing
-    CASE DEFAULT
-      CALL CollectiveStop(__STAMP__,&
-                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-  END SELECT
-#endif /* PARTICLES */
   CALL VAXPBY(nTotalU,Ut_temp,Ut,ConstOut=-RKA(iStage)) !Ut_temp = Ut - Ut_temp*RKA(iStage)
   CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
 
@@ -745,11 +675,6 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif /*FV_ENABLED*/
-#if USE_PARTICLES
-USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
-USE MOD_Particle_TimeDisc
-#endif /*USE_PARTICLES*/
 !#if USE_MPI_SHARED
 !USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
 !#endif
@@ -776,23 +701,10 @@ b_dt=RKb*dt
 CurrentStage=1
 tStage=t
 
-#if USE_PARTICLES
-CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt)
-
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-IF (doParticlePositionTrack) THEN
-  CALL TrackingParticlePosition(t)
-END IF
-#endif
-
 CALL VCopy(nTotalU,Uprev,U)                    !Uprev = U
 CALL VCopy(nTotalU,S2,U)                       !S2    = U
-!CALL DGTimeDerivative_weakForm(t)             ! allready called in timedisc
+!CALL DGTimeDerivative_weakForm(t)             ! already called in timedisc
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U     = U + Ut*b_dt(1)
-
-#if USE_PARTICLES
-CALL Particle_TimeStepByLSERK(t,b_dt)
-#endif
 
 DO iStage=2,nRKStages
   CurrentStage=iStage
@@ -804,15 +716,6 @@ DO iStage=2,nRKStages
 #endif
   CALL DGTimeDerivative_weakForm(tStage)
 
-#if USE_PARTICLES
-  CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt)
-
-  ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (doParticlePositionTrack) THEN
-    CALL TrackingParticlePosition(tStage)
-  END IF
-#endif
-
   CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                !S2 = S2 + U*RKdelta(iStage)
   CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U = RKg1(iStage)*U + RKg2(iStage)*S2
   CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                !U = U + RKg3(ek)*Uprev
@@ -822,9 +725,6 @@ DO iStage=2,nRKStages
 !  CALL UpdateDGShared(U)
 !#endif /*MPI_SHARED*/
 
-#if USE_PARTICLES
-  CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
-#endif
 END DO
 CurrentStage=1
 
@@ -936,79 +836,6 @@ END IF
 nGMRESIterdt = 0
 END SUBROUTINE TimeStepByESDIRK
 
-#if USE_PARTICLES
-!===================================================================================================================================
-!> Low-Storage Runge-Kutta integration with frozen fluid: 2 register version
-!> This procedure takes the current time t, the time step dt and the intial solution.
-!> Only particle push is integrated in time
-!> RKA/b/c coefficients are low-storage coefficients, NOT the ones from butcher table.
-!===================================================================================================================================
-SUBROUTINE TimeStepSteadyState(t)
-! MODULES
-USE MOD_Globals               ,ONLY: CollectiveStop
-USE MOD_PreProc
-USE MOD_TimeDisc_Vars         ,ONLY: dt,RKb,RKc,nRKStages,CurrentStage
-USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
-USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByEuler,Particle_TimeStepByLSERK_RHS,Particle_TimeStepByLSERK
-USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByLSERK_RK_RHS,Particle_TimeStepByLSERK_RK
-USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
-!#if USE_MPI_SHARED
-!USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
-!#endif /* MPI_SHARED */
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)  :: t                                     !< current simulation time
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL     :: tStage,b_dt(1:nRKStages)
-INTEGER  :: iStage
-!===================================================================================================================================
-
-! Premultiply with dt
-b_dt = RKb*dt
-
-! First evaluation of DG operator already done in timedisc
-CurrentStage = 1
-tStage       = t
-
-
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-IF (doParticlePositionTrack) THEN
-  CALL TrackingParticlePosition(t)
-END IF
-
-SELECT CASE (TRIM(ParticleTimeDiscMethod))
-  CASE('Runge-Kutta')
-    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt)
-    CALL Particle_TimeStepByLSERK(t,b_dt)
-
-    ! Following steps
-    DO iStage = 2,nRKStages
-      CurrentStage = iStage
-      tStage       = t+dt*RKc(iStage)
-
-      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt)
-
-      ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-      IF (doParticlePositionTrack) THEN
-        CALL TrackingParticlePosition(tStage)
-      END IF
-
-      CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
-    END DO
-
-  CASE('Euler')
-    CALL Particle_TimeStepByEuler(t,dt)
-  CASE DEFAULT
-    CALL CollectiveStop(__STAMP__,&
-                    'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-END SELECT
-
-CurrentStage = 1
-END SUBROUTINE TimeStepSteadyState
-#endif
 
 
 !===================================================================================================================================

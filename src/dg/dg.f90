@@ -290,7 +290,14 @@ USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif /*USE_LOADBALANCE*/
 #if USE_PARTICLES
 USE MOD_Part_RHS            ,ONLY: CalcSourcePart
-USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart
+USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart,DelayTime
+USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeRHS,ParticleTimeStep,ParticleTimeStepRK
+USE MOD_Particle_Timedisc_Vars,ONLY: PreviousTime
+USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt
+#if USE_MPI
+USE MOD_Particle_MPI        ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
+#endif /* USE_MPI */
 #endif /* USE_PARTICLES */
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -496,6 +503,17 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 ! The communication of the gradients is initialized within the lifting routines
 CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
 
+#if USE_PARTICLES
+IF (t.GT.PreviousTime) THEN
+  CALL ParticleTimeRHS(t,currentStage,dt)
+  IF (currentStage.EQ.1) THEN
+    CALL ParticleTimeStep(t,dt)
+  ELSE
+    CALL ParticleTimeStepRK(t,currentStage)
+  END IF
+END IF
+#endif /* PARTICLES */
+
 #if EDDYVISCOSITY
 ! 7. [ After the lifting we can now compute the eddy viscosity, which then has to be evaluated at the boundary. ]
 ! 7.1) - [ Open receive channel ]
@@ -547,6 +565,20 @@ CALL LBSplitTime(LB_DGCOMM,tLBStart)
 #endif /*USE_LOADBALANCE*/
 #endif /*PARABOLIC && USE_MPI*/
 
+#if USE_MPI && USE_PARTICLES
+IF (t.GE.DelayTime .AND. t.GT.PreviousTime) THEN
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
+  ! send number of particles
+  CALL SendNbOfParticles()
+  ! finish communication of number of particles and send particles
+  CALL MPIParticleSend()
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
+END IF
+#endif /*USE_MPI && USE_PARTICLES*/
 
 ! 10. Fill flux and Surface integral
 ! General idea: U_master/slave and gradUx,y,z_master/slave are filled and can be used to compute the Riemann solver
@@ -645,6 +677,25 @@ IF (OverintegrationType.EQ.CUTOFFCONS) THEN
 ELSE
   CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
 END IF
+
+#if USE_PARTICLES
+IF (t.GE.DelayTime .AND. t.GT.PreviousTime) THEN
+#if USE_MPI
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
+  ! receive particles, locate and finish communication
+  CALL MPIParticleRecv()
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
+#endif /*USE_MPI*/
+  ! find next free position in particle array
+  CALL UpdateNextFreePosition()
+  ! Increment previous time
+  PreviousTime = t
+END IF
+#endif /*USE_PARTICLES*/
 
 END SUBROUTINE DGTimeDerivative_weakForm
 

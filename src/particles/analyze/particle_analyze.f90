@@ -191,7 +191,7 @@ END IF
 
 ParticleAnalyzeInitIsDone = .TRUE.
 
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTCILE ANALYZE DONE!'
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE ANALYZE DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleAnalyze

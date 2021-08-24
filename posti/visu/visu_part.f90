@@ -131,7 +131,7 @@ SDEALLOCATE(ListIn%mapAllVarsToVisuVars)
 IF(datasetNames.EQ.'PartData')THEN
   CALL GetVarNames("VarNamesParticles",varnames,VarNamesExist)
 ELSE IF(datasetNames.EQ.'ImpactData')THEN
-  CALL GetVarNames("VarNamesErosion",varnames,VarNamesExist)
+  CALL GetVarNames("VarNamesImpactTracking",varnames,VarNamesExist)
 END IF
 
 IF(VarNamesExist)THEN

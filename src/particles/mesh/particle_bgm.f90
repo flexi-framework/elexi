@@ -99,6 +99,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
+USE MOD_Particle_TimeDisc_Vars ,ONLY: PreviousTime
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,Distance,ListDistance
 USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray
 USE MOD_DG                     ,ONLY: DGTimeDerivative_weakForm
@@ -331,7 +332,10 @@ IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
   halo_eps2 = 0.
 ELSE
   IF (ManualTimeStep.EQ.0.0) THEN
+    ! Skip the call, otherwise particles get incremented twice
+    PreviousTime = t
     CALL DGTimeDerivative_weakForm(t)
+    PreviousTime = -1.
     deltaT = CalcTimeStep(errType)
   ELSE
     deltaT=ManualTimeStep

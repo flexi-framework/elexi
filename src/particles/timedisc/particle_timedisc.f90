@@ -226,12 +226,10 @@ SUBROUTINE Particle_TimeStepByEuler(t,dt)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Part_Emission,           ONLY: ParticleInserting
-USE MOD_Particle_Analyze,        ONLY: TrackingParticlePath
+USE MOD_Particle_Analyze_Tools,  ONLY: TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: Species,PartSpecies,PartState,Pt,DelayTime,PDM
-USE MOD_Particle_Analyze,        ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars,   ONLY: doParticlePositionTrack
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
 #endif /*MPI*/
@@ -293,10 +291,6 @@ IF (t.GE.DelayTime) THEN
   CALL ParticleInserting()
 END IF
 
-! PACK IN ANALYZE (possible? bc it needs to be called in each RK stage!)
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-IF (doParticlePositionTrack) CALL TrackingParticlePosition(t)
-
 END SUBROUTINE Particle_TimeStepByEuler
 
 
@@ -329,9 +323,8 @@ SUBROUTINE Particle_TimeStepByLSERK(t,dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord
 USE MOD_Part_Emission,           ONLY: ParticleInserting
-USE MOD_Particle_Analyze,        ONLY: TrackingParticlePath
+USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
 USE MOD_Particle_TimeDisc_Vars,  ONLY: b_dt
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
@@ -422,20 +415,19 @@ SUBROUTINE Particle_TimeStepByLSERK_RK(t,iStage)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_TimeDisc_Vars,           ONLY: RKA
 USE MOD_Part_Emission,           ONLY: ParticleInserting
-USE MOD_Particle_Analyze,        ONLY: TrackingParticlePath
+USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
 USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt,b_dt
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,PartSpecies,Species
+USE MOD_TimeDisc_Vars,           ONLY: RKA
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles
 #endif /*MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif
-USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -546,8 +538,6 @@ SUBROUTINE TimeStepSteadyState(t)
 USE MOD_Globals               ,ONLY: CollectiveStop
 USE MOD_PreProc
 USE MOD_TimeDisc_Vars         ,ONLY: dt,RKb,RKc,nRKStages,CurrentStage
-USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
 USE MOD_Particle_Timedisc_Vars,ONLY: b_dt
 USE MOD_Particle_Vars         ,ONLY: DelayTime
 USE MOD_Part_Tools            ,ONLY: UpdateNextFreePosition
@@ -580,9 +570,6 @@ b_dt = RKb*dt
 CurrentStage = 1
 tStage       = t
 
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-IF (doParticlePositionTrack) CALL TrackingParticlePosition(t)
-
 CALL ParticleTimeRHS(t,currentStage,dt)
 CALL ParticleTimeStep(t,dt)
 
@@ -612,10 +599,6 @@ DO iStage = 2,nRKStages
   tStage       = t+dt*RKc(iStage)
 
   CALL ParticleTimeRHS(t,currentStage,dt)
-
-  ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (doParticlePositionTrack) CALL TrackingParticlePosition(tStage)
-
   CALL ParticleTimeStepRK(t,currentStage)
 
 #if USE_MPI

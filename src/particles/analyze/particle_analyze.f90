@@ -43,22 +43,12 @@ INTERFACE CalcKineticEnergy
   MODULE PROCEDURE CalcKineticEnergy
 END INTERFACE
 
-INTERFACE TrackingParticlePosition
-  MODULE PROCEDURE TrackingParticlePosition
-END INTERFACE
-
-INTERFACE TrackingParticlePath
-  MODULE PROCEDURE TrackingParticlePath
-END INTERFACE
-
 PUBLIC :: InitParticleAnalyze
 PUBLIC :: ParticleAnalyze
 PUBLIC :: ParticleInformation
 PUBLIC :: FinalizeParticleAnalyze
 PUBLIC :: DefineParametersParticleAnalyze
 PUBLIC :: CalcKineticEnergy
-PUBLIC :: TrackingParticlePosition
-PUBLIC :: TrackingParticlePath
 !==================================================================================================================================
 
 CONTAINS
@@ -78,8 +68,6 @@ CALL prms%CreateIntOption(      'Part-AnalyzeStep'        , 'Analyze is performe
 CALL prms%CreateLogicalOption(  'CalcKineticEnergy'       , 'Calculate Kinetic Energy. ','.FALSE.')
 CALL prms%CreateLogicalOption(  'CalcPartBalance'         , 'Calculate the Particle Kinetic Energy Balance'//&
                                                             '- input and outflow kinetic energy of all particles','.FALSE.')
-CALL prms%CreateLogicalOption(  'Part-TrackPosition'      , 'Track particle position','.FALSE.')
-CALL prms%CreateLogicalOption(  'Part-TrackConvergence'   , 'Track particle convergence (i.e. final position)','.FALSE.')
 CALL prms%CreateLogicalOption(  'Part-TrackDispersion'    , 'Track particle convergence radius (i.e. absolute path)','.FALSE.')
 CALL prms%CreateLogicalOption(  'Part-TrackPath'          , 'Track particle path (i.e. relative path)','.FALSE.')
 #if CODE_ANALYZE
@@ -116,7 +104,7 @@ SUBROUTINE InitParticleAnalyze()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Analyze_Vars   ,ONLY: doParticleAnalyze,doParticlePositionTrack,doParticleConvergenceTrack
+USE MOD_Particle_Analyze_Vars   ,ONLY: doParticleAnalyze
 USE MOD_Particle_Analyze_Vars   ,ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Analyze_Vars   ,ONLY: CalcEkin,CalcPartBalance
 USE MOD_Particle_Analyze_Vars   ,ONLY: ParticleAnalyzeInitIsDone,nSpecAnalyze
@@ -175,10 +163,6 @@ IF (CalcPartBalance) THEN
   nPartInTmp    = 0
 END IF
 
-! Track and write position of each particle. Primarily intended for debug purposes
-doParticlePositionTrack    = GETLOGICAL('Part-TrackPosition',   '.FALSE.')
-doParticleConvergenceTrack = GETLOGICAL('Part-TrackConvergence','.FALSE.')
-
 doParticleDispersionTrack    = GETLOGICAL('Part-TrackDispersion','.FALSE.')
 doParticlePathTrack          = GETLOGICAL('Part-TrackPath'      ,'.FALSE.')
 IF (doParticleDispersionTrack .AND. doParticlePathTrack) &
@@ -197,11 +181,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticleAnalyze
 
 
-SUBROUTINE ParticleAnalyze(t    &
-#if USE_LOADBALANCE
-                          ,iter &
-#endif /* USE_LOADBALANCE */
-  )
+SUBROUTINE ParticleAnalyze(t,iter)
 !==================================================================================================================================
 !> Controls particle analysis routines and is called at analyze time levels
 !> - writes load balancing statistics
@@ -231,9 +211,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                 :: t                      !< current simulation time
-#if USE_LOADBALANCE
 INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
-#endif /* USE_LOADBALANCE */
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -273,6 +251,9 @@ END IF
 IF (RecordPart.GT.0) THEN
   CALL ParticleRecord(t,writeToBinary=.TRUE.)
 END IF
+
+! Perform the missing particle increment
+IF (iter.GT.1) CALL ParticleAnalyzeTimeUpdate()
 
 END SUBROUTINE ParticleAnalyze
 
@@ -399,130 +380,63 @@ END IF
 END SUBROUTINE CalcKineticEnergy
 
 
-SUBROUTINE TrackingParticlePosition(time)
-!===================================================================================================================================
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals
-USE MOD_Preproc
-USE MOD_Particle_Vars,          ONLY:PartState, PDM, PEM
+
+SUBROUTINE ParticleAnalyzeTimeUpdate()
+!==================================================================================================================================
+!> Displays the actual status of the particle phase in the simulation and counts the number of impacts
+!==================================================================================================================================
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
+#endif /*USE_LOADBALANCE*/
+USE MOD_Part_RHS            ,ONLY: CalcSourcePart
+USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Vars       ,ONLY: DelayTime
+USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeRHS,ParticleTimeStep,ParticleTimeStepRK
+USE MOD_TimeDisc_Vars       ,ONLY: t,CurrentStage,dt
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,      ONLY:PartMPI
-#endif
-USE MOD_Particle_Globals,       ONLY:GETFREEUNIT
+USE MOD_Particle_MPI        ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
+#endif /* USE_MPI */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN)                :: time
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,iunit,iPartState
-CHARACTER(LEN=60)  :: TrackingFilename
-LOGICAL            :: fexist
-!===================================================================================================================================
+!==================================================================================================================================
 
-iunit=GETFREEUNIT()
-TrackingFilename = ('ParticlePosition.csv')
+CALL ParticleTimeRHS(t,currentStage,dt)
+IF (currentStage.EQ.1) THEN
+  CALL ParticleTimeStep(t,dt)
+ELSE
+  CALL ParticleTimeStepRK(t,currentStage)
+END IF
 
-INQUIRE(FILE = TrackingFilename, EXIST=fexist)
-
-IF(.NOT.fexist) THEN
+IF (t.GE.DelayTime) THEN
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
+  ! send number of particles
+  CALL SendNbOfParticles()
+  ! finish communication of number of particles and send particles
+  CALL MPIParticleSend()
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
 #if USE_MPI
- IF(PartMPI%MPIRoot)THEN
-#endif
-   iunit=GETFREEUNIT()
-   OPEN(UNIT=iunit,FILE=TrackingFilename,FORM='FORMATTED',STATUS='UNKNOWN')
-   !CALL FLUSH (iunit)
-    ! writing header
-    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'TIME', ' '
-    WRITE(iunit,'(A1)',ADVANCE='NO') ','
-    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartNum', ' '
-    WRITE(iunit,'(A1)',ADVANCE='NO') ','
-    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartPosX', ' '
-    WRITE(iunit,'(A1)',ADVANCE='NO') ','
-    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartPosY', ' '
-    WRITE(iunit,'(A1)',ADVANCE='NO') ','
-    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartPosZ', ' '
-    WRITE(iunit,'(A1)',ADVANCE='NO') ','
-    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartVelX', ' '
-    WRITE(iunit,'(A1)',ADVANCE='NO') ','
-    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartVelY', ' '
-    WRITE(iunit,'(A1)',ADVANCE='NO') ','
-    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartVelZ', ' '
-    WRITE(iunit,'(A1)',ADVANCE='NO') ','
-    WRITE(iunit,'(A8,A5)',ADVANCE='NO') 'PartElem', ' '
-    CLOSE(iunit)
-#if USE_MPI
-  END IF
-  ! Wait with all procs until the file is available.
-  ! WARNING: Global sync point, but this routine is only supposed to work for debug anyways
-  CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-#endif
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
+  ! receive particles, locate and finish communication
+  CALL MPIParticleRecv()
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
+#endif /*USE_MPI*/
+  ! find next free position in particle array
+  CALL UpdateNextFreePosition()
 END IF
 
-! Check again, we might be on the other proc and only see the file now
-INQUIRE(FILE = TrackingFilename, EXIST=fexist)
-IF(fexist) THEN
-  iunit=GETFREEUNIT()
-  OPEN(unit=iunit,FILE=TrackingFileName,FORM='Formatted',POSITION='APPEND',STATUS='old')
-  !CALL FLUSH (iunit)
-  DO i=1,PDM%ParticleVecLength
-    IF (PDM%ParticleInside(i)) THEN
-      WRITE(iunit,104,ADVANCE='NO') TIME
-      WRITE(iunit,'(A1)',ADVANCE='NO') ','
-      WRITE(iunit,'(I12)',ADVANCE='NO') i
-      DO iPartState=1,6
-        WRITE(iunit,'(A1)',ADVANCE='NO') ','
-        WRITE(iunit,104,ADVANCE='NO') PartState(iPartState,i)
-      END DO
-      WRITE(iunit,'(A1)',ADVANCE='NO') ','
-      WRITE(iunit,'(I12)',ADVANCE='NO') PEM%Element(i)
-      WRITE(iunit,'(A)') ' '
-     END IF
-  END DO
-  CLOSE(iunit)
-END IF
-
-104    FORMAT (e25.14)
-
-END SUBROUTINE TrackingParticlePosition
-
-
-SUBROUTINE TrackingParticlePath()
-!===================================================================================================================================
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-!===================================================================================================================================
-! MODULES
-USE MOD_Particle_Vars,          ONLY: PartState,PDM,LastPartPos
-USE MOD_Particle_Analyze_Vars,  ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER            :: iPart
-!===================================================================================================================================
-
-! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
-IF (doParticleDispersionTrack) THEN
-  DO iPart = 1,PDM%ParticleVecLength
-    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
-  END DO
-ELSEIF (doParticlePathTrack) THEN
-  DO iPart = 1,PDM%ParticleVecLength
-    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) +    (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
-  END DO
-END IF
-
-END SUBROUTINE TrackingParticlePath
-
+END SUBROUTINE ParticleAnalyzeTimeUpdate
 
 
 SUBROUTINE FinalizeParticleAnalyze()

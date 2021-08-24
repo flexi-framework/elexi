@@ -85,9 +85,6 @@ USE MOD_Overintegration_Vars,ONLY:NUnder
 USE MOD_Filter_Vars         ,ONLY:NFilter,FilterType
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
-#if USE_PARTICLES
-USE MOD_Particle_TimeDisc_Vars,ONLY:ManualTimestep
-#endif
 USE MOD_Predictor           ,ONLY:InitPredictor
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -164,7 +161,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Ti
 USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage,TimeDiscType
 USE MOD_TimeDisc_Vars       ,ONLY: doFinalize,writeCounter
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData
-#if !USE_EXTEND_RHS
+#if !USE_PARTICLES
 USE MOD_Analyze_Vars        ,ONLY: doAnalyzeEquation
 #endif
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
@@ -194,8 +191,6 @@ USE MOD_FV
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_Particle_Globals          ,ONLY: ALMOSTZERO
-USE MOD_Particle_Analyze          ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars     ,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_Particle_Surface_Flux     ,ONLY: InitializeParticleSurfaceFlux
 USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimestep,ManualTimeStep,PreviousTime
@@ -262,10 +257,12 @@ END SELECT
 ! Do first RK stage of first timestep to fill gradients
 CurrentStage=1
 #if USE_PARTICLES
-PreviousTime = t
-#endif /* USE_PARTICLES */
-#if USE_PARTICLES
-CALL DGTimeDerivative_weakForm(t)
+IF (UseManualTimestep) THEN
+  ! Skip the call, otherwise particles get incremented twice
+  PreviousTime = t
+  CALL DGTimeDerivative_weakForm(t)
+  PreviousTime = -1.
+END IF
 ! Initialize surface flux
 CALL InitializeParticleSurfaceFlux()
 #else
@@ -348,8 +345,6 @@ CALL Analyze(t,iter,tend)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
-CALL PrintStatusLine(t,dt,tStart,tEnd)
-
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A,ES16.7)')'Initial Timestep  : ', dt
 IF(ViscousTimeStep)THEN
@@ -392,7 +387,7 @@ DO
 !#else
     IF (nCalcTimestep.LT.1) THEN
 !#endif
-      dt_Min=CALCTIMESTEP(errType)
+      dt_Min= CALCTIMESTEP(errType)
       nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
       dt_MinOld=dt_Min
       IF(errType.NE.0)THEN
@@ -470,6 +465,7 @@ DO
 #if FV_ENABLED
       CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif
+      PreviousTime = t
       CALL DGTimeDerivative_weakForm(t)
     END IF
 #if USE_PARTICLES
@@ -561,13 +557,6 @@ DO
 
   IF(doFinalize) EXIT
 END DO
-
-#if USE_PARTICLES
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (doParticlePositionTrack .OR. doParticleConvergenceTrack) THEN
-    CALL TrackingParticlePosition(t)
-  END IF
-#endif
 
 END SUBROUTINE TimeDisc
 

@@ -330,11 +330,7 @@ CALL Benchmarking()
 CALL ParticleInformation()
 
 ! Perform particle analyze depending on ParticleInformation
-CALL ParticleAnalyze(time &
-#if USE_LOADBALANCE
-                    ,iter &
-#endif /* USE_LOADBALANCE */
-  )
+CALL ParticleAnalyze(time,iter)
 
 #endif /*USE_PARTICLES*/
 IF (PRESENT(doPrintETA_opt)) CALL PrintStatusLine(t=Time,dt=dt_opt,tStart=tStart_opt,tEnd=tend,doPrintETA_opt=.TRUE.)

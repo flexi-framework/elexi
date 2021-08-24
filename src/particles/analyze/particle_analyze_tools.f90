@@ -28,12 +28,17 @@ INTERFACE CalcEkinPart
   MODULE PROCEDURE CalcEkinPart
 END INTERFACE
 
+INTERFACE TrackingParticlePath
+  MODULE PROCEDURE TrackingParticlePath
+END INTERFACE
+
 INTERFACE ParticleRecord
   MODULE PROCEDURE ParticleRecord
 END INTERFACE
 
 PUBLIC :: CalcEkinPart
 PUBLIC :: ParticleRecord
+PUBLIC :: TrackingParticlePath
 !===================================================================================================================================
 
 CONTAINS
@@ -66,6 +71,38 @@ partV2 = PartState(4,iPart) * PartState(4,iPart) &
 CalcEkinPart = 0.5*Species(PartSpecies(iPart))%MassIC*partV2
 
 END FUNCTION CalcEkinPart
+
+
+SUBROUTINE TrackingParticlePath()
+!===================================================================================================================================
+! Outputs the particle position and velocity at every time step to determine the absolute or relative (since emission) path
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Vars,          ONLY: PartState,PDM,LastPartPos
+USE MOD_Particle_Analyze_Vars,  ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: iPart
+!===================================================================================================================================
+
+! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
+IF (doParticleDispersionTrack) THEN
+  DO iPart = 1,PDM%ParticleVecLength
+    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+  END DO
+ELSEIF (doParticlePathTrack) THEN
+  DO iPart = 1,PDM%ParticleVecLength
+    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) +    (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+  END DO
+END IF
+
+END SUBROUTINE TrackingParticlePath
 
 
 SUBROUTINE ParticleRecord(OutputTime,writeToBinary)

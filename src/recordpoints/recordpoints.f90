@@ -103,22 +103,31 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINTS...'
 
 RPDefFile = GETSTR('RP_DefFile')                        ! Filename with RP coords
-CALL ReadRPList(RPDefFile) ! RP_inUse is set to FALSE by ReadRPList if no RP is on proc.
-maxRP = nGlobalRP
+CALL ReadRPList(RPDefFile)                              ! RP_inUse is set to FALSE by ReadRPList if no RP is on proc.
 #if USE_MPI
 CALL InitRPCommunicator()
 #endif /*USE_MPI*/
 
 nVar_loc = MERGE(nVar,PP_nVar,PRESENT(nVar))
 
+! Read parameters on all procs, otherwise output is missing if no RP on MPI root
+RP_maxMemory      = GETINT('RP_MaxMemory','100')        ! Max buffer (100MB)
+RP_SamplingOffset = GETINT('RP_SamplingOffset','1')     ! Sampling offset (iteration)
+
 IF (RP_onProc) THEN
-  RP_maxMemory      = GETINT('RP_MaxMemory'     ,'100')           ! Max buffer (100MB)
-  RP_SamplingOffset = GETINT('RP_SamplingOffset','1'  )           ! Sampling offset (iteration)
+  RP_maxMemory      = RP_maxMemory * 131072             ! convert RP_maxMemory to bytes
   maxRP = nGlobalRP
+
 #if USE_MPI
+  ! Limit RP buffer size to global 4GB for HDF5 MPIO collective
+  IF (RP_MaxMemory*nRP_Procs.GT.HUGE(INT(1,KIND=4))-1) THEN
+    RP_maxMemory      = (HUGE(INT(1,KIND=4))-1)/nRP_Procs
+    IF (myRPrank.EQ.0) WRITE(UNIT_stdOUt,'(A,F6.2,A)') ' | RP_MaxMemory too large for HDF5 collective MPIO, limiting to ' &
+                                                       , RP_maxMemory / 131072, ' MB per proc (4GB total)'
+  END IF
   CALL MPI_ALLREDUCE(nRP,maxRP,1,MPI_INTEGER,MPI_MAX,RP_COMM,iError)
 #endif /*USE_MPI*/
-  RP_MaxBufferSize = RP_MaxMemory*131072/(maxRP*(nVar_loc+1))     != size in bytes/(real*maxRP*nVar)
+  RP_MaxBufferSize = RP_MaxMemory/(maxRP*(nVar_loc+1)) != size in bytes/(real*maxRP*nVar)
   ALLOCATE(lastSample(0:nVar_loc,nRP))
   lastSample = 0.
 END IF
@@ -160,7 +169,7 @@ IF (.NOT. RP_onProc) RETURN
 CALL MPI_COMM_RANK(RP_COMM, myRPrank , iError)
 CALL MPI_COMM_SIZE(RP_COMM, nRP_Procs, iError)
 
-IF (myRPrank.EQ.0) WRITE(UNIT_stdOUt,'(A,I0,A)') 'RP COMM: ',nRP_Procs,' procs'
+IF (myRPrank.EQ.0) WRITE(UNIT_stdOUt,'(A,I0,A)') ' | RP COMM: ',nRP_Procs,' procs'
 
 END SUBROUTINE InitRPCommunicator
 #endif /*USE_MPI*/
@@ -342,7 +351,7 @@ USE MOD_Preproc
 USE MOD_Analyze_Vars          ,ONLY: WriteData_dt,tWriteData
 USE MOD_DG_Vars               ,ONLY: U
 USE MOD_RecordPoints_Vars     ,ONLY: RP_Data,RP_ElemID
-USE MOD_RecordPoints_Vars     ,ONLY: RP_Buffersize,RP_MaxBuffersize,RP_SamplingOffset,iSample
+USE MOD_RecordPoints_Vars     ,ONLY: RP_Buffersize,RP_MaxBufferSize,RP_SamplingOffset,iSample
 USE MOD_RecordPoints_Vars     ,ONLY: l_xi_RP,l_eta_RP,nRP
 USE MOD_Timedisc_Vars         ,ONLY: dt
 #if PP_dim==3
@@ -373,7 +382,7 @@ IF (MOD(iter,INT(RP_SamplingOffset,KIND=8)).NE.0 .AND. .NOT.forceSampling) RETUR
 IF (.NOT.ALLOCATED(RP_Data)) THEN
   ! Compute required buffersize from timestep and add 20% tolerance
   ! +1 is added to ensure a minimum buffersize of 2
-  RP_Buffersize = MIN(CEILING((1.2*WriteData_dt)/(dt*RP_SamplingOffset))+1,RP_MaxBuffersize)
+  RP_Buffersize = MIN(CEILING((1.2*WriteData_dt)/(dt*RP_SamplingOffset))+1,RP_MaxBufferSize)
   ALLOCATE(RP_Data(0:nVar,nRP,RP_Buffersize))
 END IF
 
@@ -392,15 +401,15 @@ DO iRP = 1,nRP
       l_eta_zeta_RP = l_eta_RP(j,iRP)
 #endif /*FV_ENABLED*/
       DO i = 0,PP_N
-        U_RP(:,iRP)=U_RP(:,iRP) + U(:,i,j,k,RP_ElemID(iRP))*l_xi_RP(i,iRP)*l_eta_zeta_RP
+        U_RP(:,iRP) = U_RP(:,iRP) + U(:,i,j,k,RP_ElemID(iRP))*l_xi_RP(i,iRP)*l_eta_zeta_RP
       END DO !i
     END DO; END DO !k
 #if FV_ENABLED
   ELSE                                   ! FV
     ! RP value is cell average of nearest cell
     U_RP(:,iRP) = U(:,FV_RP_ijk(1,iRP),&
-                      FV_RP_ijk(2,iRP),&
-                      FV_RP_ijk(3,iRP),RP_ElemID(iRP))
+                    FV_RP_ijk(2,iRP),&
+                    FV_RP_ijk(3,iRP),RP_ElemID(iRP))
   END IF
 #endif /*FV_ENABLED*/
 
@@ -515,8 +524,8 @@ RP_fileExists = .TRUE.
 
 IF (resetCounters) THEN
   ! Recompute required buffersize from timestep and add 10% tolerance
-  IF (nSamples.GE.RP_Buffersize .AND. RP_Buffersize.LT.RP_Maxbuffersize) THEN
-    RP_Buffersize = MIN(CEILING(1.1*nSamples)+1,RP_MaxBuffersize)
+  IF (nSamples.GE.RP_Buffersize .AND. RP_Buffersize.LT.RP_MaxBufferSize) THEN
+    RP_Buffersize=MIN(CEILING(1.1*nSamples)+1,RP_MaxBufferSize)
     DEALLOCATE(RP_Data)
     ALLOCATE(RP_Data(0:nVar,nRP,RP_Buffersize))
   END IF

@@ -320,6 +320,9 @@ IF ((UseManualTimestep.AND.(dt_Min.EQ.0.))) THEN
 ELSE
   errType = 0
 END IF
+! Ensure dt is already the minimum in case dtAnalyze < dt
+dtAnalyze = MERGE(tAnalyze-t,HUGE(1.),tAnalyze-t.LE.dt*(1.+1.E-4))
+dt        = MIN(dt,dtAnalyze)
 #endif
 
 #if USE_LOADBALANCE
@@ -405,8 +408,8 @@ DO
 #endif
   nCalcTimestep=nCalcTimestep-1
 
-  dt=dt_Min
-  dtAnalyze=HUGE(1.)
+  dt        = dt_Min
+  dtAnalyze = HUGE(1.)
   IF(tAnalyze-t.LE.dt*(1.+1.E-4))THEN
     dtAnalyze=tAnalyze-t; doAnalyze=.TRUE.
   END IF

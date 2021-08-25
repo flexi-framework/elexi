@@ -87,6 +87,8 @@ SUBROUTINE BuildBGMAndIdentifyHaloRegion()
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_CalcTimeStep           ,ONLY: CalcTimeStep
+USE MOD_DG                     ,ONLY: DGTimeDerivative_weakForm
 USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
 USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Periodic_BC   ,ONLY: InitPeriodicBC
@@ -102,8 +104,7 @@ USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_TimeDisc_Vars ,ONLY: PreviousTime
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,Distance,ListDistance
 USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray
-USE MOD_DG                     ,ONLY: DGTimeDerivative_weakForm
-USE MOD_CalcTimeStep           ,ONLY: CalcTimeStep
+USE MOD_TimeDisc_Vars          ,ONLY: dt
 #if USE_MPI
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: nComputeNodeElems,offsetComputeNodeElem,nComputeNodeSides,nNonUniqueGlobalSides,nNonUniqueGlobalNodes
@@ -325,21 +326,26 @@ END IF
 SafetyFactor  = GETREAL('Part-SafetyFactor')
 halo_eps_velo = GETREAL('Part-HaloEpsVelo')
 
+! Calculate the time step
+IF (ManualTimeStep.EQ.0.0) THEN
+  ! Skip the call, otherwise particles get incremented twice
+  PreviousTime = t
+  CALL DGTimeDerivative_weakForm(t)
+  PreviousTime = -1.
+  ! Set the initial time step, so Particle_InitTimeDisc can set the correct b_dt
+  deltaT = CalcTimeStep(errType)
+  dt     = deltaT
+ELSE
+  deltaT = ManualTimeStep
+  dt     = ManualTimeStep
+END IF
+
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
 #endif /*USE_MPI*/
   halo_eps  = 0.
 #if USE_MPI
   halo_eps2 = 0.
 ELSE
-  IF (ManualTimeStep.EQ.0.0) THEN
-    ! Skip the call, otherwise particles get incremented twice
-    PreviousTime = t
-    CALL DGTimeDerivative_weakForm(t)
-    PreviousTime = -1.
-    deltaT = CalcTimeStep(errType)
-  ELSE
-    deltaT=ManualTimeStep
-  END IF
   IF (halo_eps_velo.EQ.0) halo_eps_velo = 343 ! speed of sound
   halo_eps = RKc(2)
   DO iStage=2,nRKStages-1

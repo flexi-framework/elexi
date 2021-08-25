@@ -309,13 +309,10 @@ doFinalize = .FALSE.
 IF(WriteMacroSurfaceValues) MacroValSampTime = t
 
 ! Check if we are running in SteadyState mode
-IF (UseManualTimestep) THEN
-  dt_min = ManualTimestep
-  dt     = ManualTimestep
-END IF
+IF (UseManualTimestep) dt_min = ManualTimestep
 
-! Get time step if needed
-IF ((UseManualTimestep.AND.(dt_Min.EQ.0.)).OR.(.NOT.UseManualTimestep)) THEN
+! Get time step if needed. For DG time stepping, this is already calculated in BuildBGMAndIdentifyHaloRegion
+IF ((UseManualTimestep.AND.(dt_Min.EQ.0.))) THEN
 #endif
   dt     = CALCTIMESTEP(errType)
 #if USE_PARTICLES

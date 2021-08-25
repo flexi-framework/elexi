@@ -67,15 +67,13 @@ PUBLIC :: Particle_FinalizeTimeDisk
 CONTAINS
 
 !===================================================================================================================================
-!> Euler particle time integration:
-!> This procedure takes the current time t, the time step dt and the solution at
-!> the current time U(t) and returns the solution at the next time level.
+!> Determine particle time stepping and set required pointers
 !===================================================================================================================================
 SUBROUTINE Particle_InitTimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools               ,ONLY:GETLOGICAL,GETSTR,GETREAL
-USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,nRKStages
+USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,nRKStages,RKb,dt
 USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimestep,ManualTimestep,b_dt
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -86,6 +84,8 @@ IMPLICIT NONE
 !===================================================================================================================================
 
 ALLOCATE(b_dt(1:nRKStages))
+! Premultiply with dt, ensure b_dt is correct for the first particle time increment
+b_dt=RKb*dt
 
 ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
 ! Check if we are running a steady state tracking
@@ -627,7 +627,9 @@ CurrentStage = 1
 END SUBROUTINE TimeStepSteadyState
 #endif
 
-
+!===================================================================================================================================
+!> Finalize particle time stepping and free variables
+!===================================================================================================================================
 SUBROUTINE Particle_FinalizeTimeDisk
 ! MODULES
 USE MOD_Particle_TimeDisc_Vars    ,ONLY:b_dt

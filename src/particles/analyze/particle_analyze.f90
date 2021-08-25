@@ -202,6 +202,7 @@ USE MOD_Particle_Boundary_Analyze ,ONLY: CalcSurfaceValues,WriteBoundaryParticle
 USE MOD_Particle_Output           ,ONLY: WriteParticleAnalyze,WriteInfoStdOut
 USE MOD_Restart_Vars              ,ONLY: RestartTime
 USE MOD_TimeDisc_Vars             ,ONLY: doFinalize,writeCounter
+USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimestep
 USE MOD_Particle_Tracking_Vars    ,ONLY: CountNbOfLostParts
 #if USE_LOADBALANCE
 USE MOD_LoadDistribution          ,ONLY: WriteElemTimeStatistics
@@ -253,7 +254,7 @@ IF (RecordPart.GT.0) THEN
 END IF
 
 ! Perform the missing particle increment
-IF (iter.GT.1) CALL ParticleAnalyzeTimeUpdate()
+IF (.NOT.UseManualTimestep .AND. iter.GT.1) CALL ParticleAnalyzeTimeUpdate()
 
 END SUBROUTINE ParticleAnalyze
 

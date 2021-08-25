@@ -175,6 +175,8 @@ CMAKE_DEPENDENT_OPTION(PARTICLES_INTKIND8     "Enable particle numbers larger st
                                               "PARTICLES"                           OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_EXTEND_RHS   "Use extended RHS for particles"      OFF
                                               "PARTICLES;FLEXI_PARABOLIC"           OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_FAXEN_CORR   "Enable Faxen correctio for particles"OFF
+                                              "PARTICLES;FLEXI_PARABOLIC"           OFF)
 # Extend RHS options
 CMAKE_DEPENDENT_OPTION(PARTICLES_UNDISTFLOW   "Use viscous stresses and pressure gradient in RHS for particles" OFF
                                               "PARTICLES_EXTEND_RHS"                OFF)
@@ -242,6 +244,12 @@ IF(PARTICLES)
     ADD_DEFINITIONS(-DUSE_INTKIND8=0)
   ENDIF()
 
+  IF (PARTICLES_FAXEN_CORR)
+    ADD_DEFINITIONS(-DUSE_FAXEN_CORR=1)
+  ELSE()
+    ADD_DEFINITIONS(-DUSE_FAXEN_CORR=0)
+  ENDIF()
+
   IF (PARTICLES_EXTEND_RHS)
     ADD_DEFINITIONS(-DUSE_EXTEND_RHS=1)
     # Undisturbed flow
@@ -292,6 +300,7 @@ ELSE()
   ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
   ADD_DEFINITIONS(-DUSE_RW=0)
   ADD_DEFINITIONS(-DUSE_EXTEND_RHS=0)
+  ADD_DEFINITIONS(-DUSE_FAXEN_CORR=0)
 ENDIF()
 
 # =========================================================================

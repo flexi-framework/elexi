@@ -148,8 +148,34 @@
 #define RHS_GRADVELV    RHS_GRADVEL1:RHS_GRADVEL3
 #define RHS_GRADPRES    4
 #define RHS_GRADTAU     5
-#define RHS_GRADVARS    (/1,2,3,4,5/)
+#define RHS_DIVTAU1     1
+#define RHS_DIVTAU2     2
+#define RHS_DIVTAU3     3
+#define RHS_GRADP1      4
+#define RHS_GRADP2      5
+#define RHS_GRADP3      6
+#endif
+#if USE_FAXEN_CORR && USE_EXTEND_RHS
+#define RHS_GRAD        6
+#define RHS_GRADVARS    (/1,2,3,4,5,6/)
+#define RHS_LAPLACEVEL  6
+#define RHS_NVARS       9
+#define RHS_LAPLACEVEL1 7
+#define RHS_LAPLACEVEL2 8
+#define RHS_LAPLACEVEL3 9
+#elif USE_EXTEND_RHS
 #define RHS_GRAD        5
+#define RHS_GRADVARS    (/1,2,3,4,5/)
+#define RHS_LAPLACEVEL  5
+#define RHS_NVARS       6
+#elif USE_FAXEN_CORR
+#define RHS_LAPLACEVEL  1
+#define RHS_GRAD        1
+#define RHS_GRADVARS    (/1/)
+#define RHS_NVARS       3
+#define RHS_LAPLACEVEL1 1
+#define RHS_LAPLACEVEL2 2
+#define RHS_LAPLACEVEL3 3
 #endif
 
 #define PART_POS1       1

@@ -143,7 +143,7 @@ USE MOD_Restart_Vars,                ONLY: RestartTurb
 USE MOD_LoadBalance_Timers,          ONLY: LBStartTime,LBPauseTime
 USE MOD_Particle_Localization,       ONLY: CountPartsPerElem
 #endif
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 USE MOD_Particle_Interpolation_Vars, ONLY: GradAtParticle
 USE MOD_Lifting_Vars,                ONLY: gradUx,gradUy,gradUz
 USE MOD_Part_RHS,                    ONLY: tauRHS
@@ -161,10 +161,9 @@ REAL,INTENT(IN)               :: dt
 #if USE_LOADBALANCE
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
-#if USE_EXTEND_RHS
-REAL                          :: divtau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL                          :: gradp( 1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-#endif /* USE_EXTEND_RHS */
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+REAL                          :: U_RHS(1:RHS_NVARS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR  */
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if USE_MPI
 #if USE_LOADBALANCE
@@ -186,14 +185,14 @@ IF (t.GE.DelayTime) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
   ! Calculate tau
-  CALL tauRHS(U,divtau,gradp)
-#endif /* USE_EXTEND_RHS */
+  CALL tauRHS(U,U_RHS)
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
   CALL InterpolateFieldToParticle(PP_nVar,U,PP_nVarPrim,FieldAtParticle&
-#if USE_EXTEND_RHS
-    ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),divtau,gradp,GradAtParticle&
-#endif
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+    ,gradUx(RHS_LIFTVARS,:,:,:,:),gradUy(RHS_LIFTVARS,:,:,:,:),gradUz(RHS_LIFTVARS,:,:,:,:),U_RHS,GradAtParticle&
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
   )
 #if USE_RW
   IF (RestartTurb) CALL InterpolateFieldToParticle(nVarTurb,UTurb,nVarTurb,TurbFieldAtParticle)

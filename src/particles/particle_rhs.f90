@@ -141,9 +141,13 @@ DO iPart = 1,PDM%ParticleVecLength
 !    !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
 !    IF (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 !#endif
-#if USE_EXTEND_RHS
     ! Calculate the drag (and gravity) force
+#if !USE_FAXEN_CORR
     Pt(1:3,iPart) = ParticlePush(iPart,FieldAtParticle(PRIM,iPart))
+#else
+    Pt(1:3,iPart) = ParticlePush(iPart,FieldAtParticle(PRIM,iPart),GradAtParticle(1:RHS_GRAD,1:3,iPart))
+#endif /* USE_FAXEN_CORR */
+#if USE_EXTEND_RHS
     ! Calculate other RHS forces and add all forces to compute the particle push
     CALL ParticlePushExtend(iPart,FieldAtParticle(PRIM,iPart)                                     ,&
                                   GradAtParticle (1:RHS_GRAD,1:3,iPart),Pt(1:PP_nVarPartRHS,iPart) &
@@ -152,9 +156,6 @@ DO iPart = 1,PDM%ParticleVecLength
 #else
                                   )
 #endif /* USE_BASSETFORCE || ANALYZE_RHS */
-#else
-    ! Calculate the drag (and gravity) force
-    Pt(1:3,iPart) = ParticlePush(iPart,FieldAtParticle(PRIM,iPart))
 #endif
   END IF
 END DO
@@ -170,15 +171,20 @@ IF((dtWriteRHS .GT. 0.0) .AND. (tWriteRHS-t .LE. dt*(1.+1.E-4))) tWriteRHS = tWr
 END SUBROUTINE CalcPartRHS
 
 
-FUNCTION ParticlePush(PartID,FieldAtParticle)
+FUNCTION ParticlePush(PartID,FieldAtParticle&
+#if USE_FAXEN_CORR
+  ,GradAtParticle)
+#else
+  )
+#endif
 !===================================================================================================================================
 ! Push due to Stoke's drag and source terms (gravity)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Globals
-USE MOD_Particle_Vars,     ONLY : Species, PartSpecies, PartGravity
-USE MOD_Particle_Vars,     ONLY : PartState
-USE MOD_Particle_Vars,     ONLY : TurbPartState
+USE MOD_Particle_Vars,     ONLY: Species, PartSpecies, PartGravity
+USE MOD_Particle_Vars,     ONLY: PartState
+USE MOD_Particle_Vars,     ONLY: TurbPartState
 USE MOD_Viscosity
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -186,6 +192,9 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)  :: PartID
 REAL,INTENT(IN)     :: FieldAtParticle(PRIM)
+#if USE_FAXEN_CORR
+REAL,INTENT(IN)     :: GradAtParticle(1:RHS_GRAD,1:3)
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL                :: ParticlePush(1:3)           ! The stamp
@@ -244,6 +253,9 @@ IF(ALLOCATED(TurbPartState)) THEN
 ELSE
   udiff(1:3) = FieldAtParticle(VELV)                             - PartState(PART_VELV,PartID)
 END IF
+#if USE_FAXEN_CORR
+udiff = udiff + (Species(PartSpecies(PartID))%DiameterIC**2)/6 * GradAtParticle(RHS_LAPLACEVEL,:)
+#endif /* USE_FAXEN_CORR */
 
 Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
 
@@ -555,9 +567,10 @@ END IF
 Pt_in(1:3) = Pt
 
 END SUBROUTINE ParticlePushExtend
+#endif /* USE_EXTEND_RHS */
 
-
-SUBROUTINE tauRHS(U,divtau,gradp)
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+SUBROUTINE tauRHS(U,U_RHS)
 !===================================================================================================================================
 ! Compute tau
 !===================================================================================================================================
@@ -583,14 +596,14 @@ IMPLICIT NONE
 REAL,INTENT(IN)             :: U(    CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)            :: divtau(    1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL,INTENT(OUT)            :: gradp(     1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(OUT)            :: U_RHS(1:RHS_NVARS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: i,j,k,iElem
 !===================================================================================================================================
 
-#if USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE
+U_RHS             = 0.
+#if USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE || USE_FAXEN_CORR
 gradUx2           = 0.
 gradUy2           = 0.
 gradUz2           = 0.
@@ -609,22 +622,31 @@ CALL Lifting_BR1_gen(3,3,gradUy(LIFT_VELV,:,:,:,:),gradUy_master_loc,gradUy_slav
                     gradUy2(1,:,:,:,:,:),gradUy2(2,:,:,:,:,:),gradUy2(3,:,:,:,:,:))
 CALL Lifting_BR1_gen(3,3,gradUz(LIFT_VELV,:,:,:,:),gradUz_master_loc,gradUz_slave_loc,&
                     gradUz2(1,:,:,:,:,:),gradUz2(2,:,:,:,:,:),gradUz2(3,:,:,:,:,:))
+#endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE || USE_FAXEN_CORR */
 
+#if USE_FAXEN_CORR
+! Compute the Laplacian of the fluid velocity
+U_RHS(RHS_LAPLACEVEL1,:,:,:,:) = gradUx2(1,1,:,:,:,:) + gradUy2(2,1,:,:,:,:) + gradUz2(3,1,:,:,:,:)
+U_RHS(RHS_LAPLACEVEL2,:,:,:,:) = gradUx2(1,2,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(3,2,:,:,:,:)
+U_RHS(RHS_LAPLACEVEL3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + gradUz2(3,3,:,:,:,:)
+#endif /* USE_FAXEN_CORR */
+
+#if USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE
 ! u_xx + u_yy + u_zz + 1/3 * (u_xx+v_yx+w_zx)
 !divtau(1,:,:,:,:) = gradUx2(1,LIFT_VEL1,:,:,:,:) + gradUy2(2,LIFT_VEL1,:,:,:,:) + gradUz2(3,LIFT_VEL1,:,:,:,:) + &
 !                    s13 * (gradUx2(1,LIFT_VEL1,:,:,:,:) + gradUy2(1,LIFT_VEL2,:,:,:,:) + gradUz2(1,LIFT_VEL3,:,:,:,:))
-divtau(1,:,:,:,:) = gradUx2(1,1,:,:,:,:) + gradUy2(2,1,:,:,:,:) + gradUz2(3,1,:,:,:,:) + &
-                    s13 * (gradUx2(1,1,:,:,:,:) + gradUy2(1,2,:,:,:,:) + gradUz2(1,3,:,:,:,:))
+U_RHS(RHS_DIVTAU1,:,:,:,:) = gradUx2(1,1,:,:,:,:) + gradUy2(2,1,:,:,:,:) + gradUz2(3,1,:,:,:,:) + &
+                      s13 * (gradUx2(1,1,:,:,:,:) + gradUy2(1,2,:,:,:,:) + gradUz2(1,3,:,:,:,:))
 ! v_xx + v_yy + v_zz + 1/3 * (u_xy+v_yy+w_zy)
 !divtau(2,:,:,:,:) = gradUx2(1,LIFT_VEL2,:,:,:,:) + gradUy2(2,LIFT_VEL2,:,:,:,:) + gradUz2(3,LIFT_VEL2,:,:,:,:) + &
 !                    s13 * (gradUx2(2,LIFT_VEL1,:,:,:,:) + gradUy2(2,LIFT_VEL2,:,:,:,:) + gradUz2(2,LIFT_VEL3,:,:,:,:))
-divtau(2,:,:,:,:) = gradUx2(1,2,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(3,2,:,:,:,:) + &
-                    s13 * (gradUx2(2,1,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(2,3,:,:,:,:))
+U_RHS(RHS_DIVTAU2,:,:,:,:) = gradUx2(1,2,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(3,2,:,:,:,:) + &
+                      s13 * (gradUx2(2,1,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(2,3,:,:,:,:))
 ! w_xx + w_yy + w_zz + 1/3 * (u_xy+v_yy+w_zy)
 !divtau(3,:,:,:,:) = gradUx2(1,LIFT_VEL3,:,:,:,:) + gradUy2(2,LIFT_VEL3,:,:,:,:) + gradUz2(3,LIFT_VEL3,:,:,:,:) + &
 !                    s13 * (gradUx2(3,LIFT_VEL1,:,:,:,:) + gradUy2(3,LIFT_VEL2,:,:,:,:) + gradUz2(3,LIFT_VEL3,:,:,:,:))
-divtau(3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + gradUz2(3,3,:,:,:,:) + &
-                    s13 * (gradUx2(3,1,:,:,:,:) + gradUy2(3,2,:,:,:,:) + gradUz2(3,3,:,:,:,:))
+U_RHS(RHS_DIVTAU3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + gradUz2(3,3,:,:,:,:) + &
+                      s13 * (gradUx2(3,1,:,:,:,:) + gradUy2(3,2,:,:,:,:) + gradUz2(3,3,:,:,:,:))
 
 ! Calculate pressure gradient
 DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -632,14 +654,11 @@ DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 END DO; END DO; END DO; END DO
 
 CALL Lifting_BR1_gen(1,1,U_local(PRES:PRES,:,:,:,:),gradp_local(:,1,:,:,:,:),gradp_local(:,2,:,:,:,:),gradp_local(:,3,:,:,:,:))
-gradp = gradp_local(1,:,:,:,:,:)
-#else
-divtau = 0.
-gradp = 0.
+U_RHS(RHS_GRADP1:RHS_GRADP3,:,:,:,:) = gradp_local(1,:,:,:,:,:)
 #endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
 
 END SUBROUTINE tauRHS
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 
 
 FUNCTION DF_SchillerAndNaumann(Rep, SphericityIC, Mp) RESULT(f)

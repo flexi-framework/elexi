@@ -566,10 +566,10 @@ IF(TrackingMethod.NE.TRIATRACKING) THEN
   CALL InitParticleSurfaces()
 END IF
 
-! Set particle timedisc pointer
-CALL Particle_InitTimeDisc()
 !CALL InitializeVariables(ManualTimeStep_opt)
 CALL InitializeVariables()
+! Set particle timedisc pointer
+CALL Particle_InitTimeDisc()
 
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
 #if USE_RW

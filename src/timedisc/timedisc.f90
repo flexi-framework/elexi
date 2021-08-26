@@ -21,6 +21,11 @@ MODULE MOD_TimeDisc
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
+
+INTERFACE DefineParametersTimeDisc
+  MODULE PROCEDURE DefineParametersTimeDisc
+END INTERFACE
+
 INTERFACE InitTimeDisc
   MODULE PROCEDURE InitTimeDisc
 END INTERFACE
@@ -33,9 +38,10 @@ INTERFACE FinalizeTimeDisc
   MODULE PROCEDURE FinalizeTimeDisc
 END INTERFACE
 
-PUBLIC :: InitTimeDisc,FinalizeTimeDisc
-PUBLIC :: TimeDisc
 PUBLIC :: DefineParametersTimeDisc
+PUBLIC :: InitTimeDisc
+PUBLIC :: TimeDisc
+PUBLIC :: FinalizeTimeDisc
 !==================================================================================================================================
 
 CONTAINS
@@ -157,35 +163,37 @@ SUBROUTINE TimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
-USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage,TimeDiscType
-USE MOD_TimeDisc_Vars       ,ONLY: doFinalize,writeCounter
+USE MOD_Analyze             ,ONLY: Analyze
+USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData
 #if !USE_PARTICLES
 USE MOD_Analyze_Vars        ,ONLY: doAnalyzeEquation
 #endif
-USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
-USE MOD_Analyze             ,ONLY: Analyze
+USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
+USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
+USE MOD_Debugmesh           ,ONLY: WriteDebugMesh
+USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
+USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
+USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
+USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
+USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
+USE MOD_Output              ,ONLY: Visualize,PrintStatusLine
+USE MOD_Overintegration     ,ONLY: Overintegration
+USE MOD_Overintegration_Vars,ONLY: OverintegrationType
+USE MOD_Predictor           ,ONLY: FillInitPredictor
+USE MOD_ReadInTools         ,ONLY: GETINT
+USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
+USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
+USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
+USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase,doTCSource
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
-USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
-USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_Output              ,ONLY: Visualize,PrintStatusLine
-USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
-USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
-USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
-USE MOD_DG_Vars             ,ONLY: U
-USE MOD_Overintegration     ,ONLY: Overintegration
-USE MOD_Overintegration_Vars,ONLY: OverintegrationType
-USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
-USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
-USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
-USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
-USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
-USE MOD_Predictor           ,ONLY: FillInitPredictor
-USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
+USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
+USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage,TimeDiscType
+USE MOD_TimeDisc_Vars       ,ONLY: doFinalize,writeCounter
 #if FV_ENABLED
 USE MOD_FV
 #endif /*FV_ENABLED*/
@@ -193,20 +201,18 @@ USE MOD_FV
 USE MOD_Particle_Globals          ,ONLY: ALMOSTZERO
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_Particle_Surface_Flux     ,ONLY: InitializeParticleSurfaceFlux
-USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimestep,ManualTimeStep,PreviousTime
+USE MOD_Particle_TimeDisc_Vars    ,ONLY: b_dt,UseManualTimestep,ManualTimeStep,PreviousTime
+USE MOD_TimeDisc_Vars             ,ONLY: RKb
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
-USE MOD_LoadBalance_Timedisc,ONLY: LoadBalance,InitialAutoRestart
-USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,PerformLoadBalance
-USE MOD_LoadBalance_Vars    ,ONLY: RestartWallTime,LoadBalanceSample
+USE MOD_LoadBalance               ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
+USE MOD_LoadBalance_Timedisc      ,ONLY: LoadBalance,InitialAutoRestart
+USE MOD_LoadBalance_Vars          ,ONLY: DoLoadBalance,PerformLoadBalance
+USE MOD_LoadBalance_Vars          ,ONLY: RestartWallTime,LoadBalanceSample
 #endif /*LOADBALANCE*/
-USE MOD_Debugmesh           ,ONLY: WriteDebugMesh
 !#if USE_MPI_SHARED
 !USE MOD_Particle_MPI_Shared ,ONLY: UpdateDGShared
 !#endif
-use MOD_IO_HDF5
-USE MOD_ReadInTools         ,ONLY: GETINT
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -323,6 +329,8 @@ END IF
 ! Ensure dt is already the minimum in case dtAnalyze < dt
 dtAnalyze = MERGE(tAnalyze-t,HUGE(1.),tAnalyze-t.LE.dt*(1.+1.E-4))
 dt        = MIN(dt,dtAnalyze)
+! Update b_dt in case dt was changed
+b_dt = RKb*dt
 #endif
 
 #if USE_LOADBALANCE

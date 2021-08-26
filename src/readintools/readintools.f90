@@ -280,16 +280,14 @@ IF(opt%numberedmulti)THEN
   aStr = Replace(aStr,"[]"  ,"$",Every = .true.)
   aStr = Replace(aStr,"[$]" ,"$",Every = .true.)
   aStr = Replace(aStr,"[$$]","$",Every = .true.)
-  CALL LowCase(CHAR(aStr),opt%name)
-  ind = INDEX(TRIM(opt%name),"$")
+
+  ind = INDEX(TRIM(CHAR(aStr)),"$")
   IF (ind.LE.0) CALL ABORT(__STAMP__, &
       '[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(opt%name)//']')
-ELSE
-#endif /*USE_PARTICLES*/
-  opt%name = name
-#if USE_PARTICLES
+  END IF
 END IF ! opt%numberedmulti
 #endif /*USE_PARTICLES*/
+opt%name = name
 
 opt%isSet       = .FALSE.
 opt%description = description

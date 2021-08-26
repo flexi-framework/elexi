@@ -11,7 +11,9 @@ ENDIF()
 MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
 
 
-# Check whether origin is point to Github or IAG
+# =========================================================================
+# Check where the code originates
+# =========================================================================
 EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN)
 
 # Origin pointing to IAG

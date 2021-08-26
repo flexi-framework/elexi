@@ -645,7 +645,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE (*,*) "changedBCnames          ", changedBCnames
 #if USE_PARTICLES
   SWRITE (*,*) "changedPartVarnames     ", PD%changedPartVarnames
-  SWRITE (*,*) "changedErosionVarnames  ", PDE%changedPartVarnames
+  SWRITE (*,*) "changedImpactVarnames  ", PDE%changedPartVarnames
 #endif
   IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
       CALL ReadState(prmfile,statefile)

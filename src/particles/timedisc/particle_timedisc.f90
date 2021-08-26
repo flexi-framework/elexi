@@ -73,7 +73,7 @@ SUBROUTINE Particle_InitTimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools               ,ONLY:GETLOGICAL,GETSTR,GETREAL
-USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,nRKStages,RKb,dt
+USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,TimeDiscType,nRKStages,RKb,dt
 USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimestep,ManualTimestep,b_dt
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -83,9 +83,14 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-ALLOCATE(b_dt(1:nRKStages))
-! Premultiply with dt, ensure b_dt is correct for the first particle time increment
-b_dt = RKb*dt
+SELECT CASE(TimeDiscType)
+  CASE('LSERKW2','LSERKK3')
+    ALLOCATE(b_dt(1:nRKStages))
+    ! Premultiply with dt, ensure b_dt is correct for the first particle time increment
+    b_dt = RKb*dt
+  CASE DEFAULT
+    CALL CollectiveStop(__STAMP__,'Particle tracking only supported with DG TimeDiscType=LSERKW')
+END SELECT
 
 ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
 ! Check if we are running a steady state tracking

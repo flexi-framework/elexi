@@ -553,7 +553,7 @@ SUBROUTINE WriteTimeAverage(MeshFileName,OutputTime,dtAvg,FV_Elems_In,nVal,&
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Output_Vars,ONLY: ProjectName
+USE MOD_Output_Vars,ONLY: ProjectName,WriteStateFiles
 USE MOD_Mesh_Vars  ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_2D         ,ONLY: ExpandArrayTo3D
 IMPLICIT NONE
@@ -583,9 +583,11 @@ REAL,POINTER                   :: UOut2D(:,:,:,:,:)
 TYPE(tElementOut),POINTER      :: ElementOutTimeAvg
 INTEGER                        :: nVar_loc, nVal_loc(5), nVal_glob(5), i
 !==================================================================================================================================
-IF(ANY(nVal(1:PP_dim).EQ.0)) RETURN ! no time averaging
-IF(nVarAvg.EQ.0.AND.nVarFluc.EQ.0) RETURN ! no time averaging
-IF(MPIROOT)THEN
+IF(ANY(nVal(1:PP_dim)       .EQ.0)) RETURN ! no time averaging
+IF(nVarAvg.EQ.0.AND.nVarFluc.EQ.0)  RETURN ! no time averaging
+IF(.NOT.WriteStateFiles)            RETURN
+
+IF (MPIROOT) THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE TO HDF5 FILE...'
   GETTIME(StartT)
 END IF

@@ -104,6 +104,10 @@ CALL prms%CreateLogicalOption(      'TriaSurfaceFlux'         , 'Using Triangle-
 CALL prms%CreateLogicalOption(      'CountNbOfLostParts'       , 'Count number of lost particles during tracking that can not '  //&
                                                                  'be found with fallbacks.'                                        &
                                                                , '.FALSE.')
+CALL prms%CreateLogicalOption(      'DisplayLostParticles'     , 'Display position, velocity, species and host element of '      //&
+                                                                 'particles lost during particle tracking (TrackingMethod = '    //&
+                                                                 'triatracking, tracing)'                                          &
+                                                               ,'.FALSE.')
 
 CALL prms%CreateIntOption(          'BezierClipLineVectorMethod','TODO-DEFINE-PARAMETER'                                           &
                                                                , '2')
@@ -782,6 +786,8 @@ PartReflCount                                = 0.
 Pt                                           = 0.
 PartSpecies                                  = 0
 PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
+PEM%Element(         1:PDM%maxParticleNumber)= 0
+PEM%lastElement(     1:PDM%maxParticleNumber)= 0
 Pt_temp                                      = 0
 PartPosRef                                   =-888.
 

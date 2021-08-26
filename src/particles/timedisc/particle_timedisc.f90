@@ -85,7 +85,7 @@ IMPLICIT NONE
 
 ALLOCATE(b_dt(1:nRKStages))
 ! Premultiply with dt, ensure b_dt is correct for the first particle time increment
-b_dt=RKb*dt
+b_dt = RKb*dt
 
 ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
 ! Check if we are running a steady state tracking

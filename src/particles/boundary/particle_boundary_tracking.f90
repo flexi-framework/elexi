@@ -274,7 +274,7 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
 
 ! Write out in the next state file write-out
 IF(MPIRoot) THEN
-  WRITE(UNIT_StdOut,'(A,I0,A)')  ' | ',PartStateBoundaryVecLength,' impact read from restart file'
+  WRITE(UNIT_StdOut,'(A,I0,A)')  ' | ',PartStateBoundaryVecLength_glob,' impact read from restart file'
   WRITE(UNIT_StdOut,'(A,F0.3,A)')' READING PARTICLE IMPACT DATA FROM HDF5 FILE DONE'
   WRITE(UNIT_StdOut,'(132("-"))')
 END IF

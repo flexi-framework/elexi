@@ -416,6 +416,7 @@ ELSE
 END IF
 
 IF (t.GE.DelayTime) THEN
+#if USE_MPI
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -423,13 +424,6 @@ IF (t.GE.DelayTime) THEN
   CALL SendNbOfParticles()
   ! finish communication of number of particles and send particles
   CALL MPIParticleSend()
-#if USE_LOADBALANCE
-  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
-#endif /*USE_LOADBALANCE*/
-#if USE_MPI
-#if USE_LOADBALANCE
-  CALL LBStartTime(tLBStart)
-#endif /*USE_LOADBALANCE*/
   ! receive particles, locate and finish communication
   CALL MPIParticleRecv()
 #if USE_LOADBALANCE

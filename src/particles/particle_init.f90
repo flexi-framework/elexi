@@ -745,9 +745,9 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
-#if USE_EXTEND_RHS
+#if USE_FAXEN_CORR
 USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_FAXEN_CORR */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -797,12 +797,12 @@ IF(doPartIndex) THEN
 END IF
 
 ! Extended RHS
-#if USE_EXTEND_RHS
+#if USE_FAXEN_CORR
 ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUy2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUz2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
-         U_local   (PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
-         gradp_local(1,3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+!         U_local   (PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+!         gradp_local(1,3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUx_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &
          gradUx_slave_loc(  1:3,0:PP_N,0:PP_NZ,1:nSides),  &
          gradUy_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &
@@ -812,12 +812,12 @@ ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
   CALL ABORT(__STAMP__,'ERROR in particle_init.f90: Cannot allocate extended particle arrays!')
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_FAXEN_CORR */
 
 ! Basset force
 #if USE_BASSETFORCE
 N_Basset    = 20
-nBassetVars = INT(N_Basset * 3)
+nBassetVars = INT(N_Basset * 3 + 3)
 ALLOCATE(durdt(nBassetVars,1:PDM%maxParticleNumber))
 durdt = 0.
 bIter = 0.
@@ -1828,13 +1828,19 @@ SDEALLOCATE(PEM%pEnd)
 SDEALLOCATE(PEM%pNext)
 
 ! Extended RHS
-#if USE_EXTENDED_RHS
-SDEALLOCATE(gradUx2,gradUy2,gradUz2)
-SDEALLOCATE(gradUx_master_loc,gradUx_slave_loc)
-SDEALLOCATE(gradUy_master_loc,gradUy_slave_loc)
-SDEALLOCATE(gradUz_master_loc,gradUz_slave_loc)
-SDEALLOCATE(U_local,gradp_local)
-#endif /* USE_EXTENDED_RHS */
+#if USE_FAXEN_CORR
+SDEALLOCATE(gradUx2)
+SDEALLOCATE(gradUy2)
+SDEALLOCATE(gradUz2)
+SDEALLOCATE(gradUx_master_loc)
+SDEALLOCATE(gradUx_slave_loc)
+SDEALLOCATE(gradUy_master_loc)
+SDEALLOCATE(gradUy_slave_loc)
+SDEALLOCATE(gradUz_master_loc)
+SDEALLOCATE(gradUz_slave_loc)
+!SDEALLOCATE(U_local)
+!SDEALLOCATE(gradp_local)
+#endif /* USE_FAXEN_CORR */
 
 ! Basset force
 #if USE_BASSETFORCE

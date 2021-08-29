@@ -139,7 +139,7 @@ ALLOCATE(TurbFieldAtParticle(1:nVarTurb,1:PDM%maxParticleNumber), STAT=ALLOCSTAT
 #endif
 IF (ALLOCSTAT.NE.0) CALL abort(__STAMP__,'ERROR in Part_interpolation.f90: Cannot allocate FieldAtParticle array!',ALLOCSTAT)
 
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 SDEALLOCATE(GradAtParticle)
 ! Allocate array for rho*(u_x,u_y,u_z)
 ! ALLOCATE(GradAtParticle    (RHS_GRAD, 1:3, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)

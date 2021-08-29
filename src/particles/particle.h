@@ -138,44 +138,42 @@
 #define DF_PART_HAIDER    3
 #define DF_PART_HOELZER   4
 
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 ! Velocity and pressure for extended RHS
 #define RHS_LIFTVARS    (/LIFT_VEL1,LIFT_VEL2,LIFT_VEL3/)
 #define RHS_LIFT        3
+#if USE_EXTEND_RHS
 #define RHS_GRADVEL1    1
 #define RHS_GRADVEL2    2
 #define RHS_GRADVEL3    3
 #define RHS_GRADVELV    RHS_GRADVEL1:RHS_GRADVEL3
-#define RHS_GRADPRES    4
-#define RHS_GRADTAU     5
-#define RHS_DIVTAU1     1
-#define RHS_DIVTAU2     2
-#define RHS_DIVTAU3     3
-#define RHS_GRADP1      4
-#define RHS_GRADP2      5
-#define RHS_GRADP3      6
-#endif
-#if USE_FAXEN_CORR && USE_EXTEND_RHS
-#define RHS_GRAD        6
-#define RHS_GRADVARS    (/1,2,3,4,5,6/)
-#define RHS_LAPLACEVEL  6
-#define RHS_NVARS       9
-#define RHS_LAPLACEVEL1 7
-#define RHS_LAPLACEVEL2 8
-#define RHS_LAPLACEVEL3 9
-#elif USE_EXTEND_RHS
+#define RHS_dVELdt      4
+#define RHS_dVEL1dt     1
+#define RHS_dVEL2dt     2
+#define RHS_dVEL3dt     3
+#define RHS_dVELVdt     RHS_dVEL1dt:RHS_dVEL3dt
+#if USE_FAXEN_CORR
+#define RHS_LAPLACEVEL  5
 #define RHS_GRAD        5
 #define RHS_GRADVARS    (/1,2,3,4,5/)
-#define RHS_LAPLACEVEL  5
+#define RHS_LAPLACEVEL1 4
+#define RHS_LAPLACEVEL2 5
+#define RHS_LAPLACEVEL3 6
 #define RHS_NVARS       6
+#else
+#define RHS_GRAD        4
+#define RHS_GRADVARS    (/1,2,3,4/)
+#define RHS_NVARS       3
+#endif
 #elif USE_FAXEN_CORR
 #define RHS_LAPLACEVEL  1
 #define RHS_GRAD        1
 #define RHS_GRADVARS    (/1/)
-#define RHS_NVARS       3
 #define RHS_LAPLACEVEL1 1
 #define RHS_LAPLACEVEL2 2
 #define RHS_LAPLACEVEL3 3
+#define RHS_NVARS       3
+#endif
 #endif
 
 #define PART_POS1       1

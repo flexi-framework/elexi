@@ -39,7 +39,7 @@ INTERFACE EvaluateFieldAtRefPos
   MODULE PROCEDURE EvaluateFieldAtRefPos
 END INTERFACE
 
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 INTERFACE EvaluateFieldAndGradAtPhysPos
   MODULE PROCEDURE EvaluateFieldAndGradAtPhysPos
 END INTERFACE
@@ -47,7 +47,7 @@ END INTERFACE
 INTERFACE EvaluateFieldAndGradAtRefPos
   MODULE PROCEDURE EvaluateFieldAndGradAtRefPos
 END INTERFACE
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 
 #if FV_ENABLED
 INTERFACE EvaluateField_FV
@@ -59,10 +59,10 @@ PUBLIC :: GetPositionInRefElem
 PUBLIC :: TensorProductInterpolation
 PUBLIC :: EvaluateFieldAtPhysPos
 PUBLIC :: EvaluateFieldAtRefPos
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 PUBLIC :: EvaluateFieldAndGradAtPhysPos
 PUBLIC :: EvaluateFieldAndGradAtRefPos
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 #if FV_ENABLED
 PUBLIC :: EvaluateField_FV
 #endif /* FV_ENABLED */
@@ -476,7 +476,7 @@ INTEGER,INTENT(IN)        :: NVar_out                                          !
 REAL,INTENT(IN)           :: gradUx(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in x direction
 REAL,INTENT(IN)           :: gradUy(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in y direction
 REAL,INTENT(IN)           :: gradUz(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in z direction
-REAL,INTENT(IN)           :: U_RHS(  1:RHS_NVARS,0:N_in,0:N_in,0:ZDIM(N_in))   !< \nabla \cdot \tau, \nabla p, \nabla^2 u
+REAL,INTENT(IN)           :: U_RHS(  1:RHS_NVARS,0:N_in,0:N_in,0:ZDIM(N_in))   !< du/dt, \nabla^2 u
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -540,22 +540,19 @@ DO k=0,N_in
   DO j=0,N_in
     L_eta_zeta=L_xi(2,j)*L_xi(3,k)
     DO i=0,N_in
-      Utmp                      = Utmp                      + U_IN(:,i,j,k)  *L_xi(1,i)*L_Eta_Zeta
+      Utmp                      = Utmp                      + U_IN(:,i,j,k)  * L_xi(1,i)*L_Eta_Zeta
 #if USE_EXTEND_RHS
-      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,1)  = UGrad_out(RHS_GRADTAU,1)  + U_RHS(RHS_DIVTAU1,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,2)  = UGrad_out(RHS_GRADTAU,2)  + U_RHS(RHS_DIVTAU2,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,3)  = UGrad_out(RHS_GRADTAU,3)  + U_RHS(RHS_DIVTAU3,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,1) = UGrad_out(RHS_GRADPRES,1) + U_RHS(RHS_GRADP1,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,2) = UGrad_out(RHS_GRADPRES,2) + U_RHS(RHS_GRADP2,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,3) = UGrad_out(RHS_GRADPRES,3) + U_RHS(RHS_GRADP3,i,j,k) *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,1) = UGrad_out(RHS_dVELdt  ,1) + U_RHS(RHS_dVEL1dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,2) = UGrad_out(RHS_dVELdt  ,2) + U_RHS(RHS_dVEL2dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,3) = UGrad_out(RHS_dVELdt  ,3) + U_RHS(RHS_dVEL3dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
 #endif
 #if USE_FAXEN_CORR
-      UGrad_out(RHS_LAPLACEVEL,1) = UGrad_out(RHS_LAPLACEVEL,1) + U_RHS(RHS_LAPLACEVEL1,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_LAPLACEVEL,2) = UGrad_out(RHS_LAPLACEVEL,2) + U_RHS(RHS_LAPLACEVEL2,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_LAPLACEVEL,3) = UGrad_out(RHS_LAPLACEVEL,3) + U_RHS(RHS_LAPLACEVEL2,i,j,k) *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_LAPLACEVEL,1) = UGrad_out(RHS_LAPLACEVEL,1) + U_RHS(RHS_LAPLACEVEL1,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_LAPLACEVEL,2) = UGrad_out(RHS_LAPLACEVEL,2) + U_RHS(RHS_LAPLACEVEL2,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_LAPLACEVEL,3) = UGrad_out(RHS_LAPLACEVEL,3) + U_RHS(RHS_LAPLACEVEL3,i,j,k) * L_xi(1,i)*L_Eta_Zeta
 #endif
     END DO ! i=0,N_In
   END DO ! j=0,N_In
@@ -596,7 +593,7 @@ INTEGER,INTENT(IN)        :: NVar_out                                           
 REAL,INTENT(IN)           :: gradUx(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in x direction
 REAL,INTENT(IN)           :: gradUy(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in y direction
 REAL,INTENT(IN)           :: gradUz(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in z direction
-REAL,INTENT(IN)           :: U_RHS(  1:RHS_NVARS,0:N_in,0:N_in,0:ZDIM(N_in))    !< \nabla \cdot \tau, \nabla p, \nabla^2 u
+REAL,INTENT(IN)           :: U_RHS(  1:RHS_NVARS,0:N_in,0:N_in,0:ZDIM(N_in))    !< du/dt, \nabla^2 u
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -621,22 +618,19 @@ DO k=0,N_in
   DO j=0,N_in
     L_eta_zeta=L_xi(2,j)*L_xi(3,k)
     DO i=0,N_in
-      Utmp                      = Utmp                      + U_IN(:,i,j,k)  *L_xi(1,i)*L_Eta_Zeta
+      Utmp                      = Utmp                      + U_IN(:,i,j,k)  * L_xi(1,i)*L_Eta_Zeta
 #if USE_EXTEND_RHS
-      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,1)  = UGrad_out(RHS_GRADTAU,1)  + U_RHS(RHS_DIVTAU1,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,2)  = UGrad_out(RHS_GRADTAU,2)  + U_RHS(RHS_DIVTAU2,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,3)  = UGrad_out(RHS_GRADTAU,3)  + U_RHS(RHS_DIVTAU3,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,1) = UGrad_out(RHS_GRADPRES,1) + U_RHS(RHS_GRADP1,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,2) = UGrad_out(RHS_GRADPRES,2) + U_RHS(RHS_GRADP2,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,3) = UGrad_out(RHS_GRADPRES,3) + U_RHS(RHS_GRADP3,i,j,k) *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,1) = UGrad_out(RHS_dVELdt  ,1) + U_RHS(RHS_dVEL1dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,2) = UGrad_out(RHS_dVELdt  ,2) + U_RHS(RHS_dVEL2dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,3) = UGrad_out(RHS_dVELdt  ,3) + U_RHS(RHS_dVEL3dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
 #endif
 #if USE_FAXEN_CORR
-      UGrad_out(RHS_LAPLACEVEL,1) = UGrad_out(RHS_LAPLACEVEL,1) + U_RHS(RHS_LAPLACEVEL1,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_LAPLACEVEL,2) = UGrad_out(RHS_LAPLACEVEL,2) + U_RHS(RHS_LAPLACEVEL2,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_LAPLACEVEL,3) = UGrad_out(RHS_LAPLACEVEL,3) + U_RHS(RHS_LAPLACEVEL3,i,j,k) *L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_LAPLACEVEL,1) = UGrad_out(RHS_LAPLACEVEL,1) + U_RHS(RHS_LAPLACEVEL1,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_LAPLACEVEL,2) = UGrad_out(RHS_LAPLACEVEL,2) + U_RHS(RHS_LAPLACEVEL2,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_LAPLACEVEL,3) = UGrad_out(RHS_LAPLACEVEL,3) + U_RHS(RHS_LAPLACEVEL3,i,j,k) * L_xi(1,i)*L_Eta_Zeta
 #endif
     END DO ! i=0,N_In
   END DO ! j=0,N_In

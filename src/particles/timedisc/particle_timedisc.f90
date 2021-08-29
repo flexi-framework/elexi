@@ -126,7 +126,7 @@ SUBROUTINE ParticleTimeRHS(t,iStage,dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_DG_Vars,                     ONLY: U
+USE MOD_DG_Vars,                     ONLY: U,Ut
 USE MOD_Part_RHS,                    ONLY: CalcPartRHS
 USE MOD_Particle_Interpolation,      ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars, ONLY: FieldAtParticle
@@ -151,7 +151,7 @@ USE MOD_Particle_Localization,       ONLY: CountPartsPerElem
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 USE MOD_Particle_Interpolation_Vars, ONLY: GradAtParticle
 USE MOD_Lifting_Vars,                ONLY: gradUx,gradUy,gradUz
-USE MOD_Part_RHS,                    ONLY: tauRHS
+USE MOD_Part_RHS,                    ONLY: extRHS
 USE MOD_Mesh_Vars,                   ONLY: nElems
 #endif
 ! IMPLICIT VARIABLE HANDLING
@@ -192,7 +192,7 @@ IF (t.GE.DelayTime) THEN
 #endif /*USE_LOADBALANCE*/
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
   ! Calculate tau
-  CALL tauRHS(U,U_RHS)
+  CALL extRHS(U,Ut,U_RHS)
 #endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
   CALL InterpolateFieldToParticle(PP_nVar,U,PP_nVarPrim,FieldAtParticle&
 #if USE_EXTEND_RHS || USE_FAXEN_CORR

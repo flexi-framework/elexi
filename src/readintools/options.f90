@@ -177,6 +177,10 @@ LOGICAL               :: NAMEEQUALSNUMBERED
 INTEGER               :: j,i,ind,ind2,ind3,jMax
 CHARACTER(LEN=255)    :: thisname,testname
 !==================================================================================================================================
+! Example:
+! testname = 'part-species1-spaceic' <- this string is kept constant (it is "tested" against all others)
+! thisname = 'part-species$-ninits'  <- this string is looped
+
 NAMEEQUALSNUMBERED = .FALSE. ! Initialize
 
 ! 1. check testname for numbers and $ (the latter allows setting multiple parameters to the same value)
@@ -206,13 +210,13 @@ DO WHILE(ind.GT.0)
         END DO ! i = 1, LEN(testname)
       ELSE
         ind2 = INDEX(TRIM(testname), TRIM(thisname))
-        IF(ind2.EQ.0)THEN
+        IF(ind2.GT.0)THEN
+          testname = TRIM(testname(MIN(ind2,LEN(TRIM(testname)) ):))
+          NAMEEQUALSNUMBERED = STRICMP(thisname, testname)
+        ELSE ! if thisname is not in testname, e.g., Part-Boundary3-SourceName and Part-Boundary3-Condition
           ind=0
           NAMEEQUALSNUMBERED=.FALSE.
-        ELSE
-          testname = TRIM(testname(MIN(ind2,LEN(testname)):))
-          NAMEEQUALSNUMBERED = STRICMP(thisname, testname)
-        END IF
+        END IF ! ind2.GT.0
       END IF ! TRIM(thisname).EQ.""
     END IF ! ind.EQ.0
   ELSE

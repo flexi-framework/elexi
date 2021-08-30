@@ -160,7 +160,6 @@ IF(nPoints.GT.0) THEN
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 
   nBytes = nPoints*SIZEOF_F(FLOATdummy)
-  WRITE(ivtk) nBytes
   IF (withData) THEN
     DO iVar = 1,nVal
       WRITE(ivtk) nBytes

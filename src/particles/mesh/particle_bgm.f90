@@ -104,7 +104,8 @@ USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_TimeDisc_Vars ,ONLY: PreviousTime
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,Distance,ListDistance
 USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray
-USE MOD_TimeDisc_Vars          ,ONLY: dt
+USE MOD_TimeDisc_Vars          ,ONLY: dt,t
+USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
 #if USE_MPI
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: nComputeNodeElems,offsetComputeNodeElem,nComputeNodeSides,nNonUniqueGlobalSides,nNonUniqueGlobalNodes
@@ -120,9 +121,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMProcs,FIBGMProcs_Shared,FIBGMProcs_Sh
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars
-USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
 USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
-USE MOD_TimeDisc_Vars          ,ONLY: t
 USE MOD_Particle_Mesh_Vars     ,ONLY: MeshHasPeriodic,DistanceOfElemCenter_Shared,DistanceOfElemCenter_Shared_Win
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -143,11 +142,12 @@ INTEGER                        :: iBGM,jBGM,kBGM
 INTEGER                        :: BGMimax,BGMimin,BGMjmax,BGMjmin,BGMkmax,BGMkmin
 INTEGER                        :: BGMCellXmax,BGMCellXmin,BGMCellYmax,BGMCellYmin,BGMCellZmax,BGMCellZmin
 INTEGER                        :: BGMiminglob,BGMimaxglob,BGMjminglob,BGMjmaxglob,BGMkminglob,BGMkmaxglob
+REAL                           :: deltaT
+INTEGER                        :: errType
 #if USE_MPI
-INTEGER                        :: errType,iStage
+INTEGER                        :: iStage
 INTEGER                        :: iSide
 INTEGER                        :: ElemID
-REAL                           :: deltaT
 REAL                           :: globalDiag,maxCellRadius
 INTEGER,ALLOCATABLE            :: sendbuf(:,:,:),recvbuf(:,:,:)
 INTEGER,ALLOCATABLE            :: offsetElemsInBGMCell(:,:,:)
@@ -325,6 +325,7 @@ END IF
 #if USE_MPI
 SafetyFactor  = GETREAL('Part-SafetyFactor')
 halo_eps_velo = GETREAL('Part-HaloEpsVelo')
+#endif /*USE_MPI*/
 
 ! Calculate the time step
 IF (ManualTimeStep.EQ.0.0) THEN
@@ -340,6 +341,7 @@ ELSE
   dt     = ManualTimeStep
 END IF
 
+#if USE_MPI
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
 #endif /*USE_MPI*/
   halo_eps  = 0.

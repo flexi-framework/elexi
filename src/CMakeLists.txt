@@ -165,29 +165,29 @@ ENDIF()
 # Particle tracking
 # =========================================================================
 OPTION(PARTICLES "Enable particle tracking" OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_CODE_ANALYZE "Output code analyze messages"        OFF
-                                              "PARTICLES"                           OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_LOADBALANCE  "Use LoadBalance timemeasurement"     OFF
-                                              "PARTICLES;LIBS_USE_MPI"              OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_RW           "Use random walk model for particles" OFF
-                                              "PARTICLES;LIBS_USE_MPI"              OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_CODE_ANALYZE "Output code analyze messages"         OFF
+                                              "PARTICLES"                            OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_LOADBALANCE  "Use LoadBalance timemeasurement"      OFF
+                                              "PARTICLES;LIBS_USE_MPI"               OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_RW           "Use random walk model for particles"  OFF
+                                              "PARTICLES;LIBS_USE_MPI"               OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_INTKIND8     "Enable particle numbers larger standard integer size" OFF
-                                              "PARTICLES"                           OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_EXTEND_RHS   "Use extended RHS for particles"      OFF
-                                              "PARTICLES;FLEXI_PARABOLIC"           OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_FAXEN_CORR   "Enable Faxen correctio for particles"OFF
-                                              "PARTICLES;FLEXI_PARABOLIC"           OFF)
+                                              "PARTICLES"                            OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_EXTEND_RHS   "Use extended RHS for particles"       OFF
+                                              "PARTICLES;FLEXI_PARABOLIC"            OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_FAXEN_CORR   "Enable Faxen correctio for particles" OFF
+                                              "PARTICLES;FLEXI_PARABOLIC"            OFF)
 # Extend RHS options
 CMAKE_DEPENDENT_OPTION(PARTICLES_UNDISTFLOW   "Use viscous stresses and pressure gradient in RHS for particles" OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
+                                              "PARTICLES_EXTEND_RHS"                 OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_VIRTUALMASS  "Use virtual mass force in RHS for particles" OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
+                                              "PARTICLES_EXTEND_RHS"                 OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_BASSETFORCE  "Use Basset force in RHS for particles" OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_ROTATION     "Consider rotation of particles"      OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_ANALYZE_RHS  "Write rhs to file for particles"     OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
+                                              "PARTICLES_EXTEND_RHS"                 OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_ROTATION     "Consider rotation of particles"       OFF
+                                              "PARTICLES_EXTEND_RHS"                 OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_ANALYZE_RHS  "Write rhs to file for particles"      OFF
+                                              "PARTICLES_EXTEND_RHS"                 OFF)
 IF(PARTICLES)
   IF(FLEXI_2D)
     MESSAGE(SEND_ERROR "PARTICLES only works on FLEXI_2D=OFF")

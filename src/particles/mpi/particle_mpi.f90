@@ -246,6 +246,9 @@ IMPLICIT NONE
 INTEGER               :: iProc
 !===================================================================================================================================
 
+! No particle exchange in postiMode
+IF (postiMode) RETURN
+
 ! Asynchronous communication. Open receive buffer to all neighboring procs to get the number of particles THEY want to send
 PartMPIExchange%nPartsRecv=0
 DO iProc=0,nExchangeProcessors-1
@@ -294,6 +297,9 @@ IMPLICIT NONE
 INTEGER                       :: iPart,ElemID
 INTEGER                       :: iProc,ProcID
 !===================================================================================================================================
+
+! No particle exchange in postiMode
+IF (postiMode) RETURN
 
 ! 1) get number of send particles
 !--- Count number of particles in cells in the halo region and add them to the message
@@ -382,6 +388,9 @@ INTEGER                       :: recv_status_list(1:MPI_STATUS_SIZE,0:nExchangeP
 INTEGER                       :: MessageSize, nRecvParticles, nSendParticles
 INTEGER                       :: ALLOCSTAT
 !===================================================================================================================================
+
+! No particle exchange in postiMode
+IF (postiMode) RETURN
 
 ! 3) Build Message
 DO iProc=0,nExchangeProcessors-1
@@ -607,6 +616,9 @@ INTEGER                       :: iProc,iPos,nRecv,PartID,jPos
 INTEGER                       :: recv_status_list(1:MPI_STATUS_SIZE,0:nExchangeProcessors-1)
 INTEGER                       :: MessageSize,nRecvParticles
 !===================================================================================================================================
+
+! No particle exchange in postiMode
+IF (postiMode) RETURN
 
 ! wait for all send requests to be successful
 DO iProc=0,nExchangeProcessors-1

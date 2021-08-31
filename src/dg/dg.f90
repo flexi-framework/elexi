@@ -291,7 +291,7 @@ USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #if USE_PARTICLES
 USE MOD_Part_RHS            ,ONLY: CalcSourcePart
 USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
-USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart,DelayTime
+USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart,DelayTime,PDM
 USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeRHS,ParticleTimeStep,ParticleTimeStepRK
 USE MOD_Particle_Timedisc_Vars,ONLY: PreviousTime
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt
@@ -504,7 +504,7 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
 
 #if USE_PARTICLES
-IF (t.GT.PreviousTime) THEN
+IF (t.GT.PreviousTime .AND. PDM%ParticleVecLength.GT.0) THEN
   CALL ParticleTimeRHS(t,currentStage,dt)
   IF (currentStage.EQ.1) THEN
     CALL ParticleTimeStep(t,dt)

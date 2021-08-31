@@ -7,8 +7,8 @@ MARK_AS_ADVANCED(FORCE CMAKE_HOSTNAME)
 SITE_NAME(CMAKE_HOSTNAME)
 
 # =========================================================================
-# Some clusters requires setting the compilers by hand and invoking 
-# ENABLE_LANGUAGE afterwards, which is required for 
+# Some clusters requires setting the compilers by hand and invoking
+# ENABLE_LANGUAGE afterwards, which is required for
 # CMAKE_Fortran_COMPILER_ID that is used below
 # > This block must be called before ENABLE_LANGUAGE
 # =========================================================================

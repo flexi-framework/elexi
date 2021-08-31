@@ -504,7 +504,7 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
 
 #if USE_PARTICLES
-IF (t.GT.PreviousTime .AND. PDM%ParticleVecLength.GT.0) THEN
+IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN
   CALL ParticleTimeRHS(t,currentStage,dt)
   IF (currentStage.EQ.1) THEN
     CALL ParticleTimeStep(t,dt)
@@ -566,7 +566,7 @@ CALL LBSplitTime(LB_DGCOMM,tLBStart)
 #endif /*PARABOLIC && USE_MPI*/
 
 #if USE_MPI && USE_PARTICLES
-IF (t.GE.DelayTime .AND. t.GT.PreviousTime) THEN
+IF (t.GE.DelayTime .AND. t.GT.PreviousTime .AND. .NOT.postiMode) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -679,7 +679,7 @@ ELSE
 END IF
 
 #if USE_PARTICLES
-IF (t.GE.DelayTime .AND. t.GT.PreviousTime) THEN
+IF (t.GE.DelayTime .AND. t.GT.PreviousTime .AND. .NOT.postiMode) THEN
 #if USE_MPI
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)

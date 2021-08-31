@@ -182,6 +182,40 @@ PUBLIC :: prms
 CONTAINS
 
 !==================================================================================================================================
+!> Writes all names that are set but not read during init
+!==================================================================================================================================
+SUBROUTINE WriteUnused(this)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CLASS(Parameters),INTENT(IN) :: this  !< CLASS(Parameters)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CLASS(link), POINTER         :: current
+!==================================================================================================================================
+
+! iterate over all options and compare names
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A,I0,A)') ' Following ',this%count_unread(),' Parameters are defined in INI but not called!'
+current => this%firstLink
+DO WHILE (associated(current))
+  ! compare name
+  ! current%opt%isSet.:           Parameter is set in INI file
+  ! .NOT.current%opt%isRemoved:   Parameter is used in the code via GET-function
+  ! .NOT.current%opt%isUsedMulti: Parameter containing "$" in its name is set in INI file and at least one correpsonding parameter
+  !                               with a number instead of "$" is used in the code via GET-function
+  IF (current%opt%isSet.AND.(.NOT.current%opt%isRemoved).AND.(.NOT.current%opt%isUsedMulti)) THEN
+    CALL set_formatting("red")
+    SWRITE(UNIT_stdOut,"(A)") TRIM(current%opt%name)
+    CALL clear_formatting()
+  END IF
+  current => current%next
+END DO
+SWRITE(UNIT_stdOut,'(132("="))')
+
+END SUBROUTINE WriteUnused
+!==================================================================================================================================
 !> Set actual section. All options created after calling this subroutine are in this 'section'. The section property is only
 !> used to get nicer looking parameter files when using --help or --markdown.
 !==================================================================================================================================
@@ -293,6 +327,8 @@ opt%isSet       = .FALSE.
 opt%description = description
 opt%section     = this%actualSection
 opt%isRemoved   = .FALSE.
+opt%isUsedMulti = .FALSE. ! Becomes true, if a variable containing "$" is set in parameter file and used for the corresponding
+                          ! valued parameter
 
 ! insert option into linked list
 IF (.NOT. associated(this%firstLink)) then
@@ -836,6 +872,7 @@ DO WHILE (associated(current))
       IF(LEN_TRIM(rest).NE.0)THEN
         CALL newopt%parse(rest)
         newopt%isSet = .TRUE.
+        newopt%isUsedMulti = .FALSE.
         ! insert option
         CALL insertOption(current, newopt)
       ELSE
@@ -1217,6 +1254,12 @@ DO WHILE (associated(current))
               SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
               CALL clear_formatting()
               SWRITE(UNIT_stdOut,"(a3)") ' | '
+              ! remove the option from the linked list of all parameters
+              IF(prms%removeAfterRead) newopt%isRemoved = .TRUE.
+              ! insert option
+              CALL insertOption(current, newopt)
+              ! Indicate that parameter was read at least once and therefore remove the warning that the parameter was not used
+              multi%isUsedMulti = .TRUE.
               RETURN
             END IF
             check => check%next
@@ -1425,6 +1468,12 @@ DO WHILE (associated(current))
               SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
               CALL clear_formatting()
               SWRITE(UNIT_stdOut,"(a3)") ' | '
+              ! remove the option from the linked list of all parameters
+              IF(prms%removeAfterRead) newopt%isRemoved = .TRUE.
+              ! insert option
+              CALL insertOption(current, newopt)
+              ! Indicate that parameter was read at least once and therefore remove the warning that the parameter was not used
+              multi%isUsedMulti = .TRUE.
               RETURN
             END IF
             check => check%next

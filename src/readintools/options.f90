@@ -26,9 +26,6 @@ MODULE MOD_Options
   TYPE,PUBLIC  :: OPTION
     CLASS(OPTION),POINTER :: next         !< pointer to next option, used for a linked list of options
     CHARACTER(LEN=255)    :: name         !< name of the option, case-insensitive (part before '=' in parameter file)
-    CHARACTER(LEN=255)    :: namelowercase!< name of the option, lower-case (part before '=' in parameter file), only required for
-                                          !< numberedmulti
-    INTEGER               :: ind          !< FIRST index of $ in namelowercase, only required for numberedmulti
     CHARACTER(LEN=1000)   :: description  !< comment in parameter file, after '!' character
     CHARACTER(LEN=255)    :: section      !< section to which the option belongs. Not mandatory.
     LOGICAL               :: isSet        !< default false. Becomes true, if set in parameter file
@@ -41,6 +38,9 @@ MODULE MOD_Options
 #if USE_PARTICLES
     LOGICAL               :: numberedmulti!< default .FALSE. Indicates if option that occurs multiple times in ini file is numbered
                                           !< example: part-species[$]-surfaceflux[$]-BC --> numberedmulti = .TRUE.
+    CHARACTER(LEN=255)    :: namelowercase!< name of the option, lower-case (part before '=' in parameter file), only required for
+                                          !< numberedmulti
+    INTEGER               :: ind          !< FIRST index of $ in namelowercase, only required for numberedmulti
 #endif
 
   CONTAINS
@@ -201,8 +201,8 @@ ind      = this%ind
 DO WHILE(ind.GT.0)
   ind2 = INDEX(TRIM(testname), TRIM(thisname(1:ind-1)))
   IF(ind2.GT.0)THEN
-    thisname = TRIM(thisname(MIN(ind+1   ,LEN(thisname)):))
-    testname = TRIM(testname(MIN(ind+ind2,LEN(testname)):))
+    thisname = TRIM(thisname(MIN(ind+1   ,LEN(TRIM(thisname))+1,255):))! ind+1 is after $ and thisname+1 is $+1
+    testname = TRIM(testname(MIN(ind+ind2,LEN(TRIM(testname))):))
     ind = INDEX(TRIM(thisname),"$")
     IF(ind.EQ.0)THEN
       IF(TRIM(thisname).EQ."")THEN
@@ -210,7 +210,7 @@ DO WHILE(ind.GT.0)
         DO i = 1, LEN(TRIM(testname))
           ind3=INDEX('0123456789',testname(i:i))
           IF(ind3.LE.0) NAMEEQUALSNUMBERED=.FALSE.
-        END DO ! i = 1, LEN(testname)
+        END DO ! i = 1, LEN(TRIM(testname))
       ELSE
         ind2 = INDEX(TRIM(testname), TRIM(thisname))
         IF(ind2.GT.0)THEN

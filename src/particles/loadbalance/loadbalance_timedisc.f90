@@ -98,6 +98,7 @@ USE MOD_Globals_Vars               ,ONLY: InitializationWallTime
 USE MOD_Preproc
 USE MOD_Analyze                    ,ONLY: InitAnalyze,FinalizeAnalyze
 USE MOD_DG                         ,ONLY: InitDG,FinalizeDG
+USE MOD_Equation                   ,ONLY: InitEquation,FinalizeEquation
 USE MOD_Filter                     ,ONLY: InitFilter,FinalizeFilter
 USE MOD_Lifting                    ,ONLY: InitLifting,FinalizeLifting
 USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,nLoadBalanceSteps,NewImbalance,MinWeight,MaxWeight
@@ -170,6 +171,7 @@ CALL FinalizeLifting()
 CALL FinalizeFV()
 #endif /*PARABOLIC*/
 CALL FinalizeDG()
+CALL FinalizeEquation()
 ! Calling timedisc causes circular depends. We only need to reallocate dtElem
 !CALL FinalizeTimeDisc()
 CALL FinalizeRestart()
@@ -196,6 +198,7 @@ CALL InitFilter()
 CALL InitOverintegration()
 CALL InitIndicator()
 CALL InitMPIvars()
+CALL InitEquation()
 CALL InitDG()
 #if FV_ENABLED
 CALL InitFV()

@@ -262,7 +262,7 @@ USE MOD_Particle_Tracking_Vars ,ONLY: PartStateLostVecLength,PartStateLost,PartL
 ! USE MOD_Particle_Tracking_Vars ,ONLY: DoPeriodicCheck,DoPeriodicFix
 USE MOD_ReadInTools            ,ONLY: GETREAL,GETINT,GETLOGICAL,GetRealArray
 #if CODE_ANALYZE
-USE MOD_Particle_Surfaces_Vars ,ONLY: SideBoundingBoxVolume
+! USE MOD_Particle_Surfaces_Vars ,ONLY: SideBoundingBoxVolume
 USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 #if USE_MPI
@@ -485,9 +485,9 @@ SELECT CASE(TrackingMethod)
     firstSide = 1
     lastSide  = nNonUniqueGlobalSides
 #endif /* USE_MPI */
-#if CODE_ANALYZE
-    ALLOCATE(SideBoundingBoxVolume(nSides))
-#endif /*CODE_ANALYZE*/
+! #if CODE_ANALYZE
+!     ALLOCATE(SideBoundingBoxVolume(nSides))
+! #endif /*CODE_ANALYZE*/
 
     IF (BezierElevation.GT.0) THEN
       DO iSide = firstSide,LastSide
@@ -536,7 +536,7 @@ SELECT CASE(TrackingMethod)
       dy = ABS(SideSlabIntervals(4)-SideSlabIntervals(3))
       dz = ABS(SideSlabIntervals(6)-SideSlabIntervals(5))
       SideID = SideInfo
-      SideBoundingBoxVolume(SideID)=dx*dy*dz
+      ! SideBoundingBoxVolume(SideID)=dx*dy*dz
     END DO
 #endif /*CODE_ANALYZE*/
 

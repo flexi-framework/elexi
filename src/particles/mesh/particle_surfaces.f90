@@ -211,9 +211,9 @@ SDEALLOCATE(D_Bezier)
 
 ! InitParticleMesh
 SDEALLOCATE(BezierSampleXi)
-#if CODE_ANALYZE
-SDEALLOCATE(SideBoundingBoxVolume)
-#endif
+! #if CODE_ANALYZE
+! SDEALLOCATE(SideBoundingBoxVolume)
+! #endif
 
 #if USE_LOADBALANCE
 ! BezierControlPoints are global and do not change during load balance

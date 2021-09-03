@@ -1037,7 +1037,7 @@ INTEGER                        :: nParticles(0:nProcessors-1)
 LOGICAL                        :: reSwitch
 INTEGER                        :: pcount
 INTEGER                        :: locnPart,offsetnPart
-INTEGER                        :: iPart,nPart_glob,iElem
+INTEGER                        :: iPart,nGlobalNbrOfParticles,iElem
 INTEGER,ALLOCATABLE            :: PartInt(:,:)
 REAL,ALLOCATABLE               :: PartData(:,:)
 INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
@@ -1094,13 +1094,13 @@ sendbuf(1)  = recvbuf(1)+locnPart
 !>> Last proc knows the global number
 CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
 !>> Gather the global number and communicate to root (MPIRank.EQ.0)
-nPart_glob  = sendbuf(1)
+nGlobalNbrOfParticles  = sendbuf(1)
 CALL MPI_GATHER(locnPart,1,MPI_INTEGER,nParticles,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
-LOGWRITE(*,*)'offsetnPart,locnPart,nPart_glob',offsetnPart,locnPart,nPart_glob
+LOGWRITE(*,*)'offsetnPart,locnPart,nGlobalNbrOfParticles',offsetnPart,locnPart,nGlobalNbrOfParticles
 CALL MPI_REDUCE(locnPart, locnPart_max, 1, MPI_INTEGER, MPI_MAX, 0, MPI_COMM_FLEXI, IERROR)
 #else
 offsetnPart  = 0
-nPart_glob   = locnPart
+nGlobalNbrOfParticles   = locnPart
 locnPart_max = locnPart
 #endif
 
@@ -1209,25 +1209,38 @@ ASSOCIATE (&
     CALL CloseDataFile()
   END IF
 
+  ! Zero particles present in the complete domain.
+  ! > Root writes empty dummy container to .h5 file (required for subsequent file access in ParaView)
+  IF (locnPart_max.EQ.0 .AND. MPIRoot) THEN
+      CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+      CALL WriteArray(      DataSetName = 'PartData'                                      ,&
+                            rank        = 2                                               ,&
+                            nValGlobal  = (/PartDataSize,nGlobalNbrOfParticles /)         ,&
+                            nVal        = (/PartDataSize,locnPart   /)                    ,&
+                            offset      = (/0           ,offsetnPart/)                    ,&
+                            collective  = .FALSE.                                         ,&
+                            RealArray   = PartData)
+      CALL CloseDataFile()
+  END IF ! locnPart_max.EQ.0 .AND. MPIRoot
 #if USE_MPI
- CALL DistributedWriteArray(FileName                                    ,&
-                            DataSetName  = 'PartData'                   ,&
-                            rank         = 2                            ,&
-                            nValGlobal   = (/PartDataSize,nPart_glob /) ,&
-                            nVal         = (/PartDataSize,locnPart   /) ,&
-                            offset       = (/0           ,offsetnPart/) ,&
-                            collective   =.FALSE.                       ,&
-                            offSetDim    = 2                            ,&
-                            communicator = PartMPI%COMM                 ,&
+ CALL DistributedWriteArray(FileName                                                      ,&
+                            DataSetName  = 'PartData'                                     ,&
+                            rank         = 2                                              ,&
+                            nValGlobal   = (/PartDataSize,nGlobalNbrOfParticles /)        ,&
+                            nVal         = (/PartDataSize,locnPart   /)                   ,&
+                            offset       = (/0           ,offsetnPart/)                   ,&
+                            collective   =.FALSE.                                         ,&
+                            offSetDim    = 2                                              ,&
+                            communicator = PartMPI%COMM                                   ,&
                             RealArray    = PartData)
 #else
   CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-  CALL WriteArray(          DataSetName  = 'PartData'                   ,&
-                            rank         = 2                            ,&
-                            nValGlobal   = (/PartDataSize,nPart_glob /) ,&
-                            nVal         = (/PartDataSize,locnPart   /) ,&
-                            offset       = (/0           ,offsetnPart/) ,&
-                            collective   = .TRUE.                       ,&
+  CALL WriteArray(          DataSetName  = 'PartData'                                     ,&
+                            rank         = 2                                              ,&
+                            nValGlobal   = (/PartDataSize,nGlobalNbrOfParticles /)        ,&
+                            nVal         = (/PartDataSize,locnPart   /)                   ,&
+                            offset       = (/0           ,offsetnPart/)                   ,&
+                            collective   = .TRUE.                                         ,&
                             RealArray    = PartData)
   CALL CloseDataFile()
 #endif /*MPI*/
@@ -1235,25 +1248,25 @@ ASSOCIATE (&
   ! Turbulent particle properties currently not supported to be read directly. Do not associate varnames
 #if USE_MPI
   IF (ALLOCATED(TurbPartState)) &
-    CALL DistributedWriteArray(FileName                                        ,&
-                               DataSetName  = 'TurbPartData'                   ,&
-                               rank         = 2                                ,&
-                               nValGlobal   = (/TurbPartDataSize,nPart_glob /) ,&
-                               nVal         = (/TurbPartDataSize,locnPart   /) ,&
-                               offset       = (/0               ,offsetnPart/) ,&
-                               collective   = .FALSE.                          ,&
-                               offSetDim    = 2                                ,&
-                               communicator = PartMPI%COMM                     ,&
+    CALL DistributedWriteArray(FileName                                                   ,&
+                               DataSetName  = 'TurbPartData'                              ,&
+                               rank         = 2                                           ,&
+                               nValGlobal   = (/TurbPartDataSize,nGlobalNbrOfParticles /) ,&
+                               nVal         = (/TurbPartDataSize,locnPart   /)            ,&
+                               offset       = (/0               ,offsetnPart/)            ,&
+                               collective   = .FALSE.                                     ,&
+                               offSetDim    = 2                                           ,&
+                               communicator = PartMPI%COMM                                ,&
                                RealArray    = TurbPartData)
 #else
   IF (ALLOCATED(TurbPartState)) THEN
     CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteArray(           DataSetName  = 'TurbPartData'                   ,&
-                               rank         = 2                                ,&
-                               nValGlobal   = (/TurbPartDataSize,nPart_glob/)  ,&
-                               nVal         = (/TurbPartDataSize,locnPart/)    ,&
-                               offset       = (/0               ,offsetnPart/) ,&
-                               collective   = .TRUE.                           ,&
+    CALL WriteArray(           DataSetName  = 'TurbPartData'                              ,&
+                               rank         = 2                                           ,&
+                               nValGlobal   = (/TurbPartDataSize,nGlobalNbrOfParticles/)  ,&
+                               nVal         = (/TurbPartDataSize,locnPart/)               ,&
+                               offset       = (/0               ,offsetnPart/)            ,&
+                               collective   = .TRUE.                                      ,&
                                RealArray    = TurbPartData)
     CALL CloseDataFile()
   END IF

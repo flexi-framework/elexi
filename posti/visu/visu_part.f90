@@ -241,6 +241,7 @@ IF (nInvalidPartsLoc.GT.0) THEN
   DEALLOCATE(PartData)
   ALLOCATE(  PartData   (1:ListIn%nPartVar_HDF5+3,1:ListIn%nPartVar_visu))
   PartData(:,1:ListIn%nPartVar_visu) = PartDataCheck(:,1:ListIn%nPartVar_visu)
+  ListIn%nLocalParts = ListIn%nPart_Visu
 END IF
 DEALLOCATE(PartDataCheck)
 

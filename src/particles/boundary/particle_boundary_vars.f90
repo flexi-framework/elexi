@@ -134,6 +134,7 @@ CHARACTER(LEN=255),ALLOCATABLE          :: SurfBCName(:)                 ! names
 
 ! Boundary
 TYPE tPartBoundary
+  INTEGER                                :: InternalBC              = 0      !
   INTEGER                                :: OpenBC                  = 1      ! = 1 (s.u.) Boundary Condition Integer Definition
   INTEGER                                :: ReflectiveBC            = 2      ! = 2 (s.u.) Boundary Condition Integer Definition
   INTEGER                                :: PeriodicBC              = 3      ! = 3 (s.u.) Boundary Condition Integer Definition

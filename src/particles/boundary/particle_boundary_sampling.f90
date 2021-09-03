@@ -229,7 +229,7 @@ BCName  = ''
 
 DO iBC=1,nBCs
   ! inner side
-  IF (PartBound%TargetBoundCond(iBC).EQ.-1) CYCLE
+  IF (PartBound%TargetBoundCond(iBC).EQ.PartBound%InternalBC) CYCLE
 
   ! count number of reflective BCs
   IF (PartBound%TargetBoundCond(iBC).EQ.PartBound%ReflectiveBC) THEN

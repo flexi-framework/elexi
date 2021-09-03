@@ -1316,6 +1316,16 @@ ALLOCATE(PartBound%RoughVarianceIC     (1:nBCs))
 !ALLOCATE(PartBound%AmbientVelo    (1:3,1:nBCs))
 !ALLOCATE(PartBound%AmbientDens        (1:nBCs))
 !ALLOCATE(PartBound%AmbientDynamicVisc (1:nBCs))
+PartBound%SourceBoundName = ''
+PartBound%SourceBoundType = ''
+PartBound%TargetBoundCond = -1
+PartBound%WallTemp        = 0.
+PartBound%WallVelo        = 0.
+PartBound%WallModel       = ''
+PartBound%WallCoeffModel  = ''
+PartBound%doRoughWallModelling= .FALSE.
+PartBound%RoughMeanIC     = 0.
+PartBound%RoughVarianceIC = 0.
 
 ! Bons particle rebound model
 ALLOCATE(PartBound%Young               (1:nBCs))
@@ -1336,7 +1346,7 @@ END DO
 ! Loop over all boundaries and get information
 DO iBC = 1,nBCs
   IF (BoundaryType(iBC,1).EQ.0) THEN
-    PartBound%TargetBoundCond(iBC) = -1
+    PartBound%TargetBoundCond(iBC) = PartBound%InternalBC
     SWRITE(UNIT_stdOut,'(A,I0,A)') " ... PartBound",iBC,"is internal bound, no mapping needed"
     CYCLE
   END IF

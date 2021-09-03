@@ -1182,7 +1182,7 @@ ELSE !BezierNewtonAngle
   CALL BezierClipRecursive(ClipMode,BezierControlPoints2D_tmp,LineNormVec,PartTrajectory,lengthPartTrajectory&
                 ,iClipIter,nXiClip,nEtaClip,nInterSections,PartID,SideID)
   IF (nInterSections.GT.1) &
-    CALL abort(__STAMP__,' More then one intersection! Cannot use Newton!' ,nInterSections)
+    CALL ABORT(__STAMP__,' More then one intersection! Cannot use Newton!' ,nInterSections)
 #endif /*CODE_ANALYZE*/
 
   XiNewton = 0.

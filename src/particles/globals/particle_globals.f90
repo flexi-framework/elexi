@@ -327,6 +327,8 @@ END SUBROUTINE FindLinIndependentVectors
 SUBROUTINE Find2DNormIndependentVectors(NormalVector, Vector1, Vector2)
 !===================================================================================================================================
 !> Finds two linear vectors of a normal vector around a base point
+!> > Inspired by Efremov, A.; Havran, V. & Seidel, H.-P., Robust and numerically stable Bézier clipping method for ray tracing NURBS
+!> > surfaces, Proceedings of the 21st spring conference on Computer graphics - SCCG '05, ACM Press, 2005
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals

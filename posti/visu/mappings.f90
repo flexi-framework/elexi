@@ -290,7 +290,7 @@ DO iVar=1,nVarIni
   IF(iVar.EQ.nVarIni)THEN
     SDEALLOCATE(PDE%VarNamePartVisu)
     ALLOCATE(PDE%VarNamePartVisu(1:PDE%nPartVar_Visu))
-    DO iVar2=1,PDE%nPartVar_Visu
+    DO iVar2=1,PDE%nPartVar_HDF5
       IF(PDE%mapAllVarsToVisuVars(iVar2).GT.0) &
         PDE%VarNamePartVisu(PDE%mapAllVarsToVisuVars(iVar2))=PDE%VarNamePartDummy(iVar2)
     END DO

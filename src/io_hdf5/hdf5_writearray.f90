@@ -209,6 +209,9 @@ IF(chunky)THEN
   CALL H5DSET_EXTENT_F(DSet_ID,Dimsf,iError) ! if resizable then dataset may need to be extended
 END IF
 
+! Dataset empty, return before allocating memory space
+IF (PRODUCT(nVal).EQ.0) RETURN
+
 ! Each process defines dataset in memory and writes it to the hyperslab in the file.
 Dimsf     = nVal  ! Now we need the local array size
 OffsetHDF = Offset

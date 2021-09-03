@@ -108,6 +108,7 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSampleBCs
 USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars,doParticleImpactSample,WriteMacroSurfaceValues
+USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars      ,ONLY: SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemSideNodeID_Shared
@@ -174,6 +175,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING...'
 ! Output of macroscopic surface values
 !> Double Variable because we follow both FLEXI and PICLas style
 doParticleImpactSample   = GETLOGICAL('Part-SurfaceSampling','F')
+doParticleImpactTrack    = GETLOGICAL('Part-TrackImpacts','.FALSE.')
 WriteMacroSurfaceValues  = GETLOGICAL('Part-WriteMacroSurfaceValues','.FALSE.')
 !
 !! Switch surface macro values flag to .TRUE. for impact tracking
@@ -182,7 +184,7 @@ IF (doParticleImpactSample.OR.WriteMacroSurfaceValues) THEN
   doParticleImpactSample  = .TRUE.
 END IF
 
-IF (.NOT.WriteMacroSurfaceValues) THEN
+IF (.NOT.WriteMacroSurfaceValues .AND. .NOT.doParticleImpactTrack ) THEN
   SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
   RETURN
 END IF

@@ -772,7 +772,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
 /*     struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) { */
 void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , struct DoubleARRAY* coords,
     struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) {
-   SWRITE("Insert particle data \n");
+   SWRITE("Insert particle data");
 	 /* vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb_part->GetBlock(blockno)); */
    vtkSmartPointer<vtkPolyData> output = vtkPolyData::SafeDownCast(mb_part->GetBlock(blockno));
 

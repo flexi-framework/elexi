@@ -219,7 +219,6 @@ CALL ReadArray(DataArray,2,(/ListIn%nPartVar_HDF5+3, ListIn%nLocalParts/),ListIn
 ListIn%nPart_Visu = 0
 nInvalidPartsLoc  = 0
 
-! What exactly is this loop doing
 DO iPart = 1,ListIn%nLocalParts
   ! Remove invalid particles
   IF (ANY(IEEE_IS_NAN(PartData(:,iPart)))) THEN
@@ -236,11 +235,11 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,nInvalidPartsGlob,1,MPI_INTEGER,MPI_SUM,MPI_COMM
 #endif
 
 ! Write data back to PartData
+IF (nInvalidPartsGlob.GT.0 .AND. MPIRoot) WRITE(Unit_stdOut,'(A,I0,A)') ' ',nInvalidPartsGlob,' invalid particles detected. Ignoring ...'
 IF (nInvalidPartsLoc.GT.0) THEN
-  SWRITE(Unit_stdOut,'(A,I0,A)') ' ',nInvalidPartsGlob,' invalid particles detected. Ignoring ...'
   DEALLOCATE(PartData)
-  ALLOCATE(  PartData   (1:ListIn%nPartVar_HDF5+3,1:ListIn%nPartVar_visu))
-  PartData(:,1:ListIn%nPartVar_visu) = PartDataCheck(:,1:ListIn%nPartVar_visu)
+  ALLOCATE(  PartData   (1:ListIn%nPartVar_HDF5+3,1:ListIn%nPart_Visu))
+  PartData(:,1:ListIn%nPart_Visu) = PartDataCheck(:,1:ListIn%nPart_Visu)
   ListIn%nLocalParts = ListIn%nPart_Visu
 END IF
 DEALLOCATE(PartDataCheck)

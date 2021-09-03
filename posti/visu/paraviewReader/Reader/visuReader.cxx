@@ -78,7 +78,7 @@ visuReader::visuReader()
    // Used to tell the visuReader, that we (un)selected a state,primite or derived quantity
    // and that the 'Apply' button becomes clickable to reload the data (load the selected quantities)
 
-   this->SelectionObserver = vtkCallbackCommand::New();
+   this->SelectionObserver     = vtkCallbackCommand::New();
    this->SelectionObserver->SetCallback(&visuReader::SelectionModifiedCallback);
    this->SelectionObserver->SetClientData(this);
    // create array for state,primitive and derived quantities
@@ -130,8 +130,8 @@ int visuReader::RequestInformation(vtkInformation *,
    outInfoVolume ->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
    outInfoSurface->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 #if USE_PARTICLES
-   outInfoPart->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
-   outInfoImpact->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+   outInfoPart   ->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+   outInfoImpact ->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 #endif
 
    // RequestInformation may be called before AddFileName, thus the arrays with timesteps and
@@ -149,7 +149,7 @@ int visuReader::RequestInformation(vtkInformation *,
    outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
 #if USE_PARTICLES
    outInfoPart   ->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
-   outInfoImpact->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
+   outInfoImpact ->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
 #endif
    outInfoVolume ->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
    outInfoSurface->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
@@ -310,7 +310,7 @@ int visuReader::RequestData(
    vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
 #if USE_PARTICLES
    vtkSmartPointer<vtkInformation> outInfoPart    = outputVector->GetInformationObject(2);
-   vtkSmartPointer<vtkInformation> outInfoImpact = outputVector->GetInformationObject(3);
+   vtkSmartPointer<vtkInformation> outInfoImpact  = outputVector->GetInformationObject(3);
 #endif
    if (outInfoVolume->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time

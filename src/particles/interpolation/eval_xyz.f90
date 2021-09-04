@@ -248,10 +248,10 @@ REAL                      :: Utmp(1:nVar)
 
 ! Sanity check the values
 IF (ANY(IEEE_IS_NAN(X_in))) THEN
-  WRITE(UNIt_stdOut,'(A,I0,A,I0)')                             ' NaN detected for PartID ', PartID, ' on proc ',myRank
-  WRITE(UNIt_stdOut,'(A18,3(1X,E27.16))')                      ' LastPosition   ', LastPartPos(1:3,PartID)
-  WRITE(UNIt_stdOut,'(A18,3(1X,E27.16))')                      ' Velocity       ', PartState  (4:6,PartID)
-  WRITE(UNIt_stdOut,'(A)')                                     ' Removing particle ...'
+  WRITE(UNIT_stdOut,'(A,I0,A,I0)')        ' NaN detected for PartID ', PartID, ' on proc ',myRank
+  WRITE(UNIT_stdOut,'(A18,3(1X,E27.16))') ' LastPosition   ', LastPartPos(1:3,PartID)
+  WRITE(UNIT_stdOut,'(A18,3(1X,E27.16))') ' Velocity       ', PartState  (4:6,PartID)
+  WRITE(UNIT_stdOut,'(A)')                ' Removing particle ...'
   PDM%ParticleInside(PartID) = .FALSE.
   RETURN
 END IF

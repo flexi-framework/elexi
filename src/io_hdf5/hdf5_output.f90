@@ -1035,7 +1035,7 @@ INTEGER                        :: sendbuf(2),recvbuf(2)
 INTEGER                        :: nParticles(0:nProcessors-1)
 #endif
 LOGICAL                        :: reSwitch
-INTEGER                        :: pcount
+INTEGER                        :: pcount,nInvalidPart
 INTEGER                        :: locnPart,offsetnPart
 INTEGER                        :: iPart,nGlobalNbrOfParticles,iElem
 INTEGER,ALLOCATABLE            :: PartInt(:,:)
@@ -1062,7 +1062,7 @@ IF (doParticleReflectionTrack) THEN
   PartDataSize = PartDataSize + 1
   varShift     = 1
 END IF
-! Incresse size if the absolute particle path is tracked
+! Increase size if the absolute particle path is tracked
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) &
   PartDataSize = PartDataSize + 3
 
@@ -1072,6 +1072,26 @@ IF (ALLOCATED(TurbPartState)) THEN
 #if USE_RW
   TurbPartDataSize = TurbPartDataSize + nRWVars
 #endif
+END IF
+
+nInvalidPart = 0
+! Make sure to eliminate invalid particles as we cannot restart from NaN
+DO pcount = 1,PDM%ParticleVecLength
+  IF (ANY(IEEE_IS_NAN(PartState(:,pcount)))) THEN
+    nInvalidPart = nInvalidPart + 1
+    PDM%ParticleInside(pcount) = .FALSE.
+  END IF
+END DO
+
+#if USE_MPI
+IF(MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,nInvalidPart,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(nInvalidPart,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
+#endif /*USE_MPI*/
+IF (nInvalidPart.GT.0 .AND. MPIRoot) THEN
+  WRITE(UNIT_stdOut,'(A,I0,A)') ' Detected ',nInvalidPart,' invalid particles during output. Removing ...'
 END IF
 
 ! Determine number of particles in the complete domain

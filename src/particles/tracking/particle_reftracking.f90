@@ -282,10 +282,10 @@ DO iPart=1,PDM%ParticleVecLength
           IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' oldxi                  ', oldXi
           IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' newxi                  ', newXi
           IPWRITE(UNIT_stdOut,'(I0,A)')             ' PartPos:           '
-          IPWRITE(UNIt_stdOut,'(I0,A18,1X,A18,1X,A18)')                '    min ', ' value ', ' max '
-          IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
-          IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
-          IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
+          IPWRITE(UNIT_stdOut,'(I0,A18,1X,A18,1X,A18)')                '    min ', ' value ', ' max '
+          IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
+          IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
+          IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
           IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' LastPartPos            ', LastPartPos(1:3,iPart)
           IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' Velocity               ', PartState(4:6,iPart)
           IF (ALLOCATED(TurbPartState)) IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' Velocity (SGS)         ', TurbPartState(1:3,iPart)
@@ -365,10 +365,10 @@ DO iPart=1,PDM%ParticleVecLength
               IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' newxi                  ', newxi
               IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' LastPartPos            ', LastPartPos(1:3,iPart)
               IPWRITE(UNIT_stdOut,'(I0,A)')             ' PartPos:           '
-              IPWRITE(UNIt_stdOut,'(I0,A18,1X,A18,1X,A18)')                '    min ', ' value ', ' max '
-              IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
-              IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
-              IPWRITE(UNIt_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
+              IPWRITE(UNIT_stdOut,'(I0,A18,1X,A18,1X,A18)')                '    min ', ' value ', ' max '
+              IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
+              IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
+              IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
               IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' Velocity               ', PartState(4:6,iPart)
               IF (ALLOCATED(TurbPartState)) IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' Velocity (SGS)         ', TurbPartState(1:3,iPart)
               Vec=PartState(1:3,iPart)-LastPartPos(1:3,iPart)
@@ -393,7 +393,7 @@ DO iPart=1,PDM%ParticleVecLength
 !              END IF
 !
 !#else
-!              IPWRITE(UNIt_stdOut,'(I0,A,I0)') ' elemid                 ', pem%element(ipart)+offsetelem
+!              IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' elemid                 ', pem%element(ipart)+offsetelem
 !#endif
               IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartSpecies  ', PartSpecies(iPart)
               CALL ABORT(__STAMP__ ,'Particle not inside of Element, ipart',ipart)

@@ -383,17 +383,6 @@ PARTOUT            = GETINT('PartOut','0')
 MPIRankOut         = GETINT('MPIRankOut','0')
 #endif /*CODE_ANALYZE*/
 
-! DoPeriodicCheck   = GETLOGICAL('Part-DoPeriodicCheck')
-! IF (DoPeriodicCheck) THEN
-!   SELECT CASE(TrackingMethod)
-!     CASE(REFMAPPING,TRACING)
-!       DoPeriodicFix   = GETLOGICAL('Part-DoPeriodicFix')
-!     CASE(TRIATRACKING)
-!       SWRITE(UNIt_stdOut,'(A)') 'Part-DoPeriodicCheck currently only available with TrackingMethods REFMAPPING and TRACING. Disabling'
-!       DoPeriodicCheck = .FALSE.
-!   END SELECT
-! END IF
-
 CartesianPeriodic = GETLOGICAL('Part-CartesianPeriodic','.FALSE.')
 IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('Part-FastPeriodic','.FALSE.')
 

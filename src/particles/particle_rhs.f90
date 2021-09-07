@@ -416,7 +416,7 @@ globalfactor = 1.
 #if PP_nVarPartRHS == 6
 ! Calculate the Re number
 Rep = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
-IF (Species(PartSpecies(PartID))%CalcSaffmanForce) THEN
+IF (Species(PartSpecies(PartID))%CalcSaffmanForce .AND. Rep.GT.0.) THEN
   ! Calculate the factor
   prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
   beta = Species(PartSpecies(PartID))%DiameterIC * VECNORM(PartState(PART_AMOMV,PartID)) * 0.5 / VECNORM(udiff)
@@ -440,7 +440,7 @@ END IF
 ! Rubinow, S.I., Keller, J.B.: The transverse force on a spinning sphere moving in a viscous
 ! fluid. Journal of Fluid Mechanics, pp. 447–459, 1961. 10.1017/S0022112061000640.
 !===================================================================================================================================
-IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
+IF (Species(PartSpecies(PartID))%CalcMagnusForce .AND. Rep.GT.0.) THEN
   rotu     = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
                GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
                GradAtParticle(RHS_GRADVEL2,1)-GradAtParticle(RHS_GRADVEL1,2)/)

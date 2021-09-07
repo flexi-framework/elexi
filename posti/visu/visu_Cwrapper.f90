@@ -318,24 +318,24 @@ ELSE
 END IF
 
 #if USE_PARTICLES
-ALLOCATE(PD%PartIds_Visu(1:PD%nPart_visu))
-ALLOCATE(PD%Part_Pos_visu(1:3,1:PD%nPart_Visu))
-ALLOCATE(PD%Part_visu(1:PD%nPartVar_visu,1:PD%nPart_visu))
-IF(ALLOCATED(PD%PartData_HDF5))THEN
-  PD%Part_Pos_visu=PD%PartData_HDF5(1:3,:)
-  PD%Part_visu=PD%PartData_HDF5(4:,:)
+ALLOCATE(PD%PartIds_Visu (                   1:PD%nPart_visu) ,&
+        ,PD%Part_Pos_visu(1:3               ,1:PD%nPart_Visu) ,&
+        ,PD%Part_visu    (1:PD%nPartVar_visu,1:PD%nPart_visu))
+IF (ALLOCATED(PD%PartData_HDF5)) THEN
+  PD%Part_Pos_visu = PD%PartData_HDF5(1:3,:)
+  PD%Part_visu     = PD%PartData_HDF5(4:,:)
 END IF
 
 CALL WritePartDataToVTK_array(PD%nPart_visu,PD%nPartVar_visu,coordsPart_out,valuesPart_out,nodeidsPart_out,varnamesPart_out,&
                               componentsPart_out,PD%Part_Pos_visu,PD%Part_visu,PD%PartIds_Visu,PD%VarNamePartCombine,&
                               PD%VarNamePartCombineLen,PD%VarNamePartVisu,PD%PartCPointers_allocated)
 
-ALLOCATE(PDE%PartIds_Visu(1:PDE%nPart_visu))
-ALLOCATE(PDE%Part_Pos_visu(1:3,1:PDE%nPart_Visu))
-ALLOCATE(PDE%Part_visu(1:PDE%nPartVar_visu,1:PDE%nPart_visu))
+ALLOCATE(PDE%PartIds_Visu (                    1:PDE%nPart_visu) ,&
+        ,PDE%Part_Pos_visu(1:3                ,1:PDE%nPart_Visu) ,&
+        ,PDE%Part_visu    (1:PDE%nPartVar_visu,1:PDE%nPart_visu))
 IF(ALLOCATED(PDE%PartData_HDF5))THEN
-  PDE%Part_Pos_visu=PDE%PartData_HDF5(1:3,:)
-  PDE%Part_visu=PDE%PartData_HDF5(4:,:)
+  PDE%Part_Pos_visu = PDE%PartData_HDF5(1:3,:)
+  PDE%Part_visu     = PDE%PartData_HDF5(4:,:)
 END IF
 CALL WritePartDataToVTK_array(PDE%nPart_visu,PDE%nPartVar_visu,coordsImpact_out,valuesImpact_out,&
                                  nodeidsImpact_out,varnamesImpact_out,componentsImpact_out,PDE%Part_Pos_visu,&

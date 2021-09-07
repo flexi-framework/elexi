@@ -159,11 +159,11 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
     ! Loop over all particles on local proc and fill the PartState
     IF (locnPart.GT.0) THEN
-      PartState(1:6,1:locnPart)     =     PartData(1:6,offsetnPart+1:offsetnPart+locnPart)
-      PartSpecies(  1:locnPart)     = INT(PartData(7  ,offsetnPart+1:offsetnPart+locnPart))
+      PartState(1:PP_nVarPart,1:locnPart) = PartData(1:PP_nVarPart,offsetnPart+1:offsetnPart+locnPart)
+      PartSpecies(            1:locnPart) = INT(PartData(PP_nVarPart+1,offsetnPart+1:offsetnPart+locnPart))
       ! Reflections were tracked previously and are therefore still enabled
       IF (PartDataSize.EQ.8) THEN
-          PartReflCount(1:locnPart) = INT(PartData(8,offsetnPart+1:offsetnPart+locnPart))
+          PartReflCount(1:locnPart) = INT(PartData(PP_nVarPart+2,offsetnPart+1:offsetnPart+locnPart))
       END IF
 
       ! Fill the particle-to-element-mapping (PEM) with the information from HDF5
@@ -379,11 +379,11 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       NbrOfMissingParticles = OffsetTotalNbrOfMissingParticles(PartMPI%MyRank) + 1
       DO iPart = 1, PDM%ParticleVecLength
         IF (.NOT.PDM%ParticleInside(iPart)) THEN
-          RecBuff(1:6,NbrOfMissingParticles) = PartState(1:6,iPart)
-          RecBuff(7,NbrOfMissingParticles)   = REAL(PartSpecies(iPart))
+          RecBuff(1:PP_nVarPart,NbrOfMissingParticles) = PartState(1:PP_nVarPart,iPart)
+          RecBuff(PP_nVarPart+1,NbrOfMissingParticles) = REAL(PartSpecies(iPart))
           ! Reflections were tracked previously and are therefore still enabled
           IF (PartDataSize.EQ.8) THEN
-            RecBuff(8,NbrOfMissingParticles) = REAL(PartReflCount(iPart))
+            RecBuff(PP_nVarPart+2,NbrOfMissingParticles) = REAL(PartReflCount(iPart))
           END IF
           NbrOfMissingParticles = NbrOfMissingParticles + 1
         END IF ! .NOT.PDM%ParticleInside(iPart)
@@ -440,7 +440,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
           END IF
         END ASSOCIATE
 
-        PartState(1:6,CurrentPartNum) = RecBuff(1:6,iPart)
+        PartState(1:PP_nVarPart,CurrentPartNum) = RecBuff(1:PP_nVarPart,iPart)
         PDM%ParticleInside(CurrentPartNum) = .true.
 
         CALL LocateParticleInElement(CurrentPartNum,doHALO=.FALSE.)
@@ -448,10 +448,10 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
           IndexOfFoundParticles(iPart) = 1
           PEM%LastElement(CurrentPartNum) = PEM%Element(CurrentPartNum)
           ! Set particle properties (if the particle is lost, it's properties are written to a .h5 file)
-          PartSpecies(CurrentPartNum)     = INT(RecBuff(7,iPart))
+          PartSpecies(CurrentPartNum)     = INT(RecBuff(PP_nVarPart+1,iPart))
           ! Reflections were tracked previously and are therefore still enabled
           IF (PartDataSize.EQ.8) THEN
-            PartReflCount(CurrentPartNum) = INT(RecBuff(8,iPart))
+            PartReflCount(CurrentPartNum) = INT(RecBuff(PP_nVarPart+2,iPart))
           END IF
           NbrOfFoundParts = NbrOfFoundParts + 1
           CurrentPartNum  = CurrentPartNum  + 1
@@ -496,11 +496,11 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
             ! Set properties of the "virtual" particle (only for using the routine StoreLostParticleProperties to store this info
             ! in the .h5 container)
-            PartState(1:6,CurrentPartNum)        = RecBuff(1:6,iPart)
-            PartSpecies(CurrentPartNum)          = INT(RecBuff(7,iPart))
+            PartState(1:PP_nVarPart,CurrentPartNum) = RecBuff(1:PP_nVarPart,iPart)
+            PartSpecies(CurrentPartNum)             = INT(RecBuff(PP_nVarPart+1,iPart))
             ! Reflections were tracked previously and are therefore still enabled
             IF (PartDataSize.EQ.8) THEN
-              PartReflCount(CurrentPartNum)      = INT(RecBuff(8,iPart))
+              PartReflCount(CurrentPartNum)      = INT(RecBuff(PP_nVarPart+2,iPart))
             END IF
             PEM%LastElement(CurrentPartNum)      = -1
             PDM%ParticleInside(CurrentPartNum)   = .FALSE.

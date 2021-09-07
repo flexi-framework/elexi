@@ -1049,8 +1049,8 @@ REAL,ALLOCATABLE               :: TurbPartData(:,:)
 !===================================================================================================================================
 
 ! Size and location of particle data
-PartDataSize = 7
-tmpIndex     = 8
+PartDataSize = PP_nVarPart + 1
+tmpIndex     = PartDataSize + 1
 ! Increase size if index is tracked
 IF (doPartIndex) THEN
   PartDataSize = PartDataSize + 1
@@ -1077,6 +1077,7 @@ END IF
 nInvalidPart = 0
 ! Make sure to eliminate invalid particles as we cannot restart from NaN
 DO pcount = 1,PDM%ParticleVecLength
+  IF (.NOT. PDM%ParticleInside(pcount)) CYCLE
   IF (ANY(IEEE_IS_NAN(PartState(:,pcount)))) THEN
     nInvalidPart = nInvalidPart + 1
     PDM%ParticleInside(pcount) = .FALSE.
@@ -1150,9 +1151,9 @@ DO iElem = offsetElem+1,offsetElem+PP_nElems
     ! Sum up particles and add properties to output array
     pcount = PEM%pStart(iElem)
     DO iPart = PartInt(1,iElem)+1,PartInt(2,iElem)
-      PartData(1:6,iPart) = PartState(1:6,pcount)
-      PartData(7  ,iPart) = REAL(PartSpecies(pcount))
-      IF (doPartIndex)                                      PartData(8                                    ,iPart) = REAL(PartIndex(pcount))
+      PartData(1:PP_nVarPart,iPart) = PartState(1:PP_nVarPart,pcount)
+      PartData(PP_nVarPart+1,iPart) = REAL(PartSpecies(pcount))
+      IF (doPartIndex)                                      PartData(PP_nVarPart+2                        ,iPart) = REAL(PartIndex(pcount))
       IF (doParticleReflectionTrack)                        PartData(tmpIndex                             ,iPart) = REAL(PartReflCount(pcount))
       IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartData(tmpIndex+varShift:tmpIndex+2+varShift,iPart) = PartPath(1:3,pcount)
 

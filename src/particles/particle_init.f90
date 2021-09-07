@@ -1391,12 +1391,11 @@ DO iBC = 1,nBCs
       ! Rough wall modelling
       PartBound%doRoughWallModelling(iBC) = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-RoughWall'          ,'.FALSE.')
       IF (PartBound%doRoughWallModelling(iBC)) THEN
-        IF (useCurveds) THEN
-          SWRITE(UNIT_StdOut,'(A)') ' | ATTENTION: You may lose particles when the faces are curved!'
-        END IF
         PartBound%RoughMeanIC(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughMeanIC'        ,'0.0')
-        ! Variance in degree, default 20 degree
+        ! Variance in radii
         PartBound%RoughVarianceIC(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughVarianceIC'    ,'0.035')
+        IF (PartBound%RoughVarianceIC(iBC).GT.1.0) &
+          CALL CollectiveSTOP(__STAMP__,'Rough variance is high, disable this message only if you are sure that you are correct!')
       END IF
       ! Non-perfect reflection
       IF (PartBound%WallModel(iBC).EQ.'coeffRes') THEN

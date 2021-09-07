@@ -318,8 +318,8 @@ ELSE
 END IF
 
 #if USE_PARTICLES
-ALLOCATE(PD%PartIds_Visu (                   1:PD%nPart_visu) ,&
-        ,PD%Part_Pos_visu(1:3               ,1:PD%nPart_Visu) ,&
+ALLOCATE(PD%PartIds_Visu (                   1:PD%nPart_visu) &
+        ,PD%Part_Pos_visu(1:3               ,1:PD%nPart_Visu) &
         ,PD%Part_visu    (1:PD%nPartVar_visu,1:PD%nPart_visu))
 IF (ALLOCATED(PD%PartData_HDF5)) THEN
   PD%Part_Pos_visu = PD%PartData_HDF5(1:3,:)
@@ -330,8 +330,8 @@ CALL WritePartDataToVTK_array(PD%nPart_visu,PD%nPartVar_visu,coordsPart_out,valu
                               componentsPart_out,PD%Part_Pos_visu,PD%Part_visu,PD%PartIds_Visu,PD%VarNamePartCombine,&
                               PD%VarNamePartCombineLen,PD%VarNamePartVisu,PD%PartCPointers_allocated)
 
-ALLOCATE(PDE%PartIds_Visu (                    1:PDE%nPart_visu) ,&
-        ,PDE%Part_Pos_visu(1:3                ,1:PDE%nPart_Visu) ,&
+ALLOCATE(PDE%PartIds_Visu (                    1:PDE%nPart_visu) &
+        ,PDE%Part_Pos_visu(1:3                ,1:PDE%nPart_Visu) &
         ,PDE%Part_visu    (1:PDE%nPartVar_visu,1:PDE%nPart_visu))
 IF(ALLOCATED(PDE%PartData_HDF5))THEN
   PDE%Part_Pos_visu = PDE%PartData_HDF5(1:3,:)

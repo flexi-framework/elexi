@@ -274,7 +274,7 @@ ELSE IF(DOT_PRODUCT(n_loc,PartTrajectory).GT.0.)  THEN
 ELSE
   CALL abort(&
     __STAMP__&
-    ,'Error in GetBoundaryInteractionAuxBC: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
+    ,'Error in GetBoundaryInteractionAuxBC: n_vec is cross_vectorendicular to PartTrajectory for AuxBC',AuxBCIdx)
 END IF
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(PartAuxBC%TargetBoundCond(AuxBCIdx))
@@ -338,7 +338,6 @@ LOGICAL                           :: Symmetry,IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngle_old
 REAL                              :: v_magnitude
 INTEGER                           :: locBCID
-REAL                              :: tang1(1:3),tang2(1:3)
 !===================================================================================================================================
 
 ! Check if reflected on AuxBC
@@ -359,8 +358,7 @@ END IF ! .NOT.IsAuxBC
 
 ! Rough wall modelling
 IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doRoughWallModelling) THEN
-  CALL OrthoNormVec(n_loc,tang1,tang2)
-  n_loc = RoughWall(n_loc,tang1,tang2,locBCID,PartTrajectory,.FALSE.)
+  n_loc = RoughWall(n_loc,locBCID,PartTrajectory)
 END IF
 
 ! Make sure we have the old values safe
@@ -383,6 +381,7 @@ LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !--> flip trajectory and move the remainder of the particle push
 PartTrajectory(1:3)     = PartTrajectory(1:3)-2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
 PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
+! Update particle velocity
 
 ! compute moved particle || rest of movement
 PartTrajectory          = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
@@ -505,7 +504,7 @@ CALL OrthoNormVec(n_loc,tang1,tang2)
 v_old   = PartState(4:6,PartID)
 
 IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doRoughWallModelling) THEN
-  n_loc = RoughWall(n_loc,tang1,tang2,locBCID,PartTrajectory,.FALSE.)
+  n_loc = RoughWall(n_loc,locBCID,PartTrajectory)
 END IF
 
 ! Sample on boundary
@@ -826,10 +825,10 @@ ElemID   = SideInfo_Shared(SIDE_NBELEMID,SideID)
 
 END SUBROUTINE PeriodicBC
 
-RECURSIVE FUNCTION RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory,restrict) RESULT (n_out)
+FUNCTION RoughWall(n_in,locBCID,PartTrajectory) RESULT (n_out)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Rough wall modelling without multiple rebounds, where the roughness is drawn from a Gaussian distribution with a mean of zero and
-! a standard deviation equal to an assumed or experimental wall roughness.
+! a standard deviation equal to an assumed or experimental wall roughness in radii.
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -840,74 +839,74 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 REAL,INTENT(IN)                   :: n_in(1:3)
-REAL,INTENT(IN)                   :: tang1(1:3)
-REAL,INTENT(IN)                   :: tang2(1:3)
 INTEGER,INTENT(IN)                :: locBCID
 REAL,INTENT(IN)                   :: PartTrajectory(1:3)
-LOGICAL,INTENT(IN)                :: restrict
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
-REAL                              :: n_out(3)
+REAL                              :: n_out(1:3)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                              :: RandNum(2),RandNumTmp(3),random_angle(2),crossv(2,3),angle,anglet1,anglet2
+REAL                              :: RandNum(4),random_angle(2),angle,cross_vector(3)
 !===================================================================================================================================
 
-crossv(1,:) = tang2 !CROSSNORM(n_in,tang1)
-crossv(2,:) = tang1 !CROSSNORM(n_in,tang2)
-
-CALL RANDOM_NUMBER(RandNumTmp)
+cross_vector = CROSSNORM(n_in,PartTrajectory)
 
 ! Compute angles
-angle = ACOS(DOT_PRODUCT(PartTrajectory,n_in))
-anglet1 = ACOS(DOT_PRODUCT(PartTrajectory,tang1))
-anglet2 = ACOS(DOT_PRODUCT(PartTrajectory,tang2))
+angle = 0.5*PI-ACOS(DOT_PRODUCT(PartTrajectory,n_in))
 
-! [0,1] -> [0,+/-angle]
-! If angle(PartTrajectory,tang1) > PI*0.75, rotate n counterclockwise (-), vice versa otherwise (+).
-RandNum(:) = 2*RandNumTmp(1:2)-1
-random_angle = PartBound%RoughMeanIC(locBCID)
-IF(.NOT.restrict)THEN
-  IF (anglet1 .GE. PI*0.5) THEN
-    RandNum(1) = SIGN(1.,PI*0.9-anglet1)*RandNumTmp(1)
-    IF (anglet1 .LT. PI*0.6) random_angle(1) = RandNumTmp(3) * ABS(anglet1-PI*0.3)
-    IF (anglet1 .GT. PI*0.9) random_angle(1) = RandNumTmp(3) * ABS(anglet1-PI*0.4)
-  ELSE
-    RandNum(1) = SIGN(1.,PI*0.4-anglet1)*RandNumTmp(1)
-    IF (anglet1 .LT. PI*0.1) random_angle(1) = RandNumTmp(3) * ABS(anglet1-PI*0.4)
-    IF (anglet1 .GT. PI*0.4) random_angle(1) = RandNumTmp(3) * ABS(anglet1-PI*0.3)
-  END IF
-  IF (anglet2 .GE. PI*0.5) THEN
-    RandNum(2) = SIGN(1.,PI*0.9-anglet2)*RandNumTmp(2)
-    IF (anglet2 .LT. PI*0.6) random_angle(2) = RandNumTmp(3) * ABS(anglet2-PI*0.3)
-    IF (anglet2 .GT. PI*0.9) random_angle(2) = RandNumTmp(3) * ABS(anglet2-PI*0.4)
-  ELSE
-    RandNum(2) = SIGN(1.,PI*0.4-anglet2)*RandNumTmp(2)
-    IF (anglet2 .LT. PI*0.1) random_angle(2) = RandNumTmp(3) * ABS(anglet2-PI*0.4)
-    IF (anglet2 .GT. PI*0.4) random_angle(2) = RandNumTmp(3) * ABS(anglet2-PI*0.3)
-  END IF
+CALL RANDOM_NUMBER(RandNum)
+! Scale to maximal range
+RandNum(1) = RandNum(1)*(angle*0.5+0.2*PI) - angle*0.5
+RandNum(3) = RandNum(3)*(angle*0.5+0.2*PI) - angle*0.5
+
+CALL RoughnessPDF(RandNum(1:2),PartBound%RoughMeanIC(locBCID),PartBound%RoughVarianceIC(locBCID),angle)
+CALL RoughnessPDF(RandNum(3:4),PartBound%RoughMeanIC(locBCID),PartBound%RoughVarianceIC(locBCID),angle)
+
+random_angle(1) = RandNum(1)
+random_angle(2) = RandNum(3)
+
+! Modifiy the angle between particle trajectory and normal vector
+n_out = n_in*COS(random_angle(1))+(/cross_vector(2)*n_in(3)   - cross_vector(3)*n_in(2),&
+                                    cross_vector(3)*n_in(1)   - cross_vector(1)*n_in(3),&
+                                    cross_vector(1)*n_in(2)   - cross_vector(2)*n_in(1)/)*SIN(random_angle(1))+&
+                                    cross_vector*DOT_PRODUCT(cross_vector,n_in)*(1.-COS(random_angle(1)))
+! Rotation of the new normal vector around the old normal vector according to Rodrigues' rotation formula:
+n_out = n_out*COS(random_angle(2))+(/n_in(2)*n_out(3)   - n_in(3)*n_out(2),&
+                                     n_in(3)*n_out(1)   - n_in(1)*n_out(3),&
+                                     n_in(1)*n_out(2)   - n_in(2)*n_out(1)/)*SIN(random_angle(2))+&
+                                     n_in(:)*DOT_PRODUCT(n_in(:),n_out)*(1.-COS(random_angle(2)))
+END FUNCTION RoughWall
+
+RECURSIVE SUBROUTINE RoughnessPDF(x,MeanIC,VarianceIC,angle)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Particle_Globals, ONLY: PI
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+REAL,INTENT(INOUT)                :: x(2)
+REAL,INTENT(IN)                   :: MeanIC
+REAL,INTENT(IN)                   :: VarianceIC
+REAL,INTENT(IN)                   :: angle
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+REAL                              :: EffectivePDF
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                              :: GaussianNormal
+!-----------------------------------------------------------------------------------------------------------------------------------
+
+GaussianNormal = 1./SQRT(2*PI*VarianceIC) * EXP(-0.5*((x(1)-MeanIC)/VarianceIC)**2)
+EffectivePDF = SIN(angle+x(1))/SIN(angle)*GaussianNormal
+! Draw a sample via the acceptance-rejection method
+IF (x(2) .GT. EffectivePDF)THEN
+  CALL RANDOM_NUMBER(x)
+  CALL RoughnessPDF(x,MeanIC,VarianceIC,angle)
 END IF
 
-! random_angle = mu + std*x
-random_angle = random_angle + PartBound%RoughVarianceIC(locBCID)*RandNum(1:2)
+END SUBROUTINE RoughnessPDF
 
-! Adjust the impact angle as well as the tangential and normal components
-! by a rotation of the normal vector around tang1 and tang2 according to Rodrigues' rotation formula:
-! v * cos(\theta) + (k x v) sin(\theta) + k (k \cdot v) (1 - cos(\theta))
-! v: vector, k: unit vector describing the axis of rotation, \theta: angle of rotation
-n_out = n_in*COS(random_angle(1))+(/crossv(1,2)*n_in(3)   - crossv(1,3)*n_in(2),&
-                                    crossv(1,3)*n_in(1)   - crossv(1,1)*n_in(3),&
-                                    crossv(1,1)*n_in(2)   - crossv(1,2)*n_in(1)/)*SIN(random_angle(1))+&
-                                    crossv(1,:)*DOT_PRODUCT(crossv(1,:),n_in)*(1.-COS(random_angle(1)))
-n_out = n_out*COS(random_angle(2))+(/crossv(2,2)*n_out(3)  - crossv(2,3)*n_out(2),&
-                                     crossv(2,3)*n_out(1)  - crossv(2,1)*n_out(3),&
-                                     crossv(2,1)*n_out(2)  - crossv(2,2)*n_out(1)/)*SIN(random_angle(2))+&
-                                     crossv(2,:)*DOT_PRODUCT(crossv(2,:),n_out)*(1.-COS(random_angle(2)))
-
-! Check if the final particle trajectory shows in the right direction and the particle does not leave the domain...
-IF(ABS(ACOS(DOT_PRODUCT(PartTrajectory,n_out))) .GE. PI*0.49) &
-  n_out = RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory,.TRUE.)
-END FUNCTION RoughWall
 
 
 !FUNCTION PARTSWITCHELEMENT(xi,eta,locSideID,SideID,ElemID)

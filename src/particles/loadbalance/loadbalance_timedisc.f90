@@ -193,7 +193,7 @@ FieldOut     => NULL() !< linked list of output pointers
 
 !-- Restart every mesh dependent routine
 CALL InitMesh(meshMode=2)
-CALL InitRestart()
+CALL InitRestart(RestartFile)
 CALL InitFilter()
 CALL InitOverintegration()
 CALL InitIndicator()

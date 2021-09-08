@@ -260,7 +260,6 @@ END IF
 ! with everything or we might end up with a non-valid error state file
 IF (isErrorFile) CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
-
 END SUBROUTINE WriteState
 
 

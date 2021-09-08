@@ -82,7 +82,6 @@ USE MOD_FV_Basis,          ONLY:InitFV_Basis
 #endif
 USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
 USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,ExtractParameterFile
-USE MOD_Restart_Vars,      ONLY:RestartFile
 USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
 USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
 IMPLICIT NONE
@@ -95,6 +94,7 @@ INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
 ! LOCAL VARIABLES
 REAL                    :: Time                              !< Used to measure simulation time
 LOGICAL                 :: userblockFound
+CHARACTER(LEN=255)      :: RestartFile_loc = ''
 !==================================================================================================================================
 CALL SetStackSizeUnlimited()
 IF(PRESENT(mpi_comm_loc))THEN
@@ -115,7 +115,7 @@ IF (nArgs.GT.2) THEN
 END IF
 ParameterFile = Args(1)
 IF (nArgs.GT.1) THEN
-  RestartFile = Args(2)
+  RestartFile_loc = Args(2)
 #if USE_LOADBALANCE
   ! LoadBalance needs the information that we are performing a restart
   DoRestart = .TRUE.
@@ -126,7 +126,7 @@ ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
   IF (.NOT.userblockFound) THEN
     CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(Args(1))//"'")
   END IF
-  RestartFile = Args(1)
+  RestartFile_loc = Args(1)
 #if USE_LOADBALANCE
   ! LoadBalance needs the information that we are performing a restart
   DoRestart = .TRUE.
@@ -221,7 +221,7 @@ CALL InitLoadBalance()
 #endif /*USE_LOADBALANCE*/
 #endif  /*USE_PARTICLES*/
 CALL InitMesh(meshMode=2)
-CALL InitRestart()
+CALL InitRestart(RestartFile_loc)
 CALL InitFilter()
 CALL InitOverintegration()
 CALL InitIndicator()

@@ -71,7 +71,7 @@ USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
 USE MOD_LoadBalance,       ONLY:InitLoadBalance
 USE MOD_Particle_MPI_Shared,ONLY:InitMPIShared
 #if USE_LOADBALANCE
-USE MOD_Restart_Vars,      ONLY:DoRestart
+USE MOD_Restart_Vars,      ONLY:DoRestart,RestartFile
 #endif /*USE_LOADBALANCE*/
 #endif /*USE_MPI*/
 #endif /*USE_PARTICLES*/
@@ -119,6 +119,8 @@ IF (nArgs.GT.1) THEN
 #if USE_LOADBALANCE
   ! LoadBalance needs the information that we are performing a restart
   DoRestart = .TRUE.
+  ! LoadBalance needs the information which is the RestartFile
+  RestartFile = RestartFile_loc
 #endif
 ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
   ParameterFile = ".flexi.ini"
@@ -130,6 +132,8 @@ ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
 #if USE_LOADBALANCE
   ! LoadBalance needs the information that we are performing a restart
   DoRestart = .TRUE.
+  ! LoadBalance needs the information which is the RestartFile
+  RestartFile = RestartFile_loc
 #endif
 END IF
 CALL DefineParametersMPI()

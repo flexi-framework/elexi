@@ -107,7 +107,7 @@ END IF
 
 ! create visu dir, where all vtu files are placed
 #if USE_MPI
-IF(nProcessors.GT.1) CALL SYSTEM('mkdir -p visu')
+IF(nProcessors.GT.1. .AND. MPIRoot) CALL SYSTEM('mkdir -p visu')
 #endif
 
 DO iArg=1+skipArgs,nArgs

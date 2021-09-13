@@ -752,6 +752,7 @@ USE MOD_Particle_Vars,               ONLY: PDM
 USE MOD_Mesh_Vars                   ,ONLY: NGeo
 USE MOD_Particle_Localization       ,ONLY: SinglePointToElement
 USE MOD_Particle_Surfaces_Vars      ,ONLY: BezierControlPoints3D
+USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars          ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Vars               ,ONLY: PartState
 #endif /* CODE_ANALYZE */
@@ -818,7 +819,7 @@ ELSE
            + BezierControlPoints3D(:,NGeo,0   ,SideID)  &
            + BezierControlPoints3D(:,0   ,NGeo,SideID)  &
            + BezierControlPoints3D(:,NGeo,NGeo,SideID))
-  v2 = v1  - ElemBaryNGeo(:,ElemID)
+  v2 = v1  - ElemBaryNGeo(:,GetCNElemID(ElemID))
 
   IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
     IPWRITE(UNIT_stdout,'(A,I0,A,I0,A,I0)') ' Obtained wrong side orientation from flip. SideID:',SideID,'flip:',flip,'PartID:',PartID

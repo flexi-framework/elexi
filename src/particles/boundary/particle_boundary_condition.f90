@@ -478,10 +478,10 @@ REAL                              :: v_old(1:3),WallVelo(3)
 INTEGER                           :: locBCID
 LOGICAL                           :: IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngleDeg,PartFaceAngle_old
-REAL                              :: PartTrajectoryTang(3),PartTrajectoryNorm(3)
-REAL                              :: v_magnitude,v_norm(3),v_tang(3)
+REAL                              :: PartTrajectoryTang1(3),PartTrajectoryTang2(3),PartTrajectoryNorm(3)
+REAL                              :: v_magnitude,v_norm(3),v_tang1(3),v_tang2(3)
 REAL                              :: intersecRemain
-REAL                              :: eps_n, eps_t
+REAL                              :: eps_n, eps_t1, eps_t2
 REAL                              :: tang1(1:3),tang2(1:3)
 ! Bons particle rebound model
 REAL                              :: Vol,d,w,w_crit,sigma_y,E_eff
@@ -506,7 +506,6 @@ ELSE
   ! get BC values
   WallVelo   = PartBound%WallVelo(1:3,locBCID)
 END IF !IsAuxBC
-CALL OrthoNormVec(n_loc,tang1,tang2)
 
 ! Make sure we have the old velocity safe
 v_old   = PartState(4:6,PartID)
@@ -515,15 +514,22 @@ IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doR
   n_loc = RoughWall(n_loc,locBCID,PartTrajectory)
 END IF
 
+! Compute tangential vectors
+CALL OrthoNormVec(n_loc,tang1,tang2)
+
 ! Sample on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
   CALL RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
 END IF
 
-! Calculate wall normal and tangential velocity, impact angle
-v_norm  = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
-v_tang  = PartState(4:6,PartID) - v_norm
+! Calculate wall normal and tangential velocities, impact angle
+v_norm   = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
+v_tang1  = DOT_PRODUCT(PartState(4:6,PartID),tang1)*tang1
+v_tang2  = DOT_PRODUCT(PartState(4:6,PartID),tang2)*tang2
 PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+
+! Just mirror the velocity in tang2 direction if no eps_t2 is available
+eps_t2 = 1.
 
 SELECT CASE(WallCoeffModel)
   !=================================================================================================================================
@@ -536,8 +542,8 @@ SELECT CASE(WallCoeffModel)
     PartFaceAngleDeg = PartFaceAngle * 180/PI
 
     ! Compute cubic polynomials for coefficient of restitution
-    eps_n = 9.9288e-01 - 3.0708e-02 * PartFaceAngleDeg  + 4.7389e-04 * PartFaceAngleDeg**2. - 2.5845e-06 * PartFaceAngleDeg**3.
-    eps_t = 9.8723e-01 - 3.0354e-02 * PartFaceAngleDeg  + 7.1913e-04 * PartFaceAngleDeg**2. - 4.2979e-06 * PartFaceAngleDeg**3.
+    eps_n  = 9.9288e-01 - 3.0708e-02 * PartFaceAngleDeg  + 4.7389e-04 * PartFaceAngleDeg**2. - 2.5845e-06 * PartFaceAngleDeg**3.
+    eps_t1 = 9.8723e-01 - 3.0354e-02 * PartFaceAngleDeg  + 7.1913e-04 * PartFaceAngleDeg**2. - 4.2979e-06 * PartFaceAngleDeg**3.
 
   !=================================================================================================================================
   ! Tabaoff, W.; Wakeman, T.: Basic Erosion Investigation in Small Turbomachinery. / Cincinnati Univ. OH, 1981
@@ -548,8 +554,8 @@ SELECT CASE(WallCoeffModel)
     PartFaceAngleDeg = PartFaceAngle * 180/PI
 
     ! Compute cubic polynomials for coefficient of restitution
-    eps_n = 1.    - 0.0211 * PartFaceAngleDeg  + 0.000228 * PartFaceAngleDeg**2. - 0.000000876 * PartFaceAngleDeg**3.
-    eps_t = 0.953                              - 0.000446 * PartFaceAngleDeg**2. + 0.00000648  * PartFaceAngleDeg**3.
+    eps_n  = 1.    - 0.0211 * PartFaceAngleDeg  + 0.000228 * PartFaceAngleDeg**2. - 0.000000876 * PartFaceAngleDeg**3.
+    eps_t1 = 0.953                              - 0.000446 * PartFaceAngleDeg**2. + 0.00000648  * PartFaceAngleDeg**3.
 
   !===================================================================================================================================
   ! Bons, J., Prenter, R., Whitaker, S.: A Simple Physics-Based Model for Particle Rebound and Deposition in Turbomachinery
@@ -584,8 +590,8 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    eps_t   = 1. - 0.3 / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * &
-                         SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
+    eps_t1   = 1. - PartBound%FricCoeff(SideInfo_Shared(SIDE_BCID,SideID)) / SQRT(DOT_PRODUCT(v_tang1(1:3),v_tang1(1:3)))  * &
+                          SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
 
 
   !===================================================================================================================================
@@ -604,7 +610,7 @@ SELECT CASE(WallCoeffModel)
     w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC / (E_eff*3*d))**0.5
 
     ! Find critical deformation
-    sigma_y = Species(PartSpecies(PartID))%YieldCoeff*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
+    sigma_y = Species(PartSpecies(PartID))%Whitaker_a*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
     w_crit  = sigma_y * 2./3. * d / E_eff
 
     ! Normal coefficient of restitution
@@ -619,8 +625,8 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    eps_t   = 1. - 0.63 / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3))) * &
-                          SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
+    eps_t1   = 1. - PartBound%FricCoeff(SideInfo_Shared(SIDE_BCID,SideID)) / SQRT(DOT_PRODUCT(v_tang1(1:3),v_tang1(1:3))) * &
+                           SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
 
   !=================================================================================================================================
   ! Fong, W.; Amili, O.; Coletti, F.: Velocity and spatial distribution of inertial particles in a turbulent channel flow
@@ -628,8 +634,8 @@ SELECT CASE(WallCoeffModel)
   !=================================================================================================================================
   CASE('Fong2019')
     ! Reuse YieldCoeff to modify the normal velocity, keep tangential velocity
-    eps_t   = 1.
-    eps_n   = PartBound%CoR(SideInfo_Shared(SIDE_BCID,SideID))
+    eps_t1   = 1.
+    eps_n    = PartBound%CoR(SideInfo_Shared(SIDE_BCID,SideID))
 
   !=================================================================================================================================
   ! Rebound ANN valid for v_{air} \in [150,350] [m/s]
@@ -650,9 +656,9 @@ SELECT CASE(WallCoeffModel)
     PartBoundANN%output(1) = LOGNORMINV(PartBoundANN%output(1), PartBoundANN%max_in(1))
     PartBoundANN%output(2) = LOGNORMINV(PartBoundANN%output(2), PartBoundANN%max_in(2))
     ! Calculate coefficents of restitution
-    eps_n = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
-    eps_t = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang(1:3))
-    ! IPWRITE (*, *) 'eps_n, eps_t:', eps_n, eps_t; STOP
+    eps_n  = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
+    eps_t1 = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang1(1:3))
+    ! IPWRITE (*, *) 'eps_n, eps_t1, eps_t2:', eps_n, eps_t1, eps_t2
 
     ! TODO: 3D Rebound; Fracture
 
@@ -675,8 +681,8 @@ WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | LastPartPos:          
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory:             ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity:                   ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | alpha,lengthPartTrajectory: ',alpha,lengthPartTrajectory
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Intersection:               ', LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | CoR (normal/tangential):    ',eps_n,eps_t
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Intersection:               ',LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | CoR (normal/tangential):    ',eps_n,eps_t1,eps_t2
 #endif
 
 LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
@@ -689,19 +695,21 @@ LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !    'Time discretization '//TRIM(TimeDiscType)//' is incompatible with current implementation of coefficients of restitution.')
 
 ! Calculate wall normal and tangential velocity components after impact, rescale to uniform length
-PartTrajectoryNorm(1:3) = eps_n*(DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
-PartTrajectoryTang(1:3) = eps_t*(PartTrajectory(1:3) - DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
-PartTrajectory(1:3)     = PartTrajectoryTang(1:3) - PartTrajectoryNorm(1:3)
-PartTrajectory          = PartTrajectory/SQRT(SUM(PartTrajectory**2.))
+PartTrajectoryNorm (1:3) = eps_n  * (DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
+PartTrajectoryTang1(1:3) = eps_t1 * (DOT_PRODUCT(PartTrajectory(1:3),tang1)*tang1)
+PartTrajectoryTang2(1:3) = eps_t2 * (DOT_PRODUCT(PartTrajectory(1:3),tang2)*tang2)
+PartTrajectory(1:3)      = PartTrajectoryTang1(1:3) - PartTrajectoryTang2(1:3) - PartTrajectoryNorm(1:3)
+PartTrajectory           = PartTrajectory/SQRT(SUM(PartTrajectory**2.))
 
 ! Rescale the remainder to the new length
-intersecRemain = SQRT(eps_n*eps_n + eps_t*eps_t)/SQRT(2.) * (lengthPartTrajectory - alpha)
+intersecRemain = (lengthPartTrajectory - alpha)
+intersecRemain = SQRT(eps_n*eps_n + eps_t1*eps_t1 + eps_t2*eps_t2)/SQRT(3.) * (lengthPartTrajectory - alpha)
 
 ! Compute moved particle || rest of movement. PartTrajectory has already been updated
-PartState(1:3,PartID) = LastPartPos(1:3,PartID) + intersecRemain*PartTrajectory(1:3)
+PartState(1:3,PartID) = LastPartPos(1:3,PartID) + intersecRemain * PartTrajectory(1:3)
 
 ! Compute new particle velocity, modified with coefficents of restitution
-PartState(4:6,PartID)= eps_t * v_tang - eps_n * v_norm + WallVelo
+PartState(4:6,PartID)= eps_t1 * v_tang1 - eps_t2 * v_tang2 - eps_n * v_norm + WallVelo
 
 #if CODE_ANALYZE
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory (CoR)        ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)

@@ -206,7 +206,7 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
   INTEGER                                :: CountIndex                       ! Count number of particles
-  LOGICAL                                :: doRoughWallModelling
+  LOGICAL                                :: doRoughWallModelling             ! Walls are modelled as rough walls
 #if USE_EXTEND_RHS
   LOGICAL                                :: CalcSaffmanForce                 ! Calculate the lift (Saffman) force
   LOGICAL                                :: CalcMagnusForce                  ! Calculate the Magnus force

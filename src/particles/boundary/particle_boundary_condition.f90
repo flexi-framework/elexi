@@ -14,6 +14,11 @@
 #include "flexi.h"
 #include "particle.h"
 
+#define SIGMOID(x)         REAL(1./(1+EXP(-x)),4)
+#define SILU(x,beta)       REAL(x/(1+EXP(-beta*x)),4)
+#define LOGNORM(x,maxi)    REAL(LOG(ABS(x)+1.)/LOG(maxi+1.),4)
+#define LOGNORMINV(x,maxi) REAL((maxi+1.)**x-1.,4)
+
 !===================================================================================================================================
 !> Determines how particles interact with a given boundary condition
 !===================================================================================================================================
@@ -445,7 +450,7 @@ SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
-USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC
+USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC,PartBoundANN
 USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
@@ -480,6 +485,9 @@ REAL                              :: eps_n, eps_t
 REAL                              :: tang1(1:3),tang2(1:3)
 ! Bons particle rebound model
 REAL                              :: Vol,d,w,w_crit,sigma_y,E_eff
+! RebANN
+INTEGER                           :: iLayer
+REAL(4)                           :: randnum(3)
 !===================================================================================================================================
 
 ! check if reflected on AuxBC
@@ -622,6 +630,31 @@ SELECT CASE(WallCoeffModel)
     ! Reuse YieldCoeff to modify the normal velocity, keep tangential velocity
     eps_t   = 1.
     eps_n   = PartBound%CoR(SideInfo_Shared(SIDE_BCID,SideID))
+
+  !=================================================================================================================================
+  ! Rebound ANN valid for v_{air} \in [150,350] [m/s]
+  !=================================================================================================================================
+  CASE('RebANN')
+    CALL RANDOM_NUMBER(randnum)
+    ! Input with normalization
+    PartBoundANN%output(1:PartBoundANN%nN(1)) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
+      LOGNORM(NORM2(PartState(PART_VELV,PartID)),PartBoundANN%max_in(2)),&
+      LOGNORM(Species(PartSpecies(PartID))%DiameterIC,PartBoundANN%max_in(3)), randnum(1), randnum(2)/)
+    ! Hidden layers
+    DO iLayer=1,PartBoundANN%nLayer
+      PartBoundANN%output(:) = SILU((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)),PartBoundANN%beta(:,iLayer))
+    END DO
+    ! Output layer
+    iLayer = PartBoundANN%nLayer+1
+    PartBoundANN%output(:) = 1.1*SIGMOID((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)))-0.1
+    PartBoundANN%output(1) = LOGNORMINV(PartBoundANN%output(1), PartBoundANN%max_in(1))
+    PartBoundANN%output(2) = LOGNORMINV(PartBoundANN%output(2), PartBoundANN%max_in(2))
+    ! Calculate coefficents of restitution
+    eps_n = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
+    eps_t = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang(1:3))
+    ! IPWRITE (*, *) 'eps_n, eps_t:', eps_n, eps_t; STOP
+
+    ! TODO: 3D Rebound; Fracture
 
   CASE DEFAULT
       CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')

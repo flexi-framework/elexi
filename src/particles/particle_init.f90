@@ -410,7 +410,8 @@ CALL prms%CreateStringOption(       'Part-Boundary[$]-WallCoeffModel', 'Coeffici
                                                                   ' - Tabakoff1981\n'                                            //&
                                                                   ' - Bons2017\n'                                                //&
                                                                   ' - Whitaker2018\n'                                            //&
-                                                                  ' - Fong2019'                                                    &
+                                                                  ' - Fong2019\n'                                                //&
+                                                                  ' - RebANN'                                                      &
                                                                             , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Boundary[$]-RoughWall'  ,'Rough wall modelling is used.'                                 &
                                                                   ,'.FALSE.', numberedmulti=.TRUE.)
@@ -418,20 +419,22 @@ CALL prms%CreateRealOption(         'Part-Boundary[$]-RoughMeanIC', 'Mean of Gau
                                                                   ,'0.0', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-RoughVarianceIC', 'Mean of Gaussian dist..'                                  &
                                                                   ,'0.04', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Boundary[$]-Young'    , "Young's modulus defining stiffness of wall material"            &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Boundary[$]-Poisson'  , "Poisson ratio defining relation of transverse to axial strain"  &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Boundary[$]-CoR'      , "Coefficent of restitution for normal velocity component"        &
-                                                                , '1.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-YoungIC'   , "Young's modulus of particle defining stiffness of particle material"        &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC' , "Poisson ratio of particle defining relation of transverse to axial strain"  &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff', "Yield strength defining elastic deformation"                    &
-                                                                ,'0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-RoughWall' , "Enables rough wall modelling"                                   &
-                                                                ,'.TRUE.'   , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-Young'      , "Young's modulus defining stiffness of wall material"          &
+                                                                  , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-Poisson'    , "Poisson ratio defining relation of transverse to axial strain"&
+                                                                  , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-CoR'        , "Coefficent of restitution for normal velocity component"      &
+                                                                  , '1.'      , numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(       'Part-Boundary[$]-ANNModel'   , 'Specifying file which contains the weights of an MLP.'        &
+                                                                  , 'model/weights.dat', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-YoungIC'     , "Young's modulus of particle defining stiffness of particle material"       &
+                                                                  , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC'   , "Poisson ratio of particle defining relation of transverse to axial strain" &
+                                                                  , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff'  , "Yield strength defining elastic deformation"                  &
+                                                                  , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-RoughWall'   , "Enables rough wall modelling"                                 &
+                                                                  ,'.TRUE.'   , numberedmulti=.TRUE.)
 
 ! Ambient condition ================================================================================================================
 CALL prms%CreateLogicalOption(      'Part-Boundary[$]-AmbientCondition', 'Use ambient condition (condition "behind" boundary).'    &
@@ -1274,7 +1277,6 @@ USE MOD_Particle_Boundary_Vars ,ONLY: PartBound,nPartBound
 !USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
 USE MOD_Particle_Surfaces_Vars ,ONLY: BCdata_auxSF
 USE MOD_Particle_Vars
-USE MOD_Mesh_Vars              ,ONLY: useCurveds
 USE MOD_ReadInTools
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -1402,7 +1404,6 @@ DO iBC = 1,nBCs
           PartBound%WallCoeffModel(iBC)   = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallCoeffModel'     ,'Tabakoff1981')
 
           SELECT CASE(PartBound%WallCoeffModel(iBC))
-            ! Bons particle rebound model
             CASE ('Bons2017','Whitaker2018')
               PartBound%Young(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Young')
               PartBound%Poisson(iBC)      = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Poisson')
@@ -1411,9 +1412,13 @@ DO iBC = 1,nBCs
             CASE('Fong2019')
               PartBound%CoR(iBC)          = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-CoR'                ,'1.')
 
-            ! Different CoR per direction
             CASE('Tabakoff1981','Grant1975')
               ! nothing to readin
+
+            ! Rebound ANN valid for v_{air} \in [150,350] [m/s]
+            CASE('RebANN')
+              ! Readin weights
+              CALL LoadWeightsANN(GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-ANNModel'       ,'model/weights.dat'))
 
             CASE DEFAULT
               CALL CollectiveSTOP(__STAMP__,'Unknown wall model given!')
@@ -1830,6 +1835,13 @@ SDEALLOCATE(PartBound%RoughVarianceIC)
 SDEALLOCATE(PartBound%Young)
 SDEALLOCATE(PartBound%Poisson)
 SDEALLOCATE(PartBound%CoR)
+SDEALLOCATE(PartBoundANN%nN)
+SDEALLOCATE(PartBoundANN%w)
+SDEALLOCATE(PartBoundANN%b)
+SDEALLOCATE(PartBoundANN%beta)
+SDEALLOCATE(PartBoundANN%output)
+SDEALLOCATE(PartBoundANN%max_in)
+SDEALLOCATE(PartBoundANN%max_out)
 
 ! particle-to-element-mapping (PEM) arrays
 SDEALLOCATE(PEM%Element)
@@ -2033,5 +2045,87 @@ END IF
 CALL RANDOM_SEED(PUT=Seeds)
 
 END SUBROUTINE InitRandomSeed
+
+
+SUBROUTINE LoadWeightsANN(Filename_loc)
+!===================================================================================================================================
+! Read in parameters of ANN
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Boundary_Vars ,ONLY: PartBoundANN
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(255),INTENT(IN)     :: Filename_loc
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                       :: tmp(2),iLayer
+INTEGER                       :: hgs=30       ! max. memory
+!===================================================================================================================================
+
+IF (MPIRoot) THEN
+  !Filename_loc = TRIM(REPLACE(Filename_loc," ","",Every=.TRUE.))
+  OPEN(34, FILE=TRIM(FileName_loc),FORM="UNFORMATTED", STATUS="UNKNOWN", ACTION="READ", ACCESS='STREAM')
+  ! Read number of layers
+  READ(34) PartBoundANN%nLayer
+  ! Read maximum number of neurons
+  READ(34) tmp(1)
+  hgs = MERGE(tmp(1), hgs, tmp(1).LE.hgs)
+  ! Allocate arrays and nullify
+  ALLOCATE(PartBoundANN%nN(PartBoundANN%nLayer+2))
+  ALLOCATE(PartBoundANN%w(1:hgs,1:hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%b(1:hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%beta(1:hgs,1:PartBoundANN%nLayer))
+  ALLOCATE(PartBoundANN%output(1:hgs))
+  PartBoundANN%w = 0.
+  PartBoundANN%b = 0.
+  PartBoundANN%beta = 0.
+  ! Read weights
+  DO iLayer=1,PartBoundANN%nLayer+1
+    READ(34) tmp
+    PartBoundANN%nN(iLayer) = tmp(1)
+    READ(34) PartBoundANN%w(1:tmp(1),1:tmp(2),iLayer)
+  END DO
+  PartBoundANN%nN(PartBoundANN%nLayer+2) = tmp(2)
+  DO iLayer=1,PartBoundANN%nLayer+1
+    READ(34) tmp(1)
+    READ(34) PartBoundANN%b(1:tmp(1),iLayer)
+  END DO
+  DO iLayer=1,PartBoundANN%nLayer
+    READ(34) tmp(1)
+    READ(34) PartBoundANN%beta(1:tmp(1),iLayer)
+  END DO
+  ALLOCATE(PartBoundANN%max_in(1:PartBoundANN%nN(1)))
+  READ(34) PartBoundANN%max_in
+  ALLOCATE(PartBoundANN%max_out(1:PartBoundANN%nN(PartBoundANN%nLayer+2)))
+  READ(34) PartBoundANN%max_out
+  CLOSE(34)
+END IF
+#if USE_MPI
+CALL MPI_BCAST(PartBoundANN%nLayer,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+IF (.NOT.ALLOCATED(PartBoundANN%nN)) ALLOCATE(PartBoundANN%nN(1:PartBoundANN%nLayer+2))
+CALL MPI_BCAST(PartBoundANN%nN,PartBoundANN%nLayer+2,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+tmp(1) = MAXVAL(PartBoundANN%nN)
+hgs = MERGE(tmp(1), hgs, tmp(1).LE.hgs)
+! Allocate arrays and nullify
+IF (.NOT.ALLOCATED(PartBoundANN%w)) THEN
+  ALLOCATE(PartBoundANN%w(1:hgs,1:hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%b(1:hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%beta(1:hgs,1:PartBoundANN%nLayer))
+  ALLOCATE(PartBoundANN%max_in(1:PartBoundANN%nN(1)))
+  ALLOCATE(PartBoundANN%max_out(1:PartBoundANN%nN(PartBoundANN%nLayer+2)))
+END IF
+CALL MPI_BCAST(PartBoundANN%w,hgs*hgs*(PartBoundANN%nLayer+1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%b,hgs*(PartBoundANN%nLayer+1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%beta,hgs*PartBoundANN%nLayer,MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%max_in,PartBoundANN%nN(1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%max_out,PartBoundANN%nN(PartBoundANN%nLayer+2),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+#endif
+
+END SUBROUTINE LoadWeightsANN
 
 END MODULE MOD_Particle_Init

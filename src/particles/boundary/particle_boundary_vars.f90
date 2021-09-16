@@ -199,7 +199,7 @@ TYPE tAuxBC_cone
   REAL                                   :: rotmatrix(3,3)
   LOGICAL                                :: inwards
 END TYPE tAuxBC_cone
-TYPE(tAuxBC_cone), ALLOCATABLE       :: AuxBC_cone(:)
+TYPE(tAuxBC_cone), ALLOCATABLE           :: AuxBC_cone(:)
 
 TYPE tAuxBC_parabol
   REAL                                   :: r_vec(3)
@@ -211,7 +211,7 @@ TYPE tAuxBC_parabol
   REAL                                   :: rotmatrix(3,3)
   LOGICAL                                :: inwards
 END TYPE tAuxBC_parabol
-TYPE(tAuxBC_parabol), ALLOCATABLE       :: AuxBC_parabol(:)
+TYPE(tAuxBC_parabol), ALLOCATABLE        :: AuxBC_parabol(:)
 
 TYPE tPartAuxBC
   INTEGER                                :: OpenBC                  = 1      ! = 1 (s.u.) Boundary Condition Integer Definition
@@ -224,6 +224,19 @@ END TYPE
 TYPE(tPartAuxBC)                         :: PartAuxBC                         ! auxBC Data for Particles
 
 LOGICAL                                  :: LowVeloRemove                 !Flag if low velocity particles should be removed
+
+!Parameters of rebound ANN
+TYPE tPartBoundANN
+  REAL(4) , ALLOCATABLE                  :: w(:,:,:)
+  REAL(4) , ALLOCATABLE                  :: b(:,:)
+  REAL(4) , ALLOCATABLE                  :: beta(:,:)
+  REAL(4) , ALLOCATABLE                  :: output(:)
+  REAL(4) , ALLOCATABLE                  :: max_in(:)
+  REAL(4) , ALLOCATABLE                  :: max_out(:)
+  INTEGER                                :: nLayer
+  INTEGER , ALLOCATABLE                  :: nN(:)
+END TYPE
+TYPE(tPartBoundANN)                      :: PartBoundANN
 !===================================================================================================================================
 
 END MODULE MOD_Particle_Boundary_Vars

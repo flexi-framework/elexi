@@ -423,12 +423,16 @@ CALL prms%CreateRealOption(         'Part-Boundary[$]-Young'      , "Young's mod
                                                                   , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-Poisson'    , "Poisson ratio defining relation of transverse to axial strain"&
                                                                   , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-FricCoeff'  , "Friction coeff"                                               &
+                                                                  , '0.3'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-CoR'        , "Coefficent of restitution for normal velocity component"      &
                                                                   , '1.'      , numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(       'Part-Boundary[$]-ANNModel'   , 'Specifying file which contains the weights of an MLP.'        &
                                                                   , 'model/weights.dat', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-YoungIC'     , "Young's modulus of particle defining stiffness of particle material"       &
                                                                   , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Whitaker_a'  , "Scale factor which defines Young's modulus of particle"       &
+                                                                  , '1.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC'   , "Poisson ratio of particle defining relation of transverse to axial strain" &
                                                                   , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff'  , "Yield strength defining elastic deformation"                  &
@@ -975,6 +979,7 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%YoungIC               = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YoungIC'            ,'0.')
   Species(iSpec)%PoissonIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PoissonIC'          ,'0.')
   Species(iSpec)%YieldCoeff            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YieldCoeff'         ,'0.')
+  Species(iSpec)%Whitaker_a            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-Whitaker_a'         ,'1.')
 
   !--> Rough wall modelling
   Species(iSpec)%doRoughWallModelling  = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RoughWall'          ,'.TRUE.')
@@ -1332,6 +1337,7 @@ PartBound%RoughVarianceIC = 0.
 ! Bons particle rebound model
 ALLOCATE(PartBound%Young               (1:nBCs))
 ALLOCATE(PartBound%Poisson             (1:nBCs))
+ALLOCATE(PartBound%FricCoeff           (1:nBCs))
 
 ! Fong coefficent of restitution
 ALLOCATE(PartBound%CoR                 (1:nBCs))
@@ -1407,6 +1413,7 @@ DO iBC = 1,nBCs
             CASE ('Bons2017','Whitaker2018')
               PartBound%Young(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Young')
               PartBound%Poisson(iBC)      = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Poisson')
+              PartBound%FricCoeff(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-FricCoeff'          ,'0.3')
 
             ! Fong coefficient of reflection
             CASE('Fong2019')
@@ -1834,6 +1841,7 @@ SDEALLOCATE(PartBound%RoughMeanIC)
 SDEALLOCATE(PartBound%RoughVarianceIC)
 SDEALLOCATE(PartBound%Young)
 SDEALLOCATE(PartBound%Poisson)
+SDEALLOCATE(PartBound%FricCoeff)
 SDEALLOCATE(PartBound%CoR)
 SDEALLOCATE(PartBoundANN%nN)
 SDEALLOCATE(PartBoundANN%w)

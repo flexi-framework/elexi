@@ -204,6 +204,7 @@ TYPE tSpecies                                                                ! P
   ! Bons particle rebound model
   REAL                                   :: YoungIC                          ! Young's modulus
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp
+  REAL                                   :: Whitaker_a                       ! Constant which scales the velocity to obtain the yield coeff
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
   INTEGER                                :: CountIndex                       ! Count number of particles
   LOGICAL                                :: doRoughWallModelling             ! Walls are modelled as rough walls

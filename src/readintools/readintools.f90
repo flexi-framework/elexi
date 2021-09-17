@@ -752,7 +752,7 @@ END SUBROUTINE insertOption
 !> Therefore the file is read line by line. After removing comments and all white spaces each line is parsed in the
 !> prms\%read_option() routine. Outputs all unknown options.
 !==================================================================================================================================
-SUBROUTINE read_options(this, filename, warn_opt)
+SUBROUTINE read_options(this, filename)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP,GetFileExtension
 IMPLICIT NONE
@@ -760,7 +760,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT) :: this     !< CLASS(Parameters)
 CHARACTER(LEN=255),INTENT(IN)   :: filename !< name of file to be read
-LOGICAL,INTENT(IN),OPTIONAL     :: warn_opt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link), POINTER  :: current
@@ -844,23 +843,14 @@ DO i=1,nLines
   IF (LEN_TRIM(HelpStr).GT.2) THEN
     ! read the option
     IF (.NOT.this%read_option(HelpStr)) THEN
-      IF(PRESENT(warn_opt)) THEN
-        IF(warn_opt.EQV..TRUE.) THEN
-          IF (firstWarn) THEN
-          firstWarn=.FALSE.
-          SWRITE(UNIT_StdOut,'(100("!"))')
-          SWRITE(UNIT_StdOut, *) "WARNING: The following options are unknown!"
-          END IF
-          SWRITE(UNIT_StdOut,*) "   ", TRIM(HelpStr)
-        END IF
-      ELSE
-       IF (firstWarn) THEN
-       firstWarn=.FALSE.
-       SWRITE(UNIT_StdOut,'(100("!"))')
-       SWRITE(UNIT_StdOut, *) "WARNING: The following options are unknown!"
-       END IF
-       SWRITE(UNIT_StdOut,*) "   ", TRIM(HelpStr)
+      IF (firstWarn) THEN
+        firstWarn=.FALSE.
+        SWRITE(UNIT_StdOut,'(100("!"))')
+        SWRITE(UNIT_StdOut, *) "WARNING: The following options are unknown!"
       END IF
+      CALL set_formatting("blue")
+      SWRITE(UNIT_StdOut,*) '   ', TRIM(HelpStr)
+      CALL clear_formatting()
     END IF
   END IF
 END DO

@@ -739,22 +739,25 @@ INTEGER                           :: NodeID, str_len, i
 CHARACTER(C_CHAR),POINTER         :: VarNamesPart_loc(:,:)
 INTEGER(C_INT),POINTER            :: componentspart_loc(:)
 !===================================================================================================================================
-IF(nVar_out.EQ.0)THEN
-  coords_out%len=0
+
+! Return when no output requested
+IF (nVar_out.EQ.0 .OR. nParts_Out.EQ.0) THEN
+  coords_out%len = 0
   RETURN
 END IF
+
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" WRITE PARTICEL DATA TO VTX XML BINARY (VTU) ARRAY..."
 
 PartCPointers_allocated=.TRUE.
 ! values and coords are already in the correct structure of VTK/Paraview
 ! set the sizes of the arrays
-coords_out%len = 3*nParts_Out
-values_out%len = nVar_out*nParts_out
+coords_out%len  = 3       *nParts_Out
+values_out%len  = nVar_out*nParts_out
 nodeids_out%len = nParts_Out
 
 ! assign data to the arrays (no copy!!!)
-coords_out%data = C_LOC(Coords(1,1))
-values_out%data = C_LOC(values(1,1))
+coords_out%data  = C_LOC(Coords(1,1))
+values_out%data  = C_LOC(values(1,1))
 nodeids_out%data = C_LOC(nodeids(1))
 
 ! copy varnames

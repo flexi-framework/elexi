@@ -27,13 +27,11 @@ PRIVATE
 INTERFACE DefineParticleMPI
   MODULE PROCEDURE DefineParticleMPI
 END INTERFACE
-#endif /*USE_MPI*/
 
 INTERFACE InitParticleMPI
   MODULE PROCEDURE InitParticleMPI
 END INTERFACE
 
-#if USE_MPI
 INTERFACE InitParticleCommSize
   MODULE PROCEDURE InitParticleCommSize
 END INTERFACE
@@ -58,9 +56,7 @@ INTERFACE MPIParticleRecv
   MODULE PROCEDURE MPIParticleRecv
 END INTERFACE
 
-#if USE_MPI
 PUBLIC :: DefineParticleMPI
-#endif /*USE_MPI*/
 PUBLIC :: InitParticleMPI
 PUBLIC :: InitParticleCommSize
 PUBLIC :: SendNbOfParticles
@@ -68,8 +64,6 @@ PUBLIC :: IRecvNbOfParticles
 PUBLIC :: MPIParticleSend
 PUBLIC :: MPIParticleRecv
 PUBLIC :: FinalizeParticleMPI
-#else
-PUBLIC :: InitParticleMPI
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
@@ -177,7 +171,7 @@ INTEGER         :: ALLOCSTAT
 
 PartCommSize   = 0
 ! PartState: position and velocity
-PartCommSize   = PartCommSize + 6
+PartCommSize   = PartCommSize + PP_nVarPart
 ! TurbPartState: SGS turbulent velocity and random draw
 PartCommSize   = PartCommSize + nSGSVars
 #if USE_RW
@@ -200,7 +194,7 @@ PartCommSize   = PartCommSize + 1
 ! time integration
 ! communication after each Runge-Kutta stage, so send time derivative must be communicated to the new proc
 ! Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
-PartCommSize   = PartCommSize + 6
+PartCommSize   = PartCommSize + PP_nVarPart
 ! TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
 ! IF (SGSinUse)    PartCommSize = PartCommSize + 3
 ! IsNewPart for RK-Reconstruction
@@ -412,8 +406,8 @@ DO iProc=0,nExchangeProcessors-1
     ! particle belongs on target proc
     IF(PartTargetProc(iPart).EQ.iProc) THEN
       !>> particle position in physical space
-      PartSendBuf(iProc)%content(1+iPos:6+iPos) = PartState(1:6,iPart)
-      jpos=iPos+6
+      PartSendBuf(iProc)%content(1+iPos:PP_nVarPart+iPos) = PartState(1:PP_nVarPart,iPart)
+      jpos=iPos+PP_nVarPart
       IF (ALLOCATED(TurbPartState)) THEN
         !>> SGS turbulent velocity and random draw
         PartSendBuf(iProc)%content(1+jPos:nSGSVars+jPos) = TurbPartState(1:nSGSVars,iPart)
@@ -453,8 +447,8 @@ DO iProc=0,nExchangeProcessors-1
       jPos=jPos+nBassetVars
 #endif /* USE_BASSETFORCE */
       !>> Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
-      PartSendBuf(iProc)%content(1+jPos:6+jPos) = Pt_temp(1:6,iPart)
-      jPos=jPos+6
+      PartSendBuf(iProc)%content(1+jPos:PP_nVarPart+jPos) = Pt_temp(1:PP_nVarPart,iPart)
+      jPos=jPos+PP_nVarPart
       !>> TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
 !      IF (SGSinUse) THEN
 !        PartSendBuf(iProc)%content(1+jPos:3+jPos) = TurbPt_temp(1:3,iPart)
@@ -504,13 +498,13 @@ PartMPIExchange%nMPIParticles=SUM(PartMPIExchange%nPartsRecv(1,:))
 ! nullify data on old particle position for safety
 DO iPart=1,PDM%ParticleVecLength
   IF(PartTargetProc(iPart).EQ.-1) CYCLE
-  PartState(1:6,iPart) = 0.
-  PartSpecies(  iPart) = 0
-  IF (doPartIndex) PartIndex(    iPart) = 0
+  PartState(:,iPart) = 0.
+  PartSpecies(iPart) = 0
+  IF (doPartIndex) PartIndex(iPart) = 0
 #if USE_BASSETFORCE
-  durdt(:,iPart)     = 0.
+  durdt(:,iPart)   = 0.
 #endif
-  Pt_temp(  1:6,iPart) = 0.
+  Pt_temp(:,iPart) = 0.
   IF (doParticleReflectionTrack)                        PartReflCount(  iPart) = 0
   IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartPath(     :,iPart) = 0.
   IF (ALLOCATED(TurbPartState))                         TurbPartState(:,iPart) = 0.
@@ -648,8 +642,8 @@ DO iProc=0,nExchangeProcessors-1
       CALL ABORT(__STAMP__,' Error in ParticleExchange_parallel. Corrupted list: PIC%nextFreePosition', nRecv)
 
     !>> position and velocity in physical space
-    PartState(1:6,PartID)   = PartRecvBuf(iProc)%content(1+iPos:6+iPos)
-    jpos=iPos+6
+    PartState(1:PP_nVarPart,PartID)   = PartRecvBuf(iProc)%content(1+iPos:PP_nVarPart+iPos)
+    jpos=iPos+PP_nVarPart
     IF (ALLOCATED(TurbPartState)) THEN
       !>> SGS turbulent velocity and random draw
       TurbPartState(1:nSGSVars,PartID) = PartRecvBuf(iProc)%content(1+jpos:nSGSVars+jpos)
@@ -689,8 +683,8 @@ DO iProc=0,nExchangeProcessors-1
     jPos=jPos+nBassetVars
 #endif /* USE_BASSETFORCE */
     !>> Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
-    Pt_temp(1:6,PartID)      = PartRecvBuf(iProc)%content(1+jPos:6+jPos)
-    jpos=jpos+6
+    Pt_temp(1:PP_nVarPart,PartID) = PartRecvBuf(iProc)%content(1+jPos:PP_nVarPart+jPos)
+    jpos=jpos+PP_nVarPart
     !>> TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
 !    IF (SGSinUse) THEN
 !      TurbPt_temp(1:3,PartID) = PartRecvBuf(iProc)%content(1+jPos:3+jPos)

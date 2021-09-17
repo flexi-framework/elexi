@@ -108,6 +108,7 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSampleBCs
 USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars,doParticleImpactSample,WriteMacroSurfaceValues
+USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars      ,ONLY: SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemSideNodeID_Shared
@@ -120,7 +121,7 @@ USE MOD_StringTools             ,ONLY: LowCase
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: nNonUniqueGlobalSides
-USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
@@ -162,7 +163,6 @@ REAL                                   :: xNod, zNod, yNod, Vector1(3), Vector2(
 #if USE_MPI
 INTEGER                                :: offsetSurfSidesProc,nSurfSidesTmp
 INTEGER                                :: GlobalElemID,GlobalElemRank
-INTEGER(KIND=MPI_ADDRESS_KIND)         :: MPISharedSize
 INTEGER                                :: sendbuf,recvbuf
 #else
 INTEGER,PARAMETER                      :: myLeaderGroupRank = 0
@@ -175,6 +175,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING...'
 ! Output of macroscopic surface values
 !> Double Variable because we follow both FLEXI and PICLas style
 doParticleImpactSample   = GETLOGICAL('Part-SurfaceSampling','F')
+doParticleImpactTrack    = GETLOGICAL('Part-TrackImpacts','.FALSE.')
 WriteMacroSurfaceValues  = GETLOGICAL('Part-WriteMacroSurfaceValues','.FALSE.')
 !
 !! Switch surface macro values flag to .TRUE. for impact tracking
@@ -183,7 +184,7 @@ IF (doParticleImpactSample.OR.WriteMacroSurfaceValues) THEN
   doParticleImpactSample  = .TRUE.
 END IF
 
-IF (.NOT.WriteMacroSurfaceValues) THEN
+IF (.NOT.WriteMacroSurfaceValues .AND. .NOT.doParticleImpactTrack ) THEN
   SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
   RETURN
 END IF
@@ -197,8 +198,7 @@ IF((nSurfSample.GT.1).AND.(TrackingMethod.EQ.TRIATRACKING)) &
 
 ! Allocate shared array for surf sides
 #if USE_MPI
-MPISharedSize = INT((3*nNonUniqueGlobalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/3,nNonUniqueGlobalSides/),GlobalSide2SurfSide_Shared_Win,GlobalSide2SurfSide_Shared)
+CALL Allocate_Shared((/3,nNonUniqueGlobalSides/),GlobalSide2SurfSide_Shared_Win,GlobalSide2SurfSide_Shared)
 CALL MPI_WIN_LOCK_ALL(0,GlobalSide2SurfSide_Shared_Win,IERROR)
 GlobalSide2SurfSide => GlobalSide2SurfSide_Shared
 #else
@@ -231,7 +231,7 @@ BCName  = ''
 
 DO iBC=1,nBCs
   ! inner side
-  IF (PartBound%TargetBoundCond(iBC).EQ.-1) CYCLE
+  IF (PartBound%TargetBoundCond(iBC).EQ.PartBound%InternalBC) CYCLE
 
   ! count number of reflective BCs
   IF (PartBound%TargetBoundCond(iBC).EQ.PartBound%ReflectiveBC) THEN
@@ -389,8 +389,7 @@ GlobalSide2SurfSide(:,firstSide:lastSide) = GlobalSide2SurfSideProc(:,firstSide:
 
 ! Build inverse mapping
 #if USE_MPI
-MPISharedSize = INT((3*nComputeNodeSurfTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/3,nComputeNodeSurfTotalSides/),SurfSide2GlobalSide_Shared_Win,SurfSide2GlobalSide_Shared)
+CALL Allocate_Shared((/3,nComputeNodeSurfTotalSides/),SurfSide2GlobalSide_Shared_Win,SurfSide2GlobalSide_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SurfSide2GlobalSide_Shared_Win,IERROR)
 SurfSide2GlobalSide => SurfSide2GlobalSide_Shared
 #else
@@ -458,8 +457,7 @@ END IF
 
 #if USE_MPI
 !> Then shared arrays for boundary sampling
-MPISharedSize = INT((SurfSampSize*nSurfSample*nSurfSample*nComputeNodeSurfTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/SurfSampSize,nSurfSample,nSurfSample,nComputeNodeSurfTotalSides/),SampWallState_Shared_Win,SampWallState_Shared)
+CALL Allocate_Shared((/SurfSampSize,nSurfSample,nSurfSample,nComputeNodeSurfTotalSides/),SampWallState_Shared_Win,SampWallState_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SampWallState_Shared_Win,IERROR)
 #else
 ALLOCATE(SampWallState_Shared(1:SurfSampSize,1:nSurfSample,1:nSurfSample,1:nComputeNodeSurfTotalSides))
@@ -476,8 +474,7 @@ CALL BARRIER_AND_SYNC(SampWallState_Shared_Win,MPI_COMM_SHARED)
 
 ! Surf sides are shared, array calculation can be distributed
 #if USE_MPI
-MPISharedSize = INT((nSurfSample*nSurfSample*nComputeNodeSurfTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-CALL Allocate_Shared(MPISharedSize,(/nSurfSample,nSurfSample,nComputeNodeSurfTotalSides/),SurfSideArea_Shared_Win,SurfSideArea_Shared)
+CALL Allocate_Shared((/nSurfSample,nSurfSample,nComputeNodeSurfTotalSides/),SurfSideArea_Shared_Win,SurfSideArea_Shared)
 CALL MPI_WIN_LOCK_ALL(0,SurfSideArea_Shared_Win,IERROR)
 SurfSideArea => SurfSideArea_Shared
 
@@ -1040,7 +1037,7 @@ USE MOD_Globals
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output             ,ONLY: WriteHeader,WriteAttribute
 USE MOD_HDF5_WriteArray         ,ONLY: WriteArray
-USE MOD_Output_Vars             ,ONLY: ProjectName
+USE MOD_Output_Vars             ,ONLY: ProjectName,WriteStateFiles
 USE MOD_Particle_Vars           ,ONLY: nSpecies
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfBC,SurfBCName
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfSample,offSetSurfSide
@@ -1074,6 +1071,7 @@ INTEGER                             :: OutputVarCount
 REAL,ALLOCATABLE                    :: OutputArray(:,:,:,:)
 REAL                                :: startT,endT
 !===================================================================================================================================
+IF (.NOT.WriteStateFiles) RETURN
 
 #if USE_MPI
 ! Return if not a sampling leader
@@ -1302,6 +1300,24 @@ INTEGER                           :: iError
 ! Return if nothing was allocated
 IF (.NOT.WriteMacroSurfaceValues) RETURN
 
+! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+CALL MPI_WIN_UNLOCK_ALL(SurfSide2GlobalSide_Shared_Win,iError)
+CALL MPI_WIN_FREE(      SurfSide2GlobalSide_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(GlobalSide2SurfSide_Shared_Win,iError)
+CALL MPI_WIN_FREE(      GlobalSide2SurfSide_Shared_Win,iError)
+
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+#endif /*USE_MPI*/
+
+! Then, free the pointers or arrays
+SDEALLOCATE(SurfBCName)
+SDEALLOCATE(SurfSampleBCs)
+MDEALLOCATE(GlobalSide2SurfSide)
+MDEALLOCATE(SurfSide2GlobalSide)
+
 ! Return if no sampling surfaces on node
 IF (.NOT.SurfOnNode) RETURN
 
@@ -1311,10 +1327,6 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
 CALL MPI_WIN_UNLOCK_ALL(SampWallState_Shared_Win      ,iError)
 CALL MPI_WIN_FREE(      SampWallState_Shared_Win      ,iError)
-CALL MPI_WIN_UNLOCK_ALL(GlobalSide2SurfSide_Shared_Win,iError)
-CALL MPI_WIN_FREE(      GlobalSide2SurfSide_Shared_Win,iError)
-CALL MPI_WIN_UNLOCK_ALL(SurfSide2GlobalSide_Shared_Win,iError)
-CALL MPI_WIN_FREE(      SurfSide2GlobalSide_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(SurfSideArea_Shared_Win       ,iError)
 CALL MPI_WIN_FREE(      SurfSideArea_Shared_Win       ,iError)
 
@@ -1332,13 +1344,9 @@ MDEALLOCATE(SurfSide2GlobalSide_Shared)
 
 ! Then, free the pointers or arrays
 SDEALLOCATE(XiEQ_SurfSample)
-SDEALLOCATE(SurfBCName)
-SDEALLOCATE(SurfSampleBCs)
 SDEALLOCATE(SampWallState)
 MDEALLOCATE(SampWallState_Shared)
 MDEALLOCATE(SurfSideArea)
-MDEALLOCATE(GlobalSide2SurfSide)
-MDEALLOCATE(SurfSide2GlobalSide)
 
 END SUBROUTINE FinalizeParticleBoundarySampling
 

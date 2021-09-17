@@ -27,8 +27,10 @@ SAVE
 REAL              :: ManualTimeStep                  !< Manual TimeStep
 LOGICAL           :: useManualTimeStep               !< Logical Flag for manual timestep. For consistency with IAG programming style
 CHARACTER(LEN=255):: ParticleTimeDiscMethod          !< name of specific time discretization scheme
+REAL              :: PreviousTime = -1.              !< Time when the routine was last called
 REAL              :: RKdtFrac
 REAL              :: RKdtFracTotal
+REAL,ALLOCATABLE  :: b_dt(:)
 
 REAL,ALLOCATABLE  :: Pa_rebuilt_coeff(:)
 REAL,ALLOCATABLE  :: Pa_rebuilt(:,:)

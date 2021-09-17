@@ -199,9 +199,9 @@ CurWeight = 0.0
 CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,'PartInt',PartIntExists)
 IF (PartIntExists) THEN
-    ALLOCATE(PartInt(1:nGlobalElems,2))
-    PartInt(:,:)           = 0
-    CALL ReadArray('PartInt',2,(/PartIntSize,nGlobalElems/),0,2,IntArray=PartInt)
+  ALLOCATE(PartInt(1:nGlobalElems,2))
+  PartInt(:,:)           = 0
+  CALL ReadArray('PartInt',2,(/PartIntSize,nGlobalElems/),0,2,IntArray=PartInt)
 END IF
 CALL CloseDataFile()
 
@@ -209,14 +209,14 @@ ALLOCATE(PartsInElem(1:nGlobalElems))
 PartsInElem = 0
 
 IF(PartIntExists)THEN
-    DO iElem = 1,nGlobalElems
-        locnPart           = PartInt(iElem,ELEM_LastPartInd)-PartInt(iElem,ELEM_FirstPartInd)
-        PartsInElem(iElem) = locnPart
+  DO iElem = 1,nGlobalElems
+    locnPart           = PartInt(iElem,ELEM_LastPartInd)-PartInt(iElem,ELEM_FirstPartInd)
+    PartsInElem(iElem) = locnPart
 
-        ! Calculate ElemTime according to number of particles in elem if we have no historical information
-        !> TODO: FIGURE OUT IF WE WANT TO MULTIPLY WITH PP_N TO ACCOUNT FOR DG LOAD
-        IF(.NOT.ElemTimeExists) ElemGlobalTime(iElem) = locnPart*ParticleMPIWeight + 1.0
-    END DO
+    ! Calculate ElemTime according to number of particles in elem if we have no historical information
+    !> TODO: FIGURE OUT IF WE WANT TO MULTIPLY WITH PP_N TO ACCOUNT FOR DG LOAD
+    IF(.NOT.ElemTimeExists) ElemGlobalTime(iElem) = locnPart*ParticleMPIWeight + 1.0
+  END DO
 END IF
 
 ! Total ElemTime on proc
@@ -977,7 +977,7 @@ SUBROUTINE checkList(offSetElemMPI,identical,numOfCalls)
 USE MOD_LoadBalance_Vars
 USE MOD_Globals          ,ONLY: nProcessors
 #if CODE_ANALYZE
-USE MOD_Globals          ,ONLY: mpiroot
+USE MOD_Globals          ,ONLY: MPIRoot,UNIT_stdOut
 #endif /* CODE_ANALYZE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

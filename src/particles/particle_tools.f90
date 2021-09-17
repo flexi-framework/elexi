@@ -30,8 +30,13 @@ INTERFACE DiceUnitVector
   MODULE PROCEDURE DiceUnitVector
 END INTERFACE
 
+! INTERFACE StoreLostParticleProperties
+!   MODULE PROCEDURE StoreLostParticleProperties
+! END INTERFACE
+
 PUBLIC :: UpdateNextFreePosition
 PUBLIC :: DiceUnitVector
+! PUBLIC :: StoreLostParticleProperties
 !===================================================================================================================================
 
 CONTAINS
@@ -111,9 +116,103 @@ IF (counter1.GT.PDM%MaxParticleNumber) PDM%nextFreePosition(PDM%MaxParticleNumbe
 RETURN
 END SUBROUTINE UpdateNextFreePosition
 
+
+!SUBROUTINE StoreLostParticleProperties(iPart,ElemID,UsePartState_opt,PartMissingType_opt)
+!!----------------------------------------------------------------------------------------------------------------------------------!
+!! Store information of a lost particle (during restart and during the simulation)
+!!----------------------------------------------------------------------------------------------------------------------------------!
+!! MODULES                                                                                                                          !
+!USE MOD_Globals                ,ONLY: abort,MyRank
+!USE MOD_Particle_Vars          ,ONLY: PartSpecies,Species,PartState,LastPartPos
+!USE MOD_Particle_Tracking_Vars ,ONLY: PartStateLost,PartLostDataSize,PartStateLostVecLength
+!USE MOD_TimeDisc_Vars          ,ONLY: t
+!!----------------------------------------------------------------------------------------------------------------------------------!
+!! insert modules here
+!!----------------------------------------------------------------------------------------------------------------------------------!
+!IMPLICIT NONE
+!! INPUT / OUTPUT VARIABLES
+!INTEGER,INTENT(IN)          :: iPart
+!INTEGER,INTENT(IN)          :: ElemID ! Global element index
+!LOGICAL,INTENT(IN),OPTIONAL :: UsePartState_opt
+!INTEGER,INTENT(IN),OPTIONAL :: PartMissingType_opt ! 0: lost, 1: missing & found once, >1: missing & multiply found
+!INTEGER                     :: dims(2)
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!! Temporary arrays
+!REAL, ALLOCATABLE    :: PartStateLost_tmp(:,:)   ! (1:11,1:NParts) 1st index: x,y,z,vx,vy,vz,SpecID,MPF,time,ElemID,iPart
+!!                                                !                 2nd index: 1 to number of lost particles
+!INTEGER              :: ALLOCSTAT
+!LOGICAL              :: UsePartState_loc
+!!===================================================================================================================================
+!UsePartState_loc = .FALSE.
+!IF (PRESENT(UsePartState_opt)) UsePartState_loc = UsePartState_opt
+!MPF = Species(PartSpecies(iPart))%MacroParticleFactor
+
+!dims = SHAPE(PartStateLost)
+
+!ASSOCIATE( iMax => PartStateLostVecLength )
+!  ! Increase maximum number of boundary-impact particles
+!  iMax = iMax + 1
+
+!  ! Check if array maximum is reached.
+!  ! If this happens, re-allocate the arrays and increase their size (every time this barrier is reached, double the size)
+!  IF(iMax.GT.dims(2))THEN
+
+!    ! --- PartStateLost ---
+!    ALLOCATE(PartStateLost_tmp(1:PartLostDataSize,1:dims(2)), STAT=ALLOCSTAT)
+!    IF (ALLOCSTAT.NE.0) CALL abort(&
+!          __STAMP__&
+!          ,'ERROR in particle_boundary_tools.f90: Cannot allocate PartStateLost_tmp temporary array!')
+!    ! Save old data
+!    PartStateLost_tmp(1:PartLostDataSize,1:dims(2)) = PartStateLost(1:PartLostDataSize,1:dims(2))
+
+!    ! Re-allocate PartStateLost to twice the size
+!    DEALLOCATE(PartStateLost)
+!    ALLOCATE(PartStateLost(1:PartLostDataSize,1:2*dims(2)), STAT=ALLOCSTAT)
+!    IF (ALLOCSTAT.NE.0) CALL abort(&
+!          __STAMP__&
+!          ,'ERROR in particle_boundary_tools.f90: Cannot allocate PartStateLost array!')
+!    PartStateLost(1:PartLostDataSize,        1:  dims(2)) = PartStateLost_tmp(1:PartLostDataSize,1:dims(2))
+!    PartStateLost(1:PartLostDataSize,dims(2)+1:2*dims(2)) = 0.
+
+!  END IF
+
+!  ! 1-3: Particle position (last valid position)
+!  IF(UsePartState_loc)THEN
+!    PartStateLost(1:3,iMax) = PartState(1:3,iPart)
+!  ELSE
+!    PartStateLost(1:3,iMax) = LastPartPos(1:3,iPart)
+!  END IF ! UsePartState_loc
+!  ! 4-6: Particle velocity
+!  PartStateLost(4:6  ,iMax) = PartState(4:6,iPart)
+!  ! 7: SpeciesID
+!  PartStateLost(7    ,iMax) = REAL(PartSpecies(iPart))
+!  ! 8: Macro particle factor
+!  PartStateLost(8    ,iMax) = MPF
+!  ! 9: time of loss
+!  PartStateLost(9    ,iMax) = time
+!  ! 10: Global element ID
+!  PartStateLost(10   ,iMax) = REAL(ElemID)
+!  ! 11: Particle ID
+!  PartStateLost(11   ,iMax) = REAL(iPart)
+!  ! 12-14: Particle position (position of loss)
+!  PartStateLost(12:14,iMax) = PartState(1:3,iPart)
+!  ! 15: myrank
+!  PartStateLost(15,iMax) = myrank
+!  ! 16: missing type, i.e., 0: lost, 1: missing & found once, >1: missing & multiply found
+!  IF(PRESENT(PartMissingType_opt))THEN ! when particles go missing during restart (maybe they are found on other procs or lost)
+!    PartStateLost(16,iMax) = PartMissingType_opt
+!  ELSE ! simply lost during the simulation
+!    PartStateLost(16,iMax) = 0
+!  END IF ! PRESENT(PartMissingType_opt)
+!END ASSOCIATE
+
+!END SUBROUTINE StoreLostParticleProperties
+
+
 FUNCTION DiceUnitVector()
 !===================================================================================================================================
-! Calculate random normalized vector in 3D (unit space)
+!> Calculates random unit vector
 !===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
@@ -126,16 +225,19 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                     :: DiceUnitVector(3)
-REAL                     :: iRan, bVec, aVec
+REAL                     :: rRan, cos_scatAngle, sin_scatAngle, rotAngle
 !===================================================================================================================================
-CALL RANDOM_NUMBER(iRan)
-bVec              = 1. - 2.*iRan
-aVec              = SQRT(1. - bVec**2.)
-DiceUnitVector(3) = bVec
-CALL RANDOM_NUMBER(iRan)
-bVec              = Pi *2. * iRan
-DiceUnitVector(1) = aVec * COS(bVec)
-DiceUnitVector(2) = aVec * SIN(bVec)
+CALL RANDOM_NUMBER(rRan)
+
+cos_scatAngle     = 2.*rRan-1.
+sin_scatAngle     = SQRT(1. - cos_scatAngle ** 2.)
+DiceUnitVector(1) = cos_scatAngle
+
+CALL RANDOM_NUMBER(rRan)
+rotAngle          = 2. * Pi * rRan
+
+DiceUnitVector(2) = sin_scatAngle * COS(rotAngle)
+DiceUnitVector(3) = sin_scatAngle * SIN(rotAngle)
 
 END FUNCTION DiceUnitVector
 

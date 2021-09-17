@@ -794,7 +794,6 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Analyze_Vars           ,ONLY: wGPSurf
 USE MOD_GetBoundaryFlux        ,ONLY: GetBoundaryState
-USE MOD_DG                     ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars                ,ONLY: UPrim_master
 USE MOD_Mesh_Vars              ,ONLY: SurfElem,Face_xGP
 USE MOD_Particle_Surfaces_Vars ,ONLY: BCdata_auxSF,SurfMeshSubSideData
@@ -815,9 +814,6 @@ REAL                    :: UPrim_Boundary(PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL                    :: vec_nIn(3),vec_t1(3),vec_t2(3)
 REAL                    :: fluid_nIn(3,0:PP_N,0:PP_NZ),fluid_t1(3,0:PP_N,0:PP_NZ),fluid_t2(3,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
-
-! Fill the gradient arrays
-CALL DGTimeDerivative_weakForm(t)
 
 ! Create average prim flux
 DO iSpec = 1,nSpecies

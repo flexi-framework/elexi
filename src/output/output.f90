@@ -300,6 +300,8 @@ IF(MPIroot)THEN
           '| [',percent,'%] '
     END IF
   ELSE
+! Attention: Number of particles might be already updated for iStage = 1, so one emission step was already performed. The solution
+! is still correct
 #if USE_PARTICLES
     IF (nParticleInDomain.GT.0) THEN
       WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I7,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A4,F6.2,A3,A1)',ADVANCE='NO') &

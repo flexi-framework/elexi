@@ -24,6 +24,7 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+REAL    ::                   EmissionTime                                ! time at which particle emission started
 LOGICAL ::                   PartDataExists                              ! Flag if restart file has saved part data
 LOGICAL ::                   TurbPartDataExists                          ! Flag if restart file has saved turbulent part data
 !===================================================================================================================================

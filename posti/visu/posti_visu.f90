@@ -56,7 +56,7 @@ CHARACTER(LEN=255)             :: FileString_multiblock
 #endif
 #if USE_PARTICLES
 CHARACTER(LEN=255)             :: FileString_Part
-CHARACTER(LEN=255)             :: FileString_Erosion
+CHARACTER(LEN=255)             :: FileString_Impact
 #endif
 #if !USE_MPI
 INTEGER                        :: MPI_COMM_WORLD = 0
@@ -107,7 +107,7 @@ END IF
 
 ! create visu dir, where all vtu files are placed
 #if USE_MPI
-IF(nProcessors.GT.1) CALL SYSTEM('mkdir -p visu')
+IF(nProcessors.GT.1. .AND. MPIRoot) CALL SYSTEM('mkdir -p visu')
 #endif
 
 DO iArg=1+skipArgs,nArgs
@@ -198,8 +198,8 @@ DO iArg=1+skipArgs,nArgs
         PD%VarNamePartVisu,PD%VarNamePartCombine,PD%VarNamePartCombineLen,PD%nGlobalParts)
     END IF
     IF(PDE%nPartVar_Visu.GT.0)THEN
-      FileString_Erosion=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuErosion',OutputTime))//'.vtu'
-      CALL WriteDataToVTKPart(PDE%nPart_Visu,PDE%nPartVar_Visu,PDE%PartData_HDF5(1:3,:),PDE%PartData_HDF5(4:,:),FileString_Erosion,&
+      FileString_Impact=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuImpact',OutputTime))//'.vtu'
+      CALL WriteDataToVTKPart(PDE%nPart_Visu,PDE%nPartVar_Visu,PDE%PartData_HDF5(1:3,:),PDE%PartData_HDF5(4:,:),FileString_Impact,&
         PDE%VarNamePartVisu,PDE%VarNamePartCombine,PDE%VarNamePartCombineLen,PDE%nGlobalParts)
     END IF
 #endif

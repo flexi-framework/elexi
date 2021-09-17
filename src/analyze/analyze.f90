@@ -326,15 +326,12 @@ CALL AnalyzeEquation(Time)
 CALL Benchmarking()
 
 #if USE_PARTICLES
-CALL ParticleAnalyze(time &
-#if USE_LOADBALANCE
-                    ,iter &
-#endif /* USE_LOADBALANCE */
-  )
-#endif /*USE_PARTICLES*/
-
-#if USE_PARTICLES
+! Calculate basic particle information and write status
 CALL ParticleInformation()
+
+! Perform particle analyze depending on ParticleInformation
+CALL ParticleAnalyze(time,iter)
+
 #endif /*USE_PARTICLES*/
 IF (PRESENT(doPrintETA_opt)) CALL PrintStatusLine(t=Time,dt=dt_opt,tStart=tStart_opt,tEnd=tend,doPrintETA_opt=.TRUE.)
 

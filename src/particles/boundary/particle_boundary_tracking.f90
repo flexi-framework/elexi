@@ -83,7 +83,7 @@ USE MOD_Particle_Analyze_Vars  ,ONLY: doParticleDispersionTrack,doParticlePathTr
 USE MOD_Particle_Boundary_Vars ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Vars ,ONLY: PartStateBoundary,PartStateBoundaryVecLength,ImpactDataSize
 USE MOD_Particle_Boundary_Vars ,ONLY: ImpactTrackInitIsDone,ImpactSideOnProc
-USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides,doParticleImpactSample
+USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides
 USE MOD_Particle_Vars          ,ONLY: doPartIndex
 ! #if USE_MPI
 ! USE MOD_Particle_Boundary_Vars ,ONLY: nImpactProcs
@@ -107,20 +107,16 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT IMPACT TRACKING...'
 
 ! Check if impact tracking is activated
-doParticleImpactTrack = GETLOGICAL('Part-TrackImpacts','.FALSE.')
 IF (.NOT.doParticleImpactTrack) THEN
   SWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
   RETURN
 END IF
 
-! surfaces sides are determined in particle_boundary_sampling.f90!
-IF (.NOT.doParticleImpactSample) &
- CALL COLLECTIVESTOP(__STAMP__,'Impact tracking only available with Part-SurfaceSampling=T!')
-
 ImpactDataSize = 14
 IF (doPartIndex)                                      ImpactDataSize = ImpactDataSize + 1
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) ImpactDataSize = ImpactDataSize + 3
 
+! surfaces sides are determined in particle_boundary_sampling.f90!
 ImpactSideOnProc = MERGE(.TRUE.,.FALSE.,nSurfTotalSides.NE.0)
 #if USE_MPI
 CALL MPI_ALLREDUCE(ImpactSideOnProc,doParticleImpactTrack,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
@@ -274,7 +270,7 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
 
 ! Write out in the next state file write-out
 IF(MPIRoot) THEN
-  WRITE(UNIT_StdOut,'(A,I0,A)')  ' | ',PartStateBoundaryVecLength,' impact read from restart file'
+  WRITE(UNIT_StdOut,'(A,I0,A)')  ' | ',PartStateBoundaryVecLength_glob,' impact read from restart file'
   WRITE(UNIT_StdOut,'(A,F0.3,A)')' READING PARTICLE IMPACT DATA FROM HDF5 FILE DONE'
   WRITE(UNIT_StdOut,'(132("-"))')
 END IF

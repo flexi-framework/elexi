@@ -39,7 +39,7 @@ INTERFACE EvaluateFieldAtRefPos
   MODULE PROCEDURE EvaluateFieldAtRefPos
 END INTERFACE
 
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 INTERFACE EvaluateFieldAndGradAtPhysPos
   MODULE PROCEDURE EvaluateFieldAndGradAtPhysPos
 END INTERFACE
@@ -47,7 +47,7 @@ END INTERFACE
 INTERFACE EvaluateFieldAndGradAtRefPos
   MODULE PROCEDURE EvaluateFieldAndGradAtRefPos
 END INTERFACE
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 
 #if FV_ENABLED
 INTERFACE EvaluateField_FV
@@ -59,10 +59,10 @@ PUBLIC :: GetPositionInRefElem
 PUBLIC :: TensorProductInterpolation
 PUBLIC :: EvaluateFieldAtPhysPos
 PUBLIC :: EvaluateFieldAtRefPos
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 PUBLIC :: EvaluateFieldAndGradAtPhysPos
 PUBLIC :: EvaluateFieldAndGradAtRefPos
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 #if FV_ENABLED
 PUBLIC :: EvaluateField_FV
 #endif /* FV_ENABLED */
@@ -212,6 +212,7 @@ USE MOD_Mesh_Vars,             ONLY: NGeo
 USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,    ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: ElemCurved,wBaryCL_NGeo1,XiCL_NGeo1
+USE MOD_Particle_Vars,         ONLY: PDM,PartState,LastPartPos
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
@@ -244,6 +245,16 @@ REAL                      :: XCL_NGeo1(1:3,0:1,0:1,0:1)
 REAL                      :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
 REAL                      :: Utmp(1:nVar)
 !===================================================================================================================================
+
+! Sanity check the values
+IF (ANY(IEEE_IS_NAN(X_in))) THEN
+  WRITE(UNIT_stdOut,'(A,I0,A,I0)')        ' NaN detected for PartID ', PartID, ' on proc ',myRank
+  WRITE(UNIT_stdOut,'(A18,3(1X,E27.16))') ' LastPosition   ', LastPartPos(1:3,PartID)
+  WRITE(UNIT_stdOut,'(A18,3(1X,E27.16))') ' Velocity       ', PartState  (4:6,PartID)
+  WRITE(UNIT_stdOut,'(A)')                ' Removing particle ...'
+  PDM%ParticleInside(PartID) = .FALSE.
+  RETURN
+END IF
 
 #if USE_MPI
 ASSOCIATE( XCL_NGeo  =>  XCL_NGeo_Shared    &
@@ -436,8 +447,8 @@ END IF
 
 END SUBROUTINE EvaluateFieldAtRefPos
 
-#if USE_EXTEND_RHS
-SUBROUTINE EvaluateFieldAndGradAtPhysPos(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID,PartID,gradUx,gradUy,gradUz,divtau,gradp,UGrad_Out)
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+SUBROUTINE EvaluateFieldAndGradAtPhysPos(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID,PartID,gradUx,gradUy,gradUz,U_RHS,UGrad_Out)
 !===================================================================================================================================
 !> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
 !> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
@@ -465,22 +476,23 @@ USE MOD_Eos,                   ONLY: ConsToPrim
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)           :: x_in(3)                                       !< position in physical space
-INTEGER,INTENT(IN)        :: NVar                                          !< 5 (rho,u_x,u_y,u_z,e)
-INTEGER,INTENT(IN)        :: N_In                                          !< usually PP_N
-INTEGER,INTENT(IN)        :: ElemID                                        !< Element index
-REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)             !< State in Element
-INTEGER,INTENT(IN)        :: PartID                                        !< particle ID
-INTEGER,INTENT(IN)        :: NVar_out                                      !< 6 (rho,u_x,u_y,u_z,p,T)
-REAL,INTENT(IN)           :: gradUx(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in x direction
-REAL,INTENT(IN)           :: gradUy(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in y direction
-REAL,INTENT(IN)           :: gradUz(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in z direction
-REAL,INTENT(IN)           :: divtau(1:3     ,0:N_in,0:N_in,0:ZDIM(N_in))   !< \nabla \cdot \tau
-REAL,INTENT(IN)           :: gradp( 1:3     ,0:N_in,0:N_in,0:ZDIM(N_in))   !< \nabla p
+REAL,INTENT(IN)           :: x_in(3)                                           !< position in physical space
+INTEGER,INTENT(IN)        :: NVar                                              !< 5 (rho,u_x,u_y,u_z,e)
+INTEGER,INTENT(IN)        :: N_In                                              !< usually PP_N
+INTEGER,INTENT(IN)        :: ElemID                                            !< Element index
+REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)                 !< State in Element
+INTEGER,INTENT(IN)        :: PartID                                            !< particle ID
+INTEGER,INTENT(IN)        :: NVar_out                                          !< 6 (rho,u_x,u_y,u_z,p,T)
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+REAL,INTENT(IN)           :: gradUx(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in x direction
+REAL,INTENT(IN)           :: gradUy(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in y direction
+REAL,INTENT(IN)           :: gradUz(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in z direction
+REAL,INTENT(IN)           :: U_RHS(  1:RHS_NVARS,0:N_in,0:N_in,0:ZDIM(N_in))   !< du/dt, \nabla^2 u
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                             !< Interpolated state at physical position x_in
-REAL,INTENT(OUT)          :: UGrad_Out(RHS_GRAD,3)                         !< Interpolated gradient at physical position x_in
+REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                                 !< Interpolated state at physical position x_in
+REAL,INTENT(OUT)          :: UGrad_Out(RHS_GRAD,3)                             !< Interpolated gradient at physical position x_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: CNElemID,i,j,k
@@ -539,16 +551,20 @@ DO k=0,N_in
   DO j=0,N_in
     L_eta_zeta=L_xi(2,j)*L_xi(3,k)
     DO i=0,N_in
-      Utmp                      = Utmp                      + U_IN(:,i,j,k)  *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,1)  = UGrad_out(RHS_GRADTAU,1)  + divtau(1,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,2)  = UGrad_out(RHS_GRADTAU,2)  + divtau(2,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,3)  = UGrad_out(RHS_GRADTAU,3)  + divtau(3,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,1) = UGrad_out(RHS_GRADPRES,1) + gradp(1,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,2) = UGrad_out(RHS_GRADPRES,2) + gradp(2,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,3) = UGrad_out(RHS_GRADPRES,3) + gradp(3,i,j,k) *L_xi(1,i)*L_Eta_Zeta
+      Utmp                      = Utmp                      + U_IN(:,i,j,k)  * L_xi(1,i)*L_Eta_Zeta
+#if USE_EXTEND_RHS
+      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,1) = UGrad_out(RHS_dVELdt  ,1) + U_RHS(RHS_dVEL1dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,2) = UGrad_out(RHS_dVELdt  ,2) + U_RHS(RHS_dVEL2dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,3) = UGrad_out(RHS_dVELdt  ,3) + U_RHS(RHS_dVEL3dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+#endif
+#if USE_FAXEN_CORR
+      UGrad_out(RHS_LAPLACEVEL,1) = UGrad_out(RHS_LAPLACEVEL,1) + U_RHS(RHS_LAPLACEVEL1,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_LAPLACEVEL,2) = UGrad_out(RHS_LAPLACEVEL,2) + U_RHS(RHS_LAPLACEVEL2,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_LAPLACEVEL,3) = UGrad_out(RHS_LAPLACEVEL,3) + U_RHS(RHS_LAPLACEVEL3,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+#endif
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In
@@ -566,7 +582,7 @@ END IF
 
 END SUBROUTINE EvaluateFieldAndGradAtPhysPos
 
-PPURE SUBROUTINE EvaluateFieldAndGradAtRefPos(Xi_in,NVar,N_in,U_In,NVar_out,U_Out,gradUx,gradUy,gradUz,divtau,gradp,UGrad_Out)
+PPURE SUBROUTINE EvaluateFieldAndGradAtRefPos(Xi_in,NVar,N_in,U_In,NVar_out,U_Out,gradUx,gradUy,gradUz,U_RHS,UGrad_Out)
 !===================================================================================================================================
 !> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
 !> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
@@ -579,20 +595,21 @@ USE MOD_Eos,                   ONLY: ConsToPrim
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)           :: Xi_in(3)                                       !< position in reference element
-INTEGER,INTENT(IN)        :: NVar                                           !< 5 (rho,u_x,u_y,u_z,e)
-INTEGER,INTENT(IN)        :: N_In                                           !< usually PP_N
-REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)              !< State in Element
-INTEGER,INTENT(IN)        :: NVar_out                                       !< 6 (rho,u_x,u_y,u_z,p,T)
-REAL,INTENT(IN)           :: gradUx(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in x direction
-REAL,INTENT(IN)           :: gradUy(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in y direction
-REAL,INTENT(IN)           :: gradUz(RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in z direction
-REAL,INTENT(IN)           :: divtau(1:3     ,0:N_in,0:N_in,0:ZDIM(N_in))    !< \nabla \cdot \tau
-REAL,INTENT(IN)           :: gradp( 1:3     ,0:N_in,0:N_in,0:ZDIM(N_in))    !< \nabla p
+REAL,INTENT(IN)           :: Xi_in(3)                                           !< position in reference element
+INTEGER,INTENT(IN)        :: NVar                                               !< 5 (rho,u_x,u_y,u_z,e)
+INTEGER,INTENT(IN)        :: N_In                                               !< usually PP_N
+REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)                  !< State in Element
+INTEGER,INTENT(IN)        :: NVar_out                                           !< 6 (rho,u_x,u_y,u_z,p,T)
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+REAL,INTENT(IN)           :: gradUx(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in x direction
+REAL,INTENT(IN)           :: gradUy(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in y direction
+REAL,INTENT(IN)           :: gradUz(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in z direction
+REAL,INTENT(IN)           :: U_RHS(  1:RHS_NVARS,0:N_in,0:N_in,0:ZDIM(N_in))    !< du/dt, \nabla^2 u
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                              !< Interpolated state at reference position xi_in
-REAL,INTENT(OUT)          :: UGrad_Out(RHS_GRAD,3)                          !< Interpolated gradient at reference position x_in
+REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                                  !< Interpolated state at reference position xi_in
+REAL,INTENT(OUT)          :: UGrad_Out(RHS_GRAD,3)                              !< Interpolated gradient at reference position x_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: i,j,k
@@ -612,16 +629,20 @@ DO k=0,N_in
   DO j=0,N_in
     L_eta_zeta=L_xi(2,j)*L_xi(3,k)
     DO i=0,N_in
-      Utmp                      = Utmp                      + U_IN(:,i,j,k)  *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,1)  = UGrad_out(RHS_GRADTAU,1)  + divtau(1,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,2)  = UGrad_out(RHS_GRADTAU,2)  + divtau(2,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADTAU,3)  = UGrad_out(RHS_GRADTAU,3)  + divtau(3,i,j,k)*L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,1) = UGrad_out(RHS_GRADPRES,1) + gradp(1,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,2) = UGrad_out(RHS_GRADPRES,2) + gradp(2,i,j,k) *L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADPRES,3) = UGrad_out(RHS_GRADPRES,3) + gradp(3,i,j,k) *L_xi(1,i)*L_Eta_Zeta
+      Utmp                      = Utmp                      + U_IN(:,i,j,k)  * L_xi(1,i)*L_Eta_Zeta
+#if USE_EXTEND_RHS
+      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,1) = UGrad_out(RHS_dVELdt  ,1) + U_RHS(RHS_dVEL1dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,2) = UGrad_out(RHS_dVELdt  ,2) + U_RHS(RHS_dVEL2dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt  ,3) = UGrad_out(RHS_dVELdt  ,3) + U_RHS(RHS_dVEL3dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+#endif
+#if USE_FAXEN_CORR
+      UGrad_out(RHS_LAPLACEVEL,1) = UGrad_out(RHS_LAPLACEVEL,1) + U_RHS(RHS_LAPLACEVEL1,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_LAPLACEVEL,2) = UGrad_out(RHS_LAPLACEVEL,2) + U_RHS(RHS_LAPLACEVEL2,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_LAPLACEVEL,3) = UGrad_out(RHS_LAPLACEVEL,3) + U_RHS(RHS_LAPLACEVEL3,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+#endif
     END DO ! i=0,N_In
   END DO ! j=0,N_In
 END DO ! k=0,N_In

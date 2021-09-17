@@ -43,13 +43,14 @@ SUBROUTINE InitializeParticleEmission()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars,      ONLY: Species,nSpecies,PDM,PEM,doPartIndex,PartIndex,sumOfMatchedParticlesSpecies
-USE MOD_Part_Emission_Tools,ONLY: SetParticleMass
-USE MOD_Part_Pos_and_Velo,  ONLY: SetParticlePosition,SetParticleVelocity
-USE MOD_Part_Tools,         ONLY: UpdateNextFreePosition
-USE MOD_Restart_Vars,       ONLY: DoRestart
+USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists,EmissionTime
+USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PDM,PEM,doPartIndex,PartIndex,sumOfMatchedParticlesSpecies
+USE MOD_Part_Emission_Tools    ,ONLY: SetParticleMass
+USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
+USE MOD_Part_Tools             ,ONLY: UpdateNextFreePosition
+USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,  ONLY: PartMPI
+USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /* MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -68,7 +69,7 @@ INTEGER               :: InitGroup
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING... '
+SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING...'
 
 ! Update next free position in particle array to get insertion position
 CALL UpdateNextFreePosition()
@@ -151,12 +152,18 @@ IF (.NOT.DoRestart .OR. (ParticleVecLengthGlob.EQ.0)) THEN
   END DO ! species
 END IF ! doRestart
 
+! Attention: FLEXI uses a different definition for elapsed time due to restart capability!
+IF ((RestartTime.GT.0) .AND. (.NOT.PartDataExists)) THEN
+  ! Remember the beginning of emission
+  EmissionTime = RestartTime
+END IF
+
 !--- set last element to current element (needed when ParticlePush is not executed, e.g. "delay")
 DO i = 1,PDM%ParticleVecLength
   PEM%lastElement(i) = PEM%Element(i)
 END DO
 
-SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING DONE '
+SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING DONE'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitializeParticleEmission
@@ -179,7 +186,7 @@ USE MOD_Part_Tools             ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Tools ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
 USE MOD_Particle_Globals       ,ONLY: ALMOSTEQUAL
-USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists
+USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists,EmissionTime
 USE MOD_Particle_Timedisc_Vars ,ONLY: RKdtFrac,RKdtFracTotal
 USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PartSpecies,PDM,DelayTime,sumOfMatchedParticlesSpecies
 USE MOD_Particle_Vars          ,ONLY: DoPoissonRounding,DoTimeDepInflow,doPartIndex,PartIndex
@@ -233,16 +240,17 @@ DO i = 1,nSpecies
         IF (.NOT.DoTimeDepInflow) THEN
           IF (.NOT.DoPoissonRounding) THEN
             ! requested particles during time-slab
-            PartIns = Species(i)%Init(iInit)%ParticleEmission * dt*RKdtFrac /Species(i)%Init(iInit)%ParticleEmissionTime
+            PartIns = Species(i)%Init(iInit)%ParticleEmission * dt*RKdtFrac / Species(i)%Init(iInit)%ParticleEmissionTime
             ! integer number of particles to be inserted
             inserted_Particle_iter = INT(PartIns,8)
 
             ! Attention: FLEXI uses a different definition for elapsed time due to restart capability!
             IF ((RestartTime.GT.0) .AND. (.NOT.PartDataExists)) THEN
               ! total number of emitted particles over simulation
-              PartIns = Species(i)%Init(iInit)%ParticleEmission * (t-RestartTime + dt*RKdtFracTotal) / Species(i)%Init(iInit)%ParticleEmissionTime
+              PartIns = Species(i)%Init(iInit)%ParticleEmission * (t-RestartTime  + dt*RKdtFracTotal) / Species(i)%Init(iInit)%ParticleEmissionTime
             ELSE
-              PartIns = Species(i)%Init(iInit)%ParticleEmission * (t             + dt*RKdtFracTotal) / Species(i)%Init(iInit)%ParticleEmissionTime
+              ! total number of emitted particles from the beginning of emission
+              PartIns = Species(i)%Init(iInit)%ParticleEmission * (t-EmissionTime + dt*RKdtFracTotal) / Species(i)%Init(iInit)%ParticleEmissionTime
             END IF
 
             !-- random-round the inserted_Particle_time for preventing periodicity

@@ -58,12 +58,17 @@ INTERFACE BARRIER_AND_SYNC
   MODULE PROCEDURE BARRIER_AND_SYNC
 END INTERFACE
 
+INTERFACE MPI_SIZE
+  MODULE PROCEDURE MPI_SIZE
+END INTERFACE
+
 PUBLIC :: DefineParametersMPIShared
 PUBLIC :: InitMPIShared
 PUBLIC :: FinalizeMPIShared
 PUBLIC :: Allocate_Shared
 !PUBLIC :: UpdateDGShared
 PUBLIC :: BARRIER_AND_SYNC
+PUBLIC :: MPI_SIZE
 !==================================================================================================================================
 
 CONTAINS
@@ -196,7 +201,7 @@ END SUBROUTINE InitMPIShared
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Logical_1(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Logical_1(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -205,7 +210,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(1)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 LOGICAL,INTENT(OUT),POINTER               :: DataPointer(:)           !> Pointer to the RMA window
@@ -220,7 +224,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Logical1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -239,7 +243,7 @@ END SUBROUTINE ALLOCATE_SHARED_LOGICAL_1
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Logical_2(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Logical_2(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -248,7 +252,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(2)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 LOGICAL,INTENT(OUT),POINTER               :: DataPointer(:,:)         !> Pointer to the RMA window
@@ -263,7 +266,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Logical1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -282,7 +285,7 @@ END SUBROUTINE ALLOCATE_SHARED_LOGICAL_2
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Int_1(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Int_1(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -291,7 +294,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(1)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:)           !> Pointer to the RMA window
@@ -306,7 +308,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Int1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -326,7 +328,7 @@ END SUBROUTINE ALLOCATE_SHARED_INT_1
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Int_2(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Int_2(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -335,7 +337,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(2)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:,:)         !> Pointer to the RMA window
@@ -350,7 +351,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Int2) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -370,7 +371,7 @@ END SUBROUTINE ALLOCATE_SHARED_INT_2
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Int_3(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Int_3(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -379,7 +380,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(3)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:,:,:)       !> Pointer to the RMA window
@@ -394,7 +394,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Int3) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -414,7 +414,7 @@ END SUBROUTINE ALLOCATE_SHARED_INT_3
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Int_4(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Int_4(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -423,7 +423,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(4)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:)     !> Pointer to the RMA window
@@ -438,7 +437,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Int3) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -458,7 +457,7 @@ END SUBROUTINE ALLOCATE_SHARED_INT_4
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_1(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_1(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -467,7 +466,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(1)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:)         !> Pointer to the RMA window
@@ -482,7 +480,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Real1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -502,7 +500,7 @@ END SUBROUTINE ALLOCATE_SHARED_REAL_1
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_2(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_2(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -511,7 +509,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(2)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:)         !> Pointer to the RMA window
@@ -526,7 +523,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Real2) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -546,7 +543,7 @@ END SUBROUTINE ALLOCATE_SHARED_REAL_2
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_3(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_3(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -555,7 +552,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(3)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:)       !> Pointer to the RMA window
@@ -570,7 +566,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Real3) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -590,7 +586,7 @@ END SUBROUTINE ALLOCATE_SHARED_REAL_3
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_4(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_4(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -599,7 +595,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(4)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:)     !> Pointer to the RMA window
@@ -614,7 +609,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Real4) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -634,7 +629,7 @@ END SUBROUTINE ALLOCATE_SHARED_REAL_4
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_5(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_5(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -643,7 +638,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(5)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:,:)   !> Pointer to the RMA window
@@ -658,7 +652,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Real5) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -678,7 +672,7 @@ END SUBROUTINE ALLOCATE_SHARED_REAL_5
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_6(Datasize_Byte,nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_6(nVal,SM_WIN,DataPointer)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -687,7 +681,6 @@ USE MOD_Particle_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: Datasize_Byte            !> Length of the data size in bytes
 INTEGER,INTENT(IN)                        :: nVal(6)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:,:,:) !> Pointer to the RMA window
@@ -702,7 +695,7 @@ __STAMP__&
 ,'ERROR: Datapointer (Real6) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
-WIN_SIZE  = MERGE(datasize_byte,INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
+WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
 DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
@@ -814,6 +807,50 @@ END SUBROUTINE FinalizeMPIShared
 !CALL BARRIER_AND_SYNC(U_Shared_Win,IERROR)
 !
 !END SUBROUTINE UpdateDGShared
+
+
+!===================================================================================================================================
+!
+!===================================================================================================================================
+FUNCTION MPI_SIZE(nVal,VarSize)
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Memory              ,ONLY: ProcessMemUsage
+USE MOD_Particle_MPI_Shared_Vars     ,ONLY: myComputeNodeRank
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER(KIND=8),INTENT(IN) :: nVal
+INTEGER,INTENT(IN)         :: VarSize
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+INTEGER(KIND=MPI_ADDRESS_KIND) :: MPI_SIZE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                      :: memory(3)
+INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+!===================================================================================================================================
+
+IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).LT.INT(HUGE(INT(1,KIND=MPI_ADDRESS_KIND)),KIND=8)) THEN
+  ! Compute node root also checks available memory
+  IF (myComputeNodeRank.EQ.0) THEN
+    ! Find memory usage and requirements
+    CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+
+    ! Compare requested size against available memory
+    IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).GT.memory(2)*kByte) &
+      CALL ABORT(__STAMP__,'Trying to allocate shared array larger than available memory!')
+  END IF
+
+  MPI_SIZE = INT(nVal,KIND=MPI_ADDRESS_KIND) * INT(VarSize,KIND=MPI_ADDRESS_KIND)
+ELSE
+  CALL ABORT(__STAMP__,'MPI_SIZE for shared array too large!')
+  ! Avoid compiler warnings
+  MPI_SIZE = -1
+END IF
+
+END FUNCTION MPI_SIZE
 #endif /* USE_MPI */
 
 END MODULE MOD_Particle_MPI_Shared

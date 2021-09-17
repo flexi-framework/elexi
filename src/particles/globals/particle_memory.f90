@@ -52,6 +52,9 @@ CONTAINS
 SUBROUTINE Allocate_Safe_Real_2(Array,nVal,STAT)
 ! MODULES
 USE MOD_Globals
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -64,6 +67,10 @@ INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocat
 INTEGER                                   :: ALLOCSTAT                !> Base pointer, translated to DataPointer later
 ! INTEGER                                   :: WIN_SIZE                 !> Size of the allocated memory window
 REAL                                      :: memory(3)
+INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+#if !USE_MPI
+INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+#endif /*!USE_MPI*/
 !==================================================================================================================================
 
 ! Check if array is already allocated
@@ -72,14 +79,19 @@ IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
 
+ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
+          VarSize  => INT(KIND(Array),KIND=8),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=8))
+
 ! Compare requested size against available memory
-!> For now, assume KIND=4 reals
-IF (PRODUCT(nVal)*4*nProcessors .LT. memory(2)*1024) THEN
+IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
   ALLOCATE(Array(nVal(1),nVal(2)),STAT=ALLOCSTAT)
   IF (PRESENT(STAT)) STAT=ALLOCSTAT
 ELSE
   CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
 END IF
+
+END ASSOCIATE
 
 END SUBROUTINE Allocate_Safe_Real_2
 
@@ -91,6 +103,9 @@ END SUBROUTINE Allocate_Safe_Real_2
 SUBROUTINE Allocate_Safe_Real_3(Array,nVal,STAT)
 ! MODULES
 USE MOD_Globals
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -103,6 +118,10 @@ INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocat
 INTEGER                                   :: ALLOCSTAT                !> Base pointer, translated to DataPointer later
 ! INTEGER                                   :: WIN_SIZE                 !> Size of the allocated memory window
 REAL                                      :: memory(3)
+INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+#if !USE_MPI
+INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+#endif /*!USE_MPI*/
 !==================================================================================================================================
 
 ! Check if array is already allocated
@@ -111,14 +130,19 @@ IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
 
+ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
+          VarSize  => INT(KIND(Array),KIND=8),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=8))
+
 ! Compare requested size against available memory
-!> For now, assume KIND=4 reals
-IF (PRODUCT(nVal)*4*nProcessors .LT. memory(2)*1024) THEN
+IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
   ALLOCATE(Array(nVal(1),nVal(2),nVal(3)),STAT=ALLOCSTAT)
   IF (PRESENT(STAT)) STAT=ALLOCSTAT
 ELSE
   CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
 END IF
+
+END ASSOCIATE
 
 END SUBROUTINE Allocate_Safe_Real_3
 

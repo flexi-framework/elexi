@@ -21,6 +21,11 @@ MODULE MOD_TimeDisc
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
+
+INTERFACE DefineParametersTimeDisc
+  MODULE PROCEDURE DefineParametersTimeDisc
+END INTERFACE
+
 INTERFACE InitTimeDisc
   MODULE PROCEDURE InitTimeDisc
 END INTERFACE
@@ -33,9 +38,10 @@ INTERFACE FinalizeTimeDisc
   MODULE PROCEDURE FinalizeTimeDisc
 END INTERFACE
 
-PUBLIC :: InitTimeDisc,FinalizeTimeDisc
-PUBLIC :: TimeDisc
 PUBLIC :: DefineParametersTimeDisc
+PUBLIC :: InitTimeDisc
+PUBLIC :: TimeDisc
+PUBLIC :: FinalizeTimeDisc
 !==================================================================================================================================
 
 CONTAINS
@@ -53,7 +59,9 @@ CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discr
                                                & a specific Runge-Kutta scheme. Possible values:\n"//&
                                                "  * standardrk3-3\n  * carpenterrk4-5\n  * niegemannrk4-14\n"//&
                                                "  * toulorgerk4-8c\n  * toulorgerk3-7c\n  * toulorgerk4-8f\n"//&
-                                               "  * ketchesonrk4-20\n  * ketchesonrk4-18", value='CarpenterRK4-5')
+                                               "  * ketchesonrk4-20\n  * ketchesonrk4-18\n  * eulerimplicit\n"//&
+                                               "  * cranknicolson2-2\n  * esdirk2-3\n  * esdirk3-4\n"//&
+                                               "  * esdirk4-6" , value='CarpenterRK4-5')
 CALL prms%CreateRealOption(  'TEnd',           "End time of the simulation (mandatory).")
 CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0 (mandatory)")
 CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory)")
@@ -83,11 +91,7 @@ USE MOD_Overintegration_Vars,ONLY:NUnder
 USE MOD_Filter_Vars         ,ONLY:NFilter,FilterType
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
-#if USE_PARTICLES
-USE MOD_ReadInTools               ,ONLY:GETLOGICAL
-USE MOD_Particle_TimeDisc
-USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimestep,ManualTimestep
-#endif
+USE MOD_Predictor           ,ONLY:InitPredictor
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -98,37 +102,22 @@ INTEGER           :: NEff
 !==================================================================================================================================
 TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
 
-#if USE_PARTICLES
-ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
-! Check if we are running a steady state tracking
-SWRITE(UNIT_StdOut,'(66("-"))')
-!--- Read Manual Time Step
-useManualTimeStep = GETLOGICAL('Part-SteadyState'   ,'F')
-ManualTimeStep    = GETREAL   ('Part-ManualTimeStep','0.0')
-IF (ManualTimeStep.GT.0.) THEN
-  useManualTimeStep = .TRUE.
-END IF
-#endif
-
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
 
 CALL SetTimeDiscCoefs(TimeDiscMethod)
 
-#if USE_PARTICLES
-IF (UseManualTimestep) THEN
-  TimeStep=>TimeStepSteadyState
-ELSE
-#endif
-  SELECT CASE(TimeDiscType)
-    CASE('LSERKW2')
-      TimeStep=>TimeStepByLSERKW2
-    CASE('LSERKK3')
-      TimeStep=>TimeStepByLSERKK3
-  END SELECT
-#if USE_PARTICLES
-END IF
-#endif
+SELECT CASE(TimeDiscType)
+  CASE('LSERKW2')
+    TimeStep=>TimeStepByLSERKW2
+  CASE('LSERKK3')
+    TimeStep=>TimeStepByLSERKK3
+  CASE('ESDIRK')
+    ! Implicit time integration
+    TimeStep=>TimeStepByESDIRK
+    ! Predictor for Newton
+    CALL InitPredictor(TimeDiscMethod)
+END SELECT
 
 IF(TimeDiscInitIsDone)THEN
    SWRITE(*,*) "InitTimeDisc already called."
@@ -174,54 +163,56 @@ SUBROUTINE TimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
-USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage
+USE MOD_Analyze             ,ONLY: Analyze
+USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData,nTimeAvgData
-#if !USE_EXTEND_RHS
+#if !USE_PARTICLES
 USE MOD_Analyze_Vars        ,ONLY: doAnalyzeEquation
 #endif
-USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
-USE MOD_Analyze             ,ONLY: Analyze
+USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
+USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
+USE MOD_Debugmesh           ,ONLY: WriteDebugMesh
+USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
+USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
+USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
+USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
+USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
+USE MOD_Output              ,ONLY: Visualize,PrintStatusLine
+USE MOD_Overintegration     ,ONLY: Overintegration
+USE MOD_Overintegration_Vars,ONLY: OverintegrationType
+USE MOD_Predictor           ,ONLY: FillInitPredictor
+USE MOD_ReadInTools         ,ONLY: GETINT
+USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
+USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
+USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
+USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase,doTCSource
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
-USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
-USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_Output              ,ONLY: Visualize,PrintStatusLine
-USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
-USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
-USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
-USE MOD_DG_Vars             ,ONLY: U
-USE MOD_Overintegration     ,ONLY: Overintegration
-USE MOD_Overintegration_Vars,ONLY: OverintegrationType
-USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
-USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
-USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
-USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
-USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
+USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
+USE MOD_TimeDisc_Vars       ,ONLY: dt,nRKStages,CurrentStage,TimeDiscType
+USE MOD_TimeDisc_Vars       ,ONLY: doFinalize,writeCounter
 #if FV_ENABLED
 USE MOD_FV
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_Particle_Globals          ,ONLY: ALMOSTZERO
-USE MOD_Particle_Analyze          ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars     ,ONLY: doParticlePositionTrack,doParticleConvergenceTrack
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
-USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimestep,ManualTimestep
+USE MOD_Particle_Surface_Flux     ,ONLY: InitializeParticleSurfaceFlux
+USE MOD_Particle_TimeDisc_Vars    ,ONLY: b_dt,UseManualTimestep,ManualTimeStep,PreviousTime
+USE MOD_TimeDisc_Vars             ,ONLY: RKb
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance         ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
-USE MOD_LoadBalance_Timedisc,ONLY: LoadBalance,InitialAutoRestart
-USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,PerformLoadBalance
-USE MOD_LoadBalance_Vars    ,ONLY: RestartWallTime,LoadBalanceSample
+USE MOD_LoadBalance               ,ONLY: ComputeElemLoad,AnalyzeLoadBalance
+USE MOD_LoadBalance_Timedisc      ,ONLY: LoadBalance,InitialAutoRestart
+USE MOD_LoadBalance_Vars          ,ONLY: DoLoadBalance,PerformLoadBalance
+USE MOD_LoadBalance_Vars          ,ONLY: RestartWallTime,LoadBalanceSample
 #endif /*LOADBALANCE*/
-USE MOD_Debugmesh           ,ONLY: WriteDebugMesh
 !#if USE_MPI_SHARED
 !USE MOD_Particle_MPI_Shared ,ONLY: UpdateDGShared
 !#endif
-use MOD_IO_HDF5
-USE MOD_ReadInTools         ,ONLY: GETINT
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -232,8 +223,8 @@ REAL                         :: dt_MinOld,dtAnalyze,dtEnd,tStart
 INTEGER(KIND=8)              :: iter,iter_loc
 REAL                         :: CalcTimeStart,CalcTimeEnd
 INTEGER                      :: TimeArray(8)              !< Array for system time
-INTEGER                      :: errType,nCalcTimestep,writeCounter,writeTCounter
-LOGICAL                      :: doAnalyze,doFinalize
+INTEGER                      :: errType,nCalcTimestep,writeTCounter
+LOGICAL                      :: doAnalyze
 #if USE_LOADBALANCE
 INTEGER                      :: tmp_LoadBalanceSample    !> loadbalance sample saved until initial autorestart ist finished
 LOGICAL                      :: tmp_DoLoadBalance        !> loadbalance flag saved until initial autorestart ist finished
@@ -271,13 +262,18 @@ END SELECT
 
 ! Do first RK stage of first timestep to fill gradients
 CurrentStage=1
-! Call if an Analyze_Equation routine is called
-#if !USE_EXTEND_RHS
-IF (doAnalyzeEquation) CALL DGTimeDerivative_weakForm(t)
+#if USE_PARTICLES
+IF (UseManualTimestep) THEN
+  ! Skip the call, otherwise particles get incremented twice
+  PreviousTime = t
+  CALL DGTimeDerivative_weakForm(t)
+  PreviousTime = -1.
+END IF
+! Initialize surface flux
+CALL InitializeParticleSurfaceFlux()
 #else
-IF (UseManualTimestep) CALL DGTimeDerivative_weakForm(t)
-#endif /* USE_EXTEND_RHS */
-!IF(doCalcIndicator) CALL CalcIndicator(U,t)
+IF(doAnalyzeEquation) CALL DGTimeDerivative_weakForm(t)
+#endif /* USE_PARTICLES */
 
 !#if FV_ENABLED
 !! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
@@ -319,13 +315,10 @@ doFinalize = .FALSE.
 IF(WriteMacroSurfaceValues) MacroValSampTime = t
 
 ! Check if we are running in SteadyState mode
-IF (UseManualTimestep) THEN
-  dt_min = ManualTimestep
-  dt     = ManualTimestep
-END IF
+IF (UseManualTimestep) dt_min = ManualTimestep
 
-! Get time step if needed
-IF ((UseManualTimestep.AND.(dt_Min.EQ.0.)).OR.(.NOT.UseManualTimestep)) THEN
+! Get time step if needed. For DG time stepping, this is already calculated in BuildBGMAndIdentifyHaloRegion
+IF ((UseManualTimestep.AND.(dt_Min.EQ.0.))) THEN
 #endif
   dt     = CALCTIMESTEP(errType)
 #if USE_PARTICLES
@@ -333,6 +326,11 @@ IF ((UseManualTimestep.AND.(dt_Min.EQ.0.)).OR.(.NOT.UseManualTimestep)) THEN
 ELSE
   errType = 0
 END IF
+! Ensure dt is already the minimum in case dtAnalyze < dt
+dtAnalyze = MERGE(tAnalyze-t,HUGE(1.),tAnalyze-t.LE.dt*(1.+1.E-4))
+dt        = MIN(dt,dtAnalyze)
+! Update b_dt in case dt was changed
+b_dt = RKb*dt
 #endif
 
 #if USE_LOADBALANCE
@@ -355,8 +353,6 @@ CALL Analyze(t,iter,tend)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
-CALL PrintStatusLine(t,dt,tStart,tEnd)
-
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A,ES16.7)')'Initial Timestep  : ', dt
 IF(ViscousTimeStep)THEN
@@ -373,6 +369,7 @@ CALL FV_Info(1_8)
 
 SWRITE(UNIT_StdOut,'(A)')' CALCULATION RUNNING...'
 
+IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
 
 ! Run computation
 CalcTimeStart=FLEXITIME()
@@ -398,7 +395,7 @@ DO
 !#else
     IF (nCalcTimestep.LT.1) THEN
 !#endif
-      dt_Min=CALCTIMESTEP(errType)
+      dt_Min= CALCTIMESTEP(errType)
       nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
       dt_MinOld=dt_Min
       IF(errType.NE.0)THEN
@@ -415,12 +412,12 @@ DO
 #if USE_PARTICLES
   ELSE
     doAnalyze = .FALSE.
-  END IF
+  END IF ! UseManualTimestep
 #endif
   nCalcTimestep=nCalcTimestep-1
 
-  dt=dt_Min
-  dtAnalyze=HUGE(1.)
+  dt        = dt_Min
+  dtAnalyze = HUGE(1.)
   IF(tAnalyze-t.LE.dt*(1.+1.E-4))THEN
     dtAnalyze=tAnalyze-t; doAnalyze=.TRUE.
   END IF
@@ -439,6 +436,7 @@ DO
 #if USE_LOADBALANCE
   IF ((dtAnalyze.LE.LoadBalanceSample*dt                                      & ! all iterations in LoadbalanceSample interval
        .OR. (ALMOSTEQUALRELATIVE(dtAnalyze,LoadBalanceSample*dt,1e-5)))       & ! make sure to get the first iteration in interval
+       .AND. (writeCounter+1.EQ.nWriteData)                                   & ! next timestep will perform a write-out
        .AND. DoLoadBalance) THEN
     PerformLoadBalance = .TRUE.                                                 ! make sure Loadbalancing is enabled
   END IF
@@ -467,13 +465,22 @@ DO
   END IF
 
   ! Call DG operator to fill face data, fluxes, gradients for analyze
-  IF (doAnalyze) THEN
-    IF(doCalcIndicator) CALL CalcIndicator(U,t)
-#if FV_ENABLED
-    CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+#if USE_PARTICLES
+  IF (.NOT.UseManualTimestep) THEN
 #endif
-    CALL DGTimeDerivative_weakForm(t)
+    IF (doAnalyze) THEN
+      IF(doCalcIndicator) CALL CalcIndicator(U,t)
+#if FV_ENABLED
+      CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+#endif
+#if USE_PARTICLES
+      PreviousTime = t
+#endif
+      CALL DGTimeDerivative_weakForm(t)
+    END IF
+#if USE_PARTICLES
   END IF
+#endif
 
   ! Call your Analysis Routine for your Testcase here.
   IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
@@ -495,41 +502,51 @@ DO
       WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF: [',CalcTimeEnd            ,' sec ]'
       WRITE(UNIT_StdOut,'(A,ES16.7)')   ' Timestep   : ',dt_Min
       IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
-      WRITE(UNIT_stdOut,'(A,ES16.7)')   '#Timesteps  : ',REAL(iter)
+      WRITE(UNIT_stdOut,'(A,ES16.7)')   '#Timesteps   : ',REAL(iter)
+      IF(TimeDiscType.EQ.'ESDIRK') THEN
+        WRITE(UNIT_stdOut,'(A,ES16.7)') '#GMRES iter  : ',REAL(nGMRESIterGlobal)
+        WRITE(UNIT_stdOut,'(A,ES16.7)') '#Newton iter : ',REAL(nNewtonIterGlobal)
+        nGMRESIterGlobal  = 0
+        nNewtonIterGlobal = 0
+      END IF
     END IF !MPIroot
 #if FV_ENABLED
     CALL FV_Info(iter_loc)
 #endif
 
     ! Visualize data and write time average solution
-    writeTCounter=writeTCounter+1
-    IF((writeTCounter.EQ.nTimeAvgData).OR.doFinalize)THEN
-      IF(doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
-      writeTCounter=0
+    writeTCounter = writeTCounter+1
+    IF (writeTCounter.EQ.nTimeAvgData .OR. doFinalize) THEN
+      IF (doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
+      writeTCounter = 0
     END IF
 
     ! Visualize data and write solution
     writeCounter=writeCounter+1
-    IF((writeCounter.EQ.nWriteData).OR.doFinalize)THEN
+    IF (writeCounter.EQ.nWriteData .OR. doFinalize) THEN
       ! Write various derived data
-      IF(RP_onProc)         CALL WriteRP(PP_nVar,StrVarNames,t,.TRUE.)
-      IF(CalcPruettDamping) CALL WriteBaseflow(TRIM(MeshFile),t)
+      IF (RP_onProc)         CALL WriteRP(PP_nVar,StrVarNames,t,.TRUE.)
+      IF (CalcPruettDamping) CALL WriteBaseflow(TRIM(MeshFile),t)
       ! Write state file
       ! NOTE: this should be last in the series, so we know all previous data
       ! has been written correctly when the state file is present
-      tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
-      CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
-                            FutureTime=tWriteData,isErrorFile=.FALSE.)
+      tWriteData = MIN(tAnalyze+WriteData_dt,tEnd)
+      CALL WriteState(MeshFileName = TRIM(MeshFile) &
+                     ,OutputTime   = t              &
+                     ,FutureTime   = tWriteData     &
+                     ,isErrorFile  = .FALSE.)
       ! Visualize data
       CALL Visualize(t,U)
-      writeCounter=0
     END IF
 
     ! do analysis
     CALL Analyze(t,iter,tend,tStart_opt=tStart,dt_opt=dt,doPrintETA_opt=.TRUE.)
-    iter_loc  = 0
+    ! Overwrite WriteCounter after Analyze to keep particle analysis synchronous
+    IF((writeCounter.EQ.nWriteData).OR.doFinalize) writeCounter=0
+
+    iter_loc      = 0
     CalcTimeStart = FLEXITIME()
-    tAnalyze  = MIN(tAnalyze+Analyze_dt,  tEnd)
+    tAnalyze      = MIN(tAnalyze+Analyze_dt,  tEnd)
   END IF !ANALYZE
 
 #if USE_LOADBALANCE
@@ -550,13 +567,6 @@ DO
 
   IF(doFinalize) EXIT
 END DO
-
-#if USE_PARTICLES
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (doParticlePositionTrack .OR. doParticleConvergenceTrack) THEN
-    CALL TrackingParticlePosition(t)
-  END IF
-#endif
 
 END SUBROUTINE TimeDisc
 
@@ -583,12 +593,8 @@ USE MOD_FV                    ,ONLY: FV_Switch
 USE MOD_FV_Vars               ,ONLY: FV_toDGinRK
 #endif /* FV */
 #if USE_PARTICLES
+USE MOD_Particle_Timedisc_Vars,ONLY: b_dt
 USE MOD_Globals               ,ONLY: CollectiveStop
-USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
-USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByEuler,Particle_TimeStepByLSERK_RHS,Particle_TimeStepByLSERK
-USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByLSERK_RK_RHS,Particle_TimeStepByLSERK_RK
-USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
 #endif /* PARTICLES */
 !#if USE_MPI_SHARED
 !USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
@@ -596,12 +602,15 @@ USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: t                                     !< current simulation time
+REAL,INTENT(INOUT)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL     :: Ut_temp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) ! temporal variable for Ut
-REAL     :: tStage,b_dt(1:nRKStages)
+REAL     :: tStage
 INTEGER  :: iStage
+#if !USE_PARTICLES
+REAL     :: b_dt(1:nRKStages)
+#endif
 !===================================================================================================================================
 
 ! Premultiply with dt
@@ -613,23 +622,6 @@ IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 CurrentStage=1
 tStage=t
 
-#if USE_PARTICLES
-SELECT CASE (TRIM(ParticleTimeDiscMethod))
-  CASE('Runge-Kutta')
-    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt)
-  CASE('Euler')
-    CALL Particle_TimeStepByEuler(t,dt)
-  CASE DEFAULT
-    CALL CollectiveStop(__STAMP__,&
-                    'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-END SELECT
-
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-IF (doParticlePositionTrack) THEN
-  CALL TrackingParticlePosition(t)
-END IF
-#endif /* PARTICLES */
-
 !CALL DGTimeDerivative_weakForm(tStage)      !allready called in timedisc
 CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
@@ -637,18 +629,6 @@ CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 !#if USE_MPI_SHARED
 !  CALL UpdateDGShared(U)
 !#endif /*MPI_SHARED*/
-
-#if USE_PARTICLES
-  SELECT CASE (TRIM(ParticleTimeDiscMethod))
-    CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK(t,b_dt)
-    CASE('Euler')
-      ! Do nothing
-    CASE DEFAULT
-      CALL CollectiveStop(__STAMP__,&
-                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-  END SELECT
-#endif /* PARTICLES */
 
 ! Following steps
 DO iStage=2,nRKStages
@@ -660,34 +640,6 @@ DO iStage=2,nRKStages
   CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
 #endif /* FV */
   CALL DGTimeDerivative_weakForm(tStage)
-#if USE_PARTICLES
-  SELECT CASE (TRIM(ParticleTimeDiscMethod))
-    CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt)! ,b_dt)
-    CASE('Euler')
-      ! Do nothing
-    CASE DEFAULT
-      CALL CollectiveStop(__STAMP__,&
-                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-  END SELECT
-
-  ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (doParticlePositionTrack) THEN
-    CALL TrackingParticlePosition(tStage)
-  END IF
-#endif /* PARTICLES */
-
-#if USE_PARTICLES
-  SELECT CASE (TRIM(ParticleTimeDiscMethod))
-    CASE('Runge-Kutta')
-      CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
-    CASE('Euler')
-      ! Do nothing
-    CASE DEFAULT
-      CALL CollectiveStop(__STAMP__,&
-                      'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-  END SELECT
-#endif /* PARTICLES */
   CALL VAXPBY(nTotalU,Ut_temp,Ut,ConstOut=-RKA(iStage)) !Ut_temp = Ut - Ut_temp*RKA(iStage)
   CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
 
@@ -722,18 +674,13 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif /*FV_ENABLED*/
-#if USE_PARTICLES
-USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
-USE MOD_Particle_TimeDisc
-#endif /*USE_PARTICLES*/
 !#if USE_MPI_SHARED
 !USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
 !#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: t                                     !< current simulation time
+REAL,INTENT(INOUT)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL             :: S2(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
@@ -753,23 +700,10 @@ b_dt=RKb*dt
 CurrentStage=1
 tStage=t
 
-#if USE_PARTICLES
-CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt)
-
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-IF (doParticlePositionTrack) THEN
-  CALL TrackingParticlePosition(t)
-END IF
-#endif
-
 CALL VCopy(nTotalU,Uprev,U)                    !Uprev = U
 CALL VCopy(nTotalU,S2,U)                       !S2    = U
-!CALL DGTimeDerivative_weakForm(t)             ! allready called in timedisc
+!CALL DGTimeDerivative_weakForm(t)             ! already called in timedisc
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U     = U + Ut*b_dt(1)
-
-#if USE_PARTICLES
-CALL Particle_TimeStepByLSERK(t,b_dt)
-#endif
 
 DO iStage=2,nRKStages
   CurrentStage=iStage
@@ -781,15 +715,6 @@ DO iStage=2,nRKStages
 #endif
   CALL DGTimeDerivative_weakForm(tStage)
 
-#if USE_PARTICLES
-  CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt)
-
-  ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-  IF (doParticlePositionTrack) THEN
-    CALL TrackingParticlePosition(tStage)
-  END IF
-#endif
-
   CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                !S2 = S2 + U*RKdelta(iStage)
   CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U = RKg1(iStage)*U + RKg2(iStage)*S2
   CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                !U = U + RKg3(ek)*Uprev
@@ -799,88 +724,117 @@ DO iStage=2,nRKStages
 !  CALL UpdateDGShared(U)
 !#endif /*MPI_SHARED*/
 
-#if USE_PARTICLES
-  CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
-#endif
 END DO
 CurrentStage=1
 
 END SUBROUTINE TimeStepByLSERKK3
 
-
-#if USE_PARTICLES
 !===================================================================================================================================
-!> Low-Storage Runge-Kutta integration with frozen fluid: 2 register version
-!> This procedure takes the current time t, the time step dt and the intial solution.
-!> Only particle push is integrated in time
-!> RKA/b/c coefficients are low-storage coefficients, NOT the ones from butcher table.
+!> This procedure takes the current time t, the time step dt and the solution at
+!> the current time U(t) and returns the solution at the next time level.
+!> ESDIRK time integrator with RKA/b/c from Butcher tableau:
+!>
+!> Un=U
+!> Calculation of the explicit terms for every stage i=1,...,s of the ESDIRK
+!> RHS_(i-1) = Un + dt * sum(j=1,i-1) a_ij  Ut(t^n + c_j delta t^n, U_j)
+!> Call Newton for searching the roots of the function
+!> F(U) = U - RHS(i-1) - a_ii * delta t * Ut(t^n + c_i * delta t^n, U) = 0
 !===================================================================================================================================
-SUBROUTINE TimeStepSteadyState(t)
+SUBROUTINE TimeStepByESDIRK(t)
 ! MODULES
-USE MOD_Globals               ,ONLY: CollectiveStop
 USE MOD_PreProc
-USE MOD_TimeDisc_Vars         ,ONLY: dt,RKb,RKc,nRKStages,CurrentStage
-USE MOD_Particle_Analyze      ,ONLY: TrackingParticlePosition
-USE MOD_Particle_Analyze_Vars ,ONLY: doParticlePositionTrack
-USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByEuler,Particle_TimeStepByLSERK_RHS,Particle_TimeStepByLSERK
-USE MOD_Particle_TimeDisc     ,ONLY: Particle_TimeStepByLSERK_RK_RHS,Particle_TimeStepByLSERK_RK
-USE MOD_Particle_TimeDisc_Vars,ONLY: ParticleTimeDiscMethod
-!#if USE_MPI_SHARED
-!USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
-!#endif /* MPI_SHARED */
+USE MOD_Globals
+USE MOD_Mathtools         ,ONLY: GlobalVectorDotProduct
+USE MOD_DG                ,ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars           ,ONLY: U,Ut
+USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter,CFLScale,CFLScale_Readin
+#if PARABOLIC
+USE MOD_TimeDisc_Vars     ,ONLY: DFLScale,DFLScale_Readin
+#endif
+USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
+USE MOD_Mesh_Vars         ,ONLY: nElems
+USE MOD_Implicit          ,ONLY: Newton
+USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged,nInnerGMRES
+USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
+USE MOD_Precond           ,ONLY: BuildPrecond
+USE MOD_Precond_Vars      ,ONLY: PrecondIter
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: t                                     !< current simulation time
+REAL,INTENT(INOUT) :: t   !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL     :: tStage,b_dt(1:nRKStages)
-INTEGER  :: iStage
+REAL    :: Ut_implicit(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages) ! temporal variable for Ut_implicit
+REAL    :: Un(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+INTEGER :: iStage,iCounter
+REAL    :: tStage
+REAL    :: delta_embedded(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)          ! difference between solution obtained with
+                                                                             ! full order scheme and embedded scheme
 !===================================================================================================================================
+!CALL DGTimeDerivative_weakForm(t)! has to be called before preconditioner to fill U_master/slave ! already called in timedisc
+IF ((iter==0).OR.(MOD(iter,PrecondIter)==0)) CALL BuildPrecond(t,ESDIRK_gamma,dt)
+tStage                   = t
+Un                       = U
+Ut_implicit(:,:,:,:,:,1) = Ut
+DO iStage=2,nRKStages
+  IF (NewtonConverged) THEN
+    ! Time of current stage
+    tStage = tStage + RKc_implicit(iStage)*dt
+    ! Compute RHS for linear solver
+    LinSolverRHS=Un
+    DO iCounter=1,iStage-1
+      LinSolverRHS = LinSolverRHS + dt*(RKA_implicit(iStage,iCounter)*Ut_implicit(:,:,:,:,:,iCounter))
+    END DO
+    ! Get predictor of u^s+1
+    CALL Predictor(tStage,iStage)
+    ! Solve to new stage
+    CALL Newton(tStage,RKA_implicit(iStage,iStage))
+    ! Store old values for use in next stages
+    !CALL DGTimeDerivative_weakForm(tStage) ! already set in last Newton iteration
+    Ut_implicit(:,:,:,:,:,iStage)=Ut
+    ! Store predictor
+    CALL PredictorStoreValues(Ut_implicit,Un,tStage,iStage)
+  END IF
+END DO
 
-! Premultiply with dt
-b_dt = RKb*dt
-
-! First evaluation of DG operator already done in timedisc
-CurrentStage = 1
-tStage       = t
-
-
-! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-IF (doParticlePositionTrack) THEN
-  CALL TrackingParticlePosition(t)
+! Adaptive Newton tolerance, see: Kennedy,Carpenter: Additive Runge-Kutta Schemes for Convection-Diffusion-Reaction Equations
+IF (adaptepsNewton.AND.NewtonConverged) THEN
+  delta_embedded = 0.
+  DO iStage=1,nRKStages
+    delta_embedded = delta_embedded + (RKb_implicit(iStage)-RKb_embedded(iStage)) * Ut_implicit(:,:,:,:,:,iStage)
+  END DO
+  CALL GlobalVectorDotProduct(delta_embedded,delta_embedded,nDOFVarProc,epsNewton)
+  epsNewton = (MIN(dt*SQRT(epsNewton)/safety,1E-3))
+#if DEBUG
+  SWRITE(*,*) 'epsNewton = ',epsNewton
+#endif
 END IF
 
-SELECT CASE (TRIM(ParticleTimeDiscMethod))
-  CASE('Runge-Kutta')
-    CALL Particle_TimeStepByLSERK_RHS(t,currentStage,dt)
-    CALL Particle_TimeStepByLSERK(t,b_dt)
-
-    ! Following steps
-    DO iStage = 2,nRKStages
-      CurrentStage = iStage
-      tStage       = t+dt*RKc(iStage)
-
-      CALL Particle_TimeStepByLSERK_RK_RHS(t,currentStage,dt)
-
-      ! Outputs the particle position and velocity at every time step. Use only for debugging purposes
-      IF (doParticlePositionTrack) THEN
-        CALL TrackingParticlePosition(tStage)
-      END IF
-
-      CALL Particle_TimeStepByLSERK_RK(t,CurrentStage,b_dt)
-    END DO
-
-  CASE('Euler')
-    CALL Particle_TimeStepByEuler(t,dt)
-  CASE DEFAULT
-    CALL CollectiveStop(__STAMP__,&
-                    'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
-END SELECT
-
-CurrentStage = 1
-END SUBROUTINE TimeStepSteadyState
+IF (NewtonConverged) THEN
+  ! increase timestep size until target CFLScale is reached
+  CFLScale = MIN(CFLScale_Readin,1.05*CFLScale)
+#if PARABOLIC
+  DFLScale = MIN(DFLScale_Readin,1.05*DFLScale)
 #endif
+ELSE
+  ! repeat current timestep with decreased timestep size
+  U = Un
+  t = t-dt
+  CFLScale = 0.5*CFLScale
+#if PARABOLIC
+  DFLScale = 0.5*DFLScale
+#endif
+  NewtonConverged = .TRUE.
+  IF (CFLScale(0).LT.0.01*CFLScale_Readin(0)) THEN
+    CALL abort(__STAMP__, &
+    'Newton not converged with GMRES Iterations of last Newton step and CFL reduction',nInnerGMRES,CFLScale(0)/CFLScale_Readin(0))
+  END IF
+  SWRITE(*,*) 'Attention: Timestep failed, repeating with dt/2!'
+END IF
+
+nGMRESIterdt = 0
+END SUBROUTINE TimeStepByESDIRK
+
 
 
 !===================================================================================================================================
@@ -893,9 +847,9 @@ SUBROUTINE FillCFL_DFL(Nin_CFL,Nin_DFL)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_TimeDisc_Vars,ONLY:CFLScale,CFLScaleAlpha
+USE MOD_TimeDisc_Vars,ONLY:CFLScale,CFLScale_Readin,CFLScaleAlpha
 #if PARABOLIC
-USE MOD_TimeDisc_Vars,ONLY:DFLScale,DFLScaleAlpha,RelativeDFL
+USE MOD_TimeDisc_Vars,ONLY:DFLScale,DFLScale_Readin,DFLScaleAlpha,RelativeDFL
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 USE MOD_TimeDisc_Vars,ONLY:CFLScaleFV
@@ -928,6 +882,7 @@ END IF
 !scale with 2N+1
 CFLScale(0) = CFLScale(0)/(2.*Nin_CFL+1.)
 SWRITE(UNIT_stdOut,'(A,2ES16.7)') '   CFL (DG/FV):',CFLScale
+CFLScale_Readin = CFLScale
 
 #if PARABOLIC
 !########################### DFL ########################################
@@ -946,6 +901,7 @@ IF((Nin_DFL.GT.10).OR.(DFLScale(0).GT.alpha))THEN
 END IF
 DFLScale(0) = DFLScale(0)/(2.*Nin_DFL+1.)**2
 SWRITE(UNIT_stdOut,'(A,2ES16.7)') '   DFL (DG/FV):',DFLScale
+DFLScale_Readin = DFLScale
 #else
 dummy = Nin_DFL ! prevent compile warning
 #endif /*PARABOLIC*/

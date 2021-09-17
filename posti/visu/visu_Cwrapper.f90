@@ -83,7 +83,7 @@ USE MOD_MPI        ,ONLY: InitMPI
 #if USE_PARTICLES
 USE MOD_Visu_Vars  ,ONLY: PartNamesAll
 #endif
-USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll
+USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll,nVarIni
 USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
 USE MOD_VTK        ,ONLY: CARRAY
 USE MOD_IO_HDF5    ,ONLY: InitMPIInfo
@@ -110,6 +110,9 @@ CHARACTER(LEN=255),POINTER            :: partnames_pointer(:)
 !===================================================================================================================================
 statefile = cstrToChar255(statefile_IN, strlen_state)
 meshfile  = cstrToChar255(meshfile_IN , strlen_mesh)
+
+! Set dummy value to force visu to read the actual values
+nVarIni = -1
 
 CALL InitMPIInfo()
 CALL InitMPI(mpi_comm_IN)
@@ -159,7 +162,7 @@ SUBROUTINE visu_CWrapper(mpi_comm_IN,  &
     coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,globalnodeidsSurfFV_out,          globalcellidsSurfFV_out,  &
     varnamesSurf_out,&
     coordsPart_out   ,valuesPart_out   ,nodeidsPart_out,   varnamesPart_out,   componentsPart_out,   &
-    coordsErosion_out,valuesErosion_out,nodeidsErosion_out,varnamesErosion_out,componentsErosion_out)
+    coordsImpact_out,valuesImpact_out,nodeidsImpact_out,varnamesImpact_out,componentsImpact_out)
 ! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
@@ -212,11 +215,11 @@ TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: valuesPart_out
 TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: nodeidsPart_out
 TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: varnamesPart_out
 TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: componentsPart_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: coordsErosion_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: valuesErosion_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: nodeidsErosion_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: varnamesErosion_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: componentsErosion_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: coordsImpact_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: valuesImpact_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: nodeidsImpact_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: varnamesImpact_out
+TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: componentsImpact_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)                      :: prmfile
@@ -275,12 +278,12 @@ IF (MeshFileMode) THEN
   nodeidsPart_out%len   = 0
   varnamesPart_out%len  = 0
   componentsPart_out%len  = 0
-  coordsErosion_out%len    = 0
-  coordsErosion_out%dim    = 0
-  valuesErosion_out%len    = 0
-  nodeidsErosion_out%len   = 0
-  varnamesErosion_out%len  = 0
-  componentsErosion_out%len  = 0
+  coordsImpact_out%len    = 0
+  coordsImpact_out%dim    = 0
+  valuesImpact_out%len    = 0
+  nodeidsImpact_out%len   = 0
+  varnamesImpact_out%len  = 0
+  componentsImpact_out%len  = 0
 
   RETURN
 END IF
@@ -315,27 +318,27 @@ ELSE
 END IF
 
 #if USE_PARTICLES
-ALLOCATE(PD%PartIds_Visu(1:PD%nPart_visu))
-ALLOCATE(PD%Part_Pos_visu(1:3,1:PD%nPart_Visu))
-ALLOCATE(PD%Part_visu(1:PD%nPartVar_visu,1:PD%nPart_visu))
-IF(ALLOCATED(PD%PartData_HDF5))THEN
-  PD%Part_Pos_visu=PD%PartData_HDF5(1:3,:)
-  PD%Part_visu=PD%PartData_HDF5(4:,:)
+ALLOCATE(PD%PartIds_Visu (                   1:PD%nPart_visu) &
+        ,PD%Part_Pos_visu(1:3               ,1:PD%nPart_Visu) &
+        ,PD%Part_visu    (1:PD%nPartVar_visu,1:PD%nPart_visu))
+IF (ALLOCATED(PD%PartData_HDF5)) THEN
+  PD%Part_Pos_visu = PD%PartData_HDF5(1:3,:)
+  PD%Part_visu     = PD%PartData_HDF5(4:,:)
 END IF
 
 CALL WritePartDataToVTK_array(PD%nPart_visu,PD%nPartVar_visu,coordsPart_out,valuesPart_out,nodeidsPart_out,varnamesPart_out,&
                               componentsPart_out,PD%Part_Pos_visu,PD%Part_visu,PD%PartIds_Visu,PD%VarNamePartCombine,&
                               PD%VarNamePartCombineLen,PD%VarNamePartVisu,PD%PartCPointers_allocated)
 
-ALLOCATE(PDE%PartIds_Visu(1:PDE%nPart_visu))
-ALLOCATE(PDE%Part_Pos_visu(1:3,1:PDE%nPart_Visu))
-ALLOCATE(PDE%Part_visu(1:PDE%nPartVar_visu,1:PDE%nPart_visu))
+ALLOCATE(PDE%PartIds_Visu (                    1:PDE%nPart_visu) &
+        ,PDE%Part_Pos_visu(1:3                ,1:PDE%nPart_Visu) &
+        ,PDE%Part_visu    (1:PDE%nPartVar_visu,1:PDE%nPart_visu))
 IF(ALLOCATED(PDE%PartData_HDF5))THEN
-  PDE%Part_Pos_visu=PDE%PartData_HDF5(1:3,:)
-  PDE%Part_visu=PDE%PartData_HDF5(4:,:)
+  PDE%Part_Pos_visu = PDE%PartData_HDF5(1:3,:)
+  PDE%Part_visu     = PDE%PartData_HDF5(4:,:)
 END IF
-CALL WritePartDataToVTK_array(PDE%nPart_visu,PDE%nPartVar_visu,coordsErosion_out,valuesErosion_out,&
-                                 nodeidsErosion_out,varnamesErosion_out,componentsErosion_out,PDE%Part_Pos_visu,&
+CALL WritePartDataToVTK_array(PDE%nPart_visu,PDE%nPartVar_visu,coordsImpact_out,valuesImpact_out,&
+                                 nodeidsImpact_out,varnamesImpact_out,componentsImpact_out,PDE%Part_Pos_visu,&
                                  PDE%Part_visu,PDE%PartIds_Visu,PDE%VarNamePartCombine,&
                                  PDE%VarNamePartCombineLen,PDE%VarNamePartVisu,PDE%PartCPointers_allocated)
 #endif

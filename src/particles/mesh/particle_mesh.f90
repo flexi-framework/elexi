@@ -254,18 +254,20 @@ USE MOD_Particle_Surfaces      ,ONLY: GetSideSlabNormalsAndIntervals
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation,BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
 USE MOD_Particle_Surfaces_Vars ,ONLY: D_Bezier,Vdm_Bezier,sVdm_Bezier
-USE MOD_Particle_Tracking_Vars ,ONLY: FastPeriodic,CountNbOfLostParts,NbrOfLostParticles,NbrOfLostParticlesTotal,CartesianPeriodic
+USE MOD_Particle_Tracking_Vars ,ONLY: FastPeriodic,CartesianPeriodic,CountNbOfLostParts
+USE MOD_Particle_Tracking_Vars ,ONLY: NbrOfLostParticles,NbrOfLostParticlesTotal,NbrOfLostParticlesTotal_old
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierSampleN,BezierSampleXi,SurfFluxSideSize,TriaSurfaceFlux
-USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod, DisplayLostParticles
+USE MOD_Particle_Tracking_Vars ,ONLY: PartStateLostVecLength,PartStateLost,PartLostDataSize
 ! USE MOD_Particle_Tracking_Vars ,ONLY: DoPeriodicCheck,DoPeriodicFix
 USE MOD_ReadInTools            ,ONLY: GETREAL,GETINT,GETLOGICAL,GetRealArray
 #if CODE_ANALYZE
-USE MOD_Particle_Surfaces_Vars ,ONLY: SideBoundingBoxVolume
+! USE MOD_Particle_Surfaces_Vars ,ONLY: SideBoundingBoxVolume
 USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 #if USE_MPI
 USE MOD_Particle_BGM           ,ONLY: WriteHaloInfo
-USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars
 #endif /* USE_MPI */
 #if USE_LOADBALANCE
@@ -285,9 +287,7 @@ INTEGER          :: RefMappingGuessProposal
 INTEGER          :: iSample
 INTEGER          :: firstSide,lastSide,iSide,SideID
 CHARACTER(LEN=2) :: tmpStr
-#if USE_MPI
-INTEGER(KIND=MPI_ADDRESS_KIND) :: MPISharedSize
-#else
+#if !USE_MPI
 INTEGER          :: ALLOCSTAT
 #endif
 !===================================================================================================================================
@@ -358,26 +358,30 @@ CALL InitGetCNSideID()
 
 CountNbOfLostParts      = GETLOGICAL('CountNbOfLostParts',".FALSE.")
 IF (CountNbOfLostParts) THEN
-  NbrOfLostParticles      = 0
+  ! Nullify and reset lost parts container after write out
+  PartStateLostVecLength = 0
+
+  ! Allocate PartStateLost for a small number of particles and double the array size each time the
+  ! maximum is reached
+  ALLOCATE(PartStateLost(1:PartLostDataSize,1:10))
+  PartStateLost=0.
+END IF ! CountNbrOfLostParts
+NbrOfLostParticles      = 0
+#if USE_LOADBALANCE
+! Nullify only once at the beginning of a simulation (not during load balance steps!)
+IF(.NOT.PerformLoadBalance)THEN
+#endif
   NbrOfLostParticlesTotal = 0
-!  DisplayLostParticles    = GETLOGICAL('DisplayLostParticles')
+  NbrOfLostParticlesTotal_old = 0
+#if USE_LOADBALANCE
 END IF
+#endif
+DisplayLostParticles    = GETLOGICAL('DisplayLostParticles')
 
 #if CODE_ANALYZE
 PARTOUT            = GETINT('PartOut','0')
 MPIRankOut         = GETINT('MPIRankOut','0')
 #endif /*CODE_ANALYZE*/
-
-! DoPeriodicCheck   = GETLOGICAL('Part-DoPeriodicCheck')
-! IF (DoPeriodicCheck) THEN
-!   SELECT CASE(TrackingMethod)
-!     CASE(REFMAPPING,TRACING)
-!       DoPeriodicFix   = GETLOGICAL('Part-DoPeriodicFix')
-!     CASE(TRIATRACKING)
-!       SWRITE(UNIt_stdOut,'(A)') 'Part-DoPeriodicCheck currently only available with TrackingMethods REFMAPPING and TRACING. Disabling'
-!       DoPeriodicCheck = .FALSE.
-!   END SELECT
-! END IF
 
 CartesianPeriodic = GETLOGICAL('Part-CartesianPeriodic','.FALSE.')
 IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('Part-FastPeriodic','.FALSE.')
@@ -449,14 +453,11 @@ SELECT CASE(TrackingMethod)
 !    CALL CalcBezierControlPoints()
 
 #if USE_MPI
-    MPISharedSize = INT((3**2*nComputeNodeTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-    CALL Allocate_Shared(MPISharedSize,(/3,3,nComputeNodeTotalSides/),SideSlabNormals_Shared_Win,SideSlabNormals_Shared)
+    CALL Allocate_Shared((/3,3,nComputeNodeTotalSides/),SideSlabNormals_Shared_Win,SideSlabNormals_Shared)
     CALL MPI_WIN_LOCK_ALL(0,SideSlabNormals_Shared_Win,IERROR)
-    MPISharedSize = INT((6*nComputeNodeTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-    CALL Allocate_Shared(MPISharedSize,(/6,nComputeNodeTotalSides/),SideSlabIntervals_Shared_Win,SideSlabIntervals_Shared)
+    CALL Allocate_Shared((/6,nComputeNodeTotalSides/),SideSlabIntervals_Shared_Win,SideSlabIntervals_Shared)
     CALL MPI_WIN_LOCK_ALL(0,SideSlabIntervals_Shared_Win,IERROR)
-    MPISharedSize = INT((nComputeNodeTotalSides),MPI_ADDRESS_KIND)*MPI_ADDRESS_KIND
-    CALL Allocate_Shared(MPISharedSize,(/nComputeNodeTotalSides/),BoundingBoxIsEmpty_Shared_Win,BoundingBoxIsEmpty_Shared)
+    CALL Allocate_Shared((/nComputeNodeTotalSides/),BoundingBoxIsEmpty_Shared_Win,BoundingBoxIsEmpty_Shared)
     CALL MPI_WIN_LOCK_ALL(0,BoundingBoxIsEmpty_Shared_Win,IERROR)
     firstSide = INT(REAL (myComputeNodeRank   *nComputeNodeTotalSides)/REAL(nComputeNodeProcessors))+1
     lastSide  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalSides)/REAL(nComputeNodeProcessors))
@@ -473,9 +474,9 @@ SELECT CASE(TrackingMethod)
     firstSide = 1
     lastSide  = nNonUniqueGlobalSides
 #endif /* USE_MPI */
-#if CODE_ANALYZE
-    ALLOCATE(SideBoundingBoxVolume(nSides))
-#endif /*CODE_ANALYZE*/
+! #if CODE_ANALYZE
+!     ALLOCATE(SideBoundingBoxVolume(nSides))
+! #endif /*CODE_ANALYZE*/
 
     IF (BezierElevation.GT.0) THEN
       DO iSide = firstSide,LastSide
@@ -524,7 +525,7 @@ SELECT CASE(TrackingMethod)
       dy = ABS(SideSlabIntervals(4)-SideSlabIntervals(3))
       dz = ABS(SideSlabIntervals(6)-SideSlabIntervals(5))
       SideID = SideInfo
-      SideBoundingBoxVolume(SideID)=dx*dy*dz
+      ! SideBoundingBoxVolume(SideID)=dx*dy*dz
     END DO
 #endif /*CODE_ANALYZE*/
 
@@ -665,6 +666,7 @@ SELECT CASE(TrackingMethod)
     END IF
 
 #if USE_LOADBALANCE
+    ! BezierControlPoints are global and do not change during load balance
     IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
       ! CalcParticleMeshMetrics

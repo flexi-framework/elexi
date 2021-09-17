@@ -59,6 +59,10 @@ INTERFACE Riemann
   MODULE PROCEDURE Riemann
 END INTERFACE
 
+INTERFACE Riemann_Point
+  MODULE PROCEDURE Riemann_Point
+END INTERFACE
+
 #if PARABOLIC
 INTERFACE ViscousFlux
   MODULE PROCEDURE ViscousFlux
@@ -73,6 +77,7 @@ END INTERFACE
 
 PUBLIC::InitRiemann
 PUBLIC::Riemann
+PUBLIC::Riemann_Point
 PUBLIC::FinalizeRiemann
 !==================================================================================================================================
 
@@ -234,7 +239,7 @@ END SELECT
 END SUBROUTINE InitRiemann
 
 !==================================================================================================================================
-!> Computes the numerical flux
+!> Computes the numerical flux for a side calling the flux calculation pointwise.
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
 !> Attention 2: numerical flux is backrotated at the end of the routine!!
 !==================================================================================================================================
@@ -266,8 +271,8 @@ ELSE
   Riemann_loc => Riemann_pointer
 END IF
 
-! Momentum has to be rotatet using the normal system individual for each
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
+  ! Momentum has to be rotatet using the normal system individual for each
   ! left state: U_L
   U_LL(EXT_DENS)=U_L(DENS,i,j)
   U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
@@ -314,18 +319,103 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
 
   ! Back Rotate the normal flux into Cartesian direction
   Fout(DENS,i,j)=F(DENS)
-  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     &
-                  + t1(:,i,j)*F(MOM2)  &
+  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)  &
+               + t1(:,i,j)*F(MOM2)  &
 #if PP_dim==3
-                  + t2(:,i,j)*F(MOM3)
+               + t2(:,i,j)*F(MOM3)
 #else
-                  + 0.
+               + 0.
 #endif
   Fout(ENER,i,j)=F(ENER)
 END DO; END DO
 END SUBROUTINE Riemann
 
+!==================================================================================================================================
+!> Computes the numerical flux
+!> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
+!> Attention 2: numerical flux is backrotated at the end of the routine!!
+!==================================================================================================================================
+SUBROUTINE Riemann_Point(FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
+! MODULES
+USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+REAL,DIMENSION(          3),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
+LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: FOut       !< advective flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,DIMENSION(PP_nVar) :: F_L,F_R,F
+REAL,DIMENSION(PP_2Var) :: U_LL,U_RR
+PROCEDURE(RiemannInt),POINTER :: Riemann_loc !< pointer defining the standard inner Riemann solver
+!==================================================================================================================================
+IF (doBC) THEN
+  Riemann_loc => RiemannBC_pointer
+ELSE
+  Riemann_loc => Riemann_pointer
+END IF
 
+! Momentum has to be rotatet using the normal system individual for each
+! left state: U_L
+U_LL(EXT_DENS)=U_L(DENS)
+U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
+U_LL(EXT_ENER)=U_L(ENER)
+U_LL(EXT_PRES)=UPrim_L(PRES)
+
+
+! rotate velocity in normal and tangential direction
+U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV),nv(:))
+U_LL(EXT_VEL2)=DOT_PRODUCT(UPrim_L(VELV),t1(:))
+U_LL(EXT_MOM1)=U_LL(EXT_DENS)*U_LL(EXT_VEL1)
+U_LL(EXT_MOM2)=U_LL(EXT_DENS)*U_LL(EXT_VEL2)
+#if PP_dim==3
+U_LL(EXT_VEL3)=DOT_PRODUCT(UPrim_L(VELV),t2(:))
+U_LL(EXT_MOM3)=U_LL(EXT_DENS)*U_LL(EXT_VEL3)
+#else
+U_LL(EXT_VEL3)=0.
+U_LL(EXT_MOM3)=0.
+#endif
+! right state: U_R
+U_RR(EXT_DENS)=U_R(DENS)
+U_RR(EXT_SRHO)=1./U_RR(EXT_DENS)
+U_RR(EXT_ENER)=U_R(ENER)
+U_RR(EXT_PRES)=UPrim_R(PRES)
+! rotate momentum in normal and tangential direction
+U_RR(EXT_VEL1)=DOT_PRODUCT(UPRIM_R(VELV),nv(:))
+U_RR(EXT_VEL2)=DOT_PRODUCT(UPRIM_R(VELV),t1(:))
+U_RR(EXT_MOM1)=U_RR(EXT_DENS)*U_RR(EXT_VEL1)
+U_RR(EXT_MOM2)=U_RR(EXT_DENS)*U_RR(EXT_VEL2)
+#if PP_dim==3
+U_RR(EXT_VEL3)=DOT_PRODUCT(UPRIM_R(VELV),t2(:))
+U_RR(EXT_MOM3)=U_RR(EXT_DENS)*U_RR(EXT_VEL3)
+#else
+U_RR(EXT_VEL3)=0.
+U_RR(EXT_MOM3)=0.
+#endif
+
+# ifndef SPLIT_DG
+CALL EvalEulerFlux1D_fast(U_LL,F_L)
+CALL EvalEulerFlux1D_fast(U_RR,F_R)
+#endif /*SPLIT_DG*/
+
+ CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
+
+ ! Back Rotate the normal flux into Cartesian direction
+ Fout(DENS)=F(DENS)
+ Fout(MOMV)=nv(:)*F(MOM1)     &
+                + t1(:)*F(MOM2)  &
+#if PP_dim==3
+                + t2(:)*F(MOM3)
+#else
+                + 0.
+#endif
+Fout(ENER)=F(ENER)
+END SUBROUTINE Riemann_Point
 
 #if PARABOLIC
 !==================================================================================================================================
@@ -340,6 +430,8 @@ SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
                       )
 ! MODULES
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -359,8 +451,6 @@ REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)              :: muSGS_L,muSGS_R
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                                       :: p,q
-REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                      :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                      :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
@@ -546,14 +636,15 @@ r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
 r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate differences
-Delta_U(1:5) = U_RR(CONS) - U_LL(CONS)
-Delta_U(6)   = Delta_U(5)-(Delta_U(3)-RoeVel(2)*Delta_U(1))*RoeVel(2) - (Delta_U(4)-RoeVel(3)*Delta_U(1))*RoeVel(3)
+Delta_U(CONS)     = U_RR(CONS) - U_LL(CONS)
+Delta_U(DELTA_U6) = Delta_U(DELTA_U5)-(Delta_U(DELTA_U3)-RoeVel(DELTA_U2)*Delta_U(DELTA_U1))*RoeVel(2) -&
+                    (Delta_U(DELTA_U4)-RoeVel(DELTA_U3)*Delta_U(DELTA_U1))*RoeVel(DELTA_U3)
 ! calculate factors
-Alpha3 = Delta_U(3) - RoeVel(2)*Delta_U(1)
-Alpha4 = Delta_U(4) - RoeVel(3)*Delta_U(1)
+Alpha3 = Delta_U(DELTA_U3) - RoeVel(DELTA_U2)*Delta_U(DELTA_U1)
+Alpha4 = Delta_U(DELTA_U4) - RoeVel(DELTA_U3)*Delta_U(DELTA_U1)
 Alpha2 = ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)
-Alpha1 = 0.5/Roec * (Delta_U(1)*(RoeVel(1)+Roec) - Delta_U(2) - Roec*Alpha2)
-Alpha5 = Delta_U(1) - Alpha1 - Alpha2
+Alpha1 = 0.5/Roec * (Delta_U(DELTA_U1)*(RoeVel(1)+Roec) - Delta_U(DELTA_U2) - Roec*Alpha2)
+Alpha5 = Delta_U(DELTA_U1) - Alpha1 - Alpha2
 #ifndef SPLIT_DG
 ! assemble Roe flux
 F=0.5*((F_L+F_R) - &
@@ -621,9 +712,9 @@ RoeDens   = SQRT(U_LL(EXT_DENS)*U_RR(EXT_DENS))
 ! Roe+Pike version of Roe Riemann solver
 
 ! calculate jump
-Delta_U(DENS)   = U_RR(EXT_DENS) - U_LL(EXT_DENS)
-Delta_U(VELV)   = U_RR(EXT_VELV) - U_LL(EXT_VELV)
-Delta_U(PRES)   = U_RR(EXT_PRES) - U_LL(EXT_PRES)
+Delta_U(DELTA_U1)   = U_RR(EXT_DENS) - U_LL(EXT_DENS)
+Delta_U(DELTA_UV)   = U_RR(EXT_VELV) - U_LL(EXT_VELV)
+Delta_U(DELTA_U5)   = U_RR(EXT_PRES) - U_LL(EXT_PRES)
 
 ! mean eigenvalues and eigenvectors
 a  = (/ RoeVel(1)-Roec, RoeVel(1), RoeVel(1), RoeVel(1), RoeVel(1)+Roec      /)
@@ -635,11 +726,11 @@ r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate wave strenghts
 tmp      = 0.5/(Roec*Roec)
-Alpha(1) = tmp*(Delta_U(5)-RoeDens*Roec*Delta_U(2))
-Alpha(2) = Delta_U(1) - Delta_U(5)*2.*tmp
-Alpha(3) = RoeDens*Delta_U(3)
-Alpha(4) = RoeDens*Delta_U(4)
-Alpha(5) = tmp*(Delta_U(5)+RoeDens*Roec*Delta_U(2))
+Alpha(1) = tmp*(Delta_U(DELTA_U5)-RoeDens*Roec*Delta_U(DELTA_U2))
+Alpha(2) = Delta_U(DELTA_U1) - Delta_U(DELTA_U5)*2.*tmp
+Alpha(3) = RoeDens*Delta_U(DELTA_U3)
+Alpha(4) = RoeDens*Delta_U(DELTA_U4)
+Alpha(5) = tmp*(Delta_U(DELTA_U5)+RoeDens*Roec*Delta_U(DELTA_U2))
 
 ! Harten+Hyman entropy fix (apply only for acoustic waves, don't fix r)
 
@@ -736,19 +827,20 @@ r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
 r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate differences
-Delta_U(1:5) = U_RR(EXT_CONS) - U_LL(EXT_CONS)
-Delta_U(6)   = Delta_U(5)-(Delta_U(3)-RoeVel(2)*Delta_U(1))*RoeVel(2) - (Delta_U(4)-RoeVel(3)*Delta_U(1))*RoeVel(3)
+Delta_U(CONS) = U_RR(EXT_CONS) - U_LL(EXT_CONS)
+Delta_U(DELTA_U6)   = Delta_U(DELTA_U5)-(Delta_U(DELTA_U3)-RoeVel(2)*Delta_U(DELTA_U1))*RoeVel(2) - &
+                      (Delta_U(DELTA_U4)-RoeVel(3)*Delta_U(DELTA_U1))*RoeVel(3)
 
 ! low Mach-Number fix
 Ma_loc = SQRT(absVel)/(Roec*SQRT(kappa))
-Delta_U(2:4) = Delta_U(2:4) * Ma_loc
+Delta_U(DELTA_UV) = Delta_U(DELTA_UV) * Ma_loc
 
 ! calculate factors
-Alpha3 = Delta_U(3) - RoeVel(2)*Delta_U(1)
-Alpha4 = Delta_U(4) - RoeVel(3)*Delta_U(1)
+Alpha3 = Delta_U(DELTA_U3) - RoeVel(2)*Delta_U(DELTA_U1)
+Alpha4 = Delta_U(DELTA_U4) - RoeVel(3)*Delta_U(DELTA_U1)
 Alpha2 = ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)
-Alpha1 = 0.5/Roec * (Delta_U(1)*(RoeVel(1)+Roec) - Delta_U(2) - Roec*Alpha2)
-Alpha5 = Delta_U(1) - Alpha1 - Alpha2
+Alpha1 = 0.5/Roec * (Delta_U(DELTA_U1)*(RoeVel(1)+Roec) - Delta_U(DELTA_U2) - Roec*Alpha2)
+Alpha5 = Delta_U(DELTA_U1) - Alpha1 - Alpha2
 
 #ifndef SPLIT_DG
 ! assemble Roe flux

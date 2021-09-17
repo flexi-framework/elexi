@@ -202,7 +202,7 @@ REAL                  :: G(2),Xi2(2),Jac2(2,2),sJac2(2,2),xWinner(3),NormVecWinn
 REAL                  :: F(1:3),eps_F
 
 !===================================================================================================================================
-SWRITE(UNIT_StdOut,'(A,I4,A)')' Project ',nRP,' RPs on the closest boundary...'
+SWRITE(UNIT_StdOut,'(A,I4,A)',ADVANCE='NO')' Project ',nRP,' RPs on the closest boundary...'
 iRP2=0
 dist2RP=HUGE(1.)
 NormVecRP=0.
@@ -283,7 +283,8 @@ DO SideID=1,nBCSides
         END DO !l=0,NSuper
       END DO! i=0,NSuper
     END DO! j=0,NSuper
-    ! get initial value of the functional G
+
+    ! Get initial value of the functional G
     CALL LagrangeInterpolationPolys(Xi2(1),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(1,:))
     CALL LagrangeInterpolationPolys(Xi2(2),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(2,:))
     G=0.
@@ -292,12 +293,14 @@ DO SideID=1,nBCSides
         G=G+Gmat(:,i,j)*Lag_NSuper(1,i)*Lag_NSuper(2,j)
       END DO! i=0,NSuper
     END DO! j=0,NSuper
+
+    ! Start Newton
     eps_F=1.E-10*(SUM(G*G))
     NewtonIter=0
     DO WHILE ((SUM(G*G).GT.eps_F).AND.(NewtonIter.LT.50))
       NewtonIter=NewtonIter+1
-      ! Compute G Jacobian dG/dXi
 
+      ! Compute G Jacobian dG/dXi
       Jac2=0.
       DO j=0,NSuper
         DO i=0,NSuper
@@ -317,6 +320,8 @@ DO SideID=1,nBCSides
       ! Compute function value
       CALL LagrangeInterpolationPolys(Xi2(1),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(1,:))
       CALL LagrangeInterpolationPolys(Xi2(2),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(2,:))
+      ! Exit if we are far enough outside of [-1,1] for the basis to reach 'Infinity' overflow
+      IF (ANY(ABS(Lag_NSuper(:,:)).GT.(HUGE(1.)))) EXIT
       G=0.
       DO j=0,NSuper
        DO i=0,NSuper

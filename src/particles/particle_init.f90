@@ -104,6 +104,10 @@ CALL prms%CreateLogicalOption(      'TriaSurfaceFlux'         , 'Using Triangle-
 CALL prms%CreateLogicalOption(      'CountNbOfLostParts'       , 'Count number of lost particles during tracking that can not '  //&
                                                                  'be found with fallbacks.'                                        &
                                                                , '.FALSE.')
+CALL prms%CreateLogicalOption(      'DisplayLostParticles'     , 'Display position, velocity, species and host element of '      //&
+                                                                 'particles lost during particle tracking (TrackingMethod = '    //&
+                                                                 'triatracking, tracing)'                                          &
+                                                               ,'.FALSE.')
 
 CALL prms%CreateIntOption(          'BezierClipLineVectorMethod','TODO-DEFINE-PARAMETER'                                           &
                                                                , '2')
@@ -129,6 +133,8 @@ CALL prms%CreateLogicalOption(      'Part-SteadyState'         , 'Only update pa
 CALL prms%CreateRealOption(         'Part-ManualTimestep'      , 'Manual time step routine for frozen fluid state'                 &
                                                                , '0.')
 CALL prms%CreateLogicalOption(      'Part-LowVeloRemove'       , 'Flag if low velocity particles should be removed'                &
+                                                               , '.FALSE.')
+CALL prms%CreateLogicalOption(      'Part-CalcSource'          , 'Flag to enable two-way coupling'                                 &
                                                                , '.FALSE.')
 
 CALL prms%CreateRealOption(         'Part-DelayTime'           , "During delay time the particles won't be moved so the fluid "  //&
@@ -175,24 +181,23 @@ CALL prms%CreateIntOption(          'Part-nSpecies'             , 'Number of spe
                                                                 , '1')
 CALL prms%CreateIntOption(          'Part-Species[$]-nInits'    , 'Number of different initial particle placements for Species [$]'&
                                                                 , '0'        , numberedmulti=.TRUE.)
-CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for forces calculation.\n'                //&
-                                                                  ' - Li\n'                                                      //&
-                                                                  ' - Minier\n'                                                  //&
-                                                                  ' - Wang\n'                                                    //&
-                                                                  ' - Jacobs\n'                                                  //&
-                                                                  ' - Vinkovic'                                                    &
+CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for calculation of the drag force.\n'       &
                                                                 , 'none'     , numberedmulti=.TRUE.)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'none',            RHS_NONE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tracer',          RHS_TRACER)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'convergence',     RHS_CONVERGENCE)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Wang',            RHS_WANG)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Vinkovic',        RHS_VINKOVIC)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Jacobs',          RHS_JACOBS)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Haider',          RHS_HAIDER)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'Hoelzer',         RHS_HOELZER)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'inertia',         RHS_INERTIA)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'SGS-Li',          RHS_LI)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'SGS-Minier',      RHS_MINIER)
+CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle model used for calculation of the drag factor.\n'      &
+                                                                , 'none'     , numberedmulti=.TRUE.)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'schiller',        DF_PART_SCHILLER)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'putnam',          DF_PART_PUTNAM)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'haider',          DF_PART_HAIDER)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'hoelzer',         DF_PART_HOELZER)
 CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle mass of species [$] [kg]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                              &
+CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                           &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'                       &
                                                                 , '0.'      , numberedmulti=.TRUE.)
@@ -216,7 +221,9 @@ CALL prms%CreateRealOption(         'Part-Species[$]-HighVeloThreshold', 'Thresh
 CALL prms%CreateRealOption(         'Part-Species[$]-SphericityIC', 'Particle sphericity of species [$] [m]'                       &
                                                                 , '1.'       , numberedmulti=.TRUE.)
 #if USE_EXTEND_RHS
-CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcLiftForce', 'Flag to calculate the lift force'                            &
+CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcSaffmanForce', 'Flag to calculate the Saffman lift force'                 &
+                                                                , '.FALSE.' , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcMagnusForce', 'Flag to calculate the Magnus force'                        &
                                                                 , '.FALSE.' , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcVirtualMass', 'Flag to calculate the virtual mass force'                  &
                                                                 , '.FALSE.' , numberedmulti=.TRUE.)
@@ -257,24 +264,26 @@ CALL prms%CreateStringOption(       'Part-Species[$]-SpaceIC'   , 'Specifying Ke
                                                                   ' - point\n'                                                   //&
                                                                   ' - line_with_equidistant_distribution\n'                      //&
                                                                   ' - line\n'                                                    //&
-                                                                  ' - cross\n'                                                   //&
+                                                                  ' - Gaussian\n'                                                //&
                                                                   ' - plane\n'                                                   //&
                                                                   ' - disc\n'                                                    //&
+                                                                  ' - cross\n'                                                   //&
+                                                                  ' - circle\n'                                                  //&
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
                                                                   ' - cylinder\n'                                                //&
-                                                                  ' - Gaussian\n'                                                //&
+                                                                  ' - sphere\n'                                                  //&
                                                                   ' - load_from_file\n'                                            &
                                                                 , 'cuboid'  , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-BasePointIC','Base point for IC cuboid and IC sphere'                         &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-BasePointIC','Base point for IC'                                              &
                                                                  , '0. , 0. , 0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-BaseVector1IC','First base vector for IC cuboid'                              &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-BaseVector1IC','First base vector for IC'                                     &
                                                                  , '1. , 0. , 0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-BaseVector2IC', 'Second base vector for IC cuboid'                            &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-BaseVector2IC', 'Second base vector for IC'                                   &
                                                                  , '0. , 1. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-BaseVariance','Variance for Gaussian distribtution'                           &
                                                                  ,'1.'           , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-NormalIC'   , 'Normal orientation of circle.'                                 &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-NormalIC'   , 'Normal orientation of IC.'                                     &
                                                                  , '0. , 0. , 1.', numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcHeightFromDt', 'Calculated cuboid/cylinder height from v and dt'          &
                                                                 , '.FALSE.'  , numberedmulti=.TRUE.)
@@ -283,7 +292,7 @@ CALL prms%CreateRealOption(         'Part-Species[$]-CuboidHeightIC'  , 'Height 
 CALL prms%CreateRealOption(         'Part-Species[$]-CylinderHeightIC', 'Third measure of cylinder  (set 0 for flat rectangle),' //&
                                                                   ' negative value = opposite direction'                           &
                                                                 , '1.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-RadiusIC'  , 'Radius for IC circle'                                           &
+CALL prms%CreateRealOption(         'Part-Species[$]-RadiusIC'  , 'Radius for IC'                                                  &
                                                                 , '1.'       , numberedmulti=.TRUE.)
 
 ! Exclude regions
@@ -292,29 +301,6 @@ CALL prms%CreateIntOption(          'Part-Species[$]-NumberOfExcludeRegions', 'N
 
 CALL prms%SetSection("Particle Species nInits")
 ! if nInit > 0 some variables have to be defined twice
-CALL prms%CreateIntFromStringOption('Part-Species[$]-Init[$]-RHSMethod' , 'Particle model used for forces calculation.\n'        //&
-                                                                  ' - Li\n'                                                      //&
-                                                                  ' - Minier\n'                                                  //&
-                                                                  ' - Wang\n'                                                    //&
-                                                                  ' - Jacobs\n'                                                  //&
-                                                                  ' - Vinkovic'                                                    &
-                                                                , 'none'     , numberedmulti=.TRUE.)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'none',            RHS_NONE)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'tracer',          RHS_TRACER)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'convergence',     RHS_CONVERGENCE)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Li',       	    RHS_LI)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Minier',          RHS_MINIER)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Wang',            RHS_WANG)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Vinkovic',        RHS_VINKOVIC)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Jacobs',          RHS_JACOBS)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Haider',          RHS_HAIDER)
-CALL addStrListEntry(               'Part-Species[$]-Init[$]-RHSMethod' ,'Hoelzer',         RHS_HOELZER)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-MassIC'    , 'Particle mass of species [$] [kg]'                      &
-                                                                , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DiameterIC', 'Particle diameter of species [$] [m]'                      &
-                                                                , '0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'               &
-                                                                , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-velocityDistribution', 'Used velocity distribution.\n'              //&
                                                                   ' - constant: all particles have the same velocity defined in' //&
                                                                   ' VeloVecIC\n'                                                 //&
@@ -326,15 +312,6 @@ CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-VeloVecIC ', 'Veloc
                                                                 , '0. , 0. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloTurbIC', 'Turbulent fluctuation of initial velocity. (ensemble velocity) '&
                                                                 , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-LowVeloThreshold', 'Threshold velocity of particles after reflection.' //&
-                                                                  ' Slower particles are deleted [$] [m/s]'                        &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-HighVeloThreshold', 'Threshold velocity of particles in the entire field.' //&
-                                                                  ' Faster particles are deleted [$] [m/s]'                        &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-SphericityIC', 'Particle sphericity of species [$] [m]'               &
-                                                                , '1.'       , numberedmulti=.TRUE.)
-
 
 ! emission time
 CALL prms%SetSection('Particle Species Ninits Emission')
@@ -366,8 +343,10 @@ CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Speci
                                                                   ' - point\n'                                                   //&
                                                                   ' - line_with_equidistant_distribution\n'                      //&
                                                                   ' - line\n'                                                    //&
-                                                                  ' - Gaussian'                                                  //&
+                                                                  ' - Gaussian\n'                                                //&
+                                                                  ' - plane\n'                                                   //&
                                                                   ' - disc\n'                                                    //&
+                                                                  ' - cross\n'                                                   //&
                                                                   ' - circle\n'                                                  //&
                                                                   ' - circle_equidistant\n'                                      //&
                                                                   ' - cuboid\n'                                                  //&
@@ -375,15 +354,15 @@ CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Speci
                                                                   ' - sphere\n'                                                  //&
                                                                   ' - load_from_file\n'                                            &
                                                                 , 'cuboid'  , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BasePointIC','Base point for IC cuboid and IC sphere'                 &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BasePointIC','Base point for IC'                                      &
                                                                  , '0. , 0. , 0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BaseVector1IC','First base vector for IC cuboid'                      &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BaseVector1IC','First base vector for IC'                             &
                                                                  , '1. , 0. , 0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BaseVector2IC', 'Second base vector for IC cuboid'                    &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-BaseVector2IC', 'Second base vector for IC'                           &
                                                                  , '0. , 1. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-BaseVariance','Variance for Gaussian distribtution'                   &
                                                                  ,'1.'           , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-NormalIC'   , 'Normal orientation of circle.'                         &
+CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-NormalIC'   , 'Normal orientation of IC.'                             &
                                                                  , '0. , 0. , 1.', numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-CalcHeightFromDt', 'Calculated cuboid/cylinder height from v and dt'  &
                                                                 , '.FALSE.'  , numberedmulti=.TRUE.)
@@ -392,7 +371,7 @@ CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-CuboidHeightIC'  , 
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-CylinderHeightIC', 'Third measure of cylinder  (set 0 for flat rectangle),' //&
                                                                   ' negative value = opposite direction'                           &
                                                                 , '1.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-RadiusIC'  , 'Radius for IC circle'                                   &
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-RadiusIC'  , 'Radius for IC'                                          &
                                                                 , '1.'       , numberedmulti=.TRUE.)
 
 ! Exclude regions
@@ -433,37 +412,35 @@ CALL prms%CreateStringOption(       'Part-Boundary[$]-WallCoeffModel', 'Coeffici
                                                                   ' - Tabakoff1981\n'                                            //&
                                                                   ' - Bons2017\n'                                                //&
                                                                   ' - Whitaker2018\n'                                            //&
-                                                                  ' - Fong2019'                                                    &
+                                                                  ' - Fong2019\n'                                                //&
+                                                                  ' - RebANN'                                                      &
                                                                             , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Boundary[$]-RoughWall'  ,'Rough wall modelling is used.'                                 &
                                                                   ,'.FALSE.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-RoughMeanIC', 'Mean of Gaussian dist..'                                      &
                                                                   ,'0.0', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Boundary[$]-RoughVarianceIC', 'Mean of Gaussian dist..'                                  &
-                                                                  ,'1.0', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Boundary[$]-Young'    , "Young's modulus defining stiffness of wall material"            &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Boundary[$]-Poisson'  , "Poisson ratio defining relation of transverse to axial strain"  &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Boundary[$]-CoR'      , "Coefficent of restitution for normal velocity component"        &
-                                                                , '1.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-YoungIC'   , "Young's modulus of particle defining stiffness of particle material"        &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC' , "Poisson ratio of particle defining relation of transverse to axial strain"  &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff', "Yield strength defining elastic deformation"                    &
-                                                                ,'0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-RoughWall' , "Enables rough wall modelling"                                   &
-                                                                ,'.TRUE.'   , numberedmulti=.TRUE.)
-! if nInit > 0 some variables have to be defined twice
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-YoungIC'   , "Young's modulus defining stiffness of particle material"&
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-PoissonIC' , "Poisson ratio defining relation of transverse to axial strain" &
-                                                                , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-YieldCoeff', "Yield strength defining elastic deformation"            &
-                                                                ,'0.'       , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-RoughWall',  "Enables rough wall modelling"                           &
-                                                                ,'.TRUE.'   , numberedmulti=.TRUE.)
+                                                                  ,'0.04', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-Young'      , "Young's modulus defining stiffness of wall material"          &
+                                                                  , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-Poisson'    , "Poisson ratio defining relation of transverse to axial strain"&
+                                                                  , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-FricCoeff'  , "Friction coeff"                                               &
+                                                                  , '0.3'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Boundary[$]-CoR'        , "Coefficent of restitution for normal velocity component"      &
+                                                                  , '1.'      , numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(       'Part-Boundary[$]-ANNModel'   , 'Specifying file which contains the weights of an MLP.'        &
+                                                                  , 'model/weights.dat', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-YoungIC'     , "Young's modulus of particle defining stiffness of particle material"       &
+                                                                  , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Whitaker_a'  , "Scale factor which defines Young's modulus of particle"       &
+                                                                  , '1.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-PoissonIC'   , "Poisson ratio of particle defining relation of transverse to axial strain" &
+                                                                  , '0.'      , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-YieldCoeff'  , "Yield strength defining elastic deformation"                  &
+                                                                  , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateLogicalOption(      'Part-Species[$]-RoughWall'   , "Enables rough wall modelling"                                 &
+                                                                  ,'.TRUE.'   , numberedmulti=.TRUE.)
 
 ! Ambient condition ================================================================================================================
 CALL prms%CreateLogicalOption(      'Part-Boundary[$]-AmbientCondition', 'Use ambient condition (condition "behind" boundary).'    &
@@ -565,7 +542,7 @@ USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_SGS,               ONLY: ParticleSGS
 USE MOD_Particle_Surfaces,          ONLY: InitParticleSurfaces
-USE MOD_Particle_Surface_Flux,      ONLY: InitializeParticleSurfaceflux
+USE MOD_Particle_TimeDisc,          ONLY: Particle_InitTimeDisc
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone
 #if USE_MPI
@@ -600,6 +577,9 @@ END IF
 
 !CALL InitializeVariables(ManualTimeStep_opt)
 CALL InitializeVariables()
+! Set particle timedisc pointer
+CALL Particle_InitTimeDisc()
+
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
 #if USE_RW
 CALL ParticleInitRandomWalk()
@@ -618,8 +598,6 @@ ELSE
 END IF
 ! Initialize emission. If no particles are present, assume restart from pure fluid and perform initial inserting
 CALL InitializeParticleEmission()
-! Initialize surface flux
-CALL InitializeParticleSurfaceFlux()
 
 #if USE_MPI
 ! has to be called AFTER InitializeVariables because we need to read the parameter file to know the CommSize
@@ -663,7 +641,7 @@ USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPa
 USE MOD_Output_Vars                ,ONLY: ProjectName
 USE MOD_Output                     ,ONLY: InitOutputToFile
 USE MOD_Restart_Vars               ,ONLY: DoRestart,RestartTime
-USE MOD_Timedisc_Vars              ,ONLY: tAnalyze
+USE MOD_Analyze_Vars               ,ONLY: Analyze_dt
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -677,8 +655,9 @@ USE MOD_Timedisc_Vars              ,ONLY: tAnalyze
 INTEGER               :: RPP_maxMemory, jP
 CHARACTER(30)         :: tmpStr
 !===================================================================================================================================
-doPartIndex             = GETLOGICAL('doPartIndex','.FALSE.')
+doPartIndex             = GETLOGICAL('Part-PartIndex','.FALSE.')
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
+doCalcSourcePart        = GETLOGICAL('Part-CalcSource','.FALSE.')
 CALL AllocateParticleArrays()
 CALL InitializeVariablesRandomNumbers()
 
@@ -712,8 +691,8 @@ IF (RecordPart.GT.0) THEN
     WRITE(UNIT=tmpStr,FMT='(I2)') jP
     ALLOCATE(RPP_Plane(jP)%RPP_Data(RPP_nVarNames,RPP_MaxBufferSize))
     RPP_Plane(jP)%RPP_Data = 0.
-    RPP_Plane(jP)%pos = GETREAL('Part-RPPosition'//TRIM(ADJUSTL(tmpStr)),'1.')
-    RPP_Plane(jP)%dir = GETINT('Part-RPDirection'//TRIM(ADJUSTL(tmpStr)),'0')
+    RPP_Plane(jP)%pos = GETREAL('Part-RPPosition'//TRIM(ADJUSTL(tmpStr)),'0.')
+    RPP_Plane(jP)%dir = GETINT('Part-RPDirection'//TRIM(ADJUSTL(tmpStr)),'1')
     RPP_Plane(jP)%RPP_Records = 0.
   END DO
 END IF
@@ -750,13 +729,14 @@ CALL MPI_BARRIER(PartMPI%COMM,IERROR)
 
 #if USE_EXTEND_RHS && ANALYZE_RHS
 FileName_RHS = TRIM(ProjectName)//'_RHS'
-WRITE(tmpStr,FMT='(F10.2)') tAnalyze
+WRITE(tmpStr,FMT='(E8.2)') Analyze_dt
 dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(ADJUSTL(tmpStr)))
 IF(dtWriteRHS.GT.0.0)THEN
   tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
 
-  CALL InitOutputToFile(FileName_RHS,'RHS',16,&
-    [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
+  CALL InitOutputToFile(FileName_RHS,'RHS',19,&
+    [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fmmx","Fmmy","Fmmz",&
+                   "Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
 END IF
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
@@ -774,9 +754,9 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
-#if USE_EXTEND_RHS
+#if USE_FAXEN_CORR
 USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_FAXEN_CORR */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -788,21 +768,21 @@ USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 INTEGER               :: ALLOCSTAT
 !===================================================================================================================================
 ! Allocate array to hold particle properties
-ALLOCATE(PartState(       1:6,1:PDM%maxParticleNumber),    &
-         PartReflCount(       1:PDM%maxParticleNumber),    &
-         LastPartPos(     1:3,1:PDM%maxParticleNumber),    &
-         PartPosRef(      1:3,1:PDM%MaxParticleNumber),    &
-         PartSpecies(         1:PDM%maxParticleNumber),    &
+ALLOCATE(PartState(1:PP_nVarPart,1:PDM%maxParticleNumber),    &
+         PartReflCount(          1:PDM%maxParticleNumber),    &
+         LastPartPos(        1:3,1:PDM%maxParticleNumber),    &
+         PartPosRef(         1:3,1:PDM%MaxParticleNumber),    &
+         PartSpecies(            1:PDM%maxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
-         Pt(              1:3,1:PDM%maxParticleNumber),    &
-         Pt_temp(         1:6,1:PDM%maxParticleNumber),    &
+         Pt(    1:PP_nVarPartRHS,1:PDM%maxParticleNumber),    &
+         Pt_temp(  1:PP_nVarPart,1:PDM%maxParticleNumber),    &
 ! Allocate array for particle position in reference coordinates
-         PDM%ParticleInside(  1:PDM%maxParticleNumber),    &
-         PDM%nextFreePosition(1:PDM%maxParticleNumber),    &
-         PDM%IsNewPart(       1:PDM%maxParticleNumber),    &
+         PDM%ParticleInside(     1:PDM%maxParticleNumber),    &
+         PDM%nextFreePosition(   1:PDM%maxParticleNumber),    &
+         PDM%IsNewPart(          1:PDM%maxParticleNumber),    &
 ! Allocate particle-to-element-mapping (PEM) arrays
-         PEM%Element(         1:PDM%maxParticleNumber),    &
-         PEM%lastElement(     1:PDM%maxParticleNumber),    &
+         PEM%Element(            1:PDM%maxParticleNumber),    &
+         PEM%lastElement(        1:PDM%maxParticleNumber),    &
          STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
   CALL ABORT(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
@@ -815,6 +795,8 @@ PartReflCount                                = 0.
 Pt                                           = 0.
 PartSpecies                                  = 0
 PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
+PEM%Element(         1:PDM%maxParticleNumber)= 0
+PEM%lastElement(     1:PDM%maxParticleNumber)= 0
 Pt_temp                                      = 0
 PartPosRef                                   =-888.
 
@@ -824,12 +806,12 @@ IF(doPartIndex) THEN
 END IF
 
 ! Extended RHS
-#if USE_EXTEND_RHS
+#if USE_FAXEN_CORR
 ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUy2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUz2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
-         U_local   (PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
-         gradp_local(1,3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+!         U_local   (PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
+!         gradp_local(1,3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUx_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &
          gradUx_slave_loc(  1:3,0:PP_N,0:PP_NZ,1:nSides),  &
          gradUy_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &
@@ -839,12 +821,12 @@ ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
   CALL ABORT(__STAMP__,'ERROR in particle_init.f90: Cannot allocate extended particle arrays!')
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_FAXEN_CORR */
 
 ! Basset force
 #if USE_BASSETFORCE
 N_Basset    = 20
-nBassetVars = INT(N_Basset * 3)
+nBassetVars = INT(N_Basset * 3 + 3)
 ALLOCATE(durdt(nBassetVars,1:PDM%maxParticleNumber))
 durdt = 0.
 bIter = 0.
@@ -930,6 +912,7 @@ USE MOD_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
 USE MOD_ISO_VARYING_STRING
+USE MOD_Part_RHS, ONLY: InitRHS
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -942,6 +925,7 @@ INTEGER               :: iSpec,iInit,iExclude
 CHARACTER(32)         :: tmpStr,tmpStr2,tmpStr3
 CHARACTER(200)        :: Filename_loc             ! specifying keyword for velocity distribution
 INTEGER               :: PartField_shape(2)
+INTEGER               :: drag_factor
 !===================================================================================================================================
 ! Loop over all species and get requested data
 DO iSpec = 1, nSpecies
@@ -956,6 +940,13 @@ DO iSpec = 1, nSpecies
   !--> General Species Values
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec
   Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'               )
+  SELECT CASE (Species(iSpec)%RHSMethod)
+    CASE (RHS_INERTIA, RHS_MINIER)
+      drag_factor                      = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'              )
+      CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
+    CASE DEFAULT
+      ! do nothing
+  END SELECT
   Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'             ,'0.')
   Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'         ,'0.')
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'          ,'0.')
@@ -971,8 +962,18 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold'   ,'0.')
   Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-HighVeloThreshold'  ,'0.')
   Species(iSpec)%SphericityIC          = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-SphericityIC'       ,'1.')
+  ! Warn when outside valid range of Haider model
+  IF ((drag_factor .EQ. DF_PART_HAIDER) .AND. (Species(iSpec)%SphericityIC .LT. 0.670)) THEN
+    SWRITE(UNIT_StdOut,*) 'WARNING: SphericityIC ', Species(iSpec)%SphericityIC,'< 0.670, drag coefficient may not be accurate.'
+  END IF
+  IF ((drag_factor .EQ. DF_PART_HOELZER) .AND. (Species(iSpec)%SphericityIC .EQ. 1.0)) THEN
+    SWRITE(UNIT_StdOut,*) 'INFO: SphericityIC ', Species(iSpec)%SphericityIC,'== 1, drag coefficient of Schiller and Naumann is used.'
+    drag_factor = DF_PART_SCHILLER
+    CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
+  END IF
 #if USE_EXTEND_RHS
-  Species(iSpec)%CalcLiftForce         = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcLiftForce'      ,'.FALSE.')
+  Species(iSpec)%CalcSaffmanForce      = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcSaffmanForce'   ,'.FALSE.')
+  Species(iSpec)%CalcMagnusForce       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcMagnusForce'    ,'.FALSE.')
   Species(iSpec)%CalcVirtualMass       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcVirtualMass'    ,'.FALSE.')
   Species(iSpec)%CalcUndisturbedFlow   = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcUndisturbedFlow','.FALSE.')
   Species(iSpec)%CalcBassetForce       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcBassetForce    ','.FALSE.')
@@ -983,6 +984,7 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%YoungIC               = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YoungIC'            ,'0.')
   Species(iSpec)%PoissonIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PoissonIC'          ,'0.')
   Species(iSpec)%YieldCoeff            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YieldCoeff'         ,'0.')
+  Species(iSpec)%Whitaker_a            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-Whitaker_a'         ,'1.')
 
   !--> Rough wall modelling
   Species(iSpec)%doRoughWallModelling  = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RoughWall'          ,'.TRUE.')
@@ -1022,6 +1024,25 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%VeloIC                = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloIC'                ,'0.')
     Species(iSpec)%Init(iInit)%VeloTurbIC            = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloTurbIC'            ,'0.')
     Species(iSpec)%Init(iInit)%velocityDistribution  = TRIM(GETSTR( 'Part-Species'//TRIM(tmpStr2)//'-velocityDistribution'  ,'constant'))
+    IF (TRIM(Species(iSpec)%Init(iInit)%velocityDistribution) .EQ. "load_from_file") THEN
+      ! load from binary file
+      IF (MPIRoot) THEN
+        WRITE(FileName_loc,"(A30,I2,A4)") FilenameRecordPart, iSpec-1, ".dat"
+        Filename_loc = TRIM(REPLACE(Filename_loc," ","",Every=.TRUE.))
+        OPEN(33, FILE=TRIM(FileName_loc),FORM="UNFORMATTED", STATUS="UNKNOWN", ACTION="READ", ACCESS='STREAM')
+        READ(33) PartField_shape
+        ALLOCATE(Species(iSpec)%Init(iInit)%PartField(PartField_shape(1), PartField_shape(2)))
+        READ(33) Species(iSpec)%Init(iInit)%PartField(:,:)
+        CLOSE(33)
+      END IF
+#if USE_MPI
+      CALL MPI_BCAST(PartField_shape,2,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+      Species(iSpec)%Init(iInit)%nPartField = PartField_shape(1)
+      IF(.NOT.ALLOCATED(Species(iSpec)%Init(iInit)%PartField))&
+        ALLOCATE(Species(iSpec)%Init(iInit)%PartField(PartField_shape(1), PartField_shape(2)))
+      CALL MPI_BCAST(Species(iSpec)%Init(iInit)%PartField,PartField_shape(1)*PartField_shape(2),MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+#endif
+    END IF
     Species(iSpec)%Init(iInit)%InflowRiseTime        = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-InflowRiseTime'        ,'0.')
     Species(iSpec)%Init(iInit)%NumberOfExcludeRegions= GETINT(      'Part-Species'//TRIM(tmpStr2)//'-NumberOfExcludeRegions','0')
 
@@ -1046,6 +1067,11 @@ DO iSpec = 1, nSpecies
         Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
         Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'      ,'1.')
         Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3,'0. , 0. , 1.')
+        IF (TRIM(Species(iSpec)%Init(iInit)%velocityDistribution) .EQ. "load_from_file") THEN
+          Species(iSpec)%Init(iInit)%RadiusIC  = &
+            MIN(MAXVAL(SQRT(Species(iSpec)%Init(iInit)%PartField(:,1)**2+Species(iSpec)%Init(iInit)%PartField(:,2)**2)),Species(iSpec)%Init(iInit)%RadiusIC)
+          SWRITE(UNIT_StdOut,'(A,I0,A,E16.5)') ' | RadiusIC of species ', iSpec, ' = ', Species(iSpec)%Init(iInit)%RadiusIC
+        END IF
       CASE('circle', 'circle_equidistant')
         Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
         Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'        ,'1.')
@@ -1069,27 +1095,6 @@ DO iSpec = 1, nSpecies
         Species(iSpec)%Init(iInit)%BaseVariance      = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-BaseVariance'    ,'1.')
         Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'        ,'1.')
         Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3,'0. , 0. , 1.')
-      CASE('load_from_file')
-        Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3,'0. , 0. , 0.')
-        Species(iSpec)%Init(iInit)%RadiusIC          = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-RadiusIC'        ,'1.')
-        Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3,'0. , 0. , 1.')
-        ! load from binary file
-        IF (MPIRoot) THEN
-          WRITE(FileName_loc,"(A30,I2,A4)") FilenameRecordPart, iSpec-1, ".dat"
-          Filename_loc = TRIM(REPLACE(Filename_loc," ","",Every=.TRUE.))
-          OPEN(33, FILE=TRIM(FileName_loc),FORM="UNFORMATTED", STATUS="UNKNOWN", ACTION="READ", ACCESS='STREAM')
-          READ(33) PartField_shape
-          ALLOCATE(Species(iSpec)%Init(iInit)%PartField(PartField_shape(1), PartField_shape(2)))
-          READ(33) Species(iSpec)%Init(iInit)%PartField(:,:)
-          CLOSE(33)
-        END IF
-#if USE_MPI
-        CALL MPI_BCAST(PartField_shape,2,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
-        Species(iSpec)%Init(iInit)%nPartField = PartField_shape(1)
-        IF(.NOT.ALLOCATED(Species(iSpec)%Init(iInit)%PartField))&
-          ALLOCATE(Species(iSpec)%Init(iInit)%PartField(PartField_shape(1), PartField_shape(2)))
-        CALL MPI_BCAST(Species(iSpec)%Init(iInit)%PartField,PartField_shape(1)*PartField_shape(2),MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
-#endif
 !      CASE('sin_deviation')
         ! Currently not implemented
       CASE DEFAULT
@@ -1323,10 +1328,21 @@ ALLOCATE(PartBound%RoughVarianceIC     (1:nBCs))
 !ALLOCATE(PartBound%AmbientVelo    (1:3,1:nBCs))
 !ALLOCATE(PartBound%AmbientDens        (1:nBCs))
 !ALLOCATE(PartBound%AmbientDynamicVisc (1:nBCs))
+PartBound%SourceBoundName = ''
+PartBound%SourceBoundType = ''
+PartBound%TargetBoundCond = -1
+PartBound%WallTemp        = 0.
+PartBound%WallVelo        = 0.
+PartBound%WallModel       = ''
+PartBound%WallCoeffModel  = ''
+PartBound%doRoughWallModelling= .FALSE.
+PartBound%RoughMeanIC     = 0.
+PartBound%RoughVarianceIC = 0.
 
 ! Bons particle rebound model
 ALLOCATE(PartBound%Young               (1:nBCs))
 ALLOCATE(PartBound%Poisson             (1:nBCs))
+ALLOCATE(PartBound%FricCoeff           (1:nBCs))
 
 ! Fong coefficent of restitution
 ALLOCATE(PartBound%CoR                 (1:nBCs))
@@ -1343,7 +1359,7 @@ END DO
 ! Loop over all boundaries and get information
 DO iBC = 1,nBCs
   IF (BoundaryType(iBC,1).EQ.0) THEN
-    PartBound%TargetBoundCond(iBC) = -1
+    PartBound%TargetBoundCond(iBC) = PartBound%InternalBC
     SWRITE(UNIT_stdOut,'(A,I0,A)') " ... PartBound",iBC,"is internal bound, no mapping needed"
     CYCLE
   END IF
@@ -1389,26 +1405,32 @@ DO iBC = 1,nBCs
       PartBound%doRoughWallModelling(iBC) = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-RoughWall'          ,'.FALSE.')
       IF (PartBound%doRoughWallModelling(iBC)) THEN
         PartBound%RoughMeanIC(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughMeanIC'        ,'0.0')
-        ! Variance in degree, default 20 degree
-        PartBound%RoughVarianceIC(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughVarianceIC'    ,'5.0')
+        ! Variance in radii
+        PartBound%RoughVarianceIC(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughVarianceIC'    ,'0.035')
+        IF (PartBound%RoughVarianceIC(iBC).GT.1.0) &
+          CALL CollectiveSTOP(__STAMP__,'Rough variance is high, disable this message only if you are sure that you are correct!')
       END IF
       ! Non-perfect reflection
       IF (PartBound%WallModel(iBC).EQ.'coeffRes') THEN
           PartBound%WallCoeffModel(iBC)   = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallCoeffModel'     ,'Tabakoff1981')
 
           SELECT CASE(PartBound%WallCoeffModel(iBC))
-            ! Bons particle rebound model
             CASE ('Bons2017','Whitaker2018')
               PartBound%Young(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Young')
               PartBound%Poisson(iBC)      = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Poisson')
+              PartBound%FricCoeff(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-FricCoeff'          ,'0.3')
 
             ! Fong coefficient of reflection
             CASE('Fong2019')
               PartBound%CoR(iBC)          = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-CoR'                ,'1.')
 
-            ! Different CoR per direction
             CASE('Tabakoff1981','Grant1975')
               ! nothing to readin
+
+            ! Rebound ANN valid for v_{air} \in [150,350] [m/s]
+            CASE('RebANN')
+              ! Readin weights
+              CALL LoadWeightsANN(GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-ANNModel'       ,'model/weights.dat'))
 
             CASE DEFAULT
               CALL CollectiveSTOP(__STAMP__,'Unknown wall model given!')
@@ -1724,7 +1746,7 @@ INTEGER                       :: iStage_loc
 
 ! Rebuild Pt_tmp-coefficients assuming F=const. (value at wall) in previous stages
 ALLOCATE(Pa_rebuilt_coeff(1:nRKStages) &
-        ,Pa_rebuilt  (1:3,1:nRKStages) &
+        ,Pa_rebuilt  (1:PP_nVarPartRHS,1:nRKStages) &
         ,Pv_rebuilt  (1:3,1:nRKStages) &
         ,v_rebuilt   (1:3,0:nRKStages-1))
 
@@ -1757,6 +1779,7 @@ USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
 USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
 USE MOD_Particle_Surfaces,          ONLY: FinalizeParticleSurfaces
+USE MOD_Particle_TimeDisc,          ONLY: Particle_FinalizeTimeDisk
 USE MOD_Particle_TimeDisc_Vars,     ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
 USE MOD_Particle_Vars
 #if USE_MPI
@@ -1823,7 +1846,15 @@ SDEALLOCATE(PartBound%RoughMeanIC)
 SDEALLOCATE(PartBound%RoughVarianceIC)
 SDEALLOCATE(PartBound%Young)
 SDEALLOCATE(PartBound%Poisson)
+SDEALLOCATE(PartBound%FricCoeff)
 SDEALLOCATE(PartBound%CoR)
+SDEALLOCATE(PartBoundANN%nN)
+SDEALLOCATE(PartBoundANN%w)
+SDEALLOCATE(PartBoundANN%b)
+SDEALLOCATE(PartBoundANN%beta)
+SDEALLOCATE(PartBoundANN%output)
+SDEALLOCATE(PartBoundANN%max_in)
+SDEALLOCATE(PartBoundANN%max_out)
 
 ! particle-to-element-mapping (PEM) arrays
 SDEALLOCATE(PEM%Element)
@@ -1834,13 +1865,19 @@ SDEALLOCATE(PEM%pEnd)
 SDEALLOCATE(PEM%pNext)
 
 ! Extended RHS
-#if USE_EXTENDED_RHS
-SDEALLOCATE(gradUx2,gradUy2,gradUz2)
-SDEALLOCATE(gradUx_master_loc,gradUx_slave_loc)
-SDEALLOCATE(gradUy_master_loc,gradUy_slave_loc)
-SDEALLOCATE(gradUz_master_loc,gradUz_slave_loc)
-SDEALLOCATE(U_local,gradp_local)
-#endif /* USE_EXTENDED_RHS */
+#if USE_FAXEN_CORR
+SDEALLOCATE(gradUx2)
+SDEALLOCATE(gradUy2)
+SDEALLOCATE(gradUz2)
+SDEALLOCATE(gradUx_master_loc)
+SDEALLOCATE(gradUx_slave_loc)
+SDEALLOCATE(gradUy_master_loc)
+SDEALLOCATE(gradUy_slave_loc)
+SDEALLOCATE(gradUz_master_loc)
+SDEALLOCATE(gradUz_slave_loc)
+!SDEALLOCATE(U_local)
+!SDEALLOCATE(gradp_local)
+#endif /* USE_FAXEN_CORR */
 
 ! Basset force
 #if USE_BASSETFORCE
@@ -1854,6 +1891,9 @@ CALL FinalizeParticleInterpolation
 #if USE_RW
 CALL ParticleFinalizeRandomWalk()
 #endif /*USE_RW*/
+
+! time disk
+CALL Particle_FinalizeTimeDisk()
 
 !
 SDEALLOCATE(Seeds)
@@ -2018,5 +2058,87 @@ END IF
 CALL RANDOM_SEED(PUT=Seeds)
 
 END SUBROUTINE InitRandomSeed
+
+
+SUBROUTINE LoadWeightsANN(Filename_loc)
+!===================================================================================================================================
+! Read in parameters of ANN
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Boundary_Vars ,ONLY: PartBoundANN
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(255),INTENT(IN)     :: Filename_loc
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                       :: tmp(2),iLayer
+INTEGER                       :: hgs=30       ! max. memory
+!===================================================================================================================================
+
+IF (MPIRoot) THEN
+  !Filename_loc = TRIM(REPLACE(Filename_loc," ","",Every=.TRUE.))
+  OPEN(34, FILE=TRIM(FileName_loc),FORM="UNFORMATTED", STATUS="UNKNOWN", ACTION="READ", ACCESS='STREAM')
+  ! Read number of layers
+  READ(34) PartBoundANN%nLayer
+  ! Read maximum number of neurons
+  READ(34) tmp(1)
+  hgs = MERGE(tmp(1), hgs, tmp(1).LE.hgs)
+  ! Allocate arrays and nullify
+  ALLOCATE(PartBoundANN%nN(PartBoundANN%nLayer+2))
+  ALLOCATE(PartBoundANN%w(1:hgs,1:hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%b(1:hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%beta(1:hgs,1:PartBoundANN%nLayer))
+  ALLOCATE(PartBoundANN%output(1:hgs))
+  PartBoundANN%w = 0.
+  PartBoundANN%b = 0.
+  PartBoundANN%beta = 0.
+  ! Read weights
+  DO iLayer=1,PartBoundANN%nLayer+1
+    READ(34) tmp
+    PartBoundANN%nN(iLayer) = tmp(1)
+    READ(34) PartBoundANN%w(1:tmp(1),1:tmp(2),iLayer)
+  END DO
+  PartBoundANN%nN(PartBoundANN%nLayer+2) = tmp(2)
+  DO iLayer=1,PartBoundANN%nLayer+1
+    READ(34) tmp(1)
+    READ(34) PartBoundANN%b(1:tmp(1),iLayer)
+  END DO
+  DO iLayer=1,PartBoundANN%nLayer
+    READ(34) tmp(1)
+    READ(34) PartBoundANN%beta(1:tmp(1),iLayer)
+  END DO
+  ALLOCATE(PartBoundANN%max_in(1:PartBoundANN%nN(1)))
+  READ(34) PartBoundANN%max_in
+  ALLOCATE(PartBoundANN%max_out(1:PartBoundANN%nN(PartBoundANN%nLayer+2)))
+  READ(34) PartBoundANN%max_out
+  CLOSE(34)
+END IF
+#if USE_MPI
+CALL MPI_BCAST(PartBoundANN%nLayer,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+IF (.NOT.ALLOCATED(PartBoundANN%nN)) ALLOCATE(PartBoundANN%nN(1:PartBoundANN%nLayer+2))
+CALL MPI_BCAST(PartBoundANN%nN,PartBoundANN%nLayer+2,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+tmp(1) = MAXVAL(PartBoundANN%nN)
+hgs = MERGE(tmp(1), hgs, tmp(1).LE.hgs)
+! Allocate arrays and nullify
+IF (.NOT.ALLOCATED(PartBoundANN%w)) THEN
+  ALLOCATE(PartBoundANN%w(1:hgs,1:hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%b(1:hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%beta(1:hgs,1:PartBoundANN%nLayer))
+  ALLOCATE(PartBoundANN%max_in(1:PartBoundANN%nN(1)))
+  ALLOCATE(PartBoundANN%max_out(1:PartBoundANN%nN(PartBoundANN%nLayer+2)))
+END IF
+CALL MPI_BCAST(PartBoundANN%w,hgs*hgs*(PartBoundANN%nLayer+1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%b,hgs*(PartBoundANN%nLayer+1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%beta,hgs*PartBoundANN%nLayer,MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%max_in,PartBoundANN%nN(1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%max_out,PartBoundANN%nN(PartBoundANN%nLayer+2),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+#endif
+
+END SUBROUTINE LoadWeightsANN
 
 END MODULE MOD_Particle_Init

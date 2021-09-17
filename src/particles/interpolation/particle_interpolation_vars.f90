@@ -28,7 +28,7 @@ LOGICAL                               :: PartInterpolationInitIsDone=.FALSE.
 LOGICAL                               :: DoInterpolation          ! Flag for interpolation
 LOGICAL                               :: InterpolationElemLoop    ! Interpolate with outer iElem-loop (not for many Elems per proc!)
 REAL,ALLOCATABLE                      :: FieldAtParticle(:,:)     ! (6,PDM%maxParticleNumber) 1nd index: rho,u_x,u_y,u_z,p,T
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 REAL,ALLOCATABLE                      :: GradAtParticle(:,:,:)    ! (3,3,PDM%maxParticleNumber) 1nd index: rho*(u_x,u_y,u_z)
 #endif
 #if USE_RW

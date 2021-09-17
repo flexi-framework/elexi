@@ -14,6 +14,11 @@
 #include "flexi.h"
 #include "particle.h"
 
+#define SIGMOID(x)         REAL(1./(1+EXP(-x)),4)
+#define SILU(x,beta)       REAL(x/(1+EXP(-beta*x)),4)
+#define LOGNORM(x,maxi)    REAL(LOG(ABS(x)+1.)/LOG(maxi+1.),4)
+#define LOGNORMINV(x,maxi) REAL((maxi+1.)**x-1.,4)
+
 !===================================================================================================================================
 !> Determines how particles interact with a given boundary condition
 !===================================================================================================================================
@@ -274,7 +279,7 @@ ELSE IF(DOT_PRODUCT(n_loc,PartTrajectory).GT.0.)  THEN
 ELSE
   CALL abort(&
     __STAMP__&
-    ,'Error in GetBoundaryInteractionAuxBC: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
+    ,'Error in GetBoundaryInteractionAuxBC: n_vec is cross_vectorendicular to PartTrajectory for AuxBC',AuxBCIdx)
 END IF
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(PartAuxBC%TargetBoundCond(AuxBCIdx))
@@ -338,7 +343,6 @@ LOGICAL                           :: Symmetry,IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngle_old
 REAL                              :: v_magnitude
 INTEGER                           :: locBCID
-REAL                              :: tang1(1:3),tang2(1:3)
 !===================================================================================================================================
 
 ! Check if reflected on AuxBC
@@ -359,8 +363,7 @@ END IF ! .NOT.IsAuxBC
 
 ! Rough wall modelling
 IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doRoughWallModelling) THEN
-  CALL OrthoNormVec(n_loc,tang1,tang2)
-  n_loc = RoughWall(n_loc,tang1,tang2,locBCID,PartTrajectory)
+  n_loc = RoughWall(n_loc,locBCID,PartTrajectory)
 END IF
 
 ! Make sure we have the old values safe
@@ -383,6 +386,7 @@ LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !--> flip trajectory and move the remainder of the particle push
 PartTrajectory(1:3)     = PartTrajectory(1:3)-2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
 PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
+! Update particle velocity
 
 ! compute moved particle || rest of movement
 PartTrajectory          = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
@@ -446,7 +450,7 @@ SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
-USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC
+USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC,PartBoundANN
 USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
@@ -474,13 +478,16 @@ REAL                              :: v_old(1:3),WallVelo(3)
 INTEGER                           :: locBCID
 LOGICAL                           :: IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngleDeg,PartFaceAngle_old
-REAL                              :: PartTrajectoryTang(3),PartTrajectoryNorm(3)
-REAL                              :: v_magnitude,v_norm(3),v_tang(3)
+REAL                              :: PartTrajectoryTang1(3),PartTrajectoryTang2(3),PartTrajectoryNorm(3)
+REAL                              :: v_magnitude,v_norm(3),v_tang1(3),v_tang2(3)
 REAL                              :: intersecRemain
-REAL                              :: eps_n, eps_t
+REAL                              :: eps_n, eps_t1, eps_t2
 REAL                              :: tang1(1:3),tang2(1:3)
 ! Bons particle rebound model
 REAL                              :: Vol,d,w,w_crit,sigma_y,E_eff
+! RebANN
+INTEGER                           :: iLayer
+REAL(4)                           :: randnum(3)
 !===================================================================================================================================
 
 ! check if reflected on AuxBC
@@ -499,24 +506,30 @@ ELSE
   ! get BC values
   WallVelo   = PartBound%WallVelo(1:3,locBCID)
 END IF !IsAuxBC
-CALL OrthoNormVec(n_loc,tang1,tang2)
 
 ! Make sure we have the old velocity safe
 v_old   = PartState(4:6,PartID)
 
 IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doRoughWallModelling) THEN
-  n_loc = RoughWall(n_loc,tang1,tang2,locBCID,PartTrajectory)
+  n_loc = RoughWall(n_loc,locBCID,PartTrajectory)
 END IF
+
+! Compute tangential vectors
+CALL OrthoNormVec(n_loc,tang1,tang2)
 
 ! Sample on boundary
 IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
   CALL RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
 END IF
 
-! Calculate wall normal and tangential velocity, impact angle
-v_norm  = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
-v_tang  = PartState(4:6,PartID) - v_norm
+! Calculate wall normal and tangential velocities, impact angle
+v_norm   = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
+v_tang1  = DOT_PRODUCT(PartState(4:6,PartID),tang1)*tang1
+v_tang2  = DOT_PRODUCT(PartState(4:6,PartID),tang2)*tang2
 PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
+
+! Just mirror the velocity in tang2 direction if no eps_t2 is available
+eps_t2 = 1.
 
 SELECT CASE(WallCoeffModel)
   !=================================================================================================================================
@@ -529,8 +542,8 @@ SELECT CASE(WallCoeffModel)
     PartFaceAngleDeg = PartFaceAngle * 180/PI
 
     ! Compute cubic polynomials for coefficient of restitution
-    eps_n = 9.9288e-01 - 3.0708e-02 * PartFaceAngleDeg  + 4.7389e-04 * PartFaceAngleDeg**2. - 2.5845e-06 * PartFaceAngleDeg**3.
-    eps_t = 9.8723e-01 - 3.0354e-02 * PartFaceAngleDeg  + 7.1913e-04 * PartFaceAngleDeg**2. - 4.2979e-06 * PartFaceAngleDeg**3.
+    eps_n  = 9.9288e-01 - 3.0708e-02 * PartFaceAngleDeg  + 4.7389e-04 * PartFaceAngleDeg**2. - 2.5845e-06 * PartFaceAngleDeg**3.
+    eps_t1 = 9.8723e-01 - 3.0354e-02 * PartFaceAngleDeg  + 7.1913e-04 * PartFaceAngleDeg**2. - 4.2979e-06 * PartFaceAngleDeg**3.
 
   !=================================================================================================================================
   ! Tabaoff, W.; Wakeman, T.: Basic Erosion Investigation in Small Turbomachinery. / Cincinnati Univ. OH, 1981
@@ -541,8 +554,8 @@ SELECT CASE(WallCoeffModel)
     PartFaceAngleDeg = PartFaceAngle * 180/PI
 
     ! Compute cubic polynomials for coefficient of restitution
-    eps_n = 1.    - 0.0211 * PartFaceAngleDeg  + 0.000228 * PartFaceAngleDeg**2. - 0.000000876 * PartFaceAngleDeg**3.
-    eps_t = 0.953                              - 0.000446 * PartFaceAngleDeg**2. + 0.00000648  * PartFaceAngleDeg**3.
+    eps_n  = 1.    - 0.0211 * PartFaceAngleDeg  + 0.000228 * PartFaceAngleDeg**2. - 0.000000876 * PartFaceAngleDeg**3.
+    eps_t1 = 0.953                              - 0.000446 * PartFaceAngleDeg**2. + 0.00000648  * PartFaceAngleDeg**3.
 
   !===================================================================================================================================
   ! Bons, J., Prenter, R., Whitaker, S.: A Simple Physics-Based Model for Particle Rebound and Deposition in Turbomachinery
@@ -577,8 +590,8 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    eps_t   = 1. - 0.3 / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3)))  * &
-                         SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
+    eps_t1   = 1. - PartBound%FricCoeff(SideInfo_Shared(SIDE_BCID,SideID)) / SQRT(DOT_PRODUCT(v_tang1(1:3),v_tang1(1:3)))  * &
+                          SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
 
 
   !===================================================================================================================================
@@ -597,7 +610,7 @@ SELECT CASE(WallCoeffModel)
     w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC / (E_eff*3*d))**0.5
 
     ! Find critical deformation
-    sigma_y = Species(PartSpecies(PartID))%YieldCoeff*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
+    sigma_y = Species(PartSpecies(PartID))%Whitaker_a*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
     w_crit  = sigma_y * 2./3. * d / E_eff
 
     ! Normal coefficient of restitution
@@ -612,17 +625,42 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    eps_t   = 1. - 0.63 / SQRT(DOT_PRODUCT(v_tang(1:3),v_tang(1:3))) * &
-                          SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
+    eps_t1   = 1. - PartBound%FricCoeff(SideInfo_Shared(SIDE_BCID,SideID)) / SQRT(DOT_PRODUCT(v_tang1(1:3),v_tang1(1:3))) * &
+                           SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
 
   !=================================================================================================================================
-  ! Fong, W.; Amili, O.; Coletti, F.: Velocity and spatial distribution of intertial particles in a turbulent channel flow
+  ! Fong, W.; Amili, O.; Coletti, F.: Velocity and spatial distribution of inertial particles in a turbulent channel flow
   ! / J. FluidMech 872, 2019
   !=================================================================================================================================
   CASE('Fong2019')
     ! Reuse YieldCoeff to modify the normal velocity, keep tangential velocity
-    eps_t   = 1.
-    eps_n   = PartBound%CoR(SideInfo_Shared(SIDE_BCID,SideID))
+    eps_t1   = 1.
+    eps_n    = PartBound%CoR(SideInfo_Shared(SIDE_BCID,SideID))
+
+  !=================================================================================================================================
+  ! Rebound ANN valid for v_{air} \in [150,350] [m/s]
+  !=================================================================================================================================
+  CASE('RebANN')
+    CALL RANDOM_NUMBER(randnum)
+    ! Input with normalization
+    PartBoundANN%output(1:PartBoundANN%nN(1)) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
+      LOGNORM(NORM2(PartState(PART_VELV,PartID)),PartBoundANN%max_in(2)),&
+      LOGNORM(Species(PartSpecies(PartID))%DiameterIC,PartBoundANN%max_in(3)), randnum(1), randnum(2)/)
+    ! Hidden layers
+    DO iLayer=1,PartBoundANN%nLayer
+      PartBoundANN%output(:) = SILU((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)),PartBoundANN%beta(:,iLayer))
+    END DO
+    ! Output layer
+    iLayer = PartBoundANN%nLayer+1
+    PartBoundANN%output(:) = 1.1*SIGMOID((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)))-0.1
+    PartBoundANN%output(1) = LOGNORMINV(PartBoundANN%output(1), PartBoundANN%max_in(1))
+    PartBoundANN%output(2) = LOGNORMINV(PartBoundANN%output(2), PartBoundANN%max_in(2))
+    ! Calculate coefficents of restitution
+    eps_n  = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
+    eps_t1 = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang1(1:3))
+    ! IPWRITE (*, *) 'eps_n, eps_t1, eps_t2:', eps_n, eps_t1, eps_t2
+
+    ! TODO: 3D Rebound; Fracture
 
   CASE DEFAULT
       CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')
@@ -643,8 +681,8 @@ WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | LastPartPos:          
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory:             ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity:                   ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | alpha,lengthPartTrajectory: ',alpha,lengthPartTrajectory
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Intersection:               ', LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | CoR (normal/tangential):    ',eps_n,eps_t
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Intersection:               ',LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
+WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | CoR (normal/tangential):    ',eps_n,eps_t1,eps_t2
 #endif
 
 LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
@@ -657,19 +695,21 @@ LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !    'Time discretization '//TRIM(TimeDiscType)//' is incompatible with current implementation of coefficients of restitution.')
 
 ! Calculate wall normal and tangential velocity components after impact, rescale to uniform length
-PartTrajectoryNorm(1:3) = eps_n*(DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
-PartTrajectoryTang(1:3) = eps_t*(PartTrajectory(1:3) - DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
-PartTrajectory(1:3)     = PartTrajectoryTang(1:3) - PartTrajectoryNorm(1:3)
-PartTrajectory          = PartTrajectory/SQRT(SUM(PartTrajectory**2.))
+PartTrajectoryNorm (1:3) = eps_n  * (DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
+PartTrajectoryTang1(1:3) = eps_t1 * (DOT_PRODUCT(PartTrajectory(1:3),tang1)*tang1)
+PartTrajectoryTang2(1:3) = eps_t2 * (DOT_PRODUCT(PartTrajectory(1:3),tang2)*tang2)
+PartTrajectory(1:3)      = PartTrajectoryTang1(1:3) - PartTrajectoryTang2(1:3) - PartTrajectoryNorm(1:3)
+PartTrajectory           = PartTrajectory/SQRT(SUM(PartTrajectory**2.))
 
 ! Rescale the remainder to the new length
-intersecRemain = SQRT(eps_n*eps_n + eps_t*eps_t)/SQRT(2.) * (lengthPartTrajectory - alpha)
+intersecRemain = (lengthPartTrajectory - alpha)
+intersecRemain = SQRT(eps_n*eps_n + eps_t1*eps_t1 + eps_t2*eps_t2)/SQRT(3.) * (lengthPartTrajectory - alpha)
 
 ! Compute moved particle || rest of movement. PartTrajectory has already been updated
-PartState(1:3,PartID) = LastPartPos(1:3,PartID) + intersecRemain*PartTrajectory(1:3)
+PartState(1:3,PartID) = LastPartPos(1:3,PartID) + intersecRemain * PartTrajectory(1:3)
 
 ! Compute new particle velocity, modified with coefficents of restitution
-PartState(4:6,PartID)= eps_t * v_tang - eps_n * v_norm + WallVelo
+PartState(4:6,PartID)= eps_t1 * v_tang1 - eps_t2 * v_tang2 - eps_n * v_norm + WallVelo
 
 #if CODE_ANALYZE
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory (CoR)        ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
@@ -826,10 +866,10 @@ ElemID   = SideInfo_Shared(SIDE_NBELEMID,SideID)
 
 END SUBROUTINE PeriodicBC
 
-FUNCTION RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory) RESULT (n_out)
+FUNCTION RoughWall(n_in,locBCID,PartTrajectory) RESULT (n_out)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Rough wall modelling without multiple rebounds, where the roughness is drawn from a Gaussian distribution with a mean of zero and
-! a standard deviation equal to an assumed or experimental wall roughness.
+! a standard deviation equal to an assumed or experimental wall roughness in radii.
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -840,54 +880,74 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 REAL,INTENT(IN)                   :: n_in(1:3)
-REAL,INTENT(IN)                   :: tang1(1:3)
-REAL,INTENT(IN)                   :: tang2(1:3)
 INTEGER,INTENT(IN)                :: locBCID
 REAL,INTENT(IN)                   :: PartTrajectory(1:3)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
-REAL                              :: n_out(3)
+REAL                              :: n_out(1:3)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                              :: RandNum(2),random_angle(2),crossv(2,3),angle
+REAL                              :: RandNum(4),random_angle(2),angle,cross_vector(3)
 !===================================================================================================================================
 
-crossv(1,:) = CROSSNORM(n_in,tang1)
-crossv(2,:) = CROSSNORM(n_in,tang2)
+cross_vector = CROSSNORM(n_in,PartTrajectory)
 
-! Rough wall modelling
+! Compute angles
+angle = 0.5*PI-ACOS(DOT_PRODUCT(PartTrajectory,n_in))
+
 CALL RANDOM_NUMBER(RandNum)
-angle = ACOS(DOT_PRODUCT(PartTrajectory,n_in))
-! [0,1] -> [0,+/-angle]
-! If angle(PartTrajectory,tang1) > 90 degree the rotate n counterclockwise (-), vice versa otherwise (+).
-RandNum(1) = SIGN(1.,PI*0.5-ACOS(DOT_PRODUCT(PartTrajectory,tang1)))*RandNum(1)
-RandNum(2) = SIGN(1.,PI*0.5-ACOS(DOT_PRODUCT(PartTrajectory,tang2)))*RandNum(2)
+! Scale to maximal range
+RandNum(1) = RandNum(1)*(angle*0.5+0.2*PI) - angle*0.5
+RandNum(3) = RandNum(3)*(angle*0.5+0.2*PI) - angle*0.5
 
-! If angle is GT 40 degree, the normal vector is moved in one direction only
-IF(angle.LT.4*PI/18)THEN
-  RandNum(1)   = RandNum(1)*2.-SIGN(1.,RandNum(1))
-  RandNum(2)   = RandNum(2)*2.-SIGN(1.,RandNum(2))
-END IF
-! random_angle = mu + std*x
-random_angle = PartBound%RoughMeanIC(locBCID) + PartBound%RoughVarianceIC(locBCID)*PI/180*RandNum
-!WRITE (*, *) 'random_angle,a(PartTrajectory,n_in)                                             :', random_angle*180/PI,angle*180/PI
+CALL RoughnessPDF(RandNum(1:2),PartBound%RoughMeanIC(locBCID),PartBound%RoughVarianceIC(locBCID),angle)
+CALL RoughnessPDF(RandNum(3:4),PartBound%RoughMeanIC(locBCID),PartBound%RoughVarianceIC(locBCID),angle)
 
-! Adjust the impact angle as well as the tangential and normal components
-! by a rotation of the normal vector around tang1 and tang2
-n_out = n_in*COS(random_angle(1))+(/crossv(1,2)*n_in(3)   - crossv(1,3)*n_in(2),&
-                                    crossv(1,3)*n_in(1)   - crossv(1,1)*n_in(3),&
-                                    crossv(1,1)*n_in(2)   - crossv(1,2)*n_in(1)/)*SIN(random_angle(1))+&
-                                    crossv(1,:)*DOT_PRODUCT(crossv(1,:),n_in)*(1.-COS(random_angle(1)))
-!WRITE (*, *) 'tang1: n_out,a(PartTrajectory,tang1),a(PartTrajectory,n_out): ', n_out,(ACOS(DOT_PRODUCT(PartTrajectory,tang1)))*180/PI ,(ACOS(DOT_PRODUCT(PartTrajectory,n_out)))*180/PI
-n_out = n_out*COS(random_angle(2))+(/crossv(2,2)*n_out(3)  - crossv(2,3)*n_out(2),&
-                                     crossv(2,3)*n_out(1)  - crossv(2,1)*n_out(3),&
-                                     crossv(2,1)*n_out(2)  - crossv(2,2)*n_out(1)/)*SIN(random_angle(2))+&
-                                     crossv(2,:)*DOT_PRODUCT(crossv(2,:),n_out)*(1.-COS(random_angle(2)))
-!WRITE (*, *) 'tang1: n_out,a(PartTrajectory,tang2),a(PartTrajectory,n_out): ', n_out,(ACOS(DOT_PRODUCT(PartTrajectory,tang2)))*180/PI ,(ACOS(DOT_PRODUCT(PartTrajectory,n_out)))*180/PI
+random_angle(1) = RandNum(1)
+random_angle(2) = RandNum(3)
 
-! Check if the final particle trajectory shows in the right direction and the particle does not leave the domain...
-!IF(ABS(ACOS(DOT_PRODUCT(PartTrajectory,n_out))).GT.MAX(angle,PI*0.5-angle)) n_out = RoughWall(n_in,tang1,tang2,locBCID,PartTrajectory)
+! Modifiy the angle between particle trajectory and normal vector
+n_out = n_in*COS(random_angle(1))+(/cross_vector(2)*n_in(3)   - cross_vector(3)*n_in(2),&
+                                    cross_vector(3)*n_in(1)   - cross_vector(1)*n_in(3),&
+                                    cross_vector(1)*n_in(2)   - cross_vector(2)*n_in(1)/)*SIN(random_angle(1))+&
+                                    cross_vector*DOT_PRODUCT(cross_vector,n_in)*(1.-COS(random_angle(1)))
+! Rotation of the new normal vector around the old normal vector according to Rodrigues' rotation formula:
+n_out = n_out*COS(random_angle(2))+(/n_in(2)*n_out(3)   - n_in(3)*n_out(2),&
+                                     n_in(3)*n_out(1)   - n_in(1)*n_out(3),&
+                                     n_in(1)*n_out(2)   - n_in(2)*n_out(1)/)*SIN(random_angle(2))+&
+                                     n_in(:)*DOT_PRODUCT(n_in(:),n_out)*(1.-COS(random_angle(2)))
 END FUNCTION RoughWall
+
+RECURSIVE SUBROUTINE RoughnessPDF(x,MeanIC,VarianceIC,angle)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Particle_Globals, ONLY: PI
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+REAL,INTENT(INOUT)                :: x(2)
+REAL,INTENT(IN)                   :: MeanIC
+REAL,INTENT(IN)                   :: VarianceIC
+REAL,INTENT(IN)                   :: angle
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+REAL                              :: EffectivePDF
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                              :: GaussianNormal
+!-----------------------------------------------------------------------------------------------------------------------------------
+
+GaussianNormal = 1./SQRT(2*PI*VarianceIC) * EXP(-0.5*((x(1)-MeanIC)/VarianceIC)**2)
+EffectivePDF = SIN(angle+x(1))/SIN(angle)*GaussianNormal
+! Draw a sample via the acceptance-rejection method
+IF (x(2) .GT. EffectivePDF)THEN
+  CALL RANDOM_NUMBER(x)
+  CALL RoughnessPDF(x,MeanIC,VarianceIC,angle)
+END IF
+
+END SUBROUTINE RoughnessPDF
+
 
 
 !FUNCTION PARTSWITCHELEMENT(xi,eta,locSideID,SideID,ElemID)

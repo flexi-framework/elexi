@@ -139,7 +139,7 @@ ALLOCATE(TurbFieldAtParticle(1:nVarTurb,1:PDM%maxParticleNumber), STAT=ALLOCSTAT
 #endif
 IF (ALLOCSTAT.NE.0) CALL abort(__STAMP__,'ERROR in Part_interpolation.f90: Cannot allocate FieldAtParticle array!',ALLOCSTAT)
 
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 SDEALLOCATE(GradAtParticle)
 ! Allocate array for rho*(u_x,u_y,u_z)
 ! ALLOCATE(GradAtParticle    (RHS_GRAD, 1:3, 1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
@@ -157,8 +157,8 @@ END SUBROUTINE InitParticleInterpolation
 
 
 SUBROUTINE InterpolateFieldToParticle(nVar,U,nVar_out,FieldAtParticle&
-#if USE_EXTEND_RHS
-    ,gradUx,gradUy,gradUz,divtau,gradp,GradAtParticle)
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+    ,gradUx,gradUy,gradUz,U_RHS,GradAtParticle)
 #else
     )
 #endif
@@ -169,9 +169,9 @@ SUBROUTINE InterpolateFieldToParticle(nVar,U,nVar_out,FieldAtParticle&
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Eval_xyz,                    ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 USE MOD_Eval_xyz,                    ONLY: EvaluateFieldAndGradAtPhysPos,EvaluateFieldAndGradAtRefPos
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 USE MOD_Mesh_Vars,                   ONLY: nElems,offsetElem
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,InterpolationElemLoop
 USE MOD_Particle_Tracking_Vars,      ONLY: TrackingMethod
@@ -192,17 +192,16 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)               :: nVar
 REAL,INTENT(IN)                  :: U(1:nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
 INTEGER,INTENT(IN)               :: nVar_out
-#if USE_EXTEND_RHS
-REAL,INTENT(IN),OPTIONAL         :: gradUx(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in x direction
-REAL,INTENT(IN),OPTIONAL         :: gradUy(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in y direction
-REAL,INTENT(IN),OPTIONAL         :: gradUz(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in z direction
-REAL,INTENT(IN),OPTIONAL         :: divtau(1:3     ,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< \nabla \cdot \tau
-REAL,INTENT(IN),OPTIONAL         :: gradp( 1:3     ,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< \nabla p
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+REAL,INTENT(IN),OPTIONAL         :: gradUx( 1:RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in x direction
+REAL,INTENT(IN),OPTIONAL         :: gradUy( 1:RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in y direction
+REAL,INTENT(IN),OPTIONAL         :: gradUz( 1:RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< Gradient in z direction
+REAL,INTENT(IN),OPTIONAL         :: U_RHS( 1:RHS_NVARS,0:PP_N,0:PP_N,0:PP_NZ,nElems)       !< divtau, gradp. laplace_u
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                 :: FieldAtParticle(1:nVar_out,1:PDM%maxParticleNumber)
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 REAL,INTENT(OUT),OPTIONAL        :: GradAtParticle(RHS_GRAD,3,1:PDM%maxParticleNumber)
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -210,7 +209,7 @@ REAL,INTENT(OUT),OPTIONAL        :: GradAtParticle(RHS_GRAD,3,1:PDM%maxParticleN
 INTEGER                          :: firstElem,lastElem,ElemID
 INTEGER                          :: firstPart,lastPart
 REAL                             :: field(nVar_out)
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 REAL                             :: grad(RHS_GRAD,3)
 #endif
 INTEGER                          :: iPart,iElem!,iVar
@@ -221,7 +220,7 @@ IF (.NOT.DoInterpolation) RETURN
 
 ! Null field vector
 field     = 0.
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 grad      = 0.
 #endif
 
@@ -235,7 +234,7 @@ IF(firstPart.GT.lastPart) RETURN
 ! InterpolationElemLoop is true, so initialize everything for it
 IF (InterpolationElemLoop) THEN
   FieldAtParticle(:,firstPart:lastPart)   = 0.
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
   IF (PRESENT(GradAtParticle)) GradAtParticle(:,:,firstPart:lastPart) = 0.
 #endif
 
@@ -277,30 +276,28 @@ IF (InterpolationElemLoop) THEN
 #endif /*FV_ENABLED*/
           ! RefMapping, evaluate in reference space
           IF (TrackingMethod.EQ.REFMAPPING) THEN
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
             IF (PRESENT(GradAtParticle)) THEN
               CALL EvaluateFieldAndGradAtRefPos   (PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field&
-                      ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID)&
-                      ,divtau(:,:,:,:,ElemID),gradp(:,:,:,:,ElemID),grad)
+                      ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),U_RHS(:,:,:,:,ElemID),grad)
             ELSE
               CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field)
             END IF
 #else
             CALL EvaluateFieldAtRefPos   (PartPosRef(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field)
-#endif
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
           ! Not RefMapping, evaluate at physical position
           ELSE
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
             IF (PRESENT(GradAtParticle)) THEN
               CALL EvaluateFieldAndGradAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field,iElem,iPart&
-                      ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID)&
-                      ,divtau(:,:,:,:,ElemID),gradp(:,:,:,:,ElemID),grad)
+                      ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),U_RHS(:,:,:,:,ElemID),grad)
             ELSE
               CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field,iElem,iPart)
             END IF
 #else
             CALL EvaluateFieldAtPhysPos(PartState(1:3,iPart),nVar,PP_N,U    (:,:,:,:,ElemID),nVar_out,field,iElem,iPart)
-#endif
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
           END IF ! TrackingMethod.EQ.REFMAPPING
 #if FV_ENABLED
         END IF
@@ -308,7 +305,7 @@ IF (InterpolationElemLoop) THEN
 
         ! Add the interpolated field to the background field
         FieldAtParticle(:,iPart) = FieldAtParticle(:,iPart) + field(:)
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
         IF (PRESENT(GradAtParticle)) GradAtParticle(:,:,iPart)         = GradAtParticle(:,:,iPart)    + grad(:,:)
 #endif
       END IF ! Element(iPart).EQ.iElem
@@ -329,9 +326,8 @@ ELSE
     IF ((RWModel.EQ.'Gosman') .AND. (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 #endif
     CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,ElemID),nVar_out,FieldAtParticle(:,iPart)&
-#if USE_EXTEND_RHS
-                  ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID)&
-                  ,divtau(:,:,:,:,ElemID),gradp(:,:,:,:,ElemID),GradAtParticle(:,:,iPart)&
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+                  ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),U_RHS(:,:,:,:,ElemID),GradAtParticle(:,:,iPart)&
 #endif
                 )
   END DO
@@ -341,8 +337,8 @@ END SUBROUTINE InterpolateFieldToParticle
 
 
 SUBROUTINE InterpolateFieldToSingleParticle(PartID,nVar,U,nVar_out,FieldAtParticle&
-#if USE_EXTEND_RHS
-    ,gradUx,gradUy,gradUz,divtau,gradp,GradAtParticle)
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+    ,gradUx,gradUy,gradUz,U_RHS,GradAtParticle)
 #else
     )
 #endif
@@ -354,9 +350,9 @@ USE MOD_Globals
 USE MOD_PreProc
 !USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAndGradAtPhysPos,EvaluateFieldAndGradAtRefPos
-#endif /* USE_EXTEND_RHS */
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
 USE MOD_Mesh_Vars,               ONLY: offsetElem,nElems
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
@@ -374,30 +370,29 @@ INTEGER,INTENT(IN)               :: PartID
 INTEGER,INTENT(IN)               :: nVar
 REAL,INTENT(IN)                  :: U(1:nVar,0:PP_N,0:PP_N,0:PP_NZ)
 INTEGER,INTENT(IN)               :: nVar_out
-#if USE_EXTEND_RHS
-REAL,INTENT(IN),OPTIONAL         :: gradUx(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)       !< Gradient in x direction
-REAL,INTENT(IN),OPTIONAL         :: gradUy(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)       !< Gradient in y direction
-REAL,INTENT(IN),OPTIONAL         :: gradUz(RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)       !< Gradient in z direction
-REAL,INTENT(IN),OPTIONAL         :: divtau(1:3     ,0:PP_N,0:PP_N,0:PP_NZ)       !< \nabla \cdot \tau
-REAL,INTENT(IN),OPTIONAL         :: gradp( 1:3     ,0:PP_N,0:PP_N,0:PP_NZ)       !< \nabla p
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+REAL,INTENT(IN),OPTIONAL         :: gradUx(   RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)          !< Gradient in x direction
+REAL,INTENT(IN),OPTIONAL         :: gradUy(   RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)          !< Gradient in y direction
+REAL,INTENT(IN),OPTIONAL         :: gradUz(   RHS_LIFT,0:PP_N,0:PP_N,0:PP_NZ)          !< Gradient in z direction
+REAL,INTENT(IN),OPTIONAL         :: U_RHS( 1:RHS_NVARS,0:PP_N,0:PP_N,0:PP_NZ)          !< divtau, gradp, laplace_u
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                 :: FieldAtParticle(1:nVar_out)
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 REAL,INTENT(OUT),OPTIONAL        :: GradAtParticle(RHS_GRAD,3)
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                             :: field(1:nVar_out)
 INTEGER                          :: ElemID
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 REAL                             :: grad(RHS_GRAD,3)
 #endif
 !===================================================================================================================================
 
 FieldAtParticle(:)   = 0.
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 IF (PRESENT(GradAtParticle)) GradAtParticle(:,:) = 0.
 #endif
 
@@ -417,10 +412,10 @@ ELSE
 #endif /*FV_ENABLED*/
   ! RefMapping, evaluate in reference space
   IF (TrackingMethod.EQ.REFMAPPING) THEN
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
     IF (PRESENT(GradAtParticle)) THEN
       CALL EvaluateFieldAndGradAtRefPos   (PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field&
-                                          ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),divtau(:,:,:,:),gradp,grad)
+                                          ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),U_RHS(:,:,:,:),grad)
 
     ELSE
       CALL EvaluateFieldAtRefPos          (PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field)
@@ -430,10 +425,10 @@ ELSE
 #endif
   ! Not RefMapping, evaluate at physical position
   ELSE
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
     IF (PRESENT(GradAtParticle)) THEN
       CALL EvaluateFieldAndGradAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID,PartID&
-                                        ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),divtau(:,:,:,:),gradp,grad)
+                                        ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),U_RHS(:,:,:,:),grad)
     ELSE
       CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID,PartID)
     END IF
@@ -447,7 +442,7 @@ END IF
 
 ! Add the interpolated field to the background field
 FieldAtParticle(:)        = FieldAtParticle(:)  + field(:)
-#if USE_EXTEND_RHS
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
 IF (PRESENT(GradAtParticle))      GradAtParticle(:,:)    = GradAtParticle(:,:)    + grad(:,:)
 #endif
 

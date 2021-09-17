@@ -24,14 +24,10 @@ SAVE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                       :: ParticleAnalyzeInitIsDone = .FALSE.
-LOGICAL                       :: DoAnalyze                             ! perform analyze
-LOGICAL                       :: DoParticleAnalyze                     ! flag if any particle analyze routine is called
+LOGICAL                       :: doParticleAnalyze                     ! perform analyze
 LOGICAL                       :: CalcPartBalance                       ! Particle Power Balance - input and outflow energy of all
                                                                        ! particles
 LOGICAL                       :: CalcEkin                              ! Compute the kinetic energy of each species
-LOGICAL                       :: doParticlePositionTrack               ! track the particle movement
-                                                                       ! stored in .csv format, debug only, no MPI
-LOGICAL                       :: doParticleConvergenceTrack            ! track the final particle position, stored in .csv format
 LOGICAL                       :: doParticleDispersionTrack             ! track the particle dispersion radius, i.e. the absolute path
 LOGICAL                       :: doParticlePathTrack                   ! track the relative particle path
 INTEGER                       :: nSpecAnalyze                          ! number of analyzed species 1 or nSpecies+1

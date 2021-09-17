@@ -71,27 +71,27 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                         :: iSpec,iInit,iNode,iRank
 INTEGER                         :: nInitRegions
-LOGICAL                         :: RegionOnProc
+LOGICAL                         :: RegionOnProc,RegionExists
 REAL                            :: xCoords(3,8),lineVector(3),radius,height
 REAL                            :: xlen,ylen,zlen
 INTEGER                         :: color
 !===================================================================================================================================
 
 ! get number of total init regions
-nInitRegions=0
-DO iSpec=1,nSpecies
-  nInitRegions=nInitRegions+Species(iSpec)%NumberOfInits+(1-Species(iSpec)%StartnumberOfInits)
+nInitRegions = 0
+DO iSpec = 1,nSpecies
+  nInitRegions = nInitRegions + Species(iSpec)%NumberOfInits + (1-Species(iSpec)%StartnumberOfInits)
 END DO ! iSpec
-IF(nInitRegions.EQ.0) RETURN
+IF (nInitRegions.EQ.0) RETURN
 
 ! allocate communicators
 ALLOCATE( PartMPI%InitGroup(1:nInitRegions))
 
-nInitRegions=0
-DO iSpec=1,nSpecies
-  RegionOnProc=.FALSE.
-  DO iInit=Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
-    nInitRegions=nInitRegions+1
+nInitRegions = 0
+DO iSpec = 1,nSpecies
+  RegionOnProc = .FALSE.
+  DO iInit = Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
+    nInitRegions = nInitRegions+1
     SELECT CASE(TRIM(Species(iSpec)%Init(iInit)%SpaceIC))
       CASE ('point')
          xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
@@ -126,10 +126,16 @@ DO iSpec=1,nSpecies
         RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE ('plane')
-        xCoords(1:3,1)=Species(iSpec)%Init(iInit)%BasePointIC
-        xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector1IC
-        xCoords(1:3,2)=Species(iSpec)%Init(iInit)%BasePointIC+Species(iSpec)%Init(iInit)%BaseVector2IC
-        RegionOnProc = BoxInProc(xCoords(1:3,1:3),3)
+        ASSOCIATE(BaseVector1 => Species(iSpec)%Init(iInit)%BaseVector1IC, &
+                  BaseVector2 => Species(iSpec)%Init(iInit)%BaseVector2IC)
+
+        xCoords(1:3,1) = Species(iSpec)%Init(iInit)%BasePointIC
+        xCoords(1:3,2) = Species(iSpec)%Init(iInit)%BasePointIC+BaseVector1
+        xCoords(1:3,3) = Species(iSpec)%Init(iInit)%BasePointIC+BaseVector2
+        xCoords(1:3,4) = Species(iSpec)%Init(iInit)%BasePointIC+BaseVector1+BaseVector2
+
+        END ASSOCIATE
+        RegionOnProc = BoxInProc(xCoords(1:3,1:4),4)
 
       CASE('disc')
         xlen=Species(iSpec)%Init(iInit)%RadiusIC * &
@@ -210,7 +216,7 @@ DO iSpec=1,nSpecies
         DO iNode=1,4
           xCoords(1:3,iNode+4) = xCoords(1:3,iNode)+lineVector*height
         END DO ! iNode
-        RegionOnProc = BoxInProc(xCoords,8)
+        RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE('cylinder')
         lineVector(1) = Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(3) - &
@@ -242,7 +248,7 @@ DO iSpec=1,nSpecies
           xCoords(1:3,iNode+4)=xCoords(1:3,iNode)+lineVector*height
         END DO ! iNode
 
-        RegionOnProc = BoxInProc(xCoords,8)
+        RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE('cuboid_equal')
          xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &
@@ -272,7 +278,7 @@ DO iSpec=1,nSpecies
          xCoords(1:3,6) = xCoords(1:3,5) + (/xlen,0.,0./)
          xCoords(1:3,7) = xCoords(1:3,5) + (/0.,ylen,0./)
          xCoords(1:3,8) = xCoords(1:3,5) + (/xlen,ylen,0./)
-         RegionOnProc = BoxInProc(xCoords,8)
+         RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
       CASE ('cuboid_with_equidistant_distribution')
          xlen = SQRT(Species(iSpec)%Init(iInit)%BaseVector1IC(1)**2 &
@@ -324,6 +330,13 @@ DO iSpec=1,nSpecies
 
     END SELECT
 
+    ! Sanity check if at least one proc will be on the new emission communicator
+    CALL MPI_ALLREDUCE(RegionOnProc,RegionExists,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
+    IF (.NOT. RegionExists) THEN
+      SWRITE(UNIT_stdOut,'(A,I0,A,I0)') 'Species',iSpec,'-Init',iInit
+      CALL CollectiveStop(__STAMP__,'No processor in range!')
+    END IF
+
     ! create new communicator
     color = MERGE(nInitRegions,MPI_UNDEFINED,RegionOnProc)
 
@@ -339,8 +352,8 @@ DO iSpec=1,nSpecies
 
       ! inform about size of emission communicator
       IF (PartMPI%InitGroup(nInitRegions)%MyRank.EQ.0) THEN
-        WRITE(UNIT_StdOut,'(A,I0,A,I0,A)') ' Emission-Region ',nInitRegions,' has started Emission-Communicator with ' &
-                                           , PartMPI%InitGroup(nInitRegions)%nProcs,' procs'
+              WRITE(UNIT_StdOut,'(A,I0,A,I0,A,I0,A)') ' Emission-Region,Emission-Communicator:',nInitRegions,' on ',&
+      PartMPI%InitGroup(nInitRegions)%nProcs,' procs ('//TRIM(Species(iSpec)%Init(iInit)%SpaceIC)//', iSpec=',iSpec,')'
       END IF
     END IF
 
@@ -509,7 +522,7 @@ IF (ALLOCSTAT.NE.0) &
 
 chunkState = -1
 
-!--- 1/4 Open receive buffer (located and non-located particles)
+!--- 1/10 Open receive buffer (located and non-located particles)
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
@@ -605,7 +618,7 @@ DO i = 1, chunkSize
   END IF ! .NOT.InsideMyBGM(i)
 END DO ! i = 1, chunkSize
 
-!--- 2/4 Send number of non-located particles
+!--- 2/10 Send number of non-located particles
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
@@ -628,7 +641,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
 END DO
 
 
-!--- 3/4 Send actual non-located particles
+!--- 3/10 Send actual non-located particles
 PartMPIInsert%nPartsSend(2,:)=0
 DO i = 1, chunkSize
   IF(ANY(.NOT.InsideMyBGM(:,i))) THEN
@@ -668,7 +681,7 @@ DO i = 1, chunkSize
 END DO ! i = 1, chunkSize
 
 
-!--- 4/4 Receive actual non-located particles
+!--- 4/10 Receive actual non-located particles
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
@@ -742,10 +755,8 @@ DO i = 1, chunkSize
       chunkState(1:3,i) = particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+3)
       IF (TrackingMethod.EQ.REFMAPPING) THEN
         CALL GetPositionInRefElem(chunkState(1:3,i),chunkState(4:6,i),ElemID)
-!        chunkState(7,i) = Species(FractNbr)
         chunkState(7,i) = REAL(ElemID,KIND=8)
       ELSE
-!        chunkState(4,i) = Species(FractNbr)
         chunkState(4,i) = REAL(ElemID,KIND=8)
       END IF ! TrackingMethod.EQ.REFMAPPING
     ! Located particle on local proc.
@@ -794,7 +805,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   END IF
 END DO
 
-!--- 3/4 Send actual located particles. PartState is filled in LocateParticleInElement
+!--- 5/10 Send actual located particles. PartState is filled in LocateParticleInElement
 PartMPILocate%nPartsSend(2,:) = 0
 DO i = 1, chunkSize
   ElemID = INT(chunkState(PartCommSize,i))
@@ -816,7 +827,7 @@ DO i = 1, chunkSize
   END IF ! ProcID.NE.myRank
 END DO ! i = 1, chunkSize
 
-!--- 4/4 Receive actual non-located particles
+!--- 6/10 Receive actual non-located particles
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
@@ -866,7 +877,7 @@ DO iProc = 0,PartMPI%InitGroup(InitGroup)%nProcs-1
   END IF
 END DO
 
-!--- 5/4 Finish communication of actual non-located particles
+!--- 7/10 Finish communication of actual non-located particles
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
@@ -880,7 +891,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   END IF
 END DO
 
-!--- 6/4 Try to locate received non-located particles
+!--- 8/10 Try to locate received non-located particles
 TotalNbrOfRecvParts = SUM(PartMPIInsert%nPartsRecv(1,:))
 DO i = 1,TotalNbrOfRecvParts
   ! We cannot call LocateParticleInElement because we do not know the final PartID yet. Locate the position and fill PartState
@@ -912,7 +923,7 @@ DO i = 1,TotalNbrOfRecvParts
   PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
 END DO
 
-!--- 7/4 Finish communication of actual non-located particles
+!--- 9/10 Finish communication of actual non-located particles
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
@@ -926,7 +937,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   END IF
 END DO
 
-!--- 8/4 Write located particles
+!--- 10/10 Write located particles
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
   IF (PartMPILocate%nPartsRecv(1,iProc).EQ.0) CYCLE

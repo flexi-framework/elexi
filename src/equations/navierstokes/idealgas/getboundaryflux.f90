@@ -56,6 +56,10 @@ INTERFACE GetBoundaryFlux
   MODULE PROCEDURE GetBoundaryFlux
 END INTERFACE
 
+INTERFACE GetBoundaryState
+  MODULE PROCEDURE GetBoundaryState
+END INTERFACE
+
 INTERFACE FinalizeBC
   MODULE PROCEDURE FinalizeBC
 END INTERFACE
@@ -75,23 +79,15 @@ END INTERFACE
 PUBLIC :: Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
 
-#if USE_PARTICLES
-INTERFACE GetBoundaryState
-  MODULE PROCEDURE GetBoundaryState
-END INTERFACE
-#endif /*USE_PARTICLES*/
-
 PUBLIC :: InitBC
 PUBLIC :: GetBoundaryFlux
 PUBLIC :: FinalizeBC
+PUBLIC :: GetBoundaryState
 #if FV_ENABLED
 #if FV_RECONSTRUCT
 PUBLIC :: GetBoundaryFVgradient
 #endif
 #endif
-#if USE_PARTICLES
-PUBLIC :: GetBoundaryState
-#endif /*USE_PARTICLES*/
 !==================================================================================================================================
 
 CONTAINS
@@ -378,11 +374,12 @@ CASE(31) ! Subsonic, round inflow and outside an isothermal wall; read data from
   ! Initialize boundary state with rotated inner state
   DO q=0,ZDIM(Nloc); DO p=0,Nloc
     ! transform state into normal system
-    UPrim_boundary(1,p,q)= UPrim_master(1,p,q)
-    UPrim_boundary(2,p,q)= SUM(UPrim_master(2:4,p,q)*NormVec( :,p,q))
-    UPrim_boundary(3,p,q)= SUM(UPrim_master(2:4,p,q)*TangVec1(:,p,q))
-    UPrim_boundary(4,p,q)= SUM(UPrim_master(2:4,p,q)*TangVec2(:,p,q))
-    UPrim_boundary(5:PP_nVarPrim,p,q)= UPrim_master(5:PP_nVarPrim,p,q)
+    UPrim_boundary(DENS,p,q)     = UPrim_master(DENS,p,q)
+    UPrim_boundary(VEL1,p,q)     = SUM(UPrim_master(VELV,p,q)*NormVec( :,p,q))
+    UPrim_boundary(VEL2,p,q)     = SUM(UPrim_master(VELV,p,q)*TangVec1(:,p,q))
+    UPrim_boundary(VEL3,p,q)     = SUM(UPrim_master(VELV,p,q)*TangVec2(:,p,q))
+    UPrim_boundary(PRES,p,q)     = UPrim_master(PRES,p,q)
+    UPrim_boundary(TEMP,p,q)     = UPrim_master(TEMP,p,q)
   END DO; END DO !p,q
 
   ! Subsonic inflow
@@ -695,7 +692,7 @@ END SELECT ! BCType
 END SUBROUTINE GetBoundaryState
 
 !==================================================================================================================================
-!> Computes the boundary fluxes for a given Cartesian mesh face (defined by SideID).
+!> Computes the boundary fluxes for a given face (defined by SideID).
 !> Calls GetBoundaryState an directly uses the returned vales for all Riemann-type BCs.
 !> For other types of BCs, we directly compute the flux on the interface.
 !==================================================================================================================================
@@ -777,8 +774,8 @@ ELSE
   SELECT CASE(BCType)
   CASE(2,12,121,22,23,24,25,27,28,29) ! Riemann-Type BCs
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
-      CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q))
-      CALL PrimToCons(UPrim_boundary(:,p,q),      UCons_boundary(:,p,q))
+      CALL PrimToCons(UPrim_master(:,p,q),  UCons_master(:,p,q))
+      CALL PrimToCons(UPrim_boundary(:,p,q),UCons_boundary(:,p,q))
     END DO; END DO ! p,q=0,PP_N
     CALL Riemann(Nloc,Flux,UCons_master,UCons_boundary,UPrim_master,UPrim_boundary, &
         NormVec,TangVec1,TangVec2,doBC=.TRUE.)
@@ -1238,7 +1235,7 @@ INTEGER                       :: p,q,SideID,ElemID,locSide
 CHARACTER(LEN=255)            :: NodeType_HDF5
 LOGICAL                       :: InterpolateSolution
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',FileName
+SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 
@@ -1323,7 +1320,7 @@ REAL,ALLOCATABLE              :: ploc(:),Tloc(:),U_local(:,:)
 REAL                          :: minr,r1,r2
 REAL,PARAMETER                :: epsilonBC=1.e-3
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',FileName
+SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
 
 !#if USE_MPI
 !MPIRequest_BC = MPI_REQUEST_NULL

@@ -47,8 +47,11 @@ END INTERFACE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
-PUBLIC :: InitPartState, ReadPartStateFile, FinalizeReadPartStateFile
-PUBLIC :: InitParticleOutput,PartitionPartMPI
+PUBLIC :: InitPartState
+PUBLIC :: ReadPartStateFile
+PUBLIC :: FinalizeReadPartStateFile
+PUBLIC :: InitParticleOutput
+PUBLIC :: PartitionPartMPI
 !===================================================================================================================================
 
 CONTAINS
@@ -72,12 +75,15 @@ TYPE(tVisuParticle),INTENT(INOUT)     :: ListIn
 INTEGER                               :: i, iVar
 CHARACTER(LEN=255)                    :: tmp, tmp2
 !===================================================================================================================================
+
 IF(ListIn%nPartVar_Visu.GT.0)THEN
   SDEALLOCATE(ListIn%VarNamePartCombine)
-  ALLOCATE (ListIn%VarNamePartCombine(ListIn%nPartVar_Visu))
   SDEALLOCATE(ListIn%VarNamePartCombineLen)
-  ALLOCATE (ListIn%VarNamePartCombineLen(ListIn%nPartVar_Visu))
-  ListIn%VarNamePartCombine = 0
+  ALLOCATE (ListIn%VarNamePartCombineLen(ListIn%nPartVar_Visu) &
+           ,ListIn%VarNamePartCombine(   ListIn%nPartVar_Visu))
+  ListIn%VarNamePartCombineLen = 0
+  ListIn%VarNamePartCombine    = 0
+
   DO iVar=2,ListIn%nPartVar_Visu
     i = LEN(TRIM(ListIn%VarNamePartVisu(iVar)))
     tmp = ListIn%VarNamePartVisu(iVar)
@@ -87,8 +93,9 @@ IF(ListIn%nPartVar_Visu.GT.0)THEN
       ListIn%VarNamePartCombine(iVar) = ListIn%VarNamePartCombine(iVar-1) + 1
     END IF
   END DO
-  ListIn%VarNamePartCombineLen = 0
+
   ListIn%VarNamePartCombineLen(ListIn%nPartVar_visu) = ListIn%VarNamePartCombine(ListIn%nPartVar_visu)
+
   DO iVar=ListIn%nPartVar_visu-1,1,-1
     IF (ListIn%VarNamePartCombine(iVar).GT.0) THEN
       ListIn%VarNamePartCombineLen(iVar) = MAX(ListIn%VarNamePartCombine(iVar), ListIn%VarNamePartCombineLen(iVar+1))
@@ -129,22 +136,24 @@ SDEALLOCATE(ListIn%VarNamePartDummy)
 SDEALLOCATE(ListIn%mapAllVarsToVisuVars)
 
 IF(datasetNames.EQ.'PartData')THEN
-  CALL GetVarNames("VarNamesParticles",varnames,VarNamesExist)
+  CALL GetVarNames("VarNamesParticles"     ,varnames,VarNamesExist)
 ELSE IF(datasetNames.EQ.'ImpactData')THEN
-  CALL GetVarNames("VarNamesErosion",varnames,VarNamesExist)
+  CALL GetVarNames("VarNamesImpactTracking",varnames,VarNamesExist)
 END IF
 
 IF(VarNamesExist)THEN
   CALL GetDataSize(File_ID,TRIM(datasetNames),dims,HSize)
-  ListIn%nPartVar_HDF5=INT(HSize(1))-3
-  ListIn%nGlobalParts=INT(HSize(2))
-  CALL PartitionPartMPI(ListIn)
-  ALLOCATE(ListIn%VarNamesPart_HDF5(1:ListIn%nPartVar_HDF5))
-  ListIn%VarNamesPart_HDF5=varnames(4:)
-  ALLOCATE(ListIn%VarNamePartDummy(1:ListIn%nPartVar_HDF5))
-  ListIn%VarNamePartDummy=''
-  ALLOCATE(ListIn%mapAllVarsToVisuVars(1:ListIn%nPartVar_HDF5))
-  ListIn%mapAllVarsToVisuVars=0
+  ListIn%nPartVar_HDF5 = INT(HSize(1))-3
+  ListIn%nGlobalParts  = INT(HSize(2))
+
+  ALLOCATE(ListIn%VarNamesPart_HDF5(   1:ListIn%nPartVar_HDF5) &
+          ,ListIn%VarNamePartDummy(    1:ListIn%nPartVar_HDF5)  &
+          ,ListIn%mapAllVarsToVisuVars(1:ListIn%nPartVar_HDF5))
+
+  ListIn%VarNamesPart_HDF5    = varnames(4:)
+  ListIn%VarNamePartDummy     = ''
+  ListIn%mapAllVarsToVisuVars = 0
+
   DO j=1,ListIn%nPartVar_HDF5
     ListIn%VarNamesPart_HDF5(j)=TRIM(datasetNames)//":"//TRIM(ListIn%VarNamesPart_HDF5(j))
   END DO
@@ -179,8 +188,9 @@ TYPE(tVisuParticle),INTENT(INOUT)       :: ListIn
 ! LOCAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=255)                      :: DataArray
-INTEGER                                 :: iPart,iVar,iVar2, i
-REAL,ALLOCATABLE                        :: PartData(:,:)
+INTEGER                                 :: iPart,iVar,iVar2,i
+INTEGER                                 :: nInvalidPartsLoc,nInvalidPartsGlob
+REAL,ALLOCATABLE                        :: PartData(:,:),PartDataCheck(:,:)
 CHARACTER(LEN=255)                      :: tmp, tmp2
 LOGICAL                                 :: datasetFound
 !===================================================================================================================================
@@ -192,51 +202,83 @@ ELSE
   DataArray = 'PartData'
 END IF
 
+SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(Unit_stdOut,'(A,A)') TRIM(DataArray),' DECOMPOSITION'
+
 CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-
 CALL DatasetExists(File_ID,TRIM(DataArray),datasetFound)
-
 IF(.NOT.datasetFound) RETURN
 
-ALLOCATE(PartData(1:ListIn%nPartVar_HDF5+3,1:ListIn%nLocalParts))
+! Assign particles to corresponding procs
+CALL PartitionPartMPI(ListIn)
+
+ALLOCATE(PartData     (1:ListIn%nPartVar_HDF5+3,1:ListIn%nLocalParts) &
+        ,PartDataCheck(1:ListIn%nPartVar_HDF5+3,1:ListIn%nLocalParts))
 CALL ReadArray(DataArray,2,(/ListIn%nPartVar_HDF5+3, ListIn%nLocalParts/),ListIn%offsetPart,2,RealArray=PartData)
 
-ListIn%nPart_Visu=0
+ListIn%nPart_Visu = 0
+nInvalidPartsLoc  = 0
 
-DO iPart=1,ListIn%nLocalParts
-  ListIn%nPart_Visu=ListIn%nPart_Visu+1
+DO iPart = 1,ListIn%nLocalParts
+  ! Remove invalid particles
+  IF (ANY(IEEE_IS_NAN(PartData(:,iPart)))) THEN
+    nInvalidPartsLoc  = nInvalidPartsLoc  + 1
+  ELSE
+    ListIn%nPart_Visu = ListIn%nPart_Visu + 1
+    PartDataCheck(:,ListIn%nPart_Visu) = PartData(:,iPart)
+  END IF
 END DO
 
+nInvalidPartsGlob = nInvalidPartsLoc
+#if USE_MPI
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,nInvalidPartsGlob,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+#endif
+
+! Write data back to PartData
+IF (nInvalidPartsGlob.GT.0 .AND. MPIRoot) WRITE(Unit_stdOut,'(A,I0,A)') ' ',nInvalidPartsGlob,' invalid particles detected. Ignoring ...'
+IF (nInvalidPartsLoc.GT.0) THEN
+  DEALLOCATE(PartData)
+  ALLOCATE(  PartData   (1:ListIn%nPartVar_HDF5+3,1:ListIn%nPart_Visu))
+  PartData(:,1:ListIn%nPart_Visu) = PartDataCheck(:,1:ListIn%nPart_Visu)
+  ListIn%nLocalParts = ListIn%nPart_Visu
+END IF
+DEALLOCATE(PartDataCheck)
+
+! Visualize all particle variables
 IF(VisuPart)THEN
-  ListIn%nPartVar_Visu=ListIn%nPartVar_HDF5
-  ALLOCATE(ListIn%PartData_HDF5(1:ListIn%nPartVar_Visu+3,1:ListIn%nLocalParts))
-  ListIn%PartData_HDF5=PartData
+  ListIn%nPartVar_Visu = ListIn%nPartVar_HDF5
+
   SDEALLOCATE(ListIn%VarNamePartVisu)
-  ALLOCATE(ListIn%VarNamePartVisu(1:ListIn%nPartVar_Visu))
-  ListIn%VarNamePartVisu=ListIn%VarNamesPart_HDF5
-  ListIn%mapAllVarsToVisuVars=1
+  ALLOCATE(ListIn%PartData_HDF5(  1:ListIn%nPartVar_Visu+3,1:ListIn%nLocalParts) &
+          ,ListIn%VarNamePartVisu(1:ListIn%nPartVar_Visu))
+  ListIn%PartData_HDF5        = PartData
+  ListIn%VarNamePartVisu      = ListIn%VarNamesPart_HDF5
+  ListIn%mapAllVarsToVisuVars = 1
+! Only visualize explicitely requested variables
 ELSE
   ALLOCATE(ListIn%PartData_HDF5(1:ListIn%nPartVar_Visu+3,1:ListIn%nLocalParts))
-  ListIn%PartData_HDF5(1:3,:)=PartData(1:3,:)
-  DO iVar=1,ListIn%nPartVar_Visu
-    DO iVar2=1,ListIn%nPartVar_HDF5
+  ListIn%PartData_HDF5(1:3,:) = PartData(1:3,:)
+  DO iVar = 1,ListIn%nPartVar_Visu
+    DO iVar2 = 1,ListIn%nPartVar_HDF5
       IF(STRICMP(ListIn%VarNamePartVisu(iVar),ListIn%VarNamesPart_HDF5(iVar2)))THEN
-        ListIn%PartData_HDF5(iVar+3,:)=PartData(iVar2+3,:)
+        ListIn%PartData_HDF5(iVar+3,:) = PartData(iVar2+3,:)
       END IF
     END DO
   END DO
 END IF
 
-SDEALLOCATE(PartData)
+DEALLOCATE(PartData)
 CALL CloseDataFile()
 
 ! Needed for output
 IF(ListIn%nPartVar_Visu.GT.0)THEN
   SDEALLOCATE(ListIn%VarNamePartCombine)
-  ALLOCATE (ListIn%VarNamePartCombine(ListIn%nPartVar_Visu))
   SDEALLOCATE(ListIn%VarNamePartCombineLen)
-  ALLOCATE (ListIn%VarNamePartCombineLen(ListIn%nPartVar_Visu))
-  ListIn%VarNamePartCombine = 0
+  ALLOCATE (ListIn%VarNamePartCombine(   ListIn%nPartVar_Visu) &
+           ,ListIn%VarNamePartCombineLen(ListIn%nPartVar_Visu))
+  ListIn%VarNamePartCombineLen = 0
+  ListIn%VarNamePartCombine    = 0
+
   DO iVar=2,ListIn%nPartVar_Visu
     i = LEN(TRIM(ListIn%VarNamePartVisu(iVar)))
     tmp = ListIn%VarNamePartVisu(iVar)
@@ -246,7 +288,7 @@ IF(ListIn%nPartVar_Visu.GT.0)THEN
       ListIn%VarNamePartCombine(iVar) = ListIn%VarNamePartCombine(iVar-1) + 1
     END IF
   END DO
-  ListIn%VarNamePartCombineLen = 0
+
   ListIn%VarNamePartCombineLen(ListIn%nPartVar_visu) = ListIn%VarNamePartCombine(ListIn%nPartVar_visu)
   DO iVar=ListIn%nPartVar_visu-1,1,-1
     IF (ListIn%VarNamePartCombine(iVar).GT.0) THEN
@@ -309,27 +351,31 @@ INTEGER                                 :: iProc,iPart
 #endif /*USE_MPI*/
 !==================================================================================================================================
 #if USE_MPI
-ALLOCATE(offsetPartMPI(0:nProcessors),nPartsMPI(0:nProcessors-1))
+ALLOCATE(offsetPartMPI(0:nProcessors) &
+        ,nPartsMPI(    0:nProcessors-1))
 offsetPartMPI=0
-ListIn%nLocalParts=ListIn%nGlobalParts/nProcessors
-iPart=ListIn%nGlobalParts-ListIn%nLocalParts*nProcessors
-DO iProc=0,nProcessors-1
-  offsetPartMPI(iProc)=ListIn%nLocalParts*iProc+MIN(iProc,iPart)
+
+ListIn%nLocalParts = ListIn%nGlobalParts/nProcessors
+iPart = ListIn%nGlobalParts-ListIn%nLocalParts*nProcessors
+
+DO iProc = 0,nProcessors-1
+  offsetPartMPI(iProc) = ListIn%nLocalParts*iProc+MIN(iProc,iPart)
 END DO
-offsetPartMPI(nProcessors)=ListIn%nGlobalParts
-nPartsMPI(0:nProcessors-1)=offsetPartMPI(1:nProcessors)-offsetPartMPI(0:nProcessors-1)
-ListIn%nLocalParts=nPartsMPI(myRank)
-ListIn%offsetPart=offsetPartMPI(myRank)
+
+offsetPartMPI(nProcessors)   = ListIn%nGlobalParts
+nPartsMPI(  0:nProcessors-1) = offsetPartMPI(1:nProcessors)-offsetPartMPI(0:nProcessors-1)
+ListIn%nLocalParts = nPartsMPI(myRank)
+ListIn%offsetPart  = offsetPartMPI(myRank)
 #else /* MPI */
-ListIn%nLocalParts=ListIn%nGlobalParts
-ListIn%offsetPart=0
+ListIn%nLocalParts = ListIn%nGlobalParts
+ListIn%offsetPart  = 0
 #endif /* MPI */
 
-PartitionPartIsDone=.TRUE.
+PartitionPartIsDone = .TRUE.
 
 #if USE_MPI
-SDEALLOCATE(offsetPartMPI)
-SDEALLOCATE(nPartsMPI)
+DEALLOCATE(offsetPartMPI)
+DEALLOCATE(nPartsMPI)
 #endif /* MPI */
 
 END SUBROUTINE PartitionPartMPI

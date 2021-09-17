@@ -28,12 +28,17 @@ INTERFACE CalcEkinPart
   MODULE PROCEDURE CalcEkinPart
 END INTERFACE
 
+INTERFACE TrackingParticlePath
+  MODULE PROCEDURE TrackingParticlePath
+END INTERFACE
+
 INTERFACE ParticleRecord
   MODULE PROCEDURE ParticleRecord
 END INTERFACE
 
 PUBLIC :: CalcEkinPart
 PUBLIC :: ParticleRecord
+PUBLIC :: TrackingParticlePath
 !===================================================================================================================================
 
 CONTAINS
@@ -68,17 +73,50 @@ CalcEkinPart = 0.5*Species(PartSpecies(iPart))%MassIC*partV2
 END FUNCTION CalcEkinPart
 
 
+SUBROUTINE TrackingParticlePath()
+!===================================================================================================================================
+! Outputs the particle position and velocity at every time step to determine the absolute or relative (since emission) path
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Vars,          ONLY: PartState,PDM,LastPartPos
+USE MOD_Particle_Analyze_Vars,  ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: iPart
+!===================================================================================================================================
+
+! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
+IF (doParticleDispersionTrack) THEN
+  DO iPart = 1,PDM%ParticleVecLength
+    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) + ABS(PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+  END DO
+ELSEIF (doParticlePathTrack) THEN
+  DO iPart = 1,PDM%ParticleVecLength
+    IF (PDM%ParticleInside(iPart)) PartPath(1:3,iPart) = PartPath(1:3,iPart) +    (PartState(1:3,iPart) - LastPartPos(1:3,iPart))
+  END DO
+END IF
+
+END SUBROUTINE TrackingParticlePath
+
+
 SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 !===================================================================================================================================
 !
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars,           ONLY: PartState,PDM,LastPartPos,PartSpecies,Species,nSpecies,PartIndex
-USE MOD_Particle_Analyze_Vars,   ONLY: RPP_MaxBufferSize,RPP_Plane,RecordPart,RPP_nVarNames
-USE MOD_HDF5_Output             ,ONLY: WriteAttribute
-USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_HDF5_WriteArray         ,ONLY: WriteArray
+USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
+USE MOD_Output_Vars             ,ONLY: WriteStateFiles
+USE MOD_Particle_Vars           ,ONLY: PartState,PDM,LastPartPos,PartSpecies,Species,nSpecies,PartIndex
+USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_MaxBufferSize,RPP_Plane,RecordPart,RPP_nVarNames
+USE MOD_HDF5_Output             ,ONLY: WriteAttribute
 #if USE_MPI
 USE MOD_Particle_HDF5_output    ,ONLY: DistributedWriteArray
 #endif /*MPI*/
@@ -101,11 +139,12 @@ INTEGER                        :: nRecords(0:nProcessors-1)
 CHARACTER(LEN=32)              :: tmpStr
 REAL                           :: DiameterIC(nSpecies), SphericityIC(nSpecies)
 #if USE_EXTEND_RHS
-INTEGER                        :: ForceIC(5,nSpecies)
+INTEGER                        :: ForceIC(6,nSpecies)
 #else
 INTEGER                        :: ForceIC(1,nSpecies)
 #endif
 !===================================================================================================================================
+IF (.NOT.WriteStateFiles) RETURN
 
 !IF(RPP_Type.EQ.'plane')THEN
 DO iRecord = 1,RecordPart
@@ -171,20 +210,22 @@ DO iRecord = 1,RecordPart
         DiameterIC(iSpecies)   = Species(iSpecies)%DiameterIC
         IF(Species(iSpecies)%RHSMethod .NE. RHS_TRACER) ForceIC(1,iSpecies)    = 1
 #if USE_EXTEND_RHS
-        IF(Species(iSpecies)%CalcLiftForce)       ForceIC(2,iSpecies) = 1
+        IF(Species(iSpecies)%CalcSaffmanForce)    ForceIC(2,iSpecies) = 1
         IF(Species(iSpecies)%CalcBassetForce)     ForceIC(3,iSpecies) = 1
         IF(Species(iSpecies)%CalcVirtualMass)     ForceIC(4,iSpecies) = 1
         IF(Species(iSpecies)%CalcUndisturbedFlow) ForceIC(5,iSpecies) = 1
+        IF(Species(iSpecies)%CalcMagnusForce)     ForceIC(6,iSpecies) = 1
 #endif
       END DO
       CALL WriteAttribute(File_ID,'SphericityIC',nSpecies,RealArray=SphericityIC)
       CALL WriteAttribute(File_ID,'DiameterIC'  ,nSpecies,RealArray=DiameterIC)
       CALL WriteAttribute(File_ID,'DragForce'   ,nSpecies,IntArray=ForceIC(1,:))
 #if USE_EXTEND_RHS
-      CALL WriteAttribute(File_ID,'LiftForce'   ,nSpecies,IntArray=ForceIC(2,:))
+      CALL WriteAttribute(File_ID,'SaffmanForce',nSpecies,IntArray=ForceIC(2,:))
       CALL WriteAttribute(File_ID,'BassForce'   ,nSpecies,IntArray=ForceIC(3,:))
       CALL WriteAttribute(File_ID,'VirtForce'   ,nSpecies,IntArray=ForceIC(4,:))
       CALL WriteAttribute(File_ID,'UndiForce'   ,nSpecies,IntArray=ForceIC(5,:))
+      CALL WriteAttribute(File_ID,'MagnusForce' ,nSpecies,IntArray=ForceIC(6,:))
 #endif
       CALL CloseDataFile()
     END IF

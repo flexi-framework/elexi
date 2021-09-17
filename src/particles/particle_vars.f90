@@ -46,6 +46,7 @@ INTEGER                       :: nrSeeds                                     ! N
 INTEGER , ALLOCATABLE         :: seeds(:)                                    ! =>NULL()   ! Seeds for Random Number Generator
 
 LOGICAL                       :: doPartIndex                                 ! Flag to give particles an unique (or not) index
+LOGICAL                       :: doCalcSourcePart                            ! Flag to enable two-way coupling (NN)
 
 #if USE_BASSETFORCE
 REAL    , ALLOCATABLE         :: durdt(:,:)                                  ! Old dur/dt for Basset force
@@ -172,10 +173,22 @@ TYPE typeSurfaceflux
   REAL                                   :: DGMeanPrimState(1:PP_nVarPrim)   ! mean DG flux through boundary
 END TYPE
 
+ABSTRACT INTERFACE
+  FUNCTION DragFactorInt(Rep,SphericityIC,Mp) RESULT(f)
+    REAL,INTENT(IN) :: Rep,SphericityIC,Mp
+    REAL            :: f
+  END FUNCTION
+END INTERFACE
+
+TYPE type_F
+  PROCEDURE(DragFactorInt),POINTER,NOPASS:: op
+END TYPE
+
 TYPE tSpecies                                                                ! Particle Data for each Species
   ! General Species Values
   TYPE(tInit), ALLOCATABLE               :: Init(:)  !     =>NULL()          ! Particle Data for each Initialisation
   INTEGER                                :: RHSMethod                        ! specifying Keyword for RHS method
+  TYPE(type_F)                           :: DragFactor_pointer               ! Pointer defining the drag factor
   REAL                                   :: MassIC                           ! Particle mass (without MPF)
   REAL                                   :: DiameterIC                       ! Particle diameter (without MPF)
   REAL                                   :: DensityIC                        ! Particle density (without MPF)
@@ -191,11 +204,13 @@ TYPE tSpecies                                                                ! P
   ! Bons particle rebound model
   REAL                                   :: YoungIC                          ! Young's modulus
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp
+  REAL                                   :: Whitaker_a                       ! Constant which scales the velocity to obtain the yield coeff
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
   INTEGER                                :: CountIndex                       ! Count number of particles
-  LOGICAL                                :: doRoughWallModelling
+  LOGICAL                                :: doRoughWallModelling             ! Walls are modelled as rough walls
 #if USE_EXTEND_RHS
-  LOGICAL                                :: CalcLiftForce                    ! Calculate the lift (Saffman) force
+  LOGICAL                                :: CalcSaffmanForce                 ! Calculate the lift (Saffman) force
+  LOGICAL                                :: CalcMagnusForce                  ! Calculate the Magnus force
   LOGICAL                                :: CalcUndisturbedFlow              ! Calculate the undisturbed flow force
   LOGICAL                                :: CalcVirtualMass                  ! Calculate the virtual mass force
   LOGICAL                                :: CalcBassetForce                  ! Calculate the Basset force
@@ -228,7 +243,7 @@ TYPE(tParticleElementMapping)            :: PEM
 TYPE tParticleDataManagement
   INTEGER                                :: CurrentNextFreePosition          ! Index of nextfree index in nextFreePosition-Array
   INTEGER                                :: maxParticleNumber                ! Maximum Number of all Particles
-  INTEGER                                :: ParticleVecLength                ! Vector Length for Particle Push Calculation
+  INTEGER                                :: ParticleVecLength=0              ! Vector Length for Particle Push Calculation
   INTEGER                                :: insideParticleNumber             ! Number of all recent Particles inside
   INTEGER , ALLOCATABLE                  :: PartInit(:)                      ! (1:NParts), initial emission condition number
                                                                              ! the calculation area
@@ -251,14 +266,14 @@ LOGICAL                                  :: DoPoissonRounding                ! P
 LOGICAL                                  :: DoTimeDepInflow                  ! Insertion and SurfaceFlux w simple random rounding
 LOGICAL                                  :: RepWarn = .FALSE.                ! Warning for Reynolds limit of particle model
 
-#if USE_EXTEND_RHS
+#if USE_FAXEN_CORR
 REAL,ALLOCATABLE                         :: gradUx2(:,:,:,:,:,:),gradUy2(:,:,:,:,:,:),gradUz2(:,:,:,:,:,:)
 REAL,ALLOCATABLE                         :: gradUx_master_loc(:,:,:,:), gradUx_slave_loc(:,:,:,:)
 REAL,ALLOCATABLE                         :: gradUy_master_loc(:,:,:,:), gradUy_slave_loc(:,:,:,:)
 REAL,ALLOCATABLE                         :: gradUz_master_loc(:,:,:,:), gradUz_slave_loc(:,:,:,:)
-REAL,ALLOCATABLE                         :: U_local(:,:,:,:,:)
-REAL,ALLOCATABLE                         :: gradp_local(:,:,:,:,:,:)
-#endif /* USE_EXTEND_RHS */
+!REAL,ALLOCATABLE                         :: U_local(:,:,:,:,:)
+!REAL,ALLOCATABLE                         :: gradp_local(:,:,:,:,:,:)
+#endif /* USE_FAXEN_CORR */
 
 #if USE_EXTEND_RHS && ANALYZE_RHS
 REAL                                     :: tWriteRHS

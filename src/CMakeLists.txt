@@ -165,27 +165,29 @@ ENDIF()
 # Particle tracking
 # =========================================================================
 OPTION(PARTICLES "Enable particle tracking" OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_CODE_ANALYZE "Output code analyze messages"        OFF
-                                              "PARTICLES"                           OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_LOADBALANCE  "Use LoadBalance timemeasurement"     OFF
-                                              "PARTICLES;LIBS_USE_MPI"              OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_RW           "Use random walk model for particles" OFF
-                                              "PARTICLES;LIBS_USE_MPI"              OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_CODE_ANALYZE "Output code analyze messages"         OFF
+                                              "PARTICLES"                            OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_LOADBALANCE  "Use LoadBalance timemeasurement"      OFF
+                                              "PARTICLES;LIBS_USE_MPI"               OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_RW           "Use random walk model for particles"  OFF
+                                              "PARTICLES;LIBS_USE_MPI"               OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_INTKIND8     "Enable particle numbers larger standard integer size" OFF
-                                              "PARTICLES"                           OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_EXTEND_RHS   "Use extended RHS for particles"      OFF
-                                              "PARTICLES;FLEXI_PARABOLIC"           OFF)
+                                              "PARTICLES"                            OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_EXTEND_RHS   "Use extended RHS for particles"       OFF
+                                              "PARTICLES;FLEXI_PARABOLIC"            OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_FAXEN_CORR   "Enable Faxen correctio for particles" OFF
+                                              "PARTICLES;FLEXI_PARABOLIC"            OFF)
 # Extend RHS options
 CMAKE_DEPENDENT_OPTION(PARTICLES_UNDISTFLOW   "Use viscous stresses and pressure gradient in RHS for particles" OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
+                                              "PARTICLES_EXTEND_RHS"                 OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_VIRTUALMASS  "Use virtual mass force in RHS for particles" OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
+                                              "PARTICLES_EXTEND_RHS"                 OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_BASSETFORCE  "Use Basset force in RHS for particles" OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_LIFTFORCE    "Use lift force in RHS for particles" OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_ANALYZE_RHS  "Write rhs to file for particles"     OFF
-                                              "PARTICLES_EXTEND_RHS"                OFF)
+                                              "PARTICLES_EXTEND_RHS"                 OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_ROTATION     "Consider rotation of particles"       OFF
+                                              "PARTICLES_EXTEND_RHS"                 OFF)
+CMAKE_DEPENDENT_OPTION(PARTICLES_ANALYZE_RHS  "Write rhs to file for particles"      OFF
+                                              "PARTICLES_EXTEND_RHS"                 OFF)
 IF(PARTICLES)
   IF(FLEXI_2D)
     MESSAGE(SEND_ERROR "PARTICLES only works on FLEXI_2D=OFF")
@@ -242,6 +244,12 @@ IF(PARTICLES)
     ADD_DEFINITIONS(-DUSE_INTKIND8=0)
   ENDIF()
 
+  IF (PARTICLES_FAXEN_CORR)
+    ADD_DEFINITIONS(-DUSE_FAXEN_CORR=1)
+  ELSE()
+    ADD_DEFINITIONS(-DUSE_FAXEN_CORR=0)
+  ENDIF()
+
   IF (PARTICLES_EXTEND_RHS)
     ADD_DEFINITIONS(-DUSE_EXTEND_RHS=1)
     # Undisturbed flow
@@ -262,11 +270,12 @@ IF(PARTICLES)
     ELSE()
       ADD_DEFINITIONS(-DUSE_BASSETFORCE=0)
     ENDIF()
-    # Lift force
-    IF (PARTICLES_LIFTFORCE)
-      ADD_DEFINITIONS(-DUSE_LIFTFORCE=1)
+    IF (PARTICLES_ROTATION)
+      ADD_DEFINITIONS(-DPP_nVarPart=9)
+      ADD_DEFINITIONS(-DPP_nVarPartRHS=6)
     ELSE()
-      ADD_DEFINITIONS(-DUSE_LIFTFORCE=0)
+      ADD_DEFINITIONS(-DPP_nVarPart=6)
+      ADD_DEFINITIONS(-DPP_nVarPartRHS=3)
     ENDIF()
     # Write RHS to file for analyze
     IF (PARTICLES_ANALYZE_RHS)
@@ -275,11 +284,12 @@ IF(PARTICLES)
       ADD_DEFINITIONS(-DANALYZE_RHS=0)
     ENDIF()
   ELSE()
+    ADD_DEFINITIONS(-DPP_nVarPart=6)
+    ADD_DEFINITIONS(-DPP_nVarPartRHS=3)
     ADD_DEFINITIONS(-DUSE_EXTEND_RHS=0)
     ADD_DEFINITIONS(-DUSE_UNDISTFLOW=0)
     ADD_DEFINITIONS(-DUSE_VIRTUALMASS=0)
     ADD_DEFINITIONS(-DUSE_BASSETFORCE=0)
-    ADD_DEFINITIONS(-DUSE_LIFTFORCE=0)
     ADD_DEFINITIONS(-DANALYZE_RHS=0)
   ENDIF()
 
@@ -290,12 +300,12 @@ ELSE()
   ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
   ADD_DEFINITIONS(-DUSE_RW=0)
   ADD_DEFINITIONS(-DUSE_EXTEND_RHS=0)
+  ADD_DEFINITIONS(-DUSE_FAXEN_CORR=0)
 ENDIF()
 
 # =========================================================================
-# Performance mode
+# Reduced lifting in performance mode
 # =========================================================================
-OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
 CMAKE_DEPENDENT_OPTION(FLEXI_OPTLIFT "Lift only needed variables" OFF
                                      "FLEXI_PERFORMANCE;NOT POSTI" OFF)
 IF(FLEXI_OPTLIFT)
@@ -371,6 +381,8 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/filter/*.f90
                            ./src/io_hdf5/*.f90
                            ./src/timedisc/*.f90
+                           ./src/precond/*.f90
+                           ./src/implicit/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
                            ./src/flexilib.f90
                            ./unitTests/unittest.f90
@@ -413,7 +425,7 @@ FILE(GLOB dgF90            ./src/dg/*.f90)
 
 # >> append F90 files of lifting to 'dgF90'-list
 IF (FLEXI_PARABOLIC)
-  #IF (PARTICLES_EXTEND_RHS)
+  #IF (PARTICLES_FAXEN_CORR)
     FILE(GLOB liftingF90     ./src/dg/lifting/*.f90
                              ./src/lifting_gen/*.f90)
   #ELSE()

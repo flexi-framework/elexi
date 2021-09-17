@@ -58,6 +58,8 @@ USE MOD_Output,            ONLY:DefineParametersOutput,InitOutput
 USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze
 USE MOD_RecordPoints,      ONLY:DefineParametersRecordPoints,InitRecordPoints
 USE MOD_TimeDisc,          ONLY:DefineParametersTimedisc,InitTimeDisc
+USE MOD_Implicit,          ONLY:DefineParametersImplicit,InitImplicit
+USE MOD_Precond,           ONLY:DefineParametersPrecond
 USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
@@ -69,7 +71,7 @@ USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
 USE MOD_LoadBalance,       ONLY:InitLoadBalance
 USE MOD_Particle_MPI_Shared,ONLY:InitMPIShared
 #if USE_LOADBALANCE
-USE MOD_Restart_Vars,      ONLY:DoRestart
+USE MOD_Restart_Vars,      ONLY:DoRestart,RestartFile
 #endif /*USE_LOADBALANCE*/
 #endif /*USE_MPI*/
 #endif /*USE_PARTICLES*/
@@ -80,7 +82,6 @@ USE MOD_FV_Basis,          ONLY:InitFV_Basis
 #endif
 USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
 USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,ExtractParameterFile
-USE MOD_Restart_Vars,      ONLY:RestartFile
 USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
 USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
 IMPLICIT NONE
@@ -93,6 +94,7 @@ INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
 ! LOCAL VARIABLES
 REAL                    :: Time                              !< Used to measure simulation time
 LOGICAL                 :: userblockFound
+CHARACTER(LEN=255)      :: RestartFile_loc = ''
 !==================================================================================================================================
 CALL SetStackSizeUnlimited()
 IF(PRESENT(mpi_comm_loc))THEN
@@ -113,10 +115,12 @@ IF (nArgs.GT.2) THEN
 END IF
 ParameterFile = Args(1)
 IF (nArgs.GT.1) THEN
-  RestartFile = Args(2)
+  RestartFile_loc = Args(2)
 #if USE_LOADBALANCE
   ! LoadBalance needs the information that we are performing a restart
   DoRestart = .TRUE.
+  ! LoadBalance needs the information which is the RestartFile
+  RestartFile = RestartFile_loc
 #endif
 ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
   ParameterFile = ".flexi.ini"
@@ -124,10 +128,12 @@ ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
   IF (.NOT.userblockFound) THEN
     CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(Args(1))//"'")
   END IF
-  RestartFile = Args(1)
+  RestartFile_loc = Args(1)
 #if USE_LOADBALANCE
   ! LoadBalance needs the information that we are performing a restart
   DoRestart = .TRUE.
+  ! LoadBalance needs the information which is the RestartFile
+  RestartFile = RestartFile_loc
 #endif
 END IF
 CALL DefineParametersMPI()
@@ -151,6 +157,8 @@ CALL DefineParametersLifting ()
 #endif /*PARABOLIC*/
 CALL DefineParametersSponge()
 CALL DefineParametersTimedisc()
+CALL DefineParametersImplicit()
+CALL DefineParametersPrecond()
 CALL DefineParametersAnalyze()
 CALL DefineParametersRecordPoints()
 #if USE_PARTICLES
@@ -217,7 +225,7 @@ CALL InitLoadBalance()
 #endif /*USE_LOADBALANCE*/
 #endif  /*USE_PARTICLES*/
 CALL InitMesh(meshMode=2)
-CALL InitRestart()
+CALL InitRestart(RestartFile_loc)
 CALL InitFilter()
 CALL InitOverintegration()
 CALL InitIndicator()
@@ -235,6 +243,7 @@ CALL InitLifting()
 CALL InitSponge()
 CALL InitTimeDisc()
 CALL InitAnalyze()
+CALL InitImplicit()
 CALL InitRecordpoints()
 CALL Restart()
 #if USE_PARTICLES
@@ -284,6 +293,7 @@ USE MOD_Overintegration,   ONLY:FinalizeOverintegration
 USE MOD_Output,            ONLY:FinalizeOutput
 USE MOD_Analyze,           ONLY:FinalizeAnalyze
 USE MOD_RecordPoints,      ONLY:FinalizeRecordPoints
+USE MOD_Implicit,          ONLY:FinalizeImplicit
 USE MOD_TimeDisc,          ONLY:FinalizeTimeDisc
 #if USE_MPI
 USE MOD_MPI,               ONLY:FinalizeMPI
@@ -322,6 +332,7 @@ CALL FinalizeFV()
 CALL FinalizeDG()
 CALL FinalizeEquation()
 CALL FinalizeInterpolation()
+CALL FinalizeImplicit
 CALL FinalizeTimeDisc()
 CALL FinalizeRestart()
 CALL FinalizeMesh()

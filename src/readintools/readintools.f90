@@ -63,6 +63,7 @@ TYPE,PUBLIC :: Parameters
   CHARACTER(LEN=255)   :: actualSection = ""  !< actual section, to set section of an option, when inserted into list
   LOGICAL              :: removeAfterRead=.TRUE. !< specifies whether options shall be marked as removed after being read
 CONTAINS
+!  PROCEDURE :: WriteUnused                !< routine that writes out parameters taht were set but not used
   PROCEDURE :: SetSection                 !< routine to set 'actualSection'
   PROCEDURE :: CreateOption               !< general routine to create a option and insert it into the linked list
                                           !< also checks if option is already created in the linked list
@@ -79,6 +80,7 @@ CONTAINS
   PROCEDURE :: read_options               !< routine that loops over the lines of a parameter files
                                           !< and calls read_option for every option. Outputs all unknow options
   PROCEDURE :: read_option                !< routine that parses a single line from the parameter file.
+!  PROCEDURE :: removeUnnecessary          !< routine that removes unused parameters from linked list
 #if USE_LOADBALANCE
   PROCEDURE :: finalize                   !< routine that resets the parameters for loadbalance
 #endif /*USE LOADBALANCE*/
@@ -181,6 +183,42 @@ PUBLIC :: prms
 
 CONTAINS
 
+! !==================================================================================================================================
+! !> Writes all names that are set but not read during init
+! !==================================================================================================================================
+! SUBROUTINE WriteUnused(this)
+! ! MODULES
+! IMPLICIT NONE
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT/OUTPUT VARIABLES
+! CLASS(Parameters),INTENT(IN) :: this  !< CLASS(Parameters)
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! CLASS(link), POINTER         :: current
+! !==================================================================================================================================
+!
+! ! iterate over all options and compare names
+! SWRITE(UNIT_stdOut,'(132("="))')
+! SWRITE(UNIT_stdOut,'(A,I0,A)') ' Following ',this%count_unread(),' Parameters are defined in INI but not called!'
+! current => this%firstLink
+! DO WHILE (associated(current))
+!   ! compare name
+!   ! current%opt%isSet.:           Parameter is set in INI file
+!   ! .NOT.current%opt%isRemoved:   Parameter is used in the code via GET-function
+!   ! .NOT.current%opt%isUsedMulti: Parameter containing "$" in its name is set in INI file and at least one correpsonding parameter
+!   !                               with a number instead of "$" is used in the code via GET-function
+!   IF (current%opt%isSet.AND.(.NOT.current%opt%isRemoved).AND.(.NOT.current%opt%isUsedMulti)) THEN
+!     CALL set_formatting("red")
+!     SWRITE(UNIT_stdOut,"(A)") TRIM(current%opt%name)
+!     CALL clear_formatting()
+!   END IF
+!   current => current%next
+! END DO
+! SWRITE(UNIT_stdOut,'(132("="))')
+!
+! END SUBROUTINE WriteUnused
+
+
 !==================================================================================================================================
 !> Set actual section. All options created after calling this subroutine are in this 'section'. The section property is only
 !> used to get nicer looking parameter files when using --help or --markdown.
@@ -216,14 +254,72 @@ CLASS(Parameters),INTENT(INOUT) :: this               !< CLASS(Parameters)
 CLASS(link), POINTER            :: current
 !==================================================================================================================================
 
-! iterate over all options and set removed to false
-current => this%firstLink
-DO WHILE (associated(current))
+! IF(loadbalance) THEN
+  ! iterate over all options and set removed to false
+  current => this%firstLink
+  DO WHILE (associated(current))
   current%opt%isRemoved=.FALSE.
   current => current%next
-END DO
+  END DO
+! ELSE
+!   current => this%firstLink
+!   DO WHILE (associated(current))
+!     DEALLOCATE(current%opt)
+!     NULLIFY(current%opt)
+!     tmp => current%next
+!     DEALLOCATE(current)
+!     NULLIFY(current)
+!     current => tmp
+!   END DO
+!   this%firstLink => null()
+!   this%lastLink  => null()
+! END IF
 
 END SUBROUTINE finalize
+
+
+! !==================================================================================================================================
+! !> Remove not used entries in the linked list of THIS parameters.
+! !> reduce size of list for faster loadbalance init
+! !==================================================================================================================================
+! SUBROUTINE removeUnnecessary(this)
+! ! MODULES
+! IMPLICIT NONE
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT/OUTPUT VARIABLES
+! CLASS(Parameters),INTENT(INOUT) :: this  !< CLASS(Parameters)
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! CLASS(link),POINTER :: tmp
+! CLASS(link),POINTER :: current
+! !==================================================================================================================================
+! current =>  this%firstLink
+! DO WHILE (associated(current%next))
+!   tmp => current%next%next
+!   !this%lastLink => current%next
+!   !this%lastLink%next => current%next
+!   IF (current%next%opt%numberedmulti) THEN
+!     DEALLOCATE(current%next%opt)
+!     NULLIFY(current%next%opt)
+!     DEALLOCATE(current%next)
+!     NULLIFY(current%next)
+!     current%next => tmp
+!   ELSE
+!     current => current%next
+!   END IF
+! END DO
+!
+! !current =>  this%firstLink
+! !IF (associated(current).AND.(current%opt%numberedmulti)) THEN
+! !  IF (associated(current%next)) THEN
+! !    this%firstLink => current%next
+! !  ELSE
+! !    this%firstLink => null()
+! !    this%LastLink  => null()
+! !  END IF
+! !END IF
+!
+! END SUBROUTINE removeUnnecessary
 #endif /*USE_LOADBALANCE*/
 
 !==================================================================================================================================
@@ -253,7 +349,6 @@ LOGICAL,INTENT(IN),OPTIONAL           :: numberedmulti    !< marker if numbered 
 ! LOCAL VARIABLES
 CLASS(link), POINTER :: newLink
 TYPE(Varying_String) :: aStr
-INTEGER              :: ind
 !==================================================================================================================================
 
 !#if USE_PARTICLES
@@ -280,21 +375,22 @@ IF(opt%numberedmulti)THEN
   aStr = Replace(aStr,"[]"  ,"$",Every = .true.)
   aStr = Replace(aStr,"[$]" ,"$",Every = .true.)
   aStr = Replace(aStr,"[$$]","$",Every = .true.)
-  CALL LowCase(CHAR(aStr),opt%name)
-  ind = INDEX(TRIM(opt%name),"$")
-  IF (ind.LE.0) CALL ABORT(__STAMP__, &
-      '[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(opt%name)//']')
-ELSE
-#endif /*USE_PARTICLES*/
-  opt%name = name
-#if USE_PARTICLES
+  CALL LowCase(TRIM(CHAR(aStr)),opt%namelowercase)
+  opt%ind = INDEX(TRIM(opt%namelowercase),"$")
+  IF(opt%ind.LE.0)THEN
+    CALL abort(__STAMP__&
+    ,'[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(name)//']')
+  END IF ! opt%ind.LE.0
 END IF ! opt%numberedmulti
 #endif /*USE_PARTICLES*/
 
+opt%name        = name
 opt%isSet       = .FALSE.
 opt%description = description
 opt%section     = this%actualSection
 opt%isRemoved   = .FALSE.
+opt%isUsedMulti = .FALSE. ! Becomes true, if a variable containing "$" is set in parameter file and used for the corresponding
+                          ! valued parameter
 
 ! insert option into linked list
 IF (.NOT. associated(this%firstLink)) then
@@ -686,8 +782,9 @@ CALL MPI_BCAST(FileContent,LEN(FileContent)*nLines,MPI_CHARACTER,0,MPI_COMM_FLEX
 
 ! infinte loop. Exit at EOF
 DO i=1,nLines
-  !! Lower case
-  CALL LowCase(FileContent(i),FileContent(i))
+  ! ! Lower case.
+  ! ! > Not required, performed in NAMEEQUALS anyways but makes output lowcase
+  ! CALL LowCase(FileContent(i),FileContent(i))
   ! read a line into 'aStr'
   aStr=Var_Str(FileContent(i))
   ! Remove comments with "!"
@@ -703,7 +800,7 @@ DO i=1,nLines
   aStr=Replace(aStr,"/)"," ",Every=.true.)
   ! Lower case
   HelpStr=CHAR(aStr)
-  ! If something remaind, this should be an option
+  ! If something remained, this should be an option
   IF (LEN_TRIM(HelpStr).GT.2) THEN
     ! read the option
     IF (.NOT.this%read_option(HelpStr)) THEN
@@ -774,11 +871,10 @@ IF (i==0) return
 name = line(1:i-1)
 rest = line(i+1:)
 
-! iterate over all options and compare names
+! iterate over all options and compare names with all except numberedmulti options
+! already added new names from numberedmulti comparison are checked if they reappear
 current => this%firstLink
 DO WHILE (associated(current))
-  ! iterate over all options and compare names with all except numberedmulti options
-  ! already added new names from numberedmulti comparison are checked if they reappear
 #if USE_PARTICLES
   IF (current%opt%numberedmulti) THEN
     current => current%next
@@ -820,7 +916,7 @@ DO WHILE (associated(current))
 END DO
 
 #if USE_PARTICLES
-! iterate over all options and compare reduced (all numberes removed) names with numberedmulti options
+! iterate over all options and compare reduced (all numbers removed) names with numberedmulti options
 current => this%firstLink
 DO WHILE (associated(current))
   IF (.NOT.current%opt%numberedmulti) THEN
@@ -838,6 +934,7 @@ DO WHILE (associated(current))
       IF(LEN_TRIM(rest).NE.0)THEN
         CALL newopt%parse(rest)
         newopt%isSet = .TRUE.
+        newopt%isUsedMulti = .FALSE.
         ! insert option
         CALL insertOption(current, newopt)
       ELSE
@@ -853,6 +950,7 @@ END DO
 #endif /*USE_PARTICLES*/
 
 END FUNCTION read_option
+
 
 !==================================================================================================================================
 !> Output all parameters, which are defined but NOT set in the parameter file.
@@ -872,13 +970,6 @@ SWRITE(UNIT_StdOut,'(100("!"))')
 SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
 DO WHILE (associated(current))
   IF (.NOT.current%opt%isRemoved) THEN
-!#if USE_PARTICLES
-!    ! Do not output the dummy string for numberedmulti
-!    IF (current%opt%numberedmulti) THEN
-!      current => current%next
-!      CYCLE
-!    END IF
-!#endif /*USE_PARTICLES*/
     SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
   END IF
   current => current%next
@@ -886,6 +977,7 @@ END DO
 SWRITE(UNIT_StdOut,'(100("!"))')
 CALL clear_formatting()
 END SUBROUTINE IgnoredParameters
+
 
 !==================================================================================================================================
 !> Print a default parameter file. The command line argument --help prints it in the format, that is used for reading the parameter
@@ -925,7 +1017,6 @@ CHARACTER(LEN=255)     :: intFromStringOutput
 CHARACTER(LEN=255)     :: fmtIntFromStringLength
 CHARACTER(LEN=255)     :: fmtStringIntFromString
 !==================================================================================================================================
-
 
 maxNameLen  = 0
 maxValueLen = 0
@@ -1036,6 +1127,7 @@ DO WHILE (associated(current))
 END DO
 END SUBROUTINE
 
+
 !==================================================================================================================================
 !> Creates a new link to a option-object, 'next' is the following link in the linked list
 !==================================================================================================================================
@@ -1055,6 +1147,7 @@ constructor_Link%next => next
 ALLOCATE(constructor_Link%opt, SOURCE=opt)
 END FUNCTION constructor_Link
 
+
 !==================================================================================================================================
 !> Count number of times a parameter is used within a file in case of multiple parameters. This only calls the internal
 !> function countoption_ of the parameters class.
@@ -1071,6 +1164,7 @@ INTEGER                     :: no    !< number of parameters
 !==================================================================================================================================
 no = prms%CountOption_(name)
 END FUNCTION CountOption
+
 
 !==================================================================================================================================
 !> General routine to get an option. This routine is called from GETINT,GETREAL,GETLOGICAL,GETSTR to get the value a non-array
@@ -1172,6 +1266,12 @@ DO WHILE (associated(current))
         ! Start replacing the index from the left
         IF(INDEX('0123456789',name(i:i)).GT.0) THEN
           testname(i:i) = '$'
+          ! Remove multiple $ in case of multi-digit numbers
+          IF(i.GT.1 .AND. testname(i-1:i-1).EQ.'$')THEN
+            testname(i-1:LEN(testname)-1)         = testname(i:LEN(testname))
+            testname(LEN(testname):LEN(testname)) = ' '
+            testname = TRIM(testname)
+          END IF
           ! Check if we can find this name
           check => prms%firstLink
           DO WHILE (associated(check))
@@ -1213,6 +1313,12 @@ DO WHILE (associated(current))
               SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
               CALL clear_formatting()
               SWRITE(UNIT_stdOut,"(a3)") ' | '
+              ! remove the option from the linked list of all parameters
+              IF(prms%removeAfterRead) newopt%isRemoved = .TRUE.
+              ! insert option
+              CALL insertOption(current, newopt)
+              ! Indicate that parameter was read at least once and therefore remove the warning that the parameter was not used
+              multi%isUsedMulti = .TRUE.
               RETURN
             END IF
             check => check%next
@@ -1271,6 +1377,7 @@ CALL ABORT(__STAMP__, &
     'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
     'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralOption
+
 
 !==================================================================================================================================
 !> General routine to get an array option. This routine is called from GETINTARRAY,GETREALARRAY,GETLOGICALARRAY,GETSTRARRAY to get
@@ -1376,45 +1483,57 @@ DO WHILE (associated(current))
         ! Start replacing the index from the left
         IF(INDEX('0123456789',name(i:i)).GT.0) THEN
           testname(i:i) = '$'
+          ! Remove multiple $ in case of multi-digit numbers
+          IF(i.GT.1 .AND. testname(i-1:i-1).EQ.'$')THEN
+            testname(i-1:LEN(testname)-1)         = testname(i:LEN(testname))
+            testname(LEN(testname):LEN(testname)) = ' '
+            testname = TRIM(testname)
+          END IF
           ! Check if we can find this name
           check => prms%firstLink
           DO WHILE (associated(check))
             IF (check%opt%NAMEEQUALS(testname) .AND. check%opt%isSet) THEN
               multi => check%opt
               ! copy value from option to result variable
-              SELECT TYPE (newopt)
+              SELECT TYPE (multi)
                 CLASS IS (IntArrayOption)
-                  IF (SIZE(newopt%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
+                  IF (SIZE(multi%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
                   SELECT TYPE(value)
                     TYPE IS (INTEGER)
-                    value = newopt%value
+                    value = multi%value
                   END SELECT
                 CLASS IS (RealArrayOption)
-                  IF (SIZE(newopt%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
+                  IF (SIZE(multi%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
                   SELECT TYPE(value)
                     TYPE IS (REAL)
-                    value = newopt%value
+                    value = multi%value
                   END SELECT
                 CLASS IS (LogicalArrayOption)
-                  IF (SIZE(newopt%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
+                  IF (SIZE(multi%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
                   SELECT TYPE(value)
                     TYPE IS (LOGICAL)
-                    value = newopt%value
+                    value = multi%value
                   END SELECT
               END SELECT
               ! print option and value to stdout. Custom print, so do it here
               WRITE(fmtName,*) prms%maxNameLen
-              SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+              SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO') ' | '
               CALL set_formatting("blue")
               SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(name)
               CALL clear_formatting()
-              SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+              SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO') ' | '
               CALL multi%printValue(prms%maxValueLen)
               SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
               CALL set_formatting("blue")
               SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
               CALL clear_formatting()
               SWRITE(UNIT_stdOut,"(a3)") ' | '
+              ! remove the option from the linked list of all parameters
+              IF(prms%removeAfterRead) newopt%isRemoved = .TRUE.
+              ! insert option
+              CALL insertOption(current, newopt)
+              ! Indicate that parameter was read at least once and therefore remove the warning that the parameter was not used
+              multi%isUsedMulti = .TRUE.
               RETURN
             END IF
             check => check%next
@@ -1472,6 +1591,7 @@ CALL ABORT(__STAMP__, &
     'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralArrayOption
 
+
 !==================================================================================================================================
 !> Get integer, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
@@ -1486,6 +1606,7 @@ value = -1
 CALL GetGeneralOption(value, name, proposal)
 END FUNCTION GETINT
 
+
 !==================================================================================================================================
 !> Get logical, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
@@ -1499,6 +1620,7 @@ value = .FALSE.
 CALL GetGeneralOption(value, name, proposal)
 END FUNCTION GETLOGICAL
 
+
 !==================================================================================================================================
 !> Get real, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
@@ -1511,6 +1633,7 @@ REAL                                 :: value    !< parameter value
 value = -1.0
 CALL GetGeneralOption(value, name, proposal)
 END FUNCTION GETREAL
+
 
 !==================================================================================================================================
 !> Get string, where proposal is used as default value, if the option was not set in parameter file
@@ -1527,6 +1650,7 @@ CALL GetGeneralOption(tmp, name, proposal)
 value = tmp%chars
 END FUNCTION GETSTR
 
+
 !==================================================================================================================================
 !> Get integer array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
@@ -1540,6 +1664,7 @@ INTEGER                              :: value(no) !< array of integers
 value = -1
 CALL GetGeneralArrayOption(value, name, no, proposal)
 END FUNCTION GETINTARRAY
+
 
 !==================================================================================================================================
 !> Get logical array, where proposal is used as default value, if the option was not set in parameter file
@@ -1555,6 +1680,7 @@ value = .FALSE.
 CALL GetGeneralArrayOption(value, name, no, proposal)
 END FUNCTION GETLOGICALARRAY
 
+
 !==================================================================================================================================
 !> Get real array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
@@ -1568,6 +1694,7 @@ REAL                                 :: value(no) !< array of reals
 value = -1.
 CALL GetGeneralArrayOption(value, name, no, proposal)
 END FUNCTION GETREALARRAY
+
 
 !==================================================================================================================================
 !> Get string array, where proposal is used as default value, if the option was not set in parameter file
@@ -1588,6 +1715,7 @@ DO i = 1, no
 END DO ! i = 1, no
 END FUNCTION GETSTRARRAY
 
+
 !==================================================================================================================================
 !> Get string array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
@@ -1607,6 +1735,7 @@ DO WHILE (associated(current))
   current => current%next
 END DO
 END FUNCTION GETDESCRIPTION
+
 
 !==================================================================================================================================
 !> GETINT for options with string values. Requires a map that provides the link between the
@@ -1706,6 +1835,12 @@ DO WHILE (associated(current))
         ! Start replacing the index from the left
         IF(INDEX('0123456789',name(iChar:iChar)).GT.0) THEN
           testname(iChar:iChar) = '$'
+          ! Remove multiple $ in case of multi-digit numbers
+          IF(iChar.GT.1 .AND. testname(iChar-1:iChar-1).EQ.'$')THEN
+            testname(iChar-1:LEN(testname)-1)     = testname(iChar:LEN(testname))
+            testname(LEN(testname):LEN(testname)) = ' '
+            testname = TRIM(testname)
+          END IF
           ! Check if we can find this name
           check => prms%firstLink
           DO WHILE (associated(check))
@@ -1788,6 +1923,7 @@ END DO
 CALL Abort(__STAMP__,&
     "Unknown option: "//TRIM(name)//" or already read (use GET... routine only for multiple options more than once).")
 END FUNCTION GETINTFROMSTR
+
 
 !===================================================================================================================================
 !> Add an entry to the mapping of string and integer values for the StringToInt option.
@@ -1921,6 +2057,7 @@ CALL Abort(__STAMP__,&
 
 END SUBROUTINE addStrListEntry
 
+
 !===================================================================================================================================
 !> This routing extracts a parameter file from the userblock of a state file
 !===================================================================================================================================
@@ -2011,6 +2148,7 @@ CALL MPI_BCAST(userblockFound,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
 
 END SUBROUTINE ExtractParameterFile
+
 
 !===================================================================================================================================
 !> This routine modifies the value for all occurences of a specific parmeter in a given parameter file.

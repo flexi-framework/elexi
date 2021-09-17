@@ -124,11 +124,11 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       struct IntARRAY  nodeids_Part;
       struct CharARRAY varnames_Part;
       struct IntARRAY components_Part;
-      struct DoubleARRAY coords_Erosion;
-      struct DoubleARRAY values_Erosion;
-      struct IntARRAY  nodeids_Erosion;
-      struct CharARRAY varnames_Erosion;
-      struct IntARRAY components_Erosion;
+      struct DoubleARRAY coords_Impact;
+      struct DoubleARRAY values_Impact;
+      struct IntARRAY  nodeids_Impact;
+      struct CharARRAY varnames_Impact;
+      struct IntARRAY components_Impact;
 
       int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
       int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);

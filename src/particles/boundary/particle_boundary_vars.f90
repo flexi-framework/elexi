@@ -59,6 +59,8 @@ INTEGER                                 :: PartStateBoundaryVecLength    !< Impa
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: PartStateBoundary             !< solution evaluated at EPs (nvar,nEP,nSamples)
 INTEGER                                 :: ImpactDataSize                !< number of variables stored per impact
 INTEGER                                 :: ImpactnGlob                   !< Global number of occured impacts
+INTEGER                                 :: ImpactnLoc                    !< Local  number of occured impacts
+INTEGER                                 :: ImpactOffset                  !< Offset number of occured impacts
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MPI Communicator for EPs
@@ -132,6 +134,7 @@ CHARACTER(LEN=255),ALLOCATABLE          :: SurfBCName(:)                 ! names
 
 ! Boundary
 TYPE tPartBoundary
+  INTEGER                                :: InternalBC              = 0      !
   INTEGER                                :: OpenBC                  = 1      ! = 1 (s.u.) Boundary Condition Integer Definition
   INTEGER                                :: ReflectiveBC            = 2      ! = 2 (s.u.) Boundary Condition Integer Definition
   INTEGER                                :: PeriodicBC              = 3      ! = 3 (s.u.) Boundary Condition Integer Definition
@@ -153,6 +156,7 @@ TYPE tPartBoundary
   ! Bons particle rebound model
   REAL    , ALLOCATABLE                  :: Young(:)                ! Young's modulus
   REAL    , ALLOCATABLE                  :: Poisson(:)              ! Poisson's ration for transverse strain under axial compression
+  REAL    , ALLOCATABLE                  :: FricCoeff(:)            ! Friction coefficient
   ! Fong coefficient of restitution
   REAL    , ALLOCATABLE                  :: CoR(:)                  ! Coefficient of restitution for normal velocity component
   ! Rough wall modelling
@@ -196,7 +200,7 @@ TYPE tAuxBC_cone
   REAL                                   :: rotmatrix(3,3)
   LOGICAL                                :: inwards
 END TYPE tAuxBC_cone
-TYPE(tAuxBC_cone), ALLOCATABLE       :: AuxBC_cone(:)
+TYPE(tAuxBC_cone), ALLOCATABLE           :: AuxBC_cone(:)
 
 TYPE tAuxBC_parabol
   REAL                                   :: r_vec(3)
@@ -208,7 +212,7 @@ TYPE tAuxBC_parabol
   REAL                                   :: rotmatrix(3,3)
   LOGICAL                                :: inwards
 END TYPE tAuxBC_parabol
-TYPE(tAuxBC_parabol), ALLOCATABLE       :: AuxBC_parabol(:)
+TYPE(tAuxBC_parabol), ALLOCATABLE        :: AuxBC_parabol(:)
 
 TYPE tPartAuxBC
   INTEGER                                :: OpenBC                  = 1      ! = 1 (s.u.) Boundary Condition Integer Definition
@@ -221,6 +225,19 @@ END TYPE
 TYPE(tPartAuxBC)                         :: PartAuxBC                         ! auxBC Data for Particles
 
 LOGICAL                                  :: LowVeloRemove                 !Flag if low velocity particles should be removed
+
+!Parameters of rebound ANN
+TYPE tPartBoundANN
+  REAL(4) , ALLOCATABLE                  :: w(:,:,:)
+  REAL(4) , ALLOCATABLE                  :: b(:,:)
+  REAL(4) , ALLOCATABLE                  :: beta(:,:)
+  REAL(4) , ALLOCATABLE                  :: output(:)
+  REAL(4) , ALLOCATABLE                  :: max_in(:)
+  REAL(4) , ALLOCATABLE                  :: max_out(:)
+  INTEGER                                :: nLayer
+  INTEGER , ALLOCATABLE                  :: nN(:)
+END TYPE
+TYPE(tPartBoundANN)                      :: PartBoundANN
 !===================================================================================================================================
 
 END MODULE MOD_Particle_Boundary_Vars

@@ -251,14 +251,17 @@ udiff(1:3) = FieldAtParticle(VELV) - PartState(PART_VELV,PartID)
 
 Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
 
+! Empirical relation of nonlinear drag from Clift et al. (1978)
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, 0.)
+
 ! Particle relaxation time
 staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
 
 ! Adding sgs term
 IF(ALLOCATED(TurbPartState)) THEN
-  Fdm = udiff * staup + TurbPartState(1:3,PartID)
+  Fdm = udiff * staup * f + TurbPartState(1:3,PartID)
 ELSE
-  Fdm = udiff * staup
+  Fdm = udiff * staup * f
 END IF
 
 ! Add gravity if required

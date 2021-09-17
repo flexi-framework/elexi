@@ -941,7 +941,7 @@ DO iSpec = 1, nSpecies
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec
   Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'               )
   SELECT CASE (Species(iSpec)%RHSMethod)
-    CASE (RHS_INERTIA, RHS_MINIER)
+    CASE (RHS_INERTIA, RHS_LI, RHS_MINIER)
       drag_factor                      = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'              )
       CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
     CASE DEFAULT

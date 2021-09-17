@@ -81,7 +81,7 @@ USE MOD_FV,                ONLY:DefineParametersFV,InitFV
 USE MOD_FV_Basis,          ONLY:InitFV_Basis
 #endif
 USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
-USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,ExtractParameterFile
+USE MOD_ReadInTools,       ONLY:prms,PrintDefaultParameterFile,ExtractParameterFile
 USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
 USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
 IMPLICIT NONE
@@ -252,7 +252,7 @@ CALL InitParticleMPI()
 #endif /*USE_MPI*/
 CALL InitParticles()
 #endif /*USE_PARTICLES*/
-CALL IgnoredParameters()
+CALL prms%WriteUnused()
 
 ! Measure init duration
 Time=FLEXITIME()

@@ -63,7 +63,7 @@ TYPE,PUBLIC :: Parameters
   CHARACTER(LEN=255)   :: actualSection = ""  !< actual section, to set section of an option, when inserted into list
   LOGICAL              :: removeAfterRead=.TRUE. !< specifies whether options shall be marked as removed after being read
 CONTAINS
-!  PROCEDURE :: WriteUnused                !< routine that writes out parameters taht were set but not used
+  PROCEDURE :: WriteUnused                !< routine that writes out parameters taht were set but not used
   PROCEDURE :: SetSection                 !< routine to set 'actualSection'
   PROCEDURE :: CreateOption               !< general routine to create a option and insert it into the linked list
                                           !< also checks if option is already created in the linked list
@@ -80,15 +80,16 @@ CONTAINS
   PROCEDURE :: read_options               !< routine that loops over the lines of a parameter files
                                           !< and calls read_option for every option. Outputs all unknow options
   PROCEDURE :: read_option                !< routine that parses a single line from the parameter file.
+  PROCEDURE :: count_unread               !< routine that counts the number of parameters, that are set in ini but not read
 !  PROCEDURE :: removeUnnecessary          !< routine that removes unused parameters from linked list
 #if USE_LOADBALANCE
   PROCEDURE :: finalize                   !< routine that resets the parameters for loadbalance
 #endif /*USE LOADBALANCE*/
 END TYPE Parameters
 
-INTERFACE IgnoredParameters
-  MODULE PROCEDURE IgnoredParameters
-END INTERFACE
+! INTERFACE IgnoredParameters
+!   MODULE PROCEDURE IgnoredParameters
+! END INTERFACE
 
 INTERFACE PrintDefaultParameterFile
   MODULE PROCEDURE PrintDefaultParameterFile
@@ -154,7 +155,7 @@ INTERFACE FinalizeParameters
   MODULE PROCEDURE FinalizeParameters
 END INTERFACE
 
-PUBLIC :: IgnoredParameters
+! PUBLIC :: IgnoredParameters
 PUBLIC :: PrintDefaultParameterFile
 PUBLIC :: CountOption
 PUBLIC :: GETINT
@@ -184,40 +185,44 @@ PUBLIC :: prms
 CONTAINS
 
 
-! !==================================================================================================================================
-! !> Writes all names that are set but not read during init
-! !==================================================================================================================================
-! SUBROUTINE WriteUnused(this)
-! ! MODULES
-! IMPLICIT NONE
-! !----------------------------------------------------------------------------------------------------------------------------------
-! ! INPUT/OUTPUT VARIABLES
-! CLASS(Parameters),INTENT(IN) :: this  !< CLASS(Parameters)
-! !----------------------------------------------------------------------------------------------------------------------------------
-! ! LOCAL VARIABLES
-! CLASS(link), POINTER         :: current
-! !==================================================================================================================================
-!
-! ! iterate over all options and compare names
-! SWRITE(UNIT_stdOut,'(132("="))')
-! SWRITE(UNIT_stdOut,'(A,I0,A)') ' Following ',this%count_unread(),' Parameters are defined in INI but not called!'
-! current => this%firstLink
-! DO WHILE (associated(current))
-!   ! compare name
-!   ! current%opt%isSet.:           Parameter is set in INI file
-!   ! .NOT.current%opt%isRemoved:   Parameter is used in the code via GET-function
-!   ! .NOT.current%opt%isUsedMulti: Parameter containing "$" in its name is set in INI file and at least one correpsonding parameter
-!   !                               with a number instead of "$" is used in the code via GET-function
-!   IF (current%opt%isSet.AND.(.NOT.current%opt%isRemoved).AND.(.NOT.current%opt%isUsedMulti)) THEN
-!     CALL set_formatting("red")
-!     SWRITE(UNIT_stdOut,"(A)") TRIM(current%opt%name)
-!     CALL clear_formatting()
-!   END IF
-!   current => current%next
-! END DO
-! SWRITE(UNIT_stdOut,'(132("="))')
-!
-! END SUBROUTINE WriteUnused
+!==================================================================================================================================
+!> Writes all names that are set but not read during init
+!==================================================================================================================================
+SUBROUTINE WriteUnused(this)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CLASS(Parameters),INTENT(IN) :: this  !< CLASS(Parameters)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CLASS(link), POINTER         :: current
+!==================================================================================================================================
+
+! iterate over all options and compare names
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A,I0,A)') ' Following ',this%count_unread(),' Parameters are defined in INI but not called!'
+current => this%firstLink
+DO WHILE (associated(current))
+  ! compare name
+  ! current%opt%isSet.:           Parameter is set in INI file
+  ! .NOT.current%opt%isRemoved:   Parameter is used in the code via GET-function
+  ! .NOT.current%opt%isUsedMulti: Parameter containing "$" in its name is set in INI file and at least one correpsonding parameter
+  !                               with a number instead of "$" is used in the code via GET-function
+  IF (current%opt%isSet.AND.(.NOT.current%opt%isRemoved) &
+#if USE_PARTICLES
+      .AND.(.NOT.current%opt%isUsedMulti) &
+#endif /*USE_PARTICLES*/
+      ) THEN
+    CALL set_formatting("red")
+    SWRITE(UNIT_stdOut,"(A)") TRIM(current%opt%name)
+    CALL clear_formatting()
+  END IF
+  current => current%next
+END DO
+SWRITE(UNIT_stdOut,'(132("="))')
+
+END SUBROUTINE WriteUnused
 
 
 !==================================================================================================================================
@@ -685,6 +690,36 @@ DO WHILE (associated(current))
 END DO
 END FUNCTION  CountOption_
 
+
+!==================================================================================================================================
+!> Count number of set but unread parameters of linked list.
+!==================================================================================================================================
+FUNCTION count_unread(this) result(count)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CLASS(Parameters),INTENT(IN) :: this  !< CLASS(Parameters)
+INTEGER                      :: count !< number of found occurences of keyword
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CLASS(link),POINTER :: current
+!==================================================================================================================================
+count = 0
+! iterate over all entries and count them
+current => this%firstLink
+DO WHILE (ASSOCIATED(current))
+  IF (current%opt%isSet.AND.(.NOT.current%opt%isRemoved) &
+#if USE_PARTICLES
+     .AND.(.NOT.current%opt%isUsedMulti) &
+#endif /*USE_PARTICLES*/
+     ) count = count + 1
+  current => current%next
+END DO
+END FUNCTION  count_unread
+
+
+
 !==================================================================================================================================
 !> Insert an option in front of option with same name in the 'prms' linked list.
 !==================================================================================================================================
@@ -957,31 +992,31 @@ END DO
 END FUNCTION read_option
 
 
-!==================================================================================================================================
-!> Output all parameters, which are defined but NOT set in the parameter file.
-!==================================================================================================================================
-SUBROUTINE IgnoredParameters()
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-CLASS(link), POINTER :: current
-!==================================================================================================================================
-current => prms%firstLink
-CALL set_formatting("bright red")
-SWRITE(UNIT_StdOut,'(100("!"))')
-SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
-DO WHILE (associated(current))
-  IF (.NOT.current%opt%isRemoved) THEN
-    SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
-  END IF
-  current => current%next
-END DO
-SWRITE(UNIT_StdOut,'(100("!"))')
-CALL clear_formatting()
-END SUBROUTINE IgnoredParameters
+! !==================================================================================================================================
+! !> Output all parameters, which are defined but NOT set in the parameter file.
+! !==================================================================================================================================
+! SUBROUTINE IgnoredParameters()
+! ! MODULES
+! IMPLICIT NONE
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT/OUTPUT VARIABLES
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! CLASS(link), POINTER :: current
+! !==================================================================================================================================
+! current => prms%firstLink
+! CALL set_formatting("bright red")
+! SWRITE(UNIT_StdOut,'(100("!"))')
+! SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
+! DO WHILE (associated(current))
+!   IF (.NOT.current%opt%isRemoved) THEN
+!     SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
+!   END IF
+!   current => current%next
+! END DO
+! SWRITE(UNIT_StdOut,'(100("!"))')
+! CALL clear_formatting()
+! END SUBROUTINE IgnoredParameters
 
 
 !==================================================================================================================================

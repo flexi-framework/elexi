@@ -234,6 +234,7 @@ CALL InitMPIvars()
 #endif
 CALL InitEquation()
 CALL InitDG()
+CALL InitAnalyze()
 #if FV_ENABLED
 CALL InitFV()
 #endif
@@ -242,7 +243,7 @@ CALL InitLifting()
 #endif /*PARABOLIC*/
 CALL InitSponge()
 CALL InitTimeDisc()
-CALL InitAnalyze()
+!CALL InitAnalyze()
 CALL InitImplicit()
 CALL InitRecordpoints()
 CALL Restart()

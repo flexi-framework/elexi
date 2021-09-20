@@ -63,7 +63,7 @@ TYPE,PUBLIC :: Parameters
   CHARACTER(LEN=255)   :: actualSection = ""  !< actual section, to set section of an option, when inserted into list
   LOGICAL              :: removeAfterRead=.TRUE. !< specifies whether options shall be marked as removed after being read
 CONTAINS
-!  PROCEDURE :: WriteUnused                !< routine that writes out parameters taht were set but not used
+  PROCEDURE :: WriteUnused                !< routine that writes out parameters taht were set but not used
   PROCEDURE :: SetSection                 !< routine to set 'actualSection'
   PROCEDURE :: CreateOption               !< general routine to create a option and insert it into the linked list
                                           !< also checks if option is already created in the linked list
@@ -80,15 +80,16 @@ CONTAINS
   PROCEDURE :: read_options               !< routine that loops over the lines of a parameter files
                                           !< and calls read_option for every option. Outputs all unknow options
   PROCEDURE :: read_option                !< routine that parses a single line from the parameter file.
+  PROCEDURE :: count_unread               !< routine that counts the number of parameters, that are set in ini but not read
 !  PROCEDURE :: removeUnnecessary          !< routine that removes unused parameters from linked list
 #if USE_LOADBALANCE
   PROCEDURE :: finalize                   !< routine that resets the parameters for loadbalance
 #endif /*USE LOADBALANCE*/
 END TYPE Parameters
 
-INTERFACE IgnoredParameters
-  MODULE PROCEDURE IgnoredParameters
-END INTERFACE
+! INTERFACE IgnoredParameters
+!   MODULE PROCEDURE IgnoredParameters
+! END INTERFACE
 
 INTERFACE PrintDefaultParameterFile
   MODULE PROCEDURE PrintDefaultParameterFile
@@ -154,7 +155,7 @@ INTERFACE FinalizeParameters
   MODULE PROCEDURE FinalizeParameters
 END INTERFACE
 
-PUBLIC :: IgnoredParameters
+! PUBLIC :: IgnoredParameters
 PUBLIC :: PrintDefaultParameterFile
 PUBLIC :: CountOption
 PUBLIC :: GETINT
@@ -183,40 +184,45 @@ PUBLIC :: prms
 
 CONTAINS
 
-! !==================================================================================================================================
-! !> Writes all names that are set but not read during init
-! !==================================================================================================================================
-! SUBROUTINE WriteUnused(this)
-! ! MODULES
-! IMPLICIT NONE
-! !----------------------------------------------------------------------------------------------------------------------------------
-! ! INPUT/OUTPUT VARIABLES
-! CLASS(Parameters),INTENT(IN) :: this  !< CLASS(Parameters)
-! !----------------------------------------------------------------------------------------------------------------------------------
-! ! LOCAL VARIABLES
-! CLASS(link), POINTER         :: current
-! !==================================================================================================================================
-!
-! ! iterate over all options and compare names
-! SWRITE(UNIT_stdOut,'(132("="))')
-! SWRITE(UNIT_stdOut,'(A,I0,A)') ' Following ',this%count_unread(),' Parameters are defined in INI but not called!'
-! current => this%firstLink
-! DO WHILE (associated(current))
-!   ! compare name
-!   ! current%opt%isSet.:           Parameter is set in INI file
-!   ! .NOT.current%opt%isRemoved:   Parameter is used in the code via GET-function
-!   ! .NOT.current%opt%isUsedMulti: Parameter containing "$" in its name is set in INI file and at least one correpsonding parameter
-!   !                               with a number instead of "$" is used in the code via GET-function
-!   IF (current%opt%isSet.AND.(.NOT.current%opt%isRemoved).AND.(.NOT.current%opt%isUsedMulti)) THEN
-!     CALL set_formatting("red")
-!     SWRITE(UNIT_stdOut,"(A)") TRIM(current%opt%name)
-!     CALL clear_formatting()
-!   END IF
-!   current => current%next
-! END DO
-! SWRITE(UNIT_stdOut,'(132("="))')
-!
-! END SUBROUTINE WriteUnused
+
+!==================================================================================================================================
+!> Writes all names that are set but not read during init
+!==================================================================================================================================
+SUBROUTINE WriteUnused(this)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CLASS(Parameters),INTENT(IN) :: this  !< CLASS(Parameters)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CLASS(link), POINTER         :: current
+!==================================================================================================================================
+
+! iterate over all options and compare names
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A,I0,A)') ' Following ',this%count_unread(),' Parameters are defined in INI but not called!'
+current => this%firstLink
+DO WHILE (associated(current))
+  ! compare name
+  ! current%opt%isSet.:           Parameter is set in INI file
+  ! .NOT.current%opt%isRemoved:   Parameter is used in the code via GET-function
+  ! .NOT.current%opt%isUsedMulti: Parameter containing "$" in its name is set in INI file and at least one correpsonding parameter
+  !                               with a number instead of "$" is used in the code via GET-function
+  IF (current%opt%isSet.AND.(.NOT.current%opt%isRemoved) &
+#if USE_PARTICLES
+      .AND.(.NOT.current%opt%isUsedMulti) &
+#endif /*USE_PARTICLES*/
+      ) THEN
+    CALL set_formatting("red")
+    SWRITE(UNIT_stdOut,"(A)") TRIM(current%opt%name)
+    CALL clear_formatting()
+  END IF
+  current => current%next
+END DO
+SWRITE(UNIT_stdOut,'(132("="))')
+
+END SUBROUTINE WriteUnused
 
 
 !==================================================================================================================================
@@ -329,7 +335,7 @@ END SUBROUTINE finalize
 !==================================================================================================================================
 SUBROUTINE CreateOption(this, opt, name, description, value, multiple      &
 #if USE_PARTICLES
-                                                           , numberedmulti &
+                       , numberedmulti , removed &
 #endif /*USE_PARTICLES*/
                                                            )
 ! MODULES
@@ -345,6 +351,7 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL  :: value            !< option value
 LOGICAL,INTENT(IN),OPTIONAL           :: multiple         !< marker if multiple option
 #if USE_PARTICLES
 LOGICAL,INTENT(IN),OPTIONAL           :: numberedmulti    !< marker if numbered multiple option
+LOGICAL,INTENT(IN),OPTIONAL           :: removed          !< marker if removed option
 #endif /*USE_PARTICLES*/
 ! LOCAL VARIABLES
 CLASS(link), POINTER :: newLink
@@ -389,6 +396,9 @@ opt%isSet       = .FALSE.
 opt%description = description
 opt%section     = this%actualSection
 opt%isRemoved   = .FALSE.
+#if USE_PARTICLES
+IF (PRESENT(removed)) opt%isRemoved = removed
+#endif /*USE_PARTICLES*/
 opt%isUsedMulti = .FALSE. ! Becomes true, if a variable containing "$" is set in parameter file and used for the corresponding
                           ! valued parameter
 
@@ -680,6 +690,36 @@ DO WHILE (associated(current))
 END DO
 END FUNCTION  CountOption_
 
+
+!==================================================================================================================================
+!> Count number of set but unread parameters of linked list.
+!==================================================================================================================================
+FUNCTION count_unread(this) result(count)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CLASS(Parameters),INTENT(IN) :: this  !< CLASS(Parameters)
+INTEGER                      :: count !< number of found occurences of keyword
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CLASS(link),POINTER :: current
+!==================================================================================================================================
+count = 0
+! iterate over all entries and count them
+current => this%firstLink
+DO WHILE (ASSOCIATED(current))
+  IF (current%opt%isSet.AND.(.NOT.current%opt%isRemoved) &
+#if USE_PARTICLES
+     .AND.(.NOT.current%opt%isUsedMulti) &
+#endif /*USE_PARTICLES*/
+     ) count = count + 1
+  current => current%next
+END DO
+END FUNCTION  count_unread
+
+
+
 !==================================================================================================================================
 !> Insert an option in front of option with same name in the 'prms' linked list.
 !==================================================================================================================================
@@ -712,7 +752,7 @@ END SUBROUTINE insertOption
 !> Therefore the file is read line by line. After removing comments and all white spaces each line is parsed in the
 !> prms\%read_option() routine. Outputs all unknown options.
 !==================================================================================================================================
-SUBROUTINE read_options(this, filename, warn_opt)
+SUBROUTINE read_options(this, filename)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP,GetFileExtension
 IMPLICIT NONE
@@ -720,7 +760,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT) :: this     !< CLASS(Parameters)
 CHARACTER(LEN=255),INTENT(IN)   :: filename !< name of file to be read
-LOGICAL,INTENT(IN),OPTIONAL     :: warn_opt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link), POINTER  :: current
@@ -804,23 +843,14 @@ DO i=1,nLines
   IF (LEN_TRIM(HelpStr).GT.2) THEN
     ! read the option
     IF (.NOT.this%read_option(HelpStr)) THEN
-      IF(PRESENT(warn_opt)) THEN
-        IF(warn_opt.EQV..TRUE.) THEN
-          IF (firstWarn) THEN
-          firstWarn=.FALSE.
-          SWRITE(UNIT_StdOut,'(100("!"))')
-          SWRITE(UNIT_StdOut, *) "WARNING: The following options are unknown!"
-          END IF
-          SWRITE(UNIT_StdOut,*) "   ", TRIM(HelpStr)
-        END IF
-      ELSE
-       IF (firstWarn) THEN
-       firstWarn=.FALSE.
-       SWRITE(UNIT_StdOut,'(100("!"))')
-       SWRITE(UNIT_StdOut, *) "WARNING: The following options are unknown!"
-       END IF
-       SWRITE(UNIT_StdOut,*) "   ", TRIM(HelpStr)
+      IF (firstWarn) THEN
+        firstWarn=.FALSE.
+        SWRITE(UNIT_StdOut,'(100("!"))')
+        SWRITE(UNIT_StdOut, *) "WARNING: The following options are unknown!"
       END IF
+      CALL set_formatting("blue")
+      SWRITE(UNIT_StdOut,*) '   ', TRIM(HelpStr)
+      CALL clear_formatting()
     END IF
   END IF
 END DO
@@ -952,31 +982,31 @@ END DO
 END FUNCTION read_option
 
 
-!==================================================================================================================================
-!> Output all parameters, which are defined but NOT set in the parameter file.
-!==================================================================================================================================
-SUBROUTINE IgnoredParameters()
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-CLASS(link), POINTER :: current
-!==================================================================================================================================
-current => prms%firstLink
-CALL set_formatting("bright red")
-SWRITE(UNIT_StdOut,'(100("!"))')
-SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
-DO WHILE (associated(current))
-  IF (.NOT.current%opt%isRemoved) THEN
-    SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
-  END IF
-  current => current%next
-END DO
-SWRITE(UNIT_StdOut,'(100("!"))')
-CALL clear_formatting()
-END SUBROUTINE IgnoredParameters
+! !==================================================================================================================================
+! !> Output all parameters, which are defined but NOT set in the parameter file.
+! !==================================================================================================================================
+! SUBROUTINE IgnoredParameters()
+! ! MODULES
+! IMPLICIT NONE
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT/OUTPUT VARIABLES
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! CLASS(link), POINTER :: current
+! !==================================================================================================================================
+! current => prms%firstLink
+! CALL set_formatting("bright red")
+! SWRITE(UNIT_StdOut,'(100("!"))')
+! SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
+! DO WHILE (associated(current))
+!   IF (.NOT.current%opt%isRemoved) THEN
+!     SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
+!   END IF
+!   current => current%next
+! END DO
+! SWRITE(UNIT_StdOut,'(100("!"))')
+! CALL clear_formatting()
+! END SUBROUTINE IgnoredParameters
 
 
 !==================================================================================================================================
@@ -1189,6 +1219,12 @@ CLASS(OPTION),ALLOCATABLE    :: newopt
 CHARACTER(LEN=:),ALLOCATABLE :: testname
 INTEGER                      :: i
 CHARACTER(LEN=20)            :: fmtName
+! Temporary arrays to create new options
+CHARACTER(LEN=255)           :: tmpValue
+CLASS(LogicalOption),ALLOCATABLE,TARGET :: logicalopt
+CLASS(IntOption)    ,ALLOCATABLE,TARGET :: intopt
+CLASS(RealOption)   ,ALLOCATABLE,TARGET :: realopt
+CLASS(StringOption) ,ALLOCATABLE,TARGET :: stringopt
 #endif /*USE_PARTICLES*/
 !==================================================================================================================================
 
@@ -1254,13 +1290,9 @@ DO WHILE (associated(current))
   ELSE
     ! compare reduced name with reduced option name
     IF (current%opt%NAMEEQUALSNUMBERED(name).AND.(.NOT.current%opt%isRemoved)) THEN
-      ! create new instance of multiple option
-      ALLOCATE(newopt, source=current%opt)
-      ! set name of new option like name in read line and set it being not multiple numbered
-      newopt%name = name
-      newopt%numberedmulti = .FALSE.
-      newopt%isSet = .FALSE.
       ! Check if we can find a general option, applying to all numberedmulti
+      SDEALLOCATE(testname) ! safety check
+      ALLOCATE(CHARACTER(LEN_TRIM(name)) :: testname)
       testname = name
       DO i = 1, LEN(name)
         ! Start replacing the index from the left
@@ -1283,23 +1315,40 @@ DO WHILE (associated(current))
                   SELECT TYPE(value)
                     TYPE IS (INTEGER)
                       value = multi%value
+                      ! insert option with numbered name ($ replaced by number)
+                      ALLOCATE(intopt)
+                      WRITE(tmpValue, *) multi%value
+                      CALL prms%CreateOption(intopt, name, 'description', value=tmpValue, multiple=.FALSE.,numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
                 CLASS IS (RealOption)
                   SELECT TYPE(value)
                     TYPE IS (REAL)
                       value = multi%value
+                      ! insert option with numbered name ($ replaced by number)
+                      ALLOCATE(realopt)
+                      WRITE(tmpValue, *) multi%value
+                      CALL prms%CreateOption(realopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
                 CLASS IS (LogicalOption)
                   SELECT TYPE(value)
                     TYPE IS (LOGICAL)
                       value = multi%value
+                      ! insert option with numbered name ($ replaced by number)
+                      ALLOCATE(logicalopt)
+                      WRITE(tmpValue, *) multi%value
+                      CALL prms%CreateOption(logicalopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
                 CLASS IS (StringOption)
                   SELECT TYPE(value)
                     TYPE IS (STR255)
                       value%chars = multi%value
+                      ! insert option with numbered name ($ replaced by number)
+                      ALLOCATE(stringopt)
+                      WRITE(tmpValue, *) TRIM(multi%value)
+                      CALL prms%CreateOption(stringopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
               END SELECT
+
               ! print option and value to stdout. Custom print, so do it here
               WRITE(fmtName,*) prms%maxNameLen
               SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
@@ -1313,10 +1362,6 @@ DO WHILE (associated(current))
               SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
               CALL clear_formatting()
               SWRITE(UNIT_stdOut,"(a3)") ' | '
-              ! remove the option from the linked list of all parameters
-              IF(prms%removeAfterRead) newopt%isRemoved = .TRUE.
-              ! insert option
-              CALL insertOption(current, newopt)
               ! Indicate that parameter was read at least once and therefore remove the warning that the parameter was not used
               multi%isUsedMulti = .TRUE.
               RETURN
@@ -1325,6 +1370,12 @@ DO WHILE (associated(current))
           END DO
         END IF
       END DO
+      ! create new instance of multiple option
+      ALLOCATE(newopt, source=current%opt)
+      ! set name of new option like name in read line and set it being not multiple numbered
+      newopt%name = name
+      newopt%numberedmulti = .FALSE.
+      newopt%isSet = .FALSE.
       ! No catchall option, check if we can find a proposal
       IF ((PRESENT(proposal)).AND.(.NOT. newopt%isSet)) THEN
         proposal_loc = TRIM(proposal)
@@ -1403,6 +1454,11 @@ CLASS(OPTION),ALLOCATABLE    :: newopt
 CHARACTER(LEN=:),ALLOCATABLE :: testname
 INTEGER                      :: i
 CHARACTER(LEN=20)            :: fmtName
+! Temporary arrays to create new options
+CHARACTER(LEN=255)           :: tmpValue
+CLASS(IntArrayOption)    ,ALLOCATABLE,TARGET :: intopt
+CLASS(RealArrayOption)   ,ALLOCATABLE,TARGET :: realopt
+CLASS(LogicalArrayOption),ALLOCATABLE,TARGET :: logicalopt
 #endif /*USE_PARTICLES*/
 !==================================================================================================================================
 
@@ -1471,13 +1527,9 @@ DO WHILE (associated(current))
   ELSE
     ! compare reduced name with reduced option name
     IF (current%opt%NAMEEQUALSNUMBERED(name).AND.(.NOT.current%opt%isRemoved)) THEN
-      ! create new instance of multiple option
-      ALLOCATE(newopt, source=current%opt)
-      ! set name of new option like name in read line and set it being not multiple numbered
-      newopt%name = name
-      newopt%numberedmulti = .FALSE.
-      newopt%isSet = .FALSE.
       ! Check if we can find a general option, applying to all numberedmulti
+      SDEALLOCATE(testname) ! safety check
+      ALLOCATE(CHARACTER(LEN_TRIM(name)) :: testname)
       testname = name
       DO i = 1, LEN(name)
         ! Start replacing the index from the left
@@ -1501,18 +1553,30 @@ DO WHILE (associated(current))
                   SELECT TYPE(value)
                     TYPE IS (INTEGER)
                     value = multi%value
+                    ! insert option with numbered name ($ replaced by number)
+                    ALLOCATE(intopt)
+                    WRITE(tmpValue, *) multi%value
+                    CALL prms%CreateOption(intopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
                 CLASS IS (RealArrayOption)
                   IF (SIZE(multi%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
                   SELECT TYPE(value)
                     TYPE IS (REAL)
                     value = multi%value
+                    ! insert option with numbered name ($ replaced by number)
+                    ALLOCATE(realopt)
+                    WRITE(tmpValue, *) multi%value
+                    CALL prms%CreateOption(realopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
                 CLASS IS (LogicalArrayOption)
                   IF (SIZE(multi%value).NE.no) CALL Abort(__STAMP__,"Array size of option '"//TRIM(name)//"' is not correct!")
                   SELECT TYPE(value)
                     TYPE IS (LOGICAL)
                     value = multi%value
+                    ! insert option with numbered name ($ replaced by number)
+                    ALLOCATE(logicalopt)
+                    WRITE(tmpValue, *) multi%value
+                    CALL prms%CreateOption(logicalopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
               END SELECT
               ! print option and value to stdout. Custom print, so do it here
@@ -1528,10 +1592,6 @@ DO WHILE (associated(current))
               SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
               CALL clear_formatting()
               SWRITE(UNIT_stdOut,"(a3)") ' | '
-              ! remove the option from the linked list of all parameters
-              IF(prms%removeAfterRead) newopt%isRemoved = .TRUE.
-              ! insert option
-              CALL insertOption(current, newopt)
               ! Indicate that parameter was read at least once and therefore remove the warning that the parameter was not used
               multi%isUsedMulti = .TRUE.
               RETURN
@@ -1540,6 +1600,12 @@ DO WHILE (associated(current))
           END DO
         END IF
       END DO
+      ! create new instance of multiple option
+      ALLOCATE(newopt, source=current%opt)
+      ! set name of new option like name in read line and set it being not multiple numbered
+      newopt%name = name
+      newopt%numberedmulti = .FALSE.
+      newopt%isSet = .FALSE.
       ! No catchall option, check if we can find a proposal
       IF ((PRESENT(proposal)).AND.(.NOT. newopt%isSet)) THEN
         proposal_loc = TRIM(proposal)

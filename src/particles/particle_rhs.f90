@@ -453,7 +453,7 @@ END IF
 IF (Species(PartSpecies(PartID))%CalcMagnusForce .AND. Rep.GT.0. .AND. ANY(Omega.NE.0)) THEN
   ! Calculate the rotation: (\nabla x u_p) x udiff
   rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
-  prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(0.05684*Rew**0.4*Rep**0.7)
+  prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(-0.05684*Rew**0.4*Rep**0.7)
   Fmm = PP_PI/8 * prefactor * Species(PartSpecies(PartID))%DiameterIC**3 * FieldAtParticle(DENS) * rotudiff
 END IF
 #endif /* PP_nVarPartRHS */

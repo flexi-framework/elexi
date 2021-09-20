@@ -681,6 +681,7 @@ LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 ! Initialize record plane of particles
 RecordPart          = GETINT('Part-nRPs','0')
 IF (RecordPart.GT.0) THEN
+  IF(doPartIndex) RPP_nVarNames = RPP_nVarNames + 1
   CALL SYSTEM('mkdir -p recordpoints')
   ! Get size of buffer array
   RPP_maxMemory     = GETINT('Part-RPMemory','100') ! Max buffer (100MB)

@@ -114,7 +114,7 @@ USE MOD_Globals
 USE MOD_HDF5_WriteArray         ,ONLY: WriteArray
 USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars             ,ONLY: WriteStateFiles
-USE MOD_Particle_Vars           ,ONLY: PartState,PDM,LastPartPos,PartSpecies,Species,nSpecies,PartIndex
+USE MOD_Particle_Vars           ,ONLY: PartState,PDM,LastPartPos,PartSpecies,Species,nSpecies,doPartIndex,PartIndex
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_MaxBufferSize,RPP_Plane,RecordPart,RPP_nVarNames
 USE MOD_HDF5_Output             ,ONLY: WriteAttribute
 #if USE_MPI
@@ -156,7 +156,7 @@ DO iRecord = 1,RecordPart
       RPP_Plane(iRecord)%RPP_Data(1:6,RPP_Plane(iRecord)%RPP_Records) = PartState(1:6,iPart)
       ! Species
       RPP_Plane(iRecord)%RPP_Data(7,RPP_Plane(iRecord)%RPP_Records)   = PartSpecies(iPart)
-      RPP_Plane(iRecord)%RPP_Data(8,RPP_Plane(iRecord)%RPP_Records)   = PartIndex(iPart)
+      IF(doPartIndex) RPP_Plane(iRecord)%RPP_Data(8,RPP_Plane(iRecord)%RPP_Records)   = PartIndex(iPart)
     END IF
   END DO
 !END IF
@@ -194,7 +194,7 @@ DO iRecord = 1,RecordPart
     StrVarNames(5) ='VelocityY'
     StrVarNames(6) ='VelocityZ'
     StrVarNames(7) ='Species'
-    StrVarNames(8) ='PartIndex'
+    IF(doPartIndex) StrVarNames(8) ='PartIndex'
 
     ForceIC = 0
 

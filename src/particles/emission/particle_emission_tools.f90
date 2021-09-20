@@ -527,8 +527,8 @@ DO i = 1,chunkSize
   radius = Species(FractNbr)%Init(iInit)%RadiusIC + 1.
 
   DO WHILE(radius.GT.Species(FractNbr)%Init(iInit)%RadiusIC)
-     RandVec(1) = RandNormal(0.0,0.5*Species(FractNbr)%Init(iInit)%RadiusIC)
-     RandVec(2) = RandNormal(0.0,0.5*Species(FractNbr)%Init(iInit)%RadiusIC)
+     RandVec(1) = MAX(MIN(RandNormal(0.0,1.0),1.0),-1.)
+     RandVec(2) = MAX(MIN(RandNormal(0.0,1.0),1.0),-1.)
      ! CALL RANDOM_NUMBER(RandVec)
      ! RandVec      = RandVec * 2. - 1.
      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &

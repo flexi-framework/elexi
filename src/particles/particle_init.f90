@@ -681,6 +681,7 @@ LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 ! Initialize record plane of particles
 RecordPart          = GETINT('Part-nRPs','0')
 IF (RecordPart.GT.0) THEN
+  IF(doPartIndex) RPP_nVarNames = RPP_nVarNames + 1
   CALL SYSTEM('mkdir -p recordpoints')
   ! Get size of buffer array
   RPP_maxMemory     = GETINT('Part-RPMemory','100') ! Max buffer (100MB)
@@ -2093,7 +2094,6 @@ IF (MPIRoot) THEN
   ALLOCATE(PartBoundANN%w(1:hgs,1:hgs,1:PartBoundANN%nLayer+1))
   ALLOCATE(PartBoundANN%b(1:hgs,1:PartBoundANN%nLayer+1))
   ALLOCATE(PartBoundANN%beta(1:hgs,1:PartBoundANN%nLayer))
-  ALLOCATE(PartBoundANN%output(1:hgs))
   PartBoundANN%w = 0.
   PartBoundANN%b = 0.
   PartBoundANN%beta = 0.
@@ -2124,6 +2124,7 @@ IF (.NOT.ALLOCATED(PartBoundANN%nN)) ALLOCATE(PartBoundANN%nN(1:PartBoundANN%nLa
 CALL MPI_BCAST(PartBoundANN%nN,PartBoundANN%nLayer+2,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 tmp(1) = MAXVAL(PartBoundANN%nN)
 hgs = MERGE(tmp(1), hgs, tmp(1).LE.hgs)
+ALLOCATE(PartBoundANN%output(1:hgs))
 ! Allocate arrays and nullify
 IF (.NOT.ALLOCATED(PartBoundANN%w)) THEN
   ALLOCATE(PartBoundANN%w(1:hgs,1:hgs,1:PartBoundANN%nLayer+1))

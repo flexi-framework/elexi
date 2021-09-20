@@ -143,6 +143,18 @@ END IF
 WriteData_dt = Analyze_dt*nWriteData
 
 ! precompute integration weights
+#if FV_ENABLED
+ALLOCATE(wGPSurf(0:PP_N,0:PP_NZ))
+#if PP_dim == 3
+DO j=0,PP_N; DO i=0,PP_N
+  wGPSurf(i,j)  = wGP(i)*wGP(j)
+END DO; END DO
+#else
+DO i=0,PP_N
+  wGPSurf(i,0)  = wGP(i)
+END DO
+#endif
+#else
 ALLOCATE(wGPSurf(0:PP_N,0:PP_NZ),wGPVol(0:PP_N,0:PP_N,0:PP_NZ))
 #if PP_dim == 3
 DO j=0,PP_N; DO i=0,PP_N
@@ -158,6 +170,7 @@ END DO
 DO j=0,PP_N; DO i=0,PP_N
   wGPVol(i,j,0) = wGP(i)*wGP(j)
 END DO; END DO
+#endif
 #endif
 
 ! precompute volume of the domain

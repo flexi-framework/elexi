@@ -51,6 +51,6 @@ TYPE tPPlane                                    !< Data type representing a sing
   INTEGER                     :: RPP_Records
 END TYPE tPPlane
 TYPE(tPPlane),ALLOCATABLE     :: RPP_Plane(:)
-INTEGER                       :: RPP_nVarNames = 8    ! I have to change it if I insert other variables for recordplanes
+INTEGER                       :: RPP_nVarNames = 7    ! I have to change it if I insert other variables for recordplanes
 
 END MODULE MOD_Particle_Analyze_Vars

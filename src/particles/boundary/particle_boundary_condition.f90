@@ -484,7 +484,7 @@ REAL                              :: intersecRemain
 REAL                              :: eps_n, eps_t1, eps_t2
 REAL                              :: tang1(1:3),tang2(1:3)
 ! Bons particle rebound model
-REAL                              :: Vol,d,w,w_crit,sigma_y,E_eff
+REAL                              :: w,w_crit,sigma_y,E_eff
 ! RebANN
 INTEGER                           :: iLayer
 REAL(4)                           :: randnum(3)
@@ -562,26 +562,21 @@ SELECT CASE(WallCoeffModel)
   ! / J. Turbomach 139(8), 2017
   !===================================================================================================================================
   CASE('Bons2017')
-    ! Assume spherical particles for now
-    Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
-    d       = (6.*Vol/PI)**(1./3.)
-
     ! Find composite elastic modulus
     E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
-               (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))            **2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID))               )**(-1.)
+               (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))**2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID)))**(-1.)
 
     ! Calculate deformation of cylindrical model particle
     w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC &
-                                                          /(E_eff*3*d)   )**0.5
+      / (E_eff*3*Species(PartSpecies(PartID))%DiameterIC))**0.5
 
     ! Find critical deformation
     sigma_y = Species(PartSpecies(PartID))%YieldCoeff
-    w_crit  = sigma_y * 2./3. * d / E_eff
+    w_crit  = sigma_y * 2./3. * Species(PartSpecies(PartID))%DiameterIC / E_eff
 
     ! Normal coefficient of restitution
     IF (w .GT. w_crit) THEN
-      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *sigma_y*(1/ (Species(PartSpecies(PartID))%DensityIC &
-                                                                          *  E_eff   ))**0.5
+      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *sigma_y*(1./(Species(PartSpecies(PartID))%DensityIC * E_eff))**0.5
     ELSE
       eps_n = 1.
     END IF
@@ -598,25 +593,21 @@ SELECT CASE(WallCoeffModel)
   ! Whitaker, S., Bons, J.: An improved particle impact model by accounting for rate of strain and stochastic rebound, 2018
   !===================================================================================================================================
   CASE('Whitaker2018')
-    ! Assume spherical particles for now
-    Vol     = Species(PartSpecies(PartID))%MassIC/Species(PartSpecies(PartID))%DensityIC
-    d       = (6.*Vol/PI)**(1./3.)
-
     ! Find composite elastic modulus
     E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
                (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))**2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID)))**(-1.)
 
     ! Calculate deformation of cylindrical model particle
-    w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC / (E_eff*3*d))**0.5
+    w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC &
+      / (E_eff*3*Species(PartSpecies(PartID))%DiameterIC))**0.5
 
     ! Find critical deformation
     sigma_y = Species(PartSpecies(PartID))%Whitaker_a*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
-    w_crit  = sigma_y * 2./3. * d / E_eff
+    w_crit  = sigma_y * 2./3. * Species(PartSpecies(PartID))%DiameterIC / E_eff
 
     ! Normal coefficient of restitution
     IF (w .GT. w_crit) THEN
-      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *sigma_y*(1/ (Species(PartSpecies(PartID))%DensityIC &
-                                                                          *  E_eff   ))**0.5
+      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *sigma_y*(1./(Species(PartSpecies(PartID))%DensityIC * E_eff))**0.5
     ELSE
       eps_n = 1.
     END IF
@@ -698,7 +689,7 @@ LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 PartTrajectoryNorm (1:3) = eps_n  * (DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc)
 PartTrajectoryTang1(1:3) = eps_t1 * (DOT_PRODUCT(PartTrajectory(1:3),tang1)*tang1)
 PartTrajectoryTang2(1:3) = eps_t2 * (DOT_PRODUCT(PartTrajectory(1:3),tang2)*tang2)
-PartTrajectory(1:3)      = PartTrajectoryTang1(1:3) - PartTrajectoryTang2(1:3) - PartTrajectoryNorm(1:3)
+PartTrajectory(1:3)      = PartTrajectoryTang1(1:3) + PartTrajectoryTang2(1:3) - PartTrajectoryNorm(1:3)
 PartTrajectory           = PartTrajectory/SQRT(SUM(PartTrajectory**2.))
 
 ! Rescale the remainder to the new length
@@ -709,7 +700,7 @@ intersecRemain = SQRT(eps_n*eps_n + eps_t1*eps_t1 + eps_t2*eps_t2)/SQRT(3.) * (l
 PartState(1:3,PartID) = LastPartPos(1:3,PartID) + intersecRemain * PartTrajectory(1:3)
 
 ! Compute new particle velocity, modified with coefficents of restitution
-PartState(4:6,PartID)= eps_t1 * v_tang1 - eps_t2 * v_tang2 - eps_n * v_norm + WallVelo
+PartState(4:6,PartID)= eps_t1 * v_tang1 + eps_t2 * v_tang2 - eps_n * v_norm + WallVelo
 
 #if CODE_ANALYZE
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory (CoR)        ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)

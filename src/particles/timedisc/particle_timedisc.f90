@@ -126,7 +126,7 @@ SUBROUTINE ParticleTimeRHS(t,iStage,dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_DG_Vars,                     ONLY: U,Ut
+USE MOD_DG_Vars,                     ONLY: U
 USE MOD_Part_RHS,                    ONLY: CalcPartRHS
 USE MOD_Particle_Interpolation,      ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars, ONLY: FieldAtParticle
@@ -149,6 +149,7 @@ USE MOD_LoadBalance_Timers,          ONLY: LBStartTime,LBPauseTime
 USE MOD_Particle_Localization,       ONLY: CountPartsPerElem
 #endif
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
+USE MOD_DG_Vars,                     ONLY: Ut
 USE MOD_Particle_Interpolation_Vars, ONLY: GradAtParticle
 USE MOD_Lifting_Vars,                ONLY: gradUx,gradUy,gradUz
 USE MOD_Part_RHS,                    ONLY: extRHS

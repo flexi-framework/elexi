@@ -128,12 +128,15 @@ USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Filter_Vars         ,ONLY: NFilter
 USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
 USE MOD_DG_Vars             ,ONLY: U
+USE MOD_Interpolation_Vars  ,ONLY: wGP
+USE MOD_Analyze_Vars        ,ONLY: wGPVol
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                     :: i,j,k
 !==================================================================================================================================
 IF(.NOT.FVInitBasisIsDone)THEN
    CALL CollectiveStop(__STAMP__,&
@@ -249,6 +252,18 @@ gradUzeta_central=0.
 ! Options for initial solution
 FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
 IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
+
+! precompute integration weights
+ALLOCATE(wGPVol(0:PP_N,0:PP_N,0:PP_NZ))
+#if PP_dim == 3
+DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  wGPVol(i,j,k) = wGP(i)*wGP(j)*wGP(k)
+END DO; END DO; END DO
+#else
+DO j=0,PP_N; DO i=0,PP_N
+  wGPVol(i,j,0) = wGP(i)*wGP(j)
+END DO; END DO
+#endif
 
 ! initial call of indicator
 IF(doCalcIndicator) CALL CalcIndicator(U,MERGE(RestartTime,0.,doRestart))

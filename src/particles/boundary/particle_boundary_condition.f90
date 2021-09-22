@@ -367,7 +367,7 @@ IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doR
 END IF
 
 ! Make sure we have the old values safe
-v_old                = PartState(4:6,PartID)
+v_old                = PartState(PART_VELV,PartID)
 IF (doParticleImpactTrack) THEN
   PartFaceAngle_old  = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 END IF
@@ -512,10 +512,6 @@ END IF !IsAuxBC
 
 ! Make sure we have the old velocity safe
 v_old   = PartState(PART_VELV,PartID)
-
-IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doRoughWallModelling) THEN
-  n_loc = RoughWall(n_loc,locBCID,PartTrajectory)
-END IF
 
 ! Compute tangential vectors
 CALL OrthoNormVec(n_loc,tang1,tang2)

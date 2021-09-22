@@ -921,7 +921,7 @@ USE MOD_Part_RHS, ONLY: InitRHS
 ! LOCAL VARIABLES
 INTEGER               :: iSpec,iInit,iExclude
 CHARACTER(32)         :: tmpStr,tmpStr2,tmpStr3
-CHARACTER(200)        :: Filename_loc             ! specifying keyword for velocity distribution
+CHARACTER(255)        :: Filename_loc             ! specifying keyword for velocity distribution
 INTEGER               :: PartField_shape(2)
 INTEGER               :: drag_factor
 !===================================================================================================================================
@@ -1022,7 +1022,7 @@ DO iSpec = 1, nSpecies
     IF (TRIM(Species(iSpec)%Init(iInit)%velocityDistribution) .EQ. "load_from_file") THEN
       ! load from binary file
       IF (MPIRoot) THEN
-        WRITE(FileName_loc,"(A30,I2,A4)") FilenameRecordPart, iSpec-1, ".dat"
+        WRITE(FileName_loc,"(A200,I2,A4)") FilenameRecordPart, iSpec-1, ".dat"
         Filename_loc = TRIM(REPLACE(Filename_loc," ","",Every=.TRUE.))
         OPEN(33, FILE=TRIM(FileName_loc),FORM="UNFORMATTED", STATUS="UNKNOWN", ACTION="READ", ACCESS='STREAM')
         READ(33) PartField_shape

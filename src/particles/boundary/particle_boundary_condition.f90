@@ -14,7 +14,7 @@
 #include "flexi.h"
 #include "particle.h"
 
-#define SIGMOID(x)         REAL(1./(1+EXP(-x)),4)
+#define SIGMOID(x)         REAL(1.1/(1+EXP(-x))-0.1,4)
 #define SILU(x,beta)       REAL(x/(1+EXP(-beta*x)),4)
 #define LOGNORM(x,maxi)    REAL(LOG(ABS(x)+1.)/LOG(maxi+1.),4)
 #define LOGNORMINV(x,maxi) REAL((maxi+1.)**x-1.,4)
@@ -378,21 +378,21 @@ IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
 END IF !.NOT.IsAuxBC
 
 ! Update particle velocity
-PartState(4:6,PartID) = PartState(4:6,PartID)-2.*DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc + WallVelo
+PartState(PART_VELV,PartID) = PartState(PART_VELV,PartID) - 2.*DOT_PRODUCT(PartState(PART_VELV,PartID),n_loc)*n_loc + WallVelo
 
 ! set particle position on face
 !--> first move the particle to the boundary
-LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
+LastPartPos(1:3,PartID)       = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !--> flip trajectory and move the remainder of the particle push
-PartTrajectory(1:3)     = PartTrajectory(1:3)-2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
-PartState(1:3,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
+PartTrajectory(1:3)           = PartTrajectory(1:3) - 2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
+PartState(PART_POSV,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
 ! Update particle velocity
 
+! TODO: What happens with rotation during perfect reflection?
+
 ! compute moved particle || rest of movement
-PartTrajectory          = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
-lengthPartTrajectory    = SQRT(PartTrajectory(1)*PartTrajectory(1)            &
-                          +    PartTrajectory(2)*PartTrajectory(2)            &
-                          +    PartTrajectory(3)*PartTrajectory(3) )
+PartTrajectory          = PartState(PART_POSV,PartID) - LastPartPos(1:3,PartID)
+lengthPartTrajectory    = SQRT(SUM(PartTrajectory**2))
 PartTrajectory          = PartTrajectory/lengthPartTrajectory
 
 ! Recording of individual particle impacts
@@ -417,19 +417,22 @@ IF (.NOT.ALMOSTZERO(DOT_PRODUCT(WallVelo,WallVelo))) THEN
   ! Reconstruction in timedisc during push
   PDM%IsNewPart(PartID) = .TRUE.
 ELSE
-  Pt_temp(1:3,PartID) = Pt_temp(1:3,PartID)-2.*DOT_PRODUCT(Pt_temp(1:3,PartID),n_loc)*n_loc
+  Pt_temp(1:3,PartID) = Pt_temp(1:3,PartID) - 2.*DOT_PRODUCT(Pt_temp(1:3,PartID),n_loc)*n_loc
   ! Reflect also force history for symmetry
   IF (Symmetry) THEN
-    Pt_temp(4:6,PartID) = Pt_temp(4:6,PartID)-2.*DOT_PRODUCT(Pt_temp(4:6,PartID),n_loc)*n_loc
+    Pt_temp(4:6,PartID) = Pt_temp(4:6,PartID) - 2.*DOT_PRODUCT(Pt_temp(4:6,PartID),n_loc)*n_loc
+#if PP_nVarPartRHS == 6
+    Pt_temp(7:9,PartID) = Pt_temp(7:9,PartID) - 2.*DOT_PRODUCT(Pt_temp(7:9,PartID),n_loc)*n_loc
+#endif
   ! Produces best result compared to analytical solution in place capacitor ...
   ELSE
-    Pt_temp(4:6,PartID) = 0.
+    Pt_temp(4:PP_nVarPart-1,PartID) = 0.
   END IF
 END IF
 
 ! Remove sliding low velocity particles
 IF (LowVeloRemove) THEN
-    v_magnitude   = SQRT(DOT_PRODUCT(PartState(4:6,PartID),PartState(4:6,PartID)))
+    v_magnitude   = SQRT(DOT_PRODUCT(PartState(PART_VELV,PartID),PartState(PART_VELV,PartID)))
 
     IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.(v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold))THEN
           Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
@@ -508,7 +511,7 @@ ELSE
 END IF !IsAuxBC
 
 ! Make sure we have the old velocity safe
-v_old   = PartState(4:6,PartID)
+v_old   = PartState(PART_VELV,PartID)
 
 IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doRoughWallModelling) THEN
   n_loc = RoughWall(n_loc,locBCID,PartTrajectory)
@@ -522,10 +525,13 @@ IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
   CALL RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
 END IF
 
+! Move particle to wall
+LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
+
 ! Calculate wall normal and tangential velocities, impact angle
-v_norm   = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
-v_tang1  = DOT_PRODUCT(PartState(4:6,PartID),tang1)*tang1
-v_tang2  = DOT_PRODUCT(PartState(4:6,PartID),tang2)*tang2
+v_norm   = DOT_PRODUCT(PartState(PART_VELV,PartID),n_loc)*n_loc
+v_tang1  = DOT_PRODUCT(PartState(PART_VELV,PartID),tang1)*tang1
+v_tang2  = DOT_PRODUCT(PartState(PART_VELV,PartID),tang2)*tang2
 PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
 ! Just mirror the velocity in tang2 direction if no eps_t2 is available
@@ -643,13 +649,13 @@ SELECT CASE(WallCoeffModel)
     END DO
     ! Output layer
     iLayer = PartBoundANN%nLayer+1
-    PartBoundANN%output(:) = 1.1*SIGMOID((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)))-0.1
+    PartBoundANN%output(:) = SIGMOID((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)))
     PartBoundANN%output(1) = LOGNORMINV(PartBoundANN%output(1), PartBoundANN%max_in(1))
     PartBoundANN%output(2) = LOGNORMINV(PartBoundANN%output(2), PartBoundANN%max_in(2))
     ! Calculate coefficents of restitution
     eps_n  = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
     eps_t1 = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang1(1:3))
-    ! IPWRITE (*, *) 'eps_n, eps_t1, eps_t2:', eps_n, eps_t1, eps_t2
+    !IPWRITE (*, *) 'eps_n, eps_t1, eps_t2   :', eps_n, eps_t1, eps_t2
 
     ! TODO: 3D Rebound; Fracture
 
@@ -667,7 +673,7 @@ END IF
 !--> first move the particle to the boundary
 #if CODE_ANALYZE
 WRITE(UNIT_stdout,'(110("-"))')
-WRITE(UNIT_stdout,'(A,I1)') '     | Diffusive reflection on BC: ', SideInfo_Shared(SIDE_BCID,SideID)
+WRITE(UNIT_stdout,'(A,I1)')                       '     | Diffusive reflection on BC: ', SideInfo_Shared(SIDE_BCID,SideID)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | LastPartPos:                ',LastPartPos(1,PartID),LastPartPos(2,PartID),LastPartPos(3,PartID)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory:             ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity:                   ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
@@ -676,7 +682,6 @@ WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Intersection:         
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | CoR (normal/tangential):    ',eps_n,eps_t1,eps_t2
 #endif
 
-LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
 !--> flip trajectory and move the remainder of the particle push
 !===================================================================================================================================
 ! > modified with coefficients of restitution
@@ -690,17 +695,22 @@ PartTrajectoryNorm (1:3) = eps_n  * (DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_lo
 PartTrajectoryTang1(1:3) = eps_t1 * (DOT_PRODUCT(PartTrajectory(1:3),tang1)*tang1)
 PartTrajectoryTang2(1:3) = eps_t2 * (DOT_PRODUCT(PartTrajectory(1:3),tang2)*tang2)
 PartTrajectory(1:3)      = PartTrajectoryTang1(1:3) + PartTrajectoryTang2(1:3) - PartTrajectoryNorm(1:3)
-PartTrajectory           = PartTrajectory/SQRT(SUM(PartTrajectory**2.))
 
 ! Rescale the remainder to the new length
 intersecRemain = (lengthPartTrajectory - alpha)
 intersecRemain = SQRT(eps_n*eps_n + eps_t1*eps_t1 + eps_t2*eps_t2)/SQRT(3.) * (lengthPartTrajectory - alpha)
+! Compute the remainder of the new particle trajectory
+PartTrajectory = intersecRemain * PartTrajectory/SQRT(SUM(PartTrajectory**2.))
 
 ! Compute moved particle || rest of movement. PartTrajectory has already been updated
-PartState(1:3,PartID) = LastPartPos(1:3,PartID) + intersecRemain * PartTrajectory(1:3)
+PartState(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)
 
 ! Compute new particle velocity, modified with coefficents of restitution
-PartState(4:6,PartID)= eps_t1 * v_tang1 + eps_t2 * v_tang2 - eps_n * v_norm + WallVelo
+PartState(4:6,PartID) = eps_t1 * v_tang1 + eps_t2 * v_tang2 - eps_n * v_norm + WallVelo
+
+! compute moved particle || rest of movement
+lengthPartTrajectory  = SQRT(SUM(PartTrajectory**2))
+PartTrajectory        = PartTrajectory/lengthPartTrajectory
 
 #if CODE_ANALYZE
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory (CoR)        ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
@@ -731,7 +741,7 @@ PDM%IsNewPart(PartID)=.TRUE.
 
 ! Remove sliding low velocity particles
 IF (LowVeloRemove) THEN
-    v_magnitude   = SQRT(DOT_PRODUCT(PartState(4:6,PartID),PartState(4:6,PartID)))
+    v_magnitude   = SQRT(DOT_PRODUCT(PartState(PART_VELV,PartID),PartState(PART_VELV,PartID)))
 
     IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.(v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold))THEN
           Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1

@@ -179,6 +179,7 @@
 #define PART_POS1       1
 #define PART_POS2       2
 #define PART_POS3       3
+#define PART_POSV       PART_POS1:PART_POS3
 #define PART_VEL1       4
 #define PART_VEL2       5
 #define PART_VEL3       6

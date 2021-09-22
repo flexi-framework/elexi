@@ -540,18 +540,18 @@ DO iPart=1,PDM%ParticleVecLength
               tmp%Side   = tmp%next%Side
               tmp%intersectCase = tmp%next%intersectCase
               tmp=>tmp%next
-              END DO
-              EXIT
-            END IF
+            END DO
+            EXIT
           END IF
+        END IF
 
         ! leave loop because particle is found to remain in element (none of the found intersections is valid)
         currentIntersect=>currentIntersect%next
         IF (ASSOCIATED(currentIntersect,LastIntersect)) THEN
           PartDoubleCheck = .FALSE.
           PartIsDone      = .TRUE.
-                EXIT
-              END IF
+          EXIT
+        END IF
       END DO ! ASSOCIATED(currentIntersect)
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------

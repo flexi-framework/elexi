@@ -360,7 +360,7 @@ INTEGER,INTENT(IN),OPTIONAL :: iStage
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: Pt(1:3)
+REAL                     :: Pt(1:6)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: globalfactor                ! prefactor of LHS divided by the particle mass
@@ -403,7 +403,7 @@ ELSE
 END IF
 
 ! Nullify arrays
-Pt(1:3) = 0.
+Pt(:) = 0.
 Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.; Fmm=0.
 Rew = 0.; Rep = 0.
 ! factor before left hand side to add all dv_p/dt terms of the RHS
@@ -425,7 +425,7 @@ Omega = 0.5 * rotu - PartState(PART_AMOMV,PartID)
 ! Prefactor according to Oesterle and Bui Dinh
 IF (ANY(Omega.NE.0)) THEN
   Rew = FieldAtParticle(DENS) * VECNORM(Omega) * Species(PartSpecies(PartID))%DiameterIC**2 / (4*mu)
-  Pt_in(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
+  Pt(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
 END IF
 
 ! Calculate the Re number
@@ -555,13 +555,13 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
 
   Fbm(1:3) = prefactor * (Fbm(1:3) * SQRT(RKdtFrac) + durdt(1:3,PartID))
 
-  Pt = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
+  Pt(1:3) = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
 
   ! Correct durdt with particle push
-  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * Pt
+  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * Pt(1:3)
 ELSE
 #endif /* USE_BASSETFORCE */
-  Pt = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
+  Pt(1:3) = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
 #if USE_BASSETFORCE
 END IF
 #endif /* USE_BASSETFORCE */
@@ -575,7 +575,7 @@ IF(dtWriteRHS.GT.0.0)THEN
 END IF
 #endif
 
-Pt_in(1:3) = Pt
+Pt_in(:) = Pt
 
 END SUBROUTINE ParticlePushExtend
 #endif /* USE_EXTEND_RHS */

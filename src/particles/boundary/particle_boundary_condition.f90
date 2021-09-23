@@ -378,6 +378,9 @@ END IF
 
 ! Make sure we have the old values safe
 v_old                = PartState(PART_VELV,PartID)
+#if PP_nVarPartRHS == 6
+rot_old              = PartState(PART_AMOMV,PartID)
+#endif
 IF (doParticleImpactTrack) THEN
   PartFaceAngle_old  = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 END IF
@@ -398,8 +401,6 @@ PartTrajectory(1:3)           = PartTrajectory(1:3) - 2.*DOT_PRODUCT(PartTraject
 PartState(PART_POSV,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
 ! Update particle velocity
 
-! TODO: What happens with rotation during perfect reflection?
-
 ! compute moved particle || rest of movement
 PartTrajectory          = PartState(PART_POSV,PartID) - LastPartPos(1:3,PartID)
 lengthPartTrajectory    = SQRT(SUM(PartTrajectory**2))
@@ -408,8 +409,8 @@ PartTrajectory          = PartTrajectory/lengthPartTrajectory
 #if PP_nVarPartRHS == 6
 ! rotation: I_2*w_2-I_1*w_1 = - r x J , J=m_2*v_2-m_1*v_1, r=d/2*n_loc
 ! for a constant particle volume: I_2=I_1, m_1=m_2
-rot_old(1:3) = PartState(PART_AMOMV,PartID) - 5/Species(PartSpecies(PartID))%DiameterIC *&
-                                              CROSS(n_loc,(PartState(PART_VELV,PartID)-v_old))
+PartState(PART_AMOMV,PartID) = rot_old - 5./Species(PartSpecies(PartID))%DiameterIC *&
+                                         CROSS(n_loc,(PartState(PART_VELV,PartID)-v_old))
 #endif
 
 ! Recording of individual particle impacts
@@ -539,6 +540,9 @@ END IF !IsAuxBC
 
 ! Make sure we have the old velocity safe
 v_old   = PartState(PART_VELV,PartID)
+#if PP_nVarPartRHS == 6
+rot_old = PartState(PART_AMOMV,PartID)
+#endif
 
 ! Compute tangential vectors
 CALL OrthoNormVec(n_loc,tang1,tang2)
@@ -738,8 +742,8 @@ PartTrajectory        = PartTrajectory/lengthPartTrajectory
 #if PP_nVarPartRHS == 6
 ! rotation: I_2*w_2-I_1*w_1 = - r x J , J=m_2*v_2-m_1*v_1, r=d/2*n_loc
 ! for a constant particle volume: I_2=I_1, m_1=m_2
-rot_old(1:3) = PartState(PART_AMOMV,PartID) - 5/Species(PartSpecies(PartID))%DiameterIC *&
-                                              CROSS(n_loc,(PartState(PART_VELV,PartID)-v_old))
+PartState(PART_AMOMV,PartID) = rot_old - 5./Species(PartSpecies(PartID))%DiameterIC *&
+                                         CROSS(n_loc,(PartState(PART_VELV,PartID)-v_old))
 #endif
 
 #if CODE_ANALYZE

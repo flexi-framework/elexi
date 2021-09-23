@@ -191,6 +191,9 @@
 #define PART_AMOMV      PART_AMOM1:PART_AMOM3
 #endif
 
+#define ENERGY_ROTATION(rho,dp,vor)     0.5*PI/60*rho*dp**5*DOT_PRODUCT(vor,vor)
+#define MOM_OF_INERTIA(rho,dp)          PI/60*rho*dp**5
+
 ! formats
 ! print to std out like  "    1.41421356237310E+000   -1.41421356237310E+000   -1.41421356237310E+000"
 ! (looks good and prevents the first digit of being a zero)

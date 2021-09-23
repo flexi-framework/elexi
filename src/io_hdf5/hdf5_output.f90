@@ -1216,8 +1216,11 @@ ASSOCIATE (&
   ALLOCATE(StrVarNames(PartDataSize))
   StrVarNames(1:3) = (/'ParticlePositionX','ParticlePositionY','ParticlePositionZ'/)
   StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityZ'        /)
-  StrVarNames(7)   = 'Species'
-  IF(doPartIndex) StrVarNames(8)   = 'Index'
+#if PP_nVarPartRHS == 6
+  StrVarNames(7:9) = (/'AngularVelX'      ,'AngularVelY'      ,'AngularVelZ'      /)
+#endif
+  StrVarNames(PP_nVarPart+1)   = 'Species'
+  IF(doPartIndex) StrVarNames(PP_nVarPart+2)   = 'Index'
   IF (doParticleReflectionTrack) &
     StrVarNames(tmpIndex) = 'ReflectionCount'
   IF (doParticleDispersionTrack.OR.doParticlePathTrack) &

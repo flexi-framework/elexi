@@ -273,7 +273,13 @@ StrVarNames(11) = 'E_kin_impact'
 StrVarNames(12) = 'E_kin_reflected'
 StrVarNames(13) = 'Alpha_impact'
 StrVarNames(14) = 'Alpha_reflected'
+#if PP_nVarPartRHS==6
+StrVarNames(15) = 'E_rot_impact'
+StrVarNames(16) = 'E_rot_reflected'
+IF (doPartIndex) StrVarNames(17)= 'Index'
+#else
 IF (doPartIndex) StrVarNames(15)= 'Index'
+#endif
 IF (doParticleDispersionTrack) THEN
   StrVarNames(ImpactDataSize-2) = 'PartPathAbsX'
   StrVarNames(ImpactDataSize-1) = 'PartPathAbsY'

@@ -158,11 +158,15 @@ CASE(1) !PartBound%OpenBC)
     CALL StoreBoundaryParticleProperties(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID) &
                                         ,PartID          = iPart                             &
                                         ,PartFaceAngle   = PartFaceAngle                     &
-                                        ,v_old           = PartState(4:6,iPart)              &
+                                        ,v_old           = PartState(PART_VELV,iPart)        &
                                         ,PartFaceAngle_old =PartFaceAngle                    &
                                         ,PartReflCount   = PartReflCount(iPart)              &
                                         ,alpha           = alpha                             &
-                                        ,n_loc           = n_loc)
+                                        ,n_loc           = n_loc                             &
+#if PP_nVarPartRHS == 6
+                                        ,rot_old         = PartState(PART_AMOMV,iPart)       &
+#endif
+                                        )
   END IF
   CALL RemoveParticle(iPart,alpha=alpha)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -314,6 +318,9 @@ SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+#if PP_nVarPartRHS == 6
+USE MOD_Mathtools                  ,ONLY: CROSS
+#endif
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC
@@ -343,6 +350,9 @@ LOGICAL                           :: Symmetry,IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngle_old
 REAL                              :: v_magnitude
 INTEGER                           :: locBCID
+#if PP_nVarPartRHS == 6
+REAL                              :: rot_old(1:3)
+#endif
 !===================================================================================================================================
 
 ! Check if reflected on AuxBC
@@ -395,6 +405,13 @@ PartTrajectory          = PartState(PART_POSV,PartID) - LastPartPos(1:3,PartID)
 lengthPartTrajectory    = SQRT(SUM(PartTrajectory**2))
 PartTrajectory          = PartTrajectory/lengthPartTrajectory
 
+#if PP_nVarPartRHS == 6
+! rotation: I_2*w_2-I_1*w_1 = - r x J , J=m_2*v_2-m_1*v_1, r=d/2*n_loc
+! for a constant particle volume: I_2=I_1, m_1=m_2
+rot_old(1:3) = PartState(PART_AMOMV,PartID) - 5/Species(PartSpecies(PartID))%DiameterIC *&
+                                              CROSS(n_loc,(PartState(PART_VELV,PartID)-v_old))
+#endif
+
 ! Recording of individual particle impacts
 IF (doParticleImpactTrack) THEN
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
@@ -406,7 +423,11 @@ IF (doParticleImpactTrack) THEN
                                       ,PartFaceAngle_old =PartFaceAngle_old                &
                                       ,PartReflCount   = PartReflCount(PartID)             &
                                       ,alpha           = alpha                             &
-                                      ,n_loc           = n_loc)
+                                      ,n_loc           = n_loc                             &
+#if PP_nVarPartRHS == 6
+                                      ,rot_old         = rot_old                           &
+#endif
+                                      )
 END IF
 
 ! Increase reflection counter
@@ -451,6 +472,9 @@ SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+#if PP_nVarPartRHS == 6
+USE MOD_Mathtools                  ,ONLY: CROSS
+#endif
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC,PartBoundANN
@@ -491,6 +515,9 @@ REAL                              :: w,w_crit,sigma_y,E_eff
 ! RebANN
 INTEGER                           :: iLayer
 REAL(4)                           :: randnum(3)
+#if PP_nVarPartRHS == 6
+REAL                              :: rot_old(1:3)
+#endif
 !===================================================================================================================================
 
 ! check if reflected on AuxBC
@@ -708,6 +735,13 @@ PartState(4:6,PartID) = eps_t1 * v_tang1 + eps_t2 * v_tang2 - eps_n * v_norm + W
 lengthPartTrajectory  = SQRT(SUM(PartTrajectory**2))
 PartTrajectory        = PartTrajectory/lengthPartTrajectory
 
+#if PP_nVarPartRHS == 6
+! rotation: I_2*w_2-I_1*w_1 = - r x J , J=m_2*v_2-m_1*v_1, r=d/2*n_loc
+! for a constant particle volume: I_2=I_1, m_1=m_2
+rot_old(1:3) = PartState(PART_AMOMV,PartID) - 5/Species(PartSpecies(PartID))%DiameterIC *&
+                                              CROSS(n_loc,(PartState(PART_VELV,PartID)-v_old))
+#endif
+
 #if CODE_ANALYZE
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory (CoR)        ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | alpha (CoR):                ',interSecRemain
@@ -725,7 +759,11 @@ IF (doParticleImpactTrack) THEN
                                       ,PartFaceAngle_old =PartFaceAngle_old                            &
                                       ,PartReflCount   = PartReflCount(PartID)                         &
                                       ,alpha           = alpha                                         &
-                                      ,n_loc           = n_loc)
+                                      ,n_loc           = n_loc                                         &
+#if PP_nVarPartRHS == 6
+                                      ,rot_old         = rot_old                                       &
+#endif
+                                      )
 END IF
 
 ! increase reflection counter

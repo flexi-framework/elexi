@@ -360,7 +360,7 @@ INTEGER,INTENT(IN),OPTIONAL :: iStage
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: Pt(1:6)
+REAL                     :: Pt(1:PP_nVarPartRHS)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: globalfactor                ! prefactor of LHS divided by the particle mass
@@ -405,7 +405,9 @@ END IF
 ! Nullify arrays
 Pt(:) = 0.
 Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.; Fmm=0.
+#if PP_nVarPartRHS == 6
 Rew = 0.; Rep = 0.
+#endif
 ! factor before left hand side to add all dv_p/dt terms of the RHS
 globalfactor = 1.
 

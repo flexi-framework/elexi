@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !==================================================================================================================================
 !> Define and init parameters for particle boundaries
@@ -112,7 +113,11 @@ IF (.NOT.doParticleImpactTrack) THEN
   RETURN
 END IF
 
+#if PP_nVarPartRHS == 6
+ImpactDataSize = 16
+#else
 ImpactDataSize = 14
+#endif
 IF (doPartIndex)                                      ImpactDataSize = ImpactDataSize + 1
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) ImpactDataSize = ImpactDataSize + 3
 
@@ -278,13 +283,20 @@ END IF
 END SUBROUTINE RestartParticleBoundaryTracking
 
 
-SUBROUTINE StoreBoundaryParticleProperties(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_old,PartReflCount,alpha,n_loc)
+SUBROUTINE StoreBoundaryParticleProperties(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_old,PartReflCount,alpha,n_loc&
+#if PP_nVarPartRHS == 6
+    ,rot_old&
+#endif
+    )
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Save particle position, velocity, and species to PartStateBoundary container for writing to .h5 later
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+#if PP_nVarPartRHS == 6
+USE MOD_Particle_Globals,        ONLY: PI
+#endif
 USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars,  ONLY: PartStateBoundary,PartStateBoundaryVecLength,ImpactDataSize
 USE MOD_Particle_Memory,         ONLY: Allocate_Safe
@@ -299,6 +311,9 @@ REAL,INTENT(IN)                   :: PartFaceAngle_old
 REAL,INTENT(IN)                   :: alpha
 INTEGER,INTENT(IN)                :: BCSideID,PartID,PartReflCount
 REAL,INTENT(IN)                   :: n_loc(1:3)
+#if PP_nVarPartRHS == 6
+REAL,INTENT(IN)                   :: rot_old(1:3)
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER              :: dims(2)
@@ -307,6 +322,9 @@ INTEGER              :: ALLOCSTAT
 !
 REAL                 :: v_magnitude_old,v_magnitude_new
 REAL                 :: e_kin_old,e_kin_new,v_norm(3)!,v_tang(3)
+#if PP_nVarPartRHS == 6
+REAL                 :: e_rot_old, e_rot_new
+#endif
 REAL                 :: t_loc
 !===================================================================================================================================
 
@@ -318,6 +336,10 @@ e_kin_new         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_new**2.
 !e_kin_loss        = e_kin_old-e_kin_new
 v_norm            = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
 !v_tang            = PartState(4:6,PartID) - v_norm
+#if PP_nVarPartRHS == 6
+e_rot_old = ENERGY_ROTATION(Species(PartSpecies(PartID))%DensityIC,Species(PartSpecies(PartID))%DiameterIC,rot_old(1:3))
+e_rot_new = ENERGY_ROTATION(Species(PartSpecies(PartID))%DensityIC,Species(PartSpecies(PartID))%DiameterIC,PartState(PART_AMOMV,PartID))
+#endif
 
 ! Check if PartStateBoundary is sufficiently large
 dims = SHAPE(PartStateBoundary)
@@ -368,7 +390,13 @@ ASSOCIATE( iMax => PartStateBoundaryVecLength )
   PartStateBoundary(12 ,iMax) = e_kin_new
   PartStateBoundary(13 ,iMax) = PartFaceAngle_old
   PartStateBoundary(14 ,iMax) = PartFaceAngle
+#if PP_nVarPartRHS==6
+  PartStateBoundary(15 ,iMax) = e_rot_old
+  PartStateBoundary(16 ,iMax) = e_rot_new
+  IF(doPartIndex)                                      PartStateBoundary(17                             ,iMax) = PartIndex(    PartID)
+#else
   IF(doPartIndex)                                      PartStateBoundary(15                             ,iMax) = PartIndex(    PartID)
+#endif
   IF(doParticleDispersionTrack.OR.doParticlePathTrack) PartStateBoundary(ImpactDataSize-2:ImpactDataSize,iMax) = PartPath (1:3,PartID)
 END ASSOCIATE
 

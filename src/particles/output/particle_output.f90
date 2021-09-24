@@ -275,6 +275,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Output_Vars     ,ONLY: ProjectName
 USE MOD_Particle_Vars
+USE MOD_Particle_Globals,ONLY: pi
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -310,7 +311,7 @@ DO i=1,nParts
                                           PartState(4,i),&
                                           PartState(5,i),&
                                           PartState(6,i),&
-                                          Species(PartSpecies(i))%MassIC,&
+                                          MASS_SPHERE(Species(PartSpecies(i))%DensityIC,PartState(PART_DIAM,i)),&
                                           i
 END DO
 CLOSE(index_unit)

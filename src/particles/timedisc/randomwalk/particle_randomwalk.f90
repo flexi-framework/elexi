@@ -204,7 +204,7 @@ CASE('Gosman')
   C_mu    = betaStar
 
   ! Assume spherical particles for now
-  d       = Species(PartSpecies(PartID))%DiameterIC
+  d       = PartState(PART_DIAM, PartID)
   rho_p   = Species(PartSpecies(PartID))%DensityIC
 
   ! Turbulent velocity fluctuation
@@ -302,7 +302,7 @@ CASE('Mofakham')
     C_mu    = betaStar
 
     ! Assume spherical particles for now
-    d       = Species(PartSpecies(PartID))%DiameterIC
+    d       = PartState(PART_DIAM,PartID)
     rho_p   = Species(PartSpecies(PartID))%DensityIC
 
     ! Turbulent velocity fluctuation

@@ -69,11 +69,11 @@ USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: PartID
-LOGICAL,INTENT(IN)                :: doHalo
+INTEGER,INTENT(IN)     :: PartID
+LOGICAL,INTENT(IN)     :: doHalo
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: ElemID
+INTEGER                :: ElemID
 !===================================================================================================================================
 ElemID = SinglePointToElement(PartState(1:3,PartID),doHALO=doHALO)
 PEM%Element(PartID) = ElemID
@@ -167,7 +167,7 @@ DO iBGMElem = 1,nBGMElems
 
   ElemID    = ListDistance(iBGMElem)
 
-  IF (.NOT.DoHALO) THEN
+  IF (.NOT.doHALO) THEN
     IF (ElemID.LT.offsetElem+1 .OR. ElemID.GT.offsetElem+PP_nElems) CYCLE
   END IF
 

@@ -1005,7 +1005,7 @@ USE MOD_Particle_Boundary_Vars,ONLY: doParticleReflectionTrack
 USE MOD_Particle_HDF5_Output
 USE MOD_Particle_Restart_Vars, ONLY: EmissionTime
 USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex
-USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex
+USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex,doWritePartDiam
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
 #endif /*MPI*/
@@ -1041,14 +1041,19 @@ INTEGER,ALLOCATABLE            :: PartInt(:,:)
 REAL,ALLOCATABLE               :: PartData(:,:)
 INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
 INTEGER                        :: PartDataSize       !number of entries in each line of PartData
-INTEGER                        :: locnPart_max, tmpIndex
+INTEGER                        :: locnPart_max, tmpIndex, tmpIndex2
 ! Particle turbulence models
 INTEGER                        :: TurbPartDataSize
 REAL,ALLOCATABLE               :: TurbPartData(:,:)
 !===================================================================================================================================
 
 ! Size and location of particle data
-PartDataSize = PP_nVarPart + 1
+PartDataSize = PP_nVarPart
+tmpIndex2    = PartDataSize
+IF (doWritePartDiam) THEN
+  PartDataSize = PartDataSize + 1
+  tmpIndex2    = tmpIndex2    + 1
+END IF
 tmpIndex     = PartDataSize + 1
 ! Increase size if index is tracked
 IF (doPartIndex) THEN
@@ -1150,8 +1155,8 @@ DO iElem = offsetElem+1,offsetElem+PP_nElems
     ! Sum up particles and add properties to output array
     pcount = PEM%pStart(iElem)
     DO iPart = PartInt(1,iElem)+1,PartInt(2,iElem)
-      PartData(1:PP_nVarPart,iPart) = PartState(1:PP_nVarPart,pcount)
-      PartData(PP_nVarPart+1,iPart) = REAL(PartSpecies(pcount))
+      PartData(1:tmpIndex2-1,iPart) = PartState(1:tmpIndex2-1,pcount)
+      PartData(tmpIndex2,iPart)     = REAL(PartSpecies(pcount))
       IF (doPartIndex)                                      PartData(PP_nVarPart+2                        ,iPart) = REAL(PartIndex(pcount))
       IF (doParticleReflectionTrack)                        PartData(tmpIndex                             ,iPart) = REAL(PartReflCount(pcount))
       IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartData(tmpIndex+varShift:tmpIndex+2+varShift,iPart) = PartPath(1:3,pcount)
@@ -1219,8 +1224,9 @@ ASSOCIATE (&
 #if PP_nVarPartRHS == 6
   StrVarNames(7:9) = (/'AngularVelX'      ,'AngularVelY'      ,'AngularVelZ'      /)
 #endif
-  StrVarNames(PP_nVarPart+1)   = 'Species'
-  IF(doPartIndex) StrVarNames(PP_nVarPart+2)   = 'Index'
+  IF (doWritePartDiam) StrVarNames(PP_nVarPart) = 'PartDiam'
+  StrVarNames(tmpIndex2) = 'Species'
+  IF (doPartIndex) StrVarNames(tmpIndex2+1) = 'Index'
   IF (doParticleReflectionTrack) &
     StrVarNames(tmpIndex) = 'ReflectionCount'
   IF (doParticleDispersionTrack.OR.doParticlePathTrack) &

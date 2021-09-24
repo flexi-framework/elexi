@@ -162,7 +162,7 @@ CASE(1) !PartBound%OpenBC)
                                         ,PartFaceAngle_old =PartFaceAngle                    &
                                         ,PartReflCount   = PartReflCount(iPart)              &
                                         ,alpha           = alpha                             &
-                                        ,n_loc           = n_loc                             &
+                                        ,dp_old          = PartState(PART_DIAM,iPart)        &
 #if PP_nVarPartRHS == 6
                                         ,rot_old         = PartState(PART_AMOMV,iPart)       &
 #endif
@@ -377,7 +377,10 @@ IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doR
 END IF
 
 ! Make sure we have the old values safe
-v_old                = PartState(PART_VELV,PartID)
+v_old   = PartState(PART_VELV,PartID)
+#if PP_nVarPartRHS == 6
+rot_old = PartState(PART_AMOMV,PartID)
+#endif
 IF (doParticleImpactTrack) THEN
   PartFaceAngle_old  = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 END IF
@@ -396,7 +399,6 @@ LastPartPos(1:3,PartID)       = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*al
 !--> flip trajectory and move the remainder of the particle push
 PartTrajectory(1:3)           = PartTrajectory(1:3) - 2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
 PartState(PART_POSV,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
-! Update particle velocity
 
 ! TODO: What happens with rotation during perfect reflection?
 
@@ -408,8 +410,7 @@ PartTrajectory          = PartTrajectory/lengthPartTrajectory
 #if PP_nVarPartRHS == 6
 ! rotation: I_2*w_2-I_1*w_1 = - r x J , J=m_2*v_2-m_1*v_1, r=d/2*n_loc
 ! for a constant particle volume: I_2=I_1, m_1=m_2
-rot_old(1:3) = PartState(PART_AMOMV,PartID) - 5/Species(PartSpecies(PartID))%DiameterIC *&
-                                              CROSS(n_loc,(PartState(PART_VELV,PartID)-v_old))
+PartState(PART_AMOMV,PartID) = rot_old(1:3) - 5/PartState(PART_DIAM,PartID)*CROSS(n_loc,(PartState(PART_VELV,PartID)-v_old))
 #endif
 
 ! Recording of individual particle impacts
@@ -423,7 +424,7 @@ IF (doParticleImpactTrack) THEN
                                       ,PartFaceAngle_old =PartFaceAngle_old                &
                                       ,PartReflCount   = PartReflCount(PartID)             &
                                       ,alpha           = alpha                             &
-                                      ,n_loc           = n_loc                             &
+                                      ,dp_old          = PartState(PART_DIAM,PartID)       &
 #if PP_nVarPartRHS == 6
                                       ,rot_old         = rot_old                           &
 #endif
@@ -453,13 +454,14 @@ END IF
 
 ! Remove sliding low velocity particles
 IF (LowVeloRemove) THEN
-    v_magnitude   = SQRT(DOT_PRODUCT(PartState(PART_VELV,PartID),PartState(PART_VELV,PartID)))
+  v_magnitude   = SQRT(DOT_PRODUCT(PartState(PART_VELV,PartID),PartState(PART_VELV,PartID)))
 
-    IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.(v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold))THEN
-          Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
-          PDM%ParticleInside(PartID) = .FALSE.
-          IPWRITE(UNIT_stdOut,*) ' Low velocity particle removed after impact. Velocity after reflection:', v_magnitude
-    END IF
+  IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.&
+    (v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold)) THEN
+    Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
+    PDM%ParticleInside(PartID) = .FALSE.
+    IPWRITE(UNIT_stdOut,*) ' Low velocity particle removed after impact. Velocity after reflection:', v_magnitude
+  END IF
 END IF
 
 END SUBROUTINE PerfectReflection
@@ -483,8 +485,8 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
+USE MOD_Particle_Fracture          ,ONLY: DiffuseReflectionFracture
 USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
-USE MOD_Particle_Surfaces          ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars              ,ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
@@ -501,7 +503,7 @@ INTEGER,INTENT(IN),OPTIONAL       :: AuxBCIdx
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                              :: v_old(1:3),WallVelo(3)
+REAL                              :: v_old(1:3),dp_old,WallVelo(3)
 INTEGER                           :: locBCID
 LOGICAL                           :: IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngleDeg,PartFaceAngle_old
@@ -510,14 +512,14 @@ REAL                              :: v_magnitude,v_norm(3),v_tang1(3),v_tang2(3)
 REAL                              :: intersecRemain
 REAL                              :: eps_n, eps_t1, eps_t2
 REAL                              :: tang1(1:3),tang2(1:3)
-! Bons particle rebound model
-REAL                              :: w,w_crit,sigma_y,E_eff
-! RebANN
-INTEGER                           :: iLayer
-REAL(4)                           :: randnum(3)
 #if PP_nVarPartRHS == 6
 REAL                              :: rot_old(1:3)
 #endif
+! Bons particle rebound model
+REAL                              :: w,w_crit,sigma_y,E_eff,d
+! RebANN
+INTEGER                           :: iLayer
+REAL(4)                           :: randnum(7)
 !===================================================================================================================================
 
 ! check if reflected on AuxBC
@@ -537,8 +539,12 @@ ELSE
   WallVelo   = PartBound%WallVelo(1:3,locBCID)
 END IF !IsAuxBC
 
-! Make sure we have the old velocity safe
+! Make sure we have the old velocity/dp/rot safe
 v_old   = PartState(PART_VELV,PartID)
+dp_old  = PartState(PART_DIAM,PartID)
+#if PP_nVarPartRHS == 6
+rot_old = PartState(PART_AMOMV,PartID)
+#endif
 
 ! Compute tangential vectors
 CALL OrthoNormVec(n_loc,tang1,tang2)
@@ -595,27 +601,25 @@ SELECT CASE(WallCoeffModel)
     E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
                (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))**2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID)))**(-1.)
 
+    v_magnitude = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))
+
     ! Calculate deformation of cylindrical model particle
-    w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC &
-      / (E_eff*3*Species(PartSpecies(PartID))%DiameterIC))**0.5
+    w       = v_magnitude * (8*MASS_SPHERE(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID)) &
+              /(E_eff*3*PartState(PART_DIAM,PartID)))**0.5
 
     ! Find critical deformation
     sigma_y = Species(PartSpecies(PartID))%YieldCoeff
-    w_crit  = sigma_y * 2./3. * Species(PartSpecies(PartID))%DiameterIC / E_eff
+    w_crit  = sigma_y * 2./3. * PartState(PART_DIAM,PartID) / E_eff
 
     ! Normal coefficient of restitution
-    IF (w .GT. w_crit) THEN
-      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *sigma_y*(1./(Species(PartSpecies(PartID))%DensityIC * E_eff))**0.5
-    ELSE
-      eps_n = 1.
-    END IF
+    eps_n = MERGE(1./v_magnitude*sigma_y*(1./(Species(PartSpecies(PartID))%DensityIC * E_eff))**0.5, 1., w .GT. w_crit)
 
     ! Tangential coefficient of restitution not considering adhesion
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
     eps_t1   = 1. - PartBound%FricCoeff(SideInfo_Shared(SIDE_BCID,SideID)) / SQRT(DOT_PRODUCT(v_tang1(1:3),v_tang1(1:3)))  * &
-                          SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
+                           v_magnitude * (eps_n+1)*COS(PartFaceAngle)**2.
 
 
   !===================================================================================================================================
@@ -626,27 +630,25 @@ SELECT CASE(WallCoeffModel)
     E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
                (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))**2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID)))**(-1.)
 
+    v_magnitude = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))
+
     ! Calculate deformation of cylindrical model particle
-    w       = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (8*Species(PartSpecies(PartID))%MassIC &
-      / (E_eff*3*Species(PartSpecies(PartID))%DiameterIC))**0.5
+    w       = v_magnitude * (8*MASS_SPHERE(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID)) &
+              / (E_eff*3*PartState(PART_DIAM,PartID)))**0.5
 
     ! Find critical deformation
     sigma_y = Species(PartSpecies(PartID))%Whitaker_a*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
-    w_crit  = sigma_y * 2./3. * Species(PartSpecies(PartID))%DiameterIC / E_eff
+    w_crit  = sigma_y * 2./3. * PartState(PART_DIAM,PartID) / E_eff
 
     ! Normal coefficient of restitution
-    IF (w .GT. w_crit) THEN
-      eps_n = 1./SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) *sigma_y*(1./(Species(PartSpecies(PartID))%DensityIC * E_eff))**0.5
-    ELSE
-      eps_n = 1.
-    END IF
+    eps_n = MERGE(1./v_magnitude*sigma_y*(1./(Species(PartSpecies(PartID))%DensityIC * E_eff))**0.5, 1., w .GT. w_crit)
 
     ! Tangential coefficient of restitution not considering adhesion
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
     eps_t1   = 1. - PartBound%FricCoeff(SideInfo_Shared(SIDE_BCID,SideID)) / SQRT(DOT_PRODUCT(v_tang1(1:3),v_tang1(1:3))) * &
-                           SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3))) * (eps_n+1)*COS(PartFaceAngle)**2.
+                           v_magnitude * (eps_n+1)*COS(PartFaceAngle)**2.
 
   !=================================================================================================================================
   ! Fong, W.; Amili, O.; Coletti, F.: Velocity and spatial distribution of inertial particles in a turbulent channel flow
@@ -658,29 +660,67 @@ SELECT CASE(WallCoeffModel)
     eps_n    = PartBound%CoR(SideInfo_Shared(SIDE_BCID,SideID))
 
   !=================================================================================================================================
-  ! Rebound ANN valid for v_{air} \in [150,350] [m/s]
+  ! Rebound 2D ANN valid for v_{air} \in [150,350] [m/s]
   !=================================================================================================================================
   CASE('RebANN')
     CALL RANDOM_NUMBER(randnum)
     ! Input with normalization
     PartBoundANN%output(1:PartBoundANN%nN(1)) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
       LOGNORM(NORM2(PartState(PART_VELV,PartID)),PartBoundANN%max_in(2)),&
-      LOGNORM(Species(PartSpecies(PartID))%DiameterIC,PartBoundANN%max_in(3)), randnum(1), randnum(2)/)
+      LOGNORM(PartState(PART_DIAM,PartID),PartBoundANN%max_in(3)), randnum(1), randnum(2)/)
     ! Hidden layers
     DO iLayer=1,PartBoundANN%nLayer
-      PartBoundANN%output(:) = SILU((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)),PartBoundANN%beta(:,iLayer))
+      PartBoundANN%output(:) = &
+        SILU((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)),PartBoundANN%beta(:,iLayer))
     END DO
     ! Output layer
     iLayer = PartBoundANN%nLayer+1
     PartBoundANN%output(:) = SIGMOID((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)))
-    PartBoundANN%output(1) = LOGNORMINV(PartBoundANN%output(1), PartBoundANN%max_in(1))
-    PartBoundANN%output(2) = LOGNORMINV(PartBoundANN%output(2), PartBoundANN%max_in(2))
+    PartBoundANN%output(1:2) = LOGNORMINV(PartBoundANN%output(1:2), PartBoundANN%max_in(1:2))
     ! Calculate coefficents of restitution
     eps_n  = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
     eps_t1 = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang1(1:3))
-    !IPWRITE (*, *) 'eps_n, eps_t1, eps_t2   :', eps_n, eps_t1, eps_t2
+    ! Random Gaussian with std 0.2
+    ! eps_t2 = eps_t2 + PartBoundANN%output(2) * TAN(MIN(0.3,MAX(-0.3,RandNormal(mean_opt=0.0,deviation_opt=0.2)))) / NORM2(v_tang2(1:3))
+    ! IPWRITE (*, *) 'eps_n, eps_t1, eps_t2:', eps_n, eps_t1, eps_t2
 
-    ! TODO: 3D Rebound; Fracture
+  !=================================================================================================================================
+  ! Fracture 2D ANN valid for v_{air} \in [150,350] [m/s]
+  !=================================================================================================================================
+  CASE('FracANN')
+    CALL RANDOM_NUMBER(randnum)
+    ! Input with normalization
+    PartBoundANN%output(1:PartBoundANN%nN(1)) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
+      LOGNORM(NORM2(PartState(PART_VELV,PartID)),PartBoundANN%max_in(2)),&
+      LOGNORM(PartState(PART_DIAM,PartID),PartBoundANN%max_in(3)), &
+      randnum(1), randnum(2), randnum(3), randnum(4), randnum(5)/)
+    ! Hidden layers
+    DO iLayer=1,PartBoundANN%nLayer
+      PartBoundANN%output(:) = &
+        SILU((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)),PartBoundANN%beta(:,iLayer))
+    END DO
+    ! Output layer
+    iLayer = PartBoundANN%nLayer+1
+    PartBoundANN%output(1:5) = LOGNORMINV(PartBoundANN%output(1:5), PartBoundANN%max_in(1:5))
+
+    ! Insert new particle if particle splits
+    IF (PartBoundANN%output(3) .GT. 0) THEN
+      ! Update particle diameter
+      PartState(PART_DIAM,PartID) = PartBoundANN%output(3)*PartState(PART_DIAM,PartID)
+      d = VOL_SPHERE_INV((VOL_SPHERE(dp_old)-VOL_SPHERE(PartState(PART_DIAM,PartID))))
+
+      ! Calculate coefficents of restitution
+      eps_n  = PartBoundANN%output(5) * SIN(PartBoundANN%output(4)) / NORM2(v_norm(1:3))
+      eps_t1 = PartBoundANN%output(5) * COS(PartBoundANN%output(4)) / NORM2(v_tang1(1:3))
+
+      ! Insert new particle
+      CALL DiffuseReflectionFracture(PartTrajectory,lengthPartTrajectory,alpha,PartID,SideID,n_loc,tang1,tang2,&
+                                     eps_n,eps_t1,eps_t2,dp_old,WallVelo)
+    END IF
+
+    ! Calculate coefficents of restitution
+    eps_n  = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
+    eps_t1 = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang1(1:3))
 
   CASE DEFAULT
       CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')
@@ -696,7 +736,7 @@ END IF
 !--> first move the particle to the boundary
 #if CODE_ANALYZE
 WRITE(UNIT_stdout,'(110("-"))')
-WRITE(UNIT_stdout,'(A,I1)')                       '     | Diffusive reflection on BC: ', SideInfo_Shared(SIDE_BCID,SideID)
+WRITE(UNIT_stdout,'(A,I1)')                       '     | Diffusive reflection on BC: ',SideInfo_Shared(SIDE_BCID,SideID)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | LastPartPos:                ',LastPartPos(1,PartID),LastPartPos(2,PartID),LastPartPos(3,PartID)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory:             ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
 WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity:                   ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
@@ -738,8 +778,9 @@ PartTrajectory        = PartTrajectory/lengthPartTrajectory
 #if PP_nVarPartRHS == 6
 ! rotation: I_2*w_2-I_1*w_1 = - r x J , J=m_2*v_2-m_1*v_1, r=d/2*n_loc
 ! for a constant particle volume: I_2=I_1, m_1=m_2
-rot_old(1:3) = PartState(PART_AMOMV,PartID) - 5/Species(PartSpecies(PartID))%DiameterIC *&
-                                              CROSS(n_loc,(PartState(PART_VELV,PartID)-v_old))
+PartState(PART_AMOMV,PartID) = (dp_old/PartState(PART_DIAM,PartID))**5*rot_old - &
+                                0.5*dp_old*Species(PartSpecies(PartID))%DensityIC*PI/6*&
+                                CROSS(n_loc,(PartState(PART_DIAM,PartID)**3*PartState(PART_VELV,PartID)-v_old*dp_old**3))
 #endif
 
 #if CODE_ANALYZE
@@ -759,7 +800,7 @@ IF (doParticleImpactTrack) THEN
                                       ,PartFaceAngle_old =PartFaceAngle_old                            &
                                       ,PartReflCount   = PartReflCount(PartID)                         &
                                       ,alpha           = alpha                                         &
-                                      ,n_loc           = n_loc                                         &
+                                      ,dp_old          = dp_old                                        &
 #if PP_nVarPartRHS == 6
                                       ,rot_old         = rot_old                                       &
 #endif
@@ -771,17 +812,18 @@ IF (doParticleReflectionTrack) PartReflCount(PartID) = PartReflCount(PartID) + 1
 
 ! Correction for Runge-Kutta. Reflect or delete force history / acceleration
 ! Coefficients of Restitution cause non-differentiable jump in velocity. Always erase force history and reconstruction in timedisc during push
-PDM%IsNewPart(PartID)=.TRUE.
+PDM%IsNewPart(PartID) = .TRUE.
 
 ! Remove sliding low velocity particles
 IF (LowVeloRemove) THEN
-    v_magnitude   = SQRT(DOT_PRODUCT(PartState(PART_VELV,PartID),PartState(PART_VELV,PartID)))
+  v_magnitude = SQRT(DOT_PRODUCT(PartState(PART_VELV,PartID),PartState(PART_VELV,PartID)))
 
-    IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.(v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold))THEN
-          Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
-          PDM%ParticleInside(PartID) = .FALSE.
-          IPWRITE(UNIT_stdOut,*) ' Low velocity particle removed after impact. Velocity after reflection:', v_magnitude
-    END IF
+  IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.&
+    (v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold)) THEN
+    Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
+    PDM%ParticleInside(PartID) = .FALSE.
+    IPWRITE(UNIT_stdOut,*) ' Low velocity particle removed after impact. Velocity after reflection:', v_magnitude
+  END IF
 END IF
 
 END SUBROUTINE DiffuseReflection
@@ -952,6 +994,7 @@ n_out = n_out*COS(random_angle(2))+(/n_in(2)*n_out(3)   - n_in(3)*n_out(2),&
                                      n_in(1)*n_out(2)   - n_in(2)*n_out(1)/)*SIN(random_angle(2))+&
                                      n_in(:)*DOT_PRODUCT(n_in(:),n_out)*(1.-COS(random_angle(2)))
 END FUNCTION RoughWall
+
 
 RECURSIVE SUBROUTINE RoughnessPDF(x,MeanIC,VarianceIC,angle)
 !----------------------------------------------------------------------------------------------------------------------------------!

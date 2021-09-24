@@ -47,6 +47,7 @@ INTEGER , ALLOCATABLE         :: seeds(:)                                    ! =
 
 LOGICAL                       :: doPartIndex                                 ! Flag to give particles an unique (or not) index
 LOGICAL                       :: doCalcSourcePart                            ! Flag to enable two-way coupling (NN)
+LOGICAL                       :: doWritePartDiam                             ! Flag to enable writeout of particle diameter
 
 #if USE_BASSETFORCE
 REAL    , ALLOCATABLE         :: durdt(:,:)                                  ! Old dur/dt for Basset force

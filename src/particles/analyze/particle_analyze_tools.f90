@@ -48,8 +48,7 @@ PURE FUNCTION CalcEkinPart(iPart)
 ! computes the kinetic energy of one particle
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals
-USE MOD_Preproc
+USE MOD_Particle_Globals,       ONLY : pi
 USE MOD_Particle_Vars,          ONLY : PartState, PartSpecies, Species
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -61,14 +60,10 @@ INTEGER,INTENT(IN)                 :: iPart
 REAL                               :: CalcEkinPart
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                               :: partV2
 !===================================================================================================================================
 
-partV2 = PartState(4,iPart) * PartState(4,iPart) &
-       + PartState(5,iPart) * PartState(5,iPart) &
-       + PartState(6,iPart) * PartState(6,iPart)
-
-CalcEkinPart = 0.5*Species(PartSpecies(iPart))%MassIC*partV2
+CalcEkinPart = 0.5*PI/6*Species(PartSpecies(iPart))%DensityIC*PartState(PART_DIAM,iPart)**3*&
+               DOT_PRODUCT(PartState(PART_VELV,iPart),PartState(PART_VELV,iPart))
 
 END FUNCTION CalcEkinPart
 
@@ -114,7 +109,7 @@ USE MOD_Globals
 USE MOD_HDF5_WriteArray         ,ONLY: WriteArray
 USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars             ,ONLY: WriteStateFiles
-USE MOD_Particle_Vars           ,ONLY: PartState,PDM,LastPartPos,PartSpecies,Species,nSpecies!,PartIndex
+USE MOD_Particle_Vars           ,ONLY: PartState,PDM,LastPartPos,PartSpecies,Species,nSpecies,PartIndex,doPartIndex
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_MaxBufferSize,RPP_Plane,RecordPart,RPP_nVarNames
 USE MOD_HDF5_Output             ,ONLY: WriteAttribute
 #if USE_MPI
@@ -124,8 +119,8 @@ USE MOD_Particle_HDF5_output    ,ONLY: DistributedWriteArray
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)             :: OutputTime
-LOGICAL,OPTIONAL,INTENT(IN) :: writeToBinary
+REAL,INTENT(IN)                :: OutputTime
+LOGICAL,OPTIONAL,INTENT(IN)    :: writeToBinary
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iPart,iRecord,iSpecies
@@ -137,7 +132,7 @@ INTEGER                        :: sendbuf(2),recvbuf(2)
 INTEGER                        :: nRecords(0:nProcessors-1)
 #endif
 CHARACTER(LEN=32)              :: tmpStr
-REAL                           :: DiameterIC(nSpecies), SphericityIC(nSpecies)
+REAL                           :: SphericityIC(nSpecies)
 #if USE_EXTEND_RHS
 INTEGER                        :: ForceIC(6,nSpecies)
 #else
@@ -154,9 +149,12 @@ DO iRecord = 1,RecordPart
       RPP_Plane(iRecord)%RPP_Records = RPP_Plane(iRecord)%RPP_Records+1
       ! Part pos and vel
       RPP_Plane(iRecord)%RPP_Data(1:6,RPP_Plane(iRecord)%RPP_Records) = PartState(1:6,iPart)
+      ! dp
+      RPP_Plane(iRecord)%RPP_Data(7,RPP_Plane(iRecord)%RPP_Records)   = PartState(PART_DIAM,iPart)
       ! Species
-      RPP_Plane(iRecord)%RPP_Data(7,RPP_Plane(iRecord)%RPP_Records)   = PartSpecies(iPart)
-!      RPP_Plane(iRecord)%RPP_Data(8,RPP_Plane(iRecord)%RPP_Records)   = PartIndex(iPart)
+      RPP_Plane(iRecord)%RPP_Data(8,RPP_Plane(iRecord)%RPP_Records)   = PartSpecies(iPart)
+      ! Index
+      IF(doPartIndex) RPP_Plane(iRecord)%RPP_Data(9,RPP_Plane(iRecord)%RPP_Records)   = PartIndex(iPart)
     END IF
   END DO
 !END IF
@@ -193,7 +191,9 @@ DO iRecord = 1,RecordPart
     StrVarNames(4) ='VelocityX'
     StrVarNames(5) ='VelocityY'
     StrVarNames(6) ='VelocityZ'
-    StrVarNames(7) ='Species'
+    StrVarNames(7) ='PartDiam'
+    StrVarNames(8) ='Species'
+    IF(doPartIndex) StrVarNames(9) ='Index'
 
     ForceIC = 0
 
@@ -206,7 +206,6 @@ DO iRecord = 1,RecordPart
       CALL WriteAttribute(File_ID,'nSpecies',1,IntScalar=nSpecies)
       DO iSpecies=1,nSpecies
         SphericityIC(iSpecies) = Species(iSpecies)%SphericityIC
-        DiameterIC(iSpecies)   = Species(iSpecies)%DiameterIC
         IF(Species(iSpecies)%RHSMethod .NE. RHS_TRACER) ForceIC(1,iSpecies)    = 1
 #if USE_EXTEND_RHS
         IF(Species(iSpecies)%CalcSaffmanForce)    ForceIC(2,iSpecies) = 1
@@ -217,7 +216,6 @@ DO iRecord = 1,RecordPart
 #endif
       END DO
       CALL WriteAttribute(File_ID,'SphericityIC',nSpecies,RealArray=SphericityIC)
-      CALL WriteAttribute(File_ID,'DiameterIC'  ,nSpecies,RealArray=DiameterIC)
       CALL WriteAttribute(File_ID,'DragForce'   ,nSpecies,IntArray=ForceIC(1,:))
 #if USE_EXTEND_RHS
       CALL WriteAttribute(File_ID,'SaffmanForce',nSpecies,IntArray=ForceIC(2,:))

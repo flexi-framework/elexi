@@ -331,9 +331,9 @@ SUBROUTINE CalcKineticEnergy()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Globals      ,ONLY: DOTPRODUCT
+USE MOD_Particle_Analyze_Tools,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars ,ONLY: PartEkin,nSpecAnalyze
-USE MOD_Particle_Vars         ,ONLY: PartState,PartSpecies,Species,PDM
+USE MOD_Particle_Vars         ,ONLY: PartSpecies,PDM
 #if USE_MPI
 USE MOD_Particle_MPI_Vars     ,ONLY: PartMPI
 #endif /*MPI*/
@@ -346,7 +346,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: i
-REAL(KIND=8)      :: partV2
+REAL              :: EkinPart
 !===================================================================================================================================
 
 PartEkin = 0.
@@ -355,17 +355,16 @@ PartEkin = 0.
 IF (nSpecAnalyze.GT.1) THEN
   DO i = 1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(i)) THEN
-      partV2   = DOTPRODUCT(PartState(4:6,i))
-      PartEkin(nSpecAnalyze)   = PartEkin(nSpecAnalyze)   + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
-      PartEkin(PartSpecies(i)) = PartEkin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
+      EkinPart = CalcEkinPart(i)
+      PartEkin(nSpecAnalyze)   = PartEkin(nSpecAnalyze)   + EkinPart
+      PartEkin(PartSpecies(i)) = PartEkin(PartSpecies(i)) + EkinPart
     END IF ! (PDM%ParticleInside(i))
   END DO ! i=1,PDM%ParticleVecLength
 ! nSpecAnalyze = 1 : only 1 species
 ELSE
   DO i = 1,PDM%ParticleVecLength
     IF (PDM%ParticleInside(i)) THEN
-      partV2   = DOTPRODUCT(PartState(4:6,i))
-      PartEkin(PartSpecies(i)) = PartEkin(PartSpecies(i)) + 0.5 *  Species(PartSpecies(i))%MassIC * partV2
+      PartEkin(PartSpecies(i)) = PartEkin(PartSpecies(i)) + CalcEkinPart(i)
     END IF ! particle inside
   END DO ! 1,PDM%ParticleVecLength
 END IF

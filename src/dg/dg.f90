@@ -291,7 +291,7 @@ USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #if USE_PARTICLES
 USE MOD_Part_RHS            ,ONLY: CalcSourcePart
 USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
-USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart,DelayTime,PDM
+USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart,DelayTime
 USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeRHS,ParticleTimeStep,ParticleTimeStepRK
 USE MOD_Particle_Timedisc_Vars,ONLY: PreviousTime
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt

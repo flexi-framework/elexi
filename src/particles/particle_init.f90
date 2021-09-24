@@ -136,6 +136,8 @@ CALL prms%CreateLogicalOption(      'Part-LowVeloRemove'       , 'Flag if low ve
                                                                , '.FALSE.')
 CALL prms%CreateLogicalOption(      'Part-CalcSource'          , 'Flag to enable two-way coupling'                                 &
                                                                , '.FALSE.')
+CALL prms%CreateLogicalOption(      'Part-WritePartDiam'       , 'Flag to enable writeout of particle diameter'                    &
+                                                               , '.FALSE.')
 
 CALL prms%CreateRealOption(         'Part-DelayTime'           , "During delay time the particles won't be moved so the fluid "  //&
                                                                  'field can be evolved'                                            &
@@ -411,7 +413,8 @@ CALL prms%CreateStringOption(       'Part-Boundary[$]-WallCoeffModel', 'Coeffici
                                                                   ' - Bons2017\n'                                                //&
                                                                   ' - Whitaker2018\n'                                            //&
                                                                   ' - Fong2019\n'                                                //&
-                                                                  ' - RebANN'                                                      &
+                                                                  ' - RebANN\n'                                                  //&
+                                                                  ' - FracANN'                                                     &
                                                                             , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Boundary[$]-RoughWall'  ,'Rough wall modelling is used.'                                 &
                                                                   ,'.FALSE.', numberedmulti=.TRUE.)
@@ -656,6 +659,7 @@ CHARACTER(30)         :: tmpStr
 doPartIndex             = GETLOGICAL('Part-PartIndex','.FALSE.')
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
 doCalcSourcePart        = GETLOGICAL('Part-CalcSource','.FALSE.')
+doWritePartDiam         = GETLOGICAL('Part-WritePartDiam','.FALSE.')
 CALL AllocateParticleArrays()
 CALL InitializeVariablesRandomNumbers()
 
@@ -679,6 +683,7 @@ LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
 ! Initialize record plane of particles
 RecordPart          = GETINT('Part-nRPs','0')
 IF (RecordPart.GT.0) THEN
+  IF(doPartIndex) RPP_nVarNames = RPP_nVarNames + 1
   CALL SYSTEM('mkdir -p recordpoints')
   ! Get size of buffer array
   RPP_maxMemory     = GETINT('Part-RPMemory','100') ! Max buffer (100MB)
@@ -854,7 +859,7 @@ CHARACTER(32)         :: hilf
 !===================================================================================================================================
 !--- initialize randomization
 ! Read print flags
-nRandomSeeds = GETINT('Part-NumberOfRandomSeeds','0')
+nRandomSeeds = GETINT('Part-NumberOfRandomSeeds','-1')
 ! specifies compiler specific minimum number of seeds
 CALL RANDOM_SEED(Size = SeedSize)
 
@@ -947,11 +952,11 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'          ,'0.')
   IF (Species(iSpec)%MassIC .EQ. 0.) THEN
     IF (Species(iSpec)%DiameterIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and diameter both zero!')
-    Species(iSpec)%MassIC=Species(iSpec)%DensityIC*PI/6.*Species(iSpec)%DiameterIC**3
+    Species(iSpec)%MassIC = MASS_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%DiameterIC)
     SWRITE(UNIT_StdOut,'(A,I0,A,E16.5)') ' | Mass of species (spherical) ', iSpec, ' = ', Species(iSpec)%MassIC
   ELSEIF (Species(iSpec)%DiameterIC .EQ. 0.) THEN
     IF (Species(iSpec)%DensityIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle density and diameter both zero!')
-    Species(iSpec)%DiameterIC=(Species(iSpec)%MassIC/Species(iSpec)%DensityIC*6./PI)**(1./3.)
+    Species(iSpec)%DiameterIC = DIAM_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%MassIC)
     SWRITE(UNIT_StdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
   END IF
   Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold'   ,'0.')
@@ -1426,6 +1431,11 @@ DO iBC = 1,nBCs
             CASE('RebANN')
               ! Readin weights
               CALL LoadWeightsANN(GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-ANNModel'       ,'model/weights.dat'))
+
+            CASE('FracANN')
+              ! Readin weights
+              CALL LoadWeightsANN(GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-ANNModel'       ,'model/weights.dat'))
+              doWritePartDiam = .TRUE.
 
             CASE DEFAULT
               CALL CollectiveSTOP(__STAMP__,'Unknown wall model given!')

@@ -133,7 +133,6 @@ SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
 USE MOD_Globals
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,doPartIndex
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
-USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionPoint
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionPlane,SetParticlePositionDisk,SetParticlePositionCross,SetParticlePositionCircle

@@ -214,7 +214,7 @@ USE MOD_Output_Vars            ,ONLY: ProjectName,WriteStateFiles
 USE MOD_Particle_Analyze_Vars  ,ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars ,ONLY: PartStateBoundary,PartStateBoundaryVecLength
 USE MOD_Particle_Boundary_Vars ,ONLY: ImpactDataSize,ImpactnGlob,ImpactnLoc,ImpactOffset
-USE MOD_Particle_Vars          ,ONLY: doPartIndex
+USE MOD_Particle_Vars          ,ONLY: doPartIndex,doWritePartDiam
 #if USE_MPI
 ! USE MOD_Particle_Boundary_Vars ,ONLY: MPI_COMM_IMPACT
 USE MOD_Particle_HDF5_Output   ,ONLY: DistributedWriteArray
@@ -231,7 +231,7 @@ CHARACTER(LEN=255)             :: FileName,FileString
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
 LOGICAL                        :: reSwitch
 REAL                           :: startT,endT
-INTEGER                        :: dims(2)
+INTEGER                        :: dims(2),tmp
 !===================================================================================================================================
 IF (.NOT.WriteStateFiles) RETURN
 
@@ -273,13 +273,19 @@ StrVarNames(11) = 'E_kin_impact'
 StrVarNames(12) = 'E_kin_reflected'
 StrVarNames(13) = 'Alpha_impact'
 StrVarNames(14) = 'Alpha_reflected'
+IF (doWritePartDiam) THEN
+  StrVarNames(15) = 'dp_old'
+  StrVarNames(16) = 'dp_new'
+  tmp = 17
+ELSE
+  tmp = 15
+END IF
 #if PP_nVarPartRHS==6
-StrVarNames(15) = 'E_rot_impact'
-StrVarNames(16) = 'E_rot_reflected'
-IF (doPartIndex) StrVarNames(17)= 'Index'
-#else
-IF (doPartIndex) StrVarNames(15)= 'Index'
+StrVarNames(tmp) = 'E_rot_impact'
+StrVarNames(tmp+1) = 'E_rot_reflected'
+tmp = tmp+2
 #endif
+IF (doPartIndex) StrVarNames(tmp)= 'Index'
 IF (doParticleDispersionTrack) THEN
   StrVarNames(ImpactDataSize-2) = 'PartPathAbsX'
   StrVarNames(ImpactDataSize-1) = 'PartPathAbsY'

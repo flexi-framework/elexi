@@ -400,8 +400,6 @@ LastPartPos(1:3,PartID)       = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*al
 PartTrajectory(1:3)           = PartTrajectory(1:3) - 2.*DOT_PRODUCT(PartTrajectory(1:3),n_loc)*n_loc
 PartState(PART_POSV,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(lengthPartTrajectory - alpha)
 
-! TODO: What happens with rotation during perfect reflection?
-
 ! compute moved particle || rest of movement
 PartTrajectory          = PartState(PART_POSV,PartID) - LastPartPos(1:3,PartID)
 lengthPartTrajectory    = SQRT(SUM(PartTrajectory**2))
@@ -516,7 +514,7 @@ REAL                              :: tang1(1:3),tang2(1:3)
 REAL                              :: rot_old(1:3)
 #endif
 ! Bons particle rebound model
-REAL                              :: w,w_crit,sigma_y,E_eff,d
+REAL                              :: w,w_crit,sigma_y,E_eff
 ! RebANN
 INTEGER                           :: iLayer
 REAL(4)                           :: randnum(7)
@@ -707,7 +705,6 @@ SELECT CASE(WallCoeffModel)
     IF (PartBoundANN%output(3) .GT. 0) THEN
       ! Update particle diameter
       PartState(PART_DIAM,PartID) = PartBoundANN%output(3)*PartState(PART_DIAM,PartID)
-      d = VOL_SPHERE_INV((VOL_SPHERE(dp_old)-VOL_SPHERE(PartState(PART_DIAM,PartID))))
 
       ! Calculate coefficents of restitution
       eps_n  = PartBoundANN%output(5) * SIN(PartBoundANN%output(4)) / NORM2(v_norm(1:3))
@@ -793,16 +790,16 @@ WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity (CoR):       
 IF (doParticleImpactTrack) THEN
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 
-  CALL StoreBoundaryParticleProperties(BCSideID        = SideInfo_Shared(SIDE_BCID,SideID)             &
-                                      ,PartID          = PartID                                        &
-                                      ,PartFaceAngle   = PartFaceAngle                                 &
-                                      ,v_old           = v_old                                         &
-                                      ,PartFaceAngle_old =PartFaceAngle_old                            &
-                                      ,PartReflCount   = PartReflCount(PartID)                         &
-                                      ,alpha           = alpha                                         &
-                                      ,dp_old          = dp_old                                        &
+  CALL StoreBoundaryParticleProperties(BCSideID           = SideInfo_Shared(SIDE_BCID,SideID)             &
+                                      ,PartID             = PartID                                        &
+                                      ,PartFaceAngle      = PartFaceAngle                                 &
+                                      ,v_old              = v_old                                         &
+                                      ,PartFaceAngle_old  = PartFaceAngle_old                             &
+                                      ,PartReflCount      = PartReflCount(PartID)                         &
+                                      ,alpha              = alpha                                         &
+                                      ,dp_old             = dp_old                                        &
 #if PP_nVarPartRHS == 6
-                                      ,rot_old         = rot_old                                       &
+                                      ,rot_old            = rot_old                                       &
 #endif
                                       )
 END IF

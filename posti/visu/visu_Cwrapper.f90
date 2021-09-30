@@ -154,6 +154,7 @@ SUBROUTINE visu_CWrapper(mpi_comm_IN,  &
 #if USE_MPI
     UseD3,                                                          &
 #endif
+    HighOrder,&
     strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
     coordsDG_out    ,valuesDG_out    ,nodeidsDG_out    ,globalnodeidsDG_out,              globalcellidsDG_out,      &
     coordsFV_out    ,valuesFV_out    ,nodeidsFV_out    ,globalnodeidsFV_out,              globalcellidsFV_out,      &
@@ -180,8 +181,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,INTENT(IN)                      :: mpi_comm_IN
 #if USE_MPI
-INTEGER,INTENT(IN)            :: UseD3
+INTEGER,INTENT(IN)                      :: UseD3
 #endif
+INTEGER,INTENT(IN)                      :: HighOrder
 INTEGER,INTENT(IN)                      :: strlen_prm
 INTEGER,INTENT(IN)                      :: strlen_posti
 INTEGER,INTENT(IN)                      :: strlen_state
@@ -234,7 +236,7 @@ CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 ! Map Fortran arrays to C pointer
 IF (MeshFileMode) THEN
   ! Write only the DG coordinates to the VTK file
-  CALL WriteCoordsToVTK_array       (NVisu,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0)
+  CALL WriteCoordsToVTK_array(NVisu,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0,HighOrder=HighOrder)
 #if USE_MPI && !FV_ENABLED
   ! GlobalNodeIDs are only required once. Do it here only if just the mesh is required
   IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG        &
@@ -296,8 +298,8 @@ globalcellidsSurfFV_out%len = 0
 IF (Avg2D) THEN
   CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElemsAvg2D_DG,valuesDG_out,UVisu_DG,2)
   CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElemsAvg2D_FV,valuesFV_out,UVisu_FV,2)
-  CALL WriteCoordsToVTK_array(NVisu   ,nElemsAvg2D_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=2,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nElemsAvg2D_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=2,DGFV=1)
+  CALL WriteCoordsToVTK_array(NVisu,nElemsAvg2D_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=2,DGFV=0,HighOrder=HighOrder)
+  CALL WriteCoordsToVTK_array(NVisu_FV,nElemsAvg2D_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=2,DGFV=1,HighOrder=HighOrder)
 #if USE_MPI && !FV_ENABLED
   IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG         &
                                                     ,globalnodeidsDG_out,globalnodeids_DG  &
@@ -307,8 +309,8 @@ IF (Avg2D) THEN
 ELSE
   CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,PP_dim)
   CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,PP_dim)
-  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=PP_dim,DGFV=1)
+  CALL WriteCoordsToVTK_array(NVisu,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0,HighOrder=HighOrder)
+  CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=PP_dim,DGFV=1,HighOrder=HighOrder)
 #if USE_MPI && !FV_ENABLED
   IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG         &
                                                     ,globalnodeidsDG_out,globalnodeids_DG  &
@@ -350,9 +352,9 @@ CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_
 CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,valuesSurfFV_out,USurfVisu_FV,PP_dim-1)
 
 CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSurfDG_out,&
-    CoordsSurfVisu_DG,nodeidsSurf_DG,dim=PP_dim-1,DGFV=0)
+    CoordsSurfVisu_DG,nodeidsSurf_DG,dim=PP_dim-1,DGFV=0,HighOrder=HighOrder)
 CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
-    CoordsSurfVisu_FV,nodeidsSurf_FV,dim=PP_dim-1,DGFV=1)
+    CoordsSurfVisu_FV,nodeidsSurf_FV,dim=PP_dim-1,DGFV=1,HighOrder=HighOrder)
 #if USE_MPI && !FV_ENABLED
   IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nBCSidesVisu_DG,CoordsSurfVisu_DG      &
                                                     ,globalnodeidsSurfDG_out,globalnodeidsSurf_DG &

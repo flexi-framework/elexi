@@ -35,6 +35,10 @@ INTERFACE InitParticleMesh
   MODULE PROCEDURE InitParticleMesh
 END INTERFACE
 
+INTERFACE FinalizeParticleMeshBasis
+    MODULE PROCEDURE FinalizeParticleMeshBasis
+END INTERFACE
+
 INTERFACE FinalizeParticleMesh
   MODULE PROCEDURE FinalizeParticleMesh
 END INTERFACE
@@ -42,6 +46,7 @@ END INTERFACE
 PUBLIC :: DefineParametersParticleMesh
 PUBLIC :: InitParticleMeshBasis
 PUBLIC :: InitParticleMesh
+PUBLIC :: FinalizeParticleMeshBasis
 PUBLIC :: FinalizeParticleMesh
 !===================================================================================================================================
 
@@ -577,6 +582,45 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitParticleMesh
 
 
+SUBROUTINE FinalizeParticleMeshBasis()
+!===================================================================================================================================
+! Finalize basic metrics needed for particle mesh
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Surfaces_Vars
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! Particle mesh metrics
+SDEALLOCATE(DCL_N)
+SDEALLOCATE(Vdm_CLN_GaussN)
+SDEALLOCATE(Vdm_CLNGeo_GaussN)
+SDEALLOCATE(Vdm_CLNGeo_CLN)
+SDEALLOCATE(Vdm_CLNGeo1_CLNGeo)
+SDEALLOCATE(Vdm_NGeo_CLNGeo)
+SDEALLOCATE(Vdm_Bezier)
+SDEALLOCATE(sVdm_Bezier)
+SDEALLOCATE(wBaryCL_NGeo)
+SDEALLOCATE(wBaryCL_NGeo1)
+SDEALLOCATE(Xi_NGeo)
+SDEALLOCATE(XiCL_NGeo)
+SDEALLOCATE(XiCL_NGeo1)
+SDEALLOCATE(DCL_NGeo)
+SDEALLOCATE(D_Bezier)
+SDEALLOCATE(XCL_NGeo)
+SDEALLOCATE(dXCL_NGeo)
+
+END SUBROUTINE FinalizeParticleMeshBasis
+
+
 SUBROUTINE FinalizeParticleMesh()
 !===================================================================================================================================
 ! Deallocates variables for the particle mesh
@@ -611,25 +655,6 @@ IMPLICIT NONE
 CALL FinalizeMeshReadin()
 
 CALL FinalizeBGM()
-
-! Particle mesh metrics
-SDEALLOCATE(DCL_N)
-SDEALLOCATE(Vdm_CLN_GaussN)
-SDEALLOCATE(Vdm_CLNGeo_GaussN)
-SDEALLOCATE(Vdm_CLNGeo_CLN)
-SDEALLOCATE(Vdm_CLNGeo1_CLNGeo)
-SDEALLOCATE(Vdm_NGeo_CLNGeo)
-SDEALLOCATE(Vdm_Bezier)
-SDEALLOCATE(sVdm_Bezier)
-SDEALLOCATE(wBaryCL_NGeo)
-SDEALLOCATE(wBaryCL_NGeo1)
-SDEALLOCATE(Xi_NGeo)
-SDEALLOCATE(XiCL_NGeo)
-SDEALLOCATE(XiCL_NGeo1)
-SDEALLOCATE(DCL_NGeo)
-SDEALLOCATE(D_Bezier)
-SDEALLOCATE(XCL_NGeo)
-SDEALLOCATE(dXCL_NGeo)
 
 SELECT CASE(TrackingMethod)
 

@@ -446,11 +446,14 @@ END SUBROUTINE InitMesh
 SUBROUTINE FinalizeMesh()
 ! MODULES
 USE MOD_Mesh_Vars
-USE MOD_Mappings  ,ONLY:FinalizeMappings
+USE MOD_Mappings      ,ONLY:FinalizeMappings
 #if FV_ENABLED
-USE MOD_FV_Vars   ,ONLY:FV_Elems_master
-USE MOD_FV_Metrics,ONLY:FinalizeFV_Metrics
+USE MOD_FV_Vars       ,ONLY:FV_Elems_master
+USE MOD_FV_Metrics    ,ONLY:FinalizeFV_Metrics
 #endif
+#if USE_PARTICLES
+USE MOD_Particle_Mesh ,ONLY: FinalizeParticleMeshBasis
+#endif /*USE_PARTICLES*/
 IMPLICIT NONE
 !============================================================================================================================
 ! Deallocate global variables, needs to go somewhere else later
@@ -462,7 +465,6 @@ SDEALLOCATE(AnalyzeSide)
 ! mortars
 SDEALLOCATE(MortarType)
 SDEALLOCATE(MortarInfo)
-
 
 ! allocated during ReadMesh
 SDEALLOCATE(NodeCoords)
@@ -502,6 +504,10 @@ CALL FinalizeMappings()
 SDEALLOCATE(FV_Elems_master) ! moved here from fv.f90
 CALL FinalizeFV_Metrics()
 #endif
+
+#if USE_PARTICLES
+CALL FinalizeParticleMeshBasis()
+#endif /*USE_PARTICLES*/
 
 MeshInitIsDone = .FALSE.
 END SUBROUTINE FinalizeMesh

@@ -176,9 +176,9 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       PartState(1:PP_nVarPart_loc,1:locnPart) = PartData(1:PP_nVarPart_loc,offsetnPart+1:offsetnPart+locnPart)
       PartSpecies(                1:locnPart) = INT(PartData(PP_nVarPart_loc+1,offsetnPart+1:offsetnPart+locnPart))
       ! For old files, where no particle diameter was saved
-      IF (ANY(PartState(PART_DIAM,1:locnPart).EQ.0)) THEN
-        DO iPart = offsetnPart+1,offsetnPart+locnPart
-          PartState(PART_DIAM,1:locnPart) = Species(PartSpecies(iPart))%DiameterIC
+      IF (ANY(PartState(PART_DIAM,1:locnPart).EQ.0.)) THEN
+        DO iPart = 1,locnPart
+          PartState(PART_DIAM,iPart) = Species(PartSpecies(iPart))%DiameterIC
         END DO
       END IF
       ! Reflections were tracked previously and are therefore still enabled

@@ -102,7 +102,7 @@ USE MOD_TimeDisc_Vars,                ONLY: t
 ! #if USE_RW
 ! USE MOD_Particle_RandomWalk_Vars,     ONLY: RWTime
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,                ONLY: bIter,N_Basset
+USE MOD_Particle_Vars,                ONLY: Species,PartSpecies,bIter,N_Basset
 #endif /* USE_BASSETFORCE */
 ! USE_MOD_Timedisc_Vars,                ONLY: t
 ! #endif
@@ -127,7 +127,7 @@ INTEGER                          :: MPIRequest_FB
 Pt(:,1:PDM%ParticleVecLength)=0.
 
 #if USE_BASSETFORCE
-bIter = MIN(bIter + 1,N_Basset + 1)
+bIter = bIter + 1 !MIN(bIter + 1,N_Basset + 1)
 ! Communicate bIter to all other processors (same effect as blocking comm...)
 #if USE_MPI
 MPIRequest_FB = MPI_REQUEST_NULL
@@ -254,15 +254,15 @@ ELSE
   udiff(1:3) = FieldAtParticle(VELV)                             - PartState(PART_VELV,PartID)
 END IF
 #if USE_FAXEN_CORR
-udiff = udiff + (PartState(PART_DIAM,PartID)**2)/6 * GradAtParticle(RHS_LAPLACEVEL,:)
+udiff = udiff + (Species(PartSpecies(PartID))%DiameterIC**2)/6 * GradAtParticle(RHS_LAPLACEVEL,:)
 #endif /* USE_FAXEN_CORR */
 
-Rep     = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
+Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
 
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, 0.)
 
 ! Particle relaxation time
-staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
+staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
 
 Fdm      = udiff * staup * f
 
@@ -334,10 +334,11 @@ USE MOD_Particle_Vars,          ONLY: Species, PartSpecies
 USE MOD_Particle_Vars,          ONLY: PartState, TurbPartState
 #if ANALYZE_RHS
 USE MOD_Particle_Vars,          ONLY: tWriteRHS,FileName_RHS,dtWriteRHS
-USE MOD_TimeDisc_Vars,          ONLY: t
 USE MOD_Output,                 ONLY: OutputToFile
 #endif /* ANALYZE_RHS */
+USE MOD_PreProc,                ONLY: PP_pi
 USE MOD_Viscosity
+USE MOD_TimeDisc_Vars,          ONLY: t
 #if USE_BASSETFORCE
 USE MOD_Equation_Vars,          ONLY: s43
 USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter
@@ -409,7 +410,6 @@ Rew = 0.; Rep = 0.
 #endif
 ! factor before left hand side to add all dv_p/dt terms of the RHS
 globalfactor = 1.
-prefactor = 1.
 
 !===================================================================================================================================
 ! Calculate the Saffman lift force according to:
@@ -426,16 +426,16 @@ rotu = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
 Omega = 0.5 * rotu - PartState(PART_AMOMV,PartID)
 ! Prefactor according to Oesterle and Bui Dinh
 IF (ANY(Omega.NE.0)) THEN
-  Rew = FieldAtParticle(DENS) * VECNORM(Omega) * PartState(PART_DIAM,PartID)**2 / (4*mu)
-  Pt_in(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
+  Rew = FieldAtParticle(DENS) * VECNORM(Omega) * Species(PartSpecies(PartID))%DiameterIC**2 / (4*mu)
+  Pt(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
 END IF
 
 ! Calculate the Re number
-Rep = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
+Rep = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
 IF (Species(PartSpecies(PartID))%CalcSaffmanForce .AND. Rep.GT.0.) THEN
   ! Calculate the factor
-  prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*PartState(PART_DIAM,PartID)*PI)
-  beta = PartState(PART_DIAM,PartID) * VECNORM(PartState(PART_AMOMV,PartID)) * 0.5 / VECNORM(udiff)
+  prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
+  beta = Species(PartSpecies(PartID))%DiameterIC * VECNORM(PartState(PART_AMOMV,PartID)) * 0.5 / VECNORM(udiff)
   IF (Rep .LE. 40) THEN
     prefactor = prefactor * (1-0.3314*SQRT(beta)*EXP(-0.1*Rep)+0.3314*SQRT(beta))
   ELSE
@@ -456,7 +456,7 @@ IF (Species(PartSpecies(PartID))%CalcMagnusForce .AND. Rep.GT.0. .AND. ANY(Omega
   ! Calculate the rotation: (\nabla x u_p) x udiff
   rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
   prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(-0.05684*Rew**0.4*Rep**0.7)
-  Fmm = PI/8 * prefactor * PartState(PART_DIAM,PartID)**3 * FieldAtParticle(DENS) * rotudiff
+  Fmm = PP_PI/8 * prefactor * Species(PartSpecies(PartID))%DiameterIC**3 * FieldAtParticle(DENS) * rotudiff
 END IF
 #endif /* PP_nVarPartRHS */
 
@@ -524,18 +524,19 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
     RKdtFrac = dt
   END IF
   ! Correction term if initial particle velocity if different from the surrounding fluid velocity
-  IF(bIter .EQ. 1) durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(RKdtFrac)
+  IF(bIter .EQ. 1) durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t)
+  IF(MOD(bIter,N_Basset) .EQ. 0) durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t-N_Basset*RKdtFrac)
 
   ! Scaling factor
-  prefactor = 9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
-            * SQRT(mu/(FieldAtParticle(DENS)*PI))
+  prefactor = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
+            * SQRT(mu/(FieldAtParticle(DENS)*PP_pi))
 
   ! Index for previous data
   nIndex = MIN(N_Basset, bIter)
   kIndex = INT((nIndex+1)*3)
 
   ! copy previous data
-  IF(bIter.GT.N_Basset) durdt(4:kIndex-3,PartID) = durdt(7:kIndex,PartID)
+  IF(bIter .GT. N_Basset) durdt(4:kIndex-3,PartID) = durdt(7:kIndex,PartID)
   ! \rho d(u)/dt = \rho D(u)/Dt - udiff * (\rho \nabla(u))
 !  dufdt(1) = DuDt(1) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL1,:))
 !  dufdt(2) = DuDt(2) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL2,:))
@@ -583,7 +584,7 @@ END SUBROUTINE ParticlePushExtend
 #endif /* USE_EXTEND_RHS */
 
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
-SUBROUTINE extRHS(UPrim,Ut,U_RHS)
+SUBROUTINE extRHS(U,Ut,U_RHS)
 !===================================================================================================================================
 ! Compute tau
 !===================================================================================================================================
@@ -608,13 +609,16 @@ USE MOD_Particle_Vars,      ONLY: gradUz_master_loc,gradUz_slave_loc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)             :: UPrim(PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(IN)             :: U(    CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL,INTENT(IN)             :: Ut(   CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)            :: U_RHS(1:RHS_NVARS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#if USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE
+INTEGER                     :: i,j,k,iElem
+#endif
 !===================================================================================================================================
 
 U_RHS             = 0.
@@ -668,9 +672,9 @@ U_RHS(RHS_LAPLACEVEL3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + g
 !CALL Lifting_BR1_gen(1,1,U_local(PRES:PRES,:,:,:,:),gradp_local(:,1,:,:,:,:),gradp_local(:,2,:,:,:,:),gradp_local(:,3,:,:,:,:))
 !U_RHS(RHS_GRADP1:RHS_GRADP3,:,:,:,:) = gradp_local(1,:,:,:,:,:)
 
-U_RHS(RHS_dVEL1dt,:,:,:,:) = Ut(MOM1,:,:,:,:) - Ut(DENS,:,:,:,:)*UPrim(VEL1,:,:,:,:)
-U_RHS(RHS_dVEL2dt,:,:,:,:) = Ut(MOM2,:,:,:,:) - Ut(DENS,:,:,:,:)*UPrim(VEL2,:,:,:,:)
-U_RHS(RHS_dVEL3dt,:,:,:,:) = Ut(MOM3,:,:,:,:) - Ut(DENS,:,:,:,:)*UPrim(VEL3,:,:,:,:)
+DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+  U_RHS(RHS_dVELVdt,i,j,k,iElem) = Ut(MOMV,i,j,k,iElem) - Ut(DENS,i,j,k,iElem)*U(MOMV,i,j,k,iElem)/U(DENS,i,j,k,iElem)
+END DO; END DO; END DO; END DO
 #endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
 
 END SUBROUTINE extRHS
@@ -774,7 +778,7 @@ SUBROUTINE CalcSourcePart(Ut)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Particle_Globals ,ONLY: VECNORM,PI
+USE MOD_Particle_Globals ,ONLY: VECNORM
 USE MOD_Mesh_Vars        ,ONLY: Elem_xGP,sJ,nElems,offsetElem
 #if FV_ENABLED
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
@@ -799,19 +803,19 @@ REAL                :: min_distance_glob,min_distance_loc
 DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
     ! Calculate particle force
-    Fp(1:3) = Pt(1:3,iPart)*MASS_SPHERE(Species(PartSpecies(iPart))%DensityIC,PartState(PART_DIAM,iPart))
+    Fp(1:3) = Pt(1:3,iPart)*Species(PartSpecies(iPart))%MassIC
     ! Determine nearest DOF
     iElem = PEM%Element(iPart)-offsetElem
-    min_distance_glob = VECNORM(Elem_xGP(:,0,0,0,iElem)-PartState(PART_POSV,iPart))
+    min_distance_glob = VECNORM(Elem_xGP(:,0,0,0,iElem)-PartState(1:3,iPart))
     ijk(:) = 0
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-      min_distance_loc = VECNORM(Elem_xGP(:,i,j,k,iElem)-PartState(PART_POSV,iPart))
+      min_distance_loc = VECNORM(Elem_xGP(:,i,j,k,iElem)-PartState(1:3,iPart))
       IF (min_distance_loc .LT. min_distance_glob) THEN; ijk(:) = (/i,j,k/); min_distance_glob = min_distance_loc; END IF
     END DO; END DO; END DO
     ! Add source term
     Ut_src(DENS     ,ijk(1),ijk(2),ijk(3)) = 0.
     Ut_src(MOM1:MOM3,ijk(1),ijk(2),ijk(3)) = Fp
-    Ut_src(ENER     ,ijk(1),ijk(2),ijk(3)) = DOT_PRODUCT(Fp,PartState(PART_VELV,iPart))
+    Ut_src(ENER     ,ijk(1),ijk(2),ijk(3)) = DOT_PRODUCT(Fp,PartState(4:6,iPart))
 #if FV_ENABLED
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))

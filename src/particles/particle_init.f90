@@ -487,7 +487,6 @@ USE MOD_PreProc
 USE MOD_ReadInTools,                ONLY: GETREAL,GETLOGICAL,GETINTFROMSTR,CountOption
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
-USE MOD_Particle_Vars,              ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -496,16 +495,10 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL              :: maxParticleNumberGlobal ! temporary variable
 !===================================================================================================================================
 
 ! Read basic particle parameter
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS...'
-
-! Read global number of particles as datatype real to allow number inputs in the format of, e.g., 5e6
-maxParticleNumberGlobal = GETREAL('Part-MaxParticleNumber')
-! Divide by number of processors, but use at least 2 (at least one next free position in the case of MPI)
-PDM%maxParticleNumber   = MAX(INT(maxParticleNumberGlobal/nProcessors), 2)
 
 ! Find tracking method immediately, a lot of the later variables depend on it
 TrackingMethod  = GETINTFROMSTR('TrackingMethod')
@@ -540,12 +533,13 @@ USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
 USE MOD_Particle_Analyze,           ONLY: InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling, ONLY: RestartParticleBoundarySampling
 USE MOD_Particle_Boundary_Vars
+USE MOD_Particle_Mesh_Vars,         ONLY: LocalVolume,MeshVolume
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_SGS,               ONLY: ParticleSGS
 USE MOD_Particle_Surfaces,          ONLY: InitParticleSurfaces
 USE MOD_Particle_TimeDisc,          ONLY: Particle_InitTimeDisc
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
-USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone
+USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,PDM
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
 #endif
@@ -563,6 +557,7 @@ LOGICAL,INTENT(IN),OPTIONAL      :: doLoadBalance_opt
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL              :: maxParticleNumberGlobal,maxParticleNumberUniform
 !===================================================================================================================================
 
 IF(ParticlesInitIsDone)THEN
@@ -571,6 +566,13 @@ IF(ParticlesInitIsDone)THEN
 END IF
 
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES...'
+
+! Read global number of particles as datatype real to allow number inputs in the format of, e.g., 5e6
+maxParticleNumberGlobal  = GETREAL('Part-MaxParticleNumber')
+! Divide by number of processors, but use at least 2 (at least one next free position in the case of MPI)
+maxParticleNumberUniform = MAX(maxParticleNumberGlobal/nProcessors,2.)
+! Increase the max particle number according to the local volume to account for element size differences
+PDM%maxParticleNumber    = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)))
 
 IF(TrackingMethod.NE.TRIATRACKING) THEN
   CALL InitParticleSurfaces()

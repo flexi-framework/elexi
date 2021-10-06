@@ -533,6 +533,7 @@ USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
 USE MOD_Particle_Analyze,           ONLY: InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling, ONLY: RestartParticleBoundarySampling
 USE MOD_Particle_Boundary_Vars
+USE MOD_Particle_Mesh_Build,        ONLY: InitElemVolumes
 USE MOD_Particle_Mesh_Vars,         ONLY: LocalVolume,MeshVolume
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_SGS,               ONLY: ParticleSGS
@@ -566,6 +567,8 @@ IF(ParticlesInitIsDone)THEN
 END IF
 
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES...'
+
+CALL InitElemVolumes()
 
 ! Read global number of particles as datatype real to allow number inputs in the format of, e.g., 5e6
 maxParticleNumberGlobal  = GETREAL('Part-MaxParticleNumber')

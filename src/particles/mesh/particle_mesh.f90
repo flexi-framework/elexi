@@ -247,7 +247,7 @@ USE MOD_Particle_Basis         ,ONLY: BuildBezierVdm,BuildBezierDMat
 USE MOD_Particle_BGM           ,ONLY: BuildBGMAndIdentifyHaloRegion
 USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation
-USE MOD_Particle_Mesh_Build    ,ONLY: GetMeshMinMax,IdentifyElemAndSideType,InitElemVolumes,ComputePeriodicVec
+USE MOD_Particle_Mesh_Build    ,ONLY: GetMeshMinMax,IdentifyElemAndSideType,ComputePeriodicVec
 USE MOD_Particle_Mesh_Build    ,ONLY: BuildElementRadiusTria,BuildElemTypeAndBasisTria,BuildEpsOneCell,BuildBCElemDistance
 USE MOD_Particle_Mesh_Build    ,ONLY: BuildElementOriginShared,BuildElementBasisAndRadius
 USE MOD_Particle_Mesh_Build    ,ONLY: BuildSideOriginAndRadius,BuildLinearSideBaseVectors
@@ -421,8 +421,6 @@ epsInCell       = SQRT(3.0*RefMappingEps)
 IF((RefMappingGuess.LT.1).OR.(RefMappingGuess.GT.4))THEN
    CALL ABORT(__STAMP__ ,'Wrong guessing method for mapping from physical space in reference space.',RefMappingGuess,999.)
 END IF
-
-CALL InitElemVolumes()
 
 ! TriaSurfaceFlux needs to be determined before particle mesh init to build all required information. TriaSurfaceFlux is enabled by
 ! default for TriaTracking and disabled otherwise

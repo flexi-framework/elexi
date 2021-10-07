@@ -554,7 +554,7 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   END DO
 
   ! Add to global scaling factor as s43*\rho*prefactor*dv_p/dt is on RHS
-  globalfactor     = globalfactor + s43 * prefactor SQRT(RKdtFrac)
+  globalfactor     = globalfactor + s43 * prefactor * SQRT(RKdtFrac)
 
   Fbm(1:3) = prefactor * (Fbm(1:3) * SQRT(RKdtFrac) + durdt(1:3,PartID))
 

@@ -24,31 +24,44 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL                             :: DoLoadBalance                              ! DoLoadBalance
-LOGICAL                             :: LoadBalanceTimeBased                       ! Flag if loadbalance is performed based on
-                                                                                  ! elapsed time
-LOGICAL                             :: PerformLoadBalance=.FALSE.                 ! Flag if loadbalance is performed in current iter
-INTEGER                             :: LoadBalanceSample                          ! Number of samples for loadbalance
-LOGICAL                             :: InitLoadBalanceIsDone                      ! switch for checking
+LOGICAL                             :: DoLoadBalance                              !> Use dynamic load balancing
+INTEGER                             :: LoadBalanceSampleBackup                    !> Loadbalance sample saved until initial autorestart ist finished
+LOGICAL                             :: DoLoadBalanceBackup                        !> Loadbalance flag saved until initial autorestart ist finished
+LOGICAL                             :: PerformLoadBalance=.FALSE.                 !> Flag if load balance is performed in current time step iteration
+INTEGER                             :: LoadBalanceSample                          !> Number of samples for loadbalance
+LOGICAL                             :: PerformLBSample                            !> Flag for enabling time measurement in current
+                                                                                  !> Time step (automatically set depending on LB
+                                                                                  !> sampling method)
+LOGICAL                             :: PerformPartWeightLB                        !> Flag for performing LB with partMPIWeight
+                                                                                  !> instead of summed ElemTimes
+                                                                                  !> -> nParts*PartWeight written into elemtime array
+LOGICAL                             :: InitLoadBalanceIsDone                      !> Switch for checking
 
+! time measurement
+REAL,ALLOCATABLE                    :: tCurrent(:)                                !> Time measurement over one step
+                                                                                  !> measured elem-independent and later weighted
+                                                                                  !> for indices look into piclas.h
+
+REAL,ALLOCATABLE                    :: tCurrent_LB_DG(:)                          !> Time measurement over one step
 ! counter
-INTEGER                             :: nLoadBalance                               ! Number of load balances calculations (calls of ComputeElemLoad)
-INTEGER                             :: nLoadBalanceSteps                          ! Number of performed load balances steps
-INTEGER                             :: LoadBalanceMaxSteps                        ! Number of maximum allowed performed load balances steps
-REAL,ALLOCATABLE                    :: LoadDistri(:)                              ! Weighted load distribution of all procs
-INTEGER,ALLOCATABLE                 :: PartDistri(:)                              ! Part distribution of all procs
-REAL                                :: MaxWeight                                  ! Maximum Weight of proc on domain
-REAL                                :: MinWeight                                  ! Minimum Weight of proc on domain
+INTEGER                             :: nLoadBalance                               !> Number of load balances calculations (calls of ComputeElemLoad)
+INTEGER                             :: nLoadBalanceSteps                          !> Number of performed load balances steps
+INTEGER                             :: LoadBalanceMaxSteps                        !> Number of maximum allowed performed load balances steps
+REAL,ALLOCATABLE                    :: LoadDistri(:)                              !> Weighted load distribution of all procs
+INTEGER,ALLOCATABLE                 :: PartDistri(:)                              !> Part distribution of all procs
+REAL                                :: MaxWeight                                  !> Maximum Weight of proc on domain
+REAL                                :: MinWeight                                  !> Minimum Weight of proc on domain
 REAL                                :: CurrentImbalance
-REAL                                :: NewImbalance                               ! Imbalance after rebalance step
+REAL                                :: NewImbalance                               ! >Imbalance after rebalance step
 
 ! Variables moved over from mesh_reading/timedisc/restart
 LOGICAL                             :: ElemTimeExists
 REAL                                :: RestartWallTime                            ! wall time at the beginning of a simulation OR
                                                                                   ! when a restart is performed via Load Balance
+REAL                                :: RestartTimeBackup                          !
 LOGICAl                             :: DoInitialAutoRestart= .FALSE.
 INTEGER                             :: InitialAutoRestartSample
-LOGICAl                             :: IAR_PerformPartWeightLB= .FALSE.
+LOGICAL                             :: ForceInitialLoadBalance  !> Set true when initial load balance steps are completed and force the load balance
 
 TYPE tData
   INTEGER, ALLOCATABLE :: offsetElemMPI(:)
@@ -60,7 +73,6 @@ TYPE(tData), POINTER :: firstData => null() !linked-list of old offsetElemMPI fo
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! particle load balancing
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER(KIND=8)                     :: nSkipAnalyze                               ! Skip Analyze-Dt
 REAL                                :: ParticleMPIWeight
 REAL                                :: DeviationThreshold                         ! threshold for load-balancing
 LOGICAL                             :: writePartitionInfo                         ! write partitioninfo file
@@ -68,22 +80,20 @@ REAL                                :: WeightSum                                
 REAL                                :: targetWeight                               ! optimal weight for each proc
 
 !-----------------------------------------------------------------------------------------------------------------------------------
-! particle load balancing
-!-----------------------------------------------------------------------------------------------------------------------------------
-REAL,ALLOCATABLE                    :: tCurrent(:)                                ! Time measured over one step
-                                                                                  ! measured for all elements on one proc and later
-                                                                                  ! weighted onto each element
-
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! Element Local measurement
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE                    :: ElemTime(:)
 REAL,ALLOCATABLE                    :: ElemTime_tmp(:)                          ! Additional container for restarting and keeping the old ElemTime values in
                                                                                 ! the state.h5 file
+REAL                                :: ElemTimePartTot  ! Total time spent for particle routines (all procs)
+REAL                                :: ElemTimeFieldTot ! Total time spent for field routines (all procs)
+REAL                                :: ElemTimePart     ! Time spent for particle routines
+REAL                                :: ElemTimeField    ! Time spent for field routines
 REAL,ALLOCATABLE                    :: ElemGlobalTime(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerElem(:)
-INTEGER(KIND=8),ALLOCATABLE         :: nSurfacefluxPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nTracksPerElem(:)
+INTEGER(KIND=4),ALLOCATABLE         :: nSurfacefluxPerElem(:)
+INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerBCElem(:)
 
 
 END MODULE MOD_LoadBalance_Vars

@@ -262,6 +262,10 @@ USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if USE_PARTICLES
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep
 #endif /*USE_PARTICLES*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,LoadBalanceSample,PerformLBSample
+USE MOD_Particle_Globals    ,ONLY: LESSEQUALTOLERANCE
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -286,6 +290,14 @@ IF (UseManualTimeStep) THEN
   IF (dt.EQ.dt_min(DT_ANALYZE)) doAnalyze  = .TRUE.
   IF (dt.EQ.dt_min(DT_END    )) doFinalize = .TRUE.
   dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
+
+#if USE_LOADBALANCE
+  ! Activate normal load balancing (NOT initial restart load balancing)
+  ! 1.) Catch all iterations within sampling interval (make sure to get the first iteration in interval): LESSEQUALTOLERANCE(a,b,tol)
+  ! 2.)             Load balancing is activated: DoLoadBalance=T
+  IF( LESSEQUALTOLERANCE(dt_Min(DT_ANALYZE), LoadBalanceSample*dt, 1e-5) &
+      .AND. DoLoadBalance) PerformLBSample=.TRUE. ! Activate load balancing in this time step
+#endif /*USE_LOADBALANCE*/
 
   ! This is strictly not a manual time step but we need to compensate for small errors along the way ...
   ! Increase time step if the NEXT time step would be smaller than dt/100
@@ -320,6 +332,14 @@ IF (errType.NE.0) THEN
   'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
 #endif
 END IF
+
+#if USE_LOADBALANCE
+! Activate normal load balancing (NOT initial restart load balancing)
+! 1.) Catch all iterations within sampling interval (make sure to get the first iteration in interval): LESSEQUALTOLERANCE(a,b,tol)
+! 2.)             Load balancing is activated: DoLoadBalance=T
+IF( LESSEQUALTOLERANCE(dt_Min(DT_ANALYZE), LoadBalanceSample*dt, 1e-5) &
+    .AND. DoLoadBalance) PerformLBSample=.TRUE. ! Activate load balancing in this time step
+#endif /*USE_LOADBALANCE*/
 
 ! Increase time step if the NEXT time step would be smaller than dt/100
 IF(dt_min(DT_ANALYZE)-dt.LT.dt/100.0 .AND. dt_min(DT_ANALYZE).GT.0) THEN; dt = dt_min(DT_ANALYZE); doAnalyze  = .TRUE.; END IF
@@ -370,6 +390,19 @@ USE MOD_Indicator           ,ONLY: CalcIndicator
 #if USE_PARTICLES
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep,PreviousTime
 #endif /*USE_PARTICLES*/
+#if USE_LOADBALANCE
+! USE MOD_HDF5_output         ,ONLY: RemoveHDF5
+USE MOD_LoadBalance         ,ONLY: ComputeElemLoad
+USE MOD_LoadBalance_TimeDisc,ONLY: LoadBalance
+USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,ElemTime,ElemTimePart,ElemTimeField!,DoLoadBalanceBackup,LoadBalanceSampleBackup
+USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample,PerformLBSample,PerformLoadBalance,LoadBalanceMaxSteps,nLoadBalanceSteps
+USE MOD_LoadBalance_Vars    ,ONLY: DoInitialAutoRestart,ForceInitialLoadBalance
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeField,RestartTimeBackup,RestartWallTime
+USE MOD_Particle_Globals    ,ONLY: ALMOSTEQUAL
+USE MOD_Particle_Localization,ONLY:CountPartsPerElem
+USE MOD_Restart_Vars        ,ONLY: RestartTime!,RestartFile
+USE MOD_TimeDisc_Vars       ,ONLY: dt_min,maxIter
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -397,6 +430,32 @@ CALL DGTimeDerivative_weakForm(t)
   PreviousTime = -1.
 END IF
 #endif /*USE_PARTICLES*/
+
+! Analysis (possible PerformAnalyze+WriteStateToHDF5 and/or LoadBalance)
+#if USE_LOADBALANCE
+! For automatic initial restart, check if the number of sampling steps has been achieved and force a load balance step, but skip
+! this procedure in the final iteration after which the simulation if finished
+!      DoInitialAutoRestart: user-activated load balance restart in first time step (could already be a restart)
+! iter.GE.LoadBalanceSample: as soon as the number of time steps for sampling is reached, perform the load balance restart
+!                   maxIter: prevent removal of last state file even though no load balance restart was performed
+ForceInitialLoadBalance = .FALSE. ! Initialize
+IF(DoInitialAutoRestart.AND.(iter.GE.LoadBalanceSample).AND.(iter.NE.maxIter)) ForceInitialLoadBalance=.TRUE.
+
+IF(ALMOSTEQUAL(dt,dt_Min(DT_ANALYZE)).OR.ForceInitialLoadBalance)THEN
+  CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of LB
+
+  ! Check if loadbalancing is enabled with partweight and set PerformLBSample true to calculate elemtimes with partweight
+  ! LoadBalanceSample is 0 if partweightLB or IAR_partweighlb are enabled. If only one of them is set Loadbalancesample switches
+  ! during time loop
+  IF (LoadBalanceSample.EQ.0 .AND. DoLoadBalance) PerformLBSample=.TRUE.
+  ! Routine calculates imbalance and if greater than threshold sets PerformLoadBalance=.TRUE.
+  CALL ComputeElemLoad()
+  ! Force load balance step after elem time has been calculated when doing an initial load balance step at iter=0
+  IF(ForceInitialLoadBalance) PerformLoadBalance=.TRUE.
+  ! Do not perform a load balance restart when the last timestep is performed
+  IF(iter.EQ.maxIter) PerformLoadBalance=.FALSE.
+END IF
+#endif /*USE_LOADBALANCE*/
 
 ! Call your analysis routine for your testcase here.
 IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
@@ -438,6 +497,44 @@ IF(doAnalyze)THEN
 
   ! Disable analyze for next time step
   doAnalyze     = .FALSE.
+
+#if USE_LOADBALANCE
+    IF((DoLoadBalance.AND.PerformLBSample.AND.(LoadBalanceMaxSteps.GT.nLoadBalanceSteps)).OR.ForceInitialLoadBalance)THEN
+      IF(PerformLoadBalance) THEN
+        ! DO NOT DELETE THIS: ONLY recalculate the timestep when the mesh is changed!
+        !CALL InitTimeStep() ! re-calculate time step after load balance is performed
+        RestartTimeBackup = RestartTime! make backup of original restart time
+        RestartTime       = t          ! Set restart simulation time to current simulation time because the time is not read from
+                                       ! the state file
+        RestartWallTime = FLEXITIME()  ! Set restart wall time if a load balance step is performed
+      END IF
+      CALL LoadBalance(OutputTime=t)
+    ELSE
+      ElemTime      = 0. ! nullify ElemTime before measuring the time in the next cycle
+      ElemTimePart  = 0.
+      ElemTimeField = 0.
+    END IF
+    PerformLBSample=.FALSE. ! Deactivate load balance sampling
+
+    ! ! Switch off Initial Auto Restart (initial load balance) after the restart was performed
+    ! IF (DoInitialAutoRestart) THEN
+    !   ! Remove the extra state file written for load balance (only when load balance restart was performed)
+    !   IF(PerformLoadBalance) CALL RemoveHDF5(RestartFile)
+    !   ! Get original settings from backup variables
+    !   DoInitialAutoRestart = .FALSE.
+    !   ForceInitialLoadBalance = .FALSE.
+    !   DoLoadBalance        = DoLoadBalanceBackup
+    !   LoadBalanceSample    = LoadBalanceSampleBackup
+    !   ! Set to iAnalyze zero so that this first analysis is not counted and the next analysis is the first one,
+    !   ! but only if the initial load balance restart and dt_Analyze did not coincide
+    !   IF(.NOT.ALMOSTEQUALRELATIVE(dt, dt_Min(DT_ANALYZE), 1E-5)) iAnalyze=0
+    !   ! Set time of the state file that was created before automatic initial restart (to be written in the next state file)
+    !   tPreviousAnalyze = RestartTimeBackup
+    !   IF (WriteMacroVolumeValues .OR. WriteMacroSurfaceValues) MacroValSampTime = t
+    ! END IF
+#endif /*USE_LOADBALANCE*/
+
+
 END IF
 
 END SUBROUTINE AnalyzeTimeStep

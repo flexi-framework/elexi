@@ -214,7 +214,6 @@ IF(PartIntExists)THEN
     PartsInElem(iElem) = locnPart
 
     ! Calculate ElemTime according to number of particles in elem if we have no historical information
-    !> TODO: FIGURE OUT IF WE WANT TO MULTIPLY WITH PP_N TO ACCOUNT FOR DG LOAD
     IF(.NOT.ElemTimeExists) ElemGlobalTime(iElem) = locnPart*ParticleMPIWeight + 1.0
   END DO
 END IF
@@ -320,21 +319,21 @@ SELECT CASE(WeightDistributionMethod)
                   EXIT
                 ELSE
                   IF (ABS(diffLower).LT.ABS(diffUpper) .AND. iElem.LT.nGlobalElems-nProcessors+1+iProc) THEN
-                    LoadDistri(iProc) = CurWeight-ElemGlobalTime(iElem)
                     LoadDiff(iProc)   = diffLower
                     curiElem = iElem
+                    LoadDistri(iProc)=CurWeight-ElemGlobalTime(iElem)
                     EXIT
                   ELSE
-                    LoadDistri(iProc) = CurWeight
                     LoadDiff(iProc)   = diffUpper
                     curiElem = iElem+1
+                    LoadDistri(iProc)=CurWeight
                     EXIT
                   END IF
                 END IF
               ELSE ! getElem.GT.1
-                LoadDistri(iProc) = CurWeight
                 LoadDiff(iProc)   = diffUpper
                 curiElem = iElem+1
+                LoadDistri(iProc)=CurWeight
                 EXIT
               END IF ! getElem.GT.1
 
@@ -383,7 +382,7 @@ SELECT CASE(WeightDistributionMethod)
     CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)
 
   !------------------------------------------------------------------------------------------------------------------------------!
-  CASE(2)
+  CASE(3)
       ! 1: last Proc receives the least load
       ! Distribute ElemGlobalTime to all procs
       CALL MPI_BCAST(ElemGlobalTime,nGlobalElems,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
@@ -425,20 +424,20 @@ SELECT CASE(WeightDistributionMethod)
               ELSE
                 IF (ABS(diffLower).LT.ABS(diffUpper) .AND. iElem.LT.nGlobalElems-nProcessors+1+iProc) THEN
                   LoadDiff(iProc)   = diffLower
+                  curiElem          = iElem
                   LoadDistri(iProc) = CurWeight-ElemGlobalTime(iElem)
-                  curiElem = iElem
                   EXIT
                 ELSE
                   LoadDiff(iProc)   = diffUpper
+                  curiElem          = iElem+1
                   LoadDistri(iProc) = CurWeight
-                  curiElem = iElem+1
                   EXIT
                 END IF
               END IF
             ELSE
               LoadDiff(iProc)   = diffUpper
+              curiElem          = iElem+1
               LoadDistri(iProc) = CurWeight
-              curiElem = iElem+1
               EXIT
             END IF
           END IF
@@ -481,7 +480,7 @@ SELECT CASE(WeightDistributionMethod)
       END DO ! iPRoc
 
   !------------------------------------------------------------------------------------------------------------------------------!
-  CASE(3)
+  CASE(4)
       ! Distribute ElemGlobalTime to all procs
       CALL MPI_BCAST(ElemGlobalTime,nGlobalElems,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
 
@@ -555,8 +554,8 @@ SELECT CASE(WeightDistributionMethod)
       END DO ! iPRoc
 
   !------------------------------------------------------------------------------------------------------------------------------!
-  CASE(4,5)
-      ! 4,5: trying to minimize max load of all procs based on CASE(-1,0) with iterative smoothing towards last proc
+  CASE(5,6)
+      ! 5,6: trying to minimize max load of all procs based on CASE(-1,0) with iterative smoothing towards last proc
       IF (MPIRoot) THEN
         ! estimation, might be set to lower value...
         itershiftmax      = nGlobalElems*nProcessors*2
@@ -567,10 +566,11 @@ SELECT CASE(WeightDistributionMethod)
         itershift         = 0
 
         !-- init as for CASE(-1)
-        IF (WeightDistributionMethod.EQ.4) THEN
+        IF (WeightDistributionMethod.EQ.5) THEN
           DO iProc = 0,nProcessors-1
             offsetElemMPI(iProc) = nElems*iProc+MIN(iProc,iElem)
           END DO
+        ! WeightDistributionMethod.EQ.6
         !-- init as for CASE(0)
         ELSE
           IF (nGlobalElems.EQ.nProcessors) THEN
@@ -592,7 +592,7 @@ SELECT CASE(WeightDistributionMethod)
               END DO
             END DO
           END IF
-        END IF !WeightDistributionMethod 4 or 5
+        END IF !WeightDistributionMethod 5 or 6
 
         offsetElemMPI(nProcessors) = nGlobalElems
         !-- calc inital distri

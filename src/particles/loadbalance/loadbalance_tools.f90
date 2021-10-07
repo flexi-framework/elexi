@@ -72,6 +72,7 @@ StartT=MPI_WTIME()
 CALL CPU_TIME(StartT)
 #endif
 
+!simple partition: nGlobalelems/nprocs, do this on proc 0
 SDEALLOCATE(offsetElemMPI)
 ALLOCATE(offsetElemMPI(0:nProcessors))
 offsetElemMPI  = 0

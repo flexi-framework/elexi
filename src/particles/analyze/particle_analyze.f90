@@ -315,7 +315,6 @@ ImpactnGlob    = PartStateBoundaryVecLength
 #endif
 
 ! Output particle and impact information
-SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A14,I16)')' # Particle : ', nParticleInDomain
 IF (doParticleImpactTrack) THEN
 SWRITE(UNIT_StdOut,'(A14,I16)')' # Impacts  : ', ImpactnGlob

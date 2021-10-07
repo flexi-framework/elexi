@@ -227,18 +227,18 @@ REAL,INTENT(IN) :: tEnd   !< end time of simulation
 LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage return
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL    :: percent,time_remaining,mins,secs,hours,days
-CHARACTER(3) :: tmpString
+LOGICAL           :: doETA_loc
+REAL              :: percent,time_remaining,mins,secs,hours,days
+CHARACTER(3)      :: tmpString
 #if FV_ENABLED
-INTEGER :: FVcounter
-REAL    :: FV_percent
+INTEGER           :: FVcounter
+REAL              :: FV_percent
 INTEGER,PARAMETER :: barWidth = 38
 #else
 INTEGER,PARAMETER :: barWidth = 50
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
-INTEGER :: nParticleOnProc,iPart
-INTEGER :: nParticleInDomain
+INTEGER           :: nParticleOnProc,nParticleInDomain,iPart
 #endif /*USE_PARTICLES*/
 !==================================================================================================================================
 #if FV_ENABLED
@@ -246,7 +246,13 @@ FVcounter = SUM(FV_Elems)
 totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount during analyze
 #endif
 
-IF(.NOT.doPrintStatusLine) RETURN
+IF (PRESENT(doETA)) THEN
+  doETA_loc = doETA
+ELSE
+  doETA_loc = .FALSE.
+END IF
+
+IF(.NOT.doPrintStatusLine .AND. .NOT.doETA_loc) RETURN
 
 #if FV_ENABLED && USE_MPI
 IF (MPIRoot) THEN
@@ -256,7 +262,7 @@ ELSE
 END IF
 #endif
 
-IF(MPIroot)THEN
+IF(MPIRoot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
 #endif
@@ -286,6 +292,7 @@ END DO
 #if USE_MPI
 ! Gather number of particles on all procs
 CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+IF (.NOT.MPIRoot) RETURN
 #else
 nParticleInDomain = nParticleOnProc
 #endif /*USE_MPI*/
@@ -293,22 +300,22 @@ nParticleInDomain = nParticleOnProc
 IF (nParticleInDomain.EQ.0) THEN
 #endif /*USE_PARTICLES*/
   IF (mins.LT.1 .AND. hours.EQ.0 .AND. days.EQ.0) THEN
-    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
-    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]:   <1 min remaining','|', &
-    REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.)-1,0)),'| [',percent,'%] ',&
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,A3,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
+    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]: <1 min remaining',' |',     &
+    REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.),0)),'| [',percent,'%] ',&
     ACHAR(13) ! ACHAR(13) is carriage return
   ELSE
-    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
-    '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
-    REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.)-1,0)),'| [',percent,'%] ',&
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A7,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
+    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
+    REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.),0)),'| [',percent,'%] ',&
     ACHAR(13) ! ACHAR(13) is carriage return
   END IF
 #if USE_PARTICLES
 ELSE
-  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I7,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A4,F6.2,A3,A1)',ADVANCE='NO') &
+  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I7,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString) &
   '   Time = ', t,'  dt = ', dt, ' ', ' # Part inside = ', nParticleInDomain,                                  &
   '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                       &
-  REPEAT('=',MAX(CEILING(percent/3.)-1,0)),'>',REPEAT(' ',33-MAX(CEILING(percent/3.)-1,0)),'| [',percent,'%] ',&
+  REPEAT('=',MAX(CEILING(percent*(barWidth-15)/100.)-1,0)),'>',REPEAT(' ',(barWidth-15)-MAX(CEILING(percent*(barWidth-15)/100.),0)),'| [',percent,'%] ',&
   ACHAR(13) ! ACHAR(13) is carriage return
 END IF
 #endif

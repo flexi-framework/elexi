@@ -299,6 +299,9 @@ USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd
 #if USE_PARTICLES
 USE MOD_Particle_Analyze,   ONLY: ParticleAnalyze,ParticleInformation
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance,        ONLY: PrintImbalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -345,6 +348,9 @@ CALL ParticleAnalyze(time,iter)
 
 IF(Time.GT.0.) THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
+#if USE_LOADBALANCE
+  CALL PrintImbalance()
+#endif /*USE_LOADBALANCE*/
   CALL PrintStatusLine(time,dt,tStart,tEnd,doETA=.TRUE.)
   SWRITE(UNIT_stdOut,'(132("."))')
   SWRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'

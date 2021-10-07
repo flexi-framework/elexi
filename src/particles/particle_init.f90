@@ -1748,12 +1748,6 @@ USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
 ! LOCAL VARIABLES
 INTEGER                       :: iStage_loc
 !===================================================================================================================================
-!!--- Read Manual Time Step
-!useManualTimeStep = .FALSE.
-!!> ManualTimeStep_opt only gets passed when running Posti. InitTimedisc was not called, so get information here
-!IF (.NOT.PRESENT(ManualTimeStep_opt)) ManualTimeStep    = GETREAL('Part-ManualTimeStep', '0.0')
-!IF (ManualTimeStep.GT.0.0)            useManualTimeStep = .TRUE.
-
 ! Rebuild Pt_tmp-coefficients assuming F=const. (value at wall) in previous stages
 ALLOCATE(Pa_rebuilt_coeff(1:nRKStages) &
         ,Pa_rebuilt  (1:PP_nVarPartRHS,1:nRKStages) &

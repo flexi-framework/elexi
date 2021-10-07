@@ -74,7 +74,7 @@ SUBROUTINE Particle_InitTimeDisc()
 USE MOD_Globals
 USE MOD_ReadInTools               ,ONLY:GETLOGICAL,GETSTR,GETREAL
 USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,TimeDiscType,nRKStages,RKb,dt
-USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimestep,ManualTimestep,b_dt
+USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimeStep,ManualTimeStep,b_dt
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

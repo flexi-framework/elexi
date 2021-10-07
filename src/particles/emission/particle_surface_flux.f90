@@ -1023,7 +1023,7 @@ USE MOD_GetBoundaryFlux         ,ONLY: GetBoundaryState
 USE MOD_Mesh_Vars               ,ONLY: BoundaryType,BC
 USE MOD_Particle_Globals        ,ONLY: VECNORM
 USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfFluxSideSize,SurfMeshSubSideData,BCdata_auxSF
-USE MOD_Particle_Timedisc_Vars  ,ONLY: UseManualTimestep
+USE MOD_Particle_Timedisc_Vars  ,ONLY: UseManualTimeStep
 USE MOD_Particle_Vars           ,ONLY: Species
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -1069,7 +1069,7 @@ DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
         CASE(1,3,4,9,91,23,24,25,27,28,29)
           ! Periodic or BC depending on inner state. PartDensity might not be exact
           SWRITE(UNIT_stdOut,'(A)') ' | Boundary state for surface flux variable during runtime. PartDensity might not be exact...'
-          IF (UseManualTimestep) CALL ABORT(__STAMP__,'Particle surface flux depending on inner boundary state not compatible with manual time step!')
+          IF (UseManualTimeStep) CALL ABORT(__STAMP__,'Particle surface flux depending on inner boundary state not compatible with manual time step!')
 
         CASE DEFAULT
           CALL ABORT(__STAMP__,'BCState not implemented for particle Surfaceflux!')

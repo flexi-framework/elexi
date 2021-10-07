@@ -476,7 +476,7 @@ END IF
 !===================================================================================================================================
 #if USE_UNDISTFLOW
 IF (Species(PartSpecies(PartID))%CalcUndisturbedFlow) THEN
-  prefactor = 1./Species(PartSpecies(PartID))%DensityIC
+  prefactor = FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
 
   Fum(1:3) = prefactor * DuDt(1:3)
 END IF
@@ -492,12 +492,12 @@ END IF
 !===================================================================================================================================
 #if USE_VIRTUALMASS
 IF (Species(PartSpecies(PartID))%CalcVirtualMass) THEN
-  prefactor = 0.5/Species(PartSpecies(PartID))%DensityIC
+  prefactor = 0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
 
   Fvm(1:3) = prefactor * DuDt(1:3)
 
   ! Add to global scaling factor as 0.5*\rho/\rho_p*dv_p/dt is on RHS
-  globalfactor     = globalfactor + prefactor*FieldAtParticle(DENS)
+  globalfactor = globalfactor + prefactor
 END IF
 #endif /* USE_VIRTUALMASS */
 
@@ -529,7 +529,7 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
 
   ! Scaling factor
   prefactor = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
-            * SQRT(mu/(FieldAtParticle(DENS)*PP_pi))
+            * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
 
   ! Index for previous data
   nIndex = MIN(N_Basset, bIter)
@@ -554,14 +554,14 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   END DO
 
   ! Add to global scaling factor as s43*\rho*prefactor*dv_p/dt is on RHS
-  globalfactor     = globalfactor + s43 * prefactor * FieldAtParticle(DENS) * SQRT(RKdtFrac)
+  globalfactor     = globalfactor + s43 * prefactor SQRT(RKdtFrac)
 
   Fbm(1:3) = prefactor * (Fbm(1:3) * SQRT(RKdtFrac) + durdt(1:3,PartID))
 
   Pt(1:3) = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
 
   ! Correct durdt with particle push
-  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * Pt(1:3)
+  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - Pt(1:3)
 ELSE
 #endif /* USE_BASSETFORCE */
   Pt(1:3) = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor

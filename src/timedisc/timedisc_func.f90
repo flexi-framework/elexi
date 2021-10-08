@@ -383,8 +383,8 @@ USE MOD_TimeDisc_Vars       ,ONLY: t,dt,tAnalyze,tEnd,CalcTimeStart
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,iter,iter_analyze
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if FV_ENABLED
-USE MOD_FV                  ,ONLY: FV_Info,FV_Elems_Update,FV_Switch
-USE MOD_FV_Vars             ,ONLY: Switch_to_FV,Switch_to_DG,FV_toDGinRK,FV_toFVinRK
+USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
+USE MOD_FV_Vars             ,ONLY: FV_toDGinRK
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif
 #if USE_PARTICLES
@@ -414,10 +414,8 @@ INTEGER,INTENT(INOUT) :: writeCounter
 
 #if FV_ENABLED
 CALL CalcIndicator(U,t)
-! NOTE: Update Switch_to_DG and Switch_to_FV
-CALL FV_Elems_Update(Switch_to_FV,Switch_to_DG,AllowToDG=FV_toDGinRK,AllowToFV=FV_toFVinRK)
 ! NOTE: Apply switch and update FV_Elems
-CALL FV_Switch(U,Ut_tmp)
+CALL FV_Switch(U,Ut_tmp,AllowToDG=FV_toDGinRK)
 #endif
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 #if USE_PARTICLES

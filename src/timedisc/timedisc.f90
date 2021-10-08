@@ -65,7 +65,7 @@ USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
 USE MOD_Analyze_Vars        ,ONLY: totalFV_nElems
 USE MOD_FV
-USE MOD_FV_Vars             ,ONLY: FV_Elems,Switch_to_FV,Switch_to_DG,FV_toDGinRK,FV_toFVinRK
+USE MOD_FV_Vars             ,ONLY: FV_Elems,FV_toDGinRK
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
@@ -79,7 +79,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                     :: nCalcTimestep,writeCounter
 #if FV_ENABLED
-LOGICAL                     :: AllowDG,AllowFV
+LOGICAL                     :: AllowDG
 #endif
 !==================================================================================================================================
 
@@ -170,10 +170,8 @@ IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
 #if FV_ENABLED
 ! NOTE: Update Switch_to_DG and Switch_to_FV
 AllowDG = (nCalcTimestep.LT.1).OR.FV_toDGinRK
-AllowFV = (nCalcTimestep.LT.1).OR.FV_toFVinRK
-CALL FV_Elems_Update(Switch_to_FV,Switch_to_DG,AllowToDG=AllowDG,AllowToFV=AllowFV)
 ! NOTE: Apply switch and update FV_Elems
-CALL FV_Switch(U)
+CALL FV_Switch(U,AllowToDG=AllowDG)
 #endif
 #if USE_PARTICLES
 ! Skip the call, otherwise particles get incremented twice

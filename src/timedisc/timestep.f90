@@ -52,15 +52,11 @@ USE MOD_PreProc
 USE MOD_Vector
 USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars       ,ONLY: U,Ut,nTotalU
-USE MOD_Mesh_Vars     ,ONLY: nElems
 USE MOD_PruettDamping ,ONLY: TempFilterTimeDeriv
 USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_tmp,RKA,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_Equation      ,ONLY: SANITY
-USE MOD_FV            ,ONLY: FV_Switch,FV_Elems_Update
-USE MOD_FV_APosteriori,ONLY: FV_APosteriori
-USE MOD_FV_Vars       ,ONLY: FV_Elems,FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
-USE MOD_FV_Vars       ,ONLY: aPosterioriLimiting,U_store,Ut_tmp_store,FV_Elems,FV_Elems_store
+USE MOD_FV            ,ONLY: FV_Switch
+USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
 USE MOD_Indicator     ,ONLY: CalcIndicator
 USE MOD_TimeDisc_Vars ,ONLY: nCalcTimestep
 #endif
@@ -74,50 +70,34 @@ REAL,INTENT(INOUT)  :: t                                     !< current simulati
 REAL     :: tStage
 INTEGER  :: iStage
 #if FV_ENABLED
-LOGICAL  :: AllowDG,AllowFV
-LOGICAL  :: sanity_tot(nElems),sanity_dg(nElems),sanity_fv(nElems)
+LOGICAL  :: AllowDG
 #endif /*FV_ENABLED*/
 !===================================================================================================================================
 
 DO iStage = 1,nRKStages
   ! NOTE: perform timestep in rk
-  IF(CurrentStage.EQ.nRKStages)THEN; CurrentStage = 0       ; tStage = t+                  dt
-  ELSE                             ; CurrentStage = iStage+1; tStage = t+RKc(CurrentStage)*dt
+  CurrentStage = iStage
+  IF (CurrentStage.EQ.1) THEN; tStage = t
+  ELSE                       ; tStage = t+RKc(CurrentStage)*dt
   END IF
 
   ! Save old solution in order to have the basis for a posteriori limiting
 #if FV_ENABLED
-  IF(aPosterioriLimiting)THEN
-    U_store        = U
-    Ut_tmp_store   = MERGE(Ut,Ut_tmp,iStage.EQ.1)
-    FV_Elems_store = FV_Elems
-    ! Ensure switch back to DG is safe
-    CALL SANITY(U,FV_Elems,sanity_tot,sanity_dg,sanity_fv)
-  ELSE
-    CALL CalcIndicator(U,t)
-  END IF
+  CALL CalcIndicator(U,t)
 
-  ! NOTE: Update Switch_to_DG and Switch_to_FV
+  ! NOTE: Update Switch_to_DG
   AllowDG=(FV_toDGinRK.OR.((nCalcTimestep.LT.1).AND.(iStage.EQ.nRKStages)))
-  AllowFV=(FV_toFVinRK.OR.((nCalcTimestep.LT.1).AND.(iStage.EQ.nRKStages)))
-  CALL FV_Elems_Update(Switch_to_FV,Switch_to_DG,AllowToDG=AllowDG,AllowToFV=AllowFV)
-
   ! NOTE: Apply switch and update FV_Elems
-  CALL FV_Switch(U,Ut_tmp)
+  CALL FV_Switch(U,Ut_tmp,AllowToDG=AllowDG)
 #endif /*FV_ENABLED*/
   CALL DGTimeDerivative_weakForm(tStage)
 
   IF (iStage.EQ.1) THEN
     CALL VCopy(nTotalU,Ut_tmp,Ut)                        !Ut_tmp = Ut
   ELSE
-    CALL VAXPBY(nTotalU,Ut_tmp,Ut,ConstOut=-RKA(iStage)) !Ut_tmp = Ut - Ut_tmp*RKA(iStage)
+    CALL VAXPBY(nTotalU,Ut_tmp,Ut,ConstOut=-RKA(iStage)) !Ut_tmp = Ut - Ut_tmp*RKA (iStage)
   END IF
-  CALL VAXPBY(nTotalU,U,Ut_tmp,ConstIn=b_dt(iStage))     !U       = U + Ut_tmp*b_dt(iStage)
-
-  ! Perform a posteriori limiting
-#if FV_ENABLED
-  IF(aPosterioriLimiting) CALL FV_APosteriori(iStage,tStage)
-#endif /*FV_ENABLED*/
+  CALL VAXPBY(nTotalU,U,Ut_tmp,   ConstIn =b_dt(iStage)) !U      = U  + Ut_tmp*b_dt(iStage)
 END DO
 
 END SUBROUTINE TimeStepByLSERKW2
@@ -135,14 +115,10 @@ USE MOD_PreProc
 USE MOD_Vector
 USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
-USE MOD_Mesh_Vars    ,ONLY: nElems
 USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_Equation      ,ONLY: SANITY
-USE MOD_FV            ,ONLY: FV_Switch,FV_Elems_Update
-USE MOD_FV_APosteriori,ONLY: FV_APosteriori
-USE MOD_FV_Vars       ,ONLY: FV_Elems,FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
-USE MOD_FV_Vars       ,ONLY: aPosterioriLimiting,U_store,UPrev_store,S2_store,FV_Elems,FV_Elems_store
+USE MOD_FV            ,ONLY: FV_Switch
+USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
 USE MOD_Indicator     ,ONLY: CalcIndicator
 USE MOD_TimeDisc_Vars ,ONLY: nCalcTimestep
 #endif
@@ -156,8 +132,7 @@ REAL,INTENT(INOUT)  :: t                                     !< current simulati
 REAL     :: tStage
 INTEGER  :: iStage
 #if FV_ENABLED
-LOGICAL  :: AllowDG,AllowFV
-LOGICAL  :: sanity_tot(nElems),sanity_dg(nElems),sanity_fv(nElems)
+LOGICAL  :: AllowDG
 #endif /*FV_ENABLED*/
 !===================================================================================================================================
 
@@ -166,30 +141,18 @@ LOGICAL  :: sanity_tot(nElems),sanity_dg(nElems),sanity_fv(nElems)
 
 DO iStage = 1,nRKStages
   ! NOTE: perform timestep in rk
-  IF(CurrentStage.EQ.nRKStages)THEN; CurrentStage = 0       ; tStage = t+                  dt
-  ELSE                             ; CurrentStage = iStage+1; tStage = t+RKc(CurrentStage)*dt
+  CurrentStage = iStage
+  IF (CurrentStage.EQ.1) THEN; tStage = t
+  ELSE                       ; tStage = t+RKc(CurrentStage)*dt
   END IF
 
   ! Save old solution in order to have the basis for a posteriori limiting
 #if FV_ENABLED
-  IF(aPosterioriLimiting)THEN
-    U_store        = U
-    UPrev_store    = MERGE(U,UPrev,iStage.EQ.1)
-    S2_store       = MERGE(U,S2   ,iStage.EQ.1)
-    FV_Elems_store = FV_Elems
-    ! Ensure switch back to DG is safe
-    CALL SANITY(U,FV_Elems,sanity_tot,sanity_dg,sanity_fv)
-  ELSE
-    CALL CalcIndicator(U,t)
-  END IF
-
-  ! NOTE: Update Switch_to_DG and Switch_to_FV
+  CALL CalcIndicator(U,t)
+  ! NOTE: Update Switch_to_DG
   AllowDG=(FV_toDGinRK.OR.((nCalcTimestep.LT.1).AND.(iStage.EQ.nRKStages)))
-  AllowFV=(FV_toFVinRK.OR.((nCalcTimestep.LT.1).AND.(iStage.EQ.nRKStages)))
-  CALL FV_Elems_Update(Switch_to_FV,Switch_to_DG,AllowToDG=AllowDG,AllowToFV=AllowFV)
-
   ! NOTE: Apply switch and update FV_Elems
-  CALL FV_Switch(U,Uprev,S2)
+  CALL FV_Switch(U,Uprev,S2,AllowToDG=AllowDG)
 #endif /*FV_ENABLED*/
   CALL DGTimeDerivative_weakForm(tStage)
 
@@ -203,11 +166,6 @@ DO iStage = 1,nRKStages
     CALL VAXPBY(nTotalU,U,UPrev,ConstIn=RKg3(iStage))                    !U = U + RKg3(ek)*UPrev
   END IF
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                         !U = U + Ut*b_dt(iStage)
-
-  ! Perform a posteriori limiting
-#if FV_ENABLED
-  IF(aPosterioriLimiting) CALL FV_APosteriori(iStage,tStage)
-#endif /*FV_ENABLED*/
 END DO
 
 END SUBROUTINE TimeStepByLSERKK3

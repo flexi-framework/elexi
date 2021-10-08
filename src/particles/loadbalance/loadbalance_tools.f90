@@ -46,7 +46,7 @@ USE MOD_Globals
 USE MOD_Globals_Vars         ,ONLY: DomainDecompositionWallTime
 USE MOD_LoadDistribution     ,ONLY: ApplyWeightDistributionMethod
 USE MOD_LoadBalance_Vars     ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,PartDistri,TargetWeight,ElemTime
-USE MOD_HDF5_Input           ,ONLY: OpenDataFile
+USE MOD_HDF5_Input           ,ONLY: OpenDataFile,CloseDataFile
 USE MOD_IO_HDF5              ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars            ,ONLY: MeshFile,offsetElem,nElems,nGlobalElems
 USE MOD_MPI_Vars             ,ONLY: offsetElemMPI
@@ -88,6 +88,10 @@ IF (DoRestart) THEN
   !--------------------------------------------------------------------------------------------------------------------------------!
   ! Readin of ElemTime: Read in only by MPIRoot in single mode, only communicate logical ElemTimeExists
   ! because the root performs the distribution of elements (domain decomposition) due to the load distribution scheme
+
+  ! Close the currently opened mesh file
+  CALL CloseDataFile()
+
   SDEALLOCATE(ElemGlobalTime)
   ALLOCATE(ElemGlobalTime(1:nGlobalElems)) ! Allocate ElemGlobalTime for all MPI ranks
   ElemGlobalTime = 0.

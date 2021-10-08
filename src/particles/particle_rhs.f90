@@ -584,7 +584,7 @@ END SUBROUTINE ParticlePushExtend
 #endif /* USE_EXTEND_RHS */
 
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
-SUBROUTINE extRHS(U,Ut,U_RHS)
+SUBROUTINE extRHS(UPrim,Ut,U_RHS)
 !===================================================================================================================================
 ! Compute tau
 !===================================================================================================================================
@@ -609,7 +609,7 @@ USE MOD_Particle_Vars,      ONLY: gradUz_master_loc,gradUz_slave_loc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)             :: U(    CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(IN)             :: UPrim(PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL,INTENT(IN)             :: Ut(   CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -673,7 +673,7 @@ U_RHS(RHS_LAPLACEVEL3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + g
 !U_RHS(RHS_GRADP1:RHS_GRADP3,:,:,:,:) = gradp_local(1,:,:,:,:,:)
 
 DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-  U_RHS(RHS_dVELVdt,i,j,k,iElem) = Ut(MOMV,i,j,k,iElem) - Ut(DENS,i,j,k,iElem)*U(MOMV,i,j,k,iElem)/U(DENS,i,j,k,iElem)
+  U_RHS(RHS_dVELVdt,i,j,k,iElem) = Ut(MOMV,i,j,k,iElem) - Ut(DENS,i,j,k,iElem)*UPrim(VELV,i,j,k,iElem)
 END DO; END DO; END DO; END DO
 #endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
 

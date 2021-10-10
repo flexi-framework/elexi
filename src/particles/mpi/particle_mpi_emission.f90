@@ -778,6 +778,7 @@ DO i = 1, chunkSize
         CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
       END IF
       mySumOfMatchedParticles = mySumOfMatchedParticles + 1
+      PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
     END IF ! ElemID.EQ.-1
   END IF ! InsideMyBGM(i)
 END DO ! i = 1, chunkSize

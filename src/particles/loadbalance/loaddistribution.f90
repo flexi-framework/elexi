@@ -160,6 +160,7 @@ USE MOD_LoadBalance_Vars ,ONLY: PartDistri
 USE MOD_HDF5_Input       ,ONLY: File_ID,ReadArray,DatasetExists,OpenDataFile,CloseDataFile
 USE MOD_Restart_Vars     ,ONLY: RestartFile
 USE MOD_ReadInTools      ,ONLY: GETINT,GETREAL
+USE MOD_StringTools      ,ONLY: set_formatting,clear_formatting
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -192,42 +193,51 @@ INTEGER,PARAMETER              :: ELEM_FirstPartInd=1
 INTEGER,PARAMETER              :: ELEM_LastPartInd =2
 REAL                           :: TargetWeight_loc
 !===================================================================================================================================
+ALLOCATE(PartsInElem(1:nGlobalElems))
 WeightSum = 0.0
 CurWeight = 0.0
-
-! Load balancing for particles: read in particle data
-CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
-CALL DatasetExists(File_ID,'PartInt',PartIntExists)
-IF (PartIntExists) THEN
-  ALLOCATE(PartInt(1:nGlobalElems,2))
-  PartInt(:,:)           = 0
-  CALL ReadArray('PartInt',2,(/PartIntSize,nGlobalElems/),0,2,IntArray=PartInt)
-END IF
-CALL CloseDataFile()
-
-ALLOCATE(PartsInElem(1:nGlobalElems))
 PartsInElem = 0
 
-IF(PartIntExists)THEN
-  DO iElem = 1,nGlobalElems
-    locnPart           = PartInt(iElem,ELEM_LastPartInd)-PartInt(iElem,ELEM_FirstPartInd)
-    PartsInElem(iElem) = locnPart
+! Readin of PartInt: Read in only by MPIRoot in single mode because the root performs the distribution of elements (domain decomposition)
+! due to the load distribution scheme
+IF(MPIRoot) THEN
+  ! Load balancing for particles: read in particle data
+  CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
+  CALL DatasetExists(File_ID,'PartInt',PartIntExists)
+  IF (PartIntExists) THEN
+    ALLOCATE(PartInt(1:nGlobalElems,2))
+    PartInt(:,:)           = 0
+    CALL ReadArray('PartInt',2,(/PartIntSize,nGlobalElems/),0,2,IntArray=PartInt)
+  END IF
+  CALL CloseDataFile()
 
-    ! Calculate ElemTime according to number of particles in elem if we have no historical information
-    IF(.NOT.ElemTimeExists) ElemGlobalTime(iElem) = locnPart*ParticleMPIWeight + 1.0
-  END DO
-END IF
+  IF(PartIntExists)THEN
+    DO iElem = 1,nGlobalElems
+      locnPart           = PartInt(iElem,ELEM_LastPartInd)-PartInt(iElem,ELEM_FirstPartInd)
+      PartsInElem(iElem) = locnPart
 
-! Total ElemTime on proc
+      ! Calculate ElemTime according to number of particles in elem if we have no historical information
+      IF(.NOT.ElemTimeExists) ElemGlobalTime(iElem) = locnPart*ParticleMPIWeight + 1.0
+    END DO
+  END IF
+END IF ! MPIRoot
+
+! Total ElemTime in domain
 WeightSum   = SUM(ElemGlobalTime(:))
 
+! Distribute PartsInElem to all procs
+CALL MPI_BCAST(PartsInElem,nGlobalElems,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
+
+! Every proc needs to get the information to arrive at the same timedisc
 ! No historical data and no particles in restart file
 IF (.NOT.ElemTimeExists .AND. ALL(PartsInElem(:).EQ.0) .AND. .NOT.postiMode) THEN
   ! Check if distribution method is ideal for pure DG FLEXI
   WeightDistributionMethod = GETINT('WeightDistributionMethod','-1')
   !> -1 is optimum distri for const. elem-weight
   IF (WeightDistributionMethod.NE.-1) THEN
-    SWRITE(*,*) 'WARNING: WeightDistributionMethod other than -1 with neither particles nor ElemTimes!'
+    CALL set_formatting("red")
+    SWRITE(UNIT_stdOut,'(A)') 'WARNING: WeightDistributionMethod other than -1 with neither particles nor ElemTimes!'
+    CALL clear_formatting()
   END IF
 ELSEIF (postiMode) THEN
   WeightDistributionMethod = -1

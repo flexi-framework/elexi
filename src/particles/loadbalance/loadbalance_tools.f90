@@ -44,10 +44,10 @@ SUBROUTINE DomainDecomposition()
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Globals_Vars         ,ONLY: DomainDecompositionWallTime
-USE MOD_LoadDistribution     ,ONLY: ApplyWeightDistributionMethod
-USE MOD_LoadBalance_Vars     ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,PartDistri,TargetWeight,ElemTime
 USE MOD_HDF5_Input           ,ONLY: OpenDataFile,CloseDataFile
 USE MOD_IO_HDF5              ,ONLY: AddToElemData,ElementOut
+USE MOD_LoadDistribution     ,ONLY: ApplyWeightDistributionMethod
+USE MOD_LoadBalance_Vars     ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,PartDistri,TargetWeight,ElemTime
 USE MOD_Mesh_Vars            ,ONLY: MeshFile,offsetElem,nElems,nGlobalElems
 USE MOD_MPI_Vars             ,ONLY: offsetElemMPI
 USE MOD_Restart_Vars         ,ONLY: DoRestart

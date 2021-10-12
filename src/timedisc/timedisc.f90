@@ -156,7 +156,6 @@ IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 CALL InitTimeStep()
 
 #if FV_ENABLED
-totalFV_nElems = totalFV_nElems + SUM(FV_Elems) ! counter for output of FV amount during analyze
 CALL FV_Info(1_8)
 #endif
 

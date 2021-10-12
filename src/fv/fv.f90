@@ -265,7 +265,7 @@ DO j=0,PP_N; DO i=0,PP_N
 END DO; END DO
 #endif
 
-! initial call of indicator
+! initial call of indicator. This is performed without the gradients in hope to prevent initial crashes
 IF(doCalcIndicator) CALL CalcIndicator(U,MERGE(RestartTime,0.,doRestart))
 FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
@@ -537,10 +537,13 @@ REAL,ALLOCATABLE       :: xx(:,:,:,:)
 REAL                   :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                   :: Elem_xFV(1:3,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
-! initial call of indicator
-!FV_Elems = 0
-! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
-!CALL FV_Switch(U,AllowToDG=.FALSE.)
+! Upgrade gradient based indictor after DGTimeDerivatite
+SELECT CASE(IndicatorType)
+  CASE(INDTYPE_DUCROS)
+    FV_Elems = 0
+    ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
+    CALL FV_Switch(U,AllowToDG=.FALSE.)
+END SELECT
 
 IF (.NOT.FV_IniSharp) THEN
   ! Super sample initial solution of all FV elements. Necessary if already initial DG solution contains oscillations, which

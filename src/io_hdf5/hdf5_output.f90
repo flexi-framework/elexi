@@ -1041,18 +1041,20 @@ INTEGER,ALLOCATABLE            :: PartInt(:,:)
 REAL,ALLOCATABLE               :: PartData(:,:)
 INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
 INTEGER                        :: PartDataSize       !number of entries in each line of PartData
-INTEGER                        :: locnPart_max, tmpIndex, tmpIndex2
+INTEGER                        :: locnPart_max, tmpIndex, tmpIndex2, PP_nVarPart_loc
 ! Particle turbulence models
 INTEGER                        :: TurbPartDataSize
 REAL,ALLOCATABLE               :: TurbPartData(:,:)
 !===================================================================================================================================
 
 ! Size and location of particle data
-PartDataSize = PP_nVarPart
-tmpIndex2    = PartDataSize
+PP_nVarPart_loc = PP_nVarPart-1
+PartDataSize    = PP_nVarPart_loc + 1
+tmpIndex2       = PartDataSize
 IF (doWritePartDiam) THEN
-  PartDataSize = PartDataSize + 1
-  tmpIndex2    = tmpIndex2    + 1
+  PP_nVarPart_loc = PP_nVarPart
+  PartDataSize    = PartDataSize + 1
+  tmpIndex2       = PartDataSize
 END IF
 tmpIndex     = PartDataSize + 1
 ! Increase size if index is tracked
@@ -1157,7 +1159,7 @@ DO iElem = offsetElem+1,offsetElem+PP_nElems
     DO iPart = PartInt(1,iElem)+1,PartInt(2,iElem)
       PartData(1:tmpIndex2-1,iPart) = PartState(1:tmpIndex2-1,pcount)
       PartData(tmpIndex2,iPart)     = REAL(PartSpecies(pcount))
-      IF (doPartIndex)                                      PartData(PP_nVarPart+2                        ,iPart) = REAL(PartIndex(pcount))
+      IF (doPartIndex)                                      PartData(PP_nVarPart_loc+2                    ,iPart) = REAL(PartIndex(pcount))
       IF (doParticleReflectionTrack)                        PartData(tmpIndex                             ,iPart) = REAL(PartReflCount(pcount))
       IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartData(tmpIndex+varShift:tmpIndex+2+varShift,iPart) = PartPath(1:3,pcount)
 

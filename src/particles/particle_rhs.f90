@@ -476,7 +476,7 @@ END IF
 !===================================================================================================================================
 #if USE_UNDISTFLOW
 IF (Species(PartSpecies(PartID))%CalcUndisturbedFlow) THEN
-  prefactor = 1./Species(PartSpecies(PartID))%DensityIC
+  prefactor = FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
 
   Fum(1:3) = prefactor * DuDt(1:3)
 END IF
@@ -492,12 +492,12 @@ END IF
 !===================================================================================================================================
 #if USE_VIRTUALMASS
 IF (Species(PartSpecies(PartID))%CalcVirtualMass) THEN
-  prefactor = 0.5/Species(PartSpecies(PartID))%DensityIC
+  prefactor = 0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
 
   Fvm(1:3) = prefactor * DuDt(1:3)
 
   ! Add to global scaling factor as 0.5*\rho/\rho_p*dv_p/dt is on RHS
-  globalfactor     = globalfactor + prefactor*FieldAtParticle(DENS)
+  globalfactor = globalfactor + prefactor
 END IF
 #endif /* USE_VIRTUALMASS */
 
@@ -529,7 +529,7 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
 
   ! Scaling factor
   prefactor = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
-            * SQRT(mu/(FieldAtParticle(DENS)*PP_pi))
+            * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
 
   ! Index for previous data
   nIndex = MIN(N_Basset, bIter)
@@ -554,14 +554,14 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   END DO
 
   ! Add to global scaling factor as s43*\rho*prefactor*dv_p/dt is on RHS
-  globalfactor     = globalfactor + s43 * prefactor * FieldAtParticle(DENS) * SQRT(RKdtFrac)
+  globalfactor     = globalfactor + s43 * prefactor * SQRT(RKdtFrac)
 
   Fbm(1:3) = prefactor * (Fbm(1:3) * SQRT(RKdtFrac) + durdt(1:3,PartID))
 
   Pt(1:3) = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
 
   ! Correct durdt with particle push
-  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * Pt(1:3)
+  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - Pt(1:3)
 ELSE
 #endif /* USE_BASSETFORCE */
   Pt(1:3) = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
@@ -584,7 +584,7 @@ END SUBROUTINE ParticlePushExtend
 #endif /* USE_EXTEND_RHS */
 
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
-SUBROUTINE extRHS(U,Ut,U_RHS)
+SUBROUTINE extRHS(UPrim,Ut,U_RHS)
 !===================================================================================================================================
 ! Compute tau
 !===================================================================================================================================
@@ -609,7 +609,7 @@ USE MOD_Particle_Vars,      ONLY: gradUz_master_loc,gradUz_slave_loc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)             :: U(    CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(IN)             :: UPrim(PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL,INTENT(IN)             :: Ut(   CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -673,7 +673,7 @@ U_RHS(RHS_LAPLACEVEL3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + g
 !U_RHS(RHS_GRADP1:RHS_GRADP3,:,:,:,:) = gradp_local(1,:,:,:,:,:)
 
 DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-  U_RHS(RHS_dVELVdt,i,j,k,iElem) = Ut(MOMV,i,j,k,iElem) - Ut(DENS,i,j,k,iElem)*U(MOMV,i,j,k,iElem)/U(DENS,i,j,k,iElem)
+  U_RHS(RHS_dVELVdt,i,j,k,iElem) = Ut(MOMV,i,j,k,iElem) - Ut(DENS,i,j,k,iElem)*UPrim(VELV,i,j,k,iElem)
 END DO; END DO; END DO; END DO
 #endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
 

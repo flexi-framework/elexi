@@ -4,17 +4,58 @@
 *.mod
 *.swp
 *.pyc
+src/commit.h
 src/deplist.mk
+src/lib*.a
 src/preprocflags.f90
 src/srcfiles_pp.mk
-src/lib*.a
+
+# build folders
 bin/*
 ini/*
 lib/*
 share/*
-build*
+build*/
 !builds.ini
+
+# tags
 ctags.txt
+
+# core dump files
+core
+
+# regression test
+output_dir/
 reggie_run/
+regressioncheck/**/*.csv
+
+# userguide
 doc/userguide/userguide.pdf
-src/commit.h
+
+# temporary files
+cache/
+.flexi.ini
+
+# hopr debug files
+sfc.dat
+
+# visualization files
+*.vtu
+*.pvtu
+*.h5
+*.pvsm
+
+# flexi debug files
+out.*.dat
+*.out
+
+# cmake temporary files
+.tags
+ctags.txt
+CMakeCache.txt
+CMakeFiles/
+userblock.tmp
+
+# integrated development environment (ide)
+.vscode/
+nbproject/

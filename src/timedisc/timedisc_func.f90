@@ -509,7 +509,7 @@ IF(doAnalyze)THEN
   doAnalyze     = .FALSE.
 
 #if USE_LOADBALANCE
-    IF((DoLoadBalance.AND.PerformLBSample.AND.(LoadBalanceMaxSteps.GT.nLoadBalanceSteps)).OR.ForceInitialLoadBalance)THEN
+    IF((DoLoadBalance.AND.PerformLBSample.AND.(LoadBalanceMaxSteps.GT.nLoadBalanceSteps).OR.(LoadBalanceMaxSteps.EQ.0)).OR.ForceInitialLoadBalance)THEN
       IF(PerformLoadBalance) THEN
         ! DO NOT DELETE THIS: ONLY recalculate the timestep when the mesh is changed!
         !CALL InitTimeStep() ! re-calculate time step after load balance is performed

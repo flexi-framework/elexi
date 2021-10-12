@@ -75,16 +75,18 @@ USE MOD_ReadInTools            ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("LoadBalance")
-CALL prms%CreateLogicalOption( 'DoLoadBalance'                ,  "Set flag for doing dynamic LoadBalance."                         &
+CALL prms%CreateLogicalOption( 'DoLoadBalance'                ,  "Set flag for doing dynamic LoadBalance."                        &
                                                               ,  '.FALSE.')
-CALL prms%CreateIntOption(     'LoadBalanceSample'            ,  "Define number of iterations (before analyze_dt)"               //&
-                                                                 " that are used for calculation of elemtime information"          &
+CALL prms%CreateIntOption(     'LoadBalanceSample'            ,  "Define number of iterations (before analyze_dt)"              //&
+                                                                 " that are used for calculation of elemtime information"         &
                                                               ,  '1')
-CALL prms%CreateIntOption(    'LoadBalanceMaxSteps'     , 'Define number of maximum load balacing steps that are allowed.', value='1')
-CALL prms%CreateLogicalOption('PartWeightLoadBalance'   , 'Set flag for doing LoadBalance with partMPIWeight instead of '//&
-                                                          'elemtimes. Elemtime array in state file is filled with '//&
-                                                          'nParts*PartMPIWeight for each Elem. '//&
-                                                          ' If Flag [TRUE] LoadBalanceSample is set to 0 and vice versa.', '.FALSE.')
+CALL prms%CreateIntOption(    'LoadBalanceMaxSteps'           , 'Define number of maximum load balacing steps that are allowed.'  &
+                                                              , '0')
+CALL prms%CreateLogicalOption('PartWeightLoadBalance'         , 'Set flag for doing LoadBalance with partMPIWeight instead of ' //&
+                                                                 'elemtimes. Elemtime array in state file is filled with '      //&
+                                                                 'nParts*PartMPIWeight for each Elem. '                         //&
+                                                                 ' If Flag [TRUE] LoadBalanceSample is set to 0 and vice versa.'  &
+                                                              ,  '.FALSE.')
 CALL prms%CreateRealOption(    'Load-DeviationThreshold'      ,  "Define threshold for dynamic load-balancing.\n"                //&
                                                                  "Restart performed if (Maxweight-Targetweight)/Targetweight >"  //&
                                                                  " defined value.",                                        '0.10')

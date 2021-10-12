@@ -98,7 +98,11 @@ END IF
 nLoadBalanceSteps = nLoadBalanceSteps+1
 SWRITE(UNIT_StdOut,'(132("-"))')
 CALL set_formatting('green')
-SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' PERFORMING LOAD BALANCE ',nLoadBalanceSteps,' of ',LoadBalanceMaxSteps,' ...'
+IF (LoadBalanceMaxSteps.GT.0) THEN
+  SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' PERFORMING LOAD BALANCE ',nLoadBalanceSteps,' of ',LoadBalanceMaxSteps,' ...'
+ELSE
+  SWRITE(UNIT_stdOut,'(A,I0,A)'     ) ' PERFORMING LOAD BALANCE ',nLoadBalanceSteps,' ...'
+END IF
 CALL clear_formatting()
 ! Measure init duration
 LB_StartTime=FLEXITIME()

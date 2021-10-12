@@ -86,7 +86,7 @@ DO iStage = 1,nRKStages
   CALL CalcIndicator(U,t)
 
   ! NOTE: Update Switch_to_DG
-  AllowDG=(FV_toDGinRK.OR.((nCalcTimestep.LT.1).AND.(iStage.EQ.nRKStages)))
+  AllowDG=(FV_toDGinRK.OR.((nCalcTimestep.LT.1).AND.(iStage.EQ.1)))
   ! NOTE: Apply switch and update FV_Elems
   CALL FV_Switch(U,Ut_tmp,AllowToDG=AllowDG)
 #endif /*FV_ENABLED*/
@@ -150,7 +150,7 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   CALL CalcIndicator(U,t)
   ! NOTE: Update Switch_to_DG
-  AllowDG=(FV_toDGinRK.OR.((nCalcTimestep.LT.1).AND.(iStage.EQ.nRKStages)))
+  AllowDG=(FV_toDGinRK.OR.((nCalcTimestep.LT.1).AND.(iStage.EQ.1)))
   ! NOTE: Apply switch and update FV_Elems
   CALL FV_Switch(U,Uprev,S2,AllowToDG=AllowDG)
 #endif /*FV_ENABLED*/

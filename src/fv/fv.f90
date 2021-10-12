@@ -518,6 +518,8 @@ USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_IniSharp,FV_IniSupersample
 USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
 USE MOD_Basis             ,ONLY: InitializeVandermonde
+USE MOD_Indicator         ,ONLY: INDTYPE_DUCROS
+USE MOD_Indicator_Vars    ,ONLY: IndicatorType
 USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
 USE MOD_ChangeBasis       ,ONLY: ChangeBasis2D_XYZ, ChangeBasis3D_XYZ
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume

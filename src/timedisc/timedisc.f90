@@ -63,9 +63,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
-USE MOD_Analyze_Vars        ,ONLY: totalFV_nElems
 USE MOD_FV
-USE MOD_FV_Vars             ,ONLY: FV_Elems
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES

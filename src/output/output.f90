@@ -292,11 +292,14 @@ END DO
 #if USE_MPI
 ! Gather number of particles on all procs
 CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-IF (.NOT.MPIRoot) RETURN
 #else
 nParticleInDomain = nParticleOnProc
 #endif /*USE_MPI*/
+#endif /*USE_PARTICLES*/
 
+IF (.NOT.MPIRoot) RETURN
+
+#if USE_PARTICLES
 IF (nParticleInDomain.EQ.0) THEN
 #endif /*USE_PARTICLES*/
   IF (mins.LT.1 .AND. hours.EQ.0 .AND. days.EQ.0) THEN

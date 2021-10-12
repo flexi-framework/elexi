@@ -259,6 +259,11 @@ USE MOD_Mesh_Vars           ,ONLY: MeshFile
 USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld,b_dt,RKb
 USE MOD_TimeDisc_Vars       ,ONLY: iter,maxIter,nCalcTimeStep,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
+#if FV_ENABLED
+USE MOD_DG_Vars             ,ONLY: U
+USE MOD_FV                  ,ONLY: FV_Switch
+USE MOD_Indicator           ,ONLY: CalcIndicator
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep
 #endif /*USE_PARTICLES*/
@@ -280,6 +285,13 @@ IF (nCalcTimestep.GE.1) THEN
   nCalcTimestep = nCalcTimestep-1
   RETURN
 END IF
+
+#if FV_ENABLED
+! Perform FV_Switch to calculate time step on updated solution
+CALL CalcIndicator(U,t)
+! NOTE: Apply switch and update FV_Elems. U is sufficient, we are in the first RK stage
+CALL FV_Switch(U,AllowToDG=.TRUE.)
+#endif /*FV_ENABLED*/
 
 #if USE_PARTICLES
 IF (UseManualTimeStep) THEN
@@ -379,7 +391,7 @@ USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
-USE MOD_TimeDisc_Vars       ,ONLY: t,dt,tAnalyze,tEnd,CalcTimeStart
+USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,iter,iter_analyze
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if FV_ENABLED
@@ -401,7 +413,7 @@ USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeField,RestartTimeBackup,RestartWallTi
 USE MOD_Particle_Globals    ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Localization,ONLY:CountPartsPerElem
 USE MOD_Restart_Vars        ,ONLY: RestartTime!,RestartFile
-USE MOD_TimeDisc_Vars       ,ONLY: dt_min,maxIter
+USE MOD_TimeDisc_Vars       ,ONLY: maxIter
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -464,7 +476,7 @@ IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 
 ! Analyze and output now
 IF(doAnalyze)THEN
-  CALL PrintAnalyze(dt)
+  CALL PrintAnalyze(dt_Min(DT_MIN))
 #if FV_ENABLED
   ! Summation has one more iter step
   CALL FV_Info(iter_analyze+1)

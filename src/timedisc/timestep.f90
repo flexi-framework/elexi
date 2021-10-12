@@ -69,9 +69,6 @@ REAL,INTENT(INOUT)  :: t                                     !< current simulati
 ! LOCAL VARIABLES
 REAL     :: tStage
 INTEGER  :: iStage
-#if FV_ENABLED
-LOGICAL  :: AllowDG
-#endif /*FV_ENABLED*/
 !===================================================================================================================================
 
 DO iStage = 1,nRKStages
@@ -81,15 +78,7 @@ DO iStage = 1,nRKStages
   ELSE                       ; tStage = t+RKc(CurrentStage)*dt
   END IF
 
-  ! Save old solution in order to have the basis for a posteriori limiting
-#if FV_ENABLED
-  CALL CalcIndicator(U,t)
-
-  ! NOTE: Update Switch_to_DG
-  AllowDG=(FV_toDGinRK.OR.((nCalcTimestep.LT.1).AND.(iStage.EQ.1)))
-  ! NOTE: Apply switch and update FV_Elems
-  CALL FV_Switch(U,Ut_tmp,AllowToDG=AllowDG)
-#endif /*FV_ENABLED*/
+  ! Update gradients
   CALL DGTimeDerivative_weakForm(tStage)
 
   IF (iStage.EQ.1) THEN
@@ -98,6 +87,15 @@ DO iStage = 1,nRKStages
     CALL VAXPBY(nTotalU,Ut_tmp,Ut,ConstOut=-RKA(iStage)) !Ut_tmp = Ut - Ut_tmp*RKA (iStage)
   END IF
   CALL VAXPBY(nTotalU,U,Ut_tmp,   ConstIn =b_dt(iStage)) !U      = U  + Ut_tmp*b_dt(iStage)
+
+#if FV_ENABLED
+  ! If UpdateTimeStep is called in next loop, FV_SWITCH is performed after t = t + dt
+  IF (nCalcTimestep.NE.0 .OR. iStage.NE.nRKStages) THEN
+    CALL CalcIndicator(U,t)
+    ! NOTE: Apply switch and update FV_Elems
+    CALL FV_Switch(U,Ut_tmp,AllowToDG=FV_toDGinRK)
+  END IF
+#endif /*FV_ENABLED*/
 END DO
 
 END SUBROUTINE TimeStepByLSERKW2
@@ -131,9 +129,6 @@ REAL,INTENT(INOUT)  :: t                                     !< current simulati
 ! LOCAL VARIABLES
 REAL     :: tStage
 INTEGER  :: iStage
-#if FV_ENABLED
-LOGICAL  :: AllowDG
-#endif /*FV_ENABLED*/
 !===================================================================================================================================
 
 ! Nomenclature:
@@ -146,14 +141,7 @@ DO iStage = 1,nRKStages
   ELSE                       ; tStage = t+RKc(CurrentStage)*dt
   END IF
 
-  ! Save old solution in order to have the basis for a posteriori limiting
-#if FV_ENABLED
-  CALL CalcIndicator(U,t)
-  ! NOTE: Update Switch_to_DG
-  AllowDG=(FV_toDGinRK.OR.((nCalcTimestep.LT.1).AND.(iStage.EQ.1)))
-  ! NOTE: Apply switch and update FV_Elems
-  CALL FV_Switch(U,Uprev,S2,AllowToDG=AllowDG)
-#endif /*FV_ENABLED*/
+  ! Update gradients
   CALL DGTimeDerivative_weakForm(tStage)
 
   IF (iStage.EQ.1) THEN
@@ -166,6 +154,15 @@ DO iStage = 1,nRKStages
     CALL VAXPBY(nTotalU,U,UPrev,ConstIn=RKg3(iStage))                    !U = U + RKg3(ek)*UPrev
   END IF
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                         !U = U + Ut*b_dt(iStage)
+
+#if FV_ENABLED
+  ! If UpdateTimeStep is called in next loop, FV_SWITCH is performed after t = t + dt
+  IF (nCalcTimestep.NE.0 .OR. iStage.NE.nRKStages) THEN
+    CALL CalcIndicator(U,t)
+    ! NOTE: Apply switch and update FV_Elems
+    CALL FV_Switch(U,Uprev,S2,AllowToDG=FV_toDGinRK)
+  END IF
+#endif /*FV_ENABLED*/
 END DO
 
 END SUBROUTINE TimeStepByLSERKK3

@@ -492,7 +492,7 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-IF (iter.EQ.1_8) totalFV_nElems = totalFV_nElems + SUM(FV_Elems) ! counter for output of FV amount during analyze
+IF (iter.EQ.1_8) totalFV_nElems = SUM(FV_Elems) ! counter for output of FV amount during analyze
 #if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)

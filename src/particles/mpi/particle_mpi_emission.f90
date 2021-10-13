@@ -905,7 +905,7 @@ DO i = 1,TotalNbrOfRecvParts
 
   ! Find a free position in the PDM array
   ParticleIndexNbr = PDM%nextFreePosition(mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
-   IF (ParticleIndexNbr.NE.0) THEN
+  IF (ParticleIndexNbr.NE.0) THEN
      ! Fill the PartState manually to avoid a second localization
      PartState(1:3,ParticleIndexNbr) = recvPartPos(DimSend*(i-1)+1:DimSend*(i-1)+3)
      PDM%ParticleInside( ParticleIndexNbr) = .TRUE.

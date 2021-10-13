@@ -236,6 +236,7 @@ TYPE tPartBoundANN
   REAL(4) , ALLOCATABLE                  :: max_out(:)
   INTEGER                                :: nLayer
   INTEGER , ALLOCATABLE                  :: nN(:)
+  INTEGER                                :: hgs=30
 END TYPE
 TYPE(tPartBoundANN)                      :: PartBoundANN
 !===================================================================================================================================

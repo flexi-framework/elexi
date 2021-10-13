@@ -14,7 +14,7 @@
 #include "flexi.h"
 #include "particle.h"
 
-#define SIGMOID(x)         REAL(1.1/(1+EXP(-x))-0.1,4)
+#define SIGMOID(x)         REAL(1/(1+EXP(-x)),4)
 #define SILU(x,beta)       REAL(x/(1+EXP(-beta*x)),4)
 #define LOGNORM(x,maxi)    REAL(LOG(ABS(x)+1.)/LOG(maxi+1.),4)
 #define LOGNORMINV(x,maxi) REAL((maxi+1.)**x-1.,4)
@@ -516,8 +516,9 @@ REAL                              :: rot_old(1:3)
 ! Bons particle rebound model
 REAL                              :: w,w_crit,sigma_y,E_eff
 ! RebANN
-INTEGER                           :: iLayer
-REAL(4)                           :: randnum(7)
+INTEGER                           :: k
+REAL(4)                           :: randnum(5),xin(8)
+REAL                              :: dp1,dp2,ekin_1,ekin_2
 !===================================================================================================================================
 
 ! check if reflected on AuxBC
@@ -635,7 +636,7 @@ SELECT CASE(WallCoeffModel)
               / (E_eff*3*PartState(PART_DIAM,PartID)))**0.5
 
     ! Find critical deformation
-    sigma_y = Species(PartSpecies(PartID))%Whitaker_a*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
+    sigma_y = Species(PartSpecies(PartID))%Whitaker_a*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))*1e6
     w_crit  = sigma_y * 2./3. * PartState(PART_DIAM,PartID) / E_eff
 
     ! Normal coefficient of restitution
@@ -661,20 +662,21 @@ SELECT CASE(WallCoeffModel)
   ! Rebound 2D ANN valid for v_{air} \in [150,350] [m/s]
   !=================================================================================================================================
   CASE('RebANN')
-    CALL RANDOM_NUMBER(randnum)
+    v_magnitude = NORM2(PartState(PART_VELV,PartID))
     ! Input with normalization
-    PartBoundANN%output(1:PartBoundANN%nN(1)) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
-      LOGNORM(NORM2(PartState(PART_VELV,PartID)),PartBoundANN%max_in(2)),&
-      LOGNORM(PartState(PART_DIAM,PartID),PartBoundANN%max_in(3)), randnum(1), randnum(2)/)
-    ! Hidden layers
-    DO iLayer=1,PartBoundANN%nLayer
-      PartBoundANN%output(:) = &
-        SILU((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)),PartBoundANN%beta(:,iLayer))
+    xin(1:3) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
+      LOGNORM(v_magnitude,PartBoundANN%max_in(2)), LOGNORM(PartState(PART_DIAM,PartID),PartBoundANN%max_in(3))/)
+    ! Check if kinetic energy of rebounding particle is lower
+    ekin_2 = v_magnitude + 1
+    DO WHILE ((ekin_2  > v_magnitude) .OR. (k .LT.5))
+      CALL RANDOM_NUMBER(randnum(1:2))
+      xin(4) = randnum(1)
+      xin(5) = randnum(2)
+
+      CALL CallANN(5,2,xin)
+
+      k = k + 1
     END DO
-    ! Output layer
-    iLayer = PartBoundANN%nLayer+1
-    PartBoundANN%output(:) = SIGMOID((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)))
-    PartBoundANN%output(1:2) = LOGNORMINV(PartBoundANN%output(1:2), PartBoundANN%max_in(1:2))
     ! Calculate coefficents of restitution
     eps_n  = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
     eps_t1 = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang1(1:3))
@@ -686,29 +688,51 @@ SELECT CASE(WallCoeffModel)
   ! Fracture 2D ANN valid for v_{air} \in [150,350] [m/s]
   !=================================================================================================================================
   CASE('FracANN')
-    CALL RANDOM_NUMBER(randnum)
+    v_magnitude = NORM2(PartState(PART_VELV,PartID))
     ! Input with normalization
-    PartBoundANN%output(1:PartBoundANN%nN(1)) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
-      LOGNORM(NORM2(PartState(PART_VELV,PartID)),PartBoundANN%max_in(2)),&
-      LOGNORM(PartState(PART_DIAM,PartID),PartBoundANN%max_in(3)), &
-      randnum(1), randnum(2), randnum(3), randnum(4), randnum(5)/)
-    ! Hidden layers
-    DO iLayer=1,PartBoundANN%nLayer
-      PartBoundANN%output(:) = &
-        SILU((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)),PartBoundANN%beta(:,iLayer))
-    END DO
-    ! Output layer
-    iLayer = PartBoundANN%nLayer+1
-    PartBoundANN%output(1:5) = LOGNORMINV(PartBoundANN%output(1:5), PartBoundANN%max_in(1:5))
+    xin(1:3) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
+      LOGNORM(v_magnitude,PartBoundANN%max_in(2)),&
+      LOGNORM(PartState(PART_DIAM,PartID),PartBoundANN%max_in(3))/)
+    ! Check if kinetic energy of rebounding particle is lower
+    ekin_1 = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID),PartState(PART_VELV,PartID))
+    ekin_2 = ekin_1 + 1
+    DO WHILE (ekin_2 > ekin_1)
+      CALL RANDOM_NUMBER(randnum(1:5))
+      xin(4:8) = (/randnum(1), randnum(2), randnum(3), randnum(4), randnum(5)/)
 
+      CALL CallANN(8,5,xin)
+
+      IF (PartBoundANN%output(3) .GT. 0) THEN
+        dp1 = PartBoundANN%output(3)*PartState(PART_DIAM,PartID)
+      ELSE
+        dp1 = PartState(PART_DIAM,PartID)
+      END IF
+
+      IF ((dp1 .LT. PartState(PART_DIAM,PartID)) .AND. (PartBoundANN%output(3) .LT. 1)) THEN
+        dp2 = VOL_SPHERE_INV((VOL_SPHERE(dp_old)-VOL_SPHERE(dp1)))
+        ekin_2 = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,dp1,(/PartBoundANN%output(2)/)) +&
+          ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,dp2,(/PartBoundANN%output(5)/))
+      ELSE
+        dp2 = 0.
+        ekin_2 = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,dp1,(/PartBoundANN%output(2)/))
+      END IF
+!      IPWRITE (*, *) 'PartBoundANN%output(1:5):', PartBoundANN%output(1:5), NORM2(v_tang1(1:3)), NORM2(v_norm(1:3))
+!      IPWRITE (*, *) 'ekin_1, ekin_2, dp1, dp2, k:', ekin_1, ekin_2, dp1, dp2, PartState(PART_DIAM,PartID), k
+
+      k = k + 1
+      IF (k.GT.5) EXIT
+    END DO
+
+    !IPWRITE (*, *) 'PartBoundANN%max_out(1:5):', PartBoundANN%max_out(1:5)
     ! Insert new particle if particle splits
-    IF (PartBoundANN%output(3) .GT. 0) THEN
+    IF (dp2 .GT. 0.) THEN
       ! Update particle diameter
-      PartState(PART_DIAM,PartID) = PartBoundANN%output(3)*PartState(PART_DIAM,PartID)
+      PartState(PART_DIAM,PartID) = dp1
 
       ! Calculate coefficents of restitution
       eps_n  = PartBoundANN%output(5) * SIN(PartBoundANN%output(4)) / NORM2(v_norm(1:3))
       eps_t1 = PartBoundANN%output(5) * COS(PartBoundANN%output(4)) / NORM2(v_tang1(1:3))
+!      IPWRITE (*, *) '2nd, eps_n, eps_t1:', eps_n, eps_t1
 
       ! Insert new particle
       CALL DiffuseReflectionFracture(PartTrajectory,lengthPartTrajectory,alpha,PartID,SideID,n_loc,tang1,tang2,&
@@ -718,6 +742,7 @@ SELECT CASE(WallCoeffModel)
     ! Calculate coefficents of restitution
     eps_n  = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
     eps_t1 = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang1(1:3))
+!    IPWRITE (*, *) '1st, eps_n, eps_t1:', eps_n, eps_t1
 
   CASE DEFAULT
       CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')
@@ -763,10 +788,10 @@ intersecRemain = SQRT(eps_n*eps_n + eps_t1*eps_t1 + eps_t2*eps_t2)/SQRT(3.) * (l
 PartTrajectory = intersecRemain * PartTrajectory/SQRT(SUM(PartTrajectory**2.))
 
 ! Compute moved particle || rest of movement. PartTrajectory has already been updated
-PartState(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)
+PartState(PART_POSV,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)
 
 ! Compute new particle velocity, modified with coefficents of restitution
-PartState(4:6,PartID) = eps_t1 * v_tang1 + eps_t2 * v_tang2 - eps_n * v_norm + WallVelo
+PartState(PART_VELV,PartID) = eps_t1 * v_tang1 + eps_t2 * v_tang2 - eps_n * v_norm + WallVelo
 
 ! compute moved particle || rest of movement
 lengthPartTrajectory  = SQRT(SUM(PartTrajectory**2))
@@ -1023,6 +1048,42 @@ END IF
 
 END SUBROUTINE RoughnessPDF
 
+
+SUBROUTINE CallANN(nin,nout,xin)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! Calls the rebound MLP
+!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+!USE MOD_Globals
+USE MOD_Particle_Globals
+USE MOD_Particle_Boundary_Vars     ,ONLY: PartBoundANN
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+INTEGER,INTENT(IN)               :: nin
+INTEGER,INTENT(IN)               :: nout
+REAL(4),INTENT(IN)               :: xin(nin)
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                          :: iLayer
+REAL                             :: x(PartBoundANN%hgs)
+!===================================================================================================================================
+x(:)     = 0.
+x(1:nin) = xin
+! Hidden layers
+DO iLayer=1,PartBoundANN%nLayer
+  PartBoundANN%output(:) = &
+    SILU((MATMUL(x,PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)),PartBoundANN%beta(:,iLayer))
+END DO
+! Output layer
+iLayer = PartBoundANN%nLayer+1
+PartBoundANN%output(:)   = SIGMOID((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)))
+PartBoundANN%output(1:nout) = LOGNORMINV(PartBoundANN%output(1:nout), PartBoundANN%max_out(1:nout))
+END SUBROUTINE CallANN
 
 
 !FUNCTION PARTSWITCHELEMENT(xi,eta,locSideID,SideID,ElemID)

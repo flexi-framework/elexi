@@ -2082,7 +2082,6 @@ CHARACTER(255),INTENT(IN)     :: Filename_loc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: tmp(2),iLayer
-INTEGER                       :: hgs=30       ! max. memory
 !===================================================================================================================================
 
 IF (MPIRoot) THEN
@@ -2092,12 +2091,12 @@ IF (MPIRoot) THEN
   READ(34) PartBoundANN%nLayer
   ! Read maximum number of neurons
   READ(34) tmp(1)
-  hgs = MERGE(tmp(1), hgs, tmp(1).LE.hgs)
+  PartBoundANN%hgs = MERGE(tmp(1), PartBoundANN%hgs, tmp(1).LE.PartBoundANN%hgs)
   ! Allocate arrays and nullify
   ALLOCATE(PartBoundANN%nN(PartBoundANN%nLayer+2))
-  ALLOCATE(PartBoundANN%w(1:hgs,1:hgs,1:PartBoundANN%nLayer+1))
-  ALLOCATE(PartBoundANN%b(1:hgs,1:PartBoundANN%nLayer+1))
-  ALLOCATE(PartBoundANN%beta(1:hgs,1:PartBoundANN%nLayer))
+  ALLOCATE(PartBoundANN%w(1:PartBoundANN%hgs,1:PartBoundANN%hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%b(1:PartBoundANN%hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%beta(1:PartBoundANN%hgs,1:PartBoundANN%nLayer))
   PartBoundANN%w = 0.
   PartBoundANN%b = 0.
   PartBoundANN%beta = 0.
@@ -2127,19 +2126,20 @@ CALL MPI_BCAST(PartBoundANN%nLayer,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 IF (.NOT.ALLOCATED(PartBoundANN%nN)) ALLOCATE(PartBoundANN%nN(1:PartBoundANN%nLayer+2))
 CALL MPI_BCAST(PartBoundANN%nN,PartBoundANN%nLayer+2,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 tmp(1) = MAXVAL(PartBoundANN%nN)
-hgs = MERGE(tmp(1), hgs, tmp(1).LE.hgs)
-ALLOCATE(PartBoundANN%output(1:hgs))
+PartBoundANN%hgs = MERGE(tmp(1), PartBoundANN%hgs, tmp(1).LE.PartBoundANN%hgs)
+ALLOCATE(PartBoundANN%output(1:PartBoundANN%hgs))
+PartBoundANN%output = 0.
 ! Allocate arrays and nullify
 IF (.NOT.ALLOCATED(PartBoundANN%w)) THEN
-  ALLOCATE(PartBoundANN%w(1:hgs,1:hgs,1:PartBoundANN%nLayer+1))
-  ALLOCATE(PartBoundANN%b(1:hgs,1:PartBoundANN%nLayer+1))
-  ALLOCATE(PartBoundANN%beta(1:hgs,1:PartBoundANN%nLayer))
+  ALLOCATE(PartBoundANN%w(1:PartBoundANN%hgs,1:PartBoundANN%hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%b(1:PartBoundANN%hgs,1:PartBoundANN%nLayer+1))
+  ALLOCATE(PartBoundANN%beta(1:PartBoundANN%hgs,1:PartBoundANN%nLayer))
   ALLOCATE(PartBoundANN%max_in(1:PartBoundANN%nN(1)))
   ALLOCATE(PartBoundANN%max_out(1:PartBoundANN%nN(PartBoundANN%nLayer+2)))
 END IF
-CALL MPI_BCAST(PartBoundANN%w,hgs*hgs*(PartBoundANN%nLayer+1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
-CALL MPI_BCAST(PartBoundANN%b,hgs*(PartBoundANN%nLayer+1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
-CALL MPI_BCAST(PartBoundANN%beta,hgs*PartBoundANN%nLayer,MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%w,PartBoundANN%hgs*PartBoundANN%hgs*(PartBoundANN%nLayer+1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%b,PartBoundANN%hgs*(PartBoundANN%nLayer+1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(PartBoundANN%beta,PartBoundANN%hgs*PartBoundANN%nLayer,MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
 CALL MPI_BCAST(PartBoundANN%max_in,PartBoundANN%nN(1),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
 CALL MPI_BCAST(PartBoundANN%max_out,PartBoundANN%nN(PartBoundANN%nLayer+2),MPI_FLOAT,0,MPI_COMM_FLEXI,iError)
 #endif

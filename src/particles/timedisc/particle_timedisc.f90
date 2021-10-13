@@ -86,8 +86,8 @@ IMPLICIT NONE
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2','LSERKK3')
     ALLOCATE(b_dt(1:nRKStages))
-    ! Fill initial value, will be set correctly in InitTimeStep
-    b_dt = HUGE(1.)
+    ! Premultiply with dt, set b_dt for the first particle time increment. Correct dt was calculated in BuildBGMAndIdentifyHaloRegion
+    b_dt = RKb*dt
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,'Particle tracking only supported with DG TimeDiscType=LSERKW')
 END SELECT

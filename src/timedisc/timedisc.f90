@@ -113,11 +113,11 @@ END SELECT
 ! Do first RK stage of first timestep to fill gradients
 #if USE_PARTICLES
 ! Skip the call, otherwise particles get incremented twice
-IF (UseManualTimestep) PreviousTime = t
+PreviousTime = t
 #endif /*USE_PARTICLES*/
 CALL DGTimeDerivative_weakForm(t)
 #if USE_PARTICLES
-IF (UseManualTimestep) PreviousTime = -1
+PreviousTime = -1
 #endif /*USE_PARTICLES*/
 
 #if FV_ENABLED
@@ -163,11 +163,11 @@ IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
 
 #if USE_PARTICLES
 ! Skip the call, otherwise particles get incremented twice
-IF (UseManualTimestep) PreviousTime = t
+PreviousTime = t
 #endif /*USE_PARTICLES*/
 CALL DGTimeDerivative_weakForm(t)
 #if USE_PARTICLES
-IF (UseManualTimestep) PreviousTime = -1
+PreviousTime = -1
 #endif /*USE_PARTICLES*/
 
 ! Run computation

@@ -331,6 +331,7 @@ halo_eps_velo = GETREAL('Part-HaloEpsVelo')
 IF (ManualTimeStep.EQ.0.0) THEN
   ! Skip the call, otherwise particles get incremented twice
   PreviousTime = t
+  ! WARNING: THIS CALL IS PERFORMED BEFORE THE INITIAL FV_SWITCH WITH INDSTARTTIME!
   CALL DGTimeDerivative_weakForm(t)
   PreviousTime = -1.
   ! Set the initial time step, so Particle_InitTimeDisc can set the correct b_dt

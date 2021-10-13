@@ -356,7 +356,7 @@ END SUBROUTINE UpdateTimeStep
 !===================================================================================================================================
 !> Update time step at the beginning of each timedisc loop
 !===================================================================================================================================
-SUBROUTINE AnalyzeTimeStep(writeCounter)
+SUBROUTINE AnalyzeTimeStep()
 ! MODULES
 USE MOD_Globals
 USE MOD_Analyze             ,ONLY: Analyze
@@ -377,7 +377,7 @@ USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart,nCalcTimeStep
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,iter,iter_analyze
-USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
+USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 #if FV_ENABLED
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
 USE MOD_FV_Vars             ,ONLY: FV_toDGinRK
@@ -403,7 +403,6 @@ USE MOD_TimeDisc_Vars       ,ONLY: maxIter
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(INOUT) :: writeCounter
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -480,11 +479,13 @@ IF(doAnalyze)THEN
     CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.FALSE.)
     ! Visualize data
     CALL Visualize(t,U)
-    writeCounter = 0
   END IF
 
   ! do analysis
   CALL Analyze(t,iter)
+  ! Overwrite WriteCounter after Analyze to keep particle analysis synchronous
+  IF((writeCounter.EQ.nWriteData).OR.doFinalize) writeCounter=0
+
   iter_analyze  = 0
   CalcTimeStart = FLEXITIME()
   tAnalyze      = MIN(tAnalyze+analyze_dt,tEnd)

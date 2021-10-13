@@ -60,7 +60,7 @@ USE MOD_TestCase_Vars       ,ONLY: doTCSource
 USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: t,tStart,tEnd,dt,tAnalyze,Timestep
 USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
-USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
+USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter,nCalcTimestep
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
 USE MOD_FV
@@ -75,7 +75,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: nCalcTimestep
 !==================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(132("-"))')

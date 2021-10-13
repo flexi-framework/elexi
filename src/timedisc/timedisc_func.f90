@@ -131,9 +131,9 @@ nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
 
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
-SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
-
 CALL SetTimeDiscCoefs(TimeDiscMethod)
+
+SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2')
     TimeStep=>TimeStepByLSERKW2
@@ -286,13 +286,6 @@ IF (nCalcTimestep.GE.1) THEN
   RETURN
 END IF
 
-#if FV_ENABLED
-! Perform FV_Switch to calculate time step on updated solution
-CALL CalcIndicator(U,t)
-! NOTE: Apply switch and update FV_Elems. U is sufficient, we are in the first RK stage
-CALL FV_Switch(U,AllowToDG=.TRUE.)
-#endif /*FV_ENABLED*/
-
 #if USE_PARTICLES
 IF (UseManualTimeStep) THEN
   dt_min(DT_ANALYZE) = tAnalyze-t             ! Time to next analysis, put in extra variable so number does not change due to numerical errors
@@ -391,7 +384,7 @@ USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
-USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
+USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart,nCalcTimeStep
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,iter,iter_analyze
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if FV_ENABLED
@@ -427,7 +420,7 @@ INTEGER,INTENT(INOUT) :: writeCounter
 #if FV_ENABLED
 CALL CalcIndicator(U,t)
 ! NOTE: Apply switch and update FV_Elems
-CALL FV_Switch(U,Ut_tmp,AllowToDG=FV_toDGinRK)
+CALL FV_Switch(U,Ut_tmp,AllowToDG=(nCalcTimestep.LT.1))
 #endif
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 #if USE_PARTICLES

@@ -188,12 +188,13 @@ SUBROUTINE InitTimeStep()
 ! MODULES
 USE MOD_Globals
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_minOld
+USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: ViscousTimeStep,CalcTimeStart,nCalcTimeStep
 #if USE_PARTICLES
 USE MOD_Particle_Surface_Flux ,ONLY: InitializeParticleSurfaceFlux
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep,ManualTimeStep
 USE MOD_TimeDisc_Vars       ,ONLY: dt_min
+USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -216,8 +217,13 @@ ELSE
 errType = 0
 END IF
 dt_min(DT_MIN)     = dt
-dt_min(DT_ANALYZE) = HUGE(1.)               ! Time to next analysis, put in extra variable so number does not change due to numerical errors
-dt_min(DT_END)     = HUGE(1.)               ! Do the same for end time
+dt_min(DT_ANALYZE) = tAnalyze-t             ! Time to next analysis, put in extra variable so number does not change due to numerical errors
+dt_min(DT_END)     = tEnd    -t             ! Do the same for end time
+dt                 = MINVAL(dt_min)
+
+IF (dt.EQ.dt_min(DT_ANALYZE))       doAnalyze  = .TRUE.
+IF (dt.EQ.dt_min(DT_END    )) THEN; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
+dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 #endif
 
 nCalcTimestep = 0
@@ -289,8 +295,8 @@ IF (UseManualTimeStep) THEN
   dt_min(DT_END)     = tEnd    -t             ! Do the same for end time
   dt                 = MINVAL(dt_min)
 
-  IF (dt.EQ.dt_min(DT_ANALYZE)) doAnalyze  = .TRUE.
-  IF (dt.EQ.dt_min(DT_END    )) doFinalize = .TRUE.
+  IF (dt.EQ.dt_min(DT_ANALYZE))       doAnalyze  = .TRUE.
+  IF (dt.EQ.dt_min(DT_END    )) THEN; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
   dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 
 #if USE_LOADBALANCE
@@ -316,8 +322,8 @@ dt_min(DT_ANALYZE) = tAnalyze-t             ! Time to next analysis, put in extr
 dt_min(DT_END)     = tEnd    -t             ! Do the same for end time
 dt                 = MINVAL(dt_min)
 
-IF (dt.EQ.dt_min(DT_ANALYZE)) doAnalyze  = .TRUE.
-IF (dt.EQ.dt_min(DT_END    )) doFinalize = .TRUE.
+IF (dt.EQ.dt_min(DT_ANALYZE))       doAnalyze  = .TRUE.
+IF (dt.EQ.dt_min(DT_END    )) THEN; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 
 nCalcTimestep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax) - 1
@@ -375,16 +381,17 @@ USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
-USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart,nCalcTimeStep
+USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,iter,iter_analyze
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if FV_ENABLED
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
 USE MOD_FV_Vars             ,ONLY: FV_toDGinRK
 USE MOD_Indicator           ,ONLY: CalcIndicator
+USE MOD_TimeDisc_Vars       ,ONLY: nCalcTimeStep
 #endif
 #if USE_PARTICLES
-USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep,PreviousTime
+USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 ! USE MOD_HDF5_output         ,ONLY: RemoveHDF5
@@ -417,11 +424,11 @@ CALL FV_Switch(U,Ut_tmp,AllowToDG=(nCalcTimestep.LT.1))
 IF (doAnalyze) THEN
 #if USE_PARTICLES
   ! Skip the call, otherwise particles get incremented twice
-  IF (UseManualTimestep) PreviousTime = t
+  PreviousTime = t
 #endif /*USE_PARTICLES*/
   CALL DGTimeDerivative_weakForm(t)
 #if USE_PARTICLES
-  IF (UseManualTimestep) PreviousTime = -1
+  PreviousTime = -1
 #endif /*USE_PARTICLES*/
 END IF
 

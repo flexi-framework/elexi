@@ -67,7 +67,7 @@ USE MOD_FV
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
-USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimestep,PreviousTime
+USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime
 #endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -161,14 +161,14 @@ SWRITE(UNIT_stdOut,'(A)') ' CALCULATION RUNNING...'
 
 IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
 
-#if USE_PARTICLES
-! Skip the call, otherwise particles get incremented twice
-PreviousTime = t
-#endif /*USE_PARTICLES*/
-CALL DGTimeDerivative_weakForm(t)
-#if USE_PARTICLES
-PreviousTime = -1
-#endif /*USE_PARTICLES*/
+! #if USE_PARTICLES
+! ! Skip the call, otherwise particles get incremented twice
+! PreviousTime = t
+! #endif /*USE_PARTICLES*/
+! CALL DGTimeDerivative_weakForm(t)
+! #if USE_PARTICLES
+! PreviousTime = -1
+! #endif /*USE_PARTICLES*/
 
 ! Run computation
 DO

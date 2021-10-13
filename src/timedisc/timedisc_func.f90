@@ -305,7 +305,7 @@ IF (UseManualTimeStep) THEN
   ! Increase time step if the NEXT time step would be smaller than dt/100
   IF(dt_min(DT_ANALYZE)-dt.LT.dt/100.0 .AND. dt_min(DT_ANALYZE).GT.0) THEN; dt = dt_min(DT_ANALYZE); doAnalyze  = .TRUE.; END IF
   ! Increase time step if the LAST time step would be smaller than dt/100
-  IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doFinalize = .TRUE.; END IF
+  IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 
   RETURN
 END IF
@@ -343,7 +343,7 @@ IF( LESSEQUALTOLERANCE(dt_Min(DT_ANALYZE), LoadBalanceSample*dt, 1e-5) &
 ! Increase time step if the NEXT time step would be smaller than dt/100
 IF(dt_min(DT_ANALYZE)-dt.LT.dt/100.0 .AND. dt_min(DT_ANALYZE).GT.0) THEN; dt = dt_min(DT_ANALYZE); doAnalyze  = .TRUE.; END IF
 ! Increase time step if the LAST time step would be smaller than dt/100
-IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doFinalize = .TRUE.; END IF
+IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 
 IF (iter.EQ.maxIter) THEN
   tEnd=t; tAnalyze=t; tWriteData=t
@@ -414,16 +414,16 @@ CALL CalcIndicator(U,t)
 CALL FV_Switch(U,Ut_tmp,AllowToDG=(nCalcTimestep.LT.1))
 #endif
 ! Call DG operator to fill face data, fluxes, gradients for analyze
+IF (doAnalyze) THEN
 #if USE_PARTICLES
-! Skip the call, otherwise particles get incremented twice
-IF (UseManualTimestep .AND. doAnalyze) THEN
-  PreviousTime = t
+  ! Skip the call, otherwise particles get incremented twice
+  IF (UseManualTimestep) PreviousTime = t
 #endif /*USE_PARTICLES*/
-CALL DGTimeDerivative_weakForm(t)
+  CALL DGTimeDerivative_weakForm(t)
 #if USE_PARTICLES
-  PreviousTime = -1.
+  IF (UseManualTimestep) PreviousTime = -1
+#endif /*USE_PARTICLES*/
 END IF
-#endif /*USE_PARTICLES*/
 
 ! Analysis (possible PerformAnalyze+WriteStateToHDF5 and/or LoadBalance)
 #if USE_LOADBALANCE

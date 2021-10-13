@@ -188,7 +188,7 @@ SUBROUTINE InitTimeStep()
 ! MODULES
 USE MOD_Globals
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_minOld,b_dt,RKb
+USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: ViscousTimeStep,CalcTimeStart,nCalcTimeStep
 #if USE_PARTICLES
 USE MOD_Particle_Surface_Flux ,ONLY: InitializeParticleSurfaceFlux
@@ -229,9 +229,6 @@ IF (errType.NE.0) CALL abort(__STAMP__,&
   'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
 #endif
 
-! Premultiply with dt
-b_dt = RKb*dt
-
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,ES16.7)') ' Initial Timestep  : ', dt
 IF(ViscousTimeStep.AND.MPIRoot) WRITE(UNIT_stdOut,'(A)') ' Viscous timestep dominates! '
@@ -256,7 +253,7 @@ USE MOD_Analyze_Vars        ,ONLY: tWriteData
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
 USE MOD_HDF5_Output         ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
-USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld,b_dt,RKb
+USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: iter,maxIter,nCalcTimeStep,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if FV_ENABLED
@@ -310,9 +307,6 @@ IF (UseManualTimeStep) THEN
   ! Increase time step if the LAST time step would be smaller than dt/100
   IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doFinalize = .TRUE.; END IF
 
-  ! Premultiply with dt
-  b_dt = RKb*dt
-
   RETURN
 END IF
 #endif /*USE_PARTICLES*/
@@ -350,9 +344,6 @@ IF( LESSEQUALTOLERANCE(dt_Min(DT_ANALYZE), LoadBalanceSample*dt, 1e-5) &
 IF(dt_min(DT_ANALYZE)-dt.LT.dt/100.0 .AND. dt_min(DT_ANALYZE).GT.0) THEN; dt = dt_min(DT_ANALYZE); doAnalyze  = .TRUE.; END IF
 ! Increase time step if the LAST time step would be smaller than dt/100
 IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doFinalize = .TRUE.; END IF
-
-! Premultiply with dt
-b_dt = RKb*dt
 
 IF (iter.EQ.maxIter) THEN
   tEnd=t; tAnalyze=t; tWriteData=t

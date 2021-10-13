@@ -34,7 +34,7 @@
 !> file.
 !==================================================================================================================================
 MODULE MOD_ReadInTools
-
+! MODULES
 USE MOD_Globals
 USE MOD_ISO_VARYING_STRING
 USE MOD_Options
@@ -83,6 +83,7 @@ CONTAINS
   PROCEDURE :: count_unread               !< routine that counts the number of parameters, that are set in ini but not read
 !  PROCEDURE :: removeUnnecessary          !< routine that removes unused parameters from linked list
 #if USE_LOADBALANCE
+  PROCEDURE :: removeUnnecessary          !< routine that removes unused parameters from linked list
   PROCEDURE :: finalize                   !< routine that resets the parameters for loadbalance
 #endif /*USE LOADBALANCE*/
 END TYPE Parameters
@@ -264,8 +265,8 @@ CLASS(link), POINTER            :: current
   ! iterate over all options and set removed to false
   current => this%firstLink
   DO WHILE (associated(current))
-  current%opt%isRemoved=.FALSE.
-  current => current%next
+    current%opt%isRemoved=.FALSE.
+    current => current%next
   END DO
 ! ELSE
 !   current => this%firstLink
@@ -284,48 +285,36 @@ CLASS(link), POINTER            :: current
 END SUBROUTINE finalize
 
 
-! !==================================================================================================================================
-! !> Remove not used entries in the linked list of THIS parameters.
-! !> reduce size of list for faster loadbalance init
-! !==================================================================================================================================
-! SUBROUTINE removeUnnecessary(this)
-! ! MODULES
-! IMPLICIT NONE
-! !----------------------------------------------------------------------------------------------------------------------------------
-! ! INPUT/OUTPUT VARIABLES
-! CLASS(Parameters),INTENT(INOUT) :: this  !< CLASS(Parameters)
-! !----------------------------------------------------------------------------------------------------------------------------------
-! ! LOCAL VARIABLES
-! CLASS(link),POINTER :: tmp
-! CLASS(link),POINTER :: current
-! !==================================================================================================================================
-! current =>  this%firstLink
-! DO WHILE (associated(current%next))
-!   tmp => current%next%next
-!   !this%lastLink => current%next
-!   !this%lastLink%next => current%next
-!   IF (current%next%opt%numberedmulti) THEN
-!     DEALLOCATE(current%next%opt)
-!     NULLIFY(current%next%opt)
-!     DEALLOCATE(current%next)
-!     NULLIFY(current%next)
-!     current%next => tmp
-!   ELSE
-!     current => current%next
-!   END IF
-! END DO
-!
-! !current =>  this%firstLink
-! !IF (associated(current).AND.(current%opt%numberedmulti)) THEN
-! !  IF (associated(current%next)) THEN
-! !    this%firstLink => current%next
-! !  ELSE
-! !    this%firstLink => null()
-! !    this%LastLink  => null()
-! !  END IF
-! !END IF
-!
-! END SUBROUTINE removeUnnecessary
+!==================================================================================================================================
+!> Remove not used entries in the linked list of THIS parameters.
+!> reduce size of list for faster loadbalance init
+!==================================================================================================================================
+SUBROUTINE removeUnnecessary(this)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CLASS(Parameters),INTENT(INOUT) :: this  !< CLASS(Parameters)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CLASS(link),POINTER :: tmp
+CLASS(link),POINTER :: current
+!==================================================================================================================================
+current =>  this%firstLink
+DO WHILE (associated(current%next))
+  tmp => current%next%next
+  IF (current%next%opt%numberedmulti) THEN
+    DEALLOCATE(current%next%opt)
+    NULLIFY(current%next%opt)
+    DEALLOCATE(current%next)
+    NULLIFY(current%next)
+    current%next => tmp
+  ELSE
+    current => current%next
+  END IF
+END DO
+
+END SUBROUTINE removeUnnecessary
 #endif /*USE_LOADBALANCE*/
 
 !==================================================================================================================================
@@ -1155,7 +1144,7 @@ DO WHILE (associated(current))
   END IF
   current => current%next
 END DO
-END SUBROUTINE
+END SUBROUTINE PrintDefaultParameterFile
 
 
 !==================================================================================================================================
@@ -1452,7 +1441,7 @@ CLASS(link),POINTER          :: check
 CLASS(Option),POINTER        :: multi
 CLASS(OPTION),ALLOCATABLE    :: newopt
 CHARACTER(LEN=:),ALLOCATABLE :: testname
-INTEGER                      :: i
+INTEGER                      :: i,j
 CHARACTER(LEN=20)            :: fmtName
 ! Temporary arrays to create new options
 CHARACTER(LEN=255)           :: tmpValue
@@ -1555,7 +1544,9 @@ DO WHILE (associated(current))
                     value = multi%value
                     ! insert option with numbered name ($ replaced by number)
                     ALLOCATE(intopt)
-                    WRITE(tmpValue, *) multi%value
+                    WRITE(tmpValue,'(*(I0))') (multi%value(j), ",",j=1,no)
+                    ! remove trailing comma
+                    tmpValue(len(TRIM(tmpValue)):len(TRIM(tmpValue))) = ' '
                     CALL prms%CreateOption(intopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
                 CLASS IS (RealArrayOption)
@@ -1565,7 +1556,9 @@ DO WHILE (associated(current))
                     value = multi%value
                     ! insert option with numbered name ($ replaced by number)
                     ALLOCATE(realopt)
-                    WRITE(tmpValue, *) multi%value
+                    WRITE(tmpValue,'(*(G0))') (multi%value(j), ",",j=1,no)
+                    ! remove trailing comma
+                    tmpValue(len(TRIM(tmpValue)):len(TRIM(tmpValue))) = ' '
                     CALL prms%CreateOption(realopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
                 CLASS IS (LogicalArrayOption)
@@ -1575,7 +1568,9 @@ DO WHILE (associated(current))
                     value = multi%value
                     ! insert option with numbered name ($ replaced by number)
                     ALLOCATE(logicalopt)
-                    WRITE(tmpValue, *) multi%value
+                    ! remove trailing comma
+                    tmpValue(len(TRIM(tmpValue)):len(TRIM(tmpValue))) = ' '
+                    WRITE(tmpValue,'(*(L))') (multi%value(j), ",",j=1,no)
                     CALL prms%CreateOption(logicalopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
               END SELECT
@@ -1653,8 +1648,8 @@ END DO
 #endif /*USE_PARTICLES*/
 
 CALL ABORT(__STAMP__, &
-    'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
-    'or already read (use GET... routine only for multiple options more than once).')
+  'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
+  'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralArrayOption
 
 

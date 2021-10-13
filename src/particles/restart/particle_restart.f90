@@ -60,7 +60,8 @@ USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
 USE MOD_Particle_Restart_Vars
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod,NbrOfLostParticles,CountNbrOfLostParts
 USE MOD_Particle_Tracking_Vars,     ONLY: NbrOfLostParticlesTotal,TotalNbrOfMissingParticlesSum,NbrOfLostParticlesTotal_old
-USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies,PartPosRef,PartReflCount
+USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies
+USE MOD_Particle_Vars,              ONLY: PartPosRef,PartReflCount,doPartIndex,PartIndex
 USE MOD_Restart_Vars,               ONLY: RestartTime,RestartFile
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,          ONLY: PartMPI
@@ -158,6 +159,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     DO iStr=1,PartDataSize
       ! Reflection
       IF (STRICMP('ReflectionCount',TRIM(StrVarNames(iStr)))) PP_nVarPart_loc = PP_nVarPart_loc - 1
+      ! PartIndex
+      IF (STRICMP('Index'          ,TRIM(StrVarNames(iStr)))) PP_nVarPart_loc = PP_nVarPart_loc - 1
     END DO
     DEALLOCATE(StrVarNames)
 
@@ -181,9 +184,11 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
           PartState(PART_DIAM,iPart) = Species(PartSpecies(iPart))%DiameterIC
         END DO
       END IF
+      ! Particle index
+      IF (doPartIndex) PartIndex(1:locnPart) = INT(PartData(PP_nVarPart_loc+2,offsetnPart+1:offsetnPart+locnPart))
       ! Reflections were tracked previously and are therefore still enabled
       IF (PartDataSize.EQ.PP_nVarPart_loc+2) THEN
-          PartReflCount(1:locnPart) = INT(PartData(PP_nVarPart_loc+2,offsetnPart+1:offsetnPart+locnPart))
+          PartReflCount(1:locnPart) = INT(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
       END IF
 
       ! Fill the particle-to-element-mapping (PEM) with the information from HDF5

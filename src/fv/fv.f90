@@ -113,30 +113,33 @@ SUBROUTINE InitFV()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Analyze_Vars        ,ONLY: wGPVol
+USE MOD_Basis               ,ONLY: InitializeVandermonde
+USE MOD_DG_Vars             ,ONLY: U
+USE MOD_Filter_Vars         ,ONLY: NFilter
 USE MOD_FV_Vars
 USE MOD_FV_Basis
-USE MOD_Basis               ,ONLY: InitializeVandermonde
 USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
-USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
+USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType,IndValue,IndStartTime
+USE MOD_Interpolation_Vars  ,ONLY: wGP
+USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
+USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Mesh_Vars           ,ONLY: nElems,nSides
+USE MOD_ReadInTools
+USE MOD_TimeDisc_Vars       ,ONLY: t
 #if FV_RECONSTRUCT
 USE MOD_FV_Limiter
 #endif
-USE MOD_ReadInTools
-USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
-USE MOD_Overintegration_Vars,ONLY: NUnder
-USE MOD_Filter_Vars         ,ONLY: NFilter
-USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
-USE MOD_DG_Vars             ,ONLY: U
-USE MOD_Interpolation_Vars  ,ONLY: wGP
-USE MOD_Analyze_Vars        ,ONLY: wGPVol
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: i,j,k
+INTEGER                     :: i,j
+#if PP_dim == 3
+INTEGER                     :: k
+#endif
 !==================================================================================================================================
 IF(.NOT.FVInitBasisIsDone)THEN
    CALL CollectiveStop(__STAMP__,&
@@ -265,12 +268,12 @@ DO j=0,PP_N; DO i=0,PP_N
 END DO; END DO
 #endif
 
-! initial call of indicator
-IF(doCalcIndicator) CALL CalcIndicator(U,MERGE(RestartTime,0.,doRestart))
+! initial call of FV_Switch. This is performed without the gradients in hope to prevent initial crashes
+! if time is before IndStartTime return high Indicator value (FV)
+IF (t.LT.IndStartTime) IndValue = 1.E16
 FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
 CALL FV_Switch(U,AllowToDG=.FALSE.)
-IF(.NOT.DoRestart) CALL FV_FillIni()
 
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
@@ -492,7 +495,7 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-IF (iter.EQ.1_8) totalFV_nElems = totalFV_nElems + SUM(FV_Elems) ! counter for output of FV amount during analyze
+IF (iter.EQ.1_8) totalFV_nElems = SUM(FV_Elems) ! counter for output of FV amount during analyze
 #if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
@@ -518,6 +521,7 @@ USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_IniSharp,FV_IniSupersample
 USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
 USE MOD_Basis             ,ONLY: InitializeVandermonde
+USE MOD_Indicator         ,ONLY: INDTYPE_DUCROS
 USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
 USE MOD_ChangeBasis       ,ONLY: ChangeBasis2D_XYZ, ChangeBasis3D_XYZ
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
@@ -537,10 +541,10 @@ REAL,ALLOCATABLE       :: xx(:,:,:,:)
 REAL                   :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                   :: Elem_xFV(1:3,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
-! initial call of indicator
-!FV_Elems = 0
+! initial switch
+FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
-!CALL FV_Switch(U,AllowToDG=.FALSE.)
+CALL FV_Switch(U,AllowToDG=.FALSE.)
 
 IF (.NOT.FV_IniSharp) THEN
   ! Super sample initial solution of all FV elements. Necessary if already initial DG solution contains oscillations, which

@@ -41,13 +41,17 @@ INTERFACE CROSSNORM
   MODULE PROCEDURE CROSSNORM
 END INTERFACE CROSSNORM
 
-INTERFACE AlmostZero
-  MODULE PROCEDURE AlmostZero
-END INTERFACE AlmostZero
+INTERFACE ALMOSTZERO
+  MODULE PROCEDURE ALMOSTZERO
+END INTERFACE ALMOSTZERO
 
-INTERFACE AlmostEqual
-  MODULE PROCEDURE AlmostEqual
-END INTERFACE AlmostEqual
+INTERFACE ALMOSTEQUAL
+  MODULE PROCEDURE ALMOSTEQUAL
+END INTERFACE ALMOSTEQUAL
+
+INTERFACE LESSEQUALTOLERANCE
+  MODULE PROCEDURE LESSEQUALTOLERANCE
+END INTERFACE
 
 INTERFACE DOTPRODUCT
   MODULE PROCEDURE DOTPRODUCT
@@ -84,8 +88,9 @@ END INTERFACE
 PUBLIC :: PI
 PUBLIC :: CROSSNORM
 PUBLIC :: VECNORM
-PUBLIC :: AlmostZero
-PUBLIC :: AlmostEqual
+PUBLIC :: ALMOSTZERO
+PUBLIC :: ALMOSTEQUAL
+PUBLIC :: LESSEQUALTOLERANCE
 PUBLIC :: DOTPRODUCT
 PUBLIC :: UnitVector
 PUBLIC :: OrthoNormVec
@@ -144,7 +149,7 @@ VECNORM = SQRT(v1(1)*v1(1)+v1(2)*v1(2)+v1(3)*v1(3))
 END FUNCTION VECNORM
 
 
-PURE FUNCTION AlmostZero(Num)
+PURE FUNCTION ALMOSTZERO(num)
 !===================================================================================================================================
 ! Performe an almost zero check. But ...
 ! Bruce Dawson quote:
@@ -175,10 +180,10 @@ LOGICAL         :: AlmostZero
 AlmostZero=.FALSE.
 IF(ABS(Num).LE.EpsMach) AlmostZero=.TRUE.
 
-END FUNCTION AlmostZero
+END FUNCTION ALMOSTZERO
 
 
-PURE FUNCTION AlmostEqual(Num1,Num2)
+PURE FUNCTION ALMOSTEQUAL(num1,num2)
 !===================================================================================================================================
 ! Bruce Dawson quote:
 ! "There is no silver bullet. You have to choose wisely."
@@ -209,7 +214,31 @@ IF(ABS(Num1-Num2).LE.MAX(ABS(Num1),ABS(Num2))*TwoEpsMach*1.01)THEN
 ELSE
  ALMOSTEQUAL=.FALSE.
 END IF
-END FUNCTION AlmostEqual
+END FUNCTION ALMOSTEQUAL
+
+
+!===================================================================================================================================
+!> Check if a <= b or a is almost equal to b via ALMOSTEQUALRELATIVE
+!> Catch tolerance issues when b is only an epsilon smaller than a but the inquiry should be that they are equal
+!===================================================================================================================================
+PPURE LOGICAL FUNCTION LESSEQUALTOLERANCE(a,b,tol)
+! MODULES
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN) :: a,b !< Two real numbers for comparison
+REAL,INTENT(IN) :: tol !< fix for tolerance issues
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+IF((a.LE.b).OR.(ALMOSTEQUALRELATIVE(a,b,tol)))THEN
+  LESSEQUALTOLERANCE = .TRUE.
+ELSE
+  LESSEQUALTOLERANCE = .FALSE.
+END IF
+END FUNCTION LESSEQUALTOLERANCE
 
 
 PURE FUNCTION DOTPRODUCT(v1)

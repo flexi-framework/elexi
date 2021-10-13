@@ -74,7 +74,7 @@ SUBROUTINE Particle_InitTimeDisc()
 USE MOD_Globals
 USE MOD_ReadInTools               ,ONLY:GETLOGICAL,GETSTR,GETREAL
 USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,TimeDiscType,nRKStages,RKb,dt
-USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimestep,ManualTimestep,b_dt
+USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimeStep,ManualTimeStep,b_dt
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -86,7 +86,7 @@ IMPLICIT NONE
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2','LSERKK3')
     ALLOCATE(b_dt(1:nRKStages))
-    ! Premultiply with dt, ensure b_dt is correct for the first particle time increment
+    ! Premultiply with dt, set b_dt for the first particle time increment. Correct dt was calculated in BuildBGMAndIdentifyHaloRegion
     b_dt = RKb*dt
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,'Particle tracking only supported with DG TimeDiscType=LSERKW')

@@ -131,11 +131,10 @@ CHARACTER(LEN=8)               :: StrDate
 CHARACTER(LEN=10)              :: StrTime
 CHARACTER(LEN=255)             :: LogFile
 !==================================================================================================================================
-IF ((.NOT.InterpolationInitIsDone).OR.OutputInitIsDone) THEN
-  CALL CollectiveStop(__STAMP__,&
-    'InitOutput not ready to be called or already called.')
-END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+IF ((.NOT.InterpolationInitIsDone).OR.OutputInitIsDone) &
+  CALL CollectiveStop(__STAMP__,'InitOutput not ready to be called or already called.')
+
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT OUTPUT...'
 
 NVisu=GETINT('NVisu',INTTOSTR(PP_N))
@@ -197,79 +196,73 @@ END IF  ! Logging
 
 OutputInitIsDone =.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitOutput
 
 
 !==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================
-SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doPrintETA_opt)
-!----------------------------------------------------------------------------------------------------------------------------------!
-! description
-!----------------------------------------------------------------------------------------------------------------------------------!
+SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doETA)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Output_Vars , ONLY: doPrintStatusLine
 #if FV_ENABLED
+USE MOD_Analyze_Vars  ,ONLY: totalFV_nElems
+USE MOD_FV_Vars       ,ONLY: FV_Elems
 USE MOD_Mesh_Vars   , ONLY: nGlobalElems
-USE MOD_FV_Vars     , ONLY: FV_Elems
-USE MOD_Analyze_Vars, ONLY: totalFV_nElems
 #endif
 #if USE_PARTICLES
 USE MOD_Particle_Vars, ONLY: PDM
 #endif
-!----------------------------------------------------------------------------------------------------------------------------------!
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: t      !< current simulation time
 REAL,INTENT(IN) :: dt     !< current time step
 REAL,INTENT(IN) :: tStart !< start time of simulation
 REAL,INTENT(IN) :: tEnd   !< end time of simulation
-LOGICAL,INTENT(IN),OPTIONAL :: doPrintETA_opt !< flag to print current ETA
+LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage return
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+LOGICAL           :: doETA_loc
+REAL              :: percent,time_remaining,mins,secs,hours,days
+CHARACTER(3)      :: tmpString
 #if FV_ENABLED
-INTEGER :: FVcounter
-REAL    :: FV_percent
-#endif
-REAL    :: percent,time_remaining,mins,secs,hours,days
+INTEGER           :: FVcounter
+REAL              :: FV_percent
+INTEGER,PARAMETER :: barWidth = 38
+#else
+INTEGER,PARAMETER :: barWidth = 50
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
-INTEGER :: nParticleOnProc,iPart
-INTEGER :: nParticleInDomain
-#endif
+INTEGER           :: nParticleOnProc,nParticleInDomain,iPart
+#endif /*USE_PARTICLES*/
 !==================================================================================================================================
 #if FV_ENABLED
 FVcounter = SUM(FV_Elems)
 totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount during analyze
 #endif
 
-IF (.NOT.PRESENT(doPrintETA_opt)) THEN
-  IF(.NOT.doPrintStatusLine) RETURN
+IF (PRESENT(doETA)) THEN
+  doETA_loc = doETA
+ELSE
+  doETA_loc = .FALSE.
 END IF
 
+IF(.NOT.doPrintStatusLine .AND. .NOT.doETA_loc) RETURN
+
 #if FV_ENABLED && USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+IF (MPIRoot) THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(FVcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
 #endif
 
-#if USE_PARTICLES
-! Count number of particles on local proc
-nParticleOnProc = 0
-DO iPart=1,PDM%ParticleVecLength
-  IF (PDM%ParticleInside(iPart)) nParticleOnProc = nParticleOnProc + 1
-END DO
-#if USE_MPI
-! Gather number of particles on all procs
-CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-#else
-nParticleInDomain = nParticleOnProc
-#endif
-#endif
-
-IF(MPIroot)THEN
+IF(MPIRoot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
 #endif
@@ -287,43 +280,98 @@ IF(MPIroot)THEN
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV '
 #endif
-  IF (PRESENT(doPrintETA_opt)) THEN
-    IF (mins.LT.1 .AND. hours.EQ.0 .AND. days.EQ.0) THEN
-      WRITE(UNIT_stdOut,'(A,A4,A,A1,A,A3,F6.2,A3)',ADVANCE='YES')                                                                 &
-      ' ETA [d:h:m]:   <1 min remaining','|',                                                                                     &
-          REPEAT('=',MAX(CEILING(percent/1.754385964912281)-1,0)),'>',REPEAT(' ',56-MAX(CEILING(percent/1.754385964912281)-1,0)), &
-          '| [',percent,'%] '
-    ELSE
-      WRITE(UNIT_stdOut,'(A,I4,A1,I0.2,A1,I0.2,A6,A,A1,A,A3,F6.2,A3)',ADVANCE='YES')                                              &
-      ' ETA [d:h:m]:       ',INT(days),':',INT(hours),':',INT(mins),' |',                                                         &
-          REPEAT('=',MAX(CEILING(percent/1.754385964912281)-1,0)),'>',REPEAT(' ',56-MAX(CEILING(percent/1.754385964912281)-1,0)), &
-          '| [',percent,'%] '
-    END IF
-  ELSE
-! Attention: Number of particles might be already updated for iStage = 1, so one emission step was already performed. The solution
-! is still correct
-#if USE_PARTICLES
-    IF (nParticleInDomain.GT.0) THEN
-      WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I7,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A4,F6.2,A3,A1)',ADVANCE='NO') &
-        '   Time = ', t,'  dt = ', dt, ' ', ' # Part inside = ', nParticleInDomain,                                  &
-        '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                       &
-        REPEAT('=',MAX(CEILING(percent/3.)-1,0)),'>',REPEAT(' ',33-MAX(CEILING(percent/3.)-1,0)),'| [',percent,'%] ',&
-        ACHAR(13) ! ACHAR(13) is carriage return
-    ELSE
-#endif
-      WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO')    &
-        '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
-        REPEAT('=',MAX(CEILING(percent/2.)-1,0)),'>',REPEAT(' ',50-MAX(CEILING(percent/2.)-1,0)),'| [',percent,'%] ',&
-        ACHAR(13) ! ACHAR(13) is carriage return
-#if USE_PARTICLES
-    END IF
-#endif
-  END IF
-#ifdef INTEL
-  CLOSE(UNIT_stdOut)
-#endif
+  tmpString = MERGE('YES','NO ',PRESENT(doETA))
 END IF
+
+#if USE_PARTICLES
+! Count number of particles on local proc
+nParticleOnProc = 0
+DO iPart=1,PDM%ParticleVecLength
+  IF (PDM%ParticleInside(iPart)) nParticleOnProc = nParticleOnProc + 1
+END DO
+#if USE_MPI
+! Gather number of particles on all procs
+CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+#else
+nParticleInDomain = nParticleOnProc
+#endif /*USE_MPI*/
+#endif /*USE_PARTICLES*/
+
+IF (.NOT.MPIRoot) RETURN
+
+#if USE_PARTICLES
+IF (nParticleInDomain.EQ.0) THEN
+#endif /*USE_PARTICLES*/
+  IF (mins.LT.1 .AND. hours.EQ.0 .AND. days.EQ.0) THEN
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,A3,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
+    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]: <1 min remaining',' |',     &
+    REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.),0)),'| [',percent,'%] ',&
+    ACHAR(13) ! ACHAR(13) is carriage return
+  ELSE
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A7,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
+    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
+    REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.),0)),'| [',percent,'%] ',&
+    ACHAR(13) ! ACHAR(13) is carriage return
+  END IF
+#if USE_PARTICLES
+ELSE
+  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I7,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString) &
+  '   Time = ', t,'  dt = ', dt, ' ', ' # Part inside = ', nParticleInDomain,                                  &
+  '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                       &
+  REPEAT('=',MAX(CEILING(percent*(barWidth-15)/100.)-1,0)),'>',REPEAT(' ',(barWidth-15)-MAX(CEILING(percent*(barWidth-15)/100.),0)),'| [',percent,'%] ',&
+  ACHAR(13) ! ACHAR(13) is carriage return
+END IF
+#endif
+#ifdef INTEL
+CLOSE(UNIT_stdOut)
+#endif
 END SUBROUTINE PrintStatusLine
+
+
+!==================================================================================================================================
+!> Displays the analysis of the simulation
+!==================================================================================================================================
+SUBROUTINE PrintAnalyze(dt)
+! MODULES                                                                                                                          !
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
+USE MOD_Mesh_Vars           ,ONLY: nGlobalElems
+USE MOD_TimeDisc_Vars       ,ONLY: CalcTimeStart,CalcTimeEnd,TimeDiscType,ViscousTimeStep
+USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,nRKStages
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(IN) :: dt     !< current time step
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: TimeArray(8)              !< Array for system time
+!==================================================================================================================================
+
+! Get calculation time per DOF
+CalcTimeEnd = FLEXITIME()
+CalcTimeEnd = (CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_analyze))/nRKStages
+! Get system time
+CALL DATE_AND_TIME(values=TimeArray)
+
+IF (.NOT.MPIRoot) RETURN
+
+WRITE(UNIT_stdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
+  ' Sys date   :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
+WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF: [',CalcTimeEnd,' sec ]'
+WRITE(UNIT_stdOut,'(A,ES16.7)')  ' Timestep   : ',dt
+IF(ViscousTimeStep) WRITE(UNIT_stdOut,'(A)')' Viscous timestep dominates! '
+WRITE(UNIT_stdOut,'(A,ES16.7)')  '#Timesteps  : ',REAL(iter)
+IF(TimeDiscType.EQ.'ESDIRK') THEN
+  WRITE(UNIT_stdOut,'(A,ES16.7)')'#GMRES iter : ',REAL(nGMRESIterGlobal)
+  WRITE(UNIT_stdOut,'(A,ES16.7)')'#Newton iter: ',REAL(nNewtonIterGlobal)
+  nGMRESIterGlobal  = 0
+  nNewtonIterGlobal = 0
+END IF
+
+END SUBROUTINE PrintAnalyze
 
 
 !==================================================================================================================================

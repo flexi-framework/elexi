@@ -37,7 +37,7 @@ END INTERFACE
 ABSTRACT INTERFACE
   SUBROUTINE ParticleTimeStepPointer(t,dt)
     REAL,INTENT(IN)          :: t
-    REAL,INTENT(IN),OPTIONAL :: dt
+    REAL,INTENT(IN)          :: dt
   END SUBROUTINE
 END INTERFACE
 
@@ -73,8 +73,8 @@ SUBROUTINE Particle_InitTimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools               ,ONLY:GETLOGICAL,GETSTR,GETREAL
-USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,TimeDiscType,nRKStages,RKb,dt
-USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimeStep,ManualTimeStep,b_dt
+USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,TimeDiscType
+USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimeStep,ManualTimeStep
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -85,9 +85,7 @@ IMPLICIT NONE
 
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2','LSERKK3')
-    ALLOCATE(b_dt(1:nRKStages))
-    ! Premultiply with dt, set b_dt for the first particle time increment. Correct dt was calculated in BuildBGMAndIdentifyHaloRegion
-    b_dt = RKb*dt
+    ! Do nothing
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,'Particle tracking only supported with DG TimeDiscType=LSERKW')
 END SELECT
@@ -246,7 +244,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
-REAL,INTENT(IN),OPTIONAL      :: dt
+REAL,INTENT(IN)               :: dt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iPart
@@ -331,9 +329,9 @@ USE MOD_PreProc
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
-USE MOD_Particle_TimeDisc_Vars,  ONLY: b_dt
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,PartSpecies,Species
+USE MOD_TimeDisc_Vars,           ONLY: b_dt
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles
 #endif /*MPI*/
@@ -345,7 +343,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
-REAL,INTENT(IN),OPTIONAL      :: dt
+REAL,INTENT(IN)               :: dt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iPart
@@ -423,10 +421,10 @@ USE MOD_Vector
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
-USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt,b_dt
+USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,PartSpecies,Species
-USE MOD_TimeDisc_Vars,           ONLY: RKA
+USE MOD_TimeDisc_Vars,           ONLY: RKA,b_dt
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles
 #endif /*MPI*/
@@ -542,8 +540,7 @@ SUBROUTINE TimeStepSteadyState(t)
 ! MODULES
 USE MOD_Globals               ,ONLY: CollectiveStop
 USE MOD_PreProc
-USE MOD_TimeDisc_Vars         ,ONLY: dt,RKb,RKc,nRKStages,CurrentStage
-USE MOD_Particle_Timedisc_Vars,ONLY: b_dt
+USE MOD_TimeDisc_Vars         ,ONLY: dt,b_dt,RKb,RKc,nRKStages,CurrentStage
 USE MOD_Particle_Vars         ,ONLY: DelayTime
 USE MOD_Part_Tools            ,ONLY: UpdateNextFreePosition
 #if USE_LOADBALANCE
@@ -637,14 +634,12 @@ END SUBROUTINE TimeStepSteadyState
 !===================================================================================================================================
 SUBROUTINE Particle_FinalizeTimeDisk
 ! MODULES
-USE MOD_Particle_TimeDisc_Vars    ,ONLY:b_dt
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-DEALLOCATE(b_dt)
 
 END SUBROUTINE Particle_FinalizeTimeDisk
 

@@ -667,8 +667,8 @@ SELECT CASE(WallCoeffModel)
     xin(1:3) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
       LOGNORM(v_magnitude,PartBoundANN%max_in(2)), LOGNORM(PartState(PART_DIAM,PartID),PartBoundANN%max_in(3))/)
     ! Check if kinetic energy of rebounding particle is lower
-    ekin_2 = v_magnitude + 1
-    DO WHILE ((ekin_2  > v_magnitude) .OR. (k .LT.5))
+    PartBoundANN%output(2) = v_magnitude + 1
+    DO WHILE (PartBoundANN%output(2) > v_magnitude)
       CALL RANDOM_NUMBER(randnum(1:2))
       xin(4) = randnum(1)
       xin(5) = randnum(2)
@@ -676,6 +676,7 @@ SELECT CASE(WallCoeffModel)
       CALL CallANN(5,2,xin)
 
       k = k + 1
+      IF (k.GT.5) EXIT
     END DO
     ! Calculate coefficents of restitution
     eps_n  = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))

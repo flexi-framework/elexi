@@ -665,9 +665,9 @@ SELECT CASE(WallCoeffModel)
     v_magnitude = NORM2(PartState(PART_VELV,PartID))
     ! Input with normalization
     xin(1:3) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
-      LOGNORM(v_magnitude,PartBoundANN%max_in(2)), LOGNORM(PartState(PART_DIAM,PartID),PartBoundANN%max_in(3))/)
+      LOGNORM(v_magnitude,PartBoundANN%max_in(2)), LOGNORM(PartState(PART_DIAM,PartID)*1e6,PartBoundANN%max_in(3))/)
     ! Check if kinetic energy of rebounding particle is lower
-    PartBoundANN%output(2) = v_magnitude + 1
+    PartBoundANN%output(2) = REAL(v_magnitude + 1,4)
     DO WHILE (PartBoundANN%output(2) > v_magnitude)
       CALL RANDOM_NUMBER(randnum(1:2))
       xin(4) = randnum(1)
@@ -693,7 +693,7 @@ SELECT CASE(WallCoeffModel)
     ! Input with normalization
     xin(1:3) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
       LOGNORM(v_magnitude,PartBoundANN%max_in(2)),&
-      LOGNORM(PartState(PART_DIAM,PartID),PartBoundANN%max_in(3))/)
+      LOGNORM(PartState(PART_DIAM,PartID)*1e6,PartBoundANN%max_in(3))/)
     ! Check if kinetic energy of rebounding particle is lower
     ekin_1 = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID),PartState(PART_VELV,PartID))
     ekin_2 = ekin_1 + 1
@@ -1079,6 +1079,7 @@ x(1:nin) = xin
 DO iLayer=1,PartBoundANN%nLayer
   PartBoundANN%output(:) = &
     SILU((MATMUL(x,PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)),PartBoundANN%beta(:,iLayer))
+  x = PartBoundANN%output(:)
 END DO
 ! Output layer
 iLayer = PartBoundANN%nLayer+1

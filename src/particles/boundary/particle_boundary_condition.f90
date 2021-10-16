@@ -662,7 +662,7 @@ SELECT CASE(WallCoeffModel)
   ! Rebound 2D ANN valid for v_{air} \in [150,350] [m/s]
   !=================================================================================================================================
   CASE('RebANN')
-    v_magnitude = NORM2(PartState(PART_VELV,PartID))
+    v_magnitude = SQRT(PartState(PART_VEL1,PartID)**2+PartState(PART_VEL3,PartID)**2)
     ! Input with normalization
     xin(1:3) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
       LOGNORM(v_magnitude,PartBoundANN%max_in(2)), LOGNORM(PartState(PART_DIAM,PartID)*1e6,PartBoundANN%max_in(3))/)
@@ -671,25 +671,23 @@ SELECT CASE(WallCoeffModel)
     DO WHILE (PartBoundANN%output(2) > v_magnitude)
       CALL RANDOM_NUMBER(randnum(1:2))
       xin(4) = randnum(1)
-      xin(5) = randnum(2)
+      xin(5) = REAL(0.9*randnum(2)+0.1,4)
 
       CALL CallANN(5,2,xin)
 
       k = k + 1
-      IF (k.GT.5) EXIT
+      IF (k.GT.3) EXIT
     END DO
     ! Calculate coefficents of restitution
-    eps_n  = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
-    eps_t1 = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang1(1:3))
-    ! Random Gaussian with std 0.2
-    ! eps_t2 = eps_t2 + PartBoundANN%output(2) * TAN(MIN(0.3,MAX(-0.3,RandNormal(mean_opt=0.0,deviation_opt=0.2)))) / NORM2(v_tang2(1:3))
-    ! IPWRITE (*, *) 'eps_n, eps_t1, eps_t2:', eps_n, eps_t1, eps_t2
+    v_magnitude = PartBoundANN%output(2)
+    eps_n  = v_magnitude * SIN(PartBoundANN%output(1)) / DOT_PRODUCT(PartState(PART_VELV,PartID),n_loc)
+    eps_t1 = v_magnitude * COS(PartBoundANN%output(1)) / DOT_PRODUCT(PartState(PART_VELV,PartID),tang1)
 
   !=================================================================================================================================
   ! Fracture 2D ANN valid for v_{air} \in [150,350] [m/s]
   !=================================================================================================================================
   CASE('FracANN')
-    v_magnitude = NORM2(PartState(PART_VELV,PartID))
+    v_magnitude = SQRT(PartState(PART_VEL1,PartID)**2+PartState(PART_VEL3,PartID)**2)
     ! Input with normalization
     xin(1:3) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
       LOGNORM(v_magnitude,PartBoundANN%max_in(2)),&
@@ -699,7 +697,7 @@ SELECT CASE(WallCoeffModel)
     ekin_2 = ekin_1 + 1
     DO WHILE (ekin_2 > ekin_1)
       CALL RANDOM_NUMBER(randnum(1:5))
-      xin(4:8) = (/randnum(1), randnum(2), randnum(3), randnum(4), randnum(5)/)
+      xin(4:8) = (/randnum(1), REAL(0.9*randnum(2)+0.1,4), randnum(3), randnum(4), REAL(0.9*randnum(5)+0.1,4)/)
 
       CALL CallANN(8,5,xin)
 

@@ -76,7 +76,7 @@ CALL prms%CreateRealOption(  'TEnd',           "End time of the simulation (mand
 CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0 (mandatory)")
 CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory)")
 CALL prms%CreateIntOption(   'maxIter',        "Stop simulation when specified number of timesteps has been performed.", value='-1')
-CALL prms%CreateIntOption(   'NCalcTimeStepMax',"Compute dt at least after every Nth timestep.", value='1')
+CALL prms%CreateIntOption(   'nCalcTimeStepMax',"Compute dt at least after every Nth timestep.", value='1')
 #if USE_PARTICLES
 CALL prms%CreateStringOption('ParticleTimeDiscMethod', "Specifies the type of particle time-discretization to be used."//&
                                                        "Possible values:\n:"//&
@@ -228,7 +228,7 @@ IF (dt.EQ.dt_min(DT_ANALYZE))       doAnalyze  = .TRUE.
 IF (dt.EQ.dt_min(DT_END    )) THEN; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 
-nCalcTimestep = 0
+nCalcTimeStep = 0
 dt_minOld     = -999.
 IF (errType.NE.0) CALL abort(__STAMP__,&
 #if EQNSYSNR == 3
@@ -286,8 +286,8 @@ INTEGER                      :: errType
 !===================================================================================================================================
 
 ! Return if no timestep update requested in this iteration
-IF (nCalcTimestep.GE.1) THEN
-  nCalcTimestep = nCalcTimestep-1
+IF (nCalcTimeStep.GE.1) THEN
+  nCalcTimeStep = nCalcTimeStep-1
   RETURN
 END IF
 
@@ -328,7 +328,7 @@ IF (dt.EQ.dt_min(DT_ANALYZE))       doAnalyze  = .TRUE.
 IF (dt.EQ.dt_min(DT_END    )) THEN; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 
-nCalcTimestep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax) - 1
+nCalcTimeStep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax) - 1
 dt_minOld     = dt
 IF (errType.NE.0) THEN
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
@@ -390,6 +390,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
 USE MOD_FV_Vars             ,ONLY: FV_toDGinRK
 USE MOD_Indicator           ,ONLY: CalcIndicator
+USE MOD_TimeDisc_Vars       ,ONLY: nCalcTimeStep
 #endif
 #if USE_PARTICLES
 USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime
@@ -418,7 +419,7 @@ IMPLICIT NONE
 #if FV_ENABLED
 CALL CalcIndicator(U,t)
 ! NOTE: Apply switch and update FV_Elems
-CALL FV_Switch(U,Ut_tmp,AllowToDG=(nCalcTimestep.LT.1))
+CALL FV_Switch(U,Ut_tmp,AllowToDG=(nCalcTimeStep.LT.1))
 #endif
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 IF (doAnalyze) THEN

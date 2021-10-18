@@ -277,7 +277,7 @@ CALL FV_Switch(U,AllowToDG=.FALSE.)
 
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitFV
 

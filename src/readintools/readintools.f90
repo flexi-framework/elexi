@@ -331,6 +331,7 @@ SUBROUTINE CreateOption(this, opt, name, description, value, multiple      &
 USE MOD_StringTools ,ONLY: LowCase
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)       :: this             !< CLASS(Parameters)
 CLASS(OPTION),INTENT(INOUT)           :: opt              !< option class
@@ -342,9 +343,12 @@ LOGICAL,INTENT(IN),OPTIONAL           :: multiple         !< marker if multiple 
 LOGICAL,INTENT(IN),OPTIONAL           :: numberedmulti    !< marker if numbered multiple option
 LOGICAL,INTENT(IN),OPTIONAL           :: removed          !< marker if removed option
 #endif /*USE_PARTICLES*/
+!----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link), POINTER :: newLink
+#if USE_PARTICLES
 TYPE(Varying_String) :: aStr
+#endif /*USE_PARTICLES*/
 !==================================================================================================================================
 
 !#if USE_PARTICLES

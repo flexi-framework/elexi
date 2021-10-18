@@ -687,8 +687,8 @@ USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_EOS          ,ONLY: PrimToCons,ConsToPrim
 USE MOD_ExactFunc    ,ONLY: ExactFunc
-USE MOD_ExactFunc_Vars,ONLY: JetRadius
 #if PARABOLIC
+USE MOD_ExactFunc_Vars,ONLY: JetRadius
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Riemann      ,ONLY: ViscousFlux
 #endif

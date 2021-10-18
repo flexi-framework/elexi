@@ -100,11 +100,14 @@ USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Predictor           ,ONLY: InitPredictor
 USE MOD_ReadInTools         ,ONLY: GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY: LowCase,StripSpaces
-USE MOD_TimeDisc_Vars       ,ONLY: b_dt,CFLScale,DFLScale,dtElem,dt,tend
+USE MOD_TimeDisc_Vars       ,ONLY: b_dt,CFLScale,dtElem,dt,tend
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeStep,TimeDiscName,TimeDiscType,TimeDiscInitIsDone,nRKStages
 USE MOD_TimeStep            ,ONLY: TimeStepByLSERKW2,TimeStepByLSERKK3,TimeStepByESDIRK
+#if PARABOLIC
+USE MOD_TimeDisc_Vars       ,ONLY: DFLScale
+#endif /*PARABOLIC*/
 #if USE_PARTICLES
 USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_TimeDisc_Vars       ,ONLY: t
@@ -188,13 +191,12 @@ SUBROUTINE InitTimeStep()
 ! MODULES
 USE MOD_Globals
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_minOld
+USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: ViscousTimeStep,CalcTimeStart,nCalcTimeStep
+USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if USE_PARTICLES
 USE MOD_Particle_Surface_Flux ,ONLY: InitializeParticleSurfaceFlux
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep,ManualTimeStep
-USE MOD_TimeDisc_Vars       ,ONLY: dt_min
-USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -210,12 +212,13 @@ IF (UseManualTimeStep) dt = ManualTimeStep
 
 ! Get time step if needed. For DG time stepping, this is already calculated in BuildBGMAndIdentifyHaloRegion
 IF ((UseManualTimeStep.AND.(dt.EQ.0.))) THEN
-#endif
+#endif /*USE_PARTICLES*/
 dt                 = CALCTIMESTEP(errType)
 #if USE_PARTICLES
 ELSE
 errType = 0
 END IF
+#endif /*USE_PARTICLES*/
 dt_min(DT_MIN)     = dt
 dt_min(DT_ANALYZE) = tAnalyze-t             ! Time to next analysis, put in extra variable so number does not change due to numerical errors
 dt_min(DT_END)     = tEnd    -t             ! Do the same for end time
@@ -224,7 +227,6 @@ dt                 = MINVAL(dt_min)
 IF (dt.EQ.dt_min(DT_ANALYZE))       doAnalyze  = .TRUE.
 IF (dt.EQ.dt_min(DT_END    )) THEN; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
-#endif
 
 nCalcTimestep = 0
 dt_minOld     = -999.
@@ -388,7 +390,6 @@ USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
 USE MOD_FV_Vars             ,ONLY: FV_toDGinRK
 USE MOD_Indicator           ,ONLY: CalcIndicator
-USE MOD_TimeDisc_Vars       ,ONLY: nCalcTimeStep
 #endif
 #if USE_PARTICLES
 USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime

@@ -124,8 +124,8 @@ IF (ParticleAnalyzeInitIsDone) THEN
   RETURN
 END IF
 
-!SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A)') ' INIT PARTICLE ANALYZE...'
+!SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE ANALYZE...'
 
 doParticleAnalyze    = .FALSE.
 nSpecAnalyze = MERGE(nSpecies + 1,1,nSpecies.GT.1)
@@ -176,7 +176,7 @@ END IF
 ParticleAnalyzeInitIsDone = .TRUE.
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE ANALYZE DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleAnalyze
 
@@ -315,9 +315,9 @@ ImpactnGlob    = PartStateBoundaryVecLength
 #endif
 
 ! Output particle and impact information
-SWRITE(UNIT_StdOut,'(A14,I16)')' # Particle : ', nParticleInDomain
+SWRITE(UNIT_stdOut,'(A14,I16)')' # Particle : ', nParticleInDomain
 IF (doParticleImpactTrack) THEN
-SWRITE(UNIT_StdOut,'(A14,I16)')' # Impacts  : ', ImpactnGlob
+SWRITE(UNIT_stdOut,'(A14,I16)')' # Impacts  : ', ImpactnGlob
 END IF
 
 END SUBROUTINE ParticleInformation

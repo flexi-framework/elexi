@@ -44,7 +44,7 @@ SUBROUTINE CalcSurfaceValues(restart_opt,remap_opt)
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Restart_Vars               ,ONLY: DoRestart,RestartTime
-USE MOD_Analyze_Vars               ,ONLY: Analyze_dt
+USE MOD_Analyze_Vars               ,ONLY: analyze_dt
 USE MOD_Mesh_Vars                  ,ONLY: MeshFile
 USE MOD_Timedisc_Vars              ,ONLY: t
 USE MOD_Restart_Vars               ,ONLY: RestartTime
@@ -89,7 +89,7 @@ END IF
 ! Update values if we are called from a restart
 IF (PRESENT(restart_opt)) THEN
   IF (restart_opt) THEN
-    TimeSample = Analyze_dt
+    TimeSample = analyze_dt
     t          = MERGE(RestartTime,0.,DoRestart)
     ActualTime = t
   END IF
@@ -357,7 +357,7 @@ END IF
 PartStateBoundaryVecLength = 0
 PartStateBoundary          = 0.
 
-IF (MPIROOT) THEN
+IF (MPIRoot) THEN
 !  CALL MarkWriteSuccessfull(FileString)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s]'

@@ -64,7 +64,7 @@ IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.SigmaModelInitI
   CALL CollectiveStop(__STAMP__,&
     "InitSigmaModel not ready to be called or already called.")
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT SigmaModel...'
 
 ! Read the variables used for LES model
@@ -89,7 +89,7 @@ END DO
 
 SigmaModelInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT SigmaModel DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitSigmaModel
 
 !===================================================================================================================================

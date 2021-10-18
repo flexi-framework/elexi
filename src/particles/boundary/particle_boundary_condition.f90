@@ -67,7 +67,7 @@ USE MOD_Particle_Vars              ,ONLY: PartState,PartReflCount
 USE MOD_Part_Operations            ,ONLY: RemoveParticle
 !USE MOD_Mesh_Vars                  ,ONLY: BC
 #if CODE_ANALYZE
-USE MOD_Globals                    ,ONLY: myRank,UNIT_stdout
+USE MOD_Globals                    ,ONLY: myRank,UNIT_stdOut
 USE MOD_Mesh_Vars                  ,ONLY: NGeo
 USE MOD_Particle_Mesh_Tools        ,ONLY: GetCNElemID
 USE MOD_Particle_Surfaces_Vars     ,ONLY: BezierControlPoints3D
@@ -122,8 +122,8 @@ CASE(REFMAPPING,TRACING)
   v2 = v1  - ElemBaryNGeo(:,GetCNElemID(ElemID))
 
   IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
-    IPWRITE(UNIT_stdout,*) 'Obtained wrong side orientation from flip. flip:',flip,'PartID:',iPart
-    IPWRITE(UNIT_stdout,*) 'n_loc (flip)', n_loc,'n_loc (estimated):',v2
+    IPWRITE(UNIT_stdOut,*) 'Obtained wrong side orientation from flip. flip:',flip,'PartID:',iPart
+    IPWRITE(UNIT_stdOut,*) 'n_loc (flip)', n_loc,'n_loc (estimated):',v2
     CALL ABORT(__STAMP__,'SideID',SideID)
   END IF
 #endif /* CODE_ANALYZE */
@@ -756,14 +756,14 @@ END IF
 ! set particle position on face
 !--> first move the particle to the boundary
 #if CODE_ANALYZE
-WRITE(UNIT_stdout,'(110("-"))')
-WRITE(UNIT_stdout,'(A,I1)')                       '     | Diffusive reflection on BC: ',SideInfo_Shared(SIDE_BCID,SideID)
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | LastPartPos:                ',LastPartPos(1,PartID),LastPartPos(2,PartID),LastPartPos(3,PartID)
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory:             ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity:                   ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | alpha,lengthPartTrajectory: ',alpha,lengthPartTrajectory
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Intersection:               ',LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16)')          '     | CoR (normal/tangential):    ',eps_n,eps_t1,eps_t2
+WRITE(UNIT_stdOut,'(110("-"))')
+WRITE(UNIT_stdOut,'(A,I1)')                       '     | Diffusive reflection on BC: ',SideInfo_Shared(SIDE_BCID,SideID)
+WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16,x,E27.16)') '     | LastPartPos:                ',LastPartPos(1,PartID),LastPartPos(2,PartID),LastPartPos(3,PartID)
+WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory:             ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
+WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity:                   ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
+WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16)')          '     | alpha,lengthPartTrajectory: ',alpha,lengthPartTrajectory
+WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16,x,E27.16)') '     | Intersection:               ',LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha
+WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16)')          '     | CoR (normal/tangential):    ',eps_n,eps_t1,eps_t2
 #endif
 
 !--> flip trajectory and move the remainder of the particle push
@@ -805,10 +805,10 @@ PartState(PART_AMOMV,PartID) = (dp_old/PartState(PART_DIAM,PartID))**5*rot_old -
 #endif
 
 #if CODE_ANALYZE
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory (CoR)        ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | alpha (CoR):                ',interSecRemain
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | NewPartPos:                 ',PartState(1,PartID),PartState(2,PartID),PartState(3,PartID)
-WRITE(UNIT_stdout,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity (CoR):             ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
+WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16,x,E27.16)') '     | PartTrajectory (CoR)        ',PartTrajectory(1),PartTrajectory(2),PartTrajectory(3)
+WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16,x,E27.16)') '     | alpha (CoR):                ',interSecRemain
+WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16,x,E27.16)') '     | NewPartPos:                 ',PartState(1,PartID),PartState(2,PartID),PartState(3,PartID)
+WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16,x,E27.16)') '     | Velocity (CoR):             ',PartState(4,PartID),PartState(5,PartID),PartState(6,PartID)
 #endif
 
 IF (doParticleImpactTrack) THEN
@@ -891,10 +891,10 @@ PVID = BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)
 #if CODE_ANALYZE
 IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
   IF(PartID.EQ.PARTOUT)THEN
-    IPWRITE(UNIT_stdout,'(I0,A,I0)')      ' PeriodicBC:      ', SideInfo_Shared(SIDE_BCID,SideID)
-    IPWRITE(UNIT_stdout,'(I0,A,I0)')      ' PartID:          ', PartID
-    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' ParticlePosition: ',PartState(1:3,PartID)
-    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' LastPartPos:      ',LastPartPos(1:3,PartID)
+    IPWRITE(UNIT_stdOut,'(I0,A,I0)')      ' PeriodicBC:      ', SideInfo_Shared(SIDE_BCID,SideID)
+    IPWRITE(UNIT_stdOut,'(I0,A,I0)')      ' PartID:          ', PartID
+    IPWRITE(UNIT_stdOut,'(I0,A,3(X,G0))') ' ParticlePosition: ',PartState(1:3,PartID)
+    IPWRITE(UNIT_stdOut,'(I0,A,3(X,G0))') ' LastPartPos:      ',LastPartPos(1:3,PartID)
   END IF
 END IF
 #endif /*CODE_ANALYZE*/
@@ -910,8 +910,8 @@ lengthPartTrajectory    = lengthPartTrajectory - alpha
 #if CODE_ANALYZE
 IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
   IF(PartID.EQ.PARTOUT)THEN
-    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' ParticlePosition-pp: ',PartState(1:3,PartID)
-    IPWRITE(UNIT_stdout,'(I0,A,3(X,G0))') ' LastPartPo-pp:       ',LastPartPos(1:3,PartID)
+    IPWRITE(UNIT_stdOut,'(I0,A,3(X,G0))') ' ParticlePosition-pp: ',PartState(1:3,PartID)
+    IPWRITE(UNIT_stdOut,'(I0,A,3(X,G0))') ' LastPartPo-pp:       ',LastPartPos(1:3,PartID)
   END IF
 END IF
 #endif /*CODE_ANALYZE*/

@@ -102,7 +102,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE Riemann2D...'
 
 CALL CalcIniStates()
@@ -135,7 +135,7 @@ IF (MPIRoot) THEN
 ENDIF
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE Riemann2D DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
 FUNCTION GetPHI(rhoL, rhoR, pL, pR)

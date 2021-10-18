@@ -122,7 +122,7 @@ CHARACTER(LEN=2)                :: dummy
 !===================================================================================================================================
 
 IF(ParticleSurfaceInitIsDone) RETURN
-!SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACES...'
 
 BezierNewtonAngle          = GETREAL('BezierNewtonAngle'         ,'1.570796326')  ! 1°=0.01754 (in rad)
@@ -181,7 +181,7 @@ ALLOCATE( locAlpha(1:BezierClipMaxIntersec) &
 ParticleSurfaceInitIsDone = .TRUE.
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACES DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleSurfaces
 
@@ -1219,18 +1219,18 @@ __STAMP__&
 END IF
 
 DO K=1,3
-  WRITE(UNIT_stdout,'(A,I1,A)',ADVANCE='NO')' P(:,:,',K,') = [ '
+  WRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')' P(:,:,',K,') = [ '
   DO I=0,NGeo ! output for MATLAB
     DO J=0,NGeo
-      WRITE(UNIT_stdout,'(E24.12)',ADVANCE='NO') BezierControlPoints3D(K,J,I)
+      WRITE(UNIT_stdOut,'(E24.12)',ADVANCE='NO') BezierControlPoints3D(K,J,I)
       IF(J.EQ.NGeo)THEN
         IF(I.EQ.NGeo)THEN
-          WRITE(UNIT_stdout,'(A)')' ];'
+          WRITE(UNIT_stdOut,'(A)')' ];'
         ELSE
-          WRITE(UNIT_stdout,'(A)')' ;...'
+          WRITE(UNIT_stdOut,'(A)')' ;...'
         END IF
       ELSE ! comma
-        WRITE(UNIT_stdout,'(A)',ADVANCE='NO')' , '
+        WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' , '
       END IF
     END DO
   END DO

@@ -687,7 +687,7 @@ FUNCTION DF_SchillerAndNaumann(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Vars,     ONLY : RepWarn
-USE MOD_Globals,           ONLY : MPIRoot, UNIT_StdOut
+USE MOD_Globals,           ONLY : MPIRoot, UNIT_stdOut
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -701,7 +701,7 @@ REAL                        :: f
 ! Warn when outside valid range of Naumann model
 IF(Rep.GT.800) THEN
   IF (RepWarn.EQV..FALSE.) THEN
-    SWRITE(UNIT_StdOut,*) 'WARNING: Rep',Rep,'> 800, drag coefficient may not be accurate.'
+    SWRITE(UNIT_stdOut,*) 'WARNING: Rep',Rep,'> 800, drag coefficient may not be accurate.'
     RepWarn=.TRUE.
   ENDIF
 ENDIF

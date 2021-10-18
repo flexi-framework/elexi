@@ -300,7 +300,7 @@ DO i = 1,nSpecies
             CALL RANDOM_NUMBER(RandVal1)
 
             IF (EXP(-PartIns).LE.TINY(PartIns)) THEN
-              IPWRITE(UNIT_StdOut,'(A)') ' WARNING: target is too large for poisson sampling: switching now to random rounding...'
+              IPWRITE(UNIT_stdOut,'(A)') ' WARNING: target is too large for poisson sampling: switching now to random rounding...'
               NbrOfParticle     = INT(PartIns + RandVal1)
               DoPoissonRounding = .FALSE.
             ELSE
@@ -399,15 +399,15 @@ DO i = 1,nSpecies
         ! number of added particles
         Species(i)%Init(iInit)%InsertedParticleMisMatch = Species(i)%Init(iInit)%sumOfRequestedParticles - Species(i)%Init(iInit)%sumOfMatchedParticles
         IF (Species(i)%Init(iInit)%sumOfRequestedParticles .GT. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
-          WRITE(UNIT_StdOut,'(A)')      'WARNING in ParticleEmission_parallel:'
-          WRITE(UNIT_StdOut,'(A,I0)')   'Fraction Nbr: '  , i
-          WRITE(UNIT_StdOut,'(A,I0,A)') 'matched only '   , Species(i)%Init(iInit)%sumOfMatchedParticles  , ' particles'
-          WRITE(UNIT_StdOut,'(A,I0,A)') 'when '           , Species(i)%Init(iInit)%sumOfRequestedParticles, ' particles were required!'
+          WRITE(UNIT_stdOut,'(A)')      'WARNING in ParticleEmission_parallel:'
+          WRITE(UNIT_stdOut,'(A,I0)')   'Fraction Nbr: '  , i
+          WRITE(UNIT_stdOut,'(A,I0,A)') 'matched only '   , Species(i)%Init(iInit)%sumOfMatchedParticles  , ' particles'
+          WRITE(UNIT_stdOut,'(A,I0,A)') 'when '           , Species(i)%Init(iInit)%sumOfRequestedParticles, ' particles were required!'
         ELSE IF (Species(i)%Init(iInit)%sumOfRequestedParticles .LT. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
-          WRITE(UNIT_StdOut,'(A)')      'ERROR in ParticleEmission_parallel:'
-          WRITE(UNIT_StdOut,'(A,I0)')   'Fraction Nbr: '  , i
-          WRITE(UNIT_StdOut,'(A,I0,A)') 'matched '        , Species(i)%Init(iInit)%sumOfMatchedParticles  , ' particles'
-          WRITE(UNIT_StdOut,'(A,I0,A)') 'when '           , Species(i)%Init(iInit)%sumOfRequestedParticles, ' particles were required!'
+          WRITE(UNIT_stdOut,'(A)')      'ERROR in ParticleEmission_parallel:'
+          WRITE(UNIT_stdOut,'(A,I0)')   'Fraction Nbr: '  , i
+          WRITE(UNIT_stdOut,'(A,I0,A)') 'matched '        , Species(i)%Init(iInit)%sumOfMatchedParticles  , ' particles'
+          WRITE(UNIT_stdOut,'(A,I0,A)') 'when '           , Species(i)%Init(iInit)%sumOfRequestedParticles, ' particles were required!'
         ! ELSE IF (NbrOfParticle .EQ. Species(i)%Init(iInit)%sumOfMatchedParticles) THEN
         !  WRITE(UNIT_stdOut,'(A,I0)')   'Fraction Nbr: '  , FractNbr
         !  WRITE(UNIT_stdOut,'(A,I0,A)') 'ParticleEmission_parallel: matched all (',NbrOfParticle,') particles!'

@@ -294,10 +294,10 @@ DO iPart=1,PDM%ParticleVecLength
 #if USE_MPI
           InElem=PEM%Element(iPart)
           IF(InElem.LE.PP_nElems)THEN
-            IPWRITE(UNIT_stdout,'(I0,A)')    ' halo-elem = F'
+            IPWRITE(UNIT_stdOut,'(I0,A)')    ' halo-elem = F'
             IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' ElemID                ', InElem+offSetElem
           ELSE
-            IPWRITE(UNIT_stdout,'(I0,A)')    ' halo-elem = T'
+            IPWRITE(UNIT_stdOut,'(I0,A)')    ' halo-elem = T'
 !            IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' ElemID       ', offSetElemMPI(PartHaloElemToProc(NATIVE_PROC_ID,InElem)) &
 !                                                   + PartHaloElemToProc(NATIVE_ELEM_ID,InElem)
           END IF
@@ -307,10 +307,10 @@ DO iPart=1,PDM%ParticleVecLength
 #if USE_MPI
           InElem=PEM%LastElement(iPart)
           IF(InElem.LE.PP_nElems)THEN
-            IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = F'
+            IPWRITE(UNIT_stdOut,'(I0,A)') ' halo-elem = F'
             IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Last-ElemID         ', InElem+offSetElem
           ELSE
-            IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = T'
+            IPWRITE(UNIT_stdOut,'(I0,A)') ' halo-elem = T'
 !            IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Last-ElemID       ', offSetElemMPI(PartHaloElemToProc(NATIVE_PROC_ID,InElem)) &
 !                                                   + PartHaloElemToProc(NATIVE_ELEM_ID,InElem)
           END IF
@@ -376,18 +376,18 @@ DO iPart=1,PDM%ParticleVecLength
 !#if USE_MPI
 !              inelem=PEM%Element(ipart)
 !              IF(inelem.LE.PP_nElems)THEN
-!                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = F'
-!                IPWRITE(UNIT_stdout,'(I0,A,I0)') ' elemid               ', inelem+offsetelem
+!                IPWRITE(UNIT_stdOut,'(I0,A)') ' halo-elem = F'
+!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' elemid               ', inelem+offsetelem
 !              ELSE
-!                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = T'
+!                IPWRITE(UNIT_stdOut,'(I0,A)') ' halo-elem = T'
 !!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' elemid         ', offsetelemmpi(PartHaloElemToProc(NATIVE_PROC_ID,inelem)) &
 !!                                                                 + PartHaloElemToProc(NATIVE_ELEM_ID,inelem)
 !              END IF
 !              IF(testelem.LE.PP_nElems)THEN
-!                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = F'
-!                IPWRITE(UNIT_stdout,'(I0,A,I0)') ' testelem             ', testelem+offsetelem
+!                IPWRITE(UNIT_stdOut,'(I0,A)') ' halo-elem = F'
+!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' testelem             ', testelem+offsetelem
 !              ELSE
-!                IPWRITE(UNIT_stdout,'(I0,A)') ' halo-elem = T'
+!                IPWRITE(UNIT_stdOut,'(I0,A)') ' halo-elem = T'
 !!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' testelem         ', offsetelemmpi(PartHaloElemToProc(NATIVE_PROC_ID,testelem)) &
 !!                                                               + PartHaloElemToProc(NATIVE_ELEM_ID,testelem)
 !              END IF
@@ -534,8 +534,8 @@ DO WHILE(DoTracing)
 #if CODE_ANALYZE
       IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
         IF(PartID.EQ.PARTOUT)THEN
-          WRITE(UNIT_stdout,'(110("="))')
-          WRITE(UNIT_stdout,'(A)')    '     | Particle is double checked: '
+          WRITE(UNIT_stdOut,'(110("="))')
+          WRITE(UNIT_stdOut,'(A)')    '     | Particle is double checked: '
         END IF
       END IF
 #endif /*CODE_ANALYZE*/
@@ -558,12 +558,12 @@ DO WHILE(DoTracing)
 #if CODE_ANALYZE
       IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
         IF(PartID.EQ.PARTOUT)THEN
-          WRITE(UNIT_stdout,'(30("-"))')
-          WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (DoubleCheck REFMAPPING): '
-          WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
-          WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
-          WRITE(UNIT_stdout,'((A,G0))')      '     | AlphaOld: ',alphaOld
-          WRITE(UNIT_stdout,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
+          WRITE(UNIT_stdOut,'(30("-"))')
+          WRITE(UNIT_stdOut,'(A)')           '     | Output after compute intersection (DoubleCheck REFMAPPING): '
+          WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
+          WRITE(UNIT_stdOut,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
+          WRITE(UNIT_stdOut,'((A,G0))')      '     | AlphaOld: ',alphaOld
+          WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
         END IF
       END IF
 #endif /*CODE_ANALYZE*/
@@ -588,11 +588,11 @@ DO WHILE(DoTracing)
 #if CODE_ANALYZE
       IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
         IF(PartID.EQ.PARTOUT)THEN
-          WRITE(UNIT_stdout,'(30("-"))')
-          WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (REFMAPPING, BCTracing): '
-          WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
-          WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
-          WRITE(UNIT_stdout,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
+          WRITE(UNIT_stdOut,'(30("-"))')
+          WRITE(UNIT_stdOut,'(A)')           '     | Output after compute intersection (REFMAPPING, BCTracing): '
+          WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
+          WRITE(UNIT_stdOut,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
+          WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
         END IF
       END IF
 #endif /*CODE_ANALYZE*/
@@ -633,7 +633,7 @@ DO WHILE(DoTracing)
         IF (ElemID.NE.OldElemID) THEN
           ! Try to recursively calculate the intersection 1000 times. Threshold might be changed...
           IF (iCount.GE.1000 .AND. MOD(iCount,1000).EQ.0) THEN
-            IPWRITE(Unit_stdOut,'(I4,A,I0,A,3(1X,I0))') ' WARNING: proc has called BCTracking ',iCount  &
+            IPWRITE(UNIT_stdOut,'(I4,A,I0,A,3(1X,I0))') ' WARNING: proc has called BCTracking ',iCount  &
               ,'x recursively! Part, Side, Elem:',PartId,SideID,ElemID
           END IF
 
@@ -825,33 +825,33 @@ IF(FastPeriodic)THEN
   ! x direction
   IF(GEO%directions(1)) THEN
     IF(PartState(1,PartID).GT.GEO%xmaxglob) THEN
-      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside x+, PartID',PartID)
     END IF
     IF(PartState(1,PartID).LT.GEO%xminglob) THEN
-      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside x-, PartID',PartID)
     END IF
   END IF
   ! y direction
   IF(GEO%directions(2)) THEN
     IF(PartState(2,PartID).GT.GEO%ymaxglob) THEN
-      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside y+, PartID',PartID)
     END IF
     IF(PartState(2,PartID).LT.GEO%yminglob) THEN
-      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside y-, PartID',PartID)
     END IF
   END IF
   ! z direction
   IF(GEO%directions(3)) THEN
     IF(PartState(3,PartID).GT.GEO%zmaxglob) THEN
-      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside z+, PartID',PartID)
     END IF
     IF(PartState(3,PartID).LT.GEO%zminglob) THEN
-      IPWRITE(Unit_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__ ,' particle outside z-, PartID',PartID)
     END IF
   END IF

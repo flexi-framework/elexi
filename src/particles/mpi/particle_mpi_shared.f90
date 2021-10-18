@@ -110,7 +110,7 @@ INTEGER                         :: i,worldGroup,sharedGroup
 INTEGER                         :: color
 !==================================================================================================================================
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT MPI SHARED COMMUNICATION...'
 
 ! Save the global number of procs
@@ -136,9 +136,9 @@ IF (MOD(nProcessors_Global,nComputeNodeProcessors).NE.0) &
   CALL ABORT(__STAMP__,'MPI shared communication currently only supported with equal procs per node!')
 
 IF (nProcessors_Global/nComputeNodeProcessors.EQ.1) THEN
-  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',1,' node'
+  SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',1,' node'
 ELSE
-  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',         &
+  SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',         &
                                                             nProcessors_Global/nComputeNodeProcessors,' nodes'
 END IF
 
@@ -193,7 +193,7 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 
 MPISharedInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')      ' INIT MPI SHARED COMMUNICATION DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitMPIShared
 

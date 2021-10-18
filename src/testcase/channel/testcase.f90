@@ -126,7 +126,7 @@ REAL                     :: bulkMach,pressure
 CHARACTER(LEN=7)         :: varnames(2)
 REAL                     :: UE(PP_2Var)
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
 
 #if FV_ENABLED
@@ -143,7 +143,7 @@ IF (customChannel) THEN
   uBulk       = GETREAL('Part-ChannelUBulk','0.')
   uTau        = GETREAL('Part-ChannelUtau', '0.')
   Re_tau      = GETREAL('Part-ChannelReTau','0.')
-  SWRITE(Unit_STDOUT,'(A)') ' | Warning: Channel Init based on Moser. Initial state might be inaccurate!'
+  SWRITE(UNIT_stdOut,'(A)') ' | Warning: Channel Init based on Moser. Initial state might be inaccurate!'
   ! Scale initial velocity distribution to new UBulk
   c1          = 2.4390244
   uBulkScale  = uBulk / (mu0 * (c1 * ((1/mu0+c1)*LOG(1/mu0+c1) + 1.3064019*(1/mu0 + 29.627395*EXP(-1./11.*1/mu0) + 0.66762137*(1/mu0+3) &
@@ -175,15 +175,15 @@ IF (customChannel) THEN
   dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho
 
   ! Tell the user the calculated variables to check
-  SWRITE(Unit_STDOUT,'(A,F8.4,A)'       ) ' | Bulk velocity given.          uBulk  =',uBulk,' m/s'
-  SWRITE(Unit_STDOUT,'(A,F8.4,A)'       ) ' | Associated pressure gradient. -dp/dx =', dpdx,' Pa s'
-  SWRITE(Unit_STDOUT,'(A,F6.2,A,F7.1,A)') ' | Associated pressure for Mach=',bulkMach,' is ',(uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa,' Pa'
+  SWRITE(UNIT_stdOut,'(A,F8.4,A)'       ) ' | Bulk velocity given.          uBulk  =',uBulk,' m/s'
+  SWRITE(UNIT_stdOut,'(A,F8.4,A)'       ) ' | Associated pressure gradient. -dp/dx =', dpdx,' Pa s'
+  SWRITE(UNIT_stdOut,'(A,F6.2,A,F7.1,A)') ' | Associated pressure for Mach=',bulkMach,' is ',(uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa,' Pa'
 ELSE
   ! Re_tau^2*rho*nu^2/delta^3
   dpdx = -1.
 
-  SWRITE(Unit_STDOUT,'(A,F6.2)')          ' | Bulk velocity based on initial velocity profile =',uBulk
-  SWRITE(Unit_STDOUT,'(A,F6.2)')          ' | Associated pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
+  SWRITE(UNIT_stdOut,'(A,F6.2)')          ' | Bulk velocity based on initial velocity profile =',uBulk
+  SWRITE(UNIT_stdOut,'(A,F6.2)')          ' | Associated pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
 ENDIF
 
 IF(.NOT.MPIRoot) RETURN
@@ -195,7 +195,7 @@ varnames(2) = 'bulkVel'
 CALL InitOutputToFile(Filename,'Statistics',2,varnames)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE CHANNEL DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
 

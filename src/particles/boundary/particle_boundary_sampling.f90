@@ -600,8 +600,8 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
 IF (mySurfRank.EQ.0) THEN
 #endif
-  WRITE(UNIT_StdOut,'(A,I8)')       ' | Number of sampling sides:           '    , nSurfTotalSides
-  WRITE(UNIT_StdOut,'(A,ES10.4E2)') ' | Surface-Area:                           ', Area
+  WRITE(UNIT_stdOut,'(A,I8)')       ' | Number of sampling sides:           '    , nSurfTotalSides
+  WRITE(UNIT_stdOut,'(A,ES10.4E2)') ' | Surface-Area:                           ', Area
   WRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
 #if USE_MPI
 END IF
@@ -922,7 +922,7 @@ END IF
 IF ((mySurfRank.EQ.0).AND..NOT.FILEEXISTS(FileString)) THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | Impact sampling file does not exist for current time. Aborting impact sampling restart ...'
   WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
 ELSE
   ! Set flag to take restart time into account
   ImpactRestart = .TRUE.
@@ -954,7 +954,7 @@ IF (myComputeNodeRank.EQ.0) THEN
       IF (mySurfRank.EQ.0) THEN
         WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | Number of variables in surface sampling file does not match. Aborting surface sampling restart ...'
         WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
-        WRITE(UNIT_StdOut,'(132("-"))')
+        WRITE(UNIT_stdOut,'(132("-"))')
       END IF
       ImpactRestart = .FALSE.
       CALL CloseDataFile()
@@ -963,7 +963,7 @@ IF (myComputeNodeRank.EQ.0) THEN
     IF (mySurfRank.EQ.0) THEN
       WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | RestartData does not exists in surface sampling tracking file.'
       WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
-      WRITE(UNIT_StdOut,'(132("-"))')
+      WRITE(UNIT_stdOut,'(132("-"))')
     END IF
     ImpactRestart = .FALSE.
     CALL CloseDataFile()
@@ -1006,7 +1006,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   IF (mySurfRank.EQ.0) THEN
     WRITE(UNIT_stdOut,'(a,E11.3)',ADVANCE='YES')' | Surface sampling restart successful at t =',RestartTime
     WRITE(UNIT_stdOut,'(a)'      ,ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
-    WRITE(UNIT_StdOut,'(132("-"))')
+    WRITE(UNIT_stdOut,'(132("-"))')
   END IF
 
   DEALLOCATE(RestartArray)

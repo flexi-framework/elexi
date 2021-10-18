@@ -104,7 +104,7 @@ IF((.NOT.InterpolationInitIsDone) .OR. ImpactTrackInitIsDone)THEN
    CALL Abort(__STAMP__,"InitializeParticleBoundary not ready to be called or already called.")
 END IF
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT IMPACT TRACKING...'
 
 ! Check if impact tracking is activated
@@ -136,10 +136,10 @@ doParticleImpactTrack = ImpactSideOnProc
 ALLOCATE(PartStateBoundary(ImpactDataSize,1:10))
 PartStateBoundary          = 0.
 PartStateBoundaryVecLength = 0
-SWRITE(UNIT_StdOut,'(A)')' | Starting impact tracking ...'
+SWRITE(UNIT_stdOut,'(A)')' | Starting impact tracking ...'
 
 SWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleBoundaryTracking
 
@@ -172,7 +172,7 @@ END SUBROUTINE InitParticleBoundaryTracking
 !   CALL MPI_COMM_SIZE(EP_COMM, nImpactProcs, iError)
 
 !   IF (myImpactRank.EQ.0) &
-!     WRITE(UNIT_StdOut,'(A,I0,A)') ' Starting impact tracking communications between ', nImpactProcs, ' procs'
+!     WRITE(UNIT_stdOut,'(A,I0,A)') ' Starting impact tracking communications between ', nImpactProcs, ' procs'
 ! END IF
 
 ! CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
@@ -276,9 +276,9 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
 
 ! Write out in the next state file write-out
 IF(MPIRoot) THEN
-  WRITE(UNIT_StdOut,'(A,I0,A)')  ' | ',PartStateBoundaryVecLength_glob,' impact read from restart file'
-  WRITE(UNIT_StdOut,'(A,F0.3,A)')' READING PARTICLE IMPACT DATA FROM HDF5 FILE DONE'
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(A,I0,A)')  ' | ',PartStateBoundaryVecLength_glob,' impact read from restart file'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)')' READING PARTICLE IMPACT DATA FROM HDF5 FILE DONE'
+  WRITE(UNIT_stdOut,'(132("-"))')
 END IF
 
 END SUBROUTINE RestartParticleBoundaryTracking

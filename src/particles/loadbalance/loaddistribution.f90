@@ -375,7 +375,7 @@ SELECT CASE(WeightDistributionMethod)
         END IF
 
         IF(iDistriIter.GT.nProcessors) THEN
-          SWRITE(UNIT_StdOut,'(A)') &
+          SWRITE(UNIT_stdOut,'(A)') &
             ' No valid load distribution throughout the processes found! Alter ParticleMPIWeight!'
           FoundDistribution = .TRUE.
         END IF
@@ -621,19 +621,19 @@ SELECT CASE(WeightDistributionMethod)
         IF (ElemDistri(MaxLoadIdx).EQ.1) THEN
           FoundDistribution = .TRUE.
           exitoptimization  = .TRUE.
-          SWRITE(UNIT_StdOut,'(A)') ' WARNING: Max. load is defined by single element!'
+          SWRITE(UNIT_stdOut,'(A)') ' WARNING: Max. load is defined by single element!'
         !>> trivial, non-optimizable distri
         ELSE IF (nProcessors.EQ.1 .OR. nGlobalElems.EQ.nProcessors) THEN
           FoundDistribution = .TRUE.
           exitoptimization  = .TRUE.
-          SWRITE(UNIT_StdOut,'(A)') ' WARNING: trivial, non-optimizable elem-distribution!'
+          SWRITE(UNIT_stdOut,'(A)') ' WARNING: trivial, non-optimizable elem-distribution!'
 
         !>> possible optimization
         ELSE IF (MinLoadIdx_glob.LT.MaxLoadIdx) THEN
           !-- global minimum is left of maximum, so all need to be shifted (and afterwards smoothed to the right)
           !-- --> shift all to left and calc resulting distri until "left" has more than "right"
           !-- (must be at somepoint for >1 procs when last elem is not more exp. than all other):
-          SWRITE(UNIT_StdOut,'(A)') ' | Shifting all to the left (init)'
+          SWRITE(UNIT_stdOut,'(A)') ' | Shifting all to the left (init)'
           currentRight = nProcessors-1
           DO WHILE (MinLoadIdx_glob.LT.MaxLoadIdx)
             !-- shift and calc new distri
@@ -644,14 +644,14 @@ SELECT CASE(WeightDistributionMethod)
             IF (ElemDistri(MaxLoadIdx).EQ.1) THEN
               FoundDistribution = .TRUE.
               exitoptimization  = .TRUE.
-              SWRITE(UNIT_StdOut,'(A)') ' WARNING: Max. load is defined by single element!'
+              SWRITE(UNIT_stdOut,'(A)') ' WARNING: Max. load is defined by single element!'
               EXIT
             END IF
             !-- check if last proc has now only one elem left, then it has to be shifted from second last proc and so on...
             IF (ElemDistri(currentRight).EQ.1) THEN
               currentRight = currentRight-1
               IF (currentRight.LT.1) THEN
-                SWRITE(UNIT_StdOut,'(A)') ' WARNING: already all elements shifted to left!'
+                SWRITE(UNIT_stdOut,'(A)') ' WARNING: already all elements shifted to left!'
                 EXIT
               END IF
             END IF
@@ -725,11 +725,11 @@ SELECT CASE(WeightDistributionMethod)
             IF (ElemDistri(MaxLoadIdx).EQ.1) THEN
               FoundDistribution = .TRUE.
               exitoptimization  = .TRUE.
-              SWRITE(UNIT_StdOut,'(A)') ' WARNING: Max. load is defined by single element!'
+              SWRITE(UNIT_stdOut,'(A)') ' WARNING: Max. load is defined by single element!'
             ELSE IF (iDistriIter.GE.iDistriItermax) THEN
               FoundDistribution = .TRUE.
               exitoptimization  = .TRUE.
-              SWRITE(UNIT_StdOut,'(A)') ' WARNING: max iternum reached: iDistriIter'
+              SWRITE(UNIT_stdOut,'(A)') ' WARNING: max iternum reached: iDistriIter'
             ! go to next shift...
             ELSE IF (MaxLoadIdx.GE.MinLoadIdx) THEN
               FoundDistribution = .TRUE.
@@ -806,7 +806,7 @@ SELECT CASE(WeightDistributionMethod)
               IF (ElemDistri(currentRight).EQ.1) THEN
                 currentRight = currentRight-1
                 IF (currentRight.LT.1) THEN
-                  SWRITE(UNIT_StdOut,'(A)') ' WARNING: already all elements shifted to left!'
+                  SWRITE(UNIT_stdOut,'(A)') ' WARNING: already all elements shifted to left!'
                   EXIT
                 END IF
               END IF
@@ -893,7 +893,7 @@ SUBROUTINE CalcDistriFromOffsets(nProcessors,nGlobalElems,ElemGlobalTime,offSetE
 USE MOD_Globals          ,ONLY: abort
 USE MOD_Particle_Utils   ,ONLY: InsertionSort
 #if CODE_ANALYZE
-USE MOD_Globals          ,ONLY: mpiroot
+USE MOD_Globals          ,ONLY: MPIRoot
 #endif /* CODE_ANALYZE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1077,7 +1077,7 @@ END SUBROUTINE freeList
 !===================================================================================================================================
 SUBROUTINE WriteElemTimeStatistics(WriteHeader,time,iter)
 ! MODULES
-USE MOD_Globals          ,ONLY: MPIRoot,FILEEXISTS,unit_stdout,abort,nProcessors,nProcessors
+USE MOD_Globals          ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,abort,nProcessors,nProcessors
 USE MOD_Globals_Vars     ,ONLY: SimulationEfficiency,PID,WallTime,InitializationWallTime,ReadMeshWallTime
 USE MOD_Globals_Vars     ,ONLY: DomainDecompositionWallTime,CommMeshReadinWallTime
 USE MOD_LoadBalance_Vars ,ONLY: TargetWeight,nLoadBalanceSteps,CurrentImbalance,MinWeight,MaxWeight,WeightSum
@@ -1263,7 +1263,7 @@ ELSE !
     WRITE(ioUnit,'(A)')TRIM(ADJUSTL(tmpStr2)) ! clip away the front and rear white spaces of the data line
     CLOSE(ioUnit)
   ELSE
-    SWRITE(UNIT_StdOut,'(A)')TRIM(outfile)//" does not exist. Cannot write load balance info!"
+    SWRITE(UNIT_stdOut,'(A)')TRIM(outfile)//" does not exist. Cannot write load balance info!"
   END IF
 END IF
 

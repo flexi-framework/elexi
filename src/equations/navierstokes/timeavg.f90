@@ -60,7 +60,7 @@ USE MOD_Preproc
 USE MOD_ReadInTools, ONLY: CountOption,GETSTR,GETLOGICAL,GETINT
 USE MOD_Mesh_Vars,   ONLY: nElems
 USE MOD_AnalyzeEquation_Vars
-USE MOD_Analyze_Vars,ONLY: nTimeAvgData, Analyze_dt, WriteTimeAvg_dt
+USE MOD_Analyze_Vars,ONLY: nTimeAvgData,analyze_dt,WriteTimeAvg_dt
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -78,7 +78,7 @@ IF((nVarAvg.EQ.0).AND.(nVarFluc.EQ.0))THEN
     'No quantities for time averaging have been specified. Please specify quantities or disable time averaging!')
 END IF
 #if FV_ENABLED
-SWRITE(UNIT_StdOut,'(A)') 'Warning: If FV is enabled, time averaging is performed on DG representation.'
+SWRITE(UNIT_stdOut,'(A)') 'Warning: If FV is enabled, time averaging is performed on DG representation.'
 #endif
 
 ! Define variables to be averaged
@@ -277,7 +277,7 @@ dtOld=0.
 dtAvg=0.
 
 ! Compute output time intervall for time averages
-WriteTimeAvg_dt=Analyze_dt*nTimeAvgData
+WriteTimeAvg_dt=analyze_dt*nTimeAvgData
 
 DEALLOCATE(VarNamesAvgList,VarNamesAvgIni,VarNamesFlucIni)
 DEALLOCATE(VarNamesFlucList)

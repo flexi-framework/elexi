@@ -255,7 +255,7 @@ DO iRecord = 1,RecordPart
     RPP_Plane(iRecord)%RPP_Data=0.0
 
     SWRITE(UNIT_stdOut,'(A)') ' WRITE PARTICLE RECORD PLANE TO HDF5 ... DONE'
-    SWRITE(UNIT_StdOut,'(132("-"))')
+    SWRITE(UNIT_stdOut,'(132("-"))')
     DEALLOCATE(StrVarNames)
 
     RPP_Plane(iRecord)%RPP_Records=0

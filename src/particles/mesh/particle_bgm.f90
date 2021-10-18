@@ -355,7 +355,7 @@ ELSE
     halo_eps = MAX(halo_eps,RKc(iStage+1)-RKc(iStage))
   END DO
   halo_eps = MAX(halo_eps,1.-RKc(nRKStages))
-  SWRITE(UNIT_StdOut,'(A,E24.12)') ' | Max. RK dtFrac, calculated      ', halo_eps
+  SWRITE(UNIT_stdOut,'(A,E24.12)') ' | Max. RK dtFrac, calculated      ', halo_eps
   !dt multiplied with maximum RKdtFrac
   halo_eps = halo_eps*halo_eps_velo*deltaT*SafetyFactor
 
@@ -364,13 +364,13 @@ ELSE
                    + (GEO%ymaxglob-GEO%yminglob)**2 &
                    + (GEO%zmaxglob-GEO%zminglob)**2 )
   IF(halo_eps.GT.globalDiag)THEN
-    SWRITE(UNIT_StdOut,'(A,E24.12)') ' | unlimited halo distance       ', halo_eps
-    SWRITE(UNIT_StdOut,'(A       )') ' | limitation of halo distance'
+    SWRITE(UNIT_stdOut,'(A,E24.12)') ' | unlimited halo distance       ', halo_eps
+    SWRITE(UNIT_stdOut,'(A       )') ' | limitation of halo distance'
     halo_eps=globalDiag
   END IF
 
   halo_eps2=halo_eps*halo_eps
-  SWRITE(UNIT_StdOut,'(A,E24.12)') ' | halo distance                   ', halo_eps
+  SWRITE(UNIT_stdOut,'(A,E24.12)') ' | halo distance                   ', halo_eps
 END IF
 
 ! find radius of largest cell
@@ -952,8 +952,8 @@ IF ((SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)  ,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:
 
 ! Debug output
 IF (myRank.EQ.0) THEN
-  SWRITE(Unit_StdOut,'(A)') ' DETERMINED compute-node (CN) halo region ...'
-  SWRITE(Unit_StdOut,'(A)') ' | CN Rank | Local Elements | Halo Elements (non-peri) | Halo Elements (peri) |'
+  SWRITE(UNIT_stdOut,'(A)') ' DETERMINED compute-node (CN) halo region ...'
+  SWRITE(UNIT_stdOut,'(A)') ' | CN Rank | Local Elements | Halo Elements (non-peri) | Halo Elements (peri) |'
   CALL FLUSH(UNIT_stdOut)
   ALLOCATE(NumberOfElements(3*nLeaderGroupProcs))
 END IF
@@ -973,7 +973,7 @@ END IF
 
 IF (myRank.EQ.0) THEN
   DO iProc = 0,nLeaderGroupProcs-1
-    WRITE(Unit_StdOut,'(A,I7,A,I15,A,I25,A,I21,A)')  &
+    WRITE(UNIT_stdOut,'(A,I7,A,I15,A,I25,A,I21,A)')  &
                                       ' |>',iProc, &
                                       ' |'  ,NumberOfElements(iProc*3+1), &
                                       ' |'  ,NumberOfElements(iProc*3+2), &
@@ -1590,9 +1590,9 @@ ElemLoop: DO iPeriodicElem = 1,nPeriodicElems
         END IF
 
       CASE DEFAULT
-        IPWRITE(UNIT_StdOut,'(I0,A,I0)') " iGlobalElem   = ", iElem
-        IPWRITE(UNIT_StdOut,'(I0,A,I0)') " iPeriodicElem = ", iPeriodicElem
-        IPWRITE(UNIT_StdOut,'(I0,A,3(I0))') " nPeriodicVectorsPerElem(:,iPeriodicElem) = ", nPeriodicVectorsPerElem(:,iPeriodicElem)
+        IPWRITE(UNIT_stdOut,'(I0,A,I0)') " iGlobalElem   = ", iElem
+        IPWRITE(UNIT_stdOut,'(I0,A,I0)') " iPeriodicElem = ", iPeriodicElem
+        IPWRITE(UNIT_stdOut,'(I0,A,3(I0))') " nPeriodicVectorsPerElem(:,iPeriodicElem) = ", nPeriodicVectorsPerElem(:,iPeriodicElem)
         CALL ABORT(__STAMP__,'Periodic vectors .LT.1 or .GT.3!')
       END SELECT
   END DO ElemLoop

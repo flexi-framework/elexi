@@ -120,7 +120,7 @@ INTEGER                  :: ioUnit,openStat,i
 REAL                     :: maxMemory
 CHARACTER(LEN=20)        :: varnames(4)
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE PERIODIC HILL...'
 
 #if FV_ENABLED
@@ -150,7 +150,7 @@ varnames(4) = 'massFlowRatePeriodic'
 CALL InitOutputToFile(Filename,'Statistics',4,varnames)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE PERIODIC HILL DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
 

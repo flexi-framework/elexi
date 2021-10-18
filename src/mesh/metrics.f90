@@ -392,9 +392,9 @@ DO iElem=1,nElems
       scaledJacRef(i,j,k)=detJac_ref(1,i,j,k,iElem)/MAXVAL(detJac_ref(1,:,:,:,iElem))
       SmallestscaledJacRef=MIN(SmallestscaledJacRef,scaledJacRef(i,j,k))
       IF(scaledJacRef(i,j,k).LT.scaledJacRefTol) THEN
-        WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJacRef(i,j,k)
-        WRITE(Unit_StdOut,*) 'Coords near:', Elem_xGP(:,INT(PP_N/2),INT(PP_N/2),INT(PP_NZ/2),iElem)
-        WRITE(Unit_StdOut,*) 'This check is optional. You can disable it by setting meshCheckRef = F'
+        WRITE(UNIT_stdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJacRef(i,j,k)
+        WRITE(UNIT_stdOut,*) 'Coords near:', Elem_xGP(:,INT(PP_N/2),INT(PP_N/2),INT(PP_NZ/2),iElem)
+        WRITE(UNIT_stdOut,*) 'This check is optional. You can disable it by setting meshCheckRef = F'
         CALL abort(__STAMP__,&
           'Scaled Jacobian in reference system lower then tolerance in global element:',iElem+offsetElem)
       END IF
@@ -413,11 +413,11 @@ DO iElem=1,nElems
   ! check for negative Jacobians
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     IF(detJac_N(1,i,j,k,iElem).LE.0.)&
-      WRITE(Unit_StdOut,*) 'Negative Jacobian found on Gauss point. Coords:', Elem_xGP(:,i,j,k,iElem)
+      WRITE(UNIT_stdOut,*) 'Negative Jacobian found on Gauss point. Coords:', Elem_xGP(:,i,j,k,iElem)
     ! check scaled Jacobians
     scaledJac(i,j,k,iElem)=detJac_N(1,i,j,k,iElem)/MAXVAL(detJac_N(1,:,:,:,iElem))
     IF(scaledJac(i,j,k,iElem).LT.0.01) THEN
-      WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac(i,j,k,iElem)
+      WRITE(UNIT_stdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac(i,j,k,iElem)
       CALL abort(__STAMP__,&
         'Scaled Jacobian lower then tolerance in global element:',iElem+offsetElem)
     END IF
@@ -611,7 +611,7 @@ TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(8:10,:,:,:,first
 DEALLOCATE(Geo)
 
 ! Communicate smallest ref. Jacobian and display
-IF(MPIroot)THEN
+IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE , SmallestscaledJacRef , 1 , MPI_DOUBLE_PRECISION , MPI_MIN , 0 , MPI_COMM_WORLD , iError)
 ELSE
   CALL MPI_REDUCE(SmallestscaledJacRef   , 0          , 1 , MPI_DOUBLE_PRECISION , MPI_MIN , 0 , MPI_COMM_WORLD , iError)

@@ -220,8 +220,8 @@ DO iPart=1,PDM%ParticleVecLength
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
     IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
-        WRITE(UNIT_stdout,'(A32)')' ---------------------------------------------------------------'
-        WRITE(UNIT_stdout,'(A)')  '     | Output of Particle information '
+        WRITE(UNIT_stdOut,'(A32)')' ---------------------------------------------------------------'
+        WRITE(UNIT_stdOut,'(A)')  '     | Output of Particle information '
         CALL OutputTrajectory(iPart,PartState(1:3,iPart),PartTrajectory,lengthPartTrajectory)
       WRITE(UNIT_stdOut,'(A,I0)') '     | global ElemID       ', PEM%LastElement(iPart)
     END IF ; END IF
@@ -245,7 +245,7 @@ DO iPart=1,PDM%ParticleVecLength
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
-          WRITE(UNIT_stdout,'(A)')    '     | Calculation of double check: '
+          WRITE(UNIT_stdOut,'(A)')    '     | Calculation of double check: '
         END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
@@ -266,17 +266,17 @@ DO iPart=1,PDM%ParticleVecLength
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
-          WRITE(UNIT_stdout,'(30("-"))')
-          WRITE(UNIT_stdout,'(A)')             '     | Output after compute intersection (tracing double check): '
+          WRITE(UNIT_stdOut,'(30("-"))')
+          WRITE(UNIT_stdOut,'(A)')             '     | Output after compute intersection (tracing double check): '
           IF (currentIntersect%IntersectCase.EQ.1) THEN
-            WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
-            WRITE(UNIT_stdout,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi,eta
-            WRITE(UNIT_stdout,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
+            WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
+            WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi,eta
+            WRITE(UNIT_stdOut,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
           ELSE IF (currentIntersect%IntersectCase.EQ.3) THEN
-            WRITE(UNIT_stdout,'(A,I0,A,L)')    '     | MaroPartID: ',iMB,' | Hit: ',foundHit
-            WRITE(UNIT_stdout,'(A,G0)')        '     | AlphaSphere: ',locAlphaSphere
+            WRITE(UNIT_stdOut,'(A,I0,A,L)')    '     | MaroPartID: ',iMB,' | Hit: ',foundHit
+            WRITE(UNIT_stdOut,'(A,G0)')        '     | AlphaSphere: ',locAlphaSphere
           END IF
-          WRITE(UNIT_stdout,'(2(A,G0))')       '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ', lengthPartTrajectory
+          WRITE(UNIT_stdOut,'(2(A,G0))')       '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ', lengthPartTrajectory
         END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
@@ -297,8 +297,8 @@ DO iPart=1,PDM%ParticleVecLength
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
-          WRITE(UNIT_stdout,'(110("="))')
-          WRITE(UNIT_stdout,'(A)')    '     | Calculation of particle intersections: '
+          WRITE(UNIT_stdOut,'(110("="))')
+          WRITE(UNIT_stdOut,'(A)')    '     | Calculation of particle intersections: '
         END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
@@ -334,12 +334,12 @@ DO iPart=1,PDM%ParticleVecLength
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
           IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
-            WRITE(UNIT_stdout,'(30("-"))')
-            WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (particle tracing): '
-            WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
-            WRITE(UNIT_stdout,'(2(A,G0))')     '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ', lengthPartTrajectory
-            WRITE(UNIT_stdout,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
-            WRITE(UNIT_stdout,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi,eta
+            WRITE(UNIT_stdOut,'(30("-"))')
+            WRITE(UNIT_stdOut,'(A)')           '     | Output after compute intersection (particle tracing): '
+            WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
+            WRITE(UNIT_stdOut,'(2(A,G0))')     '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ', lengthPartTrajectory
+            WRITE(UNIT_stdOut,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
+            WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi,eta
           END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
@@ -377,10 +377,10 @@ DO iPart=1,PDM%ParticleVecLength
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
             IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN; IF (iPart.EQ.PARTOUT) THEN
-              WRITE(UNIT_stdout,'(30("-"))')
-              WRITE(UNIT_stdout,'(A)')        '     | Output after compute AuxBC intersection (particle tracing): '
-              WRITE(UNIT_stdout,'(A,I0,A,L)') '     | AuxBC: ',iAuxBC,' | Hit: ',foundHit
-              WRITE(UNIT_stdout,'(2(A,G0))')  '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ',lengthPartTrajectory
+              WRITE(UNIT_stdOut,'(30("-"))')
+              WRITE(UNIT_stdOut,'(A)')        '     | Output after compute AuxBC intersection (particle tracing): '
+              WRITE(UNIT_stdOut,'(A,I0,A,L)') '     | AuxBC: ',iAuxBC,' | Hit: ',foundHit
+              WRITE(UNIT_stdOut,'(2(A,G0))')  '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ',lengthPartTrajectory
             END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
@@ -417,13 +417,13 @@ DO iPart=1,PDM%ParticleVecLength
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
         nIntersections=nIntersections+1
         IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
-          WRITE(UNIT_stdout,'(45(":"))')
-          WRITE(UNIT_stdout,'(A,I0)')  '     -> Check intersection: ', nIntersections
-          WRITE(UNIT_stdout,'(A,I0)')  '     -> Case: '   ,currentIntersect%IntersectCase
-          WRITE(UNIT_stdout,'(A,G0)')  '     -> alpha: '  ,currentIntersect%alpha
-          WRITE(UNIT_stdout,'(A,I0)')  '     -> locSide: ',currentIntersect%Side
+          WRITE(UNIT_stdOut,'(45(":"))')
+          WRITE(UNIT_stdOut,'(A,I0)')  '     -> Check intersection: ', nIntersections
+          WRITE(UNIT_stdOut,'(A,I0)')  '     -> Case: '   ,currentIntersect%IntersectCase
+          WRITE(UNIT_stdOut,'(A,G0)')  '     -> alpha: '  ,currentIntersect%alpha
+          WRITE(UNIT_stdOut,'(A,I0)')  '     -> locSide: ',currentIntersect%Side
           IF (currentIntersect%IntersectCase.EQ.1) THEN
-            WRITE(UNIT_stdout,'(A,I0)') '     -> SideID: ',PartElemToSide(E2S_SIDE_ID,currentIntersect%Side,ElemID)
+            WRITE(UNIT_stdOut,'(A,I0)') '     -> SideID: ',PartElemToSide(E2S_SIDE_ID,currentIntersect%Side,ElemID)
           END IF
         END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
@@ -478,9 +478,9 @@ DO iPart=1,PDM%ParticleVecLength
             IF (crossedBC) THEN
               SELECT CASE(currentIntersect%IntersectCase)
               CASE(1) ! intersection with cell side
-                WRITE(UNIT_stdout,'(A,L)') '     -> BC was intersected on a side'
+                WRITE(UNIT_stdOut,'(A,L)') '     -> BC was intersected on a side'
               CASE(2) ! AuxBC intersection
-                WRITE(UNIT_stdout,'(A,L)') '     -> BC was intersected on an AuxBC'
+                WRITE(UNIT_stdOut,'(A,L)') '     -> BC was intersected on an AuxBC'
               END SELECT
             END IF
           END IF ; END IF
@@ -556,22 +556,22 @@ DO iPart=1,PDM%ParticleVecLength
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
       IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN ; IF(iPart.EQ.PARTOUT)THEN
-        WRITE(UNIT_stdout,'(128("="))')
-        WRITE(UNIT_stdout,'(A)')            '     | Output of tracking information after the check of number of intersections: '
-        WRITE(UNIT_stdout,'(4(A,L))')       '     | crossed Side: ',crossedBC,' switched Element: ',SwitchedElement,&
+        WRITE(UNIT_stdOut,'(128("="))')
+        WRITE(UNIT_stdOut,'(A)')            '     | Output of tracking information after the check of number of intersections: '
+        WRITE(UNIT_stdOut,'(4(A,L))')       '     | crossed Side: ',crossedBC,' switched Element: ',SwitchedElement,&
           ' Particle tracking done: ',PartisDone,' Particle is double checked: ',PartDoubleCheck
         IF(SwitchedElement) THEN
-          WRITE(UNIT_stdout,'(A,I0,A,I0)')  '     | First_ElemID: ',PEM%LastElement(iPart),' | new Element: ',ElemID
+          WRITE(UNIT_stdOut,'(A,I0,A,I0)')  '     | First_ElemID: ',PEM%LastElement(iPart),' | new Element: ',ElemID
           WRITE(UNIT_stdOut,'(A,I0)')       '     | first global ElemID     ', PEM%LastElement(iPart)
           WRITE(UNIT_stdOut,'(A,I0)')       '     | new global ElemID       ', ElemID
         END IF
         IF( crossedBC) THEN
-          WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Last    PartPos:        ',lastPartPos(1:3,iPart)
-          WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Current PartPos:        ',PartState(1:3,iPart)
-          WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | PartTrajectory:         ',PartTrajectory(1:3)
-          WRITE(UNIT_stdout,'(A,(G0))')     '     | Length PartTrajectory:  ',lengthPartTrajectory
+          WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Last    PartPos:        ',lastPartPos(1:3,iPart)
+          WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Current PartPos:        ',PartState(1:3,iPart)
+          WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | PartTrajectory:         ',PartTrajectory(1:3)
+          WRITE(UNIT_stdOut,'(A,(G0))')     '     | Length PartTrajectory:  ',lengthPartTrajectory
         END IF
-        WRITE(UNIT_stdout,'(128("="))')
+        WRITE(UNIT_stdOut,'(128("="))')
       END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
@@ -822,8 +822,8 @@ ELSE
   v2 = v1  - ElemBaryNGeo(:,GetCNElemID(ElemID))
 
   IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
-    IPWRITE(UNIT_stdout,'(A,I0,A,I0,A,I0)') ' Obtained wrong side orientation from flip. SideID:',SideID,'flip:',flip,'PartID:',PartID
-    IPWRITE(UNIT_stdout,'(A,I0,A,3F12.6)')  ' n_loc (flip)', n_loc,'n_loc (estimated):',v2
+    IPWRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0)') ' Obtained wrong side orientation from flip. SideID:',SideID,'flip:',flip,'PartID:',PartID
+    IPWRITE(UNIT_stdOut,'(A,I0,A,3F12.6)')  ' n_loc (flip)', n_loc,'n_loc (estimated):',v2
     CALL ABORT(__STAMP__,'SideID',SideID)
   END IF
 #endif /* CODE_ANALYZE */
@@ -835,9 +835,9 @@ ELSE
   NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
 
 #if CODE_ANALYZE
-  WRITE(UNIT_stdout,'(30("-"))')
-  WRITE(UNIT_stdout,'(A,I0,A,I0,A,F12.6,A,I0,A,I0)') ' ElemID:',ElemID,'PartID',PartID,'SideID:',SideID,'Move rel. to Side:',DOT_PRODUCT(n_loc,PartTrajectory),'NbElemID:',NbElemID, 'PartElem (w/o refl.)', SinglePointToElement(PartState(1:3,PartID),doHalo=.TRUE.)
-  WRITE(UNIT_stdout,'(A,3F12.6,A,3F12.6)')           ' PartPos',PartState(1:3,PartID), 'PartVel:',PartState(4:6,PartID)
+  WRITE(UNIT_stdOut,'(30("-"))')
+  WRITE(UNIT_stdOut,'(A,I0,A,I0,A,F12.6,A,I0,A,I0)') ' ElemID:',ElemID,'PartID',PartID,'SideID:',SideID,'Move rel. to Side:',DOT_PRODUCT(n_loc,PartTrajectory),'NbElemID:',NbElemID, 'PartElem (w/o refl.)', SinglePointToElement(PartState(1:3,PartID),doHalo=.TRUE.)
+  WRITE(UNIT_stdOut,'(A,3F12.6,A,3F12.6)')           ' PartPos',PartState(1:3,PartID), 'PartVel:',PartState(4:6,PartID)
 #endif /* CODE_ANALYZE */
 
   IF (NbElemID.LT.0) THEN ! Mortar side

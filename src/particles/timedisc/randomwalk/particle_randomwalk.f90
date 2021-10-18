@@ -66,7 +66,7 @@ INTEGER               :: ALLOCSTAT
 !----------------------------------------------------------------------------------------------------------------------------------
 IF(ParticleRWInitIsDone) RETURN
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE RANDOM WALK ...!'
 
 !--> Random Walk model
@@ -100,7 +100,7 @@ TurbPartState = 0.
 
 ParticleRWInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE RANDOM WALK DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE ParticleInitRandomWalk
 

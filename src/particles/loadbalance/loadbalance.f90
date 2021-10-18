@@ -136,7 +136,7 @@ USE MOD_ReadInTools            ,ONLY: GETLOGICAL, GETREAL, GETINT
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-!SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT LOAD BALANCE...'
 
 #if USE_LOADBALANCE
@@ -184,7 +184,7 @@ tcurrent               = 0.
 
 InitLoadBalanceIsDone  = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LOAD BALANCE DONE!'
-!SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitLoadBalance
 
 
@@ -442,7 +442,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-IF(.NOT.MPIROOT) RETURN
+IF(.NOT.MPIRoot) RETURN
 
   SWRITE(UNIT_stdOut,'(A,ES10.3,A,ES10.3,A,ES10.3,A,ES10.3,A,ES8.2,A)')&
       '   MinWeight: ', MinWeight, '   MaxWeight: ', MaxWeight, '   TargetWeight: ', TargetWeight,'    CurrentImbalance: ',&

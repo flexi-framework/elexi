@@ -120,7 +120,7 @@ IF(EquationInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
     "InitEquation not ready to be called or already called.")
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RANS WITH SA...'
 
 s43=4./3.
@@ -198,7 +198,7 @@ IF (file_exists) THEN
   DEALLOCATE(SAd_local)
 ELSE
   includeTrip = .FALSE.
-  SWRITE(UNIT_StdOut, *) "WARNING: No walldistance file found! Scaling with walldistance deactivated!"
+  SWRITE(UNIT_stdOut, *) "WARNING: No walldistance file found! Scaling with walldistance deactivated!"
 END IF
 
 IF (includeTrip) THEN
@@ -243,7 +243,7 @@ IF(nRefState .GT. 0)THEN
     RefStatePrim(1:5,i)  = RefStatePrimTmp(1:5)
 #if PP_dim==2
     IF(RefStatePrim(VEL3,i).NE.0.) THEN
-      SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!'
+      SWRITE(UNIT_stdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!'
       RefStatePrim(VEL3,i)=0.
     END IF
 #endif
@@ -270,7 +270,7 @@ CALL InitBC()
 
 EquationInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT RANS WITH SA DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 ! Initialize current testcase
 CALL InitTestcase()

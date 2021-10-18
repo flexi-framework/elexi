@@ -223,13 +223,13 @@ CNSideID = GetCNSideID(SideID)
 #if CODE_ANALYZE
   IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
     IF(PartID.EQ.PartOut)THEN
-      WRITE(UNIT_stdout,'(110("-"))')
-      WRITE(UNIT_stdout,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec        : ',SideNormVec(1:3,CNSideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
+      WRITE(UNIT_stdOut,'(110("-"))')
+      WRITE(UNIT_stdOut,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | SideNormVec        : ',SideNormVec(1:3,CNSideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
@@ -395,13 +395,13 @@ CNSideID = GetCNSideID(SideID)
 #if CODE_ANALYZE
   IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
     IF(PartID.EQ.PartOut)THEN
-      WRITE(UNIT_stdout,'(110("-"))')
-      WRITE(UNIT_stdout,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec        : ',SideNormVec(1:3,CNSideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
+      WRITE(UNIT_stdOut,'(110("-"))')
+      WRITE(UNIT_stdOut,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | SideNormVec        : ',SideNormVec(1:3,CNSideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
@@ -648,7 +648,7 @@ locEta(1) = XiNewton(2)
 ! Newton algorithm failed, try de-Casteljau algorithm to find an intersection between the trajectory and the surface
 IF (failed) THEN
   PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,SideSlabNormals(:,2,CNSideID))))
-  IPWRITE(UNIT_stdout,*) ' Intersection-angle-of-BezierNetwon: ',PartFaceAngle*180./PI
+  IPWRITE(UNIT_stdOut,*) ' Intersection-angle-of-BezierNetwon: ',PartFaceAngle*180./PI
 
   iClipIter   = 0
   nXiClip     = 0
@@ -764,16 +764,16 @@ BiLinearCoeff(:,4) = 0.25*BaseVectors0(:,SideID)
 #if CODE_ANALYZE
   IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
     IF(PartID.EQ.PartOut)THEN
-      WRITE(UNIT_stdout,'(110("-"))')
-      WRITE(UNIT_stdout,'(A)')          '     | Output of bilinear intersection equation constants: '
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,CNSideID)
-      WRITE(UNIT_stdout,'(A,4(1X,G0))') '     | BilinearCoeff: ',BilinearCoeff(1,1:4)
-      WRITE(UNIT_stdout,'(A,4(1X,G0))') '     | BilinearCoeff: ',BilinearCoeff(2,1:4)
-      WRITE(UNIT_stdout,'(A,4(1X,G0))') '     | BilinearCoeff: ',BilinearCoeff(3,1:4)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
-      WRITE(UNIT_stdout,'(A,3(1X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
+      WRITE(UNIT_stdOut,'(110("-"))')
+      WRITE(UNIT_stdOut,'(A)')          '     | Output of bilinear intersection equation constants: '
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | SideNormVec  : ',SideNormVec(1:3,CNSideID)
+      WRITE(UNIT_stdOut,'(A,4(1X,G0))') '     | BilinearCoeff: ',BilinearCoeff(1,1:4)
+      WRITE(UNIT_stdOut,'(A,4(1X,G0))') '     | BilinearCoeff: ',BilinearCoeff(2,1:4)
+      WRITE(UNIT_stdOut,'(A,4(1X,G0))') '     | BilinearCoeff: ',BilinearCoeff(3,1:4)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint1: ',BezierControlPoints3D(:,0,0,SideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint2: ',BezierControlPoints3D(:,NGeo,0,SideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint3: ',BezierControlPoints3D(:,0,NGeo,SideID)
+      WRITE(UNIT_stdOut,'(A,3(1X,G0))') '     | Beziercontrolpoint4: ',BezierControlPoints3D(:,NGeo,NGeo,SideID)
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
@@ -1152,15 +1152,15 @@ rPerformBezierClip = rPerformBezierClip+1.
 #if CODE_ANALYZE
   IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
     IF (PartID.EQ.PartOut) THEN
-      IPWRITE(UNIT_stdout,*) ' --------------------------------------------- '
-      IPWRITE(UNIT_stdout,*) ' clipping '
-      IPWRITE(UNIT_stdout,*) ' BezierClipTolerance   ', BezierClipTolerance
-      IPWRITE(UNIT_stdout,*) ' BezierClipLocalTol    ', BezierClipLocalTol
-      IPWRITE(UNIT_stdout,*) ' ClipMode    ', ClipMode
-      IPWRITE(UNIT_stdout,*) ' n1    ', n1
-      IPWRITE(UNIT_stdout,*) ' n2    ', n2
-      IPWRITE(UNIT_stdout,*) ' dXi,dEta    ', dXi,dEta
-      IPWRITE(UNIT_stdout,*) ' BezierControlpoints3D '
+      IPWRITE(UNIT_stdOut,*) ' --------------------------------------------- '
+      IPWRITE(UNIT_stdOut,*) ' clipping '
+      IPWRITE(UNIT_stdOut,*) ' BezierClipTolerance   ', BezierClipTolerance
+      IPWRITE(UNIT_stdOut,*) ' BezierClipLocalTol    ', BezierClipLocalTol
+      IPWRITE(UNIT_stdOut,*) ' ClipMode    ', ClipMode
+      IPWRITE(UNIT_stdOut,*) ' n1    ', n1
+      IPWRITE(UNIT_stdOut,*) ' n2    ', n2
+      IPWRITE(UNIT_stdOut,*) ' dXi,dEta    ', dXi,dEta
+      IPWRITE(UNIT_stdOut,*) ' BezierControlpoints3D '
       CALL OutputBezierControlPoints(BezierControlPoints3D_in=BezierControlPoints3D(:,:,:,SideID))
     END IF
   END IF
@@ -1198,14 +1198,14 @@ ELSE !BezierNewtonAngle
     dXi  = dXi*dXi+dEta*dEta
     dXi  = SQRT(dXi)/(400.*BezierClipTolerance)
     IF (dXi.GT.1.0) THEN
-      IPWRITE(UNIT_stdout,*) ': Difference between Intersections > Tolerance'
-      IPWRITE(UNIT_stdout,*) ': xi-clip,   xi-newton', locXi(1), XiNewton(1)
-      IPWRITE(UNIT_stdout,*) ': eta-clip, eta-newton', loceta(1), XiNewton(2)
+      IPWRITE(UNIT_stdOut,*) ': Difference between Intersections > Tolerance'
+      IPWRITE(UNIT_stdOut,*) ': xi-clip,   xi-newton', locXi(1), XiNewton(1)
+      IPWRITE(UNIT_stdOut,*) ': eta-clip, eta-newton', loceta(1), XiNewton(2)
       !CALL abort(__STAMP__ &
       ! ' Wrong intersection in Xi! Clip/Newton=',nInterSections,dXi)
     END IF
     !IF(dXi.GT.1.0)THEN
-    !  IPWRITE(UNIT_stdout,*) ' eta-clip, eta-newton', loceta(1), XiNewton(2)
+    !  IPWRITE(UNIT_stdOut,*) ' eta-clip, eta-newton', loceta(1), XiNewton(2)
     !  CALL abort(__STAMP__ &
     !   ' Wrong intersection in Eta! Clip/Newton=',nInterSections, dXi)
     !END IF
@@ -1231,9 +1231,9 @@ END IF
 #if CODE_ANALYZE
 IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
   IF (PartID.EQ.PartOut) THEN
-    IPWRITE(UNIT_stdout,*)'----------------------------------------------'
-    IPWRITE(UNIT_stdout,*)' PartOut        = ',PartOut
-    IPWRITE(UNIT_stdout,*)' nInterSections = ',nInterSections
+    IPWRITE(UNIT_stdOut,*)'----------------------------------------------'
+    IPWRITE(UNIT_stdOut,*)' PartOut        = ',PartOut
+    IPWRITE(UNIT_stdOut,*)' nInterSections = ',nInterSections
   END IF
 END IF
 #endif /*CODE_ANALYZE*/
@@ -1268,7 +1268,7 @@ SELECT CASE(nInterSections)
 #if CODE_ANALYZE
     IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
       IF (PartID.EQ.PartOut) THEN
-        IPWRITE(UNIT_stdout,*) ' locAlpha-sorted ',locAlpha(1:nIntersections)
+        IPWRITE(UNIT_stdOut,*) ' locAlpha-sorted ',locAlpha(1:nIntersections)
       END IF
     END IF
 #endif /*CODE_ANALYZE*/
@@ -1306,7 +1306,7 @@ SELECT CASE(nInterSections)
 #if CODE_ANALYZE
        IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
          IF (PartID.EQ.PartOut) THEN
-           IPWRITE(UNIT_stdout,*) ' realnInter ',realnInter
+           IPWRITE(UNIT_stdOut,*) ' realnInter ',realnInter
          END IF
        END IF
 #endif /*CODE_ANALYZE*/
@@ -1441,7 +1441,7 @@ DO WHILE(iClipIter.LE.BezierClipMaxIter)
 #if CODE_ANALYZE
   IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
     IF(PartID.EQ.PartOut)THEN
-      WRITE(UNIT_stdout,'(A,I0,1X,I0)') ' iClipIter,ClipMode ', iClipIter, ClipMode
+      WRITE(UNIT_stdOut,'(A,I0,1X,I0)') ' iClipIter,ClipMode ', iClipIter, ClipMode
       !read*
     END IF
   END IF
@@ -1495,9 +1495,9 @@ __STAMP__ &
 END DO ! iClipIter=iClipIter,BezierClipMaxIter
 
 IF(iClipIter.GE.BezierClipMaxIter)THEN
-  WRITE(UNIT_stdout,'(A,I0)') 'Iter   ',iClipIter
-  WRITE(UNIT_stdout,'(A,I0)') 'PartID ',PartID
-  WRITE(UNIT_stdout,'(A)') 'Bezier Clipping not converged!'
+  WRITE(UNIT_stdOut,'(A,I0)') 'Iter   ',iClipIter
+  WRITE(UNIT_stdOut,'(A,I0)') 'PartID ',PartID
+  WRITE(UNIT_stdOut,'(A)') 'Bezier Clipping not converged!'
   STOP
 END IF
 
@@ -1566,7 +1566,7 @@ END DO ! l=1,2
 #if CODE_ANALYZE
 IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
   IF(PartID.EQ.PartOut)THEN
-    IPWRITE(UNIT_stdout,*) ' Can intersect? ', hasInter
+    IPWRITE(UNIT_stdOut,*) ' Can intersect? ', hasInter
   END IF
 END IF
 #endif /*CODE_ANALYZE*/
@@ -1617,7 +1617,7 @@ END SELECT
 #if CODE_ANALYZE
 IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
   IF(PartID.EQ.PartOut)THEN
-    IPWRITE(UNIT_stdout,*) ' Initial-guess in BezierNewton ', Xi
+    IPWRITE(UNIT_stdOut,*) ' Initial-guess in BezierNewton ', Xi
   END IF
 END IF
 #endif /*CODE_ANALYZE*/
@@ -1706,15 +1706,15 @@ END DO
 #if CODE_ANALYZE
 IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
   IF(PartID.EQ.PartOut)THEN
-    IPWRITE(UNIT_stdout,*) ' Newton converget to ', Xi
-    IPWRITE(UNIT_stdout,*) ' Tolarance Vaule ', BezierNewtonHit
-    IPWRITE(UNIT_stdout,*) ' Check if it is a zero: ',P
+    IPWRITE(UNIT_stdOut,*) ' Newton converget to ', Xi
+    IPWRITE(UNIT_stdOut,*) ' Tolarance Vaule ', BezierNewtonHit
+    IPWRITE(UNIT_stdOut,*) ' Check if it is a zero: ',P
   END IF
 END IF
 #endif /*CODE_ANALYZE*/
 
 IF(nIter.GT.BezierNewtonMaxIter) THEN
-  IPWRITE(UNIT_stdout,*) ' WARNING: Bezier-Newton not converged!'
+  IPWRITE(UNIT_stdOut,*) ' WARNING: Bezier-Newton not converged!'
   failed=.TRUE.
   RETURN
 END IF
@@ -1734,8 +1734,8 @@ alphaNorm=alpha/lengthPartTrajectory
 #if CODE_ANALYZE
 IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
   IF(PartID.EQ.PartOut)THEN
-    IPWRITE(UNIT_stdout,*) ' Intersection Point ', InterP
-    IPWRITE(UNIT_stdout,*) ' alphanorm  ',alphaNorm
+    IPWRITE(UNIT_stdOut,*) ' Intersection Point ', InterP
+    IPWRITE(UNIT_stdOut,*) ' alphanorm  ',alphaNorm
   END IF
 END IF
 #endif /*CODE_ANALYZE*/
@@ -2119,7 +2119,7 @@ SUBROUTINE ComputeBezierIntersectionPoint(nXiClip,nEtaClip,PartID,SideID,nInterS
 ! b) alpha is not a multiple intersection
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals,                 ONLY:UNIT_stdout,ABORT
+USE MOD_Globals,                 ONLY:UNIT_stdOut,ABORT
 USE MOD_Mesh_Vars,               ONLY:NGeo
 USE MOD_Particle_Surfaces_Vars,  ONLY:XiArray,EtaArray,locAlpha,locXi,locEta
 USE MOD_Particle_Surfaces_Vars,  ONLY:epsilontol,Beziercliphit
@@ -2188,7 +2188,7 @@ Eta=0.5*(Eta+1)
 #if CODE_ANALYZE
 IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
   IF(PartID.EQ.PartOut)THEN
-    IPWRITE(UNIT_stdout,*) ' xi,eta ',xi,eta
+    IPWRITE(UNIT_stdOut,*) ' xi,eta ',xi,eta
   END IF
 END IF
 #endif /*CODE_ANALYZE*/
@@ -2229,10 +2229,10 @@ alphaNorm=alpha/lengthPartTrajectory
 IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
   IF(PartID.EQ.PartOut)THEN
     CALL CalcNormAndTangBezier(nVec=IntersectionVector,xi=tmpXi,eta=tmpeta,SideID=SideID)
-    IPWRITE(UNIT_stdout,*) ' nVec   ',IntersectionVector
-    IPWRITE(UNIT_stdout,*) ' PartTrajectory   ',PartTrajectory
-    IPWRITE(UNIT_stdout,*) '<nVec,PartTrajectory>  ',DOT_PRODUCT(PartTrajectory,IntersectionVector)
-    IPWRITE(UNIT_stdout,*) ' alpha,alphanorm ',alpha,alphaNorm
+    IPWRITE(UNIT_stdOut,*) ' nVec   ',IntersectionVector
+    IPWRITE(UNIT_stdOut,*) ' PartTrajectory   ',PartTrajectory
+    IPWRITE(UNIT_stdOut,*) '<nVec,PartTrajectory>  ',DOT_PRODUCT(PartTrajectory,IntersectionVector)
+    IPWRITE(UNIT_stdOut,*) ' alpha,alphanorm ',alpha,alphaNorm
   END IF
 END IF
 #endif /*CODE_ANALYZE*/
@@ -2240,15 +2240,15 @@ END IF
 IF((alphaNorm.LE.1.0).AND.(alphaNorm.GT.-epsilontol))THEN
   ! found additional intersection point
   IF(nInterSections.GE.BezierClipMaxIntersec)THEN
-    IPWRITE(UNIT_stdout,'(I0,A)') ' nInterSections > BezierClipMaxIntersec'
-    IPWRITE(UNIT_stdout,'(I0,A,I0)') ' PartID ', PartID
-    IPWRITE(UNIT_stdout,'(I0,A,I0)') ' SideID ', SideID
-    IPWRITE(UNIT_stdout,'(I0,A,E24.12)') ' BezierClipTolerance  ', BezierClipTolerance
-    IPWRITE(UNIT_stdout,'(I0,A,E24.12)') ' BezierClipLocalTol ', BezierClipLocalTol
-    IPWRITE(UNIT_stdout,'(I0,A,E18.12,1X,E18.12)') ' critical error! ',alpha,alphaNorm
-    IPWRITE(UNIT_stdout,'(I0,A)') ' locAlpha, locXi,locEta ' !/ lengthPartTrajectory '
+    IPWRITE(UNIT_stdOut,'(I0,A)') ' nInterSections > BezierClipMaxIntersec'
+    IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID ', PartID
+    IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' SideID ', SideID
+    IPWRITE(UNIT_stdOut,'(I0,A,E24.12)') ' BezierClipTolerance  ', BezierClipTolerance
+    IPWRITE(UNIT_stdOut,'(I0,A,E24.12)') ' BezierClipLocalTol ', BezierClipLocalTol
+    IPWRITE(UNIT_stdOut,'(I0,A,E18.12,1X,E18.12)') ' critical error! ',alpha,alphaNorm
+    IPWRITE(UNIT_stdOut,'(I0,A)') ' locAlpha, locXi,locEta ' !/ lengthPartTrajectory '
     DO iInter=1,nInterSections
-      WRITE(UNIT_stdout,'(I0,3(1X,E18.12))') iInter,locAlpha(iInter),locXi(iInter),locEta(iInter)
+      WRITE(UNIT_stdOut,'(I0,3(1X,E18.12))') iInter,locAlpha(iInter),locXi(iInter),locEta(iInter)
     END DO
     STOP
     RETURN
@@ -2275,8 +2275,8 @@ IF((alphaNorm.LE.1.0).AND.(alphaNorm.GT.-epsilontol))THEN
 #if CODE_ANALYZE
      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
        IF(PartID.EQ.PartOut)THEN
-         IPWRITE(UNIT_stdout,*) ' locAlpha,alpha,tol ', locAlpha(iInter),alpha,SQRT(BezierClipTolerance)
-         IPWRITE(UNIT_stdout,*) ' locXi,ETa,,...    ,', locXi(iInter),locEta(iInter),tmpXi,tmpEta
+         IPWRITE(UNIT_stdOut,*) ' locAlpha,alpha,tol ', locAlpha(iInter),alpha,SQRT(BezierClipTolerance)
+         IPWRITE(UNIT_stdOut,*) ' locXi,ETa,,...    ,', locXi(iInter),locEta(iInter),tmpXi,tmpEta
        END IF
      END IF
 #endif /*CODE_ANALYZE*/
@@ -2360,8 +2360,8 @@ dmax=MAXVAL(minmax(2,:))
    IF(iPart.EQ.PartOut)THEN
      IPWRITE(UNIT_stdOut,*) ' minval-xi',minmax(1,:)
      IPWRITE(UNIT_stdOut,*) ' maxval-xi',minmax(2,:)
-     IPWRITE(UNIT_stdout,*) ' dmax-dmin-xi ',(dmax-dmin)
-     IPWRITE(UNIT_stdout,*) ' dmax,dmin-xi ',dmax,dmin
+     IPWRITE(UNIT_stdOut,*) ' dmax-dmin-xi ',(dmax-dmin)
+     IPWRITE(UNIT_stdOut,*) ' dmax,dmin-xi ',dmax,dmin
    END IF
  END IF
 #endif /*CODE_ANALYZE*/
@@ -2395,7 +2395,7 @@ CALL CalcSminSmax2(minmax,XiMin,XiMax,nXiClip)
 #if CODE_ANALYZE
  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
    IF(iPart.EQ.PartOut)THEN
-     IPWRITE(UNIT_stdout,*) ' XiMin,XiMax ',XiMin,XiMax,nXiClip
+     IPWRITE(UNIT_stdOut,*) ' XiMin,XiMax ',XiMin,XiMax,nXiClip
    END IF
  END IF
 #endif /*CODE_ANALYZE*/
@@ -2501,9 +2501,9 @@ IF((XiMax-XiMin).GT.BezierSplitLimit)THEN ! two possible intersections: split th
 #if CODE_ANALYZE
       IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
         IF(iPart.EQ.PartOut)THEN
-          IPWRITE(UNIT_stdout,*) ' --------------------------------------- '
-          IPWRITE(UNIT_stdout,*) ' split xi-upper '
-          IPWRITE(UNIT_stdout,*) ' XiMin,XiMax ',XiArray(:,nXiClip)
+          IPWRITE(UNIT_stdOut,*) ' --------------------------------------- '
+          IPWRITE(UNIT_stdOut,*) ' split xi-upper '
+          IPWRITE(UNIT_stdOut,*) ' XiMin,XiMax ',XiArray(:,nXiClip)
   !        CALL OutputBezierControlPoints(BezierControlPoints2D_in=BezierControlPoints2D_temp2)
         END IF
       END IF
@@ -2592,9 +2592,9 @@ IF((XiMax-XiMin).GT.BezierSplitLimit)THEN ! two possible intersections: split th
 #if CODE_ANALYZE
       IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
         IF(iPart.EQ.PartOut)THEN
-          IPWRITE(UNIT_stdout,*) ' --------------------------------------- '
-          IPWRITE(UNIT_stdout,*) ' split xi-lower '
-          IPWRITE(UNIT_stdout,*) ' XiMin,XiMax ',XiArray(:,nXiClip)
+          IPWRITE(UNIT_stdOut,*) ' --------------------------------------- '
+          IPWRITE(UNIT_stdOut,*) ' split xi-lower '
+          IPWRITE(UNIT_stdOut,*) ' XiMin,XiMax ',XiArray(:,nXiClip)
   !        CALL OutputBezierControlPoints(BezierControlPoints2D_in=BezierControlPoints2D_temp2)
         END IF
       END IF
@@ -2754,8 +2754,8 @@ dmax=MAXVAL(minmax(2,:))
    IF(iPart.EQ.PartOut)THEN
      IPWRITE(UNIT_stdOut,*) ' minval-eta',minmax(1,:)
      IPWRITE(UNIT_stdOut,*) ' maxval-eta',minmax(2,:)
-     IPWRITE(UNIT_stdout,*) ' dmax-dmin-eta ',(dmax-dmin)
-     IPWRITE(UNIT_stdout,*) ' dmax,dmin-eta ',dmax,dmin
+     IPWRITE(UNIT_stdOut,*) ' dmax-dmin-eta ',(dmax-dmin)
+     IPWRITE(UNIT_stdOut,*) ' dmax,dmin-eta ',dmax,dmin
    END IF
  END IF
 #endif /*CODE_ANALYZE*/
@@ -2789,7 +2789,7 @@ CALL CalcSminSmax2(minmax,Etamin,Etamax,nEtaClip)
 #if CODE_ANALYZE
  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
    IF(iPart.EQ.PartOut)THEN
-     IPWRITE(UNIT_stdout,*) ' EtaMin,EtaMax ',EtaMin,EtaMax,nEtaClip
+     IPWRITE(UNIT_stdOut,*) ' EtaMin,EtaMax ',EtaMin,EtaMax,nEtaClip
    END IF
  END IF
 #endif /*CODE_ANALYZE*/
@@ -2891,9 +2891,9 @@ IF((EtaMax-EtaMin).GT.BezierSplitLimit)THEN ! two possible intersections: split 
 #if CODE_ANALYZE
       IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
         IF(iPart.EQ.PartOut)THEN
-          IPWRITE(UNIT_stdout,*) ' --------------------------------------- '
-          IPWRITE(UNIT_stdout,*) ' split eta-upper '
-          IPWRITE(UNIT_stdout,*) ' EtaMin,EtaMax ',EtaArray(:,nEtaClip)
+          IPWRITE(UNIT_stdOut,*) ' --------------------------------------- '
+          IPWRITE(UNIT_stdOut,*) ' split eta-upper '
+          IPWRITE(UNIT_stdOut,*) ' EtaMin,EtaMax ',EtaArray(:,nEtaClip)
           !CALL OutputBezierControlPoints(BezierControlPoints2D_in=BezierControlPoints2D_temp2)
         END IF
       END IF
@@ -2985,9 +2985,9 @@ IF((EtaMax-EtaMin).GT.BezierSplitLimit)THEN ! two possible intersections: split 
 #if CODE_ANALYZE
       IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
         IF(iPart.EQ.PartOut)THEN
-          IPWRITE(UNIT_stdout,*) ' --------------------------------------- '
-          IPWRITE(UNIT_stdout,*) ' split eta-lower '
-          IPWRITE(UNIT_stdout,*) ' EtaMin,EtaMax ',EtaArray(:,nEtaClip)
+          IPWRITE(UNIT_stdOut,*) ' --------------------------------------- '
+          IPWRITE(UNIT_stdOut,*) ' split eta-lower '
+          IPWRITE(UNIT_stdOut,*) ' EtaMin,EtaMax ',EtaArray(:,nEtaClip)
           !CALL OutputBezierControlPoints(BezierControlPoints2D_in=BezierControlPoints2D_temp2)
         END IF
       END IF
@@ -3097,19 +3097,19 @@ REAL, INTENT(IN)                 :: PartPos(1:3)
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-WRITE(UNIT_stdout,'(A,3(E24.12,A))') ' LastPartPos = [ ',LastpartPos(1,PartID), ','  &
+WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' LastPartPos = [ ',LastpartPos(1,PartID), ','  &
                                                         ,LastpartPos(2,PartID), ','  &
                                                         ,LastpartPos(3,PartID), '];'
 
-WRITE(UNIT_stdout,'(A,3(E24.12,A))') ' PartPosition = [ ',PartPos(1), ','  &
+WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' PartPosition = [ ',PartPos(1), ','  &
                                                          ,PartPos(2), ','  &
                                                          ,PartPos(3), '];'
 
-WRITE(UNIT_stdout,'(A,3(E24.12,A))') ' PartTrajectory = [ ',PartTrajectory(1) ,','  &
+WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' PartTrajectory = [ ',PartTrajectory(1) ,','  &
                                                            ,PartTrajectory(2) ,','  &
                                                            ,PartTrajectory(3) ,'];'
 
-WRITE(UNIT_stdout,*) ' lengthPartTrajectory = ', lengthPartTrajectory
+WRITE(UNIT_stdOut,*) ' lengthPartTrajectory = ', lengthPartTrajectory
 
 END SUBROUTINE OutputTrajectory
 #endif /*CODE_ANALYZE*/

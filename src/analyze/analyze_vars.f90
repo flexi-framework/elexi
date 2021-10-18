@@ -23,10 +23,10 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER              :: NWriteData=1                      !< data output (writing/visualizeing the solution, timeaverages etc.)
-                                                          !< is performed every multiple of Analyze_dt
-REAL                 :: Analyze_dt                        !< time intervall at which analysis routines are called
+                                                          !< is performed every multiple of analyze_dt
+REAL                 :: analyze_dt                        !< time intervall at which analysis routines are called
 REAL                 :: WriteData_dt                      !< time intervall at which solution data is written
-REAL                 :: NTimeAvgData=1                    !< time averages are written every multiple of Analyze_dt
+REAL                 :: NTimeAvgData=1                    !< time averages are written every multiple of analyze_dt
 REAL                 :: WriteTimeAvg_dt                   !< time intervall at which solution data is written
 REAL                 :: tWriteData                        !< actual time at which next solution IO will be performed
 ! precomputed variables

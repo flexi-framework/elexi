@@ -96,7 +96,7 @@ IF (.NOT.PerformLoadBalance) THEN
 END IF
 
 nLoadBalanceSteps = nLoadBalanceSteps+1
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 CALL set_formatting('green')
 IF (LoadBalanceMaxSteps.GT.0) THEN
   SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' PERFORMING LOAD BALANCE ',nLoadBalanceSteps,' of ',LoadBalanceMaxSteps,' ...'
@@ -198,7 +198,7 @@ LB_Time                = FLEXITIME()
 InitializationWallTime = LB_Time - LB_StartTime
 SWRITE(UNIT_stdOut,'(A,F14.2,A)') ' INITIALIZATION DONE! [',InitializationWallTime,' sec ]'
 SWRITE(UNIT_stdOut,'(A)')' LOAD BALANCE DONE!'
-SWRITE(UNIT_StdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)')
 
 PerformLoadBalance = .FALSE.

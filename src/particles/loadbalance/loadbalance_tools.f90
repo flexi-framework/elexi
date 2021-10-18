@@ -63,7 +63,7 @@ INTEGER                        :: iProc
 INTEGER                        :: iElem
 REAL                           :: StartT,EndT
 !===================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(UNIT_stdOut,'(132("."))')
 SWRITE(UNIT_stdOut,'(A)')' DOMAIN DECOMPOSITION ...'
 
 #if USE_MPI

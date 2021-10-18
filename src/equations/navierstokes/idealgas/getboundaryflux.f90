@@ -1215,7 +1215,7 @@ INTEGER                       :: p,q,SideID,ElemID,locSide
 CHARACTER(LEN=255)            :: NodeType_HDF5
 LOGICAL                       :: InterpolateSolution
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
+SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 
@@ -1300,14 +1300,14 @@ REAL,ALLOCATABLE              :: ploc(:),Tloc(:),U_local(:,:)
 REAL                          :: minr,r1,r2
 REAL,PARAMETER                :: epsilonBC=1.e-3
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
+SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
 
 !#if USE_MPI
 !MPIRequest_BC = MPI_REQUEST_NULL
 !#endif /* USE_MPI */
 
 ! Read data from csv file and write to array
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   ! count number of rows and columns
   OPEN(UNIT=UNIT_logOut, FILE=filename, ACCESS="sequential",IOSTAT=OpenStat)
   ! read the header
@@ -1331,7 +1331,7 @@ END IF
 CALL MPI_BCAST(nlines(1:2),2,MPI_INTEGER,0,MPI_COMM_FLEXI,IERROR)
 #endif /* USE_MPI */
 
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   ! read actual data
   ! 1: \rho, 2: M, 3: p_t, 4: vx, 5: vy, 6: vz, 7: x, 8: y, 9: z
   OPEN(UNIT=UNIT_logOut, FILE=filename, ACCESS="sequential",IOSTAT=OpenStat)

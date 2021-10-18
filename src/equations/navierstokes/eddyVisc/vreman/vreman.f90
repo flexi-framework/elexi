@@ -63,7 +63,7 @@ IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.VremanInitIsDon
   CALL CollectiveStop(__STAMP__,&
     "InitVreman not ready to be called or already called.")
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT Vreman...'
 
 ! Read the variables used for LES model
@@ -86,7 +86,7 @@ END DO
 
 VremanInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT Vreman DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitVreman
 
 !===================================================================================================================================

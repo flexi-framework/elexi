@@ -149,7 +149,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
     CHECKSAFEINT(HSize(2),4)
     PartDataSize = INT(HSize(1))
-    SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of particle variables:           ', PartDataSize
+    SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of particle variables:           ', PartDataSize
 
     ! For files, where no particle diameter was saved
     ALLOCATE(StrVarNames(PartDataSize))
@@ -260,7 +260,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL UpdateNextFreePosition()
 
     SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE DONE!'
-    SWRITE(UNIT_StdOut,'(132("-"))')
+    SWRITE(UNIT_stdOut,'(132("-"))')
 
     ! Reconstruct the number of particles inserted before restart from the emission rate
     DO iSpec=1,nSpecies
@@ -450,8 +450,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       DO iPart = 1, TotalNbrOfMissingParticlesSum
         ! Sanity check
         IF(CurrentPartNum.GT.PDM%maxParticleNumber)THEn
-          IPWRITE(UNIT_StdOut,'(I0,A,I0)') " CurrentPartNum        = ",  CurrentPartNum
-          IPWRITE(UNIT_StdOut,'(I0,A,I0)') " PDM%maxParticleNumber = ",  PDM%maxParticleNumber
+          IPWRITE(UNIT_stdOut,'(I0,A,I0)') " CurrentPartNum        = ",  CurrentPartNum
+          IPWRITE(UNIT_stdOut,'(I0,A,I0)') " PDM%maxParticleNumber = ",  PDM%maxParticleNumber
           CALL abort(__STAMP__,'Missing particle ID > PDM%maxParticleNumber. Increase Part-MaxParticleNumber!')
         END IF ! CurrentPartNum.GT.PDM%maxParticleNumber
 
@@ -486,8 +486,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
         ! Sanity Check
         IF(IndexOfFoundParticles(iPart).EQ.-1)THEN
-          IPWRITE(UNIT_StdOut,'(I0,A,I0)') " iPart                        : ",  iPart
-          IPWRITE(UNIT_StdOut,'(I0,A,I0)') " IndexOfFoundParticles(iPart) : ",  IndexOfFoundParticles(iPart)
+          IPWRITE(UNIT_stdOut,'(I0,A,I0)') " iPart                        : ",  iPart
+          IPWRITE(UNIT_stdOut,'(I0,A,I0)') " IndexOfFoundParticles(iPart) : ",  IndexOfFoundParticles(iPart)
           CALL abort(__STAMP__,'IndexOfFoundParticles(iPart) was not set correctly)')
         END IF ! IndexOfFoundParticles(iPart)
       END DO ! iPart = 1, TotalNbrOfMissingParticlesSum
@@ -495,7 +495,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfFoundParts
 
       ! Combine number of found particles to make sure none are lost completely or found twice
-      IF(MPIroot)THEN
+      IF(MPIRoot)THEN
         CALL MPI_REDUCE(IndexOfFoundParticles,CompleteIndexOfFoundParticles,TotalNbrOfMissingParticlesSum,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM,IERROR)
       ELSE
         CALL MPI_REDUCE(IndexOfFoundParticles,0                            ,TotalNbrOfMissingParticlesSum,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM,IERROR)

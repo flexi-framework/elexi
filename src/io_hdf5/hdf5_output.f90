@@ -491,7 +491,7 @@ INTEGER                        :: NZ_loc
 INTEGER                        :: iElem,i,j,iVar
 #endif
 !==================================================================================================================================
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE BASE FLOW TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
@@ -586,7 +586,7 @@ IF(ANY(nVal(1:PP_dim)       .EQ.0)) RETURN ! no time averaging
 IF(nVarAvg.EQ.0.AND.nVarFluc.EQ.0)  RETURN ! no time averaging
 IF(.NOT.WriteStateFiles)            RETURN
 
-IF (MPIROOT) THEN
+IF (MPIRoot) THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
@@ -655,9 +655,9 @@ DO i=1,2
 #endif
 END DO
 
-IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
+IF(MPIRoot) CALL MarkWriteSuccessfull(FileName)
 
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
 END IF

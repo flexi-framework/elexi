@@ -146,7 +146,7 @@ IF(IndicatorInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
     "InitIndicator not ready to be called or already called.")
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
 
 ! Read in  parameters
@@ -208,7 +208,7 @@ END DO
 
 IndicatorInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitIndicator
 
 !==================================================================================================================================

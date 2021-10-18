@@ -297,7 +297,7 @@ INTEGER          :: ALLOCSTAT
 #endif
 !===================================================================================================================================
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MESH...'
 IF(ParticleMeshInitIsDone) CALL ABORT(__STAMP__, ' Particle-Mesh is already initialized.')
 
@@ -575,7 +575,7 @@ END IF
 
 ParticleMeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MESH DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleMesh
 

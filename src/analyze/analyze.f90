@@ -65,7 +65,7 @@ CALL prms%CreateRealOption(   'analyze_dt',      "Specifies time intervall at wh
 CALL prms%CreateIntOption(    'nWriteData' ,     "Intervall as multiple of analyze_dt at which HDF5 files "//&
                                                  "(e.g. State,TimeAvg,Fluc) are written.",&
                                                  '1')
-CALL prms%CreateIntOption(    'nTimeAvgData' ,   "Intervall as multiple of Analyze_dt at which HDF5 files "//&
+CALL prms%CreateIntOption(    'nTimeAvgData' ,   "Intervall as multiple of analyze_dt at which HDF5 files "//&
                                                  "(e.g. TimeAvg,Fluc) are written.",&
                                                  '1')
 CALL prms%CreateIntOption(    'NAnalyze'   ,     "Polynomial degree at which analysis is performed (e.g. for L2 errors). "//&

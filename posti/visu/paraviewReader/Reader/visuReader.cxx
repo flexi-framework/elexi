@@ -245,17 +245,25 @@ void visuReader::AddFileName(const char* filename_in) {
 
    // open the file with HDF5 and read the attribute 'time' to build a timeseries
    hid_t state = H5Fopen(filename_in, H5F_ACC_RDONLY, H5P_DEFAULT);
-   hid_t attr = H5Aopen(state, "Time", H5P_DEFAULT);
-   SWRITE("attribute Time "<<attr);
    double time;
-   if (attr > -1){
-      hid_t attr_type = H5Aget_type( attr );
-      H5Aread(attr, attr_type, &time);
-      Timesteps.push_back(time);
-   }else{
+
+   // check if attribute time exits
+   htri_t exists = H5Aexists(state, "Time");
+
+   // only access the attribute if it exists
+   if (exists > 0){
+      hid_t attr = H5Aopen(state, "Time", H5P_DEFAULT);
+      SWRITE("attribute Time "<<attr);
+      // only write back valid values
+      if (attr > -1){
+         hid_t attr_type = H5Aget_type( attr );
+         H5Aread(attr, attr_type, &time);
+         Timesteps.push_back(time);
+      }
+      H5Aclose(attr);
+   } else {
       Timesteps.push_back(0.);
    }
-   H5Aclose(attr);
    H5Fclose(state);
 }
 
@@ -641,7 +649,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
 
     int CellLength;
     int CellType;
-    if (this->HighOrder){
+    if (this->HighOrder && blockno == 0){ // blockno: 0 = DG, 1 = FV
       if (coords->dim == 1) {
         // Use the nodeids to build lines
         CellLength = NVisu+1;
@@ -657,8 +665,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
       } else {
         exit(1);
       }
-    }
-    else{
+    } else{
       if (coords->dim == 1) {
         // Use the nodeids to build lines
         CellLength = 2;

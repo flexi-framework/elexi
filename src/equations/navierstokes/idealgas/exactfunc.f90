@@ -66,29 +66,30 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Exactfunc")
 CALL prms%CreateIntFromStringOption('IniExactFunc', "Exact function to be used for computing initial solution.")
-CALL addStrListEntry('IniExactFunc','testcase'     ,-1)
-CALL addStrListEntry('IniExactFunc','testcase'     ,0)
-CALL addStrListEntry('IniExactFunc','refstate'     ,1)
-CALL addStrListEntry('IniExactFunc','sinedens'     ,2)
-CALL addStrListEntry('IniExactFunc','sinedensx'    ,21)
-CALL addStrListEntry('IniExactFunc','lindens'      ,3)
-CALL addStrListEntry('IniExactFunc','sinevel'      ,4)
-CALL addStrListEntry('IniExactFunc','sinevelx'     ,41)
-CALL addStrListEntry('IniExactFunc','sinevely'     ,42)
-CALL addStrListEntry('IniExactFunc','sinevelz'     ,43)
-CALL addStrListEntry('IniExactFunc','sinevelnorho' ,44)
-CALL addStrListEntry('IniExactFunc','roundjet'     ,5)
-CALL addStrListEntry('IniExactFunc','cylinder'     ,6)
-CALL addStrListEntry('IniExactFunc','shuvortex'    ,7)
-CALL addStrListEntry('IniExactFunc','couette'      ,8)
-CALL addStrListEntry('IniExactFunc','cavity'       ,9)
-CALL addStrListEntry('IniExactFunc','shock'        ,10)
-CALL addStrListEntry('IniExactFunc','sod'          ,11)
-CALL addStrListEntry('IniExactFunc','dmr'          ,13)
-CALL addStrListEntry('IniExactFunc','roundjet'     ,33)
+CALL addStrListEntry('IniExactFunc','testcase'       ,-1)
+CALL addStrListEntry('IniExactFunc','testcase'       ,0)
+CALL addStrListEntry('IniExactFunc','refstate'       ,1)
+CALL addStrListEntry('IniExactFunc','sinedens'       ,2)
+CALL addStrListEntry('IniExactFunc','sinedensx'      ,21)
+CALL addStrListEntry('IniExactFunc','lindens'        ,3)
+CALL addStrListEntry('IniExactFunc','sinevel'        ,4)
+CALL addStrListEntry('IniExactFunc','sinevelx'       ,41)
+CALL addStrListEntry('IniExactFunc','sinevely'       ,42)
+CALL addStrListEntry('IniExactFunc','sinevelz'       ,43)
+CALL addStrListEntry('IniExactFunc','sinevelnorho'   ,44)
+CALL addStrListEntry('IniExactFunc','roundjet'       ,5)
+CALL addStrListEntry('IniExactFunc','cylinder'       ,6)
+CALL addStrListEntry('IniExactFunc','shuvortex'      ,7)
+CALL addStrListEntry('IniExactFunc','couette'        ,8)
+CALL addStrListEntry('IniExactFunc','cavity'         ,9)
+CALL addStrListEntry('IniExactFunc','shock'          ,10)
+CALL addStrListEntry('IniExactFunc','sod'            ,11)
+CALL addStrListEntry('IniExactFunc','dmr'            ,13)
+CALL addStrListEntry('IniExactFunc','roundjet'       ,33)
 #if PARABOLIC
-CALL addStrListEntry('IniExactFunc','blasius'      ,1338)
-CALL addStrListEntry('IniExactFunc','blasius_round',1339)
+CALL addStrListEntry('IniExactFunc','blasius'        ,1338)
+CALL addStrListEntry('IniExactFunc','blasius_round_x',1339)
+CALL addStrListEntry('IniExactFunc','blasius_round_y',1340)
 #endif
 CALL prms%CreateRealArrayOption(    'AdvVel',       "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
 CALL prms%CreateRealArrayOption(    'AdvArray',     "Advection velocity array for linear setup.")
@@ -101,8 +102,8 @@ CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'JetRadius',    "Roundjet CASE(5/31)", '1.0')
 CALL prms%CreateRealOption(         'Ramping',      "Subsonic mass inflow CASE(28)", '1.0')
 #if PARABOLIC
-CALL prms%CreateRealOption(         'delta99_in',   "Blasius boundary layer CASE(1338,1339)")
-CALL prms%CreateRealArrayOption(    'x_in',         "Blasius boundary layer CASE(1338,1339)")
+CALL prms%CreateRealOption(         'delta99_in',   "Blasius boundary layer CASE(1338,1339,1340)")
+CALL prms%CreateRealArrayOption(    'x_in',         "Blasius boundary layer CASE(1338,1339,1340)")
 #endif
 
 END SUBROUTINE DefineParametersExactFunc
@@ -158,7 +159,7 @@ CASE(1338) ! Blasius boundary layer solution
   delta99_in       = GETREAL('delta99_in')
   x_in             = GETREALARRAY('x_in',2,'(/0.,0./)')
   BlasiusInitDone  = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
-CASE(1339) ! Blasius boundary layer solution
+CASE(1339,1340) ! Blasius boundary layer solution
   delta99_in       = GETREAL('delta99_in')
   x_in             = GETREALARRAY('x_in',2,'(/0.,0./)')
   BlasiusInitDone  = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
@@ -705,7 +706,49 @@ CASE(1338) ! blasius
     END IF
   END IF
   CALL PrimToCons(prim,resu)
-CASE(1339) ! blasius
+CASE(1339) ! blasius in x direction
+  prim=RefStatePrim(:,RefState)
+  ! calculate equivalent x for Blasius flat plate to have delta99_in at x_in
+  x_offset(1)=(delta99_in/5)**2*prim(DENS)*prim(VEL1)/mu0-x_in(1)
+  x_offset(2)=-x_in(2)
+  x_offset(3)=0.
+  x_eff=x+x_offset
+  ! blasius BL for pipes
+  x_eff(2)=JetRadius-SQRT(x(2)**2+x(3)**2)+x_offset(2)
+  IF(x_eff(2).GT.0 .AND. x_eff(1).GT.0) THEN
+    ! scale bl position in physical space to reference space, eta=5 is ~99% bl thickness
+    eta=x_eff(2)*(prim(DENS)*prim(VEL1)/(mu0*x_eff(1)))**0.5
+
+    deta=0.02 ! step size
+    nSteps=CEILING(eta/deta)
+    deta =eta/nSteps
+    deta2=0.5*deta
+
+    f=0.
+    fp=0.
+    fpp=0.332 ! default literature value, don't change if you don't know what you're doing
+    fppp=0.
+    !Blasius boundary layer
+    DO i=1,nSteps
+      ! predictor
+      fbar    = f   + deta * fp
+      fpbar   = fp  + deta * fpp
+      fppbar  = fpp + deta * fppp
+      fpppbar = -0.5*fbar*fppbar
+      ! corrector
+      f       = f   + deta2 * (fp   + fpbar)
+      fp      = fp  + deta2 * (fpp  + fppbar)
+      fpp     = fpp + deta2 * (fppp + fpppbar)
+      fppp    = -0.5*f*fpp
+    END DO
+    prim(VEL2)=0.5*(mu0*prim(VEL1)/prim(DENS)/x_eff(1))**0.5*(fp*eta-f)
+    prim(VEL1)=RefStatePrim(VEL1,RefState)*fp
+  ELSE
+    IF (x_eff(2).LE.0) prim(VEL1) = 0.
+  END IF
+!  IF (x(1).GT.0) prim(VELV)=0.
+  CALL PrimToCons(prim,resu)
+CASE(1340) ! blasius in z direction
   prim=RefStatePrim(:,RefState)
   ! calculate equivalent x for Blasius flat plate to have delta99_in at x_in
   x_offset(3)=(delta99_in/5)**2*prim(DENS)*prim(VEL3)/mu0-x_in(1)
@@ -743,7 +786,6 @@ CASE(1339) ! blasius
     prim(VEL2)=0.5*(mu0*prim(VEL3)/prim(DENS)/x_eff(3))**0.5*(fp*eta-f)
     prim(VEL3)=RefStatePrim(VEL3,RefState)*fp
   ELSE
-    IF (x(3).GT.0.098) prim(VELV) = 0.
     IF (x_eff(2).LE.0) prim(VEL3) = 0.
   END IF
   CALL PrimToCons(prim,resu)

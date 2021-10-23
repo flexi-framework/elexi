@@ -102,7 +102,7 @@ USE MOD_TimeDisc_Vars,                ONLY: t
 ! #if USE_RW
 ! USE MOD_Particle_RandomWalk_Vars,     ONLY: RWTime
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,                ONLY: Species,PartSpecies,bIter,N_Basset
+USE MOD_Particle_Vars,                ONLY: bIter
 #endif /* USE_BASSETFORCE */
 ! USE_MOD_Timedisc_Vars,                ONLY: t
 ! #endif

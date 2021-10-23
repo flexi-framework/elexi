@@ -37,7 +37,7 @@ END INTERFACE
 ABSTRACT INTERFACE
   SUBROUTINE ParticleTimeStepPointer(t,dt)
     REAL,INTENT(IN)          :: t
-    REAL,INTENT(IN),OPTIONAL :: dt
+    REAL,INTENT(IN)          :: dt
   END SUBROUTINE
 END INTERFACE
 
@@ -73,8 +73,8 @@ SUBROUTINE Particle_InitTimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools               ,ONLY:GETLOGICAL,GETSTR,GETREAL
-USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,TimeDiscType,nRKStages,RKb,dt
-USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimestep,ManualTimestep,b_dt
+USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,TimeDiscType
+USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimeStep,ManualTimeStep
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -85,16 +85,14 @@ IMPLICIT NONE
 
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2','LSERKK3')
-    ALLOCATE(b_dt(1:nRKStages))
-    ! Premultiply with dt, ensure b_dt is correct for the first particle time increment
-    b_dt = RKb*dt
+    ! Do nothing
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,'Particle tracking only supported with DG TimeDiscType=LSERKW')
 END SELECT
 
 ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
 ! Check if we are running a steady state tracking
-SWRITE(UNIT_StdOut,'(66("-"))')
+SWRITE(UNIT_stdOut,'(66("-"))')
 !--- Read Manual Time Step
 useManualTimeStep = GETLOGICAL('Part-SteadyState'   ,'F')
 ManualTimeStep    = GETREAL   ('Part-ManualTimeStep','0.0')
@@ -149,7 +147,7 @@ USE MOD_LoadBalance_Timers,          ONLY: LBStartTime,LBPauseTime
 USE MOD_Particle_Localization,       ONLY: CountPartsPerElem
 #endif
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
-USE MOD_DG_Vars,                     ONLY: Ut
+USE MOD_DG_Vars,                     ONLY: Ut,UPrim
 USE MOD_Particle_Interpolation_Vars, ONLY: GradAtParticle
 USE MOD_Lifting_Vars,                ONLY: gradUx,gradUy,gradUz
 USE MOD_Part_RHS,                    ONLY: extRHS
@@ -183,8 +181,8 @@ END IF
 #endif /*USE_MPI*/
 
 ! set last particle position and element
-LastPartPos(1:3,1:PDM%ParticleVecLength) = PartState(1:3,1:PDM%ParticleVecLength)
-PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(  1:PDM%ParticleVecLength)
+LastPartPos(1:3,1:PDM%ParticleVecLength) = PartState(PART_POSV,1:PDM%ParticleVecLength)
+PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(        1:PDM%ParticleVecLength)
 
 IF (t.GE.DelayTime) THEN
   CALL ParticleSurfaceflux()
@@ -193,7 +191,7 @@ IF (t.GE.DelayTime) THEN
 #endif /*USE_LOADBALANCE*/
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
   ! Calculate tau
-  CALL extRHS(U,Ut,U_RHS)
+  CALL extRHS(UPrim,Ut,U_RHS)
 #endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
   CALL InterpolateFieldToParticle(PP_nVar,U,PP_nVarPrim,FieldAtParticle&
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
@@ -246,7 +244,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
-REAL,INTENT(IN),OPTIONAL      :: dt
+REAL,INTENT(IN)               :: dt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iPart
@@ -260,12 +258,12 @@ IF (t.GE.DelayTime) THEN
     IF (PDM%ParticleInside(iPart)) THEN
       !-- Tracer Particles
       IF (Species(PartSpecies(iPart))%RHSMethod.EQ.RHS_TRACER) THEN
-        PartState(1:3,iPart) = PartState(1:3,iPart) + PartState(4:6,iPart)*dt
-        PartState(4:6,iPart) = Pt       (1:3,iPart)
+        PartState(PART_POSV,iPart) = PartState(PART_POSV,iPart) + PartState(PART_VELV,iPart)*dt
+        PartState(PART_VELV,iPart) = Pt       (1:3      ,iPart)
       !-- Normal particles
       ELSE
-        PartState(1:3,iPart)           = PartState(1:3,iPart)           + PartState(4:6,iPart)*dt
-        PartState(4:PP_nVarPart,iPart) = PartState(4:PP_nVarPart,iPart) + Pt       (1:PP_nVarPartRHS,iPart)*dt
+        PartState(PART_POSV,iPart)               = PartState(PART_POSV              ,iPart) + PartState(PART_VELV       ,iPart)*dt
+        PartState(PART_VEL1:PP_nVarPart-1,iPart) = PartState(PART_VEL1:PP_nVarPart-1,iPart) + Pt       (1:PP_nVarPartRHS,iPart)*dt
       ENDIF !< Tracer
     ENDIF !< ParticleInside
   END DO
@@ -331,9 +329,9 @@ USE MOD_PreProc
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
-USE MOD_Particle_TimeDisc_Vars,  ONLY: b_dt
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,PartSpecies,Species
+USE MOD_TimeDisc_Vars,           ONLY: b_dt
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles
 #endif /*MPI*/
@@ -345,7 +343,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
-REAL,INTENT(IN),OPTIONAL      :: dt
+REAL,INTENT(IN)               :: dt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iPart
@@ -367,16 +365,16 @@ IF (t.GE.DelayTime) THEN
       PDM%IsNewPart(iPart) = .FALSE.
 
       IF (Species(PartSpecies(iPart))%RHSMethod.EQ.RHS_TRACER)THEN
-        Pt_temp  (1:3,iPart) = PartState(4:6,iPart)
-        PartState(4:6,iPart) = Pt(       1:3,iPart)
+        Pt_temp  (1:3      ,iPart) = PartState(PART_VELV,iPart)
+        PartState(PART_VELV,iPart) = Pt(       1:3      ,iPart)
 
-        PartState(1:3,iPart) = PartState(1:3,iPart) + PartState(4:6,iPart)*b_dt(1)
+        PartState(PART_POSV,iPart) = PartState(PART_POSV,iPart) + PartState(PART_VELV,iPart)*b_dt(1)
       ELSE
-        Pt_temp  (1:3,iPart)           = PartState(4:6,iPart)
-        Pt_temp  (4:PP_nVarPart,iPart) = Pt       (1:PP_nVarPartRHS,iPart)
+        Pt_temp  (1:3,iPart)             = PartState(PART_VELV       ,iPart)
+        Pt_temp  (4:PP_nVarPart-1,iPart) = Pt       (1:PP_nVarPartRHS,iPart)
 
-        PartState(1:3,iPart)           = PartState(1:3,iPart)           + PartState(4:6,iPart)*b_dt(1)
-        PartState(4:PP_nVarPart,iPart) = PartState(4:PP_nVarPart,iPart) + Pt       (1:PP_nVarPartRHS,iPart)*b_dt(1)
+        PartState(PART_POSV,iPart)               = PartState(PART_POSV              ,iPart) + PartState(PART_VELV       ,iPart)*b_dt(1)
+        PartState(PART_VEL1:PP_nVarPart-1,iPart) = PartState(PART_VEL1:PP_nVarPart-1,iPart) + Pt       (1:PP_nVarPartRHS,iPart)*b_dt(1)
       END IF
     END IF
   END DO
@@ -423,10 +421,10 @@ USE MOD_Vector
 USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
-USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt,b_dt
+USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,DelayTime,PDM,PartSpecies,Species
-USE MOD_TimeDisc_Vars,           ONLY: RKA
+USE MOD_TimeDisc_Vars,           ONLY: RKA,b_dt
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles
 #endif /*MPI*/
@@ -460,15 +458,15 @@ IF (t.GE.DelayTime) THEN
       ! "normal" particles are pushed with whole timestep
       IF (.NOT.PDM%IsNewPart(iPart)) THEN
         IF (Species(PartSpecies(iPart))%RHSMethod.EQ.RHS_TRACER) THEN
-          Pt_temp(1:3,iPart) = PartState(4:6,iPart) - RKA(iStage) * Pt_temp(1:3,iPart)
+          Pt_temp(1:3,iPart) = PartState(PART_VELV,iPart) - RKA(iStage) * Pt_temp(1:3,iPart)
 
-          PartState(1:3,iPart) = PartState(1:3,iPart) + Pt_temp(1:3,iPart)*b_dt(iStage)
-          PartState(4:6,iPart) = Pt(       1:3,iPart)
+          PartState(PART_POSV,iPart) = PartState(PART_POSV,iPart) + Pt_temp(1:3,iPart)*b_dt(iStage)
+          PartState(PART_VELV,iPart) = Pt(       1:3      ,iPart)
         ELSE
-          Pt_temp(1:3,iPart)           = PartState(4:6,iPart)              - RKA(iStage) * Pt_temp(1:3,iPart)
-          Pt_temp(4:PP_nVarPart,iPart) = Pt       (1:PP_nVarPartRHS,iPart) - RKA(iStage) * Pt_temp(4:PP_nVarPart,iPart)
+          Pt_temp(1:3,iPart)               = PartState(PART_VELV       ,iPart) - RKA(iStage) * Pt_temp(1:3,iPart)
+          Pt_temp(4:PP_nVarPart-1,iPart)   = Pt       (1:PP_nVarPartRHS,iPart) - RKA(iStage) * Pt_temp(4:PP_nVarPart-1,iPart)
 
-          PartState(1:PP_nVarPart,iPart) = PartState(1:PP_nVarPart,iPart) + Pt_temp(1:PP_nVarPart,iPart)*b_dt(iStage)
+          PartState(1:PP_nVarPart-1,iPart) = PartState(1:PP_nVarPart-1,iPart) + Pt_temp(1:PP_nVarPart-1,iPart)*b_dt(iStage)
         END IF
 
       !IsNewPart: no Pt_temp history available. Either because of emissionType = 1 or because of reflection with almost zero wallVelo
@@ -480,7 +478,7 @@ IF (t.GE.DelayTime) THEN
         v_rebuilt(:,:)=0.
         DO iStage_loc=iStage-1,0,-1
           IF (iStage_loc.EQ.iStage-1) THEN
-            v_rebuilt(1:3,iStage_loc) = PartState(4:6,iPart) + (RandVal-1.)*b_dt(iStage_loc+1)*Pa_rebuilt(1:3,iStage_loc+1)
+            v_rebuilt(1:3,iStage_loc) = PartState(PART_VELV,iPart) + (RandVal-1.)*b_dt(iStage_loc+1)*Pa_rebuilt(1:3,iStage_loc+1)
           ELSE
             v_rebuilt(1:3,iStage_loc) = v_rebuilt(1:3,iStage_loc+1) - b_dt(iStage_loc+1)*Pa_rebuilt(1:3,iStage_loc+1)
           END IF
@@ -495,9 +493,9 @@ IF (t.GE.DelayTime) THEN
         END DO
 
         ! Pt_temp is rebuilt, do particle push
-        Pt_temp  (1:3,iPart)           = Pv_rebuilt(1:3,iStage)
-        Pt_temp  (4:PP_nVarPart,iPart) = Pa_rebuilt(1:PP_nVarPartRHS,iStage)
-        PartState(1:PP_nVarPart,iPart) = PartState( 1:PP_nVarPart,iPart) + Pt_temp(1:PP_nVarPart,iPart)*b_dt(iStage)*RandVal
+        Pt_temp  (1:3,iPart)             = Pv_rebuilt(1:3,iStage)
+        Pt_temp  (4:PP_nVarPart-1,iPart) = Pa_rebuilt(1:PP_nVarPartRHS,iStage)
+        PartState(1:PP_nVarPart-1,iPart) = PartState( 1:PP_nVarPart-1,iPart) + Pt_temp(1:PP_nVarPart-1,iPart)*b_dt(iStage)*RandVal
 
         PDM%IsNewPart(iPart) = .FALSE. !change to false: Pt_temp is now rebuilt...
       END IF !IsNewPart
@@ -542,8 +540,7 @@ SUBROUTINE TimeStepSteadyState(t)
 ! MODULES
 USE MOD_Globals               ,ONLY: CollectiveStop
 USE MOD_PreProc
-USE MOD_TimeDisc_Vars         ,ONLY: dt,RKb,RKc,nRKStages,CurrentStage
-USE MOD_Particle_Timedisc_Vars,ONLY: b_dt
+USE MOD_TimeDisc_Vars         ,ONLY: dt,b_dt,RKb,RKc,nRKStages,CurrentStage
 USE MOD_Particle_Vars         ,ONLY: DelayTime
 USE MOD_Part_Tools            ,ONLY: UpdateNextFreePosition
 #if USE_LOADBALANCE
@@ -637,14 +634,12 @@ END SUBROUTINE TimeStepSteadyState
 !===================================================================================================================================
 SUBROUTINE Particle_FinalizeTimeDisk
 ! MODULES
-USE MOD_Particle_TimeDisc_Vars    ,ONLY:b_dt
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-DEALLOCATE(b_dt)
 
 END SUBROUTINE Particle_FinalizeTimeDisk
 

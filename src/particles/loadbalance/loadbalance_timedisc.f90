@@ -16,6 +16,7 @@
 
 !===================================================================================================================================
 !> Module contains the routines for load balancing
+!> This file is needed only in FLEXI to avoid a circular depencendy
 !===================================================================================================================================
 MODULE MOD_LoadBalance_TimeDisc
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -25,15 +26,10 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 #if USE_LOADBALANCE
-INTERFACE InitialAutoRestart
-  MODULE PROCEDURE InitialAutoRestart
-END INTERFACE
-
 INTERFACE LoadBalance
   MODULE PROCEDURE LoadBalance
 END INTERFACE
 
-PUBLIC :: InitialAutoRestart
 PUBLIC :: LoadBalance
 #endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
@@ -41,53 +37,6 @@ PUBLIC :: LoadBalance
 CONTAINS
 
 #if USE_LOADBALANCE
-
-SUBROUTINE InitialAutoRestart(t,dt,dt_min,tend,tAnalyze,Analyze_dt,tmp_LoadBalanceSample,tmp_DoLoadBalance)
-!===================================================================================================================================
-! routine to adjust analyze parameters to handle initial auto restart
-!===================================================================================================================================
-! USED MODULES
-USE MOD_LoadBalance_Vars
-USE MOD_Restart_Vars               ,ONLY: RestartTime
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)              :: t
-REAL,INTENT(INOUT)           :: dt
-REAL,INTENT(INOUT)           :: dt_min
-REAL,INTENT(IN)              :: tend
-REAL,INTENT(INOUT)           :: Analyze_dt
-REAL,INTENT(INOUT)           :: tAnalyze
-INTEGER,INTENT(INOUT)        :: tmp_LoadBalanceSample    !> loadbalance sample saved until initial autorestart ist finished
-LOGICAL,INTENT(INOUT)        :: tmp_DoLoadBalance        !> loadbalance flag saved until initial autorestart ist finished
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL                         :: tEndDiff
-!===================================================================================================================================
-
-IF (.NOT.DoInitialAutoRestart) RETURN
-
-tmp_DoLoadBalance     = DoLoadBalance
-DoLoadBalance         = .TRUE.
-tmp_LoadbalanceSample = LoadBalanceSample
-LoadBalanceSample     = InitialAutoRestartSample
-
-! correct initialautrestartSample if partweight_initialautorestart is enabled so tAnalyze is calculated correctly
-! LoadBalanceSample still needs to be zero
-IF (IAR_PerformPartWeightLB) InitialAutoRestartSample=1
-
-! correction for first analyzetime due to auto initial restart
-tEndDiff = tend - t
-IF (MIN(RestartTime+Analyze_dt,tEnd,RestartTime+InitialAutoRestartSample*dt).LT.tAnalyze) THEN
-  tAnalyze     = MIN(RestartTime*Analyze_dt,tEnd,RestartTime+InitialAutoRestartSample*dt)
-  Analyze_dt   = tAnalyze-t
-  dt           = MINVAL((/dt_Min,Analyze_dt,tEndDiff/))
-END IF
-
-END SUBROUTINE InitialAutoRestart
-
-
 SUBROUTINE LoadBalance(OutputTime)
 !===================================================================================================================================
 ! routine perfoming the load balancing
@@ -101,7 +50,8 @@ USE MOD_DG                         ,ONLY: InitDG,FinalizeDG
 USE MOD_Equation                   ,ONLY: InitEquation,FinalizeEquation
 USE MOD_Filter                     ,ONLY: InitFilter,FinalizeFilter
 USE MOD_Lifting                    ,ONLY: InitLifting,FinalizeLifting
-USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,nLoadBalanceSteps,NewImbalance,MinWeight,MaxWeight
+USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ElemTimeField,ElemTimePart
+USE MOD_LoadBalance_Vars           ,ONLY: nLoadBalanceSteps,LoadBalanceMaxSteps,NewImbalance,MinWeight,MaxWeight
 USE MOD_LoadBalance_Vars           ,ONLY: CurrentImbalance,MaxWeight,MinWeight
 USE MOD_LoadBalance_Vars           ,ONLY: PerformLoadBalance
 USE MOD_Indicator                  ,ONLY: InitIndicator,FinalizeIndicator
@@ -118,6 +68,7 @@ USE MOD_ReadInTools                ,ONLY: prms
 USE MOD_Restart                    ,ONLY: InitRestart,FinalizeRestart,Restart
 USE MOD_Restart_Vars               ,ONLY: RestartFile,doRestart
 USE MOD_Sponge                     ,ONLY: InitSponge,FinalizeSponge
+USE MOD_StringTools                ,ONLY: set_formatting,clear_formatting
 !USE MOD_TimeDisc                   ,ONLY: InitTimeDisc,FinalizeTimeDisc
 USE MOD_TimeDisc_Vars              ,ONLY: dtElem
 #if PARABOLIC
@@ -137,18 +88,24 @@ REAL                            :: LB_Time,LB_StartTime
 !===================================================================================================================================
 ! only do load-balance if necessary
 IF (.NOT.PerformLoadBalance) THEN
-  ElemTime = 0.
+  ElemTime               = 0.
+  ElemTimeField          = 0.
+  ElemTimePart           = 0.
   InitializationWallTime = 0.
   RETURN
 END IF
 
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' PERFORMING LOAD BALANCE...'
-
-! Record time spent for load balance restart
+nLoadBalanceSteps = nLoadBalanceSteps+1
+SWRITE(UNIT_stdOut,'(132("-"))')
+CALL set_formatting('green')
+IF (LoadBalanceMaxSteps.GT.0) THEN
+  SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' PERFORMING LOAD BALANCE ',nLoadBalanceSteps,' of ',LoadBalanceMaxSteps,' ...'
+ELSE
+  SWRITE(UNIT_stdOut,'(A,I0,A)'     ) ' PERFORMING LOAD BALANCE ',nLoadBalanceSteps,' ...'
+END IF
+CALL clear_formatting()
+! Measure init duration
 LB_StartTime=FLEXITIME()
-
-nLoadBalanceSteps = nLoadBalanceSteps + 1
 
 ! finalize all arrays
 !CALL FinalizeFlexi(IsLoadBalance=.TRUE.)
@@ -196,11 +153,11 @@ CALL InitMesh(meshMode=2)
 CALL InitRestart(RestartFile)
 CALL InitFilter()
 CALL InitOverintegration()
-CALL InitIndicator()
 CALL InitMPIvars()
 CALL InitEquation()
 CALL InitDG()
 #if FV_ENABLED
+CALL InitIndicator()
 CALL InitFV()
 #endif /*FV_ENABLED*/
 #if PARABOLIC
@@ -220,25 +177,29 @@ CALL InitParticleMPI()
 CALL InitParticles(doLoadBalance_opt=.TRUE.)
 
 ! zero ElemTime, the measurement starts again
-ElemTime = 0.
+ElemTime      = 0.
+ElemTimePart  = 0.
+ElemTimeField = 0.
 
 IF(NewImbalance.GT.CurrentImbalance) THEN
-  SWRITE(UNIT_stdOut,'(A)') ' WARNING: LoadBalance not successful!'
+  CALL set_formatting('red')
+  SWRITE(UNIT_stdOut,'(A)') ' WARNING: LoadBalance not successful! Determined new (theoretical) imbalance from elem distribution'
+  CALL clear_formatting()
 ELSE
-  SWRITE(UNIT_stdOut,'(A)') ' LoadBalance successful!'
+  CALL set_formatting('green')
+  SWRITE(UNIT_stdOut,'(A)') ' LoadBalance successful! Determined new (theoretical) imbalance from elem distribution'
+  CALL clear_formatting()
 END IF
-SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | OldImbalance:                                  ', CurrentImbalance
-SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | NewImbalance:                                  ', NewImbalance
-SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | MaxWeight:                                     ', MaxWeight
-SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | MinWeight:                                     ', MinWeight
+SWRITE(UNIT_stdOut,'(A,ES10.3,A,ES10.3,A,ES10.3,A,ES10.3)')&
+  ' MinWeight: ', MinWeight, '    MaxWeight: ', MaxWeight, '    OldImbalance: ', CurrentImbalance,'    NewImbalance: ', NewImbalance
 
 ! Calculate time spent for load balance restart
-LB_Time=FLEXITIME()
+LB_Time                = FLEXITIME()
 InitializationWallTime = LB_Time - LB_StartTime
-!SWRITE(UNIT_stdOut,'(A,F14.2,A)') '  INITIALIZATION DONE IN [',InitializationWallTime,' sec ]'
-!SWRITE(UNIT_stdOut,'(A)')         ' LOAD BALANCE DONE!'
-SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' LOAD BALANCE DONE IN [',InitializationWallTime,' sec ]'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A,F14.2,A)') ' INITIALIZATION DONE! [',InitializationWallTime,' sec ]'
+SWRITE(UNIT_stdOut,'(A)')' LOAD BALANCE DONE!'
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A)')
 
 PerformLoadBalance = .FALSE.
 

@@ -237,8 +237,8 @@ REAL                           :: Xi(3,6),Lag(1:3,0:NGeo)
 INTEGER                        :: firstElem, lastElem
 !===================================================================================================================================
 
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curved...'
+SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' Identifying side types and whether elements are curved...'
 
 ! elements
 #if USE_MPI
@@ -370,8 +370,8 @@ INTEGER                        :: ElemLocID
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A)') ' Building EpsOneCell for all elements...'
+SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' Building EpsOneCell for all elements...'
 
 ! build sJ for all elements not on local proc
 #if USE_MPI
@@ -537,8 +537,8 @@ INTEGER                        :: sendbuf,recvbuf
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A)') ' Identifying BC sides and calculating side metrics...'
+SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' Identifying BC sides and calculating side metrics...'
 
 ! elements
 #if USE_MPI
@@ -597,16 +597,16 @@ IF (halo_eps.EQ.0) THEN
 
     ! compare halo_eps against global diagonal and reduce if necessary
     IF (.NOT.ALMOSTZERO(BC_halo_eps).AND.(BC_halo_diag.GE.BC_halo_eps)) THEN
-      SWRITE(UNIT_stdOUt,'(A,E11.3)') ' | No halo_eps given. Reconstructed to ',BC_halo_eps
+      SWRITE(UNIT_stdOut,'(A,E11.3)') ' | No halo_eps given. Reconstructed to ',BC_halo_eps
     ELSEIF (.NOT.ALMOSTZERO(BC_halo_eps).AND.(BC_halo_diag.LT.BC_halo_eps)) THEN
       fullMesh = .TRUE.
       BC_halo_eps = BC_halo_diag
-      SWRITE(UNIT_stdOUt,'(A,E11.3)') ' | No halo_eps given. Reconstructed to global diag with ',BC_halo_eps
+      SWRITE(UNIT_stdOut,'(A,E11.3)') ' | No halo_eps given. Reconstructed to global diag with ',BC_halo_eps
     ! halo_eps still at zero. Set it to global diagonal
     ELSE
       fullMesh = .TRUE.
       BC_halo_eps = BC_halo_diag
-      SWRITE(UNIT_stdOUt,'(A,F11.3)') ' | No halo_eps given and could not be reconstructed. Using global diag with ',BC_halo_eps
+      SWRITE(UNIT_stdOut,'(A,F11.3)') ' | No halo_eps given and could not be reconstructed. Using global diag with ',BC_halo_eps
     END IF
   ElSE
     fullMesh = .TRUE.
@@ -1326,7 +1326,7 @@ INTEGER                        :: iSide,firstSide,lastSide
 !REAL                           :: crossVec(3)
 !===================================================================================================================================
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' GET LINEAR SIDE BASEVECTORS...'
 #if USE_MPI
 CALL Allocate_Shared((/3,nNonUniqueGlobalSides/),BaseVectors0_Shared_Win,BaseVectors0_Shared)
@@ -1395,7 +1395,7 @@ CALL BARRIER_AND_SYNC(BaseVectors3_Shared_Win,MPI_COMM_SHARED)
 #endif /* USE_MPI */
 
 SWRITE(UNIT_stdOut,'(A)')' GET LINEAR SIDE BASEVECTORS DONE!'
-!SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE BuildLinearSideBaseVectors
 
 
@@ -1510,12 +1510,12 @@ GEO%zminglob = GEO%zmin
 GEO%zmaxglob = GEO%zmax
 #endif /*USE_MPI*/
 
-SWRITE(UNIT_StdOut,'(A,E18.8,A,E18.8,A,E18.8)') ' | Total MESH   Dim (x,y,z): '                                     &
+SWRITE(UNIT_stdOut,'(A,E18.8,A,E18.8,A,E18.8)') ' | Total MESH   Dim (x,y,z): '                                     &
                                                 , MAXVAL(NodeCoords_Shared(1,:))-MINVAL(NodeCoords_Shared(1,:)),', '&
                                                 , MAXVAL(NodeCoords_Shared(2,:))-MINVAL(NodeCoords_Shared(2,:)),', '&
                                                 , MAXVAL(NodeCoords_Shared(3,:))-MINVAL(NodeCoords_Shared(3,:))
 IF (TrackingMethod.EQ.REFMAPPING .OR. TrackingMethod.EQ. TRACING) THEN
-  SWRITE(UNIT_StdOut,'(A,E18.8,A,E18.8,A,E18.8)') ' | Total BEZIER Dim (x,y,z): '                                   &
+  SWRITE(UNIT_stdOut,'(A,E18.8,A,E18.8,A,E18.8)') ' | Total BEZIER Dim (x,y,z): '                                   &
                                                   , GEO%xmaxglob-GEO%xminglob,', '                                  &
                                                   , GEO%ymaxglob-GEO%yminglob,', '                                  &
                                                   , GEO%zmaxglob-GEO%zminglob
@@ -1587,8 +1587,8 @@ INTEGER                                  :: nLinearElemsTot,nCurvedElemsTot
 !#endif /* USE_MPI */
 !===================================================================================================================================
 
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A)') ' Identifying side types and whether elements are curved...'
+SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' Identifying side types and whether elements are curved...'
 
 ! elements
 #if USE_MPI
@@ -1912,13 +1912,13 @@ nCurvedElemsTot          = nCurvedElems
 !END IF
 !#endif /* USE_MPI */
 
-SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of planar-rectangular     faces: ', nPlanarRectangulartot
-SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of planar-non-rectangular faces: ', nPlanarNonRectangulartot
-SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of bi-linear              faces: ', nBilineartot
-SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of planar-curved          faces: ', nPlanarCurvedtot
-SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of curved                 faces: ', nCurvedtot
-SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of (bi-)linear            elems: ', nLinearElemsTot
-SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of curved                 elems: ', nCurvedElemsTot
+SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of planar-rectangular     faces: ', nPlanarRectangulartot
+SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of planar-non-rectangular faces: ', nPlanarNonRectangulartot
+SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of bi-linear              faces: ', nBilineartot
+SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of planar-curved          faces: ', nPlanarCurvedtot
+SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of curved                 faces: ', nCurvedtot
+SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of (bi-)linear            elems: ', nLinearElemsTot
+SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of curved                 elems: ', nCurvedElemsTot
 
 END SUBROUTINE IdentifyElemAndSideType
 
@@ -2154,7 +2154,7 @@ IF(WeirdElems.GT.0) THEN
   DO iElem = 1,WeirdElems
     IPWRITE(UNIT_stdOut,'(I0)') WeirdElemNbrs(iElem)
   END DO
-  IPWRITE(Unit_StdOut,'(A)')      ' This check is optional. You can disable it by setting meshCheckWeirdElements = F'
+  IPWRITE(UNIT_stdOut,'(A)')      ' This check is optional. You can disable it by setting meshCheckWeirdElements = F'
   CALL ABORT(__STAMP__,           'Weird elements found: it means that part of the element is turned inside-out')
 END IF
 
@@ -2162,7 +2162,7 @@ SWRITE(UNIT_stdOut,'(A)') ' DONE!'
 
 DEALLOCATE(WeirdElemNbrs)
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE WeirdElementCheck
 
 
@@ -2327,7 +2327,7 @@ MDEALLOCATE(PeriodicFound)
 #if USE_MPI
 IF (myRank.EQ.0) THEN
 #endif /*USE_MPI*/
-  WRITE(UNIT_StdOut,'(A,I0,A)') ' Found ',GEO%nPeriodicVectors,' periodic vectors for particle tracking'
+  WRITE(UNIT_stdOut,'(A,I0,A)') ' Found ',GEO%nPeriodicVectors,' periodic vectors for particle tracking'
   DO iVec = 1,GEO%nPeriodicVectors
     WRITE(UNIT_stdOut,'(A,I1,A,F12.8,2(", ",F12.8))') ' | Periodic vector ',iVec,': ', GEO%PeriodicVectors(:,iVec)
   END DO
@@ -2830,7 +2830,7 @@ CALL MPI_BCAST(MeshVolume,1, MPI_DOUBLE_PRECISION,0,MPI_COMM_SHARED,iERROR)
 MeshVolume = LocalVolume
 #endif /*USE_MPI*/
 
-SWRITE(UNIT_StdOut,'(A,E18.8)') ' | Total MESH Volume:        ', MeshVolume
+SWRITE(UNIT_stdOut,'(A,E18.8)') ' | Total MESH Volume:        ', MeshVolume
 
 END SUBROUTINE InitElemVolumes
 
@@ -2874,7 +2874,7 @@ REAL               :: A(3,3),detcon
 INTEGER            :: CornerNodeIDswitch(8)
 !===================================================================================================================================
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE GEOMETRY INFORMATION...'
 
 ! the cornernodes are not the first 8 entries (for Ngeo>1) of nodeinfo array so mapping is built
@@ -3012,7 +3012,7 @@ CALL BARRIER_AND_SYNC(ElemMidPoint_Shared_Win   ,MPI_COMM_SHARED)
 CALL WeirdElementCheck()
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GEOMETRY INFORMATION DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitParticleGeometry
 
 END MODULE MOD_Particle_Mesh_Build

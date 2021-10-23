@@ -48,10 +48,6 @@ TYPE tPartMPIVAR
   INTEGER                                :: nProcs                           ! number of MPI processes for particles
   INTEGER                                :: MyRank                           ! MyRank of PartMPIVAR%COMM
   LOGICAL                                :: MPIRoot                          ! Root, MPIRank=0
-  INTEGER                                :: nMPINeighbors                    ! number of MPI-Neighbors with HALO
-  LOGICAL,ALLOCATABLE                    :: isMPINeighbor(:)                 ! list of possible neighbors
-  INTEGER,ALLOCATABLE                    :: MPINeighbor(:)                   ! list containing the rank of MPI-neighbors
-  INTEGER,ALLOCATABLE                    :: GlobalToLocal(:)                 ! map from global proc id to local
 END TYPE
 
 TYPE (tPartMPIVAR)                       :: PartMPI
@@ -68,8 +64,6 @@ INTEGER                                  :: PartCommSize0                    ! N
                                                                              ! should think about own MPI-Data-Typ
 TYPE tMPIMessage
   REAL,ALLOCATABLE                      :: content(:)                        ! message buffer real
-  LOGICAL,ALLOCATABLE                   :: content_log(:)                    ! message buffer logical for BGM
-  INTEGER,ALLOCATABLE                   :: content_int(:)                    ! message buffer for integer for adsorption
 END TYPE
 
 TYPE(tMPIMessage),ALLOCATABLE  :: PartRecvBuf(:)                             ! PartRecvBuf with all required types
@@ -114,23 +108,6 @@ TYPE tParticleMPIExchange3
   TYPE(tMPIMessage),ALLOCATABLE  :: send_message(:)                          ! Message, required for particle emission
 END TYPE
 TYPE (tParticleMPIExchange3)     :: PartMPILocate
-
-TYPE tSurfMPIExchange
-  INTEGER,ALLOCATABLE            :: nSidesSend(:)                            ! Only MPI neighbors
-  INTEGER,ALLOCATABLE            :: nSidesRecv(:)                            ! Only MPI neighbors
-  INTEGER,ALLOCATABLE            :: SendRequest(:)                           ! Send requires message handle 1 - Number, 2-Message
-  INTEGER,ALLOCATABLE            :: RecvRequest(:)                           ! Receive request message handle,  1 - Number, 2-Message
-END TYPE
-TYPE (tSurfMPIExchange)          :: SurfExchange
-
-TYPE tNodeMPIExchange
-  INTEGER,ALLOCATABLE            :: nNodesSend(:)                            ! only mpi neighbors
-  INTEGER,ALLOCATABLE            :: nNodesRecv(:)                            ! only mpi neighbors
-  INTEGER,ALLOCATABLE            :: SendRequest(:)                           ! send requirest message handle 1 - Number, 2-Message
-  INTEGER,ALLOCATABLE            :: RecvRequest(:)                           ! recv request message handle,  1 - Number, 2-Message
-END TYPE
-TYPE (tNodeMPIExchange)          :: NodeExchange
-
 
 INTEGER,ALLOCATABLE              :: PartTargetProc(:)                        ! local proc id for communication
 

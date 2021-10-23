@@ -18,7 +18,7 @@
 !==================================================================================================================================
 MODULE MOD_Options
 ! MODULES
-USE MOD_Globals ,ONLY:MPIRoot,UNIT_StdOut
+USE MOD_Globals ,ONLY:MPIRoot,UNIT_stdOut
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
@@ -350,6 +350,9 @@ SUBROUTINE print(this, maxNameLen, maxValueLen, mode)
 ! MODULES
 USE MOD_StringTools
 USE MOD_ISO_VARYING_STRING
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -365,6 +368,9 @@ TYPE(VARYING_STRING) :: comment,headNewline,headSpace
 INTEGER              :: length
 INTEGER              :: commentLen
 !==================================================================================================================================
+#if USE_LOADBALANCE
+IF(PerformLoadBalance) RETURN
+#endif /*USE_LOADBALANCE*/
 IF(mode.EQ.1) commentLen=80 !--help
 IF(mode.EQ.2) commentLen=50 !--markdown
 WRITE(fmtName,*) maxNameLen
@@ -377,7 +383,7 @@ IF (mode.EQ.0) THEN
   SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(this%name)
   CALL clear_formatting()
 ELSE
-  SWRITE(UNIT_StdOut,"(A" // ADJUSTL(fmtName) // ")",ADVANCE='NO') this%name(:maxNameLen)
+  SWRITE(UNIT_stdOut,"(A" // ADJUSTL(fmtName) // ")",ADVANCE='NO') this%name(:maxNameLen)
 END IF
 
 ! print delimiter between name and value
@@ -385,16 +391,16 @@ SELECT CASE(mode)
 CASE(0)
   SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
 CASE(1)
-  SWRITE(UNIT_StdOut,"(A3)",ADVANCE='NO') " = "
+  SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " = "
 CASE(2)
-  SWRITE(UNIT_StdOut,"(A3)",ADVANCE='NO') "   "
+  SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') "   "
 END SELECT
 
 ! print value
 IF ((mode.EQ.0).OR.(this%hasDefault)) THEN
   CALL this%printValue(maxValueLen)
 ELSE
-  SWRITE(UNIT_StdOut, "(A"//fmtValue//")", ADVANCE='NO') ""
+  SWRITE(UNIT_stdOut, "(A"//fmtValue//")", ADVANCE='NO') ""
 END IF
 
 
@@ -403,13 +409,13 @@ IF (mode.EQ.0) THEN
   ! print DEFAULT/CUSTOM
   IF (this%isSet) THEN
     SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
-    CALL set_formatting("green")
+    CALL set_formatting('green')
     SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*CUSTOM"
     CALL clear_formatting()
     SWRITE(UNIT_stdOut,"(a3)") ' | '
   ELSE
     SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
-    CALL set_formatting("red")
+    CALL set_formatting('red')
     SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "DEFAULT"
     CALL clear_formatting()
     SWRITE(UNIT_stdOut,"(a3)") ' | '
@@ -420,7 +426,7 @@ ELSE
   comment = TRIM(this%description)
   WRITE(fmtValue,*) maxNameLen + maxValueLen + 4
   length = 0
-  SWRITE (UNIT_StdOut,'(A)',ADVANCE='NO') " " ! insert space after value
+  SWRITE (UNIT_stdOut,'(A)',ADVANCE='NO') " " ! insert space after value
   ! loop until comment is empty (split by newline)
   DO WHILE (LEN_TRIM(comment) .GT. 0)
     ! split comment at first newline. After the split:
@@ -435,27 +441,27 @@ ELSE
       CALL SPLIT(headNewline, headSpace, " ")
       ! if word in headSpace does not fit into actual line -> insert newline
       IF (length+LEN_TRIM(headSpace).GT.commentLen) THEN
-        SWRITE (UNIT_StdOut,*) ''
-        SWRITE(UNIT_StdOut, "(A"//fmtValue//")", ADVANCE='NO') ""
+        SWRITE (UNIT_stdOut,*) ''
+        SWRITE(UNIT_stdOut, "(A"//fmtValue//")", ADVANCE='NO') ""
         length = 0 ! reset length of line
       END IF
       ! insert word in headSpace and increase length of actual line
       IF ((length.EQ.0).AND.(mode.EQ.1)) THEN
-        SWRITE(UNIT_StdOut,'(A2)',ADVANCE='NO') "! "
+        SWRITE(UNIT_stdOut,'(A2)',ADVANCE='NO') "! "
       END IF
-      SWRITE (UNIT_StdOut,'(A)',ADVANCE='NO') CHAR(headSpace)//" "
+      SWRITE (UNIT_stdOut,'(A)',ADVANCE='NO') CHAR(headSpace)//" "
       length = length + LEN_TRIM(headSpace)+1
     END DO
     ! insert linebreak due to newline character in comment
-    SWRITE(UNIT_StdOut,*) ''
+    SWRITE(UNIT_stdOut,*) ''
     IF ((LEN_TRIM(comment).GT.0).OR.(mode.EQ.2)) THEN
-      SWRITE(UNIT_StdOut, "(A"//fmtValue//")", ADVANCE='NO') ""
+      SWRITE(UNIT_stdOut, "(A"//fmtValue//")", ADVANCE='NO') ""
     END IF
     length = 0
   END DO
   ! insert empty line after each option
   IF (mode.EQ.2) THEN
-    SWRITE(UNIT_StdOut,*) ''
+    SWRITE(UNIT_stdOut,*) ''
   END IF
 END IF
 END SUBROUTINE print
@@ -479,36 +485,36 @@ INTEGER                      :: i,length
 WRITE(fmtValue,*) maxValueLen
 SELECT TYPE (this)
 CLASS IS (IntOption)
-  SWRITE(UNIT_StdOut,"(I"//fmtValue//")",ADVANCE='NO') this%value
+  SWRITE(UNIT_stdOut,"(I"//fmtValue//")",ADVANCE='NO') this%value
 CLASS IS (LogicalOption)
-  SWRITE(UNIT_StdOut,"(L"//fmtValue//")",ADVANCE='NO') this%value
+  SWRITE(UNIT_stdOut,"(L"//fmtValue//")",ADVANCE='NO') this%value
 CLASS IS (RealOption)
   IF (this%digits.GE.1) THEN ! floating point representation
     WRITE(fmtDigits,*) this%digits
     SWRITE(UNIT_stdOut,'(F'//fmtValue//'.'//fmtDigits//')',ADVANCE='NO') this%value
   ELSE IF (this%digits.LE.-1) THEN ! scientific (exponential) representation
     WRITE(fmtDigits,*) -this%digits
-    SWRITE(UNIT_stdOut,'(E'//fmtValue//'.'//fmtDigits//')',ADVANCE='NO') this%value
+    SWRITE(UNIT_stdOut,'(ES'//fmtValue//'.'//fmtDigits//')',ADVANCE='NO') this%value
   ELSE ! digits not given
-    SWRITE(UNIT_stdOut,'(E'//fmtValue//'.19)',ADVANCE='NO') this%value
+    SWRITE(UNIT_stdOut,'(ES'//fmtValue//'.19)',ADVANCE='NO') this%value
   END IF
 CLASS IS (StringOption)
   IF (TRIM(this%value).EQ."") THEN
-    SWRITE(UNIT_StdOut,"(A"//fmtValue//")",ADVANCE='NO') '-'
+    SWRITE(UNIT_stdOut,"(A"//fmtValue//")",ADVANCE='NO') '-'
   ELSE
-    SWRITE(UNIT_StdOut,"(A"//fmtValue//")",ADVANCE='NO') TRIM(this%value)
+    SWRITE(UNIT_stdOut,"(A"//fmtValue//")",ADVANCE='NO') TRIM(this%value)
   END IF
 CLASS IS (IntFromStringOption)
   IF (TRIM(this%value).EQ."") THEN
-    SWRITE(UNIT_StdOut,"(A"//fmtValue//")",ADVANCE='NO') '-'
+    SWRITE(UNIT_stdOut,"(A"//fmtValue//")",ADVANCE='NO') '-'
   ELSE
     ! IntFromStringOption: Print in the format STRING (INTEGER) if the given value is found in the mapping,
     ! otherwise print just the integer
     IF (this%foundInList) THEN
       WRITE(intFromStringOutput,"(A,A,I0,A)") TRIM(this%strList(this%listIndex)), ' (', this%intList(this%listIndex), ')'
-      SWRITE(UNIT_StdOut,"(A"//fmtValue//")",ADVANCE='NO') TRIM(intFromStringOutput)
+      SWRITE(UNIT_stdOut,"(A"//fmtValue//")",ADVANCE='NO') TRIM(intFromStringOutput)
     ELSE
-      SWRITE(UNIT_StdOut,"(A"//fmtValue//")",ADVANCE='NO') TRIM(this%value)
+      SWRITE(UNIT_stdOut,"(A"//fmtValue//")",ADVANCE='NO') TRIM(this%value)
     END IF
   END IF
 CLASS IS (IntArrayOption)
@@ -517,37 +523,37 @@ CLASS IS (IntArrayOption)
     WRITE(fmtValue,*) (maxValueLen - length)
     SWRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO')
   END IF
-  SWRITE(UNIT_StdOut,"(A3)",ADVANCE='NO') "(/ "
+  SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') "(/ "
   DO i=1,SIZE(this%value)
     WRITE(fmtValue,'(I0)') this%value(i)
     WRITE(fmtValue,*) LEN_TRIM(fmtValue)
-    SWRITE(UNIT_StdOut,"(I"//fmtValue//")",ADVANCE='NO') this%value(i)
+    SWRITE(UNIT_stdOut,"(I"//fmtValue//")",ADVANCE='NO') this%value(i)
     IF (i.NE.SIZE(this%value)) THEN
-      SWRITE(UNIT_StdOut,"(A2)",ADVANCE='NO') ", "
+      SWRITE(UNIT_stdOut,"(A2)",ADVANCE='NO') ", "
     END IF
   END DO
-  SWRITE(UNIT_StdOut,"(A3)",ADVANCE='NO') " /)"
+  SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"
 CLASS IS (LogicalArrayOption)
   length=this%GETVALUELEN()
   IF (maxValueLen - length.GT.0) THEN
     WRITE(fmtValue,*) (maxValueLen - length)
     SWRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO')
   END IF
-  SWRITE(UNIT_StdOut,"(A3)",ADVANCE='NO') "(/ "
+  SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') "(/ "
   DO i=1,SIZE(this%value)
-    SWRITE(UNIT_StdOut,"(L1)",ADVANCE='NO') this%value(i)
+    SWRITE(UNIT_stdOut,"(L1)",ADVANCE='NO') this%value(i)
     IF (i.NE.SIZE(this%value)) THEN
-      SWRITE(UNIT_StdOut,"(A2)",ADVANCE='NO') ", "
+      SWRITE(UNIT_stdOut,"(A2)",ADVANCE='NO') ", "
     END IF
   END DO
-  SWRITE(UNIT_StdOut,"(A3)",ADVANCE='NO') " /)"
+  SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"
 CLASS IS (RealArrayOption)
   length=this%GETVALUELEN()
   IF (maxValueLen - length.GT.0) THEN
     WRITE(fmtValue,*) (maxValueLen - length)
     SWRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO')
   END IF
-  SWRITE(UNIT_stdOut,'(a3)',ADVANCE='NO') '(/ '
+  SWRITE(UNIT_stdOut,'(A3)',ADVANCE='NO') '(/ '
   DO i=1,SIZE(this%value)
     WRITE(fmtValue,*) GETSTRLENREAL(this%value(i), this%digits(i))
       IF (this%digits(i).GE.1) THEN ! floating point representation
@@ -563,7 +569,7 @@ CLASS IS (RealArrayOption)
       SWRITE(UNIT_stdOut,'(A2)',ADVANCE='NO') ', '
     END IF
   END DO
-  SWRITE(UNIT_stdOut,'(a3)',ADVANCE='NO') ' /)'
+  SWRITE(UNIT_stdOut,'(A3)',ADVANCE='NO') ' /)'
 !###
 ! TODO: Causes internal compiler error with GNU 6+ due to compiler bug (older GNU and Intel,Cray work). Uncomment as unused.
 !###
@@ -573,15 +579,15 @@ CLASS IS (RealArrayOption)
     !WRITE(fmtValue,*) (maxValueLen - length)
     !SWRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO')
   !END IF
-  !SWRITE(UNIT_StdOut,"(A3)",ADVANCE='NO') "(/ "
+  !SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') "(/ "
   !DO i=1,SIZE(this%value)
     !WRITE(fmtValue,*) LEN_TRIM(this%value(i))
-    !SWRITE(UNIT_StdOut,"(A"//fmtValue//")",ADVANCE='NO') this%value(i)
+    !SWRITE(UNIT_stdOut,"(A"//fmtValue//")",ADVANCE='NO') this%value(i)
     !IF (i.NE.SIZE(this%value)) THEN
-      !SWRITE(UNIT_StdOut,"(A2)",ADVANCE='NO') ", "
+      !SWRITE(UNIT_stdOut,"(A2)",ADVANCE='NO') ", "
     !END IF
   !END DO
-  !SWRITE(UNIT_StdOut,"(A3)",ADVANCE='NO') " /)"
+  !SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"
 CLASS DEFAULT
   STOP
 END SELECT
@@ -813,4 +819,4 @@ END IF
 
 END SUBROUTINE parseReal
 
-END module
+END MODULE

@@ -91,7 +91,7 @@ IF(PartMPI%InitGroup(InitGroup)%COMM.EQ.MPI_COMM_NULL) THEN
 END IF
 IF (PartMPI%InitGroup(InitGroup)%nProcs.GT.1) THEN
   IF (DoExactPartNumInsert) THEN !###$ ToDo
-    IF (PartMPI%InitGroup(InitGroup)%MPIROOT) THEN
+    IF (PartMPI%InitGroup(InitGroup)%MPIRoot) THEN
       ALLOCATE(ProcMeshVol(0:PartMPI%InitGroup(InitGroup)%nProcs-1))
       ALLOCATE(ProcNbrOfParticle(0:PartMPI%InitGroup(InitGroup)%nProcs-1))
       ProcMeshVol=0.
@@ -101,10 +101,10 @@ IF (PartMPI%InitGroup(InitGroup)%nProcs.GT.1) THEN
       ALLOCATE(ProcNbrOfParticle(1))
       ProcMeshVol=0.
       ProcNbrOfParticle=0
-    END IF !InitGroup%MPIroot
+    END IF !InitGroup%MPIRoot
     CALL MPI_GATHER(LocalVolume,1,MPI_DOUBLE_PRECISION &
                    ,ProcMeshVol,1,MPI_DOUBLE_PRECISION,0,PartMPI%InitGroup(InitGroup)%COMM,iError)
-    IF (PartMPI%InitGroup(InitGroup)%MPIROOT) THEN
+    IF (PartMPI%InitGroup(InitGroup)%MPIRoot) THEN
       CALL IntegerDivide(NbrOfParticle,PartMPI%InitGroup(InitGroup)%nProcs,ProcMeshVol,ProcNbrOfParticle)
     END IF
     CALL MPI_SCATTER(ProcNbrOfParticle, 1, MPI_INTEGER, chunksize, 1, MPI_INTEGER, 0, PartMPI%InitGroup(InitGroup)%COMM, IERROR)
@@ -133,7 +133,6 @@ SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
 USE MOD_Globals
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,doPartIndex
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
-USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionPoint
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionPlane,SetParticlePositionDisk,SetParticlePositionCross,SetParticlePositionCircle
@@ -200,11 +199,11 @@ ELSE
   nChunks = 1
 END IF
 chunkSize = INT(nbrOfParticle/nChunks)
-IF (PartMPI%InitGroup(InitGroup)%MPIROOT) THEN
+IF (PartMPI%InitGroup(InitGroup)%MPIRoot) THEN
   chunkSize = chunkSize*(1-nChunks) + nbrOfParticle
 END IF
 ! all proc taking part in particle inserting
-IF (PartMPI%InitGroup(InitGroup)%MPIROOT.OR.nChunks.GT.1) THEN
+IF (PartMPI%InitGroup(InitGroup)%MPIRoot.OR.nChunks.GT.1) THEN
 #endif
   ALLOCATE( particle_positions(1:chunkSize*DimSend), STAT=allocStat )
   IF (allocStat .NE. 0) &

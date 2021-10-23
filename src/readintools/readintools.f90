@@ -34,7 +34,7 @@
 !> file.
 !==================================================================================================================================
 MODULE MOD_ReadInTools
-
+! MODULES
 USE MOD_Globals
 USE MOD_ISO_VARYING_STRING
 USE MOD_Options
@@ -83,6 +83,7 @@ CONTAINS
   PROCEDURE :: count_unread               !< routine that counts the number of parameters, that are set in ini but not read
 !  PROCEDURE :: removeUnnecessary          !< routine that removes unused parameters from linked list
 #if USE_LOADBALANCE
+  PROCEDURE :: removeUnnecessary          !< routine that removes unused parameters from linked list
   PROCEDURE :: finalize                   !< routine that resets the parameters for loadbalance
 #endif /*USE LOADBALANCE*/
 END TYPE Parameters
@@ -264,8 +265,8 @@ CLASS(link), POINTER            :: current
   ! iterate over all options and set removed to false
   current => this%firstLink
   DO WHILE (associated(current))
-  current%opt%isRemoved=.FALSE.
-  current => current%next
+    current%opt%isRemoved=.FALSE.
+    current => current%next
   END DO
 ! ELSE
 !   current => this%firstLink
@@ -284,48 +285,36 @@ CLASS(link), POINTER            :: current
 END SUBROUTINE finalize
 
 
-! !==================================================================================================================================
-! !> Remove not used entries in the linked list of THIS parameters.
-! !> reduce size of list for faster loadbalance init
-! !==================================================================================================================================
-! SUBROUTINE removeUnnecessary(this)
-! ! MODULES
-! IMPLICIT NONE
-! !----------------------------------------------------------------------------------------------------------------------------------
-! ! INPUT/OUTPUT VARIABLES
-! CLASS(Parameters),INTENT(INOUT) :: this  !< CLASS(Parameters)
-! !----------------------------------------------------------------------------------------------------------------------------------
-! ! LOCAL VARIABLES
-! CLASS(link),POINTER :: tmp
-! CLASS(link),POINTER :: current
-! !==================================================================================================================================
-! current =>  this%firstLink
-! DO WHILE (associated(current%next))
-!   tmp => current%next%next
-!   !this%lastLink => current%next
-!   !this%lastLink%next => current%next
-!   IF (current%next%opt%numberedmulti) THEN
-!     DEALLOCATE(current%next%opt)
-!     NULLIFY(current%next%opt)
-!     DEALLOCATE(current%next)
-!     NULLIFY(current%next)
-!     current%next => tmp
-!   ELSE
-!     current => current%next
-!   END IF
-! END DO
-!
-! !current =>  this%firstLink
-! !IF (associated(current).AND.(current%opt%numberedmulti)) THEN
-! !  IF (associated(current%next)) THEN
-! !    this%firstLink => current%next
-! !  ELSE
-! !    this%firstLink => null()
-! !    this%LastLink  => null()
-! !  END IF
-! !END IF
-!
-! END SUBROUTINE removeUnnecessary
+!==================================================================================================================================
+!> Remove not used entries in the linked list of THIS parameters.
+!> reduce size of list for faster loadbalance init
+!==================================================================================================================================
+SUBROUTINE removeUnnecessary(this)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CLASS(Parameters),INTENT(INOUT) :: this  !< CLASS(Parameters)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CLASS(link),POINTER :: tmp
+CLASS(link),POINTER :: current
+!==================================================================================================================================
+current =>  this%firstLink
+DO WHILE (associated(current%next))
+  tmp => current%next%next
+  IF (current%next%opt%numberedmulti) THEN
+    DEALLOCATE(current%next%opt)
+    NULLIFY(current%next%opt)
+    DEALLOCATE(current%next)
+    NULLIFY(current%next)
+    current%next => tmp
+  ELSE
+    current => current%next
+  END IF
+END DO
+
+END SUBROUTINE removeUnnecessary
 #endif /*USE_LOADBALANCE*/
 
 !==================================================================================================================================
@@ -342,6 +331,7 @@ SUBROUTINE CreateOption(this, opt, name, description, value, multiple      &
 USE MOD_StringTools ,ONLY: LowCase
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)       :: this             !< CLASS(Parameters)
 CLASS(OPTION),INTENT(INOUT)           :: opt              !< option class
@@ -353,9 +343,12 @@ LOGICAL,INTENT(IN),OPTIONAL           :: multiple         !< marker if multiple 
 LOGICAL,INTENT(IN),OPTIONAL           :: numberedmulti    !< marker if numbered multiple option
 LOGICAL,INTENT(IN),OPTIONAL           :: removed          !< marker if removed option
 #endif /*USE_PARTICLES*/
+!----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link), POINTER :: newLink
+#if USE_PARTICLES
 TYPE(Varying_String) :: aStr
+#endif /*USE_PARTICLES*/
 !==================================================================================================================================
 
 !#if USE_PARTICLES
@@ -772,9 +765,9 @@ CHARACTER(LEN=1)      :: tmpChar=''
 !==================================================================================================================================
 CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for compatibility with FLEXI', '.TRUE.')
 
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   ! Get name of ini file
-  WRITE(UNIT_StdOut,*)'| Reading from file "',TRIM(filename),'":'
+  WRITE(UNIT_stdOut,*)'| Reading from file "',TRIM(filename),'":'
   IF (.NOT.FILEEXISTS(filename)) CALL Abort(__STAMP__,"Ini file does not exist.")
 
   ! Check if first argument is the ini-file
@@ -809,12 +802,12 @@ CALL MPI_BCAST(nLines,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 #endif
 ALLOCATE(FileContent(nLines))
 
-IF ((MPIROOT).AND.(nLines.GT.0)) THEN
+IF ((MPIRoot).AND.(nLines.GT.0)) THEN
   !read file
   REWIND(iniUnit)
   READ(iniUnit,'(A)') FileContent
 END IF
-IF (MPIROOT) CLOSE(iniUnit)
+IF (MPIRoot) CLOSE(iniUnit)
 #if USE_MPI
 CALL MPI_BCAST(FileContent,LEN(FileContent)*nLines,MPI_CHARACTER,0,MPI_COMM_FLEXI,iError)
 #endif
@@ -845,17 +838,17 @@ DO i=1,nLines
     IF (.NOT.this%read_option(HelpStr)) THEN
       IF (firstWarn) THEN
         firstWarn=.FALSE.
-        SWRITE(UNIT_StdOut,'(100("!"))')
-        SWRITE(UNIT_StdOut, *) "WARNING: The following options are unknown!"
+        SWRITE(UNIT_stdOut,'(100("!"))')
+        SWRITE(UNIT_stdOut, *) "WARNING: The following options are unknown!"
       END IF
       CALL set_formatting("blue")
-      SWRITE(UNIT_StdOut,*) '   ', TRIM(HelpStr)
+      SWRITE(UNIT_stdOut,*) '   ', TRIM(HelpStr)
       CALL clear_formatting()
     END IF
   END IF
 END DO
 IF (.NOT.firstWarn) THEN
-  SWRITE(UNIT_StdOut,'(100("!"))')
+  SWRITE(UNIT_stdOut,'(100("!"))')
 END IF
 DEALLOCATE(FileContent)
 
@@ -916,7 +909,7 @@ DO WHILE (associated(current))
     IF (current%opt%isSet) THEN
       IF (.NOT.(current%opt%multiple)) THEN
         ! option already set, but is not a multiple option
-        SWRITE(UNIT_StdOut,*) 'Option "', TRIM(name), '" is already set, but is not a multiple option!'
+        SWRITE(UNIT_stdOut,*) 'Option "', TRIM(name), '" is already set, but is not a multiple option!'
         STOP
       ELSE
         ! create new instance of multiple option
@@ -934,7 +927,7 @@ DO WHILE (associated(current))
       current%opt%isSet = .TRUE.
     ELSE
       CALL set_formatting("bright red")
-      SWRITE(UNIT_StdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
+      SWRITE(UNIT_stdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
       CALL clear_formatting()
     END IF
     RETURN
@@ -969,7 +962,7 @@ DO WHILE (associated(current))
         CALL insertOption(current, newopt)
       ELSE
         CALL set_formatting("bright red")
-        SWRITE(UNIT_StdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
+        SWRITE(UNIT_stdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
         CALL clear_formatting()
       END IF
       RETURN
@@ -996,15 +989,15 @@ END FUNCTION read_option
 ! !==================================================================================================================================
 ! current => prms%firstLink
 ! CALL set_formatting("bright red")
-! SWRITE(UNIT_StdOut,'(100("!"))')
-! SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
+! SWRITE(UNIT_stdOut,'(100("!"))')
+! SWRITE(UNIT_stdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
 ! DO WHILE (associated(current))
 !   IF (.NOT.current%opt%isRemoved) THEN
-!     SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
+!     SWRITE(UNIT_stdOut,*) "   ", TRIM(current%opt%name)
 !   END IF
 !   current => current%next
 ! END DO
-! SWRITE(UNIT_StdOut,'(100("!"))')
+! SWRITE(UNIT_stdOut,'(100("!"))')
 ! CALL clear_formatting()
 ! END SUBROUTINE IgnoredParameters
 
@@ -1067,17 +1060,17 @@ END DO
 
 ! if name is not specified, the complete parameter files needs to be printed
 IF ((.NOT.markdown).AND.(LEN_TRIM(name).EQ.0)) THEN
-  SWRITE(UNIT_StdOut,'(A80)')  "!==============================================================================="
-  SWRITE(UNIT_StdOut,'(A)')    "! Default Parameter File generated using 'flexi --help' "
-  SWRITE(UNIT_StdOut,'(4A)')   "!   compiled at : ", __DATE__," ", __TIME__
-  SWRITE(UNIT_StdOut,'(A80)')  "!==============================================================================="
+  SWRITE(UNIT_stdOut,'(A80)')  "!==============================================================================="
+  SWRITE(UNIT_stdOut,'(A)')    "! Default Parameter File generated using 'flexi --help' "
+  SWRITE(UNIT_stdOut,'(4A)')   "!   compiled at : ", __DATE__," ", __TIME__
+  SWRITE(UNIT_stdOut,'(A80)')  "!==============================================================================="
 END IF
 
 mode = 1
 IF (markdown) THEN
   mode = 2
-  SWRITE(UNIT_StdOut,'(A)') "## Parameterfile"
-  SWRITE(UNIT_StdOut,'(A)') ""
+  SWRITE(UNIT_stdOut,'(A)') "## Parameterfile"
+  SWRITE(UNIT_stdOut,'(A)') ""
 END IF
 
 ! Find longest parameter name and length of the standard values
@@ -1107,21 +1100,21 @@ DO WHILE (associated(current))
     IF (.NOT.STRICMP(section,current%opt%section)) THEN
       section = current%opt%section
       IF (markdown) THEN
-        SWRITE(UNIT_StdOut,'('//fmtLineLen//'("-"))')
-        SWRITE(UNIT_StdOut,'(A2,A,A2)')                                 "**",TRIM(section),"**"
-        SWRITE(UNIT_StdOut,'('//fmtName//'("-")"--"A1)', ADVANCE='NO')  " "
-        SWRITE(UNIT_StdOut,'('//fmtValue//'("-")A1)', ADVANCE='NO')     " "
-        SWRITE(UNIT_StdOut,'('//fmtComment//'("-"))')
-        SWRITE(UNIT_StdOut,'(A)', ADVANCE='NO')                         "**Variable**"
-        SWRITE(UNIT_StdOut,'('//fmtNamespace//'(" "))', ADVANCE='NO')
-        SWRITE(UNIT_StdOut,'(A)', ADVANCE='NO')                         "**Default**"
-        SWRITE(UNIT_StdOut,'('//fmtValuespace//'(" "))', ADVANCE='NO')
-        SWRITE(UNIT_StdOut,'(A)')                                       "**Description**"
-        SWRITE(UNIT_StdOut,'(A80)')                                     ""
+        SWRITE(UNIT_stdOut,'('//fmtLineLen//'("-"))')
+        SWRITE(UNIT_stdOut,'(A2,A,A2)')                                 "**",TRIM(section),"**"
+        SWRITE(UNIT_stdOut,'('//fmtName//'("-")"--"A1)', ADVANCE='NO')  " "
+        SWRITE(UNIT_stdOut,'('//fmtValue//'("-")A1)', ADVANCE='NO')     " "
+        SWRITE(UNIT_stdOut,'('//fmtComment//'("-"))')
+        SWRITE(UNIT_stdOut,'(A)', ADVANCE='NO')                         "**Variable**"
+        SWRITE(UNIT_stdOut,'('//fmtNamespace//'(" "))', ADVANCE='NO')
+        SWRITE(UNIT_stdOut,'(A)', ADVANCE='NO')                         "**Default**"
+        SWRITE(UNIT_stdOut,'('//fmtValuespace//'(" "))', ADVANCE='NO')
+        SWRITE(UNIT_stdOut,'(A)')                                       "**Description**"
+        SWRITE(UNIT_stdOut,'(A80)')                                     ""
       ELSE
-        SWRITE(UNIT_StdOut,'(A1,'//fmtLineLen//'("="))') "!"
-        SWRITE(UNIT_StdOut,'(A2,A)') "! ", TRIM(section)
-        SWRITE(UNIT_StdOut,'(A1,'//fmtLineLen//'("="))') "!"
+        SWRITE(UNIT_stdOut,'(A1,'//fmtLineLen//'("="))') "!"
+        SWRITE(UNIT_stdOut,'(A2,A)') "! ", TRIM(section)
+        SWRITE(UNIT_stdOut,'(A1,'//fmtLineLen//'("="))') "!"
       END IF
     END IF
 
@@ -1134,13 +1127,13 @@ DO WHILE (associated(current))
       currentOpt => current%opt
       SELECT TYPE(currentOpt)
       CLASS IS (IntFromStringOption)
-        SWRITE(UNIT_StdOut,'(A)') 'Possible options for this parameter are:'
+        SWRITE(UNIT_stdOut,'(A)') 'Possible options for this parameter are:'
         WRITE(fmtIntFromStringLength,*) currentOpt%maxLength   ! The biggest lenght of a named option
         WRITE(fmtStringIntFromString,*) "(A"//TRIM(fmtIntFromStringLength)//",A,I0,A)"
         DO i=1,SIZE(currentOpt%strList)
           ! Output is in the format STRING (INTEGER)
           WRITE(intFromStringOutput,TRIM(fmtStringIntFromString)) TRIM(currentOpt%strList(i)), ' (', currentOpt%intList(i), ')'
-          SWRITE(UNIT_StdOut,'(A)') TRIM(intFromStringOutput)
+          SWRITE(UNIT_stdOut,'(A)') TRIM(intFromStringOutput)
         END DO
       END SELECT
     END IF
@@ -1148,14 +1141,14 @@ DO WHILE (associated(current))
     ! print ------ line at the end of a section in markdown mode
     IF (associated(current%next).AND.markdown) THEN
       IF (.NOT.STRICMP(section,current%next%opt%section)) THEN
-        SWRITE(UNIT_StdOut,'('//fmtLineLen//'("-"))')
-        SWRITE(UNIT_StdOut,*) ''
+        SWRITE(UNIT_stdOut,'('//fmtLineLen//'("-"))')
+        SWRITE(UNIT_stdOut,*) ''
       END IF
     END IF
   END IF
   current => current%next
 END DO
-END SUBROUTINE
+END SUBROUTINE PrintDefaultParameterFile
 
 
 !==================================================================================================================================
@@ -1452,7 +1445,7 @@ CLASS(link),POINTER          :: check
 CLASS(Option),POINTER        :: multi
 CLASS(OPTION),ALLOCATABLE    :: newopt
 CHARACTER(LEN=:),ALLOCATABLE :: testname
-INTEGER                      :: i
+INTEGER                      :: i,j
 CHARACTER(LEN=20)            :: fmtName
 ! Temporary arrays to create new options
 CHARACTER(LEN=255)           :: tmpValue
@@ -1555,7 +1548,9 @@ DO WHILE (associated(current))
                     value = multi%value
                     ! insert option with numbered name ($ replaced by number)
                     ALLOCATE(intopt)
-                    WRITE(tmpValue, *) multi%value
+                    WRITE(tmpValue,'(*(I0))') (multi%value(j), ",",j=1,no)
+                    ! remove trailing comma
+                    tmpValue(len(TRIM(tmpValue)):len(TRIM(tmpValue))) = ' '
                     CALL prms%CreateOption(intopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
                 CLASS IS (RealArrayOption)
@@ -1565,7 +1560,9 @@ DO WHILE (associated(current))
                     value = multi%value
                     ! insert option with numbered name ($ replaced by number)
                     ALLOCATE(realopt)
-                    WRITE(tmpValue, *) multi%value
+                    WRITE(tmpValue,'(*(G0))') (multi%value(j), ",",j=1,no)
+                    ! remove trailing comma
+                    tmpValue(len(TRIM(tmpValue)):len(TRIM(tmpValue))) = ' '
                     CALL prms%CreateOption(realopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
                 CLASS IS (LogicalArrayOption)
@@ -1575,7 +1572,9 @@ DO WHILE (associated(current))
                     value = multi%value
                     ! insert option with numbered name ($ replaced by number)
                     ALLOCATE(logicalopt)
-                    WRITE(tmpValue, *) multi%value
+                    ! remove trailing comma
+                    tmpValue(len(TRIM(tmpValue)):len(TRIM(tmpValue))) = ' '
+                    WRITE(tmpValue,'(*(L))') (multi%value(j), ",",j=1,no)
                     CALL prms%CreateOption(logicalopt, name, 'description', value=tmpValue, multiple=.FALSE., numberedmulti=.FALSE.,removed=.TRUE.)
                   END SELECT
               END SELECT
@@ -1653,8 +1652,8 @@ END DO
 #endif /*USE_PARTICLES*/
 
 CALL ABORT(__STAMP__, &
-    'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
-    'or already read (use GET... routine only for multiple options more than once).')
+  'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
+  'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralArrayOption
 
 
@@ -2150,7 +2149,7 @@ IF (MPIRoot) THEN
         "File '"//TRIM(filename)//"' does not exist.")
   END IF
 
-  SWRITE(UNIT_StdOut,*)'| Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
+  SWRITE(UNIT_stdOut,*)'| Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
 
   ! Open parameter file for reading
   OPEN(NEWUNIT=fileUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)

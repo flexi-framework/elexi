@@ -352,7 +352,7 @@ DO iSpec = 1,nSpecies
 
       ! inform about size of emission communicator
       IF (PartMPI%InitGroup(nInitRegions)%MyRank.EQ.0) THEN
-              WRITE(UNIT_StdOut,'(A,I0,A,I0,A,I0,A)') ' Emission-Region,Emission-Communicator:',nInitRegions,' on ',&
+              WRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' Emission-Region,Emission-Communicator:',nInitRegions,' on ',&
       PartMPI%InitGroup(nInitRegions)%nProcs,' procs ('//TRIM(Species(iSpec)%Init(iInit)%SpaceIC)//', iSpec=',iSpec,')'
       END IF
     END IF
@@ -772,12 +772,13 @@ DO i = 1, chunkSize
         END IF ! TrackingMethod.EQ.REFMAPPING
         PEM%Element(ParticleIndexNbr)         = ElemID
       ELSE
-        IPWRITE(UNIT_StdOut,'(I0,A,I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for each processor (",&
+        IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for each processor (",&
                                                   PDM%MaxParticleNumber*nProcessors," in total)"
-        IPWRITE(UNIT_StdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
+        IPWRITE(UNIT_stdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
         CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
       END IF
       mySumOfMatchedParticles = mySumOfMatchedParticles + 1
+      PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
     END IF ! ElemID.EQ.-1
   END IF ! InsideMyBGM(i)
 END DO ! i = 1, chunkSize
@@ -905,7 +906,7 @@ DO i = 1,TotalNbrOfRecvParts
 
   ! Find a free position in the PDM array
   ParticleIndexNbr = PDM%nextFreePosition(mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
-   IF (ParticleIndexNbr.NE.0) THEN
+  IF (ParticleIndexNbr.NE.0) THEN
      ! Fill the PartState manually to avoid a second localization
      PartState(1:3,ParticleIndexNbr) = recvPartPos(DimSend*(i-1)+1:DimSend*(i-1)+3)
      PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
@@ -914,9 +915,9 @@ DO i = 1,TotalNbrOfRecvParts
      END IF ! TrackingMethod.EQ.REFMAPPING
      PEM%Element(ParticleIndexNbr)         = ElemID
   ELSE
-    IPWRITE(UNIT_StdOut,'(I0,A,I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for each processor (",&
+    IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for each processor (",&
                                               PDM%MaxParticleNumber*nProcessors," in total)"
-    IPWRITE(UNIT_StdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
+    IPWRITE(UNIT_stdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
     CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
   END IF
   mySumOfMatchedParticles = mySumOfMatchedParticles + 1
@@ -958,9 +959,9 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
 !        CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),PEM%Element(ParticleIndexNbr))
 !      END IF ! TrackingMethod.EQ.REFMAPPING
     ELSE
-      IPWRITE(UNIT_StdOut,'(I0,A,I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for each processor (",&
+      IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for each processor (",&
                                                 PDM%MaxParticleNumber*nProcessors," in total)"
-      IPWRITE(UNIT_StdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
+      IPWRITE(UNIT_stdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
       CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
     END IF
     mySumOfMatchedParticles = mySumOfMatchedParticles + 1

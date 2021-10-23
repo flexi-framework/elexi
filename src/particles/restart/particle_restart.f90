@@ -60,7 +60,8 @@ USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
 USE MOD_Particle_Restart_Vars
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod,NbrOfLostParticles,CountNbrOfLostParts
 USE MOD_Particle_Tracking_Vars,     ONLY: NbrOfLostParticlesTotal,TotalNbrOfMissingParticlesSum,NbrOfLostParticlesTotal_old
-USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies,PartPosRef,PartReflCount
+USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies
+USE MOD_Particle_Vars,              ONLY: PartPosRef,PartReflCount,doPartIndex,PartIndex
 USE MOD_Restart_Vars,               ONLY: RestartTime,RestartFile
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,          ONLY: PartMPI
@@ -71,44 +72,47 @@ USE MOD_Particle_SGS_Vars,          ONLY: nSGSVars
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars,   ONLY: nRWVars
 #endif
+USE MOD_StringTools,                ONLY: STRICMP
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles
+LOGICAL,INTENT(IN),OPTIONAL     :: doFlushFiles
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: FirstElemInd,LastelemInd,iInit
-INTEGER,ALLOCATABLE      :: PartInt(:,:)
-INTEGER,PARAMETER        :: PartIntSize=2        !number of entries in each line of PartInt
-INTEGER                  :: PartDim              !dummy for rank of partData
-INTEGER                  :: PartDataSize         !number of entries in each line of PartData
-INTEGER                  :: locnPart,offsetnPart
-INTEGER,PARAMETER        :: ELEM_FirstPartInd=1
-INTEGER,PARAMETER        :: ELEM_LastPartInd=2
-REAL,ALLOCATABLE         :: PartData(:,:)
-REAL                     :: xi(3),det(6,2)
-LOGICAL                  :: InElementCheck,EmissionTimeExists
-INTEGER                  :: NbrOfMissingParticles
+INTEGER                         :: FirstElemInd,LastelemInd,iInit
+INTEGER,ALLOCATABLE             :: PartInt(:,:)
+INTEGER,PARAMETER               :: PartIntSize=2        !number of entries in each line of PartInt
+INTEGER                         :: PartDim              !dummy for rank of partData
+INTEGER                         :: PartDataSize         !number of entries in each line of PartData
+INTEGER                         :: locnPart,offsetnPart
+INTEGER,PARAMETER               :: ELEM_FirstPartInd=1
+INTEGER,PARAMETER               :: ELEM_LastPartInd=2
+REAL,ALLOCATABLE                :: PartData(:,:)
+REAL                            :: xi(3),det(6,2)
+LOGICAL                         :: InElementCheck,EmissionTimeExists
+INTEGER                         :: NbrOfMissingParticles
 #if USE_MPI
-INTEGER                  :: iProc
-INTEGER,ALLOCATABLE      :: IndexOfFoundParticles(:),CompleteIndexOfFoundParticles(:)
-INTEGER                  :: CompleteNbrOfLost,CompleteNbrOfFound,CompleteNbrOfDuplicate
-REAL,ALLOCATABLE         :: RecBuff(:,:)
-INTEGER                  :: TotalNbrOfMissingParticles(0:PartMPI%nProcs-1), Displace(0:PartMPI%nProcs-1),CurrentPartNum
-INTEGER                  :: OffsetTotalNbrOfMissingParticles(0:PartMPI%nProcs-1)
-INTEGER                  :: NbrOfFoundParts, RecCount(0:PartMPI%nProcs-1)
+INTEGER                         :: iProc
+INTEGER,ALLOCATABLE             :: IndexOfFoundParticles(:),CompleteIndexOfFoundParticles(:)
+INTEGER                         :: CompleteNbrOfLost,CompleteNbrOfFound,CompleteNbrOfDuplicate
+REAL,ALLOCATABLE                :: RecBuff(:,:)
+INTEGER                         :: TotalNbrOfMissingParticles(0:PartMPI%nProcs-1), Displace(0:PartMPI%nProcs-1),CurrentPartNum
+INTEGER                         :: OffsetTotalNbrOfMissingParticles(0:PartMPI%nProcs-1)
+INTEGER                         :: NbrOfFoundParts, RecCount(0:PartMPI%nProcs-1)
 #endif /*MPI*/
-!REAL                     :: VFR_total
-INTEGER                  :: iSpec,iPart
-INTEGER                  :: iElem,CNElemID
-LOGICAL                  :: doFlushFiles_loc
+!REAL                            :: VFR_total
+INTEGER                         :: iSpec,iPart,iStr
+INTEGER                         :: iElem,CNElemID
+LOGICAL                         :: doFlushFiles_loc
 ! Particle turbulence models
-INTEGER                  :: TurbPartSize         !number of turbulent properties with curent setup
-INTEGER                  :: TurbPartDataSize     !number of turbulent properties in HDF5 file
-REAL,ALLOCATABLE         :: TurbPartData(:,:)    !number of entries in each line of TurbPartData
+INTEGER                         :: TurbPartSize         !number of turbulent properties with curent setup
+INTEGER                         :: TurbPartDataSize     !number of turbulent properties in HDF5 file
+REAL,ALLOCATABLE                :: TurbPartData(:,:)    !number of entries in each line of TurbPartData
+INTEGER                         :: PP_nVarPart_loc
+CHARACTER(LEN=255),ALLOCATABLE  :: StrVarNames(:)
 !===================================================================================================================================
 doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
 
@@ -145,10 +149,23 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
     CHECKSAFEINT(HSize(2),4)
     PartDataSize = INT(HSize(1))
-    SWRITE(UNIT_StdOut,'(A,I8)') ' | Number of particle variables:           ', PartDataSize
+    SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of particle variables:           ', PartDataSize
+
+    ! For files, where no particle diameter was saved
+    ALLOCATE(StrVarNames(PartDataSize))
+    CALL ReadAttribute(File_ID,'VarNamesParticles',PartDataSize,StrArray=StrVarNames)
+    ! Species and PartDiam
+    PP_nVarPart_loc = PartDataSize-1
+    DO iStr=1,PartDataSize
+      ! Reflection
+      IF (STRICMP('ReflectionCount',TRIM(StrVarNames(iStr)))) PP_nVarPart_loc = PP_nVarPart_loc - 1
+      ! PartIndex
+      IF (STRICMP('Index'          ,TRIM(StrVarNames(iStr)))) PP_nVarPart_loc = PP_nVarPart_loc - 1
+    END DO
+    DEALLOCATE(StrVarNames)
 
     ! Reflections are stored in the 8th data column. Do not start counting reflections mid-simulation
-    IF (PartDataSize.EQ.7) THEN
+    IF (PartDataSize.EQ.PP_nVarPart_loc+1) THEN
         doParticleReflectionTrack = .FALSE.
         SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Reflections not tracked previously. Disabling reflection counter',' | ',PartDataSize
     END IF
@@ -159,11 +176,19 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
     ! Loop over all particles on local proc and fill the PartState
     IF (locnPart.GT.0) THEN
-      PartState(1:PP_nVarPart,1:locnPart) = PartData(1:PP_nVarPart,offsetnPart+1:offsetnPart+locnPart)
-      PartSpecies(            1:locnPart) = INT(PartData(PP_nVarPart+1,offsetnPart+1:offsetnPart+locnPart))
+      PartState(1:PP_nVarPart_loc,1:locnPart) = PartData(1:PP_nVarPart_loc,offsetnPart+1:offsetnPart+locnPart)
+      PartSpecies(                1:locnPart) = INT(PartData(PP_nVarPart_loc+1,offsetnPart+1:offsetnPart+locnPart))
+      ! For old files, where no particle diameter was saved
+      IF (ANY(PartState(PART_DIAM,1:locnPart).EQ.0.)) THEN
+        DO iPart = 1,locnPart
+          PartState(PART_DIAM,iPart) = Species(PartSpecies(iPart))%DiameterIC
+        END DO
+      END IF
+      ! Particle index
+      IF (doPartIndex) PartIndex(1:locnPart) = INT(PartData(PP_nVarPart_loc+2,offsetnPart+1:offsetnPart+locnPart))
       ! Reflections were tracked previously and are therefore still enabled
-      IF (PartDataSize.EQ.8) THEN
-          PartReflCount(1:locnPart) = INT(PartData(PP_nVarPart+2,offsetnPart+1:offsetnPart+locnPart))
+      IF (PartDataSize.EQ.PP_nVarPart_loc+2) THEN
+          PartReflCount(1:locnPart) = INT(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
       END IF
 
       ! Fill the particle-to-element-mapping (PEM) with the information from HDF5
@@ -235,7 +260,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL UpdateNextFreePosition()
 
     SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE DONE!'
-    SWRITE(UNIT_StdOut,'(132("-"))')
+    SWRITE(UNIT_stdOut,'(132("-"))')
 
     ! Reconstruct the number of particles inserted before restart from the emission rate
     DO iSpec=1,nSpecies
@@ -425,8 +450,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       DO iPart = 1, TotalNbrOfMissingParticlesSum
         ! Sanity check
         IF(CurrentPartNum.GT.PDM%maxParticleNumber)THEn
-          IPWRITE(UNIT_StdOut,'(I0,A,I0)') " CurrentPartNum        = ",  CurrentPartNum
-          IPWRITE(UNIT_StdOut,'(I0,A,I0)') " PDM%maxParticleNumber = ",  PDM%maxParticleNumber
+          IPWRITE(UNIT_stdOut,'(I0,A,I0)') " CurrentPartNum        = ",  CurrentPartNum
+          IPWRITE(UNIT_stdOut,'(I0,A,I0)') " PDM%maxParticleNumber = ",  PDM%maxParticleNumber
           CALL abort(__STAMP__,'Missing particle ID > PDM%maxParticleNumber. Increase Part-MaxParticleNumber!')
         END IF ! CurrentPartNum.GT.PDM%maxParticleNumber
 
@@ -461,8 +486,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
         ! Sanity Check
         IF(IndexOfFoundParticles(iPart).EQ.-1)THEN
-          IPWRITE(UNIT_StdOut,'(I0,A,I0)') " iPart                        : ",  iPart
-          IPWRITE(UNIT_StdOut,'(I0,A,I0)') " IndexOfFoundParticles(iPart) : ",  IndexOfFoundParticles(iPart)
+          IPWRITE(UNIT_stdOut,'(I0,A,I0)') " iPart                        : ",  iPart
+          IPWRITE(UNIT_stdOut,'(I0,A,I0)') " IndexOfFoundParticles(iPart) : ",  IndexOfFoundParticles(iPart)
           CALL abort(__STAMP__,'IndexOfFoundParticles(iPart) was not set correctly)')
         END IF ! IndexOfFoundParticles(iPart)
       END DO ! iPart = 1, TotalNbrOfMissingParticlesSum
@@ -470,7 +495,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfFoundParts
 
       ! Combine number of found particles to make sure none are lost completely or found twice
-      IF(MPIroot)THEN
+      IF(MPIRoot)THEN
         CALL MPI_REDUCE(IndexOfFoundParticles,CompleteIndexOfFoundParticles,TotalNbrOfMissingParticlesSum,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM,IERROR)
       ELSE
         CALL MPI_REDUCE(IndexOfFoundParticles,0                            ,TotalNbrOfMissingParticlesSum,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM,IERROR)

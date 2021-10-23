@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !==================================================================================================================================
 !> Define and init parameters for particle boundaries
@@ -84,7 +85,7 @@ USE MOD_Particle_Boundary_Vars ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Vars ,ONLY: PartStateBoundary,PartStateBoundaryVecLength,ImpactDataSize
 USE MOD_Particle_Boundary_Vars ,ONLY: ImpactTrackInitIsDone,ImpactSideOnProc
 USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides
-USE MOD_Particle_Vars          ,ONLY: doPartIndex
+USE MOD_Particle_Vars          ,ONLY: doPartIndex,doWritePartDiam
 ! #if USE_MPI
 ! USE MOD_Particle_Boundary_Vars ,ONLY: nImpactProcs
 ! #endif /*USE_MPI*/
@@ -103,7 +104,7 @@ IF((.NOT.InterpolationInitIsDone) .OR. ImpactTrackInitIsDone)THEN
    CALL Abort(__STAMP__,"InitializeParticleBoundary not ready to be called or already called.")
 END IF
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT IMPACT TRACKING...'
 
 ! Check if impact tracking is activated
@@ -112,7 +113,12 @@ IF (.NOT.doParticleImpactTrack) THEN
   RETURN
 END IF
 
+#if PP_nVarPartRHS == 6
+ImpactDataSize = 16
+#else
 ImpactDataSize = 14
+#endif
+IF (doWritePartDiam)                                  ImpactDataSize = ImpactDataSize + 2
 IF (doPartIndex)                                      ImpactDataSize = ImpactDataSize + 1
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) ImpactDataSize = ImpactDataSize + 3
 
@@ -130,10 +136,10 @@ doParticleImpactTrack = ImpactSideOnProc
 ALLOCATE(PartStateBoundary(ImpactDataSize,1:10))
 PartStateBoundary          = 0.
 PartStateBoundaryVecLength = 0
-SWRITE(UNIT_StdOut,'(A)')' | Starting impact tracking ...'
+SWRITE(UNIT_stdOut,'(A)')' | Starting impact tracking ...'
 
 SWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleBoundaryTracking
 
@@ -166,7 +172,7 @@ END SUBROUTINE InitParticleBoundaryTracking
 !   CALL MPI_COMM_SIZE(EP_COMM, nImpactProcs, iError)
 
 !   IF (myImpactRank.EQ.0) &
-!     WRITE(UNIT_StdOut,'(A,I0,A)') ' Starting impact tracking communications between ', nImpactProcs, ' procs'
+!     WRITE(UNIT_stdOut,'(A,I0,A)') ' Starting impact tracking communications between ', nImpactProcs, ' procs'
 ! END IF
 
 ! CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
@@ -270,25 +276,30 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
 
 ! Write out in the next state file write-out
 IF(MPIRoot) THEN
-  WRITE(UNIT_StdOut,'(A,I0,A)')  ' | ',PartStateBoundaryVecLength_glob,' impact read from restart file'
-  WRITE(UNIT_StdOut,'(A,F0.3,A)')' READING PARTICLE IMPACT DATA FROM HDF5 FILE DONE'
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(A,I0,A)')  ' | ',PartStateBoundaryVecLength_glob,' impact read from restart file'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)')' READING PARTICLE IMPACT DATA FROM HDF5 FILE DONE'
+  WRITE(UNIT_stdOut,'(132("-"))')
 END IF
 
 END SUBROUTINE RestartParticleBoundaryTracking
 
 
-SUBROUTINE StoreBoundaryParticleProperties(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_old,PartReflCount,alpha,n_loc)
+SUBROUTINE StoreBoundaryParticleProperties(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_old,PartReflCount,alpha,dp_old&
+#if PP_nVarPartRHS == 6
+    ,rot_old&
+#endif
+    )
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Save particle position, velocity, and species to PartStateBoundary container for writing to .h5 later
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+USE MOD_Particle_Globals,        ONLY: PI
 USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars,  ONLY: PartStateBoundary,PartStateBoundaryVecLength,ImpactDataSize
 USE MOD_Particle_Memory,         ONLY: Allocate_Safe
-USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos,PartIndex,doPartIndex
+USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos,PartIndex,doPartIndex,doWritePartDiam
 USE MOD_TimeDisc_Vars,           ONLY: t,CurrentStage,dt,RKc
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -298,26 +309,29 @@ REAL,INTENT(IN)                   :: PartFaceAngle, v_old(1:3)
 REAL,INTENT(IN)                   :: PartFaceAngle_old
 REAL,INTENT(IN)                   :: alpha
 INTEGER,INTENT(IN)                :: BCSideID,PartID,PartReflCount
-REAL,INTENT(IN)                   :: n_loc(1:3)
+REAL,INTENT(IN)                   :: dp_old
+#if PP_nVarPartRHS == 6
+REAL,INTENT(IN)                   :: rot_old(1:3)
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER              :: dims(2)
+INTEGER              :: dims(2),tmp
 REAL,ALLOCATABLE     :: PartStateBoundary_tmp(:,:) !                 2nd index: 1 to number of boundary-crossed particles
 INTEGER              :: ALLOCSTAT
-!
-REAL                 :: v_magnitude_old,v_magnitude_new
-REAL                 :: e_kin_old,e_kin_new,v_norm(3)!,v_tang(3)
+REAL                 :: e_kin_old,e_kin_new
+#if PP_nVarPartRHS == 6
+REAL                 :: e_rot_old, e_rot_new
+#endif
 REAL                 :: t_loc
 !===================================================================================================================================
 
 !----  Calculating values before and after reflection
-v_magnitude_old   = SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
-v_magnitude_new   = SQRT(DOT_PRODUCT(PartState(4:6,PartID),PartState(4:6,PartID)))
-e_kin_old         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_old**2.
-e_kin_new         = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude_new**2.
-!e_kin_loss        = e_kin_old-e_kin_new
-v_norm            = DOT_PRODUCT(PartState(4:6,PartID),n_loc)*n_loc
-!v_tang            = PartState(4:6,PartID) - v_norm
+e_kin_old = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,dp_old,v_old(1:3))
+e_kin_new = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID),PartState(PART_VELV,PartID))
+#if PP_nVarPartRHS == 6
+e_rot_old = ENERGY_ROTATION(Species(PartSpecies(PartID))%DensityIC,dp_old,rot_old(1:3))
+e_rot_new = ENERGY_ROTATION(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID),PartState(PART_AMOMV,PartID))
+#endif
 
 ! Check if PartStateBoundary is sufficiently large
 dims = SHAPE(PartStateBoundary)
@@ -368,7 +382,19 @@ ASSOCIATE( iMax => PartStateBoundaryVecLength )
   PartStateBoundary(12 ,iMax) = e_kin_new
   PartStateBoundary(13 ,iMax) = PartFaceAngle_old
   PartStateBoundary(14 ,iMax) = PartFaceAngle
-  IF(doPartIndex)                                      PartStateBoundary(15                             ,iMax) = PartIndex(    PartID)
+  IF (doWritePartDiam) THEN
+    PartStateBoundary(15 ,iMax) = dp_old
+    PartStateBoundary(16 ,iMax) = PartState(PART_DIAM,PartID)
+    tmp = 17
+  ELSE
+    tmp = 15
+  END IF
+#if PP_nVarPartRHS==6
+  PartStateBoundary(tmp ,iMax) = e_rot_old
+  PartStateBoundary(tmp+1 ,iMax) = e_rot_new
+  tmp = tmp+2
+#endif
+  IF(doPartIndex)                                      PartStateBoundary(tmp                            ,iMax) = PartIndex(    PartID)
   IF(doParticleDispersionTrack.OR.doParticlePathTrack) PartStateBoundary(ImpactDataSize-2:ImpactDataSize,iMax) = PartPath (1:3,PartID)
 END ASSOCIATE
 

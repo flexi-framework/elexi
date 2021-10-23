@@ -115,7 +115,7 @@ IF(FilterInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
    CALL CollectiveStop(__STAMP__,'InitFilter not ready to be called or already called.')
    RETURN
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FILTER...'
 
 FilterType = GETINTFROMSTR('FilterType')
@@ -202,7 +202,7 @@ END IF !FilterType=0
 
 FilterInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FILTER DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitFilter
 
 

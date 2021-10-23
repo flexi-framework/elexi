@@ -491,7 +491,7 @@ INTEGER                        :: NZ_loc
 INTEGER                        :: iElem,i,j,iVar
 #endif
 !==================================================================================================================================
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE BASE FLOW TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
@@ -586,7 +586,7 @@ IF(ANY(nVal(1:PP_dim)       .EQ.0)) RETURN ! no time averaging
 IF(nVarAvg.EQ.0.AND.nVarFluc.EQ.0)  RETURN ! no time averaging
 IF(.NOT.WriteStateFiles)            RETURN
 
-IF (MPIROOT) THEN
+IF (MPIRoot) THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
@@ -655,9 +655,9 @@ DO i=1,2
 #endif
 END DO
 
-IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
+IF(MPIRoot) CALL MarkWriteSuccessfull(FileName)
 
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
 END IF
@@ -1005,7 +1005,7 @@ USE MOD_Particle_Boundary_Vars,ONLY: doParticleReflectionTrack
 USE MOD_Particle_HDF5_Output
 USE MOD_Particle_Restart_Vars, ONLY: EmissionTime
 USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex
-USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex
+USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex,doWritePartDiam
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
 #endif /*MPI*/
@@ -1041,14 +1041,21 @@ INTEGER,ALLOCATABLE            :: PartInt(:,:)
 REAL,ALLOCATABLE               :: PartData(:,:)
 INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
 INTEGER                        :: PartDataSize       !number of entries in each line of PartData
-INTEGER                        :: locnPart_max, tmpIndex
+INTEGER                        :: locnPart_max, tmpIndex, tmpIndex2, PP_nVarPart_loc
 ! Particle turbulence models
 INTEGER                        :: TurbPartDataSize
 REAL,ALLOCATABLE               :: TurbPartData(:,:)
 !===================================================================================================================================
 
 ! Size and location of particle data
-PartDataSize = PP_nVarPart + 1
+PP_nVarPart_loc = PP_nVarPart-1
+PartDataSize    = PP_nVarPart_loc + 1
+tmpIndex2       = PartDataSize
+IF (doWritePartDiam) THEN
+  PP_nVarPart_loc = PP_nVarPart
+  PartDataSize    = PartDataSize + 1
+  tmpIndex2       = PartDataSize
+END IF
 tmpIndex     = PartDataSize + 1
 ! Increase size if index is tracked
 IF (doPartIndex) THEN
@@ -1150,9 +1157,9 @@ DO iElem = offsetElem+1,offsetElem+PP_nElems
     ! Sum up particles and add properties to output array
     pcount = PEM%pStart(iElem)
     DO iPart = PartInt(1,iElem)+1,PartInt(2,iElem)
-      PartData(1:PP_nVarPart,iPart) = PartState(1:PP_nVarPart,pcount)
-      PartData(PP_nVarPart+1,iPart) = REAL(PartSpecies(pcount))
-      IF (doPartIndex)                                      PartData(PP_nVarPart+2                        ,iPart) = REAL(PartIndex(pcount))
+      PartData(1:tmpIndex2-1,iPart) = PartState(1:tmpIndex2-1,pcount)
+      PartData(tmpIndex2,iPart)     = REAL(PartSpecies(pcount))
+      IF (doPartIndex)                                      PartData(PP_nVarPart_loc+2                    ,iPart) = REAL(PartIndex(pcount))
       IF (doParticleReflectionTrack)                        PartData(tmpIndex                             ,iPart) = REAL(PartReflCount(pcount))
       IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartData(tmpIndex+varShift:tmpIndex+2+varShift,iPart) = PartPath(1:3,pcount)
 
@@ -1216,8 +1223,12 @@ ASSOCIATE (&
   ALLOCATE(StrVarNames(PartDataSize))
   StrVarNames(1:3) = (/'ParticlePositionX','ParticlePositionY','ParticlePositionZ'/)
   StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityZ'        /)
-  StrVarNames(7)   = 'Species'
-  IF(doPartIndex) StrVarNames(8)   = 'Index'
+#if PP_nVarPartRHS == 6
+  StrVarNames(7:9) = (/'AngularVelX'      ,'AngularVelY'      ,'AngularVelZ'      /)
+#endif
+  IF (doWritePartDiam) StrVarNames(PP_nVarPart) = 'PartDiam'
+  StrVarNames(tmpIndex2) = 'Species'
+  IF (doPartIndex) StrVarNames(tmpIndex2+1) = 'Index'
   IF (doParticleReflectionTrack) &
     StrVarNames(tmpIndex) = 'ReflectionCount'
   IF (doParticleDispersionTrack.OR.doParticlePathTrack) &

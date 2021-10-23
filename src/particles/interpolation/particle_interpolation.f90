@@ -101,7 +101,7 @@ IF (PartInterpolationInitIsDone) THEN
    RETURN
 END IF
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE INTERPOLATION...'
 
 ! For low number of particles, the loop over all elements becomes quite inefficient. User can opt out with setting
@@ -119,12 +119,12 @@ END IF
 #if USE_MPI
 CALL MPI_REDUCE(LoopDisabled,LoopDisabledGlob,1,MPI_INTEGER, MPI_SUM,0,PartMPI%COMM,iError)
 IF (MPIRoot.AND.LoopDisabledGlob.GT.0) THEN
-  WRITE(UNIT_StdOut,'(A,I0,A,I0,A)') ' InterpolationElemLoop disabled due to high number of elements on ',LoopDisabledGlob, &
+  WRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' InterpolationElemLoop disabled due to high number of elements on ',LoopDisabledGlob, &
                                      ' of ',PartMPI%nProcs,' procs'
 END IF
 #else
 LoopDisabledGlob = LoopDisabled
-WRITE(UNIT_StdOut,'(A)')          ' InterpolationElemLoop disabled due to high number of elements'
+WRITE(UNIT_stdOut,'(A)')          ' InterpolationElemLoop disabled due to high number of elements'
 #endif
 
 !--- Allocate arrays for interpolation of fields to particles
@@ -151,7 +151,7 @@ GradAtParticle(:,:,:) = 0.
 PartInterpolationInitIsDone=.TRUE.
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE INTERPOLATION DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleInterpolation
 

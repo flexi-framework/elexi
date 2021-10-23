@@ -28,11 +28,9 @@
 MODULE MOD_Indicator
 ! MODULES
 IMPLICIT NONE
-
-PRIVATE
-
-LOGICAL :: doCalcIndicator=.FALSE. !< switch whether to compute indicator
-
+!----------------------------------------------------------------------------------------------------------------------------------
+! PRIVATE VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,PARAMETER :: INDTYPE_DG             = 0
 INTEGER,PARAMETER :: INDTYPE_FV             = 1
 INTEGER,PARAMETER :: INDTYPE_PERSSON        = 2
@@ -41,6 +39,15 @@ INTEGER,PARAMETER :: INDTYPE_DUCROS         = 9
 INTEGER,PARAMETER :: INDTYPE_DUCROSTIMESJST = 10
 INTEGER,PARAMETER :: INDTYPE_HALFHALF       = 3
 INTEGER,PARAMETER :: INDTYPE_CHECKERBOARD   = 33
+
+PUBLIC :: INDTYPE_DG,INDTYPE_FV,INDTYPE_PERSSON,INDTYPE_JAMESON
+PUBLIC :: INDTYPE_DUCROS,INDTYPE_DUCROSTIMESJST,INDTYPE_HALFHALF,INDTYPE_CHECKERBOARD
+!----------------------------------------------------------------------------------------------------------------------------------
+! PRIVATE VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+PRIVATE
+
+LOGICAL :: doCalcIndicator=.FALSE. !< switch whether to compute indicator
 
 INTERFACE InitIndicator
   MODULE PROCEDURE InitIndicator
@@ -139,7 +146,7 @@ IF(IndicatorInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
     "InitIndicator not ready to be called or already called.")
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
 
 ! Read in  parameters
@@ -201,7 +208,7 @@ END DO
 
 IndicatorInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitIndicator
 
 !==================================================================================================================================

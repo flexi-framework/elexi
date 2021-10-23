@@ -323,6 +323,7 @@ END IF
 
 ! read options from posti parameter file
 NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
+HighOrder         = GETLOGICAL('HighOrder')
 #if USE_PARTICLES
 VisuPart          = GETLOGICAL("VisuPart")
 #endif
@@ -593,6 +594,7 @@ CALL prms%CreateLogicalOption("HDF5Output"      , "Write solution to HDF5 file",
 CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL prms%CreateLogicalOption("DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
 CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateLogicalOption("HighOrder"       , "Write high-order element representation",".FALSE.")
 #if USE_PARTICLES
 CALL prms%CreateLogicalOption('VisuPart'        , "Visualize particles",".FALSE.")
 #endif

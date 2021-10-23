@@ -44,7 +44,7 @@ SUBROUTINE CalcSurfaceValues(restart_opt,remap_opt)
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Restart_Vars               ,ONLY: DoRestart,RestartTime
-USE MOD_Analyze_Vars               ,ONLY: Analyze_dt
+USE MOD_Analyze_Vars               ,ONLY: analyze_dt
 USE MOD_Mesh_Vars                  ,ONLY: MeshFile
 USE MOD_Timedisc_Vars              ,ONLY: t
 USE MOD_Restart_Vars               ,ONLY: RestartTime
@@ -89,7 +89,7 @@ END IF
 ! Update values if we are called from a restart
 IF (PRESENT(restart_opt)) THEN
   IF (restart_opt) THEN
-    TimeSample = Analyze_dt
+    TimeSample = analyze_dt
     t          = MERGE(RestartTime,0.,DoRestart)
     ActualTime = t
   END IF
@@ -214,7 +214,7 @@ USE MOD_Output_Vars            ,ONLY: ProjectName,WriteStateFiles
 USE MOD_Particle_Analyze_Vars  ,ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars ,ONLY: PartStateBoundary,PartStateBoundaryVecLength
 USE MOD_Particle_Boundary_Vars ,ONLY: ImpactDataSize,ImpactnGlob,ImpactnLoc,ImpactOffset
-USE MOD_Particle_Vars          ,ONLY: doPartIndex
+USE MOD_Particle_Vars          ,ONLY: doPartIndex,doWritePartDiam
 #if USE_MPI
 ! USE MOD_Particle_Boundary_Vars ,ONLY: MPI_COMM_IMPACT
 USE MOD_Particle_HDF5_Output   ,ONLY: DistributedWriteArray
@@ -231,7 +231,7 @@ CHARACTER(LEN=255)             :: FileName,FileString
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
 LOGICAL                        :: reSwitch
 REAL                           :: startT,endT
-INTEGER                        :: dims(2)
+INTEGER                        :: dims(2),tmp
 !===================================================================================================================================
 IF (.NOT.WriteStateFiles) RETURN
 
@@ -273,7 +273,19 @@ StrVarNames(11) = 'E_kin_impact'
 StrVarNames(12) = 'E_kin_reflected'
 StrVarNames(13) = 'Alpha_impact'
 StrVarNames(14) = 'Alpha_reflected'
-IF (doPartIndex) StrVarNames(15)= 'Index'
+IF (doWritePartDiam) THEN
+  StrVarNames(15) = 'dp_old'
+  StrVarNames(16) = 'dp_new'
+  tmp = 17
+ELSE
+  tmp = 15
+END IF
+#if PP_nVarPartRHS==6
+StrVarNames(tmp) = 'E_rot_impact'
+StrVarNames(tmp+1) = 'E_rot_reflected'
+tmp = tmp+2
+#endif
+IF (doPartIndex) StrVarNames(tmp)= 'Index'
 IF (doParticleDispersionTrack) THEN
   StrVarNames(ImpactDataSize-2) = 'PartPathAbsX'
   StrVarNames(ImpactDataSize-1) = 'PartPathAbsY'
@@ -345,7 +357,7 @@ END IF
 PartStateBoundaryVecLength = 0
 PartStateBoundary          = 0.
 
-IF (MPIROOT) THEN
+IF (MPIRoot) THEN
 !  CALL MarkWriteSuccessfull(FileString)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s]'

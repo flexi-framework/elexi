@@ -102,7 +102,7 @@ INTEGER                        :: nExchangeProcessorsGlobal
 ! Keep everything in sync here
 ! CALL MPI_BARRIER(MPI_COMM_FLEXI,IERROR)
 
-!SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' IDENTIFYING Particle Exchange Processors...'
 
 ! Allocate arrays
@@ -135,7 +135,7 @@ GlobalProcToRecvProc = .FALSE.
 IF (nProcessors.EQ.1) THEN
   SWRITE(UNIT_stdOut,'(A)') ' | Running on one processor. Particle exchange communication disabled.'
   SWRITE(UNIT_stdOut,'(A)') ' IDENTIFYING Particle Exchange Processors DONE!'
-  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(132("-"))')
   RETURN
 END IF
 
@@ -307,16 +307,16 @@ IF (halo_eps.EQ.0) THEN
 
   ! compare halo_eps against global diagonal and reduce if necessary
   IF (.NOT.ALMOSTZERO(MPI_halo_eps).AND.(MPI_halo_diag.GE.MPI_halo_eps)) THEN
-    SWRITE(UNIT_stdOUt,'(A,E11.3)') ' | No halo_eps given. Reconstructed to ',MPI_halo_eps
+    SWRITE(UNIT_stdOut,'(A,E11.3)') ' | No halo_eps given. Reconstructed to ',MPI_halo_eps
   ELSEIF (.NOT.ALMOSTZERO(MPI_halo_eps).AND.(MPI_halo_diag.LT.MPI_halo_eps)) THEN
     fullMesh = .TRUE.
     MPI_halo_eps = MPI_halo_diag
-    SWRITE(UNIT_stdOUt,'(A,E11.3)') ' | No halo_eps given. Reconstructed to global diag with ',MPI_halo_eps
+    SWRITE(UNIT_stdOut,'(A,E11.3)') ' | No halo_eps given. Reconstructed to global diag with ',MPI_halo_eps
   ! halo_eps still at zero. Set it to global diagonal
   ELSE
     fullMesh = .TRUE.
     MPI_halo_eps = MPI_halo_diag
-    SWRITE(UNIT_stdOUt,'(A,F11.3)') ' | No halo_eps given and could not be reconstructed. Using global diag with ',MPI_halo_eps
+    SWRITE(UNIT_stdOut,'(A,F11.3)') ' | No halo_eps given and could not be reconstructed. Using global diag with ',MPI_halo_eps
   END IF
 ELSE
   vec(1)   = GEO%xmaxglob-GEO%xminglob
@@ -628,7 +628,7 @@ DEALLOCATE(GlobalProcToRecvProc,RecvRequest,SendRequest,CommFlag)
 ! On smooth grids, nNonSymmetricExchangeProcs should be zero. Only output if previously missing particle exchange procs are found
 CALL MPI_REDUCE(nNonSymmetricExchangeProcs,nNonSymmetricExchangeProcsGlob,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 IF ( MPIRoot .AND. nNonSymmetricExchangeProcsGlob.GT.0) THEN
-  SWRITE(Unit_StdOut,'(A,I0,A)') ' | Found ',nNonSymmetricExchangeProcsGlob, &
+  SWRITE(UNIT_stdOut,'(A,I0,A)') ' | Found ',nNonSymmetricExchangeProcsGlob, &
                                  ' previously missing non-symmetric particle exchange procs'
   IF(CheckExchangeProcs) CALL abort(__STAMP__,&
     ' Non-symmetric particle exchange procs > 0. This check is optional. You can disable it via CheckExchangeProcs = F')
@@ -670,7 +670,7 @@ SWRITE(UNIT_stdOut,'(A,I0,A)') ' | Started particle exchange communication with 
                                  ' partners per proc'
 
 SWRITE(UNIT_stdOut,'(A)') ' IDENTIFYING Particle Exchange Processors DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE IdentifyPartExchangeProcs
 

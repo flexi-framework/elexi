@@ -196,6 +196,11 @@ LOGICAL                                 :: datasetFound
 !===================================================================================================================================
 SDEALLOCATE(ListIn%PartData_HDF5)
 
+IF (ListIn%nPartVar_HDF5.EQ.0) THEN
+  ListIn%nPartVar_Visu = 0
+  RETURN
+END IF
+
 IF(PRESENT(DataArrayIn))THEN
   DataArray = DataArrayIn
 ELSE

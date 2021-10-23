@@ -69,11 +69,11 @@ USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: PartID
-LOGICAL,INTENT(IN)                :: doHalo
+INTEGER,INTENT(IN)     :: PartID
+LOGICAL,INTENT(IN)     :: doHalo
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: ElemID
+INTEGER                :: ElemID
 !===================================================================================================================================
 ElemID = SinglePointToElement(PartState(1:3,PartID),doHALO=doHALO)
 PEM%Element(PartID) = ElemID
@@ -167,7 +167,7 @@ DO iBGMElem = 1,nBGMElems
 
   ElemID    = ListDistance(iBGMElem)
 
-  IF (.NOT.DoHALO) THEN
+  IF (.NOT.doHALO) THEN
     IF (ElemID.LT.offsetElem+1 .OR. ElemID.GT.offsetElem+PP_nElems) CYCLE
   END IF
 
@@ -223,7 +223,7 @@ USE MOD_Particle_Surfaces      ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBez
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideType,SideNormVec
 USE MOD_Particle_Vars          ,ONLY: LastPartPos
 #if CODE_ANALYZE
-USE MOD_Globals                ,ONLY: MyRank,UNIT_stdout
+USE MOD_Globals                ,ONLY: MyRank,UNIT_stdOut
 USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 USE MOD_Particle_Surfaces      ,ONLY: OutputBezierControlPoints
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
@@ -272,8 +272,8 @@ lengthPartTrajectory    = VECNORM(PartTrajectory(1:3))
 #if CODE_ANALYZE
   IF(PARTOUT.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
-      IPWRITE(UNIT_stdout,*) ' --------------------------------------------- '
-      IPWRITE(UNIT_stdout,*) ' PartInElemCheck '
+      IPWRITE(UNIT_stdOut,*) ' --------------------------------------------- '
+      IPWRITE(UNIT_stdOut,*) ' PartInElemCheck '
       CALL OutputTrajectory(PartID,PartPos,PartTrajectory,lengthPartTrajectory)
     END IF
   END IF
@@ -314,11 +314,11 @@ DO ilocSide = 1,6
 #if CODE_ANALYZE
   IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
-      WRITE(UNIT_stdout,'(15("="))')
-      WRITE(UNIT_stdout,'(A)')           '     | Output after compute intersection (PartInElemCheck): '
-      WRITE(UNIT_stdout,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID)  ,' | SideID: ',SideID,'| Hit: ',isHit
-      WRITE(UNIT_stdout,'(2(A,G0))')     '     | LengthPT: ',LengthPartTrajectory,' | Alpha: ',Alpha
-      WRITE(UNIT_stdout,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi,eta
+      WRITE(UNIT_stdOut,'(15("="))')
+      WRITE(UNIT_stdOut,'(A)')           '     | Output after compute intersection (PartInElemCheck): '
+      WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID)  ,' | SideID: ',SideID,'| Hit: ',isHit
+      WRITE(UNIT_stdOut,'(2(A,G0))')     '     | LengthPT: ',LengthPartTrajectory,' | Alpha: ',Alpha
+      WRITE(UNIT_stdOut,'(A,2(X,G0))')   '     | Intersection xi/eta: ',xi,eta
     END IF
   END IF
 
@@ -367,12 +367,12 @@ DO ilocSide = 1,6
 #if CODE_ANALYZE
   IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN
     IF(PartID.EQ.PARTOUT)THEN
-      WRITE(UNIT_stdout,*) '     | alpha          ',alpha
-      WRITE(UNIT_stdout,*) '     | Normal vector  ',NormVec
-      WRITE(UNIT_stdout,*) '     | PartTrajectory ',PartTrajectory
-      WRITE(UNIT_stdout,*) '     | Dotprod        ',DOT_PRODUCT(NormVec,PartTrajectory)
-      WRITE(UNIT_stdout,*) '     | Point 2        ', LastPartPos(1:3,PartID)+alpha*PartTrajectory+NormVec
-      WRITE(UNIT_stdout,*) '     | Beziercontrolpoints3d-x'
+      WRITE(UNIT_stdOut,*) '     | alpha          ',alpha
+      WRITE(UNIT_stdOut,*) '     | Normal vector  ',NormVec
+      WRITE(UNIT_stdOut,*) '     | PartTrajectory ',PartTrajectory
+      WRITE(UNIT_stdOut,*) '     | Dotprod        ',DOT_PRODUCT(NormVec,PartTrajectory)
+      WRITE(UNIT_stdOut,*) '     | Point 2        ', LastPartPos(1:3,PartID)+alpha*PartTrajectory+NormVec
+      WRITE(UNIT_stdOut,*) '     | Beziercontrolpoints3d-x'
       CALL OutputBezierControlPoints(BezierControlPoints3D_in=BezierControlPoints3D(1:3,:,:,SideID))
     END IF
   END IF

@@ -245,17 +245,25 @@ void visuReader::AddFileName(const char* filename_in) {
 
    // open the file with HDF5 and read the attribute 'time' to build a timeseries
    hid_t state = H5Fopen(filename_in, H5F_ACC_RDONLY, H5P_DEFAULT);
-   hid_t attr = H5Aopen(state, "Time", H5P_DEFAULT);
-   SWRITE("attribute Time "<<attr);
    double time;
-   if (attr > -1){
-      hid_t attr_type = H5Aget_type( attr );
-      H5Aread(attr, attr_type, &time);
-      Timesteps.push_back(time);
-   }else{
+
+   // check if attribute time exits
+   htri_t exists = H5Aexists(state, "Time");
+
+   // only access the attribute if it exists
+   if (exists > 0){
+      hid_t attr = H5Aopen(state, "Time", H5P_DEFAULT);
+      SWRITE("attribute Time "<<attr);
+      // only write back valid values
+      if (attr > -1){
+         hid_t attr_type = H5Aget_type( attr );
+         H5Aread(attr, attr_type, &time);
+         Timesteps.push_back(time);
+      }
+      H5Aclose(attr);
+   } else {
       Timesteps.push_back(0.);
    }
-   H5Aclose(attr);
    H5Fclose(state);
 }
 
@@ -449,6 +457,7 @@ int visuReader::RequestData(
 #if USE_MPI
          &this->UseD3,
 #endif
+         &this->HighOrder,
          &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
@@ -640,20 +649,38 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
 
     int CellLength;
     int CellType;
-    if (coords->dim == 1) {
-      // Use the nodeids to build lines
-      CellLength = 2;
-      CellType   = VTK_LINE;
-    } else if (coords->dim == 2) {
-      // Use the nodeids to build quads
-      CellLength = 4;
-      CellType   = VTK_QUAD;
-    } else if (coords->dim == 3) {
-      // Use the nodeids to build hexas
-      CellLength = 8;
-      CellType   = VTK_HEXAHEDRON;
-    } else {
-      exit(1);
+    if (this->HighOrder && blockno == 0){ // blockno: 0 = DG, 1 = FV
+      if (coords->dim == 1) {
+        // Use the nodeids to build lines
+        CellLength = NVisu+1;
+        CellType   = VTK_LAGRANGE_CURVE;
+      } else if (coords->dim == 2) {
+        // Use the nodeids to build quads
+        CellLength = (NVisu+1)*(NVisu+1);
+        CellType   = VTK_LAGRANGE_QUADRILATERAL;
+      } else if (coords->dim == 3) {
+        // Use the nodeids to build hexas
+        CellLength = (NVisu+1)*(NVisu+1)*(NVisu+1);
+        CellType   = VTK_LAGRANGE_HEXAHEDRON;
+      } else {
+        exit(1);
+      }
+    } else{
+      if (coords->dim == 1) {
+        // Use the nodeids to build lines
+        CellLength = 2;
+        CellType   = VTK_LINE;
+      } else if (coords->dim == 2) {
+        // Use the nodeids to build quads
+        CellLength = 4;
+        CellType   = VTK_QUAD;
+      } else if (coords->dim == 3) {
+        // Use the nodeids to build hexas
+        CellLength = 8;
+        CellType   = VTK_HEXAHEDRON;
+      } else {
+        exit(1);
+      }
     }
 
     // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)

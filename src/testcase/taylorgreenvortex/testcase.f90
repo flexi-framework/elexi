@@ -114,7 +114,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 CHARACTER(LEN=31)        :: varnames(nTGVVars)
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE TAYLOR-GREEN VORTEX...'
 
 #if FV_ENABLED
@@ -156,7 +156,7 @@ IF(MPIRoot)THEN
 END IF
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE TAYLOR-GREEN VORTEX DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
 

@@ -147,11 +147,11 @@ END SUBROUTINE IntegerDivide
 
 SUBROUTINE SetParticleMass(FractNbr,NbrOfParticle)
 !===================================================================================================================================
-! And partilces mass and charge
+! Add particles mass and charge
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals,          ONLY: ABORT
-USE MOD_Particle_Vars,    ONLY: PDM,PartSpecies
+USE MOD_Particle_Vars,    ONLY: PDM,PartSpecies,Species,PartState
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -170,6 +170,7 @@ DO i = 1,NbrOfParticle
   PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
   IF (PositionNbr.NE.0) THEN
     PartSpecies(PositionNbr) = FractNbr
+    PartState(PART_DIAM, PositionNbr) = Species(FractNbr)%DiameterIC
   ELSE
     CALL ABORT(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
   END IF

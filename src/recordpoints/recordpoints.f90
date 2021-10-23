@@ -99,7 +99,7 @@ IF (.NOT.RP_inUse) RETURN
 IF((.NOT.InterpolationInitIsDone) .OR. RecordPointsInitIsDone) &
    CALL Abort(__STAMP__,"InitRecordPoints not ready to be called or already called.")
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINTS...'
 
 RPDefFile = GETSTR('RP_DefFile')                        ! Filename with RP coords
@@ -122,7 +122,7 @@ IF (RP_onProc) THEN
   ! Limit RP buffer size to global 4GB for HDF5 MPIO collective
   IF (RP_MaxMemory*nRP_Procs.GT.HUGE(INT(1,KIND=4))-1) THEN
     RP_maxMemory      = (HUGE(INT(1,KIND=4))-1)/nRP_Procs
-    IF (myRPrank.EQ.0) WRITE(UNIT_stdOUt,'(A,F6.2,A)') ' | RP_MaxMemory too large for HDF5 collective MPIO, limiting to ' &
+    IF (myRPrank.EQ.0) WRITE(UNIT_stdOut,'(A,F6.2,A)') ' | RP_MaxMemory too large for HDF5 collective MPIO, limiting to ' &
                                                        , RP_maxMemory / 131072, ' MB per proc (4GB total)'
   END IF
   CALL MPI_ALLREDUCE(nRP,maxRP,1,MPI_INTEGER,MPI_MAX,RP_COMM,iError)
@@ -134,7 +134,7 @@ END IF
 
 RecordPointsInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT RECORDPOINTS DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitRecordPoints
 
@@ -169,7 +169,7 @@ IF (.NOT. RP_onProc) RETURN
 CALL MPI_COMM_RANK(RP_COMM, myRPrank , iError)
 CALL MPI_COMM_SIZE(RP_COMM, nRP_Procs, iError)
 
-IF (myRPrank.EQ.0) WRITE(UNIT_stdOUt,'(A,I0,A)') ' | RP COMM: ',nRP_Procs,' procs'
+IF (myRPrank.EQ.0) WRITE(UNIT_stdOut,'(A,I0,A)') ' | RP COMM: ',nRP_Procs,' procs'
 
 END SUBROUTINE InitRPCommunicator
 #endif /*USE_MPI*/

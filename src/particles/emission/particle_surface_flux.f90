@@ -297,7 +297,7 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,DoSurfaceFlux,1,MPI_LOGICAL,MPI_LOR,PartMPI%COMM
 
 !-- no SFs defined
 IF (.NOT.DoSurfaceFlux) THEN
-  SWRITE(UNIT_StdOut,'(A)') ' | WARNING: No sides for SurfaceFluxBCs found! SurfaceFlux is now disabled!'
+  SWRITE(UNIT_stdOut,'(A)') ' | WARNING: No sides for SurfaceFluxBCs found! SurfaceFlux is now disabled!'
 END IF
 
 SDEALLOCATE(tmp_BezierControlPoints2D)
@@ -443,13 +443,13 @@ DO iSpec = 1,nSpecies
     Species(iSpec)%Surfaceflux(iSF)%ReduceNoise  = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-ReduceNoise'  ,'.FALSE.')
     IF (Species(iSpec)%Surfaceflux(iSF)%ReduceNoise) THEN
       IF (DoPoissonRounding) THEN
-        SWRITE(UNIT_StdOut,'(A)') ' WARNING: Poisson sampling not possible for noise reduction of surfacefluxes:'
-        SWRITE(UNIT_StdOut,'(A)') ' switching now to Random rounding...'
+        SWRITE(UNIT_stdOut,'(A)') ' WARNING: Poisson sampling not possible for noise reduction of surfacefluxes:'
+        SWRITE(UNIT_stdOut,'(A)') ' switching now to Random rounding...'
         DoPoissonRounding   = .FALSE.
       END IF
       IF (DoTimeDepInflow) THEN
-        SWRITE(UNIT_StdOut,'(A)') ' WARNING: Time-dependent inflow is not possible for noise reduction of surfacefluxes:'
-        SWRITE(UNIT_StdOut,'(A)') ' switching now to Random rounding...'
+        SWRITE(UNIT_stdOut,'(A)') ' WARNING: Time-dependent inflow is not possible for noise reduction of surfacefluxes:'
+        SWRITE(UNIT_stdOut,'(A)') ' switching now to Random rounding...'
         DoTimeDepInflow   = .FALSE.
       END IF
     END IF
@@ -462,9 +462,9 @@ DO iSpec = 1,nSpecies
     END IF
 
     IF (Species(iSpec)%Surfaceflux(iSF)%AcceptReject .AND. BezierSampleN.GT.1) THEN
-      SWRITE(UNIT_StdOut,'(A)') ' WARNING: BezierSampleN > 0 may not be necessary as ARM is used for SurfaceFlux!'
+      SWRITE(UNIT_stdOut,'(A)') ' WARNING: BezierSampleN > 0 may not be necessary as ARM is used for SurfaceFlux!'
     ELSE IF (.NOT.Species(iSpec)%Surfaceflux(iSF)%AcceptReject .AND. BezierSampleN.LE.NGeo .AND. .NOT.TriaSurfaceFlux) THEN
-      SWRITE(UNIT_StdOut,'(A)') ' WARNING: The choosen small BezierSampleN (def.: NGeo) might result in inhom. SurfFluxes without ARM!'
+      SWRITE(UNIT_stdOut,'(A)') ' WARNING: The choosen small BezierSampleN (def.: NGeo) might result in inhom. SurfFluxes without ARM!'
     END IF
 
     IF (Species(iSpec)%Surfaceflux(iSF)%AcceptReject) THEN
@@ -1023,7 +1023,7 @@ USE MOD_GetBoundaryFlux         ,ONLY: GetBoundaryState
 USE MOD_Mesh_Vars               ,ONLY: BoundaryType,BC
 USE MOD_Particle_Globals        ,ONLY: VECNORM
 USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfFluxSideSize,SurfMeshSubSideData,BCdata_auxSF
-USE MOD_Particle_Timedisc_Vars  ,ONLY: UseManualTimestep
+USE MOD_Particle_Timedisc_Vars  ,ONLY: UseManualTimeStep
 USE MOD_Particle_Vars           ,ONLY: Species
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -1069,7 +1069,7 @@ DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
         CASE(1,3,4,9,91,23,24,25,27,28,29)
           ! Periodic or BC depending on inner state. PartDensity might not be exact
           SWRITE(UNIT_stdOut,'(A)') ' | Boundary state for surface flux variable during runtime. PartDensity might not be exact...'
-          IF (UseManualTimestep) CALL ABORT(__STAMP__,'Particle surface flux depending on inner boundary state not compatible with manual time step!')
+          IF (UseManualTimeStep) CALL ABORT(__STAMP__,'Particle surface flux depending on inner boundary state not compatible with manual time step!')
 
         CASE DEFAULT
           CALL ABORT(__STAMP__,'BCState not implemented for particle Surfaceflux!')
@@ -1718,11 +1718,11 @@ DO
 END DO ! Jacobian-based ARM-loop
 
 IF (MINVAL(XI).LT.-1.) THEN
-  IPWRITE(UNIT_StdOut,'(I0,A,E16.8)') ' Xi<-1',XI
+  IPWRITE(UNIT_stdOut,'(I0,A,E16.8)') ' Xi<-1',XI
 END IF
 
 IF (MAXVAL(XI).GT. 1.) THEN
-  IPWRITE(UNIT_StdOut,'(I0,A,E16.8)') ' Xi>1',XI
+  IPWRITE(UNIT_stdOut,'(I0,A,E16.8)') ' Xi>1',XI
 END IF
 
 CALL EvaluateBezierPolynomialAndGradient(xi,NGeo,3,BezierControlPoints3D(1:3,0:NGeo,0:NGeo,SideID),Point=CalcPartPosBezier)

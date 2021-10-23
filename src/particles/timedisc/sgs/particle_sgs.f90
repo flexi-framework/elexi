@@ -47,7 +47,7 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE ParticleInitSGS()
 ! MODULES
-USE MOD_Globals               ,ONLY: ABORT,Unit_STDOUT
+USE MOD_Globals               ,ONLY: ABORT,UNIT_stdOut
 USE MOD_Preproc               ,ONLY: PP_N,PP_NZ
 USE MOD_Analyze_Vars          ,ONLY: ElemVol
 USE MOD_Mesh_Vars             ,ONLY: nElems
@@ -71,7 +71,7 @@ INTEGER               :: ALLOCSTAT
 
 IF(ParticleSGSInitIsDone) RETURN
 
-!SWRITE(UNIT_StdOut,'(132("-"))')
+!SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL...'
 
 ! SGS model
@@ -337,7 +337,7 @@ END SELECT
 ParticleSGSInitIsDone=.TRUE.
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE ParticleInitSGS
 

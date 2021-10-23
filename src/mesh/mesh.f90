@@ -145,7 +145,7 @@ IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
     'InitMesh not ready to be called or already called.')
 END IF
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT MESH IN MODE ',meshMode,'...'
 
 ! prepare pointer structure (get nElems, etc.)
@@ -171,7 +171,7 @@ ENDIF
 #if USE_PARTICLES
 NGeoOverride = GETINT ('NGeoOverride','-1' )
 IF (.NOT.UseCurveds) THEN
-  SWRITE(Unit_stdOut,'(A)') 'NGeoOverride set but UseCurveds = F, setting NGeoOverride = -1'
+  SWRITE(UNIT_stdOut,'(A)') ' NGeoOverride set but UseCurveds = F, setting NGeoOverride = -1'
   NGeoOverride = -1
 END IF
 meshScale    = GETREAL('meshScale'   ,'1.0')
@@ -180,7 +180,7 @@ CALL ReadMesh(MeshFile) !set nElems
 
 #if (PP_dim == 2)
 ! If this is a two dimensional calculation, all subsequent operations are performed on the reduced mesh.
-SWRITE(UNIT_StdOut,'(A)') " RUNNING A 2D SIMULATION! "
+SWRITE(UNIT_stdOut,'(A)') " RUNNING A 2D SIMULATION! "
 ! The mesh coordinates read in by the readMesh routine are therefore reduced by one dimension.
 CALL to2D_rank5((/1,0,0,0,1/),(/3,NGeo,NGeo,NGeo,nElems/),4,NodeCoords)
 NodeCoords(3,:,:,:,:) = 0.
@@ -230,7 +230,7 @@ END IF
 #if USE_PARTICLES
 IF(NGeoOverride.GT.0)THEN
 #endif /*!USE_PARTICLES*/
-SWRITE(UNIT_StdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
+SWRITE(UNIT_stdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
 #if USE_PARTICLES
 End IF
 #endif /*!USE_PARTICLES*/
@@ -437,7 +437,7 @@ CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
 
 MeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitMesh
 
 !============================================================================================================================
@@ -446,11 +446,14 @@ END SUBROUTINE InitMesh
 SUBROUTINE FinalizeMesh()
 ! MODULES
 USE MOD_Mesh_Vars
-USE MOD_Mappings  ,ONLY:FinalizeMappings
+USE MOD_Mappings      ,ONLY:FinalizeMappings
 #if FV_ENABLED
-USE MOD_FV_Vars   ,ONLY:FV_Elems_master
-USE MOD_FV_Metrics,ONLY:FinalizeFV_Metrics
+USE MOD_FV_Vars       ,ONLY:FV_Elems_master
+USE MOD_FV_Metrics    ,ONLY:FinalizeFV_Metrics
 #endif
+#if USE_PARTICLES
+USE MOD_Particle_Mesh ,ONLY: FinalizeParticleMeshBasis
+#endif /*USE_PARTICLES*/
 IMPLICIT NONE
 !============================================================================================================================
 ! Deallocate global variables, needs to go somewhere else later
@@ -462,7 +465,6 @@ SDEALLOCATE(AnalyzeSide)
 ! mortars
 SDEALLOCATE(MortarType)
 SDEALLOCATE(MortarInfo)
-
 
 ! allocated during ReadMesh
 SDEALLOCATE(NodeCoords)
@@ -502,6 +504,10 @@ CALL FinalizeMappings()
 SDEALLOCATE(FV_Elems_master) ! moved here from fv.f90
 CALL FinalizeFV_Metrics()
 #endif
+
+#if USE_PARTICLES
+CALL FinalizeParticleMeshBasis()
+#endif /*USE_PARTICLES*/
 
 MeshInitIsDone = .FALSE.
 END SUBROUTINE FinalizeMesh

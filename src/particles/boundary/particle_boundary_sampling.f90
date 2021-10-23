@@ -600,8 +600,8 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
 IF (mySurfRank.EQ.0) THEN
 #endif
-  WRITE(UNIT_StdOut,'(A,I8)')       ' | Number of sampling sides:           '    , nSurfTotalSides
-  WRITE(UNIT_StdOut,'(A,ES10.4E2)') ' | Surface-Area:                           ', Area
+  WRITE(UNIT_stdOut,'(A,I8)')       ' | Number of sampling sides:           '    , nSurfTotalSides
+  WRITE(UNIT_stdOut,'(A,ES10.4E2)') ' | Surface-Area:                           ', Area
   WRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
 #if USE_MPI
 END IF
@@ -682,7 +682,7 @@ SUBROUTINE RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAn
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars ,ONLY: SampWallState,nImpactVars
-USE MOD_Particle_Vars          ,ONLY: Species,PartSpecies,nSpecies
+USE MOD_Particle_Vars          ,ONLY: Species,PartSpecies,nSpecies,PartState
 !#if USE_MPI
 !USE MOD_Particle_Boundary_Vars ,ONLY: SampWallState_Shared,SampWallState_Shared
 !#endif
@@ -699,6 +699,7 @@ REAL                              :: delta2                         ! Reusable v
 INTEGER                           :: nShift                         ! Shift amount for species tracking
 REAL                              :: v_magnitude
 REAL                              :: e_kin
+REAL                              :: mp
 !#if USE_MPI
 !REAL                              :: increment = 1.
 !#endif
@@ -711,7 +712,8 @@ nShift        = PartSpecies(PartID) * nImpactVars
 
 !  Sampling kinetic energy at walls
 v_magnitude = SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))
-e_kin       = .5*Species(PartSpecies(PartID))%MassIC*v_magnitude**2.
+mp          = MASS_SPHERE(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID))
+e_kin       = .5*mp*v_magnitude**2.
 
 
 !#if USE_MPI
@@ -810,31 +812,25 @@ IF (nSpecies.GT.1) THEN
 END IF
 
 !-- 12 - 14 / Sampling Current Forces at walls
-    SampWallState(12,p,q,surfSideID) = SampWallState(12,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC * (v_old(1))
-    SampWallState(13,p,q,surfSideID) = SampWallState(13,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC * (v_old(2))
-    SampWallState(14,p,q,surfSideID) = SampWallState(14,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC * (v_old(3))
+    SampWallState(12,p,q,surfSideID) = SampWallState(12,p,q,surfSideID) + mp * (v_old(1))
+    SampWallState(13,p,q,surfSideID) = SampWallState(13,p,q,surfSideID) + mp * (v_old(2))
+    SampWallState(14,p,q,surfSideID) = SampWallState(14,p,q,surfSideID) + mp * (v_old(3))
 !<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 IF (nSpecies.GT.1) THEN
-    SampWallState(12+nShift,p,q,surfSideID) = SampWallState(12+nShift,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC        &
-                                               * (v_old(1))
-    SampWallState(13+nShift,p,q,surfSideID) = SampWallState(13+nShift,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC        &
-                                               * (v_old(2))
-    SampWallState(14+nShift,p,q,surfSideID) = SampWallState(14+nShift,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC        &
-                                               * (v_old(3))
+    SampWallState(12+nShift,p,q,surfSideID) = SampWallState(12+nShift,p,q,surfSideID) + mp * (v_old(1))
+    SampWallState(13+nShift,p,q,surfSideID) = SampWallState(13+nShift,p,q,surfSideID) + mp * (v_old(2))
+    SampWallState(14+nShift,p,q,surfSideID) = SampWallState(14+nShift,p,q,surfSideID) + mp * (v_old(3))
 END IF
 
 !-- 15 - 17 / Sampling Average Forces at walls
-    SampWallState(15,p,q,surfSideID) = SampWallState(15,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC * (v_old(1))
-    SampWallState(16,p,q,surfSideID) = SampWallState(16,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC * (v_old(2))
-    SampWallState(17,p,q,surfSideID) = SampWallState(17,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC * (v_old(3))
+    SampWallState(15,p,q,surfSideID) = SampWallState(15,p,q,surfSideID) + mp * (v_old(1))
+    SampWallState(16,p,q,surfSideID) = SampWallState(16,p,q,surfSideID) + mp * (v_old(2))
+    SampWallState(17,p,q,surfSideID) = SampWallState(17,p,q,surfSideID) + mp * (v_old(3))
 !<<< Repeat for specific species >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 IF (nSpecies.GT.1) THEN
-    SampWallState(15+nShift,p,q,surfSideID) = SampWallState(15+nShift,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC        &
-                                        * (v_old(1))
-    SampWallState(16+nShift,p,q,surfSideID) = SampWallState(16+nShift,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC        &
-                                        * (v_old(2))
-    SampWallState(17+nShift,p,q,surfSideID) = SampWallState(17+nShift,p,q,surfSideID) + Species(PartSpecies(PartID))%MassIC        &
-                                        * (v_old(3))
+    SampWallState(15+nShift,p,q,surfSideID) = SampWallState(15+nShift,p,q,surfSideID) + mp * (v_old(1))
+    SampWallState(16+nShift,p,q,surfSideID) = SampWallState(16+nShift,p,q,surfSideID) + mp * (v_old(2))
+    SampWallState(17+nShift,p,q,surfSideID) = SampWallState(17+nShift,p,q,surfSideID) + mp * (v_old(3))
 END IF
 !#endif /*USE_MPI*/
 
@@ -926,7 +922,7 @@ END IF
 IF ((mySurfRank.EQ.0).AND..NOT.FILEEXISTS(FileString)) THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | Impact sampling file does not exist for current time. Aborting impact sampling restart ...'
   WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
 ELSE
   ! Set flag to take restart time into account
   ImpactRestart = .TRUE.
@@ -958,7 +954,7 @@ IF (myComputeNodeRank.EQ.0) THEN
       IF (mySurfRank.EQ.0) THEN
         WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | Number of variables in surface sampling file does not match. Aborting surface sampling restart ...'
         WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
-        WRITE(UNIT_StdOut,'(132("-"))')
+        WRITE(UNIT_stdOut,'(132("-"))')
       END IF
       ImpactRestart = .FALSE.
       CALL CloseDataFile()
@@ -967,7 +963,7 @@ IF (myComputeNodeRank.EQ.0) THEN
     IF (mySurfRank.EQ.0) THEN
       WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' | RestartData does not exists in surface sampling tracking file.'
       WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
-      WRITE(UNIT_StdOut,'(132("-"))')
+      WRITE(UNIT_stdOut,'(132("-"))')
     END IF
     ImpactRestart = .FALSE.
     CALL CloseDataFile()
@@ -1010,7 +1006,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   IF (mySurfRank.EQ.0) THEN
     WRITE(UNIT_stdOut,'(a,E11.3)',ADVANCE='YES')' | Surface sampling restart successful at t =',RestartTime
     WRITE(UNIT_stdOut,'(a)'      ,ADVANCE='YES')' RESTARTING SURFACE SAMPLING FROM HDF5 FILE DONE'
-    WRITE(UNIT_StdOut,'(132("-"))')
+    WRITE(UNIT_stdOut,'(132("-"))')
   END IF
 
   DEALLOCATE(RestartArray)

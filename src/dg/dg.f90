@@ -90,7 +90,7 @@ IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.(.NOT.RestartInitI
   CALL CollectiveStop(__STAMP__,&
     'InitDG not ready to be called or already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT DG...'
 
 ! Pre-compute the dg operator building blocks (differentiation matrices and prolongation operators)
@@ -139,7 +139,7 @@ END IF
 
 DGInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT DG DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitDG
 
 
@@ -291,7 +291,7 @@ USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #if USE_PARTICLES
 USE MOD_Part_RHS            ,ONLY: CalcSourcePart
 USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
-USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart,DelayTime,PDM
+USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart,DelayTime
 USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeRHS,ParticleTimeStep,ParticleTimeStepRK
 USE MOD_Particle_Timedisc_Vars,ONLY: PreviousTime
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt

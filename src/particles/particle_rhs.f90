@@ -127,7 +127,7 @@ INTEGER                          :: MPIRequest_FB
 Pt(:,1:PDM%ParticleVecLength)=0.
 
 #if USE_BASSETFORCE
-bIter = MIN(bIter + 1,N_Basset + 1)
+bIter = bIter + 1 !MIN(bIter + 1,N_Basset + 1)
 ! Communicate bIter to all other processors (same effect as blocking comm...)
 #if USE_MPI
 MPIRequest_FB = MPI_REQUEST_NULL
@@ -390,11 +390,11 @@ USE MOD_Particle_Vars,          ONLY: Species, PartSpecies
 USE MOD_Particle_Vars,          ONLY: PartState, TurbPartState
 #if ANALYZE_RHS
 USE MOD_Particle_Vars,          ONLY: tWriteRHS,FileName_RHS,dtWriteRHS
-USE MOD_TimeDisc_Vars,          ONLY: t
 USE MOD_Output,                 ONLY: OutputToFile
 #endif /* ANALYZE_RHS */
 USE MOD_PreProc,                ONLY: PP_pi
 USE MOD_Viscosity
+USE MOD_TimeDisc_Vars,          ONLY: t
 #if USE_BASSETFORCE
 USE MOD_Equation_Vars,          ONLY: s43
 USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter
@@ -416,7 +416,7 @@ INTEGER,INTENT(IN),OPTIONAL :: iStage
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: Pt(1:3)
+REAL                     :: Pt(1:PP_nVarPartRHS)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: globalfactor                ! prefactor of LHS divided by the particle mass
@@ -459,9 +459,11 @@ ELSE
 END IF
 
 ! Nullify arrays
-Pt(1:3) = 0.
+Pt(:) = 0.
 Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.; Fmm=0.
+#if PP_nVarPartRHS == 6
 Rew = 0.; Rep = 0.
+#endif
 ! factor before left hand side to add all dv_p/dt terms of the RHS
 globalfactor = 1.
 
@@ -481,7 +483,7 @@ Omega = 0.5 * rotu - PartState(PART_AMOMV,PartID)
 ! Prefactor according to Oesterle and Bui Dinh
 IF (ANY(Omega.NE.0)) THEN
   Rew = FieldAtParticle(DENS) * VECNORM(Omega) * Species(PartSpecies(PartID))%DiameterIC**2 / (4*mu)
-  Pt_in(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
+  Pt(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
 END IF
 
 ! Calculate the Re number
@@ -509,7 +511,7 @@ END IF
 IF (Species(PartSpecies(PartID))%CalcMagnusForce .AND. Rep.GT.0. .AND. ANY(Omega.NE.0)) THEN
   ! Calculate the rotation: (\nabla x u_p) x udiff
   rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
-  prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(0.05684*Rew**0.4*Rep**0.7)
+  prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(-0.05684*Rew**0.4*Rep**0.7)
   Fmm = PP_PI/8 * prefactor * Species(PartSpecies(PartID))%DiameterIC**3 * FieldAtParticle(DENS) * rotudiff
 END IF
 #endif /* PP_nVarPartRHS */
@@ -530,7 +532,7 @@ END IF
 !===================================================================================================================================
 #if USE_UNDISTFLOW
 IF (Species(PartSpecies(PartID))%CalcUndisturbedFlow) THEN
-  prefactor = 1./Species(PartSpecies(PartID))%DensityIC
+  prefactor = FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
 
   Fum(1:3) = prefactor * DuDt(1:3)
 END IF
@@ -546,12 +548,12 @@ END IF
 !===================================================================================================================================
 #if USE_VIRTUALMASS
 IF (Species(PartSpecies(PartID))%CalcVirtualMass) THEN
-  prefactor = 0.5/Species(PartSpecies(PartID))%DensityIC
+  prefactor = 0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
 
   Fvm(1:3) = prefactor * DuDt(1:3)
 
   ! Add to global scaling factor as 0.5*\rho/\rho_p*dv_p/dt is on RHS
-  globalfactor     = globalfactor + prefactor*FieldAtParticle(DENS)
+  globalfactor = globalfactor + prefactor
 END IF
 #endif /* USE_VIRTUALMASS */
 
@@ -578,18 +580,19 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
     RKdtFrac = dt
   END IF
   ! Correction term if initial particle velocity if different from the surrounding fluid velocity
-  IF(bIter .EQ. 1) durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(RKdtFrac)
+  IF(bIter .EQ. 1) durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t)
+  IF(MOD(bIter,N_Basset) .EQ. 0) durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t-N_Basset*RKdtFrac)
 
   ! Scaling factor
   prefactor = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
-            * SQRT(mu/(FieldAtParticle(DENS)*PP_pi))
+            * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
 
   ! Index for previous data
   nIndex = MIN(N_Basset, bIter)
   kIndex = INT((nIndex+1)*3)
 
   ! copy previous data
-  IF(bIter.GT.N_Basset) durdt(4:kIndex-3,PartID) = durdt(7:kIndex,PartID)
+  IF(bIter .GT. N_Basset) durdt(4:kIndex-3,PartID) = durdt(7:kIndex,PartID)
   ! \rho d(u)/dt = \rho D(u)/Dt - udiff * (\rho \nabla(u))
 !  dufdt(1) = DuDt(1) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL1,:))
 !  dufdt(2) = DuDt(2) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL2,:))
@@ -607,17 +610,17 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   END DO
 
   ! Add to global scaling factor as s43*\rho*prefactor*dv_p/dt is on RHS
-  globalfactor     = globalfactor + s43 * prefactor * FieldAtParticle(DENS) * SQRT(RKdtFrac)
+  globalfactor     = globalfactor + s43 * prefactor * SQRT(RKdtFrac)
 
   Fbm(1:3) = prefactor * (Fbm(1:3) * SQRT(RKdtFrac) + durdt(1:3,PartID))
 
-  Pt = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
+  Pt(1:3) = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
 
   ! Correct durdt with particle push
-  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - FieldAtParticle(DENS) * Pt
+  durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - Pt(1:3)
 ELSE
 #endif /* USE_BASSETFORCE */
-  Pt = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
+  Pt(1:3) = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
 #if USE_BASSETFORCE
 END IF
 #endif /* USE_BASSETFORCE */
@@ -631,13 +634,13 @@ IF(dtWriteRHS.GT.0.0)THEN
 END IF
 #endif
 
-Pt_in(1:3) = Pt
+Pt_in(:) = Pt
 
 END SUBROUTINE ParticlePushExtend
 #endif /* USE_EXTEND_RHS */
 
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
-SUBROUTINE extRHS(U,Ut,U_RHS)
+SUBROUTINE extRHS(UPrim,Ut,U_RHS)
 !===================================================================================================================================
 ! Compute tau
 !===================================================================================================================================
@@ -662,7 +665,7 @@ USE MOD_Particle_Vars,      ONLY: gradUz_master_loc,gradUz_slave_loc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)             :: U(    CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(IN)             :: UPrim(PRIM,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL,INTENT(IN)             :: Ut(   CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -726,7 +729,7 @@ U_RHS(RHS_LAPLACEVEL3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + g
 !U_RHS(RHS_GRADP1:RHS_GRADP3,:,:,:,:) = gradp_local(1,:,:,:,:,:)
 
 DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-  U_RHS(RHS_dVELVdt,i,j,k,iElem) = Ut(MOMV,i,j,k,iElem) - Ut(DENS,i,j,k,iElem)*U(MOMV,i,j,k,iElem)/U(DENS,i,j,k,iElem)
+  U_RHS(RHS_dVELVdt,i,j,k,iElem) = Ut(MOMV,i,j,k,iElem) - Ut(DENS,i,j,k,iElem)*UPrim(VELV,i,j,k,iElem)
 END DO; END DO; END DO; END DO
 #endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
 
@@ -740,7 +743,7 @@ FUNCTION DF_SchillerAndNaumann(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Vars,     ONLY : RepWarn
-USE MOD_Globals,           ONLY : MPIRoot, UNIT_StdOut
+USE MOD_Globals,           ONLY : MPIRoot, UNIT_stdOut
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -754,7 +757,7 @@ REAL                        :: f
 ! Warn when outside valid range of Naumann model
 IF(Rep.GT.800) THEN
   IF (RepWarn.EQV..FALSE.) THEN
-    SWRITE(UNIT_StdOut,*) 'WARNING: Rep',Rep,'> 800, drag coefficient may not be accurate.'
+    SWRITE(UNIT_stdOut,*) 'WARNING: Rep',Rep,'> 800, drag coefficient may not be accurate.'
     RepWarn=.TRUE.
   ENDIF
 ENDIF

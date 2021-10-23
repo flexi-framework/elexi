@@ -35,6 +35,10 @@ INTERFACE InitParticleMesh
   MODULE PROCEDURE InitParticleMesh
 END INTERFACE
 
+INTERFACE FinalizeParticleMeshBasis
+    MODULE PROCEDURE FinalizeParticleMeshBasis
+END INTERFACE
+
 INTERFACE FinalizeParticleMesh
   MODULE PROCEDURE FinalizeParticleMesh
 END INTERFACE
@@ -42,6 +46,7 @@ END INTERFACE
 PUBLIC :: DefineParametersParticleMesh
 PUBLIC :: InitParticleMeshBasis
 PUBLIC :: InitParticleMesh
+PUBLIC :: FinalizeParticleMeshBasis
 PUBLIC :: FinalizeParticleMesh
 !===================================================================================================================================
 
@@ -242,7 +247,7 @@ USE MOD_Particle_Basis         ,ONLY: BuildBezierVdm,BuildBezierDMat
 USE MOD_Particle_BGM           ,ONLY: BuildBGMAndIdentifyHaloRegion
 USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation
-USE MOD_Particle_Mesh_Build    ,ONLY: GetMeshMinMax,IdentifyElemAndSideType,InitElemVolumes,ComputePeriodicVec
+USE MOD_Particle_Mesh_Build    ,ONLY: GetMeshMinMax,IdentifyElemAndSideType,ComputePeriodicVec
 USE MOD_Particle_Mesh_Build    ,ONLY: BuildElementRadiusTria,BuildElemTypeAndBasisTria,BuildEpsOneCell,BuildBCElemDistance
 USE MOD_Particle_Mesh_Build    ,ONLY: BuildElementOriginShared,BuildElementBasisAndRadius
 USE MOD_Particle_Mesh_Build    ,ONLY: BuildSideOriginAndRadius,BuildLinearSideBaseVectors
@@ -292,7 +297,7 @@ INTEGER          :: ALLOCSTAT
 #endif
 !===================================================================================================================================
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MESH...'
 IF(ParticleMeshInitIsDone) CALL ABORT(__STAMP__, ' Particle-Mesh is already initialized.')
 
@@ -416,8 +421,6 @@ epsInCell       = SQRT(3.0*RefMappingEps)
 IF((RefMappingGuess.LT.1).OR.(RefMappingGuess.GT.4))THEN
    CALL ABORT(__STAMP__ ,'Wrong guessing method for mapping from physical space in reference space.',RefMappingGuess,999.)
 END IF
-
-CALL InitElemVolumes()
 
 ! TriaSurfaceFlux needs to be determined before particle mesh init to build all required information. TriaSurfaceFlux is enabled by
 ! default for TriaTracking and disabled otherwise
@@ -572,9 +575,48 @@ END IF
 
 ParticleMeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MESH DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleMesh
+
+
+SUBROUTINE FinalizeParticleMeshBasis()
+!===================================================================================================================================
+! Finalize basic metrics needed for particle mesh
+!===================================================================================================================================
+! MODULES
+USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Surfaces_Vars
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------!
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! Particle mesh metrics
+SDEALLOCATE(DCL_N)
+SDEALLOCATE(Vdm_CLN_GaussN)
+SDEALLOCATE(Vdm_CLNGeo_GaussN)
+SDEALLOCATE(Vdm_CLNGeo_CLN)
+SDEALLOCATE(Vdm_CLNGeo1_CLNGeo)
+SDEALLOCATE(Vdm_NGeo_CLNGeo)
+SDEALLOCATE(Vdm_Bezier)
+SDEALLOCATE(sVdm_Bezier)
+SDEALLOCATE(wBaryCL_NGeo)
+SDEALLOCATE(wBaryCL_NGeo1)
+SDEALLOCATE(Xi_NGeo)
+SDEALLOCATE(XiCL_NGeo)
+SDEALLOCATE(XiCL_NGeo1)
+SDEALLOCATE(DCL_NGeo)
+SDEALLOCATE(D_Bezier)
+SDEALLOCATE(XCL_NGeo)
+SDEALLOCATE(dXCL_NGeo)
+
+END SUBROUTINE FinalizeParticleMeshBasis
 
 
 SUBROUTINE FinalizeParticleMesh()
@@ -611,25 +653,6 @@ IMPLICIT NONE
 CALL FinalizeMeshReadin()
 
 CALL FinalizeBGM()
-
-! Particle mesh metrics
-SDEALLOCATE(DCL_N)
-SDEALLOCATE(Vdm_CLN_GaussN)
-SDEALLOCATE(Vdm_CLNGeo_GaussN)
-SDEALLOCATE(Vdm_CLNGeo_CLN)
-SDEALLOCATE(Vdm_CLNGeo1_CLNGeo)
-SDEALLOCATE(Vdm_NGeo_CLNGeo)
-SDEALLOCATE(Vdm_Bezier)
-SDEALLOCATE(sVdm_Bezier)
-SDEALLOCATE(wBaryCL_NGeo)
-SDEALLOCATE(wBaryCL_NGeo1)
-SDEALLOCATE(Xi_NGeo)
-SDEALLOCATE(XiCL_NGeo)
-SDEALLOCATE(XiCL_NGeo1)
-SDEALLOCATE(DCL_NGeo)
-SDEALLOCATE(D_Bezier)
-SDEALLOCATE(XCL_NGeo)
-SDEALLOCATE(dXCL_NGeo)
 
 SELECT CASE(TrackingMethod)
 

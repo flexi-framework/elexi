@@ -181,16 +181,28 @@
 #define PART_POS1       1
 #define PART_POS2       2
 #define PART_POS3       3
+#define PART_POSV       PART_POS1:PART_POS3
 #define PART_VEL1       4
 #define PART_VEL2       5
 #define PART_VEL3       6
 #define PART_VELV       PART_VEL1:PART_VEL3
-#if PP_nVarPart == 9
+#if PP_nVarPart == 10
 #define PART_AMOM1      7
 #define PART_AMOM2      8
 #define PART_AMOM3      9
 #define PART_AMOMV      PART_AMOM1:PART_AMOM3
+#define PART_DIAM       10
+#else
+#define PART_DIAM       7
 #endif
+
+#define ENERGY_ROTATION(rho,dp,vor)   0.5*pi/60*rho*dp**5*DOT_PRODUCT(vor,vor)
+#define ENERGY_KINETIC(rho,dp,v)      0.5*rho*pi/6.*dp**3*DOT_PRODUCT(v,v)
+#define MOM_OF_INERTIA(rho,dp)        pi/60.*rho*dp**5
+#define MASS_SPHERE(rho,dp)           rho*pi/6.*dp**3
+#define DIAM_SPHERE(rho,mass)         (mass/rho*6./pi)**(1./3.)
+#define VOL_SPHERE(dp)                pi/6.*dp**3
+#define VOL_SPHERE_INV(Vol)           (Vol*6./pi)**(1./3.)
 
 ! formats
 ! print to std out like  "    1.41421356237310E+000   -1.41421356237310E+000   -1.41421356237310E+000"

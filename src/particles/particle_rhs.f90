@@ -265,9 +265,7 @@ ELSE
 END IF
 
 ! Add gravity if required
-IF(ANY(PartGravity.NE.0)) THEN
-  Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
-ENDIF
+IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 
 CASE(RHS_MINIER)
 !===================================================================================================================================
@@ -293,9 +291,7 @@ staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(Par
 Fdm      = udiff * staup * f
 
 ! Add gravity if required
-IF(ANY(PartGravity.NE.0)) THEN
-  Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
-ENDIF
+IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 
 CASE(RHS_INERTIA)
 !===================================================================================================================================
@@ -323,10 +319,7 @@ staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(Par
 Fdm      = udiff * staup * f
 
 ! Add gravity and bouyancy if required
-IF(ANY(PartGravity.NE.0)) THEN
-  Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
-END IF
-
+IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 
 CASE DEFAULT
   CALL ABORT(__STAMP__, 'No valid RHS method given. Species',IntInfo=PartSpecies(PartID))

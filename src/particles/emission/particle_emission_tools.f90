@@ -505,7 +505,7 @@ SUBROUTINE SetParticlePositionDisk(FractNbr,iInit,chunkSize,particle_positions)
 ! Set particle position
 !===================================================================================================================================
 ! Modules
-USE MOD_Particle_Globals       ,ONLY: VECNORM,FindLinIndependentVectors,RandNormal
+USE MOD_Particle_Globals       ,ONLY: VECNORM,FindLinIndependentVectors!,RandNormal
 USE MOD_Particle_Vars          ,ONLY: Species
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -528,10 +528,10 @@ DO i = 1,chunkSize
   radius = Species(FractNbr)%Init(iInit)%RadiusIC + 1.
 
   DO WHILE(radius.GT.Species(FractNbr)%Init(iInit)%RadiusIC)
-     RandVec(1) = MAX(MIN(RandNormal(0.0,1.0),1.0),-1.)
-     RandVec(2) = MAX(MIN(RandNormal(0.0,1.0),1.0),-1.)
-     ! CALL RANDOM_NUMBER(RandVec)
-     ! RandVec      = RandVec * 2. - 1.
+    !  RandVec(1) = MAX(MIN(RandNormal(0.0,1.0),1.0),-1.)
+    !  RandVec(2) = MAX(MIN(RandNormal(0.0,1.0),1.0),-1.)
+     CALL RANDOM_NUMBER(RandVec)
+     RandVec      = RandVec * 2. - 1.
      Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + Species(FractNbr)%Init(iInit)%RadiusIC * &
                    (RandVec(1) * lineVector + RandVec(2) *lineVector2)
 

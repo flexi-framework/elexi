@@ -109,20 +109,20 @@ DO iElem=1,nElems
   ELSE
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 #if (PP_dim==3)
-      gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (LIFT_VELV,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (LIFT_VELV,i,j,k,iElem) &
-                            + FV_Metrics_hTilde_sJ(1,i,j,k,iElem)*gradUzeta_central(LIFT_VELV,i,j,k,iElem)
-      gradUy(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (LIFT_VELV,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (LIFT_VELV,i,j,k,iElem) &
-                            + FV_Metrics_hTilde_sJ(2,i,j,k,iElem)*gradUzeta_central(LIFT_VELV,i,j,k,iElem)
-      gradUz(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(3,i,j,k,iElem)*gradUxi_central  (LIFT_VELV,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(3,i,j,k,iElem)*gradUeta_central (LIFT_VELV,i,j,k,iElem) &
-                            + FV_Metrics_hTilde_sJ(3,i,j,k,iElem)*gradUzeta_central(LIFT_VELV,i,j,k,iElem)
+      gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
+                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) &
+                            + FV_Metrics_hTilde_sJ(1,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
+      gradUy(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
+                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) &
+                            + FV_Metrics_hTilde_sJ(2,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
+      gradUz(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(3,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
+                            + FV_Metrics_gTilde_sJ(3,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) &
+                            + FV_Metrics_hTilde_sJ(3,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
 #else
-      gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (LIFT_VELV,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (LIFT_VELV,i,j,k,iElem)
-      gradUy(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (LIFT_VELV,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (LIFT_VELV,i,j,k,iElem)
+      gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
+                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
+      gradUy(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
+                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
 #endif
    END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
@@ -210,11 +210,11 @@ DO iElem=1,nElems
 #if FV_ENABLED
   ELSE
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      gradU(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(dir,i,j,k,iElem)*gradUxi_central  (LIFT_VELV,i,j,k,iElem) &
+      gradU(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(dir,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
 #if (PP_dim==3)
-                           + FV_Metrics_hTilde_sJ(dir,i,j,k,iElem)*gradUzeta_central(LIFT_VELV,i,j,k,iElem) &
+                           + FV_Metrics_hTilde_sJ(dir,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem) &
 #endif
-                           + FV_Metrics_gTilde_sJ(dir,i,j,k,iElem)*gradUeta_central (LIFT_VELV,i,j,k,iElem)
+                           + FV_Metrics_gTilde_sJ(dir,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
     END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
 #endif /*FV_ENABLED*/

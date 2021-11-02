@@ -189,8 +189,6 @@ CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'none',       
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tracer',          RHS_TRACER)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'convergence',     RHS_CONVERGENCE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'inertia',         RHS_INERTIA)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'SGS-Li',          RHS_LI)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'SGS-Minier',      RHS_MINIER)
 CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle model used for calculation of the drag factor.\n'      &
                                                                 , 'none'     , numberedmulti=.TRUE.)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'schiller',        DF_PART_SCHILLER)
@@ -951,7 +949,7 @@ DO iSpec = 1, nSpecies
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec
   Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'               )
   SELECT CASE (Species(iSpec)%RHSMethod)
-    CASE (RHS_INERTIA, RHS_LI, RHS_MINIER)
+    CASE (RHS_INERTIA)
       drag_factor                      = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'              )
       CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
     CASE DEFAULT

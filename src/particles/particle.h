@@ -131,8 +131,8 @@
 #define RHS_TRACER       2
 #define RHS_CONVERGENCE  3
 #define RHS_INERTIA      4
-#define RHS_LI           5
-#define RHS_MINIER       6
+#define RHS_SGS1         5
+#define RHS_SGS2         6
 
 ! Drag factor model
 #define DF_PART_SCHILLER  1

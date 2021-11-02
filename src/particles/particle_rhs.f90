@@ -80,7 +80,7 @@ END SUBROUTINE InitRHS
 
 SUBROUTINE CalcPartRHS(&
 #if USE_BASSETFORCE || ANALYZE_RHS
-  dt,iStage)
+  t,dt,iStage)
 #else
   )
 #endif /* USE_BASSETFORCE || ANALYZE_RHS */
@@ -97,24 +97,23 @@ USE MOD_Particle_Interpolation_Vars,  ONLY: GradAtParticle
 USE MOD_Particle_Vars,                ONLY: PDM, Pt
 #if ANALYZE_RHS
 USE MOD_Particle_Vars,                ONLY: tWriteRHS,dtWriteRHS
-USE MOD_TimeDisc_Vars,                ONLY: t
 #endif /* ANALYZE_RHS */
 ! #if USE_RW
 ! USE MOD_Particle_RandomWalk_Vars,     ONLY: RWTime
 #if USE_BASSETFORCE
 USE MOD_Particle_Vars,                ONLY: bIter
 #endif /* USE_BASSETFORCE */
-! USE_MOD_Timedisc_Vars,                ONLY: t
 ! #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-#if USE_BASSETFORCE
+#if USE_BASSETFORCE || ANALYZE_RHS
+REAL,INTENT(IN)                  :: t
 REAL,INTENT(IN)                  :: dt
 INTEGER,INTENT(IN),OPTIONAL      :: iStage
-#endif /* USE_BASSETFORCE */
+#endif /* USE_BASSETFORCE || ANALYZE_RHS */
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLE
 INTEGER                          :: iPart
@@ -152,7 +151,7 @@ DO iPart = 1,PDM%ParticleVecLength
     CALL ParticlePushExtend(iPart,FieldAtParticle(PRIM,iPart)                                     ,&
                                   GradAtParticle (1:RHS_GRAD,1:3,iPart),Pt(1:PP_nVarPartRHS,iPart) &
 #if USE_BASSETFORCE || ANALYZE_RHS
-                                  ,dt,iStage)
+                                  ,t,dt,iStage)
 #else
                                   )
 #endif /* USE_BASSETFORCE || ANALYZE_RHS */
@@ -241,35 +240,9 @@ Fdm(1)      = FieldAtParticle(VEL1) - PartState(PART_VEL1,PartID)
 Fdm(2)      = -3.
 Fdm(3)      = 0.
 
-CASE(RHS_LI)
+CASE(RHS_SGS1)
 !===================================================================================================================================
-! Calculation according to AMY LI and GOODARZ AHMADI [1993]
-!===================================================================================================================================
-IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Tracking of inertial particles requires mu to be set!')
-
-udiff(1:3) = FieldAtParticle(VELV) - PartState(PART_VELV,PartID)
-
-Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
-
-! Empirical relation of nonlinear drag from Clift et al. (1978)
-f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, 0.)
-
-! Particle relaxation time
-staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
-
-! Adding sgs term
-IF(ALLOCATED(TurbPartState)) THEN
-  Fdm = udiff * staup * f + TurbPartState(1:3,PartID)
-ELSE
-  Fdm = udiff * staup * f
-END IF
-
-! Add gravity if required
-IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
-
-CASE(RHS_MINIER)
-!===================================================================================================================================
-! Calculation according to Jean-Pierre Minier & Eric Peirano [2001]
+! Calculation according to Stokes; SGS model provides full fluid velocity seen, see Jean-Pierre Minier & Eric Peirano [2001]
 !===================================================================================================================================
 IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Tracking of inertial particles requires mu to be set!')
 
@@ -280,22 +253,46 @@ ELSE
   udiff(1:3) = FieldAtParticle(VELV)     - PartState(PART_VELV,PartID)
 END IF
 
-Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
+Rep     = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 
 ! Empirical relation of nonlinear drag from Clift et al. (1978)
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, 0.)
 
 ! Particle relaxation time
-staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
+staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
 
 Fdm      = udiff * staup * f
 
 ! Add gravity if required
 IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 
+CASE(RHS_SGS2)
+!===================================================================================================================================
+! Calculation according to Stokes; SGS force is added to RHS
+!===================================================================================================================================
+IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Tracking of inertial particles requires mu to be set!')
+
+udiff(1:3) = FieldAtParticle(VELV) - PartState(PART_VELV,PartID)
+#if USE_FAXEN_CORR
+udiff = udiff + (PartState(PART_DIAM,PartID)**2)/6 * GradAtParticle(RHS_LAPLACEVEL,:)
+#endif /* USE_FAXEN_CORR */
+
+Rep     = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
+
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, 0.)
+
+! Particle relaxation time
+staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
+
+Fdm      = udiff * staup * f
+
+! Add gravity and bouyancy if required
+IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
+IF(ALLOCATED(TurbPartState)) Fdm = Fdm + TurbPartState(:,PartID)
+
 CASE(RHS_INERTIA)
 !===================================================================================================================================
-! Calculation according to Maxey and Riley (1983)
+! Calculation according to Stokes
 !===================================================================================================================================
 IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Tracking of inertial particles requires mu to be set!')
 
@@ -306,15 +303,15 @@ ELSE
   udiff(1:3) = FieldAtParticle(VELV)                             - PartState(PART_VELV,PartID)
 END IF
 #if USE_FAXEN_CORR
-udiff = udiff + (Species(PartSpecies(PartID))%DiameterIC**2)/6 * GradAtParticle(RHS_LAPLACEVEL,:)
+udiff = udiff + (PartState(PART_DIAM,PartID)**2)/6 * GradAtParticle(RHS_LAPLACEVEL,:)
 #endif /* USE_FAXEN_CORR */
 
-Rep     = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
+Rep     = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, 0.)
 
 ! Particle relaxation time
-staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./Species(PartSpecies(PartID))%DiameterIC**2
+staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
 
 Fdm      = udiff * staup * f
 
@@ -363,7 +360,7 @@ END FUNCTION ParticlePushRot
 #if USE_EXTEND_RHS
 SUBROUTINE ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,Pt_in&
 #if USE_BASSETFORCE || ANALYZE_RHS
-  ,dt,iStage)
+  ,t,dt,iStage)
 #else
   )
 #endif
@@ -387,7 +384,6 @@ USE MOD_Output,                 ONLY: OutputToFile
 #endif /* ANALYZE_RHS */
 USE MOD_PreProc,                ONLY: PP_pi
 USE MOD_Viscosity
-USE MOD_TimeDisc_Vars,          ONLY: t
 #if USE_BASSETFORCE
 USE MOD_Equation_Vars,          ONLY: s43
 USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter
@@ -401,7 +397,8 @@ INTEGER,INTENT(IN)          :: PartID
 REAL,INTENT(IN)             :: FieldAtParticle(PRIM)
 REAL,INTENT(IN)             :: GradAtParticle(1:RHS_GRAD,1:3)
 REAL,INTENT(INOUT)          :: Pt_in(1:PP_nVarPartRHS)
-#if USE_BASSETFORCE
+#if USE_BASSETFORCE || ANALYZE_RHS
+REAL,INTENT(IN)             :: t
 REAL,INTENT(IN)             :: dt
 INTEGER,INTENT(IN),OPTIONAL :: iStage
 #endif /* USE_BASSETFORCE */
@@ -475,16 +472,16 @@ rotu = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
 Omega = 0.5 * rotu - PartState(PART_AMOMV,PartID)
 ! Prefactor according to Oesterle and Bui Dinh
 IF (ANY(Omega.NE.0)) THEN
-  Rew = FieldAtParticle(DENS) * VECNORM(Omega) * Species(PartSpecies(PartID))%DiameterIC**2 / (4*mu)
+  Rew = FieldAtParticle(DENS) * VECNORM(Omega) * PartState(PART_DIAM,PartID)**2 / (4*mu)
   Pt(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
 END IF
 
 ! Calculate the Re number
-Rep = VECNORM(udiff(1:3))*Species(PartSpecies(PartID))%DiameterIC*FieldAtParticle(DENS)/mu
-IF (Species(PartSpecies(PartID))%CalcSaffmanForce .AND. Rep.GT.0.) THEN
+Rep = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
+IF (Species(PartSpecies(PartID))%CalcSaffmanForce .AND. .NOT. ALMOSTZERO(Rep)) THEN
   ! Calculate the factor
-  prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*Species(PartSpecies(PartID))%DiameterIC*PP_PI)
-  beta = Species(PartSpecies(PartID))%DiameterIC * VECNORM(PartState(PART_AMOMV,PartID)) * 0.5 / VECNORM(udiff)
+  prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*PartState(PART_DIAM,PartID)*PP_PI)
+  beta = PartState(PART_DIAM,PartID) * VECNORM(PartState(PART_AMOMV,PartID)) * 0.5 / VECNORM(udiff)
   IF (Rep .LE. 40) THEN
     prefactor = prefactor * (1-0.3314*SQRT(beta)*EXP(-0.1*Rep)+0.3314*SQRT(beta))
   ELSE
@@ -505,7 +502,7 @@ IF (Species(PartSpecies(PartID))%CalcMagnusForce .AND. Rep.GT.0. .AND. ANY(Omega
   ! Calculate the rotation: (\nabla x u_p) x udiff
   rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
   prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(-0.05684*Rew**0.4*Rep**0.7)
-  Fmm = PP_PI/8 * prefactor * Species(PartSpecies(PartID))%DiameterIC**3 * FieldAtParticle(DENS) * rotudiff
+  Fmm = PP_PI/8 * prefactor * PartState(PART_DIAM,PartID)**3 * FieldAtParticle(DENS) * rotudiff
 END IF
 #endif /* PP_nVarPartRHS */
 
@@ -573,11 +570,15 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
     RKdtFrac = dt
   END IF
   ! Correction term if initial particle velocity if different from the surrounding fluid velocity
-  IF(bIter .EQ. 1) durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t)
-  IF(MOD(bIter,N_Basset) .EQ. 0) durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t-N_Basset*RKdtFrac)
+  durdt(1:3,PartID) = 0.
+  IF (t .GT. 0 .AND. bIter .LT. N_Basset) THEN
+    durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t)
+  ELSEIF (MOD(bIter,N_Basset) .EQ. 0) THEN
+    durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t-N_Basset*RKdtFrac)
+  END IF
 
   ! Scaling factor
-  prefactor = 9./(Species(PartSpecies(PartID))%DiameterIC*Species(PartSpecies(PartID))%DensityIC)&
+  prefactor = 9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
             * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
 
   ! Index for previous data

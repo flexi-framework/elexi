@@ -34,13 +34,7 @@ REAL,ALLOCATABLE                       :: USGS(:,:,:,:,:)                     ! 
 REAL,ALLOCATABLE                       :: USGSPart(:,:)                       ! Filtered state
 REAL,ALLOCATABLE                       :: ElemVolN(:)                         ! ElemVol**(1./3.)/(PP_N+1)
 REAL                                   :: randomVar(3)
-!! JIN SGS model
-REAL,ALLOCATABLE                       :: deltaT_L_p(:)                       ! SGS autocorrelation time seen by a particle
 !! FUKAGATA SGS model
-REAL,ALLOCATABLE                       :: gradUxPart(:,:)                     ! gradient in x-dir interpolate to the particle position
-REAL,ALLOCATABLE                       :: gradUyPart(:,:)                     ! gradient in y-dir interpolate to the particle position
-REAL,ALLOCATABLE                       :: gradUzPart(:,:)                     ! gradient in z-dir interpolate to the particle position
 REAL,ALLOCATABLE                       :: gradp(:,:,:,:,:,:)                  ! Pressur gradient gradp(1,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL,ALLOCATABLE                       :: gradpPart(:,:)                      ! Pressur gradient at particle position
 !===================================================================================================================================
 END MODULE MOD_Particle_SGS_Vars

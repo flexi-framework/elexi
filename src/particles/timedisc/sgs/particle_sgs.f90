@@ -53,7 +53,7 @@ USE MOD_Preproc               ,ONLY: PP_N,PP_NZ
 USE MOD_Analyze_Vars          ,ONLY: ElemVol
 USE MOD_Mesh_Vars             ,ONLY: nElems
 USE MOD_Particle_SGS_Vars
-USE MOD_Particle_Vars         ,ONLY: PDM,TurbPartState,TurbPt_temp
+USE MOD_Particle_Vars         ,ONLY: PDM,TurbPartState,nSpecies,Species!TurbPt_temp
 USE MOD_ReadInTools           ,ONLY: GETINT,GETSTR
 #if USE_MPI
 USE MOD_Globals               ,ONLY: MPIRoot
@@ -67,7 +67,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: ALLOCSTAT
+INTEGER               :: ALLOCSTAT,iSpec
 !===================================================================================================================================
 
 IF(ParticleSGSInitIsDone) RETURN
@@ -97,22 +97,20 @@ SELECT CASE(SGSModel)
 
     ! Allocate array to hold the SGS properties for every particle
     ALLOCATE(USGS         (1:PP_nVar ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-             USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
+             USGSPart     (1:3       ,1:PDM%maxParticleNumber),      &
              gradp        (1,1:3     ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-             gradpPart    (1:3       ,1:PDM%maxParticleNumber),      &
-             gradUxPart   (1:3       ,1:PDM%maxParticleNumber),      &
-             gradUyPart   (1:3       ,1:PDM%maxParticleNumber),      &
-             gradUzPart   (1:3       ,1:PDM%maxParticleNumber),      &
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
-             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
       CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
-!    TurbPt_temp     = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
 
+    ! Overwrite RHS if necessary
+    DO iSpec = 1, nSpecies
+      Species(iSpec)%RHSMethod = RHS_SGS1
+    END DO
 
   CASE('Sommerfeld')
     ! Set number of variables and SGS flag active
@@ -126,15 +124,13 @@ SELECT CASE(SGSModel)
 
     ! Allocate array to hold the SGS properties for every particle
     ALLOCATE(USGS         (1:PP_nVar ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-             USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
+             USGSPart     (1:3       ,1:PDM%maxParticleNumber),      &
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
-             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
-             ElemVolN     (         1:nElems),STAT=ALLOCSTAT)
+             ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
       CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
-!    TurbPt_temp     = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
 
 CASE('Amiri')
@@ -149,18 +145,19 @@ CASE('Amiri')
 
     ! Allocate array to hold the SGS properties for every particle
     ALLOCATE(USGS         (1:PP_nVar ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-             USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
-             gradUxPart   (1:3       ,1:PDM%maxParticleNumber),      &
-             gradUyPart   (1:3       ,1:PDM%maxParticleNumber),      &
-             gradUzPart   (1:3       ,1:PDM%maxParticleNumber),      &
+             USGSPart     (1:3       ,1:PDM%maxParticleNumber),      &
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
-             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
       CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
+
+    ! Overwrite RHS if necessary
+    DO iSpec = 1, nSpecies
+      Species(iSpec)%RHSMethod = RHS_SGS2
+    END DO
 
 CASE('Fukagata')
     ! Set number of variables and SGS flag active
@@ -174,18 +171,19 @@ CASE('Fukagata')
 
     ! Allocate array to hold the SGS properties for every particle
     ALLOCATE(USGS         (1:PP_nVar ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-             USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
-             gradUxPart   (1:3       ,1:PDM%maxParticleNumber),      &
-             gradUyPart   (1:3       ,1:PDM%maxParticleNumber),      &
-             gradUzPart   (1:3       ,1:PDM%maxParticleNumber),      &
+             USGSPart     (1:3       ,1:PDM%maxParticleNumber),      &
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
-             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
       CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
+
+    ! Overwrite RHS if necessary
+    DO iSpec = 1, nSpecies
+      Species(iSpec)%RHSMethod = RHS_SGS2
+    END DO
 
   CASE('Jin')
     ! Set number of variables and SGS flag active
@@ -199,9 +197,8 @@ CASE('Fukagata')
 
     ! Allocate array to hold the SGS properties for every particle
     ALLOCATE(USGS         (1:PP_nVar ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-             USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
+             USGSPart     (1:3       ,1:PDM%maxParticleNumber),      &
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
-             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
       CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
@@ -221,15 +218,13 @@ CASE('Fukagata')
 
     ! Allocate array to hold the SGS properties for every particle
     ALLOCATE(USGS         (1:PP_nVar ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-             USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
+             USGSPart     (1:3       ,1:PDM%maxParticleNumber),      &
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
-             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
       CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
-    TurbPt_temp     = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
 
   CASE('Breuer-Analytic')
@@ -244,15 +239,15 @@ CASE('Fukagata')
 
     ! Allocate array to hold the SGS properties for every particle
     ALLOCATE(USGS         (1:PP_nVar ,0:PP_N,0:PP_N,0:PP_NZ,nElems), &
-             USGSPart     (1:4       ,1:PDM%maxParticleNumber),      &
+             USGSPart     (1:3       ,1:PDM%maxParticleNumber),      &
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
-             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
+!             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
       CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState = 0.
-    TurbPt_temp   = 0.
+!    TurbPt_temp   = 0.
     ElemVolN      = ElemVol**(1./3.)/(PP_N+1)
 
   CASE('none')
@@ -325,7 +320,7 @@ USE MOD_Filter_Vars                 ,ONLY: FilterMat
 USE MOD_Mesh_Vars                   ,ONLY: offsetElem
 USE MOD_Particle_Globals
 USE MOD_Particle_SGS_Vars
-USE MOD_Particle_Interpolation      ,ONLY: InterpolateFieldToParticle
+USE MOD_Particle_Interpolation      ,ONLY: InterpolateFieldToParticle,InterpolateFieldToSingleParticle
 USE MOD_Particle_Interpolation_Vars ,ONLY: FieldAtParticle
 USE MOD_Particle_Vars               ,ONLY: TurbPartState,PDM,PEM,PartState
 USE MOD_Particle_Vars               ,ONLY: Species,PartSpecies
@@ -364,11 +359,12 @@ REAL                          :: tauSGS             ! SGS time scale
 REAL                          :: tauL(2)            ! Parallel and perpendicular SGS time scale
 REAL                          :: G_SGS(3,3)         ! Drift (analytic) / diffusion (num) matrix
 REAL                          :: B_SGS(3,3)         ! Covariance (analytic) / exp. of the drift (num) matrix
-! LOCAL VARIABLES - SOMMERFELD SGS MODEL
+REAL                          :: gradUxPart(1:3), gradUyPart(1:3),gradUzPart(1:3),gradpPart(1:3)
+! SOMMERFELD SGS MODEL
 REAL                          :: C_eps_Shotorban=19./12  ! model constant of Shotorban (according to HEINZ)
 REAL                          :: C_T=0.24           ! model constant for lagrangian time scale
 REAL                          :: C_L=3              ! model constant for eulerian time scale
-! LOCAL VARIABLES - MINIER & PEIRANO SGS MODEL
+! MINIER & PEIRANO SGS MODEL
 REAL                          :: C_0=19./12         ! model constant for lagrangian time scale MINIER (according to HEINZ)
 REAL                          :: Lambda_factor      ! factor in order to calculate diffusion matrix
 REAL                          :: trace_HR           ! trace matrix H*R
@@ -377,7 +373,6 @@ REAL                          :: aux                ! auxiliary variable
 REAL                          :: H_matrix(3,3)      !
 REAL                          :: ReynoldsTensor(3,3)! Reynolds Stress Tensor
 REAL                          :: H_R_matrix(3,3)    ! H_ij * R_ij
-REAL                          :: pg(3)              ! Pressure gradient times dt
 REAL                          :: second_drift_term(3) ! term relative at the relative displacement times gradientU
 REAL                          :: fluctuationState(3) ! fluctuation velocity: U - <U>
 REAL                          :: b_L(2)             ! Parallel and perpendicular Csanady factor
@@ -389,11 +384,10 @@ REAL                          :: deltaT_L           ! Lagrangian time scale
 REAL                          :: deltaT_E           ! Eulerian integral timescale (Fede & Simonin,2006)
 REAL                          :: St                 ! Stokes number
 ! FUKAGATA/AMIRI SGS MODEL
-REAL                          :: ni_SGS(3)          ! stochastic term sum of ni_B and ni_SGS
 REAL                          :: U_M                ! representative SGS velocity
 REAL,PARAMETER                :: C_c= 1.            ! factor of Stokes-Cunningham
-REAL,PARAMETER                :: C_Fuka= 0.93       ! constant model of Fukagata
-REAL,PARAMETER                :: C_eps=0.08         ! = (2/(3*Ko))**(3/2), Ko: Kolmogorov constant = 1.5
+REAL,PARAMETER                :: C_Fuka= 0.08       ! constant model of Fukagata
+REAL,PARAMETER                :: C_eps=0.93         ! = (2/(3*Ko))**(3/2), Ko: Kolmogorov constant = 1.5
 REAL                          :: d_ij_tensor(3,3)   ! rate of deformation tensor
 REAL                          :: beta1,beta2
 REAL                          :: factor(3)          ! factor to take into account anisotropy (AMIRI MODEL)
@@ -404,8 +398,7 @@ REAL                          :: T_L(3), T_L_f      ! Lagrangian time scale in t
 REAL                          :: R_L(3)             ! Lagrangian correlation in the three directions
 REAL                          :: L_E                ! Integral length scales
 REAL                          :: F_dr, G_dr, R_P(3) ! Correlaction vector for Sommerfeld
-REAL                          :: diag_R_E(3)        ! Eulerian correlation (only main diagonal, vector form)
-REAL                          :: sigmaF_square(3)    ! SGS kinetic energy standard deviation in the three directions
+REAL                          :: R_E_diag(3)        ! Eulerian correlation (only main diagonal, vector form)
 !===================================================================================================================================
 
 SELECT CASE(SGSModel)
@@ -419,9 +412,11 @@ CASE('none')
 
 CASE('Minier')
 !===================================================================================================================================
-! Breuer (2017) model, first option
-!> Breuer, M. and Hoppe, F., "Influence of a cost–efficient Langevin subgrid-scale model on the dispersed phase of large–eddy
-!simulations of turbulent bubble–laden and particle–laden flows." International Journal of Multiphase Flow, 89 (2017): 23-44.
+!> Minier, J.P., Peirano, E. et al.: "PDF model based on Langevin equation for polydispersed two-phase
+!> flows applied to a bluff-body gas-solid flow". Physics of Fluids, 2004.
+!
+! FOR ANISOTROPIC TURBULENCE
+!
 !===================================================================================================================================
 
 ! Time integration using Euler-Maruyama scheme
@@ -436,31 +431,29 @@ USGS = U
 CALL Filter_Pointer(USGS,FilterMat)
 
 ! Obtain the high-pass filtered velocity field
-USGS = U - USGS
+USGS(2,:,:,:,:) = U(MOM1,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM1,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(3,:,:,:,:) = U(MOM2,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM2,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(4,:,:,:,:) = U(MOM3,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM3,:,:,:,:)/USGS(DENS,:,:,:,:)
 
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),4,USGSPart)
-
-! Interpolate gradient to particle position
-CALL InterpolateFieldToParticle(3,gradUx(1:3,:,:,:,:),3,gradUxPart)
-CALL InterpolateFieldToParticle(3,gradUy(1:3,:,:,:,:),3,gradUyPart)
-CALL InterpolateFieldToParticle(3,gradUz(1:3,:,:,:,:),3,gradUzPart)
+CALL InterpolateFieldToParticle(3,USGS(MOMV,:,:,:,:),3,USGSPart)
 
 ! Calculate pressure gradient
 CALL Lifting_BR1_gen(1,1,UPrim(PRES:PRES,:,:,:,:),gradp(:,1,:,:,:,:),gradp(:,2,:,:,:,:),gradp(:,3,:,:,:,:))
 
-! Interpolate pressur gradient to particel position
-CALL InterpolateFieldToParticle(3,gradp(1,1:3,:,:,:,:),3,gradpPart)
-
 DO iPart = 1,PDM%ParticleVecLength
-
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
-  ! Use unfiltered density to obtain velocity in primitive variables
-  kSGSPart = 0.5*SUM((USGSPart(MOMV,iPart)/FieldAtParticle(DENS,iPart))**2.)
 
-  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
+  kSGSPart = 0.5*SUM(USGSPart(1:3,iPart)**2.)
+
   ElemID   = PEM%Element(iPart) - offsetElem
+
+  ! Interpolate velocity and pressure gradients to the particle position
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradUx(1:3,:,:,:,ElemID) ,3,gradUxPart)
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradUy(1:3,:,:,:,ElemID) ,3,gradUyPart)
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradUz(1:3,:,:,:,ElemID) ,3,gradUzPart)
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradp(1,1:3,:,:,:,ElemID),3,gradpPart)
 
   ! Calculate dissipation energy according to  Babak Shotorban & Farzad Mashayek (2006) A stochastic model for particle
   ! motion in large-eddy simulation, Journal of Turbulence, 7, N18, DOI: 10.1080/14685240600595685
@@ -479,131 +472,44 @@ DO iPart = 1,PDM%ParticleVecLength
   fluctuationState(1:3) = TurbPartState(1:3,iPart) - FieldAtParticle(VELV,iPart)
 
   ! No SGS turbulent kinetic energy, avoid float error
-  IF (ALMOSTZERO(kSGSPart)) THEN ! 1st IF
+  IF (ALMOSTZERO(kSGSPart)) THEN
 
-    ! We ASSUME that these are the CORRECT matrix indices
-    IF(ALMOSTZERO(MAXVAL(udiff)))THEN   ! 2ND IF
+    IF (ALMOSTZERO(MAXVAL(udiff))) THEN
+
       Pt(1:3) = 0.
       second_drift_term(1:3) = 0.
-    ELSE     ! 2ND ELSE
 
+    ELSE
+
+      Pt(1:3) = 0.
       ! Calculate second term of drift vector: (U_p-U)*(\partial U_i / \partial x_j)
-      second_drift_term(1) = udiff(1) * gradUxPart(1,iPart) + udiff(2) * gradUyPart(1,iPart) + udiff(3) * gradUzPart(1,iPart)
-      second_drift_term(2) = udiff(1) * gradUxPart(2,iPart) + udiff(2) * gradUyPart(2,iPart) + udiff(3) * gradUzPart(2,iPart)
-      second_drift_term(3) = udiff(1) * gradUxPart(3,iPart) + udiff(2) * gradUyPart(3,iPart) + udiff(3) * gradUzPart(3,iPart)
+      second_drift_term(1) = udiff(1) * gradUxPart(1) + udiff(2) * gradUyPart(1) + udiff(3) * gradUzPart(1)
+      second_drift_term(2) = udiff(1) * gradUxPart(2) + udiff(2) * gradUyPart(2) + udiff(3) * gradUzPart(2)
+      second_drift_term(3) = udiff(1) * gradUxPart(3) + udiff(2) * gradUyPart(3) + udiff(3) * gradUzPart(3)
 
-      ! parallel Csanady factor
-      b_L(1) = betaSGS*SQRT(SUM(udiff**2))
-      ! perpendicular Csanady factor
-      b_L(2) = betaSGS*2*SQRT(SUM(udiff**2))
+    END IF
 
-      ! Calculate auxliary matrix H_ij, drift matrix G_ij
-      DO i = 1,3
-        DO j = 1,3
-          IF (i.EQ.j) THEN
-            H_matrix(i,j) = b_L(2)  + (b_L(1)  - b_L(2)) *urel(i)*urel(j)
-          ELSE
-            H_matrix(i,j) =           (b_L(1)  - b_L(2)) *urel(i)*urel(j)
-          END IF
-          G_matrix(i,j) = -(0.5 + 3*C_0/4) * (C_eps_Shotorban/(SQRT(2./3))*1./ElemVolN(ElemID)) * H_matrix(i,j)
-        END DO
-      END DO
+  ELSE  ! Valid SGS turbulent kinetic energy
+
+    IF (ALMOSTZERO(MAXVAL(udiff))) THEN
+
+      second_drift_term(1:3) = 0.
+
+      ! parallel / perpendicular Csanady factor
+      b_L(1:2) = 1.
+
+      ! Calculate auxiliary matrix H_ij, drift matrix G_ij
+      H_matrix(:,:) = 0
+      H_matrix(1,1) = b_L(2)
+      H_matrix(2,2) = b_L(2)
+      H_matrix(3,3) = b_L(2)
+
+      G_matrix(:,:) = -(0.5 + 0.75*C_0) * epsilonSGS/kSGSPart * H_matrix(:,:)
 
       ! Calculate the Reynolds stress tensor
       DO i = 1,3
         DO j = 1,3
-          ReynoldsTensor(i,j) = (USGSPart(i+1,iPart)/FieldAtParticle(DENS,iPart))*(USGSPart(j+1,iPart)/FieldAtParticle(DENS,iPart))
-        END DO
-      END DO
-
-      !Calculate factor \lambda
-      H_R_matrix = MATMUL(H_matrix,ReynoldsTensor)
-
-      trace_HR = 0.
-      trace_H  = 0.
-
-      DO i = 1,3
-        trace_HR = trace_HR + H_R_matrix(i,i)
-        trace_H  = trace_H  + H_matrix(i,i)
-      END DO
-
-      Lambda_factor = trace_HR/trace_H
-
-      ! Calculate simmetrix matrix D_ij for Cholewski decomposition
-      DO i = 1,3
-        DO j = 1,3
-          D_matrix(i,j) = ( C_0/SQRT(8./27) + SQRT(3./2) ) * Lambda_factor * H_matrix(i,j)
-        END DO
-      END DO
-      D_matrix(:,:) = C_eps_Shotorban/ElemVolN(ElemID) * D_matrix(:,:)
-
-      ! Cholewski decomposition to get diffusion matrix B_matrix
-      B_matrix(:,:) = 0.
-
-      B_matrix(1,1) = sqrt( D_matrix(1,1) )       ! element (1,1)
-      DO i = 2 , 3
-        B_matrix(i,1) = D_matrix(1,i) / B_matrix(1,1)  ! first column
-      END DO
-
-      DO j = 2 , 3
-        DO i = 1 , 3
-          IF( i .LT. j ) THEN
-            B_matrix(i,j) = 0.0           ! upper triangolar elements
-          ELSE
-            IF( i .EQ. j) THEN
-              aux = 0.0
-              DO k = 1 , i -1
-                aux = aux + B_matrix(i,k)**2
-              END DO
-              B_matrix(i,j) = sqrt( D_matrix(i,i) - aux ) ! diagonal elements
-            ELSE ! (i .GT. j)
-              aux = 0.0
-              DO k = 1 , i - 1
-                aux = aux + B_matrix(j,k) * B_matrix(i,k)
-              END DO
-              B_matrix(i,j) = ( D_matrix(j,i) - aux ) / B_matrix(j,j)    ! in our case only element B(3,2)
-            END IF
-          END IF
-        END DO
-      END DO
-
-      ! EULER
-      ! Sum up turbulent contributions
-      Pt(1:3) = 0.
-      DO  j=1,3
-        Pt(1:3) = Pt(1:3) + G_matrix(1:3,j)*fluctuationState(j)*dt + B_matrix(1:3,j)*SQRT(dt)*RandNormal()
-      END DO
-    END IF !2ND END IF
-
-  ! Valid SGS turbulent kinetic energy
-  ELSE  ! 1ST ELSE
-
-    IF(ALMOSTZERO(MAXVAL(udiff)))THEN  ! 3RD IF
-
-      ! Calculate second term of drift vector: (U_p-U)*(\partial U_i / \partial x_j)
-      second_drift_term(1:3) = 0.
-
-      ! parallel Csanady factor
-      b_L(1) = 1
-      ! perpendicular Csanady factor
-      b_L(2) = 1
-
-      ! Calculate auxliary matrix H_ij, drift matrix G_ij
-      DO i = 1,3
-        DO j = 1,3
-          IF (i.EQ.j) THEN
-            H_matrix(i,j) = b_L(2)
-          ELSE
-            H_matrix(i,j) = 0
-          END IF
-          G_matrix(i,j) = -(0.5 + 3*C_0/4) * epsilonSGS/kSGSPart * H_matrix(i,j)
-        END DO
-      END DO
-
-      ! Calculate the Reynolds stress tensor
-      DO i = 1,3
-        DO j = 1,3
-          ReynoldsTensor(i,j) = (USGSPart(i+1,iPart)/FieldAtParticle(DENS,iPart))*(USGSPart(j+1,iPart)/FieldAtParticle(DENS,iPart))
+          ReynoldsTensor(i,j) = USGSPart(i,iPart)*USGSPart(j,iPart)
         END DO
       END DO
 
@@ -635,40 +541,35 @@ DO iPart = 1,PDM%ParticleVecLength
       ! Cholewski decomposition to get diffusion matrix B_matrix
       B_matrix(:,:) = 0.
 
-      B_matrix(1,1) = sqrt( D_matrix(1,1) )    ! element (1,1)
-
-      DO i = 2 , 3
-        B_matrix(i,1) = D_matrix(1,i) / B_matrix(1,1) ! first column
-      END DO
+      B_matrix(1,1) = SQRT(D_matrix(1,1))
+      B_matrix(2,1) = D_matrix(1,2) / B_matrix(1,1)
+      B_matrix(3,1) = D_matrix(1,3) / B_matrix(1,1)
 
       DO j = 2 , 3
         DO i = 1 , 3
-          IF( i .LT. j ) THEN
-            B_matrix(i,j) = 0.0    ! upper triangolar elements
-          ELSE
-            IF( i .EQ. j) THEN
-              aux = 0.0
-              DO k = 1 , i -1
-                aux = aux + B_matrix(i,k)**2
-              END DO
-              B_matrix(i,j) = sqrt( D_matrix(i,i) - aux ) ! diagonal elements
-            ELSE ! (i .GT. j)
-              aux = 0.0
-              DO k = 1 , i - 1
-                aux = aux + B_matrix(j,k) * B_matrix(i,k)
-              END DO
-              B_matrix(i,j) = ( D_matrix(j,i) - aux ) / B_matrix(j,j)    ! in our case only element B(3,2)
-            END IF
+          IF( i .LT. j ) CYCLE ! upper triangular elements
+          IF( i .EQ. j) THEN
+            aux = 0.0
+            DO k = 1 , i -1
+              aux = aux + B_matrix(i,k)**2
+            END DO
+            B_matrix(i,j) = SQRT(D_matrix(i,i) - aux) ! diagonal elements
+          ELSE ! (i .GT. j)
+            aux = 0.0
+            DO k = 1 , i - 1
+              aux = aux + B_matrix(j,k) * B_matrix(i,k)
+            END DO
+            B_matrix(i,j) = (D_matrix(j,i) - aux) / B_matrix(j,j)    ! in our case only element B(3,2)
           END IF
         END DO
       END DO
 
-    ELSE ! with valid KSGS and valid UDIFF      ! 3RD ELSE
+    ELSE ! with valid KSGS and valid UDIFF
 
       ! Calculate second term of drift vector: (U_p-U)*(\partial U_i / \partial x_j)
-      second_drift_term(1) = udiff(1) * gradUxPart(1,iPart) + udiff(2) * gradUyPart(1,iPart) + udiff(3) * gradUzPart(1,iPart)
-      second_drift_term(2) = udiff(1) * gradUxPart(2,iPart) + udiff(2) * gradUyPart(2,iPart) + udiff(3) * gradUzPart(2,iPart)
-      second_drift_term(3) = udiff(1) * gradUxPart(3,iPart) + udiff(2) * gradUyPart(3,iPart) + udiff(3) * gradUzPart(3,iPart)
+      second_drift_term(1) = udiff(1) * gradUxPart(1) + udiff(2) * gradUyPart(1) + udiff(3) * gradUzPart(1)
+      second_drift_term(2) = udiff(1) * gradUxPart(2) + udiff(2) * gradUyPart(2) + udiff(3) * gradUzPart(2)
+      second_drift_term(3) = udiff(1) * gradUxPart(3) + udiff(2) * gradUyPart(3) + udiff(3) * gradUzPart(3)
 
       ! parallel Csanady factor
       b_L(1) = (SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart*3/2))
@@ -683,14 +584,14 @@ DO iPart = 1,PDM%ParticleVecLength
           ELSE
             H_matrix(i,j) =           (b_L(1)  - b_L(2)) *urel(i)*urel(j)
           END IF
-          G_matrix(i,j) = -(0.5 + 3*C_0/4) * epsilonSGS/kSGSPart * H_matrix(i,j)
+          G_matrix(i,j) = -(0.5 + 0.75*C_0) * epsilonSGS/kSGSPart * H_matrix(i,j)
         END DO
       END DO
 
       ! Calculate the Reynolds stress tensor
       DO i = 1,3
         DO j = 1,3
-          ReynoldsTensor(i,j) = (USGSPart(i+1,iPart)/FieldAtParticle(DENS,iPart))*(USGSPart(j+1,iPart)/FieldAtParticle(DENS,iPart))
+          ReynoldsTensor(i,j) = USGSPart(i,iPart)*USGSPart(j,iPart)
         END DO
       END DO
 
@@ -722,51 +623,43 @@ DO iPart = 1,PDM%ParticleVecLength
       ! Cholewski decomposition to get diffusion matrix B_matrix
       B_matrix(:,:) = 0.
 
-      B_matrix(1,1) = sqrt( D_matrix(1,1) )     ! element (1,1)
-      DO i = 2 , 3
-        B_matrix(i,1) = D_matrix(1,i) / B_matrix(1,1)  ! first column
-      END DO
+      B_matrix(1,1) = SQRT(D_matrix(1,1))
+      B_matrix(2,1) = D_matrix(1,2) / B_matrix(1,1)
+      B_matrix(3,1) = D_matrix(1,3) / B_matrix(1,1)
 
       DO j = 2 , 3
         DO i = 1 , 3
-          IF( i .LT. j ) THEN
-            B_matrix(i,j) = 0.0    ! upper triangolar elements
-          ELSE
-            IF( i .EQ. j) THEN
-              aux = 0.0
-              DO k = 1 , i -1
-                aux = aux + B_matrix(i,k)**2
-              END DO
-              B_matrix(i,j) = SQRT( D_matrix(i,i) - aux ) ! diagonal elements
-            ELSE ! (i .GT. j)
-              aux = 0.0
-              DO k = 1 , i - 1
-                aux = aux + B_matrix(j,k) * B_matrix(i,k)
-              END DO
-              B_matrix(i,j) = ( D_matrix(j,i) - aux ) / B_matrix(j,j)    ! in our case only element B(3,2)
-            END IF
+          IF( i .LT. j ) CYCLE       ! upper triangular elements
+          IF( i .EQ. j) THEN
+            aux = 0.0
+            DO k = 1 , i -1
+              aux = aux + B_matrix(i,k)**2
+            END DO
+            B_matrix(i,j) = SQRT(D_matrix(i,i) - aux) ! diagonal elements
+          ELSE ! (i .GT. j)
+            aux = 0.0
+            DO k = 1 , i - 1
+              aux = aux + B_matrix(j,k) * B_matrix(i,k)
+            END DO
+            B_matrix(i,j) = (D_matrix(j,i) - aux) / B_matrix(j,j)    ! in our case only element B(3,2)
           END IF
         END DO
       END DO
 
-    END IF ! 3RD END IF
+    END IF
 
-    ! EULER
-    ! Sum up turbulent contributions
     Pt(1:3) = 0.
     DO j = 1,3
       Pt(1:3) = Pt(1:3)  + G_matrix(1:3,j)*fluctuationState(j)*dt + B_matrix(1:3,j)*SQRT(dt)*RandNormal()
     END DO
-  END IF ! 1ST END IF
+  END IF
 
   ! FULL FLUID VELOCITY SEEN BY THE PARTICLES
-  ! 1/\rho_f * ( \partial <P> / \partial x_i ) * dt
-  pg(1:3)  = gradpPart(1:3,iPart)/FieldAtParticle(DENS,iPart)*dt
+  !  (U_p-U)*(\partial U_i / \partial x_j) * dt - 1/\rho_f * ( \partial <P> / \partial x_i ) * dt
+  TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) - gradpPart(1:3)/FieldAtParticle(DENS,iPart)*dt &
+                                                      + second_drift_term(1:3)*dt + Pt(1:3)
 
-  !  (U_p-U)*(\partial U_i / \partial x_j) * dt
-  TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) - pg(1:3) + second_drift_term(1:3)*dt + Pt(1:3)
-
-END DO  ! Minier & Peirano
+END DO
 
 
 CASE('Sommerfeld')
@@ -775,6 +668,8 @@ CASE('Sommerfeld')
 !> Validation of a stochastic Lagrangian modelling approach for inter-particle collisions in homogeneous isotropic turbulence.
 !> Institut fur Verfahrenstechnik, Fachbereich Ingenieurwissenschaften, Martin-Luther-Universitat at Halle-Wittenberg,
 !> D-06099 Halle (Saale), Germany. Received 30 March 2000; received in revised form 3 May 2001
+!
+! FOR ISOTROPIC, HOMOGENEOUS TURBULENCE
 
 !> Model implemented from: EVALUATION OF LAGRANGIAN PARTICLE DISPERSION MODELS IN TURBULENT FLOWS (S. Laı́n∗ and C.A. Grillo)
 !===================================================================================================================================
@@ -791,24 +686,25 @@ USGS = U
 CALL Filter_Pointer(USGS,FilterMat)
 
 ! Obtain the high-pass filtered velocity field
-USGS = U - USGS
+USGS(2,:,:,:,:) = U(MOM1,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM1,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(3,:,:,:,:) = U(MOM2,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM2,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(4,:,:,:,:) = U(MOM3,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM3,:,:,:,:)/USGS(DENS,:,:,:,:)
 
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),4,USGSPart)
+CALL InterpolateFieldToParticle(3,USGS(MOMV,:,:,:,:),3,USGSPart)
 
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
 
   ! Use unfiltered density to obtain velocity in primitive variables
-  kSGSPart = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(DENS,iPart))**2.)
+  kSGSPart = 0.5*SUM(USGSPart(1:3,iPart)**2.)
 
-  ! Deviation standard of fluctuation velocity
+  ! Standard deviation of fluctuation velocity
   sigmaSGS = SQRT(2./3.*kSGSPart)
 
-  ! Deviation standard per direction
-  ! considering sigmaF_vector already to the power of 2
-  sigmaF_square(1:3) = (USGSPart(2:4,iPart)/FieldAtParticle(DENS,iPart))**2.
+  ! Standard deviation per direction, sigmaF = sigmaF**2
+  sigmaF(1:3) = USGSPart(1:3,iPart)**2.
 
   ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
   ElemID   = PEM%Element(iPart) - offsetElem
@@ -821,48 +717,39 @@ DO iPart = 1,PDM%ParticleVecLength
   udiff(1:3) =  (FieldAtParticle(2:4,iPart) + TurbPartState(1:3,iPart)) - PartState(4:6,iPart)
 
   ! Relative displcement between particle and fluid element
-  deltaR(1:3) = udiff(1:3)*dt   ! relative displacement in the three directions
+  deltaR(1:3) = udiff(1:3)*dt       ! relative displacement in the three directions
   deltaR_mag = VECNORM(deltaR(1:3)) ! |U-U_p|*dt (scalar value)
 
-  ! No SGS turbulent kinetic energy, avoid float error
-  IF (ALMOSTZERO(sigmaSGS)) THEN  !1st IF
-    ! We ASSUME that these are the CORRECT matrix indices
-    IF(ALMOSTZERO(MAXVAL(udiff)))THEN  !2nd IF
-      Pt(1:3) = 0 ! in this case we have 0/0
-    ELSE ! 2nd  ELSE IF
+  ! No SGS turbulent kinetic energy, avoid floating point exception
+  IF (ALMOSTZERO(sigmaSGS)) THEN
+    ! Lagrangian correlation R_L = 0
+    Pt(1:3) = 0
+
+  ! Valid SGS turbulent kinetic energy
+  ELSE ! ALMOSTZERO(sigmaSGS)
+
+    IF (ALMOSTZERO(deltaR_mag)) THEN
+
+      ! Lagrangian time scale in the appropriate directions
+      T_L(1:3) = C_T * sigmaF(1:3)/epsilonSGS
 
       ! Lagrangian correlation
-      R_L(1:3) = 1.
+      R_L(1:3) = EXP(-dt/T_L(1:3))
 
-      ! Integral length scales L_E when sigmaSGS goes to zero
-      L_E = C_L**2./C_eps_Shotorban * SQRT(8./27) * ElemVolN(ElemID)
-
-      ! Function g(dr) and f(dr)
-      F_dr = EXP(-deltaR_mag / L_E)
-      G_dr = (1 - deltaR_mag / (2*L_E) ) *  EXP(-deltaR_mag/L_E)
-
-      ! I'm considering only the main diagonal of the tensor (treat it as a  vector)
-      diag_R_E(1:3) = G_dr + (F_dr - G_dr)*(deltaR(1:3)*deltaR(1:3))/(deltaR_mag**2)
+      R_E_diag(1:3) = 1.
 
       !Correlaction function: vector R_P
-      R_P(1:3) = R_L(1:3) * diag_R_E(1:3)
+      R_P(1:3) = R_L(1:3) * R_E_diag(1:3)
 
       ! Calculate the fluctuation in the three directions
       DO i = 1,3
-        Pt(i) = R_P(i)*TurbPartState(i,iPart) + SQRT(sigmaF_square(i))*SQRT(1-R_P(i)**2) * RandNormal()  !!!* SQRT(dt)
+        Pt(i) = R_P(i)*TurbPartState(i,iPart) + SQRT(sigmaF(i))*SQRT(1-R_P(i)**2)* RandNormal()
       END DO
 
-    END IF  !2nd END IF
-
-  ! Valid SGS turbulent kinetic energy
-  ELSE    !1st  ELSE IF
-
-    IF(ALMOSTZERO(MAXVAL(udiff)))THEN   ! 3rd IF
-      Pt(1:3) = 0 ! in this case we have 0/0
-    ELSE ! 3rd  ELSE IF
+    ELSE ! ALMOSTZERO(deltaR_mag)
 
       ! Lagrangian time scale in the appropriate directions
-      T_L(1:3) = C_T * sigmaF_square(1:3)/epsilonSGS
+      T_L(1:3) = C_T * sigmaF(1:3)/epsilonSGS
 
       ! Lagrangian correlation
       R_L(1:3) = EXP(-dt/T_L(1:3))
@@ -872,23 +759,23 @@ DO iPart = 1,PDM%ParticleVecLength
       L_E = C_L * T_L_f * sigmaSGS
 
       ! Function g(dr) and f(dr)
-      F_dr = EXP(-deltaR_mag / L_E)
-      G_dr = (1 - deltaR_mag / (2*L_E) ) *  EXP(-deltaR_mag/L_E)
+      f_dr = EXP( -deltaR_mag / L_E)
+      g_dr = (1 - deltaR_mag / (2*L_E) ) *  EXP(-deltaR_mag/L_E)
 
-      diag_R_E(1:3) = G_dr + (F_dr - G_dr)*(deltaR(1:3)*deltaR(1:3))/(deltaR_mag**2)
+      R_E_diag(1:3) = g_dr + (f_dr - g_dr)*(deltaR(1:3)*deltaR(1:3))/(deltaR_mag**2)
 
       !Correlaction function: vector R_P
-      R_P(1:3) = R_L(1:3) * diag_R_E(1:3)
+      R_P(1:3) = R_L(1:3) * R_E_diag(1:3)
 
       ! Calculate the fluctuation in the three directions
       DO i = 1,3
-        Pt(i) = R_P(i)*TurbPartState(i,iPart) + SQRT(sigmaF_square(i))*SQRT(1-R_P(i)**2)* RandNormal()
+        Pt(i) = R_P(i)*TurbPartState(i,iPart) + SQRT(sigmaF(i))*SQRT(1.-R_P(i)**2)* RandNormal()
       END DO
-    END IF ! 3rd END IF
-  END IF ! 1ST END IF
+    END IF
+  END IF
 
   TurbPartState(1:3,iPart) =  Pt(1:3)
-END DO  ! For Sommerfeld
+END DO
 
 
 CASE('Amiri')
@@ -896,11 +783,11 @@ CASE('Amiri')
 ! A. Elhami Amiri , S. Kazemzadeh Hannani & F. Mashayek (2006)
 !>  Large-Eddy Simulation of Heavy-Particle Transport in Turbulent Channel Flow, Numerical Heat Transfer,
 !> Part B: Fundamentals, 50:4, 285-313, DOI: 10.1080/10407790600859577
-
+!
+! FOR ANISOTROPIC TURBULENCE
+!
+! TODO: check if that is correct
 !===================================================================================================================================
-
-! Calculate the dyn. viscosity
-mu=VISCOSITY_PRIM(FieldAtParticle)
 
 ! Time integration using Euler-Maruyama scheme
 IF(PRESENT(iStage))THEN
@@ -914,84 +801,86 @@ USGS = U
 CALL Filter_Pointer(USGS,FilterMat) ! DOUBLE FILTERING
 
 ! Obtain the high-pass filtered velocity field
-USGS = U - USGS
+USGS(2,:,:,:,:) = U(MOM1,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM1,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(3,:,:,:,:) = U(MOM2,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM2,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(4,:,:,:,:) = U(MOM3,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM3,:,:,:,:)/USGS(DENS,:,:,:,:)
 
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),4,USGSPart)
-
-! Interpolate gradient to the particle position
-CALL InterpolateFieldToParticle(3,gradUx(1:3,:,:,:,:),3,gradUxPart)
-CALL InterpolateFieldToParticle(3,gradUy(1:3,:,:,:,:),3,gradUyPart)
-CALL InterpolateFieldToParticle(3,gradUz(1:3,:,:,:,:),3,gradUzPart)
+CALL InterpolateFieldToParticle(3,USGS(MOMV,:,:,:,:),3,USGSPart)
 
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
 
-  ! Use unfiltered density to obtain velocity in primitive variables
-  kSGSPart = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(1,iPart))**2.)
+  ! Calculate the dyn. viscosity
+  mu=VISCOSITY_TEMPERATURE(FieldAtParticle(TEMP,iPart))
 
-  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
   ElemID   = PEM%Element(iPart) - offsetElem
 
-  ! No SGS turbulent kinetic energy, avoid float error
+  ! Interpolate gradient to the particle position
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradUx(1:3,:,:,:,ElemID),3,gradUxPart)
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradUy(1:3,:,:,:,ElemID),3,gradUyPart)
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradUz(1:3,:,:,:,ElemID),3,gradUzPart)
+
+  kSGSPart = 0.5*SUM(USGSPart(1:3,iPart)**2.)
+
+  ! Time scale of SGS scales = U_rms in case of isotropic turbolence
+  sigmaSGS = SQRT(2./3*kSGSPart)
+
+  ! No SGS turbulent kinetic energy, avoid floating point exception
   IF (ALMOSTZERO(kSGSPart)) THEN
 
-    !in the limit of sigmaF goes to zero the time sigmaS goes to zero
-    ni_SGS(1:3) = 0.
+    ! sigmaF --> 0
+    Pt(1:3) = 0.
 
   ! Valid SGS turbulent kinetic energy
   ELSE
 
     ! Particle relaxation time
-    taup = C_c * Species(PartSpecies(iPart))%DensityIC * Species(PartSpecies(iPart))%DiameterIC**2 &
-    & * 1./(18*mu)
+    taup = C_c * Species(PartSpecies(iPart))%DensityIC * PartState(PART_DIAM,iPart)**2 * 1./(18*mu)
 
     ! Integral time scale of fluid velocity along a particle trajectory by estimated by an inverse of resolved local vorticity
-    ! Local vorticity
-    rot_U(1)=gradUyPart(3,iPart) - gradUzPart(2,iPart)    ! dw/dy-dv/dz
-    rot_U(2)=gradUzPart(1,iPart) - gradUxPart(3,iPart)    ! du/dz-dw/dx
-    rot_U(3)=gradUxPart(2,iPart) - gradUyPart(1,iPart)    ! dv/dx-du/dy
+    rot_U(1)=gradUyPart(3) - gradUzPart(2)    ! dw/dy-dv/dz
+    rot_U(2)=gradUzPart(1) - gradUxPart(3)    ! du/dz-dw/dx
+    rot_U(3)=gradUxPart(2) - gradUyPart(1)    ! dv/dx-du/dy
 
     ! Calculate the factor f1, f2, f3 for the anisotropy
-    factor(1) = SQRT((USGSPart(2,iPart)**2)/(FieldAtParticle(1,iPart))) / SQRT( 2./3 * kSGSPart)   ! f1
-    factor(2) = SQRT((USGSPart(3,iPart)**2)/(FieldAtParticle(1,iPart))) / SQRT( 2./3 * kSGSPart)   ! f2
-    factor(3) = SQRT(3 - factor(1)**2 - factor(2)**2)            ! f3
+    ! TODO: third direction?
+    factor(1) = USGSPart(1,iPart) / sigmaSGS
+    factor(2) = USGSPart(2,iPart) / sigmaSGS
+    factor(3) = SQRT(3. - factor(1)**2 - factor(2)**2)
 
-    !alpha and beta Amiri
     alpha_SGS =  dt/taup
     beta_SGS  = taup*VECNORM(rot_U)
     beta1 = 1+beta_SGS
     beta2 = 1-beta_SGS
 
-    ! sigmaS_Amiri is the increase of standard deviation of particle velocity due to SGS velocity during time dt
-    ! Calculate the representative SGS velocity in order to model the increase of variance of particle velocity
-    ! due to SGS velocity in time dt
     ! U_square = (u'')^2
-    sigmaF(1:3) = SQRT(factor(1:3)**2 * 2./3 * kSGSPart) * SQRT( 1/beta1 * (1-EXP(-alpha_SGS*beta1))  &
-    & -1/beta2 * EXP(-2*alpha_SGS) * (1-EXP(alpha_SGS*beta2))  )
+    sigmaF(1:3) = factor(1:3) * sigmaSGS * SQRT( 1./beta1 * (1-EXP(-alpha_SGS*beta1))  &
+                                                -1./beta2 * EXP(-2*alpha_SGS) * (1-EXP(alpha_SGS*beta2)))
 
-    ! SGS fluid velocity by Amiri
-    DO j=1,3
-      ni_SGS(j) =  sigmaF(j)/dt * RandNormal()
+    DO i=1,3
+      Pt(i) =  sigmaF(i)/dt * RandNormal()
     END DO
 
   END IF
 
-  TurbPartState(1:3,iPart) =  ni_SGS(1:3)
+  ! The SGS drag force is added to the particle RHS
+  TurbPartState(1:3,iPart) =  Pt(1:3)
 
-END DO ! AMIRI SGS MODEL
+END DO
 
 
 CASE('Fukagata')
 !===================================================================================================================================
-! K. Fukagata (2004)
+!> K. Fukagata (2004)
 !> Dynamics of Brownian particles in a turbulent channel flow, K. Fukagata, S. Zahrai, F. H. Bark
 !> Heat and Mass Transfer 40 (2004) 715–726. DOI 10.1007/s00231-003-0462-8
+!
+! FOR ISOTROPIC TURBULENCE
+!
+! TODO: check if that is correct
 !===================================================================================================================================
-
-! Calculate the dyn. viscosity
-mu=VISCOSITY_PRIM(FieldAtParticle)
 
 ! Time integration using Euler-Maruyama scheme
 IF(PRESENT(iStage))THEN
@@ -1005,71 +894,70 @@ USGS = U
 CALL Filter_Pointer(USGS,FilterMat) ! DOUBLE FILTERING
 
 ! Obtain the high-pass filtered velocity field
-USGS = U - USGS
+USGS(2,:,:,:,:) = U(MOM1,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM1,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(3,:,:,:,:) = U(MOM2,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM2,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(4,:,:,:,:) = U(MOM3,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM3,:,:,:,:)/USGS(DENS,:,:,:,:)
 
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),4,USGSPart)
-
-! Interpolate gradient to the particle position
-CALL InterpolateFieldToParticle(3,gradUx(1:3,:,:,:,:),3,gradUxPart)
-CALL InterpolateFieldToParticle(3,gradUy(1:3,:,:,:,:),3,gradUyPart)
-CALL InterpolateFieldToParticle(3,gradUz(1:3,:,:,:,:),3,gradUzPart)
+CALL InterpolateFieldToParticle(3,USGS(MOMV,:,:,:,:),3,USGSPart)
 
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
 
-  ! Use unfiltered density to obtain velocity in primitive variables
-  kSGSPart = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(1,iPart))**2.)
+  ! Calculate the dyn. viscosity
+  mu = VISCOSITY_TEMPERATURE(FieldAtParticle(TEMP,iPart))
 
-  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
-  ElemID   = PEM%Element(iPart) - offsetElem
+  ElemID = PEM%Element(iPart) - offsetElem
+
+  ! Interpolate gradient to the particle position
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradUx(1:3,:,:,:,ElemID),3,gradUxPart)
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradUy(1:3,:,:,:,ElemID),3,gradUyPart)
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradUz(1:3,:,:,:,ElemID),3,gradUzPart)
+
+  kSGSPart = 0.5*SUM(USGSPart(1:3,iPart)**2.)
 
   ! Particle relaxation time
-  taup = C_c * Species(PartSpecies(iPart))%DensityIC * Species(PartSpecies(iPart))%DiameterIC**2 * 1./(18*mu)
+  taup = C_c * Species(PartSpecies(iPart))%DensityIC * PartState(PART_DIAM,iPart)**2 * 1./(18*mu)
 
-  ! Schmidt number of the particles in fluid
-!  Sc_Fuka = Species(PartSpecies(iPart))%MassIC*nu / ( taup * kSGSPart * FieldAtParticle(TEMP,iPart) )
+  ! Particle Schmidt number
+  ! Sc = Species(MASS_SPHERE(Species(iSpec)%DensityIC, PartState(PART_DIAM,iPart)) * mu / FieldAtParticle(DENS,iPart) &
+  !   / (taup * kSGSPart * FieldAtParticle(TEMP,iPart))
 
   ! Brownian force
-!  ni_B = RandNormal()*SQRT(2*nu/(Sc_Fuka * taup**2 * dt))
+  ! ni_B = SQRT(2*mu/FieldAtParticle(DENS,iPart)/(Sc * taup**2 * dt))
 
   ! Integral time scale of fluid velocity along a particle trajectory by estimated by an inverse of resolved local vorticity
-  ! Local vorticity
-  rot_U(1)=gradUyPart(3,iPart) - gradUzPart(2,iPart)    ! dw/dy-dv/dz
-  rot_U(2)=gradUzPart(1,iPart) - gradUxPart(3,iPart)    ! du/dz-dw/dx
-  rot_U(3)=gradUxPart(2,iPart) - gradUyPart(1,iPart)    ! dv/dx-du/dy
+  rot_U(1)=gradUyPart(3) - gradUzPart(2)    ! dw/dy-dv/dz
+  rot_U(2)=gradUzPart(1) - gradUxPart(3)    ! du/dz-dw/dx
+  rot_U(3)=gradUxPart(2) - gradUyPart(1)    ! dv/dx-du/dy
 
   ! Calculation of deformation tensor d_ij
-  d_ij_tensor(1,:)= 0.5*(/2*gradUxPart(1,iPart), gradUyPart(1,iPart)+gradUxPart(2,iPart), gradUzPart(1,iPart)+gradUxPart(3,iPart)/)
-  d_ij_tensor(2,:)= 0.5*(/gradUyPart(1,iPart)+gradUxPart(2,iPart), 2*gradUyPart(2,iPart), gradUzPart(2,iPart)+gradUyPart(3,iPart)/)
-  d_ij_tensor(3,:)= 0.5*(/gradUzPart(1,iPart)+gradUxPart(3,iPart), gradUzPart(2,iPart)+gradUyPart(3,iPart), 2*gradUzPart(3,iPart)/)
+  d_ij_tensor(1,:)= 0.5*(/             2*gradUxPart(1), gradUyPart(1)+gradUxPart(2), gradUzPart(1)+gradUxPart(3)/)
+  d_ij_tensor(2,:)= 0.5*(/ gradUyPart(1)+gradUxPart(2),             2*gradUyPart(2), gradUzPart(2)+gradUyPart(3)/)
+  d_ij_tensor(3,:)= 0.5*(/ gradUzPart(1)+gradUxPart(3), gradUzPart(2)+gradUyPart(3), 2*gradUzPart(3)/)
 
-  ! Calculation of norm of tensor d_ij according to F. Gurniki, K. Fukagata, S. Zahrai and F. H. Bark (2000)
   ! Calculate the representative SGS velocity in order to model the increase of variance of particle velocity due to SGS velocity in time dt
-  U_M = 2/(3**0.5) * C_Fuka * C_eps * ElemVolN(ElemID) * SQRT(SUM(d_ij_tensor(:,:)**2))
+  U_M = 2./SQRT(3.) * C_Fuka * C_eps * ElemVolN(ElemID) * SQRT(SUM(d_ij_tensor(:,:)**2))
 
-  !alpha and beta Fukagata
   alpha_SGS =  dt/taup
-  ! taup  / T_f_p
+  ! beta = taup  / T_f_p, T_f_p = 1./VECNORM(rot_U)
   beta_SGS = taup*VECNORM(rot_U)
   beta1 = 1+beta_SGS
   beta2 = 1-beta_SGS
 
-  !sigmaSGS is the increase of standard deviation of particle velocity due to SGS velocity during time dt
   sigmaSGS = U_M * SQRT( 1/beta1 * (1-EXP(-alpha_SGS*beta1)) - 1./beta2 * EXP(-2*alpha_SGS) * (1-EXP(alpha_SGS*beta2)))
 
-  ! SGS fluid velocity by Fukagata
-  ! now I'm using only the SGS fluid velocity (NO brownian force)
-  ! TODO: check if that is correct
-  DO j=1,3
-    ni_SGS(j) =  sigmaSGS/dt * RandNormal() !+ ni_B
+  ! SGS fluid velocity by Fukagata, without Brownian force as the particle size is larger then the molecular length scale
+  ! n_i^SGS = sigmaSGS/dt * G_i + n_i^B * G_i
+  DO i=1,3
+    Pt(i) =  sigmaSGS/dt * RandNormal() !+ ni_B * RandNormal()
   END DO
 
-  ! TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + Pt(1:3)
-  TurbPartState(1:3,iPart) =  ni_SGS(1:3)
+  ! The SGS drag force is added to the particle RHS
+  TurbPartState(1:3,iPart) =  Pt(1:3)
 
-END DO ! Fukagata
+END DO
 
 
 CASE('Jin')
@@ -1077,14 +965,15 @@ CASE('Jin')
 ! Jin (2010)
 !> Guodong Jin a , Guo-Wei He a,*, Lian-Ping Wang b, Jian Zhang a Subgrid scale fluid velocity timescales seen by inertial
 !  particles in large-eddy simulation of particle-laden turbulence. International Journal of Multiphase Flow 36 (2010) 432–437
+!
+! FOR ISOTROPIC TURBULENCE
+!
+! TODO: check if that is correct
 !===================================================================================================================================
-
-! Calculate the dyn. viscosity
-mu=VISCOSITY_PRIM(FieldAtParticle)
 
 ! Time integration using Euler-Maruyama scheme
 IF(PRESENT(iStage))THEN
-IF (iStage.NE.1) RETURN
+  IF (iStage.NE.1) RETURN
 END IF
 
 ! Filter the velocity field (low-pass)
@@ -1094,22 +983,25 @@ USGS = U
 CALL Filter_Pointer(USGS,FilterMat) ! DOUBLE FILTERING
 
 ! Obtain the high-pass filtered velocity field
-USGS = U - USGS
+USGS(2,:,:,:,:) = U(MOM1,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM1,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(3,:,:,:,:) = U(MOM2,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM2,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(4,:,:,:,:) = U(MOM3,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM3,:,:,:,:)/USGS(DENS,:,:,:,:)
 
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),4,USGSPart)
+CALL InterpolateFieldToParticle(3,USGS(MOMV,:,:,:,:),3,USGSPart)
 
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
 
-  ! Use unfiltered density to obtain velocity in primitive variables
-  kSGSPart = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(1,iPart))**2.)
+  ! Calculate the dyn. viscosity
+  mu=VISCOSITY_TEMPERATURE(FieldAtParticle(TEMP,iPart))
+
+  kSGSPart = 0.5*SUM(USGSPart(1:3,iPart)**2.)
 
   ! Time scale of SGS scales = U_rms in case of isotropic turbolence
   sigmaSGS = SQRT(2./3*kSGSPart)
 
-  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
   ElemID   = PEM%Element(iPart) - offsetElem
 
   ! No SGS turbulent kinetic energy, avoid float error
@@ -1131,26 +1023,25 @@ DO iPart = 1,PDM%ParticleVecLength
     beta_SGS = deltaT_L/deltaT_E
 
     ! Particle relaxation time
-    taup = Species(PartSpecies(iPart))%DensityIC * Species(PartSpecies(iPart))%DiameterIC**2 * 1./(18*mu)
+    taup = Species(PartSpecies(iPart))%DensityIC * PartState(PART_DIAM,iPart)**2 * 1./(18*mu)
 
     ! Stokes number
     St = taup/deltaT_E
 
-    ! SGS autocorrelation time seen by a particle =  deltaT_L
-    deltaT_L =  deltaT_L/beta_SGS * (1 - ((1-beta_SGS) / (1+St)**(0.4*(1+0.01*St))))
+    ! SGS autocorrelation time seen by a particle =  deltaT_L (from Berrouk et al. (2007))
+    deltaT_L =  deltaT_E * (1 - (1-beta_SGS) / (1+St)**(0.4*(1+0.01*St)))
 
-    ! EULER
-    ! Sum up turbulent contributions
+    ! kSGSPart  = C_0 * kSGS, C_0=f(St), here C_0=1 is assumed
     Pt(1:3) = 0.
     DO j = 1,3
-      Pt(1:3) = Pt(1:3) - 1./deltaT_L*TurbPartState(j,iPart)*dt + SQRT( (4*kSGSPart*dt)/(deltaT_L*3) ) * RandNormal()
+      Pt(1:3) = Pt(1:3) - 1./deltaT_L*TurbPartState(j,iPart)*dt + SQRT(4./3.*kSGSPart*dt/deltaT_L) * RandNormal()
     END DO
 
   END IF
 
   TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + Pt(1:3)
 
-END DO ! Jin
+END DO
 
 
 CASE('Breuer')
@@ -1161,7 +1052,9 @@ CASE('Breuer')
 !===================================================================================================================================
 
 ! Time integration using Euler-Maruyama scheme
-IF (iStage.NE.1) RETURN
+IF(PRESENT(iStage))THEN
+  IF (iStage.NE.1) RETURN
+END IF
 
 ! Filter the velocity field (low-pass)
 USGS = U
@@ -1170,21 +1063,21 @@ USGS = U
 CALL Filter_Pointer(USGS,FilterMat)
 
 ! Obtain the high-pass filtered velocity field
-USGS = U - USGS
+USGS(2,:,:,:,:) = U(MOM1,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM1,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(3,:,:,:,:) = U(MOM2,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM2,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(4,:,:,:,:) = U(MOM3,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM3,:,:,:,:)/USGS(DENS,:,:,:,:)
 
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),4,USGSPart)
+CALL InterpolateFieldToParticle(3,USGS(MOMV,:,:,:,:),3,USGSPart)
 
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
-  ! Use unfiltered density to obtain velocity in primitive variables
-  kSGSPart = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(1,iPart))**2.)
+  kSGSPart = 0.5*SUM(USGSPart(1:3,iPart)**2.)
 
   ! Time scale of SGS scales
   sigmaSGS = SQRT(2./3.*kSGSPart)
 
-  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
   ElemID   = PEM%Element(iPart) - offsetElem
 
   ! Relative velocity
@@ -1343,17 +1236,18 @@ USGS = U
 CALL Filter_Pointer(USGS,FilterMat)
 
 ! Obtain the high-pass filtered velocity field
-USGS = U - USGS
+USGS(2,:,:,:,:) = U(MOM1,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM1,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(3,:,:,:,:) = U(MOM2,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM2,:,:,:,:)/USGS(DENS,:,:,:,:)
+USGS(4,:,:,:,:) = U(MOM3,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM3,:,:,:,:)/USGS(DENS,:,:,:,:)
 
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(4,USGS(1:4,:,:,:,:),4,USGSPart)
+CALL InterpolateFieldToParticle(3,USGS(MOMV,:,:,:,:),3,USGSPart)
 
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
 
-  ! Use unfiltered density to obtain velocity in primitive variables
-  kSGSPart = 0.5*SUM((USGSPart(2:4,iPart)/FieldAtParticle(1,iPart))**2.)
+  kSGSPart = 0.5*SUM(USGSPart(1:3,iPart)**2.)
 
   ! Time scale of SGS scales
   sigmaSGS = SQRT(2./3*kSGSPart)
@@ -1361,59 +1255,56 @@ DO iPart = 1,PDM%ParticleVecLength
   ! Relative velocity
   udiff(1:3) = PartState(4:6,iPart) - (FieldAtParticle(2:4,iPart) + TurbPartState(1:3,iPart))
 
-  ! Estimate the filter width with the equivalent cell length and polynominal degree, see Flad (2017)
   ElemID   = PEM%Element(iPart) - offsetElem
 
-  IF (ANY(udiff.NE.0)) THEN
-    urel = udiff/SQRT(SUM(udiff**2))
-  ELSE
+  IF (ALMOSTZERO(MAXVAL(udiff))) THEN
     urel = 0.
+  ELSE
+    urel = udiff/SQRT(SUM(udiff**2))
   END IF
 
   ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(sigmaSGS)) THEN
     ! We ASSUME that these are the correct matrix indices
-    IF(ALMOSTZERO(MAXVAL(udiff)))THEN
-      RETURN
-    ELSE
-      ! parallel
-      tauL(1) = C*ElemVolN(ElemID)/(betaSGS*SQRT(SUM(udiff**2)))
-      ! perpendicular
-      tauL(2) = C*ElemVolN(ElemID)/(betaSGS*2*SQRT(SUM(udiff**2)))
+    IF (ALL(urel .EQ. 0)) RETURN
 
-      DO i = 1,3
-        DO j = 1,3
-          IF (i.EQ.j) THEN
-            G_SGS(i,j) = EXP(-RKdtFrac/tauL(2)) + (EXP(-RKdtFrac/tauL(1))&
-              - EXP(-RKdtFrac/tauL(2)))*urel(i)*urel(j)
-          ELSE
-            G_SGS(i,j) = (EXP(-RKdtFrac/tauL(1)) - EXP(-RKdtFrac/tauL(2)))*urel(i)*urel(j)
-          END IF
-        END DO
-      END DO
+    ! parallel
+    tauL(1) = C*ElemVolN(ElemID)/(betaSGS*SQRT(SUM(udiff**2)))
+    ! perpendicular
+    tauL(2) = C*ElemVolN(ElemID)/(betaSGS*2*SQRT(SUM(udiff**2)))
 
-      B_SGS(:,:) = 0.
-
-      ! Sum up turbulent contributions
-      Pt(1:3) = 0.
+    DO i = 1,3
       DO j = 1,3
-        Pt(1:3) = Pt(1:3) + G_SGS(1:3,j)*TurbPartState(j,iPart)
+        IF (i.EQ.j) THEN
+          G_SGS(i,j) = EXP(-RKdtFrac/tauL(2)) + (EXP(-RKdtFrac/tauL(1))&
+            - EXP(-RKdtFrac/tauL(2)))*urel(i)*urel(j)
+        ELSE
+          G_SGS(i,j) = (EXP(-RKdtFrac/tauL(1)) - EXP(-RKdtFrac/tauL(2)))*urel(i)*urel(j)
+        END IF
       END DO
-    END IF
+    END DO
+
+    B_SGS(:,:) = 0.
+
+    ! Sum up turbulent contributions
+    Pt(1:3) = 0.
+    DO j = 1,3
+      Pt(1:3) = Pt(1:3) + G_SGS(1:3,j)*TurbPartState(j,iPart)
+    END DO
 
   ! Valid SGS turbulent kinetic energy
   ELSE
 
     tauSGS   = C*ElemVolN(ElemID)/sigmaSGS
 
-    IF(ALMOSTZERO(MAXVAL(udiff)))THEN
+    IF (ALL(urel .EQ. 0)) THEN
       ! parallel
       tauL(1) = tauSGS
       ! perpendicular
       tauL(2) = tauSGS
 
       ! Calculate drift and diffusion matrix
-      G_SGS(:,:) = 0.
+      G_SGS(:,:) = 0.; B_SGS(:,:) = 0.
       DO i = 1,3
         G_SGS(i,i) = EXP(-RKdtFrac/tauL(2))
         B_SGS(i,i) = sigmaSGS*SQRT(1-EXP(-2*RKdtFrac/tauL(2)))
@@ -1479,11 +1370,7 @@ SDEALLOCATE(USGSPart)
 SDEALLOCATE(TurbPartState)
 SDEALLOCATE(TurbPt_temp)
 SDEALLOCATE(ElemVolN)
-SDEALLOCATE(gradUxPart)
-SDEALLOCATE(gradUyPart)
-SDEALLOCATE(gradUzPart)
 SDEALLOCATE(gradp)
-SDEALLOCATE(gradpPart)
 
 ParticleSGSInitIsDone=.FALSE.
 

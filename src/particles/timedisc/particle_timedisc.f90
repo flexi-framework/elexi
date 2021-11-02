@@ -206,7 +206,7 @@ IF (t.GE.DelayTime) THEN
   !--> Calculate the particle right hand side and push
   CALL CalcPartRHS(&
 #if USE_BASSETFORCE || ANALYZE_RHS
-  dt,iStage)
+  t,dt,iStage)
 #else
   )
 #endif /* USE_BASSETFORCE || ANALYZE_RHS */

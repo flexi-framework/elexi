@@ -178,7 +178,8 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
 USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
 USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
-USE MOD_Particle_Vars              ,ONLY: PDM
+USE MOD_Particle_Vars              ,ONLY: PDM,PEM
+USE MOD_Part_Operations            ,ONLY: CreateParticle
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -232,7 +233,6 @@ PartTrajectory_tmp = intersecRemain * PartTrajectory_tmp/SQRT(SUM(PartTrajectory
 ! Compute moved particle || rest of movement. PartTrajectory_tmp has already been updated
 PartState_tmp(PART_POSV) = LastPartPos(1:3,PartID) + PartTrajectory_tmp(1:3)
 
-! TODO: check kinetic energy
 ! Compute new particle velocity, modified with coefficents of restitution
 PartState_tmp(PART_VELV) = eps_t1 * v_tang1 + eps_t2 * v_tang2 - eps_n * v_norm + WallVelo
 
@@ -249,7 +249,9 @@ PartState_tmp(PART_AMOMV) = (dp_old/PartState_tmp(PART_DIAM))**5*rot_old - &
 
 ! Insert new particle
 NbrofParticle = 1
-CALL ParticleInsertingSingle(PartSpecies(PartID),0,NbrofParticle,PartState_tmp,NewPartID)
+!CALL ParticleInsertingSingle(PartSpecies(PartID),0,NbrofParticle,PartState_tmp,NewPartID)
+CALL CreateParticle(PartSpecies(PartID),PartState_tmp(:),PEM%Element(PartID),PartID,&
+                    LastPartPos(1:3,PartID),PEM%Element(PartID),NewPartID)
 
 ! No new particle is inserted
 IF (NbrofParticle .EQ. 0) THEN

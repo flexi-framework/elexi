@@ -53,7 +53,7 @@ SUBROUTINE GetBoundaryInteraction(PartTrajectory,lengthPartTrajectory,alpha,xi,e
 !===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals                    ,ONLY: ABORT
+USE MOD_Globals                    ,ONLY: ABORT,FLEXITIME
 USE MOD_Particle_Globals           ,ONLY: PI
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,doParticleImpactTrack
@@ -517,8 +517,8 @@ REAL                              :: rot_old(1:3)
 REAL                              :: w,w_crit,sigma_y,E_eff
 ! RebANN
 INTEGER                           :: k
-REAL(4)                           :: randnum(5),xin(8)
-REAL                              :: dp1,dp2,ekin_1,ekin_2
+REAL(4)                           :: randnum(6),xin(8)
+REAL                              :: dp1,dp2,ekin_1,ekin_2,S
 !===================================================================================================================================
 
 ! check if reflected on AuxBC
@@ -676,7 +676,7 @@ SELECT CASE(WallCoeffModel)
       CALL CallANN(5,2,xin)
 
       k = k + 1
-      IF (k.GT.3) EXIT
+      IF (k.GT.5) EXIT
     END DO
     ! Calculate coefficents of restitution
     v_magnitude = PartBoundANN%output(2)
@@ -688,26 +688,40 @@ SELECT CASE(WallCoeffModel)
   !=================================================================================================================================
   CASE('FracANN')
     v_magnitude = SQRT(PartState(PART_VEL1,PartID)**2+PartState(PART_VEL3,PartID)**2)
+
     ! Input with normalization
     xin(1:3) = (/LOGNORM(PartFaceAngle,PartBoundANN%max_in(1)),&
       LOGNORM(v_magnitude,PartBoundANN%max_in(2)),&
       LOGNORM(PartState(PART_DIAM,PartID)*1e6,PartBoundANN%max_in(3))/)
+
     ! Check if kinetic energy of rebounding particle is lower
     ekin_1 = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID),PartState(PART_VELV,PartID))
     ekin_2 = ekin_1 + 1
+
+    ! fracture probability
+    S = 1.-1./(1.+(90.e-6/PartState(PART_DIAM,PartID) - 1.) * ABS(DOT_PRODUCT(PartState(PART_VELV,PartID),n_loc)/350.)**0.45)
+
+    CALL RANDOM_NUMBER(randnum(6))
     DO WHILE (ekin_2 > ekin_1)
       CALL RANDOM_NUMBER(randnum(1:5))
-      xin(4:8) = (/randnum(1), REAL(0.9*randnum(2)+0.1,4), randnum(3), randnum(4), REAL(0.9*randnum(5)+0.1,4)/)
 
-      CALL CallANN(8,5,xin)
+      IF (S .GT. randnum(6)) THEN
+        ! particle fractures
+        xin(4:8) = (/randnum(1), REAL(0.9*randnum(2)+0.1,4), randnum(3), randnum(4), REAL(0.9*randnum(5)+0.1,4)/)
+      ELSE
+        xin(4:8) = (/randnum(1), REAL(0.9*randnum(2)+0.1,4), randnum(3), REAL(0.,4), REAL(0.,4)/)
+      END IF
 
-      IF (PartBoundANN%output(3) .GT. 0) THEN
+      CALL CallANN(8,6,xin)
+
+      IF (S .GT. randnum(6)) THEN
+        ! particle fractures
         dp1 = PartBoundANN%output(3)*PartState(PART_DIAM,PartID)
       ELSE
         dp1 = PartState(PART_DIAM,PartID)
       END IF
 
-      IF ((dp1 .LT. PartState(PART_DIAM,PartID)) .AND. (PartBoundANN%output(3) .LT. 1)) THEN
+      IF ((dp1 .LT. PartState(PART_DIAM,PartID))) THEN
         dp2 = VOL_SPHERE_INV((VOL_SPHERE(dp_old)-VOL_SPHERE(dp1)))
         ekin_2 = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,dp1,(/PartBoundANN%output(2)/)) +&
           ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,dp2,(/PartBoundANN%output(5)/))
@@ -715,14 +729,12 @@ SELECT CASE(WallCoeffModel)
         dp2 = 0.
         ekin_2 = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,dp1,(/PartBoundANN%output(2)/))
       END IF
-!      IPWRITE (*, *) 'PartBoundANN%output(1:5):', PartBoundANN%output(1:5), NORM2(v_tang1(1:3)), NORM2(v_norm(1:3))
-!      IPWRITE (*, *) 'ekin_1, ekin_2, dp1, dp2, k:', ekin_1, ekin_2, dp1, dp2, PartState(PART_DIAM,PartID), k
+      !IPWRITE (*, *) 'ekin_1, ekin_2, dp1, dp2, k:', ekin_1, ekin_2, dp1, dp2, PartState(PART_DIAM,PartID), k
 
       k = k + 1
-      IF (k.GT.5) EXIT
+      IF (k.GT.10) THEN; dp2=0.; EXIT; END IF
     END DO
 
-    !IPWRITE (*, *) 'PartBoundANN%max_out(1:5):', PartBoundANN%max_out(1:5)
     ! Insert new particle if particle splits
     IF (dp2 .GT. 0.) THEN
       ! Update particle diameter
@@ -731,7 +743,6 @@ SELECT CASE(WallCoeffModel)
       ! Calculate coefficents of restitution
       eps_n  = PartBoundANN%output(5) * SIN(PartBoundANN%output(4)) / NORM2(v_norm(1:3))
       eps_t1 = PartBoundANN%output(5) * COS(PartBoundANN%output(4)) / NORM2(v_tang1(1:3))
-!      IPWRITE (*, *) '2nd, eps_n, eps_t1:', eps_n, eps_t1
 
       ! Insert new particle
       CALL DiffuseReflectionFracture(PartTrajectory,lengthPartTrajectory,alpha,PartID,SideID,n_loc,tang1,tang2,&
@@ -741,7 +752,6 @@ SELECT CASE(WallCoeffModel)
     ! Calculate coefficents of restitution
     eps_n  = PartBoundANN%output(2) * SIN(PartBoundANN%output(1)) / NORM2(v_norm(1:3))
     eps_t1 = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang1(1:3))
-!    IPWRITE (*, *) '1st, eps_n, eps_t1:', eps_n, eps_t1
 
   CASE DEFAULT
       CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')
@@ -782,7 +792,7 @@ PartTrajectory(1:3)      = PartTrajectoryTang1(1:3) + PartTrajectoryTang2(1:3) -
 
 ! Rescale the remainder to the new length
 intersecRemain = (lengthPartTrajectory - alpha)
-intersecRemain = SQRT(eps_n*eps_n + eps_t1*eps_t1 + eps_t2*eps_t2)/SQRT(3.) * (lengthPartTrajectory - alpha)
+intersecRemain = SQRT(eps_n*eps_n + eps_t1*eps_t1 + eps_t2*eps_t2)/SQRT(3.) * intersecRemain
 ! Compute the remainder of the new particle trajectory
 PartTrajectory = intersecRemain * PartTrajectory/SQRT(SUM(PartTrajectory**2.))
 

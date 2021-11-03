@@ -325,11 +325,16 @@ ELSE
     !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
     IF ((RWModel.EQ.'Gosman') .AND. (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 #endif
-    CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,ElemID),nVar_out,FieldAtParticle(:,iPart)&
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
-                  ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),U_RHS(:,:,:,:,ElemID),GradAtParticle(:,:,iPart)&
-#endif
-                )
+    IF (PRESENT(GradAtParticle)) THEN
+      CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,ElemID),nVar_out,FieldAtParticle(:,iPart)&
+                  ,gradUx(:,:,:,:,ElemID),gradUy(:,:,:,:,ElemID),gradUz(:,:,:,:,ElemID),U_RHS(:,:,:,:,ElemID),GradAtParticle(:,:,iPart))
+    ELSE
+      CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,ElemID),nVar_out,FieldAtParticle(:,iPart))
+    END IF
+#else
+    CALL InterpolateFieldToSingleParticle(iPart,nVar,U(:,:,:,:,ElemID),nVar_out,FieldAtParticle(:,iPart))
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
   END DO
 END IF
 

@@ -483,12 +483,10 @@ INTEGER,INTENT(IN)        :: ElemID                                            !
 REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)                 !< State in Element
 INTEGER,INTENT(IN)        :: PartID                                            !< particle ID
 INTEGER,INTENT(IN)        :: NVar_out                                          !< 6 (rho,u_x,u_y,u_z,p,T)
-#if USE_EXTEND_RHS || USE_FAXEN_CORR
 REAL,INTENT(IN)           :: gradUx(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in x direction
 REAL,INTENT(IN)           :: gradUy(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in y direction
 REAL,INTENT(IN)           :: gradUz(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))   !< Gradient in z direction
 REAL,INTENT(IN)           :: U_RHS(  1:RHS_NVARS,0:N_in,0:N_in,0:ZDIM(N_in))   !< du/dt, \nabla^2 u
-#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                                 !< Interpolated state at physical position x_in
@@ -600,12 +598,10 @@ INTEGER,INTENT(IN)        :: NVar                                               
 INTEGER,INTENT(IN)        :: N_In                                               !< usually PP_N
 REAL,INTENT(IN)           :: U_In(1:NVar,0:N_In,0:N_In,0:N_In)                  !< State in Element
 INTEGER,INTENT(IN)        :: NVar_out                                           !< 6 (rho,u_x,u_y,u_z,p,T)
-#if USE_EXTEND_RHS || USE_FAXEN_CORR
 REAL,INTENT(IN)           :: gradUx(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in x direction
 REAL,INTENT(IN)           :: gradUy(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in y direction
 REAL,INTENT(IN)           :: gradUz(    RHS_LIFT,0:N_in,0:N_in,0:ZDIM(N_in))    !< Gradient in z direction
 REAL,INTENT(IN)           :: U_RHS(  1:RHS_NVARS,0:N_in,0:N_in,0:ZDIM(N_in))    !< du/dt, \nabla^2 u
-#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                                  !< Interpolated state at reference position xi_in

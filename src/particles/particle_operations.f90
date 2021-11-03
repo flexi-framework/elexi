@@ -37,22 +37,25 @@ PUBLIC :: RemoveParticle
 
 CONTAINS
 
-SUBROUTINE CreateParticle(Species,Pos,ElemID,Velocity,NewPartID)
+SUBROUTINE CreateParticle(SpeciesIn,PartStateIn,ElemID,PartID,LastPartPosIn,LastElemID,NewPartID)
 !===================================================================================================================================
 !> creates a single particle at correct array position and assign properties
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef,LastPartPos,PartSpecies
+USE MOD_Particle_Vars          ,ONLY: doPartIndex,PartIndex,PartReflCount!,Species
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER, INTENT(IN)           :: Species
-REAL, INTENT(IN)              :: Pos(1:3)
+INTEGER, INTENT(IN)           :: SpeciesIn
+REAL, INTENT(IN)              :: PartStateIn(1:PP_nVarPart)
 INTEGER, INTENT(IN)           :: ElemID
-REAL, INTENT(IN)              :: Velocity(1:3)
+INTEGER, INTENT(IN)           :: PartID
+REAL, INTENT(IN)              :: LastPartPosIn(1:3)
+INTEGER, INTENT(IN)           :: LastElemID
 INTEGER, INTENT(OUT),OPTIONAL :: NewPartID
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! LOCAL VARIABLES
@@ -63,22 +66,28 @@ newParticleID         = PDM%ParticleVecLength
 IF (newParticleID.GT.PDM%MaxParticleNumber) &
   CALL ABORT(__STAMP__,'CreateParticle: newParticleID.GT.PDM%MaxParticleNumber. newParticleID=',newParticleID)
 
-PartSpecies(newParticleID)     = Species
-LastPartPos(1:3,newParticleID) = Pos(1:3)
-PartState(1:3,newParticleID)   = Pos(1:3)
-PartState(4:6,newParticleID)   = Velocity(1:3)
+PartSpecies(newParticleID)             = SpeciesIn
+LastPartPos(1:3,newParticleID)         = LastPartPosIn(1:3)
+PartState(1:PP_nVarPart,newParticleID) = PartStateIn(1:PP_nVarPart)
+PartReflCount(newParticleID)           = 0
 
 ! Set the new reference position here
 IF(TrackingMethod.EQ.REFMAPPING)THEN
-  CALL GetPositionInRefElem(PartState(1:3,newParticleID),PartPosRef(1:3,newParticleID),ElemID)
+  CALL GetPositionInRefElem(PartState(PART_POSV,newParticleID),PartPosRef(1:3,newParticleID),ElemID)
 END IF ! TrackingMethod.EQ.REFMAPPING
 
 PDM%ParticleInside(newParticleID) = .TRUE.
 PDM%IsNewPart(newParticleID)      = .TRUE.
 PEM%Element(newParticleID)        = ElemID
-PEM%lastElement(newParticleID)    = ElemID
+PEM%lastElement(newParticleID)    = LastElemID
 
 IF (PRESENT(NewPartID)) NewPartID = newParticleID
+
+!DO iInit = Species(SpeciesIn)%StartnumberOfInits, Species(SpeciesIn)%NumberOfInits
+!  Species(SpeciesIn)%Init(iInit)%mySumOfMatchedParticles = Species(SpeciesIn)%Init(iInit)%mySumOfMatchedParticles + 1
+!END DO
+
+IF (doPartIndex) PartIndex(newParticleID) = PartIndex(PartID)
 
 END SUBROUTINE CreateParticle
 

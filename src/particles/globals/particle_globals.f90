@@ -282,8 +282,15 @@ REAL,INTENT(OUT) :: v2(3), v3(3)
 !ELSE
 !  v2=(/ v1(3)       , v1(3) ,-v1(1)-v1(2) /)
 !END IF
+! Rebound in x-z plane
 IF (ABS(v1(1)).LT.100*EpsMach) THEN
-  v2 = (/ 0.    , -v1(3), v1(2)/)
+  IF (ABS(v1(3)).LT.100*EpsMach) THEN
+    v2 = (/ 1.    , 0.    , 0.   /)
+  ELSEIF (ABS(v1(2)).LT.100*EpsMach) THEN
+    v2 = (/ 1.    , 0.    , 0.   /)
+  ELSE
+    v2 = (/ 0.    , -v1(3), v1(2)/)
+  END IF
 ELSEIF (ABS(v1(2)).LT.100*EpsMach) THEN
   v2 = (/ -v1(3), 0.    , v1(1)/)
 ELSEIF (ABS(v1(3)).LT.100*EpsMach) THEN

@@ -114,9 +114,9 @@ IF (.NOT.doParticleImpactTrack) THEN
 END IF
 
 #if PP_nVarPartRHS == 6
-ImpactDataSize = 16
+ImpactDataSize = 19
 #else
-ImpactDataSize = 14
+ImpactDataSize = 17
 #endif
 IF (doWritePartDiam)                                  ImpactDataSize = ImpactDataSize + 2
 IF (doPartIndex)                                      ImpactDataSize = ImpactDataSize + 1
@@ -382,12 +382,13 @@ ASSOCIATE( iMax => PartStateBoundaryVecLength )
   PartStateBoundary(12 ,iMax) = e_kin_new
   PartStateBoundary(13 ,iMax) = PartFaceAngle_old
   PartStateBoundary(14 ,iMax) = PartFaceAngle
+  PartStateBoundary(15:17,iMax) = PartState(PART_VELV,PartID)
   IF (doWritePartDiam) THEN
-    PartStateBoundary(15 ,iMax) = dp_old
-    PartStateBoundary(16 ,iMax) = PartState(PART_DIAM,PartID)
-    tmp = 17
+    PartStateBoundary(18 ,iMax) = dp_old
+    PartStateBoundary(19 ,iMax) = PartState(PART_DIAM,PartID)
+    tmp = 20
   ELSE
-    tmp = 15
+    tmp = 18
   END IF
 #if PP_nVarPartRHS==6
   PartStateBoundary(tmp ,iMax) = e_rot_old

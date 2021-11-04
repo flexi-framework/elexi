@@ -259,12 +259,12 @@ END IF
 
 ! Array for impact tracking variable
 ALLOCATE(StrVarNames(ImpactDataSize))
-StrVarNames(1)  = 'ParticlePositionX'
-StrVarNames(2)  = 'ParticlePositionY'
-StrVarNames(3)  = 'ParticlePositionZ'
-StrVarNames(4)  = 'VelocityX'
-StrVarNames(5)  = 'VelocityY'
-StrVarNames(6)  = 'VelocityZ'
+StrVarNames(1)  = 'PartPosX'
+StrVarNames(2)  = 'PartPosY'
+StrVarNames(3)  = 'PartPosZ'
+StrVarNames(4)  = 'VelX_Old'
+StrVarNames(5)  = 'VelY_Old'
+StrVarNames(6)  = 'VelZ_Old'
 StrVarNames(7)  = 'Species'
 StrVarNames(8)  = 'BoundaryNumber'
 StrVarNames(9)  = 'ImpactTime'
@@ -273,12 +273,15 @@ StrVarNames(11) = 'E_kin_impact'
 StrVarNames(12) = 'E_kin_reflected'
 StrVarNames(13) = 'Alpha_impact'
 StrVarNames(14) = 'Alpha_reflected'
+StrVarNames(15)  = 'VelX'
+StrVarNames(16)  = 'VelY'
+StrVarNames(17)  = 'VelZ'
 IF (doWritePartDiam) THEN
-  StrVarNames(15) = 'dp_old'
-  StrVarNames(16) = 'dp_new'
-  tmp = 17
+  StrVarNames(18) = 'dp_old'
+  StrVarNames(19) = 'dp_new'
+  tmp = 20
 ELSE
-  tmp = 15
+  tmp = 18
 END IF
 #if PP_nVarPartRHS==6
 StrVarNames(tmp) = 'E_rot_impact'

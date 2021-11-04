@@ -292,9 +292,9 @@ IF (ABS(v1(1)).LT.100*EpsMach) THEN
     v2 = (/ 0.    , -v1(3), v1(2)/)
   END IF
 ELSEIF (ABS(v1(2)).LT.100*EpsMach) THEN
-  v2 = (/ -v1(3), 0.    , v1(1)/)
+  v2 = (/  v1(3), 0.    , -v1(1)/)
 ELSEIF (ABS(v1(3)).LT.100*EpsMach) THEN
-  v2 = (/ -v1(2), v1(1) , 0.   /)
+  v2 = (/ -v1(2), v1(1) , 0.    /)
 ELSE
   v2 = (/ v1(3) , v1(3) , -v1(1)-v1(2) /)
 END IF

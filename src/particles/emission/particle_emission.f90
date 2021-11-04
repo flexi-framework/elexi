@@ -110,6 +110,7 @@ IF (.NOT.DoRestart .OR. (ParticleVecLengthGlob.EQ.0)) THEN
 
   DO i = 1,nSpecies
     DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
+      IF(doPartIndex) Species(i)%Init(iInit)%nPartsPerProc = 0
       ! no special emissiontype to be used
       IF (.NOT.Species(i)%Init(iInit)%UseForInit) CYCLE
 

@@ -869,7 +869,7 @@ CHARACTER(32)         :: hilf
 !--- initialize randomization
 ! Read print flags
 nRandomSeeds = GETINT('Part-NumberOfRandomSeeds','-1')
-! specifies compiler specific minimum number of seeds
+! Specifies compiler specific minimum number of seeds
 CALL RANDOM_SEED(Size = SeedSize)
 
 ALLOCATE(Seeds(SeedSize))
@@ -877,7 +877,7 @@ ALLOCATE(Seeds(SeedSize))
 Seeds(:) = 1
 SELECT CASE(nRandomSeeds)
   CASE(-1)
-    ! ensures different random numbers through irreproducable random seeds (via System_clock)
+    ! Ensures different random numbers through irreproducible random seeds (via System_clock)
     CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
 
   CASE(0)
@@ -2052,11 +2052,11 @@ IF(.NOT. uRandomExists) THEN
     IF (nRandomSeeds.EQ.0) THEN
       AuxilaryClock=AuxilaryClock+PartMPI%MyRank
     ELSE IF(nRandomSeeds.GT.0) THEN
-      AuxilaryClock=AuxilaryClock+(PartMPI%MyRank+1)*Seeds(iSeed)*37
+      AuxilaryClock=AuxilaryClock+(PartMPI%MyRank+1)*INT(Seeds(iSeed),8)*37
     END IF
 #else
     IF (nRandomSeeds.GT.0) THEN
-      AuxilaryClock=AuxilaryClock+Seeds(iSeed)*37
+      AuxilaryClock=AuxilaryClock+INT(Seeds(iSeed),8)*37
     END IF
 #endif
     IF (AuxilaryClock .EQ. 0) THEN

@@ -669,7 +669,7 @@ CASE('Sommerfeld')
 !> Institut fur Verfahrenstechnik, Fachbereich Ingenieurwissenschaften, Martin-Luther-Universitat at Halle-Wittenberg,
 !> D-06099 Halle (Saale), Germany. Received 30 March 2000; received in revised form 3 May 2001
 !
-! FOR ISOTROPIC, HOMOGENEOUS TURBULENCE
+! FOR ISOTROPIC, HOMOGENEOUS TURBULENCE due to the coefficients f and g (apart from that it is for anisotropic turbulence)
 
 !> Model implemented from: EVALUATION OF LAGRANGIAN PARTICLE DISPERSION MODELS IN TURBULENT FLOWS (S. Laı́n∗ and C.A. Grillo)
 !===================================================================================================================================
@@ -786,7 +786,6 @@ CASE('Amiri')
 !
 ! FOR ANISOTROPIC TURBULENCE
 !
-! TODO: check if that is correct
 !===================================================================================================================================
 
 ! Time integration using Euler-Maruyama scheme
@@ -879,7 +878,6 @@ CASE('Fukagata')
 !
 ! FOR ISOTROPIC TURBULENCE
 !
-! TODO: check if that is correct
 !===================================================================================================================================
 
 ! Time integration using Euler-Maruyama scheme
@@ -968,7 +966,6 @@ CASE('Jin')
 !
 ! FOR ISOTROPIC TURBULENCE
 !
-! TODO: check if that is correct
 !===================================================================================================================================
 
 ! Time integration using Euler-Maruyama scheme
@@ -1049,6 +1046,9 @@ CASE('Breuer')
 ! Breuer (2017) model, first option
 !> Breuer, M. and Hoppe, F., "Influence of a cost–efficient Langevin subgrid-scale model on the dispersed phase of large–eddy
 !simulations of turbulent bubble–laden and particle–laden flows." International Journal of Multiphase Flow, 89 (2017): 23-44.
+!
+! FOR ANISOTROPIC TURBULENCE
+!
 !===================================================================================================================================
 
 ! Time integration using Euler-Maruyama scheme
@@ -1206,6 +1206,9 @@ CASE('Breuer-Analytic')
 ! Breuer (2017) model, second option
 !> Breuer, M. and Hoppe, F., "Influence of a cost–efficient Langevin subgrid-scale model on the dispersed phase of large–eddy
 !simulations of turbulent bubble–laden and particle–laden flows." International Journal of Multiphase Flow, 89 (2017): 23-44.
+!
+! FOR ANISOTROPIC TURBULENCE
+!
 !===================================================================================================================================
 
 ! Time integration in first RK stage (p. 26)

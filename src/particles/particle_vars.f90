@@ -48,6 +48,7 @@ INTEGER , ALLOCATABLE         :: seeds(:)                                    ! =
 LOGICAL                       :: doPartIndex                                 ! Flag to give particles an unique (or not) index
 LOGICAL                       :: doCalcSourcePart                            ! Flag to enable two-way coupling (NN)
 LOGICAL                       :: doWritePartDiam                             ! Flag to enable writeout of particle diameter
+LOGICAL                       :: doRandomPartDiam                            ! Flag to enable random particle diameter
 
 #if USE_BASSETFORCE
 REAL    , ALLOCATABLE         :: durdt(:,:)                                  ! Old dur/dt for Basset force
@@ -202,6 +203,8 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: HighVeloThreshold                ! Threshold value for removal of high velocity particle
   INTEGER                                :: LowVeloCounter                   ! Counter how many low velocity particles were removed
   REAL                                   :: SphericityIC                     ! Particle sphericity
+  ! Random particle diameter
+  REAL                                   :: PartDiamVarianceIC               ! Variance of random particle diameter
   ! Bons particle rebound model
   REAL                                   :: YoungIC                          ! Young's modulus
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp

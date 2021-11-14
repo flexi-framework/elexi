@@ -138,6 +138,8 @@ CALL prms%CreateLogicalOption(      'Part-CalcSource'          , 'Flag to enable
                                                                , '.FALSE.')
 CALL prms%CreateLogicalOption(      'Part-WritePartDiam'       , 'Flag to enable writeout of particle diameter'                    &
                                                                , '.FALSE.')
+CALL prms%CreateLogicalOption(      'Part-RandomPartDiam'      , 'Flag to enable random particle diameter with a certain variance' &
+                                                               , '.FALSE.')
 
 CALL prms%CreateRealOption(         'Part-DelayTime'           , "During delay time the particles won't be moved so the fluid "  //&
                                                                  'field can be evolved'                                            &
@@ -220,6 +222,8 @@ CALL prms%CreateRealOption(         'Part-Species[$]-HighVeloThreshold', 'Thresh
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-SphericityIC', 'Particle sphericity of species [$] [m]'                       &
                                                                 , '1.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-PartDiamVarianceIC', 'Particle diameter variance of species [$] [-]'          &
+                                                                , '0.'       , numberedmulti=.TRUE.)
 #if USE_EXTEND_RHS
 CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcSaffmanForce', 'Flag to calculate the Saffman lift force'                 &
                                                                 , '.FALSE.' , numberedmulti=.TRUE.)
@@ -536,7 +540,6 @@ USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Mesh_Build,        ONLY: InitElemVolumes
 USE MOD_Particle_Mesh_Vars,         ONLY: LocalVolume,MeshVolume
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
-USE MOD_Particle_SGS,               ONLY: ParticleSGS
 USE MOD_Particle_Surfaces,          ONLY: InitParticleSurfaces
 USE MOD_Particle_TimeDisc,          ONLY: Particle_InitTimeDisc
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
@@ -661,15 +664,16 @@ USE MOD_Analyze_Vars               ,ONLY: analyze_dt
 INTEGER               :: RPP_maxMemory, jP
 CHARACTER(30)         :: tmpStr
 !===================================================================================================================================
-doPartIndex             = GETLOGICAL('Part-PartIndex','.FALSE.')
+doPartIndex             = GETLOGICAL('Part-PartIndex'     ,'.FALSE.')
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
-doCalcSourcePart        = GETLOGICAL('Part-CalcSource','.FALSE.')
-doWritePartDiam         = GETLOGICAL('Part-WritePartDiam','.FALSE.')
+doCalcSourcePart        = GETLOGICAL('Part-CalcSource'    ,'.FALSE.')
+doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' ,'.FALSE.')
+doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam','.FALSE.')
 CALL AllocateParticleArrays()
 CALL InitializeVariablesRandomNumbers()
 
 ! gravitational acceleration
-PartGravity             = GETREALARRAY('Part-Gravity'          ,3  ,'0. , 0. , 0.')
+PartGravity             = GETREALARRAY('Part-Gravity'      ,3  ,'0. , 0. , 0.')
 FilenameRecordPart      = GETSTR('Part-FilenameRecordPart'     ,'data/recordplane_')
 
 ! Number of species
@@ -980,6 +984,7 @@ DO iSpec = 1, nSpecies
     drag_factor = DF_PART_SCHILLER
     CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
   END IF
+  Species(iSpec)%PartDiamVarianceIC    = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PartDiamVarianceIC' ,'0.')
 #if USE_EXTEND_RHS
   Species(iSpec)%CalcSaffmanForce      = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcSaffmanForce'   )
   Species(iSpec)%CalcMagnusForce       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcMagnusForce'    )
@@ -1445,6 +1450,7 @@ DO iBC = 1,nBCs
               ! Readin weights
               CALL LoadWeightsANN(GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-ANNModel'       ,'model/weights.dat'))
               doWritePartDiam = .TRUE.
+              doRandomPartDiam = .TRUE.
 
             CASE DEFAULT
               CALL CollectiveSTOP(__STAMP__,'Unknown wall model given!')

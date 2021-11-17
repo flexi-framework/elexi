@@ -118,6 +118,7 @@ USE MOD_Globals
 USE MOD_Mesh_Vars
 USE MOD_Particle_Mesh_Vars
 #if USE_MPI
+USE MOD_MPI_Vars                  ,ONLY: offsetElemMPI
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
 #endif
@@ -137,7 +138,7 @@ IF (postiMode) RETURN
 
 #if USE_MPI
 ! allocate shared array for ElemInfo
-CALL MPI_ALLREDUCE(nElems,nComputeNodeElems,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,IERROR)
+nComputeNodeElems = offsetElemMPI(ComputeNodeRootRank+nComputeNodeProcessors) - offsetElemMPI(ComputeNodeRootRank)
 
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) THEN

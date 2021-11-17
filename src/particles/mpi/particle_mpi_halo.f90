@@ -74,7 +74,7 @@ USE MOD_TimeDisc_Vars           ,ONLY: nRKStages,RKc
 ! Partner identification
 LOGICAL                        :: ProcInRange
 INTEGER                        :: iPeriodicVector,jPeriodicVector,iPeriodicDir,jPeriodicDir,kPeriodicDir
-INTEGER,DIMENSION(2)           :: DirPeriodicVector = [-1,1]
+INTEGER,DIMENSION(2),PARAMETER :: DirPeriodicVector = (/-1,1/)
 REAL,DIMENSION(6)              :: xCoordsProc,xCoordsOrigin
 INTEGER                        :: iElem,ElemID,firstElem,lastElem,NbElemID
 INTEGER                        :: iSide,SideID,firstSide,lastSide,iLocSide

@@ -56,6 +56,8 @@ if [ -z "$PARENTCOMMIT" ]; then
     PARENTCOMMIT=$(git rev-parse origin/master)
     echo "WARNING: Could not find parent commit, creating userblock diff to master."
   fi
+  # check if the branch exists in the local
+  PARENTEXISTS=$(git branch --list ${PARENTCOMMIT})
 fi
 
 cd "$1"
@@ -81,6 +83,9 @@ echo $PARENTCOMMIT                 >> userblock.txt
 echo "{[( GIT DIFF )]}"            >> userblock.txt
 # commited changes
 git diff -p $PARENTCOMMIT..HEAD    >> userblock.txt
+if [[ -n ${PARENTEXISTS} ]]; then
+  git diff -p $PARENTCOMMIT..HEAD >> userblock.txt
+fi
 # uncommited changes
 git diff -p                        >> userblock.txt
 

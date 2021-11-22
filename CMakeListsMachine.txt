@@ -150,7 +150,7 @@ ELSE()
   ENDIF()
 ENDIF()
 
-MESSAGE(STATUS "Compiling using [${FLEXI_INSTRUCTION}] instruction")
+MESSAGE(STATUS "Compiling with [${CMAKE_Fortran_COMPILER_ID}] fortran compiler using [${FLEXI_INSTRUCTION}] instruction")
 
 # =========================================================================
 # COMPILER FLAGS

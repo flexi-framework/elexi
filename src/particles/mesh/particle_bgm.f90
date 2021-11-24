@@ -1383,7 +1383,7 @@ DO iElem = firstElem,lastElem
                                       BoundsOfElem_Shared(2,3,iElem)-BoundsOfElem_Shared(1,3,iElem) /) / 2.)
 
 ! Use a named loop so the entire element can be cycled
-ElemLoop: DO iLocElem = offsetElemMPI(ComputeNodeRootRank)+1,offsetElemMPI(ComputeNodeRootRank)+nComputeNodeElems
+ElemLoop: DO iLocElem = offsetElemMPI(ComputeNodeRootRank)+1, offsetElemMPI(ComputeNodeRootRank)+nComputeNodeElems
     ! element might be already added back
     IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).GT.0) EXIT ElemLoop
 

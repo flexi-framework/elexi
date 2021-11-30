@@ -244,8 +244,6 @@ INTEGER           :: ElemCharLengthZ_Shared_Win
 
 ! periodic sides
 LOGICAL           :: MeshHasPeriodic
-REAL,POINTER      :: DistanceOfElemCenter_Shared(:)
-INTEGER           :: DistanceOfElemCenter_Shared_Win
 #endif
 
 ! ElemID for WriteHaloInfo

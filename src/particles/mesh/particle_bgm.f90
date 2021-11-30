@@ -118,11 +118,11 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element_Shared,FIBGM_Element_Shared_
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem_Shared,FIBGM_offsetElem_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMToProc_Shared,FIBGMToProc_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMProcs,FIBGMProcs_Shared,FIBGMProcs_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: MeshHasPeriodic
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
-USE MOD_Particle_Mesh_Vars     ,ONLY: MeshHasPeriodic,DistanceOfElemCenter_Shared,DistanceOfElemCenter_Shared_Win
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
@@ -1343,8 +1343,7 @@ USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_MPI_Vars               ,ONLY: offsetElemMPI
 USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,SideInfo_Shared,BoundsOfElem_Shared,nComputeNodeElems
-USE MOD_Particle_Mesh_Vars     ,ONLY: DistanceOfElemCenter_Shared
+USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,BoundsOfElem_Shared,nComputeNodeElems
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_MPI_Vars      ,ONLY: halo_eps
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
@@ -1356,7 +1355,6 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                        :: hasPeriodic
 INTEGER                        :: iElem,firstElem,lastElem,iDir,jDir,kDir
 INTEGER                        :: iLocElem
 INTEGER                        :: iPeriodicVector,jPeriodicVector

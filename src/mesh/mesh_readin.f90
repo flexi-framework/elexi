@@ -93,13 +93,14 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 LOGICAL,ALLOCATABLE            :: UserBCFound(:)
 CHARACTER(LEN=255),ALLOCATABLE :: BCNames(:)
+CHARACTER(LEN=255)             :: ErrorString
 INTEGER, ALLOCATABLE           :: BCMapping(:),BCType(:,:)
 INTEGER                        :: iBC,iUserBC
 INTEGER                        :: Offset=0 ! Every process reads all BCs
 !==================================================================================================================================
 ! read in boundary conditions from ini file, will overwrite BCs from meshfile!
 nUserBCs = CountOption('BoundaryName')
-IF(nUserBCs.GT.0)THEN
+IF (nUserBCs.GT.0) THEN
   ALLOCATE(BoundaryName(1:nUserBCs))
   ALLOCATE(BoundaryType(1:nUserBCs,2))
   DO iBC=1,nUserBCs
@@ -113,38 +114,45 @@ CALL GetDataSize(File_ID,'BCNames',nDims,HSize)
 CHECKSAFEINT(HSize(1),4)
 nBCs=INT(HSize(1),4)
 DEALLOCATE(HSize)
+
 ALLOCATE(BCNames(nBCs))
 ALLOCATE(BCMapping(nBCs))
 ALLOCATE(UserBCFound(nUserBCs))
-CALL ReadArray('BCNames',1,(/nBCs/),Offset,1,StrArray=BCNames)  ! Type is a dummy type only
+CALL ReadArray('BCNames',1,(/nBCs/),Offset,1,StrArray=BCNames)
 ! User may have redefined boundaries in the ini file. So we have to create mappings for the boundaries.
-BCMapping=0
-UserBCFound=.FALSE.
-IF(nUserBCs .GT. 0)THEN
+BCMapping   = 0
+UserBCFound = .FALSE.
+IF (nUserBCs.GT.0) THEN
   DO iBC=1,nBCs
     DO iUserBC=1,nUserBCs
-      IF(INDEX(TRIM(BCNames(iBC)),TRIM(BoundaryName(iUserBC))).NE.0)THEN
-        BCMapping(iBC)=iUserBC
-        UserBCFound(iUserBC)=.TRUE.
+      IF (INDEX(TRIM(BCNames(iBC)),TRIM(BoundaryName(iUserBC))).NE.0) THEN
+        ! Check if the BC was defined multiple times
+        IF (BCMapping(iBC).NE.0) THEN
+          WRITE(ErrorString,'(A,A,A)') ' Boundary ',TRIM(BCNames(iBC)),' is redefined multiple times in parameter file!'
+          CALL CollectiveStop(__STAMP__,ErrorString)
+        END IF
+
+        BCMapping(iBC)       = iUserBC
+        UserBCFound(iUserBC) = .TRUE.
       END IF
     END DO
   END DO
 END IF
 DO iUserBC=1,nUserBCs
-  IF(.NOT.UserBCFound(iUserBC)) CALL Abort(__STAMP__,&
+  IF (.NOT.UserBCFound(iUserBC)) CALL ABORT(__STAMP__,&
     'Boundary condition specified in parameter file has not been found: '//TRIM(BoundaryName(iUserBC)))
 END DO
 DEALLOCATE(UserBCFound)
 
 ! Read boundary types from data file
 CALL GetDataSize(File_ID,'BCType',nDims,HSize)
-IF((HSize(1).NE.4).OR.(HSize(2).NE.nBCs)) STOP 'Problem in readBC'
+IF((HSize(1).NE.4).OR.(HSize(2).NE.nBCs)) CALL CollectiveStop(__STAMP__,'Problem in readBC')
 DEALLOCATE(HSize)
 ALLOCATE(BCType(4,nBCs))
 offset=0
 CALL ReadArray('BCType',2,(/4,nBCs/),Offset,1,IntArray=BCType)
 ! Now apply boundary mappings
-IF(nUserBCs .GT. 0)THEN
+IF (nUserBCs.GT.0) THEN
   DO iBC=1,nBCs
     IF(BCMapping(iBC) .NE. 0)THEN
       IF((BoundaryType(BCMapping(iBC),1).EQ.1).AND.(BCType(1,iBC).NE.1)) &
@@ -158,6 +166,7 @@ IF(nUserBCs .GT. 0)THEN
     END IF
   END DO
 END IF
+
 IF(ALLOCATED(BoundaryName)) DEALLOCATE(BoundaryName)
 IF(ALLOCATED(BoundaryType)) DEALLOCATE(BoundaryType)
 ALLOCATE(BoundaryName(nBCs))
@@ -169,9 +178,11 @@ BoundaryType(:,BC_ALPHA) = BCType(4,:)
 SWRITE(UNIT_stdOut,'(132("."))')
 SWRITE(UNIT_stdOut,'(A,A15,A20,A10,A10,A10)')' BOUNDARY CONDITIONS','|','Name','Type','State','Alpha'
 DO iBC=1,nBCs
-  SWRITE(*,'(A,A33,A20,I10,I10,I10)')' |','|',TRIM(BoundaryName(iBC)),BoundaryType(iBC,:)
+  SWRITE(Unit_stdOut,'(A,A33,A20,I10,I10,I10)')' |','|',TRIM(BoundaryName(iBC)),BoundaryType(iBC,:)
 END DO
+
 SWRITE(UNIT_stdOut,'(132("."))')
+
 DEALLOCATE(BCNames,BCType,BCMapping)
 
 END SUBROUTINE ReadBCs

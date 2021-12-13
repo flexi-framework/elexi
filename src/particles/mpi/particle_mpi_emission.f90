@@ -325,6 +325,9 @@ DO iSpec = 1,nSpecies
         xCoords(1:3,8) = Species(iSpec)%Init(iInit)%BasePointIC+(/+xlen,+ylen,+zlen/)
         RegionOnProc = BoxInProc(xCoords(1:3,1:8),8)
 
+      CASE('cell_local')
+        RegionOnProc = .TRUE.
+
       CASE DEFAULT
         CALL ABORT(__STAMP__,'ERROR: Given SpaceIC is not implemented!')
 

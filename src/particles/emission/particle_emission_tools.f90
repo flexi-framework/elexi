@@ -264,13 +264,13 @@ LOGICAL, INTENT(IN)              :: UseExactPartNum
 INTEGER, INTENT(INOUT)           :: chunkSize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                          :: iElem, ichunkSize
+INTEGER                          :: iElem, iChunkSize
 INTEGER                          :: iPart, nPart
 REAL                             :: iRan, RandomPos(3)
 REAL                             :: PartDens
 LOGICAL                          :: InsideFlag
 INTEGER                          :: CellChunkSize(1:nElems)
-INTEGER                          :: chunkSize_tmp, ParticleIndexNbr
+INTEGER                          :: chunkSize_tmp,ParticleIndexNbr
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 IF (UseExactPartNum) THEN
@@ -289,11 +289,11 @@ ELSE
     'ERROR in SetCellLocalParticlePosition: Maximum particle number during sanity check! max. particles needed: ',chunkSize_tmp)
 END IF
 
-ichunkSize       = 1
+iChunkSize       = 1
 ParticleIndexNbr = 1
 
-DO iElem = offsetElem+1, offsetElem+nElems
-  ASSOCIATE( Bounds => BoundsOfElem_Shared(1:2,1:3,offsetElem+iElem) ) ! 1-2: Min, Max value; 1-3: x,y,z
+DO iElem = offsetElem+1,offsetElem+nElems
+  ASSOCIATE( Bounds => BoundsOfElem_Shared(1:2,1:3,iElem) ) ! 1-2: Min, Max value; 1-3: x,y,z
     IF (UseExactPartNum) THEN
       nPart = CellChunkSize(iElem)
     ELSE
@@ -301,22 +301,22 @@ DO iElem = offsetElem+1, offsetElem+nElems
       nPart = INT(PartDens * ElemVolume_Shared(iElem) + iRan)
     END IF
 
-    DO iPart = 1, nPart
-      ParticleIndexNbr = PDM%nextFreePosition(iChunksize + PDM%CurrentNextFreePosition)
+    DO iPart = 1,nPart
+      ParticleIndexNbr = PDM%nextFreePosition(iChunkSize + PDM%CurrentNextFreePosition)
       IF (ParticleIndexNbr .NE. 0) THEN
         InsideFlag = .FALSE.
 
         DO WHILE(.NOT.InsideFlag)
           CALL RANDOM_NUMBER(RandomPos)
           RandomPos  = Bounds(1,:) + RandomPos*(Bounds(2,:)-Bounds(1,:))
-          InsideFlag = ParticleInsideCheck(RandomPos,iPart,iElem)
+          InsideFlag = ParticleInsideCheck(RandomPos,ParticleIndexNbr,iElem)
         END DO
 
         PartState(     1:3,ParticleIndexNbr) = RandomPos(1:3)
         PDM%ParticleInside(ParticleIndexNbr) = .TRUE.
         PDM%IsNewPart(     ParticleIndexNbr) = .TRUE.
         PEM%Element(       ParticleIndexNbr) = iElem
-        ichunkSize = ichunkSize + 1
+        iChunkSize = iChunkSize + 1
       ELSE
         CALL ABORT(__STAMP__ &
             ,'ERROR in SetCellLocalParticlePosition: Maximum particle number reached during inserting! --> ParticleIndexNbr.EQ.0')

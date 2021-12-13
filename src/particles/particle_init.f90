@@ -1111,6 +1111,8 @@ DO iSpec = 1, nSpecies
         Species(iSpec)%Init(iInit)%NormalIC          = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-NormalIC'      ,3)
 !      CASE('sin_deviation')
         ! Currently not implemented
+      CASE('cell_local')
+        ! No readin
       CASE DEFAULT
         CALL ABORT(__STAMP__,'Unknown particle emission type')
     END SELECT
@@ -1133,9 +1135,10 @@ DO iSpec = 1, nSpecies
 
     !--- Check if Initial ParticleInserting is really used
     IF (Species(iSpec)%Init(iInit)%UseForInit                   .AND. &
+       (Species(iSpec)%Init(iInit)%PartDensity          .EQ.0)  .AND. &
        (Species(iSpec)%Init(iInit)%initialParticleNumber.EQ.0)) THEN
       Species(iSpec)%Init(iInit)%UseForInit = .FALSE.
-      SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no ParticleNumber detected,'
+      SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no ParticleNumber or PartDensity detected,'
       SWRITE(UNIT_stdOut,'(A)')                        ' disabling initial particle inserting!'
     END IF
 
@@ -1143,8 +1146,17 @@ DO iSpec = 1, nSpecies
     IF (Species(iSpec)%Init(iInit)%UseForEmission         .AND. &
        (Species(iSpec)%Init(iInit)%ParticleEmission.EQ.0)) THEN
       Species(iSpec)%Init(iInit)%UseForEmission = .FALSE.
-      SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no emission rate  detected,'
+      SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no emission rate                 detected,'
       SWRITE(UNIT_stdOut,'(A)')                        ' disabling particle emission!'
+    END IF
+
+    !--- Check if cell_local is used with correct emission type
+    IF (Species(iSpec)%Init(iInit)%UseForInit                   .AND. &
+       (Species(iSpec)%Init(iInit)%PartDensity          .EQ.0)  .AND. &
+       (Species(iSpec)%Init(iInit)%initialParticleNumber.EQ.0)) THEN
+      ! Species(iSpec)%Init(iInit)%UseForInit = .FALSE.
+      SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no ParticleNumber or PartDensity detected,'
+      SWRITE(UNIT_stdOut,'(A)')                        ' disabling initial particle inserting!'
     END IF
 
     !--- cuboid-/cylinder-height calculation from v and dt
@@ -1163,6 +1175,13 @@ DO iSpec = 1, nSpecies
             Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
             SWRITE(UNIT_stdOut,'(A)') " | WARNING: Cylinder height will be calculated from v and dt!"
           END IF
+        END IF
+
+      CASE('cell_local')
+        IF (Species(iSpec)%Init(iInit)%ParticleEmissionType.NE.0) THEN
+          Species(iSpec)%Init(iInit)%UseForInit = .FALSE.
+          SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no cell_local & EmissionType !=0 detected,'
+          SWRITE(UNIT_stdOut,'(A)')                        ' disabling initial particle inserting!'
         END IF
 
       CASE DEFAULT

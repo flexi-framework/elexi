@@ -77,11 +77,13 @@ DoExactPartNumInsert =  .FALSE.
 ! check if particle inserting during simulation or initial inserting and also if via partdensity or exact particle number
 ! nbrOfParticles is set for initial inserting if initialPartNum or partdensity is set in ini
 ! ParticleEmission and Partdensity not working together
-IF (NbrofParticle.EQ.0.AND.(Species(FractNbr)%Init(iInit)%ParticleEmission.EQ.0)) RETURN
-IF ((NbrofParticle.GT.0).AND.(Species(FractNbr)%Init(iInit)%PartDensity.LE.0.)) THEN
+IF ( NbrofParticle.EQ.0 .AND.(Species(FractNbr)%Init(iInit)%ParticleEmission.EQ.0)) RETURN
+IF ((NbrofParticle.GT.0).AND.(Species(FractNbr)%Init(iInit)%PartDensity     .LE.0.)) THEN
   DoExactPartNumInsert =  .TRUE.
 END IF
+
 chunksize = 0
+
 #if USE_MPI
 ! emission group communicator
 InitGroup=Species(FractNbr)%Init(iInit)%InitCOMM
@@ -89,6 +91,7 @@ IF(PartMPI%InitGroup(InitGroup)%COMM.EQ.MPI_COMM_NULL) THEN
   NbrofParticle=0
   RETURN
 END IF
+
 IF (PartMPI%InitGroup(InitGroup)%nProcs.GT.1) THEN
   IF (DoExactPartNumInsert) THEN !###$ ToDo
     IF (PartMPI%InitGroup(InitGroup)%MPIRoot) THEN
@@ -163,6 +166,20 @@ INTEGER                                  :: InitGroup
 !===================================================================================================================================
 IF (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'cell_local') THEN
   CALL SetParticlePositionCellLocal(FractNbr,iInit,NbrOfParticle)
+  Species(FractNbr)%Init(iInit)%sumOfRequestedParticles = NbrOfParticle
+
+#if USE_MPI
+  ! emission group communicator for the current iInit
+  InitGroup = Species(FractNbr)%Init(iInit)%InitCOMM
+  CALL MPI_IALLREDUCE( Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles &
+                  , Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   &
+                  , 1                                                     &
+                  , MPI_INTEGER                                           &
+                  , MPI_SUM                                               &
+                  , PartMPI%InitGroup(InitGroup)%COMM                     &
+                  , PartMPI%InitGroup(InitGroup)%Request                  &
+                  , IERROR)
+#endif /*USE_MPI*/
   RETURN
 END IF
 

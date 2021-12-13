@@ -74,6 +74,8 @@ SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING...'
 ! Update next free position in particle array to get insertion position
 CALL UpdateNextFreePosition()
 
+CALL DetermineInitialParticleNumber()
+
 ! FLEXI gained restart capability from pure fluid solution. Do initial particle inserting only if we are not restarting or if there
 ! are no particles present in the current file. Check globally, otherwise some procs might block
 #if USE_MPI
@@ -82,76 +84,80 @@ CALL MPI_ALLREDUCE(PDM%ParticleVecLength,ParticleVecLengthGlob,1,MPI_INTEGER,MPI
 ParticleVecLengthGlob = PDM%ParticleVecLength
 #endif /* MPI */
 
-IF (.NOT.DoRestart .OR. (ParticleVecLengthGlob.EQ.0)) THEN
-  ! for the case of particle insertion per time, the inserted particle number for the current time must
-  ! be updated. Otherwise, at the first timestep after restart, these particles will be inserted again
-  ! Do insanity check of max. particle number compared to the number that is to be inserted for certain insertion types
-  insertParticles = 0
+! Initialize emission. If no particles are present, assume restart from pure fluid and perform initial inserting
+IF (DoRestart .AND. ParticleVecLengthGlob.GT.0) RETURN
 
-  ! Get number of particles to be inserted. Divide it between MPI procs if required.
-  DO i=1,nSpecies
-    DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
-      IF ((TRIM(Species(i)%Init(iInit)%SpaceIC).EQ.'cuboid') .OR.(TRIM(Species(i)%Init(iInit)%SpaceIC).EQ.'cylinder')) THEN
+! For the case of particle insertion per time, the inserted particle number for the current time must
+! be updated. Otherwise, at the first timestep after restart, these particles will be inserted again
+! Do insanity check of max. particle number compared to the number that is to be inserted for certain insertion types
+insertParticles = 0
+
+! Get number of particles to be inserted. Divide it between MPI procs if required.
+DO i=1,nSpecies
+  DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
+    SELECT CASE(TRIM(Species(i)%Init(iInit)%SpaceIC))
+      CASE('cuboid','cylinder')
 #if USE_MPI
         insertParticles = insertParticles + INT(REAL(Species(i)%Init(iInit)%initialParticleNumber)/PartMPI%nProcs)
 #else
         insertParticles = insertParticles + INT(     Species(i)%Init(iInit)%initialParticleNumber)
 #endif
-      END IF
-    END DO
+      CASE('cell_local')
+        insertParticles = insertParticles + INT(     Species(i)%Init(iInit)%initialParticleNumber)
+    END SELECT
   END DO
+END DO
 
-  ! Check if requested to insert more particles than the particle array can hold
-  IF (insertParticles.GT.PDM%maxParticleNumber) THEN
-    IPWRITE(UNIT_stdOut,'(A40,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
-    IPWRITE(UNIT_stdOut,'(A40,I0)') ' To be inserted particles: ',insertParticles
-    CALL abort(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
-  END IF
+! Check if requested to insert more particles than the particle array can hold
+IF (insertParticles.GT.PDM%maxParticleNumber) THEN
+  IPWRITE(UNIT_stdOut,'(A40,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
+  IPWRITE(UNIT_stdOut,'(A40,I0)') ' To be inserted particles: ',insertParticles
+  CALL abort(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
+END IF
 
-  DO i = 1,nSpecies
-    DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
-      IF(doPartIndex) Species(i)%Init(iInit)%nPartsPerProc = 0
-      ! no special emissiontype to be used
-      IF (.NOT.Species(i)%Init(iInit)%UseForInit) CYCLE
+DO i = 1,nSpecies
+  DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
+    IF(doPartIndex) Species(i)%Init(iInit)%nPartsPerProc = 0
+    ! no special emissiontype to be used
+    IF (.NOT.Species(i)%Init(iInit)%UseForInit) CYCLE
 
-      ! initial particle number too large to handle
-      IF(Species(i)%Init(iInit)%initialParticleNumber.GT.HUGE(1)) &
-        CALL abort(__STAMP__,' Integer for initialParticleNumber too large!')
+    ! initial particle number too large to handle
+    IF(Species(i)%Init(iInit)%initialParticleNumber.GT.HUGE(1)) &
+      CALL abort(__STAMP__,' Integer for initialParticleNumber too large!')
 
-      NbrOfParticle = INT(Species(i)%Init(iInit)%initialParticleNumber,4)
-      SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle position for species ',i,' ... '
-      CALL SetParticlePosition(i,iInit,NbrOfParticle)
-      ! give the particles their correct velocity
-      SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle velocities for species ',i,' ... '
-      CALL SetParticleVelocity(i,iInit,NbrOfParticle,1)
-      ! give the particles their correct (species) mass
-      SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle mass for species ',i,' ... '
-      CALL SetParticleMass(i,NbrOfParticle)
-      ! update number of particles on proc and find next free position in particle array
-      PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfParticle
-      CALL UpdateNextFreePosition()
+    NbrOfParticle = INT(Species(i)%Init(iInit)%initialParticleNumber,4)
+    SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle position for species ',i,' ... '
+    CALL SetParticlePosition(i,iInit,NbrOfParticle)
+    ! give the particles their correct velocity
+    SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle velocities for species ',i,' ... '
+    CALL SetParticleVelocity(i,iInit,NbrOfParticle,1)
+    ! give the particles their correct (species) mass
+    SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle mass for species ',i,' ... '
+    CALL SetParticleMass(i,NbrOfParticle)
+    ! update number of particles on proc and find next free position in particle array
+    PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfParticle
+    CALL UpdateNextFreePosition()
 
 #if USE_MPI
-      InitGroup = Species(i)%Init(iInit)%InitCOMM
-      IF (PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL .AND. Species(i)%Init(iInit)%sumOfRequestedParticles.GT.0) THEN
-        CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%Request, MPI_STATUS_IGNORE, iError)
-        IF(doPartIndex) CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%RequestIndex, MPI_STATUS_IGNORE, iError)
-      END IF
+    InitGroup = Species(i)%Init(iInit)%InitCOMM
+    IF (PartMPI%InitGroup(InitGroup)%COMM.NE.MPI_COMM_NULL .AND. Species(i)%Init(iInit)%sumOfRequestedParticles.GT.0) THEN
+      CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%Request, MPI_STATUS_IGNORE, iError)
+      IF(doPartIndex) CALL MPI_WAIT(PartMPI%InitGroup(InitGroup)%RequestIndex, MPI_STATUS_IGNORE, iError)
+    END IF
 #endif
 
-      IF (doPartIndex) THEN
-        sumOfMatchedParticlesSpecies = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%sumOfMatchedParticles
-        particle_count = 0
-        DO k = 1,PDM%ParticleVecLength
-          IF (.NOT.PDM%IsNewPart(k)) CYCLE
+    IF (doPartIndex) THEN
+      sumOfMatchedParticlesSpecies = sumOfMatchedParticlesSpecies + Species(i)%Init(iInit)%sumOfMatchedParticles
+      particle_count = 0
+      DO k = 1,PDM%ParticleVecLength
+        IF (.NOT.PDM%IsNewPart(k)) CYCLE
 
-          particle_count = particle_count + 1
-          PartIndex(k)   = Species(i)%Init(iInit)%nPartsPerProc + particle_count
-        END DO
-      END IF ! doPartIndex
-    END DO ! inits
-  END DO ! species
-END IF ! doRestart
+        particle_count = particle_count + 1
+        PartIndex(k)   = Species(i)%Init(iInit)%nPartsPerProc + particle_count
+      END DO
+    END IF ! doPartIndex
+  END DO ! inits
+END DO ! species
 
 ! Attention: FLEXI uses a different definition for elapsed time due to restart capability!
 IF ((RestartTime.GT.0) .AND. (.NOT.PartDataExists)) THEN
@@ -434,6 +440,69 @@ DO i = 1,nSpecies
 END DO ! i=1,nSpecies
 
 END SUBROUTINE ParticleInserting
+
+
+SUBROUTINE DetermineInitialParticleNumber()
+!===================================================================================================================================
+!>
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Mesh_Vars  ,ONLY: LocalVolume
+USE MOD_Particle_Vars       ,ONLY: PDM,Species,nSpecies
+#if USE_MPI
+USE MOD_Particle_MPI_Vars   ,ONLY: PartMPI
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                     :: iSpec,iInit
+INTEGER(KIND=8)             :: insertParticles
+!===================================================================================================================================
+
+! Do sanity check of max. particle number compared to the number that is to be inserted for certain insertion types
+insertParticles = 0
+
+DO iSpec=1,nSpecies
+  DO iInit = Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
+    ! Skip inits utilized for emission per iteration
+    IF (Species(iSpec)%Init(iInit)%ParticleEmissionType.NE.0) CYCLE
+
+    ! Calculate the ParticleNumber from PartDensity
+    IF ((Species(iSpec)%Init(iInit)%PartDensity.GT.0.)) THEN
+      SELECT CASE(TRIM(Species(iSpec)%Init(iInit)%SpaceIC))
+        CASE('cell_local')
+          ! Only calculate the particle number if the velocity is known
+          SELECT CASE(TRIM(Species(iSpec)%Init(iInit)%velocityDistribution))
+            CASE('constant')
+              ! Volume of the mesh region on this proc
+              IF (LocalVolume.GT.0.) THEN
+                Species(iSpec)%Init(iInit)%initialParticleNumber = NINT(Species(iSpec)%Init(iInit)%PartDensity * LocalVolume)
+              ELSE
+                CALL ABORT(__STAMP__,'Local mesh volume is zero!')
+              END IF
+            CASE DEFAULT
+              CALL ABORT(__STAMP__,'Given velocity distribution is not supported with the SpaceIC cell_local!')
+          END SELECT  ! Species(iSpec)%Init(iInit)%velocityDistribution
+        CASE DEFAULT
+        ! do nothing
+      END SELECT    ! Species(iSpec)%Init(iInit)%SpaceIC
+    END IF
+    ! Sum-up the number of particles to be inserted
+    insertParticles = insertParticles + INT(Species(iSpec)%Init(iInit)%initialParticleNumber,8)
+  END DO
+END DO
+
+IF (insertParticles.GT.PDM%maxParticleNumber) THEN
+  IPWRITE(UNIT_stdOut,'(A,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
+  IPWRITE(UNIT_stdOut,'(A,I0)') ' To be inserted particles: ',INT(insertParticles,4)
+  CALL ABORT(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
+END IF
+
+END SUBROUTINE DetermineInitialParticleNumber
 
 
 END MODULE MOD_Part_Emission

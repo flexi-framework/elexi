@@ -110,8 +110,8 @@ END DO
 
 ! Check if requested to insert more particles than the particle array can hold
 IF (insertParticles.GT.PDM%maxParticleNumber) THEN
-  IPWRITE(UNIT_stdOut,'(A40,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
-  IPWRITE(UNIT_stdOut,'(A40,I0)') ' To be inserted particles: ',insertParticles
+  IPWRITE(UNIT_stdOut,'(I0,A40,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
+  IPWRITE(UNIT_stdOut,'(I0,A40,I0)') ' To be inserted particles: ',insertParticles
   CALL abort(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
 END IF
 
@@ -307,7 +307,7 @@ DO i = 1,nSpecies
             CALL RANDOM_NUMBER(RandVal1)
 
             IF (EXP(-PartIns).LE.TINY(PartIns)) THEN
-              IPWRITE(UNIT_stdOut,'(A)') ' WARNING: target is too large for poisson sampling: switching now to random rounding...'
+              IPWRITE(UNIT_stdOut,'(I0,A)') ' WARNING: target is too large for poisson sampling: switching now to random rounding...'
               NbrOfParticle     = INT(PartIns + RandVal1)
               DoPoissonRounding = .FALSE.
             ELSE
@@ -497,8 +497,8 @@ DO iSpec=1,nSpecies
 END DO
 
 IF (insertParticles.GT.PDM%maxParticleNumber) THEN
-  IPWRITE(UNIT_stdOut,'(A,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
-  IPWRITE(UNIT_stdOut,'(A,I0)') ' To be inserted particles: ',INT(insertParticles,4)
+  IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
+  IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' To be inserted particles: ',INT(insertParticles,4)
   CALL ABORT(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
 END IF
 

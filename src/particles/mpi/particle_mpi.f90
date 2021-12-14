@@ -467,8 +467,8 @@ DO iProc=0,nExchangeProcessors-1
 
       ! sanity check the message length. PartCommSize must be a multiple of particles to send
       IF(MOD(jPos,PartCommSize).NE.0) THEN
-        IPWRITE(UNIT_stdOut,'(A,I0)')  'PartCommSize',PartCommSize
-        IPWRITE(UNIT_stdOut,'(A,I0)')  'jPos',jPos
+        IPWRITE(UNIT_stdOut,'(I0,A,I0)')  'PartCommSize',PartCommSize
+        IPWRITE(UNIT_stdOut,'(I0,A,I0)')  'jPos',jPos
         CALL ABORT( __STAMP__,' Particle-wrong sending message size!')
       END IF
 
@@ -479,7 +479,7 @@ DO iProc=0,nExchangeProcessors-1
     END IF ! Particle is particle with target proc-id equals local proc id
   END DO  ! iPart
 
-  IF(iPos.NE.(MessageSize)) IPWRITE(UNIT_stdOut,'(A,I0,I0)') ' error message size', iPos,MessageSize
+  IF(iPos.NE.(MessageSize)) IPWRITE(UNIT_stdOut,'(I0,A,I0,I0)') ' error message size', iPos,MessageSize
 END DO ! iProc
 
 ! 4) Finish Received number of particles
@@ -523,8 +523,8 @@ DO iProc=0,nExchangeProcessors-1
   ! allocate recv buffer with the correct size
   ALLOCATE(PartRecvBuf(iProc)%content(MessageSize),STAT=ALLOCSTAT)
   IF (ALLOCSTAT.NE.0) THEN
-    IPWRITE(UNIT_stdOut,'(A,I0)') 'sum of total received particles            ', SUM(PartMPIExchange%nPartsRecv(1,:))
-    IPWRITE(UNIT_stdOut,'(A,I0)') 'sum of total received deposition particles ', SUM(PartMPIExchange%nPartsRecv(2,:))
+    IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'sum of total received particles            ', SUM(PartMPIExchange%nPartsRecv(1,:))
+    IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'sum of total received deposition particles ', SUM(PartMPIExchange%nPartsRecv(2,:))
     CALL ABORT(__STAMP__,'  Cannot allocate PartRecvBuf, local source ProcId, Allocstat',iProc,REAL(ALLOCSTAT))
   END IF
 

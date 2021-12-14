@@ -208,12 +208,12 @@ DO i = 1,PDM%ParticleVecLength
           ! the determinants
           IF (NrOfThroughSides.EQ.0) THEN
             ! Particle appears to have not crossed any of the checked sides. Deleted!
-            IPWRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' Error in Particle TriaTracking! Particle Number',i,'lost. Element:', ElemID,'(species:',PartSpecies(i),')'
-            IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' LastPos: ', LastPartPos(1:3,i)
-            IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' Pos:     ', PartState(1:3,i)
-            IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' Velo:    ', PartState(4:6,i)
+            IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A,I0,A)') ' Error in Particle TriaTracking! Particle Number',i,'lost. Element:', ElemID,'(species:',PartSpecies(i),')'
+            IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' LastPos: ', LastPartPos(1:3,i)
+            IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' Pos:     ', PartState(1:3,i)
+            IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' Velo:    ', PartState(4:6,i)
             ! PICLas v2.0 does not loose particles anymore, so try to abort instead of just warn
-!            IPWRITE(UNIT_stdOut,'(A)') 'Particle deleted!'
+!            IPWRITE(UNIT_stdOut,'(I0,A)') 'Particle deleted!'
             CALL ABORT(__STAMP__,'Lost particle detected during TriaTracking!')
 !            PDM%ParticleInside(i) = .FALSE.
 !            IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
@@ -311,12 +311,12 @@ DO i = 1,PDM%ParticleVecLength
             ! Particle that went through multiple sides first, but did not cross any sides during the second check -> Deleted!
             IF (SecondNrOfThroughSides.EQ.0) THEN
               ! Particle appears to have not crossed any of the checked sides. Deleted!
-              IPWRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' Error in Particle TriaTracking! Particle Number',i,'lost. Element:', ElemID,'(species:',PartSpecies(i),')'
-              IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' LastPos: ', LastPartPos(1:3,i)
-              IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' Pos:     ', PartState(1:3,i)
-              IPWRITE(UNIT_stdOut,'(A,3F12.6)')         ' Velo:    ', PartState(4:6,i)
+              IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A,I0,A)') ' Error in Particle TriaTracking! Particle Number',i,'lost. Element:', ElemID,'(species:',PartSpecies(i),')'
+              IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' LastPos: ', LastPartPos(1:3,i)
+              IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' Pos:     ', PartState(1:3,i)
+              IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' Velo:    ', PartState(4:6,i)
               ! PICLas v2.0 does not loose particles anymore, so try to abort instead of just warn
-!              IPWRITE(UNIT_stdOut,'(A)') 'Particle deleted!'
+!              IPWRITE(UNIT_stdOut,'(I0,A)') 'Particle deleted!'
               CALL ABORT(__STAMP__,'Lost particle detected during TriaTracking!')
 !              PDM%ParticleInside(i) = .FALSE.
 !              IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
@@ -370,7 +370,7 @@ DO i = 1,PDM%ParticleVecLength
         CNElemID = GetCNElemID(ElemID)
 
         IF (CNElemID.LT.1) THEN
-          IPWRITE(UNIT_stdOut,'(A,F12.6)') 'Particle Velocity: ',SQRT(DOTPRODUCT(PartState(4:6,i)))
+          IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') 'Particle Velocity: ',SQRT(DOTPRODUCT(PartState(4:6,i)))
           CALL ABORT(__STAMP__,'ERROR: Element not defined! Please increase the size of the halo region (HaloEpsVelo)!')
         END IF
         TrackInfo%CurrElem = ElemID

@@ -136,9 +136,9 @@ DO iN = 1,length
 END DO
 
 IF (Nrest.NE.0) THEN
-  IPWRITE(UNIT_stdOut,'(A,I0)') 'Ntot:  ',Ntot
-  IPWRITE(UNIT_stdOut,'(A,I0)') 'Ntot0: ',Ntot0
-  IPWRITE(UNIT_stdOut,'(A,I0)') 'Nrest: ',Nrest
+  IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Ntot:  ',Ntot
+  IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Ntot0: ',Ntot0
+  IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Nrest: ',Nrest
   CALL abort(__STAMP__,'ERROR 2 in IntegerDivide!')
 END IF
 
@@ -219,13 +219,13 @@ DO
   IF (Tpois.LT.TINY(Tpois)) THEN
     ! Turn off Poisson Sampling and "sample" by random-rounding
     IF (Flag) THEN
-      IPWRITE(UNIT_stdOut,'(A)') ' WARNING: target is too large for poisson sampling: switching now to Random rounding...'
+      IPWRITE(UNIT_stdOut,'(I0,A)') ' WARNING: target is too large for poisson sampling: switching now to Random rounding...'
       IntSample = INT(RealTarget + RandVal1)
       Flag      = .FALSE.
       EXIT
     ! Turning off not allowed: abort (RealTarget must be decreased ot PoissonSampling turned off manually)
     ELSE
-      CALL abort(__STAMP__,'ERROR in SamplePoissonDistri: RealTarget (e.g. flux) is too large for poisson sampling!')
+      CALL ABORT(__STAMP__,'ERROR in SamplePoissonDistri: RealTarget (e.g. flux) is too large for poisson sampling!')
     END IF
   END IF
 

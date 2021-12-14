@@ -373,28 +373,6 @@ DO iPart=1,PDM%ParticleVecLength
               IF (ALLOCATED(TurbPartState)) IPWRITE(UNIT_stdOut,'(I0,A,3(1X,E15.8))') ' Velocity (SGS)         ', TurbPartState(1:3,iPart)
               Vec=PartState(1:3,iPart)-LastPartPos(1:3,iPart)
               IPWRITE(UNIT_stdOut,'(I0,A,1X,E15.8)') ' displacement /halo_eps ', DOT_PRODUCT(Vec,Vec)/halo_eps2
-!#if USE_MPI
-!              inelem=PEM%Element(ipart)
-!              IF(inelem.LE.PP_nElems)THEN
-!                IPWRITE(UNIT_stdOut,'(I0,A)') ' halo-elem = F'
-!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' elemid               ', inelem+offsetelem
-!              ELSE
-!                IPWRITE(UNIT_stdOut,'(I0,A)') ' halo-elem = T'
-!!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' elemid         ', offsetelemmpi(PartHaloElemToProc(NATIVE_PROC_ID,inelem)) &
-!!                                                                 + PartHaloElemToProc(NATIVE_ELEM_ID,inelem)
-!              END IF
-!              IF(testelem.LE.PP_nElems)THEN
-!                IPWRITE(UNIT_stdOut,'(I0,A)') ' halo-elem = F'
-!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' testelem             ', testelem+offsetelem
-!              ELSE
-!                IPWRITE(UNIT_stdOut,'(I0,A)') ' halo-elem = T'
-!!                IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' testelem         ', offsetelemmpi(PartHaloElemToProc(NATIVE_PROC_ID,testelem)) &
-!!                                                               + PartHaloElemToProc(NATIVE_ELEM_ID,testelem)
-!              END IF
-!
-!#else
-!              IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' elemid                 ', pem%element(ipart)+offsetelem
-!#endif
               IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartSpecies  ', PartSpecies(iPart)
               CALL ABORT(__STAMP__ ,'Particle not inside of Element, ipart',ipart)
             END IF ! inside
@@ -825,33 +803,33 @@ IF(FastPeriodic)THEN
   ! x direction
   IF(GEO%directions(1)) THEN
     IF(PartState(1,PartID).GT.GEO%xmaxglob) THEN
-      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside x+, PartID',PartID)
     END IF
     IF(PartState(1,PartID).LT.GEO%xminglob) THEN
-      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside x-, PartID',PartID)
     END IF
   END IF
   ! y direction
   IF(GEO%directions(2)) THEN
     IF(PartState(2,PartID).GT.GEO%ymaxglob) THEN
-      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside y+, PartID',PartID)
     END IF
     IF(PartState(2,PartID).LT.GEO%yminglob) THEN
-      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside y-, PartID',PartID)
     END IF
   END IF
   ! z direction
   IF(GEO%directions(3)) THEN
     IF(PartState(3,PartID).GT.GEO%zmaxglob) THEN
-      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__,' particle outside z+, PartID',PartID)
     END IF
     IF(PartState(3,PartID).LT.GEO%zminglob) THEN
-      IPWRITE(UNIT_stdOut,'(A,3F12.6)') 'PartPos', PartState(:,PartID)
+      IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') 'PartPos', PartState(:,PartID)
       CALL abort(__STAMP__ ,' particle outside z-, PartID',PartID)
     END IF
   END IF

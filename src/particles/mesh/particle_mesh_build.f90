@@ -2149,13 +2149,13 @@ DO iElem = firstElem,lastElem
 END DO
 
 IF(WeirdElems.GT.0) THEN
-  IPWRITE(UNIT_stdOut,'(A,I0,A)') ' FOUND', WeirdElems, 'ELEMENTS!'
-  IPWRITE(UNIT_stdOut,'(A)')      ' WEIRD ELEM NUMBERS:'
+  IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') ' FOUND', WeirdElems, 'ELEMENTS!'
+  IPWRITE(UNIT_stdOut,'(I0,A)')      ' WEIRD ELEM NUMBERS:'
   DO iElem = 1,WeirdElems
     IPWRITE(UNIT_stdOut,'(I0)') WeirdElemNbrs(iElem)
   END DO
-  IPWRITE(UNIT_stdOut,'(A)')      ' This check is optional. You can disable it by setting meshCheckWeirdElements = F'
-  CALL ABORT(__STAMP__,           'Weird elements found: it means that part of the element is turned inside-out')
+  IPWRITE(UNIT_stdOut,'(I0,A)')      ' This check is optional. You can disable it by setting meshCheckWeirdElements = F'
+  CALL ABORT(__STAMP__,              'Weird elements found: it means that part of the element is turned inside-out')
 END IF
 
 SWRITE(UNIT_stdOut,'(A)') ' DONE!'

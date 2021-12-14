@@ -567,10 +567,10 @@ DO BCSideID = 1,nBCSides
 END DO
 
 #if CODE_ANALYZE
-IPWRITE(UNIT_stdOut,'(A)')       " ===== TOTAL AREA (all BCsides) ====="
-IPWRITE(UNIT_stdOut,'(A,F12.6)') " totalArea      = ",totalArea
-IPWRITE(UNIT_stdOut,'(A,F12.6)') " totalArea/(pi) = ",totalArea/(ACOS(-1.))
-IPWRITE(UNIT_stdOut,'(A)')       " ===== TOTAL AREA (all BCsides) ====="
+IPWRITE(UNIT_stdOut,'(I0,A)')       " ===== TOTAL AREA (all BCsides) ====="
+IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') " totalArea      = ",totalArea
+IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') " totalArea/(pi) = ",totalArea/(ACOS(-1.))
+IPWRITE(UNIT_stdOut,'(I0,A)')       " ===== TOTAL AREA (all BCsides) ====="
 #endif /*CODE_ANALYZE*/
 
 END SUBROUTINE BCSurfMeshSideAreasandNormals

@@ -822,8 +822,8 @@ ELSE
   v2 = v1  - ElemBaryNGeo(:,GetCNElemID(ElemID))
 
   IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
-    IPWRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0)') ' Obtained wrong side orientation from flip. SideID:',SideID,'flip:',flip,'PartID:',PartID
-    IPWRITE(UNIT_stdOut,'(A,I0,A,3F12.6)')  ' n_loc (flip)', n_loc,'n_loc (estimated):',v2
+    IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A,I0)') ' Obtained wrong side orientation from flip. SideID:',SideID,'flip:',flip,'PartID:',PartID
+    IPWRITE(UNIT_stdOut,'(I0,A,I0,A,3F12.6)')  ' n_loc (flip)', n_loc,'n_loc (estimated):',v2
     CALL ABORT(__STAMP__,'SideID',SideID)
   END IF
 #endif /* CODE_ANALYZE */
@@ -894,7 +894,7 @@ ELSE
     END DO
 
     ! passed none of the mortar elements. Keep particle inside current element and warn
-    IPWRITE(UNIT_stdOut,'(A,I0)') 'Boundary issue with inner mortar element', ElemID
+    IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Boundary issue with inner mortar element', ElemID
 
   ! regular side
   ELSE

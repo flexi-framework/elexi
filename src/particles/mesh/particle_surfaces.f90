@@ -1095,10 +1095,10 @@ IF (PRESENT(BezierControlPoints2D_opt)) THEN
 END IF
 
 #if CODE_ANALYZE
-IPWRITE(UNIT_stdOut,'(A)')            ' ===== SINGLE AREA ====='
-IPWRITE(UNIT_stdOut,'(A,I0,A,F16.7)') 'SideID:',SideID,'areaTotal   =',areaTotal
-IPWRITE(UNIT_stdOut,'(A,I0,A,F16.7)') 'SideID:',SideID,'areaTotalAbs=',areaTotalAbs
-IPWRITE(UNIT_stdOut,'(A)')            ' ============================'
+IPWRITE(UNIT_stdOut,'(I0,A)')            ' ===== SINGLE AREA ====='
+IPWRITE(UNIT_stdOut,'(I0,A,I0,A,F16.7)') 'SideID:',SideID,'areaTotal   =',areaTotal
+IPWRITE(UNIT_stdOut,'(I0,A,I0,A,F16.7)') 'SideID:',SideID,'areaTotalAbs=',areaTotalAbs
+IPWRITE(UNIT_stdOut,'(I0,A)')            ' ============================'
 #endif /*CODE_ANALYZE*/
 
 END SUBROUTINE GetBezierSampledAreas

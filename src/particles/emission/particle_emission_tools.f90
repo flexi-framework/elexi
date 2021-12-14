@@ -254,6 +254,9 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared,ElemVolume_Shared
 USE MOD_Particle_Tracking      ,ONLY: ParticleInsideCheck
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PEM,PartState
+#if USE_MPI
+USE MOD_Particle_Mesh_Vars     ,ONLY: offsetComputeNodeElem
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -271,7 +274,14 @@ REAL                             :: PartDens
 LOGICAL                          :: InsideFlag
 INTEGER                          :: CellChunkSize(1:nElems)
 INTEGER                          :: chunkSize_tmp,ParticleIndexNbr
-!-----------------------------------------------------------------------------------------------------------------------------------
+INTEGER                          :: offsetElemCNProc
+!===================================================================================================================================
+#if USE_MPI
+! ElemVolume is only built for local DG elements. Therefore, array is only filled for elements on the same compute node
+offsetElemCNProc = offsetElem - offsetComputeNodeElem
+#else
+offsetElemCNProc = 0
+#endif  /*USE_MPI*/
 
 IF (UseExactPartNum) THEN
   IF(chunkSize.GE.PDM%maxParticleNumber) &
@@ -279,7 +289,7 @@ IF (UseExactPartNum) THEN
                'ERROR in SetCellLocalParticlePosition: Maximum particle number reached! max. particles needed: ',chunksize)
 
   CellChunkSize(:) = 0
-  CALL IntegerDivide(chunkSize,nElems,ElemVolume_Shared(:),CellChunkSize(:))
+  CALL IntegerDivide(chunkSize,nElems,ElemVolume_Shared(1+offsetElemCNProc:nElems+offsetElemCNProc),CellChunkSize(:))
 ELSE
   ! numerical PartDensity is needed
   PartDens      = Species(iSpec)%Init(iInit)%PartDensity
@@ -292,13 +302,13 @@ END IF
 iChunkSize       = 1
 ParticleIndexNbr = 1
 
-DO iElem = offsetElem+1,offsetElem+nElems
-  ASSOCIATE( Bounds => BoundsOfElem_Shared(1:2,1:3,iElem) ) ! 1-2: Min, Max value; 1-3: x,y,z
+DO iElem = 1,nElems
+  ASSOCIATE( Bounds => BoundsOfElem_Shared(1:2,1:3,iElem+offsetElem) ) ! 1-2: Min, Max value; 1-3: x,y,z
     IF (UseExactPartNum) THEN
       nPart = CellChunkSize(iElem)
     ELSE
       CALL RANDOM_NUMBER(iRan)
-      nPart = INT(PartDens * ElemVolume_Shared(iElem) + iRan)
+      nPart = INT(PartDens * ElemVolume_Shared(iElem+offsetElemCNProc) + iRan)
     END IF
 
     DO iPart = 1,nPart
@@ -309,13 +319,13 @@ DO iElem = offsetElem+1,offsetElem+nElems
         DO WHILE(.NOT.InsideFlag)
           CALL RANDOM_NUMBER(RandomPos)
           RandomPos  = Bounds(1,:) + RandomPos*(Bounds(2,:)-Bounds(1,:))
-          InsideFlag = ParticleInsideCheck(RandomPos,ParticleIndexNbr,iElem)
+          InsideFlag = ParticleInsideCheck(RandomPos,ParticleIndexNbr,iElem+offsetElem)
         END DO
 
         PartState(     1:3,ParticleIndexNbr) = RandomPos(1:3)
         PDM%ParticleInside(ParticleIndexNbr) = .TRUE.
         PDM%IsNewPart(     ParticleIndexNbr) = .TRUE.
-        PEM%Element(       ParticleIndexNbr) = iElem
+        PEM%Element(       ParticleIndexNbr) = iElem+offsetElem
         iChunkSize = iChunkSize + 1
       ELSE
         CALL ABORT(__STAMP__ &

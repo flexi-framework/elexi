@@ -504,13 +504,17 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
 
 #if USE_PARTICLES
-IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN
+IF (t.GE.DelayTime .AND. t.GT.PreviousTime .AND. .NOT.postiMode) THEN
   CALL ParticleTimeRHS(t,currentStage,dt)
   IF (currentStage.EQ.1) THEN
     CALL ParticleTimeStep(t,dt)
   ELSE
     CALL ParticleTimeStepRK(t,currentStage)
   END IF
+#if USE_MPI
+  ! send number of particles
+  CALL SendNbOfParticles()
+#endif /*USE_MPI */
 END IF
 #endif /* PARTICLES */
 
@@ -570,8 +574,6 @@ IF (t.GE.DelayTime .AND. t.GT.PreviousTime .AND. .NOT.postiMode) THEN
 #if USE_LOADBALANCE
   CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-  ! send number of particles
-  CALL SendNbOfParticles()
   ! finish communication of number of particles and send particles
   CALL MPIParticleSend()
 #if USE_LOADBALANCE

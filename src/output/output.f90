@@ -293,20 +293,19 @@ IF(MPIRoot)THEN
   time_remaining = time_remaining / 60
   hours= MOD(time_remaining,24.)
   days = time_remaining / 24
+
 #if FV_ENABLED
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV '
 #endif /*FV_ENABLED*/
-  tmpString = MERGE('YES','NO ',PRESENT(doETA))
+
 #if PP_LIMITER
   PP_percent = REAL(PPcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
+  WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
 #endif /*PP_LIMITER*/
-  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1)',ADVANCE='NO') ' Time = ', t, &
-      ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(hours),':',INT(mins),':',INT(secs), ACHAR(13)
-#ifdef INTEL
-  CLOSE(UNIT_stdOut)
-#endif /*INTEL*/
+
+  ! Status line or standard output
+  tmpString = MERGE('YES','NO ',PRESENT(doETA))
 END IF
 
 #if USE_PARTICLES

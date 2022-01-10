@@ -66,6 +66,10 @@ USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 USE MOD_FV
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
+#if PP_LIMITER
+USE MOD_PPLimiter           ,ONLY: PPLimiter,PPLimiter_Info
+USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
+#endif /*PP_LIMITER*/
 #if USE_PARTICLES
 USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime
 #endif /*USE_PARTICLES*/
@@ -124,6 +128,9 @@ PreviousTime = -1
 CALL CalcIndicator(U,t)
 IF(.NOT.DoRestart)  CALL FV_FillIni()
 #endif /*FV_ENABLED*/
+#if PP_LIMITER
+IF(DoPPLimiter) CALL PPLimiter()
+#endif /*PP_LIMITER*/
 
 IF(.NOT.DoRestart) THEN
   SWRITE(UNIT_stdOut,'(A)') ' WRITING INITIAL SOLUTION:'
@@ -154,7 +161,10 @@ CALL InitTimeStep()
 
 #if FV_ENABLED
 CALL FV_Info(1_8)
-#endif
+#endif /*FV_ENABLED*/
+#if PP_LIMITER
+CALL PPLimiter_Info(1_8)
+#endif /*PP_LIMITER*/
 
 SWRITE(UNIT_stdOut,'(A)') ' CALCULATION RUNNING...'
 

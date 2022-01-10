@@ -59,7 +59,11 @@ USE MOD_FV            ,ONLY: FV_Switch
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
 USE MOD_Indicator     ,ONLY: CalcIndicator
 USE MOD_TimeDisc_Vars ,ONLY: nCalcTimestep
-#endif
+#endif /*FV_ENABLED*/
+#if PP_LIMITER
+USE MOD_PPLimiter    ,ONLY: PPLimiter
+USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
+#endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -99,6 +103,9 @@ DO iStage = 1,nRKStages
     CALL FV_Switch(U,Ut_tmp,AllowToDG=FV_toDGinRK)
   END IF
 #endif /*FV_ENABLED*/
+#if PP_LIMITER
+  IF(DoPPLimiter) CALL PPLimiter()
+#endif /*PP_LIMITER*/
 END DO
 
 END SUBROUTINE TimeStepByLSERKW2
@@ -122,7 +129,11 @@ USE MOD_FV            ,ONLY: FV_Switch
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
 USE MOD_Indicator     ,ONLY: CalcIndicator
 USE MOD_TimeDisc_Vars ,ONLY: nCalcTimestep
-#endif
+#endif /*FV_ENABLED*/
+#if PP_LIMITER
+USE MOD_PPLimiter    ,ONLY: PPLimiter
+USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
+#endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -169,6 +180,9 @@ DO iStage = 1,nRKStages
     CALL FV_Switch(U,Uprev,S2,AllowToDG=FV_toDGinRK)
   END IF
 #endif /*FV_ENABLED*/
+#if PP_LIMITER
+  IF(DoPPLimiter) CALL PPLimiter()
+#endif /*PP_LIMITER*/
 END DO
 
 END SUBROUTINE TimeStepByLSERKK3

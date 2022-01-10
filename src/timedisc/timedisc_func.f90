@@ -392,7 +392,11 @@ USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
 USE MOD_FV_Vars             ,ONLY: FV_toDGinRK
 USE MOD_Indicator           ,ONLY: CalcIndicator
 USE MOD_TimeDisc_Vars       ,ONLY: nCalcTimeStep
-#endif
+#endif /*FV_ENABLED*/
+#if PP_LIMITER
+USE MOD_PPLimiter    ,ONLY: PPLimiter
+USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
+#endif /*PP_LIMITER*/
 #if USE_PARTICLES
 USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime
 #endif /*USE_PARTICLES*/
@@ -421,7 +425,10 @@ IMPLICIT NONE
 CALL CalcIndicator(U,t)
 ! NOTE: Apply switch and update FV_Elems
 CALL FV_Switch(U,Ut_tmp,AllowToDG=(nCalcTimeStep.LT.1))
-#endif
+#endif /*FV_ENABLED*/
+#if PP_LIMITER
+IF (DoPPLimiter) CALL PPLimiter()
+#endif /*PP_LIMITER*/
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 IF (doAnalyze) THEN
 #if USE_PARTICLES
@@ -543,7 +550,6 @@ IF(doAnalyze)THEN
 END IF
 
 END SUBROUTINE AnalyzeTimeStep
-
 
 
 !===================================================================================================================================

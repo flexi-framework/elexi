@@ -26,6 +26,7 @@
 #define MOM2  3             /* momentum y */
 #define MOM3  4             /* momentum z */
 #define MOMV  MOM1:MOM3     /* momentum vector */
+#define MMV2  MOM1:1+PP_dim /* momentum vector */
 #define ENER  5             /* energy */
 
 ! primitive variables

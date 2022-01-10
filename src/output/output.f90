@@ -209,13 +209,18 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Output_Vars , ONLY: doPrintStatusLine
 #if FV_ENABLED
-USE MOD_Analyze_Vars  ,ONLY: totalFV_nElems
-USE MOD_FV_Vars       ,ONLY: FV_Elems
+USE MOD_Analyze_Vars, ONLY: totalFV_nElems
+USE MOD_FV_Vars     , ONLY: FV_Elems
 USE MOD_Mesh_Vars   , ONLY: nGlobalElems
-#endif
+#endif /*FV_ENABLED*/
+#if PP_LIMITER
+USE MOD_Analyze_Vars, ONLY: totalPP_nElems
+USE MOD_Filter_Vars , ONLY: PP_Elems
+USE MOD_Mesh_Vars   , ONLY: nGlobalElems
+#endif /*PP_LIMITER*/
 #if USE_PARTICLES
 USE MOD_Particle_Vars, ONLY: PDM
-#endif
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -240,10 +245,18 @@ INTEGER,PARAMETER :: barWidth = 50
 #if USE_PARTICLES
 INTEGER           :: nParticleOnProc,nParticleInDomain,iPart
 #endif /*USE_PARTICLES*/
+#if PP_LIMITER
+INTEGER           :: PPcounter
+REAL              :: PP_percent
+#endif /*PP_LIMITER*/
 !==================================================================================================================================
 #if FV_ENABLED
 FVcounter = SUM(FV_Elems)
 totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount during analyze
+#endif
+#if PP_LIMITER
+PPcounter = SUM(PP_Elems)
+totalPP_nElems = totalPP_nElems + PPcounter ! counter for output of FV amount during analyze
 #endif
 
 IF (PRESENT(doETA)) THEN
@@ -262,6 +275,10 @@ ELSE
 END IF
 #endif
 
+#if PP_LIMITER && USE_MPI
+CALL MPI_REDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+#endif /*PP_LIMITER && USE_MPI*/
+
 IF(MPIRoot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
@@ -279,8 +296,17 @@ IF(MPIRoot)THEN
 #if FV_ENABLED
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV '
-#endif
+#endif /*FV_ENABLED*/
   tmpString = MERGE('YES','NO ',PRESENT(doETA))
+#if PP_LIMITER
+  PP_percent = REAL(PPcounter) / nGlobalElems * 100.
+  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
+#endif /*PP_LIMITER*/
+  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1)',ADVANCE='NO') ' Time = ', t, &
+      ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(hours),':',INT(mins),':',INT(secs), ACHAR(13)
+#ifdef INTEL
+  CLOSE(UNIT_stdOut)
+#endif /*INTEL*/
 END IF
 
 #if USE_PARTICLES
@@ -321,10 +347,10 @@ ELSE
   REPEAT('=',MAX(CEILING(percent*(barWidth-15)/100.)-1,0)),'>',REPEAT(' ',(barWidth-15)-MAX(CEILING(percent*(barWidth-15)/100.),0)),'| [',percent,'%] ',&
   ACHAR(13) ! ACHAR(13) is carriage return
 END IF
-#endif
+#endif /*USE_PARTICLES*/
 #ifdef INTEL
 CLOSE(UNIT_stdOut)
-#endif
+#endif /*INTEL*/
 END SUBROUTINE PrintStatusLine
 
 

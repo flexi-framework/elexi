@@ -2179,10 +2179,10 @@ SUBROUTINE ComputePeriodicVec()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Mesh_Vars                ,ONLY: nElems,nBCs,NGeo,offsetElem,BoundaryType
+USE MOD_Mesh_Vars                ,ONLY: nElems,NGeo,offsetElem,BoundaryType
 USE MOD_Particle_Boundary_Vars   ,ONLY: PartBound
 USE MOD_Particle_Globals         ,ONLY: VECNORM,ALMOSTZERO
-USE MOD_Particle_Mesh_Vars       ,ONLY: GEO,ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars       ,ONLY: GEO,MeshHasPeriodic,ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_ReadInTools              ,ONLY: PrintOption
 ! IMPLICIT VARIABLE HANDLING
@@ -2194,7 +2194,7 @@ IMPLICIT NONE
 INTEGER,PARAMETER              :: iNode=1
 REAL,PARAMETER                 :: CartesianTol=1.E-12
 CHARACTER(1)                   :: tmpStr
-INTEGER                        :: iVec,iBC
+INTEGER                        :: iVec
 INTEGER                        :: firstElem,lastElem,NbSideID,BCALPHA,flip
 INTEGER                        :: SideID,ElemID,NbElemID,localSideID,localSideNbID,nStart
 INTEGER                        :: CornerNodeIDswitch(8),NodeMap(4,6)
@@ -2227,11 +2227,7 @@ NodeMap(:,5)=(/CNS(1),CNS(5),CNS(8),CNS(4)/)
 NodeMap(:,6)=(/CNS(5),CNS(6),CNS(7),CNS(8)/)
 
 ! Find number of periodic vectors
-GEO%nPeriodicVectors = 0
-DO iBC = 1,nBCs
-  IF (BoundaryType(iBC,BC_TYPE).NE.1) CYCLE
-  GEO%nPeriodicVectors = MAX(GEO%nPeriodicVectors,BoundaryType(iBC,BC_ALPHA))
-END DO
+GEO%nPeriodicVectors = MERGE(MAXVAL(BoundaryType(:,BC_ALPHA)),0,MeshHasPeriodic)
 IF (GEO%nPeriodicVectors.EQ.0) RETURN
 
 firstElem = offsetElem+1

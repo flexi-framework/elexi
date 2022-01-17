@@ -1452,7 +1452,7 @@ SUBROUTINE InitializeVariablesPartBoundary()
 USE MOD_Globals
 USE MOD_Mesh_Vars              ,ONLY: BoundaryName,BoundaryType,nBCs
 USE MOD_Particle_Boundary_Vars ,ONLY: PartBound,nPartBound
-!USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
+USE MOD_Particle_Mesh_Vars     ,ONLY: MeshHasPeriodic
 USE MOD_Particle_Surfaces_Vars ,ONLY: BCdata_auxSF
 USE MOD_Particle_Vars
 USE MOD_ReadInTools
@@ -1514,6 +1514,9 @@ ALLOCATE(PartBound%FricCoeff           (1:nBCs))
 
 ! Fong coefficent of restitution
 ALLOCATE(PartBound%CoR                 (1:nBCs))
+
+! Periodic BCs
+MeshHasPeriodic = .FALSE.
 
 ! Surface Flux
 ALLOCATE(BCdata_auxSF                  (1:nBCs))
@@ -1615,6 +1618,7 @@ DO iBC = 1,nBCs
     ! Periodic
     CASE('periodic')
       PartBound%TargetBoundCond(iBC)      = PartBound%PeriodicBC
+      MeshHasPeriodic                     = .TRUE.
 
     CASE('symmetry')
       PartBound%TargetBoundCond(iBC)      = PartBound%SymmetryBC

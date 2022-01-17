@@ -337,7 +337,8 @@ nVal = SQRT(nx*nx + ny*ny + nz*nz)
 nx = -nx / nVal
 ny = -ny / nVal
 nz = -nz / nVal
-IF (.NOT.TrackingMethod.EQ.TRIATRACKING) THEN
+
+IF (TrackingMethod.NE.TRIATRACKING) THEN
   CNSideID = GetCNSideID(SideID)
   IF ((SideType(CNSideID).EQ.PLANAR_RECT .OR. SideType(CNSideID).EQ.PLANAR_NONRECT)) THEN
     !if surfflux-side are planar, TriaSurfaceFlux can be also used for tracing or Refmapping (for which SideNormVec exists)!
@@ -358,6 +359,7 @@ END IF
 IF(PRESENT(nVec)) THEN
   nVec = (/nx,ny,nz/)
 END IF
+
 IF(PRESENT(area)) THEN
   area = nVal*0.5
 END IF
@@ -616,7 +618,7 @@ END SUBROUTINE EvaluateBezierPolynomialAndGradient
 
 SUBROUTINE GetSideSlabNormalsAndIntervals(BezierControlPoints3D,SideSlabNormals,SideSlabInterVals,BoundingBoxIsEmpty)
 !===================================================================================================================================
-! computes the oriented-slab box for each bezier basis surface (i.e. 3 slab normals + 3 intervalls)
+! computes the oriented-slab box for each bezier basis surface (i.e. 3 slab normals + 3 intervals)
 ! see article:
 !    author = {Shyue-wu Wang and Zen-chung Shih and Ruei-chuan Chang},
 !    title = {An Efficient and Stable Ray Tracing Algorithm for Parametric Surfaces},
@@ -702,12 +704,12 @@ IF((ABS(DOT_PRODUCT(SideSlabNormals(:,2),SideSlabNormals(:,3)))).GT.1.E-6) CALL 
 __STAMP__&
 ,'Side slab normal 2 and 3 are not perpendicular.',0,ABS(DOT_PRODUCT(SideSlabNormals(:,2),SideSlabNormals(:,3))))
 !-----------------------------------------------------------------------------------------------------------------------------------
-! 2.) slab box intervalls beta_1, beta_2, beta_3
+! 2.) slab box intervals beta_1, beta_2, beta_3
 !-----------------------------------------------------------------------------------------------------------------------------------
 !SideSlabIntervals(x- x+ y- y+ z- z+, SideID)
 
 
-! Intervall beta_1
+! Interval beta_1
 !print*,"SideID",SideID
 SideSlabIntervals(:)=0.
 
@@ -889,7 +891,7 @@ SUBROUTINE GetBezierSampledAreas(SideID,BezierSampleN,BezierSurfFluxProjection_o
                                 ,SurfMeshSubSideVec_nOut_opt,SurfMeshSubSideVec_t1_opt,SurfMeshSubSideVec_t2_opt &
                                 ,DmaxSampleN_opt,Dmax_opt,BezierControlPoints2D_opt)
 !===================================================================================================================================
-! equidistanlty super-sampled bezier surface area and vector calculation. Required for surface flux
+! equidistantly super-sampled Bezier surface area and vector calculation. Required for surface flux
 ! --------------------------------------
 ! book: see also for general remarks
 ! author = {Farin, Gerald},

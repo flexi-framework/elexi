@@ -158,7 +158,8 @@ LOGICAL                        :: ElemInsideHalo
 INTEGER                        :: firstHaloElem,lastHaloElem
 ! FIBGMToProc
 LOGICAL                        :: dummyLog
-INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize,dummyInt
+INTEGER                        :: dummyInt
+INTEGER                        :: iProc,ProcRank,nFIBGMToProc,MessageSize
 INTEGER                        :: BGMiDelta,BGMjDelta,BGMkDelta
 INTEGER                        :: BGMiglobDelta,BGMjglobDelta,BGMkglobDelta
 ! Periodic FIBGM
@@ -175,8 +176,8 @@ INTEGER,ALLOCATABLE            :: NumberOfElements(:)
 !===================================================================================================================================
 
 ! Read parameter for FastInitBackgroundMesh (FIBGM)
-GEO%FIBGMdeltas(1:3) = GETREALARRAY('Part-FIBGMdeltas',3,'1. , 1. , 1.')
-GEO%FactorFIBGM(1:3) = GETREALARRAY('Part-FactorFIBGM',3,'1. , 1. , 1.')
+GEO%FIBGMdeltas(1:3) = GETREALARRAY('Part-FIBGMdeltas',3)
+GEO%FactorFIBGM(1:3) = GETREALARRAY('Part-FactorFIBGM',3)
 GEO%FIBGMdeltas(1:3) = 1./GEO%FactorFIBGM(1:3) * GEO%FIBGMdeltas(1:3)
 
 ! Ensure BGM does not protrude beyond mesh when divisible by FIBGMdeltas
@@ -196,6 +197,11 @@ GEO%FIBGMjminglob = BGMjminglob
 GEO%FIBGMjmaxglob = BGMjmaxglob
 GEO%FIBGMkminglob = BGMkminglob
 GEO%FIBGMkmaxglob = BGMkmaxglob
+
+SWRITE(UNIT_stdOut,'(A,I18,A,I18,A,I18)') ' | Total FIBGM Cells(x,y,z): '                                     &
+                                          , BGMimaxglob - BGMiminglob                                    ,', '&
+                                          , BGMjmaxglob - BGMjminglob                                    ,', '&
+                                          , BGMkmaxglob - BGMkminglob
 
 ! Read periodic vectors from parameter file
 CALL InitPeriodicBC()
@@ -219,11 +225,11 @@ lastElem  = nElems
 #endif  /*USE_MPI*/
 
 ! Use NodeCoords only for TriaTracking since Tracing and RefMapping have potentially curved elements, only BezierControlPoints form
-! convec hull
+! convex hull
 SELECT CASE(TrackingMethod)
   CASE(TRIATRACKING)
     DO iElem = firstElem, lastElem
-      offSetNodeID = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
+      offsetNodeID = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
       nNodeIDs     = ElemInfo_Shared(ELEM_LASTNODEIND ,iElem)-ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
       firstNodeID  = offsetNodeID+1
       lastNodeID   = offsetNodeID+nNodeIDs
@@ -975,6 +981,7 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
 
+! Flag each FIBGM element proc positive
 BGMiglobDelta = BGMimaxglob - BGMiminglob
 BGMjglobDelta = BGMjmaxglob - BGMjminglob
 BGMkglobDelta = BGMkmaxglob - BGMkminglob

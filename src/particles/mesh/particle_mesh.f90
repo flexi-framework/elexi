@@ -344,15 +344,13 @@ CALL BuildBGMAndIdentifyHaloRegion()
 
 #if USE_MPI
 CalcHaloInfo = GETLOGICAL('CalcHaloInfo')
-IF (CalcHaloInfo) THEN
-  CALL WriteHaloInfo
-END IF
+IF (CalcHaloInfo) CALL WriteHaloInfo
 #endif /*USE_MPI*/
 
 ! Initialize mapping function: GetGlobalElemID(1:nComputeNodeTotalElems)
 CALL InitGetGlobalElemID()
 
-! Initialize mapping function: GetCNElemID()
+! Initialize mapping function: GetCNElemID(1:GlobalElemID)
 CALL InitGetCNElemID()
 
 ! Initialize mapping function: GetGlobalSideID(1:nComputeNodeTotalSides)
@@ -361,7 +359,7 @@ CALL InitGetGlobalSideID()
 ! Initialize mapping function: GetCNSideID(1:GlobalSideID)
 CALL InitGetCNSideID()
 
-CountNbOfLostParts      = GETLOGICAL('CountNbOfLostParts',".FALSE.")
+CountNbOfLostParts      = GETLOGICAL('CountNbOfLostParts')
 IF (CountNbOfLostParts) THEN
   ! Nullify and reset lost parts container after write out
   PartStateLostVecLength = 0
@@ -388,9 +386,10 @@ PARTOUT            = GETINT('PartOut','0')
 MPIRankOut         = GETINT('MPIRankOut','0')
 #endif /*CODE_ANALYZE*/
 
-CartesianPeriodic = GETLOGICAL('Part-CartesianPeriodic','.FALSE.')
-IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('Part-FastPeriodic','.FALSE.')
+CartesianPeriodic = GETLOGICAL('Part-CartesianPeriodic')
+IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('Part-FastPeriodic')
 
+! method from xPhysic to parameter space
 IF (UseCurveds) THEN ! don't use RefMappingGuess=1, because RefMappingGuess is only best for linear cubical elements
   ! curved elements can be stronger deformed, hence, a better guess can be used
   ! RefMappingGuess 2,3 searches the closest Gauss/CL points of the considered element. This point is used as the initial value for
@@ -415,7 +414,7 @@ IF((RefMappingGuess.EQ.1).AND.(UseCurveds)) THEN
   SWRITE(UNIT_stdOut,'(A)')' WARNING: read-in [RefMappingGuess=1] when using [UseCurveds=T] may create problems!'
 END IF
 
-RefMappingEps   = GETREAL('RefMappingEps','1e-4')
+RefMappingEps   = GETREAL('RefMappingEps')
 epsInCell       = SQRT(3.0*RefMappingEps)
 
 IF((RefMappingGuess.LT.1).OR.(RefMappingGuess.GT.4))THEN
@@ -518,19 +517,18 @@ SELECT CASE(TrackingMethod)
     CALL BARRIER_AND_SYNC(SideSlabNormals_Shared_Win   ,MPI_COMM_SHARED)
     CALL BARRIER_AND_SYNC(SideSlabIntervals_Shared_Win ,MPI_COMM_SHARED)
     CALL BARRIER_AND_SYNC(BoundingBoxIsEmpty_Shared_Win,MPI_COMM_SHARED)
-    CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /* USE_MPI */
-#if CODE_ANALYZE
-    ! TODO: bounding box volumes must be calculated for all unique sides.
-    offsetSideID = ElemInfo_Shared(SideIf
-    DO iSide = offsetMPISides_YOUR,LastSide
-      dx = ABS(SideSlabIntervals(2)-SideSlabIntervals(1))
-      dy = ABS(SideSlabIntervals(4)-SideSlabIntervals(3))
-      dz = ABS(SideSlabIntervals(6)-SideSlabIntervals(5))
-      SideID = SideInfo
-      ! SideBoundingBoxVolume(SideID)=dx*dy*dz
-    END DO
-#endif /*CODE_ANALYZE*/
+! #if CODE_ANALYZE
+!     ! TODO: bounding box volumes must be calculated for all unique sides.
+!     offsetSideID = ElemInfo_Shared(SideIf
+!     DO iSide=offsetMPISides_YOUR,LastSide
+!       dx=ABS(SideSlabIntervals(2)-SideSlabIntervals(1))
+!       dy=ABS(SideSlabIntervals(4)-SideSlabIntervals(3))
+!       dz=ABS(SideSlabIntervals(6)-SideSlabIntervals(5))
+!       SideID = SideInfo
+!       SideBoundingBoxVolume(SideID)=dx*dy*dz
+!     END DO
+! #endif /*CODE_ANALYZE*/
 
     ! Compute element bary and element radius for node elements (with halo region)
     CALL BuildElementOriginShared()

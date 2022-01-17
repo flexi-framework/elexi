@@ -80,7 +80,7 @@ IF (GEO%nPeriodicVectors.GT.0) THEN
   ALLOCATE(PartShiftVector(1:3,1:PDM%maxParticleNumber))
   PartShiftVector = 0.
 END IF
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 END SUBROUTINE InitPeriodicBC
 

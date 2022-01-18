@@ -61,10 +61,12 @@ REAL,POINTER,DIMENSION(:,:,:,:,:)        :: Elem_xGP_Shared
 REAL,POINTER,DIMENSION(:,:,:,:,:,:)      :: dXCL_NGeo_Shared   ! Jacobi matrix of the mapping P\in NGeo
 
 ! FIBGM
-INTEGER,ALLOCPOINT,DIMENSION(:,:,:)      :: FIBGM_nTotalElems  !> FastInitBackgroundMesh of global domain
 INTEGER,ALLOCPOINT,DIMENSION(:,:,:)      :: FIBGM_nElems       !> FastInitBackgroundMesh of compute node
 INTEGER,ALLOCPOINT,DIMENSION(:,:,:)      :: FIBGM_offsetElem   !> element offsets in 1D FIBGM_Element_Shared array
 INTEGER,ALLOCPOINT,DIMENSION(:)          :: FIBGM_Element      !> element offsets in 1D FIBGM_Element_Shared array
+#if USE_MPI
+INTEGER,ALLOCPOINT,DIMENSION(:,:,:)      :: FIBGM_nTotalElems  !> FastInitBackgroundMesh of global domain
+#endif /*USE_MPI*/
 
 LOGICAL,ALLOCPOINT,DIMENSION(:)          :: ElemCurved         !> flag if an element is curved
 

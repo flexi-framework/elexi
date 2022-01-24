@@ -371,13 +371,13 @@ DO SideID=1,nBCSides
       ! find the side with minimum distance
       dist2RP(iRP)=Winner_Dist2
       NormVecRP(:,iRP)=-NormVecWinner
-!       SWRITE(UNIT_StdOut,'(A,I4,A,3F8.4,A,3F8.4,A)')' Projected RP ',iRP,' with coordinates ',aRP%x,' to ',ARP%xF,'.'
+!       SWRITE(UNIT_stdOut,'(A,I4,A,3F8.4,A,3F8.4,A)')' Projected RP ',iRP,' with coordinates ',aRP%x,' to ',ARP%xF,'.'
     END IF
   END DO! iRP=1,nRP
 END DO! SideID=1,nBCSides
 
-SWRITE(UNIT_StdOut,'(A)')' done.'
-SWRITE(UNIT_StdOut,'(A,F15.8)')'  Max. distance: ',SQRT(MAXVAL(dist2RP))
+SWRITE(UNIT_stdOut,'(A)')' done.'
+SWRITE(UNIT_stdOut,'(A,F15.8)')'  Max. distance: ',SQRT(MAXVAL(dist2RP))
 END SUBROUTINE ProjectRPtoBC
 
 

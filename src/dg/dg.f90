@@ -240,8 +240,8 @@ USE MOD_Interpolation_Vars  ,ONLY: L_Minus,L_Plus
 USE MOD_Overintegration_Vars,ONLY: OverintegrationType
 USE MOD_Overintegration,     ONLY: Overintegration
 USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
-USE MOD_Testcase            ,ONLY: TestcaseSource
-USE MOD_Testcase_Vars       ,ONLY: doTCSource
+USE MOD_TestCase            ,ONLY: TestcaseSource
+USE MOD_TestCase_Vars       ,ONLY: doTCSource
 USE MOD_Equation            ,ONLY: GetPrimitiveStateSurface,GetConservativeStateSurface
 USE MOD_EOS                 ,ONLY: ConsToPrim
 USE MOD_Exactfunc           ,ONLY: CalcSource

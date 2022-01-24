@@ -54,7 +54,6 @@ USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ElemTimeField,ElemTimePart
 USE MOD_LoadBalance_Vars           ,ONLY: nLoadBalanceSteps,LoadBalanceMaxSteps,NewImbalance,MinWeight,MaxWeight
 USE MOD_LoadBalance_Vars           ,ONLY: CurrentImbalance,MaxWeight,MinWeight
 USE MOD_LoadBalance_Vars           ,ONLY: PerformLoadBalance
-USE MOD_Indicator                  ,ONLY: InitIndicator,FinalizeIndicator
 USE MOD_IO_HDF5                    ,ONLY: ElementOut,FieldOut
 USE MOD_Mesh                       ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars                  ,ONLY: nElems
@@ -76,6 +75,7 @@ USE MOD_Lifting                    ,ONLY: InitLifting
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 USE MOD_FV                         ,ONLY: InitFV,FinalizeFV
+USE MOD_Indicator                  ,ONLY: InitIndicator,FinalizeIndicator
 #endif /* FV_ENABLED */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -126,6 +126,7 @@ CALL FinalizeLifting()
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 CALL FinalizeFV()
+CALL FinalizeIndicator()
 #endif /*PARABOLIC*/
 CALL FinalizeDG()
 CALL FinalizeEquation()
@@ -138,7 +139,6 @@ CALL FinalizeMesh()
 CALL FinalizeSponge()
 CALL FinalizeOverintegration()
 CALL FinalizeFilter()
-CALL FinalizeIndicator()
 CALL FinalizeParticleMPI()
 CALL FinalizeParticles()
 CALL FinalizeMPI()

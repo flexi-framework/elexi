@@ -107,7 +107,7 @@ IF (nUserBCs.GT.0) THEN
     BoundaryName(iBC)   = GETSTR('BoundaryName')
     BoundaryType(iBC,:) = GETINTARRAY('BoundaryType',2) !(/Type,State/)
   END DO
-END IF !nUserBCs>0
+END IF ! nUserBCs.GT.0
 
 ! Read boundary names from data file
 CALL GetDataSize(File_ID,'BCNames',nDims,HSize)
@@ -156,7 +156,7 @@ IF (nUserBCs.GT.0) THEN
   DO iBC=1,nBCs
     IF(BCMapping(iBC) .NE. 0)THEN
       IF((BoundaryType(BCMapping(iBC),1).EQ.1).AND.(BCType(1,iBC).NE.1)) &
-        CALL abort(__STAMP__,&
+        CALL Abort(__STAMP__,&
                    'Remapping non-periodic to periodic BCs is not possible!')
       SWRITE(UNIT_stdOut,'(A,A)')    ' |     Boundary in HDF file found | ',TRIM(BCNames(iBC))
       SWRITE(UNIT_stdOut,'(A,I4,I4)')' |                            was | ',BCType(1,iBC),BCType(3,iBC)
@@ -471,7 +471,7 @@ DO iElem=FirstElemInd,LastElemInd
           aSide%connection%Elem=>GETNEWELEM()
           aSide%NbProc = ELEMIPROC(nbElemID)
 #else
-          CALL abort(__STAMP__, &
+          CALL Abort(__STAMP__, &
             ' ElemID of neighbor not in global Elem list ')
 #endif
         END IF
@@ -789,7 +789,7 @@ INTEGER           :: iProc
 !===================================================================================================================================
 CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
 IF(HSize(1).NE.6) THEN
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
     'ERROR: Wrong size of ElemInfo, should be 6')
 END IF
 CHECKSAFEINT(HSize(2),4)
@@ -808,6 +808,8 @@ CALL DomainDecomposition()
 CALL InitLoadBalanceTracking()
 #else
 !simple partition: nGlobalelems/nprocs, do this on proc 0
+SDEALLOCATE(offsetElemMPI)
+ALLOCATE(offsetElemMPI(0:nProcessors))
 offsetElemMPI=0
 nElems = nGlobalElems/nProcessors
 iElem  = nGlobalElems-nElems*nProcessors

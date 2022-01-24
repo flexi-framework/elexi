@@ -29,17 +29,17 @@ INTERFACE InitTimeDisc
   MODULE PROCEDURE InitTimeDisc
 END INTERFACE
 
-! INTERFACE InitTimeStep
-!   MODULE PROCEDURE InitTimeStep
-! END INTERFACE
+INTERFACE InitTimeStep
+  MODULE PROCEDURE InitTimeStep
+END INTERFACE
 
-! INTERFACE UpdateTimeStep
-!   MODULE PROCEDURE UpdateTimeStep
-! END INTERFACE
+INTERFACE UpdateTimeStep
+  MODULE PROCEDURE UpdateTimeStep
+END INTERFACE
 
-! INTERFACE AnalyzeTimeStep
-!   MODULE PROCEDURE AnalyzeTimeStep
-! END INTERFACE
+INTERFACE AnalyzeTimeStep
+  MODULE PROCEDURE AnalyzeTimeStep
+END INTERFACE
 
 INTERFACE FinalizeTimeDisc
   MODULE PROCEDURE FinalizeTimeDisc
@@ -112,6 +112,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: DFLScale
 USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_TimeDisc_Vars       ,ONLY: t
 #endif /*USE_PARTICLES*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -230,7 +231,7 @@ dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 
 nCalcTimeStep = 0
 dt_minOld     = -999.
-IF (errType.NE.0) CALL abort(__STAMP__,&
+IF (errType.NE.0) CALL Abort(__STAMP__,&
 #if EQNSYSNR == 3
   'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
 #else
@@ -262,7 +263,7 @@ USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
 USE MOD_HDF5_Output         ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
 USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
-USE MOD_TimeDisc_Vars       ,ONLY: iter,maxIter,nCalcTimeStep,nCalcTimeStepMax
+USE MOD_TimeDisc_Vars       ,ONLY: nCalcTimeStep,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if FV_ENABLED
 USE MOD_DG_Vars             ,ONLY: U
@@ -332,7 +333,7 @@ nCalcTimeStep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.))))
 dt_minOld     = dt
 IF (errType.NE.0) THEN
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
 #if EQNSYSNR == 3
   'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
 #else
@@ -352,11 +353,6 @@ IF( LESSEQUALTOLERANCE(dt_Min(DT_ANALYZE), LoadBalanceSample*dt, 1e-5) &
 IF(dt_min(DT_ANALYZE)-dt.LT.dt/100.0 .AND. dt_min(DT_ANALYZE).GT.0) THEN; dt = dt_min(DT_ANALYZE); doAnalyze  = .TRUE.; END IF
 ! Increase time step if the LAST time step would be smaller than dt/100
 IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
-
-IF (iter.EQ.maxIter) THEN
-  tEnd=t; tAnalyze=t; tWriteData=t
-  doAnalyze=.TRUE.; doFinalize=.TRUE.
-END IF
 
 END SUBROUTINE UpdateTimeStep
 
@@ -384,7 +380,7 @@ USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
-USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze
+USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 #if FV_ENABLED
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp
@@ -394,8 +390,8 @@ USE MOD_Indicator           ,ONLY: CalcIndicator
 USE MOD_TimeDisc_Vars       ,ONLY: nCalcTimeStep
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
-USE MOD_PPLimiter    ,ONLY: PPLimiter
-USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
+USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
+USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
 #endif /*PP_LIMITER*/
 #if USE_PARTICLES
 USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime
@@ -421,14 +417,11 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-#if FV_ENABLED
-CALL CalcIndicator(U,t)
-! NOTE: Apply switch and update FV_Elems
-CALL FV_Switch(U,Ut_tmp,AllowToDG=(nCalcTimeStep.LT.1))
-#endif /*FV_ENABLED*/
-#if PP_LIMITER
-IF (DoPPLimiter) CALL PPLimiter()
-#endif /*PP_LIMITER*/
+IF (iter.EQ.maxIter) THEN
+  tEnd=t; tAnalyze=t; tWriteData=t
+  doAnalyze=.TRUE.; doFinalize=.TRUE.
+END IF
+
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 IF (doAnalyze) THEN
 #if USE_PARTICLES
@@ -480,6 +473,9 @@ IF(doAnalyze)THEN
 #if FV_ENABLED
   ! Summation has one more iter step
   CALL FV_Info(iter_analyze+1)
+#endif
+#if PP_LIMITER
+  CALL PPLimiter_Info(iter_analyze+1)
 #endif
 
   ! Visualize data and write solution

@@ -58,11 +58,10 @@ USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
 USE MOD_FV            ,ONLY: FV_Switch
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
 USE MOD_Indicator     ,ONLY: CalcIndicator
-USE MOD_TimeDisc_Vars ,ONLY: nCalcTimestep
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
-USE MOD_PPLimiter    ,ONLY: PPLimiter
-USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
+USE MOD_PPLimiter     ,ONLY: PPLimiter
+USE MOD_Filter_Vars   ,ONLY: DoPPLimiter
 #endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -93,15 +92,15 @@ DO iStage = 1,nRKStages
   ELSE
     CALL VAXPBY(nTotalU,Ut_tmp,Ut,ConstOut=-RKA(iStage)) !Ut_tmp = Ut - Ut_tmp*RKA (iStage)
   END IF
-  CALL VAXPBY(nTotalU,U,Ut_tmp,   ConstIn =b_dt(iStage)) !U      = U  + Ut_tmp*b_dt(iStage)
+  CALL VAXPBY(nTotalU,U,Ut_tmp,   ConstIn =b_dt(iStage)) !U       = U + Ut_tmp*b_dt(iStage)
 
 #if FV_ENABLED
-  ! If UpdateTimeStep is called in next loop, FV_SWITCH is performed after t = t + dt
-  IF (nCalcTimestep.NE.0 .OR. iStage.NE.nRKStages) THEN
-    CALL CalcIndicator(U,t)
-    ! NOTE: Apply switch and update FV_Elems
-    CALL FV_Switch(U,Ut_tmp,AllowToDG=FV_toDGinRK)
-  END IF
+  ! Time needs to be evaluated at the next step because time integration was already performed
+  ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
+  CALL CalcIndicator(U,tFV)
+  ! NOTE: Apply switch and update FV_Elems
+  CALL FV_Switch(U,Ut_tmp,AllowToDG=(iStage.EQ.nRKStages .OR. FV_toDGinRK))
+  END ASSOCIATE
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
@@ -125,10 +124,9 @@ USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
 USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_FV            ,ONLY: FV_Switch
-USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
-USE MOD_Indicator     ,ONLY: CalcIndicator
-USE MOD_TimeDisc_Vars ,ONLY: nCalcTimestep
+USE MOD_FV           ,ONLY: FV_Switch
+USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
+USE MOD_Indicator    ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
 USE MOD_PPLimiter    ,ONLY: PPLimiter
@@ -173,12 +171,12 @@ DO iStage = 1,nRKStages
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                         !U = U + Ut*b_dt(iStage)
 
 #if FV_ENABLED
-  ! If UpdateTimeStep is called in next loop, FV_SWITCH is performed after t = t + dt
-  IF (nCalcTimestep.NE.0 .OR. iStage.NE.nRKStages) THEN
-    CALL CalcIndicator(U,t)
-    ! NOTE: Apply switch and update FV_Elems
-    CALL FV_Switch(U,Uprev,S2,AllowToDG=FV_toDGinRK)
-  END IF
+  ! Time needs to be evaluated at the next step because time integration was already performed
+  ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
+  CALL CalcIndicator(U,t)
+  ! NOTE: Apply switch and update FV_Elems
+  CALL FV_Switch(U,Uprev,S2,AllowToDG=(iStage.EQ.nRKStages .OR. FV_toDGinRK))
+  END ASSOCIATE
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
@@ -284,7 +282,7 @@ ELSE
 #endif
   NewtonConverged = .TRUE.
   IF (CFLScale(0).LT.0.01*CFLScale_Readin(0)) THEN
-    CALL abort(__STAMP__, &
+    CALL Abort(__STAMP__, &
     'Newton not converged with GMRES Iterations of last Newton step and CFL reduction',nInnerGMRES,CFLScale(0)/CFLScale_Readin(0))
   END IF
   SWRITE(*,*) 'Attention: Timestep failed, repeating with dt/2!'

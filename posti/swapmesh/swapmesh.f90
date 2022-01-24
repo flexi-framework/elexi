@@ -239,7 +239,7 @@ CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=NGeo)
 ! Get the number of elements in the mesh file by reading the size of the ElemInfo array
 CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
 IF(HSize(1).NE.6) THEN
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
     'ERROR: Wrong size of ElemInfo, should be 6')
 END IF
 CHECKSAFEINT(HSize(2),4)
@@ -269,7 +269,7 @@ END IF
 
 #if (PP_dim == 2)
 ! If this is a two dimensional calculation, all subsequent operations are performed on the reduced mesh.
-SWRITE(UNIT_StdOut,'(A)') " RUNNING A 2D SIMULATION! "
+SWRITE(UNIT_stdOut,'(A)') " RUNNING A 2D SIMULATION! "
 ! The mesh coordinates read in by the readMesh routine are therefore reduced by one dimension.
 CALL to2D_rank5((/1,0,0,0,1/),(/3,NGeo,NGeo,NGeo,nElems/),4,NodeCoords)
 NodeCoords(3,:,:,:,:) = 0.
@@ -291,7 +291,7 @@ IF (PRESENT(Elem_IJK)) THEN
     ALLOCATE(Elem_IJK(3,nElems))
     CALL ReadArray('Elem_IJK',2,(/3,nElems/),0,2,IntArray=Elem_IJK)
   ELSE
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
     'ERROR: Not a IJK sorted mesh!')
   END IF
 END IF

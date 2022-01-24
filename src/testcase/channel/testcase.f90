@@ -27,9 +27,9 @@
 !> The channel halfwidth is set to 1 and the Reynolds number is thus set with mu0 = 1/Re_tau. Further, rho=1 and the pressure is
 !> computed to obtain the specified Bulk Mach number (Mach=0.1 for the Moser case). Hence, u_tau = tau = -dp/dx = 1 .
 !==================================================================================================================================
-MODULE MOD_Testcase
+MODULE MOD_TestCase
 ! MODULES
-USE MOD_Testcase_Vars
+USE MOD_TestCase_Vars
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -182,15 +182,15 @@ IF (customChannel) THEN
   dpdx     = -(Re_tau**2.)*(mu0**2.)/(rho*delta**3.) !-(Re_tau**2)*(mu0**2)/rho
 
   ! Tell the user the calculated variables to check
-  SWRITE(UNIT_stdOut,'(A,F8.4,A)'       ) ' | Bulk velocity given.          uBulk  =',uBulk,' m/s'
+  SWRITE(UNIT_stdOut,'(A,F8.4,A)'       ) ' | Bulk velocity given.        bulkVel  =',bulkVel,' m/s'
   SWRITE(UNIT_stdOut,'(A,F8.4,A)'       ) ' | Associated pressure gradient. -dp/dx =', dpdx,' Pa s'
-  SWRITE(UNIT_stdOut,'(A,F6.2,A,F7.1,A)') ' | Associated pressure for Mach=',bulkMach,' is ',(uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa,' Pa'
+  SWRITE(UNIT_stdOut,'(A,F6.2,A,F7.1,A)') ' | Associated pressure for Mach=',bulkMach,' is ',pressure,' Pa'
 ELSE
   ! Re_tau^2*rho*nu^2/delta^3
   dpdx = -1.
 
-  SWRITE(UNIT_stdOut,'(A,F6.2)')          ' | Bulk velocity based on initial velocity profile =',uBulk
-  SWRITE(UNIT_stdOut,'(A,F6.2)')          ' | Associated pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
+  SWRITE(UNIT_stdOut,'(A,F6.2)')          ' | Bulk velocity based on initial velocity profile =',bulkVel
+  SWRITE(UNIT_stdOut,'(A,F6.2)')          ' | Associated pressure for Mach = 0.1 is', pressure
 ENDIF
 
 IF(.NOT.MPIRoot) RETURN
@@ -468,4 +468,4 @@ REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting bounda
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 
-END MODULE MOD_Testcase
+END MODULE MOD_TestCase

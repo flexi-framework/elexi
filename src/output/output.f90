@@ -106,6 +106,8 @@ CALL addStrListEntry('ASCIIOutputFormat','tecplot',ASCIIOUTPUTFORMAT_TECPLOT)
 CALL prms%CreateLogicalOption(      'doPrintStatusLine','Print: percentage of time, ...', '.FALSE.')
 CALL prms%CreateLogicalOption(      'WriteStateFiles','Write HDF5 state files. Disable this only for debugging issues. \n'// &
                                                       'NO SOLUTION WILL BE WRITTEN!', '.TRUE.')
+CALL prms%CreateLogicalOption(      'WriteTimeAvgFiles','Write HDF5 time average files. Disable this only for debugging. \n'// &
+                                                      'NO TIME AVERAGE FILES WILL BE WRITTEN!', '.TRUE.')
 END SUBROUTINE DefineParametersOutput
 
 !==================================================================================================================================
@@ -162,6 +164,8 @@ ErrorFiles =GETLOGICAL('ErrorFiles')
 doPrintStatusLine=GETLOGICAL("doPrintStatusLine")
 WriteStateFiles=GETLOGICAL("WriteStateFiles")
 IF (.NOT.WriteStateFiles) CALL PrintWarning("Write of state files disabled!")
+WriteTimeAvgFiles=GETLOGICAL("WriteTimeAvgFiles")
+IF (.NOT.WriteTimeAvgFiles) CALL PrintWarning("Write of time average files disabled!")
 
 
 IF (MPIRoot) THEN
@@ -207,11 +211,14 @@ SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doETA)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Output_Vars , ONLY: doPrintStatusLine
+USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
+#if FV_ENABLED || PP_LIMITER
+USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
+#endif
 #if FV_ENABLED
-USE MOD_Analyze_Vars, ONLY: totalFV_nElems
-USE MOD_FV_Vars     , ONLY: FV_Elems
-USE MOD_Mesh_Vars   , ONLY: nGlobalElems
+USE MOD_Analyze_Vars  ,ONLY: totalFV_nElems
+USE MOD_FV_Vars       ,ONLY: FV_Elems
+USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
 USE MOD_Analyze_Vars, ONLY: totalPP_nElems
@@ -225,29 +232,33 @@ USE MOD_Particle_Vars, ONLY: PDM
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN) :: t      !< current simulation time
-REAL,INTENT(IN) :: dt     !< current time step
-REAL,INTENT(IN) :: tStart !< start time of simulation
-REAL,INTENT(IN) :: tEnd   !< end time of simulation
+REAL,INTENT(IN)             :: t      !< current simulation time
+REAL,INTENT(IN)             :: dt     !< current time step
+REAL,INTENT(IN)             :: tStart !< start time of simulation
+REAL,INTENT(IN)             :: tEnd   !< end time of simulation
 LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage return
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL           :: doETA_loc
-REAL              :: percent,time_remaining,mins,secs,hours,days
-CHARACTER(3)      :: tmpString
-#if FV_ENABLED
-INTEGER           :: FVcounter
-REAL              :: FV_percent
-INTEGER,PARAMETER :: barWidth = 38
+REAL         :: percent,time_remaining,mins,secs,hours,days
+CHARACTER(3) :: tmpString
+#if FV_ENABLED && PP_LIMITER
+INTEGER,PARAMETER :: barWidth = 31
+#elif FV_ENABLED || PP_LIMITER
+INTEGER,PARAMETER :: barWidth = 41
 #else
-INTEGER,PARAMETER :: barWidth = 50
+INTEGER,PARAMETER :: barWidth = 51
+#endif
+#if FV_ENABLED
+INTEGER      :: FVcounter
+REAL         :: FV_percent
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
 INTEGER           :: nParticleOnProc,nParticleInDomain,iPart
 #endif /*USE_PARTICLES*/
 #if PP_LIMITER
-INTEGER           :: PPcounter
-REAL              :: PP_percent
+INTEGER :: PPcounter
+REAL    :: PP_percent
 #endif /*PP_LIMITER*/
 !==================================================================================================================================
 #if FV_ENABLED
@@ -276,7 +287,11 @@ END IF
 #endif
 
 #if PP_LIMITER && USE_MPI
-CALL MPI_REDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+IF (MPIRoot) THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(PPcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
 #endif /*PP_LIMITER && USE_MPI*/
 
 IF(MPIRoot)THEN
@@ -301,7 +316,7 @@ IF(MPIRoot)THEN
 
 #if PP_LIMITER
   PP_percent = REAL(PPcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
+  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
 #endif /*PP_LIMITER*/
 
   ! Status line or standard output
@@ -677,7 +692,7 @@ IF(.NOT.file_exists)THEN ! No restart create new file
        ACCESS = 'SEQUENTIAL'       ,&
        IOSTAT = stat               )
   IF (stat.NE.0) THEN
-    CALL abort(__STAMP__, &
+    CALL Abort(__STAMP__, &
       'ERROR: cannot open '//TRIM(Filename_loc))
   END IF
   ! Create a new file with the CSV or Tecplot header
@@ -737,7 +752,7 @@ OPEN(NEWUNIT  = ioUnit             , &
      RECL     = 50000              , &
      IOSTAT = openStat             )
 IF(openStat.NE.0) THEN
-  CALL abort(__STAMP__, &
+  CALL Abort(__STAMP__, &
     'ERROR: cannot open '//TRIM(Filename_loc))
 END IF
 ! Choose between CSV and tecplot output format

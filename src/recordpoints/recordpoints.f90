@@ -183,11 +183,11 @@ SUBROUTINE ReadRPList(FileString)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_HDF5_Input
-USE MOD_Mesh_Vars             ,ONLY: MeshFile,nGlobalElems
-USE MOD_Mesh_Vars             ,ONLY: OffsetElem
-USE MOD_Mesh_Vars             ,ONLY: nElems
-USE MOD_RecordPoints_Vars     ,ONLY: RP_onProc,L_xi_RP,L_eta_RP,L_zeta_RP
-USE MOD_RecordPoints_Vars     ,ONLY: offsetRP,RP_ElemID,nRP,nGlobalRP
+USE MOD_Mesh_Vars             ,ONLY:MeshFile,nGlobalElems
+USE MOD_Mesh_Vars             ,ONLY:OffsetElem
+USE MOD_Mesh_Vars             ,ONLY:nElems
+USE MOD_RecordPoints_Vars     ,ONLY:RP_onProc,L_xi_RP,L_eta_RP,L_zeta_RP
+USE MOD_RecordPoints_Vars     ,ONLY:offsetRP,RP_ElemID,nRP,nGlobalRP
 #if FV_ENABLED
 USE MOD_RecordPoints_Vars     ,ONLY: FV_RP_ijk
 #endif
@@ -205,12 +205,12 @@ INTEGER                       :: OffsetRPArray(2,nElems)
 REAL,ALLOCATABLE              :: xi_RP(:,:)
 !==================================================================================================================================
 
-IF (MPIRoot) THEN
+IF(MPIRoot)THEN
   IF (.NOT.FILEEXISTS(FileString)) &
     CALL ABORT(__STAMP__,'RPList from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Read recordpoint definitions from data file "'//TRIM(FileString)//'"...'
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Read recordpoint definitions from data file "'//TRIM(FileString)//'" ...'
 
 ! Open data file
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -443,7 +443,7 @@ USE MOD_RecordPoints_Vars     ,ONLY: RP_Buffersize,RP_Maxbuffersize,RP_fileExist
 #if USE_MPI
 USE MOD_RecordPoints_Vars     ,ONLY: RP_COMM
 USE MOD_RecordPoints_Vars     ,ONLY: myRPrank
-#endif
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -556,7 +556,7 @@ END SUBROUTINE WriteRP
 !==================================================================================================================================
 SUBROUTINE FinalizeRecordPoints()
 ! MODULES
-USE MOD_Globals!,                 ONLY: iERROR
+USE MOD_Globals,                 ONLY: iError
 USE MOD_RecordPoints_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -574,7 +574,7 @@ SDEALLOCATE(FV_RP_ijk)
 
 #if USE_MPI
 ! Free MPI communicator
-IF(RP_COMM.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(RP_COMM, IERROR)
+IF(RP_COMM.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(RP_COMM, iError)
 #endif /* USE_MPI */
 
 RecordPointsInitIsDone = .FALSE.

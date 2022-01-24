@@ -1468,7 +1468,7 @@ DO WHILE (associated(current))
     ELSE
       ! no proposal, no default and also not set in parameter file => abort
       IF ((.NOT.opt%hasDefault).AND.(.NOT.opt%isSet)) THEN
-        CALL ABORT(__STAMP__, &
+        CALL Abort(__STAMP__, &
             "Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
         RETURN
       END IF

@@ -230,7 +230,7 @@ END IF
 #if USE_PARTICLES
 IF(NGeoOverride.GT.0)THEN
 #endif /*!USE_PARTICLES*/
-SWRITE(UNIT_stdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
+SWRITE(UNIT_stdOut,'(A3,A30,A3,I0)')' | ','Ngeo',' | ', Ngeo
 #if USE_PARTICLES
 End IF
 #endif /*!USE_PARTICLES*/

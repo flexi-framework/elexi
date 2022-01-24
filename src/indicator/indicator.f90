@@ -28,9 +28,9 @@
 MODULE MOD_Indicator
 ! MODULES
 IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! PRIVATE VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
+
+PRIVATE
+
 INTEGER,PARAMETER :: INDTYPE_DG             = 0
 INTEGER,PARAMETER :: INDTYPE_FV             = 1
 INTEGER,PARAMETER :: INDTYPE_PERSSON        = 2
@@ -39,15 +39,6 @@ INTEGER,PARAMETER :: INDTYPE_DUCROS         = 9
 INTEGER,PARAMETER :: INDTYPE_DUCROSTIMESJST = 10
 INTEGER,PARAMETER :: INDTYPE_HALFHALF       = 3
 INTEGER,PARAMETER :: INDTYPE_CHECKERBOARD   = 33
-
-PUBLIC :: INDTYPE_DG,INDTYPE_FV,INDTYPE_PERSSON,INDTYPE_JAMESON
-PUBLIC :: INDTYPE_DUCROS,INDTYPE_DUCROSTIMESJST,INDTYPE_HALFHALF,INDTYPE_CHECKERBOARD
-!----------------------------------------------------------------------------------------------------------------------------------
-! PRIVATE VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-PRIVATE
-
-LOGICAL :: doCalcIndicator=.FALSE. !< switch whether to compute indicator
 
 INTERFACE InitIndicator
   MODULE PROCEDURE InitIndicator
@@ -68,11 +59,9 @@ INTERFACE DucrosIndicator
 END INTERFACE
 #endif /* PARABOLIC */
 
-#if FV_ENABLED
 INTERFACE JamesonIndicator
   MODULE PROCEDURE JamesonIndicator
 END INTERFACE
-#endif /* FV_ENABLED */
 #endif /* EQNSYSNR == 2 */
 
 
@@ -80,7 +69,6 @@ INTERFACE FinalizeIndicator
   MODULE PROCEDURE FinalizeIndicator
 END INTERFACE
 
-PUBLIC::doCalcIndicator
 PUBLIC::InitIndicator
 PUBLIC::CalcIndicator
 PUBLIC::IndPersson
@@ -153,10 +141,6 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
 IndicatorType = GETINTFROMSTR('IndicatorType')
 SELECT CASE(IndicatorType)
 CASE(INDTYPE_JAMESON)
-#if !(FV_ENABLED)
-  CALL Abort(__STAMP__, &
-      "Jameson indicator only works with FV_ENABLED.")
-#endif
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
   CALL Abort(__STAMP__, &
       "Jameson indicator only works with Navier-Stokes equations.")
@@ -171,10 +155,6 @@ CASE(INDTYPE_DUCROS)
       "Ducros indicator only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
 CASE(INDTYPE_DUCROSTIMESJST)
-#if !(FV_ENABLED)
-  CALL Abort(__STAMP__, &
-      "Ducros*JST indicator only works with FV_ENABLED.")
-#endif
 #if !(PARABOLIC)
   CALL Abort(__STAMP__, &
       "Ducros*JST indicator not available without PARABOLIC!")
@@ -220,9 +200,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Indicator_Vars ,ONLY: IndicatorType,IndValue,IndStartTime
 USE MOD_Mesh_Vars      ,ONLY: offsetElem,Elem_xGP,nElems
-#if FV_ENABLED
 USE MOD_FV_Vars        ,ONLY: FV_Elems,FV_sVdm
-#endif /* FV_ENABLED */
 #if PARABOLIC && EQNSYSNR == 2
 USE MOD_Lifting_Vars   ,ONLY: gradUx,gradUy,gradUz
 #endif
@@ -236,14 +214,13 @@ REAL,INTENT(IN)           :: t                                            !< Sim
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
-#if FV_ENABLED
 REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
-#endif
 REAL,POINTER              :: U_P(:,:,:,:)
 !==================================================================================================================================
+
 ! if time is before IndStartTime return high Indicator value (FV)
 IF (t.LT.IndStartTime) THEN
-  IndValue = 1.E16
+  IndValue = HUGE(1.)
   RETURN
 END IF
 
@@ -254,30 +231,22 @@ CASE(INDTYPE_FV) ! indicator everywhere
   IndValue = 100
 CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   DO iElem=1,nElems
-#if FV_ENABLED
     IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
-#endif
       U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
-#if FV_ENABLED
     ELSE
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
       U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U_DG
     END IF
-#endif
     IndValue(iElem) = IndPersson(U_P)
   END DO ! iElem
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
-#if FV_ENABLED
 CASE(INDTYPE_JAMESON)
   IndValue = JamesonIndicator(U)
-#endif
 #if PARABOLIC
 CASE(INDTYPE_DUCROS)
   IndValue = DucrosIndicator(gradUx,gradUy,gradUz)
-#if FV_ENABLED
 CASE(INDTYPE_DUCROSTIMESJST)
   IndValue = JamesonIndicator(U) * DucrosIndicator(gradUx,gradUy,gradUz)
-#endif /*FV_ENABLED*/
 #endif /*PARABOLIC*/
 #endif /* NAVIER-STOKES */
 CASE(INDTYPE_HALFHALF)  ! half/half
@@ -298,7 +267,7 @@ CASE(INDTYPE_CHECKERBOARD) ! every second element (checkerboard like)
     END IF
   END DO ! iElem = 1, nElems
 CASE DEFAULT ! unknown Indicator Type
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
     "Unknown IndicatorType!")
 END SELECT
 
@@ -400,9 +369,7 @@ FUNCTION DucrosIndicator(gradUx, gradUy, gradUz) RESULT(IndValue)
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: nElems,sJ
 USE MOD_Analyze_Vars       ,ONLY: wGPVol
-#if FV_ENABLED
 USE MOD_FV_Vars            ,ONLY: FV_Elems
-#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -448,7 +415,6 @@ END DO ! iElem
 END FUNCTION DucrosIndicator
 #endif /* PARABOLIC */
 
-#if FV_ENABLED
 !==================================================================================================================================
 !> Indicator by Jameson.
 !==================================================================================================================================
@@ -624,7 +590,6 @@ DO iElem=1,nElems
   IndValue(iElem) = IndValue(iElem) / ElemVol
 END DO ! iElem
 END FUNCTION JamesonIndicator
-#endif
 
 #endif /* EQNSYSNR == 2 */
 
@@ -671,9 +636,6 @@ ELSE
   RETURN
 END IF
 END SUBROUTINE IndFVBoundaries
-
-
-
 
 
 !==================================================================================================================================

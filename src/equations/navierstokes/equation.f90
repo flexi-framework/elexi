@@ -88,7 +88,7 @@ USE MOD_Eos               ,ONLY: InitEos,PrimToCons
 USE MOD_EOS_Vars          ,ONLY: R
 USE MOD_Exactfunc         ,ONLY: InitExactFunc
 USE MOD_ReadInTools       ,ONLY: CountOption,GETREALARRAY,GETSTR
-USE MOD_Testcase          ,ONLY: InitTestcase
+USE MOD_TestCase          ,ONLY: InitTestcase
 USE MOD_Riemann           ,ONLY: InitRiemann
 USE MOD_GetBoundaryFlux,   ONLY: InitBC
 USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
@@ -295,7 +295,7 @@ END SUBROUTINE
 SUBROUTINE FinalizeEquation()
 ! MODULES
 USE MOD_Equation_Vars
-USE MOD_Testcase        ,ONLY: FinalizeTestcase
+USE MOD_TestCase        ,ONLY: FinalizeTestcase
 USE MOD_Riemann         ,ONLY: FinalizeRiemann
 USE MOD_CalcTimeStep    ,ONLY: FinalizeCalctimestep
 #if EDDYVISCOSITY

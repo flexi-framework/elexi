@@ -127,6 +127,9 @@ PreviousTime = -1
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
 CALL CalcIndicator(U,t)
 IF(.NOT.DoRestart)  CALL FV_FillIni()
+! FV_FillIni might still give invalid cells, switch again ...
+CALL CalcIndicator(U,t)
+CALL FV_Switch(U,AllowToDG=.FALSE.)
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
 IF(DoPPLimiter) CALL PPLimiter()
@@ -153,11 +156,11 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' Errors of initial solution:'
 CALL Analyze(t,iter)
 
-! Fill recordpoints buffer (initialization/restart)
-IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
-
 ! compute initial timestep
 CALL InitTimeStep()
+
+! Fill recordpoints buffer (initialization/restart)
+IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
 #if FV_ENABLED
 CALL FV_Info(1_8)
@@ -184,6 +187,9 @@ DO
   ! Update time step
   CALL UpdateTimeStep()
 
+  IF(doCalcTimeAverage) CALL CalcTimeAverage(.FALSE.,dt,t)
+  IF(doTCSource)        CALL CalcForcing(t,dt)
+
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ! Perform Timestep using a global time stepping routine, attention: only RK3 has time dependent BC
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -191,9 +197,6 @@ DO
   iter         = iter         + 1
   iter_analyze = iter_analyze + 1
   t            = t            + dt
-
-  IF(doCalcTimeAverage) CALL CalcTimeAverage(.FALSE.,dt,t)
-  IF(doTCSource)        CALL CalcForcing(t,dt)
 
   ! Perform analysis at the end of the RK loop
   CALL AnalyzeTimeStep()

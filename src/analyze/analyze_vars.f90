@@ -22,7 +22,7 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER              :: NWriteData=1                      !< data output (writing/visualizeing the solution, timeaverages etc.)
+INTEGER              :: nWriteData=1                      !< data output (writing/visualizeing the solution, timeaverages etc.)
                                                           !< is performed every multiple of analyze_dt
 REAL                 :: analyze_dt                        !< time intervall at which analysis routines are called
 REAL                 :: WriteData_dt                      !< time intervall at which solution data is written

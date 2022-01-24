@@ -172,36 +172,37 @@ SUBROUTINE CalcMetrics()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ReadInTools        ,ONLY: GETLOGICAL
+USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
+USE MOD_Interpolation_Vars
+USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
 USE MOD_Mesh_Vars          ,ONLY: NGeo,NGeoRef,nElems,nGlobalElems,offsetElem
-#if PP_dim == 3
-USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
-#endif
 USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,dXCL_N
 USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,Ja_Face
 USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
 USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Mesh_Vars          ,ONLY: scaledJac
+USE MOD_Output_Vars        ,ONLY: doPrintStatusLine
+USE MOD_ReadInTools        ,ONLY: prms,GETLOGICAL
+#if PP_dim == 3
+USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
+#endif
 #if FV_ENABLED
 USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
 USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1
 USE MOD_FillMortar1        ,ONLY: U_Mortar1
-#endif
-USE MOD_Interpolation_Vars
-USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
+#endif /*FV_ENABLED*/
 #if (PP_dim == 3)
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D_XYZ
 #else
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D_XYZ
 #endif
-USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
-USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 #if USE_MPI
 USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE,firstMPISide_YOUR,lastMPISide_YOUR,nSides
 USE MOD_MPI_Vars           ,ONLY: nNbProcs
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-#endif
+#endif /*USE_MPI*/
 #if USE_PARTICLES
 USE MOD_Particle_Mesh_Vars ,ONLY: XCL_NGeo,dXCL_NGeo
 #endif /*PARTICLES*/
@@ -266,7 +267,11 @@ LOGICAL            :: meshCheckRef
 REAL,ALLOCATABLE   :: scaledJacRef(:,:,:)
 REAL               :: SmallestscaledJacRef
 REAL,PARAMETER     :: scaledJacRefTol=0.01
-!===================================================================================================================================
+
+! Output
+REAL              :: percent
+CHARACTER(LEN=20) :: fmtName
+!==================================================================================================================================
 ! Prerequisites
 Metrics_fTilde=0.
 Metrics_gTilde=0.
@@ -344,7 +349,6 @@ DO iElem=1,nElems
     END DO !l=0,N
   END DO; END DO; END DO !i,j,k=0,NGeo
 
-
   ! 1.c)Jacobians! grad(X_1) (grad(X_2) x grad(X_3))
   ! Compute Jacobian on NGeo and then interpolate:
   ! required to guarantee conservativity when restarting with N<NGeo
@@ -418,7 +422,7 @@ DO iElem=1,nElems
     scaledJac(i,j,k,iElem)=detJac_N(1,i,j,k,iElem)/MAXVAL(detJac_N(1,:,:,:,iElem))
     IF(scaledJac(i,j,k,iElem).LT.0.01) THEN
       WRITE(UNIT_stdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac(i,j,k,iElem)
-      CALL abort(__STAMP__,&
+      CALL Abort(__STAMP__,&
         'Scaled Jacobian lower then tolerance in global element:',iElem+offsetElem)
     END IF
   END DO; END DO; END DO !i,j,k=0,N
@@ -590,6 +594,17 @@ DO iElem=1,nElems
 #if USE_PARTICLES
   END ASSOCIATE
 #endif /* USE_PARTICLES */
+
+  ! Print CalcMetrics progress
+  IF (doPrintStatusLine .AND. MPIRoot) THEN
+    percent = REAL(iElem)/REAL(nElems)*100.
+    WRITE(fmtName,*) prms%maxNameLen
+    WRITE(UNIT_stdOut,'(A3,A'//ADJUSTL(fmtName)//',A2,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO')    &
+    ' | ','Calculating Metrics',' |',     &
+      REPEAT('=',MAX(CEILING(percent*(prms%maxValueLen+2)/100.)-1,0)),'>',&
+      REPEAT(' ',(prms%maxValueLen+2)-MAX(CEILING(percent*(prms%maxValueLen+2)/100.),0)),'| [',percent,'%] ',&
+    ACHAR(13) ! ACHAR(13) is carriage return
+  END IF
 END DO !iElem=1,nElems
 
 #if USE_MPI

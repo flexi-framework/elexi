@@ -19,10 +19,10 @@
 #endif
 
 !==================================================================================================================================
-!> Ercoftac periodic hill testcase 
+!> Ercoftac periodic hill testcase
 !> http://www.kbwiki.ercoftac.org/w/index.php/Abstr:2D_Periodic_Hill_Flow
 !==================================================================================================================================
-MODULE MOD_Testcase
+MODULE MOD_TestCase
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -139,7 +139,7 @@ massFlowBC=-1
 DO i=1,nBCs
   IF(TRIM(BoundaryName(i)).EQ.TRIM(massFlowBCName)) massFlowBC=i
 END DO
-IF(massFlowBC.EQ.-1) CALL abort(__STAMP__,'No inflow BC found.')
+IF(massFlowBC.EQ.-1) CALL Abort(__STAMP__,'No inflow BC found.')
 
 IF(.NOT.MPIRoot) RETURN
 
@@ -213,7 +213,7 @@ h=max(0.,&
 ELSEIF(xloc.GT.54.)THEN
 h=  0.
 ELSE
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
              'Wrong hill geometry')
 END IF
 h=h/28.
@@ -434,4 +434,4 @@ REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting bounda
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 
-END MODULE MOD_Testcase
+END MODULE MOD_TestCase

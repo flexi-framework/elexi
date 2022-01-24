@@ -363,7 +363,6 @@ ELSE ! N_in>1
   cheb_tmp=2.*atan(1.)/REAL(N_in+1) ! pi/(2N+2)
   DO iGP=0,(N_in+1)/2-1 !since points are symmetric, only left side is computed
     xGP(iGP)=-COS(cheb_tmp*REAL(2*iGP+1)) !initial guess
-    ! xGPtemp(iGP)=cheb_tmp*REAL(2*iGP+1) !initial guess
     ! Newton iteration
     DO iter=0,nIter
       ! CALL LegendrePolynomialAndDerivative(N_in+1,-COS(xGPtemp(iGP)),L_Np1,Lder_Np1)
@@ -387,7 +386,7 @@ ELSE ! N_in>1
         xGP(iGP)=xGP(iGP)+dx
         IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
       END DO !iter
-      CALL abort(__STAMP__,&
+      CALL Abort(__STAMP__,&
                  'ERROR: Legendre Gauss nodes could not be computed up to desired precision. Code stopped!')
     END IF ! (iter.GT.nIter)
     CALL LegendrePolynomialAndDerivative(N_in+1,xGP(iGP),L_Np1,Lder_Np1)
@@ -495,7 +494,7 @@ IF(N_in.GT.1)THEN
         xGP(iGP)=xGP(iGP)+dx
         IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
       END DO ! iter
-      CALL abort(__STAMP__,&
+      CALL Abort(__STAMP__,&
                  'ERROR: Legendre Gauss Lobatto nodes could not be computed up to desired precision. Code stopped!')
     END IF ! (iter.GT.nIter)
     CALL qAndLEvaluation(N_in,xGP(iGP),q,qder,L)

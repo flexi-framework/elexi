@@ -143,6 +143,7 @@ SUBROUTINE SigmaModel_Volume()
 USE MOD_PreProc
 USE MOD_Mesh_Vars,         ONLY: nElems
 USE MOD_EddyVisc_Vars,     ONLY: muSGS, CSdeltaS2, maxEddyVisc
+USE MOD_EOS_Vars,          ONLY: mu0
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
 IMPLICIT NONE

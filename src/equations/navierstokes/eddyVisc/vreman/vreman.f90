@@ -98,7 +98,6 @@ END SUBROUTINE InitVreman
 !===================================================================================================================================
 PPURE SUBROUTINE Vreman_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
 ! MODULES
-USE MOD_EddyVisc_Vars,     ONLY:CS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -143,7 +142,8 @@ SUBROUTINE Vreman_Volume()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,         ONLY: nElems
-USE MOD_EddyVisc_Vars,     ONLY: CSdeltaS2, muSGS
+USE MOD_EddyVisc_Vars,     ONLY: CSdeltaS2, muSGS, maxEddyVisc
+USE MOD_EOS_Vars,          ONLY: mu0
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
 IMPLICIT NONE
@@ -157,6 +157,9 @@ DO iElem = 1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CALL Vreman_Point(gradUx(   :,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
                            U(DENS,i,j,k,iElem),      CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
+    IF (muSGS(1,i,j,k,iElem) .GT. maxEddyVisc*mu0 .AND. maxEddyVisc .GT. 0.) THEN
+      muSGS(1,i,j,k,iElem) = maxEddyVisc*mu0
+    END IF
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE Vreman_Volume

@@ -47,11 +47,11 @@ REAL,ALLOCATABLE  :: muSGS_slave (:,:,:,:) !< Sub-grid eddy viscosity on slave s
 REAL,ALLOCATABLE  :: muSGSmax(:)           !< maximum eddy viscosity per element
 REAL              :: CS                    !< Model coefficient for eddy viscosity models
 REAL              :: PrSGS                 !< turbulent Prandtl number for the sub-grid scales
+REAL              :: maxEddyVisc           !< Maximum eddy viscosity compared to physical dynamic viscosity
 
 LOGICAL           :: VanDriest=.FALSE.     !< Logical indicating if Van Driest damping is activated (only use for channel flow)
 LOGICAL           :: SmagorinskyInitIsDone=.FALSE. !< Logical indicating if Smagorinsky model has been initialized
 LOGICAL           :: VremanInitIsDone=.FALSE.      !< Logical indicating if Vreman model has been initialized
 LOGICAL           :: SigmaModelInitIsDone=.FALSE.  !< Logical indicating if sigma model has been initialized
-LOGICAL           :: VremanInitIsDone=.FALSE.      !< Logical indicating if sigma model has been initialized
 
 END MODULE MOD_EddyVisc_Vars

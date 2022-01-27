@@ -156,6 +156,10 @@ INTERFACE FinalizeParameters
   MODULE PROCEDURE FinalizeParameters
 END INTERFACE
 
+INTERFACE PrintOption
+  MODULE PROCEDURE PrintOption
+END INTERFACE
+
 ! PUBLIC :: IgnoredParameters
 PUBLIC :: PrintDefaultParameterFile
 PUBLIC :: CountOption
@@ -173,6 +177,7 @@ PUBLIC :: addStrListEntry
 PUBLIC :: FinalizeParameters
 PUBLIC :: ExtractParameterFile
 PUBLIC :: ModifyParameterFile
+PUBLIC :: PrintOption
 
 TYPE(Parameters) :: prms
 PUBLIC :: prms
@@ -2328,5 +2333,78 @@ NULLIFY(prms%firstLink)
 NULLIFY(prms%lastLink)
 
 END SUBROUTINE FinalizeParameters
+
+
+!==================================================================================================================================
+!> Print name and value for an option to UNIT_StdOut
+!==================================================================================================================================
+SUBROUTINE PrintOption(NameOpt,InfoOpt,IntOpt,RealOpt,LogOpt,StrOpt)
+! MODULES
+USE MOD_Globals               ,ONLY: Abort,MPIRoot
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)            :: NameOpt ! Option name
+CHARACTER(LEN=*),INTENT(IN)            :: InfoOpt ! Option information:
+! optional
+INTEGER,INTENT(IN),OPTIONAL            :: IntOpt  ! Integer value
+REAL,INTENT(IN),OPTIONAL               :: RealOpt ! Real value
+LOGICAL,INTENT(IN),OPTIONAL            :: LogOpt  ! Logical value
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL   :: StrOpt  ! String value
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=20)    :: fmtName
+CHARACTER(LEN=20)    :: fmtValue
+INTEGER              :: Counter
+!==================================================================================================================================
+IF(.NOT.MPIRoot)RETURN
+
+! set length of name
+WRITE(fmtName,*) prms%maxNameLen
+
+! Set format and length for value
+Counter=0
+WRITE(fmtValue,*) prms%maxValueLen
+fmtValue=ADJUSTL(fmtValue)
+IF(PRESENT(RealOpt))THEN
+  IF(prms%maxValueLen.GE.23)THEN
+    fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.14E3'
+  ELSE
+    fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.4E3'
+  END IF
+  Counter=Counter+1
+END IF
+IF(PRESENT(IntOpt))THEN
+  fmtValue='I'//TRIM(fmtValue)
+  Counter=Counter+1
+END IF
+IF(PRESENT(LogOpt))THEN
+  fmtValue='L'//TRIM(fmtValue)
+  Counter=Counter+1
+END IF
+IF(PRESENT(StrOpt))THEN
+  fmtValue='A'//TRIM(fmtValue)
+  Counter=Counter+1
+END IF
+
+IF(Counter.EQ.0)THEN
+  CALL abort(&
+      __STAMP__&
+      ,'PrintOption: format type not known')
+ELSEIF(Counter.GT.1)THEN
+  CALL abort(&
+      __STAMP__&
+      ,'PrintOption: only one option is allowed: [IntOpt,RealOpt,LogOpt]')
+END IF
+
+! write to UNIT_StdOut
+!SWRITE(UNIT_StdOut,'(A3,A'//fmtName//',A3,'//fmtValue//',A3,A7,A3)')' | ',TRIM(NameOpt),' | ',' | ',TRIM('OUTPUT'),' | '
+                    WRITE(UNIT_StdOut,'(A3,A'//TRIM(fmtName)//',A3)',ADVANCE='NO')' | ',TRIM(NameOpt),' | '
+IF(PRESENT(RealOpt))WRITE(UNIT_StdOut,'('//TRIM(fmtValue)//')',ADVANCE='NO')RealOpt
+IF(PRESENT(IntOpt)) WRITE(UNIT_StdOut,'('//TRIM(fmtValue)//')',ADVANCE='NO')IntOpt
+IF(PRESENT(LogOpt)) WRITE(UNIT_StdOut,'('//TRIM(fmtValue)//')',ADVANCE='NO')LogOpt
+IF(PRESENT(StrOpt)) WRITE(UNIT_StdOut,'('//TRIM(fmtValue)//')',ADVANCE='NO')TRIM(StrOpt)
+                    WRITE(UNIT_StdOut,'(A3,A7,A3)')' | ',TRIM(InfoOpt),' | '
+END SUBROUTINE PrintOption
 
 END MODULE MOD_ReadInTools

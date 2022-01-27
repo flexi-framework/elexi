@@ -140,31 +140,31 @@ gnu_build_all:
   <<: *defaults_nightly
   stage: dg_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic -j 6
 
 gnu_timediscs:
   <<: *defaults_nightly
   stage: dg_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/timedisc -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/timedisc -j 6
 
 gnu_convtest:
   <<: *defaults_nightly
   stage: dg_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/convtest -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/convtest -j 6
 
 gnu_parabolic:
   <<: *defaults_nightly
   stage: dg_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/parabolic -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/parabolic -j 6
 
 gnu_riemann:
   <<: *defaults_nightly
   stage: dg_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/riemann -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/riemann -j 6
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -197,31 +197,31 @@ gnu_tgv:
   <<: *defaults_weekly
   stage: dg_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/tgv -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/tgv -j 6
 
 gnu_naca:
   <<: *defaults_weekly
   stage: dg_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/naca -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/naca -j 6
 
 gnu_fv:
   <<: *defaults_weekly
   stage: dg_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6
 
 gnu_channelRANS:
   <<: *defaults_weekly
   stage: dg_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6
 
 gnu_imperator:
   <<: *defaults_weekly
   stage: dg_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/preconditioner -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/preconditioner -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "particle_weekly": Build and run more complex tests, basically complete simulatons
@@ -271,8 +271,6 @@ github:
   tags:
     - flexitag
   rules:
-    - if: '$DO_DEPLOY'
+    - if: '$DO_DEPLOY && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
   script:
-    - if [ -z "${DO_DEPLOY}" ]; then exit ; fi
-    - if [ $CI_SERVER_URL != /.*\.iag\.uni-stuttgart\.de$/ ]; then exit ; fi
     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git flexi_github ; cd flexi_github ; git push --mirror git@github.com:flexi-framework/flexi.git ; cd ../

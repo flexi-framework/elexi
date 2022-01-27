@@ -177,14 +177,14 @@ SANI_particle:
   stage: particle_nightly
   allow_failure: true
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/SANI -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/SANI -j 6
 
 NIG_particle:
   <<: *defaults_nightly
   stage: particle_nightly
   allow_failure: true
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/NIG -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/NIG -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "dg_weekly": Build and run more complex tests, basically complete simulatons
@@ -231,7 +231,7 @@ WEK_particle:
   stage: particle_weekly
   allow_failure: true
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/WEK -j 6; fi
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/WEK -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf

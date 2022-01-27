@@ -450,9 +450,6 @@ SUBROUTINE DetermineInitialParticleNumber()
 USE MOD_Globals
 USE MOD_Particle_Mesh_Vars  ,ONLY: LocalVolume
 USE MOD_Particle_Vars       ,ONLY: PDM,Species,nSpecies
-#if USE_MPI
-USE MOD_Particle_MPI_Vars   ,ONLY: PartMPI
-#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

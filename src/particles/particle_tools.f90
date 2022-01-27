@@ -56,13 +56,12 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: counter1,i,n
+INTEGER            :: counter,i,n
 INTEGER            :: ElemID
 !===================================================================================================================================
 
 IF(PDM%maxParticleNumber.EQ.0) RETURN
 
-counter1 = 1
 
 IF (useLinkedList) THEN
   PEM%pNumber(:) = 0
@@ -70,22 +69,24 @@ END IF
 
 n = PDM%ParticleVecLength !PDM%maxParticleNumber
 PDM%ParticleVecLength    = 0
-PDM%insideParticleNumber = 0
+counter = 0
 
 IF (useLinkedList) THEN
- DO i=1,n
+ DO i = 1,n
    IF (.NOT.PDM%ParticleInside(i)) THEN
-     PDM%nextFreePosition(counter1) = i
-     counter1 = counter1 + 1
+     counter = counter + 1
+     PDM%nextFreePosition(counter) = i
    ELSE
-     ElemID = PEM%Element(i)
+      ElemID = PEM%Element(i)
+      ! Start of linked list for particles in elem
       IF (PEM%pNumber(ElemID).EQ.0) THEN
-        PEM%pStart(ElemID) = i                          ! Start of Linked List for Particles in Elem
-     ELSE
-        PEM%pNext(PEM%pEnd(ElemID)) = i                 ! Next Particle of same Elem (Linked List)
+        PEM%pStart(ElemID) = i
+      ! Next particle of same elem (linked list)
+      ELSE
+        PEM%pNext(PEM%pEnd(ElemID)) = i
      END IF
-     PEM%pEnd(ElemID)      = i
-     PEM%pNumber(ElemID)   = PEM%pNumber(ElemID) + 1    ! Number of Particles in Element
+     PEM%pEnd(   ElemID)   = i
+     PEM%pNumber(ElemID)   = PEM%pNumber(ElemID) + 1
      PDM%ParticleVecLength = i
    END IF
  END DO
@@ -94,26 +95,27 @@ IF (useLinkedList) THEN
 ELSE
  DO i=1,n
    IF (.NOT.PDM%ParticleInside(i)) THEN
-     PDM%nextFreePosition(counter1) = i
-     counter1 = counter1 + 1
+     counter = counter + 1
+     PDM%nextFreePosition(counter) = i
    ELSE
      PDM%ParticleVecLength = i
    END IF
  END DO
 ENDIF
 
-PDM%insideParticleNumber    = PDM%ParticleVecLength - counter1+1
 PDM%CurrentNextFreePosition = 0
 
+! Positions after ParticleVecLength in freePosition
 DO i = n+1,PDM%maxParticleNumber
- PDM%nextFreePosition(counter1) = i
- counter1 = counter1 + 1
+  counter = counter + 1
+  PDM%nextFreePosition(counter) = i
 END DO
 
-PDM%nextFreePosition(counter1:PDM%MaxParticleNumber) = 0 ! exists if MaxParticleNumber is reached!!!
-IF (counter1.GT.PDM%MaxParticleNumber) PDM%nextFreePosition(PDM%MaxParticleNumber)=0
+! Set nextFreePosition for occupied slots to zero
+PDM%nextFreePosition(counter+1:PDM%maxParticleNumber) = 0
+! If maxParticleNumber are inside, counter is greater than maxParticleNumber
+IF (counter+1.GT.PDM%MaxParticleNumber) PDM%nextFreePosition(PDM%MaxParticleNumber) = 0
 
-RETURN
 END SUBROUTINE UpdateNextFreePosition
 
 

@@ -13,6 +13,7 @@ CMAKE_DEPENDENT_OPTION(POSTI_CHANNEL_FFT           "Build the channel FFT tool" 
 CMAKE_DEPENDENT_OPTION(POSTI_WALLDISTANCE          "Build the walldistance tool"                        OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_TURBULENCE            "Build the turbulence tool"                          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"                        OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_TODG                  "Build the DG conversion tool"                       OFF "POSTI;FLEXI_FV" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_AVG1D                 "Build the 1D average tool"                          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_HIT_INIT              "Build the HIT initialization tool"                  OFF "POSTI" OFF)
@@ -152,12 +153,17 @@ IF(POSTI_TO3D)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/to3D/CMakeLists.txt)
 ENDIF()
 
+IF(POSTI_TODG)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/toDG/CMakeLists.txt)
+ENDIF()
+
 IF(POSTI_AVG2D)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg2D/CMakeLists.txt)
 ENDIF()
 
 IF(POSTI_AVG1D)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg1D/CMakeLists.txt)
+ENDIF()
 
 IF(POSTI_HIT_INIT OR POSTI_HIT_FILTER OR POSTI_HIT_ANALYZE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/hit/CMakeLists.txt)

@@ -258,8 +258,6 @@ END TYPE
 
 TYPE (tParticleDataManagement)           :: PDM
 
-REAL                                     :: DelayTime
-
 LOGICAL                                  :: ParticlesInitIsDone=.FALSE.
 
 LOGICAL                                  :: DoSurfaceFlux                    ! Flag for emitting by SurfaceFluxBCs

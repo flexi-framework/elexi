@@ -141,10 +141,6 @@ CALL prms%CreateLogicalOption(      'Part-WritePartDiam'       , 'Flag to enable
 CALL prms%CreateLogicalOption(      'Part-RandomPartDiam'      , 'Flag to enable random particle diameter with a certain variance' &
                                                                , '.FALSE.')
 
-CALL prms%CreateRealOption(         'Part-DelayTime'           , "During delay time the particles won't be moved so the fluid "  //&
-                                                                 'field can be evolved'                                            &
-                                                               , '0.')
-
 CALL prms%CreateRealArrayOption(    'Part-Gravity'             , 'Gravitational acceleration as vector'                            &
                                                                , '0. , 0. , 0.')
 
@@ -1763,7 +1759,6 @@ SUBROUTINE InitializeVariablesTimeStep()
 USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
-! USE MOD_Particle_Timedisc_Vars,  ONLY: useManualTimeStep,ManualTimeStep
 USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
 USE MOD_TimeDisc_Vars,           ONLY: RKA,nRKStages
 ! IMPLICIT VARIABLE HANDLING
@@ -1790,10 +1785,6 @@ DO iStage_loc=1,nRKStages
     Pa_rebuilt_coeff(iStage_loc) = 1. - RKA(iStage_loc)*Pa_rebuilt_coeff(iStage_loc-1)
   END IF
 END DO
-
-
-! Time delay before initial particle inserting
-DelayTime         = GETREAL(   'Part-DelayTime'    ,'0.')
 
 END SUBROUTINE InitializeVariablesTimeStep
 

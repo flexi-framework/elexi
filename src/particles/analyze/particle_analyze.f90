@@ -389,7 +389,6 @@ USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif /*USE_LOADBALANCE*/
 USE MOD_Part_RHS            ,ONLY: CalcSourcePart
 USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
-USE MOD_Particle_Vars       ,ONLY: DelayTime
 USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeRHS,ParticleTimeStep,ParticleTimeStepRK
 USE MOD_TimeDisc_Vars       ,ONLY: t,CurrentStage,dt
 #if USE_MPI
@@ -413,24 +412,22 @@ ELSE
   CALL ParticleTimeStepRK(t,currentStage)
 END IF
 
-IF (t.GE.DelayTime) THEN
 #if USE_MPI
 #if USE_LOADBALANCE
-  CALL LBStartTime(tLBStart)
+CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
-  ! send number of particles
-  CALL SendNbOfParticles()
-  ! finish communication of number of particles and send particles
-  CALL MPIParticleSend()
-  ! receive particles, locate and finish communication
-  CALL MPIParticleRecv()
+! send number of particles
+CALL SendNbOfParticles()
+! finish communication of number of particles and send particles
+CALL MPIParticleSend()
+! receive particles, locate and finish communication
+CALL MPIParticleRecv()
 #if USE_LOADBALANCE
-  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
+CALL LBPauseTime(LB_PARTCOMM,tLBStart)
 #endif /*USE_LOADBALANCE*/
 #endif /*USE_MPI*/
-  ! find next free position in particle array
-  CALL UpdateNextFreePosition()
-END IF
+! find next free position in particle array
+CALL UpdateNextFreePosition()
 
 END SUBROUTINE ParticleAnalyzeTimeUpdate
 

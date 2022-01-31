@@ -195,7 +195,7 @@ USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
 USE MOD_Particle_Globals       ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists,EmissionTime
 USE MOD_Particle_Timedisc_Vars ,ONLY: RKdtFrac,RKdtFracTotal
-USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PartSpecies,PDM,DelayTime,sumOfMatchedParticlesSpecies
+USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PartSpecies,PDM,sumOfMatchedParticlesSpecies
 USE MOD_Particle_Vars          ,ONLY: DoPoissonRounding,DoTimeDepInflow,doPartIndex,PartIndex
 USE MOD_Timedisc_Vars          ,ONLY: dt,t,RKc,nRKStages,currentStage
 IMPLICIT NONE
@@ -296,8 +296,8 @@ DO i = 1,nSpecies
             RiseTime = Species(i)%Init(iInit)%InflowRiseTime
 
             ! ramp up the particle insertion by increasing the RiseFactor depending on time
-            IF (RiseTime.GT.0. .AND. t-DelayTime.LT.RiseTime) THEN
-              RiseFactor = (t-DelayTime)/RiseTime
+            IF (RiseTime.GT.0. .AND. t.LT.RiseTime) THEN
+              RiseFactor = t/RiseTime
             ELSE
               RiseFactor = 1.
             END IF
@@ -321,8 +321,8 @@ DO i = 1,nSpecies
         ELSE
           ! linear rise of inflow
           RiseTime = Species(i)%Init(iInit)%InflowRiseTime
-          IF (RiseTime.GT.0. .AND. t-DelayTime.LT.RiseTime) THEN
-            RiseFactor = (t-DelayTime)/RiseTime
+          IF (RiseTime.GT.0. .AND. t.LT.RiseTime) THEN
+            RiseFactor = t/RiseTime
           ELSE
             RiseFactor = 1.
           END IF

@@ -179,6 +179,11 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     IF (locnPart.GT.0) THEN
       PartState(1:PP_nVarPart_loc,1:locnPart) = PartData(1:PP_nVarPart_loc,offsetnPart+1:offsetnPart+locnPart)
       PartSpecies(                1:locnPart) = INT(PartData(PP_nVarPart_loc+1,offsetnPart+1:offsetnPart+locnPart))
+      ! Sanity check: SpecID > 0
+      IF (ANY(PartSpecies(1:locnPart).LE.0)) THEN
+        IPWRITE(UNIT_StdOut,'(I0,A,I0,A,I0,A,3(ES25.14E3),A,I0)') "Warning: Found particle in restart file with SpecID.LE.0"
+        CALL Abort(__STAMP__,'Found particle in restart file with species ID zero, which indicates a corrupted restart file.')
+      END IF
       ! For old files, where no particle diameter was saved
       IF (ANY(PartState(PART_DIAM,1:locnPart).EQ.0.)) THEN
         DO iPart = 1,locnPart

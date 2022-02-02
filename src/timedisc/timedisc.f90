@@ -53,7 +53,7 @@ USE MOD_Overintegration_Vars,ONLY: OverintegrationType
 USE MOD_Predictor           ,ONLY: FillInitPredictor
 USE MOD_RecordPoints        ,ONLY: RecordPoints
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
-USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
+USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime,FlushInitialState
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
 USE MOD_TimeDisc_Functions  ,ONLY: InitTimeStep,UpdateTimeStep,AnalyzeTimeStep
 USE MOD_TestCase_Vars       ,ONLY: doTCSource
@@ -145,7 +145,7 @@ END IF
 CALL AnalyzeTestCase(t,.FALSE.)
 
 ! Write the state at time=0, i.e. the initial condition
-CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.FALSE.)
+IF((.NOT.DoRestart).OR.FlushInitialState) CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.FALSE.)
 CALL Visualize(t,U)
 
 ! No computation needed if tEnd = tStart!

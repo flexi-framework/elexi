@@ -118,6 +118,7 @@ USE MOD_2D
 USE MOD_Particle_Mesh      ,ONLY:InitParticleMeshBasis
 USE MOD_Particle_Mesh_Vars ,ONLY:NGeoOverride,meshScale
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

@@ -720,8 +720,9 @@ END SUBROUTINE MarkWriteSuccessfull
 SUBROUTINE FlushFiles(FlushTime_In)
 ! MODULES
 USE MOD_Globals
-USE MOD_Output_Vars ,ONLY: ProjectName
-USE MOD_HDF5_Input  ,ONLY: GetNextFileName
+USE MOD_Output_Vars      ,ONLY: ProjectName
+USE MOD_HDF5_Input       ,ONLY: GetNextFileName
+USE MOD_Restart_Vars     ,ONLY: DoRestart,FlushInitialState
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -731,7 +732,7 @@ REAL,INTENT(IN),OPTIONAL :: FlushTime_In     !< Time to start flush
 ! LOCAL VARIABLES
 INTEGER                  :: stat,ioUnit
 REAL                     :: FlushTime
-CHARACTER(LEN=255)       :: FileName,InputFile,NextFile
+CHARACTER(LEN=255)       :: InputFile,NextFile
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
 
@@ -741,21 +742,15 @@ IF (.NOT.PRESENT(FlushTime_In)) THEN
 ELSE
   FlushTime=FlushTime_In
 END IF
-FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',FlushTime))//'.h5'
+NextFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',FlushTime))//'.h5'
 
 ! Delete state files
-InputFile=TRIM(FileName)
-! Read calculation time from file
-CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
-! Delete File - only root
-stat=0
-OPEN ( NEWUNIT= ioUnit,         &
-       FILE   = InputFile,      &
-       STATUS = 'OLD',          &
-       ACTION = 'WRITE',        &
-       ACCESS = 'SEQUENTIAL',   &
-       IOSTAT = stat          )
-IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
+! If the original restart file is not to be deleted, skip this file and go to the next one
+IF (DoRestart.AND.(.NOT.FlushInitialState)) THEN
+  ! Read calculation time from file
+  CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
+END IF ! .NOT.FlushInitialState
+
 DO
   InputFile=TRIM(NextFile)
   ! Read calculation time from file
@@ -775,6 +770,43 @@ END DO
 WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')'DONE'
 
 END SUBROUTINE FlushFiles
+
+
+!SUBROUTINE RemoveHDF5(InputFile)
+!!===================================================================================================================================
+!! Deletes all HDF5 output files, beginning from time Flushtime
+!!===================================================================================================================================
+!! MODULES
+!USE MOD_Globals
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT VARIABLES
+!CHARACTER(LEN=*),INTENT(IN) :: InputFile
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! OUTPUT VARIABLES
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!INTEGER                  :: stat,ioUnit
+!!===================================================================================================================================
+!! Only MPI root does the killing
+!IF(.NOT.MPIRoot) RETURN
+
+!WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' DELETING HDF5 FILE ['//TRIM(InputFile)//']...'
+
+!! Delete File - only root
+!stat=0
+!OPEN ( NEWUNIT= ioUnit,         &
+!       FILE   = TRIM(InputFile),&
+!       STATUS = 'OLD',          &
+!       ACTION = 'WRITE',        &
+!       ACCESS = 'SEQUENTIAL',   &
+!       IOSTAT = stat          )
+!IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
+!IF(iError.NE.0) WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '**** FAILED to remove ['//TRIM(InputFile)//'] with iError.NE.0 ****'
+!WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')'DONE'
+
+!END SUBROUTINE RemoveHDF5
 
 
 !==================================================================================================================================

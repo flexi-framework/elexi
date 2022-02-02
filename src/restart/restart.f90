@@ -74,6 +74,8 @@ CALL prms%CreateRealOption(   'RestartMuTilda',   "Constant mu_tilda to be appli
 CALL prms%CreateIntOption(    'NFVRestartSuper',  "Polynomial degree for equidistant supersampling of FV subcells when restarting&
                                                    &on a different polynomial degree. Default 2*MAX(N,NRestart).")
 #endif
+CALL prms%CreateLogicalOption('FlushInitialState',"Check whether (during restart) the statefile from which the restart is performed&
+                                                  &should be deleted.", '.FALSE.')
 END SUBROUTINE DefineParametersRestart
 
 
@@ -307,6 +309,9 @@ IF(DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(Nod
 ELSE
   InterpolateSolution=.FALSE.
 END IF
+
+! Check whether (during restart) the statefile from which the restart is performed should be deleted
+FlushInitialState = GETLOGICAL('FlushInitialState')
 
 RestartInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT RESTART DONE!'

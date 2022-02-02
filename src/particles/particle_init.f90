@@ -765,6 +765,7 @@ SUBROUTINE AllocateParticleArrays()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ReadInTools
+USE MOD_Particle_Memory        ,ONLY: VerifyMemUsage
 USE MOD_Particle_Vars
 #if USE_FAXEN_CORR
 USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
@@ -777,9 +778,14 @@ USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: ALLOCSTAT
+INTEGER(KIND=8)               :: ArraySize
 !===================================================================================================================================
 ! Allocate array to hold particle properties
+ArraySize = INT(((2.*REAL(PP_nVarPart) + REAL(PP_nVarPartRHS) + 6.)*SIZE_REAL + &
+                  5.*SIZE_INT          + 2.*SIZE_LOG)              *PDM%maxParticleNumber,KIND=8)
+IF (.NOT.VerifyMemUsage(ArraySize)) &
+  CALL Abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays. Array size too large!')
+
 ALLOCATE(PartState(1:PP_nVarPart,1:PDM%maxParticleNumber),    &
          PartReflCount(          1:PDM%maxParticleNumber),    &
          LastPartPos(        1:3,1:PDM%maxParticleNumber),    &
@@ -794,10 +800,7 @@ ALLOCATE(PartState(1:PP_nVarPart,1:PDM%maxParticleNumber),    &
          PDM%IsNewPart(          1:PDM%maxParticleNumber),    &
 ! Allocate particle-to-element-mapping (PEM) arrays
          PEM%Element(            1:PDM%maxParticleNumber),    &
-         PEM%lastElement(        1:PDM%maxParticleNumber),    &
-         STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) &
-  CALL ABORT(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays!')
+         PEM%lastElement(        1:PDM%maxParticleNumber))
 
 PDM%ParticleInside(1:PDM%maxParticleNumber)  = .FALSE.
 PDM%IsNewPart(     1:PDM%maxParticleNumber)  = .FALSE.
@@ -813,12 +816,19 @@ Pt_temp                                      = 0
 PartPosRef                                   =-888.
 
 IF(doPartIndex) THEN
-  ALLOCATE(PartIndex(1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
+  IF (.NOT.VerifyMemUsage(INT(PDM%maxParticleNumber*SIZE_INT,KIND=8))) &
+    CALL Abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays. Array size too large!')
+
+  ALLOCATE(PartIndex(1:PDM%maxParticleNumber))
   PartIndex                                  = 0
 END IF
 
 ! Extended RHS
 #if USE_FAXEN_CORR
+ArraySize = INT((9*3*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*nElems)*SIZE_REAL*PDM%maxParticleNumber,KIND=8)
+IF (.NOT.VerifyMemUsage(ArraySize)) &
+  CALL Abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays. Array size too large!')
+
 ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUy2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUz2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
@@ -829,10 +839,7 @@ ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
          gradUy_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &
          gradUy_slave_loc(  1:3,0:PP_N,0:PP_NZ,1:nSides),  &
          gradUz_master_loc( 1:3,0:PP_N,0:PP_NZ,1:nSides),  &
-         gradUz_slave_loc(  1:3,0:PP_N,0:PP_NZ,1:nSides),  &
-         STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) &
-  CALL ABORT(__STAMP__,'ERROR in particle_init.f90: Cannot allocate extended particle arrays!')
+         gradUz_slave_loc(  1:3,0:PP_N,0:PP_NZ,1:nSides))
 #endif /* USE_FAXEN_CORR */
 
 ! Basset force

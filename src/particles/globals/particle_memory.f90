@@ -24,6 +24,11 @@ USE MOD_Globals
 USE MPI
 #endif /*MPI*/
 IMPLICIT NONE
+PRIVATE
+
+INTERFACE VerifyMemUsage
+  MODULE PROCEDURE VerifyMemUsage
+END INTERFACE
 
 INTERFACE Allocate_Safe
   MODULE PROCEDURE Allocate_Safe_Real_2
@@ -39,11 +44,55 @@ INTERFACE
   END SUBROUTINE processmemusage
 END INTERFACE
 
+PUBLIC :: VerifyMemUsage
 PUBLIC :: Allocate_Safe
 PUBLIC :: processmemusage
 !===================================================================================================================================
 
 CONTAINS
+
+FUNCTION VerifyMemUsage(ArraySize)
+!==================================================================================================================================
+!> Verifies sufficient memory is available to allocate
+!> CAVE: Currently assumes each rank is calling with the same size
+!==================================================================================================================================
+! MODULES
+USE MOD_Globals
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER(KIND=8)                           :: ArraySize
+LOGICAL                                   :: VerifyMemUsage
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                      :: memory(3)
+INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+#if !USE_MPI
+INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+#endif /*!USE_MPI*/
+!==================================================================================================================================
+
+! Find memory usage and requirements
+CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+
+ASSOCIATE(nProc => INT(nComputeNodeProcessors,KIND=8))
+
+! Compare requested size against available memory
+SWRITE(*,*) 'ArraySize*nProc,memory(2)*kByte:', ArraySize*nProc,memory(2)*kByte
+IF (ArraySize*nProc .LT. memory(2)*kByte) THEN
+  VerifyMemUsage = .TRUE.
+ELSE
+  VerifyMemUsage = .FALSE.
+END IF
+
+END ASSOCIATE
+
+END FUNCTION VerifyMemUsage
+
 
 !==================================================================================================================================
 !> Allocate data after checking for available memory

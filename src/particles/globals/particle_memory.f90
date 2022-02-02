@@ -31,6 +31,10 @@ INTERFACE VerifyMemUsage
 END INTERFACE
 
 INTERFACE Allocate_Safe
+  MODULE PROCEDURE Allocate_Safe_Logical_1
+  MODULE PROCEDURE Allocate_Safe_Int_1
+  MODULE PROCEDURE Allocate_Safe_Int_2
+  MODULE PROCEDURE Allocate_Safe_Real_1
   MODULE PROCEDURE Allocate_Safe_Real_2
   MODULE PROCEDURE Allocate_Safe_Real_3
 END INTERFACE Allocate_Safe
@@ -98,6 +102,206 @@ END FUNCTION VerifyMemUsage
 !> Allocate data after checking for available memory
 !> CAVE: Currently assumes each rank is calling with the same size
 !==================================================================================================================================
+SUBROUTINE Allocate_Safe_Logical_1(Array,nVal,STAT)
+! MODULES
+USE MOD_Globals
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+LOGICAL,ALLOCATABLE,INTENT(OUT)           :: Array(:)                 !> Array to be allocated
+INTEGER,INTENT(IN)                        :: nVal(1)                  !> Number of variables in each rank
+INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocation status
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                   :: ALLOCSTAT                !> Allocation status
+REAL                                      :: memory(3)
+INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+#if !USE_MPI
+INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+#endif /*!USE_MPI*/
+!==================================================================================================================================
+
+! Check if array is already allocated
+IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+
+! Find memory usage and requirements
+CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+
+ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
+          VarSize  => INT(KIND(Array),KIND=8),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=8))
+
+! Compare requested size against available memory
+IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
+  ALLOCATE(Array(nVal(1)),STAT=ALLOCSTAT)
+  IF (PRESENT(STAT)) STAT=ALLOCSTAT
+ELSE
+  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+END IF
+
+END ASSOCIATE
+
+END SUBROUTINE Allocate_Safe_Logical_1
+
+
+!==================================================================================================================================
+!> Allocate data after checking for available memory
+!> CAVE: Currently assumes each rank is calling with the same size
+!==================================================================================================================================
+SUBROUTINE Allocate_Safe_Int_1(Array,nVal,STAT)
+! MODULES
+USE MOD_Globals
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,ALLOCATABLE,INTENT(OUT)           :: Array(:)                 !> Array to be allocated
+INTEGER,INTENT(IN)                        :: nVal(1)                  !> Number of variables in each rank
+INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocation status
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                   :: ALLOCSTAT                !> Allocation status
+REAL                                      :: memory(3)
+INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+#if !USE_MPI
+INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+#endif /*!USE_MPI*/
+!==================================================================================================================================
+
+! Check if array is already allocated
+IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+
+! Find memory usage and requirements
+CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+
+ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
+          VarSize  => INT(KIND(Array),KIND=8),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=8))
+
+! Compare requested size against available memory
+IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
+  ALLOCATE(Array(nVal(1)),STAT=ALLOCSTAT)
+  IF (PRESENT(STAT)) STAT=ALLOCSTAT
+ELSE
+  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+END IF
+
+END ASSOCIATE
+
+END SUBROUTINE Allocate_Safe_Int_1
+
+
+!==================================================================================================================================
+!> Allocate data after checking for available memory
+!> CAVE: Currently assumes each rank is calling with the same size
+!==================================================================================================================================
+SUBROUTINE Allocate_Safe_Int_2(Array,nVal,STAT)
+! MODULES
+USE MOD_Globals
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,ALLOCATABLE,INTENT(OUT)           :: Array(:,:)               !> Array to be allocated
+INTEGER,INTENT(IN)                        :: nVal(2)                  !> Number of variables in each rank
+INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocation status
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                   :: ALLOCSTAT                !> Allocation status
+REAL                                      :: memory(3)
+INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+#if !USE_MPI
+INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+#endif /*!USE_MPI*/
+!==================================================================================================================================
+
+! Check if array is already allocated
+IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+
+! Find memory usage and requirements
+CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+
+ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
+          VarSize  => INT(KIND(Array),KIND=8),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=8))
+
+! Compare requested size against available memory
+IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
+  ALLOCATE(Array(nVal(1),nVal(2)),STAT=ALLOCSTAT)
+  IF (PRESENT(STAT)) STAT=ALLOCSTAT
+ELSE
+  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+END IF
+
+END ASSOCIATE
+
+END SUBROUTINE Allocate_Safe_Int_2
+
+
+!==================================================================================================================================
+!> Allocate data after checking for available memory
+!> CAVE: Currently assumes each rank is calling with the same size
+!==================================================================================================================================
+SUBROUTINE Allocate_Safe_Real_1(Array,nVal,STAT)
+! MODULES
+USE MOD_Globals
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,ALLOCATABLE,INTENT(OUT)              :: Array(:)                 !> Array to be allocated
+INTEGER,INTENT(IN)                        :: nVal(1)                  !> Number of variables in each rank
+INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocation status
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                   :: ALLOCSTAT                !> Allocation status
+REAL                                      :: memory(3)
+INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+#if !USE_MPI
+INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+#endif /*!USE_MPI*/
+!==================================================================================================================================
+
+! Check if array is already allocated
+IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+
+! Find memory usage and requirements
+CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+
+ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
+          VarSize  => INT(KIND(Array),KIND=8),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=8))
+
+! Compare requested size against available memory
+IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
+  ALLOCATE(Array(nVal(1)),STAT=ALLOCSTAT)
+  IF (PRESENT(STAT)) STAT=ALLOCSTAT
+ELSE
+  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+END IF
+
+END ASSOCIATE
+
+END SUBROUTINE Allocate_Safe_Real_1
+
+
+!==================================================================================================================================
+!> Allocate data after checking for available memory
+!> CAVE: Currently assumes each rank is calling with the same size
+!==================================================================================================================================
 SUBROUTINE Allocate_Safe_Real_2(Array,nVal,STAT)
 ! MODULES
 USE MOD_Globals
@@ -113,8 +317,7 @@ INTEGER,INTENT(IN)                        :: nVal(2)                  !> Number 
 INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocation status
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                   :: ALLOCSTAT                !> Base pointer, translated to DataPointer later
-! INTEGER                                   :: WIN_SIZE                 !> Size of the allocated memory window
+INTEGER                                   :: ALLOCSTAT                !> Allocation status
 REAL                                      :: memory(3)
 INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
 #if !USE_MPI
@@ -164,8 +367,7 @@ INTEGER,INTENT(IN)                        :: nVal(3)                  !> Number 
 INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocation status
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                   :: ALLOCSTAT                !> Base pointer, translated to DataPointer later
-! INTEGER                                   :: WIN_SIZE                 !> Size of the allocated memory window
+INTEGER                                   :: ALLOCSTAT                !> Allocation status
 REAL                                      :: memory(3)
 INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
 #if !USE_MPI

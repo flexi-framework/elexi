@@ -669,6 +669,7 @@ IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
 doCalcSourcePart        = GETLOGICAL('Part-CalcSource'    ,'.FALSE.')
 doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' ,'.FALSE.')
 doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam','.FALSE.')
+
 CALL AllocateParticleArrays()
 CALL InitializeVariablesRandomNumbers()
 
@@ -781,6 +782,22 @@ USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 INTEGER(KIND=8)               :: ArraySize
 !===================================================================================================================================
 ! Allocate array to hold particle properties
+! CALL Allocate_Safe(PartState    ,(/PP_nVarPart   ,PDM%maxParticleNumber/))
+! CALL Allocate_Safe(PartReflCount,(/               PDM%maxParticleNumber/))
+! CALL Allocate_Safe(LastPartPos  ,(/3             ,PDM%maxParticleNumber/))
+! CALL Allocate_Safe(PartPosRef   ,(/3             ,PDM%MaxParticleNumber/))
+! CALL Allocate_Safe(PartSpecies  ,(/               PDM%maxParticleNumber/))
+! ! Allocate array for Runge-Kutta time stepping
+! CALL Allocate_Safe(Pt           ,(/PP_nVarPartRHS,PDM%maxParticleNumber/))
+! CALL Allocate_Safe(Pt_temp      ,(/PP_nVarPart   ,PDM%maxParticleNumber/))
+! ! Allocate array for particle position in reference coordinates
+! CALL Allocate_Safe(PDM%ParticleInside  ,(/        PDM%maxParticleNumber/))
+! CALL Allocate_Safe(PDM%nextFreePosition,(/        PDM%maxParticleNumber/))
+! CALL Allocate_Safe(PDM%IsNewPart       ,(/        PDM%maxParticleNumber/))
+! ! Allocate particle-to-element-mapping (PEM) arrays
+! CALL Allocate_Safe(PEM%Element         ,(/        PDM%maxParticleNumber/))
+! CALL Allocate_Safe(PEM%lastElement     ,(/        PDM%maxParticleNumber/))
+
 ArraySize = INT(((2.*REAL(PP_nVarPart) + REAL(PP_nVarPartRHS) + 6.)*SIZE_REAL + &
                   5.*SIZE_INT          + 2.*SIZE_LOG)              *PDM%maxParticleNumber,KIND=8)
 IF (.NOT.VerifyMemUsage(ArraySize)) &

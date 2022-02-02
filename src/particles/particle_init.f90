@@ -574,7 +574,11 @@ maxParticleNumberGlobal  = GETREAL('Part-MaxParticleNumber')
 ! Divide by number of processors, but use at least 2 (at least one next free position in the case of MPI)
 maxParticleNumberUniform = MAX(maxParticleNumberGlobal/nProcessors,2.)
 ! Increase the max particle number according to the local volume to account for element size differences
+IF (maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).GT. HUGE(INT(1,KIND=4)) .OR. &
+    maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).LT.-HUGE(INT(1,KIND=4)))     &
+  CALL CollectiveStop(__STAMP__,'maxParticleNumber too big for current number of processors. Decrease maxParticleNumber or increase nProcs!')
 PDM%maxParticleNumber    = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)))
+SWRITE(UNIT_stdOut,'(A,I0)') ' | Max. Particle NUMBER/Proc: ', PDM%maxParticleNumber
 
 IF(TrackingMethod.NE.TRIATRACKING) THEN
   CALL InitParticleSurfaces()

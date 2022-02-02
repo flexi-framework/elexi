@@ -394,7 +394,7 @@ USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
 USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
 #endif /*PP_LIMITER*/
 #if USE_PARTICLES
-USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime
+USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime,UseManualTimeStep
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 ! USE MOD_HDF5_output         ,ONLY: RemoveHDF5
@@ -426,11 +426,13 @@ END IF
 IF (doAnalyze) THEN
 #if USE_PARTICLES
   ! Skip the call, otherwise particles get incremented twice
+  IF (.NOT.UseManualTimeStep) THEN
   PreviousTime = t
 #endif /*USE_PARTICLES*/
   CALL DGTimeDerivative_weakForm(t)
 #if USE_PARTICLES
   PreviousTime = -1
+  END IF
 #endif /*USE_PARTICLES*/
 END IF
 

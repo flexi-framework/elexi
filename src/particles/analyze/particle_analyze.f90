@@ -253,9 +253,6 @@ IF (RecordPart.GT.0) THEN
   CALL ParticleRecord(t,writeToBinary=.TRUE.)
 END IF
 
-! Perform the missing particle increment
-IF (.NOT.UseManualTimeStep .AND. iter.GT.1) CALL ParticleAnalyzeTimeUpdate()
-
 END SUBROUTINE ParticleAnalyze
 
 
@@ -377,59 +374,6 @@ END IF
 #endif /*MPI*/
 
 END SUBROUTINE CalcKineticEnergy
-
-
-
-SUBROUTINE ParticleAnalyzeTimeUpdate()
-!==================================================================================================================================
-!> Displays the actual status of the particle phase in the simulation and counts the number of impacts
-!==================================================================================================================================
-#if USE_LOADBALANCE
-USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
-#endif /*USE_LOADBALANCE*/
-USE MOD_Part_RHS            ,ONLY: CalcSourcePart
-USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
-USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeRHS,ParticleTimeStep,ParticleTimeStepRK
-USE MOD_TimeDisc_Vars       ,ONLY: t,CurrentStage,dt
-#if USE_MPI
-USE MOD_Particle_MPI        ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
-#endif /* USE_MPI */
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-#if USE_LOADBALANCE
-REAL                        :: tLBStart
-#endif /*USE_LOADBALANCE*/
-!==================================================================================================================================
-
-CALL ParticleTimeRHS(t,currentStage,dt)
-IF (currentStage.EQ.1) THEN
-  CALL ParticleTimeStep(t,dt)
-ELSE
-  CALL ParticleTimeStepRK(t,currentStage)
-END IF
-
-#if USE_MPI
-#if USE_LOADBALANCE
-CALL LBStartTime(tLBStart)
-#endif /*USE_LOADBALANCE*/
-! send number of particles
-CALL SendNbOfParticles()
-! finish communication of number of particles and send particles
-CALL MPIParticleSend()
-! receive particles, locate and finish communication
-CALL MPIParticleRecv()
-#if USE_LOADBALANCE
-CALL LBPauseTime(LB_PARTCOMM,tLBStart)
-#endif /*USE_LOADBALANCE*/
-#endif /*USE_MPI*/
-! find next free position in particle array
-CALL UpdateNextFreePosition()
-
-END SUBROUTINE ParticleAnalyzeTimeUpdate
 
 
 SUBROUTINE FinalizeParticleAnalyze()

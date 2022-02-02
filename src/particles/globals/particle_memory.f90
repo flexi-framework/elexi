@@ -86,7 +86,6 @@ CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal 
 ASSOCIATE(nProc => INT(nComputeNodeProcessors,KIND=8))
 
 ! Compare requested size against available memory
-SWRITE(*,*) 'ArraySize*nProc,memory(2)*kByte:', ArraySize*nProc,memory(2)*kByte
 IF (ArraySize*nProc .LT. memory(2)*kByte) THEN
   VerifyMemUsage = .TRUE.
 ELSE

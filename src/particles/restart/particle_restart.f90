@@ -265,7 +265,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     ! Reconstruct the number of particles inserted before restart from the emission rate
     DO iSpec=1,nSpecies
       DO iInit = Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
-        Species(iSpec)%Init(iInit)%InsertedParticle = INT(Species(iSpec)%Init(iInit)%ParticleEmission * RestartTime / Species(iSpec)%Init(iInit)%ParticleEmissionTime,8)
+        Species(iSpec)%Init(iInit)%InsertedParticle = INT(Species(iSpec)%Init(iInit)%ParticleEmission * (RestartTime - EmissionTime) / Species(iSpec)%Init(iInit)%ParticleEmissionTime,8)
       END DO
     END DO
 

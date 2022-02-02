@@ -579,6 +579,7 @@ IF (maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).GT. 
   CALL CollectiveStop(__STAMP__,'maxParticleNumber too big for current number of processors. Decrease maxParticleNumber or increase nProcs!')
 PDM%maxParticleNumber    = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)))
 SWRITE(UNIT_stdOut,'(A,I0)') ' | Max. Particle NUMBER/Proc: ', PDM%maxParticleNumber
+SWRITE(UNIT_stdOut,'(A,I0)') ' | Max. Particle NUMBER/Glob: ', INT(REAL(PDM%maxParticleNumber)*REAL(nProcessors),KIND=8)
 
 IF(TrackingMethod.NE.TRIATRACKING) THEN
   CALL InitParticleSurfaces()

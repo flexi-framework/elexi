@@ -775,9 +775,8 @@ DO i = 1, chunkSize
         END IF ! TrackingMethod.EQ.REFMAPPING
         PEM%Element(ParticleIndexNbr)         = ElemID
       ELSE
-        IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for each processor (",&
-                                                  PDM%MaxParticleNumber*nProcessors," in total)"
-        IPWRITE(UNIT_stdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
+        IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
+        IPWRITE(UNIT_stdOut,'(I0,A)')      " Increase value for [Part-maxParticleNumber]!"
         CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
       END IF
       mySumOfMatchedParticles = mySumOfMatchedParticles + 1
@@ -918,9 +917,8 @@ DO i = 1,TotalNbrOfRecvParts
      END IF ! TrackingMethod.EQ.REFMAPPING
      PEM%Element(ParticleIndexNbr)         = ElemID
   ELSE
-    IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for each processor (",&
-                                              PDM%MaxParticleNumber*nProcessors," in total)"
-    IPWRITE(UNIT_stdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
+    IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
+    IPWRITE(UNIT_stdOut,'(I0,A)')      " Increase value for [Part-maxParticleNumber]!"
     CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
   END IF
   mySumOfMatchedParticles = mySumOfMatchedParticles + 1
@@ -962,8 +960,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
 !        CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),PEM%Element(ParticleIndexNbr))
 !      END IF ! TrackingMethod.EQ.REFMAPPING
     ELSE
-      IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for each processor (",&
-                                                PDM%MaxParticleNumber*nProcessors," in total)"
+      IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
       IPWRITE(UNIT_stdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
       CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
     END IF

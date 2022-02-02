@@ -463,7 +463,7 @@ INTEGER            :: N_Base,nVar_Base,nElems_Base
 CHARACTER(LEN=255) :: NodeType_Base
 REAL,ALLOCATABLE   :: UTmp(:,:,:,:,:),Vdm_NBase_N(:,:)
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A,A)')'  Read Sponge Base Flow from file "',FileName
+SWRITE(UNIT_stdOut,'(A,A)')'  Read Sponge Base Flow from file "',TRIM(FileName)
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_Base,N_Base,nElems_Base,NodeType_Base)
 

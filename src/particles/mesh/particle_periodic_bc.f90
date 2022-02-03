@@ -98,18 +98,16 @@ SUBROUTINE CheckPeriodicVectors()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Mesh_Vars, ONLY: GEO
-!----------------------------------------------------------------------------------------------------------------------------------
+USE MOD_Particle_Globals,            ONLY: ALMOSTZERO
+USE MOD_Particle_Mesh_Vars,          ONLY: GEO
+USE MOD_Particle_Tracking_Vars,      ONLY: CartesianPeriodic
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!LOGICAL                :: directions(1:3)
-!INTEGER                :: iPV
+INTEGER                :: iPV
 REAL                   :: eps(1:3)!,dummy
 !===================================================================================================================================
 
@@ -123,38 +121,91 @@ IF (GEO%nPeriodicVectors.EQ.0) RETURN
 SDEALLOCATE(GEO%DirPeriodicVectors)
 ALLOCATE(GEO%DirPeriodicVectors(1:GEO%nPeriodicVectors))
 
+! CartesianPeriodic and FastPeriodic allow only periodic vectors. Permit some tolerance since vectors are determined based on the
+! mesh node coordinates
+IF (CartesianPeriodic) THEN
+  DO iPV = 1,GEO%nPeriodicVectors
+    ! Periodic vector in x-direction
+    IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(1,iPV))) THEN
+      IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(2,iPV)) .OR. .NOT.ALMOSTZERO(GEO%PeriodicVectors(3,iPV))) &
+        CALL Abort(__STAMP__,'Periodic vector not in Cartesian direction!',iPV)
+
+      GEO%DirPeriodicVectors(iPV) = 1
+      IF (.NOT.GEO%directions(1)) THEN
+        GEO%directions(1) = .TRUE.
+        GEO%PeriodicVectors(2,iPV) = 0.
+        GEO%PeriodicVectors(3,iPV) = 0.
+      ELSE
+        CALL Abort(__STAMP__,'Multiple periodic Vectors in x-direction!',iPV)
+      END IF
+
+    ! Periodic vector in y-direction
+    ELSE IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(2,iPV))) THEN
+      IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(1,iPV)) .OR. .NOT.ALMOSTZERO(GEO%PeriodicVectors(3,iPV))) &
+        CALL Abort(__STAMP__,'Periodic vector not in Cartesian direction!',iPV)
+
+      GEO%DirPeriodicVectors(iPV) = 2
+      IF (.NOT.GEO%directions(2)) THEN
+        GEO%directions(2) = .TRUE.
+        GEO%PeriodicVectors(1,iPV) = 0.
+        GEO%PeriodicVectors(3,iPV) = 0.
+      ELSE
+        CALL Abort(__STAMP__,'Multiple periodic Vectors in x-direction!',iPV)
+      END IF
+
+    ! Periodic vector in z-direction
+    ELSE IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(3,iPV))) THEN
+      IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(1,iPV)) .OR. .NOT.ALMOSTZERO(GEO%PeriodicVectors(2,iPV))) &
+        CALL Abort(__STAMP__,'Periodic vector not in Cartesian direction!',iPV)
+
+      GEO%DirPeriodicVectors(iPV) = 3
+      IF (.NOT.GEO%directions(3)) THEN
+        GEO%directions(3) = .TRUE.
+        GEO%PeriodicVectors(1,iPV) = 0.
+        GEO%PeriodicVectors(2,iPV) = 0.
+      ELSE
+        CALL Abort(__STAMP__,'Multiple periodic Vectors in x-direction!',iPV)
+      END IF
+    ELSE
+      CALL Abort(__STAMP__,'Length of periodic vector = 0!',iPV)
+    END IF
+  END DO
+END IF
+
 ! check if periodic vector is multiple of FIBGM-deltas
 ! some tolerance
-eps(1)=1.E-9*(GEO%FIBGMDeltas(1))
-eps(2)=1.E-9*(GEO%FIBGMDeltas(2))
-eps(3)=1.E-9*(GEO%FIBGMDeltas(3))
+eps(1) = 1.E-9*(GEO%FIBGMDeltas(1))
+eps(2) = 1.E-9*(GEO%FIBGMDeltas(2))
+eps(3) = 1.E-9*(GEO%FIBGMDeltas(3))
 
-IF(ABS(SUM(GEO%PeriodicVectors(1,:))-NINT(SUM(GEO%PeriodicVectors(1,:))/GEO%FIBGMDeltas(1))*GEO%FIBGMDeltas(1)) &
-.GT.eps(1)) THEN
-ERRWRITE(*,*)'SUM(PeriodicVectors(1,:))   =',SUM(GEO%PeriodicVectors(1,:))
-ERRWRITE(*,*)'GEO%FIBGMDeltas(1)          =',GEO%FIBGMDeltas(1)
-ERRWRITE(*,*)'1.E-9*(FIBGMDeltas(1))      =',eps(1)
-ERRWRITE(*,*)'ABS(SUM-NINT(SUM/D(1))*D(1))=',ABS(SUM(GEO%PeriodicVectors(1,:))-&
-                                            NINT(SUM(GEO%PeriodicVectors(1,:))/GEO%FIBGMDeltas(1))*GEO%FIBGMDeltas(1))
-CALL ABORT(__STAMP__,'Periodic Vector in x-direction is not a multiple of FIBGMDeltas!',999, &
-  ABS(SUM(GEO%PeriodicVectors(1,:))-NINT(SUM(GEO%PeriodicVectors(1,:))/GEO%FIBGMDeltas(1))*GEO%FIBGMDeltas(1)))
+IF (ABS(SUM(GEO%PeriodicVectors(1,:))-NINT(SUM(GEO%PeriodicVectors(1,:))/GEO%FIBGMDeltas(1))*GEO%FIBGMDeltas(1)) &
+    .GT.eps(1)) THEN
+  ERRWRITE(*,*)'SUM(PeriodicVectors(1,:))   =',SUM(GEO%PeriodicVectors(1,:))
+  ERRWRITE(*,*)'GEO%FIBGMDeltas(1)          =',GEO%FIBGMDeltas(1)
+  ERRWRITE(*,*)'1.E-9*(FIBGMDeltas(1))      =',eps(1)
+  ERRWRITE(*,*)'ABS(SUM-NINT(SUM/D(1))*D(1))=',ABS(SUM(GEO%PeriodicVectors(1,:))-&
+                                              NINT(SUM(GEO%PeriodicVectors(1,:))/GEO%FIBGMDeltas(1))*GEO%FIBGMDeltas(1))
+  CALL Abort(__STAMP__,'Periodic Vector in x-direction is not a multiple of FIBGMDeltas!',999, &
+    ABS(SUM(GEO%PeriodicVectors(1,:))-NINT(SUM(GEO%PeriodicVectors(1,:))/GEO%FIBGMDeltas(1))*GEO%FIBGMDeltas(1)))
+
 ELSE IF (ABS(SUM(GEO%PeriodicVectors(2,:))-NINT(SUM(GEO%PeriodicVectors(2,:))/GEO%FIBGMDeltas(2))*GEO%FIBGMDeltas(2)) &
-       .GT.eps(2)) THEN
+        .GT.eps(2)) THEN
 ERRWRITE(*,*)'SUM(PeriodicVectors(2,:))   =',SUM(GEO%PeriodicVectors(2,:))
 ERRWRITE(*,*)'GEO%FIBGMDeltas(2)          =',GEO%FIBGMDeltas(2)
 ERRWRITE(*,*)'1.E-9*(FIBGMDeltas(2))      =',eps(2)
 ERRWRITE(*,*)'ABS(SUM-NINT(SUM/D(2))*D(2))=',ABS(SUM(GEO%PeriodicVectors(2,:))-&
                                             NINT(SUM(GEO%PeriodicVectors(2,:))/GEO%FIBGMDeltas(2))*GEO%FIBGMDeltas(2))
-CALL ABORT(__STAMP__,'Periodic Vector in y-direction is not a multiple of FIBGMDeltas!',999, &
+CALL Abort(__STAMP__,'Periodic Vector in y-direction is not a multiple of FIBGMDeltas!',999, &
   ABS(SUM(GEO%PeriodicVectors(2,:))-NINT(SUM(GEO%PeriodicVectors(2,:))/GEO%FIBGMDeltas(2))*GEO%FIBGMDeltas(2)))
+
 ELSE IF (ABS(SUM(GEO%PeriodicVectors(3,:))-NINT(SUM(GEO%PeriodicVectors(3,:))/GEO%FIBGMDeltas(3))*GEO%FIBGMDeltas(3)) &
-       .GT.eps(3)) THEN
+        .GT.eps(3)) THEN
 ERRWRITE(*,*)'SUM(PeriodicVectors(3,:))   =',SUM(GEO%PeriodicVectors(3,:))
 ERRWRITE(*,*)'GEO%FIBGMDeltas(3)          =',GEO%FIBGMDeltas(3)
 ERRWRITE(*,*)'1.E-9*(FIBGMDeltas(3))      =',eps(3)
 ERRWRITE(*,*)'ABS(SUM-NINT(SUM/D(3))*D(3))=',ABS(SUM(GEO%PeriodicVectors(3,:))-&
                                             NINT(SUM(GEO%PeriodicVectors(3,:))/GEO%FIBGMDeltas(3))*GEO%FIBGMDeltas(3))
-CALL ABORT(__STAMP__,'Periodic Vector in z-direction is not a multiple of FIBGMDeltas!',999,&
+CALL Abort(__STAMP__,'Periodic Vector in z-direction is not a multiple of FIBGMDeltas!',999,&
   ABS(SUM(GEO%PeriodicVectors(3,:))-NINT(SUM(GEO%PeriodicVectors(3,:))/GEO%FIBGMDeltas(3))*GEO%FIBGMDeltas(3)))
 END IF
 

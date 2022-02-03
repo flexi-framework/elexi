@@ -2344,26 +2344,28 @@ END SUBROUTINE FinalizeParameters
 !==================================================================================================================================
 !> Print name and value for an option to UNIT_StdOut
 !==================================================================================================================================
-SUBROUTINE PrintOption(NameOpt,InfoOpt,IntOpt,RealOpt,LogOpt,StrOpt)
+SUBROUTINE PrintOption(NameOpt,InfoOpt,IntOpt,IntArrayOpt,RealOpt,LogOpt,StrOpt)
 ! MODULES
 USE MOD_Globals               ,ONLY: Abort,MPIRoot
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)            :: NameOpt ! Option name
-CHARACTER(LEN=*),INTENT(IN)            :: InfoOpt ! Option information:
+CHARACTER(LEN=*),INTENT(IN)            :: NameOpt        ! Option name
+CHARACTER(LEN=*),INTENT(IN)            :: InfoOpt        ! Option information:
 ! optional
-INTEGER,INTENT(IN),OPTIONAL            :: IntOpt  ! Integer value
-REAL,INTENT(IN),OPTIONAL               :: RealOpt ! Real value
-LOGICAL,INTENT(IN),OPTIONAL            :: LogOpt  ! Logical value
-CHARACTER(LEN=*),INTENT(IN),OPTIONAL   :: StrOpt  ! String value
+INTEGER,INTENT(IN),OPTIONAL            :: IntOpt         ! Integer value
+INTEGER,INTENT(IN),OPTIONAL            :: IntArrayOpt(:) ! Integer array value
+REAL,INTENT(IN),OPTIONAL               :: RealOpt        ! Real value
+LOGICAL,INTENT(IN),OPTIONAL            :: LogOpt         ! Logical value
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL   :: StrOpt         ! String value
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=20)    :: fmtName
 CHARACTER(LEN=20)    :: fmtValue
-INTEGER              :: Counter
+CHARACTER(LEN=50)    :: tmp
+INTEGER              :: i,Counter,length
 !==================================================================================================================================
-IF(.NOT.MPIRoot)RETURN
+IF (.NOT.MPIRoot) RETURN
 
 ! set length of name
 WRITE(fmtName,*) prms%maxNameLen
@@ -2381,6 +2383,10 @@ IF(PRESENT(RealOpt))THEN
   Counter=Counter+1
 END IF
 IF(PRESENT(IntOpt))THEN
+  fmtValue='I'//TRIM(fmtValue)
+  Counter=Counter+1
+END IF
+IF(PRESENT(IntArrayOpt))THEN
   fmtValue='I'//TRIM(fmtValue)
   Counter=Counter+1
 END IF
@@ -2403,6 +2409,16 @@ ELSEIF(Counter.GT.1)THEN
       ,'PrintOption: only one option is allowed: [IntOpt,RealOpt,LogOpt]')
 END IF
 
+IF(PRESENT(IntArrayOpt)) THEN
+  length = 3 ! '(/ '
+  DO i=1,SIZE(IntArrayOpt)
+    WRITE(tmp,"(I0)") IntArrayOpt(i)
+    length = length + LEN_TRIM(tmp)
+  END DO
+  length = length + 2*(SIZE(IntArrayOpt)-1) ! ', ' between array elements
+  length = length + 3 ! ' /)'
+END IF
+
 ! write to UNIT_StdOut
 !SWRITE(UNIT_StdOut,'(A3,A'//fmtName//',A3,'//fmtValue//',A3,A7,A3)')' | ',TRIM(NameOpt),' | ',' | ',TRIM('OUTPUT'),' | '
                     WRITE(UNIT_StdOut,'(A3,A'//TRIM(fmtName)//',A3)',ADVANCE='NO')' | ',TRIM(NameOpt),' | '
@@ -2410,6 +2426,15 @@ IF(PRESENT(RealOpt))WRITE(UNIT_StdOut,'('//TRIM(fmtValue)//')',ADVANCE='NO')Real
 IF(PRESENT(IntOpt)) WRITE(UNIT_StdOut,'('//TRIM(fmtValue)//')',ADVANCE='NO')IntOpt
 IF(PRESENT(LogOpt)) WRITE(UNIT_StdOut,'('//TRIM(fmtValue)//')',ADVANCE='NO')LogOpt
 IF(PRESENT(StrOpt)) WRITE(UNIT_StdOut,'('//TRIM(fmtValue)//')',ADVANCE='NO')TRIM(StrOpt)
+IF(PRESENT(IntArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(fmtValue,*) (prms%maxValueLen - length)
+                    WRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO'); END IF
+                    WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') "(/ "
+  DO i=1,SIZE(IntArrayOpt); WRITE(fmtValue,'(I0)') IntArrayOpt(i); WRITE(fmtValue,*) LEN_TRIM(fmtValue)
+                    WRITE(UNIT_stdOut,"(I"//fmtValue//")",ADVANCE='NO') IntArrayOpt(i)
+    IF (i.NE.SIZE(IntArrayOpt)) &
+                    WRITE(UNIT_stdOut,"(A2)",ADVANCE='NO') ", "
+  END DO
+                    WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)";END IF
                     WRITE(UNIT_StdOut,'(A3,A7,A3)')' | ',TRIM(InfoOpt),' | '
 END SUBROUTINE PrintOption
 

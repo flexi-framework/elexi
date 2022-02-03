@@ -103,7 +103,7 @@ USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_TimeDisc_Vars ,ONLY: PreviousTime
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,Distance,ListDistance
-USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray
+USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray,PrintOption
 USE MOD_TimeDisc_Vars          ,ONLY: dt,t
 USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
 #if USE_MPI
@@ -198,10 +198,10 @@ GEO%FIBGMjmaxglob = BGMjmaxglob
 GEO%FIBGMkminglob = BGMkminglob
 GEO%FIBGMkmaxglob = BGMkmaxglob
 
-SWRITE(UNIT_stdOut,'(A,I18,A,I18,A,I18)') ' | Total FIBGM Cells(x,y,z): '                                     &
-                                          , BGMimaxglob - BGMiminglob                                    ,', '&
-                                          , BGMjmaxglob - BGMjminglob                                    ,', '&
-                                          , BGMkmaxglob - BGMkminglob
+CALL PrintOption('Total FIBGM Cells (x,y,z)','INFO',IntArrayOpt=(/           &
+                                                    BGMimaxglob - BGMiminglob&
+                                                   ,BGMjmaxglob - BGMjminglob&
+                                                   ,BGMkmaxglob - BGMkminglob/))
 
 ! Read periodic vectors from parameter file
 CALL InitPeriodicBC()
@@ -1112,6 +1112,10 @@ CALL BARRIER_AND_SYNC(FIBGMProcs_Shared_Win,MPI_COMM_SHARED)
 ! and get max number of bgm-elems
 ALLOCATE(Distance    (1:MAXVAL(FIBGM_nElems)) &
         ,ListDistance(1:MAXVAL(FIBGM_nElems)) )
+
+CALL PrintOption('Elems per FIBGM cell (min,max)','INFO',IntArrayOpt=(/ &
+                  MINVAL(FIBGM_nTotalElems,MASK=FIBGM_nTotalElems.GT.0),&
+                  MAXVAL(FIBGM_nTotalElems)/))
 
 #if USE_MPI
 ! Build a local nNonUniqueSides to nComputeNodeSides/nComputeNodeTotalSides mapping

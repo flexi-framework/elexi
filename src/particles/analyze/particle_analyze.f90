@@ -202,7 +202,6 @@ USE MOD_Particle_Boundary_Analyze ,ONLY: CalcSurfaceValues,WriteBoundaryParticle
 USE MOD_Particle_Output           ,ONLY: WriteParticleAnalyze,WriteInfoStdOut
 USE MOD_Restart_Vars              ,ONLY: RestartTime
 USE MOD_TimeDisc_Vars             ,ONLY: doFinalize,writeCounter
-USE MOD_Particle_TimeDisc_Vars    ,ONLY: UseManualTimeStep
 USE MOD_Particle_Tracking_Vars    ,ONLY: CountNbOfLostParts
 #if USE_LOADBALANCE
 USE MOD_LoadDistribution          ,ONLY: WriteElemTimeStatistics

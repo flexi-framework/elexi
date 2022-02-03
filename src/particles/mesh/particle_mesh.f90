@@ -259,7 +259,7 @@ USE MOD_Particle_Surfaces      ,ONLY: GetSideSlabNormalsAndIntervals
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierElevation,BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideSlabNormals,SideSlabIntervals,BoundingBoxIsEmpty
 USE MOD_Particle_Surfaces_Vars ,ONLY: D_Bezier,Vdm_Bezier,sVdm_Bezier
-USE MOD_Particle_Tracking_Vars ,ONLY: FastPeriodic,CartesianPeriodic,CountNbOfLostParts
+USE MOD_Particle_Tracking_Vars ,ONLY: CountNbOfLostParts
 USE MOD_Particle_Tracking_Vars ,ONLY: NbrOfLostParticles,NbrOfLostParticlesTotal,NbrOfLostParticlesTotal_old
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierSampleN,BezierSampleXi,SurfFluxSideSize,TriaSurfaceFlux
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod, DisplayLostParticles
@@ -385,9 +385,6 @@ DisplayLostParticles    = GETLOGICAL('DisplayLostParticles')
 PARTOUT            = GETINT('PartOut','0')
 MPIRankOut         = GETINT('MPIRankOut','0')
 #endif /*CODE_ANALYZE*/
-
-CartesianPeriodic = GETLOGICAL('Part-CartesianPeriodic')
-IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('Part-FastPeriodic')
 
 ! method from xPhysic to parameter space
 IF (UseCurveds) THEN ! don't use RefMappingGuess=1, because RefMappingGuess is only best for linear cubical elements

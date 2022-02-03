@@ -100,8 +100,8 @@ SUBROUTINE CheckPeriodicVectors()
 USE MOD_Globals
 USE MOD_Particle_Globals,            ONLY: ALMOSTZERO
 USE MOD_Particle_Mesh_Vars,          ONLY: GEO
-USE MOD_Particle_Tracking_Vars,      ONLY: CartesianPeriodic
-USE MOD_ReadInTools,                 ONLY: PrintOption
+USE MOD_Particle_Tracking_Vars,      ONLY: CartesianPeriodic,FastPeriodic
+USE MOD_ReadInTools,                 ONLY: GETLOGICAL,PrintOption
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -121,6 +121,9 @@ IF (GEO%nPeriodicVectors.EQ.0) RETURN
 
 SDEALLOCATE(GEO%DirPeriodicVectors)
 ALLOCATE(GEO%DirPeriodicVectors(1:GEO%nPeriodicVectors))
+
+CartesianPeriodic = GETLOGICAL('Part-CartesianPeriodic')
+IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('Part-FastPeriodic')
 
 ! CartesianPeriodic and FastPeriodic allow only periodic vectors. Permit some tolerance since vectors are determined based on the
 ! mesh node coordinates

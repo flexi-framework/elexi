@@ -52,6 +52,10 @@ INTERFACE InitOutput
   MODULE PROCEDURE InitOutput
 END INTERFACE
 
+INTERFACE PrintPercentage
+  MODULE PROCEDURE PrintPercentage
+END INTERFACE
+
 INTERFACE PrintStatusLine
   MODULE PROCEDURE PrintStatusLine
 END INTERFACE
@@ -72,7 +76,7 @@ INTERFACE FinalizeOutput
   MODULE PROCEDURE FinalizeOutput
 END INTERFACE
 
-PUBLIC:: InitOutput,PrintStatusLine,Visualize,InitOutputToFile,OutputToFile,FinalizeOutput
+PUBLIC:: InitOutput,PrintPercentage,PrintStatusLine,Visualize,InitOutputToFile,OutputToFile,FinalizeOutput
 PUBLIC:: insert_userblock
 !==================================================================================================================================
 
@@ -205,6 +209,38 @@ END SUBROUTINE InitOutput
 
 
 !==================================================================================================================================
+!> Displays the current process of a given procedure
+!==================================================================================================================================
+SUBROUTINE PrintPercentage(NameOpt,percent)
+! MODULES                                                                                                                          !
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
+USE MOD_ReadInTools   ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN) :: NameOpt        !< Option name
+REAL,INTENT(IN)             :: percent        !< current progress percentage
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=20)    :: fmtName
+!==================================================================================================================================
+
+IF (.NOT.doPrintStatusLine) RETURN
+IF (.NOT.MPIRoot)           RETURN
+
+WRITE(fmtName,*) prms%maxNameLen
+WRITE(UNIT_StdOut,'(A3,A'//TRIM(fmtName)//',A2)',ADVANCE='NO')' | ',TRIM(NameOpt),' | '
+WRITE(UNIT_stdOut,'(A,A1,A)',ADVANCE='NO') REPEAT('=',MAX(CEILING(percent*(prms%maxValueLen+2)/100.)-1,0)),'>',&
+                                           REPEAT(' ',(prms%maxValueLen+2)-MAX(CEILING(percent*(prms%maxValueLen+2)/100.),0))
+WRITE(UNIT_stdOut,'(A3,F6.2,A3,A1)',ADVANCE='NO') '| [',percent,'%] ',ACHAR(13) ! ACHAR(13) is carriage return
+
+END SUBROUTINE PrintPercentage
+
+
+!==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================
 SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doETA)
@@ -240,14 +276,14 @@ LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage retur
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL           :: doETA_loc
-REAL         :: percent,time_remaining,mins,secs,hours,days
-CHARACTER(3) :: tmpString
+REAL              :: percent,time_remaining,mins,secs,hours,days
+CHARACTER(3)      :: tmpString
 #if FV_ENABLED && PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 31
+INTEGER,PARAMETER :: barWidth = 30
 #elif FV_ENABLED || PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 41
+INTEGER,PARAMETER :: barWidth = 40
 #else
-INTEGER,PARAMETER :: barWidth = 51
+INTEGER,PARAMETER :: barWidth = 50
 #endif
 #if FV_ENABLED
 INTEGER      :: FVcounter

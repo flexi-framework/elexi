@@ -183,8 +183,8 @@ USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
 USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Mesh_Vars          ,ONLY: scaledJac
-USE MOD_Output_Vars        ,ONLY: doPrintStatusLine
-USE MOD_ReadInTools        ,ONLY: prms,GETLOGICAL
+USE MOD_Output             ,ONLY: PrintPercentage
+USE MOD_ReadInTools        ,ONLY: GETLOGICAL
 #if PP_dim == 3
 USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
 #endif
@@ -270,7 +270,6 @@ REAL,PARAMETER     :: scaledJacRefTol=0.01
 
 ! Output
 REAL              :: percent
-CHARACTER(LEN=20) :: fmtName
 !==================================================================================================================================
 ! Prerequisites
 Metrics_fTilde=0.
@@ -596,15 +595,8 @@ DO iElem=1,nElems
 #endif /* USE_PARTICLES */
 
   ! Print CalcMetrics progress
-  IF (doPrintStatusLine .AND. MPIRoot) THEN
-    percent = REAL(iElem)/REAL(nElems)*100.
-    WRITE(fmtName,*) prms%maxNameLen
-    WRITE(UNIT_stdOut,'(A3,A'//ADJUSTL(fmtName)//',A2,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO')    &
-    ' | ','Calculating Metrics',' |',     &
-      REPEAT('=',MAX(CEILING(percent*(prms%maxValueLen+2)/100.)-1,0)),'>',&
-      REPEAT(' ',(prms%maxValueLen+2)-MAX(CEILING(percent*(prms%maxValueLen+2)/100.),0)),'| [',percent,'%] ',&
-    ACHAR(13) ! ACHAR(13) is carriage return
-  END IF
+  percent = REAL(iElem)/REAL(nElems)*100.
+  CALL PrintPercentage(NameOpt='Calculating Metrics',percent=percent)
 END DO !iElem=1,nElems
 
 #if USE_MPI

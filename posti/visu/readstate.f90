@@ -352,7 +352,10 @@ meshMode_old = meshMode_loc
 
 SDEALLOCATE(U)
 ALLOCATE(U(1:nVar_State,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+
+SWRITE(UNIT_stdOut,'(A,A,A)') ' READING FIELD FROM DATA FILE "',TRIM(statefile),'" ...'
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+
 #if EQNSYSNR!=1
 SELECT CASE(RestartMode)
   ! State file or no CheckRestartFile performed
@@ -398,7 +401,6 @@ SELECT CASE(RestartMode)
     END IF
 END SELECT
 #endif /* EQNSYSNR!=1 */
-
 
 CALL CloseDataFile()
 

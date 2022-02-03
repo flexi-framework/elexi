@@ -167,6 +167,7 @@ SUBROUTINE visu_CWrapper(mpi_comm_IN,  &
 ! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
+USE MOD_Output_Vars ,ONLY: doPrintStatusLine
 USE MOD_Visu_Vars
 USE MOD_Visu        ,ONLY: visu
 USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array,CARRAY
@@ -231,6 +232,10 @@ CHARACTER(LEN=255)                      :: statefile
 prmfile   = cstrToChar255(prmfile_IN,   strlen_prm)
 postifile = cstrToChar255(postifile_IN, strlen_posti)
 statefile = cstrToChar255(statefile_IN, strlen_state)
+
+! Enable progress indicator
+doPrintStatusLine = .TRUE.
+
 CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 
 ! Map Fortran arrays to C pointer

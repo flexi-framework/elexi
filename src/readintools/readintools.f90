@@ -2344,7 +2344,7 @@ END SUBROUTINE FinalizeParameters
 !==================================================================================================================================
 !> Print name and value for an option to UNIT_StdOut
 !==================================================================================================================================
-SUBROUTINE PrintOption(NameOpt,InfoOpt,IntOpt,IntArrayOpt,RealOpt,LogOpt,StrOpt)
+SUBROUTINE PrintOption(NameOpt,InfoOpt,IntOpt,IntArrayOpt,RealOpt,LogOpt,LogArrayOpt,StrOpt)
 ! MODULES
 USE MOD_Globals               ,ONLY: Abort,MPIRoot
 IMPLICIT NONE
@@ -2357,6 +2357,7 @@ INTEGER,INTENT(IN),OPTIONAL            :: IntOpt         ! Integer value
 INTEGER,INTENT(IN),OPTIONAL            :: IntArrayOpt(:) ! Integer array value
 REAL,INTENT(IN),OPTIONAL               :: RealOpt        ! Real value
 LOGICAL,INTENT(IN),OPTIONAL            :: LogOpt         ! Logical value
+LOGICAL,INTENT(IN),OPTIONAL            :: LogArrayOpt(:) ! Logical array value
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL   :: StrOpt         ! String value
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -2394,6 +2395,10 @@ IF(PRESENT(LogOpt))THEN
   fmtValue='L'//TRIM(fmtValue)
   Counter=Counter+1
 END IF
+IF(PRESENT(LogArrayOpt))THEN
+  fmtValue='L'//TRIM(fmtValue)
+  Counter=Counter+1
+END IF
 IF(PRESENT(StrOpt))THEN
   fmtValue='A'//TRIM(fmtValue)
   Counter=Counter+1
@@ -2418,6 +2423,12 @@ IF(PRESENT(IntArrayOpt)) THEN
   length = length + 2*(SIZE(IntArrayOpt)-1) ! ', ' between array elements
   length = length + 3 ! ' /)'
 END IF
+IF(PRESENT(LogArrayOpt)) THEN
+  length = 3 ! '(/ '
+  length = length + SIZE(LogArrayOpt) ! each value needs only one character
+  length = length + 2*(SIZE(LogArrayOpt)-1) ! ', ' between array elements
+  length = length + 3 ! ' /)'
+END IF
 
 ! write to UNIT_StdOut
 !SWRITE(UNIT_StdOut,'(A3,A'//fmtName//',A3,'//fmtValue//',A3,A7,A3)')' | ',TRIM(NameOpt),' | ',' | ',TRIM('OUTPUT'),' | '
@@ -2434,7 +2445,16 @@ IF(PRESENT(IntArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(f
     IF (i.NE.SIZE(IntArrayOpt)) &
                     WRITE(UNIT_stdOut,"(A2)",ADVANCE='NO') ", "
   END DO
-                    WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)";END IF
+                    WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"; END IF
+IF(PRESENT(LogArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(fmtValue,*) (prms%maxValueLen - length)
+                    WRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO'); END IF
+                    WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') "(/ "
+  DO i=1,SIZE(LogArrayOpt)
+                    WRITE(UNIT_stdOut,"(L1)",ADVANCE='NO') LogArrayOpt(i)
+    IF (i.NE.SIZE(LogArrayOpt)) &
+                    WRITE(UNIT_stdOut,"(A2)",ADVANCE='NO') ", "
+  END DO
+                    WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"; END IF
                     WRITE(UNIT_StdOut,'(A3,A7,A3)')' | ',TRIM(InfoOpt),' | '
 END SUBROUTINE PrintOption
 

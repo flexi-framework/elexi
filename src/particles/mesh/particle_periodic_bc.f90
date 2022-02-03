@@ -101,6 +101,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals,            ONLY: ALMOSTZERO
 USE MOD_Particle_Mesh_Vars,          ONLY: GEO
 USE MOD_Particle_Tracking_Vars,      ONLY: CartesianPeriodic
+USE MOD_ReadInTools,                 ONLY: PrintOption
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -170,6 +171,8 @@ IF (CartesianPeriodic) THEN
       CALL Abort(__STAMP__,'Length of periodic vector = 0!',iPV)
     END IF
   END DO
+
+  CALL PrintOption('CartesianPeriodic active in directions (x,y,z)','INFO',LogArrayOpt=GEO%directions)
 END IF
 
 ! check if periodic vector is multiple of FIBGM-deltas

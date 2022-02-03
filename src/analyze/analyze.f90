@@ -295,7 +295,7 @@ USE MOD_Benchmarking,       ONLY: Benchmarking
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_Output,             ONLY: OutputToFile,PrintStatusLine
 USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd
+USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd,maxIter
 #if USE_PARTICLES
 USE MOD_Particle_Analyze,   ONLY: ParticleAnalyze,ParticleInformation
 #endif
@@ -351,7 +351,7 @@ IF(Time.GT.0.) THEN
 #if USE_LOADBALANCE
   CALL PrintImbalance()
 #endif /*USE_LOADBALANCE*/
-  CALL PrintStatusLine(time,dt,tStart,tEnd,doETA=.TRUE.)
+  CALL PrintStatusLine(time,dt,tStart,tEnd,iter,maxIter,doETA=.TRUE.)
   SWRITE(UNIT_stdOut,'(132("."))')
   SWRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
   SWRITE(UNIT_stdOut,'(132("-"))')

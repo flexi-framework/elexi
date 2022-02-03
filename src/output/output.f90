@@ -243,7 +243,7 @@ END SUBROUTINE PrintPercentage
 !==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================
-SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doETA)
+SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,iter,maxIter,doETA)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_PreProc
@@ -268,15 +268,18 @@ USE MOD_Particle_Vars, ONLY: PDM
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)             :: t      !< current simulation time
-REAL,INTENT(IN)             :: dt     !< current time step
-REAL,INTENT(IN)             :: tStart !< start time of simulation
-REAL,INTENT(IN)             :: tEnd   !< end time of simulation
-LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage return
+REAL,INTENT(IN)             :: t       !< current simulation time
+REAL,INTENT(IN)             :: dt      !< current time step
+REAL,INTENT(IN)             :: tStart  !< start time of simulation
+REAL,INTENT(IN)             :: tEnd    !< end time of simulation
+INTEGER(KIND=8),INTENT(IN)  :: iter    !< current iteration
+INTEGER(KIND=8),INTENT(IN)  :: maxIter !< end iteration of simulation
+LOGICAL,INTENT(IN),OPTIONAL :: doETA   !< flag to print ETA without carriage return
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL           :: doETA_loc
-REAL              :: percent,time_remaining,mins,secs,hours,days
+REAL              :: percent,percent_time,percent_iter
+REAL              :: time_remaining,mins,secs,hours,days
 CHARACTER(3)      :: tmpString
 #if FV_ENABLED && PP_LIMITER
 INTEGER,PARAMETER :: barWidth = 30
@@ -334,7 +337,9 @@ IF(MPIRoot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
 #endif
-  percent = (t-tStart) / (tend-tStart)
+  percent_time = (t-tStart) / (tEnd-tStart)
+  percent_iter = REAL(iter) / REAL(maxIter)
+  percent      = MAX(percent_time,percent_iter)
   CALL CPU_TIME(time_remaining)
   IF (percent.GT.0.0) time_remaining = time_remaining/percent - time_remaining
   percent = percent*100.

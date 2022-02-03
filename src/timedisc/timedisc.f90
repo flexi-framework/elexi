@@ -201,7 +201,7 @@ DO
   ! Perform analysis at the end of the RK loop
   CALL AnalyzeTimeStep()
 
-  CALL PrintStatusLine(t,dt,tStart,tEnd)
+  CALL PrintStatusLine(t,dt,tStart,tEnd,iter,maxIter)
 
   IF(doFinalize) EXIT
 END DO

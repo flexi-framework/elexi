@@ -86,7 +86,6 @@ IMPLICIT NONE
 CALL prms%CreateLogicalOption('CheckExchangeProcs' , 'Check if proc communication of particle info is non-symmetric', '.TRUE.')
 
 END SUBROUTINE DefineParticleMPI
-#endif /*USE_MPI*/
 
 
 SUBROUTINE InitParticleMPI()
@@ -139,7 +138,6 @@ ParticleMPIInitIsDone=.TRUE.
 END SUBROUTINE InitParticleMPI
 
 
-#if USE_MPI
 SUBROUTINE InitParticleCommSize()
 !===================================================================================================================================
 ! get size of Particle-MPI-Message. Unfortunately, this subroutine have to be called after particle_init because

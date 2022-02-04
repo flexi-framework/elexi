@@ -96,7 +96,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBGM_Shared
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_nTotalElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
@@ -111,7 +111,7 @@ USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: nComputeNodeElems,offsetComputeNodeElem,nComputeNodeSides,nNonUniqueGlobalSides,nNonUniqueGlobalNodes
 USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared,ElemInfo_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared_Win,ElemToBGM_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nTotalElems,FIBGM_nTotalElems_Shared,FIBGM_nTotalElems_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nTotalElems_Shared,FIBGM_nTotalElems_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProcFlag,FIBGMToProcFlag_Shared,FIBGMToProcFlag_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems_Shared,FIBGM_nElems_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element_Shared,FIBGM_Element_Shared_Win
@@ -1107,6 +1107,9 @@ MDEALLOCATE(FIBGMToProcFlag_Shared)
 MDEALLOCATE(FIBGMToProcFlag)
 
 CALL BARRIER_AND_SYNC(FIBGMProcs_Shared_Win,MPI_COMM_SHARED)
+#else
+ALLOCATE(FIBGM_nTotalElems(BGMimax,BGMjmax,BGMkmax))
+FIBGM_nTotalElems = FIBGM_nElems
 #endif /*USE_MPI*/
 
 ! and get max number of bgm-elems
@@ -1226,13 +1229,14 @@ SDEALLOCATE(CNTotalSide2GlobalSide)
 SDEALLOCATE(GlobalSide2CNTotalSide)
 #endif /*USE_MPI*/
 
-MDEALLOCATE(FIBGM_nElems)
-MDEALLOCATE(FIBGM_offsetElem)
-MDEALLOCATE(FIBGM_Element)
 MDEALLOCATE(BoundsOfElem_Shared)
+MDEALLOCATE(FIBGM_nTotalElems)
 MDEALLOCATE(FIBGM_nTotalElems_Shared)
+MDEALLOCATE(FIBGM_nElems)
 MDEALLOCATE(FIBGM_nElems_Shared)
+MDEALLOCATE(FIBGM_offsetElem)
 MDEALLOCATE(FIBGM_offsetElem_Shared)
+MDEALLOCATE(FIBGM_Element)
 MDEALLOCATE(FIBGM_Element_Shared)
 MDEALLOCATE(FIBGMToProc)
 MDEALLOCATE(FIBGMToProc_Shared)

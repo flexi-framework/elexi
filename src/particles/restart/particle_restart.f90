@@ -58,13 +58,14 @@ USE MOD_Particle_Localization,      ONLY: LocateParticleInElement,ParticleInside
 USE MOD_Particle_Mesh_Vars,         ONLY: ElemEpsOneCell
 USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
 USE MOD_Particle_Restart_Vars
-USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod,NbrOfLostParticles,CountNbrOfLostParts
+USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod,NbrOfLostParticles
 USE MOD_Particle_Tracking_Vars,     ONLY: NbrOfLostParticlesTotal,TotalNbrOfMissingParticlesSum,NbrOfLostParticlesTotal_old
 USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies
 USE MOD_Particle_Vars,              ONLY: PartPosRef,PartReflCount,doPartIndex,PartIndex
 USE MOD_Restart_Vars,               ONLY: RestartTime,RestartFile
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,          ONLY: PartMPI
+USE MOD_Particle_Tracking_Vars,     ONLY: CountNbrOfLostParts
 #endif /*MPI*/
 ! Particle turbulence models
 USE MOD_Particle_Vars,              ONLY: TurbPartState

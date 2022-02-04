@@ -519,6 +519,7 @@ IF (.NOT. isHit) THEN; alpha = -1.0; isHit = .FALSE.; RETURN; END IF
 
 END SUBROUTINE ComputePlanarNonRectIntersection
 
+
 SUBROUTINE ComputePlanarCurvedIntersection(isHit                        &
                                            ,PartTrajectory              &
                                            ,lengthPartTrajectory        &
@@ -563,6 +564,7 @@ LOGICAL,INTENT(OUT),OPTIONAL             :: opt_CriticalParallelInSide
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                     :: n1(3),n2(3)
+REAL                                     :: NormVec(1:3),locDistance
 INTEGER                                  :: CNSideID,nInterSections,p,q
 LOGICAL                                  :: CriticalParallelInSide
 REAL                                     :: XiNewton(2)
@@ -588,31 +590,29 @@ rBoundingBoxChecks=rBoundingBoxChecks+1.
 
 CriticalParallelInSide=.FALSE.
 
+! new with flip
+IF(flip.EQ.0)THEN
+  NormVec     =  SideNormVec(1:3,CNSideID)
+  locDistance =  SideDistance(CNSideID)
+ELSE
+  NormVec     = -SideNormVec(1:3,CNSideID)
+  locDistance = -SideDistance(CNSideID)
+END IF
+
 ! Calculate distance from particle to planar side face
 !> 1) check if particle is moving in other direction or exactly parallel, no intersection
 !> 2) difference between SideDistance (distance from origin to sice) and the dot product is the distance of the particle to the side
 !> 3) check if distance from particle to side is longer than the particle vector, no intersection
-IF(TrackingMethod.EQ.REFMAPPING)THEN
-  coeffA = DOT_PRODUCT(SideNormVec(1:3,CNSideID),PartTrajectory)
-  IF (coeffA.LE.0.) RETURN
-  locSideDistance = SideDistance(CNSideID) - DOT_PRODUCT(LastPartPos(1:3,PartID),SideNormVec(1:3,CNSideID))
-  locSideDistance = locSideDistance/coeffA
-  IF (locSideDistance.GT.lengthPartTrajectory) RETURN
-! no refmapping
-ELSE
-  coeffA=DOT_PRODUCT(SideNormVec(1:3,CNSideID),PartTrajectory)
+coeffA = DOT_PRODUCT(NormVec,PartTrajectory)
+IF (coeffA.LE.0.) RETURN
+
+! difference between SideDistance (distance from origin to side) and the dot product is the distance of the particle to the side
+locSideDistance = locDistance-DOT_PRODUCT(LastPartPos(1:3,PartID),NormVec)
+locSideDistance = locSideDistance/coeffA
+IF (locSideDistance.GT.lengthPartTrajectory) RETURN
+
+IF (TrackingMethod.NE.REFMAPPING) THEN
   IF (ALMOSTZERO(coeffA)) CriticalParallelInSide = .TRUE.
-  IF (flip.EQ.0) THEN
-    IF (coeffA.LE.0.) RETURN
-    locSideDistance = SideDistance(CNSideID) - DOT_PRODUCT(LastPartPos(1:3,PartID),SideNormVec(1:3,CNSideID))
-    locSideDistance = locSideDistance/coeffA
-    IF (locSideDistance.GT.lengthPartTrajectory) RETURN
-  ELSE
-    IF (coeffA.GE.0.) RETURN
-    locSideDistance = -SideDistance(CNSideID) + DOT_PRODUCT(LastPartPos(1:3,PartID),SideNormVec(1:3,CNSideID))
-    locSideDistance = locSideDistance/coeffA
-    IF(locSideDistance.GT.lengthPartTrajectory) RETURN
-  END IF
 END IF
 
 ! Check if the particle intersects the bounding box of the side. If not, we can eliminate the side without doing more checking
@@ -699,9 +699,8 @@ END SELECT
 END SUBROUTINE ComputePlanarCurvedIntersection
 
 
-
 SUBROUTINE ComputeBiLinearIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild &
-                                                   ,PartID,SideID,ElemCheck_Opt,alpha2)
+                                                   ,PartID,flip,SideID,ElemCheck_Opt,alpha2)
 !===================================================================================================================================
 ! Compute the Intersection with planar surface, improved version by
 ! Haselbacher, A.; Najjar, F. M. & Ferry, J. P., An efficient and robust particle-localization algorithm for unstructured grids
@@ -732,6 +731,7 @@ IMPLICIT NONE
 REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
 REAL,INTENT(IN)                   :: lengthPartTrajectory
 INTEGER,INTENT(IN)                :: PartID,SideID
+INTEGER,INTENT(IN)                :: flip
 LOGICAL,INTENT(IN),OPTIONAL       :: ElemCheck_Opt
 REAL,INTENT(IN),OPTIONAL          :: alpha2
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -832,7 +832,7 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
         ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
-        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,SideID)
+        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,flip,SideID)
       END IF
 
       IF( ABS(xi(1)).LE.1.0) THEN
@@ -883,7 +883,7 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
         ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
-        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,SideID)
+        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,flip,SideID)
       END IF
 
       IF( ABS(xi(1)).LE.1.0) THEN
@@ -921,7 +921,7 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
         ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
-        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,SideID)
+        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,flip,SideID)
         RETURN
       END IF
 
@@ -1017,7 +1017,7 @@ END SUBROUTINE ComputeBiLinearIntersection
 
 
 SUBROUTINE ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID &
-                ,SideID,opt_CriticalParallelInSide,ElemCheck_Opt)
+                ,flip,SideID,opt_CriticalParallelInSide,ElemCheck_Opt)
 !===================================================================================================================================
 ! Compute the intersection with a Bezier surface
 ! particle path = LastPartPos+lengthPartTrajectory*PartTrajectory
@@ -1052,6 +1052,7 @@ IMPLICIT NONE
 REAL,INTENT(IN),DIMENSION(1:3)           :: PartTrajectory
 REAL,INTENT(IN)                          :: lengthPartTrajectory
 INTEGER,INTENT(IN)                       :: PartID,SideID
+INTEGER,INTENT(IN)                       :: flip
 LOGICAL,INTENT(IN),OPTIONAL              :: ElemCheck_Opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -1060,7 +1061,7 @@ LOGICAL,INTENT(OUT)                      :: isHit
 LOGICAL,INTENT(OUT),OPTIONAL             :: opt_CriticalParallelInSide
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                     :: n1(3),n2(3)
+REAL                                     :: n1(3),n2(3),NormVec(1:3)
 INTEGER                                  :: CNSideID,nInterSections,iInter,p,q
 INTEGER                                  :: iClipIter,nXiClip,nEtaClip
 #if CODE_ANALYZE
@@ -1087,12 +1088,19 @@ CNSideID = GetCNSideID(SideID)
 rBoundingBoxChecks = rBoundingBoxChecks + 1.
 #endif /*CODE_ANALYZE*/
 
+! new with flip
+IF(flip.EQ.0)THEN
+  NormVec     =  SideNormVec(1:3,CNSideID)
+ELSE
+  NormVec     = -SideNormVec(1:3,CNSideID)
+END IF
+
 CriticalParallelInSide = .FALSE.
 IF (BoundingBoxIsEmpty(CNSideID)) THEN
   IF (TrackingMethod.EQ.REFMAPPING) THEN
-    IF (DOT_PRODUCT(SideNormVec(1:3,CNSideID),PartTrajectory).LT.0.) RETURN
+    IF (DOT_PRODUCT(NormVec,PartTrajectory).LT.0.) RETURN
   ELSE
-    IF (ALMOSTZERO(DOT_PRODUCT(SideNormVec(1:3,CNSideID),PartTrajectory))) CriticalParallelInSide=.TRUE.
+    IF (ALMOSTZERO(DOT_PRODUCT(NormVec,PartTrajectory))) CriticalParallelInSide=.TRUE.
   END IF
   IF (.NOT.FlatBoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,SideID)) RETURN ! the particle does not intersect the
                                                                                                   ! bounding box

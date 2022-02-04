@@ -415,6 +415,8 @@ ELSE
   ALLOCATE( NodeCoordsTmp(1:3,0:NGeo        ,0:NGeo        ,0:NGeo)                                                                &
           , NodeCoordsNew(1:3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride))
 
+  nNonUniqueGlobalNodes = (NGeoOverride+1)**3*nGlobalElems
+
   DO iElem=FirstElemInd,LastElemInd
     LocElemID = iElem - offsetElem
     ! change ElemInfo_Shared to reflect new NodeCoords

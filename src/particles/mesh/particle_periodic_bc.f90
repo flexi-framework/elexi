@@ -130,43 +130,43 @@ IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('Part-FastPeriodic')
 IF (CartesianPeriodic) THEN
   DO iPV = 1,GEO%nPeriodicVectors
     ! Periodic vector in x-direction
-    IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(1,iPV))) THEN
-      IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(2,iPV)) .OR. .NOT.ALMOSTZERO(GEO%PeriodicVectors(3,iPV))) &
+    IF (GEO%PeriodicVectors(1,iPV).NE.0) THEN
+      IF ((GEO%PeriodicVectors(2,iPV).NE.0).OR.(GEO%PeriodicVectors(3,iPV).NE.0)) THEN
+        SWRITE(Unit_stdOut,'(A,3F7.2)') 'Periodic vector: ',GEO%PeriodicVectors(:,iPV)
         CALL Abort(__STAMP__,'Periodic vector not in Cartesian direction!',iPV)
+      END IF
 
       GEO%DirPeriodicVectors(iPV) = 1
       IF (.NOT.GEO%directions(1)) THEN
         GEO%directions(1) = .TRUE.
-        GEO%PeriodicVectors(2,iPV) = 0.
-        GEO%PeriodicVectors(3,iPV) = 0.
       ELSE
         CALL Abort(__STAMP__,'Multiple periodic Vectors in x-direction!',iPV)
       END IF
 
     ! Periodic vector in y-direction
-    ELSE IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(2,iPV))) THEN
-      IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(1,iPV)) .OR. .NOT.ALMOSTZERO(GEO%PeriodicVectors(3,iPV))) &
+    ELSE IF (GEO%PeriodicVectors(2,iPV).NE.0) THEN
+      IF ((GEO%PeriodicVectors(1,iPV).NE.0).OR.(GEO%PeriodicVectors(3,iPV).NE.0)) THEN
+        SWRITE(Unit_stdOut,'(A,3F7.2)') 'Periodic vector: ',GEO%PeriodicVectors(:,iPV)
         CALL Abort(__STAMP__,'Periodic vector not in Cartesian direction!',iPV)
+      END IF
 
       GEO%DirPeriodicVectors(iPV) = 2
       IF (.NOT.GEO%directions(2)) THEN
         GEO%directions(2) = .TRUE.
-        GEO%PeriodicVectors(1,iPV) = 0.
-        GEO%PeriodicVectors(3,iPV) = 0.
       ELSE
         CALL Abort(__STAMP__,'Multiple periodic Vectors in x-direction!',iPV)
       END IF
 
     ! Periodic vector in z-direction
-    ELSE IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(3,iPV))) THEN
-      IF (.NOT.ALMOSTZERO(GEO%PeriodicVectors(1,iPV)) .OR. .NOT.ALMOSTZERO(GEO%PeriodicVectors(2,iPV))) &
+    ELSE IF (GEO%PeriodicVectors(3,iPV).NE.0) THEN
+      IF ((GEO%PeriodicVectors(1,iPV).NE.0).OR.(GEO%PeriodicVectors(2,iPV).NE.0)) THEN
+        SWRITE(Unit_stdOut,'(A,3F7.2)') 'Periodic vector: ',GEO%PeriodicVectors(:,iPV)
         CALL Abort(__STAMP__,'Periodic vector not in Cartesian direction!',iPV)
+      END IF
 
       GEO%DirPeriodicVectors(iPV) = 3
       IF (.NOT.GEO%directions(3)) THEN
         GEO%directions(3) = .TRUE.
-        GEO%PeriodicVectors(1,iPV) = 0.
-        GEO%PeriodicVectors(2,iPV) = 0.
       ELSE
         CALL Abort(__STAMP__,'Multiple periodic Vectors in x-direction!',iPV)
       END IF

@@ -142,6 +142,7 @@ CASE('Fluc')
   FileTypeOut='Fluc'
   IF(doFluc) CALL CollectiveStop(__STAMP__,'ONLY STATE FILES')
 CASE DEFAULT
+  isTimeAvg=.TRUE.  ! remove compiler warning
   CALL CollectiveStop(__STAMP__,'Unknown file type: '//TRIM(ref%FileType))
 END SELECT
 
@@ -290,9 +291,9 @@ SDEALLOCATE(Ufluc)
 SDEALLOCATE(Utmp)
 
 #if USE_MPI
+CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
-CALL FinalizeMPI()
 #endif
 
 CONTAINS

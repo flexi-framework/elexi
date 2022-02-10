@@ -39,7 +39,7 @@ CHARACTER(LEN=255),ALLOCATABLE       :: tmpDatasetNames(:)
 INTEGER,ALLOCATABLE                  :: Elem_IJK_2D(:,:),Elem_IJK_3D(:,:)
 INTEGER                              :: nElems2D,nElems3D,iElem,iElem2D
 REAL,ALLOCATABLE                     :: RealArray2D(:,:,:,:),RealArray3D(:,:,:,:)
-INTEGER                              :: nVar,N
+INTEGER                              :: N
 INTEGER                              :: p,q,i,j
 CHARACTER(LEN=255)                   :: OldFileName,FileName
 !===================================================================================================================================
@@ -113,11 +113,11 @@ SDEALLOCATE(RealArray2D)
 SDEALLOCATE(RealArray3D)
 
 #if USE_MPI
-CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) &
-  CALL Abort(__STAMP__,'MPI finalize error',iError)
 CALL FinalizeMPI()
+CALL MPI_FINALIZE(iError)
+IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
+
 WRITE(UNIT_stdOut,'(132("="))')
 WRITE(UNIT_stdOut,'(A)') ' TO3D TOOL FINISHED! '
 WRITE(UNIT_stdOut,'(132("="))')

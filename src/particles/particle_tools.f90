@@ -62,7 +62,6 @@ INTEGER            :: ElemID
 
 IF(PDM%maxParticleNumber.EQ.0) RETURN
 
-
 IF (useLinkedList) THEN
   PEM%pNumber(:) = 0
 END IF

@@ -27,7 +27,7 @@ USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_ISO_VARYING_STRING
 USE MOD_MPI                   ,ONLY: InitMPI
-USE MOD_Output_Vars           ,ONLY: ProjectName
+USE MOD_Output_Vars           ,ONLY: ProjectName,doPrintStatusLine
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
 USE MOD_Visu
 USE MOD_Visu_Vars
@@ -113,6 +113,9 @@ IF(nProcessors.GT.1. .AND. MPIRoot) CALL SYSTEM('mkdir -p visu')
 DO iArg=1+skipArgs,nArgs
   statefile = TRIM(Args(iArg))
   SWRITE(UNIT_stdOut,'(A,A)') 'Processing state-file: ',TRIM(statefile)
+
+  ! Enable progress indicator
+  doPrintStatusLine = .TRUE.
 
   CALL visu(MPI_COMM_WORLD, prmfile, postifile, statefile)
 

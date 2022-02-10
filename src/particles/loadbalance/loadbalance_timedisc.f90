@@ -62,14 +62,17 @@ USE MOD_Output_Vars                ,ONLY: ProjectName
 USE MOD_Overintegration            ,ONLY: InitOverintegration,FinalizeOverintegration
 USE MOD_Particle_Init              ,ONLY: InitParticles,FinalizeParticles
 USE MOD_Particle_MPI               ,ONLY: InitParticleMPI,FinalizeParticleMPI
+USE MOD_Predictor                  ,ONLY: InitPredictor,FinalizePredictor
 USE MOD_RecordPoints               ,ONLY: InitRecordPoints,FinalizeRecordPoints
 USE MOD_ReadInTools                ,ONLY: prms
 USE MOD_Restart                    ,ONLY: InitRestart,FinalizeRestart,Restart
-USE MOD_Restart_Vars               ,ONLY: RestartFile,doRestart
+USE MOD_Restart_Vars               ,ONLY: RestartFile,doRestart,RestartMode
 USE MOD_Sponge                     ,ONLY: InitSponge,FinalizeSponge
 USE MOD_StringTools                ,ONLY: set_formatting,clear_formatting
 !USE MOD_TimeDisc                   ,ONLY: InitTimeDisc,FinalizeTimeDisc
 USE MOD_TimeDisc_Vars              ,ONLY: dtElem
+USE MOD_TimeDisc_Vars              ,ONLY: Ut_tmp,UPrev,S2
+USE MOD_TimeDisc_Vars              ,ONLY: TimeDiscType,TimeDiscMethod
 #if PARABOLIC
 USE MOD_Lifting                    ,ONLY: InitLifting
 #endif /*PARABOLIC*/
@@ -117,6 +120,7 @@ LB_StartTime=FLEXITIME()
 !-- Save the last output file name as restart file name
 RestartFile = TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//'State',OutputTime))//'.h5'
 doRestart   = .TRUE.
+RestartMode = 1
 
 !-- Finalize every mesh dependent routine
 CALL FinalizeRecordPoints()
@@ -130,9 +134,12 @@ CALL FinalizeIndicator()
 #endif /*PARABOLIC*/
 CALL FinalizeDG()
 CALL FinalizeEquation()
-! Calling timedisc causes circular depends. We only need to reallocate dtElem
+! Calling timedisc causes circular depends. We only need to reallocate arrays
 !CALL FinalizeTimeDisc()
 CALL FinalizeRestart()
+SDEALLOCATE(Ut_tmp)
+SDEALLOCATE(S2)
+SDEALLOCATE(UPrev)
 SDEALLOCATE(dtElem)
 
 CALL FinalizeMesh()
@@ -165,8 +172,20 @@ CALL InitLifting()
 #endif /*PARABOLIC*/
 CALL InitSponge()
 
-! Calling timedisc causes circular depends. We only need to reallocate dtElem
+! Calling timedisc causes circular depends. We only need to reallocate arrays
 !CALL InitTimeDisc()
+SELECT CASE(TimeDiscType)
+  CASE('LSERKW2')
+    ALLOCATE(Ut_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+  CASE('LSERKK3')
+    ALLOCATE(S2   (1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) &
+            ,UPrev(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+    ! Implicit time integration
+  CASE('ESDIRK')
+    ! Predictor for Newton
+    CALL FinalizePredictor()
+    CALL InitPredictor(TimeDiscMethod)
+END SELECT
 ALLOCATE(dtElem(nElems))
 dtElem = 0.
 

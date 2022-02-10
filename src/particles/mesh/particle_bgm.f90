@@ -198,10 +198,10 @@ GEO%FIBGMjmaxglob = BGMjmaxglob
 GEO%FIBGMkminglob = BGMkminglob
 GEO%FIBGMkmaxglob = BGMkmaxglob
 
-CALL PrintOption('Total FIBGM Cells (x,y,z)','INFO',IntArrayOpt=(/           &
-                                                    BGMimaxglob - BGMiminglob&
-                                                   ,BGMjmaxglob - BGMjminglob&
-                                                   ,BGMkmaxglob - BGMkminglob/))
+CALL PrintOption('Total FIBGM Cells (x,y,z)','INFO',IntArrayOpt=(/               &
+                                                    BGMimaxglob - BGMiminglob + 1&
+                                                   ,BGMjmaxglob - BGMjminglob + 1&
+                                                   ,BGMkmaxglob - BGMkminglob + 1/))
 
 ! Read periodic vectors from parameter file
 CALL InitPeriodicBC()

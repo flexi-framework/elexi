@@ -143,7 +143,6 @@ SDEALLOCATE(ElemTime)
 ALLOCATE(ElemTime(1:nElems))
 ElemTime = 0.
 CALL AddToElemData(ElementOut,'ElemTime',ElemTime)
-!CALL AddToElemData(ElementOut,'ElemTime',RealArray=ElemTime(1:nElems))
 
 ! Calculate new (theoretical) imbalance with offsetElemMPI information
 IF (ElemTimeExists.AND.MPIRoot) THEN

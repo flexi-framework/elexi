@@ -444,20 +444,20 @@ CALL prms%CreateLogicalOption(      'Part-Species[$]-RoughWall'   , "Enables rou
                                                                   ,'.TRUE.'   , numberedmulti=.TRUE.)
 
 ! Ambient condition ================================================================================================================
-CALL prms%CreateLogicalOption(      'Part-Boundary[$]-AmbientCondition', 'Use ambient condition (condition "behind" boundary).'    &
-                                                                            , numberedmulti=.TRUE.)
-CALL prms%CreateLogicalOption(      'Part-Boundary[$]-AmbientConditionFix', 'TODO-DEFINE-PARAMETER'                                &
-                                                                            , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-AmbientVelo', 'Ambient velocity'                                             &
-                                                                            , numberedmulti=.TRUE.)
+! CALL prms%CreateLogicalOption(      'Part-Boundary[$]-AmbientCondition', 'Use ambient condition (condition "behind" boundary).'    &
+!                                                                             , numberedmulti=.TRUE.)
+! CALL prms%CreateLogicalOption(      'Part-Boundary[$]-AmbientConditionFix', 'TODO-DEFINE-PARAMETER'                                &
+!                                                                             , numberedmulti=.TRUE.)
+! CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-AmbientVelo', 'Ambient velocity'                                             &
+!                                                                   ,'0. , 0. , 0.', , numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-WallVelo'   , 'Velocity (global x,y,z in [m/s]) of reflective particle'    //&
                                                                     ' boundary.'                                                   &
-                                                                            , numberedmulti=.TRUE.)
+                                                                  ,'0. , 0. , 0.', numberedmulti=.TRUE.)
 
-CALL prms%CreateRealOption(         'Part-Boundary[$]-AmbientDens', 'Ambient density'                                              &
-                                                                            , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Boundary[$]-AmbientDynamicVisc' , 'Ambient dynamic viscosity'                            &
-                                                                            , numberedmulti=.TRUE.)
+! CALL prms%CreateRealOption(         'Part-Boundary[$]-AmbientDens', 'Ambient density'                                              &
+!                                                                             , numberedmulti=.TRUE.)
+! CALL prms%CreateRealOption(         'Part-Boundary[$]-AmbientDynamicVisc' , 'Ambient dynamic viscosity'                            &
+!                                                                             , numberedmulti=.TRUE.)
 #if USE_EXTEND_RHS && ANALYZE_RHS
 CALL prms%CreateRealOption(         'Part-tWriteRHS'              , 'Output time for RHS', '0.'                                    )
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
@@ -510,7 +510,7 @@ SELECT CASE(TrackingMethod)
     CALL CollectiveStop(__STAMP__,'TrackingMethod not implemented! TrackingMethod=',IntInfo=TrackingMethod)
 END SELECT
 
-DoInterpolation       = GETLOGICAL('Part-DoInterpolation','.TRUE.')
+DoInterpolation       = GETLOGICAL('Part-DoInterpolation')
 ! IF (.NOT.DoInterpolation) &
 !   CALL CollectiveStop(__STAMP__,'Simulation without particle interpolation currently not supported!')
 
@@ -669,21 +669,21 @@ USE MOD_Analyze_Vars               ,ONLY: analyze_dt
 INTEGER               :: RPP_maxMemory, jP
 CHARACTER(30)         :: tmpStr
 !===================================================================================================================================
-doPartIndex             = GETLOGICAL('Part-PartIndex'     ,'.FALSE.')
+doPartIndex             = GETLOGICAL('Part-PartIndex'     )
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
-doCalcSourcePart        = GETLOGICAL('Part-CalcSource'    ,'.FALSE.')
-doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' ,'.FALSE.')
-doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam','.FALSE.')
+doCalcSourcePart        = GETLOGICAL('Part-CalcSource'    )
+doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' )
+doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam')
 
 CALL AllocateParticleArrays()
 CALL InitializeVariablesRandomNumbers()
 
 ! gravitational acceleration
-PartGravity             = GETREALARRAY('Part-Gravity'      ,3  ,'0. , 0. , 0.')
-FilenameRecordPart      = GETSTR('Part-FilenameRecordPart'     ,'data/recordplane_')
+PartGravity             = GETREALARRAY('Part-Gravity'      ,3  )
+FilenameRecordPart      = GETSTR('Part-FilenameRecordPart'     )
 
 ! Number of species
-nSpecies                = GETINT(     'Part-nSpecies','1')
+nSpecies                = GETINT(     'Part-nSpecies')
 ! Abort if running particle code without any species
 IF (nSpecies.LE.0) &
   CALL ABORT(__STAMP__,'ERROR: nSpecies .LE. 0:', nSpecies)
@@ -693,15 +693,15 @@ CALL InitializeVariablesSpeciesInits()
 
 CALL InitializeVariablesPartBoundary()
 ! Flag if low velocity particles should be removed
-LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove','.FALSE.')
+LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove')
 
 ! Initialize record plane of particles
-RecordPart          = GETINT('Part-nRPs','0')
+RecordPart          = GETINT('Part-nRPs')
 IF (RecordPart.GT.0) THEN
   IF(doPartIndex) RPP_nVarNames = RPP_nVarNames + 1
   CALL SYSTEM('mkdir -p recordpoints')
   ! Get size of buffer array
-  RPP_maxMemory     = GETINT('Part-RPMemory','100') ! Max buffer (100MB)
+  RPP_maxMemory     = GETINT('Part-RPMemory')       ! Max buffer (100MB)
   RPP_MaxBufferSize = RPP_MaxMemory*131072/6        != size in bytes/(real*RPP_maxMemory)
   ! Readin record planes
   ALLOCATE(RPP_Plane(RecordPart))
@@ -709,14 +709,14 @@ IF (RecordPart.GT.0) THEN
     WRITE(UNIT=tmpStr,FMT='(I2)') jP
     ALLOCATE(RPP_Plane(jP)%RPP_Data(RPP_nVarNames,RPP_MaxBufferSize))
     RPP_Plane(jP)%RPP_Data = 0.
-    RPP_Plane(jP)%pos = GETREAL('Part-RPPosition'//TRIM(ADJUSTL(tmpStr)),'0.')
-    RPP_Plane(jP)%dir = GETINT('Part-RPDirection'//TRIM(ADJUSTL(tmpStr)),'1')
+    RPP_Plane(jP)%pos = GETREAL('Part-RPPosition'//TRIM(ADJUSTL(tmpStr)))
+    RPP_Plane(jP)%dir = GETINT('Part-RPDirection'//TRIM(ADJUSTL(tmpStr)))
     RPP_Plane(jP)%RPP_Records = 0.
   END DO
 END IF
 
 ! AuxBCs
-nAuxBCs=GETINT('Part-nAuxBCs','0')
+nAuxBCs = GETINT('Part-nAuxBCs')
 CALL InitializeVariablesAuxBC()
 
 ! CALL InitializeVariablesTimeStep(ManualTimeStep_opt)
@@ -897,7 +897,7 @@ CHARACTER(32)         :: hilf
 !===================================================================================================================================
 !--- initialize randomization
 ! Read print flags
-nRandomSeeds = GETINT('Part-NumberOfRandomSeeds','-1')
+nRandomSeeds = GETINT('Part-NumberOfRandomSeeds')
 ! Specifies compiler specific minimum number of seeds
 CALL RANDOM_SEED(Size = SeedSize)
 
@@ -980,17 +980,17 @@ DO iSpec = 1, nSpecies
   ! get species values // only once
   !--> General Species Values
   SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec
-  Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'               )
+  Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'      )
   SELECT CASE (Species(iSpec)%RHSMethod)
     CASE (RHS_INERTIA)
-      drag_factor                      = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'              )
+      drag_factor                      = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'     )
       CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
     CASE DEFAULT
       ! do nothing
   END SELECT
-  Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'             ,'0.')
-  Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'         ,'0.')
-  Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'          ,'0.')
+  Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'         )
+  Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'     )
+  Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'      )
   IF (Species(iSpec)%MassIC .EQ. 0.) THEN
     IF (Species(iSpec)%DiameterIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and diameter both zero!')
     IF (Species(iSpec)%DensityIC  .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and density  both zero!')
@@ -1013,7 +1013,7 @@ DO iSpec = 1, nSpecies
     drag_factor = DF_PART_SCHILLER
     CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
   END IF
-  Species(iSpec)%PartDiamVarianceIC    = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PartDiamVarianceIC' ,'0.')
+  Species(iSpec)%PartDiamVarianceIC    = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PartDiamVarianceIC' )
 #if USE_EXTEND_RHS
   Species(iSpec)%CalcSaffmanForce      = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcSaffmanForce'   )
   Species(iSpec)%CalcMagnusForce       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcMagnusForce'    )
@@ -1449,42 +1449,42 @@ DO iBC = 1,nBCs
     ! Inflow / outflow
     CASE('open')
       PartBound%TargetBoundCond(iBC)      = PartBound%OpenBC
-!      PartBound%AmbientCondition(iBC)     = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-AmbientCondition'   ,'.FALSE.')
+!      PartBound%AmbientCondition(iBC)     = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-AmbientCondition'   )
 !      IF(PartBound%AmbientCondition(iBC)) THEN
-!        PartBound%AmbientConditionFix(iBC)= GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-AmbientConditionFix','.TRUE.')
-!        PartBound%AmbientVelo(1:3,iBC)    = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-AmbientVelo'      ,3,'0., 0., 0.')
-!        PartBound%AmbientDens(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-AmbientDens'        ,'0')
-!        PartBound%AmbientDynamicVisc(iBC) = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-AmbientDynamicVisc' ,'1.72326582572253E-5') ! N2:T=288K
+!        PartBound%AmbientConditionFix(iBC)= GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-AmbientConditionFix')
+!        PartBound%AmbientVelo(1:3,iBC)    = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-AmbientVelo'      ,3)
+!        PartBound%AmbientDens(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-AmbientDens'        )
+!        PartBound%AmbientDynamicVisc(iBC) = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-AmbientDynamicVisc' ) ! N2:T=288K
 !      END IF
 
     ! Reflective (wall)
     CASE('reflective')
       PartBound%TargetBoundCond(iBC)      = PartBound%ReflectiveBC
-      PartBound%WallVelo(1:3,iBC)         = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-WallVelo'         ,3,'0. , 0. , 0.')
-      PartBound%WallModel(iBC)            = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallModel'          ,'perfRef')
+      PartBound%WallVelo(1:3,iBC)         = GETREALARRAY('Part-Boundary'//TRIM(tmpStr)//'-WallVelo'         ,3)
+      PartBound%WallModel(iBC)            = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallModel'          )
 
       ! Rough wall modelling
-      PartBound%doRoughWallModelling(iBC) = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-RoughWall'          ,'.FALSE.')
+      PartBound%doRoughWallModelling(iBC) = GETLOGICAL(  'Part-Boundary'//TRIM(tmpStr)//'-RoughWall'          )
       IF (PartBound%doRoughWallModelling(iBC)) THEN
-        PartBound%RoughMeanIC(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughMeanIC'        ,'0.0')
+        PartBound%RoughMeanIC(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughMeanIC'        )
         ! Variance in radii
-        PartBound%RoughVarianceIC(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughVarianceIC'    ,'0.035')
+        PartBound%RoughVarianceIC(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-RoughVarianceIC'    )
         IF (PartBound%RoughVarianceIC(iBC).GT.1.0) &
           CALL CollectiveSTOP(__STAMP__,'Rough variance is high, disable this message only if you are sure that you are correct!')
       END IF
       ! Non-perfect reflection
       IF (PartBound%WallModel(iBC).EQ.'coeffRes') THEN
-          PartBound%WallCoeffModel(iBC)   = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallCoeffModel'     ,'Tabakoff1981')
+          PartBound%WallCoeffModel(iBC)   = GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-WallCoeffModel'     )
 
           SELECT CASE(PartBound%WallCoeffModel(iBC))
             CASE ('Bons2017','Whitaker2018')
               PartBound%Young(iBC)        = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Young')
               PartBound%Poisson(iBC)      = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-Poisson')
-              PartBound%FricCoeff(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-FricCoeff'          ,'0.3')
+              PartBound%FricCoeff(iBC)    = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-FricCoeff'          )
 
             ! Fong coefficient of reflection
             CASE('Fong2019')
-              PartBound%CoR(iBC)          = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-CoR'                ,'1.')
+              PartBound%CoR(iBC)          = GETREAL(     'Part-Boundary'//TRIM(tmpStr)//'-CoR'                )
 
             CASE('Tabakoff1981','Grant1975')
               ! nothing to readin
@@ -1492,11 +1492,11 @@ DO iBC = 1,nBCs
             ! Rebound ANN valid for v_{air} \in [150,350] [m/s]
             CASE('RebANN')
               ! Readin weights
-              CALL LoadWeightsANN(GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-ANNModel'       ,'model/weights.dat'))
+              CALL LoadWeightsANN(GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-ANNModel'))
 
             CASE('FracANN')
               ! Readin weights
-              CALL LoadWeightsANN(GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-ANNModel'       ,'model/weights.dat'))
+              CALL LoadWeightsANN(GETSTR(      'Part-Boundary'//TRIM(tmpStr)//'-ANNModel'))
               doWritePartDiam = .TRUE.
               doRandomPartDiam = .TRUE.
 
@@ -1579,9 +1579,9 @@ IF (nAuxBCs.GT.0) THEN
     ! Reflective (wall)
     CASE('reflective')
       PartAuxBC%TargetBoundCond(iPartBound) = PartAuxBC%ReflectiveBC
-      PartAuxBC%MomentumACC(iPartBound)     = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-MomentumACC','0')
-      PartAuxBC%WallTemp(iPartBound)        = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-WallTemp','0')
-      PartAuxBC%WallVelo(1:3,iPartBound)    = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-WallVelo',3,'0. , 0. , 0.')
+      PartAuxBC%MomentumACC(iPartBound)     = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-MomentumACC')
+      PartAuxBC%WallTemp(iPartBound)        = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-WallTemp'   )
+      PartAuxBC%WallVelo(1:3,iPartBound)    = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-WallVelo',3 )
 
     ! Unknown auxiliary boundary type
     CASE DEFAULT
@@ -1648,10 +1648,10 @@ IF (nAuxBCs.GT.0) THEN
     SELECT CASE (TRIM(AuxBCType(iAuxBC)))
 
     CASE ('plane')
-      AuxBC_plane(AuxBCMap(iAuxBC))%r_vec = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3,'0. , 0. , 0.')
+      AuxBC_plane(AuxBCMap(iAuxBC))%r_vec = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3)
       WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_plane(AuxBCMap(iAuxBC))%radius)
       AuxBC_plane(AuxBCMap(iAuxBC))%radius= GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-radius',TRIM(tmpStr2))
-      n_vec                               = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-n_vec',3,'1. , 0. , 0.')
+      n_vec                               = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-n_vec',3)
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
         CALL ABORT(__STAMP__,'Part-AuxBC-n_vec is zero for AuxBC',iAuxBC)
@@ -1661,8 +1661,8 @@ IF (nAuxBCs.GT.0) THEN
       END IF
 
     CASE ('cylinder')
-      AuxBC_cylinder(AuxBCMap(iAuxBC))%r_vec = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3,'0. , 0. , 0.')
-      n_vec                                  = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3,'1. , 0. , 0.')
+      AuxBC_cylinder(AuxBCMap(iAuxBC))%r_vec = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3)
+      n_vec                                  = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3)
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
         CALL ABORT(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
@@ -1671,16 +1671,16 @@ IF (nAuxBCs.GT.0) THEN
         AuxBC_cylinder(AuxBCMap(iAuxBC))%axis = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
       END IF
 
-      AuxBC_cylinder(AuxBCMap(iAuxBC))%radius  = GETREAL(   'Part-AuxBC'//TRIM(tmpStr)//'-radius','1.')
+      AuxBC_cylinder(AuxBCMap(iAuxBC))%radius  = GETREAL(   'Part-AuxBC'//TRIM(tmpStr)//'-radius')
       WRITE(UNIT=tmpStr2,FMT='(G0)') -HUGE(AuxBC_cylinder(AuxBCMap(iAuxBC))%lmin)
       AuxBC_cylinder(AuxBCMap(iAuxBC))%lmin    = GETREAL(   'Part-AuxBC'//TRIM(tmpStr)//'-lmin',TRIM(tmpStr2))
       WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_cylinder(AuxBCMap(iAuxBC))%lmin)
       AuxBC_cylinder(AuxBCMap(iAuxBC))%lmax    = GETREAL(   'Part-AuxBC'//TRIM(tmpStr)//'-lmax',TRIM(tmpStr2))
-      AuxBC_cylinder(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards','.TRUE.')
+      AuxBC_cylinder(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards')
 
     CASE ('cone')
-      AuxBC_cone(AuxBCMap(iAuxBC))%r_vec     = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3,'0. , 0. , 0.')
-      n_vec                                  = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3,'1. , 0. , 0.')
+      AuxBC_cone(AuxBCMap(iAuxBC))%r_vec     = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3)
+      n_vec                                  = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3)
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
         CALL ABORT(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
@@ -1695,11 +1695,11 @@ IF (nAuxBCs.GT.0) THEN
 
       WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_cone(AuxBCMap(iAuxBC))%lmin)
       AuxBC_cone(AuxBCMap(iAuxBC))%lmax  = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-lmax',TRIM(tmpStr2))
-      rmax                               = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-rmax','0.')
+      rmax                               = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-rmax')
 
       ! either define rmax at lmax or the halfangle
       IF (rmax.EQ.0.) THEN
-        AuxBC_cone(AuxBCMap(iAuxBC))%halfangle  = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-halfangle','45.')*PI/180.
+        AuxBC_cone(AuxBCMap(iAuxBC))%halfangle  = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-halfangle')*PI/180.
       ELSE
         AuxBC_cone(AuxBCMap(iAuxBC))%halfangle  = ATAN(rmax/AuxBC_cone(AuxBCMap(iAuxBC))%lmax)
       END IF
@@ -1707,7 +1707,7 @@ IF (nAuxBCs.GT.0) THEN
       IF (AuxBC_cone(AuxBCMap(iAuxBC))%halfangle.LE.0.) &
         CALL ABORT(__STAMP__,'Part-AuxBC-halfangle is .le. zero for AuxBC',iAuxBC)
 
-      AuxBC_cone(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards','.TRUE.')
+      AuxBC_cone(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards')
       cos2 = COS(AuxBC_cone(AuxBCMap(iAuxBC))%halfangle)**2
       AuxBC_cone(AuxBCMap(iAuxBC))%geomatrix(:,1) &
         = AuxBC_cone(AuxBCMap(iAuxBC))%axis(1)*AuxBC_cone(AuxBCMap(iAuxBC))%axis - (/cos2,0.,0./)
@@ -1717,8 +1717,8 @@ IF (nAuxBCs.GT.0) THEN
         = AuxBC_cone(AuxBCMap(iAuxBC))%axis(3)*AuxBC_cone(AuxBCMap(iAuxBC))%axis - (/0.,0.,cos2/)
 
     CASE ('parabol')
-      AuxBC_parabol(AuxBCMap(iAuxBC))%r_vec = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3,'0. , 0. , 0.')
-      n_vec                                 = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3,'1. , 0. , 0.')
+      AuxBC_parabol(AuxBCMap(iAuxBC))%r_vec = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3)
+      n_vec                                 = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3)
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
         CALL ABORT(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
@@ -1733,8 +1733,8 @@ IF (nAuxBCs.GT.0) THEN
 
       WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_parabol(AuxBCMap(iAuxBC))%lmin)
       AuxBC_parabol(AuxBCMap(iAuxBC))%lmax  = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-lmax',TRIM(tmpStr2))
-      AuxBC_parabol(AuxBCMap(iAuxBC))%zfac  = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-zfac','1.')
-      AuxBC_parabol(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards','.TRUE.')
+      AuxBC_parabol(AuxBCMap(iAuxBC))%zfac  = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-zfac')
+      AuxBC_parabol(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards')
 
       n(:,1)=AuxBC_parabol(AuxBCMap(iAuxBC))%axis
 

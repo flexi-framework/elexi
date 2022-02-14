@@ -174,9 +174,9 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING...'
 
 ! Output of macroscopic surface values
 !> Double Variable because we follow both FLEXI and PICLas style
-doParticleImpactSample   = GETLOGICAL('Part-SurfaceSampling','F')
-doParticleImpactTrack    = GETLOGICAL('Part-TrackImpacts','.FALSE.')
-WriteMacroSurfaceValues  = GETLOGICAL('Part-WriteMacroSurfaceValues','.FALSE.')
+doParticleImpactSample   = GETLOGICAL('Part-SurfaceSampling')
+doParticleImpactTrack    = GETLOGICAL('Part-TrackImpacts')
+WriteMacroSurfaceValues  = GETLOGICAL('Part-WriteMacroSurfaceValues')
 !
 !! Switch surface macro values flag to .TRUE. for impact tracking
 IF (doParticleImpactSample.OR.WriteMacroSurfaceValues) THEN
@@ -184,7 +184,7 @@ IF (doParticleImpactSample.OR.WriteMacroSurfaceValues) THEN
   doParticleImpactSample  = .TRUE.
 END IF
 
-IF (.NOT.WriteMacroSurfaceValues .AND. .NOT.doParticleImpactTrack ) THEN
+IF (.NOT.WriteMacroSurfaceValues .AND. .NOT.doParticleImpactTrack) THEN
   SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
   RETURN
 END IF
@@ -1294,7 +1294,7 @@ INTEGER                           :: iError
 !===================================================================================================================================
 
 ! Return if nothing was allocated
-IF (.NOT.WriteMacroSurfaceValues) RETURN
+IF (.NOT.WriteMacroSurfaceValues .AND. .NOT.doParticleImpactTrack) RETURN
 
 ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 #if USE_MPI

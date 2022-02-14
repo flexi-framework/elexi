@@ -145,8 +145,8 @@ REAL                  :: VFR_total
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX...'
 
 ! initialization of surface model flags
-DoPoissonRounding = GETLOGICAL('Particles-DoPoissonRounding','.FALSE.')
-DoTimeDepInflow   = GETLOGICAL('Particles-DoTimeDepInflow'  ,'.FALSE.')
+DoPoissonRounding = GETLOGICAL('Particles-DoPoissonRounding')
+DoTimeDepInflow   = GETLOGICAL('Particles-DoTimeDepInflow'  )
 
 ALLOCATE(SurfMeshSubSideData(SurfFluxSideSize(1)   &
         ,SurfFluxSideSize(2),1:nBCSides)           &
@@ -335,7 +335,7 @@ INTEGER                :: iSpec,iSF
 DO iSpec = 1,nSpecies
   ! Find number of SurfaceFluxBC per species
   WRITE(UNIT=tmpStr,FMT='(I0)') iSpec
-  Species(iSpec)%nSurfacefluxBCs = GETINT('Part-Species'//TRIM(tmpStr)//'-nSurfacefluxBCs','0')
+  Species(iSpec)%nSurfacefluxBCs = GETINT('Part-Species'//TRIM(tmpStr)//'-nSurfacefluxBCs')
 
   ! Ignore species with no SurfaceFlux BC
   IF (Species(iSpec)%nSurfacefluxBCs.EQ.0) CYCLE
@@ -348,7 +348,7 @@ DO iSpec = 1,nSpecies
   DO iSF = 1,Species(iSpec)%nSurfacefluxBCs
     WRITE(UNIT=tmpStr2,FMT='(I0)') iSF
     tmpStr2 = TRIM(tmpStr)//'-Surfaceflux'//TRIM(tmpStr2)
-    Species(iSpec)%Surfaceflux(iSF)%BC = GETINT('Part-Species'//TRIM(tmpStr2)//'-BC','0')
+    Species(iSpec)%Surfaceflux(iSF)%BC = GETINT('Part-Species'//TRIM(tmpStr2)//'-BC')
 
     ! Sanity check user input
     IF ((Species(iSpec)%Surfaceflux(iSF)%BC.LT.1) .OR. Species(iSpec)%Surfaceflux(iSF)%BC.GT.nBCs) &
@@ -437,10 +437,10 @@ DO iSpec = 1,nSpecies
       END IF
     END IF
 
-    Species(iSpec)%Surfaceflux(iSF)%PartDensity  = GETREAL(   'Part-Species'//TRIM(tmpStr2)//'-PartDensity'  ,'0.'     )
+    Species(iSpec)%Surfaceflux(iSF)%PartDensity  = GETREAL(   'Part-Species'//TRIM(tmpStr2)//'-PartDensity')
 
     ! Reduce noise
-    Species(iSpec)%Surfaceflux(iSF)%ReduceNoise  = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-ReduceNoise'  ,'.FALSE.')
+    Species(iSpec)%Surfaceflux(iSF)%ReduceNoise  = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-ReduceNoise')
     IF (Species(iSpec)%Surfaceflux(iSF)%ReduceNoise) THEN
       IF (DoPoissonRounding) THEN
         SWRITE(UNIT_stdOut,'(A)') ' WARNING: Poisson sampling not possible for noise reduction of surfacefluxes:'
@@ -458,7 +458,7 @@ DO iSpec = 1,nSpecies
     IF (TriaSurfaceFlux) THEN
       Species(iSpec)%Surfaceflux(iSF)%AcceptReject = .FALSE.
     ELSE
-      Species(iSpec)%Surfaceflux(iSF)%AcceptReject = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-AcceptReject','.TRUE.')
+      Species(iSpec)%Surfaceflux(iSF)%AcceptReject = GETLOGICAL('Part-Species'//TRIM(tmpStr2)//'-AcceptReject')
     END IF
 
     IF (Species(iSpec)%Surfaceflux(iSF)%AcceptReject .AND. BezierSampleN.GT.1) THEN
@@ -615,7 +615,7 @@ REAL, ALLOCATABLE     :: areasLoc(:),areasGlob(:)
 
 !-- 2.: create Side lists for applicable BCs
 !--- 2a: temporary (linked) lists
-OutputSurfaceFluxLinked = GETLOGICAL('OutputSurfaceFluxLinked','.FALSE.')
+OutputSurfaceFluxLinked = GETLOGICAL('OutputSurfaceFluxLinked')
 
 TmpMapToBC    = 0
 TmpSideStart  = 0

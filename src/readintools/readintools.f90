@@ -182,10 +182,10 @@ PUBLIC :: PrintOption
 TYPE(Parameters) :: prms
 PUBLIC :: prms
 
-  type, public :: STR255
-     private
-     character(LEN=255) :: chars
-  end type STR255
+TYPE, PUBLIC :: STR255
+   PRIVATE
+   CHARACTER(LEN=255) :: chars
+END TYPE STR255
 !==================================================================================================================================
 
 CONTAINS
@@ -209,7 +209,7 @@ CLASS(link), POINTER         :: current
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,I0,A)') ' Following ',this%count_unread(),' Parameters are defined in INI but not called!'
 current => this%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   ! compare name
   ! current%opt%isSet.:           Parameter is set in INI file
   ! .NOT.current%opt%isRemoved:   Parameter is used in the code via GET-function
@@ -269,13 +269,13 @@ CLASS(link), POINTER            :: current
 ! IF(loadbalance) THEN
   ! iterate over all options and set removed to false
   current => this%firstLink
-  DO WHILE (associated(current))
+  DO WHILE (ASSOCIATED(current))
     current%opt%isRemoved=.FALSE.
     current => current%next
   END DO
 ! ELSE
 !   current => this%firstLink
-!   DO WHILE (associated(current))
+!   DO WHILE (ASSOCIATED(current))
 !     DEALLOCATE(current%opt)
 !     NULLIFY(current%opt)
 !     tmp => current%next
@@ -306,7 +306,7 @@ CLASS(link),POINTER :: tmp
 CLASS(link),POINTER :: current
 !==================================================================================================================================
 current =>  this%firstLink
-DO WHILE (associated(current%next))
+DO WHILE (ASSOCIATED(current%next))
   tmp => current%next%next
   IF (current%next%opt%numberedmulti) THEN
     DEALLOCATE(current%next%opt)
@@ -401,7 +401,7 @@ opt%isUsedMulti = .FALSE. ! Becomes true, if a variable containing "$" is set in
                           ! valued parameter
 
 ! insert option into linked list
-IF (.NOT. associated(this%firstLink)) then
+IF (.NOT. ASSOCIATED(this%firstLink)) THEN
   this%firstLink => constructor_Link(opt, this%firstLink)
   this%lastLink => this%firstLink
 ELSE
@@ -680,7 +680,7 @@ CLASS(link),POINTER :: current
 count = 0
 ! iterate over all options and compare names
 current => this%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (current%opt%NAMEEQUALS(name)) THEN
     IF (current%opt%isSet) count = count + 1
   END IF
@@ -717,7 +717,6 @@ END DO
 END FUNCTION  count_unread
 
 
-
 !==================================================================================================================================
 !> Insert an option in front of option with same name in the 'prms' linked list.
 !==================================================================================================================================
@@ -734,7 +733,7 @@ CLASS(link),POINTER :: newLink
 CLASS(link),POINTER :: current
 !==================================================================================================================================
 current =>  first
-DO WHILE (associated(current%next))
+DO WHILE (ASSOCIATED(current%next))
   IF (.NOT.current%next%opt%NAMEEQUALS(opt%name)) THEN
     EXIT
   END IF
@@ -743,6 +742,7 @@ END DO
 newLink => constructor_Link(opt, current%next)
 current%next => newLink
 END SUBROUTINE insertOption
+
 
 !==================================================================================================================================
 !> Read options from parameter file.
@@ -789,7 +789,7 @@ IF(MPIRoot)THEN
        ACTION = 'READ',         &
        ACCESS = 'SEQUENTIAL',   &
        IOSTAT = stat)
-  IF (stat.NE.0) CALL ABORT(__STAMP__,"Could not open ini file.")
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open ini file.")
 
   ! parallel IO: ROOT reads file and sends it to all other procs
   nLines = 0
@@ -861,7 +861,7 @@ DEALLOCATE(FileContent)
 this%maxNameLen  = 0
 this%maxValueLen = 0
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   this%maxNameLen = MAX(this%maxNameLen, current%opt%GETNAMELEN())
   this%maxValueLen = MAX(this%maxValueLen, current%opt%GETVALUELEN())
   current => current%next
@@ -902,7 +902,7 @@ rest = line(i+1:)
 ! iterate over all options and compare names with all except numberedmulti options
 ! already added new names from numberedmulti comparison are checked if they reappear
 current => this%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
 #if USE_PARTICLES
   IF (current%opt%numberedmulti) THEN
     current => current%next
@@ -946,7 +946,7 @@ END DO
 #if USE_PARTICLES
 ! iterate over all options and compare reduced (all numbers removed) names with numberedmulti options
 current => this%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (.NOT.current%opt%numberedmulti) THEN
     current => current%next
   ELSE
@@ -996,7 +996,7 @@ END FUNCTION read_option
 ! CALL set_formatting("bright red")
 ! SWRITE(UNIT_stdOut,'(100("!"))')
 ! SWRITE(UNIT_stdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
-! DO WHILE (associated(current))
+! DO WHILE (ASSOCIATED(current))
 !   IF (.NOT.current%opt%isRemoved) THEN
 !     SWRITE(UNIT_stdOut,*) "   ", TRIM(current%opt%name)
 !   END IF
@@ -1050,7 +1050,7 @@ maxNameLen  = 0
 maxValueLen = 0
 current => prms%firstLink
 ! check if name is a section or a option
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (STRICMP(current%opt%section,name)) THEN
     singlesection = TRIM(name)
     EXIT
@@ -1080,7 +1080,7 @@ END IF
 
 ! Find longest parameter name and length of the standard values
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   maxNameLen = MAX(maxNameLen, current%opt%GETNAMELEN())
   maxValueLen = MAX(maxValueLen, current%opt%GETVALUELEN())
   current => current%next
@@ -1100,7 +1100,7 @@ WRITE(fmtComment,*) commentLen
 WRITE(fmtNamespace,*) spaceNameLen
 WRITE(fmtValuespace,*) spaceValueLen
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF ((LEN_TRIM(singlesection).EQ.0).OR.(STRICMP(singlesection,current%opt%section))) THEN
     IF (.NOT.STRICMP(section,current%opt%section)) THEN
       section = current%opt%section
@@ -1144,7 +1144,7 @@ DO WHILE (associated(current))
     END IF
 
     ! print ------ line at the end of a section in markdown mode
-    IF (associated(current%next).AND.markdown) THEN
+    IF (ASSOCIATED(current%next).AND.markdown) THEN
       IF (.NOT.STRICMP(section,current%next%opt%section)) THEN
         SWRITE(UNIT_stdOut,'('//fmtLineLen//'("-"))')
         SWRITE(UNIT_stdOut,*) ''
@@ -1229,7 +1229,7 @@ CLASS(StringOption) ,ALLOCATABLE,TARGET :: stringopt
 ! iterate over all options
 !>> This includes numberedmulti options that are defined in the parameter file
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   ! if name matches option
   IF (.NOT.current%opt%isRemoved) THEN
     IF (current%opt%NAMEEQUALS(name)) THEN
@@ -1241,7 +1241,7 @@ DO WHILE (associated(current))
       ELSE
         ! no proposal, no default and also not set in parameter file => abort
         IF ((.NOT.opt%hasDefault).AND.(.NOT.opt%isSet)) THEN
-          CALL ABORT(__STAMP__, &
+          CALL Abort(__STAMP__, &
               "Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
           RETURN
         END IF
@@ -1282,7 +1282,7 @@ END DO
 #if USE_PARTICLES
 ! iterate over all options and compare reduced (all numbers removed) names with numberedmulti options
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (.NOT.current%opt%numberedmulti) THEN
     current => current%next
   ELSE
@@ -1306,7 +1306,7 @@ DO WHILE (associated(current))
           END DO
           ! Check if we can find this name
           check => prms%firstLink
-          DO WHILE (associated(check))
+          DO WHILE (ASSOCIATED(check))
             IF (check%opt%NAMEEQUALS(TRIM(testname)) .AND. check%opt%isSet) THEN
               multi => check%opt
               ! copy value from option to result variable
@@ -1383,7 +1383,7 @@ DO WHILE (associated(current))
       ELSE
         ! no proposal, no default and also not set in parameter file => abort
         IF ((.NOT.newopt%hasDefault).AND.(.NOT.newopt%isSet)) THEN
-          CALL ABORT(__STAMP__, &
+          CALL Abort(__STAMP__, &
               "[numberedmulti] Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
           RETURN
         END IF
@@ -1424,7 +1424,7 @@ DO WHILE (associated(current))
 END DO
 #endif /*USE_PARTICLES*/
 
-CALL ABORT(__STAMP__, &
+CALL Abort(__STAMP__, &
     'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
     'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralOption
@@ -1464,7 +1464,7 @@ CLASS(LogicalArrayOption),ALLOCATABLE,TARGET :: logicalopt
 
 ! iterate over all options
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   ! if name matches option
   IF (current%opt%NAMEEQUALS(name).AND.(.NOT.current%opt%isRemoved)) THEN
     opt => current%opt
@@ -1521,7 +1521,7 @@ END DO
 #if USE_PARTICLES
 ! iterate over all options and compare reduced (all numbers removed) names with numberedmulti options
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (.NOT.current%opt%numberedmulti) THEN
     current => current%next
   ELSE
@@ -1545,7 +1545,7 @@ DO WHILE (associated(current))
           END DO
           ! Check if we can find this name
           check => prms%firstLink
-          DO WHILE (associated(check))
+          DO WHILE (ASSOCIATED(check))
             IF (check%opt%NAMEEQUALS(testname) .AND. check%opt%isSet) THEN
               multi => check%opt
               ! copy value from option to result variable
@@ -1621,7 +1621,7 @@ DO WHILE (associated(current))
       ELSE
         ! no proposal, no default and also not set in parameter file => abort
         IF ((.NOT.newopt%hasDefault).AND.(.NOT.newopt%isSet)) THEN
-          CALL ABORT(__STAMP__, &
+          CALL Abort(__STAMP__, &
               "Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
           RETURN
         END IF
@@ -1660,7 +1660,7 @@ DO WHILE (associated(current))
 END DO
 #endif /*USE_PARTICLES*/
 
-CALL ABORT(__STAMP__, &
+CALL Abort(__STAMP__, &
   'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
   'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralArrayOption
@@ -1802,7 +1802,7 @@ CLASS(link),POINTER :: current
 !==================================================================================================================================
 ! iterate over all options and compare names
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (current%opt%NAMEEQUALS(name)) THEN
     description = current%opt%description
   END IF
@@ -1838,7 +1838,7 @@ CHARACTER(LEN=20)             :: fmtName
 !==================================================================================================================================
 ! iterate over all options and compare names
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (current%opt%NAMEEQUALS(name).AND.(.NOT.current%opt%isRemoved)) THEN
     opt => current%opt
     SELECT TYPE (opt)
@@ -1891,7 +1891,7 @@ END DO
 #if USE_PARTICLES
 ! iterate over all options and compare reduced (all numbers removed) names with numberedmulti options
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (.NOT.current%opt%numberedmulti) THEN
     current => current%next
   ELSE
@@ -1919,7 +1919,7 @@ DO WHILE (associated(current))
           END DO
           ! Check if we can find this name
           check => prms%firstLink
-          DO WHILE (associated(check))
+          DO WHILE (ASSOCIATED(check))
             IF (check%opt%NAMEEQUALS(testname) .AND. check%opt%isSet) THEN
               multi => check%opt
               ! copy value from option to result variable
@@ -2021,7 +2021,7 @@ INTEGER           ,ALLOCATABLE :: intListTmp(:)    ! temporary integer list
 !===================================================================================================================================
 ! iterate over all options and compare names
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (current%opt%NAMEEQUALS(name)) THEN
     opt => current%opt
     SELECT TYPE (opt)
@@ -2073,7 +2073,7 @@ END DO
 #if USE_PARTICLES
 ! iterate over all options and compare reduced (all numberes removed) names with numberedmulti options
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (.NOT.current%opt%numberedmulti) THEN
     current => current%next
   ELSE
@@ -2321,7 +2321,7 @@ CLASS(link), POINTER         :: current, tmp
 
 IF(ASSOCIATED(prms%firstlink))THEN
   current => prms%firstLink
-  DO WHILE (associated(current%next))
+  DO WHILE (ASSOCIATED(current%next))
     DEALLOCATE(current%opt)
     NULLIFY(current%opt)
     tmp => current%next

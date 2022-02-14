@@ -130,7 +130,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE ANALYZE...'
 doParticleAnalyze    = .FALSE.
 nSpecAnalyze = MERGE(nSpecies + 1,1,nSpecies.GT.1)
 
-CalcEkin = GETLOGICAL('CalcKineticEnergy','.FALSE.')
+CalcEkin = GETLOGICAL('CalcKineticEnergy')
 IF (CalcEkin) THEN
   doParticleAnalyze = .TRUE.
   SDEALLOCATE(PartEkin)
@@ -139,7 +139,7 @@ IF (CalcEkin) THEN
 END IF
 
 ! Calculate number and kinetic energy of particles entering / leaving the domain
-CalcPartBalance = GETLOGICAL('CalcPartBalance','.FALSE.')
+CalcPartBalance = GETLOGICAL('CalcPartBalance')
 IF (CalcPartBalance) THEN
   doParticleAnalyze = .TRUE.
   SDEALLOCATE(nPartIn)
@@ -163,8 +163,8 @@ IF (CalcPartBalance) THEN
   nPartInTmp    = 0
 END IF
 
-doParticleDispersionTrack    = GETLOGICAL('Part-TrackDispersion','.FALSE.')
-doParticlePathTrack          = GETLOGICAL('Part-TrackPath'      ,'.FALSE.')
+doParticleDispersionTrack    = GETLOGICAL('Part-TrackDispersion')
+doParticlePathTrack          = GETLOGICAL('Part-TrackPath'      )
 IF (doParticleDispersionTrack .AND. doParticlePathTrack) &
   CALL CollectiveStop(__STAMP__,'doParticleDispersionTrack and doParticlePathTrack cannot be enabled at the same time!')
 

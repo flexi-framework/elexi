@@ -125,19 +125,19 @@ IF(ParticleSurfaceInitIsDone) RETURN
 !SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACES...'
 
-BezierNewtonAngle          = GETREAL('BezierNewtonAngle'         ,'1.570796326')  ! 1°=0.01754 (in rad)
-BezierClipTolerance        = GETREAL('BezierClipTolerance'       ,'1e-8')
-BezierNewtonTolerance2     = GETREAL('BezierNewtonTolerance'     ,'1e-4')
-BezierNewtonGuess          = GETINT( 'BezierNewtonGuess'         ,'1')
-BezierNewtonMaxIter        = GETINT( 'BezierNewtonMaxIter'       ,'100')
-BezierSplitLimit           = GETREAL('BezierSplitLimit'          ,'0.6')
+BezierNewtonAngle          = GETREAL('BezierNewtonAngle'         )  ! 1°=0.01754 (in rad)
+BezierClipTolerance        = GETREAL('BezierClipTolerance'       )
+BezierNewtonTolerance2     = GETREAL('BezierNewtonTolerance'     )
+BezierNewtonGuess          = GETINT( 'BezierNewtonGuess'         )
+BezierNewtonMaxIter        = GETINT( 'BezierNewtonMaxIter'       )
+BezierSplitLimit           = GETREAL('BezierSplitLimit'          )
 BezierSplitLimit           = 2.*BezierSplitLimit
-BezierClipMaxIter          = GETINT( 'BezierClipMaxIter'         ,'100')
-BezierClipLineVectorMethod = GETINT( 'BezierClipLineVectorMethod','2')
-BezierClipHit              = GETREAL('BezierClipHit'             ,'0.')
+BezierClipMaxIter          = GETINT( 'BezierClipMaxIter'         )
+BezierClipLineVectorMethod = GETINT( 'BezierClipLineVectorMethod')
+BezierClipHit              = GETREAL('BezierClipHit'             )
 IF(ALMOSTZERO(BezierClipHit)) BezierClipHit = 100.*BezierClipTolerance
 BezierClipHit   = 1.0 + BezierClipHit
-BezierNewtonHit            = GETREAL('BezierNewtonHit'           ,'0.')
+BezierNewtonHit            = GETREAL('BezierNewtonHit'           )
 IF(ALMOSTZERO(BezierNewtonHit)) BezierNewtonHit=BezierNewtonTolerance2
 BezierNewtonHit = 1.0 + (BezierNewtonHit) ! it is not clear how this value should be determined
 BezierNewtonTolerance2 = BezierNewtonTolerance2**2
@@ -145,10 +145,10 @@ tmp             = 2*(NGeo+1)
 WRITE(dummy,'(I2.2)') tmp
 BezierClipMaxIntersec      = GETINT( 'BezierClipMaxIntersec'     ,dummy)
 
-epsilontol            = GETREAL('epsilontol','0.')
+epsilontol            = GETREAL('epsilontol')
 ! it might be smarter to give the tolerance as a relationship to the machine epsilon (epsMach)
 IF(ALMOSTZERO(epsilontol)) THEN
-  epsilonrel          = GETREAL('epsilonrel','0.')
+  epsilonrel          = GETREAL('epsilonrel')
   IF(.NOT.ALMOSTZERO(epsilonrel)) THEN
     epsilontol=epsilonrel*EpsMach
   ! if nothing is entered, than a default value is used

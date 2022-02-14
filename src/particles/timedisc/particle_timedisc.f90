@@ -94,8 +94,8 @@ ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
 ! Check if we are running a steady state tracking
 SWRITE(UNIT_stdOut,'(66("-"))')
 !--- Read Manual Time Step
-useManualTimeStep = GETLOGICAL('Part-SteadyState'   ,'F')
-ManualTimeStep    = GETREAL   ('Part-ManualTimeStep','0.0')
+useManualTimeStep = GETLOGICAL('Part-SteadyState'   )
+ManualTimeStep    = GETREAL   ('Part-ManualTimeStep')
 IF (ManualTimeStep.GT.0.) THEN
   useManualTimeStep = .TRUE.
   TimeStep => TimeStepSteadyState

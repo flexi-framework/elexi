@@ -323,7 +323,7 @@ ELemTime = 0.
 !===================================================================================================================================
 
 ! Initialize Vandermonde for Bezier basis surface representation (particle tracking with curved elements)
-BezierElevation = GETINT('BezierElevation','0')
+BezierElevation = GETINT('BezierElevation')
 NGeoElevated    = NGeo + BezierElevation
 
 CALL BuildBezierVdm              (NGeo,XiCL_NGeo,Vdm_Bezier,sVdm_Bezier)
@@ -382,8 +382,8 @@ END IF
 DisplayLostParticles    = GETLOGICAL('DisplayLostParticles')
 
 #if CODE_ANALYZE
-PARTOUT            = GETINT('PartOut','0')
-MPIRankOut         = GETINT('MPIRankOut','0')
+PARTOUT            = GETINT('PartOut')
+MPIRankOut         = GETINT('MPIRankOut')
 #endif /*CODE_ANALYZE*/
 
 ! method from xPhysic to parameter space

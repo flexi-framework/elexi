@@ -146,16 +146,16 @@ IF(nProcessors.EQ.1)THEN
   SWRITE(UNIT_stdOut,'(A)') 'No LoadBalance (nProcessors=1)'
   DeviationThreshold   = HUGE(1.0)
 ELSE
-  DoLoadBalance        = GETLOGICAL('DoLoadBalance','F')
+  DoLoadBalance        = GETLOGICAL('DoLoadBalance')
   LoadBalanceSample    = GETINT    ('LoadBalanceSample')
   LoadBalanceMaxSteps  = GETINT    ('LoadBalanceMaxSteps')
-  DeviationThreshold   = GETREAL   ('Load-DeviationThreshold','0.10')
-  PerformPartWeightLB  = GETLOGICAL('PartWeightLoadBalance','F')
+  DeviationThreshold   = GETREAL   ('Load-DeviationThreshold')
+  PerformPartWeightLB  = GETLOGICAL('PartWeightLoadBalance')
 END IF
 
 IF (PerformPartWeightLB) THEN
   ! Read particle MPI weight
-  ParticleMPIWeight   = GETREAL('Part-MPIWeight','0.02')
+  ParticleMPIWeight   = GETREAL('Part-MPIWeight')
   ! deactivate loadbalance sampling of elemtimes if balancing with partweight is enabled
   LoadBalanceSample = 0
   ! CALL PrintOption('PartWeightLoadBalance = T : LoadBalanceSample','INFO',IntOpt=LoadBalanceSample)

@@ -59,7 +59,7 @@ INTEGER                :: iVec,iBC
 LOGICAL                :: hasPeriodic
 !===================================================================================================================================
 
-!GEO%nPeriodicVectors       = GETINT('Part-nPeriodicVectors','0')
+!GEO%nPeriodicVectors       = GETINT('Part-nPeriodicVectors')
 
 ! sanity check with DG. Both must be either periodic or non-periodic.
 hasPeriodic = .FALSE.

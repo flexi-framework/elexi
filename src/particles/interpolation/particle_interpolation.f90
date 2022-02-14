@@ -106,7 +106,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE INTERPOLATION...'
 
 ! For low number of particles, the loop over all elements becomes quite inefficient. User can opt out with setting
 ! InterpolationElemLoop = F.
-InterpolationElemLoop = GETLOGICAL('Part-InterpolationElemLoop','.TRUE.')
+InterpolationElemLoop = GETLOGICAL('Part-InterpolationElemLoop')
 
 ! Even if the user did not opt out, switch InterpolationElemLoop off for procs with high number of elems.
 !>> so far arbitrary treshold of 10 elems per proc

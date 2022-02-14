@@ -263,30 +263,20 @@ CHARACTER(LEN=255),INTENT(IN)        :: FileName
 IF((MAXVAL(ElemTime).LE.0.0)          .AND.& ! Restart
     DoRestart                         .AND.& ! Restart
     ALLOCATED(ElemTime_tmp)) THEN            ! only allocated when not starting simulation from zero
-    ! Additionally, store old values in ElemData container
-    ElemTime = ElemTime_tmp
-
-    ! Write 'ElemTime' container
-    CALL GatheredWriteArray(FileName                               ,&
-                            create          = .FALSE.              ,&
-                            DataSetName     = 'ElemTime'           ,&
-                            rank            = 2                    ,&
-                            nValGlobal      = (/1   ,nGlobalElems/),&
-                            nVal            = (/1   ,nElems      /),&
-                            offset          = (/0   ,offsetElem  /),&
-                            collective      = .TRUE.               ,&
-                            RealArray       = ElemTime_tmp)
-ELSE
-    CALL GatheredWriteArray(FileName                               ,&
-                            create          = .FALSE.              ,&
-                            DataSetName     = 'ElemTime'           ,&
-                            rank            = 2                    ,&
-                            nValGlobal      = (/1   ,nGlobalElems/),&
-                            nVal            = (/1   ,nElems      /),&
-                            offset          = (/0   ,offsetElem  /),&
-                            collective      = .TRUE.               ,&
-                            RealArray       = ElemTime)
+  ! Additionally, store old values in ElemData container
+  ElemTime = ElemTime_tmp
 END IF ! (MAXVAL(ElemData).LE.0.0).AND.DoRestart)
+
+! Write 'ElemTime' container
+CALL GatheredWriteArray(FileName                               ,&
+                        create          = .FALSE.              ,&
+                        DataSetName     = 'ElemTime'           ,&
+                        rank            = 2                    ,&
+                        nValGlobal      = (/1   ,nGlobalElems/),&
+                        nVal            = (/1   ,nElems      /),&
+                        offset          = (/0   ,offsetElem  /),&
+                        collective      = .TRUE.               ,&
+                        RealArray       = ElemTime)
 
 END SUBROUTINE WriteElemTime
 #endif /*USE_LOADBALANCE*/

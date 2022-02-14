@@ -47,7 +47,8 @@ USE MOD_Globals_Vars         ,ONLY: DomainDecompositionWallTime
 USE MOD_HDF5_Input           ,ONLY: OpenDataFile,CloseDataFile
 USE MOD_IO_HDF5              ,ONLY: AddToElemData,ElementOut
 USE MOD_LoadDistribution     ,ONLY: ApplyWeightDistributionMethod
-USE MOD_LoadBalance_Vars     ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,PartDistri,TargetWeight,ElemTime
+USE MOD_LoadBalance_Vars     ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,PartDistri,TargetWeight
+USE MOD_LoadBalance_Vars     ,ONLY: ElemTime,ProcTime
 USE MOD_Mesh_Vars            ,ONLY: MeshFile,offsetElem,nElems,nGlobalElems
 USE MOD_MPI_Vars             ,ONLY: offsetElemMPI
 USE MOD_Restart_Vars         ,ONLY: DoRestart
@@ -140,9 +141,13 @@ IF (ElemTimeExists) CALL ReadElemTime(single=.FALSE.)
 
 ! Set new ElemTime depending on new load distribution
 SDEALLOCATE(ElemTime)
-ALLOCATE(ElemTime(1:nElems))
+SDEALLOCATE(ProcTime)
+ALLOCATE(ElemTime(1:nElems),&
+         ProcTime(1:nElems))
 ElemTime = 0.
+ProcTime = 0.
 CALL AddToElemData(ElementOut,'ElemTime',ElemTime)
+CALL AddToElemData(ElementOut,'ProcTime',ProcTime)
 
 ! Calculate new (theoretical) imbalance with offsetElemMPI information
 IF (ElemTimeExists.AND.MPIRoot) THEN

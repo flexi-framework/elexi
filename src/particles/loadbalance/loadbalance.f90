@@ -230,7 +230,7 @@ SUBROUTINE ComputeElemLoad()
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,tCurrent,nLoadBalance
+USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,ProcTime,tCurrent,nLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: DeviationThreshold,PerformLoadBalance,LoadBalanceSample
 USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem,nSurfacefluxPerElem
 USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight,ElemTimePartTot,ElemTimePart
@@ -339,6 +339,9 @@ ELSE IF(PerformLBSample .AND. LoadBalanceSample.EQ.0) THEN
         ,' ERROR: MAXVAL(nPartsPerElem).GT.0 but MAXVAL(ElemTime).LE.1.0 with ParticleMPIWeight=',RealInfo=ParticleMPIWeight)
   END IF
 END IF
+
+! Determine load on complete proc
+ProcTime(1:PP_nElems) = SUM(ElemTime(1:PP_nElems))
 
 ! Determine sum of balance and calculate target balanced weight and communicate via MPI_ALLREDUCE
 CALL ComputeImbalance()

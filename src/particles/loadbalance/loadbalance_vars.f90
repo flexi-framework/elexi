@@ -83,12 +83,13 @@ REAL                                :: targetWeight                             
 ! Element Local measurement
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE                    :: ElemTime(:)
+REAL,ALLOCATABLE                    :: ProcTime(:)
 REAL,ALLOCATABLE                    :: ElemTime_tmp(:)                          ! Additional container for restarting and keeping the old ElemTime values in
                                                                                 ! the state.h5 file
-REAL                                :: ElemTimePartTot  ! Total time spent for particle routines (all procs)
-REAL                                :: ElemTimeFieldTot ! Total time spent for field routines (all procs)
-REAL                                :: ElemTimePart     ! Time spent for particle routines
-REAL                                :: ElemTimeField    ! Time spent for field routines
+REAL                                :: ElemTimePartTot                          ! Total time spent for particle routines (all procs)
+REAL                                :: ElemTimeFieldTot                         ! Total time spent for field routines (all procs)
+REAL                                :: ElemTimePart                             ! Time spent for particle routines
+REAL                                :: ElemTimeField                            ! Time spent for field routines
 REAL,ALLOCATABLE                    :: ElemGlobalTime(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nTracksPerElem(:)

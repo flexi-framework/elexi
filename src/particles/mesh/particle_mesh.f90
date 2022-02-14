@@ -278,7 +278,7 @@ USE MOD_Particle_MPI_Shared_Vars
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 #else
-USE MOD_LoadBalance_Vars       ,ONLY: ElemTime
+USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,ProcTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -317,8 +317,11 @@ END IF
 ! ElemTime already set in loadbalance.f90
 #if !USE_LOADBALANCE
 SDEALLOCATE(ElemTime)
-ALLOCATE(ElemTime(1:nElems))
-ELemTime = 0.
+SDEALLOCATE(ProcTime)
+ALLOCATE(ElemTime(1:nElems),&
+         ProcTime(1:nElems))
+ElemTime = 0.
+ProcTime = 0.
 #endif /*!USE_LOADBALANCE*/
 !===================================================================================================================================
 
@@ -632,7 +635,7 @@ USE MOD_Particle_MPI_Shared_vars    ,ONLY: MPI_COMM_SHARED
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars            ,ONLY: PerformLoadBalance
 #else
-USE MOD_LoadBalance_Vars            ,ONLY: ElemTime
+USE MOD_LoadBalance_Vars            ,ONLY: ElemTime,ProcTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -980,6 +983,7 @@ SDEALLOCATE(ListDistance)
 ! Load Balance
 #if !USE_LOADBALANCE
 SDEALLOCATE(ElemTime)
+SDEALLOCATE(ProcTime)
 #endif /* !USE_LOADBALANCE */
 
 ParticleMeshInitIsDone=.FALSE.

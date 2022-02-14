@@ -1312,7 +1312,9 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 SDEALLOCATE(SurfBCName)
 SDEALLOCATE(SurfSampleBCs)
 MDEALLOCATE(GlobalSide2SurfSide)
+MDEALLOCATE(GlobalSide2SurfSide_Shared)
 MDEALLOCATE(SurfSide2GlobalSide)
+MDEALLOCATE(SurfSide2GlobalSide_Shared)
 
 ! Return if no sampling surfaces on node
 IF (.NOT.SurfOnNode) RETURN

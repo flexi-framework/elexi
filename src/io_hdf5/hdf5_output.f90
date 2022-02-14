@@ -692,6 +692,42 @@ IF(withUserblock_loc) CALL copy_userblock(TRIM(FileName)//C_NULL_CHAR,TRIM(Userb
 END SUBROUTINE GenerateFileSkeleton
 
 
+SUBROUTINE GenerateNextFileInfo(TypeString,OutputTime,PreviousTime)
+!===================================================================================================================================
+!> Subroutine that opens the previous written file on root processor and writes the necessary nextfile info
+!===================================================================================================================================
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Output_Vars        ,ONLY: ProjectName
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)    :: TypeString
+REAL,INTENT(IN)                :: OutputTime
+REAL,INTENT(IN)                :: PreviousTime
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=255)             :: FileName,MeshFile255
+!===================================================================================================================================
+! Set old file name
+FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),PreviousTime))//'.h5'
+! The restart file name and the file name set here might differ (renamed restart file or changed project name).
+! Therefore, the attribute is only written if the file exists.
+IF(FILEEXISTS(Filename))THEN
+  CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+
+  MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),OutputTime))//'.h5'
+  CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
+  CALL CloseDataFile()
+END IF ! FILEEXISTS(Filename)
+
+END SUBROUTINE GenerateNextFileInfo
+
+
 !==================================================================================================================================
 !> Add time attribute, after all relevant data has been written to a file,
 !> to indicate the writing process has been finished successfully
@@ -720,7 +756,7 @@ END SUBROUTINE MarkWriteSuccessfull
 SUBROUTINE FlushFiles(FlushTime_In)
 ! MODULES
 USE MOD_Globals
-USE MOD_Output_Vars      ,ONLY: ProjectName
+USE MOD_Output_Vars      ,ONLY: ProjectName,WriteStateFiles
 USE MOD_HDF5_Input       ,ONLY: GetNextFileName
 USE MOD_Restart_Vars     ,ONLY: DoRestart,FlushInitialState
 ! IMPLICIT VARIABLE HANDLING
@@ -734,7 +770,8 @@ INTEGER                  :: stat,ioUnit
 REAL                     :: FlushTime
 CHARACTER(LEN=255)       :: InputFile,NextFile
 !==================================================================================================================================
-IF(.NOT.MPIRoot) RETURN
+! Only MPI root does the flushing and only if DoWriteStateToHDF5 is true
+IF((.NOT.MPIRoot).OR.(.NOT.WriteStateFiles)) RETURN
 
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' DELETING OLD HDF5 FILES...'
 IF (.NOT.PRESENT(FlushTime_In)) THEN
@@ -742,12 +779,13 @@ IF (.NOT.PRESENT(FlushTime_In)) THEN
 ELSE
   FlushTime=FlushTime_In
 END IF
-NextFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',FlushTime))//'.h5'
 
 ! Delete state files
+NextFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',FlushTime))//'.h5'
+
 ! If the original restart file is not to be deleted, skip this file and go to the next one
 IF (DoRestart.AND.(.NOT.FlushInitialState)) THEN
-  ! Read calculation time from file
+  ! Set next file name
   CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
 END IF ! .NOT.FlushInitialState
 

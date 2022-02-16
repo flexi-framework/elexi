@@ -211,7 +211,7 @@ IF(MPIRoot) THEN
   END IF
   CALL CloseDataFile()
 
-  IF(PartIntExists)THEN
+  IF (PartIntExists) THEN
     DO iElem = 1,nGlobalElems
       locnPart           = PartInt(iElem,ELEM_LastPartInd)-PartInt(iElem,ELEM_FirstPartInd)
       PartsInElem(iElem) = locnPart
@@ -346,7 +346,6 @@ SELECT CASE(WeightDistributionMethod)
                 LoadDistri(iProc)=CurWeight
                 EXIT
               END IF ! getElem.GT.1
-
             END IF
           END DO ! iElem
         END DO ! iProc
@@ -385,10 +384,9 @@ SELECT CASE(WeightDistributionMethod)
 
       END DO ! .NOT.FoundDistribution
 
-      WRITE(UNIT_stdOut,'(A,I0,A)') ' Found new load distribution after ',iDistriIter, ' iterations.'
-
     END IF ! MPIRoot
     ! Send the load distribution to all other procs
+    SWRITE(UNIT_stdOut,'(A,A17,ES11.4,A,ES11.4,A)') ' Accepted distribution','    TargetWeight: ',TargetWeight_loc,'    (last proc: ',LastProcDiff,')'
     CALL MPI_BCAST(offSetElemMPI,nProcessors+1, MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)
 
   !------------------------------------------------------------------------------------------------------------------------------!
@@ -469,7 +467,6 @@ SELECT CASE(WeightDistributionMethod)
         CALL SingleStepOptimalPartition(MyElems,NewElems,ElemGlobalTime(FirstElemInd:LastElemInd))
         ElemDistri   = 0
         CALL MPI_ALLGATHER(NewElems,1,MPI_INTEGER,ElemDistri(:),1,MPI_INTEGER,MPI_COMM_FLEXI,iERROR)
-        curiElem=iElem+1
         ! calculate proc offset
         OffSetElemMPI(0) = 0
         DO jProc = 0,nProcessors-1
@@ -627,7 +624,6 @@ SELECT CASE(WeightDistributionMethod)
           FoundDistribution = .TRUE.
           exitoptimization  = .TRUE.
           SWRITE(UNIT_stdOut,'(A)') ' WARNING: trivial, non-optimizable elem-distribution!'
-
         !>> possible optimization
         ELSE IF (MinLoadIdx_glob.LT.MaxLoadIdx) THEN
           !-- global minimum is left of maximum, so all need to be shifted (and afterwards smoothed to the right)
@@ -680,7 +676,7 @@ SELECT CASE(WeightDistributionMethod)
 
           !-- loop for "smoothing" (moving elems from heavy intervals to light intervals)
           DO WHILE (.NOT.FoundDistribution .AND. MaxLoadIdx.NE.nProcessors-1)
-            ! should be catched before...
+            ! Should be check and terminated before arriving here
             IF (MaxLoadIdx.GE.MinLoadIdx) &
               CALL abort(__STAMP__,'MaxLoadIdx.GE.MinLoadIdx! ')
             iShiftLocal = iShiftLocal+1
@@ -979,6 +975,7 @@ IF (PRESENT(nth_opt)) nth_opt = nth
 
 END SUBROUTINE CalcDistriFromOffsets
 
+
 !===================================================================================================================================
 !
 !===================================================================================================================================
@@ -1045,6 +1042,7 @@ END IF
 numOfCalls = newData%numOfCalls
 
 END SUBROUTINE checkList
+
 
 !===================================================================================================================================
 !
@@ -1127,7 +1125,7 @@ CHARACTER(LEN=255),DIMENSION(nOutputVar) :: StrVarNames(nOutputVar)=(/ CHARACTER
     ! 'FieldTimePercent'       , &
     ! 'PartTimePercent'          &
     /)
-CHARACTER(LEN=255),DIMENSION(nOutputVar) :: tmpStr ! needed because PerformAnalyze is called mutiple times at the beginning
+CHARACTER(LEN=255),DIMENSION(nOutputVar) :: tmpStr ! needed because PerformAnalyze is called multiple times at the beginning
 CHARACTER(LEN=1000)                      :: tmpStr2
 CHARACTER(LEN=1),PARAMETER               :: delimiter=","
 REAL                                     :: memory(1:3)       ! used, available and total
@@ -1216,10 +1214,10 @@ IF (WriteHeader) THEN
 
   CLOSE(ioUnit)
 ELSE !
-  IF (.NOT.PRESENT(time)) THEN
-    time_loc = -1.
-  ELSE
+  IF (PRESENT(time)) THEN
     time_loc = time
+  ELSE
+    time_loc = -1.
   END IF
 
 !  ! Calculate elem time proportions for field and particle routines
@@ -1263,7 +1261,7 @@ ELSE !
     WRITE(ioUnit,'(A)')TRIM(ADJUSTL(tmpStr2)) ! clip away the front and rear white spaces of the data line
     CLOSE(ioUnit)
   ELSE
-    SWRITE(UNIT_stdOut,'(A)')TRIM(outfile)//" does not exist. Cannot write load balance info!"
+    WRITE(UNIT_stdOut,'(A)')TRIM(outfile)//" does not exist. Cannot write load balance info!"
   END IF
 END IF
 

@@ -96,7 +96,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBGM_Shared
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_nTotalElems
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
@@ -111,7 +111,7 @@ USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: nComputeNodeElems,offsetComputeNodeElem,nComputeNodeSides,nNonUniqueGlobalSides,nNonUniqueGlobalNodes
 USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared,ElemInfo_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared_Win,ElemToBGM_Shared_Win
-USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nTotalElems_Shared,FIBGM_nTotalElems_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nTotalElems,FIBGM_nTotalElems_Shared,FIBGM_nTotalElems_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProcFlag,FIBGMToProcFlag_Shared,FIBGMToProcFlag_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems_Shared,FIBGM_nElems_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element_Shared,FIBGM_Element_Shared_Win
@@ -1004,12 +1004,9 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 !      local FIBGMToProcFlag and its offset
 ! 2.5) Compute node root communicates the partially filled arrays between the other compute node roots to obtain the full array
 !===================================================================================================================================
+
 SWRITE(UNIT_stdOut,'(A)')' BUILDING FIBGM ELEMENT MAPPING ...'
-#if USE_MPI
 StartT=MPI_WTIME()
-#else
-CALL CPU_TIME(StartT)
-#endif
 
 firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
@@ -1183,19 +1180,23 @@ MDEALLOCATE(FIBGMToProcFlag)
 
 CALL BARRIER_AND_SYNC(FIBGMProcs_Shared_Win ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(FIBGMToProc_Shared_Win,MPI_COMM_SHARED)
-#endif /*USE_MPI*/
 
 EndT = FLEXITIME()
 SWRITE(UNIT_stdOut,'(A,F0.3,A)')' BUILDING FIBGM ELEMENT MAPPING DONE! [',EndT-StartT,'s]'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
+ASSOCIATE(FIBGM_nElems => FIBGM_nTotalElems)
+#endif /*USE_MPI*/
+CALL PrintOption('Elems per FIBGM cell (min,max)','INFO',IntArrayOpt=(/ &
+                  MINVAL(FIBGM_nElems,MASK=FIBGM_nElems.GT.0)          ,&
+                  MAXVAL(FIBGM_nElems)/))
+#if USE_MPI
+END ASSOCIATE
+#endif /*USE_MPI*/
+
 ! and get max number of bgm-elems
 ALLOCATE(Distance    (1:MAXVAL(FIBGM_nElems)) &
         ,ListDistance(1:MAXVAL(FIBGM_nElems)) )
-
-CALL PrintOption('Elems per FIBGM cell (min,max)','INFO',IntArrayOpt=(/ &
-                  MINVAL(FIBGM_nTotalElems,MASK=FIBGM_nTotalElems.GT.0),&
-                  MAXVAL(FIBGM_nTotalElems)/))
 
 #if USE_MPI
 ! Build a local nNonUniqueSides to nComputeNodeSides/nComputeNodeTotalSides mapping
@@ -1304,11 +1305,12 @@ SDEALLOCATE(CNTotalElem2GlobalElem)
 SDEALLOCATE(GlobalElem2CNTotalElem)
 SDEALLOCATE(CNTotalSide2GlobalSide)
 SDEALLOCATE(GlobalSide2CNTotalSide)
+
+MDEALLOCATE(FIBGM_nTotalElems)
+MDEALLOCATE(FIBGM_nTotalElems_Shared)
 #endif /*USE_MPI*/
 
 MDEALLOCATE(BoundsOfElem_Shared)
-MDEALLOCATE(FIBGM_nTotalElems)
-MDEALLOCATE(FIBGM_nTotalElems_Shared)
 MDEALLOCATE(FIBGM_nElems)
 MDEALLOCATE(FIBGM_nElems_Shared)
 MDEALLOCATE(FIBGM_offsetElem)

@@ -140,10 +140,10 @@ DO iRank = minRank,maxRank
   END IF
 END DO ! iRank=minRank,maxRank
 
-CALL MPI_ALLTOALL(send_count, 1, MPI_INTEGER, recv_count, 1, MPI_INTEGER, MPI_COMM_FLEXI, iERROR)
-newElems = SUM(recv_count)
+CALL MPI_ALLTOALL(send_count,1,MPI_INTEGER,recv_count,1, MPI_INTEGER,MPI_COMM_FLEXI,iERROR)
+NewElems = SUM(recv_count)
 
-DEALLOCATE(PreSum, send_count, recv_count, split)
+DEALLOCATE(PreSum,send_count,recv_count,split)
 
 END SUBROUTINE SingleStepOptimalPartition
 
@@ -157,7 +157,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_HDF5_Input       ,ONLY: File_ID,ReadArray,DatasetExists,OpenDataFile,CloseDataFile
 USE MOD_LoadBalance_Vars ,ONLY: WeightDistributionMethod,ElemGlobalTime
-USE MOD_LoadBalance_Vars ,ONLY: ParticleMPIWeight,WeightSum
+USE MOD_LoadBalance_Vars ,ONLY: ParticleMPIWeight
 USE MOD_LoadBalance_Vars ,ONLY: PartDistri
 USE MOD_Mesh_Vars        ,ONLY: nGlobalElems
 USE MOD_MPI_Vars         ,ONLY: offsetElemMPI
@@ -538,7 +538,7 @@ offsetElemMPI = 0
 offsetElemMPI(nProcs) = nGlobalElems
 
 TargetWeight_loc = WeightSum/REAL(nProcs)
-SWRITE(UNIT_stdOut,'(A,F7.2)') 'TargetWeight', TargetWeight_loc
+SWRITE(UNIT_stdOut,'(A,ES16.7)') 'TargetWeight', TargetWeight_loc
 
 IF (WeightDistributionMethod.EQ.3) THEN
   LastProcDiff = 0.

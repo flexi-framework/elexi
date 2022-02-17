@@ -34,32 +34,25 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! Private Part --------------------------------------------------------------------------------------------------------------------
+
 INTERFACE FillIni
   MODULE PROCEDURE FillIni
 END INTERFACE
 
-
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 INTERFACE InitDG
   MODULE PROCEDURE InitDG
 END INTERFACE
-
 
 INTERFACE DGTimeDerivative_weakForm
   MODULE PROCEDURE DGTimeDerivative_weakForm
 END INTERFACE
 
-
 INTERFACE FinalizeDG
   MODULE PROCEDURE FinalizeDG
 END INTERFACE
 
-
-PUBLIC::InitDG,DGTimeDerivative_weakForm,FinalizeDG
+PUBLIC :: InitDG,DGTimeDerivative_weakForm,FinalizeDG
 !==================================================================================================================================
-
-
 
 CONTAINS
 
@@ -140,8 +133,8 @@ END IF
 DGInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT DG DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
-END SUBROUTINE InitDG
 
+END SUBROUTINE InitDG
 
 
 !==================================================================================================================================
@@ -209,8 +202,8 @@ DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))
 ! interpolate to left and right face (1 and -1 in reference space) and pre-divide by mass matrix
 L_HatPlus  = MATMUL(Minv,L_Plus)
 L_HatMinus = MATMUL(Minv,L_Minus)
-END SUBROUTINE InitDGbasis
 
+END SUBROUTINE InitDGbasis
 
 
 !==================================================================================================================================
@@ -704,7 +697,6 @@ END IF
 END SUBROUTINE DGTimeDerivative_weakForm
 
 
-
 !==================================================================================================================================
 !> Fills the solution array U with a initial solution provided by the ExactFunc subroutine though interpolation
 !==================================================================================================================================
@@ -732,8 +724,8 @@ DO iElem=1,nElems
     CALL ExactFunc(IniExactFunc,0.,xGP(1:3,i,j,k,iElem),U(:,i,j,k,iElem))
   END DO; END DO; END DO
 END DO
-END SUBROUTINE FillIni
 
+END SUBROUTINE FillIni
 
 
 !==================================================================================================================================
@@ -772,6 +764,5 @@ SDEALLOCATE(UPrim_boundary)
 
 DGInitIsDone = .FALSE.
 END SUBROUTINE FinalizeDG
-
 
 END MODULE MOD_DG

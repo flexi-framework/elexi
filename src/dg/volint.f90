@@ -37,10 +37,10 @@ INTERFACE VolInt
 #endif /*SPLIT_DG*/
 END INTERFACE
 
-PUBLIC::VolInt
+PUBLIC :: VolInt
 !==================================================================================================================================
-CONTAINS
 
+CONTAINS
 
 !==================================================================================================================================
 !> Computes the advection and viscous part volume integral of the weak DG form according to Kopriva

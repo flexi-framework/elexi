@@ -532,6 +532,7 @@ USE MOD_TimeDisc_Vars         ,ONLY: dt,b_dt,RKb,RKc,nRKStages,CurrentStage
 USE MOD_Part_Tools            ,ONLY: UpdateNextFreePosition
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Timers    ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
+USE MOD_LoadBalance_Vars      ,ONLY: PerformLBSample
 #endif /*USE_LOADBALANCE*/
 #if USE_MPI
 USE MOD_Particle_MPI          ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
@@ -548,12 +549,19 @@ REAL,INTENT(INOUT)              :: t                                     !< curr
 REAL                            :: tStage
 INTEGER                         :: iStage
 #if USE_LOADBALANCE
-REAL                            :: tLBStart
+REAL                            :: tLBStart,tDGStart
 #endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 ! Premultiply with dt
 b_dt = RKb*dt
+
+#if USE_LOADBALANCE
+! Add a minimal compute load to DG elements
+IF (PerformLBSample) THEN
+  CALL LBStartTime(tDGStart)
+END IF
+#endif /*USE_LOADBALANCE*/
 
 ! First evaluation of DG operator already done in timedisc
 CurrentStage = 1
@@ -608,6 +616,16 @@ DO iStage = 2,nRKStages
 END DO
 
 CurrentStage = 1
+
+#if USE_LOADBALANCE
+! Add a minimal compute load to DG elements
+IF (PerformLBSample) THEN
+  CALL LBStartTime(tLBStart)
+  ! 20% is empirical value which seems as sufficient DG load for load balancing
+  tLBStart = tLBStart - 0.2*(tLBStart - tDGStart)
+  CALL LBSplitTime(LB_DG,tLBStart)
+END IF
+#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE TimeStepSteadyState
 #endif

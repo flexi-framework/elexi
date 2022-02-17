@@ -262,18 +262,17 @@ SUBROUTINE visu_InitFile(statefile,postifile)
 USE HDF5
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Visu_Vars
 USE MOD_EOS_Posti_Vars
-USE MOD_MPI                ,ONLY: InitMPI
+USE MOD_Visu_Vars
 USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndName
 USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile,ReadArray,DatasetExists
 USE MOD_Interpolation_Vars ,ONLY: NodeType
+USE MOD_MPI                ,ONLY: InitMPI
 USE MOD_Output_Vars        ,ONLY: ProjectName
+USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_StringTools        ,ONLY: STRICMP,INTTOSTR
 USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,FinalizeParameters,CountOption
-USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
-USE MOD_StringTools        ,ONLY: INTTOSTR
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
@@ -465,26 +464,27 @@ SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
-USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,OpenDataFile,CloseDataFile
-USE MOD_Posti_ReadState     ,ONLY: ReadState
-USE MOD_Posti_VisuMesh      ,ONLY: VisualizeMesh
+USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
+USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
+USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG,CalcSurfQuantities_DG
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
+USE MOD_Posti_ReadState     ,ONLY: ReadState
+USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
+USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
+USE MOD_Posti_VisuMesh      ,ONLY: VisualizeMesh
+USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile,PrintDefaultParameterFile
+USE MOD_Restart_Vars        ,ONLY: RestartMode
+USE MOD_StringTools         ,ONLY: STRICMP
+USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 #if FV_ENABLED
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_FV,CalcSurfQuantities_FV
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
-#endif
-USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
-USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile,PrintDefaultParameterFile
-USE MOD_StringTools         ,ONLY: STRICMP
-USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
-USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
-USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
-USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
-USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_Posti_Part_Tools    ,ONLY: ReadPartStateFile, InitParticleOutput
-#endif
+#endif /*USE_PARTICLES*/
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN
@@ -496,7 +496,7 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 LOGICAL                          :: changedPrmFile
 #if USE_PARTICLES
 CHARACTER(LEN=255)               :: DataArray
-#endif
+#endif /*USE_PARTICLES*/
 !===================================================================================================================================
 
 !**********************************************************************************************
@@ -770,6 +770,7 @@ DGonly_old            = DGonly
 Avg2D_old             = Avg2D
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
 NState_old            = PP_N
+RestartMode           = -1
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(*,*) "Visu finished for state file: ", TRIM(statefile)
@@ -785,13 +786,14 @@ SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,nElems_loc,FileString,MeshFileName,VarN
 ! MODULES
 USE MOD_Globals               !,ONLY: ABORT,TIMESTAMP,MPIROOT,MPI_COMM_FLEXI,UNIT_stdOut
 USE MOD_PreProc
-USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
+USE MOD_2D                    ,ONLY: ExpandArrayTo3D
 USE MOD_HDF5_Output           ,ONLY: GenerateFileSkeleton,WriteAttribute,MarkWriteSuccessfull
+USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_HDF5_WriteArray       ,ONLY: GatheredWriteArray
 USE MOD_Mesh_Vars             ,ONLY: nElems,nGlobalElems,offsetElem
 !USE MOD_Output_Vars           ,ONLY: ProjectName
 USE MOD_Visu_Vars             ,ONLY: OutputTime,NCalc,nVarCalc
-USE MOD_2D                    ,ONLY: ExpandArrayTo3D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

@@ -200,7 +200,6 @@ TYPE tSpecies                                                                ! P
   INTEGER                                :: nSurfacefluxBCs                  ! Number of SF emissions
   INTEGER                                :: StartnumberOfInits               ! 0 if old emit defined (array is copied into 0. entry)
   REAL                                   :: LowVeloThreshold                 ! Threshold value for removal of low velocity particles
-  REAL                                   :: HighVeloThreshold                ! Threshold value for removal of high velocity particle
   INTEGER                                :: LowVeloCounter                   ! Counter how many low velocity particles were removed
   REAL                                   :: SphericityIC                     ! Particle sphericity
   ! Random particle diameter

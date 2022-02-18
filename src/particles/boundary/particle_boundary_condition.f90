@@ -24,6 +24,7 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Boundary_Condition
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -268,22 +269,16 @@ CASE ('parabol')
   n_loc = UNITVECTOR( intersec - ( r_vec + axis*(DOT_PRODUCT(intersec-r_vec,axis)+0.5*AuxBC_parabol(AuxBCMap(AuxBCIdx))%zfac) ) )
   IF (.NOT.AuxBC_parabol(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
 CASE DEFAULT
-  CALL abort(&
-    __STAMP__&
-    ,'AuxBC does not exist')
+  CALL abort(__STAMP__,'AuxBC does not exist')
 END SELECT
 IF(DOT_PRODUCT(n_loc,PartTrajectory).LT.0.)  THEN
   crossedBC=.FALSE.
   !RETURN
-  CALL abort(&
-    __STAMP__&
-    ,'Error in GetBoundaryInteractionAuxBC: Particle coming from outside!')
+  CALL abort(__STAMP__,'Error in GetBoundaryInteractionAuxBC: Particle coming from outside!')
 ELSE IF(DOT_PRODUCT(n_loc,PartTrajectory).GT.0.)  THEN
   crossedBC=.TRUE.
 ELSE
-  CALL abort(&
-    __STAMP__&
-    ,'Error in GetBoundaryInteractionAuxBC: n_vec is cross_vectorendicular to PartTrajectory for AuxBC',AuxBCIdx)
+  CALL abort(__STAMP__,'Error in GetBoundaryInteractionAuxBC: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
 END IF
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(PartAuxBC%TargetBoundCond(AuxBCIdx))
@@ -974,6 +969,7 @@ ElemID   = SideInfo_Shared(SIDE_NBELEMID,SideID)
 
 END SUBROUTINE PeriodicBC
 
+
 FUNCTION RoughWall(n_in,locBCID,PartTrajectory) RESULT (n_out)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Rough wall modelling without multiple rebounds, where the roughness is drawn from a Gaussian distribution with a mean of zero and
@@ -1094,82 +1090,5 @@ iLayer = PartBoundANN%nLayer+1
 PartBoundANN%output(:)   = SIGMOID((MATMUL(PartBoundANN%output(:),PartBoundANN%w(:,:,iLayer)) + PartBoundANN%b(:,iLayer)))
 PartBoundANN%output(1:nout) = LOGNORMINV(PartBoundANN%output(1:nout), PartBoundANN%max_out(1:nout))
 END SUBROUTINE CallANN
-
-
-!FUNCTION PARTSWITCHELEMENT(xi,eta,locSideID,SideID,ElemID)
-!!===================================================================================================================================
-!! particle moves through face and switches element
-!!===================================================================================================================================
-!! MODULES
-!USE MOD_Globals
-!USE MOD_Particle_Mesh_Vars ,ONLY: PartElemToElemAndSide
-!USE MOD_Mesh_Vars          ,ONLY: MortarType
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT VARIABLES
-!INTEGER,INTENT(IN)  :: locSideID, SideID,ElemID
-!REAL,INTENT(IN)     :: xi,eta
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! OUTPUT VARIABLES
-!INTEGER,DIMENSION(2) :: PARTSWITCHELEMENT
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!!===================================================================================================================================
-!
-!! move particle to new element
-!!     Type 1               Type 2              Type3
-!!      eta                  eta                 eta
-!!       ^                    ^                   ^
-!!       |                    |                   |
-!!   +---+---+            +---+---+           +---+---+
-!!   | 3 | 4 |            |   2   |           |   |   |
-!!   +---+---+ --->  xi   +---+---+ --->  xi  + 1 + 2 + --->  xi
-!!   | 1 | 2 |            |   1   |           |   |   |
-!!   +---+---+            +---+---+           +---+---+
-!
-!CALL ABORT(__STAMP__,'Not yet implemented for new halo region')
-!
-!SELECT CASE(MortarType(1,SideID))
-!CASE(1)
-!  IF(Xi.GT.0.)THEN
-!    IF(Eta.GT.0.)THEN
-!      PARTSWITCHELEMENT(1)=PartElemToElemAndSide(4  ,locSideID,ElemID)
-!      PARTSWITCHELEMENT(2)=PartElemToElemAndSide(4+4,locSideID,ElemID)
-!    ELSE
-!      PARTSWITCHELEMENT(1)=PartElemToElemAndSide(2  ,locSideID,ElemID)
-!      PARTSWITCHELEMENT(2)=PartElemToElemAndSide(2+4,locSideID,ElemID)
-!    END IF
-!  ELSE
-!    IF(Eta.GT.0.)THEN
-!      PARTSWITCHELEMENT(1)=PartElemToElemAndSide(3  ,locSideID,ElemID)
-!      PARTSWITCHELEMENT(2)=PartElemToElemAndSide(3+4,locSideID,ElemID)
-!    ELSE
-!      PARTSWITCHELEMENT(1)=PartElemToElemAndSide(1  ,locSideID,ElemID)
-!      PARTSWITCHELEMENT(2)=PartElemToElemAndSide(1+4,locSideID,ElemID)
-!    END IF
-!  END IF
-!CASE(2)
-!  IF(Eta.GT.0.)THEN
-!    PARTSWITCHELEMENT(1)=PartElemToElemAndSide(2  ,locSideID,ElemID)
-!    PARTSWITCHELEMENT(2)=PartElemToElemAndSide(2+4,locSideID,ElemID)
-!  ELSE
-!    PARTSWITCHELEMENT(1)=PartElemToElemAndSide(1  ,locSideID,ElemID)
-!    PARTSWITCHELEMENT(2)=PartElemToElemAndSide(1+4,locSideID,ElemID)
-!  END IF
-!CASE(3)
-!  IF(Xi.LE.0.)THEN
-!    PARTSWITCHELEMENT(1)=PartElemToElemAndSide(1  ,locSideID,ElemID)
-!    PARTSWITCHELEMENT(2)=PartElemToElemAndSide(1+4,locSideID,ElemID)
-!  ELSE
-!    PARTSWITCHELEMENT(1)=PartElemToElemAndSide(2  ,locSideID,ElemID)
-!    PARTSWITCHELEMENT(2)=PartElemToElemAndSide(2+4,locSideID,ElemID)
-!  END IF
-!CASE DEFAULT ! normal side OR small mortar side
-!  PARTSWITCHELEMENT(1)=PartElemToElemAndSide(1  ,locSideID,ElemID)
-!  PARTSWITCHELEMENT(2)=PartElemToElemAndSide(1+4,locSideID,ElemID)
-!END SELECT
-!
-!END FUNCTION PARTSWITCHELEMENT
 
 END MODULE MOD_Particle_Boundary_Condition

@@ -213,9 +213,6 @@ CALL prms%CreateRealOption(         'Part-Species[$]-VeloTurbIC', 'Turbulent flu
 CALL prms%CreateRealOption(         'Part-Species[$]-LowVeloThreshold', 'Threshold velocity of particles after reflection.'      //&
                                                                   ' Slower particles are deleted [$] [m/s]'                        &
                                                                 , '0.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-HighVeloThreshold', 'Threshold velocity of particles in the entire field.'  //&
-                                                                  ' Faster particles are deleted [$] [m/s]'                        &
-                                                                , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-SphericityIC', 'Particle sphericity of species [$] [m]'                       &
                                                                 , '1.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-PartDiamVarianceIC', 'Particle diameter variance of species [$] [-]'          &
@@ -247,8 +244,8 @@ CALL prms%CreateRealOption(         'Part-Species[$]-InflowRiseTime', 'Time to r
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateIntOption(          'Part-Species[$]-ParticleEmissionType', 'Define Emission Type for particles (volume'         //&
                                                                   ' emission)\n'                                                 //&
-                                                                  '1 = emission rate in part/s,\n'//&
-                                                                  '2 = emission rate part/iteration\n'&
+                                                                  '1 = emission rate in part/s,\n'                               //&
+                                                                  '2 = emission rate part/iteration\n'                             &
                                                                 , '2'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-ParticleEmission', 'Emission rate in part/s or part/iteration.'               &
                                                                 , '0.'      , numberedmulti=.TRUE.)
@@ -306,11 +303,11 @@ CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-velocityDistributio
                                                                   ' VeloVecIC\n'                                                 //&
                                                                   ' - fluid:    particles have local fluid velocity\n'             &
                                                                 , 'constant', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloIC'    , 'Absolute value of initial velocity. (ensemble velocity) ' &
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloIC'    , 'Absolute value of initial velocity. (ensemble velocity)'&
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-VeloVecIC ', 'Velocity vector for given species'                      &
                                                                 , '0. , 0. , 0.', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloTurbIC', 'Turbulent fluctuation of initial velocity. (ensemble velocity) '&
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloTurbIC', 'Turbulent fluctuation of initial velocity. (ensemble velocity)'&
                                                                 , '0.'      , numberedmulti=.TRUE.)
 
 ! emission time
@@ -326,20 +323,20 @@ CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-InflowRiseTime', 'T
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-ParticleEmissionType', 'Define Emission Type for particles (volume' //&
                                                                   ' emission)\n'                                                 //&
-                                                                  '1 = emission rate in part/s,\n'//&
-                                                                  '2 = emission rate part/iteration\n'&
+                                                                  '1 = emission rate in part/s,\n'                               //&
+                                                                  '2 = emission rate part/iteration\n'                             &
                                                                 , '1'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-ParticleEmission', 'Emission rate in part/s or part/iteration.'       &
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-ParticleEmissionTime', 'Scale emission time for EmissionType==1.'     &
                                                                 , '1.'      , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-PartDensity', 'PartDensity (real particles per m^3) or (vpi_)cub./cyl.' //&
-                                                                   'as alternative to Part.Emis. in Type1 '                        &
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-PartDensity', 'PartDensity (real particles per m^3) or (vpi_)cub./cyl.'//&
+                                                                   ' as alternative to Part.Emis. in Type1 '                        &
                                                                  , '0.'     , numberedmulti=.TRUE.)
 
 ! emission region
-CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Specifying Keyword for particle space condition of species ' //&
-                                                                  '[$] in case of one init.\n'                                   //&
+CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-SpaceIC'   , 'Specifying Keyword for particle space condition of species'//&
+                                                                  ' [$] in case of one init.\n'                                   //&
                                                                   ' - point\n'                                                   //&
                                                                   ' - line_with_equidistant_distribution\n'                      //&
                                                                   ' - line\n'                                                    //&
@@ -368,7 +365,7 @@ CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-CalcHeightFromDt', 
                                                                 , '.FALSE.'  , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-CuboidHeightIC'  , 'Height of cuboid if SpaceIC=cuboid'               &
                                                                 , '1.'       , numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-CylinderHeightIC', 'Third measure of cylinder  (set 0 for flat rectangle),' //&
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-CylinderHeightIC', 'Third measure of cylinder  (set 0 for flat rectangle),'//&
                                                                   ' negative value = opposite direction'                           &
                                                                 , '1.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-RadiusIC'  , 'Radius for IC'                                          &
@@ -1002,7 +999,6 @@ DO iSpec = 1, nSpecies
     SWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
   END IF
   Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold' )
-  Species(iSpec)%HighVeloThreshold     = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-HighVeloThreshold')
   Species(iSpec)%SphericityIC          = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-SphericityIC'     )
   ! Warn when outside valid range of Haider model
   IF ((drag_factor .EQ. DF_PART_HAIDER) .AND. (Species(iSpec)%SphericityIC .LT. 0.670)) THEN

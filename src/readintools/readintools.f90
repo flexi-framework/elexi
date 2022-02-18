@@ -1818,6 +1818,9 @@ END FUNCTION GETDESCRIPTION
 !==================================================================================================================================
 FUNCTION GETINTFROMSTR(name) result(value)
 USE MOD_StringTools ,ONLY: ISINT, STRICMP
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)   :: name        !< parameter name
 INTEGER                       :: value       !< return value
@@ -1946,6 +1949,9 @@ DO WHILE (ASSOCIATED(current))
                       CALL PrintWarning("No named option for parameter " //TRIM(name)// " exists for this number, please ensure your input is correct.")
                       multi%foundInList = .FALSE.
                     END IF
+#if USE_LOADBALANCE
+                    IF(PerformLoadBalance) RETURN
+#endif /*USE_LOADBALANCE*/
                     ! print option and value to stdout. Custom print, so do it here
                     WRITE(fmtName,*) prms%maxNameLen
                     SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
@@ -1967,6 +1973,9 @@ DO WHILE (ASSOCIATED(current))
                     IF (STRICMP(multi%strList(i), multi%value)) THEN
                       value = multi%intList(i)
                       multi%listIndex = i ! Store index of the mapping
+#if USE_LOADBALANCE
+                      IF(PerformLoadBalance) RETURN
+#endif /*USE_LOADBALANCE*/
                       ! print option and value to stdout. Custom print, so do it here
                       WRITE(fmtName,*) prms%maxNameLen
                       SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "

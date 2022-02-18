@@ -1398,7 +1398,8 @@ SUBROUTINE FinalizeHaloInfo()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Mesh_Vars      ,ONLY: CalcHaloInfo,ElemHaloInfo_Array,ElemHaloInfo_Shared,ElemHaloInfo_Shared_Win
+USE MOD_Particle_Mesh_Vars      ,ONLY: CalcHaloInfo,ElemHaloID
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemHaloInfo_Array,ElemHaloInfo_Shared,ElemHaloInfo_Shared_Win
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1419,6 +1420,8 @@ CALL MPI_WIN_FREE(      ElemHaloInfo_Shared_Win,iError)
 ! Then, free the pointers or arrays
 MDEALLOCATE(ElemHaloInfo_Shared)
 MDEALLOCATE(ElemHaloInfo_Array)
+
+SDEALLOCATE(ElemHaloID)
 
 END SUBROUTINE FinalizeHaloInfo
 #endif /*USE_MPI*/

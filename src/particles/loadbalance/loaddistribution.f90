@@ -32,11 +32,16 @@ END INTERFACE
 INTERFACE ApplyWeightDistributionMethod
   MODULE PROCEDURE ApplyWeightDistributionMethod
 END INTERFACE
+
+INTERFACE WeightDistribution_Equal
+  MODULE PROCEDURE WeightDistribution_Equal
+END INTERFACE
 #endif /*MPI*/
 
-PUBLIC  :: WriteElemTimeStatistics
+PUBLIC :: WriteElemTimeStatistics
 #if USE_MPI
-PUBLIC  :: ApplyWeightDistributionMethod
+PUBLIC :: ApplyWeightDistributionMethod
+PUBLIC :: WeightDistribution_Equal
 #endif /*MPI*/
 !===================================================================================================================================
 
@@ -257,7 +262,7 @@ SELECT CASE(WeightDistributionMethod)
 END SELECT ! WeightDistributionMethod
 
 ! Send the load distribution to all other procs
-CALL MPI_BCAST(offsetElemMPI,nProcs+1, MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)
+CALL MPI_BCAST(offsetElemMPI,nProcs+1,MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)
 
 ! Set PartDistri for every processor
 DO iProc = 0 ,nProcs-1

@@ -788,42 +788,37 @@ INTEGER           :: iProc
 #endif
 !===================================================================================================================================
 CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
-IF(HSize(1).NE.6) THEN
-  CALL Abort(__STAMP__,&
-    'ERROR: Wrong size of ElemInfo, should be 6')
-END IF
+IF(HSize(1).NE.6) CALL Abort(__STAMP__,'ERROR: Wrong size of ElemInfo, should be 6')
+
 CHECKSAFEINT(HSize(2),4)
-nGlobalElems=INT(HSize(2),4)
+nGlobalElems = INT(HSize(2),4)
 DEALLOCATE(HSize)
 #if USE_MPI
-IF(nGlobalElems.LT.nProcessors) THEN
-  CALL Abort(__STAMP__,&
+IF(nGlobalElems.LT.nProcessors) CALL Abort(__STAMP__,&
   'ERROR: Number of elements (1) is smaller then number of processors (2)!',nGlobalElems,REAL(nProcessors))
-END IF
 
 SDEALLOCATE(offsetElemMPI)
 ALLOCATE(   offsetElemMPI(0:nProcessors))
+offsetElemMPI = 0
+
 #if USE_LOADBALANCE
 CALL DomainDecomposition()
 CALL InitLoadBalanceTracking()
-#else
-!simple partition: nGlobalelems/nprocs, do this on proc 0
-SDEALLOCATE(offsetElemMPI)
-ALLOCATE(offsetElemMPI(0:nProcessors))
-offsetElemMPI=0
+#else /*USE_LOADBALANCE*/
+! Simple partition: nGlobalelems/nprocs, do this on proc 0
 nElems = nGlobalElems/nProcessors
 iElem  = nGlobalElems-nElems*nProcessors
 DO iProc = 0,nProcessors-1
-  offsetElemMPI(iProc)=nElems*iProc+MIN(iProc,iElem)
+  offsetElemMPI(iProc) = nElems*iProc+MIN(iProc,iElem)
 END DO
 offsetElemMPI(nProcessors) = nGlobalElems
-#endif /*USE_LOADBALANCE*/
 
-!local nElems and offset
+! Local nElems and offset
 nElems     = offsetElemMPI(myRank+1)-offsetElemMPI(myRank)
 offsetElem = offsetElemMPI(myRank)
 LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
-#else /*USE_MPI*/
+#endif /*USE_LOADBALANCE*/
+#else  /*USE_MPI*/
 nElems     = nGlobalElems   ! local number of Elements
 offsetElem = 0              ! offset is the index of first entry, hdf5 array starts at 0-.GT. -1
 #endif /*USE_MPI*/

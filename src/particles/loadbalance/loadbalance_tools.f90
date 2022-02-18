@@ -46,7 +46,7 @@ USE MOD_Globals
 USE MOD_Globals_Vars         ,ONLY: DomainDecompositionWallTime
 USE MOD_HDF5_Input           ,ONLY: OpenDataFile,CloseDataFile
 USE MOD_IO_HDF5              ,ONLY: AddToElemData,ElementOut
-USE MOD_LoadDistribution     ,ONLY: ApplyWeightDistributionMethod
+USE MOD_LoadDistribution     ,ONLY: ApplyWeightDistributionMethod,WeightDistribution_Equal
 USE MOD_LoadBalance_Vars     ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,PartDistri,TargetWeight
 USE MOD_LoadBalance_Vars     ,ONLY: ElemTime,ProcTime
 USE MOD_Mesh_Vars            ,ONLY: MeshFile,offsetElem,nElems,nGlobalElems
@@ -61,7 +61,6 @@ IMPLICIT NONE
 LOGICAL                        :: ElemTimeExists
 REAL,ALLOCATABLE               :: WeightSum_proc(:)
 INTEGER                        :: iProc
-INTEGER                        :: iElem
 REAL                           :: StartT,EndT
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(132("."))')
@@ -73,10 +72,6 @@ StartT=MPI_WTIME()
 CALL CPU_TIME(StartT)
 #endif
 
-!simple partition: nGlobalelems/nprocs, do this on proc 0
-SDEALLOCATE(offsetElemMPI)
-ALLOCATE(offsetElemMPI(0:nProcessors))
-offsetElemMPI  = 0
 SDEALLOCATE(LoadDistri)
 ALLOCATE(LoadDistri(   0:nProcessors-1))
 LoadDistri(:)  = 0.
@@ -118,12 +113,10 @@ IF (DoRestart) THEN
   CALL ApplyWeightDistributionMethod(ElemTimeExists)
 ELSE
   ! Simple partition: nGlobalelems/nProcessors
-  nElems = nGlobalElems/nProcessors
-  iElem  = nGlobalElems-nElems*nProcessors
-  DO iProc = 0,nProcessors-1
-    offsetElemMPI(iProc) = nElems*iProc + MIN(iProc,iElem)
-  END DO
-  offsetElemMPI(nProcessors) = nGlobalElems
+  CALL WeightDistribution_Equal(nProcessors,nGlobalElems,offsetElemMPI)
+
+  ! Send the load distribution to all other procs
+  CALL MPI_BCAST(offsetElemMPI,nProcessors+1,MPI_INTEGER,0,MPI_COMM_FLEXI,iERROR)
 END IF ! IF(DoRestart)
 
 ! Set local number of elements

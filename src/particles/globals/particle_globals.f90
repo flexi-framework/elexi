@@ -35,6 +35,12 @@ REAL                                  :: TwoEpsMach = 2.d0 * epsilon(0.)
 
 ! Keep nElems and PP_nElems separate for now
 INTEGER                               :: PP_nElems
+
+#ifdef INTKIND8
+INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(18)
+#else
+INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(8)
+#endif
 !=================================================================================================================================
 
 INTERFACE CROSSNORM

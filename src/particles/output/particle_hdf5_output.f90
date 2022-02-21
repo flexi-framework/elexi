@@ -97,10 +97,6 @@ CHARACTER(LEN=255),INTENT(IN)  :: FileName
 ! LOCAL VARIABLES
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
 INTEGER                        :: nVar,VarShift
-#if USE_MPI
-INTEGER                        :: sendbuf(2),recvbuf(2)
-INTEGER                        :: nParticles(0:nProcessors-1)
-#endif
 LOGICAL                        :: reSwitch
 INTEGER                        :: pcount,nInvalidPart
 INTEGER                        :: locnPart,offsetnPart
@@ -109,7 +105,7 @@ INTEGER,ALLOCATABLE            :: PartInt(:,:)
 REAL,ALLOCATABLE               :: PartData(:,:)
 INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
 INTEGER                        :: PartDataSize       !number of entries in each line of PartData
-INTEGER                        :: locnPart_max, tmpIndex, tmpIndex2, PP_nVarPart_loc
+INTEGER                        :: tmpIndex,tmpIndex2,PP_nVarPart_loc
 ! Particle turbulence models
 INTEGER                        :: TurbPartDataSize
 REAL,ALLOCATABLE               :: TurbPartData(:,:)
@@ -178,26 +174,8 @@ DO pcount = 1,PDM%ParticleVecLength
   END IF
 END DO
 
-#if USE_MPI
-!>> Sum up particles from the other procs
-sendbuf(1)  = locnPart
-recvbuf     = 0
-CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
-!>> Offset of each proc is the sum of the particles on the previous procs
-offsetnPart = recvbuf(1)
-sendbuf(1)  = recvbuf(1)+locnPart
-!>> Last proc knows the global number
-CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
-!>> Gather the global number and communicate to root (MPIRank.EQ.0)
-nGlobalNbrOfParticles  = sendbuf(1)
-CALL MPI_GATHER(locnPart,1,MPI_INTEGER,nParticles,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
-LOGWRITE(*,*)'offsetnPart,locnPart,nGlobalNbrOfParticles',offsetnPart,locnPart,nGlobalNbrOfParticles
-CALL MPI_REDUCE(locnPart, locnPart_max, 1, MPI_INTEGER, MPI_MAX, 0, MPI_COMM_FLEXI, IERROR)
-#else
-offsetnPart  = 0
-nGlobalNbrOfParticles   = locnPart
-locnPart_max = locnPart
-#endif
+! Communicate the total number and offset
+CALL GetOffsetAndGlobalNumberOfParts('WriteParticleToHDF5',offsetnPart,nGlobalNbrOfParticles,locnPart)
 
 ! Allocate data arrays for mean particle quantities
 ALLOCATE(PartInt( PartIntSize ,offsetElem +1:offsetElem +PP_nElems))
@@ -240,7 +218,7 @@ DO iElem = offsetElem+1,offsetElem+PP_nElems
     ! Set counter to the end of particle number in the current element
     iPart = PartInt(2,iElem)
   ELSE
-    CALL abort(__STAMP__, " Particle HDF5-Output method not supported! PEM%pNumber not associated")
+    CALL Abort(__STAMP__, " Particle HDF5-Output method not supported! PEM%pNumber not associated")
   END IF
   PartInt(2,iElem)=iPart
 END DO ! iElem = offsetElem+1,offsetElem+PP_nElems
@@ -310,7 +288,7 @@ ASSOCIATE (&
 
   ! Zero particles present in the complete domain.
   ! > Root writes empty dummy container to .h5 file (required for subsequent file access in ParaView)
-  IF (locnPart_max.EQ.0 .AND. MPIRoot) THEN
+  IF (nGlobalNbrOfParticles.EQ.0 .AND. MPIRoot) THEN
       CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
       CALL WriteArray(      DataSetName = 'PartData'                                      ,&
                             rank        = 2                                               ,&
@@ -320,7 +298,7 @@ ASSOCIATE (&
                             collective  = .FALSE.                                         ,&
                             RealArray   = PartData)
       CALL CloseDataFile()
-  END IF ! locnPart_max.EQ.0 .AND. MPIRoot
+  END IF ! nGlobalNbrOfParticles.EQ.0 .AND. MPIRoot
 #if USE_MPI
  CALL DistributedWriteArray(FileName                                                      ,&
                             DataSetName  = 'PartData'                                     ,&
@@ -465,6 +443,66 @@ END IF
 
 END SUBROUTINE DistributedWriteArray
 #endif /*USE_MPI*/
+
+
+!===================================================================================================================================
+!> Calculate the particle offset and global number of particles across all processors
+!> In this routine the number are calculated using integer KIND=8, but are returned with integer KIND=ICC in order to test if using
+!> integer KIND=8 is required for total number of particles, particle boundary state, lost particles or clones
+!===================================================================================================================================
+SUBROUTINE GetOffsetAndGlobalNumberOfParts(CallingRoutine,offsetnPart,globnPart,locnPart)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Particle_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)  :: CallingRoutine
+INTEGER(KIND=IK),INTENT(IN)  :: locnPart
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+INTEGER(KIND=IK),INTENT(OUT) :: offsetnPart
+INTEGER(KIND=IK),INTENT(OUT) :: globnPart
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+#if USE_MPI
+INTEGER(KIND=8)              :: locnPart8,locnPart8Recv,globnPart8 ! always integer KIND=8
+#endif
+!===================================================================================================================================
+#if USE_MPI
+locnPart8     = INT(locnPart,8)
+locnPart8Recv = 0_IK
+CALL MPI_EXSCAN(locnPart8,locnPart8Recv,1,MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,iError)
+offsetnPart   = INT(locnPart8Recv,KIND=IK)
+
+! Last proc calculates the global number and broadcasts it
+IF(myRank.EQ.nProcessors-1) locnPart8=locnPart8Recv+locnPart8
+CALL MPI_BCAST(locnPart8,1,MPI_INTEGER8,nProcessors-1,MPI_COMM_WORLD,iError)
+
+! Global numbers
+globnPart8   = locnPart8
+LOGWRITE(*,*) TRIM(CallingRoutine)//'offsetnPart,locnPart,globnPart8',offsetnPart,locnPart,globnPart8
+#else
+offsetnPart  = 0_IK
+globnPart8   = INT(locnPart,8)
+#endif
+
+! Sanity check: Add up all particles with integer KIND=8 and compare
+IF (MPIRoot) THEN
+  ! Check if offsetnPart is kind=8 is the number of particles is larger than integer KIND=4
+  IF (globnPart8.GT.INT(HUGE(offsetnPart),8)) THEN
+    WRITE(UNIT_stdOut,'(A,I0)') '\n\n\nTotal number of particles  : ',globnPart8
+    WRITE(UNIT_stdOut,'(A,I0)')       'Maximum number of particles: ',HUGE(offsetnPart)
+    CALL Abort(__STAMP__,TRIM(CallingRoutine)//' has encountered more than integer KIND=4 particles!')
+  END IF
+END IF ! MPIRoot
+
+! Cast to Kind=IK before returning the number
+globnPart = INT(globnPart8,KIND=IK)
+
+END SUBROUTINE GetOffsetAndGlobalNumberOfParts
 
 
 #if USE_LOADBALANCE

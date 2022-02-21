@@ -41,7 +41,7 @@ IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
 
   # Check if the hook actually gets loaded
   EXECUTE_PROCESS(COMMAND git config --get core.hooksPath OUTPUT_VARIABLE HOOKSPATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-  IF (DEFINED HOOKSPATH  AND NOT "${HOOKSPATH}" STREQUAL "")
+  IF (DEFINED HOOKSPATH  AND NOT "${HOOKSPATH}" STREQUAL "" AND NOT "${HOOKSPATH}" STREQUAL ".git/hooks")
     # STRING(ASCII 27 ESCAPE)
     # MESSAGE (STATUS "${ESCAPE}[34mCustom hooks path detected. Please ensure to call ${PRECOMMIT_FILE} manually.${ESCAPE}[0m")
     MESSAGE (WARNING "Custom git hooks path detected. Please ensure to call ${PRECOMMIT_FILE} manually.")

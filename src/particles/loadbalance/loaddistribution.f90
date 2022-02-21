@@ -1063,7 +1063,6 @@ END SUBROUTINE CalcDistriFromOffsets
 !===================================================================================================================================
 SUBROUTINE checkList(nProcs,offsetElemMPI,identical,numOfCalls)
 ! MODULES
-USE MOD_Globals          ,ONLY: nProcessors
 USE MOD_LoadBalance_Vars
 #if CODE_ANALYZE
 USE MOD_Globals          ,ONLY: MPIRoot,UNIT_stdOut
@@ -1109,7 +1108,7 @@ SWRITE(UNIT_stdOut,'(A,I0)') 'identical:',identical
 ! read*
 IF (.NOT.identical) THEN
   ALLOCATE(newData)
-  ALLOCATE(newData%offsetElemMPI(0:nProcessors))
+  ALLOCATE(newData%offsetElemMPI(0:nProcs))
   newData%offsetElemMPI = offsetElemMPI
   newData%numOfCalls    = 1
   ! insert at beginning of list

@@ -565,6 +565,7 @@ END IF
 
 END SUBROUTINE AnalyzeTimeStep
 
+
 !==================================================================================================================================
 !> Evaluates the initial time step for the current update of U
 !==================================================================================================================================
@@ -631,6 +632,7 @@ IF (dt_Min.LT.dt_kill) THEN
     'TimeDisc ERROR - Critical Kill timestep reached! Time: ',RealInfo=t)
 END IF
 END FUNCTION EvalTimeStep
+
 
 !===================================================================================================================================
 !> Scaling of the CFL number, from paper GASSNER, KOPRIVA, "A comparision of the Gauss and Gauss-Lobatto
@@ -703,6 +705,7 @@ dummy = Nin_DFL ! prevent compile warning
 #endif /*PARABOLIC*/
 END SUBROUTINE fillCFL_DFL
 
+
 !==================================================================================================================================
 !> Print information on the timestep
 !==================================================================================================================================
@@ -731,6 +734,7 @@ dt_analyzemin = HUGE(1.)
 nDtLimited = 0
 
 END SUBROUTINE TimeDisc_Info
+
 
 !==================================================================================================================================
 !> Finalizes variables necessary for timedisc subroutines

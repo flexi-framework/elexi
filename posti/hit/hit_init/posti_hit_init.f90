@@ -33,7 +33,7 @@ USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMes
 USE MOD_Mesh_Vars,               ONLY: nElems
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,FinalizeIOHDF5
-USE MOD_HDF5_Output,             ONLY: WriteState
+USE MOD_HDF5_Output_State,       ONLY: WriteState
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_MPI,                     ONLY: InitMPI,DefineParametersMPI
 #if USE_MPI

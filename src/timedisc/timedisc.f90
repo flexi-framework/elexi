@@ -44,7 +44,7 @@ USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
-USE MOD_HDF5_Output         ,ONLY: WriteState
+USE MOD_HDF5_Output_State   ,ONLY: WriteState
 USE MOD_IO_HDF5             ,ONLY:
 USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
 USE MOD_Output              ,ONLY: Visualize,PrintStatusLine

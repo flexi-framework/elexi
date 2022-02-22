@@ -206,8 +206,7 @@ SUBROUTINE WriteBoundaryParticleToHDF5(OutputTime)
 ! MODULES
 USE MOD_Globals
 ! USE MOD_PreProc
-USE MOD_HDF5_WriteArray        ,ONLY: WriteArray,GatheredWriteArray
-USE MOD_HDF5_Output            ,ONLY: WriteAttribute
+USE MOD_HDF5_Output            ,ONLY: WriteAttribute,WriteArray,GatheredWriteArray
 USE MOD_IO_HDF5                ,ONLY: GatheredWrite
 USE MOD_IO_HDF5                ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars            ,ONLY: ProjectName,WriteStateFiles

@@ -467,7 +467,7 @@ END SUBROUTINE ReadOldStateFile
 !===================================================================================================================================
 SUBROUTINE WriteNewStateFile()
 ! MODULES                                                                                                                          !
-USE MOD_HDF5_Output,        ONLY: WriteState
+USE MOD_HDF5_Output_State,  ONLY: WriteState
 USE MOD_Swapmesh_Vars,      ONLY: Time_State,MeshFileNew
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE

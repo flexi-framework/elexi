@@ -108,12 +108,13 @@ USE MOD_Equation_Vars     ,ONLY: nRefState,BCData,BCDataPrim,nBCByType,BCSideID
 USE MOD_Equation_Vars     ,ONLY: BCStateFile,RefStatePrim
 USE MOD_Interpolation_Vars,ONLY: InterpolationInitIsDone
 USE MOD_Mesh_Vars         ,ONLY: MeshInitIsDone,nBCSides,BC,BoundaryType,nBCs,Face_xGP
-USE MOD_Exactfunc_Vars    ,ONLY: JetRadius, RoundJetInitDone, Ramping
+USE MOD_Exactfunc_Vars    ,ONLY: JetRadius,RoundJetInitDone,Ramping
 #if PARABOLIC
 USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
 #endif
 USE MOD_EOS               ,ONLY: ConsToPrim
 USE MOD_ExactFunc         ,ONLY: ExactFunc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -300,10 +301,9 @@ USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,cp
 USE MOD_ExactFunc      ,ONLY: ExactFunc
 USE MOD_ExactFunc_Vars ,ONLY: JetRadius, Ramping
 USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,BCData
-!----------------------------------------------------------------------------------------------------------------------------------
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)      :: SideID                                   !< ID of current side
 REAL,INTENT(IN)         :: t                                        !< current time (provided by time integration scheme)
@@ -314,8 +314,6 @@ REAL,INTENT(IN)         :: TangVec1(         3,0:Nloc,0:ZDIM(Nloc)) !< tangent s
 REAL,INTENT(IN)         :: TangVec2(         3,0:Nloc,0:ZDIM(Nloc)) !< tangent surface vectors 2
 REAL,INTENT(IN)         :: Face_xGP(         3,0:Nloc,0:ZDIM(Nloc)) !< positions of surface flux points
 REAL,INTENT(OUT)        :: UPrim_boundary(PRIM,0:Nloc,0:ZDIM(Nloc)) !< resulting boundary state
-
-! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
@@ -715,6 +713,8 @@ USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 #endif
 USE MOD_TestCase     ,ONLY: GetBoundaryFluxTestcase
 USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID                                         !< ID of current side
@@ -1059,6 +1059,7 @@ USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_DG_Vars       ,ONLY: UPrim_Boundary
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1113,6 +1114,7 @@ USE MOD_ExactFunc_Vars,ONLY: JetRadius
 USE MOD_Lifting_Vars  ,ONLY: doWeakLifting
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_Testcase      ,ONLY: Lifting_GetBoundaryFluxTestcase
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1217,7 +1219,8 @@ USE MOD_Interpolation_Vars,ONLY:L_minus,L_plus
 #endif
 USE MOD_ChangeBasisByDim  ,ONLY:ChangeBasisVolume
 USE MOD_EOS               ,ONLY:ConsToPrim
- IMPLICIT NONE
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN) :: FileName       !< name of file BC data is read from
@@ -1301,6 +1304,7 @@ USE MOD_Globals
 USE MOD_Equation_Vars        ,ONLY: BCData
 USE MOD_EoS_Vars             ,ONLY: kappa,R
 USE MOD_Mesh_Vars            ,ONLY: Face_xGP,nBCSides,BoundaryType,BC
+! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1412,6 +1416,7 @@ END SUBROUTINE ReadBCFlowCsv
 !==================================================================================================================================
 RECURSIVE SUBROUTINE QuickSort(A,nLines,first,last,ind)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

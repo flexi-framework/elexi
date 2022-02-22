@@ -111,6 +111,7 @@ USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
 #if PP_LIMITER
 USE MOD_PPLimiter         ,ONLY: InitPPLimiter
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -228,6 +229,7 @@ SUBROUTINE HestFilter()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Filter_Vars,ONLY:HestFilterParam,FilterMat
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -272,6 +274,7 @@ USE MOD_Mesh_Vars,         ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars,           ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -458,6 +461,7 @@ SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,filter_ind)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -527,6 +531,7 @@ USE MOD_Filter_Vars
 #if PP_LIMITER
 USE MOD_PPLimiter,    ONLY: FinalizePPLimiter
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(FilterMat)

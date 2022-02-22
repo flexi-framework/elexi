@@ -154,8 +154,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_CalcTurb_Vars
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
-USE MOD_HDF5_Output       ,ONLY: MarkWriteSuccessfull
-USE MOD_HDF5_WriteArray   ,ONLY: GatheredWriteArray
+USE MOD_HDF5_Output       ,ONLY: GatheredWriteArray,MarkWriteSuccessfull
 USE MOD_Mesh_Vars         ,ONLY: offsetElem,nGlobalElems,sJ,nElems
 USE MOD_Output_Vars       ,ONLY: ProjectName,NOut,Vdm_N_NOut
 ! IMPLICIT VARIABLE HANDLING

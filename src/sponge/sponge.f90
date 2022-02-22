@@ -60,6 +60,7 @@ CONTAINS
 SUBROUTINE DefineParametersSponge()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Sponge")
@@ -118,7 +119,8 @@ USE MOD_Output_Vars,  ONLY:ProjectName
 USE MOD_PruettDamping,ONLY:InitPruettDamping
 USE MOD_Restart_Vars, ONLY:DoRestart,RestartTime,RestartFile
 USE MOD_Equation_Vars,ONLY:IniExactFunc
- IMPLICIT NONE
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -258,7 +260,8 @@ USE MOD_Output_Vars       ,ONLY:NVisu,Vdm_GaussN_NVisu
 USE MOD_ChangeBasisByDim  ,ONLY:ChangeBasisVolume
 USE MOD_Mesh_Vars         ,ONLY:sJ,nElems
 USE MOD_VTK               ,ONLY:WriteDataToVTK
- IMPLICIT NONE
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -452,7 +455,8 @@ USE MOD_HDF5_input ,       ONLY: OpenDataFile,CloseDataFile,ReadArray,GetDataPro
 USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume
 USE MOD_Interpolation,     ONLY: GetVandermonde
 USE MOD_Interpolation_Vars,ONLY: NodeType
- IMPLICIT NONE
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN) :: FileName                 !< HDF5 filename
@@ -514,6 +518,7 @@ USE MOD_ChangeBasis ,ONLY: ChangeBasis3D
 USE MOD_FV_Vars     ,ONLY: FV_Vdm,FV_Elems
 USE MOD_Mesh_Vars   ,ONLY: sJ
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -564,6 +569,7 @@ SUBROUTINE FinalizeSponge()
 ! MODULES
 USE MOD_Sponge_Vars  ,ONLY:SpongeMat,SpongeMap,SpBaseFlow
 USE MOD_PruettDamping,ONLY:FinalizePruettDamping
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL FinalizePruettDamping()

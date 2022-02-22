@@ -89,6 +89,7 @@ CONTAINS
 SUBROUTINE DefineParametersOutput()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Output")
@@ -127,6 +128,7 @@ USE MOD_StringTools       ,ONLY:INTTOSTR
 USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,NodeTypeVISU,NodeType
 USE ISO_C_BINDING,         ONLY: C_NULL_CHAR
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -484,6 +486,7 @@ USE MOD_EOS,              ONLY:PrimToCons,ConsToPrim
 USE MOD_FV_Basis
 USE MOD_Indicator_Vars,   ONLY:IndValue
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -637,6 +640,7 @@ SUBROUTINE InitOutputToFile(Filename,ZoneName,nVar,VarNames,lastLine)
 USE MOD_Globals
 USE MOD_Restart_Vars, ONLY: RestartTime
 USE MOD_Output_Vars,  ONLY: ProjectName,ASCIIOutputFormat
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -764,6 +768,7 @@ SUBROUTINE OutputToFile(FileName,time,nVar,output)
 ! MODULES
 USE MOD_Globals
 USE MOD_Output_Vars,  ONLY: ASCIIOutputFormat
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -817,6 +822,7 @@ END SUBROUTINE OutputToFile
 SUBROUTINE FinalizeOutput()
 ! MODULES
 USE MOD_Output_Vars,ONLY:Vdm_GaussN_NVisu,Vdm_N_NOut,OutputInitIsDone
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(Vdm_GaussN_NVisu)

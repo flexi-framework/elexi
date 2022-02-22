@@ -20,8 +20,7 @@ USE MOD_IO_HDF5
 USE MOD_StringTools,ONLY:STRICMP
 USE MOD_Mesh_Vars,  ONLY:nGlobalElems,nElems,OffsetElem
 USE MOD_HDF5_Input, ONLY:ReadAttribute,ReadArray,GetDataSize,DataSetExists,GetArrayAndName,GetDataProps
-USE MOD_HDF5_Output,ONLY:WriteAttribute
-USE MOD_HDF5_WriteArray,ONLY:WriteArray
+USE MOD_HDF5_Output,ONLY:WriteArray,WriteAttribute
 USE MOD_MPI,        ONLY:InitMPI
 #if USE_MPI
 USE MOD_MPI,        ONLY:FinalizeMPI

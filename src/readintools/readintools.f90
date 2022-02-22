@@ -196,6 +196,7 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE WriteUnused(this)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -237,6 +238,7 @@ END SUBROUTINE WriteUnused
 !==================================================================================================================================
 SUBROUTINE SetSection(this, section)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -257,6 +259,7 @@ END SUBROUTINE SetSection
 !==================================================================================================================================
 SUBROUTINE finalize(this)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -296,6 +299,7 @@ END SUBROUTINE finalize
 !==================================================================================================================================
 SUBROUTINE removeUnnecessary(this)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -419,6 +423,10 @@ SUBROUTINE CreateIntOption(this, name, description, value, multiple      &
                                                          , numberedmulti &
 #endif /*USE_PARTICLES*/
                                                          )
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -448,6 +456,10 @@ SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple   
                                                                    , numberedmulti    &
 #endif /*USE_PARTICLES*/
                                                                    )
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -478,6 +490,10 @@ SUBROUTINE CreateLogicalOption(this, name, description, value, multiple         
                                                              , numberedmulti      &
 #endif /*USE_PARTICLES*/
                                                              )
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -507,6 +523,10 @@ SUBROUTINE CreateRealOption(this, name, description, value, multiple            
                                                           , numberedmulti      &
 #endif /*USE_PARTICLES*/
                                                           )
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -536,6 +556,10 @@ SUBROUTINE CreateStringOption(this, name, description, value, multiple          
                                                              , numberedmulti      &
 #endif /*USE_PARTICLES*/
                                                              )
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -565,6 +589,10 @@ SUBROUTINE CreateIntArrayOption(this, name, description, value, multiple        
                                                              , numberedmulti      &
 #endif /*USE_PARTICLES*/
                                                              )
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -594,6 +622,10 @@ SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple    
                                                              , numberedmulti      &
 #endif /*USE_PARTICLES*/
                                                              )
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -623,6 +655,10 @@ SUBROUTINE CreateRealArrayOption(this, name, description, value, multiple       
                                                              , numberedmulti      &
 #endif /*USE_PARTICLES*/
                                                              )
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -648,6 +684,10 @@ END SUBROUTINE CreateRealArrayOption
 !> Create a new string array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 !SUBROUTINE CreateStringArrayOption(this, name, description, value, multiple)
+!! MODULES
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!----------------------------------------------------------------------------------------------------------------------------------
 !! INPUT/OUTPUT VARIABLES
 !CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 !CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -667,6 +707,7 @@ END SUBROUTINE CreateRealArrayOption
 !==================================================================================================================================
 FUNCTION CountOption_(this, name) result(count)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -694,6 +735,7 @@ END FUNCTION  CountOption_
 !==================================================================================================================================
 FUNCTION count_unread(this) result(count)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -722,6 +764,7 @@ END FUNCTION  count_unread
 !==================================================================================================================================
 SUBROUTINE insertOption(first, opt)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -753,6 +796,7 @@ END SUBROUTINE insertOption
 SUBROUTINE read_options(this, filename)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP,GetFileExtension
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -877,6 +921,7 @@ END SUBROUTINE read_options
 !==================================================================================================================================
 FUNCTION read_option(this, line) result(found)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -985,6 +1030,7 @@ END FUNCTION read_option
 ! !==================================================================================================================================
 ! SUBROUTINE IgnoredParameters()
 ! ! MODULES
+! ! IMPLICIT VARIABLE HANDLING
 ! IMPLICIT NONE
 ! !----------------------------------------------------------------------------------------------------------------------------------
 ! ! INPUT/OUTPUT VARIABLES
@@ -1015,6 +1061,7 @@ END FUNCTION read_option
 SUBROUTINE PrintDefaultParameterFile(markdown,name)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1161,6 +1208,7 @@ END SUBROUTINE PrintDefaultParameterFile
 !==================================================================================================================================
 FUNCTION constructor_Link(opt, next)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1182,6 +1230,7 @@ END FUNCTION constructor_Link
 !==================================================================================================================================
 FUNCTION CountOption(name) result(no)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 USE MOD_Options
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1199,7 +1248,10 @@ END FUNCTION CountOption
 !> option.
 !==================================================================================================================================
 SUBROUTINE GetGeneralOption(value, name, proposal)
+! MODULES
 USE MOD_Options
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name     !< parameter name
@@ -1435,7 +1487,10 @@ END SUBROUTINE GetGeneralOption
 !> the value an array option.
 !==================================================================================================================================
 SUBROUTINE GetGeneralArrayOption(value, name, no, proposal)
+! MODULES
 USE MOD_Options
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
@@ -1670,6 +1725,9 @@ END SUBROUTINE GetGeneralArrayOption
 !> Get integer, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETINT(name, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: name              !< parameter name
@@ -1685,6 +1743,10 @@ END FUNCTION GETINT
 !> Get logical, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETLOGICAL(name, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: name              !< parameter name
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
@@ -1699,6 +1761,10 @@ END FUNCTION GETLOGICAL
 !> Get real, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETREAL(name, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name     !< parameter name
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
@@ -1713,6 +1779,10 @@ END FUNCTION GETREAL
 !> Get string, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETSTR(name, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name     !< parameter name
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
@@ -1729,6 +1799,10 @@ END FUNCTION GETSTR
 !> Get integer array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETINTARRAY(name, no, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
@@ -1744,6 +1818,10 @@ END FUNCTION GETINTARRAY
 !> Get logical array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETLOGICALARRAY(name, no, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
@@ -1759,6 +1837,10 @@ END FUNCTION GETLOGICALARRAY
 !> Get real array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETREALARRAY(name, no, proposal) RESULT(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
@@ -1774,6 +1856,10 @@ END FUNCTION GETREALARRAY
 !> Get string array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETSTRARRAY(name, no, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
@@ -1794,6 +1880,10 @@ END FUNCTION GETSTRARRAY
 !> Get string array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETDESCRIPTION(name) result(description)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name        !< parameter name
 CHARACTER(LEN=1000)                  :: description !< description
@@ -1817,10 +1907,14 @@ END FUNCTION GETDESCRIPTION
 !> parameter definition. If there is no named value to an option passed as int a warning is returned.
 !==================================================================================================================================
 FUNCTION GETINTFROMSTR(name) result(value)
+! MODULES
 USE MOD_StringTools ,ONLY: ISINT, STRICMP
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 #endif /*USE_LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)   :: name        !< parameter name
 INTEGER                       :: value       !< return value
@@ -2014,8 +2108,11 @@ END FUNCTION GETINTFROMSTR
 !> Add an entry to the mapping of string and integer values for the StringToInt option.
 !===================================================================================================================================
 SUBROUTINE addStrListEntry(name,string_in,int_in)
+! MODULES
 USE MOD_Globals,     ONLY: abort
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: name      !< parameter name
 CHARACTER(LEN=*),INTENT(IN)    :: string_in !< (IN) string used for the option value
@@ -2149,6 +2246,7 @@ END SUBROUTINE addStrListEntry
 SUBROUTINE ExtractParameterFile(filename,prmfile,userblockFound)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -2243,6 +2341,7 @@ SUBROUTINE ModifyParameterFile(prmfile,prmName,prmValue,prmChanged)
 ! MODULES
 USE MOD_Globals
 USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -2323,7 +2422,10 @@ END SUBROUTINE ModifyParameterFile
 !> Clear parameters list 'prms'.
 !===================================================================================================================================
 SUBROUTINE FinalizeParameters()
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link), POINTER         :: current, tmp
 !===================================================================================================================================
@@ -2356,6 +2458,7 @@ END SUBROUTINE FinalizeParameters
 SUBROUTINE PrintOption(NameOpt,InfoOpt,IntOpt,IntArrayOpt,RealOpt,LogOpt,LogArrayOpt,StrOpt)
 ! MODULES
 USE MOD_Globals               ,ONLY: Abort,MPIRoot
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

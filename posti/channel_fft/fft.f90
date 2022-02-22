@@ -320,7 +320,6 @@ USE MOD_FFT_Vars
 USE MOD_Commandline_Arguments
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output
-USE MOD_HDF5_WriteArray,            ONLY: WriteArray
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES

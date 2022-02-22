@@ -282,7 +282,7 @@ SUBROUTINE UpdateTimeStep()
 ! MODULES
 USE MOD_Globals
 USE MOD_Analyze_Vars        ,ONLY: tWriteData
-USE MOD_HDF5_Output         ,ONLY: WriteState
+USE MOD_HDF5_Output_State   ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
 USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: nCalcTimeStep,nCalcTimeStepMax
@@ -388,7 +388,8 @@ USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
-USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
+USE MOD_HDF5_Output         ,ONLY: WriteBaseFlow
+USE MOD_HDF5_Output_State   ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
 USE MOD_Output              ,ONLY: Visualize,PrintAnalyze,PrintStatusLine
 USE MOD_PruettDamping       ,ONLY: TempFilterTimeDeriv
@@ -607,7 +608,7 @@ FUNCTION EvalTimeStep(errType) RESULT(dt_Min)
 USE MOD_Globals
 USE MOD_Analyze_Vars        ,ONLY: tWriteData
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_HDF5_Output         ,ONLY: WriteState
+USE MOD_HDF5_Output_State   ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
 USE MOD_TimeDisc_Vars       ,ONLY: dt_kill,dt_dynmin,t,dt_analyzemin,dtElem,nDtLimited
 ! IMPLICIT VARIABLE HANDLING
@@ -742,6 +743,7 @@ END SUBROUTINE TimeDisc_Info
 SUBROUTINE FinalizeTimeDisc()
 ! MODULES
 USE MOD_TimeDisc_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 TimeDiscInitIsDone = .FALSE.

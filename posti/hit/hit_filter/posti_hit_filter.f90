@@ -34,7 +34,7 @@ USE MOD_Mesh_ReadIn,             ONLY: ReadIJKSorting
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,FinalizeIOHDF5
 USE MOD_IO_HDF5,                 ONLY: FieldOut,AddToFieldData,FinalizeFieldData
-USE MOD_HDF5_Output,             ONLY: WriteState
+USE MOD_HDF5_Output_State,       ONLY: WriteState
 USE MOD_HDF5_Input,              ONLY: ISVALIDMESHFILE
 USE MOD_Output,                  ONLY: DefineParametersOutput
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI

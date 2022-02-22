@@ -62,6 +62,7 @@ CONTAINS
 SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc)
 ! MODULES
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -100,6 +101,7 @@ FUNCTION GetMaskCons()
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNames
 USE MOD_StringTools   ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -128,6 +130,7 @@ FUNCTION GetMaskPrim()
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNamesPrim
 USE MOD_StringTools   ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -154,6 +157,7 @@ END FUNCTION GetMaskPrim
 FUNCTION GetMaskGrad()
 ! MODULES
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -172,6 +176,7 @@ SUBROUTINE CalcQuantities(nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCa
 ! MODULES
 USE MOD_Globals
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -228,6 +233,7 @@ USE MOD_PreProc
 USE MOD_EOS_Posti_Vars
 USE MOD_EOS_Vars
 USE MOD_StringTools     ,ONLY: LowCase,KEYVALUE
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -448,6 +454,7 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Eos_Vars,ONLY:KappaM1
 USE MOD_DG_Vars ,ONLY:Ut,U
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -525,6 +532,7 @@ END FUNCTION FillVorticity
 !==================================================================================================================================
 FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -558,6 +566,7 @@ END FUNCTION FillLambda2
 !==================================================================================================================================
 PURE FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -594,6 +603,7 @@ PURE FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Viscosity
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -637,6 +647,7 @@ FUNCTION FillWallHeatTransfer(nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RES
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Viscosity
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -681,6 +692,7 @@ USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,SideToElem,nBCSides
 USE MOD_Interpolation       ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeGL
 USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

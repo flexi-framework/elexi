@@ -355,7 +355,7 @@ IF (meshMode.GT.0) THEN
   ! Build necessary mappings
   CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M,dim=PP_dim)
 END IF
-
+! deallocate pointers
 SWRITE(UNIT_stdOut,'(A)') " NOW CALLING deleteMeshPointer..."
 CALL deleteMeshPointer()
 
@@ -392,6 +392,7 @@ IF (meshMode.GT.1) THEN
   ! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
   ! assign 1/detJ (sJ)
   ! assign normal and tangential vectors and surfElems on faces
+
 #if (PP_dim == 3)
   ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
   crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')

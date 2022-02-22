@@ -55,6 +55,7 @@ USE MOD_Mesh_Vars,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,nElems
 #if PARABOLIC
 USE MOD_EOS_Vars ,ONLY:KappasPr
 #endif /*PARABOLIC*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

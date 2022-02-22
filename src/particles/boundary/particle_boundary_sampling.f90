@@ -1028,11 +1028,9 @@ SUBROUTINE WriteSurfSample(MeshFileName,OutputTime,remap_opt)
 !> additional performs all the final required computations
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_IO_HDF5
-USE MOD_HDF5_Output             ,ONLY: WriteHeader,WriteAttribute
-USE MOD_HDF5_WriteArray         ,ONLY: WriteArray
+USE MOD_HDF5_Output             ,ONLY: WriteHeader,WriteAttribute,WriteArray
 USE MOD_Output_Vars             ,ONLY: ProjectName,WriteStateFiles
 USE MOD_Particle_Vars           ,ONLY: nSpecies
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfBC,SurfBCName
@@ -1044,9 +1042,9 @@ USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfTotalSides
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 #endif
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: MeshFileName
 REAL,INTENT(IN)                      :: OutputTime
@@ -1280,9 +1278,9 @@ USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_MPI_Boundary_Sampling ,ONLY: FinalizeSurfCommunication
 USE MOD_Particle_MPI_Shared_Vars       ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
 #endif /*USE_MPI*/
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES

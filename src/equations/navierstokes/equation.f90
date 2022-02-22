@@ -59,6 +59,7 @@ USE MOD_SplitFlux  ,ONLY: DefineParametersSplitDG
 #if EDDYVISCOSITY
 USE MOD_EddyVisc,   ONLY: DefineParametersEddyVisc
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Equation")
@@ -98,7 +99,8 @@ USE MOD_EddyVisc          ,ONLY: InitEddyVisc
 #ifdef SPLIT_DG
 USE MOD_SplitFlux         ,ONLY: InitSplitDG
 #endif /*SPLIT_DG*/
- IMPLICIT NONE
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -206,6 +208,7 @@ SUBROUTINE GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
 USE MOD_Preproc
 USE MOD_EOS,      ONLY: ConsToPrim
 USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -257,6 +260,7 @@ SUBROUTINE GetConservativeStateSurface(UPrim_master,UPrim_slave,U_master,U_slave
 USE MOD_Preproc
 USE MOD_EOS,      ONLY: PrimToCons
 USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -302,6 +306,7 @@ USE MOD_CalcTimeStep    ,ONLY: FinalizeCalctimestep
 USE MOD_EddyVisc        ,ONLY: FinalizeEddyVisc
 #endif /*EDDYVISCOSITY*/
 USE MOD_GetBoundaryFlux, ONLY: FinalizeBC
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL FinalizeTestcase()

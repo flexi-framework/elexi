@@ -19,7 +19,7 @@
 MODULE MOD_Particle_HDF5_output
 ! MODULES
 USE MOD_IO_HDF5
-USE MOD_HDF5_WriteArray
+USE MOD_HDF5_Output
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
@@ -28,6 +28,10 @@ PRIVATE
 !INTERFACE DistributedWriteArray
 !  MODULE PROCEDURE DistributedWriteArray
 !END INTERFACE
+
+INTERFACE WriteParticle
+  MODULE PROCEDURE WriteParticle
+END INTERFACE
 
 #if USE_LOADBALANCE
 !INTERFACE WriteElemDataToSeparateContainer
@@ -39,6 +43,7 @@ INTERFACE WriteElemTime
 END INTERFACE
 #endif /*USE_LOADBALANCE*/
 
+PUBLIC :: WriteParticle
 #if USE_MPI
 PUBLIC :: DistributedWriteArray
 #endif
@@ -49,6 +54,339 @@ PUBLIC :: WriteElemTime
 !==================================================================================================================================
 
 CONTAINS
+
+
+!===================================================================================================================================
+! Subroutine that write the particle information to the state file
+!> PartInt  contains the index of particles in each global element
+!> PartData contains the indidividual properties of each particle
+!===================================================================================================================================
+SUBROUTINE WriteParticle(FileName)
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Mesh_Vars,             ONLY: nGlobalElems, offsetElem
+USE MOD_Part_Tools,            ONLY: UpdateNextFreePosition
+USE MOD_Particle_Globals
+USE MOD_Particle_Analyze_Vars, ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
+USE MOD_Particle_Boundary_Vars,ONLY: doParticleReflectionTrack
+! USE MOD_Particle_HDF5_Output
+USE MOD_Particle_Restart_Vars, ONLY: EmissionTime
+USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex
+USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex,doWritePartDiam
+#if USE_MPI
+USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
+#endif /*MPI*/
+#if CODE_ANALYZE
+USE MOD_Particle_Tracking_Vars,ONLY: PartOut,MPIRankOut
+#endif /*CODE_ANALYZE*/
+! Particle turbulence models
+USE MOD_Particle_Vars,         ONLY: TurbPartState
+USE MOD_Particle_SGS_Vars,     ONLY: nSGSVars
+#if USE_RW
+USE MOD_Particle_RandomWalk_Vars,ONLY: nRWVars
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN)  :: FileName
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
+INTEGER                        :: nVar,VarShift
+#if USE_MPI
+INTEGER                        :: sendbuf(2),recvbuf(2)
+INTEGER                        :: nParticles(0:nProcessors-1)
+#endif
+LOGICAL                        :: reSwitch
+INTEGER                        :: pcount,nInvalidPart
+INTEGER                        :: locnPart,offsetnPart
+INTEGER                        :: iPart,nGlobalNbrOfParticles,iElem
+INTEGER,ALLOCATABLE            :: PartInt(:,:)
+REAL,ALLOCATABLE               :: PartData(:,:)
+INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
+INTEGER                        :: PartDataSize       !number of entries in each line of PartData
+INTEGER                        :: locnPart_max, tmpIndex, tmpIndex2, PP_nVarPart_loc
+! Particle turbulence models
+INTEGER                        :: TurbPartDataSize
+REAL,ALLOCATABLE               :: TurbPartData(:,:)
+!===================================================================================================================================
+
+! Size and location of particle data
+PP_nVarPart_loc = PP_nVarPart-1
+PartDataSize    = PP_nVarPart_loc + 1
+tmpIndex2       = PartDataSize
+IF (doWritePartDiam) THEN
+  PP_nVarPart_loc = PP_nVarPart
+  PartDataSize    = PartDataSize + 1
+  tmpIndex2       = PartDataSize
+END IF
+tmpIndex     = PartDataSize + 1
+! Increase size if index is tracked
+IF (doPartIndex) THEN
+  PartDataSize = PartDataSize + 1
+  tmpIndex     = tmpIndex     + 1
+END IF
+varShift     = 0
+! Increase size if reflections are tracked
+IF (doParticleReflectionTrack) THEN
+  PartDataSize = PartDataSize + 1
+  varShift     = 1
+END IF
+! Increase size if the absolute particle path is tracked
+IF (doParticleDispersionTrack.OR.doParticlePathTrack) &
+  PartDataSize = PartDataSize + 3
+
+! Add turbulent dispersion data to output
+IF (ALLOCATED(TurbPartState)) THEN
+  TurbPartDataSize = nSGSVars
+#if USE_RW
+  TurbPartDataSize = TurbPartDataSize + nRWVars
+#endif
+END IF
+
+nInvalidPart = 0
+! Make sure to eliminate invalid particles as we cannot restart from NaN
+DO pcount = 1,PDM%ParticleVecLength
+  IF (.NOT. PDM%ParticleInside(pcount)) CYCLE
+  IF (ANY(IEEE_IS_NAN(PartState(:,pcount)))) THEN
+    nInvalidPart = nInvalidPart + 1
+    PDM%ParticleInside(pcount) = .FALSE.
+  END IF
+END DO
+
+#if USE_MPI
+IF(MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,nInvalidPart,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(nInvalidPart,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
+#endif /*USE_MPI*/
+IF (nInvalidPart.GT.0 .AND. MPIRoot) THEN
+  WRITE(UNIT_stdOut,'(A,I0,A)') ' Detected ',nInvalidPart,' invalid particles during output. Removing ...'
+END IF
+
+! Determine number of particles in the complete domain
+locnPart =   0
+!>> Count number of particle on local proc
+DO pcount = 1,PDM%ParticleVecLength
+  IF(PDM%ParticleInside(pcount)) THEN
+    locnPart = locnPart + 1
+  END IF
+END DO
+
+#if USE_MPI
+!>> Sum up particles from the other procs
+sendbuf(1)  = locnPart
+recvbuf     = 0
+CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+!>> Offset of each proc is the sum of the particles on the previous procs
+offsetnPart = recvbuf(1)
+sendbuf(1)  = recvbuf(1)+locnPart
+!>> Last proc knows the global number
+CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
+!>> Gather the global number and communicate to root (MPIRank.EQ.0)
+nGlobalNbrOfParticles  = sendbuf(1)
+CALL MPI_GATHER(locnPart,1,MPI_INTEGER,nParticles,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+LOGWRITE(*,*)'offsetnPart,locnPart,nGlobalNbrOfParticles',offsetnPart,locnPart,nGlobalNbrOfParticles
+CALL MPI_REDUCE(locnPart, locnPart_max, 1, MPI_INTEGER, MPI_MAX, 0, MPI_COMM_FLEXI, IERROR)
+#else
+offsetnPart  = 0
+nGlobalNbrOfParticles   = locnPart
+locnPart_max = locnPart
+#endif
+
+! Allocate data arrays for mean particle quantities
+ALLOCATE(PartInt( PartIntSize ,offsetElem +1:offsetElem +PP_nElems))
+ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
+! Allocate data arrays for turbulent particle quantities
+IF (ALLOCATED(TurbPartState)) ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
+
+! Update next free position using a linked list
+ALLOCATE(PEM%pStart (offsetElem+1:offsetElem+PP_nElems) , &
+         PEM%pNumber(offsetElem+1:offsetElem+PP_nElems) , &
+         PEM%pNext  (1           :PDM%maxParticleNumber), &
+         PEM%pEnd   (offsetElem+1:offsetElem+PP_nElems))
+useLinkedList = .TRUE.
+CALL UpdateNextFreePosition()
+
+! Walk along the linked list and fill the data arrays
+iPart = offsetnPart
+! Walk over all elements on local proc
+DO iElem = offsetElem+1,offsetElem+PP_nElems
+  ! Set start of particle numbers in current element
+  PartInt(1,iElem) = iPart
+  ! Find all particles in current element
+  IF (ALLOCATED(PEM%pNumber)) THEN
+    PartInt(2,iElem) = PartInt(1,iElem) + PEM%pNumber(iElem)
+    ! Sum up particles and add properties to output array
+    pcount = PEM%pStart(iElem)
+    DO iPart = PartInt(1,iElem)+1,PartInt(2,iElem)
+      PartData(1:tmpIndex2-1,iPart) = PartState(1:tmpIndex2-1,pcount)
+      PartData(tmpIndex2,iPart)     = REAL(PartSpecies(pcount))
+      IF (doPartIndex)                                      PartData(PP_nVarPart_loc+2                    ,iPart) = REAL(PartIndex(pcount))
+      IF (doParticleReflectionTrack)                        PartData(tmpIndex                             ,iPart) = REAL(PartReflCount(pcount))
+      IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartData(tmpIndex+varShift:tmpIndex+2+varShift,iPart) = PartPath(1:3,pcount)
+
+      ! Turbulent particle properties
+      IF (ALLOCATED(TurbPartState))  TurbPartData(:,iPart) = TurbPartState(:,pcount)
+
+      ! Set the index to the next particle
+      pcount = PEM%pNext(pcount)
+    END DO
+    ! Set counter to the end of particle number in the current element
+    iPart = PartInt(2,iElem)
+  ELSE
+    CALL abort(__STAMP__, " Particle HDF5-Output method not supported! PEM%pNumber not associated")
+  END IF
+  PartInt(2,iElem)=iPart
+END DO ! iElem = offsetElem+1,offsetElem+PP_nElems
+
+! Allocate PartInt varnames array and fill it
+nVar=2
+ALLOCATE(StrVarNames(nVar))
+StrVarNames(1)='FirstPartID'
+StrVarNames(2)='LastPartID'
+
+IF (MPIRoot) THEN
+  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteAttribute(File_ID,'VarNamesPartInt',nVar,StrArray=StrVarNames)
+  ! Write the beginning of the emission for restart from fluid solution
+  IF (EmissionTime .NE. 0) &
+    CALL WriteAttribute(File_ID,'EmissionTime',1,RealScalar=EmissionTime)
+  CALL CloseDataFile()
+END IF
+
+reSwitch=.FALSE.
+IF(gatheredWrite)THEN
+  ! gatheredwrite not working with distributed particles
+  ! particles require own routine for which the communicator has to be build each time
+  reSwitch=.TRUE.
+  gatheredWrite=.FALSE.
+END IF
+
+! Associate construct for integer KIND=8 possibility
+ASSOCIATE (&
+      nGlobalElems    => INT(nGlobalElems)                              ,&
+      nVar            => INT(nVar)                                      ,&
+      PP_nElems       => INT(PP_nElems)                                 ,&
+      offsetElem      => INT(offsetElem)                                ,&
+      PartDataSize    => INT(PartDataSize))
+
+  CALL GatheredWriteArray(FileName                                      ,&
+                          create      = .FALSE.                         ,&
+                          DataSetName = 'PartInt'                       ,&
+                          rank        = 2                               ,&
+                          nValGlobal  = (/nVar,nGlobalElems/)           ,&
+                          nVal        = (/nVar,PP_nElems   /)           ,&
+                          offset      = (/0   ,offsetElem  /)           ,&
+                          collective  = .TRUE.                          ,&
+                          IntArray    = PartInt)
+  DEALLOCATE(StrVarNames)
+
+  ! Allocate PartData varnames array and fill it
+  ALLOCATE(StrVarNames(PartDataSize))
+  StrVarNames(1:3) = (/'ParticlePositionX','ParticlePositionY','ParticlePositionZ'/)
+  StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityZ'        /)
+#if PP_nVarPartRHS == 6
+  StrVarNames(7:9) = (/'AngularVelX'      ,'AngularVelY'      ,'AngularVelZ'      /)
+#endif
+  IF (doWritePartDiam) StrVarNames(PP_nVarPart) = 'PartDiam'
+  StrVarNames(tmpIndex2) = 'Species'
+  IF (doPartIndex) StrVarNames(tmpIndex2+1) = 'Index'
+  IF (doParticleReflectionTrack) &
+    StrVarNames(tmpIndex) = 'ReflectionCount'
+  IF (doParticleDispersionTrack.OR.doParticlePathTrack) &
+    StrVarNames(tmpIndex+varShift:tmpIndex+2+varShift)=(/'PartPathX','PartPathY','PartPathZ'/)
+
+  IF(MPIRoot)THEN
+    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+    CALL WriteAttribute(File_ID,'VarNamesParticles',PartDataSize,StrArray=StrVarNames)
+    CALL CloseDataFile()
+  END IF
+
+  ! Zero particles present in the complete domain.
+  ! > Root writes empty dummy container to .h5 file (required for subsequent file access in ParaView)
+  IF (locnPart_max.EQ.0 .AND. MPIRoot) THEN
+      CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+      CALL WriteArray(      DataSetName = 'PartData'                                      ,&
+                            rank        = 2                                               ,&
+                            nValGlobal  = (/PartDataSize,nGlobalNbrOfParticles /)         ,&
+                            nVal        = (/PartDataSize,locnPart   /)                    ,&
+                            offset      = (/0           ,offsetnPart/)                    ,&
+                            collective  = .FALSE.                                         ,&
+                            RealArray   = PartData)
+      CALL CloseDataFile()
+  END IF ! locnPart_max.EQ.0 .AND. MPIRoot
+#if USE_MPI
+ CALL DistributedWriteArray(FileName                                                      ,&
+                            DataSetName  = 'PartData'                                     ,&
+                            rank         = 2                                              ,&
+                            nValGlobal   = (/PartDataSize,nGlobalNbrOfParticles /)        ,&
+                            nVal         = (/PartDataSize,locnPart   /)                   ,&
+                            offset       = (/0           ,offsetnPart/)                   ,&
+                            collective   =.FALSE.                                         ,&
+                            offSetDim    = 2                                              ,&
+                            communicator = PartMPI%COMM                                   ,&
+                            RealArray    = PartData)
+#else
+  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteArray(          DataSetName  = 'PartData'                                     ,&
+                            rank         = 2                                              ,&
+                            nValGlobal   = (/PartDataSize,nGlobalNbrOfParticles /)        ,&
+                            nVal         = (/PartDataSize,locnPart   /)                   ,&
+                            offset       = (/0           ,offsetnPart/)                   ,&
+                            collective   = .TRUE.                                         ,&
+                            RealArray    = PartData)
+  CALL CloseDataFile()
+#endif /*MPI*/
+
+  ! Turbulent particle properties currently not supported to be read directly. Do not associate varnames
+#if USE_MPI
+  IF (ALLOCATED(TurbPartState)) &
+    CALL DistributedWriteArray(FileName                                                   ,&
+                               DataSetName  = 'TurbPartData'                              ,&
+                               rank         = 2                                           ,&
+                               nValGlobal   = (/TurbPartDataSize,nGlobalNbrOfParticles /) ,&
+                               nVal         = (/TurbPartDataSize,locnPart   /)            ,&
+                               offset       = (/0               ,offsetnPart/)            ,&
+                               collective   = .FALSE.                                     ,&
+                               offSetDim    = 2                                           ,&
+                               communicator = PartMPI%COMM                                ,&
+                               RealArray    = TurbPartData)
+#else
+  IF (ALLOCATED(TurbPartState)) THEN
+    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+    CALL WriteArray(           DataSetName  = 'TurbPartData'                              ,&
+                               rank         = 2                                           ,&
+                               nValGlobal   = (/TurbPartDataSize,nGlobalNbrOfParticles/)  ,&
+                               nVal         = (/TurbPartDataSize,locnPart/)               ,&
+                               offset       = (/0               ,offsetnPart/)            ,&
+                               collective   = .TRUE.                                      ,&
+                               RealArray    = TurbPartData)
+    CALL CloseDataFile()
+  END IF
+#endif /*MPI*/
+
+END ASSOCIATE
+  ! reswitch
+IF(reSwitch) gatheredWrite=.TRUE.
+
+! De-allocate linked list and return to normal particle array mode
+useLinkedList=.FALSE.
+DEALLOCATE( StrVarNames  &
+          , PartInt      &
+          , PartData     &
+          , PEM%pStart   &
+          , PEM%pNumber  &
+          , PEM%pNext    &
+          , PEM%pEnd)
+
+END SUBROUTINE WriteParticle
+
 
 #if USE_MPI
 SUBROUTINE DistributedWriteArray(FileName,DataSetName,rank,nValGlobal,nVal,offset,collective,&

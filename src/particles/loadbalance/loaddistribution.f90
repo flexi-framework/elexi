@@ -145,7 +145,7 @@ DO iRank = minRank,maxRank
   END IF
 END DO ! iRank=minRank,maxRank
 
-CALL MPI_ALLTOALL(send_count,1,MPI_INTEGER,recv_count,1, MPI_INTEGER,MPI_COMM_FLEXI,iERROR)
+CALL MPI_ALLTOALL(send_count,1,MPI_INTEGER,recv_count,1,MPI_INTEGER,MPI_COMM_FLEXI,iERROR)
 NewElems = SUM(recv_count)
 
 DEALLOCATE(PreSum,send_count,recv_count,split)
@@ -566,7 +566,7 @@ ElemLoop: DO iElem = curiElem,nGlobalElems-nProcs+iProc+1
       CASE(3)
         getElem = getElem+1
 
-        IF (CurWeight.GT.TargetWeight_loc .OR. iElem.EQ.nGlobalElems-nProcs +iProc+1) THEN
+        IF (CurWeight.GT.TargetWeight_loc .OR. iElem.EQ.nGlobalElems-nProcs+iProc+1) THEN
           diffLower = CurWeight-ElemGlobalTime(iElem)-TargetWeight_loc
           diffUpper = Curweight-TargetWeight_loc
 
@@ -610,21 +610,21 @@ END DO ! iProc
 ElemDistri = 0
 
 DO iProc = 0,nProcs-1
-  ElemDistri(iProc) = offsetElemMPI(iProc+1)-offsetElemMPI(iProc)
+  ElemDistri(iProc) = offsetElemMPI(iProc+1) - offsetElemMPI(iProc)
   ! sanity check
   IF (ElemDistri(iProc).LE.0) CALL Abort(__STAMP__,'Process received zero elements during load distribution',iProc)
 END DO ! iPRoc
 
 ! redistribute element weight
 DO iProc = 1,nProcs
-  FirstElemInd = offsetElemMPI(MyRank)+1
-  LastElemInd  = offsetElemMPI(MyRank+1)
-  MyElems      = ElemDistri(MyRank)
+  FirstElemInd = offsetElemMPI(myRank)+1
+  LastElemInd  = offsetElemMPI(myRank +1)
+  MyElems      = ElemDistri(   myRank)
   CALL SingleStepOptimalPartition(nProcs,MyElems,NewElems,ElemGlobalTime(FirstElemInd:LastElemInd))
   ElemDistri   = 0
 
   ErrorCode    = 0
-  IF(NewElems.LE.0) ErrorCode = ErrorCode+100
+  IF(NewElems.LE.0) ErrorCode = ErrorCode + 100
 
   CALL MPI_ALLGATHER(NewElems,1,MPI_INTEGER,ElemDistri(:),1,MPI_INTEGER,MPI_COMM_FLEXI,iERROR)
 
@@ -636,7 +636,7 @@ DO iProc = 1,nProcs
   END DO ! jProc=1,nProcs
 
   IF(offsetElemMPI(nProcs).NE.nGlobalElems) ErrorCode = ErrorCode+10
-  IF(SUM(ElemDistri)           .NE.nGlobalElems) ErrorCode = ErrorCode+1
+  IF(SUM(ElemDistri)      .NE.nGlobalElems) ErrorCode = ErrorCode+1
   IF(ErrorCode.NE.0) CALL Abort(__STAMP__,' Error during re-distribution! ErrorCode:', ErrorCode)
 END DO ! iProc
 
@@ -644,13 +644,13 @@ END DO ! iProc
 LoadDistri = 0.
 DO iProc = 0,nProcs-1
   FirstElemInd = offsetElemMPI(iProc)+1
-  LastElemInd  = offsetElemMPI(iProc+1)
+  LastElemInd  = offsetElemMPI(iProc +1)
   IF (ElemTimeExists) THEN
     SELECT CASE(WeightDistributionMethod)
       CASE(3)
         LoadDistri(iProc) = SUM(ElemGlobalTime(FirstElemInd:LastElemInd))
       CASE(4)
-        LoadDistri(iProc) = SUM(PartsInElem(FirstElemInd:LastElemInd))
+        LoadDistri(iProc) = SUM(PartsInElem(   FirstElemInd:LastElemInd))
       END SELECT
   ELSE
     LoadDistri(iProc) = LastElemInd-offsetElemMPI(iProc) + SUM(PartsInElem(FirstElemInd:LastElemInd))*ParticleMPIWeight

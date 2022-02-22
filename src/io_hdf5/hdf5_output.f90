@@ -19,15 +19,10 @@
 MODULE MOD_HDF5_Output
 ! MODULES
 USE MOD_IO_HDF5
-USE MOD_HDF5_WriteArray
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-
-INTERFACE WriteState
-  MODULE PROCEDURE WriteState
-END INTERFACE
 
 INTERFACE WriteTimeAverage
   MODULE PROCEDURE WriteTimeAverage
@@ -45,6 +40,10 @@ INTERFACE WriteHeader
   MODULE PROCEDURE WriteHeader
 END INTERFACE
 
+!INTERFACE WriteArray
+!  MODULE PROCEDURE WriteArray
+!END INTERFACE
+
 INTERFACE WriteAttribute
   MODULE PROCEDURE WriteAttribute
 END INTERFACE
@@ -55,6 +54,10 @@ END INTERFACE
 
 INTERFACE WriteAdditionalElemData
   MODULE PROCEDURE WriteAdditionalElemData
+END INTERFACE
+
+INTERFACE WriteAdditionalFieldData
+  MODULE PROCEDURE WriteAdditionalFieldData
 END INTERFACE
 
 INTERFACE
@@ -69,198 +72,111 @@ INTERFACE GenerateFileSkeleton
   MODULE PROCEDURE GenerateFileSkeleton
 END INTERFACE
 
-
-PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow,GenerateFileSkeleton
-PUBLIC :: WriteAttribute,WriteAdditionalElemData,MarkWriteSuccessfull
+PUBLIC :: FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow,GenerateFileSkeleton
+PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,WriteAdditionalFieldData,MarkWriteSuccessfull
 !==================================================================================================================================
 
 CONTAINS
 
+
 !==================================================================================================================================
-!> Subroutine to write the solution U to HDF5 format
-!> Is used for postprocessing and for restart
+!> This routine is a wrapper routine for WriteArray and first gathers all output arrays of an MPI sub group,
+!> then only the master will write the data. Significantly reduces IO overhead for a large number of processes!
 !==================================================================================================================================
-SUBROUTINE WriteState(MeshFileName,OutputTime,FutureTime,isErrorFile)
+SUBROUTINE GatheredWriteArray(FileName,create,DataSetName,rank,nValGlobal,nVal,offset,collective,RealArray,IntArray,StrArray)
 ! MODULES
-USE MOD_PreProc
 USE MOD_Globals
-USE MOD_DG_Vars           ,ONLY: U
-USE MOD_Output_Vars       ,ONLY: ProjectName,NOut,Vdm_N_NOut,WriteStateFiles
-USE MOD_Mesh_Vars         ,ONLY: offsetElem,nGlobalElems,sJ,nElems
-USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
-USE MOD_Equation_Vars     ,ONLY: StrVarNames
-#if PP_dim == 2
-USE MOD_2D                ,ONLY: ExpandArrayTo3D
-#endif
-#if USE_RW
-USE MOD_DG_Vars           ,ONLY: UTurb
-USE MOD_Equation_Vars     ,ONLY: nVarTurb
-USE MOD_Restart_Vars      ,ONLY: RestartTurb
-#endif
-#if USE_LOADBALANCE
-USE MOD_Particle_HDF5_Output,ONLY: WriteElemTime
-#endif /*USE_LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName   !< file name of mesh used for simulation
-REAL,INTENT(IN)                :: OutputTime     !< simulation time when output is performed
-REAL,INTENT(IN)                :: FutureTime     !< hint, when next file will be written
-LOGICAL,INTENT(IN)             :: isErrorFile    !< indicate whether an error file is written in case of a crashed simulation
+CHARACTER(LEN=*),INTENT(IN)    :: FileName          !< Name of the file to write to
+CHARACTER(LEN=*),INTENT(IN)    :: DataSetName       !< Name of the dataset to write
+LOGICAL,INTENT(IN)             :: create            !< Should the file be created or not
+LOGICAL,INTENT(IN)             :: collective        !< Collective write or not
+INTEGER,INTENT(IN)             :: rank              !< Rank of array
+INTEGER,INTENT(IN)             :: nVal(rank)        !< Local number of variables in each rank
+INTEGER,INTENT(IN)             :: nValGlobal(rank)  !< Global number of variables in each rank
+INTEGER,INTENT(IN)             :: offset(rank)      !< Offset in each rank
+REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealArray(PRODUCT(nVal)) !< Real array to write
+INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray( PRODUCT(nVal)) !< Integer array to write
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray( PRODUCT(nVal)) !< String array to write
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255)             :: FileName,FileType
-REAL                           :: StartT,EndT
-REAL,POINTER                   :: UOut(:,:,:,:,:)
-#if PP_dim == 2
-REAL,ALLOCATABLE               :: UOutTmp(:,:,:,:,:)
-#endif
-REAL                           :: Utmp(5,0:PP_N,0:PP_N,0:PP_NZ)
-REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_NZ),JOut(1,0:NOut,0:NOut,0:ZDIM(NOut))
-INTEGER                        :: iElem,i,j,k
-INTEGER                        :: nVal(5)
+#if USE_MPI
+REAL,              ALLOCATABLE :: UReal(:)
+CHARACTER(LEN=255),ALLOCATABLE :: UStr(:)
+INTEGER,           ALLOCATABLE :: UInt(:)
+INTEGER                        :: i,nValGather(rank),nDOFLocal
+INTEGER,DIMENSION(nLocalProcs) :: nDOFPerNode,offsetNode
 !==================================================================================================================================
-IF (.NOT.WriteStateFiles) RETURN
+! HDF5 with MPI can only write max. (32 bit signed integer / size of single element) elements (2GB per MPI rank)
+IF (PRODUCT(REAL(nVal)).GT.nLimit) CALL Abort(__STAMP__, & ! Casting to avoid overflow
+ 'Dataset "'//TRIM(DataSetName)//'" exceeds HDF5 chunksize limit of 2GB per rank! Increase number of ranks or compile without MPI!')
 
-IF(MPIRoot)THEN
-  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE STATE TO HDF5 FILE...'
-  GETTIME(StartT)
-END IF
+IF(gatheredWrite)THEN
+  IF(ANY(offset(1:rank-1).NE.0)) &
+    CALL Abort(__STAMP__,'Offset only allowed in last dimension for gathered IO.')
 
-! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
-FileType=MERGE('ERROR_State','State      ',isErrorFile)
-FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),OutputTime))//'.h5'
-#if USE_RW
-IF (RestartTurb) THEN
-  IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar+nVarTurb,NOut,StrVarNames,&
-                                        MeshFileName,OutputTime,FutureTime,withUserblock=.TRUE.)
-ELSE
-#endif /* USE_RW */
-  IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar,NOut,StrVarNames(1:PP_nVar),&
-                                        MeshFileName,OutputTime,FutureTime,withUserblock=.TRUE.)
-#if USE_RW
-END IF
-#endif /* USE_RW */
+  ! Get last dim of each array on IO nodes
+  nDOFLocal=PRODUCT(nVal)
+  CALL MPI_GATHER(nDOFLocal,1,MPI_INTEGER,nDOFPerNode,1,MPI_INTEGER,0,MPI_COMM_NODE,iError)
 
-! Set size of output
-nVal=(/PP_nVar,NOut+1,NOut+1,ZDIM(NOut)+1,nElems/)
-
-! build output data
-IF(NOut.NE.PP_N)THEN
-#if FV_ENABLED
-  CALL Abort(__STAMP__, &
-      "NOut not working for FV!")
-#endif
-  ! Project JU and J to NOut, compute U on Nout
-  ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:ZDIM(NOut),nElems))
-  DO iElem=1,nElems
-    JN(1,:,:,:)=1./sJ(:,:,:,iElem,0)
-    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      Utmp(:,i,j,k)=U(:,i,j,k,iElem)*JN(1,i,j,k)
-    END DO; END DO; END DO
-    CALL ChangeBasisVolume(PP_nVar,PP_N,NOut,Vdm_N_NOut,&
-                           Utmp,UOut(1:PP_nVar,:,:,:,iElem))
-    ! Jacobian
-    CALL ChangeBasisVolume(1,PP_N,NOut,Vdm_N_NOut,JN,JOut)
-    DO k=0,ZDIM(NOut); DO j=0,NOut; DO i=0,NOut
-      UOut(:,i,j,k,iElem)=UOut(:,i,j,k,iElem)/JOut(1,i,j,k)
-    END DO; END DO; END DO
-  END DO
-#if PP_dim == 2
-  ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-  IF (.NOT.output2D) THEN
-    ALLOCATE(UOutTmp(PP_nVar,0:NOut,0:NOut,0:ZDIM(NOut),nElems))
-    UOutTmp = UOut
-    DEALLOCATE(UOut)
-    ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
-    CALL ExpandArrayTo3D(5,nVal,4,Nout+1,UOutTmp,UOut)
-    DEALLOCATE(UOutTmp)
-    nVal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nElems/)
-  END IF
-#endif
-
-ELSE ! write state on same polynomial degree as the solution
-
-#if PP_dim == 3
-#if USE_RW
-  IF (RestartTurb) THEN
-    ! Add UTurb to output for RW, we need to expand the solution
-    ALLOCATE(UOut(1:PP_nVar+nVarTurb,0:NOut,0:NOut,0:ZDIM(NOut),nElems))
-    Uout(1:PP_nVar,:,:,:,:)                  = U    (1:PP_nVar ,:,:,:,:)
-    Uout(PP_nVar+1:PP_nVar+nVarTurb,:,:,:,:) = UTurb(1:nVarTurb,:,:,:,:)
-    ! Correct size of the output array
-    nVal=(/PP_nVar+nVarTurb,NOut+1,NOut+1,NOut+1,nElems/)
+  ! Allocate big array and compute offsets of small arrs inside big
+  offsetNode=0
+  IF(MPILocalRoot)THEN
+    nValGather=nVal
+    nValGather(rank)=SUM(nDOFPerNode)/PRODUCT(nVal(1:rank-1))
+    DO i=2,nLocalProcs
+      offsetNode(i)=offsetNode(i-1)+nDOFPerNode(i-1)
+    END DO
+    IF(PRESENT(RealArray)) ALLOCATE(UReal(PRODUCT(nValGather)))
+    IF(PRESENT(IntArray))  ALLOCATE(UInt( PRODUCT(nValGather)))
+    IF(PRESENT(StrArray))  ALLOCATE(UStr( PRODUCT(nValGather)))
   ELSE
-#endif /* USE_RW */
-    UOut => U
-#if USE_RW
-  END IF
-#endif /* USE_RW */
-#else
-  IF (.NOT.output2D) THEN
-    ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-    ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
-    CALL ExpandArrayTo3D(5,(/PP_nVar,NOut+1,NOut+1,ZDIM(NOut)+1,nElems/),4,NOut+1,U,UOut)
-    ! Correct size of the output array
-    nVal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nElems/)
-  ELSE
-    UOut => U
-  END IF
-#endif
-END IF ! (NOut.NE.PP_N)
+    IF(PRESENT(RealArray)) ALLOCATE(UReal(1))
+    IF(PRESENT(IntArray))  ALLOCATE(UInt( 1))
+    IF(PRESENT(StrArray))  ALLOCATE(UStr( 1))
+  ENDIF
 
-! Reopen file and write DG solution
-#if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-#endif
-#if USE_RW
-IF (RestartTurb) THEN
-  CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                          DataSetName='DG_Solution', rank=5,&
-                          nValGlobal=(/PP_nVar+nVarTurb,NOut+1,NOut+1,NOut+1,nGlobalElems/),&
-                          nVal=nVal                                              ,&
-                          offset=    (/0,      0,     0,     0,     offsetElem/),&
-                          collective=.TRUE.,RealArray=UOut)
-  ! UOut always separately allocated with RestartTurb
-  DEALLOCATE(UOut)
+  ! Gather small arrays on IO nodes
+  IF(PRESENT(RealArray)) CALL MPI_GATHERV(RealArray,nDOFLocal,MPI_DOUBLE_PRECISION,&
+                                          UReal,nDOFPerNode,offsetNode,MPI_DOUBLE_PRECISION,0,MPI_COMM_NODE,iError)
+  IF(PRESENT(IntArray))  CALL MPI_GATHERV(IntArray, nDOFLocal,MPI_INTEGER,&
+                                          UInt, nDOFPerNode,offsetNode,MPI_INTEGER,0,MPI_COMM_NODE,iError)
+  !IF(PRESENT(StrArray))  CALL MPI_GATHERV(RealArray,nDOFLocal,MPI_DOUBLE_PRECISION,&
+  !                                        UReal,nDOFPerNode, offsetNode,MPI_DOUBLE_PRECISION,0,MPI_COMM_NODE,iError)
+
+  IF(MPILocalRoot)THEN
+    ! Reopen file and write DG solution (only IO nodes)
+    CALL OpenDataFile(FileName,create=create,single=.FALSE.,readOnly=.FALSE.,communicatorOpt=MPI_COMM_LEADERS)
+    IF(PRESENT(RealArray)) CALL WriteArray(DataSetName,rank,nValGlobal,nValGather,&
+                                                 offset,collective=collective,RealArray=UReal)
+    IF(PRESENT(IntArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nValGather,&
+                                                 offset,collective=collective,IntArray =UInt)
+    !IF(PRESENT(StrArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nValGather,&
+    !                                             offset,collective=collective,StrArr =UStr)
+    CALL CloseDataFile()
+  END IF
+
+  SDEALLOCATE(UReal)
+  SDEALLOCATE(UInt)
+  SDEALLOCATE(UStr)
 ELSE
 #endif
-  CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                          DataSetName='DG_Solution', rank=5,&
-                          nValGlobal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nGlobalElems/),&
-                          nVal=nVal                                              ,&
-                          offset=    (/0,      0,     0,     0,     offsetElem/),&
-                          collective=.TRUE.,RealArray=UOut)
-
-  ! Deallocate UOut only if we did not point to U
-  IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
-#if USE_RW
-END IF
-#endif
-
-#if USE_PARTICLES
-CALL WriteParticle(FileName)
-#endif /*USE_PARTICLES*/
-#if USE_LOADBALANCE
-! Write 'ElemTime' to a separate container in the state.h5 file
-CALL WriteElemTime(FileName)
-#endif /*USE_LOADBALANCE*/
-
-CALL WriteAdditionalElemData(FileName,ElementOut)
-CALL WriteAdditionalFieldData(FileName,FieldOut)
-
-IF(MPIRoot)THEN
-  CALL MarkWriteSuccessfull(FileName)
-  GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
-END IF
-
+  CALL OpenDataFile(FileName,create=create,single=.FALSE.,readOnly=.FALSE.)
+  IF(PRESENT(RealArray)) CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
+                                               offset,collective,RealArray=RealArray)
+  IF(PRESENT(IntArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
+                                               offset,collective,IntArray =IntArray)
+  IF(PRESENT(StrArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
+                                               offset,collective,StrArray =StrArray)
+  CALL CloseDataFile()
 #if USE_MPI
-! Since we are going to abort directly after this wenn an error state is written, make sure that all processors are finished
-! with everything or we might end up with a non-valid error state file
-IF (isErrorFile) CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+END IF
 #endif
-END SUBROUTINE WriteState
+
+END SUBROUTINE GatheredWriteArray
 
 
 !==================================================================================================================================
@@ -285,6 +201,7 @@ SUBROUTINE WriteAdditionalElemData(FileName,ElemList)
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY: offsetElem,nGlobalElems,nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -352,6 +269,7 @@ SUBROUTINE WriteAdditionalFieldData(FileName,FieldList)
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY: offsetElem,nGlobalElems,nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -476,6 +394,7 @@ USE MOD_Output_Vars  ,ONLY: ProjectName
 USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
 USE MOD_Equation_Vars,ONLY: StrVarNames
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -555,6 +474,7 @@ USE MOD_Globals
 USE MOD_Output_Vars,ONLY: ProjectName,WriteTimeAvgFiles
 USE MOD_Mesh_Vars  ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_2D         ,ONLY: ExpandArrayTo3D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -582,9 +502,9 @@ REAL,POINTER                   :: UOut2D(:,:,:,:,:)
 TYPE(tElementOut),POINTER      :: ElementOutTimeAvg
 INTEGER                        :: nVar_loc, nVal_loc(5), nVal_glob(5), i
 !==================================================================================================================================
+IF(.NOT.WriteTimeAvgFiles)          RETURN ! do not write time average files
 IF(ANY(nVal(1:PP_dim)       .EQ.0)) RETURN ! no time averaging
 IF(nVarAvg.EQ.0.AND.nVarFluc.EQ.0)  RETURN ! no time averaging
-IF(.NOT.WriteTimeAvgFiles)          RETURN ! do not write time average files
 
 IF (MPIRoot) THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE TO HDF5 FILE...'
@@ -678,6 +598,7 @@ USE MOD_Interpolation_Vars ,ONLY: NodeType
 #if FV_ENABLED
 USE MOD_FV_Vars            ,ONLY: FV_X,FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -777,6 +698,7 @@ END SUBROUTINE GenerateFileSkeleton
 !==================================================================================================================================
 SUBROUTINE MarkWriteSuccessfull(FileName)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -800,6 +722,7 @@ SUBROUTINE FlushFiles(FlushTime_In)
 USE MOD_Globals
 USE MOD_Output_Vars ,ONLY: ProjectName
 USE MOD_HDF5_Input  ,ONLY: GetNextFileName
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -860,6 +783,7 @@ END SUBROUTINE FlushFiles
 SUBROUTINE WriteHeader(FileType_in,File_ID)
 ! MODULES
 USE MOD_Output_Vars,ONLY:ProgramName,FileVersion,ProjectName
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -881,6 +805,129 @@ CALL WriteAttribute(File_ID,'File_Version',1,RealScalar=FileVersion)
 END SUBROUTINE WriteHeader
 
 
+!==================================================================================================================================
+!> Low-level subroutine to actually write data to HDF5 format
+!==================================================================================================================================
+SUBROUTINE WriteArray(DataSetName,rank,nValGlobal,nVal,offset,&
+                            collective,resizeDim,chunkSize,&
+                            RealArray,IntArray,StrArray)
+! MODULES
+USE MOD_Globals
+USE,INTRINSIC :: ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)   :: DataSetName      !< name of the dataset to write the data into
+INTEGER,INTENT(IN)            :: rank             !< number of dimensions of the array
+INTEGER,INTENT(IN)            :: nValGlobal(rank) !< max size of array in offset dimension
+INTEGER,INTENT(IN)            :: nVal(rank)       !< size of complete (local) array to write
+INTEGER,INTENT(IN)            :: offset(rank)     !< offset =0, start at beginning of the array
+LOGICAL,INTENT(IN)            :: collective       !< use collective writes from all procs
+LOGICAL,INTENT(IN),OPTIONAL   :: resizeDim(rank)  !< specify dimensions which can be resized (enlarged)
+INTEGER,INTENT(IN),OPTIONAL   :: chunkSize(rank)  !< specify chunksize
+REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealArray(PRODUCT(nVal)) !< number of array entries
+INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray(PRODUCT(nVal))  !< number of array entries
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(PRODUCT(nVal))  !< number of array entries (length 255)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER(HID_T)                 :: PList_ID,DSet_ID,MemSpace,FileSpace,Type_ID,dsetparams
+INTEGER(HSIZE_T)               :: Dimsf(Rank),OffsetHDF(Rank),nValMax(Rank)
+INTEGER(SIZE_T)                :: SizeSet=255
+LOGICAL                        :: chunky,exists
+TYPE(C_PTR)                    :: buf
+!==================================================================================================================================
+LOGWRITE(*,'(A,I1.1,A,A,A)')' WRITE ',Rank,'D ARRAY "',TRIM(DataSetName),'" TO HDF5 FILE...'
+
+! specify chunk size if desired
+nValMax=nValGlobal
+chunky=.FALSE.
+CALL H5PCREATE_F(H5P_DATASET_CREATE_F,dsetparams,iError)
+IF(PRESENT(chunkSize))THEN
+  chunky=.TRUE.
+  Dimsf=chunkSize
+  CALL H5PSET_CHUNK_F(dsetparams,rank,dimsf,iError)
+END IF
+! make array extendable in case you want to append something
+IF(PRESENT(resizeDim))THEN
+  IF(.NOT.PRESENT(chunkSize))&
+    CALL Abort(__STAMP__,&
+               'Chunk size has to be specified when using resizable arrays.')
+  nValMax = MERGE(H5S_UNLIMITED_F,nValMax,resizeDim)
+END IF
+
+! Create the dataset with default properties.
+IF(PRESENT(RealArray)) Type_ID=H5T_NATIVE_DOUBLE
+IF(PRESENT(IntArray))  Type_ID=H5T_NATIVE_INTEGER
+IF(PRESENT(StrArray))THEN
+  ! Create HDF5 datatype for the character array.
+  CALL H5TCOPY_F(H5T_NATIVE_CHARACTER, Type_ID, iError)
+  CALL H5TSET_SIZE_F(Type_ID, SizeSet, iError)
+END IF
+
+Dimsf = nValGlobal ! we need the global array size
+! Check data set. Data sets can be checked by determining the existence of the corresponding link
+CALL H5LEXISTS_F(File_ID, TRIM(DataSetName), exists, iError)
+IF (.NOT. exists) THEN
+  ! Create the data space for the  dataset.
+  CALL H5SCREATE_SIMPLE_F(Rank, Dimsf, FileSpace, iError, nValMax)
+  CALL H5DCREATE_F(File_ID, TRIM(DataSetName), Type_ID, FileSpace, DSet_ID,iError,dsetparams)
+  CALL H5SCLOSE_F(FileSpace, iError)
+ELSE
+  CALL H5DOPEN_F(File_ID, TRIM(DatasetName),DSet_ID, iError)
+END IF
+IF(chunky)THEN
+  CALL H5DSET_EXTENT_F(DSet_ID,Dimsf,iError) ! if resizable then dataset may need to be extended
+END IF
+
+! Dataset empty, return before allocating memory space
+IF (PRODUCT(nVal).EQ.0) RETURN
+
+! Each process defines dataset in memory and writes it to the hyperslab in the file.
+Dimsf     = nVal  ! Now we need the local array size
+OffsetHDF = Offset
+! Create the data space in the memory
+IF(ANY(Dimsf.EQ.0))THEN
+  CALL H5SCREATE_F(H5S_NULL_F,MemSpace,iError)
+ELSE
+  CALL H5SCREATE_SIMPLE_F(Rank, Dimsf, MemSpace, iError)
+END IF
+! Select hyperslab in the file.
+CALL H5DGET_SPACE_F(DSet_id, FileSpace, iError)
+IF(ANY(Dimsf.EQ.0))THEN
+  CALL H5SSELECT_NONE_F(FileSpace,iError)
+ELSE
+  CALL H5SSELECT_HYPERSLAB_F(FileSpace, H5S_SELECT_SET_F, OffsetHDF, Dimsf, iError)
+END IF
+
+! Create property list for collective dataset write
+CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)
+#if USE_MPI
+IF(collective)THEN
+  CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_COLLECTIVE_F,  iError)
+ELSE
+  CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_INDEPENDENT_F, iError)
+END IF
+#endif
+
+!Write the dataset collectively.
+IF(PRESENT(IntArray))  buf=C_LOC(IntArray)
+IF(PRESENT(RealArray)) buf=C_LOC(RealArray)
+IF(PRESENT(StrArray))  buf=C_LOC(StrArray(1))
+CALL H5DWRITE_F(DSet_ID,Type_ID,buf,iError,file_space_id=filespace,mem_space_id=memspace,xfer_prp=PList_ID)
+
+IF(PRESENT(StrArray)) CALL H5TCLOSE_F(Type_ID, iError)
+! Close the property list, dataspaces and dataset.
+CALL H5PCLOSE_F(dsetparams, iError)
+CALL H5PCLOSE_F(PList_ID, iError)
+CALL H5SCLOSE_F(FileSpace, iError)
+CALL H5SCLOSE_F(MemSpace, iError)
+CALL H5DCLOSE_F(DSet_ID, iError)
+
+LOGWRITE(*,*)'...DONE!'
+
+END SUBROUTINE WriteArray
+
 
 !==================================================================================================================================
 !> Subroutine to write Attributes to HDF5 format of a given Loc_ID, which can be the File_ID,datasetID,groupID. This must be opened
@@ -892,6 +939,7 @@ SUBROUTINE WriteAttribute(Loc_ID_in,AttribName,nVal,DataSetname,&
 ! MODULES
 USE MOD_Globals
 USE,INTRINSIC :: ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -985,339 +1033,5 @@ IF(Loc_ID.NE.Loc_ID_in)THEN
 END IF
 LOGWRITE(*,*)'...DONE!'
 END SUBROUTINE WriteAttribute
-
-
-#if USE_PARTICLES
-!===================================================================================================================================
-! Subroutine that write the particle information to the state file
-!> PartInt  contains the index of particles in each global element
-!> PartData contains the indidividual properties of each particle
-!===================================================================================================================================
-SUBROUTINE WriteParticle(FileName)
-! MODULES
-USE MOD_PreProc
-USE MOD_Globals
-USE MOD_Mesh_Vars,             ONLY: nGlobalElems, offsetElem
-USE MOD_Part_Tools,            ONLY: UpdateNextFreePosition
-USE MOD_Particle_Globals
-USE MOD_Particle_Analyze_Vars, ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
-USE MOD_Particle_Boundary_Vars,ONLY: doParticleReflectionTrack
-USE MOD_Particle_HDF5_Output
-USE MOD_Particle_Restart_Vars, ONLY: EmissionTime
-USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex
-USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex,doWritePartDiam
-#if USE_MPI
-USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
-#endif /*MPI*/
-#if CODE_ANALYZE
-USE MOD_Particle_Tracking_Vars,ONLY: PartOut,MPIRankOut
-#endif /*CODE_ANALYZE*/
-! Particle turbulence models
-USE MOD_Particle_Vars,         ONLY: TurbPartState
-USE MOD_Particle_SGS_Vars,     ONLY: nSGSVars
-#if USE_RW
-USE MOD_Particle_RandomWalk_Vars,ONLY: nRWVars
-#endif
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN)  :: FileName
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
-INTEGER                        :: nVar,VarShift
-#if USE_MPI
-INTEGER                        :: sendbuf(2),recvbuf(2)
-INTEGER                        :: nParticles(0:nProcessors-1)
-#endif
-LOGICAL                        :: reSwitch
-INTEGER                        :: pcount,nInvalidPart
-INTEGER                        :: locnPart,offsetnPart
-INTEGER                        :: iPart,nGlobalNbrOfParticles,iElem
-INTEGER,ALLOCATABLE            :: PartInt(:,:)
-REAL,ALLOCATABLE               :: PartData(:,:)
-INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
-INTEGER                        :: PartDataSize       !number of entries in each line of PartData
-INTEGER                        :: locnPart_max, tmpIndex, tmpIndex2, PP_nVarPart_loc
-! Particle turbulence models
-INTEGER                        :: TurbPartDataSize
-REAL,ALLOCATABLE               :: TurbPartData(:,:)
-!===================================================================================================================================
-
-! Size and location of particle data
-PP_nVarPart_loc = PP_nVarPart-1
-PartDataSize    = PP_nVarPart_loc + 1
-tmpIndex2       = PartDataSize
-IF (doWritePartDiam) THEN
-  PP_nVarPart_loc = PP_nVarPart
-  PartDataSize    = PartDataSize + 1
-  tmpIndex2       = PartDataSize
-END IF
-tmpIndex     = PartDataSize + 1
-! Increase size if index is tracked
-IF (doPartIndex) THEN
-  PartDataSize = PartDataSize + 1
-  tmpIndex     = tmpIndex     + 1
-END IF
-varShift     = 0
-! Increase size if reflections are tracked
-IF (doParticleReflectionTrack) THEN
-  PartDataSize = PartDataSize + 1
-  varShift     = 1
-END IF
-! Increase size if the absolute particle path is tracked
-IF (doParticleDispersionTrack.OR.doParticlePathTrack) &
-  PartDataSize = PartDataSize + 3
-
-! Add turbulent dispersion data to output
-IF (ALLOCATED(TurbPartState)) THEN
-  TurbPartDataSize = nSGSVars
-#if USE_RW
-  TurbPartDataSize = TurbPartDataSize + nRWVars
-#endif
-END IF
-
-nInvalidPart = 0
-! Make sure to eliminate invalid particles as we cannot restart from NaN
-DO pcount = 1,PDM%ParticleVecLength
-  IF (.NOT. PDM%ParticleInside(pcount)) CYCLE
-  IF (ANY(IEEE_IS_NAN(PartState(:,pcount)))) THEN
-    nInvalidPart = nInvalidPart + 1
-    PDM%ParticleInside(pcount) = .FALSE.
-  END IF
-END DO
-
-#if USE_MPI
-IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,nInvalidPart,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-ELSE
-  CALL MPI_REDUCE(nInvalidPart,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-END IF
-#endif /*USE_MPI*/
-IF (nInvalidPart.GT.0 .AND. MPIRoot) THEN
-  WRITE(UNIT_stdOut,'(A,I0,A)') ' Detected ',nInvalidPart,' invalid particles during output. Removing ...'
-END IF
-
-! Determine number of particles in the complete domain
-locnPart =   0
-!>> Count number of particle on local proc
-DO pcount = 1,PDM%ParticleVecLength
-  IF(PDM%ParticleInside(pcount)) THEN
-    locnPart = locnPart + 1
-  END IF
-END DO
-
-#if USE_MPI
-!>> Sum up particles from the other procs
-sendbuf(1)  = locnPart
-recvbuf     = 0
-CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
-!>> Offset of each proc is the sum of the particles on the previous procs
-offsetnPart = recvbuf(1)
-sendbuf(1)  = recvbuf(1)+locnPart
-!>> Last proc knows the global number
-CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
-!>> Gather the global number and communicate to root (MPIRank.EQ.0)
-nGlobalNbrOfParticles  = sendbuf(1)
-CALL MPI_GATHER(locnPart,1,MPI_INTEGER,nParticles,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
-LOGWRITE(*,*)'offsetnPart,locnPart,nGlobalNbrOfParticles',offsetnPart,locnPart,nGlobalNbrOfParticles
-CALL MPI_REDUCE(locnPart, locnPart_max, 1, MPI_INTEGER, MPI_MAX, 0, MPI_COMM_FLEXI, IERROR)
-#else
-offsetnPart  = 0
-nGlobalNbrOfParticles   = locnPart
-locnPart_max = locnPart
-#endif
-
-! Allocate data arrays for mean particle quantities
-ALLOCATE(PartInt( PartIntSize ,offsetElem +1:offsetElem +PP_nElems))
-ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
-! Allocate data arrays for turbulent particle quantities
-IF (ALLOCATED(TurbPartState)) ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
-
-! Update next free position using a linked list
-ALLOCATE(PEM%pStart (offsetElem+1:offsetElem+PP_nElems) , &
-         PEM%pNumber(offsetElem+1:offsetElem+PP_nElems) , &
-         PEM%pNext  (1           :PDM%maxParticleNumber), &
-         PEM%pEnd   (offsetElem+1:offsetElem+PP_nElems))
-useLinkedList = .TRUE.
-CALL UpdateNextFreePosition()
-
-! Walk along the linked list and fill the data arrays
-iPart = offsetnPart
-! Walk over all elements on local proc
-DO iElem = offsetElem+1,offsetElem+PP_nElems
-  ! Set start of particle numbers in current element
-  PartInt(1,iElem) = iPart
-  ! Find all particles in current element
-  IF (ALLOCATED(PEM%pNumber)) THEN
-    PartInt(2,iElem) = PartInt(1,iElem) + PEM%pNumber(iElem)
-    ! Sum up particles and add properties to output array
-    pcount = PEM%pStart(iElem)
-    DO iPart = PartInt(1,iElem)+1,PartInt(2,iElem)
-      PartData(1:tmpIndex2-1,iPart) = PartState(1:tmpIndex2-1,pcount)
-      PartData(tmpIndex2,iPart)     = REAL(PartSpecies(pcount))
-      IF (doPartIndex)                                      PartData(PP_nVarPart_loc+2                    ,iPart) = REAL(PartIndex(pcount))
-      IF (doParticleReflectionTrack)                        PartData(tmpIndex                             ,iPart) = REAL(PartReflCount(pcount))
-      IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartData(tmpIndex+varShift:tmpIndex+2+varShift,iPart) = PartPath(1:3,pcount)
-
-      ! Turbulent particle properties
-      IF (ALLOCATED(TurbPartState))  TurbPartData(:,iPart) = TurbPartState(:,pcount)
-
-      ! Set the index to the next particle
-      pcount = PEM%pNext(pcount)
-    END DO
-    ! Set counter to the end of particle number in the current element
-    iPart = PartInt(2,iElem)
-  ELSE
-    CALL abort(__STAMP__, " Particle HDF5-Output method not supported! PEM%pNumber not associated")
-  END IF
-  PartInt(2,iElem)=iPart
-END DO ! iElem = offsetElem+1,offsetElem+PP_nElems
-
-! Allocate PartInt varnames array and fill it
-nVar=2
-ALLOCATE(StrVarNames(nVar))
-StrVarNames(1)='FirstPartID'
-StrVarNames(2)='LastPartID'
-
-IF (MPIRoot) THEN
-  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-  CALL WriteAttribute(File_ID,'VarNamesPartInt',nVar,StrArray=StrVarNames)
-  ! Write the beginning of the emission for restart from fluid solution
-  IF (EmissionTime .NE. 0) &
-    CALL WriteAttribute(File_ID,'EmissionTime',1,RealScalar=EmissionTime)
-  CALL CloseDataFile()
-END IF
-
-reSwitch=.FALSE.
-IF(gatheredWrite)THEN
-  ! gatheredwrite not working with distributed particles
-  ! particles require own routine for which the communicator has to be build each time
-  reSwitch=.TRUE.
-  gatheredWrite=.FALSE.
-END IF
-
-! Associate construct for integer KIND=8 possibility
-ASSOCIATE (&
-      nGlobalElems    => INT(nGlobalElems)                              ,&
-      nVar            => INT(nVar)                                      ,&
-      PP_nElems       => INT(PP_nElems)                                 ,&
-      offsetElem      => INT(offsetElem)                                ,&
-      PartDataSize    => INT(PartDataSize))
-
-  CALL GatheredWriteArray(FileName                                      ,&
-                          create      = .FALSE.                         ,&
-                          DataSetName = 'PartInt'                       ,&
-                          rank        = 2                               ,&
-                          nValGlobal  = (/nVar,nGlobalElems/)           ,&
-                          nVal        = (/nVar,PP_nElems   /)           ,&
-                          offset      = (/0   ,offsetElem  /)           ,&
-                          collective  = .TRUE.                          ,&
-                          IntArray    = PartInt)
-  DEALLOCATE(StrVarNames)
-
-  ! Allocate PartData varnames array and fill it
-  ALLOCATE(StrVarNames(PartDataSize))
-  StrVarNames(1:3) = (/'ParticlePositionX','ParticlePositionY','ParticlePositionZ'/)
-  StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityZ'        /)
-#if PP_nVarPartRHS == 6
-  StrVarNames(7:9) = (/'AngularVelX'      ,'AngularVelY'      ,'AngularVelZ'      /)
-#endif
-  IF (doWritePartDiam) StrVarNames(PP_nVarPart) = 'PartDiam'
-  StrVarNames(tmpIndex2) = 'Species'
-  IF (doPartIndex) StrVarNames(tmpIndex2+1) = 'Index'
-  IF (doParticleReflectionTrack) &
-    StrVarNames(tmpIndex) = 'ReflectionCount'
-  IF (doParticleDispersionTrack.OR.doParticlePathTrack) &
-    StrVarNames(tmpIndex+varShift:tmpIndex+2+varShift)=(/'PartPathX','PartPathY','PartPathZ'/)
-
-  IF(MPIRoot)THEN
-    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteAttribute(File_ID,'VarNamesParticles',PartDataSize,StrArray=StrVarNames)
-    CALL CloseDataFile()
-  END IF
-
-  ! Zero particles present in the complete domain.
-  ! > Root writes empty dummy container to .h5 file (required for subsequent file access in ParaView)
-  IF (locnPart_max.EQ.0 .AND. MPIRoot) THEN
-      CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-      CALL WriteArray(      DataSetName = 'PartData'                                      ,&
-                            rank        = 2                                               ,&
-                            nValGlobal  = (/PartDataSize,nGlobalNbrOfParticles /)         ,&
-                            nVal        = (/PartDataSize,locnPart   /)                    ,&
-                            offset      = (/0           ,offsetnPart/)                    ,&
-                            collective  = .FALSE.                                         ,&
-                            RealArray   = PartData)
-      CALL CloseDataFile()
-  END IF ! locnPart_max.EQ.0 .AND. MPIRoot
-#if USE_MPI
- CALL DistributedWriteArray(FileName                                                      ,&
-                            DataSetName  = 'PartData'                                     ,&
-                            rank         = 2                                              ,&
-                            nValGlobal   = (/PartDataSize,nGlobalNbrOfParticles /)        ,&
-                            nVal         = (/PartDataSize,locnPart   /)                   ,&
-                            offset       = (/0           ,offsetnPart/)                   ,&
-                            collective   =.FALSE.                                         ,&
-                            offSetDim    = 2                                              ,&
-                            communicator = PartMPI%COMM                                   ,&
-                            RealArray    = PartData)
-#else
-  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-  CALL WriteArray(          DataSetName  = 'PartData'                                     ,&
-                            rank         = 2                                              ,&
-                            nValGlobal   = (/PartDataSize,nGlobalNbrOfParticles /)        ,&
-                            nVal         = (/PartDataSize,locnPart   /)                   ,&
-                            offset       = (/0           ,offsetnPart/)                   ,&
-                            collective   = .TRUE.                                         ,&
-                            RealArray    = PartData)
-  CALL CloseDataFile()
-#endif /*MPI*/
-
-  ! Turbulent particle properties currently not supported to be read directly. Do not associate varnames
-#if USE_MPI
-  IF (ALLOCATED(TurbPartState)) &
-    CALL DistributedWriteArray(FileName                                                   ,&
-                               DataSetName  = 'TurbPartData'                              ,&
-                               rank         = 2                                           ,&
-                               nValGlobal   = (/TurbPartDataSize,nGlobalNbrOfParticles /) ,&
-                               nVal         = (/TurbPartDataSize,locnPart   /)            ,&
-                               offset       = (/0               ,offsetnPart/)            ,&
-                               collective   = .FALSE.                                     ,&
-                               offSetDim    = 2                                           ,&
-                               communicator = PartMPI%COMM                                ,&
-                               RealArray    = TurbPartData)
-#else
-  IF (ALLOCATED(TurbPartState)) THEN
-    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteArray(           DataSetName  = 'TurbPartData'                              ,&
-                               rank         = 2                                           ,&
-                               nValGlobal   = (/TurbPartDataSize,nGlobalNbrOfParticles/)  ,&
-                               nVal         = (/TurbPartDataSize,locnPart/)               ,&
-                               offset       = (/0               ,offsetnPart/)            ,&
-                               collective   = .TRUE.                                      ,&
-                               RealArray    = TurbPartData)
-    CALL CloseDataFile()
-  END IF
-#endif /*MPI*/
-
-END ASSOCIATE
-  ! reswitch
-IF(reSwitch) gatheredWrite=.TRUE.
-
-! De-allocate linked list and return to normal particle array mode
-useLinkedList=.FALSE.
-DEALLOCATE( StrVarNames  &
-          , PartInt      &
-          , PartData     &
-          , PEM%pStart   &
-          , PEM%pNumber  &
-          , PEM%pNext    &
-          , PEM%pEnd)
-
-END SUBROUTINE WriteParticle
-#endif /*PARTICLES*/
 
 END MODULE MOD_HDF5_output

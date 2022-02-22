@@ -60,6 +60,7 @@ CONTAINS
 SUBROUTINE DefineParametersRestart()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Restart")
@@ -97,6 +98,7 @@ USE MOD_Restart_Vars
 USE MOD_StringTools        ,ONLY: INTTOSTR
 USE MOD_ReadInTools        ,ONLY: GETINT
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -223,6 +225,7 @@ USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
 USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -336,6 +339,7 @@ USE MOD_2D,                 ONLY: ExpandArrayTo3D
 #else
 USE MOD_2D,                 ONLY: to2D_rank5
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -640,6 +644,7 @@ END SUBROUTINE Restart
 SUBROUTINE SupersampleFVCell(UOld,UNew,NOld,NNew,NSuper)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -691,6 +696,7 @@ USE MOD_Restart_Vars
 #if USE_RW
 USE MOD_DG_Vars,     ONLY:Uturb
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 #if USE_RW

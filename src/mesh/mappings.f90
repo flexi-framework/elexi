@@ -84,6 +84,7 @@ CONTAINS
 SUBROUTINE buildMappings(Nloc,V2S,S2V,S2V2,FS2M,dim)
 ! MODULES
 USE MOD_Globals,           ONLY:CollectiveStop
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -229,6 +230,7 @@ END SUBROUTINE BuildMappings
 !==================================================================================================================================
 FUNCTION Flip_S2M(Nloc, p, q, flip, dim)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -267,6 +269,7 @@ END FUNCTION Flip_S2M
 !==================================================================================================================================
 FUNCTION Flip_M2S(Nloc, p, q, flip, dim)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -287,6 +290,7 @@ END FUNCTION Flip_M2S
 !==================================================================================================================================
 FUNCTION CGNS_VolToSide(Nloc, i, j, k, locSideID, dim)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -380,6 +384,7 @@ END FUNCTION CGNS_SideToVol
 !==================================================================================================================================
 FUNCTION CGNS_SideToVol2(Nloc, p, q, locSideID, dim)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -426,6 +431,7 @@ END FUNCTION CGNS_SideToVol2
 !==================================================================================================================================
 FUNCTION VolToSide(Nloc, i, j, k, flip, locSideID, dim)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -449,9 +455,10 @@ END FUNCTION VolToSide
 !==================================================================================================================================
 FUNCTION SideToVol(Nloc, l, p, q, flip, locSideID,dim)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: l,p,q,flip,locSideID,Nloc,dim
 INTEGER,DIMENSION(3) :: SideToVol
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -470,9 +477,10 @@ END FUNCTION SideToVol
 !==================================================================================================================================
 FUNCTION SideToVol2(Nloc, p, q, flip, locSideID,dim)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: p,q,flip,locSideID,Nloc,dim
 INTEGER,DIMENSION(2) :: SideToVol2
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -502,7 +510,9 @@ END FUNCTION SideToVol2
 !END FUNCTION ElemToNbElem
 
 SUBROUTINE FinalizeMappings()
+! MODULES
 USE MOD_Mesh_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(FS2M)

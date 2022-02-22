@@ -207,7 +207,7 @@ REAL,ALLOCATABLE              :: xi_RP(:,:)
 
 IF(MPIRoot)THEN
   IF (.NOT.FILEEXISTS(FileString)) &
-    CALL ABORT(__STAMP__,'RPList from data file "'//TRIM(FileString)//'" does not exist')
+    CALL Abort(__STAMP__,'RPList from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Read recordpoint definitions from data file "'//TRIM(FileString)//'" ...'
@@ -230,7 +230,7 @@ nGlobalElems_RPList = INT(HSize(2),4) ! global number of elements
 DEALLOCATE(HSize)
 
 IF (nGlobalElems_RPList.NE.nGlobalElems) &
-  CALL ABORT(__STAMP__,'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
+  CALL Abort(__STAMP__,'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
 
 CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntArray=OffsetRPArray)
 
@@ -431,8 +431,7 @@ SUBROUTINE WriteRP(nVar,StrVarNames,OutputTime,resetCounters)
 USE MOD_PreProc
 USE MOD_Globals
 USE HDF5
-USE MOD_HDF5_Output           ,ONLY: WriteAttribute,MarkWriteSuccessfull
-USE MOD_HDF5_WriteArray       ,ONLY: WriteArray
+USE MOD_HDF5_Output           ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessfull
 USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Mesh_Vars             ,ONLY: MeshFile
 USE MOD_Output_Vars           ,ONLY: ProjectName

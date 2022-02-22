@@ -112,8 +112,7 @@ USE MOD_Walldistance_Vars
 USE MOD_Interpolation_Vars
 USE MOD_Mesh_Vars,          ONLY: Elem_xGP,nBCSides,nElems,nGlobalElems,offsetElem,Face_xGP
 USE MOD_Mesh_Vars,          ONLY: BoundaryType,BC,MeshFile,SideToElem
-USE MOD_HDF5_Output,        ONLY: WriteAttribute
-USE MOD_HDF5_WriteArray,    ONLY: WriteArray
+USE MOD_HDF5_Output,        ONLY: WriteArray,WriteAttribute
 USE MOD_IO_HDF5
 USE MOD_VTK,                ONLY: WriteDataToVTK
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
@@ -154,7 +153,6 @@ CALL FinalizeParameters()
 CALL prms%CreateRealOption(    'meshScale',           "Scale the mesh by this factor (shrink/enlarge).",&
                                                       '1.0')
 meshScale=GETREAL('meshScale','1.0')
-
 
 ! First step: Coarse search using the supersampled points
 DO iElem=1,nElems

@@ -234,7 +234,7 @@ IF (useBaseflow) THEN
           VarSortTimeAvg(i)=j
           EXIT
         ELSE IF(i .EQ. INT(HSize(1))) THEN
-          CALL abort(__STAMP__,'Required DMD-Var not provided by TimeAvg-File')
+          CALL Abort(__STAMP__,'Required DMD-Var not provided by TimeAvg-File')
         END IF
       END DO
     END DO
@@ -490,8 +490,8 @@ SUBROUTINE WriteDmdStateFile()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_IO_HDF5
-USE MOD_HDF5_Output,        ONLY: WriteState,WriteTimeAverage,GenerateFileSkeleton,WriteAttribute
-USE MOD_HDF5_WriteArray,    ONLY: WriteArray
+USE MOD_HDF5_Output,        ONLY: WriteTimeAverage,GenerateFileSkeleton,WriteAttribute,WriteArray
+USE MOD_HDF5_Output_State,  ONLY: WriteState
 USE MOD_Output,             ONLY: InitOutput
 USE MOD_Output_Vars
 USE MOD_DMD_Vars,           ONLY: Phi,N_State,N_StateZ,nElems_State,nModes,freq,alpha,lambda,sigmaSort,Time_State,VarNameDMD

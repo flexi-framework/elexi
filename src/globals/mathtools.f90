@@ -50,6 +50,7 @@ CONTAINS
 !==================================================================================================================================
 FUNCTION INVERSE(A) RESULT(AINV)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -114,6 +115,7 @@ END FUNCTION INVERSE
 !==================================================================================================================================
 FUNCTION INVERSE_LU(A) RESULT(AINV)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -197,95 +199,95 @@ END IF
 END FUNCTION INVERSE_LU
 
 
-!FUNCTION INV(A) RESULT(AINV)
-!!===================================================================================================================================
-!! Computes matrix inverse using lapack
-!!===================================================================================================================================
-!! MODULES
-!USE MOD_Globals
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT VARIABLES
-!REAL,INTENT(IN)  :: A(:,:)
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! OUTPUT VARIABLES
-!REAL             :: AINV(SIZE(A,1),SIZE(A,2))
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! External procedures defined in LAPACK
-!EXTERNAL DGETRF
-!EXTERNAL DGETRI
-!! LOCAL VARIABLES
-!REAL    :: work(SIZE(A,1))  ! work array for lapack
-!INTEGER :: ipiv(SIZE(A,1))  ! pivot indices
-!INTEGER :: n,info
-!!===================================================================================================================================
-!! Store A in Ainv to prevent it from being overwritten by LAPACK
-!Ainv = A
-!n = size(A,1)
+! FUNCTION INV(A) RESULT(AINV)
+! !===================================================================================================================================
+! ! Computes matrix inverse using lapack
+! !===================================================================================================================================
+! ! MODULES
+! USE MOD_Globals
+! ! IMPLICIT VARIABLE HANDLING
+! IMPLICIT NONE
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT VARIABLES
+! REAL,INTENT(IN)  :: A(:,:)
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! OUTPUT VARIABLES
+! REAL             :: AINV(SIZE(A,1),SIZE(A,2))
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! External procedures defined in LAPACK
+! EXTERNAL DGETRF
+! EXTERNAL DGETRI
+! ! LOCAL VARIABLES
+! REAL    :: work(SIZE(A,1))  ! work array for lapack
+! INTEGER :: ipiv(SIZE(A,1))  ! pivot indices
+! INTEGER :: n,info
+! !===================================================================================================================================
+! ! Store A in Ainv to prevent it from being overwritten by LAPACK
+! Ainv = A
+! n = size(A,1)
 
-!! DGETRF computes an LU factorization of a general M-by-N matrix A
-!! using partial pivoting with row interchanges.
-!CALL DGETRF(n, n, Ainv, n, ipiv, info)
+! ! DGETRF computes an LU factorization of a general M-by-N matrix A
+! ! using partial pivoting with row interchanges.
+! CALL DGETRF(n, n, Ainv, n, ipiv, info)
 
-!IF(info.NE.0)THEN
-!    CALL abort(&
-!__STAMP__&
-!,' Matrix is numerically singular!')
-!END IF
+! IF(info.NE.0)THEN
+!     CALL abort(&
+! __STAMP__&
+! ,' Matrix is numerically singular!')
+! END IF
 
-!! DGETRI computes the inverse of a matrix using the LU factorization
-!! computed by DGETRF.
-!CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
+! ! DGETRI computes the inverse of a matrix using the LU factorization
+! ! computed by DGETRF.
+! CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
 
-!IF(info.NE.0)THEN
-!    CALL abort(&
-!__STAMP__&
-!,' Matrix inversion failed!')
-!END IF
-!END FUNCTION INV
+! IF(info.NE.0)THEN
+!     CALL abort(&
+! __STAMP__&
+! ,' Matrix inversion failed!')
+! END IF
+! END FUNCTION INV
 
-!SUBROUTINE INV33(M,MInv,detM)
-!!===================================================================================================================================
-!! Computes the inverse of a 3x3 matrix
-!!===================================================================================================================================
-!! MODULES
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT VARIABLES
-!REAL,INTENT(IN)     :: M(3,3)  ! ?
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! OUTPUT VARIABLES
-!REAL,INTENT(OUT)    :: MInv(3,3),detM  ! ?
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!!===================================================================================================================================
-!detM =   M(1,1)*M(2,2)*M(3,3)  &
-!       - M(1,1)*M(2,3)*M(3,2)  &
-!       - M(1,2)*M(2,1)*M(3,3)  &
-!       + M(1,2)*M(2,3)*M(3,1)  &
-!       + M(1,3)*M(2,1)*M(3,2)  &
-!       - M(1,3)*M(2,2)*M(3,1)
+! SUBROUTINE INV33(M,MInv,detM)
+! !===================================================================================================================================
+! ! Computes the inverse of a 3x3 matrix
+! !===================================================================================================================================
+! ! MODULES
+! ! IMPLICIT VARIABLE HANDLING
+! IMPLICIT NONE
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT VARIABLES
+! REAL,INTENT(IN)     :: M(3,3)  ! ?
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! OUTPUT VARIABLES
+! REAL,INTENT(OUT)    :: MInv(3,3),detM  ! ?
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! !===================================================================================================================================
+! detM =   M(1,1)*M(2,2)*M(3,3)  &
+!        - M(1,1)*M(2,3)*M(3,2)  &
+!        - M(1,2)*M(2,1)*M(3,3)  &
+!        + M(1,2)*M(2,3)*M(3,1)  &
+!        + M(1,3)*M(2,1)*M(3,2)  &
+!        - M(1,3)*M(2,2)*M(3,1)
 
-!IF(ABS(detM).LE.1.E-12*SUM(ABS(M)))THEN
-!   MInv=0.
-!   detM=0.
-!   RETURN
-!END IF
+! IF(ABS(detM).LE.1.E-12*SUM(ABS(M)))THEN
+!    MInv=0.
+!    detM=0.
+!    RETURN
+! END IF
 
-!MInv(1,1) =  (M(2,2)*M(3,3)-M(2,3)*M(3,2))
-!MInv(2,1) = -(M(2,1)*M(3,3)-M(2,3)*M(3,1))
-!MInv(3,1) =  (M(2,1)*M(3,2)-M(2,2)*M(3,1))
-!MInv(1,2) = -(M(1,2)*M(3,3)-M(1,3)*M(3,2))
-!MInv(2,2) =  (M(1,1)*M(3,3)-M(1,3)*M(3,1))
-!MInv(3,2) = -(M(1,1)*M(3,2)-M(1,2)*M(3,1))
-!MInv(1,3) =  (M(1,2)*M(2,3)-M(1,3)*M(2,2))
-!MInv(2,3) = -(M(1,1)*M(2,3)-M(1,3)*M(2,1))
-!MInv(3,3) =  (M(1,1)*M(2,2)-M(1,2)*M(2,1))
-!MInv=MInv/detM
+! MInv(1,1) =  (M(2,2)*M(3,3)-M(2,3)*M(3,2))
+! MInv(2,1) = -(M(2,1)*M(3,3)-M(2,3)*M(3,1))
+! MInv(3,1) =  (M(2,1)*M(3,2)-M(2,2)*M(3,1))
+! MInv(1,2) = -(M(1,2)*M(3,3)-M(1,3)*M(3,2))
+! MInv(2,2) =  (M(1,1)*M(3,3)-M(1,3)*M(3,1))
+! MInv(3,2) = -(M(1,1)*M(3,2)-M(1,2)*M(3,1))
+! MInv(1,3) =  (M(1,2)*M(2,3)-M(1,3)*M(2,2))
+! MInv(2,3) = -(M(1,1)*M(2,3)-M(1,3)*M(2,1))
+! MInv(3,3) =  (M(1,1)*M(2,2)-M(1,2)*M(2,1))
+! MInv=MInv/detM
 
-!END SUBROUTINE INV33
+! END SUBROUTINE INV33
 
 
 ! !===================================================================================================================================
@@ -307,6 +309,7 @@ END FUNCTION INVERSE_LU
 ! !===================================================================================================================================
 ! PURE FUNCTION ALMOSTEQUALRELATIVE(x,y,tol)
 ! ! MODULES
+! ! IMPLICIT VARIABLE HANDLING
 ! IMPLICIT NONE
 ! !----------------------------------------------------------------------------------------------------------------------------------
 ! ! INPUT/OUTPUT VARIABLES
@@ -337,6 +340,7 @@ END FUNCTION INVERSE_LU
 !==================================================================================================================================
 PPURE FUNCTION CROSS(v1,v2)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

@@ -100,6 +100,7 @@ USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues
 USE MOD_CalcWallParticles
 USE MOD_CalcWallParticles_Vars
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -240,6 +241,7 @@ USE MOD_Output,             ONLY: OutputToFile
 USE MOD_CalcWallParticles
 USE MOD_CalcWallParticles_Vars
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -350,6 +352,7 @@ USE MOD_DG_Vars,            ONLY: U,UPrim
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -422,6 +425,7 @@ USE MOD_EOS_Vars,          ONLY: Kappa,R,sKappaM1,KappaM1
 #if FV_ENABLED
 USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -529,6 +533,7 @@ USE MOD_AnalyzeEquation_Vars, ONLY: isWall
 #if FV_ENABLED
 USE MOD_FV_Vars,              ONLY: FV_Elems_master,FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -603,6 +608,7 @@ USE MOD_Mesh_Vars,         ONLY: nSides,nMPISides_YOUR,AnalyzeSide,nBCs,Boundary
 #if FV_ENABLED
 USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -662,6 +668,7 @@ SUBROUTINE FinalizeAnalyzeEquation()
 ! MODULES
 USE MOD_AnalyzeEquation_Vars
 USE MOD_TimeAverage,        ONLY: FinalizeTimeAverage
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

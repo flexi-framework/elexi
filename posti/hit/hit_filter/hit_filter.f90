@@ -130,7 +130,8 @@ SUBROUTINE WriteNewStateFile()
 USE MOD_Globals
 USE MOD_Mesh_Vars,          ONLY: MeshFile
 USE MOD_IO_HDF5,            ONLY: File_ID,OpenDataFile,CloseDataFile
-USE MOD_HDF5_Output,        ONLY: WriteState,WriteAttribute
+USE MOD_HDF5_Output,        ONLY: WriteAttribute
+USE MOD_HDF5_Output_State,  ONLY: WriteState
 USE MOD_Interpolation_Vars, ONLY: NodeType
 USE MOD_Output_Vars,        ONLY: NOut,ProjectName
 USE MOD_HIT_Filter_Vars,    ONLY: N_HDF5,ProjectName_HDF5,Time_HDF5,NodeType_HDF5

@@ -16,6 +16,7 @@ USE MOD_MPI,        ONLY:InitMPI
 USE MOD_MPI,        ONLY:FinalizeMPI
 #endif
 USE MOD_IO_HDF5,    ONLY: InitMPIInfo
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! TYPE AND PARAMETER DEFINITIONS
@@ -304,6 +305,8 @@ CONTAINS
 !> Retrieves relevant header and dateset parameters from Flexi files and stores them in a type
 !===================================================================================================================================
 SUBROUTINE GetParams(filename,f)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -342,9 +345,9 @@ END SUBROUTINE
 !===================================================================================================================================
 SUBROUTINE WriteTimeAverageByCopy(filename_in,filename_out,filetype_out,f,uavg,avgTime,ufluc)
 ! MODULES
-USE MOD_HDF5_Output,     ONLY: WriteAttribute
-USE MOD_HDF5_WriteArray, ONLY: WriteArray
+USE MOD_HDF5_Output,     ONLY: WriteAttribute,WriteArray
 USE MOD_StringTools,     ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

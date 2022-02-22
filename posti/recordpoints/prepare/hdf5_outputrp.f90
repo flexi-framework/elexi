@@ -39,10 +39,10 @@ SUBROUTINE WriteRecordPointstoHDF5(ProjectName,MeshFileName)
 ! MODULES
 USE MOD_Globals
 USE MOD_HDF5_Output
-USE MOD_HDF5_WriteArray
 USE MOD_Mesh_Vars       ,ONLY:NGeo,nGlobalElems
 USE MOD_Interpolation_Vars,ONLY: NodeType
 USE MOD_RPSet_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES

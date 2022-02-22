@@ -787,9 +787,8 @@ SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,nElems_loc,FileString,MeshFileName,VarN
 USE MOD_Globals               !,ONLY: ABORT,TIMESTAMP,MPIROOT,MPI_COMM_FLEXI,UNIT_stdOut
 USE MOD_PreProc
 USE MOD_2D                    ,ONLY: ExpandArrayTo3D
-USE MOD_HDF5_Output           ,ONLY: GenerateFileSkeleton,WriteAttribute,MarkWriteSuccessfull
+USE MOD_HDF5_Output           ,ONLY: GenerateFileSkeleton,WriteAttribute,GatheredWriteArray,MarkWriteSuccessfull
 USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
-USE MOD_HDF5_WriteArray       ,ONLY: GatheredWriteArray
 USE MOD_Mesh_Vars             ,ONLY: nElems,nGlobalElems,offsetElem
 !USE MOD_Output_Vars           ,ONLY: ProjectName
 USE MOD_Visu_Vars             ,ONLY: OutputTime,NCalc,nVarCalc

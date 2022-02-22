@@ -106,7 +106,7 @@ SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_HDF5_WriteArray         ,ONLY: WriteArray
+USE MOD_HDF5_Output             ,ONLY: WriteArray
 USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars             ,ONLY: WriteStateFiles
 USE MOD_Particle_Vars           ,ONLY: PartState,PDM,LastPartPos,PartSpecies,Species,nSpecies,PartIndex,doPartIndex

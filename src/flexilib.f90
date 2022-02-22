@@ -85,6 +85,7 @@ USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
 USE MOD_ReadInTools,       ONLY:prms,PrintDefaultParameterFile,ExtractParameterFile
 USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
 USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -314,6 +315,7 @@ USE MOD_Particle_MPI,      ONLY:FinalizeParticleMPI
 USE MOD_Particle_MPI_Shared,ONLY:FinalizeMPIShared
 #endif /*USE_MPI*/
 #endif /*USE_PARTICLES*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

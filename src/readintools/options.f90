@@ -150,6 +150,7 @@ CONTAINS
 FUNCTION NAMEEQUALS(this, name)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -170,6 +171,7 @@ FUNCTION NAMEEQUALSNUMBERED(this, name)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP,LowCase
 USE MOD_ISO_VARYING_STRING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -238,6 +240,7 @@ END FUNCTION NAMEEQUALSNUMBERED
 !==================================================================================================================================
 FUNCTION GETNAMELEN(this)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -254,6 +257,7 @@ END FUNCTION GETNAMELEN
 !==================================================================================================================================
 FUNCTION GETVALUELEN(this)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -319,6 +323,8 @@ END FUNCTION GETVALUELEN
 !> Returns length of a real represented as string with a given number of digits
 !===================================================================================================================================
 FUNCTION GETSTRLENREAL(value,digits)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -353,6 +359,7 @@ USE MOD_ISO_VARYING_STRING
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 #endif /*USE_LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -470,6 +477,8 @@ END SUBROUTINE print
 !> print value of an option
 !==================================================================================================================================
 SUBROUTINE printValue(this,maxValueLen)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -598,8 +607,9 @@ END SUBROUTINE printValue
 !==================================================================================================================================
 SUBROUTINE parse(this, rest_in)
 ! MODULES
-USE MOD_Globals, ONLY:abort
+USE MOD_Globals, ONLY:Abort
 USE MOD_ISO_VARYING_STRING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -762,8 +772,11 @@ END SUBROUTINE parse
 !> parse string to real and get the format of the number (floating,scientific)
 !===================================================================================================================================
 SUBROUTINE parseReal(this,string_in, value, digits)
+! MODULES
 USE MOD_Globals, ONLY:abort
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CLASS(OPTION)                 :: this      !< CLASS(OPTION)
 CHARACTER(LEN=255),INTENT(IN) :: string_in !< (IN) string containing a real number

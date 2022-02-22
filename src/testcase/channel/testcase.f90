@@ -95,6 +95,7 @@ SUBROUTINE DefineParametersTestcase()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
@@ -125,6 +126,7 @@ USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState,RefStateCons
 USE MOD_EOS,                ONLY: PrimToCons
 USE MOD_EOS_Vars,           ONLY: kappa,mu0,R
 USE MOD_Output,             ONLY: InitOutputToFile
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -217,6 +219,7 @@ USE MOD_PreProc,      ONLY: PP_PI
 USE MOD_Equation_Vars,ONLY: RefStatePrim,IniRefState
 USE MOD_EOS,          ONLY: PrimToCons
 USE MOD_EOS_Vars,     ONLY: mu0
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -309,7 +312,6 @@ Resu_tt=0.
 END SUBROUTINE ExactFuncTestcase
 
 
-
 !==================================================================================================================================
 !> Compute bulk velocity for forcing term of the channel.
 !==================================================================================================================================
@@ -324,6 +326,7 @@ USE MOD_Mesh_Vars,      ONLY: nElems
 #if USE_MPI
 USE MOD_MPI_Vars
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -353,6 +356,7 @@ SUBROUTINE TestcaseSource(Ut)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars, ONLY:sJ,nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -376,6 +380,7 @@ END SUBROUTINE TestcaseSource
 SUBROUTINE WriteStats()
 ! MODULES
 USE MOD_Output,       ONLY:OutputToFile
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -392,6 +397,7 @@ END SUBROUTINE WriteStats
 SUBROUTINE AnalyzeTestcase(Time,doFlush)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -413,6 +419,7 @@ END SUBROUTINE AnalyzeTestCase
 SUBROUTINE FinalizeTestcase()
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 IF(MPIRoot) DEALLOCATE(writeBuf)
@@ -447,7 +454,10 @@ END SUBROUTINE GetBoundaryFluxTestcase
 
 
 SUBROUTINE GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
+! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID                                   !< ID of current side
@@ -459,7 +469,10 @@ END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
 SUBROUTINE Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
+! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID                                   !< ID of current side

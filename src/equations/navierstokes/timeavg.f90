@@ -61,6 +61,7 @@ USE MOD_ReadInTools, ONLY: CountOption,GETSTR,GETLOGICAL,GETINT
 USE MOD_Mesh_Vars,   ONLY: nElems
 USE MOD_AnalyzeEquation_Vars
 USE MOD_Analyze_Vars,ONLY: nTimeAvgData,analyze_dt,WriteTimeAvg_dt
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -289,6 +290,7 @@ END SUBROUTINE InitCalcTimeAverage
 !==================================================================================================================================
 PURE FUNCTION GETMAPBYNAME(VarName,VarNameList,nVarList)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -333,6 +335,7 @@ USE MOD_AnalyzeEquation_Vars
 USE MOD_FV_Vars      ,ONLY: FV_Elems,FV_sVdm
 USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -527,6 +530,7 @@ END SUBROUTINE CalcTimeAverage
 SUBROUTINE FinalizeTimeAverage()
 ! MODULES
 USE MOD_AnalyzeEquation_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

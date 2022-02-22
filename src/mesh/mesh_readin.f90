@@ -86,6 +86,7 @@ SUBROUTINE ReadBCs()
 USE MOD_Globals
 USE MOD_Mesh_Vars  ,ONLY:BoundaryName,BoundaryType,nBCs,nUserBCs
 USE MOD_ReadInTools,ONLY:GETINTARRAY,CountOption,GETSTR
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -777,8 +778,9 @@ USE MOD_MPI_Vars,     ONLY:offsetElemMPI
 USE MOD_LoadBalance,       ONLY:InitLoadBalanceTracking
 USE MOD_LoadBalance_Tools, ONLY:DomainDecomposition
 #endif /*USE_LOADBALANCE*/
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -835,6 +837,7 @@ FUNCTION ELEMIPROC(ElemID)
 ! MODULES
 USE MOD_Globals,   ONLY:nProcessors
 USE MOD_MPI_vars,  ONLY:offsetElemMPI
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -874,11 +877,11 @@ END FUNCTION ELEMIPROC
 !> for meshes thar are i,j,k sorted.
 !===================================================================================================================================
 SUBROUTINE ReadIJKSorting()
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES
 USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,MeshFile
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

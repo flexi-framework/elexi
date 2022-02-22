@@ -85,6 +85,7 @@ PUBLIC::CARRAY
 CONTAINS
 
 SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV,HighOrder)
+! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
@@ -288,6 +289,7 @@ END SUBROUTINE CreateConnectivity
 SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension,HighOrder,PostiParallel)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -324,8 +326,8 @@ REAL,ALLOCATABLE                      :: buf(:,:,:,:), buf2(:,:,:,:,:)
 #endif /*USE_MPI*/
 INTEGER                               :: DGFV_loc
 LOGICAL                               :: nValAtLastDimension_loc
-LOGICAL                               :: PostiParallel_loc
 INTEGER                               :: HighOrder_loc                                 ! INTEGER to be consistent with visu_Cwrapper
+LOGICAL                               :: PostiParallel_loc
 CHARACTER(LEN=255)                    :: FileString_loc
 !===================================================================================================================================
 IF (PRESENT(DGFV)) THEN

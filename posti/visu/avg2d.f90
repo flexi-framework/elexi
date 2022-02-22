@@ -428,8 +428,7 @@ SUBROUTINE WriteAverageToHDF5(nVar,NVisu,NodeType,OutputTime,MeshFileName,UVisu_
 USE MOD_Globals
 USE MOD_PreProc
 USE HDF5
-USE MOD_HDF5_Output,    ONLY: WriteAttribute,WriteHeader,WriteAdditionalElemData
-USE MOD_HDF5_WriteArray,ONLY: GatheredWriteArray
+USE MOD_HDF5_Output,    ONLY: GatheredWriteArray,WriteAttribute,WriteHeader,WriteAdditionalElemData
 USE MOD_IO_HDF5,        ONLY: OpenDataFile,CloseDataFile,AddToElemData
 USE MOD_HDF5_Input,     ONLY: File_ID
 USE MOD_Output_Vars,    ONLY: ProjectName

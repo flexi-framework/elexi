@@ -55,6 +55,7 @@ USE MOD_Mesh_Vars,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,nElems
 #if PARABOLIC
 USE MOD_EOS_Vars ,ONLY:KappasPr
 #endif /*PARABOLIC*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -126,6 +127,7 @@ USE MOD_Viscosity
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -262,6 +264,7 @@ END FUNCTION CALCTIMESTEP
 !==================================================================================================================================
 SUBROUTINE FinalizeCalctimestep()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(MetricsAdv)

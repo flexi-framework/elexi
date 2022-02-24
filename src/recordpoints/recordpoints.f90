@@ -555,8 +555,10 @@ END SUBROUTINE WriteRP
 !==================================================================================================================================
 SUBROUTINE FinalizeRecordPoints()
 ! MODULES
-USE MOD_Globals,                 ONLY: iError
 USE MOD_RecordPoints_Vars
+#if USE_MPI
+USE MOD_Globals,                 ONLY: iError
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================

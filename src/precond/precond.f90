@@ -149,18 +149,19 @@ SUBROUTINE BuildPrecond(t,alpha,dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mathtools     ,ONLY:Inverse
-USE MOD_Mesh_Vars     ,ONLY:nElems,nSides
+USE MOD_DG            ,ONLY:DGTimeDerivative_WeakForm
 USE MOD_Implicit_Vars ,ONLY:nDOFVarElem
-USE MOD_SparseILU     ,ONLY:BuildILU0
-USE MOD_Precond_Vars  ,ONLY:invP,DebugMatrix,PrecondType,SolveSystem,DoDisplayPrecond,Ploc,Ploc1
 USE MOD_Jac_ex        ,ONLY:Jac_ex
 USE MOD_Jac_FD        ,ONLY:Jac_FD
-USE MOD_DG            ,ONLY:DGTimeDerivative_WeakForm
+USE MOD_Mathtools     ,ONLY:Inverse
+USE MOD_Mesh_Vars     ,ONLY:nElems
+USE MOD_SparseILU     ,ONLY:BuildILU0
+USE MOD_Precond_Vars  ,ONLY:invP,DebugMatrix,PrecondType,SolveSystem,DoDisplayPrecond,Ploc,Ploc1
 #if USE_MPI
+USE MOD_DG_Vars       ,ONLY:U_master,UPrim_master
+USE MOD_Mesh_Vars     ,ONLY:nSides
 USE MOD_MPI_Vars
 USE MOD_MPI           ,ONLY:StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-USE MOD_DG_Vars       ,ONLY:U_master,UPrim_master
 #if PARABOLIC
 USE MOD_Lifting_Vars  ,ONLY:gradUx_master,gradUy_master
 #if PP_dim==3
@@ -171,14 +172,14 @@ USE MOD_EddyVisc_Vars ,ONLY:muSGS_master
 #endif /*EDDYVISCOSITY*/
 #endif /*PARABOLIC*/
 #if FV_ENABLED
-USE MOD_MPI           ,ONLY:StartExchange_FV_Elems
 USE MOD_FV_Vars       ,ONLY:FV_Elems_Sum,FV_Elems_master,FV_Elems_slave
+USE MOD_MPI           ,ONLY:StartExchange_FV_Elems
 #if FV_RECONSTRUCT
 USE MOD_DG_Vars       ,ONLY:U_slave,UPrim_slave
 USE MOD_FV_Vars       ,ONLY:FV_dx_master
 #endif /*FV_ENABLED*/
 #endif /*FV_RECONSTRUCT*/
-#endif /*MPI*/
+#endif /*USE_MPI*/
 #if FV_ENABLED && FV_RECONSTRUCT
 USE MOD_DG_Vars       ,ONLY:UPrim
 USE MOD_Jac_Ex_Reconstruction,ONLY:Fill_ExtendedState
@@ -201,7 +202,7 @@ REAL               :: Time
 INTEGER            :: ind(2)
 #if USE_MPI
 REAL               :: TimeMPI
-#endif /*MPI*/
+#endif /*USE_MPI*/
 !===================================================================================================================================
 IF(PrecondType.EQ.0) RETURN !NO PRECONDITIONER
 
@@ -261,8 +262,8 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                             
 CALL StartReceiveMPIData(UPrim_slave,DataSizeSidePrim,1,nSides,MPIRequest_U(:,SEND),SendID=1) ! Send MINE    / UPrim_slave
 CALL StartSendMPIData(   UPrim_slave,DataSizeSidePrim,1,nSides,MPIRequest_U(:,RECV),SendID=1) ! Receive YOUR / UPrim_slave
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                                           ! UPrim_slave: master -> slave
-#endif
-#endif
+#endif /*FV_ENABLED*/
+#endif /*FV_RECONSTRUCT*/
 #endif /*USE_MPI*/
 
 #if FV_ENABLED && FV_RECONSTRUCT
@@ -342,7 +343,7 @@ IF(DoDisplayPrecond)THEN
   IF(MPIRoot) THEN
     Time=TimeMPI
   END IF
-#endif /*MPI*/
+#endif /*USE_MPI*/
   SWRITE(UNIT_stdOut,'(A,F11.3,A)')' TOTAL DERIVATING & INVERTING TIME =[',Time,' ]'
   SWRITE(UNIT_stdOut,'(A)')' BUILD PRECONDITIONER DONE!'
   SWRITE(UNIT_stdOut,'(132("-"))')

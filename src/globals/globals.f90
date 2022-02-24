@@ -189,8 +189,8 @@ INTEGER,OPTIONAL                  :: ErrorCode       !< MPI Error info (integer)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=50)                 :: IntString,RealString
-INTEGER                           :: errOut          ! Output of MPI_ABORT
 #if USE_MPI
+INTEGER                           :: errOut          ! Output of MPI_ABORT
 INTEGER                           :: signalout       ! Output errorcode
 #endif
 !==================================================================================================================================

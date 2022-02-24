@@ -467,8 +467,9 @@ INTEGER(KIND=IK),INTENT(OUT) :: offsetnPart
 INTEGER(KIND=IK),INTENT(OUT) :: globnPart
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER(KIND=8)              :: globnPart8                         ! always integer KIND=8
 #if USE_MPI
-INTEGER(KIND=8)              :: locnPart8,locnPart8Recv,globnPart8 ! always integer KIND=8
+INTEGER(KIND=8)              :: locnPart8,locnPart8Recv            ! always integer KIND=8
 #endif
 !===================================================================================================================================
 #if USE_MPI

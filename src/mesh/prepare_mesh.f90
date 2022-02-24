@@ -76,7 +76,7 @@ TYPE(tElem),POINTER :: aElem
 TYPE(tSide),POINTER :: aSide
 INTEGER   :: iElem,FirstElemInd,LastElemInd
 INTEGER   :: iLocSide,iSide,iInnerSide,iBCSide
-INTEGER   :: iMortar,iMortarInnerSide,iMortarMPISide,nMortars,lastMortarInnerSide
+INTEGER   :: iMortar,iMortarInnerSide,iMortarMPISide,nMortars
 INTEGER   :: i,j
 INTEGER   :: PeriodicBCMap(nBCs)       !connected periodic BCs
 #if USE_MPI
@@ -84,6 +84,7 @@ INTEGER   :: nSmallMortarSides
 INTEGER   :: nSmallMortarInnerSides
 INTEGER   :: nSmallMortarMPISides_MINE
 INTEGER   :: nSmallMortarMPISides_YOUR
+INTEGER   :: lastMortarInnerSide
 INTEGER               :: iNbProc,ioUnit,addToInnerMortars
 INTEGER               :: ProcInfo(9),nNBmax      !for output only
 INTEGER,ALLOCATABLE   :: SideIDMap(:)

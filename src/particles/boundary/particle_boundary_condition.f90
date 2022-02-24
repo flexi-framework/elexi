@@ -54,7 +54,7 @@ SUBROUTINE GetBoundaryInteraction(PartTrajectory,lengthPartTrajectory,alpha,xi,e
 !===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals                    ,ONLY: ABORT,FLEXITIME
+USE MOD_Globals                    ,ONLY: Abort,FLEXITIME
 USE MOD_Particle_Globals           ,ONLY: PI
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,doParticleImpactTrack
@@ -71,6 +71,7 @@ USE MOD_Part_Operations            ,ONLY: RemoveParticle
 USE MOD_Globals                    ,ONLY: myRank,UNIT_stdOut
 USE MOD_Mesh_Vars                  ,ONLY: NGeo
 USE MOD_Particle_Mesh_Tools        ,ONLY: GetCNElemID
+USE MOD_Particle_Mesh_Vars         ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Surfaces_Vars     ,ONLY: BezierControlPoints3D
 #endif /* CODE_ANALYZE */
 ! IMPLICIT VARIABLE HANDLING
@@ -125,7 +126,7 @@ CASE(REFMAPPING,TRACING)
   IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
     IPWRITE(UNIT_stdOut,*) 'Obtained wrong side orientation from flip. flip:',flip,'PartID:',iPart
     IPWRITE(UNIT_stdOut,*) 'n_loc (flip)', n_loc,'n_loc (estimated):',v2
-    CALL ABORT(__STAMP__,'SideID',SideID)
+    CALL Abort(__STAMP__,'SideID',SideID)
   END IF
 #endif /* CODE_ANALYZE */
 
@@ -143,7 +144,7 @@ END SELECT
 crossedBC = .TRUE.
 
 IF (.NOT. ALLOCATED(PartBound%TargetBoundCond)) &
-  CALL ABORT(__STAMP__,' ERROR: PartBound not allocated!.')
+  CALL Abort(__STAMP__,' ERROR: PartBound not allocated!.')
 
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,SideID)))
@@ -184,7 +185,7 @@ CASE(2) !PartBound%ReflectiveBC)
          CALL  DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,iPart,SideID,n_loc                               &
                                 ,WallCoeffModel=PartBound%WallCoeffModel(SideInfo_Shared(SIDE_BCID,SideID)))
       CASE DEFAULT
-          CALL ABORT(__STAMP__, ' No or invalid particle wall model given. Please update Part-Boundary[$]-WallModel.')
+          CALL Abort(__STAMP__, ' No or invalid particle wall model given. Please update Part-Boundary[$]-WallModel.')
     END SELECT
 !  END IF
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -194,7 +195,7 @@ CASE(3) !PartBound%PeriodicBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(6) !PartBound%MPINeighborhoodBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
-  CALL abort(__STAMP__,' ERROR: PartBound not associated!. (PartBound%MPINeighborhoodBC)')
+  CALL Abort(__STAMP__,' ERROR: PartBound not associated!. (PartBound%MPINeighborhoodBC)')
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(10) !PartBound%SymmetryBC
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -207,7 +208,7 @@ CASE(10) !PartBound%SymmetryBC
 !                    ,opt_crossed=crossedBC)
 
 CASE DEFAULT
-  CALL abort(__STAMP__,' ERROR: PartBound not associated!. (unknown case)',999,999.)
+  CALL Abort(__STAMP__,' ERROR: PartBound not associated!. (unknown case)',999,999.)
 END SELECT
 
 END SUBROUTINE GetBoundaryInteraction
@@ -269,16 +270,16 @@ CASE ('parabol')
   n_loc = UNITVECTOR( intersec - ( r_vec + axis*(DOT_PRODUCT(intersec-r_vec,axis)+0.5*AuxBC_parabol(AuxBCMap(AuxBCIdx))%zfac) ) )
   IF (.NOT.AuxBC_parabol(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
 CASE DEFAULT
-  CALL abort(__STAMP__,'AuxBC does not exist')
+  CALL Abort(__STAMP__,'AuxBC does not exist')
 END SELECT
 IF(DOT_PRODUCT(n_loc,PartTrajectory).LT.0.)  THEN
   crossedBC=.FALSE.
   !RETURN
-  CALL abort(__STAMP__,'Error in GetBoundaryInteractionAuxBC: Particle coming from outside!')
+  CALL Abort(__STAMP__,'Error in GetBoundaryInteractionAuxBC: Particle coming from outside!')
 ELSE IF(DOT_PRODUCT(n_loc,PartTrajectory).GT.0.)  THEN
   crossedBC=.TRUE.
 ELSE
-  CALL abort(__STAMP__,'Error in GetBoundaryInteractionAuxBC: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
+  CALL Abort(__STAMP__,'Error in GetBoundaryInteractionAuxBC: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
 END IF
 ! Select the corresponding boundary condition and calculate particle treatment
 SELECT CASE(PartAuxBC%TargetBoundCond(AuxBCIdx))
@@ -299,7 +300,7 @@ CASE(2) !PartAuxBC%ReflectiveBC)
   END IF
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE DEFAULT
-  CALL abort(__STAMP__,' ERROR: AuxBC bound not associated!. (unknown case)')
+  CALL Abort(__STAMP__,' ERROR: AuxBC bound not associated!. (unknown case)')
 END SELECT
 
 END SUBROUTINE GetBoundaryInteractionAuxBC
@@ -749,7 +750,7 @@ SELECT CASE(WallCoeffModel)
     eps_t1 = PartBoundANN%output(2) * COS(PartBoundANN%output(1)) / NORM2(v_tang1(1:3))
 
   CASE DEFAULT
-      CALL abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')
+      CALL Abort(__STAMP__, ' No particle wall coefficients given. This should not happen.')
 
 END SELECT
 
@@ -774,9 +775,9 @@ WRITE(UNIT_stdOut,'(A,E27.16,x,E27.16)')          '     | CoR (normal/tangential
 !--> flip trajectory and move the remainder of the particle push
 !===================================================================================================================================
 ! > modified with coefficients of restitution
-! > WARNING: this only works with LSERK. Check and abort if not fulfilled
+! > WARNING: this only works with LSERK. Check and Abort if not fulfilled
 !IF (.NOT.(TimeDiscType.EQ.'LSERKW2').AND..NOT.(TimeDiscType.EQ.'LSWERKW3'))               &
-!    CALL ABORT(__STAMP__,                                                                 &
+!    CALL Abort(__STAMP__,                                                                 &
 !    'Time discretization '//TRIM(TimeDiscType)//' is incompatible with current implementation of coefficients of restitution.')
 
 ! Calculate wall normal and tangential velocity components after impact, rescale to uniform length
@@ -938,7 +939,7 @@ ElemID   = SideInfo_Shared(SIDE_NBELEMID,SideID)
 !         IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' PartPos                ', PartState(1:3,PartID)
 !         IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' xi                     ', PartPosRef(1:3,PartID)
 !         IPWRITE(UNIT_stdOut,'(I0,A,X,E15.8)')    ' epsOneCell             ', ElemEpsOneCell(CNElemID)
-!         ! Fix particle position or abort
+!         ! Fix particle position or Abort
 !         IF (DoPeriodicFix) THEN
 !           ! Save the old PartState
 !           PartStateOld = PartState(1:3,PartID)
@@ -958,7 +959,7 @@ ElemID   = SideInfo_Shared(SIDE_NBELEMID,SideID)
 !           LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + Displacement
 !           IPWRITE(UNIT_stdOut,'(I0,A,3(X,E15.8))') ' Particle relocated by  ', Displacement
 !         ELSE
-!           CALL ABORT(__STAMP__,'Particle not inside of element, PartID'
+!           CALL Abort(__STAMP__,'Particle not inside of element, PartID'
 !       END IF
 
 !     CASE(TRIATRACKING)

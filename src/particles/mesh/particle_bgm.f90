@@ -173,9 +173,9 @@ REAL                           :: StartT,EndT
 #else
 REAL                           :: halo_eps
 #endif /*USE_MPI*/
-#if CODE_ANALYZE
+#if CODE_ANALYZE && USE_MPI
 INTEGER,ALLOCATABLE            :: NumberOfElements(:)
-#endif /*CODE_ANALYZE*/
+#endif /*CODE_ANALYZE && USE_MPI*/
 !===================================================================================================================================
 
 ! Read parameter for FastInitBackgroundMesh (FIBGM)

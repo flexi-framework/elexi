@@ -274,9 +274,6 @@ DO iPart=1,PDM%ParticleVecLength
             WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
             WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi,eta
             WRITE(UNIT_stdOut,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
-          ELSE IF (currentIntersect%IntersectCase.EQ.3) THEN
-            WRITE(UNIT_stdOut,'(A,I0,A,L)')    '     | MaroPartID: ',iMB,' | Hit: ',foundHit
-            WRITE(UNIT_stdOut,'(A,G0)')        '     | AlphaSphere: ',locAlphaSphere
           END IF
           WRITE(UNIT_stdOut,'(2(A,G0))')       '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ', lengthPartTrajectory
         END IF ; END IF
@@ -425,7 +422,7 @@ DO iPart=1,PDM%ParticleVecLength
           WRITE(UNIT_stdOut,'(A,G0)')  '     -> alpha: '  ,currentIntersect%alpha
           WRITE(UNIT_stdOut,'(A,I0)')  '     -> locSide: ',currentIntersect%Side
           IF (currentIntersect%IntersectCase.EQ.1) THEN
-            WRITE(UNIT_stdOut,'(A,I0)') '     -> SideID: ',PartElemToSide(E2S_SIDE_ID,currentIntersect%Side,ElemID)
+            WRITE(UNIT_stdOut,'(A,I0)') '     -> SideID: ',GetGlobalNonUniqueSideID(ElemID,currentIntersect%Side)
           END IF
         END IF ; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------

@@ -689,6 +689,9 @@ INTEGER                        :: ElemDistri(        0:nProcs-1)
 INTEGER                        :: offsetElemMPI_opt( 0:nProcs)
 INTEGER                        :: offsetElemMPI_opt0(0:nProcs)
 INTEGER                        :: offsetElemMPI_tmp( 0:nProcs)
+#if USE_MPI
+INTEGER                        :: iProc
+#endif /*USE_MPI*/
 !===================================================================================================================================
 IF (.NOT.MPIRoot) RETURN
 

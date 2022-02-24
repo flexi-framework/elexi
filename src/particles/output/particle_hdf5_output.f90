@@ -77,9 +77,6 @@ USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex,doWritePartDiam
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
 #endif /*MPI*/
-#if CODE_ANALYZE
-USE MOD_Particle_Tracking_Vars,ONLY: PartOut,MPIRankOut
-#endif /*CODE_ANALYZE*/
 ! Particle turbulence models
 USE MOD_Particle_Vars,         ONLY: TurbPartState
 USE MOD_Particle_SGS_Vars,     ONLY: nSGSVars

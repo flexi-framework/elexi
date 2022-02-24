@@ -79,7 +79,7 @@ SUBROUTINE IntersectionWithWall(PartTrajectory,alpha,iPart,iLocSide,Element,TriN
 ! MODULES
 USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars
-USE MOD_Particle_Vars,               ONLY: lastPartPos,PartState
+USE MOD_Particle_Vars,               ONLY: lastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ REAL,INTENT(INOUT)               :: alpha
 ! LOCAL VARIABLES
 INTEGER                          :: CNElemID
 INTEGER                          :: Node1,Node2
-REAL                             :: PoldX,PoldY,PoldZ,PnewX,PnewY,PnewZ,nx,ny,nz,nVal
+REAL                             :: PoldX,PoldY,PoldZ,nx,ny,nz,nVal
 REAL                             :: bx,by,bz,ax,ay,az,dist
 REAL                             :: xNod,yNod,zNod
 REAL                             :: Vector1(1:3),Vector2(1:3)
@@ -107,9 +107,6 @@ CNElemID = GetCNElemID(Element)
 PoldX = LastPartPos(1,iPart)
 PoldY = LastPartPos(2,iPart)
 PoldZ = LastPartPos(3,iPart)
-PnewX = PartState(1,iPart)
-PnewY = PartState(2,iPart)
-PnewZ = PartState(3,iPart)
 
 xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
 yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
@@ -221,7 +218,7 @@ INTEGER                           :: CNSideID
 CNSideID = GetCNSideID(SideID)
 
 #if CODE_ANALYZE
-  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
     IF(PartID.EQ.PartOut)THEN
       WRITE(UNIT_stdOut,'(110("-"))')
       WRITE(UNIT_stdOut,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
@@ -283,7 +280,7 @@ END IF
 
 ! particle is located outside of the element, but distance is within machine precision. Move particle back inside
 IF(locSideDistance.LT.-100*epsMach)THEN
-  alpha = -1.0
+  alpha = -1.
   isHit = .FALSE.
   RETURN
 END IF
@@ -314,7 +311,7 @@ C2=P2(1)*P0(1)+P2(2)*P0(2)+P2(3)*P0(3)
 
 sdet=A1*B2-A2*B1
 IF (ABS(sdet).EQ.0) &
-  CALL abort(__STAMP__,' ABS(sdet).EQ.0!')
+  CALL Abort(__STAMP__,' ABS(sdet).EQ.0!')
 
 sdet=1.0/sdet
 epsLoc=(1.+100.*epsMach)
@@ -393,7 +390,7 @@ INTEGER                           :: CNSideID
 CNSideID = GetCNSideID(SideID)
 
 #if CODE_ANALYZE
-  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
     IF(PartID.EQ.PartOut)THEN
       WRITE(UNIT_stdOut,'(110("-"))')
       WRITE(UNIT_stdOut,'(A,I0)')       '     | Output of planar face constants for Side: ',SideID
@@ -671,9 +668,9 @@ nInterSections = MERGE(1,0,locAlpha(1).GT.-1)
 IF (PRESENT(opt_CriticalParallelInSide)) THEN
   opt_CriticalParallelInSide = .FALSE.
 
-IF (CriticalParallelInSide) THEN
-  IF (ALMOSTZERO(locAlpha(1))) THEN
-    opt_CriticalParallelInSide = .TRUE.
+  IF (CriticalParallelInSide) THEN
+    IF (ALMOSTZERO(locAlpha(1))) THEN
+      opt_CriticalParallelInSide = .TRUE.
     END IF
   END IF
 END IF
@@ -692,7 +689,7 @@ SELECT CASE(nInterSections)
     RETURN
   ! less than zero or more than one intersection
   CASE DEFAULT
-    CALL abort(__STAMP__,'Error while calculating planar curved intersection!')
+    CALL Abort(__STAMP__,'Error while calculating planar curved intersection!')
 END SELECT
 
 
@@ -762,7 +759,7 @@ BiLinearCoeff(:,3) = 0.25*BaseVectors2(:,SideID)
 BiLinearCoeff(:,4) = 0.25*BaseVectors0(:,SideID)
 
 #if CODE_ANALYZE
-  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
     IF(PartID.EQ.PartOut)THEN
       WRITE(UNIT_stdOut,'(110("-"))')
       WRITE(UNIT_stdOut,'(A)')          '     | Output of bilinear intersection equation constants: '
@@ -830,7 +827,7 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
         ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
         ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
-        ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
+        ! CALL Abort(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
         CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,flip,SideID)
       END IF
@@ -881,7 +878,7 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
         ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
         ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
-        ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
+        ! CALL Abort(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
         CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,flip,SideID)
       END IF
@@ -919,7 +916,7 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
         ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
         ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
-        ! CALL ABORT(__STAMP__,'Invalid intersection with bilinear side!',SideID)
+        ! CALL Abort(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
         CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,flip,SideID)
         RETURN
@@ -942,8 +939,8 @@ SELECT CASE(nRoot)
           InterType = InterType+2
           isHit     = .TRUE.
         END IF
-      END IF ! xi .lt. OnePlusEps
-    END IF ! eta .lt. OnePlusEps
+      END IF ! ABS(xi(2)).LE.1.0
+    END IF ! ABS(eta(2)).LE.1.0
 
     SELECT CASE(InterType)
       ! No intersection found, return
@@ -1039,7 +1036,7 @@ USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
 USE MOD_Particle_Utils,          ONLY:InsertionSort
 USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos
 #if CODE_ANALYZE
-USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
+USE MOD_Globals,                 ONLY:myRank,UNIT_stdOut
 USE MOD_Particle_Surfaces,       ONLY:OutputBezierControlPoints
 USE MOD_Particle_Surfaces_Vars,  ONLY:rBoundingBoxChecks,rPerformBezierClip,rPerformBezierNewton
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -1158,7 +1155,7 @@ rPerformBezierClip = rPerformBezierClip+1.
   LineNormVec = 0.
   ! CALL recursive Bezier clipping algorithm
 #if CODE_ANALYZE
-  IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
+  IF (PartOut.GT.0 .AND. MPIRankOut.EQ.myRank) THEN
     IF (PartID.EQ.PartOut) THEN
       IPWRITE(UNIT_stdOut,*) ' --------------------------------------------- '
       IPWRITE(UNIT_stdOut,*) ' clipping '
@@ -1190,14 +1187,14 @@ ELSE !BezierNewtonAngle
   CALL BezierClipRecursive(ClipMode,BezierControlPoints2D_tmp,LineNormVec,PartTrajectory,lengthPartTrajectory&
                 ,iClipIter,nXiClip,nEtaClip,nInterSections,PartID,SideID)
   IF (nInterSections.GT.1) &
-    CALL ABORT(__STAMP__,' More then one intersection! Cannot use Newton!' ,nInterSections)
+    CALL Abort(__STAMP__,' More then one intersection! Cannot use Newton!' ,nInterSections)
 #endif /*CODE_ANALYZE*/
 
   XiNewton = 0.
   CALL BezierNewton(locAlpha(1),XiNewton,BezierControlPoints2D,PartTrajectory,lengthPartTrajectory,PartID,SideID,failed)
   nInterSections = 0
   IF (locAlpha(1).GT.-1) nInterSections=1
-  IF (failed) CALL abort(__STAMP__,' Bezier-Newton does not yield root! ')
+  IF (failed) CALL Abort(__STAMP__,' Bezier-Newton does not yield root! ')
 
 #if CODE_ANALYZE
   IF(nInterSections.EQ.1)THEN
@@ -1209,12 +1206,12 @@ ELSE !BezierNewtonAngle
       IPWRITE(UNIT_stdOut,*) ': Difference between Intersections > Tolerance'
       IPWRITE(UNIT_stdOut,*) ': xi-clip,   xi-newton', locXi(1), XiNewton(1)
       IPWRITE(UNIT_stdOut,*) ': eta-clip, eta-newton', loceta(1), XiNewton(2)
-      !CALL abort(__STAMP__ &
+      !CALL Abort(__STAMP__ &
       ! ' Wrong intersection in Xi! Clip/Newton=',nInterSections,dXi)
     END IF
     !IF(dXi.GT.1.0)THEN
     !  IPWRITE(UNIT_stdOut,*) ' eta-clip, eta-newton', loceta(1), XiNewton(2)
-    !  CALL abort(__STAMP__ &
+    !  CALL Abort(__STAMP__ &
     !   ' Wrong intersection in Eta! Clip/Newton=',nInterSections, dXi)
     !END IF
   END IF
@@ -1237,7 +1234,7 @@ IF (PRESENT(ElemCheck_Opt)) THEN
 END IF
 
 #if CODE_ANALYZE
-IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
+IF (PartOut.GT.0 .AND. MPIRankOut.EQ.myRank) THEN
   IF (PartID.EQ.PartOut) THEN
     IPWRITE(UNIT_stdOut,*)'----------------------------------------------'
     IPWRITE(UNIT_stdOut,*)' PartOut        = ',PartOut
@@ -1274,7 +1271,7 @@ SELECT CASE(nInterSections)
     ! sort intersection distance
     CALL InsertionSort(locAlpha(1:nIntersections),locID,nIntersections)
 #if CODE_ANALYZE
-    IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
+    IF (PartOut.GT.0 .AND. MPIRankOut.EQ.myRank) THEN
       IF (PartID.EQ.PartOut) THEN
         IPWRITE(UNIT_stdOut,*) ' locAlpha-sorted ',locAlpha(1:nIntersections)
       END IF
@@ -1312,7 +1309,7 @@ SELECT CASE(nInterSections)
         END IF
       END DO ! iInter=2,nInterSections
 #if CODE_ANALYZE
-       IF (PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank) THEN
+       IF (PartOut.GT.0 .AND. MPIRankOut.EQ.myRank) THEN
          IF (PartID.EQ.PartOut) THEN
            IPWRITE(UNIT_stdOut,*) ' realnInter ',realnInter
          END IF
@@ -1387,7 +1384,7 @@ SELECT CASE(nInterSections)
     SDEALLOCATE(locID)
 END SELECT
 
-CALL abort(__STAMP__,' The code should never go here')
+CALL Abort(__STAMP__,' The code should never go here')
 
 ! remove compiler warning
 IF (PRESENT(ElemCheck_Opt)) ClipMode = 0
@@ -1415,7 +1412,7 @@ USE MOD_Mesh_Vars,               ONLY:NGeo
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipMaxIter
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipLineVectorMethod
 #if CODE_ANALYZE
-USE MOD_Globals,                 ONLY:MyRank
+USE MOD_Globals,                 ONLY:myRank
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 USE MOD_Particle_Surfaces,       ONLY:OutputBezierControlPoints
 #endif /*CODE_ANALYZE*/
@@ -1447,7 +1444,7 @@ DO WHILE(iClipIter.LE.BezierClipMaxIter)
   END IF
   iClipIter=iClipIter+1
 #if CODE_ANALYZE
-  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
     IF(PartID.EQ.PartOut)THEN
       WRITE(UNIT_stdOut,'(A,I0,1X,I0)') ' iClipIter,ClipMode ', iClipIter, ClipMode
       !read*
@@ -1495,7 +1492,7 @@ DO WHILE(iClipIter.LE.BezierClipMaxIter)
     RETURN ! leave, because convergence
   CASE DEFAULT
 
-    CALL abort(&
+    CALL Abort(&
 __STAMP__ &
       ,' ClipMode is defined in [1-5]! ')
   END SELECT
@@ -1527,10 +1524,9 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:BezierNewtonTolerance2,BezierNewtonMaxIter
 USE MOD_Particle_Vars,           ONLY:LastPartPos!,PartState
 USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
 USE MOD_Particle_Surfaces_Vars,  ONLY:D_Bezier
-!USE MOD_Particle_Mesh_Vars,      ONLY:PartSideToElem
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierNewtonHit
-USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
+USE MOD_Globals,                 ONLY:myRank,UNIT_stdOut
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1572,7 +1568,7 @@ DO l=1,2
 END DO ! l=1,2
 
 #if CODE_ANALYZE
-IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
   IF(PartID.EQ.PartOut)THEN
     IPWRITE(UNIT_stdOut,*) ' Can intersect? ', hasInter
   END IF
@@ -1617,13 +1613,13 @@ CASE(4)
   ! trival guess
   Xi(:)=(/0.,0./)
 CASE DEFAULT
-  CALL abort(&
+  CALL Abort(&
 __STAMP__ &
     ,' BezierNewtonGuess is not implemented! ', BezierNewtonGuess)
 END SELECT
 
 #if CODE_ANALYZE
-IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
   IF(PartID.EQ.PartOut)THEN
     IPWRITE(UNIT_stdOut,*) ' Initial-guess in BezierNewton ', Xi
   END IF
@@ -1674,7 +1670,7 @@ DO WHILE((dXi2.GT.BezierNewtonTolerance2).AND.(nIter.LE.BezierNewtonMaxIter))
     alpha=-1.0
     Xi=1.5
     EXIT
-    !CALL abort(__STAMP__ &
+    !CALL Abort(__STAMP__ &
     !   'Bezier-Netwton singular. iter,sdetJac',nIter,sDet)
   END IF
 
@@ -1712,7 +1708,7 @@ DO WHILE((dXi2.GT.BezierNewtonTolerance2).AND.(nIter.LE.BezierNewtonMaxIter))
 END DO
 
 #if CODE_ANALYZE
-IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
   IF(PartID.EQ.PartOut)THEN
     IPWRITE(UNIT_stdOut,*) ' Newton converget to ', Xi
     IPWRITE(UNIT_stdOut,*) ' Tolarance Vaule ', BezierNewtonHit
@@ -1740,7 +1736,7 @@ alpha=DOT_PRODUCT(IntersectionVector,PartTrajectory)
 alphaNorm=alpha/lengthPartTrajectory
 
 #if CODE_ANALYZE
-IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
   IF(PartID.EQ.PartOut)THEN
     IPWRITE(UNIT_stdOut,*) ' Intersection Point ', InterP
     IPWRITE(UNIT_stdOut,*) ' alphanorm  ',alphaNorm
@@ -1754,7 +1750,7 @@ alpha=-1.0
 END SUBROUTINE BezierNewton
 
 
-FUNCTION InsideBoundingBox(ParticlePosition,SideID)
+PURE FUNCTION InsideBoundingBox(ParticlePosition,SideID)
 !================================================================================================================================
 ! check is the particles is inside the bounding box, return TRUE/FALSE
 !================================================================================================================================
@@ -1818,11 +1814,11 @@ FUNCTION BoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,Side
 !================================================================================================================================
 ! check if the particle trajectory penetrates the bounding box, return TRUE/FALSE
 !================================================================================================================================
-USE MOD_Globals,                 ONLY: ABORT
-USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
+USE MOD_Globals,                 ONLY: Abort
 USE MOD_Particle_Globals
-USE MOD_Particle_Vars,           ONLY: LastPartPos
+USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY: SideSlabNormals,SideSlabIntervals,BezierControlPoints3D
+USE MOD_Particle_Vars,           ONLY: LastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -1893,8 +1889,8 @@ FUNCTION FlatBoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
-USE MOD_Particle_Vars,           ONLY:LastPartPos
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideSlabNormals,SideSlabIntervals,BezierControlPoints3D
+USE MOD_Particle_Vars,           ONLY:LastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -1990,7 +1986,7 @@ SUBROUTINE QuadraticSolver(A,B,C,nRoot,r1,r2)
 ! subroutine to compute the modified a,b,c equation, parameter already mapped in final version
 !================================================================================================================================
 #if CODE_ANALYZE
-USE MOD_Globals,            ONLY:UNIT_stdOut,MyRank
+USE MOD_Globals,            ONLY:UNIT_stdOut,myRank
 #endif /*CODE_ANALYZE*/
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -2118,8 +2114,6 @@ END IF
 END FUNCTION ComputeXi
 
 
-
-
 SUBROUTINE ComputeBezierIntersectionPoint(nXiClip,nEtaClip,PartID,SideID,nInterSections,PartTrajectory,lengthPartTrajectory)
 !===================================================================================================================================
 ! Compute the BezierInterSectionPoint in 3D, and verify if this intersection is satisfies
@@ -2127,7 +2121,7 @@ SUBROUTINE ComputeBezierIntersectionPoint(nXiClip,nEtaClip,PartID,SideID,nInterS
 ! b) alpha is not a multiple intersection
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals,                 ONLY:UNIT_stdOut,ABORT
+USE MOD_Globals,                 ONLY:UNIT_stdOut,Abort
 USE MOD_Mesh_Vars,               ONLY:NGeo
 USE MOD_Particle_Surfaces_Vars,  ONLY:XiArray,EtaArray,locAlpha,locXi,locEta
 USE MOD_Particle_Surfaces_Vars,  ONLY:epsilontol,Beziercliphit
@@ -2194,7 +2188,7 @@ Xi=0.5*(Xi+1)
 Eta=0.5*(Eta+1)
 
 #if CODE_ANALYZE
-IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
   IF(PartID.EQ.PartOut)THEN
     IPWRITE(UNIT_stdOut,*) ' xi,eta ',xi,eta
   END IF
@@ -2234,7 +2228,7 @@ alpha=DOT_PRODUCT(IntersectionVector,PartTrajectory)
 alphaNorm=alpha/lengthPartTrajectory
 
 #if CODE_ANALYZE
-IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
   IF(PartID.EQ.PartOut)THEN
     CALL CalcNormAndTangBezier(nVec=IntersectionVector,xi=tmpXi,eta=tmpeta,SideID=SideID)
     IPWRITE(UNIT_stdOut,*) ' nVec   ',IntersectionVector
@@ -2281,7 +2275,7 @@ IF((alphaNorm.LE.1.0).AND.(alphaNorm.GT.-epsilontol))THEN
      !IF((locAlpha(iInter)-alpha).LT.SQRT(BezierClipTolerance)) isNewIntersection=.FALSE.
      !IF(ALMOSTEQUALRELATIVE(locAlpha(iInter),alpha,SQRT(BezierClipTolerance))) isNewIntersection=.FALSE.
 #if CODE_ANALYZE
-     IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+     IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
        IF(PartID.EQ.PartOut)THEN
          IPWRITE(UNIT_stdOut,*) ' locAlpha,alpha,tol ', locAlpha(iInter),alpha,SQRT(BezierClipTolerance)
          IPWRITE(UNIT_stdOut,*) ' locXi,ETa,,...    ,', locXi(iInter),locEta(iInter),tmpXi,tmpEta
@@ -2322,7 +2316,7 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:BezierSplitLimit
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints1D,BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
 #if CODE_ANALYZE
-USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
+USE MOD_Globals,                 ONLY:myRank,UNIT_stdOut
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 USE MOD_Particle_Surfaces,       ONLY:OutputBezierControlPoints
 #endif /*CODE_ANALYZE*/
@@ -2364,7 +2358,7 @@ END DO ! l
 dmin=MINVAL(minmax(1,:))
 dmax=MAXVAL(minmax(2,:))
 #if CODE_ANALYZE
- IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+ IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
    IF(iPart.EQ.PartOut)THEN
      IPWRITE(UNIT_stdOut,*) ' minval-xi',minmax(1,:)
      IPWRITE(UNIT_stdOut,*) ' maxval-xi',minmax(2,:)
@@ -2375,7 +2369,7 @@ dmax=MAXVAL(minmax(2,:))
 #endif /*CODE_ANALYZE*/
 
 !print*,'dmax,min,...',dmax,dmin,ABS(dmax-dmin),BezierClipTolerance
-! 1D abort criterion from
+! 1D Abort criterion from
 !      AUTHOR = {Efremov, Alexander and Havran, Vlastimil and Seidel, Hans-Peter},
 !      TITLE = {Robust and Numerically Stable Bezier Clipping Method for Ray Tracing NURBS Surfaces},
 !      YEAR = {2005},
@@ -2401,7 +2395,7 @@ END IF
 ! calc Smin and Smax and check boundaries
 CALL CalcSminSmax2(minmax,XiMin,XiMax,nXiClip)
 #if CODE_ANALYZE
- IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+ IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
    IF(iPart.EQ.PartOut)THEN
      IPWRITE(UNIT_stdOut,*) ' XiMin,XiMax ',XiMin,XiMax,nXiClip
    END IF
@@ -2507,7 +2501,7 @@ IF((XiMax-XiMin).GT.BezierSplitLimit)THEN ! two possible intersections: split th
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
-      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
         IF(iPart.EQ.PartOut)THEN
           IPWRITE(UNIT_stdOut,*) ' --------------------------------------- '
           IPWRITE(UNIT_stdOut,*) ' split xi-upper '
@@ -2598,7 +2592,7 @@ IF((XiMax-XiMin).GT.BezierSplitLimit)THEN ! two possible intersections: split th
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
-      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
         IF(iPart.EQ.PartOut)THEN
           IPWRITE(UNIT_stdOut,*) ' --------------------------------------- '
           IPWRITE(UNIT_stdOut,*) ' split xi-lower '
@@ -2711,7 +2705,7 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:MinMax,XiUp,XiDown,XiBuf
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
 #if CODE_ANALYZE
-USE MOD_Globals,                 ONLY:MyRank,UNIT_stdOut
+USE MOD_Globals,                 ONLY:myRank,UNIT_stdOut
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 USE MOD_Particle_Surfaces,       ONLY:OutputBezierControlPoints
 #endif /*CODE_ANALYZE*/
@@ -2758,7 +2752,7 @@ END DO ! l
 dmin=MINVAL(minmax(1,:))
 dmax=MAXVAL(minmax(2,:))
 #if CODE_ANALYZE
- IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+ IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
    IF(iPart.EQ.PartOut)THEN
      IPWRITE(UNIT_stdOut,*) ' minval-eta',minmax(1,:)
      IPWRITE(UNIT_stdOut,*) ' maxval-eta',minmax(2,:)
@@ -2769,7 +2763,7 @@ dmax=MAXVAL(minmax(2,:))
 #endif /*CODE_ANALYZE*/
 
 !print*,'dmax,min,...',dmax,dmin,ABS(dmax-dmin),BezierClipTolerance
-! 1D abort criterion from
+! 1D Abort criterion from
 !      AUTHOR = {Efremov, Alexander and Havran, Vlastimil and Seidel, Hans-Peter},
 !      TITLE = {Robust and Numerically Stable Bezier Clipping Method for Ray Tracing NURBS Surfaces},
 !      YEAR = {2005},
@@ -2795,7 +2789,7 @@ END IF
 ! calc Smin and Smax and check boundaries
 CALL CalcSminSmax2(minmax,Etamin,Etamax,nEtaClip)
 #if CODE_ANALYZE
- IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+ IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
    IF(iPart.EQ.PartOut)THEN
      IPWRITE(UNIT_stdOut,*) ' EtaMin,EtaMax ',EtaMin,EtaMax,nEtaClip
    END IF
@@ -2897,7 +2891,7 @@ IF((EtaMax-EtaMin).GT.BezierSplitLimit)THEN ! two possible intersections: split 
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
-      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
         IF(iPart.EQ.PartOut)THEN
           IPWRITE(UNIT_stdOut,*) ' --------------------------------------- '
           IPWRITE(UNIT_stdOut,*) ' split eta-upper '
@@ -2991,7 +2985,7 @@ IF((EtaMax-EtaMin).GT.BezierSplitLimit)THEN ! two possible intersections: split 
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
-      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.MyRank)THEN
+      IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
         IF(iPart.EQ.PartOut)THEN
           IPWRITE(UNIT_stdOut,*) ' --------------------------------------- '
           IPWRITE(UNIT_stdOut,*) ' split eta-lower '
@@ -3105,11 +3099,11 @@ REAL, INTENT(IN)                 :: PartPos(1:3)
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' LastPartPos = [ ',LastpartPos(1,PartID), ','  &
+WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' LastPartPos    = [ ',LastpartPos(1,PartID), ','  &
                                                         ,LastpartPos(2,PartID), ','  &
                                                         ,LastpartPos(3,PartID), '];'
 
-WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' PartPosition = [ ',PartPos(1), ','  &
+WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' PartPosition   = [ ',PartPos(1), ','  &
                                                          ,PartPos(2), ','  &
                                                          ,PartPos(3), '];'
 
@@ -3154,7 +3148,7 @@ REAL,DIMENSION(2)                    :: Lxi,Leta
 ! compute Lxi vector
 ! 1) the initial Lxi vector is the combination of the two bounding vectors  which point in eta direction
 !     to get the 1D distances of each point via scalar product, we have to right-rotate the vector
-Lxi=(BezierControlPoints2D(:,   0,NGeo)-BezierControlPoints2D(:,   0,   0))+&
+LXi=(BezierControlPoints2D(:,   0,NGeo)-BezierControlPoints2D(:,   0,   0))+&
     (BezierControlPoints2D(:,NGeo,NGeo)-BezierControlPoints2D(:,NGeo,   0))
 ! Dcrease the angle between Lxi and Leta about a little bit
 Lxi(1) = (1-1e-4)*Lxi(1)
@@ -3383,7 +3377,7 @@ SELECT CASE (TRIM(AuxBCType(AuxBCIdx)))
         tang1(3) = 1.0
         tang1(1) = -(axis(2)+axis(3))/axis(1)
       ELSE
-        CALL ABORT(__STAMP__,'Error in ComputeAuxBCIntersection, axis is zero for AuxBC',AuxBCIdx)
+        CALL Abort(__STAMP__,'Error in ComputeAuxBCIntersection, axis is zero for AuxBC',AuxBCIdx)
       END IF
 
       tang1   = UNITVECTOR(tang1)
@@ -3450,7 +3444,7 @@ SELECT CASE (TRIM(AuxBCType(AuxBCIdx)))
       CALL QuadraticSolver(A(1,1),B(1,1),C(1,1),nRoot,roots(1),roots(2))
 
     ELSE
-      CALL abort(__STAMP__,'AuxBC does not exist')
+      CALL Abort(__STAMP__,'AuxBC does not exist')
     END IF ! cylinder, cone, or paraboloid
 
     ! number of roots of quadratic solver
@@ -3469,7 +3463,7 @@ SELECT CASE (TRIM(AuxBCType(AuxBCIdx)))
         ELSE IF (TRIM(AuxBCType(AuxBCIdx)).EQ.'parabol') THEN
           n_vec = intersec - ( r_vec + axis*(origindist(1)+0.5*zfac) )
         ELSE
-          CALL ABORT(__STAMP__,'AuxBC does not exist')
+          CALL Abort(__STAMP__,'AuxBC does not exist')
         END IF
 
         IF (.NOT.inwards) n_vec = -n_vec
@@ -3518,7 +3512,7 @@ SELECT CASE (TRIM(AuxBCType(AuxBCIdx)))
         ELSE IF (TRIM(AuxBCType(AuxBCIdx)).EQ.'parabol') THEN
           n_vec = intersec - ( r_vec + axis*(origindist(1)+0.5*zfac) )
         ELSE
-          CALL ABORT(__STAMP__,'AuxBC does not exist')
+          CALL Abort(__STAMP__,'AuxBC does not exist')
         END IF
 
         alphadir(1)   = DOT_PRODUCT(n_vec,PartTrajectory)
@@ -3532,7 +3526,7 @@ SELECT CASE (TRIM(AuxBCType(AuxBCIdx)))
         ELSE IF (TRIM(AuxBCType(AuxBCIdx)).EQ.'parabol') THEN
           n_vec = intersec - ( r_vec + axis*(origindist(2)+0.5*zfac) )
         ELSE
-          CALL ABORT(__STAMP__,'AuxBC does not exist')
+          CALL Abort(__STAMP__,'AuxBC does not exist')
         END IF
 
         alphadir(2) = DOT_PRODUCT(n_vec,PartTrajectory)
@@ -3564,7 +3558,7 @@ SELECT CASE (TRIM(AuxBCType(AuxBCIdx)))
     isHit = .TRUE.
   CASE DEFAULT
     SWRITE(*,*) ' AuxBC does not exist: ', TRIM(AuxBCType(AuxBCIdx))
-    CALL ABORT(__STAMP__,'AuxBC does not exist')
+    CALL Abort(__STAMP__,'AuxBC does not exist')
 END SELECT
 
 END SUBROUTINE ComputeAuxBCIntersection

@@ -75,7 +75,7 @@ CALL prms%CreateIntOption(      'PartOut'                 , 'If compiled with CO
                                                             ' every tracking information is written as STDOUT.'                &
                                                           , '0')
 CALL prms%CreateIntOption(      'MPIRankOut'              , 'If compiled with CODE_ANALYZE flag: This MPI-Proc writes the'   //&
-                                                            ' tracking information for the defined PartOut.'
+                                                            ' tracking information for the defined PartOut.'                   &
                                                           , '0')
 #endif /*CODE_ANALYZE*/
 CALL prms%CreateIntOption(      'Part-nRPs'               , 'Number of record planes'                                          &

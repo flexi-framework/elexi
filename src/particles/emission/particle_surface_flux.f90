@@ -140,6 +140,10 @@ REAL                  :: tmp_SubSideDmax(SurfFluxSideSize(1),SurfFluxSideSize(2)
 REAL                  :: tmp_SubSideAreas(SurfFluxSideSize(1),SurfFluxSideSize(2))
 REAL,ALLOCATABLE      :: tmp_BezierControlPoints2D(:,:,:,:,:)
 REAL                  :: VFR_total
+#if CODE_ANALYZE
+INTEGER,ALLOCATABLE   :: CountCircInflowType(:,:,:)     ! Counter whether cells are inside/partially inside or
+                                                        ! outside of circular region (only with CODE_ANALYZE)
+#endif /*CODE_ANALYZE*/
 !===================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX...'
@@ -1249,10 +1253,6 @@ USE MOD_Particle_Vars           ,ONLY: Species,nSpecies,PDM,PEM
 USE MOD_Particle_Vars           ,ONLY: PartState,LastPartPos,PartSpecies
 USE MOD_Particle_Vars           ,ONLY: DoSurfaceFlux,DoPoissonRounding,DoTimeDepInflow
 USE MOD_TimeDisc_Vars           ,ONLY: t,dt
-#if CODE_ANALYZE
-USE MOD_Part_Emission_Tools     ,ONLY: CalcVectorAdditionCoeffs
-USE MOD_Particle_Tracking_Vars  ,ONLY: PartOut, MPIRankOut
-#endif /*CODE_ANALYZE*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars        ,ONLY: nSurfacefluxPerElem
 USE MOD_LoadBalance_Timers      ,ONLY: LBStartTime,LBElemSplitTime,LBPauseTime
@@ -1293,9 +1293,6 @@ REAL                        :: fluid_nIn(1:3,0:PP_N,0:PP_NZ),fluid_t1(1:3,0:PP_N
 ! load balance
 REAL                        :: tLBStart
 #endif /*USE_LOADBALANCE*/
-#if CODE_ANALYZE
-REAL                        :: tmpVec(3)
-#endif /*CODE_ANALYZE*/
 !===================================================================================================================================
 
 IF (.NOT.DoSurfaceFlux) RETURN
@@ -1569,6 +1566,46 @@ DO iSpec = 1,nSpecies
 END DO ! iSpec
 
 END SUBROUTINE ParticleSurfaceflux
+
+#if CODE_ANALYZE
+!===================================================================================================================================
+!>
+!===================================================================================================================================
+SUBROUTINE AnalyzePartPos(ParticleIndexNbr)
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Globals   ,ONLY: ALMOSTEQUAL
+USE MOD_Particle_Vars      ,ONLY: LastPartPos,PDM
+USE MOD_Particle_Mesh_Vars ,ONLY: GEO
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER, INTENT(IN)                        :: ParticleIndexNbr
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+IF(   (LastPartPos(1,ParticleIndexNbr).GT.GEO%xmaxglob).AND. .NOT.ALMOSTEQUAL(LastPartPos(1,ParticleIndexNbr),GEO%xmaxglob) &
+  .OR.(LastPartPos(1,ParticleIndexNbr).LT.GEO%xminglob).AND. .NOT.ALMOSTEQUAL(LastPartPos(1,ParticleIndexNbr),GEO%xminglob) &
+  .OR.(LastPartPos(2,ParticleIndexNbr).GT.GEO%ymaxglob).AND. .NOT.ALMOSTEQUAL(LastPartPos(2,ParticleIndexNbr),GEO%ymaxglob) &
+  .OR.(LastPartPos(2,ParticleIndexNbr).LT.GEO%yminglob).AND. .NOT.ALMOSTEQUAL(LastPartPos(2,ParticleIndexNbr),GEO%yminglob) &
+  .OR.(LastPartPos(3,ParticleIndexNbr).GT.GEO%zmaxglob).AND. .NOT.ALMOSTEQUAL(LastPartPos(3,ParticleIndexNbr),GEO%zmaxglob) &
+  .OR.(LastPartPos(3,ParticleIndexNbr).LT.GEO%zminglob).AND. .NOT.ALMOSTEQUAL(LastPartPos(3,ParticleIndexNbr),GEO%zminglob)) THEN
+  IPWRITE(UNIt_stdOut,'(I0,A18,L1)')                            ' ParticleInside ',PDM%ParticleInside(ParticleIndexNbr)
+  IPWRITE(UNIt_stdOut,'(I0,A18,L1)')                            ' PDM%IsNewPart ', PDM%IsNewPart(ParticleIndexNbr)
+  IPWRITE(UNIt_stdOut,'(I0,A18,1X,A18,1X,A18)')                  '    min ', ' value ', ' max '
+  IPWRITE(UNIt_stdOut,'(I0,A2,1X,ES25.14,1X,ES25.14,1X,ES25.14)') ' x', GEO%xminglob, LastPartPos(1,ParticleIndexNbr) &
+                                                                , GEO%xmaxglob
+  IPWRITE(UNIt_stdOut,'(I0,A2,1X,ES25.14,1X,ES25.14,1X,ES25.14)') ' y', GEO%yminglob, LastPartPos(2,ParticleIndexNbr) &
+                                                                , GEO%ymaxglob
+  IPWRITE(UNIt_stdOut,'(I0,A2,1X,ES25.14,1X,ES25.14,1X,ES25.14)') ' z', GEO%zminglob, LastPartPos(3,ParticleIndexNbr) &
+                                                                , GEO%zmaxglob
+  CALL Abort(__STAMP__,' LastPartPos outside of mesh. iPart=',ParticleIndexNbr)
+END IF
+END SUBROUTINE AnalyzePartPos
+#endif /*CODE_ANALYZE*/
 
 
 FUNCTION InSideCircularInflow(iSpec, iSF, iSide, Particle_pos)

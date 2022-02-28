@@ -770,13 +770,15 @@ END SUBROUTINE ReadMesh
 SUBROUTINE BuildPartition()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Mesh_Vars,    ONLY:nElems,nGlobalElems,offsetElem
+USE MOD_Mesh_Vars,         ONLY:nGlobalElems
 #if USE_MPI
-USE MOD_MPI_Vars,     ONLY:offsetElemMPI
+USE MOD_MPI_Vars,          ONLY:offsetElemMPI
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance,       ONLY:InitLoadBalanceTracking
 USE MOD_LoadBalance_Tools, ONLY:DomainDecomposition
+#else
+USE MOD_Mesh_Vars,         ONLY:nElems,offsetElem
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

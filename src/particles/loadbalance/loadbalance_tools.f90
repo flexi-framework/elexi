@@ -23,19 +23,19 @@ MODULE MOD_LoadBalance_Tools
 IMPLICIT NONE
 PRIVATE
 
-#if USE_MPI
+#if USE_LOADBALANCE && USE_MPI
 INTERFACE DomainDecomposition
   MODULE PROCEDURE DomainDecomposition
 END INTERFACE
 
 PUBLIC::DomainDecomposition
-#endif /*USE_MPI*/
+#endif /*USE_LOADBALANCE && USE_MPI*/
 !==================================================================================================================================
 
 CONTAINS
 
 
-#if USE_MPI
+#if USE_LOADBALANCE && USE_MPI
 SUBROUTINE DomainDecomposition()
 !===================================================================================================================================
 !> Read ElemTime from .h5 container and compute domain decomposition
@@ -230,7 +230,6 @@ ELSE
 END IF ! single
 
 END SUBROUTINE ReadElemTime
-#endif /*USE_MPI*/
-
+#endif /*USE_LOADBALANCE && USE_MPI*/
 
 END MODULE MOD_LoadBalance_Tools

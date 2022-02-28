@@ -39,20 +39,24 @@ INTERFACE ParticleInsideQuad3D
   MODULE PROCEDURE ParticleInsideQuad3D
 END INTERFACE
 
-INTERFACE CountPartsPerElem
-  MODULE PROCEDURE CountPartsPerElem
-END INTERFACE
-
 INTERFACE PARTHASMOVED
   MODULE PROCEDURE PARTHASMOVED
 END INTERFACE
+
+#if USE_LOADBALANCE
+INTERFACE CountPartsPerElem
+  MODULE PROCEDURE CountPartsPerElem
+END INTERFACE
+#endif /*USE_LOADBALANCE*/
 
 PUBLIC:: SinglePointToElement
 PUBLIC:: LocateParticleInElement
 PUBLIC:: PartInElemCheck
 PUBLIC:: ParticleInsideQuad3D
-PUBLIC:: CountPartsPerElem
 PUBLIC:: PARTHASMOVED
+#if USE_LOADBALANCE
+PUBLIC:: CountPartsPerElem
+#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 CONTAINS
@@ -675,6 +679,7 @@ END DO  ! iLocSide = 1,6
 END SUBROUTINE ParticleInsideNbMortar
 
 
+#if USE_LOADBALANCE
 SUBROUTINE CountPartsPerElem(ResetNumberOfParticles)
 !===================================================================================================================================
 ! count number of particles in element
@@ -716,6 +721,7 @@ DO iPart = 1,PDM%ParticleVecLength
 END DO ! iPart=1,PDM%ParticleVecLength
 
 END SUBROUTINE CountPartsPerElem
+#endif /*USE_LOADBALANCE*/
 
 
 PURE FUNCTION CalcDetOfTrias(A,bending)

@@ -24,6 +24,7 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
+#if USE_LOADBALANCE
 INTERFACE WriteElemTimeStatistics
   MODULE PROCEDURE WriteElemTimeStatistics
 END INTERFACE
@@ -43,10 +44,12 @@ PUBLIC :: WriteElemTimeStatistics
 PUBLIC :: ApplyWeightDistributionMethod
 PUBLIC :: WeightDistribution_Equal
 #endif /*MPI*/
+#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 CONTAINS
 
+#if USE_LOADBALANCE
 #if USE_MPI
 !===================================================================================================================================
 ! Calculate the optimal load partition, subroutine taken from sparta.f90 of HALO
@@ -689,9 +692,9 @@ INTEGER                        :: ElemDistri(        0:nProcs-1)
 INTEGER                        :: offsetElemMPI_opt( 0:nProcs)
 INTEGER                        :: offsetElemMPI_opt0(0:nProcs)
 INTEGER                        :: offsetElemMPI_tmp( 0:nProcs)
-#if USE_MPI
+#if CODE_ANALYZE
 INTEGER                        :: iProc
-#endif /*USE_MPI*/
+#endif /*CODE_ANALYZE*/
 !===================================================================================================================================
 IF (.NOT.MPIRoot) RETURN
 
@@ -1351,5 +1354,6 @@ ELSE !
 END IF
 
 END SUBROUTINE WriteElemTimeStatistics
+#endif /*USE_LOADBAlANCE*/
 
 END MODULE MOD_LoadDistribution

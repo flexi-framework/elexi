@@ -2607,6 +2607,13 @@ IF (myComputeNodeRank.EQ.0) THEN
   BezierControlPoints3D         = 0.
 END IF
 IF (BezierElevation.GT.0) THEN
+  ! Check if BezierControlPoints can safely be elevated
+  ASSOCIATE(NGeoElevated          => INT(NGeoElevated         ,KIND=8),&
+            nNonUniqueGlobalSides => INT(nNonUniqueGlobalSides,KIND=8))
+  IF (3*(NGeoElevated+1)*(NGeoElevated+1)*nNonUniqueGlobalSides.GT.INT(HUGE(INT(1,KIND=4)),KIND=8)) &
+    CALL Abort(__STAMP__,'BezierControlPoints3DElevated exceeding INT4. Reduce BezierElevation!')
+  END ASSOCIATE
+
   CALL Allocate_Shared((/3*(NGeoElevated+1)*(NGeoElevated+1)*nNonUniqueGlobalSides/), &
                                       BezierControlPoints3DElevated_Shared_Win,BezierControlPoints3DElevated_Shared)
   CALL MPI_WIN_LOCK_ALL(0,BezierControlPoints3DElevated_Shared_Win,IERROR)

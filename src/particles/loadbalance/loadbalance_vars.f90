@@ -26,8 +26,8 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                             :: DoLoadBalance                              !> Use dynamic load balancing
 INTEGER                             :: WeightDistributionMethod                   !> Load distribution method
-INTEGER                             :: LoadBalanceSampleBackup                    !> Loadbalance sample saved until initial autorestart ist finished
-LOGICAL                             :: DoLoadBalanceBackup                        !> Loadbalance flag saved until initial autorestart ist finished
+! INTEGER                             :: LoadBalanceSampleBackup                    !> Loadbalance sample saved until initial autorestart ist finished
+! LOGICAL                             :: DoLoadBalanceBackup                        !> Loadbalance flag saved until initial autorestart ist finished
 LOGICAL                             :: PerformLoadBalance=.FALSE.                 !> Flag if load balance is performed in current time step iteration
 INTEGER                             :: LoadBalanceSample                          !> Number of samples for loadbalance
 LOGICAL                             :: PerformLBSample                            !> Flag for enabling time measurement in current
@@ -42,11 +42,14 @@ LOGICAL                             :: InitLoadBalanceIsDone                    
 REAL,ALLOCATABLE                    :: tCurrent(:)                                !> Time measurement over one step
                                                                                   !> measured elem-independent and later weighted
                                                                                   !> for indices look into piclas.h
-
+#if USE_LOADBALANCE
 REAL,ALLOCATABLE                    :: tCurrent_LB_DG(:)                          !> Time measurement over one step
+#endif /*USE_LOADBALANCE*/
+
 ! counter
 INTEGER                             :: nLoadBalance                               !> Number of load balances calculations (calls of ComputeElemLoad)
 INTEGER                             :: nLoadBalanceSteps                          !> Number of performed load balances steps
+#if USE_LOADBALANCE
 INTEGER                             :: LoadBalanceMaxSteps                        !> Number of maximum allowed performed load balances steps
 REAL,ALLOCATABLE                    :: LoadDistri(:)                              !> Weighted load distribution of all procs
 INTEGER,ALLOCATABLE                 :: PartDistri(:)                              !> Part distribution of all procs
@@ -70,6 +73,7 @@ TYPE tData
   TYPE(tData), POINTER :: nextData => null()
 END TYPE tData
 TYPE(tData), POINTER :: firstData => null() !linked-list of old offsetElemMPI for WeightDistributionMethod 5 and 6
+#endif /*USE_LOADBALANCE*/
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! particle load balancing
@@ -85,6 +89,7 @@ REAL                                :: targetWeight                             
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE                    :: ElemTime(:)
 REAL,ALLOCATABLE                    :: ProcTime(:)
+#if USE_LOADBALANCE
 REAL,ALLOCATABLE                    :: ElemTime_tmp(:)                          ! Additional container for restarting and keeping the old ElemTime values in
                                                                                 ! the state.h5 file
 REAL                                :: ElemTimePartTot                          ! Total time spent for particle routines (all procs)
@@ -96,6 +101,6 @@ INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nTracksPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nSurfacefluxPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerBCElem(:)
-
+#endif /*USE_LOADBALANCE*/
 
 END MODULE MOD_LoadBalance_Vars

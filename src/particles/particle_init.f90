@@ -150,13 +150,13 @@ CALL prms%SetSection("Particle Random Walk")
 ! >>> Values in this section only apply for turbulence models providing turbulent kinetic energy and a turbulent length/time scale
 !===================================================================================================================================
 CALL prms%CreateStringOption(       'Part-RWModel'  , 'Random walk model used for steady-state calculations.\n'                  //&
-                                                      ' - Gosman\n'                                                              //&
-                                                      ' - Dehbi\n'                                                               //&
-                                                      ' - Langevin\n'                                                              &
+                                                      ' - Gosman   : Gosman (1983)\n'                                            //&
+                                                      ' - Mofakham : Modified Mofakham (2020)\n'                                 //&
+                                                      ' - none     : LES/DNS mode. Assume fully resolved turbulence'               &
                                                     , 'none')
 CALL prms%CreateStringOption(       'Part-RWTime'   , 'Time stepping used for random walk model.\n'                              //&
-                                                      ' - RK \n'                                                                 //&
-                                                      ' - RW'                                                                      &
+                                                      ' - RK       : Update random walk every RK stage\n'                        //&
+                                                      ' - RW       : Update random walk after min(eddy time scale, transit time scale)'&
                                                     , 'RW')
 #endif /* USE_RW */
 
@@ -164,9 +164,14 @@ CALL prms%CreateStringOption(       'Part-RWTime'   , 'Time stepping used for ra
 ! >>> Options for particle SGS model
 !===================================================================================================================================
 CALL prms%CreateStringOption(       'Part-SGSModel' , 'SGS model used for reconstruction of SGS influence on particle\n'         //&
-                                                      ' - Breuer \n'                                                             //&
-                                                      ' - Breuer-Analytic \n'                                                    //&
-                                                      ' - none'                                                                    &
+                                                      ' - Amiri           : Amiri (2006)\n'                                      //&
+                                                      ' - Breuer          : Breuer (2017) model, first option\n'                 //&
+                                                      ' - Breuer-Analytic : Breuer (2017) model, second option\n'                //&
+                                                      ' - Fukagata        : Fukagata (2004)\n'                                   //&
+                                                      ' - Jin             : Jin (2010)\n'                                        //&
+                                                      ' - Minier          : Minier and Peirano (2004)\n'                         //&
+                                                      ' - Sommerfeld      : Sommerfeld (2001)\n'                                 //&
+                                                      ' - none            : DNS mode. Assume fully resolved turbulence'            &
                                                     , 'none')
 CALL prms%CreateIntOption(          'Part-SGSNFilter','Number of cut-off modes in the high-pass SGS filter'                        &
                                                     , '2')
@@ -181,13 +186,21 @@ CALL prms%CreateIntOption(          'Part-nSpecies'             , 'Number of spe
                                                                 , '1')
 CALL prms%CreateIntOption(          'Part-Species[$]-nInits'    , 'Number of different initial particle placements for Species [$]'&
                                                                 , '0'        , numberedmulti=.TRUE.)
-CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for calculation of the drag force.\n'       &
+CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for calculation of the drag force.\n'     //&
+                                                                  ' - none        : no coupling between field and particles\n'   //&
+                                                                  ' - convergence : special case for convergence testing\n'      //&
+                                                                  ' - inertia     : particles are convected as initerial particles\n'//&
+                                                                  ' - tracer      : particles act as ideal tracers\n'              &
                                                                 , 'none'     , numberedmulti=.TRUE.)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'none',            RHS_NONE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tracer',          RHS_TRACER)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'convergence',     RHS_CONVERGENCE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'inertia',         RHS_INERTIA)
-CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle model used for calculation of the drag factor.\n'      &
+CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle model used for calculation of the drag factor.\n'    //&
+                                                                  ' - schiller    : Schiller and Naumann (1933)\n'               //&
+                                                                  ' - putman      : Putnam et al. (1961)\n'                      //&
+                                                                  ' - haider      : Haider and Levenspiel (1989)\n'              //&
+                                                                  ' - hoelzer     : Hoelzer et al. (2008)\n'                       &
                                                                 , 'none'     , numberedmulti=.TRUE.)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'schiller',        DF_PART_SCHILLER)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'putnam',          DF_PART_PUTNAM)
@@ -200,11 +213,15 @@ CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diam
 CALL prms%CreateRealOption(         'Part-Species[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'                       &
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(       'Part-Species[$]-velocityDistribution', 'Used velocity distribution.\n'                      //&
-                                                                  ' - constant: all particles have the same velocity defined in' //&
-                                                                  ' VeloVecIC\n'                                                 //&
-                                                                  ' - fluid:    particles have local fluid velocity\n'             &
+                                                                  ' - constant          : Emission with constant velocity\n'     //&
+                                                                  ' - constant_turbulent: Emission with constant velocity plus'  //&
+                                                                                        ' Gaussian random fluctuations\n'        //&
+                                                                  ' - radial_constant   : Emission with constant velocity scaled'//&
+                                                                                        ' with radial position\n'                //&
+                                                                  ' - load_from_file    : Emission with velocity from file\n'    //&
+                                                                  ' - fluid             : Emission with local fluid velocity'      &
                                                                 , 'constant', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(         'Part-Species[$]-VeloIC'    , 'Absolute value of initial velocity. (ensemble velocity) '      &
+CALL prms%CreateRealOption(         'Part-Species[$]-VeloIC'    , 'Absolute value of initial velocity. (ensemble velocity) '       &
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealArrayOption(    'Part-Species[$]-VeloVecIC ', 'Velocity vector for given species'                              &
                                                                 , '0. , 0. , 0.', numberedmulti=.TRUE.)
@@ -299,9 +316,13 @@ CALL prms%CreateIntOption(          'Part-Species[$]-NumberOfExcludeRegions', 'N
 CALL prms%SetSection("Particle Species nInits")
 ! if nInit > 0 some variables have to be defined twice
 CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-velocityDistribution', 'Used velocity distribution.\n'              //&
-                                                                  ' - constant: all particles have the same velocity defined in' //&
-                                                                  ' VeloVecIC\n'                                                 //&
-                                                                  ' - fluid:    particles have local fluid velocity\n'             &
+                                                                  ' - constant          : Emission with constant velocity\n'     //&
+                                                                  ' - constant_turbulent: Emission with constant velocity plus'  //&
+                                                                                        ' Gaussian random fluctuations\n'        //&
+                                                                  ' - radial_constant   : Emission with constant velocity scaled'//&
+                                                                                        ' with radial position\n'                //&
+                                                                  ' - load_from_file    : Emission with velocity from file\n'    //&
+                                                                  ' - fluid             : Emission with local fluid velocity'      &
                                                                 , 'constant', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloIC'    , 'Absolute value of initial velocity. (ensemble velocity)'&
                                                                 , '0.'      , numberedmulti=.TRUE.)
@@ -391,13 +412,9 @@ CALL prms%CreateStringOption(       'Part-Boundary[$]-Type'     , 'Used boundary
                                                                   '- reflective\n'                                               //&
                                                                   '- periodic\n'                                                   &
                                                                             , numberedmulti=.TRUE.)
-CALL prms%CreateStringOption(       'Part-Boundary[$]-Name'     , 'Source Name of Boundary. Has to be same name as defined in'   //&
+CALL prms%CreateStringOption(       'Part-Boundary[$]-Name'     , 'Source name of boundary. Has to be same name as defined in'   //&
                                                                 ' preproc tool'                                                    &
                                                                             , numberedmulti=.TRUE.)
-CALL prms%CreateRealArrayOption(    'Part-PeriodicVector[$]'    , 'Vector for periodic boundaries.'                              //&
-                                                                  ' Has to be the same as defined in preproc.ini in their'       //&
-                                                                  ' respective order. '                                            &
-                                                                , '1.,0.,0.', numberedmulti=.TRUE.)
 
 ! Wall model =======================================================================================================================
 CALL prms%SetSection("Particle Rebound Model")
@@ -406,12 +423,13 @@ CALL prms%CreateStringOption(       'Part-Boundary[$]-WallModel', 'Wall model to
                                                                   ' - coeffRes - Coefficient of restitution'                       &
                                                                   ,'perfRef', numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(       'Part-Boundary[$]-WallCoeffModel', 'Coefficients to be used. Options:.\n'                    //&
-                                                                  ' - Tabakoff1981\n'                                            //&
-                                                                  ' - Bons2017\n'                                                //&
-                                                                  ' - Whitaker2018\n'                                            //&
-                                                                  ' - Fong2019\n'                                                //&
-                                                                  ' - RebANN\n'                                                  //&
-                                                                  ' - FracANN'                                                     &
+                                                                  ' - Grant1975    : Grant and Tabakoff (1975)\n'                //&
+                                                                  ' - Tabakoff1981 : Tabaoff and Wakeman (1981)\n'               //&
+                                                                  ' - Bons2017     : Bons et al. (2017)\n'                       //&
+                                                                  ' - Whitaker2018 : Whitaker and Bons (2018)\n'                 //&
+                                                                  ' - Fong2019     : Fong et al. (2019)\n'                       //&
+                                                                  ' - RebANN       : Rebound  artificial neural network\n'       //&
+                                                                  ' - FracANN      : Fracture artificial neural network'           &
                                                                             , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Boundary[$]-RoughWall'  ,'Rough wall modelling is used.'                                 &
                                                                   ,'.FALSE.', numberedmulti=.TRUE.)

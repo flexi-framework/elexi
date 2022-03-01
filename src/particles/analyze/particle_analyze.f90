@@ -64,12 +64,17 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Particle Analyze")
 
-CALL prms%CreateIntOption(      'Part-AnalyzeStep'        , 'Analyze is performed each Nth time step','1')
-CALL prms%CreateLogicalOption(  'CalcKineticEnergy'       , 'Calculate Kinetic Energy. ','.FALSE.')
-CALL prms%CreateLogicalOption(  'CalcPartBalance'         , 'Calculate the Particle Kinetic Energy Balance'//&
-                                                            '- input and outflow kinetic energy of all particles','.FALSE.')
-CALL prms%CreateLogicalOption(  'Part-TrackDispersion'    , 'Track particle convergence radius (i.e. absolute path)','.FALSE.')
-CALL prms%CreateLogicalOption(  'Part-TrackPath'          , 'Track particle path (i.e. relative path)','.FALSE.')
+CALL prms%CreateIntOption(      'Part-AnalyzeStep'        , 'Analyze is performed each Nth time step'                          &
+                                                          , '1')
+CALL prms%CreateLogicalOption(  'CalcKineticEnergy'       , 'Calculate Kinetic Energy'                                         &
+                                                          , '.FALSE.')
+CALL prms%CreateLogicalOption(  'CalcPartBalance'         , 'Calculate the Particle Kinetic Energy Balance'                  //&
+                                                            '- input and outflow kinetic energy of all particles'              &
+                                                          , '.FALSE.')
+CALL prms%CreateLogicalOption(  'Part-TrackDispersion'    , 'Track particle convergence radius (i.e. absolute path)'           &
+                                                          , '.FALSE.')
+CALL prms%CreateLogicalOption(  'Part-TrackPath'          , 'Track particle path (i.e. relative path)'                         &
+                                                          , '.FALSE.')
 #if CODE_ANALYZE
 CALL prms%CreateIntOption(      'PartOut'                 , 'If compiled with CODE_ANALYZE flag: For This particle number'   //&
                                                             ' every tracking information is written as STDOUT.'                &
@@ -92,7 +97,7 @@ CALL prms%CreateRealOption(     'Part-RPPosition[$]'      , 'Position of the rec
 CALL prms%CreateStringOption(   'Part-FilenameRecordPart' , 'Specifying filename for load_from_file init.'                     &
                                                           , 'data/recordplane_')
 CALL prms%CreateLogicalOption(  'Part-PartIndex'          , 'Flag to give each particle an unique index'                      &
-                                                               , '.FALSE.')
+                                                          , '.FALSE.')
 
 END SUBROUTINE DefineParametersParticleAnalyze
 

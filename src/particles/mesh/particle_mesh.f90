@@ -78,7 +78,7 @@ CALL prms%CreateLogicalOption(      'CalcHaloInfo'              , 'Output halo i
 ! Background mesh init variables
 CALL prms%CreateRealArrayOption(    'Part-FIBGMdeltas'          , 'Define the deltas for the cartesian Fast-Init-Background-Mesh.'//&
                                                                   ' They should be of the similar size as the smallest cells of' //&
-                                                                  ' the used mesh for simulation.'                                 &
+                                                                  ' the used mesh for simulation when multiplied with FactorFIBGM.'&
                                                                 , '1. , 1. , 1.')
 CALL prms%CreateRealArrayOption(    'Part-FactorFIBGM'          , 'Factor with which the background mesh will be scaled.'          &
                                                                 , '1. , 1. , 1.')
@@ -108,10 +108,10 @@ CALL prms%CreateLogicalOption(      'meshCheckWeirdElements'    , 'Abort when we
 ! RefMapping
 CALL prms%CreateIntOption(          'RefMappingGuess'           , ' Initial guess of the Newton for mapping the particle into'   //&
                                                                   ' reference coordinates.\n'                                    //&
-                                                                  '1 -linear pseudo-Cartesian coordinates\n'                     //&
-                                                                  '2 - Xi of closest Gauss point\n'                              //&
-                                                                  '3 - Xi of closest XCL_ngeo point\n'                           //&
-                                                                  '4 -trival guess (0,0,0)^t')
+                                                                  ' - 1 : linear pseudo-Cartesian coordinates\n'                 //&
+                                                                  ' - 2 : Xi of closest Gauss point\n'                           //&
+                                                                  ' - 3 : Xi of closest XCL_ngeo point\n'                        //&
+                                                                  ' - 4 : trival guess (0,0,0)^t')
 CALL prms%CreateRealOption(         'RefMappingEps'             , ' Tolerance for mapping particle into reference element'       //&
                                                                   ' measured as L2-norm of deltaXi.'                               &
                                                                 , '1e-4')
@@ -133,9 +133,9 @@ CALL prms%CreateRealOption(         'BezierClipTolerance'       , ' Tolerance fo
 CALL prms%CreateRealOption(         'BezierNewtonTolerance'     , ' Tolerance for BezierNewton'                                    &
                                                                 , '1e-4')
 CALL prms%CreateIntOption(          'BezierNewtonGuess'         , ' Initial guess for BezierNewton\n'                            //&
-                                                                  ' 1 - linear projected face\n'                                 //&
-                                                                  ' 2 - closest projected BeziercontrolPoint\n'                  //&
-                                                                  ' 4 - (0,0)^t'                                                   &
+                                                                  ' - 1 : linear projected face\n'                                 //&
+                                                                  ' - 2 : closest projected BeziercontrolPoint\n'                  //&
+                                                                  ' - 4 : (0,0)^t'                                                   &
                                                                 , '1')
 CALL prms%CreateIntOption(          'BezierNewtonMaxIter'       , ' TODO-DEFINE-PARAMETER'                                         &
                                                                 , '100')

@@ -332,7 +332,7 @@ CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloTurbIC', 'Turbu
                                                                 , '0.'      , numberedmulti=.TRUE.)
 
 ! emission time
-CALL prms%SetSection('Particle Species Ninits Emission')
+CALL prms%SetSection('Particle Species nInits Emission')
 CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-UseForEmission', 'Flag to use Init/Emission for emission'             &
                                                                 , '.TRUE.'  , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-UseForInit', 'Flag to use Init/Emission for init'                     &
@@ -419,8 +419,8 @@ CALL prms%CreateStringOption(       'Part-Boundary[$]-Name'     , 'Source name o
 ! Wall model =======================================================================================================================
 CALL prms%SetSection("Particle Rebound Model")
 CALL prms%CreateStringOption(       'Part-Boundary[$]-WallModel', 'Wall model to be used. Options:.\n'                           //&
-                                                                  ' - perfRef  - perfect reflection\n'                           //&
-                                                                  ' - coeffRes - Coefficient of restitution'                       &
+                                                                  ' - perfRef      : perfect reflection\n'                       //&
+                                                                  ' - coeffRes     : Coefficient of restitution'                   &
                                                                   ,'perfRef', numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(       'Part-Boundary[$]-WallCoeffModel', 'Coefficients to be used. Options:.\n'                    //&
                                                                   ' - Grant1975    : Grant and Tabakoff (1975)\n'                //&

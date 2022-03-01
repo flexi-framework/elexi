@@ -133,9 +133,9 @@ CALL prms%CreateRealOption(         'BezierClipTolerance'       , ' Tolerance fo
 CALL prms%CreateRealOption(         'BezierNewtonTolerance'     , ' Tolerance for BezierNewton'                                    &
                                                                 , '1e-4')
 CALL prms%CreateIntOption(          'BezierNewtonGuess'         , ' Initial guess for BezierNewton\n'                            //&
-                                                                  ' - 1 : linear projected face\n'                                 //&
-                                                                  ' - 2 : closest projected BeziercontrolPoint\n'                  //&
-                                                                  ' - 4 : (0,0)^t'                                                   &
+                                                                  ' - 1 : linear projected face\n'                               //&
+                                                                  ' - 2 : closest projected BezierControlPoint\n'                //&
+                                                                  ' - 4 : (0,0)^t'                                                 &
                                                                 , '1')
 CALL prms%CreateIntOption(          'BezierNewtonMaxIter'       , ' TODO-DEFINE-PARAMETER'                                         &
                                                                 , '100')

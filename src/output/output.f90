@@ -284,9 +284,9 @@ REAL              :: percent,percent_time,percent_iter
 REAL              :: time_remaining,mins,secs,hours,days
 CHARACTER(3)      :: tmpString
 #if FV_ENABLED && PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 30
+INTEGER,PARAMETER :: barWidth = 26
 #elif FV_ENABLED || PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 40
+INTEGER,PARAMETER :: barWidth = 28
 #else
 INTEGER,PARAMETER :: barWidth = 50
 #endif
@@ -354,12 +354,12 @@ IF(MPIRoot)THEN
 
 #if FV_ENABLED
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV '
+  WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
 #endif /*FV_ENABLED*/
 
 #if PP_LIMITER
   PP_percent = REAL(PPcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
+  WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
 #endif /*PP_LIMITER*/
 
   ! Status line or standard output

@@ -72,9 +72,10 @@ CONTAINS
 SUBROUTINE Particle_InitTimeDisc()
 ! MODULES
 USE MOD_Globals
-USE MOD_ReadInTools               ,ONLY:GETLOGICAL,GETSTR,GETREAL
-USE MOD_TimeDisc_Vars             ,ONLY:TimeStep,TimeDiscType
-USE MOD_Particle_TimeDisc_Vars    ,ONLY:ParticleTimeDiscMethod,UseManualTimeStep,ManualTimeStep
+USE MOD_ReadInTools               ,ONLY: GETLOGICAL,GETSTR,GETREAL
+USE MOD_TimeDisc_Vars             ,ONLY: TimeStep,TimeDiscType
+USE MOD_Particle_TimeDisc_Vars    ,ONLY: ParticleTimeDiscMethod,UseManualTimeStep,ManualTimeStep
+USE MOD_Particle_Vars             ,ONLY: nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -113,6 +114,12 @@ SELECT CASE (TRIM(ParticleTimeDiscMethod))
     CALL CollectiveStop(__STAMP__,&
                     'Unknown method of particle time discretization: '//TRIM(ParticleTimeDiscMethod))
 END SELECT
+
+! Switch to dummy routines if running particle code without any species
+IF (nSpecies.LE.0) THEN
+  ParticleTimeStep   => Particle_TimeStepDummy
+  ParticleTimeStepRK => Particle_TimeStepDummy_RK
+END IF
 
 END SUBROUTINE Particle_InitTimeDisc
 
@@ -213,6 +220,40 @@ CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE ParticleTimeRHS
+
+
+!===================================================================================================================================
+!> Euler particle time integration:
+!> This procedure takes the current time t, the time step dt and the solution at
+!> the current time U(t) and returns the solution at the next time level.
+!===================================================================================================================================
+SUBROUTINE Particle_TimeStepDummy(t,dt)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)               :: t
+REAL,INTENT(IN)               :: dt
+!===================================================================================================================================
+END SUBROUTINE Particle_TimeStepDummy
+
+
+!===================================================================================================================================
+!> Euler particle time integration:
+!> This procedure takes the current time t, the time step dt and the solution at
+!> the current time U(t) and returns the solution at the next time level.
+!===================================================================================================================================
+SUBROUTINE Particle_TimeStepDummy_RK(t,iStage)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)               :: t
+INTEGER,INTENT(IN)            :: iStage
+!===================================================================================================================================
+END SUBROUTINE Particle_TimeStepDummy_RK
 
 
 !===================================================================================================================================

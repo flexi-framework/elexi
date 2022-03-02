@@ -146,6 +146,12 @@ INTEGER,ALLOCATABLE   :: CountCircInflowType(:,:,:)     ! Counter whether cells 
 #endif /*CODE_ANALYZE*/
 !===================================================================================================================================
 
+! Return if running particle code without any species
+IF (nSpecies.LE.0) THEN
+  DoSurfaceFlux = .FALSE.
+  RETURN
+END IF
+
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX...'
 
 ! initialization of surface model flags

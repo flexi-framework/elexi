@@ -72,7 +72,7 @@ USE MOD_Particle_Analyze_Vars, ONLY: PartPath,doParticleDispersionTrack,doPartic
 USE MOD_Particle_Boundary_Vars,ONLY: doParticleReflectionTrack
 ! USE MOD_Particle_HDF5_Output
 USE MOD_Particle_Restart_Vars, ONLY: EmissionTime
-USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex
+USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex,nSpecies
 USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex,doWritePartDiam
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
@@ -107,6 +107,9 @@ INTEGER                        :: tmpIndex,tmpIndex2,PP_nVarPart_loc
 INTEGER                        :: TurbPartDataSize
 REAL,ALLOCATABLE               :: TurbPartData(:,:)
 !===================================================================================================================================
+
+! Return if running particle code without any species
+IF (nSpecies.LE.0) RETURN
 
 ! Size and location of particle data
 PP_nVarPart_loc = PP_nVarPart-1

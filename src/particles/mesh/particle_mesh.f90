@@ -629,6 +629,7 @@ USE MOD_Particle_Mesh_Readin        ,ONLY: FinalizeMeshReadin
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Surfaces_Vars
 USE MOD_Particle_Tracking_Vars      ,ONLY: TrackingMethod,Distance,ListDistance
+USE MOD_Particle_Vars               ,ONLY: nSpecies
 #if USE_MPI
 USE MOD_Particle_MPI_Shared_vars    ,ONLY: MPI_COMM_SHARED
 #endif /*USE_MPI*/
@@ -649,6 +650,9 @@ IMPLICIT NONE
 
 ! Particle mesh readin happens during mesh readin, finalize with gathered routine here
 CALL FinalizeMeshReadin()
+
+! Return if running particle code without any species
+IF (nSpecies.LE.0) RETURN
 
 CALL FinalizeBGM()
 

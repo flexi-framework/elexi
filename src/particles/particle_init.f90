@@ -183,7 +183,7 @@ CALL prms%CreateIntOption(          'Part-SGSNFilter','Number of cut-off modes i
 CALL prms%SetSection("Particle Species")
 ! species inits and properties
 CALL prms%CreateIntOption(          'Part-nSpecies'             , 'Number of species in part'                                      &
-                                                                , '1')
+                                                                , '0')
 CALL prms%CreateIntOption(          'Part-Species[$]-nInits'    , 'Number of different initial particle placements for Species [$]'&
                                                                 , '0'        , numberedmulti=.TRUE.)
 CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for calculation of the drag force.\n'     //&
@@ -555,7 +555,7 @@ USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_Surfaces,          ONLY: InitParticleSurfaces
 USE MOD_Particle_TimeDisc,          ONLY: Particle_InitTimeDisc
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
-USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,PDM
+USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,nSpecies,PDM
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
 #endif
@@ -605,6 +605,9 @@ END IF
 CALL InitializeVariables()
 ! Set particle timedisc pointer
 CALL Particle_InitTimeDisc()
+
+! Return if running particle code without any species
+IF (nSpecies.LE.0) RETURN
 
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
 #if USE_RW
@@ -658,6 +661,7 @@ USE MOD_Particle_Boundary_Tracking ,ONLY: InitParticleBoundaryTracking
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
 USE MOD_Particle_Boundary_Vars     ,ONLY: nAuxBCs
 USE MOD_Particle_Interpolation     ,ONLY: InitParticleInterpolation
+USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
 USE MOD_ReadInTools
 #if USE_MPI
@@ -699,9 +703,12 @@ FilenameRecordPart      = GETSTR('Part-FilenameRecordPart'     )
 
 ! Number of species
 nSpecies                = GETINT(     'Part-nSpecies')
-! Abort if running particle code without any species
-IF (nSpecies.LE.0) &
-  CALL ABORT(__STAMP__,'ERROR: nSpecies .LE. 0:', nSpecies)
+! Return if running particle code without any species
+IF (nSpecies.LE.0) THEN
+  DoInterpolation = .FALSE.
+  RETURN
+END IF
+
 ! Allocate species array
 ALLOCATE(Species(1:nSpecies))
 CALL InitializeVariablesSpeciesInits()

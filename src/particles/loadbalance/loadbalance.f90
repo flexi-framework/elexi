@@ -144,8 +144,9 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT LOAD BALANCE...'
 IF(nProcessors.EQ.1)THEN
   ! deactivate load balance for single core computations
   DoLoadBalance        = .FALSE.
-  SWRITE(UNIT_stdOut,'(A)') 'No LoadBalance (nProcessors=1)'
+  SWRITE(UNIT_stdOut,'(A)') ' | No LoadBalance (nProcessors=1)'
   DeviationThreshold   = HUGE(1.0)
+  PerformPartWeightLB  = .FALSE.
 ELSE
   DoLoadBalance        = GETLOGICAL('DoLoadBalance')
   LoadBalanceSample    = GETINT    ('LoadBalanceSample')

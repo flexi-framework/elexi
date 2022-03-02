@@ -407,7 +407,6 @@ USE MOD_FV                  ,ONLY: FV_Info
 #endif
 #if PP_LIMITER
 USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
-USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
 #endif /*PP_LIMITER*/
 #if USE_PARTICLES
 USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime,UseManualTimeStep

@@ -233,8 +233,9 @@ SUBROUTINE IRecvNbOfParticles()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_MPI_Vars,      ONLY:PartMPI,PartMPIExchange
-USE MOD_Particle_MPI_Vars,      ONLY:nExchangeProcessors,ExchangeProcToGlobalProc
+USE MOD_Particle_MPI_Vars,      ONLY: PartMPI,PartMPIExchange
+USE MOD_Particle_MPI_Vars,      ONLY: nExchangeProcessors,ExchangeProcToGlobalProc
+USE MOD_Particle_Vars,          ONLY: nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -243,6 +244,9 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER               :: iProc
 !===================================================================================================================================
+
+! Return if running particle code without any species
+IF (nSpecies.LE.0) RETURN
 
 ! Asynchronous communication. Open receive buffer to all neighboring procs to get the number of particles THEY want to send
 PartMPIExchange%nPartsRecv=0
@@ -280,7 +284,7 @@ USE MOD_Preproc
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI,PartMPIExchange,PartTargetProc
 USE MOD_Particle_MPI_Vars      ,ONLY: nExchangeProcessors,ExchangeProcToGlobalProc,GlobalProcToExchangeProc
-USE MOD_Particle_Vars          ,ONLY: PEM,PDM
+USE MOD_Particle_Vars          ,ONLY: PEM,PDM,nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -292,6 +296,9 @@ IMPLICIT NONE
 INTEGER                       :: iPart,ElemID
 INTEGER                       :: iProc,ProcID
 !===================================================================================================================================
+
+! Return if running particle code without any species
+IF (nSpecies.LE.0) RETURN
 
 ! 1) get number of send particles
 !--- Count number of particles in cells in the halo region and add them to the message
@@ -354,7 +361,7 @@ USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack,doPart
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,PartCommSize,PartSendBuf,PartRecvBuf,PartTargetProc
 USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors,ExchangeProcToGlobalProc
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex,doPartIndex
-USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
+USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp,nSpecies
 USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
 USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
 ! Variables for impact tracking
@@ -380,6 +387,9 @@ INTEGER                       :: recv_status_list(1:MPI_STATUS_SIZE,0:nExchangeP
 INTEGER                       :: MessageSize, nRecvParticles, nSendParticles
 INTEGER                       :: ALLOCSTAT
 !===================================================================================================================================
+
+! Return if running particle code without any species
+IF (nSpecies.LE.0) RETURN
 
 ! 3) Build Message
 DO iProc=0,nExchangeProcessors-1
@@ -580,7 +590,7 @@ USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack,doPart
 USE MOD_Particle_MPI_Vars,        ONLY:PartMPIExchange,PartCommSize,PartRecvBuf,PartSendBuf!,PartMPI
 USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex,doPartIndex
-USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp
+USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp,nSpecies
 USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
 USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
 ! variables for impact tracking
@@ -605,6 +615,9 @@ INTEGER                       :: iProc,iPos,nRecv,PartID,jPos
 INTEGER                       :: recv_status_list(1:MPI_STATUS_SIZE,0:nExchangeProcessors-1)
 INTEGER                       :: MessageSize,nRecvParticles
 !===================================================================================================================================
+
+! Return if running particle code without any species
+IF (nSpecies.LE.0) RETURN
 
 ! wait for all send requests to be successful
 DO iProc=0,nExchangeProcessors-1

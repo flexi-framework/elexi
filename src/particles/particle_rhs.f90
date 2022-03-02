@@ -756,6 +756,10 @@ IF(Rep.GT.800) THEN
   ENDIF
 ENDIF
 f  = 1. + 0.15*Rep**0.687
+
+! Suppress compiler warning
+NO_OP(SphericityIC)
+NO_OP(MP)
 END FUNCTION DF_SchillerAndNaumann
 
 FUNCTION DF_Putnam(Rep, SphericityIC, Mp) RESULT(f)
@@ -776,6 +780,10 @@ REAL                        :: f
 f = 1. + (Rep**2./3.)/6.
 ! High Re correction according to Putnam et al. (1961)
 IF(Rep .GT. 1000) f = 0.0183*Rep
+
+! Suppress compiler warning
+NO_OP(SphericityIC)
+NO_OP(MP)
 END FUNCTION DF_Putnam
 
 FUNCTION DF_Haider(Rep, SphericityIC, Mp) RESULT(f)
@@ -798,6 +806,9 @@ k1 = EXP(2.3288-6.4581*SphericityIC+2.4486*SphericityIC**2)
 k2 = EXP(4.905-13.8944*SphericityIC+18.4222*SphericityIC**2-10.2599*SphericityIC**3)
 k3 = EXP(1.4681+12.2584*SphericityIC-20.7322*SphericityIC**2+15.8855*SphericityIC**3)
 f = (1+k1*Rep**(0.0964+0.5565*SphericityIC))+Rep**2*1./24*k2/(Rep+k3)
+
+! Suppress compiler warning
+NO_OP(MP)
 END FUNCTION DF_Haider
 
 FUNCTION DF_Hoelzer(Rep, SphericityIC, Mp) RESULT(f)
@@ -819,6 +830,9 @@ REAL                        :: f
 f =  s13 * 1./SQRT(SphericityIC) + s23 * 1./SQRT(SphericityIC)+&
      SQRT(Rep)/8. * 1./(SphericityIC**(3./4.)) +&
      Rep/24. * 0.4210**(0.4*(-LOG(SphericityIC))**0.2) *1./SphericityIC
+
+! Suppress compiler warning
+NO_OP(MP)
 END FUNCTION DF_Hoelzer
 
 !==================================================================================================================================

@@ -219,6 +219,9 @@ IF (SGSinUse) CALL ParticleSGS(dt,iStage)
 CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/
 
+! Suppress compiler warning
+NO_OP(t)
+
 END SUBROUTINE ParticleTimeRHS
 
 
@@ -236,6 +239,8 @@ IMPLICIT NONE
 REAL,INTENT(IN)               :: t
 REAL,INTENT(IN)               :: dt
 !===================================================================================================================================
+NO_OP(t)
+NO_OP(dt)
 END SUBROUTINE Particle_TimeStepDummy
 
 
@@ -253,6 +258,9 @@ IMPLICIT NONE
 REAL,INTENT(IN)               :: t
 INTEGER,INTENT(IN)            :: iStage
 !===================================================================================================================================
+! Suppress compiler warning
+NO_OP(t)
+NO_OP(iStage)
 END SUBROUTINE Particle_TimeStepDummy_RK
 
 
@@ -327,6 +335,9 @@ CALL LBSplitTime(LB_TRACK,tLBStart)
 ! emitt particles inserted in current time step
 CALL ParticleInserting()
 
+! Suppress compiler warning
+NO_OP(t)
+
 END SUBROUTINE Particle_TimeStepByEuler
 
 
@@ -346,6 +357,9 @@ INTEGER,INTENT(IN)            :: iStage
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+! Suppress compiler warning
+NO_OP(t)
+NO_OP(iStage)
 END SUBROUTINE Particle_TimeStepByEuler_RK
 
 
@@ -434,6 +448,9 @@ CALL LBSplitTime(LB_TRACK,tLBStart)
 #endif /*USE_LOADBALANCE*/
 ! emitt particles inserted in current time step
 CALL ParticleInserting()
+
+! Suppress compiler warning
+NO_OP(dt)
 
 END SUBROUTINE Particle_TimeStepByLSERK
 

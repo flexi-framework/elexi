@@ -30,6 +30,7 @@ IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
   # Check if the pre-commit hooks exits
   IF (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit)
     # Create otherwise
+    EXECUTE_PROCESS(COMMAND mkdir -p ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks)
     EXECUTE_PROCESS(COMMAND ln -s ${CMAKE_CURRENT_SOURCE_DIR}/${PRECOMMIT_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit)
   ELSE()
     # Check if the hook is the correct symlink and warn otherwise

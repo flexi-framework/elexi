@@ -194,6 +194,7 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: MassIC                           ! Particle mass (without MPF)
   REAL                                   :: DiameterIC                       ! Particle diameter (without MPF)
   REAL                                   :: DensityIC                        ! Particle density (without MPF)
+  REAL                                   :: StokesIC                         ! Particle Stokes number (without MPF)
   INTEGER                                :: NumberOfInits                    ! Number of different initial particle placements
   ! SurfaceFlux
   TYPE(typeSurfaceflux),ALLOCATABLE      :: SurfaceFlux(:)                   ! Particle Data for each SurfaceFlux emission

@@ -86,6 +86,7 @@ CALL addStrListEntry('IniExactFunc','shock'          ,10)
 CALL addStrListEntry('IniExactFunc','sod'            ,11)
 CALL addStrListEntry('IniExactFunc','dmr'            ,13)
 CALL addStrListEntry('IniExactFunc','roundjet'       ,33)
+CALL addStrListEntry('IniExactFunc','convergence'    ,34)
 #if PARABOLIC
 CALL addStrListEntry('IniExactFunc','blasius'        ,1338)
 CALL addStrListEntry('IniExactFunc','blasius_round_x',1339)
@@ -521,6 +522,14 @@ CASE(33) !Roundjet, x-axis is jet axis
   CALL PrimToCons(prim,ResuR)
   ! after x/r0=10 blend to ResuR
   Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)/JetRadius-JetEnd))
+
+CASE(34) ! Part convergence
+  prim(DENS) = 1
+  prim(VELV) = 0.
+  prim(PRES) = 1
+  prim(TEMP) = prim(PRES)/(prim(DENS)*R)
+  prim(VEL1) = 0.5*x(2)
+  CALL PrimToCons(prim,Resu)
 
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow

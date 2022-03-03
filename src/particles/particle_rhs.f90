@@ -225,20 +225,19 @@ CASE(RHS_TRACER)
 ! Passive tracer moving with fluid velocity
 !===================================================================================================================================
 IF (ALLOCATED(TurbPartState)) THEN
-  Fdm         = FieldAtParticle(VELV) + TurbPartState(1:3,PartID)
+  Fdm = FieldAtParticle(VELV) + TurbPartState(1:3,PartID)
 ELSE
-  Fdm         = FieldAtParticle(VELV)
+  Fdm = FieldAtParticle(VELV)
 END IF
 
 CASE(RHS_CONVERGENCE)
 !===================================================================================================================================
 ! Special case, drag force only active in x-direction, fixed differential. Gravity in y-direction. Used for convergence tests
 !===================================================================================================================================
-Fdm(1)      = FieldAtParticle(VEL1) - PartState(PART_VEL1,PartID)
-
-! Gravity fixed to -3
-Fdm(2)      = -3.
-Fdm(3)      = 0.
+! Particle relaxation time
+Fdm(1) = (FieldAtParticle(VEL1) - PartState(PART_VEL1,PartID)) * 0.5 * 1./Species(PartSpecies(PartID))%StokesIC
+Fdm(2) = PartGravity(2)
+Fdm(3) = 0.
 
 CASE(RHS_SGS1)
 !===================================================================================================================================

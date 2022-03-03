@@ -1114,12 +1114,13 @@ ELSE
 END IF
 
 ! 2.) Bezier intersection: transformation of bezier patch 3D->2D
+! 2.1) Compute the normal vectors defining the planes, should be orthorgonal to the particle trajectory and to each other.
 CALL Find2DNormIndependentVectors(PartTrajectory,n1,n2)
 
 ! check angle to boundingbox (height normal vector)
 PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,SideSlabNormals(:,2,CNSideID))))
 
-! projection like Nishita
+! 2.2) Projection of the Bezier surface batch onto the (x,y) coordinate system spanned by n1, n2; see Nishita.
 ! plane 1 with n1 becomes y-axis and plane 2 with n2 becomes the x-axis
 DO q = 0,NGeo
   DO p = 0,NGeo

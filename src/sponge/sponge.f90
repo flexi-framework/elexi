@@ -510,13 +510,13 @@ SUBROUTINE Sponge(Ut)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Sponge_Vars ,ONLY: SpongeMap,SpongeMat,SpBaseFlow,nSpongeElems
-USE MOD_DG_Vars     ,ONLY: U
-USE MOD_Mesh_Vars   ,ONLY: nElems
+USE MOD_Sponge_Vars,       ONLY: SpongeMap,SpongeMat,SpBaseFlow,nSpongeElems
+USE MOD_DG_Vars,           ONLY: U
+USE MOD_Mesh_Vars,         ONLY: nElems
 #if FV_ENABLED
-USE MOD_ChangeBasis ,ONLY: ChangeBasis3D
-USE MOD_FV_Vars     ,ONLY: FV_Vdm,FV_Elems
-USE MOD_Mesh_Vars   ,ONLY: sJ
+USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume
+USE MOD_FV_Vars,           ONLY: FV_Vdm,FV_Elems
+USE MOD_Mesh_Vars,         ONLY: sJ
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -541,8 +541,8 @@ DO iSpongeElem=1,nSpongeElems
       SpongeMatTmp(1,i,j,k) = sJ(i,j,k,iElem,0)*SpongeMat(i,j,k,iSpongeElem)
     END DO; END DO; END DO ! i,j,k
     ! Change Basis of SpongeMat and SpongeBaseFlow to FV grid
-    CALL ChangeBasis3D(1,PP_N,PP_N,FV_Vdm,SpongeMatTmp(:,:,:,:),SpongeMat_FV(:,:,:,:))
-    CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,SpBaseFlow(:,:,:,:,iElem),SpBaseFlow_FV(:,:,:,:))
+    CALL ChangeBasisVolume(1      ,PP_N,PP_N,FV_Vdm,SpongeMatTmp(:,:,:,:)    ,SpongeMat_FV( :,:,:,:))
+    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,SpBaseFlow(:,:,:,:,iElem),SpBaseFlow_FV(:,:,:,:))
     ! Calc and add source, take the FV Jacobian into account
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) - SpongeMat_Fv(1,i,j,k)/sJ(i,j,k,iElem,1) * &

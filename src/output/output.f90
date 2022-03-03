@@ -284,11 +284,11 @@ REAL              :: percent,percent_time,percent_iter
 REAL              :: time_remaining,mins,secs,hours,days
 CHARACTER(3)      :: tmpString
 #if FV_ENABLED && PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 26
+INTEGER,PARAMETER :: barWidth = 27
 #elif FV_ENABLED || PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 28
+INTEGER,PARAMETER :: barWidth = 39
 #else
-INTEGER,PARAMETER :: barWidth = 50
+INTEGER,PARAMETER :: barWidth = 51
 #endif
 #if FV_ENABLED
 INTEGER(KIND=8)   :: FVcounter
@@ -387,20 +387,20 @@ IF (nParticleInDomain.EQ.0) THEN
 #endif /*USE_PARTICLES*/
   IF (mins.LT.1 .AND. hours.EQ.0 .AND. days.EQ.0) THEN
     WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,A3,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
-    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]: <1 min remaining',' |',     &
+    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]: <1 min remaining',' |',              &
     REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.),0)),'| [',percent,'%] ',&
     ACHAR(13) ! ACHAR(13) is carriage return
   ELSE
     WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A7,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
-    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
+    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',      &
     REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.),0)),'| [',percent,'%] ',&
     ACHAR(13) ! ACHAR(13) is carriage return
   END IF
 #if USE_PARTICLES
 ELSE
   WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I7,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString) &
-  '   Time = ', t,'  dt = ', dt, ' ', ' # Part inside = ', nParticleInDomain,                                  &
-  '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                       &
+  '  Time = ', t,'  dt = ', dt, ' ', ' # Part inside = ', nParticleInDomain,                                          &
+  '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                              &
   REPEAT('=',MAX(CEILING(percent*(barWidth-15)/100.)-1,0)),'>',REPEAT(' ',(barWidth-15)-MAX(CEILING(percent*(barWidth-15)/100.),0)),'| [',percent,'%] ',&
   ACHAR(13) ! ACHAR(13) is carriage return
 END IF

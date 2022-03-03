@@ -152,6 +152,10 @@ INTERFACE ModifyParameterFile
   MODULE PROCEDURE ModifyParameterFile
 END INTERFACE
 
+INTERFACE CompareParameterFile
+  MODULE PROCEDURE CompareParameterFile
+END INTERFACE
+
 INTERFACE FinalizeParameters
   MODULE PROCEDURE FinalizeParameters
 END INTERFACE
@@ -177,6 +181,7 @@ PUBLIC :: addStrListEntry
 PUBLIC :: FinalizeParameters
 PUBLIC :: ExtractParameterFile
 PUBLIC :: ModifyParameterFile
+PUBLIC :: CompareParameterFile
 PUBLIC :: PrintOption
 
 TYPE(Parameters) :: prms
@@ -2262,25 +2267,17 @@ LOGICAL               :: iniFound
 !==================================================================================================================================
 
 IF (MPIRoot) THEN
-  IF (.NOT.FILEEXISTS(filename)) THEN
-    CALL CollectiveStop(__STAMP__,&
-        "File '"//TRIM(filename)//"' does not exist.")
-  END IF
+  IF (.NOT.FILEEXISTS(filename)) &
+    CALL CollectiveStop(__STAMP__,"File '"//TRIM(filename)//"' does not exist.")
 
   SWRITE(UNIT_stdOut,*)'| Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
 
   ! Open parameter file for reading
   OPEN(NEWUNIT=fileUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
-  IF(stat.NE.0) THEN
-    CALL Abort(__STAMP__,&
-        "Could not open '"//TRIM(filename)//"'")
-  END IF
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(filename)//"'")
 
   OPEN(NEWUNIT=iniUnit,FILE=TRIM(prmfile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
-  IF(stat.NE.0) THEN
-    CALL Abort(__STAMP__,&
-        "Could not open '"//TRIM(prmfile)//"'")
-  END IF
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile)//"'")
 
   iniFound = .FALSE.
   userblockFound = .FALSE.
@@ -2361,23 +2358,15 @@ TYPE(Varying_String)  :: aStr
 prmChanged = .FALSE.
 
 IF (MPIRoot) THEN
-  IF (.NOT.FILEEXISTS(prmfile)) THEN
-    CALL CollectiveStop(__STAMP__,&
-        "File '"//TRIM(prmfile)//"' does not exist.")
-  END IF
+  IF (.NOT.FILEEXISTS(prmfile)) &
+    CALL CollectiveStop(__STAMP__,"File '"//TRIM(prmfile)//"' does not exist.")
 
   ! 1. First copy the parameter file to a temporary file and change the parameter values if necessary
-  OPEN(NEWUNIT=copyUnit,FILE=TRIM(prmfile),STATUS='UNKNOWN',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
-  IF(stat.NE.0) THEN
-    CALL Abort(__STAMP__,&
-        "Could not open '"//TRIM(prmfile)//"'")
-  END IF
+  OPEN(NEWUNIT=copyUnit,FILE=TRIM(prmfile)     ,STATUS='UNKNOWN',ACTION='READ' ,ACCESS='SEQUENTIAL',IOSTAT=stat)
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile)//"'")
 
   OPEN(NEWUNIT=fileUnit,FILE=TRIM(prmfile_copy),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
-  IF(stat.NE.0) THEN
-    CALL Abort(__STAMP__,&
-        "Could not open '"//TRIM(prmfile)//"'")
-  END IF
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile_copy)//"'")
 
   DO
     ! read a line into 'aStr'
@@ -2416,6 +2405,80 @@ END IF
 CALL MPI_BCAST(prmChanged,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
 END SUBROUTINE ModifyParameterFile
+
+
+!===================================================================================================================================
+!> This routine modifies the value for all occurences of a specific parmeter in a given parameter file.
+!> Currently only implemented for parameters with scalar integer values.
+!===================================================================================================================================
+SUBROUTINE CompareParameterFile(prmfile1,prmfile2,prmChanged)
+! MODULES
+USE MOD_Globals
+USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)  :: prmfile1    !< name of first  parameter file to be compared
+CHARACTER(LEN=*),INTENT(IN)  :: prmfile2    !< name of second parameter file to be compared
+LOGICAL,INTENT(OUT)          :: prmChanged  !< flag to indicate whether parameter files are different
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER               :: stat1,stat2,prm1Unit,prm2Unit
+INTEGER               :: i
+CHARACTER(LEN=255)    :: tmp1=""
+CHARACTER(LEN=255)    :: tmp2=""
+TYPE(Varying_String)  :: aStr
+!==================================================================================================================================
+prmChanged = .FALSE.
+
+IF (MPIRoot) THEN
+  IF (.NOT.FILEEXISTS(prmfile1)) &
+    CALL CollectiveStop(__STAMP__,"File '"//TRIM(prmfile1)//"' does not exist.")
+
+  IF (.NOT.FILEEXISTS(prmfile2)) &
+    CALL CollectiveStop(__STAMP__,"File '"//TRIM(prmfile2)//"' does not exist.")
+
+  ! Open both parameter files
+  OPEN(NEWUNIT=prm1Unit,FILE=TRIM(prmfile1),STATUS='UNKNOWN',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat1)
+  IF (stat1.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile1)//"'")
+
+  OPEN(NEWUNIT=prm2Unit,FILE=TRIM(prmfile2),STATUS='UNKNOWN',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat2)
+  IF (stat2.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile2)//"'")
+
+  DO
+    ! read a line into 'aStr'
+    CALL Get(prm1Unit,aStr,iostat=stat1)
+    tmp1 = TRIM(CHAR(aStr))
+    CALL Get(prm2Unit,aStr,iostat=stat2)
+    tmp2 = TRIM(CHAR(aStr))
+
+    ! Strip all ocurring whitespaces and comments from the line
+    DO i = 1,LEN(tmp1)
+      IF(STRICMP(tmp1(i:i),"!"))       EXIT  ! Exit if comments start
+      IF(STRICMP(tmp1(i:i)," "))       CYCLE ! Cycle over whitespaces
+
+      ! Exit on first difference
+      IF(.NOT.STRICMP(tmp1(i:i),tmp2(i:i))) THEN
+        prmChanged = .TRUE.
+        CLOSE(prm1Unit)
+        CLOSE(prm2Unit)
+        RETURN
+      END IF
+    END DO
+
+    ! EXIT if we have reached the end of the file
+    IF(IS_IOSTAT_END(stat1)) EXIT
+    IF(IS_IOSTAT_END(stat2)) EXIT
+  END DO
+
+  CLOSE(prm1Unit)
+  CLOSE(prm2Unit)
+END IF
+#if USE_MPI
+CALL MPI_BCAST(prmChanged,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
+END SUBROUTINE CompareParameterFile
 
 
 !===================================================================================================================================

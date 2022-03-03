@@ -64,14 +64,15 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Restart")
-CALL prms%CreateLogicalOption('ResetTime',      "Override solution time to t=0 on restart.", '.FALSE.')
-CALL prms%CreateLogicalOption('RestartTurb',    "Flag to denote restart from time-averaged file containing turbulent quantities.", '.FALSE.')
+CALL prms%CreateLogicalOption('ResetTime',        "Override solution time to t=0 on restart."                , '.FALSE.')
+CALL prms%CreateLogicalOption('ResetTimeOverride',"Override guard against applying ResetTime multiply times.", '.FALSE.')
+CALL prms%CreateLogicalOption('RestartTurb',      "Flag to denote restart from time-averaged file containing turbulent quantities.", '.FALSE.')
 #if EQNSYSNR == 3
-CALL prms%CreateRealOption(   'RestartMuTilda', "Constant mu_tilda to be applied throughout the domain.", '0.')
+CALL prms%CreateRealOption(   'RestartMuTilda',   "Constant mu_tilda to be applied throughout the domain."   , '0.')
 #endif
 #if FV_ENABLED
-CALL prms%CreateIntOption(    'NFVRestartSuper',"Polynomial degree for equidistant supersampling of FV subcells when restarting&
-                                                 &on a different polynomial degree. Default 2*MAX(N,NRestart).")
+CALL prms%CreateIntOption(    'NFVRestartSuper',  "Polynomial degree for equidistant supersampling of FV subcells when restarting&
+                                                   &on a different polynomial degree. Default 2*MAX(N,NRestart).")
 #endif
 END SUBROUTINE DefineParametersRestart
 
@@ -215,16 +216,16 @@ SUBROUTINE InitRestart(RestartFile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE,GetVarNames,DatasetExists
+USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
+USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
+USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
+USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL,ExtractParameterFile,CompareParameterFile
 USE MOD_Restart_Vars
 #if FV_ENABLED
-USE MOD_StringTools,        ONLY: INTTOSTR
 USE MOD_ReadInTools,        ONLY: GETINT
+USE MOD_StringTools,        ONLY: INTTOSTR
 #endif
-USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE,GetVarNames,DatasetExists
-USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
-USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
-USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL
-USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -232,7 +233,8 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL            :: ResetTime,validHDF5
+LOGICAL            :: ResetTime,validHDF5,prmChanged,userblockFound
+CHARACTER(LEN=255) :: ParameterFileOld
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.RestartInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,'InitRestart not ready to be called or already called.')
@@ -261,6 +263,23 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
   ! Option to set the calculation time to 0 even tho performing a restart
   ResetTime = GETLOGICAL('ResetTime','.FALSE.')
+
+  ! Ensure this is not the same run starting over with ResetTime=T
+  IF (ResetTime) THEN
+    IF (.NOT.GETLOGICAL('ResetTimeOverride')) THEN
+      ! Extract the old parameter file
+      ParameterFileOld = ".flexi.old.ini"
+      CALL ExtractParameterFile(RestartFile,ParameterFileOld,userblockFound)
+
+      ! Compare it against the current file
+      IF (userblockFound) THEN
+        CALL CompareParameterFile(ParameterFile,ParameterFileOld,prmChanged)
+        IF (.NOT.prmChanged) &
+          CALL CollectiveStop(__STAMP__,'Running simulation with ResetTime=T, same parameter file and ResetTimeOverride=F!')
+      END IF
+    END IF
+  END IF
+
 #if EQNSYSNR == 3
   MuTilda  =GETREAL   ('RestartMuTilda','0.')
 #endif

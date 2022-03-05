@@ -290,35 +290,28 @@ ASSOCIATE (&
   ! > Root writes empty dummy container to .h5 file (required for subsequent file access in ParaView)
   IF (nGlobalNbrOfParticles.EQ.0 .AND. MPIRoot) THEN
       CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-      CALL WriteArray(      DataSetName = 'PartData'                                      ,&
-                            rank        = 2                                               ,&
-                            nValGlobal  = (/PartDataSize,nGlobalNbrOfParticles /)         ,&
-                            nVal        = (/PartDataSize,locnPart   /)                    ,&
-                            offset      = (/0           ,offsetnPart/)                    ,&
-                            collective  = .FALSE.                                         ,&
-                            RealArray   = PartData)
+      CALL WriteArray(      DataSetName  = 'PartData'     , rank = 2                       ,&
+                            nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles/)        ,&
+                            nVal         = (/PartDataSize , locnPart             /)        ,&
+                            offset       = (/0            , offsetnPart          /)        ,&
+                            collective   = .FALSE.        , RealArray = PartData)
       CALL CloseDataFile()
   END IF ! nGlobalNbrOfParticles.EQ.0 .AND. MPIRoot
 #if USE_MPI
  CALL DistributedWriteArray(FileName                                                      ,&
-                            DataSetName  = 'PartData'                                     ,&
-                            rank         = 2                                              ,&
-                            nValGlobal   = (/PartDataSize,nGlobalNbrOfParticles /)        ,&
-                            nVal         = (/PartDataSize,locnPart   /)                   ,&
-                            offset       = (/0           ,offsetnPart/)                   ,&
-                            collective   =.FALSE.                                         ,&
-                            offSetDim    = 2                                              ,&
-                            communicator = PartMPI%COMM                                   ,&
-                            RealArray    = PartData)
+                            DataSetName  = 'PartData'     , rank = 2                      ,&
+                            nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles/)       ,&
+                            nVal         = (/PartDataSize , locnPart             /)       ,&
+                            offset       = (/0            , offsetnPart          /)       ,&
+                            collective   = UseCollectiveIO, offSetDim = 2                 ,&
+                            communicator = PartMPI%COMM   , RealArray = PartData)
 #else
   CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-  CALL WriteArray(          DataSetName  = 'PartData'                                     ,&
-                            rank         = 2                                              ,&
-                            nValGlobal   = (/PartDataSize,nGlobalNbrOfParticles /)        ,&
-                            nVal         = (/PartDataSize,locnPart   /)                   ,&
-                            offset       = (/0           ,offsetnPart/)                   ,&
-                            collective   = .TRUE.                                         ,&
-                            RealArray    = PartData)
+  CALL WriteArray(          DataSetName  = 'PartData'     , rank = 2                      ,&
+                            nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles/)       ,&
+                            nVal         = (/PartDataSize , locnPart             /)       ,&
+                            offset       = (/0            , offsetnPart          /)       ,&
+                            collective   = .FALSE.        , RealArray = PartData)
   CALL CloseDataFile()
 #endif /*MPI*/
 
@@ -326,25 +319,20 @@ ASSOCIATE (&
 #if USE_MPI
   IF (ALLOCATED(TurbPartState)) &
     CALL DistributedWriteArray(FileName                                                   ,&
-                               DataSetName  = 'TurbPartData'                              ,&
-                               rank         = 2                                           ,&
-                               nValGlobal   = (/TurbPartDataSize,nGlobalNbrOfParticles /) ,&
-                               nVal         = (/TurbPartDataSize,locnPart   /)            ,&
-                               offset       = (/0               ,offsetnPart/)            ,&
-                               collective   = .FALSE.                                     ,&
-                               offSetDim    = 2                                           ,&
-                               communicator = PartMPI%COMM                                ,&
-                               RealArray    = TurbPartData)
+                               DataSetName  = 'TurbPartData'     , rank = 2               ,&
+                               nValGlobal   = (/TurbPartDataSize , nGlobalNbrOfParticles/),&
+                               nVal         = (/TurbPartDataSize , locnPart             /),&
+                               offset       = (/0                , offsetnPart          /),&
+                               collective   = UseCollectiveIO    , offSetDim = 2          ,&
+                               communicator = PartMPI%COMM       , RealArray = TurbPartData)
 #else
   IF (ALLOCATED(TurbPartState)) THEN
     CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteArray(           DataSetName  = 'TurbPartData'                              ,&
-                               rank         = 2                                           ,&
-                               nValGlobal   = (/TurbPartDataSize,nGlobalNbrOfParticles/)  ,&
-                               nVal         = (/TurbPartDataSize,locnPart/)               ,&
-                               offset       = (/0               ,offsetnPart/)            ,&
-                               collective   = .TRUE.                                      ,&
-                               RealArray    = TurbPartData)
+    CALL WriteArray(           DataSetName  = 'TurbPartData'     , rank = 2               ,&
+                               nValGlobal   = (/TurbPartDataSize , nGlobalNbrOfParticles/),&
+                               nVal         = (/TurbPartDataSize , locnPart             /),&
+                               offset       = (/0                , offsetnPart          /),&
+                               collective   = .FALSE.            , RealArray = TurbPartData)
     CALL CloseDataFile()
   END IF
 #endif /*MPI*/

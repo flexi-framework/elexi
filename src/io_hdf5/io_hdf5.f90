@@ -48,6 +48,9 @@ INTEGER,PARAMETER        :: nLimit = INT(REAL(HUGE(INT(1,KIND=4)))/REAL(KIND(REA
                                                 !< INT( Max. Bytes allowed by MPI (2GB per rank) / Size of single double entry)
 INTEGER                  :: MPIInfo             !< hardware / storage specific / file system MPI parameters to pass to HDF5
                                                 !< for optimized performance on specific systems
+#if USE_PARTICLES
+LOGICAL                  :: UseCollectiveIO     !< flag whether DistributedWriteArray() should use H5FD_MPIO_COLLECTIVE_F instead of H5FD_MPIO_INDEPENDENT_F
+#endif /*USE_PARTICLES*/
 
 !> Type containing pointers to data to be written to HDF5 in an element-wise scalar fashion.
 !> Alternatively a function pointer can be specified providing the desired data.
@@ -141,7 +144,13 @@ CALL prms%CreateLogicalOption('gatheredWrite', "Set true to activate gathered HD
                                                '.FALSE.')
 #if PP_dim == 2
 CALL prms%CreateLogicalOption('output2D'     , "Set true to activate hdf5 data output with flat third dimension.",'.FALSE.')
-#endif
+#endif /*PP_dim == 2*/
+#if USE_PARTICLES
+CALL prms%CreateLogicalOption('UseCollectiveIO', "Set true to activate collective HDF5 IO during distributed write when possibly "//&
+                                                 "only a subset of all processors carries the data, e.g., the 'PartData' container when not all processors have particles. "//&
+                                                 "This activates the usage of H5FD_MPIO_COLLECTIVE_F instead of H5FD_MPIO_INDEPENDENT_F.",&
+                                               '.FALSE.')
+#endif /*USE_PARTICLES*/
 END SUBROUTINE DefineParametersIO_HDF5
 
 !==================================================================================================================================

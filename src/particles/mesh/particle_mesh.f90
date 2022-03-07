@@ -163,7 +163,7 @@ SUBROUTINE InitParticleMeshBasis()
 ! Init basic metrics needed for particle mesh
 !===================================================================================================================================
 ! MODULES
-USE MOD_PreProc                ,ONLY: N
+USE MOD_PreProc
 USE MOD_Basis
 USE MOD_Interpolation_Vars     ,ONLY: xGP
 USE MOD_Mesh_Vars
@@ -178,15 +178,15 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(0:N)                     :: XiCL_N,wBaryCL_N
+REAL,DIMENSION(0:PP_N)                  :: XiCL_N,wBaryCL_N
 REAL,DIMENSION(0:NGeo)                  :: wBary_NGeo
 INTEGER                                 :: i
 !===================================================================================================================================
 
-ALLOCATE(DCL_N             (0:N   ,0:N)     &
-        ,Vdm_CLN_GaussN    (0:N   ,0:N)     &
-        ,Vdm_CLNGeo_GaussN (0:N   ,0:NGeo)  &
-        ,Vdm_CLNGeo_CLN    (0:N   ,0:NGeo)  &
+ALLOCATE(DCL_N             (0:PP_N,0:PP_N)  &
+        ,Vdm_CLN_GaussN    (0:PP_N,0:PP_N)  &
+        ,Vdm_CLNGeo_GaussN (0:PP_N,0:NGeo)  &
+        ,Vdm_CLNGeo_CLN    (0:PP_N,0:NGeo)  &
         ,Vdm_CLNGeo1_CLNGeo(0:NGeo,0:1)     &
         ,Vdm_NGeo_CLNGeo   (0:NGeo,0:NGeo)  &
         ,Vdm_Bezier        (0:NGeo,0:NGeo)  &
@@ -200,10 +200,10 @@ ALLOCATE(DCL_N             (0:N   ,0:N)     &
         ,D_Bezier          (0:NGeo,0:NGeo))
 
 ! Chebyshev-Lobatto N
-CALL ChebyGaussLobNodesAndWeights(N,XiCL_N)
-CALL BarycentricWeights          (N,XiCL_N,wBaryCL_N)
-CALL PolynomialDerivativeMatrix  (N,XiCL_N,DCL_N)
-CALL InitializeVandermonde       (N,N,wBaryCL_N,XiCL_N,xGP,Vdm_CLN_GaussN)
+CALL ChebyGaussLobNodesAndWeights(PP_N,XiCL_N)
+CALL BarycentricWeights          (PP_N,XiCL_N,wBaryCL_N)
+CALL PolynomialDerivativeMatrix  (PP_N,XiCL_N,DCL_N)
+CALL InitializeVandermonde       (PP_N,PP_N,wBaryCL_N,XiCL_N,xGP,Vdm_CLN_GaussN)
 
 !equidistant-Lobatto NGeo
 DO i=0,NGeo
@@ -217,8 +217,8 @@ CALL ChebyGaussLobNodesAndWeights(NGeo,XiCL_NGeo)
 CALL BarycentricWeights          (NGeo,XiCL_NGeo,wBaryCL_NGeo)
 CALL PolynomialDerivativeMatrix  (NGeo,XiCL_NGeo,DCL_NGeo)
 
-CALL InitializeVandermonde       (NGeo,N   ,wBaryCL_NGeo,XiCL_NGeo,xGP      ,Vdm_CLNGeo_GaussN)
-CALL InitializeVandermonde       (NGeo,N   ,wBaryCL_NGeo,XiCL_NGeo,XiCL_N   ,Vdm_CLNGeo_CLN   )
+CALL InitializeVandermonde       (NGeo,PP_N,wBaryCL_NGeo,XiCL_NGeo,xGP      ,Vdm_CLNGeo_GaussN)
+CALL InitializeVandermonde       (NGeo,PP_N,wBaryCL_NGeo,XiCL_NGeo,XiCL_N   ,Vdm_CLNGeo_CLN   )
 CALL InitializeVandermonde       (NGeo,NGeo,wBary_NGeo  ,Xi_NGeo  ,XiCL_NGeo,Vdm_NGeo_CLNGeo  )
 
 ! small wBaryCL_NGEO

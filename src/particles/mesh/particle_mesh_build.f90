@@ -2322,6 +2322,7 @@ SUBROUTINE CalcParticleMeshMetrics()
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_Basis                    ,ONLY: BarycentricWeights,ChebyGaussLobNodesAndWeights,InitializeVandermonde
 USE MOD_ChangeBasis              ,ONLY: ChangeBasis3D
 USE MOD_Interpolation            ,ONLY: GetDerivativeMatrix
@@ -2333,7 +2334,6 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo,dXCL_NGeo
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID
 #if USE_MPI
-USE MOD_PreProc                  ,ONLY: N
 USE MOD_Mesh_Vars                ,ONLY: NGeo
 USE MOD_Mesh_Vars                ,ONLY: nElems,nGlobalElems,offsetElem
 !USE MOD_Mesh_Vars                ,ONLY: InterpolateFromTree

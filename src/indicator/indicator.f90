@@ -647,9 +647,11 @@ SUBROUTINE FinalizeIndicator()
 USE MOD_Indicator_Vars
 IMPLICIT NONE
 !==================================================================================================================================
-IndicatorInitIsDone=.FALSE.
 SDEALLOCATE(IndValue)
 SDEALLOCATE(FVBoundaryType)
+
+IndicatorInitIsDone=.FALSE.
+
 END SUBROUTINE FinalizeIndicator
 
 END MODULE MOD_Indicator

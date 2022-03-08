@@ -162,7 +162,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName   !< file name of mesh used for simulation
-REAL,TARGET,INTENT(IN)         :: SolutionArray(nVarTurb,0:PP_N,0:PP_N,0:ZDIM(PP_N),nElems)
+REAL,TARGET,INTENT(IN)         :: SolutionArray(nVarTurb,0:PP_N,0:PP_N,0:PP_NZ,nElems)
 CHARACTER(LEN=*),INTENT(IN)    :: ArrayName      !< name of array to be written
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

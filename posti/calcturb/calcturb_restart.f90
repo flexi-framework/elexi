@@ -312,9 +312,9 @@ ELSE
         ! We need mean values later, so keep them in their own array
         IF (ArrayName_in.EQ.'Mean') THEN
             SDEALLOCATE(UMean)
-            ALLOCATE(UMean(PP_nVar,0:PP_N,0:PP_N,0:ZDIM(PP_N),nElems))
+            ALLOCATE(UMean(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
         END IF
-        IF (ArrayName_in.EQ.'TKE')  ALLOCATE(TKE  (        0:PP_N,0:PP_N,0:ZDIM(PP_N),nElems))
+        IF (ArrayName_in.EQ.'TKE')  ALLOCATE(TKE(0:PP_N,0:PP_N,0:PP_NZ,nElems))
         ! Interpolate
         DO iElem=1,nElems
             CALL ChangeBasisVolume(1,3*Ngeo,N_HDF5,Vdm_3Ngeo_NRestart,detJac_Ref(:,:,:,:,iElem),JNR)
@@ -335,10 +335,10 @@ ELSE
         ! We need mean values later, so keep them in their own array
         IF (ArrayName_in.EQ.'Mean') THEN
             SDEALLOCATE(UMean)
-            ALLOCATE(UMean(PP_nVar,0:PP_N,0:PP_N,0:ZDIM(PP_N),nElems))
+            ALLOCATE(UMean(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
             UMean = U
         ELSE IF(ArrayName_in.EQ.'TKE') THEN
-            ALLOCATE(TKE  (       0:PP_N,0:PP_N,0:ZDIM(PP_N),nElems))
+            ALLOCATE(TKE  (       0:PP_N,0:PP_N,0:PP_NZ,nElems))
             TKE   = U(5,:,:,:,:)
         END IF
     END IF

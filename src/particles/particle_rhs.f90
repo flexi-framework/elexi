@@ -871,7 +871,7 @@ DO iPart = 1,PDM%ParticleVecLength
     iElem = PEM%Element(iPart)-offsetElem
     min_distance_glob = VECNORM(Elem_xGP(:,0,0,0,iElem)-PartState(1:3,iPart))
     ijk(:) = 0
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       min_distance_loc = VECNORM(Elem_xGP(:,i,j,k,iElem)-PartState(1:3,iPart))
       IF (min_distance_loc .LT. min_distance_glob) THEN; ijk(:) = (/i,j,k/); min_distance_glob = min_distance_loc; END IF
     END DO; END DO; END DO

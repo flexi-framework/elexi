@@ -722,15 +722,9 @@ IF(FastPeriodic)THEN
         IF(GEO%DirPeriodicVectors(iPV).EQ.iDir) EXIT
       END DO
       MoveVector = CEILING(ABS(PartState(iDir,PartID)-GEOLims(2))/ABS(GEO%PeriodicVectors(iDir,iPV)))*GEO%PeriodicVectors(1:3,iPV)
-      IF(GEO%PeriodicVectors(iDir,iPV).GT.0)THEN
-        PartState(  1:3,PartID) = PartState(  1:3,PartID) - MoveVector
-        LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) - MoveVector
-        isMoved = .TRUE.
-      ELSE
-        PartState  (1:3,PartID) = PartState(  1:3,PartID) + MoveVector
-        LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + MoveVector
-        isMoved = .TRUE.
-      END IF
+      PartState(  1:3,PartID) = PartState(  1:3,PartID) - MoveVector * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
+      LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) - MoveVector * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
+      isMoved = .TRUE.
     END IF
 
     ! Check against lower limit
@@ -796,15 +790,9 @@ ELSE
       DO iPV = 1,GEO%nPeriodicVectors
         IF(GEO%DirPeriodicVectors(iPV).EQ.iDir) EXIT
       END DO
-      IF(GEO%PeriodicVectors(iDir,iPV).GT.0)THEN
-        PartState  (1:3,PartID) = PartState  (1:3,PartID) + GEO%PeriodicVectors(1:3,iPV)
-        LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + GEO%PeriodicVectors(1:3,iPV)
-        isMoved = .TRUE.
-      ELSE
-        PartState  (1:3,PartID) = PartState  (1:3,PartID) - GEO%PeriodicVectors(1:3,iPV)
-        LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) - GEO%PeriodicVectors(1:3,iPV)
-        isMoved = .TRUE.
-      END IF
+      PartState  (1:3,PartID) = PartState  (1:3,PartID) + GEO%PeriodicVectors(1:3,iPV) * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
+      LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + GEO%PeriodicVectors(1:3,iPV) * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
+      isMoved = .TRUE.
     END IF
   END DO
 END IF

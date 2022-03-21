@@ -42,9 +42,6 @@ USE MOD_ReadInTools,            ONLY:GETINT,GETREALARRAY
 USE MOD_Particle_Mesh_Vars,     ONLY:GEO
 USE MOD_Particle_Boundary_Vars, ONLY:PartBound
 USE MOD_Mesh_Vars,              ONLY:BoundaryType,nBCs
-#if USE_MPI
-USE MOD_Particle_Vars,          ONLY:PDM
-#endif /*MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

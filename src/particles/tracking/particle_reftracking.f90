@@ -722,8 +722,9 @@ IF(FastPeriodic)THEN
         IF(GEO%DirPeriodicVectors(iPV).EQ.iDir) EXIT
       END DO
       MoveVector = CEILING(ABS(PartState(iDir,PartID)-GEOLims(2))/ABS(GEO%PeriodicVectors(iDir,iPV)))*GEO%PeriodicVectors(1:3,iPV)
-      PartState(  1:3,PartID) = PartState(  1:3,PartID) - MoveVector * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
-      LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) - MoveVector * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
+      MoveVector = MoveVector * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
+      PartState(  1:3,PartID) = PartState(  1:3,PartID) - MoveVector
+      LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) - MoveVector
       isMoved = .TRUE.
     END IF
 
@@ -733,25 +734,20 @@ IF(FastPeriodic)THEN
         IF(GEO%DirPeriodicVectors(iPV).EQ.iDir) EXIT
       END DO
       MoveVector = CEILING(ABS(PartState(iDir,PartID)-GEOLims(1))/ABS(GEO%PeriodicVectors(iDir,iPV)))*GEO%PeriodicVectors(1:3,iPV)
-      IF(GEO%PeriodicVectors(iDir,iPV).GT.0)THEN
-        PartState  (1:3,PartID) = PartState(  1:3,PartID) + MoveVector
-        LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + MoveVector
-        isMoved = .TRUE.
-      ELSE
-        PartState(  1:3,PartID) = PartState(  1:3,PartID) - MoveVector
-        LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) - MoveVector
-        isMoved = .TRUE.
-      END IF
+      MoveVector = MoveVector * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
+      PartState  (1:3,PartID) = PartState(  1:3,PartID) + MoveVector
+      LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + MoveVector
+      isMoved = .TRUE.
     END IF
 
     ! Check if particle is inside
     IF(PartState(iDir,PartID).GT.GEOLims(2)) THEN
       IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') 'PartPos', PartState(:,PartID)
-      CALL Abort(__STAMP__,' particle outside '//DirChar//'+, PartID',PartID)
+      CALL Abort(__STAMP__,'Particle outside '//DirChar//'+, PartID',PartID)
     END IF
     IF(PartState(iDir,PartID).LT.GEOLims(1)) THEN
       IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') 'PartPos', PartState(:,PartID)
-      CALL Abort(__STAMP__,' particle outside '//DirChar//'-, PartID',PartID)
+      CALL Abort(__STAMP__,'Particle outside '//DirChar//'-, PartID',PartID)
     END IF
   END DO
 
@@ -774,15 +770,10 @@ ELSE
       DO iPV = 1,GEO%nPeriodicVectors
         IF(GEO%DirPeriodicVectors(iPV).EQ.iDir) EXIT
       END DO
-      IF(GEO%PeriodicVectors(iDir,iPV).GT.0)THEN
-        PartState  (1:3,PartID) = PartState  (1:3,PartID) - GEO%PeriodicVectors(1:3,iPV)
-        LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) - GEO%PeriodicVectors(1:3,iPV)
-        isMoved = .TRUE.
-      ELSE
-        PartState  (1:3,PartID) = PartState  (1:3,PartID) + GEO%PeriodicVectors(1:3,iPV)
-        LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + GEO%PeriodicVectors(1:3,iPV)
-        isMoved = .TRUE.
-      END IF
+      MoveVector = GEO%PeriodicVectors(1:3,iPV) * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
+      PartState  (1:3,PartID) = PartState  (1:3,PartID) - MoveVector
+      LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) - MoveVector
+      isMoved = .TRUE.
     END IF
 
     ! Check against lower limit
@@ -790,8 +781,9 @@ ELSE
       DO iPV = 1,GEO%nPeriodicVectors
         IF(GEO%DirPeriodicVectors(iPV).EQ.iDir) EXIT
       END DO
-      PartState  (1:3,PartID) = PartState  (1:3,PartID) + GEO%PeriodicVectors(1:3,iPV) * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
-      LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + GEO%PeriodicVectors(1:3,iPV) * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
+      MoveVector = GEO%PeriodicVectors(1:3,iPV) * SIGN(1.,GEO%PeriodicVectors(iDir,iPV))
+      PartState  (1:3,PartID) = PartState  (1:3,PartID) + MoveVector
+      LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + MoveVector
       isMoved = .TRUE.
     END IF
   END DO

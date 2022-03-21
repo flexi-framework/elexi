@@ -675,10 +675,7 @@ USE MOD_Particle_Vars,               ONLY:PartState,LastPartPos
 USE MOD_Globals
 USE MOD_Particle_Mesh_Vars,          ONLY:GEO
 USE MOD_Particle_Tracking_Vars,      ONLY:FastPeriodic
-#if USE_MPI
-USE MOD_Particle_MPI_Vars,           ONLY:PartShiftVector
-#endif /*USE_MPI*/
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)              :: PartID
@@ -692,10 +689,6 @@ REAL                            :: MoveVector(1:3),GEOLims(2)
 LOGICAL                         :: isMoved
 CHARACTER(LEN=1)                :: DirChar
 !===================================================================================================================================
-
-#if USE_MPI
-PartShiftVector(1:3,PartID) = PartState(1:3,PartID)
-#endif /*USE_MPI*/
 
 isMoved = .FALSE.
 
@@ -788,10 +781,6 @@ ELSE
     END IF
   END DO
 END IF
-
-#if USE_MPI
-PartShiftVector(1:3,PartID) = -PartState(1:3,PartID)+PartShiftvector(1:3,PartID)
-#endif /*USE_MPI*/
 
 IF(PRESENT(isMovedOut)) isMovedOut = isMoved
 

@@ -44,7 +44,6 @@ USE MOD_Particle_Boundary_Vars, ONLY:PartBound
 USE MOD_Mesh_Vars,              ONLY:BoundaryType,nBCs
 #if USE_MPI
 USE MOD_Particle_Vars,          ONLY:PDM
-USE MOD_Particle_MPI_Vars,      ONLY:PartShiftVector
 #endif /*MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -73,14 +72,6 @@ DO iVec = 1, SIZE(PartBound%TargetBoundCond)
 END DO
 
 CALL CheckPeriodicVectors()
-
-#if USE_MPI
-SDEALLOCATE(PartShiftVector)
-IF (GEO%nPeriodicVectors.GT.0) THEN
-  ALLOCATE(PartShiftVector(1:3,1:PDM%maxParticleNumber))
-  PartShiftVector = 0.
-END IF
-#endif /*USE_MPI*/
 
 END SUBROUTINE InitPeriodicBC
 

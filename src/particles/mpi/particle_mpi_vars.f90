@@ -110,8 +110,6 @@ END TYPE
 TYPE (tParticleMPIExchange3)     :: PartMPILocate
 
 INTEGER,ALLOCATABLE              :: PartTargetProc(:)                        ! local proc id for communication
-
-REAL, ALLOCATABLE                :: PartShiftVector(:,:)                     ! store particle periodic map
 #endif /*USE_MPI*/
 !===================================================================================================================================
 

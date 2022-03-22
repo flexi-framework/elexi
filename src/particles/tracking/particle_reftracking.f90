@@ -269,8 +269,8 @@ DO iPart = 1,PDM%ParticleVecLength
     CNTestElem = GetCNElemID(TestElem)
 
     IF (CNTestElem.LE.0) THEN
-      IPWRITE(UNIT_stdOut,'(I0,A)') ' Tolerance issue with element!'
-      CALL PrintLostParticle(iPart,CNTestElem,oldXi,newXi)
+      IPWRITE(UNIT_stdOut,'(I0,A)') ' Particle element not on local compute node!'
+      CALL PrintParticleInfo(iPart,CNTestElem,oldXi,newXi)
       CALL Abort(__STAMP__ ,'Particle not inside of element, iPart',iPart)
 
     ELSE
@@ -281,7 +281,7 @@ DO iPart = 1,PDM%ParticleVecLength
         IF (ElemToBCSides(ELEM_NBR_BCSIDES,CNTestElem).LE.0) THEN
           ! Debug output
           IPWRITE(UNIT_stdOut,'(I0,A)') ' Tolerance issue with internal element!'
-          CALL PrintLostParticle(iPart,CNElemID,oldXi,newXi)
+          CALL PrintParticleInfo(iPart,CNElemID,oldXi,newXi)
 #if USE_MPI
           InElem   = PEM%Element(iPart)
           HaloStat = MERGE('T','F',InElem.GE.OffSetElem+1 .AND. InElem.LE.OffSetElem+PP_nElems)
@@ -332,7 +332,7 @@ DO iPart = 1,PDM%ParticleVecLength
             ! Re-localization to a new element failed
             IF (.NOT.PDM%ParticleInside(iPart)) THEN
               IPWRITE(UNIT_stdOut,'(I0,A)') ' Tolerance issue with BC element!'
-              CALL PrintLostParticle(iPart,CNTestElem,oldXi,newXi)
+              CALL PrintParticleInfo(iPart,CNTestElem,oldXi,newXi)
               CALL Abort(__STAMP__ ,'Particle not inside of element, iPart',iPart)
             END IF ! .NOT.PDM%ParticleInside(iPart)
           ! Xi.LT.epsOneCell
@@ -466,13 +466,14 @@ DO WHILE(DoTracing)
     ! double check
     IF (doublecheck) THEN
 #if CODE_ANALYZE
-      IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.myRank) THEN
-        IF (PartID.EQ.PARTOUT) THEN
-          WRITE(UNIT_stdOut,'(110("="))')
-          WRITE(UNIT_stdOut,'(A)')    '     | Particle is double checked: '
-        END IF
-      END IF
+!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
+      IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.myRank) THEN; IF (PartID.EQ.PARTOUT) THEN
+        WRITE(UNIT_stdOut,'(110("="))')
+        WRITE(UNIT_stdOut,'(A)')    '     | Particle is double checked: '
+      END IF; END IF
+!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
+
       SELECT CASE(SideType(CNSideID))
         CASE(PLANAR_RECT)
           CALL ComputePlanarRectIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
@@ -489,16 +490,16 @@ DO WHILE(DoTracing)
       END SELECT
 
 #if CODE_ANALYZE
-      IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.myRank) THEN
-        IF (PartID.EQ.PARTOUT) THEN
-          WRITE(UNIT_stdOut,'(30("-"))')
-          WRITE(UNIT_stdOut,'(A)')           '     | Output after compute intersection (DoubleCheck REFMAPPING): '
-          WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
-          WRITE(UNIT_stdOut,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
-          WRITE(UNIT_stdOut,'((A,G0))')      '     | AlphaOld: ',alphaOld
-          WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
-        END IF
-      END IF
+!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
+      IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.myRank) THEN; IF (PartID.EQ.PARTOUT) THEN
+        WRITE(UNIT_stdOut,'(30("-"))')
+        WRITE(UNIT_stdOut,'(A)')           '     | Output after compute intersection (DoubleCheck REFMAPPING): '
+        WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
+        WRITE(UNIT_stdOut,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
+        WRITE(UNIT_stdOut,'((A,G0))')      '     | AlphaOld: ',alphaOld
+        WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
+      END IF; END IF
+!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
 
     ! not double check
@@ -519,15 +520,15 @@ DO WHILE(DoTracing)
     END SELECT
 
 #if CODE_ANALYZE
-      IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.myRank) THEN
-        IF (PartID.EQ.PARTOUT) THEN
-          WRITE(UNIT_stdOut,'(30("-"))')
-          WRITE(UNIT_stdOut,'(A)')           '     | Output after compute intersection (REFMAPPING, BCTracing): '
-          WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
-          WRITE(UNIT_stdOut,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
-          WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
-        END IF
-      END IF
+!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
+      IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.myRank) THEN; IF (PartID.EQ.PARTOUT) THEN
+        WRITE(UNIT_stdOut,'(30("-"))')
+        WRITE(UNIT_stdOut,'(A)')           '     | Output after compute intersection (REFMAPPING, BCTracing): '
+        WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
+        WRITE(UNIT_stdOut,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
+        WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
+      END IF; END IF
+!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
     END IF
 
@@ -861,7 +862,7 @@ END IF ! nInter.GT.0
 END SUBROUTINE FallBackFaceIntersection
 
 
-SUBROUTINE PrintLostParticle(PartID,CNElemID,oldXi,newXi)
+SUBROUTINE PrintParticleInfo(PartID,CNElemID,oldXi,newXi)
 !===================================================================================================================================
 ! Prints information for particle outside reference element during tracking
 !===================================================================================================================================
@@ -902,6 +903,6 @@ IF (ALLOCATED(TurbPartState)) &
 IPWRITE(UNIT_stdOut,  '(I0,A,1X,E15.8)')        ' displacement/halo_eps ', DOT_PRODUCT(Vec,Vec)/halo_eps2
 IPWRITE(UNIT_stdOut,  '(I0,A,I0)')              ' PartSpecies           ', PartSpecies(PartID)
 
-END SUBROUTINE PrintLostParticle
+END SUBROUTINE PrintParticleInfo
 
 END MODULE MOD_Particle_RefTracking

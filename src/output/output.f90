@@ -250,6 +250,7 @@ SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,iter,maxIter,doETA)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
+USE MOD_Restart_Vars  ,ONLY: DoRestart,RestartTime
 #if FV_ENABLED || PP_LIMITER
 USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
 #endif
@@ -280,7 +281,7 @@ LOGICAL,INTENT(IN),OPTIONAL :: doETA   !< flag to print ETA without carriage ret
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL           :: doETA_loc
-REAL              :: percent,percent_time,percent_iter
+REAL              :: percent,percent_time,percent_iter,percent_ETA
 REAL              :: time_remaining,mins,secs,hours,days
 CHARACTER(3)      :: tmpString
 #if FV_ENABLED && PP_LIMITER
@@ -342,8 +343,15 @@ IF(MPIRoot)THEN
   percent_time = (t-tStart) / (tEnd-tStart)
   percent_iter = REAL(iter) / REAL(maxIter)
   percent      = MAX(percent_time,percent_iter)
+
+  ! Calculate ETA with percent of current run
+  ASSOCIATE(tBegin => MERGE(RestartTime,tStart,DoRestart))
+  percent_ETA  = (t-tBegin) / (tEnd-tBegin)
+  percent_ETA  = MAX(percent_ETA,percent_iter)
+  END ASSOCIATE
+
   CALL CPU_TIME(time_remaining)
-  IF (percent.GT.0.0) time_remaining = time_remaining/percent - time_remaining
+  IF (percent_ETA.GT.0.0) time_remaining = time_remaining/percent_ETA - time_remaining
   percent = percent*100.
   secs = MOD(time_remaining,60.)
   time_remaining = time_remaining / 60
@@ -417,8 +425,8 @@ END SUBROUTINE PrintStatusLine
 SUBROUTINE PrintAnalyze(dt)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Globals_Vars        ,ONLY: PID
 USE MOD_PreProc
+USE MOD_Analyze_Vars        ,ONLY: PID
 USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
 USE MOD_Mesh_Vars           ,ONLY: nGlobalElems
 USE MOD_TimeDisc_Vars       ,ONLY: CalcTimeStart,CalcTimeEnd,TimeDiscType,ViscousTimeStep

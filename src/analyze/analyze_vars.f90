@@ -50,6 +50,9 @@ LOGICAL              :: doAnalyzeEquation =.FALSE.        !< marks whether the d
 REAL                 :: PIDTimeStart                      !< start system time for PID calculation
 REAL                 :: PIDTimeEnd                        !< end   system time for PID calculation
 REAL                 :: PID_kill                          !< kill PID for FLEXI
+INTEGER              :: nCalcPID                          !< counter for iterations since last PID calculation
+INTEGER              :: nCalcPIDMax                       !< compute PID at least after every Nth iteration
+REAL                 :: PID                               !< current PID in FLEXI
 
 ! Analyze to file
 REAL                 :: iterRestart=0                     !< contains iteration count of previous computation in case a restart is

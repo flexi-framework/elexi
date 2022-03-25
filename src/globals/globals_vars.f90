@@ -42,8 +42,6 @@ REAL                       :: CommMeshReadinWallTime               !> Shared mem
 REAL                       :: SimulationEfficiency                 !> relates the simulated time to the used CPUh (SIMULATION TIME PER
                                                                    !> CALCULATION in [s]/[CPUh])
 REAL                       :: StartT                               !> Timer start
-REAL                       :: PID                                  !> Performance index: (CalcTimeEnd-CalcTimeStart)*nProcessors/
-                                                                   !> (nGlobalElems*(PP_N+1)**3*iter_loc)
 !===================================================================================================================================
 
 END MODULE MOD_Globals_Vars

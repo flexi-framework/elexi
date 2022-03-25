@@ -1164,8 +1164,9 @@ END SUBROUTINE freeList
 SUBROUTINE WriteElemTimeStatistics(WriteHeader,time,iter)
 ! MODULES
 USE MOD_Globals          ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,abort,nProcessors,nProcessors
-USE MOD_Globals_Vars     ,ONLY: SimulationEfficiency,PID,WallTime,InitializationWallTime,ReadMeshWallTime
+USE MOD_Globals_Vars     ,ONLY: SimulationEfficiency,WallTime,InitializationWallTime,ReadMeshWallTime
 USE MOD_Globals_Vars     ,ONLY: DomainDecompositionWallTime,CommMeshReadinWallTime
+USE MOD_Analyze_Vars     ,ONLY: PID
 USE MOD_LoadBalance_Vars ,ONLY: TargetWeight,nLoadBalanceSteps,CurrentImbalance,MinWeight,MaxWeight,WeightSum
 USE MOD_Restart_Vars     ,ONLY: DoRestart
 USE MOD_Particle_Memory  ,ONLY: ProcessMemUsage

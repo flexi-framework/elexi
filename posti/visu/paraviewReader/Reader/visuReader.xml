@@ -136,8 +136,9 @@
          </IntVectorProperty>
 #endif
 #endif
+#if PV_HIGHORDER
          <IntVectorProperty command="SetHighOrder"
-            default_values="0"
+            default_values="1"
             animateable="0"
             name="HighOrder"
             number_of_elements="1"
@@ -150,6 +151,7 @@
                WARNING: This only works correctly with NodeType = VISU!
             </Documentation>
          </IntVectorProperty>
+#endif
       <!-- ================================================================== -->
          <StringVectorProperty name="VarArrayInfo"
             information_only="1">

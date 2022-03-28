@@ -339,7 +339,11 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
   ElemID   = GetGlobalElemID(iElem)
   HaloProc = ElemInfo_Shared(ELEM_RANK,ElemID)
 
+  ! Skip elements on same rank
   IF (HaloProc.EQ.myRank) CYCLE
+
+  ! Skip tracing mortar elements
+  IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).EQ.4) CYCLE
 
 !#if CODE_ANALYZE
 !    ! Sanity checks. Elems in halo region must have ELEM_HALOFLAG=2 and the proc must not be flagged yet

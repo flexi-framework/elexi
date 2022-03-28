@@ -147,7 +147,7 @@ INTEGER                        :: errType
 #if USE_MPI
 INTEGER                        :: iStage
 INTEGER                        :: iSide
-INTEGER                        :: ElemID
+INTEGER                        :: ElemID,ElemDone
 REAL                           :: globalDiag,maxCellRadius
 INTEGER,ALLOCATABLE            :: sendbuf(:,:,:),recvbuf(:,:,:)
 INTEGER,ALLOCATABLE            :: offsetElemsInBGMCell(:,:,:)
@@ -212,8 +212,8 @@ CALL InitPeriodicBC()
 #if USE_MPI
 CALL Allocate_Shared((/6,nGlobalElems/),ElemToBGM_Shared_Win,ElemToBGM_Shared)
 CALL Allocate_Shared((/2,3,nGlobalElems/),BoundsOfElem_Shared_Win,BoundsOfElem_Shared)
-CALL MPI_WIN_LOCK_ALL(0,ElemToBGM_Shared_Win,IERROR)
-CALL MPI_WIN_LOCK_ALL(0,BoundsOfElem_Shared_Win,IERROR)
+CALL MPI_WIN_LOCK_ALL(0,ElemToBGM_Shared_Win   ,iError)
+CALL MPI_WIN_LOCK_ALL(0,BoundsOfElem_Shared_Win,iError)
 firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
 ! Periodic Sides
@@ -505,7 +505,7 @@ ELSE
     END IF
   END DO
   ! The code below changes ElemInfo_Shared, identification of halo elements must complete before
-  CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
   ! sum all MPI-side of compute-node and create correct offset mapping in SideInfo_Shared
   nMPISidesShared = COUNT(SideInfo_Shared(SIDE_NBELEMTYPE,:).EQ.2)
@@ -585,7 +585,11 @@ CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
 ! Mortar sides
 IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
   DO iElem = firstElem, lastElem
-    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).LT.1) CYCLE
+    ASSOCIATE(posElem => (iElem-1)*ELEMINFOSIZE + (ELEM_HALOFLAG-1))
+    CALL MPI_FETCH_AND_OP(ElemDone,ElemDone,MPI_INTEGER,0,INT(posElem*SIZE_INT,MPI_ADDRESS_KIND),MPI_NO_OP,ElemInfo_Shared_Win,iError)
+    CALL MPI_WIN_FLUSH(0,ElemInfo_Shared_Win,iError)
+    END ASSOCIATE
+    IF (ElemDone.LT.1) CYCLE
 
     ! Loop over all sides and check for mortar sides
     DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,iElem)
@@ -601,7 +605,8 @@ IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
           ! Element not previously flagged
           IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).LT.1) THEN
             ASSOCIATE(posElem => (ElemID-1)*ELEMINFOSIZE + (ELEM_HALOFLAG-1))
-              CALL MPI_FETCH_AND_OP(haloChange,dummyInt,MPI_INTEGER,0,INT(posElem*SIZE_INT,MPI_ADDRESS_KIND),MPI_REPLACE,ElemInfo_Shared_Win,IERROR)
+              CALL MPI_FETCH_AND_OP(haloChange,dummyInt,MPI_INTEGER,0,INT(posElem*SIZE_INT,MPI_ADDRESS_KIND),MPI_REPLACE,ElemInfo_Shared_Win,iError)
+              CALL MPI_WIN_FLUSH(0,ElemInfo_Shared_Win,iError)
             END ASSOCIATE
           END IF
         END DO
@@ -693,11 +698,11 @@ END IF
 ! be shifted to BGM[i]min with pointers
 CALL Allocate_Shared((/(BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1)/) &
                     ,FIBGM_nElems_Shared_Win,FIBGM_nElems_Shared)
-CALL MPI_WIN_LOCK_ALL(0,FIBGM_nElems_Shared_Win,IERROR)
+CALL MPI_WIN_LOCK_ALL(0,FIBGM_nElems_Shared_Win,iError)
 ! allocated shared memory for BGM cell offset in 1D array of BGM to element mapping
 CALL Allocate_Shared((/(BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1)/) &
                     ,FIBGM_offsetElem_Shared_Win,FIBGM_offsetElem_Shared)
-CALL MPI_WIN_LOCK_ALL(0,FIBGM_offsetElem_Shared_Win,IERROR)
+CALL MPI_WIN_LOCK_ALL(0,FIBGM_offsetElem_Shared_Win,iError)
 FIBGM_nElems     (BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax) => FIBGM_nElems_Shared
 FIBGM_offsetElem (BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax) => FIBGM_offsetElem_Shared
 
@@ -738,7 +743,7 @@ END DO ! iBGM
 CALL Allocate_Shared((/FIBGM_offsetElem(BGMimax,BGMjmax,BGMkmax)   + &
                        FIBGM_nElems    (BGMimax,BGMjmax,BGMkmax)/)   &
                      ,FIBGM_Element_Shared_Win,FIBGM_Element_Shared)
-CALL MPI_WIN_LOCK_ALL(0,FIBGM_Element_Shared_Win,IERROR)
+CALL MPI_WIN_LOCK_ALL(0,FIBGM_Element_Shared_Win,iError)
 FIBGM_Element => FIBGM_Element_Shared
 #else
 ALLOCATE( FIBGM_Element(1:FIBGM_offsetElem(BGMimax,BGMjmax,BGMkmax) + &
@@ -1019,11 +1024,11 @@ BGMkglobDelta = BGMkmaxglob - BGMkminglob
 ! Allocate array to hold the number of elemebts on each FIBGM cell
 CALL Allocate_Shared((/(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1)/)                    &
                     ,FIBGM_nTotalElems_Shared_Win,FIBGM_nTotalElems_Shared)
-CALL MPI_WIN_LOCK_ALL(0,FIBGM_nTotalElems_Shared_Win,IERROR)
+CALL MPI_WIN_LOCK_ALL(0,FIBGM_nTotalElems_Shared_Win,iError)
 
 ! Allocate flags which procs belong to which FIGBM cell
 CALL Allocate_Shared((/(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1)*nComputeNodeProcessors/),FIBGMToProcFlag_Shared_Win,FIBGMToProcFlag_Shared)
-CALL MPI_WIN_LOCK_ALL(0,FIBGMToProcFlag_Shared_Win,IERROR)
+CALL MPI_WIN_LOCK_ALL(0,FIBGMToProcFlag_Shared_Win,iError)
 FIBGM_nTotalElems(BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob)                            => FIBGM_nTotalElems_Shared
 FIBGMToProcFlag  (BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob,0:nComputeNodeProcessors-1) => FIBGMToProcFlag_Shared
 
@@ -1046,15 +1051,17 @@ DO iElem = offsetElem+1,offsetElem+nElems
                   posRank => INT(ProcRank*(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1) + (kBGM-1)*(BGMiglobDelta+1)*(BGMjglobDelta+1) + (jBGM-1)*(BGMiglobDelta+1) + (iBGM-1),KIND=MPI_ADDRESS_KIND))
 
           ! Increment number of elements on FIBGM cell
-          CALL MPI_FETCH_AND_OP(increment,dummyInt,MPI_INTEGER,0,INT(posElem*SIZE_INT,MPI_ADDRESS_KIND),MPI_SUM,FIBGM_nTotalElems_Shared_Win,IERROR)
+          CALL MPI_FETCH_AND_OP(increment,dummyInt,MPI_INTEGER,0,INT(posElem*SIZE_INT,MPI_ADDRESS_KIND),MPI_SUM,FIBGM_nTotalElems_Shared_Win,iError)
           ! Perform logical OR and place data on CN root
-          CALL MPI_FETCH_AND_OP(.TRUE.   ,dummyLog,MPI_LOGICAL,0,INT(posRank*SIZE_INT,MPI_ADDRESS_KIND),MPI_LOR,FIBGMToProcFlag_Shared_Win  ,IERROR)
+          CALL MPI_FETCH_AND_OP(.TRUE.   ,dummyLog,MPI_LOGICAL,0,INT(posRank*SIZE_INT,MPI_ADDRESS_KIND),MPI_LOR,FIBGMToProcFlag_Shared_Win  ,iError)
         END ASSOCIATE
       END DO
     END DO
   END DO
 END DO
 
+CALL MPI_WIN_FLUSH(0,FIBGM_nTotalElems_Shared_Win,iError)
+CALL MPI_WIN_FLUSH(0,FIBGMToProcFlag_Shared_Win  ,iError)
 CALL BARRIER_AND_SYNC(FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
 
@@ -1067,7 +1074,7 @@ CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
 
 ! Allocate shared array to hold the mapping
 CALL Allocate_Shared((/2,BGMiglobDelta+1,BGMjglobDelta+1,BGMkglobDelta+1/),FIBGMToProc_Shared_Win,FIBGMToProc_Shared)
-CALL MPI_WIN_LOCK_ALL(0,FIBGMToProc_Shared_Win,IERROR)
+CALL MPI_WIN_LOCK_ALL(0,FIBGMToProc_Shared_Win,iError)
 FIBGMToProc => FIBGMToProc_Shared
 
 IF (myComputeNodeRank.EQ.0) FIBGMToProc = 0
@@ -1126,7 +1133,7 @@ CALL MPI_BCAST(nFIBGMToProc,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
 
 ! Allocate shared array to hold the proc information
 CALL Allocate_Shared((/nFIBGMToProc/),FIBGMProcs_Shared_Win,FIBGMProcs_Shared)
-CALL MPI_WIN_LOCK_ALL(0,FIBGMProcs_Shared_Win,IERROR)
+CALL MPI_WIN_LOCK_ALL(0,FIBGMProcs_Shared_Win,iError)
 FIBGMProcs => FIBGMProcs_Shared
 
 IF (myComputeNodeRank.EQ.0) FIBGMProcs= -1
@@ -1462,7 +1469,7 @@ firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProces
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
 
 ! The code below changes ElemInfo_Shared, identification of periodic elements must complete before
-CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
 ! This is a distributed loop. Nonetheless, the load will be unbalanced due to the location of the space-filling curve. Still,
 ! this approach is again preferred compared to the communication overhead.

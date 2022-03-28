@@ -372,7 +372,7 @@ ELSE
 
   halo_eps2=halo_eps*halo_eps
   SWRITE(UNIT_stdOut,'(A,E24.12)') ' | halo distance                   ', halo_eps
-  IF(halo_eps.LT.0.)CALL ABORT(__STAMP__,'halo_eps cannot be negative!')
+  IF(halo_eps.LT.0.)CALL Abort(__STAMP__,'halo_eps cannot be negative!')
 END IF
 
 ! The initial cutoff is performed based on the FIBGM elements. However, we have to ensure that all possible halo elements, i.e.
@@ -812,7 +812,7 @@ IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
             GEO%FIBGM(iBGM,jBGM,kBGM)%nElem = GEO%FIBGM(iBGM,jBGM,kBGM)%nElem + 1
             IF (FIBGM_Element( FIBGM_offsetElem    (iBGM,jBGM,kBGM)        & ! offset of BGM cell in 1D array
                          + offsetElemsInBGMCell(iBGM,jBGM,kBGM)        & ! offset of BGM nElems in local proc
-                         + GEO%FIBGM           (iBGM,jBGM,kBGM)%nElem).NE.-1) CALL ABORT(__STAMP__,'Double access')
+                         + GEO%FIBGM           (iBGM,jBGM,kBGM)%nElem).NE.-1) CALL Abort(__STAMP__,'Double access')
             FIBGM_Element( FIBGM_offsetElem    (iBGM,jBGM,kBGM)        & ! offset of BGM cell in 1D array
                          + offsetElemsInBGMCell(iBGM,jBGM,kBGM)        & ! offset of BGM nElems in local proc
                          + GEO%FIBGM           (iBGM,jBGM,kBGM)%nElem) = ElemID
@@ -879,7 +879,7 @@ DEALLOCATE(offsetElemsInBGMCell)
 CALL BARRIER_AND_SYNC(FIBGM_Element_Shared_Win,MPI_COMM_SHARED)
 
 ! Abort if FIBGM_Element still contains unfilled entries
-IF (ANY(FIBGM_Element.EQ.-1)) CALL ABORT(__STAMP__,'Error while filling FIBGM element array')
+IF (ANY(FIBGM_Element.EQ.-1)) CALL Abort(__STAMP__,'Error while filling FIBGM element array')
 
 ! Locally sum up Number of all elements on current compute-node (including halo region)
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN
@@ -940,12 +940,12 @@ END IF
 #if CODE_ANALYZE
 ! Sanity checks
 IF (  SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)  ,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.1).NE.nComputeNodeElems) &
-  CALL ABORT(__STAMP__,'Error with number of local elements on compute node')
+  CALL Abort(__STAMP__,'Error with number of local elements on compute node')
 
 IF ((SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)  ,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.1) &
     +SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)/2,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.2) &
     +SUM(ElemInfo_Shared(ELEM_HALOFLAG,:)/3,MASK=ElemInfo_Shared(ELEM_HALOFLAG,:).EQ.3)).NE.nComputeNodeTotalElems) &
-  CALL ABORT(__STAMP__,'Error with number of halo elements on compute node')
+  CALL Abort(__STAMP__,'Error with number of halo elements on compute node')
 
 ! Debug output
 IF (myRank.EQ.0) THEN
@@ -1243,10 +1243,10 @@ END DO
 
 ! Sanity check
 IF (nComputeNodeSides.NE.ElemInfo_Shared(ELEM_LASTSIDEIND,offsetComputeNodeElem+nComputeNodeElems)-ElemInfo_Shared(ELEM_FIRSTSIDEIND,offsetComputeNodeElem+1)) &
-  CALL ABORT(__STAMP__,'Error with number of local sides on compute node')
+  CALL Abort(__STAMP__,'Error with number of local sides on compute node')
 
 IF (nComputeNodeTotalSides.NE.MessageSize) &
-  CALL ABORT(__STAMP__,'Error with number of halo sides on compute node')
+  CALL Abort(__STAMP__,'Error with number of halo sides on compute node')
 
 ! ElemToBGM is only used during init. First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)

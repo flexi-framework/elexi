@@ -89,13 +89,13 @@ SELECT CASE(RWModel)
     RWinUse =  .FALSE.
 
   CASE DEFAULT
-    CALL abort(__STAMP__, ' No valid particle random walk model given.')
+    CALL Abort(__STAMP__, ' No valid particle random walk model given.')
 END SELECT
 
 ! Allocate array to hold the RW properties for every particle
 ALLOCATE(TurbPartState(1:nRWVars,1:PDM%maxParticleNumber),STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
-  CALL abort(__STAMP__,'ERROR in particle_randomwalk.f90: Cannot allocate particle random walk arrays!')
+  CALL Abort(__STAMP__,'ERROR in particle_randomwalk.f90: Cannot allocate particle random walk arrays!')
 TurbPartState = 0.
 
 ParticleRWInitIsDone=.TRUE.
@@ -193,7 +193,7 @@ CASE('Gosman')
       IF (t.LT.TurbPartState(4,PartID)) RETURN
 
     CASE DEFAULT
-      CALL abort(__STAMP__, ' No particle random walk time step given. This should not happen.')
+      CALL Abort(__STAMP__, ' No particle random walk time step given. This should not happen.')
 
   END SELECT
 
@@ -337,7 +337,7 @@ CASE('Mofakham')
       IF (ANY(udiff.NE.0)) THEN
         tau     = (4./3.)*rho_p*d/(FieldAtParticle(1)*Cd*SQRT(SUM(udiff(1:3)**2.)))
       ELSE
-        WRITE(*,*) 'No velocity fluctuation in random walk. Mitigating...'
+        IPWRITE(UNIT_stdOut,'(I0,A)') 'No velocity fluctuation in random walk. Mitigating...'
         tau     = HUGE(1.)
       END IF
 
@@ -375,7 +375,7 @@ CASE('Mofakham')
   END IF ! t.LT.t_int
 
 CASE DEFAULT
-    CALL abort(__STAMP__, ' No particle random walk model given. This should not happen.')
+    CALL Abort(__STAMP__, ' No particle random walk model given. This should not happen.')
 
 END SELECT
 

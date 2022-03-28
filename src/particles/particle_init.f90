@@ -952,7 +952,7 @@ SELECT CASE(nRandomSeeds)
       Seeds(iSeed) = GETINT('Part-RandomSeed'//TRIM(hilf))
     END DO
 
-    IF (ALL(Seeds(:).EQ.0)) CALL ABORT(__STAMP__,'Not all seeds can be set to zero ')
+    IF (ALL(Seeds(:).EQ.0)) CALL CollectiveStop(__STAMP__,'Not all seeds can be set to zero ')
     CALL InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
 
   CASE DEFAULT
@@ -1167,7 +1167,7 @@ DO iSpec = 1, nSpecies
       CASE('cell_local')
         ! No readin
       CASE DEFAULT
-        CALL ABORT(__STAMP__,'Unknown particle emission type')
+        CALL CollectiveStop(__STAMP__,'Unknown particle emission type')
     END SELECT
 
     ! Nullify additional init data here
@@ -1239,13 +1239,13 @@ DO iSpec = 1, nSpecies
 
       CASE DEFAULT
         IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
-          CALL ABORT(__STAMP__,' Calculating height from v and dt is only supported for cuboid or cylinder!')
+          CALL CollectiveStop(__STAMP__,' Calculating height from v and dt is only supported for cuboid or cylinder!')
         END IF
     END SELECT
 
     IF (Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
       IF (Species(iSpec)%Init(iInit)%UseForInit) THEN
-        CALL ABORT(__STAMP__,' Calculating height from v and dt is not supported for initial ParticleInserting!')
+        CALL CollectiveStop(__STAMP__,' Calculating height from v and dt is not supported for initial ParticleInserting!')
       END IF
     END IF
 
@@ -1309,7 +1309,7 @@ DO iSpec = 1, nSpecies
               * Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(1)
           ELSE IF ( (TRIM(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%SpaceIC).NE.'cuboid')    .AND. &
                     (TRIM(Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%SpaceIC).NE.'cylinder')) THEN
-            CALL ABORT(__STAMP__,'Error in ParticleInit, ExcludeRegions must be cuboid or cylinder!')
+            CALL CollectiveStop(__STAMP__,'Error in ParticleInit, ExcludeRegions must be cuboid or cylinder!')
           END IF
 
           IF (Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%NormalIC(1)**2 +           &
@@ -1329,13 +1329,13 @@ DO iSpec = 1, nSpecies
               + Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(2)**2      &
               + Species(iSpec)%Init(iInit)%ExcludeRegion(iExclude)%BaseVector2IC(3)**2)
           ELSE
-            CALL ABORT(__STAMP__,'Error in ParticleInit, NormalIC Vector must not be zero!')
+            CALL CollectiveStop(__STAMP__,'Error in ParticleInit, NormalIC Vector must not be zero!')
           END IF
         END DO !iExclude
 
       ! invalid combination of SpaceIC and exclude region
       ELSE
-        CALL ABORT(__STAMP__,'Error in ParticleInit, ExcludeRegions are currently only implemented for the SpaceIC cuboid or cylinder!')
+        CALL CollectiveStop(__STAMP__,'Error in ParticleInit, ExcludeRegions are currently only implemented for the SpaceIC cuboid or cylinder!')
       END IF
     END IF
 
@@ -1540,7 +1540,7 @@ DO iBC = 1,nBCs
     ! Invalid boundary option
     CASE DEFAULT
       SWRITE(UNIT_stdOut,'(A,A)') ' Boundary does not exists: ', TRIM(PartBound%SourceBoundType(iBC))
-      CALL ABORT(__STAMP__,'Particle Boundary Condition does not exist')
+      CALL CollectiveStop(__STAMP__,'Particle Boundary Condition does not exist')
   END SELECT
 END DO
 
@@ -1610,7 +1610,7 @@ IF (nAuxBCs.GT.0) THEN
     ! Unknown auxiliary boundary type
     CASE DEFAULT
       SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC Condition does not exists: ', TRIM(tmpString)
-      CALL ABORT(__STAMP__,'AuxBC Condition does not exist')
+      CALL CollectiveStop(__STAMP__,'AuxBC Condition does not exist')
 
     END SELECT
   END DO
@@ -1645,7 +1645,7 @@ IF (nAuxBCs.GT.0) THEN
 
     CASE DEFAULT
       SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
-      CALL ABORT(__STAMP__,'AuxBC does not exist')
+      CALL CollectiveStop(__STAMP__,'AuxBC does not exist')
     END SELECT
   END DO
 
@@ -1678,7 +1678,7 @@ IF (nAuxBCs.GT.0) THEN
       n_vec                               = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-n_vec',3)
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL ABORT(__STAMP__,'Part-AuxBC-n_vec is zero for AuxBC',iAuxBC)
+        CALL CollectiveStop(__STAMP__,'Part-AuxBC-n_vec is zero for AuxBC',iAuxBC)
       ! If not, scale vector
       ELSE
         AuxBC_plane(AuxBCMap(iAuxBC))%n_vec = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
@@ -1689,7 +1689,7 @@ IF (nAuxBCs.GT.0) THEN
       n_vec                                  = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3)
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL ABORT(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
+        CALL CollectiveStop(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
       ! If not, scale vector
       ELSE
         AuxBC_cylinder(AuxBCMap(iAuxBC))%axis = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
@@ -1707,7 +1707,7 @@ IF (nAuxBCs.GT.0) THEN
       n_vec                                  = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3)
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL ABORT(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
+        CALL CollectiveStop(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
       ! If not, scale vector
       ELSE
         AuxBC_cone(AuxBCMap(iAuxBC))%axis = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
@@ -1715,7 +1715,7 @@ IF (nAuxBCs.GT.0) THEN
 
       AuxBC_cone(AuxBCMap(iAuxBC))%lmin  = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-lmin','0.')
       IF (AuxBC_cone(AuxBCMap(iAuxBC))%lmin.LT.0.) &
-        CALL ABORT(__STAMP__,'Part-AuxBC-lminis .lt. zero for AuxBC',iAuxBC)
+        CALL CollectiveStop(__STAMP__,'Part-AuxBC-lminis .lt. zero for AuxBC',iAuxBC)
 
       WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_cone(AuxBCMap(iAuxBC))%lmin)
       AuxBC_cone(AuxBCMap(iAuxBC))%lmax  = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-lmax',TRIM(tmpStr2))
@@ -1729,7 +1729,7 @@ IF (nAuxBCs.GT.0) THEN
       END IF
 
       IF (AuxBC_cone(AuxBCMap(iAuxBC))%halfangle.LE.0.) &
-        CALL ABORT(__STAMP__,'Part-AuxBC-halfangle is .le. zero for AuxBC',iAuxBC)
+        CALL CollectiveStop(__STAMP__,'Part-AuxBC-halfangle is .le. zero for AuxBC',iAuxBC)
 
       AuxBC_cone(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards')
       cos2 = COS(AuxBC_cone(AuxBCMap(iAuxBC))%halfangle)**2
@@ -1745,7 +1745,7 @@ IF (nAuxBCs.GT.0) THEN
       n_vec                                 = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3)
       ! Check if normal vector is zero
       IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL ABORT(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
+        CALL CollectiveStop(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
       ! If not, scale vector
       ELSE
         AuxBC_parabol(AuxBCMap(iAuxBC))%axis = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
@@ -1753,7 +1753,7 @@ IF (nAuxBCs.GT.0) THEN
 
       AuxBC_parabol(AuxBCMap(iAuxBC))%lmin  = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-lmin','0.')
       IF (AuxBC_parabol(AuxBCMap(iAuxBC))%lmin.LT.0.) &
-        CALL ABORT(__STAMP__,'Part-AuxBC-lmin is .lt. zero for AuxBC',iAuxBC)
+        CALL CollectiveStop(__STAMP__,'Part-AuxBC-lmin is .lt. zero for AuxBC',iAuxBC)
 
       WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_parabol(AuxBCMap(iAuxBC))%lmin)
       AuxBC_parabol(AuxBCMap(iAuxBC))%lmax  = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-lmax',TRIM(tmpStr2))
@@ -1779,7 +1779,7 @@ IF (nAuxBCs.GT.0) THEN
         CALL rotx(rot2,alpha2)
         n2     = MATMUL(rot2,n1)
       ELSE
-        CALL ABORT(__STAMP__,'Vector is collinear with x-axis. this should not be possible... AuxBC:',iAuxBC)
+        CALL CollectiveStop(__STAMP__,'Vector is collinear with x-axis. this should not be possible... AuxBC:',iAuxBC)
       END IF
 
       AuxBC_parabol(AuxBCMap(iAuxBC))%rotmatrix(:,:)  = MATMUL(rot2,rot1)
@@ -1792,7 +1792,7 @@ IF (nAuxBCs.GT.0) THEN
 
     CASE DEFAULT
       SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
-      CALL ABORT(__STAMP__,'AuxBC does not exist for AuxBC',iAuxBC)
+      CALL CollectiveStop(__STAMP__,'AuxBC does not exist for AuxBC',iAuxBC)
 
     END SELECT
   END DO

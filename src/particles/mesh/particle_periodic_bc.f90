@@ -65,7 +65,7 @@ END DO ! iBC=1,nBCs
 
 DO iVec = 1, SIZE(PartBound%TargetBoundCond)
   IF((PartBound%TargetBoundCond(iVec).EQ.PartBound%PeriodicBC).AND.(GEO%nPeriodicVectors.EQ.0)) &
-    CALL abort(__STAMP__,'Part-PeriodicVectors need to be assigned in the ini file')
+    CALL Abort(__STAMP__,'Part-PeriodicVectors need to be assigned in the ini file')
 END DO
 
 CALL CheckPeriodicVectors()
@@ -102,7 +102,7 @@ REAL                   :: eps(1:3)!,dummy
 
 LOGWRITE(UNIT_stdOut,'(A,I0)') ' nPeriodicVectors = ',GEO%nPeriodicVectors
 IF ((GEO%nPeriodicVectors.GT.3).OR.(GEO%nPeriodicVectors.LT.0)) &
-  CALL abort(__STAMP__,'nPeriodicVectors must be >= 0 and <= 3!',GEO%nPeriodicVectors,999.)
+  CALL Abort(__STAMP__,'nPeriodicVectors must be >= 0 and <= 3!',GEO%nPeriodicVectors,999.)
 
 GEO%directions = .FALSE.
 IF (GEO%nPeriodicVectors.EQ.0) RETURN

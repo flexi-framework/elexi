@@ -125,7 +125,7 @@ offsetElem = offsetElemMPI(myRank)
 LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
 
 ! Sanity check: local nElems and offset
-IF (nElems.LE.0) CALL ABORT(__STAMP__,' Process did not receive any elements/load! ')
+IF (nElems.LE.0) CALL Abort(__STAMP__,' Process did not receive any elements/load! ')
 
 ! Read the ElemTime again, but this time with every proc, depending on the domain decomposition in order to write the data
 ! to the state file (keep ElemTime on restart, if no new ElemTime is calculated during the run or replace with newly measured values
@@ -157,8 +157,8 @@ IF (ElemTimeExists.AND.MPIRoot) THEN
   TargetWeight = SUM(WeightSum_proc)/nProcessors
   NewImbalance = (MaxWeight-TargetWeight )/TargetWeight
 
-  ! abort if invalid targetWeight
-  IF(TargetWeight.LE.0.0) CALL abort(__STAMP__,' LoadBalance: TargetWeight = ',RealInfo=TargetWeight)
+  ! Abort if invalid targetWeight
+  IF(TargetWeight.LE.0.0) CALL Abort(__STAMP__,' LoadBalance: TargetWeight = ',RealInfo=TargetWeight)
 
   ! valid decomposition, output result
   SWRITE(UNIT_stdOut,'(A)') ' Calculated new (theoretical) imbalance with offsetElemMPI information'

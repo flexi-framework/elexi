@@ -112,7 +112,7 @@ END DO
 IF (insertParticles.GT.PDM%maxParticleNumber) THEN
   IPWRITE(UNIT_stdOut,'(I0,A40,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
   IPWRITE(UNIT_stdOut,'(I0,A40,I0)') ' To be inserted particles: ',insertParticles
-  CALL abort(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
+  CALL Abort(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
 END IF
 
 DO i = 1,nSpecies
@@ -123,7 +123,7 @@ DO i = 1,nSpecies
 
     ! initial particle number too large to handle
     IF(Species(i)%Init(iInit)%initialParticleNumber.GT.HUGE(1)) &
-      CALL abort(__STAMP__,' Integer for initialParticleNumber too large!')
+      CALL Abort(__STAMP__,' Integer for initialParticleNumber too large!')
 
     NbrOfParticle = INT(Species(i)%Init(iInit)%initialParticleNumber,4)
     SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle position for species ',i,' ... '
@@ -363,7 +363,7 @@ DO i = 1,nSpecies
         END IF
 
       CASE DEFAULT
-        CALL ABORT(__STAMP__,'Unknown particle emission type')
+        CALL Abort(__STAMP__,'Unknown particle emission type')
         ! Line below not required anymore, but might want to change back to silent fail later
         ! NbrOfParticle = 0
     END SELECT
@@ -479,10 +479,10 @@ DO iSpec=1,nSpecies
               IF (LocalVolume.GT.0.) THEN
                 Species(iSpec)%Init(iInit)%initialParticleNumber = NINT(Species(iSpec)%Init(iInit)%PartDensity * LocalVolume)
               ELSE
-                CALL ABORT(__STAMP__,'Local mesh volume is zero!')
+                CALL Abort(__STAMP__,'Local mesh volume is zero!')
               END IF
             CASE DEFAULT
-              CALL ABORT(__STAMP__,'Given velocity distribution is not supported with the SpaceIC cell_local!')
+              CALL Abort(__STAMP__,'Given velocity distribution is not supported with the SpaceIC cell_local!')
           END SELECT  ! Species(iSpec)%Init(iInit)%velocityDistribution
         CASE DEFAULT
         ! do nothing
@@ -496,7 +496,7 @@ END DO
 IF (insertParticles.GT.PDM%maxParticleNumber) THEN
   IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
   IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' To be inserted particles: ',INT(insertParticles,4)
-  CALL ABORT(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
+  CALL Abort(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
 END IF
 
 END SUBROUTINE DetermineInitialParticleNumber

@@ -123,7 +123,7 @@ END SUBROUTINE UpdateNextFreePosition
 !! Store information of a lost particle (during restart and during the simulation)
 !!----------------------------------------------------------------------------------------------------------------------------------!
 !! MODULES                                                                                                                          !
-!USE MOD_Globals                ,ONLY: abort,MyRank
+!USE MOD_Globals                ,ONLY: Abort,MyRank
 !USE MOD_Particle_Vars          ,ONLY: PartSpecies,Species,PartState,LastPartPos
 !USE MOD_Particle_Tracking_Vars ,ONLY: PartStateLost,PartLostDataSize,PartStateLostVecLength
 !USE MOD_TimeDisc_Vars          ,ONLY: t
@@ -161,7 +161,7 @@ END SUBROUTINE UpdateNextFreePosition
 
 !    ! --- PartStateLost ---
 !    ALLOCATE(PartStateLost_tmp(1:PartLostDataSize,1:dims(2)), STAT=ALLOCSTAT)
-!    IF (ALLOCSTAT.NE.0) CALL abort(&
+!    IF (ALLOCSTAT.NE.0) CALL Abort(&
 !          __STAMP__&
 !          ,'ERROR in particle_boundary_tools.f90: Cannot allocate PartStateLost_tmp temporary array!')
 !    ! Save old data
@@ -170,7 +170,7 @@ END SUBROUTINE UpdateNextFreePosition
 !    ! Re-allocate PartStateLost to twice the size
 !    DEALLOCATE(PartStateLost)
 !    ALLOCATE(PartStateLost(1:PartLostDataSize,1:2*dims(2)), STAT=ALLOCSTAT)
-!    IF (ALLOCSTAT.NE.0) CALL abort(&
+!    IF (ALLOCSTAT.NE.0) CALL Abort(&
 !          __STAMP__&
 !          ,'ERROR in particle_boundary_tools.f90: Cannot allocate PartStateLost array!')
 !    PartStateLost(1:PartLostDataSize,        1:  dims(2)) = PartStateLost_tmp(1:PartLostDataSize,1:dims(2))

@@ -398,7 +398,7 @@ DO iElem=1,nElems
         WRITE(UNIT_stdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJacRef(i,j,k)
         WRITE(UNIT_stdOut,*) 'Coords near:', Elem_xGP(:,INT(PP_N/2),INT(PP_N/2),INT(PP_NZ/2),iElem)
         WRITE(UNIT_stdOut,*) 'This check is optional. You can disable it by setting meshCheckRef = F'
-        CALL abort(__STAMP__,&
+        CALL Abort(__STAMP__,&
           'Scaled Jacobian in reference system lower then tolerance in global element:',iElem+offsetElem)
       END IF
     END DO; END DO; END DO !i,j,k=0,N
@@ -531,7 +531,7 @@ DO iElem=1,nElems
 
 #if USE_PARTICLES
   IF(interpolateFromTree)THEN
-    CALL ABORT(__STAMP__,'InterpolateFromTree currently not supported with particles')
+    CALL Abort(__STAMP__,'InterpolateFromTree currently not supported with particles')
   END IF
 #endif
 

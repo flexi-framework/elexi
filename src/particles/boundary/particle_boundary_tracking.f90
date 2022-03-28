@@ -253,7 +253,7 @@ IF (ImpactDataExists) THEN
 
       ! Check if the new PartStateBoundary size can be safely allocated
       CALL Allocate_Safe(PartStateBoundary,(/ImpactDataSize,j*10/), STAT=ALLOCSTAT)
-      IF (ALLOCSTAT.NE.0) CALL ABORT(__STAMP__,'ERROR in particle_boundary_init.f90: Cannot allocate PartStateBoundary array!')
+      IF (ALLOCSTAT.NE.0) CALL Abort(__STAMP__,'ERROR in particle_boundary_init.f90: Cannot allocate PartStateBoundary array!')
       PartStateBoundary(:,:) = 0.
     END IF
 
@@ -345,14 +345,14 @@ ASSOCIATE( iMax => PartStateBoundaryVecLength )
   IF (iMax.GT.dims(2)) THEN
     ! Check if the new PartStateBoundary size can be safely allocated
     CALL Allocate_Safe(PartStateBoundary_tmp,(/ImpactDataSize,dims(2)/), STAT=ALLOCSTAT)
-    IF (ALLOCSTAT.NE.0) CALL ABORT(__STAMP__,'ERROR in particle_boundary_tools.f90: Cannot allocate PartStateBoundary_tmp temporary array!')
+    IF (ALLOCSTAT.NE.0) CALL Abort(__STAMP__,'ERROR in particle_boundary_tools.f90: Cannot allocate PartStateBoundary_tmp temporary array!')
     ! Save old data
     PartStateBoundary_tmp(1:ImpactDataSize,1:dims(2)) = PartStateBoundary(1:ImpactDataSize,1:dims(2))
 
     ! Re-allocate PartStateBoundary to twice the size
     DEALLOCATE(PartStateBoundary)
     CALL Allocate_Safe(PartStateBoundary,(/ImpactDataSize,2*dims(2)/), STAT=ALLOCSTAT)
-    IF (ALLOCSTAT.NE.0) CALL ABORT(__STAMP__,'ERROR in particle_boundary_tools.f90: Cannot allocate PartStateBoundary array!')
+    IF (ALLOCSTAT.NE.0) CALL Abort(__STAMP__,'ERROR in particle_boundary_tools.f90: Cannot allocate PartStateBoundary array!')
     PartStateBoundary(1:ImpactDataSize,        1:  dims(2)) = PartStateBoundary_tmp(1:ImpactDataSize,1:dims(2))
     PartStateBoundary(1:ImpactDataSize,dims(2)+1:2*dims(2)) = 0.
   END IF

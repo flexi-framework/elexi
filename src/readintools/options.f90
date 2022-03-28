@@ -773,7 +773,7 @@ END SUBROUTINE parse
 !===================================================================================================================================
 SUBROUTINE parseReal(this,string_in, value, digits)
 ! MODULES
-USE MOD_Globals, ONLY:abort
+USE MOD_Globals, ONLY:Abort
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

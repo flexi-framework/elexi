@@ -199,7 +199,7 @@ DO iSpec = 1,nSpecies
         lineVector(3) = Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(2) - &
                         Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
         IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
-           CALL ABORT(__STAMP__,'BaseVectors are parallel!')
+           CALL Abort(__STAMP__,'BaseVectors are parallel!')
         ELSE
           lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + &
                                          lineVector(3) * lineVector(3))
@@ -226,7 +226,7 @@ DO iSpec = 1,nSpecies
         lineVector(3) = Species(iSpec)%Init(iInit)%BaseVector1IC(1) * Species(iSpec)%Init(iInit)%BaseVector2IC(2) - &
                         Species(iSpec)%Init(iInit)%BaseVector1IC(2) * Species(iSpec)%Init(iInit)%BaseVector2IC(1)
         IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
-           CALL ABORT(__STAMP__,'BaseVectors are parallel!')
+           CALL Abort(__STAMP__,'BaseVectors are parallel!')
         ELSE
           lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + &
             lineVector(3) * lineVector(3))
@@ -263,7 +263,7 @@ DO iSpec = 1,nSpecies
          IF ((xlen.NE.Species(iSpec)%Init(iInit)%BaseVector1IC(1)).OR. &
              (ylen.NE.Species(iSpec)%Init(iInit)%BaseVector2IC(2)).OR. &
              (zlen.NE.Species(iSpec)%Init(iInit)%CuboidHeightIC)) THEN
-            CALL ABORT(__STAMP__, &
+            CALL Abort(__STAMP__, &
               'Basevectors1IC,-2IC and CuboidHeightIC have to be in x,y,z-direction, respectively for emission condition')
          END IF
 
@@ -293,7 +293,7 @@ DO iSpec = 1,nSpecies
          IF ((xlen.NE.Species(iSpec)%Init(iInit)%BaseVector1IC(1)).OR. &
              (ylen.NE.Species(iSpec)%Init(iInit)%BaseVector2IC(2)).OR. &
              (zlen.NE.Species(iSpec)%Init(iInit)%CuboidHeightIC)) THEN
-            CALL ABORT(__STAMP__, &
+            CALL Abort(__STAMP__, &
               'Basevectors1IC,-2IC and CuboidHeightIC have to be in x,y,z-direction, respectively for emission condition')
          END IF
 
@@ -329,7 +329,7 @@ DO iSpec = 1,nSpecies
         RegionOnProc = .TRUE.
 
       CASE DEFAULT
-        CALL ABORT(__STAMP__,'ERROR: Given SpaceIC is not implemented!')
+        CALL Abort(__STAMP__,'ERROR: Given SpaceIC is not implemented!')
 
     END SELECT
 
@@ -418,7 +418,7 @@ END SUBROUTINE InitEmissionComm
 !            , PartMPIInsert%send_message(  0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
 !            , STAT=ALLOCSTAT)
 !    IF (ALLOCSTAT.NE.0) &
-!      CALL ABORT(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
+!      CALL Abort(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
 !
 !    ALLOCATE( PartMPILocate%nPartsSend (2,0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
 !            , PartMPILocate%nPartsRecv (2,0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
@@ -428,7 +428,7 @@ END SUBROUTINE InitEmissionComm
 !            , EmissionSendBuf          (  0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
 !            , STAT=ALLOCSTAT)
 !    IF (ALLOCSTAT.NE.0) &
-!      CALL ABORT(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
+!      CALL Abort(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
 !  END DO
 !END DO
 !
@@ -491,7 +491,7 @@ ALLOCATE( PartMPIInsert%nPartsSend  (2,0:PartMPI%InitGroup(InitGroup)%nProcs-1) 
         , PartMPIInsert%send_message(  0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
         , STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
-  CALL ABORT(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
+  CALL Abort(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
 
 PartMPIInsert%nPartsSend=0
 PartMPIInsert%nPartsRecv=0
@@ -505,7 +505,7 @@ ALLOCATE( PartMPILocate%nPartsSend (2,0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
         , EmissionSendBuf          (  0:PartMPI%InitGroup(InitGroup)%nProcs-1) &
         , STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
-  CALL ABORT(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
+  CALL Abort(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
 
 PartMPILocate%nPartsSend=0
 PartMPILocate%nPartsRecv=0
@@ -521,7 +521,7 @@ PartCommSize   = PartCommSize + 1                              ! ID of element
 ALLOCATE( chunkState(PartCommSize,chunkSize)                                                &
         , STAT=ALLOCSTAT)
 IF (ALLOCSTAT.NE.0) &
-  CALL ABORT(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
+  CALL Abort(__STAMP__,' Cannot allocate particle emission MPI arrays! ALLOCSTAT',ALLOCSTAT)
 
 chunkState = -1
 
@@ -639,7 +639,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
     MessageSize = DimSend*PartMPIInsert%nPartsSend(1,iProc)
     ALLOCATE( PartMPIInsert%send_message(iProc)%content(MessageSize), STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
-      CALL ABORT(__STAMP__,'  Cannot allocate emission PartSendBuf, local ProcId, ALLOCSTAT',iProc,REAL(ALLOCSTAT))
+      CALL Abort(__STAMP__,'  Cannot allocate emission PartSendBuf, local ProcId, ALLOCSTAT',iProc,REAL(ALLOCSTAT))
   END IF
 END DO
 
@@ -689,9 +689,9 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
   CALL MPI_WAIT(PartMPIInsert%SendRequest(1,iProc),msg_status(:),IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   CALL MPI_WAIT(PartMPIInsert%RecvRequest(1,iProc),msg_status(:),IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO
 
 ! recvPartPos holds particles from ALL procs
@@ -750,7 +750,7 @@ DO i = 1, chunkSize
       tProc=PartMPI%InitGroup(InitGroup)%CommToGroup(ProcID)
       ! Processor is not on emission communicator
       IF(tProc.EQ.-1) &
-        CALL ABORT(__STAMP__,'Error in particle_mpi_emission: proc not on emission communicator')
+        CALL Abort(__STAMP__,'Error in particle_mpi_emission: proc not on emission communicator')
 
       PartMPILocate%nPartsSend(1,tProc)= PartMPILocate%nPartsSend(1,tProc)+1
 
@@ -777,7 +777,7 @@ DO i = 1, chunkSize
       ELSE
         IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
         IPWRITE(UNIT_stdOut,'(I0,A)')      " Increase value for [Part-maxParticleNumber]!"
-        CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
+        CALL Abort(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
       END IF
       mySumOfMatchedParticles = mySumOfMatchedParticles + 1
       PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
@@ -804,7 +804,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
     MessageSize = PartMPILocate%nPartsSend(1,iProc)*PartCommSize
     ALLOCATE(EmissionSendBuf(iProc)%content(MessageSize),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
-      CALL ABORT(__STAMP__,'  Cannot allocate emission EmissionSendBuf, local ProcId, ALLOCSTAT',iProc,REAL(ALLOCSTAT))
+      CALL Abort(__STAMP__,'  Cannot allocate emission EmissionSendBuf, local ProcId, ALLOCSTAT',iProc,REAL(ALLOCSTAT))
   END IF
 END DO
 
@@ -835,9 +835,9 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
   CALL MPI_WAIT(PartMPILocate%SendRequest(1,iProc),msg_status(:),IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   CALL MPI_WAIT(PartMPILocate%RecvRequest(1,iProc),msg_status(:),IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO
 
 DO iProc = 0,PartMPI%InitGroup(InitGroup)%nProcs-1
@@ -849,7 +849,7 @@ DO iProc = 0,PartMPI%InitGroup(InitGroup)%nProcs-1
     MessageSize    = nRecvParticles * PartCommSize
     ALLOCATE(EmissionRecvBuf(iProc)%content(MessageSize),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
-      CALL ABORT(__STAMP__,'  Cannot allocate emission EmissionRecvBuf, local ProcId, ALLOCSTAT',iProc,REAL(ALLOCSTAT))
+      CALL Abort(__STAMP__,'  Cannot allocate emission EmissionRecvBuf, local ProcId, ALLOCSTAT',iProc,REAL(ALLOCSTAT))
 
     !--- MPI_IRECV lengths of lists of particles entering local mesh
     CALL MPI_IRECV( EmissionRecvBuf(iProc)%content                             &
@@ -861,7 +861,7 @@ DO iProc = 0,PartMPI%InitGroup(InitGroup)%nProcs-1
                   , PartMPILocate%RecvRequest(2,iProc)                         &
                   , IERROR )
     IF(IERROR.NE.MPI_SUCCESS) &
-      CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+      CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
   !--- (non-blocking:) send messages to all procs receiving particles from myself
   IF (PartMPILocate%nPartsSend(2,iProc).GT.0) THEN
@@ -876,7 +876,7 @@ DO iProc = 0,PartMPI%InitGroup(InitGroup)%nProcs-1
                   , PartMPILocate%SendRequest(2,iProc)                         &
                   , IERROR )
     IF(IERROR.NE.MPI_SUCCESS) &
-      CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+      CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
 END DO
 
@@ -886,11 +886,11 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
 
   IF (PartMPIInsert%nPartsSend(1,iProc).GT.0) THEN
     CALL MPI_WAIT(PartMPIInsert%SendRequest(2,iProc),msg_status(:),IERROR)
-    IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+    IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
   IF (PartMPIInsert%nPartsRecv(1,iProc).GT.0) THEN
     CALL MPI_WAIT(PartMPIInsert%RecvRequest(2,iProc),msg_status(:),IERROR)
-    IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+    IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
 END DO
 
@@ -919,7 +919,7 @@ DO i = 1,TotalNbrOfRecvParts
   ELSE
     IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
     IPWRITE(UNIT_stdOut,'(I0,A)')      " Increase value for [Part-maxParticleNumber]!"
-    CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
+    CALL Abort(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
   END IF
   mySumOfMatchedParticles = mySumOfMatchedParticles + 1
   PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
@@ -931,11 +931,11 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
 
   IF (PartMPILocate%nPartsSend(1,iProc).GT.0) THEN
     CALL MPI_WAIT(PartMPILocate%SendRequest(2,iProc),msg_status(:),IERROR)
-    IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+    IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
   IF (PartMPILocate%nPartsRecv(1,iProc).GT.0) THEN
     CALL MPI_WAIT(PartMPILocate%RecvRequest(2,iProc),msg_status(:),IERROR)
-    IF(IERROR.NE.MPI_SUCCESS) CALL abort(__STAMP__,' MPI Communication error', IERROR)
+    IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
 END DO
 
@@ -962,7 +962,7 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
     ELSE
       IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
       IPWRITE(UNIT_stdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
-      CALL ABORT(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
+      CALL Abort(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
     END IF
     mySumOfMatchedParticles = mySumOfMatchedParticles + 1
     PDM%IsNewPart(ParticleIndexNbr) = .TRUE.

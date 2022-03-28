@@ -1907,7 +1907,7 @@ nCurvedElemsTot          = nCurvedElems
 !IF (myComputeNodeRank.EQ.0) THEN
 !#endif /* USE_MPI */
 !  IF ((nComputeNodeTotalElems-nCurvedElemsTot).NE.nLinearElemsTot) &
-!    CALL ABORT(__STAMP__, 'Error in particle mesh: lost elements while trying to dermine if elements are curved')
+!    CALL Abort(__STAMP__, 'Error in particle mesh: lost elements while trying to dermine if elements are curved')
 !#if USE_MPI
 !END IF
 !#endif /* USE_MPI */
@@ -1991,7 +1991,7 @@ DO iElem=1,nElems
     IF (GEO%ElemToRegion(iElem).EQ.0) THEN
       GEO%ElemToRegion(iElem) = iRegions
     ELSE
-      CALL ABORT(__STAMP__,'Defined regions are overlapping')
+      CALL Abort(__STAMP__,'Defined regions are overlapping')
     END IF
   END DO ! iRegions=1,NbrOfRegions
 END DO ! iElem=1,nElems
@@ -2155,7 +2155,7 @@ IF(WeirdElems.GT.0) THEN
     IPWRITE(UNIT_stdOut,'(I0)') WeirdElemNbrs(iElem)
   END DO
   IPWRITE(UNIT_stdOut,'(I0,A)')      ' This check is optional. You can disable it by setting meshCheckWeirdElements = F'
-  CALL ABORT(__STAMP__,              'Weird elements found: it means that part of the element is turned inside-out')
+  CALL Abort(__STAMP__,              'Weird elements found: it means that part of the element is turned inside-out')
 END IF
 
 SWRITE(UNIT_stdOut,'(A)') ' DONE!'
@@ -2474,7 +2474,7 @@ END IF
 !
 !! Build XCL and dXCL for compute node halo region (each proc of compute-node build only its fair share)
 !IF(interpolateFromTree) THEN
-!  CALL abort(__STAMP__,'ERROR: InterpolateFromTree not yet implemented for new halo region!')
+!  CALL Abort(__STAMP__,'ERROR: InterpolateFromTree not yet implemented for new halo region!')
 !ELSE
 !  CALL GetDerivativeMatrix(NGeo  , NodeTypeCL  , DCL_Ngeo)
 !
@@ -2625,13 +2625,13 @@ END IF
 #else
 ALLOCATE(BezierControlPoints3D(1:3,0:NGeo,0:NGeo,1:nNonUniqueGlobalSides) &
         ,STAT=ALLOCSTAT)
-IF (ALLOCSTAT.NE.0) CALL ABORT(__STAMP__,'  Cannot allocate BezierControlPoints3D!')
+IF (ALLOCSTAT.NE.0) CALL Abort(__STAMP__,'  Cannot allocate BezierControlPoints3D!')
 BezierControlPoints3D         = 0.
 
 IF (BezierElevation.GT.0) THEN
   ALLOCATE(BezierControlPoints3DElevated(1:3,0:NGeoElevated,0:NGeoElevated,1:nNonUniqueGlobalSides) &
           ,STAT=ALLOCSTAT)
-  IF (ALLOCSTAT.NE.0) CALL ABORT(__STAMP__,'  Cannot allocate BezierControlPoints3DElevated!')
+  IF (ALLOCSTAT.NE.0) CALL Abort(__STAMP__,'  Cannot allocate BezierControlPoints3DElevated!')
   BezierControlPoints3DElevated = 0.
 END IF
 #endif /*USE_MPI*/

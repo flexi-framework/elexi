@@ -124,8 +124,8 @@ CASE(REFMAPPING,TRACING)
   v2 = v1  - ElemBaryNGeo(:,GetCNElemID(ElemID))
 
   IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
-    IPWRITE(UNIT_stdOut,*) 'Obtained wrong side orientation from flip. flip:',flip,'PartID:',iPart
-    IPWRITE(UNIT_stdOut,*) 'n_loc (flip)', n_loc,'n_loc (estimated):',v2
+    IPWRITE(UNIT_stdOut,'(I0,A,I1,A,I0)')         'Obtained wrong side orientation from flip. flip: ',flip,', PartID: ',iPart
+    IPWRITE(UNIT_stdOut,'(I0,A,3F12.6,A,3F12.6)') 'n_loc (flip)', n_loc,'n_loc (estimated):',v2
     CALL Abort(__STAMP__,'SideID',SideID)
   END IF
 #endif /* CODE_ANALYZE */
@@ -398,7 +398,7 @@ PartState(PART_POSV,PartID)   = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*(l
 
 ! compute moved particle || rest of movement
 PartTrajectory          = PartState(PART_POSV,PartID) - LastPartPos(1:3,PartID)
-lengthPartTrajectory    = SQRT(SUM(PartTrajectory**2))
+lengthPartTrajectory    = VECNORM(PartTrajectory)
 PartTrajectory          = PartTrajectory/lengthPartTrajectory
 
 #if PP_nVarPartRHS == 6
@@ -448,13 +448,13 @@ END IF
 
 ! Remove sliding low velocity particles
 IF (LowVeloRemove) THEN
-  v_magnitude   = SQRT(DOT_PRODUCT(PartState(PART_VELV,PartID),PartState(PART_VELV,PartID)))
+  v_magnitude   = VECNORM(PartState(PART_VELV,PartID))
 
   IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.&
     (v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold)) THEN
     Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
     PDM%ParticleInside(PartID) = .FALSE.
-    IPWRITE(UNIT_stdOut,*) ' Low velocity particle removed after impact. Velocity after reflection:', v_magnitude
+    IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') ' Low velocity particle removed after impact. Velocity after reflection:', v_magnitude
   END IF
 END IF
 
@@ -596,7 +596,7 @@ SELECT CASE(WallCoeffModel)
     E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
                (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))**2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID)))**(-1.)
 
-    v_magnitude = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))
+    v_magnitude = VECNORM(v_norm(1:3))
 
     ! Calculate deformation of cylindrical model particle
     w       = v_magnitude * (8*MASS_SPHERE(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID)) &
@@ -613,7 +613,7 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    eps_t1   = 1. - PartBound%FricCoeff(SideInfo_Shared(SIDE_BCID,SideID)) / SQRT(DOT_PRODUCT(v_tang1(1:3),v_tang1(1:3)))  * &
+    eps_t1   = 1. - PartBound%FricCoeff(SideInfo_Shared(SIDE_BCID,SideID)) / VECNORM(v_tang1(1:3))  * &
                            v_magnitude * (eps_n+1)*COS(PartFaceAngle)**2.
 
 
@@ -625,14 +625,14 @@ SELECT CASE(WallCoeffModel)
     E_eff   = ((1. - Species(PartSpecies(PartID))%PoissonIC**2.)/Species(PartSpecies(PartID))%YoungIC +        &
                (1. - PartBound%Poisson(SideInfo_Shared(SIDE_BCID,SideID))**2.)/PartBound%Young(SideInfo_Shared(SIDE_BCID,SideID)))**(-1.)
 
-    v_magnitude = SQRT(DOT_PRODUCT(v_norm(1:3),v_norm(1:3)))
+    v_magnitude = VECNORM(v_norm(1:3))
 
     ! Calculate deformation of cylindrical model particle
     w       = v_magnitude * (8*MASS_SPHERE(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID)) &
               / (E_eff*3*PartState(PART_DIAM,PartID)))**0.5
 
     ! Find critical deformation
-    sigma_y = Species(PartSpecies(PartID))%Whitaker_a*SQRT(DOT_PRODUCT(v_old(1:3),v_old(1:3)))*1e6
+    sigma_y = Species(PartSpecies(PartID))%Whitaker_a*VECNORM(v_old(1:3))*1e6
     w_crit  = sigma_y * 2./3. * PartState(PART_DIAM,PartID) / E_eff
 
     ! Normal coefficient of restitution
@@ -642,7 +642,7 @@ SELECT CASE(WallCoeffModel)
     !> Assume change in density from last particle position to wall position to be negligible
     ! Original relation by Barker, B., Casaday, B., Shankara, P., Ameri, A., and Bons, J. P., 2013.
     !> Cosine term added by Bons, J., Prenter, R., Whitaker, S., 2017.
-    eps_t1   = 1. - PartBound%FricCoeff(SideInfo_Shared(SIDE_BCID,SideID)) / SQRT(DOT_PRODUCT(v_tang1(1:3),v_tang1(1:3))) * &
+    eps_t1   = 1. - PartBound%FricCoeff(SideInfo_Shared(SIDE_BCID,SideID)) / VECNORM(v_tang1(1:3)) * &
                            v_magnitude * (eps_n+1)*COS(PartFaceAngle)**2.
 
   !=================================================================================================================================
@@ -725,7 +725,6 @@ SELECT CASE(WallCoeffModel)
         dp2 = 0.
         ekin_2 = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,dp1,(/PartBoundANN%output(2)/))
       END IF
-      !IPWRITE (*, *) 'ekin_1, ekin_2, dp1, dp2, k:', ekin_1, ekin_2, dp1, dp2, PartState(PART_DIAM,PartID), k
 
       k = k + 1
       IF (k.GT.10) THEN; dp2=0.; EXIT; END IF
@@ -790,7 +789,7 @@ PartTrajectory(1:3)      = PartTrajectoryTang1(1:3) + PartTrajectoryTang2(1:3) -
 intersecRemain = (lengthPartTrajectory - alpha)
 intersecRemain = SQRT(eps_n*eps_n + eps_t1*eps_t1 + eps_t2*eps_t2)/SQRT(3.) * intersecRemain
 ! Compute the remainder of the new particle trajectory
-PartTrajectory = intersecRemain * PartTrajectory/SQRT(SUM(PartTrajectory**2.))
+PartTrajectory = intersecRemain * PartTrajectory/VECNORM(PartTrajectory)
 
 ! Compute moved particle || rest of movement. PartTrajectory has already been updated
 PartState(PART_POSV,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)
@@ -799,7 +798,7 @@ PartState(PART_POSV,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)
 PartState(PART_VELV,PartID) = eps_t1 * v_tang1 + eps_t2 * v_tang2 - eps_n * v_norm + WallVelo
 
 ! compute moved particle || rest of movement
-lengthPartTrajectory  = SQRT(SUM(PartTrajectory**2))
+lengthPartTrajectory  = VECNORM(PartTrajectory)
 PartTrajectory        = PartTrajectory/lengthPartTrajectory
 
 #if PP_nVarPartRHS == 6
@@ -843,13 +842,13 @@ PDM%IsNewPart(PartID) = .TRUE.
 
 ! Remove sliding low velocity particles
 IF (LowVeloRemove) THEN
-  v_magnitude = SQRT(DOT_PRODUCT(PartState(PART_VELV,PartID),PartState(PART_VELV,PartID)))
+  v_magnitude = VECNORM(PartState(PART_VELV,PartID))
 
   IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.&
     (v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold)) THEN
     Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
     PDM%ParticleInside(PartID) = .FALSE.
-    IPWRITE(UNIT_stdOut,*) ' Low velocity particle removed after impact. Velocity after reflection:', v_magnitude
+    IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') ' Low velocity particle removed after impact. Velocity after reflection:', v_magnitude
   END IF
 END IF
 

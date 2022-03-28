@@ -98,7 +98,7 @@ SELECT TYPE(value)
     ALLOCATE(bytes(64))
     bytes(1:length) = TRANSFER(value, bytes(1:length))
   CLASS DEFAULT
-    CALL ABORT(__STAMP__,'Error: Unsupported type in SHA1.')
+    CALL Abort(__STAMP__,'Error: Unsupported type in SHA1.')
 END SELECT
 
 hash = SHA1Hash(bytes, length)
@@ -181,7 +181,7 @@ select type (value)
         bytes((i - 1)*width + 1:i*width) = TRANSFER(value(i), bytes((i - 1)*width + 1:i*width))
     END DO
   CLASS DEFAULT
-    CALL ABORT(__STAMP__,'Error: Unsupported type in SHA1.')
+    CALL Abort(__STAMP__,'Error: Unsupported type in SHA1.')
 END SELECT
 
 hash = SHA1Hash(bytes, length)

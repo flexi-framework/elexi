@@ -265,14 +265,14 @@ DO iSpec = 1,nSpecies
       END DO ! iSide
 
     ELSE IF (BCdata_auxSF(currentBC)%SideNumber.EQ.-1) THEN
-      CALL ABORT(__STAMP__,'ERROR in ParticleSurfaceflux: Someting is wrong with SideNumber of BC ',currentBC)
+      CALL Abort(__STAMP__,'ERROR in ParticleSurfaceflux: Someting is wrong with SideNumber of BC ',currentBC)
     END IF
 
 #if CODE_ANALYZE
     IF (BCdata_auxSF(currentBC)%SideNumber.GT.0 .AND. Species(iSpec)%Surfaceflux(iSF)%CircularInflow) THEN
-      IPWRITE(*,'(I4,A,2(x,I0),A,3(x,I0))') ' For Surfaceflux/Spec',iSF,iSpec,' are nType0,1,2: ' &
-                                            , CountCircInflowType(1,iSF,iSpec),CountCircInflowType(2, iSF,iSpec) &
-                                            , CountCircInflowType(3, iSF,iSpec)
+      IPWRITE(UNIT_stdOut,'(I0,A,2(x,I0),A,3(x,I0))') ' For Surfaceflux/Spec',iSF,iSpec,' are nType0,1,2: ' &
+                                                      , CountCircInflowType(1,iSF,iSpec),CountCircInflowType(2, iSF,iSpec) &
+                                                      , CountCircInflowType(3, iSF,iSpec)
     END IF
 #endif /*CODE_ANALYZE*/
   END DO ! iSF
@@ -362,7 +362,7 @@ DO iSpec = 1,nSpecies
 
     ! Sanity check user input
     IF ((Species(iSpec)%Surfaceflux(iSF)%BC.LT.1) .OR. Species(iSpec)%Surfaceflux(iSF)%BC.GT.nBCs) &
-      CALL abort(__STAMP__, 'SurfacefluxBCs must be between 1 and nBCs!')
+      CALL Abort(__STAMP__, 'SurfacefluxBCs must be between 1 and nBCs!')
   END DO
 
   ! Increase global counter of SurfaceFluxBC
@@ -398,7 +398,7 @@ DO iSpec = 1,nSpecies
         Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal = .FALSE.
 
       CASE DEFAULT
-        CALL abort(__STAMP__, 'Invalid velocity distribution for particle SurfaceFlux!')
+        CALL Abort(__STAMP__, 'Invalid velocity distribution for particle SurfaceFlux!')
     END SELECT
 
     ! Get additional SurfaceFlux velocity information
@@ -424,12 +424,12 @@ DO iSpec = 1,nSpecies
           Species(iSpec)%Surfaceflux(iSF)%dir(2) = 1
           Species(iSpec)%Surfaceflux(iSF)%dir(3) = 2
         ELSE
-          CALL ABORT(__STAMP__,'ERROR in init: axialDir for SFradial must be between 1 and 3!')
+          CALL Abort(__STAMP__,'ERROR in init: axialDir for SFradial must be between 1 and 3!')
         END IF
 
         IF ( Species(iSpec)%Surfaceflux(iSF)%VeloVecIC(Species(iSpec)%Surfaceflux(iSF)%dir(2)).NE.0. .OR. &
              Species(iSpec)%Surfaceflux(iSF)%VeloVecIC(Species(iSpec)%Surfaceflux(iSF)%dir(3)).NE.0. )    &
-          CALL abort(__STAMP__,'ERROR in init: axialDir for SFradial do not correspond to VeloVecIC!')
+          CALL Abort(__STAMP__,'ERROR in init: axialDir for SFradial do not correspond to VeloVecIC!')
 
         Species(iSpec)%Surfaceflux(iSF)%origin   = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-origin',2,'0. , 0.')
         WRITE(UNIT=tmpStr3,FMT='(E16.8)') HUGE(Species(iSpec)%Surfaceflux(iSF)%rmax)
@@ -538,7 +538,7 @@ DO BCSideID = 1,nBCSides
   ! SurfMeshSideArea based on trias
   IF (TriaSurfaceFlux) THEN
     IF (SurfFluxSideSize(1).NE.1 .OR. SurfFluxSideSize(2).NE.2) &
-      CALL ABORT(__STAMP__, 'SurfFluxSideSize must be 1,2 for TriaSurfaceFlux!')
+      CALL Abort(__STAMP__, 'SurfFluxSideSize must be 1,2 for TriaSurfaceFlux!')
 
     ! Calculate surfSideArea
     DO jSample=1,SurfFluxSideSize(2); DO iSample=1,SurfFluxSideSize(1)
@@ -553,7 +553,7 @@ DO BCSideID = 1,nBCSides
     END DO; END DO
   ELSE
     IF (ANY(SurfFluxSideSize.NE.BezierSampleN)) &
-      CALL ABORT(__STAMP__, 'SurfFluxSideSize must be BezierSampleN,BezierSampleN for .NOT.TriaSurfaceFlux!')
+      CALL Abort(__STAMP__, 'SurfFluxSideSize must be BezierSampleN,BezierSampleN for .NOT.TriaSurfaceFlux!')
 
     CALL GetBezierSampledAreas( SideID                      = SideID                        &
                               , BezierSampleN               = BezierSampleN                 &
@@ -726,7 +726,7 @@ DO iBC = 1,countDataBC
       ! Check that all sides are planar if TriaSurfaceFlux is used for Tracing or RefMapping
       IF (.NOT.TrackingMethod.EQ.TRIATRACKING) THEN
         IF (SideType(CNSideID).NE.PLANAR_RECT .AND. SideType(CNSideID).NE.PLANAR_NONRECT) &
-          CALL ABORT(__STAMP__,'Every surfaceflux-sides must be planar if TriaSurfaceFlux is used for Tracing or RefMapping!')
+          CALL Abort(__STAMP__,'Every surfaceflux-sides must be planar if TriaSurfaceFlux is used for Tracing or RefMapping!')
       END IF !.NOT.TrackingMethod.EQ.TRIATRACKING
 
       ! Store additional information for TriaSurfaceFlux
@@ -740,7 +740,7 @@ DO iBC = 1,countDataBC
       END DO; END DO
     ELSE
       IF (SideType(CNSideID).NE.PLANAR_RECT .AND. SideType(CNSideID).NE.PLANAR_NONRECT) &
-        CALL ABORT(__STAMP__,'Surface flux is untested for non-planar sides. You can disable this error in the code. You have been warned!')
+        CALL Abort(__STAMP__,'Surface flux is untested for non-planar sides. You can disable this error in the code. You have been warned!')
     END IF ! TriaSurfaceFlux
 
     !-- BC-list specific data
@@ -753,7 +753,7 @@ DO iBC = 1,countDataBC
     !-- next Side
     IF (BCSideID .EQ. TmpSideEnd(iBC)) THEN
       IF (TmpSideNumber(iBC).NE.iCount) &
-        CALL ABORT(__STAMP__,'Someting is wrong with TmpSideNumber of iBC',iBC,999.)
+        CALL Abort(__STAMP__,'Someting is wrong with TmpSideNumber of iBC',iBC,999.)
 
       IF (OutputSurfaceFluxLinked)      &
           IPWRITE(UNIT_stdOut,'(I4,I7,A53,I0)') iCount,' Sides have been found for Surfaceflux-linked PartBC ',TmpMapToBC(iBC)
@@ -1079,10 +1079,10 @@ DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
         CASE(1,3,4,9,91,23,24,25,27,28,29)
           ! Periodic or BC depending on inner state. PartDensity might not be exact
           SWRITE(UNIT_stdOut,'(A)') ' | Boundary state for surface flux variable during runtime. PartDensity might not be exact...'
-          IF (UseManualTimeStep) CALL ABORT(__STAMP__,'Particle surface flux depending on inner boundary state not compatible with manual time step!')
+          IF (UseManualTimeStep) CALL Abort(__STAMP__,'Particle surface flux depending on inner boundary state not compatible with manual time step!')
 
         CASE DEFAULT
-          CALL ABORT(__STAMP__,'BCState not implemented for particle Surfaceflux!')
+          CALL Abort(__STAMP__,'BCState not implemented for particle Surfaceflux!')
       END SELECT
 
       ! Copy DGMeanPrimFlux to VeloIC
@@ -1090,7 +1090,7 @@ DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
 
       ! Sanity check
       IF (Species(iSpec)%Surfaceflux(iSF)%VeloIC.EQ.0) &
-        CALL ABORT(__STAMP__,'Fluid BCState velocity component normal to boundary > 0 required for particle SurfaceFlux!')
+        CALL Abort(__STAMP__,'Fluid BCState velocity component normal to boundary > 0 required for particle SurfaceFlux!')
 
       ! Normalize velocity vector
       Species(iSpec)%Surfaceflux(iSF)%VeloVecIC = VECNORM(Species(iSpec)%Surfaceflux(iSF)%DGMeanPrimState(2:4)) / Species(iSpec)%Surfaceflux(iSF)%VeloIC
@@ -1104,7 +1104,7 @@ DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
       nVFR = MAX(tmp_SubSideAreas(iSample,jSample) * vSF,0.)
 
     CASE DEFAULT
-      CALL ABORT(__STAMP__,'Invalid velocity distribution for particle SurfaceFlux!')
+      CALL Abort(__STAMP__,'Invalid velocity distribution for particle SurfaceFlux!')
   END SELECT
 
   ! check rmax-rejection
@@ -1212,7 +1212,7 @@ ALLOCATE(PartInsSubSides(SurfFluxSideSize(1),SurfFluxSideSize(2),1:BCdata_auxSF(
 PartInsSubSides = 0
 
 IF (BCdata_auxSF(currentBC)%SideNumber.LT.1) THEN
-  IF (PartInsSF.NE.0) CALL ABORT(__STAMP__,'ERROR in ParticleSurfaceflux: Someting is wrong with PartInsSF of BC ',currentBC)
+  IF (PartInsSF.NE.0) CALL Abort(__STAMP__,'ERROR in ParticleSurfaceflux: Someting is wrong with PartInsSF of BC ',currentBC)
 ELSE
   CALL IntegerDivide( PartInsSF                                                                                       &
                     , BCdata_auxSF(currentBC)%SideNumber*SurfFluxSideSize(1)*SurfFluxSideSize(2)                      &
@@ -1318,7 +1318,7 @@ DO iSpec = 1,nSpecies
     IF (BCdata_auxSF(currentBC)%SideNumber.EQ.0) CYCLE
 
     IF (BCdata_auxSF(currentBC)%SideNumber.EQ.-1) &
-      CALL ABORT(__STAMP__,'ERROR in ParticleSurfaceflux: Someting is wrong with SideNumber of BC ',currentBC)
+      CALL Abort(__STAMP__,'ERROR in ParticleSurfaceflux: Someting is wrong with SideNumber of BC ',currentBC)
 
 #if USE_LOADBALANCE
     CALL LBStartTime(tLBStart)
@@ -1437,7 +1437,7 @@ DO iSpec = 1,nSpecies
 
         !-- proceed with calculated to be inserted particles
         IF (PartInsSubSide.LT.0) &
-          CALL ABORT(__STAMP__,'ERROR in ParticleSurfaceflux: PartInsSubSide.LT.0!')
+          CALL Abort(__STAMP__,'ERROR in ParticleSurfaceflux: PartInsSubSide.LT.0!')
 
         ! -- cycle if no particles are to be inserted through subside
         IF (PartInsSubSide.LE.0) CYCLE
@@ -1518,7 +1518,7 @@ DO iSpec = 1,nSpecies
             CALL AnalyzePartPos(ParticleIndexNbr)
 #endif /*CODE_ANALYZE*/
           ELSE
-            CALL ABORT(__STAMP__,'ERROR in ParticleSurfaceflux: ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
+            CALL Abort(__STAMP__,'ERROR in ParticleSurfaceflux: ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
           END IF
         END DO
 
@@ -1541,7 +1541,7 @@ DO iSpec = 1,nSpecies
 #endif /*USE_LOADBALANCE*/
     END DO ! iSide
 
-    IF (NbrOfParticle.NE.iPartTotal) CALL ABORT(__STAMP__, 'Error 2 in ParticleSurfaceflux!')
+    IF (NbrOfParticle.NE.iPartTotal) CALL Abort(__STAMP__, 'Error 2 in ParticleSurfaceflux!')
 
     !----- 2b.: set remaining properties
     CALL SetParticleMass(iSpec,NbrOfParticle)
@@ -1565,7 +1565,7 @@ DO iSpec = 1,nSpecies
 
     IF (NbrOfParticle.NE.PartsEmitted) THEN
       ! should be equal for including the following lines in tSurfaceFlux
-      CALL ABORT(__STAMP__,'ERROR in ParticleSurfaceflux: NbrOfParticle.NE.PartsEmitted')
+      CALL Abort(__STAMP__,'ERROR in ParticleSurfaceflux: NbrOfParticle.NE.PartsEmitted')
     END IF
 
   END DO ! iSF
@@ -1646,7 +1646,7 @@ SELECT CASE(Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide))
   CASE(1)
     ! Work around -Wuninitialized
     InSideCircularInflow = .FALSE.
-    CALL ABORT(__STAMP__, 'Side outside of valid bounds was considered although nVFR=0...?!')
+    CALL Abort(__STAMP__, 'Side outside of valid bounds was considered although nVFR=0...?!')
 
   !- RejectType=2 : side is partly inside valid bounds
   CASE(2)
@@ -1662,7 +1662,7 @@ SELECT CASE(Species(iSpec)%Surfaceflux(iSF)%SurfFluxSideRejectType(iSide))
   CASE DEFAULT
     ! Work around -Wuninitialized
     InSideCircularInflow = .FALSE.
-    CALL ABORT(__STAMP__, 'Wrong SurfFluxSideRejectType!')
+    CALL Abort(__STAMP__, 'Wrong SurfFluxSideRejectType!')
 END SELECT ! SurfFluxSideRejectType
 
 END FUNCTION InSideCircularInflow
@@ -1846,7 +1846,7 @@ PartIns = Species(iSpec)%Surfaceflux(iSF)%PartDensity * dt*RKdtFrac  &
         * Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%nVFR
 
 IF (EXP(-PartIns).LE.TINY(PartIns)) THEN
-  CALL ABORT(__STAMP__, 'ERROR in ParticleSurfaceflux: flux is too large for poisson sampling!')
+  CALL Abort(__STAMP__, 'ERROR in ParticleSurfaceflux: flux is too large for poisson sampling!')
 
 ! poisson-sampling instead of random rounding (reduces numerical non-equlibrium effects [Tysanner and Garcia 2004]
 ELSE
@@ -1948,11 +1948,11 @@ SELECT CASE(TRIM(Species(FractNbr)%Surfaceflux(iSF)%velocityDistribution))
 
     VeloIC    = VECNORM(VeloVecIC(1:3))
     IF (VeloIC.EQ.0) &
-      CALL ABORT(__STAMP__,'Fluid BCState velocity component normal to boundary > 0 required for particle SurfaceFlux!')
+      CALL Abort(__STAMP__,'Fluid BCState velocity component normal to boundary > 0 required for particle SurfaceFlux!')
     VeloVecIC(1:3) = VeloVecIC(1:3) / VeloIC
 
   CASE DEFAULT
-    CALL ABORT(__STAMP__,'Invalid velocity distribution for particle SurfaceFlux!')
+    CALL Abort(__STAMP__,'Invalid velocity distribution for particle SurfaceFlux!')
 END SELECT
 
 IF (.NOT.Species(FractNbr)%Surfaceflux(iSF)%VeloIsNormal) THEN
@@ -2000,7 +2000,7 @@ SELECT CASE(TRIM(velocityDistribution))
     END DO ! i = ...NbrOfParticle
 
   CASE DEFAULT
-    CALL ABORT(__STAMP__,'Invalid velocity distribution for particle SurfaceFlux!')
+    CALL Abort(__STAMP__,'Invalid velocity distribution for particle SurfaceFlux!')
 END SELECT
 
 END SUBROUTINE SetSurfacefluxVelocities

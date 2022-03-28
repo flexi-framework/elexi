@@ -336,8 +336,8 @@ ELSE IF(PerformLBSample .AND. LoadBalanceSample.EQ.0) THEN
 
   ! Sanity check ElemTime
   IF((MAXVAL(nPartsPerElem).GT.0).AND.(MAXVAL(ElemTime).LE.1.0)) THEN
-    IPWRITE (*,*) "parts, time =", MAXVAL(nPartsPerElem),MAXVAL(ElemTime)
-    CALL ABORT(__STAMP__&
+    IPWRITE(UNIT_stdOut,'(I0,A,I0,F12.6)') 'parts, time =', MAXVAL(nPartsPerElem),MAXVAL(ElemTime)
+    CALL Abort(__STAMP__&
         ,' ERROR: MAXVAL(nPartsPerElem).GT.0 but MAXVAL(ElemTime).LE.1.0 with ParticleMPIWeight=',RealInfo=ParticleMPIWeight)
   END IF
 END IF
@@ -406,7 +406,7 @@ ELSE
   WeightSum_loc = SUM(ElemTime)
 
   IF(ALMOSTZERO(WeightSum_loc))THEN
-    IPWRITE(*,*) 'Info: The measured time of all elems is zero. ALMOSTZERO(WeightSum)=.TRUE., SUM(ElemTime)=',WeightSum_loc
+    IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') 'Info: The measured time of all elems is zero. ALMOSTZERO(WeightSum)=.TRUE., SUM(ElemTime)=',WeightSum_loc
   END IF
 
   !CALL MPI_ALLREDUCE(WeightSum_loc,TargetWeight,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)

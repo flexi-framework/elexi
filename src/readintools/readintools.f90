@@ -392,7 +392,7 @@ IF(opt%numberedmulti)THEN
   CALL LowCase(TRIM(CHAR(aStr)),opt%namelowercase)
   opt%ind = INDEX(TRIM(opt%namelowercase),"$")
   IF(opt%ind.LE.0)THEN
-    CALL abort(__STAMP__&
+    CALL Abort(__STAMP__&
     ,'[numberedmulti] parameter does not contain "$" symbol, which is required for these kinds of variables for ['//TRIM(name)//']')
   END IF ! opt%ind.LE.0
 END IF ! opt%numberedmulti
@@ -2114,7 +2114,7 @@ END FUNCTION GETINTFROMSTR
 !===================================================================================================================================
 SUBROUTINE addStrListEntry(name,string_in,int_in)
 ! MODULES
-USE MOD_Globals,     ONLY: abort
+USE MOD_Globals,     ONLY: Abort
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -2580,11 +2580,11 @@ IF(PRESENT(StrOpt))THEN
 END IF
 
 IF(Counter.EQ.0)THEN
-  CALL abort(&
+  CALL Abort(&
       __STAMP__&
       ,'PrintOption: format type not known')
 ELSEIF(Counter.GT.1)THEN
-  CALL abort(&
+  CALL Abort(&
       __STAMP__&
       ,'PrintOption: only one option is allowed: [IntOpt,RealOpt,LogOpt]')
 END IF

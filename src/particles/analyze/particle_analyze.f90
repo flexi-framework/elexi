@@ -125,7 +125,7 @@ IMPLICIT NONE
 !===================================================================================================================================
 
 IF (ParticleAnalyzeInitIsDone) THEN
-  CALL abort(__STAMP__,'InitParticleAnalyse already called.',999,999.)
+  CALL Abort(__STAMP__,'InitParticleAnalyse already called.',999,999.)
   RETURN
 END IF
 

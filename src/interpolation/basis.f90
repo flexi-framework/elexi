@@ -89,7 +89,7 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE buildLegendreVdm(N_In,xi_In,Vdm_Leg,sVdm_Leg)
 ! MODULES
-USE MOD_Globals,ONLY:abort
+USE MOD_Globals,ONLY:Abort
 USE MOD_PreProc,ONLY:PP_RealTolerance
 #ifndef VDM_ANALYTICAL
 USE MOD_Mathtools,ONLY:INVERSE
@@ -137,7 +137,7 @@ END DO
 CALL InitializeVandermonde(N_In,N_In,wBary_Loc,xi_In,xGauss,Vdm_Lag)
 sVdm_Leg=MATMUL(Vdm_Leg_Gauss,Vdm_Lag)
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
-IF(dummy.GT.15.*PP_RealTolerance) CALL abort(__STAMP__,&
+IF(dummy.GT.15.*PP_RealTolerance) CALL Abort(__STAMP__,&
                                          'buildLegendreVdm: problems in MODAL<->NODAL Vandermonde ',999,dummy)
 #else
 ! Lapack
@@ -145,7 +145,7 @@ sVdm_Leg=INVERSE(Vdm_Leg)
 
 !check (Vdm_Leg)^(-1)*Vdm_Leg := I
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
-IF(dummy.GT.10.*PP_RealTolerance) CALL abort(__STAMP__,&
+IF(dummy.GT.10.*PP_RealTolerance) CALL Abort(__STAMP__,&
                                          'problems in Legendre Vandermonde ',999,dummy)
 #endif
 END SUBROUTINE buildLegendreVdm

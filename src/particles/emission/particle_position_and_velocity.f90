@@ -224,7 +224,7 @@ IF (PartMPI%InitGroup(InitGroup)%MPIRoot.OR.nChunks.GT.1) THEN
 #endif
   ALLOCATE( particle_positions(1:chunkSize*DimSend), STAT=allocStat )
   IF (allocStat .NE. 0) &
-    CALL abort(__STAMP__,'ERROR in SetParticlePosition: cannot allocate particle_positions!')
+    CALL Abort(__STAMP__,'ERROR in SetParticlePosition: cannot allocate particle_positions!')
 
   !------------------SpaceIC-cases: start-----------------------------------------------------------!
   SELECT CASE(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC))
@@ -277,7 +277,7 @@ ELSE
         PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
       END IF
     ELSE
-      CALL ABORT(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
+      CALL Abort(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
     END IF
   END DO
 #if USE_MPI
@@ -321,7 +321,7 @@ NbrOfParticle = Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles
 IF (chunkSize.GT.0) THEN
   DEALLOCATE(particle_positions, STAT=allocStat)
   IF (allocStat .NE. 0) &
-    CALL ABORT(__STAMP__,'ERROR in ParticleEmission_parallel: cannot deallocate particle_positions!')
+    CALL Abort(__STAMP__,'ERROR in ParticleEmission_parallel: cannot deallocate particle_positions!')
 END IF
 
 END SUBROUTINE SetParticlePosition
@@ -384,7 +384,7 @@ REAL                             :: minDistance,globminDistance
 ! Abort if we don't have any/too many particles
 IF(NbrOfParticle.LT.1) RETURN
 IF(NbrOfParticle.GT.PDM%maxParticleNumber) &
-    CALL abort(__STAMP__,'NbrOfParticle > PDM%maxParticleNumber!')
+    CALL Abort(__STAMP__,'NbrOfParticle > PDM%maxParticleNumber!')
 
 SELECT CASE (init_or_sf)
   CASE(1) !iInit
@@ -399,17 +399,17 @@ SELECT CASE (init_or_sf)
     Alpha                 = Species(FractNbr)%Init(iInit)%alpha
   CASE(2) !SurfaceFlux
     ! TODO
-    CALL ABORT(__STAMP__,'surface flux not yet implemented in FLEXI')
+    CALL Abort(__STAMP__,'surface flux not yet implemented in FLEXI')
 
     IF (TRIM(Species(FractNbr)%Surfaceflux(iInit)%velocityDistribution).EQ.'constant') THEN
       velocityDistribution=Species(FractNbr)%Surfaceflux(iInit)%velocityDistribution
     ELSE
-      CALL ABORT(__STAMP__,'only constant velo-distri implemented in SetParticleVelocity for surfaceflux!')
+      CALL Abort(__STAMP__,'only constant velo-distri implemented in SetParticleVelocity for surfaceflux!')
     END IF
     VeloVecIC             = Species(FractNbr)%Surfaceflux(iInit)%VeloVecIC(1:3)
     VeloIC                = Species(FractNbr)%Surfaceflux(iInit)%VeloIC
   CASE DEFAULT
-    CALL ABORT(__STAMP__,'neither iInit nor Surfaceflux defined as reference!')
+    CALL Abort(__STAMP__,'neither iInit nor Surfaceflux defined as reference!')
 END SELECT
 
 ! Set velocity according to velocityDistribution
@@ -582,7 +582,7 @@ CASE('fluid')
   END DO
 
 CASE DEFAULT
-    CALL abort(__STAMP__,'Wrong particle velocity distribution!')
+    CALL Abort(__STAMP__,'Wrong particle velocity distribution!')
 
 END SELECT
 

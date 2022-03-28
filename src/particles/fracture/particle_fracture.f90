@@ -101,7 +101,7 @@ IF (ParticleIndexNbr.NE.0) THEN
   PartSpecies(ParticleIndexNbr)         = FractNbr
   PartReflCount(ParticleIndexNbr)       = 0
 ELSE
-  CALL ABORT(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
+  CALL Abort(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
 END IF
 
 #if USE_MPI

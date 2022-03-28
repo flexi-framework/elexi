@@ -140,7 +140,7 @@ IF (nUserBCs.GT.0) THEN
   END DO
 END IF
 DO iUserBC=1,nUserBCs
-  IF (.NOT.UserBCFound(iUserBC)) CALL ABORT(__STAMP__,&
+  IF (.NOT.UserBCFound(iUserBC)) CALL Abort(__STAMP__,&
     'Boundary condition specified in parameter file has not been found: '//TRIM(BoundaryName(iUserBC)))
 END DO
 DEALLOCATE(UserBCFound)

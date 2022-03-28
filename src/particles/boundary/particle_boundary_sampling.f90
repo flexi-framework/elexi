@@ -194,7 +194,7 @@ WRITE(UNIT=tmpStr,FMT='(I0)') NGeo
 nSurfSample             = GETINT    ('Part-nSurfSample',TRIM(tmpStr))
 
 IF((nSurfSample.GT.1).AND.(TrackingMethod.EQ.TRIATRACKING)) &
-  CALL abort(__STAMP__,'nSurfSample cannot be >1 if TriaTracking=T')
+  CALL Abort(__STAMP__,'nSurfSample cannot be >1 if TriaTracking=T')
 
 ! Allocate shared array for surf sides
 #if USE_MPI

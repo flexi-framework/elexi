@@ -127,9 +127,9 @@ DO iProc = 0,nLeaderGroupProcs-1
   IF (iProc.EQ.myLeaderGroupRank) CYCLE
 
   CALL MPI_WAIT(SendRequest(iProc),MPISTATUS,IERROR)
-  IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+  IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   CALL MPI_WAIT(RecvRequest(iProc),MPISTATUS,IERROR)
-  IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+  IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO
 
 !--- Split communicator from MPI_COMM_LEADER_SHARED
@@ -242,12 +242,12 @@ DO iProc = 0,nLeaderGroupProcs-1
 
   IF (nSendSurfSidesTmp(iProc).NE.0) THEN
     CALL MPI_WAIT(SendRequest(MPIRankSurfLeader(iProc)),MPIStatus,IERROR)
-    IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+    IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
 
   IF (nRecvSurfSidesTmp(iProc).NE.0) THEN
     CALL MPI_WAIT(RecvRequest(MPIRankSurfLeader(iProc)),MPIStatus,IERROR)
-    IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+    IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
 END DO
 
@@ -609,12 +609,12 @@ IF (myComputeNodeRank.EQ.0) THEN
 
     IF (SurfMapping(iProc)%nSendSurfSides.NE.0) THEN
       CALL MPI_WAIT(SendRequestLeader(iProc),MPIStatus,IERROR)
-      IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error',IERROR)
+      IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error',IERROR)
     END IF
 
     IF (SurfMapping(iProc)%nRecvSurfSides.NE.0) THEN
       CALL MPI_WAIT(RecvRequestLeader(iProc),MPIStatus,IERROR)
-      IF (IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error',IERROR)
+      IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error',IERROR)
     END IF
   END DO ! iProc
 

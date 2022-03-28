@@ -133,7 +133,7 @@ CALL MPI_COMM_SIZE(MPI_COMM_SHARED, nComputeNodeProcessors,IERROR)
 
 ! MPI3 shared implementation currently only works with equal procs per node
 IF (MOD(nProcessors_Global,nComputeNodeProcessors).NE.0) &
-  CALL ABORT(__STAMP__,'MPI shared communication currently only supported with equal procs per node!')
+  CALL Abort(__STAMP__,'MPI shared communication currently only supported with equal procs per node!')
 
 IF (nProcessors_Global/nComputeNodeProcessors.EQ.1) THEN
   SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',1,' node'
@@ -219,9 +219,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Logical1) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Logical1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -261,9 +259,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Logical1) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Logical1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -303,9 +299,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Int1) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Int1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -346,9 +340,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Int2) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Int2) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -389,9 +381,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Int3) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Int3) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -432,9 +422,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Int3) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Int3) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -475,9 +463,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Real1) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Real1) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -518,9 +504,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Real2) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Real2) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -561,9 +545,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Real3) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Real3) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -604,9 +586,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Real4) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Real4) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -647,9 +627,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Real5) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Real5) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -690,9 +668,7 @@ TYPE(C_PTR)                               :: SM_PTR                   !> Base po
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
 !==================================================================================================================================
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Real6) already associated')
+IF (ASSOCIATED(DataPointer)) CALL Abort(__STAMP__,'ERROR: Datapointer (Real6) already associated')
 
 ! Only node MPI root actually allocates the memory, all other nodes allocate memory with zero length but use the same displacement
 WIN_SIZE  = MERGE(MPI_SIZE(PRODUCT(INT(nVal,KIND=8)),KIND(DataPointer)),INT(0,MPI_ADDRESS_KIND),myComputeNodeRank.EQ.0)
@@ -737,7 +713,7 @@ CALL MPI_BARRIER (Communicator,iError)
 CALL MPI_WIN_SYNC(SharedWindow,iError)
 
 ! IF(iError.NE.0)THEN
-!   CALL abort(__STAMP__,'ERROR in MPI_WIN_SYNC() for '//TRIM(SM_WIN_NAME)//': iError returned non-zero value =',IntInfoOpt=iError)
+!   CALL Abort(__STAMP__,'ERROR in MPI_WIN_SYNC() for '//TRIM(SM_WIN_NAME)//': iError returned non-zero value =',IntInfoOpt=iError)
 ! END IF ! iError.NE.0
 END SUBROUTINE BARRIER_AND_SYNC
 
@@ -840,12 +816,12 @@ IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).LT.INT(HUGE(INT(1,KIND=MPI_ADDRESS_KIND
 
     ! Compare requested size against available memory
     IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).GT.memory(2)*kByte) &
-      CALL ABORT(__STAMP__,'Trying to allocate shared array larger than available memory!')
+      CALL Abort(__STAMP__,'Trying to allocate shared array larger than available memory!')
   END IF
 
   MPI_SIZE = INT(nVal,KIND=MPI_ADDRESS_KIND) * INT(VarSize,KIND=MPI_ADDRESS_KIND)
 ELSE
-  CALL ABORT(__STAMP__,'MPI_SIZE for shared array too large!')
+  CALL Abort(__STAMP__,'MPI_SIZE for shared array too large!')
   ! Avoid compiler warnings
   MPI_SIZE = -1
 END IF

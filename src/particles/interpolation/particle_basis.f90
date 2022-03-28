@@ -65,7 +65,7 @@ SUBROUTINE ComputeBernSteinCoeff(N_In,NChooseK)
 !===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals,                ONLY:abort
+USE MOD_Globals,                ONLY:Abort
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -103,7 +103,7 @@ SUBROUTINE BuildBezierVdm(N_In,xi_In,Vdm_Bezier,sVdm_Bezier)
 ! by a BLAS routine for better matrix conditioning
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals,                ONLY: abort
+USE MOD_Globals,                ONLY: Abort
 USE MOD_PreProc
 USE MOD_Particle_Surfaces_Vars, ONLY: arrayNchooseK,FacNchooseK,BezierElevation,ElevationMatrix
 ! IMPLICIT VARIABLE HANDLING
@@ -149,7 +149,7 @@ END DO !j
 
 ! 3.) build array with binomial coeffs (fractions) for elevation
 IF (N_In+BezierElevation.GE.171) &
-  CALL ABORT(__STAMP__,'Bezier elevation to polynomial degrees greater/equal 171 is forbiddon! exit.',171,REAL(N_In+BezierElevation))
+  CALL Abort(__STAMP__,'Bezier elevation to polynomial degrees greater/equal 171 is forbiddon! exit.',171,REAL(N_In+BezierElevation))
 
 ElevationMatrix(0                   ,0)    = 1.
 ElevationMatrix(N_In+BezierElevation,N_In) = 1.
@@ -166,7 +166,7 @@ DO i = 1,N_In+BezierElevation-1
   eps=ABS(SUM(ElevationMatrix(i,:))-1.0)
 
   IF (eps>1e-12) &
-    CALL ABORT(__STAMP__,'The line of the elevation matrix does not sum to unity! 1-1=',0,eps)
+    CALL Abort(__STAMP__,'The line of the elevation matrix does not sum to unity! 1-1=',0,eps)
 END DO
 
 dummy_vec=0.
@@ -177,17 +177,17 @@ sVdm_Bezier=Vdm_Bezier
 CALL DGETRF(N_In+1,N_In+1,sVdm_Bezier,N_In+1,IPIV,errorflag)
 
 IF (errorflag .NE. 0) &
-  CALL ABORT(__STAMP__,'LU factorisation of matrix crashed',999,999.)
+  CALL Abort(__STAMP__,'LU factorisation of matrix crashed',999,999.)
 
 CALL DGETRI(N_In+1,sVdm_Bezier,N_In+1,IPIV,dummy_vec,N_In+1,errorflag)
 
 IF (errorflag .NE. 0) &
-  CALL ABORT(__STAMP__,'Solver crashed',999,999.)
+  CALL Abort(__STAMP__,'Solver crashed',999,999.)
 
 dummy=SUM(ABS(MATMUL(sVdm_Bezier,Vdm_Bezier)))-REAL(N_In+1)
 
 IF(ABS(dummy).GT.1.E-13) &
-  CALL ABORT(__STAMP__,'problems in Bezier Vandermonde: check (Vdm_Bezier)^(-1)*Vdm_Bezier := I has a value of',999,dummy)
+  CALL Abort(__STAMP__,'problems in Bezier Vandermonde: check (Vdm_Bezier)^(-1)*Vdm_Bezier := I has a value of',999,dummy)
 
 END SUBROUTINE BuildBezierVdm
 
@@ -245,7 +245,7 @@ SUBROUTINE DeCasteljauInterpolation(N_In,xi_In,SideID,xPoint)
 ! Computes a point in a Bezier-Surface by using the DeCasteljau alogrithm
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals,                ONLY: abort
+USE MOD_Globals,                ONLY: Abort
 USE MOD_PreProc
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 ! IMPLICIT VARIABLE HANDLING
@@ -350,7 +350,7 @@ END DO
 CALL DGETRF(dim1, dim1, Ainv, dim1, IPIV, INFO)
 
 IF (INFO /= 0) &
-  CALL abort(__STAMP__,' Matrix is numerically singular!')
+  CALL Abort(__STAMP__,' Matrix is numerically singular!')
 
 ! DGETRI computes the inverse of a matrix using the LU factorization
 ! computed by DGETRF.
@@ -358,7 +358,7 @@ lwork = dim1*dim1
 CALL DGETRI(dim1, Ainv, dim1, IPIV, WORK, lwork , INFO)
 
 IF (INFO /= 0) &
-  CALL abort(__STAMP__,' Matrix inversion failed!')
+  CALL Abort(__STAMP__,' Matrix inversion failed!')
 
 END FUNCTION GetInverse
 
@@ -449,7 +449,7 @@ INTEGER(KIND=8)    :: FACTORIAL
 INTEGER(KIND=8)    :: I
 !===================================================================================================================================
 IF (N_in.LT.0) &
-  CALL abort(__STAMP__,'FACTORIAL of a negative integer number not allowed! ',999,REAL(N_in))
+  CALL Abort(__STAMP__,'FACTORIAL of a negative integer number not allowed! ',999,REAL(N_in))
 
 IF (N_in.EQ.0) THEN
    ! debug, should be one!
@@ -459,7 +459,7 @@ ELSE
 END IF
 
 IF (FACTORIAL.LT.0) &
-  CALL abort(__STAMP__,'FACTORIAL is negative. This is not allowed! ',999,REAL(FACTORIAL))
+  CALL Abort(__STAMP__,'FACTORIAL is negative. This is not allowed! ',999,REAL(FACTORIAL))
 
 END FUNCTION FACTORIAL
 
@@ -487,7 +487,7 @@ INTEGER         :: I
 !===================================================================================================================================
 
 IF (N_in.LT.0) &
-  CALL abort(__STAMP__,'FACTORIAL of a negative integer number not allowed! ',999,REAL(N_in))
+  CALL Abort(__STAMP__,'FACTORIAL of a negative integer number not allowed! ',999,REAL(N_in))
 
 FACTORIAL_REAL=1.
 
@@ -496,7 +496,7 @@ DO I = 2,N_in
 END DO
 
 IF(FACTORIAL_REAL.LT.0) &
-  CALL abort(__STAMP__,'FACTORIAL is negative. This is not allowed! ',999,FACTORIAL_REAL)
+  CALL Abort(__STAMP__,'FACTORIAL is negative. This is not allowed! ',999,FACTORIAL_REAL)
 
 END FUNCTION FACTORIAL_REAL
 

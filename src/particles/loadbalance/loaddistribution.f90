@@ -465,7 +465,7 @@ DO WHILE(.NOT.FoundDistribution)
   DO iProc = 0,nProcs-1
     ElemDistri(iProc) = offsetElemMPI(iProc+1)-offsetElemMPI(iProc)
     ! sanity check
-    IF(ElemDistri(iProc).LE.0) CALL abort(__STAMP__,' Process received zero elements during load distribution',iProc)
+    IF(ElemDistri(iProc).LE.0) CALL Abort(__STAMP__,' Process received zero elements during load distribution',iProc)
   END DO ! iPRoc
 
   ! Determine the remaining load on the last proc
@@ -717,9 +717,9 @@ CALL CalcDistriFromOffsets(nProcs,nGlobalElems,ElemGlobalTime,offsetElemMPI &
     ,ElemDistri,LoadDistri,MaxLoadIdx,MaxLoadVal,MinLoadIdx,MinLoadVal,MinLoadIdx_glob)
 
 #if CODE_ANALYZE
-SWRITE(*,*)'******** initial distri:',MaxLoadIdx,MinLoadIdx,MinLoadIdx_glob
+SWRITE(UNIT_stdOut,'(A,3(X,I0))') ' ******** initial distri:',MaxLoadIdx,MinLoadIdx,MinLoadIdx_glob
 DO iProc = 0,nProcs-1
-  SWRITE(*,*)'iProc',iProc,LoadDistri(iProc),ElemDistri(iProc)
+  SWRITE(UNIT_stdOut,'(A,I0,F12.6,I0)') ' iProc',iProc,LoadDistri(iProc),ElemDistri(iProc)
 END DO
 #endif /*CODE_ANALYZE*/
 
@@ -765,9 +765,9 @@ ELSE IF (MinLoadIdx_glob.LT.MaxLoadIdx) THEN
 END IF
 
 #if CODE_ANALYZE
-SWRITE(*,*) '******** adapted distri:',MaxLoadIdx,MinLoadIdx,MinLoadIdx_glob
+SWRITE(UNIT_stdOut,'(A,3(X,I0))') ' ******** adapted distri:',MaxLoadIdx,MinLoadIdx,MinLoadIdx_glob
 DO iProc = 0,nProcs-1
-  SWRITE(*,*)'iProc',iProc,LoadDistri(iProc),ElemDistri(iProc)
+  SWRITE(UNIT_stdOut,'(A,I0,F12.6,I0)') ' iProc',iProc,LoadDistri(iProc),ElemDistri(iProc)
 END DO
 #endif /*CODE_ANALYZE*/
 
@@ -799,7 +799,7 @@ DO WHILE (globalshift)
     startIdx = MaxLoadIdx+1
 
 #if CODE_ANALYZE
-    SWRITE(*,*)'numOfCalls,startIdx,nthMinLoad_Idx,MinLoadIdx',numOfCalls,startIdx,nthMinLoad_Idx,MinLoadIdx
+    SWRITE(UNIT_stdOut,'(A,(4X,I0))') ' numOfCalls,startIdx,nthMinLoad_Idx,MinLoadIdx',numOfCalls,startIdx,nthMinLoad_Idx,MinLoadIdx
 #endif /*CODE_ANALYZE*/
 
     !-- smooth towards respective minimum (but also allow further "left" minima as target and ultimatively take best one)
@@ -821,9 +821,9 @@ DO WHILE (globalshift)
         ,ElemDistri,LoadDistri,MaxLoadIdx,MaxLoadVal,MinLoadIdx,MinLoadVal,MinLoadIdx_glob)
 
 #if CODE_ANALYZE
-    SWRITE(*,*) '******** iDistriIter',iDistriIter,MaxLoadIdx,MinLoadIdx
+    SWRITE(UNIT_stdOut,'(A,3(X,I0))') ' ******** iDistriIter',iDistriIter,MaxLoadIdx,MinLoadIdx
     DO iProc = 0,nProcs-1
-      SWRITE(*,*)'iProc',iProc,LoadDistri(iProc),ElemDistri(iProc)
+      SWRITE(UNIT_stdOut,'(A,I0,F12.6,I0)') ' iProc',iProc,LoadDistri(iProc),ElemDistri(iProc)
     END DO
 #endif /*CODE_ANALYZE*/
 
@@ -840,7 +840,7 @@ DO WHILE (globalshift)
     ELSE IF (MaxLoadIdx.GE.MinLoadIdx) THEN
       FoundDistribution = .TRUE.
 #if CODE_ANALYZE
-      SWRITE(*,*) 'MaxLoadIdx.GE.MinLoadIdx...'
+      SWRITE(UNIT_stdOut,'(A)') 'MaxLoadIdx.GE.MinLoadIdx...'
 #endif /*CODE_ANALYZE*/
     END IF
     !-- save optimal distri
@@ -854,7 +854,7 @@ DO WHILE (globalshift)
   FoundDistribution = .FALSE. !caution: this flag is now used for identifying to-be shiftes config
 
 #if CODE_ANALYZE
-  SWRITE(*,*) '******** optIter',optIter
+  SWRITE(UNIT_stdOut,'(A,(X,I0)') ' ******** optIter',optIter
 #endif /*CODE_ANALYZE*/
 
   !-- check if shifts are applicable for further optimization (first try to shift optimum, then last iter of smoothing-loop)
@@ -872,7 +872,7 @@ DO WHILE (globalshift)
     lastopt = optIter
 
 #if CODE_ANALYZE
-    SWRITE(*,*) 'shifting all to the left for opt...'
+    SWRITE(UNIT_stdOut,'(A)') ' shifting all to the left for opt...'
 #endif /*CODE_ANALYZE*/
 
   !-- check if last iter of previous iteration needs shift
@@ -886,11 +886,11 @@ DO WHILE (globalshift)
       FoundDistribution = .TRUE.
 
 #if CODE_ANALYZE
-      SWRITE(*,*)'shifting all to the left for last iter...'
+      SWRITE(UNIT_stdOut,'(A)')' shifting all to the left for last iter...'
     ELSE IF (itershift.EQ.itershiftmax) THEN
-      SWRITE(*,*)'WARNING: max iternum reached: itershift'
+      SWRITE(UNIT_stdOut,'(A)')' WARNING: max iternum reached: itershift'
     ELSE IF (.NOT.exitoptimization) THEN
-      SWRITE(*,*)'exiting shift-iteration, since neither opt-distri nor last iter ended with max load at last proc...'
+      SWRITE(UNIT_stdOut,'(A)')' exiting shift-iteration, since neither opt-distri nor last iter ended with max load at last proc...'
 #endif /*CODE_ANALYZE*/
 
     END IF
@@ -925,7 +925,7 @@ DO WHILE (globalshift)
         ,ElemDistri,LoadDistri,MaxLoadIdx,MaxLoadVal,MinLoadIdx,MinLoadVal,MinLoadIdx_glob,numOfCalls,nthMinLoad_Idx)
 
 #if CODE_ANALYZE
-    SWRITE(*,*)'numOfCalls:',numOfCalls
+    SWRITE(UNIT_stdOut,'(A,(X,I0)')' numOfCalls:',numOfCalls
 #endif /*CODE_ANALYZE*/
 
     IF (numOfCalls.GT.0) THEN
@@ -938,7 +938,7 @@ DO WHILE (globalshift)
       globalshift   = .FALSE.
 
 #if CODE_ANALYZE
-      SWRITE(*,*) 'no valid shift left...'
+      SWRITE(UNIT_stdOut,'(A)') 'no valid shift left...'
 #endif /*CODE_ANALYZE*/
 
     END IF
@@ -952,9 +952,9 @@ DO WHILE (globalshift)
   END IF
 
 #if CODE_ANALYZE
-  SWRITE(*,*) '******** final, itershift',itershift,MaxLoadIdx,MinLoadIdx
+  SWRITE(UNIT_stdOut,'(A,3(X,I0))') ' ******** final, itershift',itershift,MaxLoadIdx,MinLoadIdx
   DO iProc = 0,nProcs-1
-    SWRITE(*,*)'iProc',iProc,LoadDistri(iProc),ElemDistri(iProc)
+    SWRITE(UNIT_stdOut,'(A,I0,F12.6,I0)') ' iProc',iProc,LoadDistri(iProc),ElemDistri(iProc)
   END DO
 #endif /*CODE_ANALYZE*/
 
@@ -1029,7 +1029,7 @@ DO iProc = 0,nProcs-1
 END DO
 
 #if CODE_ANALYZE
-SWRITE(*,*)'maxIdx:',MaxLoadIdx,'minIdx:',MinLoadIdx
+SWRITE(UNIT_stdOut,'(A,I0,A,I0)')' maxIdx: ',MaxLoadIdx,', minIdx: ',MinLoadIdx
 #endif /*CODE_ANALYZE*/
 
 IF (nth.GT.1) THEN
@@ -1050,11 +1050,11 @@ IF (nth.GT.1) THEN
   IF (counter.EQ.1 .OR. nthMinLoad_Idx.EQ.-1) THEN
     nth = 0
 #if CODE_ANALYZE
-    SWRITE(*,*) 'counter set to 0!'
+    SWRITE(UNIT_stdOut,'(A') ' counter set to 0!'
 #endif /*CODE_ANALYZE*/
   END IF
 ELSE IF (nth.EQ.1) THEN
-  IF (.NOT.PRESENT(nthMinLoad_Idx)) CALL abort(__STAMP__,'nthMinLoad_Idx not present!')
+  IF (.NOT.PRESENT(nthMinLoad_Idx)) CALL Abort(__STAMP__,'nthMinLoad_Idx not present!')
 
   nthMinLoad_Idx = MinLoadIdx
 END IF
@@ -1163,7 +1163,7 @@ END SUBROUTINE freeList
 !===================================================================================================================================
 SUBROUTINE WriteElemTimeStatistics(WriteHeader,time,iter)
 ! MODULES
-USE MOD_Globals          ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,abort,nProcessors,nProcessors
+USE MOD_Globals          ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,Abort,nProcessors,nProcessors
 USE MOD_Globals_Vars     ,ONLY: SimulationEfficiency,WallTime,InitializationWallTime,ReadMeshWallTime
 USE MOD_Globals_Vars     ,ONLY: DomainDecompositionWallTime,CommMeshReadinWallTime
 USE MOD_Analyze_Vars     ,ONLY: PID
@@ -1273,7 +1273,7 @@ memory=memory/1048576.
 !> create new file
 IF (WriteHeader) THEN
   IF(.NOT.PRESENT(iter)) &
-    CALL abort(__STAMP__,' WriteElemTimeStatistics: When creating ElemTimeStatistics.csv (WriteHeader=T) then supply [iter] variable')
+    CALL Abort(__STAMP__,' WriteElemTimeStatistics: When creating ElemTimeStatistics.csv (WriteHeader=T) then supply [iter] variable')
   IF(iter.GT.0)                             RETURN ! don't create new file if this is not the first iteration
   IF((DoRestart).AND.(FILEEXISTS(outfile))) RETURN ! don't create new file if this is a restart and the file already exists;
   !                                                ! assume continued simulation and old load balance data is still needed

@@ -95,7 +95,7 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)          :: ElemID                                 !< Global element index
 REAL,INTENT(IN)             :: x_in(3)                                !< position in physical space
-!LOGICAL,INTENT(IN),OPTIONAL :: DoReUseMap                             !< flag if start values for Newton elem mapping already exists
+! LOGICAL,INTENT(IN),OPTIONAL :: DoReUseMap                             !< flag if start values for Newton elem mapping already exists
 LOGICAL,INTENT(IN),OPTIONAL :: ForceMode                              !< flag for mode change in RefElemNewton
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -127,14 +127,14 @@ ELSE
   IF(NGeo.EQ.1)THEN
     CALL RefElemNewton(Xi,X_In,wBaryCL_NGeo,XiCL_NGeo,XCL_NGeo(:,:,:,:,ElemID),dXCL_NGeo(:,:,:,:,:,ElemID),NGeo,ElemID,Mode=iMode)
   ELSE
-    XCL_NGeo1(1:3,0,0,0) = XCL_NGeo(1:3, 0  , 0  , 0  ,ElemID)
-    XCL_NGeo1(1:3,1,0,0) = XCL_NGeo(1:3,NGeo, 0  , 0  ,ElemID)
-    XCL_NGeo1(1:3,0,1,0) = XCL_NGeo(1:3, 0  ,NGeo, 0  ,ElemID)
-    XCL_NGeo1(1:3,1,1,0) = XCL_NGeo(1:3,NGeo,NGeo, 0  ,ElemID)
-    XCL_NGeo1(1:3,0,0,1) = XCL_NGeo(1:3, 0  , 0  ,NGeo,ElemID)
-    XCL_NGeo1(1:3,1,0,1) = XCL_NGeo(1:3,NGeo, 0  ,NGeo,ElemID)
-    XCL_NGeo1(1:3,0,1,1) = XCL_NGeo(1:3, 0  ,NGeo,NGeo,ElemID)
-    XCL_NGeo1(1:3,1,1,1) = XCL_NGeo(1:3,NGeo,NGeo,NGeo,ElemID)
+    XCL_NGeo1 (1:3,    0,0,0) = XCL_NGeo (1:3,     0  , 0  , 0  ,ElemID)
+    XCL_NGeo1 (1:3,    1,0,0) = XCL_NGeo (1:3,    NGeo, 0  , 0  ,ElemID)
+    XCL_NGeo1 (1:3,    0,1,0) = XCL_NGeo (1:3,     0  ,NGeo, 0  ,ElemID)
+    XCL_NGeo1 (1:3,    1,1,0) = XCL_NGeo (1:3,    NGeo,NGeo, 0  ,ElemID)
+    XCL_NGeo1 (1:3,    0,0,1) = XCL_NGeo (1:3,     0  , 0  ,NGeo,ElemID)
+    XCL_NGeo1 (1:3,    1,0,1) = XCL_NGeo (1:3,    NGeo, 0  ,NGeo,ElemID)
+    XCL_NGeo1 (1:3,    0,1,1) = XCL_NGeo (1:3,     0  ,NGeo,NGeo,ElemID)
+    XCL_NGeo1 (1:3,    1,1,1) = XCL_NGeo (1:3,    NGeo,NGeo,NGeo,ElemID)
     ! fill dummy dXCL_NGeo1
     dXCL_NGeo1(1:3,1:3,0,0,0) = dXCL_NGeo(1:3,1:3, 0  , 0  , 0  ,ElemID)
     dXCL_NGeo1(1:3,1:3,1,0,0) = dXCL_NGeo(1:3,1:3,NGeo, 0  , 0  ,ElemID)
@@ -201,7 +201,6 @@ SUBROUTINE EvaluateFieldAtPhysPos(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID,Part
 !===================================================================================================================================
 !> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
 !> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
-!> 3) interpolate backgroundfield to position ( U_Out -> U_Out(x_in)+BG_field(x_in) )
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -312,7 +311,7 @@ END DO ! k=0,N_In
 END ASSOCIATE
 #endif
 
-! Convert to primitve variables
+! Convert to primitive variables
 IF (NVar_out.EQ.PP_nVarPrim) THEN
   CALL ConsToPrim(U_out,Utmp)
 ELSE
@@ -326,8 +325,7 @@ END SUBROUTINE EvaluateFieldAtPhysPos
 SUBROUTINE EvaluateField_FV(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID)
 !===================================================================================================================================
 !> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
-!> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
-!> 3) interpolate backgroundfield to position ( U_Out -> U_Out(x_in)+BG_field(x_in) )
+!> 2) interpolate FV solution to position (U_In -> U_Out(x_in))
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -359,8 +357,9 @@ INTEGER                   :: IJK(3)
 REAL                      :: distance_ref(3), distance(3)
 !===================================================================================================================================
 
-! If the element is curved, all Gauss points are required
-IF (TrackingMethod .NE. REFMAPPING) THEN
+! Calculate position in reference space when passed as physical positioCalculate position in reference space when passed as physical
+! position
+IF (TrackingMethod.NE.REFMAPPING) THEN
   CALL GetPositionInRefElem(x_in,xi,ElemID+offsetElem)
 ELSE
   xi = x_in
@@ -397,7 +396,6 @@ END SUBROUTINE EvaluateField_FV
 PPURE SUBROUTINE EvaluateFieldAtRefPos(Xi_in,NVar,N_in,U_In,NVar_out,U_Out)
 !===================================================================================================================================
 !> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
-!> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
 !===================================================================================================================================
 ! MODULES
 USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
@@ -438,7 +436,7 @@ DO k=0,N_in
   END DO ! j=0,N_In
 END DO ! k=0,N_In
 
-! Convert to primitve variables
+! Convert to primitive variables
 IF (NVar_out.EQ.PP_nVarPrim) THEN
   CALL ConsToPrim(U_out,Utmp)
 ELSE
@@ -452,7 +450,7 @@ SUBROUTINE EvaluateFieldAndGradAtPhysPos(x_in,NVar,N_in,U_In,NVar_out,U_Out,Elem
 !===================================================================================================================================
 !> 1) Get position within reference element (x_in -> xi=[-1,1]) by inverting the mapping
 !> 2) interpolate DG solution to position (U_In -> U_Out(x_in))
-!> 3) interpolate backgroundfield to position ( U_Out -> U_Out(x_in)+BG_field(x_in) )
+!> 3) interpolate DG gradient to position (U_In -> U_GradOut(x_in))
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -543,20 +541,20 @@ CALL LagrangeInterpolationPolys(xi(2),N_in,xGP,wBary,L_xi(2,:))
 CALL LagrangeInterpolationPolys(xi(3),N_in,xGP,wBary,L_xi(3,:))
 
 ! "more efficient" - Quote Thomas B.
-Utmp(:)       = 0.
-UGrad_Out(:,:)= 0.
+Utmp(:)        = 0.
+UGrad_Out(:,:) = 0.
 DO k=0,N_in
   DO j=0,N_in
-    L_eta_zeta=L_xi(2,j)*L_xi(3,k)
+    L_eta_zeta = L_xi(2,j)*L_xi(3,k)
     DO i=0,N_in
       Utmp                      = Utmp                      + U_IN(:,i,j,k)  * L_xi(1,i)*L_Eta_Zeta
 #if USE_EXTEND_RHS
-      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_dVELdt  ,1) = UGrad_out(RHS_dVELdt  ,1) + U_RHS(RHS_dVEL1dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_dVELdt  ,2) = UGrad_out(RHS_dVELdt  ,2) + U_RHS(RHS_dVEL2dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_dVELdt  ,3) = UGrad_out(RHS_dVELdt  ,3) + U_RHS(RHS_dVEL3dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV  ,1) = UGrad_out(RHS_GRADVELV  ,1) + gradUx(:             ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV  ,2) = UGrad_out(RHS_GRADVELV  ,2) + gradUy(:             ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV  ,3) = UGrad_out(RHS_GRADVELV  ,3) + gradUz(:             ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt    ,1) = UGrad_out(RHS_dVELdt    ,1) + U_RHS(RHS_dVEL1dt    ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt    ,2) = UGrad_out(RHS_dVELdt    ,2) + U_RHS(RHS_dVEL2dt    ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt    ,3) = UGrad_out(RHS_dVELdt    ,3) + U_RHS(RHS_dVEL3dt    ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
 #endif
 #if USE_FAXEN_CORR
       UGrad_out(RHS_LAPLACEVEL,1) = UGrad_out(RHS_LAPLACEVEL,1) + U_RHS(RHS_LAPLACEVEL1,i,j,k) * L_xi(1,i)*L_Eta_Zeta
@@ -580,10 +578,11 @@ END IF
 
 END SUBROUTINE EvaluateFieldAndGradAtPhysPos
 
+
 PPURE SUBROUTINE EvaluateFieldAndGradAtRefPos(Xi_in,NVar,N_in,U_In,NVar_out,U_Out,gradUx,gradUy,gradUz,U_RHS,UGrad_Out)
 !===================================================================================================================================
 !> 1) interpolate DG solution to position (U_In -> U_Out(xi_in))
-!> 2) interpolate backgroundfield to position ( U_Out -> U_Out(xi_in)+BG_field(xi_in) )
+!> 2) interpolate DG gradient to position (U_In -> U_GradOut(xi_in))
 !===================================================================================================================================
 ! MODULES
 USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
@@ -627,12 +626,12 @@ DO k=0,N_in
     DO i=0,N_in
       Utmp                      = Utmp                      + U_IN(:,i,j,k)  * L_xi(1,i)*L_Eta_Zeta
 #if USE_EXTEND_RHS
-      UGrad_out(RHS_GRADVELV,1) = UGrad_out(RHS_GRADVELV,1) + gradUx(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,2) = UGrad_out(RHS_GRADVELV,2) + gradUy(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_GRADVELV,3) = UGrad_out(RHS_GRADVELV,3) + gradUz(:         ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_dVELdt  ,1) = UGrad_out(RHS_dVELdt  ,1) + U_RHS(RHS_dVEL1dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_dVELdt  ,2) = UGrad_out(RHS_dVELdt  ,2) + U_RHS(RHS_dVEL2dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
-      UGrad_out(RHS_dVELdt  ,3) = UGrad_out(RHS_dVELdt  ,3) + U_RHS(RHS_dVEL3dt,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV  ,1) = UGrad_out(RHS_GRADVELV  ,1) + gradUx(:             ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV  ,2) = UGrad_out(RHS_GRADVELV  ,2) + gradUy(:             ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_GRADVELV  ,3) = UGrad_out(RHS_GRADVELV  ,3) + gradUz(:             ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt    ,1) = UGrad_out(RHS_dVELdt    ,1) + U_RHS(RHS_dVEL1dt    ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt    ,2) = UGrad_out(RHS_dVELdt    ,2) + U_RHS(RHS_dVEL2dt    ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
+      UGrad_out(RHS_dVELdt    ,3) = UGrad_out(RHS_dVELdt    ,3) + U_RHS(RHS_dVEL3dt    ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
 #endif
 #if USE_FAXEN_CORR
       UGrad_out(RHS_LAPLACEVEL,1) = UGrad_out(RHS_LAPLACEVEL,1) + U_RHS(RHS_LAPLACEVEL1,i,j,k) * L_xi(1,i)*L_Eta_Zeta
@@ -685,7 +684,7 @@ REAL                             :: Lag(1:3,0:N_In), F(1:3),Xi_Old(1:3)
 INTEGER                          :: NewTonIter,i,j,k
 REAL                             :: deltaXi(1:3),deltaXi2
 REAL                             :: Jac(1:3,1:3),sdetJac,sJac(1:3,1:3)
-REAL                             :: buff,buff2, Norm_F, Norm_F_old,lambda
+REAL                             :: buff,buff2,Norm_F,Norm_F_old,lambda
 INTEGER                          :: iArmijo
 !===================================================================================================================================
 
@@ -697,77 +696,78 @@ CALL LagrangeInterpolationPolys(Xi(3),N_In,XiCL_N_in,wBaryCL_N_in,Lag(3,:))
 F=-x_in ! xRp
 DO k=0,N_In
   DO j=0,N_In
-    buff=Lag(2,j)*Lag(3,k)
+    buff = Lag(2,j)*Lag(3,k)
     DO i=0,N_In
-      F=F+XCL_N_in(:,i,j,k)*Lag(1,i)*buff !Lag(2,j)*Lag(3,k)
+      F = F+XCL_N_in(:,i,j,k)*Lag(1,i)*buff !Lag(2,j)*Lag(3,k)
     END DO !l=0,N_In
   END DO !i=0,N_In
 END DO !j=0,N_In
 
 IF(ALL(ABS(F).LT.epsMach)) THEN
-  deltaXi2=0.
+  deltaXi2 = 0.
 ELSE
-  deltaXi2=1. !HUGE(1.0)
+  deltaXi2 = 1. !HUGE(1.0)
 END IF
 
-Norm_F=DOT_PRODUCT(F,F)
-Norm_F_old=Norm_F
-NewtonIter=0
+Norm_F     = DOT_PRODUCT(F,F)
+Norm_F_old = Norm_F
+NewtonIter = 0
 !abortCrit=ElemRadiusN_in(ElemID)*ElemRadiusN_in(ElemID)*RefMappingEps
-DO WHILE((deltaXi2.GT.RefMappingEps).AND.(NewtonIter.LT.100))
-  NewtonIter=NewtonIter+1
+DO WHILE(deltaXi2.GT.RefMappingEps .AND. NewtonIter.LT.100)
+  NewtonIter = NewtonIter+1
 
   ! caution, dXCL_NGeo is transposed of required matrix
-  Jac=0.
+  Jac = 0.
   DO k=0,N_In
     DO j=0,N_In
-      buff=Lag(2,j)*Lag(3,k)
+      buff = Lag(2,j)*Lag(3,k)
       DO i=0,N_In
-        buff2=Lag(1,i)*buff
-        Jac(1,1:3)=Jac(1,1:3)+dXCL_N_in(1:3,1,i,j,k)*buff2
-        Jac(2,1:3)=Jac(2,1:3)+dXCL_N_in(1:3,2,i,j,k)*buff2
-        Jac(3,1:3)=Jac(3,1:3)+dXCL_N_in(1:3,3,i,j,k)*buff2
+        buff2 = Lag(1,i)*buff
+        Jac(1,1:3) = Jac(1,1:3)+dXCL_N_in(1:3,1,i,j,k)*buff2
+        Jac(2,1:3) = Jac(2,1:3)+dXCL_N_in(1:3,2,i,j,k)*buff2
+        Jac(3,1:3) = Jac(3,1:3)+dXCL_N_in(1:3,3,i,j,k)*buff2
       END DO !i=0,N_In
     END DO !j=0,N_In
   END DO !k=0,N_In
 
   ! Compute inverse of Jacobian
-  sdetJac=getDet(Jac)
+  sdetJac = getDet(Jac)
   IF (sdetJac.GT.0.) THEN
-   sdetJac=1./sdetJac
+   sdetJac = 1./sdetJac
   ELSE !shit
    ! Newton has not converged !?!?
    IF (Mode.EQ.1) THEN
-     IPWRITE(UNIT_stdOut,*) ' Particle not inside of element!'
-     IPWRITE(UNIT_stdOut,*) ' sdetJac     ', sdetJac
-     IPWRITE(UNIT_stdOut,*) ' Newton-Iter ', NewtonIter
-     IPWRITE(UNIT_stdOut,*) ' xi          ', xi(1:3)
-     IPWRITE(UNIT_stdOut,*) ' PartPos     ', X_in
-     IPWRITE(UNIT_stdOut,*) ' ElemID      ', ElemID
-     CALL ABORT(__STAMP__, 'Newton in FindXiForPartPos singular. iter,sdetJac',NewtonIter,sDetJac)
+     IPWRITE(UNIT_stdOut,'(I0,A)')        ' Particle not inside of element!'
+     IPWRITE(UNIT_stdOut,'(I0,A,F12.6)')  ' sdetJac     ', sdetJac
+     IPWRITE(UNIT_stdOut,'(I0,A,I0)')     ' Newton-Iter ', NewtonIter
+     IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') ' xi          ', xi(1:3)
+     IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') ' PartPos     ', X_in
+     IPWRITE(UNIT_stdOut,'(I0,A,I0)')     ' ElemID      ', ElemID
+     CALL Abort(__STAMP__, 'Newton in FindXiForPartPos singular. iter,sdetJac',NewtonIter,sDetJac)
    ELSE
-     Xi(1)=HUGE(1.0)
-     Xi(2)=Xi(1)
-     Xi(3)=Xi(1)
+     Xi(1) = HUGE(1.0)
+     Xi(2) = Xi(1)
+     Xi(3) = Xi(1)
      RETURN
    END IF
   END IF
-  sJac=getInv(Jac,sdetJac)
+  sJac = getInv(Jac,sdetJac)
 
   ! Iterate Xi using Newton step
   ! Use FAIL
   !Xi = Xi - MATMUL(sJac,F)
 
   ! Armijo step size control
-  deltaXi=MATMUL(sJac,F)
-  deltaXi2=DOT_PRODUCT(deltaXi,deltaXi)
-  Xi_Old=Xi
+  deltaXi  = MATMUL(sJac,F)
+  deltaXi2 = DOT_PRODUCT(deltaXi,deltaXi)
+  Xi_Old   = Xi
 
-  Norm_F_old=Norm_F
-  Norm_F=Norm_F*2.
-  lambda=1.0
-  iArmijo=1
-  DO WHILE(Norm_F.GT.Norm_F_old*(1.-0.0001*lambda) .AND.iArmijo.LE.8)
+  Norm_F_old = Norm_F
+  Norm_F     = Norm_F*2.
+  lambda     = 1.
+  iArmijo    = 1
+
+  DO WHILE(Norm_F.GT.Norm_F_old*(1.-0.0001*lambda) .AND. iArmijo.LE.8)
 
     Xi = Xi_Old - lambda*deltaXI!MATMUL(sJac,F)
 
@@ -776,48 +776,50 @@ DO WHILE((deltaXi2.GT.RefMappingEps).AND.(NewtonIter.LT.100))
     CALL LagrangeInterpolationPolys(Xi(2),N_In,XiCL_N_in,wBaryCL_N_in,Lag(2,:))
     CALL LagrangeInterpolationPolys(Xi(3),N_In,XiCL_N_in,wBaryCL_N_in,Lag(3,:))
     ! F(xi) = x(xi) - x_in
-    F=-x_in ! xRp
+    F = -x_in ! xRp
     DO k=0,N_In
       DO j=0,N_In
-        buff=Lag(2,j)*Lag(3,k)
+        buff = Lag(2,j)*Lag(3,k)
         DO i=0,N_In
-          buff2=Lag(1,i)*buff
-          F=F+XCL_N_in(:,i,j,k)*buff2
+          buff2 = Lag(1,i)*buff
+          F     = F+XCL_N_in(:,i,j,k)*buff2
         END DO !l=0,N_In
       END DO !i=0,N_In
     END DO !j=0,N_In
-    lambda=0.2*lambda
-    iArmijo=iArmijo+1
-    Norm_F=DOT_PRODUCT(F,F)
+    lambda  = 0.2*lambda
+    iArmijo = iArmijo+1
+    Norm_F  = DOT_PRODUCT(F,F)
   END DO ! Armijo iteration
 
   ! check xi value for plausibility
 !  IF (ANY(ABS(Xi).GT.1.5)) THEN
-  IF (ANY(ABS(Xi).GT.1.5).AND.NewtonIter.GT.2) THEN
-    IF (Mode.EQ.1) THEN
-      IPWRITE(UNIT_stdOut,*) ' Particle not inside of element, strict mode enabled!'
-      IPWRITE(UNIT_stdOut,*) ' Newton-Iter:   ', NewtonIter
-      IPWRITE(UNIT_stdOut,*) ' xi:            ', xi(1:3)
-      IPWRITE(UNIT_stdOut,*) ' PartPos (phys):', X_in
-      IF (PRESENT(PartID)) THEN
-        IPWRITE(UNIT_stdOut,*) ' LastPos (phys):', LastPartPos(:,PartID)
-        IPWRITE(UNIT_stdOut,*) ' PartVel:       ', PartState(4:6,PartID),'abs:',SQRT(SUM(PartState(4:6,PartID)**2))
-        IPWRITE(UNIT_stdOut,*) ' ElemID:        ', ElemID
-        IPWRITE(UNIT_stdOut,*) ' PartID:        ', PartID
-        CALL abort(__STAMP__,'Particle not inside of Element, ElemID,',ElemID)
-      END IF
-    ELSEIF (Mode.EQ.3) THEN
-      IPWRITE(UNIT_stdOut,*) 'WARNING: Particle not inside of element! Particle ', PartID, 'in Elem ', ElemID, 'will be deleted'
-      IPWRITE(UNIT_stdOut,*) ' xi:            ', xi(1:3)
-      IPWRITE(UNIT_stdOut,*) ' PartPos (phys):', X_in
-      IPWRITE(UNIT_stdOut,*) ' LastPos (phys):', LastPartPos(:,PartID)
-      IPWRITE(UNIT_stdOut,*) ' PartVel:       ', PartState(4:6,PartID),'abs:',SQRT(SUM(PartState(4:6,PartID)**2))
-      PDM%ParticleInside(PartID) = .FALSE.
-      IF(CountNbOfLostParts) NbrOfLostParticles=NbrOfLostParticles+1
-      EXIT
-    ELSE
-      EXIT
-    END IF
+  IF (ANY(ABS(Xi).GT.1.5) .AND. NewtonIter.GT.2) THEN
+    SELECT CASE(Mode)
+      CASE(1)
+        IPWRITE(UNIT_stdOut,'(I0,A)')        'ERROR: Particle not inside of element, strict mode enabled!'
+        IPWRITE(UNIT_stdOut,'(I0,A,I0)')     ' Newton-Iter:   ', NewtonIter
+        IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') ' xi:            ', xi(1:3)
+        IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') ' PartPos (phys):', X_in
+        IF (PRESENT(PartID)) THEN
+          IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' LastPos (phys):', LastPartPos(:,PartID)
+          IPWRITE(UNIT_stdOut,'(I0,A,3F12.6,A,F12.6)') ' PartVel:       ', PartState(4:6,PartID),'abs:',VECNORM(PartState(4:6,PartID)**2)
+          IPWRITE(UNIT_stdOut,'(I0,A,I0)')             ' PartID:        ', PartID
+        END IF
+        CALL Abort(__STAMP__,'Particle not inside of Element, ElemID,',ElemID)
+
+      CASE(3)
+        IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A)')      'WARNING: Particle not inside of element! Particle ',PartID,' in Elem ',ElemID,' will be deleted'
+        IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' xi:            ', xi(1:3)
+        IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' PartPos (phys):', X_in
+        IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' LastPos (phys):', LastPartPos(:,PartID)
+        IPWRITE(UNIT_stdOut,'(I0,A,3F12.6,A,F12.6)') ' PartVel:       ', PartState(4:6,PartID),'abs:',VECNORM(PartState(4:6,PartID)**2)
+        PDM%ParticleInside(PartID) = .FALSE.
+        IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles+1
+        EXIT
+
+      CASE DEFAULT
+        EXIT
+    END SELECT
   END IF
 
 END DO !newton
@@ -917,9 +919,10 @@ RefMappingGuessLoc = RefMappingGuess
 
 SELECT CASE(RefMappingGuessLoc)
 
+  ! Linear interpolation
   CASE(1)
     CNElemID = GetCNElemID(ElemID)
-    Ptild = X_in - ElemBaryNGeo(:,CNElemID)
+    Ptild    = X_in - ElemBaryNGeo(:,CNElemID)
     ! plus coord system (1-3) and minus coord system (4-6)
     DO iDir = 1,6
       XiLinear(iDir) = DOT_PRODUCT(Ptild,XiEtaZetaBasis(:,iDir,CNElemID))*slenXiEtaZetaBasis(iDir,CNElemID)
@@ -931,10 +934,11 @@ SELECT CASE(RefMappingGuessLoc)
     ! limit xi to [-1,1]
     IF(MAXVAL(ABS(Xi)).GT.epsOne) Xi = MAX(MIN(1.0d0,Xi),-1.0d0)
 
+  ! Compute distance on Gauss Points
   CASE(2)
-    ! compute distance on Gauss Points
     Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID)),(x_in(:)-Elem_xGP_Shared(:,0,0,0,ElemID))))
-    Xi(:) = (/xGP(0),xGP(0),xGP(0)/) ! start value
+    Xi(:)       = (/xGP(0),xGP(0),xGP(0)/) ! start value
+
     DO i = 0,PP_N; DO j = 0,PP_N; DO k = 0,PP_N
       dX = ABS(X_in(1) - Elem_xGP_Shared(1,i,j,k,ElemID))
       IF(dX.GT.Winner_Dist) CYCLE
@@ -949,10 +953,11 @@ SELECT CASE(RefMappingGuessLoc)
       END IF
     END DO; END DO; END DO
 
+  ! Compute distance on XCL Points
   CASE(3)
-    ! compute distance on XCL Points
     Winner_Dist = SQRT(DOT_PRODUCT((x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID)),(x_in(:)-XCL_NGeo_Shared(:,0,0,0,ElemID))))
-    Xi(:) = (/XiCL_NGeo(0),XiCL_NGeo(0),XiCL_NGeo(0)/) ! start value
+    Xi(:)       = (/XiCL_NGeo(0),XiCL_NGeo(0),XiCL_NGeo(0)/) ! start value
+
     DO i = 0,NGeo; DO j = 0,NGeo; DO k = 0,NGeo
       dX = ABS(X_in(1) - XCL_NGeo_Shared(1,i,j,k,ElemID))
       IF (dX.GT.Winner_Dist) CYCLE
@@ -969,7 +974,7 @@ SELECT CASE(RefMappingGuessLoc)
 
   CASE(4)
     ! trivial guess
-    xi=0.
+    xi = 0.
 END SELECT
 
 END SUBROUTINE GetRefNewtonStartValue

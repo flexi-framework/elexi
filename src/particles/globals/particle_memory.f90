@@ -125,7 +125,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 !==================================================================================================================================
 
 ! Check if array is already allocated
-IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
@@ -139,7 +139,7 @@ IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
   ALLOCATE(Array(nVal(1)),STAT=ALLOCSTAT)
   IF (PRESENT(STAT)) STAT=ALLOCSTAT
 ELSE
-  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+  CALL Abort(__STAMP__,'Trying to allocate array larger than available memory!')
 END IF
 
 END ASSOCIATE
@@ -175,7 +175,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 !==================================================================================================================================
 
 ! Check if array is already allocated
-IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
@@ -189,7 +189,7 @@ IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
   ALLOCATE(Array(nVal(1)),STAT=ALLOCSTAT)
   IF (PRESENT(STAT)) STAT=ALLOCSTAT
 ELSE
-  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+  CALL Abort(__STAMP__,'Trying to allocate array larger than available memory!')
 END IF
 
 END ASSOCIATE
@@ -225,7 +225,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 !==================================================================================================================================
 
 ! Check if array is already allocated
-IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
@@ -239,7 +239,7 @@ IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
   ALLOCATE(Array(nVal(1),nVal(2)),STAT=ALLOCSTAT)
   IF (PRESENT(STAT)) STAT=ALLOCSTAT
 ELSE
-  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+  CALL Abort(__STAMP__,'Trying to allocate array larger than available memory!')
 END IF
 
 END ASSOCIATE
@@ -275,7 +275,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 !==================================================================================================================================
 
 ! Check if array is already allocated
-IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
@@ -289,7 +289,7 @@ IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
   ALLOCATE(Array(nVal(1)),STAT=ALLOCSTAT)
   IF (PRESENT(STAT)) STAT=ALLOCSTAT
 ELSE
-  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+  CALL Abort(__STAMP__,'Trying to allocate array larger than available memory!')
 END IF
 
 END ASSOCIATE
@@ -325,7 +325,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 !==================================================================================================================================
 
 ! Check if array is already allocated
-IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
@@ -339,7 +339,7 @@ IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
   ALLOCATE(Array(nVal(1),nVal(2)),STAT=ALLOCSTAT)
   IF (PRESENT(STAT)) STAT=ALLOCSTAT
 ELSE
-  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+  CALL Abort(__STAMP__,'Trying to allocate array larger than available memory!')
 END IF
 
 END ASSOCIATE
@@ -375,7 +375,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 !==================================================================================================================================
 
 ! Check if array is already allocated
-IF (ALLOCATED(ARRAY)) CALL ABORT(__STAMP__,'Trying to allocate already allocated array!')
+IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
@@ -389,7 +389,7 @@ IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
   ALLOCATE(Array(nVal(1),nVal(2),nVal(3)),STAT=ALLOCSTAT)
   IF (PRESENT(STAT)) STAT=ALLOCSTAT
 ELSE
-  CALL ABORT(__STAMP__,'Trying to allocate array larger than available memory!')
+  CALL Abort(__STAMP__,'Trying to allocate array larger than available memory!')
 END IF
 
 END ASSOCIATE

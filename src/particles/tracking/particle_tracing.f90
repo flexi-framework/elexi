@@ -168,7 +168,7 @@ DO iPart = 1,PDM%ParticleVecLength
         IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' x', GEO%xminglob, LastPartPos(1,iPart), GEO%xmaxglob
         IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' y', GEO%yminglob, LastPartPos(2,iPart), GEO%ymaxglob
         IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)') ' z', GEO%zminglob, LastPartPos(3,iPart), GEO%zmaxglob
-        CALL ABORT(__STAMP__,' LastPartPos outside of mesh. iPart=, currentStage',iPart,REAL(currentStage))
+        CALL Abort(__STAMP__,' LastPartPos outside of mesh. iPart=, currentStage',iPart,REAL(currentStage))
       END IF
     END IF
     ! caution: reuse of variable, foundHit=TRUE == inside
@@ -191,7 +191,7 @@ DO iPart = 1,PDM%ParticleVecLength
       IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' Velocity:          ', PartState(4:6,iPart)
       IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' PartTrajectory:    ', PartState(1:3,iPart) - LastPartPos(1:3,iPart)
       IPWRITE(UNIT_stdOut,'(I0,A,ES25.14E3)')       ' lengthPT:          ', SQRT(DOT_PRODUCT(PartTrajectory,PartTrajectory))
-      CALL ABORT(__STAMP__,'ERROR: Lastpartpos in wrong element. PartID:',iPart)
+      CALL Abort(__STAMP__,'ERROR: Lastpartpos in wrong element. PartID:',iPart)
     END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
@@ -326,7 +326,7 @@ DO iPart = 1,PDM%ParticleVecLength
               CALL ComputeCurvedIntersection(       foundHit,PartTrajectory,lengthPartTrajectory,locAlpha,xi,eta,iPart,flip,SideID &
                                                                                             ,isCriticalParallelInFace)
             CASE DEFAULT
-              CALL abort(__STAMP__,' Missing required side-data. Please increase halo region. ',SideID)
+              CALL Abort(__STAMP__,' Missing required side-data. Please increase halo region. ',SideID)
           END SELECT
 
 #if CODE_ANALYZE
@@ -616,7 +616,7 @@ DO iPart=1,PDM%ParticleVecLength
       IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)')      ' x', GEO%xminglob, PartState(1,iPart), GEO%xmaxglob
       IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)')      ' y', GEO%yminglob, PartState(2,iPart), GEO%ymaxglob
       IPWRITE(UNIT_stdOut,'(I0,A2,1X,E27.16,1X,E27.16,1X,E27.16)')      ' z', GEO%zminglob, PartState(3,iPart), GEO%zmaxglob
-      CALL ABORT(__STAMP__,' PartPos outside of mesh AFTER tracking. iPart= ,currentStage= ',iPart,REAL(currentStage))
+      CALL Abort(__STAMP__,' PartPos outside of mesh AFTER tracking. iPart= ,currentStage= ',iPart,REAL(currentStage))
     END IF
 
     ! caution: reuse of variable, foundHit=TRUE == inside
@@ -637,7 +637,7 @@ DO iPart=1,PDM%ParticleVecLength
      IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' PartRefPos:        ', RefPos(1:3)
      IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.14E3))') ' PartTrajectory:    ', PartTrajectory
      IPWRITE(UNIT_stdOut,'(I0,A,ES25.14E3)')      ' lengthPT:           ', lengthPartTrajectory
-     CALL ABORT(__STAMP__,'iPart=. ',iPart)
+     CALL Abort(__STAMP__,'iPart=. ',iPart)
      END IF
   END IF ! Part inside
 END  DO ! iPart=1,PDM%ParticleVecLength
@@ -820,7 +820,7 @@ ELSE
   IF (DOT_PRODUCT(v2,n_loc).LT.0) THEN
     IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A,I0)') ' Obtained wrong side orientation from flip. SideID:',SideID,'flip:',flip,'PartID:',PartID
     IPWRITE(UNIT_stdOut,'(I0,A,I0,A,3F12.6)')  ' n_loc (flip)', n_loc,'n_loc (estimated):',v2
-    CALL ABORT(__STAMP__,'SideID',SideID)
+    CALL Abort(__STAMP__,'SideID',SideID)
   END IF
 #endif /* CODE_ANALYZE */
 

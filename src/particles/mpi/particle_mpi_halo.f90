@@ -201,7 +201,7 @@ DO iElem = firstElem,lastElem
 END DO
 
 IF (nComputeNodeProcessors.GT.1.AND.nExchangeSides.EQ.0) &
-  CALL ABORT(__STAMP__,'Found no side connectivity between processor domains')
+  CALL Abort(__STAMP__,'Found no side connectivity between processor domains')
 
 !> Build mapping for all MPI sides on current proc
 ALLOCATE(ExchangeSides(1:nExchangeSides))
@@ -345,12 +345,12 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
 !    ! Sanity checks. Elems in halo region must have ELEM_HALOFLAG=2 and the proc must not be flagged yet
 !    IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).NE.2) THEN
 !      IPWRITE(UNIT_stdOut,*) 'Element ID:',ElemID,'Halo Flag: ',ElemInfo_Shared(ELEM_HALOFLAG,ElemID)
-!      CALL ABORT(__STAMP__,  'Element found in range of halo elements while not flagged as such!')
+!      CALL Abort(__STAMP__,  'Element found in range of halo elements while not flagged as such!')
 !    END IF
 !
 !    IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc).EQ.1) THEN
 !      IPWRITE(UNIT_stdOut,*) 'Element ID:',ElemID,'Halo Proc: ',HaloProc
-!      CALL ABORT(__STAMP__, 'Proc claimed to have elements both on compute node and in halo region!')
+!      CALL Abort(__STAMP__, 'Proc claimed to have elements both on compute node and in halo region!')
 !    END IF
 !#endif
 
@@ -547,7 +547,7 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
           ! Do nothing
 
         CASE DEFAULT
-          CALL ABORT(__STAMP__,'Invalid number of periodic vectors in particle_mpi_halo.f90')
+          CALL Abort(__STAMP__,'Invalid number of periodic vectors in particle_mpi_halo.f90')
 
       END SELECT
 
@@ -583,9 +583,9 @@ DO iProc = 0,nProcessors_Global-1
   IF (iProc.EQ.myRank) CYCLE
 
   CALL MPI_WAIT(RecvRequest(iProc),MPIStatus,IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO
 
 ! Append previously not found procs to list of exchange processors
@@ -612,7 +612,7 @@ CALL MPI_REDUCE(nNonSymmetricExchangeProcs,nNonSymmetricExchangeProcsGlob,1,MPI_
 IF ( MPIRoot .AND. nNonSymmetricExchangeProcsGlob.GT.0) THEN
   SWRITE(UNIT_stdOut,'(A,I0,A)') ' | Found ',nNonSymmetricExchangeProcsGlob, &
                                  ' previously missing non-symmetric particle exchange procs'
-  IF(CheckExchangeProcs) CALL abort(__STAMP__,&
+  IF(CheckExchangeProcs) CALL Abort(__STAMP__,&
     ' Non-symmetric particle exchange procs > 0. This check is optional. You can disable it via CheckExchangeProcs = F')
 END IF
 

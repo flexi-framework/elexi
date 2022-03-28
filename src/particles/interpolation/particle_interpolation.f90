@@ -137,7 +137,7 @@ SDEALLOCATE(TurbFieldAtParticle)
 ! Allocate array for TKE,epsilson
 ALLOCATE(TurbFieldAtParticle(1:nVarTurb,1:PDM%maxParticleNumber), STAT=ALLOCSTAT)
 #endif
-IF (ALLOCSTAT.NE.0) CALL abort(__STAMP__,'ERROR in Part_interpolation.f90: Cannot allocate FieldAtParticle array!',ALLOCSTAT)
+IF (ALLOCSTAT.NE.0) CALL Abort(__STAMP__,'ERROR in Part_interpolation.f90: Cannot allocate FieldAtParticle array!',ALLOCSTAT)
 
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 SDEALLOCATE(GradAtParticle)
@@ -411,7 +411,7 @@ IF (FV_Elems(ElemID-offsetElem).EQ.1) THEN ! FV Element
   IF (TrackingMethod.EQ.REFMAPPING) THEN
     CALL EvaluateField_FV(PartPosRef(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID-offsetElem)
   ELSE
-    CALL EvaluateField_FV(PartState (1:3,PartID) ,nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID-offsetElem)
+    CALL EvaluateField_FV(PartState (1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID-offsetElem)
   END IF
 ELSE
 #endif /*FV_ENABLED*/

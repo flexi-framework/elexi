@@ -243,7 +243,7 @@ CASE(RHS_SGS1)
 !===================================================================================================================================
 ! Calculation according to Stokes; SGS model provides full fluid velocity seen, see Jean-Pierre Minier & Eric Peirano [2001]
 !===================================================================================================================================
-IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Tracking of inertial particles requires mu to be set!')
+IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL Abort(__STAMP__,'Tracking of inertial particles requires mu to be set!')
 
 ! In Minier case, TurbPartState it's the FULL  fluid velocity
 IF(ALLOCATED(TurbPartState)) THEN
@@ -269,7 +269,7 @@ CASE(RHS_SGS2)
 !===================================================================================================================================
 ! Calculation according to Stokes; SGS force is added to RHS
 !===================================================================================================================================
-IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Tracking of inertial particles requires mu to be set!')
+IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL Abort(__STAMP__,'Tracking of inertial particles requires mu to be set!')
 
 udiff(1:3) = FieldAtParticle(VELV) - PartState(PART_VELV,PartID)
 #if USE_FAXEN_CORR
@@ -293,7 +293,7 @@ CASE(RHS_INERTIA)
 !===================================================================================================================================
 ! Calculation according to Stokes
 !===================================================================================================================================
-IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL ABORT(__STAMP__,'Tracking of inertial particles requires mu to be set!')
+IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL Abort(__STAMP__,'Tracking of inertial particles requires mu to be set!')
 
 ! Assume spherical particles for now
 IF(ALLOCATED(TurbPartState)) THEN
@@ -318,7 +318,7 @@ Fdm      = udiff * staup * f
 IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 
 CASE DEFAULT
-  CALL ABORT(__STAMP__, 'No valid RHS method given. Species',IntInfo=PartSpecies(PartID))
+  CALL Abort(__STAMP__, 'No valid RHS method given. Species',IntInfo=PartSpecies(PartID))
 
 END SELECT
 

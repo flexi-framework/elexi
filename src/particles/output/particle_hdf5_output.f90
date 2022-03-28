@@ -556,7 +556,7 @@ END SUBROUTINE GetOffsetAndGlobalNumberOfParts
 !  e=>e%next
 !END DO
 !
-!IF(nVar.NE.1) CALL ABORT(__STAMP__,'WriteElemDataToSeparateContainer: Array not found in ElemData = '//TRIM(ElemDataName))
+!IF(nVar.NE.1) CALL Abort(__STAMP__,'WriteElemDataToSeparateContainer: Array not found in ElemData = '//TRIM(ElemDataName))
 !
 !! Check if ElemTime is all zeros and if this is a restart (save the old values)
 !IF((MAXVAL(ElemData).LE.0.0)          .AND.& ! Restart

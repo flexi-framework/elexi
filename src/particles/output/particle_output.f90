@@ -63,7 +63,7 @@ CONTAINS
 !! LOCAL VARIABLES
 !!===================================================================================================================================
 !IF (ParticleOutputInitIsDone) &
-!  CALL ABORT(__STAMP__,'InitOutput not ready to be called or already called.',999,999.)
+!  CALL Abort(__STAMP__,'InitOutput not ready to be called or already called.',999,999.)
 !
 !SWRITE(UNIT_stdOut,'(132("-"))')
 !SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE OUTPUT...'

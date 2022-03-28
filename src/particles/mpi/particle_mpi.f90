@@ -112,7 +112,7 @@ IMPLICIT NONE
 
 !SWRITE(UNIT_stdOut,'(132("-"))')
 !SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MPI... '
-IF(ParticleMPIInitIsDone) CALL ABORT(__STAMP__,' Particle MPI already initialized!')
+IF(ParticleMPIInitIsDone) CALL Abort(__STAMP__,' Particle MPI already initialized!')
 
 #if USE_MPI
 ! Get flag for ignoring the abort if the number of global exchange procs is non-symmetric
@@ -218,7 +218,7 @@ ALLOCATE( PartMPIExchange%nPartsSend(2,0:nExchangeProcessors-1)  &
         , STAT=ALLOCSTAT                                       )
 
 IF (ALLOCSTAT.NE.0) &
-  CALL ABORT(__STAMP__,' Cannot allocate Particle-MPI-Variables! ALLOCSTAT',ALLOCSTAT)
+  CALL Abort(__STAMP__,' Cannot allocate Particle-MPI-Variables! ALLOCSTAT',ALLOCSTAT)
 
 PartMPIExchange%nPartsSend=0
 PartMPIExchange%nPartsRecv=0
@@ -259,7 +259,7 @@ DO iProc=0,nExchangeProcessors-1
                 , PartMPI%COMM                                               &
                 , PartMPIExchange%RecvRequest(1,iProc)                       &
                 , IERROR )
-! IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__&
+! IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__&
 !         ,' MPI Communication error', IERROR)
 END DO ! iProc
 
@@ -333,7 +333,7 @@ DO iProc=0,nExchangeProcessors-1
                 , PartMPI%COMM                                               &
                 , PartMPIExchange%SendRequest(1,iProc)                       &
                 , IERROR )
-  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO ! iProc
 
 END SUBROUTINE SendNbOfParticles
@@ -404,7 +404,7 @@ DO iProc=0,nExchangeProcessors-1
   MessageSize=nSendParticles*PartCommSize
   ALLOCATE(PartSendBuf(iProc)%content(MessageSize),STAT=ALLOCSTAT)
   IF (ALLOCSTAT.NE.0) &
-    CALL ABORT(__STAMP__,'  Cannot allocate PartSendBuf, local ProcId, ALLOCSTAT',iProc,REAL(ALLOCSTAT))
+    CALL Abort(__STAMP__,'  Cannot allocate PartSendBuf, local ProcId, ALLOCSTAT',iProc,REAL(ALLOCSTAT))
 
   ! fill message
   !--- Loop over all particles
@@ -477,7 +477,7 @@ DO iProc=0,nExchangeProcessors-1
       IF(MOD(jPos,PartCommSize).NE.0) THEN
         IPWRITE(UNIT_stdOut,'(I0,A,I0)')  'PartCommSize',PartCommSize
         IPWRITE(UNIT_stdOut,'(I0,A,I0)')  'jPos',jPos
-        CALL ABORT( __STAMP__,' Particle-wrong sending message size!')
+        CALL Abort( __STAMP__,' Particle-wrong sending message size!')
       END IF
 
       ! increment message position to next element, PartCommSize.EQ.jPos
@@ -495,9 +495,9 @@ END DO ! iProc
 !--- particles to communicate
 DO iProc=0,nExchangeProcessors-1
   CALL MPI_WAIT(PartMPIExchange%SendRequest(1,iProc),MPIStatus,IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   CALL MPI_WAIT(PartMPIExchange%RecvRequest(1,iProc),recv_status_list(:,iProc),IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO ! iProc
 
 ! total number of received particles
@@ -533,7 +533,7 @@ DO iProc=0,nExchangeProcessors-1
   IF (ALLOCSTAT.NE.0) THEN
     IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'sum of total received particles            ', SUM(PartMPIExchange%nPartsRecv(1,:))
     IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'sum of total received deposition particles ', SUM(PartMPIExchange%nPartsRecv(2,:))
-    CALL ABORT(__STAMP__,'  Cannot allocate PartRecvBuf, local source ProcId, Allocstat',iProc,REAL(ALLOCSTAT))
+    CALL Abort(__STAMP__,'  Cannot allocate PartRecvBuf, local source ProcId, Allocstat',iProc,REAL(ALLOCSTAT))
   END IF
 
   ! start asynchronous MPI recv for each proc
@@ -545,7 +545,7 @@ DO iProc=0,nExchangeProcessors-1
                 , PartMPI%COMM                                               &
                 , PartMPIExchange%RecvRequest(2,iProc)                       &
                 , IERROR )
-  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO ! iProc
 
 ! 6) Send Particles
@@ -567,7 +567,7 @@ DO iProc=0,nExchangeProcessors-1
                 , PartMPI%COMM                                               &
                 , PartMPIExchange%SendRequest(2,iProc)                       &
                 , IERROR )
-  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 
   ! Deallocate sendBuffer after send was successful, see MPIParticleRecv
 END DO ! iProc
@@ -625,7 +625,7 @@ DO iProc=0,nExchangeProcessors-1
   IF(SUM(PartMPIExchange%nPartsSend(:,iProc)).EQ.0) CYCLE
 
   CALL MPI_WAIT(PartMPIExchange%SendRequest(2,iProc),MPIStatus,IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL ABORT(__STAMP__,' MPI Communication error', IERROR)
+  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO ! iProc
 
 
@@ -650,7 +650,7 @@ DO iProc=0,nExchangeProcessors-1
     ! particles get a local ID on each proc, therefore put it at the next free position
     PartID = PDM%nextFreePosition(nRecv+PDM%CurrentNextFreePosition)
     IF(PartID.EQ.0) &
-      CALL ABORT(__STAMP__,' Error in ParticleExchange_parallel. Corrupted list: PIC%nextFreePosition', nRecv)
+      CALL Abort(__STAMP__,' Error in ParticleExchange_parallel. Corrupted list: PIC%nextFreePosition', nRecv)
 
     !>> position and velocity in physical space
     PartState(1:PP_nVarPart,PartID)   = PartRecvBuf(iProc)%content(1+iPos:PP_nVarPart+iPos)
@@ -707,7 +707,7 @@ DO iProc=0,nExchangeProcessors-1
     ELSE IF ( INT(PartRecvBuf(iProc)%content( 1+jPos)) .EQ. 0) THEN
       PDM%IsNewPart(PartID)=.FALSE.
     ELSE
-      CALL ABORT(__STAMP__,'Error with IsNewPart in MPIParticleRecv!',1,PartRecvBuf(iProc)%content(1+jPos))
+      CALL Abort(__STAMP__,'Error with IsNewPart in MPIParticleRecv!',1,PartRecvBuf(iProc)%content(1+jPos))
     END IF
     jPos=jPos+1
     !>> particle elment
@@ -716,8 +716,8 @@ DO iProc=0,nExchangeProcessors-1
 
     ! PartCommSize must be a multiple of particles to receive
     IF(MOD(jPos,PartCommSize).NE.0)THEN
-      IPWRITE(UNIT_stdOut,*)  'jPos',jPos
-      CALL ABORT(__STAMP__,' Particle-wrong receiving message size!')
+      IPWRITE(UNIT_stdOut,'(A,I0)')  'jPos',jPos
+      CALL Abort(__STAMP__,' Particle-wrong receiving message size!')
     END IF
 
     ! Set Flag for received parts in order to localize them later
@@ -734,7 +734,7 @@ IF(PDM%ParticleVecLength.GT.PDM%MaxParticleNumber)THEN
   IPWRITE(UNIT_stdOut,'(I0,A,I0)')   " PDM%ParticleVecLength = ", PDM%ParticleVecLength
   IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
   IPWRITE(UNIT_stdOut,'(I0,A)')      " Increase value for [Part-maxParticleNumber]!"
-  CALL ABORT(__STAMP__,' ParticleVecLegnth > MaxParticleNumber due to MPI-communication!')
+  CALL Abort(__STAMP__,' ParticleVecLegnth > MaxParticleNumber due to MPI-communication!')
 END IF
 
 ! deallocate send,receive buffer

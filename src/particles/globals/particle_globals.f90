@@ -365,7 +365,7 @@ ELSE IF (NormalVector(3).NE.0) THEN
   Vector1(2) = 1
   Vector1(3) = (0 - NormalVector(1) - NormalVector(2)) / NormalVector(3)
 ELSE
-  CALL abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
+  CALL Abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
 END IF
 
 ! Find the third vecord vector with the cross product
@@ -406,7 +406,7 @@ ELSE IF (NormalVector(3).NE.0) THEN
   Vector1 = (/-NormalVector(3),               0., NormalVector(1)/)
 
 ELSE
-  CALL abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
+  CALL Abort(__STAMP__,'The normal direction vector can not be (0,0,0)')
 END IF
 
 Vector1 = UNITVECTOR(Vector1)

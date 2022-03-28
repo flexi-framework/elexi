@@ -111,7 +111,7 @@ DO iN = 1,length
 END DO
 
 !-- distribute remaining number
-IF (Nrest.LT.0) CALL ABORT(__STAMP__,'ERROR 1 in IntegerDivide!')
+IF (Nrest.LT.0) CALL Abort(__STAMP__,'ERROR 1 in IntegerDivide!')
 
 IF (Nrest.GT.0) THEN
   DO iN = 1,length
@@ -139,7 +139,7 @@ IF (Nrest.NE.0) THEN
   IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Ntot:  ',Ntot
   IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Ntot0: ',Ntot0
   IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Nrest: ',Nrest
-  CALL abort(__STAMP__,'ERROR 2 in IntegerDivide!')
+  CALL Abort(__STAMP__,'ERROR 2 in IntegerDivide!')
 END IF
 
 END SUBROUTINE IntegerDivide
@@ -150,7 +150,7 @@ SUBROUTINE SetParticleMass(FractNbr,NbrOfParticle)
 ! Add particles mass and charge
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals,          ONLY: ABORT
+USE MOD_Globals,          ONLY: Abort
 USE MOD_Particle_Vars,    ONLY: PDM,PartSpecies,Species,PartState,doRandomPartDiam
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -179,7 +179,7 @@ DO i = 1,NbrOfParticle
       PartState(PART_DIAM, PositionNbr) = Species(FractNbr)%DiameterIC
     END IF
   ELSE
-    CALL ABORT(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
+    CALL Abort(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
   END IF
 END DO
 
@@ -225,7 +225,7 @@ DO
       EXIT
     ! Turning off not allowed: abort (RealTarget must be decreased ot PoissonSampling turned off manually)
     ELSE
-      CALL ABORT(__STAMP__,'ERROR in SamplePoissonDistri: RealTarget (e.g. flux) is too large for poisson sampling!')
+      CALL Abort(__STAMP__,'ERROR in SamplePoissonDistri: RealTarget (e.g. flux) is too large for poisson sampling!')
     END IF
   END IF
 
@@ -285,7 +285,7 @@ offsetElemCNProc = 0
 
 IF (UseExactPartNum) THEN
   IF(chunkSize.GE.PDM%maxParticleNumber) &
-    CALL ABORT(__STAMP__, &
+    CALL Abort(__STAMP__, &
                'ERROR in SetCellLocalParticlePosition: Maximum particle number reached! max. particles needed: ',chunksize)
 
   CellChunkSize(:) = 0
@@ -295,7 +295,7 @@ ELSE
   PartDens      = Species(iSpec)%Init(iInit)%PartDensity
   chunkSize_tmp = INT(PartDens * LocalVolume)
   IF(chunkSize_tmp.GE.PDM%maxParticleNumber) &
-    CALL ABORT(__STAMP__, &
+    CALL Abort(__STAMP__, &
     'ERROR in SetCellLocalParticlePosition: Maximum particle number during sanity check! max. particles needed: ',chunkSize_tmp)
 END IF
 
@@ -328,7 +328,7 @@ DO iElem = 1,nElems
         PEM%Element(       ParticleIndexNbr) = iElem+offsetElem
         iChunkSize = iChunkSize + 1
       ELSE
-        CALL ABORT(__STAMP__ &
+        CALL Abort(__STAMP__ &
             ,'ERROR in SetCellLocalParticlePosition: Maximum particle number reached during inserting! --> ParticleIndexNbr.EQ.0')
       END IF
     END DO
@@ -643,7 +643,7 @@ lineVector(3) = Species(FractNbr)%Init(iInit)%BaseVector1IC(1) * Species(FractNb
 
 ! Sanity check line vectors
 IF ((lineVector(1).eq.0).AND.(lineVector(2).eq.0).AND.(lineVector(3).eq.0)) THEN
-  CALL ABORT(__STAMP__,'BaseVectors are parallel!')
+  CALL Abort(__STAMP__,'BaseVectors are parallel!')
 ELSE
   lineVector = lineVector / SQRT(lineVector(1) * lineVector(1) + lineVector(2) * lineVector(2) + lineVector(3) * lineVector(3))
 END IF
@@ -776,7 +776,7 @@ INTEGER                 :: i
 IF (Species(FractNbr)%Init(iInit)%NormalIC(1).EQ.0.) THEN
   IF (Species(FractNbr)%Init(iInit)%NormalIC(2).EQ.0.) THEN
     IF (Species(FractNbr)%Init(iInit)%NormalIC(3).EQ.0.) &
-      CALL abort(__STAMP__,'Error in SetParticlePosition, NormalIC should not be zero')
+      CALL Abort(__STAMP__,'Error in SetParticlePosition, NormalIC should not be zero')
     lineVector(1:2)   = 1.0
     lineVector(3)     = 0.0
   ELSE
@@ -905,7 +905,7 @@ SUBROUTINE InsideExcludeRegionCheck(FractNbr, iInit, Particle_pos, insideExclude
 ! Subroutine for checking if calculated particle position would be inside user-defined ExcludeRegion (cuboid or cylinder)
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals,                ONLY : abort
+USE MOD_Globals,                ONLY : Abort
 USE MOD_Particle_Vars,          ONLY : Species
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -996,7 +996,7 @@ DO iExclude=1,Species(FractNbr)%Init(iInit)%NumberOfExcludeRegions
       END IF
 
     CASE DEFAULT
-        CALL abort(__STAMP__,'Wrong SpaceIC for ExcludeRegion!')
+        CALL Abort(__STAMP__,'Wrong SpaceIC for ExcludeRegion!')
 
   END SELECT
 END DO

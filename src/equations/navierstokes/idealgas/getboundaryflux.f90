@@ -153,10 +153,10 @@ DO iSide=1,nBCSides
     CALL Abort(__STAMP__,&
                'No inflow refstate (Tt,alpha,beta,empty,pT) in refstate defined for BC_TYPE',locType)
   IF((locType.EQ.28).AND.(locState.LT.1))&
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'No inflow refstate (Tt,x,x,x,mass flux) in refstate defined for BC_TYPE',locType)
   IF((locType.EQ.29).AND.(locState.LT.1))&
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'No inflow refstate (Tt,alpha,beta,empty,pT) in refstate defined for BC_TYPE',locType)
   IF((locType.EQ.121).AND.(locState.LT.1))&
     CALL Abort(__STAMP__,&

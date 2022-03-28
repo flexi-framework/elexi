@@ -504,7 +504,7 @@ DO iLocSide = 1,6
 
           ! If small mortar element not defined, abort. Every available information on the compute-node is kept in shared memory, so
           ! no way to recover it during runtime
-          IF (NbElemID.LT.1) CALL ABORT(__STAMP__,'Small mortar element not defined!',ElemID)
+          IF (NbElemID.LT.1) CALL Abort(__STAMP__,'Small mortar element not defined!',ElemID)
 
           CALL ParticleInsideNbMortar(PartStateLoc,NbElemID,InElementCheckMortarNb)
           IF (InElementCheckMortarNb) THEN

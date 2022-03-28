@@ -273,7 +273,7 @@ SUBROUTINE CalcNormAndTangTriangle(nVec,tang1,tang2,area,midpoint,ndist,xyzNod,V
 !================================================================================================================================
 ! function to compute the geo-data of a triangulated surface
 !================================================================================================================================
-USE MOD_Globals,                              ONLY: ABORT
+USE MOD_Globals,                              ONLY: Abort
 USE MOD_PreProc
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Vars,                   ONLY: SideInfo_Shared,NodeCoords_Shared,ElemSideNodeID_Shared
@@ -309,7 +309,7 @@ ELSE IF (PRESENT(SideID)) THEN
   CNElemID  = GetCNElemID(SideInfo_Shared(SIDE_ELEMID ,SideID))
   LocSideID = SideInfo_Shared(SIDE_LOCALID,SideID)
 ELSE
-  CALL ABORT(__STAMP__, 'Either SideID or ElemID+LocSideID have to be given to CalcNormAndTangTriangle!')
+  CALL Abort(__STAMP__, 'Either SideID or ElemID+LocSideID have to be given to CalcNormAndTangTriangle!')
 END IF
 
 xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,LocSideID,CNElemID)+1)
@@ -345,7 +345,7 @@ IF (TrackingMethod.NE.TRIATRACKING) THEN
     !warning: these values go into SurfMeshSubSideData and if TriaSurfaceFlux they should be used only for planar_rect/_nonrect sides
     dotpr = DOT_PRODUCT(SideNormVec(1:3,CNSideID),(/nx,ny,nz/))
     IF ( .NOT.ALMOSTEQUALRELATIVE(dotpr,1.,1.0E-2) ) &
-      CALL abort(__STAMP__, 'SideNormVec is not identical with V1xV2!')
+      CALL Abort(__STAMP__, 'SideNormVec is not identical with V1xV2!')
   END IF
 END IF
 
@@ -375,7 +375,7 @@ IF(PRESENT(ndist)) THEN
   ndist(2) = nz * (Vector1(1)-Vector2(1)) - nx * (Vector1(3)-Vector2(3))
   ndist(3) = nx * (Vector1(2)-Vector2(2)) - ny * (Vector1(1)-Vector2(1))
   ndistVal = SQRT(ndist(1)*ndist(1) + ndist(2)*ndist(2) + ndist(3)*ndist(3))
-  IF (ALMOSTZERO(ndistVal)) CALL abort(&
+  IF (ALMOSTZERO(ndistVal)) CALL Abort(&
 __STAMP__&
 , 'ndistVal=0 in InitSurfaceflux!')
   ndist(1:3) = ndist(1:3) / ndistVal
@@ -409,7 +409,7 @@ IF(PRESENT(tang1) .OR. PRESENT(tang2)) THEN
         tang2(3) = nx - ny * tang1(1)
         tang1 = tang1 / SQRT(2.0 + tang1(1)*tang1(1))
       ELSE
-        CALL abort(__STAMP__,&
+        CALL Abort(__STAMP__,&
           'Error in InitParticles: normal vector is zero!')
       END IF
     END IF
@@ -666,7 +666,7 @@ SideSlabNormals(:,1) = BezierControlPoints3D(:,NGeoElevated,0)              &
                      - BezierControlPoints3D(:,0,NGeoElevated)
 
 IF (ALL(SideSlabNormals(:,1).EQ.0)) &
-  CALL ABORT(__STAMP__,             &
+  CALL Abort(__STAMP__,             &
   'Error while calculating side slab normals and intervals. Normal vector length zero. Possibly wrong BezierControlPoints')
 
 SideSlabNormals(:,1)=SideSlabNormals(:,1)/SQRT(DOT_PRODUCT(SideSlabNormals(:,1),SideSlabNormals(:,1)))
@@ -787,11 +787,11 @@ END IF
 dMax=MAX(h,l,w)
 IF(l/dMax.LT.1.0e-6)THEN
   ! side is almost a line
-  CALL ABORT(__STAMP__,'ERROR: found degenerated side. length/dMax of a side slab is ->',0,l/dMax)
+  CALL Abort(__STAMP__,'ERROR: found degenerated side. length/dMax of a side slab is ->',0,l/dMax)
 END IF
 IF(w/dMax.LT.1.0e-6)THEN
   ! side is almost a line
-  CALL ABORT(__STAMP__,'ERROR: found degenerated side. width/dMax of a side slab is ->',0,w/dMax)
+  CALL Abort(__STAMP__,'ERROR: found degenerated side. width/dMax of a side slab is ->',0,w/dMax)
 END IF
 IF(h/dMax.LT.1.0e-6)THEN
   ! the height of the sideslab is almost zero --> flat in regards to machine precision
@@ -800,7 +800,7 @@ IF(h/dMax.LT.1.0e-6)THEN
 END IF
 
 IF(l*w*h.LT.0) THEN
-  CALL ABORT(__STAMP__,'A bounding box (for sides) is negative!?. length*width*height.LT.0 ->',0,(l*w*h))
+  CALL Abort(__STAMP__,'A bounding box (for sides) is negative!?. length*width*height.LT.0 ->',0,(l*w*h))
 END IF
 
 IF(ALMOSTZERO(h/SQRT(l*l+w*w+h*h)))THEN ! bounding box volume is approx zeros
@@ -948,7 +948,7 @@ IF (PRESENT(Dmax_opt)) THEN
     DmaxSampleN = DmaxSampleN_opt
     CalcDmax    = .TRUE.
   ELSE
-    CALL ABORT(__STAMP__,'DmaxSampleN not defined in GetBezierSampledAreas!')
+    CALL Abort(__STAMP__,'DmaxSampleN not defined in GetBezierSampledAreas!')
   END IF
 END IF
 
@@ -1072,7 +1072,7 @@ DO jSample = 1,BezierSampleN; DO iSample = 1,BezierSampleN
       Dmax(iSample,jSample) = MAX(Dmax(iSample,jSample),D)
     END DO; END DO ! I,J
 
-    IF (Dmax(iSample,jSample).LT.0.) CALL ABORT(__STAMP__,'ERROR in GetBezierSampledAreas: No Dmax found!?')
+    IF (Dmax(iSample,jSample).LT.0.) CALL Abort(__STAMP__,'ERROR in GetBezierSampledAreas: No Dmax found!?')
   END IF
 
   IF (BezierSurfFluxProjection) THEN
@@ -1215,7 +1215,7 @@ IF(PRESENT(BezierControlPoints3d_in))THEN
 ELSE IF(PRESENT(BezierControlPoints2d_in))THEN
   BezierControlPoints3D(1:2,:,:)=BezierControlPoints2d_in(:,:,:)
 ELSE
-  CALL abort(&
+  CALL Abort(&
 __STAMP__&
 ,' OutputBezierControlPoints(): Something went wrong.!')
 END IF

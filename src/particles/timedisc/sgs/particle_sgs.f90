@@ -48,7 +48,7 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE ParticleInitSGS()
 ! MODULES
-USE MOD_Globals               ,ONLY: ABORT,UNIT_stdOut
+USE MOD_Globals               ,ONLY: Abort,UNIT_stdOut
 USE MOD_Preproc               ,ONLY: PP_N,PP_NZ
 USE MOD_Analyze_Vars          ,ONLY: ElemVol
 USE MOD_Mesh_Vars             ,ONLY: nElems
@@ -81,7 +81,7 @@ SGSModel = TRIM(GETSTR('Part-SGSModel','none'))
 ! SGS and RW are not compatible. Go back and think about what you were trying to simulate.
 #if USE_RW
 IF (SGSModel.NE.'none'.AND.RWModel.NE.'none') &
-  CALL abort(__STAMP__,'SGS and RW not compatible!')
+  CALL Abort(__STAMP__,'SGS and RW not compatible!')
 #endif
 
 SELECT CASE(SGSModel)
@@ -102,7 +102,7 @@ SELECT CASE(SGSModel)
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
-      CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+      CALL Abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
@@ -128,7 +128,7 @@ SELECT CASE(SGSModel)
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
-      CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+      CALL Abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
@@ -149,7 +149,7 @@ CASE('Amiri')
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
-      CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+      CALL Abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
@@ -175,7 +175,7 @@ CASE('Fukagata')
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
-      CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+      CALL Abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
@@ -201,7 +201,7 @@ CASE('Fukagata')
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
-      CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+      CALL Abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
@@ -222,7 +222,7 @@ CASE('Fukagata')
              TurbPartState(1:nSGSVars,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
-      CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+      CALL Abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState   = 0.
     ElemVolN        = ElemVol**(1./3.)/(PP_N+1)
@@ -244,7 +244,7 @@ CASE('Fukagata')
 !             TurbPt_temp  (1:3       ,1:PDM%maxParticleNumber),      &
              ElemVolN     (           1:nElems),STAT=ALLOCSTAT)
     IF (ALLOCSTAT.NE.0) &
-      CALL abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
+      CALL Abort(__STAMP__,'ERROR in particle_sgs.f90: Cannot allocate particle SGS arrays!')
 
     TurbPartState = 0.
 !    TurbPt_temp   = 0.
@@ -256,7 +256,7 @@ CASE('Fukagata')
     SGSinUse = .FALSE.
 
   CASE DEFAULT
-    CALL abort(__STAMP__, ' No valid particle subgrid scale (SGS) model given.')
+    CALL Abort(__STAMP__, ' No valid particle subgrid scale (SGS) model given.')
 END SELECT
 
 ParticleSGSInitIsDone=.TRUE.
@@ -463,7 +463,7 @@ DO iPart = 1,PDM%ParticleVecLength
   udiff(1:3) = PartState(PART_VELV,iPart) - FieldAtParticle(VELV,iPart) !+ TurbPartState(1:3,iPart) ! only mean velocity
 
   IF (ANY(udiff.NE.0)) THEN
-    urel = udiff/SQRT(SUM(udiff**2))
+    urel = udiff/VECNORM(udiff)
   ELSE
     urel = 0.
   END IF
@@ -936,7 +936,7 @@ DO iPart = 1,PDM%ParticleVecLength
   d_ij_tensor(3,:)= 0.5*(/ gradUzPart(1)+gradUxPart(3), gradUzPart(2)+gradUyPart(3), 2*gradUzPart(3)/)
 
   ! Calculate the representative SGS velocity in order to model the increase of variance of particle velocity due to SGS velocity in time dt
-  U_M = 2./SQRT(3.) * C_Fuka * C_eps * ElemVolN(ElemID) * SQRT(SUM(d_ij_tensor(:,:)**2))
+  U_M = 2./SQRT(3.) * C_Fuka * C_eps * ElemVolN(ElemID) * VECNORM(d_ij_tensor(:,:))
 
   alpha_SGS =  dt/taup
   ! beta = taup  / T_f_p, T_f_p = 1./VECNORM(rot_U)
@@ -1084,7 +1084,7 @@ DO iPart = 1,PDM%ParticleVecLength
   udiff(1:3) = PartState(PART_VELV,iPart) - (FieldAtParticle(VELV,iPart) + TurbPartState(1:3,iPart))
 
   IF (ANY(udiff.NE.0)) THEN
-    urel = udiff/SQRT(SUM(udiff**2))
+    urel = udiff/VECNORM(udiff)
   ELSE
     urel = 0.
   END IF
@@ -1096,9 +1096,9 @@ DO iPart = 1,PDM%ParticleVecLength
       RETURN
     ELSE
       ! parallel
-      tauL(1) = C*ElemVolN(ElemID)/(betaSGS*SQRT(SUM(udiff**2)))
+      tauL(1) = C*ElemVolN(ElemID)/(betaSGS  *VECNORM(udiff))
       ! perpendicular
-      tauL(2) = C*ElemVolN(ElemID)/(betaSGS*2*SQRT(SUM(udiff**2)))
+      tauL(2) = C*ElemVolN(ElemID)/(betaSGS*2*VECNORM(udiff))
 
       ! Calculate drift and diffusion matrix
       DO i = 1,3
@@ -1193,8 +1193,8 @@ DO iPart = 1,PDM%ParticleVecLength
 !>> In near-wall turbulence, the SGS fluctuations can readily exceed 10*U_resolved
 !  ! Sanity check. Use 10*U as arbitrary threshold
 !  IF (ANY(ABS(TurbPartState(1:3,iPart)).GT.10.*MAXVAL(ABS(PartState(4:6,iPart))))) THEN
-!    IPWRITE(*,*) 'Obtained SGS velocity of',SQRT(SUM(TurbPartState(1:3,iPart)**2)), &
-!                 'while resolved velocity is',SQRT(SUM(PartState(4:6,iPart)**2)),   &
+!    IPWRITE(*,*) 'Obtained SGS velocity of',VECNORM(TurbPartState(1:3,iPart)), &
+!                 'while resolved velocity is',VECNORM(PartState(4:6,iPart)),   &
 !                 'for',iPart
 !    TurbPartState(:,iPart) = 0.
 !  END IF
@@ -1263,7 +1263,7 @@ DO iPart = 1,PDM%ParticleVecLength
   IF (ALMOSTZERO(MAXVAL(udiff))) THEN
     urel = 0.
   ELSE
-    urel = udiff/SQRT(SUM(udiff**2))
+    urel = udiff/VECNORM(udiff)
   END IF
 
   ! No SGS turbulent kinetic energy, avoid float error
@@ -1272,9 +1272,9 @@ DO iPart = 1,PDM%ParticleVecLength
     IF (ALL(urel .EQ. 0)) RETURN
 
     ! parallel
-    tauL(1) = C*ElemVolN(ElemID)/(betaSGS*SQRT(SUM(udiff**2)))
+    tauL(1) = C*ElemVolN(ElemID)/(betaSGS  *VECNORM(udiff))
     ! perpendicular
-    tauL(2) = C*ElemVolN(ElemID)/(betaSGS*2*SQRT(SUM(udiff**2)))
+    tauL(2) = C*ElemVolN(ElemID)/(betaSGS*2*VECNORM(udiff))
 
     DO i = 1,3
       DO j = 1,3
@@ -1347,7 +1347,7 @@ DO iPart = 1,PDM%ParticleVecLength
 END DO
 
 CASE DEFAULT
-  CALL ABORT(__STAMP__, ' No particle SGS model given. This should not happen.')
+  CALL Abort(__STAMP__, ' No particle SGS model given. This should not happen.')
 
 END SELECT
 

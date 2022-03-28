@@ -3558,7 +3558,7 @@ SELECT CASE (TRIM(AuxBCType(AuxBCIdx)))
     END IF
     isHit = .TRUE.
   CASE DEFAULT
-    SWRITE(*,*) ' AuxBC does not exist: ', TRIM(AuxBCType(AuxBCIdx))
+    SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(AuxBCIdx))
     CALL Abort(__STAMP__,'AuxBC does not exist')
 END SELECT
 

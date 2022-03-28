@@ -111,7 +111,7 @@ DO iAuxBC=1,nAuxBCs
           ElemHasAuxBCs(iElem,iAuxBC)=.FALSE.
         ! e.g. if elem has zero volume...
         ELSE
-          CALL abort(__STAMP__,'Error in MarkAuxBCElems for AuxBC:',iAuxBC)
+          CALL Abort(__STAMP__,'Error in MarkAuxBCElems for AuxBC:',iAuxBC)
         END IF
 
         END ASSOCIATE
@@ -216,7 +216,7 @@ DO iAuxBC=1,nAuxBCs
 
     CASE DEFAULT
       SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
-      CALL abort(__STAMP__,'AuxBC does not exist')
+      CALL Abort(__STAMP__,'AuxBC does not exist')
   END SELECT
 END DO
 

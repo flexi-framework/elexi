@@ -64,7 +64,7 @@ INTEGER :: newParticleID
 PDM%ParticleVecLength = PDM%ParticleVecLength + 1 ! Increase particle vector length
 newParticleID         = PDM%ParticleVecLength
 IF (newParticleID.GT.PDM%MaxParticleNumber) &
-  CALL ABORT(__STAMP__,'CreateParticle: newParticleID.GT.PDM%MaxParticleNumber. newParticleID=',newParticleID)
+  CALL Abort(__STAMP__,'CreateParticle: newParticleID.GT.PDM%MaxParticleNumber. newParticleID=',newParticleID)
 
 PartSpecies(newParticleID)             = SpeciesIn
 LastPartPos(1:3,newParticleID)         = LastPartPosIn(1:3)

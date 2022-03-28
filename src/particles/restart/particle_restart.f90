@@ -227,7 +227,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       IF ((TurbPartDataSize.EQ.0).AND.(TurbPartSize.NE.0)) THEN
         SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data but current run in DNS mode. Ignoring...'
       ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.NE.TurbPartSize)) THEN
-        CALL abort(__STAMP__,' Number of turbulent variables in HDF5 does not match requested SGS/RW model!')
+        CALL Abort(__STAMP__,' Number of turbulent variables in HDF5 does not match requested SGS/RW model!')
       ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.EQ.TurbPartSize)) THEN
         ! Maybe add check that compares the models here. Should resort to a warning in case we want to change the model midrun, so
         ! nothing urgent
@@ -274,7 +274,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     IF (PDM%ParticleVecLength.GT.PDM%maxParticleNumber) THEN
       SWRITE (UNIT_stdOut,'(A,I0)') "PDM%ParticleVecLength =", PDM%ParticleVecLength
       SWRITE (UNIT_stdOut,'(A,I0)') "PDM%maxParticleNumber =", PDM%maxParticleNumber
-      CALL abort(__STAMP__&
+      CALL Abort(__STAMP__&
           ,' Number of Particles in Restart file is higher than MaxParticleNumber! Increase MaxParticleNumber!')
     END IF ! PDM%ParticleVecLength.GT.PDM%maxParticleNumber
 
@@ -453,7 +453,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         IF(CurrentPartNum.GT.PDM%maxParticleNumber)THEn
           IPWRITE(UNIT_stdOut,'(I0,A,I0)') " CurrentPartNum        = ",  CurrentPartNum
           IPWRITE(UNIT_stdOut,'(I0,A,I0)') " PDM%maxParticleNumber = ",  PDM%maxParticleNumber
-          CALL abort(__STAMP__,'Missing particle ID > PDM%maxParticleNumber. Increase Part-MaxParticleNumber!')
+          CALL Abort(__STAMP__,'Missing particle ID > PDM%maxParticleNumber. Increase Part-MaxParticleNumber!')
         END IF ! CurrentPartNum.GT.PDM%maxParticleNumber
 
         ! Do not search particles twice: Skip my own particles, because these have already been searched for before they are
@@ -489,7 +489,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         IF(IndexOfFoundParticles(iPart).EQ.-1)THEN
           IPWRITE(UNIT_stdOut,'(I0,A,I0)') " iPart                        : ",  iPart
           IPWRITE(UNIT_stdOut,'(I0,A,I0)') " IndexOfFoundParticles(iPart) : ",  IndexOfFoundParticles(iPart)
-          CALL abort(__STAMP__,'IndexOfFoundParticles(iPart) was not set correctly)')
+          CALL Abort(__STAMP__,'IndexOfFoundParticles(iPart) was not set correctly)')
         END IF ! IndexOfFoundParticles(iPart)
       END DO ! iPart = 1, TotalNbrOfMissingParticlesSum
 

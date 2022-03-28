@@ -43,7 +43,7 @@ SUBROUTINE PerformTracking()
 !> Routine called from the timedisc to call the selected tracking routine
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals                  ,ONLY: ABORT
+USE MOD_Globals                  ,ONLY: Abort
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 USE MOD_Particle_Tracing         ,ONLY: ParticleTracing
 USE MOD_Particle_RefTracking     ,ONLY: ParticleRefTracking
@@ -67,7 +67,7 @@ SELECT CASE(TrackingMethod)
   CASE(TRIATRACKING)
     CALL ParticleTriaTracking()
   CASE DEFAULT
-    CALL ABORT(__STAMP__,'TrackingMethod not implemented! TrackingMethod =',IntInfo=TrackingMethod)
+    CALL Abort(__STAMP__,'TrackingMethod not implemented! TrackingMethod =',IntInfo=TrackingMethod)
 END SELECT
 
 END SUBROUTINE PerformTracking
@@ -108,7 +108,7 @@ SELECT CASE(TrackingMethod)
   CASE(TRIATRACKING)
     CALL ParticleInsideQuad3D(Position,GlobalElemID,ParticleInsideCheck)
   CASE DEFAULT
-    CALL ABORT(__STAMP__,'TrackingMethod not implemented! TrackingMethod =',IntInfo=TrackingMethod)
+    CALL Abort(__STAMP__,'TrackingMethod not implemented! TrackingMethod =',IntInfo=TrackingMethod)
 END SELECT
 
 END FUNCTION ParticleInsideCheck

@@ -299,7 +299,7 @@ INTEGER          :: ALLOCSTAT
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE MESH...'
-IF(ParticleMeshInitIsDone) CALL ABORT(__STAMP__, ' Particle-Mesh is already initialized.')
+IF(ParticleMeshInitIsDone) CALL Abort(__STAMP__, ' Particle-Mesh is already initialized.')
 
 !===================================================================================================================================
 ! Collect particle variables that are not initialized somewhere else
@@ -418,7 +418,7 @@ RefMappingEps   = GETREAL('RefMappingEps')
 epsInCell       = SQRT(3.0*RefMappingEps)
 
 IF((RefMappingGuess.LT.1).OR.(RefMappingGuess.GT.4))THEN
-   CALL ABORT(__STAMP__ ,'Wrong guessing method for mapping from physical space in reference space.',RefMappingGuess,999.)
+   CALL Abort(__STAMP__ ,'Wrong guessing method for mapping from physical space in reference space.',RefMappingGuess,999.)
 END IF
 
 ! TriaSurfaceFlux needs to be determined before particle mesh init to build all required information. TriaSurfaceFlux is enabled by
@@ -426,7 +426,7 @@ END IF
 WRITE(tmpStr,'(L1)') (TrackingMethod.EQ.TRIATRACKING)
 TriaSurfaceFlux = GETLOGICAL('TriaSurfaceFlux',TRIM(tmpStr))
 IF((TrackingMethod.EQ.TRIATRACKING).AND.(.NOT.TriaSurfaceFlux)) THEN
-  CALL ABORT(__STAMP__,'TriaSurfaceFlux explicitly turned off for TriaTracking!')
+  CALL Abort(__STAMP__,'TriaSurfaceFlux explicitly turned off for TriaTracking!')
 END IF
 
 SELECT CASE(TrackingMethod)
@@ -472,7 +472,7 @@ SELECT CASE(TrackingMethod)
             ,SideSlabIntervals(  1:6,1:nNonUniqueGlobalSides) &
             ,BoundingBoxIsEmpty(     1:nNonUniqueGlobalSides) &
             ,STAT=ALLOCSTAT)
-    IF (ALLOCSTAT.NE.0) CALL ABORT(__STAMP__,'  Cannot allocate SideMetrics arrays!')
+    IF (ALLOCSTAT.NE.0) CALL Abort(__STAMP__,'  Cannot allocate SideMetrics arrays!')
     firstSide = 1
     lastSide  = nNonUniqueGlobalSides
 #endif /* USE_MPI */
@@ -553,7 +553,7 @@ SELECT CASE(TrackingMethod)
     CALL BuildEpsOneCell()
 
   CASE DEFAULT
-    CALL ABORT(__STAMP__,'Invalid tracking method in particle_mesh.f90!')
+    CALL Abort(__STAMP__,'Invalid tracking method in particle_mesh.f90!')
 
 END SELECT
 

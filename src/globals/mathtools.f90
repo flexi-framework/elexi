@@ -231,7 +231,7 @@ END FUNCTION INVERSE_LU
 ! CALL DGETRF(n, n, Ainv, n, ipiv, info)
 
 ! IF(info.NE.0)THEN
-!     CALL abort(&
+!     CALL Abort(&
 ! __STAMP__&
 ! ,' Matrix is numerically singular!')
 ! END IF
@@ -241,7 +241,7 @@ END FUNCTION INVERSE_LU
 ! CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
 
 ! IF(info.NE.0)THEN
-!     CALL abort(&
+!     CALL Abort(&
 ! __STAMP__&
 ! ,' Matrix inversion failed!')
 ! END IF

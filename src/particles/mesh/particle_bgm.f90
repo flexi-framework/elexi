@@ -153,7 +153,8 @@ INTEGER,ALLOCATABLE            :: sendbuf(:,:,:),recvbuf(:,:,:)
 INTEGER,ALLOCATABLE            :: offsetElemsInBGMCell(:,:,:)
 INTEGER                        :: nHaloElems,nMPISidesShared
 INTEGER,ALLOCATABLE            :: offsetCNHalo2GlobalElem(:),offsetMPISideShared(:)
-REAL,ALLOCATABLE               :: BoundsOfElemCenter(:),MPISideBoundsOfElemCenter(:,:)
+REAL                           :: BoundsOfElemCenter(1:4)
+REAL,ALLOCATABLE               :: MPISideBoundsOfElemCenter(:,:)
 LOGICAL                        :: ElemInsideHalo
 INTEGER                        :: firstHaloElem,lastHaloElem
 ! FIBGMToProc
@@ -549,7 +550,6 @@ ELSE
   ! do refined check: (refined halo region reduction)
   ! check the bounding box of each element in compute-nodes' halo domain
   ! against the bounding boxes of the elements of the MPI-surface (inter compute-node MPI sides)
-  ALLOCATE(BoundsOfElemCenter(1:4))
   DO iElem = firstHaloElem,lastHaloElem
     ElemID = offsetCNHalo2GlobalElem(iElem)
     ElemInsideHalo = .FALSE.

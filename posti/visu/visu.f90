@@ -118,7 +118,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
       END IF
       IF (.NOT.sameVars) FileType = 'Generic'
 
-    CASE('TimeAvg')
+    CASE('BaseFlow','TimeAvg')
       IF (nVarIni.EQ.0) THEN
         FileType = 'Generic'
       ELSE
@@ -127,10 +127,28 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
         CALL InitRestartFile(statefile)
         CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
         SELECT CASE(RestartMode)
+          ! TimeAvg with vars missing
           CASE(0)
             SDEALLOCATE(VarNamesHDF5)
             CALL GetVarNames("VarNames_Mean",VarNamesHDF5,VarNamesExist)
             FileType = 'Generic'
+
+          ! BaseFlow
+          CASE(1)
+            SDEALLOCATE(VarNamesHDF5)
+            CALL GetVarNames("VarNames",VarNamesHDF5,VarNamesExist)
+
+            sameVars = .FALSE.
+            FileType = 'State'
+            IF (VarNamesExist .AND. PP_nVar.EQ.SIZE(VarNamesHDF5)) THEN
+              sameVars = .TRUE.
+              DO i = 1,SIZE(VarNamesHDF5)
+                sameVars = sameVars.AND.(STRICMP(VarNamesHDF5(i),DepNames(i)))
+              END DO
+            END IF
+            IF (.NOT.sameVars) FileType = 'Generic'
+
+          ! TimeAvg with complete vars
           CASE(2,3)
             SDEALLOCATE(VarNamesHDF5)
             CALL GetVarNames("VarNames_Mean",VarNamesHDF5,VarNamesExist)

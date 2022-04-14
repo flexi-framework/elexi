@@ -176,7 +176,7 @@ USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 USE MOD_Interpolation_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
-USE MOD_Mesh_Vars          ,ONLY: NGeo,NGeoRef,nElems,nGlobalElems,offsetElem
+USE MOD_Mesh_Vars          ,ONLY: NGeo,NGeoRef,nElems,offsetElem
 USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,dXCL_N
 USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,Ja_Face
 USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
@@ -184,7 +184,7 @@ USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Mesh_Vars          ,ONLY: scaledJac
 USE MOD_Output             ,ONLY: PrintPercentage
-USE MOD_ReadInTools        ,ONLY: GETLOGICAL
+USE MOD_ReadInTools        ,ONLY: GETLOGICAL,PrintOption
 #if PP_dim == 3
 USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
 #endif
@@ -625,8 +625,10 @@ ELSE
 END IF
 #endif /*USE_MPI*/
 
-SWRITE (*,'(A,ES18.10E3,A,I0,A,ES13.5E3)') " Smallest scaled Jacobian in reference system: ",SmallestscaledJacRef,&
-    " (",nGlobalElems," global elements). Abort threshold is set to:", scaledJacRefTol
+IF (MPIRoot) THEN
+  CALL PrintOption('Min. scaled Jacobian [ref.]','INFO' ,RealOpt=SmallestscaledJacRef)
+  CALL PrintOption('Abort threshold'            ,'PARAM',RealOpt=scaledJacRefTol)
+END IF
 
 #if FV_ENABLED
 #if USE_MPI

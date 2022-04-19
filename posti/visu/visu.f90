@@ -42,7 +42,7 @@ CONTAINS
 !===================================================================================================================================
 !> Main routine of the visualization tool visu. Called either by the ParaView plugin or by the standalone program version.
 !===================================================================================================================================
-SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile)
+SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile, UseCurveds)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -77,6 +77,7 @@ INTEGER,INTENT(IN)               :: mpi_comm_IN
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
+LOGICAL,INTENT(IN),OPTIONAL      :: UseCurveds
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
@@ -265,7 +266,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE(UNIT_StdOut,'(132("-"))')
 
   IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
-    CALL ReadState(prmfile,statefile)
+    IF (PRESENT(UseCurveds)) THEN; CALL ReadState(prmfile,statefile,UseCurveds)
+    ELSE;                          CALL ReadState(prmfile,statefile)
+    END IF
   END IF
 
   ! build mappings of BC sides for surface visualization

@@ -136,6 +136,18 @@
          </IntVectorProperty>
 #endif
 #endif
+         <IntVectorProperty command="SetUseCurveds"
+            default_values="1"
+            animateable="0"
+            name="UseCurveds"
+            number_of_elements="1"
+            label="Use curved elements"
+            panel_visibility="advanced">
+            <BooleanDomain name="bool"/>
+            <Documentation>
+               This property switches enables the use of high-order elements.
+            </Documentation>
+         </IntVectorProperty>
 #if PV_HIGHORDER
          <IntVectorProperty command="SetHighOrder"
             default_values="1"

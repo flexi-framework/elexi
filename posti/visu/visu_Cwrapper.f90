@@ -157,15 +157,15 @@ SUBROUTINE visu_CWrapper(mpi_comm_IN,  &
 #if USE_MPI
     UseD3,                                                          &
 #endif
-    UseHighOrder,&
-    strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
+    UseHighOrder,UseCurveds_IN,                                                                                     &
+    strlen_prm      ,prmfile_IN      ,strlen_posti     ,postifile_IN       ,strlen_state ,statefile_IN,             &
     coordsDG_out    ,valuesDG_out    ,nodeidsDG_out    ,globalnodeidsDG_out,              globalcellidsDG_out,      &
     coordsFV_out    ,valuesFV_out    ,nodeidsFV_out    ,globalnodeidsFV_out,              globalcellidsFV_out,      &
     varnames_out,                                                                                                   &
     coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out,globalnodeidsSurfDG_out,          globalcellidsSurfDG_out,  &
     coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,globalnodeidsSurfFV_out,          globalcellidsSurfFV_out,  &
-    varnamesSurf_out,&
-    coordsPart_out   ,valuesPart_out   ,nodeidsPart_out,   varnamesPart_out,   componentsPart_out,   &
+    varnamesSurf_out,                                                                                               &
+    coordsPart_out  ,valuesPart_out  ,nodeidsPart_out  ,varnamesPart_out  ,componentsPart_out,                      &
     coordsImpact_out,valuesImpact_out,nodeidsImpact_out,varnamesImpact_out,componentsImpact_out)
 ! MODULES
 USE ISO_C_BINDING
@@ -188,6 +188,7 @@ INTEGER,INTENT(IN)                      :: mpi_comm_IN
 INTEGER,INTENT(IN)                      :: UseD3
 #endif
 INTEGER,INTENT(IN)                      :: UseHighOrder
+INTEGER,INTENT(IN)                      :: UseCurveds_IN
 INTEGER,INTENT(IN)                      :: strlen_prm
 INTEGER,INTENT(IN)                      :: strlen_posti
 INTEGER,INTENT(IN)                      :: strlen_state
@@ -231,15 +232,17 @@ TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: componentsImpact_out
 CHARACTER(LEN=255)                      :: prmfile
 CHARACTER(LEN=255)                      :: postifile
 CHARACTER(LEN=255)                      :: statefile
+LOGICAl                                 :: UseCurveds
 !===================================================================================================================================
-prmfile   = cstrToChar255(prmfile_IN,   strlen_prm)
-postifile = cstrToChar255(postifile_IN, strlen_posti)
-statefile = cstrToChar255(statefile_IN, strlen_state)
+prmfile    = cstrToChar255(prmfile_IN,   strlen_prm)
+postifile  = cstrToChar255(postifile_IN, strlen_posti)
+statefile  = cstrToChar255(statefile_IN, strlen_state)
+UseCurveds = MERGE(.TRUE.,.FALSE.,UseCurveds_IN.GT.0)
 
 ! Enable progress indicator
 doPrintStatusLine = .TRUE.
 
-CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
+CALL visu(mpi_comm_IN, prmfile, postifile, statefile, UseCurveds)
 
 ! Map Fortran arrays to C pointer
 IF (MeshFileMode) THEN

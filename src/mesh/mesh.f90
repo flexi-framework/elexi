@@ -91,7 +91,7 @@ END SUBROUTINE DefineParametersMesh
 !> - compute the mesh metrics
 !> - provide mesh metrics for overintegration
 !==================================================================================================================================
-SUBROUTINE InitMesh(meshMode,MeshFile_IN)
+SUBROUTINE InitMesh(meshMode,MeshFile_IN,UseCurveds_IN)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -127,6 +127,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: meshMode !< 0: only read and build Elem_xGP,
                                !< 1: as 0 + build connectivity, 2: as 1 + calc metrics
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: MeshFile_IN !< file name of mesh to be read
+LOGICAL,INTENT(IN),OPTIONAL            :: UseCurveds_IN
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: x(3)
@@ -161,7 +162,11 @@ validMesh = ISVALIDMESHFILE(MeshFile)
 IF(.NOT.validMesh) &
     CALL CollectiveStop(__STAMP__,'ERROR - Mesh file not a valid HDF5 mesh.')
 
-useCurveds=GETLOGICAL('useCurveds','.TRUE.')
+IF (PRESENT(UseCurveds_IN)) THEN
+  useCurveds = UseCurveds_IN
+ELSE
+  useCurveds = GETLOGICAL('useCurveds','.TRUE.')
+END IF
 
 #if USE_LOADBALANCE
 IF (.NOT.PerformLoadBalance) THEN

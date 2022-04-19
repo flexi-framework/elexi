@@ -57,6 +57,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       vtkSetMacro(NCalc,int);
       vtkSetMacro(UseD3,int);
       vtkSetMacro(HighOrder,int);
+      vtkSetMacro(UseCurveds,int);
       vtkSetStringMacro(NodeTypeVisu);
       vtkSetMacro(Avg2d,int);
       vtkSetMacro(DGonly,int);
@@ -164,6 +165,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       int   NCalc;
       int   UseD3;
       int   HighOrder;
+      int   UseCurveds;
       char* NodeTypeVisu;
       int   Avg2d;
       int   DGonly;

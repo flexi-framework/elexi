@@ -44,7 +44,7 @@ CONTAINS
 !> If the DG operator should not be called and no parameter file (seperate or from userblock) can be found,
 !> we specify PP_N from the state file as our polynomial degree (later needed by InitInterpolation).
 !===================================================================================================================================
-SUBROUTINE ReadState(prmfile,statefile)
+SUBROUTINE ReadState(prmfile,statefile,UseCurveds)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars   ,ONLY:withDGOperator
@@ -55,6 +55,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile      !< FLEXI parameter file, used if DG operator is called
 CHARACTER(LEN=255),INTENT(IN)    :: statefile    !< HDF5 state file
+LOGICAL,INTENT(IN),OPTIONAL      :: UseCurveds
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound
@@ -72,13 +73,17 @@ END IF
 
 SWRITE(UNIT_stdOut,'(A,L1)') " [ALL] get solution withDGOperator = ", withDGOperator
 IF (withDGOperator) THEN
-  CALL ReadStateAndGradients(prmfile,statefile)
+  CALL ReadStateAndGradients(prmfile,statefile,UseCurveds)
 ELSE
   ! If no parameters have been specified, use PP_N to later initialize the interpolation routines.
   IF (.NOT.userblockFound) THEN
-    CALL ReadStateWithoutGradients(prmfile,statefile,PP_N)
+    IF (PRESENT(UseCurveds)) THEN; CALL ReadStateWithoutGradients(prmfile,statefile,NIN=PP_N,UseCurveds=UseCurveds)
+    ELSE;                          CALL ReadStateWithoutGradients(prmfile,statefile,NIN=PP_N)
+    END IF
   ELSE
-    CALL ReadStateWithoutGradients(prmfile,statefile)
+    IF (PRESENT(UseCurveds)) THEN; CALL ReadStateWithoutGradients(prmfile,statefile,UseCurveds=UseCurveds)
+    ELSE;                          CALL ReadStateWithoutGradients(prmfile,statefile)
+    END IF
   END IF
 END IF
 END SUBROUTINE ReadState
@@ -88,7 +93,7 @@ END SUBROUTINE ReadState
 !> Read a state file via Restart routine and preforms one DGTimeDerivative_weakForm.
 !> This fill at least 'U', 'UPrim', and the gradients 'gradUx/y/z'.
 !===================================================================================================================================
-SUBROUTINE ReadStateAndGradients(prmfile,statefile)
+SUBROUTINE ReadStateAndGradients(prmfile,statefile,UseCurveds)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -132,6 +137,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN):: prmfile       !< FLEXI parameter file, used if DG operator is called
 CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
+LOGICAL,INTENT(IN),OPTIONAL  :: UseCurveds
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                    :: iElem
@@ -198,7 +204,9 @@ CALL InitRestart(statefile)
 
 IF (changedMeshFile.OR.changedWithDGOperator) THEN
   CALL FinalizeMesh()
-  CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
+  IF (PRESENT(UseCurveds)) THEN; CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile,UseCurveds_IN=UseCurveds)
+  ELSE;                          CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
+  END IF
 END IF
 
 CALL InitFilter()
@@ -239,7 +247,7 @@ END SUBROUTINE ReadStateAndGradients
 !===================================================================================================================================
 !> Read 'U' directly from a state file.
 !===================================================================================================================================
-SUBROUTINE ReadStateWithoutGradients(prmfile,statefile,Nin)
+SUBROUTINE ReadStateWithoutGradients(prmfile,statefile,Nin,UseCurveds)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -277,6 +285,7 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN):: prmfile       !< FLEXI parameter file, used if DG operator is called
 CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
 INTEGER,INTENT(IN),OPTIONAL  :: Nin           !< Polynomial degree used in InitInterpolation (OPTIONAL)
+LOGICAL,INTENT(IN),OPTIONAL  :: UseCurveds
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: meshMode_loc
@@ -342,7 +351,9 @@ END IF
 ! Call mesh init if the mesh file changed or we need a different mesh mode
 IF ((changedMeshFile).OR.(changedMeshMode)) THEN
   CALL FinalizeMesh()
-  CALL InitMesh(meshMode=meshMode_loc,MeshFile_IN=MeshFile)
+  IF (PRESENT(UseCurveds)) THEN; CALL InitMesh(meshMode=meshMode_loc,MeshFile_IN=MeshFile,UseCurveds_IN=UseCurveds)
+  ELSE;                          CALL InitMesh(meshMode=meshMode_loc,MeshFile_IN=MeshFile)
+  END IF
 END IF
 
 ! Initialize EOS since some quantities need gas properties like R and kappa

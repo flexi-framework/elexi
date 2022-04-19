@@ -457,7 +457,7 @@ int visuReader::RequestData(
 #if USE_MPI
          &this->UseD3,
 #endif
-         &this->HighOrder,
+         &this->HighOrder,&this->UseCurveds,
          &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),

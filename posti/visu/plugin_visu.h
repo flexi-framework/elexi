@@ -30,7 +30,7 @@ extern "C" {
 #if USE_MPI
         int* UseD3,
 #endif
-        int* HighOrder,
+        int* HighOrder, int* UseCurveds,
         int* strlen_prm,   const char* prmfile_IN,
         int* strlen_posti, const char* postifile_IN,
         int* strlen_state, const char* statefile_IN,

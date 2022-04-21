@@ -215,18 +215,30 @@ IF(PARTICLES)
   ADD_DEFINITIONS(-DUSE_PARTICLES=1)
 
   # Shared memory split type. Only available with OpenMPI
-  IF(NOT "${MPI_Fortran_COMPILER}" MATCHES "mpt")
-    SET(FLEXI_SHARED_MEMORY "MPI_COMM_TYPE_SHARED" CACHE STRING "Split type for creating new communicators based on colors and keys  (requires MPI 3 or higher). Options with the prefix OMPI_ are specific to Open MPI.")
-    SET_PROPERTY(CACHE FLEXI_SHARED_MEMORY PROPERTY STRINGS MPI_COMM_TYPE_SHARED
-                                                            OMPI_COMM_TYPE_CORE)
-    ADD_DEFINITIONS(-DSHARED_MEMORY_METHOD=${FLEXI_SHARED_MEMORY})
-    IF(FLEXI_SHARED_MEMORY STREQUAL "MPI_COMM_TYPE_SHARED")
-      MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
-    ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
-      MESSAGE(STATUS "Shared memory split type for subcommunicators set to core-level")
-    ENDIF()
+  SET(FLEXI_SPLIT_TYPE "$ENV{FLEXI_SPLIT_TYPE}")
+  IF("${FLEXI_SPLIT_TYPE}" STREQUAL "")
+    SET(FLEXI_SPLIT_TYPE "MPI_COMM_TYPE_SHARED")
   ELSE()
-    ADD_DEFINITIONS(-DSHARED_MEMORY_METHOD=MPI_COMM_TYPE_SHARED)
+    MESSAGE(STATUS "Using user-defined environment variable [FLEXI_SPLIT_TYPE = ${FLEXI_SPLIT_TYPE}] for shared memory communicator splitting. Setting [FLEXI_SHARED_MEMORY = ${FLEXI_SPLIT_TYPE}]")
+  ENDIF()
+  SET(FLEXI_SHARED_MEMORY "${FLEXI_SPLIT_TYPE}" CACHE STRING "Split type for creating new communicators based on colors and keys (requires MPI 3 or higher). Options with the prefix OMPI_ are specific to Open MPI.")
+  SET_PROPERTY(CACHE FLEXI_SHARED_MEMORY PROPERTY STRINGS MPI_COMM_TYPE_SHARED
+                                                          OMPI_COMM_TYPE_CORE
+                                                          FLEXI_COMM_TYPE_NODE)
+
+  ADD_DEFINITIONS(-DSHARED_MEMORY_METHOD=${FLEXI_SHARED_MEMORY})
+  IF(FLEXI_SHARED_MEMORY STREQUAL "MPI_COMM_TYPE_SHARED")
+    UNSET(FLEXI_SHARED_MEMORY_CORES CACHE)
+    ADD_DEFINITIONS(-DCORE_SPLIT=0)
+    MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
+  ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "FLEXI_COMM_TYPE_NODE")
+    SET(FLEXI_SHARED_MEMORY_CORES "2" CACHE STRING "Number of cores per node when setting FLEXI_SHARED_MEMORY=FLEXI_COMM_TYPE_NODE. All cores must be on the same physical node!")
+    ADD_DEFINITIONS(-DCORE_SPLIT=${FLEXI_SHARED_MEMORY_CORES})
+    MESSAGE(STATUS "Shared memory split type for subcommunicators set to sub-node-level with user-specific value [FLEXI_SHARED_MEMORY_CORES = ${FLEXI_SHARED_MEMORY_CORES}] cores per node")
+  ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
+    UNSET(FLEXI_SHARED_MEMORY_CORES CACHE)
+    ADD_DEFINITIONS(-DCORE_SPLIT=1)
+    MESSAGE(STATUS "Shared memory split type for subcommunicators set to core-level")
   ENDIF()
 
   # Code Analyze

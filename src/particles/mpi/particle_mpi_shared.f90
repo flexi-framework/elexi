@@ -116,16 +116,27 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT MPI SHARED COMMUNICATION...'
 ! Save the global number of procs
 nProcessors_Global = nProcessors
 
-! Split the node communicator (shared memory) from the global communicator
-#if !LIBS_MPT
-IF(SHARED_MEMORY_METHOD.EQ.OMPI_COMM_TYPE_CORE)THEN
+! Split the node communicator (shared memory) from the global communicator on physical processor or node level
+#if (CORE_SPLIT==1)
   CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,myRank,0,MPI_COMM_SHARED,iError)
-ELSE
-#endif /* !LIBS_MPT */
+#elif (CORE_SPLIT==0)
+  ! Note that using SharedMemoryMethod=OMPI_COMM_TYPE_CORE somehow does not work in every case (intel/amd processors)
+  ! Also note that OMPI_COMM_TYPE_CORE is undefined when not using OpenMPI
   CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_FLEXI,SHARED_MEMORY_METHOD,0,MPI_INFO_NULL,MPI_COMM_SHARED,IERROR)
-#if !LIBS_MPT
-END IF ! SharedMemoryMethod.EQ.
-#endif /* !LIBS_MPT */
+#else
+  ! Check if more nodes than procs are required or
+  ! if the resulting split would create unequal procs per node
+  IF((CORE_SPLIT.GE.nProcessors_Global).OR.(MOD(nProcessors_Global,CORE_SPLIT).GT.0))THEN
+    SWRITE (UNIT_stdOut,'(A,I0,A,I0,A,F0.2,A)') ' WARNING: Either more nodes than cores selected (nodes: ',CORE_SPLIT,', cores: ',&
+        nProcessors_Global,') OR unequal number of cores per node (=',REAL(nProcessors_Global)/REAL(CORE_SPLIT),&
+        '). Setting 1 core per node for MPI_COMM_SHARED!'
+    color = myRank
+  ELSE    
+    ! Group procs so that every CORE_SPLIT procs are in the same group
+    color = INT(REAL(myrank*CORE_SPLIT)/REAL(nProcessors_Global))+1
+  END IF ! (CORE_SPLIT.GE.nProcessors_Global).OR.(MOD().GT.0)
+  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,0,MPI_COMM_SHARED,iError)
+#endif
 
 ! Find my rank on the shared communicator, comm size and proc name
 CALL MPI_COMM_RANK(MPI_COMM_SHARED, myComputeNodeRank,IERROR)
@@ -135,11 +146,12 @@ CALL MPI_COMM_SIZE(MPI_COMM_SHARED, nComputeNodeProcessors,IERROR)
 IF (MOD(nProcessors_Global,nComputeNodeProcessors).NE.0) &
   CALL Abort(__STAMP__,'MPI shared communication currently only supported with equal procs per node!')
 
-IF (nProcessors_Global/nComputeNodeProcessors.EQ.1) THEN
+IF (nProcessors_Global.EQ.nComputeNodeProcessors) THEN
   SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',1,' node'
 ELSE
-  SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',         &
-                                                            nProcessors_Global/nComputeNodeProcessors,' nodes'
+  SWRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',         &
+                                                         nProcessors_Global/nComputeNodeProcessors,' nodes for a total number of ',&
+                                                         nProcessors_Global,' procs'
 END IF
 
 ! Map global rank number into shared rank number. Returns MPI_UNDEFINED if not on the same node

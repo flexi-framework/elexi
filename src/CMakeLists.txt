@@ -327,6 +327,7 @@ ELSE()
   ADD_DEFINITIONS(-DUSE_RW=0)
   ADD_DEFINITIONS(-DUSE_EXTEND_RHS=0)
   ADD_DEFINITIONS(-DUSE_FAXEN_CORR=0)
+  ADD_DEFINITIONS(-DCORE_SPLIT=1)
 ENDIF()
 
 # =========================================================================

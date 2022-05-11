@@ -69,7 +69,7 @@ SUBROUTINE LocateParticleInElement(PartID,doHALO)
 ! MODULES                                                                                                                          !
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
-USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef
+USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -79,16 +79,16 @@ LOGICAL,INTENT(IN)     :: doHalo
 ! LOCAL VARIABLES
 INTEGER                :: ElemID
 !===================================================================================================================================
-ElemID = SinglePointToElement(PartState(1:3,PartID),doHALO=doHALO)
-PEM%Element(PartID) = ElemID
-IF(ElemID.EQ.-1)THEN
-  PDM%ParticleInside(PartID)=.FALSE.
-ELSE
-  PDM%ParticleInside(PartID)=.TRUE.
-  IF(TrackingMethod.EQ.REFMAPPING)THEN
-    CALL GetPositionInRefElem(PartState(1:3,PartID),PartPosRef(1:3,PartID),ElemID)
-  END IF ! TrackingMethod.EQ.REFMAPPING
-END IF ! ElemID.EQ.-1
+SELECT CASE(TrackingMethod)
+  CASE(TRIATRACKING,TRACING)
+    ElemID = SinglePointToElement(PartState(1:3,PartID),doHALO=doHALO)
+  CASE(REFMAPPING)
+    ElemID = SinglePointToElement(PartState(1:3,PartID),doHALO=doHALO,PartID_opt=PartID)
+END SELECT
+
+PEM%Element(       PartID) = ElemID
+PDM%ParticleInside(PartID) = MERGE(.FALSE.,.TRUE.,ElemID.EQ.-1)
+
 END SUBROUTINE LocateParticleInElement
 
 
@@ -96,7 +96,7 @@ END SUBROUTINE LocateParticleInElement
 !> This function maps a 3D point to an element
 !> returns elementID or -1 in case no element was found
 !===================================================================================================================================
-INTEGER FUNCTION SinglePointToElement(Pos3D,doHALO,doEmission_opt)
+INTEGER FUNCTION SinglePointToElement(Pos3D,doHALO,doEmission_opt,PartID_opt)
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
@@ -110,6 +110,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_offsetElem,FIBGM_Elemen
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID,GetCNElemID
 USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance,TrackingMethod
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
+USE MOD_Particle_Vars          ,ONLY: PartPosRef
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -118,13 +119,14 @@ IMPLICIT NONE
 REAL,INTENT(IN)                   :: Pos3D(1:3)
 LOGICAL,INTENT(IN)                :: doHalo
 LOGICAL,INTENT(IN),OPTIONAL       :: doEmission_opt
+INTEGER,INTENT(IN),OPTIONAL       :: PartID_opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                           :: iBGMElem,nBGMElems,ElemID,CNElemID, iBGM,jBGM,kBGM
-REAL                              :: Distance2, RefPos(1:3)
+INTEGER                           :: iBGMElem,nBGMElems,ElemID,CNElemID,iBGM,jBGM,kBGM
+REAL                              :: Distance2,RefPos(1:3)
 REAL                              :: Det(6,2)
 LOGICAL                           :: InElementCheck,doEmission
 !===================================================================================================================================
@@ -192,6 +194,8 @@ DO iBGMElem = 1,nBGMElems
         CNElemID  = GetCNElemID(ElemID)
         IF (MAXVAL(ABS(RefPos)).LE.ElemEpsOneCell(CNElemID)) InElementCheck = .TRUE.
       END IF
+
+      IF (InElementCheck .AND. PRESENT(PartID_opt)) PartPosRef(1:3,PartID_opt) = RefPos
   END SELECT
 
   IF (InElementCheck) THEN

@@ -71,7 +71,7 @@ OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
 EXECUTE_PROCESS(COMMAND ld.gold --version COMMAND grep "^GNU gold" COMMAND sed "s/^.* //g" OUTPUT_VARIABLE GNU_GOLD_VERSION)
 IF (DEFINED GNU_GOLD_VERSION  AND NOT "${GNU_GOLD_VERSION}" STREQUAL "")
   STRING(STRIP "${GNU_GOLD_VERSION}" GNU_GOLD_VERSION)
-  MESSAGE(STATUS "Setting linker to gold v${GNU_GOLD_VERSION}")
+  MESSAGE(STATUS "Setting linker to [gold] (v${GNU_GOLD_VERSION})")
   # Shift responsibility of driving the final stages of compilation from collect2 to gold via the linker plugin
   # More information at: https://gcc.gnu.org/wiki/LinkTimeOptimization
   IF(CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)

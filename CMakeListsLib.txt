@@ -277,8 +277,7 @@ IF(NOT LIBS_BUILD_MATH_LIB)
   FIND_PACKAGE(LAPACK QUIET)
   IF (LAPACK_FOUND)
     LIST(APPEND linkedlibs ${LAPACK_LIBRARIES})
-    MESSAGE(STATUS "Using system BLAS/Lapack library")
-    MESSAGE(STATUS "Compiling with system BLAS/Lapack library")
+    MESSAGE(STATUS "Compiling with system [BLAS/Lapack]")
   ENDIF()
 
   # VDM inverse, replace lapack with analytical solution

@@ -467,7 +467,7 @@ END SUBROUTINE WriteBaseflow
 SUBROUTINE WriteTimeAverage(MeshFileName,OutputTime,dtAvg,FV_Elems_In,nVal,&
                             nVarAvg,VarNamesAvg,UAvg,&
                             nVarFluc,VarNamesFluc,UFluc,&
-                            FileName_In,FutureTime)
+                            FileName_In,NodeType_In,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -481,7 +481,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)             :: nVarAvg                                      !< Number of variables in UAvg  (first dimension)
 INTEGER,INTENT(IN)             :: nVarFluc                                     !< Number of variables in UFluc (first dimension)
 INTEGER,INTENT(IN)             :: nVal(3)                                      !< Dimension (2:4) of UAvg/UFluc
-INTEGER,INTENT(IN)             :: FV_Elems_In(nElems)                          !< Array with custom FV_Elem information
+INTEGER,INTENT(IN),OPTIONAL    :: FV_Elems_In(nElems)                          !< Array with custom FV_Elem information
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName                                 !< Name of mesh file
 CHARACTER(LEN=255),INTENT(IN)  :: VarNamesAvg(nVarAvg)                         !< Average variable names
 CHARACTER(LEN=255),INTENT(IN)  :: VarNamesFluc(nVarFluc)                       !< Average variable names
@@ -491,6 +491,7 @@ REAL,INTENT(IN),TARGET         :: UAvg(nVarAvg,nVal(1),nVal(2),nVal(3),nElems) !
 REAL,INTENT(IN),TARGET         :: UFluc(nVarFluc,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution fluctuations
 REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !< Time of next output
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Filename_In                            !< custom filename
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: NodeType_In                            !< custom node type
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName,DataSet,tmp255
@@ -519,8 +520,14 @@ IF(PRESENT(Filename_In)) Filename=TRIM(Filename_In)
 IF(MPIRoot)THEN
                     ! dummy DG_Solution to fix Posti error, tres oegly !!!
                     tmp255 = TRIM('DUMMY_DO_NOT_VISUALIZE')
+  ! Routine might be called from posti with different node type. In this case, userblock is also missing
+  IF(.NOT.PRESENT(NodeType_In))THEN
                     CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',1 ,PP_N,(/tmp255/),&
                            MeshFileName,OutputTime,FutureTime,create=.TRUE.,withUserblock=.TRUE.)
+  ELSE
+                    CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',1 ,PP_N,(/tmp255/),&
+                           MeshFileName,OutputTime,FutureTime,create=.TRUE.,withUserblock=.FALSE.,NodeTypeIn=NodeType_In)
+  END IF
   IF(nVarAvg .GT.0) CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVarAvg ,PP_N,VarNamesAvg,&
                            MeshFileName,OutputTime,FutureTime,create=.FALSE.,Dataset='Mean')
   IF(nVarFluc.GT.0) CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVarFluc,PP_N,VarNamesFluc,&
@@ -535,10 +542,12 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
 
 ! write dummy FV array
-NULLIFY(ElementOutTimeAvg)
-CALL AddToElemData(ElementOutTimeAvg,'FV_Elems',IntArray=FV_Elems_In)
-CALL WriteAdditionalElemData(FileName,ElementOutTimeAvg)
-DEALLOCATE(ElementOutTimeAvg)
+IF(PRESENT(FV_Elems_In))THEN
+  NULLIFY(ElementOutTimeAvg)
+  CALL AddToElemData(ElementOutTimeAvg,'FV_Elems',IntArray=FV_Elems_In)
+  CALL WriteAdditionalElemData(FileName,ElementOutTimeAvg)
+  DEALLOCATE(ElementOutTimeAvg)
+END IF
 
 DO i=1,2
   nVar_loc =  MERGE(nVarAvg,nVarFluc,i.EQ.1)
@@ -588,7 +597,7 @@ END SUBROUTINE WriteTimeAverage
 !> Subroutine that generates the output file on a single processor and writes all the necessary attributes (better MPI performance)
 !==================================================================================================================================
 SUBROUTINE GenerateFileSkeleton(FileName,TypeString,nVar,NData,StrVarNames,MeshFileName,OutputTime,&
-                                FutureTime,Dataset,create,withUserblock)
+                                FutureTime,Dataset,create,withUserblock,NodeTypeIn)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -613,6 +622,7 @@ REAL,INTENT(IN),OPTIONAL       :: FutureTime         !< Time of next output
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Dataset      !< Name of the dataset
 LOGICAL,INTENT(IN),OPTIONAL    :: create             !< specify whether file should be newly created
 LOGICAL,INTENT(IN),OPTIONAL    :: withUserblock      !< specify whether userblock data shall be written or not
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: NodeTypeIn   !< Name of the node type
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(HID_T)                 :: DSet_ID,FileSpace,HDF5DataType
@@ -673,6 +683,7 @@ IF(create_loc)THEN
     CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
   END IF
   tmp255=TRIM(NodeType)
+  IF(PRESENT(NodeTypeIn)) tmp255=TRIM(NodeTypeIn)
   CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/tmp255/))
 #if FV_ENABLED
   CALL WriteAttribute(File_ID,'FV_Type',1,IntScalar=2)

@@ -172,6 +172,13 @@ gnu_riemann:
 #                         - particle mortar tests
 #                         - particle sanitize tests
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
+PROC_particle:
+    <<: *defaults_nightly
+    stage: particle_checkin
+    script:
+        - cd build_gnu
+        - python ./reggie2.0/reggie.py ../regressioncheck/checks/particle/PROC -j 6
+
 SANI_particle:
   <<: *defaults_nightly
   stage: particle_nightly

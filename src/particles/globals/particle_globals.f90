@@ -91,6 +91,14 @@ INTERFACE StringBeginsWith
   MODULE PROCEDURE StringBeginsWith
 END INTERFACE
 
+INTERFACE ElementOnProc
+  MODULE PROCEDURE ElementOnProc
+END INTERFACE
+
+INTERFACE ElementOnNode
+  MODULE PROCEDURE ElementOnNode
+END INTERFACE
+
 PUBLIC :: PI
 PUBLIC :: CROSSNORM
 PUBLIC :: VECNORM
@@ -104,6 +112,8 @@ PUBLIC :: FindLinIndependentVectors
 PUBLIC :: Find2DNormIndependentVectors
 PUBLIC :: RandNormal
 PUBLIC :: StringBeginsWith
+PUBLIC :: ElementOnProc
+PUBLIC :: ElementOnNode
 !===================================================================================================================================
 
 CONTAINS
@@ -521,5 +531,58 @@ ELSE
 END IF ! SubStringLength.GT.0.AND.MainStringLength.GT.0
 END FUNCTION StringBeginsWith
 
+
+!===================================================================================================================================
+!> Check whether element ID is on the current proc
+!===================================================================================================================================
+PPURE LOGICAL FUNCTION ElementOnProc(GlobalElemID) RESULT(L)
+! MODULES
+USE MOD_Preproc
+USE MOD_Mesh_Vars                ,ONLY: offSetElem
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER, INTENT(IN) :: GlobalElemID ! Global element index
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: LocalElemID
+!-----------------------------------------------------------------------------------------------------------------------------------
+!===================================================================================================================================
+LocalElemID = GlobalElemID - offsetElem
+L = (LocalElemID.GE.1).AND.(LocalElemID.LE.PP_nElems)
+END FUNCTION ElementOnProc
+
+
+!===================================================================================================================================
+!> Check whether element ID is on the current node
+!===================================================================================================================================
+PPURE LOGICAL FUNCTION ElementOnNode(GlobalElemID) RESULT(L)
+! MODULES
+USE MOD_Preproc
+#if USE_MPI
+USE MOD_MPI_Vars                 ,ONLY: offsetElemMPI
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: ComputeNodeRootRank,nComputeNodeProcessors
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER, INTENT(IN) :: GlobalElemID ! Global element index
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+!===================================================================================================================================
+#if USE_MPI
+L = (GlobalElemID.GE.offsetElemMPI(ComputeNodeRootRank)+1).AND.&
+    (GlobalElemID.LE.offsetElemMPI(ComputeNodeRootRank+nComputeNodeProcessors))
+#else
+L = .TRUE.
+#endif /*USE_MPI*/
+END FUNCTION ElementOnNode
 
 END MODULE MOD_Particle_Globals

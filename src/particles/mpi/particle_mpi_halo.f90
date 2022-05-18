@@ -65,6 +65,8 @@ USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Timedisc_Vars  ,ONLY: ManualTimeStep
 USE MOD_Particle_Tracking_Vars  ,ONLY: TrackingMethod
 USE MOD_TimeDisc_Vars           ,ONLY: nRKStages,RKc
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -76,16 +78,15 @@ INTEGER,DIMENSION(2),PARAMETER :: DirPeriodicVector = (/-1,1/)
 REAL,DIMENSION(6)              :: xCoordsProc,xCoordsOrigin
 INTEGER                        :: iElem,ElemID,firstElem,lastElem,NbElemID
 INTEGER                        :: iSide,SideID,firstSide,lastSide,iLocSide
-!INTEGER                        :: firstSide,lastSide
 INTEGER                        :: iMortar,nMortarElems,NbSideID
 INTEGER                        :: iProc,HaloProc
-!INTEGER                        :: GlobalProcID
 INTEGER                        :: nExchangeSides
-!INTEGER                        :: nExchangeProcs
 INTEGER,ALLOCATABLE            :: ExchangeSides(:)
 REAL                           :: BoundsOfElemCenter(1:4)
 REAL,ALLOCATABLE               :: MPISideBoundsOfElemCenter(:,:)
 INTEGER                        :: ExchangeProcLeader
+LOGICAL,ALLOCATABLE            :: MPISideElem(:)
+LOGICAL                        :: ProcHasExchangeElem
 ! halo_eps reconstruction
 REAL                           :: MPI_halo_eps,MPI_halo_eps_velo,MPI_halo_diag,vec(1:3),deltaT
 LOGICAL                        :: fullMesh
@@ -139,18 +140,20 @@ IF (nProcessors.EQ.1) THEN
 END IF
 
 ! Open receive buffer for non-symmetric exchange identification
-DO iProc = 0,nProcessors_Global-1
-  IF (iProc.EQ.myRank) CYCLE
+IF (CheckExchangeProcs) THEN
+  DO iProc = 0,nProcessors_Global-1
+    IF (iProc.EQ.myRank) CYCLE
 
-  CALL MPI_IRECV( GlobalProcToRecvProc(iProc)  &
-                , 1                            &
-                , MPI_LOGICAL                  &
-                , iProc                        &
-                , 1999                         &
-                , MPI_COMM_FLEXI               &
-                , RecvRequest(iProc)           &
-                , IERROR)
-END DO
+    CALL MPI_IRECV( GlobalProcToRecvProc(iProc)  &
+                  , 1                            &
+                  , MPI_LOGICAL                  &
+                  , iProc                        &
+                  , 1999                         &
+                  , MPI_COMM_FLEXI               &
+                  , RecvRequest(iProc)           &
+                  , IERROR)
+  END DO
+END IF
 
 !> Count all MPI sides on current proc.
 firstElem = offsetElem+1
@@ -163,11 +166,16 @@ lastElem  = offsetElem+nElems
 !  END IF
 !END DO
 
-!>>> For all element, loop over the six sides and check if the neighbor element is on the current proc
+!>>> For all elements, loop over the six sides and check if the neighbor element is on the current proc
 !>>> Special care for big mortar sides, here the SIDE_ELEMID must be used
+ALLOCATE(MPISideElem(offsetElem+1:offsetElem+nElems))
 nExchangeSides = 0
+MPISideElem    = .FALSE.
 
 DO iElem = firstElem,lastElem
+  ! Element already flagged
+  IF (MPISideElem(iElem)) CYCLE
+
   DO iLocSide = 1,6
     SideID   = GetGlobalNonUniqueSideID(iElem,iLocSide)
     NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
@@ -187,15 +195,20 @@ DO iElem = firstElem,lastElem
 
         ! If any of the small mortar sides is not on the local proc, the side is a MPI side
         IF (NbElemID.LT.firstElem .OR. NbElemID.GT.lastElem) THEN
-          nExchangeSides = nExchangeSides + 1
+          nExchangeSides     = nExchangeSides + 1
+          MPISideElem(iElem) = .TRUE.
           EXIT
         END IF
       END DO
 
     ! regular side or small mortar side
     ELSE
+      ! Only check inner (MPI interfaces) and boundary sides (NbElemID.EQ.0)
+      ! Boundary sides cannot be discarded because one proc might have MPI interfaces and the other might not
+      ! NbElemID.LT.firstElem is always true for NbElemID.EQ.0 because firstElem.GE.1
       IF (NbElemID.LT.firstElem .OR. NbElemID.GT.lastElem) THEN
-        nExchangeSides = nExchangeSides + 1
+        nExchangeSides     = nExchangeSides + 1
+        MPISideElem(iElem) = .TRUE.
       END IF
     END IF
   END DO
@@ -208,16 +221,12 @@ IF (nComputeNodeProcessors.GT.1.AND.nExchangeSides.EQ.0) &
 ALLOCATE(ExchangeSides(1:nExchangeSides))
 
 nExchangeSides = 0
-
-! This approach does not work, we get only the MPI sides pointing into the compute-node halo region
-!DO iSide = firstSide,lastSide
-!  IF (SideInfo_Shared(SIDE_NBELEMTYPE,iSide).EQ.2) THEN
-!    nExchangeSides = nExchangeSides + 1
-!    ExchangeSides(nExchangeSides) = SideInfo_Shared(SIDE_ID,iSide)
-!  END IF
-!END DO
+MPISideElem    = .FALSE.
 
 DO iElem = firstElem,lastElem
+  ! Element already flagged
+  IF (MPISideElem(iElem)) CYCLE
+
   DO iLocSide = 1,6
     SideID   = GetGlobalNonUniqueSideID(iElem,iLocSide)
     NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
@@ -239,19 +248,26 @@ DO iElem = firstElem,lastElem
         IF (NbElemID.LT.firstElem .OR. NbElemID.GT.lastElem) THEN
           nExchangeSides = nExchangeSides + 1
           ExchangeSides(nExchangeSides) = SideID
+          MPISideElem(iElem) = .TRUE.
           EXIT
         END IF
       END DO
 
     ! regular side or small mortar side
     ELSE
+      ! Only check inner (MPI interfaces) and boundary sides (NbElemID.EQ.0)
+      ! Boundary sides cannot be discarded because one proc might have MPI interfaces and the other might not
+      ! NbElemID.LT.firstElem is always true for NbElemID.EQ.0 because firstElem.GE.1
       IF (NbElemID.LT.firstElem .OR. NbElemID.GT.lastElem) THEN
         nExchangeSides = nExchangeSides + 1
         ExchangeSides(nExchangeSides) = SideID
+        MPISideElem(iElem) = .TRUE.
       END IF
     END IF
   END DO
 END DO
+
+DEALLOCATE(MPISideElem)
 
 !> Build metrics for all MPI sides on current proc
 ALLOCATE(MPISideBoundsOfElemCenter(1:4,1:nExchangeSides))
@@ -273,7 +289,7 @@ END DO
 
 ! if running on one node, halo_eps is meaningless. Get a representative MPI_halo_eps for MPI proc identification
 fullMesh = .FALSE.
-IF (halo_eps.EQ.0) THEN
+IF (halo_eps.LE.0.) THEN
   ! reconstruct halo_eps_velo
   IF (halo_eps_velo.EQ.0) THEN
     ! Set to speed of sound
@@ -436,8 +452,8 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
             IF (VECNORM( BoundsOfElemCenter(1:3)                                                       &
                        + GEO%PeriodicVectors(1:3,1) * DirPeriodicVector(iPeriodicDir)                  &
                        - MPISideBoundsOfElemCenter(1:3,iSide))                                         &
-              .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                                  &
-                        +MPISideBoundsOfElemCenter(4,iSide) ) THEN
+                    .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                            &
+                       + MPISideBoundsOfElemCenter(4,iSide) ) THEN
                 ! flag the proc as exchange proc (in halo region)
                 GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                 GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -454,8 +470,8 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
               IF (VECNORM( BoundsOfElemCenter(1:3)                                                    &
                          + GEO%PeriodicVectors(1:3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir) &
                          - MPISideBoundsOfElemCenter(1:3,iSide))                                      &
-                        .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                       &
-                                  +MPISideBoundsOfElemCenter(4,iSide)) THEN
+                      .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                         &
+                         + MPISideBoundsOfElemCenter(4,iSide)) THEN
                 ! flag the proc as exchange proc (in halo region)
                 GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                 GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -473,7 +489,7 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
                          + GEO%PeriodicVectors(1:3,2) * DirPeriodicVector(jPeriodicDir)               &
                          - MPISideBoundsOfElemCenter(1:3,iSide))                                      &
                       .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                         &
-                                +MPISideBoundsOfElemCenter(4,iSide)) THEN
+                         + MPISideBoundsOfElemCenter(4,iSide)) THEN
                 ! flag the proc as exchange proc (in halo region)
                 GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                 GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -494,8 +510,8 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
               IF (VECNORM( BoundsOfElemCenter(1:3)                                                      &
                          + GEO%PeriodicVectors(1:3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir)   &
                          - MPISideBoundsOfElemCenter(1:3,iSide))                                        &
-                        .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                         &
-                                  +MPISideBoundsOfElemCenter(4,iSide)) THEN
+                      .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                           &
+                         + MPISideBoundsOfElemCenter(4,iSide)) THEN
                 ! flag the proc as exchange proc (in halo region)
                 GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                 GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -513,7 +529,7 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
                              + GEO%PeriodicVectors(1:3,jPeriodicVector) * DirPeriodicVector(jPeriodicDir) &
                              - MPISideBoundsOfElemCenter(1:3,iSide))                                      &
                           .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                         &
-                                    +MPISideBoundsOfElemCenter(4,iSide)) THEN
+                             + MPISideBoundsOfElemCenter(4,iSide)) THEN
                     ! flag the proc as exchange proc (in halo region)
                     GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                     GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -535,7 +551,7 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
                            + GEO%PeriodicVectors(1:3,3) * DirPeriodicVector(kPeriodicDir)                   &
                            - MPISideBoundsOfElemCenter(1:3,iSide))                                          &
                         .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                             &
-                        +MPISideBoundsOfElemCenter(4,iSide) ) THEN
+                           + MPISideBoundsOfElemCenter(4,iSide) ) THEN
                   ! flag the proc as exchange proc (in halo region)
                   GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
                   GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
@@ -565,72 +581,136 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
   END DO ! iSide = 1, nExchangeSides
 END DO ElemLoop
 
-! Notify every proc which was identified by the local proc
+! Remove elements if the halo proc contains only internal elements, i.e. we cannot possibly reach the halo element
+!
+!   CN1     CN2    > If a processor contains large changes in element size, internal elements might intersect with
+!  _ _ _    _ _ _  > the MPI sides. Since a processor checks all potential halo elements against only its own exchange
+! |_|_|_|  |_|_|_| > sides, the large elements will only take effect for the proc not containing it. However, if the
+! |_|_|_|  |_| | | > proc flags only large internal elements without flagging a single exchange element, there is no
+! |_|_|_|  |_|_|_| > way for a particle to actually reach.
+! |_|_|_|  |_| | |
+! |_|_|_|  |_|_|_| > This routine therefore checks for the presence of exchange sides on the procs and unflags the
+!                  > proc if none is found.
+!
 DO iProc = 0,nProcessors_Global-1
   IF (iProc.EQ.myRank) CYCLE
 
-  ! CommFlag holds the information if the local proc wants to communicate with iProc. Cannot be a logical because ISEND might not
-  ! return before the next value is written
-  CommFlag(iProc) = MERGE(.TRUE.,.FALSE.,GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).GT.0)
-  CALL MPI_ISEND( CommFlag(iProc)              &
-                , 1                            &
-                , MPI_LOGICAL                  &
-                , iProc                        &
-                , 1999                         &
-                , MPI_COMM_FLEXI               &
-                , SendRequest(iProc)           &
-                , IERROR)
-END DO
+  IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).LE.0) CYCLE
 
-! Finish communication
-DO iProc = 0,nProcessors_Global-1
-  IF (iProc.EQ.myRank) CYCLE
+  ProcHasExchangeElem = .FALSE.
+  ! Use a named loop so the entire element can be cycled
+ExchangeLoop: DO iElem = offsetElemMPI(iProc)+1,offsetElemMPI(iProc+1)
+    ! Ignore elements outside nComputeNodeTotalElems
+    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).LT.0) CYCLE
 
-  CALL MPI_WAIT(RecvRequest(iProc),MPIStatus,IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
-  CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
-  IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
-END DO
+    DO iLocSide = 1,6
+      SideID   = GetGlobalNonUniqueSideID(iElem,iLocSide)
+      NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID)
 
-! Append previously not found procs to list of exchange processors
-nNonSymmetricExchangeProcs = 0
-DO iProc = 0,nProcessors_Global-1
-  IF (iProc.EQ.myRank) CYCLE
+      ! Mortar side
+      IF (NbElemID.LT.0) THEN
+        nMortarElems = MERGE(4,2,SideInfo_Shared(SIDE_NBELEMID,SideID).EQ.-1)
 
-  ! Ignore procs that are already flagged or not requesting communication
-  IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).GT.0) CYCLE
-  IF (.NOT.GlobalProcToRecvProc(iProc)) CYCLE
+        DO iMortar = 1,nMortarElems
+          NbSideID = -SideInfo_Shared(SIDE_LOCALID,SideID + iMortar)
+          ! If small mortar side not defined, skip it for now, likely not inside the halo region
+          IF (NbSideID.LT.1) CYCLE
 
-  ! Found a previously missing proc
-  GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc) = 2
-  GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,iProc) = nExchangeProcessors
+          NbElemID = SideInfo_Shared(SIDE_NBELEMID,SideID + iMortar)
+          ! If small mortar element not defined, skip it for now, likely not inside the halo region
+          IF (NbElemID.LT.1) CYCLE
 
-  nNonSymmetricExchangeProcs = nNonSymmetricExchangeProcs + 1
-  nExchangeProcessors        = nExchangeProcessors + 1
-END DO
+          ! If any of the small mortar sides is not on the halo proc, the side is a MPI side
+          IF (NbElemID.LT.offsetElemMPI(iProc)+1 .OR. NbElemID.GT.offsetElemMPI(iProc+1)) THEN
+            ProcHasExchangeElem = .TRUE.
+            EXIT ExchangeLoop
+          END IF
+        END DO
 
-DEALLOCATE(GlobalProcToRecvProc,RecvRequest,SendRequest,CommFlag)
+      ! regular side or small mortar side
+      ELSE
+        ! Only check inner (MPI interfaces) and boundary sides (NbElemID.EQ.0)
+        ! Boundary sides cannot be discarded because one proc might have MPI interfaces and the other might not
+        IF (NbElemID.LT.offsetElemMPI(iProc)+1 .OR. NbElemID.GT.offsetElemMPI(iProc+1)) THEN
+          ProcHasExchangeElem = .TRUE.
+          EXIT ExchangeLoop
+        END IF
+      END IF
+    END DO
+  END DO ExchangeLoop ! iElem = offsetElemMPI(iProc)+1,offsetElemMPI(iProc+1)
 
-! On smooth grids, nNonSymmetricExchangeProcs should be zero. Only output if previously missing particle exchange procs are found
-CALL MPI_REDUCE(nNonSymmetricExchangeProcs,nNonSymmetricExchangeProcsGlob,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-IF ( MPIRoot .AND. nNonSymmetricExchangeProcsGlob.GT.0) THEN
-  SWRITE(UNIT_stdOut,'(A,I0,A)') ' | Found ',nNonSymmetricExchangeProcsGlob, &
-                                 ' previously missing non-symmetric particle exchange procs'
-  IF(CheckExchangeProcs) CALL Abort(__STAMP__,&
-    ' Non-symmetric particle exchange procs > 0. This check is optional. You can disable it via CheckExchangeProcs = F')
+  ! Processor has halo elements but no MPI sides, remove the exchange processor
+  IF (.NOT.ProcHasExchangeElem) THEN
+    GlobalProcToExchangeProc(:,iProc) = 0
+    nExchangeProcessors = nExchangeProcessors - 1
+  END IF
+END DO ! iProc = 1,nExchangeProcessors
+
+! Notify every proc if it was identified by the local proc
+IF(CheckExchangeProcs)THEN
+  DO iProc = 0,nProcessors_Global-1
+    IF (iProc.EQ.myRank) CYCLE
+
+    ! CommFlag holds the information if the local proc wants to communicate with iProc. Cannot be a logical because ISEND might not
+    ! return before the next value is written
+    CommFlag(iProc) = MERGE(.TRUE.,.FALSE.,GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).GT.0)
+    CALL MPI_ISEND( CommFlag(iProc)              &
+                  , 1                            &
+                  , MPI_LOGICAL                  &
+                  , iProc                        &
+                  , 1999                         &
+                  , MPI_COMM_FLEXI               &
+                  , SendRequest(iProc)           &
+                  , IERROR)
+  END DO
+
+  ! Finish communication
+  DO iProc = 0,nProcessors_Global-1
+    IF (iProc.EQ.myRank) CYCLE
+
+    CALL MPI_WAIT(RecvRequest(iProc),MPIStatus,IERROR)
+    IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
+    CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
+    IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
+  END DO
+
+  ! Append previously not found procs to list of exchange processors
+  nNonSymmetricExchangeProcs = 0
+  DO iProc = 0,nProcessors_Global-1
+    IF (iProc.EQ.myRank) CYCLE
+
+    ! Ignore procs that are already flagged or not requesting communication
+    IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).GT.0) CYCLE
+    IF (.NOT.GlobalProcToRecvProc(iProc)) CYCLE
+
+    ! Found a previously missing proc
+    GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc) = 2
+    GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,iProc) = nExchangeProcessors
+
+    nNonSymmetricExchangeProcs = nNonSymmetricExchangeProcs + 1
+    nExchangeProcessors        = nExchangeProcessors + 1
+  END DO
+
+  ! On smooth grids, nNonSymmetricExchangeProcs should be zero. Only output if previously missing particle exchange procs are found
+  CALL MPI_ALLREDUCE(nNonSymmetricExchangeProcs,nNonSymmetricExchangeProcsGlob,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+  IF (nNonSymmetricExchangeProcsGlob.GT.0) THEN
+    SWRITE(UNIT_StdOut,'(X,131("~"))')
+    SWRITE(UNIT_stdOut,'(A,I0,A)') ' | Found ',nNonSymmetricExchangeProcsGlob, &
+                                   ' previously missing non-symmetric particle exchange procs'
+    IF(CheckExchangeProcs) CALL CollectiveStop(__STAMP__,&
+      ' Non-symmetric particle exchange procs > 0. This check is optional. You can disable it via CheckExchangeProcs = F')
+  END IF ! nNonSymmetricExchangeProcsGlob.GT.0
 END IF
+
+SDEALLOCATE(GlobalProcToRecvProc)
+SDEALLOCATE(RecvRequest)
+SDEALLOCATE(SendRequest)
+SDEALLOCATE(CommFlag)
 
 ! Build reverse mapping
 !-- EXCHANGE_PROC_TYPE information is currently unused and either -1 (no communication) or 2 (communication). Can be used to
 !-- implement check if exchange partner is on the same compute node, so build it here
 ALLOCATE(ExchangeProcToGlobalProc(2,0:nExchangeProcessors-1))
-
-! Loop through all procs and build reverse mapping
-!DO iProc = 0,nComputeNodeProcessors-1
-!  ExchangeProcToGlobalProc(EXCHANGE_PROC_TYPE,iProc) = 1
-!  ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,iProc) = iProc + ComputeNodeRootRank
-!END DO
-!nExchangeProcessors = nComputeNodeProcessors
 
 DO iProc = 0,nProcessors_Global-1
   IF (iProc.EQ.myRank) CYCLE
@@ -841,6 +921,6 @@ SELECT CASE(nPeriodicVectors)
 END SELECT
 
 END FUNCTION HaloBoxInProc
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 END MODULE MOD_Particle_MPI_Halo

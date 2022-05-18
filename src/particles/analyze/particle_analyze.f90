@@ -68,6 +68,8 @@ CALL prms%CreateIntOption(      'Part-AnalyzeStep'        , 'Analyze is performe
                                                           , '1')
 CALL prms%CreateLogicalOption(  'CalcKineticEnergy'       , 'Calculate Kinetic Energy'                                         &
                                                           , '.FALSE.')
+CALL prms%CreateLogicalOption(  'CalcPartNumber'          , 'Calculate the particle number'                                    &
+                                                          , '.FALSE.')
 CALL prms%CreateLogicalOption(  'CalcPartBalance'         , 'Calculate the Particle Kinetic Energy Balance'                  //&
                                                             '- input and outflow kinetic energy of all particles'              &
                                                           , '.FALSE.')
@@ -111,9 +113,9 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars   ,ONLY: doParticleAnalyze
 USE MOD_Particle_Analyze_Vars   ,ONLY: doParticleDispersionTrack,doParticlePathTrack
-USE MOD_Particle_Analyze_Vars   ,ONLY: CalcEkin,CalcPartBalance
+USE MOD_Particle_Analyze_Vars   ,ONLY: CalcPartNumber,CalcPartBalance,CalcEkin
 USE MOD_Particle_Analyze_Vars   ,ONLY: ParticleAnalyzeInitIsDone,nSpecAnalyze
-USE MOD_Particle_Analyze_Vars   ,ONLY: nPartIn,nPartOut,PartPath,PartEkin,PartEkinOut,PartEkinIn,nPartInTmp,PartEkinInTmp
+USE MOD_Particle_Analyze_Vars   ,ONLY: nPart,nPartIn,nPartOut,PartPath,PartEkin,PartEkinOut,PartEkinIn,nPartInTmp,PartEkinInTmp
 USE MOD_Particle_Vars           ,ONLY: nSpecies,PDM
 USE MOD_ReadInTools             ,ONLY: GETLOGICAL,GETINT,GETSTR,GETINTARRAY,GETREALARRAY,GETREAL
 ! IMPLICIT VARIABLE HANDLING
@@ -141,6 +143,15 @@ IF (CalcEkin) THEN
   SDEALLOCATE(PartEkin)
   ALLOCATE( PartEkin (nSpecAnalyze))
   PartEkin = 0.
+END IF
+
+! Calculate number of particles in the domain
+CalcPartNumber  = GETLOGICAL('CalcPartNumber')
+IF (CalcPartNumber) THEN
+  doParticleAnalyze = .TRUE.
+  SDEALLOCATE(nPart)
+  ALLOCATE( nPart      (nSpecAnalyze))
+  nPart       = 0
 END IF
 
 ! Calculate number and kinetic energy of particles entering / leaving the domain
@@ -199,7 +210,7 @@ SUBROUTINE ParticleAnalyze(t,iter)
 USE MOD_Globals
 USE MOD_Analyze_Vars              ,ONLY: nWriteData
 USE MOD_Particle_Analyze_Tools    ,ONLY: ParticleRecord
-USE MOD_Particle_Analyze_Vars     ,ONLY: doParticleAnalyze,CalcEkin
+USE MOD_Particle_Analyze_Vars     ,ONLY: doParticleAnalyze,CalcEkin,CalcPartNumber
 USE MOD_Particle_Analyze_Vars     ,ONLY: RecordPart
 USE MOD_Particle_Boundary_Vars    ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack
@@ -229,6 +240,10 @@ CALL WriteElemTimeStatistics(WriteHeader=.TRUE.,iter=iter)
 ! Write information to console output
 IF (CountNbOfLostParts) THEN
   CALL WriteInfoStdOut()
+END IF
+
+IF (CalcPartNumber) THEN
+  CALL CalcParticleNumber()
 END IF
 
 IF (CalcEkin) THEN
@@ -324,6 +339,59 @@ END IF
 END SUBROUTINE ParticleInformation
 
 
+SUBROUTINE CalcParticleNumber()
+!===================================================================================================================================
+! compute the number of particles per species
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_Particle_Analyze_Vars ,ONLY: nPart,nSpecAnalyze
+USE MOD_Particle_Vars         ,ONLY: PartSpecies,PDM
+#if USE_MPI
+USE MOD_Particle_MPI_Vars     ,ONLY: PartMPI
+#endif /*MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: i
+!===================================================================================================================================
+
+nPart = 0.
+
+! nSpecAnalyze > 1, calculate species and sum
+IF (nSpecAnalyze.GT.1) THEN
+  DO i = 1,PDM%ParticleVecLength
+    IF (PDM%ParticleInside(i)) THEN
+      nPart(nSpecAnalyze)   = nPart(nSpecAnalyze)   + 1
+      nPart(PartSpecies(i)) = nPart(PartSpecies(i)) + 1
+    END IF ! (PDM%ParticleInside(i))
+  END DO ! i=1,PDM%ParticleVecLength
+! nSpecAnalyze = 1 : only 1 species
+ELSE
+  DO i = 1,PDM%ParticleVecLength
+    IF (PDM%ParticleInside(i)) THEN
+      nPart(PartSpecies(i)) = nPart(PartSpecies(i)) + 1
+    END IF ! particle inside
+  END DO ! 1,PDM%ParticleVecLength
+END IF
+
+#if USE_MPI
+IF(PartMPI%MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,nPart,nSpecAnalyze,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM, IERROR)
+ELSE
+  CALL MPI_REDUCE(nPart       ,0    ,nSpecAnalyze,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM, IERROR)
+END IF
+#endif /*MPI*/
+
+END SUBROUTINE CalcParticleNumber
+
+
 SUBROUTINE CalcKineticEnergy()
 !===================================================================================================================================
 ! compute the kinetic energy of particles
@@ -394,16 +462,18 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-SDEALLOCATE(PartEkin)
-
+! CalcPartNumber
+SDEALLOCATE(nPart  )
+! CalcPartBalance
 SDEALLOCATE(nPartIn)
 SDEALLOCATE(nPartOut)
+! CalcEkinPart
+SDEALLOCATE(PartEkin)
 SDEALLOCATE(PartEkinIn)
 SDEALLOCATE(PartEkinOut)
-
 SDEALLOCATE(nPartInTmp)
 SDEALLOCATE(PartEkinInTmp)
-
+! RecordPart
 SDEALLOCATE(RPP_Plane)
 
 ParticleAnalyzeInitIsDone = .FALSE.

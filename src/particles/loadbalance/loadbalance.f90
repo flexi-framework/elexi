@@ -406,7 +406,7 @@ ELSE
   WeightSum_loc = SUM(ElemTime)
 
   IF(ALMOSTZERO(WeightSum_loc))THEN
-    IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') 'Info: The measured time of all elems is zero. ALMOSTZERO(WeightSum)=.TRUE., SUM(ElemTime)=',WeightSum_loc
+    IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') ' Info: The measured time of all elems is zero. ALMOSTZERO(WeightSum)=.TRUE., SUM(ElemTime)=',WeightSum_loc
   END IF
 
   !CALL MPI_ALLREDUCE(WeightSum_loc,TargetWeight,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)

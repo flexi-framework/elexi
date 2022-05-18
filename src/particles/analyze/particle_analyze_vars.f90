@@ -25,12 +25,14 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                       :: ParticleAnalyzeInitIsDone = .FALSE.
 LOGICAL                       :: doParticleAnalyze                     ! perform analyze
-LOGICAL                       :: CalcPartBalance                       ! Particle Power Balance - input and outflow energy of all
+LOGICAL                       :: CalcPartNumber                        ! particle number inside domain
+LOGICAL                       :: CalcPartBalance                       ! particle power balance - input and outflow energy of all
                                                                        ! particles
-LOGICAL                       :: CalcEkin                              ! Compute the kinetic energy of each species
+LOGICAL                       :: CalcEkin                              ! compute the kinetic energy of each species
 LOGICAL                       :: doParticleDispersionTrack             ! track the particle dispersion radius, i.e. the absolute path
 LOGICAL                       :: doParticlePathTrack                   ! track the relative particle path
 INTEGER                       :: nSpecAnalyze                          ! number of analyzed species 1 or nSpecies+1
+INTEGER,ALLOCATABLE           :: nPart(:)                              ! Number of particles per species
 INTEGER,ALLOCATABLE           :: nPartIn(:)                            ! Number of entry and leaving particles
 INTEGER,ALLOCATABLE           :: nPartOut(:)                           ! Number of entry and leaving particles
 INTEGER,ALLOCATABLE           :: nPartInTmp(:)                         ! Number of entry and leaving particles
@@ -44,10 +46,10 @@ REAL                          :: TimeSample
 
 INTEGER                       :: RPP_MaxBufferSize
 INTEGER                       :: RecordPart
-TYPE tPPlane                                    !< Data type representing a single plane
-  REAL                        :: pos            !< position of the plane
-  INTEGER                     :: dir            !< direction of the normal vector of the plane
-  REAL, ALLOCATABLE           :: RPP_Data(:,:)  !< PartState and PartSpecies
+TYPE tPPlane                                                           !< Data type representing a single plane
+  REAL                        :: pos                                   !< position of the plane
+  INTEGER                     :: dir                                   !< direction of the normal vector of the plane
+  REAL, ALLOCATABLE           :: RPP_Data(:,:)                         !< PartState and PartSpecies
   INTEGER                     :: RPP_Records
 END TYPE tPPlane
 TYPE(tPPlane),ALLOCATABLE     :: RPP_Plane(:)

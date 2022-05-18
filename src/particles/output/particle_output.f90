@@ -132,7 +132,7 @@ INTEGER             :: unit_index,iSpec,OutputCounter
 !===================================================================================================================================
 
 OutputCounter = 2
-unit_index = 535
+unit_index    = 535
 
 IF (MPIRoot) THEN
   INQUIRE(UNIT=unit_index, OPENED=isOpen)
@@ -145,7 +145,15 @@ IF (MPIRoot) THEN
       !--- insert header
       OPEN(unit_index,file=TRIM(outfile))
       ! Time
-      WRITE(unit_index,'(A8,A5)',ADVANCE='NO') '001-TIME',' '
+      WRITE(unit_index,'(A8)',ADVANCE='NO') '001-TIME'
+      ! Particle number
+      IF (CalcPartNumber) THEN
+        DO iSpec = 1,nSpecAnalyze
+          WRITE(unit_index,'(A1)',ADVANCE='NO') ','
+          WRITE(unit_index,'(I3.3,A14,I3.3,A5)',ADVANCE='NO') OutputCounter,'-nPart-Spec-',iSpec,' '
+          OutputCounter = OutputCounter + 1
+        END DO
+     END IF
       ! Particle number balance
       IF (CalcPartBalance) THEN
         DO iSpec = 1,nSpecAnalyze
@@ -221,6 +229,13 @@ END IF
 IF (MPIRoot) THEN
   ! Time
   WRITE(unit_index,WRITEFORMAT,ADVANCE='NO') t
+  ! Particle number
+  IF (CalcPartNumber) THEN
+    DO iSpec = 1,nSpecAnalyze
+      WRITE(unit_index,'(A1)',ADVANCE='NO') ','
+      WRITE(unit_index,WRITEFORMAT,ADVANCE='NO') REAL(nPart(iSpec))
+    END DO
+  END IF
   ! Particle number balance
   IF (CalcPartBalance) THEN
     DO iSpec = 1,nSpecAnalyze

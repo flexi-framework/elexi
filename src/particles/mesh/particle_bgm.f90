@@ -179,11 +179,11 @@ LOGICAL                        :: PeriodicComponent(1:3)
 INTEGER                        :: iPeriodicVector,iPeriodicComponent
 ! Mortar
 INTEGER                        :: iMortar,NbElemID,NbSideID,nMortarElems
-! Timer
-REAL                           :: StartT,EndT
 #else
 REAL                           :: halo_eps
 #endif /*USE_MPI*/
+! Timer
+REAL                           :: StartT,EndT
 #if CODE_ANALYZE && USE_MPI
 INTEGER,ALLOCATABLE            :: NumberOfElements(:)
 #endif /*CODE_ANALYZE && USE_MPI*/

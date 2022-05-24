@@ -93,7 +93,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL,ALLOCATABLE            :: UserBCFound(:)
-CHARACTER(LEN=255),ALLOCATABLE :: BCNames(:)
+LOGICAL                        :: NameCheck,LengthCheck
+CHARACTER(LEN=255), ALLOCATABLE:: BCNames(:)
 CHARACTER(LEN=255)             :: ErrorString
 INTEGER, ALLOCATABLE           :: BCMapping(:),BCType(:,:)
 INTEGER                        :: iBC,iUserBC
@@ -126,7 +127,12 @@ UserBCFound = .FALSE.
 IF (nUserBCs.GT.0) THEN
   DO iBC=1,nBCs
     DO iUserBC=1,nUserBCs
-      IF (INDEX(TRIM(BCNames(iBC)),TRIM(BoundaryName(iUserBC))).NE.0) THEN
+      ! Check if BoundaryName(iUserBC) is a substring of BCNames(iBC)
+      NameCheck = INDEX(TRIM(BCNames(iBC)),TRIM(BoundaryName(iUserBC))).NE.0
+      ! Check if both strings have equal length
+      LengthCheck = LEN(TRIM(BCNames(iBC))).EQ.LEN(TRIM(BoundaryName(iUserBC)))
+      ! Check if both strings are equal (length has to be checked because index checks for substrings!)
+      IF(NameCheck.AND.LengthCheck)THEN
         ! Check if the BC was defined multiple times
         IF (BCMapping(iBC).NE.0) THEN
           WRITE(ErrorString,'(A,A,A)') ' Boundary ',TRIM(BCNames(iBC)),' is redefined multiple times in parameter file!'

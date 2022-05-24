@@ -201,7 +201,10 @@ ENDIF()
 # Location of binary and filenames
 # =========================================================================
 # append relative filename-macro for __FILENAME__ in Stamp of abort function (see flexi.h)
-SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
+# subst replacement is GNU make specific
+IF("${CMAKE_GENERATOR}" MATCHES "Unix Makefiles")
+  SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
+ENDIF()
 
 # add basedir for location of corresponding userblock-file
 ADD_DEFINITIONS("-DBASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
@@ -270,7 +273,8 @@ ENDIF()
 # Userblock
 # =========================================================================
 ADD_CUSTOM_COMMAND(TARGET libflexistatic PRE_BUILD COMMAND
-   sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}")
+  sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}"
+  BYPRODUCTS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o)
 
 # =========================================================================
 # Install

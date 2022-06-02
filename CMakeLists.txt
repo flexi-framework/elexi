@@ -151,7 +151,6 @@ IF (NOT CMAKE_BUILD_TYPE)
    ENDIF()
 ENDIF (NOT CMAKE_BUILD_TYPE)
 
-
 STRING(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LC)
 IF (BUILD_TYPE_LC MATCHES "debug" OR BUILD_TYPE_LC MATCHES "sanitize")
   ADD_DEFINITIONS("-DDEBUG")
@@ -209,9 +208,9 @@ ENDIF()
 # add basedir for location of corresponding userblock-file
 ADD_DEFINITIONS("-DBASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
 
-# -------------------------------------------------------------------------
+# =========================================================================
 # echo COMPILE_DEFINITIONS
-# -------------------------------------------------------------------------
+# =========================================================================
 GET_DIRECTORY_PROPERTY(comp_defs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
 SET(comp_defs_str "COMPILE_DEFINITIONS = ")
 FOREACH (def ${comp_defs})

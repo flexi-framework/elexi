@@ -97,7 +97,7 @@ INTEGER                        :: nVar,VarShift
 LOGICAL                        :: reSwitch
 INTEGER                        :: pcount,nInvalidPart
 INTEGER                        :: locnPart,offsetnPart
-INTEGER                        :: iPart,nGlobalNbrOfParticles,iElem
+INTEGER                        :: iPart,iElem
 INTEGER,ALLOCATABLE            :: PartInt(:,:)
 REAL,ALLOCATABLE               :: PartData(:,:)
 INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
@@ -175,7 +175,7 @@ DO pcount = 1,PDM%ParticleVecLength
 END DO
 
 ! Communicate the total number and offset
-CALL GetOffsetAndGlobalNumberOfParts('WriteParticleToHDF5',offsetnPart,nGlobalNbrOfParticles,locnPart)
+CALL GetOffsetAndGlobalNumberOfParts('WriteParticleToHDF5',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
 
 ! Allocate data arrays for mean particle quantities
 ALLOCATE(PartInt( PartIntSize ,offsetElem +1:offsetElem +PP_nElems))
@@ -288,29 +288,29 @@ ASSOCIATE (&
 
   ! Zero particles present in the complete domain.
   ! > Root writes empty dummy container to .h5 file (required for subsequent file access in ParaView)
-  IF (nGlobalNbrOfParticles.EQ.0 .AND. MPIRoot) THEN
+  IF (nGlobalNbrOfParticles(3).EQ.0 .AND. MPIRoot) THEN
       CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-      CALL WriteArray(      DataSetName  = 'PartData'     , rank = 2                       ,&
-                            nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles/)        ,&
-                            nVal         = (/PartDataSize , locnPart             /)        ,&
-                            offset       = (/0            , offsetnPart          /)        ,&
+      CALL WriteArray(      DataSetName  = 'PartData'     , rank = 2                          ,&
+                            nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles(3)/)        ,&
+                            nVal         = (/PartDataSize , locnPart                /)        ,&
+                            offset       = (/0            , offsetnPart             /)        ,&
                             collective   = .FALSE.        , RealArray = PartData)
       CALL CloseDataFile()
-  END IF ! nGlobalNbrOfParticles.EQ.0 .AND. MPIRoot
+  END IF ! nGlobalNbrOfParticles(3).EQ.0 .AND. MPIRoot
 #if USE_MPI
- CALL DistributedWriteArray(FileName                                                      ,&
-                            DataSetName  = 'PartData'     , rank = 2                      ,&
-                            nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles/)       ,&
-                            nVal         = (/PartDataSize , locnPart             /)       ,&
-                            offset       = (/0            , offsetnPart          /)       ,&
-                            collective   = UseCollectiveIO, offSetDim = 2                 ,&
+ CALL DistributedWriteArray(FileName                                                         ,&
+                            DataSetName  = 'PartData'     , rank = 2                         ,&
+                            nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles(3)/)       ,&
+                            nVal         = (/PartDataSize , locnPart                /)       ,&
+                            offset       = (/0            , offsetnPart             /)       ,&
+                            collective   = UseCollectiveIO, offSetDim = 2                    ,&
                             communicator = PartMPI%COMM   , RealArray = PartData)
 #else
   CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-  CALL WriteArray(          DataSetName  = 'PartData'     , rank = 2                      ,&
-                            nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles/)       ,&
-                            nVal         = (/PartDataSize , locnPart             /)       ,&
-                            offset       = (/0            , offsetnPart          /)       ,&
+  CALL WriteArray(          DataSetName  = 'PartData'     , rank = 2                         ,&
+                            nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles(3)/)       ,&
+                            nVal         = (/PartDataSize , locnPart                /)       ,&
+                            offset       = (/0            , offsetnPart             /)       ,&
                             collective   = .FALSE.        , RealArray = PartData)
   CALL CloseDataFile()
 #endif /*MPI*/
@@ -318,20 +318,20 @@ ASSOCIATE (&
   ! Turbulent particle properties currently not supported to be read directly. Do not associate varnames
 #if USE_MPI
   IF (ALLOCATED(TurbPartState)) &
-    CALL DistributedWriteArray(FileName                                                   ,&
-                               DataSetName  = 'TurbPartData'     , rank = 2               ,&
-                               nValGlobal   = (/TurbPartDataSize , nGlobalNbrOfParticles/),&
-                               nVal         = (/TurbPartDataSize , locnPart             /),&
-                               offset       = (/0                , offsetnPart          /),&
-                               collective   = UseCollectiveIO    , offSetDim = 2          ,&
+    CALL DistributedWriteArray(FileName                                                      ,&
+                               DataSetName  = 'TurbPartData'     , rank = 2                  ,&
+                               nValGlobal   = (/TurbPartDataSize , nGlobalNbrOfParticles(3)/),&
+                               nVal         = (/TurbPartDataSize , locnPart                /),&
+                               offset       = (/0                , offsetnPart             /),&
+                               collective   = UseCollectiveIO    , offSetDim = 2             ,&
                                communicator = PartMPI%COMM       , RealArray = TurbPartData)
 #else
   IF (ALLOCATED(TurbPartState)) THEN
     CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteArray(           DataSetName  = 'TurbPartData'     , rank = 2               ,&
-                               nValGlobal   = (/TurbPartDataSize , nGlobalNbrOfParticles/),&
-                               nVal         = (/TurbPartDataSize , locnPart             /),&
-                               offset       = (/0                , offsetnPart          /),&
+    CALL WriteArray(           DataSetName  = 'TurbPartData'     , rank = 2                  ,&
+                               nValGlobal   = (/TurbPartDataSize , nGlobalNbrOfParticles(3)/),&
+                               nVal         = (/TurbPartDataSize , locnPart                /),&
+                               offset       = (/0                , offsetnPart             /),&
                                collective   = .FALSE.            , RealArray = TurbPartData)
     CALL CloseDataFile()
   END IF
@@ -438,26 +438,31 @@ END SUBROUTINE DistributedWriteArray
 !> In this routine the number are calculated using integer KIND=8, but are returned with integer KIND=ICC in order to test if using
 !> integer KIND=8 is required for total number of particles, particle boundary state, lost particles or clones
 !===================================================================================================================================
-SUBROUTINE GetOffsetAndGlobalNumberOfParts(CallingRoutine,offsetnPart,globnPart,locnPart)
+SUBROUTINE GetOffsetAndGlobalNumberOfParts(CallingRoutine,offsetnPart,globnPart,locnPart,GetMinMaxNbrOfParticles)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Particle_Globals
+#if USE_MPI
+USE MOD_Particle_MPI_Vars ,ONLY: PartMPI
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)  :: CallingRoutine
 INTEGER(KIND=IK),INTENT(IN)  :: locnPart
+LOGICAL,INTENT(IN)           :: GetMinMaxNbrOfParticles
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER(KIND=IK),INTENT(OUT) :: offsetnPart
-INTEGER(KIND=IK),INTENT(OUT) :: globnPart
+INTEGER(KIND=IK),INTENT(OUT) :: globnPart(6)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(KIND=8)              :: globnPart8                         ! always integer KIND=8
 #if USE_MPI
 INTEGER(KIND=8)              :: locnPart8,locnPart8Recv            ! always integer KIND=8
+INTEGER(KIND=IK)             :: SimNumSpecMin,SimNumSpecMax
 #endif
 !===================================================================================================================================
 #if USE_MPI
@@ -473,10 +478,6 @@ CALL MPI_BCAST(locnPart8,1,MPI_INTEGER8,nProcessors-1,MPI_COMM_WORLD,iError)
 ! Global numbers
 globnPart8   = locnPart8
 LOGWRITE(*,*) TRIM(CallingRoutine)//'offsetnPart,locnPart,globnPart8',offsetnPart,locnPart,globnPart8
-#else
-offsetnPart  = 0_IK
-globnPart8   = INT(locnPart,8)
-#endif
 
 ! Sanity check: Add up all particles with integer KIND=8 and compare
 IF (MPIRoot) THEN
@@ -488,8 +489,34 @@ IF (MPIRoot) THEN
   END IF
 END IF ! MPIRoot
 
+! Get min/max number of particles
+SimNumSpecMin = 0
+SimNumSpecMax = 0
+IF(GetMinMaxNbrOfParticles)THEN
+  IF (PartMPI%MPIRoot) THEN
+    CALL MPI_REDUCE(locnPart,SimNumSpecMin,1,MPI_INTEGER,MPI_MIN,0,PartMPI%COMM,IERROR)
+    CALL MPI_REDUCE(locnPart,SimNumSpecMax,1,MPI_INTEGER,MPI_MAX,0,PartMPI%COMM,IERROR)
+  ELSE
+    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER,MPI_MIN,0,PartMPI%COMM,IERROR)
+    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER,MPI_MAX,0,PartMPI%COMM,IERROR)
+  END IF
+END IF ! GetMinMaxNbrOfParticles
+
 ! Cast to Kind=IK before returning the number
-globnPart = INT(globnPart8,KIND=IK)
+globnPart(1) = INT(SimNumSpecMin , KIND = IK)
+globnPart(2) = INT(SimNumSpecMax , KIND = IK)
+globnPart(3) = INT(globnPart8    , KIND = IK)
+#else
+offsetnPart=0_IK
+globnPart(1:3)=INT(locnPart,KIND=IK)
+#endif
+
+! Get extrema over the complete simulation only during WriteParticleToHDF5
+IF(GetMinMaxNbrOfParticles)THEN
+  globnPart(4) = MIN(globnPart(1),globnPart(4))
+  globnPart(5) = MAX(globnPart(2),globnPart(5))
+  globnPart(6) = MAX(globnPart(3),globnPart(6))
+END IF ! GetMinMaxNbrOfParticles
 
 END SUBROUTINE GetOffsetAndGlobalNumberOfParts
 

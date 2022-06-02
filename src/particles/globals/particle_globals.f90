@@ -29,18 +29,19 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+#ifdef INTKIND8
+INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(18)
+#else
+INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(8)
+#endif
+
 REAL                                  :: PI         = ACOS(-1.0D0)
 REAL                                  :: epsMach    = epsilon(0.)
 REAL                                  :: TwoEpsMach = 2.d0 * epsilon(0.)
 
 ! Keep nElems and PP_nElems separate for now
 INTEGER                               :: PP_nElems
-
-#ifdef INTKIND8
-INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(18)
-#else
-INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(8)
-#endif
+INTEGER(KIND=IK)                      :: nGlobalNbrOfParticles(6) !< 1-3: min,max,total number of simulation particles over all processors
 !=================================================================================================================================
 
 INTERFACE CROSSNORM
@@ -97,6 +98,10 @@ END INTERFACE
 
 INTERFACE ElementOnNode
   MODULE PROCEDURE ElementOnNode
+END INTERFACE
+
+INTERFACE DisplayNumberOfParticles
+  MODULE PROCEDURE DisplayNumberOfParticles
 END INTERFACE
 
 PUBLIC :: PI
@@ -584,5 +589,36 @@ L = (GlobalElemID.GE.offsetElemMPI(ComputeNodeRootRank)+1).AND.&
 L = .TRUE.
 #endif /*USE_MPI*/
 END FUNCTION ElementOnNode
+
+
+!===================================================================================================================================
+!> Write min, max, average and total number of simulations particles to stdout stream
+!===================================================================================================================================
+SUBROUTINE DisplayNumberOfParticles(Mode)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Mode ! 1: during the simulation
+!                          ! 2: at the end of the simulation
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+
+!===================================================================================================================================
+SELECT CASE(Mode)
+CASE(1)
+  SWRITE(UNIT_StdOut,'(4(A,ES16.7))') "#Particles : ", REAL(nGlobalNbrOfParticles(3)),&
+      "    Average particles per proc : ",REAL(nGlobalNbrOfParticles(3))/REAL(nProcessors),&
+      "    Min : ",REAL(nGlobalNbrOfParticles(1)),&
+      "    Max : ",REAL(nGlobalNbrOfParticles(2))
+CASE(2)
+  SWRITE(UNIT_StdOut,'(4(A,ES16.7))') "#Particles : ", REAL(nGlobalNbrOfParticles(6)),&
+      " (peak)         Average (peak) : ",REAL(nGlobalNbrOfParticles(6))/REAL(nProcessors),&
+      "    Min : ",REAL(nGlobalNbrOfParticles(4)),&
+      "    Max : ",REAL(nGlobalNbrOfParticles(5))
+CASE DEFAULT
+  CALL Abort(__STAMP__,'DisplayNumberOfParticles() called with unknown Mode=',IntInfo=Mode)
+END SELECT
+END SUBROUTINE DisplayNumberOfParticles
 
 END MODULE MOD_Particle_Globals

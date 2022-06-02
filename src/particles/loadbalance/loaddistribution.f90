@@ -1341,11 +1341,13 @@ ELSE !
         delimiter,memory(1)               ,&
         delimiter,memory(2)               ,&
         delimiter,memory(3)                &
-        ! delimiter,REAL(nGlobalNbrOfParticles)
-        ! delimiter,ElemTimeField              ,&
-        ! delimiter,ElemTimePart               ,&
-        ! delimiter,ElemTimeFieldPercent       ,&
-        ! delimiter,ElemTimePartPercent
+#if USE_PARTICLES
+       ,delimiter,REAL(nGlobalNbrOfParticles(3)),&
+        delimiter,ElemTimeField              ,&
+        delimiter,ElemTimePart               ,&
+        delimiter,ElemTimeFieldPercent       ,&
+        delimiter,ElemTimePartPercent
+#endif /*USE_PARTICLES*/
     ; ! this is required for terminating the "&" when particles=off
     WRITE(ioUnit,'(A)')TRIM(ADJUSTL(tmpStr2)) ! clip away the front and rear white spaces of the data line
     CLOSE(ioUnit)

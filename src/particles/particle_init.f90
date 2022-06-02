@@ -599,6 +599,9 @@ PDM%maxParticleNumber    = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(Me
 SWRITE(UNIT_stdOut,'(A,I0)') ' | Max. Particle NUMBER/Proc: ', PDM%maxParticleNumber
 SWRITE(UNIT_stdOut,'(A,I0)') ' | Max. Particle NUMBER/Glob: ', INT(REAL(PDM%maxParticleNumber)*REAL(nProcessors),KIND=8)
 
+nGlobalNbrOfParticles    = 0
+nGlobalNbrOfParticles(4) = HUGE(nGlobalNbrOfParticles(4))
+
 IF(TrackingMethod.NE.TRIATRACKING) THEN
   CALL InitParticleSurfaces()
 END IF

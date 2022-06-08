@@ -48,6 +48,7 @@ USE MOD_HDF5_Output_State   ,ONLY: WriteState
 USE MOD_IO_HDF5             ,ONLY:
 USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
 USE MOD_Output              ,ONLY: Visualize,PrintStatusLine
+USE MOD_Output_Vars         ,ONLY: ProjectName
 USE MOD_Overintegration     ,ONLY: Overintegration
 USE MOD_Overintegration_Vars,ONLY: OverintegrationType
 USE MOD_Predictor           ,ONLY: FillInitPredictor
@@ -151,7 +152,10 @@ END IF
 CALL AnalyzeTestCase(t,.FALSE.)
 
 ! Write the state at time=0, i.e. the initial condition
-IF((.NOT.DoRestart).OR.FlushInitialState) CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.FALSE.)
+IF (.NOT.DoRestart                                                                      &
+  .OR.FlushInitialState                                                                 &
+  .OR..NOT.FILEEXISTS(TRIM(TIMESTAMP(TRIM(ProjectName)//'_STATE',t))//'.h5'))&
+  CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.FALSE.)
 CALL Visualize(t,U)
 
 ! No computation needed if tEnd = tStart!

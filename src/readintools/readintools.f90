@@ -2518,7 +2518,7 @@ END SUBROUTINE FinalizeParameters
 !==================================================================================================================================
 !> Print name and value for an option to UNIT_StdOut
 !==================================================================================================================================
-SUBROUTINE PrintOption(NameOpt,InfoOpt,IntOpt,IntArrayOpt,RealOpt,LogOpt,LogArrayOpt,StrOpt)
+SUBROUTINE PrintOption(NameOpt,InfoOpt,IntOpt,IntArrayOpt,RealOpt,RealArrayOpt,LogOpt,LogArrayOpt,StrOpt)
 ! MODULES
 USE MOD_Globals               ,ONLY: Abort,MPIRoot
 ! IMPLICIT VARIABLE HANDLING
@@ -2531,6 +2531,7 @@ CHARACTER(LEN=*),INTENT(IN)            :: InfoOpt        ! Option information:
 INTEGER,INTENT(IN),OPTIONAL            :: IntOpt         ! Integer value
 INTEGER,INTENT(IN),OPTIONAL            :: IntArrayOpt(:) ! Integer array value
 REAL,INTENT(IN),OPTIONAL               :: RealOpt        ! Real value
+REAL,INTENT(IN),OPTIONAL               :: RealArrayOpt(:)! Real array value
 LOGICAL,INTENT(IN),OPTIONAL            :: LogOpt         ! Logical value
 LOGICAL,INTENT(IN),OPTIONAL            :: LogArrayOpt(:) ! Logical array value
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL   :: StrOpt         ! String value
@@ -2552,10 +2553,15 @@ WRITE(fmtValue,*) prms%maxValueLen
 fmtValue=ADJUSTL(fmtValue)
 IF(PRESENT(RealOpt))THEN
   IF(prms%maxValueLen.GE.23)THEN
-    fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.14E3'
+    fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.14E2'
   ELSE
-    fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.4E3'
+    fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.4E2'
   END IF
+  Counter=Counter+1
+END IF
+IF(PRESENT(RealArrayOpt))THEN
+  WRITE(fmtValue,*) prms%maxValueLen/SIZE(RealArrayOpt)-2*(SIZE(RealArrayOpt)-1)
+  fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.4E2'
   Counter=Counter+1
 END IF
 IF(PRESENT(IntOpt))THEN
@@ -2580,13 +2586,9 @@ IF(PRESENT(StrOpt))THEN
 END IF
 
 IF(Counter.EQ.0)THEN
-  CALL Abort(&
-      __STAMP__&
-      ,'PrintOption: format type not known')
+  CALL Abort(__STAMP__,'PrintOption: format type not known')
 ELSEIF(Counter.GT.1)THEN
-  CALL Abort(&
-      __STAMP__&
-      ,'PrintOption: only one option is allowed: [IntOpt,RealOpt,LogOpt]')
+  CALL Abort(__STAMP__,'PrintOption: only one option is allowed: [IntOpt,RealOpt,LogOpt]')
 END IF
 
 IF(PRESENT(IntArrayOpt)) THEN
@@ -2596,6 +2598,15 @@ IF(PRESENT(IntArrayOpt)) THEN
     length = length + LEN_TRIM(tmp)
   END DO
   length = length + 2*(SIZE(IntArrayOpt)-1) ! ', ' between array elements
+  length = length + 3 ! ' /)'
+END IF
+IF(PRESENT(RealArrayOpt)) THEN
+  length = 3 ! '(/ '
+  DO i=1,SIZE(RealArrayOpt)
+    WRITE(tmp,'('//TRIM(fmtValue)//')') RealArrayOpt(i)
+    length = length + LEN_TRIM(tmp)
+  END DO
+  length = length + 2*(SIZE(RealArrayOpt)-1) ! ', ' between array elements
   length = length + 3 ! ' /)'
 END IF
 IF(PRESENT(LogArrayOpt)) THEN
@@ -2621,6 +2632,17 @@ IF(PRESENT(IntArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(f
                     WRITE(UNIT_stdOut,"(A2)",ADVANCE='NO') ", "
   END DO
                     WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"; END IF
+
+IF(PRESENT(RealArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(fmtValue,*) (prms%maxValueLen - length)
+                    WRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO'); END IF
+                    WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') "(/ "
+                    WRITE(fmtValue,*) prms%maxValueLen/SIZE(RealArrayOpt)-2*(SIZE(RealArrayOpt)-1); fmtValue=ADJUSTL(fmtValue); fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.4E2'
+  DO i=1,SIZE(RealArrayOpt)
+                    WRITE(UNIT_stdOut,'('//TRIM(fmtValue)//')',ADVANCE='NO') RealArrayOpt(i)
+    IF (i.NE.SIZE(RealArrayOpt)) &
+                    WRITE(UNIT_stdOut,"(A2)",ADVANCE='NO') ", "
+  END DO
+                    WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"; END IF
 IF(PRESENT(LogArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(fmtValue,*) (prms%maxValueLen - length)
                     WRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO'); END IF
                     WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') "(/ "
@@ -2630,7 +2652,11 @@ IF(PRESENT(LogArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(f
                     WRITE(UNIT_stdOut,"(A2)",ADVANCE='NO') ", "
   END DO
                     WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"; END IF
-                    WRITE(UNIT_StdOut,'(A3,A7,A3)')' | ',TRIM(InfoOpt),' | '
+                    WRITE(UNIT_StdOut,'(A3)',ADVANCE='NO')' | '
+                    CALL set_formatting("magenta")
+                    WRITE(UNIT_StdOut,'(A7)',ADVANCE='NO')TRIM(InfoOpt)
+                    CALL clear_formatting()
+                    WRITE(UNIT_StdOut,'(A2)',ADVANCE='YES')' |'
 END SUBROUTINE PrintOption
 
 END MODULE MOD_ReadInTools

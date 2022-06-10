@@ -68,8 +68,8 @@ USE MOD_MPI,               ONLY:InitMPIvars
 #if USE_PARTICLES
 USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticleGlobals,InitParticles
 #if USE_MPI
-USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
 USE MOD_LoadBalance,       ONLY:InitLoadBalance
+USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
 USE MOD_Particle_MPI_Shared,ONLY:InitMPIShared
 #if USE_LOADBALANCE
 USE MOD_Restart_Vars,      ONLY:DoRestart,RestartFile
@@ -368,9 +368,8 @@ CALL FinalizeCommandlineArguments()
 ! For flexilib MPI init/finalize is controlled by main program
 CALL FinalizeMPI()
 #endif
-SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' FLEXI FINISHED! [',Time-StartTime,' sec ]'
-SWRITE(UNIT_stdOut,'(132("="))')
+
+CALL DisplaySimulationTime(Time, StartTime, 'FINISHED')
 END SUBROUTINE FinalizeFlexi
 
 END MODULE MOD_Flexi

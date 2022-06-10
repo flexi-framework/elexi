@@ -1163,11 +1163,12 @@ END SUBROUTINE freeList
 !===================================================================================================================================
 SUBROUTINE WriteElemTimeStatistics(WriteHeader,time,iter)
 ! MODULES
-USE MOD_Globals          ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,Abort,nProcessors,nProcessors
+USE MOD_Globals          ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,Abort,nProcessors,nGlobalNbrOfParticles
 USE MOD_Globals_Vars     ,ONLY: SimulationEfficiency,WallTime,InitializationWallTime,ReadMeshWallTime
 USE MOD_Globals_Vars     ,ONLY: DomainDecompositionWallTime,CommMeshReadinWallTime
 USE MOD_Analyze_Vars     ,ONLY: PID
 USE MOD_LoadBalance_Vars ,ONLY: TargetWeight,nLoadBalanceSteps,CurrentImbalance,MinWeight,MaxWeight,WeightSum
+USE MOD_LoadBalance_Vars ,ONLY: ElemTimeField,ElemTimePart
 USE MOD_Restart_Vars     ,ONLY: DoRestart
 USE MOD_Particle_Memory  ,ONLY: ProcessMemUsage
 #if USE_MPI
@@ -1188,7 +1189,8 @@ REAL                                     :: time_loc
 CHARACTER(LEN=22),PARAMETER              :: outfile='ElemTimeStatistics.csv'
 INTEGER                                  :: ioUnit,I
 CHARACTER(LEN=255)                       :: formatStr
-INTEGER,PARAMETER                        :: nOutputVar=18 !21
+REAL                                     :: SumElemTime,ElemTimeFieldPercent,ElemTimePartPercent
+INTEGER,PARAMETER                        :: nOutputVar=23
 CHARACTER(LEN=255),DIMENSION(nOutputVar) :: StrVarNames(nOutputVar)=(/ CHARACTER(LEN=255) :: &
     'time'                   , &
     'Procs'                  , &
@@ -1207,12 +1209,12 @@ CHARACTER(LEN=255),DIMENSION(nOutputVar) :: StrVarNames(nOutputVar)=(/ CHARACTER
     'InitializationWallTime' , &
     'MemoryUsed'             , &
     'MemoryAvailable'        , &
-    'MemoryTotal'              &
-    ! '#Particles'             , &
-    ! 'FieldTime'              , &
-    ! 'PartTime'               , &
-    ! 'FieldTimePercent'       , &
-    ! 'PartTimePercent'          &
+    'MemoryTotal'            , &
+    '#Particles'             , &
+    'FieldTime'              , &
+    'PartTime'               , &
+    'FieldTimePercent'       , &
+    'PartTimePercent'          &
     /)
 CHARACTER(LEN=255),DIMENSION(nOutputVar) :: tmpStr ! needed because PerformAnalyze is called multiple times at the beginning
 CHARACTER(LEN=1000)                      :: tmpStr2
@@ -1309,15 +1311,15 @@ ELSE !
     time_loc = -1.
   END IF
 
-!  ! Calculate elem time proportions for field and particle routines
-!  SumElemTime=ElemTimeField+ElemTimePart
-!  IF(SumElemTime.LE.0.)THEN
-!    ElemTimeFieldPercent = 0.
-!    ElemTimePartPercent  = 0.
-!  ELSE
-!    ElemTimeFieldPercent = 100. * ElemTimeField / SumElemTime
-!    ElemTimePartPercent  = 100. * ElemTimePart / SumElemTime
-!  END IF ! ElemTimeField+ElemTimePart.LE.0.
+  ! Calculate elem time proportions for field and particle routines
+  SumElemTime=ElemTimeField+ElemTimePart
+  IF(SumElemTime.LE.0.)THEN
+    ElemTimeFieldPercent = 0.
+    ElemTimePartPercent  = 0.
+  ELSE
+    ElemTimeFieldPercent = 100. * ElemTimeField / SumElemTime
+    ElemTimePartPercent  = 100. * ElemTimePart / SumElemTime
+  END IF ! ElemTimeField+ElemTimePart.LE.0.
 
   IF (FILEEXISTS(outfile)) THEN
     OPEN(NEWUNIT=ioUnit,FILE=TRIM(outfile),POSITION="APPEND",STATUS="OLD")
@@ -1341,13 +1343,11 @@ ELSE !
         delimiter,memory(1)               ,&
         delimiter,memory(2)               ,&
         delimiter,memory(3)                &
-#if USE_PARTICLES
        ,delimiter,REAL(nGlobalNbrOfParticles(3)),&
         delimiter,ElemTimeField              ,&
         delimiter,ElemTimePart               ,&
         delimiter,ElemTimeFieldPercent       ,&
         delimiter,ElemTimePartPercent
-#endif /*USE_PARTICLES*/
     ; ! this is required for terminating the "&" when particles=off
     WRITE(ioUnit,'(A)')TRIM(ADJUSTL(tmpStr2)) ! clip away the front and rear white spaces of the data line
     CLOSE(ioUnit)

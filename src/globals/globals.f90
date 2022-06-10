@@ -47,6 +47,13 @@ INTEGER           ::MPI_COMM_NODE   =MPI_COMM_NULL                            !<
 INTEGER           ::MPI_COMM_LEADERS=MPI_COMM_NULL                            !< all node masters
 INTEGER           ::MPI_COMM_WORKERS=MPI_COMM_NULL                            !< all non-master nodes
 #endif
+#if USE_PARTICLES
+#ifdef INTKIND8
+INTEGER(KIND=SELECTED_INT_KIND(18))  :: nGlobalNbrOfParticles(6)              !< 1-3: min,max,total number of simulation particles over all processors
+#else
+INTEGER(KIND=SELECTED_INT_KIND( 8))  :: nGlobalNbrOfParticles(6)              !< 1-3: min,max,total number of simulation particles over all processors
+#endif
+#endif /*USE_PARTICLES*/
 
 LOGICAL           :: doGenerateUnittestReferenceData
 INTEGER           :: doPrintHelp ! 0: no help, 1: help, 2: markdown-help
@@ -79,6 +86,10 @@ END INTERFACE
 
 INTERFACE FLEXITIME
   MODULE PROCEDURE FLEXITIME
+END INTERFACE
+
+INTERFACE DisplaySimulationTime
+  MODULE PROCEDURE DisplaySimulationTime
 END INTERFACE
 
 INTERFACE CreateErrFile
@@ -480,6 +491,89 @@ IF(PRESENT(Time2))THEN
 END IF
 TimeStamp=TRIM(Filename)//'_'//TRIM(TimeStamp)
 END FUNCTION TIMESTAMP
+
+
+SUBROUTINE DisplaySimulationTime(Time, StartTime, Message)
+!===================================================================================================================================
+! Finalizes variables necessary for analyse subroutines
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN) :: Message         !< Output message
+REAL,INTENT(IN)             :: Time, StartTime !< Current simulation time and beginning of simulation time
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL :: SimulationTime,mins,secs,hours,days
+!===================================================================================================================================
+! Return with all procs except root if not called during abort
+IF(.NOT.MPIRoot.AND.(Message.NE.'ABORTED')) RETURN
+
+! Output particle info
+WRITE(UNIT_stdOut,'(132("="))')
+#if USE_PARTICLES
+IF(Message.NE.'RUNNING') CALL DisplayNumberOfParticles(2)
+WRITE(UNIT_stdOut,'(132("-"))')
+#endif /*USE_PARTICLES*/
+
+! Calculate simulation time
+SimulationTime = Time-StartTime
+
+! Get secs, mins, hours and days
+secs = MOD(SimulationTime,60.)
+SimulationTime = SimulationTime / 60.
+mins = MOD(SimulationTime,60.)
+SimulationTime = SimulationTime / 60.
+hours = MOD(SimulationTime,24.)
+SimulationTime = SimulationTime / 24.
+!days = MOD(SimulationTime,365.) ! Use this if years are also to be displayed
+days = SimulationTime
+
+! Output message with all procs, as root might not be the calling process during abort
+WRITE(UNIT_stdOut,'(A,F16.2,A)',ADVANCE='NO')  ' FLEXI '//TRIM(Message)//'! [',Time-StartTime,' sec ]'
+WRITE(UNIT_stdOut,'(A2,I6,A1,I0.2,A1,I0.2,A1,I0.2,A1)') ' [',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),']'
+WRITE(UNIT_stdOut,'(132("="))')
+END SUBROUTINE DisplaySimulationTime
+
+
+#if USE_PARTICLES
+!===================================================================================================================================
+!> Write min, max, average and total number of simulations particles to stdout stream
+!===================================================================================================================================
+SUBROUTINE DisplayNumberOfParticles(Mode)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Mode ! 1: during the simulation
+!                          ! 2: at the end of the simulation
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+
+!===================================================================================================================================
+IF(.NOT.MPIRoot) RETURN
+
+SELECT CASE(Mode)
+  CASE(1)
+    WRITE(UNIT_stdOut,'(4(A,ES16.7))') "#Particles  : ", REAL(nGlobalNbrOfParticles(3))   ,&
+       ",    Part/Proc (avg): ",REAL(nGlobalNbrOfParticles(3))/REAL(nProcessors)          ,&
+       ",  (min):         "    ,REAL(nGlobalNbrOfParticles(1))                            ,&
+       ",  (max):     "        ,REAL(nGlobalNbrOfParticles(2))
+  CASE(2)
+    WRITE(UNIT_stdOut,'(4(A,ES16.7))') "#Particles  : ", REAL(nGlobalNbrOfParticles(6))   ,&
+       " (peak),       Average (peak) : ",REAL(nGlobalNbrOfParticles(6))/REAL(nProcessors),&
+       ",  (min) : "           ,REAL(nGlobalNbrOfParticles(4))                            ,&
+       ",  (max) : "           ,REAL(nGlobalNbrOfParticles(5))
+  CASE DEFAULT
+    CALL Abort(__STAMP__,'DisplayNumberOfParticles() called with unknown Mode=',IntInfo=Mode)
+END SELECT
+END SUBROUTINE DisplayNumberOfParticles
+#endif /*USE_PARTICLES*/
 
 
 !==================================================================================================================================

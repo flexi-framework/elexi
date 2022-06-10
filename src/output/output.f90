@@ -398,7 +398,7 @@ IF (nParticleInDomain.EQ.0) THEN
 #endif /*USE_PARTICLES*/
   IF (mins.LT.1 .AND. hours.EQ.0 .AND. days.EQ.0) THEN
     WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,A3,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
-    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]: <1 min remaining',' |',              &
+    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]:<1 min remaining',' |',              &
     REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.),0)),'| [',percent,'%] ',&
     ACHAR(13) ! ACHAR(13) is carriage return
   ELSE

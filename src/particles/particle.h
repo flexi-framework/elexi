@@ -28,6 +28,11 @@
 #define SIZE_INT8 8
 #define SIZE_REAL KIND(REAL(1))
 #define SIZE_CHAR KIND('a')
+#ifdef INTKIND8
+#define MPI_INTEGER_INT_KIND MPI_INTEGER8
+#else
+#define MPI_INTEGER_INT_KIND MPI_INTEGER
+#endif
 
 ! Shared Memory
 #if USE_MPI

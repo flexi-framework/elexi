@@ -134,8 +134,11 @@ END IF
 !SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE ANALYZE...'
 
-doParticleAnalyze    = .FALSE.
+doParticleAnalyze = .FALSE.
 nSpecAnalyze = MERGE(nSpecies + 1,1,nSpecies.GT.1)
+SDEALLOCATE(nPart)
+ALLOCATE(   nPart(nSpecAnalyze))
+nPart        = 0
 
 CalcEkin = GETLOGICAL('CalcKineticEnergy')
 IF (CalcEkin) THEN
@@ -147,12 +150,8 @@ END IF
 
 ! Calculate number of particles in the domain
 CalcPartNumber  = GETLOGICAL('CalcPartNumber')
-IF (CalcPartNumber) THEN
+IF (CalcPartNumber) &
   doParticleAnalyze = .TRUE.
-  SDEALLOCATE(nPart)
-  ALLOCATE( nPart      (nSpecAnalyze))
-  nPart       = 0
-END IF
 
 ! Calculate number and kinetic energy of particles entering / leaving the domain
 CalcPartBalance = GETLOGICAL('CalcPartBalance')
@@ -243,7 +242,7 @@ IF (CountNbOfLostParts) THEN
 END IF
 
 IF (CalcPartNumber) THEN
-  CALL CalcParticleNumber()
+  CALL CalcParticleNumber(.FALSE.)
 END IF
 
 IF (CalcEkin) THEN
@@ -281,34 +280,22 @@ SUBROUTINE ParticleInformation()
 !==================================================================================================================================
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Particle_Globals          ,ONLY: DisplayNumberOfParticles
 USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Vars    ,ONLY: PartStateBoundaryVecLength
 USE MOD_Particle_Boundary_Vars    ,ONLY: ImpactnGlob,ImpactnLoc,ImpactOffset
-USE MOD_Particle_Vars             ,ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: nParticleOnProc,iPart
-INTEGER                        :: nParticleInDomain
 #if USE_MPI
 INTEGER                        :: sendbuf(2),recvbuf(2)
 #endif
 !==================================================================================================================================
 
-! Count number of particles on local proc
-nParticleOnProc = 0
-DO iPart = 1,PDM%ParticleVecLength
-  IF (PDM%ParticleInside(iPart)) nParticleOnProc = nParticleOnProc + 1
-END DO
-#if USE_MPI
-! Gather number of particles on all procs
-CALL MPI_REDUCE(nParticleOnProc,nParticleInDomain,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-#else
-nParticleInDomain = nParticleOnProc
-#endif
+CALL CalcParticleNumber(.FALSE.)
 
 ! Find amount of recorded impacts on current proc
 ImpactnLoc  = PartStateBoundaryVecLength
@@ -331,8 +318,7 @@ ImpactnGlob    = PartStateBoundaryVecLength
 #endif
 
 ! Output particle and impact information
-SWRITE(UNIT_stdOut,'(A14,I16)')' # Particle : ', nParticleInDomain
-! CALL DisplayNumberOfParticles(1)
+CALL DisplayNumberOfParticles(1)
 IF (doParticleImpactTrack) THEN
 SWRITE(UNIT_stdOut,'(A14,I16)')' # Impacts  : ', ImpactnGlob
 END IF
@@ -340,15 +326,17 @@ END IF
 END SUBROUTINE ParticleInformation
 
 
-SUBROUTINE CalcParticleNumber()
+SUBROUTINE CalcParticleNumber(CalcMinMax)
 !===================================================================================================================================
-! compute the number of particles per species
+! Computes the number of particles per species
+! Last section of the routine contains the MPI-communication
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_Particle_Globals
 USE MOD_Particle_Analyze_Vars ,ONLY: nPart,nSpecAnalyze
-USE MOD_Particle_Vars         ,ONLY: PartSpecies,PDM
+USE MOD_Particle_Vars         ,ONLY: nSpecies,PartSpecies,PDM
 #if USE_MPI
 USE MOD_Particle_MPI_Vars     ,ONLY: PartMPI
 #endif /*MPI*/
@@ -356,39 +344,48 @@ USE MOD_Particle_MPI_Vars     ,ONLY: PartMPI
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+LOGICAL,INTENT(IN)             :: CalcMinMax
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: i
+INTEGER           :: iPart
+INTEGER(KIND=IK)  :: nPartMin,nPartMax
 !===================================================================================================================================
 
 nPart = 0.
+DO iPart = 1,PDM%ParticleVecLength
+  IF (PDM%ParticleInside(iPart)) THEN
+    nPart(PartSpecies(iPart)) = nPart(PartSpecies(iPart)) + 1
+  END IF ! (PDM%ParticleInside(iPart))
+END DO ! iPart=1,PDM%ParticleVecLength
 
 ! nSpecAnalyze > 1, calculate species and sum
 IF (nSpecAnalyze.GT.1) THEN
-  DO i = 1,PDM%ParticleVecLength
-    IF (PDM%ParticleInside(i)) THEN
-      nPart(nSpecAnalyze)   = nPart(nSpecAnalyze)   + 1
-      nPart(PartSpecies(i)) = nPart(PartSpecies(i)) + 1
-    END IF ! (PDM%ParticleInside(i))
-  END DO ! i=1,PDM%ParticleVecLength
-! nSpecAnalyze = 1 : only 1 species
-ELSE
-  DO i = 1,PDM%ParticleVecLength
-    IF (PDM%ParticleInside(i)) THEN
-      nPart(PartSpecies(i)) = nPart(PartSpecies(i)) + 1
-    END IF ! particle inside
-  END DO ! 1,PDM%ParticleVecLength
+  nPart(nSpecAnalyze) = SUM(nPart(1:nSpecies))
 END IF
 
 #if USE_MPI
 IF(PartMPI%MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,nPart,nSpecAnalyze,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM, IERROR)
+  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,nPartMin,1           ,MPI_INTEGER,MPI_MIN,0,PartMPI%COMM,IERROR)
+  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,nPartMax,1           ,MPI_INTEGER,MPI_MAX,0,PartMPI%COMM,IERROR)
+                 CALL MPI_REDUCE(MPI_IN_PLACE,nPart   ,nSpecAnalyze,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM,IERROR)
+#endif /*USE_MPI*/
+  nGlobalNbrOfParticles(3)   = INT(nPart(nSpecAnalyze),KIND=IK)
+  IF (CalcMinMax) THEN
+    nGlobalNbrOfParticles(1) = INT(nPartMin           ,KIND=IK)
+    nGlobalNbrOfParticles(2) = INT(nPartMax           ,KIND=IK)
+    nGlobalNbrOfParticles(4) = MIN(nGlobalNbrOfParticles(1),nGlobalNbrOfParticles(4))
+    nGlobalNbrOfParticles(5) = MAX(nGlobalNbrOfParticles(2),nGlobalNbrOfParticles(5))
+    nGlobalNbrOfParticles(6) = MAX(nGlobalNbrOfParticles(3),nGlobalNbrOfParticles(6))
+  END IF
+#if USE_MPI
 ELSE
-  CALL MPI_REDUCE(nPart       ,0    ,nSpecAnalyze,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM, IERROR)
+  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,0       ,1           ,MPI_INTEGER,MPI_MIN,0,PartMPI%COMM,IERROR)
+  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,0       ,1           ,MPI_INTEGER,MPI_MAX,0,PartMPI%COMM,IERROR)
+                 CALL MPI_REDUCE(nPart       ,0       ,nSpecAnalyze,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM,IERROR)
 END IF
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 END SUBROUTINE CalcParticleNumber
 

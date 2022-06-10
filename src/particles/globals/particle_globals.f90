@@ -41,7 +41,7 @@ REAL                                  :: TwoEpsMach = 2.d0 * epsilon(0.)
 
 ! Keep nElems and PP_nElems separate for now
 INTEGER                               :: PP_nElems
-INTEGER(KIND=IK)                      :: nGlobalNbrOfParticles(6) !< 1-3: min,max,total number of simulation particles over all processors
+! INTEGER(KIND=IK)                      :: nGlobalNbrOfParticles(6) !< 1-3: min,max,total number of simulation particles over all processors
 !=================================================================================================================================
 
 INTERFACE CROSSNORM
@@ -98,10 +98,6 @@ END INTERFACE
 
 INTERFACE ElementOnNode
   MODULE PROCEDURE ElementOnNode
-END INTERFACE
-
-INTERFACE DisplayNumberOfParticles
-  MODULE PROCEDURE DisplayNumberOfParticles
 END INTERFACE
 
 PUBLIC :: PI
@@ -185,7 +181,6 @@ PURE FUNCTION ALMOSTZERO(num)
 !      Good luck and God speed."
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -218,7 +213,6 @@ PURE FUNCTION ALMOSTEQUAL(num1,num2)
 !      Good luck and God speed."
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -329,7 +323,6 @@ PURE FUNCTION UNITVECTOR(v1)
 ! compute  a unit vector from a given vector
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -353,7 +346,6 @@ SUBROUTINE FindLinIndependentVectors(NormalVector, Vector1, Vector2)
 !> Finds two linear vectors of a normal vector around a base point
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -397,7 +389,6 @@ SUBROUTINE Find2DNormIndependentVectors(NormalVector, Vector1, Vector2)
 !> > surfaces, Proceedings of the 21st spring conference on Computer graphics - SCCG '05, ACM Press, 2005
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -436,7 +427,7 @@ FUNCTION GETFREEUNIT()
 ! Get unused file unit number
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals
+!USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -589,36 +580,5 @@ L = (GlobalElemID.GE.offsetElemMPI(ComputeNodeRootRank)+1).AND.&
 L = .TRUE.
 #endif /*USE_MPI*/
 END FUNCTION ElementOnNode
-
-
-!===================================================================================================================================
-!> Write min, max, average and total number of simulations particles to stdout stream
-!===================================================================================================================================
-SUBROUTINE DisplayNumberOfParticles(Mode)
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Mode ! 1: during the simulation
-!                          ! 2: at the end of the simulation
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-
-!===================================================================================================================================
-SELECT CASE(Mode)
-CASE(1)
-  SWRITE(UNIT_StdOut,'(4(A,ES16.7))') "#Particles : ", REAL(nGlobalNbrOfParticles(3)),&
-      "    Average particles per proc : ",REAL(nGlobalNbrOfParticles(3))/REAL(nProcessors),&
-      "    Min : ",REAL(nGlobalNbrOfParticles(1)),&
-      "    Max : ",REAL(nGlobalNbrOfParticles(2))
-CASE(2)
-  SWRITE(UNIT_StdOut,'(4(A,ES16.7))') "#Particles : ", REAL(nGlobalNbrOfParticles(6)),&
-      " (peak)         Average (peak) : ",REAL(nGlobalNbrOfParticles(6))/REAL(nProcessors),&
-      "    Min : ",REAL(nGlobalNbrOfParticles(4)),&
-      "    Max : ",REAL(nGlobalNbrOfParticles(5))
-CASE DEFAULT
-  CALL Abort(__STAMP__,'DisplayNumberOfParticles() called with unknown Mode=',IntInfo=Mode)
-END SELECT
-END SUBROUTINE DisplayNumberOfParticles
 
 END MODULE MOD_Particle_Globals

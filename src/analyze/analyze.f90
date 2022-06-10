@@ -354,7 +354,6 @@ CALL ParticleInformation()
 
 ! Perform particle analyze depending on ParticleInformation
 CALL ParticleAnalyze(time,iter)
-
 #endif /*USE_PARTICLES*/
 
 IF(Time.GT.0.) THEN

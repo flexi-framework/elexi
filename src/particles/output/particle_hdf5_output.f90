@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !==================================================================================================================================
 !> Module for the Particle HDF5 Output
@@ -494,11 +495,11 @@ SimNumSpecMin = 0
 SimNumSpecMax = 0
 IF(GetMinMaxNbrOfParticles)THEN
   IF (PartMPI%MPIRoot) THEN
-    CALL MPI_REDUCE(locnPart,SimNumSpecMin,1,MPI_INTEGER,MPI_MIN,0,PartMPI%COMM,IERROR)
-    CALL MPI_REDUCE(locnPart,SimNumSpecMax,1,MPI_INTEGER,MPI_MAX,0,PartMPI%COMM,IERROR)
+    CALL MPI_REDUCE(locnPart,SimNumSpecMin,1,MPI_INTEGER_INT_KIND,MPI_MIN,0,PartMPI%COMM,IERROR)
+    CALL MPI_REDUCE(locnPart,SimNumSpecMax,1,MPI_INTEGER_INT_KIND,MPI_MAX,0,PartMPI%COMM,IERROR)
   ELSE
-    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER,MPI_MIN,0,PartMPI%COMM,IERROR)
-    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER,MPI_MAX,0,PartMPI%COMM,IERROR)
+    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER_INT_KIND,MPI_MIN,0,PartMPI%COMM,IERROR)
+    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER_INT_KIND,MPI_MAX,0,PartMPI%COMM,IERROR)
   END IF
 END IF ! GetMinMaxNbrOfParticles
 

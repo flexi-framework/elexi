@@ -834,6 +834,9 @@ DO iSpec = 1,nSpecies
     Surf = 0.
     Species(iSpec)%Surfaceflux(iSF)%DGMeanPrimState = 0.
 
+    ! Ignore SFBCs that have no side on the current proc
+    IF (BCdata_auxSF(currentBC)%SideNumber.EQ.0) CYCLE
+
     DO iSide = 1,BCdata_auxSF(currentBC)%SideNumber
       BCSideID = BCdata_auxSF(currentBC)%SideList(iSide)
 

@@ -23,7 +23,7 @@ PROGRAM evalrec
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Commandline_Arguments
-USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters,ExtractParameterFile
+USE MOD_ReadInTools,       ONLY:prms,PrintDefaultParameterFile,FinalizeParameters,ExtractParameterFile
 USE MOD_ReadInTools,       ONLY:GETSTR
 USE MOD_StringTools       ,ONLY:STRICMP,GetFileExtension
 USE MOD_HDF5_Input,        ONLY:ISVALIDHDF5FILE
@@ -173,7 +173,7 @@ CALL InitMesh(meshMode=0)
 CALL InitMPIvars()
 #endif
 CALL InitRecordpoints()
-CALL IgnoredParameters()
+CALL prms%WriteUnused()
 
 IF (stateFileMode) THEN
   ! As the file is a state, we can just allocate the normal U and perform a restart later on

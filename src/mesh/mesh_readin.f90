@@ -447,7 +447,6 @@ DO iElem=FirstElemInd,LastElemInd
         END IF
       END IF
 
-
       IF(aSide%mortarType.GT.0) CYCLE        ! no connection for mortar master
       IF(ASSOCIATED(aSide%connection)) CYCLE ! already connected
 

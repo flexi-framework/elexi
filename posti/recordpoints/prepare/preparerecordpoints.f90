@@ -26,7 +26,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_StringTools,        ONLY:STRICMP,GetFileExtension
-USE MOD_ReadInTools,        ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters,GETSTR
+USE MOD_ReadInTools,        ONLY:prms,PrintDefaultParameterFile,FinalizeParameters,GETSTR
 ! Flexilib initialization
 USE MOD_MPI,                ONLY:DefineParametersMPI,InitMPI
 USE MOD_IO_HDF5,            ONLY:DefineParametersIO_HDF5,InitIOHDF5

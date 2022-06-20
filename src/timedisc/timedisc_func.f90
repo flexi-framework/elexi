@@ -122,6 +122,11 @@ USE MOD_TimeDisc_Vars       ,ONLY: DFLScale
 USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_TimeDisc_Vars       ,ONLY: t
 #endif /*USE_PARTICLES*/
+#if USE_LOADBALANCE
+USE MOD_ReadInTools         ,ONLY: GETLOGICAL,GETINT,PrintOption
+USE MOD_LoadBalance_Vars    ,ONLY: DoInitialAutoRestart,InitialAutoRestartSample
+USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -129,6 +134,10 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: NEff
+#if USE_LOADBALANCE
+LOGICAL           :: InitialAutoRestartPartWeight
+CHARACTER(20)     :: hilf
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
 IF(TimeDiscInitIsDone)THEN
   SWRITE(UNIT_stdOut,'(A)') "InitTimeDisc already called."
@@ -202,6 +211,23 @@ IF(WriteMacroSurfaceValues) MacroValSampTime = t
 
 SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
 
+#if USE_LOADBALANCE
+! Automatically do a load balance step at the beginning of a new simulation or a user-restarted simulation
+DoInitialAutoRestart = GETLOGICAL('DoInitialAutoRestart')
+IF(nProcessors.LT.2) DoInitialAutoRestart = .FALSE.
+
+WRITE(UNIT=hilf,FMT='(I0)') LoadBalanceSample
+InitialAutoRestartSample     = GETINT('InitialAutoRestartSample',TRIM(hilf))
+InitialAutoRestartPartWeight = GETLOGICAL('InitialAutoRestart-PartWeightLoadBalance','F')
+IF (InitialAutoRestartPartWeight) THEN
+  InitialAutoRestartSample = 0 ! deactivate loadbalance sampling of ElemTimes if balancing with partweight is enabled
+  CALL PrintOption('InitialAutoRestart-PartWeightLoadBalance = T : InitialAutoRestartSample','INFO',IntOpt=InitialAutoRestartSample)
+ELSE IF (InitialAutoRestartSample.EQ.0) THEN
+  InitialAutoRestartPartWeight = .TRUE. ! loadbalance (ElemTimes) is done with partmpiweight if loadbalancesampling is set to zero
+  CALL PrintOption('InitialAutoRestart-PartWeightLoadBalance','INFO',LogOpt=InitialAutoRestartPartWeight)
+END IF
+#endif /*USE_LOADBALANCE*/
+
 TimeDiscInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT TIMEDISC DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
@@ -222,6 +248,11 @@ USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 USE MOD_Particle_Surface_Flux ,ONLY: InitializeParticleSurfaceFlux
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep,ManualTimeStep
 #endif /*USE_PARTICLES*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalanceBackup,LoadBalanceSampleBackup,DoLoadBalance
+USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample,PerformLBSample
+USE MOD_LoadBalance_Vars    ,ONLY: DoInitialAutoRestart,InitialAutoRestartSample
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -269,6 +300,28 @@ IF(ViscousTimeStep.AND.MPIRoot) WRITE(UNIT_stdOut,'(A)') ' Viscous timestep domi
 ! Initialize surface flux
 CALL InitializeParticleSurfaceFlux()
 #endif /*USE_PARTICLES*/
+
+#if USE_LOADBALANCE
+IF (DoInitialAutoRestart) THEN
+
+  ! Set general load balance flag ON
+  DoLoadBalanceBackup   = DoLoadBalance ! Backup
+  DoLoadBalance         = .TRUE.        ! Force TRUE (during automatic restart, original variable might be false)
+
+  ! Backup number of samples required for each load balance
+  LoadBalanceSampleBackup = LoadBalanceSample        ! Backup: this is zero when PerformPartWeightLB=.TRUE.
+  LoadBalanceSample       = InitialAutoRestartSample ! this is zero when InitialAutoRestartPartWeight=.TRUE.
+
+  ! Activate sampling in first time step
+  PerformLBSample       = .TRUE.
+
+  ! Sanity check: initial automatic restart must happen before tAnalyze is reached (tAnalyze < LoadBalanceSample*dt not implemented)
+  DO WHILE(LoadBalanceSample*dt.GT.dt_Min(DT_ANALYZE).AND.(LoadBalanceSample.GT.1))
+   LoadBalanceSample = LoadBalanceSample-1
+  END DO
+
+END IF
+#endif /*USE_LOADBALANCE*/
 
 CalcTimeStart = FLEXITIME()
 
@@ -412,16 +465,16 @@ USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
 USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime,UseManualTimeStep
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
-! USE MOD_HDF5_output         ,ONLY: RemoveHDF5
+USE MOD_HDF5_output         ,ONLY: RemoveHDF5
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad
 USE MOD_LoadBalance_TimeDisc,ONLY: LoadBalance
-USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,ElemTime,ElemTimePart,ElemTimeField!,DoLoadBalanceBackup,LoadBalanceSampleBackup
+USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,ElemTime,ElemTimePart,ElemTimeField,DoLoadBalanceBackup,LoadBalanceSampleBackup
 USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample,PerformLBSample,PerformLoadBalance,LoadBalanceMaxSteps,nLoadBalanceSteps
 USE MOD_LoadBalance_Vars    ,ONLY: DoInitialAutoRestart,ForceInitialLoadBalance
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeField,RestartTimeBackup,RestartWallTime
 USE MOD_Particle_Globals    ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Localization,ONLY:CountPartsPerElem
-USE MOD_Restart_Vars        ,ONLY: RestartTime!,RestartFile
+USE MOD_Restart_Vars        ,ONLY: RestartTime,RestartFile
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
@@ -487,7 +540,11 @@ IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,doAnalyze)
 IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 
 ! Analyze and output now
+#if USE_LOADBALANCE
+IF(doAnalyze .OR. PerformLoadBalance) THEN
+#else
 IF(doAnalyze)THEN
+#endif /*USE_LOADBALANCE*/
   CALL PrintAnalyze(dt_Min(DT_MIN))
   CALL TimeDisc_Info(iter_analyze+1)
 #if FV_ENABLED
@@ -544,22 +601,21 @@ IF(doAnalyze)THEN
   END IF
   PerformLBSample=.FALSE. ! Deactivate load balance sampling
 
-  ! ! Switch off Initial Auto Restart (initial load balance) after the restart was performed
-  ! IF (DoInitialAutoRestart) THEN
-  !   ! Remove the extra state file written for load balance (only when load balance restart was performed)
-  !   IF(PerformLoadBalance) CALL RemoveHDF5(RestartFile)
-  !   ! Get original settings from backup variables
-  !   DoInitialAutoRestart = .FALSE.
-  !   ForceInitialLoadBalance = .FALSE.
-  !   DoLoadBalance        = DoLoadBalanceBackup
-  !   LoadBalanceSample    = LoadBalanceSampleBackup
-  !   ! Set to iAnalyze zero so that this first analysis is not counted and the next analysis is the first one,
-  !   ! but only if the initial load balance restart and dt_Analyze did not coincide
-  !   IF(.NOT.ALMOSTEQUALRELATIVE(dt, dt_Min(DT_ANALYZE), 1E-5)) iAnalyze=0
-  !   ! Set time of the state file that was created before automatic initial restart (to be written in the next state file)
-  !   tPreviousAnalyze = RestartTimeBackup
-  !   IF (WriteMacroVolumeValues .OR. WriteMacroSurfaceValues) MacroValSampTime = t
-  ! END IF
+  ! Switch off Initial Auto Restart (initial load balance) after the restart was performed
+  IF (DoInitialAutoRestart) THEN
+    ! Remove the extra state file written for load balance (only when load balance restart was performed)
+    IF(PerformLoadBalance) CALL RemoveHDF5(RestartFile)
+    ! Get original settings from backup variables
+    DoInitialAutoRestart    = .FALSE.
+    ForceInitialLoadBalance = .FALSE.
+    DoLoadBalance           = DoLoadBalanceBackup
+    LoadBalanceSample       = LoadBalanceSampleBackup
+    ! Set to iter_analyze zero so that this first analysis is not counted and the next analysis is the first one,
+    ! but only if the initial load balance restart and dt_Analyze did not coincide
+    IF(.NOT.ALMOSTEQUALRELATIVE(dt, dt_Min(DT_ANALYZE), 1E-5)) iter_analyze = 0
+    ! Set time of the state file that was created before automatic initial restart (to be written in the next state file)
+    ! tPreviousAnalyze = RestartTimeBackup
+  END IF
 #endif /*USE_LOADBALANCE*/
 END IF
 

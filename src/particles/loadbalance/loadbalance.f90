@@ -114,6 +114,12 @@ CALL prms%CreateIntOption(     'InitialAutoRestartSample',       "Define number 
                                                                  "IF 0 than one iteration is sampled and statefile written has"  //&
                                                                  " zero timeflag.\n"                                             //&
                                                                  " DEFAULT: LoadBalanceSample.")
+CALL prms%CreateLogicalOption( 'InitialAutoRestart-PartWeightLoadBalance', "Set flag for doing initial auto restart with"        //&
+                                                                 " partMPIWeight instead of  ElemTimes. ElemTime array in state" //&
+                                                                 " file is filled with nParts*PartMPIWeight for each Elem. "     //&
+                                                                 " If Flag [TRUE] InitialAutoRestartSample is set to 0 and vice" //&
+                                                                 "versa.", '.FALSE.')
+
 
 END SUBROUTINE DefineParametersLoadBalance
 

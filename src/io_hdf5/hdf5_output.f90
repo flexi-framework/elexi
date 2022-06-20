@@ -36,6 +36,10 @@ INTERFACE FlushFiles
   MODULE PROCEDURE FlushFiles
 END INTERFACE
 
+INTERFACE RemoveHDF5
+  MODULE PROCEDURE RemoveHDF5
+END INTERFACE
+
 INTERFACE WriteHeader
   MODULE PROCEDURE WriteHeader
 END INTERFACE
@@ -72,7 +76,7 @@ INTERFACE GenerateFileSkeleton
   MODULE PROCEDURE GenerateFileSkeleton
 END INTERFACE
 
-PUBLIC :: FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow,GenerateFileSkeleton
+PUBLIC :: FlushFiles,RemoveHDF5,WriteHeader,WriteTimeAverage,WriteBaseflow,GenerateFileSkeleton
 PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,WriteAdditionalFieldData,MarkWriteSuccessfull
 !==================================================================================================================================
 
@@ -821,41 +825,41 @@ WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')'DONE'
 END SUBROUTINE FlushFiles
 
 
-!SUBROUTINE RemoveHDF5(InputFile)
-!!===================================================================================================================================
-!! Deletes all HDF5 output files, beginning from time Flushtime
-!!===================================================================================================================================
-!! MODULES
-!USE MOD_Globals
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT VARIABLES
-!CHARACTER(LEN=*),INTENT(IN) :: InputFile
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! OUTPUT VARIABLES
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!INTEGER                  :: stat,ioUnit
-!!===================================================================================================================================
-!! Only MPI root does the killing
-!IF(.NOT.MPIRoot) RETURN
+SUBROUTINE RemoveHDF5(InputFile)
+!===================================================================================================================================
+! Deletes all HDF5 output files, beginning from time Flushtime
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN) :: InputFile
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                  :: stat,ioUnit
+!===================================================================================================================================
+! Only MPI root does the killing
+IF(.NOT.MPIRoot) RETURN
 
-!WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' DELETING HDF5 FILE ['//TRIM(InputFile)//']...'
+WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' DELETING HDF5 FILE ['//TRIM(InputFile)//']...'
 
-!! Delete File - only root
-!stat=0
-!OPEN ( NEWUNIT= ioUnit,         &
-!       FILE   = TRIM(InputFile),&
-!       STATUS = 'OLD',          &
-!       ACTION = 'WRITE',        &
-!       ACCESS = 'SEQUENTIAL',   &
-!       IOSTAT = stat          )
-!IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
-!IF(iError.NE.0) WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '**** FAILED to remove ['//TRIM(InputFile)//'] with iError.NE.0 ****'
-!WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')'DONE'
+! Delete File - only root
+stat=0
+OPEN ( NEWUNIT= ioUnit,         &
+       FILE   = TRIM(InputFile),&
+       STATUS = 'OLD',          &
+       ACTION = 'WRITE',        &
+       ACCESS = 'SEQUENTIAL',   &
+       IOSTAT = stat          )
+IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
+IF(iError.NE.0) WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '**** FAILED to remove ['//TRIM(InputFile)//'] with iError.NE.0 ****'
+WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')'DONE'
 
-!END SUBROUTINE RemoveHDF5
+END SUBROUTINE RemoveHDF5
 
 
 !==================================================================================================================================

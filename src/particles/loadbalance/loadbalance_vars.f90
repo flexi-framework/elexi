@@ -26,8 +26,8 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                             :: DoLoadBalance                              !> Use dynamic load balancing
 INTEGER                             :: WeightDistributionMethod                   !> Load distribution method
-! INTEGER                             :: LoadBalanceSampleBackup                    !> Loadbalance sample saved until initial autorestart ist finished
-! LOGICAL                             :: DoLoadBalanceBackup                        !> Loadbalance flag saved until initial autorestart ist finished
+INTEGER                             :: LoadBalanceSampleBackup                    !> Loadbalance sample saved until initial autorestart ist finished
+LOGICAL                             :: DoLoadBalanceBackup                        !> Loadbalance flag saved until initial autorestart ist finished
 LOGICAL                             :: PerformLoadBalance=.FALSE.                 !> Flag if load balance is performed in current time step iteration
 INTEGER                             :: LoadBalanceSample                          !> Number of samples for loadbalance
 LOGICAL                             :: PerformLBSample                            !> Flag for enabling time measurement in current

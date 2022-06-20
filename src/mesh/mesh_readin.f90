@@ -775,15 +775,16 @@ END SUBROUTINE ReadMesh
 SUBROUTINE BuildPartition()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Mesh_Vars,         ONLY:nGlobalElems
+USE MOD_Mesh_Vars,         ONLY:nGlobalElems,nElems
 #if USE_MPI
 USE MOD_MPI_Vars,          ONLY:offsetElemMPI
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance,       ONLY:InitLoadBalanceTracking
 USE MOD_LoadBalance_Tools, ONLY:DomainDecomposition
+USE MOD_Particle_Globals,  ONLY:PP_nElems
 #else
-USE MOD_Mesh_Vars,         ONLY:nElems,offsetElem
+USE MOD_Mesh_Vars,         ONLY:offsetElem
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -831,6 +832,9 @@ LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
 nElems     = nGlobalElems   ! local number of Elements
 offsetElem = 0              ! offset is the index of first entry, hdf5 array starts at 0-.GT. -1
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+PP_nElems  = nElems
+#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE BuildPartition
 

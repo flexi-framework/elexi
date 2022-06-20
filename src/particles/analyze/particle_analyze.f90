@@ -353,6 +353,8 @@ INTEGER           :: iPart
 INTEGER(KIND=IK)  :: nPartMin,nPartMax
 !===================================================================================================================================
 
+IF (nSpecies.EQ.0) RETURN
+
 nPart = 0.
 DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN

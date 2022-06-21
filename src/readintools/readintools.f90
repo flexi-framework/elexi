@@ -2540,7 +2540,7 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL   :: StrOpt         ! String value
 CHARACTER(LEN=20)    :: fmtName
 CHARACTER(LEN=20)    :: fmtValue
 CHARACTER(LEN=50)    :: tmp
-INTEGER              :: i,Counter,length
+INTEGER              :: i,Counter,length,fmtLength
 !==================================================================================================================================
 IF (.NOT.MPIRoot) RETURN
 
@@ -2560,8 +2560,11 @@ IF(PRESENT(RealOpt))THEN
   Counter=Counter+1
 END IF
 IF(PRESENT(RealArrayOpt))THEN
-  WRITE(fmtValue,*) prms%maxValueLen/SIZE(RealArrayOpt)-2*(SIZE(RealArrayOpt)-1)
-  fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.4E2'
+  fmtLength = (prms%maxValueLen-2*SIZE(RealArrayOpt)-6)/SIZE(RealArrayOpt)
+  WRITE(fmtValue,*) fmtLength
+  IF (fmtLength.GT.10) THEN; fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.4E2'
+                       ELSE; fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.1E2'
+  END IF
   Counter=Counter+1
 END IF
 IF(PRESENT(IntOpt))THEN
@@ -2636,7 +2639,10 @@ IF(PRESENT(IntArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(f
 IF(PRESENT(RealArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(fmtValue,*) (prms%maxValueLen - length)
                     WRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO'); END IF
                     WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') "(/ "
-                    WRITE(fmtValue,*) prms%maxValueLen/SIZE(RealArrayOpt)-2*(SIZE(RealArrayOpt)-1); fmtValue=ADJUSTL(fmtValue); fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.4E2'
+                    fmtLength = (prms%maxValueLen-2*SIZE(RealArrayOpt)-6)/SIZE(RealArrayOpt)
+  IF (fmtLength.GT.10) THEN; WRITE(fmtValue,*) fmtLength; fmtValue=ADJUSTL(fmtValue); fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.4E2'
+                       ELSE; WRITE(fmtValue,*) fmtLength; fmtValue=ADJUSTL(fmtValue); fmtValue='ES'//ADJUSTL(TRIM(fmtValue))//'.1E2'
+  END IF
   DO i=1,SIZE(RealArrayOpt)
                     WRITE(UNIT_stdOut,'('//TRIM(fmtValue)//')',ADVANCE='NO') RealArrayOpt(i)
     IF (i.NE.SIZE(RealArrayOpt)) &

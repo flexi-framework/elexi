@@ -787,17 +787,17 @@ ELSE
   CALL MPI_REDUCE(nSides_MortarType,MPI_IN_PLACE     ,3,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif /*USE_MPI*/
-SWRITE(UNIT_stdOut,'(132("."))')
-SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=0     | ',nSides_flip(0)
-SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=1     | ',nSides_flip(1)
-SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=2     | ',nSides_flip(2)
-SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=3     | ',nSides_flip(3)
-SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=4     | ',nSides_flip(4)
-SWRITE(UNIT_stdOut,'(132("."))')
-SWRITE(*,'(A,A34,I0)')' |','nSides of MortarType=1 | ',nSides_MortarType(1)
-SWRITE(*,'(A,A34,I0)')' |','nSides of MortarType=2 | ',nSides_MortarType(2)
-SWRITE(*,'(A,A34,I0)')' |','nSides of MortarType=3 | ',nSides_MortarType(3)
-SWRITE(UNIT_stdOut,'(132("."))')
+LBWRITE(UNIT_stdOut,'(132("."))')
+LBWRITE(*,'(A,A34,I0)')' |','nSides with Flip=0     | ',nSides_flip(0)
+LBWRITE(*,'(A,A34,I0)')' |','nSides with Flip=1     | ',nSides_flip(1)
+LBWRITE(*,'(A,A34,I0)')' |','nSides with Flip=2     | ',nSides_flip(2)
+LBWRITE(*,'(A,A34,I0)')' |','nSides with Flip=3     | ',nSides_flip(3)
+LBWRITE(*,'(A,A34,I0)')' |','nSides with Flip=4     | ',nSides_flip(4)
+LBWRITE(UNIT_stdOut,'(132("."))')
+LBWRITE(*,'(A,A34,I0)')' |','nSides of MortarType=1 | ',nSides_MortarType(1)
+LBWRITE(*,'(A,A34,I0)')' |','nSides of MortarType=2 | ',nSides_MortarType(2)
+LBWRITE(*,'(A,A34,I0)')' |','nSides of MortarType=3 | ',nSides_MortarType(3)
+LBWRITE(UNIT_stdOut,'(132("."))')
 
 LOGWRITE(*,*)'============================= START SIDE CHECKER ==================='
 DO iElem=1,nElems

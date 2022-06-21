@@ -347,8 +347,8 @@ INTEGER                                 :: Rank
 INTEGER(HID_T)                          :: Dset_ID,FileSpace
 INTEGER(HSIZE_T), DIMENSION(7)          :: Dims,DimsMax
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A,A)')' GET SIZE OF DATA IN HDF5 FILE...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A,A)')' GET SIZE OF DATA IN HDF5 FILE...'
 
 IF(.NOT.PRESENT(ArrayName_opt)) THEN
     ArrayName = 'DG_Solution'
@@ -363,7 +363,7 @@ CALL H5DOPEN_F(File_ID, ArrayName, Dset_ID, iError)
 CALL H5DGET_SPACE_F(Dset_ID, FileSpace, iError)
 ! Get number of dimensions of data space
 CALL H5SGET_SIMPLE_EXTENT_NDIMS_F(FileSpace, Rank, iError)
-SWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','Rank of database',' | ',Rank,' | HDF5    |'
+LBWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','Rank of database',' | ',Rank,' | HDF5    |'
 ! Get size and max size of data space
 Dims   =0
 DimsMax=0
@@ -380,21 +380,21 @@ END IF
 !nVar_HDF5 = INT(Dims(1),4)
 CHECKSAFEINT(Dims(1),4)
 nVar_HDF5 = INT(Dims(1),4)
-SWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','Number of variables nVar',' | ',nVar_HDF5,' | HDF5    |'
+LBWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','Number of variables nVar',' | ',nVar_HDF5,' | HDF5    |'
 ! N = index 2-4 of array, is expected to have the same value for each direction
 CHECKSAFEINT(Dims(2)-1,4)
 N_HDF5 = INT(Dims(2)-1,4)
-SWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','Polynomial degree N',' | ',N_HDF5,' | HDF5    |'
+LBWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','Polynomial degree N',' | ',N_HDF5,' | HDF5    |'
 IF(PRESENT(NodeType_HDF5)) THEN
-  SWRITE(UNIT_stdOut,'(A3,A30,A3,A33,A13)')' | ','          Node type',' | ',TRIM(NodeType_HDF5),' | HDF5    |'
+  LBWRITE(UNIT_stdOut,'(A3,A30,A3,A33,A13)')' | ','          Node type',' | ',TRIM(NodeType_HDF5),' | HDF5    |'
 END IF
 ! nElems = index 5 of array
 CHECKSAFEINT(Dims(5),4)
 nElems_HDF5 = INT(Dims(5),4)
-SWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','GeometricnElems',' | ',nElems_HDF5,' | HDF5    |'
+LBWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','GeometricnElems',' | ',nElems_HDF5,' | HDF5    |'
 
-SWRITE(UNIT_stdOut,'(A)')' DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE GetDataProps
 

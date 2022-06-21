@@ -172,7 +172,7 @@ ENDIF
 #if USE_PARTICLES
 NGeoOverride = GETINT ('NGeoOverride','-1' )
 IF (.NOT.UseCurveds) THEN
-  SWRITE(UNIT_stdOut,'(A)') ' NGeoOverride set but UseCurveds = F, setting NGeoOverride = -1'
+  LBWRITE(UNIT_stdOut,'(A)') ' NGeoOverride set but UseCurveds = F, setting NGeoOverride = -1'
   NGeoOverride = -1
 END IF
 meshScale    = GETREAL('meshScale'   ,'1.0')

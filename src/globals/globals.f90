@@ -22,6 +22,9 @@ USE ISO_C_BINDING
 #if USE_MPI
 USE mpi
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars      ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 USE ISO_C_BINDING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

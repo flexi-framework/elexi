@@ -64,6 +64,11 @@
 ! Define MPI specific write shortcuts
 #if USE_MPI
 #  define SWRITE IF(MPIRoot) WRITE
+#if USE_LOADBALANCE
+#  define LBWRITE IF(MPIRoot.AND..NOT.PerformLoadBalance) WRITE
+#else
+#  define LBWRITE IF(MPIRoot) WRITE
+#endif
 #  define IPWRITE(a,b) WRITE(a,b)myRank,
 #  define GETTIME(a) a=MPI_WTIME()
 #else

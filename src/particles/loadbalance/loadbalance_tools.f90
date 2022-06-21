@@ -63,7 +63,7 @@ REAL,ALLOCATABLE               :: WeightSum_proc(:)
 INTEGER                        :: iProc
 REAL                           :: StartT,EndT
 !===================================================================================================================================
-SWRITE(UNIT_stdOut,'(132("."))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' DOMAIN DECOMPOSITION ...'
 
 #if USE_MPI
@@ -161,11 +161,13 @@ IF (ElemTimeExists.AND.MPIRoot) THEN
   IF(TargetWeight.LE.0.0) CALL Abort(__STAMP__,' LoadBalance: TargetWeight = ',RealInfo=TargetWeight)
 
   ! valid decomposition, output result
+  SWRITE(UNIT_stdOut,'(132("."))')
   SWRITE(UNIT_stdOut,'(A)') ' Calculated new (theoretical) imbalance with offsetElemMPI information'
   SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | MaxWeight:                                     ', MaxWeight
   SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | MinWeight:                                     ', MinWeight
   SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | TargetWeight:                                  ', TargetWeight
   SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | NewImbalance:                                  ', NewImbalance
+  SWRITE(UNIT_stdOut,'(132("."))')
   DEALLOCATE(WeightSum_proc)
 ELSE
   SWRITE(UNIT_stdOut,'(A)') ' No ElemTime found in restart file'
@@ -180,7 +182,7 @@ IF (INDEX(MeshFile,'h5').NE.0)  CALL OpenDataFile(MeshFile,create=.FALSE.,single
 EndT                        = FLEXITIME()
 DomainDecompositionWallTime = EndT-StartT
 SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DOMAIN DECOMPOSITION ... DONE  [',DomainDecompositionWallTime,'s]'
-SWRITE(UNIT_stdOut,'(132("."))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE DomainDecomposition
 
@@ -209,7 +211,7 @@ REAL                :: StartT,EndT
 !===================================================================================================================================
 
 IF(MPIRoot)THEN
-  WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO') '| Reading ElemTime from restart file: ',TRIM(RestartFile),' ...'
+  WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO') ' | Reading ElemTime from restart file: ',TRIM(RestartFile),' ...'
   GETTIME(StartT)
 END IF
 
@@ -229,7 +231,10 @@ ELSE
   CALL CloseDataFile()
 END IF ! single
 
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
+IF(MPIRoot)THEN
+  GETTIME(EndT)
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
+END IF
 
 END SUBROUTINE ReadElemTime
 #endif /*USE_LOADBALANCE && USE_MPI*/

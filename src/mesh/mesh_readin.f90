@@ -165,9 +165,9 @@ IF (nUserBCs.GT.0) THEN
       IF((BoundaryType(BCMapping(iBC),1).EQ.1).AND.(BCType(1,iBC).NE.1)) &
         CALL Abort(__STAMP__,&
                    'Remapping non-periodic to periodic BCs is not possible!')
-      SWRITE(UNIT_stdOut,'(A,A)')    ' |     Boundary in HDF file found | ',TRIM(BCNames(iBC))
-      SWRITE(UNIT_stdOut,'(A,I4,I4)')' |                            was | ',BCType(1,iBC),BCType(3,iBC)
-      SWRITE(UNIT_stdOut,'(A,I4,I4)')' |                      is set to | ',BoundaryType(BCMapping(iBC),1:2)
+      LBWRITE(UNIT_stdOut,'(A,A)')    ' |     Boundary in HDF file found | ',TRIM(BCNames(iBC))
+      LBWRITE(UNIT_stdOut,'(A,I4,I4)')' |                            was | ',BCType(1,iBC),BCType(3,iBC)
+      LBWRITE(UNIT_stdOut,'(A,I4,I4)')' |                      is set to | ',BoundaryType(BCMapping(iBC),1:2)
       BCType(1,iBC) = BoundaryType(BCMapping(iBC),BC_TYPE)
       BCType(3,iBC) = BoundaryType(BCMapping(iBC),BC_STATE)
     END IF
@@ -182,13 +182,13 @@ BoundaryName = BCNames
 BoundaryType(:,BC_TYPE)  = BCType(1,:)
 BoundaryType(:,BC_STATE) = BCType(3,:)
 BoundaryType(:,BC_ALPHA) = BCType(4,:)
-SWRITE(UNIT_stdOut,'(132("."))')
-SWRITE(UNIT_stdOut,'(A,A15,A20,A10,A10,A10)')' BOUNDARY CONDITIONS','|','Name','Type','State','Alpha'
+LBWRITE(UNIT_stdOut,'(132("."))')
+LBWRITE(UNIT_stdOut,'(A,A15,A20,A10,A10,A10)')' BOUNDARY CONDITIONS','|','Name','Type','State','Alpha'
 DO iBC=1,nBCs
-  SWRITE(Unit_stdOut,'(A,A33,A20,I10,I10,I10)')' |','|',TRIM(BoundaryName(iBC)),BoundaryType(iBC,:)
+  LBWRITE(Unit_stdOut,'(A,A33,A20,I10,I10,I10)')' |','|',TRIM(BoundaryName(iBC)),BoundaryType(iBC,:)
 END DO
 
-SWRITE(UNIT_stdOut,'(132("."))')
+LBWRITE(UNIT_stdOut,'(132("."))')
 
 DEALLOCATE(BCNames,BCType,BCMapping)
 
@@ -744,22 +744,20 @@ CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLE
 IF(MPIRoot) ReduceData=ReduceData_glob
 #endif /*USE_MPI*/
 
-IF(MPIRoot)THEN
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nElems               | ',ReduceData(1) !nElems
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nNodes               | ',ReduceData(3) !nNodes
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides               | ',ReduceData(2)-ReduceData(7)/2
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,    BC        | ',ReduceData(6) !nBCSides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,   MPI        | ',ReduceData(7)/2 !nMPISides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides, Inner        | ',ReduceData(4) !nInnerSides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,Mortar        | ',ReduceData(9) !nMortarSides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,Total | ',ReduceData(5)-ReduceData(10)/2
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,Inner | ',ReduceData(5)-ReduceData(10)
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,  MPI | ',ReduceData(10)/2 !nPeriodicSides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nAnalyzeSides        | ',ReduceData(8) !nAnalyzeSides
-  WRITE(UNIT_stdOut,'(A,A34,L1)')' |','useCurveds           | ',useCurveds
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','Ngeo                 | ',Ngeo
-  WRITE(UNIT_stdOut,'(132("."))')
-END IF
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nElems               | ',ReduceData(1) !nElems
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nNodes               | ',ReduceData(3) !nNodes
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides               | ',ReduceData(2)-ReduceData(7)/2
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,    BC        | ',ReduceData(6) !nBCSides
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,   MPI        | ',ReduceData(7)/2 !nMPISides
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides, Inner        | ',ReduceData(4) !nInnerSides
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,Mortar        | ',ReduceData(9) !nMortarSides
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,Total | ',ReduceData(5)-ReduceData(10)/2
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,Inner | ',ReduceData(5)-ReduceData(10)
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,  MPI | ',ReduceData(10)/2 !nPeriodicSides
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nAnalyzeSides        | ',ReduceData(8) !nAnalyzeSides
+LBWRITE(UNIT_stdOut,'(A,A34,L1)')' |','useCurveds           | ',useCurveds
+LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','Ngeo                 | ',Ngeo
+LBWRITE(UNIT_stdOut,'(132("."))')
 
 EndT             = FLEXITIME()
 ReadMeshWallTime = EndT-StartT

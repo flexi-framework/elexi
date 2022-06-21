@@ -106,7 +106,7 @@ USE MOD_Preproc
 USE MOD_Mesh_Vars,                  ONLY: NGeo
 USE MOD_Particle_Globals
 USE MOD_Particle_Surfaces_Vars
-USE MOD_ReadInTools,                ONLY: GETREAL,GETINT,GETLOGICAL
+USE MOD_ReadInTools,                ONLY: GETREAL,GETINT,GETLOGICAL,PrintOption
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,     ONLY: rBoundingBoxChecks,rPerformBezierClip,rPerformBezierNewton
 #endif /*CODE_ANALYZE*/
@@ -158,7 +158,7 @@ IF(ALMOSTZERO(epsilontol)) THEN
     epsilontol=100.*EpsMach
   END IF
 END IF
-SWRITE(UNIT_stdOut,'(A44,17x,E12.6,A2,E12.6)')   ' |         epsilon (abs.,rel. to epsMach) | ',epsilontol,', ',epsilontol/EpsMach
+CALL PrintOption('epsilon (abs.,rel. to epsMach)','INFO',RealArrayOpt=(/epsilontol,epsilontol/EpsMach/))
 MinusEps              = -epsilontol
 OnePlusEps            = 1.0 + 100.*epsilontol
 OneMinusEps           = 1.0 - epsilontol

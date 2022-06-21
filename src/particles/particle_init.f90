@@ -558,6 +558,7 @@ USE MOD_Particle_Surfaces,          ONLY: InitParticleSurfaces
 USE MOD_Particle_TimeDisc,          ONLY: Particle_InitTimeDisc
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,nSpecies,PDM
+USE MOD_ReadInTools,                ONLY: PrintOption
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
 #endif
@@ -596,8 +597,8 @@ IF (maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).GT. 
     maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).LT.-HUGE(INT(1,KIND=4)))     &
   CALL CollectiveStop(__STAMP__,'maxParticleNumber too big for current number of processors. Decrease maxParticleNumber or increase nProcs!')
 PDM%maxParticleNumber    = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)))
-SWRITE(UNIT_stdOut,'(A,I0)') ' | Max. Particle NUMBER/Proc: ', PDM%maxParticleNumber
-SWRITE(UNIT_stdOut,'(A,I0)') ' | Max. Particle NUMBER/Glob: ', INT(REAL(PDM%maxParticleNumber)*REAL(nProcessors),KIND=8)
+CALL PrintOption('Max. Particle NUMBER (Proc/Glob)','INFO',IntArrayOpt=(/PDM%maxParticleNumber                                    &
+                                                                       ,INT(REAL(PDM%maxParticleNumber)*REAL(nProcessors),KIND=4)/))
 
 nGlobalNbrOfParticles    = 0
 nGlobalNbrOfParticles(4) = HUGE(nGlobalNbrOfParticles(4))

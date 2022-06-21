@@ -64,6 +64,7 @@ USE MOD_Particle_MPI_Vars       ,ONLY: nExchangeProcessors,ExchangeProcToGlobalP
 USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Timedisc_Vars  ,ONLY: ManualTimeStep
 USE MOD_Particle_Tracking_Vars  ,ONLY: TrackingMethod
+USE MOD_ReadInTools             ,ONLY: PrintOption
 USE MOD_TimeDisc_Vars           ,ONLY: nRKStages,RKc
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -321,16 +322,16 @@ IF (halo_eps.LE.0.) THEN
 
   ! compare halo_eps against global diagonal and reduce if necessary
   IF (.NOT.ALMOSTZERO(MPI_halo_eps).AND.(MPI_halo_diag.GE.MPI_halo_eps)) THEN
-    SWRITE(UNIT_stdOut,'(A,E11.3)') ' | No halo_eps given. Reconstructed to ',MPI_halo_eps
+    CALL PrintOption('No halo_eps given. Reconstructed','CALCUL.',RealOpt=MPI_halo_eps)
   ELSEIF (.NOT.ALMOSTZERO(MPI_halo_eps).AND.(MPI_halo_diag.LT.MPI_halo_eps)) THEN
     fullMesh = .TRUE.
     MPI_halo_eps = MPI_halo_diag
-    SWRITE(UNIT_stdOut,'(A,E11.3)') ' | No halo_eps given. Reconstructed to global diag with ',MPI_halo_eps
+    CALL PrintOption('No halo_eps given. Reconstructed to global diag','CALCUL.',RealOpt=MPI_halo_eps)
   ! halo_eps still at zero. Set it to global diagonal
   ELSE
     fullMesh = .TRUE.
     MPI_halo_eps = MPI_halo_diag
-    SWRITE(UNIT_stdOut,'(A,F11.3)') ' | No halo_eps given and could not be reconstructed. Using global diag with ',MPI_halo_eps
+    CALL PrintOption('No halo_eps given and could not be reconstructed. Using global diag','CALCUL.',RealOpt=MPI_halo_eps)
   END IF
 ELSE
   vec(1)   = GEO%xmaxglob-GEO%xminglob

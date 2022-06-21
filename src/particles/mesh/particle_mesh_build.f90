@@ -492,6 +492,7 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: ElemBaryNGeo,ElemRadiusNGeo
 USE MOD_Particle_Mesh_Vars       ,ONLY: nUniqueBCSides
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID,GetCNElemID,GetCNElemID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Utils           ,ONLY: InsertionSort
+USE MOD_ReadInTools              ,ONLY: PrintOption
 #if USE_MPI
 USE MOD_CalcTimeStep             ,ONLY: CalcTimeStep
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides_Shared,SideBCMetrics_Shared
@@ -597,16 +598,16 @@ IF (halo_eps.EQ.0) THEN
 
     ! compare halo_eps against global diagonal and reduce if necessary
     IF (.NOT.ALMOSTZERO(BC_halo_eps).AND.(BC_halo_diag.GE.BC_halo_eps)) THEN
-      SWRITE(UNIT_stdOut,'(A,E11.3)') ' | No halo_eps given. Reconstructed to ',BC_halo_eps
+      CALL PrintOption('No halo_eps given. Reconstructed','CALCUL.',RealOpt=BC_halo_eps)
     ELSEIF (.NOT.ALMOSTZERO(BC_halo_eps).AND.(BC_halo_diag.LT.BC_halo_eps)) THEN
       fullMesh = .TRUE.
       BC_halo_eps = BC_halo_diag
-      SWRITE(UNIT_stdOut,'(A,E11.3)') ' | No halo_eps given. Reconstructed to global diag with ',BC_halo_eps
+      CALL PrintOption('No halo_eps given. Reconstructed to global diag','CALCUL.',RealOpt=BC_halo_eps)
     ! halo_eps still at zero. Set it to global diagonal
     ELSE
       fullMesh = .TRUE.
       BC_halo_eps = BC_halo_diag
-      SWRITE(UNIT_stdOut,'(A,F11.3)') ' | No halo_eps given and could not be reconstructed. Using global diag with ',BC_halo_eps
+      CALL PrintOption('No halo_eps given and could not be reconstructed. Using global diag','CALCUL.',RealOpt=BC_halo_eps)
     END IF
   ElSE
     fullMesh = .TRUE.
@@ -1411,6 +1412,7 @@ USE MOD_Particle_Mesh_Vars      ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars  ,ONLY: TrackingMethod
+USE MOD_ReadInTools             ,ONLY: PrintOption
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars      ,ONLY: offsetComputeNodeSide,nComputeNodeSides
 USE MOD_Particle_Mesh_Vars      ,ONLY: offsetComputeNodeNode,nComputeNodeNodes
@@ -1510,15 +1512,15 @@ GEO%zminglob = GEO%zmin
 GEO%zmaxglob = GEO%zmax
 #endif /*USE_MPI*/
 
-SWRITE(UNIT_stdOut,'(A,E18.8,A,E18.8,A,E18.8)') ' | Total MESH   Dim (x,y,z): '                                     &
-                                                , MAXVAL(NodeCoords_Shared(1,:))-MINVAL(NodeCoords_Shared(1,:)),', '&
-                                                , MAXVAL(NodeCoords_Shared(2,:))-MINVAL(NodeCoords_Shared(2,:)),', '&
-                                                , MAXVAL(NodeCoords_Shared(3,:))-MINVAL(NodeCoords_Shared(3,:))
+CALL PrintOption('Total MESH   Dim (x,y,z)','INFO',RealArrayOpt=(/                                                  &
+                                                  MAXVAL(NodeCoords_Shared(1,:))-MINVAL(NodeCoords_Shared(1,:))     &
+                                                , MAXVAL(NodeCoords_Shared(2,:))-MINVAL(NodeCoords_Shared(2,:))     &
+                                                , MAXVAL(NodeCoords_Shared(3,:))-MINVAL(NodeCoords_Shared(3,:))/))
 IF (TrackingMethod.EQ.REFMAPPING .OR. TrackingMethod.EQ. TRACING) THEN
-  SWRITE(UNIT_stdOut,'(A,E18.8,A,E18.8,A,E18.8)') ' | Total BEZIER Dim (x,y,z): '                                   &
-                                                  , GEO%xmaxglob-GEO%xminglob,', '                                  &
-                                                  , GEO%ymaxglob-GEO%yminglob,', '                                  &
-                                                  , GEO%zmaxglob-GEO%zminglob
+  CALL PrintOption('Total BEZIER Dim (x,y,z)','INFO',RealArrayOpt=(/                                                &
+                                                  GEO%xmaxglob-GEO%xminglob                                         &
+                                                , GEO%ymaxglob-GEO%yminglob                                         &
+                                                , GEO%zmaxglob-GEO%zminglob/))
 END IF
 
 END SUBROUTINE GetMeshMinMax
@@ -1912,13 +1914,13 @@ nCurvedElemsTot          = nCurvedElems
 !END IF
 !#endif /* USE_MPI */
 
-SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of planar-rectangular     faces: ', nPlanarRectangulartot
-SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of planar-non-rectangular faces: ', nPlanarNonRectangulartot
-SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of bi-linear              faces: ', nBilineartot
-SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of planar-curved          faces: ', nPlanarCurvedtot
-SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of curved                 faces: ', nCurvedtot
-SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of (bi-)linear            elems: ', nLinearElemsTot
-SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of curved                 elems: ', nCurvedElemsTot
+LBWRITE(UNIT_stdOut,'(A,I8)') ' | Number of planar-rectangular     faces: ', nPlanarRectangulartot
+LBWRITE(UNIT_stdOut,'(A,I8)') ' | Number of planar-non-rectangular faces: ', nPlanarNonRectangulartot
+LBWRITE(UNIT_stdOut,'(A,I8)') ' | Number of bi-linear              faces: ', nBilineartot
+LBWRITE(UNIT_stdOut,'(A,I8)') ' | Number of planar-curved          faces: ', nPlanarCurvedtot
+LBWRITE(UNIT_stdOut,'(A,I8)') ' | Number of curved                 faces: ', nCurvedtot
+LBWRITE(UNIT_stdOut,'(A,I8)') ' | Number of (bi-)linear            elems: ', nLinearElemsTot
+LBWRITE(UNIT_stdOut,'(A,I8)') ' | Number of curved                 elems: ', nCurvedElemsTot
 
 END SUBROUTINE IdentifyElemAndSideType
 
@@ -2720,6 +2722,7 @@ USE MOD_Mesh_Vars                ,ONLY: nElems
 USE MOD_Mesh_Vars                ,ONLY: sJ
 USE MOD_Particle_Mesh_Vars       ,ONLY: LocalVolume,MeshVolume
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemVolume_Shared
+USE MOD_ReadInTools              ,ONLY: PrintOption
 #if USE_MPI
 USE MOD_Mesh_Vars                ,ONLY: offsetElem
 USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems,offsetComputeNodeElem
@@ -2814,7 +2817,7 @@ CALL MPI_BCAST(MeshVolume,1, MPI_DOUBLE_PRECISION,0,MPI_COMM_SHARED,iERROR)
 MeshVolume = LocalVolume
 #endif /*USE_MPI*/
 
-SWRITE(UNIT_stdOut,'(A,E18.8)') ' | Total MESH Volume:        ', MeshVolume
+CALL PrintOption('Total MESH Volume','INFO',RealOpt=MeshVolume)
 
 END SUBROUTINE InitElemVolumes
 

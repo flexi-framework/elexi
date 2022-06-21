@@ -180,6 +180,7 @@ IF (INDEX(MeshFile,'h5').NE.0)  CALL OpenDataFile(MeshFile,create=.FALSE.,single
 EndT                        = FLEXITIME()
 DomainDecompositionWallTime = EndT-StartT
 SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DOMAIN DECOMPOSITION ... DONE  [',DomainDecompositionWallTime,'s]'
+SWRITE(UNIT_stdOut,'(132("."))')
 
 END SUBROUTINE DomainDecomposition
 
@@ -204,22 +205,21 @@ LOGICAL,INTENT(IN)  :: single !< read data file either single=.TRUE. (only MPI r
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! LOCAL VARIABLES
 LOGICAL             :: ElemTimeExists
+REAL                :: StartT,EndT
 !===================================================================================================================================
+
+IF(MPIRoot)THEN
+  WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO') '| Reading ElemTime from restart file: ',TRIM(RestartFile),' ...'
+  GETTIME(StartT)
+END IF
 
 ! Read data file either single=.TRUE. (only MPI root) or single=.FALSE. (all ranks)
 IF (single) THEN
-  nElems         = nGlobalElems   ! Temporarily set nElems as nGlobalElems for GetArrayAndName
-  offsetElem     = 0              ! Offset is the index of first entry, hdf5 array starts at 0-.GT. -1
-
-  ! NEW method
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
   CALL DatasetExists(File_ID,'ElemTime',ElemTimeExists)
-  IF (ElemTimeExists) THEN
+  IF (ElemTimeExists) &
     CALL ReadArray('ElemTime',2,(/1,nGlobalElems/),0,2,RealArray=ElemGlobalTime)
-    WRITE(UNIT_stdOut,*) "Read ElemTime from restart file: "//TRIM(RestartFile)
-  END IF ! ElemTimeExists
   CALL CloseDataFile()
-
 ELSE
   SDEALLOCATE(ElemTime_tmp)
   ALLOCATE(ElemTime_tmp(1:nElems))
@@ -228,6 +228,8 @@ ELSE
   CALL ReadArray('ElemTime',2,(/1,nElems/),OffsetElem,2,RealArray=ElemTime_tmp)
   CALL CloseDataFile()
 END IF ! single
+
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
 
 END SUBROUTINE ReadElemTime
 #endif /*USE_LOADBALANCE && USE_MPI*/

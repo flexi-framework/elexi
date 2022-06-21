@@ -192,7 +192,7 @@ CASE DEFAULT
 END SELECT
 
 ! Preparation of the baseflow on each Gauss Point
-SWRITE(UNIT_stdOut,'(A)') '  Initialize Sponge Base Flow...'
+SWRITE(UNIT_stdOut,'(A)') ' Initialize Sponge Base Flow...'
 ALLOCATE(SpBaseFlow(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 SELECT CASE(SpBaseflowType)
 CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate

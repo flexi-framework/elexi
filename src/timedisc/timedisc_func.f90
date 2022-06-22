@@ -778,7 +778,7 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 ! LOCAL VARIABLES
 !==================================================================================================================================
 ! Output Data
-IF ((dt_analyzemin.LT.dt_dynmin)) THEN
+IF ((dt_analyzemin.LT.dt_dynmin) .AND. nDtLimited.GT.0) THEN
     CALL PrintWarning("TimeDisc INFO - Timestep dropped below predefined minimum! - LIMITING!")
     SWRITE(UNIT_stdOut,'(A,ES16.7,A)')' TimeDisc   : physical timestep acc. to CFL/DFL:', dt_analyzemin
     SWRITE(UNIT_stdOut,'(A,F8.3,A,I0,A)')' TimeDisc   : limited timestep amount %: ',REAL(nDtLimited)/iter*100,', ',nDtLimited,' timesteps'

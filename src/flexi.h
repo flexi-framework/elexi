@@ -66,16 +66,17 @@
 #  define SWRITE IF(MPIRoot) WRITE
 #if USE_LOADBALANCE
 #  define LBWRITE IF(MPIRoot.AND..NOT.PerformLoadBalance) WRITE
-#else
+#else /*USE_LOADBALANCE*/
 #  define LBWRITE IF(MPIRoot) WRITE
-#endif
+#endif /*USE_LOADBALANCE*/
 #  define IPWRITE(a,b) WRITE(a,b)myRank,
 #  define GETTIME(a) a=MPI_WTIME()
-#else
+#else /*USE_MPI*/
 #  define SWRITE WRITE
+#  define LBWRITE WRITE
 #  define IPWRITE WRITE
 #  define GETTIME(a) CALL CPU_TIME(a)
-#endif
+#endif /*USE_MPI*/
 #define ERRWRITE(a,b)  CALL CreateErrFile(); IF(ErrorFiles) WRITE(UNIT_errOut,b)
 #define LOGWRITE(a,b)  IF(Logging) WRITE(UNIT_logOut,b)
 #define SDEALLOCATE(A) IF(ALLOCATED(A))  DEALLOCATE(A)

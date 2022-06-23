@@ -232,9 +232,9 @@ CALL MPI_COMM_SIZE(MPI_COMM_NODE,nLocalProcs,iError)
 MPILocalRoot=(myLocalRank .EQ. 0)
 
 IF (nProcessors.EQ.nLocalProcs) THEN
-  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A)') ' | Starting gathered I/O communication with ',nLocalProcs,' procs in ',1,' group'
+  LBWRITE(UNIT_stdOUt,'(A,I0,A,I0,A)') ' | Starting gathered I/O communication with ',nLocalProcs,' procs in ',1,' group'
 ELSE
-  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A,I0,A)') ' | Starting gathered I/O communication with ',nLocalProcs,' procs each in ',&
+  LBWRITE(UNIT_stdOUt,'(A,I0,A,I0,A,I0,A)') ' | Starting gathered I/O communication with ',nLocalProcs,' procs each in ',&
                                                         nProcessors/nLocalProcs,' groups for a total number of ',&
                                                         nProcessors,' procs'
 END IF
@@ -256,7 +256,6 @@ ELSE
   nLeaderProcs=nProcessors-nWorkerProcs
 END IF
 END SUBROUTINE InitMPIvars
-
 
 
 !==================================================================================================================================

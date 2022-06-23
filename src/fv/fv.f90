@@ -144,8 +144,8 @@ IF(.NOT.FVInitBasisIsDone)THEN
    CALL CollectiveStop(__STAMP__,&
      'InitFV not ready to be called or already called.')
 END IF
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
 
 ! Read minimal and maximal threshold for the indicator
 FV_IndLowerThreshold = GETREAL('FV_IndLowerThreshold','-99.')
@@ -272,8 +272,8 @@ FV_Elems = 0
 CALL FV_Switch(U,AllowToDG=.FALSE.)
 
 FVInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitFV
 

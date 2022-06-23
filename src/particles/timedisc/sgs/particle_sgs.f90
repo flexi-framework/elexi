@@ -48,7 +48,7 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE ParticleInitSGS()
 ! MODULES
-USE MOD_Globals               ,ONLY: Abort,UNIT_stdOut
+USE MOD_Globals
 USE MOD_Preproc               ,ONLY: PP_N,PP_NZ
 USE MOD_Analyze_Vars          ,ONLY: ElemVol
 USE MOD_Mesh_Vars             ,ONLY: nElems
@@ -72,8 +72,8 @@ INTEGER               :: ALLOCSTAT,iSpec
 
 IF(ParticleSGSInitIsDone) RETURN
 
-!SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL...'
+!LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL...'
 
 ! SGS model
 SGSModel = TRIM(GETSTR('Part-SGSModel','none'))
@@ -261,8 +261,8 @@ END SELECT
 
 ParticleSGSInitIsDone=.TRUE.
 
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SGS MODEL DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE ParticleInitSGS
 
@@ -284,7 +284,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                   :: iDeg
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)') ' Init SGS filter...'
+LBWRITE(UNIT_stdOut,'(A)') ' Init SGS filter...'
 
 ! Abort if Navier-Stokes filter is requested in addition to the SST filter
 IF(FilterType.GT.0) CALL CollectiveStop(__STAMP__, 'SGS incompatible with Navier-Stokes filter!')

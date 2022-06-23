@@ -122,8 +122,8 @@ CHARACTER(LEN=2)                :: dummy
 !===================================================================================================================================
 
 IF(ParticleSurfaceInitIsDone) RETURN
-!SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACES...'
+! LBWRITE(UNIT_stdOut,'(132("."))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACES...'
 
 BezierNewtonAngle          = GETREAL('BezierNewtonAngle'         )  ! 1°=0.01754 (in rad)
 BezierClipTolerance        = GETREAL('BezierClipTolerance'       )
@@ -180,8 +180,8 @@ ALLOCATE( locAlpha(1:BezierClipMaxIntersec) &
 
 ParticleSurfaceInitIsDone = .TRUE.
 
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACES DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACES DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleSurfaces
 

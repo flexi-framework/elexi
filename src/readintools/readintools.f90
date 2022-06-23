@@ -2544,6 +2544,14 @@ INTEGER              :: i,Counter,length,fmtLength
 !==================================================================================================================================
 IF (.NOT.MPIRoot) RETURN
 
+! Return if running loadbalance and printing static information
+#if USE_LOADBALANCE
+SELECT CASE(TRIM(InfoOpt))
+  CASE("INFO","PARAM")
+    RETURN
+END SELECT
+#endif /*USE_LOADBALANCE*/
+
 ! set length of name
 WRITE(fmtName,*) prms%maxNameLen
 

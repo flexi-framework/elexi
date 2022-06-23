@@ -112,9 +112,8 @@ USE MOD_EOS_Vars      ,ONLY: Tref,ExpoSuth
 REAL    :: BulkMach,BulkReynolds
 LOGICAL :: UseNonDimensionalEqn=.FALSE.
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT IDEAL GAS...'
-
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT IDEAL GAS...'
 
 UseNonDimensionalEqn=GETLOGICAL('UseNonDimensionalEqn','.FALSE.')
 IF(UseNonDimensionalEqn)THEN
@@ -132,7 +131,7 @@ IF(.NOT. UseNonDimensionalEqn)THEN
   R=GETREAL('R','287.058')
 ELSE
   R=1./(Kappa*BulkMach*BulkMach)
-  SWRITE(UNIT_stdOut,'(A,ES16.7)')' |                              R | Set to 1/(Kappa*BulkMach**2)=',R
+  LBWRITE(UNIT_stdOut,'(A,ES16.7)')' |                              R | Set to 1/(Kappa*BulkMach**2)=',R
 END IF
 
 cp=R*kappa/(kappa-1.)
@@ -149,7 +148,7 @@ IF(.NOT. UseNonDimensionalEqn)THEN
   mu0=GETREAL('mu0','0.0')
 ELSE
   mu0=1./BulkReynolds
-  SWRITE(UNIT_stdOut,'(A,ES16.7)')' |                            mu0 | Set to 1/BulkReynolds=',mu0
+  LBWRITE(UNIT_stdOut,'(A,ES16.7)')' |                            mu0 | Set to 1/BulkReynolds=',mu0
 END IF
 #elif PP_VISC == 1
 ! mu-Sutherland
@@ -167,17 +166,17 @@ IF(.NOT. UseNonDimensionalEqn)THEN
   Tref    =GETREAL('Tref')
 ELSE
   mu0=1./BulkReynolds
-  SWRITE(UNIT_stdOut,'(A,ES16.7)')' |                            mu0 | Set to 1/BulkReynolds=',mu0
+  LBWRITE(UNIT_stdOut,'(A,ES16.7)')' |                            mu0 | Set to 1/BulkReynolds=',mu0
   Tref=1.
-  SWRITE(UNIT_stdOut,*)'|                           Tref | Set to 1.'
+  LBWRITE(UNIT_stdOut,*)'|                           Tref | Set to 1.'
 END IF
 ExpoSuth=GETREAL('ExpoSuth')
 mu0     =mu0/Tref**ExpoSuth
 #endif
 #endif /*PARABOLIC*/
 
-SWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitEos
 
 !==================================================================================================================================

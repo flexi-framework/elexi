@@ -104,12 +104,12 @@ IF((.NOT.InterpolationInitIsDone) .OR. ImpactTrackInitIsDone)THEN
    CALL Abort(__STAMP__,"InitializeParticleBoundary not ready to be called or already called.")
 END IF
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT IMPACT TRACKING...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT IMPACT TRACKING...'
 
 ! Check if impact tracking is activated
 IF (.NOT.doParticleImpactTrack) THEN
-  SWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
+  LBWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
   RETURN
 END IF
 
@@ -136,10 +136,10 @@ doParticleImpactTrack = ImpactSideOnProc
 ALLOCATE(PartStateBoundary(ImpactDataSize,1:10))
 PartStateBoundary          = 0.
 PartStateBoundaryVecLength = 0
-SWRITE(UNIT_stdOut,'(A)')' | Starting impact tracking ...'
+LBWRITE(UNIT_stdOut,'(A)')' | Starting impact tracking ...'
 
-SWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleBoundaryTracking
 

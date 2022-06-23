@@ -52,6 +52,7 @@ USE MOD_LoadBalance_Vars     ,ONLY: ElemTime,ProcTime
 USE MOD_Mesh_Vars            ,ONLY: MeshFile,offsetElem,nElems,nGlobalElems
 USE MOD_MPI_Vars             ,ONLY: offsetElemMPI
 USE MOD_Restart_Vars         ,ONLY: DoRestart
+USE MOD_ReadInTools          ,ONLY: PrintOption
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -163,10 +164,10 @@ IF (ElemTimeExists.AND.MPIRoot) THEN
   ! valid decomposition, output result
   SWRITE(UNIT_stdOut,'(132("."))')
   SWRITE(UNIT_stdOut,'(A)') ' Calculated new (theoretical) imbalance with offsetElemMPI information'
-  SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | MaxWeight:                                     ', MaxWeight
-  SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | MinWeight:                                     ', MinWeight
-  SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | TargetWeight:                                  ', TargetWeight
-  SWRITE(UNIT_stdOut,'(A,ES15.7)') ' | NewImbalance:                                  ', NewImbalance
+  CALL PrintOption('MaxWeight'   ,'CALC',RealOpt=MaxWeight)
+  CALL PrintOption('MinWeight'   ,'CALC',RealOpt=MinWeight)
+  CALL PrintOption('TargetWeight','CALC',RealOpt=TargetWeight)
+  CALL PrintOption('NewImbalance','CALC',RealOpt=NewImbalance)
   SWRITE(UNIT_stdOut,'(132("."))')
   DEALLOCATE(WeightSum_proc)
 ELSE

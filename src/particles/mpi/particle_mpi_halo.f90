@@ -322,16 +322,16 @@ IF (halo_eps.LE.0.) THEN
 
   ! compare halo_eps against global diagonal and reduce if necessary
   IF (.NOT.ALMOSTZERO(MPI_halo_eps).AND.(MPI_halo_diag.GE.MPI_halo_eps)) THEN
-    CALL PrintOption('No halo_eps given. Reconstructed','CALCUL.',RealOpt=MPI_halo_eps)
+    CALL PrintOption('No halo_eps given. Reconstructed','CALC',RealOpt=MPI_halo_eps)
   ELSEIF (.NOT.ALMOSTZERO(MPI_halo_eps).AND.(MPI_halo_diag.LT.MPI_halo_eps)) THEN
     fullMesh = .TRUE.
     MPI_halo_eps = MPI_halo_diag
-    CALL PrintOption('No halo_eps given. Reconstructed to global diag','CALCUL.',RealOpt=MPI_halo_eps)
+    CALL PrintOption('No halo_eps given. Reconstructed to global diag','CALC',RealOpt=MPI_halo_eps)
   ! halo_eps still at zero. Set it to global diagonal
   ELSE
     fullMesh = .TRUE.
     MPI_halo_eps = MPI_halo_diag
-    CALL PrintOption('No halo_eps given and could not be reconstructed. Using global diag','CALCUL.',RealOpt=MPI_halo_eps)
+    CALL PrintOption('No halo_eps given and could not be reconstructed. Using global diag','CALC',RealOpt=MPI_halo_eps)
   END IF
 ELSE
   vec(1)   = GEO%xmaxglob-GEO%xminglob

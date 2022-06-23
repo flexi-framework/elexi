@@ -355,8 +355,14 @@ DO iSpec = 1,nSpecies
 
       ! inform about size of emission communicator
       IF (PartMPI%InitGroup(nInitRegions)%MyRank.EQ.0) THEN
-              WRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' Emission-Region,Emission-Communicator:',nInitRegions,' on ',&
+#if USE_LOADBALANCE
+        IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+          WRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' Emission-Region,Emission-Communicator:',nInitRegions,' on ',&
       PartMPI%InitGroup(nInitRegions)%nProcs,' procs ('//TRIM(Species(iSpec)%Init(iInit)%SpaceIC)//', iSpec=',iSpec,')'
+#if USE_LOADBALANCE
+        END IF
+#endif /*USE_LOADBALANCE*/
       END IF
     END IF
 

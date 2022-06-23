@@ -97,8 +97,8 @@ IMPLICIT NONE
 INTEGER                      :: iElem,i,j,k
 REAL                         :: Vol
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT POSITIVITY-PRESERVING LIMITER...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT POSITIVITY-PRESERVING LIMITER...'
 
 ! Read in variables
 DoPPLimiter = GETLOGICAL('DoPPLimiter','.FALSE.')
@@ -152,8 +152,8 @@ IF (DoPPLimiter) THEN
 #endif
   END IF
 END IF
-SWRITE(UNIT_stdOut,'(A)')' INIT POSITIVITY-PRESERVING LIMITER DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT POSITIVITY-PRESERVING LIMITER DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitPPLimiter
 
 !==================================================================================================================================

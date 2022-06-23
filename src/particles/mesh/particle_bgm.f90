@@ -368,7 +368,7 @@ ELSE
     halo_eps = MAX(halo_eps,RKc(iStage+1)-RKc(iStage))
   END DO
   halo_eps = MAX(halo_eps,1.-RKc(nRKStages))
-  CALL PrintOption('max. RK dtFrac','CALCUL.',RealOpt=halo_eps)
+  CALL PrintOption('max. RK dtFrac','CALC',RealOpt=halo_eps)
   !dt multiplied with maximum RKdtFrac
   halo_eps = halo_eps*halo_eps_velo*deltaT*SafetyFactor
 
@@ -377,13 +377,13 @@ ELSE
                    + (GEO%ymaxglob-GEO%yminglob)**2 &
                    + (GEO%zmaxglob-GEO%zminglob)**2 )
   IF(halo_eps.GT.globalDiag)THEN
-    CALL PrintOption('unlimited halo distance','CALCUL.',RealOpt=halo_eps)
+    CALL PrintOption('unlimited halo distance','CALC',RealOpt=halo_eps)
     SWRITE(UNIT_stdOut,'(A       )') ' | limitation of halo distance'
     halo_eps=globalDiag
   END IF
 
   halo_eps2=halo_eps*halo_eps
-  CALL PrintOption('halo distance','CALCUL.',RealOpt=halo_eps)
+  CALL PrintOption('halo distance','CALC',RealOpt=halo_eps)
   IF(halo_eps.LT.0.)CALL Abort(__STAMP__,'halo_eps cannot be negative!')
 END IF
 
@@ -399,7 +399,7 @@ DO iElem = firstElem, lastElem
 END DO
 ! >> Communicate global maximum
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,maxCellRadius,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_SHARED,iError)
-CALL PrintOption('max. cell radius','CALCUL.',RealOpt=maxCellRadius)
+CALL PrintOption('max. cell radius','INFO',RealOpt=maxCellRadius)
 SWRITE(UNIT_stdOut,'(A)') ' | Building halo BGM ...'
 #if USE_MPI
 StartT=MPI_WTIME()
@@ -1110,8 +1110,7 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif /*CODE_ANALYZE*/
 
 EndT = FLEXITIME()
-SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' | Building halo BGM ... DONE! ['&
-,EndT-StartT,'s]'
+SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' | Building halo BGM ... DONE! [',EndT-StartT,'s]'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 ! ONLY IF HALO_EPS .LT. GLOBAL_DIAG

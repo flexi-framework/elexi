@@ -998,7 +998,7 @@ INTEGER               :: drag_factor
 !===================================================================================================================================
 ! Loop over all species and get requested data
 DO iSpec = 1, nSpecies
-  SWRITE(UNIT_stdOut,'(66("-"))')
+  LBWRITE(UNIT_stdOut,'(66("-"))')
   WRITE(UNIT=tmpStr,FMT='(I2)') iSpec
 
   ! Get number of requested inits
@@ -1007,7 +1007,7 @@ DO iSpec = 1, nSpecies
 
   ! get species values // only once
   !--> General Species Values
-  SWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec
+  LBWRITE(UNIT_StdOut,'(A,I0,A,I0)') ' | Reading general  particle properties for Species',iSpec
   Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'      )
   SELECT CASE (Species(iSpec)%RHSMethod)
     CASE (RHS_INERTIA)
@@ -1023,21 +1023,21 @@ DO iSpec = 1, nSpecies
     IF (Species(iSpec)%DiameterIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and diameter both zero!')
     IF (Species(iSpec)%DensityIC  .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and density  both zero!')
     Species(iSpec)%MassIC = MASS_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%DiameterIC)
-    SWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Mass of species (spherical) ', iSpec, ' = ', Species(iSpec)%MassIC
+    LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Mass of species (spherical) ', iSpec, ' = ', Species(iSpec)%MassIC
   ELSEIF (Species(iSpec)%DiameterIC .EQ. 0.) THEN
     IF (Species(iSpec)%DensityIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle density and diameter both zero!')
     Species(iSpec)%DiameterIC = DIAM_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%MassIC)
-    SWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
+    LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
   END IF
   Species(iSpec)%StokesIC              = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-StokesIC'         )
   Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold' )
   Species(iSpec)%SphericityIC          = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-SphericityIC'     )
   ! Warn when outside valid range of Haider model
   IF ((drag_factor .EQ. DF_PART_HAIDER) .AND. (Species(iSpec)%SphericityIC .LT. 0.670)) THEN
-    SWRITE(UNIT_stdOut,*) 'WARNING: SphericityIC ', Species(iSpec)%SphericityIC,'< 0.670, drag coefficient may not be accurate.'
+    LBWRITE(UNIT_stdOut,*) 'WARNING: SphericityIC ', Species(iSpec)%SphericityIC,'< 0.670, drag coefficient may not be accurate.'
   END IF
   IF ((drag_factor .EQ. DF_PART_HOELZER) .AND. (Species(iSpec)%SphericityIC .EQ. 1.0)) THEN
-    SWRITE(UNIT_stdOut,*) 'INFO: SphericityIC ', Species(iSpec)%SphericityIC,'== 1, drag coefficient of Schiller and Naumann is used.'
+    LBWRITE(UNIT_stdOut,*) 'INFO: SphericityIC ', Species(iSpec)%SphericityIC,'== 1, drag coefficient of Schiller and Naumann is used.'
     drag_factor = DF_PART_SCHILLER
     CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
   END IF
@@ -1051,7 +1051,7 @@ DO iSpec = 1, nSpecies
 #endif
 
   !--> Bons particle rebound model
-  SWRITE(UNIT_stdOut,'(A,I0,A,I0)') ' | Reading rebound  particle properties for Species',iSpec
+  LBWRITE(UNIT_stdOut,'(A,I0,A,I0)') ' | Reading rebound  particle properties for Species',iSpec
   Species(iSpec)%YoungIC               = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YoungIC'            )
   Species(iSpec)%PoissonIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PoissonIC'          )
   Species(iSpec)%YieldCoeff            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-YieldCoeff'         )
@@ -1082,7 +1082,7 @@ DO iSpec = 1, nSpecies
     END IF ! iInit
 
     ! Emission and init data
-    SWRITE(UNIT_stdOut,'(A,I0,A,I0)') ' | Reading emission particle properties for Species',iSpec,'-Init',iInit
+    LBWRITE(UNIT_stdOut,'(A,I0,A,I0)') ' | Reading emission particle properties for Species',iSpec,'-Init',iInit
     Species(iSpec)%Init(iInit)%UseForInit            = GETLOGICAL(  'Part-Species'//TRIM(tmpStr2)//'-UseForInit'            )
     Species(iSpec)%Init(iInit)%UseForEmission        = GETLOGICAL(  'Part-Species'//TRIM(tmpStr2)//'-UseForEmission'        )
     Species(iSpec)%Init(iInit)%initialParticleNumber = GETINT(      'Part-Species'//TRIM(tmpStr2)//'-initialParticleNumber' )
@@ -1141,7 +1141,7 @@ DO iSpec = 1, nSpecies
         IF (TRIM(Species(iSpec)%Init(iInit)%velocityDistribution) .EQ. "load_from_file") THEN
           Species(iSpec)%Init(iInit)%RadiusIC  = &
             MIN(MAXVAL(SQRT(Species(iSpec)%Init(iInit)%PartField(:,1)**2+Species(iSpec)%Init(iInit)%PartField(:,2)**2)),Species(iSpec)%Init(iInit)%RadiusIC)
-          SWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | RadiusIC of species ', iSpec, ' = ', Species(iSpec)%Init(iInit)%RadiusIC
+          LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | RadiusIC of species ', iSpec, ' = ', Species(iSpec)%Init(iInit)%RadiusIC
         END IF
       CASE('circle', 'circle_equidistant')
         Species(iSpec)%Init(iInit)%BasePointIC       = GETREALARRAY('Part-Species'//TRIM(tmpStr2)//'-BasePointIC'   ,3)
@@ -1195,16 +1195,16 @@ DO iSpec = 1, nSpecies
        (Species(iSpec)%Init(iInit)%PartDensity          .EQ.0)  .AND. &
        (Species(iSpec)%Init(iInit)%initialParticleNumber.EQ.0)) THEN
       Species(iSpec)%Init(iInit)%UseForInit = .FALSE.
-      SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no ParticleNumber or PartDensity detected,'
-      SWRITE(UNIT_stdOut,'(A)')                        ' disabling initial particle inserting!'
+      LBWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no ParticleNumber or PartDensity detected,'
+      LBWRITE(UNIT_stdOut,'(A)')                        ' disabling initial particle inserting!'
     END IF
 
     !--- Check if ParticleEmission is really used
     IF (Species(iSpec)%Init(iInit)%UseForEmission         .AND. &
        (Species(iSpec)%Init(iInit)%ParticleEmission.EQ.0)) THEN
       Species(iSpec)%Init(iInit)%UseForEmission = .FALSE.
-      SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no emission rate                 detected,'
-      SWRITE(UNIT_stdOut,'(A)')                        ' disabling particle emission!'
+      LBWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no emission rate                 detected,'
+      LBWRITE(UNIT_stdOut,'(A)')                        ' disabling particle emission!'
     END IF
 
     !--- Check if cell_local is used with correct emission type
@@ -1212,8 +1212,8 @@ DO iSpec = 1, nSpecies
        (Species(iSpec)%Init(iInit)%PartDensity          .EQ.0)  .AND. &
        (Species(iSpec)%Init(iInit)%initialParticleNumber.EQ.0)) THEN
       ! Species(iSpec)%Init(iInit)%UseForInit = .FALSE.
-      SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no ParticleNumber or PartDensity detected,'
-      SWRITE(UNIT_stdOut,'(A)')                        ' disabling initial particle inserting!'
+      LBWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no ParticleNumber or PartDensity detected,'
+      LBWRITE(UNIT_stdOut,'(A)')                        ' disabling initial particle inserting!'
     END IF
 
     !--- cuboid-/cylinder-height calculation from v and dt
@@ -1222,7 +1222,7 @@ DO iSpec = 1, nSpecies
         IF (.NOT.Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
           IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CuboidHeightIC,-1.)) THEN
             Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
-            SWRITE(UNIT_stdOut,'(A)') " | WARNING: Cuboid height will be calculated from v and dt!"
+            LBWRITE(UNIT_stdOut,'(A)') " | WARNING: Cuboid height will be calculated from v and dt!"
           END IF
         END IF
 
@@ -1230,15 +1230,15 @@ DO iSpec = 1, nSpecies
         IF (.NOT.Species(iSpec)%Init(iInit)%CalcHeightFromDt) THEN
           IF (ALMOSTEQUAL(Species(iSpec)%Init(iInit)%CylinderHeightIC,-1.)) THEN
             Species(iSpec)%Init(iInit)%CalcHeightFromDt=.TRUE.
-            SWRITE(UNIT_stdOut,'(A)') " | WARNING: Cylinder height will be calculated from v and dt!"
+            LBWRITE(UNIT_stdOut,'(A)') " | WARNING: Cylinder height will be calculated from v and dt!"
           END IF
         END IF
 
       CASE('cell_local')
         IF (Species(iSpec)%Init(iInit)%ParticleEmissionType.NE.0) THEN
           Species(iSpec)%Init(iInit)%UseForInit = .FALSE.
-          SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no cell_local & EmissionType !=0 detected,'
-          SWRITE(UNIT_stdOut,'(A)')                        ' disabling initial particle inserting!'
+          LBWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' | WARNING: Species',iSpec,'-Init',iInit,' - no cell_local & EmissionType !=0 detected,'
+          LBWRITE(UNIT_stdOut,'(A)')                        ' disabling initial particle inserting!'
         END IF
 
       CASE DEFAULT
@@ -1357,7 +1357,7 @@ DO iSpec = 1, nSpecies
         ! old style parameters has been defined for inits/emissions
         Species(iSpec)%StartnumberOfInits = 0
       END IF
-      SWRITE(UNIT_stdOut,'(A,I0,A,I0)') ' | StartNumberOfInits of Species ', iSpec, ' = ', Species(iSpec)%StartnumberOfInits
+      LBWRITE(UNIT_stdOut,'(A,I0,A,I0)') ' | StartNumberOfInits of Species ', iSpec, ' = ', Species(iSpec)%StartnumberOfInits
     END IF ! iInit .EQ.0
 
   END DO ! iInit
@@ -1398,8 +1398,8 @@ IF (nPartBound.EQ.0) THEN
   nPartBound = nBCs
 END IF
 
-SWRITE(UNIT_stdOut,'(132("."))')
-SWRITE(UNIT_stdOut,'(A)') ' | Reading particle boundary properties'
+LBWRITE(UNIT_stdOut,'(132("."))')
+LBWRITE(UNIT_stdOut,'(A)') ' | Reading particle boundary properties'
 
 ! Allocate arrays for particle boundaries
 ALLOCATE(PartBound%SourceBoundName     (1:nBCs))
@@ -1450,7 +1450,7 @@ END DO
 DO iBC = 1,nBCs
   IF (BoundaryType(iBC,1).EQ.0) THEN
     PartBound%TargetBoundCond(iBC) = PartBound%InternalBC
-    SWRITE(UNIT_stdOut,'(A,I0,A)') " ... PartBound",iBC,"is internal bound, no mapping needed"
+    LBWRITE(UNIT_stdOut,'(A,I0,A)') " ... PartBound ",iBC," is internal bound, no mapping needed"
     CYCLE
   END IF
 

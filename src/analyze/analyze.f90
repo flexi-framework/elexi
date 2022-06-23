@@ -118,8 +118,8 @@ CHARACTER(MAXVAL( (/( LEN_TRIM(StrVarNames(i)), i=1,SIZE(StrVarNames(:)) )/) )+5
 IF ((.NOT.InterpolationInitIsDone).OR.AnalyzeInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,'InitAnalyse not ready to be called or already called.')
 END IF
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT ANALYZE...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT ANALYZE...'
 
 ! Get the various analysis/output variables
 doCalcErrorNorms  =GETLOGICAL('CalcErrorNorms' ,'.TRUE.')
@@ -237,9 +237,9 @@ IF (PID_kill.GT.0) THEN
 END IF
 
 AnalyzeInitIsDone = .TRUE.
-SWRITE(UNIT_stdOut,'(A,ES18.9)')' Volume of computational domain : ',Vol
-SWRITE(UNIT_stdOut,'(A)')       ' INIT ANALYZE DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A,ES18.9)')' Volume of computational domain : ',Vol
+LBWRITE(UNIT_stdOut,'(A)')       ' INIT ANALYZE DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitAnalyze
 

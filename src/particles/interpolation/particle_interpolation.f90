@@ -119,12 +119,12 @@ END IF
 #if USE_MPI
 CALL MPI_REDUCE(LoopDisabled,LoopDisabledGlob,1,MPI_INTEGER, MPI_SUM,0,PartMPI%COMM,iError)
 IF (MPIRoot.AND.LoopDisabledGlob.GT.0) THEN
-  WRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' InterpolationElemLoop disabled due to high number of elements on ',LoopDisabledGlob, &
+  WRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' | InterpolationElemLoop disabled due to high number of elements on ',LoopDisabledGlob, &
                                      ' of ',PartMPI%nProcs,' procs'
 END IF
 #else
 LoopDisabledGlob = LoopDisabled
-WRITE(UNIT_stdOut,'(A)')          ' InterpolationElemLoop disabled due to high number of elements'
+WRITE(UNIT_stdOut,'(A)')          ' | InterpolationElemLoop disabled due to high number of elements'
 #endif
 
 !--- Allocate arrays for interpolation of fields to particles

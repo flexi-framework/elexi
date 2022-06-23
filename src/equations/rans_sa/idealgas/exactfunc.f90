@@ -119,8 +119,8 @@ USE MOD_Equation_Vars      ,ONLY: IniExactFunc,IniRefState
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT EXACT FUNCTION...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT EXACT FUNCTION...'
 
 IniExactFunc = GETINTFROMSTR('IniExactFunc')
 IniRefState  = GETINT('IniRefState', "-1")
@@ -159,8 +159,8 @@ CASE(2,3,4,41,42) ! synthetic test cases
 END SELECT
 #endif
 
-SWRITE(UNIT_stdOut,'(A)')' INIT EXACT FUNCTION DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT EXACT FUNCTION DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitExactFunc
 
 !==================================================================================================================================

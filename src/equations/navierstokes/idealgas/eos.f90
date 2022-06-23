@@ -114,9 +114,8 @@ USE MOD_EOS_Vars      ,ONLY: Tref,ExpoSuth
 REAL    :: BulkMach,BulkReynolds
 LOGICAL :: UseNonDimensionalEqn=.FALSE.
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT IDEAL GAS...'
-
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT IDEAL GAS...'
 
 UseNonDimensionalEqn=GETLOGICAL('UseNonDimensionalEqn','.FALSE.')
 IF(UseNonDimensionalEqn)THEN
@@ -178,8 +177,8 @@ mu0     =mu0/Tref**ExpoSuth
 #endif
 #endif /*PARABOLIC*/
 
-SWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitEos
 
 !==================================================================================================================================

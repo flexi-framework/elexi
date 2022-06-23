@@ -66,8 +66,8 @@ INTEGER               :: ALLOCSTAT
 !----------------------------------------------------------------------------------------------------------------------------------
 IF(ParticleRWInitIsDone) RETURN
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE RANDOM WALK ...!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE RANDOM WALK ...!'
 
 !--> Random Walk model
 RWModel = TRIM(GETSTR('Part-RWModel','none'))
@@ -99,8 +99,8 @@ IF (ALLOCSTAT.NE.0) &
 TurbPartState = 0.
 
 ParticleRWInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE RANDOM WALK DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE RANDOM WALK DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE ParticleInitRandomWalk
 

@@ -83,8 +83,8 @@ IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.(.NOT.RestartInitI
   CALL CollectiveStop(__STAMP__,&
     'InitDG not ready to be called or already called.')
 END IF
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT DG...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT DG...'
 
 ! Pre-compute the dg operator building blocks (differentiation matrices and prolongation operators)
 CALL InitDGBasis(PP_N, xGP,wGP,L_minus,L_plus,D ,D_T ,D_Hat ,D_Hat_T ,L_HatMinus ,L_HatPlus)
@@ -131,8 +131,8 @@ IF(.NOT.DoRestart)THEN
 END IF
 
 DGInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT DG DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT DG DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitDG
 

@@ -237,8 +237,8 @@ REAL                           :: Xi(3,6),Lag(1:3,0:NGeo)
 INTEGER                        :: firstElem, lastElem
 !===================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' Identifying side types and whether elements are curved...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' Identifying side types and whether elements are curved...'
 
 ! elements
 #if USE_MPI
@@ -370,8 +370,8 @@ INTEGER                        :: ElemLocID
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' Building EpsOneCell for all elements...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' Building EpsOneCell for all elements...'
 
 ! build sJ for all elements not on local proc
 #if USE_MPI
@@ -538,8 +538,8 @@ INTEGER                        :: sendbuf,recvbuf
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' Identifying BC sides and calculating side metrics...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' Identifying BC sides and calculating side metrics...'
 
 ! elements
 #if USE_MPI
@@ -598,20 +598,20 @@ IF (halo_eps.EQ.0) THEN
 
     ! compare halo_eps against global diagonal and reduce if necessary
     IF (.NOT.ALMOSTZERO(BC_halo_eps).AND.(BC_halo_diag.GE.BC_halo_eps)) THEN
-      CALL PrintOption('No halo_eps given. Reconstructed','CALCUL.',RealOpt=BC_halo_eps)
+      CALL PrintOption('No halo_eps given. Reconstructed','CALC',RealOpt=BC_halo_eps)
     ELSEIF (.NOT.ALMOSTZERO(BC_halo_eps).AND.(BC_halo_diag.LT.BC_halo_eps)) THEN
       fullMesh = .TRUE.
       BC_halo_eps = BC_halo_diag
-      CALL PrintOption('No halo_eps given. Reconstructed to global diag','CALCUL.',RealOpt=BC_halo_eps)
+      CALL PrintOption('No halo_eps given. Reconstructed to global diag','CALC',RealOpt=BC_halo_eps)
     ! halo_eps still at zero. Set it to global diagonal
     ELSE
       fullMesh = .TRUE.
       BC_halo_eps = BC_halo_diag
-      CALL PrintOption('No halo_eps given and could not be reconstructed. Using global diag','CALCUL.',RealOpt=BC_halo_eps)
+      CALL PrintOption('No halo_eps given and could not be reconstructed. Using global diag','CALC',RealOpt=BC_halo_eps)
     END IF
   ElSE
     fullMesh = .TRUE.
-    SWRITE(UNIT_stdOut,'(A)') ' | Running on one processor. Calculating side metrics for full mesh.'
+    LBWRITE(UNIT_stdOut,'(A)') ' | Running on one processor. Calculating side metrics for full mesh.'
   END IF
 ELSE
   vec(1)   = GEO%xmaxglob-GEO%xminglob
@@ -1327,8 +1327,8 @@ INTEGER                        :: iSide,firstSide,lastSide
 !REAL                           :: crossVec(3)
 !===================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' GET LINEAR SIDE BASEVECTORS...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' GET LINEAR SIDE BASEVECTORS...'
 #if USE_MPI
 CALL Allocate_Shared((/3,nNonUniqueGlobalSides/),BaseVectors0_Shared_Win,BaseVectors0_Shared)
 CALL MPI_WIN_LOCK_ALL(0,BaseVectors0_Shared_Win,IERROR)
@@ -1395,8 +1395,8 @@ CALL BARRIER_AND_SYNC(BaseVectors3_Shared_Win,MPI_COMM_SHARED)
 ! CALL BARRIER_AND_SYNC(BaseVectorsScale_Shared_Win,MPI_COMM_SHARED)
 #endif /* USE_MPI */
 
-SWRITE(UNIT_stdOut,'(A)')' GET LINEAR SIDE BASEVECTORS DONE!'
-!SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' GET LINEAR SIDE BASEVECTORS DONE!'
+!LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE BuildLinearSideBaseVectors
 
 
@@ -1589,8 +1589,8 @@ INTEGER                                  :: nLinearElemsTot,nCurvedElemsTot
 !#endif /* USE_MPI */
 !===================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' Identifying side types and whether elements are curved...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' Identifying side types and whether elements are curved...'
 
 ! elements
 #if USE_MPI
@@ -2045,7 +2045,7 @@ INTEGER             :: firstElem,lastElem
 meshCheckWeirdElements = GETLOGICAL('meshCheckWeirdElements')
 IF (.NOT.meshCheckWeirdElements) RETURN
 
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' Checking for weird elements ...'
+LBWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' Checking for weird elements ...'
 
 #if USE_MPI
 firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
@@ -2160,11 +2160,11 @@ IF(WeirdElems.GT.0) THEN
   CALL Abort(__STAMP__,              'Weird elements found: it means that part of the element is turned inside-out')
 END IF
 
-SWRITE(UNIT_stdOut,'(A)') ' DONE!'
+LBWRITE(UNIT_stdOut,'(A)') ' DONE!'
 
 DEALLOCATE(WeirdElemNbrs)
 
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE WeirdElementCheck
 
 
@@ -2587,7 +2587,7 @@ INTEGER                        :: ALLOCSTAT
 IF (PerformLoadBalance) RETURN
 #endif
 
-SWRITE(UNIT_stdOut,'(A)') ' CALCULATING BezierControlPoints...'
+LBWRITE(UNIT_stdOut,'(A)') ' CALCULATING BezierControlPoints...'
 
 ! BezierControlPoints1D and BezierControlPoints2D are only need on NGeo but see lots of memory churn in particle_intersection.f90
 ALLOCATE(XiBuf(0:NGeo,0:NGeo))
@@ -2861,8 +2861,8 @@ REAL               :: A(3,3),detcon
 INTEGER            :: CornerNodeIDswitch(8)
 !===================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE GEOMETRY INFORMATION...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE GEOMETRY INFORMATION...'
 
 ! the cornernodes are not the first 8 entries (for Ngeo>1) of nodeinfo array so mapping is built
 CornerNodeIDswitch(1)=1
@@ -2998,8 +2998,8 @@ CALL BARRIER_AND_SYNC(ElemMidPoint_Shared_Win   ,MPI_COMM_SHARED)
 !--- check for elements with intersecting sides (e.g. very flat elements)
 CALL WeirdElementCheck()
 
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GEOMETRY INFORMATION DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GEOMETRY INFORMATION DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitParticleGeometry
 
 END MODULE MOD_Particle_Mesh_Build

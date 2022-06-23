@@ -135,6 +135,9 @@ USE MOD_Particle_MPI_Boundary_Sampling,ONLY: InitSurfCommunication
 USE MOD_Particle_Boundary_Vars  ,ONLY: mySurfRank
 USE MOD_Particle_Mesh_Vars      ,ONLY: nComputeNodeSides
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars        ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -170,7 +173,7 @@ INTEGER,PARAMETER                      :: myLeaderGroupRank = 0
 !===================================================================================================================================
 
 ! Get input parameters
-SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING...'
+LBWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING...'
 
 ! Output of macroscopic surface values
 !> Double Variable because we follow both FLEXI and PICLas style
@@ -185,7 +188,7 @@ IF (doParticleImpactSample.OR.WriteMacroSurfaceValues) THEN
 END IF
 
 IF (.NOT.WriteMacroSurfaceValues .AND. .NOT.doParticleImpactTrack) THEN
-  SWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
+  LBWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
   RETURN
 END IF
 
@@ -598,7 +601,11 @@ DEALLOCATE(Xi_NGeo,wGP_NGeo)
 CALL MPI_BCAST(nSurfTotalSides,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
+#if USE_LOADBALANCE
+IF (mySurfRank.EQ.0 .AND. .NOT.PerformLoadBalance) THEN
+#else
 IF (mySurfRank.EQ.0) THEN
+#endif /*USE_LOADBALANCE*/
 #endif
   WRITE(UNIT_stdOut,'(A,I8)')       ' | Number of sampling sides:           '    , nSurfTotalSides
   WRITE(UNIT_stdOut,'(A,ES10.4E2)') ' | Surface-Area:                           ', Area

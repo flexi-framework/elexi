@@ -118,9 +118,9 @@ RestartFile = RestartFile_in
 ! Check if we want to perform a restart
 IF (LEN_TRIM(RestartFile).LE.0) RETURN
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE...'
-SWRITE(UNIT_stdOut,'(A,A,A)')' | Checking restart from file "',TRIM(RestartFile),'":'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE...'
+LBWRITE(UNIT_stdOut,'(A,A,A)')' | Checking restart from file "',TRIM(RestartFile),'":'
 ! Check if restart file is a valid state. This routine requires the file to be closed.
 validHDF5 = ISVALIDHDF5FILE(RestartFile)
 IF(.NOT.validHDF5) &
@@ -194,8 +194,8 @@ END IF
 
 CALL CloseDataFile()
 
-SWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE DONE'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE DONE'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitRestartFile
 

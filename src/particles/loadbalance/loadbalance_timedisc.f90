@@ -160,7 +160,7 @@ CALL InitMesh(meshMode=2)
 CALL InitRestart(RestartFile)
 CALL InitFilter()
 CALL InitOverintegration()
-CALL InitMPIvars()
+CALL InitMPIVars()
 CALL InitEquation()
 CALL InitDG()
 #if FV_ENABLED

@@ -93,7 +93,7 @@ END SELECT
 
 ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
 ! Check if we are running a steady state tracking
-SWRITE(UNIT_stdOut,'(66("-"))')
+LBWRITE(UNIT_stdOut,'(66("-"))')
 !--- Read Manual Time Step
 useManualTimeStep = GETLOGICAL('Part-SteadyState'   )
 ManualTimeStep    = GETREAL   ('Part-ManualTimeStep')

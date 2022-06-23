@@ -68,8 +68,8 @@ INTEGER               :: InitGroup
 #endif
 !===================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING...'
 
 ! Update next free position in particle array to get insertion position
 CALL UpdateNextFreePosition()
@@ -126,13 +126,13 @@ DO i = 1,nSpecies
       CALL Abort(__STAMP__,' Integer for initialParticleNumber too large!')
 
     NbrOfParticle = INT(Species(i)%Init(iInit)%initialParticleNumber,4)
-    SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle position for species ',i,' ... '
+    LBWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle position for species ',i,' ... '
     CALL SetParticlePosition(i,iInit,NbrOfParticle)
     ! give the particles their correct velocity
-    SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle velocities for species ',i,' ... '
+    LBWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle velocities for species ',i,' ... '
     CALL SetParticleVelocity(i,iInit,NbrOfParticle,1)
     ! give the particles their correct (species) mass
-    SWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle mass for species ',i,' ... '
+    LBWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle mass for species ',i,' ... '
     CALL SetParticleMass(i,NbrOfParticle)
     ! update number of particles on proc and find next free position in particle array
     PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfParticle
@@ -170,8 +170,8 @@ DO i = 1,PDM%ParticleVecLength
   PEM%lastElement(i) = PEM%Element(i)
 END DO
 
-SWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING DONE'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING DONE'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitializeParticleEmission
 

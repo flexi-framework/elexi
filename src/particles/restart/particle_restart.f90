@@ -62,6 +62,7 @@ USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod,NbrOfLostParticles
 USE MOD_Particle_Tracking_Vars,     ONLY: NbrOfLostParticlesTotal,TotalNbrOfMissingParticlesSum,NbrOfLostParticlesTotal_old
 USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies
 USE MOD_Particle_Vars,              ONLY: PartPosRef,PartReflCount,doPartIndex,PartIndex
+USE MOD_ReadInTools,                ONLY: PrintOption
 USE MOD_Restart_Vars,               ONLY: RestartTime,RestartFile
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,          ONLY: PartMPI
@@ -114,10 +115,16 @@ INTEGER                         :: TurbPartDataSize     !number of turbulent pro
 REAL,ALLOCATABLE                :: TurbPartData(:,:)    !number of entries in each line of TurbPartData
 INTEGER                         :: PP_nVarPart_loc
 CHARACTER(LEN=255),ALLOCATABLE  :: StrVarNames(:)
+REAL                            :: StartT,EndT
 !===================================================================================================================================
 doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
 
 IF (LEN_TRIM(RestartFile).GT.0) THEN
+#if USE_MPI
+  StartT=MPI_WTIME()
+#else
+  CALL CPU_TIME(StartT)
+#endif
   SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE...'
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
@@ -150,7 +157,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
     CHECKSAFEINT(HSize(2),4)
     PartDataSize = INT(HSize(1))
-    SWRITE(UNIT_stdOut,'(A,I8)') ' | Number of particle variables:           ', PartDataSize
+    CALL PrintOption('Number of particle variables','INFO',IntOpt=PartDataSize)
 
     ! For files, where no particle diameter was saved
     ALLOCATE(StrVarNames(PartDataSize))
@@ -265,7 +272,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
     PDM%ParticleVecLength = PDM%ParticleVecLength + locnPart
     CALL UpdateNextFreePosition()
 
-    SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE DONE!'
+    GETTIME(EndT)
+    SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE DONE! [',EndT-StartT,'s]'
     SWRITE(UNIT_stdOut,'(132("-"))')
 
     ! Reconstruct the number of particles inserted before restart from the emission rate

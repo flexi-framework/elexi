@@ -131,15 +131,15 @@ IF((.NOT.DGInitIsDone).OR.LiftingInitIsDone)THEN
    RETURN
 END IF
 
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(132("-"))')
 #if PP_Lifting==1
-SWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR1...'
+LBWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR1...'
 doWeakLifting=GETLOGICAL('doWeakLifting','.FALSE.')
 IF(.NOT.doWeakLifting)&
   doConservativeLifting=GETLOGICAL('doConservativeLifting','.FALSE.')
 
 #elif PP_Lifting==2
-SWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR2 ...'
+LBWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR2 ...'
 doWeakLifting=.FALSE.
 doConservativeLifting=GETLOGICAL('doConservativeLifting','.FALSE.')
 etaBR2=GETREAL('etaBR2','2.')
@@ -190,8 +190,8 @@ diffFluxZ_L=0.
 diffFluxZ_R=0.
 
 LiftingInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT LIFTING DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT LIFTING DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitLifting
 
 !==================================================================================================================================

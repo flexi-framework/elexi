@@ -112,8 +112,8 @@ IF(EquationInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
     "InitEquation not ready to be called or already called.")
 END IF
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT NAVIER-STOKES...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT NAVIER-STOKES...'
 
 s43=4./3.
 s23=2./3.
@@ -179,8 +179,8 @@ CALL InitSplitDG()
 CALL InitBC()
 
 EquationInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT NAVIER-STOKES DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT NAVIER-STOKES DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 ! Initialize current testcase
 CALL InitTestcase()

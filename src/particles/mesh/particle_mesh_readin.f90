@@ -586,7 +586,7 @@ IF (PerformLoadBalance) THEN
   CALL BARRIER_AND_SYNC(SideInfo_Shared_Win,MPI_COMM_SHARED)
 
   IF (myComputeNodeRank.EQ.0) THEN
-    SWRITE(UNIT_stdOut,'(A)',ADVANCE="NO") ' Updating mesh on shared memory...'
+    SWRITE(UNIT_stdOut,'(A)',ADVANCE="NO") ' | Updating mesh on shared memory ...'
 
     ! Arrays for the compute node to hold the elem offsets
     ALLOCATE(displsElem(   0:nLeaderGroupProcs-1),&
@@ -630,7 +630,7 @@ IF (PerformLoadBalance) THEN
 END IF
 #endif /*USE_LOADBALANCE*/
 
-SWRITE(UNIT_stdOut,'(A)',ADVANCE="NO") ' Communicating mesh on shared memory...'
+SWRITE(UNIT_stdOut,'(A)',ADVANCE="NO") ' | Communicating mesh on shared memory...'
 
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) THEN
@@ -763,6 +763,7 @@ IF (PerformLoadBalance) THEN
   CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
   CALL BARRIER_AND_SYNC(SideInfo_Shared_Win,MPI_COMM_SHARED)
 
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DONE  [',CommMeshReadinWallTime,'s]'
   RETURN
 END IF
 #endif /*USE_LOADBALANCE*/

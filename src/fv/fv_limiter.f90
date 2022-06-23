@@ -93,23 +93,22 @@ LimiterType = GETINTFROMSTR('FV_LimiterType')
 SELECT CASE(LimiterType)
 CASE (FV_LIMITERTYPE_NULL) ! NullLimiter
   FV_Limiter => NullLimiter
-  SWRITE(UNIT_stdOut,'(A)') '  Using "NullLimiter" limiter.'
+  LBWRITE(UNIT_stdOut,'(A)') ' | Using "NullLimiter" limiter.'
 CASE (FV_LIMITERTYPE_MINMOD) ! MinMod
   FV_Limiter => MinMod
-  SWRITE(UNIT_stdOut,'(A)') '  Using "Minmod" limiter.'
+  LBWRITE(UNIT_stdOut,'(A)') ' | Using "Minmod" limiter.'
 CASE (FV_LIMITERTYPE_SWEBY) ! Sweby
   FV_Limiter => Sweby
   FV_sweby_beta = GETREAL('swebyb')
-  SWRITE(UNIT_stdOut,'(A,F8.6)') '  Using "Sweby" limiter with beta = ', FV_sweby_beta
+  LBWRITE(UNIT_stdOut,'(A,F8.6)') ' | Using "Sweby" limiter with beta = ', FV_sweby_beta
 CASE (FV_LIMITERTYPE_VANALBADA) ! van Albada
   FV_Limiter => VanAlbada
-  SWRITE(UNIT_stdOut,'(A)') '  Using "van Albada" limiter.'
+  LBWRITE(UNIT_stdOut,'(A)') ' | Using "van Albada" limiter.'
 CASE (FV_LIMITERTYPE_CENTRAL) ! Central
   FV_Limiter => CentralLimiter
-  SWRITE(UNIT_stdOut,'(A,F8.6)') '  Using "Central" limiter.'
+  LBWRITE(UNIT_stdOut,'(A,F8.6)') ' | Using "Central" limiter.'
 CASE DEFAULT
-  CALL CollectiveStop(__STAMP__,&
-    'FV Limiter-Type unknown.')
+  CALL CollectiveStop(__STAMP__,'FV Limiter-Type unknown.')
 END SELECT
 END SUBROUTINE InitFV_Limiter
 

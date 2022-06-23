@@ -147,7 +147,7 @@ IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
 END IF
 
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT MESH IN MODE ',meshMode,'...'
+LBWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT MESH IN MODE ',meshMode,'...'
 
 ! prepare pointer structure (get nElems, etc.)
 IF (PRESENT(MeshFile_IN)) THEN
@@ -165,7 +165,7 @@ CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=NGeo)
 CALL CloseDataFile()
 
 IF(useCurveds.AND.(PP_N.LT.NGeo))THEN
-  SWRITE(UNIT_stdOut,'(A)') 'WARNING: N<NGeo, for curved hexa normals are only approximated,&
+  LBWRITE(UNIT_stdOut,'(A)') 'WARNING: N<NGeo, for curved hexa normals are only approximated,&
                            & can cause problems on periodic boundaries! Set N>=NGeo'
 ENDIF
 
@@ -181,7 +181,7 @@ CALL ReadMesh(MeshFile) !set nElems
 
 #if (PP_dim == 2)
 ! If this is a two dimensional calculation, all subsequent operations are performed on the reduced mesh.
-SWRITE(UNIT_stdOut,'(A)') " RUNNING A 2D SIMULATION! "
+LBWRITE(UNIT_stdOut,'(A)') " RUNNING A 2D SIMULATION! "
 ! The mesh coordinates read in by the readMesh routine are therefore reduced by one dimension.
 CALL to2D_rank5((/1,0,0,0,1/),(/3,NGeo,NGeo,NGeo,nElems/),4,NodeCoords)
 NodeCoords(3,:,:,:,:) = 0.
@@ -231,7 +231,7 @@ END IF
 #if USE_PARTICLES
 IF(NGeoOverride.GT.0)THEN
 #endif /*!USE_PARTICLES*/
-SWRITE(UNIT_stdOut,'(A3,A30,A3,I0)')' | ','Ngeo',' | ', Ngeo
+LBWRITE(UNIT_stdOut,'(A3,A30,A3,I0)')' | ','Ngeo',' | ', Ngeo
 #if USE_PARTICLES
 End IF
 #endif /*!USE_PARTICLES*/
@@ -270,12 +270,12 @@ ENDIF
 ! Return if no connectivity and metrics are required (e.g. for visualization mode)
 IF (meshMode.GT.0) THEN
 
-  SWRITE(UNIT_stdOut,'(A)') " NOW CALLING setLocalSideIDs..."
+  LBWRITE(UNIT_stdOut,'(A)') " NOW CALLING setLocalSideIDs..."
   CALL setLocalSideIDs()
 
 #if USE_MPI
   ! for MPI, we need to exchange flips, so that MINE MPISides have flip>0, YOUR MpiSides flip=0
-  SWRITE(UNIT_stdOut,'(A)') " NOW CALLING exchangeFlip..."
+  LBWRITE(UNIT_stdOut,'(A)') " NOW CALLING exchangeFlip..."
   CALL exchangeFlip()
 #endif
 
@@ -341,7 +341,7 @@ IF (meshMode.GT.0) THEN
   MortarType=0
   MortarInfo=-1
 
-  SWRITE(UNIT_stdOut,'(A)') " NOW CALLING fillMeshInfo..."
+  LBWRITE(UNIT_stdOut,'(A)') " NOW CALLING fillMeshInfo..."
   CALL fillMeshInfo()
 
 #if (PP_dim ==2)
@@ -357,7 +357,7 @@ IF (meshMode.GT.0) THEN
   CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M,dim=PP_dim)
 END IF
 ! deallocate pointers
-SWRITE(UNIT_stdOut,'(A)') " NOW CALLING deleteMeshPointer..."
+LBWRITE(UNIT_stdOut,'(A)') " NOW CALLING deleteMeshPointer..."
 CALL deleteMeshPointer()
 
 IF (meshMode.GT.1) THEN
@@ -398,7 +398,7 @@ IF (meshMode.GT.1) THEN
   ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
   crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')
 #endif
-  SWRITE(UNIT_stdOut,'(A)') " NOW CALLING calcMetrics..."
+  LBWRITE(UNIT_stdOut,'(A)') " NOW CALLING calcMetrics..."
 
 #if USE_PARTICLES
   CALL InitParticleMeshBasis()
@@ -438,8 +438,8 @@ IF ((.NOT.postiMode).AND.(ALLOCATED(scaledJac))) DEALLOCATE(scaledJac)
 CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
 
 MeshInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitMesh
 
 !============================================================================================================================

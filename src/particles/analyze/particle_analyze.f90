@@ -131,8 +131,8 @@ IF (ParticleAnalyzeInitIsDone) THEN
   RETURN
 END IF
 
-!SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE ANALYZE...'
+!LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE ANALYZE...'
 
 doParticleAnalyze = .FALSE.
 nSpecAnalyze = MERGE(nSpecies + 1,1,nSpecies.GT.1)
@@ -190,8 +190,8 @@ END IF
 
 ParticleAnalyzeInitIsDone = .TRUE.
 
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE ANALYZE DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE ANALYZE DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitParticleAnalyze
 

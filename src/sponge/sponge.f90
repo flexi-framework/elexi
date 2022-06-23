@@ -132,8 +132,8 @@ LOGICAL             :: validBaseFlowFile
 !==================================================================================================================================
 doSponge=GETLOGICAL('SpongeLayer','.FALSE.')
 IF(.NOT.doSponge) RETURN
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT SPONGE...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT SPONGE...'
 
 damping   = GETREAL('damping','1.')
 IF(damping .LE. 0.)  THEN
@@ -192,7 +192,7 @@ CASE DEFAULT
 END SELECT
 
 ! Preparation of the baseflow on each Gauss Point
-SWRITE(UNIT_stdOut,'(A)') ' Initialize Sponge Base Flow...'
+LBWRITE(UNIT_stdOut,'(A)') ' Initialize Sponge Base Flow...'
 ALLOCATE(SpBaseFlow(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 SELECT CASE(SpBaseflowType)
 CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
@@ -216,7 +216,7 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett: RefState for computation from scratch, Bas
     CALL ReadBaseFlow(BaseFlowfile)
   ELSE
     IF (SpongeExactFunc.LT.0) THEN
-      SWRITE(UNIT_stdOut,'(A)') 'WARNING: No sponge exact func given! Use ini exact func instead.'
+      LBWRITE(UNIT_stdOut,'(A)') 'WARNING: No sponge exact func given! Use ini exact func instead.'
       SpongeExactFunc = IniExactFunc
     END IF
     DO iElem=1,nElems
@@ -228,8 +228,8 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett: RefState for computation from scratch, Bas
   END IF
 END SELECT
 
-SWRITE(UNIT_stdOut,'(A)')' INIT SPONGE DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT SPONGE DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitSponge
 
@@ -286,7 +286,7 @@ REAL,ALLOCATABLE                        :: SpRadius(:)                 ! Radius 
 REAL,ALLOCATABLE                        :: SpAxis(:,:)                 ! Axis of the cylindrical sponge layer (only 3D)
 #endif
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)') '  Initialize Sponge Ramping Function...'
+LBWRITE(UNIT_stdOut,'(A)') '  Initialize Sponge Ramping Function...'
 
 ! Precalculation of the sponge strength on the whole domain to determine actual sponge region
 

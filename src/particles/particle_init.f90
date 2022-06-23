@@ -577,6 +577,7 @@ LOGICAL,INTENT(IN),OPTIONAL      :: doLoadBalance_opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: maxParticleNumberGlobal,maxParticleNumberUniform
+INTEGER           :: minParticleNumberLocal,maxParticleNumberLocal
 !===================================================================================================================================
 
 IF(ParticlesInitIsDone)THEN
@@ -597,8 +598,21 @@ IF (maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).GT. 
     maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).LT.-HUGE(INT(1,KIND=4)))     &
   CALL CollectiveStop(__STAMP__,'maxParticleNumber too big for current number of processors. Decrease maxParticleNumber or increase nProcs!')
 PDM%maxParticleNumber    = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)))
-CALL PrintOption('Max. Particle NUMBER (Proc/Glob)','INFO',IntArrayOpt=(/PDM%maxParticleNumber                                    &
-                                                                       ,INT(REAL(PDM%maxParticleNumber)*REAL(nProcessors),KIND=4)/))
+
+minParticleNumberLocal = PDM%maxParticleNumber
+maxParticleNumberLocal = PDM%maxParticleNumber
+#if USE_MPI
+IF (MPIRoot) THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,minParticleNumberLocal,1,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,iERROR)
+  CALL MPI_REDUCE(MPI_IN_PLACE,maxParticleNumberLocal,1,MPI_INTEGER,MPI_MAX,0,MPI_COMM_FLEXI,iERROR)
+ELSE
+  CALL MPI_REDUCE(minParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,iERROR)
+  CALL MPI_REDUCE(maxParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_MAX,0,MPI_COMM_FLEXI,iERROR)
+END IF
+#endif /*USE_MPI*/
+CALL PrintOption('Particle NUMBER (Min/Max/Glob)','CALC',IntArrayOpt=(/minParticleNumberLocal &
+                                                                      ,maxParticleNumberLocal &
+                                                                      ,INT(REAL(PDM%maxParticleNumber)*REAL(nProcessors),KIND=4)/))
 
 nGlobalNbrOfParticles    = 0
 nGlobalNbrOfParticles(4) = HUGE(nGlobalNbrOfParticles(4))

@@ -627,7 +627,11 @@ CALL InitializeVariables()
 CALL Particle_InitTimeDisc()
 
 ! Return if running particle code without any species
-IF (nSpecies.LE.0) RETURN
+IF (nSpecies.LE.0) THEN
+  SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLES DONE!'
+  SWRITE(UNIT_stdOut,'(132("-"))')
+  RETURN
+END IF
 
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
 #if USE_RW

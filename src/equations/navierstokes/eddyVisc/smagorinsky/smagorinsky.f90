@@ -70,8 +70,8 @@ IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.SmagorinskyInit
   CALL CollectiveStop(__STAMP__,&
     "InitSmagorinsky not ready to be called or already called.")
 END IF
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT SMAGORINSKY...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT SMAGORINSKY...'
 
 ! Read model coefficient
 CS = GETREAL('CS')
@@ -101,8 +101,8 @@ DO iElem=1,nElems
 END DO
 
 SmagorinskyInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT SMAGORINSKY DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT SMAGORINSKY DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitSmagorinsky
 
 !===================================================================================================================================

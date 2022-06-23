@@ -65,8 +65,8 @@ IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.VremanInitIsDon
   CALL CollectiveStop(__STAMP__,&
     "InitVreman not ready to be called or already called.")
 END IF
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT VREMAN...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT VREMAN...'
 
 ! Read model coefficient
 ! Vreman model, paper CS=Smagorinsky constant: 0.18
@@ -89,8 +89,8 @@ DO iElem=1,nElems
 END DO
 
 VremanInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT VREMAN DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT VREMAN DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitVreman
 
 !===================================================================================================================================

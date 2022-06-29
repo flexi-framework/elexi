@@ -160,9 +160,16 @@ IF(.NOT.validMesh) &
     CALL CollectiveStop(__STAMP__,'ERROR - Mesh file not a valid HDF5 mesh.')
 
 useCurveds=GETLOGICAL('useCurveds','.TRUE.')
-CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=NGeo)
-CALL CloseDataFile()
+
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=NGeo)
+  CALL CloseDataFile()
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 IF(useCurveds.AND.(PP_N.LT.NGeo))THEN
   LBWRITE(UNIT_stdOut,'(A)') 'WARNING: N<NGeo, for curved hexa normals are only approximated,&
@@ -456,6 +463,10 @@ USE MOD_FV_Metrics    ,ONLY:FinalizeFV_Metrics
 #if USE_PARTICLES
 USE MOD_Particle_Mesh ,ONLY: FinalizeParticleMeshBasis
 #endif /*USE_PARTICLES*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !============================================================================================================================
 ! Deallocate global variables, needs to go somewhere else later
@@ -470,8 +481,6 @@ SDEALLOCATE(MortarInfo)
 
 ! allocated during ReadMesh
 SDEALLOCATE(NodeCoords)
-SDEALLOCATE(BoundaryName)
-SDEALLOCATE(BoundaryType)
 
 ! Volume
 SDEALLOCATE(Elem_xGP)
@@ -512,6 +521,14 @@ CALL FinalizeParticleMeshBasis()
 #endif /*USE_PARTICLES*/
 
 MeshInitIsDone = .FALSE.
+
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) RETURN
+#endif /*USE_LOADBALANCE*/
+! BCS
+SDEALLOCATE(BoundaryName)
+SDEALLOCATE(BoundaryType)
+
 END SUBROUTINE FinalizeMesh
 
 END MODULE MOD_Mesh

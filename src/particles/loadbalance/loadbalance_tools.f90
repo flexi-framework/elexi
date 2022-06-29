@@ -85,10 +85,6 @@ IF (DoRestart) THEN
   !--------------------------------------------------------------------------------------------------------------------------------!
   ! Readin of ElemTime: Read in only by MPIRoot in single mode, only communicate logical ElemTimeExists
   ! because the root performs the distribution of elements (domain decomposition) due to the load distribution scheme
-
-  ! Close the currently opened mesh file
-  CALL CloseDataFile()
-
   SDEALLOCATE(ElemGlobalTime)
   ALLOCATE(ElemGlobalTime(1:nGlobalElems)) ! Allocate ElemGlobalTime for all MPI ranks
   ElemGlobalTime = 0.

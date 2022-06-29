@@ -230,7 +230,11 @@ USE MOD_Particle_Mesh_Readin, ONLY: ReadMeshBasics
 USE MOD_Particle_Mesh_Readin, ONLY: ReadMeshElems,ReadMeshSides,ReadMeshSideNeighbors
 USE MOD_Particle_Mesh_Readin, ONLY: ReadMeshNodes,ReadMeshTrees
 USE MOD_Particle_Mesh_Readin, ONLY: StartCommunicateMeshReadin,FinishCommunicateMeshReadin
-#endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
+USE MOD_Particle_Mesh_Vars   ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
+#endif /*USE_LOADBALANCE*/
+#endif /*PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -263,29 +267,43 @@ LOGICAL                        :: dsExists
 REAL                           :: StartT,EndT
 !==================================================================================================================================
 IF(MESHInitIsDone) RETURN
-IF(MPIRoot)THEN
-  IF(.NOT.FILEEXISTS(FileString))  CALL CollectiveStop(__STAMP__, &
-    'readMesh from data file "'//TRIM(FileString)//'" does not exist')
-END IF
 
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ...'
-SWRITE(UNIT_stdOut,'(132("-"))')
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*LOADBALANCE*/
+  IF(MPIRoot) THEN
+    IF(.NOT.FILEEXISTS(FileString))  CALL Abort(__STAMP__&
+      ,'readMesh from data file "'//TRIM(FileString)//'" does not exist')
+  END IF
+
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ...'
+  SWRITE(UNIT_stdOut,'(132("-"))')
 #if USE_MPI
-StartT=MPI_WTIME()
+  StartT=MPI_WTIME()
 #else
-CALL CPU_TIME(StartT)
+  CALL CPU_TIME(StartT)
 #endif
+#if USE_LOADBALANCE
+END IF ! .NOT.PerformLoadBalance
+#endif /*LOADBALANCE*/
 
 ! Open mesh file
-CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL BuildPartition()
+CALL BuildPartition(FileString)
 FirstElemInd=offsetElem+1
 LastElemInd =offsetElem+nElems
 
-CALL ReadBCs()
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL ReadBCs()
+  CALL CloseDataFile()
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 #if USE_PARTICLES
-CALL ReadMeshBasics()
+CALL ReadMeshBasics(FileString)
 #endif
 
 !----------------------------------------------------------------------------------------------------------------------------
@@ -299,7 +317,16 @@ ALLOCATE(Elems(FirstElemInd:LastElemInd))
 
 !read local ElemInfo from mesh file
 ALLOCATE(ElemInfo(ElemInfoSize,FirstElemInd:LastElemInd))
-CALL ReadArray('ElemInfo',2,(/ElemInfoSize,nElems/),offsetElem,2,IntArray=ElemInfo)
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) THEN
+  ElemInfo(1:ElemInfoSize,:) = ElemInfo_Shared(1:ElemInfoSize,offsetElem+1:offsetElem+nElems)
+ELSE
+#endif /*USE_LOADBALANCE*/
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL ReadArray('ElemInfo',2,(/ElemInfoSize,nElems/),offsetElem,2,IntArray=ElemInfo)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 ! Fill list of tElem objects by the information stored in ElemInfo
 DO iElem=FirstElemInd,LastElemInd
@@ -336,6 +363,17 @@ FirstSideInd=offsetSideID+1
 LastSideInd =offsetSideID+nSideIDs
 ALLOCATE(SideInfo(SideInfoSize,FirstSideInd:LastSideInd))
 CALL ReadArray('SideInfo',2,(/SideInfoSize,nSideIDs/),offsetSideID,2,IntArray=SideInfo)
+
+#if USE_LOADBALANCE
+  IF (PerformLoadBalance) THEN
+    SideInfo(1:SideInfoSize,:) = SideInfo_Shared(1:SideInfoSize,offsetSideID+1:offsetSideID+nSideIDs)
+  ELSE
+#endif /*USE_LOADBALANCE*/
+    CALL ReadArray('SideInfo',2,(/SideInfoSize,nSideIDs/),offsetSideID,2,IntArray=SideInfo)
+    CALL CloseDataFile()
+#if USE_LOADBALANCE
+  END IF
+#endif /*USE_LOADBALANCE*/
 
 #if USE_PARTICLES
 CALL ReadMeshSides()
@@ -499,26 +537,49 @@ CALL ReadMeshNodes()
 #endif
 
 ! get physical coordinates
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) &
+#endif /*USE_LOADBALANCE*/
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.,communicatorOpt=MPI_COMM_WORLD)
+
 IF(useCurveds)THEN
   ALLOCATE(NodeCoords(3,0:NGeo,0:NGeo,0:NGeo,nElems))
-  CALL ReadArray('NodeCoords',2,(/3,nElems*(NGeo+1)**3/),offsetElem*(NGeo+1)**3,2,RealArray=NodeCoords)
+#if USE_LOADBALANCE
+  IF (PerformLoadBalance) THEN
+    NodeCoords = RESHAPE(NodeCoords_Shared(1:3,(NGeo+1)**3*offsetElem+1:(NGeo+1)**3*(offsetElem+nElems)),(/3,NGeo+1,NGeo+1,NGeo+1,nElems/))
+  ELSE
+#endif /*USE_LOADBALANCE*/
+    CALL ReadArray('NodeCoords',2,(/3,nElems*(NGeo+1)**3/),offsetElem*(NGeo+1)**3,2,RealArray=NodeCoords)
+#if USE_LOADBALANCE
+  END IF
+#endif /*USE_LOADBALANCE*/
 ELSE
   ALLOCATE(NodeCoords(   3,0:1,   0:1,   0:1,   nElems))
-  ALLOCATE(NodeCoordsTmp(3,0:NGeo,0:NGeo,0:NGeo,nElems))
-  ! read all nodes
-  CALL ReadArray('NodeCoords',2,(/3,nElems*(NGeo+1)**3/),offsetElem*(NGeo+1)**3,2,RealArray=NodeCoordsTmp)
-  ! throw away all nodes except the 8 corner nodes of each hexa
-  NodeCoords(:,0,0,0,:)=NodeCoordsTmp(:,0,   0,   0,   :)
-  NodeCoords(:,1,0,0,:)=NodeCoordsTmp(:,NGeo,0,   0,   :)
-  NodeCoords(:,0,1,0,:)=NodeCoordsTmp(:,0,   NGeo,0,   :)
-  NodeCoords(:,1,1,0,:)=NodeCoordsTmp(:,NGeo,NGeo,0,   :)
-  NodeCoords(:,0,0,1,:)=NodeCoordsTmp(:,0,   0,   NGeo,:)
-  NodeCoords(:,1,0,1,:)=NodeCoordsTmp(:,NGeo,0,   NGeo,:)
-  NodeCoords(:,0,1,1,:)=NodeCoordsTmp(:,0,   NGeo,NGeo,:)
-  NodeCoords(:,1,1,1,:)=NodeCoordsTmp(:,NGeo,NGeo,NGeo,:)
-  DEALLOCATE(NodeCoordsTmp)
-  NGeo=1 ! linear mesh; set polynomial degree of geometry to 1
+#if USE_LOADBALANCE
+  IF (PerformLoadBalance) THEN
+    NGeo       = 1 ! linear mesh; set polynomial degree of geometry to 1
+    NodeCoords = RESHAPE(NodeCoords_Shared(1:3,8*offsetElem+1:8*(offsetElem+nElems)),(/3,NGeo+1,NGeo+1,NGeo+1,nElems/))
+  ELSE
+#endif /*USE_LOADBALANCE*/
+    ALLOCATE(NodeCoordsTmp(3,0:NGeo,0:NGeo,0:NGeo,nElems))
+    ! read all nodes
+    CALL ReadArray('NodeCoords',2,(/3,nElems*(NGeo+1)**3/),offsetElem*(NGeo+1)**3,2,RealArray=NodeCoordsTmp)
+    ! throw away all nodes except the 8 corner nodes of each hexa
+    NodeCoords(:,0,0,0,:)=NodeCoordsTmp(:,0,   0,   0,   :)
+    NodeCoords(:,1,0,0,:)=NodeCoordsTmp(:,NGeo,0,   0,   :)
+    NodeCoords(:,0,1,0,:)=NodeCoordsTmp(:,0,   NGeo,0,   :)
+    NodeCoords(:,1,1,0,:)=NodeCoordsTmp(:,NGeo,NGeo,0,   :)
+    NodeCoords(:,0,0,1,:)=NodeCoordsTmp(:,0,   0,   NGeo,:)
+    NodeCoords(:,1,0,1,:)=NodeCoordsTmp(:,NGeo,0,   NGeo,:)
+    NodeCoords(:,0,1,1,:)=NodeCoordsTmp(:,0,   NGeo,NGeo,:)
+    NodeCoords(:,1,1,1,:)=NodeCoordsTmp(:,NGeo,NGeo,NGeo,:)
+    DEALLOCATE(NodeCoordsTmp)
+    NGeo=1 ! linear mesh; set polynomial degree of geometry to 1
+#if USE_LOADBALANCE
+  ENDIF
+#endif /*USE_LOADBALANCE*/
 ENDIF
+
 nNodes=nElems*(NGeo+1)**3 ! total number of nodes on this processor
 
 #if PP_dim == 2
@@ -770,7 +831,7 @@ END SUBROUTINE ReadMesh
 !==================================================================================================================================
 !> Partition the mesh by numbers of processors. Elements are distributed equally to all processors.
 !==================================================================================================================================
-SUBROUTINE BuildPartition()
+SUBROUTINE BuildPartition(FileString)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Mesh_Vars,         ONLY:nGlobalElems,nElems
@@ -788,6 +849,7 @@ USE MOD_Mesh_Vars,         ONLY:offsetElem
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)  :: FileString !< (IN) mesh filename
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI && !USE_LOADBALANCE
@@ -795,7 +857,9 @@ INTEGER           :: iElem
 INTEGER           :: iProc
 #endif
 !===================================================================================================================================
+CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
+CALL CloseDataFile()
 IF(HSize(1).NE.6) CALL Abort(__STAMP__,'ERROR: Wrong size of ElemInfo, should be 6')
 
 CHECKSAFEINT(HSize(2),4)

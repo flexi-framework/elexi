@@ -75,13 +75,14 @@ PUBLIC :: FinalizeMeshReadin
 
 CONTAINS
 
-SUBROUTINE ReadMeshBasics()
+SUBROUTINE ReadMeshBasics(FileString)
 !===================================================================================================================================
 ! Read basic global counters from mesh file
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_HDF5_Input                ,ONLY: File_ID,ReadAttribute
+USE MOD_HDF5_Input                ,ONLY: OpenDataFile,CloseDataFile
 USE MOD_Mesh_Vars                 ,ONLY: NGeo,nGlobalElems
 USE MOD_Particle_Mesh_Vars        ,ONLY: nNonUniqueGlobalSides,nNonUniqueGlobalNodes
 #if USE_LOADBALANCE
@@ -91,6 +92,7 @@ USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)  :: FileString !< (IN) mesh filename
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -102,9 +104,11 @@ IF (PerformLoadBalance) RETURN
 ! INTEGER KIND=4 check for number of nodes
 CHECKSAFEINT((NGeo+1)**3.*INT(nGlobalElems,8),4)
 
+CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 !CALL ReadAttribute(File_ID,'nUniqueSides',1,IntScalar=nGlobalUniqueSidesFromMesh)
 CALL ReadAttribute(File_ID,'nSides'      ,1,IntScalar=nNonUniqueGlobalSides)
 CALL ReadAttribute(File_ID,'nNodes'      ,1,IntScalar=nNonUniqueGlobalNodes)
+CALL CloseDataFile()
 
 END SUBROUTINE ReadMeshBasics
 
@@ -284,10 +288,11 @@ SUBROUTINE ReadMeshNodes()
 ! MODULES
 USE MOD_Globals
 USE MOD_ChangeBasisByDim          ,ONLY: ChangeBasisVolume
-USE MOD_HDF5_Input                ,ONLY: ReadArray
+USE MOD_HDF5_Input                ,ONLY: ReadArray,OpenDataFile
+USE MOD_IO_HDF5                   ,ONLY: CloseDataFile
 USE MOD_Interpolation             ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars        ,ONLY: NodeType,NodeTypeVISU
-USE MOD_Mesh_Vars                 ,ONLY: nElems,NGeo,nGlobalElems,offsetElem,useCurveds
+USE MOD_Mesh_Vars                 ,ONLY: MeshFile,nElems,NGeo,nGlobalElems,offsetElem,useCurveds
 USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_Particle_MPI_Shared
@@ -332,11 +337,13 @@ END IF
 FirstNodeInd = offsetNodeID+1
 LastNodeInd  = offsetNodeID+nNodeIDs
 
-!read local Node Info from data file
+! read local Node Info from data file
 ALLOCATE(NodeInfo(FirstNodeInd:LastNodeInd))
+CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.,communicatorOpt=MPI_COMM_FLEXI)
 CALL ReadArray('GlobalNodeIDs',1,(/nNodeIDs/),offsetNodeID,1,IntArray=NodeInfo)
 ALLOCATE(NodeCoords_indx(3,nNodeIDs))
 CALL ReadArray('NodeCoords',2,(/3,nNodeIDs/),offsetNodeID,2,RealArray=NodeCoords_indx)
+CALL CloseDataFile()
 
 ! Keep all nodes if elements are curved and not interpolated
 IF (NGeoOverride.LE.0 .AND. (useCurveds.OR.NGeo.EQ.1) .OR. NGeoOverride.EQ.NGeo) THEN

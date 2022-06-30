@@ -1110,7 +1110,7 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif /*CODE_ANALYZE*/
 
 EndT = FLEXITIME()
-SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' | Building halo BGM ... DONE! [',EndT-StartT,'s]'
+SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' | Building halo BGM DONE! [',EndT-StartT,'s]'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 ! ONLY IF HALO_EPS .LT. GLOBAL_DIAG

@@ -15,11 +15,10 @@
 #include "particle.h"
 
 !==================================================================================================================================
-!> \brief Routines that handle restart capabilities.
+!> \brief Routines that handle particle restart capabilities.
 !>
 !> With this feature a simulation can be resumed from a state file that has been created during a previous
 !> simulation (restart file). The restart file is passed to FLEXI as a second command line argument.
-!> The restart can also be performed from a file with a different polynomial degree or node type than the current simulation.
 !==================================================================================================================================
 MODULE MOD_Particle_Restart
 ! MODULES
@@ -43,38 +42,41 @@ SUBROUTINE ParticleRestart(doFlushFiles)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Eval_XYZ,                   ONLY: GetPositionInRefElem
-USE MOD_HDF5_Input
-USE MOD_HDF5_Output,                ONLY: FlushFiles
-USE MOD_Mesh_Vars,                  ONLY: offsetElem
-USE MOD_Part_Tools,                 ONLY: UpdateNextFreePosition
-USE MOD_Particle_Boundary_Analyze,  ONLY: CalcSurfaceValues
-USE MOD_Particle_Boundary_Tracking, ONLY: RestartParticleBoundaryTracking
-USE MOD_Particle_Boundary_Vars,     ONLY: ImpactRestart,doParticleReflectionTrack
-USE MOD_Particle_Boundary_Vars,     ONLY: doParticleImpactTrack
 USE MOD_Particle_Globals
-USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
-USE MOD_Particle_Localization,      ONLY: LocateParticleInElement,ParticleInsideQuad3D
-USE MOD_Particle_Mesh_Vars,         ONLY: ElemEpsOneCell
-USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
+USE MOD_Particle_Readin
 USE MOD_Particle_Restart_Vars
+USE MOD_ReadInTools,                ONLY: PrintOption
+! Boundary
+USE MOD_Particle_Boundary_Analyze,  ONLY: CalcSurfaceValues
+USE MOD_Particle_Boundary_Vars,     ONLY: ImpactRestart
+! Localization
+USE MOD_Particle_Localization,      ONLY: LocateParticleInElement,ParticleInsideQuad3D
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod,NbrOfLostParticles
 USE MOD_Particle_Tracking_Vars,     ONLY: NbrOfLostParticlesTotal,TotalNbrOfMissingParticlesSum,NbrOfLostParticlesTotal_old
+! Interpolation
+USE MOD_Eval_XYZ,                   ONLY: GetPositionInRefElem
+USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
+USE MOD_Particle_Mesh_Vars,         ONLY: ElemEpsOneCell
+! Mesh
+USE MOD_Mesh_Vars,                  ONLY: offsetElem
+USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
+! Particles
+USE MOD_Part_Tools,                 ONLY: UpdateNextFreePosition
 USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies
+USE MOD_Particle_Vars,              ONLY: PartInt,PartData,TurbPartData
 USE MOD_Particle_Vars,              ONLY: PartPosRef,PartReflCount,doPartIndex,PartIndex
-USE MOD_ReadInTools,                ONLY: PrintOption
-USE MOD_Restart_Vars,               ONLY: RestartTime,RestartFile
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,          ONLY: PartMPI
 USE MOD_Particle_Tracking_Vars,     ONLY: CountNbrOfLostParts
-#endif /*MPI*/
+#endif /*USE_MPI*/
 ! Particle turbulence models
 USE MOD_Particle_Vars,              ONLY: TurbPartState
 USE MOD_Particle_SGS_Vars,          ONLY: nSGSVars
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars,   ONLY: nRWVars
-#endif
-USE MOD_StringTools,                ONLY: STRICMP
+#endif /*USE_RW*/
+! Restart
+USE MOD_Restart_Vars,               ONLY: RestartTime
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -84,111 +86,51 @@ LOGICAL,INTENT(IN),OPTIONAL     :: doFlushFiles
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: FirstElemInd,LastelemInd,iInit
-INTEGER,ALLOCATABLE             :: PartInt(:,:)
-INTEGER,PARAMETER               :: PartIntSize=2        !number of entries in each line of PartInt
-INTEGER                         :: PartDim              !dummy for rank of partData
-INTEGER                         :: PartDataSize         !number of entries in each line of PartData
-INTEGER                         :: locnPart,offsetnPart
-INTEGER,PARAMETER               :: ELEM_FirstPartInd=1
-INTEGER,PARAMETER               :: ELEM_LastPartInd=2
-REAL,ALLOCATABLE                :: PartData(:,:)
-REAL                            :: xi(3),det(6,2)
-LOGICAL                         :: InElementCheck,EmissionTimeExists
-INTEGER                         :: NbrOfMissingParticles
+! Parameters
+INTEGER,PARAMETER                  :: ELEM_FirstPartInd = 1
+INTEGER,PARAMETER                  :: ELEM_LastPartInd  = 2
+! Counters
+INTEGER                            :: iElem,CNElemID
+INTEGER                            :: FirstElemInd,LastelemInd
+INTEGER                            :: locnPart,offsetnPart
+INTEGER                            :: iSpec,iPart,iInit
+! Localization
+LOGICAL                            :: InElementCheck
+REAL                               :: xi(3)
+REAL                               :: det(6,2)
+INTEGER                            :: NbrOfMissingParticles
+! MPI
 #if USE_MPI
-INTEGER                         :: iProc
-INTEGER,ALLOCATABLE             :: IndexOfFoundParticles(:),CompleteIndexOfFoundParticles(:)
-INTEGER                         :: CompleteNbrOfLost,CompleteNbrOfFound,CompleteNbrOfDuplicate
-REAL,ALLOCATABLE                :: RecBuff(:,:)
-INTEGER                         :: TotalNbrOfMissingParticles(0:PartMPI%nProcs-1), Displace(0:PartMPI%nProcs-1),CurrentPartNum
-INTEGER                         :: OffsetTotalNbrOfMissingParticles(0:PartMPI%nProcs-1)
-INTEGER                         :: NbrOfFoundParts, RecCount(0:PartMPI%nProcs-1)
-#endif /*MPI*/
-!REAL                            :: VFR_total
-INTEGER                         :: iSpec,iPart,iStr
-INTEGER                         :: iElem,CNElemID
-LOGICAL                         :: doFlushFiles_loc
-! Particle turbulence models
-INTEGER                         :: TurbPartSize         !number of turbulent properties with curent setup
-INTEGER                         :: TurbPartDataSize     !number of turbulent properties in HDF5 file
-REAL,ALLOCATABLE                :: TurbPartData(:,:)    !number of entries in each line of TurbPartData
-INTEGER                         :: PP_nVarPart_loc
-CHARACTER(LEN=255),ALLOCATABLE  :: StrVarNames(:)
-REAL                            :: StartT,EndT
+
+INTEGER,ALLOCATABLE                :: IndexOfFoundParticles(:),CompleteIndexOfFoundParticles(:)
+INTEGER                            :: CompleteNbrOfLost,CompleteNbrOfFound,CompleteNbrOfDuplicate
+REAL,ALLOCATABLE                   :: RecBuff(:,:)
+INTEGER                            :: TotalNbrOfMissingParticles(0:PartMPI%nProcs-1), Displace(0:PartMPI%nProcs-1),CurrentPartNum
+INTEGER                            :: OffsetTotalNbrOfMissingParticles(0:PartMPI%nProcs-1)
+INTEGER                            :: NbrOfFoundParts, RecCount(0:PartMPI%nProcs-1)
+INTEGER                            :: iProc
+#endif /*USE_MPI*/
 !===================================================================================================================================
-doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
 
-IF (LEN_TRIM(RestartFile).GT.0) THEN
-#if USE_MPI
-  StartT=MPI_WTIME()
-#else
-  CALL CPU_TIME(StartT)
-#endif
-  SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE...'
-  CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+! ===========================================================================
+! Distribute or read the particle solution
+! ===========================================================================
+CALL ParticleReadin(doFlushFiles)
 
-  ! Read the emission time
-  CALL DatasetExists(File_ID,'EmissionTime',EmissionTimeExists,attrib=.TRUE.)
-  ! Reset EmissionTime for ResetTime
-  IF (EmissionTimeExists .AND. RestartTime.GT.0) THEN
-    CALL ReadAttribute(File_ID,'EmissionTime',1,RealScalar=EmissionTime)
-    SWRITE(UNIT_stdOut,'(A,F16.6)')' | Resuming particle emission from time    ',EmissionTime
-  ELSE
-    EmissionTime = 0.
-  END IF
-
-  ! Read the first/last ElemID on the local proc
-  FirstElemInd = offsetElem+1
-  LastElemInd  = offsetElem+PP_nElems
-
-  ! Check if file contains particle information
-  CALL DatasetExists(File_ID,'PartData',PartDataExists)
-  IF (PartDataExists) THEN
-    ! PartInt contains the indices of the particles in each element
-    ALLOCATE(PartInt(PartIntSize,FirstElemInd:LastElemInd))
-
-    ! Read number of local particles and their offset from HDF5
-    CALL ReadArray('PartInt',2,(/PartIntSize,PP_nElems/),offsetElem,2,IntArray=PartInt)
-    locnPart    = PartInt(ELEM_LastPartInd,LastElemInd)-PartInt(ELEM_FirstPartInd,FirstElemInd)
-    offsetnPart = PartInt(ELEM_FirstPartInd,FirstElemInd)
-
-    ! Get size of PartData
-    CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
-    CHECKSAFEINT(HSize(2),4)
-    PartDataSize = INT(HSize(1))
-    CALL PrintOption('Number of particle variables','INFO',IntOpt=PartDataSize)
-
-    ! For files, where no particle diameter was saved
-    ALLOCATE(StrVarNames(PartDataSize))
-    CALL ReadAttribute(File_ID,'VarNamesParticles',PartDataSize,StrArray=StrVarNames)
-    ! Species and PartDiam
-    PP_nVarPart_loc = PartDataSize-1
-    DO iStr=1,PartDataSize
-      ! Reflection
-      IF (STRICMP('ReflectionCount',TRIM(StrVarNames(iStr)))) PP_nVarPart_loc = PP_nVarPart_loc - 1
-      ! PartIndex
-      IF (STRICMP('Index'          ,TRIM(StrVarNames(iStr)))) PP_nVarPart_loc = PP_nVarPart_loc - 1
-    END DO
-    DEALLOCATE(StrVarNames)
-
-    ! Reflections are stored in the 8th data column. Do not start counting reflections mid-simulation
-    IF (PartDataSize.EQ.PP_nVarPart_loc+1) THEN
-        doParticleReflectionTrack = .FALSE.
-        SWRITE(UNIT_stdOut,'(A3,A30,A3,I33)')' | ','Reflections not tracked previously. Disabling reflection counter',' | ',PartDataSize
-    END IF
-
-    ! Get PartData
-    ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
-    CALL ReadArray('PartData',2,(/PartDataSize,locnPart/),offsetnPart,2,RealArray=PartData)
+IF(PartIntExists)THEN
+  IF(PartDataExists)THEN
+    FirstElemInd = offsetElem+1
+    LastElemInd  = offsetElem+PP_nElems
+    locnPart     = PartInt(ELEM_LastPartInd,LastElemInd)-PartInt(ELEM_FirstPartInd,FirstElemInd)
+    offsetnPart  = PartInt(ELEM_FirstPartInd,FirstElemInd)
 
     ! Loop over all particles on local proc and fill the PartState
     IF (locnPart.GT.0) THEN
-      PartState(1:PP_nVarPart_loc,1:locnPart) = PartData(1:PP_nVarPart_loc,offsetnPart+1:offsetnPart+locnPart)
-      PartSpecies(                1:locnPart) = INT(PartData(PP_nVarPart_loc+1,offsetnPart+1:offsetnPart+locnPart))
+      PartState(1:PP_nVarPartState,1:locnPart) = PartData(  1:PP_nVarPartState  ,offsetnPart+1:offsetnPart+locnPart)
+      PartSpecies(                 1:locnPart) = INT(PartData(PP_nVarPartState+1,offsetnPart+1:offsetnPart+locnPart))
       ! Sanity check: SpecID > 0
       IF (ANY(PartSpecies(1:locnPart).LE.0)) THEN
-        IPWRITE(UNIT_StdOut,'(I0,A,I0,A,I0,A,3(ES25.14E3),A,I0)') "Warning: Found particle in restart file with SpecID.LE.0"
+        IPWRITE(UNIT_StdOut,'(I0,A,I0,A,I0,A,3(ES25.14E3),A,I0)') 'Warning: Found particle in restart file with SpecID.LE.0!'
         CALL Abort(__STAMP__,'Found particle in restart file with species ID zero, which indicates a corrupted restart file.')
       END IF
       ! For old files, where no particle diameter was saved
@@ -198,11 +140,13 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         END DO
       END IF
       ! Particle index
-      IF (doPartIndex) PartIndex(1:locnPart) = INT(PartData(PP_nVarPart_loc+2,offsetnPart+1:offsetnPart+locnPart))
+      IF (doPartIndex) PartIndex(1:locnPart) = INT(PartData(PP_nVarPartState+2,offsetnPart+1:offsetnPart+locnPart))
       ! Reflections were tracked previously and are therefore still enabled
-      IF (PartDataSize.EQ.PP_nVarPart_loc+2) THEN
-          PartReflCount(1:locnPart) = INT(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
-      END IF
+      IF (PartDataSize.EQ.PP_nVarPartState+2) &
+        PartReflCount(1:locnPart) = INT(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
+
+      FirstElemInd = offsetElem+1
+      LastElemInd  = offsetElem+PP_nElems
 
       ! Fill the particle-to-element-mapping (PEM) with the information from HDF5
       DO iElem = FirstElemInd,LastElemInd
@@ -217,7 +161,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
       ! All particle properties restored. Particle ready to be tracked
       PDM%ParticleInside(1:locnPart) = .TRUE.
-    END IF
+    END IF ! PartDataExists
 
     ! Total size of turbulent properties
     TurbPartDataSize = nSGSVars
@@ -226,55 +170,22 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 #endif
 
     ! Check if TurbPartData exists in HDF5 file
-    CALL DatasetExists(File_ID,'TurbPartData',TurbPartDataExists)
     IF(TurbPartDataExists)THEN
-
-      ! Get size of TurbPartData, reuse PartDim dummy
-      CALL GetDataSize(File_ID,'TurbPartData',PartDim,HSize)
-      CHECKSAFEINT(HSize(2),4)
-      TurbPartSize = INT(HSize(1))
-      SWRITE(UNIT_stdOut,'(A3,A38,A3,I25)')' | ','Number of turbulent particle variables',' | ',TurbPartSize
-
-      ! Compare number of turbulent properties of current run against HDF5
-      IF ((TurbPartDataSize.EQ.0).AND.(TurbPartSize.NE.0)) THEN
-        SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data but current run in DNS mode. Ignoring...'
-      ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.NE.TurbPartSize)) THEN
-        CALL Abort(__STAMP__,' Number of turbulent variables in HDF5 does not match requested SGS/RW model!')
-      ELSEIF ((TurbPartDataSize.NE.0).AND.(TurbPartDataSize.EQ.TurbPartSize)) THEN
-        ! Maybe add check that compares the models here. Should resort to a warning in case we want to change the model midrun, so
-        ! nothing urgent
-        SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='YES') ' | HDF5 state file containing SGS/RW data with ',TurbPartDataSize, &
-                                                    ' variables and matching current setup. Continuing run...'
-        ! Get TurbPartData
-        ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
-        CALL ReadArray('TurbPartData',2,(/TurbPartDataSize,locnPart/),offsetnPart,2,RealArray=TurbPartData)
-
-        ! Loop over all particles on local proc and fill the TurbPartState
-        IF (locnPart.GT.0) THEN
-          TurbPartState(1:TurbPartDataSize,1:locnPart) = TurbPartData(1:TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart)
-        END IF
-
-        ! De-allocate array used for readin
-        DEALLOCATE(TurbPartData)
-
-      ! Last case is no turbulent properties in current run or HDF5. Do nothing ...
+      ! Loop over all particles on local proc and fill the TurbPartState
+      IF (locnPart.GT.0) THEN
+        TurbPartState(1:TurbPartDataSize,1:locnPart) = TurbPartData(1:TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart)
       END IF
+
+      ! De-allocate array used for readin
+      DEALLOCATE(TurbPartData)
     ! No turbulent particle properties in HDF5
-    ELSE
-      IF (TurbPartDataSize.NE.0) THEN
-        SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' | HDF5 state file not containing SGS/RW data but model active in current run.'
-        SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' | SGS/RW model will start without history...'
-      END IF
-    END IF
+    END IF ! TurbPartDataExists
 
     ! De-allocate arrays used for read-in
-    DEALLOCATE(PartInt,PartData)
+    DEALLOCATE(PartInt)
+    DEALLOCATE(PartData)
     PDM%ParticleVecLength = PDM%ParticleVecLength + locnPart
     CALL UpdateNextFreePosition()
-
-    GETTIME(EndT)
-    SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE DONE! [',EndT-StartT,'s]'
-    SWRITE(UNIT_stdOut,'(132("-"))')
 
     ! Reconstruct the number of particles inserted before restart from the emission rate
     DO iSpec=1,nSpecies
@@ -449,9 +360,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
 
       ! Keep track which particles are found on the current proc
       ALLOCATE(IndexOfFoundParticles          (TotalNbrOfMissingParticlesSum))
-      IF (MPIRoot) THEN
+      IF (MPIRoot) &
         ALLOCATE(CompleteIndexOfFoundParticles(TotalNbrOfMissingParticlesSum))
-      END IF ! MPIRoot
       IndexOfFoundParticles = -1
 
       ! Free lost particle positions in local array to make room for missing particles that are tested
@@ -556,12 +466,12 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         NbrOfLostParticlesTotal = NbrOfLostParticlesTotal + CompleteNbrOfLost
 
         DEALLOCATE(CompleteIndexOfFoundParticles)
-
       END IF ! MPIRoot
+
       CALL MPI_BCAST(NbrOfLostParticlesTotal,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
       NbrOfLostParticlesTotal_old = NbrOfLostParticlesTotal
-
     END IF ! TotalNbrOfMissingParticlesSum.GT.0
+
 #else /*not USE_MPI*/
     IF(NbrOfMissingParticles.GT.0)THEN
       NbrOfLostParticlesTotal = NbrOfLostParticlesTotal + NbrOfLostParticles
@@ -578,18 +488,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
       SWRITE(UNIT_stdOut,'(A)') ' PartData does not exists in restart file'
       SWRITE(UNIT_stdOut,'(132("-"))')
   END IF ! PartDataExists
-  CALL CloseDataFile()
+END IF ! PartIntExists
 
-  ! Get individual impact data
-  IF (doParticleImpactTrack) CALL RestartParticleBoundaryTracking
-
-  ! Delete all files that will be rewritten --> moved from restart.f90 since we need it here
-  IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
-! No restart
-ELSE
-  ! Delete all files since we are doing a fresh start --> moved from restart.f90 since we need it here
-  IF (doFlushFiles_loc) CALL FlushFiles()
-END IF
 
 ! Make sure we update our surface data after reading the sampling data
 #if USE_MPI

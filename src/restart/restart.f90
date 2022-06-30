@@ -647,6 +647,8 @@ IF (DoRestart) THEN
   ! Delete all files that will be rewritten --> moved to particle_restart.f90 since we need it there
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
 #endif
+  SWRITE(UNIT_stdOut,'(A)') ' PERFORMING RESTART DONE!'
+  SWRITE(UNIT_stdOut,'(132("-"))')
 ELSE
 #if !(USE_PARTICLES)
   ! Delete all files since we are doing a fresh start --> moved to particle_restart.f90 since we need it there ! Delete all files since we are doing a fresh start --> moved to particle_restart.f90 since we need it there

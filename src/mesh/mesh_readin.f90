@@ -820,9 +820,15 @@ LBWRITE(UNIT_stdOut,'(A,A34,L1)')' |','useCurveds           | ',useCurveds
 LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','Ngeo                 | ',Ngeo
 LBWRITE(UNIT_stdOut,'(132("."))')
 
-EndT             = FLEXITIME()
-ReadMeshWallTime = EndT-StartT
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ... DONE  [',ReadMeshWallTime,'s]'
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*LOADBALANCE*/
+  EndT             = FLEXITIME()
+  ReadMeshWallTime = EndT-StartT
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ... DONE  [',ReadMeshWallTime,'s]'
+#if USE_LOADBALANCE
+END IF ! .NOT.PerformLoadBalance
+#endif /*LOADBALANCE*/
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE ReadMesh

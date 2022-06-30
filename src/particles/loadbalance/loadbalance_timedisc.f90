@@ -52,15 +52,18 @@ USE MOD_Filter                     ,ONLY: InitFilter,FinalizeFilter
 USE MOD_Lifting                    ,ONLY: InitLifting,FinalizeLifting
 USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ElemTimeField,ElemTimePart
 USE MOD_LoadBalance_Vars           ,ONLY: nLoadBalanceSteps,LoadBalanceMaxSteps,NewImbalance,MinWeight,MaxWeight
+USE MOD_LoadBalance_Vars           ,ONLY: MPInElemSend,MPIoffsetElemSend,MPInElemRecv,MPIoffsetElemRecv,ElemInfoRank
+USE MOD_LoadBalance_Vars           ,ONLY: nElemsOld,offsetElemOld
 USE MOD_LoadBalance_Vars           ,ONLY: CurrentImbalance,MaxWeight,MinWeight
 USE MOD_LoadBalance_Vars           ,ONLY: PerformLoadBalance
 USE MOD_IO_HDF5                    ,ONLY: ElementOut,FieldOut
 USE MOD_Mesh                       ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_Mesh_Vars                  ,ONLY: nElems
+USE MOD_Mesh_Vars                  ,ONLY: nElems,offsetElem
 USE MOD_MPI                        ,ONLY: InitMPIVars,FinalizeMPI
 USE MOD_Output_Vars                ,ONLY: ProjectName
 USE MOD_Overintegration            ,ONLY: InitOverintegration,FinalizeOverintegration
 USE MOD_Particle_Init              ,ONLY: InitParticles,FinalizeParticles
+USE MOD_Particle_Mesh_Vars         ,ONLY: ElemInfo_Shared
 USE MOD_Particle_MPI               ,ONLY: InitParticleMPI,FinalizeParticleMPI
 USE MOD_Predictor                  ,ONLY: InitPredictor,FinalizePredictor
 USE MOD_RecordPoints               ,ONLY: InitRecordPoints,FinalizeRecordPoints
@@ -88,6 +91,8 @@ USE MOD_Indicator                  ,ONLY: InitIndicator,FinalizeIndicator
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: LB_Time,LB_StartTime
+INTEGER                         :: iProc,iElem,ElemRank
+INTEGER                         :: offsetElemSend,offsetElemRecv
 !===================================================================================================================================
 ! only do load-balance if necessary
 IF (.NOT.PerformLoadBalance) THEN
@@ -121,6 +126,10 @@ LB_StartTime=FLEXITIME()
 RestartFile = TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//'State',OutputTime))//'.h5'
 doRestart   = .TRUE.
 RestartMode = 1
+
+nElemsOld     = nElems
+offsetElemOld = offsetElem
+ElemInfoRank  = ElemInfo_Shared(ELEM_RANK,:)
 
 !-- Finalize every mesh dependent routine
 CALL FinalizeRecordPoints()
@@ -188,6 +197,34 @@ SELECT CASE(TimeDiscType)
 END SELECT
 ALLOCATE(dtElem(nElems))
 dtElem = 0.
+
+! Calculate the elements to send
+MPInElemSend      = 0
+MPIoffsetElemSend = 0
+! Loop with the old element over the new elem distribution
+DO iElem = 1,nElemsOld
+  ElemRank               = ElemInfo_Shared(ELEM_RANK,offsetElemOld+iElem)+1
+  MPInElemSend(ElemRank) = MPInElemSend(ElemRank) + 1
+END DO
+
+offsetElemSend = 0
+DO iProc = 2,nProcessors
+  MPIoffsetElemSend(iProc) = SUM(MPInElemSend(1:iProc-1))
+END DO
+
+! Calculate the elements to send
+MPInElemRecv      = 0
+MPIoffsetElemRecv = 0
+! Loop with the new element over the old elem distribution
+DO iElem = 1,nElems
+  ElemRank               = ElemInfoRank(offsetElem+iElem)+1
+  MPInElemRecv(ElemRank) = MPInElemRecv(ElemRank) + 1
+END DO
+
+offsetElemRecv = 0
+DO iProc = 2,nProcessors
+  MPIoffsetElemRecv(iProc) = SUM(MPInElemRecv(1:iProc-1))
+END DO
 
 CALL InitAnalyze()
 CALL InitRecordpoints()

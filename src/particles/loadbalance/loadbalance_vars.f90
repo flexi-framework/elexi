@@ -25,7 +25,6 @@ SAVE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                             :: DoLoadBalance                              !> Use dynamic load balancing
-INTEGER                             :: WeightDistributionMethod                   !> Load distribution method
 INTEGER                             :: LoadBalanceSampleBackup                    !> Loadbalance sample saved until initial autorestart ist finished
 LOGICAL                             :: DoLoadBalanceBackup                        !> Loadbalance flag saved until initial autorestart ist finished
 LOGICAL                             :: PerformLoadBalance=.FALSE.                 !> Flag if load balance is performed in current time step iteration
@@ -37,6 +36,7 @@ LOGICAL                             :: PerformPartWeightLB                      
                                                                                   !> instead of summed ElemTimes
                                                                                   !> -> nParts*PartWeight written into elemtime array
 LOGICAL                             :: InitLoadBalanceIsDone                      !> Switch for checking
+INTEGER                             :: WeightDistributionMethod   !> Method used for distributing the elements among the available processors
 
 ! time measurement
 REAL,ALLOCATABLE                    :: tCurrent(:)                                !> Time measurement over one step
@@ -73,6 +73,21 @@ TYPE tData
   TYPE(tData), POINTER :: nextData => null()
 END TYPE tData
 TYPE(tData), POINTER :: firstData => null() !linked-list of old offsetElemMPI for WeightDistributionMethod 5 and 6
+
+!-----------------------------------------------------------------------------------------------------------------------------------
+! element load balancing
+!-----------------------------------------------------------------------------------------------------------------------------------
+INTEGER                             :: nElemsOld
+INTEGER                             :: offsetElemOld
+INTEGER,ALLOCATABLE                 :: MPInElemSend(:)
+INTEGER,ALLOCATABLE                 :: MPIoffsetElemSend(:)
+INTEGER,ALLOCATABLE                 :: MPInElemRecv(:)
+INTEGER,ALLOCATABLE                 :: MPIoffsetElemRecv(:)
+INTEGER,ALLOCATABLE                 :: MPInPartSend(:)
+INTEGER,ALLOCATABLE                 :: MPIoffsetPartSend(:)
+INTEGER,ALLOCATABLE                 :: MPInPartRecv(:)
+INTEGER,ALLOCATABLE                 :: MPIoffsetPartRecv(:)
+INTEGER,ALLOCATABLE                 :: ElemInfoRank(:)
 #endif /*USE_LOADBALANCE*/
 
 !-----------------------------------------------------------------------------------------------------------------------------------

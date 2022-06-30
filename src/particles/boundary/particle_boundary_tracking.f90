@@ -31,10 +31,6 @@ INTERFACE InitParticleBoundaryTracking
   MODULE PROCEDURE InitParticleBoundaryTracking
 END INTERFACE
 
-INTERFACE RestartParticleBoundaryTracking
-  MODULE PROCEDURE RestartParticleBoundaryTracking
-END INTERFACE
-
 INTERFACE StoreBoundaryParticleProperties
   MODULE PROCEDURE StoreBoundaryParticleProperties
 END INTERFACE
@@ -45,7 +41,6 @@ END INTERFACE
 
 PUBLIC :: DefineParametersParticleBoundaryTracking
 PUBLIC :: InitParticleBoundaryTracking
-PUBLIC :: RestartParticleBoundaryTracking
 PUBLIC :: StoreBoundaryParticleProperties
 PUBLIC :: FinalizeParticleBoundaryTracking
 !==================================================================================================================================
@@ -181,109 +176,6 @@ END SUBROUTINE InitParticleBoundaryTracking
 ! #endif /*USE_MPI*/
 
 
-SUBROUTINE RestartParticleBoundaryTracking
-!==================================================================================================================================
-!> Restarts the impact tracking. Needed before files are flushed
-!==================================================================================================================================
-USE MOD_Globals
-USE MOD_Particle_Boundary_Vars     ,ONLY: PartStateBoundary,PartStateBoundaryVecLength,ImpactDataSize
-USE MOD_HDF5_Input                 ,ONLY: OpenDataFile,CloseDataFile,DatasetExists,GetDataSize
-USE MOD_HDF5_Input                 ,ONLY: ReadArray,File_ID,HSize
-USE MOD_Particle_Memory            ,ONLY: Allocate_Safe
-USE MOD_Restart_Vars               ,ONLY: RestartFile
-!----------------------------------------------------------------------------------------------------------------------------------!
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-LOGICAL                        :: ImpactDataExists
-INTEGER                        :: j,offsetImpact
-INTEGER                        :: ImpactDim              ! dummy for rank of ImpactData
-INTEGER                        :: PartStateBoundaryVecLength_glob
-INTEGER                        :: ALLOCSTAT
-#if USE_MPI
-INTEGER                        :: iProc
-INTEGER                        :: offsetImpactsProcCount,offsetImpacts(0:nProcessors)
-#endif /* USE_MPI */
-!==================================================================================================================================
-
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' READING PARTICLE IMPACT DATA FROM HDF5 FILE...'
-
-PartStateBoundaryVecLength = 0
-
-! Open the restart file and search for ImpactData
-CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL DatasetExists(File_ID,'ImpactData',ImpactDataExists)
-
-IF (ImpactDataExists) THEN
-  CALL GetDataSize(File_ID,'ImpactData',ImpactDim,HSize)
-  CHECKSAFEINT(HSize(2),4)
-  PartStateBoundaryVecLength_glob    = INT(HSize(2))
-
-#if USE_MPI
-  ! Distribute impacts between procs
-  offsetImpacts              = 0
-  PartStateBoundaryVecLength = PartStateBoundaryVecLength_glob/nProcessors
-  offsetImpactsProcCount     = PartStateBoundaryVecLength_glob-PartStateBoundaryVecLength*nProcessors
-  DO iProc = 0,nProcessors-1
-    offsetImpacts(iProc) = PartStateBoundaryVecLength*iProc+MIN(iProc,offsetImpactsProcCount)
-  END DO
-  offsetImpacts(nProcessors) = PartStateBoundaryVecLength_glob
-
-  ! local impacts and offset
-  PartStateBoundaryVecLength = offsetImpacts(myRank+1)-offsetImpacts(myRank)
-  offsetImpact               = offsetImpacts(myRank)
-#else
-  PartStateBoundaryVecLength = PartStateBoundaryVecLength
-  offsetImpact               = 0
-#endif /* USE_MPI */
-
-  ! Check if PartStateBoundary is sufficiently large
-  ASSOCIATE( iMax => PartStateBoundaryVecLength )
-
-    ! Check if array maximum is reached.
-    ! If this happens, re-allocate the arrays and increase their size (every time this barrier is reached, double the size)
-    IF (iMax.GT.10) THEN
-      j = 1
-      DO WHILE (iMax.GT.j*10)
-        j = j*2
-      END DO
-
-      ! Check if the new PartStateBoundary size can be safely allocated
-      CALL Allocate_Safe(PartStateBoundary,(/ImpactDataSize,j*10/), STAT=ALLOCSTAT)
-      IF (ALLOCSTAT.NE.0) CALL Abort(__STAMP__,'ERROR in particle_boundary_init.f90: Cannot allocate PartStateBoundary array!')
-      PartStateBoundary(:,:) = 0.
-    END IF
-
-    ! We lost the impact <-> proc association, so read in according to calculated distribution
-    CALL ReadArray(ArrayName  = 'ImpactData'                                  ,&
-                   rank       = 2                                             ,&
-                   nVal       = (/ImpactDataSize,PartStateBoundaryVecLength/) ,&
-                   offset_in  = offsetImpact                                  ,&
-                   offset_dim = 2                                             ,&
-                   RealArray  = PartStateBoundary(1:ImpactDataSize,1:PartStateBoundaryVecLength))
-  END ASSOCIATE
-END IF
-
-CALL CloseDataFile()
-
-! Keep everything in sync
-#if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_FLEXI,iERROR)
-#endif /* USE_MPI */
-
-! Write out in the next state file write-out
-IF(MPIRoot) THEN
-  WRITE(UNIT_stdOut,'(A,I0,A)')  ' | ',PartStateBoundaryVecLength_glob,' impact read from restart file'
-  WRITE(UNIT_stdOut,'(A,F0.3,A)')' READING PARTICLE IMPACT DATA FROM HDF5 FILE DONE'
-  WRITE(UNIT_stdOut,'(132("-"))')
-END IF
-
-END SUBROUTINE RestartParticleBoundaryTracking
-
-
 SUBROUTINE StoreBoundaryParticleProperties(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_old,PartReflCount,alpha,dp_old&
 #if PP_nVarPartRHS == 6
     ,rot_old&
@@ -409,10 +301,19 @@ SUBROUTINE FinalizeParticleBoundaryTracking()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Boundary_Vars
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars,    ONLY :PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 IMPLICIT NONE
 !==================================================================================================================================
 
-SDEALLOCATE(PartStateBoundary)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  SDEALLOCATE(PartStateBoundary)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 ! #if USE_MPI
 ! ! Free MPI communicator

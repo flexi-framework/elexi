@@ -30,10 +30,13 @@ REAL    , ALLOCATABLE         :: TurbPartState(:,:)                          ! (
 REAL    , ALLOCATABLE         :: PartPosRef(:,:)                             ! (1:3,1:NParts) particles pos mapped to -1|1 space
 INTEGER , ALLOCATABLE         :: PartPosGauss(:,:)                           ! (1:3,1:NParts) Gauss point localization of particles
 REAL    , ALLOCATABLE         :: Pt(:,:)                                     ! Derivative of PartState (vx,xy,vz) only
+REAL    , ALLOCATABLE         :: PartData(:,:)                               ! PartState ordered along SFC, particle number per
+                                                                             ! element given in PartInt
+INTEGER , ALLOCATABLE         :: PartInt(:,:)                                ! Particle number per element
 INTEGER , ALLOCATABLE         :: PartReflCount(:)                            ! Counter of number of reflections
-
 REAL    , ALLOCATABLE         :: Pt_temp(:,:)                                ! LSERK4 additional derivative of PartState
                                                                              ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz
+REAL    , ALLOCATABLE         :: TurbPartData(:,:)                           ! Turbulent particle data
 REAL    , ALLOCATABLE         :: TurbPt_temp(:,:)                            ! LSERK4 additional derivative of TurbPartState
                                                                              ! (1:3,1:NParts) with 2nd index: vx',vy',vz'
 REAL    , ALLOCATABLE         :: LastPartPos(:,:)                            ! (1:3,1:NParts) with 2nd index: x,y,z

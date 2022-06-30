@@ -222,9 +222,6 @@ CALL InitParticleGlobals
 #if USE_MPI
 CALL InitMPIShared()
 #endif /*USE_MPÌ*/
-#if USE_LOADBALANCE
-CALL InitLoadBalance()
-#endif /*USE_LOADBALANCE*/
 #endif /*USE_PARTICLES*/
 CALL InitMesh(meshMode=2)
 CALL InitRestart(RestartFile_loc)
@@ -252,6 +249,9 @@ CALL Restart()
 #if USE_MPI
 CALL InitParticleMPI()
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+CALL InitLoadBalance()
+#endif /*USE_LOADBALANCE*/
 CALL InitParticles()
 #endif /*USE_PARTICLES*/
 CALL prms%WriteUnused()

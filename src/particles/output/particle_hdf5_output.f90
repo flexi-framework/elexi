@@ -66,24 +66,28 @@ SUBROUTINE WriteParticle(FileName)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Mesh_Vars,             ONLY: nGlobalElems, offsetElem
-USE MOD_Part_Tools,            ONLY: UpdateNextFreePosition
 USE MOD_Particle_Globals
-USE MOD_Particle_Analyze_Vars, ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
-USE MOD_Particle_Boundary_Vars,ONLY: doParticleReflectionTrack
-! USE MOD_Particle_HDF5_Output
-USE MOD_Particle_Restart_Vars, ONLY: EmissionTime
-USE MOD_Particle_Vars,         ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex,nSpecies
-USE MOD_Particle_Vars,         ONLY: useLinkedList,doPartIndex,doWritePartDiam
+USE MOD_Mesh_Vars               ,ONLY: nGlobalElems, offsetElem
+USE MOD_Part_Tools              ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Analyze_Vars   ,ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
+USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleReflectionTrack
+USE MOD_Particle_Restart_Vars   ,ONLY: EmissionTime
+USE MOD_Particle_Vars           ,ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex,nSpecies
+USE MOD_Particle_Vars           ,ONLY: PartInt,PartData
+USE MOD_Particle_Vars           ,ONLY: useLinkedList,doPartIndex,doWritePartDiam
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,     ONLY: PartMPI
+USE MOD_Particle_MPI_Vars       ,ONLY: PartMPI
 #endif /*MPI*/
 ! Particle turbulence models
-USE MOD_Particle_Vars,         ONLY: TurbPartState
-USE MOD_Particle_SGS_Vars,     ONLY: nSGSVars
+USE MOD_Particle_Vars           ,ONLY: TurbPartState
+USE MOD_Particle_SGS_Vars       ,ONLY: nSGSVars
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars,ONLY: nRWVars
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars        ,ONLY: PerformLoadBalance
+USE MOD_Particle_Restart_Vars   ,ONLY: PartDataSize
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -99,11 +103,11 @@ LOGICAL                        :: reSwitch
 INTEGER                        :: pcount,nInvalidPart
 INTEGER                        :: locnPart,offsetnPart
 INTEGER                        :: iPart,iElem
-INTEGER,ALLOCATABLE            :: PartInt(:,:)
-REAL,ALLOCATABLE               :: PartData(:,:)
 INTEGER,PARAMETER              :: PartIntSize=2      !number of entries in each line of PartInt
-INTEGER                        :: PartDataSize       !number of entries in each line of PartData
 INTEGER                        :: tmpIndex,tmpIndex2,PP_nVarPart_loc
+#if !USE_LOADBALANCE
+INTEGER                        :: PartDataSize       !number of entries in each line of PartData
+#endif /*!USE_LOADBALANCE*/
 ! Particle turbulence models
 INTEGER                        :: TurbPartDataSize
 REAL,ALLOCATABLE               :: TurbPartData(:,:)
@@ -179,6 +183,11 @@ END DO
 CALL GetOffsetAndGlobalNumberOfParts('WriteParticleToHDF5',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
 
 ! Allocate data arrays for mean particle quantities
+#if USE_LOADBALANCE
+! Arrays might still be allocated from previous loadbalance step
+SDEALLOCATE(PartInt)
+SDEALLOCATE(PartData)
+#endif /*USE_LOADBALANCE*/
 ALLOCATE(PartInt( PartIntSize ,offsetElem +1:offsetElem +PP_nElems))
 ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
 ! Allocate data arrays for turbulent particle quantities
@@ -345,12 +354,18 @@ IF(reSwitch) gatheredWrite=.TRUE.
 ! De-allocate linked list and return to normal particle array mode
 useLinkedList=.FALSE.
 DEALLOCATE( StrVarNames  &
-          , PartInt      &
-          , PartData     &
           , PEM%pStart   &
           , PEM%pNumber  &
           , PEM%pNext    &
           , PEM%pEnd)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+DEALLOCATE( PartInt      &
+          , PartData)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE WriteParticle
 

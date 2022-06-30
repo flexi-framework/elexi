@@ -132,8 +132,18 @@ SUBROUTINE InitLoadBalance()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_LoadBalance_Vars
-USE MOD_ReadInTools            ,ONLY: GETLOGICAL, GETREAL, GETINT
+USE MOD_LoadBalance_Vars       ,ONLY: InitLoadBalanceIsDone,DoLoadBalance,LoadBalanceSample
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLBSample,PerformPartWeightLB
+USE MOD_LoadBalance_Vars       ,ONLY: nLoadBalance,nLoadBalanceSteps,DeviationThreshold
+USE MOD_ReadInTools            ,ONLY: GETLOGICAL,GETREAL,GETINT
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceMaxSteps
+USE MOD_LoadBalance_Vars       ,ONLY: tCurrent,ElemInfoRank
+USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight
+USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPIoffsetElemSend,MPInElemRecv,MPIoffsetElemRecv
+USE MOD_LoadBalance_Vars       ,ONLY: MPInPartSend,MPIoffsetPartSend,MPInPartRecv,MPIoffsetPartRecv
+USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -188,6 +198,9 @@ ALLOCATE(tCurrent(1:LB_NTIMES))
 ! Allocation length (1:number of loadbalance times)
 ! look into piclas.h for more info about time names
 tcurrent               = 0.
+ALLOCATE(MPInElemSend(nProcessors),MPIoffsetElemSend(nProcessors),MPInElemRecv(nProcessors),MPIoffsetElemRecv(nProcessors))
+ALLOCATE(MPInPartSend(nProcessors),MPIoffsetPartSend(nProcessors),MPInPartRecv(nProcessors),MPIoffsetPartRecv(nProcessors))
+ALLOCATE(ElemInfoRank(nGlobalElems))
 #endif /*USE_LOADBALANCE*/
 
 InitLoadBalanceIsDone  = .TRUE.

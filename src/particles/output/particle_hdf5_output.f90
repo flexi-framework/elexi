@@ -469,12 +469,12 @@ INTEGER(KIND=IK)             :: SimNumSpecMin,SimNumSpecMax
 #if USE_MPI
 locnPart8     = INT(locnPart,8)
 locnPart8Recv = 0_IK
-CALL MPI_EXSCAN(locnPart8,locnPart8Recv,1,MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,iError)
+CALL MPI_EXSCAN(locnPart8,locnPart8Recv,1,MPI_INTEGER8,MPI_SUM,MPI_COMM_FLEXI,iError)
 offsetnPart   = INT(locnPart8Recv,KIND=IK)
 
 ! Last proc calculates the global number and broadcasts it
 IF(myRank.EQ.nProcessors-1) locnPart8=locnPart8Recv+locnPart8
-CALL MPI_BCAST(locnPart8,1,MPI_INTEGER8,nProcessors-1,MPI_COMM_WORLD,iError)
+CALL MPI_BCAST(locnPart8,1,MPI_INTEGER8,nProcessors-1,MPI_COMM_FLEXI,iError)
 
 ! Global numbers
 globnPart8   = locnPart8

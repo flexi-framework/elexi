@@ -218,7 +218,7 @@ IF (MPIRoot) THEN
 END IF ! MPIRoot
 
 ! Distribute PartsInElem to all procs
-CALL MPI_BCAST(PartsInElem,nGlobalElems,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
+CALL MPI_BCAST(PartsInElem,nGlobalElems,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 
 ! Every proc needs to get the information to arrive at the same timedisc
 ! No historical data and no particles in restart file

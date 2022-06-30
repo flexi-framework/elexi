@@ -402,12 +402,12 @@ IF(.NOT.PerformLBSample .AND. .NOT.PerformPartWeightLB) THEN
 ELSE
 
   ! Collect ElemTime for particles and field separately (only on root process)
-  CALL MPI_REDUCE(ElemTimeField , ElemTimeFieldTot , 1 , MPI_DOUBLE_PRECISION , MPI_SUM , 0 , MPI_COMM_WORLD , IERROR)
-  CALL MPI_REDUCE(ElemTimePart  , ElemTimePartTot  , 1 , MPI_DOUBLE_PRECISION , MPI_SUM , 0 , MPI_COMM_WORLD , IERROR)
+  CALL MPI_REDUCE(ElemTimeField,ElemTimeFieldTot,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+  CALL MPI_REDUCE(ElemTimePart ,ElemTimePartTot ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
   WeightSum = ElemTimeFieldTot            ! only correct on MPI root
   WeightSum = WeightSum + ElemTimePartTot ! only correct on MPI root
   ! send WeightSum from MPI root to all other procs
-  CALL MPI_BCAST(WeightSum,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,iError)
+  CALL MPI_BCAST(WeightSum,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
 
   WeightSum_loc = SUM(ElemTime)
 
@@ -415,9 +415,9 @@ ELSE
     IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') ' Info: The measured time of all elems is zero. ALMOSTZERO(WeightSum)=.TRUE., SUM(ElemTime)=',WeightSum_loc
   END IF
 
-  !CALL MPI_ALLREDUCE(WeightSum_loc,TargetWeight,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)
-  CALL MPI_ALLREDUCE(WeightSum_loc,MaxWeight   ,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,iError)
-  CALL MPI_ALLREDUCE(WeightSum_loc,MinWeight   ,1,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,iError)
+  !CALL MPI_ALLREDUCE(WeightSum_loc,TargetWeight,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+  CALL MPI_ALLREDUCE(WeightSum_loc,MaxWeight   ,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_FLEXI,iError)
+  CALL MPI_ALLREDUCE(WeightSum_loc,MinWeight   ,1,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_FLEXI,iError)
 
   ! Calculate the average value that is supposed to be the optimally distributed weight
   TargetWeight = WeightSum/nProcessors

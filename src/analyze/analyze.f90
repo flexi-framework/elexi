@@ -130,7 +130,7 @@ AnalyzeRefState   =GETINT('AnalyzeRefState' ,INTTOSTR(IniRefState))
 analyze_dt        =GETREAL('analyze_dt','0.0')
 nWriteData        =GETINT('nWriteData' ,'1')
 nTimeAvgData      =GETINT('nTimeAvgData' ,INTTOSTR(nWriteData))
-NAnalyze          =GETINT('NAnalyze'   ,INTTOSTR(2*(PP_N+1)))
+NAnalyze          =GETINT('NAnalyze'     ,INTTOSTR(2*(PP_N+1)))
 #if PP_dim == 3
 NAnalyzeZ         =NAnalyze
 #else

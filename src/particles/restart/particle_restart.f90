@@ -558,7 +558,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
         DEALLOCATE(CompleteIndexOfFoundParticles)
 
       END IF ! MPIRoot
-      CALL MPI_BCAST(NbrOfLostParticlesTotal,1,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
+      CALL MPI_BCAST(NbrOfLostParticlesTotal,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
       NbrOfLostParticlesTotal_old = NbrOfLostParticlesTotal
 
     END IF ! TotalNbrOfMissingParticlesSum.GT.0

@@ -87,7 +87,8 @@ INTEGER,ALLOCATABLE                 :: MPInPartSend(:)
 INTEGER,ALLOCATABLE                 :: MPIoffsetPartSend(:)
 INTEGER,ALLOCATABLE                 :: MPInPartRecv(:)
 INTEGER,ALLOCATABLE                 :: MPIoffsetPartRecv(:)
-INTEGER,ALLOCATABLE                 :: ElemInfoRank(:)
+INTEGER,POINTER                     :: ElemInfoRank_Shared(:) => NULL()
+INTEGER                             :: ElemInfoRank_Shared_Win
 #endif /*USE_LOADBALANCE*/
 
 !-----------------------------------------------------------------------------------------------------------------------------------

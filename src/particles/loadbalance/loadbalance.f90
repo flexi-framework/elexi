@@ -138,11 +138,12 @@ USE MOD_LoadBalance_Vars       ,ONLY: nLoadBalance,nLoadBalanceSteps,DeviationTh
 USE MOD_ReadInTools            ,ONLY: GETLOGICAL,GETREAL,GETINT
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceMaxSteps
-USE MOD_LoadBalance_Vars       ,ONLY: tCurrent,ElemInfoRank
-USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight
+USE MOD_LoadBalance_Vars       ,ONLY: tCurrent,ParticleMPIWeight
 USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPIoffsetElemSend,MPInElemRecv,MPIoffsetElemRecv
 USE MOD_LoadBalance_Vars       ,ONLY: MPInPartSend,MPIoffsetPartSend,MPInPartRecv,MPIoffsetPartRecv
+USE MOD_LoadBalance_Vars       ,ONLY: ElemInfoRank_Shared,ElemInfoRank_Shared_Win
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
+USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -200,7 +201,8 @@ ALLOCATE(tCurrent(1:LB_NTIMES))
 tcurrent               = 0.
 ALLOCATE(MPInElemSend(nProcessors),MPIoffsetElemSend(nProcessors),MPInElemRecv(nProcessors),MPIoffsetElemRecv(nProcessors))
 ALLOCATE(MPInPartSend(nProcessors),MPIoffsetPartSend(nProcessors),MPInPartRecv(nProcessors),MPIoffsetPartRecv(nProcessors))
-ALLOCATE(ElemInfoRank(nGlobalElems))
+CALL Allocate_Shared((/nGlobalElems/),ElemInfoRank_Shared_Win,ElemInfoRank_Shared)
+CALL MPI_WIN_LOCK_ALL(0,ElemInfoRank_Shared_Win,iError)
 #endif /*USE_LOADBALANCE*/
 
 InitLoadBalanceIsDone  = .TRUE.
@@ -481,7 +483,12 @@ END SUBROUTINE PrintImbalance
 !===================================================================================================================================
 SUBROUTINE FinalizeLoadBalance()
 ! MODULES
+USE MOD_Globals
 USE MOD_LoadBalance_Vars
+#if USE_LOADBALANCE
+USE MOD_Particle_MPI_Shared
+USE MOD_Particle_MPI_Shared_Vars   ,ONLY: MPI_COMM_SHARED
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -492,6 +499,17 @@ IMPLICIT NONE
 
 ! Deallocate arrays
 SDEALLOCATE(tCurrent)
+
+#if USE_LOADBALANCE
+! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+CALL MPI_WIN_UNLOCK_ALL(ElemInfoRank_Shared_Win,iError)
+CALL MPI_WIN_FREE(ElemInfoRank_Shared_Win,iError)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+
+! Then, free the pointers or arrays
+NULLIFY(ElemInfoRank_Shared)
+#endif /*USE_LOADBALANCE*/
 
 InitLoadBalanceIsDone = .FALSE.
 

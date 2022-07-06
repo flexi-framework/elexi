@@ -52,8 +52,9 @@ USE MOD_Filter                     ,ONLY: InitFilter,FinalizeFilter
 USE MOD_Lifting                    ,ONLY: InitLifting,FinalizeLifting
 USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ElemTimeField,ElemTimePart
 USE MOD_LoadBalance_Vars           ,ONLY: nLoadBalanceSteps,LoadBalanceMaxSteps,NewImbalance,MinWeight,MaxWeight
-USE MOD_LoadBalance_Vars           ,ONLY: MPInElemSend,MPIoffsetElemSend,MPInElemRecv,MPIoffsetElemRecv,ElemInfoRank
+USE MOD_LoadBalance_Vars           ,ONLY: MPInElemSend,MPIoffsetElemSend,MPInElemRecv,MPIoffsetElemRecv
 USE MOD_LoadBalance_Vars           ,ONLY: nElemsOld,offsetElemOld
+USE MOD_LoadBalance_Vars           ,ONLY: ElemInfoRank_Shared,ElemInfoRank_Shared_Win
 USE MOD_LoadBalance_Vars           ,ONLY: CurrentImbalance,MaxWeight,MinWeight
 USE MOD_LoadBalance_Vars           ,ONLY: PerformLoadBalance
 USE MOD_IO_HDF5                    ,ONLY: ElementOut,FieldOut
@@ -65,6 +66,8 @@ USE MOD_Overintegration            ,ONLY: InitOverintegration,FinalizeOverintegr
 USE MOD_Particle_Init              ,ONLY: InitParticles,FinalizeParticles
 USE MOD_Particle_Mesh_Vars         ,ONLY: ElemInfo_Shared
 USE MOD_Particle_MPI               ,ONLY: InitParticleMPI,FinalizeParticleMPI
+USE MOD_Particle_MPI_Shared        ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared_Vars   ,ONLY: myComputeNodeRank
 USE MOD_Predictor                  ,ONLY: InitPredictor,FinalizePredictor
 USE MOD_RecordPoints               ,ONLY: InitRecordPoints,FinalizeRecordPoints
 USE MOD_ReadInTools                ,ONLY: prms
@@ -129,7 +132,9 @@ RestartMode = 1
 
 nElemsOld     = nElems
 offsetElemOld = offsetElem
-ElemInfoRank  = ElemInfo_Shared(ELEM_RANK,:)
+IF (myComputeNodeRank.EQ.0) &
+  ElemInfoRank_Shared  = ElemInfo_Shared(ELEM_RANK,:)
+CALL BARRIER_AND_SYNC(ElemInfoRank_Shared_Win,iError)
 
 !-- Finalize every mesh dependent routine
 CALL FinalizeRecordPoints()
@@ -217,7 +222,7 @@ MPInElemRecv      = 0
 MPIoffsetElemRecv = 0
 ! Loop with the new element over the old elem distribution
 DO iElem = 1,nElems
-  ElemRank               = ElemInfoRank(offsetElem+iElem)+1
+  ElemRank               = ElemInfoRank_Shared(offsetElem+iElem)+1
   MPInElemRecv(ElemRank) = MPInElemRecv(ElemRank) + 1
 END DO
 

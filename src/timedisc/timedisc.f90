@@ -144,7 +144,7 @@ IF(DoPPLimiter) CALL PPLimiter()
 
 IF(.NOT.DoRestart) THEN
   SWRITE(UNIT_stdOut,'(A)') ' WRITING INITIAL SOLUTION:'
-ELSE
+ELSEIF (FlushInitialState) THEN
   SWRITE(UNIT_stdOut,'(A)') ' REWRITING SOLUTION:'
 END IF
 
@@ -154,7 +154,7 @@ CALL AnalyzeTestCase(t,.FALSE.)
 ! Write the state at time=0, i.e. the initial condition
 IF (.NOT.DoRestart                                                                      &
   .OR.FlushInitialState                                                                 &
-  .OR..NOT.FILEEXISTS(TRIM(TIMESTAMP(TRIM(ProjectName)//'_STATE',t))//'.h5'))&
+  .OR..NOT.FILEEXISTS(TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',t))//'.h5'))&
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.FALSE.)
 CALL Visualize(t,U)
 

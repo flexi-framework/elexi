@@ -1,3 +1,36 @@
+# Settings
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+# Set up reggie environment
+before_script:
+  - ulimit -s unlimited
+  - module list || true
+  - python3 -V  || true
+  - python2 -V  || true
+  - if [ -n "${DO_CORE_SPLIT}" ]; then
+      echo " FLEXI_SPLIT_TYPE=OMPI_COMM_TYPE_CORE. Splitting shared memory domains on processor-level!";
+      export FLEXI_SPLIT_TYPE=OMPI_COMM_TYPE_CORE;
+    else
+      if [ -n "${DO_NODE_SPLIT}" ]; then
+        echo " FLEXI_SPLIT_TYPE=PICLAS_COMM_TYPE_NODE. Splitting shared memory domains on sub-node-level with 2 cores per node!";
+        export FLEXI_SPLIT_TYPE=PICLAS_COMM_TYPE_NODE;
+      else
+        echo "Splitting shared memory domains on node-level! Set variable DO_CORE_SPLIT=T to force core-level OR DO_NODE_SPLIT=T to force sub-node-level shared memory splitting for all regression tests.";
+      fi
+    fi
+  - if [ -n "${DO_NINJA}" ]; then
+      echo " Setting CMAKE_GENERATOR=Ninja to use ninja generator";
+      export CMAKE_GENERATOR=Ninja;
+      export GENERATOR=ninja;
+      export NCORES=0;
+    else
+      echo " Using default generator [Unix Makefiles] and [make] for compiling.";
+      export CMAKE_GENERATOR=;
+      export GENERATOR=make;
+      export NCORES=;
+    fi
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+# Stages
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
 stages:
   - build
   - dg_checkin
@@ -81,7 +114,7 @@ build_gnu:
   script:
     - mkdir -p build_gnu ; cd build_gnu
     - git clone git@gitlab.com:reggie2.0/reggie2.0.git
-    - cmake .. -DLIBS_BUILD_HDF5=OFF ; make -j 6
+    - cmake .. -DLIBS_BUILD_HDF5=OFF ; $GENERATOR -j $NCORES
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "dg_checkin":
@@ -94,7 +127,7 @@ gnu:
   script:
     - rm -r build_gnu; mkdir -p build_gnu; cd build_gnu
     - git clone git@gitlab.com:reggie2.0/reggie2.0.git
-    - cmake .. -DLIBS_BUILD_HDF5=OFF ; make -j 6
+    - cmake .. -DLIBS_BUILD_HDF5=OFF ; $GENERATOR -j $NCORES
     - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
 
 # gnu_sanitize:

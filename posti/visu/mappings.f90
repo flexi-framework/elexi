@@ -82,7 +82,7 @@ CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData_loc(:)
 !===================================================================================================================================
 ! Build partition to get nElems
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL BuildPartition()
+CALL BuildPartition(MeshFile)
 CALL CloseDataFile()
 
 SDEALLOCATE(FV_Elems_loc)

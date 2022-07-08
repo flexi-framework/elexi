@@ -143,6 +143,10 @@ CALL prms%CreateLogicalOption(      'Part-RandomPartDiam'      , 'Flag to enable
 
 CALL prms%CreateRealArrayOption(    'Part-Gravity'             , 'Gravitational acceleration as vector'                            &
                                                                , '0. , 0. , 0.')
+CALL prms%CreateRealOption(         'Part-charactLength'       , 'Characteristic length scale for Stokes number'                   &
+                                                                , '1.')
+CALL prms%CreateIntOption(          'Part-IniRefState'         , 'IniRefState for the calculation of the Stokes number'            &
+                                                                , '1')
 
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
@@ -213,7 +217,7 @@ CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diam
 CALL prms%CreateRealOption(         'Part-Species[$]-DensityIC' , 'Particle density of species [$] [kg/m^3]'                       &
                                                                 , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-StokesIC'  , 'Particle Stokes number of species [$]'                          &
-                                                                , '1.'      , numberedmulti=.TRUE.)
+                                                                , '0.'      , numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(       'Part-Species[$]-velocityDistribution', 'Used velocity distribution.\n'                      //&
                                                                   ' - constant          : Emission with constant velocity\n'     //&
                                                                   ' - constant_turbulent: Emission with constant velocity plus'  //&
@@ -999,7 +1003,9 @@ USE MOD_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_Particle_Vars
 USE MOD_ISO_VARYING_STRING
-USE MOD_Part_RHS, ONLY: InitRHS
+USE MOD_Part_RHS              ,ONLY: InitRHS
+USE MOD_Viscosity
+USE MOD_Equation_Vars         ,ONLY: RefStatePrim
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1012,9 +1018,13 @@ INTEGER               :: iSpec,iInit,iExclude
 CHARACTER(32)         :: tmpStr,tmpStr2,tmpStr3
 CHARACTER(255)        :: Filename_loc             ! specifying keyword for velocity distribution
 INTEGER               :: PartField_shape(2)
-INTEGER               :: drag_factor
+INTEGER               :: drag_factor,RefStatePart
+REAL                  :: tmp,charactLength,mu
 !===================================================================================================================================
 ! Loop over all species and get requested data
+RefStatePart            = GETINT('Part-IniRefState'   )
+! characteristic length scale
+charactLength           = GETREAL('Part-charactLength')
 DO iSpec = 1, nSpecies
   LBWRITE(UNIT_stdOut,'(66("-"))')
   WRITE(UNIT=tmpStr,FMT='(I2)') iSpec
@@ -1034,20 +1044,34 @@ DO iSpec = 1, nSpecies
     CASE DEFAULT
       ! do nothing
   END SELECT
-  Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'         )
-  Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'     )
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'      )
-  IF (Species(iSpec)%MassIC .EQ. 0.) THEN
-    IF (Species(iSpec)%DiameterIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and diameter both zero!')
-    IF (Species(iSpec)%DensityIC  .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and density  both zero!')
-    Species(iSpec)%MassIC = MASS_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%DiameterIC)
-    LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Mass of species (spherical) ', iSpec, ' = ', Species(iSpec)%MassIC
-  ELSEIF (Species(iSpec)%DiameterIC .EQ. 0.) THEN
-    IF (Species(iSpec)%DensityIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle density and diameter both zero!')
-    Species(iSpec)%DiameterIC = DIAM_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%MassIC)
+  Species(iSpec)%StokesIC              = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-StokesIC'       )
+
+  IF (Species(iSpec)%RHSMethod .EQ. RHS_CONVERGENCE) THEN
+    IF (Species(iSpec)%StokesIC .EQ. 0) CALL COLLECTIVESTOP(__STAMP__,'Stokes number is zero!')
+  ELSEIF (Species(iSpec)%StokesIC .GT. 0.) THEN
+    ! dyn. viscosity
+    mu = VISCOSITY_PRIM(RefStatePrim(:,RefStatePart))
+    tmp = 18 * mu * charactLength / (Species(iSpec)%DensityIC * NORM2(RefStatePrim(VELV,RefStatePart)))
+    Species(iSpec)%DiameterIC = SQRT(Species(iSpec)%StokesIC * tmp)
     LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
+    Species(iSpec)%MassIC = MASS_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%DiameterIC)
+    LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Mass of species (spherical)     ', iSpec, ' = ', Species(iSpec)%MassIC
+  ELSE
+    Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'         )
+    Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'     )
+    IF (Species(iSpec)%MassIC .EQ. 0.) THEN
+      IF (Species(iSpec)%DiameterIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and diameter both zero!')
+      IF (Species(iSpec)%DensityIC  .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and density  both zero!')
+      Species(iSpec)%MassIC = MASS_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%DiameterIC)
+      LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Mass of species (spherical)     ', iSpec, ' = ', Species(iSpec)%MassIC
+    ELSEIF (Species(iSpec)%DiameterIC .EQ. 0.) THEN
+      IF (Species(iSpec)%DensityIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle density and diameter both zero!')
+      Species(iSpec)%DiameterIC = DIAM_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%MassIC)
+      LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
+    END IF
   END IF
-  Species(iSpec)%StokesIC              = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-StokesIC'         )
+
   Species(iSpec)%LowVeloThreshold      = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-LowVeloThreshold' )
   Species(iSpec)%SphericityIC          = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-SphericityIC'     )
   ! Warn when outside valid range of Haider model

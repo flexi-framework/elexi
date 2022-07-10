@@ -1009,9 +1009,7 @@ USE MOD_Equation_Vars         ,ONLY: RefStatePrim
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER               :: iSpec,iInit,iExclude
@@ -1019,7 +1017,7 @@ CHARACTER(32)         :: tmpStr,tmpStr2,tmpStr3
 CHARACTER(255)        :: Filename_loc             ! specifying keyword for velocity distribution
 INTEGER               :: PartField_shape(2)
 INTEGER               :: drag_factor,RefStatePart
-REAL                  :: tmp,charactLength,mu
+REAL                  :: tmp,charactLength,mu,prim(1:PP_nVarPrim)
 !===================================================================================================================================
 ! Loop over all species and get requested data
 RefStatePart            = GETINT('Part-IniRefState'   )
@@ -1051,7 +1049,8 @@ DO iSpec = 1, nSpecies
     IF (Species(iSpec)%StokesIC .EQ. 0) CALL COLLECTIVESTOP(__STAMP__,'Stokes number is zero!')
   ELSEIF (Species(iSpec)%StokesIC .GT. 0.) THEN
     ! dyn. viscosity
-    mu = VISCOSITY_PRIM(RefStatePrim(:,RefStatePart))
+    prim=RefStatePrim(:,RefStatePart)
+    mu = VISCOSITY_PRIM(prim)
     tmp = 18 * mu * charactLength / (Species(iSpec)%DensityIC * NORM2(RefStatePrim(VELV,RefStatePart)))
     Species(iSpec)%DiameterIC = SQRT(Species(iSpec)%StokesIC * tmp)
     LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC

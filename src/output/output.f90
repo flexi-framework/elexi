@@ -397,8 +397,8 @@ IF (.NOT.MPIRoot) RETURN
 IF (nParticleInDomain.EQ.0) THEN
 #endif /*USE_PARTICLES*/
   IF (mins.LT.1 .AND. hours.EQ.0 .AND. days.EQ.0) THEN
-    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,A3,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
-    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]:<1 min remaining',' |',              &
+    WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,A3,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)                               &
+    '   Time = ', t,'  dt = ', dt, ' ', ' ETA [d:h:m]:<1 min remaining',' |',                                          &
     REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.),0)),'| [',percent,'%] ',&
     ACHAR(13) ! ACHAR(13) is carriage return
   ELSE
@@ -409,9 +409,9 @@ IF (nParticleInDomain.EQ.0) THEN
   END IF
 #if USE_PARTICLES
 ELSE
-  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I7,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString) &
-  '  Time = ', t,'  dt = ', dt, ' ', ' # Part inside = ', nParticleInDomain,                                          &
-  '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                              &
+  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,E10.4,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString) &
+  '  Time = ', t,'  dt = ', dt, ' ', ' # Particle = ', REAL(nParticleInDomain),                                         &
+  '  ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),'  |',                                                &
   REPEAT('=',MAX(CEILING(percent*(barWidth-15)/100.)-1,0)),'>',REPEAT(' ',(barWidth-15)-MAX(CEILING(percent*(barWidth-15)/100.),0)),'| [',percent,'%] ',&
   ACHAR(13) ! ACHAR(13) is carriage return
 END IF

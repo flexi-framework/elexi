@@ -245,7 +245,6 @@ USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: ViscousTimeStep,CalcTimeStart,nCalcTimeStep
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if USE_PARTICLES
-USE MOD_Particle_Surface_Flux ,ONLY: InitializeParticleSurfaceFlux
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep,ManualTimeStep
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
@@ -295,11 +294,6 @@ IF (errType.NE.0) CALL Abort(__STAMP__,&
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,ES16.7)') ' Initial Timestep  : ', dt
 IF(ViscousTimeStep.AND.MPIRoot) WRITE(UNIT_stdOut,'(A)') ' Viscous timestep dominates! '
-
-#if USE_PARTICLES
-! Initialize surface flux
-CALL InitializeParticleSurfaceFlux()
-#endif /*USE_PARTICLES*/
 
 #if USE_LOADBALANCE
 IF (DoInitialAutoRestart) THEN

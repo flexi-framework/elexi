@@ -36,8 +36,8 @@ END INTERFACE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-REAL             :: t=0.                               !< current physical time
-REAL             :: dt                                 !< current timestep
+REAL             :: t  = 0.                            !< current physical time
+REAL             :: dt = 0.                            !< current timestep
 REAL             :: dt_old                             !< last timestep
 REAL             :: dt_dynmin                          !< minimal allowed timestep
 REAL             :: dt_kill                            !< Kill timestep for FLEXI

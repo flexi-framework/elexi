@@ -268,7 +268,7 @@ CALL prms%CreateRealOption(         'Part-Species[$]-InflowRiseTime', 'Time to r
 CALL prms%CreateIntOption(          'Part-Species[$]-ParticleEmissionType', 'Define Emission Type for particles (volume'         //&
                                                                   ' emission)\n'                                                 //&
                                                                   '1 = emission rate in part/s,\n'                               //&
-                                                                  '2 = emission rate part/iteration\n'                             &
+                                                                  '2 = emission rate in part/iteration\n'                             &
                                                                 , '2'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-ParticleEmission', 'Emission rate in part/s or part/iteration.'               &
                                                                 , '0.'      , numberedmulti=.TRUE.)
@@ -351,7 +351,7 @@ CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-InflowRiseTime', 'T
 CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-ParticleEmissionType', 'Define Emission Type for particles (volume' //&
                                                                   ' emission)\n'                                                 //&
                                                                   '1 = emission rate in part/s,\n'                               //&
-                                                                  '2 = emission rate part/iteration\n'                             &
+                                                                  '2 = emission rate in part/iteration\n'                             &
                                                                 , '1'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-ParticleEmission', 'Emission rate in part/s or part/iteration.'       &
                                                                 , '0.'      , numberedmulti=.TRUE.)
@@ -559,6 +559,7 @@ USE MOD_Particle_Mesh_Build,        ONLY: InitElemVolumes
 USE MOD_Particle_Mesh_Vars,         ONLY: LocalVolume,MeshVolume
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
 USE MOD_Particle_Surfaces,          ONLY: InitParticleSurfaces
+USE MOD_Particle_Surface_Flux,      ONLY: InitializeParticleSurfaceFlux
 USE MOD_Particle_TimeDisc,          ONLY: Particle_InitTimeDisc
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,nSpecies,PDM
@@ -667,6 +668,9 @@ CALL InitParticleCommSize()
 
 ! Rebuild previous sampling on surfMesh
 CALL RestartParticleBoundarySampling()
+
+! Initialize surface flux
+CALL InitializeParticleSurfaceFlux()
 
 ParticlesInitIsDone=.TRUE.
 

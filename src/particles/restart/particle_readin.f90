@@ -357,7 +357,7 @@ ELSE
         END IF
       END IF ! TurbPartDataExists
 
-      SWRITE(UNIT_stdOut,'(A,I0)')  ' | Particle(s) read from restart file: ',PartInt(ELEM_LastPartInd,nGlobalElems)
+      IF (myRank.EQ.nProcessors-1) WRITE(UNIT_stdOut,'(A,I0)')  ' | Particle(s) read from restart file: ',PartInt(ELEM_LastPartInd,nGlobalElems)
     ELSE
       SWRITE(UNIT_stdOut,'(A)') ' PartData does not exists in restart file'
       SWRITE(UNIT_stdOut,'(132("-"))')

@@ -1341,8 +1341,6 @@ CALL FinalizeSurfCommunication()
 IF (MPI_COMM_LEADERS_SURF.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS_SURF,iERROR)
 
 MDEALLOCATE(SurfSideArea_Shared)
-MDEALLOCATE(GlobalSide2SurfSide_Shared)
-MDEALLOCATE(SurfSide2GlobalSide_Shared)
 #endif /*USE_MPI*/
 
 ! Then, free the pointers or arrays

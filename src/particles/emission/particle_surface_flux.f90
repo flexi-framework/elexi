@@ -312,7 +312,7 @@ END IF
 
 SDEALLOCATE(tmp_BezierControlPoints2D)
 
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX DONE'
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitializeParticleSurfaceflux

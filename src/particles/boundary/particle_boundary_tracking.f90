@@ -73,23 +73,28 @@ SUBROUTINE InitParticleBoundaryTracking()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_ReadInTools            ,ONLY: GETSTR,GETINT,GETLOGICAL,GETREAL
-USE MOD_Interpolation_Vars     ,ONLY: InterpolationInitIsDone
-USE MOD_Particle_Analyze_Vars  ,ONLY: doParticleDispersionTrack,doParticlePathTrack
-USE MOD_Particle_Boundary_Vars ,ONLY: doParticleImpactTrack
-USE MOD_Particle_Boundary_Vars ,ONLY: PartStateBoundary,PartStateBoundaryVecLength,ImpactDataSize
-USE MOD_Particle_Boundary_Vars ,ONLY: ImpactTrackInitIsDone,ImpactSideOnProc
-USE MOD_Particle_Boundary_Vars ,ONLY: nSurfTotalSides
-USE MOD_Particle_Vars          ,ONLY: doPartIndex,doWritePartDiam
-! #if USE_MPI
-! USE MOD_Particle_Boundary_Vars ,ONLY: nImpactProcs
-! #endif /*USE_MPI*/
+USE MOD_ReadInTools              ,ONLY: GETSTR,GETINT,GETLOGICAL,GETREAL
+USE MOD_Interpolation_Vars       ,ONLY: InterpolationInitIsDone
+USE MOD_Particle_Analyze_Vars    ,ONLY: doParticleDispersionTrack,doParticlePathTrack
+USE MOD_Particle_Boundary_Vars   ,ONLY: doParticleImpactTrack
+USE MOD_Particle_Boundary_Vars   ,ONLY: PartStateBoundary,PartStateBoundaryVecLength,ImpactDataSize
+USE MOD_Particle_Boundary_Vars   ,ONLY: ImpactTrackInitIsDone,ImpactSideOnProc
+USE MOD_Particle_Boundary_Vars   ,ONLY: nSurfTotalSides
+USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSide2GlobalSide,SurfSide2GlobalSide_Shared
+USE MOD_Particle_Boundary_Vars   ,ONLY: GlobalSide2SurfSide,GlobalSide2SurfSide_Shared
+USE MOD_Particle_Boundary_Vars   ,ONLY: SurfBCName,SurfSampleBCs
+USE MOD_Particle_Vars            ,ONLY: doPartIndex,doWritePartDiam
+#if USE_MPI
+USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSide2GlobalSide_Shared_Win,GlobalSide2SurfSide_Shared_Win
+USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+LOGICAL               :: ImpactSideGlobal
 #if !USE_MPI
 INTEGER,PARAMETER     :: nImpactProcs = 1
 #endif /*!USE_MPI*/
@@ -120,18 +125,54 @@ IF (doParticleDispersionTrack.OR.doParticlePathTrack) ImpactDataSize = ImpactDat
 ! surfaces sides are determined in particle_boundary_sampling.f90!
 ImpactSideOnProc = MERGE(.TRUE.,.FALSE.,nSurfTotalSides.NE.0)
 #if USE_MPI
-CALL MPI_ALLREDUCE(ImpactSideOnProc,doParticleImpactTrack,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(ImpactSideOnProc,ImpactSideGlobal,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
 ! Initialize impact tracking communicator (needed for output)
 ! CALL InitImpactCommunication()
 #else
-doParticleImpactTrack = ImpactSideOnProc
+ImpactSideGlobal = ImpactSideOnProc
 #endif /*USE_MPI*/
 
+! Free the arrays if they were previously associated
+IF (doParticleImpactTrack .AND. .NOT.ImpactSideGlobal) THEN
+#if USE_MPI
+  ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+  CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+
+  CALL MPI_WIN_UNLOCK_ALL(SurfSide2GlobalSide_Shared_Win,iError)
+  CALL MPI_WIN_FREE(      SurfSide2GlobalSide_Shared_Win,iError)
+  CALL MPI_WIN_UNLOCK_ALL(GlobalSide2SurfSide_Shared_Win,iError)
+  CALL MPI_WIN_FREE(      GlobalSide2SurfSide_Shared_Win,iError)
+
+  CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+#endif /*USE_MPI*/
+
+  ! Then, free the pointers or arrays
+  MDEALLOCATE(GlobalSide2SurfSide)
+  MDEALLOCATE(GlobalSide2SurfSide_Shared)
+  MDEALLOCATE(SurfSide2GlobalSide)
+  MDEALLOCATE(SurfSide2GlobalSide_Shared)
+
+  ! Finally, free the local arrays
+  SDEALLOCATE(SurfBCName)
+  SDEALLOCATE(SurfSampleBCs)
+
+  doParticleImpactTrack = .FALSE.
+  LBWRITE(UNIT_stdOut,'(A)')' | Impact tracking requested but no impact faces found! Disabling ...'
+  LBWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
+  LBWRITE(UNIT_stdOut,'(132("-"))')
+
+  RETURN
+END IF
+
 ! Allocate and nullify impact tracking arrays
-ALLOCATE(PartStateBoundary(ImpactDataSize,1:10))
-PartStateBoundary          = 0.
-PartStateBoundaryVecLength = 0
-LBWRITE(UNIT_stdOut,'(A)')' | Starting impact tracking ...'
+IF (.NOT.ALLOCATED(PartStateBoundary)) THEN
+  ALLOCATE(PartStateBoundary(ImpactDataSize,1:10))
+  PartStateBoundary          = 0.
+  PartStateBoundaryVecLength = 0
+  LBWRITE(UNIT_stdOut,'(A)')' | Starting impact tracking ...'
+ELSE
+  SWRITE(UNIT_stdOut,'(A)')' | Restarting impact tracking ...'
+END IF
 
 LBWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
 LBWRITE(UNIT_stdOut,'(132("-"))')

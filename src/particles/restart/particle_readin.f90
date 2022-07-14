@@ -259,11 +259,7 @@ ELSE
   ! SDEALLOCATE(PartInt)
   ! SDEALLOCATE(PartData)
 
-#if USE_MPI
-  StartT=MPI_WTIME()
-#else
-  CALL CPU_TIME(StartT)
-#endif
+  GETTIME(StartT)
   SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE...'
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 

@@ -67,11 +67,7 @@ REAL                           :: StartT,EndT
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)')' DOMAIN DECOMPOSITION ...'
 
-#if USE_MPI
-StartT=MPI_WTIME()
-#else
-CALL CPU_TIME(StartT)
-#endif
+GETTIME(StartT)
 
 SDEALLOCATE(LoadDistri)
 ALLOCATE(LoadDistri(   0:nProcessors-1))

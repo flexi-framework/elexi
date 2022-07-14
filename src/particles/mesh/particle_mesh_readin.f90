@@ -559,11 +559,7 @@ INTEGER                        :: offsetNodeID!,nNodeIDs
 IF (postiMode) RETURN
 
 ! Start timer: finished in FinishCommunicateMeshReadin()
-#if USE_MPI
-StartT=MPI_WTIME()
-#else
-CALL CPU_TIME(StartT)
-#endif
+GETTIME(StartT)
 
 #if USE_MPI
 ! MPISharedInitIsDone is not set if this routine is called from posti

@@ -278,11 +278,7 @@ IF (.NOT.PerformLoadBalance) THEN
 
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ...'
   SWRITE(UNIT_stdOut,'(132("-"))')
-#if USE_MPI
-  StartT=MPI_WTIME()
-#else
-  CALL CPU_TIME(StartT)
-#endif
+  GETTIME(StartT)
 #if USE_LOADBALANCE
 END IF ! .NOT.PerformLoadBalance
 #endif /*LOADBALANCE*/

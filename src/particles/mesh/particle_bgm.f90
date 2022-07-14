@@ -401,11 +401,7 @@ END DO
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,maxCellRadius,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_SHARED,iError)
 CALL PrintOption('max. cell radius','INFO',RealOpt=maxCellRadius)
 SWRITE(UNIT_stdOut,'(A)') ' | Building halo BGM ...'
-#if USE_MPI
-StartT=MPI_WTIME()
-#else
-CALL CPU_TIME(StartT)
-#endif /*USE_MPI*/
+GETTIME(StartT)
 
 ! ! enlarge BGM with halo region (all element outside of this region will be cut off)
 IF (GEO%nPeriodicVectors.GT.0 .AND. TrackingMethod.EQ.REFMAPPING) THEN
@@ -1140,11 +1136,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 #endif /*USE_MPI*/
 
 SWRITE(UNIT_stdOut,'(A)')' BUILDING FIBGM ELEMENT MAPPING ...'
-#if USE_MPI
-StartT=MPI_WTIME()
-#else
-CALL CPU_TIME(StartT)
-#endif /*USE_MPI*/
+GETTIME(StartT)
 
 #if USE_MPI
 firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1

@@ -61,6 +61,7 @@ USE MOD_Particle_Mesh_Vars,         ONLY: ElemEpsOneCell
 USE MOD_Mesh_Vars,                  ONLY: offsetElem
 USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
 ! Particles
+USE MOD_Particle_HDF5_Output,       ONLY: GetOffsetAndGlobalNumberOfParts
 USE MOD_Part_Tools,                 ONLY: UpdateNextFreePosition
 USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies
 USE MOD_Particle_Vars,              ONLY: PartInt,PartData,TurbPartData
@@ -498,6 +499,9 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,ImpactRestart,1,MPI_LOGICAL,MPI_LOR,PartMPI%COMM
 #endif
 
 IF (ImpactRestart) CALL CalcSurfaceValues(restart_opt=.TRUE.)
+
+! Communicate the total number and offset
+CALL GetOffsetAndGlobalNumberOfParts('WriteParticleToHDF5',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
 
 !#if USE_MPI
 !CALL MPI_BARRIER(PartMPI%COMM,iError)

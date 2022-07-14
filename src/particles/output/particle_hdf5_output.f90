@@ -17,7 +17,7 @@
 !==================================================================================================================================
 !> Module for the Particle HDF5 Output
 !==================================================================================================================================
-MODULE MOD_Particle_HDF5_output
+MODULE MOD_Particle_HDF5_Output
 ! MODULES
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output
@@ -34,6 +34,10 @@ INTERFACE WriteParticle
   MODULE PROCEDURE WriteParticle
 END INTERFACE
 
+INTERFACE GetOffsetAndGlobalNumberOfParts
+  MODULE PROCEDURE GetOffsetAndGlobalNumberOfParts
+END INTERFACE
+
 #if USE_LOADBALANCE
 !INTERFACE WriteElemDataToSeparateContainer
 !  MODULE PROCEDURE WriteElemDataToSeparateContainer
@@ -45,6 +49,7 @@ END INTERFACE
 #endif /*USE_LOADBALANCE*/
 
 PUBLIC :: WriteParticle
+PUBLIC :: GetOffsetAndGlobalNumberOfParts
 #if USE_MPI
 PUBLIC :: DistributedWriteArray
 #endif
@@ -689,4 +694,4 @@ CALL GatheredWriteArray(FileName                               ,&
 END SUBROUTINE WriteElemTime
 #endif /*USE_LOADBALANCE*/
 
-END MODULE MOD_Particle_HDF5_output
+END MODULE MOD_Particle_HDF5_Output

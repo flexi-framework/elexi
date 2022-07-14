@@ -2521,6 +2521,9 @@ END SUBROUTINE FinalizeParameters
 SUBROUTINE PrintOption(NameOpt,InfoOpt,IntOpt,IntArrayOpt,RealOpt,RealArrayOpt,LogOpt,LogArrayOpt,StrOpt)
 ! MODULES
 USE MOD_Globals               ,ONLY: Abort,MPIRoot
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars      ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -2546,10 +2549,12 @@ IF (.NOT.MPIRoot) RETURN
 
 ! Return if running loadbalance and printing static information
 #if USE_LOADBALANCE
-SELECT CASE(TRIM(InfoOpt))
-  CASE("INFO","PARAM")
-    RETURN
-END SELECT
+IF (PerformLoadBalance) THEN
+  SELECT CASE(TRIM(InfoOpt))
+    CASE("INFO","PARAM")
+      RETURN
+  END SELECT
+END IF
 #endif /*USE_LOADBALANCE*/
 
 ! set length of name

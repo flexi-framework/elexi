@@ -2175,12 +2175,12 @@ SUBROUTINE ComputePeriodicVec()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Mesh_Vars                ,ONLY: NGeo,offsetElem,BoundaryType
+USE MOD_Mesh_Vars                ,ONLY: nElems,NGeo,offsetElem,BoundaryType
 USE MOD_Particle_Boundary_Vars   ,ONLY: PartBound
 USE MOD_Particle_Globals         ,ONLY: VECNORM,ALMOSTZERO
 USE MOD_Particle_Mesh_Vars       ,ONLY: GEO,ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalNonUniqueSideID
-USE MOD_Mesh_Vars                ,ONLY: nElems
+USE MOD_ReadInTools              ,ONLY: PrintOption
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -2189,6 +2189,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER,PARAMETER              :: iNode=1
 REAL,PARAMETER                 :: CartesianTol=1.E-12
+CHARACTER(1)                   :: tmpStr
 INTEGER                        :: iVec
 INTEGER                        :: firstElem,lastElem,NbSideID,BCALPHA,flip
 INTEGER                        :: SideID,ElemID,NbElemID,localSideID,localSideNbID,nStart
@@ -2303,16 +2304,11 @@ END DO
 
 SDEALLOCATE(PeriodicFound)
 
-#if USE_MPI
-IF (myRank.EQ.0) THEN
-#endif /*USE_MPI*/
-  WRITE(UNIT_stdOut,'(A,I0,A)') ' Found ',GEO%nPeriodicVectors,' periodic vectors for particle tracking'
-  DO iVec = 1,GEO%nPeriodicVectors
-    WRITE(UNIT_stdOut,'(A,I1,A,F12.8,2(", ",F12.8))') ' | Periodic vector ',iVec,': ', GEO%PeriodicVectors(:,iVec)
-  END DO
-#if USE_MPI
-END IF
-#endif /*USE_MPI*/
+SWRITE(UNIT_stdOut,'(A,I0,A)') ' | Found ',GEO%nPeriodicVectors,' periodic vectors for particle tracking'
+DO iVec = 1,GEO%nPeriodicVectors
+  WRITE(UNIT=tmpStr,FMT='(I1)') iVec
+  CALL PrintOption('Periodic vector '//TRIM(tmpStr),'INFO',RealArrayOpt=GEO%PeriodicVectors(:,iVec))
+END DO
 
 END SUBROUTINE ComputePeriodicVec
 

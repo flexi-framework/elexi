@@ -410,7 +410,7 @@ WRITE(UNIT_stdOut,'(A)') ' Performing iterative search for new load distribution
 
 DO WHILE(.NOT.FoundDistribution)
   iDistriIter     = iDistriIter+1
-  WRITE(UNIT_stdOut,'(A,I4,A,ES15.7)') ' | Iteration ',iDistriIter,' with TargetWeight ',TargetWeight_loc
+  WRITE(UNIT_stdOut,'(A,I7,A,ES15.7)') ' | Iteration ',iDistriIter,' with TargetWeight ',TargetWeight_loc
 
   TargetWeight_loc = TargetWeight_loc+LastProcDiff/REAL(nProcs)
   curiElem         = 1
@@ -493,7 +493,7 @@ DO WHILE(.NOT.FoundDistribution)
 
 END DO ! .NOT.FoundDistribution
 
-WRITE(UNIT_stdOut,'(A,A17,ES11.4,A,ES11.4,A)') ' Accepted distribution','    TargetWeight: ',TargetWeight_loc,'    (last proc: ',LastProcDiff,')'
+WRITE(UNIT_stdOut,'(A,A17,ES15.7,A,ES15.7,A)') ' Accepted distribution','    TargetWeight: ',TargetWeight_loc,'    (last proc: ',LastProcDiff,')'
 
 END SUBROUTINE WeightDistribution_ElemTimeLeast
 

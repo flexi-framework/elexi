@@ -100,9 +100,10 @@ LOGICAL                            :: InElementCheck
 REAL                               :: xi(3)
 REAL                               :: det(6,2)
 INTEGER                            :: NbrOfMissingParticles
+! Timers
+REAL                               :: StartT,EndT
 ! MPI
 #if USE_MPI
-
 INTEGER,ALLOCATABLE                :: IndexOfFoundParticles(:),CompleteIndexOfFoundParticles(:)
 INTEGER                            :: CompleteNbrOfLost,CompleteNbrOfFound,CompleteNbrOfDuplicate
 REAL,ALLOCATABLE                   :: RecBuff(:,:)
@@ -117,6 +118,10 @@ INTEGER                            :: iProc
 ! Distribute or read the particle solution
 ! ===========================================================================
 CALL ParticleReadin(doFlushFiles)
+
+SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' RESTARTING PARTICLES...'
+GETTIME(StartT)
 
 IF(PartIntExists)THEN
   IF(PartDataExists)THEN
@@ -486,8 +491,7 @@ IF(PartIntExists)THEN
 
     CALL UpdateNextFreePosition()
   ELSE
-      SWRITE(UNIT_stdOut,'(A)') ' PartData does not exists in restart file'
-      SWRITE(UNIT_stdOut,'(132("-"))')
+      SWRITE(UNIT_stdOut,'(A)') ' | PartData does not exists in restart file. No particles restarted.'
   END IF ! PartDataExists
 END IF ! PartIntExists
 
@@ -501,7 +505,11 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,ImpactRestart,1,MPI_LOGICAL,MPI_LOR,PartMPI%COMM
 IF (ImpactRestart) CALL CalcSurfaceValues(restart_opt=.TRUE.)
 
 ! Communicate the total number and offset
-CALL GetOffsetAndGlobalNumberOfParts('WriteParticleToHDF5',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
+CALL GetOffsetAndGlobalNumberOfParts('ParticleRestart',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
+
+GETTIME(EndT)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' RESTARTING PARTICLES DONE! [',EndT-StartT,'s]'
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 !#if USE_MPI
 !CALL MPI_BARRIER(PartMPI%COMM,iError)

@@ -174,7 +174,7 @@ IF (INDEX(MeshFile,'h5').NE.0)  CALL OpenDataFile(MeshFile,create=.FALSE.,single
 
 EndT                        = FLEXITIME()
 DomainDecompositionWallTime = EndT-StartT
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DOMAIN DECOMPOSITION ... DONE  [',DomainDecompositionWallTime,'s]'
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DOMAIN DECOMPOSITION ... DONE! [',DomainDecompositionWallTime,'s]'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE DomainDecomposition
@@ -226,7 +226,7 @@ END IF ! single
 
 IF(MPIRoot)THEN
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
 END IF
 
 END SUBROUTINE ReadElemTime

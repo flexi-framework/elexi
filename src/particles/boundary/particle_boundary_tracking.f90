@@ -157,7 +157,7 @@ IF (doParticleImpactTrack .AND. .NOT.ImpactSideGlobal) THEN
   SDEALLOCATE(SurfSampleBCs)
 
   doParticleImpactTrack = .FALSE.
-  LBWRITE(UNIT_stdOut,'(A)')' | Impact tracking requested but no impact faces found! Disabling ...'
+  LBWRITE(UNIT_stdOut,'(A)')' | Impact tracking  requested but no impact faces  found! Disabling...'
   LBWRITE(UNIT_stdOut,'(A)')' INIT IMPACT TRACKING DONE!'
   LBWRITE(UNIT_stdOut,'(132("-"))')
 

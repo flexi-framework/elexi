@@ -126,7 +126,7 @@ LastElemInd  = offsetElem+PP_nElems
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) THEN
   StartT=MPI_WTIME()
-  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' RESTARTING PARTICLES DURING LOADBALANCE...'
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' REDISTRIBUTING PARTICLES DURING LOADBALANCE...'
 
   ! Reconstruct the PartDataSize
   IF (PartDataSize.EQ.0) THEN
@@ -241,7 +241,7 @@ IF (PerformLoadBalance) THEN
   ! ------------------------------------------------
   ! Impact data has no processor association, can remain on the previous processor
   GETTIME(EndT)
-  SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE  [',EndT-StartT,'s]'
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
   SWRITE(UNIT_stdOut,'(132("-"))')
 
 ! NOT. PerformLoadBalance
@@ -354,13 +354,7 @@ ELSE
       END IF ! TurbPartDataExists
 
       IF (myRank.EQ.nProcessors-1) WRITE(UNIT_stdOut,'(A,I0)')  ' | Particle(s) read from restart file: ',PartInt(ELEM_LastPartInd,nGlobalElems)
-    ELSE
-      SWRITE(UNIT_stdOut,'(A)') ' PartData does not exists in restart file'
-      SWRITE(UNIT_stdOut,'(132("-"))')
     END IF ! PartDataExists
-  ELSE
-    SWRITE(UNIT_stdOut,'(A)') ' PartInt does not exists in restart file'
-    SWRITE(UNIT_stdOut,'(132("-"))')
   END IF ! PartIntExists
 
   ! ------------------------------------------------

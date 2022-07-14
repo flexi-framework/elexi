@@ -177,7 +177,7 @@ mu0     =mu0/Tref**ExpoSuth
 #endif
 #endif /*PARABOLIC*/
 
-LBWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
+LBWRITE(UNIT_stdOut,'(A)')' INIT IDEAL GAS DONE!'
 LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitEos
 

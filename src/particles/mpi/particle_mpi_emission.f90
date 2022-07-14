@@ -75,6 +75,7 @@ LOGICAL                         :: RegionOnProc,RegionExists
 REAL                            :: xCoords(3,8),lineVector(3),radius,height
 REAL                            :: xlen,ylen,zlen
 INTEGER                         :: color
+REAL                            :: StartT,EndT
 !===================================================================================================================================
 
 ! get number of total init regions
@@ -83,6 +84,10 @@ DO iSpec = 1,nSpecies
   nInitRegions = nInitRegions + Species(iSpec)%NumberOfInits + (1-Species(iSpec)%StartnumberOfInits)
 END DO ! iSpec
 IF (nInitRegions.EQ.0) RETURN
+
+! SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE PARALLEL EMISSION...'
+GETTIME(StartT)
 
 ! allocate communicators
 ALLOCATE( PartMPI%InitGroup(1:nInitRegions))
@@ -358,7 +363,7 @@ DO iSpec = 1,nSpecies
 #if USE_LOADBALANCE
         IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
-          WRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' Emission-Region,Emission-Communicator:',nInitRegions,' on ',&
+          WRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' | Emission-Region,Emission-Communicator:',nInitRegions,' on ',&
       PartMPI%InitGroup(nInitRegions)%nProcs,' procs ('//TRIM(Species(iSpec)%Init(iInit)%SpaceIC)//', iSpec=',iSpec,')'
 #if USE_LOADBALANCE
         END IF
@@ -390,6 +395,10 @@ DO iSpec = 1,nSpecies
     END IF
   END DO ! iniT
 END DO ! iSpec
+
+GETTIME(EndT)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' INIT PARTICLE PARALLEL EMISSION DONE! [',EndT-StartT,'s]'
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitEmissionComm
 

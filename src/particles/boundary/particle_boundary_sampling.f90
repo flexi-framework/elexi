@@ -150,7 +150,7 @@ INTEGER                                :: nSurfSidesProc
 INTEGER                                :: offsetSurfTotalSidesProc
 INTEGER,ALLOCATABLE                    :: GlobalSide2SurfSideProc(:,:)
 ! user defined sampling surfaces
-LOGICAL                                :: DoSide
+LOGICAL                                :: DoSide,SurfGlob
 INTEGER                                :: iSurfBC,nSurfSampleBC
 CHARACTER(20)                          :: tmpStr,tmpStrBC
 CHARACTER(LEN=255),ALLOCATABLE         :: BCName(:)
@@ -188,7 +188,7 @@ IF (doParticleImpactSample.OR.WriteMacroSurfaceValues) THEN
 END IF
 
 IF (.NOT.WriteMacroSurfaceValues .AND. .NOT.doParticleImpactTrack) THEN
-  LBWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
+  LBWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE!'
   RETURN
 END IF
 
@@ -434,6 +434,15 @@ nSurfTotalSides = nComputeNodeSurfTotalSides
 #endif /* USE_MPI */
 
 ! surface sampling array do not need to be allocated if there are no sides within halo_eps range
+#if USE_MPI
+CALL MPI_REDUCE(SurfOnNode,SurfGlob,1,MPI_LOGICAL,MPI_LOR,0,MPI_COMM_FLEXI,iERROR)
+#else
+SurfGlob = SurfOnNode
+#endif /*USE_MPI*/
+IF (.NOT.SurfGlob) THEN
+  LBWRITE(UNIT_stdOut,'(A)')' | Surface sampling requested but no sampling faces found! Disabling...'
+  LBWRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE!'
+END IF
 IF(.NOT.SurfOnNode) RETURN
 
 ! allocate arrays to hold data. If nSpecies > 1, one more species is added to hold the global average
@@ -609,7 +618,7 @@ IF (mySurfRank.EQ.0) THEN
 #endif
   WRITE(UNIT_stdOut,'(A,I8)')       ' | Number of sampling sides:           '    , nSurfTotalSides
   WRITE(UNIT_stdOut,'(A,ES10.4E2)') ' | Surface-Area:                           ', Area
-  WRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE'
+  WRITE(UNIT_stdOut,'(A)') ' INIT SURFACE SAMPLING DONE!'
 #if USE_MPI
 END IF
 #endif
@@ -1268,7 +1277,7 @@ END IF
 
 IF (mySurfRank.EQ.0) THEN
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE  [',EndT-StartT,'s]'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE! [',EndT-StartT,'s]'
 END IF
 
 END SUBROUTINE WriteSurfSample

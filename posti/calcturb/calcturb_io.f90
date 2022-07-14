@@ -226,7 +226,7 @@ IF(NOut.NE.NCalc) DEALLOCATE(UOut)
 IF(MPIRoot)THEN
     CALL MarkWriteSuccessfull(FileName)
     GETTIME(EndT)
-    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE!  [',EndT-StartT,'s]'
+    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
 END IF
 
 END SUBROUTINE WriteStateFile

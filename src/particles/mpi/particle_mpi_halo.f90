@@ -743,7 +743,7 @@ SWRITE(UNIT_stdOut,'(A,I0,A)') ' | Started particle exchange communication with 
 
 IF (MPIRoot) THEN
   EndT = MPI_WTIME()
-  WRITE(UNIT_stdOut,'(A,F0.3,A)') ' IDENTIFYING Particle Exchange Processors DONE  [',EndT-StartT,'s]'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)') ' IDENTIFYING Particle Exchange Processors DONE! [',EndT-StartT,'s]'
   WRITE(UNIT_stdOut,'(132("-"))')
 END IF ! MPIRoot
 

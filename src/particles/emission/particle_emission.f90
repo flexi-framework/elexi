@@ -66,10 +66,12 @@ INTEGER               :: ParticleVecLengthGlob,particle_count
 #if USE_MPI
 INTEGER               :: InitGroup
 #endif
+REAL                  :: StartT,EndT
 !===================================================================================================================================
 
-LBWRITE(UNIT_stdOut,'(132("-"))')
+! LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING...'
+GETTIME(StartT)
 
 ! Update next free position in particle array to get insertion position
 CALL UpdateNextFreePosition()
@@ -170,7 +172,8 @@ DO i = 1,PDM%ParticleVecLength
   PEM%lastElement(i) = PEM%Element(i)
 END DO
 
-LBWRITE(UNIT_stdOut,'(A)') ' INITIAL PARTICLE INSERTING DONE'
+GETTIME(EndT)
+LBWRITE(UNIT_stdOut,'(A,F0.3,A)') ' INITIAL PARTICLE INSERTING DONE! [',EndT-StartT,'s]'
 LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitializeParticleEmission

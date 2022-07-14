@@ -460,7 +460,7 @@ IF(.NOT.output2D) DEALLOCATE(UOut)
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessfull(FileName)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
 END IF
 END SUBROUTINE WriteBaseflow
 
@@ -592,7 +592,7 @@ IF(MPIRoot) CALL MarkWriteSuccessfull(FileName)
 
 IF(MPIRoot)THEN
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
 END IF
 END SUBROUTINE WriteTimeAverage
 
@@ -782,13 +782,15 @@ REAL,INTENT(IN),OPTIONAL :: FlushTime_In     !< Time to start flush
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                  :: stat,ioUnit
+REAL                     :: StartT,EndT
 REAL                     :: FlushTime
 CHARACTER(LEN=255)       :: InputFile,NextFile
 !==================================================================================================================================
 ! Only MPI root does the flushing and only if DoWriteStateToHDF5 is true
 IF((.NOT.MPIRoot).OR.(.NOT.WriteStateFiles)) RETURN
+GETTIME(StartT)
 
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' DELETING OLD HDF5 FILES...'
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' DELETING OLD HDF5 FILES...'
 IF (.NOT.PRESENT(FlushTime_In)) THEN
   FlushTime=0.0
 ELSE
@@ -820,7 +822,8 @@ DO
   IF(iError.NE.0) EXIT  ! iError is set in GetNextFileName !
 END DO
 
-WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')'DONE'
+GETTIME(EndT)
+WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DELETING OLD HDF5 FILES DONE! [',EndT-StartT,'s]'
 
 END SUBROUTINE FlushFiles
 
@@ -841,9 +844,11 @@ CHARACTER(LEN=*),INTENT(IN) :: InputFile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                  :: stat,ioUnit
+REAL                     :: StartT,EndT
 !===================================================================================================================================
 ! Only MPI root does the killing
 IF(.NOT.MPIRoot) RETURN
+GETTIME(StartT)
 
 WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' DELETING HDF5 FILE ['//TRIM(InputFile)//']...'
 
@@ -857,7 +862,9 @@ OPEN ( NEWUNIT= ioUnit,         &
        IOSTAT = stat          )
 IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
 IF(iError.NE.0) WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '**** FAILED to remove ['//TRIM(InputFile)//'] with iError.NE.0 ****'
-WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')'DONE'
+
+GETTIME(EndT)
+WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
 
 END SUBROUTINE RemoveHDF5
 

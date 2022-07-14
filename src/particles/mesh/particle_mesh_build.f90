@@ -1324,11 +1324,14 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iSide,firstSide,lastSide
+REAL                           :: StartT,EndT
 !REAL                           :: crossVec(3)
 !===================================================================================================================================
 
 LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' GET LINEAR SIDE BASEVECTORS...'
+GETTIME(StartT)
+
 #if USE_MPI
 CALL Allocate_Shared((/3,nNonUniqueGlobalSides/),BaseVectors0_Shared_Win,BaseVectors0_Shared)
 CALL MPI_WIN_LOCK_ALL(0,BaseVectors0_Shared_Win,IERROR)
@@ -1395,7 +1398,8 @@ CALL BARRIER_AND_SYNC(BaseVectors3_Shared_Win,MPI_COMM_SHARED)
 ! CALL BARRIER_AND_SYNC(BaseVectorsScale_Shared_Win,MPI_COMM_SHARED)
 #endif /* USE_MPI */
 
-LBWRITE(UNIT_stdOut,'(A)')' GET LINEAR SIDE BASEVECTORS DONE!'
+GETTIME(EndT)
+LBWRITE(UNIT_stdOut,'(A,F0.3,A)')' GET LINEAR SIDE BASEVECTORS DONE! [',EndT-StartT,'s]'
 !LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE BuildLinearSideBaseVectors
 

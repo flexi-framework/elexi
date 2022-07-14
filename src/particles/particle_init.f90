@@ -535,7 +535,7 @@ DoInterpolation       = GETLOGICAL('Part-DoInterpolation')
 ! IF (.NOT.DoInterpolation) &
 !   CALL CollectiveStop(__STAMP__,'Simulation without particle interpolation currently not supported!')
 
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS DONE'
+SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE GLOBALS DONE!'
 
 END SUBROUTINE InitParticleGlobals
 

@@ -276,7 +276,7 @@ IF (.NOT.PerformLoadBalance) THEN
       ,'readMesh from data file "'//TRIM(FileString)//'" does not exist')
   END IF
 
-  SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ...'
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'"...'
   SWRITE(UNIT_stdOut,'(132("-"))')
   GETTIME(StartT)
 #if USE_LOADBALANCE

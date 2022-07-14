@@ -144,6 +144,7 @@ REAL                  :: VFR_total
 INTEGER,ALLOCATABLE   :: CountCircInflowType(:,:,:)     ! Counter whether cells are inside/partially inside or
                                                         ! outside of circular region (only with CODE_ANALYZE)
 #endif /*CODE_ANALYZE*/
+REAL                  :: StartT,EndT
 !===================================================================================================================================
 
 ! Return if running particle code without any species
@@ -153,6 +154,7 @@ IF (nSpecies.LE.0) THEN
 END IF
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX...'
+GETTIME(StartT)
 
 ! initialization of surface model flags
 DoPoissonRounding = GETLOGICAL('Particles-DoPoissonRounding')
@@ -312,7 +314,8 @@ END IF
 
 SDEALLOCATE(tmp_BezierControlPoints2D)
 
-SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE SURFACE FLUX DONE!'
+GETTIME(EndT)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INIT PARTICLE SURFACE FLUX DONE! [',EndT-StartT,'s]'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitializeParticleSurfaceflux

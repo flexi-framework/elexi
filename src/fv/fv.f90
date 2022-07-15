@@ -129,6 +129,9 @@ USE MOD_TimeDisc_Vars       ,ONLY: t
 #if FV_RECONSTRUCT
 USE MOD_FV_Limiter
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars    ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -173,9 +176,15 @@ switchConservative = GETLOGICAL("FV_SwitchConservative")
 CALL InitFV_Limiter()
 #endif
 
-ALLOCATE(FV_Elems(nElems)) ! holds information if element is DG (0) or FV (1)
-! All cells are initially DG cells
-FV_Elems = 0
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  ALLOCATE(FV_Elems(nElems)) ! holds information if element is DG (0) or FV (1)
+  ! All cells are initially DG cells
+  FV_Elems = 0
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 CALL AddToElemData(ElementOut,'FV_Elems',IntArray=FV_Elems) ! append this array to HDF5 output files
 
 ! The elementwise information of 'FV_Elems' is also needed at the faces and therefore
@@ -269,7 +278,13 @@ END DO; END DO
 IF (t.LT.IndStartTime) IndValue = 1.E16
 FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
-CALL FV_Switch(U,AllowToDG=.FALSE.)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL FV_Switch(U,AllowToDG=.FALSE.)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 FVInitIsDone=.TRUE.
 LBWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
@@ -647,10 +662,21 @@ END SUBROUTINE FV_DGtoFV
 SUBROUTINE FinalizeFV()
 ! MODULES
 USE MOD_FV_Vars
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-SDEALLOCATE(FV_Elems)
+
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  SDEALLOCATE(FV_Elems)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
+
 !SDEALLOCATE(FV_Elems_master) ! moved to mesh.f90
 SDEALLOCATE(FV_Elems_slave)
 SDEALLOCATE(FV_Elems_Counter)

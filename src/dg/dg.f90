@@ -71,6 +71,10 @@ USE MOD_Interpolation_Vars,   ONLY: InterpolationInitIsDone
 USE MOD_Restart_Vars,         ONLY: DoRestart,RestartInitIsDone
 USE MOD_Mesh_Vars,            ONLY: nElems,nSides,Elem_xGP,MeshInitIsDone
 USE MOD_ChangeBasisByDim,     ONLY: ChangeBasisVolume
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars,     ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -89,11 +93,17 @@ LBWRITE(UNIT_stdOut,'(A)') ' INIT DG...'
 ! Pre-compute the dg operator building blocks (differentiation matrices and prolongation operators)
 CALL InitDGBasis(PP_N, xGP,wGP,L_minus,L_plus,D ,D_T ,D_Hat ,D_Hat_T ,L_HatMinus ,L_HatPlus)
 
-! Allocate the local DG solution (JU or U): element-based
-ALLOCATE(U(        PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  ! Allocate the local DG solution (JU or U): element-based
+  ALLOCATE(U(        PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+  U = 0.
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 ! Allocate the time derivative / solution update /residual vector dU/dt: element-based
 ALLOCATE(Ut(       PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-U=0.
 Ut=0.
 
 ! Allocate the 2D solution vectors on the sides, one array for the data belonging to the proc (the master)
@@ -736,6 +746,10 @@ SUBROUTINE FinalizeDG()
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_DG_Vars
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -751,7 +765,6 @@ SDEALLOCATE(DVolSurf)
 #endif
 SDEALLOCATE(L_HatMinus)
 SDEALLOCATE(L_HatPlus)
-SDEALLOCATE(U)
 SDEALLOCATE(Ut)
 SDEALLOCATE(U_master)
 SDEALLOCATE(U_slave)
@@ -762,7 +775,16 @@ SDEALLOCATE(UPrim_master)
 SDEALLOCATE(UPrim_slave)
 SDEALLOCATE(UPrim_boundary)
 
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  SDEALLOCATE(U)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
+
 DGInitIsDone = .FALSE.
+
 END SUBROUTINE FinalizeDG
 
 END MODULE MOD_DG

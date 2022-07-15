@@ -43,16 +43,23 @@ SUBROUTINE DomainDecomposition()
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_Globals_Vars         ,ONLY: DomainDecompositionWallTime
-USE MOD_HDF5_Input           ,ONLY: OpenDataFile,CloseDataFile
-USE MOD_IO_HDF5              ,ONLY: AddToElemData,ElementOut
-USE MOD_LoadDistribution     ,ONLY: ApplyWeightDistributionMethod,WeightDistribution_Equal
-USE MOD_LoadBalance_Vars     ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,PartDistri,TargetWeight
-USE MOD_LoadBalance_Vars     ,ONLY: ElemTime,ProcTime
-USE MOD_Mesh_Vars            ,ONLY: MeshFile,offsetElem,nElems,nGlobalElems
-USE MOD_MPI_Vars             ,ONLY: offsetElemMPI
-USE MOD_Restart_Vars         ,ONLY: DoRestart
-USE MOD_ReadInTools          ,ONLY: PrintOption
+USE MOD_Globals_Vars               ,ONLY: DomainDecompositionWallTime
+USE MOD_HDF5_Input                 ,ONLY: OpenDataFile,CloseDataFile
+USE MOD_IO_HDF5                    ,ONLY: AddToElemData,ElementOut
+USE MOD_LoadDistribution           ,ONLY: ApplyWeightDistributionMethod,WeightDistribution_Equal
+USE MOD_LoadBalance_Vars           ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,TargetWeight
+USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ProcTime,PerformLoadBalance
+USE MOD_Mesh_Vars                  ,ONLY: offsetElem,nElems,nGlobalElems!,MeshFile
+USE MOD_MPI_Vars                   ,ONLY: offsetElemMPI
+USE MOD_Restart_Vars               ,ONLY: DoRestart
+USE MOD_ReadInTools                ,ONLY: PrintOption
+! Element Redistribution
+USE MOD_LoadBalance_Vars           ,ONLY: MPInElemSend,MPIoffsetElemSend,MPInElemRecv,MPIoffsetElemRecv
+USE MOD_LoadBalance_Vars           ,ONLY: nElemsOld,offsetElemOld
+USE MOD_LoadBalance_Vars           ,ONLY: ElemInfoRank_Shared,ElemInfoRank_Shared_Win
+USE MOD_Particle_Mesh_Vars         ,ONLY: ElemInfo_Shared,ElemInfo_Shared_Win
+USE MOD_Particle_MPI_Shared        ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared_Vars   ,ONLY: myComputeNodeRank,MPI_COMM_SHARED
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -62,6 +69,10 @@ IMPLICIT NONE
 LOGICAL                        :: ElemTimeExists
 REAL,ALLOCATABLE               :: WeightSum_proc(:)
 INTEGER                        :: iProc
+! Element Redistribution
+INTEGER                        :: iElem,ElemRank,nElemsProc
+INTEGER                        :: offsetElemSend,offsetElemRecv
+! Timers
 REAL                           :: StartT,EndT
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(132("-"))')
@@ -69,15 +80,20 @@ SWRITE(UNIT_stdOut,'(A)')' DOMAIN DECOMPOSITION ...'
 
 GETTIME(StartT)
 
+IF (PerformLoadBalance) THEN
+  nElemsOld     = nElems
+  offsetElemOld = offsetElem
+  IF (myComputeNodeRank.EQ.0) &
+    ElemInfoRank_Shared  = ElemInfo_Shared(ELEM_RANK,:)
+  CALL BARRIER_AND_SYNC(ElemInfoRank_Shared_Win,iError)
+END IF
+
 SDEALLOCATE(LoadDistri)
-ALLOCATE(LoadDistri(   0:nProcessors-1))
+ALLOCATE(LoadDistri(0:nProcessors-1))
 LoadDistri(:)  = 0.
-SDEALLOCATE(PartDistri)
-ALLOCATE(PartDistri(   0:nProcessors-1))
-PartDistri(:)  = 0
 ElemTimeExists = .FALSE.
 
-IF (DoRestart) THEN
+IF (DoRestart .OR. PerformLoadBalance) THEN
   !--------------------------------------------------------------------------------------------------------------------------------!
   ! Readin of ElemTime: Read in only by MPIRoot in single mode, only communicate logical ElemTimeExists
   ! because the root performs the distribution of elements (domain decomposition) due to the load distribution scheme
@@ -85,11 +101,14 @@ IF (DoRestart) THEN
   ALLOCATE(ElemGlobalTime(1:nGlobalElems)) ! Allocate ElemGlobalTime for all MPI ranks
   ElemGlobalTime = 0.
 
-  ! 1) Only MPIRoot does readin of ElemTime
-  IF (MPIRoot) THEN
-    ! read ElemTime by root only
+  IF (PerformLoadBalance) THEN
     CALL ReadElemTime(single=.TRUE.)
+  ! 1) Only MPIRoot does readin of ElemTime during restart
+  ELSEIF (MPIRoot) THEN
+    CALL ReadElemTime(single=.TRUE.)
+  END IF
 
+  IF (MPIRoot) THEN
     ! if the elemtime is 0.0, the value must be changed in order to prevent a division by zero
     IF (MAXVAL(ElemGlobalTime).LE.0.) THEN
       ElemGlobalTime = 1.0
@@ -116,6 +135,46 @@ END IF ! IF(DoRestart)
 nElems     = offsetElemMPI(myRank+1) - offsetElemMPI(myRank)
 offsetElem = offsetElemMPI(myRank)
 LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
+
+IF (PerformLoadBalance) THEN
+  ! Only update the mapping of element to rank
+  IF (myComputeNodeRank.EQ.0) THEN
+    ! Shared array is allocated on compute-node level, compute-node root must update the mapping
+    DO iProc = 0,nProcessors-1
+      nElemsProc = offsetElemMPI(iProc+1) - offsetElemMPI(iProc)
+      ElemInfo_Shared(ELEM_RANK,offsetElemMPI(iProc)+1:offsetElemMPI(iProc)+nElemsProc) = iProc
+    END DO ! iProc = 0,nProcessors-1
+  END IF ! myComputeNodeRank.EQ.0
+  CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
+
+  ! Calculate the elements to send
+  MPInElemSend      = 0
+  MPIoffsetElemSend = 0
+  ! Loop with the old element over the new elem distribution
+  DO iElem = 1,nElemsOld
+    ElemRank               = ElemInfo_Shared(ELEM_RANK,offsetElemOld+iElem)+1
+    MPInElemSend(ElemRank) = MPInElemSend(ElemRank) + 1
+  END DO
+
+  offsetElemSend = 0
+  DO iProc = 2,nProcessors
+    MPIoffsetElemSend(iProc) = SUM(MPInElemSend(1:iProc-1))
+  END DO
+
+  ! Calculate the elements to recv
+  MPInElemRecv      = 0
+  MPIoffsetElemRecv = 0
+  ! Loop with the new element over the old elem distribution
+  DO iElem = 1,nElems
+    ElemRank               = ElemInfoRank_Shared(offsetElem+iElem)+1
+    MPInElemRecv(ElemRank) = MPInElemRecv(ElemRank) + 1
+  END DO
+
+  offsetElemRecv = 0
+  DO iProc = 2,nProcessors
+    MPIoffsetElemRecv(iProc) = SUM(MPInElemRecv(1:iProc-1))
+  END DO
+END IF
 
 ! Sanity check: local nElems and offset
 IF (nElems.LE.0) CALL Abort(__STAMP__,' Process did not receive any elements/load! ')
@@ -170,7 +229,7 @@ ELSE
 END IF
 
 ! Re-open mesh file to continue readin. Meshfile is not set if this routine is called from posti
-IF (INDEX(MeshFile,'h5').NE.0)  CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+! IF (INDEX(MeshFile,'h5').NE.0)  CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 EndT                        = FLEXITIME()
 DomainDecompositionWallTime = EndT-StartT
@@ -187,11 +246,14 @@ SUBROUTINE ReadElemTime(single)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_IO_HDF5
-USE MOD_HDF5_Input       ,ONLY: ReadArray,DatasetExists
-USE MOD_LoadBalance_Vars ,ONLY: ElemGlobalTime
-USE MOD_LoadBalance_Vars ,ONLY: ElemTime_tmp
-USE MOD_Mesh_Vars        ,ONLY: offsetElem,nElems,nGlobalElems
-USE MOD_Restart_Vars     ,ONLY: RestartFile
+USE MOD_HDF5_Input             ,ONLY: ReadArray,DatasetExists
+USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,ElemGlobalTime
+USE MOD_LoadBalance_Vars       ,ONLY: ElemTime_tmp
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
+USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
+USE MOD_LoadBalance_Vars       ,ONLY: offsetElemMPIOld
+USE MOD_Mesh_Vars              ,ONLY: offsetElem,nElems,nGlobalElems
+USE MOD_Restart_Vars           ,ONLY: RestartFile
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -200,33 +262,61 @@ LOGICAL,INTENT(IN)  :: single !< read data file either single=.TRUE. (only MPI r
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! LOCAL VARIABLES
 LOGICAL             :: ElemTimeExists
+INTEGER             :: iProc
 REAL                :: StartT,EndT
+REAL,ALLOCATABLE    :: ElemTimeTmp(:)
+INTEGER             :: ElemPerProc(0:nProcessors-1)
 !===================================================================================================================================
 
-IF(MPIRoot)THEN
-  WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO') ' | Reading ElemTime from restart file: ',TRIM(RestartFile),' ...'
-  GETTIME(StartT)
-END IF
+IF (PerformLoadBalance) THEN
+  IF (single) THEN
+    DO iProc = 0,nProcessors-1
+      ElemPerProc(iProc) = offsetElemMPIOld(iProc+1) - offsetElemMPIOld(iProc)
+    END DO
+    CALL MPI_GATHERV(ElemTime,nElems,MPI_DOUBLE_PRECISION,ElemGlobalTime,ElemPerProc,offsetElemMPIOld(0:nProcessors-1),MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+  ELSE
+    ALLOCATE(ElemTimeTmp(1:nElems))
 
-! Read data file either single=.TRUE. (only MPI root) or single=.FALSE. (all ranks)
-IF (single) THEN
-  CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
-  CALL DatasetExists(File_ID,'ElemTime',ElemTimeExists)
-  IF (ElemTimeExists) &
-    CALL ReadArray('ElemTime',2,(/1,nGlobalElems/),0,2,RealArray=ElemGlobalTime)
-  CALL CloseDataFile()
+    ASSOCIATE (&
+            counts_send  => (MPInElemSend     ) ,&
+            disp_send    => (MPIoffsetElemSend) ,&
+            counts_recv  => (MPInElemRecv     ) ,&
+            disp_recv    => (MPIoffsetElemRecv))
+      ! Communicate PartInt over MPI
+      CALL MPI_ALLTOALLV(ElemTime,counts_send,disp_send,MPI_DOUBLE_PRECISION,ElemTimeTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
+    END ASSOCIATE
+
+    DEALLOCATE(ElemTime)
+    ALLOCATE(ElemTime(1:nElems))
+    ElemTime = ElemTimeTmp
+    DEALLOCATE(ElemTimeTmp)
+  END IF
 ELSE
-  SDEALLOCATE(ElemTime_tmp)
-  ALLOCATE(ElemTime_tmp(1:nElems))
-  ElemTime_tmp  = 0.
-  CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.,communicatorOpt=MPI_COMM_FLEXI)
-  CALL ReadArray('ElemTime',2,(/1,nElems/),OffsetElem,2,RealArray=ElemTime_tmp)
-  CALL CloseDataFile()
-END IF ! single
+  IF(MPIRoot)THEN
+    WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO') ' | Reading ElemTime from restart file: ',TRIM(RestartFile),' ...'
+    GETTIME(StartT)
+  END IF
 
-IF(MPIRoot)THEN
-  GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+  ! Read data file either single=.TRUE. (only MPI root) or single=.FALSE. (all ranks)
+  IF (single) THEN
+    CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
+    CALL DatasetExists(File_ID,'ElemTime',ElemTimeExists)
+    IF (ElemTimeExists) &
+      CALL ReadArray('ElemTime',2,(/1,nGlobalElems/),0,2,RealArray=ElemGlobalTime)
+    CALL CloseDataFile()
+  ELSE
+    SDEALLOCATE(ElemTime_tmp)
+    ALLOCATE(ElemTime_tmp(1:nElems))
+    ElemTime_tmp  = 0.
+    CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.,communicatorOpt=MPI_COMM_FLEXI)
+    CALL ReadArray('ElemTime',2,(/1,nElems/),OffsetElem,2,RealArray=ElemTime_tmp)
+    CALL CloseDataFile()
+  END IF ! single
+
+  IF(MPIRoot)THEN
+    GETTIME(EndT)
+    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+  END IF
 END IF
 
 END SUBROUTINE ReadElemTime

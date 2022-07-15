@@ -358,17 +358,16 @@ nSideIDs    =ElemInfo(ELEM_LastSideInd,LastElemInd)-ElemInfo(ELEM_FirstSideInd,F
 FirstSideInd=offsetSideID+1
 LastSideInd =offsetSideID+nSideIDs
 ALLOCATE(SideInfo(SideInfoSize,FirstSideInd:LastSideInd))
-CALL ReadArray('SideInfo',2,(/SideInfoSize,nSideIDs/),offsetSideID,2,IntArray=SideInfo)
 
 #if USE_LOADBALANCE
-  IF (PerformLoadBalance) THEN
-    SideInfo(1:SideInfoSize,:) = SideInfo_Shared(1:SideInfoSize,offsetSideID+1:offsetSideID+nSideIDs)
-  ELSE
+IF (PerformLoadBalance) THEN
+  SideInfo(1:SideInfoSize,:) = SideInfo_Shared(1:SideInfoSize,offsetSideID+1:offsetSideID+nSideIDs)
+ELSE
 #endif /*USE_LOADBALANCE*/
-    CALL ReadArray('SideInfo',2,(/SideInfoSize,nSideIDs/),offsetSideID,2,IntArray=SideInfo)
-    CALL CloseDataFile()
+  CALL ReadArray('SideInfo',2,(/SideInfoSize,nSideIDs/),offsetSideID,2,IntArray=SideInfo)
+  CALL CloseDataFile()
 #if USE_LOADBALANCE
-  END IF
+END IF
 #endif /*USE_LOADBALANCE*/
 
 #if USE_PARTICLES
@@ -843,6 +842,7 @@ USE MOD_MPI_Vars,          ONLY:offsetElemMPI
 #if USE_LOADBALANCE
 USE MOD_LoadBalance,       ONLY:InitLoadBalanceTracking
 USE MOD_LoadBalance_Tools, ONLY:DomainDecomposition
+USE MOD_LoadBalance_Vars,  ONLY:PerformLoadBalance,offsetElemMPIOld
 USE MOD_Particle_Globals,  ONLY:PP_nElems
 #else
 USE MOD_Mesh_Vars,         ONLY:offsetElem
@@ -870,6 +870,14 @@ DEALLOCATE(HSize)
 #if USE_MPI
 IF(nGlobalElems.LT.nProcessors) CALL Abort(__STAMP__,&
   'ERROR: Number of elements (1) is smaller then number of processors (2)!',nGlobalElems,REAL(nProcessors))
+
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) THEN
+  SDEALLOCATE(offsetElemMPIOld)
+  ALLOCATE(   offsetElemMPIOld(0:nProcessors))
+  offsetElemMPIOld = offsetElemMPI
+END IF
+#endif /*USE_LOADBALANCE*/
 
 SDEALLOCATE(offsetElemMPI)
 ALLOCATE(   offsetElemMPI(0:nProcessors))

@@ -123,6 +123,10 @@ USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Filter_Vars         ,ONLY: NFilter
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars    ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -172,8 +176,14 @@ CASE(-1) ! legacy
 END SELECT
 
 IndStartTime = GETREAL('IndStartTime')
-ALLOCATE(IndValue(nElems))
-IndValue=0.
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  ALLOCATE(IndValue(nElems))
+  IndValue = 0.
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
 
 IndVar = GETINT('IndVar','1')
@@ -645,9 +655,20 @@ END SUBROUTINE IndFVBoundaries
 SUBROUTINE FinalizeIndicator()
 ! MODULES
 USE MOD_Indicator_Vars
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-SDEALLOCATE(IndValue)
+
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  SDEALLOCATE(IndValue)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 SDEALLOCATE(FVBoundaryType)
 
 IndicatorInitIsDone=.FALSE.

@@ -223,7 +223,6 @@ DEALLOCATE( PEM%pStart   &
 END SUBROUTINE FillParticleData
 
 
-
 SUBROUTINE WriteInfoStdOut()
 !===================================================================================================================================
 ! Writes particle information to standard output

@@ -52,7 +52,6 @@ INTEGER                             :: nLoadBalanceSteps                        
 #if USE_LOADBALANCE
 INTEGER                             :: LoadBalanceMaxSteps                        !> Number of maximum allowed performed load balances steps
 REAL,ALLOCATABLE                    :: LoadDistri(:)                              !> Weighted load distribution of all procs
-INTEGER,ALLOCATABLE                 :: PartDistri(:)                              !> Part distribution of all procs
 REAL                                :: MaxWeight                                  !> Maximum Weight of proc on domain
 REAL                                :: MinWeight                                  !> Minimum Weight of proc on domain
 REAL                                :: CurrentImbalance
@@ -79,6 +78,7 @@ TYPE(tData), POINTER :: firstData => null() !linked-list of old offsetElemMPI fo
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                             :: nElemsOld
 INTEGER                             :: offsetElemOld
+INTEGER,ALLOCATABLE                 :: offsetElemMPIOld(:)
 INTEGER,ALLOCATABLE                 :: MPInElemSend(:)
 INTEGER,ALLOCATABLE                 :: MPIoffsetElemSend(:)
 INTEGER,ALLOCATABLE                 :: MPInElemRecv(:)

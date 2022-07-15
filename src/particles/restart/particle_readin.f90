@@ -56,6 +56,7 @@ USE MOD_Mesh_Vars              ,ONLY: OffsetElem,nGlobalElems
 ! Particles
 USE MOD_Particle_Boundary_Vars ,ONLY: doParticleReflectionTrack,doParticleImpactTrack
 USE MOD_Particle_Vars          ,ONLY: PartInt,PartData,TurbPartData
+USE MOD_Particle_Vars          ,ONLY: PartDataSize,TurbPartDataSize
 ! Restart
 USE MOD_Restart_Vars           ,ONLY: RestartFile,RestartTime
 ! LoadBalance
@@ -64,12 +65,8 @@ USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: nElemsOld,offsetElemOld,ElemInfoRank_Shared
 USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
 USE MOD_LoadBalance_Vars       ,ONLY: MPInPartSend,MPInPartRecv,MPIoffsetPartSend,MPIoffsetPartRecv
-USE MOD_LoadBalance_Vars       ,ONLY: nElemsOld,offsetElemOld,ElemInfoRank_Shared
 USE MOD_Mesh_Vars              ,ONLY: nElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared
-! Particles
-USE MOD_Particle_Analyze_Vars  ,ONLY: doParticleDispersionTrack,doParticlePathTrack
-USE MOD_Particle_Vars          ,ONLY: doPartIndex,doWritePartDiam
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -128,21 +125,9 @@ IF (PerformLoadBalance) THEN
   StartT=MPI_WTIME()
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' REDISTRIBUTING PARTICLES DURING LOADBALANCE...'
 
-  ! Reconstruct the PartDataSize
-  IF (PartDataSize.EQ.0) THEN
-    PartDataSize    = PP_nVarPart + 1
-    IF (doWritePartDiam) &
-      PartDataSize  = PartDataSize + 1
-    ! Increase size if index is tracked
-    IF (doPartIndex) &
-      PartDataSize  = PartDataSize + 1
-    ! Increase size if reflections are tracked
-    IF (doParticleReflectionTrack) &
-      PartDataSize  = PartDataSize + 1
-    ! Increase size if the absolute particle path is tracked
-    IF (doParticleDispersionTrack.OR.doParticlePathTrack) &
-      PartDataSize  = PartDataSize + 3
-  END IF ! PartDataSize.EQ.0
+  ! Check the PartDataSize
+  IF (PartDataSize.EQ.0) &
+    CALL Abort(__STAMP__,'PartDataSize.EQ.0 but should have been set before loadbalance!')
 
   ! PartInt and PartData are still allocated from last WriteState
   ! ------------------------------------------------

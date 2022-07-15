@@ -72,6 +72,7 @@ USE MOD_PPLimiter           ,ONLY: PPLimiter,PPLimiter_Info
 USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
 #endif /*PP_LIMITER*/
 #if USE_PARTICLES
+USE MOD_Particle_Output     ,ONLY: FillParticleData
 USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime
 #endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
@@ -154,8 +155,13 @@ CALL AnalyzeTestCase(t,.FALSE.)
 ! Write the state at time=0, i.e. the initial condition
 IF (.NOT.DoRestart                                                                      &
   .OR.FlushInitialState                                                                 &
-  .OR..NOT.FILEEXISTS(TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',t))//'.h5'))&
+  .OR..NOT.FILEEXISTS(TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',t))//'.h5')) THEN
+#if USE_PARTICLES
+  ! Fill the SFC-ordered particle arrays
+  CALL FillParticleData()
+#endif /*USE_PARTICLES*/
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.FALSE.)
+END IF
 CALL Visualize(t,U)
 
 ! No computation needed if tEnd = tStart!

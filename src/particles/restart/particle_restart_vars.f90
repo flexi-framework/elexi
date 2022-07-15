@@ -26,10 +26,8 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL                               :: EmissionTime                      ! time at which particle emission started
 INTEGER                            :: PP_nVarPartState                  ! Number of particle vars to be copied into PartState
-LOGICAL                            :: PartIntExists    = .FALSE.        ! Flag if restart file has saved part ints
-LOGICAL                            :: PartDataExists   = .FALSE.        ! Flag if restart file has saved part data
-INTEGER                            :: PartDataSize     = 0              ! number of entries in each line of PartData
-INTEGER                            :: TurbPartDataSize = 0              ! number of turbulent properties with current setup
-LOGICAL                            :: TurbPartDataExists                ! Flag if restart file has saved turbulent part data
+LOGICAL                            :: PartIntExists      = .FALSE.      ! Flag if restart file has saved part ints
+LOGICAL                            :: PartDataExists     = .FALSE.      ! Flag if restart file has saved part data
+LOGICAL                            :: TurbPartDataExists = .FALSE.      ! Flag if restart file has saved turbulent part data
 !===================================================================================================================================
 END MODULE MOD_Particle_Restart_Vars

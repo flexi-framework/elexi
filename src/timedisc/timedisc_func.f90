@@ -335,6 +335,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: nCalcTimeStep,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if USE_PARTICLES
+USE MOD_Particle_Output     ,ONLY: FillParticleData
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
@@ -397,6 +398,10 @@ dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 nCalcTimeStep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax) - 1
 dt_minOld     = dt
 IF (errType.NE.0) THEN
+#if USE_PARTICLES
+  ! Fill the SFC-ordered particle arrays
+  CALL FillParticleData()
+#endif /*USE_PARTICLES*/
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
   CALL Abort(__STAMP__,&
 #if EQNSYSNR == 3
@@ -456,6 +461,7 @@ USE MOD_FV                  ,ONLY: FV_Info
 USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
 #endif /*PP_LIMITER*/
 #if USE_PARTICLES
+USE MOD_Particle_Output     ,ONLY: FillParticleData
 USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime,UseManualTimeStep
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
@@ -549,8 +555,13 @@ IF(doAnalyze)THEN
   CALL PPLimiter_Info(iter_analyze+1)
 #endif
 
-  ! Visualize data and write solution
   writeCounter = writeCounter+1
+#if USE_PARTICLES
+  ! Fill the SFC-ordered particle arrays
+  ! TODO: Currently still coupled with WriteState
+  CALL FillParticleData()
+#endif /*USE_PARTICLES*/
+  ! Visualize data and write solution
   IF((writeCounter.EQ.nWriteData).OR.doFinalize)THEN
     ! Write various derived data
     IF(doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
@@ -660,6 +671,9 @@ USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
 USE MOD_HDF5_Output_State   ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
 USE MOD_TimeDisc_Vars       ,ONLY: dt_kill,dt_dynmin,t,dt_analyzemin,dtElem,nDtLimited
+#if USE_PARTICLES
+USE MOD_Particle_Output     ,ONLY: FillParticleData
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -676,6 +690,9 @@ IF (dt_Min.LT.dt_dynmin) THEN
   nDtLimited  = nDtLimited + 1
 END IF
 IF (dt_Min.LT.dt_kill) THEN
+#if USE_PARTICLES
+  CALL FillParticleData()
+#endif /*USE_PARTICLES*/
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                   FutureTime=tWriteData,isErrorFile=.TRUE.)
   CALL Abort(__STAMP__,&

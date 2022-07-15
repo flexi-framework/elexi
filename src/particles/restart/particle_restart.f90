@@ -61,10 +61,11 @@ USE MOD_Particle_Mesh_Vars,         ONLY: ElemEpsOneCell
 USE MOD_Mesh_Vars,                  ONLY: offsetElem
 USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
 ! Particles
-USE MOD_Particle_HDF5_Output,       ONLY: GetOffsetAndGlobalNumberOfParts
+USE MOD_Particle_Output,            ONLY: GetOffsetAndGlobalNumberOfParts
 USE MOD_Part_Tools,                 ONLY: UpdateNextFreePosition
 USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies
 USE MOD_Particle_Vars,              ONLY: PartInt,PartData,TurbPartData
+USE MOD_Particle_Vars,              ONLY: PartDataSize,TurbPartDataSize
 USE MOD_Particle_Vars,              ONLY: PartPosRef,PartReflCount,doPartIndex,PartIndex
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,          ONLY: PartMPI

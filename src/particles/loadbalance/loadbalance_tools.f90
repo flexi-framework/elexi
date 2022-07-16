@@ -85,7 +85,7 @@ IF (PerformLoadBalance) THEN
   offsetElemOld = offsetElem
   IF (myComputeNodeRank.EQ.0) &
     ElemInfoRank_Shared  = ElemInfo_Shared(ELEM_RANK,:)
-  CALL BARRIER_AND_SYNC(ElemInfoRank_Shared_Win,iError)
+  CALL BARRIER_AND_SYNC(ElemInfoRank_Shared_Win,MPI_COMM_SHARED)
 END IF
 
 SDEALLOCATE(LoadDistri)

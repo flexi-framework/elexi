@@ -131,7 +131,7 @@ nProcessors_Global = nProcessors
         nProcessors_Global,') OR unequal number of cores per node (=',REAL(nProcessors_Global)/REAL(CORE_SPLIT),&
         '). Setting 1 core per node for MPI_COMM_SHARED!'
     color = myRank
-  ELSE    
+  ELSE
     ! Group procs so that every CORE_SPLIT procs are in the same group
     color = INT(REAL(myrank*CORE_SPLIT)/REAL(nProcessors_Global))+1
   END IF ! (CORE_SPLIT.GE.nProcessors_Global).OR.(MOD().GT.0)
@@ -788,11 +788,11 @@ END SUBROUTINE FinalizeMPIShared
 !U_Shared(:,:,:,:,FirstElemShared:LastElemShared) = U(:,:,:,:,:)
 !
 !! Synchronize all RMA communication
-!CALL BARRIER_AND_SYNC(U_Shared_Win,IERROR)
+!CALL BARRIER_AND_SYNC(U_Shared_Win,MPI_COMM_SHARED)
 !CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
 !! Intel documentation claims this is required on "certain architectures". Whatever this means...
 !! https://software.intel.com/en-us/articles/an-introduction-to-mpi-3-shared-memory-programming
-!CALL BARRIER_AND_SYNC(U_Shared_Win,IERROR)
+!CALL BARRIER_AND_SYNC(U_Shared_Win,MPI_COMM_SHARED)
 !
 !END SUBROUTINE UpdateDGShared
 

@@ -350,6 +350,10 @@ CHARACTER(LEN=255),INTENT(IN)        :: FileName
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+
+! ElemTime might not be allocated, e.g, when running in posti mode
+IF (.NOT.ALLOCATED(ElemTime)) RETURN
+
 ! Check if ElemTime is all zeros and if this is a restart (save the old values)
 IF((MAXVAL(ElemTime).LE.0.0)          .AND.& ! Restart
     DoRestart                         .AND.& ! Restart

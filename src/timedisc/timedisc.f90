@@ -37,44 +37,47 @@ SUBROUTINE TimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Analyze             ,ONLY: Analyze
-USE MOD_Analyze_Vars        ,ONLY: analyze_dt,tWriteData,WriteData_dt
-USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
-USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
-USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
-USE MOD_DG_Vars             ,ONLY: U
-USE MOD_Equation_Vars       ,ONLY: StrVarNames
-USE MOD_HDF5_Output_State   ,ONLY: WriteState
-USE MOD_IO_HDF5             ,ONLY:
-USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
-USE MOD_Output              ,ONLY: Visualize,PrintStatusLine
-USE MOD_Output_Vars         ,ONLY: ProjectName
-USE MOD_Overintegration     ,ONLY: Overintegration
-USE MOD_Overintegration_Vars,ONLY: OverintegrationType
-USE MOD_Predictor           ,ONLY: FillInitPredictor
-USE MOD_RecordPoints        ,ONLY: RecordPoints
-USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
-USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime,FlushInitialState
-USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
-USE MOD_TimeDisc_Functions  ,ONLY: InitTimeStep,UpdateTimeStep,AnalyzeTimeStep
-USE MOD_TestCase_Vars       ,ONLY: doTCSource
-USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
-USE MOD_TimeDisc_Vars       ,ONLY: t,tStart,tEnd,dt,tAnalyze,Timestep
-USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
-USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter,nCalcTimestep
-USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
+USE MOD_Analyze               ,ONLY: Analyze
+USE MOD_Analyze_Vars          ,ONLY: analyze_dt,tWriteData,WriteData_dt
+USE MOD_AnalyzeEquation_Vars  ,ONLY: doCalcTimeAverage
+USE MOD_ApplyJacobianCons     ,ONLY: ApplyJacobianCons
+USE MOD_DG                    ,ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars               ,ONLY: U
+USE MOD_Equation_Vars         ,ONLY: StrVarNames
+USE MOD_HDF5_Output_State     ,ONLY: WriteState
+USE MOD_IO_HDF5               ,ONLY:
+USE MOD_Mesh_Vars             ,ONLY: MeshFile,nGlobalElems
+USE MOD_Output                ,ONLY: Visualize,PrintStatusLine
+USE MOD_Output_Vars           ,ONLY: ProjectName
+USE MOD_Overintegration       ,ONLY: Overintegration
+USE MOD_Overintegration_Vars  ,ONLY: OverintegrationType
+USE MOD_Predictor             ,ONLY: FillInitPredictor
+USE MOD_RecordPoints          ,ONLY: RecordPoints
+USE MOD_RecordPoints_Vars     ,ONLY: RP_onProc
+USE MOD_Restart_Vars          ,ONLY: DoRestart,RestartTime,FlushInitialState
+USE MOD_TestCase              ,ONLY: AnalyzeTestCase,CalcForcing
+USE MOD_TimeDisc_Functions    ,ONLY: InitTimeStep,UpdateTimeStep,AnalyzeTimeStep
+USE MOD_TestCase_Vars         ,ONLY: doTCSource
+USE MOD_TimeDisc_Vars         ,ONLY: iter,iter_analyze,maxIter
+USE MOD_TimeDisc_Vars         ,ONLY: t,tStart,tEnd,dt,tAnalyze,Timestep
+USE MOD_TimeDisc_Vars         ,ONLY: TimeDiscType
+USE MOD_TimeDisc_Vars         ,ONLY: doAnalyze,doFinalize,writeCounter,nCalcTimestep
+USE MOD_TimeAverage           ,ONLY: CalcTimeAverage
 #if FV_ENABLED
 USE MOD_FV
-USE MOD_Indicator           ,ONLY: CalcIndicator
+USE MOD_Indicator             ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
-USE MOD_PPLimiter           ,ONLY: PPLimiter,PPLimiter_Info
-USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
+USE MOD_PPLimiter             ,ONLY: PPLimiter,PPLimiter_Info
+USE MOD_Filter_Vars           ,ONLY: DoPPLimiter
 #endif /*PP_LIMITER*/
 #if USE_PARTICLES
-USE MOD_Particle_Output     ,ONLY: FillParticleData
+USE MOD_Particle_Output       ,ONLY: FillParticleData
 USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime
 #endif /*USE_PARTICLES*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars      ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -132,13 +135,24 @@ PreviousTime = -1
 #endif /*USE_PARTICLES*/
 
 #if FV_ENABLED
-! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
-CALL CalcIndicator(U,t)
-IF(.NOT.DoRestart)  CALL FV_FillIni()
-! FV_FillIni might still give invalid cells, switch again ...
-CALL CalcIndicator(U,t)
-CALL FV_Switch(U,AllowToDG=.FALSE.)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
+  CALL CalcIndicator(U,t)
+  IF (.NOT.DoRestart) THEN
+    CALL FV_FillIni()
+    ! FV_FillIni might still give invalid cells, switch again ...
+    CALL CalcIndicator(U,t)
+  END IF
+  CALL FV_Switch(U,AllowToDG=.FALSE.)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 #endif /*FV_ENABLED*/
+#if USE_LOADBALANCE
+PerformLoadBalance = .FALSE.
+#endif /*USE_LOADBALANCE*/
 #if PP_LIMITER
 IF(DoPPLimiter) CALL PPLimiter()
 #endif /*PP_LIMITER*/

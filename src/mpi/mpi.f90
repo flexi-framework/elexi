@@ -411,7 +411,7 @@ SUBROUTINE FinalizeMPI()
 USE MOD_Globals
 USE MOD_MPI_Vars
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Vars        ,ONLY: PerformLoadBalance
+USE MOD_LoadBalance_Vars        ,ONLY: PerformLoadBalance,offsetElemMPIOld
 #endif /*USE_LOADBALANCE*/
 IMPLICIT NONE
 !==================================================================================================================================
@@ -451,6 +451,7 @@ IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
 SDEALLOCATE(offsetElemMPI)
 #if USE_LOADBALANCE
+SDEALLOCATE(offsetElemMPIOld)
 END IF
 #endif /*USE_LOADBALANCE*/
 

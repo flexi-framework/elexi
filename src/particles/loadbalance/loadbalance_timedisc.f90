@@ -220,8 +220,6 @@ SWRITE(UNIT_stdOut,'(A)')' LOAD BALANCE DONE!'
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)')
 
-PerformLoadBalance = .FALSE.
-
 END SUBROUTINE LoadBalance
 #endif /*USE_LOADBALANCE*/
 

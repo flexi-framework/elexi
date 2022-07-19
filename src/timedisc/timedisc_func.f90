@@ -605,7 +605,6 @@ IF(doAnalyze)THEN
     ElemTimePart  = 0.
     ElemTimeField = 0.
   END IF
-  PerformLBSample=.FALSE. ! Deactivate load balance sampling
 
   ! Switch off Initial Auto Restart (initial load balance) after the restart was performed
   IF (DoInitialAutoRestart) THEN
@@ -622,6 +621,9 @@ IF(doAnalyze)THEN
     ! Set time of the state file that was created before automatic initial restart (to be written in the next state file)
     ! tPreviousAnalyze = RestartTimeBackup
   END IF
+
+  PerformLBSample    = .FALSE. ! Deactivate load balance sampling
+  PerformLoadBalance = .FALSE. ! Unset      load balance flag
 #endif /*USE_LOADBALANCE*/
 END IF
 

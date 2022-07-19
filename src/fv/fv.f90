@@ -273,14 +273,14 @@ DO j=0,PP_N; DO i=0,PP_N
 END DO; END DO
 #endif
 
-! initial call of FV_Switch. This is performed without the gradients in hope to prevent initial crashes
-! if time is before IndStartTime return high Indicator value (FV)
-IF (t.LT.IndStartTime) IndValue = 1.E16
-FV_Elems = 0
-! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
 #if USE_LOADBALANCE
 IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
+  ! initial call of FV_Switch. This is performed without the gradients in hope to prevent initial crashes
+  ! if time is before IndStartTime return high Indicator value (FV)
+  IF (t.LT.IndStartTime) IndValue = HUGE(1.)
+  FV_Elems = 0
+  ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
   CALL FV_Switch(U,AllowToDG=.FALSE.)
 #if USE_LOADBALANCE
 END IF

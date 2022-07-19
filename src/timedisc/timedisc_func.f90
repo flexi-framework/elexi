@@ -245,6 +245,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: ViscousTimeStep,CalcTimeStart,nCalcTimeStep
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if USE_PARTICLES
+USE MOD_Particle_Vars       ,ONLY: nSpecies
 USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep,ManualTimeStep
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
@@ -265,9 +266,9 @@ INTEGER                      :: errType
 IF (UseManualTimeStep) dt = ManualTimeStep
 
 ! Get time step if needed. For DG time stepping, this is already calculated in BuildBGMAndIdentifyHaloRegion
-IF ((UseManualTimeStep.AND.(dt.EQ.0.))) THEN
+IF ((UseManualTimeStep.AND.(dt.EQ.0.)) .OR. nSpecies.EQ.0) THEN
 #endif /*USE_PARTICLES*/
-dt                 = EvalInitialTimeStep(errType)
+dt      = EvalInitialTimeStep(errType)
 #if USE_PARTICLES
 ELSE
 errType = 0

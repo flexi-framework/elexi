@@ -62,6 +62,7 @@ SUBROUTINE DefineParametersParticleBGM()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('BGM')
@@ -125,6 +126,9 @@ USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -221,10 +225,16 @@ CALL PrintOption('Total FIBGM Cells (x,y,z)','INFO',IntArrayOpt=(/              
 CALL InitPeriodicBC()
 
 #if USE_MPI
-CALL Allocate_Shared((/6,nGlobalElems/),ElemToBGM_Shared_Win,ElemToBGM_Shared)
-CALL Allocate_Shared((/2,3,nGlobalElems/),BoundsOfElem_Shared_Win,BoundsOfElem_Shared)
-CALL MPI_WIN_LOCK_ALL(0,ElemToBGM_Shared_Win   ,iError)
-CALL MPI_WIN_LOCK_ALL(0,BoundsOfElem_Shared_Win,iError)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL Allocate_Shared((/2,3,nGlobalElems/),BoundsOfElem_Shared_Win,BoundsOfElem_Shared)
+  CALL Allocate_Shared((/  6,nGlobalElems/),ElemToBGM_Shared_Win   ,ElemToBGM_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,BoundsOfElem_Shared_Win,iError)
+  CALL MPI_WIN_LOCK_ALL(0,ElemToBGM_Shared_Win   ,iError)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 firstElem = INT(REAL( myComputeNodeRank   *nGlobalElems)/REAL(nComputeNodeProcessors))+1
 lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
 ! Periodic Sides
@@ -240,80 +250,86 @@ lastElem  = nElems
 
 ! Use NodeCoords only for TriaTracking since Tracing and RefMapping have potentially curved elements, only BezierControlPoints form
 ! convex hull
-SELECT CASE(TrackingMethod)
-  CASE(TRIATRACKING)
-    DO iElem = firstElem, lastElem
-      offsetNodeID = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
-      nNodeIDs     = ElemInfo_Shared(ELEM_LASTNODEIND ,iElem)-ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
-      firstNodeID  = offsetNodeID+1
-      lastNodeID   = offsetNodeID+nNodeIDs
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  SELECT CASE(TrackingMethod)
+    CASE(TRIATRACKING)
+      DO iElem = firstElem, lastElem
+        offsetNodeID = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
+        nNodeIDs     = ElemInfo_Shared(ELEM_LASTNODEIND ,iElem)-ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem)
+        firstNodeID  = offsetNodeID+1
+        lastNodeID   = offsetNodeID+nNodeIDs
 
-      xmin=MINVAL(NodeCoords_Shared(1,firstNodeID:lastNodeID))
-      xmax=MAXVAL(NodeCoords_Shared(1,firstNodeID:lastNodeID))
-      ymin=MINVAL(NodeCoords_Shared(2,firstNodeID:lastNodeID))
-      ymax=MAXVAL(NodeCoords_Shared(2,firstNodeID:lastNodeID))
-      zmin=MINVAL(NodeCoords_Shared(3,firstNodeID:lastNodeID))
-      zmax=MAXVAL(NodeCoords_Shared(3,firstNodeID:lastNodeID))
+        xmin=MINVAL(NodeCoords_Shared(1,firstNodeID:lastNodeID))
+        xmax=MAXVAL(NodeCoords_Shared(1,firstNodeID:lastNodeID))
+        ymin=MINVAL(NodeCoords_Shared(2,firstNodeID:lastNodeID))
+        ymax=MAXVAL(NodeCoords_Shared(2,firstNodeID:lastNodeID))
+        zmin=MINVAL(NodeCoords_Shared(3,firstNodeID:lastNodeID))
+        zmax=MAXVAL(NodeCoords_Shared(3,firstNodeID:lastNodeID))
 
-      BoundsOfElem_Shared(1,1,iElem) = xmin
-      BoundsOfElem_Shared(2,1,iElem) = xmax
-      BoundsOfElem_Shared(1,2,iElem) = ymin
-      BoundsOfElem_Shared(2,2,iElem) = ymax
-      BoundsOfElem_Shared(1,3,iElem) = zmin
-      BoundsOfElem_Shared(2,3,iElem) = zmax
+        BoundsOfElem_Shared(1,1,iElem) = xmin
+        BoundsOfElem_Shared(2,1,iElem) = xmax
+        BoundsOfElem_Shared(1,2,iElem) = ymin
+        BoundsOfElem_Shared(2,2,iElem) = ymax
+        BoundsOfElem_Shared(1,3,iElem) = zmin
+        BoundsOfElem_Shared(2,3,iElem) = zmax
 
-      ! BGM indices must be >0 --> move by 1
-      ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
-      ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
-      ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
-      ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
-      ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
-      ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
-    END DO ! iElem = firstElem, lastElem
+        ! BGM indices must be >0 --> move by 1
+        ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
+        ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
+        ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
+        ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
+        ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
+        ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
+      END DO ! iElem = firstElem, lastElem
 
-  CASE(TRACING,REFMAPPING)
-    DO iElem = firstElem, lastElem
-      xmin= HUGE(1.)
-      xmax=-HUGE(1.)
-      ymin= HUGE(1.)
-      ymax=-HUGE(1.)
-      zmin= HUGE(1.)
-      zmax=-HUGE(1.)
+    CASE(TRACING,REFMAPPING)
+      DO iElem = firstElem, lastElem
+        xmin= HUGE(1.)
+        xmax=-HUGE(1.)
+        ymin= HUGE(1.)
+        ymax=-HUGE(1.)
+        zmin= HUGE(1.)
+        zmax=-HUGE(1.)
 
-      DO iLocSide = 1,6
-        SideID = GetGlobalNonUniqueSideID(iElem,iLocSide)
-        xmin = MIN(xmin,MINVAL(BezierControlPoints3D(1,:,:,SideID)))
-        xmax = MAX(xmax,MAXVAL(BezierControlPoints3D(1,:,:,SideID)))
-        ymin = MIN(ymin,MINVAL(BezierControlPoints3D(2,:,:,SideID)))
-        ymax = MAX(ymax,MAXVAL(BezierControlPoints3D(2,:,:,SideID)))
-        zmin = MIN(zmin,MINVAL(BezierControlPoints3D(3,:,:,SideID)))
-        zmax = MAX(zmax,MAXVAL(BezierControlPoints3D(3,:,:,SideID)))
-      END DO
+        DO iLocSide = 1,6
+          SideID = GetGlobalNonUniqueSideID(iElem,iLocSide)
+          xmin = MIN(xmin,MINVAL(BezierControlPoints3D(1,:,:,SideID)))
+          xmax = MAX(xmax,MAXVAL(BezierControlPoints3D(1,:,:,SideID)))
+          ymin = MIN(ymin,MINVAL(BezierControlPoints3D(2,:,:,SideID)))
+          ymax = MAX(ymax,MAXVAL(BezierControlPoints3D(2,:,:,SideID)))
+          zmin = MIN(zmin,MINVAL(BezierControlPoints3D(3,:,:,SideID)))
+          zmax = MAX(zmax,MAXVAL(BezierControlPoints3D(3,:,:,SideID)))
+        END DO
 
-      ! Restrict to domain extent
-      xmin = MAX(xmin,GEO%xminglob)
-      xmax = MIN(xmax,GEO%xmaxglob)
-      ymin = MAX(ymin,GEO%yminglob)
-      ymax = MIN(ymax,GEO%ymaxglob)
-      zmin = MAX(zmin,GEO%zminglob)
-      zmax = MIN(zmax,GEO%zmaxglob)
+        ! Restrict to domain extent
+        xmin = MAX(xmin,GEO%xminglob)
+        xmax = MIN(xmax,GEO%xmaxglob)
+        ymin = MAX(ymin,GEO%yminglob)
+        ymax = MIN(ymax,GEO%ymaxglob)
+        zmin = MAX(zmin,GEO%zminglob)
+        zmax = MIN(zmax,GEO%zmaxglob)
 
-      BoundsOfElem_Shared(1,1,iElem) = xmin
-      BoundsOfElem_Shared(2,1,iElem) = xmax
-      BoundsOfElem_Shared(1,2,iElem) = ymin
-      BoundsOfElem_Shared(2,2,iElem) = ymax
-      BoundsOfElem_Shared(1,3,iElem) = zmin
-      BoundsOfElem_Shared(2,3,iElem) = zmax
+        BoundsOfElem_Shared(1,1,iElem) = xmin
+        BoundsOfElem_Shared(2,1,iElem) = xmax
+        BoundsOfElem_Shared(1,2,iElem) = ymin
+        BoundsOfElem_Shared(2,2,iElem) = ymax
+        BoundsOfElem_Shared(1,3,iElem) = zmin
+        BoundsOfElem_Shared(2,3,iElem) = zmax
 
-      ! BGM indices must be >0 --> move by 1
-      ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
-      ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
-      ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
-      ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
-      ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
-      ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
-    END DO ! iElem = firstElem, lastElem
-END SELECT
+        ! BGM indices must be >0 --> move by 1
+        ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
+        ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
+        ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
+        ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
+        ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
+        ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
+      END DO ! iElem = firstElem, lastElem
+  END SELECT
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 #if USE_MPI
 CALL BARRIER_AND_SYNC(ElemToBGM_Shared_Win   ,MPI_COMM_SHARED)
@@ -1148,22 +1164,23 @@ BGMjglobDelta = BGMjmaxglob - BGMjminglob
 BGMkglobDelta = BGMkmaxglob - BGMkminglob
 
 ! Allocate array to hold the number of elements on each FIBGM cell
-CALL Allocate_Shared((/(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1)/)                    &
-                    ,FIBGM_nTotalElems_Shared_Win,FIBGM_nTotalElems_Shared)
-CALL MPI_WIN_LOCK_ALL(0,FIBGM_nTotalElems_Shared_Win,iError)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL Allocate_Shared((/(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1)/),FIBGM_nTotalElems_Shared_Win,FIBGM_nTotalElems_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,FIBGM_nTotalElems_Shared_Win,iError)
+  FIBGM_nTotalElems(BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob) => FIBGM_nTotalElems_Shared
+  IF (myComputeNodeRank.EQ.0) FIBGM_nTotalElems = 0
+  CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 ! Allocate flags which procs belong to which FIGBM cell
 CALL Allocate_Shared((/(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1)*nComputeNodeProcessors/),FIBGMToProcFlag_Shared_Win,FIBGMToProcFlag_Shared)
 CALL MPI_WIN_LOCK_ALL(0,FIBGMToProcFlag_Shared_Win,iError)
-FIBGM_nTotalElems(BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob)                            => FIBGM_nTotalElems_Shared
 FIBGMToProcFlag  (BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob,0:nComputeNodeProcessors-1) => FIBGMToProcFlag_Shared
-
-IF (myComputeNodeRank.EQ.0) THEN
-  FIBGMToProcFlag   = .FALSE.
-  FIBGM_nTotalElems = 0
-END IF
-
-CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
+IF (myComputeNodeRank.EQ.0) FIBGMToProcFlag = .FALSE.
 CALL BARRIER_AND_SYNC(FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
 
 ! 1.1) Count number of elements on compute node
@@ -1177,6 +1194,9 @@ DO iElem = offsetElem+1,offsetElem+nElems
                   posRank => INT(ProcRank*(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1) + (kBGM-1)*(BGMiglobDelta+1)*(BGMjglobDelta+1) + (jBGM-1)*(BGMiglobDelta+1) + (iBGM-1),KIND=MPI_ADDRESS_KIND))
 
           ! Increment number of elements on FIBGM cell
+#if USE_LOADBALANCE
+          IF (.NOT.PerformLoadBalance) &
+#endif /*USE_LOADBALANCE*/
           CALL MPI_FETCH_AND_OP(increment,dummyInt,MPI_INTEGER,0,INT(posElem*SIZE_INT,MPI_ADDRESS_KIND),MPI_SUM,FIBGM_nTotalElems_Shared_Win,iError)
           ! Perform logical OR and place data on CN root
           CALL MPI_FETCH_AND_OP(.TRUE.   ,dummyLog,MPI_LOGICAL,0,INT(posRank*SIZE_INT,MPI_ADDRESS_KIND),MPI_LOR,FIBGMToProcFlag_Shared_Win  ,iError)
@@ -1186,17 +1206,21 @@ DO iElem = offsetElem+1,offsetElem+nElems
   END DO
 END DO
 
-CALL MPI_WIN_FLUSH(0,FIBGM_nTotalElems_Shared_Win,iError)
-CALL MPI_WIN_FLUSH(0,FIBGMToProcFlag_Shared_Win  ,iError)
-CALL BARRIER_AND_SYNC(FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
-CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
-
-! 1.2) FIBGM_nTotalElems can just be added up
-IF (myComputeNodeRank.EQ.0) THEN
-  ! All-reduce between node leaders
-  CALL MPI_ALLREDUCE(MPI_IN_PLACE,FIBGM_nTotalElems_Shared,(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1),MPI_INTEGER,MPI_SUM,MPI_COMM_LEADERS_SHARED,iError)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL MPI_WIN_FLUSH( 0,FIBGM_nTotalElems_Shared_Win,iError)
+  CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
+  ! 1.2) FIBGM_nTotalElems can just be added up
+  IF (myComputeNodeRank.EQ.0) &
+    ! All-reduce between node leaders
+    CALL MPI_ALLREDUCE(MPI_IN_PLACE,FIBGM_nTotalElems_Shared,(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1),MPI_INTEGER,MPI_SUM,MPI_COMM_LEADERS_SHARED,iError)
+  CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
+#if USE_LOADBALANCE
 END IF
-CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
+#endif /*USE_LOADBALANCE*/
+CALL MPI_WIN_FLUSH(   0,FIBGMToProcFlag_Shared_Win  ,iError)
+CALL BARRIER_AND_SYNC(  FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
 
 ! Allocate shared array to hold the mapping
 CALL Allocate_Shared((/2,BGMiglobDelta+1,BGMjglobDelta+1,BGMkglobDelta+1/),FIBGMToProc_Shared_Win,FIBGMToProc_Shared)
@@ -1207,7 +1231,6 @@ IF (myComputeNodeRank.EQ.0) FIBGMToProc = 0
 CALL BARRIER_AND_SYNC(FIBGMToProc_Shared_Win,MPI_COMM_SHARED)
 
 IF (myComputeNodeRank.EQ.0) THEN
-
   ! Compute-node local array to hold local number of elements
   ALLOCATE(FIBGM_LocalProcs(3,BGMiglobDelta+1,BGMjglobDelta+1,BGMkglobDelta+1))
   FIBGM_LocalProcs = 0
@@ -1382,18 +1405,7 @@ IF (nComputeNodeSides.NE.ElemInfo_Shared(ELEM_LASTSIDEIND,offsetComputeNodeElem+
 
 IF (nComputeNodeTotalSides.NE.MessageSize) &
   CALL Abort(__STAMP__,'Error with number of halo sides on compute node')
-
-! ElemToBGM is only used during init. First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
-CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
-
-CALL MPI_WIN_UNLOCK_ALL(ElemToBGM_Shared_Win,iError)
-CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
-
-CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
-
 #endif /*USE_MPI*/
-! Then, free the pointers or arrays
-MDEALLOCATE(ElemToBGM_Shared)
 
 END SUBROUTINE BuildBGMAndIdentifyHaloRegion
 
@@ -1406,6 +1418,11 @@ SUBROUTINE FinalizeBGM()
 USE MOD_Globals
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_MPI_Shared_Vars
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1418,10 +1435,19 @@ USE MOD_Particle_MPI_Shared_Vars
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
-CALL MPI_WIN_UNLOCK_ALL(BoundsOfElem_Shared_Win,iError)
-CALL MPI_WIN_FREE(BoundsOfElem_Shared_Win,iError)
-CALL MPI_WIN_UNLOCK_ALL(FIBGM_nTotalElems_Shared_Win,iError)
-CALL MPI_WIN_FREE(FIBGM_nTotalElems_Shared_Win,iError)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL MPI_WIN_UNLOCK_ALL(BoundsOfElem_Shared_Win,iError)
+  CALL MPI_WIN_FREE(BoundsOfElem_Shared_Win,iError)
+  CALL MPI_WIN_UNLOCK_ALL(FIBGM_nTotalElems_Shared_Win,iError)
+  CALL MPI_WIN_FREE(FIBGM_nTotalElems_Shared_Win,iError)
+  ! ElemToBGM is only used during init. But it is expensive to build, so keep it around for now
+  CALL MPI_WIN_UNLOCK_ALL(ElemToBGM_Shared_Win,iError)
+  CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 CALL MPI_WIN_UNLOCK_ALL(FIBGM_nElems_Shared_Win,iError)
 CALL MPI_WIN_FREE(FIBGM_nElems_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(FIBGM_offsetElem_Shared_Win,iError)
@@ -1441,11 +1467,24 @@ SDEALLOCATE(GlobalElem2CNTotalElem)
 SDEALLOCATE(CNTotalSide2GlobalSide)
 SDEALLOCATE(GlobalSide2CNTotalSide)
 
-MDEALLOCATE(FIBGM_nTotalElems)
-MDEALLOCATE(FIBGM_nTotalElems_Shared)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  MDEALLOCATE(FIBGM_nTotalElems)
+  MDEALLOCATE(FIBGM_nTotalElems_Shared)
+  MDEALLOCATE(ElemToBGM_Shared)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 #endif /*USE_MPI*/
 
-MDEALLOCATE(BoundsOfElem_Shared)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  MDEALLOCATE(BoundsOfElem_Shared)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 MDEALLOCATE(FIBGM_nElems)
 MDEALLOCATE(FIBGM_nElems_Shared)
 MDEALLOCATE(FIBGM_offsetElem)

@@ -1055,6 +1055,7 @@ INTEGER(SIZE_T)                :: AttrLen
 INTEGER,TARGET                 :: logtoint
 TYPE(C_PTR)                    :: buf
 INTEGER                        :: hdferr
+LOGICAL                        :: exists
 !==================================================================================================================================
 LOGWRITE(*,*)' WRITE ATTRIBUTE "',TRIM(AttribName),'" TO HDF5 FILE...'
 IF(PRESENT(DataSetName))THEN
@@ -1092,10 +1093,10 @@ IF(PRESENT(StrArray))THEN
 ENDIF
 
 CALL H5ESET_AUTO_F(0, hdferr)
-CALL H5AOPEN_F(    Loc_ID, TRIM(AttribName), Attr_ID, iError)
-IF(iError.EQ.0)THEN
+CALL H5AEXISTS_F(Loc_ID, TRIM(AttribName), exists, iError)
+IF(exists)THEN
   CALL H5ACLOSE_F(Attr_ID, iError)
-  CALL H5ADELETE_F(Loc_ID, TRIM(AttribName)         , iError)
+  CALL H5ADELETE_F(Loc_ID, TRIM(AttribName)      , iError)
 END IF
 CALL H5ESET_AUTO_F(1, hdferr)
 CALL H5ACREATE_F(Loc_ID, TRIM(AttribName), Type_ID, DataSpace, Attr_ID, iError)

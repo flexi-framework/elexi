@@ -235,26 +235,22 @@ END IF ! MPIRoot
 ! Every proc needs to get the information to arrive at the same timedisc
 CALL MPI_BCAST(PartsInElem,nGlobalElems,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 
-IF (PerformLoadBalance) THEN
-  ! ElemTime always exists during load balance, attempt to respect the user choice
+! No historical data and no particles in restart file
+IF (.NOT.ElemTimeExists .AND. ALL(PartsInElem(:).EQ.0) .AND. .NOT.postiMode) THEN
+  ! Check if distribution method is ideal for pure DG FLEXI
   WeightDistributionMethod = GETINT('WeightDistributionMethod','-1')
-ELSE
-  ! No historical data and no particles in restart file
-  IF (.NOT.ElemTimeExists .AND. ALL(PartsInElem(:).EQ.0) .AND. .NOT.postiMode) THEN
-    ! Check if distribution method is ideal for pure DG FLEXI
-    WeightDistributionMethod = GETINT('WeightDistributionMethod','-1')
-    !> -1 is optimum distri for const. elem-weight
-    IF (WeightDistributionMethod.NE.-1) THEN
-      CALL set_formatting("red")
-      SWRITE(UNIT_stdOut,'(A)') 'WARNING: WeightDistributionMethod other than -1 with neither particles nor ElemTimes!'
-      CALL clear_formatting()
-    END IF
-  ELSEIF (postiMode) THEN
-    WeightDistributionMethod = -1
-  ELSE
-    WeightDistributionMethod = GETINT('WeightDistributionMethod','1')
+  !> -1 is optimum distri for const. elem-weight
+  IF (WeightDistributionMethod.NE.-1) THEN
+    CALL set_formatting("red")
+    SWRITE(UNIT_stdOut,'(A)') 'WARNING: WeightDistributionMethod other than -1 with neither particles nor ElemTimes!'
+    CALL clear_formatting()
   END IF
-END IF ! PerformLoadBalance
+ELSEIF (postiMode) THEN
+  WeightDistributionMethod = -1
+ELSE
+  ! ElemTime always exists during load balance, attempt to respect the user choice
+  WeightDistributionMethod = GETINT('WeightDistributionMethod','1')
+END IF
 
 SELECT CASE(WeightDistributionMethod)
 

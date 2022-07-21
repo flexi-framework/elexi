@@ -280,7 +280,7 @@ SUBROUTINE ParticleInformation()
 !==================================================================================================================================
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Particle_Globals          ,ONLY: DisplayNumberOfParticles
+USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Vars    ,ONLY: PartStateBoundaryVecLength
 USE MOD_Particle_Boundary_Vars    ,ONLY: ImpactnGlob,ImpactnLoc,ImpactOffset
@@ -291,7 +291,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
-INTEGER                        :: sendbuf(2),recvbuf(2)
+INTEGER(KIND=IK)               :: sendbuf(2),recvbuf(2)
 #endif
 !==================================================================================================================================
 
@@ -304,24 +304,23 @@ ImpactnLoc  = PartStateBoundaryVecLength
 #if USE_MPI
 sendbuf(1) = ImpactnLoc
 recvbuf    = 0
-CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+CALL MPI_EXSCAN(sendbuf(1),recvbuf(1),1,MPI_INTEGER_INT_KIND,MPI_SUM,MPI_COMM_FLEXI,iError)
 !>> Offset of each proc is the sum of the particles on the previous procs
 ImpactOffset = recvbuf(1)
 sendbuf(1)   = recvbuf(1) + ImpactnLoc
 !>> Last proc knows the global number
-CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
+CALL MPI_BCAST(sendbuf(1),1,MPI_INTEGER_INT_KIND,nProcessors-1,MPI_COMM_FLEXI,iError)
 !>> Gather the global number and communicate to root (MPIRank.EQ.0)
 ImpactnGlob  = sendbuf(1)
 #else
-ImpactOffset   = 0
-ImpactnGlob    = PartStateBoundaryVecLength
+ImpactOffset = 0
+ImpactnGlob  = PartStateBoundaryVecLength
 #endif
 
 ! Output particle and impact information
 CALL DisplayNumberOfParticles(1)
-IF (doParticleImpactTrack) THEN
-SWRITE(UNIT_stdOut,'(A14,I16)')' # Impacts  : ', ImpactnGlob
-END IF
+IF (doParticleImpactTrack .AND. MPIRoot) &
+  WRITE(UNIT_stdOut,'(A14,ES16.7)')'#Impacts    : ', REAL(ImpactnGlob)
 
 END SUBROUTINE ParticleInformation
 

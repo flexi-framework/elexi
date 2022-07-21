@@ -38,7 +38,7 @@ SUBROUTINE ParticleReadin(doFlushFiles)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Particle_Globals       ,ONLY: PP_nElems
+USE MOD_Particle_Globals
 USE MOD_Particle_Restart_Vars
 USE MOD_ReadInTools            ,ONLY: PrintOption
 USE MOD_StringTools            ,ONLY: STRICMP
@@ -91,11 +91,11 @@ LOGICAL                            :: doFlushFiles_loc
 LOGICAL                            :: EmissionTimeExists
 ! Impacts
 LOGICAL                            :: ImpactDataExists
-INTEGER                            :: ALLOCSTAT
-INTEGER                            :: j,offsetImpact
-INTEGER                            :: PartStateBoundaryVecLengthGlob
+INTEGER                            :: ALLOCSTAT,j
+INTEGER(KIND=IK)                   :: offsetImpact
+INTEGER(KIND=IK)                   :: PartStateBoundaryVecLengthGlob
 #if USE_MPI
-INTEGER                            :: offsetImpactsProcCount,offsetImpacts(0:nProcessors)
+INTEGER(KIND=IK)                   :: offsetImpactsProcCount,offsetImpacts(0:nProcessors)
 #endif /* USE_MPI */
 ! LoadBalance
 #if USE_LOADBALANCE

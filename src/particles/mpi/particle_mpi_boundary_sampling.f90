@@ -490,9 +490,9 @@ IF (myComputeNodeRank.EQ.0) THEN
         !-- 2. - 6. / Kinetic energy on impact (mean, min, max, M2, variance)
         SampWallState_Shared(2+nShift,p,q,iSurfSide) = (  SampWallState_Shared(2+nShift,p,q,iSurfSide)                           &
                                                         *(SampWallState_Shared(1+nShift,p,q,iSurfSide)                           &
-                                                        - SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
-                                                        + SampWallStateTmp(2+nShift,p,q,iSurfSide,iProc)                         &
-                                                        * SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
+                                                        - SampWallStateTmp(    1+nShift,p,q,iSurfSide,iProc))                    &
+                                                        + SampWallStateTmp(    2+nShift,p,q,iSurfSide,iProc)                     &
+                                                        * SampWallStateTmp(    1+nShift,p,q,iSurfSide,iProc))                    &
                                                         / SampWallState_Shared(1+nShift,p,q,iSurfSide)
         IF (SampWallStateTmp(3+nShift,p,q,iSurfSide,iProc).LT.SampWallState_Shared(3+nShift,p,q,iSurfSide))                      &
             SampWallState_Shared(3+nShift,p,q,iSurfSide) = SampWallStateTmp(3+nShift,p,q,iSurfSide,iProc)
@@ -503,9 +503,9 @@ IF (myComputeNodeRank.EQ.0) THEN
         !-- 7. - 11 / Impact angle (mean, min, max, M2, variance)
         SampWallState_Shared(7+nShift,p,q,iSurfSide) = (  SampWallState_Shared(7+nShift,p,q,iSurfSide)                           &
                                                         *(SampWallState_Shared(1+nShift,p,q,iSurfSide)                           &
-                                                        - SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
-                                                        + SampWallStateTmp(7+nShift,p,q,iSurfSide,iProc)                         &
-                                                        * SampWallStateTmp(1+nShift,p,q,iSurfSide,iProc))                        &
+                                                        - SampWallStateTmp(    1+nShift,p,q,iSurfSide,iProc))                    &
+                                                        + SampWallStateTmp(    7+nShift,p,q,iSurfSide,iProc)                     &
+                                                        * SampWallStateTmp(    1+nShift,p,q,iSurfSide,iProc))                    &
                                                         / SampWallState_Shared(1+nShift,p,q,iSurfSide)
         IF (SampWallStateTmp(8+nShift,p,q,iSurfSide,iProc).LT.SampWallState_Shared(8+nShift,p,q,iSurfSide))                      &
             SampWallState_Shared(8+nShift,p,q,iSurfSide) = SampWallStateTmp(8+nShift,p,q,iSurfSide,iProc)
@@ -515,10 +515,10 @@ IF (myComputeNodeRank.EQ.0) THEN
         !>>
         !-- 12 - 14 / Sampling Current Forces at walls - we can simply add those
         SampWallState_Shared(12+nShift:14+nShift,p,q,iSurfSide) = SampWallState_Shared(12+nShift:14+nShift,p,q,iSurfSide)        &
-                                                                 + SampWallStateTmp   (12+nShift:14+nShift,p,q,iSurfSide,iProc)
+                                                                + SampWallStateTmp    (12+nShift:14+nShift,p,q,iSurfSide,iProc)
         !-- 15 - 17 / Sampling Average Forces at walls  - we can simply add those
         SampWallState_Shared(15+nShift:17+nShift,p,q,iSurfSide) = SampWallState_Shared(15+nShift:17+nShift,p,q,iSurfSide)        &
-                                                                 + SampWallStateTmp   (15+nShift:17+nShift,p,q,iSurfSide,iProc)
+                                                                + SampWallStateTmp    (15+nShift:17+nShift,p,q,iSurfSide,iProc)
       END DO ! iSpec = 1,nSpecies
     END DO; END DO; END DO ! p, q, iSurfSide
   END DO ! iProc

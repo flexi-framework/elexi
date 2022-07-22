@@ -59,9 +59,9 @@ LOGICAL                                 :: ImpactSideOnProc       = .FALSE. !< m
 INTEGER(KIND=IK)                        :: PartStateBoundaryVecLength    !< Impacts on current proc
 REAL,ALLOCATABLE,DIMENSION(:,:)         :: PartStateBoundary             !< solution evaluated at EPs (nvar,nEP,nSamples)
 INTEGER                                 :: ImpactDataSize                !< number of variables stored per impact
-INTEGER(KIND=IK)                        :: ImpactnGlob                   !< Global number of occured impacts
-INTEGER(KIND=IK)                        :: ImpactnLoc                    !< Local  number of occured impacts
-INTEGER(KIND=IK)                        :: ImpactOffset                  !< Offset number of occured impacts
+INTEGER(KIND=IK)                        :: ImpactnGlob                   !< Global number of occurred impacts
+INTEGER(KIND=IK)                        :: ImpactnLoc                    !< Local  number of occurred impacts
+INTEGER(KIND=IK)                        :: ImpactOffset                  !< Offset number of occurred impacts
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MPI Communicator for EPs

@@ -74,20 +74,25 @@ REAL,INTENT(IN)                :: ElemTime(1:OldElems)
 INTEGER,INTENT(OUT)            :: NewElems
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,ALLOCATABLE               :: preSum(:)
+REAL                           :: preSum(1:OldElems)
 REAL                           :: LowerBoundary
 REAL                           :: UpperBoundary
 INTEGER                        :: iElem,iRank
 INTEGER                        :: minRank,maxRank,leftOff,lb,ub,mid
 ! MPI
 REAL                           :: LoadSend,opt_split,WeightSplit
-INTEGER, ALLOCATABLE           :: split(:),sEND_count(:),recv_count(:)
+INTEGER                        :: split(0:nProcs-1),send_count(0:nProcs-1),recv_count(0:nProcs-1)
 !===================================================================================================================================
 
-ALLOCATE(PreSum(    1:OldElems) &
-        ,send_count(0:nProcs-1) &
-        ,split(     0:nProcs-1) &
-        ,recv_count(0:nProcs-1))
+! Handle the case that OldElems is zero. This is not a valid redistribution but avoids the crash. The old distribution gets restored
+! afterwards in WeightDistribution_SingleStepOptimal
+IF (OldElems.LE.0) THEN
+  LoadSend   = 0.
+  CALL MPI_EXSCAN(LoadSend,LowerBoundary,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iERROR)
+  send_count = 0
+  CALL MPI_ALLTOALL(send_count,1,MPI_INTEGER,recv_count,1,MPI_INTEGER,MPI_COMM_FLEXI,iERROR)
+  RETURN
+END IF
 
 PreSum(1) = ElemTime(1)
 DO iElem = 2,OldElems
@@ -151,7 +156,6 @@ END DO ! iRank=minRank,maxRank
 CALL MPI_ALLTOALL(send_count,1,MPI_INTEGER,recv_count,1,MPI_INTEGER,MPI_COMM_FLEXI,iERROR)
 NewElems = SUM(recv_count)
 
-DEALLOCATE(PreSum,send_count,recv_count,split)
 
 END SUBROUTINE SingleStepOptimalPartition
 
@@ -514,6 +518,8 @@ SUBROUTINE WeightDistribution_SingleStepOptimal(nProcs,nGlobalElems,ElemGlobalTi
 USE MOD_Globals
 USE MOD_LoadBalance_Vars ,ONLY: WeightDistributionMethod
 USE MOD_LoadBalance_Vars ,ONLY: LoadDistri,ParticleMPIWeight,WeightSum
+USE MOD_LoadBalance_Vars ,ONLY: offsetElemMPIOld
+USE MOD_StringTools      ,ONLY: set_formatting,clear_formatting
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -554,7 +560,7 @@ offsetElemMPI = 0
 offsetElemMPI(nProcs) = nGlobalElems
 
 TargetWeight_loc = WeightSum/REAL(nProcs)
-SWRITE(UNIT_stdOut,'(A,ES16.7)') 'TargetWeight', TargetWeight_loc
+SWRITE(UNIT_stdOut,'(A,ES16.7)') ' TargetWeight: ', TargetWeight_loc
 
 IF (WeightDistributionMethod.EQ.3) THEN
   LastProcDiff = 0.
@@ -631,7 +637,7 @@ DO iProc = 1,nProcs
   FirstElemInd = offsetElemMPI(myRank)+1
   LastElemInd  = offsetElemMPI(myRank +1)
   MyElems      = ElemDistri(   myRank)
-  CALL SingleStepOptimalPartition(nProcs,MyElems,NewElems,ElemGlobalTime(FirstElemInd:LastElemInd))
+  CALL SingleStepOptimalPartition(nProcs,MyElems,NewElems,ElemGlobalTime(FirstElemInd:LastElemInd));
   ElemDistri   = 0
 
   ErrorCode    = 0
@@ -648,8 +654,17 @@ DO iProc = 1,nProcs
 
   IF(offsetElemMPI(nProcs).NE.nGlobalElems) ErrorCode = ErrorCode+10
   IF(SUM(ElemDistri)      .NE.nGlobalElems) ErrorCode = ErrorCode+1
-  IF(ErrorCode.NE.0) CALL Abort(__STAMP__,' Error during re-distribution! ErrorCode:', ErrorCode)
 END DO ! iProc
+
+! Check if any errors occurred
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,ErrorCode,1,MPI_INTEGER,MPI_MAX,MPI_COMM_FLEXI,iError)
+IF (ErrorCode.NE.0) THEN
+  CALL set_formatting("red")
+  SWRITE(UNIT_stdOut,'(A,I0)') ' Error during re-distribution! ErrorCode: ',ErrorCode
+  CALL clear_formatting()
+  ! Restore the old distribution
+  offsetElemMPI = offsetElemMPIOld
+END IF
 
 ! compute load distri
 LoadDistri = 0.

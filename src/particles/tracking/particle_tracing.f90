@@ -466,7 +466,7 @@ DO iPart = 1,PDM%ParticleVecLength
                                             , currentIntersect%Side   &
                                             , crossedBC)
             IF (.NOT.PDM%ParticleInside(iPart)) PartisDone = .TRUE.
-            dolocSide = .TRUE. !important when in previously traced portion an elemchange occured, check all sides again!
+            dolocSide = .TRUE. !important when in previously traced portion an elemchange occurred, check all sides again!
           END SELECT
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
@@ -572,7 +572,7 @@ DO iPart = 1,PDM%ParticleVecLength
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
 ! -- 8. Reset interscetion list if no double check is performed
-      ! reset intersection list because no intersections where found or no double check is performed or no interacions occured
+      ! reset intersection list because no intersections where found or no double check is performed or no interacions occurred
       currentIntersect=>firstIntersect
       IF (currentIntersect%intersectCase.GT.0 .AND. .NOT.PartDoubleCheck)THEN
         DO WHILE (ASSOCIATED(currentIntersect))

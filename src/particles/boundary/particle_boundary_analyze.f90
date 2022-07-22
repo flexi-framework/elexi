@@ -305,7 +305,7 @@ IF (MPIRoot) THEN
   CALL CloseDataFile()
 END IF
 
-! Zero impacts occured in the complete domain.
+! Zero impacts occurred in the complete domain.
 ! > Root writes empty dummy container to .h5 file (required for subsequent file access in ParaView)
 IF (ImpactnGlob.EQ.0 .AND. MPIRoot) THEN
 CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)

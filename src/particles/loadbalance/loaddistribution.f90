@@ -173,7 +173,7 @@ USE MOD_LoadBalance_Vars ,ONLY: ParticleMPIWeight
 USE MOD_LoadBalance_Vars ,ONLY: nElemsOld,offsetElemMPIOld
 USE MOD_Mesh_Vars        ,ONLY: nGlobalElems
 USE MOD_MPI_Vars         ,ONLY: offsetElemMPI
-USE MOD_Particle_Vars    ,ONLY: PartInt
+USE MOD_Particle_Vars    ,ONLY: PartInt,nSpecies
 USE MOD_ReadInTools      ,ONLY: GETINT,GETREAL
 USE MOD_Restart_Vars     ,ONLY: RestartFile
 USE MOD_StringTools      ,ONLY: set_formatting,clear_formatting
@@ -202,39 +202,41 @@ ALLOCATE(PartsInElem(1:nGlobalElems))
 IF (MPIRoot) ALLOCATE(PartIntGlob(1:nGlobalElems,2))
 
 ! Redistribute/read PartInt array
-IF (PerformLoadBalance) THEN
-  DO iProc = 0,nProcessors-1
-    ElemPerProc(iProc) = offsetElemMPIOld(iProc+1) - offsetElemMPIOld(iProc)
-  END DO
-  CALL MPI_GATHERV(PartInt,nElemsOld,MPI_DOUBLE_PRECISION,PartIntGlob,ElemPerProc,offsetElemMPIOld(0:nProcessors-1),MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
-  PartIntExists = .TRUE.
-ELSE
-  ! Readin of PartInt: Read in only by MPIRoot in single mode because the root performs the distribution of elements (domain decomposition)
-  ! due to the load distribution scheme
-  IF (MPIRoot) THEN
-    ! Load balancing for particles: read in particle data
-    CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
-    CALL DatasetExists(File_ID,'PartInt',PartIntExists)
-    IF (PartIntExists) THEN
-      CALL ReadArray('PartInt',2,(/PartIntSize,nGlobalElems/),0,2,IntArray=PartIntGlob)
-    END IF
-    CALL CloseDataFile()
-  END IF ! MPIRoot
-END IF ! PerformLoadBalance
-
-IF (MPIRoot) THEN
-  IF (PartIntExists) THEN
-    DO iElem = 1,nGlobalElems
-      locnPart           = PartIntGlob(iElem,ELEM_LastPartInd)-PartIntGlob(iElem,ELEM_FirstPartInd)
-      PartsInElem(iElem) = locnPart
-
-      ! Calculate ElemTime according to number of particles in elem if we have no historical information
-      IF(.NOT.ElemTimeExists) ElemGlobalTime(iElem) = locnPart*ParticleMPIWeight + 1.0
+IF (nSpecies.GT.0) THEN
+  IF (PerformLoadBalance) THEN
+    DO iProc = 0,nProcessors-1
+      ElemPerProc(iProc) = offsetElemMPIOld(iProc+1) - offsetElemMPIOld(iProc)
     END DO
-  END IF
+    CALL MPI_GATHERV(PartInt,nElemsOld,MPI_DOUBLE_PRECISION,PartIntGlob,ElemPerProc,offsetElemMPIOld(0:nProcessors-1),MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+    PartIntExists = .TRUE.
+  ELSE
+    ! Readin of PartInt: Read in only by MPIRoot in single mode because the root performs the distribution of elements (domain decomposition)
+    ! due to the load distribution scheme
+    IF (MPIRoot) THEN
+      ! Load balancing for particles: read in particle data
+      CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
+      CALL DatasetExists(File_ID,'PartInt',PartIntExists)
+      IF (PartIntExists) THEN
+        CALL ReadArray('PartInt',2,(/PartIntSize,nGlobalElems/),0,2,IntArray=PartIntGlob)
+      END IF
+      CALL CloseDataFile()
+    END IF ! MPIRoot
+  END IF ! PerformLoadBalance
 
-  DEALLOCATE(PartIntGlob)
-END IF ! MPIRoot
+  IF (MPIRoot) THEN
+    IF (PartIntExists) THEN
+      DO iElem = 1,nGlobalElems
+        locnPart           = PartIntGlob(iElem,ELEM_LastPartInd)-PartIntGlob(iElem,ELEM_FirstPartInd)
+        PartsInElem(iElem) = locnPart
+
+        ! Calculate ElemTime according to number of particles in elem if we have no historical information
+        IF(.NOT.ElemTimeExists) ElemGlobalTime(iElem) = locnPart*ParticleMPIWeight + 1.0
+      END DO
+    END IF
+
+    DEALLOCATE(PartIntGlob)
+  END IF ! MPIRoot
+END IF ! nSpecies.GT.0
 
 ! Every proc needs to get the information to arrive at the same timedisc
 CALL MPI_BCAST(PartsInElem,nGlobalElems,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)

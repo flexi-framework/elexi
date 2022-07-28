@@ -54,7 +54,7 @@ USE MOD_LoadBalance_Restart        ,ONLY: FieldRestart
 USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ElemTimeField,ElemTimePart
 USE MOD_LoadBalance_Vars           ,ONLY: nLoadBalanceSteps,LoadBalanceMaxSteps,NewImbalance,MinWeight,MaxWeight
 USE MOD_LoadBalance_Vars           ,ONLY: CurrentImbalance,MaxWeight,MinWeight
-USE MOD_LoadBalance_Vars           ,ONLY: PerformLoadBalance
+USE MOD_LoadBalance_Vars           ,ONLY: PerformLoadBalance,LoadBalanceCounter
 USE MOD_IO_HDF5                    ,ONLY: ElementOut,FieldOut,FinalizeIOHDF5
 USE MOD_Mesh                       ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars                  ,ONLY: nElems
@@ -99,7 +99,8 @@ IF (.NOT.PerformLoadBalance) THEN
   RETURN
 END IF
 
-nLoadBalanceSteps = nLoadBalanceSteps+1
+nLoadBalanceSteps  = nLoadBalanceSteps+1
+LoadBalanceCounter = 0
 SWRITE(UNIT_stdOut,'(132("-"))')
 CALL set_formatting('green')
 IF (LoadBalanceMaxSteps.GT.0) THEN

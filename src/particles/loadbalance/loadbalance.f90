@@ -80,9 +80,12 @@ CALL prms%CreateLogicalOption( 'DoLoadBalance'                ,  "Set flag for d
 CALL prms%CreateIntOption(     'LoadBalanceSample'            ,  "Define number of iterations (before analyze_dt)"              //&
                                                                  " that are used for calculation of elemtime information"         &
                                                               ,  '1')
-CALL prms%CreateIntOption(    'LoadBalanceMaxSteps'           ,  'Define number of maximum load balacing steps that are allowed.' &
+CALL prms%CreateIntOption(     'LoadBalanceMaxSteps'          ,  'Define number of maximum load balacing steps that are allowed.' &
                                                               ,  '0')
-CALL prms%CreateLogicalOption('PartWeightLoadBalance'         ,  'Set flag for doing LoadBalance with partMPIWeight instead of '//&
+CALL prms%CreateIntOption(     'LoadBalanceInterval'          ,   'Intervall as multiple of analyze_dt at which loadbalancing ' //&
+                                                                  'is performed.\n'                                             //&
+                                                                  'DEFAULT: nWriteData')
+CALL prms%CreateLogicalOption( 'PartWeightLoadBalance'        ,  'Set flag for doing LoadBalance with partMPIWeight instead of '//&
                                                                  'elemtimes. Elemtime array in state file is filled with '      //&
                                                                  'nParts*PartMPIWeight for each Elem. '                         //&
                                                                  ' If Flag [TRUE] LoadBalanceSample is set to 0 and vice versa.'  &
@@ -132,9 +135,11 @@ SUBROUTINE InitLoadBalance()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_Analyze_Vars           ,ONLY: nWriteData
 USE MOD_LoadBalance_Vars       ,ONLY: InitLoadBalanceIsDone,DoLoadBalance,LoadBalanceSample
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLBSample,PerformPartWeightLB
-USE MOD_LoadBalance_Vars       ,ONLY: nLoadBalance,nLoadBalanceSteps,DeviationThreshold
+USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceInterval,LoadBalanceCounter
+USE MOD_LoadBalance_Vars       ,ONLY: nLoadBalance,nLoadBalanceSteps,LoadBalanceInterval,DeviationThreshold
 USE MOD_ReadInTools            ,ONLY: GETLOGICAL,GETREAL,GETINT
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceMaxSteps
@@ -153,6 +158,7 @@ USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+CHARACTER(LEN=5) :: tmpStr
 !===================================================================================================================================
 !SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT LOAD BALANCE...'
@@ -165,9 +171,11 @@ IF(nProcessors.EQ.1)THEN
   DeviationThreshold   = HUGE(1.0)
   PerformPartWeightLB  = .FALSE.
 ELSE
+  WRITE(tmpStr,'(I5.5)') nWriteData
   DoLoadBalance        = GETLOGICAL('DoLoadBalance')
   LoadBalanceSample    = GETINT    ('LoadBalanceSample')
   LoadBalanceMaxSteps  = GETINT    ('LoadBalanceMaxSteps')
+  LoadBalanceInterval  = GETINT    ('LoadBalanceInterval',tmpStr)
   DeviationThreshold   = GETREAL   ('Load-DeviationThreshold')
   PerformPartWeightLB  = GETLOGICAL('PartWeightLoadBalance')
 END IF
@@ -191,6 +199,7 @@ PerformPartWeightLB    = .FALSE.
 #endif /*USE_LOADBALANCE*/
 nLoadBalance           = 0
 nLoadBalanceSteps      = 0
+LoadBalanceCounter     = 0
 PerformLBSample        = .FALSE.
 
 #if USE_LOADBALANCE
@@ -258,6 +267,7 @@ USE MOD_LoadBalance_Vars       ,ONLY: DeviationThreshold,PerformLoadBalance,Load
 USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem,nSurfacefluxPerElem
 USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight,ElemTimePartTot,ElemTimePart
 USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance,PerformLBSample,ElemTimeFieldTot,ElemTimeField
+USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceCounter,LoadBalanceInterval
 USE MOD_LoadDistribution       ,ONLY: WriteElemTimeStatistics
 USE MOD_Particle_Globals
 USE MOD_Particle_Localization  ,ONLY: CountPartsPerElem
@@ -374,6 +384,10 @@ CALL WriteElemTimeStatistics(WriteHeader=.FALSE.,time=t)
 
 ! only check if imbalance is > a given threshold
 PerformLoadBalance = MERGE(.TRUE.,.FALSE.,CurrentImbalance.GT.DeviationThreshold)
+
+! only perform loadbalance if LoadBalanceInterval is reached
+LoadBalanceCounter = LoadBalanceCounter + 1
+PerformLoadBalance = MERGE(PerformLoadBalance,.FALSE.,LoadBalanceCounter.EQ.LoadBalanceInterval)
 
 ! Reset counters
 nTracksPerElem       = 0

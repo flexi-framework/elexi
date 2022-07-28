@@ -122,14 +122,16 @@ LastElemInd  = offsetElem+PP_nElems
 
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) THEN
-  StartT=MPI_WTIME()
+  ! PartInt and PartData are still allocated from last WriteState
+  StartT = MPI_WTIME()
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' REDISTRIBUTING PARTICLES DURING LOADBALANCE...'
 
-  ! Check the PartDataSize
+  ! ------------------------------------------------
+  ! Check and set sizes
+  ! ------------------------------------------------
   IF (PartDataSize.EQ.0) &
     CALL Abort(__STAMP__,'PartDataSize.EQ.0 but should have been set before loadbalance!')
 
-  ! PartInt and PartData are still allocated from last WriteState
   ! ------------------------------------------------
   ! PartInt
   ! ------------------------------------------------

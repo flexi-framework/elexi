@@ -49,6 +49,8 @@ REAL,ALLOCATABLE                    :: tCurrent_LB_DG(:)                        
 ! counter
 INTEGER                             :: nLoadBalance                               !> Number of load balances calculations (calls of ComputeElemLoad)
 INTEGER                             :: nLoadBalanceSteps                          !> Number of performed load balances steps
+INTEGER                             :: LoadBalanceInterval                        !> Interval as multiple of analyze_dt at which loadbalancing is performed
+INTEGER                             :: LoadBalanceCounter                         !< Count the number of analyze steps until LoadBalanceInterval
 #if USE_LOADBALANCE
 INTEGER                             :: LoadBalanceMaxSteps                        !> Number of maximum allowed performed load balances steps
 REAL,ALLOCATABLE                    :: LoadDistri(:)                              !> Weighted load distribution of all procs

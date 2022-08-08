@@ -559,7 +559,10 @@ IF(doAnalyze)THEN
   writeCounter = writeCounter+1
 #if USE_PARTICLES
   ! Fill the SFC-ordered particle arrays
-  ! TODO: Currently still coupled with WriteState
+#if !USE_LOADBALANCE
+  ! Do not call without load balance and outside nWriteData
+  IF ((writeCounter.EQ.nWriteData).OR.doFinalize) &
+#endif /*!USE_LOADBALANCE*/
   CALL FillParticleData()
 #endif /*USE_PARTICLES*/
   ! Visualize data and write solution

@@ -67,7 +67,7 @@ IF (useLinkedList) THEN
 END IF
 
 n = PDM%ParticleVecLength !PDM%maxParticleNumber
-PDM%ParticleVecLength    = 0
+PDM%ParticleVecLength = 0
 counter = 0
 
 IF (useLinkedList) THEN

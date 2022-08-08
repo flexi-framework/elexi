@@ -488,7 +488,7 @@ IF (PARTICLES)
   LIST(APPEND flexiF90 ${particlesF90})
 
   ADD_LIBRARY(memusagelib STATIC ./src/particles/globals/processmemusage.cxx)
-  SET_TARGET_PROPERTIES(memusagelib PROPERTIES LINKER_LANGUAGE CXX
+  SET_TARGET_PROPERTIES(memusagelib PROPERTIES LANGUAGE CXX LINKER_LANGUAGE CXX
                                                COMPILE_FLAGS "-fPIC")
   LIST(APPEND particlelibs memusagelib)
 ENDIF()
@@ -506,7 +506,7 @@ ENDIF()
 
 ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
-SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C
+SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C LINKER_LANGUAGE C
                                                            COMPILE_FLAGS "-fPIC")
 
 # we link the statically built libs

@@ -883,9 +883,8 @@ PPURE SUBROUTINE GetRefNewtonStartValue(X_in,Xi,ElemID)
 !> Returns the initial value/ guess for the Newton's algorithm
 !===================================================================================================================================
 ! MODULES
-  USE MOD_Globals
-
-USE MOD_Preproc,                 ONLY: PP_N
+USE MOD_Globals
+USE MOD_Preproc
 USE MOD_Interpolation_Vars,      ONLY: xGP
 USE MOD_Mesh_Vars,               ONLY: NGeo!,Elem_xGP,offsetElem
 !USE MOD_Particle_Globals,        ONLY: PP_nElems

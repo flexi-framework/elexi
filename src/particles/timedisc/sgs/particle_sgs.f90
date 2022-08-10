@@ -49,7 +49,7 @@ CONTAINS
 SUBROUTINE ParticleInitSGS()
 ! MODULES
 USE MOD_Globals
-USE MOD_Preproc               ,ONLY: PP_N,PP_NZ
+USE MOD_Preproc
 USE MOD_Analyze_Vars          ,ONLY: ElemVol
 USE MOD_Mesh_Vars             ,ONLY: nElems
 USE MOD_Particle_SGS_Vars

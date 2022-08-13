@@ -480,16 +480,14 @@ Rep = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 IF (Species(PartSpecies(PartID))%CalcSaffmanForce .AND. .NOT. ALMOSTZERO(Rep)) THEN
   ! Calculate the factor
   prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*PartState(PART_DIAM,PartID)*PP_PI)
-  beta = PartState(PART_DIAM,PartID) * VECNORM(PartState(PART_AMOMV,PartID)) * 0.5 / VECNORM(udiff)
+  beta = PartState(PART_DIAM,PartID) * VECNORM(rotu) * 0.5 / VECNORM(udiff)
   IF (Rep .LE. 40) THEN
     prefactor = prefactor * (1-0.3314*SQRT(beta)*EXP(-0.1*Rep)+0.3314*SQRT(beta))
   ELSE
     prefactor = prefactor * 0.0524*SQRT(beta*Rep)
   END IF
-  ! Calculate the rotation: (\nabla x u) x udiff
-  rotudiff = CROSS(rotu, udiff)
-  dotp   = MAX(SQRT(DOT_PRODUCT(rotu(:),rotu(:))),0.001)
-  IF (dotp .NE. 0) Flm(:) = SQRT(2*FieldAtParticle(DENS)*mu * 1./dotp)*rotudiff(:) * prefactor
+  dotp   = NORM2(rotu(:))
+  IF (dotp .GT. 1.E-3) Flm(:) = SQRT(FieldAtParticle(DENS)*mu * 1./dotp) * CROSS(rotu, udiff) * prefactor
 END IF
 
 !===================================================================================================================================

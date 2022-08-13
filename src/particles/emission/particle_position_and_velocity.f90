@@ -351,7 +351,10 @@ USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
 USE MOD_Eval_xyz,                ONLY: EvaluateField_FV
 USE MOD_FV_Vars,                 ONLY: FV_Elems
 #endif /* FV_ENABLED */
-USE MOD_StringTools             ,ONLY: STRICMP
+USE MOD_StringTools,             ONLY: STRICMP
+#if USE_BASSETFORCE
+USE MOD_Particle_Vars,           ONLY: durdt,bIter
+#endif /* USE_BASSETFORCE */
 !IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !!-----------------------------------------------------------------------------------------------------------------------------------
@@ -428,6 +431,10 @@ CASE('random')
       PartState(4:6,PositionNbr) = RandVal(1:3) * VeloIC
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
+#if USE_BASSETFORCE
+      durdt(:,PositionNbr) = 0.
+      bIter(PositionNbr) = 0
+#endif /* USE_BASSETFORCE */
     END IF
     i = i + 1
   END DO
@@ -443,6 +450,10 @@ CASE('constant')
       PartState(4:6,PositionNbr) = VeloVecIC(1:3) * VeloIC
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
+#if USE_BASSETFORCE
+      durdt(:,PositionNbr) = 0.
+      bIter(PositionNbr) = 0
+#endif /* USE_BASSETFORCE */
     END IF
     i = i + 1
   END DO
@@ -465,6 +476,10 @@ CASE('constant_turbulent')
       PartState(4:6,PositionNbr) = VeloVecIC(1:3) * VeloIC + RandVal(1:3) * VeloTurbIC * VeloIC
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
+#if USE_BASSETFORCE
+      durdt(:,PositionNbr) = 0.
+      bIter(PositionNbr) = 0
+#endif /* USE_BASSETFORCE */
     END IF
     i = i + 1
   END DO
@@ -483,6 +498,10 @@ CASE('radial_constant')
       PartState(4:6,PositionNbr) = Radius(1:3) * VeloIC
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
+#if USE_BASSETFORCE
+      durdt(:,PositionNbr) = 0.
+      bIter(PositionNbr) = 0
+#endif /* USE_BASSETFORCE */
     END IF
     i = i + 1
   END DO
@@ -512,6 +531,10 @@ CASE('load_from_file')
 !      END IF
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
+#if USE_BASSETFORCE
+      durdt(:,PositionNbr) = 0.
+      bIter(PositionNbr) = 0
+#endif /* USE_BASSETFORCE */
     END IF
     i = i + 1
   END DO
@@ -577,6 +600,10 @@ CASE('fluid')
 
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
+#if USE_BASSETFORCE
+      durdt(:,PositionNbr) = 0.
+      bIter(PositionNbr) = 0
+#endif /* USE_BASSETFORCE */
     END IF
     i=i+1
   END DO

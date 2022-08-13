@@ -60,9 +60,14 @@ LOGICAL                       :: doRandomPartDiam                            ! F
 
 #if USE_BASSETFORCE
 REAL    , ALLOCATABLE         :: durdt(:,:)                                  ! Old dur/dt for Basset force
+REAL    , ALLOCATABLE         :: FbCoeff(:)                                  ! Coeff. for Basset force
+REAL    , ALLOCATABLE         :: Fbi(:,:,:)
+REAL    , ALLOCATABLE         :: Fbdt(:,:)
 INTEGER                       :: N_Basset                                    ! Number of old dur/dt terms used for the Basset force
-INTEGER                       :: bIter
+INTEGER , ALLOCATABLE         :: bIter(:)
 INTEGER                       :: nBassetVars
+INTEGER                       :: FbCoeffm
+REAL    , ALLOCATABLE         :: FbCoeffa(:),FbCoefft(:)
 #endif
 
 CHARACTER(255)                :: FilenameRecordPart

@@ -147,6 +147,8 @@ CALL prms%CreateRealOption(         'Part-charactLength'       , 'Characteristic
                                                                 , '1.')
 CALL prms%CreateIntOption(          'Part-IniRefState'         , 'IniRefState for the calculation of the Stokes number'            &
                                                                 , '1')
+CALL prms%CreateIntOption(          'Part-NBasset    '         , 'Number of previous steps used in Basset force'                   &
+                                                                , '20')
 
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
@@ -800,15 +802,16 @@ CALL MPI_BARRIER(PartMPI%COMM,IERROR)
 #endif /*MPI*/
 
 #if USE_EXTEND_RHS && ANALYZE_RHS
-FileName_RHS = TRIM(ProjectName)//'_RHS'
+WRITE(tmpStr,FMT='(I0)') myRank
+FileName_RHS = TRIM(ProjectName)//'_'//TRIM(ADJUSTL(tmpStr))//'_RHS'
 WRITE(tmpStr,FMT='(E8.2)') analyze_dt
 dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(ADJUSTL(tmpStr)))
 IF(dtWriteRHS.GT.0.0)THEN
   tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
 
-  CALL InitOutputToFile(FileName_RHS,'RHS',19,&
-    [CHARACTER(4)::"Spec","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fmmx","Fmmy","Fmmz",&
-                   "Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz"])
+  CALL InitOutputToFile(FileName_RHS,'RHS',23,&
+    [CHARACTER(4)::"Spec","Fx","Fy","Fz","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fmmx","Fmmy","Fmmz",&
+                   "Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz","nIndex"],WriteRootOnly=.FALSE.)
 END IF
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
@@ -827,6 +830,9 @@ USE MOD_PreProc
 USE MOD_ReadInTools
 USE MOD_Particle_Memory        ,ONLY: VerifyMemUsage
 USE MOD_Particle_Vars
+#if USE_BASSETFORCE
+USE MOD_Equation_Vars,          ONLY: s43
+#endif
 #if USE_FAXEN_CORR
 USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 #endif /* USE_FAXEN_CORR */
@@ -839,6 +845,8 @@ USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(KIND=8)               :: ArraySize
+INTEGER                       :: k
+REAL                          :: s32
 !===================================================================================================================================
 ! Allocate array to hold particle properties
 ! CALL Allocate_Safe(PartState    ,(/PP_nVarPart   ,PDM%maxParticleNumber/))
@@ -920,11 +928,29 @@ ALLOCATE(gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems),  &
 
 ! Basset force
 #if USE_BASSETFORCE
-N_Basset    = 20
-nBassetVars = INT(N_Basset * 3 + 3)
-ALLOCATE(durdt(nBassetVars,1:PDM%maxParticleNumber))
+N_Basset = GETINT('Part-NBasset')
+s32 = 3./2.
+nBassetVars = INT((N_Basset+1) * 3)
+ALLOCATE(durdt(1:nBassetVars,1:PDM%maxParticleNumber))
 durdt = 0.
-bIter = 0.
+ALLOCATE(bIter(1:PDM%maxParticleNumber))
+bIter = 0
+ALLOCATE(Fbdt(1:N_Basset,1:PDM%maxParticleNumber))
+Fbdt = 0.
+! Window kernel
+ALLOCATE(FbCoeff(1:N_Basset))
+DO k=1,N_Basset-1
+  FbCoeff(k) = ((k+s43)/((k+1)*SQRT(REAL(k+1))+(k+s32)*SQRT(REAL(k)))+(k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k))))
+END DO
+FbCoeff(N_Basset) = (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
+! Exponential kernel
+FbCoeffm = 10
+ALLOCATE(Fbi(1:3,1:FbCoeffm,1:PDM%maxParticleNumber))
+Fbi = 0.
+ALLOCATE(FbCoeffa(FbCoeffm),FbCoefft(FbCoeffm))
+FbCoeffa = (/0.23477481312586,0.28549576238194,0.28479416718255,0.26149775537574,0.32056200511938,0.35354490689146,&
+  0.39635904496921,0.42253908596514,0.48317384225265,0.63661146557001/)
+FbCoefft = (/0.1,0.3,1.,3.,10.,40.,190.,1000.,6500.,50000./)
 #endif /* USE_BASSETFORCE */
 
 END SUBROUTINE AllocateParticleArrays
@@ -1055,7 +1081,8 @@ DO iSpec = 1, nSpecies
     ! dyn. viscosity
     prim=RefStatePrim(:,RefStatePart)
     mu = VISCOSITY_PRIM(prim)
-    tmp = 18 * mu * charactLength / (Species(iSpec)%DensityIC * NORM2(RefStatePrim(VELV,RefStatePart)))
+    tmp = 18 * mu / (Species(iSpec)%DensityIC) * charactLength
+    !tmp = 18 * mu * charactLength / (Species(iSpec)%DensityIC * NORM2(RefStatePrim(VELV,RefStatePart)))
     Species(iSpec)%DiameterIC = SQRT(Species(iSpec)%StokesIC * tmp)
     LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
     Species(iSpec)%MassIC = MASS_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%DiameterIC)
@@ -2012,6 +2039,12 @@ SDEALLOCATE(gradUz_slave_loc)
 ! Basset force
 #if USE_BASSETFORCE
 SDEALLOCATE(durdt)
+SDEALLOCATE(bIter)
+SDEALLOCATE(Fbdt)
+SDEALLOCATE(FbCoeff)
+SDEALLOCATE(FbCoeffa)
+SDEALLOCATE(FbCoefft)
+SDEALLOCATE(Fbi)
 #endif /* USE_BASSETFORCE */
 
 ! interpolation

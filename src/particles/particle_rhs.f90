@@ -15,6 +15,8 @@
 #include "eos.h"
 #include "particle.h"
 
+#define PHI(x) 1+0.5*x+1./6*x**2
+
 !===================================================================================================================================
 ! Subroutine to compute the particle right hand side, therefore the acceleration due to the Lorentz-force with
 ! respect to the Lorentz factor
@@ -101,7 +103,7 @@ USE MOD_Particle_Vars,                ONLY: tWriteRHS,dtWriteRHS
 ! #if USE_RW
 ! USE MOD_Particle_RandomWalk_Vars,     ONLY: RWTime
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,                ONLY: bIter
+USE MOD_Particle_Vars,                ONLY: bIter,N_Basset
 #endif /* USE_BASSETFORCE */
 ! #endif
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -117,22 +119,11 @@ INTEGER,INTENT(IN),OPTIONAL      :: iStage
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLE
 INTEGER                          :: iPart
-#if USE_MPI && USE_BASSETFORCE
-INTEGER                          :: MPIRequest_FB
-#endif
 !===================================================================================================================================
 
 ! Drag force
 Pt(:,1:PDM%ParticleVecLength)=0.
 
-#if USE_BASSETFORCE
-bIter = bIter + 1 !MIN(bIter + 1,N_Basset + 1)
-! Communicate bIter to all other processors (same effect as blocking comm...)
-#if USE_MPI
-MPIRequest_FB = MPI_REQUEST_NULL
-CALL MPI_IBCAST(bIter,1,MPI_INTEGER,0,MPI_COMM_FLEXI,MPIRequest_FB,IERROR)
-#endif /* USE_MPI */
-#endif /* USE_BASSETFORCE */
 DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
 !#if USE_RW
@@ -147,6 +138,9 @@ DO iPart = 1,PDM%ParticleVecLength
     Pt(1:3,iPart) = ParticlePush(iPart,FieldAtParticle(PRIM,iPart),GradAtParticle(1:RHS_GRAD,1:3,iPart))
 #endif /* USE_FAXEN_CORR */
 #if USE_EXTEND_RHS
+#if USE_BASSETFORCE
+    bIter(iPart) = MIN(bIter(iPart) + 1,N_Basset + 2)
+#endif /* USE_BASSETFORCE */
     ! Calculate other RHS forces and add all forces to compute the particle push
     CALL ParticlePushExtend(iPart,FieldAtParticle(PRIM,iPart)                                     ,&
                                   GradAtParticle (1:RHS_GRAD,1:3,iPart),Pt(1:PP_nVarPartRHS,iPart) &
@@ -158,10 +152,6 @@ DO iPart = 1,PDM%ParticleVecLength
 #endif
   END IF
 END DO
-
-#if USE_BASSETFORCE && USE_MPI
-CALL MPI_WAIT(MPIRequest_FB,MPI_STATUS_IGNORE,IERROR)
-#endif
 
 #if ANALYZE_RHS
 IF((dtWriteRHS .GT. 0.0) .AND. (tWriteRHS-t .LE. dt*(1.+1.E-4))) tWriteRHS = tWriteRHS + dtWriteRHS
@@ -375,8 +365,8 @@ SUBROUTINE ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,Pt_in&
 ! MODULES
 USE MOD_Particle_Globals
 USE MOD_Mathtools,              ONLY: CROSS
-USE MOD_Particle_Vars,          ONLY: Species, PartSpecies
-USE MOD_Particle_Vars,          ONLY: PartState, TurbPartState
+USE MOD_Particle_Vars,          ONLY: Species,PartSpecies
+USE MOD_Particle_Vars,          ONLY: PartState,TurbPartState
 #if ANALYZE_RHS
 USE MOD_Particle_Vars,          ONLY: tWriteRHS,FileName_RHS,dtWriteRHS
 USE MOD_Output,                 ONLY: OutputToFile
@@ -385,7 +375,7 @@ USE MOD_PreProc,                ONLY: PP_pi
 USE MOD_Viscosity
 #if USE_BASSETFORCE
 USE MOD_Equation_Vars,          ONLY: s43
-USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter
+USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter,Fbi,FbCoeff,FbCoeffa,FbCoefft,FbCoeffm,Fbdt
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
 #endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
@@ -405,7 +395,8 @@ INTEGER,INTENT(IN),OPTIONAL :: iStage
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: Pt(1:PP_nVarPartRHS)
+INTEGER                  :: nGP
+REAL                     :: Pt(1:PP_nVarPartRHS),Fdi(1:3,10),Fre(1:3,10),tmp(1:3)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: globalfactor                ! prefactor of LHS divided by the particle mass
@@ -423,6 +414,8 @@ REAL,PARAMETER           :: s32=3./2.
 REAL                     :: RKdtFrac                    ! Runge-Kutta time step
 INTEGER                  :: k,kIndex,nIndex
 REAL                     :: dufdt(1:3)                  ! partial derivative of the fluid velocity
+! Convergence1
+! REAL                     :: Sb,Cb
 #endif /* USE_BASSETFORCE */
 #if PP_nVarPartRHS == 6
 REAL                     :: Rep                         ! particle Reynolds number
@@ -430,6 +423,9 @@ REAL                     :: Omega(3),Rew                ! relative fluid-particl
 REAL                     :: rotu(3),rotudiff(3)         ! curl product of the velocity and the velocity difference
 REAL                     :: dotp,beta                   ! dot_product, beta=dp*|\omega|/(2*udiff)
 #endif /* PP_nVarPartRHS == 6 */
+#if ANALYZE_RHS
+REAL                     :: Fltot(3),Fmtot(3),Futot(3),Fvtot(3),Fbtot(3),Fdtot(3),Ftot(3)
+#endif
 !===================================================================================================================================
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
@@ -505,8 +501,7 @@ END IF
 
 #if USE_UNDISTFLOW || USE_VIRTUALMASS
 IF (Species(PartSpecies(PartID))%CalcUndisturbedFlow.OR.Species(PartSpecies(PartID))%CalcVirtualMass) THEN
-  ! Material derivative \rho D(u_i)/Dt = - \nabla p + \nabla \cdot \tau
-!  DuDt(:)  = - GradAtParticle(RHS_GRADPRES,:) + mu*GradAtParticle(RHS_GRADTAU,:)
+  ! Material derivative D(u_i)/Dt = \partial (u_i)/\partial t + u_j \partial (u_i)/\partial (x_j) (inkomp.)
   DuDt(1)  = GradAtParticle(RHS_dVELdt,1) + DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL1,:))
   DuDt(2)  = GradAtParticle(RHS_dVELdt,2) + DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL2,:))
   DuDt(3)  = GradAtParticle(RHS_dVELdt,3) + DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL3,:))
@@ -552,62 +547,90 @@ END IF
 !===================================================================================================================================
 #if USE_BASSETFORCE
 IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
+  ! Index for previous data
+  nIndex = MIN(N_Basset+1, bIter(PartID))
+  kIndex = INT((nIndex)*3)
+
+  ! copy previous data
+  IF (bIter(PartID) .GT. N_Basset+1) THEN
+    tmp(1:3) = durdt(1:3,PartID)
+    durdt(1:kIndex-3,PartID) = durdt(4:kIndex,PartID)
+    Fbdt(1:nIndex-1,PartID) = Fbdt(2:nIndex,PartID)
+  END IF
+
   ! Time integration in first RK stage (p. 26)
-  IF(PRESENT(iStage))THEN
+  IF (PRESENT(iStage)) THEN
     IF (iStage.EQ.1) THEN
-      RKdtFrac      = RKC(2)*dt
+      Fbdt(nIndex,PartID) = RKC(2)*dt
     ELSE
       IF (iStage.NE.nRKStages) THEN
-        RKdtFrac      = (RKC(iStage+1)-RKC(iStage))*dt
+        Fbdt(nIndex,PartID) = (RKC(iStage+1)-RKC(iStage))*dt
       ELSE
-        RKdtFrac      = (1.-RKC(nRKStages))*dt
+        Fbdt(nIndex,PartID) = (1.-RKC(nRKStages))*dt
       END IF
     END IF
   ELSE
-    RKdtFrac = dt
-  END IF
-  ! Correction term if initial particle velocity if different from the surrounding fluid velocity
-  durdt(1:3,PartID) = 0.
-  IF (t .GT. 0 .AND. bIter .LT. N_Basset) THEN
-    durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t)
-  ELSEIF (MOD(bIter,N_Basset) .EQ. 0) THEN
-    durdt(1:3,PartID) = (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t-N_Basset*RKdtFrac)
+   Fbdt(nIndex,PartID) = dt
   END IF
 
   ! Scaling factor
-  prefactor = 9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
+  prefactor =9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
             * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
 
-  ! Index for previous data
-  nIndex = MIN(N_Basset, bIter)
-  kIndex = INT((nIndex+1)*3)
-
-  ! copy previous data
-  IF(bIter .GT. N_Basset) durdt(4:kIndex-3,PartID) = durdt(7:kIndex,PartID)
-  ! \rho d(u)/dt = \rho D(u)/Dt - udiff * (\rho \nabla(u))
-!  dufdt(1) = DuDt(1) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL1,:))
-!  dufdt(2) = DuDt(2) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL2,:))
-!  dufdt(3) = DuDt(3) - DOT_PRODUCT(udiff(:),FieldAtParticle(DENS)*GradAtParticle(RHS_GRADVEL3,:))
+  ! d(u_i)/dt = \partial (u_i)/\partial t + v_j \partial (u_i)/\partial (x_j) (inkomp.)
   dufdt(1) = GradAtParticle(RHS_dVELdt,1) + DOT_PRODUCT(PartState(PART_VELV,PartID), GradAtParticle(RHS_GRADVEL1,:))
   dufdt(2) = GradAtParticle(RHS_dVELdt,2) + DOT_PRODUCT(PartState(PART_VELV,PartID), GradAtParticle(RHS_GRADVEL2,:))
   dufdt(3) = GradAtParticle(RHS_dVELdt,3) + DOT_PRODUCT(PartState(PART_VELV,PartID), GradAtParticle(RHS_GRADVEL3,:))
 
-  ! \rho d(udiff)/dt = \rho d(u)/dt - \rho (dv_p/dt)
+  ! current derivative
   durdt(kIndex-2:kIndex,PartID) = dufdt(:)
+  ! NOTE: convergence1
+  ! durdt(kIndex-2:kIndex,PartID) = COS(t)
+  ! NOTE: convergence2
+  ! durdt(kIndex-2:kIndex,PartID) = t**2
 
-  Fbm = s43 * durdt(kIndex-2:kIndex,PartID) + durdt(4:6,PartID) * (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
-  DO k=1,nIndex-1
-    Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * ((k+s43)/((k+1)*SQRT(REAL(k+1))+(k+s32)*SQRT(REAL(k)))+(k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k))))
+  Fbm = s43 * durdt(kIndex-2:kIndex,PartID) * SQRT(Fbdt(nIndex,PartID)) + durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID) *&
+  FbCoeff(N_Basset) * SQRT(Fbdt(1,PartID))
+  DO k=1,nIndex-2
+    Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * FbCoeff(k) * SQRT(Fbdt(nIndex-k,PartID))
   END DO
+  Fbm(1:3) = prefactor * Fbm(1:3)
+
+  IF (biter(PartID) .GT. N_Basset+1) THEN
+    DO k=1,FbCoeffm
+      ! F_i-di(t) = 2 c_B sqrt(e t) exp(-t_win/(2 FbCoefft)) (g_n...)
+      Fdi(1:3,k) = 2*SQRT(EXP(1.)*FbCoefft(k))*EXP(-SUM(Fbdt(1:nIndex,PartID))/(2*FbCoefft(k)))*(durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID)*&
+        (1-(PHI((-Fbdt(nIndex,PartID)/(2*FbCoefft(k))))))+tmp*EXP(-Fbdt(nIndex,PartID)/(2*FbCoefft(k)))*((PHI((Fbdt(nIndex,PartID)/(2*FbCoefft(k)))))-1.))
+      ! F_i-re(t) = exp(-dt/(2 FbCoefft)) F_i (t-dt)
+      Fre(1:3,k) = EXP(-Fbdt(nIndex,PartID)/(2*FbCoefft(k)))*Fbi(1:3,k,PartID)
+    END DO
+
+    DO k=1,FbCoeffm
+      Fbi(1:3,k,PartID) = FbCoeffa(k) * (prefactor*Fdi(1:3,k) + Fre(1:3,k))
+      Fbm = Fbm + Fbi(1:3,k,PartID)
+    END DO
+  END IF
 
   ! Add to global scaling factor as s43*\rho*prefactor*dv_p/dt is on RHS
-  globalfactor     = globalfactor + s43 * prefactor * SQRT(RKdtFrac)
+  globalfactor     = globalfactor + s43 * prefactor * SQRT(Fbdt(nIndex,PartID))
 
-  Fbm(1:3) = prefactor * (Fbm(1:3) * SQRT(RKdtFrac) + durdt(1:3,PartID))
+  ! Correction term if initial particle velocity if different from the surrounding fluid velocity
+  IF (biter(PartID) .EQ. 1 .AND. t.GT. 0) THEN
+    Fbm(1:3) = Fbm(1:3) + prefactor * (FieldAtParticle(VELV) - PartState(PART_VELV,PartID)) / SQRT(t)
+  END IF
+
+  ! NOTE: convergence1
+  ! Cb = 0.5 + (1+0.926*SQRT(2/PI*t))/(2+1.782*SQRT(2/PI*t)+3.104*2/PI*t) * SIN(t) -&
+  !            1./(2+4.142*SQRT(2/PI*t)+3.492*2/PI*t+6.67*SQRT(2/PI*t)**3) * COS(t)
+  ! Sb = 0.5 - (1+0.926*SQRT(2/PI*t))/(2+1.782*SQRT(2/PI*t)+3.104*2/PI*t) * COS(t) -&
+  !            1./(2+4.142*SQRT(2/PI*t)+3.492*2/PI*t+6.67*SQRT(2/PI*t)**3) * SIN(t)
+  ! tmp(3) = prefactor*SQRT(2*PI)*(Cb*COS(t)+Sb*SIN(t))
+  ! NOTE: convergence2
+  ! tmp(3) = prefactor*2/15*t**0.5*(8*t**2)
 
   Pt(1:3) = (Flm + Fmm + Fum + Fvm + Fbm + Pt_in(1:3)) * 1./globalfactor
 
-  ! Correct durdt with particle push
+  ! \rho d(udiff)/dt = \rho d(u)/dt - \rho (dv_p/dt)
   durdt(kIndex-2:kIndex,PartID) = durdt(kIndex-2:kIndex,PartID) - Pt(1:3)
 ELSE
 #endif /* USE_BASSETFORCE */
@@ -618,9 +641,23 @@ END IF
 
 ! Output RHS to file
 #if ANALYZE_RHS
+#if USE_VIRTUALMASS
+IF (Species(PartSpecies(PartID))%CalcVirtualMass) THEN
+  prefactor = 0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
+  Fvm = Fvm-Pt(1:3)*prefactor
+END IF
+#endif
+#if USE_BASSETFORCE
+IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
+  prefactor = 9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
+            * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
+  Fbm = Fbm-Pt(1:3)*s43*prefactor*SQRT(Fbdt(nIndex,PartID))
+END IF
+#endif
 IF(dtWriteRHS.GT.0.0)THEN
   IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
-    CALL OutputToFile(FileName_RHS,(/t/),(/19,1/),(/REAL(PartSpecies(PartID)),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3)/))
+    CALL OutputToFile(FileName_RHS,(/t/),(/23,1/),&
+      (/REAL(PartSpecies(PartID)),Pt(1:3),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3),REAL(bIter(PartID),8)/))
   END IF
 END IF
 #endif
@@ -720,7 +757,7 @@ U_RHS(RHS_LAPLACEVEL3,:,:,:,:) = gradUx2(1,3,:,:,:,:) + gradUy2(2,3,:,:,:,:) + g
 !U_RHS(RHS_GRADP1:RHS_GRADP3,:,:,:,:) = gradp_local(1,:,:,:,:,:)
 
 DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-  U_RHS(RHS_dVELVdt,i,j,k,iElem) = Ut(MOMV,i,j,k,iElem) - Ut(DENS,i,j,k,iElem)*UPrim(VELV,i,j,k,iElem)
+  U_RHS(RHS_dVELVdt,i,j,k,iElem) = (Ut(MOMV,i,j,k,iElem) - Ut(DENS,i,j,k,iElem)*UPrim(VELV,i,j,k,iElem))*1./UPrim(DENS,i,j,k,iElem)
 END DO; END DO; END DO; END DO
 #endif /* USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE */
 

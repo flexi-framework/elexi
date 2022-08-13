@@ -156,7 +156,7 @@ USE MOD_Particle_Vars,            ONLY:PDM,doPartIndex
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #endif
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,            ONLY:nBassetVars
+USE MOD_Particle_Vars,            ONLY:nBassetVars,N_Basset,FbCoeffm
 #endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -185,6 +185,9 @@ IF(doPartIndex)  PartCommSize = PartCommSize + 1
 #if USE_BASSETFORCE
 ! Extended RHS: Basset force
 PartCommSize   = PartCommSize + nBassetVars
+PartCommSize   = PartCommSize + 1
+PartCommSize   = PartCommSize + N_Basset
+PartCommSize   = PartCommSize + 3*FbCoeffm
 #endif /* USE_BASSETFORCE */
 ! id of element
 PartCommSize   = PartCommSize + 1
@@ -374,7 +377,7 @@ USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #endif
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars
+USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars,bIter,N_Basset,FbCoeffm,Fbdt,Fbi
 #endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -453,6 +456,12 @@ DO iProc=0,nExchangeProcessors-1
       !>> Basset force
       PartSendBuf(iProc)%content(1+jPos:nBassetVars+jPos) = durdt(1:nBassetVars,iPart)
       jPos=jPos+nBassetVars
+      PartSendBuf(iProc)%content(1+jPos) = REAL(bIter(iPart),KIND=8)
+      jPos=jPos+1
+      PartSendBuf(iProc)%content(1+jPos:N_Basset+jPos) = Fbdt(1:N_Basset,iPart)
+      jPos=jPos+N_Basset
+      PartSendBuf(iProc)%content(1+jPos:3*FbCoeffm+jPos) = RESHAPE(Fbi(1:3,1:FbCoeffm,iPart),(/3*FbCoeffm/))
+      jPos=jPos+3*FbCoeffm
 #endif /* USE_BASSETFORCE */
       !>> Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
       PartSendBuf(iProc)%content(1+jPos:PP_nVarPart+jPos) = Pt_temp(1:PP_nVarPart,iPart)
@@ -510,7 +519,10 @@ DO iPart=1,PDM%ParticleVecLength
   PartSpecies(iPart) = 0
   IF (doPartIndex) PartIndex(iPart) = 0
 #if USE_BASSETFORCE
-  durdt(:,iPart)   = 0.
+  durdt(:,iPart) = 0.
+  bIter(iPart) = 0.
+  Fbdt(:,iPart) = 0.
+  Fbi(:,:,iPart) = 0.
 #endif
   Pt_temp(:,iPart) = 0.
   IF (doParticleReflectionTrack)                        PartReflCount(  iPart) = 0
@@ -603,7 +615,7 @@ USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #endif
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars
+USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars,N_Basset,bIter,Fbdt,Fbi,FbCoeffm
 #endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -692,6 +704,12 @@ DO iProc=0,nExchangeProcessors-1
     !>> Basset force
     durdt(1:nBassetVars,PartID) = PartRecvBuf(iProc)%content(1+jPos:nBassetVars+jPos)
     jPos=jPos+nBassetVars
+    bIter(PartID)               = INT(PartRecvBuf(iProc)%content(1+jPos),KIND=4)
+    jPos=jPos+1
+    Fbdt(1:N_Basset,PartID)     = PartRecvBuf(iProc)%content(1+jPos:N_Basset+jPos)
+    jPos=jPos+N_Basset
+    Fbi(1:3,1:FbCoeffm,PartID)  = RESHAPE(PartRecvBuf(iProc)%content(1+jPos:3*FbCoeffm+jPos),(/3,FbCoeffm/))
+    jPos=jPos+3*FbCoeffm
 #endif /* USE_BASSETFORCE */
     !>> Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
     Pt_temp(1:PP_nVarPart,PartID) = PartRecvBuf(iProc)%content(1+jPos:PP_nVarPart+jPos)

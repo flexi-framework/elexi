@@ -956,23 +956,6 @@ DO iPart = 1,PDM%ParticleVecLength
     END DO; END DO; END DO
     IF (Vol .GT. EPSILON(0.)) THEN
       Ut_src = Ut_src + PartSource / Vol
-      DO iElem = 1, nElems
-        ! TODO: correct for FV_ENABLED
-#if FV_ENABLED
-        IF (FV_Elems(iElem).GT.0) THEN ! FV elem
-          CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:,iElem),Ut_src2(:,:,:,:))
-          DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-            Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
-          END DO; END DO; END DO ! i,j,k
-        ELSE
-#endif
-          DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-            Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k,iElem)/sJ(i,j,k,iElem,0)
-          END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED
-        END IF
-#endif
-      END DO
     ELSE
       iElem = PEM%Element(iPart)-offsetElem
       min_distance_glob = VECNORM(Elem_xGP(:,0,0,0,iElem)-PartState(1:3,iPart))
@@ -982,30 +965,31 @@ DO iPart = 1,PDM%ParticleVecLength
         IF (min_distance_loc .LT. min_distance_glob) THEN; ijk(:) = (/i,j,k/); min_distance_glob = min_distance_loc; END IF
       END DO; END DO; END DO
       ! Add source term
-      Ut_src = 0.
-      Wp = DOT_PRODUCT(Fp,UPrim(VELV,ijk(1),ijk(2),ijk(3),iElem))
       Ut_src(MOMV,ijk(1),ijk(2),ijk(3),iElem) = Ut_src(MOMV,ijk(1),ijk(2),ijk(3),iElem)+&
         Fp*sJ(ijk(1),ijk(2),ijk(3),iElem,0)/wGPVol(ijk(1),ijk(2),ijk(3))
       Ut_src(ENER,ijk(1),ijk(2),ijk(3),iElem) = Ut_src(ENER,ijk(1),ijk(2),ijk(3),iElem)+&
         Wp*sJ(ijk(1),ijk(2),ijk(3),iElem,0)/wGPVol(ijk(1),ijk(2),ijk(3))
       ! Add source term
-#if FV_ENABLED
-      IF (FV_Elems(iElem).GT.0) THEN ! FV elem
-        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:,iElem),Ut_src2(:,:,:,:))
-        DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-          Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
-        END DO; END DO; END DO ! i,j,k
-      ELSE
-#endif
-        DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-          Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k,iElem)/sJ(i,j,k,iElem,0)
-        END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED
-      END IF
-#endif
     END IF
   END IF
 END DO ! iPart
+
+DO iElem = 1, nElems
+#if FV_ENABLED
+  IF (FV_Elems(iElem).GT.0) THEN ! FV elem
+    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:,iElem),Ut_src2(:,:,:,:))
+    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
+    END DO; END DO; END DO ! i,j,k
+  ELSE
+#endif
+    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k,iElem)/sJ(i,j,k,iElem,0)
+    END DO; END DO; END DO ! i,j,k
+#if FV_ENABLED
+  END IF
+#endif
+END DO
 
 END SUBROUTINE CalcSourcePart
 

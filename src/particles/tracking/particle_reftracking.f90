@@ -42,7 +42,7 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
-USE MOD_Mesh_Vars              ,ONLY: useCurveds,NGeo
+USE MOD_Mesh_Vars              ,ONLY: useCurveds,NGeo,offsetElem
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Particle_Localization  ,ONLY: PartInElemCheck
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
@@ -55,7 +55,7 @@ USE MOD_Particle_Tracking_Vars ,ONLY: nTracks,Distance,ListDistance,CartesianPer
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef,LastPartPos
 #if USE_LOADBALANCE
-USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars              ,ONLY: nElems
 USE MOD_LoadBalance_Vars       ,ONLY: nTracksPerElem
 USE MOD_LoadBalance_Timers     ,ONLY: LBStartTime,LBElemSplitTime,LBElemPauseTime,LBPauseTime
 #endif /*USE_LOADBALANCE*/

@@ -221,14 +221,14 @@ ENDFOREACH()
 ADD_CUSTOM_TARGET(preproc_defines COMMAND echo ${comp_defs_str})
 
 # =========================================================================
-# USERBLOCK + Preproc_flags
+# USERBLOCK + PREPROC_FLAGS
 # =========================================================================
 # A function to get all user defined variables with a specified prefix
-function (getListOfVarsStartingWith _prefix _varResult)
-    GET_CMAKE_PROPERTY(_vars CACHE_VARIABLES)
-    STRING(REGEX MATCHALL "(^|;)${_prefix}[A-Za-z0-9_]*" _matchedVars "${_vars}")
-    SET(${_varResult} ${_matchedVars} PARENT_SCOPE)
-endfunction()
+FUNCTION (GETLISTOFVARSSTARTINGWITH _PREFIX _VARRESULT)
+    GET_CMAKE_PROPERTY(_VARS CACHE_VARIABLES)
+    STRING(REGEX MATCHALL "(^|;)${_PREFIX}[A-Za-z0-9_]*" _MATCHEDVARS "${_VARS}")
+    SET(${_VARRESULT} ${_MATCHEDVARS} PARENT_SCOPE)
+ENDFUNCTION()
 
 # A function to get all user defined variables with a specified prefix
 SET(configuration ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake)
@@ -271,7 +271,7 @@ ELSE()
 ENDIF()
 
 # =========================================================================
-# Userblock
+# USERBLOCK
 # =========================================================================
 ADD_CUSTOM_COMMAND(TARGET libflexistatic PRE_BUILD COMMAND
   sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}"

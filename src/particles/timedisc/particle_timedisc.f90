@@ -43,8 +43,9 @@ END INTERFACE
 
 ! > Dummy interface for time step function pointer
 ABSTRACT INTERFACE
-  SUBROUTINE ParticleTimeStepRKPointer(t,CurrentStage)
+  SUBROUTINE ParticleTimeStepRKPointer(t,dt,CurrentStage)
     REAL,INTENT(IN)    :: t
+    REAL,INTENT(IN)    :: dt
     INTEGER,INTENT(IN) :: CurrentStage
   END SUBROUTINE
 END INTERFACE
@@ -127,7 +128,7 @@ END SUBROUTINE Particle_InitTimeDisc
 !===================================================================================================================================
 !> Calculate the right hand side before updating the field solution. Can be used to hide sending of number of particles.
 !===================================================================================================================================
-SUBROUTINE ParticleTimeRHS(t,iStage,dt)
+SUBROUTINE ParticleTimeRHS(t,dt,iStage)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -165,8 +166,8 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
-INTEGER,INTENT(IN)            :: iStage
 REAL,INTENT(IN)               :: dt
+INTEGER,INTENT(IN),OPTIONAL   :: iStage
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_LOADBALANCE
@@ -249,17 +250,19 @@ END SUBROUTINE Particle_TimeStepDummy
 !> This procedure takes the current time t, the time step dt and the solution at
 !> the current time U(t) and returns the solution at the next time level.
 !===================================================================================================================================
-SUBROUTINE Particle_TimeStepDummy_RK(t,iStage)
+SUBROUTINE Particle_TimeStepDummy_RK(t,dt,iStage)
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
+REAL,INTENT(IN)               :: dt
 INTEGER,INTENT(IN)            :: iStage
 !===================================================================================================================================
 ! Suppress compiler warning
 NO_OP(t)
+NO_OP(dt)
 NO_OP(iStage)
 END SUBROUTINE Particle_TimeStepDummy_RK
 
@@ -282,7 +285,7 @@ USE MOD_Particle_Vars,           ONLY: Species,PartSpecies,PartState,Pt,PDM
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
 #endif /*MPI*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Timers,      ONLY: LBSplitTime
+USE MOD_LoadBalance_Timers,      ONLY: LBStartTime,LBSplitTime
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -297,6 +300,13 @@ INTEGER                       :: iPart
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
+
+CALL ParticleTimeRHS(t,dt)
+
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
+
 ! particle push using Euler
 DO iPart=1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
@@ -346,20 +356,30 @@ END SUBROUTINE Particle_TimeStepByEuler
 !> This procedure takes the current time t, the time step dt and the solution at
 !> the current time U(t) and returns the solution at the next time level.
 !===================================================================================================================================
-SUBROUTINE Particle_TimeStepByEuler_RK(t,iStage)
+SUBROUTINE Particle_TimeStepByEuler_RK(t,dt,iStage)
 ! MODULES
+#if USE_MPI
+USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles
+#endif /*MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
+REAL,INTENT(IN)               :: dt
 INTEGER,INTENT(IN)            :: iStage
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
 ! Suppress compiler warning
 NO_OP(t)
+NO_OP(dt)
 NO_OP(iStage)
+! Necessary to avoid further if statements in dg operator
+#if USE_MPI
+! open receive buffer for number of particles
+CALL IRecvNbofParticles()
+#endif
 END SUBROUTINE Particle_TimeStepByEuler_RK
 
 
@@ -399,6 +419,8 @@ INTEGER                       :: iPart
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
+
+CALL ParticleTimeRHS(t,dt,1)
 
 #if USE_LOADBALANCE
 CALL LBStartTime(tLBStart)
@@ -461,7 +483,7 @@ END SUBROUTINE Particle_TimeStepByLSERK
 !> the current time U(t) and returns the solution at the next time level.
 !> RKA/b/c coefficients are low-storage coefficients, NOT the ones from butcher table.
 !===================================================================================================================================
-SUBROUTINE Particle_TimeStepByLSERK_RK(t,iStage)
+SUBROUTINE Particle_TimeStepByLSERK_RK(t,dt,iStage)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -484,6 +506,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)               :: t
+REAL,INTENT(IN)               :: dt
 INTEGER,INTENT(IN)            :: iStage
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -494,6 +517,8 @@ REAL,PARAMETER                :: RandVal = 1.                         ! Random t
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
+
+CALL ParticleTimeRHS(t,dt,iStage)
 
 #if USE_LOADBALANCE
 CALL LBStartTime(tLBStart)
@@ -625,7 +650,7 @@ END IF
 CurrentStage = 1
 tStage       = t
 
-CALL ParticleTimeRHS(t,currentStage,dt)
+CALL ParticleTimeRHS(t,dt,iStage)
 CALL ParticleTimeStep(t,dt)
 
 #if USE_MPI
@@ -651,8 +676,8 @@ DO iStage = 2,nRKStages
   CurrentStage = iStage
   tStage       = t+dt*RKc(iStage)
 
-  CALL ParticleTimeRHS(t,currentStage,dt)
-  CALL ParticleTimeStepRK(t,currentStage)
+  CALL ParticleTimeRHS(t,dt,iStage)
+  CALL ParticleTimeStepRK(t,dt,iStage)
 
 #if USE_MPI
 #if USE_LOADBALANCE

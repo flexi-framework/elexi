@@ -295,7 +295,7 @@ USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 USE MOD_Part_RHS            ,ONLY: CalcSourcePart
 USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart
-USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeRHS,ParticleTimeStep,ParticleTimeStepRK
+USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeStep,ParticleTimeStepRK
 USE MOD_Particle_Timedisc_Vars,ONLY: PreviousTime
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt
 #if USE_MPI
@@ -508,11 +508,10 @@ CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
 
 #if USE_PARTICLES
 IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN
-  CALL ParticleTimeRHS(t,currentStage,dt)
   IF (currentStage.EQ.1) THEN
     CALL ParticleTimeStep(t,dt)
   ELSE
-    CALL ParticleTimeStepRK(t,currentStage)
+    CALL ParticleTimeStepRK(t,dt,currentStage)
   END IF
 #if USE_MPI
   ! send number of particles

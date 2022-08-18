@@ -845,8 +845,10 @@ USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(KIND=8)               :: ArraySize
+#if USE_BASSETFORCE
 INTEGER                       :: k
 REAL                          :: s32
+#endif /* USE_BASSETFORCE */
 !===================================================================================================================================
 ! Allocate array to hold particle properties
 ! CALL Allocate_Safe(PartState    ,(/PP_nVarPart   ,PDM%maxParticleNumber/))
@@ -935,7 +937,7 @@ ALLOCATE(durdt(1:nBassetVars,1:PDM%maxParticleNumber))
 durdt = 0.
 ALLOCATE(bIter(1:PDM%maxParticleNumber))
 bIter = 0
-ALLOCATE(Fbdt(1:N_Basset,1:PDM%maxParticleNumber))
+ALLOCATE(Fbdt(1:N_Basset+1,1:PDM%maxParticleNumber))
 Fbdt = 0.
 ! Window kernel
 ALLOCATE(FbCoeff(1:N_Basset))
@@ -1090,7 +1092,11 @@ DO iSpec = 1, nSpecies
   ELSE
     Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'         )
     Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'     )
-    IF (Species(iSpec)%MassIC .EQ. 0.) THEN
+    IF (Species(iSpec)%DensityIC .EQ. 0.) THEN
+      IF (Species(iSpec)%DiameterIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle density and diameter both zero!')
+      IF (Species(iSpec)%MassIC     .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle density and mass     both zero!')
+      Species(iSpec)%DensityIC = DENS_SPHERE(Species(iSpec)%MassIC, Species(iSpec)%DiameterIC)
+    ELSEIF (Species(iSpec)%MassIC .EQ. 0.) THEN
       IF (Species(iSpec)%DiameterIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and diameter both zero!')
       IF (Species(iSpec)%DensityIC  .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle mass and density  both zero!')
       Species(iSpec)%MassIC = MASS_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%DiameterIC)

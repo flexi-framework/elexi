@@ -186,7 +186,7 @@ IF(doPartIndex)  PartCommSize = PartCommSize + 1
 ! Extended RHS: Basset force
 PartCommSize   = PartCommSize + nBassetVars
 PartCommSize   = PartCommSize + 1
-PartCommSize   = PartCommSize + N_Basset
+PartCommSize   = PartCommSize + N_Basset+1
 PartCommSize   = PartCommSize + 3*FbCoeffm
 #endif /* USE_BASSETFORCE */
 ! id of element
@@ -458,8 +458,8 @@ DO iProc=0,nExchangeProcessors-1
       jPos=jPos+nBassetVars
       PartSendBuf(iProc)%content(1+jPos) = REAL(bIter(iPart),KIND=8)
       jPos=jPos+1
-      PartSendBuf(iProc)%content(1+jPos:N_Basset+jPos) = Fbdt(1:N_Basset,iPart)
-      jPos=jPos+N_Basset
+      PartSendBuf(iProc)%content(1+jPos:N_Basset+1+jPos) = Fbdt(1:N_Basset+1,iPart)
+      jPos=jPos+N_Basset+1
       PartSendBuf(iProc)%content(1+jPos:3*FbCoeffm+jPos) = RESHAPE(Fbi(1:3,1:FbCoeffm,iPart),(/3*FbCoeffm/))
       jPos=jPos+3*FbCoeffm
 #endif /* USE_BASSETFORCE */
@@ -706,8 +706,8 @@ DO iProc=0,nExchangeProcessors-1
     jPos=jPos+nBassetVars
     bIter(PartID)               = INT(PartRecvBuf(iProc)%content(1+jPos),KIND=4)
     jPos=jPos+1
-    Fbdt(1:N_Basset,PartID)     = PartRecvBuf(iProc)%content(1+jPos:N_Basset+jPos)
-    jPos=jPos+N_Basset
+    Fbdt(1:N_Basset+1,PartID)     = PartRecvBuf(iProc)%content(1+jPos:N_Basset+1+jPos)
+    jPos=jPos+N_Basset+1
     Fbi(1:3,1:FbCoeffm,PartID)  = RESHAPE(PartRecvBuf(iProc)%content(1+jPos:3*FbCoeffm+jPos),(/3,FbCoeffm/))
     jPos=jPos+3*FbCoeffm
 #endif /* USE_BASSETFORCE */

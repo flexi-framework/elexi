@@ -647,7 +647,7 @@ END SUBROUTINE Visualize
 !> Searches the file for a dataset at restart time and tries to resume at this point.
 !> Otherwise a new file is created.
 !==================================================================================================================================
-SUBROUTINE InitOutputToFile(Filename,ZoneName,nVar,VarNames,lastLine)
+SUBROUTINE InitOutputToFile(Filename,ZoneName,nVar,VarNames,lastLine,WriteRootOnly)
 ! MODULES
 USE MOD_Globals
 USE MOD_Restart_Vars, ONLY: RestartTime
@@ -661,6 +661,7 @@ CHARACTER(LEN=*),INTENT(IN)   :: ZoneName         !< name of zone (e.g. names of
 INTEGER,INTENT(IN)            :: nVar             !< number of variables
 CHARACTER(LEN=*),INTENT(IN)   :: VarNames(nVar)   !< variable names to be written
 REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1) !< last written line to search for, when appending to the file
+LOGICAL,INTENT(IN),OPTIONAL   :: WriteRootOnly
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: stat            !< File IO status
@@ -670,7 +671,9 @@ REAL                           :: dummytime       !< Simulation time read from f
 LOGICAL                        :: file_exists     !< marker if file exists and is valid
 CHARACTER(LEN=255)             :: FileName_loc    !< FileName with data type extension
 !==================================================================================================================================
-IF(.NOT.MPIRoot) RETURN
+IF(.NOT. PRESENT(WriteRootOnly)) THEN
+  IF(.NOT.MPIRoot) RETURN
+END IF
 IF(PRESENT(lastLine)) lastLine=-HUGE(1.)
 
 ! Append data type extension to FileName

@@ -206,6 +206,7 @@
 #define ENERGY_KINETIC(rho,dp,v)      0.5*rho*pi/6.*dp**3*DOT_PRODUCT(v,v)
 #define MOM_OF_INERTIA(rho,dp)        pi/60.*rho*dp**5
 #define MASS_SPHERE(rho,dp)           rho*pi/6.*dp**3
+#define DENS_SPHERE(mass,dp)          mass/(pi/6.*dp**3)
 #define DIAM_SPHERE(rho,mass)         (mass/rho*6./pi)**(1./3.)
 #define VOL_SPHERE(dp)                pi/6.*dp**3
 #define VOL_SPHERE_INV(Vol)           (Vol*6./pi)**(1./3.)

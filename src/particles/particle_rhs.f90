@@ -636,23 +636,27 @@ END IF
 
 ! Output RHS to file
 #if ANALYZE_RHS
-#if USE_VIRTUALMASS
-IF (Species(PartSpecies(PartID))%CalcVirtualMass) THEN
-  prefactor = 0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
-  Fvm = Fvm-Pt(1:3)*prefactor
-END IF
-#endif
-#if USE_BASSETFORCE
-IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
-  prefactor = 9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
-            * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
-  Fbm = Fbm-Pt(1:3)*s43*prefactor*SQRT(Fbdt(nIndex,PartID))
-END IF
-#endif
 IF(dtWriteRHS.GT.0.0)THEN
   IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
+#if USE_VIRTUALMASS
+    IF (Species(PartSpecies(PartID))%CalcVirtualMass) THEN
+      prefactor = 0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
+      Fvm = Fvm-Pt(1:3)*prefactor
+    END IF
+#endif
+#if USE_BASSETFORCE
+    IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
+      prefactor = 9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
+                * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
+      Fbm = Fbm+Pt(1:3)*s43*prefactor*SQRT(Fbdt(nIndex,PartID))
+    END IF
+#endif /* USE_BASSETFORCE */
     CALL OutputToFile(FileName_RHS,(/t/),(/23,1/),&
+#if USE_BASSETFORCE
       (/REAL(PartSpecies(PartID)),Pt(1:3),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3),REAL(bIter(PartID),8)/))
+#else
+      (/REAL(PartSpecies(PartID)),Pt(1:3),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3),REAL(1.,8)/))
+#endif /* USE_BASSETFORCE */
   END IF
 END IF
 #endif
@@ -874,56 +878,132 @@ SUBROUTINE CalcSourcePart(Ut)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Particle_Globals ,ONLY: VECNORM
-USE MOD_Mesh_Vars        ,ONLY: Elem_xGP,sJ,nElems,offsetElem
+USE MOD_Analyze_Vars      ,ONLY: wGPVol
+USE MOD_Particle_Globals  ,ONLY: VECNORM
+USE MOD_Mesh_Vars         ,ONLY: Elem_xGP,sJ,nElems,offsetElem
+USE MOD_Particle_Globals  ,ONLY: PP_nElems
+USE MOD_Particle_Mesh_Vars,ONLY: GEO,FIBGM_nElems,FIBGM_offsetElem,FIBGM_Element
+USE MOD_Particle_Mesh_Vars,ONLY: Elem_xGP_Shared
+USE MOD_Particle_Mesh_Tools,ONLY: GetCNElemID
 #if FV_ENABLED
-USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
-USE MOD_FV_Vars          ,ONLY: FV_Vdm,FV_Elems
+USE MOD_FV_Vars           ,ONLY: FV_Elems
+USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
+USE MOD_FV_Vars           ,ONLY: FV_Vdm
 #endif
-USE MOD_Particle_Vars    ,ONLY: Species,PartSpecies,PartState,Pt,PEM,PDM
+USE MOD_Particle_Vars     ,ONLY: Species,PartSpecies,PartState,Pt,PEM,PDM
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k,iElem,iPart,ijk(3)
-REAL                :: Ut_src(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
-REAL                :: Fp(3)
+INTEGER             :: i,j,k,iElem,iPart,ijk(3),iBGM,jBGM,kBGM,imin,imax,jmin,jmax,kmin,kmax,ElemID,CNElemID
+REAL                :: Ut_src(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
+REAL                :: PartSource(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
+REAL                :: Fp(3),Wp,r,Vol
+REAL                :: min_distance_glob,min_distance_loc
 #if FV_ENABLED
 REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
-REAL                :: min_distance_glob,min_distance_loc
 !==================================================================================================================================
 
+Ut_src = 0.
 DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
+    IF (Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER .OR. &
+    Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_CONVERGENCE  .OR. &
+    Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER) CYCLE
+
+    Vol = 0.
+    PartSource = 0.
+    ! Radius of particle
+    r = PartState(PART_DIAM,iPart)*0.5
     ! Calculate particle force
-    Fp(1:3) = Pt(1:3,iPart)*Species(PartSpecies(iPart))%MassIC
-    ! Determine nearest DOF
-    iElem = PEM%Element(iPart)-offsetElem
-    min_distance_glob = VECNORM(Elem_xGP(:,0,0,0,iElem)-PartState(1:3,iPart))
-    ijk(:) = 0
-    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      min_distance_loc = VECNORM(Elem_xGP(:,i,j,k,iElem)-PartState(1:3,iPart))
-      IF (min_distance_loc .LT. min_distance_glob) THEN; ijk(:) = (/i,j,k/); min_distance_glob = min_distance_loc; END IF
+    Fp(1:3) = -Pt(1:3,iPart)*Species(PartSpecies(iPart))%MassIC
+    ! Calculate the work
+    Wp = DOT_PRODUCT(Fp,PartState(4:6,iPart))
+
+    ! --- get background mesh cell of point
+    imin = FLOOR((PartState(1,iPart)-r-GEO%xminglob)/GEO%FIBGMdeltas(1)+1)
+    imin = MAX(GEO%FIBGMimin,imin)
+    imax = CEILING((PartState(1,iPart)+r-GEO%xminglob)/GEO%FIBGMdeltas(1))
+    imax = MIN(GEO%FIBGMimax,imax)
+    jmin = FLOOR((PartState(2,iPart)-r-GEO%yminglob)/GEO%FIBGMdeltas(2)+1)
+    jmin = MAX(GEO%FIBGMjmin,jmin)
+    jmax = CEILING((PartState(2,iPart)+r-GEO%yminglob)/GEO%FIBGMdeltas(2))
+    jmax = MIN(GEO%FIBGMjmax,jmax)
+    kmin = FLOOR((PartState(3,iPart)-r-GEO%zminglob)/GEO%FIBGMdeltas(3)+1)
+    kmin = MAX(GEO%FIBGMkmin,kmin)
+    kmax = CEILING((PartState(3,iPart)+r-GEO%zminglob)/GEO%FIBGMdeltas(3))
+    kmax = MIN(GEO%FIBGMkmax,kmax)
+
+    DO kBGM=kmin,kmax; DO jBGM=jmin,jmax; DO iBGM=imin,imax
+      !--- check all cells associated with this background mesh cell
+      DO iElem = 1, FIBGM_nElems(iBGM,jBGM,kBGM)
+        ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
+        CNElemID = GetCNElemID(ElemID)
+        ElemID = ElemID-offsetElem
+        IF (ElemID.LT.1 .OR. ElemID.GT.PP_nElems) CYCLE
+        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+          IF (NORM2(Elem_xGP_Shared(1:2,i,j,k,CNElemID)-PartState(PART_POS1:PART_POS2,iPart)) .LE. r) THEN
+            ! TODO: sJ_shared
+            Vol = Vol + wGPVol(i,j,k)/sJ(i,j,k,ElemID,0)
+            PartSource(MOMV,i,j,k,ElemID) = Fp
+            PartSource(ENER,i,j,k,ElemID) = Wp
+          END IF
+        END DO; END DO; END DO
+      END DO
     END DO; END DO; END DO
-    ! Add source term
-    Ut_src(DENS     ,ijk(1),ijk(2),ijk(3)) = 0.
-    Ut_src(MOM1:MOM3,ijk(1),ijk(2),ijk(3)) = Fp
-    Ut_src(ENER     ,ijk(1),ijk(2),ijk(3)) = DOT_PRODUCT(Fp,PartState(4:6,iPart))
+    IF (Vol .GT. EPSILON(0.)) THEN
+      Ut_src = Ut_src + PartSource / Vol
+      DO iElem = 1, nElems
+        ! TODO: correct for FV_ENABLED
 #if FV_ENABLED
-    IF (FV_Elems(iElem).GT.0) THEN ! FV elem
-      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
-      Ut(:,ijk(1),ijk(2),ijk(3),iElem) = Ut(:,ijk(1),ijk(2),ijk(3),iElem)+&
-                                         Ut_src2(:,ijk(1),ijk(2),ijk(3))/sJ(ijk(1),ijk(2),ijk(3),iElem,1)
+        IF (FV_Elems(iElem).GT.0) THEN ! FV elem
+          CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:,iElem),Ut_src2(:,:,:,:))
+          DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+            Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
+          END DO; END DO; END DO ! i,j,k
+        ELSE
+#endif
+          DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+            Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k,iElem)/sJ(i,j,k,iElem,0)
+          END DO; END DO; END DO ! i,j,k
+#if FV_ENABLED
+        END IF
+#endif
+      END DO
     ELSE
-#endif
-      Ut(:,ijk(1),ijk(2),ijk(3),iElem) = Ut(:,ijk(1),ijk(2),ijk(3),iElem)+&
-                                         Ut_src(:,ijk(1),ijk(2),ijk(3))/sJ(ijk(1),ijk(2),ijk(3),iElem,0)
+      iElem = PEM%Element(iPart)-offsetElem
+      min_distance_glob = VECNORM(Elem_xGP(:,0,0,0,iElem)-PartState(1:3,iPart))
+      ijk(:) = 0
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+        min_distance_loc = VECNORM(Elem_xGP(:,i,j,k,iElem)-PartState(1:3,iPart))
+        IF (min_distance_loc .LT. min_distance_glob) THEN; ijk(:) = (/i,j,k/); min_distance_glob = min_distance_loc; END IF
+      END DO; END DO; END DO
+      ! Add source term
+      Ut_src = 0.
+      Wp = DOT_PRODUCT(Fp,UPrim(VELV,ijk(1),ijk(2),ijk(3),iElem))
+      Ut_src(MOMV,ijk(1),ijk(2),ijk(3),iElem) = Ut_src(MOMV,ijk(1),ijk(2),ijk(3),iElem)+&
+        Fp*sJ(ijk(1),ijk(2),ijk(3),iElem,0)/wGPVol(ijk(1),ijk(2),ijk(3))
+      Ut_src(ENER,ijk(1),ijk(2),ijk(3),iElem) = Ut_src(ENER,ijk(1),ijk(2),ijk(3),iElem)+&
+        Wp*sJ(ijk(1),ijk(2),ijk(3),iElem,0)/wGPVol(ijk(1),ijk(2),ijk(3))
+      ! Add source term
 #if FV_ENABLED
-    END IF
+      IF (FV_Elems(iElem).GT.0) THEN ! FV elem
+        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:,iElem),Ut_src2(:,:,:,:))
+        DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+          Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
+        END DO; END DO; END DO ! i,j,k
+      ELSE
 #endif
+        DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+          Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k,iElem)/sJ(i,j,k,iElem,0)
+        END DO; END DO; END DO ! i,j,k
+#if FV_ENABLED
+      END IF
+#endif
+    END IF
   END IF
 END DO ! iPart
 

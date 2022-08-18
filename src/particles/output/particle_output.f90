@@ -510,8 +510,8 @@ INTEGER(KIND=IK),INTENT(OUT) :: offsetnPart
 INTEGER(KIND=IK),INTENT(OUT) :: globnPart(6)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=8)              :: globnPart8                         ! always integer KIND=8
 #if USE_MPI
+INTEGER(KIND=8)              :: globnPart8                         ! always integer KIND=8
 INTEGER(KIND=8)              :: locnPart8,locnPart8Recv            ! always integer KIND=8
 INTEGER(KIND=IK)             :: SimNumSpecMin,SimNumSpecMax
 #endif
@@ -560,6 +560,9 @@ globnPart(3) = INT(globnPart8    , KIND = IK)
 #else
 offsetnPart=0_IK
 globnPart(1:3)=INT(locnPart,KIND=IK)
+
+! Suppress compiler warning
+NO_OP(CallingRoutine)
 #endif
 
 ! Get extrema over the complete simulation only during WriteParticleToHDF5

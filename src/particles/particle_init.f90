@@ -810,7 +810,7 @@ IF(dtWriteRHS.GT.0.0)THEN
   tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
 
   CALL InitOutputToFile(FileName_RHS,'RHS',23,&
-    [CHARACTER(4)::"Spec","Fx","Fy","Fz","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fmmx","Fmmy","Fmmz",&
+    [CHARACTER(6)::"Spec","Fx","Fy","Fz","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fmmx","Fmmy","Fmmz",&
                    "Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz","nIndex"],WriteRootOnly=.FALSE.)
 END IF
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */

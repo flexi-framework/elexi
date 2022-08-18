@@ -137,7 +137,7 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iElem,iHaloElem,iLocSide,SideID
+INTEGER                        :: iElem,iLocSide,SideID
 INTEGER                        :: FirstElem,LastElem
 INTEGER                        :: firstNodeID,lastNodeID
 INTEGER                        :: offsetNodeID,nNodeIDs,currentOffset
@@ -152,7 +152,7 @@ INTEGER                        :: errType
 #if USE_MPI
 INTEGER                        :: iStage
 INTEGER                        :: iSide
-INTEGER                        :: ElemID,ElemDone
+INTEGER                        :: ElemID,ElemDone,iHaloElem
 REAL                           :: globalDiag,maxCellRadius
 INTEGER,ALLOCATABLE            :: sendbuf(:,:,:),recvbuf(:,:,:)
 INTEGER,ALLOCATABLE            :: offsetElemsInBGMCell(:,:,:)

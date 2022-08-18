@@ -2129,13 +2129,13 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:epsilontol,Beziercliphit
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipTolerance,BezierClipLocalTol,BezierClipMaxIntersec
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Particle_Vars,           ONLY:LastPartPos
+#if USE_MPI
+USE MOD_Globals,                 ONLY: myRank
+#endif /*USE_MPI*/
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBezier
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
-#if defined(CODE_ANALYZE) || USE_MPI
-USE MOD_Globals,                 ONLY: myRank
-#endif /*defined(CODE_ANALYZE)*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

@@ -534,7 +534,7 @@ END FUNCTION StringBeginsWith
 PPURE LOGICAL FUNCTION ElementOnProc(GlobalElemID) RESULT(L)
 ! MODULES
 USE MOD_Preproc
-USE MOD_Mesh_Vars                ,ONLY: offSetElem
+USE MOD_Mesh_Vars                ,ONLY: offsetElem
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -578,6 +578,9 @@ L = (GlobalElemID.GE.offsetElemMPI(ComputeNodeRootRank)+1).AND.&
     (GlobalElemID.LE.offsetElemMPI(ComputeNodeRootRank+nComputeNodeProcessors))
 #else
 L = .TRUE.
+
+! Suppress compiler warning
+NO_OP(GlobalElemID)
 #endif /*USE_MPI*/
 END FUNCTION ElementOnNode
 

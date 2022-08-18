@@ -395,7 +395,6 @@ INTEGER,INTENT(IN),OPTIONAL :: iStage
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: nGP
 REAL                     :: Pt(1:PP_nVarPartRHS),Fdi(1:3,10),Fre(1:3,10),tmp(1:3)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
@@ -411,7 +410,6 @@ REAL                     :: DuDt(1:3)                   ! viscous and pressure f
 #endif
 #if USE_BASSETFORCE
 REAL,PARAMETER           :: s32=3./2.
-REAL                     :: RKdtFrac                    ! Runge-Kutta time step
 INTEGER                  :: k,kIndex,nIndex
 REAL                     :: dufdt(1:3)                  ! partial derivative of the fluid velocity
 ! Convergence1
@@ -423,9 +421,6 @@ REAL                     :: Omega(3),Rew                ! relative fluid-particl
 REAL                     :: rotu(3),rotudiff(3)         ! curl product of the velocity and the velocity difference
 REAL                     :: dotp,beta                   ! dot_product, beta=dp*|\omega|/(2*udiff)
 #endif /* PP_nVarPartRHS == 6 */
-#if ANALYZE_RHS
-REAL                     :: Fltot(3),Fmtot(3),Futot(3),Fvtot(3),Fbtot(3),Fdtot(3),Ftot(3)
-#endif
 !===================================================================================================================================
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
@@ -770,8 +765,11 @@ FUNCTION DF_SchillerAndNaumann(Rep, SphericityIC, Mp) RESULT(f)
 ! Compute the drag factor according to Schiller and Naumann
 !===================================================================================================================================
 ! MODULES
+USE MOD_Globals,           ONLY : UNIT_stdOut
 USE MOD_Particle_Vars,     ONLY : RepWarn
-USE MOD_Globals,           ONLY : MPIRoot, UNIT_stdOut
+#if USE_MPI
+USE MOD_Globals,           ONLY : MPIRoot
+#endif /*USE_MPI*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

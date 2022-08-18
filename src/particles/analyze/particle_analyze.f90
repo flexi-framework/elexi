@@ -234,6 +234,9 @@ INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
 #if USE_LOADBALANCE
 ! Create .csv file for performance analysis and load balance: write header line
 CALL WriteElemTimeStatistics(WriteHeader=.TRUE.,iter=iter)
+#else
+! Supress compiler warning
+NO_OP(iter)
 #endif /*LOADBALANCE*/
 
 ! Write information to console output

@@ -808,13 +808,20 @@ DO WHILE(deltaXi2.GT.RefMappingEps .AND. NewtonIter.LT.100)
         CALL Abort(__STAMP__,'Particle not inside of Element, ElemID,',ElemID)
 
       CASE(3)
-        IPWRITE(UNIT_stdOut,'(I0,A,I0,A,I0,A)')      'WARNING: Particle not inside of element! Particle ',PartID,' in Elem ',ElemID,' will be deleted'
+        IPWRITE(UNIT_stdOut,'(I0,A)')        'ERROR: Particle not inside of element, particle will be deleted!'
+        IF (PRESENT(PartID)) THEN
+          IPWRITE(UNIT_stdOut,'(I0,A,I0)')             ' PartID:        ', PartID
+        END IF
+        IPWRITE(UNIT_stdOut,'(I0,A,I0)')             ' ElemID:        ', ElemID
         IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' xi:            ', xi(1:3)
         IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' PartPos (phys):', X_in
-        IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' LastPos (phys):', LastPartPos(:,PartID)
-        IPWRITE(UNIT_stdOut,'(I0,A,3F12.6,A,F12.6)') ' PartVel:       ', PartState(4:6,PartID),'abs:',VECNORM(PartState(4:6,PartID)**2)
-        PDM%ParticleInside(PartID) = .FALSE.
-        IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles+1
+        IF (PRESENT(PartID)) THEN
+          IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)')         ' LastPos (phys):', LastPartPos(:,PartID)
+          IPWRITE(UNIT_stdOut,'(I0,A,3F12.6,A,F12.6)') ' PartVel (+abs):', PartState(PART_VELV,PartID),&
+                                                                   'abs:', VECNORM(PartState(PART_VELV,PartID))
+          PDM%ParticleInside(PartID) = .FALSE.
+          IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles+1
+        END IF
         EXIT
 
       CASE DEFAULT

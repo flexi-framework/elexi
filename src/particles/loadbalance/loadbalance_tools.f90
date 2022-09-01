@@ -292,19 +292,22 @@ IF (PerformLoadBalance) THEN
     DEALLOCATE(ElemTimeTmp)
   END IF
 ELSE
-  IF(MPIRoot)THEN
-    WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO') ' | Reading ElemTime from restart file: ',TRIM(RestartFile),' ...'
-    GETTIME(StartT)
-  END IF
-
   ! Read data file either single=.TRUE. (only MPI root) or single=.FALSE. (all ranks)
   IF (single) THEN
+    WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO')   ' | Reading ElemTime from restart file (single-mode): ',TRIM(RestartFile),' ...'
+    GETTIME(StartT)
+
     CALL OpenDataFile(RestartFile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
     CALL DatasetExists(File_ID,'ElemTime',ElemTimeExists)
     IF (ElemTimeExists) &
       CALL ReadArray('ElemTime',2,(/1,nGlobalElems/),0,2,RealArray=ElemGlobalTime)
     CALL CloseDataFile()
   ELSE
+    IF(MPIRoot)THEN
+      WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO') ' | Reading ElemTime from restart file (MPI-mode)   : ',TRIM(RestartFile),' ...'
+      GETTIME(StartT)
+    END IF
+
     SDEALLOCATE(ElemTime_tmp)
     ALLOCATE(ElemTime_tmp(1:nElems))
     ElemTime_tmp  = 0.

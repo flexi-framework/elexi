@@ -384,8 +384,8 @@ changedMeshFile  = .NOT.(STRICMP(MeshFile,MeshFile_old))
 changedDGonly    = (DGonly.NEQV.DGonly_old)
 changedAvg2D     = (Avg2D.NEQV.Avg2D_old)
 
-SWRITE(*,*) "state file old -> new: ", TRIM(statefile_old), " -> ",TRIM(statefile)
-SWRITE(*,*) " mesh file old -> new: ", TRIM(MeshFile_old) , " -> ",TRIM(MeshFile)
+IF (changedStateFile .AND. MPIRoot) WRITE(*,*) "state file old -> new: ", TRIM(statefile_old), " -> ",TRIM(statefile)
+IF (changedMeshFile  .AND. MPIRoot) WRITE(*,*) " mesh file old -> new: ", TRIM(MeshFile_old) , " -> ",TRIM(MeshFile)
 
 ! if Mesh or State changed readin some more attributes/parameters
 IF (changedStateFile.OR.changedMeshFile) THEN

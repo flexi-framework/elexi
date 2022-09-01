@@ -661,6 +661,7 @@ END SUBROUTINE FV_DGtoFV
 !==================================================================================================================================
 SUBROUTINE FinalizeFV()
 ! MODULES
+USE MOD_Analyze_Vars         ,ONLY: wGPVol
 USE MOD_FV_Vars
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
@@ -682,6 +683,7 @@ SDEALLOCATE(FV_Elems_slave)
 SDEALLOCATE(FV_Elems_Counter)
 SDEALLOCATE(FV_Elems_Amount)
 SDEALLOCATE(FV_Elems_Sum)
+SDEALLOCATE(wGPVol)
 #if FV_RECONSTRUCT
 SDEALLOCATE(FV_surf_gradU)
 SDEALLOCATE(FV_multi_master)

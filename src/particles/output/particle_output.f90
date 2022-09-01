@@ -162,12 +162,10 @@ END DO
 ! Communicate the total number and offset
 CALL GetOffsetAndGlobalNumberOfParts('WriteParticleToHDF5',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
 
-! Allocate data arrays for mean particle quantities
-#if USE_LOADBALANCE
 ! Arrays might still be allocated from previous loadbalance step
 SDEALLOCATE(PartInt)
 SDEALLOCATE(PartData)
-#endif /*USE_LOADBALANCE*/
+! Allocate data arrays for mean particle quantities
 ALLOCATE(PartInt( PartIntSize ,offsetElem +1:offsetElem +PP_nElems))
 ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
 ! Allocate data arrays for turbulent particle quantities

@@ -112,14 +112,14 @@ IF (.NOT.DGonly) THEN
     DEALLOCATE(ElemData_loc,VarNamesElemData_loc,tmp)
   END IF
 
-  nElems_FV = SUM(FV_Elems_loc)
+  nElems_FV = COUNT(FV_Elems_loc.EQ.1)
   nElems_DG = nElems - nElems_FV
 
   ! build the mapping, that holds the global indices of all FV elements
   SDEALLOCATE(mapFVElemsToAllElems)
   ALLOCATE(mapFVElemsToAllElems(1:nElems_FV))
-  iElem2 =1
-  DO iElem=1,nElems
+  iElem2 = 1
+  DO iElem = 1,nElems
     IF (FV_Elems_loc(iElem).EQ.1) THEN
       mapFVElemsToAllElems(iElem2) = iElem
       iElem2 = iElem2 + 1
@@ -129,8 +129,8 @@ IF (.NOT.DGonly) THEN
   ! build the mapping, that holds the global indices of all DG elements
   SDEALLOCATE(mapDGElemsToAllElems)
   ALLOCATE(mapDGElemsToAllElems(1:nElems_DG))
-  iElem2 =1
-  DO iElem=1,nElems
+  iElem2 = 1
+  DO iElem = 1,nElems
     IF (FV_Elems_loc(iElem).EQ.0) THEN
       mapDGElemsToAllElems(iElem2) = iElem
       iElem2 = iElem2 + 1

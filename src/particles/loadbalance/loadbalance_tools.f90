@@ -302,6 +302,9 @@ ELSE
     IF (ElemTimeExists) &
       CALL ReadArray('ElemTime',2,(/1,nGlobalElems/),0,2,RealArray=ElemGlobalTime)
     CALL CloseDataFile()
+
+    GETTIME(EndT)
+    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
   ELSE
     IF(MPIRoot)THEN
       WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO') ' | Reading ElemTime from restart file (MPI-mode)   : ',TRIM(RestartFile),' ...'
@@ -314,12 +317,12 @@ ELSE
     CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.,communicatorOpt=MPI_COMM_FLEXI)
     CALL ReadArray('ElemTime',2,(/1,nElems/),OffsetElem,2,RealArray=ElemTime_tmp)
     CALL CloseDataFile()
-  END IF ! single
 
-  IF(MPIRoot)THEN
-    GETTIME(EndT)
-    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
-  END IF
+    IF(MPIRoot)THEN
+      GETTIME(EndT)
+      WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+    END IF
+  END IF ! single
 END IF
 
 END SUBROUTINE ReadElemTime

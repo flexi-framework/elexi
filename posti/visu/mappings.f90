@@ -195,11 +195,11 @@ USE MOD_Globals
 USE MOD_Visu_Vars
 USE MOD_Restart_Vars    ,ONLY: RestartMode
 USE MOD_ReadInTools     ,ONLY: GETSTR,GETLOGICAL,CountOption
-USE MOD_StringTools     ,ONLY: STRICMP
+USE MOD_StringTools     ,ONLY: STRICMP,set_formatting,clear_formatting
 #if FV_RECONSTRUCT
 USE MOD_EOS_Posti       ,ONLY: AppendNeededPrims
 #endif
-
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -328,10 +328,10 @@ DO iVar=1,nVarDep
 END DO
 
 ! print the dependency table
-SWRITE(*,*) "Dependencies: ", withDGOperator
+LOGWRITE(*,*) "Dependencies: ", withDGOperator
 WRITE(format,'(I2)') SIZE(DepTable,2)
 DO iVar=1,nVarDep
-  SWRITE (*,'('//format//'I2,A)') DepTable(iVar,:), " "//TRIM(VarnamesAll(iVar))
+  LOGWRITE (*,'('//format//'I2,A)') DepTable(iVar,:), " "//TRIM(VarnamesAll(iVar))
 END DO
 
 ! Build :
@@ -401,11 +401,10 @@ IF (StateFileMode) CALL AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc_
 
 ! print the mappings
 WRITE(format,'(I0)') nVarAll
-SWRITE (*,'(A,'//format//'I0)') "mapDepToCalc             ",mapDepToCalc
-SWRITE (*,'(A,'//format//'I0)') "mapDepToCalc_FV          ",mapDepToCalc_FV
-SWRITE (*,'(A,'//format//'I0)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars
-SWRITE (*,'(A,'//format//'I0)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
-
+LOGWRITE (*,'(A,'//format//'I0)') "mapDepToCalc             ",mapDepToCalc
+LOGWRITE (*,'(A,'//format//'I0)') "mapDepToCalc_FV          ",mapDepToCalc_FV
+LOGWRITE (*,'(A,'//format//'I0)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars
+LOGWRITE (*,'(A,'//format//'I0)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
 
 !---------------------- Surface visualization ----------------------------!
 
@@ -429,7 +428,6 @@ END DO
 
 ! Set flag indicating if surface visualization is needed
 doSurfVisu = nBCNamesVisu.GT.0
-SWRITE (*,*) 'doSurfVisu: ',doSurfVisu
 
 ! check if any boundary changed
 changedBCnames = .TRUE.
@@ -441,8 +439,7 @@ SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
 ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesAll))
 mapAllBCNamesToVisuBCNames_old = mapAllBCNamesToVisuBCNames
 
-
-SWRITE (*,'(A,'//format//'I0)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
+LOGWRITE (*,'(A,'//format//'I0)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
 
 END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
 

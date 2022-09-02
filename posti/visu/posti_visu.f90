@@ -79,22 +79,8 @@ END IF
 IF (nArgs.LT.1) &
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 
-SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)') &
-' ██╗   ██╗██╗███████╗██╗   ██╗'
-SWRITE(UNIT_stdOut,'(A)') &
-' ██║   ██║██║██╔════╝██║   ██║'
-SWRITE(UNIT_stdOut,'(A)') &
-' ██║   ██║██║███████╗██║   ██║'
-SWRITE(UNIT_stdOut,'(A)') &
-' ╚██╗ ██╔╝██║╚════██║██║   ██║'
-SWRITE(UNIT_stdOut,'(A)') &
-'  ╚████╔╝ ██║███████║╚██████╔╝'
-SWRITE(UNIT_stdOut,'(A)') &
-'   ╚═══╝  ╚═╝╚══════╝ ╚═════╝ '
-StartTime=FLEXITIME()
-
-prmfile = ''
+StartTime = FLEXITIME()
+prmfile   = ''
 ! check if parameter file is given
 IF(STRICMP(GetFileExtension(Args(1)),'ini')) THEN
   skipArgs = 1 ! first argument is the parameter file
@@ -135,7 +121,7 @@ DO iArg=1+skipArgs,nArgs
   WRITE(tmpString2,'(I0)') nArgs -skipArgs
   tmpLength = 96 - LEN(TRIM(tmpString1)) - LEN(TRIM(tmpString2))
   percent   = REAL(iArg-1-skipArgs)/REAL(nArgs-skipArgs)*100.
-  SWRITE(UNIT_stdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(132("="))')
   SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' Processing file ',iArg-skipArgs,' of ',nArgs-skipArgs,' |'
   SWRITE(UNIT_stdOut,'(A,A1,A)'     ,ADVANCE='NO')  REPEAT('=',MAX(CEILING(percent*(tmpLength+1)/100.),0)),'>',&
                                                     REPEAT(' ',(tmpLength+1)-MAX(CEILING(percent*(tmpLength+1)/100.),0))

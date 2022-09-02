@@ -499,7 +499,7 @@ USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
 USE MOD_Posti_VisuMesh      ,ONLY: VisualizeMesh
 USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile,PrintDefaultParameterFile
 USE MOD_Restart_Vars        ,ONLY: RestartMode
-USE MOD_StringTools         ,ONLY: STRICMP
+USE MOD_StringTools         ,ONLY: STRICMP,set_formatting,clear_formatting
 USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 #if FV_ENABLED
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_FV,CalcSurfQuantities_FV
@@ -634,7 +634,7 @@ IF (doPrintHelp.GT.0) THEN
   STOP
 END IF
 
-SWRITE (*,*) "READING FROM: ", TRIM(statefile)
+SWRITE(UNIT_stdOut,'(A,A)') " READING FROM: ", TRIM(statefile)
 
 changedStateFile      = .FALSE.
 changedMeshFile       = .FALSE.
@@ -667,21 +667,41 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   ELSE
     changedPrmFile = (prmfile .NE. prmfile_old)
   END IF
-  SWRITE (*,*) "changedStateFile        ", changedStateFile
-  SWRITE (*,*) "changedMeshFile         ", changedMeshFile
-  SWRITE (*,*) "changedNVisu            ", changedNVisu
-  SWRITE (*,*) "changedNCalc            ", changedNCalc
-  SWRITE (*,*) "changedVarNames         ", changedVarNames
-  SWRITE (*,*) "changedFV_Elems         ", changedFV_Elems
-  SWRITE (*,*) "changedWithDGOperator   ", changedWithDGOperator
-  SWRITE (*,*) "changedDGonly           ", changedDGonly
-  SWRITE (*,*) "changedAvg2D            ", changedAvg2D
-  SWRITE (*,*) "changedPrmFile          ", changedPrmFile, TRIM(prmfile_old), " -> ", TRIM(prmfile)
-  SWRITE (*,*) "changedBCnames          ", changedBCnames
+
+  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(A)') " DETECTING REQUIRED PARAMETERS..."
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | doSurfVisu              "
+  CALL set_formatting(MERGE("blue ","green",doSurfVisu))             ; SWRITE(UNIT_stdOut,'(L1)') doSurfVisu             ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedStateFile        "
+  CALL set_formatting(MERGE("blue ","green",changedStateFile))       ; SWRITE(UNIT_stdOut,'(L1)') changedStateFile       ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedMeshFile         "
+  CALL set_formatting(MERGE("blue ","green",changedMeshFile))        ; SWRITE(UNIT_stdOut,'(L1)') changedMeshFile        ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedNVisu            "
+  CALL set_formatting(MERGE("blue ","green",changedNVisu))           ; SWRITE(UNIT_stdOut,'(L1)') changedNVisu           ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedNCalc            "
+  CALL set_formatting(MERGE("blue ","green",changedNCalc))           ; SWRITE(UNIT_stdOut,'(L1)') changedNCalc           ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedVarNames         "
+  CALL set_formatting(MERGE("blue ","green",changedVarNames))        ; SWRITE(UNIT_stdOut,'(L1)') changedVarNames        ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedFV_Elems         "
+  CALL set_formatting(MERGE("blue ","green",changedFV_Elems))        ; SWRITE(UNIT_stdOut,'(L1)') changedFV_Elems        ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedWithDGOperator   "
+  CALL set_formatting(MERGE("blue ","green",changedWithDGOperator))  ; SWRITE(UNIT_stdOut,'(L1)') changedWithDGOperator  ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedDGonly           "
+  CALL set_formatting(MERGE("blue ","green",changedDGonly))          ; SWRITE(UNIT_stdOut,'(L1)') changedDGonly          ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedAvg2D            "
+  CALL set_formatting(MERGE("blue ","green",changedAvg2D))           ; SWRITE(UNIT_stdOut,'(L1)') changedAvg2D           ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedPrmFile          "
+  CALL set_formatting(MERGE("blue ","green",changedPrmFile))         ; SWRITE(UNIT_stdOut,'(L1)') changedPrmFile         ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedBCNames          "
+  CALL set_formatting(MERGE("blue ","green",changedBCNames))         ; SWRITE(UNIT_stdOut,'(L1)') changedBCNames         ; CALL clear_formatting()
 #if USE_PARTICLES
-  SWRITE (*,*) "changedPartVarnames     ", PD%changedPartVarnames
-  SWRITE (*,*) "changedImpactVarnames   ", PDE%changedPartVarnames
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedPartVarnames     "
+  CALL set_formatting(MERGE("blue ","green",PD%changedPartVarnames)) ; SWRITE(UNIT_stdOut,'(L1)') PD%changedPartVarNames ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedImpactVarnames   "
+  CALL set_formatting(MERGE("blue ","green",PDE%changedPartVarnames)); SWRITE(UNIT_stdOut,'(L1)') PDE%changedPartVarNames; CALL clear_formatting()
 #endif
+  SWRITE(UNIT_StdOut,'(132("-"))')
+
   IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
     CALL ReadState(prmfile,statefile)
   END IF
@@ -741,6 +761,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
 
   ! convert part/impact data to visu grid
 #if USE_PARTICLES
+  SWRITE(UNIT_stdOut,'(132("."))')
   IF (changedStateFile.OR.PD%changedPartVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     DataArray='PartData'
     CALL ReadPartStateFile(statefile,DataArray,PD)
@@ -749,6 +770,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     DataArray='ImpactData'
     CALL ReadPartStateFile(statefile,DataArray,PDE)
   END IF
+  SWRITE(UNIT_stdOut,'(132("."))')
 #endif
 
   IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NodeType,OutputTime,MeshFile_state,UVisu_DG&
@@ -793,7 +815,7 @@ NState_old            = PP_N
 RestartMode           = -1
 
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,'(A,A)') " Visu finished for state file: ", TRIM(statefile)
+SWRITE(UNIT_stdOut,'(A,A)') " Visu finished for state file: ", TRIM(statefile)
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE visu

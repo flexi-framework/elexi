@@ -207,8 +207,7 @@ ELSE
   DataArray = 'PartData'
 END IF
 
-SWRITE(UNIT_StdOut,'(132("."))')
-SWRITE(Unit_stdOut,'(A,A)') TRIM(DataArray),' DECOMPOSITION'
+SWRITE(Unit_stdOut,'(A,A)') ' ',TRIM(DataArray),' DECOMPOSITION'
 
 CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,TRIM(DataArray),datasetFound)

@@ -74,7 +74,9 @@ USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni,nVar_Sta
 USE MOD_Posti_Part_Tools  ,ONLY: InitPartState
 USE MOD_Visu_Vars         ,ONLY: PD,PDE,PartNamesAll
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
 CHARACTER(LEN=*)  ,INTENT(IN)                       :: meshfile
@@ -291,7 +293,10 @@ USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_ma
 USE MOD_StringTools        ,ONLY: STRICMP,INTTOSTR
 USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,FinalizeParameters,CountOption
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -503,7 +508,9 @@ USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
 #if USE_PARTICLES
 USE MOD_Posti_Part_Tools    ,ONLY: ReadPartStateFile, InitParticleOutput
 #endif /*USE_PARTICLES*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
@@ -639,7 +646,7 @@ changedWithDGOperator = .FALSE.
 changedDGonly         = .FALSE.
 
 IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
-  SWRITE(*,*) "MeshFile Mode"
+  SWRITE(UNIT_stdOut,'(A3,A30,A3,A33,A13)')' | ','                   Mode ',' | ','Mesh',' | HDF5    |'
   MeshFileMode = .TRUE.
   MeshFile      = statefile
   nVar_State    = 0
@@ -649,7 +656,7 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
 
   CALL VisualizeMesh(postifile,MeshFile)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
-  SWRITE(*,*) "State Mode"
+  SWRITE(UNIT_stdOut,'(A3,A30,A3,A33,A13)')' | ','                   Mode ',' | ','State',' | HDF5    |'
   MeshFileMode = .FALSE.
   ! initialize state file
   CALL visu_InitFile(statefile,postifile)
@@ -786,8 +793,8 @@ NState_old            = PP_N
 RestartMode           = -1
 
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(*,*) "Visu finished for state file: ", TRIM(statefile)
-SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_StdOut,'(A,A)') " Visu finished for state file: ", TRIM(statefile)
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE visu
 
@@ -809,7 +816,7 @@ USE MOD_Visu_Vars             ,ONLY: OutputTime,NCalc,nVarCalc
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVarVisu
 INTEGER,INTENT(IN)             :: NVisu
 INTEGER,INTENT(IN)             :: nElems_loc
@@ -992,11 +999,11 @@ END IF
 END SUBROUTINE visu_WriteHDF5
 
 
-
 !===================================================================================================================================
 !> Deallocate arrays used by visu.
 !===================================================================================================================================
 SUBROUTINE FinalizeVisu()
+! MODULES
 USE MOD_Globals
 USE MOD_Commandline_Arguments,ONLY: FinalizeCommandlineArguments
 USE MOD_DG                   ,ONLY: FinalizeDG
@@ -1025,10 +1032,14 @@ USE MOD_MPI                  ,ONLY: FinalizeMPI
 #if USE_PARTICLES
 USE MOD_Posti_Part_Tools     ,ONLY: FinalizeReadPartStateFile
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL :: Time,SimulationTime,mins,secs,hours,days
 !===================================================================================================================================
-
-SWRITE (UNIT_stdOut,'(A)') 'VISU FINALIZE'
 
 IF(MPIRoot)THEN
   IF(FILEEXISTS('.posti.ini'))THEN
@@ -1116,6 +1127,25 @@ SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
 SDEALLOCATE(mapAllBCNamesToVisuBCNames)
 SDEALLOCATE(nSidesPerBCNameVisu_DG)
 SDEALLOCATE(nSidesPerBCNameVisu_FV)
+
+! Calculate simulation time
+Time = FLEXITIME()
+SimulationTime = Time-StartTime
+
+! Get secs, mins, hours and days
+secs = MOD(SimulationTime,60.)
+SimulationTime = SimulationTime / 60.
+mins = MOD(SimulationTime,60.)
+SimulationTime = SimulationTime / 60.
+hours = MOD(SimulationTime,24.)
+SimulationTime = SimulationTime / 24.
+!days = MOD(SimulationTime,365.) ! Use this if years are also to be displayed
+days = SimulationTime
+
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A,F16.2,A)',ADVANCE='NO')  ' VISU  FINISHED! [',Time-StartTime,' sec ]'
+SWRITE(UNIT_stdOut,'(A2,I6,A1,I0.2,A1,I0.2,A1,I0.2,A1)') ' [',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),']'
+SWRITE(UNIT_stdOut,'(132("="))')
 
 #if USE_MPI
 CALL FinalizeMPI()

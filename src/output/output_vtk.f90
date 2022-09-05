@@ -979,6 +979,7 @@ SUBROUTINE WriteDataToVTKPart(nParts,nVal,Coord,Value,FileString,VarNamePartVisu
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Restart_Vars   ,ONLY: RestartTime
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

@@ -1037,9 +1037,19 @@ IF(MPIRoot)THEN
   OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
-  Buffer='<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
-
+  ! This version is important for high-order elements because ParaView automatically converts the node numbering when switching from VTK8 to VTK9 convention
+  ! https://gitlab.kitware.com/paraview/paraview/-/issues/20728
+  Buffer='<VTKFile type="UnstructuredGrid" version="2.2" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Specify file type
   Buffer='  <UnstructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Specify output time
+  Buffer='    <FieldData>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='      <DataArray type="Float64" Name="TimeValue" NumberOfTuples="1">'//lf;WRITE(ivtk) TRIM(Buffer)
+  WRITE(TempStr1,'(F17.9)')RestartTime
+  Buffer='        '//TRIM(ADJUSTL(TempStr1))//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='      </DataArray>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='    </FieldData>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Specify field pieces
   WRITE(TempStr1,'(I16)')nVTKElems
   WRITE(TempStr2,'(I16)')nVTKCells
   Buffer='    <Piece NumberOfPoints="'//TRIM(ADJUSTL(TempStr1))//&

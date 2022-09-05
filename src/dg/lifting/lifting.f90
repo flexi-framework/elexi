@@ -139,7 +139,7 @@ IF(.NOT.doWeakLifting)&
   doConservativeLifting=GETLOGICAL('doConservativeLifting','.FALSE.')
 
 #elif PP_Lifting==2
-LBWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR2 ...'
+LBWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR2...'
 doWeakLifting=.FALSE.
 doConservativeLifting=GETLOGICAL('doConservativeLifting','.FALSE.')
 etaBR2=GETREAL('etaBR2','2.')

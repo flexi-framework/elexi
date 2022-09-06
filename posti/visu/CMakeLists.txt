@@ -7,7 +7,9 @@ SET(TOOL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/posti/visu")
 MESSAGE(STATUS "Posti: building ${TOOL_NAME} tool.")
 INCLUDE_DIRECTORIES( ${TOOL_DIR})
 
-FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d.f90
+FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d/avg2d.f90
+                          ${TOOL_DIR}/io_hdf5/visu_hdf5_output.f90
+                          ${TOOL_DIR}/mesh/mesh.f90
                           ${TOOL_DIR}/calc.f90
                           ${TOOL_DIR}/CMakeLists.txt
                           ${TOOL_DIR}/converttovisu.f90
@@ -16,13 +18,13 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d.f90
                           ${TOOL_DIR}/pluginTypes_visu.h
                           ${TOOL_DIR}/plugin_visu.h
                           ${TOOL_DIR}/posti_visu.f90
-                          ${TOOL_DIR}/readstate.f90
-                          ${TOOL_DIR}/visu_Cwrapper.f90
                           ${TOOL_DIR}/visu.f90
-                          ${TOOL_DIR}/visumesh.f90
-                          ${TOOL_DIR}/visu_vars.f90
-                          ${TOOL_DIR}/visu_part.f90)
-
+                          ${TOOL_DIR}/visu_Cwrapper.f90
+                          ${TOOL_DIR}/visu_init.f90
+                          ${TOOL_DIR}/visu_mesh.f90
+                          ${TOOL_DIR}/visu_part.f90
+                          ${TOOL_DIR}/visu_state.f90
+                          ${TOOL_DIR}/visu_vars.f90)
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
 SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})

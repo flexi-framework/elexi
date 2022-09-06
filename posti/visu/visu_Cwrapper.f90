@@ -48,9 +48,9 @@ END INTERFACE
 PUBLIC:: visu_requestInformation
 PUBLIC:: visu_CWrapper
 PUBLIC:: visu_dealloc_nodeids
+!===================================================================================================================================
 
 CONTAINS
-
 
 !===================================================================================================================================
 !> Function to convert a C string with length strlen to a FORTRAN character array with length 255.
@@ -72,6 +72,7 @@ cstrToChar255 = TRANSFER(tmp(1:strlen), cstrToChar255)
 cstrToChar255(strlen+1:255) = ' '
 END FUNCTION cstrToChar255
 
+
 !===================================================================================================================================
 !> Wrapper to visu_InitFile for Paraview plugin, returns the available variable names and boundary names.
 !===================================================================================================================================
@@ -79,17 +80,18 @@ SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, strl
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
+USE MOD_IO_HDF5    ,ONLY: InitMPIInfo
 USE MOD_MPI        ,ONLY: InitMPI
+USE MOD_Visu_Init  ,ONLY: visu_getVarNamesAndFileType
+USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll,nVarIni
+USE MOD_VTK        ,ONLY: CARRAY
 #if USE_PARTICLES
 USE MOD_Visu_Vars  ,ONLY: PartNamesAll
 #endif
-USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll,nVarIni
-USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
-USE MOD_VTK        ,ONLY: CARRAY
-USE MOD_IO_HDF5    ,ONLY: InitMPIInfo
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                    :: mpi_comm_IN
 INTEGER,INTENT(IN)                    :: strlen_state
 TYPE(C_PTR),TARGET,INTENT(IN)         :: statefile_IN
@@ -144,6 +146,7 @@ ELSE
 END IF
 #endif
 END SUBROUTINE visu_requestInformation
+
 
 !===================================================================================================================================
 !> C wrapper routine for the visu call from ParaView. The main visu routine is called with the parameter file created by the
@@ -370,6 +373,7 @@ CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSur
 CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,VarnamesAll,nVarSurfVisuAll)
 
 END SUBROUTINE visu_CWrapper
+
 
 !===================================================================================================================================
 !> Deallocate the different NodeID arrays.

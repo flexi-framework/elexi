@@ -29,7 +29,8 @@ USE MOD_ISO_VARYING_STRING
 USE MOD_MPI                   ,ONLY: InitMPI
 USE MOD_Output_Vars           ,ONLY: ProjectName,doPrintStatusLine
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
-USE MOD_Visu
+USE MOD_Visu                  ,ONLY: visu,FinalizeVisu
+USE MOD_Visu_HDF5_Output      ,ONLY: visu_WriteHDF5
 USE MOD_Visu_Vars
 USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
 #if USE_MPI

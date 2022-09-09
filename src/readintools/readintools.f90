@@ -1574,7 +1574,7 @@ DO WHILE (ASSOCIATED(current))
       !END SELECT
     END SELECT
     ! print option and value to stdout
-    CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+    CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0, proposal=proposal)
     ! remove the option from the linked list of all parameters
     IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
     RETURN

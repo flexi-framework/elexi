@@ -143,7 +143,6 @@ PUBLIC :: GETSTRLENREAL
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Compares name with the name of the option (case-insensitive)
 !==================================================================================================================================
@@ -154,8 +153,8 @@ USE MOD_StringTools ,ONLY: STRICMP
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CLASS(OPTION),INTENT(IN)    :: this !< CLASS(OPTION)
-CHARACTER(LEN=*),INTENT(IN) :: name !< incoming name, which is compared with the name of this option
+CLASS(OPTION),INTENT(IN)             :: this !< CLASS(OPTION)
+CHARACTER(LEN=*),INTENT(IN)          :: name !< incoming name, which is compared with the name of this option
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL            :: NAMEEQUALS
@@ -175,8 +174,8 @@ USE MOD_ISO_VARYING_STRING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CLASS(OPTION),INTENT(IN)    :: this !< CLASS(OPTION)
-CHARACTER(LEN=*),INTENT(IN) :: name !< incoming name, which is compared with the name of this option
+CLASS(OPTION),INTENT(IN)             :: this !< CLASS(OPTION)
+CHARACTER(LEN=*),INTENT(IN)          :: name !< incoming name, which is compared with the name of this option
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL               :: NAMEEQUALSNUMBERED
@@ -244,8 +243,8 @@ FUNCTION GETNAMELEN(this)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CLASS(OPTION),INTENT(IN) :: this         !< CLASS(OPTION)
-INTEGER                  :: GETNAMELEN   !< length of option name
+CLASS(OPTION),INTENT(IN)         :: this         !< CLASS(OPTION)
+INTEGER                          :: GETNAMELEN   !< length of option name
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -255,14 +254,15 @@ END FUNCTION GETNAMELEN
 !==================================================================================================================================
 !> return string-length required to print the value
 !==================================================================================================================================
-FUNCTION GETVALUELEN(this)
+FUNCTION GETVALUELEN(this,proposal)
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CLASS(OPTION),INTENT(IN)    :: this         !< CLASS(OPTION)
-INTEGER                     :: GETVALUELEN  !< string length
+CLASS(OPTION),INTENT(IN)             :: this         !< CLASS(OPTION)
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal     !< reference value
+INTEGER                              :: GETVALUELEN  !< string length
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: i
@@ -272,7 +272,7 @@ CHARACTER(LEN=50) :: tmp
 GETVALUELEN = 0  ! default return value
 
 ! only if option is set of has default value, we have to find the length of this value
-IF ((this%isSet).OR.(this%hasDefault)) THEN
+IF ((this%isSet).OR.(this%hasDefault).OR.PRESENT(proposal)) THEN
   ! each class has a different type, which requires different commands to get the string-length of the value
   SELECT TYPE (this)
   CLASS IS (IntOption)
@@ -352,7 +352,7 @@ END FUNCTION GETSTRLENREAL
 !==================================================================================================================================
 !> print option
 !==================================================================================================================================
-SUBROUTINE print(this, maxNameLen, maxValueLen, mode)
+SUBROUTINE print(this, maxNameLen, maxValueLen, mode, proposal)
 ! MODULES
 USE MOD_StringTools
 USE MOD_ISO_VARYING_STRING
@@ -363,10 +363,11 @@ USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CLASS(OPTION),INTENT(IN)    :: this         !< option to print
-INTEGER,INTENT(IN)          :: maxNameLen   !< max string length of name
-INTEGER,INTENT(IN)          :: maxValueLen  !< max string length of value
-INTEGER,INTENT(IN)          :: mode         !< 0: during readin, 1: default parameter file, 2: markdown
+CLASS(OPTION),INTENT(IN)             :: this         !< option to print
+INTEGER,INTENT(IN)                   :: maxNameLen   !< max string length of name
+INTEGER,INTENT(IN)                   :: maxValueLen  !< max string length of value
+INTEGER,INTENT(IN)                   :: mode         !< 0: during readin, 1: default parameter file, 2: markdown
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal     !< reference value
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=20)    :: fmtName
@@ -405,7 +406,7 @@ END SELECT
 
 ! print value
 IF ((mode.EQ.0).OR.(this%hasDefault)) THEN
-  CALL this%printValue(maxValueLen)
+  CALL this%printValue(maxValueLen, proposal)
 ELSE
   SWRITE(UNIT_stdOut, "(A"//fmtValue//")", ADVANCE='NO') ""
 END IF
@@ -476,14 +477,15 @@ END SUBROUTINE print
 !==================================================================================================================================
 !> print value of an option
 !==================================================================================================================================
-SUBROUTINE printValue(this,maxValueLen)
+SUBROUTINE printValue(this,maxValueLen,proposal)
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CLASS(OPTION),INTENT(IN)    :: this         !< option to print
-INTEGER,INTENT(IN)          :: maxValueLen  !< max string length of name
+CLASS(OPTION),INTENT(IN)             :: this         !< option to print
+INTEGER,INTENT(IN)                   :: maxValueLen  !< max string length of name
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal     !< reference value
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=20)            :: fmtValue
@@ -527,7 +529,7 @@ CLASS IS (IntFromStringOption)
     END IF
   END IF
 CLASS IS (IntArrayOption)
-  length=this%GETVALUELEN()
+  length=this%GETVALUELEN(proposal)
   IF (maxValueLen - length.GT.0) THEN
     WRITE(fmtValue,*) (maxValueLen - length)
     SWRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO')
@@ -543,7 +545,7 @@ CLASS IS (IntArrayOption)
   END DO
   SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"
 CLASS IS (LogicalArrayOption)
-  length=this%GETVALUELEN()
+  length=this%GETVALUELEN(proposal)
   IF (maxValueLen - length.GT.0) THEN
     WRITE(fmtValue,*) (maxValueLen - length)
     SWRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO')
@@ -557,7 +559,7 @@ CLASS IS (LogicalArrayOption)
   END DO
   SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"
 CLASS IS (RealArrayOption)
-  length=this%GETVALUELEN()
+  length=this%GETVALUELEN(proposal)
   IF (maxValueLen - length.GT.0) THEN
     WRITE(fmtValue,*) (maxValueLen - length)
     SWRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO')
@@ -583,7 +585,7 @@ CLASS IS (RealArrayOption)
 ! TODO: Causes internal compiler error with GNU 6+ due to compiler bug (older GNU and Intel,Cray work). Uncomment as unused.
 !###
 !CLASS IS (StringArrayOption)
-  !length=this%GETVALUELEN()
+  !length=this%GETVALUELEN(proposal)
   !IF (maxValueLen - length.GT.0) THEN
     !WRITE(fmtValue,*) (maxValueLen - length)
     !SWRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO')
@@ -613,8 +615,8 @@ USE MOD_ISO_VARYING_STRING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CLASS(OPTION)               :: this     !< CLASS(OPTION)
-CHARACTER(LEN=*),INTENT(IN) :: rest_in  !< string to parse
+CLASS(OPTION)                        :: this     !< CLASS(OPTION)
+CHARACTER(LEN=*),INTENT(IN)          :: rest_in  !< string to parse
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)  :: tmp,tmp2,rest
@@ -778,10 +780,10 @@ USE MOD_Globals, ONLY:Abort
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-CLASS(OPTION)                 :: this      !< CLASS(OPTION)
-CHARACTER(LEN=255),INTENT(IN) :: string_in !< (IN) string containing a real number
-REAL,INTENT(OUT)              :: value     !< (OUT) the converted real
-INTEGER,INTENT(OUT)           :: digits    !< (OUT) the number of digits if floating representation, or -1 if scientific
+CLASS(OPTION)                          :: this      !< CLASS(OPTION)
+CHARACTER(LEN=255),INTENT(IN)          :: string_in !< (IN) string containing a real number
+REAL,INTENT(OUT)                       :: value     !< (OUT) the converted real
+INTEGER,INTENT(OUT)                    :: digits    !< (OUT) the number of digits if floating representation, or -1 if scientific
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: pos,posE,posMinus,stat

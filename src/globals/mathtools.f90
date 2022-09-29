@@ -320,6 +320,8 @@ END FUNCTION INVERSE_LU
 ! !==================================================================================================================================
 ! ALMOSTEQUALRELATIVE=(ABS(x-y).LE.MAX(ABS(x),ABS(y))*tol)
 ! END FUNCTION ALMOSTEQUALRELATIVE
+
+
 ! PURE FUNCTION ALMOSTEQUALABSOLUTE(x,y,tol)
 ! ! MODULES
 ! IMPLICIT NONE

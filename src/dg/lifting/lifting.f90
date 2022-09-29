@@ -127,7 +127,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 IF((.NOT.DGInitIsDone).OR.LiftingInitIsDone)THEN
-   SWRITE(*,*) "InitDG not ready to be called or already called."
+   SWRITE(UNIT_stdOut,'(A)') "InitDG not ready to be called or already called."
    RETURN
 END IF
 
@@ -136,14 +136,14 @@ LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR1...'
 doWeakLifting=GETLOGICAL('doWeakLifting','.FALSE.')
 IF(.NOT.doWeakLifting)&
-  doConservativeLifting=GETLOGICAL('doConservativeLifting','.FALSE.')
+  doConservativeLifting = GETLOGICAL('doConservativeLifting')
 
 #elif PP_Lifting==2
 LBWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR2...'
-doWeakLifting=.FALSE.
-doConservativeLifting=GETLOGICAL('doConservativeLifting','.FALSE.')
-etaBR2=GETREAL('etaBR2','2.')
-etaBR2_wall=GETREAL('etaBR2_wall','-1.')
+doWeakLifting           = .FALSE.
+doConservativeLifting   = GETLOGICAL('doConservativeLifting')
+etaBR2                  = GETREAL(   'etaBR2'               )
+etaBR2_wall             = GETREAL(   'etaBR2_wall'          )
 IF(etaBR2_wall .EQ. -1.) etaBR2_wall = etaBR2  !default etaBR2_wall == etaBR2
 
 ALLOCATE(FluxX(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides))

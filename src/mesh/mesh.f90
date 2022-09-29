@@ -337,6 +337,7 @@ IF (meshMode.GT.0) THEN
   ALLOCATE(SideToElem(5,nSides))
   ALLOCATE(BC(1:nBCSides))
   ALLOCATE(AnalyzeSide(1:nSides))
+  ALLOCATE(SideToGlobalSide(1:nSides))
   ElemToSide  = 0
   SideToElem  = -1   !mapping side to elem, sorted by side ID (for surfint)
   BC          = 0
@@ -353,9 +354,9 @@ IF (meshMode.GT.0) THEN
 
 #if (PP_dim ==2)
   ! In 2D, there is only one flip for the slave sides (1)
-  SideToElem(S2E_FLIP,:) = MIN(1,SideToElem(S2E_FLIP,:))
-  ElemToSide(:,1,:) = -999
-  ElemToSide(:,6,:) = -999
+  SideToElem(S2E_FLIP,:)   = MIN(1,SideToElem(S2E_FLIP,:))
+  ElemToSide(:,1,:)        = -999
+  ElemToSide(:,6,:)        = -999
   ElemToSide(E2S_FLIP,:,:) = MIN(1,ElemToSide(E2S_FLIP,:,:))
   MortarInfo(MI_FLIP,:,:)  = MIN(1,MortarInfo(MI_FLIP,:,:))
 #endif
@@ -418,21 +419,6 @@ IF (meshMode.GT.1) THEN
 #endif
   ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
   CALL WriteDebugMesh(GETINT('debugmesh','0'))
-END IF
-
-IF (meshMode.GT.0) THEN
-  ALLOCATE(SideToGlobalSide(nSides))
-  DO iElem=1,nElems
-#if PP_dim == 3
-    DO LocSideID=1,6
-#else
-    DO LocSideID=2,5
-#endif
-      SideID = ElemToSide(E2S_SIDE_ID,LocSideID,iElem)
-      iSide = ElemInfo(3,iElem+offsetElem) + LocSideID
-      SideToGlobalSide(SideID) = ABS(SideInfo(2,iSide))
-    END DO
-  END DO ! iElem
 END IF
 
 SDEALLOCATE(dXCL_N)

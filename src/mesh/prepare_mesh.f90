@@ -693,6 +693,7 @@ USE MOD_Mesh_Vars,ONLY: nElems,offsetElem,nBCSides
 USE MOD_Mesh_Vars,ONLY: firstMortarInnerSide,lastMortarInnerSide,nMortarInnerSides,firstMortarMPISide
 USE MOD_Mesh_Vars,ONLY: ElemToSide,SideToElem,BC,AnalyzeSide
 USE MOD_Mesh_Vars,ONLY: MortarType,MortarInfo
+USE MOD_Mesh_Vars,ONLY: SideToGlobalSide
 #if USE_MPI
 USE MOD_MPI_Vars
 #endif
@@ -731,7 +732,7 @@ DO iElem = 1,nElems
 #else
   DO LocSideID = 2,5
 #endif
-    aSide=>aElem%Side(LocSideID)%sp
+    aSide => aElem%Side(LocSideID)%sp
     IF(aSide%Flip.EQ.0)THEN                                          ! root side
       SideToElem(S2E_ELEM_ID,aSide%SideID)          = iElem          ! root element
       SideToElem(S2E_LOC_SIDE_ID,aSide%SideID)      = LocSideID
@@ -742,6 +743,7 @@ DO iElem = 1,nElems
       SideToElem(S2E_FLIP,aSide%SideID)             = aSide%Flip
     END IF
     IF(aSide%sideID .LE. nBCSides) BC(aSide%sideID) = aSide%BCIndex
+    SideToGlobalSide(aSide%sideID)                  = aSide%ind
   END DO ! LocSideID
 END DO ! iElem
 

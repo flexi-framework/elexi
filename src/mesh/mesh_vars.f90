@@ -124,13 +124,21 @@ INTEGER             :: nSides=0                !< =nInnerSides+nBCSides+nMPISide
 INTEGER             :: nSidesMaster=0          !< =sideIDMaster
 INTEGER             :: nSidesSlave=0           !< =nInnerSides+nBCSides+nMPISides
 INTEGER             :: nInnerSides=0           !< InnerSide index range: sideID [nBCSides+1:nBCSides+nInnerSides]
+INTEGER             :: nPeriodicSides=0        !< PeriodicSides
 INTEGER             :: nBCSides=0              !< BCSide index range: sideID [1:nBCSides]
 INTEGER             :: nAnalyzeSides=0         !< marker for each side (BC,analyze flag, periodic,...)
 INTEGER             :: nMPISides=0             !< number of MPI sides in mesh
+INTEGER             :: nMPIPeriodics=0         !< number of MPI periodic sides
 INTEGER             :: nMPISides_MINE=0        !< number of MINE MPI sides (on local processor)
 INTEGER             :: nMPISides_YOUR=0        !< number of YOUR MPI sides (on neighbour processors)
 INTEGER             :: nBCs=0                  !< number of BCs in mesh
 INTEGER             :: nUserBCs=0              !< number of BC in inifile
+#if USE_MPI
+INTEGER             :: nGlobalSides=0          !< number of global sides in mesh
+INTEGER             :: nGlobalMPISides=0       !< number of global MPI sides in mesh
+INTEGER             :: nGlobalBCSides=0        !< number of global BC sides in mesh
+INTEGER             :: nGlobalPeriodicSides=0  !< number of global periodic sides in mesh
+#endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! ijk sorted meshes
 INTEGER             :: nElems_IJK(3)           !< Global number of elements in i,j,k direction

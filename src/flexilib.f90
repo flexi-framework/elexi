@@ -42,6 +42,7 @@ USE MOD_Commandline_Arguments
 USE MOD_Restart,           ONLY:DefineParametersRestart,InitRestart,Restart
 USE MOD_Interpolation,     ONLY:DefineParametersInterpolation,InitInterpolation
 USE MOD_Mesh,              ONLY:DefineParametersMesh,InitMesh
+USE MOD_Mesh_Check,        ONLY:CheckMesh
 USE MOD_Eos,               ONLY:DefineParametersEos
 USE MOD_Exactfunc,         ONLY:DefineParametersExactFunc
 USE MOD_Mortar,            ONLY:InitMortar
@@ -230,6 +231,7 @@ CALL InitOverintegration()
 #if USE_MPI
 CALL InitMPIvars()
 #endif
+CALL CheckMesh()
 CALL InitEquation()
 CALL InitDG()
 #if FV_ENABLED

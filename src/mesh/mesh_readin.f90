@@ -214,7 +214,7 @@ USE MOD_Mesh_Vars,          ONLY:NGeo,NGeoTree
 USE MOD_Mesh_Vars,          ONLY:NodeCoords,TreeCoords
 USE MOD_Mesh_Vars,          ONLY:offsetElem,offsetTree,nElems,nTrees,nGlobalTrees
 USE MOD_Mesh_Vars,          ONLY:xiMinMax,ElemToTree
-USE MOD_Mesh_Vars,          ONLY:nSides,nInnerSides,nBCSides,nMPISides,nAnalyzeSides
+USE MOD_Mesh_Vars,          ONLY:nSides,nInnerSides,nPeriodicSides,nMPIPeriodics,nBCSides,nMPISides,nAnalyzeSides
 USE MOD_Mesh_Vars,          ONLY:nMortarSides,isMortarMesh,meshHasMortars
 USE MOD_Mesh_Vars,          ONLY:useCurveds
 USE MOD_Mesh_Vars,          ONLY:BoundaryType
@@ -223,6 +223,7 @@ USE MOD_Mesh_Vars,          ONLY:Elems
 USE MOD_Mesh_Vars,          ONLY:GETNEWELEM,GETNEWSIDE
 USE MOD_Mesh_Vars,          ONLY:ElemInfo,SideInfo
 #if USE_MPI
+USE MOD_Mesh_Vars,          ONLY:nGlobalSides,nGlobalBCSides,nGlobalMPISides,nGlobalPeriodicSides
 USE MOD_MPI_Vars,           ONLY:nMPISides_Proc,nNbProcs,NbProc
 #endif
 #if USE_PARTICLES
@@ -252,7 +253,6 @@ INTEGER                        :: iElem,nbElemID,nNodes
 INTEGER                        :: iLocSide,nbLocSide
 INTEGER                        :: iSide
 INTEGER                        :: FirstSideInd,LastSideInd,FirstElemInd,LastElemInd
-INTEGER                        :: nPeriodicSides,nMPIPeriodics
 INTEGER                        :: ReduceData(10)
 INTEGER                        :: nSideIDs,offsetSideID
 INTEGER                        :: iMortar,jMortar,nMortars
@@ -828,6 +828,11 @@ meshHasMortars = MERGE(.TRUE.,.FALSE.,ReduceData(9).GT.0)
 #if USE_MPI
 CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 IF(MPIRoot) ReduceData=ReduceData_glob
+
+nGlobalSides         = ReduceData(2)-ReduceData(7)/2
+nGlobalMPISides      = ReduceData(7)/2
+nGlobalBCSides       = ReduceData(6)
+nGlobalPeriodicSides = ReduceData(5)-ReduceData(10)/2
 #endif /*USE_MPI*/
 
 LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nElems               | ',ReduceData(1) !nElems

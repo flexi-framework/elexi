@@ -68,6 +68,7 @@ USE MOD_Mesh_Vars,  ONLY: nMortarSides,nMortarInnerSides,nMortarMPISides
 USE MOD_ReadInTools,ONLY: GETLOGICAL
 USE MOD_MPI_Vars
 #endif
+! IMPLICIT VARIABLE HANLDING
 IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -95,8 +96,8 @@ CHARACTER(LEN=255)    :: PartitionInfoFileName
 LOGICAL               :: writePartitionInfo
 #endif
 !==================================================================================================================================
-FirstElemInd= offsetElem+1
-LastElemInd = offsetElem+nElems
+FirstElemInd = offsetElem+1
+LastElemInd  = offsetElem+nElems
 ! ----------------------------------------
 ! Set side IDs to arrange sides:
 ! 1. BC sides
@@ -116,39 +117,39 @@ LastElemInd = offsetElem+nElems
 !   >0 : BC is the slave of a periodic BC. The value is the index of the master BC.
 ! This map is used below to overwrite the BCindex of all periodic slave side to the BCindex of the corresponding master side.
 ! Therewith slave and master side have the same BCindex.
-PeriodicBCMap=-2
-DO i=1,nBCs
-  IF((BoundaryType(i,BC_TYPE).NE.1)) PeriodicBCMap(i)=-1 ! not periodic
-  IF((BoundaryType(i,BC_TYPE).EQ.1).AND.(BoundaryType(i,BC_ALPHA).GT.0)) PeriodicBCMap(i)=-1 ! master of periodic BC
+PeriodicBCMap = -2
+DO i = 1,nBCs
+  IF((BoundaryType(i,BC_TYPE).NE.1))                                     PeriodicBCMap(i) = -1 ! not periodic
+  IF((BoundaryType(i,BC_TYPE).EQ.1).AND.(BoundaryType(i,BC_ALPHA).GT.0)) PeriodicBCMap(i) = -1 ! master of periodic BC
   IF((BoundaryType(i,BC_TYPE).EQ.1).AND.(BoundaryType(i,BC_ALPHA).LT.0))THEN ! slave of periodic BC
     DO j=1,nBCs ! iterate over all other BCs and find corresponding master BC
       IF(BoundaryType(j,BC_TYPE).NE.1) CYCLE
-      IF(BoundaryType(j,BC_ALPHA).EQ.(-BoundaryType(i,BC_ALPHA))) PeriodicBCMap(i)=j ! save index of master BC
+      IF(BoundaryType(j,BC_ALPHA).EQ.(-BoundaryType(i,BC_ALPHA)))        PeriodicBCMap(i) = j  ! save index of master BC
     END DO
   END IF
 END DO
-IF(ANY(PeriodicBCMap.EQ.-2))&
-  CALL Abort(__STAMP__,'Periodic connection not found.')
+IF(ANY(PeriodicBCMap.EQ.-2)) CALL Abort(__STAMP__,'Periodic connection not found.')
 
 ! Iterate over all elements and within each element over all sides (6 for hexas) and for each big Mortar side over all
 ! small virtual sides.
 ! For each side set 'sideID' to -1 (indicates non-assigned side)
 ! and for periodic sides set BCindex of the slave side to the index of the master side using the PeriodicBCMap.
-DO iElem=FirstElemInd,LastElemInd
-  aElem=>Elems(iElem)%ep
-  DO iLocSide=1,6
-    aSide=>aElem%Side(iLocSide)%sp
+DO iElem = FirstElemInd,LastElemInd
+  aElem => Elems(iElem)%ep
+  DO iLocSide = 1,6
+    aSide => aElem%Side(iLocSide)%sp
     ! LOOP over mortars, if no mortar, then LOOP is executed once
-    nMortars=aSide%nMortars
-    DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+    nMortars = aSide%nMortars
+    DO iMortar = 0,nMortars
+      ! point to small virtual side
+      IF(iMortar.GT.0) aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
 
-      aSide%sideID=-1
+      aSide%sideID = -1
       ! periodic master and slave side have different BCs (i.e. different BCindex).
       ! => overwrite BCindex of the slave side by the BCindex of the master side.
       IF(aSide%BCIndex.GE.1)THEN ! side is at BC
-        IF(PeriodicBCMap(aSide%BCIndex).NE.-1)& ! side is slave side of a periodic side => store BC index of master side
-          aSide%BCIndex=PeriodicBCMap(aSide%BCIndex)
+        ! side is slave side of a periodic side => store BC index of master side
+        IF(PeriodicBCMap(aSide%BCIndex).NE.-1) aSide%BCIndex = PeriodicBCMap(aSide%BCIndex)
       END IF
     END DO ! iMortar
   END DO
@@ -158,29 +159,29 @@ END DO
 ! and for each big Mortar side over all small virtual sides.
 ! For each side set 'tmp' marker to zero, except for big Mortar sides which have at least one small virtual side
 ! with a neighbor on another processor (set 'tmp' to -1).
-nMortarInnerSides=0
-nMortarMPISides=0
-DO iElem=FirstElemInd,LastElemInd
-  aElem=>Elems(iElem)%ep
+nMortarInnerSides = 0
+nMortarMPISides   = 0
+DO iElem = FirstElemInd,LastElemInd
+  aElem => Elems(iElem)%ep
 #if PP_dim == 3
-  DO iLocSide=1,6
+  DO iLocSide = 1,6
 #else
-  DO iLocSide=2,5
+  DO iLocSide = 2,5
 #endif
-    aSide=>aElem%Side(iLocSide)%sp
-    aSide%tmp=0
-    IF(aSide%nMortars.GT.0)THEN   ! only if side has small virtual sides
-      DO iMortar=1,aSide%nMortars ! iterate over small virtual sides and check
-                                  ! if any of the them has a neighbor on another processor
+    aSide => aElem%Side(iLocSide)%sp
+    aSide%tmp = 0
+    IF(aSide%nMortars.GT.0)THEN     ! only if side has small virtual sides
+      DO iMortar = 1,aSide%nMortars ! iterate over small virtual sides and check
+                                    ! if any of the them has a neighbor on another processor
         IF(aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp%nbProc.NE.-1)THEN
-          aSide%tmp=-1
+          aSide%tmp = -1
           EXIT
         END IF
       END DO ! iMortar
-      IF(aSide%tmp.EQ.-1) THEN                ! if at least one small virtual side has neighbor on another processor
-        nMortarMPISides=nMortarMPISides+1     ! then count big side as a Mortar-MPI-side
+      IF(aSide%tmp.EQ.-1) THEN                  ! if at least one small virtual side has neighbor on another processor
+        nMortarMPISides   = nMortarMPISides+1   ! then count big side as a Mortar-MPI-side
       ELSE
-        nMortarInnerSides=nMortarInnerSides+1 ! else count big side as a Mortar-Inner-side
+        nMortarInnerSides = nMortarInnerSides+1 ! else count big side as a Mortar-Inner-side
       END IF
     END IF ! nMortars>0
   END DO
@@ -190,44 +191,46 @@ IF((nMortarInnerSides+nMortarMPISides).NE.nMortarSides) &
 
 ! Iterate over all elements and within each element over all sides (6 for hexas in 3D, 4 for quads in 2D)
 ! and for each big Mortar side over all small virtual sides and set the 'SideID'.
-iSide=0
-iBCSide=0                             ! BC sides are the first sides in list of all sides (see mesh.f90)
-iMortarInnerSide=nBCSides             ! inner Mortar sides come directly after BC sides
-iInnerSide=nBCSides+nMortarInnerSides ! inner (non-Mortar) side come next
-iMortarMPISide=nSides-nMortarMPISides ! MPI Mortar sides come last
-DO iElem=FirstElemInd,LastElemInd
-  aElem=>Elems(iElem)%ep
+iSide            = 0
+iBCSide          = 0                          ! BC sides are the first sides in list of all sides (see mesh.f90)
+iMortarInnerSide = nBCSides                   ! inner Mortar sides come directly after BC sides
+iInnerSide       = nBCSides+nMortarInnerSides ! inner (non-Mortar) side come next
+iMortarMPISide   = nSides-nMortarMPISides     ! MPI Mortar sides come last
+DO iElem = FirstElemInd,LastElemInd
+  aElem => Elems(iElem)%ep
 #if PP_dim == 3
-  DO iLocSide=1,6
+  DO iLocSide = 1,6
 #else
-  DO iLocSide=2,5
+  DO iLocSide = 2,5
 #endif
-    aSide=>aElem%Side(iLocSide)%sp
-    nMortars=aSide%nMortars
-    DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+    aSide => aElem%Side(iLocSide)%sp
+    nMortars = aSide%nMortars
+    DO iMortar = 0,nMortars
+      ! point to small virtual side
+      IF(iMortar.GT.0) aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
 
       IF(aSide%sideID.EQ.-1)THEN   ! SideID not set so far
         IF(aSide%NbProc.EQ.-1)THEN ! no MPI Sides
           IF(ASSOCIATED(aSide%connection))THEN ! side has a connection => inner side
-            iInnerSide=iInnerSide+1
-            iSide=iSide+1
-            aSide%SideID=iInnerSide            ! set SideID for this side
-            aSide%connection%SideID=iInnerSide ! and set same SideID for connected side
+            iInnerSide              = iInnerSide      +1
+            iSide                   = iSide           +1
+            aSide%SideID            = iInnerSide     ! set SideID for this side
+            aSide%connection%SideID = iInnerSide     ! and set same SideID for connected side
           ELSE  ! side has no connection => big Mortar or BC side
             IF(aSide%MortarType.GT.0) THEN ! if big Mortar side
               IF(aSide%tmp.EQ.-1)THEN         ! if MPI Mortar side
-                iMortarMPISide=iMortarMPISide+1
-                aSide%SideID=iMortarMPISide
+                iMortarMPISide      = iMortarMPISide  +1
+                aSide%SideID        = iMortarMPISide
               ELSE                            ! else (non-MPI Mortar side)
-                iMortarInnerSide=iMortarInnerSide+1
-                iSide=iSide+1
-                aSide%SideID=iMortarInnerSide
+                iMortarInnerSide    = iMortarInnerSide+1
+                iSide               = iSide           +1
+                aSide%SideID        = iMortarInnerSide
               END IF ! mpi mortar
-            ELSE                           ! no Mortar side => this is now a BC side, really!
-              iBCSide=iBCSide+1
-              iSide=iSide+1
-              aSide%SideID=iBCSide
+            ! no Mortar side => this is now a BC side, really!
+            ELSE
+              iBCSide               = iBCSide         +1
+              iSide                 = iSide           +1
+              aSide%SideID          = iBCSide
             END IF ! mortar
           END IF ! associated connection
         END IF ! .NOT. MPISide
@@ -235,15 +238,15 @@ DO iElem=FirstElemInd,LastElemInd
     END DO ! iMortar
   END DO ! iLocSide=1,6
 END DO ! iElem
-IF(iSide.NE.nInnerSides+nBCSides+nMortarInnerSides) STOP 'not all SideIDs are set!'
+IF(iSide.NE.nInnerSides+nBCSides+nMortarInnerSides) CALL Abort(__STAMP__,'not all SideIDs are set!')
 LOGWRITE(*,*)'-------------------------------------------------------'
 LOGWRITE(*,'(A22,I8)')'nMortarSides:',nMortarSides
 LOGWRITE(*,'(A22,I8)')'nMortarInnerSides:',nMortarInnerSides
 LOGWRITE(*,'(A22,I8)')'nMortarMPISides:',nMortarMPISides
 LOGWRITE(*,*)'-------------------------------------------------------'
 
-nMPISides_MINE=0
-nMPISides_YOUR=0
+nMPISides_MINE = 0
+nMPISides_YOUR = 0
 #if USE_MPI
 ! SPLITTING number of MPISides in MINE and YOURS
 ! General strategy:
@@ -251,18 +254,18 @@ nMPISides_YOUR=0
 !  The processor with the smaller rank gets #commonSides/2, the processor with the higher rank
 !  gets the rest: #commonSides - #commonSides/2
 ALLOCATE(nMPISides_MINE_Proc(1:nNbProcs),nMPISides_YOUR_Proc(1:nNbProcs))
-nMPISides_MINE_Proc=0
-nMPISides_YOUR_Proc=0
+nMPISides_MINE_Proc = 0
+nMPISides_YOUR_Proc = 0
 DO iNbProc=1,nNbProcs
   IF(myRank.LT.NbProc(iNbProc)) THEN
-    nMPISides_MINE_Proc(iNbProc)=nMPISides_Proc(iNbProc)/2
+    nMPISides_MINE_Proc(iNbProc) = nMPISides_Proc(iNbProc)/2
   ELSE
-    nMPISides_MINE_Proc(iNbProc)=nMPISides_Proc(iNbProc)-nMPISides_Proc(iNbProc)/2
+    nMPISides_MINE_Proc(iNbProc) = nMPISides_Proc(iNbProc)-nMPISides_Proc(iNbProc)/2
   END IF
-  nMPISides_YOUR_Proc(iNbProc)=nMPISides_Proc(iNbProc)-nMPISides_MINE_Proc(iNbProc)
+  nMPISides_YOUR_Proc(iNbProc)   = nMPISides_Proc(iNbProc)-nMPISides_MINE_Proc(iNbProc)
 END DO
-nMPISides_MINE=SUM(nMPISides_MINE_Proc)
-nMPISides_YOUR=SUM(nMPISides_YOUR_Proc)
+nMPISides_MINE = SUM(nMPISides_MINE_Proc)
+nMPISides_YOUR = SUM(nMPISides_YOUR_Proc)
 
 ! Since we now know the number of MINE and YOUR sides for each neighboring processor we
 ! can calculate the SideID offsets for each processor.
@@ -272,16 +275,16 @@ nMPISides_YOUR=SUM(nMPISides_YOUR_Proc)
 !    'nMPISides_MINE_Proc' and 'nMPISides_YOUR_Proc'. The latter ones start with index '1', while the
 !    offset arrays start with '0'!
 ALLOCATE(offsetMPISides_YOUR(0:nNbProcs),offsetMPISides_MINE(0:nNbProcs))
-offsetMPISides_MINE=0
-offsetMPISides_YOUR=0
+offsetMPISides_MINE = 0
+offsetMPISides_YOUR = 0
 ! compute offset, first all MINE , then all YOUR MPISides
-offsetMPISides_MINE(0)=nInnerSides+nBCSides+nMortarInnerSides
-DO iNbProc=1,nNbProcs
-  offsetMPISides_MINE(iNbProc)=offsetMPISides_MINE(iNbProc-1)+nMPISides_MINE_Proc(iNbProc)
+offsetMPISides_MINE(0) = nInnerSides+nBCSides+nMortarInnerSides
+DO iNbProc = 1,nNbProcs
+  offsetMPISides_MINE(iNbProc) = offsetMPISides_MINE(iNbProc-1)+nMPISides_MINE_Proc(iNbProc)
 END DO
-offsetMPISides_YOUR(0)=offsetMPISides_MINE(nNbProcs)
-DO iNbProc=1,nNbProcs
-  offsetMPISides_YOUR(iNbProc)=offsetMPISides_YOUR(iNbProc-1)+nMPISides_YOUR_Proc(iNbProc)
+offsetMPISides_YOUR(0) = offsetMPISides_MINE(nNbProcs)
+DO iNbProc = 1,nNbProcs
+  offsetMPISides_YOUR(iNbProc) = offsetMPISides_YOUR(iNbProc-1)+nMPISides_YOUR_Proc(iNbProc)
 END DO
 
 ! Iterate over all processors and for each processor over all elements and within each element
@@ -291,57 +294,57 @@ END DO
 ! The global side indices of these sides are stored in a map 'SideIDMap', which is sorted.
 ! Therewith this map holds all global side indices (sorted) of all common sides with the specific neighbor-processor.
 ! The sides are then enumerated consecutively according to this map.
-DO iNbProc=1,nNbProcs
+DO iNbProc = 1,nNbProcs
   ALLOCATE(SideIDMap(nMPISides_Proc(iNbProc)))
-  iSide=0
-  DO iElem=FirstElemInd,LastElemInd
-    aElem=>Elems(iElem)%ep
+  iSide = 0
+  DO iElem = FirstElemInd,LastElemInd
+    aElem => Elems(iElem)%ep
 #if PP_dim == 3
-    DO iLocSide=1,6
+    DO iLocSide = 1,6
 #else
-    DO iLocSide=2,5
+    DO iLocSide = 2,5
 #endif
-      aSide=>aElem%Side(iLocSide)%sp
-      nMortars=aSide%nMortars
-      DO iMortar=0,nMortars
-        IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+      aSide    => aElem%Side(iLocSide)%sp
+      nMortars =  aSide%nMortars
+      DO iMortar = 0,nMortars
+        IF(iMortar.GT.0) aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
         IF(aSide%NbProc.NE.NbProc(iNbProc))CYCLE
-        iSide=iSide+1
+        iSide = iSide+1
         ! optimization: put non-mortars first to optimize addtoInnerMortars (also small virtual sides are marked with MortarType<0)
         IF((iMortar.EQ.0).AND.(aSide%MortarType.EQ.0)) aSide%ind=-aSide%ind
-        SideIDMap(iSide)=aSide%ind ! fill map with global Side indices
+        SideIDMap(iSide) = aSide%ind ! fill map with global Side indices
       END DO ! iMortar
     END DO ! iLocSide
   END DO ! iElem
   IF(iSide.GT.1) CALL MergeSort(SideIDMap(1:iSide),iSide) ! sort by global side index
   ! again loop over all common sides with the specific neighboring processor and assign SideIDs according to the 'SideIDMap'.
-  DO iElem=FirstElemInd,LastElemInd
-    aElem=>Elems(iElem)%ep
+  DO iElem = FirstElemInd,LastElemInd
+    aElem => Elems(iElem)%ep
 #if PP_dim == 3
-    DO iLocSide=1,6
+    DO iLocSide = 1,6
 #else
-    DO iLocSide=2,5
+    DO iLocSide = 2,5
 #endif
-      aSide=>aElem%Side(iLocSide)%sp
-      nMortars=aSide%nMortars
-      DO iMortar=0,nMortars
-        IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+      aSide    => aElem%Side(iLocSide)%sp
+      nMortars =  aSide%nMortars
+      DO iMortar = 0,nMortars
+        IF(iMortar.GT.0) aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
         IF(aSide%NbProc.NE.NbProc(iNbProc))CYCLE
         ! For the side get index of global index in sorted SideIDMap and set this as SideID of the side (offset is added below).
-        aSide%SideID=INVMAP(aSide%ind,nMPISides_Proc(iNbProc),SideIDMap)
+        aSide%SideID = INVMAP(aSide%ind,nMPISides_Proc(iNbProc),SideIDMap)
         ! Since SideIDMap starts with index '1', this SideID must be shifted further by the offsetMPISides_MINE/YOUR.
         ! ATTENTION: indexing of offsetMPISides_MINE and offsetMPISides_YOUR starts with '0'.
         IF(myRank.LT.aSide%NbProc)THEN
           IF(aSide%SideID.LE.nMPISides_MINE_Proc(iNbProc))THEN ! MINE
-            aSide%SideID=aSide%SideID +offsetMPISides_MINE(iNbProc-1)
+            aSide%SideID =  aSide%SideID                              +offsetMPISides_MINE(iNbProc-1)
           ELSE ! YOUR
-            aSide%SideID=(aSide%SideID-nMPISides_MINE_Proc(iNbProc))+offsetMPISides_YOUR(iNbProc-1)
+            aSide%SideID = (aSide%SideID-nMPISides_MINE_Proc(iNbProc))+offsetMPISides_YOUR(iNbProc-1)
           END IF
         ELSE
           IF(aSide%SideID.LE.nMPISides_YOUR_Proc(iNbProc))THEN ! MINE
-            aSide%SideID=aSide%SideID +offsetMPISides_YOUR(iNbProc-1)
+            aSide%SideID = aSide%SideID                               +offsetMPISides_YOUR(iNbProc-1)
           ELSE ! YOUR
-            aSide%SideID=(aSide%SideID-nMPISides_YOUR_Proc(iNbProc))+offsetMPISides_MINE(iNbProc-1)
+            aSide%SideID = (aSide%SideID-nMPISides_YOUR_Proc(iNbProc))+offsetMPISides_MINE(iNbProc-1)
           END IF
         END IF ! myrank<NbProc
       END DO ! iMortar
@@ -352,18 +355,18 @@ END DO !nbProc(i)
 ! Iterate over all processors and for each processor over all elements and within each element
 ! over all sides (6 for hexas in 3D, 4 for quads in 2D) and for each big Mortar side over all small virtual sides
 ! and revert the negative SideIDs.
-DO iElem=FirstElemInd,LastElemInd
-  aElem=>Elems(iElem)%ep
+DO iElem = FirstElemInd,LastElemInd
+  aElem => Elems(iElem)%ep
 #if PP_dim == 3
-  DO iLocSide=1,6
+  DO iLocSide = 1,6
 #else
-  DO iLocSide=2,5
+  DO iLocSide = 2,5
 #endif
-    aSide=>aElem%Side(iLocSide)%sp
-    nMortars=aSide%nMortars
-    DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
-      aSide%ind=ABS(aSide%ind) ! revert negative sideIDs (used to put non-mortars at the top of the list)
+    aSide => aElem%Side(iLocSide)%sp
+    nMortars = aSide%nMortars
+    DO iMortar = 0,nMortars
+      IF(iMortar.GT.0) aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+      aSide%ind = ABS(aSide%ind) ! revert negative sideIDs (used to put non-mortars at the top of the list)
     END DO ! iMortar
   END DO ! iLocSide
 END DO ! iElem
@@ -380,13 +383,13 @@ END DO ! iElem
 !    MPIMortars
 IF(nMortarSides.GT.0)THEN
   ! reset 'tmp'-marker of all sides to 0
-  DO iElem=FirstElemInd,LastElemInd
-    aElem=>Elems(iElem)%ep
-    DO iLocSide=1,6
-      aSide=>aElem%Side(iLocSide)%sp
-      aSide%tmp=0
-      DO iMortar=1,aSide%nMortars
-        aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp%tmp=0
+  DO iElem = FirstElemInd,LastElemInd
+    aElem => Elems(iElem)%ep
+    DO iLocSide = 1,6
+      aSide     => aElem%Side(iLocSide)%sp
+      aSide%tmp =  0
+      DO iMortar = 1,aSide%nMortars
+        aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp%tmp = 0
       END DO ! iMortar
     END DO ! iLocSide
   END DO ! iElem
@@ -397,76 +400,75 @@ IF(nMortarSides.GT.0)THEN
   ! Therewith only the big Mortar sides have a 'tmp'-marker different from 0.
   ! Additionally count all big Mortar sides that can be moved to inner Mortars (with tmp == -1).
   ! ATTENTION: big Mortars, which are already inner Mortars are also marked and counted.
-  addToInnerMortars=0
-  DO iElem=FirstElemInd,LastElemInd
-    aElem=>Elems(iElem)%ep
-    DO iLocSide=1,6
-      aSide=>aElem%Side(iLocSide)%sp
+  addToInnerMortars = 0
+  DO iElem = FirstElemInd,LastElemInd
+    aElem => Elems(iElem)%ep
+    DO iLocSide = 1,6
+      aSide => aElem%Side(iLocSide)%sp
       IF(aSide%nMortars.GT.0)THEN
-        aSide%tmp=-1 ! mortar side
-        DO iMortar=1,aSide%nMortars
+        aSide%tmp = -1 ! mortar side
+        DO iMortar = 1,aSide%nMortars
           IF(aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp%SideID.GT.offsetMPISides_YOUR(0))THEN
-            aSide%tmp=-2  ! mortar side with side used in MPI_YOUR
+            aSide%tmp = -2  ! mortar side with side used in MPI_YOUR
             EXIT
           END IF
         END DO ! iMortar
         IF(aSide%tmp.EQ.-1) THEN
-          addToInnerMortars=addToInnerMortars+1
+          addToInnerMortars = addToInnerMortars+1
         END IF
       END IF ! nMortars>0
     END DO ! iLocSide
   END DO ! iElem
 
-
-  addToInnerMortars=addToInnerMortars-nMortarInnerSides ! inner big Mortars are counted as well, subtract them.
+  addToInnerMortars = addToInnerMortars-nMortarInnerSides ! inner big Mortars are counted as well, subtract them.
   ! Shift all InnerSides, MPI_MINE and MPI_YOUR sides rearwards by the number of big Mortars that will be moved.
   ! Therewith the space/gap in the InnerMortars for the big Mortars, that will be moved, is created.
   IF(addToInnerMortars.GT.0)THEN
-    lastMortarInnerSide=nBCSides+nMortarInnerSides ! SideID of the last InnerMortar (before the move)
+    lastMortarInnerSide = nBCSides+nMortarInnerSides ! SideID of the last InnerMortar (before the move)
     ! Iterate over all elements and within each element over all sides (6 for hexas)
-    DO iElem=FirstElemInd,LastElemInd
-      aElem=>Elems(iElem)%ep
-      DO iLocSide=1,6
-        aSide=>aElem%Side(iLocSide)%sp
+    DO iElem = FirstElemInd,LastElemInd
+      aElem => Elems(iElem)%ep
+      DO iLocSide = 1,6
+        aSide => aElem%Side(iLocSide)%sp
         ! if side is not a big Mortar side and the SideID is greater than off the last inner Mortar,
         ! then shift SidID by number of big Mortars that will be moved and mark side as shifted (tmp=1)
         IF((aSide%tmp.EQ.0).AND.(aSide%SideID.GT.lastMortarInnerSide))THEN
-          aSide%SideID=aSide%SideID+addToInnerMortars
-          aSide%tmp=1
+          aSide%SideID = aSide%SideID+addToInnerMortars
+          aSide%tmp    = 1
         END IF
         ! repeat the same for the small virtual sides
-        nMortars=aSide%nMortars
-        DO iMortar=1,nMortars
-          aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+        nMortars = aSide%nMortars
+        DO iMortar = 1,nMortars
+          aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
           IF((aSide%tmp.EQ.0).AND.(aSide%SideID.GT.lastMortarInnerSide))THEN
-            aSide%SideID=aSide%SideID+addToInnerMortars
-            aSide%tmp=1
+            aSide%SideID = aSide%SideID+addToInnerMortars
+            aSide%tmp    = 1
           END IF
         END DO ! iMortar
       END DO ! iLocSide
     END DO ! iElem
     ! increase the offsets
-    offsetMPISides_MINE=offsetMPISides_MINE+addToInnerMortars
-    offsetMPISides_YOUR=offsetMPISides_YOUR+addToInnerMortars
+    offsetMPISides_MINE = offsetMPISides_MINE+addToInnerMortars
+    offsetMPISides_YOUR = offsetMPISides_YOUR+addToInnerMortars
 
-    nMortarInnerSides=nMortarInnerSides+addToInnerMortars  ! increase number of inner Mortars
-    nMortarMPISides  =nMortarMPISides  -addToInnerMortars  ! decrease number of MPI Mortars
-    iMortarMPISide=nSides-nMortarMPISides                  ! first index of the remaining MPI Mortars
-    iMortarInnerSide=nBCSides                              ! first index of the new inner Mortars
+    nMortarInnerSides   = nMortarInnerSides  +addToInnerMortars  ! increase number of inner Mortars
+    nMortarMPISides     = nMortarMPISides    -addToInnerMortars  ! decrease number of MPI Mortars
+    iMortarMPISide      = nSides-nMortarMPISides                 ! first index of the remaining MPI Mortars
+    iMortarInnerSide    = nBCSides                               ! first index of the new inner Mortars
 
     ! Until now only the InnerSides, MPI_MINE and MPI_YOUR are moved. Since the BCSides come before the
     ! InnerMortars they stay untouched. It only remains to adjust the SideIDs of the InnerMortars and the MPIMortars.
     ! They are totally renumbered.
-    DO iElem=FirstElemInd,LastElemInd
-      aElem=>Elems(iElem)%ep
-      DO iLocSide=1,6
-        aSide=>aElem%Side(iLocSide)%sp
+    DO iElem = FirstElemInd,LastElemInd
+      aElem => Elems(iElem)%ep
+      DO iLocSide = 1,6
+        aSide => aElem%Side(iLocSide)%sp
         IF(aSide%tmp.EQ.-2)THEN ! MPI mortars, renumber SideIDs
-          iMortarMPISide=iMortarMPISide+1
-          aSide%SideID=iMortarMPISide
+          iMortarMPISide = iMortarMPISide+1
+          aSide%SideID   = iMortarMPISide
         ELSEIF(aSide%tmp.EQ.-1)THEN ! innermortars mortars, renumber SideIDs
-          iMortarInnerSide=iMortarInnerSide+1
-          aSide%SideID=iMortarInnerSide
+          iMortarInnerSide = iMortarInnerSide+1
+          aSide%SideID     = iMortarInnerSide
         END IF ! aSide%tmp==-1
       END DO ! iLocSide
     END DO ! iElem
@@ -488,24 +490,23 @@ ALLOCATE(OffsetMPISides_send(0:nNbProcs,2))
 ALLOCATE(nMPISides_rec(        nNbProcs,2))
 ALLOCATE(OffsetMPISides_rec( 0:nNbProcs,2))
 ! Set number of sides and offset for SEND MINE - RECEIVE YOUR case
-nMPISides_send(:,1)     =nMPISides_MINE_Proc
-OffsetMPISides_send(:,1)=OffsetMPISides_MINE
-nMPISides_rec(:,1)      =nMPISides_YOUR_Proc
-OffsetMPISides_rec(:,1) =OffsetMPISides_YOUR
+nMPISides_send(:,1)      = nMPISides_MINE_Proc
+OffsetMPISides_send(:,1) = OffsetMPISides_MINE
+nMPISides_rec(:,1)       = nMPISides_YOUR_Proc
+OffsetMPISides_rec(:,1)  = OffsetMPISides_YOUR
 ! Set number of sides and offset for SEND YOUR - RECEIVE MINE case
-nMPISides_send(:,2)     =nMPISides_YOUR_Proc
-OffsetMPISides_send(:,2)=OffsetMPISides_YOUR
-nMPISides_rec(:,2)      =nMPISides_MINE_Proc
-OffsetMPISides_rec(:,2) =OffsetMPISides_MINE
+nMPISides_send(:,2)      = nMPISides_YOUR_Proc
+OffsetMPISides_send(:,2) = OffsetMPISides_YOUR
+nMPISides_rec(:,2)       = nMPISides_MINE_Proc
+OffsetMPISides_rec(:,2)  = OffsetMPISides_MINE
 
 !------------------------------------------------------
 ! From this point on only debug output is performed
 !------------------------------------------------------
-
 ! count small virtual sides (all, MINE, YOUR)
-nSmallMortarSides=0
-nSmallMortarMPIsides_MINE=0
-nSmallMortarMPIsides_YOUR=0
+nSmallMortarSides         = 0
+nSmallMortarMPIsides_MINE = 0
+nSmallMortarMPIsides_YOUR = 0
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
   DO iLocSide=1,6
@@ -524,8 +525,7 @@ DO iElem=1,nElems
     END IF ! mortarSide
   END DO ! LocSideID
 END DO ! iElem
-nSmallMortarInnerSides=nSmallMortarSides-nSmallMortarMPISides_MINE-nSmallMortarMPISides_YOUR
-
+nSmallMortarInnerSides = nSmallMortarSides-nSmallMortarMPISides_MINE-nSmallMortarMPISides_YOUR
 
 WRITE(formatstr,'(a5,I2,a3)')'(A22,',nNBProcs,'I8)'
 LOGWRITE(*,*)'-------------------------------------------------------'
@@ -546,20 +546,20 @@ LOGWRITE(*,*)'-------------------------------------------------------'
 writePartitionInfo = GETLOGICAL('writePartitionInfo','.FALSE.')
 IF(.NOT.writePartitionInfo) RETURN
 ! output partitioning info
-ProcInfo(1)=nElems
-ProcInfo(2)=nSides
-ProcInfo(3)=nInnerSides
-ProcInfo(4)=nBCSides
-ProcInfo(5)=nMortarInnerSides
-ProcInfo(6)=nMortarMPISides
-ProcInfo(7)=nSmallMortarInnerSides
-ProcInfo(8)=nSmallMortarMPISides_MINE
-ProcInfo(9)=nSmallMortarMPISides_YOUR
+ProcInfo(1) = nElems
+ProcInfo(2) = nSides
+ProcInfo(3) = nInnerSides
+ProcInfo(4) = nBCSides
+ProcInfo(5) = nMortarInnerSides
+ProcInfo(6) = nMortarMPISides
+ProcInfo(7) = nSmallMortarInnerSides
+ProcInfo(8) = nSmallMortarMPISides_MINE
+ProcInfo(9) = nSmallMortarMPISides_YOUR
 IF(MPIRoot)THEN
   ALLOCATE(nNBProcs_glob(0:nProcessors-1))
   ALLOCATE(ProcInfo_glob(9,0:nProcessors-1))
-  nNBProcs_glob=-99999
-  Procinfo_glob=-88888
+  nNBProcs_glob = -99999
+  Procinfo_glob = -88888
 ELSE
   ALLOCATE(nNBProcs_glob(1)) ! dummy for debug
   ALLOCATE(ProcInfo_glob(1,1)) ! dummy for debug
@@ -567,21 +567,21 @@ END IF !MPIRoot
 CALL MPI_GATHER(nNBProcs,1,MPI_INTEGER,nNBProcs_glob,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 CALL MPI_GATHER(ProcInfo,9,MPI_INTEGER,ProcInfo_glob,9,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 IF(MPIRoot)THEN
-  nNBmax=MAXVAL(nNBProcs_glob) ! count, total number of columns in table
+  nNBmax      = MAXVAL(nNBProcs_glob) ! count, total number of columns in table
   ALLOCATE(NBinfo_glob(6,nNBmax,0:nProcessors))
-  NBinfo_glob=-77777
+  NBinfo_glob = -77777
 ELSE
   ALLOCATE(NBinfo_glob(1,1,1)) ! dummy for debug
 END IF
 CALL MPI_BCAST(nNBmax,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 ALLOCATE(NBinfo(6,nNbmax))
-NBinfo=0
-NBinfo(1,1:nNBProcs)=NBProc
-NBinfo(2,1:nNBProcs)=nMPISides_Proc
-NBinfo(3,1:nNBProcs)=nMPISides_MINE_Proc
-NBinfo(4,1:nNBProcs)=nMPISides_YOUR_Proc
-NBinfo(5,1:nNBProcs)=offsetMPISides_MINE(0:nNBProcs-1)
-NBinfo(6,1:nNBProcs)=offsetMPISides_YOUR(0:nNBProcs-1)
+NBinfo               = 0
+NBinfo(1,1:nNBProcs) = NBProc
+NBinfo(2,1:nNBProcs) = nMPISides_Proc
+NBinfo(3,1:nNBProcs) = nMPISides_MINE_Proc
+NBinfo(4,1:nNBProcs) = nMPISides_YOUR_Proc
+NBinfo(5,1:nNBProcs) = offsetMPISides_MINE(0:nNBProcs-1)
+NBinfo(6,1:nNBProcs) = offsetMPISides_YOUR(0:nNBProcs-1)
 CALL MPI_GATHER(NBinfo,6*nNBmax,MPI_INTEGER,NBinfo_glob,6*nNBmax,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 DEALLOCATE(NBinfo)
 IF(MPIRoot)THEN
@@ -596,61 +596,61 @@ IF(MPIRoot)THEN
   WRITE(ioUnit,'(300("="))')
   ! statistics
   ALLOCATE(tmparray(12,0:3),tmpreal(12,2))
-  tmparray(:,0)=0      ! tmp
-  tmparray(:,1)=0      ! mean
-  tmparray(:,2)=-HUGE(1) ! max
-  tmparray(:,3)= HUGE(1) ! min
-  DO i=0,nProcessors-1
+  tmparray(:,0) = 0        ! tmp
+  tmparray(:,1) = 0        ! mean
+  tmparray(:,2) = -HUGE(1) ! max
+  tmparray(:,3) =  HUGE(1) ! min
+  DO i = 0,nProcessors-1
     !actual proc
-    tmparray( 1,0)=Procinfo_glob(1,i)
-    tmparray( 2,0)=Procinfo_glob(2,i)
-    tmparray( 3,0)=Procinfo_glob(3,i)
-    tmparray( 4,0)=Procinfo_glob(4,i)
-    tmparray( 5,0)=SUM(NBinfo_glob(2,:,i))
-    tmparray( 6,0)=SUM(NBinfo_glob(3,:,i))
-    tmparray( 7,0)=nNBProcs_glob(i)
-    tmparray( 8,0)=Procinfo_glob(5,i)
-    tmparray( 9,0)=Procinfo_glob(6,i)
-    tmparray(10,0)=Procinfo_glob(7,i)
-    tmparray(11,0)=Procinfo_glob(8,i)
-    tmparray(12,0)=Procinfo_glob(9,i)
-    DO j=1,12
+    tmparray( 1,0) = Procinfo_glob(1,i)
+    tmparray( 2,0) = Procinfo_glob(2,i)
+    tmparray( 3,0) = Procinfo_glob(3,i)
+    tmparray( 4,0) = Procinfo_glob(4,i)
+    tmparray( 5,0) = SUM(NBinfo_glob(2,:,i))
+    tmparray( 6,0) = SUM(NBinfo_glob(3,:,i))
+    tmparray( 7,0) = nNBProcs_glob(i)
+    tmparray( 8,0) = Procinfo_glob(5,i)
+    tmparray( 9,0) = Procinfo_glob(6,i)
+    tmparray(10,0) = Procinfo_glob(7,i)
+    tmparray(11,0) = Procinfo_glob(8,i)
+    tmparray(12,0) = Procinfo_glob(9,i)
+    DO j = 1,12
       ! mean
-      tmparray(j,1)=tmparray(j,1)+tmparray(j,0)
+      tmparray(j,1) = tmparray(j,1)+tmparray(j,0)
       ! max
-      tmparray(j,2)=MAX(tmparray(j,2),tmparray(j,0))
+      tmparray(j,2) = MAX(tmparray(j,2),tmparray(j,0))
       ! min
-      tmparray(j,3)=MIN(tmparray(j,3),tmparray(j,0))
+      tmparray(j,3) = MIN(tmparray(j,3),tmparray(j,0))
     END DO
   END DO
-  tmpreal(:,1)=REAL(tmparray(:,1))/REAL(nProcessors) ! mean in REAL
-  tmpreal(:,2)=0.   ! RMS
-  DO i=0,nProcessors-1
+  tmpreal(:,1) = REAL(tmparray(:,1))/REAL(nProcessors) ! mean in REAL
+  tmpreal(:,2) = 0.                                    ! RMS
+  DO i = 0,nProcessors-1
     ! actual proc
-    tmparray( 1,0)=Procinfo_glob(1,i)
-    tmparray( 2,0)=Procinfo_glob(2,i)
-    tmparray( 3,0)=Procinfo_glob(3,i)
-    tmparray( 4,0)=Procinfo_glob(4,i)
-    tmparray( 5,0)=SUM(NBinfo_glob(2,:,i))
-    tmparray( 6,0)=SUM(NBinfo_glob(3,:,i))
-    tmparray( 7,0)=nNBProcs_glob(i)
-    tmparray( 8,0)=Procinfo_glob(5,i)
-    tmparray( 9,0)=Procinfo_glob(6,i)
-    tmparray(10,0)=Procinfo_glob(7,i)
-    tmparray(11,0)=Procinfo_glob(8,i)
-    tmparray(12,0)=Procinfo_glob(9,i)
-    DO j=1,12
-      tmpreal(j,2)=tmpreal(j,2)+(tmparray(j,0)-tmpreal(j,1))**2
+    tmparray( 1,0) = Procinfo_glob(1,i)
+    tmparray( 2,0) = Procinfo_glob(2,i)
+    tmparray( 3,0) = Procinfo_glob(3,i)
+    tmparray( 4,0) = Procinfo_glob(4,i)
+    tmparray( 5,0) = SUM(NBinfo_glob(2,:,i))
+    tmparray( 6,0) = SUM(NBinfo_glob(3,:,i))
+    tmparray( 7,0) = nNBProcs_glob(i)
+    tmparray( 8,0) = Procinfo_glob(5,i)
+    tmparray( 9,0) = Procinfo_glob(6,i)
+    tmparray(10,0) = Procinfo_glob(7,i)
+    tmparray(11,0) = Procinfo_glob(8,i)
+    tmparray(12,0) = Procinfo_glob(9,i)
+    DO j = 1,12
+      tmpreal(j,2) = tmpreal(j,2)+(tmparray(j,0)-tmpreal(j,1))**2
     END DO
   END DO
-  tmpreal(:,2)=SQRT(tmpreal(:,2)/REAL(nProcessors))
+  tmpreal(:,2) = SQRT(tmpreal(:,2)/REAL(nProcessors))
   WRITE(ioUnit,'(A23,12(13X,F10.2))')'   MEAN        ',tmpreal(:,1)
   WRITE(ioUnit,'(300("-"))')
   WRITE(ioUnit,'(A23,12(13X,F10.2))')'   RMS         ',tmpreal(:,2)
   WRITE(ioUnit,'(300("-"))')
-  WRITE(ioUnit,'(A23,12(13X,I10))')'   MIN         ',tmparray(:,3)
+  WRITE(ioUnit,'(A23,12(13X,I10))')  '   MIN         ',tmparray(:,3)
   WRITE(ioUnit,'(300("-"))')
-  WRITE(ioUnit,'(A23,12(13X,I10))')'   MAX         ',tmparray(:,2)
+  WRITE(ioUnit,'(A23,12(13X,I10))')  '   MAX         ',tmparray(:,2)
   WRITE(ioUnit,'(300("="))')
   DO i=0,nProcessors-1
     WRITE(ioUnit,'(13(13X,I10))')i, &
@@ -662,9 +662,9 @@ IF(MPIRoot)THEN
   WRITE(ioUnit,*)' '
   WRITE(ioUnit,'(7(A15))')'Rank','NBProc','nMPISides_Proc','nMPISides_MINE','nMPISides_YOUR','offset_MINE','offset_YOUR'
   WRITE(ioUnit,'(105("="))')
-  DO i=0,nProcessors-1
+  DO i = 0,nProcessors-1
     WRITE(ioUnit,'(7(5X,I10))')i,NBinfo_glob(:,1,i)
-    DO j=2,nNBProcs_glob(i)
+    DO j = 2,nNBProcs_glob(i)
       WRITE(ioUnit,'(A15,6(5X,I10))')' ',NBinfo_glob(:,j,i)
     END DO
     WRITE(ioUnit,'(105("-"))')
@@ -675,7 +675,6 @@ END IF ! MPIRoot
 DEALLOCATE(NBinfo_glob,nNBProcs_glob,ProcInfo_glob)
 #endif /*USE_MPI*/
 END SUBROUTINE setLocalSideIDs
-
 
 
 !==================================================================================================================================
@@ -697,7 +696,9 @@ USE MOD_Mesh_Vars,ONLY: MortarType,MortarInfo
 #if USE_MPI
 USE MOD_MPI_Vars
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -707,79 +708,80 @@ INTEGER             :: iElem,LocSideID,nSides_flip(0:4),SideID
 INTEGER             :: nSides_MortarType(1:3),iMortar
 !==================================================================================================================================
 ! Element to Side mapping
-nSides_flip=0
-DO iElem=1,nElems
-  aElem=>Elems(iElem+offsetElem)%ep
+nSides_flip = 0
+DO iElem = 1,nElems
+  aElem => Elems(iElem+offsetElem)%ep
 #if PP_dim == 3
-  DO LocSideID=1,6
+  DO LocSideID = 1,6
 #else
-  DO LocSideID=2,5
+  DO LocSideID = 2,5
 #endif
-    aSide=>aElem%Side(LocSideID)%sp
-    ElemToSide(E2S_SIDE_ID,LocSideID,iElem)=aSide%SideID
-    ElemToSide(E2S_FLIP,LocSideID,iElem)   =aSide%Flip
-    nSides_flip(aSide%flip)=nSides_flip(aSide%flip)+1
+    aSide => aElem%Side(LocSideID)%sp
+    ElemToSide(E2S_SIDE_ID,LocSideID,iElem) = aSide%SideID
+    ElemToSide(E2S_FLIP,LocSideID,iElem)    = aSide%Flip
+    nSides_flip(aSide%flip) = nSides_flip(aSide%flip)+1
   END DO ! LocSideID
 END DO ! iElem
 
 ! Side to Element mapping, sorted by SideID
-DO iElem=1,nElems
-  aElem=>Elems(iElem+offsetElem)%ep
+DO iElem = 1,nElems
+  aElem => Elems(iElem+offsetElem)%ep
 #if PP_dim == 3
-  DO LocSideID=1,6
+  DO LocSideID = 1,6
 #else
-  DO LocSideID=2,5
+  DO LocSideID = 2,5
 #endif
     aSide=>aElem%Side(LocSideID)%sp
-    IF(aSide%Flip.EQ.0)THEN ! root side
-      SideToElem(S2E_ELEM_ID,aSide%SideID)         = iElem ! root Element
-      SideToElem(S2E_LOC_SIDE_ID,aSide%SideID)     = LocSideID
-      AnalyzeSide(aSide%sideID)                    = aSide%BCIndex
+    IF(aSide%Flip.EQ.0)THEN                                          ! root side
+      SideToElem(S2E_ELEM_ID,aSide%SideID)          = iElem          ! root element
+      SideToElem(S2E_LOC_SIDE_ID,aSide%SideID)      = LocSideID
+      AnalyzeSide(aSide%sideID)                     = aSide%BCIndex
     ELSE
-      SideToElem(S2E_NB_ELEM_ID,aSide%SideID)      = iElem ! element with flipped side
-      SideToElem(S2E_NB_LOC_SIDE_ID,aSide%SideID)  = LocSideID
-      SideToElem(S2E_FLIP,aSide%SideID)            = aSide%Flip
+      SideToElem(S2E_NB_ELEM_ID,aSide%SideID)       = iElem          ! element with flipped side
+      SideToElem(S2E_NB_LOC_SIDE_ID,aSide%SideID)   = LocSideID
+      SideToElem(S2E_FLIP,aSide%SideID)             = aSide%Flip
     END IF
-    IF(aSide%sideID .LE. nBCSides) BC(aSide%sideID)=aSide%BCIndex
+    IF(aSide%sideID .LE. nBCSides) BC(aSide%sideID) = aSide%BCIndex
   END DO ! LocSideID
 END DO ! iElem
 
 ! Mapping of Mortar Master Side to Mortar Slave Side
-nSides_MortarType=0
+nSides_MortarType = 0
 
-DO iElem=1,nElems
-  aElem=>Elems(iElem+offsetElem)%ep
+DO iElem = 1,nElems
+  aElem => Elems(iElem+offsetElem)%ep
 #if PP_dim == 3
-  DO LocSideID=1,6
+  DO LocSideID = 1,6
 #else
-  DO LocSideID=2,5
+  DO LocSideID = 2,5
 #endif
-    aSide=>aElem%Side(LocSideID)%sp
+    aSide => aElem%Side(LocSideID)%sp
     ! Set type of mortar:
     !    -1: Small side belonging to big mortar
     !     0: No mortar
     ! 1,2,3: Type of big mortar
-    MortarType(1,aSide%SideID)=aSide%MortarType
+    MortarType(1,aSide%SideID) = aSide%MortarType
     IF(aSide%nMortars.GT.0)THEN ! mortar side
       ! compute index of big mortar in MortarInfo = [1:nMortarSides]
-      SideID=aSide%SideID+1-MERGE(firstMortarInnerSide,firstMortarMPISide-nMortarInnerSides,&
-                                  aSide%SideID.LE.lastMortarInnerSide)
-      MortarType(2,aSide%SideID)=SideID
+      SideID = aSide%SideID+1 - MERGE(firstMortarInnerSide                &
+                                    ,firstMortarMPISide-nMortarInnerSides &
+                                    ,aSide%SideID.LE.lastMortarInnerSide)
+      MortarType(2,aSide%SideID) = SideID
       DO iMortar=1,aSide%nMortars
-        mSide=>aSide%MortarSide(iMortar)%sp
-        MortarInfo(MI_SIDEID,iMortar,SideID)=mSide%SideID
-        MortarInfo(MI_FLIP,iMortar,SideID)=mSide%Flip
+        mSide => aSide%MortarSide(iMortar)%sp
+        MortarInfo(MI_SIDEID,iMortar,SideID) = mSide%SideID
+        MortarInfo(MI_FLIP,iMortar,SideID)   = mSide%Flip
       END DO ! iMortar
-      nSides_MortarType(aSide%MortarType)=nSides_MortarType(aSide%MortarType)+1
+      nSides_MortarType(aSide%MortarType) = nSides_MortarType(aSide%MortarType)+1
     END IF ! mortarSide
   END DO ! LocSideID
 END DO ! iElem
 
 #if USE_MPI
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,nSides_flip,5,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE     ,nSides_flip      ,5,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(nSides_flip,MPI_IN_PLACE,5,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(nSides_flip      ,MPI_IN_PLACE     ,5,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE     ,nSides_MortarType,3,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
@@ -800,25 +802,27 @@ LBWRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides of MortarType=3 | ',nSides_MortarT
 LBWRITE(UNIT_stdOut,'(132("."))')
 
 LOGWRITE(*,*)'============================= START SIDE CHECKER ==================='
-DO iElem=1,nElems
-  aElem=>Elems(iElem+offsetElem)%ep
+DO iElem = 1,nElems
+  aElem => Elems(iElem+offsetElem)%ep
   LOGWRITE(*,*)'=============== iElem= ',iElem, '==================='
 #if PP_dim == 3
-  DO LocSideID=1,6
+  DO LocSideID = 1,6
 #else
-  DO LocSideID=2,5
+  DO LocSideID = 2,5
 #endif
-    aSide=>aElem%Side(LocSideID)%sp
-    LOGWRITE(*,'(5(A,I4))')'globSideID= ',aSide%ind, &
-                 ', flip= ',aSide%flip ,&
-                 ', SideID= ', aSide%SideID,', nMortars= ',aSide%nMortars,', nbProc= ',aSide%nbProc
+    aSide => aElem%Side(LocSideID)%sp
+    LOGWRITE(*,'(5(A,I4))')'globSideID= ',aSide%ind      ,&
+                 ', flip= '              ,aSide%flip     ,&
+                 ', SideID= '            ,aSide%SideID   ,&
+                 ', nMortars= '          ,aSide%nMortars ,&
+                 ', nbProc= '            ,aSide%nbProc
     IF(aSide%nMortars.GT.0)THEN ! mortar side
       LOGWRITE(*,*)'   --- Mortars ---'
-      DO iMortar=1,aSide%nMortars
+      DO iMortar = 1,aSide%nMortars
         LOGWRITE(*,'(I4,4(A,I4))') iMortar,', globSideID= ',aSide%MortarSide(iMortar)%sp%ind, &
-                     ', flip= ',aSide%MortarSide(iMortar)%sp%Flip, &
-                     ', SideID= ',aSide%MortarSide(iMortar)%sp%SideID, &
-                     ', nbProc= ',aSide%MortarSide(iMortar)%sp%nbProc
+                                           ', flip= '      ,aSide%MortarSide(iMortar)%sp%Flip, &
+                                           ', SideID= '    ,aSide%MortarSide(iMortar)%sp%SideID, &
+                                           ', nbProc= '    ,aSide%MortarSide(iMortar)%sp%nbProc
 
       END DO ! iMortar
     END IF ! mortarSide
@@ -840,7 +844,9 @@ USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY: nElems,offsetElem
 USE MOD_Mesh_Vars,ONLY: tElem,tSide,Elems
 USE MOD_MPI_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -854,66 +860,66 @@ INTEGER             :: SendRequest(nNbProcs),RecRequest(nNbProcs)
 !==================================================================================================================================
 IF(nProcessors.EQ.1) RETURN
 ! fill MINE flip info
-DO iElem=1,nElems
-  aElem=>Elems(iElem+offsetElem)%ep
+DO iElem = 1,nElems
+  aElem => Elems(iElem+offsetElem)%ep
 #if PP_dim == 3
-  DO LocSideID=1,6
+  DO LocSideID = 1,6
 #else
-  DO LocSideID=2,5
+  DO LocSideID = 2,5
 #endif
-    aSide=>aElem%Side(LocSideID)%sp
-    nMortars=aSide%nMortars
-    DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(LocSideID)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+    aSide    => aElem%Side(LocSideID)%sp
+    nMortars =  aSide%nMortars
+    DO iMortar = 0,nMortars
+      IF(iMortar.GT.0) aSide => aElem%Side(LocSideID)%sp%mortarSide(iMortar)%sp ! point to small virtual side
       IF((aSide%SideID.GT.offsetMPISides_MINE(0)       ).AND.&
          (aSide%SideID.LE.offsetMPISides_MINE(nNBProcs)))THEN
-        Flip_MINE(aSide%sideID)=aSide%flip
+        Flip_MINE(aSide%sideID) = aSide%flip
       END IF
     END DO ! iMortar
   END DO ! LocSideID
 END DO ! iElem
-DO iNbProc=1,nNbProcs
+DO iNbProc = 1,nNbProcs
   ! Start send flip from MINE
   IF(nMPISides_MINE_Proc(iNbProc).GT.0)THEN
-    nSendVal    =nMPISides_MINE_Proc(iNbProc)
-    SideID_start=OffsetMPISides_MINE(iNbProc-1)+1
-    SideID_end  =OffsetMPISides_MINE(iNbProc)
+    nSendVal     = nMPISides_MINE_Proc(iNbProc)
+    SideID_start = OffsetMPISides_MINE(iNbProc-1)+1
+    SideID_end   = OffsetMPISides_MINE(iNbProc)
     CALL MPI_ISEND(Flip_MINE(SideID_start:SideID_end),nSendVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,SendRequest(iNbProc),iError)
   END IF
   ! Start receive flip to YOUR
   IF(nMPISides_YOUR_Proc(iNbProc).GT.0)THEN
-    nRecVal     =nMPISides_YOUR_Proc(iNbProc)
-    SideID_start=OffsetMPISides_YOUR(iNbProc-1)+1
-    SideID_end  =OffsetMPISides_YOUR(iNbProc)
+    nRecVal      = nMPISides_YOUR_Proc(iNbProc)
+    SideID_start = OffsetMPISides_YOUR(iNbProc-1)+1
+    SideID_end   = OffsetMPISides_YOUR(iNbProc)
     CALL MPI_IRECV(Flip_YOUR(SideID_start:SideID_end),nRecVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,RecRequest(iNbProc),iError)
   END IF
 END DO ! iProc=1,nNBProcs
 DO iNbProc=1,nNbProcs
-  IF(nMPISides_YOUR_Proc(iNbProc).GT.0)CALL MPI_WAIT(RecRequest(iNbProc) ,MPIStatus,iError)
-  IF(nMPISides_MINE_Proc(iNBProc).GT.0)CALL MPI_WAIT(SendRequest(iNbProc),MPIStatus,iError)
+  IF(nMPISides_YOUR_Proc(iNbProc).GT.0) CALL MPI_WAIT(RecRequest(iNbProc) ,MPIStatus,iError)
+  IF(nMPISides_MINE_Proc(iNBProc).GT.0) CALL MPI_WAIT(SendRequest(iNbProc),MPIStatus,iError)
 END DO ! iProc=1,nNBProcs
-DO iElem=1,nElems
-  aElem=>Elems(iElem+offsetElem)%ep
+DO iElem = 1,nElems
+  aElem => Elems(iElem+offsetElem)%ep
 #if PP_dim == 3
-  DO LocSideID=1,6
+  DO LocSideID = 1,6
 #else
-  DO LocSideID=2,5
+  DO LocSideID = 2,5
 #endif
-    aSide=>aElem%Side(LocSideID)%sp
-    nMortars=aSide%nMortars
-    DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(LocSideID)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+    aSide    => aElem%Side(LocSideID)%sp
+    nMortars =  aSide%nMortars
+    DO iMortar = 0,nMortars
+      IF(iMortar.GT.0) aSide => aElem%Side(LocSideID)%sp%mortarSide(iMortar)%sp ! point to small virtual side
       IF(aSide%NbProc.EQ.-1) CYCLE !no MPISide
       IF(aSide%SideID.GT.offsetMPISides_YOUR(0))THEN
         IF(aSide%flip.EQ.0)THEN
-          IF(Flip_YOUR(aSide%SideID).EQ.0) STOP 'problem in exchangeflip'
-          aSide%flip=Flip_YOUR(aSide%sideID)
-            END IF
-          ELSE
-            aSide%flip=0 !MINE MPISides flip=0
+          IF(Flip_YOUR(aSide%SideID).EQ.0) CALL Abort(__STAMP__,'Problem in exchangeFlip')
+          aSide%flip = Flip_YOUR(aSide%sideID)
           END IF
+        ELSE
+          aSide%flip = 0 ! MINE MPISides
+        END IF
     END DO ! iMortar
   END DO ! LocSideID
 END DO ! iElem
@@ -926,6 +932,7 @@ END SUBROUTINE exchangeFlip
 !==================================================================================================================================
 RECURSIVE SUBROUTINE MergeSort(A,nTotal)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -944,9 +951,9 @@ IF(nTotal.EQ.2)THEN
   ENDIF
   RETURN
 ENDIF
-nA=(nTotal+1)/2
+nA = (nTotal+1)/2
 CALL MergeSort(A,nA)
-nB=nTotal-nA
+nB = nTotal-nA
 CALL MergeSort(A(nA+1:nTotal),nB)
 ! Performed first on lowest level
 IF(A(nA).GT.A(nA+1)) CALL DoMerge(A,nA,nB)
@@ -958,6 +965,7 @@ END SUBROUTINE MergeSort
 !==================================================================================================================================
 SUBROUTINE DoMerge(A,nA,nB)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -969,21 +977,21 @@ INTEGER,INTENT(INOUT) :: A(nA+nB)  !< subarray to be merged
 INTEGER :: i,j,k
 INTEGER :: part1(nA),part2(nB)
 !==================================================================================================================================
-part1(1:nA)=A(1:nA)
-part2(1:nB)=A(nA+1:nA+nB)
+part1(1:nA) = A(1:nA)
+part2(1:nB) = A(nA+1:nA+nB)
 i=1; j=1; k=1;
 DO WHILE((i.LE.nA).AND.(j.LE.nB))
   IF(part1(i).LE.part2(j))THEN
-    A(k)=part1(i)
-    i=i+1
+    A(k) = part1(i)
+    i    = i+1
   ELSE
-    A(k)=part2(j)
-    j=j+1
+    A(k) = part2(j)
+    j    = j+1
   ENDIF
-  k=k+1
+  k = k+1
 END DO
-j=nA-i
-A(k:k+nA-i)=part1(i:nA)
+j = nA-i
+A(k:k+nA-i) = part1(i:nA)
 END SUBROUTINE DoMerge
 
 
@@ -993,6 +1001,7 @@ END SUBROUTINE DoMerge
 !==================================================================================================================================
 FUNCTION INVMAP(ID,nIDs,ArrID)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1002,32 +1011,32 @@ INTEGER, INTENT(IN)                :: ArrID(nIDs)   !< 1D array of IDs
 INTEGER                            :: INVMAP        !< index of ID in NodeMap array
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                            :: i,maxSteps,low,up,mid
+INTEGER                            :: i,maxSteps,low,high,mid
 !==================================================================================================================================
-INVMAP=0
-maxSteps=INT(LOG(REAL(nIDs))*1.4426950408889634556)+1    !1/LOG(2.)=1.4426950408889634556
-low=1
-up=nIDs
-IF((ID.LT.ArrID(low)).OR.(ID.GT.ArrID(up))) THEN
+INVMAP   = 0
+maxSteps = INT(LOG(REAL(nIDs))*1.4426950408889634556)+1    ! 1/LOG(2.) = 1.4426950408889634556
+low      = 1
+high     = nIDs
+IF((ID.LT.ArrID(low)).OR.(ID.GT.ArrID(high))) THEN
   !WRITE(*,*)'WARNING, Node Index Not in local range -> set to -1'
-  INVMAP=-1  ! not in the range!
+  INVMAP = -1  ! not in the range!
   RETURN
 END IF
 IF(ID.EQ.ArrID(low))THEN
-  INVMAP=low
-ELSEIF(ID.EQ.ArrID(up))THEN
-  INVMAP=up
+  INVMAP = low
+ELSEIF(ID.EQ.ArrID(high))THEN
+  INVMAP = high
 ELSE
   !bisection
-  DO i=1,maxSteps
-    mid=(up-low)/2+low
+  DO i = 1,maxSteps
+    mid = (high-low)/2+low
     IF(ID .EQ. ArrID(mid))THEN
-      INVMAP=mid                     ! index found!
+      INVMAP = mid                     ! index found!
       EXIT
-    ELSEIF(ID .GT. ArrID(mid))THEN ! seek in upper half
-      low=mid
+    ELSEIF(ID .GT. ArrID(mid))THEN     ! seek in upper half
+      low  = mid
     ELSE
-      up=mid
+      high = mid
     END IF
   END DO
 END IF

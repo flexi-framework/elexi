@@ -105,7 +105,7 @@ nUserBCs = CountOption('BoundaryName')
 IF (nUserBCs.GT.0) THEN
   ALLOCATE(BoundaryName(1:nUserBCs))
   ALLOCATE(BoundaryType(1:nUserBCs,2))
-  DO iBC=1,nUserBCs
+  DO iBC = 1,nUserBCs
     BoundaryName(iBC)   = GETSTR('BoundaryName')
     BoundaryType(iBC,:) = GETINTARRAY('BoundaryType',2) !(/Type,State/)
   END DO
@@ -114,7 +114,7 @@ END IF ! nUserBCs.GT.0
 ! Read boundary names from data file
 CALL GetDataSize(File_ID,'BCNames',nDims,HSize)
 CHECKSAFEINT(HSize(1),4)
-nBCs=INT(HSize(1),4)
+nBCs = INT(HSize(1),4)
 DEALLOCATE(HSize)
 
 ALLOCATE(BCNames(nBCs))
@@ -128,9 +128,9 @@ IF (nUserBCs.GT.0) THEN
   DO iBC=1,nBCs
     DO iUserBC=1,nUserBCs
       ! Check if BoundaryName(iUserBC) is a substring of BCNames(iBC)
-      NameCheck = INDEX(TRIM(BCNames(iBC)),TRIM(BoundaryName(iUserBC))).NE.0
+      NameCheck   = INDEX(TRIM(BCNames(iBC)),TRIM(BoundaryName(iUserBC))).NE.0
       ! Check if both strings have equal length
-      LengthCheck = LEN(TRIM(BCNames(iBC))).EQ.LEN(TRIM(BoundaryName(iUserBC)))
+      LengthCheck = LEN(  TRIM(BCNames(iBC))).EQ.LEN(TRIM(BoundaryName(iUserBC)))
       ! Check if both strings are equal (length has to be checked because index checks for substrings!)
       IF(NameCheck.AND.LengthCheck)THEN
         ! Check if the BC was defined multiple times
@@ -145,7 +145,7 @@ IF (nUserBCs.GT.0) THEN
     END DO
   END DO
 END IF
-DO iUserBC=1,nUserBCs
+DO iUserBC = 1,nUserBCs
   IF (.NOT.UserBCFound(iUserBC)) CALL Abort(__STAMP__,&
     'Boundary condition specified in parameter file has not been found: '//TRIM(BoundaryName(iUserBC)))
 END DO
@@ -156,12 +156,12 @@ CALL GetDataSize(File_ID,'BCType',nDims,HSize)
 IF((HSize(1).NE.4).OR.(HSize(2).NE.nBCs)) CALL CollectiveStop(__STAMP__,'Problem in readBC')
 DEALLOCATE(HSize)
 ALLOCATE(BCType(4,nBCs))
-offset=0
+offset = 0
 CALL ReadArray('BCType',2,(/4,nBCs/),Offset,1,IntArray=BCType)
 ! Now apply boundary mappings
 IF (nUserBCs.GT.0) THEN
-  DO iBC=1,nBCs
-    IF(BCMapping(iBC) .NE. 0)THEN
+  DO iBC = 1,nBCs
+    IF(BCMapping(iBC).NE.0)THEN
       IF((BoundaryType(BCMapping(iBC),1).EQ.1).AND.(BCType(1,iBC).NE.1)) &
         CALL Abort(__STAMP__,&
                    'Remapping non-periodic to periodic BCs is not possible!')
@@ -285,8 +285,8 @@ END IF ! .NOT.PerformLoadBalance
 
 ! Open mesh file
 CALL BuildPartition(FileString)
-FirstElemInd=offsetElem+1
-LastElemInd =offsetElem+nElems
+FirstElemInd = offsetElem+1
+LastElemInd  = offsetElem+nElems
 
 #if USE_LOADBALANCE
 IF (.NOT.PerformLoadBalance) THEN
@@ -325,12 +325,12 @@ END IF
 #endif /*USE_LOADBALANCE*/
 
 ! Fill list of tElem objects by the information stored in ElemInfo
-DO iElem=FirstElemInd,LastElemInd
-  Elems(iElem)%ep=>GETNEWELEM() ! create a new element object with default values and store pointer of it in the list
-  aElem=>Elems(iElem)%ep        ! get the element and set: global index, type and zone
-  aElem%Ind    = iElem
-  aElem%Type   = ElemInfo(ELEM_Type,iElem)
-  aElem%Zone   = ElemInfo(ELEM_Zone,iElem)
+DO iElem = FirstElemInd,LastElemInd
+  Elems(iElem)%ep => GETNEWELEM()       ! create a new element object with default values and store pointer of it in the list
+  aElem       => Elems(iElem)%ep        ! get the element and set: global index, type and zone
+  aElem%Ind   =  iElem
+  aElem%Type  =  ElemInfo(ELEM_Type,iElem)
+  aElem%Zone  =  ElemInfo(ELEM_Zone,iElem)
 END DO
 
 #if USE_PARTICLES
@@ -352,11 +352,11 @@ CALL ReadMeshElems()
 !----------------------------------------------------------------------------------------------------------------------------
 
 ! get offset of local side indices in the global sides
-offsetSideID=ElemInfo(ELEM_FirstSideInd,FirstElemInd) ! hdf5 array starts at 0-> -1
-nSideIDs    =ElemInfo(ELEM_LastSideInd,LastElemInd)-ElemInfo(ELEM_FirstSideInd,FirstElemInd)
+offsetSideID = ElemInfo(ELEM_FirstSideInd,FirstElemInd) ! hdf5 array starts at 0-> -1
+nSideIDs     = ElemInfo(ELEM_LastSideInd ,LastElemInd)-ElemInfo(ELEM_FirstSideInd,FirstElemInd)
 ! read local SideInfo from mesh file
-FirstSideInd=offsetSideID+1
-LastSideInd =offsetSideID+nSideIDs
+FirstSideInd = offsetSideID+1
+LastSideInd  = offsetSideID+nSideIDs
 ALLOCATE(SideInfo(SideInfoSize,FirstSideInd:LastSideInd))
 
 #if USE_LOADBALANCE
@@ -375,15 +375,15 @@ CALL ReadMeshSides()
 #endif
 
 ! iterate over all local elements and within each element over all sides
-DO iElem=FirstElemInd,LastElemInd
-  aElem=>Elems(iElem)%ep
-  iSide=ElemInfo(ELEM_FirstSideInd,iElem) !first index -1 in Sideinfo
+DO iElem = FirstElemInd,LastElemInd
+  aElem => Elems(iElem)%ep
+  iSide =  ElemInfo(ELEM_FirstSideInd,iElem) !first index -1 in Sideinfo
   ! build up sides of the element according to CGNS standard
   ! assign flip
-  DO iLocSide=1,6
-    aSide=>aElem%Side(iLocSide)%sp
-    iSide=iSide+1
-    nbElemID=SideInfo(SIDE_nbElemID,iSide) ! get neighboring element index of element adjacent to this side
+  DO iLocSide = 1,6
+    aSide => aElem%Side(iLocSide)%sp
+    iSide    = iSide+1
+    nbElemID = SideInfo(SIDE_nbElemID,iSide) ! get neighboring element index of element adjacent to this side
 
 #if PP_dim == 2
     ! In 2D check that there is only one layer of elements in z-direction
@@ -399,40 +399,49 @@ DO iElem=FirstElemInd,LastElemInd
 
     ! If nbElemID <0, this marks a mortar master side.
     ! The number (-1,-2,-3) is the Type of mortar
-    IF(nbElemID.LT.0)THEN ! mortar Sides attached!
-      aSide%MortarType=ABS(nbElemID)
+    IF(nbElemID.LT.0)THEN ! mortar sides attached!
+      aSide%MortarType = ABS(nbElemID)
       SELECT CASE(aSide%MortarType)
-      CASE(1)
-        aSide%nMortars=4
-      CASE(2,3)
-        aSide%nMortars=2
+        CASE(1)
+          aSide%nMortars = 4
+        CASE(2,3)
+          aSide%nMortars = 2
       END SELECT
+
       ALLOCATE(aSide%MortarSide(aSide%nMortars))
-      DO iMortar=1,aSide%nMortars
-        aSide%MortarSide(iMortar)%sp=>GETNEWSIDE()
+      DO iMortar = 1,aSide%nMortars
+        aSide%MortarSide(iMortar)%sp => GETNEWSIDE()
       END DO
     ELSE
-      aSide%nMortars=0
+      aSide%nMortars = 0
     END IF
-    IF(SideInfo(SIDE_Type,iSide).LT.0) aSide%MortarType=-1 !marks side as belonging to a mortar
 
-    IF(aSide%MortarType.LE.0)THEN ! side is not a big Mortar side
-      aSide%Elem=>aElem
-      oriented=(Sideinfo(SIDE_ID,iSide).GT.0)
-      aSide%Ind=ABS(SideInfo(SIDE_ID,iSide))
-      IF(oriented)THEN !oriented side
-        aSide%flip=0
-      ELSE !not oriented
-        aSide%flip=MOD(Sideinfo(SIDE_Flip,iSide),10)
-        IF((aSide%flip.LT.0).OR.(aSide%flip.GT.4)) STOP 'NodeID doesnt belong to side'
+    ! mark side as belonging to a mortar
+    IF(SideInfo(SIDE_Type,iSide).LT.0) aSide%MortarType = -1
+
+    ! side is not a big Mortar side
+    IF(aSide%MortarType.LE.0)THEN
+      aSide%Elem => aElem
+      oriented   = (   Sideinfo(SIDE_ID,iSide).GT.0)
+      aSide%Ind  = ABS(SideInfo(SIDE_ID,iSide))
+      ! oriented side
+      IF(oriented) THEN
+        aSide%flip = 0
+      ! not oriented side
+      ELSE
+        aSide%flip = MOD(Sideinfo(SIDE_Flip,iSide),10)
+        IF((aSide%flip.LT.0).OR.(aSide%flip.GT.4)) CALL Abort(__STAMP__,'NodeID doesnt belong to side')
       END IF
-    ELSE ! side is a big Mortar side
-      DO iMortar=1,aSide%nMortars ! iterate over virtual small Mortar sides
-        iSide=iSide+1
-        aSide%mortarSide(iMortar)%sp%Elem=>aElem ! set element pointer to actual element
-        IF(SideInfo(SIDE_ID,iSide).LT.0) STOP 'Problem in Mortar readin,should be flip=0'
-        aSide%mortarSide(iMortar)%sp%flip=0
-        aSide%mortarSide(iMortar)%sp%Ind =ABS(SideInfo(SIDE_ID,iSide))
+
+    ! side is a big mortar side
+    ELSE
+      ! iterate over virtual small mortar sides
+      DO iMortar = 1,aSide%nMortars
+        iSide = iSide+1
+        aSide%mortarSide(iMortar)%sp%Elem => aElem ! set element pointer to actual element
+        IF(SideInfo(SIDE_ID,iSide).LT.0) CALL Abort(__STAMP__,'Problem in Mortar readin,should be flip=0')
+        aSide%mortarSide(iMortar)%sp%flip = 0
+        aSide%mortarSide(iMortar)%sp%Ind  = ABS(SideInfo(SIDE_ID,iSide))
       END DO !iMortar
     END IF
   END DO !i=1,locnSides
@@ -452,26 +461,27 @@ END DO !iElem
 !   - if neighboring element is on other processor:
 !       create a new virtual neighboring side and element
 !----------------------------------------------------------------------------------------------------------------------------
-DO iElem=FirstElemInd,LastElemInd
-  aElem=>Elems(iElem)%ep
-  iSide=ElemInfo(ELEM_FirstSideInd,iElem) !first index -1 in Sideinfo
-  DO iLocSide=1,6
-    aSide=>aElem%Side(iLocSide)%sp
-    iSide=iSide+1
+DO iElem = FirstElemInd,LastElemInd
+  aElem => Elems(iElem)%ep
+  iSide =  ElemInfo(ELEM_FirstSideInd,iElem) ! first index -1 in Sideinfo
+  DO iLocSide = 1,6
+    aSide => aElem%Side(iLocSide)%sp
+    iSide =  iSide+1
     ! LOOP over mortars, if no mortar, then LOOP is executed once
-    nMortars=aSide%nMortars
-    DO iMortar=0,nMortars
+    nMortars = aSide%nMortars
+    DO iMortar = 0,nMortars
       IF(iMortar.GT.0)THEN
-        iSide=iSide+1
-        aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+        iSide =  iSide+1
+        aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
       END IF
       nbElemID      = SideInfo(SIDE_nbElemID,iSide)
       aSide%BCindex = SideInfo(SIDE_BCID,iSide)
 
-      ! BC sides don't need a connection, except for periodic (BC_TYPE=1) and "dummy" inner BCs (BC_TYPE=100).
+      ! BC sides don't need a connection, except for internal (BC_TYPE=0), periodic (BC_TYPE=1) and "dummy" inner BCs (BC_TYPE=100).
       ! For all other BC sides: reset the flip and mortars settings, do not build a connection.
       IF(aSide%BCindex.NE.0)THEN ! BC
-        IF((BoundaryType(aSide%BCindex,BC_TYPE).NE.1).AND.&
+        ! print*,aSide%BCindex,BoundaryType(aSide%BCindex,BC_TYPE)
+        IF((BoundaryType(aSide%BCindex,BC_TYPE).NE.1  ) .AND.&
            (BoundaryType(aSide%BCindex,BC_TYPE).NE.100))THEN
           aSide%flip  =0
           IF(iMortar.EQ.0) aSide%mortarType  = 0
@@ -488,27 +498,27 @@ DO iElem=FirstElemInd,LastElemInd
         IF((nbElemID.LE.LastElemInd).AND.(nbElemID.GE.FirstElemInd))THEN !local
           ! connect sides by looping over the side of the neighboring element and finding the side that
           ! has the same index
-          DO nbLocSide=1,6
-            bSide=>Elems(nbElemID)%ep%Side(nbLocSide)%sp
+          DO nbLocSide = 1,6
+            bSide => Elems(nbElemID)%ep%Side(nbLocSide)%sp
             ! LOOP over mortars, if no mortar, then LOOP is executed once
-            nMortars=bSide%nMortars
-            DO jMortar=0,nMortars
-              IF(jMortar.GT.0) bSide=>Elems(nbElemID)%ep%Side(nbLocSide)%sp%mortarSide(jMortar)%sp
+            nMortars = bSide%nMortars
+            DO jMortar = 0,nMortars
+              IF(jMortar.GT.0) bSide => Elems(nbElemID)%ep%Side(nbLocSide)%sp%mortarSide(jMortar)%sp
 
               ! check for matching indices of local side and side of the neighboring element
-              IF(bSide%ind.EQ.aSide%ind)THEN
-                aSide%connection=>bSide
-                bSide%connection=>aSide
+              IF(bSide%ind.EQ.aSide%ind) THEN
+                aSide%connection => bSide
+                bSide%connection => aSide
                 EXIT
               END IF
             END DO !jMortar
           END DO !nbLocSide
         ELSE ! MPI connection
 #if USE_MPI
-          aSide%connection     =>GETNEWSIDE()
-          aSide%connection%flip= aSide%flip
-          aSide%connection%Elem=>GETNEWELEM()
-          aSide%NbProc = ELEMIPROC(nbElemID)
+          aSide%connection      => GETNEWSIDE()
+          aSide%connection%flip =  aSide%flip
+          aSide%connection%Elem => GETNEWELEM()
+          aSide%NbProc          =  ELEMIPROC(nbElemID)
 #else
           CALL Abort(__STAMP__, &
             ' ElemID of neighbor not in global Elem list ')
@@ -560,14 +570,14 @@ ELSE
     ! read all nodes
     CALL ReadArray('NodeCoords',2,(/3,nElems*(NGeo+1)**3/),offsetElem*(NGeo+1)**3,2,RealArray=NodeCoordsTmp)
     ! throw away all nodes except the 8 corner nodes of each hexa
-    NodeCoords(:,0,0,0,:)=NodeCoordsTmp(:,0,   0,   0,   :)
-    NodeCoords(:,1,0,0,:)=NodeCoordsTmp(:,NGeo,0,   0,   :)
-    NodeCoords(:,0,1,0,:)=NodeCoordsTmp(:,0,   NGeo,0,   :)
-    NodeCoords(:,1,1,0,:)=NodeCoordsTmp(:,NGeo,NGeo,0,   :)
-    NodeCoords(:,0,0,1,:)=NodeCoordsTmp(:,0,   0,   NGeo,:)
-    NodeCoords(:,1,0,1,:)=NodeCoordsTmp(:,NGeo,0,   NGeo,:)
-    NodeCoords(:,0,1,1,:)=NodeCoordsTmp(:,0,   NGeo,NGeo,:)
-    NodeCoords(:,1,1,1,:)=NodeCoordsTmp(:,NGeo,NGeo,NGeo,:)
+    NodeCoords(:,0,0,0,:) = NodeCoordsTmp(:,0,   0,   0,   :)
+    NodeCoords(:,1,0,0,:) = NodeCoordsTmp(:,NGeo,0,   0,   :)
+    NodeCoords(:,0,1,0,:) = NodeCoordsTmp(:,0,   NGeo,0,   :)
+    NodeCoords(:,1,1,0,:) = NodeCoordsTmp(:,NGeo,NGeo,0,   :)
+    NodeCoords(:,0,0,1,:) = NodeCoordsTmp(:,0,   0,   NGeo,:)
+    NodeCoords(:,1,0,1,:) = NodeCoordsTmp(:,NGeo,0,   NGeo,:)
+    NodeCoords(:,0,1,1,:) = NodeCoordsTmp(:,0,   NGeo,NGeo,:)
+    NodeCoords(:,1,1,1,:) = NodeCoordsTmp(:,NGeo,NGeo,NGeo,:)
     DEALLOCATE(NodeCoordsTmp)
     NGeo=1 ! linear mesh; set polynomial degree of geometry to 1
 #if USE_LOADBALANCE
@@ -575,10 +585,11 @@ ELSE
 #endif /*USE_LOADBALANCE*/
 ENDIF
 
-nNodes=nElems*(NGeo+1)**3 ! total number of nodes on this processor
+! total number of nodes on this processor
+nNodes = nElems*(NGeo+1)**3
 
 #if PP_dim == 2
-DO iElem=1,nElems
+DO iElem = 1,nElems
   IF (NodeCoords(3,0,0,0,iElem).GT.NodeCoords(3,0,0,1,iElem))THEN
     CALL Abort(__STAMP__, &
         "Zeta is oriented in negative z-direction, has to be oriented in positive z-direction instead" // &
@@ -610,42 +621,40 @@ END DO
 !                    first index = coordinate
 !                    second index =1 for minimum corner node, =2 for maximum corner node
 !   'TreeCoords'   : coordinates of all nodes of the tree-elements
-dsExists=.FALSE.
-iMortar=0
+dsExists = .FALSE.
+iMortar  = 0
 CALL DatasetExists(File_ID,'isMortarMesh',dsExists,.TRUE.)
 IF(dsExists)&
   CALL ReadAttribute(File_ID,'isMortarMesh',1,IntScalar=iMortar)
-isMortarMesh=(iMortar.EQ.1)
+isMortarMesh = (iMortar.EQ.1)
 IF(isMortarMesh)THEN
-  CALL ReadAttribute(File_ID,'NgeoTree',1,IntScalar=NGeoTree)
-  CALL ReadAttribute(File_ID,'nTrees',1,IntScalar=nGlobalTrees)
+  CALL ReadAttribute(File_ID,'NgeoTree'    ,1,IntScalar=NGeoTree)
+  CALL ReadAttribute(File_ID,'nTrees'      ,1,IntScalar=nGlobalTrees)
 
   ALLOCATE(xiMinMax(3,2,1:nElems))
-  xiMinMax=-1.
-  CALL ReadArray('xiMinMax',3,(/3,2,nElems/),offsetElem,3,RealArray=xiMinMax)
+  xiMinMax   = -1.
+  CALL ReadArray('xiMinMax'  ,3,(/3,2,nElems/),offsetElem,3,RealArray=xiMinMax)
 
   ALLOCATE(ElemToTree(1:nElems))
-  ElemToTree=0
-  CALL ReadArray('ElemToTree',1,(/nElems/),offsetElem,1,IntArray=ElemToTree)
+  ElemToTree = 0
+  CALL ReadArray('ElemToTree',1,(/    nElems/),offsetElem,1,IntArray=ElemToTree)
 
   ! only read trees, connected to a procs elements
-  offsetTree=MINVAL(ElemToTree)-1
-  ElemToTree=ElemToTree-offsetTree
-  nTrees=MAXVAL(ElemToTree)
+  offsetTree = MINVAL(ElemToTree)-1
+  ElemToTree = ElemToTree-offsetTree
+  nTrees     = MAXVAL(ElemToTree)
 
   ALLOCATE(TreeCoords(3,0:NGeoTree,0:NGeoTree,0:NGeoTree,nTrees))
-  TreeCoords=-1.
+  TreeCoords = -1.
   CALL ReadArray('TreeCoords',2,(/3,(NGeoTree+1)**3*nTrees/),&
                  (NGeoTree+1)**3*offsetTree,2,RealArray=TreeCoords)
 #if USE_PARTICLES
   CALL ReadMeshTrees()
 #endif
-
+! no mortar mesh
 ELSE
-  nTrees=0
+  nTrees = 0
 END IF
-
-
 CALL CloseDataFile()
 
 #if USE_PARTICLES
@@ -658,79 +667,98 @@ CALL StartCommunicateMeshReadin()
 !----------------------------------------------------------------------------------------------------------------------------
 !                              COUNT SIDES
 !----------------------------------------------------------------------------------------------------------------------------
-nBCSides=0
-nAnalyzeSides=0
-nMortarSides=0
-nSides=0
-nPeriodicSides=0
-nMPIPeriodics=0
-nMPISides=0
+nBCSides       = 0
+nAnalyzeSides  = 0
+nMortarSides   = 0
+nSides         = 0
+nPeriodicSides = 0
+nMPIPeriodics  = 0
+nMPISides      = 0
 #if USE_MPI
 ALLOCATE(MPISideCount(0:nProcessors-1))
-MPISideCount=0
+MPISideCount   = 0
 #endif
 
 ! Iterate over all elements and within each element over all sides (6 for hexas) and for each big Mortar side over all
 ! small virtual sides and reset 'tmp' array of each side to zero.
-DO iElem=FirstElemInd,LastElemInd
-  aElem=>Elems(iElem)%ep
-  DO iLocSide=1,6
-    aSide=>aElem%Side(iLocSide)%sp
+DO iElem = FirstElemInd,LastElemInd
+  aElem => Elems(iElem)%ep
+  DO iLocSide = 1,6
+    aSide => aElem%Side(iLocSide)%sp
     ! LOOP over mortars, if no mortar, then LOOP is executed once
-    nMortars=aSide%nMortars
-    DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
-      aSide%tmp=0
-    END DO !iMortar
-  END DO !iLocSide
-END DO !iElem
+    nMortars = aSide%nMortars
+    DO iMortar = 0,nMortars
+      ! point to small virtual side
+      IF(iMortar.GT.0) aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
+      aSide%tmp = 0
+    END DO ! iMortar
+  END DO ! iLocSide
+END DO ! iElem
 
 ! Iterate over all elements and within each element over all sides (6 for hexas in 3D, 4 for quads in 2D)
 ! and for each big Mortar side over all small virtual sides
-DO iElem=FirstElemInd,LastElemInd
-  aElem=>Elems(iElem)%ep
+DO iElem = FirstElemInd,LastElemInd
+  aElem => Elems(iElem)%ep
 #if PP_dim == 3
-  DO iLocSide=1,6
+  DO iLocSide = 1,6
 #else
-  DO iLocSide=2,5
+  DO iLocSide = 2,5
 #endif
-    aSide=>aElem%Side(iLocSide)%sp
+    aSide => aElem%Side(iLocSide)%sp
     ! LOOP over mortars, if no mortar, then LOOP is executed once
-    nMortars=aSide%nMortars
-    DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+    nMortars = aSide%nMortars
+    DO iMortar = 0,nMortars
+      ! point to small virtual side
+      IF(iMortar.GT.0) aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
 
-      IF(aSide%tmp.EQ.0)THEN ! if side not counted so far
-        nSides=nSides+1
-        aSide%tmp=-1 ! mark side as counted
-        IF(ASSOCIATED(aSide%connection)) aSide%connection%tmp=-1 ! mark connected side as counted
-        IF(aSide%BCindex.NE.0)THEN !side is BC or periodic side
-          nAnalyzeSides=nAnalyzeSides+1
-          IF(ASSOCIATED(aSide%connection))THEN
-            IF(BoundaryType(aSide%BCindex,BC_TYPE).EQ.1)THEN ! periodic side
-              nPeriodicSides=nPeriodicSides+1
-#if USE_MPI
-              IF(aSide%NbProc.NE.-1) nMPIPeriodics=nMPIPeriodics+1
-#endif
-            END IF
-          ELSE
-            IF(aSide%MortarType.EQ.0)THEN !really a BC side
-              nBCSides=nBCSides+1
-            END IF
-          END IF
+      ! if side not counted so far
+      IF(aSide%tmp.EQ.0)THEN
+        nSides    = nSides+1
+        aSide%tmp = -1               ! mark side as counted
+        IF(ASSOCIATED(aSide%connection))THEN
+          ! sanity check that the boundary index is zero
+          ! IF(aSide%BCindex.NE.0) CALL Abort(__STAMP__,'Error with BCIndex on connected side')
+          aSide%connection%tmp = -1  ! mark connected side as counted
         END IF
-        IF(aSide%MortarType.GT.0) nMortarSides=nMortarSides+1
+
+        ! side is BC or periodic side.
+        IF(aSide%BCindex.NE.0)THEN
+          nAnalyzeSides = nAnalyzeSides+1
+          IF(ASSOCIATED(aSide%connection))THEN
+            SELECT CASE(BoundaryType(aSide%BCindex,BC_TYPE))
+              ! internal side
+              CASE(0)
+                ! do nothing
+
+              ! periodic side
+              CASE(1)
+                nPeriodicSides = nPeriodicSides+1
 #if USE_MPI
-        IF(aSide%NbProc.NE.-1) THEN ! count total number of MPI sides and number of MPI sides for each neighboring processor
-          nMPISides=nMPISides+1
-          MPISideCount(aSide%NbProc)=MPISideCount(aSide%NbProc)+1
+                IF(aSide%NbProc.NE.-1)    nMPIPeriodics = nMPIPeriodics+1
+#endif
+              CASE DEFAULT
+                CALL Abort(__STAMP__,'Error with BoundaryType on connected side')
+            END SELECT
+          ! BC side
+          ELSE
+            IF(aSide%MortarType.EQ.0)     nBCSides      = nBCSides+1
+          END IF ! ASSOCIATED(aSide%connection)
+        END IF
+        IF(aSide%MortarType.GT.0) nMortarSides = nMortarSides+1
+#if USE_MPI
+        ! count total number of MPI sides and number of MPI sides for each neighboring processor
+        IF(aSide%NbProc.NE.-1) THEN
+          nMPISides                  = nMPISides+1
+          MPISideCount(aSide%NbProc) = MPISideCount(aSide%NbProc)+1
         END IF
 #endif
       END IF
-    END DO !iMortar
-  END DO !iLocSide
-END DO !iElem
-nInnerSides=nSides-nBCSides-nMPISides-nMortarSides !periodic side count to inner side!!!
+    END DO ! iMortar
+  END DO ! iLocSide
+END DO ! iElem
+
+! Periodic sides count as inner sides!
+nInnerSides = nSides-nBCSides-nMPISides-nMortarSides
 
 LOGWRITE(*,*)'-------------------------------------------------------'
 LOGWRITE(*,'(A22,I8)')'nSides:',      nSides
@@ -746,28 +774,30 @@ LOGWRITE(*,*)'-------------------------------------------------------'
 !   - NbProc(1:nNbProcs): global index of each neigboring processor
 !   - nMPISides_Proc(1:nNbProcs): count of common sides with each neighboring processor
 
-nNBProcs=0
+nNBProcs = 0
 ! iterate over all processors and count processors which are neighbors (having a common side)
-DO iProc=0,nProcessors-1
+DO iProc = 0,nProcessors-1
   IF(iProc.EQ.myRank) CYCLE
-  IF(MPISideCount(iProc).GT.0) nNBProcs=nNbProcs+1
+  IF(MPISideCount(iProc).GT.0) nNBProcs = nNbProcs+1
 END DO
-IF(nNbProcs.EQ.0)THEN ! compiled with MPI, but execute on a single processor !
+
+! compiled with MPI, but execute on a single processor
+IF(nNbProcs.EQ.0)THEN
   ALLOCATE(NbProc(1),nMPISides_Proc(1))
-  nNbProcs=1
-  NbProc=0
-  nMPISides_Proc=0
+  nNbProcs       = 1
+  NbProc         = 0
+  nMPISides_Proc = 0
 ELSE
   ! build a mapping 1..nNbProcs to the global number of processors (allows to iterate over all neighboring processors)
   ! and store for each neighboring processor the number of common sides
   ALLOCATE(NbProc(nNbProcs),nMPISides_Proc(1:nNbProcs))
-  iNbProc=0
-  DO iProc=0,nProcessors-1
+  iNbProc = 0
+  DO iProc = 0,nProcessors-1
     IF(iProc.EQ.myRank) CYCLE
     IF(MPISideCount(iProc).GT.0) THEN
-      iNbProc=iNbProc+1
-      NbProc(iNbProc)=iProc  ! map neighboring proc number to global proc number
-      nMPISides_Proc(iNBProc)=MPISideCount(iProc) ! store number of common sides
+      iNbProc                 = iNbProc+1
+      NbProc(iNbProc)         = iProc               ! map neighboring proc number to global proc number
+      nMPISides_Proc(iNBProc) = MPISideCount(iProc) ! store number of common sides
     END IF
   END DO
 END IF
@@ -776,16 +806,16 @@ DEALLOCATE(MPISideCount)
 #endif /*USE_MPI*/
 
 ! Sum up all element, side and node numbers over all processors (just for stdout)
-ReduceData(1)=nElems
-ReduceData(2)=nSides
-ReduceData(3)=nNodes
-ReduceData(4)=nInnerSides
-ReduceData(5)=nPeriodicSides
-ReduceData(6)=nBCSides
-ReduceData(7)=nMPISides
-ReduceData(8)=nAnalyzeSides
-ReduceData(9)=nMortarSides
-ReduceData(10)=nMPIPeriodics
+ReduceData(1)  = nElems
+ReduceData(2)  = nSides
+ReduceData(3)  = nNodes
+ReduceData(4)  = nInnerSides
+ReduceData(5)  = nPeriodicSides
+ReduceData(6)  = nBCSides
+ReduceData(7)  = nMPISides
+ReduceData(8)  = nAnalyzeSides
+ReduceData(9)  = nMortarSides
+ReduceData(10) = nMPIPeriodics
 
 #if USE_PARTICLES
 ! Finish non-blocking communication of mesh information
@@ -928,27 +958,27 @@ INTEGER, INTENT(IN)                :: ElemID     !< (IN)  NodeID to search for
 INTEGER                            :: ELEMIPROC  !< (OUT) processor id
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                            :: i,maxSteps,low,up,mid
+INTEGER                            :: i,maxSteps,low,high,mid
 !==================================================================================================================================
-ELEMIPROC=0
-maxSteps=INT(LOG(REAL(nProcessors))*1.4426950408889634556)+1    !1/LOG(2.)=1.4426950408889634556
-low=0
-up=nProcessors-1
-IF((ElemID.GT.offsetElemMPI(low)).AND.(ElemID.LE.offsetElemMPI(low+1)))THEN
-  ELEMIPROC=low
-ELSEIF((ElemID.GT.offsetElemMPI(up)).AND.(ElemID.LE.offsetElemMPI(up+1)))THEN
-  ELEMIPROC=up
+ELEMIPROC = 0
+maxSteps  = INT(LOG(REAL(nProcessors))*1.4426950408889634556)+1    ! 1/LOG(2.) = 1.4426950408889634556
+low       = 0
+high      = nProcessors-1
+IF(    ElemID.GT.offsetElemMPI(low)  .AND. ElemID.LE.offsetElemMPI(low +1))THEN
+  ELEMIPROC = low
+ELSEIF(ElemID.GT.offsetElemMPI(high) .AND. ElemID.LE.offsetElemMPI(high+1))THEN
+  ELEMIPROC = high
 ELSE
-  !bisection
-  DO i=1,maxSteps
-    mid=(up-low)/2+low
-    IF((ElemID.GT.offsetElemMPI(mid)).AND.(ElemID.LE.offsetElemMPI(mid+1)))THEN
-      ELEMIPROC=mid                     !index found!
+  ! bisection
+  DO i = 1,maxSteps
+    mid = (high-low)/2+low
+    IF(    ElemID.GT.offsetElemMPI(mid) .AND. ElemID.LE.offsetElemMPI(mid+1))THEN
+      ELEMIPROC = mid                            ! index found
       EXIT
-    ELSEIF(ElemID .GT. offsetElemMPI(mid+1))THEN ! seek in upper half
-      low=mid+1
-    ELSE
-      up=mid
+    ELSEIF(ElemID.GT.offsetElemMPI(mid+1))THEN ! seek in upper half
+      low = mid+1
+    ELSE                                         ! seek in lower half
+      high = mid
     END IF
   END DO
 END IF
@@ -974,9 +1004,9 @@ LOGICAL        :: dsExists
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
 IF(dsExists)THEN
-  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
+  CALL ReadArray('nElems_IJK',1,(/3       /),0         ,1,IntArray=nElems_IJK)
   ALLOCATE(Elem_IJK(3,nElems))
-  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+  CALL ReadArray('Elem_IJK'  ,2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
 END IF
 CALL CloseDataFile()
 END SUBROUTINE ReadIJKSorting

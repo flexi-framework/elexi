@@ -83,10 +83,8 @@ IMPLICIT NONE
 !==================================================================================================================================
 
 ! Check if all the necessary initialization is done before
-IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.(.NOT.RestartInitIsDone).OR.DGInitIsDone)THEN
-  CALL CollectiveStop(__STAMP__,&
-    'InitDG not ready to be called or already called.')
-END IF
+IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.(.NOT.RestartInitIsDone).OR.DGInitIsDone) &
+  CALL CollectiveStop(__STAMP__,'InitDG not ready to be called or already called.')
 LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INIT DG...'
 
@@ -150,7 +148,7 @@ END SUBROUTINE InitDG
 !==================================================================================================================================
 !> Allocate and initialize the building blocks for the DG operator: Differentiation matrices and prolongation operators
 !==================================================================================================================================
-SUBROUTINE InitDGbasis(N_in,xGP,wGP,L_Minus,L_Plus,D,D_T,D_Hat,D_Hat_T,L_HatMinus,L_HatPlus)
+SUBROUTINE InitDGBasis(N_in,xGP,wGP,L_Minus,L_Plus,D,D_T,D_Hat,D_Hat_T,L_HatMinus,L_HatPlus)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_Interpolation,    ONLY: GetNodesAndWeights
@@ -213,7 +211,7 @@ DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))
 L_HatPlus  = MATMUL(Minv,L_Plus)
 L_HatMinus = MATMUL(Minv,L_Minus)
 
-END SUBROUTINE InitDGbasis
+END SUBROUTINE InitDGBasis
 
 
 !==================================================================================================================================
@@ -302,6 +300,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt
 USE MOD_Particle_MPI        ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
 #endif /* USE_MPI */
 #endif /* USE_PARTICLES */
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -430,9 +429,9 @@ CALL LBSplitTime(LB_DGCOMM,tLBStart)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems) ! FV_Elems_slave: slave -> master
 #if FV_RECONSTRUCT
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_gradU) ! FV_multi_slave: slave -> master
-#endif
-#endif
-#endif
+#endif /*FV_RECONSTRUCT*/
+#endif /*FV_ENABLED*/
+#endif /*USE_MPI*/
 
 ! 4. Convert face data from conservative to primitive variables
 !    Attention: For FV with 2nd order reconstruction U_master/slave and therewith UPrim_master/slave are still only 1st order
@@ -447,7 +446,7 @@ CALL LBSplitTime(LB_DG,tLBStart)
 #if FV_ENABLED
 ! Build four-states-array for the 4 different combinations DG/DG(0), FV/DG(1), DG/FV(2) and FV/FV(3) a face can be.
 FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
-#endif
+#endif /*FV_ENABLED*/
 
 #if FV_ENABLED && FV_RECONSTRUCT
 ! [ 5. Second order reconstruction (computation of slopes) ]
@@ -487,7 +486,7 @@ CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.FALSE.)
 #if USE_MPI
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)   ! FV_surf_gradU: master -> slave
 CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.TRUE.)
-#endif
+#endif /*USE_MPI*/
 ! 5.4)
 CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU,t)
 ! 5.5)
@@ -496,9 +495,9 @@ CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,
 CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 #if PARABOLIC
     ,gradUxi_central,gradUeta_central,gradUzeta_central &
-#endif
+#endif /*PARABOLIC*/
     )
-#endif /* FV_ENABLED && FV_RECONSTRUCT */
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
 
 #if PARABOLIC
 ! 6. Lifting
@@ -516,9 +515,9 @@ IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN
 #if USE_MPI
   ! send number of particles
   CALL SendNbOfParticles()
-#endif /*USE_MPI */
+#endif /*USE_MPI*/
 END IF
-#endif /* PARTICLES */
+#endif /*PARTICLES*/
 
 #if EDDYVISCOSITY
 ! 7. [ After the lifting we can now compute the eddy viscosity, which then has to be evaluated at the boundary. ]
@@ -529,16 +528,15 @@ END IF
 IF(CurrentStage.EQ.1) THEN
 #if USE_MPI
   CALL StartReceiveMPIData(muSGS_slave,DataSizeSideSGS,1,nSides,MPIRequest_SGS(:,RECV),SendID=2)
-#endif
+#endif /*USE_MPI*/
   CALL ComputeEddyViscosity()
 #if USE_MPI
   CALL ProlongToFace(1,PP_N,muSGS,muSGS_master,muSGS_slave,L_Minus,L_Plus,.TRUE.)
   CALL StartSendMPIData   (muSGS_slave,DataSizeSideSGS,1,nSides,MPIRequest_SGS(:,SEND),SendID=2)
-#endif
+#endif /*USE_MPI*/
   CALL ProlongToFace(1,PP_N,muSGS,muSGS_master,muSGS_slave,L_Minus,L_Plus,.FALSE.)
 END IF
-#endif /* EDDYVISCOSITY */
-
+#endif /*EDDYVISCOSITY*/
 #endif /*PARABOLIC*/
 
 ! 8. Compute volume integral contribution and add to Ut
@@ -553,14 +551,14 @@ CALL VolInt(Ut)
 #if FV_ENABLED
 ! [ 9. Volume integral (advective and viscous) for all FV elements ]
 CALL FV_VolInt(UPrim,Ut)
-#endif
+#endif /*FV_ENABLED*/
 
 #if PARABOLIC && USE_MPI
 #if EDDYVISCOSITY
 IF(CurrentStage.EQ.1) THEN
   CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS)  ! muSGS_slave: slave -> master
 END IF
-#endif /* EDDYVISCOSITY */
+#endif /*EDDYVISCOSITY*/
 ! Complete send / receive for gradUx, gradUy, gradUz, started in the lifting routines
 #if USE_LOADBALANCE
 CALL LBStartTime(tLBStart)
@@ -605,7 +603,7 @@ END IF
 CALL FV_DGtoFV(PP_nVarLifting,gradUx_master,gradUx_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUy_master,gradUy_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUz_master,gradUz_slave)
-#endif
+#endif /*PARABOLIC*/
 
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )
 CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )
@@ -666,7 +664,7 @@ Ut=-Ut
 IF(doCalcSource) CALL CalcSource(Ut,t)
 #if USE_PARTICLES
 IF(doCalcSourcePart) CALL CalcSourcePart(Ut)
-#endif /* USE_PARTICLES */
+#endif /*USE_PARTICLES*/
 IF(doSponge)     CALL Sponge(Ut)
 IF(doTCSource)   CALL TestcaseSource(Ut)
 
@@ -679,7 +677,7 @@ END IF
 IF (OverintegrationType.EQ.CUTOFFCONS) THEN
 #if FV_ENABLED
   CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.,FVE=1)
-#endif
+#endif /*FV_ENABLED*/
 ELSE
   CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
 END IF

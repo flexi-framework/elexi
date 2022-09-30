@@ -896,11 +896,11 @@ DO i=1,nLines
       IF (firstWarn) THEN
         firstWarn=.FALSE.
         SWRITE(UNIT_stdOut,'(100("!"))')
-        SWRITE(UNIT_stdOut, *) "WARNING: The following options are unknown!"
+        SWRITE(UNIT_stdOut,'(A)') "WARNING: The following options are unknown!"
       END IF
 
       CALL set_formatting("blue")
-      SWRITE(UNIT_stdOut,*) '   ', TRIM(HelpStr)
+      SWRITE(UNIT_stdOut,'(A,A)') '   ', TRIM(HelpStr)
       CALL clear_formatting()
     END IF
   END IF
@@ -968,7 +968,7 @@ DO WHILE (ASSOCIATED(current))
     IF (current%opt%isSet) THEN
       IF (.NOT.(current%opt%multiple)) THEN
         ! option already set, but is not a multiple option
-        SWRITE(UNIT_stdOut,*) 'Option "', TRIM(name), '" is already set, but is not a multiple option!'
+        SWRITE(UNIT_stdOut,'(A,A,A)') 'Option "', TRIM(name), '" is already set, but is not a multiple option!'
         STOP
       ELSE
         ! create new instance of multiple option
@@ -986,7 +986,7 @@ DO WHILE (ASSOCIATED(current))
       current%opt%isSet = .TRUE.
     ELSE
       CALL set_formatting("bright red")
-      SWRITE(UNIT_stdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
+      SWRITE(UNIT_stdOut,'(A,A,A)') 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
       CALL clear_formatting()
     END IF
     RETURN
@@ -1021,7 +1021,7 @@ DO WHILE (ASSOCIATED(current))
         CALL insertOption(current, newopt)
       ELSE
         CALL set_formatting("bright red")
-        SWRITE(UNIT_stdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
+        SWRITE(UNIT_stdOut,'(A,A,A)') 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
         CALL clear_formatting()
       END IF
       RETURN
@@ -1655,15 +1655,15 @@ DO WHILE (ASSOCIATED(current))
               WRITE(fmtName,*) prms%maxNameLen
               SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO') ' | '
               CALL set_formatting("blue")
-              SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(name)
+              SWRITE(UNIT_stdOut,"(A"//fmtName//")", ADVANCE='NO') TRIM(name)
               CALL clear_formatting()
               SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO') ' | '
               CALL multi%printValue(prms%maxValueLen)
-              SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
+              SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
               CALL set_formatting("blue")
-              SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
+              SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "*MULTI"
               CALL clear_formatting()
-              SWRITE(UNIT_stdOut,"(a3)") ' | '
+              SWRITE(UNIT_stdOut,"(A3)") ' | '
               ! Indicate that parameter was read at least once and therefore remove the warning that the parameter was not used
               multi%isUsedMulti = .TRUE.
               RETURN
@@ -2057,17 +2057,17 @@ DO WHILE (ASSOCIATED(current))
 #endif /*USE_LOADBALANCE*/
                     ! print option and value to stdout. Custom print, so do it here
                     WRITE(fmtName,*) prms%maxNameLen
-                    SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+                    SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
                     CALL set_formatting("blue")
-                    SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(name)
+                    SWRITE(UNIT_stdOut,"(A"//fmtName//")", ADVANCE='NO') TRIM(name)
                     CALL clear_formatting()
-                    SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+                    SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
                     CALL multi%printValue(prms%maxValueLen)
-                    SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
+                    SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
                     CALL set_formatting("blue")
-                    SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
+                    SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "*MULTI"
                     CALL clear_formatting()
-                    SWRITE(UNIT_stdOut,"(a3)") ' | '
+                    SWRITE(UNIT_stdOut,"(A3)") ' | '
                     RETURN
                   END IF
                   ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
@@ -2081,17 +2081,17 @@ DO WHILE (ASSOCIATED(current))
 #endif /*USE_LOADBALANCE*/
                       ! print option and value to stdout. Custom print, so do it here
                       WRITE(fmtName,*) prms%maxNameLen
-                      SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+                      SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
                       CALL set_formatting("blue")
-                      SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(name)
+                      SWRITE(UNIT_stdOut,"(A"//fmtName//")", ADVANCE='NO') TRIM(name)
                       CALL clear_formatting()
-                      SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+                      SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
                       CALL multi%printValue(prms%maxValueLen)
-                      SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
+                      SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
                       CALL set_formatting("blue")
-                      SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*MULTI"
+                      SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "*MULTI"
                       CALL clear_formatting()
-                      SWRITE(UNIT_stdOut,"(a3)") ' | '
+                      SWRITE(UNIT_stdOut,"(A3)") ' | '
                       RETURN
                     END IF
                   END DO
@@ -2274,7 +2274,7 @@ IF (MPIRoot) THEN
   IF (.NOT.FILEEXISTS(filename)) &
     CALL CollectiveStop(__STAMP__,"File '"//TRIM(filename)//"' does not exist.")
 
-  SWRITE(UNIT_stdOut,*)'| Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
+  SWRITE(UNIT_stdOut,'(A,A,A,A)') ' | Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
 
   ! Open parameter file for reading
   OPEN(NEWUNIT=fileUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
@@ -2301,7 +2301,7 @@ IF (MPIRoot) THEN
       userblockFound = STRICMP(tmp,"{[(")
     END IF
     IF (.NOT.userblockFound) THEN
-      SWRITE(*,*) "No Userblock found!"
+      SWRITE(UNIT_stdOut,'(A)') "No Userblock found!"
       EXIT
     END IF
 

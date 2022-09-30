@@ -386,7 +386,7 @@ WRITE(fmtValue,*) maxValueLen
 ! print name
 IF (mode.EQ.0) THEN
   WRITE(fmtName,*) maxNameLen
-  SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+  SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
   CALL set_formatting("blue")
   SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(this%name)
   CALL clear_formatting()
@@ -397,7 +397,7 @@ END IF
 ! print delimiter between name and value
 SELECT CASE(mode)
 CASE(0)
-  SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+  SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
 CASE(1)
   SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " = "
 CASE(2)
@@ -416,17 +416,17 @@ END IF
 IF (mode.EQ.0) THEN
   ! print DEFAULT/CUSTOM
   IF (this%isSet) THEN
-    SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
+    SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
     CALL set_formatting('green')
-    SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*CUSTOM"
+    SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "*CUSTOM"
     CALL clear_formatting()
-    SWRITE(UNIT_stdOut,"(a3)") ' | '
+    SWRITE(UNIT_stdOut,"(A3)") ' | '
   ELSE
-    SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
+    SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
     CALL set_formatting('red')
-    SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "DEFAULT"
+    SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "DEFAULT"
     CALL clear_formatting()
-    SWRITE(UNIT_stdOut,"(a3)") ' | '
+    SWRITE(UNIT_stdOut,"(A3)") ' | '
   END IF
 ELSE
   ! print comment: this is complicated, since it includes line breaks for long comments

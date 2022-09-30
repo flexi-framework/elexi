@@ -233,7 +233,7 @@ END IF
 
 EndT                        = FLEXITIME()
 DomainDecompositionWallTime = EndT-StartT
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DOMAIN DECOMPOSITION... DONE! [',DomainDecompositionWallTime,'s]'
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DOMAIN DECOMPOSITION DONE! [',DomainDecompositionWallTime,'s]'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE DomainDecomposition

@@ -131,9 +131,7 @@ IF(NOut.NE.PP_N)THEN
 #if PP_dim == 2
   ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
   IF (.NOT.output2D) THEN
-    ALLOCATE(UOutTmp(PP_nVar,0:NOut,0:NOut,0:ZDIM(NOut),nElems))
-    UOutTmp = UOut
-    DEALLOCATE(UOut)
+    CALL MOVE_ALLOC(UOut,UOutTmp)
     ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
     CALL ExpandArrayTo3D(5,nVal,4,Nout+1,UOutTmp,UOut)
     DEALLOCATE(UOutTmp)

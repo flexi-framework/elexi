@@ -75,11 +75,7 @@ ASSOCIATE (&
   ! Communicate PartInt over MPI
   CALL MPI_ALLTOALLV(U,counts_send,disp_send,MPI_DOUBLE_PRECISION,UTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
 END ASSOCIATE
-
-DEALLOCATE(U)
-ALLOCATE(U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-U = UTmp
-DEALLOCATE(UTmp)
+CALL MOVE_ALLOC(UTmp,U)
 
 #if FV_ENABLED
 ALLOCATE(FV_ElemsTmp(nElems))
@@ -91,11 +87,7 @@ ASSOCIATE (&
   ! Communicate PartInt over MPI
   CALL MPI_ALLTOALLV(FV_Elems,counts_send,disp_send,MPI_INTEGER,FV_ElemsTmp,counts_recv,disp_recv,MPI_INTEGER,MPI_COMM_FLEXI,iError)
 END ASSOCIATE
-
-DEALLOCATE(FV_Elems)
-ALLOCATE(FV_Elems(nElems))
-FV_Elems = FV_ElemsTmp
-DEALLOCATE(FV_ElemsTmp)
+CALL MOVE_ALLOC(FV_ElemsTmp,FV_Elems)
 
 ALLOCATE(IndValueTmp(nElems))
 ASSOCIATE (&
@@ -106,11 +98,7 @@ ASSOCIATE (&
   ! Communicate PartInt over MPI
   CALL MPI_ALLTOALLV(IndValue,counts_send,disp_send,MPI_DOUBLE_PRECISION,IndValueTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
 END ASSOCIATE
-
-DEALLOCATE(IndValue)
-ALLOCATE(IndValue(nElems))
-IndValue = IndValueTmp
-DEALLOCATE(IndValueTmp)
+CALL MOVE_ALLOC(IndValueTmp,IndValue)
 
 ! Update the FV face information
 CALL FV_ProlongFVElemsToFace()

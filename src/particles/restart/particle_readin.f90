@@ -173,11 +173,7 @@ IF (PerformLoadBalance) THEN
   DO iProc = 2,nProcessors
     MPIoffsetPartRecv(iProc) = SUM(MPInPartRecv(1:iProc-1))
   END DO
-
-  DEALLOCATE(PartInt)
-  ALLOCATE(PartInt(PartIntSize,FirstElemInd:LastElemInd))
-  PartInt = PartIntTmp
-  DEALLOCATE(PartIntTmp)
+  CALL MOVE_ALLOC(PartIntTmp,PartInt)
   PartIntExists = .TRUE.
 
   ! ------------------------------------------------
@@ -194,11 +190,7 @@ IF (PerformLoadBalance) THEN
     ! Communicate PartInt over MPI
     CALL MPI_ALLTOALLV(PartData,counts_send,disp_send,MPI_DOUBLE_PRECISION,PartDataTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
   END ASSOCIATE
-
-  DEALLOCATE(PartData)
-  ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
-  PartData = PartDataTmp
-  DEALLOCATE(PartDataTmp)
+  CALL MOVE_ALLOC(PartDataTmp,PartData)
   PartDataExists   = .TRUE.
   PP_nVarPartState = PP_nVarPart-1
 
@@ -215,11 +207,7 @@ IF (PerformLoadBalance) THEN
       ! Communicate PartInt over MPI
       CALL MPI_ALLTOALLV(TurbPartData,counts_send,disp_send,MPI_DOUBLE_PRECISION,TurbPartDataTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
     END ASSOCIATE
-
-    DEALLOCATE(TurbPartData)
-    ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
-    TurbPartData = TurbPartDataTmp
-    DEALLOCATE(TurbPartDataTmp)
+    CALL MOVE_ALLOC(TurbPartDataTmp,TurbPartData)
     TurbPartDataExists = .TRUE.
   END IF ! ALLOCATED(TurbPartData)
 

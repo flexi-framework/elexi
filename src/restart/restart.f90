@@ -500,10 +500,7 @@ IF (DoRestart) THEN
 
   ! Write truncated array back to U_local
   IF (ALLOCATED(U_localNVar)) THEN
-    DEALLOCATE(U_local)
-    ALLOCATE(U_local(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
-    U_local = U_localNVar
-    DEALLOCATE(U_localNVar)
+    CALL MOVE_ALLOC(U_localNVar,U_local)
   END IF
 
   ! ! Expand the solution if we read a restart file from a different equation system (RANS --> Navier-Stokes)
@@ -581,10 +578,7 @@ IF (DoRestart) THEN
       ALLOCATE(U_local2(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
       CALL ExpandArrayTo3D(5,HSize_proc,4,N_Restart,U_local,U_local2)
       ! Reallocate 'U_local' to 3D and mv data from U_local2 to U_local
-      DEALLOCATE(U_local)
-      ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
-      U_local = U_local2
-      DEALLOCATE(U_local2)
+      CALL MOVE_ALLOC(U_local2,U_local)
     END IF
 #else
     IF (HSize_proc(4).NE.1) THEN
@@ -640,10 +634,10 @@ IF (DoRestart) THEN
 #endif
         END IF
       END DO
-    END IF
+    END IF ! N_Restart.GT.PP_N
 
     DEALLOCATE(U_local)
-  END IF
+  END IF ! InterpolateSolution
   DEALLOCATE(HSize)
   CALL CloseDataFile()
 

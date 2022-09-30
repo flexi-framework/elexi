@@ -179,7 +179,6 @@ IF ((HIT_tFilter.EQ.0)) &
   CALL CollectiveStop(__STAMP__, 'HIT target parameters cannot be zero!')
 
 ! Allocate array for temporally filtered RMS
-ALLOCATE(HIT_RMS(1:3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(UPrim_temp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 UPRIM_temp = 0.
 
@@ -202,17 +201,18 @@ IF(DoRestart)THEN
     CALL ReadArray('HIT',5,HSize_proc,OffsetElem,5,RealArray=HIT_local)
     ! No interpolation needed, read solution directly from file
     IF(.NOT. InterpolateSolution)THEN
-      HIT_RMS = HIT_local
-      DEALLOCATE(HIT_local)
+      CALL MOVE_ALLOC(HIT_local,HIT_RMS)
     ELSE
       CALL CollectiveStop(__STAMP__,'Interpolation currently not supported for HIT test case!')
     END IF
   ELSE
     SWRITE(UNIT_stdOut,'(A)')' | No restart variables for HIT test case found. Starting without u_RMS history!'
+    ALLOCATE(HIT_RMS(1:3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
     HIT_RMS    = 0.
   END IF
   CALL CloseDataFile()
 ELSE
+  ALLOCATE(HIT_RMS(1:3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
   HIT_RMS    = 0.
 END IF
 

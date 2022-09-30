@@ -147,7 +147,7 @@ IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
 END IF
 
 SWRITE(UNIT_stdOut,'(132("-"))')
-LBWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT MESH IN MODE ',meshMode,'...'
+SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT MESH IN MODE ',meshMode,'...'
 
 ! prepare pointer structure (get nElems, etc.)
 IF (PRESENT(MeshFile_IN)) THEN
@@ -445,8 +445,8 @@ IF ((.NOT.postiMode).AND.(ALLOCATED(scaledJac))) DEALLOCATE(scaledJac)
 CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
 
 MeshInitIsDone=.TRUE.
-LBWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
-LBWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitMesh
 
 !============================================================================================================================

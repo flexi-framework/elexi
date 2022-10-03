@@ -244,9 +244,9 @@ INTEGER           :: ElemCharLengthX_Shared_Win
 INTEGER           :: ElemCharLengthY_Shared_Win
 INTEGER           :: ElemCharLengthZ_Shared_Win
 
+#endif
 ! periodic sides
 LOGICAL           :: MeshHasPeriodic
-#endif
 
 ! ElemID for WriteHaloInfo
 INTEGER,ALLOCATABLE                      :: ElemHaloID(:)

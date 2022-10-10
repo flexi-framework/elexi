@@ -11,8 +11,7 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-!=================================================================================================================================
-! Here, preprocessor variables for particle subsystem are defined
+!================================================================================================================================= ! Here, preprocessor variables for particle subsystem are defined
 !=================================================================================================================================
 
 ! Calculate GCC version
@@ -145,6 +144,7 @@
 #define DF_PART_PUTNAM    2
 #define DF_PART_HAIDER    3
 #define DF_PART_HOELZER   4
+#define DF_PART_LOTH      5
 
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 ! Velocity and pressure for extended RHS

@@ -206,12 +206,14 @@ CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle mode
                                                                   ' - schiller    : Schiller and Naumann (1933)\n'               //&
                                                                   ' - putman      : Putnam et al. (1961)\n'                      //&
                                                                   ' - haider      : Haider and Levenspiel (1989)\n'              //&
-                                                                  ' - hoelzer     : Hoelzer et al. (2008)\n'                       &
+                                                                  ' - hoelzer     : Hoelzer et al. (2008)\n'                     //&
+                                                                  ' - loth        : Loth (2008)\n'                                 &
                                                                 , 'none'     , numberedmulti=.TRUE.)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'schiller',        DF_PART_SCHILLER)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'putnam',          DF_PART_PUTNAM)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'haider',          DF_PART_HAIDER)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'hoelzer',         DF_PART_HOELZER)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'loth',            DF_PART_LOTH)
 CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle mass of species [$] [kg]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                           &
@@ -1118,6 +1120,9 @@ DO iSpec = 1, nSpecies
     LBWRITE(UNIT_stdOut,*) 'INFO: SphericityIC ', Species(iSpec)%SphericityIC,'== 1, drag coefficient of Schiller and Naumann is used.'
     drag_factor = DF_PART_SCHILLER
     CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
+  END IF
+  IF ((drag_factor .NE. DF_PART_HAIDER .AND. drag_factor .NE. DF_PART_HOELZER) .AND. (Species(iSpec)%SphericityIC .LT. 1.0)) THEN
+    LBWRITE(UNIT_stdOut,*) 'WARNING: SphericityIC is ignored for ', iSpec,', as the wrong drag force was chosen.'
   END IF
   Species(iSpec)%PartDiamVarianceIC    = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PartDiamVarianceIC' )
 #if USE_EXTEND_RHS

@@ -76,6 +76,8 @@ SELECT CASE(drag_factor)
     FD_Pointer%op => DF_Haider
   CASE(DF_PART_HOELZER)
     FD_Pointer%op => DF_Hoelzer
+  CASE(DF_PART_LOTH)
+    FD_Pointer%op => DF_Loth
 END SELECT
 
 END SUBROUTINE InitRHS
@@ -175,6 +177,7 @@ USE MOD_Particle_Vars,     ONLY: Species, PartSpecies, PartGravity
 USE MOD_Particle_Vars,     ONLY: PartState
 USE MOD_Particle_Vars,     ONLY: TurbPartState
 USE MOD_Viscosity
+USE MOD_EoS_Vars,          ONLY: kappa
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -191,9 +194,10 @@ REAL                :: ParticlePush(1:3)           ! The stamp
 ! LOCAL VARIABLES
 REAL                :: Fdm(1:3)
 REAL                :: Rep                         ! Particle Reynolds number
+REAL                :: Mp                          ! Particle Mach number
 !REAL                :: velosqp                    ! v^2 particle
 !REAL                :: velosqf                    ! v^2 fluid
-REAL                :: udiff(3)
+REAL                :: udiff(3),urel
 REAL                :: f                           ! Drag factor
 REAL                :: staup                       ! Inverse of the particle relaxation time
 REAL                :: mu                          ! viscosity
@@ -242,10 +246,12 @@ ELSE
   udiff(1:3) = FieldAtParticle(VELV)     - PartState(PART_VELV,PartID)
 END IF
 
-Rep     = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
+urel = VECNORM(udiff(1:3))
+Rep  = urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
+Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
 
 ! Empirical relation of nonlinear drag from Clift et al. (1978)
-f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, 0.)
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, Mp)
 
 ! Particle relaxation time
 staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
@@ -266,9 +272,11 @@ udiff(1:3) = FieldAtParticle(VELV) - PartState(PART_VELV,PartID)
 udiff = udiff + (PartState(PART_DIAM,PartID)**2)/6 * GradAtParticle(RHS_LAPLACEVEL,:)
 #endif /* USE_FAXEN_CORR */
 
-Rep     = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
+urel = VECNORM(udiff(1:3))
+Rep  = urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
+Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
 
-f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, 0.)
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, Mp)
 
 ! Particle relaxation time
 staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
@@ -295,9 +303,11 @@ END IF
 udiff = udiff + (PartState(PART_DIAM,PartID)**2)/6 * GradAtParticle(RHS_LAPLACEVEL,:)
 #endif /* USE_FAXEN_CORR */
 
-Rep     = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
+urel = VECNORM(udiff(1:3))
+Rep  = urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
+Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
 
-f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, 0.)
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, Mp)
 
 ! Particle relaxation time
 staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
@@ -870,6 +880,41 @@ f =  s13 * 1./SQRT(SphericityIC) + s23 * 1./SQRT(SphericityIC)+&
 ! Suppress compiler warning
 NO_OP(MP)
 END FUNCTION DF_Hoelzer
+
+FUNCTION DF_Loth(Rep, SphericityIC, Mp) RESULT(f)
+!===================================================================================================================================
+! Compute the drag factor according to Loth (2008)
+!===================================================================================================================================
+! MODULES
+USE MOD_Equation_Vars,      ONLY: s13,s23
+!-----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                        :: f
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                        :: Hm, Cm, Gm
+!-----------------------------------------------------------------------------------------------------------------------------------
+IF (Mp .LT. 0.89) THEN
+  Gm = 1. - 1.525*Mp**4
+ELSE
+  Gm = 0.0002 + 0.0008*TANH(12.77*(Mp-2.02))
+END IF
+IF (Mp .LE. 1.45) THEN
+  Cm = 5.*s13 + s23*TANH(3*LOG(Mp+0.1))
+ELSE
+  Cm = 2.044 + 0.2*EXP(-1.8*(LOG(Mp/1.5))**2)
+END IF
+Hm = 1 - 0.258*Cm/(1+514*Gm)
+! Valid up to Rep < 3e5
+f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Gm*Rep**(-1.16))
+NO_OP(SphericityIC)
+END FUNCTION DF_Loth
 
 !==================================================================================================================================
 !> Compute source terms for particles and add them to the nearest DOF

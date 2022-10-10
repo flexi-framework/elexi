@@ -35,14 +35,22 @@ INTERFACE CROSS
   MODULE PROCEDURE CROSS
 END INTERFACE CROSS
 
+#if !VDM_ANALYTICAL
+INTERFACE GetSPDInverse
+   MODULE PROCEDURE GetSPDInverse
+END INTERFACE
+#endif /*!VDM_ANALYTICAL*/
+
 PUBLIC::INVERSE
 PUBLIC::INVERSE_LU
 PUBLIC::CROSS
 PUBLIC::GlobalVectorDotProduct
+#if !VDM_ANALYTICAL
+PUBLIC::GetSPDInverse
+#endif /*!VDM_ANALYTICAL*/
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Computes matrix inverse using LAPACK
@@ -225,28 +233,29 @@ END FUNCTION INVERSE_LU
 ! ! Store A in Ainv to prevent it from being overwritten by LAPACK
 ! Ainv = A
 ! n = size(A,1)
-
+!
 ! ! DGETRF computes an LU factorization of a general M-by-N matrix A
 ! ! using partial pivoting with row interchanges.
 ! CALL DGETRF(n, n, Ainv, n, ipiv, info)
-
+!
 ! IF(info.NE.0)THEN
-!     CALL Abort(&
+!     CALL abort(&
 ! __STAMP__&
 ! ,' Matrix is numerically singular!')
 ! END IF
-
+!
 ! ! DGETRI computes the inverse of a matrix using the LU factorization
 ! ! computed by DGETRF.
 ! CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
-
+!
 ! IF(info.NE.0)THEN
-!     CALL Abort(&
+!     CALL abort(&
 ! __STAMP__&
 ! ,' Matrix inversion failed!')
 ! END IF
 ! END FUNCTION INV
-
+!
+!
 ! SUBROUTINE INV33(M,MInv,detM)
 ! !===================================================================================================================================
 ! ! Computes the inverse of a 3x3 matrix
@@ -269,13 +278,13 @@ END FUNCTION INVERSE_LU
 !        + M(1,2)*M(2,3)*M(3,1)  &
 !        + M(1,3)*M(2,1)*M(3,2)  &
 !        - M(1,3)*M(2,2)*M(3,1)
-
+!
 ! IF(ABS(detM).LE.1.E-12*SUM(ABS(M)))THEN
 !    MInv=0.
 !    detM=0.
 !    RETURN
 ! END IF
-
+!
 ! MInv(1,1) =  (M(2,2)*M(3,3)-M(2,3)*M(3,2))
 ! MInv(2,1) = -(M(2,1)*M(3,3)-M(2,3)*M(3,1))
 ! MInv(3,1) =  (M(2,1)*M(3,2)-M(2,2)*M(3,1))
@@ -286,7 +295,6 @@ END FUNCTION INVERSE_LU
 ! MInv(2,3) = -(M(1,1)*M(2,3)-M(1,3)*M(2,1))
 ! MInv(3,3) =  (M(1,1)*M(2,2)-M(1,2)*M(2,1))
 ! MInv=MInv/detM
-
 ! END SUBROUTINE INV33
 
 
@@ -387,5 +395,49 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,Resu,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLE
 #endif
 
 END SUBROUTINE GlobalVectorDotProduct
+
+#if !VDM_ANALYTICAL
+FUNCTION GetSPDInverse(dim1,A) RESULT(Ainv)
+!============================================================================================================================
+! invert a symmetric positive definite matrix (dependant in LAPACK Routines)
+!============================================================================================================================
+! MODULES
+USE MOD_Globals, ONLY: abort
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------
+!input parameters
+INTEGER, INTENT(IN) :: dim1   !size of matrix a
+REAL,INTENT(IN)     :: A(dim1,dim1)
+!----------------------------------------------------------------------------------------------------------------------------
+!output parameters
+REAL                :: Ainv(dim1,dim1)
+!----------------------------------------------------------------------------------------------------------------------------
+!local variables
+INTEGER            :: INFO,i,j
+!============================================================================================================================
+! Store A in Ainv to prevent it from being overwritten by LAPACK
+Ainv = A
+
+! DPOTRF computes the Cholesky decomposition of a symmetric positive definite matrix A
+CALL DPOTRF('U',dim1,Ainv,dim1,INFO)
+IF (INFO /= 0) THEN
+  CALL Abort(__STAMP__,'GetSPDInverse(dim1,A): SPD MATRIX INVERSION FAILED for CALL DPOTRF()! INFO = ',IntInfo=INFO)
+END IF
+
+! DPOTRI computes the inverse of a matrix using the cholesky decomp.
+CALL DPOTRI('U', dim1, Ainv, dim1, INFO )
+IF (INFO /= 0) THEN
+  CALL Abort(__STAMP__,'GetSPDInverse(dim1,A): SPD MATRIX INVERSION FAILED for CALL DPOTRI()! INFO = ',IntInfo=INFO)
+END IF
+
+! Reorder matrix
+DO j=1,dim1
+  DO i=j+1,dim1
+    Ainv(i,j)=Ainv(j,i)
+  END DO
+END DO
+
+END FUNCTION GetSPDInverse
+#endif /*!VDM_ANALYTICAL*/
 
 END MODULE MOD_Mathtools

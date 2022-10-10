@@ -28,13 +28,14 @@ endfunction()
 ENABLE_TESTING()
 
 # Add the unit tests
-add_unit_test(ReadInTools ./unitTests/ReadInTools.f90)
-add_unit_test(NodesAndWeights ./unitTests/NodesAndWeights.f90)
-add_unit_test(Vandermonde ./unitTests/Vandermonde.f90)
+add_unit_test(ReadInTools      ./unitTests/ReadInTools.f90)
+add_unit_test(NodesAndWeights  ./unitTests/NodesAndWeights.f90)
+add_unit_test(Vandermonde      ./unitTests/Vandermonde.f90)
 add_unit_test(DerivativeMatrix ./unitTests/DerivativeMatrix.f90)
-add_unit_test(ChangeBasis ./unitTests/ChangeBasis.f90)
-add_unit_test(SurfInt ./unitTests/SurfInt.f90)
-add_unit_test(ProlongToFace ./unitTests/ProlongToFace.f90)
+add_unit_test(ChangeBasis      ./unitTests/ChangeBasis.f90)
+add_unit_test(SurfInt          ./unitTests/SurfInt.f90)
+add_unit_test(ProlongToFace    ./unitTests/ProlongToFace.f90)
+add_unit_test(MatrixInverse    ./unitTests/MatrixInverse.f90)
 
 # Perform unit tests when the last test has been compiled
 ADD_CUSTOM_TARGET( all_tests ALL

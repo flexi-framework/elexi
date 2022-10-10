@@ -321,8 +321,7 @@ IF(ANY(.NOT.RPFound)) THEN
         END DO! i=0,NSuper
       END DO! j=0,NSuper
       ! get initial value of the functional G
-
-      CALL Newton(NSuper,(/0.,0./),dGmat,Xi_NSuper,wBary_NSuper,Gmat,Xi2)
+      CALL Newton(NSuper,(/0.,0./),dGmat,Xi_NSuper,wBary_NSuper,Gmat,Xi2,LagOut=Lag_NSuper)
 
       ! use Newton result if minimum is within parameter range, else see if supersampled
       ! initial guess is better than previous result
@@ -376,11 +375,11 @@ DO iRP=1,nRP_Global
   IF(.NOT.RPFound(iRP))THEN
     aRP=>RPlist(iRP)%RP
     ! Only mark as invalid if greater then max tolerance
-    IF(MAXVAL(ABS(aRP%Xi)).GT.maxTol)THEN
+    IF (MAXVAL(ABS(aRP%Xi)).GT.maxTol) THEN
+      aRP%ElemID = -1
       ! RP has not been found
-      WRITE(*,*) 'Record Point with ID :',iRP,' and Coordinates ',aRP%x, ' is a troublemaker!'
-      CALL Abort(__STAMP__, &
-           'Newton has reached 50 Iter, Point not found')
+      WRITE(UNIT_stdOut,*) 'Record Point with ID :',iRP,' and Coordinates ',aRP%x, ' is a troublemaker!'
+      !CALL Abort(__STAMP__,'Newton has reached 50 Iter, Point not found')
     END IF
   END IF
 END DO

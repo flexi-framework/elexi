@@ -30,7 +30,11 @@ INTERFACE InitRPSet
   MODULE PROCEDURE InitRPSet
 END INTERFACE
 
-PUBLIC :: DefineParametersRPSet,InitRPSet
+INTERFACE CheckRecordPoints
+  MODULE PROCEDURE CheckRecordPoints
+END INTERFACE
+
+PUBLIC :: DefineParametersRPSet,InitRPSet,CheckRecordPoints
 !===================================================================================================================================
 
 CONTAINS
@@ -493,5 +497,184 @@ RPSetInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT RECORDPOINTS SET DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitRPSet
+
+
+SUBROUTINE CheckRecordPoints()
+! MODULES
+USE MOD_Globals
+USE MOD_Parameters
+USE MOD_Output_Vars     ,ONLY: ProjectName
+USE MOD_RPSet_Vars
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+TYPE(tLine),POINTER          :: Line
+TYPE(tPlane),POINTER         :: Plane
+TYPE(tBox),POINTER           :: Box
+TYPE(tRP_Ptr),POINTER        :: RPPlane_ptr(:,:)     !< Array of pointers to the record points of the group
+INTEGER                      :: iVar,i,j,k,iPlane,iBox,iLine,m,mm
+INTEGER,ALLOCATABLE          :: MapToRP(:,:)
+INTEGER                      :: iGr,iP,iRP,iRP_gr
+TYPE(tRP),POINTER            :: aRP
+!===================================================================================================================================
+! TODO: Prepare points structure
+DO i=1,nPoints
+  IF (Points(i)%RP%ElemID .LE. 0) print *, 'WARNING! Not implemented yet'
+END DO ! i
+! TODO:  Prepare lines structure
+DO iLine=1,nLines
+  Line=>Lines(iLine)
+  DO i=1,Line%nRP
+    IF (Line%RP_ptr(i)%RP%ElemID .LE. 0) print *, 'WARNING! Not implemented yet'
+  END DO ! i
+END DO
+! Prepare plane structure
+mm = 0
+DO iPlane=1,nPlanes
+  Plane=>Planes(iPlane)
+  ALLOCATE(RPPlane_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
+  ALLOCATE(MapToRP(PRODUCT(Plane%nRP(1:2)),2))
+  m = 0
+  DO j=1,Plane%nRP(2)
+    DO i=1,Plane%nRP(1)
+      IF (Plane%RP_ptr(i,j)%RP%ElemID .LE. 0) CYCLE
+      ALLOCATE(RPPlane_ptr(i,j)%RP)
+      !IF (MAXVAL(ABS(Plane%RP_ptr(i,j)%RP%xF)) .GT. maxTol) CYCLE
+      m = m+1
+      RPPlane_ptr(i,j)%RP%ElemID  = Plane%RP_ptr(i,j)%RP%ElemID
+      RPPlane_ptr(i,j)%RP%GroupID = Plane%RP_ptr(i,j)%RP%GroupID
+      RPPlane_ptr(i,j)%RP%x(:)    = Plane%RP_ptr(i,j)%RP%x(:)
+      RPPlane_ptr(i,j)%RP%xF(:)   = Plane%RP_ptr(i,j)%RP%xF(:)
+      RPPlane_ptr(i,j)%RP%xi(:)   = Plane%RP_ptr(i,j)%RP%xi(:)
+      Groups(Plane%RP_ptr(i,j)%RP%GroupID)%nRP = 0
+      MapToRP(m,1:2) = (/i,j/)
+    END DO ! i
+  END DO ! j
+  Plane%nRP(1) = m
+  Plane%nRP(2) = 1
+  DEALLOCATE(Plane%RP_ptr)
+  ALLOCATE(Plane%RP_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
+  DO k=1,Plane%nRP(1)
+    ALLOCATE(Plane%RP_ptr(k,1)%RP)
+    i = MapToRP(k,1)
+    j = MapToRP(k,2)
+    Plane%RP_ptr(k,1)%RP%ElemID  = RPPlane_ptr(i,j)%RP%ElemID
+    Plane%RP_ptr(k,1)%RP%GroupID = RPPlane_ptr(i,j)%RP%GroupID
+    Plane%RP_ptr(k,1)%RP%x(:)    = RPPlane_ptr(i,j)%RP%x(:)
+    Plane%RP_ptr(k,1)%RP%xF(:)   = RPPlane_ptr(i,j)%RP%xF(:)
+    Plane%RP_ptr(k,1)%RP%xi(:)   = RPPlane_ptr(i,j)%RP%xi(:)
+  END DO ! k
+  DEALLOCATE(MapToRP)
+  DEALLOCATE(RPPlane_ptr)
+  ALLOCATE(RPPlane_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
+  m = 0
+  ELEM: DO k=1,Plane%nRP(1)
+    DO i=1,k-1
+      IF(NORM2(Plane%RP_ptr(i,1)%RP%xF(:)-Plane%RP_ptr(k,1)%RP%xF(:)).LT.1.E-10) CYCLE ELEM
+    END DO
+    m = m+1
+    ALLOCATE(RPPlane_ptr(m,1)%RP)
+    RPPlane_ptr(m,1)%RP%ElemID  = Plane%RP_ptr(k,1)%RP%ElemID
+    RPPlane_ptr(m,1)%RP%GroupID = Plane%RP_ptr(k,1)%RP%GroupID
+    RPPlane_ptr(m,1)%RP%x(:)    = Plane%RP_ptr(k,1)%RP%x(:)
+    RPPlane_ptr(m,1)%RP%xF(:)   = Plane%RP_ptr(k,1)%RP%xF(:)
+    RPPlane_ptr(m,1)%RP%xi(:)   = Plane%RP_ptr(k,1)%RP%xi(:)
+  END DO ELEM
+  Plane%nRP(1) = m
+  DEALLOCATE(Plane%RP_ptr)
+  ALLOCATE(Plane%RP_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
+  DO k=1,Plane%nRP(1)
+    ALLOCATE(Plane%RP_ptr(k,1)%RP)
+    mm = mm+1
+    Plane%RP_ptr(k,1)%RP%ID      = mm
+    Plane%RP_ptr(k,1)%RP%ElemID  = RPPlane_ptr(k,1)%RP%ElemID
+    Plane%RP_ptr(k,1)%RP%GroupID = RPPlane_ptr(k,1)%RP%GroupID
+    Plane%RP_ptr(k,1)%RP%x(:)    = RPPlane_ptr(k,1)%RP%x(:)
+    Plane%RP_ptr(k,1)%RP%xF(:)   = RPPlane_ptr(k,1)%RP%xF(:)
+    Plane%RP_ptr(k,1)%RP%xi(:)   = RPPlane_ptr(k,1)%RP%xi(:)
+    Groups(Plane%RP_ptr(k,1)%RP%GroupID)%nRP = Groups(Plane%RP_ptr(k,1)%RP%GroupID)%nRP+1
+  END DO ! k
+  DEALLOCATE(RPPlane_ptr)
+END DO
+! TODO: Prepare box structure
+DO iBox=1,nBoxes
+  Box=>Boxes(iBox)
+  DO k=1,Box%nRP(3)
+    DO j=1,Box%nRP(2)
+      DO i=1,Box%nRP(1)
+        IF (Boxes(iBox)%RP_ptr(i,j,k)%RP%ElemID .LE. 0) print *, 'WARNING! Not implemented yet'
+      END DO ! i
+    END DO ! j
+  END DO ! k
+END DO !iBox
+
+nRP_global = mm
+! Create global RP array
+DEALLOCATE(RPlist)
+ALLOCATE(RPlist(nRP_global))
+iRP=0
+
+! fill Boxes
+IF(nBoxes.GT.0) THEN
+  DO iBox=1,nBoxes
+    Box=>Boxes(iBox)
+    DO k=1,Box%nRP(3)
+      DO j=1,Box%nRP(2)
+        DO i=1,Box%nRP(1)
+        iRP=iRP+1
+        RPlist(iRP)%RP=>Boxes(iBox)%RP_ptr(i,j,k)%RP
+        END DO ! i
+      END DO ! j
+    END DO ! k
+  END DO !iBox
+END IF
+
+! fill Planes
+IF(nPlanes.GT.0) THEN
+  DO iPlane=1,nPlanes
+    Plane=>Planes(iPlane)
+    DO j=1,Plane%nRP(2)
+      DO i=1,Plane%nRP(1)
+      iRP=iRP+1
+      RPlist(iRP)%RP=>Planes(iPlane)%RP_ptr(i,j)%RP
+      END DO ! i
+    END DO ! j
+  END DO !iPlane
+END IF
+
+! fill line
+IF(nLines.GT.0) THEN
+  DO iLine=1,nLines
+    DO iP=1,Lines(iLine)%nRP
+      iRP=iRP+1
+      RPlist(iRP)%RP=>Lines(iLine)%RP_ptr(iP)%RP
+    END DO !iP
+  END DO !iLine
+END IF
+
+! fill points
+IF(nPoints.GT.0) THEN
+  DO iP=1,nPoints
+    iRP=iRP+1
+    RPlist(iRP)%RP=>Points(iP)%RP
+  END DO !iP
+END IF
+
+! Create pointers from groups to RPs
+DO iGr=1,nGroups
+  DEALLOCATE(Groups(iGr)%RP_ptr)
+  ALLOCATE(Groups(iGr)%RP_ptr(Groups(iGr)%nRP))
+  iRP_gr=0
+  DO iRP=1,nRP_global
+    aRP=>RPlist(iRP)%RP
+    IF(aRP%GroupID.EQ.iGr) THEN
+      iRP_gr=iRP_gr+1
+      Groups(iGr)%RP_ptr(iRP_gr)%RP=>aRP
+    END IF
+  END DO !iRP
+END DO !iGr
+
+
+END SUBROUTINE CheckRecordPoints
 
 END MODULE MOD_RPSet

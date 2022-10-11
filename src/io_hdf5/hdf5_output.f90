@@ -258,6 +258,7 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         offset=    (/0   ,offSetElem  /),&
                         collective=.TRUE.,RealArray=ElemData)
 DEALLOCATE(ElemData,VarNames)
+
 END SUBROUTINE WriteAdditionalElemData
 
 
@@ -325,12 +326,15 @@ DO WHILE(ASSOCIATED(f))
       CALL f%eval(tmp)
       NodeData=>tmp
     END IF
-    CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                            DataSetName=f%DatasetName, rank=5, &
-                            nValGlobal=(/f%nVal,nGlobalElems/),&
-                            nVal=      (/f%nVal,nElems      /),&
-                            offset=    (/0,0,0,0,  offsetElem  /),&
-                            collective=.TRUE.,RealArray=NodeData)
+    CALL GatheredWriteArray(FileName                              ,&
+                            create      = .FALSE.                 ,&
+                            DataSetName = f%DatasetName           ,&
+                            rank        = 5                       ,&
+                            nValGlobal  = (/f%nVal ,nGlobalElems/),&
+                            nVal        = (/f%nVal ,nElems      /),&
+                            offset      = (/0,0,0,0,offsetElem  /),&
+                            collective  = .TRUE.                  ,&
+                            RealArray   = NodeData)
     IF(ASSOCIATED(f%Eval)) DEALLOCATE(tmp)
   END IF
   f=>f%next
@@ -376,12 +380,15 @@ DO WHILE(ASSOCIATED(f))
   f=>f%next
 END DO
 ! Write the arrays (fixed size)
-CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                        DataSetName='FieldData', rank=5,  &
-                        nValGlobal=(/nVar,PP_N+1,PP_N+1,PP_NZ+1,nGlobalElems/),&
-                        nVal=      (/nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems      /),&
-                        offset=    (/0   ,0     ,0     ,0     ,offsetElem  /),&
-                        collective=.TRUE.,RealArray=tmp)
+CALL GatheredWriteArray(FileName                                                 ,&
+                        create      = .FALSE.                                    ,&
+                        DataSetName = 'FieldData'                                ,&
+                        rank        = 5                                          ,&
+                        nValGlobal  = (/nVar,PP_N+1,PP_N+1,PP_NZ+1,nGlobalElems/),&
+                        nVal        = (/nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems      /),&
+                        offset      = (/0   ,0     ,0     ,0     ,offsetElem   /),&
+                        collective  = .TRUE.                                     ,&
+                        RealArray   = tmp)
 DEALLOCATE(VarNames,tmp)
 
 END SUBROUTINE WriteAdditionalFieldData

@@ -65,13 +65,7 @@ array_loc = array( lbound_in(1):ubound_loc(1),&
                    lbound_in(2):ubound_loc(2),&
                    lbound_in(3):ubound_loc(3),&
                    lbound_in(4):ubound_loc(4))
-DEALLOCATE(array)
-ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4)))
-array = array_loc
-DEALLOCATE(array_loc)
+CALL MOVE_ALLOC(array_loc,array)
 
 END SUBROUTINE to2D_rank4
 
@@ -102,14 +96,7 @@ array_loc = array( lbound_in(1):ubound_loc(1),&
                    lbound_in(3):ubound_loc(3),&
                    lbound_in(4):ubound_loc(4),&
                    lbound_in(5):ubound_loc(5))
-DEALLOCATE(array)
-ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4),&
-                   lbound_in(5):ubound_loc(5)))
-array = array_loc
-DEALLOCATE(array_loc)
+CALL MOVE_ALLOC(array_loc,array)
 
 END SUBROUTINE to2D_rank5
 
@@ -142,15 +129,7 @@ array_loc = array( lbound_in(1):ubound_loc(1),&
                    lbound_in(4):ubound_loc(4),&
                    lbound_in(5):ubound_loc(5),&
                    lbound_in(6):ubound_loc(6))
-DEALLOCATE(array)
-ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4),&
-                   lbound_in(5):ubound_loc(5),&
-                   lbound_in(6):ubound_loc(6)))
-array = array_loc
-DEALLOCATE(array_loc)
+CALL MOVE_ALLOC(array_loc,array)
 
 END SUBROUTINE to2D_rank6
 

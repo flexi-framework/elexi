@@ -163,8 +163,8 @@ CALL BARRIER_AND_SYNC(ElemRadius2NGeo_Shared_Win,MPI_COMM_SHARED)
 #endif /* USE_MPI*/
 
 #if USE_MPI
-firstElem = INT(REAL( myComputeNodeRank*   nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
-lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 #else
 firstElem = 1
 lastElem  = nElems
@@ -270,8 +270,8 @@ END IF
 #endif /*USE_MPI*/
 
 #if USE_MPI
-firstElem = INT(REAL( myComputeNodeRank*   nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
-lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 #else
 firstElem = 1
 lastElem  = nElems
@@ -385,8 +385,8 @@ END IF
 
 CALL BARRIER_AND_SYNC(ElemsJ_Shared_Win,MPI_COMM_SHARED)
 
-firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
-lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 #else
 firstElem = 1
 lastElem  = nElems
@@ -560,8 +560,8 @@ END IF
 
 CALL BARRIER_AND_SYNC(ElemToBCSides_Shared_Win,MPI_COMM_SHARED)
 
-firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
-lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 
 ! if running on one node, halo_eps is meaningless. Get a representative BC_halo_eps for BC side identification
 fullMesh = .FALSE.
@@ -846,8 +846,8 @@ END IF ! fullMesh
 #if USE_MPI
 CALL BARRIER_AND_SYNC(SideBCMetrics_Shared_Win,MPI_COMM_SHARED)
 
-firstSide = INT(REAL( myComputeNodeRank   *nComputeNodeBCSides)/REAL(nComputeNodeProcessors))+1
-lastSide  = INT(REAL((myComputeNodeRank+1)*nComputeNodeBCSides)/REAL(nComputeNodeProcessors))
+firstSide = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeBCSides)/REAL(nComputeNodeProcessors))+1
+lastSide  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeBCSides)/REAL(nComputeNodeProcessors))
 #else
 firstSide = 1
 lastSide  = nComputeNodeBCSides
@@ -958,8 +958,8 @@ ElemBaryNGeo => ElemBaryNGeo_Shared
 ASSOCIATE(XCL_NGeo => XCL_NGeo_Shared)
 
 ! Set ranges
-firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
-lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 #else
 ALLOCATE(ElemBaryNGeo(1:3,nComputeNodeElems))
 firstElem = 1
@@ -1085,8 +1085,8 @@ CALL BARRIER_AND_SYNC(ElemRadius2NGeo_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
 
 #if USE_MPI
-firstElem = INT(REAL( myComputeNodeRank*   nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
-lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 #else
 firstElem = 1
 lastElem  = nElems
@@ -1186,8 +1186,8 @@ INTEGER                        :: sendbuf,recvbuf
 !===================================================================================================================================
 
 #if USE_MPI
-firstSide = INT(REAL( myComputeNodeRank   *nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
-lastSide  = INT(REAL((myComputeNodeRank+1)*nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
+firstSide = INT(REAL(myComputeNodeRank  )*REAL(nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
+lastSide  = INT(REAL(myComputeNodeRank+1)*REAL(nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
 #else
 firstSide = 1
 lastSide  = nNonUniqueGlobalSides
@@ -1349,8 +1349,8 @@ BaseVectors2 => BaseVectors2_Shared
 BaseVectors3 => BaseVectors3_Shared
 !BaseVectorsScale => BaseVectorsScale_Shared
 
-firstSide = INT(REAL (myComputeNodeRank   *nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
-lastSide  = INT(REAL((myComputeNodeRank+1)*nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
+firstSide = INT(REAL(myComputeNodeRank  )*REAL(nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
+lastSide  = INT(REAL(myComputeNodeRank+1)*REAL(nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
 #else
 ALLOCATE( BaseVectors0(1:3,1:nNonUniqueGlobalSides),&
           BaseVectors1(1:3,1:nNonUniqueGlobalSides),&
@@ -1648,8 +1648,8 @@ NGeo3 = NGeo2   *(NGeo+1)
 ! decide if element is (bi-)linear or curved
 ! decide if sides are planar-rect, planar-nonrect, planar-curved, bilinear or curved
 #if USE_MPI
-firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
-lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 #else
 firstElem = 1
 lastElem  = nElems
@@ -2052,8 +2052,8 @@ IF (.NOT.meshCheckWeirdElements) RETURN
 LBWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' Checking for weird elements ...'
 
 #if USE_MPI
-firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
-lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 #else
 firstElem = 1
 lastElem  = nElems
@@ -2455,8 +2455,8 @@ END IF
 
 !nComputeNodeHaloElems = nComputeNodeTotalElems - nComputeNodeElems
 !IF (nComputeNodeHaloElems.GT.nComputeNodeProcessors) THEN
-!  firstHaloElem = INT(REAL( myComputeNodeRank   *nComputeNodeHaloElems)/REAL(nComputeNodeProcessors))+1
-!  lastHaloElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeHaloElems)/REAL(nComputeNodeProcessors))
+!  firstHaloElem = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeHaloElems)/REAL(nComputeNodeProcessors))+1
+!  lastHaloElem  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeHaloElems)/REAL(nComputeNodeProcessors))
 !ELSE
 !  firstHaloElem = myComputeNodeRank + 1
 !  IF (myComputeNodeRank.LT.nComputeNodeHaloElems) THEN
@@ -2644,12 +2644,12 @@ IF (BezierElevation.GT.0) THEN
   CALL BARRIER_AND_SYNC(BezierControlPoints3DElevated_Shared_Win,MPI_COMM_SHARED)
 END IF
 
-firstElem = INT(REAL( myComputeNodeRank*   nGlobalElems)/REAL(nComputeNodeProcessors))+1
-lastElem  = INT(REAL((myComputeNodeRank+1)*nGlobalElems)/REAL(nComputeNodeProcessors))
-!firstSide = INT(REAL (myComputeNodeRank   *nComputeNodeTotalSides)/REAL(nComputeNodeProcessors))+1
-!lastSide  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalSides)/REAL(nComputeNodeProcessors))
-firstSide = INT(REAL (myComputeNodeRank   *nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
-lastSide  = INT(REAL((myComputeNodeRank+1)*nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL(myComputeNodeRank  )*REAL(nGlobalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL(myComputeNodeRank+1)*REAL(nGlobalElems)/REAL(nComputeNodeProcessors))
+! firstSide = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeTotalSides)/REAL(nComputeNodeProcessors))+1
+! lastSide  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeTotalSides)/REAL(nComputeNodeProcessors))
+firstSide = INT(REAL(myComputeNodeRank  )*REAL(nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))+1
+lastSide  = INT(REAL(myComputeNodeRank+1)*REAL(nNonUniqueGlobalSides)/REAL(nComputeNodeProcessors))
 #else
 firstElem = 1
 lastElem  = nElems
@@ -2887,8 +2887,8 @@ NodeMap(:,6)=(/CNS(5),CNS(6),CNS(7),CNS(8)/)
 #if USE_MPI
 CALL Allocate_Shared((/6,nComputeNodeTotalElems/),ConcaveElemSide_Shared_Win,ConcaveElemSide_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ConcaveElemSide_Shared_Win,IERROR)
-firstElem = INT(REAL( myComputeNodeRank   *nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
-lastElem  = INT(REAL((myComputeNodeRank+1)*nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
+firstElem = INT(REAL(myComputeNodeRank  )*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))+1
+lastElem  = INT(REAL(myComputeNodeRank+1)*REAL(nComputeNodeTotalElems)/REAL(nComputeNodeProcessors))
 
 CALL Allocate_Shared((/8,nComputeNodeTotalElems/),ElemNodeID_Shared_Win,ElemNodeID_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemNodeID_Shared_Win,IERROR)

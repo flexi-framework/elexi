@@ -200,7 +200,7 @@ CASE DEFAULT
 END SELECT
 
 ! Preparation of the baseflow on each Gauss Point
-LBWRITE(UNIT_stdOut,'(A)') ' Initialize Sponge Base Flow...'
+LBWRITE(UNIT_stdOut,'(A)') ' | Initialize Sponge Base Flow...'
 ALLOCATE(SpBaseFlow(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 SELECT CASE(SpBaseflowType)
 CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
@@ -295,7 +295,7 @@ REAL,ALLOCATABLE                        :: SpRadius(:)                 ! Radius 
 REAL,ALLOCATABLE                        :: SpAxis(:,:)                 ! Axis of the cylindrical sponge layer (only 3D)
 #endif
 !==================================================================================================================================
-LBWRITE(UNIT_stdOut,'(A)') '  Initialize Sponge Ramping Function...'
+LBWRITE(UNIT_stdOut,'(A)') ' | Initialize Sponge Ramping Function...'
 
 ! Precalculation of the sponge strength on the whole domain to determine actual sponge region
 

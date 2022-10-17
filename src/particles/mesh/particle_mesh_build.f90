@@ -2227,7 +2227,7 @@ NodeMap(:,5)=(/CNS(1),CNS(5),CNS(8),CNS(4)/)
 NodeMap(:,6)=(/CNS(5),CNS(6),CNS(7),CNS(8)/)
 
 ! Find number of periodic vectors
-GEO%nPeriodicVectors = MERGE(MAXVAL(BoundaryType(:,BC_ALPHA)),0,MeshHasPeriodic)
+GEO%nPeriodicVectors = MERGE(MAXVAL(BoundaryType(:,BC_ALPHA),mask=BoundaryType(:,BC_TYPE).EQ.1),0,MeshHasPeriodic)
 IF (GEO%nPeriodicVectors.EQ.0) RETURN
 
 firstElem = offsetElem+1

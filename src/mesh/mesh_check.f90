@@ -46,7 +46,7 @@ USE MOD_Mesh_Vars           ,ONLY: firstInnerSide,lastInnerSide,lastMPISide_MINE
 USE MOD_Mesh_Vars           ,ONLY: nSides,nBCSides,nMPISides!,nMPIPeriodics
 USE MOD_Mesh_Vars           ,ONLY: SideToElem,S2V2
 USE MOD_Mesh_Vars           ,ONLY: BoundaryType
-USE MOD_Mesh_Vars           ,ONLY: AnalyzeSide
+USE MOD_Mesh_Vars           ,ONLY: AnalyzeSide,meshHasMortars
 ! USE MOD_Mesh_Vars           ,ONLY: Elem_xGP
 USE MOD_Mesh_Vars           ,ONLY: NodeCoords,NGeo
 USE MOD_ReadInTools         ,ONLY: GETLOGICAL
@@ -96,7 +96,10 @@ LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)')' CHECK SIDE CONNECTIVITY...'
 
 doCheckMesh = GETLOGICAL('meshCheckConnectivity')
-IF (.NOT.doCheckMesh) THEN
+IF (.NOT.doCheckMesh .OR. meshHasMortars) THEN
+  IF (meshHasMortars) THEN
+    LBWRITE(UNIT_stdOut,'(A)')' Mortar elements encountered. Force-disabling check side connectivity!'
+  END IF
   LBWRITE(UNIT_stdOut,'(A)')' CHECK SIDE CONNECTIVITY DONE'
   LBWRITE(UNIT_stdOut,'(132("-"))')
   RETURN

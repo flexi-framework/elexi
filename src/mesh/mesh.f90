@@ -63,7 +63,7 @@ CALL prms%CreateLogicalOption( 'meshdeform',          "Apply simple sine-shaped 
 CALL prms%CreateLogicalOption( 'meshCheckRef',        "Flag if the mesh Jacobians should be checked in the reference system in "//&
                                                       "addition to the computational system.",'.TRUE.')
 CALL prms%CreateLogicalOption( 'meshCheckConnectivity',"Flag if the mesh connectivity should be checked by comparing the face "//&
-                                                      "Gauss points.",'.FALSE.')
+                                                      "Gauss points.",'.TRUE.')
 #if (PP_dim == 3)
 CALL prms%CreateLogicalOption( 'crossProductMetrics', "Compute mesh metrics using cross product form. Caution: in this case "//&
                                                       "free-stream preservation is only guaranteed for N=3*NGeo.",&

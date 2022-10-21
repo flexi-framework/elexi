@@ -884,6 +884,7 @@ END FUNCTION DF_Hoelzer
 FUNCTION DF_Loth(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
 ! Compute the drag factor according to Loth (2008)
+! > Loth, E., Compressibility and Rarefaction Effects on Drag of a Spherical Particle,AIAA Journal, 2008, 46, 2219-2228
 !===================================================================================================================================
 ! MODULES
 USE MOD_Equation_Vars,      ONLY: s13,s23
@@ -901,18 +902,18 @@ REAL                        :: f
 REAL                        :: Hm, Cm, Gm
 !-----------------------------------------------------------------------------------------------------------------------------------
 IF (Mp .LT. 0.89) THEN
-  Gm = 1. - 1.525*Mp**4
+  Gm = 1. - 1.525*Mp**4                                                      ! (eq. 16a)
 ELSE
-  Gm = 0.0002 + 0.0008*TANH(12.77*(Mp-2.02))
+  Gm = 0.0002 + 0.0008*TANH(12.77*(Mp-2.02))                                 ! (eq. 16b)
 END IF
 IF (Mp .LE. 1.45) THEN
-  Cm = 5.*s13 + s23*TANH(3*LOG(Mp+0.1))
+  Cm = 5.*s13 + s23*TANH(3*LOG(Mp+0.1))                                      ! (eq. 14a)
 ELSE
-  Cm = 2.044 + 0.2*EXP(-1.8*(LOG(Mp/1.5))**2)
+  Cm = 2.044 + 0.2*EXP(-1.8*(LOG(Mp/1.5))**2)                                ! (eq. 14b)
 END IF
-Hm = 1 - 0.258*Cm/(1+514*Gm)
+Hm = 1 - 0.258*Cm/(1+514*Gm)                                                 ! (eq. 16c)
 ! Valid up to Rep < 3e5
-f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Gm*Rep**(-1.16))
+f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Gm*Rep**(-1.16))   ! (eq. 15, divided by Rep/24)
 NO_OP(SphericityIC)
 END FUNCTION DF_Loth
 

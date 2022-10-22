@@ -46,8 +46,6 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-REAL,ALLOCATABLE :: UPrim_Blasius(:,:,:,:)
-
 INTERFACE InitBC
   MODULE PROCEDURE InitBC
 END INTERFACE
@@ -328,26 +326,10 @@ BCState = Boundarytype(BC(SideID),BC_STATE)
 SELECT CASE(BCType)
 CASE(2) !Exact function or refstate
   IF(BCState.EQ.0) THEN
-    IF (.NOT.ALLOCATED(UPrim_Blasius)) THEN
-      ALLOCATE(UPrim_Blasius(PRIM,0:Nloc,0:ZDIM(Nloc),nBCSides))
-      ! Initialize
-      UPrim_Blasius = 0.
-      DO q=0,ZDIM(Nloc); DO p=0,Nloc
-        CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),Cons)
-        CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
-        UPrim_Blasius(:,p,q,SideID) = UPrim_boundary(:,p,q)
-      END DO; END DO
-    ELSEIF (ALL(UPrim_Blasius(:,:,:,SideID).EQ.0.)) THEN
-      ! Continue filling
-      DO q=0,ZDIM(Nloc); DO p=0,Nloc
-        CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),Cons)
-        CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
-        UPrim_Blasius(:,p,q,SideID) = UPrim_boundary(:,p,q)
-      END DO; END DO
-    ELSE
-      ! All filled
-      UPrim_boundary(:,:,:) = UPrim_Blasius(:,:,:,SideID)
-    END IF
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
+      CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),Cons)
+      CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
+    END DO; END DO
   ELSE
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
       UPrim_boundary(:,p,q) = RefStatePrim(:,BCState)
@@ -1475,7 +1457,6 @@ SDEALLOCATE(BCData)
 SDEALLOCATE(BCDataPrim)
 SDEALLOCATE(nBCByType)
 SDEALLOCATE(BCSideID)
-SDEALLOCATE(UPrim_Blasius)
 END SUBROUTINE FinalizeBC
 
 END MODULE MOD_GetBoundaryFlux

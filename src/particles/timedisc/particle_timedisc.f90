@@ -98,7 +98,7 @@ LBWRITE(UNIT_stdOut,'(66("-"))')
 !--- Read Manual Time Step
 useManualTimeStep = GETLOGICAL('Part-SteadyState'   )
 ManualTimeStep    = GETREAL   ('Part-ManualTimeStep')
-IF (ManualTimeStep.GT.0.) THEN
+IF (useManualTimeStep .OR. ManualTimeStep.GT.0.) THEN
   useManualTimeStep = .TRUE.
   TimeStep => TimeStepSteadyState
 END IF
@@ -599,6 +599,7 @@ CALL LBSplitTime(LB_TRACK,tLBStart)
 CALL ParticleInserting()
 
 END SUBROUTINE Particle_TimeStepByLSERK_RK
+
 
 #if USE_PARTICLES
 !===================================================================================================================================

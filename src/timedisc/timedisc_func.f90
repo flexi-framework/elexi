@@ -266,7 +266,7 @@ INTEGER                      :: errType
 IF (UseManualTimeStep) dt = ManualTimeStep
 
 ! Get time step if needed. For DG time stepping, this is already calculated in BuildBGMAndIdentifyHaloRegion
-IF ((UseManualTimeStep.AND.(dt.EQ.0.)) .OR. nSpecies.EQ.0) THEN
+IF ((UseManualTimeStep .AND. dt.EQ.0.) .OR. nSpecies.EQ.0) THEN
 #endif /*USE_PARTICLES*/
 dt      = EvalInitialTimeStep(errType)
 #if USE_PARTICLES

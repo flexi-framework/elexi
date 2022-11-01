@@ -538,14 +538,12 @@ END IF
 CALL CloseDataFile()
 
 #if USE_MPI
-IF (myRPrank.EQ.0) THEN
+IF (myRPrank.EQ.0) &
 #endif /* USE_MPI */
-  CALL MarkWriteSuccessfull(Filestring)
-  GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
-#if USE_MPI
-END IF
-#endif /* USE_MPI */
+CALL MarkWriteSuccessfull(Filestring)
+
+GETTIME(EndT)
+CALL DisplayMessageAndTime(EndT-StartT, 'WRITE RECORDPOINT DATA TO HDF5 FILE DONE', DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.,rank=myRPrank)
 
 END SUBROUTINE WriteRP
 

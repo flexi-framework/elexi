@@ -368,10 +368,12 @@ REAL                           :: dX_NGeoRef(3,3,0:NGeoRef,0:NGeoRef,0:NGeoRef)
 
 INTEGER                        :: ElemLocID
 #endif /*USE_MPI*/
+REAL                           :: StartT,EndT
 !===================================================================================================================================
 
+GETTIME(StartT)
 LBWRITE(UNIT_stdOut,'(132("-"))')
-LBWRITE(UNIT_stdOut,'(A)') ' Building EpsOneCell for all elements...'
+LBWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' Building EpsOneCell for all elements...'
 
 ! build sJ for all elements not on local proc
 #if USE_MPI
@@ -469,6 +471,8 @@ CALL BARRIER_AND_SYNC(ElemEpsOneCell_Shared_Win,MPI_COMM_SHARED)
 !IF(CalcMeshInfo)THEN
 !  CALL AddToElemData(ElementOut,'epsOneCell',RealArray=epsOneCell(1:nElems))
 !END IF
+GETTIME(EndT)
+CALL DisplayMessageAndTime(EndT-StartT, 'DONE!',DisplayDespiteLB=.FALSE.)
 
 END SUBROUTINE BuildEpsOneCell
 
@@ -1329,7 +1333,7 @@ REAL                           :: StartT,EndT
 !===================================================================================================================================
 
 LBWRITE(UNIT_stdOut,'(132("-"))')
-LBWRITE(UNIT_stdOut,'(A)') ' GET LINEAR SIDE BASEVECTORS...'
+LBWRITE(UNIT_stdOut,'(A)', ADVANCE='NO') ' GET LINEAR SIDE BASEVECTORS...'
 GETTIME(StartT)
 
 #if USE_MPI
@@ -1399,7 +1403,7 @@ CALL BARRIER_AND_SYNC(BaseVectors3_Shared_Win,MPI_COMM_SHARED)
 #endif /* USE_MPI */
 
 GETTIME(EndT)
-LBWRITE(UNIT_stdOut,'(A,F0.3,A)')' GET LINEAR SIDE BASEVECTORS DONE! [',EndT-StartT,'s]'
+CALL DisplayMessageAndTime(EndT-StartT, 'DONE!',DisplayDespiteLB=.FALSE.)
 !LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE BuildLinearSideBaseVectors
 

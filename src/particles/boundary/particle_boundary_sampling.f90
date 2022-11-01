@@ -1079,7 +1079,7 @@ INTEGER                             :: nShiftRHS
 !INTEGER                             :: iSurfSide
 INTEGER                             :: OutputVarCount
 REAL,ALLOCATABLE                    :: OutputArray(:,:,:,:)
-REAL                                :: startT,endT
+REAL                                :: StartT,EndT
 !===================================================================================================================================
 IF (.NOT.WriteStateFiles) RETURN
 
@@ -1094,7 +1094,7 @@ IF (nSurfTotalSides      .EQ.0) RETURN
 
 IF (mySurfRank.EQ.0) THEN
   WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' WRITE PARTICLE SURFACE STATE TO HDF5 FILE...'
-  GETTIME(startT)
+  GETTIME(StartT)
 END IF
 
 ! Allocate and fill output array
@@ -1277,7 +1277,7 @@ END IF
 
 IF (mySurfRank.EQ.0) THEN
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE! [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT, 'DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.FALSE., rank=mySurfRank)
 END IF
 
 END SUBROUTINE WriteSurfSample

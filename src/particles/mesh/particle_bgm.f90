@@ -1123,8 +1123,7 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif /*CODE_ANALYZE*/
 
 EndT = FLEXITIME()
-SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' | Building halo BGM DONE! [',EndT-StartT,'s]'
-SWRITE(UNIT_StdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT,'| Building halo BGM DONE!',DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 ! ONLY IF HALO_EPS .LT. GLOBAL_DIAG
 ! ONLY IF EMISSION .EQ. 1 .OR. 2
@@ -1152,7 +1151,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 !===================================================================================================================================
 #endif /*USE_MPI*/
 
-SWRITE(UNIT_stdOut,'(A)')' BUILDING FIBGM ELEMENT MAPPING ...'
+LBWRITE(UNIT_stdOut,'(A)', ADVANCE='NO')' BUILDING FIBGM ELEMENT MAPPING ...'
 GETTIME(StartT)
 
 #if USE_MPI
@@ -1340,8 +1339,7 @@ CALL BARRIER_AND_SYNC(FIBGMToProc_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
 
 EndT = FLEXITIME()
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' BUILDING FIBGM ELEMENT MAPPING DONE! [',EndT-StartT,'s]'
-SWRITE(UNIT_StdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, 'DONE!')
 
 #if USE_MPI
 ASSOCIATE(FIBGM_nElems => FIBGM_nTotalElems)

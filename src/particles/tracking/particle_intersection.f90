@@ -253,7 +253,7 @@ coeffA = DOT_PRODUCT(NormVec,PartTrajectory)
 IF (ALMOSTZERO(coeffA)) THEN
   CriticalParallelInSide = .TRUE.
 ELSE
-CriticalParallelInSide = .FALSE.
+  CriticalParallelInSide = .FALSE.
 END IF
 
 ! difference between SideDistance (distance from origin to side) and the dot product is the distance of the particle to the side

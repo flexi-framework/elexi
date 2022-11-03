@@ -92,13 +92,13 @@ CALL prms%CreateIntOption(      'Part-RPMemory'           , 'Record particles me
 !CALL prms%CreateStringOption(  'Part-RecordType[$]'        , 'Type of record plane.\n'                                        //&
 !                                                             ' - plane\n'                                                       &
 !                                                           , 'none', numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(      'Part-RPDirection[$]'     , 'Direction of the normal vector of the record plane'               &
-                                                          , '1', numberedmulti=.TRUE.)
-CALL prms%CreateRealOption(     'Part-RPPosition[$]'      , 'Position of the record plane in RPDirection.'                     &
-                                                          , '0.', numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption('Part-RPNormVec[$]'       , 'Direction of the normal vector of the record plane'               &
+                                                          , numberedmulti=.TRUE.)
+CALL prms%CreateRealArrayOption('Part-RPBasePoint[$]'     , 'Base point of the record plane.'                                  &
+                                                          , numberedmulti=.TRUE.)
 CALL prms%CreateStringOption(   'Part-FilenameRecordPart' , 'Specifying filename for load_from_file init.'                     &
                                                           , 'data/recordplane_')
-CALL prms%CreateLogicalOption(  'Part-PartIndex'          , 'Flag to give each particle an unique index'                      &
+CALL prms%CreateLogicalOption(  'Part-PartIndex'          , 'Flag to give each particle an unique index'                       &
                                                           , '.FALSE.')
 
 END SUBROUTINE DefineParametersParticleAnalyze

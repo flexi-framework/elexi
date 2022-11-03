@@ -767,8 +767,9 @@ IF (RecordPart.GT.0) THEN
     WRITE(UNIT=tmpStr,FMT='(I2)') jP
     ALLOCATE(RPP_Plane(jP)%RPP_Data(RPP_nVarNames,RPP_MaxBufferSize))
     RPP_Plane(jP)%RPP_Data = 0.
-    RPP_Plane(jP)%pos = GETREAL('Part-RPPosition'//TRIM(ADJUSTL(tmpStr)))
-    RPP_Plane(jP)%dir = GETINT('Part-RPDirection'//TRIM(ADJUSTL(tmpStr)))
+    RPP_Plane(jP)%pos  = GETREALARRAY('Part-RPBasePoint'//TRIM(ADJUSTL(tmpStr)),3)
+    RPP_Plane(jP)%dir  = GETREALARRAY('Part-RPNormVec'  //TRIM(ADJUSTL(tmpStr)),3)
+    RPP_Plane(jp)%dist = DOT_PRODUCT(RPP_Plane(jP)%pos,RPP_Plane(jp)%dir)
     RPP_Plane(jP)%RPP_Records = 0.
   END DO
 END IF

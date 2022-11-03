@@ -106,6 +106,7 @@ SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Particle_Globals        ,ONLY: VECNORM,ALMOSTZERO
 USE MOD_HDF5_Output             ,ONLY: WriteArray
 USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars             ,ONLY: WriteStateFiles
@@ -138,6 +139,12 @@ INTEGER                        :: ForceIC(6,nSpecies)
 #else
 INTEGER                        :: ForceIC(1,nSpecies)
 #endif
+! RecordPlane
+REAL                           :: PartTrajectory(3),lengthPartTrajectory,Inter1(3)
+REAL                           :: locOrigin(1:3),locNormVec(1:3),locDistance
+REAL                           :: coeffA,locPlaneDistance(3),alphaNorm
+! Timers
+REAL                           :: StartT,EndT
 !===================================================================================================================================
 IF (.NOT.WriteStateFiles) RETURN
 
@@ -145,11 +152,33 @@ IF (.NOT.WriteStateFiles) RETURN
 DO iRecord = 1,RecordPart
   DO iPart=1,PDM%ParticleVecLength
     IF (.NOT. PDM%ParticleInside(iPart)) CYCLE
-    IF ((PartState(  RPP_Plane(iRecord)%dir,iPart).GE.RPP_Plane(iRecord)%pos) .AND. &
-        (LastPartPos(RPP_Plane(iRecord)%dir,iPart).LT.RPP_Plane(iRecord)%pos)) THEN
+
+    ! Compute particle trajectory
+    PartTrajectory       = PartState(1:3,iPart) - LastPartPos(1:3,iPart)
+    lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
+
+    ! Compute planar rect intersection
+    locOrigin   = RPP_Plane(iRecord)%pos
+    locNormVec  = RPP_Plane(iRecord)%dir
+    locDistance = RPP_Plane(iRecord)%dist
+    coeffA      = DOT_PRODUCT(locNormVec,PartTrajectory)
+
+    ! Particle moving parallel to plane
+    IF (ALMOSTZERO(coeffA)) CYCLE
+
+    ! Calculate normalized distance to intersection
+    locPlaneDistance = LastPartPos(1:3,iPart) - locOrigin
+    alphaNorm        = -DOT_PRODUCT(locPlaneDistance,locNormVec) / coeffA
+
+    IF (alphaNorm.GE.0 .AND. alphaNorm.LE.1.) THEN
+      ! Calculate intersection point
+      Inter1 = locPlaneDistance + alphaNorm * PartTrajectory + locOrigin
+
       RPP_Plane(iRecord)%RPP_Records = RPP_Plane(iRecord)%RPP_Records+1
-      ! Part pos and vel
-      RPP_Plane(iRecord)%RPP_Data(1:6,RPP_Plane(iRecord)%RPP_Records) = PartState(1:6,iPart)
+      ! Part intersection point
+      RPP_Plane(iRecord)%RPP_Data(1:3,RPP_Plane(iRecord)%RPP_Records) = Inter1
+      ! Part velocity
+      RPP_Plane(iRecord)%RPP_Data(4:6,RPP_Plane(iRecord)%RPP_Records) = PartState(4:6,iPart)
       ! dp
       RPP_Plane(iRecord)%RPP_Data(7,RPP_Plane(iRecord)%RPP_Records)   = PartState(PART_DIAM,iPart)
       ! Species
@@ -158,7 +187,6 @@ DO iRecord = 1,RecordPart
       IF(doPartIndex) RPP_Plane(iRecord)%RPP_Data(9,RPP_Plane(iRecord)%RPP_Records)   = PartIndex(iPart)
     END IF
   END DO
-!END IF
 
   IF((RPP_Plane(iRecord)%RPP_Records .GE. RPP_MaxBufferSize .OR. PRESENT(writeToBinary)))THEN
 
@@ -200,8 +228,12 @@ DO iRecord = 1,RecordPart
 
     WRITE(UNIT=tmpStr,FMT='(I0)') iRecord
     FileName_loc = TRIM(TIMESTAMP('recordpoints/recordpoints_part'//TRIM(ADJUSTL(tmpStr)),OutputTime))//'.h5'
-    SWRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileName_loc)
+    ! SWRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileName_loc)
+
     IF(MPIRoot)THEN
+      WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' WRITE PARTICLE RECORD  PLANE TO HDF5 FILE...'
+      GETTIME(startT)
+
       CALL OpenDataFile(FileName_loc,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
       CALL WriteAttribute(File_ID,'VarNamesPart',RPP_nVarNames,StrArray=StrVarNames)
       CALL WriteAttribute(File_ID,'nSpecies',1,IntScalar=nSpecies)
@@ -254,8 +286,11 @@ DO iRecord = 1,RecordPart
 
     RPP_Plane(iRecord)%RPP_Data=0.0
 
-    SWRITE(UNIT_stdOut,'(A)') ' WRITE PARTICLE RECORD PLANE TO HDF5 ... DONE'
-    SWRITE(UNIT_stdOut,'(132("-"))')
+    IF (MPIRoot) THEN
+      GETTIME(EndT)
+      WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE! [',EndT-StartT,'s]'
+      WRITE(UNIT_stdOut,'(132("-"))')
+    END IF
     DEALLOCATE(StrVarNames)
 
     RPP_Plane(iRecord)%RPP_Records=0

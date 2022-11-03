@@ -46,9 +46,10 @@ REAL                          :: TimeSample
 
 INTEGER                       :: RPP_MaxBufferSize
 INTEGER                       :: RecordPart
-TYPE tPPlane                                                           !< Data type representing a single plane
-  REAL                        :: pos                                   !< position of the plane
-  INTEGER                     :: dir                                   !< direction of the normal vector of the plane
+TYPE tPPlane                                                           !< data type representing a single plane
+  REAL                        :: pos(3)                                !< origin of the plane
+  REAL                        :: dir(3)                                !< direction of the normal vector of the plane
+  REAL                        :: dist                                  !< distance of planar base from origin
   REAL, ALLOCATABLE           :: RPP_Data(:,:)                         !< PartState and PartSpecies
   INTEGER                     :: RPP_Records
 END TYPE tPPlane

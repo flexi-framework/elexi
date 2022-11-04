@@ -421,8 +421,10 @@ INTEGER                        :: NZ_loc
 INTEGER                        :: iElem,i,j,iVar
 #endif
 !==================================================================================================================================
-GETTIME(StartT)
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE BASE FLOW TO HDF5 FILE...'
+IF(MPIRoot)THEN
+  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE BASE FLOW TO HDF5 FILE...'
+  GETTIME(StartT)
+END IF
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',OutputTime))//'.h5'
@@ -462,11 +464,11 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
 #if PP_dim == 2
 IF(.NOT.output2D) DEALLOCATE(UOut)
 #endif
-IF(MPIRoot) CALL MarkWriteSuccessfull(FileName)
-
-GETTIME(EndT)
-CALL DisplayMessageAndTime(EndT-StartT, 'DONE!', DisplayDespiteLB=.TRUE.)
-
+IF(MPIRoot)THEN
+  CALL MarkWriteSuccessfull(FileName)
+  GETTIME(EndT)
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+END IF
 END SUBROUTINE WriteBaseflow
 
 
@@ -595,9 +597,10 @@ END DO
 
 IF(MPIRoot) CALL MarkWriteSuccessfull(FileName)
 
-GETTIME(endT)
-CALL DisplayMessageAndTime(EndT-StartT, 'DONE', DisplayDespiteLB=.TRUE., DisplayLine=.FALSE.)
-
+IF(MPIRoot)THEN
+  GETTIME(EndT)
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+END IF
 END SUBROUTINE WriteTimeAverage
 
 

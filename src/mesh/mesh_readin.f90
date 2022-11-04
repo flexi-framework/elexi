@@ -854,7 +854,7 @@ IF (.NOT.PerformLoadBalance) THEN
 #endif /*LOADBALANCE*/
   EndT             = FLEXITIME()
   ReadMeshWallTime = EndT-StartT
-  CALL DisplayMessageAndTime(ReadMeshWallTime, 'READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ... DONE', DisplayDespiteLB=.TRUE., DisplayLine=.FALSE.)
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ... DONE  [',ReadMeshWallTime,'s]'
 #if USE_LOADBALANCE
 END IF ! .NOT.PerformLoadBalance
 #endif /*LOADBALANCE*/

@@ -84,8 +84,10 @@ INTEGER                        :: nVal(5)
 !==================================================================================================================================
 IF (.NOT.WriteStateFiles) RETURN
 
-GETTIME(StartT)
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE STATE TO HDF5 FILE...'
+IF(MPIRoot)THEN
+  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE STATE TO HDF5 FILE...'
+  GETTIME(StartT)
+END IF
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 FileType=MERGE('ERROR_State','State      ',isErrorFile)
@@ -209,9 +211,11 @@ CALL WriteElemTime(FileName)
 CALL WriteAdditionalElemData( FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
 
-IF(MPIRoot) CALL MarkWriteSuccessfull(FileName)
-GETTIME(EndT)
-CALL DisplayMessageAndTime(EndT-StartT, 'DONE', DisplayDespiteLB=.TRUE., DisplayLine=.FALSE.)
+IF(MPIRoot)THEN
+  CALL MarkWriteSuccessfull(FileName)
+  GETTIME(EndT)
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+END IF
 
 #if USE_MPI
 ! Since we are going to abort directly after this wenn an error state is written, make sure that all processors are finished

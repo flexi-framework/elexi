@@ -198,7 +198,8 @@ END IF
 CALL CloseDataFile()
 
 GETTIME(EndT)
-CALL DisplayMessageAndTime(EndT-StartT, 'CHECK RESTART FILE DONE!', DisplayDespiteLB=.FALSE.)
+LBWRITE(UNIT_stdOut,'(A,F0.3,A)') ' CHECK RESTART FILE DONE! [',EndT-StartT,'s]'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitRestartFile
 
@@ -320,7 +321,8 @@ FlushInitialState = GETLOGICAL('FlushInitialState')
 
 RestartInitIsDone = .TRUE.
 GETTIME(EndT)
-CALL DisplayMessageAndTime(EndT-StartT, 'INIT RESTART DONE!', DisplayDespiteLB=.FALSE.)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INIT RESTART DONE! [',EndT-StartT,'s]'
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitRestart
 
@@ -650,7 +652,7 @@ IF (DoRestart) THEN
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
 #endif
   GETTIME(EndT)
-  CALL DisplayMessageAndTime(EndT-StartT, 'DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)')' PERFORMING RESTART DONE! [',EndT-StartT,'s]'
   SWRITE(UNIT_stdOut,'(132("-"))')
 ELSE
 #if !(USE_PARTICLES)

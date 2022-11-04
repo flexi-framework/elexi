@@ -105,8 +105,11 @@ REAL                           :: StartT,EndT
 ! Keep everything in sync here
 ! CALL MPI_BARRIER(MPI_COMM_FLEXI,IERROR)
 
-GETTIME(StartT)
-SWRITE(UNIT_stdOut,'(A)') ' IDENTIFYING Particle Exchange Processors ...'
+IF (MPIRoot) THEN
+  ! WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(A)') ' IDENTIFYING Particle Exchange Processors ...'
+  StartT = MPI_WTIME()
+END IF ! MPIRoot
 
 ! Allocate arrays
 ALLOCATE(GlobalProcToExchangeProc(EXCHANGE_PROC_SIZE,0:nProcessors_Global-1))
@@ -738,8 +741,12 @@ SWRITE(UNIT_stdOut,'(A,I0,A)') ' | Started particle exchange communication with 
                                  nExchangeProcessorsGlobal/nProcessors_Global            , &
                                  ' partners per proc'
 
-GETTIME(EndT)
-CALL DisplayMessageAndTime(EndT-StartT, 'IDENTIFYING Particle Exchange Processors DONE!', DisplayDespiteLB=.TRUE.)
+IF (MPIRoot) THEN
+  EndT = MPI_WTIME()
+  WRITE(UNIT_stdOut,'(A,F0.3,A)') ' IDENTIFYING Particle Exchange Processors DONE! [',EndT-StartT,'s]'
+  WRITE(UNIT_stdOut,'(132("-"))')
+END IF ! MPIRoot
+
 
 END SUBROUTINE IdentifyPartExchangeProcs
 

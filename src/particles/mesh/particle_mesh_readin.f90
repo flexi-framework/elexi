@@ -864,7 +864,8 @@ END IF
 
 EndT                   = FLEXITIME()
 CommMeshReadinWallTime = EndT-StartT
-CALL DisplayMessageAndTime(CommMeshReadinWallTime, 'DONE!')
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DONE  [',CommMeshReadinWallTime,'s]'
+SWRITE(UNIT_stdOut,'(132("."))')
 
 END SUBROUTINE FinishCommunicateMeshReadin
 

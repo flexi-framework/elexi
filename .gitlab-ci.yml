@@ -255,7 +255,7 @@ gnu_fv_switch:
 
 gnu_fv_blend:
   <<: *defaults_weekly
-  stage: reggie_weekly
+  stage: dg_weekly
   script:
     - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv_blend -j 6
 

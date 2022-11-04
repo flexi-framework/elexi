@@ -316,19 +316,20 @@ REAL                            :: tLBStart
 ! -----------------------------------------------------------------------------
 ! MAIN STEPS        []=FV only
 ! -----------------------------------------------------------------------------
-! 1.  Filter solution vector
-! 2.  Convert volume solution to primitive
-! 3.  Prolong to face (fill U_master/slave)
-! 4.  ConsToPrim of face data (U_master/slave)
-![5.] Second order reconstruction for FV
-! 6.  Lifting
-! 7.  Volume integral (DG only)
-![8.] FV volume integral
-! 9.  IF EDDYVISCOSITY: Prolong muSGS to face and send from slave to master
-! 10. Fill flux (Riemann solver) + surface integral
-! 11. Ut = -Ut
-! 12. Sponge and source terms
-! 13. Perform overintegration and apply Jacobian
+! 1.   Filter solution vector
+! 2.   Convert volume solution to primitive
+! 3.   Prolong to face (fill U_master/slave)
+! 4.   ConsToPrim of face data (U_master/slave)
+![5. ] Second order reconstruction for FV
+! 6.   Lifting
+! 7.   IF EDDYVISCOSITY: Prolong muSGS to face and send from slave to master
+! 8.   Volume integral (DG only)
+![9. ] FV volume integral
+![10.] Volume integral (viscous contribution) if FV-blending
+! 11.  Fill flux (Riemann solver) + surface integral
+! 12.  Ut = -Ut
+! 13.  Sponge and source terms
+! 14.  Perform overintegration and apply Jacobian
 ! -----------------------------------------------------------------------------
 
 ! (0. Nullify arrays)
@@ -554,6 +555,11 @@ CALL VolInt(Ut)
 CALL FV_VolInt(UPrim,Ut)
 #endif /*FV_ENABLED*/
 
+#if (FV_ENABLED == 2) && PARABOLIC
+! [10. Compute viscous volume integral contribution separately and add to Ut (FV-blending only)]
+CALL VolInt_Visc(Ut)
+#endif
+
 #if PARABOLIC && USE_MPI
 #if EDDYVISCOSITY
 IF(CurrentStage.EQ.1) THEN
@@ -583,7 +589,7 @@ IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN
 END IF
 #endif /*USE_MPI && USE_PARTICLES*/
 
-! 10. Fill flux and Surface integral
+! 11. Fill flux and Surface integral
 ! General idea: U_master/slave and gradUx,y,z_master/slave are filled and can be used to compute the Riemann solver
 !               and viscous flux at the faces. This is done for the MPI master sides first, to start communication early
 !               and then for all other sides.
@@ -591,15 +597,15 @@ END IF
 !               at mixed interfaces must be converted from DG to FV representation.
 !               After communication from master to slave the flux can be integrated over the faces.
 ! Steps:
-! * (step 10.2 is done for all MPI master sides first and then for all remaining sides)
-! * (step 10.3 and 10.4 are done for all other sides first and then for the MPI master sides)
-![10.1)] Change basis of DG solution and gradients at mixed FV/DG interfaces to the FV grid
-![10.2)] Convert primitive face solution to conservative at FV faces
-! 10.3)  Fill flux (Riemann solver + viscous flux)
-! 10.4)  Combine fluxes from the 2/4 small mortar sides to the flux on the big mortar side (when communication finished)
-! 10.5)  Compute surface integral
+! * (step 11.2 is done for all MPI master sides first and then for all remaining sides)
+! * (step 11.3 and 10.4 are done for all other sides first and then for the MPI master sides)
+![11.1)] Change basis of DG solution and gradients at mixed FV/DG interfaces to the FV grid
+![11.2)] Convert primitive face solution to conservative at FV faces
+! 11.3)  Fill flux (Riemann solver + viscous flux)
+! 11.4)  Combine fluxes from the 2/4 small mortar sides to the flux on the big mortar side (when communication finished)
+! 11.5)  Compute surface integral
 #if FV_ENABLED
-! 10.1)
+! 11.1)
 #if PARABOLIC
 CALL FV_DGtoFV(PP_nVarLifting,gradUx_master,gradUx_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUy_master,gradUy_slave)
@@ -609,12 +615,12 @@ CALL FV_DGtoFV(PP_nVarLifting,gradUz_master,gradUz_slave)
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )
 CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )
 
-! 10.2)
+! 11.2)
 CALL GetConservativeStateSurface(UPrim_master, UPrim_slave, U_master, U_slave, FV_Elems_master, FV_Elems_slave, 1)
 #endif /*FV_ENABLED*/
 
 #if USE_MPI
-! 10.3)
+! 11.3)
 #if USE_LOADBALANCE
 CALL LBStartTime(tLBStart)
 #endif /*USE_LOADBALANCE*/
@@ -634,34 +640,33 @@ CALL LBSplitTime(LB_DGCOMM,tLBStart)
 #endif /*USE_LOADBALANCE*/
 #endif /*USE_MPI*/
 
-! 10.3)
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.FALSE.)
-! 10.4)
+! 11.4)
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
-! 10.5)
+! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
 #if USE_LOADBALANCE
 CALL LBSplitTime(LB_DG,tLBStart)
 #endif /*USE_LOADBALANCE*/
 
 #if USE_MPI
-! 10.4)
+! 11.4)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux )                       ! Flux_slave: master -> slave
 #if USE_LOADBALANCE
 CALL LBSplitTime(LB_DGCOMM,tLBStart)
 #endif /*USE_LOADBALANCE*/
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
-! 10.5)
+! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
 #if USE_LOADBALANCE
 CALL LBSplitTime(LB_DG,tLBStart)
 #endif /*USE_LOADBALANCE*/
 #endif /*USE_MPI*/
 
-! 11. Swap to right sign :)
+! 12. Swap to right sign :)
 Ut=-Ut
 
-! 12. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
+! 13. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
 IF(doCalcSource) CALL CalcSource(Ut,t)
 #if USE_PARTICLES
 IF(doCalcSourcePart) CALL CalcSourcePart(Ut)
@@ -669,7 +674,7 @@ IF(doCalcSourcePart) CALL CalcSourcePart(Ut)
 IF(doSponge)     CALL Sponge(Ut)
 IF(doTCSource)   CALL TestcaseSource(Ut)
 
-! 13. Perform overintegration and apply Jacobian
+! 14. Perform overintegration and apply Jacobian
 ! Perform overintegration (projection filtering type overintegration)
 IF(OverintegrationType.GT.0) THEN
   CALL Overintegration(Ut)

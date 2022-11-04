@@ -48,10 +48,12 @@ USE MOD_DG_Vars                ,ONLY: U
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
 USE MOD_Mesh_Vars              ,ONLY: nElems
-#if FV_ENABLED
+#if FV_ENABLED == 1
 USE MOD_FV                     ,ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars                ,ONLY: FV_Elems
 USE MOD_Indicator_Vars         ,ONLY: IndValue
+#elif FV_ENABLED == 2
+USE MOD_FV_Vars                ,ONLY: FV_alpha
 #endif /*FV_ENABLED*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -60,9 +62,11 @@ USE MOD_Indicator_Vars         ,ONLY: IndValue
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE                :: UTmp(:,:,:,:,:)
-#if FV_ENABLED
+#if FV_ENABLED == 1
 REAL,ALLOCATABLE                :: IndValueTmp(:)
 INTEGER,ALLOCATABLE             :: FV_ElemsTmp(:)
+#elif FV_ENABLED == 2
+INTEGER,ALLOCATABLE             :: FV_alphaTmp(:)
 #endif /*FV_ENABLED*/
 !===================================================================================================================================
 
@@ -77,7 +81,7 @@ ASSOCIATE (&
 END ASSOCIATE
 CALL MOVE_ALLOC(UTmp,U)
 
-#if FV_ENABLED
+#if FV_ENABLED == 1
 ALLOCATE(FV_ElemsTmp(nElems))
 ASSOCIATE (&
         counts_send  => (MPInElemSend     ) ,&
@@ -102,6 +106,18 @@ CALL MOVE_ALLOC(IndValueTmp,IndValue)
 
 ! Update the FV face information
 CALL FV_ProlongFVElemsToFace()
+
+#elif FV_ENABLED == 2
+ALLOCATE(FV_alphaTmp(nElems))
+ASSOCIATE (&
+        counts_send  => (MPInElemSend     ) ,&
+        disp_send    => (MPIoffsetElemSend) ,&
+        counts_recv  => (MPInElemRecv     ) ,&
+        disp_recv    => (MPIoffsetElemRecv))
+  ! Communicate PartInt over MPI
+  CALL MPI_ALLTOALLV(FV_alpha,counts_send,disp_send,MPI_INTEGER,FV_alphaTmp,counts_recv,disp_recv,MPI_INTEGER,MPI_COMM_FLEXI,iError)
+END ASSOCIATE
+CALL MOVE_ALLOC(FV_alphaTmp,FV_alpha)
 #endif /*FV_ENABLED*/
 
 END SUBROUTINE FieldRestart

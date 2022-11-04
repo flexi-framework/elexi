@@ -74,8 +74,8 @@ SDEALLOCATE(MetricsVisc)
 #endif
 #endif /* USE_PARTICLES */
 
-ALLOCATE(MetricsAdv(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
-DO FVE=0,FV_ENABLED
+ALLOCATE(MetricsAdv(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
+DO FVE=0,FV_SIZE
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       MetricsAdv(1,i,j,k,iElem,FVE)=sJ(i,j,k,iElem,FVE)*NORM2(Metrics_fTilde(:,i,j,k,iElem,FVE))
@@ -85,9 +85,9 @@ DO FVE=0,FV_ENABLED
   END DO
 END DO
 #if PARABOLIC
-ALLOCATE(MetricsVisc(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
+ALLOCATE(MetricsVisc(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
 KappasPr_max=KAPPASPR_MAX_TIMESTEP_H()
-DO FVE=0,FV_ENABLED
+DO FVE=0,FV_SIZE
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       MetricsVisc(1,i,j,k,iElem,FVE)=KappasPR_max*(SUM((Metrics_fTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2))

@@ -360,11 +360,13 @@ USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
 USE MOD_Mesh_Vars,          ONLY: nElems,nGlobalElems
 USE MOD_Restart_Vars
 #if FV_ENABLED
-USE MOD_FV,                 ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars,            ONLY: FV_Elems
+#endif
+#if FV_ENABLED == 1
+USE MOD_FV_Switching,       ONLY: FV_ProlongFVElemsToFace
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
-#endif /*FV_ENABLED*/
+#endif /*FV_ENABLED==1*/
 #if PP_dim == 3
 USE MOD_2D,                 ONLY: ExpandArrayTo3D
 #else
@@ -374,34 +376,26 @@ USE MOD_2D,                 ONLY: to2D_rank5
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles !< flag to delete old state files
+LOGICAL,INTENT(IN),OPTIONAL     :: doFlushFiles !< flag to delete old state files
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
-REAL,ALLOCATABLE   :: U_localNVar(:,:,:,:,:)
-REAL,ALLOCATABLE   :: U_local2(:,:,:,:,:)
-INTEGER            :: iElem,i,j,k
-INTEGER            :: iVar
-INTEGER            :: HSize_proc(5)
-REAL,ALLOCATABLE   :: JNR(:,:,:,:)
-REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
-REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
-LOGICAL            :: doFlushFiles_loc
-#if FV_ENABLED
-INTEGER             :: nVal(15)
-REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
-CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
-#endif /*FV_ENABLED*/
-#if GCL
-REAL,ALLOCATABLE   :: Jac_local(:,:,:,:,:)
-#if PP_dim == 3
-REAL,ALLOCATABLE   :: Jac_local2(:,:,:,:,:)
-#endif /*PP_dim == 3*/
-LOGICAL            :: foundJac
-INTEGER            :: HSize_procJac(5)
-#endif /*GCL*/
+REAL,ALLOCATABLE                :: U_local(:,:,:,:,:)
+REAL,ALLOCATABLE                :: U_localNVar(:,:,:,:,:)
+REAL,ALLOCATABLE                :: U_local2(:,:,:,:,:)
+INTEGER                         :: iElem,i,j,k
+INTEGER                         :: iVar
+INTEGER                         :: HSize_proc(5)
+REAL,ALLOCATABLE                :: JNR(:,:,:,:)
+REAL                            :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
+REAL                            :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
+LOGICAL                         :: doFlushFiles_loc
+#if FV_ENABLED == 1
+INTEGER                         :: nVal(15)
+REAL,ALLOCATABLE                :: ElemData(:,:),tmp(:)
+CHARACTER(LEN=255),ALLOCATABLE  :: VarNamesElemData(:)
+#endif /*FV_ENABLED==1*/
 ! Timers
-REAL               :: StartT,EndT
+REAL                            :: StartT,EndT
 !==================================================================================================================================
 
 doFlushFiles_loc = MERGE(doFlushFiles,.TRUE.,PRESENT(doFlushFiles))
@@ -412,7 +406,7 @@ IF (DoRestart) THEN
   GETTIME(StartT)
 
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-#if FV_ENABLED
+#if FV_ENABLED == 1
   ! Read FV element distribution and indicator values from elem data array if possible
   CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData)
   IF (ALLOCATED(VarNamesElemData)) THEN
@@ -437,7 +431,7 @@ IF (DoRestart) THEN
   SDEALLOCATE(VarNamesElemData)
   SDEALLOCATE(tmp)
   CALL FV_ProlongFVElemsToFace()
-#endif
+#endif /*FV_ENABLED==1*/
 
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
   IF (RestartMode.GT.1) THEN
@@ -538,28 +532,6 @@ IF (DoRestart) THEN
       U = U_local
     END IF
 #endif
-#if GCL
-#if PP_dim == 3
-    IF (HSize_procJac(4).EQ.1) THEN
-      ! FLEXI compiled 3D, but data is 2D => expand third space dimension
-      IF (foundJac) CALL ExpandArrayTo3D(5,(/1,PP_N+1,PP_N+1,1,nElems/),4,PP_N+1,Jac_local,Jac)
-    ELSE
-      ! FLEXI compiled 3D + data 3D
-      IF (foundJac) Jac = Jac_local
-    END IF
-#else
-    IF (HSize_procJac(4).EQ.1) THEN
-      ! FLEXI compiled 2D + data 2D
-      IF (foundJac) Jac = Jac_local
-    ELSE
-      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
-      IF (foundJac) THEN
-        CALL to2D_rank5((/1,0,0,0,1/),(/1,PP_N,PP_N,PP_N,nElems/),4,Jac_local)
-        Jac = Jac_local
-      END IF
-    END IF
-#endif /*PP_dim == 3*/
-#endif /*GCL*/
   ELSE ! InterpolateSolution
     IF (RestartTurb) CALL CollectiveStop(__STAMP__,'Interpolation not supported for turbulent quantities. Non-linear operation!')
     ! We need to interpolate the solution to the new computational grid
@@ -585,24 +557,8 @@ IF (DoRestart) THEN
       ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
       CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,N_Restart,N_Restart,N_Restart,nElems/),4,U_local)
     END IF
-#if GCL
-    IF (HSize_procJac(4).NE.1) THEN
-      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
-      IF (foundJac) THEN
-        CALL to2D_rank5((/1,0,0,0,1/),(/1,N_Restart,N_Restart,N_Restart,nElems/),4,Jac_local)
-      END IF
-    END IF
-#endif /*GCL*/
 #endif /*PP_dim == 3*/
 
-#if GCL
-    ! Transform Jacobian
-    DO iElem=1,nElems
-      CALL ChangeBasisVolume(1,N_Restart,PP_N,Vdm_NRestart_N,Jac_local(:,:,:,:,iElem),Jac(:,:,:,:,iElem))
-    END DO
-    ! Set inverse of Jacobian
-    sJ(:,:,:,:,0) = 1./Jac(1,:,:,:,:)
-#endif
     ! Transform solution to refspace and project solution to N
     ! For conservativity deg of detJac should be identical to EFFECTIVE polynomial deg of solution
     ! (e.g. beware when filtering the jacobian )

@@ -375,13 +375,13 @@ IF (PRESENT(OutputDirectory)) THEN
   ELSE
     ! create visu dir, where all vtu files are placed
     IF (PostiParallel_loc) THEN
-      IF (MPIRoot) CALL SYSTEM('mkdir -p '//TRIM(OutputDirectory)//'/visu')
+      IF (MPIRoot) CALL SYSTEM('mkdir -p visu')
     END IF
   END IF ! TRIM(OutputDirectory).NE.''
 ELSE
   ! create visu dir, where all vtu files are placed
   IF (PostiParallel_loc) THEN
-    IF (MPIRoot) CALL SYSTEM('mkdir -p '//TRIM(OutputDirectory)//'/visu')
+    IF (MPIRoot) CALL SYSTEM('mkdir -p visu')
   END IF
 END IF ! PRESENT(OutputDirectory)
 

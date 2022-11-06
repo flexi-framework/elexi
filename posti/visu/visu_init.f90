@@ -310,6 +310,9 @@ CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
 ! read options from posti parameter file
 CALL prms%read_options(postifile)
 
+! read output directory
+OutputDirectoy = GETSTR("OutputDirectoy")
+
 ! Get number of variables to be visualized
 nVarIni = CountOption("VarName")
 

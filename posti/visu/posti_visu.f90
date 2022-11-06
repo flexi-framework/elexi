@@ -28,6 +28,7 @@ USE MOD_Commandline_Arguments
 USE MOD_ISO_VARYING_STRING
 USE MOD_MPI                   ,ONLY: InitMPI
 USE MOD_Output_Vars           ,ONLY: ProjectName,doPrintStatusLine
+USE MOD_ReadInTools           ,ONLY: GETSTR
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
 USE MOD_Visu                  ,ONLY: visu,FinalizeVisu
 USE MOD_Visu_HDF5_Output      ,ONLY: visu_WriteHDF5
@@ -137,14 +138,25 @@ DO iArg=1+skipArgs,nArgs
   IF (MeshFileMode) THEN
     ! Remove file extension
     iExt = INDEX(MeshFile,'.',BACK = .TRUE.) ! Position of file extension
-    FileString_DG=MeshFile(:iExt-1)
-    FileString_DG=TRIM(FileString_DG)//'_visu'
+    ! Prepend output directory
+    IF (TRIM(OutputDirectoy).NE.'') THEN
+      FileString_DG = TRIM(OutputDirectoy)//'/'//MeshFile(:iExt-1)
+    ELSE
+      FileString_DG =                            MeshFile(:iExt-1)
+    END IF ! TRIM(OutputDirectoy).NE.''
+    FileString_DG = TRIM(FileString_DG)//'_visu'
   ELSE
 #if FV_ENABLED
-    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
-    IF (.NOT.MeshFileMode) FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
+    IF (TRIM(OutputDirectoy).NE.'') THEN
+      FileString_DG =                        TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
+      IF (.NOT.MeshFileMode) FileString_FV = TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
+    ELSE
+      FileString_DG =                                                   TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
+      IF (.NOT.MeshFileMode) FileString_FV =                            TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
+    END IF ! TRIM(OutputDirectoy).NE.''
 #else
-    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+    IF (TRIM(OutputDirectoy).NE.'') &
+      FileString_DG =                        TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
 #endif
   END IF
 
@@ -192,15 +204,29 @@ DO iArg=1+skipArgs,nArgs
 
     IF (doSurfVisu) THEN
       ! Surface data
+      IF (TRIM(OutputDirectoy).NE.'') THEN
 #if FV_ENABLED
-      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
+        FileString_SurfDG = TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
 #else
-      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
+        FileString_SurfDG = TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
 #endif
+      ELSE
+#if FV_ENABLED
+        FileString_SurfDG =                            TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
+#else
+        FileString_SurfDG =                            TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
+#endif
+      END IF ! TRIM(OutputDirectoy).NE.''
+
       CALL WriteDataToVTK(nVarSurfVisuAll,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
         FileString_SurfDG,dim=PP_dim-1,DGFV=0,nValAtLastDimension=.TRUE.,HighOrder=HighOrder)
 #if FV_ENABLED
-      FileString_SurfFV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
+      IF (TRIM(OutputDirectoy).NE.'') THEN
+        FileString_SurfFV = TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
+      ELSE
+        FileString_SurfFV =                            TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
+      END IF ! TRIM(OutputDirectoy).NE.''
+
       CALL WriteDataToVTK(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
           FileString_SurfFV,dim=PP_dim-1,DGFV=1,nValAtLastDimension=.TRUE.,HighOrder=HighOrder)
 
@@ -224,30 +250,6 @@ DO iArg=1+skipArgs,nArgs
         PDE%VarNamePartVisu,PDE%VarNamePartCombine,PDE%VarNamePartCombineLen,PDE%nGlobalParts)
     END IF
 #endif
-!ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line
-
-  !IF (nProcessors.GT.1) &
-    !CALL CollectiveStop(__STAMP__,"1D csv output along lines only supported for single execution")
-
-  !strOutputFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_extract1D',OutputTime))
-
-  !OPEN(NEWUNIT = iounit, STATUS='REPLACE',FILE=TRIM(strOutputFile)//'_DG.csv')
-  !DO iElem=1,nElems_DG
-    !DO i=0,NVisu
-      !WRITE(iounit,*) CoordsVisu_DG(1,i,0,0,iElem), UVisu_DG(i,0,0,iElem,:)
-    !END DO
-  !END DO
-  !CLOSE(iounit) ! close the file
-
-!#if FV_ENABLED
-  !OPEN(NEWUNIT = iounit, STATUS='REPLACE',FILE=TRIM(strOutputFile)//'_FV.csv')
-  !DO iElem=1,nElems_FV
-    !DO i=0,NVisu_FV
-      !WRITE(iounit,*) CoordsVisu_FV(1,i,0,0,iElem), UVisu_FV(i,0,0,iElem,:)
-    !END DO
-  !END DO
-  !CLOSE(iounit) ! close the file
-!#endif
   END IF
 
   IF(HDF5Output) THEN

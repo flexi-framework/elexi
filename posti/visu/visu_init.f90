@@ -311,12 +311,12 @@ CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
 CALL prms%read_options(postifile)
 
 ! read output directory
-SELECT CASE(CountOption("OutputDirectoy"))
+SELECT CASE(CountOption("OutputDirectory"))
   CASE(0) ! Do nothing
   CASE(1)
-    OutputDirectoy = GETSTR("OutputDirectoy")
+    OutputDirectory = GETSTR("OutputDirectory")
   CASE DEFAULT
-    CALL CollectiveStop(__STAMP__,'OutputDirectoy is not a multiple option!')
+    CALL CollectiveStop(__STAMP__,'OutputDirectory is not a multiple option!')
 END SELECT
 
 ! Get number of variables to be visualized

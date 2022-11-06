@@ -174,7 +174,7 @@ CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies
 CALL prms%SetSection("posti")
 CALL prms%CreateStringOption( "MeshFile"        , "Custom mesh file")
-CALL prms%CreateStringOption( "OutputDirectoy"  , "Custom output directory")
+CALL prms%CreateStringOption( "OutputDirectory" , "Custom output directory")
 CALL prms%CreateStringOption( "VarName"         , "Names of variables, which should be visualized.", multiple=.TRUE.)
 CALL prms%CreateLogicalOption("noVisuVars"      , "If no VarNames are given, this flags supresses visu of standard variables",&
                                                   ".FALSE.")

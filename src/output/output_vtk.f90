@@ -286,7 +286,8 @@ END SUBROUTINE CreateConnectivity
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D point data to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension,HighOrder,PostiParallel)
+SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension,HighOrder,PostiParallel,&
+                          OutputDirectory)
 ! MODULES
 USE MOD_Globals
 USE MOD_Restart_Vars   ,ONLY: RestartTime
@@ -306,6 +307,7 @@ INTEGER,OPTIONAL,INTENT(IN)           :: DGFV                 !< flag indicating
 LOGICAL,OPTIONAL,INTENT(IN)           :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
 LOGICAL,OPTIONAL,INTENT(IN)           :: HighOrder            !< if TRUE, posti uses high-order element representation
 LOGICAL,OPTIONAL,INTENT(IN)           :: PostiParallel        !< if TRUE, posti runs parallel
+CHARACTER(LEN=*),OPTIONAL,INTENT(IN)  :: OutputDirectory      !< Custom output directory
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                               :: iVal,ivtk
@@ -360,6 +362,12 @@ IF (PRESENT(PostiParallel)) THEN
 ELSE
   PostiParallel_loc = .FALSE.
   FileString_loc=TRIM(FileString)//'.vtu'
+END IF
+
+! Prepend output directory
+IF (PRESENT(OutputDirectory)) THEN
+  IF (TRIM(OutputDirectory).NE.'') &
+  FileString_loc=TRIM(OutputDirectory)//'/'//TRIM(FileString_loc)
 END IF
 
 IF (dim.EQ.3) THEN

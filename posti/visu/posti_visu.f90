@@ -28,7 +28,6 @@ USE MOD_Commandline_Arguments
 USE MOD_ISO_VARYING_STRING
 USE MOD_MPI                   ,ONLY: InitMPI
 USE MOD_Output_Vars           ,ONLY: ProjectName,doPrintStatusLine
-USE MOD_ReadInTools           ,ONLY: GETSTR
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
 USE MOD_Visu                  ,ONLY: visu,FinalizeVisu
 USE MOD_Visu_HDF5_Output      ,ONLY: visu_WriteHDF5
@@ -138,25 +137,14 @@ DO iArg=1+skipArgs,nArgs
   IF (MeshFileMode) THEN
     ! Remove file extension
     iExt = INDEX(MeshFile,'.',BACK = .TRUE.) ! Position of file extension
-    ! Prepend output directory
-    IF (TRIM(OutputDirectoy).NE.'') THEN
-      FileString_DG = TRIM(OutputDirectoy)//'/'//MeshFile(:iExt-1)
-    ELSE
-      FileString_DG =                            MeshFile(:iExt-1)
-    END IF ! TRIM(OutputDirectoy).NE.''
+    FileString_DG = MeshFile(:iExt-1)
     FileString_DG = TRIM(FileString_DG)//'_visu'
   ELSE
 #if FV_ENABLED
-    IF (TRIM(OutputDirectoy).NE.'') THEN
-      FileString_DG =                        TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
-      IF (.NOT.MeshFileMode) FileString_FV = TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
-    ELSE
-      FileString_DG =                                                   TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
-      IF (.NOT.MeshFileMode) FileString_FV =                            TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
-    END IF ! TRIM(OutputDirectoy).NE.''
+    FileString_DG =                        TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
+    IF (.NOT.MeshFileMode) FileString_FV = TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
 #else
-    IF (TRIM(OutputDirectoy).NE.'') &
-      FileString_DG =                        TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+    FileString_DG =                        TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
 #endif
   END IF
 
@@ -204,28 +192,16 @@ DO iArg=1+skipArgs,nArgs
 
     IF (doSurfVisu) THEN
       ! Surface data
-      IF (TRIM(OutputDirectoy).NE.'') THEN
 #if FV_ENABLED
-        FileString_SurfDG = TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
+      FileString_SurfDG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
 #else
-        FileString_SurfDG = TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
+      FileString_SurfDG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
 #endif
-      ELSE
-#if FV_ENABLED
-        FileString_SurfDG =                            TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
-#else
-        FileString_SurfDG =                            TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
-#endif
-      END IF ! TRIM(OutputDirectoy).NE.''
 
       CALL WriteDataToVTK(nVarSurfVisuAll,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
         FileString_SurfDG,dim=PP_dim-1,DGFV=0,nValAtLastDimension=.TRUE.,HighOrder=HighOrder)
 #if FV_ENABLED
-      IF (TRIM(OutputDirectoy).NE.'') THEN
-        FileString_SurfFV = TRIM(OutputDirectoy)//'/'//TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
-      ELSE
-        FileString_SurfFV =                            TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
-      END IF ! TRIM(OutputDirectoy).NE.''
+      FileString_SurfFV = TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
 
       CALL WriteDataToVTK(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
           FileString_SurfFV,dim=PP_dim-1,DGFV=1,nValAtLastDimension=.TRUE.,HighOrder=HighOrder)

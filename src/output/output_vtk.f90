@@ -59,13 +59,13 @@ END INTERFACE
 INTERFACE WriteDataToVTKPart
   MODULE PROCEDURE WriteDataToVTKPart
 END INTERFACE
-#endif
+#endif /*USE_PARTICLES*/
 
 #if USE_MPI
 INTERFACE WriteParallelVTK
   MODULE PROCEDURE WriteParallelVTK
 END INTERFACE
-#endif
+#endif /*USE_MPI*/
 
 PUBLIC::WriteDataToVTK
 PUBLIC::WriteVTKMultiBlockDataSet
@@ -75,10 +75,10 @@ PUBLIC::WriteVarnamesToVTK_array
 #if USE_PARTICLES
 PUBLIC::WriteDataToVTKPart
 PUBLIC::WritePartDataToVTK_array
-#endif
+#endif /*USE_PARTICLES*/
 #if USE_MPI
 PUBLIC::WriteParallelVTK
-#endif
+#endif /*USE_MPI*/
 PUBLIC::CARRAY
 !===================================================================================================================================
 
@@ -385,7 +385,9 @@ ELSE
   END IF
 END IF ! PRESENT(OutputDirectory)
 
+#if USE_MPI
 IF (PostiParallel_loc) CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
 
 IF (dim.EQ.3) THEN
   NVisu_k = NVisu
@@ -409,7 +411,7 @@ SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO') " WRITE ",dim,"D DATA TO VTX XML BIN
   CALL MPI_GATHER(nElems,1,MPI_INTEGER,nElems_glob,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 #else
   nElems_glob(0) = nElems
-#endif
+#endif /*USE_MPI*/
 IF(.NOT.PostiParallel_loc)THEN
   nTotalElems = SUM(nElems_glob)
 ELSE
@@ -503,7 +505,7 @@ IF(.NOT.PostiParallel_loc)THEN
     ALLOCATE(buf(   0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
   END IF
 END IF
-#endif
+#endif /*USE_MPI*/
 
 ! Write binary raw data into append section
 ! Solution data
@@ -553,7 +555,7 @@ IF(.NOT.PostiParallel_loc)THEN
     ALLOCATE(buf2(3,0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
   END IF
 END IF
-#endif
+#endif /*USE_MPI*/
 
 ! Coordinates
 IF(.NOT.PostiParallel_loc)THEN
@@ -585,7 +587,7 @@ END IF
 IF(MPIRoot.AND..NOT.PostiParallel_loc)THEN
   SDEALLOCATE(buf2)
 END IF
-#endif
+#endif /*USE_MPI*/
 
 ! Connectivity and footer
 IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
@@ -1051,7 +1053,7 @@ INTEGER            :: nParts_glob(1:nProcessors)
 INTEGER            :: iProc,nMaxParts
 INTEGER            :: nParts_proc
 REAL,ALLOCATABLE   :: buf(:), buf2(:,:), buf3(:,:)
-#endif
+#endif /*USE_MPI*/
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" WRITE PARTICLE/IMPACT DATA TO VTX XML BINARY (VTU) FILE..."
 
@@ -1060,7 +1062,7 @@ SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" WRITE PARTICLE/IMPACT DATA TO VTX XML BI
 CALL MPI_ALLGATHER(nParts,1,MPI_INTEGER,nParts_glob(:),1,MPI_INTEGER,MPI_COMM_FLEXI,iError)
 #else
 nParts_glob(1) = nParts
-#endif /* USE_MPI */
+#endif /*USE_MPI*/
 
 IF(nParts.LT.1)THEN
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
@@ -1161,7 +1163,7 @@ IF(MPIRoot)THEN
 END IF
 ALLOCATE(buf2(nParts_glob(myRank+1),nVal))
 buf2=TRANSPOSE(Value)
-#endif
+#endif /*USE_MPI*/
 
 ! Write binary raw data into append section
 ! Point data
@@ -1209,7 +1211,7 @@ IF(MPIRoot)THEN
   nMaxParts=MAXVAL(nParts_glob)
   ALLOCATE(buf2(3,nMaxParts))
 END IF
-#endif
+#endif /*USE_MPI*/
 
 ! Coordinates
 IF(MPIRoot)THEN
@@ -1235,7 +1237,7 @@ END IF !MPIRoot
 IF(MPIRoot)THEN
   SDEALLOCATE(buf2)
 END IF
-#endif
+#endif /*USE_MPI*/
 
 IF(MPIRoot)THEN
   ! Connectivity
@@ -1261,6 +1263,6 @@ IF(MPIRoot)THEN
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END IF
 END SUBROUTINE WriteDataToVTKPart
-#endif
+#endif /*USE_PARTICLES*/
 
 END MODULE MOD_VTK

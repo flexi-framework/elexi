@@ -207,6 +207,8 @@ IF (nSpecies.GT.0) THEN
     DO iProc = 0,nProcessors-1
       ElemPerProc(iProc) = offsetElemMPIOld(iProc+1) - offsetElemMPIOld(iProc)
     END DO
+    ! Sanity check
+    IF(.NOT.ALLOCATED(PartInt)) CALL abort(__STAMP__,'PartInt is not allocated') ! Missing call to FillParticleData()
     CALL MPI_GATHERV(PartInt,nElemsOld,MPI_DOUBLE_PRECISION,PartIntGlob,ElemPerProc,offsetElemMPIOld(0:nProcessors-1),MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
     PartIntExists = .TRUE.
   ELSE

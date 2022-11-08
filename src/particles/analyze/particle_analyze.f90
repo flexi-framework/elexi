@@ -477,6 +477,8 @@ SDEALLOCATE(nPartInTmp)
 SDEALLOCATE(PartEkinInTmp)
 ! RecordPart
 SDEALLOCATE(RPP_Plane)
+SDEALLOCATE(RPP_Records)
+SDEALLOCATE(RPP_Records_Glob)
 
 ParticleAnalyzeInitIsDone = .FALSE.
 

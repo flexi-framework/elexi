@@ -55,5 +55,10 @@ TYPE tPPlane                                                           !< data t
 END TYPE tPPlane
 TYPE(tPPlane),ALLOCATABLE     :: RPP_Plane(:)
 INTEGER                       :: RPP_nVarNames = 8
+INTEGER,ALLOCATABLE           :: RPP_Records(:)
+INTEGER,ALLOCATABLE           :: RPP_Records_Glob(:)
+#if USE_MPI
+INTEGER                       :: RPP_MPI_Request
+#endif /*USE_MPI*/
 
 END MODULE MOD_Particle_Analyze_Vars

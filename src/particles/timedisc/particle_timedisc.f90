@@ -394,7 +394,7 @@ SUBROUTINE Particle_TimeStepByLSERK(t,dt)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Part_Emission,           ONLY: ParticleInserting
-USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,TrackingParticlePath
+USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,ParticleRecordPath,TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,PDM,PartSpecies,Species
@@ -450,7 +450,7 @@ END DO
 ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath
 
-IF (RecordPart.GT.0) CALL ParticleRecord(t)
+IF (RecordPart.GT.0) CALL ParticleRecordPath()
 
 #if USE_LOADBALANCE
 CALL LBSplitTime(LB_PUSH,tLBStart)
@@ -471,6 +471,8 @@ CALL LBSplitTime(LB_TRACK,tLBStart)
 ! emitt particles inserted in current time step
 CALL ParticleInserting()
 
+IF (RecordPart.GT.0) CALL ParticleRecord(t)
+
 ! Suppress compiler warning
 NO_OP(dt)
 
@@ -489,7 +491,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Vector
 USE MOD_Part_Emission,           ONLY: ParticleInserting
-USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,TrackingParticlePath
+USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,ParticleRecordPath,TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
 USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
@@ -577,7 +579,7 @@ END DO
 ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath()
 
-IF (RecordPart.GT.0) CALL ParticleRecord(t)
+IF (RecordPart.GT.0) CALL ParticleRecordPath()
 
 #if USE_LOADBALANCE
 CALL LBSplitTime(LB_PUSH,tLBStart)
@@ -597,6 +599,8 @@ CALL LBSplitTime(LB_TRACK,tLBStart)
 #endif /*USE_LOADBALANCE*/
 ! emitt particles inserted in current time step
 CALL ParticleInserting()
+
+IF (RecordPart.GT.0) CALL ParticleRecord(t)
 
 END SUBROUTINE Particle_TimeStepByLSERK_RK
 

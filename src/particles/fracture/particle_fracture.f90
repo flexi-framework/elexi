@@ -107,14 +107,14 @@ END IF
 #if USE_MPI
 ! Start communicating matched particles. This routine is finished in particle_emission.f90
 CALL MPI_IALLREDUCE( Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles &
-                , Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   &
-                , 1                                                     &
-                , MPI_INTEGER                                           &
-                , MPI_SUM                                               &
-!                , 0                                                     &
-                , PartMPI%InitGroup(InitGroup)%COMM                     &
-                , PartMPI%InitGroup(InitGroup)%Request                  &
-                , IERROR)
+                   , Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   &
+                   , 1                                                     &
+                   , MPI_INTEGER                                           &
+                   , MPI_SUM                                               &
+!                   , 0                                                     &
+                   , PartMPI%InitGroup(InitGroup)%COMM                     &
+                   , PartMPI%InitGroup(InitGroup)%Request                  &
+                   , IERROR)
 
 IF (doPartIndex) THEN
   Species(FractNbr)%Init(iInit)%nPartsPerProc=0

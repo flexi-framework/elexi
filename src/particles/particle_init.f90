@@ -692,6 +692,8 @@ SUBROUTINE InitializeVariables()
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars
+USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart, RPP_nVarNames
+USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_Records,RPP_Records_Glob
 USE MOD_Particle_Boundary_Sampling ,ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking ,ONLY: InitParticleBoundaryTracking
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
@@ -701,11 +703,11 @@ USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
 USE MOD_ReadInTools
 #if USE_MPI
+USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MPI_Request
 USE MOD_Particle_MPI_Emission      ,ONLY: InitEmissionComm
 USE MOD_Particle_MPI_Halo          ,ONLY: IdentifyPartExchangeProcs
 USE MOD_Particle_MPI_Vars          ,ONLY: PartMPI
 #endif /*USE_MPI*/
-USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPart, RPP_nVarNames
 #if USE_EXTEND_RHS && ANALYZE_RHS
 USE MOD_Output_Vars                ,ONLY: ProjectName
 USE MOD_Output                     ,ONLY: InitOutputToFile
@@ -762,7 +764,13 @@ IF (RecordPart.GT.0) THEN
   RPP_maxMemory     = GETINT('Part-RPMemory')       ! Max buffer (100MB)
   RPP_MaxBufferSize = RPP_MaxMemory*131072/6        != size in bytes/(real*RPP_maxMemory)
   ! Readin record planes
-  ALLOCATE(RPP_Plane(RecordPart))
+  ALLOCATE(RPP_Plane(       RecordPart))
+  ALLOCATE(RPP_Records(     RecordPart))
+  ALLOCATE(RPP_Records_Glob(RecordPart))
+  RPP_Records_Glob = 0
+#if USE_MPI
+  RPP_MPI_Request = MPI_REQUEST_NULL
+#endif /*USE_MPI*/
   DO jP = 1,RecordPart
     WRITE(UNIT=tmpStr,FMT='(I2)') jP
     ALLOCATE(RPP_Plane(jP)%RPP_Data(RPP_nVarNames,RPP_MaxBufferSize))

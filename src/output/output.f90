@@ -376,7 +376,7 @@ IF(MPIRoot)THEN
   percent_ETA  = MAX(percent_ETA,percent_iter)
   END ASSOCIATE
 
-  CALL CPU_TIME(time_remaining)
+  GETTIME(time_remaining)
   IF (percent_ETA.GT.0.0) time_remaining = time_remaining/percent_ETA - time_remaining
   percent = percent*100.
   secs = MOD(time_remaining,60.)

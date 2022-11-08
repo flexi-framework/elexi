@@ -49,7 +49,7 @@ USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
 USE MOD_Mesh_Vars              ,ONLY: nElems
 #if FV_ENABLED == 1
-USE MOD_FV                     ,ONLY: FV_ProlongFVElemsToFace
+USE MOD_FV_Switching           ,ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars                ,ONLY: FV_Elems
 USE MOD_Indicator_Vars         ,ONLY: IndValue
 #elif FV_ENABLED == 2

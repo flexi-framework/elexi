@@ -62,6 +62,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: t,tStart,tEnd,dt,tAnalyze,Timestep
 USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter,nCalcTimestep
+USE MOD_TimeDisc_Vars       ,ONLY: time_start
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
 USE MOD_Indicator           ,ONLY: CalcIndicator
@@ -197,6 +198,7 @@ CALL PPLimiter_Info(1_8)
 SWRITE(UNIT_stdOut,'(A)') ' CALCULATION RUNNING...'
 
 IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
+CALL CPU_TIME(time_start)
 
 ! #if USE_PARTICLES
 ! ! Skip the call, otherwise particles get incremented twice

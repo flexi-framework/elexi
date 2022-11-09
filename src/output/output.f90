@@ -254,6 +254,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
 USE MOD_Restart_Vars  ,ONLY: DoRestart,RestartTime
+USE MOD_TimeDisc_Vars ,ONLY: time_start
 #if (FV_ENABLED == 1) || PP_LIMITER
 USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
 #endif
@@ -376,7 +377,8 @@ IF(MPIRoot)THEN
   percent_ETA  = MAX(percent_ETA,percent_iter)
   END ASSOCIATE
 
-  GETTIME(time_remaining)
+  CALL CPU_TIME(time_remaining)
+  time_remaining = time_remaining - time_start
   IF (percent_ETA.GT.0.0) time_remaining = time_remaining/percent_ETA - time_remaining
   percent = percent*100.
   secs = MOD(time_remaining,60.)

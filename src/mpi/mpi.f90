@@ -151,7 +151,6 @@ MPILocalRoot=.TRUE.
 END SUBROUTINE InitMPI
 
 
-
 #if USE_MPI
 !==================================================================================================================================
 !> Initialize derived mpi variables used for communication

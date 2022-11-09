@@ -213,7 +213,7 @@ LOGICAL                        :: RPP_Output
 INTEGER                        :: iRecord,iSpecies
 CHARACTER(LEN=200)             :: FileName_loc
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
-INTEGER                        :: locRPP,offsetRPP!,RPP_glob
+INTEGER                        :: locRPP,offsetRPP,RPP_glob
 REAL                           :: SphericityIC(nSpecies)
 #if USE_EXTEND_RHS
 INTEGER                        :: ForceIC(6,nSpecies)
@@ -246,7 +246,7 @@ DO iRecord = 1,RecordPart
 
     RPP_Output = .TRUE.
     locRPP     = RPP_Plane(iRecord)%RPP_Records
-    ! RPP_glob  = 0
+    RPP_glob   = RPP_Records_Glob(iRecord)
 
     !>> Sum up particles from the other procs
 #if USE_MPI
@@ -317,7 +317,7 @@ DO iRecord = 1,RecordPart
     CALL DistributedWriteArray(FileName_loc                                       ,&
                                DataSetName  = 'RecordData'                        ,&
                                rank         = 2                                   ,&
-                               nValGlobal   = (/RPP_nVarNames ,RPP_Records_Glob/) ,&
+                               nValGlobal   = (/RPP_nVarNames ,RPP_Glob        /) ,&
                                nVal         = (/RPP_nVarNames ,locRPP          /) ,&
                                offset       = (/0             ,offsetRPP       /) ,&
                                collective   = .FALSE.                             ,&
@@ -329,7 +329,7 @@ DO iRecord = 1,RecordPart
     CALL OpenDataFile(FileName_loc,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
     CALL WriteArray(           DataSetName  = 'RecordData'                        ,&
                                rank         = 2                                   ,&
-                               nValGlobal   = (/RPP_nVarNames ,RPP_Records_Glob/) ,&
+                               nValGlobal   = (/RPP_nVarNames ,RPP_Glob        /) ,&
                                nVal         = (/RPP_nVarNames ,locRPP          /) ,&
                                offset       = (/0             ,offsetRPP       /) ,&
                                collective   = .TRUE.                              ,&

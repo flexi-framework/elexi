@@ -54,7 +54,7 @@ TYPE tPPlane                                                           !< data t
   INTEGER                     :: RPP_Records
 END TYPE tPPlane
 TYPE(tPPlane),ALLOCATABLE     :: RPP_Plane(:)
-INTEGER                       :: RPP_nVarNames = 8
+INTEGER                       :: RPP_nVarNames = 9
 INTEGER,ALLOCATABLE           :: RPP_Records(:)
 INTEGER,ALLOCATABLE           :: RPP_Records_Glob(:)
 #if USE_MPI

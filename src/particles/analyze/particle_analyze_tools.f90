@@ -116,6 +116,7 @@ USE MOD_HDF5_Output             ,ONLY: WriteArray
 USE MOD_Output_Vars             ,ONLY: WriteStateFiles
 USE MOD_Particle_Vars           ,ONLY: PartState,PDM,LastPartPos,PartSpecies,PartIndex,doPartIndex
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_Plane,RecordPart,RPP_Records,RPP_Records_Glob
+USE MOD_TimeDisc_Vars           ,ONLY: t,dt,currentStage,RKC,nRKStages
 #if USE_MPI
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_MPI_Request
 #endif /*USE_MPI*/
@@ -126,6 +127,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iPart,iRecord
+REAL                           :: t_loc
 ! RecordPlane
 REAL                           :: PartTrajectory(3),lengthPartTrajectory,Inter1(3)
 REAL                           :: locOrigin(1:3),locNormVec(1:3),locDistance
@@ -165,17 +167,33 @@ DO iRecord = 1,RecordPart
       ! Calculate intersection point
       Inter1 = LastPartPos(1:3,iPart) + alphaNorm*PartTrajectory*lengthPartTrajectory
 
+      ! Calculate exact impact time
+      IF (CurrentStage.EQ.1) THEN
+        t_loc = t                                                       & ! current physical time
+              +  RKc(2)                                *dt*alphaNorm      ! relative time till intersection
+      ELSE IF (CurrentStage.GT.1 .AND. currentStage.LT.nRKStages) THEN
+        t_loc = t                                                       & ! current physical time
+              +  RKc(CurrentStage)                     *dt              & ! current stage time
+              + (RKc(CurrentStage+1)-RKc(currentStage))*dt*alphaNorm      ! relative time till intersection
+      ELSE ! nRKStages
+        t_loc = t                                                       & ! current physical time
+              +  RKc(CurrentStage)                     *dt              & ! current stage time
+              + (1.                 -RKc(currentStage))*dt*alphaNorm      ! relative time till intersection
+      END IF
+
       RPP_Plane(iRecord)%RPP_Records = RPP_Plane(iRecord)%RPP_Records+1
       ! Part intersection point
       RPP_Plane(iRecord)%RPP_Data(1:3,RPP_Plane(iRecord)%RPP_Records) = Inter1
       ! Part velocity
       RPP_Plane(iRecord)%RPP_Data(4:6,RPP_Plane(iRecord)%RPP_Records) = PartState(4:6,iPart)
       ! dp
-      RPP_Plane(iRecord)%RPP_Data(7,RPP_Plane(iRecord)%RPP_Records)   = PartState(PART_DIAM,iPart)
+      RPP_Plane(iRecord)%RPP_Data(7  ,RPP_Plane(iRecord)%RPP_Records) = PartState(PART_DIAM,iPart)
       ! Species
-      RPP_Plane(iRecord)%RPP_Data(8,RPP_Plane(iRecord)%RPP_Records)   = PartSpecies(iPart)
+      RPP_Plane(iRecord)%RPP_Data(8  ,RPP_Plane(iRecord)%RPP_Records) = PartSpecies(iPart)
+      ! Time
+      RPP_Plane(iRecord)%RPP_Data(9  ,RPP_Plane(iRecord)%RPP_Records) = t_loc
       ! Index
-      IF(doPartIndex) RPP_Plane(iRecord)%RPP_Data(9,RPP_Plane(iRecord)%RPP_Records)   = PartIndex(iPart)
+      IF(doPartIndex) RPP_Plane(iRecord)%RPP_Data(10,RPP_Plane(iRecord)%RPP_Records) = PartIndex(iPart)
     END IF
   END DO
   RPP_Records(iRecord) = RPP_Plane(iRecord)%RPP_Records
@@ -281,7 +299,8 @@ DO iRecord = 1,RecordPart
     StrVarNames(6) ='VelocityZ'
     StrVarNames(7) ='PartDiam'
     StrVarNames(8) ='Species'
-    IF(doPartIndex) StrVarNames(9) ='Index'
+    StrVarNames(9) ='Time'
+    IF(doPartIndex) StrVarNames(10) ='Index'
 
     ForceIC = 0
 

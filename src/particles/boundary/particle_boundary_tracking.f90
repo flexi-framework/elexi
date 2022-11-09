@@ -233,7 +233,7 @@ USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack,doPart
 USE MOD_Particle_Boundary_Vars,  ONLY: PartStateBoundary,PartStateBoundaryVecLength,ImpactDataSize
 USE MOD_Particle_Memory,         ONLY: Allocate_Safe
 USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos,PartIndex,doPartIndex,doWritePartDiam
-USE MOD_TimeDisc_Vars,           ONLY: t,CurrentStage,dt,RKc
+USE MOD_TimeDisc_Vars,           ONLY: t,CurrentStage,dt,RKc,nRKStages
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -294,14 +294,16 @@ ASSOCIATE( iMax => PartStateBoundaryVecLength )
 
   ! Calculate exact impact time
   IF (CurrentStage.EQ.1) THEN
-      t_loc = t                                                         ! current physical time
-  ELSEIF (CurrentStage.EQ.2) THEN
-      t_loc = t                                                       & ! current physical time
-            +  RKc(CurrentStage)                     *dt*alpha          ! current stage time
-  ELSE
-      t_loc = t                                                       & ! current physical time
-            +  RKc(CurrentStage-1)                   *dt              & ! current stage time
-            + (RKc(CurrentStage)-RKc(currentStage-1))*dt*alpha
+    t_loc = t                                                       & ! current physical time
+          +  RKc(2)                                *dt*alpha          ! relative time till intersection
+  ELSE IF (CurrentStage.GT.1 .AND. currentStage.LT.nRKStages) THEN
+    t_loc = t                                                       & ! current physical time
+          +  RKc(CurrentStage)                     *dt              & ! current stage time
+          + (RKc(CurrentStage+1)-RKc(currentStage))*dt*alpha          ! relative time till intersection
+  ELSE ! nRKStages
+    t_loc = t                                                       & ! current physical time
+          +  RKc(CurrentStage)                     *dt              & ! current stage time
+          + (1.                 -RKc(currentStage))*dt*alpha          ! relative time till intersection
   END IF
 
   ! Record individual impact

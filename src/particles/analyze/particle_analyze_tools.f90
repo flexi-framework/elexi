@@ -129,7 +129,7 @@ INTEGER                        :: iPart,iRecord
 ! RecordPlane
 REAL                           :: PartTrajectory(3),lengthPartTrajectory,Inter1(3)
 REAL                           :: locOrigin(1:3),locNormVec(1:3),locDistance
-REAL                           :: coeffA,locPlaneDistance(3),alphaNorm
+REAL                           :: coeffA,locPlaneDistance,alpha,alphaNorm
 !===================================================================================================================================
 IF (.NOT.WriteStateFiles) RETURN
 
@@ -141,6 +141,7 @@ DO iRecord = 1,RecordPart
     ! Compute particle trajectory
     PartTrajectory       = PartState(1:3,iPart) - LastPartPos(1:3,iPart)
     lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
+    PartTrajectory       = PartTrajectory/lengthPartTrajectory
 
     ! Compute planar rect intersection
     locOrigin   = RPP_Plane(iRecord)%pos
@@ -151,13 +152,18 @@ DO iRecord = 1,RecordPart
     ! Particle moving parallel to plane
     IF (ALMOSTZERO(coeffA)) CYCLE
 
-    ! Calculate normalized distance to intersection
-    locPlaneDistance = LastPartPos(1:3,iPart) - locOrigin
-    alphaNorm        = -DOT_PRODUCT(locPlaneDistance,locNormVec) / coeffA
+    ! Difference between SideDistance (distance from origin to side) and the dot product is the distance of the particle to the side
+    locPlaneDistance = locDistance-DOT_PRODUCT(LastPartPos(1:3,iPart),locNormVec)
+
+    ! Length of particle vector until side intersection in physical space
+    alpha     = locPlaneDistance/coeffA
+
+    ! Calculate normalized alpha, i.e. length of particle vector until intersection in reference element
+    alphaNorm = alpha/lengthPartTrajectory
 
     IF (alphaNorm.GE.0 .AND. alphaNorm.LE.1.) THEN
       ! Calculate intersection point
-      Inter1 = locPlaneDistance + alphaNorm * PartTrajectory + locOrigin
+      Inter1 = LastPartPos(1:3,iPart) + alphaNorm*PartTrajectory*lengthPartTrajectory
 
       RPP_Plane(iRecord)%RPP_Records = RPP_Plane(iRecord)%RPP_Records+1
       ! Part intersection point

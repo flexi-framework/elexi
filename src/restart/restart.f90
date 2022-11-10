@@ -270,7 +270,8 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   ! Read in time from restart file
   CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
   ! Option to set the calculation time to 0 even tho performing a restart
-  ResetTime = GETLOGICAL('ResetTime','.FALSE.')
+  ResetTime = GETLOGICAL('ResetTime')
+  IF (postiMode) ResetTime = .FALSE.
 
   ! Ensure this is not the same run starting over with ResetTime=T
   IF (ResetTime) THEN
@@ -289,7 +290,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   END IF
 
 #if EQNSYSNR == 3
-  MuTilda  =GETREAL   ('RestartMuTilda','0.')
+  MuTilda  =GETREAL   ('RestartMuTilda')
 #endif
   IF(ResetTime) RestartTime=0.
   CALL CloseDataFile()

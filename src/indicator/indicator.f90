@@ -250,13 +250,14 @@ REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 
 ! if time is before IndStartTime return high Indicator value (FV)
-#if FV_ENABLED == 1
 IF (t.LT.IndStartTime) THEN
+#if FV_ENABLED == 1
   IndValue = HUGE(1.)
+#elif FV_ENABLED == 2
   FV_alpha = FV_alpha_max
+#endif /*FV_ENABLED*/
   RETURN
 END IF
-#endif /*FV_ENABLED == 1*/
 
 SELECT CASE (IndicatorType)
 CASE(INDTYPE_DG) ! no indicator, just a high value to trigger filtering
@@ -320,9 +321,7 @@ CASE DEFAULT ! unknown Indicator Type
 END SELECT
 
 ! obtain indicator value for elements that contain domain boundaries
-#if FV_BLENDING == 1
 CALL IndFVBoundaries(IndValue)
-#endif /*!FV_BLENDING == 1*/
 
 END SUBROUTINE CalcIndicator
 

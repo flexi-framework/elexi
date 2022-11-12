@@ -39,10 +39,7 @@ debug=.TRUE.
 CALL InitMPI()
 ! Check for command line arguments to generate the reference solution
 nArgs=COMMAND_ARGUMENT_COUNT()
-IF (nArgs.GT.0) THEN
-  WRITE(*,*) 'ERROR - Unknown command line argument.'
-  STOP -1
-END IF
+IF (nArgs.GT.0) CALL abort(__STAMP__,'ERROR - Unknown command line argument.')
 
 ! Invert A
 A(1,1) = 16.0
@@ -97,7 +94,7 @@ END IF ! debug
 #if USE_MPI
 ! we also have to finalize MPI itself here
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF(iError.NE.0) CALL abort(__STAMP__,'MPI finalize error')
 #endif
 
 END PROGRAM ReadInToolsUnitTest

@@ -59,10 +59,7 @@ LOGICAL :: logArrayOpt_mult_A(2)
 CALL InitMPI()
 ! Check for command line arguments to generate the reference solution
 nArgs=COMMAND_ARGUMENT_COUNT()
-IF (nArgs.GT.0) THEN
-  WRITE(*,*) 'ERROR - Unknown command line argument.'
-  STOP -1
-END IF
+IF (nArgs.GT.0) CALL abort(__STAMP__,'ERROR - Unknown command line argument.')
 
 CALL prms%SetSection("UnitTest")
 CALL prms%CreateIntOption('intOpt'        , "Description IntOpt")
@@ -188,7 +185,7 @@ CALL MPI_BARRIER  (MPI_COMM_FLEXI,IERROR)
 CALL MPI_COMM_FREE(MPI_COMM_FLEXI,IERROR)
 ! we also have to finalize MPI itself here
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF(iError.NE.0) CALL abort(__STAMP__,'MPI finalize error')
 #endif
 
 END PROGRAM ReadInToolsUnitTest

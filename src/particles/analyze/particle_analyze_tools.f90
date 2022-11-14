@@ -313,8 +313,9 @@ DO iRecord = 1,RecordPart
       GETTIME(startT)
 
       CALL OpenDataFile(FileName_loc,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
-      CALL WriteAttribute(File_ID,'VarNamesPart',RPP_nVarNames,StrArray=StrVarNames)
-      CALL WriteAttribute(File_ID,'nSpecies',1,IntScalar=nSpecies)
+      CALL WriteAttribute(File_ID,'File_Type'   ,1            ,StrScalar=(/CHARACTER(LEN=255)::'RecordPlane'/))
+      CALL WriteAttribute(File_ID,'VarNamesPart',RPP_nVarNames,StrArray =StrVarNames)
+      CALL WriteAttribute(File_ID,'nSpecies'    ,1            ,IntScalar=nSpecies)
       DO iSpecies=1,nSpecies
         SphericityIC(iSpecies) = Species(iSpecies)%SphericityIC
         IF(Species(iSpecies)%RHSMethod .NE. RHS_TRACER) ForceIC(1,iSpecies)    = 1

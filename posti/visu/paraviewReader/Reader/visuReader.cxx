@@ -357,7 +357,11 @@ int visuReader::RequestData(
    for (int i = 0; i< nVars; ++i)
    {
       const char* name = VarDataArraySelection->GetArrayName(i);
-      VarNames_selected[i] = VarDataArraySelection->ArrayIsEnabled(name);
+      if ((name != NULL) && (name[0] != '\0')) {
+        VarNames_selected[i] = VarDataArraySelection->ArrayIsEnabled(name);
+      } else {
+        VarNames_selected[i] = 0;
+      }
    }
 
    int nBCs = BCDataArraySelection->GetNumberOfArrays();
@@ -365,7 +369,11 @@ int visuReader::RequestData(
    for (int i = 0; i< nBCs; ++i)
    {
       const char* name = BCDataArraySelection->GetArrayName(i);
-      BCNames_selected[i] = BCDataArraySelection->ArrayIsEnabled(name);
+      if ((name != NULL) && (name[0] != '\0')) {
+        BCNames_selected[i] = BCDataArraySelection->ArrayIsEnabled(name);
+      } else {
+        BCNames_selected[i] = 0;
+      }
    }
 
 #if USE_PARTICLES
@@ -374,7 +382,11 @@ int visuReader::RequestData(
    for (int i = 0; i< nParts; ++i)
    {
       const char* name = VarParticleDataArraySelection->GetArrayName(i);
-      PartNames_selected[i] = VarParticleDataArraySelection->ArrayIsEnabled(name);
+      if ((name != NULL) && (name[0] != '\0')) {
+        PartNames_selected[i] = VarParticleDataArraySelection->ArrayIsEnabled(name);
+      } else {
+        PartNames_selected[i] = 0;
+      }
    }
 #endif
 

@@ -115,7 +115,7 @@ ASSOCIATE (&
         counts_recv  => (MPInElemRecv     ) ,&
         disp_recv    => (MPIoffsetElemRecv))
   ! Communicate PartInt over MPI
-  CALL MPI_ALLTOALLV(FV_alpha,counts_send,disp_send,MPI_INTEGER,FV_alphaTmp,counts_recv,disp_recv,MPI_INTEGER,MPI_COMM_FLEXI,iError)
+  CALL MPI_ALLTOALLV(FV_alpha,counts_send,disp_send,MPI_DOUBLE_PRECISION,FV_alphaTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
 END ASSOCIATE
 CALL MOVE_ALLOC(FV_alphaTmp,FV_alpha)
 #endif /*FV_ENABLED*/

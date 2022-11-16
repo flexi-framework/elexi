@@ -951,11 +951,12 @@ bIter = 0
 ALLOCATE(Fbdt(1:N_Basset+1,1:PDM%maxParticleNumber))
 Fbdt = 0.
 ! Window kernel
-ALLOCATE(FbCoeff(1:N_Basset))
+ALLOCATE(FbCoeff(1:2*N_Basset-1))
 DO k=1,N_Basset-1
   FbCoeff(k) = ((k+s43)/((k+1)*SQRT(REAL(k+1))+(k+s32)*SQRT(REAL(k)))+(k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k))))
+  FbCoeff(N_Basset+k-1) = (k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k)))
 END DO
-FbCoeff(N_Basset) = (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
+!FbCoeff(N_Basset) = (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
 ! Exponential kernel
 FbCoeffm = 10
 ALLOCATE(Fbi(1:3,1:FbCoeffm,1:PDM%maxParticleNumber))

@@ -384,7 +384,7 @@ USE MOD_Output,                 ONLY: OutputToFile
 USE MOD_PreProc,                ONLY: PP_pi
 USE MOD_Viscosity
 #if USE_BASSETFORCE
-USE MOD_Equation_Vars,          ONLY: s43
+USE MOD_Equation_Vars,          ONLY: s43,s23
 USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter,Fbi,FbCoeff,FbCoeffa,FbCoefft,FbCoeffm,Fbdt
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
 #endif /* USE_BASSETFORCE */
@@ -422,8 +422,9 @@ REAL                     :: DuDt(1:3)                   ! viscous and pressure f
 REAL,PARAMETER           :: s32=3./2.
 INTEGER                  :: k,kIndex,nIndex
 REAL                     :: dufdt(1:3)                  ! partial derivative of the fluid velocity
+REAL                     :: dtk(0:N_Basset+1)
 ! Convergence1
-! REAL                     :: Sb,Cb
+REAL                     :: Sb,Cb
 #endif /* USE_BASSETFORCE */
 #if PP_nVarPartRHS == 6
 REAL                     :: Rep                         ! particle Reynolds number
@@ -578,6 +579,12 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
    Fbdt(nIndex,PartID) = dt
   END IF
 
+  ! save previous time steps dtk[j] = np.where(Ntmp==Nsteps,np.sum(dt[j-Ntmp:j]),np.sum(dt[:j]))
+  dtk(0) = 0.
+  DO k=1,nIndex
+    dtk(k) = SUM(Fbdt(1:k,PartID))
+  END DO
+
   ! Scaling factor
   prefactor =9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
             * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
@@ -594,27 +601,38 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   ! NOTE: convergence2
   ! durdt(kIndex-2:kIndex,PartID) = t**2
 
-  Fbm = s43 * durdt(kIndex-2:kIndex,PartID) * SQRT(Fbdt(nIndex,PartID)) + durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID) *&
-  FbCoeff(N_Basset) * SQRT(Fbdt(1,PartID))
-  DO k=1,nIndex-2
-    Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * FbCoeff(k) * SQRT(Fbdt(nIndex-k,PartID))
-  END DO
-  Fbm(1:3) = prefactor * Fbm(1:3)
-
-  IF (biter(PartID) .GT. N_Basset+1) THEN
-    DO k=1,FbCoeffm
-      ! F_i-di(t) = 2 c_B sqrt(e t) exp(-t_win/(2 FbCoefft)) (g_n...)
-      Fdi(1:3,k) = 2*SQRT(EXP(1.)*FbCoefft(k))*EXP(-SUM(Fbdt(1:nIndex,PartID))/(2*FbCoefft(k)))*(durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID)*&
-        (1-(PHI((-Fbdt(nIndex,PartID)/(2*FbCoefft(k))))))+tmp*EXP(-Fbdt(nIndex,PartID)/(2*FbCoefft(k)))*((PHI((Fbdt(nIndex,PartID)/(2*FbCoefft(k)))))-1.))
-      ! F_i-re(t) = exp(-dt/(2 FbCoefft)) F_i (t-dt)
-      Fre(1:3,k) = EXP(-Fbdt(nIndex,PartID)/(2*FbCoefft(k)))*Fbi(1:3,k,PartID)
+  IF (PRESENT(iStage)) THEN
+    Fbm = s43 * durdt(kIndex-2:kIndex,PartID) * SQRT(Fbdt(nIndex,PartID)) + durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID) * &
+          (2*(SQRT(dtk(nIndex))-SQRT(dtk(nIndex-1))) + s23/Fbdt(1,PartID)*(dtk(nIndex)**1.5-dtk(nIndex-1)**1.5) - &
+          2*dtk(nIndex)/Fbdt(1,PartID)*(SQRT(dtk(nIndex))-SQRT(dtk(nIndex-1))))
+    DO k=1,nIndex-1
+      Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * (s23*(dtk(k)**1.5-dtk(k-1)**1.5)/Fbdt(k,PartID) + &
+                  2*(SQRT(dtk(k))-SQRT(dtk(k-1))) - 2*dtk(k)/Fbdt(k,PartID)*(SQRT(dtk(k))-SQRT(dtk(k-1))) + &
+                  2*dtk(k+1)/Fbdt(k+1,PartID)*(SQRT(dtk(k+1))-SQRT(dtk(k))) - s23/Fbdt(k+1,PartID)*(dtk(k+1)**1.5-dtk(k)**1.5))
     END DO
-
-    DO k=1,FbCoeffm
-      Fbi(1:3,k,PartID) = FbCoeffa(k) * (prefactor*Fdi(1:3,k) + Fre(1:3,k))
-      Fbm = Fbm + Fbi(1:3,k,PartID)
+  ELSE
+    Fbm = s43 * durdt(kIndex-2:kIndex,PartID) * SQRT(Fbdt(nIndex,PartID)) + durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID) * &
+    FbCoeff(N_Basset+nIndex-1) * SQRT(Fbdt(1,PartID))
+    DO k=1,nIndex-1
+      Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * FbCoeff(k) * SQRT(Fbdt(nIndex-k,PartID))
     END DO
   END IF
+
+  ! IF (biter(PartID) .GT. N_Basset+1) THEN
+  !   DO k=1,FbCoeffm
+  !     ! F_i-di(t) = 2 c_B sqrt(e t) exp(-t_win/(2 FbCoefft)) (g_n...)
+  !     Fdi(1:3,k) = 2*SQRT(EXP(1.)*FbCoefft(k))*EXP(-SUM(Fbdt(1:nIndex,PartID))/(2*FbCoefft(k)))*(durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID)*&
+  !       (1-(PHI((-Fbdt(nIndex,PartID)/(2*FbCoefft(k))))))+tmp*EXP(-Fbdt(nIndex,PartID)/(2*FbCoefft(k)))*((PHI((Fbdt(nIndex,PartID)/(2*FbCoefft(k)))))-1.))
+  !     ! F_i-re(t) = exp(-dt/(2 FbCoefft)) F_i (t-dt)
+  !     Fre(1:3,k) = EXP(-Fbdt(nIndex,PartID)/(2*FbCoefft(k)))*Fbi(1:3,k,PartID)
+  !   END DO
+
+  !   DO k=1,FbCoeffm
+  !     Fbi(1:3,k,PartID) = FbCoeffa(k) * (prefactor*Fdi(1:3,k) + Fre(1:3,k))
+  !     Fbm = Fbm + Fbi(1:3,k,PartID)
+  !   END DO
+  ! END IF
+  Fbm(1:3) = prefactor * Fbm(1:3)
 
   ! Add to global scaling factor as s43*\rho*prefactor*dv_p/dt is on RHS
   globalfactor     = globalfactor + s43 * prefactor * SQRT(Fbdt(nIndex,PartID))
@@ -625,9 +643,9 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   END IF
 
   ! NOTE: convergence1
-  ! Cb = 0.5 + (1+0.926*SQRT(2/PI*t))/(2+1.782*SQRT(2/PI*t)+3.104*2/PI*t) * SIN(t) -&
+  ! Cb = 0.5 + (1+0.926*SQRT(2/PI*t))/(2+1.792*SQRT(2/PI*t)+3.104*2/PI*t) * SIN(t) -&
   !            1./(2+4.142*SQRT(2/PI*t)+3.492*2/PI*t+6.67*SQRT(2/PI*t)**3) * COS(t)
-  ! Sb = 0.5 - (1+0.926*SQRT(2/PI*t))/(2+1.782*SQRT(2/PI*t)+3.104*2/PI*t) * COS(t) -&
+  ! Sb = 0.5 - (1+0.926*SQRT(2/PI*t))/(2+1.792*SQRT(2/PI*t)+3.104*2/PI*t) * COS(t) -&
   !            1./(2+4.142*SQRT(2/PI*t)+3.492*2/PI*t+6.67*SQRT(2/PI*t)**3) * SIN(t)
   ! tmp(3) = prefactor*SQRT(2*PI)*(Cb*COS(t)+Sb*SIN(t))
   ! NOTE: convergence2

@@ -55,6 +55,9 @@ USE MOD_Indicator_Vars         ,ONLY: IndValue
 #elif FV_ENABLED == 2
 USE MOD_FV_Vars                ,ONLY: FV_alpha
 #endif /*FV_ENABLED*/
+#if FV_ENABLED
+USE MOD_IO_HDF5                ,ONLY: AddToElemData,ElementOut
+#endif /*FV_ENABLED*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -92,6 +95,7 @@ ASSOCIATE (&
   CALL MPI_ALLTOALLV(FV_Elems,counts_send,disp_send,MPI_INTEGER,FV_ElemsTmp,counts_recv,disp_recv,MPI_INTEGER,MPI_COMM_FLEXI,iError)
 END ASSOCIATE
 CALL MOVE_ALLOC(FV_ElemsTmp,FV_Elems)
+CALL AddToElemData(ElementOut,'FV_Elems',IntArray=FV_Elems) ! append this array to HDF5 output files
 
 ALLOCATE(IndValueTmp(nElems))
 ASSOCIATE (&
@@ -103,6 +107,7 @@ ASSOCIATE (&
   CALL MPI_ALLTOALLV(IndValue,counts_send,disp_send,MPI_DOUBLE_PRECISION,IndValueTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
 END ASSOCIATE
 CALL MOVE_ALLOC(IndValueTmp,IndValue)
+CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
 
 ! Update the FV face information
 CALL FV_ProlongFVElemsToFace()
@@ -118,6 +123,7 @@ ASSOCIATE (&
   CALL MPI_ALLTOALLV(FV_alpha,counts_send,disp_send,MPI_DOUBLE_PRECISION,FV_alphaTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
 END ASSOCIATE
 CALL MOVE_ALLOC(FV_alphaTmp,FV_alpha)
+CALL AddToElemData(ElementOut,'FV_alpha',RealArray=FV_alpha)
 #endif /*FV_ENABLED*/
 
 END SUBROUTINE FieldRestart

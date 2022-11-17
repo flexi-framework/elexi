@@ -189,15 +189,15 @@ CASE(-1) ! legacy
 END SELECT
 
 IndStartTime = GETREAL('IndStartTime')
-#if USE_LOADBALANCE
+#if USE_LOADBALANCE && FV_ENABLED == 1
 IF (.NOT.PerformLoadBalance) THEN
-#endif /*USE_LOADBALANCE*/
+#endif /*USE_LOADBALANCE && FV_ENABLED == 1*/
   ALLOCATE(IndValue(nElems))
   IndValue = 0.
-#if USE_LOADBALANCE
+  CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
+#if USE_LOADBALANCE && FV_ENABLED == 1
 END IF
-#endif /*USE_LOADBALANCE*/
-CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
+#endif /*USE_LOADBALANCE && FV_ENABLED == 1*/
 
 IndVar = GETINT('IndVar','1')
 

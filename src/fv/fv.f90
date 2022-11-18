@@ -106,7 +106,6 @@ SUBROUTINE InitFV()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Analyze_Vars        ,ONLY: wGPVol
-USE MOD_Basis               ,ONLY: InitializeVandermonde
 USE MOD_Interpolation_Vars  ,ONLY: wGP
 USE MOD_FV_Vars
 USE MOD_FV_Basis

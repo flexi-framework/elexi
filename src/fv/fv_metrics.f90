@@ -31,8 +31,17 @@ INTERFACE FinalizeFV_Metrics
   MODULE PROCEDURE FinalizeFV_Metrics
 END INTERFACE
 
+#if USE_PARTICLES && FV_RECONSTRUCT
+INTERFACE Integrate_Path1D
+  MODULE PROCEDURE Integrate_Path1D
+END INTERFACE
+#endif
+
 PUBLIC::InitFV_Metrics
 PUBLIC::FinalizeFV_Metrics
+#if USE_PARTICLES && FV_RECONSTRUCT
+PUBLIC::Integrate_Path1D
+#endif
 !==================================================================================================================================
 
 CONTAINS
@@ -92,7 +101,9 @@ REAL                                   :: DG_dx_slave (1,0:PP_N,0:PP_NZ,1:nSides
 REAL                                   :: DG_dx_master(1,0:PP_N,0:PP_NZ,1:nSides)
 REAL                                   :: tmp2(3,0:PP_N)
 REAL,DIMENSION(0:PP_N,0:PP_N)          :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
+#if !USE_PARTICLES
 REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_NZ):: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
+#endif
 REAL                                   :: x0, xN
 REAL,POINTER                           :: FV_dx_P(:,:)
 #if USE_MPI
@@ -161,6 +172,14 @@ ALLOCATE(FV_dx_ETA_R (0:PP_N,0:PP_NZ,0:PP_N,nElems))  ! Attention: storage order
 ALLOCATE(FV_dx_ZETA_L(0:PP_N,0:PP_N ,0:PP_N,nElems))  ! Attention: storage order is (i,j,k,iElem)
 ALLOCATE(FV_dx_ZETA_R(0:PP_N,0:PP_N ,0:PP_N,nElems))  ! Attention: storage order is (i,j,k,iElem)
 #endif
+
+#if USE_PARTICLES
+ALLOCATE(FV_Path_XI(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(FV_Path_ETA(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+#if (PP_dim == 3)
+ALLOCATE(FV_Path_ZETA(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+#endif
+#endif /*USE_PARTICLES*/
 
 ALLOCATE(FV_dx_slave (1,0:PP_N,0:PP_NZ,1:nSides))
 ALLOCATE(FV_dx_master(1,0:PP_N,0:PP_NZ,1:nSides))
@@ -238,7 +257,7 @@ Geo(8:10,:,:,:)=TangVec2(:,:,0:PP_NZ,1,firstMPISide_MINE:nSides)
 MPIRequest_Geo=MPI_REQUEST_NULL
 CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
 CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo) 
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
 SurfElem  (:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(1   ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 NormVec (:,:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 TangVec1(:,:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
@@ -349,14 +368,29 @@ CALL GetVandermonde(PP_N,NodeTypeCL,PP_N,NodeType, Vdm_CLN_GaussN, modal=.FALSE.
 Vdm_CLN_FV = MATMUL(FV_Vdm, Vdm_CLN_GaussN)
 
 DO iElem=1,nElems
+#if USE_PARTICLES
+  ASSOCIATE( FV_Path_XI   => FV_Path_XI  (:,:,:,:,iElem) &
+            ,FV_Path_ETA  => FV_Path_ETA (:,:,:,:,iElem) &
+            ,FV_Path_ZETA => FV_Path_ZETA(:,:,:,:,iElem))
+#endif /*USE_PARTICLES*/
   DO l=0,PP_N
+#if USE_PARTICLES
+    ASSOCIATE(dXCL_N => dXCL_N(:,:,:,:,:,:) &
+             ,l => l+1)
+#endif /*USE_PARTICLES*/
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(1,:,l,:,:,iElem), FV_Path_XI  (:,l,:,:))
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(2,:,:,l,:,iElem), FV_Path_ETA (:,l,:,:))
 #if (PP_dim == 3)
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(3,:,:,:,l,iElem), FV_Path_ZETA(:,l,:,:))
 #endif
+#if USE_PARTICLES
+    END ASSOCIATE
+#endif /*USE_PARTICLES*/
   END DO ! i=0,PP_N
   DO q=0,PP_NZ; DO p=0,PP_N
+#if USE_PARTICLES
+    ASSOCIATE(p => p+1, q => q+1)
+#endif /*USE_PARTICLES*/
     tmp2 = FV_Path_XI(:,:,p,q)
     CALL ChangeBasis1D(3,PP_N,PP_N,Vdm_CLN_GaussN, tmp2, FV_Path_XI(:,:,p,q))
     tmp2 = FV_Path_ETA(:,:,p,q)
@@ -365,6 +399,9 @@ DO iElem=1,nElems
     tmp2 = FV_Path_ZETA(:,:,p,q)
     CALL ChangeBasis1D(3,PP_N,PP_N,Vdm_CLN_GaussN, tmp2, FV_Path_ZETA(:,:,p,q))
 #endif
+#if USE_PARTICLES
+    END ASSOCIATE
+#endif /*USE_PARTICLES*/
   END DO; END DO! p,q=0,PP_N
 
   ! Calculate distances between FV subcells
@@ -441,6 +478,9 @@ DO iElem=1,nElems
       END DO; END DO
     END IF
   END DO
+#if USE_PARTICLES
+  END ASSOCIATE
+#endif /*USE_PARTICLES*/
 END DO
 
 ! distances at big mortar interfaces must be distributed to the smaller sides
@@ -562,6 +602,46 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
 END DO; END DO! p,q=0,Nloc
 FV_Length=FV_Length*0.5*(xN-x0) ! *0.5 since reference element has width=2
 END SUBROUTINE Integrate_Path
+
+#if USE_PARTICLES
+!==================================================================================================================================
+!> Computes the distance between two points along a path given in 1D reference coordinates
+!==================================================================================================================================
+SUBROUTINE Integrate_Path1D(Nloc2,Nloc,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Length)
+! MODULES
+USE MOD_Basis       ,ONLY: InitializeVandermonde
+USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc2                                     !< degree of path polynomial
+INTEGER,INTENT(IN) :: Nloc                                      !< number of points to compute (Nloc+1)**2
+REAL,INTENT(IN)    :: xGP(  0:Nloc2)                            !< parametric coords
+REAL,INTENT(IN)    :: wGP(  0:Nloc2)                            !< integration weights
+REAL,INTENT(IN)    :: wBary(0:Nloc2)                            !< interpolations weights
+REAL,INTENT(IN)    :: x0                                        !< start point
+REAL,INTENT(IN)    :: xN                                        !< end point
+REAL,INTENT(INOUT) :: FV_Path_1D(3,0:Nloc2)                     !< path polynomial
+REAL,INTENT(OUT)   :: FV_Length                                 !< distance
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL               :: VDM(0:Nloc2,0:Nloc2)
+REAL               :: SubxGP(1,0:Nloc2)
+REAL               :: FV_Path_Cut(3,0:Nloc2)
+INTEGER            :: q,p,l
+!===================================================================================================================================
+subxGP(1,:) = x0 + (xGP + 1.)/2. * (xN-x0)
+CALL InitializeVandermonde(Nloc2,Nloc2,wBary,xGP,subxGP(1,:),Vdm)
+
+FV_Length=0.
+! path to integrate in ref space [-1,1]
+CALL ChangeBasis1D(3,Nloc2,Nloc2,Vdm,FV_Path_1D(:,:), FV_Path_Cut)
+! integrate path
+DO l=0,Nloc2
+  FV_Length = FV_Length + NORM2(FV_Path_Cut(:,l)) * wGP(l)
+END DO
+FV_Length=FV_Length*0.5*(xN-x0) ! *0.5 since reference element has width=2
+END SUBROUTINE Integrate_Path1D
+#endif
 #endif
 
 
@@ -587,6 +667,12 @@ SDEALLOCATE(FV_dx_ETA_L)
 SDEALLOCATE(FV_dx_ETA_R)
 SDEALLOCATE(FV_dx_ZETA_L)
 SDEALLOCATE(FV_dx_ZETA_R)
+
+#if USE_PARTICLES
+SDEALLOCATE(FV_Path_XI)
+SDEALLOCATE(FV_Path_ETA)
+SDEALLOCATE(FV_Path_ZETA)
+#endif /*USE_PARTICLES*/
 
 SDEALLOCATE(FV_dx_slave)
 SDEALLOCATE(FV_dx_master)

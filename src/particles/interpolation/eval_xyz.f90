@@ -83,7 +83,7 @@ USE MOD_Mesh_Vars,               ONLY: NGeo
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,      ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,      ONLY: wBaryCL_NGeo1,XiCL_NGeo1
-USE MOD_Particle_Mesh_Vars,      ONLY: ElemCurved
+USE MOD_Particle_Mesh_Vars,      ONLY: BoundsOfElem_Shared,ElemCurved
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars,      ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
@@ -106,6 +106,14 @@ INTEGER                    :: CNElemID,iMode
 REAL                       :: XCL_NGeo1(1:3,0:1,0:1,0:1)
 REAL                       :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
 !===================================================================================================================================
+
+! Check whether the particle position intersects with the element bounding box
+IF (     x_in(1).LT.BoundsOfElem_Shared(1,1,ElemID) .OR. x_in(1).GT.BoundsOfElem_Shared(2,1,ElemID)  &
+    .OR. x_in(2).LT.BoundsOfElem_Shared(1,2,ElemID) .OR. x_in(2).GT.BoundsOfElem_Shared(2,2,ElemID)  &
+    .OR. x_in(3).LT.BoundsOfElem_Shared(1,3,ElemID) .OR. x_in(3).GT.BoundsOfElem_Shared(2,3,ElemID)) THEN
+  xi = HUGE(1.)
+  RETURN
+END IF
 
 #if USE_MPI
 ASSOCIATE( XCL_NGeo  => XCL_NGeo_Shared     &

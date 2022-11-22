@@ -591,7 +591,7 @@ AnalyzeRefState                               Define state used for analyze (e.g
 doMeasureFlops                              T Set true to measure flop count, if compiled with
                                               PAPI.
 
-PIDkill                                  -1.0 Kill FLEXI if PID gets below this value (optional)
+PIDkill                                  -1.0 Kill FLEXI if PID gets above this value (optional)
 
 NCalcPID                                    1 Compute PID after every Nth timestep.
 

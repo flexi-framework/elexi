@@ -562,36 +562,40 @@ REAL                          :: dz
 IF(outputFormat.LE.0) RETURN
 ! Specify output names
 
-nFV_Elems = 0
-PP_nVar_loc=PP_nVar
+nFV_Elems      = 0
+PP_nVar_loc    = PP_nVar
 #if FV_ENABLED
-PP_nVar_loc=PP_nVar+2
-DO iElem=1,nElems
+PP_nVar_loc    = PP_nVar+2
+DO iElem = 1,nElems
   IF (FV_Elems(iElem).GT.0) nFV_Elems = nFV_Elems + 1
 END DO
 NVisu_FV = (PP_N+1)*2-1
-ALLOCATE(FV_U_NVisu(PP_nVar_loc,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),1:nFV_Elems))
-ALLOCATE(FV_Coords_NVisu(1:3,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),1:nFV_Elems))
-ALLOCATE(Vdm_GaussN_NVisu_FV(0:NVisu_FV,0:PP_N))
+ALLOCATE(FV_U_NVisu(         PP_nVar_loc,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),1:nFV_Elems))
+ALLOCATE(FV_Coords_NVisu(    1:3        ,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),1:nFV_Elems))
+ALLOCATE(Vdm_GaussN_NVisu_FV(            0:NVisu_FV,0:PP_N))
 CALL FV_Build_VisuVdm(PP_N,Vdm_GaussN_NVisu_FV)
 #endif
 ALLOCATE(U_NVisu(PP_nVar_loc,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems-nFV_Elems)))
 U_NVisu = 0.
 ALLOCATE(Coords_NVisu(1:3,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems-nFV_Elems)))
 
-DG_iElem=0; FV_iElem=0
-DO iElem=1,nElems
+DG_iElem = 0
+FV_iElem = 0
+
+DO iElem = 1,nElems
 #if FV_ENABLED
-  IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
+  ! DG Element
+  IF (FV_Elems(iElem).EQ.0) THEN
 #endif
     DG_iElem = DG_iElem+1
     ! Create coordinates of visualization points
-    CALL ChangeBasisVolume(3,PP_N,NVisu,Vdm_GaussN_NVisu,Elem_xGP(1:3,:,:,:,iElem),Coords_NVisu(1:3,:,:,:,DG_iElem))
+    CALL ChangeBasisVolume(3      ,PP_N,NVisu,Vdm_GaussN_NVisu,Elem_xGP(1:3,:,:,:,iElem),Coords_NVisu( 1:3,:,:,:,DG_iElem))
     ! Interpolate solution onto visu grid
-    CALL ChangeBasisVolume(PP_nVar,PP_N,NVisu,Vdm_GaussN_NVisu,U(1:PP_nVar,:,:,:,iElem),U_NVisu(1:PP_nVar,:,:,:,DG_iElem))
+    CALL ChangeBasisVolume(PP_nVar,PP_N,NVisu,Vdm_GaussN_NVisu,U( 1:PP_nVar,:,:,:,iElem),U_NVisu(1:PP_nVar,:,:,:,DG_iElem))
 #if FV_ENABLED
     U_NVisu(PP_nVar_loc-1,:,:,:,DG_iElem) = IndValue(iElem)
-    U_NVisu(PP_nVar_loc,:,:,:,DG_iElem) = FV_Elems(iElem)
+    U_NVisu(PP_nVar_loc  ,:,:,:,DG_iElem) = FV_Elems(iElem)
+  ! FV Element
   ELSE
     FV_iElem = FV_iElem+1
 
@@ -599,7 +603,9 @@ DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       CALL ConsToPrim(UPrim ,U(:,i,j,k,iElem))
       DO kk=0,PP_dim-2; DO jj=0,1; DO ii=0,1
-        kkk=k*2+kk; jjj=j*2+jj; iii=i*2+ii
+        kkk = k*2+kk
+        jjj = j*2+jj
+        iii = i*2+ii
 #if FV_RECONSTRUCT
         dx = MERGE(  -FV_dx_XI_L(j,k,i,iElem),  FV_dx_XI_R(j,k,i,iElem),ii.EQ.0)
         dy = MERGE( -FV_dx_ETA_L(i,k,j,iElem), FV_dx_ETA_R(i,k,j,iElem),jj.EQ.0)
@@ -615,13 +621,13 @@ DO iElem=1,nElems
       END DO; END DO; END DO
     END DO; END DO; END DO
     FV_U_NVisu(PP_nVar_loc-1,:,:,:,FV_iElem) = IndValue(iElem)
-    FV_U_NVisu(PP_nVar_loc,:,:,:,FV_iElem) = FV_Elems(iElem)
+    FV_U_NVisu(PP_nVar_loc  ,:,:,:,FV_iElem) = FV_Elems(iElem)
   END IF
 #endif
 END DO !iElem
 
 ALLOCATE(StrVarNames_loc(PP_nVar_loc))
-DO iVar=1,PP_nVar
+DO iVar = 1,PP_nVar
   StrVarNames_loc(iVar) = StrVarNames(iVar)
 END DO ! iVar=1,PP_nVar
 #if FV_ENABLED
@@ -631,28 +637,28 @@ END DO ! iVar=1,PP_nVar
 
 ! Visualize data
 SELECT CASE(OutputFormat)
-CASE(OUTPUTFORMAT_TECPLOT)
-  STOP 'Tecplot output removed due to license issues (possible GPL incompatibility).'
-CASE(OUTPUTFORMAT_TECPLOTASCII)
-  STOP 'Tecplot output removed due to license issues (possible GPL incompatibility).'
-CASE(OUTPUTFORMAT_PARAVIEW)
+  CASE(OUTPUTFORMAT_TECPLOT)
+    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
+  CASE(OUTPUTFORMAT_TECPLOTASCII)
+    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
+  CASE(OUTPUTFORMAT_PARAVIEW)
 #if FV_ENABLED
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
+    FileString_DG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
 #else
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+    FileString_DG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
 #endif
-  Coords_NVisu_p => Coords_NVisu
-  U_NVisu_p => U_NVisu
-  CALL WriteDataToVTK(PP_nVar_loc,NVisu,nElems-nFV_Elems,StrVarNames_loc,Coords_NVisu_p,U_NVisu_p,TRIM(FileString_DG),dim=PP_dim,DGFV=0)
+    Coords_NVisu_p  => Coords_NVisu
+    U_NVisu_p       => U_NVisu
+    CALL WriteDataToVTK(PP_nVar_loc,NVisu,nElems-nFV_Elems,StrVarNames_loc,Coords_NVisu_p,U_NVisu_p,TRIM(FileString_DG),dim=PP_dim,DGFV=0)
 #if FV_ENABLED
-  FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
+  FileString_FV   = TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
   FV_Coords_NVisu_p => FV_Coords_NVisu
-  FV_U_NVisu_p => FV_U_NVisu
+  FV_U_NVisu_p      => FV_U_NVisu
   CALL WriteDataToVTK(PP_nVar_loc,NVisu_FV,nFV_Elems,StrVarNames_loc,FV_Coords_NVisu_p,FV_U_NVisu_p,TRIM(FileString_FV),dim=PP_dim,DGFV=1)
 
   IF (MPIRoot) THEN
     ! write multiblock file
-    FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+    FileString_multiblock = TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
     CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
   ENDIF
 #endif
@@ -665,6 +671,7 @@ DEALLOCATE(FV_U_NVisu)
 DEALLOCATE(FV_Coords_NVisu)
 DEALLOCATE(Vdm_GaussN_NVisu_FV)
 #endif
+
 END SUBROUTINE Visualize
 
 
@@ -702,10 +709,11 @@ CHARACTER(LEN=255)             :: tmpStr          !< FileName with data type ext
 CHARACTER(LEN=4)               :: tmpExt          !< Data type extension
 INTEGER                        :: counter         !< Incrementing counter for file backups
 !==================================================================================================================================
-IF(.NOT. PRESENT(WriteRootOnly)) THEN
-  IF(.NOT.MPIRoot) RETURN
+IF (.NOT.PRESENT(WriteRootOnly)) THEN
+  IF (.NOT.MPIRoot) RETURN
 END IF
-IF(PRESENT(lastLine)) lastLine=-HUGE(1.)
+
+IF (PRESENT(lastLine)) lastLine = -HUGE(1.)
 
 ! Append data type extension to FileName
 IF (ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV) THEN
@@ -718,11 +726,11 @@ END IF
 
 ! Check for file
 file_exists = FILEEXISTS(FileName_loc)
-IF(RestartTime.LT.0.0) file_exists=.FALSE.
+IF (RestartTime.LT.0) file_exists = .FALSE.
 !! File processing starts here open old and extract information or create new file.
 ioUnit = 0
 
-IF(file_exists)THEN ! File exists and append data
+IF (file_exists) THEN ! File exists and append data
   OPEN(NEWUNIT  = ioUnit             , &
        FILE     = TRIM(FileName_loc) , &
        FORM     = 'FORMATTED'        , &
@@ -730,24 +738,24 @@ IF(file_exists)THEN ! File exists and append data
        POSITION = 'APPEND'           , &
        RECL     = 50000              , &
        IOSTAT = stat                 )
-  IF(stat.NE.0)THEN
-    WRITE(UNIT_stdOut,*)' File '//TRIM(FileName_loc)// ' is invalid. Rewriting file...'
-    file_exists=.FALSE.
+  IF (stat.NE.0) THEN
+    WRITE(UNIT_stdOut,'(A)') ' File '//TRIM(FileName_loc)// ' is invalid. Rewriting file...'
+    file_exists = .FALSE.
   END IF
 END IF
 
-IF(file_exists)THEN
+IF (file_exists) THEN
   ! If we have a restart we need to find the position from where to move on.
   ! Read the values from the previous analyse interval, get the CPUtime
-  WRITE(UNIT_stdOut,'(A)')              ' Opening   file '//TRIM(FileName_loc)
+  WRITE(UNIT_stdOut,'(A)')              ' | Opening file '//TRIM(FileName_loc)
   WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Searching file for time stamp...'
 
   REWIND(ioUnit)
   ! Loop over header and try to read the first data line. Header size depends on output format.
-  iMax =MERGE(2,4,ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV)
-  DO i=1,iMax
+  iMax = MERGE(2,4,ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV)
+  DO i = 1,iMax
     READ(ioUnit,*,IOSTAT=stat)
-    IF(stat.NE.0)THEN
+    IF (stat.NE.0) THEN
       ! file is broken, rewrite
       file_exists=.FALSE.
       WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' failed. Writing new file.'
@@ -756,59 +764,83 @@ IF(file_exists)THEN
   END DO
 END IF
 
-IF(file_exists)THEN
+IF (file_exists) THEN
   ! Loop until we have found the position
-  Dummytime = 0.0
-  stat=0
-  DO WHILE ((Dummytime.LT.RestartTime) .AND. (stat.EQ.0))
+  Dummytime = 0.
+  stat      = 0
+  DO WHILE (Dummytime.LT.RestartTime .AND. stat.EQ.0)
     READ(ioUnit,*,IOSTAT=stat) Dummytime
   END DO
-  IF(stat.EQ.0)THEN
+  IF (stat.EQ.0) THEN
     ! read final dataset
     IF(PRESENT(lastLine))THEN
       BACKSPACE(ioUnit)
       READ(ioUnit,*,IOSTAT=stat) lastLine
     END IF
-    ! Perform a backup of the old file
-    counter = 1
-    ! Find the first free slot
-    DO WHILE(FILEEXISTS(TRIM(FileName)//'.'//TRIM(ADJUSTL(INTTOSTR(counter)))//TRIM(tmpExt)))
-      counter = counter + 1
-    END DO
-    tmpStr  = TRIM(FileName)//'.'//TRIM(ADJUSTL(INTTOSTR(counter)))//TRIM(tmpExt)
-    ! Move the file to the free slot
-    WRITE(Unit_StdOut,'(A,A,A,A)') ' | Copying existing file ',TRIM(FileName_loc),' to ',TRIM(tmpStr)
-    CALL EXECUTE_COMMAND_LINE('cp '//TRIM(FileName_loc)//' '//TRIM(tmpStr), WAIT=.TRUE., EXITSTAT=stat)
 
+    ! Check if there is more than one line left, i.e. lines that will be deleted
+    stat    = 0
     BACKSPACE(ioUnit)
-    ENDFILE(ioUnit) ! delete from here to end of file
+    DO WHILE (stat.EQ.0)
+      READ(ioUnit,*,IOSTAT=stat) Dummytime
+    END DO
+
+    ! Perform a backup of the old file, last line is counted double
+    IF (Dummytime.GT.RestartTime) THEN
+      counter = 1
+      ! Find the first free slot
+      DO WHILE(FILEEXISTS(TRIM(FileName)//'.'//TRIM(ADJUSTL(INTTOSTR(counter)))//TRIM(tmpExt)))
+        counter = counter + 1
+      END DO
+      tmpStr  = TRIM(FileName)//'.'//TRIM(ADJUSTL(INTTOSTR(counter)))//TRIM(tmpExt)
+      ! Move the file to the free slot
+      WRITE(Unit_StdOut,'(A,A,A,A)') ' |> Copying existing file ',TRIM(FileName_loc),' to ',TRIM(tmpStr)
+      CALL EXECUTE_COMMAND_LINE('cp '//TRIM(FileName_loc)//' '//TRIM(tmpStr), WAIT=.TRUE., EXITSTAT=stat)
+    END IF
+
+    ! Rewind back to the beginning of the file
+    REWIND(ioUnit)
+    ! Loop over header and try to read the first data line. Header size depends on output format.
+    iMax = MERGE(2,4,ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV)
+    DO i = 1,iMax
+      READ(ioUnit,*,IOSTAT=stat)
+    END DO
+
+    ! Restore previous position
+    Dummytime = 0.
+    stat      = 0
+    DO WHILE (Dummytime.LT.RestartTime .AND. stat.EQ.0)
+      READ(ioUnit,*,IOSTAT=stat) Dummytime
+    END DO
+
+    ! Delete from here to end of file
+    BACKSPACE(ioUnit)
+    ENDFILE(ioUnit)
     WRITE(UNIT_stdOut,'(A,ES15.5)',ADVANCE='YES')' Searching file for time stamp successfull. Resuming file at time ',Dummytime
   ELSE
-    WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Searching file time for stamp failed. Appending data to end of file.'
+    WRITE(UNIT_stdOut,'(A)'       ,ADVANCE='YES')' Searching file time for stamp failed. Appending data to end of file.'
   END IF
 END IF
 CLOSE(ioUnit)
 
-IF(.NOT.file_exists)THEN ! No restart create new file
+IF (.NOT.file_exists) THEN ! No restart create new file
   OPEN(NEWUNIT= ioUnit             ,&
        FILE   = TRIM(FileName_loc) ,&
        STATUS = 'UNKNOWN'          ,&
        ACCESS = 'SEQUENTIAL'       ,&
        IOSTAT = stat               )
-  IF (stat.NE.0) THEN
-    CALL Abort(__STAMP__, &
-      'ERROR: cannot open '//TRIM(FileName_loc))
-  END IF
+  IF (stat.NE.0) CALL Abort(__STAMP__,'ERROR: cannot open '//TRIM(FileName_loc))
+
   ! Create a new file with the CSV or Tecplot header
   IF (ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV) THEN
     WRITE(ioUnit,'(A)',ADVANCE='NO') 'Time'
-    DO i=1,nVar
+    DO i = 1,nVar
       WRITE(ioUnit,'(A)',ADVANCE='NO') ','//TRIM(VarNames(i))
     END DO
   ELSE
     WRITE(ioUnit,*)'TITLE="'//TRIM(ZoneName)//','//TRIM(ProjectName)//'"'
     WRITE(ioUnit,'(A)',ADVANCE='NO')'VARIABLES = "Time"'
-    DO i=1,nVar
+    DO i = 1,nVar
       WRITE(ioUnit,'(A)',ADVANCE='NO') ',"'//TRIM(VarNames(i))//'"'
     END DO
     WRITE(ioUnit,'(A)',ADVANCE='YES')
@@ -816,6 +848,7 @@ IF(.NOT.file_exists)THEN ! No restart create new file
   END IF
   CLOSE(ioUnit) ! outputfile
 END IF
+
 END SUBROUTINE InitOutputToFile
 
 
@@ -856,10 +889,8 @@ OPEN(NEWUNIT  = ioUnit             , &
      POSITION = 'APPEND'           , &
      RECL     = 50000              , &
      IOSTAT = openStat             )
-IF(openStat.NE.0) THEN
-  CALL Abort(__STAMP__, &
-    'ERROR: cannot open '//TRIM(FileName_loc))
-END IF
+IF (openStat.NE.0) CALL Abort(__STAMP__,'ERROR: cannot open '//TRIM(FileName_loc))
+
 ! Choose between CSV and tecplot output format
 IF (ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV) THEN
   ! Create format string for the variable output: WITH COMMA SEPARATION
@@ -868,10 +899,13 @@ ELSE
   ! Create format string for the variable output: WITH BLANK SEPARATION
   WRITE(formatStr,'(A10,I2,A14)')'(E23.14E5,',nVar(1),'(1X,E23.14E5))'
 END IF
-DO i=1,nVar(2)
+
+DO i = 1,nVar(2)
   WRITE(ioUnit,formatstr) time(i),output(nVar(1)*(i-1)+1:nVar(1)*i)
 END DO
+
 CLOSE(ioUnit) ! outputfile
+
 END SUBROUTINE OutputToFile
 
 
@@ -887,6 +921,7 @@ IMPLICIT NONE
 SDEALLOCATE(Vdm_GaussN_NVisu)
 SDEALLOCATE(Vdm_N_NOut)
 OutputInitIsDone = .FALSE.
+
 END SUBROUTINE FinalizeOutput
 
 END MODULE MOD_Output

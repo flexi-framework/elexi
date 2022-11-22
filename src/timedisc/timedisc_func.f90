@@ -122,11 +122,6 @@ USE MOD_TimeDisc_Vars       ,ONLY: DFLScale
 USE MOD_Particle_Boundary_Vars,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_TimeDisc_Vars       ,ONLY: t
 #endif /*USE_PARTICLES*/
-#if USE_LOADBALANCE
-USE MOD_ReadInTools         ,ONLY: GETLOGICAL,GETINT,PrintOption
-USE MOD_LoadBalance_Vars    ,ONLY: DoInitialAutoRestart,InitialAutoRestartSample
-USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample
-#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -134,10 +129,6 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: NEff
-#if USE_LOADBALANCE
-LOGICAL           :: InitialAutoRestartPartWeight
-CHARACTER(20)     :: hilf
-#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
 IF(TimeDiscInitIsDone)THEN
   SWRITE(UNIT_stdOut,'(A)') "InitTimeDisc already called."
@@ -210,23 +201,6 @@ IF(WriteMacroSurfaceValues) MacroValSampTime = t
 #endif
 
 SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
-
-#if USE_LOADBALANCE
-! Automatically do a load balance step at the beginning of a new simulation or a user-restarted simulation
-DoInitialAutoRestart = GETLOGICAL('DoInitialAutoRestart')
-IF(nProcessors.LT.2) DoInitialAutoRestart = .FALSE.
-
-WRITE(UNIT=hilf,FMT='(I0)') LoadBalanceSample
-InitialAutoRestartSample     = GETINT('InitialAutoRestartSample',TRIM(hilf))
-InitialAutoRestartPartWeight = GETLOGICAL('InitialAutoRestart-PartWeightLoadBalance','F')
-IF (InitialAutoRestartPartWeight) THEN
-  InitialAutoRestartSample = 0 ! deactivate loadbalance sampling of ElemTimes if balancing with partweight is enabled
-  CALL PrintOption('InitialAutoRestart-PartWeightLoadBalance = T : InitialAutoRestartSample','INFO',IntOpt=InitialAutoRestartSample)
-ELSE IF (InitialAutoRestartSample.EQ.0) THEN
-  InitialAutoRestartPartWeight = .TRUE. ! loadbalance (ElemTimes) is done with partmpiweight if loadbalancesampling is set to zero
-  CALL PrintOption('InitialAutoRestart-PartWeightLoadBalance','INFO',LogOpt=InitialAutoRestartPartWeight)
-END IF
-#endif /*USE_LOADBALANCE*/
 
 TimeDiscInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT TIMEDISC DONE!'

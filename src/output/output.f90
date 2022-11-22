@@ -677,8 +677,9 @@ END SUBROUTINE Visualize
 SUBROUTINE InitOutputToFile(Filename,ZoneName,nVar,VarNames,lastLine,WriteRootOnly)
 ! MODULES
 USE MOD_Globals
-USE MOD_Restart_Vars, ONLY: RestartTime
 USE MOD_Output_Vars,  ONLY: ProjectName,ASCIIOutputFormat
+USE MOD_Restart_Vars, ONLY: RestartTime
+USE MOD_StringTools,  ONLY: INTTOSTR
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -697,6 +698,9 @@ INTEGER                        :: i,iMax          !< Counter for header lines
 REAL                           :: dummytime       !< Simulation time read from file
 LOGICAL                        :: file_exists     !< marker if file exists and is valid
 CHARACTER(LEN=255)             :: FileName_loc    !< FileName with data type extension
+CHARACTER(LEN=255)             :: tmpStr          !< FileName with data type extension (iterator)
+CHARACTER(LEN=4)               :: tmpExt          !< Data type extension
+INTEGER                        :: counter         !< Incrementing counter for file backups
 !==================================================================================================================================
 IF(.NOT. PRESENT(WriteRootOnly)) THEN
   IF(.NOT.MPIRoot) RETURN
@@ -706,8 +710,10 @@ IF(PRESENT(lastLine)) lastLine=-HUGE(1.)
 ! Append data type extension to FileName
 IF (ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV) THEN
   FileName_loc = TRIM(FileName)//'.csv'
+  tmpExt       = '.csv'
 ELSE
   FileName_loc = TRIM(FileName)//'.dat'
+  tmpExt       = '.dat'
 END IF
 
 ! Check for file
@@ -718,7 +724,7 @@ ioUnit = 0
 
 IF(file_exists)THEN ! File exists and append data
   OPEN(NEWUNIT  = ioUnit             , &
-       FILE     = TRIM(Filename_loc) , &
+       FILE     = TRIM(FileName_loc) , &
        FORM     = 'FORMATTED'        , &
        STATUS   = 'OLD'              , &
        POSITION = 'APPEND'           , &
@@ -733,8 +739,8 @@ END IF
 IF(file_exists)THEN
   ! If we have a restart we need to find the position from where to move on.
   ! Read the values from the previous analyse interval, get the CPUtime
-  WRITE(UNIT_stdOut,*)'Opening file '//TRIM(FileName_loc)
-  WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Searching for time stamp...'
+  WRITE(UNIT_stdOut,'(A)')              ' Opening   file '//TRIM(FileName_loc)
+  WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Searching file for time stamp...'
 
   REWIND(ioUnit)
   ! Loop over header and try to read the first data line. Header size depends on output format.
@@ -763,24 +769,35 @@ IF(file_exists)THEN
       BACKSPACE(ioUnit)
       READ(ioUnit,*,IOSTAT=stat) lastLine
     END IF
+    ! Perform a backup of the old file
+    counter = 1
+    ! Find the first free slot
+    DO WHILE(FILEEXISTS(TRIM(FileName)//'.'//TRIM(ADJUSTL(INTTOSTR(counter)))//TRIM(tmpExt)))
+      counter = counter + 1
+    END DO
+    tmpStr  = TRIM(FileName)//'.'//TRIM(ADJUSTL(INTTOSTR(counter)))//TRIM(tmpExt)
+    ! Move the file to the free slot
+    WRITE(Unit_StdOut,'(A,A,A,A)') ' | Copying existing file ',TRIM(FileName_loc),' to ',TRIM(tmpStr)
+    CALL EXECUTE_COMMAND_LINE('cp '//TRIM(FileName_loc)//' '//TRIM(tmpStr), WAIT=.TRUE., EXITSTAT=stat)
+
     BACKSPACE(ioUnit)
     ENDFILE(ioUnit) ! delete from here to end of file
-    WRITE(UNIT_stdOut,'(A,ES15.5)',ADVANCE='YES')' successfull. Resuming file at time ',Dummytime
+    WRITE(UNIT_stdOut,'(A,ES15.5)',ADVANCE='YES')' Searching file for time stamp successfull. Resuming file at time ',Dummytime
   ELSE
-    WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' failed. Appending data to end of file.'
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Searching file time for stamp failed. Appending data to end of file.'
   END IF
 END IF
 CLOSE(ioUnit)
 
 IF(.NOT.file_exists)THEN ! No restart create new file
   OPEN(NEWUNIT= ioUnit             ,&
-       FILE   = TRIM(Filename_loc) ,&
+       FILE   = TRIM(FileName_loc) ,&
        STATUS = 'UNKNOWN'          ,&
        ACCESS = 'SEQUENTIAL'       ,&
        IOSTAT = stat               )
   IF (stat.NE.0) THEN
     CALL Abort(__STAMP__, &
-      'ERROR: cannot open '//TRIM(Filename_loc))
+      'ERROR: cannot open '//TRIM(FileName_loc))
   END IF
   ! Create a new file with the CSV or Tecplot header
   IF (ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV) THEN
@@ -833,7 +850,7 @@ ELSE
 END IF
 
 OPEN(NEWUNIT  = ioUnit             , &
-     FILE     = TRIM(Filename_loc) , &
+     FILE     = TRIM(FileName_loc) , &
      FORM     = 'FORMATTED'        , &
      STATUS   = 'OLD'              , &
      POSITION = 'APPEND'           , &
@@ -841,7 +858,7 @@ OPEN(NEWUNIT  = ioUnit             , &
      IOSTAT = openStat             )
 IF(openStat.NE.0) THEN
   CALL Abort(__STAMP__, &
-    'ERROR: cannot open '//TRIM(Filename_loc))
+    'ERROR: cannot open '//TRIM(FileName_loc))
 END IF
 ! Choose between CSV and tecplot output format
 IF (ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV) THEN

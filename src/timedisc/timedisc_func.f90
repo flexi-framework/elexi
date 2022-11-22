@@ -448,11 +448,11 @@ USE MOD_LoadBalance_TimeDisc,ONLY: LoadBalance
 USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,ElemTime,ElemTimePart,ElemTimeField,DoLoadBalanceBackup,LoadBalanceSampleBackup
 USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample,PerformLBSample,PerformLoadBalance,LoadBalanceMaxSteps,nLoadBalanceSteps
 USE MOD_LoadBalance_Vars    ,ONLY: DoInitialAutoRestart,ForceInitialLoadBalance
-USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeField,RestartTimeBackup,RestartWallTime
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeField,RestartTimeBackup!,RestartWallTime
 USE MOD_Particle_Globals    ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Localization,ONLY:CountPartsPerElem
 USE MOD_Restart_Vars        ,ONLY: RestartTime,RestartFile
-USE MOD_TimeDisc_Vars       ,ONLY: maxIter
+USE MOD_TimeDisc_Vars       ,ONLY: maxIter,time_start
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -576,9 +576,14 @@ IF(doAnalyze)THEN
       RestartTimeBackup = RestartTime! make backup of original restart time
       RestartTime       = t          ! Set restart simulation time to current simulation time because the time is not read from
                                      ! the state file
-      RestartWallTime = FLEXITIME()  ! Set restart wall time if a load balance step is performed
     END IF
+
     CALL LoadBalance(OutputTime=t)
+
+    IF(PerformLoadBalance) THEN
+      ! RestartWallTime = FLEXITIME()  ! Set restart wall time if a load balance step is performed
+      CALL CPU_TIME(time_start)      ! Set the start CPU time to the time after loadbalance init
+    END IF
   ELSE
     ElemTime      = 0. ! nullify ElemTime before measuring the time in the next cycle
     ElemTimePart  = 0.

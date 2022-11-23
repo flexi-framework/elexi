@@ -105,7 +105,7 @@ CALL prms%CreateIntOption(     'WeightDistributionMethod'     ,  "Method for dis
                                                                  " 3/4 : parallel single step distribution\n"                    //&
                                                                  " 5/6 : iterative smoothing of loads towards last proc\n")
 
-CALL prms%SetSection("Restart")
+CALL prms%SetSection("LoadBalance Restart")
 CALL prms%CreateLogicalOption( 'DoInitialAutoRestart',           "Set Flag for doing automatic initial restart with"             //&
                                                                  " loadbalancing routines after first 'InitialAutoRestartSample'"//&
                                                                  "-number of iterations.\n"                                      //&
@@ -135,20 +135,22 @@ SUBROUTINE InitLoadBalance()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Analyze_Vars           ,ONLY: nWriteData
 USE MOD_LoadBalance_Vars       ,ONLY: InitLoadBalanceIsDone,DoLoadBalance,LoadBalanceSample
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLBSample,PerformPartWeightLB
-USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceInterval,LoadBalanceCounter
-USE MOD_LoadBalance_Vars       ,ONLY: nLoadBalance,nLoadBalanceSteps,LoadBalanceInterval,DeviationThreshold
+USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceCounter
+USE MOD_LoadBalance_Vars       ,ONLY: nLoadBalance,nLoadBalanceSteps,DeviationThreshold
 USE MOD_ReadInTools            ,ONLY: GETLOGICAL,GETREAL,GETINT
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceMaxSteps
+USE MOD_Analyze_Vars           ,ONLY: nWriteData
+USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceMaxSteps,LoadBalanceInterval
 USE MOD_LoadBalance_Vars       ,ONLY: tCurrent,ParticleMPIWeight
 USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPIoffsetElemSend,MPInElemRecv,MPIoffsetElemRecv
 USE MOD_LoadBalance_Vars       ,ONLY: MPInPartSend,MPIoffsetPartSend,MPInPartRecv,MPIoffsetPartRecv
 USE MOD_LoadBalance_Vars       ,ONLY: ElemInfoRank_Shared,ElemInfoRank_Shared_Win
+USE MOD_LoadBalance_Vars       ,ONLY: DoInitialAutoRestart,InitialAutoRestartSample
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
+USE MOD_ReadInTools            ,ONLY: PrintOption
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -158,7 +160,10 @@ USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=5) :: tmpStr
+#if USE_LOADBALANCE
+CHARACTER(LEN=5)  :: tmpStr
+LOGICAL           :: InitialAutoRestartPartWeight
+#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 !SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT LOAD BALANCE...'
@@ -212,6 +217,21 @@ ALLOCATE(MPInElemSend(nProcessors),MPIoffsetElemSend(nProcessors),MPInElemRecv(n
 ALLOCATE(MPInPartSend(nProcessors),MPIoffsetPartSend(nProcessors),MPInPartRecv(nProcessors),MPIoffsetPartRecv(nProcessors))
 CALL Allocate_Shared((/nGlobalElems/),ElemInfoRank_Shared_Win,ElemInfoRank_Shared)
 CALL MPI_WIN_LOCK_ALL(0,ElemInfoRank_Shared_Win,iError)
+
+! Automatically do a load balance step at the beginning of a new simulation or a user-restarted simulation
+DoInitialAutoRestart = GETLOGICAL('DoInitialAutoRestart')
+IF(nProcessors.LT.2) DoInitialAutoRestart = .FALSE.
+
+WRITE(UNIT=tmpStr,FMT='(I0)') LoadBalanceSample
+InitialAutoRestartSample     = GETINT('InitialAutoRestartSample',TRIM(tmpStr))
+InitialAutoRestartPartWeight = GETLOGICAL('InitialAutoRestart-PartWeightLoadBalance','F')
+IF (InitialAutoRestartPartWeight) THEN
+  InitialAutoRestartSample = 0 ! deactivate loadbalance sampling of ElemTimes if balancing with partweight is enabled
+  CALL PrintOption('InitialAutoRestart-PartWeightLoadBalance = T : InitialAutoRestartSample','INFO',IntOpt=InitialAutoRestartSample)
+ELSE IF (InitialAutoRestartSample.EQ.0) THEN
+  InitialAutoRestartPartWeight = .TRUE. ! loadbalance (ElemTimes) is done with partmpiweight if loadbalancesampling is set to zero
+  CALL PrintOption('InitialAutoRestart-PartWeightLoadBalance','INFO',LogOpt=InitialAutoRestartPartWeight)
+END IF
 #endif /*USE_LOADBALANCE*/
 
 InitLoadBalanceIsDone  = .TRUE.

@@ -83,7 +83,7 @@ USE MOD_Mesh_Vars,               ONLY: NGeo
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,      ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,      ONLY: wBaryCL_NGeo1,XiCL_NGeo1
-USE MOD_Particle_Mesh_Vars,      ONLY: ElemCurved
+USE MOD_Particle_Mesh_Vars,      ONLY: BoundsOfElem_Shared,ElemCurved
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars,      ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
@@ -106,6 +106,14 @@ INTEGER                    :: CNElemID,iMode
 REAL                       :: XCL_NGeo1(1:3,0:1,0:1,0:1)
 REAL                       :: dXCL_NGeo1(1:3,1:3,0:1,0:1,0:1)
 !===================================================================================================================================
+
+! Check whether the particle position intersects with the element bounding box
+IF (     x_in(1).LT.BoundsOfElem_Shared(1,1,ElemID) .OR. x_in(1).GT.BoundsOfElem_Shared(2,1,ElemID)  &
+    .OR. x_in(2).LT.BoundsOfElem_Shared(1,2,ElemID) .OR. x_in(2).GT.BoundsOfElem_Shared(2,2,ElemID)  &
+    .OR. x_in(3).LT.BoundsOfElem_Shared(1,3,ElemID) .OR. x_in(3).GT.BoundsOfElem_Shared(2,3,ElemID)) THEN
+  xi = HUGE(1.)
+  RETURN
+END IF
 
 #if USE_MPI
 ASSOCIATE( XCL_NGeo  => XCL_NGeo_Shared     &
@@ -330,10 +338,18 @@ SUBROUTINE EvaluateField_FV(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_FV_Vars               ,ONLY: gradUxi,gradUeta, gradUzeta
-USE MOD_FV_Vars               ,ONLY: FV_X
-USE MOD_Eos                   ,ONLY: ConsToPrim, PrimToCons
-USE MOD_Mesh_Vars             ,ONLY: sJ,offsetElem
+#if FV_RECONSTRUCT
+USE MOD_FV_Vars               ,ONLY: gradUxi,gradUeta
+#if PP_dim == 3
+USE MOD_FV_Vars               ,ONLY: gradUzeta
+#endif /* PP_dim == 3 */
+USE MOD_FV_Vars               ,ONLY: FV_X,FV_Path_XI,FV_Path_ETA,FV_Path_ZETA
+USE MOD_Mesh_Vars             ,ONLY: sJ
+USE MOD_Interpolation_Vars    ,ONLY: xGP,wGP,wBary
+USE MOD_FV_Metrics            ,ONLY: Integrate_Path1D
+#endif /*FV_RECONSTRUCT*/
+USE MOD_Eos                   ,ONLY: ConsToPrim
+USE MOD_Mesh_Vars             ,ONLY: offsetElem
 USE MOD_Particle_Tracking_Vars,ONLY: TrackingMethod
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -350,21 +366,22 @@ INTEGER,INTENT(IN)        :: NVar_out                                      !< 6 
 REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                             !< Interpolated state at physical position x_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: i,j,k
 REAL                      :: U_Prim(1:nVar_out,0:N_In,0:N_In,0:N_In)
 REAL                      :: xi(3)
 INTEGER                   :: IJK(3)
-REAL                      :: distance_ref(3), distance(3)
+#if FV_RECONSTRUCT
+INTEGER                   :: i,j,k
+REAL                      :: distance(3)
+#endif /*FV_RECONSTRUCT*/
 !===================================================================================================================================
 
-! Calculate position in reference space when passed as physical positioCalculate position in reference space when passed as physical
-! position
+! Calculate position in reference space when passed as physical position
 IF (TrackingMethod.NE.REFMAPPING) THEN
   CALL GetPositionInRefElem(x_in,xi,ElemID+offsetElem)
 ELSE
   xi = x_in
 END IF
-IJK(1:3) = INT((xi(1:3)+1.)/2*(PP_N+1))
+IJK(1:3) = MIN(NINT((xi(1:3)+1.)/2*(PP_N+1)),PP_N)
 
 #if FV_RECONSTRUCT
 ! Transform to primitve variables
@@ -372,22 +389,23 @@ DO k=0,ZDIM(N_In); DO j=0,N_In; DO i=0,N_In
   CALL ConsToPrim(U_Prim(:,i,j,k),U_In(:,i,j,k))
 END DO; END DO; END DO! i,j,k=0,Nloc
 
-! Get distance to fv subcell mid point in reference space
-DO i = 1,3
-  distance_ref(i) = xi(i) - FV_X(IJK(i))
-END DO
-
-! Transform to physical space
-distance(:) = distance_ref(:)/sJ(IJK(1),IJK(2),IJK(3),ElemID,1)
+! Get distance to fv subcell mid point in physical space
+CALL Integrate_Path1D(N_In,N_In,xGP,wGP,wBary,FV_X(IJK(1)),xi(1),FV_Path_XI  (:,:,IJK(2),IJK(3),ElemID),distance(1))
+CALL Integrate_Path1D(N_In,N_In,xGP,wGP,wBary,FV_X(IJK(2)),xi(2),FV_Path_ETA (:,:,IJK(1),IJK(3),ElemID),distance(2))
+#if PP_dim == 3
+CALL Integrate_Path1D(N_In,N_In,xGP,wGP,wBary,FV_X(IJK(3)),xi(3),FV_Path_ZETA(:,:,IJK(1),IJK(2),ElemID),distance(3))
+#endif /* PP_dim == 3 */
 
 ! Get reconstructed solution at particle position
-U_out = U_Prim(:,IJK(1),IJK(2),IJK(3)) + gradUxi  (:,IJK(1),IJK(2),IJK(3),ElemID) * distance(1)&
-                                       + gradUeta (:,IJK(1),IJK(2),IJK(3),ElemID) * distance(2)&
-                                       + gradUzeta(:,IJK(1),IJK(2),IJK(3),ElemID) * distance(3)
+U_out = U_Prim(:,IJK(1),IJK(2),IJK(3)) + gradUxi  (:,IJK(2),IJK(3),IJK(1),ElemID) * distance(1) &
+#if PP_dim == 3
+                                       + gradUzeta(:,IJK(1),IJK(2),IJK(3),ElemID) * distance(3) &
+#endif /* PP_dim == 3 */
+                                       + gradUeta (:,IJK(1),IJK(3),IJK(2),ElemID) * distance(2)
 #else
 ! Transform to primitve variables
 CALL ConsToPrim(U_out,U_in(:,IJK(1),IJK(2),IJK(3)))
-#endif
+#endif /*FV_RECONSTRUCT*/
 
 END SUBROUTINE EvaluateField_FV
 #endif /*FV_ENABLED*/

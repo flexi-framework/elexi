@@ -81,7 +81,7 @@ REAL,ALLOCATABLE       :: FV_w_inv(:)            !< 1/FV_w
 REAL,ALLOCATABLE       :: FV_Vdm(:,:)            !< Vandermonde to switch from DG to FV
 REAL,ALLOCATABLE       :: FV_sVdm(:,:)           !< Vandermonde to switch from FV to DG
 INTEGER                :: FV_CellType            !< Type of FV Cell: -1 = SAME              ,0 = EQUIDISTANT
-                                                 !<                   1 = LEGENDRE_GAUSS    ,2 = LEGENDRE_LOBATTO  
+                                                 !<                   1 = LEGENDRE_GAUSS    ,2 = LEGENDRE_LOBATTO
                                                  !<                   3 = CHEBYSHEV_LOBATTO
 
 #if FV_RECONSTRUCT
@@ -110,6 +110,12 @@ REAL,ALLOCATABLE       :: FV_dx_slave (:,:,:,:)  !< contains FV_dx_XI_L/FV_dx_XI
                                                  !< but in face coordinate system
 REAL,ALLOCATABLE       :: FV_dx_master(:,:,:,:)  !< contains FV_dx_XI_L/FV_dx_XI_R or ETA or ZETA of the master side element
                                                  !< but in face coordinate system
+
+#if USE_PARTICLES
+REAL,ALLOCATABLE       :: FV_Path_XI(:,:,:,:,:)
+REAL,ALLOCATABLE       :: FV_Path_ETA(:,:,:,:,:)
+REAL,ALLOCATABLE       :: FV_Path_ZETA(:,:,:,:,:)
+#endif /*USE_PARTICLES*/
 
 ! arrays for gradients and metrics
 REAL,ALLOCATABLE,TARGET:: gradUxi  (:,:,:,:,:)        !< FD in XI direction (PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)

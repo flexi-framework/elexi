@@ -843,6 +843,7 @@ USE MOD_Particle_Memory        ,ONLY: VerifyMemUsage
 USE MOD_Particle_Vars
 #if USE_BASSETFORCE
 USE MOD_Equation_Vars,          ONLY: s43
+USE MOD_Restart_Vars           ,ONLY: RestartTime
 #endif
 #if USE_FAXEN_CORR
 USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
@@ -948,23 +949,24 @@ ALLOCATE(durdt(1:nBassetVars,1:PDM%maxParticleNumber))
 durdt = 0.
 ALLOCATE(bIter(1:PDM%maxParticleNumber))
 bIter = 0
-ALLOCATE(Fbdt(1:N_Basset+1,1:PDM%maxParticleNumber))
+ALLOCATE(Fbdt(1:N_Basset+2,1:PDM%maxParticleNumber))
 Fbdt = 0.
+Fbdt(1,:) = RestartTime
 ! Window kernel
 ALLOCATE(FbCoeff(1:2*N_Basset-1))
 DO k=1,N_Basset-1
   FbCoeff(k) = ((k+s43)/((k+1)*SQRT(REAL(k+1))+(k+s32)*SQRT(REAL(k)))+(k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k))))
   FbCoeff(N_Basset+k-1) = (k-s43)/((k-1)*SQRT(REAL(k-1))+(k-s32)*SQRT(REAL(k)))
 END DO
-!FbCoeff(N_Basset) = (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
+FbCoeff(N_Basset) = (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basset-s32)*SQRT(REAL(N_Basset)))
 ! Exponential kernel
-FbCoeffm = 10
-ALLOCATE(Fbi(1:3,1:FbCoeffm,1:PDM%maxParticleNumber))
-Fbi = 0.
-ALLOCATE(FbCoeffa(FbCoeffm),FbCoefft(FbCoeffm))
-FbCoeffa = (/0.23477481312586,0.28549576238194,0.28479416718255,0.26149775537574,0.32056200511938,0.35354490689146,&
-  0.39635904496921,0.42253908596514,0.48317384225265,0.63661146557001/)
-FbCoefft = (/0.1,0.3,1.,3.,10.,40.,190.,1000.,6500.,50000./)
+!FbCoeffm = 10
+!ALLOCATE(Fbi(1:3,1:FbCoeffm,1:PDM%maxParticleNumber))
+!Fbi = 0.
+!ALLOCATE(FbCoeffa(FbCoeffm),FbCoefft(FbCoeffm))
+!FbCoeffa = (/0.23477481312586,0.28549576238194,0.28479416718255,0.26149775537574,0.32056200511938,0.35354490689146,&
+!  0.39635904496921,0.42253908596514,0.48317384225265,0.63661146557001/)
+!FbCoefft = (/0.1,0.3,1.,3.,10.,40.,190.,1000.,6500.,50000./)
 #endif /* USE_BASSETFORCE */
 
 END SUBROUTINE AllocateParticleArrays
@@ -2067,9 +2069,9 @@ SDEALLOCATE(durdt)
 SDEALLOCATE(bIter)
 SDEALLOCATE(Fbdt)
 SDEALLOCATE(FbCoeff)
-SDEALLOCATE(FbCoeffa)
-SDEALLOCATE(FbCoefft)
-SDEALLOCATE(Fbi)
+!SDEALLOCATE(FbCoeffa)
+!SDEALLOCATE(FbCoefft)
+!SDEALLOCATE(Fbi)
 #endif /* USE_BASSETFORCE */
 
 ! interpolation

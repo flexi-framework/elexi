@@ -385,7 +385,7 @@ USE MOD_PreProc,                ONLY: PP_pi
 USE MOD_Viscosity
 #if USE_BASSETFORCE
 USE MOD_Equation_Vars,          ONLY: s43,s23
-USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter,Fbi,FbCoeff,FbCoeffa,FbCoefft,FbCoeffm,Fbdt
+USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter,FbCoeff,FbCoeffa,Fbdt,FbCoefft!,Fbi,FbCoeffm
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
 #endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
@@ -422,7 +422,7 @@ REAL                     :: DuDt(1:3)                   ! viscous and pressure f
 REAL,PARAMETER           :: s32=3./2.
 INTEGER                  :: k,kIndex,nIndex
 REAL                     :: dufdt(1:3)                  ! partial derivative of the fluid velocity
-REAL                     :: dtk(0:N_Basset+1)
+REAL                     :: dtk(3),dtn(2)
 ! Convergence1
 REAL                     :: Sb,Cb
 #endif /* USE_BASSETFORCE */
@@ -559,34 +559,27 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
 
   ! copy previous data
   IF (bIter(PartID) .GT. N_Basset+1) THEN
-    tmp(1:3) = durdt(1:3,PartID)
+    tmp(1:3)                 = durdt(1:3,PartID)
     durdt(1:kIndex-3,PartID) = durdt(4:kIndex,PartID)
-    Fbdt(1:nIndex-1,PartID) = Fbdt(2:nIndex,PartID)
+    Fbdt(1:nIndex,PartID)    = Fbdt(2:nIndex+1,PartID)
   END IF
 
-  ! Time integration in first RK stage (p. 26)
   IF (PRESENT(iStage)) THEN
     IF (iStage.EQ.1) THEN
-      Fbdt(nIndex,PartID) = RKC(2)*dt
+      Fbdt(nIndex+1,PartID) = t+RKC(2)*dt
     ELSE
       IF (iStage.NE.nRKStages) THEN
-        Fbdt(nIndex,PartID) = (RKC(iStage+1)-RKC(iStage))*dt
+        Fbdt(nIndex+1,PartID) = t+(RKC(iStage+1)-RKC(iStage))*dt
       ELSE
-        Fbdt(nIndex,PartID) = (1.-RKC(nRKStages))*dt
+        Fbdt(nIndex+1,PartID) = t+(1.-RKC(nRKStages))*dt
       END IF
     END IF
   ELSE
-   Fbdt(nIndex,PartID) = dt
+   Fbdt(nIndex+1,PartID) = t+dt
   END IF
 
-  ! save previous time steps dtk[j] = np.where(Ntmp==Nsteps,np.sum(dt[j-Ntmp:j]),np.sum(dt[:j]))
-  dtk(0) = 0.
-  DO k=1,nIndex
-    dtk(k) = SUM(Fbdt(1:k,PartID))
-  END DO
-
   ! Scaling factor
-  prefactor =9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
+  prefactor = 9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
             * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
 
   ! d(u_i)/dt = \partial (u_i)/\partial t + v_j \partial (u_i)/\partial (x_j) (inkomp.)
@@ -602,19 +595,31 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   ! durdt(kIndex-2:kIndex,PartID) = t**2
 
   IF (PRESENT(iStage)) THEN
-    Fbm = s43 * durdt(kIndex-2:kIndex,PartID) * SQRT(Fbdt(nIndex,PartID)) + durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID) * &
-          (2*(SQRT(dtk(nIndex))-SQRT(dtk(nIndex-1))) + s23/Fbdt(1,PartID)*(dtk(nIndex)**1.5-dtk(nIndex-1)**1.5) - &
-          2*dtk(nIndex)/Fbdt(1,PartID)*(SQRT(dtk(nIndex))-SQRT(dtk(nIndex-1))))
+    dtk(1) = Fbdt(nIndex+1,PartID) - Fbdt(1,PartID)
+    dtk(2) = Fbdt(nIndex+1,PartID) - Fbdt(2,PartID)
+    dtn(1) = Fbdt(nIndex+1,PartID) - Fbdt(nIndex,PartID)
+    dtn(2) = Fbdt(2,PartID) - Fbdt(1,PartID)
+    Fbm = s43 * durdt(kIndex-2:kIndex,PartID) * SQRT(dtn(1)) + durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID) * &
+          (2*(SQRT(dtk(1))-SQRT(dtk(2))) + s23/dtn(2)*(dtk(1)**1.5-dtk(2)**1.5) - &
+          2*dtk(1)/dtn(2)*(SQRT(dtk(1))-SQRT(dtk(2))))
     DO k=1,nIndex-1
-      Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * (s23*(dtk(k)**1.5-dtk(k-1)**1.5)/Fbdt(k,PartID) + &
-                  2*(SQRT(dtk(k))-SQRT(dtk(k-1))) - 2*dtk(k)/Fbdt(k,PartID)*(SQRT(dtk(k))-SQRT(dtk(k-1))) + &
-                  2*dtk(k+1)/Fbdt(k+1,PartID)*(SQRT(dtk(k+1))-SQRT(dtk(k))) - s23/Fbdt(k+1,PartID)*(dtk(k+1)**1.5-dtk(k)**1.5))
+      dtk(1) = Fbdt(nIndex+1,PartID)   - Fbdt(nIndex-k+1,PartID)
+      dtk(2) = Fbdt(nIndex+1,PartID)   - Fbdt(nIndex-k+2,PartID)
+      dtk(3) = Fbdt(nIndex+1,PartID)   - Fbdt(nIndex-k,PartID)
+      dtn(1) = Fbdt(nIndex-k+2,PartID) - Fbdt(nIndex-k+1,PartID)
+      dtn(2) = Fbdt(nIndex-k+1,PartID) - Fbdt(nIndex-k,PartID)
+      Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * (s23*(dtk(1)**1.5-dtk(2)**1.5)/dtn(1) + &
+                  2*(SQRT(dtk(1))-SQRT(dtk(2))) - 2*dtk(1)/dtn(1)*(SQRT(dtk(1))-SQRT(dtk(2))) + &
+                  2*dtk(3)/dtn(2)*(SQRT(dtk(3))-SQRT(dtk(1))) - s23/dtn(2)*(dtk(3)**1.5-dtk(1)**1.5))
     END DO
   ELSE
-    Fbm = s43 * durdt(kIndex-2:kIndex,PartID) * SQRT(Fbdt(nIndex,PartID)) + durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID) * &
-    FbCoeff(N_Basset+nIndex-1) * SQRT(Fbdt(1,PartID))
+    dtn(1) = Fbdt(nIndex+1,PartID) - Fbdt(nIndex,PartID)
+    dtn(2) = Fbdt(2,PartID) - Fbdt(1,PartID)
+    Fbm = s43 * durdt(kIndex-2:kIndex,PartID) * SQRT(dtn(1)) + durdt(kIndex-2-(nIndex-1)*3:kIndex-(nIndex-1)*3,PartID) * &
+    FbCoeff(N_Basset+nIndex-1) * SQRT(dtn(2))
     DO k=1,nIndex-1
-      Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * FbCoeff(k) * SQRT(Fbdt(nIndex-k,PartID))
+      dtn(1) = Fbdt(nIndex-k+2,PartID) - Fbdt(nIndex-k+1,PartID)
+      Fbm = Fbm + durdt(kIndex-2-k*3:kIndex-k*3,PartID) * FbCoeff(k) * SQRT(dtn(1))
     END DO
   END IF
 

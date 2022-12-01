@@ -632,7 +632,11 @@ ENDIF
 
 #if USE_MPI
 IF(PostiParallel_loc.AND.MPIRoot)THEN
-  CALL WriteParallelVTK(FileString,nVal,VarNames,OutputDirectory)
+  IF(PRESENT(OutputDirectory))THEN
+    CALL WriteParallelVTK(FileString,nVal,VarNames,OutputDirectory)
+  ELSE
+    CALL WriteParallelVTK(FileString,nVal,VarNames)
+  END IF
 ENDIF
 #endif
 

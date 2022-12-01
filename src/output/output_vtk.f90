@@ -672,6 +672,8 @@ IF (MPIRoot) THEN
       ELSE
         OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
       END IF
+    ELSE
+      OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
     END IF
     ! Line feed character
     lf = char(10)
@@ -732,6 +734,8 @@ IF (MPIRoot) THEN
     ELSE
       OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
     END IF
+  ELSE
+    OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
   END IF
   ! Line feed character
   lf = char(10)

@@ -113,7 +113,7 @@ SUBROUTINE FV_ProlongFValphaToFace(doMPISides)
 USE MOD_FV_Vars         ,ONLY: FV_alpha,FV_alpha_master,FV_alpha_slave
 USE MOD_Mesh_Vars       ,ONLY: SideToElem
 USE MOD_Mesh_Vars       ,ONLY: firstMPISide_MINE,lastMortarMPISide
-USE MOD_Mesh_Vars       ,ONLY: lastInnerSide,firstBCSide,nSides
+USE MOD_Mesh_Vars       ,ONLY: lastInnerSide
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

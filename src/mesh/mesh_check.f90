@@ -70,7 +70,7 @@ IMPLICIT NONE
 INTEGER,PARAMETER               :: SIDE_BCID=5
 ! REAL,PARAMETER                  :: RelTol=1.E-9
 LOGICAL                         :: doCheckMesh!,doCheckRel
-INTEGER                         :: NGeo_HDF5
+! INTEGER                         :: NGeo_HDF5
 INTEGER                         :: p,q
 INTEGER                         :: ElemID,nbElemID,BCID
 INTEGER                         :: SideID,firstSideID,lastSideID,locSide,nbLocSide,flip

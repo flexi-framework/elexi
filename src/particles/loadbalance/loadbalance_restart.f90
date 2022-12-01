@@ -66,7 +66,7 @@ REAL,ALLOCATABLE                :: UTmp(:,:,:,:,:)
 REAL,ALLOCATABLE                :: IndValueTmp(:)
 INTEGER,ALLOCATABLE             :: FV_ElemsTmp(:)
 #elif FV_ENABLED == 2
-INTEGER,ALLOCATABLE             :: FV_alphaTmp(:)
+REAL,ALLOCATABLE                :: FV_alphaTmp(:)
 #endif /*FV_ENABLED*/
 !===================================================================================================================================
 

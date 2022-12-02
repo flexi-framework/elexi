@@ -543,7 +543,7 @@ LOGWRITE(*,formatstr)'offsetMPISides_MINE:',offsetMPISides_MINE
 LOGWRITE(*,formatstr)'offsetMPISides_YOUR:',offsetMPISides_YOUR
 LOGWRITE(*,*)'-------------------------------------------------------'
 
-writePartitionInfo = GETLOGICAL('writePartitionInfo','.FALSE.')
+writePartitionInfo = GETLOGICAL('writePartitionInfo')
 IF(.NOT.writePartitionInfo) RETURN
 ! output partitioning info
 ProcInfo(1) = nElems

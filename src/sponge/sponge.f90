@@ -195,8 +195,7 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
     spongeExactFunc = GETINT('SpongeExactFunc','-1')
   END IF
 CASE DEFAULT
-  CALL CollectiveStop(__STAMP__,&
-    "Undefined SpongeBaseFlow!")
+  CALL CollectiveStop(__STAMP__,"Undefined SpongeBaseFlow!")
 END SELECT
 
 ! Preparation of the baseflow on each Gauss Point

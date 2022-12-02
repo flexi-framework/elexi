@@ -102,7 +102,9 @@ CALL prms%CreateRealOption(         'IniAmplitude', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'JetRadius',    "Roundjet CASE(5/33)", '1.0')
 CALL prms%CreateRealOption(         'JetEnd',       "Roundjet CASE(5/33)", '10.0')
-CALL prms%CreateRealOption(         'Ramping',      "Subsonic mass inflow CASE(28)", '1.0')
+CALL prms%CreateRealOption(         'Ramping',      "Subsonic mass inflow CASE(28)"  , '1.0')
+CALL prms%CreateRealOption(         'P_Parameter',  "Couette-Poiseuille flow CASE(8)", '0.0')
+CALL prms%CreateRealOption(         'U_Parameter',  "Couette-Poiseuille flow CASE(8)", '0.01')
 #if PARABOLIC
 CALL prms%CreateRealOption(         'delta99_in',   "Blasius boundary layer CASE(1338,1339,1340)")
 CALL prms%CreateRealArrayOption(    'x_in',         "Blasius boundary layer CASE(1338,1339,1340)")
@@ -144,19 +146,19 @@ CASE(5) ! Roundjet
   JetEnd           = GETREAL('JetEnd   ','10.0')
   RoundjetInitDone =.TRUE.
 CASE(7) ! Shu Vortex
-  IniCenter    = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
-  IniAxis      = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
-  IniAmplitude = GETREAL('IniAmplitude','0.2')
-  IniHalfwidth = GETREAL('IniHalfwidth','0.2')
+  IniCenter       = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
+  IniAxis         = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
+  IniAmplitude    = GETREAL('IniAmplitude')
+  IniHalfwidth    = GETREAL('IniHalfwidth')
 CASE(8) ! couette-poiseuille flow
-  P_Parameter  = GETREAL('P_Parameter','0.0')
-  U_Parameter  = GETREAL('U_Parameter','0.01')
+  P_Parameter     = GETREAL('P_Parameter')
+  U_Parameter     = GETREAL('U_Parameter')
 CASE(10) ! shock
-  MachShock    = GETREAL('MachShock','1.5')
-  PreShockDens = GETREAL('PreShockDens','1.0')
+  MachShock       = GETREAL('MachShock')
+  PreShockDens    = GETREAL('PreShockDens')
 CASE(33) ! Roundjet
-  JetRadius        = GETREAL('JetRadius','1.0')
-  JetEnd           = GETREAL('JetEnd   ','10.0')
+  JetRadius        = GETREAL('JetRadius')
+  JetEnd           = GETREAL('JetEnd')
   RoundjetInitDone =.TRUE.
 #if PARABOLIC
 CASE(1338) ! Blasius boundary layer solution

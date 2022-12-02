@@ -24,6 +24,7 @@
 MODULE MOD_Mesh_Readin
 ! MODULES
 USE MOD_HDF5_Input
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 !> @defgroup eleminfo ElemInfo parameters

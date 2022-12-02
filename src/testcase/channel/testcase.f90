@@ -99,11 +99,11 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
-CALL prms%CreateRealOption('ChannelMach', "Bulk mach number used in the channel testcase.", '0.1')
+CALL prms%CreateRealOption('ChannelMach', "Bulk mach number used in the channel testcase."                      , '0.1')
 CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
-CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
-                                              "(Note: always called at global analyze level)", '1000')
-CALL prms%CreateLogicalOption(  'Part-CustomChannel', "Allow channel dimensions other than Moser")
+CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "       //&
+                                              "(Note: always called at global analyze level)"                  , '1000')
+CALL prms%CreateLogicalOption(  'Part-CustomChannel', "Allow channel dimensions other than Moser",            '.FALSE.')
 CALL prms%CreateRealOption(     'Part-ChannelReTau',  "Custom channel Re_tau")
 CALL prms%CreateRealOption(     'Part-ChannelUTau',   "Custom channel U_tau")
 CALL prms%CreateRealOption(     'Part-ChannelUBulk',  "Custom channel bulk velocity")
@@ -141,13 +141,13 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
 
 #if FV_ENABLED
-CALL CollectiveStop(__STAMP__, &
-  'The testcase has not been implemented for FV yet!')
+CALL CollectiveStop(__STAMP__,'The testcase has not been implemented for FV yet!')
 #endif
 
-nWriteStats      = GETINT('nWriteStats','100')
-nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
-customChannel    = GETLOGICAL('Part-CustomChannel','.FALSE.')
+<<<<<<< HEAD
+nWriteStats      = GETINT('nWriteStats')
+nAnalyzeTestCase = GETINT('nAnalyzeTestCase')
+customChannel    = GETLOGICAL('Part-CustomChannel')
 
 ! Channel dimensions and BCs other than Moser
 IF (customChannel) THEN
@@ -167,7 +167,7 @@ ELSE
 ENDIF
 
 ! Set the background pressure according to chosen bulk Mach number
-bulkMach = GETREAL('ChannelMach','0.1')
+bulkMach = GETREAL('ChannelMach')
 pressure = (uBulk/bulkMach)**2*RefStatePrim(DENS,IniRefState)/kappa
 RefStatePrim(PRES,IniRefState) = pressure
 ! TODO: ATTENTION only sRho and Pressure of UE filled!!!

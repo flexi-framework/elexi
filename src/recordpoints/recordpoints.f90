@@ -93,7 +93,7 @@ INTEGER               :: maxRP
 INTEGER               :: nVar_loc
 !==================================================================================================================================
 ! check if recordpoints are activated
-RP_inUse = GETLOGICAL('RP_inUse','.FALSE.')
+RP_inUse = GETLOGICAL('RP_inUse')
 IF (.NOT.RP_inUse) RETURN
 
 IF((.NOT.InterpolationInitIsDone) .OR. RecordPointsInitIsDone) &
@@ -111,8 +111,8 @@ CALL InitRPCommunicator()
 nVar_loc = MERGE(nVar,PP_nVar,PRESENT(nVar))
 
 ! Read parameters on all procs, otherwise output is missing if no RP on MPI root
-RP_maxMemory      = GETINT('RP_MaxMemory','100')        ! Max buffer (100MB)
-RP_SamplingOffset = GETINT('RP_SamplingOffset','1')     ! Sampling offset (iteration)
+RP_maxMemory        = GETINT('RP_MaxMemory')            ! Max buffer (100MB)
+RP_SamplingOffset   = GETINT('RP_SamplingOffset')       ! Sampling offset (iteration)
 
 IF (RP_onProc) THEN
   RP_maxMemory      = RP_maxMemory * 131072             ! convert RP_maxMemory to bytes

@@ -78,14 +78,14 @@ CHARACTER(LEN=*),INTENT(IN) :: TimeDiscMethod !< name of time discretization to 
 ! LOCAL VARIABLES
 !===================================================================================================================================
 IF(TimeDiscType.EQ.'ESDIRK')THEN
-  PredictorType=GETINT('PredictorType','0')
+  PredictorType=GETINT('PredictorType')
 
   SELECT CASE(PredictorType)
   CASE(0) ! nothing to do
   CASE(1) ! use right hand side as predictor
     ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE(2) ! Lagrange polynomial predictor
-    PredictorOrder=GETINT('PredictorOrder','1')
+    PredictorOrder=GETINT('PredictorOrder')
     ! For the extrapolation, we need values from old time steps. The extrapolaton will be done for each stage separately, so we need
     ! to store the solution and time instance at each stage. How many time steps we need to store depends on the polynomial order.
     ALLOCATE(t_old(0:PredictorOrder,2:nRKStages))

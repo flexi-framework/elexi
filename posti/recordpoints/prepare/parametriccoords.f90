@@ -320,6 +320,7 @@ IF(ANY(.NOT.RPFound)) THEN
           END DO !l=0,NSuper
         END DO! i=0,NSuper
       END DO! j=0,NSuper
+
       ! get initial value of the functional G
       CALL Newton(NSuper,(/0.,0./),dGmat,Xi_NSuper,wBary_NSuper,Gmat,Xi2,LagOut=Lag_NSuper)
 

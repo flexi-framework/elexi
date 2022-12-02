@@ -71,7 +71,7 @@ CALL prms%CreateLogicalOption('WriteWallVelocity', "Set true to write wall velol
 CALL prms%CreateLogicalOption('WriteTotalStates' , "Set true to write total states to file"           , '.TRUE.')
 #if USE_PARTICLES
 CALL prms%CreateLogicalOption('CalcWallParticles' , "Set true to compute particle properties at walls", '.FALSE.')
-CALL prms%CreateLogicalOption('WriteWallParticles', "Set true to write particle properties at walls"  , '.FALSE.')
+CALL prms%CreateLogicalOption('WriteWallParticles', "Set true to write particle properties at walls"  , '.TRUE.')
 #endif
 CALL prms%CreateStringOption( 'VarNameAvg'       , "Names of variables to be time-averaged"           , multiple=.TRUE.)
 CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged&
@@ -107,20 +107,20 @@ IMPLICIT NONE
 INTEGER          :: i
 !==================================================================================================================================
 ! Get the various analysis/output variables
-doCalcBodyForces    =GETLOGICAL('CalcBodyForces'   ,'.FALSE.')
-doCalcBulkState     =GETLOGICAL('CalcBulkState'    ,'.FALSE.')
-doCalcMeanFlux      =GETLOGICAL('CalcMeanFlux'     ,'.FALSE.')
-doCalcWallVelocity  =GETLOGICAL('CalcWallVelocity' ,'.FALSE.')
-doCalcTotalStates   =GETLOGICAL('CalcTotalStates'  ,'.FALSE.')
-doWriteBodyForces   =GETLOGICAL('WriteBodyForces'  ,'.TRUE.')
-doWriteBulkState    =GETLOGICAL('WriteBulkState'   ,'.TRUE.')
-doWriteMeanFlux     =GETLOGICAL('WriteMeanFlux'    ,'.TRUE.')
-doWriteWallVelocity =GETLOGICAL('WriteWallVelocity','.TRUE.')
-doWriteTotalStates  =GETLOGICAL('WriteTotalStates' ,'.TRUE.')
-doCalcTimeAverage   =GETLOGICAL('CalcTimeAverage'  ,'.FALSE.')
+doCalcBodyForces     = GETLOGICAL('CalcBodyForces')
+doCalcBulkState      = GETLOGICAL('CalcBulkState')
+doCalcMeanFlux       = GETLOGICAL('CalcMeanFlux')
+doCalcWallVelocity   = GETLOGICAL('CalcWallVelocity')
+doCalcTotalStates    = GETLOGICAL('CalcTotalStates')
+doWriteBodyForces    = GETLOGICAL('WriteBodyForces')
+doWriteBulkState     = GETLOGICAL('WriteBulkState')
+doWriteMeanFlux      = GETLOGICAL('WriteMeanFlux')
+doWriteWallVelocity  = GETLOGICAL('WriteWallVelocity')
+doWriteTotalStates   = GETLOGICAL('WriteTotalStates')
+doCalcTimeAverage    = GETLOGICAL('CalcTimeAverage')
 #if USE_PARTICLES
-doCalcWallParticles =GETLOGICAL('CalcWallParticles' ,'.FALSE.')
-doWriteWallParticles=GETLOGICAL('WriteWallParticles','.TRUE.')
+doCalcWallParticles  = GETLOGICAL('CalcWallParticles')
+doWriteWallParticles = GETLOGICAL('WriteWallParticles')
 IF (doCalcWallParticles) WriteMacroSurfaceValues = .TRUE.
 #endif
 

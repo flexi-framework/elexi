@@ -157,7 +157,7 @@ CALL prms%CreateLogicalOption('gatheredWrite', "Set true to activate gathered HD
                                                "Only local group masters will write data after gathering from local slaves.",&
                                                '.FALSE.')
 #if PP_dim == 2
-CALL prms%CreateLogicalOption('output2D'     , "Set true to activate hdf5 data output with flat third dimension.",'.FALSE.')
+CALL prms%CreateLogicalOption('output2D'     , "Set true to activate hdf5 data output with flat third dimension.",'.TRUE.')
 #endif /*PP_dim == 2*/
 #if USE_PARTICLES
 CALL prms%CreateLogicalOption('UseCollectiveIO', "Set true to activate collective HDF5 IO during distributed write when possibly "//&
@@ -182,12 +182,12 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 gatheredWrite=.FALSE.
-IF(nLeaderProcs.LT.nProcessors) gatheredWrite=GETLOGICAL('gatheredWrite','.FALSE.')
+IF(nLeaderProcs.LT.nProcessors) gatheredWrite=GETLOGICAL('gatheredWrite')
 
 #if PP_dim == 3
 output2D = .FALSE.
 #else
-output2D = GETLOGICAL('output2D','.TRUE.')
+output2D = GETLOGICAL('output2D')
 #endif
 
 CALL InitMPIInfo()

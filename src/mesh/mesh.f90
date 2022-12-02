@@ -46,6 +46,7 @@ SUBROUTINE DefineParametersMesh()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Mesh")
@@ -165,7 +166,7 @@ IF(.NOT.validMesh) &
 IF (PRESENT(UseCurveds_IN)) THEN
   useCurveds = UseCurveds_IN
 ELSE
-  useCurveds = GETLOGICAL('useCurveds','.TRUE.')
+  useCurveds = GETLOGICAL('useCurveds')
 END IF
 
 #if USE_LOADBALANCE
@@ -203,7 +204,7 @@ NodeCoords(3,:,:,:,:) = 0.
 
 ! if trees are available: compute metrics on tree level and interpolate to elements
 interpolateFromTree=.FALSE.
-IF(isMortarMesh) interpolateFromTree=GETLOGICAL('interpolateFromTree','.TRUE.')
+IF(isMortarMesh) interpolateFromTree=GETLOGICAL('interpolateFromTree')
 IF(interpolateFromTree)THEN
 #if (PP_dim == 2)
   CALL CollectiveStop(__STAMP__,&
@@ -218,7 +219,7 @@ ELSE
 ENDIF
 
 #if !USE_PARTICLES
-NGeoOverride=GETINT('NGeoOverride','-1')
+NGeoOverride=GETINT('NGeoOverride')
 #endif /*!USE_PARTICLES*/
 IF(NGeoOverride.GT.0)THEN
   ALLOCATE(CoordsTmp(3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride,nElemsLoc))
@@ -252,12 +253,12 @@ End IF
 
 ! scale and deform mesh if desired (warning: no mesh output!)
 #if !USE_PARTICLES
-meshScale=GETREAL('meshScale','1.0')
+meshScale=GETREAL('meshScale')
 #endif /*!USE_PARTICLES*/
 IF(ABS(meshScale-1.).GT.1e-14)&
   Coords = Coords*meshScale
 
-IF(GETLOGICAL('meshdeform','.FALSE.'))THEN
+IF(GETLOGICAL('meshdeform'))THEN
 #if USE_PARTICLES
   CALL COLLECTIVESTOP(__STAMP__,'Mesh deformation currently not supported in conjunction with particles!')
 #endif
@@ -411,7 +412,7 @@ IF (meshMode.GT.1) THEN
 
 #if (PP_dim == 3)
   ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
-  crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')
+  crossProductMetrics=GETLOGICAL('crossProductMetrics')
 #endif
   LBWRITE(UNIT_stdOut,'(A)') " NOW CALLING calcMetrics..."
 
@@ -425,7 +426,7 @@ IF (meshMode.GT.1) THEN
   CALL InitFV_Metrics()  ! FV metrics
 #endif
   ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
-  CALL WriteDebugMesh(GETINT('debugmesh','0'))
+  CALL WriteDebugMesh(GETINT('debugmesh'))
 END IF
 
 SDEALLOCATE(dXCL_N)

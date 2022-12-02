@@ -118,7 +118,7 @@ INTEGER                                :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
 #endif
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build Metrics ...'
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' Build Metrics ...'
 
 #if FV_RECONSTRUCT
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

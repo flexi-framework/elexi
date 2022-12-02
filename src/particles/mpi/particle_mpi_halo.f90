@@ -700,7 +700,7 @@ IF(CheckExchangeProcs)THEN
   ! On smooth grids, nNonSymmetricExchangeProcs should be zero. Only output if previously missing particle exchange procs are found
   CALL MPI_ALLREDUCE(nNonSymmetricExchangeProcs,nNonSymmetricExchangeProcsGlob,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
   IF (nNonSymmetricExchangeProcsGlob.GT.0) THEN
-    SWRITE(UNIT_StdOut,'(X,131("~"))')
+    SWRITE(UNIT_stdOut,'(132("~"))')
     SWRITE(UNIT_stdOut,'(A,I0,A)') ' | Found ',nNonSymmetricExchangeProcsGlob, &
                                    ' previously missing non-symmetric particle exchange procs'
     IF(CheckExchangeProcs) CALL CollectiveStop(__STAMP__,&

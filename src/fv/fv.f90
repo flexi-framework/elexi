@@ -183,6 +183,7 @@ IF (.NOT.PerformLoadBalance) THEN
   ALLOCATE(FV_Elems(nElems)) ! holds information if element is DG (0) or FV (1)
   ! All cells are initially DG cells
   FV_Elems = 0
+  CALL AddToElemData(ElementOut,'FV_Elems',IntArray=FV_Elems) ! append this array to HDF5 output files
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/
@@ -204,23 +205,22 @@ IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
   ALLOCATE(FV_alpha(1:nElems))
   FV_alpha = 0.
+  CALL AddToElemData(ElementOut,'FV_alpha',RealArray=FV_alpha)
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/
 ALLOCATE(FV_alpha_master(nSides))
 ALLOCATE(FV_alpha_slave( nSides))
-CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
 
 ALLOCATE(FV_Elems(nElems)) ! holds information if element is DG (0) or FV (1)
 ! All cells are initially DG cells
 FV_Elems = 0
+CALL AddToElemData(ElementOut,'FV_Elems',IntArray=FV_Elems) ! append this array to HDF5 output files
 #endif /*FV_ENABLED*/
 
 #if FV_RECONSTRUCT
 CALL InitFV_Limiter()
 #endif
-
-CALL AddToElemData(ElementOut,'FV_Elems',IntArray=FV_Elems) ! append this array to HDF5 output files
 
 ! The elementwise information of 'FV_Elems' is also needed at the faces and therefore
 ! is 'prolongated' to the faces into the arrays 'FV_Elems_master/slave'.

@@ -15,6 +15,7 @@
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 #include "eos.h"
 #endif
+#include "indicator.h"
 
 !==================================================================================================================================
 !> This module contains the all indicators useable e.g. for Shock-Capturing/Limiting
@@ -28,17 +29,9 @@
 MODULE MOD_Indicator
 ! MODULES
 IMPLICIT NONE
-
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTEGER,PARAMETER :: INDTYPE_DG             = 0
-INTEGER,PARAMETER :: INDTYPE_FV             = 1
-INTEGER,PARAMETER :: INDTYPE_PERSSON        = 2
-INTEGER,PARAMETER :: INDTYPE_JAMESON        = 8
-INTEGER,PARAMETER :: INDTYPE_DUCROS         = 9
-INTEGER,PARAMETER :: INDTYPE_DUCROSTIMESJST = 10
-INTEGER,PARAMETER :: INDTYPE_HALFHALF       = 3
-INTEGER,PARAMETER :: INDTYPE_CHECKERBOARD   = 33
 
 INTERFACE InitIndicator
   MODULE PROCEDURE InitIndicator
@@ -87,26 +80,29 @@ USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Indicator")
-CALL prms%CreateIntFromStringOption('IndicatorType',"Specify type of indicator to be used: DG, FV, Persson,"//&
-                                             "Ducros, DucrosTimesJST, halfhalf, checkerboard",&
-                                             'DG')
-CALL addStrListEntry('IndicatorType','dg',            INDTYPE_DG)
-CALL addStrListEntry('IndicatorType','fv',            INDTYPE_FV)
-CALL addStrListEntry('IndicatorType','persson',       INDTYPE_PERSSON)
-CALL addStrListEntry('IndicatorType','halfhalf',      INDTYPE_HALFHALF)
-CALL addStrListEntry('IndicatorType','checkerboard',  INDTYPE_CHECKERBOARD)
-CALL addStrListEntry('IndicatorType','jameson',       INDTYPE_JAMESON)
-CALL addStrListEntry('IndicatorType','ducros',        INDTYPE_DUCROS)
-CALL addStrListEntry('IndicatorType','ducrostimesjst',INDTYPE_DUCROSTIMESJST)
-CALL prms%CreateIntOption('IndVar',        "Specify variable upon which indicator is applied, for general indicators.",&
-                                           '1')
-CALL prms%CreateRealOption('IndStartTime', "Specify physical time when indicator evalution starts. Before this time"//&
-                                           "a high indicator value is returned from indicator calculation."//&
-                                           "(Idea: FV everywhere at begin of computation to smooth solution)", '0.0')
-CALL prms%CreateIntOption('nModes',        "Number of highest modes to be checked for Persson modal indicator.",'2')
-CALL prms%CreateLogicalOption('FVBoundaries',  "Use FV discretization in element that contains a side of a certain BC_TYPE", '.FALSE.')
-CALL prms%CreateIntOption    ('FVBoundaryType',"BC_TYPE that should be discretized with FV."//&
-                                               "Set it to BC_TYPE, setting 0 will apply FV to all BC Sides",multiple=.TRUE.)
+CALL prms%CreateIntFromStringOption('IndicatorType'       ,"Specify type of indicator to be used: DG, FV, Persson,"                  //&
+                                                           " Ducros, DucrosTimesJST, Jameson, halfhalf, checkerboard"                  &
+                                                          ,'DG')
+CALL addStrListEntry('IndicatorType','dg',                INDTYPE_DG)
+CALL addStrListEntry('IndicatorType','fv',                INDTYPE_FV)
+CALL addStrListEntry('IndicatorType','persson',           INDTYPE_PERSSON)
+CALL addStrListEntry('IndicatorType','halfhalf',          INDTYPE_HALFHALF)
+CALL addStrListEntry('IndicatorType','checkerboard',      INDTYPE_CHECKERBOARD)
+CALL addStrListEntry('IndicatorType','jameson',           INDTYPE_JAMESON)
+CALL addStrListEntry('IndicatorType','ducros',            INDTYPE_DUCROS)
+CALL addStrListEntry('IndicatorType','ducrostimesjst',    INDTYPE_DUCROSTIMESJST)
+CALL prms%CreateIntOption(          'IndVar'              ,"Specify variable upon which indicator is applied, for general indicators.",&
+                                                          '1')
+CALL prms%CreateRealOption(         'IndStartTime'        ,"Specify physical time when indicator evalution starts. Before this time" //&
+                                                           "a high indicator value is returned from indicator calculation."          //&
+                                                           "(Idea: FV everywhere at begin of computation to smooth solution)"          &
+                                                          ,'0.0')
+CALL prms%CreateIntOption(          'nModes'              ,"Number of highest modes to be checked for Persson modal indicator."        &
+                                                          ,'2')
+CALL prms%CreateLogicalOption(      'FVBoundaries'        ,"Use FV discretization in element that contains a side of a certain BC_TYPE"&
+                                                          ,'.FALSE.')
+CALL prms%CreateIntOption    (      'FVBoundaryType'      ,"BC_TYPE that should be discretized with FV."                             //&
+                                                           "Set it to BC_TYPE, setting 0 will apply FV to all BC Sides",multiple=.TRUE.)
 END SUBROUTINE DefineParametersIndicator
 
 
@@ -123,23 +119,25 @@ USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Filter_Vars         ,ONLY: NFilter
-#if USE_LOADBALANCE
+#if USE_LOADBALANCE && FV_ENABLED == 1
 USE MOD_LoadBalance_Vars    ,ONLY: PerformLoadBalance
-#endif /*USE_LOADBALANCE*/
+#endif /*USE_LOADBALANCE && FV_ENABLED == 1*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#if FV_ENABLED == 1
 INTEGER                                  :: iBC,nFVBoundaryType
+#endif
 !==================================================================================================================================
 IF(IndicatorInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
     "InitIndicator not ready to be called or already called.")
 END IF
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT INDICATOR...'
 
 ! Read in  parameters
 #if FV_ENABLED == 2
@@ -188,19 +186,22 @@ CASE(-1) ! legacy
   IndicatorType=INDTYPE_DG
 END SELECT
 
-IndStartTime = GETREAL('IndStartTime')
-#if USE_LOADBALANCE
+#if USE_LOADBALANCE && FV_ENABLED == 1
 IF (.NOT.PerformLoadBalance) THEN
-#endif /*USE_LOADBALANCE*/
+#endif /*USE_LOADBALANCE && FV_ENABLED == 1*/
   ALLOCATE(IndValue(nElems))
   IndValue = 0.
-#if USE_LOADBALANCE
+  CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
+#if USE_LOADBALANCE && FV_ENABLED == 1
 END IF
-#endif /*USE_LOADBALANCE*/
-CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
+#endif /*USE_LOADBALANCE && FV_ENABLED == 1*/
+
+! Indicator Start Time
+IndStartTime = GETREAL('IndStartTime')
 
 IndVar = GETINT('IndVar')
 
+#if FV_ENABLED == 1
 ! FV element at boundaries
 FVBoundaries    = GETLOGICAL('FVBoundaries')
 nFVBoundaryType = CountOption('FVBoundaryType')
@@ -208,11 +209,13 @@ ALLOCATE(FVBoundaryType(nFVBoundaryType))
 DO iBC=1,nFVBoundaryType
   FVBoundaryType(iBC) = GETINT('FVBoundaryType','0')! which BCType should be at an FV element? Default value means every BC will be FV
 END DO
+#endif /* FV_ENABLED == 1 */
 
 IndicatorInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitIndicator
+
 
 !==================================================================================================================================
 !> Perform calculation of the indicator.
@@ -289,8 +292,10 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   END DO ! iElem
 #endif /*FV_ENABLED==2*/
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
+#if FV_ENABLED
 CASE(INDTYPE_JAMESON)
-  IndValue = JamesonIndicator(U)
+    IndValue = JamesonIndicator(U)
+#endif
 #if PARABOLIC
 CASE(INDTYPE_DUCROS)
   IndValue = DucrosIndicator(gradUx,gradUy,gradUz)
@@ -320,8 +325,10 @@ CASE DEFAULT ! unknown Indicator Type
     "Unknown IndicatorType!")
 END SELECT
 
+#if FV_ENABLED == 1
 ! obtain indicator value for elements that contain domain boundaries
 CALL IndFVBoundaries(IndValue)
+#endif /*!FV_ENABLED == 1*/
 
 END SUBROUTINE CalcIndicator
 
@@ -409,16 +416,19 @@ IndValue=LOG10(IndValue)
 
 END FUNCTION IndPersson
 
+
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 #if PARABOLIC
 !==================================================================================================================================
 !> Indicator by Ducros.
 !==================================================================================================================================
 FUNCTION DucrosIndicator(gradUx, gradUy, gradUz) RESULT(IndValue)
+! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: nElems,sJ
 USE MOD_Analyze_Vars       ,ONLY: wGPVol
 USE MOD_FV_Vars            ,ONLY: FV_Elems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -464,14 +474,16 @@ END DO ! iElem
 END FUNCTION DucrosIndicator
 #endif /* PARABOLIC */
 
+
 !==================================================================================================================================
 !> Indicator by Jameson.
 !==================================================================================================================================
 FUNCTION JamesonIndicator(U) RESULT(IndValue)
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Indicator_Vars     ,ONLY: IndVar
-USE MOD_EOS_Vars           ,ONLY: KappaM1
+USE MOD_EOS_Vars           ,ONLY: sKappaM1,KappaM1,R
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars          ,ONLY: nElems,nSides
 USE MOD_Mesh_Vars          ,ONLY: firstMortarInnerSide,lastMortarInnerSide,firstMortarMPISide,lastMortarMPISide
@@ -520,13 +532,24 @@ INTEGER                   :: DataSizeSide_loc
 SELECT CASE(IndVar)
 CASE(1:PP_nVar)
   UJameson(1,:,:,:,:) = U(IndVar,:,:,:,:)
-CASE(6)
+CASE(6) ! Pressure
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(EXT_CONS)=U(:,i,j,k,iElem)
       UE(EXT_SRHO)=1./UE(EXT_DENS)
       UE(EXT_VELV)=VELOCITY_HE(UE)
       UJameson(1,i,j,k,iElem)=PRESSURE_HE(UE)
+    END DO; END DO; END DO! i,j,k=0,PP_N
+  END DO ! iElem
+CASE(7) ! Entropy
+  DO iElem=1,nElems
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      UE(EXT_CONS) = U(:,i,j,k,iElem)
+      UE(EXT_SRHO) = 1./UE(EXT_DENS)
+      UE(EXT_VELV) = VELOCITY_HE(UE)
+      UE(EXT_PRES) = PRESSURE_HE(UE)
+      UE(EXT_TEMP) = TEMPERATURE_HE(UE)
+      UJameson(1,i,j,k,iElem) = ENTROPY_HE(UE)
     END DO; END DO; END DO! i,j,k=0,PP_N
   END DO ! iElem
 END SELECT
@@ -745,20 +768,20 @@ END SUBROUTINE IndFVBoundaries
 SUBROUTINE FinalizeIndicator()
 ! MODULES
 USE MOD_Indicator_Vars
-#if USE_LOADBALANCE
+#if USE_LOADBALANCE && FV_ENABLED == 1
 USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
-#endif /*USE_LOADBALANCE*/
+#endif /*USE_LOADBALANCE && FV_ENABLED == 1*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 
-#if USE_LOADBALANCE
+#if USE_LOADBALANCE && FV_ENABLED == 1
 IF (.NOT.PerformLoadBalance) THEN
-#endif /*USE_LOADBALANCE*/
+#endif /*USE_LOADBALANCE && FV_ENABLED == 1*/
   SDEALLOCATE(IndValue)
-#if USE_LOADBALANCE
+#if USE_LOADBALANCE && FV_ENABLED == 1
 END IF
-#endif /*USE_LOADBALANCE*/
+#endif /*USE_LOADBALANCE && FV_ENABLED == 1*/
 SDEALLOCATE(FVBoundaryType)
 
 IndicatorInitIsDone=.FALSE.

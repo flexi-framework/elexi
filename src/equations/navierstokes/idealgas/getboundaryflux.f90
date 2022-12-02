@@ -292,7 +292,7 @@ SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,Ta
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals        ,ONLY: Abort
-USE MOD_Mesh_Vars      ,ONLY: BoundaryType,BC,nBCSides
+USE MOD_Mesh_Vars      ,ONLY: BoundaryType,BC
 USE MOD_EOS            ,ONLY: ConsToPrim,PrimtoCons
 USE MOD_EOS            ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R,cp

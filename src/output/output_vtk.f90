@@ -632,7 +632,11 @@ ENDIF
 
 #if USE_MPI
 IF(PostiParallel_loc.AND.MPIRoot)THEN
-  CALL WriteParallelVTK(FileString,nVal,VarNames,OutputDirectory)
+  IF(PRESENT(OutputDirectory))THEN
+    CALL WriteParallelVTK(FileString,nVal,VarNames,OutputDirectory)
+  ELSE
+    CALL WriteParallelVTK(FileString,nVal,VarNames)
+  END IF
 ENDIF
 #endif
 
@@ -668,6 +672,8 @@ IF (MPIRoot) THEN
       ELSE
         OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
       END IF
+    ELSE
+      OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
     END IF
     ! Line feed character
     lf = char(10)
@@ -728,6 +734,8 @@ IF (MPIRoot) THEN
     ELSE
       OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
     END IF
+  ELSE
+    OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
   END IF
   ! Line feed character
   lf = char(10)

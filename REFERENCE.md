@@ -1,13 +1,19 @@
 # Attribution
 
-If you use Flexi for your publications, please cite it.
-For the general method please cite
+If you use Flexi for your publications, please cite it. 
+For the general method, please cite
 ```
-Hindenlang, F., Gassner, G. J., Altmann, C., Beck, A., Staudenmaier, M., & Munz, C. D. (2012). . Computers & Fluids, 61, 86-93.
+Hindenlang, F., Gassner, G. J., Altmann, C., Beck, A., Staudenmaier, M., & Munz, C. D.
 Explicit discontinuous Galerkin methods for unsteady problems
 Computers & Fluids, 61, (2012) 86-93
 ```
-For LES related topics please cite
+If you use the FLEXI-PARTICLE extension, please cite
+```
+Kopper, P., Schwarz, A., Copplestone, S. M., Ortwein, P., Staudacher, S., and Beck, A.
+A framework for high-fidelity particle tracking on massively parallel systems
+arXiv, (2022)
+```
+For LES related topics, please cite
 ```
 Beck, A. D., Bolemann, T., Flad, D., Frank, H., Gassner, G. J., Hindenlang, F., & Munz, C. D.
 High‐order discontinuous Galerkin spectral element methods for transitional and turbulent flow simulations
@@ -23,6 +29,15 @@ or use the following Bibtex files
      pages={86--93},
      year={2012},
      publisher={Elsevier}
+    }
+
+    @misc{https://doi.org/10.48550/arxiv.2211.05458,
+     doi={10.48550/ARXIV.2211.05458},
+     url={https://arxiv.org/abs/2211.05458},
+     author={Kopper, Patrick and Schwarz, Anna and Copplestone, Stephen M. and Ortwein, Philip and Staudacher, Stephan and Beck, Andrea},
+     title={A framework for high-fidelity particle tracking on massively parallel systems},
+     year={2022},
+     publisher={arXiv},
     }
 
     @article{flexi_les,

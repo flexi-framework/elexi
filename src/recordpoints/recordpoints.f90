@@ -146,7 +146,7 @@ END SUBROUTINE InitRecordPoints
 SUBROUTINE InitRPCommunicator()
 ! MODULES
 USE MOD_Globals
-USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc,myRPrank,RP_COMM,nRP_Procs
+USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc,myRPrank,RP_COMM,nRP_Procs,RP_RootRank
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -162,14 +162,17 @@ color = MERGE(2,MPI_UNDEFINED,RP_onProc)
 ! create new RP communicator for RP output. Pass MPI_INFO_NULL as rank to follow the original ordering
 CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI, color, MPI_INFO_NULL, RP_COMM, iError)
 
-! return if proc not on RP_COMM
-IF (.NOT. RP_onProc) RETURN
+! ignore comm if proc not on RP_COMM
+IF (RP_onProc) THEN
+  ! Find my rank on the RP communicator, comm size and proc name
+  CALL MPI_COMM_RANK(RP_COMM, myRPrank , iError)
+  CALL MPI_COMM_SIZE(RP_COMM, nRP_Procs, iError)
+  IF (myRPrank.EQ.0) WRITE(UNIT_stdOut,'(A,I0,A)') ' | RP COMM: ',nRP_Procs,' procs'
+END IF
 
-! Find my rank on the RP communicator, comm size and proc name
-CALL MPI_COMM_RANK(RP_COMM, myRPrank , iError)
-CALL MPI_COMM_SIZE(RP_COMM, nRP_Procs, iError)
-
-IF (myRPrank.EQ.0) WRITE(UNIT_stdOut,'(A,I0,A)') ' | RP COMM: ',nRP_Procs,' procs'
+! Send rank of RP root to all procs
+RP_RootRank = MERGE(myRank,0,myRank.EQ.0)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,RP_RootRank,1,MPI_INTEGER,MPI_MAX,MPI_COMM_FLEXI,iError)
 
 END SUBROUTINE InitRPCommunicator
 #endif /*USE_MPI*/
@@ -441,7 +444,7 @@ USE MOD_RecordPoints_Vars     ,ONLY: offsetRP,nRP,nGlobalRP
 USE MOD_RecordPoints_Vars     ,ONLY: RP_Buffersize,RP_Maxbuffersize,RP_fileExists,chunkSamples
 #if USE_MPI
 USE MOD_RecordPoints_Vars     ,ONLY: RP_COMM
-USE MOD_RecordPoints_Vars     ,ONLY: myRPrank
+USE MOD_RecordPoints_Vars     ,ONLY: myRPrank!,RP_RootRank
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -457,6 +460,13 @@ CHARACTER(LEN=255)             :: FileString
 CHARACTER(LEN=255)             :: tmp255
 REAL                           :: startT,endT
 !==================================================================================================================================
+
+! #if USE_MPI
+! ! Communicate the RP_Buffersize to all procs
+! CALL MPI_BCAST(RP_Buffersize,1,MPI_INTEGER,RP_RootRank,MPI_COMM_FLEXI,iError)
+! #endif /* USE_MPI */
+
+! IF (.NOT.RP_onProc) RETURN
 
 #if USE_MPI
 IF (myRPrank.EQ.0) THEN

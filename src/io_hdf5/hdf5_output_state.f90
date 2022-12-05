@@ -85,7 +85,7 @@ INTEGER                        :: nVal(5)
 IF (.NOT.WriteStateFiles) RETURN
 
 IF(MPIRoot)THEN
-  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE STATE TO HDF5 FILE...'
+  WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' WRITE STATE TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
 

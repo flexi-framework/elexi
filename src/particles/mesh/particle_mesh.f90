@@ -651,6 +651,16 @@ IMPLICIT NONE
 ! Particle mesh readin happens during mesh readin, finalize with gathered routine here
 CALL FinalizeMeshReadin()
 
+! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+! InitElemVolumes is always called
+CALL MPI_WIN_UNLOCK_ALL(ElemVolume_Shared_Win           ,iError)
+CALL MPI_WIN_FREE(      ElemVolume_Shared_Win           ,iError)
+CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
+#endif /*USE_MPI*/
+MDEALLOCATE(ElemVolume_Shared)
+
 ! Return if running particle code without any species
 IF (nSpecies.LE.0) RETURN
 
@@ -665,8 +675,8 @@ SELECT CASE(TrackingMethod)
     CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
     ! InitElemVolumes
-    CALL MPI_WIN_UNLOCK_ALL(ElemVolume_Shared_Win           ,iError)
-    CALL MPI_WIN_FREE(      ElemVolume_Shared_Win           ,iError)
+    ! CALL MPI_WIN_UNLOCK_ALL(ElemVolume_Shared_Win           ,iError)
+    ! CALL MPI_WIN_FREE(      ElemVolume_Shared_Win           ,iError)
 
     ! InitParticleGeometry
     IF (TriaSurfaceFlux) THEN
@@ -884,8 +894,8 @@ SELECT CASE(TrackingMethod)
     CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
     ! InitElemVolumes
-    CALL MPI_WIN_UNLOCK_ALL(ElemVolume_Shared_Win           ,iError)
-    CALL MPI_WIN_FREE(      ElemVolume_Shared_Win           ,iError)
+    ! CALL MPI_WIN_UNLOCK_ALL(ElemVolume_Shared_Win           ,iError)
+    ! CALL MPI_WIN_FREE(      ElemVolume_Shared_Win           ,iError)
 
     IF (DoInterpolation) THEN
 #if USE_LOADBALANCE

@@ -137,10 +137,10 @@ IF (PerformLoadBalance) THEN
   ! ------------------------------------------------
   ALLOCATE(PartIntTmp(PartIntSize,FirstElemInd:LastElemInd))
   ASSOCIATE (&
-          counts_send  => (2*MPInElemSend     ) ,&
-          disp_send    => (2*MPIoffsetElemSend) ,&
-          counts_recv  => (2*MPInElemRecv     ) ,&
-          disp_recv    => (2*MPIoffsetElemRecv))
+          counts_send  => (PartIntSize*MPInElemSend     ) ,&
+          disp_send    => (PartIntSize*MPIoffsetElemSend) ,&
+          counts_recv  => (PartIntSize*MPInElemRecv     ) ,&
+          disp_recv    => (PartIntSize*MPIoffsetElemRecv))
     ! Communicate PartInt over MPI
     CALL MPI_ALLTOALLV(PartInt,counts_send,disp_send,MPI_INTEGER_INT_KIND,PartIntTmp,counts_recv,disp_recv,MPI_INTEGER_INT_KIND,MPI_COMM_FLEXI,iError)
   END ASSOCIATE
@@ -235,7 +235,7 @@ ELSE
   ! SDEALLOCATE(PartData)
 
   GETTIME(StartT)
-  SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE...'
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE...'
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
   ! Read the emission time

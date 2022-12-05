@@ -12,6 +12,9 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#if USE_LOADBALANCE
+#include "particle.h"
+#endif /*USE_LOADBALANCE*/
 
 !==================================================================================================================================
 !> Module that provides functions for computing the solutions time history at a defined set of points ("recordpoints")
@@ -186,14 +189,25 @@ SUBROUTINE ReadRPList(FileString)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_HDF5_Input
-USE MOD_Mesh_Vars             ,ONLY:MeshFile,nGlobalElems
-USE MOD_Mesh_Vars             ,ONLY:OffsetElem
-USE MOD_Mesh_Vars             ,ONLY:nElems
-USE MOD_RecordPoints_Vars     ,ONLY:RP_onProc,L_xi_RP,L_eta_RP,L_zeta_RP
-USE MOD_RecordPoints_Vars     ,ONLY:offsetRP,RP_ElemID,nRP,nGlobalRP
+USE MOD_Mesh_Vars             ,ONLY: MeshFile,nGlobalElems
+USE MOD_Mesh_Vars             ,ONLY: OffsetElem
+USE MOD_Mesh_Vars             ,ONLY: nElems
+USE MOD_RecordPoints_Vars     ,ONLY: RP_onProc,L_xi_RP,L_eta_RP,L_zeta_RP
+USE MOD_RecordPoints_Vars     ,ONLY: offsetRP,RP_ElemID,nRP,nGlobalRP
+USE MOD_RecordPoints_Vars     ,ONLY: OffsetRPArray,xi_RP
 #if FV_ENABLED
 USE MOD_RecordPoints_Vars     ,ONLY: FV_RP_ijk
 #endif
+#if USE_LOADBALANCE
+USE MOD_Analyze_Vars          ,ONLY: WriteData_dt
+USE MOD_LoadBalance_Vars      ,ONLY: PerformLoadBalance
+USE MOD_LoadBalance_Vars      ,ONLY: nElemsOld,offsetElemOld,ElemInfoRank_Shared
+USE MOD_LoadBalance_Vars      ,ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
+USE MOD_Particle_Mesh_Vars    ,ONLY: ElemInfo_Shared
+USE MOD_RecordPoints_Vars     ,ONLY: RP_Data,iSample,nSamples,RP_fileExists
+USE MOD_RecordPoints_Vars     ,ONLY: RP_Buffersize,RP_MaxBufferSize,RP_SamplingOffset
+USE MOD_Timedisc_Vars         ,ONLY: dt
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -204,73 +218,202 @@ CHARACTER(LEN=255),INTENT(IN) :: FileString !< name of hdf5 file for readin of r
 CHARACTER(LEN=255)            :: MeshFile_RPList
 INTEGER                       :: nGlobalElems_RPList
 INTEGER                       :: iElem,iRP,iRP_glob
-INTEGER                       :: OffsetRPArray(2,nElems)
-REAL,ALLOCATABLE              :: xi_RP(:,:)
+INTEGER                       :: FirstElemInd,LastelemInd
+#if USE_LOADBALANCE
+INTEGER                       :: iProc,RPRank
+INTEGER                       :: offsetRPSend,offsetRPRecv
+INTEGER                       :: nRPOld,offsetRPOld
+INTEGER                       :: MPInRPSend(nProcessors),MPInRPRecv(nProcessors),MPIoffsetRPSend(nProcessors),MPIoffsetRPRecv(nProcessors)
+! Temporary arrays
+INTEGER,ALLOCATABLE           :: OffsetRPArrayTmp(:,:)
+REAL,ALLOCATABLE              :: xi_RPTmp(:,:)
+REAL,ALLOCATABLE              :: RP_Data1D(:,:),RP_Data1DTmp(:,:)
+#endif /*USE_LOADBALANCE*/
+! Timers
+REAL                          :: StartT,EndT
 !==================================================================================================================================
 
-IF(MPIRoot)THEN
-  IF (.NOT.FILEEXISTS(FileString)) &
-    CALL Abort(__STAMP__,'RPList from data file "'//TRIM(FileString)//'" does not exist')
-END IF
+FirstElemInd = offsetElem+1
+LastElemInd  = offsetElem+nElems
 
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Read recordpoint definitions from data file "'//TRIM(FileString)//'" ...'
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) THEN
+  ! OffsetRPArray and RP_Data are still allocated from last WriteState
+  ! StartT = MPI_WTIME()
+  ! SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' REDISTRIBUTING RECORDPOINTS DURING LOADBALANCE...'
 
-! Open data file
-CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  ! ------------------------------------------------
+  ! OffsetRPArray
+  ! ------------------------------------------------
+  ALLOCATE(OffsetRPArrayTmp(2,FirstElemInd:LastElemInd))
+  ASSOCIATE (&
+          counts_send  => (2*MPInElemSend     ) ,&
+          disp_send    => (2*MPIoffsetElemSend) ,&
+          counts_recv  => (2*MPInElemRecv     ) ,&
+          disp_recv    => (2*MPIoffsetElemRecv))
+    ! Communicate OffsetRPArray over MPI
+    CALL MPI_ALLTOALLV(OffsetRPArray,counts_send,disp_send,MPI_INTEGER_INT_KIND,OffsetRPArrayTmp,counts_recv,disp_recv,MPI_INTEGER_INT_KIND,MPI_COMM_FLEXI,iError)
+  END ASSOCIATE
 
-! compare mesh file names
-CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile_RPList)
-IF (TRIM(MeshFile_RPList).NE.TRIM(MeshFile)) THEN
-  ! Print empty line to break the ADVANCE=NO
-  SWRITE(UNIT_stdOut,'(/,A,A,A)') ' WARNING: MeshFileName ',TRIM(MeshFile_RPList), &
-                                  ' from RPList differs from Mesh File specified in parameterfile!'
-END IF
+  ! Calculate the recordpoint deltas
+  MPInRPSend      = 0
+  MPIoffsetRPSend = 0
+  ! Calculate the recordpoints to send
+  ! Loop with the old element over the new recordpoint distribution
+  DO iElem = 1,nElemsOld
+    RPRank             = ElemInfo_Shared(ELEM_RANK,offsetElemOld+iElem)+1
+    MPInRPSend(RPRank) = MPInRPSend(RPRank) + OffsetRPArray(2,offsetElemOld+iElem) - OffsetRPArray(1,offsetElemOld+iElem)
+  END DO
 
-! Readin OffsetRP
-CALL GetDataSize(File_ID,'OffsetRP',nDims,HSize)
-CHECKSAFEINT(HSize(2),4)
-nGlobalElems_RPList = INT(HSize(2),4) ! global number of elements
-DEALLOCATE(HSize)
+  offsetRPSend = 0
+  DO iProc = 2,nProcessors
+    MPIoffsetRPSend(iProc) = SUM(MPInRPSend(1:iProc-1))
+  END DO
 
-IF (nGlobalElems_RPList.NE.nGlobalElems) &
-  CALL Abort(__STAMP__,'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
+  ! Calculate the elements to send
+  MPInRPRecv      = 0
+  MPIoffsetRPRecv = 0
+  ! Loop with the new element over the old recordpoint distribution
+  DO iElem = 1,nElems
+    RPRank             = ElemInfoRank_Shared(offsetElem+iElem)+1
+    MPInRPRecv(RPRank) = MPInRPRecv(RPRank) + OffsetRPArrayTmp(2,offsetElem+iElem) - OffsetRPArrayTmp(1,offsetElem+iElem)
+  END DO
 
-CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntArray=OffsetRPArray)
+  offsetRPRecv = 0
+  DO iProc = 2,nProcessors
+    MPIoffsetRPRecv(iProc) = SUM(MPInRPRecv(1:iProc-1))
+  END DO
+  CALL MOVE_ALLOC(OffsetRPArrayTmp,OffsetRPArray)
 
-! Check if local domain contains any record points
-! OffsetRP: first index: 1: offset in RP list for first RP on elem,
-!                        2: offset in RP list for last RP on elem
-! If these offsets are equal, no RP on elem.
-nRP      = OffsetRPArray(2,nElems) - OffsetRPArray(1,1)
-offsetRP = OffsetRPArray(1,1)
+  ! Save the old RP
+  nRPOld      = nRP
+  offsetRPOld = offsetRP
 
-! Read in RP reference coordinates
-CALL GetDataSize(File_ID,'xi_RP',nDims,HSize)
-CHECKSAFEINT(HSize(2),4)
-nGlobalRP = INT(HSize(2),4) ! global number of RecordPoints
-DEALLOCATE(HSize)
+  ! Check if local domain contains any record points
+  ! OffsetRP: first index: 1: offset in RP list for first RP on elem,
+  !                        2: offset in RP list for last RP on elem
+  ! If these offsets are equal, no RP on elem.
+  nRP         = OffsetRPArray(2,offsetElem+nElems) - OffsetRPArray(1,offsetElem+1)
+  offsetRP    = OffsetRPArray(1,offsetElem+1)
 
-ALLOCATE(xi_RP(3,nRP))
-CALL ReadArray('xi_RP',2,(/3,nRP/),offsetRP,2,RealArray=xi_RP)
+  ! ------------------------------------------------
+  ! xi_RP
+  ! ------------------------------------------------
+  ALLOCATE(xi_RPTmp(3,offsetRP+1:offsetRP+nRP))
+  ASSOCIATE (&
+          counts_send  => (3*MPInRPSend     ) ,&
+          disp_send    => (3*MPIoffsetRPSend) ,&
+          counts_recv  => (3*MPInRPRecv     ) ,&
+          disp_recv    => (3*MPIoffsetRPRecv))
+    ! Communicate xi_RP over MPI
+    CALL MPI_ALLTOALLV(xi_RP,counts_send,disp_send,MPI_DOUBLE_PRECISION,xi_RPTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
+  END ASSOCIATE
+  CALL MOVE_ALLOC(xi_RPTmp,xi_RP)
 
-IF(nRP.LT.1) THEN
-  RP_onProc=.FALSE.
+  ! ------------------------------------------------
+  ! RP_Data
+  ! ------------------------------------------------
+  ALLOCATE(RP_Data1D   (0:PP_nVar,offsetRP+1:offsetRP+nRP))
+  ALLOCATE(RP_Data1DTmp(0:PP_nVar,offsetRP+1:offsetRP+nRP))
+  IF (RP_onProc) RP_Data1D = RP_Data(:,:,1)
+  ASSOCIATE (&
+          counts_send  => ((PP_nVar+1)*MPInRPSend     ) ,&
+          disp_send    => ((PP_nVar+1)*MPIoffsetRPSend) ,&
+          counts_recv  => ((PP_nVar+1)*MPInRPRecv     ) ,&
+          disp_recv    => ((PP_nVar+1)*MPIoffsetRPRecv))
+    ! Communicate RP_Data1D over MPI
+    CALL MPI_ALLTOALLV(RP_Data1D,counts_send,disp_send,MPI_DOUBLE_PRECISION,RP_Data1DTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
+  END ASSOCIATE
+
+  IF (nRP.GT.0) THEN
+    RP_Buffersize = MIN(CEILING((1.2*WriteData_dt)/(dt*RP_SamplingOffset))+1,RP_MaxBufferSize)
+    IF (RP_Buffersize.LT.1) CALL Abort(__STAMP__,'Error calculating RP_Buffersize!')
+
+    SDEALLOCATE(RP_Data)
+    ALLOCATE(RP_Data(0:PP_nVar,nRP,RP_Buffersize))
+    RP_Data(:,:,1) = RP_Data1DTmp
+  END IF
+  SDEALLOCATE(RP_Data1D)
+  SDEALLOCATE(RP_Data1DTmp)
+
+  ! Restore RP output information
+  RP_fileExists  = .FALSE.
+  iSample        = 1
+  nSamples       = 0
+
+  ! GETTIME(EndT)
+  ! SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
+
+! NOT. PerformLoadBalance
 ELSE
-  RP_onProc=.TRUE.
+#endif /*USE_LOADBALANCE*/
+  IF (MPIRoot)THEN
+    IF (.NOT.FILEEXISTS(FileString)) &
+      CALL Abort(__STAMP__,'RPList from data file "'//TRIM(FileString)//'" does not exist')
+  END IF
+
+  GETTIME(StartT)
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Read recordpoint definitions from data file "'//TRIM(FileString)//'" ...'
+
+  ! Open data file
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+
+  ! compare mesh file names
+  CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile_RPList)
+  IF (TRIM(MeshFile_RPList).NE.TRIM(MeshFile)) THEN
+    ! Print empty line to break the ADVANCE=NO
+    SWRITE(UNIT_stdOut,'(/,A,A,A)') ' WARNING: MeshFileName ',TRIM(MeshFile_RPList), &
+                                    ' from RPList differs from Mesh File specified in parameterfile!'
+  END IF
+
+  ! Readin OffsetRP
+  CALL GetDataSize(File_ID,'OffsetRP',nDims,HSize)
+  CHECKSAFEINT(HSize(2),4)
+  nGlobalElems_RPList = INT(HSize(2),4) ! global number of elements
+  DEALLOCATE(HSize)
+
+  IF (nGlobalElems_RPList.NE.nGlobalElems) &
+    CALL CollectiveStop(__STAMP__,'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
+
+  ALLOCATE(OffsetRPArray(2,offsetElem+1:offsetElem+nElems))
+  CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntArray=OffsetRPArray)
+
+  ! Check if local domain contains any record points
+  ! OffsetRP: first index: 1: offset in RP list for first RP on elem,
+  !                        2: offset in RP list for last RP on elem
+  ! If these offsets are equal, no RP on elem.
+  nRP      = OffsetRPArray(2,offsetElem+nElems) - OffsetRPArray(1,offsetElem+1)
+  offsetRP = OffsetRPArray(1,offsetElem+1)
+
+  ! Read in RP reference coordinates
+  CALL GetDataSize(File_ID,'xi_RP',nDims,HSize)
+  CHECKSAFEINT(HSize(2),4)
+  nGlobalRP = INT(HSize(2),4) ! global number of RecordPoints
+  DEALLOCATE(HSize)
+
+  ALLOCATE(xi_RP(3,offsetRP+1:offsetRP+nRP))
+  CALL ReadArray('xi_RP',2,(/3,nRP/),offsetRP,2,RealArray=xi_RP)
+  CALL CloseDataFile()
+
+  GETTIME(EndT)
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE [',EndT-StartT,'s]'
+#if USE_LOADBALANCE
+END IF ! PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
+
+RP_onProc = MERGE(.TRUE.,.FALSE.,nRP.GT.0)
+
+IF (RP_onProc) THEN
   ! create mapping to elements
   ALLOCATE(RP_ElemID(nRP))
   DO iRP = 1,nRP
     iRP_glob = offsetRP+iRP
     DO iElem = 1,nElems
-      IF (iRP_glob.LE.OffsetRPArray(2,iElem) .AND. iRP_glob.GT.OffsetRPArray(1,iElem)) &
+      IF (iRP_glob.LE.OffsetRPArray(2,offsetElem+iElem) .AND. iRP_glob.GT.OffsetRPArray(1,offsetElem+iElem)) &
         RP_ElemID(iRP) = iElem
     END DO
   END DO
-END IF
 
-CALL CloseDataFile()
-
-IF (RP_onProc) THEN
   ALLOCATE( L_xi_RP  (0:PP_N,nRP) &
           , L_eta_RP (0:PP_N,nRP) &
           , L_zeta_RP(0:PP_N,nRP))
@@ -304,9 +447,6 @@ IF (RP_onProc) THEN
 
 #endif
 END IF
-DEALLOCATE(xi_RP)
-
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' DONE.'
 
 END SUBROUTINE ReadRPList
 
@@ -552,7 +692,7 @@ IF (myRPrank.EQ.0) THEN
 #endif /* USE_MPI */
   CALL MarkWriteSuccessfull(Filestring)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' WRITE RECORDPOINT DATA TO HDF5 FILE DONE! [',EndT-StartT,'s]'
 #if USE_MPI
 END IF
 #endif /* USE_MPI */
@@ -569,11 +709,23 @@ USE MOD_RecordPoints_Vars
 #if USE_MPI
 USE MOD_Globals,                 ONLY: iError
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars,        ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+SDEALLOCATE(OffsetRPArray)
+SDEALLOCATE(xi_RP)
 SDEALLOCATE(RP_Data)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
+
 SDEALLOCATE(RP_ElemID)
 SDEALLOCATE(L_xi_RP)
 SDEALLOCATE(L_eta_RP)

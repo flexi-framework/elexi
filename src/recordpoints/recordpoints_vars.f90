@@ -40,6 +40,8 @@ INTEGER            :: offsetRP                !< offset for each proc in global 
 INTEGER            :: iSample=0               !< no of samples in array
 INTEGER            :: nSamples=0              !< total no. samples in case of multiple io steps
 INTEGER            :: chunkSamples=0          !< time samples per chunk for IO (first iSample in file)
+INTEGER,ALLOCATABLE:: OffsetRPArray(:,:)      !< RP distribution from HDF5
+REAL,ALLOCATABLE   :: xi_RP(:,:)              !< RP reference coordinates
 INTEGER,ALLOCATABLE:: RP_ElemID(:)            !< mapping from RP->Elem (nRP)
 #if FV_ENABLED
 INTEGER,ALLOCATABLE:: FV_RP_ijk(:,:)          !< ijk-index of FV subcell nearest to record point [1:3,nRP]

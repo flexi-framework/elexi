@@ -144,7 +144,6 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
 CALL CollectiveStop(__STAMP__,'The testcase has not been implemented for FV yet!')
 #endif
 
-<<<<<<< HEAD
 nWriteStats      = GETINT('nWriteStats')
 nAnalyzeTestCase = GETINT('nAnalyzeTestCase')
 customChannel    = GETLOGICAL('Part-CustomChannel')

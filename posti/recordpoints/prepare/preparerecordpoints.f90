@@ -111,10 +111,6 @@ CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 
 CALL InitRPSet()
 CALL GetRecordPoints()
-!<<<<<<< HEAD
-!CALL WriteRecordPointstoHDF5(ProjectName,MeshFile)
-!CALL visuRP()
-!=======
 CALL CheckRecordPoints()
 ! Only write out on MPIRoot
 IF (MPIRoot) THEN
@@ -125,7 +121,6 @@ END IF
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
-!>>>>>>> 5d4732714... Delete record points which are outside of the domain; currently only implemented for planes; bugfix in newton call in preparerecordpoints
 
 CALL FinalizeOutput()
 CALL FinalizeInterpolation()

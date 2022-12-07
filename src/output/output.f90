@@ -795,7 +795,7 @@ IF (file_exists) THEN
       tmpStr  = TRIM(FileName)//'.'//TRIM(ADJUSTL(INTTOSTR(counter)))//TRIM(tmpExt)
       ! Move the file to the free slot
       WRITE(Unit_StdOut,'(A,A,A,A)') ' |> Copying existing file ',TRIM(FileName_loc),' to ',TRIM(tmpStr)
-      CALL EXECUTE_COMMAND_LINE('cp '//TRIM(FileName_loc)//' '//TRIM(tmpStr), WAIT=.TRUE., EXITSTAT=stat)
+      CALL EXECUTE_COMMAND_LINE('cp '//TRIM(FileName_loc)//' '//TRIM(tmpStr), WAIT=.FALSE.)
     END IF
 
     ! Rewind back to the beginning of the file

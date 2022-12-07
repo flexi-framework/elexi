@@ -218,8 +218,8 @@ ELSE
   CALL MPI_REDUCE(FV_totalAlpha    ,0               ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif /*USE_MPI*/
-SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' FV_alpha    : ',FV_alpha_range(1),' - ',FV_alpha_range(2),&
-                                              ', avg: '         ,FV_totalAlpha / REAL(nGlobalElems) / iter
+SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' FV_alpha   : ',FV_alpha_range(1),' - ',FV_alpha_range(2),&
+                                              ', avg: '        ,FV_totalAlpha / REAL(nGlobalElems) / iter
 FV_totalAlpha   = 0.
 END SUBROUTINE FV_Info
 

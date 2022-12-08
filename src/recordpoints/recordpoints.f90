@@ -116,21 +116,23 @@ nVar_loc = MERGE(nVar,PP_nVar,PRESENT(nVar))
 ! Read parameters on all procs, otherwise output is missing if no RP on MPI root
 RP_maxMemory        = GETINT('RP_MaxMemory')            ! Max buffer (100MB)
 RP_SamplingOffset   = GETINT('RP_SamplingOffset')       ! Sampling offset (iteration)
-
-IF (RP_onProc) THEN
-  RP_maxMemory      = RP_maxMemory * 131072             ! convert RP_maxMemory to bytes
-  maxRP = nGlobalRP
+RP_maxMemory        = RP_maxMemory * 131072               ! convert RP_maxMemory to bytes
 
 #if USE_MPI
-  ! Limit RP buffer size to global 4GB for HDF5 MPIO collective
-  IF (RP_MaxMemory*nRP_Procs.GT.HUGE(INT(1,KIND=4))-1) THEN
-    RP_maxMemory      = (HUGE(INT(1,KIND=4))-1)/nRP_Procs
-    IF (myRPrank.EQ.0) WRITE(UNIT_stdOut,'(A,F6.2,A)') ' | RP_MaxMemory too large for HDF5 collective MPIO, limiting to ' &
-                                                       , RP_maxMemory / 131072, ' MB per proc (4GB total)'
-  END IF
-  CALL MPI_ALLREDUCE(nRP,maxRP,1,MPI_INTEGER,MPI_MAX,RP_COMM,iError)
+! Limit RP buffer size to global 4GB for HDF5 MPIO collective
+IF (RP_MaxMemory*RP_nProcs.GT.HUGE(INT(1,KIND=4))-1) THEN
+  RP_maxMemory      = (HUGE(INT(1,KIND=4))-1)/RP_nProcs
+  SWRITE(UNIT_stdOut,'(A,F6.2,A)') ' | RP_MaxMemory too large for HDF5 collective MPIO, limiting to ' &
+                                                     , RP_maxMemory / 131072, ' MB per proc (4GB total)'
+END IF
+CALL MPI_ALLREDUCE(nRP,maxRP,1,MPI_INTEGER,MPI_MAX,MPI_COMM_FLEXI,iError)
+#else
+maxRP = nGlobalRP
 #endif /*USE_MPI*/
-  RP_MaxBufferSize = RP_MaxMemory/(maxRP*(nVar_loc+1)) != size in bytes/(real*maxRP*nVar)
+
+RP_MaxBufferSize = RP_MaxMemory/(maxRP*(nVar_loc+1)) != size in bytes/(real*maxRP*nVar)
+
+IF (RP_onProc) THEN
   ALLOCATE(lastSample(0:nVar_loc,nRP))
   lastSample = 0.
 END IF
@@ -149,7 +151,7 @@ END SUBROUTINE InitRecordPoints
 SUBROUTINE InitRPCommunicator()
 ! MODULES
 USE MOD_Globals
-USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc,myRPrank,RP_COMM,nRP_Procs,RP_RootRank
+USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc,myRPrank,RP_COMM,RP_nProcs,RP_RootRank
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -169,13 +171,15 @@ CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI, color, MPI_INFO_NULL, RP_COMM, iError)
 IF (RP_onProc) THEN
   ! Find my rank on the RP communicator, comm size and proc name
   CALL MPI_COMM_RANK(RP_COMM, myRPrank , iError)
-  CALL MPI_COMM_SIZE(RP_COMM, nRP_Procs, iError)
-  IF (myRPrank.EQ.0) WRITE(UNIT_stdOut,'(A,I0,A)') ' | RP COMM: ',nRP_Procs,' procs'
+  CALL MPI_COMM_SIZE(RP_COMM, RP_nProcs, iError)
 END IF
 
-! Send rank of RP root to all procs
-RP_RootRank = MERGE(myRank,0,myRank.EQ.0)
+! Send RP root rank/numbre to all procs
+RP_RootRank = MERGE(myRPRank ,0,myRPRank.EQ.0)
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,RP_RootRank,1,MPI_INTEGER,MPI_MAX,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,RP_nProcs  ,1,MPI_INTEGER,MPI_MAX,MPI_COMM_FLEXI,iError)
+
+SWRITE(UNIT_stdOut,'(A,I0,A)') ' | RP COMM: ',RP_nProcs,' procs'
 
 END SUBROUTINE InitRPCommunicator
 #endif /*USE_MPI*/

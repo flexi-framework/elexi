@@ -59,8 +59,8 @@ CHARACTER(LEN=255) :: StrVarNames(PP_nVar)    !< RP variables names for output
 #if USE_MPI
 INTEGER            :: myRPrank                !< rank within RP communicator
 INTEGER            :: RP_RootRank             !< rank of RP root on MPI_COMM_FLEXI
+INTEGER            :: RP_nProcs               !< number of procs with RPs
 INTEGER            :: RP_COMM=MPI_COMM_NULL   !< MPI RP communicator
-INTEGER            :: nRP_Procs               !< number of procs with RPs
 #endif /* USE_MPI */
 
 END MODULE MOD_recordPoints_Vars

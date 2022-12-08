@@ -225,25 +225,26 @@ DO iArg=1+skipArgs,nArgs
 
   IF(HDF5Output) THEN
     FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
-    CALL visu_WriteHDF5( nVarVisu      &
-                       , NVisu         &
-                       , nElems_DG     &
-                       , FileString_DG &
-                       , MeshFile      &
-                       , VarNames_loc  &
-                       , 3             &
-                       , UVisu_DG      )
+    CALL visu_WriteHDF5(nVarVisu     = nVarVisu      &
+                       ,NVisu        = NVisu         &
+                       ,nElems_loc   = nElems_DG     &
+                       ,FileString   = FileString_DG &
+                       ,MeshFileName = MeshFile      &
+                       ,VarNames_loc = VarNames_loc  &
+                       ,Coords_DG    = CoordsVisu_DG &
+                       ,dim          = 3             &
+                       ,UVisu_DG     = UVisu_DG      )
     IF (doSurfVisu) THEN
       FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
-      ! This is should be a 2D output, be I only need 1D information, so I couldn't be bothered to do it properly
-      CALL visu_WriteHDF5( nVarSurfVisuAll     &
-                         , NVisu               &
-                         , nBCSidesVisu_DG     &
-                         , FileString_SurfDG   &
-                         , MeshFile            &
-                         , VarNamesSurf_loc    &
-                         , 1                   &
-                         , UVisu_DG1D=USurfVisu_DG(0,0,0,1,:)        )
+      CALL visu_WriteHDF5( nVarVisu     = nVarSurfVisuAll              &
+                         , NVisu        = NVisu                        &
+                         , nElems_loc   = nBCSidesVisu_DG              &
+                         , FileString   = FileString_SurfDG            &
+                         , MeshFileName = MeshFile                     &
+                         , VarNames_loc = VarNamesSurf_loc             &
+                         , Coords_DG2D  = CoordsSurfVisu_DG(:,:,:,0,:) &
+                         , dim          = 2                            &
+                         , UVisu_DG2D   = USurfVisu_DG(:,:,0,:,:))
     END IF
   END IF
 

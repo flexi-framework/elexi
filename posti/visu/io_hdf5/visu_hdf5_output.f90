@@ -39,7 +39,9 @@ CONTAINS
 !> Subroutine to write the solution U to HDF5 format
 !> Is used for postprocessing
 !==================================================================================================================================
-SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,nElems_loc,FileString,MeshFileName,VarNames_loc,dim,UVisu_DG,UVisu_DG2D,UVisu_DG1D)
+SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,nElems_loc,FileString,MeshFileName,VarNames_loc  &
+                         ,Coords_DG,Coords_DG2D,Coords_DG1D,dim                           &
+                         ,UVisu_DG ,UVisu_DG2D ,UVisu_DG1D )
 ! MODULES
 USE MOD_Globals               !,ONLY: ABORT,TIMESTAMP,MPIROOT,MPI_COMM_FLEXI,UNIT_stdOut
 USE MOD_PreProc
@@ -48,7 +50,7 @@ USE MOD_HDF5_Output           ,ONLY: GenerateFileSkeleton,WriteAttribute,Gathere
 USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Mesh_Vars             ,ONLY: nElems,nGlobalElems,offsetElem
 !USE MOD_Output_Vars           ,ONLY: ProjectName
-USE MOD_Visu_Vars             ,ONLY: OutputTime,NCalc,nVarCalc
+USE MOD_Visu_Vars             ,ONLY: OutputTime
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -60,9 +62,12 @@ CHARACTER(LEN=*),INTENT(IN)    :: FileString
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName
 CHARACTER(LEN=*),INTENT(IN)    :: VarNames_loc(nVarVisu)
 INTEGER,INTENT(IN)             :: dim
-REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG  (0:nVisu,0:nVisu,0:MERGE(nVisu,0,dim.GT.2),1:nElems,1:nVarVisu)
-REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG2D(0:NCalc,0:ZDIM(NCalc),1:nElems,1:nVarCalc)
-REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG1D(nVarVisu)
+REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG  (1:3,0:nVisu,0:nVisu,0:MERGE(nVisu,0,dim.GT.2),1:nElems)
+REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG2D(1:3,0:nVisu,0:ZDIM(NVisu),1:nElems_loc)
+REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG1D(1:3)
+REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG   (0:nVisu,0:nVisu,0:MERGE(nVisu,0,dim.GT.2),1:nElems,1:nVarVisu)
+REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG2D (0:NVisu,0:ZDIM(NVisu),1:nElems_loc,1:nVarVisu)
+REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG1D (1:nVarVisu)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName!,FileType
@@ -75,7 +80,7 @@ INTEGER                        :: recvbuf,sendbuf
 #endif
 !==================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO HDF5 FILE..."
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D DATA TO HDF5 FILE..."
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 !FileType = 'Solution'
@@ -92,7 +97,7 @@ SELECT CASE(dim)
                                          , MeshFileName                                     &
                                          , OutputTime                                       &
                                          , create        = .TRUE.                           &
-                                         , Dataset       = 'Posti')
+                                         , Dataset       = 'Visu')
     ALLOCATE( nVal      (dim+2) &
             , nValGlobal(dim+2) &
             , offset    (dim+2))
@@ -100,7 +105,7 @@ SELECT CASE(dim)
   CASE(2)
     IF(MPIRoot) THEN
       CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-      CALL WriteAttribute(File_ID,'VarNames_Posti2D',nVarVisu,StrArray=VarNames_loc)
+      CALL WriteAttribute(File_ID,'VarNames_Visu2D',nVarVisu,StrArray=VarNames_loc)
       CALL CloseDataFile()
     END IF
     ALLOCATE( nVal      (dim+2) &
@@ -110,7 +115,7 @@ SELECT CASE(dim)
   CASE(1)
     IF(MPIRoot) THEN
       CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-      CALL WriteAttribute(File_ID,'VarNames_Posti1D',nVarVisu,StrArray=VarNames_loc)
+      CALL WriteAttribute(File_ID,'VarNames_Visu1D',nVarVisu,StrArray=VarNames_loc)
       CALL CloseDataFile()
     END IF
     ALLOCATE( nVal      (1) &
@@ -163,21 +168,21 @@ SELECT CASE(dim)
   !  CALL ExpandArrayTo3D(5,(/nVarVisu,NVisu+1,NVisu+1,1,nElems/),4,NVisu+1,UVisu_DG(:,:,:,1,:),UOut)
     ALLOCATE(UOut2D(1:nVarVisu,0:NVisu,0:NVisu,1:nElems))
     DO iElem = 1,nElems
-  !    DO k = 0,NVisu; DO j = 0,NVisu
-        DO iVar = 1,nVarVisu
-          UOut2D(iVar,:,:,iElem) = UVisu_DG2D(0,0,1,iVar)
-        END DO
-  !    END DO; END DO
+      DO iVar = 1,nVarVisu
+        UOut2D(iVar,:,:,iElem) = UVisu_DG2D(:,:,iElem,iVar)
+      END DO
     END DO
 
 #if USE_MPI
     END ASSOCIATE
 #endif
 
-  CASE (1)
-    nVal       = (/nVarVisu/)
-    nValGlobal = (/nVarVisu/)
-    offset     = (/0       /)
+  ! CASE (1)
+  !   nVal       = (/nVarVisu/)
+  !   nValGlobal = (/nVarVisu/)
+  !   offset     = (/0       /)
+  CASE(1)
+    CALL Abort(__STAMP__,'1D HDF5 output currently not implemented')
 
 END SELECT
 
@@ -188,9 +193,23 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 
 SELECT CASE(dim)
   CASE(3)
+    ASSOCIATE(nValGlobal => (/3       ,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/), &
+              nVal       => (/3       ,NVisu+1,NVisu+1,NVisu+1,nElems      /))
+
     CALL GatheredWriteArray( TRIM(FileName)            &
                            , create      = .FALSE.     &
-                           , DataSetName = 'Posti'     &
+                           , DataSetName = 'Coords'    &
+                           , rank        = dim+2       &
+                           , nValGlobal  = nValGlobal  &
+                           , nVal        = nVal        &
+                           , offset      = offset      &
+                           , collective  =.TRUE.       &
+                           , RealArray   = Coords_DG)
+    END ASSOCIATE
+
+    CALL GatheredWriteArray( TRIM(FileName)            &
+                           , create      = .FALSE.     &
+                           , DataSetName = 'Visu'      &
                            , rank        = dim+2       &
                            , nValGlobal  = nValGlobal  &
                            , nVal        = nVal        &
@@ -200,9 +219,23 @@ SELECT CASE(dim)
     DEALLOCATE(UOut)
 
   CASE(2)
+    ASSOCIATE(nValGlobal => (/3       ,NVisu+1,NVisu+1,nGlobalElems_loc/), &
+              nVal       => (/3       ,NVisu+1,NVisu+1,nElems_loc      /))
+
     CALL GatheredWriteArray( TRIM(FileName)            &
                            , create      = .FALSE.     &
-                           , DataSetName = 'Posti2D'   &
+                           , DataSetName = 'Coords2D'  &
+                           , rank        = dim+2       &
+                           , nValGlobal  = nValGlobal  &
+                           , nVal        = nVal        &
+                           , offset      = offset      &
+                           , collective  =.TRUE.       &
+                           , RealArray   = Coords_DG2D)
+    END ASSOCIATE
+
+    CALL GatheredWriteArray( TRIM(FileName)            &
+                           , create      = .FALSE.     &
+                           , DataSetName = 'Visu2D'    &
                            , rank        = dim+2       &
                            , nValGlobal  = nValGlobal  &
                            , nVal        = nVal        &
@@ -211,16 +244,30 @@ SELECT CASE(dim)
                            , RealArray   = UOut2D)
     DEALLOCATE(UOut2D)
 
-  CASE(1)
-    CALL GatheredWriteArray( TRIM(FileName)            &
-                           , create      = .FALSE.     &
-                           , DataSetName = 'Posti1D'   &
-                           , rank        = 1           &
-                           , nValGlobal  = nValGlobal  &
-                           , nVal        = nVal        &
-                           , offset      = offset      &
-                           , collective  =.TRUE.       &
-                           , RealArray   = UVisu_DG1D)
+  ! CASE(1)
+  !   ASSOCIATE(nValGlobal => (/3/), &
+  !             nVal       => (/3/))
+
+  !   CALL GatheredWriteArray( TRIM(FileName)            &
+  !                          , create      = .FALSE.     &
+  !                          , DataSetName = 'Coords1D'  &
+  !                          , rank        = 1           &
+  !                          , nValGlobal  = nValGlobal  &
+  !                          , nVal        = nVal        &
+  !                          , offset      = offset      &
+  !                          , collective  =.TRUE.       &
+  !                          , RealArray   = Coords_DG1D)
+  !   END ASSOCIATE
+
+  !   CALL GatheredWriteArray( TRIM(FileName)            &
+  !                          , create      = .FALSE.     &
+  !                          , DataSetName = 'Visu1D'    &
+  !                          , rank        = 1           &
+  !                          , nValGlobal  = nValGlobal  &
+  !                          , nVal        = nVal        &
+  !                          , offset      = offset      &
+  !                          , collective  =.TRUE.       &
+  !                          , RealArray   = UVisu_DG1D)
 
 
 END SELECT

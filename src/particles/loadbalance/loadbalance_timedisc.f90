@@ -216,8 +216,8 @@ SWRITE(UNIT_stdOut,'(A,ES10.3,A,ES10.3,A,ES10.3,A,ES10.3)')&
 ! Calculate time spent for load balance restart
 LB_Time                = FLEXITIME()
 InitializationWallTime = LB_Time - LB_StartTime
-SWRITE(UNIT_stdOut,'(A,F14.2,A)') ' INITIALIZATION DONE! [',InitializationWallTime,' sec ]'
-SWRITE(UNIT_stdOut,'(A)')' LOAD BALANCE DONE!'
+! SWRITE(UNIT_stdOut,'(A,F14.2,A)') ' INITIALIZATION DONE! [',InitializationWallTime,' sec ]'
+SWRITE(UNIT_stdOut,'(A,F14.2,A)') ' LOAD BALANCE DONE! [',InitializationWallTime,' sec ]'
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)')
 

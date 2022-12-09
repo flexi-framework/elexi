@@ -46,7 +46,6 @@ SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile, UseCurveds)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Visu_Vars
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,OpenDataFile,CloseDataFile
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
 USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
@@ -57,11 +56,13 @@ USE MOD_Posti_ReadMesh      ,ONLY: VisualizeMesh
 USE MOD_Posti_ReadState     ,ONLY: ReadState
 USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
-USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile,PrintDefaultParameterFile
+USE MOD_ReadInTools         ,ONLY: prms,addStrListEntry
+USE MOD_ReadInTools         ,ONLY: FinalizeParameters,ExtractParameterFile,PrintDefaultParameterFile
 USE MOD_Restart_Vars        ,ONLY: RestartMode
 USE MOD_StringTools         ,ONLY: STRICMP,set_formatting,clear_formatting
 USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 USE MOD_Visu_Init           ,ONLY: visu_getVarNamesAndFileType,visu_InitFile
+USE MOD_Visu_Vars
 #if FV_ENABLED
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_FV,CalcSurfQuantities_FV
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
@@ -174,22 +175,29 @@ CALL InitMPIInfo()
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies
 CALL prms%SetSection("posti")
-CALL prms%CreateStringOption( "MeshFile"        , "Custom mesh file")
-CALL prms%CreateStringOption( "OutputDirectory" , "Custom output directory")
-CALL prms%CreateStringOption( "VarName"         , "Names of variables, which should be visualized.", multiple=.TRUE.)
-CALL prms%CreateLogicalOption("noVisuVars"      , "If no VarNames are given, this flags supresses visu of standard variables",&
-                                                  ".FALSE.")
-CALL prms%CreateIntOption(    "NVisu"           , "Polynomial degree at which solution is sampled for visualization.")
-CALL prms%CreateIntOption(    "NCalc"           , "Polynomial degree at which calculations are done.")
-CALL prms%CreateLogicalOption("Avg2D"           , "Average solution in z-direction",".FALSE.")
-CALL prms%CreateLogicalOption("Avg2DHDF5Output" , "Write averaged solution to HDF5 file",".FALSE.")
-CALL prms%CreateLogicalOption("HDF5Output"      , "Write solution to HDF5 file",".FALSE.")
-CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
-CALL prms%CreateLogicalOption("DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
-CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
-CALL prms%CreateLogicalOption("HighOrder"       , "Write high-order element representation",".FALSE.")
+CALL prms%CreateStringOption(       "MeshFile"        , "Custom mesh file")
+CALL prms%CreateStringOption(       "OutputDirectory" , "Custom output directory")
+CALL prms%CreateIntFromStringOption("OutputFormat"    , "File format for visualization: None, Tecplot, TecplotASCII, ParaView, HDF5. "//&
+                                                        " Note: Tecplot output is currently unavailable due to licensing issues.",      &
+                                                        'paraview')
+CALL addStrListEntry('OutputFormat','none'            , OUTPUTFORMAT_NONE)
+CALL addStrListEntry('OutputFormat','tecplot'         , OUTPUTFORMAT_TECPLOT)
+CALL addStrListEntry('OutputFormat','tecplotascii'    , OUTPUTFORMAT_TECPLOTASCII)
+CALL addStrListEntry('OutputFormat','paraview'        , OUTPUTFORMAT_PARAVIEW)
+CALL addStrListEntry('OutputFormat','hdf5'            , OUTPUTFORMAT_HDF5)
+CALL prms%CreateStringOption(       "VarName"         , "Names of variables, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateLogicalOption(      "noVisuVars"      , "If no VarNames are given, this flags supresses visu of standard variables",&
+                                                        ".FALSE.")
+CALL prms%CreateIntOption(          "NVisu"           , "Polynomial degree at which solution is sampled for visualization.")
+CALL prms%CreateIntOption(          "NCalc"           , "Polynomial degree at which calculations are done.")
+CALL prms%CreateLogicalOption(      "Avg2D"           , "Average solution in z-direction",".FALSE.")
+CALL prms%CreateStringOption(       "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
+CALL prms%CreateLogicalOption(      "DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
+CALL prms%CreateStringOption(       "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateLogicalOption(      "HighOrder"       , "Write high-order element representation",".FALSE.")
 #if USE_PARTICLES
-CALL prms%CreateLogicalOption('VisuPart'        , "Visualize particles",".FALSE.")
+CALL prms%CreateLogicalOption(      'VisuField'       , "Visualize field"    ,".FALSE.")
+CALL prms%CreateLogicalOption(      'VisuPart'        , "Visualize particles",".FALSE.")
 #endif
 
 IF (doPrintHelp.GT.0) THEN
@@ -299,16 +307,34 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
       SDEALLOCATE(UVisu_FV)
       ALLOCATE(UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVarVisu))
       ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV,nVarVisu))
-      CALL Average2D(nVarCalc,nVarCalc_FV,NCalc,NCalc_FV,nElems_DG,nElems_FV,NodeType,UCalc_DG,UCalc_FV,&
-          Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,1,nVarDep,mapDepToCalc,&
-          UVisu_DG,UVisu_FV)
+      CALL Average2D(nVarCalc    ,nVarCalc_FV  &
+                    ,NCalc       ,NCalc_FV     &
+                    ,nElems_DG   ,nElems_FV    &
+                    ,NodeType                  &
+                    ,UCalc_DG    ,UCalc_FV     &
+                    ,Vdm_DGToFV  ,Vdm_FVToDG   &
+                    ,Vdm_DGToVisu,Vdm_FVToVisu &
+                    ,1,nVarDep   ,mapDepToCalc &
+                    ,UVisu_DG    ,UVisu_FV)
+
+      SELECT CASE(OutputFormat)
+        CASE(OUTPUTFORMAT_HDF5)
+          CALL WriteAverageToHDF5(nVarVisu,NVisu,NodeType,OutputTime,MeshFile_state,UVisu_DG &
+#if FV_ENABLED
+                                 ,NVisu_FV,UVisu_FV                                          &
+#endif /* FV_ENABLED */
+    )
+      END SELECT
+
+    ! .NOT. Avg2D
     ELSE
       CALL ConvertToVisu_DG()
 #if FV_ENABLED
       CALL ConvertToVisu_FV()
 #endif
-    END IF
-  END IF
+    END IF ! Avg2D
+  END IF ! changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedAvg2D
+
   IF (doSurfVisu) THEN
     ! convert Surface DG solution to visu grid
     IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
@@ -317,7 +343,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
       CALL ConvertToSurfVisu_FV()
 #endif
     END IF
-  END IF
+  END IF ! doSurfVisu
 
   ! convert generic data to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
@@ -331,18 +357,14 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     DataArray='PartData'
     CALL ReadPartStateFile(statefile,DataArray,PD)
   END IF
+
   IF (changedStateFile.OR.PDE%changedPartVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     DataArray='ImpactData'
     CALL ReadPartStateFile(statefile,DataArray,PDE)
   END IF
+
   SWRITE(UNIT_stdOut,'(132("."))')
 #endif
-
-  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NodeType,OutputTime,MeshFile_state,UVisu_DG&
-#if FV_ENABLED
-    ,NVisu_FV,UVisu_FV&
-#endif /* FV_ENABLED */
-    )
 
 #if USE_MPI
    IF ((.NOT.MPIRoot).AND.(Avg2d)) THEN

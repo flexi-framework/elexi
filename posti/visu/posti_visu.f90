@@ -154,99 +154,103 @@ DO iArg=1+skipArgs,nArgs
     END IF
   END DO
 
-  IF (Avg2D) THEN
-    CALL WriteDataToVTK(nVarVisu,NVisu,nElemsAvg2D_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
-        dim=2,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
+  SELECT CASE(OutputFormat)
+    CASE(OUTPUTFORMAT_PARAVIEW)
+      IF (Avg2D) THEN
+        CALL WriteDataToVTK(nVarVisu,NVisu,nElemsAvg2D_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
+            dim=2,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
 
 #if FV_ENABLED
-    CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElemsAvg2D_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-        dim=2,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
+        CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElemsAvg2D_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
+            dim=2,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
 
-    IF (MPIRoot) THEN
-      ! write multiblock file
-      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
-      CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV,OutputDirectory=OutputDirectory)
-    ENDIF
-#endif
-  ELSE
-    CALL WriteDataToVTK(nVarVisu,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
-        dim=PP_dim,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
-
-#if FV_ENABLED
-    IF (.NOT.MeshFileMode) THEN
-      CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-          dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
-
-      IF (MPIRoot) THEN
-        ! write multiblock file
-        FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
-        CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV,OutputDirectory=OutputDirectory)
-      ENDIF
-    END IF
+        IF (MPIRoot) THEN
+          ! write multiblock file
+          FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+          CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV,OutputDirectory=OutputDirectory)
+        ENDIF
 #endif
 
-    IF (doSurfVisu) THEN
-      ! Surface data
+      ! .NOT.Avg2D
+      ELSE
+        CALL WriteDataToVTK(nVarVisu,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
+            dim=PP_dim,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
+
 #if FV_ENABLED
-      FileString_SurfDG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
+        IF (.NOT.MeshFileMode) THEN
+          CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
+              dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
+
+          IF (MPIRoot) THEN
+            ! write multiblock file
+            FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+            CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV,OutputDirectory=OutputDirectory)
+          ENDIF
+        END IF
+#endif
+
+        IF (doSurfVisu) THEN
+          ! Surface data
+#if FV_ENABLED
+          FileString_SurfDG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
 #else
-      FileString_SurfDG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
+          FileString_SurfDG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
 #endif
 
-      CALL WriteDataToVTK(nVarSurfVisuAll,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
-        FileString_SurfDG,dim=PP_dim-1,DGFV=0,nValAtLastDimension=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
+          CALL WriteDataToVTK(nVarSurfVisuAll,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
+              FileString_SurfDG,dim=PP_dim-1,DGFV=0,nValAtLastDimension=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
 #if FV_ENABLED
-      FileString_SurfFV = TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
+          FileString_SurfFV = TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
 
-      CALL WriteDataToVTK(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
-          FileString_SurfFV,dim=PP_dim-1,DGFV=1,nValAtLastDimension=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
+          CALL WriteDataToVTK(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
+              FileString_SurfFV,dim=PP_dim-1,DGFV=1,nValAtLastDimension=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
 
-      IF (MPIRoot) THEN
-        ! write multiblock file
-        FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfSolution',OutputTime))
-        CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_SurfDG,FileString_SurfFV,OutputDirectory=OutputDirectory)
-      ENDIF
+          IF (MPIRoot) THEN
+            ! write multiblock file
+            FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfSolution',OutputTime))
+            CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_SurfDG,FileString_SurfFV,OutputDirectory=OutputDirectory)
+          ENDIF
 #endif
-    END IF
+        END IF ! doSurfVisu
 
 #if USE_PARTICLES
-    IF(PD%nPartVar_Visu.GT.0)THEN
-      FileString_Part=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuPart',OutputTime))//'.vtu'
-      CALL WriteDataToVTKPart(PD%nPart_Visu,PD%nPartVar_Visu,PD%PartData_HDF5(1:3,:),PD%PartData_HDF5(4:,:),FileString_Part,&
-        PD%VarNamePartVisu,PD%VarNamePartCombine,PD%VarNamePartCombineLen,PD%nGlobalParts)
-    END IF
-    IF(PDE%nPartVar_Visu.GT.0)THEN
-      FileString_Impact=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuImpact',OutputTime))//'.vtu'
-      CALL WriteDataToVTKPart(PDE%nPart_Visu,PDE%nPartVar_Visu,PDE%PartData_HDF5(1:3,:),PDE%PartData_HDF5(4:,:),FileString_Impact,&
-        PDE%VarNamePartVisu,PDE%VarNamePartCombine,PDE%VarNamePartCombineLen,PDE%nGlobalParts)
-    END IF
+        IF(PD%nPartVar_Visu.GT.0)THEN
+          FileString_Part=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuPart',OutputTime))//'.vtu'
+          CALL WriteDataToVTKPart(PD%nPart_Visu,PD%nPartVar_Visu,PD%PartData_HDF5(1:3,:),PD%PartData_HDF5(4:,:),FileString_Part,&
+            PD%VarNamePartVisu,PD%VarNamePartCombine,PD%VarNamePartCombineLen,PD%nGlobalParts)
+        END IF
+        IF(PDE%nPartVar_Visu.GT.0)THEN
+          FileString_Impact=TRIM(TIMESTAMP(TRIM(ProjectName)//'_visuImpact',OutputTime))//'.vtu'
+          CALL WriteDataToVTKPart(PDE%nPart_Visu,PDE%nPartVar_Visu,PDE%PartData_HDF5(1:3,:),PDE%PartData_HDF5(4:,:),FileString_Impact,&
+            PDE%VarNamePartVisu,PDE%VarNamePartCombine,PDE%VarNamePartCombineLen,PDE%nGlobalParts)
+        END IF
 #endif
-  END IF
+      END IF ! Avg2D
 
-  IF(HDF5Output) THEN
-    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
-    CALL visu_WriteHDF5(nVarVisu     = nVarVisu      &
-                       ,NVisu        = NVisu         &
-                       ,nElems_loc   = nElems_DG     &
-                       ,FileString   = FileString_DG &
-                       ,MeshFileName = MeshFile      &
-                       ,VarNames_loc = VarNames_loc  &
-                       ,Coords_DG    = CoordsVisu_DG &
-                       ,dim          = 3             &
-                       ,UVisu_DG     = UVisu_DG      )
-    IF (doSurfVisu) THEN
-      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
-      CALL visu_WriteHDF5( nVarVisu     = nVarSurfVisuAll              &
-                         , NVisu        = NVisu                        &
-                         , nElems_loc   = nBCSidesVisu_DG              &
-                         , FileString   = FileString_SurfDG            &
-                         , MeshFileName = MeshFile                     &
-                         , VarNames_loc = VarNamesSurf_loc             &
-                         , Coords_DG2D  = CoordsSurfVisu_DG(:,:,:,0,:) &
-                         , dim          = 2                            &
-                         , UVisu_DG2D   = USurfVisu_DG(:,:,0,:,:))
-    END IF
-  END IF
+    CASE(OUTPUTFORMAT_HDF5)
+      FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
+      CALL visu_WriteHDF5(nVarVisu     = nVarVisu      &
+                         ,NVisu        = NVisu         &
+                         ,nElems_loc   = nElems_DG     &
+                         ,FileString   = FileString_DG &
+                         ,MeshFileName = MeshFile      &
+                         ,VarNames_loc = VarNames_loc  &
+                         ,Coords_DG    = CoordsVisu_DG &
+                         ,dim          = 3             &
+                         ,UVisu_DG     = UVisu_DG      )
+      IF (doSurfVisu) THEN
+        FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
+        CALL visu_WriteHDF5( nVarVisu     = nVarSurfVisuAll              &
+                           , NVisu        = NVisu                        &
+                           , nElems_loc   = nBCSidesVisu_DG              &
+                           , FileString   = FileString_SurfDG            &
+                           , MeshFileName = MeshFile                     &
+                           , VarNames_loc = VarNamesSurf_loc             &
+                           , Coords_DG2D  = CoordsSurfVisu_DG(:,:,:,0,:) &
+                           , dim          = 2                            &
+                           , UVisu_DG2D   = USurfVisu_DG(:,:,0,:,:))
+      END IF
+  END SELECT ! OutputFormat
 
   DEALLOCATE(VarNames_loc)
   DEALLOCATE(VarNamesSurf_loc)

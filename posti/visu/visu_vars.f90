@@ -23,6 +23,13 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+! Output format for state visualization
+INTEGER                           :: OutputFormat              = 3
+INTEGER,PARAMETER                 :: OUTPUTFORMAT_NONE         = 0
+INTEGER,PARAMETER                 :: OUTPUTFORMAT_TECPLOT      = 1
+INTEGER,PARAMETER                 :: OUTPUTFORMAT_TECPLOTASCII = 2
+INTEGER,PARAMETER                 :: OUTPUTFORMAT_PARAVIEW     = 3
+INTEGER,PARAMETER                 :: OUTPUTFORMAT_HDF5         = 4
 !==================================================================================================================================
 CHARACTER(LEN=255)                :: fileType = ''               !< possible values:
                                                                  !< * 'State' for FLEXI state files matching the compiled EOS
@@ -67,9 +74,6 @@ LOGICAL                           :: MeshFileMode                !< Flag indicat
 LOGICAL                           :: doSurfVisu                  !< Flag indicating if any surfaces need to be visualized
 LOGICAL                           :: Avg2D                       !< Flag indicating if solution should be averaged in zeta dir
 LOGICAL                           :: Avg2D_old = .FALSE.         !< Previus state of Avg2D flag, used to check for change
-LOGICAL                           :: Avg2DHDF5Output             !< Flag indicating if the averaged solution should be written to a
-                                                                 !< .h5 file
-LOGICAL                           :: HDF5Output                  !< Flag indicating if the solution should be written to a .h5 file
 
 
 ! The following flags indicate if during successive visualizations of (different) state files the respective properties
@@ -183,6 +187,7 @@ REAL,ALLOCATABLE                  :: Vdm_FVToVisu(:,:)
 ! Particles
 ! ==============================================================================================================================
 LOGICAL                           :: VisuPart                    !< Flag indicating if the simulation was run with particles
+LOGICAL                           :: VisuField                   !< Flag indicating if the simulation was run with field time increments
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: PartnamesAll(:)         !< all available varnames (state file + dependent vars + generic)
 
 TYPE tVisuParticle

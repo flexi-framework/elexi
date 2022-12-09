@@ -268,19 +268,20 @@ END SUBROUTINE visu_getVarNamesAndFileType
 SUBROUTINE visu_InitFile(statefile,postifile)
 ! MODULES
 USE HDF5
-USE MOD_Preproc
 USE MOD_Globals
+USE MOD_Preproc
 USE MOD_EOS_Posti_Vars
-USE MOD_Visu_Vars
 USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndName
 USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile,ReadArray,DatasetExists
 USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_MPI                ,ONLY: InitMPI
 USE MOD_Output_Vars        ,ONLY: ProjectName
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
+USE MOD_ReadInTools        ,ONLY: prms,addStrListEntry,FinalizeParameters,CountOption
+USE MOD_ReadInTools        ,ONLY: GETINT,GETINTFROMSTR,GETLOGICAL,GETSTR
 USE MOD_StringTools        ,ONLY: STRICMP,INTTOSTR
-USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,FinalizeParameters,CountOption
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
+USE MOD_Visu_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -349,6 +350,7 @@ END IF
 NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
 HighOrder         = GETLOGICAL('HighOrder')
 #if USE_PARTICLES
+VisuField         = GETLOGICAL("VisuField")
 VisuPart          = GETLOGICAL("VisuPart")
 #endif
 
@@ -376,9 +378,16 @@ CALL visu_getVarNamesAndFileType(statefile,'',VarnamesAll,BCNamesAll)
 
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
-! HDF5 Output for avg2D
-IF (Avg2D) Avg2DHDF5Output = GETLOGICAL("Avg2DHDF5Output")
-HDF5Output = GETLOGICAL("HDF5Output")
+! Get output format for visualization
+OutputFormat = GETINTFROMSTR('OutputFormat')
+SELECT CASE(OutputFormat)
+  CASE(OUTPUTFORMAT_NONE)
+    CALL CollectiveStop(__STAMP__,'Output disabled, exiting.')
+  CASE(OUTPUTFORMAT_TECPLOT)
+    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
+  CASE(OUTPUTFORMAT_TECPLOTASCII)
+    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
+END SELECT
 
 ! check if state, mesh, NVisu, DGonly or Avg2D changed
 changedStateFile = .NOT.STRICMP(statefile,statefile_old)
@@ -404,15 +413,15 @@ END IF
 CALL CloseDataFile()
 
 ! Polynomial degree for calculations
-NCalc             = GETINT("NCalc",INTTOSTR(PP_N))
+NCalc                 = GETINT("NCalc",INTTOSTR(PP_N))
 IF (NCalc.LE.0) NCalc = PP_N
-changedNCalc      = NCalc.NE.NCalc_old
+changedNCalc          = NCalc.NE.NCalc_old
 
 ! Output of averaged data is only available for NVisu = PP_N and NodeTypeVisuPosti=NodeType_State
 ! These settings are enforced here!
-IF (Avg2DHDF5Output) THEN
-        NVisu = PP_N
-        NodeTypeVisuPosti=NodeType_State
+IF (Avg2D .AND. OutputFormat.EQ.OUTPUTFORMAT_HDF5) THEN
+  NVisu             = PP_N
+  NodeTypeVisuPosti = NodeType_State
 END IF
 ! Check for changed visualization basis here to take change done for average output into account
 changedNVisu     = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))

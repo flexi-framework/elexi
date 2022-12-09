@@ -62,7 +62,9 @@ CHARACTER(LEN=255)             :: FileString_multiblock
 CHARACTER(LEN=255)             :: FileString_Part
 CHARACTER(LEN=255)             :: FileString_Impact
 #endif
-#if !USE_MPI
+#if USE_MPI
+LOGICAL                        :: InitMPI_loc=.FALSE.
+#else
 INTEGER                        :: MPI_COMM_WORLD = 0
 #endif
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames_loc(:)
@@ -228,6 +230,34 @@ DO iArg=1+skipArgs,nArgs
       END IF ! Avg2D
 
     CASE(OUTPUTFORMAT_HDF5)
+#if USE_MPI
+      ! Initialize communicator
+      IF (MPI_COMM_NODE.EQ.MPI_COMM_NULL) THEN
+        ! Create the worker MPI Comms
+        CALL MPI_COMM_DUP(MPI_COMM_FLEXI,MPI_COMM_NODE,iError)
+        CALL MPI_COMM_RANK(MPI_COMM_NODE,myLocalRank,iError)
+        CALL MPI_COMM_SIZE(MPI_COMM_NODE,nLocalProcs,iError)
+        MPILocalRoot=(myLocalRank .EQ. 0)
+
+        ! Split global communicator into small group leaders and the others
+        MPI_COMM_LEADERS = MPI_COMM_NULL
+        MPI_COMM_WORKERS = MPI_COMM_NULL
+        myLeaderRank     = -1
+        myWorkerRank     = -1
+        IF(myLocalRank.EQ.0)THEN
+          CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,0,0,MPI_COMM_LEADERS,iError)
+          CALL MPI_COMM_RANK( MPI_COMM_LEADERS,myLeaderRank,iError)
+          CALL MPI_COMM_SIZE( MPI_COMM_LEADERS,nLeaderProcs,iError)
+          nWorkerProcs = nProcessors-nLeaderProcs
+        ELSE
+          CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,1,0,MPI_COMM_WORKERS,iError)
+          CALL MPI_COMM_RANK( MPI_COMM_WORKERS,myWorkerRank,iError)
+          CALL MPI_COMM_SIZE( MPI_COMM_WORKERS,nWorkerProcs,iError)
+          nLeaderProcs = nProcessors-nWorkerProcs
+        END IF
+      END IF
+
+#endif /*USE_MPI*/
       FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
       CALL visu_WriteHDF5(nVarVisu     = nVarVisu      &
                          ,NVisu        = NVisu         &
@@ -250,6 +280,15 @@ DO iArg=1+skipArgs,nArgs
                            , dim          = 2                            &
                            , UVisu_DG2D   = USurfVisu_DG(:,:,0,:,:))
       END IF
+
+#if USE_MPI
+      IF (InitMPI_loc) THEN
+        ! Free MPI communicators
+        IF(MPI_COMM_NODE   .NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_NODE   ,iError)
+        IF(MPI_COMM_WORKERS.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_WORKERS,iError)
+        IF(MPI_COMM_LEADERS.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS,iError)
+      END IF
+#endif /*USE_MPI*/
   END SELECT ! OutputFormat
 
   DEALLOCATE(VarNames_loc)

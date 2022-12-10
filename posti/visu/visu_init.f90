@@ -239,6 +239,8 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
     ALLOCATE(bcnames_loc(nBCNamesAll))
     CALL ReadArray('BCNames',1,(/nBCNamesAll/),Offset,1,StrArray=bcnames_loc)
     CALL CloseDataFile()
+  ELSE
+    CALL PrintWarning('Mesh file "'//TRIM(MeshFile_loc)//'" specified in the loaded file does not exist! Surface visualization will not be available!')
   END IF
 
   SDEALLOCATE(datasetNames)

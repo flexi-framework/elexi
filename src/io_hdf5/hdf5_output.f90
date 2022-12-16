@@ -397,7 +397,7 @@ END SUBROUTINE WriteAdditionalFieldData
 !==================================================================================================================================
 !> Subroutine to write the baseflow to HDF5 format
 !==================================================================================================================================
-SUBROUTINE WriteBaseflow(MeshFileName,OutputTime)
+SUBROUTINE WriteBaseflow(MeshFileName,OutputTime,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -411,6 +411,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
 REAL,INTENT(IN)                :: OutputTime         !< Time of output
+REAL,INTENT(IN)                :: FutureTime         !< hint, when next file will be written
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName
@@ -428,7 +429,7 @@ END IF
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',OutputTime))//'.h5'
-IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,StrVarNames,MeshFileName,OutputTime)
+IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,StrVarNames,MeshFileName,OutputTime,FutureTime)
 
 #if PP_dim == 3
   UOut => SpBaseFlow
@@ -500,7 +501,7 @@ REAL,INTENT(IN)                :: OutputTime                                   !
 REAL,INTENT(IN)                :: dtAvg                                        !< Timestep of averaging
 REAL,INTENT(IN),TARGET         :: UAvg(nVarAvg,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution
 REAL,INTENT(IN),TARGET         :: UFluc(nVarFluc,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution fluctuations
-REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !< Time of next output
+REAL,INTENT(IN)                :: FutureTime                                   !< Time of next output
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Filename_In                            !< custom filename
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: NodeType_In                            !< custom node type
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -525,7 +526,7 @@ END IF
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_TimeAvg',OutputTime))//'.h5'
-IF(PRESENT(Filename_In)) Filename=TRIM(Filename_In)
+IF(PRESENT(Filename_In)) FileName=TRIM(Filename_In)
 
 ! Write time averaged data --------------------------------------------------------------------------------------------------------
 IF(MPIRoot)THEN
@@ -629,7 +630,7 @@ INTEGER,INTENT(IN)             :: NData              !< Polynomial degree of dat
 CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)  !< Variabel names
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
 REAL,INTENT(IN)                :: OutputTime         !< Time of output
-REAL,INTENT(IN),OPTIONAL       :: FutureTime         !< Time of next output
+REAL,INTENT(IN)                :: FutureTime         !< Time of next output
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Dataset      !< Name of the dataset
 LOGICAL,INTENT(IN),OPTIONAL    :: create             !< specify whether file should be newly created
 LOGICAL,INTENT(IN),OPTIONAL    :: withUserblock      !< specify whether userblock data shall be written or not
@@ -689,10 +690,8 @@ IF(create_loc)THEN
   CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
   tmp255=TRIM(MeshFileName)
   CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/tmp255/))
-  IF(PRESENT(FutureTime))THEN
-    MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),FutureTime))//'.h5'
-    CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
-  END IF
+  MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),FutureTime))//'.h5'
+  CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
   tmp255=TRIM(NodeType)
   IF(PRESENT(NodeTypeIn)) tmp255=TRIM(NodeTypeIn)
   CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/tmp255/))

@@ -37,10 +37,11 @@ CONTAINS
 SUBROUTINE GetRecordPoints()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSet_Vars        ,ONLY: RPSetInitIsDone
+USE MOD_ReadIntools
+USE MOD_RPSet_Vars,        ONLY: RPSetInitIsDone
 USE MOD_Mesh_Vars,         ONLY: MeshInitIsDone
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys,ChebyGaussLobNodesAndWeights,BarycentricWeights,InitializeVandermonde
-USE MOD_ReadIntools
+USE MOD_rpset,             ONLY: CheckRecordPoints
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -57,6 +58,7 @@ END IF
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' FIND RECORDPOINTS IN MESH...'
 CALL GetParametricCoordinates()
+CALL CheckRecordPoints()
 CALL SortRP()
 
 SWRITE(UNIT_stdOut,'(A)')' FINDING RECORDPOINTS DONE!'

@@ -121,7 +121,6 @@ CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 ! RP Routines
 CALL InitRPSet()
 CALL GetRecordPoints()
-CALL CheckRecordPoints()
 ! Only write out on MPIRoot
 IF (MPIRoot) THEN
   CALL WriteRecordPointstoHDF5(ProjectName,MeshFile)

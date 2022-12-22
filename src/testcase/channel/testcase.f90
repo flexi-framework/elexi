@@ -104,10 +104,10 @@ CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at e
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "       //&
                                               "(Note: always called at global analyze level)"                  , '1000')
 CALL prms%CreateLogicalOption(  'Part-CustomChannel', "Allow channel dimensions other than Moser",            '.FALSE.')
-CALL prms%CreateRealOption(     'Part-ChannelReTau',  "Custom channel Re_tau")
-CALL prms%CreateRealOption(     'Part-ChannelUTau',   "Custom channel U_tau")
-CALL prms%CreateRealOption(     'Part-ChannelUBulk',  "Custom channel bulk velocity")
-CALL prms%CreateRealOption(     'Part-ChannelDelta',  "Custom channel half height")
+CALL prms%CreateRealOption(     'Part-ChannelReTau',  "Custom channel Re_tau"                                          )
+CALL prms%CreateRealOption(     'Part-ChannelUTau',   "Custom channel U_tau"                                           )
+CALL prms%CreateRealOption(     'Part-ChannelbulkVel',"Custom channel bulk velocity"                                   )
+CALL prms%CreateRealOption(     'Part-ChannelDelta',  "Custom channel half height"                                     )
 END SUBROUTINE DefineParametersTestcase
 
 !==================================================================================================================================
@@ -132,7 +132,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,PARAMETER           :: c1 = 2.4390244 ! Empirical parameter for estimation of uBulk
+REAL,PARAMETER           :: c1 = 2.4390244 ! Empirical parameter for estimation of bulkVel
 REAL                     :: bulkMach,pressure
 REAL                     :: UE(PP_2Var)
 CHARACTER(LEN=7)         :: varnames(2)
@@ -150,24 +150,24 @@ customChannel    = GETLOGICAL('Part-CustomChannel')
 
 ! Channel dimensions and BCs other than Moser
 IF (customChannel) THEN
-  uBulk       = GETREAL('Part-ChannelUBulk','0.')
+  bulkVel     = GETREAL('Part-ChannelbulkVel','0.')
   uTau        = GETREAL('Part-ChannelUtau', '0.')
   Re_tau      = GETREAL('Part-ChannelReTau','0.')
   SWRITE(UNIT_stdOut,'(A)') ' | Warning: Channel Init based on Moser. Initial state might be inaccurate!'
-  ! Scale initial velocity distribution to new UBulk
-  uBulkScale  = uBulk / (mu0 * (c1 * ((1/mu0+c1)*LOG(1/mu0+c1) + 1.3064019*(1/mu0 + 29.627395*EXP(-1./11.*1/mu0) + 0.66762137*(1/mu0+3) &
+  ! Scale initial velocity distribution to new bulkVel
+  bulkVelScale  = bulkVel / (mu0 * (c1 * ((1/mu0+c1)*LOG(1/mu0+c1) + 1.3064019*(1/mu0 + 29.627395*EXP(-1./11.*1/mu0) + 0.66762137*(1/mu0+3) &
                 * EXP(-1/mu0/3.))) - 97.4857927165))
 ELSE
   ! Compute initial guess for bulk velocity for given Re_tau to compute background pressure
-  uBulkScale  = 1.
+  bulkVelScale  = 1.
   Re_tau      = 1/mu0
-  uBulk       = (Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))
-  uBulk       = 1./Re_tau * (c1*uBulk - 97.4857927165)
+  bulkVel       = (Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))
+  bulkVel       = 1./Re_tau * (c1*bulkVel - 97.4857927165)
 ENDIF
 
 ! Set the background pressure according to chosen bulk Mach number
 bulkMach = GETREAL('ChannelMach')
-pressure = (uBulk/bulkMach)**2*RefStatePrim(DENS,IniRefState)/kappa
+pressure = (bulkVel/bulkMach)**2*RefStatePrim(DENS,IniRefState)/kappa
 RefStatePrim(PRES,IniRefState) = pressure
 ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
 UE(EXT_SRHO) = 1./RefStatePrim(DENS,IniRefState)
@@ -248,10 +248,10 @@ ELSE
   END IF
 ENDIF
 
-! Integral of (...) is 29.89, hence scale it to fit UBulk
+! Integral of (...) is 29.89, hence scale it to fit bulkVel
 ! Prim(VEL1) = uPlus
-Prim(VEL1) = uBulkScale*(1./0.41*LOG(1+0.41*yPlus)+7.8*(1-EXP(-yPlus/11.)-yPlus/11.*EXP(-yPlus/3.)))
-! Prim(PRES) = (uBulk*sqrt(kappa*Prim(5)/Prim(1)))**2*Prim(1)/kappa ! Pressure such that Ma=1/sqrt(kappa*p/rho)
+Prim(VEL1) = bulkVelScale*(1./0.41*LOG(1+0.41*yPlus)+7.8*(1-EXP(-yPlus/11.)-yPlus/11.*EXP(-yPlus/3.)))
+! Prim(PRES) = (bulkVel*sqrt(kappa*Prim(5)/Prim(1)))**2*Prim(1)/kappa ! Pressure such that Ma=1/sqrt(kappa*p/rho)
 
 ! Superimpose sinusoidal disturbances to accelerate development of turbulence
 Amplitude = 0.1*Prim(VEL1)
@@ -334,17 +334,17 @@ REAL,INTENT(IN)                 :: t,dt
 ! LOCAL VARIABLES
 INTEGER                         :: i,j,k,iElem
 !==================================================================================================================================
-BulkVel =0.
+bulkVel =0.
 DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    BulkVel = BulkVel+U(MOM1,i,j,k,iElem)/U(DENS,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
+    bulkVel = bulkVel+U(MOM1,i,j,k,iElem)/U(DENS,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
 END DO
 
 #if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,BulkVel,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,bulkVel,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
 #endif
-BulkVel = BulkVel/Vol
+bulkVel = bulkVel/Vol
 END SUBROUTINE CalcForcing
 
 
@@ -368,7 +368,7 @@ INTEGER                         :: i,j,k,iElem
 DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     Ut(MOM1,i,j,k,iElem) = Ut(MOM1,i,j,k,iElem) - dpdx/sJ(i,j,k,iElem,0)
-    Ut(ENER,i,j,k,iElem) = Ut(ENER,i,j,k,iElem) - dpdx/sJ(i,j,k,iElem,0)*BulkVel
+    Ut(ENER,i,j,k,iElem) = Ut(ENER,i,j,k,iElem) - dpdx/sJ(i,j,k,iElem,0)*bulkVel
   END DO; END DO; END DO
 END DO
 END SUBROUTINE TestcaseSource

@@ -92,7 +92,7 @@ SELECT CASE(SGSModel)
 
     ! Init double-filtering for SGS turbulent kinetic energy
     !>> Modal Filter, default to cut-off at PP_N-2
-    nSGSFilter = GETINT('Part-SGSNFilter')
+    nSGSFilter = MIN(PP_N-1,GETINT('Part-SGSNFilter'))
     CALL InitSGSFilter()
 
     ! Allocate array to hold the SGS properties for every particle
@@ -119,7 +119,7 @@ SELECT CASE(SGSModel)
 
     ! Init double-filtering for SGS turbulent kinetic energy
     !>> Modal Filter, default to cut-off at PP_N-2
-    nSGSFilter = GETINT('Part-SGSNFilter')
+    nSGSFilter = MIN(PP_N-1,GETINT('Part-SGSNFilter'))
     CALL InitSGSFilter()
 
     ! Allocate array to hold the SGS properties for every particle
@@ -140,7 +140,7 @@ CASE('Amiri')
 
     ! Init double-filtering for SGS turbulent kinetic energy
     !>> Modal Filter, default to cut-off at PP_N-2
-    nSGSFilter = GETINT('Part-SGSNFilter')
+    nSGSFilter = MIN(PP_N-1,GETINT('Part-SGSNFilter'))
     CALL InitSGSFilter()
 
     ! Allocate array to hold the SGS properties for every particle
@@ -166,7 +166,7 @@ CASE('Fukagata')
 
     ! Init double-filtering for SGS turbulent kinetic energy
     !>> Modal Filter, default to cut-off at PP_N-2
-    nSGSFilter = GETINT('Part-SGSNFilter')
+    nSGSFilter = MIN(PP_N-1,GETINT('Part-SGSNFilter'))
     CALL InitSGSFilter()
 
     ! Allocate array to hold the SGS properties for every particle
@@ -192,7 +192,7 @@ CASE('Fukagata')
 
     ! Init double-filtering for SGS turbulent kinetic energy
     !>> Modal Filter, default to cut-off at PP_N-2
-    nSGSFilter = GETINT('Part-SGSNFilter')
+    nSGSFilter = MIN(PP_N-1,GETINT('Part-SGSNFilter'))
     CALL InitSGSFilter()
 
     ! Allocate array to hold the SGS properties for every particle
@@ -213,7 +213,7 @@ CASE('Fukagata')
 
     ! Init double-filtering for SGS turbulent kinetic energy
     !>> Modal Filter, default to cut-off at PP_N-2
-    nSGSFilter = GETINT('Part-SGSNFilter')
+    nSGSFilter = MIN(PP_N-1,GETINT('Part-SGSNFilter'))
     CALL InitSGSFilter()
 
     ! Allocate array to hold the SGS properties for every particle
@@ -234,7 +234,7 @@ CASE('Fukagata')
 
     ! Init double-filtering for SGS turbulent kinetic energy
     !>> Modal Filter, default to cut-off at PP_N-2
-    nSGSFilter = GETINT('Part-SGSNFilter')
+    nSGSFilter = MIN(PP_N-1,GETINT('Part-SGSNFilter'))
     CALL InitSGSFilter()
 
     ! Allocate array to hold the SGS properties for every particle
@@ -1073,6 +1073,7 @@ CALL InterpolateFieldToParticle(3,USGS(MOMV,:,:,:,:),3,USGSPart)
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
   IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
+
   kSGSPart = 0.5*SUM(USGSPart(1:3,iPart)**2.)
 
   ! Time scale of SGS scales

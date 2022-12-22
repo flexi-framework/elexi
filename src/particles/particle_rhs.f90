@@ -204,7 +204,9 @@ REAL                :: mu                          ! viscosity
 !===================================================================================================================================
 
 ! Calculate the dyn. viscosity
-mu=VISCOSITY_PRIM(FieldAtParticle)
+#if PARABOLIC
+mu = VISCOSITY_PRIM(FieldAtParticle)
+#endif
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
 
@@ -388,6 +390,7 @@ USE MOD_Equation_Vars,          ONLY: s43,s23
 USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter,FbCoeff,FbCoeffa,Fbdt,FbCoefft!,Fbi,FbCoeffm
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
 #endif /* USE_BASSETFORCE */
+USE MOD_Particle_TimeDisc_Vars, ONLY: useManualTimeStep
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -424,7 +427,7 @@ INTEGER                  :: k,kIndex,nIndex
 REAL                     :: dufdt(1:3)                  ! partial derivative of the fluid velocity
 REAL                     :: dtk(3),dtn(2)
 ! Convergence1
-REAL                     :: Sb,Cb
+! REAL                     :: Sb,Cb
 #endif /* USE_BASSETFORCE */
 #if PP_nVarPartRHS == 6
 REAL                     :: Rep                         ! particle Reynolds number
@@ -439,8 +442,10 @@ SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
     RETURN
 END SELECT
 
+#if PARABOLIC
 ! Calculate the dyn. viscosity
-mu=VISCOSITY_PRIM(FieldAtParticle)
+mu = VISCOSITY_PRIM(FieldAtParticle)
+#endif
 
 ! Calcuate velocity difference
 IF(ALLOCATED(TurbPartState)) THEN
@@ -465,20 +470,15 @@ globalfactor = 1.
 !===================================================================================================================================
 #if PP_nVarPartRHS == 6
 ! Calculate the RHS of the rotation
-! Calculate the rotation: \nabla x u
-rotu = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
-         GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
-         GradAtParticle(RHS_GRADVEL2,1)-GradAtParticle(RHS_GRADVEL1,2)/)
-! Relative fluid-particle Angular velocity
-Omega = 0.5 * rotu - PartState(PART_AMOMV,PartID)
-! Prefactor according to Oesterle and Bui Dinh
-IF (ANY(Omega.NE.0)) THEN
-  Rew = FieldAtParticle(DENS) * VECNORM(Omega) * PartState(PART_DIAM,PartID)**2 / (4*mu)
-  Pt(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
+IF (Species(PartSpecies(PartID))%CalcMagnusForce .OR. Species(PartSpecies(PartID))%CalcSaffmanForce) THEN
+  ! Calculate the rotation: \nabla x u
+  rotu = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
+           GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
+           GradAtParticle(RHS_GRADVEL2,1)-GradAtParticle(RHS_GRADVEL1,2)/)
+  ! Calculate the Re number
+  Rep = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 END IF
 
-! Calculate the Re number
-Rep = VECNORM(udiff(1:3))*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 IF (Species(PartSpecies(PartID))%CalcSaffmanForce .AND. .NOT. ALMOSTZERO(Rep)) THEN
   ! Calculate the factor
   prefactor = 9.69/(Species(PartSpecies(PartID))%DensityIC*PartState(PART_DIAM,PartID)*PP_PI)
@@ -497,20 +497,35 @@ END IF
 ! Rubinow, S.I., Keller, J.B.: The transverse force on a spinning sphere moving in a viscous
 ! fluid. Journal of Fluid Mechanics, pp. 447–459, 1961. 10.1017/S0022112061000640.
 !===================================================================================================================================
-IF (Species(PartSpecies(PartID))%CalcMagnusForce .AND. Rep.GT.0. .AND. ANY(Omega.NE.0)) THEN
-  ! Calculate the rotation: (\nabla x u_p) x udiff
-  rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
-  prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(-0.05684*Rew**0.4*Rep**0.7)
-  Fmm = PP_PI/8 * prefactor * PartState(PART_DIAM,PartID)**3 * FieldAtParticle(DENS) * rotudiff
+IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
+  ! Relative fluid-particle Angular velocity
+  Omega = 0.5 * rotu - PartState(PART_AMOMV,PartID)
+  ! Prefactor according to Oesterle and Bui Dinh
+  IF (ANY(Omega.NE.0)) THEN
+    Rew = FieldAtParticle(DENS) * VECNORM(Omega) * PartState(PART_DIAM,PartID)**2 / (4*mu)
+    Pt(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
+    ! Calculate the rotation: (\nabla x u_p) x udiff
+    rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
+    IF (Rep.GT.0.) THEN
+      prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(-0.05684*Rew**0.4*Rep**0.7)
+      Fmm = PP_PI/8 * prefactor * PartState(PART_DIAM,PartID)**3 * FieldAtParticle(DENS) * rotudiff
+    END IF
+  END IF
 END IF
 #endif /* PP_nVarPartRHS */
 
 #if USE_UNDISTFLOW || USE_VIRTUALMASS
 IF (Species(PartSpecies(PartID))%CalcUndisturbedFlow.OR.Species(PartSpecies(PartID))%CalcVirtualMass) THEN
   ! Material derivative D(u_i)/Dt = \partial (u_i)/\partial t + u_j \partial (u_i)/\partial (x_j) (inkomp.)
-  DuDt(1)  = GradAtParticle(RHS_dVELdt,1) + DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL1,:))
-  DuDt(2)  = GradAtParticle(RHS_dVELdt,2) + DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL2,:))
-  DuDt(3)  = GradAtParticle(RHS_dVELdt,3) + DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL3,:))
+  IF (useManualTimeStep) THEN
+    DuDt(1)  = DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL1,:))
+    DuDt(2)  = DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL2,:))
+    DuDt(3)  = DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL3,:))
+  ELSE
+    DuDt(1)  = GradAtParticle(RHS_dVELdt,1) + DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL1,:))
+    DuDt(2)  = GradAtParticle(RHS_dVELdt,2) + DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL2,:))
+    DuDt(3)  = GradAtParticle(RHS_dVELdt,3) + DOT_PRODUCT(FieldAtParticle(VELV), GradAtParticle(RHS_GRADVEL3,:))
+  END IF
 END IF
 #endif /* USE_UNDISTFLOW || USE_VIRTUALMASS */
 

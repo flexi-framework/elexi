@@ -642,7 +642,7 @@ DO k=0,N_in
   DO j=0,N_in
     L_eta_zeta=L_xi(2,j)*L_xi(3,k)
     DO i=0,N_in
-      Utmp                      = Utmp                      + U_IN(:,i,j,k)  * L_xi(1,i)*L_Eta_Zeta
+      Utmp                        = Utmp                        + U_In(:,i,j,k)                * L_xi(1,i)*L_Eta_Zeta
 #if USE_EXTEND_RHS
       UGrad_out(RHS_GRADVELV  ,1) = UGrad_out(RHS_GRADVELV  ,1) + gradUx(:             ,i,j,k) * L_xi(1,i)*L_Eta_Zeta
       UGrad_out(RHS_GRADVELV  ,2) = UGrad_out(RHS_GRADVELV  ,2) + gradUy(:             ,i,j,k) * L_xi(1,i)*L_Eta_Zeta

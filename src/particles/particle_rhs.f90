@@ -640,7 +640,7 @@ IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
   Fbm(1:3) = prefactor * Fbm(1:3)
 
   ! Add to global scaling factor as s43*\rho*prefactor*dv_p/dt is on RHS
-  globalfactor     = globalfactor + s43 * prefactor * SQRT(Fbdt(nIndex,PartID))
+  globalfactor     = globalfactor + s43 * prefactor * SQRT(Fbdt(nIndex+1,PartID)-Fbdt(nIndex,PartID))
 
   ! Correction term if initial particle velocity if different from the surrounding fluid velocity
   IF (biter(PartID) .EQ. 1 .AND. t.GT. 0) THEN
@@ -681,7 +681,7 @@ IF(dtWriteRHS.GT.0.0)THEN
     IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
       prefactor = 9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
                 * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
-      Fbm = Fbm+Pt(1:3)*s43*prefactor*SQRT(Fbdt(nIndex,PartID))
+      Fbm = Fbm-Pt(1:3)*s43*prefactor*SQRT(Fbdt(nIndex+1,PartID)-Fbdt(nIndex,PartID))
     END IF
 #endif /* USE_BASSETFORCE */
     CALL OutputToFile(FileName_RHS,(/t/),(/23,1/),&

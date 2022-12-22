@@ -87,6 +87,7 @@ CALL addStrListEntry('IniExactFunc','sod'            ,11)
 CALL addStrListEntry('IniExactFunc','dmr'            ,13)
 CALL addStrListEntry('IniExactFunc','roundjet'       ,33)
 CALL addStrListEntry('IniExactFunc','convergence'    ,34)
+CALL addStrListEntry('IniExactFunc','sinevelx'       ,35)
 #if PARABOLIC
 CALL addStrListEntry('IniExactFunc','blasius'        ,1338)
 CALL addStrListEntry('IniExactFunc','blasius_round_x',1339)
@@ -290,6 +291,34 @@ CASE(2) ! sinus
     Resu_tt(DENS)=-Amplitude*sin(Omega*SUM(cent(1:3)))*ov**2.
     Resu_tt(MOMV)=Resu_tt(DENS)*prim(VELV)
     Resu_tt(ENER)=0.5*SUM(Resu_tt(MOMV)*prim(VELV))
+  END IF
+CASE(35) ! sinus x (vel)
+  Frequency=1.0
+  Amplitude=1.0
+  Omega=2.*Frequency
+  ! base flow
+  prim(DENS)   = 1.
+  prim(VEL1)   = Amplitude*SIN(Omega*tEval)
+  prim(VEL2)   = 0.
+  prim(VEL3)   = 0.
+  prim(PRES)   = 1.
+  ! g(t)
+  Resu(DENS)=prim(DENS) ! rho
+  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
+
+  IF(fullBoundaryOrder)THEN
+    ov=Omega*Amplitude
+    ! g'(t)
+    prim(VEL1)    = ov*COS(Omega*tEval)
+    Resu_t(DENS)  = 0.
+    Resu_t(MOMV)  = Resu_t(DENS)*prim(VELV) ! rho*vel
+    Resu_t(ENER)  = 0.5*SUM(Resu_t(MOMV)*prim(VELV))
+    ! g''(t)
+    prim(VEL1)    = -ov**2*SIN(Omega*tEval)
+    Resu_tt(DENS) = 0.
+    Resu_tt(MOMV) = Resu_tt(DENS)*prim(VELV)
+    Resu_tt(ENER) = 0.5*SUM(Resu_tt(MOMV)*prim(VELV))
   END IF
 CASE(21) ! sinus x
   Frequency=0.5
@@ -527,7 +556,7 @@ CASE(33) !Roundjet, x-axis is jet axis
 
 CASE(34) ! Part convergence
   prim(DENS) = 1
-  prim(VELV) = 0.
+  prim(VELV) = RefStatePrim(VELV,RefState)
   prim(PRES) = 1
   prim(TEMP) = prim(PRES)/(prim(DENS)*R)
   prim(VEL1) = 0.5*x(2)
@@ -1079,6 +1108,33 @@ CASE(43) ! Sinus in z
 #endif
   END DO
 #endif
+CASE(35) ! sinus x (vel)
+  Frequency=1.
+  Amplitude=1.0
+  Omega=2*Frequency
+
+  DO iElem=1,nElems
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      Ut_src(DENS,i,j,k) = 0.
+      Ut_src(MOM1,i,j,k) = 2*COS(Omega*t)
+      Ut_src(MOM2:MOM3,i,j,k) = 0.0
+      Ut_src(ENER,i,j,k) = SIN(Omega*t) * 2*COS(Omega*t)
+    END DO; END DO; END DO ! i,j,k
+#if FV_ENABLED
+    IF (FV_Elems(iElem).GT.0) THEN ! FV elem
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
+      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+        Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
+      END DO; END DO; END DO ! i,j,k
+    ELSE
+#endif
+      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+        Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
+      END DO; END DO; END DO ! i,j,k
+#if FV_ENABLED
+    END IF
+#endif
+  END DO
 CASE DEFAULT
   ! No source -> do nothing and set marker to not run again
   doCalcSource=.FALSE.

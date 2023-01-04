@@ -421,7 +421,9 @@ USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-IF(MPIRoot) DEALLOCATE(writeBuf)
+IF(MPIRoot) THEN
+  SDEALLOCATE(writeBuf)
+END IF
 END SUBROUTINE
 
 

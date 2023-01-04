@@ -132,12 +132,13 @@
 #define TRIATRACKING  3
 
 ! RHS method
-#define RHS_NONE         1
-#define RHS_TRACER       2
-#define RHS_CONVERGENCE  3
-#define RHS_INERTIA      4
-#define RHS_SGS1         5
-#define RHS_SGS2         6
+#define RHS_NONE           1
+#define RHS_TRACER         2
+#define RHS_TCONVERGENCE   3
+#define RHS_HPCONVERGENCE  4
+#define RHS_INERTIA        5
+#define RHS_SGS1           6
+#define RHS_SGS2           7
 
 ! Drag factor model
 #define DF_PART_SCHILLER  1

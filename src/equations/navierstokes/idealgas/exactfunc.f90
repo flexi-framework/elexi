@@ -73,8 +73,8 @@ CALL addStrListEntry('IniExactFunc','sinedens'       ,2)
 CALL addStrListEntry('IniExactFunc','sinedensx'      ,21)
 CALL addStrListEntry('IniExactFunc','lindens'        ,3)
 CALL addStrListEntry('IniExactFunc','sinevel'        ,4)
-CALL addStrListEntry('IniExactFunc','sinevelx'       ,41)
-CALL addStrListEntry('IniExactFunc','sinevely'       ,42)
+CALL addStrListEntry('IniExactFunc','sinevelxt'      ,41)
+CALL addStrListEntry('IniExactFunc','sinevelyt'      ,42)
 CALL addStrListEntry('IniExactFunc','sinevelz'       ,43)
 CALL addStrListEntry('IniExactFunc','sinevelnorho'   ,44)
 CALL addStrListEntry('IniExactFunc','roundjet'       ,5)
@@ -88,6 +88,7 @@ CALL addStrListEntry('IniExactFunc','dmr'            ,13)
 CALL addStrListEntry('IniExactFunc','roundjet'       ,33)
 CALL addStrListEntry('IniExactFunc','convergence'    ,34)
 CALL addStrListEntry('IniExactFunc','sinevelx'       ,35)
+CALL addStrListEntry('IniExactFunc','sinevely'       ,36)
 #if PARABOLIC
 CALL addStrListEntry('IniExactFunc','blasius'        ,1338)
 CALL addStrListEntry('IniExactFunc','blasius_round_x',1339)
@@ -320,6 +321,19 @@ CASE(35) ! sinus x (vel)
     Resu_tt(MOMV) = Resu_tt(DENS)*prim(VELV)
     Resu_tt(ENER) = 0.5*SUM(Resu_tt(MOMV)*prim(VELV))
   END IF
+CASE(36) ! sinus y (vel)
+  Frequency=1.
+  Amplitude=0.1
+  Omega=Frequency*PP_Pi
+  ! base flow
+  prim(DENS)      = 1.
+  prim(VEL1)      = Amplitude*SIN(Omega*x(2))
+  prim(VEL2:VEL3) = 0.
+  prim(PRES)      = 1.
+  ! g(t)
+  Resu(DENS)=prim(DENS) ! rho
+  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
 CASE(21) ! sinus x
   Frequency=0.5
   Amplitude=0.3

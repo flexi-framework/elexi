@@ -226,7 +226,7 @@ ELSE
   Fdm = FieldAtParticle(VELV)
 END IF
 
-CASE(RHS_CONVERGENCE)
+CASE(RHS_TCONVERGENCE)
 !===================================================================================================================================
 ! Special case, drag force only active in x-direction, fixed differential. Gravity in y-direction. Used for convergence tests
 !===================================================================================================================================
@@ -234,6 +234,13 @@ CASE(RHS_CONVERGENCE)
 Fdm(1) = (FieldAtParticle(VEL1) - PartState(PART_VEL1,PartID)) * 0.5 * 1./Species(PartSpecies(PartID))%StokesIC
 Fdm(2) = PartGravity(2)
 Fdm(3) = 0.
+
+CASE(RHS_HPCONVERGENCE)
+!===================================================================================================================================
+! Special case, part push depends only on fluid velocity, which is only active in x-direction, fixed differential.
+! Used for h-/p-convergence tests
+!===================================================================================================================================
+Fdm(1) = FieldAtParticle(VEL1); Fdm(2:3) = 0.
 
 CASE(RHS_SGS1)
 !===================================================================================================================================
@@ -438,7 +445,7 @@ REAL                     :: dotp,beta                   ! dot_product, beta=dp*|
 !===================================================================================================================================
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
-  CASE(RHS_NONE,RHS_CONVERGENCE,RHS_TRACER)
+  CASE(RHS_NONE,RHS_TCONVERGENCE,RHS_HPCONVERGENCE,RHS_TRACER)
     RETURN
 END SELECT
 
@@ -994,9 +1001,10 @@ REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 Ut_src = 0.
 DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
-    IF (Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER .OR. &
-    Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_CONVERGENCE  .OR. &
-    Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER) CYCLE
+    IF (Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER        .OR. &
+        Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TCONVERGENCE  .OR. &
+        Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_HPCONVERGENCE .OR. &
+        Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER) CYCLE
 
     Vol = 0.
     PartSource = 0.

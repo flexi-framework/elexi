@@ -193,14 +193,16 @@ CALL prms%CreateIntOption(          'Part-nSpecies'             , 'Number of spe
 CALL prms%CreateIntOption(          'Part-Species[$]-nInits'    , 'Number of different initial particle placements for Species [$]'&
                                                                 , '0'        , numberedmulti=.TRUE.)
 CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for calculation of the drag force.\n'     //&
-                                                                  ' - none        : no coupling between field and particles\n'   //&
-                                                                  ' - convergence : special case for convergence testing\n'      //&
-                                                                  ' - inertia     : particles are convected as initerial particles\n'//&
-                                                                  ' - tracer      : particles act as ideal tracers\n'              &
+                                                                  ' - none          : no coupling between field and particles\n' //&
+                                                                  ' - tconvergence  : special case for time-convergence testing\n'//&
+                                                                  ' - hpconvergence : special case for hp-convergence testing\n' //&
+                                                                  ' - inertia       : particles are convected as initerial particles\n'//&
+                                                                  ' - tracer        : particles act as ideal tracers\n'              &
                                                                 , 'none'     , numberedmulti=.TRUE.)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'none',            RHS_NONE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tracer',          RHS_TRACER)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'convergence',     RHS_CONVERGENCE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tconvergence',    RHS_TCONVERGENCE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'hpconvergence',   RHS_HPCONVERGENCE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'inertia',         RHS_INERTIA)
 CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle model used for calculation of the drag factor.\n'    //&
                                                                   ' - schiller    : Schiller and Naumann (1933)\n'               //&
@@ -1091,7 +1093,7 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'      )
   Species(iSpec)%StokesIC              = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-StokesIC'       )
 
-  IF (Species(iSpec)%RHSMethod .EQ. RHS_CONVERGENCE) THEN
+  IF (Species(iSpec)%RHSMethod .EQ. RHS_TCONVERGENCE) THEN
     IF (Species(iSpec)%StokesIC .EQ. 0) CALL COLLECTIVESTOP(__STAMP__,'Stokes number is zero!')
   ELSEIF (Species(iSpec)%StokesIC .GT. 0.) THEN
     ! dyn. viscosity
@@ -1158,12 +1160,14 @@ DO iSpec = 1, nSpecies
   !--> Check if particles have valid mass/density
   IF (Species(iSpec)%MassIC .LE. 0.    .AND..NOT.(Species(iSpec)%RHSMethod.EQ.RHS_NONE          &
                                        .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TRACER        &
-                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_CONVERGENCE)) &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_HPCONVERGENCE &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TCONVERGENCE)) &
     CALL CollectiveStop(__STAMP__, 'Invalid particle mass given, Species=',IntInfo=iSpec)
 
   IF (Species(iSpec)%DensityIC .LE. 0. .AND..NOT.(Species(iSpec)%RHSMethod.EQ.RHS_NONE          &
                                        .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TRACER        &
-                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_CONVERGENCE)) &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_HPCONVERGENCE &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TCONVERGENCE)) &
     CALL CollectiveStop(__STAMP__, 'Invalid particle density given, Species=',IntInfo=iSpec)
 
   ! Loop over all inits and get requested data

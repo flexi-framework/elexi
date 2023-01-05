@@ -225,9 +225,6 @@ USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo,dXCL_NGeo
 #endif /*USE_MPI*/
-#if USE_RW
-USE MOD_Equation_Vars,         ONLY: nVarTurb
-#endif /*USE_RW*/
 USE MOD_Eos,                   ONLY: ConsToPrim
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -484,9 +481,6 @@ USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo,dXCL_NGeo
 #endif /*USE_MPI*/
-#if USE_RW
-USE MOD_Equation_Vars,         ONLY: nVarTurb
-#endif /*USE_RW*/
 USE MOD_Eos,                   ONLY: ConsToPrim
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

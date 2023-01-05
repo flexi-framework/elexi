@@ -1123,7 +1123,7 @@ DO jSample = 1,SurfFluxSideSize(2); DO iSample = 1,SurfFluxSideSize(1)
   !-- store SF-specific SubSide data in SurfFluxSubSideData (incl. projected velos)
   Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%nVFR    = nVFR
   Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%projFak = projFak
-  Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%a_nIn   = a
+  ! Species(iSpec)%Surfaceflux(iSF)%SurfFluxSubSideData(iSample,jSample,iSide)%a_nIn   = a
 
   IF (.NOT.Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal) THEN
     ! v in t1-dir

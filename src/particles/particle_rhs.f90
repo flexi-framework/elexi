@@ -397,7 +397,9 @@ USE MOD_Equation_Vars,          ONLY: s43,s23
 USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter,FbCoeff,FbCoeffa,Fbdt,FbCoefft!,Fbi,FbCoeffm
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
 #endif /* USE_BASSETFORCE */
+#if USE_UNDISTFLOW || USE_VIRTUALMASS
 USE MOD_Particle_TimeDisc_Vars, ONLY: useManualTimeStep
+#endif /* USE_UNDISTFLOW || USE_VIRTUALMASS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -415,16 +417,18 @@ INTEGER,INTENT(IN),OPTIONAL :: iStage
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: Pt(1:PP_nVarPartRHS),Fdi(1:3,10),Fre(1:3,10),tmp(1:3)
+REAL                     :: Pt(1:PP_nVarPartRHS),Fdi(1:3,10),Fre(1:3,10)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: globalfactor                ! prefactor of LHS divided by the particle mass
-REAL                     :: prefactor                   ! factor divided by the particle mass
 REAL                     :: Flm(1:3)                    ! Saffman force divided by the particle mass
 REAL                     :: Fmm(1:3)                    ! Magnus force divided by the particle mass
 REAL                     :: Fum(1:3)                    ! undisturbed flow force divided by the particle mass
 REAL                     :: Fvm(1:3)                    ! virtual mass force divided by the particle mass
 REAL                     :: Fbm(1:3)                    ! Basset force divided by the particle mass
+#if (USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE || PP_nVarPartRHS == 6)
+REAL                     :: prefactor                   ! factor divided by the particle mass
+#endif
 #if (USE_UNDISTFLOW || USE_VIRTUALMASS)
 REAL                     :: DuDt(1:3)                   ! viscous and pressure forces divided by the particle mass
 #endif
@@ -433,6 +437,7 @@ REAL,PARAMETER           :: s32=3./2.
 INTEGER                  :: k,kIndex,nIndex
 REAL                     :: dufdt(1:3)                  ! partial derivative of the fluid velocity
 REAL                     :: dtk(3),dtn(2)
+REAL                     :: tmp(1:3)
 ! Convergence1
 ! REAL                     :: Sb,Cb
 #endif /* USE_BASSETFORCE */

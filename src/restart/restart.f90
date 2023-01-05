@@ -372,7 +372,12 @@ USE MOD_StringTools,        ONLY: STRICMP
 USE MOD_2D,                 ONLY: ExpandArrayTo3D
 #else
 USE MOD_2D,                 ONLY: to2D_rank5
-#endif
+#endif /*PP_dim*/
+#if USE_RW
+USE MOD_DG_Vars,            ONLY: Uturb
+USE MOD_Equation_Vars,      ONLY: nVarTurb
+USE MOD_Restart_Vars,       ONLY: RestartTurb
+#endif /*USE_RW*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

@@ -893,7 +893,7 @@ ALLOCATE(PartState(1:PP_nVarPart,1:PDM%maxParticleNumber),    &
          PartSpecies(            1:PDM%maxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
          Pt(    1:PP_nVarPartRHS,1:PDM%maxParticleNumber),    &
-         Pt_temp(  1:PP_nVarPart,1:PDM%maxParticleNumber),    &
+         Pt_temp(1:PP_nVarPart-1,1:PDM%maxParticleNumber),    &
 ! Allocate array for particle position in reference coordinates
          PDM%ParticleInside(     1:PDM%maxParticleNumber),    &
          PDM%nextFreePosition(   1:PDM%maxParticleNumber),    &
@@ -1219,9 +1219,6 @@ DO iSpec = 1, nSpecies
     !> Read only emission properties required for SpaceIC
     !>>> Parameters must be set to false to allow conformity checks afterwards
     Species(iSpec)%Init(iInit)%CalcHeightFromDt = .FALSE.
-
-    ! Set unique part index
-    IF (doPartIndex) Species(iSpec)%Init(iInit)%CountIndex = 0.
 
     SELECT CASE(Species(iSpec)%Init(iInit)%SpaceIC)
       CASE('point')

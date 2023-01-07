@@ -33,12 +33,7 @@ INTERFACE GetBoundaryInteraction
   MODULE PROCEDURE GetBoundaryInteraction
 END INTERFACE
 
-INTERFACE GetBoundaryInteractionAuxBC
-  MODULE PROCEDURE GetBoundaryInteractionAuxBC
-END INTERFACE
-
 PUBLIC :: GetBoundaryInteraction
-PUBLIC :: GetBoundaryInteractionAuxBC
 !===================================================================================================================================
 
 CONTAINS
@@ -214,100 +209,8 @@ END SELECT
 END SUBROUTINE GetBoundaryInteraction
 
 
-SUBROUTINE GetBoundaryInteractionAuxBC(PartTrajectory,lengthPartTrajectory,alpha,iPart,AuxBCIdx,crossedBC)
-!===================================================================================================================================
-! Computes the post boundary state of a particle that interacts with an auxBC
-!  OpenBC                  = 1
-!  ReflectiveBC            = 2
-!===================================================================================================================================
-! MODULES
-USE MOD_PreProc
-USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_Particle_Vars              ,ONLY: PDM
-USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
-USE MOD_Particle_Boundary_Vars     ,ONLY: PartAuxBC
-USE MOD_Particle_Boundary_Vars     ,ONLY: AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone,AuxBC_parabol
-USE MOD_Particle_Vars              ,ONLY: LastPartPos
-USE MOD_Part_Operations            ,ONLY: RemoveParticle
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-INTEGER,INTENT(IN)                   :: iPart,AuxBCIdx
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL,INTENT(INOUT)                   :: alpha,PartTrajectory(1:3),lengthPartTrajectory
-LOGICAL,INTENT(OUT)                  :: crossedBC
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL                                 :: n_loc(1:3)
-REAL                                 :: intersec(3),r_vec(3),axis(3),cos2inv
-!===================================================================================================================================
-
-! Reset flag
-crossedBC    =.FALSE.
-SELECT CASE (TRIM(AuxBCType(AuxBCIdx)))
-CASE ('plane')
-  n_loc = AuxBC_plane(AuxBCMap(AuxBCIdx))%n_vec
-CASE ('cylinder')
-  intersec = LastPartPos(1:3,iPart) + alpha*PartTrajectory
-  r_vec = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%r_vec
-  axis  = AuxBC_cylinder(AuxBCMap(AuxBCIdx))%axis
-  n_loc = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis) ) )
-  IF (.NOT.AuxBC_cylinder(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
-CASE ('cone')
-  intersec = LastPartPos(1:3,iPart) + alpha*PartTrajectory
-  r_vec = AuxBC_cone(AuxBCMap(AuxBCIdx))%r_vec
-  axis  = AuxBC_cone(AuxBCMap(AuxBCIdx))%axis
-  cos2inv = 1./COS(AuxBC_cone(AuxBCMap(AuxBCIdx))%halfangle)**2
-  n_loc = UNITVECTOR( intersec - ( r_vec + axis*DOT_PRODUCT(intersec-r_vec,axis)*cos2inv ) )
-  IF (.NOT.AuxBC_cone(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
-CASE ('parabol')
-  intersec = LastPartPos(1:3,iPart) + alpha*PartTrajectory
-  r_vec = AuxBC_parabol(AuxBCMap(AuxBCIdx))%r_vec
-  axis  = AuxBC_parabol(AuxBCMap(AuxBCIdx))%axis
-  n_loc = UNITVECTOR( intersec - ( r_vec + axis*(DOT_PRODUCT(intersec-r_vec,axis)+0.5*AuxBC_parabol(AuxBCMap(AuxBCIdx))%zfac) ) )
-  IF (.NOT.AuxBC_parabol(AuxBCMap(AuxBCIdx))%inwards) n_loc=-n_loc
-CASE DEFAULT
-  CALL Abort(__STAMP__,'AuxBC does not exist')
-END SELECT
-IF(DOT_PRODUCT(n_loc,PartTrajectory).LT.0.)  THEN
-  crossedBC=.FALSE.
-  !RETURN
-  CALL Abort(__STAMP__,'Error in GetBoundaryInteractionAuxBC: Particle coming from outside!')
-ELSE IF(DOT_PRODUCT(n_loc,PartTrajectory).GT.0.)  THEN
-  crossedBC=.TRUE.
-ELSE
-  CALL Abort(__STAMP__,'Error in GetBoundaryInteractionAuxBC: n_vec is perpendicular to PartTrajectory for AuxBC',AuxBCIdx)
-END IF
-! Select the corresponding boundary condition and calculate particle treatment
-SELECT CASE(PartAuxBC%TargetBoundCond(AuxBCIdx))
-!-----------------------------------------------------------------------------------------------------------------------------------
-CASE(1) !PartAuxBC%OpenBC
-!-----------------------------------------------------------------------------------------------------------------------------------
-  ! Sampling on aux surfaces currently not supported
-  ! CALL RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,iPart,SideID,alpha)
-  CALL RemoveParticle(iPart,alpha=alpha)
-!-----------------------------------------------------------------------------------------------------------------------------------
-CASE(2) !PartAuxBC%ReflectiveBC)
-!-----------------------------------------------------------------------------------------------------------------------------------
-  IF (PDM%ParticleInside(iPart)) THEN
-    ! simple reflection, auxBC can not have diffuse reflection
-    ! perfectly reflecting, specular re-emission
-      CALL PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi=-1.,eta=-1.,PartID=iPart,SideID=-1,n_loc=n_loc, &
-             opt_Symmetry=.FALSE.,AuxBCIdx=AuxBCIdx)
-  END IF
-!-----------------------------------------------------------------------------------------------------------------------------------
-CASE DEFAULT
-  CALL Abort(__STAMP__,' ERROR: AuxBC bound not associated!. (unknown case)')
-END SELECT
-
-END SUBROUTINE GetBoundaryInteractionAuxBC
-
-
 SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,n_Loc, &
-                             opt_Symmetry,AuxBCIdx)
+                             opt_Symmetry)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Computes the perfect reflection in 3D
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -319,7 +222,7 @@ USE MOD_Mathtools                  ,ONLY: CROSS
 #endif
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
-USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC
+USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack,doParticleImpactTrack
 USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
@@ -336,13 +239,12 @@ REAL,INTENT(IN)                   :: xi, eta
 REAL,INTENT(INOUT)                :: n_loc(1:3)
 INTEGER,INTENT(IN)                :: PartID, SideID
 LOGICAL,INTENT(IN),OPTIONAL       :: opt_Symmetry
-INTEGER,INTENT(IN),OPTIONAL       :: AuxBCIdx
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                              :: v_old(1:3),WallVelo(3)
-LOGICAL                           :: Symmetry,IsAuxBC
+LOGICAL                           :: Symmetry
 REAL                              :: PartFaceAngle,PartFaceAngle_old
 REAL                              :: v_magnitude
 INTEGER                           :: locBCID
@@ -351,21 +253,10 @@ REAL                              :: rot_old(1:3)
 #endif
 !===================================================================================================================================
 
-! Check if reflected on AuxBC
-IsAuxBC = MERGE(.TRUE.,.FALSE.,PRESENT(AuxBCIdx))
-
-! Normal BC
-IF (.NOT.IsAuxBC) THEN
-  locBCID   = SideInfo_Shared(SIDE_BCID,SideID)
-  ! Get wall velo and BCID
-  WallVelo  = PartBound%WallVelo(1:3,locBCID)
-  Symmetry  = MERGE(opt_Symmetry,.FALSE.,PRESENT(opt_Symmetry))
-
-! Reflected on AuxBC
-ELSE
-  WallVelo = PartAuxBC%WallVelo(1:3,AuxBCIdx)
-  Symmetry  = MERGE(opt_Symmetry,.FALSE.,PRESENT(opt_Symmetry))
-END IF ! .NOT.IsAuxBC
+locBCID   = SideInfo_Shared(SIDE_BCID,SideID)
+! Get wall velo and BCID
+WallVelo  = PartBound%WallVelo(1:3,locBCID)
+Symmetry  = MERGE(opt_Symmetry,.FALSE.,PRESENT(opt_Symmetry))
 
 ! Rough wall modelling
 IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doRoughWallModelling) THEN
@@ -382,9 +273,9 @@ IF (doParticleImpactTrack) THEN
 END IF
 
 ! Sample on boundary
-IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
+IF (WriteMacroSurfaceValues) THEN
   CALL RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
-END IF !.NOT.IsAuxBC
+END IF ! WriteMacroSurfaceValues
 
 ! Update particle velocity
 PartState(PART_VELV,PartID) = PartState(PART_VELV,PartID) - 2.*DOT_PRODUCT(PartState(PART_VELV,PartID),n_loc)*n_loc + WallVelo
@@ -461,7 +352,7 @@ END IF
 END SUBROUTINE PerfectReflection
 
 
-SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,n_loc,AuxBCIdx,WallCoeffModel)
+SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,SideID,n_loc,WallCoeffModel)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Computes the diffuse reflection in 3D
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -473,7 +364,7 @@ USE MOD_Mathtools                  ,ONLY: CROSS
 #endif
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
-USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartAuxBC,PartBoundANN
+USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartBoundANN
 USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
@@ -492,14 +383,12 @@ REAL,INTENT(IN)                   :: xi, eta
 REAL,INTENT(INOUT)                :: n_loc(1:3)
 INTEGER,INTENT(IN)                :: PartID,SideID
 CHARACTER(LEN=255),INTENT(IN)     :: WallCoeffModel
-INTEGER,INTENT(IN),OPTIONAL       :: AuxBCIdx
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                              :: v_old(1:3),dp_old,WallVelo(3)
 INTEGER                           :: locBCID
-LOGICAL                           :: IsAuxBC
 REAL                              :: PartFaceAngle,PartFaceAngleDeg,PartFaceAngle_old
 REAL                              :: PartTrajectoryTang1(3),PartTrajectoryTang2(3),PartTrajectoryNorm(3)
 REAL                              :: v_magnitude,v_norm(3),v_tang1(3),v_tang2(3)
@@ -517,22 +406,10 @@ REAL(4)                           :: randnum(6),xin(8)
 REAL                              :: dp1,dp2,ekin_1,ekin_2,S
 !===================================================================================================================================
 
-! check if reflected on AuxBC
-IF (PRESENT(AuxBCIdx)) THEN
-  IsAuxBC=.TRUE.
-ELSE
-  IsAuxBC=.FALSE.
-END IF
-
-! reflected on AuxBC
-IF (IsAuxBC) THEN
-  WallVelo   = PartAuxBC%WallVelo(1:3,AuxBCIdx)
-ELSE
-  ! additional states
-  locBCID    = SideInfo_Shared(SIDE_BCID,SideID)
-  ! get BC values
-  WallVelo   = PartBound%WallVelo(1:3,locBCID)
-END IF !IsAuxBC
+! additional states
+locBCID    = SideInfo_Shared(SIDE_BCID,SideID)
+! get BC values
+WallVelo   = PartBound%WallVelo(1:3,locBCID)
 
 ! Make sure we have the old velocity/dp/rot safe
 v_old   = PartState(PART_VELV,PartID)
@@ -545,9 +422,9 @@ rot_old = PartState(PART_AMOMV,PartID)
 CALL OrthoNormVec(n_loc,tang1,tang2)
 
 ! Sample on boundary
-IF ((.NOT.IsAuxBC) .AND. WriteMacroSurfaceValues) THEN
+IF (WriteMacroSurfaceValues) THEN
   CALL RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,PartID,SideID)! ,alpha)
-END IF
+END IF ! WriteMacroSurfaceValues
 
 ! Move particle to wall
 LastPartPos(1:3,PartID) = LastPartPos(1:3,PartID) + PartTrajectory(1:3)*alpha

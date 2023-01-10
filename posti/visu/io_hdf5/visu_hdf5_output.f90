@@ -77,7 +77,7 @@ INTEGER,ALLOCATABLE            :: nVal(:),nValGlobal(:),offset(:)
 #if USE_MPI
 INTEGER                        :: nGlobalElems_loc,offsetElem_loc
 INTEGER                        :: recvbuf,sendbuf
-#endif
+#endif /*USE_MPI*/
 !==================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D DATA TO HDF5 FILE..."
@@ -95,6 +95,7 @@ SELECT CASE(dim)
                                          , NVisu                                            &
                                          , VarNames_loc                                     &
                                          , MeshFileName                                     &
+                                         , OutputTime                                       &
                                          , OutputTime                                       &
                                          , create        = .TRUE.                           &
                                          , Dataset       = 'Visu')
@@ -157,7 +158,11 @@ SELECT CASE(dim)
     sendbuf    = recvbuf + nElems
     CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
     nGlobalElems = sendbuf
-#endif
+#else
+    ASSOCIATE( nElems       => nElems_loc       &
+             , nGlobalElems => nElems_loc       &
+             , offsetElem   => 0             )
+#endif /*USE_MPI*/
 
     ! USurfVisu_DG is sorted in the old style, re-sort for HDF5
     nVal       = (/nVarVisu,NVisu+1,NVisu+1,nElems      /)
@@ -173,9 +178,7 @@ SELECT CASE(dim)
       END DO
     END DO
 
-#if USE_MPI
     END ASSOCIATE
-#endif
 
   ! CASE (1)
   !   nVal       = (/nVarVisu/)
@@ -189,7 +192,7 @@ END SELECT
 ! Reopen file and write DG solution
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-#endif
+#endif /*USE_MPI*/
 
 SELECT CASE(dim)
   CASE(3)
@@ -219,8 +222,13 @@ SELECT CASE(dim)
     DEALLOCATE(UOut)
 
   CASE(2)
+#if USE_MPI
     ASSOCIATE(nValGlobal => (/3       ,NVisu+1,NVisu+1,nGlobalElems_loc/), &
               nVal       => (/3       ,NVisu+1,NVisu+1,nElems_loc      /))
+#else
+    ASSOCIATE(nValGlobal => (/3       ,NVisu+1,NVisu+1,nElems_loc      /), &
+              nVal       => (/3       ,NVisu+1,NVisu+1,nElems_loc      /))
+#endif /*USE_MPI*/
 
     CALL GatheredWriteArray( TRIM(FileName)            &
                            , create      = .FALSE.     &

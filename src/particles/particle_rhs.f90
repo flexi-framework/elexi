@@ -520,7 +520,7 @@ IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
     rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
     IF (Rep.GT.0.) THEN
       prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(-0.05684*Rew**0.4*Rep**0.7)
-      Fmm = PP_PI/8 * prefactor * PartState(PART_DIAM,PartID)**3 * FieldAtParticle(DENS) * rotudiff
+      Fmm = 3./4 * prefactor * FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC * rotudiff
     END IF
   END IF
 END IF

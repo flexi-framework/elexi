@@ -464,7 +464,7 @@ DO iProc=0,nExchangeProcessors-1
       !jPos=jPos+3*FbCoeffm
 #endif /* USE_BASSETFORCE */
       !>> Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
-      PartSendBuf(iProc)%content(1+jPos:PP_nVarPart+jPos) = Pt_temp(1:PP_nVarPart,iPart)
+      PartSendBuf(iProc)%content(1+jPos:PP_nVarPart-1+jPos) = Pt_temp(1:PP_nVarPart-1,iPart)
       jPos=jPos+PP_nVarPart
       !>> TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
 !      IF (SGSinUse) THEN
@@ -712,7 +712,7 @@ DO iProc=0,nExchangeProcessors-1
     !jPos=jPos+3*FbCoeffm
 #endif /* USE_BASSETFORCE */
     !>> Pt_tmp for pushing: Runge-Kutta derivative of position and velocity
-    Pt_temp(1:PP_nVarPart,PartID) = PartRecvBuf(iProc)%content(1+jPos:PP_nVarPart+jPos)
+    Pt_temp(1:PP_nVarPart-1,PartID) = PartRecvBuf(iProc)%content(1+jPos:PP_nVarPart-1+jPos)
     jpos=jpos+PP_nVarPart
     !>> TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
 !    IF (SGSinUse) THEN

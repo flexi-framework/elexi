@@ -172,13 +172,13 @@ IF (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'cell_local') THEN
   ! emission group communicator for the current iInit
   InitGroup = Species(FractNbr)%Init(iInit)%InitCOMM
   CALL MPI_IALLREDUCE( Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles &
-                  , Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   &
-                  , 1                                                     &
-                  , MPI_INTEGER                                           &
-                  , MPI_SUM                                               &
-                  , PartMPI%InitGroup(InitGroup)%COMM                     &
-                  , PartMPI%InitGroup(InitGroup)%Request                  &
-                  , IERROR)
+                     , Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   &
+                     , 1                                                     &
+                     , MPI_INTEGER                                           &
+                     , MPI_SUM                                               &
+                     , PartMPI%InitGroup(InitGroup)%COMM                     &
+                     , PartMPI%InitGroup(InitGroup)%Request                  &
+                     , IERROR)
 #endif /*USE_MPI*/
   RETURN
 END IF

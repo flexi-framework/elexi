@@ -83,7 +83,7 @@ nInitRegions = 0
 DO iSpec = 1,nSpecies
   nInitRegions = nInitRegions + Species(iSpec)%NumberOfInits !+ (1-Species(iSpec)%StartnumberOfInits)
   ! old style parameters has been defined for inits/emissions but might have no particles
-  IF (Species(iSpec)%Init(0)%UseForEmission) nInitRegions = nInitRegions + 1
+  IF (Species(iSpec)%Init(0)%UseForInit .OR. Species(iSpec)%Init(0)%UseForEmission) nInitRegions = nInitRegions + 1
 END DO ! iSpec
 
 IF (nInitRegions.EQ.0) THEN
@@ -103,7 +103,7 @@ DO iSpec = 1,nSpecies
   RegionOnProc = .FALSE.
   DO iInit = Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
     ! Ignore disabled emissions
-    IF (.NOT.Species(iSpec)%Init(iInit)%UseForEmission) CYCLE
+    IF (.NOT.Species(iSpec)%Init(iInit)%UseForEmission .AND. .NOT.Species(iSpec)%Init(iInit)%UseForInit) CYCLE
 
     nInitRegions = nInitRegions+1
     SELECT CASE(TRIM(Species(iSpec)%Init(iInit)%SpaceIC))

@@ -81,9 +81,15 @@ REAL                            :: StartT,EndT
 ! get number of total init regions
 nInitRegions = 0
 DO iSpec = 1,nSpecies
-  nInitRegions = nInitRegions + Species(iSpec)%NumberOfInits + (1-Species(iSpec)%StartnumberOfInits)
+  nInitRegions = nInitRegions + Species(iSpec)%NumberOfInits !+ (1-Species(iSpec)%StartnumberOfInits)
+  ! old style parameters has been defined for inits/emissions but might have no particles
+  IF (Species(iSpec)%Init(0)%UseForEmission) nInitRegions = nInitRegions + 1
 END DO ! iSpec
-IF (nInitRegions.EQ.0) RETURN
+
+IF (nInitRegions.EQ.0) THEN
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' NO PARTICLE EMISSION, SKIPPING INIT PARTICLE PARALLEL EMISSION...'
+  RETURN
+END IF
 
 ! SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE PARALLEL EMISSION...'
@@ -96,6 +102,9 @@ nInitRegions = 0
 DO iSpec = 1,nSpecies
   RegionOnProc = .FALSE.
   DO iInit = Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
+    ! Ignore disabled emissions
+    IF (.NOT.Species(iSpec)%Init(iInit)%UseForEmission) CYCLE
+
     nInitRegions = nInitRegions+1
     SELECT CASE(TRIM(Species(iSpec)%Init(iInit)%SpaceIC))
       CASE ('point')
@@ -1060,19 +1069,23 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                       :: iSpec,iInit,nInitRegions
+INTEGER                         :: nInitRegions,iInitRegions,iSpec
 !===================================================================================================================================
 
 nInitRegions = 0
-DO iSpec = 1,nSpecies
-  DO iInit = Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
-    nInitRegions = nInitRegions+1
-    IF (PartMPI%InitGroup(nInitRegions)%COMM.NE.MPI_COMM_NULL) THEN
+DO iSpec=1,nSpecies
+  nInitRegions = nInitRegions + Species(iSpec)%NumberOfInits !+ (1-Species(iSpec)%StartnumberOfInits)
+  ! old style parameters has been defined for inits/emissions but might have no particles
+  IF (Species(iSpec)%Init(0)%UseForEmission) nInitRegions = nInitRegions + 1
+END DO ! iSpec
+IF(nInitRegions.GT.0) THEN
+  DO iInitRegions=1,nInitRegions
+    IF(PartMPI%InitGroup(iInitRegions)%COMM.NE.MPI_COMM_NULL) THEN
       SDEALLOCATE(PartMPI%InitGroup(nInitRegions)%GroupToComm)
       SDEALLOCATE(PartMPI%InitGroup(nInitRegions)%CommToGroup)
     END IF
-  END DO
-END DO
+  END DO ! iInitRegions
+END IF
 
 SDEALLOCATE( PartMPI%InitGroup)
 

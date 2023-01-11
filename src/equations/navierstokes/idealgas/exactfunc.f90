@@ -887,13 +887,13 @@ SUBROUTINE CalcSource(Ut,t)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_EOS_Vars         ,ONLY: Kappa,KappaM1
 USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
-USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel,IniAmplitude,IniFrequency
-#if PARABOLIC
-USE MOD_Eos_Vars         ,ONLY: mu0,Pr
-#endif
 USE MOD_Mesh_Vars        ,ONLY: Elem_xGP,sJ,nElems
+#if PARABOLIC
+USE MOD_EOS_Vars         ,ONLY: mu0,Pr
+#endif
 #if FV_ENABLED
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
 USE MOD_FV_Vars          ,ONLY: FV_Vdm,FV_Elems
@@ -901,7 +901,7 @@ USE MOD_FV_Vars          ,ONLY: FV_Vdm,FV_Elems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)     :: t                                       !< current solution time
+REAL,INTENT(IN)     :: t                                        !< current solution time
 REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -1132,9 +1132,9 @@ CASE(35) ! sinus x (vel)
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       Ut_src(DENS,i,j,k) = 0.
-      Ut_src(MOM1,i,j,k) = 2*COS(Omega*t)
+      Ut_src(MOM1,i,j,k) = Amplitude*Omega*COS(Omega*t)
       Ut_src(MOM2:MOM3,i,j,k) = 0.0
-      Ut_src(ENER,i,j,k) = SIN(Omega*t) * 2*COS(Omega*t)
+      Ut_src(ENER,i,j,k) = Amplitude*(SIN(Omega*t) * Omega*COS(Omega*t)) ! Factor 2 eliminated with .5 from kinetic energy
     END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
@@ -1151,6 +1151,9 @@ CASE(35) ! sinus x (vel)
     END IF
 #endif
   END DO
+! CASE(36) ! sinus y (vel)
+!   ! No time derivative
+!   Ut = 0.
 CASE DEFAULT
   ! No source -> do nothing and set marker to not run again
   doCalcSource=.FALSE.

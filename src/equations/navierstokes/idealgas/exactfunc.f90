@@ -89,6 +89,7 @@ CALL addStrListEntry('IniExactFunc','roundjet'       ,33)
 CALL addStrListEntry('IniExactFunc','convergence'    ,34)
 CALL addStrListEntry('IniExactFunc','sinevelx'       ,35)
 CALL addStrListEntry('IniExactFunc','sinevely'       ,36)
+CALL addStrListEntry('IniExactFunc','sinevelty'      ,37)
 #if PARABOLIC
 CALL addStrListEntry('IniExactFunc','blasius'        ,1338)
 CALL addStrListEntry('IniExactFunc','blasius_round_x',1339)
@@ -146,7 +147,7 @@ SELECT CASE (IniExactFunc)
   CASE(35) ! sinus x (vel)
     IniFrequency    = GETREAL('IniFrequency','1.0')
     IniAmplitude    = GETREAL('IniAmplitude','1.0')
-  CASE(36,4) ! synthetic test cases
+  CASE(36,37,4) ! synthetic test cases
     IniFrequency    = GETREAL('IniFrequency','1.0')
     IniAmplitude    = GETREAL('IniAmplitude','0.1')
   CASE(41,42,43,44) ! synthetic test cases
@@ -387,6 +388,13 @@ CASE(33) !Roundjet, x-axis is jet axis
   CALL PrimToCons(prim,ResuR)
   ! after x/r0=10 blend to ResuR
   Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)/JetRadius-JetEnd))
+CASE(34) ! Part convergence
+  prim(DENS) = 1
+  prim(VELV) = RefStatePrim(VELV,RefState)
+  prim(PRES) = 1
+  prim(TEMP) = prim(PRES)/(prim(DENS)*R)
+  prim(VEL1) = 0.5*x(2)
+  CALL PrimToCons(prim,Resu)
 CASE(35) ! sinus x (vel)
   Frequency=IniFrequency
   Amplitude=IniAmplitude
@@ -428,13 +436,19 @@ CASE(36) ! sinus y (vel)
   Resu(DENS)=prim(DENS) ! rho
   Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
   Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
-CASE(34) ! Part convergence
-  prim(DENS) = 1
-  prim(VELV) = RefStatePrim(VELV,RefState)
-  prim(PRES) = 1
-  prim(TEMP) = prim(PRES)/(prim(DENS)*R)
-  prim(VEL1) = 0.5*x(2)
-  CALL PrimToCons(prim,Resu)
+CASE(37) ! sinus y and t (vel)
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
+  Omega=Frequency*PP_Pi
+  ! base flow
+  prim(DENS)      = 1.
+  prim(VEL1)      = Amplitude*SIN(Omega*(t-x(2)))
+  prim(VEL2:VEL3) = 0.
+  prim(PRES)      = 1.
+  ! g(t)
+  Resu(DENS)=prim(DENS) ! rho
+  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
 CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
   Frequency=IniFrequency
   Amplitude=IniAmplitude

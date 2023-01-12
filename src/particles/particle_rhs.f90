@@ -931,13 +931,48 @@ f =  s13 * 1./SQRT(SphericityIC) + s23 * 1./SQRT(SphericityIC)+&
 NO_OP(MP)
 END FUNCTION DF_Hoelzer
 
+!FUNCTION DF_Loth(Rep, SphericityIC, Mp) RESULT(f)
+!!===================================================================================================================================
+!! Compute the drag factor according to Loth (2008)
+!! > Loth, E., Compressibility and Rarefaction Effects on Drag of a Spherical Particle,AIAA Journal, 2008, 46, 2219-2228
+!!===================================================================================================================================
+!! MODULES
+!USE MOD_Equation_Vars,      ONLY: s13,s23
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT VARIABLES
+!REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! OUTPUT VARIABLES
+!REAL                        :: f
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!REAL                        :: Hm, Cm, Gm
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!IF (Mp .LT. 0.89) THEN
+!  Gm = 1. - 1.525*Mp**4                                                      ! (eq. 16a)
+!ELSE
+!  Gm = 0.0002 + 0.0008*TANH(12.77*(Mp-2.02))                                 ! (eq. 16b)
+!END IF
+!IF (Mp .LE. 1.45) THEN
+!  Cm = 5.*s13 + s23*TANH(3*LOG(Mp+0.1))                                      ! (eq. 14a)
+!ELSE
+!  Cm = 2.044 + 0.2*EXP(-1.8*(LOG(Mp/1.5))**2)                                ! (eq. 14b)
+!END IF
+!Hm = 1 - 0.258*Cm/(1+514*Gm)                                                 ! (eq. 16c)
+!! Valid up to Rep < 3e5
+!f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Gm*Rep**(-1.16))   ! (eq. 15, divided by Rep/24)
+!NO_OP(SphericityIC)
+!END FUNCTION DF_Loth
+
 FUNCTION DF_Loth(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
-! Compute the drag factor according to Loth (2008)
-! > Loth, E., Compressibility and Rarefaction Effects on Drag of a Spherical Particle,AIAA Journal, 2008, 46, 2219-2228
+! Compute the drag factor according to Loth (2021)
+! > Loth, E., Supersonic and hypersonic drag coefficients for a sphere, AIAA Journal, 2021, 59, 3261-3274
 !===================================================================================================================================
 ! MODULES
-USE MOD_Equation_Vars,      ONLY: s13,s23
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -951,19 +986,23 @@ REAL                        :: f
 ! LOCAL VARIABLES
 REAL                        :: Hm, Cm, Gm
 !-----------------------------------------------------------------------------------------------------------------------------------
-IF (Mp .LT. 0.89) THEN
-  Gm = 1. - 1.525*Mp**4                                                      ! (eq. 16a)
+IF (Mp .LT. 0.8) THEN
+  Gm = 166*Mp**3+3.29*Mp**2-10.9*Mp+20                                       ! (eq. 8b)
 ELSE
-  Gm = 0.0002 + 0.0008*TANH(12.77*(Mp-2.02))                                 ! (eq. 16b)
+  Gm = 5+40*Mp**(-3)                                                         ! (eq. 8c)
 END IF
-IF (Mp .LE. 1.45) THEN
-  Cm = 5.*s13 + s23*TANH(3*LOG(Mp+0.1))                                      ! (eq. 14a)
+IF (Mp .LE. 1.5) THEN
+  Cm = 1.65 + 0.65*TANH(4*Mp-3.4)                                            ! (eq. 7a)
 ELSE
-  Cm = 2.044 + 0.2*EXP(-1.8*(LOG(Mp/1.5))**2)                                ! (eq. 14b)
+  Cm = 2.18 - 0.13*TANH(0.9*Mp-2.7)                                          ! (eq. 7b)
 END IF
-Hm = 1 - 0.258*Cm/(1+514*Gm)                                                 ! (eq. 16c)
+IF (Mp .LE. 1.0) THEN
+  Hm = 0.0239*Mp**3+0.212*Mp**2-0.074*Mp+1                                   ! (eq. 8d)
+ELSE
+  Hm = 0.93+1/(3.5+Mp**5)                                                    ! (eq. 8e)
+END IF
 ! Valid up to Rep < 3e5
-f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Gm*Rep**(-1.16))   ! (eq. 15, divided by Rep/24)
+f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Rep**(-1.16*Cm)+Gm*Rep**(-0.5))   ! (eq. 8a, divided by Rep/24)
 NO_OP(SphericityIC)
 END FUNCTION DF_Loth
 

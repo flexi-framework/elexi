@@ -912,7 +912,7 @@ DEALLOCATE(FileContent)
 
 ! calculate the maximal string length of all option-names and option-values
 this%maxNameLen  = 0
-this%maxValueLen = 0
+this%maxValueLen = 33 ! minimum width for 3-wide RealArray in PrintOption
 current => prms%firstLink
 DO WHILE (ASSOCIATED(current))
   this%maxNameLen = MAX(this%maxNameLen, current%opt%GETNAMELEN())
@@ -1988,8 +1988,7 @@ DO WHILE (ASSOCIATED(current))
           RETURN
         END IF
       END DO
-      CALL Abort(__STAMP__,&
-          "Unknown value for option: "//TRIM(name))
+      CALL Abort(__STAMP__,"Unknown value for option: "//TRIM(name))
     END SELECT
   END IF
   current => current%next
@@ -2653,7 +2652,6 @@ IF(PRESENT(IntArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(f
                     WRITE(UNIT_stdOut,"(A2)",ADVANCE='NO') ", "
   END DO
                     WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " /)"; END IF
-
 IF(PRESENT(RealArrayOpt)) THEN; IF (prms%maxValueLen - length.GT.0) THEN; WRITE(fmtValue,*) (prms%maxValueLen - length)
                     WRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO'); END IF
                     WRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') "(/ "

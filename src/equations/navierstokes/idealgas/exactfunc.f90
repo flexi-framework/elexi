@@ -96,11 +96,12 @@ CALL addStrListEntry('IniExactFunc','blasius_round_y',1340)
 #endif
 CALL prms%CreateRealArrayOption(    'AdvVel',       "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
 CALL prms%CreateRealArrayOption(    'AdvArray',     "Advection velocity array for linear setup.")
+CALL prms%CreateRealOption(         'IniAmplitude', "Amplitude for synthetic test case")
+CALL prms%CreateRealOption(         'IniFrequency', "Frequency for synthetic test case")
 CALL prms%CreateRealOption(         'MachShock',    "Parameter required for CASE(10)", '1.5')
 CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE(10)", '1.0')
 CALL prms%CreateRealArrayOption(    'IniCenter',    "Shu Vortex CASE(7) (x,y,z)")
 CALL prms%CreateRealArrayOption(    'IniAxis',      "Shu Vortex CASE(7) (x,y,z)")
-CALL prms%CreateRealOption(         'IniAmplitude', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'JetRadius',    "Roundjet CASE(5/33)", '1.0')
 CALL prms%CreateRealOption(         'JetEnd',       "Roundjet CASE(5/33)", '10.0')
@@ -124,7 +125,6 @@ USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_ExactFunc_Vars
 USE MOD_Equation_Vars      ,ONLY: IniExactFunc,IniRefState
-
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -139,42 +139,53 @@ IniExactFunc = GETINTFROMSTR('IniExactFunc')
 IniRefState  = GETINT('IniRefState', "-1")
 ! Read in boundary parameters
 SELECT CASE (IniExactFunc)
-CASE(2,21,3,4,41,42,43,44) ! synthetic test cases
-  AdvVel       = GETREALARRAY('AdvVel',3)
-CASE(31)
-  AdvArray     = GETREALARRAY('AdvArray',9)
-CASE(5) ! Roundjet
-  JetRadius        = GETREAL('JetRadius','1.0')
-  JetEnd           = GETREAL('JetEnd   ','10.0')
-  RoundjetInitDone =.TRUE.
-CASE(7) ! Shu Vortex
-  IniCenter       = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
-  IniAxis         = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
-  IniAmplitude    = GETREAL('IniAmplitude')
-  IniHalfwidth    = GETREAL('IniHalfwidth')
-CASE(8) ! couette-poiseuille flow
-  P_Parameter     = GETREAL('P_Parameter')
-  U_Parameter     = GETREAL('U_Parameter')
-CASE(10) ! shock
-  MachShock       = GETREAL('MachShock')
-  PreShockDens    = GETREAL('PreShockDens')
-CASE(33) ! Roundjet
-  JetRadius        = GETREAL('JetRadius')
-  JetEnd           = GETREAL('JetEnd')
-  RoundjetInitDone =.TRUE.
+  CASE(2,21) ! sinus
+    AdvVel          = GETREALARRAY('AdvVel',3)
+    IniFrequency    = GETREAL('IniFrequency','0.5')
+    IniAmplitude    = GETREAL('IniAmplitude','0.3')
+  CASE(35) ! sinus x (vel)
+    IniFrequency    = GETREAL('IniFrequency','1.0')
+    IniAmplitude    = GETREAL('IniAmplitude','1.0')
+  CASE(36,4) ! synthetic test cases
+    IniFrequency    = GETREAL('IniFrequency','1.0')
+    IniAmplitude    = GETREAL('IniAmplitude','0.1')
+  CASE(41,42,43,44) ! synthetic test cases
+    AdvVel          = GETREALARRAY('AdvVel',3)
+    IniFrequency    = GETREAL('IniFrequency','1.0')
+    IniAmplitude    = GETREAL('IniAmplitude','0.1')
+  CASE(3,31)
+    AdvArray         = GETREALARRAY('AdvArray',9)
+  CASE(5) ! Roundjet
+    JetRadius        = GETREAL('JetRadius','1.0')
+    JetEnd           = GETREAL('JetEnd   ','10.0')
+    RoundjetInitDone =.TRUE.
+  CASE(7) ! Shu Vortex
+    IniCenter        = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
+    IniAxis          = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
+    IniAmplitude     = GETREAL('IniAmplitude')
+    IniHalfwidth     = GETREAL('IniHalfwidth')
+  CASE(8) ! couette-poiseuille flow
+    P_Parameter      = GETREAL('P_Parameter')
+    U_Parameter      = GETREAL('U_Parameter')
+  CASE(10) ! shock
+    MachShock        = GETREAL('MachShock')
+    PreShockDens     = GETREAL('PreShockDens')
+  CASE(33) ! Roundjet
+    JetRadius        = GETREAL('JetRadius')
+    JetEnd           = GETREAL('JetEnd')
+    RoundjetInitDone =.TRUE.
 #if PARABOLIC
-CASE(1338) ! Blasius boundary layer solution
-  delta99_in       = GETREAL('delta99_in')
-  x_in             = GETREALARRAY('x_in',2,'(/0.,0./)')
-  BlasiusInitDone  = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
-CASE(1339,1340) ! Blasius boundary layer solution
-  delta99_in       = GETREAL('delta99_in')
-  x_in             = GETREALARRAY('x_in',2,'(/0.,0./)')
-  BlasiusInitDone  = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
-  JetRadius        = GETREAL('JetRadius','1.0')
-  RoundjetInitDone = .TRUE.
+  CASE(1338) ! Blasius boundary layer solution
+    delta99_in       = GETREAL('delta99_in')
+    x_in             = GETREALARRAY('x_in',2,'(/0.,0./)')
+    BlasiusInitDone  = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
+  CASE(1339,1340) ! Blasius boundary layer solution
+    delta99_in       = GETREAL('delta99_in')
+    x_in             = GETREALARRAY('x_in',2,'(/0.,0./)')
+    BlasiusInitDone  = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
+    JetRadius        = GETREAL('JetRadius','1.0')
+    RoundjetInitDone = .TRUE.
 #endif
-CASE DEFAULT
 END SELECT ! IniExactFunc
 
 #if PP_dim==2
@@ -204,7 +215,7 @@ USE MOD_Preproc        ,ONLY: PP_PI
 USE MOD_Globals        ,ONLY: Abort
 USE MOD_Mathtools      ,ONLY: CROSS
 USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
-USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniAxis,AdvVel,AdvArray
+USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniFrequency,IniAxis,AdvVel,AdvArray
 USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens
 USE MOD_Exactfunc_Vars ,ONLY: P_Parameter,U_Parameter
 USE MOD_Exactfunc_Vars ,ONLY: JetRadius,JetEnd
@@ -224,7 +235,7 @@ REAL,INTENT(IN)                 :: x(3)                   !< physical coordinate
 REAL,INTENT(IN)                 :: tIn                    !< solution time (Runge-Kutta stage)
 REAL,INTENT(OUT)                :: Resu(PP_nVar)          !< state in conservative variables
 INTEGER,INTENT(IN),OPTIONAL     :: RefStateOpt            !< refstate to be used for exact func
-!----------------------------------------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: RefState,p,q
 REAL                            :: tEval
@@ -267,8 +278,8 @@ CASE(0)
 CASE(1) ! constant
   Resu = RefStateCons(:,RefState)
 CASE(2) ! sinus
-  Frequency=0.5
-  Amplitude=0.3
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=2.*PP_Pi*Frequency
   ! base flow
   prim(DENS)   = 1.
@@ -293,50 +304,9 @@ CASE(2) ! sinus
     Resu_tt(MOMV)=Resu_tt(DENS)*prim(VELV)
     Resu_tt(ENER)=0.5*SUM(Resu_tt(MOMV)*prim(VELV))
   END IF
-CASE(35) ! sinus x (vel)
-  Frequency=1.0
-  Amplitude=1.0
-  Omega=2.*Frequency
-  ! base flow
-  prim(DENS)   = 1.
-  prim(VEL1)   = Amplitude*SIN(Omega*tEval)
-  prim(VEL2)   = 0.
-  prim(VEL3)   = 0.
-  prim(PRES)   = 1.
-  ! g(t)
-  Resu(DENS)=prim(DENS) ! rho
-  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
-  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
-
-  IF(fullBoundaryOrder)THEN
-    ov=Omega*Amplitude
-    ! g'(t)
-    prim(VEL1)    = ov*COS(Omega*tEval)
-    Resu_t(DENS)  = 0.
-    Resu_t(MOMV)  = Resu_t(DENS)*prim(VELV) ! rho*vel
-    Resu_t(ENER)  = 0.5*SUM(Resu_t(MOMV)*prim(VELV))
-    ! g''(t)
-    prim(VEL1)    = -ov**2*SIN(Omega*tEval)
-    Resu_tt(DENS) = 0.
-    Resu_tt(MOMV) = Resu_tt(DENS)*prim(VELV)
-    Resu_tt(ENER) = 0.5*SUM(Resu_tt(MOMV)*prim(VELV))
-  END IF
-CASE(36) ! sinus y (vel)
-  Frequency=1.
-  Amplitude=0.1
-  Omega=Frequency*PP_Pi
-  ! base flow
-  prim(DENS)      = 1.
-  prim(VEL1)      = Amplitude*SIN(Omega*x(2))
-  prim(VEL2:VEL3) = 0.
-  prim(PRES)      = 1.
-  ! g(t)
-  Resu(DENS)=prim(DENS) ! rho
-  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
-  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
 CASE(21) ! sinus x
-  Frequency=0.5
-  Amplitude=0.3
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=2.*PP_Pi*Frequency
   ! base flow
   prim(DENS)   = 1.
@@ -379,7 +349,6 @@ CASE(3) ! linear in rho
     Resu_t(MOMV)=Resu_t(DENS)*prim(VELV) ! rho*vel
     Resu_t(ENER)=0.5*SUM(Resu_t(MOMV)*prim(VELV))
   END IF
-
 CASE(31) ! linear in xyz
   prim(1)   = RefStatePrim(1,RefState)
   prim(2:4) = 0.
@@ -394,14 +363,81 @@ CASE(31) ! linear in xyz
       END IF
     END DO
   END DO
-
   Resu(1)  =prim(1) ! rho
   Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
   Resu(5)  =4.4642857 !prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e
+CASE(33) !Roundjet, x-axis is jet axis
+  prim(DENS)  = RefStatePrim(1,RefState)
+  prim(VELV)  = 0.
+  prim(PRES)  = RefStatePrim(5,RefState)
+  prim(TEMP)  = prim(PRES)/(prim(DENS)*R)
+  ! Jet inflow (from x=0)
+  ! Initial jet radius: JetRadius
+  ! Momentum thickness: delta_theta0=0.05=1/20
+  r_len=MAX(SQRT(x(2)*x(2)+x(3)*x(3)),1e-15)
+  prim(VEL1)=RefStatePrim(VEL1,RefState)*0.5*(1.+TANH((JetRadius-r_len)/JetRadius*10.))
+  CALL RANDOM_NUMBER(random)
+  ! Random disturbance +-5%; uniform distribution between -1,1
+  random=0.05*2.*(random-0.5)
+  prim(VEL1)=prim(VEL1)+random*prim(VEL1)
+  prim(VEL2)=x(2)/r_len*0.5*random*prim(VEL1)
+  prim(VEL3)=x(3)/r_len*0.5*random*prim(VEL1)
+  CALL PrimToCons(prim,ResuL)
+  prim(VELV)  =0.
+  CALL PrimToCons(prim,ResuR)
+  ! after x/r0=10 blend to ResuR
+  Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)/JetRadius-JetEnd))
+CASE(35) ! sinus x (vel)
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
+  Omega=2.*Frequency
+  ! base flow
+  prim(DENS)   = 1.
+  prim(VEL1)   = Amplitude*SIN(Omega*tEval)
+  prim(VEL2)   = 0.
+  prim(VEL3)   = 0.
+  prim(PRES)   = 1.
+  ! g(t)
+  Resu(DENS)=prim(DENS) ! rho
+  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
 
+  IF(fullBoundaryOrder)THEN
+    ov=Omega*Amplitude
+    ! g'(t)
+    prim(VEL1)    = ov*COS(Omega*tEval)
+    Resu_t(DENS)  = 0.
+    Resu_t(MOMV)  = Resu_t(DENS)*prim(VELV) ! rho*vel
+    Resu_t(ENER)  = 0.5*SUM(Resu_t(MOMV)*prim(VELV))
+    ! g''(t)
+    prim(VEL1)    = -ov**2*SIN(Omega*tEval)
+    Resu_tt(DENS) = 0.
+    Resu_tt(MOMV) = Resu_tt(DENS)*prim(VELV)
+    Resu_tt(ENER) = 0.5*SUM(Resu_tt(MOMV)*prim(VELV))
+  END IF
+CASE(36) ! sinus y (vel)
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
+  Omega=Frequency*PP_Pi
+  ! base flow
+  prim(DENS)      = 1.
+  prim(VEL1)      = Amplitude*SIN(Omega*x(2))
+  prim(VEL2:VEL3) = 0.
+  prim(PRES)      = 1.
+  ! g(t)
+  Resu(DENS)=prim(DENS) ! rho
+  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
+CASE(34) ! Part convergence
+  prim(DENS) = 1
+  prim(VELV) = RefStatePrim(VELV,RefState)
+  prim(PRES) = 1
+  prim(TEMP) = prim(PRES)/(prim(DENS)*R)
+  prim(VEL1) = 0.5*x(2)
+  CALL PrimToCons(prim,Resu)
 CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
-  Frequency=1.
-  Amplitude=0.1
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=PP_Pi*Frequency
   a=AdvVel(1)*2.*PP_Pi
 
@@ -431,10 +467,9 @@ CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
 #endif
     Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
-
 CASE(41) ! SINUS in x
   Frequency=1.
-  Amplitude=0.1
+  Amplitude=IniAmplitude
   Omega=PP_Pi*Frequency
   a=AdvVel(1)*2.*PP_Pi
   ! g(t)
@@ -452,8 +487,8 @@ CASE(41) ! SINUS in x
     Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 CASE(42) ! SINUS in y
-  Frequency=1.
-  Amplitude=0.1
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=PP_Pi*Frequency
   a=AdvVel(2)*2.*PP_Pi
   ! g(t)
@@ -474,8 +509,8 @@ CASE(42) ! SINUS in y
   END IF
 #if PP_dim==3
 CASE(43) ! SINUS in z
-  Frequency=1.
-  Amplitude=0.1
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=PP_Pi*Frequency
   a=AdvVel(3)*2.*PP_Pi
   ! g(t)
@@ -496,8 +531,8 @@ CASE(43) ! SINUS in z
   END IF
 #endif
 CASE(44) ! ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D), only velocity
-  Frequency=1.
-  Amplitude=0.1
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=PP_Pi*Frequency
   a=AdvVel(1)*2.*PP_Pi
 
@@ -520,7 +555,6 @@ CASE(44) ! ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D), o
     Resu_tt(4)     = 0.
 #endif
   END IF
-
 CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   prim(DENS)  =1.
   prim(VELV)  =0.
@@ -545,37 +579,6 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   CALL PrimToCons(prim,ResuR)
   ! after x/r0=10 blend to ResuR
   Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)/JetRadius-JetEnd))
-
-CASE(33) !Roundjet, x-axis is jet axis
-  prim(DENS)  = RefStatePrim(1,RefState)
-  prim(VELV)  = 0.
-  prim(PRES)  = RefStatePrim(5,RefState)
-  prim(TEMP)  = prim(PRES)/(prim(DENS)*R)
-  ! Jet inflow (from x=0)
-  ! Initial jet radius: JetRadius
-  ! Momentum thickness: delta_theta0=0.05=1/20
-  r_len=MAX(SQRT(x(2)*x(2)+x(3)*x(3)),1e-15)
-  prim(VEL1)=RefStatePrim(VEL1,RefState)*0.5*(1.+TANH((JetRadius-r_len)/JetRadius*10.))
-  CALL RANDOM_NUMBER(random)
-  ! Random disturbance +-5%; uniform distribution between -1,1
-  random=0.05*2.*(random-0.5)
-  prim(VEL1)=prim(VEL1)+random*prim(VEL1)
-  prim(VEL2)=x(2)/r_len*0.5*random*prim(VEL1)
-  prim(VEL3)=x(3)/r_len*0.5*random*prim(VEL1)
-  CALL PrimToCons(prim,ResuL)
-  prim(VELV)  =0.
-  CALL PrimToCons(prim,ResuR)
-  ! after x/r0=10 blend to ResuR
-  Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)/JetRadius-JetEnd))
-
-CASE(34) ! Part convergence
-  prim(DENS) = 1
-  prim(VELV) = RefStatePrim(VELV,RefState)
-  prim(PRES) = 1
-  prim(TEMP) = prim(PRES)/(prim(DENS)*R)
-  prim(VEL1) = 0.5*x(2)
-  CALL PrimToCons(prim,Resu)
-
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow
     prim(DENS)=RefStatePrim(DENS,RefState)  ! Density
@@ -623,7 +626,7 @@ CASE(7) ! SHU VORTEX,isentropic vortex
   cent=CROSS(iniAxis,cent)      !distance to axis, tangent vector, length r
   cent=cent/iniHalfWidth        !Halfwidth is dimension 1
   r2=SUM(cent*cent) !
-  du = iniAmplitude/(2.*PP_Pi)*exp(0.5*(1.-r2))   ! vel. perturbation
+  du = IniAmplitude/(2.*PP_Pi)*exp(0.5*(1.-r2))   ! vel. perturbation
   dTemp = -kappaM1/(2.*kappa*RT)*du**2            ! adiabatic
   prim(DENS)=prim(DENS)*(1.+dTemp)**(1.*skappaM1) !rho
   prim(VELV)=prim(VELV)+du*cent(:)                !v
@@ -705,7 +708,6 @@ CASE(12) ! Shu Osher density fluctuations shock wave interaction
     prim(PRES)      = 1.
   END IF
   CALL PrimToCons(prim,resu)
-
 CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone/Athena/tests/dmr/dmr.html )
   IF (x(1).EQ.0.) THEN
     prim = RefStatePrim(:,1)
@@ -887,7 +889,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
 USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1
-USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
+USE MOD_Exactfunc_Vars   ,ONLY: AdvVel,IniAmplitude,IniFrequency
 #if PARABOLIC
 USE MOD_Eos_Vars         ,ONLY: mu0,Pr
 #endif
@@ -915,8 +917,8 @@ REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 SELECT CASE (IniExactFunc)
 CASE(4) ! exact function
-  Frequency=1.
-  Amplitude=0.1
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=PP_Pi*Frequency
   a=AdvVel(1)*2.*PP_Pi
   tmp(1)=-a+REAL(PP_dim)*Omega
@@ -970,8 +972,8 @@ CASE(4) ! exact function
 #endif
   END DO ! iElem
 CASE(41) ! Sinus in x
-  Frequency=1.
-  Amplitude=0.1
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=PP_Pi*Frequency
   a=AdvVel(1)*2.*PP_Pi
   C = 2.0
@@ -1020,8 +1022,8 @@ CASE(41) ! Sinus in x
 #endif
   END DO
 CASE(42) ! Sinus in y
-  Frequency=1.
-  Amplitude=0.1
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=PP_Pi*Frequency
   a=AdvVel(2)*2.*PP_Pi
   C = 2.0
@@ -1073,8 +1075,8 @@ CASE(42) ! Sinus in y
 
 #if PP_dim==3
 CASE(43) ! Sinus in z
-  Frequency=1.
-  Amplitude=0.1
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=PP_Pi*Frequency
   a=AdvVel(3)*2.*PP_Pi
   C = 2.0
@@ -1123,8 +1125,8 @@ CASE(43) ! Sinus in z
   END DO
 #endif
 CASE(35) ! sinus x (vel)
-  Frequency=1.
-  Amplitude=1.0
+  Frequency=IniFrequency
+  Amplitude=IniAmplitude
   Omega=2*Frequency
 
   DO iElem=1,nElems

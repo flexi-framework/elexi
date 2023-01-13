@@ -731,7 +731,7 @@ REAL,INTENT(OUT)                :: U(PP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),nElems) 
 INTEGER                         :: i,j,k,iElem
 !==================================================================================================================================
 
-! Evaluate the initial solution at the nodes and fill the solutin vector U.
+! Evaluate the initial solution at the nodes and fill the solution vector U.
 DO iElem=1,nElems
   DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
     CALL ExactFunc(IniExactFunc,0.,xGP(1:3,i,j,k,iElem),U(:,i,j,k,iElem))

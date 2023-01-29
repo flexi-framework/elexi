@@ -78,6 +78,8 @@ SELECT CASE(drag_factor)
     FD_Pointer%op => DF_Hoelzer
   CASE(DF_PART_LOTH)
     FD_Pointer%op => DF_Loth
+  CASE(DF_PART_GANSER)
+    FD_Pointer%op => DF_Ganser
 END SELECT
 
 END SUBROUTINE InitRHS
@@ -253,7 +255,11 @@ Rep  = urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
 
 ! Empirical relation of nonlinear drag from Clift et al. (1978)
+#if USE_SPHERICITY
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, PartState(PART_SPHE,PartID), Mp)
+#else
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, Mp)
+#endif
 
 ! Particle relaxation time
 staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
@@ -278,7 +284,11 @@ urel = VECNORM(udiff(1:3))
 Rep  = urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
 
+#if USE_SPHERICITY
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, PartState(PART_SPHE,PartID), Mp)
+#else
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, Mp)
+#endif
 
 ! Particle relaxation time
 staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
@@ -309,7 +319,11 @@ urel = VECNORM(udiff(1:3))
 Rep  = urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
 
+#if USE_SPHERICITY
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, PartState(PART_SPHE,PartID), Mp)
+#else
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, Mp)
+#endif
 
 ! Particle relaxation time
 staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
@@ -507,7 +521,7 @@ IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
     ! Calculate the rotation: (\nabla x u_p) x udiff
     rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
     IF (Rep.GT.0.) THEN
-      prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(-0.05684*Rew**0.4*Rep**0.7)
+      prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(-0.09896*Rew**0.4*Rep**(-0.3))
       Fmm = PP_PI/8 * prefactor * PartState(PART_DIAM,PartID)**3 * FieldAtParticle(DENS) * rotudiff
     END IF
   END IF
@@ -919,10 +933,85 @@ f =  s13 * 1./SQRT(SphericityIC) + s23 * 1./SQRT(SphericityIC)+&
 NO_OP(MP)
 END FUNCTION DF_Hoelzer
 
+!FUNCTION DF_Loth(Rep, SphericityIC, Mp) RESULT(f)
+!!===================================================================================================================================
+!! Compute the drag factor according to Loth (2008)
+!! > Loth, E., Compressibility and Rarefaction Effects on Drag of a Spherical Particle,AIAA Journal, 2008, 46, 2219-2228
+!!===================================================================================================================================
+!! MODULES
+!USE MOD_Equation_Vars,      ONLY: s13,s23
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT VARIABLES
+!REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! OUTPUT VARIABLES
+!REAL                        :: f
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!REAL                        :: Hm, Cm, Gm
+!!-----------------------------------------------------------------------------------------------------------------------------------
+!IF (Mp .LT. 0.89) THEN
+!  Gm = 1. - 1.525*Mp**4                                                      ! (eq. 16a)
+!ELSE
+!  Gm = 0.0002 + 0.0008*TANH(12.77*(Mp-2.02))                                 ! (eq. 16b)
+!END IF
+!IF (Mp .LE. 1.45) THEN
+!  Cm = 5.*s13 + s23*TANH(3*LOG(Mp+0.1))                                      ! (eq. 14a)
+!ELSE
+!  Cm = 2.044 + 0.2*EXP(-1.8*(LOG(Mp/1.5))**2)                                ! (eq. 14b)
+!END IF
+!Hm = 1 - 0.258*Cm/(1+514*Gm)                                                 ! (eq. 16c)
+!! Valid up to Rep < 3e5
+!f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Gm*Rep**(-1.16))   ! (eq. 15, divided by Rep/24)
+!NO_OP(SphericityIC)
+!END FUNCTION DF_Loth
+
 FUNCTION DF_Loth(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
+! Compute the drag factor according to Loth (2021)
+! > Loth, E., Supersonic and hypersonic drag coefficients for a sphere, AIAA Journal, 2021, 59, 3261-3274
+!===================================================================================================================================
+! MODULES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                        :: f
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                        :: Hm, Cm, Gm
+!-----------------------------------------------------------------------------------------------------------------------------------
+IF (Mp .LT. 0.8) THEN
+  Gm = 166*Mp**3+3.29*Mp**2-10.9*Mp+20                                       ! (eq. 8b)
+ELSE
+  Gm = 5+40*Mp**(-3)                                                         ! (eq. 8c)
+END IF
+IF (Mp .LE. 1.5) THEN
+  Cm = 1.65 + 0.65*TANH(4*Mp-3.4)                                            ! (eq. 7a)
+ELSE
+  Cm = 2.18 - 0.13*TANH(0.9*Mp-2.7)                                          ! (eq. 7b)
+END IF
+IF (Mp .LE. 1.0) THEN
+  Hm = 0.0239*Mp**3+0.212*Mp**2-0.074*Mp+1                                   ! (eq. 8d)
+ELSE
+  Hm = 0.93+1/(3.5+Mp**5)                                                    ! (eq. 8e)
+END IF
+! Valid up to Rep < 3e5
+f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Rep**(-1.16*Cm)+Gm*Rep**(-0.5))   ! (eq. 8a, divided by Rep/24)
+NO_OP(SphericityIC)
+END FUNCTION DF_Loth
+
+FUNCTION DF_Ganser(Rep, SphericityIC, Mp) RESULT(f)
+!===================================================================================================================================
 ! Compute the drag factor according to Loth (2008)
-! > Loth, E., Compressibility and Rarefaction Effects on Drag of a Spherical Particle,AIAA Journal, 2008, 46, 2219-2228
+! > Ganser, G., A rational approach to drag prediction of spherical and nonspherical particles, Powder Technology, 1993, 77, 143-152
 !===================================================================================================================================
 ! MODULES
 USE MOD_Equation_Vars,      ONLY: s13,s23
@@ -937,23 +1026,14 @@ REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
 REAL                        :: f
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                        :: Hm, Cm, Gm
+REAL                        :: K1,K2
 !-----------------------------------------------------------------------------------------------------------------------------------
-IF (Mp .LT. 0.89) THEN
-  Gm = 1. - 1.525*Mp**4                                                      ! (eq. 16a)
-ELSE
-  Gm = 0.0002 + 0.0008*TANH(12.77*(Mp-2.02))                                 ! (eq. 16b)
-END IF
-IF (Mp .LE. 1.45) THEN
-  Cm = 5.*s13 + s23*TANH(3*LOG(Mp+0.1))                                      ! (eq. 14a)
-ELSE
-  Cm = 2.044 + 0.2*EXP(-1.8*(LOG(Mp/1.5))**2)                                ! (eq. 14b)
-END IF
-Hm = 1 - 0.258*Cm/(1+514*Gm)                                                 ! (eq. 16c)
+K1 = (s13 + s23*SphericityIC**(-0.5))**(-1)                                          ! (Table 7)
+K2 = 1.8148*(-LOG(SphericityIC)**(-0.5743))                                          ! (Table 7)
 ! Valid up to Rep < 3e5
-f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Gm*Rep**(-1.16))   ! (eq. 15, divided by Rep/24)
+f = 1./K1*(1. + 0.118*(K1*K2*Rep)**0.6567) + Rep/24*0.4305*K2/(1+3305/(Rep*K1*K2))   ! (eq. 18)
 NO_OP(SphericityIC)
-END FUNCTION DF_Loth
+END FUNCTION DF_Ganser
 
 !==================================================================================================================================
 !> Compute source terms for particles and add them to the nearest DOF

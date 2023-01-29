@@ -1,7 +1,6 @@
 # =========================================================================
 # POSTI
 # =========================================================================
-
 CMAKE_DEPENDENT_OPTION(POSTI_VISU                  "Build the visu tool"                                ON  "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_MERGETIMEAVERAGES     "Build the time-averaging tool"                      OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_DMD                   "Build the DMD tool"                                 OFF "POSTI" OFF)
@@ -19,19 +18,6 @@ CMAKE_DEPENDENT_OPTION(POSTI_AVG1D                 "Build the 1D average tool"  
 CMAKE_DEPENDENT_OPTION(POSTI_HIT_INIT              "Build the HIT initialization tool"                  OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_HIT_FILTER            "Build the HIT spectral filter tool"                 OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_HIT_ANALYZE           "Build the HIT analyze tool"                         OFF "POSTI" OFF)
-
-OPTION(ENABLE_OPENMP "Enable OpenMP" OFF)
-IF(ENABLE_OPENMP)
-  IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
-    MESSAGE(WARNING "For finding OpenMP Fortran flags at least CMake version 3.1.0 is required. Please specify flags manually or use newer CMake version.")
-  ENDIF()
-  FIND_PACKAGE(OpenMP REQUIRED)
-  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS_DEBUG}   ${OpenMP_Fortran_FLAGS}")
-  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} ${OpenMP_Fortran_FLAGS}")
-  SET (CMAKE_CXX_FLAGS_DEBUG       "${CMAKE_CXX_FLAGS_DEBUG}       ${OpenMP_CXX_FLAGS}")
-  SET (CMAKE_CXX_FLAGS_RELEASE     "${CMAKE_CXX_FLAGS_RELEASE}     ${OpenMP_CXX_FLAGS}")
-  SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
-ENDIF()
 
 # =========================================================================
 # Build shared posti library
@@ -102,8 +88,9 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
   IF(SELFBUILTEXTERNALS)
     ADD_DEPENDENCIES(fftwlib ${SELFBUILTEXTERNALS})
   ENDIF()
+  MARK_AS_ADVANCED(FORCE FFTW_INCLUDES)
+  MARK_AS_ADVANCED(FORCE FFTW_LIBRARY)
 ENDIF()
-
 
 IF(POSTI_VISU)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/CMakeLists.txt)

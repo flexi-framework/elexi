@@ -43,7 +43,7 @@
 #include <sstream>
 
 // MPI
-#include "vtkMultiProcessController.h"
+#include <vtkMultiProcessController.h>
 vtkStandardNewMacro(visuReader);
 vtkCxxSetObjectMacro(visuReader, Controller, vtkMultiProcessController);
 

@@ -389,15 +389,17 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+! volume
 SDEALLOCATE(nodeids_DG)
 SDEALLOCATE(nodeids_FV)
 SDEALLOCATE(globalnodeids_DG)
 SDEALLOCATE(globalnodeids_FV)
-! surf
+! surface
 SDEALLOCATE(nodeidsSurf_DG)
 SDEALLOCATE(nodeidsSurf_FV)
 SDEALLOCATE(globalnodeidsSurf_DG)
 SDEALLOCATE(globalnodeidsSurf_FV)
+! particles
 #if USE_PARTICLES
 IF (PD%PartCPointers_allocated) THEN
   DEALLOCATE(PD%Part_visu)

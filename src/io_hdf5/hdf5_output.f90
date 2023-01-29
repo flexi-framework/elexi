@@ -340,7 +340,6 @@ DO WHILE(ASSOCIATED(f))
   f=>f%next
 END DO
 
-
 ! --------------------------------------------------------------------------------------------- !
 ! Now process arrays with standard size PP_N
 ! --------------------------------------------------------------------------------------------- !
@@ -470,6 +469,7 @@ IF(MPIRoot)THEN
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
 END IF
+
 END SUBROUTINE WriteBaseflow
 
 
@@ -562,14 +562,16 @@ IF(PRESENT(FV_Elems_In))THEN
 END IF
 
 DO i=1,2
-  nVar_loc =  MERGE(nVarAvg,nVarFluc,i.EQ.1)
-  IF(nVar_loc.EQ.0) CYCLE
-  DataSet  =  MERGE('Mean      ','MeanSquare',i.EQ.1)
   IF(i.EQ.1)THEN
     UOut   => UAvg
-  ELSE
+    nVar_loc = nVarAvg
+    DataSet  =  'Mean'
+  ELSE IF (i.EQ.2)THEN
     UOut   => UFluc
+    nVar_loc = nVarFluc
+    DataSet  =  'MeanSquare'
   END IF
+  IF(nVar_loc.EQ.0) CYCLE
   nVal_loc =  (/nVar_loc,nVal,nElems/)
 #if PP_dim == 2
   IF (.NOT.output2D) THEN
@@ -697,9 +699,13 @@ IF(create_loc)THEN
   CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/tmp255/))
 #if FV_ENABLED
   CALL WriteAttribute(File_ID,'FV_Type',1,IntScalar=2)
-  CALL WriteAttribute(File_ID,'FV_X',PP_N+1,RealArray=FV_X)
-  FV_w_array(:)= FV_w
-  CALL WriteAttribute(File_ID,'FV_w',PP_N+1,RealArray=FV_w_array)
+  IF(ALLOCATED(FV_X))THEN
+    CALL WriteAttribute(File_ID,'FV_X',PP_N+1,RealArray=FV_X)
+  END IF
+  IF(ALLOCATED(FV_w))THEN
+    FV_w_array(:)=FV_w
+    CALL WriteAttribute(File_ID,'FV_w',PP_N+1,RealArray=FV_w_array)
+  END IF
 #endif
 
   CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)

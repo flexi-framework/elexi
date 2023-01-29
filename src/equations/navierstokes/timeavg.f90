@@ -78,7 +78,7 @@ IF((nVarAvg.EQ.0).AND.(nVarFluc.EQ.0))THEN
   CALL CollectiveStop(__STAMP__, &
     'No quantities for time averaging have been specified. Please specify quantities or disable time averaging!')
 END IF
-#if FV_ENABLED
+#if FV_ENABLED == 1
 SWRITE(UNIT_stdOut,'(A)') 'Warning: If FV is enabled, time averaging is performed on DG representation.'
 #endif
 
@@ -331,7 +331,7 @@ USE MOD_EOS          ,ONLY: ConsToPrim
 USE MOD_EOS_Vars     ,ONLY: Kappa
 USE MOD_Analyze_Vars ,ONLY: WriteTimeAvg_dt
 USE MOD_AnalyzeEquation_Vars
-#if FV_ENABLED
+#if FV_ENABLED == 1
 USE MOD_FV_Vars      ,ONLY: FV_Elems,FV_sVdm
 USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
 #endif
@@ -356,7 +356,7 @@ INTEGER                         :: p,q
 REAL                            :: GradVel(1:3,1:3), Shear(1:3,1:3)
 #endif
 REAL,POINTER                    :: Uloc(:,:,:,:)
-#if FV_ENABLED
+#if FV_ENABLED == 1
 REAL,TARGET                     :: UDG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 INTEGER                         :: FV_Elems_loc(1:nElems)
@@ -370,7 +370,7 @@ IF(ANY(CalcAvg(6:nMaxVarAvg))) getPrims=.TRUE.
 DO iElem=1,nElems
 
 ! Always change FV to DG
-#if FV_ENABLED
+#if FV_ENABLED == 1
   IF(FV_Elems(iElem).EQ.1) THEN ! FV Element
     CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),UDG)
     Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => UDG
@@ -378,7 +378,7 @@ DO iElem=1,nElems
     Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
   END IF
 #else
-    Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
+  Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
 #endif
 
   IF(getPrims)THEN
@@ -473,7 +473,7 @@ DO iElem=1,nElems
 
 #if PARABOLIC
   IF(CalcFluc(17).OR.CalcFluc(18))THEN  !'Dissipation via vel gradients'
-#if FV_ENABLED
+#if FV_ENABLED == 1
   STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV!'
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N

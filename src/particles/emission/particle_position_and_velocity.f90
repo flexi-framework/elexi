@@ -172,13 +172,13 @@ IF (TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'cell_local') THEN
   ! emission group communicator for the current iInit
   InitGroup = Species(FractNbr)%Init(iInit)%InitCOMM
   CALL MPI_IALLREDUCE( Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles &
-                  , Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   &
-                  , 1                                                     &
-                  , MPI_INTEGER                                           &
-                  , MPI_SUM                                               &
-                  , PartMPI%InitGroup(InitGroup)%COMM                     &
-                  , PartMPI%InitGroup(InitGroup)%Request                  &
-                  , IERROR)
+                     , Species(FractNbr)%Init(iInit)%sumOfMatchedParticles   &
+                     , 1                                                     &
+                     , MPI_INTEGER                                           &
+                     , MPI_SUM                                               &
+                     , PartMPI%InitGroup(InitGroup)%COMM                     &
+                     , PartMPI%InitGroup(InitGroup)%Request                  &
+                     , IERROR)
 #endif /*USE_MPI*/
   RETURN
 END IF
@@ -345,7 +345,8 @@ USE MOD_Mesh_Vars,               ONLY: offsetElem
 USE MOD_DG_Vars,                 ONLY: UTurb
 USE MOD_Restart_Vars,            ONLY: RestartTurb
 USE MOD_Equation_Vars,           ONLY: nVarTurb
-USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
+! USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
+USE MOD_Particle_Vars,           ONLY: TurbPartState
 #endif /* USE_RW */
 #if FV_ENABLED
 USE MOD_Eval_xyz,                ONLY: EvaluateField_FV

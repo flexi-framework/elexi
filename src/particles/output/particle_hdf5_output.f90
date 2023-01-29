@@ -80,10 +80,6 @@ USE MOD_Particle_Vars           ,ONLY: doPartIndex,doWritePartDiam
 #if USE_MPI
 USE MOD_Particle_MPI_Vars       ,ONLY: PartMPI
 #endif /*MPI*/
-! Particle turbulence models
-#if USE_RW
-USE MOD_Particle_RandomWalk_Vars,ONLY: nRWVars
-#endif
 ! Load balance
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars        ,ONLY: PerformLoadBalance

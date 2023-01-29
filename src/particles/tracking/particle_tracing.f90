@@ -54,13 +54,13 @@ SUBROUTINE ParticleTracing()
 !> -- 1. Initialize particle path and tracking info
 !> -- 2. Track particle vector up to final particle position
 !> -- 3. special check if some double check has to be performed (only necessary for bilinear sides)
-!> -- 4. Check if particle intersected a side and also which side (also AuxBCs)
-!>         For each side only one intersection is chosen, but particle might insersect more than one side. Assign pointer list
-!> -- 5. Loop over all intersections in pointer list and check intersection type: inner side, BC, auxBC or MacroSphere
+!> -- 4. Check if particle intersected a side and also which side
+!>         For each side only one intersection is chosen, but particle might intersect more than one side. Assign pointer list
+!> -- 5. Loop over all intersections in pointer list and check intersection type: inner side, BC
 !>       and calculate interaction
 !> -- 6. Update particle position and decide if double check might be necessary
 !> -- 7. Correct intersection list if double check will be performed and leave loop to do double check
-!> -- 8. Reset interscetion list if no double check is performed
+!> -- 8. Reset intersection list if no double check is performed
 !> -- 9. If tolerance was marked, check if particle is inside of proc volume and try to find it in case it was lost
 !> ---------------------------------------------------------------------------------------------------------------------------------
 !> - DoubleCheck:
@@ -75,18 +75,15 @@ SUBROUTINE ParticleTracing()
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Eval_xyz                    ,ONLY: GetPositionInRefElem
-USE MOD_Particle_Boundary_Vars      ,ONLY: nAuxBCs,UseAuxBCs
-USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteractionAuxBC
 USE MOD_Particle_Localization       ,ONLY: LocateParticleInElement,PARTHASMOVED
 USE MOD_Particle_Localization       ,ONLY: PartInElemCheck
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
-USE MOD_Particle_Intersection       ,ONLY: ComputeAuxBCIntersection
 USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID,GetCNElemID,GetCNSideID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
-USE MOD_Particle_Mesh_Vars          ,ONLY: ElemRadiusNGeo,ElemHasAuxBCs
+USE MOD_Particle_Mesh_Vars          ,ONLY: ElemRadiusNGeo
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
 USE MOD_Particle_Tracking_vars,      ONLY: ntracks,MeasureTrackTime, CountNbOfLostParts , NbrOfLostParticles
 USE MOD_Particle_Utils              ,ONLY: InsertionSort
@@ -114,7 +111,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                       :: iPart
 INTEGER                       :: ElemID,CNElemID,OldElemID,firstElem
-INTEGER                       :: ilocSide,SideID,CNSideID,flip,iAuxBC
+INTEGER                       :: ilocSide,SideID,CNSideID,flip
 LOGICAL                       :: dolocSide(1:6)
 LOGICAL                       :: PartisDone,foundHit,markTol,crossedBC,SwitchedElement,isCriticalParallelInFace
 REAL                          :: localpha,xi,eta
@@ -290,7 +287,7 @@ DO iPart = 1,PDM%ParticleVecLength
 
       ! NOT PartDoubleCheck
       ELSE
-! -- 4. Check if particle intersected a side and also which side (also AuxBCs)
+! -- 4. Check if particle intersected a side and also which side
 !       For each side only one intersection is chosen, but particle might intersect more than one side. Assign pointer list
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
@@ -359,49 +356,9 @@ DO iPart = 1,PDM%ParticleVecLength
             IF ((ABS(xi).GE.0.99).OR.(ABS(eta).GE.0.99)) markTol=.TRUE.
           END IF
         END DO ! ilocSide
-
-        IF (UseAuxBCs) THEN
-          DO iAuxBC = 1,nAuxBCs
-            locAlpha = -1
-            isCriticalParallelInFace = .FALSE.
-            IF (ElemHasAuxBCs(ElemID,iAuxBC)) THEN
-              CALL ComputeAuxBCIntersection(foundHit,PartTrajectory,lengthPartTrajectory &
-                  ,iAuxBC,locAlpha,iPart,isCriticalParallelInFace)
-            ELSE
-              foundHit = .FALSE.
-            END IF
-#if CODE_ANALYZE
-!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
-            IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN; IF (iPart.EQ.PARTOUT) THEN
-              WRITE(UNIT_stdOut,'(30("-"))')
-              WRITE(UNIT_stdOut,'(A)')        '     | Output after compute AuxBC intersection (particle tracing): '
-              WRITE(UNIT_stdOut,'(A,I0,A,L)') '     | AuxBC: ',iAuxBC,' | Hit: ',foundHit
-              WRITE(UNIT_stdOut,'(2(A,G0))')  '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ',lengthPartTrajectory
-            END IF ; END IF
-!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
-#endif /*CODE_ANALYZE*/
-            ! Particle detected inside of face and PartTrajectory parallel to face
-            IF (isCriticalParallelInFace) THEN
-              IPWRITE(UNIT_stdOut,'(I0,A)')    ' Warning: Particle located inside of BC and moves parallel to side. Undefined position.'
-              IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Removing particle with id: ',iPart
-              PartIsDone = .TRUE.
-              PDM%ParticleInside(iPart) = .FALSE.
-              IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles+1
-              EXIT
-            END IF
-            IF (foundHit) THEN
-              ! start from last intersection entry and place current intersection in correct entry position
-              currentIntersect   => lastIntersect
-              CALL AssignListPosition(currentIntersect,locAlpha,iAuxBC,2)
-              currentIntersect   => lastIntersect
-              lastIntersect      => currentIntersect%next
-              lastIntersect%prev => currentIntersect
-            END IF ! foundHit
-          END DO !iAuxBC
-        END IF !UseAuxBCs
       END IF
 
-! -- 5. Loop over all intersections in pointer list and check intersection type: inner side, BC or auxBC and calculate interaction
+! -- 5. Loop over all intersections in pointer list and check intersection type: inner side, BC and calculate interaction
 #if CODE_ANALYZE
       nIntersections = 0
 #endif /*CODE_ANALYZE*/
@@ -456,17 +413,6 @@ DO iPart = 1,PDM%ParticleVecLength
             IF (ElemID.NE.OldElemID) THEN
               IF (.NOT.crossedBC) SwitchedElement=.TRUE.
             END IF
-          !------------------------------------
-          CASE(2) ! AuxBC intersection
-          !------------------------------------
-            CALL GetBoundaryInteractionAuxBC( PartTrajectory          &
-                                            , lengthPartTrajectory    &
-                                            , currentIntersect%alpha  &
-                                            , iPart                   &
-                                            , currentIntersect%Side   &
-                                            , crossedBC)
-            IF (.NOT.PDM%ParticleInside(iPart)) PartisDone = .TRUE.
-            dolocSide = .TRUE. !important when in previously traced portion an elemchange occurred, check all sides again!
           END SELECT
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
@@ -475,8 +421,6 @@ DO iPart = 1,PDM%ParticleVecLength
               SELECT CASE(currentIntersect%IntersectCase)
                 CASE(1) ! intersection with cell side
                   WRITE(UNIT_stdOut,'(A,L)') '     -> BC was intersected on a side'
-                CASE(2) ! AuxBC intersection
-                  WRITE(UNIT_stdOut,'(A,L)') '     -> BC was intersected on an AuxBC'
               END SELECT
             END IF
           END IF; END IF

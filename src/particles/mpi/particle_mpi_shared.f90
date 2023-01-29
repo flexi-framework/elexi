@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "particle.h"
 
 !===================================================================================================================================
 !> Contains the routines to exchange data using MPI-3 shared memory
@@ -35,7 +36,11 @@ INTERFACE FinalizeMPIShared
   MODULE PROCEDURE FinalizeMPIShared
 END INTERFACE
 
+#if DEBUG_MEMORY
+INTERFACE Allocate_Shared_DEBUG
+#else
 INTERFACE Allocate_Shared
+#endif /*DEBUG_MEMORY*/
   MODULE PROCEDURE Allocate_Shared_Logical_1
   MODULE PROCEDURE Allocate_Shared_Logical_2
   MODULE PROCEDURE Allocate_Shared_Int_1
@@ -65,7 +70,11 @@ END INTERFACE
 PUBLIC :: DefineParametersMPIShared
 PUBLIC :: InitMPIShared
 PUBLIC :: FinalizeMPIShared
-PUBLIC :: Allocate_Shared
+#if DEBUG_MEMORY
+PUBLIC::Allocate_Shared_DEBUG
+#else
+PUBLIC::Allocate_Shared
+#endif /*DEBUG_MEMORY*/
 !PUBLIC :: UpdateDGShared
 PUBLIC :: BARRIER_AND_SYNC
 PUBLIC :: MPI_SIZE
@@ -213,7 +222,11 @@ END SUBROUTINE InitMPIShared
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Logical_1(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Logical_1(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+          ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -225,6 +238,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(1)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 LOGICAL,INTENT(OUT),POINTER               :: DataPointer(:)           !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -239,6 +255,10 @@ DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
@@ -253,7 +273,11 @@ END SUBROUTINE ALLOCATE_SHARED_LOGICAL_1
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Logical_2(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Logical_2(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -265,6 +289,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(2)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 LOGICAL,INTENT(OUT),POINTER               :: DataPointer(:,:)         !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -280,6 +307,10 @@ DISP_UNIT = 1
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
+
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
@@ -293,7 +324,11 @@ END SUBROUTINE ALLOCATE_SHARED_LOGICAL_2
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Int_1(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Int_1(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -305,6 +340,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(1)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:)           !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -320,6 +358,10 @@ DISP_UNIT = 1
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
+
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
@@ -334,7 +376,12 @@ END SUBROUTINE ALLOCATE_SHARED_INT_1
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Int_2(nVal,SM_WIN,DataPointer)
+
+SUBROUTINE Allocate_Shared_Int_2(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -346,6 +393,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(2)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:,:)         !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -361,6 +411,10 @@ DISP_UNIT = 1
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
+
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
@@ -375,7 +429,11 @@ END SUBROUTINE ALLOCATE_SHARED_INT_2
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Int_3(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Int_3(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -387,6 +445,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(3)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:,:,:)       !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -401,6 +462,10 @@ DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
@@ -416,7 +481,11 @@ END SUBROUTINE ALLOCATE_SHARED_INT_3
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Int_4(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Int_4(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -428,6 +497,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(4)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:)     !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -443,6 +515,10 @@ DISP_UNIT = 1
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
+
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
@@ -457,7 +533,11 @@ END SUBROUTINE ALLOCATE_SHARED_INT_4
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_1(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_1(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -469,6 +549,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(1)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:)         !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -484,6 +567,10 @@ DISP_UNIT = 1
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
+
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
@@ -498,7 +585,11 @@ END SUBROUTINE ALLOCATE_SHARED_REAL_1
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_2(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_2(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -510,6 +601,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(2)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:)         !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -525,6 +619,10 @@ DISP_UNIT = 1
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
+
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
@@ -539,7 +637,11 @@ END SUBROUTINE ALLOCATE_SHARED_REAL_2
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_3(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_3(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -551,6 +653,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(3)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:)       !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -566,6 +671,10 @@ DISP_UNIT = 1
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
+
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
@@ -580,7 +689,11 @@ END SUBROUTINE ALLOCATE_SHARED_REAL_3
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_4(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_4(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -592,6 +705,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(4)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:)     !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -607,6 +723,10 @@ DISP_UNIT = 1
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
+
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
@@ -621,7 +741,11 @@ END SUBROUTINE ALLOCATE_SHARED_REAL_4
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_5(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_5(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -633,6 +757,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(5)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:,:)   !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -648,6 +775,10 @@ DISP_UNIT = 1
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
+
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
@@ -662,7 +793,11 @@ END SUBROUTINE ALLOCATE_SHARED_REAL_5
 !==================================================================================================================================
 !> Allocate data with MPI-3 shared memory option
 !==================================================================================================================================
-SUBROUTINE Allocate_Shared_Real_6(nVal,SM_WIN,DataPointer)
+SUBROUTINE Allocate_Shared_Real_6(nVal,SM_WIN,DataPointer&
+#if DEBUG_MEMORY
+        ,SM_WIN_NAME&
+#endif /*DEBUG_MEMORY*/
+)
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
@@ -674,6 +809,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: nVal(6)                  !> Local number of variables in each rank
 INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:,:,:) !> Pointer to the RMA window
+#if DEBUG_MEMORY
+CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
+#endif /*DEBUG_MEMORY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
@@ -688,6 +826,10 @@ DISP_UNIT = 1
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+
+#if DEBUG_MEMORY
+LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+#endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN

@@ -28,7 +28,7 @@ LOGICAL                       :: useLinkedList                               ! F
 REAL    , ALLOCATABLE         :: PartState(:,:)                              ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz
 REAL    , ALLOCATABLE         :: TurbPartState(:,:)                          ! (1:4,1:NParts) with 2nd index vx',vy',vz',t_remaining
 REAL    , ALLOCATABLE         :: PartPosRef(:,:)                             ! (1:3,1:NParts) particles pos mapped to -1|1 space
-INTEGER , ALLOCATABLE         :: PartPosGauss(:,:)                           ! (1:3,1:NParts) Gauss point localization of particles
+! INTEGER , ALLOCATABLE         :: PartPosGauss(:,:)                           ! (1:3,1:NParts) Gauss point localization of particles
 INTEGER , ALLOCATABLE         :: PartReflCount(:)                            ! Counter of number of reflections
 REAL    , ALLOCATABLE         :: LastPartPos(:,:)                            ! (1:3,1:NParts) with 2nd index: x,y,z
 INTEGER , ALLOCATABLE         :: PartSpecies(:)                              ! (1:NParts)
@@ -48,9 +48,8 @@ INTEGER                       :: PartDataSize     = 0                        ! n
 INTEGER                       :: TurbPartDataSize = 0                        ! number of turbulent properties with current setup
 
 INTEGER                       :: sumOfMatchedParticlesSpecies                ! previous sumOfMatchedParticles for all species
-INTEGER                       :: PartRHSMethod
 REAL                          :: PartGravity(3)
-INTEGER                       :: nrSeeds                                     ! Number of Seeds for Random Number Generator
+! INTEGER                       :: nrSeeds                                     ! Number of Seeds for Random Number Generator
 INTEGER , ALLOCATABLE         :: seeds(:)                                    ! =>NULL()   ! Seeds for Random Number Generator
 
 LOGICAL                       :: doPartIndex                                 ! Flag to give particles an unique (or not) index
@@ -118,18 +117,9 @@ TYPE tInit                                                                   ! P
   REAL                                   :: VeloIC                           ! velocity for inital Data
   REAL                                   :: VeloTurbIC                       ! turbulent velocity fluctuation for inital Data
   REAL                                   :: VeloVecIC(3)                     ! normalized velocity vector
-  REAL                                   :: Amplitude                        ! Amplitude for sin-deviation initiation.
-  REAL                                   :: WaveNumber                       ! WaveNumber for sin-deviation initiation.
-  INTEGER                                :: maxParticleNumberX               ! Maximum Number of all Particles in x direction
-  INTEGER                                :: maxParticleNumberY               ! Maximum Number of all Particles in y direction
-  INTEGER                                :: maxParticleNumberZ               ! Maximum Number of all Particles in z direction
-  REAL                                   :: MJxRatio                         ! x direction portion of velocity for Maxwell-Juettner
-  REAL                                   :: MJyRatio                         ! y direction portion of velocity for Maxwell-Juettner
-  REAL                                   :: MJzRatio                         ! z direction portion of velocity for Maxwell-Juettner
   REAL                                   :: Alpha                            ! WaveNumber for sin-deviation initiation.
   REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3)
   INTEGER                                :: ParticleEmissionType             ! Emission Type 1 = emission rate in 1/s,
-  INTEGER                                :: CountIndex
                                                                              !               2 = emission rate 1/iteration
   REAL                                   :: ParticleEmission                 ! Emission in [1/s] or [1/Iteration]
   REAL                                   :: ParticleEmissionTime             ! Scale emission time for emission type 1
@@ -151,7 +141,7 @@ END TYPE tInit
 
 TYPE tSurfFluxSubSideData
   REAL                                   :: projFak                          ! VeloVecIC projected to inwards normal
-  REAL                                   :: a_nIn                            ! speed ratio projected to inwards normal
+  ! REAL                                   :: a_nIn                            ! speed ratio projected to inwards normal
   REAL                                   :: Velo_t1                          ! Velo comp. of first orth. vector
   REAL                                   :: Velo_t2                          ! Velo comp. of second orth. vector
   REAL                                   :: nVFR                             ! normal volume flow rate through subside
@@ -231,7 +221,6 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: PoissonIC                        ! Poisson's ration for transverse strain under ax. comp
   REAL                                   :: Whitaker_a                       ! Constant which scales the velocity to obtain the yield coeff
   REAL                                   :: YieldCoeff                       ! Yield strength coefficient
-  INTEGER                                :: CountIndex                       ! Count number of particles
   LOGICAL                                :: doRoughWallModelling             ! Walls are modelled as rough walls
 #if USE_EXTEND_RHS
   LOGICAL                                :: CalcSaffmanForce                 ! Calculate the lift (Saffman) force

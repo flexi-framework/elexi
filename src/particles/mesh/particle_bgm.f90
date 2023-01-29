@@ -122,7 +122,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMToProc_Shared,FIBGMToProc
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMProcs,FIBGMProcs_Shared,FIBGMProcs_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: MeshHasPeriodic
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
-USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
 USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
 #endif /*USE_MPI*/
@@ -833,12 +833,10 @@ END IF
 ! allocated shared memory for nElems per BGM cell
 ! MPI shared memory is continuous, beginning from 1. All shared arrays have to
 ! be shifted to BGM[i]min with pointers
-CALL Allocate_Shared((/(BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1)/) &
-                    ,FIBGM_nElems_Shared_Win,FIBGM_nElems_Shared)
+CALL Allocate_Shared((/(BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1)/),FIBGM_nElems_Shared_Win,FIBGM_nElems_Shared)
 CALL MPI_WIN_LOCK_ALL(0,FIBGM_nElems_Shared_Win,iError)
 ! allocated shared memory for BGM cell offset in 1D array of BGM to element mapping
-CALL Allocate_Shared((/(BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1)/) &
-                    ,FIBGM_offsetElem_Shared_Win,FIBGM_offsetElem_Shared)
+CALL Allocate_Shared((/(BGMiDelta+1)*(BGMjDelta+1)*(BGMkDelta+1)/),FIBGM_offsetElem_Shared_Win,FIBGM_offsetElem_Shared)
 CALL MPI_WIN_LOCK_ALL(0,FIBGM_offsetElem_Shared_Win,iError)
 FIBGM_nElems     (BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax) => FIBGM_nElems_Shared
 FIBGM_offsetElem (BGMimin:BGMimax,BGMjmin:BGMjmax,BGMkmin:BGMkmax) => FIBGM_offsetElem_Shared
@@ -877,9 +875,7 @@ END DO ! iBGM
 
 #if USE_MPI
 ! allocate 1D array for mapping of BGM cell to Element indices
-CALL Allocate_Shared((/FIBGM_offsetElem(BGMimax,BGMjmax,BGMkmax)   + &
-                       FIBGM_nElems    (BGMimax,BGMjmax,BGMkmax)/)   &
-                     ,FIBGM_Element_Shared_Win,FIBGM_Element_Shared)
+CALL Allocate_Shared((/FIBGM_offsetElem(BGMimax,BGMjmax,BGMkmax)+FIBGM_nElems(BGMimax,BGMjmax,BGMkmax)/),FIBGM_Element_Shared_Win,FIBGM_Element_Shared)
 CALL MPI_WIN_LOCK_ALL(0,FIBGM_Element_Shared_Win,iError)
 FIBGM_Element => FIBGM_Element_Shared
 #else
@@ -1515,7 +1511,7 @@ USE MOD_Preproc
 USE MOD_IO_HDF5                 ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars               ,ONLY: nGlobalElems,offsetElem
 USE MOD_Particle_Globals        ,ONLY: PP_nElems
-USE MOD_Particle_MPI_Shared     ,ONLY: Allocate_Shared,MPI_SIZE,BARRIER_AND_SYNC
+USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemHaloID

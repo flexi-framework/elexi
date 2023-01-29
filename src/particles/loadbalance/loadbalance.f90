@@ -149,7 +149,7 @@ USE MOD_LoadBalance_Vars       ,ONLY: MPInPartSend,MPIoffsetPartSend,MPInPartRec
 USE MOD_LoadBalance_Vars       ,ONLY: ElemInfoRank_Shared,ElemInfoRank_Shared_Win
 USE MOD_LoadBalance_Vars       ,ONLY: DoInitialAutoRestart,InitialAutoRestartSample
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
-USE MOD_Particle_MPI_Shared    ,ONLY: Allocate_Shared
+USE MOD_Particle_MPI_Shared
 USE MOD_ReadInTools            ,ONLY: PrintOption
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING

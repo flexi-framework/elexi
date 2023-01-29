@@ -47,7 +47,7 @@ SUBROUTINE UpdateNextFreePosition()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Vars        ,ONLY: PDM,PEM,useLinkedList
+USE MOD_Particle_Vars        ,ONLY: PDM,PEM,PartSpecies,useLinkedList
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -76,13 +76,16 @@ IF (useLinkedList) THEN
      counter = counter + 1
      PDM%nextFreePosition(counter) = i
    ELSE
+      ! Sanity check corrupted particle list (some or all entries of a particle become zero, including the species ID)
+      IF(PartSpecies(i).LE.0) CALL Abort(__STAMP__,'Species ID is zero for PartID=',IntInfo=i)
+
       ElemID = PEM%Element(i)
-      ! Start of linked list for particles in elem
-      IF (PEM%pNumber(ElemID).EQ.0) THEN
-        PEM%pStart(ElemID) = i
-      ! Next particle of same elem (linked list)
-      ELSE
-        PEM%pNext(PEM%pEnd(ElemID)) = i
+        ! Start of linked list for particles in elem
+        IF (PEM%pNumber(ElemID).EQ.0) THEN
+          PEM%pStart(ElemID)          = i
+        ! Next particle of same elem (linked list)
+        ELSE
+          PEM%pNext(PEM%pEnd(ElemID)) = i
      END IF
      PEM%pEnd(   ElemID)   = i
      PEM%pNumber(ElemID)   = PEM%pNumber(ElemID) + 1

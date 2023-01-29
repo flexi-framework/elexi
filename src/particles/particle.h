@@ -42,6 +42,16 @@
 #define MDEALLOCATE(A) IF(ALLOCATED(A)) DEALLOCATE(A)
 #endif
 
+! Debug memory
+#if DEBUG_MEMORY
+#define Allocate_Shared(a,b,c)   Allocate_Shared_DEBUG(a,b,c,'b')
+#endif
+#if USE_MPI
+#define LWRITE IF(myComputeNodeRank.EQ.0) WRITE
+#else
+#define LWRITE WRITE
+#endif
+
 ! Boundaries for Particles
 #define PLANAR_RECT    0
 #define PLANAR_NONRECT 1
@@ -132,12 +142,13 @@
 #define TRIATRACKING  3
 
 ! RHS method
-#define RHS_NONE         1
-#define RHS_TRACER       2
-#define RHS_CONVERGENCE  3
-#define RHS_INERTIA      4
-#define RHS_SGS1         5
-#define RHS_SGS2         6
+#define RHS_NONE           1
+#define RHS_TRACER         2
+#define RHS_TCONVERGENCE   3
+#define RHS_HPCONVERGENCE  4
+#define RHS_INERTIA        5
+#define RHS_SGS1           6
+#define RHS_SGS2           7
 
 ! Drag factor model
 #define DF_PART_SCHILLER  1

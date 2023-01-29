@@ -28,10 +28,10 @@ REAL              :: MachShock         !< Shock Mach speed for ExactFunction = 6
 REAL              :: PreShockDens      !< Pre-shock density for ExactFunction = 6 (shock)
 REAL              :: AdvVel(3)         !< Advection Velocity for the test cases
 REAL              :: AdvArray(9)       !< Advection array
+REAL              :: IniFrequency      !< parameter used for synthetic test cases
+REAL              :: IniAmplitude      !< parameter used for synthetic test cases
 REAL              :: IniCenter(3)      !< parameter used for Shu vortex
 REAL              :: IniAxis(3)        !< parameter used for Shu vortex
-REAL              :: IniFrequency      !< parameter used for Shu vortex
-REAL              :: IniAmplitude      !< parameter used for Shu vortex
 REAL              :: IniHalfwidth      !< parameter used for Shu vortex
 REAL              :: P_Parameter       !< parameter for Couette-Poiseuille flow
 REAL              :: U_Parameter       !< parameter for Couette-Poiseuille flow

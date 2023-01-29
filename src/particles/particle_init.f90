@@ -113,8 +113,6 @@ CALL prms%CreateIntOption(          'BezierClipLineVectorMethod','TODO-DEFINE-PA
                                                                , '2')
 CALL prms%CreateIntOption(          'NbrOfRegions'             , 'Number of regions to be mapped to Elements'                      &
                                                                , '0')
-CALL prms%CreateIntOption(          'Part-nAuxBCs'             , 'Number of auxillary BCs that are checked during tracing'         &
-                                                               , '0')
 
 
 CALL prms%CreateRealOption(         'Part-MaxParticleNumber'   , 'Maximum number of Particles for the whole simulation. '        //&
@@ -195,14 +193,16 @@ CALL prms%CreateIntOption(          'Part-nSpecies'             , 'Number of spe
 CALL prms%CreateIntOption(          'Part-Species[$]-nInits'    , 'Number of different initial particle placements for Species [$]'&
                                                                 , '0'        , numberedmulti=.TRUE.)
 CALL prms%CreateIntFromStringOption('Part-Species[$]-RHSMethod' , 'Particle model used for calculation of the drag force.\n'     //&
-                                                                  ' - none        : no coupling between field and particles\n'   //&
-                                                                  ' - convergence : special case for convergence testing\n'      //&
-                                                                  ' - inertia     : particles are convected as initerial particles\n'//&
-                                                                  ' - tracer      : particles act as ideal tracers\n'              &
+                                                                  ' - none          : no coupling between field and particles\n' //&
+                                                                  ' - tconvergence  : special case for time-convergence testing\n'//&
+                                                                  ' - hpconvergence : special case for hp-convergence testing\n' //&
+                                                                  ' - inertia       : particles are convected as initerial particles\n'//&
+                                                                  ' - tracer        : particles act as ideal tracers\n'              &
                                                                 , 'none'     , numberedmulti=.TRUE.)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'none',            RHS_NONE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tracer',          RHS_TRACER)
-CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'convergence',     RHS_CONVERGENCE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tconvergence',    RHS_TCONVERGENCE)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'hpconvergence',   RHS_HPCONVERGENCE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'inertia',         RHS_INERTIA)
 CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle model used for calculation of the drag factor.\n'    //&
                                                                   ' - schiller    : Schiller and Naumann (1933)\n'               //&
@@ -704,7 +704,6 @@ USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_Records,RPP_Records_Glob
 USE MOD_Particle_Boundary_Sampling ,ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking ,ONLY: InitParticleBoundaryTracking
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
-USE MOD_Particle_Boundary_Vars     ,ONLY: nAuxBCs
 USE MOD_Particle_Interpolation     ,ONLY: InitParticleInterpolation
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
@@ -794,10 +793,6 @@ IF (RecordPart.GT.0) THEN
     RPP_Plane(jP)%RPP_Records = 0.
   END DO
 END IF
-
-! AuxBCs
-nAuxBCs = GETINT('Part-nAuxBCs')
-CALL InitializeVariablesAuxBC()
 
 ! CALL InitializeVariablesTimeStep(ManualTimeStep_opt)
 CALL InitializeVariablesTimeStep()
@@ -904,7 +899,7 @@ ALLOCATE(PartState(1:PP_nVarPart,1:PDM%maxParticleNumber),    &
          PartSpecies(            1:PDM%maxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
          Pt(    1:PP_nVarPartRHS,1:PDM%maxParticleNumber),    &
-         Pt_temp(  1:PP_nVarPart,1:PDM%maxParticleNumber),    &
+         Pt_temp(1:PP_nVarPart-1,1:PDM%maxParticleNumber),    &
 ! Allocate array for particle position in reference coordinates
          PDM%ParticleInside(     1:PDM%maxParticleNumber),    &
          PDM%nextFreePosition(   1:PDM%maxParticleNumber),    &
@@ -1104,7 +1099,7 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'      )
   Species(iSpec)%StokesIC              = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-StokesIC'       )
 
-  IF (Species(iSpec)%RHSMethod .EQ. RHS_CONVERGENCE) THEN
+  IF (Species(iSpec)%RHSMethod .EQ. RHS_TCONVERGENCE) THEN
     IF (Species(iSpec)%StokesIC .EQ. 0) CALL COLLECTIVESTOP(__STAMP__,'Stokes number is zero!')
   ELSEIF (Species(iSpec)%StokesIC .GT. 0.) THEN
     ! dyn. viscosity
@@ -1175,12 +1170,14 @@ DO iSpec = 1, nSpecies
   !--> Check if particles have valid mass/density
   IF (Species(iSpec)%MassIC .LE. 0.    .AND..NOT.(Species(iSpec)%RHSMethod.EQ.RHS_NONE          &
                                        .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TRACER        &
-                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_CONVERGENCE)) &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_HPCONVERGENCE &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TCONVERGENCE)) &
     CALL CollectiveStop(__STAMP__, 'Invalid particle mass given, Species=',IntInfo=iSpec)
 
   IF (Species(iSpec)%DensityIC .LE. 0. .AND..NOT.(Species(iSpec)%RHSMethod.EQ.RHS_NONE          &
                                        .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TRACER        &
-                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_CONVERGENCE)) &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_HPCONVERGENCE &
+                                       .OR.       Species(iSpec)%RHSMethod.EQ.RHS_TCONVERGENCE)) &
     CALL CollectiveStop(__STAMP__, 'Invalid particle density given, Species=',IntInfo=iSpec)
 
   ! Loop over all inits and get requested data
@@ -1232,9 +1229,6 @@ DO iSpec = 1, nSpecies
     !> Read only emission properties required for SpaceIC
     !>>> Parameters must be set to false to allow conformity checks afterwards
     Species(iSpec)%Init(iInit)%CalcHeightFromDt = .FALSE.
-
-    ! Set unique part index
-    IF (doPartIndex) Species(iSpec)%Init(iInit)%CountIndex = 0.
 
     SELECT CASE(Species(iSpec)%Init(iInit)%SpaceIC)
       CASE('point')
@@ -1665,266 +1659,6 @@ DO iBC = 1,nBCs
 END DO
 
 END SUBROUTINE InitializeVariablesPartBoundary
-
-
-SUBROUTINE InitializeVariablesAuxBC()
-!===================================================================================================================================
-! Initialize the variables first
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals
-USE MOD_ReadInTools
-USE MOD_Particle_Globals        ,ONLY: PI,ALMOSTZERO
-USE MOD_Particle_Boundary_Tools ,ONLY: MarkAuxBCElems
-USE MOD_Particle_Boundary_Vars  ,ONLY: PartAuxBC
-USE MOD_Particle_Boundary_Vars  ,ONLY: nAuxBCs,AuxBCType,AuxBCMap,AuxBC_plane,AuxBC_cylinder,AuxBC_cone,AuxBC_parabol,UseAuxBCs
-USE MOD_Particle_Vars
-! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER               :: iAuxBC, nAuxBCplanes, nAuxBCcylinders, nAuxBCcones, nAuxBCparabols
-INTEGER               :: iPartBound
-CHARACTER(32)         :: tmpStr,tmpStr2
-CHARACTER(200)        :: tmpString
-REAL                  :: n_vec(3), cos2, rmax
-REAL, DIMENSION(3,1)  :: n,n1,n2
-REAL, DIMENSION(3,3)  :: rot1, rot2
-REAL                  :: alpha1, alpha2
-!===================================================================================================================================
-!--> Only read anything if there are auxiliary BCs
-IF (nAuxBCs.GT.0) THEN
-  UseAuxBCs=.TRUE.
-  ALLOCATE (AuxBCType(1:nAuxBCs) &
-            ,AuxBCMap(1:nAuxBCs) )
-  AuxBCMap=0
-
-  !- Read in BC parameters
-  ALLOCATE(PartAuxBC%TargetBoundCond  (1:nAuxBCs))
-  ALLOCATE(PartAuxBC%MomentumACC      (1:nAuxBCs))
-  ALLOCATE(PartAuxBC%WallTemp         (1:nAuxBCs))
-  ALLOCATE(PartAuxBC%WallVelo     (1:3,1:nAuxBCs))
-
-  ! Get auxiliary boundary types
-  DO iPartBound=1,nAuxBCs
-    WRITE(UNIT=tmpStr,FMT='(I0)') iPartBound
-    tmpString = TRIM(GETSTR('Part-AuxBC'//TRIM(tmpStr)//'-Condition','open'))
-
-    SELECT CASE (TRIM(tmpString))
-
-    ! Inflow / outflow
-    CASE('open')
-      PartAuxBC%TargetBoundCond(iPartBound) = PartAuxBC%OpenBC
-
-    ! Reflective (wall)
-    CASE('reflective')
-      PartAuxBC%TargetBoundCond(iPartBound) = PartAuxBC%ReflectiveBC
-      PartAuxBC%MomentumACC(iPartBound)     = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-MomentumACC')
-      PartAuxBC%WallTemp(iPartBound)        = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-WallTemp'   )
-      PartAuxBC%WallVelo(1:3,iPartBound)    = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-WallVelo',3 )
-
-    ! Unknown auxiliary boundary type
-    CASE DEFAULT
-      SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC Condition does not exists: ', TRIM(tmpString)
-      CALL CollectiveStop(__STAMP__,'AuxBC Condition does not exist')
-
-    END SELECT
-  END DO
-
-  !- read and count types
-  nAuxBCplanes    = 0
-  nAuxBCcylinders = 0
-  nAuxBCcones     = 0
-  nAuxBCparabols  = 0
-
-  DO iAuxBC=1,nAuxBCs
-    WRITE(UNIT=tmpStr,FMT='(I0)') iAuxBC
-    AuxBCType(iAuxBC) = TRIM(GETSTR('Part-AuxBC'//TRIM(tmpStr)//'-Type','plane'))
-
-    SELECT CASE (TRIM(AuxBCType(iAuxBC)))
-
-    CASE ('plane')
-      nAuxBCplanes     = nAuxBCplanes + 1
-      AuxBCMap(iAuxBC) = nAuxBCplanes
-
-    CASE ('cylinder')
-      nAuxBCcylinders  = nAuxBCcylinders + 1
-      AuxBCMap(iAuxBC) = nAuxBCcylinders
-
-    CASE ('cone')
-      nAuxBCcones      = nAuxBCcones + 1
-      AuxBCMap(iAuxBC) = nAuxBCcones
-
-    CASE ('parabol')
-      nAuxBCparabols   = nAuxBCparabols + 1
-      AuxBCMap(iAuxBC) = nAuxBCparabols
-
-    CASE DEFAULT
-      SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
-      CALL CollectiveStop(__STAMP__,'AuxBC does not exist')
-    END SELECT
-  END DO
-
-  !- allocate type-specifics
-  IF (nAuxBCplanes.GT.0) THEN
-    ALLOCATE (AuxBC_plane(   1:nAuxBCplanes))
-  END IF
-
-  IF (nAuxBCcylinders.GT.0) THEN
-    ALLOCATE (AuxBC_cylinder(1:nAuxBCcylinders))
-  END IF
-
-  IF (nAuxBCcones.GT.0) THEN
-    ALLOCATE (AuxBC_cone(    1:nAuxBCcones))
-  END IF
-
-  IF (nAuxBCparabols.GT.0) THEN
-    ALLOCATE (AuxBC_parabol( 1:nAuxBCparabols))
-  END IF
-
-  !- read type-specifics
-  DO iAuxBC=1,nAuxBCs
-    WRITE(UNIT=tmpStr,FMT='(I0)') iAuxBC
-    SELECT CASE (TRIM(AuxBCType(iAuxBC)))
-
-    CASE ('plane')
-      AuxBC_plane(AuxBCMap(iAuxBC))%r_vec = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3)
-      WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_plane(AuxBCMap(iAuxBC))%radius)
-      AuxBC_plane(AuxBCMap(iAuxBC))%radius= GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-radius',TRIM(tmpStr2))
-      n_vec                               = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-n_vec',3)
-      ! Check if normal vector is zero
-      IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL CollectiveStop(__STAMP__,'Part-AuxBC-n_vec is zero for AuxBC',iAuxBC)
-      ! If not, scale vector
-      ELSE
-        AuxBC_plane(AuxBCMap(iAuxBC))%n_vec = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
-      END IF
-
-    CASE ('cylinder')
-      AuxBC_cylinder(AuxBCMap(iAuxBC))%r_vec = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3)
-      n_vec                                  = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3)
-      ! Check if normal vector is zero
-      IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL CollectiveStop(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
-      ! If not, scale vector
-      ELSE
-        AuxBC_cylinder(AuxBCMap(iAuxBC))%axis = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
-      END IF
-
-      AuxBC_cylinder(AuxBCMap(iAuxBC))%radius  = GETREAL(   'Part-AuxBC'//TRIM(tmpStr)//'-radius')
-      WRITE(UNIT=tmpStr2,FMT='(G0)') -HUGE(AuxBC_cylinder(AuxBCMap(iAuxBC))%lmin)
-      AuxBC_cylinder(AuxBCMap(iAuxBC))%lmin    = GETREAL(   'Part-AuxBC'//TRIM(tmpStr)//'-lmin',TRIM(tmpStr2))
-      WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_cylinder(AuxBCMap(iAuxBC))%lmin)
-      AuxBC_cylinder(AuxBCMap(iAuxBC))%lmax    = GETREAL(   'Part-AuxBC'//TRIM(tmpStr)//'-lmax',TRIM(tmpStr2))
-      AuxBC_cylinder(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards')
-
-    CASE ('cone')
-      AuxBC_cone(AuxBCMap(iAuxBC))%r_vec     = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3)
-      n_vec                                  = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3)
-      ! Check if normal vector is zero
-      IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL CollectiveStop(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
-      ! If not, scale vector
-      ELSE
-        AuxBC_cone(AuxBCMap(iAuxBC))%axis = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
-      END IF
-
-      AuxBC_cone(AuxBCMap(iAuxBC))%lmin  = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-lmin','0.')
-      IF (AuxBC_cone(AuxBCMap(iAuxBC))%lmin.LT.0.) &
-        CALL CollectiveStop(__STAMP__,'Part-AuxBC-lminis .lt. zero for AuxBC',iAuxBC)
-
-      WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_cone(AuxBCMap(iAuxBC))%lmin)
-      AuxBC_cone(AuxBCMap(iAuxBC))%lmax  = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-lmax',TRIM(tmpStr2))
-      rmax                               = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-rmax')
-
-      ! either define rmax at lmax or the halfangle
-      IF (rmax.EQ.0.) THEN
-        AuxBC_cone(AuxBCMap(iAuxBC))%halfangle  = GETREAL('Part-AuxBC'//TRIM(tmpStr)//'-halfangle')*PI/180.
-      ELSE
-        AuxBC_cone(AuxBCMap(iAuxBC))%halfangle  = ATAN(rmax/AuxBC_cone(AuxBCMap(iAuxBC))%lmax)
-      END IF
-
-      IF (AuxBC_cone(AuxBCMap(iAuxBC))%halfangle.LE.0.) &
-        CALL CollectiveStop(__STAMP__,'Part-AuxBC-halfangle is .le. zero for AuxBC',iAuxBC)
-
-      AuxBC_cone(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards')
-      cos2 = COS(AuxBC_cone(AuxBCMap(iAuxBC))%halfangle)**2
-      AuxBC_cone(AuxBCMap(iAuxBC))%geomatrix(:,1) &
-        = AuxBC_cone(AuxBCMap(iAuxBC))%axis(1)*AuxBC_cone(AuxBCMap(iAuxBC))%axis - (/cos2,0.,0./)
-      AuxBC_cone(AuxBCMap(iAuxBC))%geomatrix(:,2) &
-        = AuxBC_cone(AuxBCMap(iAuxBC))%axis(2)*AuxBC_cone(AuxBCMap(iAuxBC))%axis - (/0.,cos2,0./)
-      AuxBC_cone(AuxBCMap(iAuxBC))%geomatrix(:,3) &
-        = AuxBC_cone(AuxBCMap(iAuxBC))%axis(3)*AuxBC_cone(AuxBCMap(iAuxBC))%axis - (/0.,0.,cos2/)
-
-    CASE ('parabol')
-      AuxBC_parabol(AuxBCMap(iAuxBC))%r_vec = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-r_vec',3)
-      n_vec                                 = GETREALARRAY('Part-AuxBC'//TRIM(tmpStr)//'-axis',3)
-      ! Check if normal vector is zero
-      IF (DOT_PRODUCT(n_vec,n_vec).EQ.0.) THEN
-        CALL CollectiveStop(__STAMP__,'Part-AuxBC-axis is zero for AuxBC',iAuxBC)
-      ! If not, scale vector
-      ELSE
-        AuxBC_parabol(AuxBCMap(iAuxBC))%axis = n_vec/SQRT(DOT_PRODUCT(n_vec,n_vec))
-      END IF
-
-      AuxBC_parabol(AuxBCMap(iAuxBC))%lmin  = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-lmin','0.')
-      IF (AuxBC_parabol(AuxBCMap(iAuxBC))%lmin.LT.0.) &
-        CALL CollectiveStop(__STAMP__,'Part-AuxBC-lmin is .lt. zero for AuxBC',iAuxBC)
-
-      WRITE(UNIT=tmpStr2,FMT='(G0)') HUGE(AuxBC_parabol(AuxBCMap(iAuxBC))%lmin)
-      AuxBC_parabol(AuxBCMap(iAuxBC))%lmax  = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-lmax',TRIM(tmpStr2))
-      AuxBC_parabol(AuxBCMap(iAuxBC))%zfac  = GETREAL(     'Part-AuxBC'//TRIM(tmpStr)//'-zfac')
-      AuxBC_parabol(AuxBCMap(iAuxBC))%inwards = GETLOGICAL('Part-AuxBC'//TRIM(tmpStr)//'-inwards')
-
-      n(:,1)=AuxBC_parabol(AuxBCMap(iAuxBC))%axis
-
-      ! Check if normal vector is colliniar with y?
-      IF (.NOT.ALMOSTZERO(SQRT(n(1,1)**2+n(3,1)**2))) THEN
-        alpha1 = ATAN2(n(1,1),n(3,1))
-        CALL roty(rot1,alpha1)
-        n1     = MATMUL(rot1,n)
-      ELSE
-        alpha1 = 0.
-        CALL ident(rot1)
-        n1     = n
-      END IF
-
-      ! Check if normal vector is colliniar with x?
-      IF (.NOT.ALMOSTZERO(SQRT(n1(2,1)**2+n1(3,1)**2))) THEN
-        alpha2 = -ATAN2(n1(2,1),n1(3,1))
-        CALL rotx(rot2,alpha2)
-        n2     = MATMUL(rot2,n1)
-      ELSE
-        CALL CollectiveStop(__STAMP__,'Vector is collinear with x-axis. this should not be possible... AuxBC:',iAuxBC)
-      END IF
-
-      AuxBC_parabol(AuxBCMap(iAuxBC))%rotmatrix(:,:)  = MATMUL(rot2,rot1)
-      AuxBC_parabol(AuxBCMap(iAuxBC))%geomatrix4(:,:) = 0.
-      AuxBC_parabol(AuxBCMap(iAuxBC))%geomatrix4(1,1) = 1.
-      AuxBC_parabol(AuxBCMap(iAuxBC))%geomatrix4(2,2) = 1.
-      AuxBC_parabol(AuxBCMap(iAuxBC))%geomatrix4(3,3) = 0.
-      AuxBC_parabol(AuxBCMap(iAuxBC))%geomatrix4(3,4) = -0.5*AuxBC_parabol(AuxBCMap(iAuxBC))%zfac
-      AuxBC_parabol(AuxBCMap(iAuxBC))%geomatrix4(4,3) = -0.5*AuxBC_parabol(AuxBCMap(iAuxBC))%zfac
-
-    CASE DEFAULT
-      SWRITE(UNIT_stdOut,'(A,A)') ' AuxBC does not exist: ', TRIM(AuxBCType(iAuxBC))
-      CALL CollectiveStop(__STAMP__,'AuxBC does not exist for AuxBC',iAuxBC)
-
-    END SELECT
-  END DO
-
-  ! Mark elements with auxiliary BCs
-  CALL MarkAuxBCElems()
-ELSE
-  ! Flag if AuxBCs are used
-  UseAuxBCs=.FALSE.
-END IF
-
-END SUBROUTINE InitializeVariablesAuxBC
 
 
 !SUBROUTINE InitializeVariablesTimeStep(ManualTimeStep_opt)

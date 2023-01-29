@@ -237,9 +237,9 @@ WRITE(UNIT_StdOut,'(A3,A'//TRIM(fmtName)//',A2)',ADVANCE='NO')' | ',TRIM(NameOpt
 WRITE(UNIT_stdOut,'(A,A1,A)',ADVANCE='NO') REPEAT('=',MAX(CEILING(percent*(prms%maxValueLen+1)/100.),0)),'>',&
                                            REPEAT(' ',(prms%maxValueLen+1)-MAX(CEILING(percent*(prms%maxValueLen+1)/100.),0))
 IF (percent.LT.100) THEN
-  WRITE(UNIT_stdOut,'(A3,F6.2,A3,A1)',ADVANCE='NO' ) '| [',percent,'%] ',ACHAR(13) ! ACHAR(13) is carriage
+  WRITE(UNIT_stdOut,'(A2,F6.2,A3,A1)',ADVANCE='NO' ) '|[',percent,'%]|',ACHAR(13) ! ACHAR(13) is carriage
 ELSE
-  WRITE(UNIT_stdOut,'(A3,F6.2,A3)'   ,ADVANCE='YES') '| [',percent,'%] '
+  WRITE(UNIT_stdOut,'(A2,F6.2,A3)'   ,ADVANCE='YES') '|[',percent,'%]|'
 END IF
 
 END SUBROUTINE PrintPercentage

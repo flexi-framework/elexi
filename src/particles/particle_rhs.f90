@@ -228,7 +228,7 @@ ELSE
   Fdm = FieldAtParticle(VELV)
 END IF
 
-CASE(RHS_CONVERGENCE)
+CASE(RHS_TCONVERGENCE)
 !===================================================================================================================================
 ! Special case, drag force only active in x-direction, fixed differential. Gravity in y-direction. Used for convergence tests
 !===================================================================================================================================
@@ -236,6 +236,13 @@ CASE(RHS_CONVERGENCE)
 Fdm(1) = (FieldAtParticle(VEL1) - PartState(PART_VEL1,PartID)) * 0.5 * 1./Species(PartSpecies(PartID))%StokesIC
 Fdm(2) = PartGravity(2)
 Fdm(3) = 0.
+
+CASE(RHS_HPCONVERGENCE)
+!===================================================================================================================================
+! Special case, part push depends only on fluid velocity, which is only active in x-direction, fixed differential.
+! Used for h-/p-convergence tests
+!===================================================================================================================================
+Fdm(1) = FieldAtParticle(VEL1); Fdm(2:3) = 0.
 
 CASE(RHS_SGS1)
 !===================================================================================================================================
@@ -404,7 +411,9 @@ USE MOD_Equation_Vars,          ONLY: s43,s23
 USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter,FbCoeff,FbCoeffa,Fbdt,FbCoefft!,Fbi,FbCoeffm
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
 #endif /* USE_BASSETFORCE */
+#if USE_UNDISTFLOW || USE_VIRTUALMASS
 USE MOD_Particle_TimeDisc_Vars, ONLY: useManualTimeStep
+#endif /* USE_UNDISTFLOW || USE_VIRTUALMASS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -422,16 +431,18 @@ INTEGER,INTENT(IN),OPTIONAL :: iStage
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: Pt(1:PP_nVarPartRHS),Fdi(1:3,10),Fre(1:3,10),tmp(1:3)
+REAL                     :: Pt(1:PP_nVarPartRHS),Fdi(1:3,10),Fre(1:3,10)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: globalfactor                ! prefactor of LHS divided by the particle mass
-REAL                     :: prefactor                   ! factor divided by the particle mass
 REAL                     :: Flm(1:3)                    ! Saffman force divided by the particle mass
 REAL                     :: Fmm(1:3)                    ! Magnus force divided by the particle mass
 REAL                     :: Fum(1:3)                    ! undisturbed flow force divided by the particle mass
 REAL                     :: Fvm(1:3)                    ! virtual mass force divided by the particle mass
 REAL                     :: Fbm(1:3)                    ! Basset force divided by the particle mass
+#if (USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE || PP_nVarPartRHS == 6)
+REAL                     :: prefactor                   ! factor divided by the particle mass
+#endif
 #if (USE_UNDISTFLOW || USE_VIRTUALMASS)
 REAL                     :: DuDt(1:3)                   ! viscous and pressure forces divided by the particle mass
 #endif
@@ -440,6 +451,7 @@ REAL,PARAMETER           :: s32=3./2.
 INTEGER                  :: k,kIndex,nIndex
 REAL                     :: dufdt(1:3)                  ! partial derivative of the fluid velocity
 REAL                     :: dtk(3),dtn(2)
+REAL                     :: tmp(1:3)
 ! Convergence1
 ! REAL                     :: Sb,Cb
 #endif /* USE_BASSETFORCE */
@@ -452,7 +464,7 @@ REAL                     :: dotp,beta                   ! dot_product, beta=dp*|
 !===================================================================================================================================
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
-  CASE(RHS_NONE,RHS_CONVERGENCE,RHS_TRACER)
+  CASE(RHS_NONE,RHS_TCONVERGENCE,RHS_HPCONVERGENCE,RHS_TRACER)
     RETURN
 END SELECT
 
@@ -522,7 +534,7 @@ IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
     rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
     IF (Rep.GT.0.) THEN
       prefactor = 0.45 + (4*Rew/Rep-0.45)*EXP(-0.09896*Rew**0.4*Rep**(-0.3))
-      Fmm = PP_PI/8 * prefactor * PartState(PART_DIAM,PartID)**3 * FieldAtParticle(DENS) * rotudiff
+      Fmm = 3./4 * prefactor * FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC * rotudiff
     END IF
   END IF
 END IF
@@ -1074,9 +1086,10 @@ REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 Ut_src = 0.
 DO iPart = 1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
-    IF (Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER .OR. &
-    Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_CONVERGENCE  .OR. &
-    Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER) CYCLE
+    IF (Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER        .OR. &
+        Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TCONVERGENCE  .OR. &
+        Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_HPCONVERGENCE .OR. &
+        Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER) CYCLE
 
     Vol = 0.
     PartSource = 0.

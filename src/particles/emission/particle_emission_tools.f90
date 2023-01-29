@@ -152,6 +152,9 @@ SUBROUTINE SetParticleMass(FractNbr,NbrOfParticle)
 ! MODULES
 USE MOD_Globals,          ONLY: Abort
 USE MOD_Particle_Vars,    ONLY: PDM,PartSpecies,Species,PartState,doRandomPartDiam
+#if USE_SPHERICITY
+USE MOD_Particle_Vars,    ONLY: doRandomSphericity
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -174,10 +177,21 @@ DO i = 1,NbrOfParticle
     IF (doRandomPartDiam) THEN
       CALL RANDOM_NUMBER(randnum)
       randnum = randnum*2.-1.
-      PartState(PART_DIAM, PositionNbr) = Species(FractNbr)%DiameterIC + randnum * Species(FractNbr)%PartDiamVarianceIC
+      PartState(PART_DIAM, PositionNbr) = (Species(FractNbr)%DiameterIC * Species(FractNbr)%ScalePartDiam + FLOOR(randnum * &
+                   Species(FractNbr)%PartDiamVarianceIC*Species(FractNbr)%ScalePartDiam))/Species(FractNbr)%ScalePartDiam
     ELSE
       PartState(PART_DIAM, PositionNbr) = Species(FractNbr)%DiameterIC
     END IF
+#if USE_SPHERICITY
+    IF (doRandomSphericity) THEN
+      CALL RANDOM_NUMBER(randnum)
+      randnum = randnum*2.-1.
+      PartState(PART_SPHE, PositionNbr) = (Species(FractNbr)%SphericityIC * 100 + FLOOR(randnum * &
+                                           Species(FractNbr)%PartSpheVarianceIC*100))*0.01
+    ELSE
+      PartState(PART_SPHE, PositionNbr) = Species(FractNbr)%SphericityIC
+    END IF
+#endif
   ELSE
     CALL Abort(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
   END IF

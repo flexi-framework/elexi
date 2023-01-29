@@ -146,6 +146,13 @@ IF(PartIntExists)THEN
           PartState(PART_DIAM,iPart) = Species(PartSpecies(iPart))%DiameterIC
         END DO
       END IF
+#if USE_SPHERICITY
+      IF (ANY(PartState(PART_SPHE,1:locnPart).EQ.0.)) THEN
+        DO iPart = 1,locnPart
+          PartState(PART_SPHE,iPart) = Species(PartSpecies(iPart))%SphericityIC
+        END DO
+      END IF
+#endif
       ! Particle index
       IF (doPartIndex) PartIndex(1:locnPart) = INT(PartData(PP_nVarPartState+2,offsetnPart+1:offsetnPart+locnPart))
       ! Reflections were tracked previously and are therefore still enabled

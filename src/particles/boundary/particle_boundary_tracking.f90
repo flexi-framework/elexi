@@ -119,6 +119,9 @@ ImpactDataSize = 19
 ImpactDataSize = 17
 #endif
 IF (doWritePartDiam)                                  ImpactDataSize = ImpactDataSize + 2
+#if USE_SPHERICITY
+ImpactDataSize = ImpactDataSize + 1
+#endif
 IF (doPartIndex)                                      ImpactDataSize = ImpactDataSize + 1
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) ImpactDataSize = ImpactDataSize + 3
 
@@ -329,6 +332,10 @@ ASSOCIATE( iMax => PartStateBoundaryVecLength )
   PartStateBoundary(tmp ,iMax) = e_rot_old
   PartStateBoundary(tmp+1 ,iMax) = e_rot_new
   tmp = tmp+2
+#endif
+#if USE_SPHERICITY
+  PartStateBoundary(tmp ,iMax) = REAL(PartState(PART_SPHE,PartID))
+  tmp = tmp+1
 #endif
   IF(doPartIndex)                                      PartStateBoundary(tmp                            ,iMax) = PartIndex(    PartID)
   IF(doParticleDispersionTrack.OR.doParticlePathTrack) PartStateBoundary(ImpactDataSize-2:ImpactDataSize,iMax) = PartPath (1:3,PartID)

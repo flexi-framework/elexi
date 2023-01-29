@@ -145,6 +145,7 @@
 #define DF_PART_HAIDER    3
 #define DF_PART_HOELZER   4
 #define DF_PART_LOTH      5
+#define DF_PART_GANSER    6
 
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 ! Velocity and pressure for extended RHS
@@ -192,14 +193,15 @@
 #define PART_VEL2       5
 #define PART_VEL3       6
 #define PART_VELV       PART_VEL1:PART_VEL3
-#if PP_nVarPart == 10
+#if PP_nVarPart >= 10
 #define PART_AMOM1      7
 #define PART_AMOM2      8
 #define PART_AMOM3      9
 #define PART_AMOMV      PART_AMOM1:PART_AMOM3
-#define PART_DIAM       10
-#else
-#define PART_DIAM       7
+#endif
+#define PART_DIAM       PP_nVarPart
+#if USE_SPHERICITY
+#define PART_SPHE       PP_nVarPart-1
 #endif
 
 #define ENERGY_ROTATION(rho,dp,vor)   0.5*pi/60*rho*dp**5*DOT_PRODUCT(vor,vor)

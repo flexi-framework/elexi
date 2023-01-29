@@ -126,7 +126,7 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iPart,iRecord
+INTEGER                        :: iPart,iRecord,m
 REAL                           :: t_loc
 ! RecordPlane
 REAL                           :: PartTrajectory(3),lengthPartTrajectory,Inter1(3)
@@ -192,8 +192,14 @@ DO iRecord = 1,RecordPart
       RPP_Plane(iRecord)%RPP_Data(8  ,RPP_Plane(iRecord)%RPP_Records) = PartSpecies(iPart)
       ! Time
       RPP_Plane(iRecord)%RPP_Data(9  ,RPP_Plane(iRecord)%RPP_Records) = t_loc
+      m = 9
+#if USE_SPHERICITY
+      ! Sphericity
+      m = m + 1
+      RPP_Plane(iRecord)%RPP_Data(m  ,RPP_Plane(iRecord)%RPP_Records) = PartState(PART_SPHE,iPart)
+#endif
       ! Index
-      IF(doPartIndex) RPP_Plane(iRecord)%RPP_Data(10,RPP_Plane(iRecord)%RPP_Records) = PartIndex(iPart)
+      IF(doPartIndex) RPP_Plane(iRecord)%RPP_Data(m+1,RPP_Plane(iRecord)%RPP_Records) = PartIndex(iPart)
     END IF
   END DO
   RPP_Records(iRecord) = RPP_Plane(iRecord)%RPP_Records
@@ -300,7 +306,12 @@ DO iRecord = 1,RecordPart
     StrVarNames(7) ='PartDiam'
     StrVarNames(8) ='Species'
     StrVarNames(9) ='Time'
+#if USE_SPHERICITY
+    StrVarNames(10)='Sphericity'
+    IF(doPartIndex) StrVarNames(11) ='Index'
+#else
     IF(doPartIndex) StrVarNames(10) ='Index'
+#endif
 
     ForceIC = 0
 
@@ -327,7 +338,9 @@ DO iRecord = 1,RecordPart
         IF(Species(iSpecies)%CalcMagnusForce)     ForceIC(6,iSpecies) = 1
 #endif
       END DO
+#if !USE_SPHERICITY
       CALL WriteAttribute(File_ID,'SphericityIC',nSpecies,RealArray=SphericityIC)
+#endif
       CALL WriteAttribute(File_ID,'DragForce'   ,nSpecies,IntArray=ForceIC(1,:))
 #if USE_EXTEND_RHS
       CALL WriteAttribute(File_ID,'SaffmanForce',nSpecies,IntArray=ForceIC(2,:))

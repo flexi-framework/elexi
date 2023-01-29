@@ -140,6 +140,8 @@ CALL prms%CreateLogicalOption(      'Part-WritePartDiam'       , 'Flag to enable
                                                                , '.FALSE.')
 CALL prms%CreateLogicalOption(      'Part-RandomPartDiam'      , 'Flag to enable random particle diameter with a certain variance' &
                                                                , '.FALSE.')
+CALL prms%CreateLogicalOption(      'Part-RandomSphericity'    , 'Flag to enable random particle sphericity with a certain var'    &
+                                                               , '.FALSE.')
 
 CALL prms%CreateRealArrayOption(    'Part-Gravity'             , 'Gravitational acceleration as vector'                            &
                                                                , '0. , 0. , 0.')
@@ -214,6 +216,7 @@ CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'putnam',     
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'haider',          DF_PART_HAIDER)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'hoelzer',         DF_PART_HOELZER)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'loth',            DF_PART_LOTH)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'ganser',          DF_PART_GANSER)
 CALL prms%CreateRealOption(         'Part-Species[$]-MassIC'    , 'Particle mass of species [$] [kg]'                              &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-DiameterIC', 'Particle diameter of species [$] [m]'                           &
@@ -243,6 +246,10 @@ CALL prms%CreateRealOption(         'Part-Species[$]-LowVeloThreshold', 'Thresho
 CALL prms%CreateRealOption(         'Part-Species[$]-SphericityIC', 'Particle sphericity of species [$] [m]'                       &
                                                                 , '1.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-PartDiamVarianceIC', 'Particle diameter variance of species [$] [-]'          &
+                                                                , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-ScalePartDiam', 'Scale particle diameter of species [$] [m]'                  &
+                                                                , '1.'       , numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-PartSpheVarianceIC', 'Particle sphericity variance of species [$] [-]'        &
                                                                 , '0.'       , numberedmulti=.TRUE.)
 #if USE_EXTEND_RHS
 CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcSaffmanForce', 'Flag to calculate the Saffman lift force'                 &
@@ -731,6 +738,9 @@ IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
 doCalcSourcePart        = GETLOGICAL('Part-CalcSource'    )
 doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' )
 doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam')
+#if USE_SPHERICITY
+doRandomSphericity      = GETLOGICAL('Part-RandomSphericity')
+#endif
 
 CALL AllocateParticleArrays()
 CALL InitializeVariablesRandomNumbers()
@@ -759,6 +769,9 @@ LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove')
 RecordPart          = GETINT('Part-nRPs')
 IF (RecordPart.GT.0) THEN
   IF(doPartIndex) RPP_nVarNames = RPP_nVarNames + 1
+#if USE_SPHERICITY
+  RPP_nVarNames = RPP_nVarNames + 1
+#endif
   CALL SYSTEM('mkdir -p recordpoints')
   ! Get size of buffer array
   RPP_maxMemory     = GETINT('Part-RPMemory')       ! Max buffer (100MB)
@@ -1106,6 +1119,7 @@ DO iSpec = 1, nSpecies
   ELSE
     Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'         )
     Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'     )
+    Species(iSpec)%ScalePartDiam         = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-ScalePartDiam'  )
     IF (Species(iSpec)%DensityIC .EQ. 0.) THEN
       IF (Species(iSpec)%DiameterIC .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle density and diameter both zero!')
       IF (Species(iSpec)%MassIC     .EQ. 0.) CALL COLLECTIVESTOP(__STAMP__,'Particle density and mass     both zero!')
@@ -1137,6 +1151,9 @@ DO iSpec = 1, nSpecies
     LBWRITE(UNIT_stdOut,*) 'WARNING: SphericityIC is ignored for ', iSpec,', as the wrong drag force was chosen.'
   END IF
   Species(iSpec)%PartDiamVarianceIC    = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PartDiamVarianceIC' )
+#if USE_SPHERICITY
+  Species(iSpec)%PartSpheVarianceIC    = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-PartSpheVarianceIC' )
+#endif
 #if USE_EXTEND_RHS
   Species(iSpec)%CalcSaffmanForce      = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcSaffmanForce'   )
   Species(iSpec)%CalcMagnusForce       = GETLOGICAL(   'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-CalcMagnusForce'    )

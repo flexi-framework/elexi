@@ -156,6 +156,9 @@ ASSOCIATE (&
 #if PP_nVarPartRHS == 6
     StrVarNames(7:9) = (/'AngularVelX'      ,'AngularVelY'      ,'AngularVelZ'      /)
 #endif
+#if USE_SPHERICITY
+    StrVarNames(PP_nVarPart-1) = 'Sphericity'
+#endif
     IF (doWritePartDiam) StrVarNames(PP_nVarPart) = 'PartDiam'
     StrVarNames(PartDataVarSpecies) = 'Species'
     IF (doPartIndex) StrVarNames(PartDataVarSpecies+1) = 'Index'

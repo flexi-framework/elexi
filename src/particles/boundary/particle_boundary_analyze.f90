@@ -287,6 +287,10 @@ StrVarNames(tmp) = 'E_rot_impact'
 StrVarNames(tmp+1) = 'E_rot_reflected'
 tmp = tmp+2
 #endif
+#if USE_SPHERICITY
+StrVarNames(tmp) = 'Sphericity'
+tmp = tmp+1
+#endif
 IF (doPartIndex) StrVarNames(tmp)= 'Index'
 IF (doParticleDispersionTrack) THEN
   StrVarNames(ImpactDataSize-2) = 'PartPathAbsX'

@@ -316,8 +316,8 @@ DO iPart=1,PDM%ParticleVecLength
       PartState(PART_VELV,iPart) = Pt       (1:3      ,iPart)
     !-- Normal particles
     ELSE
-      PartState(PART_POSV,iPart)               = PartState(PART_POSV              ,iPart) + PartState(PART_VELV       ,iPart)*dt
-      PartState(PART_VEL1:PP_nVarPart-1,iPart) = PartState(PART_VEL1:PP_nVarPart-1,iPart) + Pt       (1:PP_nVarPartRHS,iPart)*dt
+      PartState(PART_POSV,iPart)                  = PartState(PART_POSV                 ,iPart) + PartState(PART_VELV,iPart)*dt
+      PartState(PART_VEL1:3+PP_nVarPartRHS,iPart) = PartState(PART_VEL1:3+PP_nVarPartRHS,iPart) + Pt       (:        ,iPart)*dt
     ENDIF !< Tracer
   ENDIF !< ParticleInside
 END DO
@@ -439,10 +439,10 @@ DO iPart=1,PDM%ParticleVecLength
       PartState(PART_POSV,iPart) = PartState(PART_POSV,iPart) + PartState(PART_VELV,iPart)*b_dt(1)
     ELSE
       Pt_temp  (1:3,iPart)             = PartState(PART_VELV       ,iPart)
-      Pt_temp  (4:PP_nVarPart-1,iPart) = Pt       (1:PP_nVarPartRHS,iPart)
+      Pt_temp  (4:3+PP_nVarPartRHS,iPart) = Pt       (1:PP_nVarPartRHS,iPart)
 
-      PartState(PART_POSV,iPart)               = PartState(PART_POSV              ,iPart) + PartState(PART_VELV       ,iPart)*b_dt(1)
-      PartState(PART_VEL1:PP_nVarPart-1,iPart) = PartState(PART_VEL1:PP_nVarPart-1,iPart) + Pt       (1:PP_nVarPartRHS,iPart)*b_dt(1)
+      PartState(PART_POSV,iPart)                  = PartState(PART_POSV                 ,iPart) + PartState(PART_VELV,iPart)*b_dt(1)
+      PartState(PART_VEL1:3+PP_nVarPartRHS,iPart) = PartState(PART_VEL1:3+PP_nVarPartRHS,iPart) + Pt       (:        ,iPart)*b_dt(1)
     END IF
   END IF
 END DO
@@ -537,10 +537,10 @@ DO iPart=1,PDM%ParticleVecLength
         PartState(PART_POSV,iPart) = PartState(PART_POSV,iPart) + Pt_temp(1:3,iPart)*b_dt(iStage)
         PartState(PART_VELV,iPart) = Pt(       1:3      ,iPart)
       ELSE
-        Pt_temp(1:3,iPart)               = PartState(PART_VELV       ,iPart) - RKA(iStage) * Pt_temp(1:3,iPart)
-        Pt_temp(4:PP_nVarPart-1,iPart)   = Pt       (1:PP_nVarPartRHS,iPart) - RKA(iStage) * Pt_temp(4:PP_nVarPart-1,iPart)
+        Pt_temp(1:3,iPart)                  = PartState(PART_VELV       ,iPart) - RKA(iStage) * Pt_temp(1:3               ,iPart)
+        Pt_temp(4:3+PP_nVarPartRHS,iPart)   = Pt       (1:PP_nVarPartRHS,iPart) - RKA(iStage) * Pt_temp(4:3+PP_nVarPartRHS,iPart)
 
-        PartState(1:PP_nVarPart-1,iPart) = PartState(1:PP_nVarPart-1,iPart) + Pt_temp(1:PP_nVarPart-1,iPart)*b_dt(iStage)
+        PartState(1:3+PP_nVarPartRHS,iPart) = PartState(1:3+PP_nVarPartRHS,iPart) + Pt_temp(:,iPart)*b_dt(iStage)
       END IF
 
     !IsNewPart: no Pt_temp history available. Either because of emissionType = 1 or because of reflection with almost zero wallVelo
@@ -567,9 +567,9 @@ DO iPart=1,PDM%ParticleVecLength
       END DO
 
       ! Pt_temp is rebuilt, do particle push
-      Pt_temp  (1:3,iPart)             = Pv_rebuilt(1:3,iStage)
-      Pt_temp  (4:PP_nVarPart-1,iPart) = Pa_rebuilt(1:PP_nVarPartRHS,iStage)
-      PartState(1:PP_nVarPart-1,iPart) = PartState( 1:PP_nVarPart-1,iPart) + Pt_temp(1:PP_nVarPart-1,iPart)*b_dt(iStage)*RandVal
+      Pt_temp  (1:3,iPart)                = Pv_rebuilt(1:3,iStage)
+      Pt_temp  (4:3+PP_nVarPartRHS,iPart) = Pa_rebuilt(1:PP_nVarPartRHS,iStage)
+      PartState(1:3+PP_nVarPartRHS,iPart) = PartState( 1:3+PP_nVarPartRHS,iPart) + Pt_temp(:,iPart)*b_dt(iStage)*RandVal
 
       PDM%IsNewPart(iPart) = .FALSE. !change to false: Pt_temp is now rebuilt...
     END IF !IsNewPart
@@ -655,8 +655,7 @@ END IF
 CurrentStage = 1
 tStage       = t
 
-CALL ParticleTimeRHS(t,dt,iStage)
-CALL ParticleTimeStep(t,dt)
+CALL ParticleTimeStep(tStage,dt)
 
 #if USE_MPI
 #if USE_LOADBALANCE
@@ -681,8 +680,7 @@ DO iStage = 2,nRKStages
   CurrentStage = iStage
   tStage       = t+dt*RKc(iStage)
 
-  CALL ParticleTimeRHS(t,dt,iStage)
-  CALL ParticleTimeStepRK(t,dt,iStage)
+  CALL ParticleTimeStepRK(tStage,dt,iStage)
 
 #if USE_MPI
 #if USE_LOADBALANCE

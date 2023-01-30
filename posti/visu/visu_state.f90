@@ -276,7 +276,7 @@ USE MOD_MPI                 ,ONLY: FinalizeMPI
 USE MOD_Particle_Init       ,ONLY: DefineParametersParticles
 #endif
 #if FV_ENABLED
-USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
+USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis,DefineParametersFV_Basis
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 #endif
 IMPLICIT NONE
@@ -325,6 +325,9 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()
 CALL DefineParametersMesh()
+#if FV_ENABLED
+CALL DefineParametersFV_Basis()
+#endif
 CALL DefineParametersEOS()
 #if USE_PARTICLES
 CALL DefineParametersParticles()

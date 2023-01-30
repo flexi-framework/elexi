@@ -67,6 +67,7 @@ USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSen
 USE MOD_LoadBalance_Vars       ,ONLY: MPInPartSend,MPInPartRecv,MPIoffsetPartSend,MPIoffsetPartRecv
 USE MOD_Mesh_Vars              ,ONLY: nElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared
+USE MOD_Particle_Output_Vars   ,ONLY: PartDataVarSpecies
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -192,7 +193,7 @@ IF (PerformLoadBalance) THEN
   END ASSOCIATE
   CALL MOVE_ALLOC(PartDataTmp,PartData)
   PartDataExists   = .TRUE.
-  PP_nVarPartState = PP_nVarPart-1
+  PP_nVarPartState = PartDataVarSpecies-1 !PP_nVarPart-1
 
   ! ------------------------------------------------
   ! TurbPartData

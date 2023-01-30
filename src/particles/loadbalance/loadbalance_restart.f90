@@ -44,7 +44,8 @@ SUBROUTINE FieldRestart()
 ! USED MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_DG_Vars                ,ONLY: U
+USE MOD_DG_Vars                ,ONLY: U,UPrim
+USE MOD_EoS                    ,ONLY: ConsToPrim
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
 USE MOD_Mesh_Vars              ,ONLY: nElems
@@ -83,6 +84,7 @@ ASSOCIATE (&
   CALL MPI_ALLTOALLV(U,counts_send,disp_send,MPI_DOUBLE_PRECISION,UTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
 END ASSOCIATE
 CALL MOVE_ALLOC(UTmp,U)
+CALL ConsToPrim(PP_N,UPrim,U)
 
 #if FV_ENABLED == 1
 ALLOCATE(FV_ElemsTmp(nElems))

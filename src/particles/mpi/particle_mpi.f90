@@ -195,7 +195,7 @@ PartCommSize   = PartCommSize + 1
 ! time integration
 ! communication after each Runge-Kutta stage, so send time derivative must be communicated to the new proc
 ! Pt_temp for pushing: Runge-Kutta derivative of position and velocity
-PartCommSize   = PartCommSize + (PP_nVarPart-1)
+PartCommSize   = PartCommSize + (PP_nVarPartRHS+3)
 ! TurbPt_tmp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
 ! IF (SGSinUse)    PartCommSize = PartCommSize + 3
 ! IsNewPart for RK-Reconstruction
@@ -464,8 +464,8 @@ DO iProc=0,nExchangeProcessors-1
       !jPos=jPos+3*FbCoeffm
 #endif /* USE_BASSETFORCE */
       !>> Pt_temp for pushing: Runge-Kutta derivative of position and velocity
-      PartSendBuf(iProc)%content(1+jPos:PP_nVarPart-1+jPos) = Pt_temp(1:PP_nVarPart-1,iPart)
-      jPos=jPos+PP_nVarPart-1
+      PartSendBuf(iProc)%content(1+jPos:PP_nVarPartRHS+3+jPos) = Pt_temp(1:PP_nVarPartRHS+3,iPart)
+      jPos=jPos+PP_nVarPartRHS+3
       !>> TurbPt_temp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
 !      IF (SGSinUse) THEN
 !        PartSendBuf(iProc)%content(1+jPos:3+jPos) = TurbPt_temp(1:3,iPart)
@@ -712,8 +712,8 @@ DO iProc=0,nExchangeProcessors-1
     !jPos=jPos+3*FbCoeffm
 #endif /* USE_BASSETFORCE */
     !>> Pt_temp for pushing: Runge-Kutta derivative of position and velocity
-    Pt_temp(1:PP_nVarPart-1,PartID) = PartRecvBuf(iProc)%content(1+jPos:PP_nVarPart-1+jPos)
-    jpos=jpos+PP_nVarPart-1
+    Pt_temp(1:PP_nVarPartRHS+3,PartID) = PartRecvBuf(iProc)%content(1+jPos:PP_nVarPartRHS+3+jPos)
+    jpos=jpos+PP_nVarPartRHS+3
     !>> TurbPt_temp for pushing: Runge-Kutta derivative of turbulent velocity fluctuation
 !    IF (SGSinUse) THEN
 !      TurbPt_temp(1:3,PartID) = PartRecvBuf(iProc)%content(1+jPos:3+jPos)

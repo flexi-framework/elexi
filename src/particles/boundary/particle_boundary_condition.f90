@@ -333,7 +333,7 @@ ELSE
 #endif
   ! Produces best result compared to analytical solution in place capacitor ...
   ELSE
-    Pt_temp(4:PP_nVarPart-1,PartID) = 0.
+    Pt_temp(4:PP_nVarPartRHS+3,PartID) = 0.
   END IF
 END IF
 

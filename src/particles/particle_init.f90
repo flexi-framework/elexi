@@ -899,7 +899,7 @@ ALLOCATE(PartState(1:PP_nVarPart,1:PDM%maxParticleNumber),    &
          PartSpecies(            1:PDM%maxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
          Pt(    1:PP_nVarPartRHS,1:PDM%maxParticleNumber),    &
-         Pt_temp(1:PP_nVarPart-1,1:PDM%maxParticleNumber),    &
+         Pt_temp(1:PP_nVarPartRHS+3,1:PDM%maxParticleNumber),   &
 ! Allocate array for particle position in reference coordinates
          PDM%ParticleInside(     1:PDM%maxParticleNumber),    &
          PDM%nextFreePosition(   1:PDM%maxParticleNumber),    &

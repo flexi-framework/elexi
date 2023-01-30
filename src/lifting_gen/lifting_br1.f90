@@ -226,7 +226,7 @@ PPURE SUBROUTINE Lifting_SurfInt_BR1(nVar,Nloc,Flux,gradU,doMPISides,L_HatMinus,
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_SurfintLifting_gen, ONLY: DoSurfIntLifting_gen
+USE MOD_SurfIntLifting_gen, ONLY: DoSurfIntLifting_gen
 USE MOD_Mesh_Vars,          ONLY: SideToElem,nSides,nElems
 USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars,          ONLY: S2V2
@@ -278,9 +278,9 @@ DO SideID=firstSideID,lastSideID
         ! note: for master sides, the mapping S2V2 should be a unit matrix
         FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux(:,p,q,SideID)
       END DO; END DO ! p,q
-#if   (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
       CALL DoSurfIntLifting_gen(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,gradU(:,:,:,:,ElemID))
-#elif (PP_NodeType==2)
+#elif (PP_NodeType==2 && !defined(EXACT_MM))
       CALL DoSurfIntLifting_gen(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,gradU(:,:,:,:,ElemID))
 #endif
     END IF
@@ -304,9 +304,9 @@ DO SideID=firstSideID,lastSideID
           FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID))= Flux(:,p,q,SideID)
         END DO; END DO ! p,q
       END IF
-#if   (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
       CALL DoSurfIntLifting_gen(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,gradU(:,:,:,:,nbElemID))
-#elif (PP_NodeType==2)
+#elif (PP_NodeType==2 && !defined(EXACT_MM))
       CALL DoSurfIntLifting_gen(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,gradU(:,:,:,:,nbElemID))
 #endif
     END IF

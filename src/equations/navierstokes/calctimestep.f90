@@ -124,7 +124,10 @@ USE MOD_TimeDisc_Vars,ONLY:DFLScale
 USE MOD_Viscosity
 #endif /*PARABOLIC*/
 #if FV_ENABLED
-USE MOD_FV_Vars      ,ONLY: FV_Elems,FV_alpha,FV_alpha_min
+USE MOD_FV_Vars      ,ONLY: FV_Elems
+#if FV_ENABLED == 2
+USE MOD_FV_Vars      ,ONLY: FV_alpha,FV_alpha_min
+#endif
 #endif
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars, ONLY: muSGS

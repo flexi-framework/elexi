@@ -52,6 +52,10 @@ CALL InitMPI()
 IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
      'This tool is designed only for single execution!')
 
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A)') ' AVG2D TOOL'
+SWRITE(UNIT_stdOut,'(132("="))')
+
 CALL ParseCommandlineArguments()
 ! Check for correct number of input files
 IF (nArgs.NE.1) THEN
@@ -87,10 +91,18 @@ IF (MPIRoot) CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(Args(1))//" "//TRIM(NewFil
 ! Loop over all the datasets
 DO iDataset = 1, SIZE(tmpDatasetNames)
   ! Read in the elementwise or pointwise arrays
-  WRITE(*,*) ''
-  WRITE(*,*) 'Read dataset ',TRIM(tmpDatasetNames(iDataset))
+  IF (iDataset.NE.1) &
+  WRITE(UNIT_stdOut,'(A)')   ! Empty line
+  WRITE(UNIT_stdOut,'(A,A)') ' Read dataset ',TRIM(tmpDatasetNames(iDataset))
   CALL OpenDataFile(TRIM(Args(1)),create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
   CALL GetDataSize(File_ID,TRIM(tmpDatasetNames(iDataset)),nDims,HSize)
+
+  ! Skip data set if the last dimension is not nElems
+  IF (HSize(nDims).NE.nElems) THEN
+    WRITE(UNIT_stdOut,'(A,A,A)') ' Skip dataset ',TRIM(tmpDatasetNames(iDataset)), ' (wrong number of elements)'
+    CYCLE
+  END IF
+
   IF (nDims.EQ.2) THEN
     ! Elementwise data set
     ALLOCATE(RealElemArray(INT(HSize(1)),INT(HSize(2))))
@@ -108,11 +120,10 @@ DO iDataset = 1, SIZE(tmpDatasetNames)
     CALL GetNodesAndWeights(N,TRIM(NodeType),xGP,wGP)
   ELSE
     CALL CloseDataFile()
-    WRITE(*,*) 'Skip dataset ',TRIM(tmpDatasetNames(iDataset)), ' (wrong dimension)'
+    WRITE(UNIT_stdOut,'(A,A,A)') ' Skip dataset ',TRIM(tmpDatasetNames(iDataset)), ' (wrong dimension)'
     CYCLE
   END IF
   CALL CloseDataFile()
-
 
   ! Compute the averages
   IF (nDims.EQ.2) THEN
@@ -168,7 +179,7 @@ DO iDataset = 1, SIZE(tmpDatasetNames)
 
 
   ! Open new file and write the array
-  WRITE(*,*) 'Write dataset ',TRIM(tmpDatasetNames(iDataset))
+  WRITE(UNIT_stdOut,'(A,A)') ' Write dataset ',TRIM(tmpDatasetNames(iDataset))
   CALL OpenDataFile(TRIM(NewFileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   IF (nDims.EQ.2) THEN
     CALL WriteArray(TRIM(tmpDatasetNames(iDataset)),2,&
@@ -202,7 +213,7 @@ IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
 
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)') ' AVG2D TOOL FINISHED! '
+SWRITE(UNIT_stdOut,'(A)') ' AVG2D TOOL FINISHED!'
 SWRITE(UNIT_stdOut,'(132("="))')
 
 END PROGRAM avg2D

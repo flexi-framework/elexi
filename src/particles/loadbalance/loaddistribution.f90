@@ -236,7 +236,7 @@ IF (nSpecies.GT.0) THEN
       END DO
     END IF
 
-    DEALLOCATE(PartIntGlob)
+    SDEALLOCATE(PartIntGlob)
   END IF ! MPIRoot
 END IF ! nSpecies.GT.0
 

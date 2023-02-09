@@ -196,7 +196,7 @@ CALL prms%CreateLogicalOption(      "DGonly"          , "Visualize FV elements a
 CALL prms%CreateStringOption(       "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
 CALL prms%CreateLogicalOption(      "HighOrder"       , "Write high-order element representation",".FALSE.")
 #if USE_PARTICLES
-CALL prms%CreateLogicalOption(      'VisuField'       , "Visualize field"    ,".FALSE.")
+CALL prms%CreateLogicalOption(      'VisuField'       , "Visualize field"    ,".TRUE.")
 CALL prms%CreateLogicalOption(      'VisuPart'        , "Visualize particles",".FALSE.")
 #endif
 

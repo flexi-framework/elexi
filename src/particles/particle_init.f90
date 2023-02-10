@@ -490,9 +490,9 @@ CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-WallVelo'   , 'Velocity (g
 !                                                                             , numberedmulti=.TRUE.)
 ! CALL prms%CreateRealOption(         'Part-Boundary[$]-AmbientDynamicVisc' , 'Ambient dynamic viscosity'                            &
 !                                                                             , numberedmulti=.TRUE.)
-#if USE_EXTEND_RHS && ANALYZE_RHS
-CALL prms%CreateRealOption(         'Part-tWriteRHS'              , 'Output time for RHS', '0.'                                    )
-#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
+!#if USE_EXTEND_RHS && ANALYZE_RHS
+!CALL prms%CreateRealOption(         'Part-tWriteRHS'              , 'Output time for RHS', '0.'                                    )
+!#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 ! Call every other DefineParametersParticle routine
 CALL DefineParametersParticleAnalyze()
@@ -714,12 +714,12 @@ USE MOD_Particle_MPI_Emission      ,ONLY: InitEmissionComm
 USE MOD_Particle_MPI_Halo          ,ONLY: IdentifyPartExchangeProcs
 USE MOD_Particle_MPI_Vars          ,ONLY: PartMPI
 #endif /*USE_MPI*/
-#if USE_EXTEND_RHS && ANALYZE_RHS
-USE MOD_Output_Vars                ,ONLY: ProjectName
-USE MOD_Output                     ,ONLY: InitOutputToFile
-USE MOD_Restart_Vars               ,ONLY: DoRestart,RestartTime
-USE MOD_Analyze_Vars               ,ONLY: analyze_dt
-#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
+!#if USE_EXTEND_RHS && ANALYZE_RHS
+!USE MOD_Output_Vars                ,ONLY: ProjectName
+!USE MOD_Output                     ,ONLY: InitOutputToFile
+!USE MOD_Restart_Vars               ,ONLY: DoRestart,RestartTime
+!USE MOD_Analyze_Vars               ,ONLY: analyze_dt
+!#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -773,6 +773,9 @@ IF (RecordPart.GT.0) THEN
 #if USE_SPHERICITY
   RPP_nVarNames = RPP_nVarNames + 1
 #endif
+#if ANALYZE_RHS
+  RPP_nVarNames = RPP_nVarNames + 18
+#endif
   CALL SYSTEM('mkdir -p recordpoints')
   ! Get size of buffer array
   RPP_maxMemory     = GETINT('Part-RPMemory')       ! Max buffer (100MB)
@@ -822,19 +825,19 @@ CALL InitEmissionComm()
 CALL MPI_BARRIER(PartMPI%COMM,IERROR)
 #endif /*MPI*/
 
-#if USE_EXTEND_RHS && ANALYZE_RHS
-WRITE(tmpStr,FMT='(I0)') myRank
-FileName_RHS = TRIM(ProjectName)//'_'//TRIM(ADJUSTL(tmpStr))//'_RHS'
-WRITE(tmpStr,FMT='(E8.2)') analyze_dt
-dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(ADJUSTL(tmpStr)))
-IF(dtWriteRHS.GT.0.0)THEN
-  tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
-
-  CALL InitOutputToFile(FileName_RHS,'RHS',23,&
-    [CHARACTER(6)::"Spec","Fx","Fy","Fz","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fmmx","Fmmy","Fmmz",&
-                   "Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz","nIndex"],WriteRootOnly=.FALSE.)
-END IF
-#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
+!#if USE_EXTEND_RHS && ANALYZE_RHS
+!WRITE(tmpStr,FMT='(I0)') myRank
+!FileName_RHS = TRIM(ProjectName)//'_'//TRIM(ADJUSTL(tmpStr))//'_RHS'
+!WRITE(tmpStr,FMT='(E8.2)') analyze_dt
+!dtWriteRHS    = GETREAL('Part-tWriteRHS',TRIM(ADJUSTL(tmpStr)))
+!IF(dtWriteRHS.GT.0.0)THEN
+!  tWriteRHS     = MERGE(dtWriteRHS+RestartTime,dtWriteRHS,doRestart)
+!
+!  CALL InitOutputToFile(FileName_RHS,'RHS',23,&
+!    [CHARACTER(6)::"Spec","Fx","Fy","Fz","Fdmx","Fdmy","Fdmz","Flmx","Flmy","Flmz","Fmmx","Fmmy","Fmmz",&
+!                   "Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz","nIndex"],WriteRootOnly=.FALSE.)
+!END IF
+!#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 
@@ -978,6 +981,11 @@ FbCoeff(N_Basset) = (N_Basset-s43)/((N_Basset-1)*SQRT(REAL(N_Basset-1))+(N_Basse
 !  0.39635904496921,0.42253908596514,0.48317384225265,0.63661146557001/)
 !FbCoefft = (/0.1,0.3,1.,3.,10.,40.,190.,1000.,6500.,50000./)
 #endif /* USE_BASSETFORCE */
+
+#if USE_EXTEND_RHS && ANALYZE_RHS
+ALLOCATE(Pt_ext(18,PDM%maxParticleNumber))
+Pt_ext = 0.
+#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 END SUBROUTINE AllocateParticleArrays
 
@@ -1826,6 +1834,10 @@ SDEALLOCATE(FbCoeff)
 !SDEALLOCATE(FbCoefft)
 !SDEALLOCATE(Fbi)
 #endif /* USE_BASSETFORCE */
+
+#if ANALYZE_RHS
+SDEALLOCATE(Pt_ext)
+#endif /* ANALYZE_RHS */
 
 ! interpolation
 CALL FinalizeParticleInterpolation

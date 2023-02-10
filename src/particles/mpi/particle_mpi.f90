@@ -189,6 +189,9 @@ PartCommSize   = PartCommSize + 1
 PartCommSize   = PartCommSize + N_Basset+2
 !PartCommSize   = PartCommSize + 3*FbCoeffm
 #endif /* USE_BASSETFORCE */
+#if ANALYZE_RHS
+PartCommSize   = PartCommSize + 18
+#endif
 ! id of element
 PartCommSize   = PartCommSize + 1
 
@@ -379,6 +382,9 @@ USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #if USE_BASSETFORCE
 USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars,bIter,N_Basset,Fbdt!,FbCoeffm,Fbi
 #endif /* USE_BASSETFORCE */
+#if ANALYZE_RHS
+USE MOD_Particle_Vars,            ONLY:Pt_ext
+#endif /* ANALYZE_RHS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -463,6 +469,10 @@ DO iProc=0,nExchangeProcessors-1
       !PartSendBuf(iProc)%content(1+jPos:3*FbCoeffm+jPos) = RESHAPE(Fbi(1:3,1:FbCoeffm,iPart),(/3*FbCoeffm/))
       !jPos=jPos+3*FbCoeffm
 #endif /* USE_BASSETFORCE */
+#if ANALYZE_RHS
+      PartSendBuf(iProc)%content(1+jPos:18+jPos) = Pt_ext(1:18,iPart)
+      jPos=jPos+18
+#endif /* ANALYZE_RHS */
       !>> Pt_temp for pushing: Runge-Kutta derivative of position and velocity
       PartSendBuf(iProc)%content(1+jPos:PP_nVarPartRHS+3+jPos) = Pt_temp(1:PP_nVarPartRHS+3,iPart)
       jPos=jPos+PP_nVarPartRHS+3
@@ -523,6 +533,9 @@ DO iPart=1,PDM%ParticleVecLength
   bIter(iPart) = 0.
   Fbdt(:,iPart) = 0.
   !Fbi(:,:,iPart) = 0.
+#endif
+#if ANALYZE_RHS
+  Pt_ext(:,iPart) = 0.
 #endif
   Pt_temp(:,iPart) = 0.
   IF (doParticleReflectionTrack)                        PartReflCount(  iPart) = 0
@@ -617,6 +630,9 @@ USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
 #if USE_BASSETFORCE
 USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars,N_Basset,bIter,Fbdt!,FbCoeffm,Fbi
 #endif /* USE_BASSETFORCE */
+#if ANALYZE_RHS
+USE MOD_Particle_Vars,            ONLY:Pt_ext
+#endif /* ANALYZE_RHS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -711,6 +727,10 @@ DO iProc=0,nExchangeProcessors-1
     !Fbi(1:3,1:FbCoeffm,PartID)  = RESHAPE(PartRecvBuf(iProc)%content(1+jPos:3*FbCoeffm+jPos),(/3,FbCoeffm/))
     !jPos=jPos+3*FbCoeffm
 #endif /* USE_BASSETFORCE */
+#if ANALYZE_RHS
+    Pt_ext(1:18,PartID) = PartRecvBuf(iProc)%content(1+jPos:18+jPos)
+    jPos=jPos+18
+#endif /* ANALYZE_RHS */
     !>> Pt_temp for pushing: Runge-Kutta derivative of position and velocity
     Pt_temp(1:PP_nVarPartRHS+3,PartID) = PartRecvBuf(iProc)%content(1+jPos:PP_nVarPartRHS+3+jPos)
     jpos=jpos+PP_nVarPartRHS+3

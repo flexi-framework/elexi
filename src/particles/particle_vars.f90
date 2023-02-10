@@ -290,6 +290,7 @@ REAL,ALLOCATABLE                         :: gradUz_master_loc(:,:,:,:), gradUz_s
 REAL                                     :: tWriteRHS
 REAL                                     :: dtWriteRHS
 CHARACTER(LEN=255)                       :: Filename_RHS
+REAL,ALLOCATABLE                         :: Pt_ext(:,:)
 #endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 !===================================================================================================================================

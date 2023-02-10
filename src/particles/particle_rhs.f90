@@ -101,9 +101,9 @@ USE MOD_Particle_Interpolation_Vars,  ONLY: FieldAtParticle
 USE MOD_Particle_Interpolation_Vars,  ONLY: GradAtParticle
 #endif
 USE MOD_Particle_Vars,                ONLY: PDM, Pt
-#if ANALYZE_RHS
-USE MOD_Particle_Vars,                ONLY: tWriteRHS,dtWriteRHS
-#endif /* ANALYZE_RHS */
+!#if ANALYZE_RHS
+!USE MOD_Particle_Vars,                ONLY: tWriteRHS,dtWriteRHS
+!#endif /* ANALYZE_RHS */
 ! #if USE_RW
 ! USE MOD_Particle_RandomWalk_Vars,     ONLY: RWTime
 #if USE_BASSETFORCE
@@ -157,9 +157,9 @@ DO iPart = 1,PDM%ParticleVecLength
   END IF
 END DO
 
-#if ANALYZE_RHS
-IF((dtWriteRHS .GT. 0.0) .AND. (tWriteRHS-t .LE. dt*(1.+1.E-4))) tWriteRHS = tWriteRHS + dtWriteRHS
-#endif /* ANALYZE_RHS */
+!#if ANALYZE_RHS
+!IF((dtWriteRHS .GT. 0.0) .AND. (tWriteRHS-t .LE. dt*(1.+1.E-4))) tWriteRHS = tWriteRHS + dtWriteRHS
+!#endif /* ANALYZE_RHS */
 
 END SUBROUTINE CalcPartRHS
 
@@ -401,8 +401,9 @@ USE MOD_Mathtools,              ONLY: CROSS
 USE MOD_Particle_Vars,          ONLY: Species,PartSpecies
 USE MOD_Particle_Vars,          ONLY: PartState,TurbPartState
 #if ANALYZE_RHS
-USE MOD_Particle_Vars,          ONLY: tWriteRHS,FileName_RHS,dtWriteRHS
-USE MOD_Output,                 ONLY: OutputToFile
+!USE MOD_Particle_Vars,          ONLY: tWriteRHS,FileName_RHS,dtWriteRHS,Pt_ext
+USE MOD_Particle_Vars,          ONLY: Pt_ext
+!USE MOD_Output,                 ONLY: OutputToFile
 #endif /* ANALYZE_RHS */
 USE MOD_PreProc,                ONLY: PP_pi
 USE MOD_Viscosity
@@ -710,29 +711,31 @@ END IF
 
 ! Output RHS to file
 #if ANALYZE_RHS
-IF(dtWriteRHS.GT.0.0)THEN
-  IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
+!IF(dtWriteRHS.GT.0.0)THEN
+!  IF(tWriteRHS-t.LE.dt*(1.+1.E-4))THEN
+Pt_ext(1:3  ,PartID) = Pt_in(1:3)
 #if USE_VIRTUALMASS
-    IF (Species(PartSpecies(PartID))%CalcVirtualMass) THEN
-      prefactor = 0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
-      Fvm = Fvm-Pt(1:3)*prefactor
-    END IF
+IF (Species(PartSpecies(PartID))%CalcVirtualMass) &
+  Pt_ext(4:6,PartID) = Fvm-Pt(1:3)*0.5*FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC
 #endif
+Pt_ext(7:9  ,PartID) = Fum(1:3)
+Pt_ext(10:12,PartID) = Flm(1:3)
+Pt_ext(13:15,PartID) = Fmm(1:3)
 #if USE_BASSETFORCE
-    IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
-      prefactor = 9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
-                * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
-      Fbm = Fbm-Pt(1:3)*s43*prefactor*SQRT(Fbdt(nIndex+1,PartID)-Fbdt(nIndex,PartID))
-    END IF
-#endif /* USE_BASSETFORCE */
-    CALL OutputToFile(FileName_RHS,(/t/),(/23,1/),&
-#if USE_BASSETFORCE
-      (/REAL(PartSpecies(PartID)),Pt(1:3),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3),REAL(bIter(PartID),8)/))
-#else
-      (/REAL(PartSpecies(PartID)),Pt(1:3),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3),REAL(1.,8)/))
-#endif /* USE_BASSETFORCE */
-  END IF
+IF (Species(PartSpecies(PartID))%CalcBassetForce) THEN
+  prefactor = 9./(PartState(PART_DIAM,PartID)*Species(PartSpecies(PartID))%DensityIC)&
+            * SQRT(FieldAtParticle(DENS)*mu/(PP_pi))
+  Pt_ext(16:18,PartID) = Fbm-Pt(1:3)*s43*prefactor*SQRT(Fbdt(nIndex+1,PartID)-Fbdt(nIndex,PartID))
 END IF
+#endif /* USE_BASSETFORCE */
+!    CALL OutputToFile(FileName_RHS,(/t/),(/23,1/),&
+!#if USE_BASSETFORCE
+!      (/REAL(PartSpecies(PartID)),Pt(1:3),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3),REAL(bIter(PartID),8)/))
+!#else
+!      (/REAL(PartSpecies(PartID)),Pt(1:3),Pt_in(1:3),Flm(1:3),Fmm(1:3),Fum(1:3),Fvm(1:3),Fbm(1:3),REAL(1.,8)/))
+!#endif /* USE_BASSETFORCE */
+!  END IF
+!END IF
 #endif
 
 Pt_in(:) = Pt

@@ -123,6 +123,9 @@ USE MOD_TimeDisc_Vars           ,ONLY: t,dt,currentStage,RKC,nRKStages
 #if USE_MPI
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_MPI_Request
 #endif /*USE_MPI*/
+#if ANALYZE_RHS
+USE MOD_Particle_Vars           ,ONLY: Pt_ext
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -200,7 +203,7 @@ DO iRecord = 1,RecordPart
       END IF
       ! Time
       m = m + 1
-      RPP_Plane(iRecord)%RPP_Data(9  ,RPP_Plane(iRecord)%RPP_Records) = t_loc
+      RPP_Plane(iRecord)%RPP_Data(m  ,RPP_Plane(iRecord)%RPP_Records) = t_loc
 #if USE_SPHERICITY
       ! Sphericity
       m = m + 1
@@ -210,6 +213,10 @@ DO iRecord = 1,RecordPart
       IF(doPartIndex) THEN; m = m + 1
         RPP_Plane(iRecord)%RPP_Data(m,RPP_Plane(iRecord)%RPP_Records) = PartIndex(iPart)
       END IF
+#if ANALYZE_RHS
+      m = m + 1
+      RPP_Plane(iRecord)%RPP_Data(m:m+18,RPP_Plane(iRecord)%RPP_Records) = Pt_ext(:,iPart)
+#endif /*ANALYZE_RHS*/
     END IF
   END DO
   RPP_Records(iRecord) = RPP_Plane(iRecord)%RPP_Records
@@ -328,6 +335,26 @@ DO iRecord = 1,RecordPart
     IF(doPartIndex) THEN; m = m + 1
       StrVarNames(m) ='Index'
     END IF
+#if ANALYZE_RHS
+    m = m + 1; StrVarNames(m)   ='FdX'
+    m = m + 1; StrVarNames(m)   ='FdY'
+    m = m + 1; StrVarNames(m)   ='FdZ'
+    m = m + 1; StrVarNames(m)   ='FvX'
+    m = m + 1; StrVarNames(m)   ='FvY'
+    m = m + 1; StrVarNames(m)   ='FvZ'
+    m = m + 1; StrVarNames(m)   ='FuX'
+    m = m + 1; StrVarNames(m)   ='FuY'
+    m = m + 1; StrVarNames(m)   ='FuZ'
+    m = m + 1; StrVarNames(m)   ='FlX'
+    m = m + 1; StrVarNames(m)   ='FlY'
+    m = m + 1; StrVarNames(m)   ='FlZ'
+    m = m + 1; StrVarNames(m)   ='FmX'
+    m = m + 1; StrVarNames(m)   ='FmY'
+    m = m + 1; StrVarNames(m)   ='FmZ'
+    m = m + 1; StrVarNames(m)   ='FbX'
+    m = m + 1; StrVarNames(m)   ='FbY'
+    m = m + 1; StrVarNames(m)   ='FbZ'
+#endif
 
     ForceIC = 0
 

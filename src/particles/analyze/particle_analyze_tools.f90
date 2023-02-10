@@ -78,8 +78,8 @@ SUBROUTINE TrackingParticlePath()
 ! Outputs the particle position and velocity at every time step to determine the absolute or relative (since emission) path
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Vars,          ONLY: PartState,PDM,LastPartPos
 USE MOD_Particle_Analyze_Vars,  ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
+USE MOD_Particle_Vars,          ONLY: PartState,PDM,LastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -114,8 +114,11 @@ USE MOD_Globals
 USE MOD_Particle_Globals        ,ONLY: VECNORM,ALMOSTZERO
 USE MOD_HDF5_Output             ,ONLY: WriteArray
 USE MOD_Output_Vars             ,ONLY: WriteStateFiles
-USE MOD_Particle_Vars           ,ONLY: PartState,PDM,LastPartPos,PartSpecies,PartIndex,doPartIndex
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_Plane,RecordPart,RPP_Records,RPP_Records_Glob
+USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleReflectionTrack
+USE MOD_Particle_Vars           ,ONLY: PartState,PDM,LastPartPos,PartSpecies
+USE MOD_Particle_Vars           ,ONLY: doPartIndex,PartIndex
+USE MOD_Particle_Vars           ,ONLY: PartReflCount
 USE MOD_TimeDisc_Vars           ,ONLY: t,dt,currentStage,RKC,nRKStages
 #if USE_MPI
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_MPI_Request
@@ -190,16 +193,23 @@ DO iRecord = 1,RecordPart
       RPP_Plane(iRecord)%RPP_Data(7  ,RPP_Plane(iRecord)%RPP_Records) = PartState(PART_DIAM,iPart)
       ! Species
       RPP_Plane(iRecord)%RPP_Data(8  ,RPP_Plane(iRecord)%RPP_Records) = PartSpecies(iPart)
+      m = 8
+      ! Reflection
+      IF (doParticleReflectionTrack) THEN; m = m + 1
+        RPP_Plane(iRecord)%RPP_Data(m,RPP_Plane(iRecord)%RPP_Records) = PartReflCount(iPart)
+      END IF
       ! Time
+      m = m + 1
       RPP_Plane(iRecord)%RPP_Data(9  ,RPP_Plane(iRecord)%RPP_Records) = t_loc
-      m = 9
 #if USE_SPHERICITY
       ! Sphericity
       m = m + 1
       RPP_Plane(iRecord)%RPP_Data(m  ,RPP_Plane(iRecord)%RPP_Records) = PartState(PART_SPHE,iPart)
 #endif
       ! Index
-      IF(doPartIndex) RPP_Plane(iRecord)%RPP_Data(m+1,RPP_Plane(iRecord)%RPP_Records) = PartIndex(iPart)
+      IF(doPartIndex) THEN; m = m + 1
+        RPP_Plane(iRecord)%RPP_Data(m,RPP_Plane(iRecord)%RPP_Records) = PartIndex(iPart)
+      END IF
     END IF
   END DO
   RPP_Records(iRecord) = RPP_Plane(iRecord)%RPP_Records
@@ -221,16 +231,16 @@ SUBROUTINE ParticleRecord(OutputTime,writeToBinary)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_HDF5_Output             ,ONLY: WriteArray
+USE MOD_HDF5_Output             ,ONLY: WriteAttribute,WriteArray
 USE MOD_IO_HDF5                 ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Output_Vars             ,ONLY: WriteStateFiles
-USE MOD_Particle_Vars           ,ONLY: Species,nSpecies,doPartIndex
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_MaxBufferSize,RPP_Plane,RecordPart,RPP_nVarNames,RPP_Records_Glob
-USE MOD_HDF5_Output             ,ONLY: WriteAttribute
+USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleReflectionTrack
+USE MOD_Particle_Vars           ,ONLY: Species,nSpecies,doPartIndex
 #if USE_MPI
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_MPI_Request
 USE MOD_Particle_HDF5_Output    ,ONLY: DistributedWriteArray
-#endif /*MPI*/
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -240,7 +250,7 @@ LOGICAL,OPTIONAL,INTENT(IN)    :: writeToBinary
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                        :: RPP_Output
-INTEGER                        :: iRecord,iSpecies
+INTEGER                        :: iRecord,iSpecies,m
 CHARACTER(LEN=200)             :: FileName_loc
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
 INTEGER                        :: locRPP,offsetRPP,RPP_glob
@@ -297,21 +307,27 @@ DO iRecord = 1,RecordPart
 #endif
 
     ALLOCATE(StrVarNames(RPP_nVarNames))
-    StrVarNames(1) ='PartPosX'
-    StrVarNames(2) ='PartPosY'
-    StrVarNames(3) ='PartPosZ'
-    StrVarNames(4) ='VelocityX'
-    StrVarNames(5) ='VelocityY'
-    StrVarNames(6) ='VelocityZ'
-    StrVarNames(7) ='PartDiam'
-    StrVarNames(8) ='Species'
-    StrVarNames(9) ='Time'
+    StrVarNames(1)   ='PartPosX'
+    StrVarNames(2)   ='PartPosY'
+    StrVarNames(3)   ='PartPosZ'
+    StrVarNames(4)   ='VelocityX'
+    StrVarNames(5)   ='VelocityY'
+    StrVarNames(6)   ='VelocityZ'
+    StrVarNames(7)   ='PartDiam'
+    StrVarNames(8)   ='Species'
+    m = 8
+    IF (doParticleReflectionTrack) THEN; m = m + 1
+      StrVarNames(m) ='ReflectionCount'
+    END IF
+    m = m + 1
+    StrVarNames(m)   ='Time'
 #if USE_SPHERICITY
-    StrVarNames(10)='Sphericity'
-    IF(doPartIndex) StrVarNames(11) ='Index'
-#else
-    IF(doPartIndex) StrVarNames(10) ='Index'
+    m = m + 1
+    StrVarNames(m)   ='Sphericity'
 #endif
+    IF(doPartIndex) THEN; m = m + 1
+      StrVarNames(m) ='Index'
+    END IF
 
     ForceIC = 0
 

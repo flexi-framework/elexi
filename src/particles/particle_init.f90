@@ -703,7 +703,7 @@ USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MaxBufferSize, RPP_Plane, RecordPa
 USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_Records,RPP_Records_Glob
 USE MOD_Particle_Boundary_Sampling ,ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking ,ONLY: InitParticleBoundaryTracking
-USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
+USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove,doParticleReflectionTrack
 USE MOD_Particle_Interpolation     ,ONLY: InitParticleInterpolation
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
@@ -767,7 +767,9 @@ LowVeloRemove       = GETLOGICAL('Part-LowVeloRemove')
 ! Initialize record plane of particles
 RecordPart          = GETINT('Part-nRPs')
 IF (RecordPart.GT.0) THEN
-  IF(doPartIndex) RPP_nVarNames = RPP_nVarNames + 1
+  RPP_nVarNames = 9
+  IF(doPartIndex)               RPP_nVarNames = RPP_nVarNames + 1
+  IF(doParticleReflectionTrack) RPP_nVarNames = RPP_nVarNames + 1
 #if USE_SPHERICITY
   RPP_nVarNames = RPP_nVarNames + 1
 #endif

@@ -352,7 +352,6 @@ END IF
 NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
 HighOrder         = GETLOGICAL('HighOrder')
 #if USE_PARTICLES
-VisuField         = GETLOGICAL("VisuField")
 VisuPart          = GETLOGICAL("VisuPart")
 #endif
 

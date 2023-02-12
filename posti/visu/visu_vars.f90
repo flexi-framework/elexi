@@ -187,7 +187,6 @@ REAL,ALLOCATABLE                  :: Vdm_FVToVisu(:,:)
 ! Particles
 ! ==============================================================================================================================
 LOGICAL                           :: VisuPart                    !< Flag indicating if the simulation was run with particles
-LOGICAL                           :: VisuField                   !< Flag indicating if the simulation was run with field time increments
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: PartnamesAll(:)         !< all available varnames (state file + dependent vars + generic)
 
 TYPE tVisuParticle

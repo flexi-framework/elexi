@@ -490,7 +490,8 @@ END IF
 ! determine the SimulationEfficiency and PID here,
 ! because it is used in ComputeElemLoad -> WriteElemTimeStatistics
 IF(   ALMOSTEQUAL(dt,dt_Min(DT_ANALYZE)) &
-  .OR.ALMOSTEQUAL(dt,dt_Min(DT_END))) THEN
+  .OR.ALMOSTEQUAL(dt,dt_Min(DT_END    )) &
+  .OR.doAnalyze) THEN
   ! Get calculation time per DOF
   CalcTimeEnd          = FLEXITIME()
   WallTimeEnd          = CalcTimeEnd

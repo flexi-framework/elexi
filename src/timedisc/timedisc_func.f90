@@ -426,7 +426,7 @@ USE MOD_PruettDamping       ,ONLY: TempFilterTimeDeriv
 USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
 USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
-USE MOD_Restart_Vars        ,ONLY: RestartWallTime
+USE MOD_Restart_Vars        ,ONLY: RestartTime,RestartWallTime
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
@@ -456,7 +456,7 @@ USE MOD_LoadBalance_Vars    ,ONLY: DoInitialAutoRestart,ForceInitialLoadBalance
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeField,RestartTimeBackup
 USE MOD_Particle_Globals    ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Localization,ONLY:CountPartsPerElem
-USE MOD_Restart_Vars        ,ONLY: RestartTime,RestartFile
+USE MOD_Restart_Vars        ,ONLY: RestartFile
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,time_start
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
@@ -489,9 +489,7 @@ END IF
 
 ! determine the SimulationEfficiency and PID here,
 ! because it is used in ComputeElemLoad -> WriteElemTimeStatistics
-IF(   ALMOSTEQUAL(dt,dt_Min(DT_ANALYZE)) &
-  .OR.ALMOSTEQUAL(dt,dt_Min(DT_END    )) &
-  .OR.doAnalyze) THEN
+IF(doAnalyze) THEN
   ! Get calculation time per DOF
   CalcTimeEnd          = FLEXITIME()
   WallTimeEnd          = CalcTimeEnd

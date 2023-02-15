@@ -1190,14 +1190,14 @@ END SUBROUTINE freeList
 !===================================================================================================================================
 SUBROUTINE WriteElemTimeStatistics(WriteHeader,time,iter)
 ! MODULES
-USE MOD_Globals          ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,Abort,nProcessors,nGlobalNbrOfParticles
-USE MOD_Globals_Vars     ,ONLY: SimulationEfficiency,WallTime,InitializationWallTime,ReadMeshWallTime
-USE MOD_Globals_Vars     ,ONLY: DomainDecompositionWallTime,CommMeshReadinWallTime
-USE MOD_Analyze_Vars     ,ONLY: PID
-USE MOD_LoadBalance_Vars ,ONLY: TargetWeight,nLoadBalanceSteps,CurrentImbalance,MinWeight,MaxWeight,WeightSum
-USE MOD_LoadBalance_Vars ,ONLY: ElemTimeField,ElemTimePart
-USE MOD_Restart_Vars     ,ONLY: DoRestart
-USE MOD_Particle_Memory  ,ONLY: ProcessMemUsage
+USE MOD_Globals                   ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,Abort,nProcessors,nGlobalNbrOfParticles
+USE MOD_Globals_Vars              ,ONLY: SimulationEfficiency,WallTime,InitializationWallTime,ReadMeshWallTime
+USE MOD_Globals_Vars              ,ONLY: DomainDecompositionWallTime,CommMeshReadinWallTime
+USE MOD_Analyze_Vars              ,ONLY: PID
+USE MOD_LoadBalance_Vars          ,ONLY: TargetWeight,nLoadBalanceSteps,CurrentImbalance,MinWeight,MaxWeight,WeightSum
+USE MOD_LoadBalance_Vars          ,ONLY: ElemTimeField,ElemTimePart
+USE MOD_Restart_Vars              ,ONLY: DoRestart
+USE MOD_Particle_Memory           ,ONLY: ProcessMemUsage
 #if USE_MPI
 USE MOD_Globals
 USE MOD_Particle_MPI_Shared_Vars  ,ONLY: myComputeNodeRank,myLeaderGroupRank
@@ -1208,11 +1208,10 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 LOGICAL,INTENT(IN)                      :: WriteHeader
-REAL,INTENT(IN),OPTIONAL                :: time
+REAL,INTENT(IN)                         :: time
 INTEGER(KIND=8),INTENT(IN),OPTIONAL     :: iter
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! LOCAL VARIABLES
-REAL                                     :: time_loc
 CHARACTER(LEN=22),PARAMETER              :: outfile='ElemTimeStatistics.csv'
 INTEGER                                  :: ioUnit,I
 CHARACTER(LEN=255)                       :: formatStr
@@ -1332,12 +1331,6 @@ IF (WriteHeader) THEN
 
   CLOSE(ioUnit)
 ELSE !
-  IF (PRESENT(time)) THEN
-    time_loc = time
-  ELSE
-    time_loc = -1.
-  END IF
-
   ! Calculate elem time proportions for field and particle routines
   SumElemTime=ElemTimeField+ElemTimePart
   IF(SumElemTime.LE.0.)THEN
@@ -1352,7 +1345,7 @@ ELSE !
     OPEN(NEWUNIT=ioUnit,FILE=TRIM(outfile),POSITION="APPEND",STATUS="OLD")
     WRITE(formatStr,'(A2,I2,A14)')'(',nOutputVar,'(A1,E21.14E3))'
     WRITE(tmpStr2,formatStr)               &
-              " ",time_loc,                &
+              " ",time,                    &
         delimiter,REAL(nProcessors),       &
         delimiter,MinWeight,               &
         delimiter,MaxWeight,               &

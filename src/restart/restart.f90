@@ -231,7 +231,7 @@ USE MOD_Restart_Vars
 #if FV_ENABLED
 USE MOD_ReadInTools,        ONLY: GETINT
 USE MOD_StringTools,        ONLY: INTTOSTR
-#endif
+#endif /*FV_ENABLED*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -243,9 +243,8 @@ LOGICAL            :: ResetTime,validHDF5,prmChanged,userblockFound
 REAL               :: StartT,EndT
 CHARACTER(LEN=255) :: ParameterFileOld
 !==================================================================================================================================
-IF((.NOT.InterpolationInitIsDone).OR.RestartInitIsDone)THEN
+IF(.NOT.InterpolationInitIsDone .OR. RestartInitIsDone) &
   CALL CollectiveStop(__STAMP__,'InitRestart not ready to be called or already called.')
-END IF
 
 ! If not done previously, check the restart file
 IF (RestartMode.EQ.-1) CALL InitRestartFile(RestartFile_in)
@@ -320,6 +319,7 @@ END IF
 ! Check whether (during restart) the statefile from which the restart is performed should be deleted
 FlushInitialState = GETLOGICAL('FlushInitialState')
 
+RestartWallTime   = FLEXITIME()
 RestartInitIsDone = .TRUE.
 GETTIME(EndT)
 SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INIT RESTART DONE! [',EndT-StartT,'s]'

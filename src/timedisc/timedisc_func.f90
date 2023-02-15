@@ -511,7 +511,8 @@ ForceInitialLoadBalance = .FALSE. ! Initialize
 IF(DoInitialAutoRestart.AND.(iter.GE.LoadBalanceSample).AND.(iter.NE.maxIter)) ForceInitialLoadBalance=.TRUE.
 
 IF(   ALMOSTEQUAL(dt,dt_Min(DT_ANALYZE)) &
-  .OR.ALMOSTEQUAL(dt,dt_Min(DT_END))     &
+  .OR.ALMOSTEQUAL(dt,dt_Min(DT_END    )) &
+  .OR.doAnalyze                          &
   .OR.ForceInitialLoadBalance) THEN
   CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of LB
 

@@ -76,7 +76,11 @@ END FUNCTION cstrToChar255
 !===================================================================================================================================
 !> Wrapper to visu_InitFile for Paraview plugin, returns the available variable names and boundary names.
 !===================================================================================================================================
-SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, strlen_mesh, meshfile_IN, varnames, bcnames, partnames)
+SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, strlen_mesh, meshfile_IN, varnames, bcnames &
+#if USE_PARTICLES
+                                  ,partnames &
+#endif /*USE_PARTICLES*/
+                                  )
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
@@ -99,7 +103,9 @@ INTEGER,INTENT(IN)                    :: strlen_mesh
 TYPE(C_PTR),TARGET,INTENT(IN)         :: meshfile_IN
 TYPE (CARRAY), INTENT(INOUT)          :: varnames
 TYPE (CARRAY), INTENT(INOUT)          :: bcnames
+#if USE_PARTICLES
 TYPE (CARRAY), INTENT(INOUT)          :: partnames
+#endif /*USE_PARTICLES*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
 CHARACTER(LEN=255)                    :: statefile
@@ -164,9 +170,12 @@ SUBROUTINE visu_CWrapper(mpi_comm_IN,  &
     varnames_out,                                                                                                   &
     coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out,globalnodeidsSurfDG_out,          globalcellidsSurfDG_out,  &
     coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,globalnodeidsSurfFV_out,          globalcellidsSurfFV_out,  &
-    varnamesSurf_out,                                                                                               &
-    coordsPart_out  ,valuesPart_out  ,nodeidsPart_out  ,varnamesPart_out  ,componentsPart_out,                      &
-    coordsImpact_out,valuesImpact_out,nodeidsImpact_out,varnamesImpact_out,componentsImpact_out)
+    varnamesSurf_out                                                                                                &
+#if USE_PARTICLES
+   ,coordsPart_out  ,valuesPart_out  ,nodeidsPart_out  ,varnamesPart_out  ,componentsPart_out,                      &
+    coordsImpact_out,valuesImpact_out,nodeidsImpact_out,varnamesImpact_out,componentsImpact_out                     &
+#endif /*USE_PARTICLES*/
+    )
 ! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
@@ -176,57 +185,59 @@ USE MOD_Visu        ,ONLY: visu
 USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array,CARRAY
 #if !FV_ENABLED
 USE MOD_Posti_VisuMesh, ONLY: WriteGlobalNodeIDsToVTK_array
-#endif
+#endif /*!FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_VTK         ,ONLY: WritePartDataToVTK_array
-#endif
+#endif /*USE_PARTICLES*/
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)                      :: mpi_comm_IN
+INTEGER,INTENT(IN)            :: mpi_comm_IN
 #if USE_MPI
-INTEGER,INTENT(IN)                      :: UseD3
+INTEGER,INTENT(IN)            :: UseD3
 #endif
-INTEGER,INTENT(IN)                      :: UseHighOrder
-INTEGER,INTENT(IN)                      :: UseCurveds_IN
-INTEGER,INTENT(IN)                      :: strlen_prm
-INTEGER,INTENT(IN)                      :: strlen_posti
-INTEGER,INTENT(IN)                      :: strlen_state
-TYPE(C_PTR),TARGET,INTENT(IN)           :: prmfile_IN
-TYPE(C_PTR),TARGET,INTENT(IN)           :: postifile_IN
-TYPE(C_PTR),TARGET,INTENT(IN)           :: statefile_IN
-TYPE (CARRAY), INTENT(INOUT)            :: coordsDG_out
-TYPE (CARRAY), INTENT(INOUT)            :: valuesDG_out
-TYPE (CARRAY), INTENT(INOUT)            :: nodeidsDG_out
-TYPE (CARRAY), INTENT(INOUT)            :: globalnodeidsDG_out
-TYPE (CARRAY), INTENT(INOUT)            :: globalcellidsDG_out
-TYPE (CARRAY), INTENT(INOUT)            :: coordsFV_out
-TYPE (CARRAY), INTENT(INOUT)            :: valuesFV_out
-TYPE (CARRAY), INTENT(INOUT)            :: nodeidsFV_out
-TYPE (CARRAY), INTENT(INOUT)            :: globalnodeidsFV_out
-TYPE (CARRAY), INTENT(INOUT)            :: globalcellidsFV_out
-TYPE (CARRAY), INTENT(INOUT)            :: varnames_out
-TYPE (CARRAY), INTENT(INOUT)            :: coordsSurfDG_out
-TYPE (CARRAY), INTENT(INOUT)            :: valuesSurfDG_out
-TYPE (CARRAY), INTENT(INOUT)            :: nodeidsSurfDG_out
-TYPE (CARRAY), INTENT(INOUT)            :: globalnodeidsSurfDG_out
-TYPE (CARRAY), INTENT(INOUT)            :: globalcellidsSurfDG_out
-TYPE (CARRAY), INTENT(INOUT)            :: coordsSurfFV_out
-TYPE (CARRAY), INTENT(INOUT)            :: valuesSurfFV_out
-TYPE (CARRAY), INTENT(INOUT)            :: nodeidsSurfFV_out
-TYPE (CARRAY), INTENT(INOUT)            :: globalnodeidsSurfFV_out
-TYPE (CARRAY), INTENT(INOUT)            :: globalcellidsSurfFV_out
-TYPE (CARRAY), INTENT(INOUT)            :: varnamesSurf_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: coordsPart_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: valuesPart_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: nodeidsPart_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: varnamesPart_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: componentsPart_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: coordsImpact_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: valuesImpact_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: nodeidsImpact_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: varnamesImpact_out
-TYPE (CARRAY), INTENT(INOUT),OPTIONAL   :: componentsImpact_out
+INTEGER,INTENT(IN)            :: UseHighOrder
+INTEGER,INTENT(IN)            :: UseCurveds_IN
+INTEGER,INTENT(IN)            :: strlen_prm
+INTEGER,INTENT(IN)            :: strlen_posti
+INTEGER,INTENT(IN)            :: strlen_state
+TYPE(C_PTR),TARGET,INTENT(IN) :: prmfile_IN
+TYPE(C_PTR),TARGET,INTENT(IN) :: postifile_IN
+TYPE(C_PTR),TARGET,INTENT(IN) :: statefile_IN
+TYPE (CARRAY), INTENT(INOUT)  :: coordsDG_out
+TYPE (CARRAY), INTENT(INOUT)  :: valuesDG_out
+TYPE (CARRAY), INTENT(INOUT)  :: nodeidsDG_out
+TYPE (CARRAY), INTENT(INOUT)  :: globalnodeidsDG_out
+TYPE (CARRAY), INTENT(INOUT)  :: globalcellidsDG_out
+TYPE (CARRAY), INTENT(INOUT)  :: coordsFV_out
+TYPE (CARRAY), INTENT(INOUT)  :: valuesFV_out
+TYPE (CARRAY), INTENT(INOUT)  :: nodeidsFV_out
+TYPE (CARRAY), INTENT(INOUT)  :: globalnodeidsFV_out
+TYPE (CARRAY), INTENT(INOUT)  :: globalcellidsFV_out
+TYPE (CARRAY), INTENT(INOUT)  :: varnames_out
+TYPE (CARRAY), INTENT(INOUT)  :: coordsSurfDG_out
+TYPE (CARRAY), INTENT(INOUT)  :: valuesSurfDG_out
+TYPE (CARRAY), INTENT(INOUT)  :: nodeidsSurfDG_out
+TYPE (CARRAY), INTENT(INOUT)  :: globalnodeidsSurfDG_out
+TYPE (CARRAY), INTENT(INOUT)  :: globalcellidsSurfDG_out
+TYPE (CARRAY), INTENT(INOUT)  :: coordsSurfFV_out
+TYPE (CARRAY), INTENT(INOUT)  :: valuesSurfFV_out
+TYPE (CARRAY), INTENT(INOUT)  :: nodeidsSurfFV_out
+TYPE (CARRAY), INTENT(INOUT)  :: globalnodeidsSurfFV_out
+TYPE (CARRAY), INTENT(INOUT)  :: globalcellidsSurfFV_out
+TYPE (CARRAY), INTENT(INOUT)  :: varnamesSurf_out
+#if USE_PARTICLES
+TYPE (CARRAY), INTENT(INOUT)  :: coordsPart_out
+TYPE (CARRAY), INTENT(INOUT)  :: valuesPart_out
+TYPE (CARRAY), INTENT(INOUT)  :: nodeidsPart_out
+TYPE (CARRAY), INTENT(INOUT)  :: varnamesPart_out
+TYPE (CARRAY), INTENT(INOUT)  :: componentsPart_out
+TYPE (CARRAY), INTENT(INOUT)  :: coordsImpact_out
+TYPE (CARRAY), INTENT(INOUT)  :: valuesImpact_out
+TYPE (CARRAY), INTENT(INOUT)  :: nodeidsImpact_out
+TYPE (CARRAY), INTENT(INOUT)  :: varnamesImpact_out
+TYPE (CARRAY), INTENT(INOUT)  :: componentsImpact_out
+#endif /*USE_PARTICLES*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)                      :: prmfile
@@ -285,6 +296,7 @@ IF (MeshFileMode) THEN
   globalnodeidsSurfFV_out%len = 0
   globalcellidsSurfFV_out%len = 0
   varnamesSurf_out%len  = 0
+#if USE_PARTICLES
   coordsPart_out%len    = 0
   coordsPart_out%dim    = 0
   valuesPart_out%len    = 0
@@ -297,6 +309,7 @@ IF (MeshFileMode) THEN
   nodeidsImpact_out%len   = 0
   varnamesImpact_out%len  = 0
   componentsImpact_out%len  = 0
+#endif /*USE_PARTICLES*/
 
   RETURN
 END IF
@@ -350,10 +363,10 @@ IF(ALLOCATED(PDE%PartData_HDF5))THEN
   PDE%Part_Pos_visu = PDE%PartData_HDF5(1:3,:)
   PDE%Part_visu     = PDE%PartData_HDF5(4:,:)
 END IF
-CALL WritePartDataToVTK_array(PDE%nPart_visu,PDE%nPartVar_visu,coordsImpact_out,valuesImpact_out,&
-                                 nodeidsImpact_out,varnamesImpact_out,componentsImpact_out,PDE%Part_Pos_visu,&
-                                 PDE%Part_visu,PDE%PartIds_Visu,PDE%VarNamePartCombine,&
-                                 PDE%VarNamePartCombineLen,PDE%VarNamePartVisu,PDE%PartCPointers_allocated)
+
+CALL WritePartDataToVTK_array(PDE%nPart_visu,PDE%nPartVar_visu,coordsImpact_out,valuesImpact_out,nodeidsImpact_out,varnamesImpact_out,&
+                              componentsImpact_out,PDE%Part_Pos_visu,PDE%Part_visu,PDE%PartIds_Visu,PDE%VarNamePartCombine,&
+                              PDE%VarNamePartCombineLen,PDE%VarNamePartVisu,PDE%PartCPointers_allocated)
 #endif
 
 CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)

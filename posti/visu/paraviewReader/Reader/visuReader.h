@@ -84,12 +84,14 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       void DisableAllBCArrays();
       void EnableAllBCArrays();
 
+#if USE_PARTICLES
       int GetNumberOfVarParticleArrays();
       const char* GetVarParticleArrayName(int index);
       int GetVarParticleArrayStatus(const char* name);
       void SetVarParticleArrayStatus(const char* name, int status);
       void DisableAllVarParticleArrays();
       void EnableAllVarParticleArrays();
+#endif /*USE_PARTICLES*/
 
       // MPI
       void SetController(vtkMultiProcessController *);
@@ -121,6 +123,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       struct IntARRAY  globalnodeidsSurf_FV;
       struct IntARRAY  globalcellidsSurf_FV;
       struct CharARRAY varnamesSurf;
+#if USE_PARTICLES
       struct DoubleARRAY coords_Part;
       struct DoubleARRAY values_Part;
       struct IntARRAY  nodeids_Part;
@@ -131,9 +134,10 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       struct IntARRAY  nodeids_Impact;
       struct CharARRAY varnames_Impact;
       struct IntARRAY components_Impact;
+#endif /*USE_PARTICLES*/
 
       int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
-      int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
+      int RequestData(       vtkInformation *, vtkInformationVector **, vtkInformationVector *);
 
       void InsertData  (vtkMultiBlockDataSet* mb,          int blockno
                       , struct DoubleARRAY* coords,        struct DoubleARRAY* values
@@ -144,7 +148,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
             struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components); */
 			virtual void InsertPartData(vtkMultiBlockDataSet* mb_part, int blockno, struct DoubleARRAY* coords,
             struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components);
-#endif
+#endif /*USE_PARTICLES*/
 
       void DistributeData(vtkMultiBlockDataSet* mb, int blockno);
 

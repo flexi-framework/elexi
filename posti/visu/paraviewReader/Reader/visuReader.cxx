@@ -107,10 +107,10 @@ int visuReader::RequestInformation(vtkInformation *,
    this->SetController(vtkMultiProcessController::GetGlobalController());
    if (this->Controller == NULL) {
       NumProcesses = 1;
-      ProcessId = 0;
+      ProcessId    = 0;
    } else {
       NumProcesses = this->Controller->GetNumberOfProcesses();
-      ProcessId = this->Controller->GetLocalProcessId();
+      ProcessId    = this->Controller->GetLocalProcessId();
    }
 
    vtkMPICommunicator *communicator = vtkMPICommunicator::SafeDownCast(this->Controller->GetCommunicator());
@@ -124,7 +124,7 @@ int visuReader::RequestInformation(vtkInformation *,
 #if USE_PARTICLES
    vtkSmartPointer<vtkInformation> outInfoPart    = outputVector->GetInformationObject(2);
    vtkSmartPointer<vtkInformation> outInfoImpact = outputVector->GetInformationObject(3);
-#endif
+#endif /*USE_PARTICLES*/
 
    // sets the number of pieces to the number of processsors
    outInfoVolume ->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
@@ -132,7 +132,7 @@ int visuReader::RequestInformation(vtkInformation *,
 #if USE_PARTICLES
    outInfoPart   ->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
    outInfoImpact ->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
-#endif
+#endif /*USE_PARTICLES*/
 
    // RequestInformation may be called before AddFileName, thus the arrays with timesteps and
    // file names may be empty.  In this case, simply leave the function. It will be called again
@@ -150,7 +150,7 @@ int visuReader::RequestInformation(vtkInformation *,
 #if USE_PARTICLES
    outInfoPart   ->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
    outInfoImpact ->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
-#endif
+#endif /*USE_PARTICLES*/
    outInfoVolume ->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
    outInfoSurface->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
 
@@ -170,7 +170,9 @@ int visuReader::RequestInformation(vtkInformation *,
 
    struct CharARRAY varnames;
    struct CharARRAY bcnames;
+#if USE_PARTICLES
    struct CharARRAY partnames;
+#endif /*USE_PARTICLES*/
    // Call Posti-function requestInformation:
    // This function returns the varnames of state, primitive and derived quantities
    int strlen_state = strlen(FileNames[0].c_str());
@@ -180,7 +182,11 @@ int visuReader::RequestInformation(vtkInformation *,
    } else {
       strlen_mesh = strlen(MeshFileOverwrite);
    }
-   __mod_visu_cwrapper_MOD_visu_requestinformation(&fcomm, &strlen_state, FileNames[0].c_str(), &strlen_mesh, MeshFileOverwrite, &varnames, &bcnames, &partnames);
+   __mod_visu_cwrapper_MOD_visu_requestinformation(&fcomm, &strlen_state, FileNames[0].c_str(), &strlen_mesh, MeshFileOverwrite, &varnames, &bcnames
+#if USE_PARTICLES
+                                                  ,&partnames
+#endif /*USE_PARTICLES*/
+                                                  );
 
    MPI_Barrier(mpiComm);
 
@@ -468,7 +474,7 @@ int visuReader::RequestData(
    __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm,
 #if USE_MPI
          &this->UseD3,
-#endif
+#endif /*USE_MPI*/
          &this->HighOrder,&this->UseCurveds,
          &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
@@ -478,9 +484,12 @@ int visuReader::RequestData(
          &varnames,
          &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,&globalnodeidsSurf_DG,&globalcellidsSurf_DG,
          &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&globalnodeidsSurf_FV,&globalcellidsSurf_FV,
-         &varnamesSurf,
-         &coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,
-         &coords_Impact,&values_Impact,&nodeids_Impact,&varnames_Impact,&components_Impact);
+         &varnamesSurf
+#if USE_PARTICLES
+        ,&coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,
+         &coords_Impact,&values_Impact,&nodeids_Impact,&varnames_Impact,&components_Impact
+#endif /*USE_PARTICLES*/
+   );
 
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 
@@ -545,13 +554,11 @@ int visuReader::RequestData(
       //mb->SetBlock(3, vtkUnstructuredGrid::New());
    }
 
-
-    // Insert Surface DG data into output
+   // Insert Surface DG data into output
    InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &globalnodeidsSurf_DG, &globalcellidsSurf_DG, &varnamesSurf);
 
-    // Insert Surface FV data into output
+   // Insert Surface FV data into output
    InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &globalnodeidsSurf_FV, &globalcellidsSurf_FV, &varnamesSurf);
-
 
 #if USE_MPI
    if (this->UseD3) {
@@ -563,44 +570,42 @@ int visuReader::RequestData(
    }
 #endif /* USE_MPI */
 
-
 #if USE_PARTICLES
 	 // write PartData
-	 if  (coords_Part.len > 0) {
-      /* vtkPolyData* mb_part = vtkPolyData::SafeDownCast(outInfoPart->Get(vtkDataObject::DATA_OBJECT())); */
-      vtkMultiBlockDataSet* mb_part = vtkMultiBlockDataSet::SafeDownCast(outInfoPart->Get(vtkDataObject::DATA_OBJECT()));
-      if (!mb_part) {
-         std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
-         return 0;
-      }
+   /* vtkPolyData* mb_part = vtkPolyData::SafeDownCast(outInfoPart->Get(vtkDataObject::DATA_OBJECT())); */
+   vtkMultiBlockDataSet* mb_part = vtkMultiBlockDataSet::SafeDownCast(outInfoPart->Get(vtkDataObject::DATA_OBJECT()));
+   if (!mb_part) {
+      std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
+      return 0;
+   }
 
-      SWRITE("Number of Blocks in MultiBlockDataset : " << mb_part->GetNumberOfBlocks())
-      if (mb_part->GetNumberOfBlocks() < 2) {
-        SWRITE("Create new part output Block");
-        /* mb_part->SetBlock(0, vtkUnstructuredGrid::New()); */
-        mb_part->SetBlock(0, vtkPolyData::New());
-      }
+   SWRITE("Number of Blocks in MultiBlockDataset : " << mb_part->GetNumberOfBlocks())
+   if (mb_part->GetNumberOfBlocks() < 2) {
+     SWRITE("Create new part output Block");
+     /* mb_part->SetBlock(0, vtkUnstructuredGrid::New()); */
+     mb_part->SetBlock(0, vtkPolyData::New());
+   }
 
-      InsertPartData(mb_part,0, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
-	 }
-	 if  (coords_Impact.len > 0) {
-      /* vtkMultiBlockDataSet* mb_impact = vtkMultiBlockDataSet::SafeDownCast(outInfoImpact->Get(vtkDataObject::DATA_OBJECT())); */
-      vtkMultiBlockDataSet* mb_impact = vtkMultiBlockDataSet::SafeDownCast(outInfoImpact->Get(vtkDataObject::DATA_OBJECT()));
-      if (!mb_impact) {
-         std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
-         return 0;
-      }
+   // Insert particle data into output
+   InsertPartData(mb_part,0, &coords_Part, &values_Part, &nodeids_Part, &varnames_Part, &components_Part);
 
-      SWRITE("Number of Blocks in MultiBlockDataset : " << mb_impact->GetNumberOfBlocks())
-      if (mb_impact->GetNumberOfBlocks() < 2) {
-        SWRITE("Create new impact output Block");
-        /* mb_impact->SetBlock(0, vtkUnstructuredGrid::New()); */
-        mb_impact->SetBlock(0, vtkPolyData::New());
-      }
+   /* vtkMultiBlockDataSet* mb_impact = vtkMultiBlockDataSet::SafeDownCast(outInfoImpact->Get(vtkDataObject::DATA_OBJECT())); */
+   vtkMultiBlockDataSet* mb_impact = vtkMultiBlockDataSet::SafeDownCast(outInfoImpact->Get(vtkDataObject::DATA_OBJECT()));
+   if (!mb_impact) {
+      std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
+      return 0;
+   }
 
-      InsertPartData(mb_impact,0, &coords_Impact, &values_Impact, &nodeids_Impact, &varnames_Impact, &components_Impact);
-	 }
-#endif
+   SWRITE("Number of Blocks in MultiBlockDataset : " << mb_impact->GetNumberOfBlocks())
+   if (mb_impact->GetNumberOfBlocks() < 2) {
+     SWRITE("Create new impact output Block");
+     /* mb_impact->SetBlock(0, vtkUnstructuredGrid::New()); */
+     mb_impact->SetBlock(0, vtkPolyData::New());
+   }
+
+   // Insert impact data into output
+   InsertPartData(mb_impact,0, &coords_Impact, &values_Impact, &nodeids_Impact, &varnames_Impact, &components_Impact);
+#endif /*USE_PARTICLES*/
 
    __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
 
@@ -611,7 +616,6 @@ int visuReader::RequestData(
    SWRITE("RequestData finished");
    return 1;
 }
-
 
 /*
  * This function inserts the data, loaded by the Posti tool, into a ouput
@@ -639,7 +643,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
         } }
     }
     else {
-#endif
+#endif /*!FV_ENABLED*/
       pdata->SetNumberOfTuples(coords->len/3);
       // copy coordinates
       double* ptr = pdata->GetPointer(0);
@@ -649,7 +653,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
       }
 #if !FV_ENABLED
     }
-#endif
+#endif /*!FV_ENABLED*/
 
     // create points array to be used for the output
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
@@ -706,11 +710,11 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
           cellarray->InsertCellPoint(gi);
         }
         else {
-#endif
+#endif /*!FV_ENABLED*/
           cellarray->InsertCellPoint(nodeids->data[gi]);
 #if !FV_ENABLED
         }
-#endif
+#endif /*!FV_ENABLED*/
         gi++;
       }
     }
@@ -752,7 +756,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
       /* output->GetPointData()->CopyGlobalIdsOn(); */
       /* output->GetPointData()->SetActiveGlobalIds("GlobalNodeIds"); */
     }
-#endif
+#endif /*!FV_ENABLED*/
 
     // assign the actual data, loaded by the Posti tool, to the output
     unsigned int nVar = varnames->len/255;
@@ -779,7 +783,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
           }
         }
         else {
-#endif
+#endif /*!FV_ENABLED*/
           vdata->SetNumberOfTuples(sizePerVar);
           // copy values
           double* ptr = vdata->GetPointer(0);
@@ -789,7 +793,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
           }
 #if !FV_ENABLED
         }
-#endif
+#endif /*!FV_ENABLED*/
         dataPos += sizePerVar;
         // set name of variable
         char tmps[255];
@@ -809,8 +813,10 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
  */
 /* void visuReader::InsertPartData(vtkPolyData* mb_part, int blockno, struct DoubleARRAY* coords, */
 /*     struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) { */
-void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , struct DoubleARRAY* coords,
-    struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) {
+void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno
+                               ,struct DoubleARRAY* coords   ,struct DoubleARRAY* values
+                               ,struct IntARRAY* nodeids     ,struct CharARRAY* varnames
+                               ,struct IntARRAY* components) {
    SWRITE("Insert particle data");
 	 /* vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb_part->GetBlock(blockno)); */
    vtkSmartPointer<vtkPolyData> output = vtkPolyData::SafeDownCast(mb_part->GetBlock(blockno));
@@ -833,14 +839,14 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
 
    vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
    vtkSmartPointer<vtkVertex>    vertex    = vtkSmartPointer<vtkVertex>::New();
-      // Use the nodeids to build vertices (a cell that represents a 3D point)
-      // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
-      // loop over all nodeids
-      for (int i=0; i<nodeids->len; i++) {
-         vertex   ->GetPointIds()->SetId(0,nodeids->data[i]);
-         cellarray->InsertNextCell(vertex);
-      }
-      output->SetVerts(cellarray);
+   // Use the nodeids to build vertices (a cell that represents a 3D point)
+   // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
+   // loop over all nodeids
+   for (int i=0; i<nodeids->len; i++) {
+      vertex   ->GetPointIds()->SetId(0,nodeids->data[i]);
+      cellarray->InsertNextCell(vertex);
+   }
+   output->SetVerts(cellarray);
 
    // assign the actual data, loaded by the Posti tool, to the output
    unsigned int nVarCombine = varnames->len/255;
@@ -851,7 +857,7 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
 
 	 if (nVar > 0) {
 	   unsigned int sizePerVar = values->len/nVar;
-	   int dataPos = 0;
+	   int          dataPos    = 0;
 	   // loop over all loaded variables
 	   for (unsigned int iVar = 0; iVar < nVarCombine; iVar++) {
         vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
@@ -864,7 +870,7 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
           for (long i = 0; i < components->data[iVar]; ++i)
           {
             *ptr++ = values->data[dataPos+i+j*nVar];
-//            std::cout << "Data " << values->data[dataPos+i+j*nVar] << "\n";
+         // std::cout << "Data " << values->data[dataPos+i+j*nVar] << "\n";
           }
         }
         dataPos += components->data[iVar];
@@ -873,14 +879,14 @@ void visuReader::InsertPartData(vtkMultiBlockDataSet* mb_part,int blockno , stru
         strncpy(tmps, varnames->data+iVar*255, 255);
         std::string varname(tmps);
         varname = varname.substr(0,varname.find(" "));
-//	      std::cout << "Varname " << varname << "\n";
+        // std::cout << "Varname " << varname << "\n";
         vdata->SetName(varname.c_str());
         // insert array of variable into the output
         output->GetPointData()->AddArray(vdata);
     }
-   }
+  }
 }
-#endif
+#endif /*USE_PARTICLES*/
 
 #if USE_MPI
 void visuReader::DistributeData(vtkMultiBlockDataSet* mb, int blockno) {
@@ -914,7 +920,6 @@ void visuReader::DistributeData(vtkMultiBlockDataSet* mb, int blockno) {
 }
 #endif /* USE_MPI */
 
-
 visuReader::~visuReader(){
    SWRITE("~visuReader");
    delete [] FileName;
@@ -929,140 +934,117 @@ visuReader::~visuReader(){
  * and return the names of the variables, ....
  */
 
-void visuReader::DisableAllVarArrays()
-{
+void visuReader::DisableAllVarArrays() {
    this->VarDataArraySelection->DisableAllArrays();
 }
-void visuReader::EnableAllVarArrays()
-{
+
+void visuReader::EnableAllVarArrays() {
    this->VarDataArraySelection->EnableAllArrays();
 }
-int visuReader::GetNumberOfVarArrays()
-{
+
+int visuReader::GetNumberOfVarArrays() {
    return this->VarDataArraySelection->GetNumberOfArrays();
 }
 
-const char* visuReader::GetVarArrayName(int index)
-{
-   if (index >= ( int ) this->GetNumberOfVarArrays() || index < 0)
-   {
+const char* visuReader::GetVarArrayName(int index) {
+   if (index >= ( int ) this->GetNumberOfVarArrays() || index < 0) {
       return NULL;
    }
-   else
-   {
+   else {
       return this->VarDataArraySelection->GetArrayName(index);
    }
 }
-int visuReader::GetVarArrayStatus(const char* name)
-{
+
+int visuReader::GetVarArrayStatus(const char* name) {
    return this->VarDataArraySelection->ArrayIsEnabled(name);
 }
 
-void visuReader::SetVarArrayStatus(const char* name, int status)
-{
-   if (status)
-   {
+void visuReader::SetVarArrayStatus(const char* name, int status) {
+   if (status) {
       this->VarDataArraySelection->EnableArray(name);
    }
-   else
-   {
+   else {
       this->VarDataArraySelection->DisableArray(name);
    }
 }
 
-void visuReader::DisableAllBCArrays()
-{
+void visuReader::DisableAllBCArrays() {
    this->BCDataArraySelection->DisableAllArrays();
 }
-void visuReader::EnableAllBCArrays()
-{
+
+void visuReader::EnableAllBCArrays() {
    this->BCDataArraySelection->EnableAllArrays();
 }
-int visuReader::GetNumberOfBCArrays()
-{
+
+int visuReader::GetNumberOfBCArrays() {
    return this->BCDataArraySelection->GetNumberOfArrays();
 }
 
-const char* visuReader::GetBCArrayName(int index)
-{
-   if (index >= ( int ) this->GetNumberOfBCArrays() || index < 0)
-   {
+const char* visuReader::GetBCArrayName(int index) {
+   if (index >= ( int ) this->GetNumberOfBCArrays() || index < 0) {
       return NULL;
    }
-   else
-   {
+   else {
       return this->BCDataArraySelection->GetArrayName(index);
    }
 }
-int visuReader::GetBCArrayStatus(const char* name)
-{
+
+int visuReader::GetBCArrayStatus(const char* name) {
    return this->BCDataArraySelection->ArrayIsEnabled(name);
 }
 
-void visuReader::SetBCArrayStatus(const char* name, int status)
-{
-   if (status)
-   {
+void visuReader::SetBCArrayStatus(const char* name, int status) {
+   if (status) {
       this->BCDataArraySelection->EnableArray(name);
    }
-   else
-   {
+   else {
       this->BCDataArraySelection->DisableArray(name);
    }
 }
 
 void visuReader::SelectionModifiedCallback(vtkObject*, unsigned long,
-      void* clientdata, void*)
-{
+      void* clientdata, void*) {
    static_cast<visuReader*>(clientdata)->Modified();
 }
 
 int visuReader::FillOutputPortInformation(
-      int vtkNotUsed(port), vtkInformation* info)
-{
+      int vtkNotUsed(port), vtkInformation* info) {
    info->Set(vtkDataObject::DATA_TYPE_NAME(), "vtkMultiBlockDataSet");
    return 1;
 }
 
-void visuReader::DisableAllVarParticleArrays()
-{
+#if USE_PARTICLES
+void visuReader::DisableAllVarParticleArrays() {
    this->VarParticleDataArraySelection->DisableAllArrays();
 }
-void visuReader::EnableAllVarParticleArrays()
-{
+
+void visuReader::EnableAllVarParticleArrays() {
    this->VarParticleDataArraySelection->EnableAllArrays();
 }
-int visuReader::GetNumberOfVarParticleArrays()
-{
+
+int visuReader::GetNumberOfVarParticleArrays() {
    return this->VarParticleDataArraySelection->GetNumberOfArrays();
 }
 
-const char* visuReader::GetVarParticleArrayName(int index)
-{
-   if (index >= ( int ) this->GetNumberOfVarParticleArrays() || index < 0)
-   {
+const char* visuReader::GetVarParticleArrayName(int index) {
+   if (index >= ( int ) this->GetNumberOfVarParticleArrays() || index < 0) {
       return NULL;
    }
-   else
-   {
+   else {
       return this->VarParticleDataArraySelection->GetArrayName(index);
    }
 }
-int visuReader::GetVarParticleArrayStatus(const char* name)
-{
+
+int visuReader::GetVarParticleArrayStatus(const char* name) {
    return this->VarParticleDataArraySelection->ArrayIsEnabled(name);
 }
 
-void visuReader::SetVarParticleArrayStatus(const char* name, int status)
-{
-   if (status)
-   {
+void visuReader::SetVarParticleArrayStatus(const char* name, int status) {
+   if (status) {
       this->VarParticleDataArraySelection->EnableArray(name);
    }
-   else
-   {
+   else {
       this->VarParticleDataArraySelection->DisableArray(name);
    }
 }
-
-
+#endif /*USE_PARTICLES*/

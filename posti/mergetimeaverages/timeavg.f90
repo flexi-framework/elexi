@@ -275,8 +275,16 @@ DO iFile = 1,nFiles
     CALL CollectiveStop(__STAMP__,'Change of node type not supported yet!')
   IF(.NOT.STRICMP(ref%MeshFile,loc%MeshFile))&
     CALL CollectiveStop(__STAMP__,'Change of mesh file not supported yet!')
-  ! IF(ANY(ref%nVal.NE.loc%nVal))&
-  !   CALL CollectiveStop(__STAMP__,'Change of polynomial degree and variables not supported!')
+
+  DO i = 1,ref%nDataSets
+    nDim            = ref%nDims(   i)
+    ! Skip data set if the last dimension is not nElems
+    IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+    ! Check if dataset size has changed
+    IF(ANY(ref%nVal(1:nDim,i).NE.loc%nVal(1:nDim,i))) &
+      CALL CollectiveStop(__STAMP__,'Change of polynomial degree and variables not supported! Dataset: '//TRIM(loc%DatasetNames(i)))
+    END IF
+  END DO
   ! TODO: check change of FV subcells ?!
 
   Time = loc%time

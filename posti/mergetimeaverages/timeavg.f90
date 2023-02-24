@@ -74,6 +74,10 @@ CHARACTER(LEN=255),ALLOCATABLE       :: tmpDatasetNames(:)
 INTEGER                              :: nVarAvg(5),nVarFluc(5)
 INTEGER                              :: locsize(maxDim),globsize(maxDim),offsetsize(maxDim)
 
+! Printout
+CHARACTER(LEN=20)                    :: formatstr
+INTEGER                              :: lenDatasetNames
+
 !> Time
 REAL                                 :: dt,AvgTime,TotalAvgTime,TotalAvgTimeGlobal
 
@@ -189,10 +193,23 @@ END SELECT
 ! Allocate arrays for the datasets
 ALLOCATE(avg(ref%nDataSets))
 
+! Length of longest dataset name
+lenDatasetNames = 0
+DO i = 1,ref%nDataSets
+  lenDatasetNames = MAX(lenDatasetNames,LEN(TRIM(ref%DatasetNames(i))))
+END DO
+
 DO i = 1,ref%nDataSets
   nDim            = ref%nDims(   i)
   locsize(1:nDim) = ref%nVal(1:nDim,i)
   locsize(  nDim) = nElems
+
+  ! Skip data set if the last dimension is not nElems
+  IF (ref%nVal(nDim,i).NE.nGlobalElems) THEN
+    WRITE(formatstr,'(A,I0,A)')'(A,A',lenDatasetNames,',A,I0)'
+    SWRITE(UNIT_stdOut,formatstr) ' Skip dataset ',TRIM(ref%DatasetNames(i)), ', entries in last dimension: ', ref%nVal(nDim,i)
+    CYCLE
+  END IF
 
   ALLOCATE(avg(i)%AvgData(PRODUCT(locsize(1:nDim))) &
           ,avg(i)%AvgTmp( PRODUCT(locsize(1:nDim))))
@@ -258,8 +275,8 @@ DO iFile = 1,nFiles
     CALL CollectiveStop(__STAMP__,'Change of node type not supported yet!')
   IF(.NOT.STRICMP(ref%MeshFile,loc%MeshFile))&
     CALL CollectiveStop(__STAMP__,'Change of mesh file not supported yet!')
-  IF(ANY(ref%nVal.NE.loc%nVal))&
-    CALL CollectiveStop(__STAMP__,'Change of polynomial degree and variables not supported!')
+  ! IF(ANY(ref%nVal.NE.loc%nVal))&
+  !   CALL CollectiveStop(__STAMP__,'Change of polynomial degree and variables not supported!')
   ! TODO: check change of FV subcells ?!
 
   Time = loc%time
@@ -299,6 +316,9 @@ DO iFile = 1,nFiles
     locsize(1:nDim) = ref%nVal(1:nDim,i)
     locsize(nDim)   = nElems
 
+    ! Skip data set if the last dimension is not nElems
+    IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+
     CALL ReadArray(ArrayName  = TRIM(ref%DatasetNames(i)) &
                   ,Rank       = nDim                      &
                   ,nVal       = locsize(1:nDim)           &
@@ -323,6 +343,9 @@ DO iFile = 1,nFiles
 
     ! Compute total average
     DO i = 1,ref%nDataSets
+      ! Skip data set if the last dimension is not nElems
+      IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+
       avg(i)%AvgData = avg(i)%AvgData/TotalAvgTime
 
       ! Identify the datasets
@@ -381,6 +404,9 @@ DO iFile = 1,nFiles
         CASE('DG_Solution','Mean','MeanSquare')
           ! Do nothing, already written above
         CASE DEFAULT
+          ! Skip data set if the last dimension is not nElems
+          IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+
           nDim             = ref%nDims(   i)
           locsize( 1:nDim) = ref%nVal(1:nDim,i)
           locsize(   nDim) = nElems
@@ -430,7 +456,7 @@ CONTAINS
 
 
 !===================================================================================================================================
-!> Retrieves relevant header and dateset parameters from Flexi files and stores them in a type
+!> Retrieves relevant header and dataset parameters from Flexi files and stores them in a type
 !===================================================================================================================================
 SUBROUTINE GetParams(filename,f)
 ! MODULES

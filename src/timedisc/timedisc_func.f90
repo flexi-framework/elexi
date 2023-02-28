@@ -512,8 +512,6 @@ IF(   ALMOSTEQUAL(dt,dt_Min(DT_ANALYZE)) &
   .OR.ALMOSTEQUAL(dt,dt_Min(DT_END    )) &
   .OR.doAnalyze                          &
   .OR.ForceInitialLoadBalance) THEN
-  CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of LB
-
   ! Check if loadbalancing is enabled with partweight and set PerformLBSample true to calculate elemtimes with partweight
   ! LoadBalanceSample is 0 if partweightLB or IAR_partweighlb are enabled. If only one of them is set Loadbalancesample switches
   ! during time loop
@@ -558,6 +556,8 @@ IF(doAnalyze)THEN
   IF ((writeCounter.EQ.nWriteData).OR.doFinalize) &
 #endif /*!USE_LOADBALANCE*/
   CALL FillParticleData()
+  ! Recount nPartsPerElem, they might have been overwritten during ComputeElemLoad
+  CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.)
 #endif /*USE_PARTICLES*/
   ! Visualize data and write solution
   IF((writeCounter.EQ.nWriteData).OR.doFinalize)THEN

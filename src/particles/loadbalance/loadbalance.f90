@@ -410,9 +410,9 @@ LoadBalanceCounter = LoadBalanceCounter + 1
 PerformLoadBalance = MERGE(PerformLoadBalance,.FALSE.,LoadBalanceCounter.EQ.LoadBalanceInterval)
 
 ! Reset counters
-nTracksPerElem       = 0
 nPartsPerElem        = 0
-!nSurfacePartsPerElem = 0
+nTracksPerElem       = 0
+! nSurfacePartsPerElem = 0
 tCurrent             = 0.
 
 END SUBROUTINE ComputeElemLoad

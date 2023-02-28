@@ -135,11 +135,12 @@ SDEALLOCATE(ListIn%VarNamesPart_HDF5)
 SDEALLOCATE(ListIn%VarNamePartDummy)
 SDEALLOCATE(ListIn%mapAllVarsToVisuVars)
 
-IF(datasetNames.EQ.'PartData')THEN
-  CALL GetVarNames("VarNamesParticles"     ,varnames,VarNamesExist)
-ELSE IF(datasetNames.EQ.'ImpactData')THEN
-  CALL GetVarNames("VarNamesImpactTracking",varnames,VarNamesExist)
-END IF
+SELECT CASE(TRIM(datasetNames))
+  CASE('PartData')
+    CALL GetVarNames("VarNamesParticles"     ,varnames,VarNamesExist)
+  CASE('ImpactData')
+    CALL GetVarNames("VarNamesImpactTracking",varnames,VarNamesExist)
+END SELECT
 
 IF(VarNamesExist)THEN
   CALL GetDataSize(File_ID,TRIM(datasetNames),dims,HSize)
@@ -328,7 +329,6 @@ SDEALLOCATE(ListIn%VarNamesPart_HDF5)
 SDEALLOCATE(ListIn%PartData_HDF5)
 SDEALLOCATE(ListIn%mapAllVarsToVisuVars)
 END SUBROUTINE FinalizeReadPartStateFile
-
 
 
 SUBROUTINE PartitionPartMPI(ListIn)

@@ -557,7 +557,9 @@ IF(doAnalyze)THEN
 #endif /*!USE_LOADBALANCE*/
   CALL FillParticleData()
   ! Recount nPartsPerElem, they might have been overwritten during ComputeElemLoad
+#if USE_LOADBALANCE
   CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.)
+#endif /*USE_LOADBALANCE*/
 #endif /*USE_PARTICLES*/
   ! Visualize data and write solution
   IF((writeCounter.EQ.nWriteData).OR.doFinalize)THEN

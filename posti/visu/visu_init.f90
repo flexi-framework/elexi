@@ -193,6 +193,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
         !   IF (RestartMode.GT.1 .AND. readDGsolutionVars) THEN
         !     CALL GetVarNames("VarNames_Mean",varnames_tmp,VarNamesExist)
         !   END IF
+        CASE('ElemTime')
+          ! Ignore, already part of ElemData
+          CYCLE
         CASE('ElemData')
           CALL GetVarNames("VarNamesAdd",varnames_tmp,VarNamesExist)
         CASE('FieldData')

@@ -42,7 +42,7 @@ CONTAINS
 !> 4. write mesh to VTK array
 !> 5. set length of all other output arrays to zero
 !=================================================================================================================================
-SUBROUTINE VisualizeMesh(postifile,meshfile_in)
+SUBROUTINE VisualizeMesh(postifile,meshfile_in,useCurveds)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -66,6 +66,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN):: postifile
 CHARACTER(LEN=255),INTENT(IN):: meshfile_in
+LOGICAL,INTENT(IN),OPTIONAL  :: UseCurveds
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iElem,iVar,jVar,iVarVisu,meshModeLoc
@@ -100,8 +101,10 @@ NVisu_FV = 1
 ! read mesh, depending if we should visualize the Jacobian or not different mesh modes are needed (calculate metrics or not)
 meshModeLoc = 0
 IF (nVarIni.GT.0) meshModeLoc=2
-CALL InitInterpolation(Ngeo)
-CALL InitMesh(meshMode=meshModeLoc, MeshFile_IN=meshfile_in)
+CALL InitInterpolation(NVisu)
+IF (PRESENT(UseCurveds)) THEN; CALL InitMesh(meshMode=meshModeLoc,MeshFile_IN=MeshFile_in,UseCurveds_IN=UseCurveds)
+ELSE;                          CALL InitMesh(meshMode=meshModeLoc,MeshFile_IN=MeshFile_in)
+END IF
 
 ! convert to visu grid
 nElems_DG = nElems

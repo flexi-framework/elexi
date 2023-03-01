@@ -58,7 +58,7 @@ USE MOD_Restart        ,ONLY: InitRestartFile
 USE MOD_Restart_Vars   ,ONLY: RestartMode
 USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni,nVar_State
 #if USE_PARTICLES
-USE MOD_Posti_Part_Tools  ,ONLY: InitPartState
+USE MOD_Posti_Part_Tools  ,ONLY: InitPartState,InitPartStatistics
 USE MOD_Visu_Vars         ,ONLY: PD,PDE,PartNamesAll
 #endif
 ! IMPLICIT VARIABLE HANDLING
@@ -169,36 +169,40 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
     IF (varnames_found) THEN
       CALL GetVarNames("VarNames_"//TRIM(datasetNames(i)),varnames_tmp,VarNamesExist)
     ELSE
-      IF (STRICMP(datasetNames(i), "DG_Solution")) THEN
-        IF (readDGsolutionVars) THEN
-          CALL GetVarNames("VarNames",varnames_tmp,VarNamesExist)
-        END IF
-      ! ELSEIF (RestartMode.GT.1 .AND. STRICMP(datasetNames(i), "Mean")) THEN
-      !   IF (readDGsolutionVars) THEN
-      !     CALL GetVarNames("VarNames_Mean",varnames_tmp,VarNamesExist)
-      !   END IF
-      ELSE IF(STRICMP(datasetNames(i), "ElemData")) THEN
-        CALL GetVarNames("VarNamesAdd",varnames_tmp,VarNamesExist)
-      ELSE IF(STRICMP(datasetNames(i), "FieldData")) THEN
-        CALL GetVarNames("VarNamesAddField",varnames_tmp,VarNamesExist)
+      SELECT CASE(TRIM(datasetNames(i)))
+        CASE('DG_Solution')
+          IF (readDGsolutionVars) THEN
+            CALL GetVarNames("VarNames",varnames_tmp,VarNamesExist)
+          END IF
+        ! CASE('Mean')
+        !   IF (RestartMode.GT.1 .AND. readDGsolutionVars) THEN
+        !     CALL GetVarNames("VarNames_Mean",varnames_tmp,VarNamesExist)
+        !   END IF
+        CASE('ElemData')
+          CALL GetVarNames("VarNamesAdd",varnames_tmp,VarNamesExist)
+        CASE('FieldData')
+          CALL GetVarNames("VarNamesAddField",varnames_tmp,VarNamesExist)
 #if USE_PARTICLES
-      ELSE IF(STRICMP(datasetNames(i), "PartData")) THEN
-        CALL InitPartState(datasetNames(i),PD)
-        CYCLE
-      ELSE IF(STRICMP(datasetNames(i), "ImpactData")) THEN
-        CALL InitPartState(datasetNames(i),PDE)
-        CYCLE
+        ! Particle statistics
+        CASE('PartInt')
+          CALL InitPartStatistics('VarNamesParticles',statefile,varnames_tmp,varnamesExist)
+        CASE('PartData')
+          CALL InitPartState(datasetNames(i),PD)
+          CYCLE
+        CASE('ImpactData')
+          CALL InitPartState(datasetNames(i),PDE)
+          CYCLE
 #endif
-      ELSE
-        CALL GetDataSize(File_ID,TRIM(datasetNames(i)),dims,HSize)
-        IF ((dims.NE.5).AND.(dims.NE.2)) CYCLE ! Do not add datasets to the list that can not contain elementwise or field data
-        ALLOCATE(varnames_tmp(INT(HSize(1))))
-        DO j=1,INT(HSize(1))
-          WRITE(varnames_tmp(j),'(I0)') j
-        END DO
-        VarNamesExist=.TRUE.
-      END IF
-    END IF
+        CASE DEFAULT
+          CALL GetDataSize(File_ID,TRIM(datasetNames(i)),dims,HSize)
+          IF ((dims.NE.5).AND.(dims.NE.2)) CYCLE ! Do not add datasets to the list that can not contain elementwise or field data
+          ALLOCATE(varnames_tmp(INT(HSize(1))))
+          DO j=1,INT(HSize(1))
+            WRITE(varnames_tmp(j),'(I0)') j
+          END DO
+          VarNamesExist=.TRUE.
+      END SELECT
+    END IF ! varnames_found
     IF (.NOT.VarNamesExist) CYCLE
 
     ! increase array 'varnames_loc'

@@ -85,7 +85,7 @@ INTEGER,PARAMETER                  :: PartIntSize       = 2           ! number o
 ! Counters
 INTEGER                            :: locnPart,offsetnPart
 INTEGER                            :: iStr
-INTEGER                            :: FirstElemInd,LastelemInd
+INTEGER                            :: FirstElemInd,LastElemInd
 ! HDF5
 INTEGER                            :: PartDim                         ! dummy for rank of partData
 LOGICAL                            :: doFlushFiles_loc

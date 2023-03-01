@@ -215,4 +215,11 @@ END TYPE tVisuParticle
 TYPE(tVisuParticle)               :: PD
 TYPE(tVisuParticle)               :: PDE
 
+! ==============================================================================================================================
+! Particle Statistics
+! ==============================================================================================================================
+LOGICAL                           :: withPartStatistics
+INTEGER                           :: nSpecies
+INTEGER                           :: PartSpeciesIndex
+
 END MODULE MOD_Visu_Vars

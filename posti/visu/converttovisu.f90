@@ -187,6 +187,7 @@ END DO
 
 END SUBROUTINE ConvertToVisu_FV
 
+
 !===================================================================================================================================
 !> Convert the calculated surface FV quantities to the visualization grid.
 !===================================================================================================================================
@@ -385,19 +386,22 @@ SUBROUTINE ConvertToVisu_GenericData(statefile)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Visu_Vars
-USE MOD_IO_HDF5            ,ONLY: HSize
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume,ChangeBasisSurf
 USE MOD_HDF5_Input         ,ONLY: File_ID,GetVarNames
 USE MOD_HDF5_Input         ,ONLY: OpenDataFile,ReadArray,CloseDataFile,DatasetExists,ReadAttribute,GetDataSize
-USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem,nBCSides,ElemToSide
-USE MOD_StringTools        ,ONLY: STRICMP,split_string
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume,ChangeBasisSurf
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
+USE MOD_IO_HDF5            ,ONLY: HSize
 USE MOD_ProlongToFace      ,ONLY: EvalElemFace
 USE MOD_Mappings           ,ONLY: buildMappings
+USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem,nBCSides,ElemToSide
+USE MOD_StringTools        ,ONLY: STRICMP,split_string
 USE MOD_Visu_Avg2D         ,ONLY: Average2D,BuildVandermonds_Avg2D
+USE MOD_Visu_Vars
+#if USE_PARTICLES
+USE MOD_Posti_Part_Tools   ,ONLY: ReadPartStatistics
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -452,73 +456,85 @@ DO iVar=nVarDep+1,nVarAll
 
       ! Check if we have a new dataset
       datasetChanged = .NOT.STRICMP(TRIM(DataSetName),TRIM(DataSetOld))
-
       SWRITE(UNIT_stdOut,'(A,A,A,A)') " Convert variable ",TRIM(VariableName)," from dataset ", TRIM(DatasetName)
-
-      ! Get metadata if dataset changed
-      IF (datasetChanged) THEN
-        ! Try to open the dataset
-        CALL DatasetExists(File_ID,TRIM(DatasetName),datasetFound)
-        ! Abort if the dataset was not found
-        IF (.NOT.datasetFound)  THEN
-          CALL CloseDataFile()
-          CALL Abort(__STAMP__,'Dataset '//TRIM(DatasetName)//' does not exist.')
-        END IF
-        ! Get dimensions of the dataset and store number of variables as well as size of array
-        CALL GetDataSize(File_ID,TRIM(DatasetName),nDims,HSize)
-        nVal   = INT(HSize(1))
-        nSize  = INT(HSize(2))
-#if PP_dim == 3
-        nSizeZ = nSize
-#else
-        nSizeZ = 1
-#endif
-        SDEALLOCATE(DataSetVarNames)
-        CALL GetVarNames("VarNames_"//TRIM(DatasetName),DatasetVarNames,varnamesExist)
-      END IF
-      SWRITE (UNIT_stdOut,'(A,L)') " varnamesExist: ", varnamesExist
-
-      iVarDataset = 0
-      ! loop over all varnames
-      DO iVar2=nVarDep+1,nVarAll
-        CALL split_string(TRIM(VarnamesAll(iVar2)),':',substrings,substring_count)
-        IF (substring_count.GT.1) THEN
-          ! if dataset is the same increase variable index inside dataset
-          IF (STRICMP(substrings(1),DatasetName)) THEN
-            iVarDataset = iVarDataset+1
-            ! exit if variablename found
-            IF (STRICMP(substrings(2),VariableName)) EXIT
+#if USE_PARTICLES
+      IF (TRIM(DatasetName).EQ.'PartInt') THEN
+        nVal  = 1
+        nSize = nElems
+        nDims = 2
+        iVarDataset = 1
+        SDEALLOCATE(ElemData)
+        ALLOCATE(ElemData(nVal,nElems))
+        CALL ReadPartStatistics(VariableName,ElemData(nVal,:))
+      ELSE
+#endif /*USE_PARTICLES*/
+        ! Get metadata if dataset changed
+        IF (datasetChanged) THEN
+          ! Try to open the dataset
+          CALL DatasetExists(File_ID,TRIM(DatasetName),datasetFound)
+          ! Abort if the dataset was not found
+          IF (.NOT.datasetFound)  THEN
+            CALL CloseDataFile()
+            CALL Abort(__STAMP__,'Dataset '//TRIM(DatasetName)//' does not exist.')
           END IF
+          ! Get dimensions of the dataset and store number of variables as well as size of array
+          CALL GetDataSize(File_ID,TRIM(DatasetName),nDims,HSize)
+          nVal   = INT(HSize(1))
+          nSize  = INT(HSize(2))
+#if PP_dim == 3
+          nSizeZ = nSize
+#else
+          nSizeZ = 1
+#endif
+          SDEALLOCATE(DataSetVarNames)
+          CALL GetVarNames("VarNames_"//TRIM(DatasetName),DatasetVarNames,varnamesExist)
         END IF
-      END DO
+        SWRITE (UNIT_stdOut,'(A,L)') " varnamesExist: ", varnamesExist
 
-      ! Read in the data if we have a new dataset. Also allocate Vandermonde matrix used in conversion to visu grid.
-      IF (datasetChanged.AND.(iVarDataset.GT.0)) THEN
-        SELECT CASE(nDims)
-        CASE(2) ! Elementwise data
-          ! Allocate array and read dataset
-          SDEALLOCATE(ElemData)
-          ALLOCATE(ElemData(nVal,nElems))
-          CALL ReadArray(TRIM(DatasetName),2,(/nVal,nElems/),offsetElem,2,RealArray=ElemData)
-        CASE(5) ! Pointwise data
-          ! Allocate array and read dataset
-          SDEALLOCATE(FieldData)
-          ALLOCATE(FieldData(nVal,nSize,nSize,nSizeZ,nElems))
-          CALL ReadArray(TRIM(DatasetName),5,(/nVal,nSize,nSize,nSizeZ,nElems/),offsetElem,5,RealArray=FieldData)
-          ! Get Vandermonde matrix used to convert to the visu grid
-          SDEALLOCATE(Vdm_DG_Visu)
-          ALLOCATE(Vdm_DG_Visu(0:NVisu,0:nSize-1))
-          CALL GetVandermonde(nSize-1,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DG_Visu,modal=.FALSE.)
-          SDEALLOCATE(Vdm_FV_Visu)
-          ALLOCATE(Vdm_FV_Visu(0:NVisu_FV,0:nSize-1))
-          CALL GetVandermonde(nSize-1,NodeType,NVisu_FV,NodeTypeVisuPosti,Vdm_FV_Visu,modal=.FALSE.)
-        CASE DEFAULT
-          CALL Abort(__STAMP__,'Dataset '//TRIM(DatasetName)//' does not have 2 or 5 dimensions.')
-        END SELECT
+        iVarDataset = 0
+        ! loop over all varnames
+        DO iVar2=nVarDep+1,nVarAll
+          CALL split_string(TRIM(VarnamesAll(iVar2)),':',substrings,substring_count)
+          IF (substring_count.GT.1) THEN
+            ! if dataset is the same, increase variable index inside dataset
+            IF (STRICMP(substrings(1),DatasetName)) THEN
+              iVarDataset = iVarDataset+1
+              ! exit if variablename found
+              IF (STRICMP(substrings(2),VariableName)) EXIT
+            END IF
+          END IF
+        END DO
 
-        ! Store current name of dataset
-        DataSetOld = TRIM(DatasetName)
-      END IF ! New dataset
+        ! Read in the data if we have a new dataset. Also allocate Vandermonde matrix used in conversion to visu grid.
+        IF (datasetChanged.AND.(iVarDataset.GT.0)) THEN
+          SELECT CASE(nDims)
+          CASE(2) ! Elementwise data
+            ! Allocate array and read dataset
+            SDEALLOCATE(ElemData)
+            ALLOCATE(ElemData(nVal,nElems))
+            CALL ReadArray(TRIM(DatasetName),2,(/nVal,nElems/),offsetElem,2,RealArray=ElemData)
+          CASE(5) ! Pointwise data
+            ! Allocate array and read dataset
+            SDEALLOCATE(FieldData)
+            ALLOCATE(FieldData(nVal,nSize,nSize,nSizeZ,nElems))
+            CALL ReadArray(TRIM(DatasetName),5,(/nVal,nSize,nSize,nSizeZ,nElems/),offsetElem,5,RealArray=FieldData)
+            ! Get Vandermonde matrix used to convert to the visu grid
+            SDEALLOCATE(Vdm_DG_Visu)
+            ALLOCATE(Vdm_DG_Visu(0:NVisu,0:nSize-1))
+            CALL GetVandermonde(nSize-1,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DG_Visu,modal=.FALSE.)
+            SDEALLOCATE(Vdm_FV_Visu)
+            ALLOCATE(Vdm_FV_Visu(0:NVisu_FV,0:nSize-1))
+            CALL GetVandermonde(nSize-1,NodeType,NVisu_FV,NodeTypeVisuPosti,Vdm_FV_Visu,modal=.FALSE.)
+          CASE DEFAULT
+            CALL Abort(__STAMP__,'Dataset '//TRIM(DatasetName)//' does not have 2 or 5 dimensions.')
+          END SELECT
+
+          ! Store current name of dataset
+          DataSetOld = TRIM(DatasetName)
+        END IF ! New dataset
+#if USE_PARTICLES
+      END IF
+#endif /*USE_PARTICLES*/
 
       ! Get index of visu array that we should write to
       iVarVisu= mapAllVarsToVisuVars(iVar)

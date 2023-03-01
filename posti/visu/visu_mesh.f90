@@ -47,9 +47,9 @@ SUBROUTINE VisualizeMesh(postifile,meshfile_in,useCurveds)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
-USE MOD_HDF5_Input    ,ONLY: ReadAttribute,File_ID,OpenDataFile,CloseDataFile
+USE MOD_HDF5_Input    ,ONLY: ReadAttribute,ReadArray,File_ID,OpenDataFile,CloseDataFile
 USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_Mesh_Vars     ,ONLY: nElems,Ngeo,scaledJac
+USE MOD_Mesh_Vars     ,ONLY: nElems,offsetElem,Ngeo,scaledJac
 USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords
@@ -122,8 +122,13 @@ IF (nVarIni.GT.0) THEN
   ! A very simple mapping is build: There are two depending variables, either one or both of them can be visualized
   NCalc = PP_N
   nVarVisu = nVarIni
-  nVarDep = 2
-  nVarAll = 2
+  IF (IJK_exists) THEN
+    nVarDep = 5
+    nVarAll = 5
+  ELSE
+    nVarDep = 2
+    nVarAll = 2
+  END IF
   SDEALLOCATE(mapDepToCalc)
   SDEALLOCATE(mapAllVarsToVisuVars)
   SDEALLOCATE(mapAllVarsToSurfVisuVars)
@@ -146,10 +151,23 @@ IF (nVarIni.GT.0) THEN
   END DO ! iVar = 1, nVarIni
   SDEALLOCATE(UCalc_DG)
   ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG,nVarDep))
+
+  ! Fill the array
   UCalc_DG(:,:,:,:,1) = scaledJac
   DO iElem=1,nElems
     UCalc_DG(:,:,:,iElem,2) = MINVAL(UCalc_DG(:,:,:,iElem,1))
   END DO ! iElem
+
+  IF (IJK_exists) THEN
+    ALLOCATE(Elem_IJK(3,nElems))
+    CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+    DO iElem=1,nElems
+      UCalc_DG(:,:,:,iElem,3) = Elem_IJK(1,iElem)
+      UCalc_DG(:,:,:,iElem,4) = Elem_IJK(2,iElem)
+      UCalc_DG(:,:,:,iElem,5) = Elem_IJK(3,iElem)
+    END DO
+    DEALLOCATE(Elem_IJK)
+  END IF
 
   CALL ConvertToVisu_DG()
 ELSE

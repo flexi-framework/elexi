@@ -103,6 +103,12 @@ CHARACTER(LEN=255)                   :: FilenameOut,FileTypeOut
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL InitMPIInfo()
+
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A)') '===================================================   MERGE TIMEAVERAGES '//&
+                         '==================================================='
+SWRITE(UNIT_stdOut,'(132("="))')
+
 CALL ParseCommandlineArguments()
 
 ! Check if the number of arguments is correct
@@ -283,7 +289,6 @@ DO iFile = 1,nFiles
     ! Check if dataset size has changed
     IF(ANY(ref%nVal(1:nDim,i).NE.loc%nVal(1:nDim,i))) &
       CALL CollectiveStop(__STAMP__,'Change of polynomial degree and variables not supported! Dataset: '//TRIM(loc%DatasetNames(i)))
-    END IF
   END DO
   ! TODO: check change of FV subcells ?!
 

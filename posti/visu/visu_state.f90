@@ -395,6 +395,8 @@ SELECT CASE(RestartMode)
       HSize_proc(5) = nElems
       ! Allocate array to hold the restart data
       ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+      DEALLOCATE(HSize)
+
       CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
 
       ! Conservative Variables, time-averaged

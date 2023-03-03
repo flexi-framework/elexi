@@ -219,6 +219,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
             WRITE(varnames_tmp(j),'(I0)') j
           END DO
           VarNamesExist=.TRUE.
+          DEALLOCATE(HSize)
       END SELECT
     END IF ! varnames_found
     IF (.NOT.VarNamesExist) CYCLE

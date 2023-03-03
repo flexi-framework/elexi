@@ -187,6 +187,7 @@ IF (MPIRoot) THEN
   CALL GetDataSize(File_ID,'PartInt',PartDim,HSize)
   CHECKSAFEINT(HSize(2),4)
   nGlobalElems = INT(HSize(2))
+  DEALLOCATE(HSize)
   ALLOCATE(PartInt(PartIntSize,nGlobalElems))
   CALL ReadArray('PartInt',2,(/PartIntSize,nGlobalElems/),0,2,IntArray=PartInt)
 
@@ -197,6 +198,7 @@ IF (MPIRoot) THEN
   CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
   CHECKSAFEINT(HSize(2),4)
   PartDataSize = INT(HSize(1))
+  DEALLOCATE(HSize)
 
   ! Get PartData
   ALLOCATE(PartData(PartDataSize,nGlobalParts))
@@ -279,6 +281,7 @@ offsetnPart = PartInt(ELEM_FirstPartInd,FirstElemInd)
 CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
 CHECKSAFEINT(HSize(2),4)
 PartDataSize = INT(HSize(1))
+DEALLOCATE(HSize)
 
 ! Get PartData
 ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
@@ -359,6 +362,7 @@ IF(VarNamesExist)THEN
   CALL GetDataSize(File_ID,TRIM(datasetNames),dims,HSize)
   ListIn%nPartVar_HDF5 = INT(HSize(1))-3
   ListIn%nGlobalParts  = INT(HSize(2))
+  DEALLOCATE(HSize)
 
   ALLOCATE(ListIn%VarNamesPart_HDF5(   1:ListIn%nPartVar_HDF5) &
           ,ListIn%VarNamePartDummy(    1:ListIn%nPartVar_HDF5)  &

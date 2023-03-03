@@ -601,7 +601,6 @@ IF (DoRestart) THEN
 
     DEALLOCATE(U_local)
   END IF ! InterpolateSolution
-  DEALLOCATE(HSize)
   CALL CloseDataFile()
 
   IF (RestartMode.GT.1) THEN

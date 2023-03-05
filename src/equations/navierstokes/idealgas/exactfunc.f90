@@ -163,8 +163,8 @@ SELECT CASE (IniExactFunc)
   CASE(7) ! Shu Vortex
     IniCenter        = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
     IniAxis          = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
-    IniAmplitude     = GETREAL('IniAmplitude')
-    IniHalfwidth     = GETREAL('IniHalfwidth')
+    IniAmplitude     = GETREAL('IniAmplitude','0.2')
+    IniHalfwidth     = GETREAL('IniHalfwidth','0.2')
   CASE(8) ! couette-poiseuille flow
     P_Parameter      = GETREAL('P_Parameter')
     U_Parameter      = GETREAL('U_Parameter')

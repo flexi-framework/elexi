@@ -279,7 +279,6 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_LL(EXT_ENER)=U_L(ENER,i,j)
   U_LL(EXT_PRES)=UPrim_L(PRES,i,j)
 
-
   ! rotate velocity in normal and tangential direction
   U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV,i,j),nv(:,i,j))
   U_LL(EXT_VEL2)=DOT_PRODUCT(UPrim_L(VELV,i,j),t1(:,i,j))

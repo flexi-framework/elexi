@@ -209,7 +209,8 @@ CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle mode
                                                                   ' - putman      : Putnam et al. (1961)\n'                      //&
                                                                   ' - haider      : Haider and Levenspiel (1989)\n'              //&
                                                                   ' - hoelzer     : Hoelzer et al. (2008)\n'                     //&
-                                                                  ' - loth        : Loth (2008)\n'                                 &
+                                                                  ' - loth        : Loth (2008)\n'                               //&
+                                                                  ' - ganser      : Ganser (2008)\n'                               &
                                                                 , 'none'     , numberedmulti=.TRUE.)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'schiller',        DF_PART_SCHILLER)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'putnam',          DF_PART_PUTNAM)

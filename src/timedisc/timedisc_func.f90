@@ -669,6 +669,7 @@ IF (dt.LT.dt_kill) &
   CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep below critical kill timestep!")
 END FUNCTION EvalInitialTimeStep
 
+
 !==================================================================================================================================
 !> Evaluates the time step for the current update of U
 !==================================================================================================================================

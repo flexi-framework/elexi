@@ -133,8 +133,9 @@ IF (nVarIni.GT.0) THEN
   SDEALLOCATE(mapAllVarsToVisuVars)
   SDEALLOCATE(mapAllVarsToSurfVisuVars)
   ALLOCATE(mapDepToCalc(nVarDep))
-  mapDepToCalc(1) = 1
-  mapDepToCalc(2) = 2
+  DO iVar = 1, nVarDep
+    mapDepToCalc(iVar) = iVar
+  END DO ! iVar
   ALLOCATE(mapAllVarsToVisuVars(nVarAll))
   mapAllVarsToVisuVars = 0
   ALLOCATE(mapAllVarsToSurfVisuVars(1:nVarAll))
@@ -160,6 +161,7 @@ IF (nVarIni.GT.0) THEN
 
   IF (IJK_exists) THEN
     ALLOCATE(Elem_IJK(3,nElems))
+    CALL OpenDataFile(meshfile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
     CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
     DO iElem=1,nElems
       UCalc_DG(:,:,:,iElem,3) = Elem_IJK(1,iElem)
@@ -167,6 +169,7 @@ IF (nVarIni.GT.0) THEN
       UCalc_DG(:,:,:,iElem,5) = Elem_IJK(3,iElem)
     END DO
     DEALLOCATE(Elem_IJK)
+    CALL CloseDataFile()
   END IF
 
   CALL ConvertToVisu_DG()

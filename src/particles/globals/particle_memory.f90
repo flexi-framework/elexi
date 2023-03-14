@@ -25,6 +25,18 @@ USE MPI
 #endif /*MPI*/
 IMPLICIT NONE
 PRIVATE
+SAVE
+
+!-----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+LOGICAL :: MemoryStatFileExists = .FALSE.
+
+!=================================================================================================================================
+
+INTERFACE GetMemUsage
+  MODULE PROCEDURE GetMemUsage
+END INTERFACE
 
 INTERFACE VerifyMemUsage
   MODULE PROCEDURE VerifyMemUsage
@@ -48,12 +60,157 @@ INTERFACE
   END SUBROUTINE processmemusage
 END INTERFACE
 
+PUBLIC :: GetMemUsage
 PUBLIC :: VerifyMemUsage
 PUBLIC :: Allocate_Safe
 PUBLIC :: processmemusage
 !===================================================================================================================================
 
 CONTAINS
+
+SUBROUTINE GetMemUsage(memory,caller)
+!==================================================================================================================================
+!> Verifies sufficient memory is available to allocate
+!> CAVE: Currently assumes each rank is calling with the same size
+!==================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_StringTools               ,ONLY: split_string,STRICMP
+#if USE_MPI
+USE MOD_Particle_MPI_Shared_Vars  ,ONLY: myComputeNodeRank,myLeaderGroupRank
+! USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeProcessors
+USE MOD_Particle_MPI_Shared_Vars  ,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_SHARED
+#endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars          ,ONLY: nLoadBalanceSteps
+#endif /*USE_LOADBALANCE*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(OUT)                          :: memory(3)
+CHARACTER(LEN=*),INTENT(IN)               :: caller
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+REAL                                      :: buffers,cached,memSize
+INTEGER                                   :: stat,memstat,ioUnit
+INTEGER                                   :: memCount
+CHARACTER(LEN=255)                        :: memName
+CHARACTER(LEN=255)                        :: memStrings(2),memArray(2)
+#if USE_MPI
+REAL                                      :: ProcMemoryUsed    ! Used memory on a single proc
+REAL                                      :: NodeMemoryUsed    ! Sum of used memory across one compute node
+#endif /*USE_MPI*/
+!==================================================================================================================================
+
+! IF (nProcessors.NE.nComputeNodeProcessors) &
+!   CALL Abort(__STAMP__,'GetMemUsage routine only suitable for single node executation!')
+
+! Find memory usage and requirements
+CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+
+! only CN roots communicate available and total memory info (count once per node)
+#if USE_MPI
+IF (nProcessors.GT.1) THEN
+  ! Collect data on node roots
+  ProcMemoryUsed = memory(1)
+  IF (myComputeNodeRank.EQ.0) THEN
+    CALL MPI_REDUCE(ProcMemoryUsed , NodeMemoryUsed , 1 , MPI_DOUBLE_PRECISION , MPI_SUM , 0 , MPI_COMM_SHARED , IERROR)
+    memory(1) = NodeMemoryUsed
+  ELSE
+    CALL MPI_REDUCE(ProcMemoryUsed , 0              , 1 , MPI_DOUBLE_PRECISION , MPI_SUM , 0 , MPI_COMM_SHARED , IERROR)
+  END IF
+
+  ! collect data from node roots on first root node
+  IF (myComputeNodeRank.EQ.0) THEN ! only leaders
+    IF (myLeaderGroupRank.EQ.0) THEN ! first node leader MUST be MPIRoot
+      CALL MPI_REDUCE(MPI_IN_PLACE , memory , 3 , MPI_DOUBLE_PRECISION , MPI_SUM , 0 , MPI_COMM_LEADERS_SHARED , IERROR)
+    ELSE
+      CALL MPI_REDUCE(memory       , 0      , 3 , MPI_DOUBLE_PRECISION , MPI_SUM , 0 , MPI_COMM_LEADERS_SHARED , IERROR)
+    END IF ! myLeaderGroupRank.EQ.0
+  END IF ! myComputeNodeRank.EQ.0
+END IF ! nProcessors.GT.1
+#endif /*USE_MPI*/
+
+! Find cache usage
+IF (MPIRoot) THEN
+  OPEN(NEWUNIT= ioUnit         , &
+       FILE   = '/proc/meminfo', &
+       STATUS = 'OLD'          , &
+       ACTION = 'READ'         , &
+       ACCESS = 'SEQUENTIAL'   , &
+       IOSTAT = stat)
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open /proc/meminfo.")
+
+  ! parallel IO: ROOT reads file and sends it to all other procs
+  stat   = 0
+  DO
+    READ (ioUnit,"(A)",IOSTAT=stat) memName
+    ! Split once to get the memory array name
+    CALL split_string(memName      ,':',memStrings,memCount)
+    ! Split again to get the memory array size
+    CALL split_string(TRIM(ADJUSTL(memStrings(2))),' ',memArray,memCount)
+    ! Read the memSize into an integer
+    READ(memArray(1),*,IOSTAT=memstat) memSize
+    IF (memstat.NE.0) EXIT
+    IF (STRICMP(memStrings(1),'Buffers')) buffers = memSize
+    IF (STRICMP(memStrings(1),'Cached' )) cached  = memSize
+    IF(IS_IOSTAT_END(stat)) EXIT
+  END DO
+  CLOSE(ioUnit)
+END IF ! MPIRoot
+
+! Block, so no new caching/buffering occurs
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
+
+IF (MPIRoot) THEN
+  ! Check if the file exists
+  IF (.NOT.MemoryStatFileExists) THEN
+    INQUIRE(FILE='MemoryStatistics.csv',EXIST=MemoryStatFileExists)
+    IF (.NOT.MemoryStatFileExists) THEN
+      ! File really does not exist
+      OPEN(NEWUNIT  = ioUnit                 , &
+           FILE     = 'MemoryStatistics.csv' , &
+           FORM     = 'FORMATTED'            , &
+           STATUS   = 'NEW'                  , &
+           RECL     = 50000                  , &
+           IOSTAT   = stat)
+         print*,stat
+      ! Write header
+#if USE_LOADBALANCE
+      WRITE(ioUnit,'(A,6(A1,A))') 'Function',',','memUsed',',','memAvail',',','memTotal',',','Cached',',','Buffers',',','nLoadBalanceSteps'
+#else
+      WRITE(ioUnit,'(A,5(A1,A))') 'Function',',','memUsed',',','memAvail',',','memTotal',',','Cached',',','Buffers',
+#endif /*USE_LOADBALANCE*/
+      CLOSE(ioUnit)
+    END IF
+  END IF
+
+  OPEN(NEWUNIT  = ioUnit                 , &
+       FILE     = 'MemoryStatistics.csv' , &
+       FORM     = 'FORMATTED'            , &
+       STATUS   = 'OLD'                  , &
+       POSITION = 'APPEND'               , &
+       RECL     = 50000                  , &
+       IOSTAT   = stat)
+#if USE_LOADBALANCE
+  WRITE(ioUnit,'(A,6(A1,E21.14E3))') TRIM(caller),',',memory(1),',',memory(2),',',memory(3),',',cached,',',buffers,',',REAL(nLoadBalanceSteps)
+#else
+  WRITE(ioUnit,'(A,5(A1,E21.14E3))') TRIM(caller),',',memory(1),',',memory(2),',',memory(3),',',cached,',',buffers
+#endif /*USE_LOADBALANCE*/
+  CLOSE(ioUnit)
+END IF
+
+! Block, so writing is finished
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
+
+END SUBROUTINE GetMemUsage
+
 
 FUNCTION VerifyMemUsage(ArraySize)
 !==================================================================================================================================

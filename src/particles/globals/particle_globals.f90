@@ -35,9 +35,9 @@ INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(18)
 INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(8)
 #endif
 
-REAL                                  :: PI         = ACOS(-1.0D0)
-REAL                                  :: epsMach    = epsilon(0.)
-REAL                                  :: TwoEpsMach = 2.d0 * epsilon(0.)
+REAL,PARAMETER                        :: PI         = ACOS(-1.0D0)
+REAL,PARAMETER                        :: epsMach    = epsilon(0.)
+REAL,PARAMETER                        :: TwoEpsMach = 2.d0 * epsilon(0.)
 
 ! Keep nElems and PP_nElems separate for now
 INTEGER                               :: PP_nElems

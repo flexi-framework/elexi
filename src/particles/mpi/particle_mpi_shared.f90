@@ -257,7 +257,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -308,7 +308,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -359,7 +359,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -412,7 +412,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -464,7 +464,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -516,7 +516,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -568,7 +568,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -620,7 +620,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -672,7 +672,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -724,7 +724,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -776,7 +776,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -828,7 +828,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here

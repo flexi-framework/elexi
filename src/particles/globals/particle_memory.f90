@@ -183,7 +183,7 @@ IF (MPIRoot) THEN
 #if USE_LOADBALANCE
       WRITE(ioUnit,'(A,6(A1,A))') 'Function',',','memUsed',',','memAvail',',','memTotal',',','Cached',',','Buffers',',','nLoadBalanceSteps'
 #else
-      WRITE(ioUnit,'(A,5(A1,A))') 'Function',',','memUsed',',','memAvail',',','memTotal',',','Cached',',','Buffers',
+      WRITE(ioUnit,'(A,5(A1,A))') 'Function',',','memUsed',',','memAvail',',','memTotal',',','Cached',',','Buffers'
 #endif /*USE_LOADBALANCE*/
       CLOSE(ioUnit)
     END IF

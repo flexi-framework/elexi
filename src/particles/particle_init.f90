@@ -205,6 +205,7 @@ CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tconvergence'
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'hpconvergence',   RHS_HPCONVERGENCE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'inertia',         RHS_INERTIA)
 CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle model used for calculation of the drag factor.\n'    //&
+                                                                  ' - stokes      : Stokes (1851)\n'                             //&
                                                                   ' - schiller    : Schiller and Naumann (1933)\n'               //&
                                                                   ' - putman      : Putnam et al. (1961)\n'                      //&
                                                                   ' - haider      : Haider and Levenspiel (1989)\n'              //&
@@ -212,6 +213,7 @@ CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle mode
                                                                   ' - loth        : Loth (2008)\n'                               //&
                                                                   ' - ganser      : Ganser (2008)\n'                               &
                                                                 , 'none'     , numberedmulti=.TRUE.)
+CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'stokes',          DF_PART_STOKES)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'schiller',        DF_PART_SCHILLER)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'putnam',          DF_PART_PUTNAM)
 CALL addStrListEntry(               'Part-Species[$]-DragFactor', 'haider',          DF_PART_HAIDER)

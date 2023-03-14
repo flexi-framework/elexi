@@ -151,12 +151,13 @@
 #define RHS_SGS2           7
 
 ! Drag factor model
-#define DF_PART_SCHILLER  1
-#define DF_PART_PUTNAM    2
-#define DF_PART_HAIDER    3
-#define DF_PART_HOELZER   4
-#define DF_PART_LOTH      5
-#define DF_PART_GANSER    6
+#define DF_PART_STOKES    1
+#define DF_PART_SCHILLER  2
+#define DF_PART_PUTNAM    3
+#define DF_PART_HAIDER    4
+#define DF_PART_HOELZER   5
+#define DF_PART_LOTH      6
+#define DF_PART_GANSER    7
 
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 ! Velocity and pressure for extended RHS

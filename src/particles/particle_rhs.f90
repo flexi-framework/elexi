@@ -68,6 +68,8 @@ TYPE(type_F),INTENT(INOUT)  :: FD_Pointer
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 SELECT CASE(drag_factor)
+  CASE(DF_PART_STOKES)
+    FD_Pointer%op => DF_Stokes
   CASE(DF_PART_SCHILLER)
     FD_Pointer%op => DF_SchillerAndNaumann
   CASE(DF_PART_PUTNAM)
@@ -841,6 +843,40 @@ END SUBROUTINE extRHS
 #endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 
 
+FUNCTION DF_Stokes(Rep, SphericityIC, Mp) RESULT(f)
+!===================================================================================================================================
+! Compute the drag factor according to Stokes' theory
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals,           ONLY : UNIT_stdOut
+USE MOD_Particle_Vars,     ONLY : RepWarn
+#if USE_MPI
+USE MOD_Globals,           ONLY : MPIRoot
+#endif /*USE_MPI*/
+!-----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                        :: f
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Warn when outside valid range of Naumann model
+IF(Rep.GT.1) THEN
+  IF (RepWarn.EQV..FALSE.) THEN
+    SWRITE(UNIT_stdOut,*) 'WARNING: Rep',Rep,'> 1, drag coefficient may not be accurate.'
+    RepWarn=.TRUE.
+  ENDIF
+ENDIF
+f  = 1.
+
+! Suppress compiler warning
+NO_OP(SphericityIC)
+NO_OP(MP)
+END FUNCTION DF_Stokes
+
 FUNCTION DF_SchillerAndNaumann(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
 ! Compute the drag factor according to Schiller and Naumann
@@ -915,8 +951,8 @@ REAL                        :: f
 ! LOCAL VARIABLES
 REAL                        :: k1, k2, k3
 !-----------------------------------------------------------------------------------------------------------------------------------
-k1 = EXP(2.3288-6.4581*SphericityIC+2.4486*SphericityIC**2)
-k2 = EXP(4.905-13.8944*SphericityIC+18.4222*SphericityIC**2-10.2599*SphericityIC**3)
+k1 = EXP(2.3288-6.4581 *SphericityIC+ 2.4486*SphericityIC**2)
+k2 = EXP(4.905 -13.8944*SphericityIC+18.4222*SphericityIC**2-10.2599*SphericityIC**3)
 k3 = EXP(1.4681+12.2584*SphericityIC-20.7322*SphericityIC**2+15.8855*SphericityIC**3)
 f = (1+k1*Rep**(0.0964+0.5565*SphericityIC))+Rep**2*1./24*k2/(Rep+k3)
 
@@ -1020,6 +1056,8 @@ ELSE
 END IF
 ! Valid up to Rep < 3e5
 f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Rep**(-1.16*Cm)+Gm*Rep**(-0.5))   ! (eq. 8a, divided by Rep/24)
+
+! Suppress compiler warning
 NO_OP(SphericityIC)
 END FUNCTION DF_Loth
 
@@ -1047,7 +1085,10 @@ K1 = (s13 + s23*SphericityIC**(-0.5))**(-1)                                     
 K2 = 1.8148*(-LOG(SphericityIC)**(-0.5743))                                          ! (Table 7)
 ! Valid up to Rep < 3e5
 f = 1./K1*(1. + 0.118*(K1*K2*Rep)**0.6567) + Rep/24*0.4305*K2/(1+3305/(Rep*K1*K2))   ! (eq. 18)
+
+! Suppress compiler warning
 NO_OP(SphericityIC)
+NO_OP(Mp)
 END FUNCTION DF_Ganser
 
 !==================================================================================================================================

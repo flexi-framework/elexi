@@ -560,10 +560,10 @@ IF (PARTICLES)
   FILE(GLOB_RECURSE particlesF90 ./src/particles/*.f90)
   LIST(APPEND flexiF90 ${particlesF90})
 
-  ADD_LIBRARY(memusagelib STATIC ./src/particles/globals/processmemusage.cxx)
-  SET_TARGET_PROPERTIES(memusagelib PROPERTIES LANGUAGE CXX LINKER_LANGUAGE CXX
-                                               COMPILE_FLAGS "-fPIC")
-  LIST(APPEND particlelibs memusagelib)
+  # ADD_LIBRARY(memusagelib STATIC ./src/particles/globals/processmemusage.cxx)
+  # SET_TARGET_PROPERTIES(memusagelib PROPERTIES LANGUAGE CXX LINKER_LANGUAGE CXX
+  #                                              COMPILE_FLAGS "-fPIC")
+  # LIST(APPEND particlelibs memusagelib)
 ENDIF()
 
 

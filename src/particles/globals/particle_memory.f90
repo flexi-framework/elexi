@@ -34,6 +34,16 @@ LOGICAL :: MemoryStatFileExists = .FALSE.
 
 !=================================================================================================================================
 
+INTERFACE ProcessMemUsage
+  ! SUBROUTINE processmemusage(memUsed,memAvail,memTotal) BIND(C, name='processmemusage')
+  !   USE ISO_C_BINDING,   ONLY : c_double
+  !   real(c_double) :: memUsed
+  !   real(c_double) :: memAvail
+  !   real(c_double) :: memTotal
+  ! END SUBROUTINE processmemusage
+  MODULE PROCEDURE ProcessMemUsage
+END INTERFACE
+
 INTERFACE GetMemUsage
   MODULE PROCEDURE GetMemUsage
 END INTERFACE
@@ -51,22 +61,98 @@ INTERFACE Allocate_Safe
   MODULE PROCEDURE Allocate_Safe_Real_3
 END INTERFACE Allocate_Safe
 
-INTERFACE
-  SUBROUTINE processmemusage(memUsed,memAvail,memTotal) BIND(C, name='processmemusage')
-    USE ISO_C_BINDING,   ONLY : c_double
-    real(c_double) :: memUsed
-    real(c_double) :: memAvail
-    real(c_double) :: memTotal
-  END SUBROUTINE processmemusage
-END INTERFACE
-
+PUBLIC :: ProcessMemUsage
 PUBLIC :: GetMemUsage
 PUBLIC :: VerifyMemUsage
 PUBLIC :: Allocate_Safe
-PUBLIC :: processmemusage
 !===================================================================================================================================
 
 CONTAINS
+
+SUBROUTINE ProcessMemUsage(memory)
+!==================================================================================================================================
+! processmemusage(REAL,REAL,REAL) - takes three REALS, attemps to read the system-dependent data for available and total memory as
+! well as the system-dependent data for a process' unique set size (USS), and return the results in KB.
+!
+! On failure, returns -1 on the failed value
+!==================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_StringTools               ,ONLY: split_string,STRICMP
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(OUT)                          :: memory(3)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+! INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+REAL                                      :: memSize
+INTEGER                                   :: stat,memstat,ioUnit
+INTEGER                                   :: memCount
+CHARACTER(LEN=255)                        :: memName
+CHARACTER(LEN=255)                        :: memStrings(2),memArray(2)
+!==================================================================================================================================
+
+stat   = 0
+memory = 0
+
+! Open the magic symbolic link /proc/self, which resolves to the process's own /proc/[pid] directory
+! /proc/pid/smaps_rollup provides pre-summed memory information for a process.
+! > https://www.kernel.org/doc/Documentation/ABI/testing/procfs-smaps_rollup
+OPEN(NEWUNIT= ioUnit                   , &
+     FILE   = '/proc/self/smaps_rollup', &
+     STATUS = 'OLD'                    , &
+     ACTION = 'READ'                   , &
+     ACCESS = 'SEQUENTIAL'             , &
+     IOSTAT = stat)
+IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open /proc/self/smaps_rollup.")
+
+! Skip the first line, containing the hash
+READ (ioUnit,"(A)",IOSTAT=stat)
+
+DO
+  READ (ioUnit,"(A)",IOSTAT=stat) memName
+  ! Split once to get the memory array name
+  CALL split_string(memName      ,':',memStrings,memCount)
+  ! Split again to get the memory array size
+  CALL split_string(TRIM(ADJUSTL(memStrings(2))),' ',memArray,memCount)
+  ! Read the memSize into an integer
+  READ(memArray(1),*,IOSTAT=memstat) memSize
+  IF (memstat.NE.0) EXIT
+  IF (STRICMP(memStrings(1),'Private_Clean')) memory(1) = memory(1) + memSize
+  IF (STRICMP(memStrings(1),'Private_Dirty')) memory(1) = memory(1) + memSize
+  IF(IS_IOSTAT_END(stat)) EXIT
+END DO
+CLOSE(ioUnit)
+
+! /proc/meminfo provides information about distribution and utilization of memory.
+! > https://www.kernel.org/doc/Documentation/filesystems/proc.txt
+OPEN(NEWUNIT= ioUnit                   , &
+     FILE   = '/proc/meminfo'          , &
+     STATUS = 'OLD'                    , &
+     ACTION = 'READ'                   , &
+     ACCESS = 'SEQUENTIAL'             , &
+     IOSTAT = stat)
+IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open /proc/meminfo.")
+
+DO
+  READ (ioUnit,"(A)",IOSTAT=stat) memName
+  ! Split once to get the memory array name
+  CALL split_string(memName      ,':',memStrings,memCount)
+  ! Split again to get the memory array size
+  CALL split_string(TRIM(ADJUSTL(memStrings(2))),' ',memArray,memCount)
+  ! Read the memSize into an integer
+  READ(memArray(1),*,IOSTAT=memstat) memSize
+  IF (memstat.NE.0) EXIT
+  IF (STRICMP(memStrings(1),'MemTotal'    )) memory(3) = memSize
+  IF (STRICMP(memStrings(1),'MemAvailable')) memory(2) = memSize
+  IF(IS_IOSTAT_END(stat)) EXIT
+END DO
+CLOSE(ioUnit)
+
+END SUBROUTINE ProcessMemUsage
+
 
 SUBROUTINE GetMemUsage(memory,caller)
 !==================================================================================================================================
@@ -108,9 +194,9 @@ REAL                                      :: NodeMemoryUsed    ! Sum of used mem
 !   CALL Abort(__STAMP__,'GetMemUsage routine only suitable for single node executation!')
 
 ! Find memory usage and requirements
-CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
-! only CN roots communicate available and total memory info (count once per node)
+! Only CN roots communicate available and total memory info (count once per node)
 #if USE_MPI
 IF (nProcessors.GT.1) THEN
   ! Collect data on node roots
@@ -143,7 +229,7 @@ IF (MPIRoot) THEN
        IOSTAT = stat)
   IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open /proc/meminfo.")
 
-  ! parallel IO: ROOT reads file and sends it to all other procs
+  ! Parallel IO: CN ROOT reads file and sends it to all other procs
   stat   = 0
   DO
     READ (ioUnit,"(A)",IOSTAT=stat) memName
@@ -238,7 +324,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 !==================================================================================================================================
 
 ! Find memory usage and requirements
-CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
 ASSOCIATE(nProc => INT(nComputeNodeProcessors,KIND=8))
 
@@ -285,7 +371,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
-CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
 ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
           VarSize  => INT(KIND(Array),KIND=8),          &
@@ -335,7 +421,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
-CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
 ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
           VarSize  => INT(KIND(Array),KIND=8),          &
@@ -385,7 +471,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
-CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
 ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
           VarSize  => INT(KIND(Array),KIND=8),          &
@@ -435,7 +521,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
-CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
 ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
           VarSize  => INT(KIND(Array),KIND=8),          &
@@ -485,7 +571,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
-CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
 ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
           VarSize  => INT(KIND(Array),KIND=8),          &
@@ -535,7 +621,7 @@ INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
 IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated array!')
 
 ! Find memory usage and requirements
-CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
 ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
           VarSize  => INT(KIND(Array),KIND=8),          &

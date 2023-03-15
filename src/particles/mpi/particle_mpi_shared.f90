@@ -966,7 +966,7 @@ IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).LT.INT(HUGE(INT(1,KIND=MPI_ADDRESS_KIND
   ! Compute node root also checks available memory
   IF (myComputeNodeRank.EQ.0) THEN
     ! Find memory usage and requirements
-    CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+    CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
     ! Compare requested size against available memory
     IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).GT.memory(2)*kByte) &

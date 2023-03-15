@@ -1246,7 +1246,6 @@ CHARACTER(LEN=255),DIMENSION(nOutputVar) :: tmpStr ! needed because PerformAnaly
 CHARACTER(LEN=1000)                      :: tmpStr2
 CHARACTER(LEN=1),PARAMETER               :: delimiter=","
 REAL                                     :: memory(1:3)       ! used, available and total
-REAL                                     :: memoryGlobal(1:3) ! Globally used, available (only node roots) and total (also only node roots) memory
 #if USE_MPI
 REAL                                     :: ProcMemoryUsed    ! Used memory on a single proc
 REAL                                     :: NodeMemoryUsed    ! Sum of used memory across one compute node
@@ -1254,13 +1253,11 @@ REAL                                     :: NodeMemoryUsed    ! Sum of used memo
 !===================================================================================================================================
 
 ! Get process memory info
-CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal
+CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal
 
 ! only CN roots communicate available and total memory info (count once per node)
 #if USE_MPI
-IF(nProcessors.EQ.1)THEN
-  memoryGlobal = memory
-ELSE
+IF(nProcessors.GT.1)THEN
   ! Collect data on node roots
   ProcMemoryUsed = memory(1)
   IF (myComputeNodeRank.EQ.0) THEN
@@ -1280,8 +1277,6 @@ ELSE
   END IF ! myComputeNodeRank.EQ.0
 
 END IF ! nProcessors.EQ.1
-#else
-memoryGlobal = memory
 #endif /*USE_MPI*/
 
 ! --------------------------------------------------

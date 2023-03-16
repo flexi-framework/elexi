@@ -62,7 +62,7 @@
 ! number of entry in each line of ElemInfo
 #define ELEMINFOSIZE_H5   6
 !#if USE_MPI
-#define ELEMINFOSIZE      8
+#define ELEMINFOSIZE      9
 !#else
 !#define ELEMINFOSIZE      6
 !#endif /* USE_MPI*/
@@ -76,6 +76,7 @@
 ! ElemInfo for shared array
 #define ELEM_RANK         7
 #define ELEM_HALOFLAG     8
+#define ELEM_HASMORTAR    9
 
 ! number of entries in each line of SideInfo
 #define SIDEINFOSIZE_H5   5

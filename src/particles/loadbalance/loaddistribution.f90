@@ -1276,7 +1276,7 @@ IF(nProcessors.GT.1)THEN
     END IF ! myLeaderGroupRank.EQ.0
   END IF ! myComputeNodeRank.EQ.0
 
-END IF ! nProcessors.EQ.1
+END IF ! nProcessors.GT.1
 #endif /*USE_MPI*/
 
 ! --------------------------------------------------

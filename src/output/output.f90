@@ -455,7 +455,7 @@ END SUBROUTINE PrintStatusLine
 SUBROUTINE PrintAnalyze(dt)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Globals_Vars        ,ONLY: SimulationEfficiency!,WallTime
+USE MOD_Globals_Vars        ,ONLY: SimulationEfficiency,StartTime!,WallTime
 USE MOD_PreProc
 USE MOD_Analyze_Vars        ,ONLY: PID
 USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal

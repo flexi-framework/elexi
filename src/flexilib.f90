@@ -37,7 +37,7 @@ CONTAINS
 SUBROUTINE InitFlexi(nArgs_In,Args_In,mpi_comm_loc)
 ! MODULES
 USE MOD_Globals
-USE MOD_Globals_Vars,      ONLY:InitializationWallTime
+USE MOD_Globals_Vars,      ONLY:InitializationWallTime,StartTime
 USE MOD_Commandline_Arguments
 USE MOD_PreProc
 USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze
@@ -289,6 +289,7 @@ END SUBROUTINE InitFlexi
 SUBROUTINE FinalizeFlexi()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,      ONLY:StartTime
 USE MOD_Analyze,           ONLY:FinalizeAnalyze
 USE MOD_Commandline_Arguments,ONLY:FinalizeCommandlineArguments
 USE MOD_DG,                ONLY:FinalizeDG

@@ -14,9 +14,9 @@
 #include "flexi.h"
 #include "eos.h"
 
-#if FV_ENABLED
-#error "This testcase is not tested with FV"
-#endif
+!#if FV_ENABLED
+!#error "This testcase is not tested with FV"
+!#endif
 
 !==================================================================================================================================
 !> The channel case is a setup according to the Moser channel:
@@ -140,9 +140,9 @@ CHARACTER(LEN=7)         :: varnames(2)
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
 
-#if FV_ENABLED
-CALL CollectiveStop(__STAMP__,'The testcase has not been implemented for FV yet!')
-#endif
+!#if FV_ENABLED
+!CALL CollectiveStop(__STAMP__,'The testcase has not been implemented for FV yet!')
+!#endif
 
 nWriteStats      = GETINT('nWriteStats')
 nAnalyzeTestCase = GETINT('nAnalyzeTestCase')
@@ -160,7 +160,7 @@ IF (customChannel) THEN
 ELSE
   ! Compute initial guess for bulk velocity for given Re_tau to compute background pressure
   bulkVelScale  = 1.
-  Re_tau      = 1/mu0
+  Re_tau        = 1/mu0
   bulkVel       = (Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))
   bulkVel       = 1./Re_tau * (c1*bulkVel - 97.4857927165)
 ENDIF
@@ -325,6 +325,9 @@ USE MOD_Mesh_Vars,      ONLY: nElems
 #if USE_MPI
 USE MOD_MPI_Vars
 #endif
+#if FV_ENABLED == 1
+USE MOD_FV_Vars,        ONLY: FV_Elems,FV_w
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -336,9 +339,19 @@ INTEGER                         :: i,j,k,iElem
 !==================================================================================================================================
 bulkVel =0.
 DO iElem=1,nElems
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    bulkVel = bulkVel+U(MOM1,i,j,k,iElem)/U(DENS,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
-  END DO; END DO; END DO
+#if FV_ENABLED == 1
+  IF (FV_Elems(iElem).GT.0) THEN ! FV elem
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      bulkVel = bulkVel+U(MOM1,i,j,k,iElem)/U(DENS,i,j,k,iElem)*FV_w(i)*FV_w(j)*FV_w(k)/sJ(i,j,k,iElem,1)
+    END DO; END DO; END DO
+  ELSE
+#endif
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      bulkVel = bulkVel+U(MOM1,i,j,k,iElem)/U(DENS,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
+    END DO; END DO; END DO
+#if FV_ENABLED == 1
+  END IF
+#endif
 END DO
 
 #if USE_MPI
@@ -354,7 +367,10 @@ END SUBROUTINE CalcForcing
 SUBROUTINE TestcaseSource(Ut)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Mesh_Vars, ONLY:sJ,nElems
+USE MOD_Mesh_Vars, ONLY: sJ,nElems
+#if FV_ENABLED == 1
+USE MOD_FV_Vars,   ONLY: FV_Elems
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -362,13 +378,17 @@ IMPLICIT NONE
 REAL,INTENT(INOUT)              :: Ut(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: i,j,k,iElem
+INTEGER                         :: i,j,k,iElem,FVE
 !==================================================================================================================================
 ! Apply forcing with the pressure gradient
+FVE = 0
 DO iElem=1,nElems
+#if FV_ENABLED == 1
+  FVE = FV_Elems(iElem)
+#endif
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    Ut(MOM1,i,j,k,iElem) = Ut(MOM1,i,j,k,iElem) - dpdx/sJ(i,j,k,iElem,0)
-    Ut(ENER,i,j,k,iElem) = Ut(ENER,i,j,k,iElem) - dpdx/sJ(i,j,k,iElem,0)*bulkVel
+    Ut(MOM1,i,j,k,iElem) = Ut(MOM1,i,j,k,iElem) - dpdx/sJ(i,j,k,iElem,FVE)
+    Ut(ENER,i,j,k,iElem) = Ut(ENER,i,j,k,iElem) - dpdx/sJ(i,j,k,iElem,FVE)*bulkVel
   END DO; END DO; END DO
 END DO
 END SUBROUTINE TestcaseSource
@@ -378,7 +398,7 @@ END SUBROUTINE TestcaseSource
 !==================================================================================================================================
 SUBROUTINE WriteStats()
 ! MODULES
-USE MOD_Output,       ONLY:OutputToFile
+USE MOD_Output,       ONLY: OutputToFile
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

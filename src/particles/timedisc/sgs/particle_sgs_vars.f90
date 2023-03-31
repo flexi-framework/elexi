@@ -35,6 +35,7 @@ REAL,ALLOCATABLE                       :: USGSPart(:,:)                       ! 
 REAL,ALLOCATABLE                       :: ElemVolN(:)                         ! ElemVol**(1./3.)/(PP_N+1)
 REAL                                   :: randomVar(3)
 !! FUKAGATA SGS model
-REAL,ALLOCATABLE                       :: gradp(:,:,:,:,:,:)                  ! Pressur gradient gradp(1,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,ALLOCATABLE                       :: gradp(:,:,:,:,:,:)                  ! Pressure gradient
+REAL,ALLOCATABLE                       :: divTau(:,:,:,:,:)                   !
 !===================================================================================================================================
 END MODULE MOD_Particle_SGS_Vars

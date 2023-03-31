@@ -54,6 +54,7 @@ USE MOD_Analyze_Vars          ,ONLY: ElemVol
 USE MOD_Mesh_Vars             ,ONLY: nElems
 USE MOD_Particle_SGS_Vars
 USE MOD_Particle_Vars         ,ONLY: PDM,TurbPartState,nSpecies,Species!TurbPt_temp
+USE MOD_Particle_Vars         ,ONLY: gradUx2,gradUy2,gradUz2
 USE MOD_ReadInTools           ,ONLY: GETINT,GETSTR
 #if USE_MPI
 USE MOD_Globals               ,ONLY: MPIRoot
@@ -109,8 +110,16 @@ SELECT CASE(SGSModel)
 
     ! Overwrite RHS if necessary
     DO iSpec = 1, nSpecies
-      Species(iSpec)%RHSMethod = RHS_SGS1
+      IF (Species(iSpec)%RHSMethod .EQ. RHS_INERTIA) Species(iSpec)%RHSMethod = RHS_SGS1
     END DO
+
+    ALLOCATE(divTau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)       &
+#if !FAXEN_CORR
+            ,gradUx2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)  &
+            ,gradUy2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)  &
+            ,gradUz2(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)  &
+#endif
+            )
 
   CASE('Sommerfeld')
     ! Set number of variables and SGS flag active
@@ -349,36 +358,33 @@ REAL                          :: kSGSPart           ! SGS kinetic energy
 REAL                          :: sigmaSGS           ! SGS kinetic energy standard deviation
 REAL                          :: epsilonSGS         ! SGS dissipation energy by Shotorban
 REAL                          :: taup               ! relative particle relaxation time
-REAL                          :: alpha_SGS,beta_SGS
-REAL                          :: rot_U(3)           ! rotor of velovity
+REAL                          :: alpha_SGS
+REAL                          :: rotu(3)            ! rotation of velovity
 REAL                          :: mu                 ! viscosity
 ! BREUER SGS MODEL
 REAL,PARAMETER                :: C=1.
-REAL,PARAMETER                :: betaSGS=1.
+REAL                          :: betaSGS
 REAL                          :: tauSGS             ! SGS time scale
 REAL                          :: tauL(2)            ! Parallel and perpendicular SGS time scale
 REAL                          :: G_SGS(3,3)         ! Drift (analytic) / diffusion (num) matrix
 REAL                          :: B_SGS(3,3)         ! Covariance (analytic) / exp. of the drift (num) matrix
-REAL                          :: gradUxPart(1:3), gradUyPart(1:3),gradUzPart(1:3),gradpPart(1:3)
+REAL                          :: gradUxPart(1:3), gradUyPart(1:3),gradUzPart(1:3),gradpPart(1:3),divTauPart(1:3)
 ! SOMMERFELD SGS MODEL
 REAL                          :: C_eps_Shotorban=19./12  ! model constant of Shotorban (according to HEINZ)
 REAL                          :: C_T=0.24           ! model constant for lagrangian time scale
 REAL                          :: C_L=3              ! model constant for eulerian time scale
 ! MINIER & PEIRANO SGS MODEL
-REAL                          :: C_0=19./12         ! model constant for lagrangian time scale MINIER (according to HEINZ)
-REAL                          :: Lambda_factor      ! factor in order to calculate diffusion matrix
+REAL                          :: C_0=2.1            ! model constant for lagrangian time scale MINIER (according to HEINZ)
 REAL                          :: trace_HR           ! trace matrix H*R
 REAL                          :: trace_H            ! trace matrix H
 REAL                          :: aux                ! auxiliary variable
-REAL                          :: H_matrix(3,3)      !
+REAL                          :: kSGS_tilde         ! new SGS kinetic energy
 REAL                          :: ReynoldsTensor(3,3)! Reynolds Stress Tensor
 REAL                          :: H_R_matrix(3,3)    ! H_ij * R_ij
 REAL                          :: second_drift_term(3) ! term relative at the relative displacement times gradientU
 REAL                          :: fluctuationState(3) ! fluctuation velocity: U - <U>
-REAL                          :: b_L(2)             ! Parallel and perpendicular Csanady factor
-REAL                          :: G_matrix(3,3)      ! Drift matrix
-REAL                          :: B_matrix(3,3)      ! Diffusion matrix
 REAL                          :: D_matrix(3,3)      ! Symmetric matrix for Cholewski decomposition
+REAL                          :: D_matrix_L(2)
 ! JIN MODEL
 REAL                          :: deltaT_L           ! Lagrangian time scale
 REAL                          :: deltaT_E           ! Eulerian integral timescale (Fede & Simonin,2006)
@@ -436,10 +442,12 @@ USGS(3,:,:,:,:) = U(MOM2,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM2,:,:,:,:)/USGS(DENS
 USGS(4,:,:,:,:) = U(MOM3,:,:,:,:)/U(DENS,:,:,:,:) - USGS(MOM3,:,:,:,:)/USGS(DENS,:,:,:,:)
 
 ! Interpolate SGS kinetic energy to particle position
-CALL InterpolateFieldToParticle(3,USGS(MOMV,:,:,:,:),3,USGSPart)
+CALL InterpolateFieldToParticle(3,USGS(VELV,:,:,:,:),3,USGSPart)
 
 ! Calculate pressure gradient
 CALL Lifting_BR1_gen(1,1,UPrim(PRES:PRES,:,:,:,:),gradp(:,1,:,:,:,:),gradp(:,2,:,:,:,:),gradp(:,3,:,:,:,:))
+
+CALL CalcDivTau()
 
 DO iPart = 1,PDM%ParticleVecLength
   ! Only consider particles
@@ -447,20 +455,21 @@ DO iPart = 1,PDM%ParticleVecLength
 
   kSGSPart = 0.5*SUM(USGSPart(1:3,iPart)**2.)
 
+  ! Lagrangian time scale
   ElemID   = PEM%Element(iPart) - offsetElem
+
+  ! ratio between lagrangian and eulerian time scale
+  betaSGS  = 0.356 ! deltaT_L/deltaT_E
 
   ! Interpolate velocity and pressure gradients to the particle position
   CALL InterpolateFieldToSingleParticle(iPart,3,gradUx(1:3,:,:,:,ElemID) ,3,gradUxPart)
   CALL InterpolateFieldToSingleParticle(iPart,3,gradUy(1:3,:,:,:,ElemID) ,3,gradUyPart)
   CALL InterpolateFieldToSingleParticle(iPart,3,gradUz(1:3,:,:,:,ElemID) ,3,gradUzPart)
-  CALL InterpolateFieldToSingleParticle(iPart,3,gradp(1,1:3,:,:,:,ElemID),3,gradpPart)
-
-  ! Calculate dissipation energy according to  Babak Shotorban & Farzad Mashayek (2006) A stochastic model for particle
-  ! motion in large-eddy simulation, Journal of Turbulence, 7, N18, DOI: 10.1080/14685240600595685
-  epsilonSGS = C_eps_Shotorban/ElemVolN(ElemID) * (kSGSPart**(3./2))
+  CALL InterpolateFieldToSingleParticle(iPart,3,gradp(1,1:3,:,:,:,ElemID),3,gradpPart )
+  CALL InterpolateFieldToSingleParticle(iPart,3,divTau(1:3,:,:,:,ElemID) ,3,divTauPart)
 
   ! Relative velocity
-  udiff(1:3) = PartState(PART_VELV,iPart) - FieldAtParticle(VELV,iPart) !+ TurbPartState(1:3,iPart) ! only mean velocity
+  udiff(1:3) = PartState(PART_VELV,iPart) - FieldAtParticle(VELV,iPart)
 
   IF (ANY(udiff.NE.0)) THEN
     urel = udiff/VECNORM(udiff)
@@ -468,196 +477,165 @@ DO iPart = 1,PDM%ParticleVecLength
     urel = 0.
   END IF
 
-  ! Calculate fluctuation velocity
-  fluctuationState(1:3) = TurbPartState(1:3,iPart) - FieldAtParticle(VELV,iPart)
+  ! Calculate the dyn. viscosity
+  mu=VISCOSITY_TEMPERATURE(FieldAtParticle(TEMP,iPart))
 
+  second_drift_term(:) = - gradpPart(:)/FieldAtParticle(DENS,iPart)! + mu * divTauPart(:)
   ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(kSGSPart)) THEN
-
-    IF (ALMOSTZERO(MAXVAL(udiff))) THEN
-
-      Pt(1:3) = 0.
-      second_drift_term(1:3) = 0.
-
+    ! We ASSUME that these are the CORRECT matrix indices
+    IF(ALMOSTZERO(MAXVAL(udiff)))THEN
+      Pt = 0.
     ELSE
+      ! Calculate second term of drift vector: (U_p-U)*(\partial U_i / \partial x_j) - nabla p
+      second_drift_term(:) = second_drift_term(:) + udiff(1) * gradUxPart(:) + udiff(2) * gradUyPart(:) + udiff(3) * gradUzPart(:)
 
-      Pt(1:3) = 0.
-      ! Calculate second term of drift vector: (U_p-U)*(\partial U_i / \partial x_j)
-      second_drift_term(1) = udiff(1) * gradUxPart(1) + udiff(2) * gradUyPart(1) + udiff(3) * gradUzPart(1)
-      second_drift_term(2) = udiff(1) * gradUxPart(2) + udiff(2) * gradUyPart(2) + udiff(3) * gradUzPart(2)
-      second_drift_term(3) = udiff(1) * gradUxPart(3) + udiff(2) * gradUyPart(3) + udiff(3) * gradUzPart(3)
+      ! parallel
+      tauL(1) = SQRT(  betaSGS**2*SUM(udiff**2)*3./2)/(ElemVolN(ElemID))*(0.5 + 0.75*C_0)
+      ! perpendicular
+      tauL(2) = SQRT(4*betaSGS**2*SUM(udiff**2)*3./2)/(ElemVolN(ElemID))*(0.5 + 0.75*C_0)
 
+      ! Calculate drift and diffusion matrix
+      DO i = 1,3
+        DO j = 1,3
+          IF (i.EQ.j) THEN
+            G_SGS(i,j) = tauL(2)  + (tauL(1) - tauL(2)) *urel(i)*urel(j)
+          ELSE
+            G_SGS(i,j) =            (tauL(1) - tauL(2)) *urel(i)*urel(j)
+          END IF
+        END DO
+      END DO
+      ! as kSGS is ALMOSTZERO
+      B_SGS(:,:) = 0.
     END IF
 
   ELSE  ! Valid SGS turbulent kinetic energy
 
+    ! Calculate dissipation energy according to  Babak Shotorban & Farzad Mashayek (2006) A stochastic model for particle
+    ! motion in large-eddy simulation, Journal of Turbulence, 7, N18, DOI: 10.1080/14685240600595685
+    epsilonSGS = 1./ElemVolN(ElemID) * (kSGSPart**(3./2))
+    tauSGS = (0.5 + 0.75*C_0)**(-1) * kSGSPart/epsilonSGS
+
     IF (ALMOSTZERO(MAXVAL(udiff))) THEN
+      ! parallel and perpendicular
+      tauL(:) = tauSGS
 
-      second_drift_term(1:3) = 0.
-
-      ! parallel / perpendicular Csanady factor
-      b_L(1:2) = 1.
-
-      ! Calculate auxiliary matrix H_ij, drift matrix G_ij
-      H_matrix(:,:) = 0
-      H_matrix(1,1) = b_L(2)
-      H_matrix(2,2) = b_L(2)
-      H_matrix(3,3) = b_L(2)
-
-      G_matrix(:,:) = -(0.5 + 0.75*C_0) * epsilonSGS/kSGSPart * H_matrix(:,:)
-
-      ! Calculate the Reynolds stress tensor
+      ! Calculate auxiliary matrix H_ij and drift G_ij
+      G_SGS    = 0.
+      trace_HR = 0.; trace_H  = 0.
       DO i = 1,3
         DO j = 1,3
+          ! Calculate the Reynolds stress tensor
           ReynoldsTensor(i,j) = USGSPart(i,iPart)*USGSPart(j,iPart)
+          IF (i.EQ.j) THEN
+            G_SGS(i,j) = tauL(2)
+            trace_H    = trace_H  + G_SGS(i,j)
+          END IF
         END DO
       END DO
 
-      !Calculate factor \lambda
-      H_R_matrix = MATMUL(H_matrix,ReynoldsTensor)
-
-      trace_HR = 0.
-      trace_H  = 0.
+      H_R_matrix = MATMUL(G_SGS,ReynoldsTensor)
 
       DO i = 1,3
         trace_HR = trace_HR + H_R_matrix(i,i)
-        trace_H  = trace_H  + H_matrix(i,i)
       END DO
 
-      Lambda_factor = (3 * trace_HR) / (2 * kSGSPart * trace_H)
+      kSGS_tilde = (3 * trace_HR) / (2 * kSGSPart * trace_H)
 
-      ! Calculate simmetrix matrix D_ij for Cholewski decomposition
+      ! parallel (1) and perpendicular (2)
+      D_matrix_L(:) = tauL(:)*C_0*kSGS_tilde + 2./3 * (tauL(:)*kSGS_tilde-1)
+
+      ! Calculate diffusion matrix
       DO i = 1,3
         DO j = 1,3
           IF (i.EQ.j) THEN
-            D_matrix(i,j) = C_0*Lambda_factor*H_matrix(i,j) + 2 * ( Lambda_factor*H_matrix(i,j) -1)/3
+            B_SGS(i,j) = D_matrix_L(2)
           ELSE
-            D_matrix(i,j) = C_0*Lambda_factor*H_matrix(i,j) + 2 * ( Lambda_factor*H_matrix(i,j)   )/3
+            B_SGS(i,j) = 0.0
           END IF
         END DO
       END DO
-      D_matrix(:,:) = epsilonSGS * D_matrix(:,:)
-
-      ! Cholewski decomposition to get diffusion matrix B_matrix
-      B_matrix(:,:) = 0.
-
-      B_matrix(1,1) = SQRT(D_matrix(1,1))
-      B_matrix(2,1) = D_matrix(1,2) / B_matrix(1,1)
-      B_matrix(3,1) = D_matrix(1,3) / B_matrix(1,1)
-
-      DO j = 2 , 3
-        DO i = 1 , 3
-          IF( i .LT. j ) CYCLE ! upper triangular elements
-          IF( i .EQ. j) THEN
-            aux = 0.0
-            DO k = 1 , i -1
-              aux = aux + B_matrix(i,k)**2
-            END DO
-            B_matrix(i,j) = SQRT(D_matrix(i,i) - aux) ! diagonal elements
-          ELSE ! (i .GT. j)
-            aux = 0.0
-            DO k = 1 , i - 1
-              aux = aux + B_matrix(j,k) * B_matrix(i,k)
-            END DO
-            B_matrix(i,j) = (D_matrix(j,i) - aux) / B_matrix(j,j)    ! in our case only element B(3,2)
-          END IF
-        END DO
-      END DO
+      B_SGS(:,:) = epsilonSGS * B_SGS(:,:)
 
     ELSE ! with valid KSGS and valid UDIFF
 
       ! Calculate second term of drift vector: (U_p-U)*(\partial U_i / \partial x_j)
-      second_drift_term(1) = udiff(1) * gradUxPart(1) + udiff(2) * gradUyPart(1) + udiff(3) * gradUzPart(1)
-      second_drift_term(2) = udiff(1) * gradUxPart(2) + udiff(2) * gradUyPart(2) + udiff(3) * gradUzPart(2)
-      second_drift_term(3) = udiff(1) * gradUxPart(3) + udiff(2) * gradUyPart(3) + udiff(3) * gradUzPart(3)
+      second_drift_term(:) = second_drift_term(:) + udiff(1) * gradUxPart(:) + udiff(2) * gradUyPart(:) + udiff(3) * gradUzPart(:)
 
-      ! parallel Csanady factor
-      b_L(1) = (SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart*3/2))
-      ! perpendicular Csanady factor
-      b_L(2) = (SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart*3/2))
+      ! parallel
+      tauL(1) = (SQRT(1+  betaSGS**2*SUM(udiff**2)/kSGSPart*3/2))/tauSGS
+      ! perpendicular
+      tauL(2) = (SQRT(1+4*betaSGS**2*SUM(udiff**2)/kSGSPart*3/2))/tauSGS
 
-      ! Calculate auxliary matrix H_ij, drift matrix G_ij
+      ! Calculate auxiliary matrix H_ij and drift G_ij
+      trace_HR = 0.; trace_H  = 0.
       DO i = 1,3
         DO j = 1,3
-          IF (i.EQ.j) THEN
-            H_matrix(i,j) = b_L(2)  + (b_L(1)  - b_L(2)) *urel(i)*urel(j)
-          ELSE
-            H_matrix(i,j) =           (b_L(1)  - b_L(2)) *urel(i)*urel(j)
-          END IF
-          G_matrix(i,j) = -(0.5 + 0.75*C_0) * epsilonSGS/kSGSPart * H_matrix(i,j)
-        END DO
-      END DO
-
-      ! Calculate the Reynolds stress tensor
-      DO i = 1,3
-        DO j = 1,3
+          ! Calculate the Reynolds stress tensor
           ReynoldsTensor(i,j) = USGSPart(i,iPart)*USGSPart(j,iPart)
+          IF (i.EQ.j) THEN
+            G_SGS(i,j) = tauL(2)  + (tauL(1) - tauL(2)) *urel(i)*urel(j)
+            trace_H    = trace_H  + G_SGS(i,j)*tauSGS
+          ELSE
+            G_SGS(i,j) =            (tauL(1) - tauL(2)) *urel(i)*urel(j)
+          END IF
         END DO
       END DO
 
-      !Calculate factor \lambda
-      H_R_matrix = MATMUL(H_matrix,ReynoldsTensor)
-
-      trace_HR = 0.
-      trace_H  = 0.
+      H_R_matrix = MATMUL(G_SGS*tauSGS,ReynoldsTensor)
 
       DO i = 1,3
         trace_HR = trace_HR + H_R_matrix(i,i)
-        trace_H  = trace_H  + H_matrix(i,i)
       END DO
 
-      Lambda_factor = (3 * trace_HR) / (2 * kSGSPart * trace_H)
+      kSGS_tilde = (3 * trace_HR) / (2 * kSGSPart * trace_H)
 
-      ! Calculate simmetrix matrix D_ij for Cholewski decomposition
+      ! parallel (1) and perpendicular (2)
+      D_matrix_L(:) = tauSGS*tauL(:)*C_0*kSGS_tilde + 2./3 * (tauSGS*tauL(:)*kSGS_tilde-1)
+
+      D_matrix = 0.
+      ! Calculate symmetry matrix D_ij for Cholewski decomposition
       DO i = 1,3
-        DO j = 1,3
+        DO j = i,3
           IF (i.EQ.j) THEN
-            D_matrix(i,j) = C_0*Lambda_factor*H_matrix(i,j) + 2 * ( Lambda_factor*H_matrix(i,j) -1)/3
+            D_matrix(i,j) = D_matrix_L(2) + (D_matrix_L(1) - D_matrix_L(2)) * urel(i)*urel(j)
           ELSE
-            D_matrix(i,j) = C_0*Lambda_factor*H_matrix(i,j) + 2 * ( Lambda_factor*H_matrix(i,j)   )/3
+            D_matrix(i,j) =                 (D_matrix_L(1) - D_matrix_L(2)) * urel(i)*urel(j)
+            D_matrix(j,i) = D_matrix(i,j)
           END IF
         END DO
       END DO
       D_matrix(:,:) = epsilonSGS * D_matrix(:,:)
 
-      ! Cholewski decomposition to get diffusion matrix B_matrix
-      B_matrix(:,:) = 0.
-
-      B_matrix(1,1) = SQRT(D_matrix(1,1))
-      B_matrix(2,1) = D_matrix(1,2) / B_matrix(1,1)
-      B_matrix(3,1) = D_matrix(1,3) / B_matrix(1,1)
-
-      DO j = 2 , 3
-        DO i = 1 , 3
-          IF( i .LT. j ) CYCLE       ! upper triangular elements
-          IF( i .EQ. j) THEN
-            aux = 0.0
-            DO k = 1 , i -1
-              aux = aux + B_matrix(i,k)**2
-            END DO
-            B_matrix(i,j) = SQRT(D_matrix(i,i) - aux) ! diagonal elements
+      ! Cholewski decomposition to get diffusion matrix B_SGS
+      B_SGS(:,:) = 0.
+      DO i = 1 , 3
+        DO j = 1 , i
+          aux = 0.
+          DO k = 1 , j -1
+            aux = aux + B_SGS(i,k)*B_SGS(j,k)
+          END DO
+          IF (i .EQ. j) THEN
+            B_SGS(i,j) = SQRT(D_matrix(i,i) - aux) ! diagonal elements
           ELSE ! (i .GT. j)
-            aux = 0.0
-            DO k = 1 , i - 1
-              aux = aux + B_matrix(j,k) * B_matrix(i,k)
-            END DO
-            B_matrix(i,j) = (D_matrix(j,i) - aux) / B_matrix(j,j)    ! in our case only element B(3,2)
+            B_SGS(i,j) = (D_matrix(i,j) - aux) / B_SGS(j,j)    ! in our case only element B(3,2)
           END IF
         END DO
       END DO
-
     END IF
-
-    Pt(1:3) = 0.
-    DO j = 1,3
-      Pt(1:3) = Pt(1:3)  + G_matrix(1:3,j)*fluctuationState(j)*dt + B_matrix(1:3,j)*SQRT(dt)*RandNormal()
-    END DO
   END IF
 
+  ! Calculate fluctuating velocity
+  fluctuationState(1:3) = TurbPartState(1:3,iPart) - FieldAtParticle(VELV,iPart)
+
+  Pt(1:3) = 0.
+  DO j = 1,3
+    Pt(1:3) = Pt(1:3)  - G_SGS(1:3,j)*fluctuationState(j)*dt + B_SGS(j,1:3)*SQRT(dt)*RandNormal()
+  END DO
+
   ! FULL FLUID VELOCITY SEEN BY THE PARTICLES
-  !  (U_p-U)*(\partial U_i / \partial x_j) * dt - 1/\rho_f * ( \partial <P> / \partial x_i ) * dt
-  TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) - gradpPart(1:3)/FieldAtParticle(DENS,iPart)*dt &
-                                                      + second_drift_term(1:3)*dt + Pt(1:3)
+  !  (U_p-U)*(\partial U_i / \partial x_j) * dt - ( \partial <P> / \partial x_i ) * dt
+  TurbPartState(1:3,iPart) = TurbPartState(1:3,iPart) + Pt(1:3) + second_drift_term(1:3)*dt
 
 END DO
 
@@ -839,9 +817,9 @@ DO iPart = 1,PDM%ParticleVecLength
     taup = C_c * Species(PartSpecies(iPart))%DensityIC * PartState(PART_DIAM,iPart)**2 * 1./(18*mu)
 
     ! Integral time scale of fluid velocity along a particle trajectory by estimated by an inverse of resolved local vorticity
-    rot_U(1)=gradUyPart(3) - gradUzPart(2)    ! dw/dy-dv/dz
-    rot_U(2)=gradUzPart(1) - gradUxPart(3)    ! du/dz-dw/dx
-    rot_U(3)=gradUxPart(2) - gradUyPart(1)    ! dv/dx-du/dy
+    rotu(1)=gradUyPart(3) - gradUzPart(2)    ! dw/dy-dv/dz
+    rotu(2)=gradUzPart(1) - gradUxPart(3)    ! du/dz-dw/dx
+    rotu(3)=gradUxPart(2) - gradUyPart(1)    ! dv/dx-du/dy
 
     ! Calculate the factor f1, f2, f3 for the anisotropy
     ! TODO: third direction?
@@ -850,9 +828,9 @@ DO iPart = 1,PDM%ParticleVecLength
     factor(3) = SQRT(3. - factor(1)**2 - factor(2)**2)
 
     alpha_SGS =  dt/taup
-    beta_SGS  = taup*VECNORM(rot_U)
-    beta1 = 1+beta_SGS
-    beta2 = 1-beta_SGS
+    betaSGS  = taup*VECNORM(rotu)
+    beta1 = 1+betaSGS
+    beta2 = 1-betaSGS
 
     ! U_square = (u'')^2
     sigmaF(1:3) = factor(1:3) * sigmaSGS * SQRT( 1./beta1 * (1-EXP(-alpha_SGS*beta1))  &
@@ -926,9 +904,9 @@ DO iPart = 1,PDM%ParticleVecLength
   ! ni_B = SQRT(2*mu/FieldAtParticle(DENS,iPart)/(Sc * taup**2 * dt))
 
   ! Integral time scale of fluid velocity along a particle trajectory by estimated by an inverse of resolved local vorticity
-  rot_U(1)=gradUyPart(3) - gradUzPart(2)    ! dw/dy-dv/dz
-  rot_U(2)=gradUzPart(1) - gradUxPart(3)    ! du/dz-dw/dx
-  rot_U(3)=gradUxPart(2) - gradUyPart(1)    ! dv/dx-du/dy
+  rotu(1)=gradUyPart(3) - gradUzPart(2)    ! dw/dy-dv/dz
+  rotu(2)=gradUzPart(1) - gradUxPart(3)    ! du/dz-dw/dx
+  rotu(3)=gradUxPart(2) - gradUyPart(1)    ! dv/dx-du/dy
 
   ! Calculation of deformation tensor d_ij
   d_ij_tensor(1,:)= 0.5*(/             2*gradUxPart(1), gradUyPart(1)+gradUxPart(2), gradUzPart(1)+gradUxPart(3)/)
@@ -939,10 +917,10 @@ DO iPart = 1,PDM%ParticleVecLength
   U_M = 2./SQRT(3.) * C_Fuka * C_eps * ElemVolN(ElemID) * VECNORM(d_ij_tensor(:,:))
 
   alpha_SGS =  dt/taup
-  ! beta = taup  / T_f_p, T_f_p = 1./VECNORM(rot_U)
-  beta_SGS = taup*VECNORM(rot_U)
-  beta1 = 1+beta_SGS
-  beta2 = 1-beta_SGS
+  ! beta = taup  / T_f_p, T_f_p = 1./VECNORM(rotu)
+  betaSGS = taup*VECNORM(rotu)
+  beta1 = 1+betaSGS
+  beta2 = 1-betaSGS
 
   sigmaSGS = U_M * SQRT( 1/beta1 * (1-EXP(-alpha_SGS*beta1)) - 1./beta2 * EXP(-2*alpha_SGS) * (1-EXP(alpha_SGS*beta2)))
 
@@ -1017,7 +995,7 @@ DO iPart = 1,PDM%ParticleVecLength
     deltaT_E = 3*PI/10*1./(PI/ElemVolN(ElemID)*sigmaSGS)
 
     ! ratio between lagrangian and eulerian time scale
-    beta_SGS = deltaT_L/deltaT_E
+    betaSGS = deltaT_L/deltaT_E
 
     ! Particle relaxation time
     taup = Species(PartSpecies(iPart))%DensityIC * PartState(PART_DIAM,iPart)**2 * 1./(18*mu)
@@ -1026,7 +1004,7 @@ DO iPart = 1,PDM%ParticleVecLength
     St = taup/deltaT_E
 
     ! SGS autocorrelation time seen by a particle =  deltaT_L (from Berrouk et al. (2007))
-    deltaT_L =  deltaT_E * (1 - (1-beta_SGS) / (1+St)**(0.4*(1+0.01*St)))
+    deltaT_L =  deltaT_E * (1 - (1-betaSGS) / (1+St)**(0.4*(1+0.01*St)))
 
     ! kSGSPart  = C_0 * kSGS, C_0=f(St), here C_0=1 is assumed
     Pt(1:3) = 0.
@@ -1050,6 +1028,7 @@ CASE('Breuer')
 ! FOR ANISOTROPIC TURBULENCE
 !
 !===================================================================================================================================
+betaSGS = 1.
 
 ! Time integration using Euler-Maruyama scheme
 IF(PRESENT(iStage))THEN
@@ -1211,6 +1190,7 @@ CASE('Breuer-Analytic')
 ! FOR ANISOTROPIC TURBULENCE
 !
 !===================================================================================================================================
+betaSGS = 1.
 
 ! Time integration in first RK stage (p. 26)
 IF(PRESENT(iStage))THEN
@@ -1355,12 +1335,68 @@ END SELECT
 END SUBROUTINE ParticleSGS
 
 
+SUBROUTINE CalcDivTau()
+!===================================================================================================================================
+! Compute tau
+!===================================================================================================================================
+! MODULES
+USE MOD_PreProc
+USE MOD_Equation_Vars,      ONLY: s23
+USE MOD_Mesh_Vars,          ONLY: nElems
+USE MOD_Lifting_BR1_gen,    ONLY: Lifting_BR1_gen
+#if !FAXEN_CORR
+USE MOD_Lifting_Vars,       ONLY: gradUx,gradUy,gradUz
+USE MOD_Lifting_Vars,       ONLY: gradUx_master,gradUx_slave
+USE MOD_Lifting_Vars,       ONLY: gradUy_master,gradUy_slave
+USE MOD_Lifting_Vars,       ONLY: gradUz_master,gradUz_slave
+#endif
+USE MOD_Particle_Vars,      ONLY: gradUx2,gradUy2,gradUz2
+USE MOD_Particle_SGS_Vars,  ONLY: divTau
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+#if !FAXEN_CORR
+! Calculate the second gradient of the velocity and output \nabla \cdot tau
+CALL Lifting_BR1_gen(3,3,gradUx(LIFT_VELV,:,:,:,:),gradUx_master(LIFT_VELV,:,:,:),gradUx_slave(LIFT_VELV,:,:,:),&
+                    gradUx2(1,:,:,:,:,:),gradUx2(2,:,:,:,:,:),gradUx2(3,:,:,:,:,:))
+CALL Lifting_BR1_gen(3,3,gradUy(LIFT_VELV,:,:,:,:),gradUy_master(LIFT_VELV,:,:,:),gradUy_slave( LIFT_VELV,:,:,:),&
+                    gradUy2(1,:,:,:,:,:),gradUy2(2,:,:,:,:,:),gradUy2(3,:,:,:,:,:))
+CALL Lifting_BR1_gen(3,3,gradUz(LIFT_VELV,:,:,:,:),gradUz_master(LIFT_VELV,:,:,:),gradUz_slave( LIFT_VELV,:,:,:),&
+                    gradUz2(1,:,:,:,:,:),gradUz2(2,:,:,:,:,:),gradUz2(3,:,:,:,:,:))
+#endif
+
+! Time derivative of VELV + GradientVELV or RHS of NS equations (same result) for the calculation of the substantial derivative
+!divtau(1,:,:,:,:) = gradUx2(1,LIFT_VEL1,:,:,:,:) + gradUy2(2,LIFT_VEL1,:,:,:,:) + gradUz2(3,LIFT_VEL1,:,:,:,:) + &
+!                    s13 * (gradUx2(1,LIFT_VEL1,:,:,:,:) + gradUy2(1,LIFT_VEL2,:,:,:,:) + gradUz2(1,LIFT_VEL3,:,:,:,:))
+divTau(1,:,:,:,:) = 2*gradUx2(1,1,:,:,:,:) + gradUy2(2,1,:,:,:,:) + gradUz2(3,1,:,:,:,:) + gradUy2(1,2,:,:,:,:) + &
+                    + gradUz2(1,3,:,:,:,:) - s23 * (gradUx2(1,1,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(3,3,:,:,:,:))
+!divtau(2,:,:,:,:) = gradUx2(1,LIFT_VEL2,:,:,:,:) + gradUy2(2,LIFT_VEL2,:,:,:,:) + gradUz2(3,LIFT_VEL2,:,:,:,:) + &
+!                    s13 * (gradUx2(2,LIFT_VEL1,:,:,:,:) + gradUy2(2,LIFT_VEL2,:,:,:,:) + gradUz2(2,LIFT_VEL3,:,:,:,:))
+divTau(2,:,:,:,:) = gradUx2(2,1,:,:,:,:) + 2*gradUy2(2,2,:,:,:,:) + gradUz2(2,3,:,:,:,:) + gradUx2(1,2,:,:,:,:) + &
+                    + gradUz2(3,2,:,:,:,:) - s23 * (gradUx2(1,1,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(3,3,:,:,:,:))
+!divtau(3,:,:,:,:) = gradUx2(1,LIFT_VEL3,:,:,:,:) + gradUy2(2,LIFT_VEL3,:,:,:,:) + gradUz2(3,LIFT_VEL3,:,:,:,:) + &
+!                    s13 * (gradUx2(3,LIFT_VEL1,:,:,:,:) + gradUy2(3,LIFT_VEL2,:,:,:,:) + gradUz2(3,LIFT_VEL3,:,:,:,:))
+divTau(2,:,:,:,:) = gradUx2(3,1,:,:,:,:) + gradUy2(3,2,:,:,:,:) + 2*gradUz2(3,3,:,:,:,:) + gradUx2(1,3,:,:,:,:) + &
+                    + gradUz2(2,3,:,:,:,:) - s23 * (gradUx2(1,1,:,:,:,:) + gradUy2(2,2,:,:,:,:) + gradUz2(3,3,:,:,:,:))
+
+END SUBROUTINE CalcDivTau
+
+
 !===================================================================================================================================
 !> Finalize the SGS model
 !===================================================================================================================================
 SUBROUTINE ParticleFinalizeSGS()
 ! MODULES
 USE MOD_Particle_Vars,              ONLY: TurbPartState,TurbPt_temp
+#if !FAXEN_CORR
+USE MOD_Particle_Vars,              ONLY: gradUx2,gradUy2,gradUz2
+#endif
 USE MOD_Particle_SGS_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1375,6 +1411,12 @@ SDEALLOCATE(TurbPartState)
 SDEALLOCATE(TurbPt_temp)
 SDEALLOCATE(ElemVolN)
 SDEALLOCATE(gradp)
+SDEALLOCATE(divTau)
+#if !FAXEN_CORR
+SDEALLOCATE(gradUx2)
+SDEALLOCATE(gradUy2)
+SDEALLOCATE(gradUz2)
+#endif
 
 ParticleSGSInitIsDone=.FALSE.
 

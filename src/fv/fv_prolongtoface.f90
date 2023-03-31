@@ -85,14 +85,14 @@ DO SideID=firstSideID,lastSideID
     ! FV_surf_gradU contains the gradient over the DG element interface and is calculated in 'FV_SurfCalcGradients'
     ! subroutine in fv_reconstruction.f90
     DO q=0,PP_NZ; DO p=0,PP_N
-      CALL FV_Limiter(FV_multi_master(:,p,q,SideID), FV_surf_gradU(:,p,q,SideID), gradU(:,p,q))
+      CALL FV_Limiter(PP_nVarPrim, FV_multi_master(:,p,q,SideID), FV_surf_gradU(:,p,q,SideID), gradU(:,p,q))
       UPrim_master(:,p,q,SideID) = UPrim_master(:,p,q,SideID) - gradU(:,p,q) * FV_dx_master(1,p,q,SideID)
     END DO; END DO ! p,q=0,PP_N
   END IF
   IF (SideID.GE.firstInnerSide) THEN
     IF (FV_Elems_slave(SideID).GT.0) THEN ! FV element
       DO q=0,PP_NZ; DO p=0,PP_N
-        CALL FV_Limiter(FV_multi_slave(:,p,q,SideID), -FV_surf_gradU(:,p,q,SideID), gradU(:,p,q))
+        CALL FV_Limiter(PP_nVarPrim, FV_multi_slave(:,p,q,SideID), -FV_surf_gradU(:,p,q,SideID), gradU(:,p,q))
         UPrim_slave(:,p,q,SideID) = UPrim_slave(:,p,q,SideID) - gradU(:,p,q) * FV_dx_slave(1,p,q,SideID)
       END DO; END DO ! p,q=0,PP_N
     END IF

@@ -211,6 +211,7 @@
             </Documentation>
          </StringVectorProperty>
       <!-- ================================================================== -->
+#if USE_PARTICLES
          <StringVectorProperty name="VarParticleArrayInfo"
             information_only="1">
             <ArraySelectionInformationHelper attribute_name="VarParticle" />
@@ -233,11 +234,14 @@
                This property contains a list of the PartData visualization.
             </Documentation>
          </StringVectorProperty>
+#endif /*USE_PARTICLES*/
       <!-- ================================================================== -->
-         <OutputPort name="Volume" index="0"/>
-         <OutputPort name="Surface" index="1"/>
-         <OutputPort name="Particles:PartData" index="2"/>
+         <OutputPort name="Volume"               index="0"/>
+         <OutputPort name="Surface"              index="1"/>
+#if USE_PARTICLES
+         <OutputPort name="Particles:PartData"   index="2"/>
          <OutputPort name="Particles:ImpactData" index="3"/>
+#endif /*USE_PARTICLES*/
          <Hints>
             <ReaderFactory extensions="h5"
                file_description="2 Posti Visu" />

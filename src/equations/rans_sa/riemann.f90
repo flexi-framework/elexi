@@ -24,7 +24,7 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ABSTRACT INTERFACE
-  SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
+  PPURE SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
     REAL,DIMENSION(PP_nVar),INTENT(OUT):: F
@@ -61,7 +61,6 @@ INTERFACE FinalizeRiemann
   MODULE PROCEDURE FinalizeRiemann
 END INTERFACE
 
-
 PUBLIC::InitRiemann
 PUBLIC::Riemann
 PUBLIC::Riemann_Point
@@ -70,7 +69,6 @@ PUBLIC::FinalizeRiemann
 
 PUBLIC::DefineParametersRiemann
 CONTAINS
-
 
 !==================================================================================================================================
 !> Define parameters
@@ -95,6 +93,7 @@ CALL addStrListEntry('RiemannBC','lf',           PRM_RIEMANN_LF)
 CALL addStrListEntry('RiemannBC','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
 CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
 END SUBROUTINE DefineParametersRiemann
+
 
 !==================================================================================================================================!
 !> Initialize Riemann solver routines, read inner and BC Riemann solver parameters and set pointers
@@ -136,6 +135,7 @@ END SELECT
 
 END SUBROUTINE InitRiemann
 
+
 !==================================================================================================================================
 !> Computes the numerical flux
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
@@ -169,8 +169,8 @@ ELSE
   Riemann_loc => Riemann_pointer
 END IF
 
-! Momentum has to be rotated using the normal system individual for each
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
+  ! Momentum has to be rotated using the normal system individual for each
   ! left state: U_L
   U_LL(EXT_DENS)=U_L(DENS,i,j)
   U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
@@ -228,6 +228,7 @@ END DO; END DO
 
 END SUBROUTINE Riemann
 
+
 !==================================================================================================================================
 !> Computes the numerical flux
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
@@ -236,6 +237,7 @@ END SUBROUTINE Riemann
 SUBROUTINE Riemann_Point(FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -243,8 +245,7 @@ REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_L        !< conservative solution a
 REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-!> normal vector and tangential vectors at side
-REAL,DIMENSION(          3),INTENT(IN)  :: nv,t1,t2
+REAL,DIMENSION(          3),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
 LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
 REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -259,7 +260,7 @@ ELSE
   Riemann_loc => Riemann_pointer
 END IF
 
-! Momentum has to be rotatet using the normal system individual for each
+! Momentum has to be rotated using the normal system individual for each
 ! left state: U_L
 U_LL(EXT_DENS)=U_L(DENS)
 U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
@@ -302,7 +303,7 @@ CALL EvalEulerFlux1D_fast(U_RR,F_R)
 
 CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
 
-! Back Rotate the normal flux into Cartesian direction
+! Back rotate the normal flux into Cartesian direction
 Fout(DENS)=F(DENS)
 Fout(MOMV)=nv(:)*F(MOM1)     &
                 + t1(:)*F(MOM2)  &
@@ -315,6 +316,7 @@ Fout(ENER)=F(ENER)
 Fout(MUSA)=F(MUSA)
 
 END SUBROUTINE Riemann_Point
+
 
 #if PARABOLIC
 !==================================================================================================================================
@@ -358,10 +360,11 @@ END DO; END DO
 END SUBROUTINE ViscousFlux
 #endif /* PARABOLIC */
 
+
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
 !==================================================================================================================================
-SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa
 IMPLICIT NONE
@@ -384,12 +387,13 @@ F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(EXT_CONS) - U_LL(EXT_CONS)))
 
 END SUBROUTINE Riemann_LF
 
+
 !=================================================================================================================================
 !> Roe's approximate Riemann solver using the Harten and Hymen II entropy fix, see
 !> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
 !>  A review of entropy fixes as applied to Roe's linearization.
 !=================================================================================================================================
-SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
 #ifdef SPLIT_DG
@@ -490,6 +494,7 @@ LambdaMax = MAX( ABS(U_RR(EXT_VEL1)),ABS(U_LL(EXT_VEL1)) ) + MAX(c_L,c_R)
 F(MUSA) = 0.5*((F_L(MUSA)+F_R(MUSA)) - LambdaMax*(U_RR(EXT_MUSA) - U_LL(EXT_MUSA)))
 END SUBROUTINE Riemann_RoeEntropyFix
 
+
 !==================================================================================================================================
 !> Finalize Riemann solver routines
 !==================================================================================================================================
@@ -502,6 +507,5 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 END SUBROUTINE FinalizeRiemann
-
 
 END MODULE MOD_Riemann

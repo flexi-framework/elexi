@@ -61,8 +61,6 @@ REAL                                :: NewImbalance                             
 
 ! Variables moved over from mesh_reading/timedisc/restart
 LOGICAL                             :: ElemTimeExists
-! REAL                                :: RestartWallTime                            ! wall time at the beginning of a simulation OR
-                                                                                  ! when a restart is performed via Load Balance
 REAL                                :: RestartTimeBackup                          !
 LOGICAl                             :: DoInitialAutoRestart= .FALSE.
 INTEGER                             :: InitialAutoRestartSample

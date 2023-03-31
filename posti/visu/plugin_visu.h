@@ -21,15 +21,18 @@
 
 extern "C" {
   extern void __mod_visu_cwrapper_MOD_visu_requestinformation(int* mpi_comm_IN,
-        int* str_len, const char* state_file, int* str_len_mesh, const char* mesh_file,  struct CharARRAY* varnames, struct CharARRAY* bcnames,
-				struct CharARRAY* partnames);
+        int* str_len, const char* state_file, int* str_len_mesh, const char* mesh_file,  struct CharARRAY* varnames, struct CharARRAY* bcnames
+#if USE_PARTICLES
+       ,struct CharARRAY* partnames
+#endif /*USE_PARTICLES*/
+        );
 }
 
 extern "C" {
   extern void __mod_visu_cwrapper_MOD_visu_cwrapper(int* mpi_comm_IN,
 #if USE_MPI
         int* UseD3,
-#endif
+#endif /*USE_MPI*/
         int* HighOrder, int* UseCurveds,
         int* strlen_prm,   const char* prmfile_IN,
         int* strlen_posti, const char* postifile_IN,
@@ -39,12 +42,14 @@ extern "C" {
         struct CharARRAY* varnames_out,
         struct DoubleARRAY* coordsSurf_out,   struct DoubleARRAY* valuesSurf_out,    struct IntARRAY* nodeidsSurf_out,   struct IntARRAY* globalnodeidsSurf_out,    struct IntARRAY* globalcellidsSurf_out,
         struct DoubleARRAY* coordsSurfFV_out, struct DoubleARRAY* valuesSurfFV_out,  struct IntARRAY* nodeidsSurfFV_out, struct IntARRAY* globalnodeidsSurfFV_out,  struct IntARRAY* globalcellidsSurfFV_out,
-        struct CharARRAY* varnamesSurf_out, struct DoubleARRAY* coordsPart_out,
-				struct DoubleARRAY* valuesPart_out, struct IntARRAY* nodeidsPart_out,
-				struct CharARRAY* varnamesPart_out, struct IntARRAY* componentsPart_out,
-				struct DoubleARRAY* coordsImpact_out,	struct DoubleARRAY* valuesImpact_out,
-				struct IntARRAY* nodeidsImpact_out,struct CharARRAY* varnamesImpact_out,
-				struct IntARRAY* componentsImpact_out);
+        struct CharARRAY* varnamesSurf_out
+#if USE_PARTICLES
+       ,struct DoubleARRAY* coordsPart_out,   struct DoubleARRAY* valuesPart_out,    struct IntARRAY* nodeidsPart_out,
+        struct CharARRAY* varnamesPart_out,   struct IntARRAY* componentsPart_out,
+        struct DoubleARRAY* coordsImpact_out,	struct DoubleARRAY* valuesImpact_out,  struct IntARRAY* nodeidsImpact_out,
+        struct CharARRAY* varnamesImpact_out, struct IntARRAY* componentsImpact_out
+#endif /*USE_PARTICLES*/
+        );
 }
 
 extern "C" {
@@ -54,5 +59,4 @@ extern "C" {
 extern "C" {
   extern void __mod_visu_MOD_finalizevisu();
 }
-
 #endif /* VISU_PLUGIN_H */

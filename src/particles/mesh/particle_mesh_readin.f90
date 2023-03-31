@@ -196,8 +196,8 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: FirstElemInd,LastElemInd
-INTEGER                        :: nSideIDs,offsetSideID
+INTEGER                        :: FirstElemInd,LastElemInd,iElem
+INTEGER                        :: nSideIDs,offsetSideID,iSide
 !===================================================================================================================================
 
 ! do not build particle mesh information in posti mode
@@ -230,6 +230,18 @@ ALLOCATE(SideInfo_Shared(1:SIDEINFOSIZE+1,1:nSideIDs))
 SideInfo_Shared(1                :SIDEINFOSIZE_H5,1:nSideIDs) = SideInfo(:,:)
 SideInfo_Shared(SIDEINFOSIZE_H5+1:SIDEINFOSIZE+1 ,1:nSideIDs) = 0
 #endif /*USE_MPI*/
+
+! Identify all elements containing a mortar side
+ElemInfo_Shared(ELEM_HASMORTAR,offsetElem+1:offsetElem+nElems) = 0
+DO iElem = FirstElemInd, LastElemInd
+  ! Loop over all sides and check for mortar sides
+  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,iElem)
+    IF (SideInfo_Shared(SIDE_NBELEMID,iSide).LT.0) THEN
+      ElemInfo_Shared(ELEM_HASMORTAR,iElem) = 1
+      EXIT
+    END IF
+  END DO
+END DO
 
 END SUBROUTINE ReadMeshSides
 

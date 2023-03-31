@@ -233,6 +233,12 @@ CMAKE_DEPENDENT_OPTION(PARTICLES_ROTATION     "Consider rotation of particles"  
                                               "PARTICLES_EXTEND_RHS"                 OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_ANALYZE_RHS  "Write rhs to file for particles"      OFF
                                               "PARTICLES_EXTEND_RHS"                 OFF)
+
+# Hide debug options by default
+MARK_AS_ADVANCED(FORCE PARTICLES_ANALYZE_RHS)
+MARK_AS_ADVANCED(FORCE PARTICLES_CODE_ANALYZE)
+MARK_AS_ADVANCED(FORCE PARTICLES_DEBUG_MEMORY)
+
 IF(PARTICLES)
   IF(FLEXI_2D)
     MESSAGE(SEND_ERROR "PARTICLES only works on FLEXI_2D=OFF")
@@ -554,10 +560,10 @@ IF (PARTICLES)
   FILE(GLOB_RECURSE particlesF90 ./src/particles/*.f90)
   LIST(APPEND flexiF90 ${particlesF90})
 
-  ADD_LIBRARY(memusagelib STATIC ./src/particles/globals/processmemusage.cxx)
-  SET_TARGET_PROPERTIES(memusagelib PROPERTIES LANGUAGE CXX LINKER_LANGUAGE CXX
-                                               COMPILE_FLAGS "-fPIC")
-  LIST(APPEND particlelibs memusagelib)
+  # ADD_LIBRARY(memusagelib STATIC ./src/particles/globals/processmemusage.cxx)
+  # SET_TARGET_PROPERTIES(memusagelib PROPERTIES LANGUAGE CXX LINKER_LANGUAGE CXX
+  #                                              COMPILE_FLAGS "-fPIC")
+  # LIST(APPEND particlelibs memusagelib)
 ENDIF()
 
 

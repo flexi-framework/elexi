@@ -231,7 +231,7 @@ USE MOD_Restart_Vars
 #if FV_ENABLED
 USE MOD_ReadInTools,        ONLY: GETINT
 USE MOD_StringTools,        ONLY: INTTOSTR
-#endif
+#endif /*FV_ENABLED*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -243,9 +243,8 @@ LOGICAL            :: ResetTime,validHDF5,prmChanged,userblockFound
 REAL               :: StartT,EndT
 CHARACTER(LEN=255) :: ParameterFileOld
 !==================================================================================================================================
-IF((.NOT.InterpolationInitIsDone).OR.RestartInitIsDone)THEN
+IF(.NOT.InterpolationInitIsDone .OR. RestartInitIsDone) &
   CALL CollectiveStop(__STAMP__,'InitRestart not ready to be called or already called.')
-END IF
 
 ! If not done previously, check the restart file
 IF (RestartMode.EQ.-1) CALL InitRestartFile(RestartFile_in)
@@ -320,6 +319,7 @@ END IF
 ! Check whether (during restart) the statefile from which the restart is performed should be deleted
 FlushInitialState = GETLOGICAL('FlushInitialState')
 
+RestartWallTime   = FLEXITIME()
 RestartInitIsDone = .TRUE.
 GETTIME(EndT)
 SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INIT RESTART DONE! [',EndT-StartT,'s]'
@@ -454,6 +454,7 @@ IF (DoRestart) THEN
   HSize_proc(5) = nElems
   ! Allocate array to hold the restart data
   ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+  DEALLOCATE(HSize)
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
   IF (RestartMode.GT.1) THEN
     CALL ReadArray('Mean'       ,5,HSize_proc,OffsetElem,5,RealArray=U_local)
@@ -600,7 +601,6 @@ IF (DoRestart) THEN
 
     DEALLOCATE(U_local)
   END IF ! InterpolateSolution
-  DEALLOCATE(HSize)
   CALL CloseDataFile()
 
   IF (RestartMode.GT.1) THEN

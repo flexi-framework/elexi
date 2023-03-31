@@ -193,8 +193,8 @@ END SUBROUTINE Build_FV_DG_distribution
 SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars()
 USE MOD_Globals
 USE MOD_Visu_Vars
-USE MOD_Restart_Vars    ,ONLY: RestartMode
 USE MOD_ReadInTools     ,ONLY: GETSTR,GETLOGICAL,CountOption
+USE MOD_Restart_Vars    ,ONLY: RestartMode
 USE MOD_StringTools     ,ONLY: STRICMP,set_formatting,clear_formatting
 #if FV_RECONSTRUCT
 USE MOD_EOS_Posti       ,ONLY: AppendNeededPrims
@@ -219,11 +219,12 @@ ALLOCATE(mapAllVarsToVisuVars    (1:nVarAll))
 ALLOCATE(mapAllVarsToSurfVisuVars(1:nVarAll))
 mapAllVarsToVisuVars     = 0
 mapAllVarsToSurfVisuVars = 0
-nVarVisu        = 0
-nVarSurfVisuAll = 0
+nVarVisu           = 0
+nVarSurfVisuAll    = 0
 #if USE_PARTICLES
-PD%nPartVar_Visu = 0
-PDE%nPartVar_Visu = 0
+PD%nPartVar_Visu   = 0
+PDE%nPartVar_Visu  = 0
+withPartStatistics = .FALSE.
 #endif
 
 ! If no variable names are given in prm file, take the variables given in the HDF5 "VarNames" attribute (if present) or all found
@@ -254,6 +255,7 @@ DO iVar=1,nVarIni
   ELSE
     VarName = GETSTR("VarName")
   END IF
+
   DO iVar2=1,nVarAll
     IF (STRICMP(VarName, VarnamesAll(iVar2))) THEN
       nVarSurfVisuAll = nVarSurfVisuAll + 1
@@ -274,6 +276,7 @@ DO iVar=1,nVarIni
       PD%mapAllVarsToVisuVars(iVar2)=PD%nPartVar_Visu
     END IF
   END DO
+
   IF(iVar.EQ.nVarIni)THEN
     SDEALLOCATE(PD%VarNamePartVisu)
     ALLOCATE(PD%VarNamePartVisu(1:PD%nPartVar_Visu))
@@ -283,6 +286,7 @@ DO iVar=1,nVarIni
     END DO
     SDEALLOCATE(PD%VarNamePartDummy)
   END IF
+
   ! PartImpact
   DO iVar2=1,PDE%nPartVar_HDF5
     IF (STRICMP(VarName, PDE%VarNamesPart_HDF5(iVar2)))THEN
@@ -291,6 +295,7 @@ DO iVar=1,nVarIni
       PDE%mapAllVarsToVisuVars(iVar2)=PDE%nPartVar_Visu
     END IF
   END DO
+
   IF(iVar.EQ.nVarIni)THEN
     SDEALLOCATE(PDE%VarNamePartVisu)
     ALLOCATE(PDE%VarNamePartVisu(1:PDE%nPartVar_Visu))
@@ -300,6 +305,11 @@ DO iVar=1,nVarIni
     END DO
     SDEALLOCATE(PDE%VarNamePartDummy)
   END IF
+
+#if USE_PARTICLES
+  ! Check if particle statistics are requested
+  IF (INDEX(TRIM(VarName),'PartInt').GT.0) withPartStatistics = .TRUE.
+#endif /*USE_PARTICLES*/
 #endif
 END DO
 
@@ -316,6 +326,10 @@ DO iVar=1,nVarDep
     withDGOperator = withDGOperator .OR. (DepTable(iVar,0).GT.0)
   END IF
 END DO
+
+#if USE_PARTICLES
+withDGOperator = withDGOperator .OR. withPartStatistics
+#endif /*USE_PARTICLES*/
 
 ! Calculate all dependencies:
 ! For each quantity copy from all quantities that this quantity depends on the dependencies.
@@ -442,6 +456,7 @@ mapAllBCNamesToVisuBCNames_old = mapAllBCNamesToVisuBCNames
 LOGWRITE (*,'(A,'//format//'I0)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
 
 END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
+
 
 !===================================================================================================================================
 !> This routine builds mappings that give for each BC side the index of the visualization side, seperate by FV and DG.

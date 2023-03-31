@@ -178,10 +178,10 @@ REAL                          :: U_RHS(1:RHS_NVARS,0:PP_N,0:PP_N,0:PP_NZ,1:nElem
 #endif /* USE_EXTEND_RHS || USE_FAXEN_CORR  */
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if USE_MPI
-#if USE_LOADBALANCE
-! Needed for scaling parts and load balance
-CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.)
-#endif
+! #if USE_LOADBALANCE
+! ! Needed for scaling parts and load balance
+! CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.)
+! #endif
 
 PartMPIExchange%nMPIParticles=0
 #endif /*USE_MPI*/

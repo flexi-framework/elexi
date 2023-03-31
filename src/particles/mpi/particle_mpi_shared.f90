@@ -142,7 +142,7 @@ nProcessors_Global = nProcessors
     color = myRank
   ELSE
     ! Group procs so that every CORE_SPLIT procs are in the same group
-    color = INT(REAL(myRank)*REAL(CORE_SPLIT)/REAL(nProcessors_Global))+1
+    color = INT(REAL(myRank)/REAL(CORE_SPLIT))
   END IF ! (CORE_SPLIT.GE.nProcessors_Global).OR.(MOD().GT.0)
   CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,0,MPI_COMM_SHARED,iError)
 #endif
@@ -257,7 +257,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -308,7 +308,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -359,7 +359,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -412,7 +412,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -464,7 +464,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -516,7 +516,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -568,7 +568,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -620,7 +620,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -672,7 +672,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -724,7 +724,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -776,7 +776,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -828,7 +828,7 @@ DISP_UNIT = 1
 CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
 
 #if DEBUG_MEMORY
-LWRITE(UNIT_stdOut,'(A,I7,A50,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
+LWRITE(UNIT_stdOut,'(A,I7,A,A,A,I20)') "myrank=",myrank," Allocated ",TRIM(SM_WIN_NAME)," with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
@@ -966,7 +966,7 @@ IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).LT.INT(HUGE(INT(1,KIND=MPI_ADDRESS_KIND
   ! Compute node root also checks available memory
   IF (myComputeNodeRank.EQ.0) THEN
     ! Find memory usage and requirements
-    CALL ProcessMemUsage(memory(1),memory(2),memory(3)) ! memUsed,memAvail,memTotal in kB
+    CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
     ! Compare requested size against available memory
     IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).GT.memory(2)*kByte) &

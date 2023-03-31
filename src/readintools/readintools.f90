@@ -211,6 +211,9 @@ CLASS(Parameters),INTENT(IN) :: this  !< CLASS(Parameters)
 CLASS(link), POINTER         :: current
 !==================================================================================================================================
 
+! return if there are no unused names
+IF (this%count_unread().EQ.0) RETURN
+
 ! iterate over all options and compare names
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,I0,A)') ' Following ',this%count_unread(),' Parameters are defined in INI but not called!'

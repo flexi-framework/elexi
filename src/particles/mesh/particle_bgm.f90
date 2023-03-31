@@ -723,6 +723,9 @@ ElemLoop: DO iElem = offsetElemMPI(iProc-1)+1,offsetElemMPI(iProc)
 
   ! Mortar sides: Only multi-node
   DO iElem = firstElem, lastElem
+    ! Element not a mortar element
+    IF (ElemInfo_Shared(ELEM_HASMORTAR,iElem).LT.1) CYCLE
+
     ASSOCIATE(posElem => (iElem-1)*ELEMINFOSIZE + (ELEM_HALOFLAG-1))
     CALL MPI_FETCH_AND_OP(ElemDone,ElemDone,MPI_INTEGER,0,INT(posElem*SIZE_INT,MPI_ADDRESS_KIND),MPI_NO_OP,ElemInfo_Shared_Win,iError)
     CALL MPI_WIN_FLUSH(0,ElemInfo_Shared_Win,iError)

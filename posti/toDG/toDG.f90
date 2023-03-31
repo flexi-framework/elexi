@@ -249,7 +249,8 @@ SELECT CASE(TRIM(FileType))
 CASE('State')
   ! Safety check if the number of elements did not change
   CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
-  IF (INT(HSIZE(nDims)).NE.nGlobalElems)  STOP 'Number of elements in HDF5 file changed during computation!'
+  IF (INT(HSize(nDims)).NE.nGlobalElems)  STOP 'Number of elements in HDF5 file changed during computation!'
+  DEALLOCATE(HSize)
   CALL GetArrayAndName('DG_Solution','VarNames'          ,nVal          ,UTmp          ,VarNames)
   !CALL ReadArray('DG_Solution',5,INT(HSize),0,5,RealArray=UTmp)
   CALL GetArrayAndName('ElemData'  ,'VarNamesAdd'        ,nValAdd       ,ElemDataTmp   ,VarNamesAdd)
@@ -262,7 +263,8 @@ CASE('State')
 CASE('TimeAvg')
   ! Safety check if the number of elements did not change
   CALL GetDataSize(File_ID,'Mean',nDims,HSize)
-  IF (INT(HSIZE(nDims)).NE.nGlobalElems)  STOP 'Number of elements in HDF5 file changed during computation!'
+  IF (INT(HSize(nDims)).NE.nGlobalElems)  STOP 'Number of elements in HDF5 file changed during computation!'
+  DEALLOCATE(HSize)
   CALL GetArrayAndName('Mean'      ,'VarNames_Mean'      ,nValMean      ,UMeanTmp      ,VarNamesMean)
   CALL GetArrayAndName('MeanSquare','VarNames_MeanSquare',nValMeanSquare,UMeanSquareTmp,VarNamesMeanSquare)
   CALL GetArrayAndName('ElemData'  ,'VarNamesAdd'        ,nValAdd       ,ElemDataTmp   ,VarNamesAdd)

@@ -456,6 +456,7 @@ ELSE
   UOld = U_local
 END IF
 #endif
+DEALLOCATE(HSize)
 
 ! Read the current time
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_State)

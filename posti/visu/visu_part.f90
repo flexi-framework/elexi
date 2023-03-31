@@ -26,8 +26,16 @@ INTERFACE InitParticleOutput
   MODULE PROCEDURE InitParticleOutput
 END INTERFACE
 
+INTERFACE InitPartStatistics
+  MODULE PROCEDURE InitPartStatistics
+END INTERFACE
+
 INTERFACE InitPartState
   MODULE PROCEDURE InitPartState
+END INTERFACE
+
+INTERFACE ReadPartStatistics
+  MODULE PROCEDURE ReadPartStatistics
 END INTERFACE
 
 INTERFACE ReadPartStateFile
@@ -42,16 +50,13 @@ INTERFACE FinalizeReadPartStateFile
   MODULE PROCEDURE FinalizeReadPartStateFile
 END INTERFACE
 
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-PUBLIC :: InitPartState
-PUBLIC :: ReadPartStateFile
-PUBLIC :: FinalizeReadPartStateFile
 PUBLIC :: InitParticleOutput
+PUBLIC :: InitPartState
+PUBLIC :: InitPartStatistics
+PUBLIC :: ReadPartStateFile
+PUBLIC :: ReadPartStatistics
 PUBLIC :: PartitionPartMPI
+PUBLIC :: FinalizeReadPartStateFile
 !===================================================================================================================================
 
 CONTAINS
@@ -106,6 +111,217 @@ END IF
 END SUBROUTINE InitParticleOutput
 
 
+SUBROUTINE InitPartStatistics(AttribName,statefile,VarNames,AttribExists)
+!===================================================================================================================================
+! Read in main attributes from given HDF5 state file
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_IO_HDF5                ,ONLY: File_ID
+USE MOD_HDF5_Input             ,ONLY: HSize,ReadArray,GetVarNames,GetDataSize,GetAttributeSize
+USE MOD_HDF5_Input             ,ONLY: DatasetExists,ReadAttribute
+USE MOD_HDF5_Input             ,ONLY: OpenDataFile,CloseDataFile
+USE MOD_Visu_Vars              ,ONLY: nSpecies,PartSpeciesIndex
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+CHARACTER(LEN=*),INTENT(IN)                :: AttribName
+CHARACTER(LEN=255),INTENT(IN)              :: statefile
+CHARACTER(LEN=255),ALLOCATABLE,INTENT(OUT) :: VarNames(:)
+LOGICAL,INTENT(OUT)                        :: AttribExists
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Parameters
+INTEGER,PARAMETER                  :: ELEM_FirstPartInd = 1
+INTEGER,PARAMETER                  :: ELEM_LastPartInd  = 2
+INTEGER,PARAMETER                  :: PartIntSize       = 2           ! number of entries in each line of PartInt
+! Counters
+INTEGER                            :: dims,nVal,iVar
+! HDF5
+INTEGER                            :: PartDim                         ! dummy for rank of partData
+INTEGER                            :: PartDataSize
+CHARACTER(LEN=255),ALLOCATABLE     :: VarNamesPart(:)
+! Formatting
+! CHARACTER(LEN=10)                  :: formatstr
+CHARACTER(LEN=40)                  :: tmpStr
+! Particle variables
+INTEGER                            :: nGlobalParts
+INTEGER                            :: nGlobalElems
+INTEGER,ALLOCATABLE                :: PartInt( :,:)
+REAL,ALLOCATABLE                   :: PartData(:,:)
+!===================================================================================================================================
+
+SDEALLOCATE(VarNames)
+CALL DatasetExists(File_ID,AttribName,AttribExists,attrib=.TRUE.)
+
+IF (.NOT.AttribExists) RETURN
+
+! get size of array
+CALL GetAttributeSize(File_ID,AttribName,dims,HSize)
+nVal = INT(HSize(1))
+DEALLOCATE(HSize)
+ALLOCATE(VarNamesPart(nVal))
+
+! read variable names
+CALL ReadAttribute(File_ID,TRIM(AttribName),nVal,StrArray=VarNamesPart)
+
+! Find the index of the PartSpecies
+PartSpeciesIndex = 0
+DO iVar = 1,nVal
+  IF (TRIM(VarNamesPart(iVar)).EQ.'Species') PartSpeciesIndex = iVar
+END DO ! iVar = 1,nVal
+
+IF (iVar.EQ.0) RETURN
+
+! Read number of local particles and their offset from HDF5
+nSpecies = 0
+
+CALL CloseDataFile()
+IF (MPIRoot) THEN
+  CALL OpenDataFile(statefile,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
+  CALL GetDataSize(File_ID,'PartInt',PartDim,HSize)
+  CHECKSAFEINT(HSize(2),4)
+  nGlobalElems = INT(HSize(2))
+  DEALLOCATE(HSize)
+  ALLOCATE(PartInt(PartIntSize,nGlobalElems))
+  CALL ReadArray('PartInt',2,(/PartIntSize,nGlobalElems/),0,2,IntArray=PartInt)
+
+  nGlobalParts = PartInt(ELEM_LastPartInd,nGlobalElems)
+  DEALLOCATE(PartInt)
+
+  ! Get the number of species
+  CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
+  CHECKSAFEINT(HSize(2),4)
+  PartDataSize = INT(HSize(1))
+  DEALLOCATE(HSize)
+
+  ! Get PartData
+  ALLOCATE(PartData(PartDataSize,nGlobalParts))
+  CALL ReadArray('PartData',2,(/PartDataSize,nGlobalParts/),0,2,RealArray=PartData)
+
+  ! Find the number of species
+  nSpecies = MAXVAL(INT(PartData(PartSpeciesIndex,:)))
+  CALL CloseDataFile()
+END IF
+CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+
+#if USE_MPI
+CALL MPI_BCAST(nSpecies,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
+
+! Create dummy varnames for the PartStatistics
+ALLOCATE(VarNames(nSpecies))
+DO iVar = 1,nSpecies
+  WRITE(tmpStr,'(A,I0.3)') 'PartDensity',iVar
+  VarNames(iVar) = TRIM(tmpStr)
+END DO ! iVar = 1,nSpecies
+
+END SUBROUTINE InitPartStatistics
+
+
+SUBROUTINE ReadPartStatistics(VariableName,ElemData)
+!===================================================================================================================================
+! Read in particle state from given HDF5 state file
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Analyze_Vars           ,ONLY: ElemVol,wGPVol
+USE MOD_HDF5_Input             ,ONLY: HSize,ReadArray,GetDataSize
+USE MOD_HDF5_Input             ,ONLY: ReadArray, OpenDataFile, CloseDataFile, DatasetExists
+USE MOD_Interpolation_Vars     ,ONLY: wGP
+USE MOD_IO_HDF5                ,ONLY: File_ID
+USE MOD_Mesh_Vars              ,ONLY: offsetElem,nElems,sJ
+USE MOD_Visu_Vars              ,ONLY: PartSpeciesIndex
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN)      :: VariableName
+REAL,INTENT(INOUT)                 :: ElemData(:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Parameters
+INTEGER,PARAMETER                  :: ELEM_FirstPartInd = 1
+INTEGER,PARAMETER                  :: ELEM_LastPartInd  = 2
+INTEGER,PARAMETER                  :: PartIntSize       = 2           ! number of entries in each line of PartInt
+! Counters
+INTEGER                            :: i,j,k
+INTEGER                            :: locnPart,offsetnPart
+INTEGER                            :: FirstElemInd,LastElemInd,iElem
+! HDF5
+INTEGER                            :: PartDim                         ! dummy for rank of partData
+INTEGER                            :: PartDataSize
+CHARACTER(LEN=255)                 :: dummyStr
+! Mesh
+! REAL                               :: ElemVol
+! Particle variables
+INTEGER                            :: SpeciesInd,iPart
+INTEGER,ALLOCATABLE                :: PartInt( :,:)
+REAL,ALLOCATABLE                   :: PartData(:,:)
+!===================================================================================================================================
+
+FirstElemInd = offsetElem+1
+LastElemInd  = offsetElem+nElems
+
+! Get PartInt
+ALLOCATE(PartInt(PartIntSize,FirstElemInd:LastElemInd))
+CALL ReadArray('PartInt',2,(/PartIntSize,nElems/),offsetElem,2,IntArray=PartInt)
+
+locnPart    = PartInt(ELEM_LastPartInd ,LastElemInd )-PartInt(ELEM_FirstPartInd,FirstElemInd)
+offsetnPart = PartInt(ELEM_FirstPartInd,FirstElemInd)
+
+! Get the number of particle variables
+CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
+CHECKSAFEINT(HSize(2),4)
+PartDataSize = INT(HSize(1))
+DEALLOCATE(HSize)
+
+! Get PartData
+ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
+CALL ReadArray('PartData',2,(/PartDataSize,locnPart/),offsetnPart,2,RealArray=PartData)
+
+! Count the number of particles per element
+READ(VariableName,'(A11,I3)') dummyStr,SpeciesInd
+ElemData = 0
+DO iElem = 1,nElems
+  locnPart    = PartInt(ELEM_LastPartInd ,offsetElem+iElem)-PartInt(ELEM_FirstPartInd,offsetElem+iElem)
+  offsetnPart = PartInt(ELEM_FirstPartInd,offsetElem+iElem)
+
+  DO iPart = offsetnPart+1,offsetnPart+locnPart
+    IF (PartData(PartSpeciesIndex,iPart).EQ.SpeciesInd) &
+      ElemData(iElem) = ElemData(iElem) + 1
+  END DO ! iPart
+END DO ! iElem
+
+! Divide by element volume
+IF (.NOT. ALLOCATED(ElemVol)) THEN
+  ALLOCATE(ElemVol(nElems))
+  ALLOCATE(wGPVol(0:PP_N,0:PP_N,0:PP_NZ))
+  ElemVol = 0.
+
+  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    wGPVol(i,j,k) = wGP(i)*wGP(j)*wGP(k)
+  END DO; END DO; END DO
+
+  DO iElem=1,nElems
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      ElemVol(iElem) = ElemVol(iElem) + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
+    END DO; END DO; END DO ! i,j,k
+  END DO ! iElem
+END IF
+
+ElemData = ElemData/ElemVol
+
+END SUBROUTINE ReadPartStatistics
+
+
 SUBROUTINE InitPartState(datasetNames,ListIn)
 !===================================================================================================================================
 ! Read in main attributes from given HDF5 state file
@@ -135,16 +351,18 @@ SDEALLOCATE(ListIn%VarNamesPart_HDF5)
 SDEALLOCATE(ListIn%VarNamePartDummy)
 SDEALLOCATE(ListIn%mapAllVarsToVisuVars)
 
-IF(datasetNames.EQ.'PartData')THEN
-  CALL GetVarNames("VarNamesParticles"     ,varnames,VarNamesExist)
-ELSE IF(datasetNames.EQ.'ImpactData')THEN
-  CALL GetVarNames("VarNamesImpactTracking",varnames,VarNamesExist)
-END IF
+SELECT CASE(TRIM(datasetNames))
+  CASE('PartData')
+    CALL GetVarNames("VarNamesParticles"     ,varnames,VarNamesExist)
+  CASE('ImpactData')
+    CALL GetVarNames("VarNamesImpactTracking",varnames,VarNamesExist)
+END SELECT
 
 IF(VarNamesExist)THEN
   CALL GetDataSize(File_ID,TRIM(datasetNames),dims,HSize)
   ListIn%nPartVar_HDF5 = INT(HSize(1))-3
   ListIn%nGlobalParts  = INT(HSize(2))
+  DEALLOCATE(HSize)
 
   ALLOCATE(ListIn%VarNamesPart_HDF5(   1:ListIn%nPartVar_HDF5) &
           ,ListIn%VarNamePartDummy(    1:ListIn%nPartVar_HDF5)  &
@@ -328,7 +546,6 @@ SDEALLOCATE(ListIn%VarNamesPart_HDF5)
 SDEALLOCATE(ListIn%PartData_HDF5)
 SDEALLOCATE(ListIn%mapAllVarsToVisuVars)
 END SUBROUTINE FinalizeReadPartStateFile
-
 
 
 SUBROUTINE PartitionPartMPI(ListIn)

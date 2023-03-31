@@ -168,6 +168,7 @@ INTEGER,ALLOCATABLE,TARGET            :: globalcellidsSurf_FV(:)      !< nodeIDs
 ! ==============================================================================================================================
 ! Avg2D
 ! ==============================================================================================================================
+LOGICAL                           :: IJK_exists                  !< IJK sorting of elements
 INTEGER,ALLOCATABLE               :: Elem_IJK(:,:)               !< IJK sorting of elements
 INTEGER,ALLOCATABLE               :: Elem_IJK_glob(:,:)          !< IJK sorting of global elements for parallel avgerage
 INTEGER                           :: nElems_IJK(3)               !< Number of elements in structured direction
@@ -187,7 +188,6 @@ REAL,ALLOCATABLE                  :: Vdm_FVToVisu(:,:)
 ! Particles
 ! ==============================================================================================================================
 LOGICAL                           :: VisuPart                    !< Flag indicating if the simulation was run with particles
-LOGICAL                           :: VisuField                   !< Flag indicating if the simulation was run with field time increments
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: PartnamesAll(:)         !< all available varnames (state file + dependent vars + generic)
 
 TYPE tVisuParticle
@@ -215,5 +215,12 @@ END TYPE tVisuParticle
 
 TYPE(tVisuParticle)               :: PD
 TYPE(tVisuParticle)               :: PDE
+
+! ==============================================================================================================================
+! Particle Statistics
+! ==============================================================================================================================
+LOGICAL                           :: withPartStatistics
+INTEGER                           :: nSpecies
+INTEGER                           :: PartSpeciesIndex
 
 END MODULE MOD_Visu_Vars

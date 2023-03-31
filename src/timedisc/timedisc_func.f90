@@ -409,26 +409,31 @@ END SUBROUTINE UpdateTimeStep
 SUBROUTINE AnalyzeTimeStep()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars        ,ONLY: SimulationEfficiency,WallTime,StartTime
+USE MOD_PreProc
 USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Analyze_Vars        ,ONLY: analyze_dt,WriteData_dt,tWriteData,nWriteData
+USE MOD_Analyze_Vars        ,ONLY: PID
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
 USE MOD_HDF5_Output         ,ONLY: WriteBaseFlow
 USE MOD_HDF5_Output_State   ,ONLY: WriteState
-USE MOD_Mesh_Vars           ,ONLY: MeshFile
+USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
 USE MOD_Output              ,ONLY: Visualize,PrintAnalyze,PrintStatusLine
 USE MOD_PruettDamping       ,ONLY: TempFilterTimeDeriv
 USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
 USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
+USE MOD_Restart_Vars        ,ONLY: RestartTime,RestartWallTime
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
-USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
+USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter,nRKStages
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
+USE MOD_TimeDisc_Vars       ,ONLY: CalcTimeStart,CalcTimeEnd
 #if FV_ENABLED == 1
 USE MOD_FV_Switching        ,ONLY: FV_Info
 #elif FV_ENABLED == 2
@@ -448,10 +453,10 @@ USE MOD_LoadBalance_TimeDisc,ONLY: LoadBalance
 USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,ElemTime,ElemTimePart,ElemTimeField,DoLoadBalanceBackup,LoadBalanceSampleBackup
 USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample,PerformLBSample,PerformLoadBalance,LoadBalanceMaxSteps,nLoadBalanceSteps
 USE MOD_LoadBalance_Vars    ,ONLY: DoInitialAutoRestart,ForceInitialLoadBalance
-USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeField,RestartTimeBackup!,RestartWallTime
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeField,RestartTimeBackup
 USE MOD_Particle_Globals    ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Localization,ONLY:CountPartsPerElem
-USE MOD_Restart_Vars        ,ONLY: RestartTime,RestartFile
+USE MOD_Restart_Vars        ,ONLY: RestartFile
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,time_start
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
@@ -460,6 +465,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL    :: WallTimeEnd               !> wall time of simulation end
 !===================================================================================================================================
 
 IF(iter.EQ.maxIter) THEN
@@ -481,6 +487,17 @@ IF(doAnalyze) THEN
 #endif /*USE_PARTICLES*/
 END IF
 
+! determine the SimulationEfficiency and PID here,
+! because it is used in ComputeElemLoad -> WriteElemTimeStatistics
+IF(doAnalyze) THEN
+  ! Get calculation time per DOF
+  CalcTimeEnd          = FLEXITIME()
+  WallTimeEnd          = CalcTimeEnd
+  WallTime             = WallTimeEnd-StartTime
+  SimulationEfficiency = (t-RestartTime)/((WallTimeEnd-RestartWallTime)*nProcessors/3600.) ! in [s] / [CPUh]
+  PID                  = (CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_analyze))/nRKStages
+END IF
+
 ! Analysis (possible PerformAnalyze+WriteStateToHDF5 and/or LoadBalance)
 #if USE_LOADBALANCE
 ! For automatic initial restart, check if the number of sampling steps has been achieved and force a load balance step, but skip
@@ -492,10 +509,9 @@ ForceInitialLoadBalance = .FALSE. ! Initialize
 IF(DoInitialAutoRestart.AND.(iter.GE.LoadBalanceSample).AND.(iter.NE.maxIter)) ForceInitialLoadBalance=.TRUE.
 
 IF(   ALMOSTEQUAL(dt,dt_Min(DT_ANALYZE)) &
-  .OR.ALMOSTEQUAL(dt,dt_Min(DT_END))     &
+  .OR.ALMOSTEQUAL(dt,dt_Min(DT_END    )) &
+  .OR.doAnalyze                          &
   .OR.ForceInitialLoadBalance) THEN
-  CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.) !for scaling of tParts of LB
-
   ! Check if loadbalancing is enabled with partweight and set PerformLBSample true to calculate elemtimes with partweight
   ! LoadBalanceSample is 0 if partweightLB or IAR_partweighlb are enabled. If only one of them is set Loadbalancesample switches
   ! during time loop
@@ -540,6 +556,10 @@ IF(doAnalyze)THEN
   IF ((writeCounter.EQ.nWriteData).OR.doFinalize) &
 #endif /*!USE_LOADBALANCE*/
   CALL FillParticleData()
+  ! Recount nPartsPerElem, they might have been overwritten during ComputeElemLoad
+#if USE_LOADBALANCE
+  CALL CountPartsPerElem(ResetNumberOfParticles=.TRUE.)
+#endif /*USE_LOADBALANCE*/
 #endif /*USE_PARTICLES*/
   ! Visualize data and write solution
   IF((writeCounter.EQ.nWriteData).OR.doFinalize)THEN
@@ -576,12 +596,14 @@ IF(doAnalyze)THEN
       RestartTimeBackup = RestartTime! make backup of original restart time
       RestartTime       = t          ! Set restart simulation time to current simulation time because the time is not read from
                                      ! the state file
+      RestartWallTime = FLEXITIME()  ! Set restart wall time if a load balance step is performed
     END IF
 
     CALL LoadBalance(OutputTime=t)
 
     IF(PerformLoadBalance) THEN
       ! RestartWallTime = FLEXITIME()  ! Set restart wall time if a load balance step is performed
+      CalcTimeStart = FLEXITIME()
       CALL CPU_TIME(time_start)      ! Set the start CPU time to the time after loadbalance init
     END IF
   ELSE
@@ -646,6 +668,7 @@ END IF
 IF (dt.LT.dt_kill) &
   CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep below critical kill timestep!")
 END FUNCTION EvalInitialTimeStep
+
 
 !==================================================================================================================================
 !> Evaluates the time step for the current update of U

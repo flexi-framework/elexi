@@ -61,8 +61,9 @@ INTEGER, INTENT(OUT),OPTIONAL :: NewPartID
 ! LOCAL VARIABLES
 INTEGER :: newParticleID
 !===================================================================================================================================
-PDM%ParticleVecLength = PDM%ParticleVecLength + 1 ! Increase particle vector length
-newParticleID         = PDM%ParticleVecLength
+newParticleID               = PDM%nextFreePosition(1 + PDM%CurrentNextFreePosition)
+PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + 1
+IF (newParticleID.GT.PDM%ParticleVecLength) PDM%ParticleVecLength = PDM%ParticleVecLength + 1
 IF (newParticleID.GT.PDM%MaxParticleNumber) &
   CALL Abort(__STAMP__,'CreateParticle: newParticleID.GT.PDM%MaxParticleNumber. newParticleID=',newParticleID)
 

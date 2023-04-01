@@ -112,7 +112,11 @@ DO iElem=1,nElems
    END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
   ELSE
-    CALL FV_CalcGradients(nVarIn,nVarOut,iElem,UPrim(:,:,:,:,iElem),gradUxi_central,gradUeta_central,gradUzeta_central)
+    CALL FV_CalcGradients(nVarIn,nVarOut,iElem,UPrim(:,:,:,:,iElem),gradUxi_central,gradUeta_central&
+#if (PP_dim==3)
+                                                                   ,gradUzeta_central&
+#endif /*PP_dim==3*/
+                                                                   )
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 #if (PP_dim==3)
       gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k) &

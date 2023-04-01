@@ -123,7 +123,7 @@ REAL                          :: xiNloc(0:Nloc)
 !==================================================================================================================================
 
 CALL GetVandermonde(    NGeo, NodeTypeVISU, NLoc, NodeTypeCL, Vdm_EQNGeo_CLNloc,  modal=.FALSE.)
-CALL GetVandermonde(    Nloc, NodeTypeCL  , Nloc, NodeType  , Vdm_CLNloc_Nloc,     modal=.FALSE.)
+CALL GetVandermonde(    Nloc, NodeTypeCL  , Nloc, NodeType  , Vdm_CLNloc_Nloc,    modal=.FALSE.)
 
 ! NOTE: Transform intermediately to CL points, to be consistent with metrics being built with CL
 !       Important for curved meshes if NGeo<N, no effect for N>=NGeo

@@ -84,7 +84,6 @@
 #define VISCOSITY_TEMPERATURE(T)       mu0*T**ExpoSuth
 #endif
 
-
 #define EXT_CONS    1:PP_nVar                  /* all ext cons variables */
 #define EXT_PRIM    PP_nVarPrim:PP_2Var        /* all ext prim variables */
 ! conservative (extended) variables

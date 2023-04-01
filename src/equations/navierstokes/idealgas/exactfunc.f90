@@ -147,10 +147,10 @@ SELECT CASE (IniExactFunc)
   CASE(35) ! sinus x (vel)
     IniFrequency    = GETREAL('IniFrequency','1.0')
     IniAmplitude    = GETREAL('IniAmplitude','1.0')
-  CASE(36,37,4) ! synthetic test cases
+  CASE(36,37) ! synthetic test cases
     IniFrequency    = GETREAL('IniFrequency','1.0')
     IniAmplitude    = GETREAL('IniAmplitude','0.1')
-  CASE(41,42,43,44) ! synthetic test cases
+  CASE(4,41,42,43,44) ! synthetic test cases
     AdvVel          = GETREALARRAY('AdvVel',3)
     IniFrequency    = GETREAL('IniFrequency','1.0')
     IniAmplitude    = GETREAL('IniAmplitude','0.1')
@@ -482,7 +482,7 @@ CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
     Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 CASE(41) ! SINUS in x
-  Frequency=1.
+  Frequency=IniFrequency
   Amplitude=IniAmplitude
   Omega=PP_Pi*Frequency
   a=AdvVel(1)*2.*PP_Pi

@@ -128,7 +128,7 @@ IF(info .NE. 0) THEN
   d_model = 0.
 ELSE
   sigma = SQRT(MAX(0.,lambda)) ! ensure were not negative
-  ! Sigma is in ascending order unlike in the paper by Nicoud 2011
+  ! Sigma is in ascending order unlike in the paper by Nicoud (2011)
   d_model = (sigma(1)*(sigma(3)-sigma(2))*(sigma(2)-sigma(1)))/(sigma(3)**2)
 END IF
 ! Sigma-Model

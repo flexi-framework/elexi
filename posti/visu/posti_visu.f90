@@ -23,6 +23,7 @@
 PROGRAM Posti_Visu
 USE ISO_C_BINDING
 USE MOD_Globals
+USE MOD_Globals_Vars          ,ONLY: StartTime
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_ISO_VARYING_STRING

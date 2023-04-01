@@ -114,6 +114,7 @@ END SUBROUTINE InitSpec
 SUBROUTINE Spec()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars         ,ONLY: StartTime
 USE MOD_PreProc
 USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars

@@ -31,8 +31,9 @@ PROGRAM Posti_CalcTurb
 ! MODULES
 USE ISO_C_BINDING
 USE MOD_ISO_VARYING_STRING
-USE MOD_Globals               ,ONLY: CollectiveStop,UNIT_stdOut,SetStackSizeUnlimited,StartTime,FlexiTime,iError,MPIROOT
+USE MOD_Globals               ,ONLY: CollectiveStop,UNIT_stdOut,SetStackSizeUnlimited,FLEXITIME,iError,MPIROOT
 USE MOD_Globals               ,ONLY: ParameterFile
+USE MOD_Globals_Vars          ,ONLY: StartTime
 USE MOD_CalcTurb              ,ONLY: DefineCalcTurb,InitCalcTurb,FinalizeCalcTurb,ALMOSTEQUAL,ALMOSTZERO
 USE MOD_CalcTurb_IO           ,ONLY: ReadStateFile,WriteStateFile
 USE MOD_CalcTurb_Vars

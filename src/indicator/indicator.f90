@@ -32,6 +32,9 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
+INTERFACE DefineParametersIndicator
+  MODULE PROCEDURE DefineParametersIndicator
+END INTERFACE
 
 INTERFACE InitIndicator
   MODULE PROCEDURE InitIndicator
@@ -62,13 +65,13 @@ INTERFACE FinalizeIndicator
   MODULE PROCEDURE FinalizeIndicator
 END INTERFACE
 
+PUBLIC::DefineParametersIndicator
 PUBLIC::InitIndicator
 PUBLIC::CalcIndicator
 PUBLIC::IndPersson
 PUBLIC::FinalizeIndicator
 !==================================================================================================================================
 
-PUBLIC::DefineParametersIndicator
 CONTAINS
 
 !==================================================================================================================================

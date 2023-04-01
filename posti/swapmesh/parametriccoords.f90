@@ -51,6 +51,7 @@ CONTAINS
 SUBROUTINE GetParametricCoordinates()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,          ONLY: StartTime
 USE MOD_Basis,                 ONLY: ChebyGaussLobNodesAndWeights,BarycentricWeights
 USE MOD_ChangeBasisByDim,      ONLY: ChangeBasisVolume
 USE MOD_Interpolation,         ONLY: GetVandermonde,GetDerivativeMatrix

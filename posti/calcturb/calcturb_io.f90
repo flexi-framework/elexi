@@ -56,7 +56,9 @@ USE MOD_Equation      ,ONLY: DefineParametersEquation,InitEquation,FinalizeEquat
 USE MOD_Exactfunc     ,ONLY: DefineParametersExactFunc
 USE MOD_Filter        ,ONLY: DefineParametersFilter,InitFilter,FinalizeFilter
 USE MOD_Lifting       ,ONLY: DefineParametersLifting,InitLifting,FinalizeLifting
-USE MOD_Indicator     ,ONLY: DefineParametersIndicator,InitIndicator,FinalizeIndicator
+! #if FV_ENABLED
+! USE MOD_Indicator     ,ONLY: DefineParametersIndicator,InitIndicator,FinalizeIndicator
+! #endif /*FV_ENABLED*/
 USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5       ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
@@ -105,7 +107,9 @@ CALL DefineParametersOutput()
 CALL DefineParametersMesh()
 CALL DefineParametersFilter()
 CALL DefineParametersOverintegration()
-CALL DefineParametersIndicator()
+! #if FV_ENABLED
+! CALL DefineParametersIndicator()
+! #endif /*FV_ENABLED*/
 CALL DefineParametersEos()
 CALL DefineParametersEquation()
 CALL DefineParametersExactFunc()

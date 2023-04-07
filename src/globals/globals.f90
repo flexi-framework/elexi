@@ -38,7 +38,6 @@ LOGICAL           ::Logging                                                   !<
 LOGICAL           ::ErrorFiles                                                !< switch to turn error file writing on or of
 CHARACTER(LEN=255)::ErrorFileName='NOT_SET'                                   !< file to write error data into
 INTEGER           ::iError                                                    !< default error handle
-REAL              ::StartTime                                                 !< start time of the simulation
 INTEGER           ::myRank,myLocalRank,myLeaderRank,myWorkerRank
 INTEGER           ::nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
 INTEGER           ::MPI_COMM_FLEXI                                            !< Flexi MPI communicator

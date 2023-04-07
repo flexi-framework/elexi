@@ -298,6 +298,7 @@ END SUBROUTINE InitAnalyzeBasis
 SUBROUTINE Analyze(Time,iter)
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,       ONLY: StartTime
 USE MOD_PreProc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation,    ONLY: AnalyzeEquation

@@ -288,7 +288,7 @@ DO i=0,PP_N
   s_L(:,i) = (URec_extended(:,i  ) - URec_extended(:,i-1)) * FV_sdx(i  )
   s_R(:,i) = (URec_extended(:,i+1) - URec_extended(:,i  )) * FV_sdx(i+1)
   ! Limit slopes
-  CALL FV_Limiter(s_L(:,i),s_R(:,i),s_lim(:,i)) ! only null- or minmod-limiter
+  CALL FV_Limiter(PP_nVarPrim, s_L(:,i),s_R(:,i),s_lim(:,i)) ! only null- or minmod-limiter
   SELECT CASE(LimiterType)
   CASE(0) ! NullLimiter
     DO iVar=1,PP_nVarPrim
@@ -328,27 +328,27 @@ DO i=0,PP_N
         dUdUvolprim_plus( iVar,iVar,i,1) = 0. + FV_dx_R(i) * FV_sdx(i) * (&
                        -(s_R(iVar,i)*(s_L(iVar,i)+s_R(iVar,i))+s_L(iVar,i)*s_R(iVar,i))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13) &
                        +(2.*s_L(iVar,i)*(s_L(iVar,i)**2*s_R(iVar,i)+s_R(iVar,i)**2*s_L(iVar,i)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2))
-    
+
         dUdUvolprim_plus( iVar,iVar,i,2) = 1. + FV_dx_R(i) * (&
-                       -(s_L(iVar,i)**2*FV_sdx(i+1)-s_R(iVar,i)**2*FV_sdx(i) & 
+                       -(s_L(iVar,i)**2*FV_sdx(i+1)-s_R(iVar,i)**2*FV_sdx(i) &
                          +2.*s_L(iVar,i)*s_R(iVar,i)*FV_sdx(i+1)-2.*s_L(iVar,i)*s_R(iVar,i)*FV_sdx(i))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13) &
                        -(2.*(s_L(iVar,i)*s_R(iVar,i)**2+s_L(iVar,i)**2*s_R(iVar,i)) &
                          *(s_L(iVar,i)*FV_sdx(i)-s_R(iVar,i)*FV_sdx(i+1)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2))
-    
+
         dUdUvolprim_plus( iVar,iVar,i,3) = 0. + FV_dx_R(i) * FV_sdx(i+1) * (&
                        -(2*s_L(iVar,i)*s_R(iVar,i)**2*(s_L(iVar,i)+s_R(iVar,i)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2) &
                        +(s_L(iVar,i)*(2.*s_R(iVar,i)+s_L(iVar,i)))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13))
-    
+
         dUdUvolprim_minus(iVar,iVar,i,1) = 0. - FV_dx_L(i) * FV_sdx(i) * (&
                        -(s_R(iVar,i)*(s_L(iVar,i)+s_R(iVar,i))+s_L(iVar,i)*s_R(iVar,i))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13) &
                        +(2.*s_L(iVar,i)*(s_L(iVar,i)**2*s_R(iVar,i)+s_R(iVar,i)**2*s_L(iVar,i)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2))
-    
+
         dUdUvolprim_minus(iVar,iVar,i,2) = 1. - FV_dx_L(i) * (&
-                       -(s_L(iVar,i)**2*FV_sdx(i+1)-s_R(iVar,i)**2*FV_sdx(i) & 
+                       -(s_L(iVar,i)**2*FV_sdx(i+1)-s_R(iVar,i)**2*FV_sdx(i) &
                          +2.*s_L(iVar,i)*s_R(iVar,i)*FV_sdx(i+1)-2.*s_L(iVar,i)*s_R(iVar,i)*FV_sdx(i))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13) &
                        -(2.*(s_L(iVar,i)*s_R(iVar,i)**2+s_L(iVar,i)**2*s_R(iVar,i)) &
                          *(s_L(iVar,i)*FV_sdx(i)-s_R(iVar,i)*FV_sdx(i+1)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2))
-    
+
         dUdUvolprim_minus(iVar,iVar,i,3) = 0. - FV_dx_L(i) * FV_sdx(i+1) * (&
                        -(2*s_L(iVar,i)*s_R(iVar,i)**2*(s_L(iVar,i)+s_R(iVar,i)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2) &
                        +(s_L(iVar,i)*(2.*s_R(iVar,i)+s_L(iVar,i)))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13))
@@ -472,13 +472,13 @@ IF (.NOT.Mortar_minus) THEN
   s_L_minus(:) = (URec_extended(:,0     ) - URec_extended(:,-1    )) * FV_sdx(0     )
   s_R_minus(:) = (URec_extended(:,1     ) - URec_extended(:, 0    )) * FV_sdx(1     )
   ! Limit gradients
-  CALL FV_Limiter(s_L_minus(:),s_R_minus(:),s_lim_minus(:)) ! only null-, minmod- or central-limiter
+  CALL FV_Limiter(PP_nVarPrim, s_L_minus(:),s_R_minus(:),s_lim_minus(:)) ! only null-, minmod- or central-limiter
 END IF
 IF (.NOT.Mortar_plus) THEN
   s_L_plus( :) = (URec_extended(:,PP_N  ) - URec_extended(:,PP_N-1)) * FV_sdx(PP_N  )
   s_R_plus( :) = (URec_extended(:,PP_N+1) - URec_extended(:,PP_N  )) * FV_sdx(PP_N+1)
   ! Limit gradients
-  CALL FV_Limiter(s_L_plus( :),s_R_plus( :),s_lim_plus( :)) ! only null-, minmod- or central-limiter
+  CALL FV_Limiter(PP_nVarPrim, s_L_plus( :),s_R_plus( :),s_lim_plus( :)) ! only null-, minmod- or central-limiter
 END IF
 SELECT CASE(LimiterType)
 CASE(0) ! NullLimiter
@@ -570,7 +570,7 @@ CASE(3) ! van Albada
                          -(s_R_plus(iVar)*(s_L_plus(iVar)+s_R_plus(iVar))+s_L_plus(iVar)*s_R_plus(iVar))/MAX(s_L_plus(iVar)**2+s_R_plus(iVar)**2,1e-13) &
                          +(2.*s_L_plus(iVar)*(s_L_plus(iVar)**2*s_R_plus(iVar)+s_R_plus(iVar)**2*s_L_plus(iVar)))/(MAX(s_L_plus(iVar)**2+s_R_plus(iVar)**2,1e-13)**2))
         dUdUvolprim_plus( iVar,iVar,PP_N  ,2) = 1. + FV_dx_R * (&
-                         -(s_L_plus(iVar)**2*FV_sdx(PP_N+1)-s_R_plus(iVar)**2*FV_sdx(PP_N) & 
+                         -(s_L_plus(iVar)**2*FV_sdx(PP_N+1)-s_R_plus(iVar)**2*FV_sdx(PP_N) &
                            +2.*s_L_plus(iVar)*s_R_plus(iVar)*FV_sdx(PP_N+1)-2.*s_L_plus(iVar)*s_R_plus(iVar)*FV_sdx(PP_N))/MAX(s_L_plus(iVar)**2+s_R_plus(iVar)**2,1e-13) &
                          -(2.*(s_L_plus(iVar)*s_R_plus(iVar)**2+s_L_plus(iVar)**2*s_R_plus(iVar)) &
                            *(s_L_plus(iVar)*FV_sdx(PP_N)-s_R_plus(iVar)*FV_sdx(PP_N+1)))/(MAX(s_L_plus(iVar)**2+s_R_plus(iVar)**2,1e-13)**2))

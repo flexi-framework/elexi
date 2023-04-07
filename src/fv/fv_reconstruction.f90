@@ -391,10 +391,10 @@ DO iElem=1,nElems
   ! 3. limit
   DO l=0,PP_N
    DO q=0,PP_NZ; DO p=0,PP_N
-       CALL FV_Limiter(gradUxi_tmp  (:,p,q,l),gradUxi_tmp  (:,p,q,l+1),gradUxi  (:,p,q,l,iElem))
-       CALL FV_Limiter(gradUeta_tmp (:,p,q,l),gradUeta_tmp (:,p,q,l+1),gradUeta (:,p,q,l,iElem))
+       CALL FV_Limiter(PP_nVarPrim,gradUxi_tmp  (:,p,q,l),gradUxi_tmp  (:,p,q,l+1),gradUxi  (:,p,q,l,iElem))
+       CALL FV_Limiter(PP_nVarPrim,gradUeta_tmp (:,p,q,l),gradUeta_tmp (:,p,q,l+1),gradUeta (:,p,q,l,iElem))
 #if PP_dim == 3
-       CALL FV_Limiter(gradUzeta_tmp(:,p,q,l),gradUzeta_tmp(:,p,q,l+1),gradUzeta(:,p,q,l,iElem))
+       CALL FV_Limiter(PP_nVarPrim,gradUzeta_tmp(:,p,q,l),gradUzeta_tmp(:,p,q,l+1),gradUzeta(:,p,q,l,iElem))
 #endif
    END DO; END DO ! q, p
   END DO ! l

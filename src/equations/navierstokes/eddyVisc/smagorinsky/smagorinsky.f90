@@ -103,7 +103,9 @@ END DO
 SmagorinskyInitIsDone=.TRUE.
 LBWRITE(UNIT_stdOut,'(A)')' INIT SMAGORINSKY DONE!'
 LBWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitSmagorinsky
+
 
 !===================================================================================================================================
 !> Compute Smagorinsky Eddy-Visosity
@@ -130,6 +132,7 @@ S_eN = SQRT ( 2.*(gradUx(LIFT_VEL1)**2 + gradUy(LIFT_VEL2)**2 + gradUz(LIFT_VEL3
 ! we store the first constant term in damp
 muSGS = damp * S_eN * dens
 END SUBROUTINE Smagorinsky_Point
+
 
 !===================================================================================================================================
 !> Compute Smagorinsky Eddy-Visosity for the volume
@@ -160,6 +163,7 @@ DO iElem = 1,nElems
 END DO
 END SUBROUTINE Smagorinsky_Volume
 
+
 !===============================================================================================================================
 !> Deallocate arrays and finalize variables used by Smagorinsky SGS model
 !===============================================================================================================================
@@ -172,7 +176,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===============================================================================================================================
+SDEALLOCATE(damp)
 SmagorinskyInitIsDone = .FALSE.
+
 END SUBROUTINE FinalizeSmagorinsky
 
 END MODULE MOD_Smagorinsky

@@ -47,28 +47,33 @@ USE MOD_Mesh_Vars    ,ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 USE MOD_FV_Vars      ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ
-USE MOD_FV_Vars      ,ONLY: gradUxi_central, gradUeta_central
 #if (PP_dim==3)
 USE MOD_FV_Vars      ,ONLY: FV_Metrics_hTilde_sJ
-USE MOD_FV_Vars      ,ONLY: gradUzeta_central
 #endif
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)             :: nVarIn
-INTEGER,INTENT(IN)             :: nVarOut
-REAL,INTENT(IN)                :: UPrim( nVarIn ,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
-REAL,INTENT(OUT)               :: gradUx(nVarOut,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in x-direction
-REAL,INTENT(OUT)               :: gradUy(nVarOut,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in y-direction
-REAL,INTENT(OUT)               :: gradUz(nVarOut,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
+INTEGER,INTENT(IN)                              :: nVarIn
+INTEGER,INTENT(IN)                              :: nVarOut
+REAL,INTENT(IN)                                 :: UPrim( nVarIn ,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
+REAL,INTENT(OUT)                                :: gradUx(nVarOut,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in x-direction
+REAL,INTENT(OUT)                                :: gradUy(nVarOut,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in y-direction
+REAL,INTENT(OUT)                                :: gradUz(nVarOut,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(nVarOut)        :: gradUxi,gradUeta
+REAL,DIMENSION(nVarOut)                         :: gradUxi,gradUeta
 #if (PP_dim==3)
-REAL,DIMENSION(nVarOut)        :: gradUzeta
+REAL,DIMENSION(nVarOut)                         :: gradUzeta
 #endif
-INTEGER                        :: iElem,i,j,k,l
+INTEGER                                         :: iElem,i,j,k,l
+#if FV_ENABLED
+REAL,DIMENSION(nVarOut,0:PP_N,0:PP_N,0:PP_NZ)   :: gradUxi_central
+REAL,DIMENSION(nVarOut,0:PP_N,0:PP_N,0:PP_NZ)   :: gradUeta_central
+#if PP_dim == 3
+REAL,DIMENSION(nVarOut,0:PP_N,0:PP_N,0:PP_NZ)   :: gradUzeta_central
+#endif
+#endif
 !==================================================================================================================================
 ! volume integral
 DO iElem=1,nElems
@@ -107,22 +112,27 @@ DO iElem=1,nElems
    END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
   ELSE
+    CALL FV_CalcGradients(nVarIn,nVarOut,iElem,UPrim(:,:,:,:,iElem),gradUxi_central,gradUeta_central&
+#if (PP_dim==3)
+                                                                   ,gradUzeta_central&
+#endif /*PP_dim==3*/
+                                                                   )
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 #if (PP_dim==3)
-      gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) &
-                            + FV_Metrics_hTilde_sJ(1,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
-      gradUy(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) &
-                            + FV_Metrics_hTilde_sJ(2,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
-      gradUz(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(3,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(3,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) &
-                            + FV_Metrics_hTilde_sJ(3,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
+      gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k) &
+                            + FV_Metrics_hTilde_sJ(1,i,j,k,iElem)*gradUzeta_central(:,i,j,k)
+      gradUy(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (:,i,j,k) &
+                            + FV_Metrics_hTilde_sJ(2,i,j,k,iElem)*gradUzeta_central(:,i,j,k)
+      gradUz(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(3,i,j,k,iElem)*gradUxi_central  (:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ(3,i,j,k,iElem)*gradUeta_central (:,i,j,k) &
+                            + FV_Metrics_hTilde_sJ(3,i,j,k,iElem)*gradUzeta_central(:,i,j,k)
 #else
-      gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
-      gradUy(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
+      gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k)
+      gradUy(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (:,i,j,k)
 #endif
    END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
@@ -256,6 +266,81 @@ DO i=1,nDOFElem
 #endif
 END DO ! i
 END SUBROUTINE Lifting_Metrics
+
+#if FV_RECONSTRUCT
+!==================================================================================================================================
+!> Calculate slopes in the inside and limit them using TVD limiters.
+!> It is important to use physical distances (and not reference distances) to calculate the slope, since otherwise the
+!> slope limiter can not be applied. (Scenario: inner-cell-stretching)
+!> Additionally build central limited slopes for the computation of gradients used for the viscous fluxes.
+!==================================================================================================================================
+PPURE SUBROUTINE FV_CalcGradients(nVarIn,nVarOut,iElem,UPrim,gradUxi_central,gradUeta_central&
+#if PP_dim == 3
+  ,gradUzeta_central&
+#endif
+  )
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_FV_Vars        ,ONLY: FV_sdx_XI,FV_sdx_ETA
+#if PP_dim == 3
+USE MOD_FV_Vars        ,ONLY: FV_sdx_ZETA
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: nVarIn
+INTEGER,INTENT(IN) :: nVarOut
+INTEGER,INTENT(IN) :: iElem
+REAL,INTENT(IN)    :: UPrim            (nVarIn ,0:PP_N,0:PP_N,0:PP_NZ) !< primitive volume solution
+REAL,INTENT(OUT)   :: gradUxi_central  (nVarOut,0:PP_N,0:PP_N,0:PP_NZ) !< physical slope in   xi-direction (mean value)
+REAL,INTENT(OUT)   :: gradUeta_central (nVarOut,0:PP_N,0:PP_N,0:PP_NZ) !< physical slope in  eta-direction (mean value)
+#if PP_dim == 3
+REAL,INTENT(OUT)   :: gradUzeta_central(nVarOut,0:PP_N,0:PP_N,0:PP_NZ) !< physical slope in zeta-direction (mean value)
+#endif
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,DIMENSION(nVarIn,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUxi_tmp
+REAL,DIMENSION(nVarIn,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUeta_tmp
+#if PP_dim == 3
+REAL,DIMENSION(nVarIn,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUzeta_tmp
+#endif
+INTEGER                                        :: l,iVar
+INTEGER                                        :: i,j,k
+!==================================================================================================================================
+! Strategy:
+! 1. compute slopes between subcells in all 3 directions and store in temporary arrays
+!    Attention concerning the storage order: last index corresponds to the respective direction (xi/eta/zeta)!
+! 2. limit the slopes from the temporary array and store in gradUxi/eta/zeta
+
+! 1. gradients of inner subcells
+gradUxi_tmp   = 0.
+gradUeta_tmp  = 0.
+#if PP_dim == 3
+gradUzeta_tmp = 0.
+#endif
+DO l=1,PP_N
+  DO iVar=1,nVarIn
+    gradUxi_tmp  (iVar,:,:,l) = (UPrim(iVar,l,:,:) - UPrim(iVar,l-1,:,:)) * FV_sdx_XI  (:,:,l,iElem)
+    gradUeta_tmp (iVar,:,:,l) = (UPrim(iVar,:,l,:) - UPrim(iVar,:,l-1,:)) * FV_sdx_ETA (:,:,l,iElem)
+#if PP_dim == 3
+    gradUzeta_tmp(iVar,:,:,l) = (UPrim(iVar,:,:,l) - UPrim(iVar,:,:,l-1)) * FV_sdx_ZETA(:,:,l,iElem)
+#endif
+  END DO
+END DO
+
+! 2. limit with central limiter for viscous fluxes
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+  gradUxi_central  (:,i,j,k) = 0.5*(gradUxi_tmp  (:,j,k,i)+gradUxi_tmp  (:,j,k,i+1))
+  gradUeta_central (:,i,j,k) = 0.5*(gradUeta_tmp (:,i,k,j)+gradUeta_tmp (:,i,k,j+1))
+#if PP_dim == 3
+  gradUzeta_central(:,i,j,k) = 0.5*(gradUzeta_tmp(:,i,j,k)+gradUzeta_tmp(:,i,j,k+1))
+#endif
+END DO; END DO; END DO! i,j,k=0,PP_N
+
+END SUBROUTINE FV_CalcGradients
+#endif
 
 END MODULE MOD_Lifting_VolInt_gen
 #endif /*PARABOLIC*/

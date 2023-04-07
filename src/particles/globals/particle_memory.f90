@@ -161,6 +161,7 @@ SUBROUTINE GetMemUsage(memory,caller)
 !==================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars              ,ONLY: StartTime
 USE MOD_StringTools               ,ONLY: split_string,STRICMP
 #if USE_MPI
 USE MOD_Particle_MPI_Shared_Vars  ,ONLY: myComputeNodeRank,myLeaderGroupRank
@@ -184,12 +185,14 @@ INTEGER                                   :: stat,memstat,ioUnit
 INTEGER                                   :: memCount
 CHARACTER(LEN=255)                        :: memName
 CHARACTER(LEN=255)                        :: memStrings(2),memArray(2)
+REAL                                      :: currentT
 #if USE_MPI
 REAL                                      :: ProcMemoryUsed    ! Used memory on a single proc
 REAL                                      :: NodeMemoryUsed    ! Sum of used memory across one compute node
 #endif /*USE_MPI*/
 !==================================================================================================================================
 
+GETTIME(CurrentT)
 ! IF (nProcessors.NE.nComputeNodeProcessors) &
 !   CALL Abort(__STAMP__,'GetMemUsage routine only suitable for single node executation!')
 
@@ -264,12 +267,11 @@ IF (MPIRoot) THEN
            STATUS   = 'NEW'                  , &
            RECL     = 50000                  , &
            IOSTAT   = stat)
-         print*,stat
       ! Write header
 #if USE_LOADBALANCE
-      WRITE(ioUnit,'(A,6(A1,A))') 'Function',',','memUsed',',','memAvail',',','memTotal',',','Cached',',','Buffers',',','nLoadBalanceSteps'
+      WRITE(ioUnit,'(A,7(A1,A))') 'Walltime',',','Function',',','memUsed',',','memAvail',',','memTotal',',','Cached',',','Buffers',',','nLoadBalanceSteps'
 #else
-      WRITE(ioUnit,'(A,5(A1,A))') 'Function',',','memUsed',',','memAvail',',','memTotal',',','Cached',',','Buffers'
+      WRITE(ioUnit,'(A,6(A1,A))') 'Walltime',',','Function',',','memUsed',',','memAvail',',','memTotal',',','Cached',',','Buffers'
 #endif /*USE_LOADBALANCE*/
       CLOSE(ioUnit)
     END IF
@@ -283,9 +285,9 @@ IF (MPIRoot) THEN
        RECL     = 50000                  , &
        IOSTAT   = stat)
 #if USE_LOADBALANCE
-  WRITE(ioUnit,'(A,6(A1,E21.14E3))') TRIM(caller),',',memory(1),',',memory(2),',',memory(3),',',cached,',',buffers,',',REAL(nLoadBalanceSteps)
+  WRITE(ioUnit,'(E21.14E3,A1,A,6(A1,E21.14E3))') currentT-StartTime,',',TRIM(caller),',',memory(1),',',memory(2),',',memory(3),',',cached,',',buffers,',',REAL(nLoadBalanceSteps)
 #else
-  WRITE(ioUnit,'(A,5(A1,E21.14E3))') TRIM(caller),',',memory(1),',',memory(2),',',memory(3),',',cached,',',buffers
+  WRITE(ioUnit,'(E21.14E3,A1,A,5(A1,E21.14E3))') currentT-StartTime,',',TRIM(caller),',',memory(1),',',memory(2),',',memory(3),',',cached,',',buffers
 #endif /*USE_LOADBALANCE*/
   CLOSE(ioUnit)
 END IF

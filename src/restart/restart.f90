@@ -228,6 +228,7 @@ USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
 USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL,ExtractParameterFile,CompareParameterFile
 USE MOD_Restart_Vars
+USE MOD_TimeDisc_Vars,      ONLY: t,tStart
 #if FV_ENABLED
 USE MOD_ReadInTools,        ONLY: GETINT
 USE MOD_StringTools,        ONLY: INTTOSTR
@@ -303,6 +304,9 @@ ELSE
   RestartTime = 0.
   SWRITE(UNIT_stdOut,'(A)')' | No restart wanted, doing a fresh computation!'
 END IF
+
+! Fill correct initial time
+t = MERGE(RestartTime,tStart,DoRestart)
 
 ! Check if we need to interpolate the restart file to our current polynomial degree and node type
 IF(DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(NodeType))))THEN

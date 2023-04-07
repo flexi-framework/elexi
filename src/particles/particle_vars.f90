@@ -277,8 +277,8 @@ LOGICAL                                  :: DoPoissonRounding                ! P
 LOGICAL                                  :: DoTimeDepInflow                  ! Insertion and SurfaceFlux w simple random rounding
 LOGICAL                                  :: RepWarn = .FALSE.                ! Warning for Reynolds limit of particle model
 
-#if USE_FAXEN_CORR
 REAL,ALLOCATABLE                         :: gradUx2(:,:,:,:,:,:),gradUy2(:,:,:,:,:,:),gradUz2(:,:,:,:,:,:)
+#if USE_FAXEN_CORR
 REAL,ALLOCATABLE                         :: gradUx_master_loc(:,:,:,:), gradUx_slave_loc(:,:,:,:)
 REAL,ALLOCATABLE                         :: gradUy_master_loc(:,:,:,:), gradUy_slave_loc(:,:,:,:)
 REAL,ALLOCATABLE                         :: gradUz_master_loc(:,:,:,:), gradUz_slave_loc(:,:,:,:)

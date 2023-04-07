@@ -409,7 +409,7 @@ END SUBROUTINE UpdateTimeStep
 SUBROUTINE AnalyzeTimeStep()
 ! MODULES
 USE MOD_Globals
-USE MOD_Globals_Vars        ,ONLY: SimulationEfficiency,WallTime
+USE MOD_Globals_Vars        ,ONLY: SimulationEfficiency,WallTime,StartTime
 USE MOD_PreProc
 USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Analyze_Vars        ,ONLY: analyze_dt,WriteData_dt,tWriteData,nWriteData

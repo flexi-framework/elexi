@@ -596,7 +596,7 @@ LOGICAL,INTENT(IN),OPTIONAL      :: doLoadBalance_opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: maxParticleNumberGlobal,maxParticleNumberUniform
-INTEGER           :: minParticleNumberLocal,maxParticleNumberLocal
+INTEGER           :: minParticleNumberLocal,maxParticleNumberLocal,sumParticleNumberLocal
 !===================================================================================================================================
 
 IF(ParticlesInitIsDone)THEN
@@ -624,14 +624,16 @@ maxParticleNumberLocal = PDM%maxParticleNumber
 IF (MPIRoot) THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,minParticleNumberLocal,1,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,iERROR)
   CALL MPI_REDUCE(MPI_IN_PLACE,maxParticleNumberLocal,1,MPI_INTEGER,MPI_MAX,0,MPI_COMM_FLEXI,iERROR)
+  CALL MPI_REDUCE(MPI_IN_PLACE,sumParticleNumberLocal,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iERROR)
 ELSE
   CALL MPI_REDUCE(minParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,iERROR)
   CALL MPI_REDUCE(maxParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_MAX,0,MPI_COMM_FLEXI,iERROR)
+  CALL MPI_REDUCE(sumParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iERROR)
 END IF
 #endif /*USE_MPI*/
 CALL PrintOption('Particle NUMBER (Min/Max/Glob)','CALC',IntArrayOpt=(/minParticleNumberLocal &
                                                                       ,maxParticleNumberLocal &
-                                                                      ,INT(REAL(PDM%maxParticleNumber)*REAL(nProcessors),KIND=4)/))
+                                                                      ,sumParticleNumberLocal/))
 
 nGlobalNbrOfParticles    = 0
 nGlobalNbrOfParticles(4) = HUGE(nGlobalNbrOfParticles(4))

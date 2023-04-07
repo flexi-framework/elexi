@@ -38,9 +38,10 @@ INTERFACE InitFV_Limiter
 END INTERFACE
 
 ABSTRACT INTERFACE
-  PPURE SUBROUTINE LimiterInt(sL, sR, s)
-    REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-    REAL,INTENT(OUT) :: s(PP_nVarPrim)
+  PPURE SUBROUTINE LimiterInt(nVar, sL, sR, s)
+    INTEGER,INTENT(IN) :: nVar
+    REAL,INTENT(IN)    :: sL(nVar),sR(nVar)
+    REAL,INTENT(OUT)   :: s(nVar)
   END SUBROUTINE
 END INTERFACE
 
@@ -115,14 +116,15 @@ END SUBROUTINE InitFV_Limiter
 !==================================================================================================================================
 !> Limiter sets slope to zero.
 !==================================================================================================================================
-PPURE SUBROUTINE NullLimiter(sL, sR, s)
+PPURE SUBROUTINE NullLimiter(nVar, sL, sR, s)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
-REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
-REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
+INTEGER,INTENT(IN) :: nVar
+REAL,INTENT(IN)    :: sL(nVar) !< left slope
+REAL,INTENT(IN)    :: sR(nVar) !< right slope
+REAL,INTENT(OUT)   :: s(nVar)  !< limited slope
 !==================================================================================================================================
 ! NullLimiter
 s = 0.
@@ -131,14 +133,15 @@ END SUBROUTINE NullLimiter
 !==================================================================================================================================
 !> MinMod slope limiter.
 !==================================================================================================================================
-PPURE SUBROUTINE MinMod(sL, sR, s)
+PPURE SUBROUTINE MinMod(nVar, sL, sR, s)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
-REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
-REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
+INTEGER,INTENT(IN) :: nVar
+REAL,INTENT(IN)    :: sL(nVar) !< left slope
+REAL,INTENT(IN)    :: sR(nVar) !< right slope
+REAL,INTENT(OUT)   :: s(nVar)  !< limited slope
 !==================================================================================================================================
 ! MinMod
 s = MERGE(sL,sR, ABS(sL) .LT. ABS(sR))
@@ -153,35 +156,37 @@ END SUBROUTINE MinMod
 !==================================================================================================================================
 !> Sweby slope limiter.
 !==================================================================================================================================
-PPURE SUBROUTINE Sweby(sL, sR, s)
+PPURE SUBROUTINE Sweby(nVar, sL, sR, s)
 ! MODULES
 USE MOD_FV_Vars ,ONLY: FV_sweby_beta
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
-REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
-REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
+INTEGER,INTENT(IN) :: nVar
+REAL,INTENT(IN)    :: sL(nVar) !< left slope
+REAL,INTENT(IN)    :: sR(nVar) !< right slope
+REAL,INTENT(OUT)   :: s(nVar)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL :: sa(PP_nVarPrim),sb(PP_nVarPrim)
+REAL :: sa(nVar),sb(nVar)
 !==================================================================================================================================
-CALL MinMod(sL*FV_sweby_beta,sR,sa)
-CALL MinMod(sL,sR*FV_sweby_beta,sb)
+CALL MinMod(nVar,sL*FV_sweby_beta,sR,sa)
+CALL MinMod(nVar,sL,sR*FV_sweby_beta,sb)
 s = SIGN(MAX(ABS(sa),ABS(sb)),sL)
 END SUBROUTINE Sweby
 
 !==================================================================================================================================
 !> van Albada slope limiter.
 !==================================================================================================================================
-PPURE SUBROUTINE VanAlbada(sL, sR, s)
+PPURE SUBROUTINE VanAlbada(nVar, sL, sR, s)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
-REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
-REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
+INTEGER,INTENT(IN) :: nVar
+REAL,INTENT(IN)    :: sL(nVar) !< left slope
+REAL,INTENT(IN)    :: sR(nVar) !< right slope
+REAL,INTENT(OUT)   :: s(nVar)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -193,14 +198,15 @@ END SUBROUTINE VanAlbada
 !==================================================================================================================================
 !> central limiter s = (sL + sR)/2  (ATTENTION: unstable and not TVD)
 !==================================================================================================================================
-PPURE SUBROUTINE CentralLimiter(sL, sR, s)
+PPURE SUBROUTINE CentralLimiter(nVar, sL, sR, s)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
-REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
-REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
+INTEGER,INTENT(IN) :: nVar
+REAL,INTENT(IN)    :: sL(nVar) !< left slope
+REAL,INTENT(IN)    :: sR(nVar) !< right slope
+REAL,INTENT(OUT)   :: s(nVar)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================

@@ -341,7 +341,6 @@ USE MOD_FV_Vars               ,ONLY: gradUxi,gradUeta
 USE MOD_FV_Vars               ,ONLY: gradUzeta
 #endif /* PP_dim == 3 */
 USE MOD_FV_Vars               ,ONLY: FV_X,FV_Path_XI,FV_Path_ETA,FV_Path_ZETA
-USE MOD_Mesh_Vars             ,ONLY: sJ
 USE MOD_Interpolation_Vars    ,ONLY: xGP,wGP,wBary
 USE MOD_FV_Metrics            ,ONLY: Integrate_Path1D
 #endif /*FV_RECONSTRUCT*/
@@ -363,12 +362,17 @@ INTEGER,INTENT(IN)        :: NVar_out                                      !< 6 
 REAL,INTENT(OUT)          :: U_Out(1:NVar_out)                             !< Interpolated state at physical position x_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                      :: U_Prim(1:nVar_out,0:N_In,0:N_In,0:N_In)
-REAL                      :: xi(3)
-INTEGER                   :: IJK(3)
+REAL                                          :: U_Prim(1:nVar_out,0:N_In,0:N_In,0:N_In)
+REAL                                          :: xi(3)
+INTEGER                                       :: IJK(3)
 #if FV_RECONSTRUCT
-INTEGER                   :: i,j,k
-REAL                      :: distance(3)
+INTEGER                                       :: i,j,k
+REAL                                          :: distance(3)
+REAL,DIMENSION(nVar_out,0:N_In,0:N_In,0:N_In) :: gradUxi_tmp
+REAL,DIMENSION(nVar_out,0:N_In,0:N_In,0:N_In) :: gradUeta_tmp
+#if PP_dim == 3
+REAL,DIMENSION(nVar_out,0:N_In,0:N_In,0:N_In) :: gradUzeta_tmp
+#endif
 #endif /*FV_RECONSTRUCT*/
 !===================================================================================================================================
 
@@ -382,9 +386,11 @@ IJK(1:3) = MIN(NINT((xi(1:3)+1.)/2*(PP_N+1)),PP_N)
 
 #if FV_RECONSTRUCT
 ! Transform to primitve variables
-DO k=0,ZDIM(N_In); DO j=0,N_In; DO i=0,N_In
-  CALL ConsToPrim(U_Prim(:,i,j,k),U_In(:,i,j,k))
-END DO; END DO; END DO! i,j,k=0,Nloc
+IF (nVar_out.EQ.PP_nVarPrim) THEN
+  DO k=0,ZDIM(N_In); DO j=0,N_In; DO i=0,N_In
+    CALL ConsToPrim(U_Prim(:,i,j,k),U_In(:,i,j,k))
+  END DO; END DO; END DO! i,j,k=0,Nloc
+END IF
 
 ! Get distance to fv subcell mid point in physical space
 CALL Integrate_Path1D(N_In,N_In,xGP,wGP,wBary,FV_X(IJK(1)),xi(1),FV_Path_XI  (:,:,IJK(2),IJK(3),ElemID),distance(1))
@@ -394,14 +400,27 @@ CALL Integrate_Path1D(N_In,N_In,xGP,wGP,wBary,FV_X(IJK(3)),xi(3),FV_Path_ZETA(:,
 #endif /* PP_dim == 3 */
 
 ! Get reconstructed solution at particle position
-U_out = U_Prim(:,IJK(1),IJK(2),IJK(3)) + gradUxi  (:,IJK(2),IJK(3),IJK(1),ElemID) * distance(1) &
+IF (nVar_out.EQ.PP_nVarPrim) THEN
+  U_out = U_Prim(:,IJK(1),IJK(2),IJK(3)) + gradUxi  (:,IJK(2),IJK(3),IJK(1),ElemID) * distance(1) &
 #if PP_dim == 3
-                                       + gradUzeta(:,IJK(1),IJK(2),IJK(3),ElemID) * distance(3) &
+                                         + gradUzeta(:,IJK(1),IJK(2),IJK(3),ElemID) * distance(3) &
 #endif /* PP_dim == 3 */
-                                       + gradUeta (:,IJK(1),IJK(3),IJK(2),ElemID) * distance(2)
+                                         + gradUeta (:,IJK(1),IJK(3),IJK(2),ElemID) * distance(2)
+ELSE
+  CALL FV_CalcGradients(nVar,nVar_Out,ElemID,U_In,gradUxi_tmp,gradUeta_tmp,gradUzeta_tmp)
+  U_out = U_In(:,IJK(1),IJK(2),IJK(3)) + gradUxi_tmp  (:,IJK(2),IJK(3),IJK(1)) * distance(1) &
+#if PP_dim == 3
+                                       + gradUzeta_tmp(:,IJK(1),IJK(2),IJK(3)) * distance(3) &
+#endif /* PP_dim == 3 */
+                                       + gradUeta_tmp (:,IJK(1),IJK(3),IJK(2)) * distance(2)
+END IF
 #else
 ! Transform to primitve variables
-CALL ConsToPrim(U_out,U_in(:,IJK(1),IJK(2),IJK(3)))
+IF (nVar_out.EQ.PP_nVarPrim) THEN
+  CALL ConsToPrim(U_out,U_in(:,IJK(1),IJK(2),IJK(3)))
+ELSE
+  U_Out = U_in(:,IJK(1),IJK(2),IJK(3))
+END IF
 #endif /*FV_RECONSTRUCT*/
 
 END SUBROUTINE EvaluateField_FV
@@ -996,5 +1015,84 @@ SELECT CASE(RefMappingGuessLoc)
 END SELECT
 
 END SUBROUTINE GetRefNewtonStartValue
+
+
+#if FV_RECONSTRUCT
+!==================================================================================================================================
+!> Calculate slopes in the inside and limit them using TVD limiters.
+!> It is important to use physical distances (and not reference distances) to calculate the slope, since otherwise the
+!> slope limiter can not be applied. (Scenario: inner-cell-stretching)
+!> Additionally build central limited slopes for the computation of gradients used for the viscous fluxes.
+!==================================================================================================================================
+SUBROUTINE FV_CalcGradients(nVarIn,nVarOut,iElem,UPrim,gradUxi,gradUeta&
+#if PP_dim == 3
+  ,gradUzeta&
+#endif
+  )
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_FV_Vars        ,ONLY: FV_sdx_XI,FV_sdx_ETA
+#if PP_dim == 3
+USE MOD_FV_Vars        ,ONLY: FV_sdx_ZETA
+#endif
+USE MOD_FV_Limiter     ,ONLY: FV_Limiter
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: nVarIn
+INTEGER,INTENT(IN) :: nVarOut
+INTEGER,INTENT(IN) :: iElem
+REAL,INTENT(IN)    :: UPrim    (nVarIn ,0:PP_N,0:PP_N,0:PP_NZ) !< primitive volume solution
+REAL,INTENT(OUT)   :: gradUxi  (nVarOut,0:PP_N,0:PP_N,0:PP_NZ) !< physical slope in   xi-direction (mean value)
+REAL,INTENT(OUT)   :: gradUeta (nVarOut,0:PP_N,0:PP_N,0:PP_NZ) !< physical slope in  eta-direction (mean value)
+#if PP_dim == 3
+REAL,INTENT(OUT)   :: gradUzeta(nVarOut,0:PP_N,0:PP_N,0:PP_NZ) !< physical slope in zeta-direction (mean value)
+#endif
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,DIMENSION(nVarIn,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUxi_tmp
+REAL,DIMENSION(nVarIn,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUeta_tmp
+#if PP_dim == 3
+REAL,DIMENSION(nVarIn,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUzeta_tmp
+#endif
+INTEGER                                        :: l,iVar,p,q
+!==================================================================================================================================
+! FIXME: right know we assume that the gradients in the outer subcells are zero
+! Strategy:
+! 1. compute slopes between subcells in all 3 directions and store in temporary arrays
+!    Attention concerning the storage order: last index corresponds to the respective direction (xi/eta/zeta)!
+! 2. limit the slopes from the temporary array and store in gradUxi/eta/zeta
+
+! 1. gradients of inner subcells
+gradUxi_tmp   = 0.
+gradUeta_tmp  = 0.
+#if PP_dim == 3
+gradUzeta_tmp = 0.
+#endif
+DO l=1,PP_N
+  DO iVar=1,nVarIn
+    gradUxi_tmp  (iVar,:,:,l) = (UPrim(iVar,l,:,:) - UPrim(iVar,l-1,:,:)) * FV_sdx_XI  (:,:,l,iElem)
+    gradUeta_tmp (iVar,:,:,l) = (UPrim(iVar,:,l,:) - UPrim(iVar,:,l-1,:)) * FV_sdx_ETA (:,:,l,iElem)
+#if PP_dim == 3
+    gradUzeta_tmp(iVar,:,:,l) = (UPrim(iVar,:,:,l) - UPrim(iVar,:,:,l-1)) * FV_sdx_ZETA(:,:,l,iElem)
+#endif
+  END DO
+END DO
+
+! 3. limit
+DO l=0,PP_N
+  DO q=0,PP_NZ; DO p=0,PP_N
+    CALL FV_Limiter(nVarOut, gradUxi_tmp  (:,p,q,l),gradUxi_tmp  (:,p,q,l+1),gradUxi  (:,p,q,l))
+    CALL FV_Limiter(nVarOut, gradUeta_tmp (:,p,q,l),gradUeta_tmp (:,p,q,l+1),gradUeta (:,p,q,l))
+#if PP_dim == 3
+    CALL FV_Limiter(nVarOut, gradUzeta_tmp(:,p,q,l),gradUzeta_tmp(:,p,q,l+1),gradUzeta(:,p,q,l))
+#endif
+  END DO; END DO ! q, p
+END DO ! l
+
+END SUBROUTINE FV_CalcGradients
+#endif
 
 END MODULE MOD_Eval_xyz

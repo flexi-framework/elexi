@@ -100,6 +100,10 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBGM_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem
+USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalSide2CNTotalSide
+USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalSide2GlobalSide
+USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalElem2CNTotalElem
+USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalElem2GlobalElem
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_TimeDisc_Vars ,ONLY: PreviousTime
@@ -120,6 +124,10 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element_Shared,FIBGM_Element_Shared_
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem_Shared,FIBGM_offsetElem_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMToProc_Shared,FIBGMToProc_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMProcs,FIBGMProcs_Shared,FIBGMProcs_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalSide2CNTotalSide_Shared,GlobalSide2CNTotalSide_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalSide2GlobalSide_Shared,CNTotalSide2GlobalSide_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalElem2CNTotalElem_Shared,GlobalElem2CNTotalElem_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalElem2GlobalElem_Shared,CNTotalElem2GlobalElem_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: MeshHasPeriodic
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
 USE MOD_Particle_MPI_Shared
@@ -1037,47 +1045,66 @@ ELSE
       nComputeNodeTotalElems = nComputeNodeTotalElems + 1
     END IF
   END DO
-  ALLOCATE(CNTotalElem2GlobalElem(1:nComputeNodeTotalElems))
-  ALLOCATE(GlobalElem2CNTotalElem(1:nGlobalElems))
-  nComputeNodeTotalElems = 0
-  GlobalElem2CNTotalElem(1:nGlobalElems) = -1
-  ! CN-local elements
-  DO iElem = 1,nGlobalElems
-    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.1) THEN
-      nComputeNodeTotalElems = nComputeNodeTotalElems + 1
-      CNTotalElem2GlobalElem(nComputeNodeTotalElems) = iElem
-      GlobalElem2CNTotalElem(iElem) = nComputeNodeTotalElems
-      nComputeNodeTotalSides = nComputeNodeTotalSides &
-                             + (ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem))
-      nComputeNodeTotalNodes = nComputeNodeTotalNodes &
-                             + (ElemInfo_Shared(ELEM_LASTNODEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem))
-    END IF
-  END DO
-  ! CN-halo elements (non-periodic)
-  DO iElem = 1,nGlobalElems
-    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.2) THEN
-      nComputeNodeTotalElems = nComputeNodeTotalElems + 1
-      CNTotalElem2GlobalElem(nComputeNodeTotalElems) = iElem
-      GlobalElem2CNTotalElem(iElem) = nComputeNodeTotalElems
-      nComputeNodeTotalSides = nComputeNodeTotalSides &
-                             + (ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem))
-      nComputeNodeTotalNodes = nComputeNodeTotalNodes &
-                             + (ElemInfo_Shared(ELEM_LASTNODEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem))
-    END IF
-  END DO
-  ! CN-halo elements (periodic)
-  DO iElem = 1,nGlobalElems
-    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.3) THEN
-      nComputeNodeTotalElems = nComputeNodeTotalElems + 1
-      CNTotalElem2GlobalElem(nComputeNodeTotalElems) = iElem
-      GlobalElem2CNTotalElem(iElem) = nComputeNodeTotalElems
-      nComputeNodeTotalSides = nComputeNodeTotalSides &
-                             + (ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem))
-      nComputeNodeTotalNodes = nComputeNodeTotalNodes &
-                             + (ElemInfo_Shared(ELEM_LASTNODEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem))
-    END IF
-  END DO
-END IF
+
+#if USE_LOADBALANCE
+  IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+    CALL Allocate_Shared((/nGlobalElems          /),GlobalElem2CNTotalElem_Shared_Win,GlobalElem2CNTotalElem_Shared)
+    CALL MPI_WIN_LOCK_ALL(0,GlobalElem2CNTotalElem_Shared_Win,iERROR)
+    GlobalElem2CNTotalElem => GlobalElem2CNTotalElem_Shared
+#if USE_LOADBALANCE
+  END IF
+#endif /*USE_LOADBALANCE*/
+  CALL Allocate_Shared((/nComputeNodeTotalElems/),CNTotalElem2GlobalElem_Shared_Win,CNTotalElem2GlobalElem_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,CNTotalElem2GlobalElem_Shared_Win,iERROR)
+  CNTotalElem2GlobalElem => CNTotalElem2GlobalElem_Shared
+
+  ! Compute-node root fills the information
+  IF (myComputeNodeRank.EQ.0) THEN
+    nComputeNodeTotalElems = 0
+    GlobalElem2CNTotalElem(1:nGlobalElems) = -1
+
+    ! CN-local elements
+    DO iElem = 1,nGlobalElems
+      IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.1) THEN
+        nComputeNodeTotalElems = nComputeNodeTotalElems + 1
+        CNTotalElem2GlobalElem(nComputeNodeTotalElems) = iElem
+        GlobalElem2CNTotalElem(iElem) = nComputeNodeTotalElems
+        nComputeNodeTotalSides = nComputeNodeTotalSides &
+                               + (ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem))
+        nComputeNodeTotalNodes = nComputeNodeTotalNodes &
+                               + (ElemInfo_Shared(ELEM_LASTNODEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem))
+      END IF
+    END DO
+    ! CN-halo elements (non-periodic)
+    DO iElem = 1,nGlobalElems
+      IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.2) THEN
+        nComputeNodeTotalElems = nComputeNodeTotalElems + 1
+        CNTotalElem2GlobalElem(nComputeNodeTotalElems) = iElem
+        GlobalElem2CNTotalElem(iElem) = nComputeNodeTotalElems
+        nComputeNodeTotalSides = nComputeNodeTotalSides &
+                               + (ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem))
+        nComputeNodeTotalNodes = nComputeNodeTotalNodes &
+                               + (ElemInfo_Shared(ELEM_LASTNODEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem))
+      END IF
+    END DO
+    ! CN-halo elements (periodic)
+    DO iElem = 1,nGlobalElems
+      IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).EQ.3) THEN
+        nComputeNodeTotalElems = nComputeNodeTotalElems + 1
+        CNTotalElem2GlobalElem(nComputeNodeTotalElems) = iElem
+        GlobalElem2CNTotalElem(iElem) = nComputeNodeTotalElems
+        nComputeNodeTotalSides = nComputeNodeTotalSides &
+                               + (ElemInfo_Shared(ELEM_LASTSIDEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem))
+        nComputeNodeTotalNodes = nComputeNodeTotalNodes &
+                               + (ElemInfo_Shared(ELEM_LASTNODEIND,iElem) - ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem))
+      END IF
+    END DO
+  END IF ! myComputeNodeRank.EQ.0
+
+  CALL BARRIER_AND_SYNC(CNTotalElem2GlobalElem_Shared_Win,MPI_COMM_SHARED)
+  CALL BARRIER_AND_SYNC(GlobalElem2CNTotalElem_Shared_Win,MPI_COMM_SHARED)
+END IF ! nComputeNodeProcessors.EQ.nProcessors_Global
 
 #if CODE_ANALYZE
 ! Sanity checks
@@ -1323,7 +1350,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   ! 2.5) Communicate the partially filled arrays between the procs
   ! > Technically, this could be an MPI_ALLGATHERV but good luck figuring out the linearized displacements
   CALL MPI_ALLREDUCE(MPI_IN_PLACE,FIBGMProcs,nFIBGMToProc,MPI_INTEGER,MPI_MAX,MPI_COMM_LEADERS_SHARED,iError)
-END IF
+END IF ! myComputeNodeRank.EQ.0
 
 ! De-allocate FLAG array
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
@@ -1359,53 +1386,70 @@ ALLOCATE(Distance    (1:MAXVAL(FIBGM_nElems)) &
 
 #if USE_MPI
 ! Build a local nNonUniqueSides to nComputeNodeSides/nComputeNodeTotalSides mapping
-ALLOCATE(CNTotalSide2GlobalSide(1:nComputeNodeTotalSides))
-ALLOCATE(GlobalSide2CNTotalSide(1:nNonUniqueGlobalSides))
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL Allocate_Shared((/nNonUniqueGlobalSides /),GlobalSide2CNTotalSide_Shared_Win,GlobalSide2CNTotalSide_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,GlobalSide2CNTotalSide_Shared_Win,iERROR)
+  GlobalSide2CNTotalSide => GlobalSide2CNTotalSide_Shared
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
+CALL Allocate_Shared((/nComputeNodeTotalSides/),CNTotalSide2GlobalSide_Shared_Win,CNTotalSide2GlobalSide_Shared)
+CALL MPI_WIN_LOCK_ALL(0,CNTotalSide2GlobalSide_Shared_Win,iERROR)
+CNTotalSide2GlobalSide => CNTotalSide2GlobalSide_Shared
 
 ! Use MessageSize to temporally store the previous value
 MessageSize = nComputeNodeTotalSides
-nComputeNodeSides      = 0
-nComputeNodeTotalSides = 0
-GlobalSide2CNTotalSide(:) = -1
-CNTotalSide2GlobalSide(:) = -1
 
-! CN-local elements
-DO iElem = 1,nComputeNodeElems
-  ElemID = iElem + offsetComputeNodeElem
+! Compute-node root fills the information
+IF (myComputeNodeRank.EQ.0) THEN
+  nComputeNodeSides      = 0
+  nComputeNodeTotalSides = 0
+  GlobalSide2CNTotalSide(:) = -1
+  CNTotalSide2GlobalSide(:) = -1
 
-  ! Loop over all sides
-  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
-    ! Check if side was already added
-    ! IF (GlobalSide2CNTotalSide(iSide).NE.-1) CYCLE
+  ! CN-local elements
+  DO iElem = 1,nComputeNodeElems
+    ElemID = iElem + offsetComputeNodeElem
 
-    nComputeNodeSides             = nComputeNodeSides      + 1
-    nComputeNodeTotalSides        = nComputeNodeTotalSides + 1
-    CNTotalSide2GlobalSide(nComputeNodeTotalSides) = iSide
-    GlobalSide2CNTotalSide(iSide) = nComputeNodeTotalSides
+    ! Loop over all sides
+    DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
+      ! Check if side was already added
+      ! IF (GlobalSide2CNTotalSide(iSide).NE.-1) CYCLE
+
+      nComputeNodeSides             = nComputeNodeSides      + 1
+      nComputeNodeTotalSides        = nComputeNodeTotalSides + 1
+      CNTotalSide2GlobalSide(nComputeNodeTotalSides) = iSide
+      GlobalSide2CNTotalSide(iSide) = nComputeNodeTotalSides
+    END DO
   END DO
-END DO
 
-! CN-halo elements
-Do iElem = nComputeNodeElems + 1,nComputeNodeTotalElems
-  ElemID = CNTotalElem2GlobalElem(iElem)
+  ! CN-halo elements
+  Do iElem = nComputeNodeElems + 1,nComputeNodeTotalElems
+    ElemID = CNTotalElem2GlobalElem(iElem)
 
-  ! Loop over all sides
-  DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
-    ! Check if side was already added
-    ! IF (GlobalSide2CNTotalSide(iSide).NE.-1) CYCLE
+    ! Loop over all sides
+    DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
+      ! Check if side was already added
+      ! IF (GlobalSide2CNTotalSide(iSide).NE.-1) CYCLE
 
-    nComputeNodeTotalSides        = nComputeNodeTotalSides + 1
-    CNTotalSide2GlobalSide(nComputeNodeTotalSides) = iSide
-    GlobalSide2CNTotalSide(iSide) = nComputeNodeTotalSides
+      nComputeNodeTotalSides        = nComputeNodeTotalSides + 1
+      CNTotalSide2GlobalSide(nComputeNodeTotalSides) = iSide
+      GlobalSide2CNTotalSide(iSide) = nComputeNodeTotalSides
+    END DO
   END DO
-END DO
 
-! Sanity check
-IF (nComputeNodeSides.NE.ElemInfo_Shared(ELEM_LASTSIDEIND,offsetComputeNodeElem+nComputeNodeElems)-ElemInfo_Shared(ELEM_FIRSTSIDEIND,offsetComputeNodeElem+1)) &
-  CALL Abort(__STAMP__,'Error with number of local sides on compute node')
+  ! Sanity check
+  IF (nComputeNodeSides.NE.ElemInfo_Shared(ELEM_LASTSIDEIND,offsetComputeNodeElem+nComputeNodeElems)-ElemInfo_Shared(ELEM_FIRSTSIDEIND,offsetComputeNodeElem+1)) &
+    CALL Abort(__STAMP__,'Error with number of local sides on compute node')
 
-IF (nComputeNodeTotalSides.NE.MessageSize) &
-  CALL Abort(__STAMP__,'Error with number of halo sides on compute node')
+  IF (nComputeNodeTotalSides.NE.MessageSize) &
+    CALL Abort(__STAMP__,'Error with number of halo sides on compute node')
+END IF ! myComputeNodeRank.EQ.0
+
+CALL BARRIER_AND_SYNC(CNTotalSide2GlobalSide_Shared_Win,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(GlobalSide2CNTotalSide_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
 
 END SUBROUTINE BuildBGMAndIdentifyHaloRegion
@@ -1443,6 +1487,10 @@ IF (.NOT.PerformLoadBalance) THEN
   CALL MPI_WIN_FREE(BoundsOfElem_Shared_Win,iError)
   CALL MPI_WIN_UNLOCK_ALL(FIBGM_nTotalElems_Shared_Win,iError)
   CALL MPI_WIN_FREE(FIBGM_nTotalElems_Shared_Win,iError)
+  CALL MPI_WIN_UNLOCK_ALL(GlobalElem2CNTotalElem_Shared_Win,iError)
+  CALL MPI_WIN_FREE(GlobalElem2CNTotalElem_Shared_Win,iError)
+  CALL MPI_WIN_UNLOCK_ALL(GlobalSide2CNTotalSide_Shared_Win,iError)
+  CALL MPI_WIN_FREE(GlobalSide2CNTotalSide_Shared_Win,iError)
   ! ElemToBGM is only used during init. But it is expensive to build, so keep it around for now
   CALL MPI_WIN_UNLOCK_ALL(ElemToBGM_Shared_Win,iError)
   CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
@@ -1459,20 +1507,23 @@ CALL MPI_WIN_UNLOCK_ALL(FIBGMToProc_Shared_Win,iError)
 CALL MPI_WIN_FREE(FIBGMToProc_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(FIBGMProcs_Shared_Win,iError)
 CALL MPI_WIN_FREE(FIBGMProcs_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(CNTotalElem2GlobalElem_Shared_Win,iError)
+CALL MPI_WIN_FREE(CNTotalElem2GlobalElem_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(CNTotalSide2GlobalSide_Shared_Win,iError)
+CALL MPI_WIN_FREE(CNTotalSide2GlobalSide_Shared_Win,iError)
 
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
 ! Then, free the pointers or arrays
-SDEALLOCATE(CNTotalElem2GlobalElem)
-SDEALLOCATE(GlobalElem2CNTotalElem)
-SDEALLOCATE(CNTotalSide2GlobalSide)
-SDEALLOCATE(GlobalSide2CNTotalSide)
-
 #if USE_LOADBALANCE
 IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
   MDEALLOCATE(FIBGM_nTotalElems)
   MDEALLOCATE(FIBGM_nTotalElems_Shared)
+  MDEALLOCATE(GlobalElem2CNTotalElem)
+  MDEALLOCATE(GlobalElem2CNTotalElem_Shared)
+  MDEALLOCATE(GlobalSide2CNTotalSide)
+  MDEALLOCATE(GlobalSide2CNTotalSide_Shared)
   MDEALLOCATE(ElemToBGM_Shared)
 #if USE_LOADBALANCE
 END IF
@@ -1496,6 +1547,10 @@ MDEALLOCATE(FIBGMToProc)
 MDEALLOCATE(FIBGMToProc_Shared)
 MDEALLOCATE(FIBGMProcs)
 MDEALLOCATE(FIBGMProcs_Shared)
+MDEALLOCATE(CNTotalElem2GlobalElem)
+MDEALLOCATE(CNTotalElem2GlobalElem_Shared)
+MDEALLOCATE(CNTotalSide2GlobalSide)
+MDEALLOCATE(CNTotalSide2GlobalSide_Shared)
 
 #if USE_MPI
 CALL FinalizeHaloInfo()

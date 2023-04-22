@@ -1040,11 +1040,14 @@ ELSE
   nComputeNodeTotalElems = 0
   nComputeNodeTotalSides = 0
   nComputeNodeTotalNodes = 0
-  DO iElem = 1, nGlobalElems
+
+  ! Sum up all elements on the compute node
+  DO iElem = firstElem, lastElem
     IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).NE.0) THEN
       nComputeNodeTotalElems = nComputeNodeTotalElems + 1
     END IF
   END DO
+  CALL MPI_ALLREDUCE(MPI_IN_PLACE,nComputeNodeTotalElems,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,iError)
 
 #if USE_LOADBALANCE
   IF (.NOT.PerformLoadBalance) THEN

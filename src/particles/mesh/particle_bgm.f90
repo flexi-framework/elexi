@@ -1490,12 +1490,13 @@ IF (.NOT.PerformLoadBalance) THEN
   ! ElemToBGM is only used during init. But it is expensive to build, so keep it around for now
   CALL MPI_WIN_UNLOCK_ALL(ElemToBGM_Shared_Win,iError)
   CALL MPI_WIN_FREE(ElemToBGM_Shared_Win,iError)
+  ! Mapping arrays are only allocated if not running on one node
   IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
     CALL MPI_WIN_UNLOCK_ALL(GlobalElem2CNTotalElem_Shared_Win,iError)
     CALL MPI_WIN_FREE(GlobalElem2CNTotalElem_Shared_Win,iError)
-    CALL MPI_WIN_UNLOCK_ALL(GlobalSide2CNTotalSide_Shared_Win,iError)
-    CALL MPI_WIN_FREE(GlobalSide2CNTotalSide_Shared_Win,iError)
   END IF ! nComputeNodeProcessors.NE.nProcessors_Global
+  CALL MPI_WIN_UNLOCK_ALL(GlobalSide2CNTotalSide_Shared_Win,iError)
+  CALL MPI_WIN_FREE(GlobalSide2CNTotalSide_Shared_Win,iError)
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/
@@ -1509,12 +1510,13 @@ CALL MPI_WIN_UNLOCK_ALL(FIBGMToProc_Shared_Win,iError)
 CALL MPI_WIN_FREE(FIBGMToProc_Shared_Win,iError)
 CALL MPI_WIN_UNLOCK_ALL(FIBGMProcs_Shared_Win,iError)
 CALL MPI_WIN_FREE(FIBGMProcs_Shared_Win,iError)
+! Mapping arrays are only allocated if not running on one node
 IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
   CALL MPI_WIN_UNLOCK_ALL(CNTotalElem2GlobalElem_Shared_Win,iError)
   CALL MPI_WIN_FREE(CNTotalElem2GlobalElem_Shared_Win,iError)
-  CALL MPI_WIN_UNLOCK_ALL(CNTotalSide2GlobalSide_Shared_Win,iError)
-  CALL MPI_WIN_FREE(CNTotalSide2GlobalSide_Shared_Win,iError)
 END IF ! nComputeNodeProcessors.NE.nProcessors_Global
+CALL MPI_WIN_UNLOCK_ALL(CNTotalSide2GlobalSide_Shared_Win,iError)
+CALL MPI_WIN_FREE(CNTotalSide2GlobalSide_Shared_Win,iError)
 
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
@@ -1525,12 +1527,13 @@ IF (.NOT.PerformLoadBalance) THEN
   MDEALLOCATE(FIBGM_nTotalElems)
   MDEALLOCATE(FIBGM_nTotalElems_Shared)
   MDEALLOCATE(ElemToBGM_Shared)
+  ! Mapping arrays are only allocated if not running on one node
   IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
     MDEALLOCATE(GlobalElem2CNTotalElem)
     MDEALLOCATE(GlobalElem2CNTotalElem_Shared)
-    MDEALLOCATE(GlobalSide2CNTotalSide)
-    MDEALLOCATE(GlobalSide2CNTotalSide_Shared)
   END IF ! nComputeNodeProcessors.NE.nProcessors_Global
+  MDEALLOCATE(GlobalSide2CNTotalSide)
+  MDEALLOCATE(GlobalSide2CNTotalSide_Shared)
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/
@@ -1553,12 +1556,13 @@ MDEALLOCATE(FIBGMToProc)
 MDEALLOCATE(FIBGMToProc_Shared)
 MDEALLOCATE(FIBGMProcs)
 MDEALLOCATE(FIBGMProcs_Shared)
+! Mapping arrays are only allocated if not running on one node
 IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
   MDEALLOCATE(CNTotalElem2GlobalElem)
   MDEALLOCATE(CNTotalElem2GlobalElem_Shared)
-  MDEALLOCATE(CNTotalSide2GlobalSide)
-  MDEALLOCATE(CNTotalSide2GlobalSide_Shared)
 END IF ! nComputeNodeProcessors.NE.nProcessors_Global
+MDEALLOCATE(CNTotalSide2GlobalSide)
+MDEALLOCATE(CNTotalSide2GlobalSide_Shared)
 
 #if USE_MPI
 CALL FinalizeHaloInfo()

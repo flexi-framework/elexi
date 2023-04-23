@@ -1542,18 +1542,19 @@ IF (.NOT.PerformLoadBalance) THEN
   END IF ! nComputeNodeProcessors.NE.nProcessors_Global
   MDEALLOCATE(GlobalSide2CNTotalSide)
   MDEALLOCATE(GlobalSide2CNTotalSide_Shared)
-#if USE_LOADBALANCE
-END IF
-#endif /*USE_LOADBALANCE*/
-#endif /*USE_MPI*/
-
-#if USE_LOADBALANCE
-IF (.NOT.PerformLoadBalance) THEN
-#endif /*USE_LOADBALANCE*/
   MDEALLOCATE(BoundsOfElem_Shared)
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/
+! Mapping arrays are only allocated if not running on one node
+IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
+  MDEALLOCATE(CNTotalElem2GlobalElem)
+  MDEALLOCATE(CNTotalElem2GlobalElem_Shared)
+END IF ! nComputeNodeProcessors.NE.nProcessors_Global
+MDEALLOCATE(CNTotalSide2GlobalSide)
+MDEALLOCATE(CNTotalSide2GlobalSide_Shared)
+#endif /*USE_MPI*/
+
 MDEALLOCATE(FIBGM_nElems)
 MDEALLOCATE(FIBGM_nElems_Shared)
 MDEALLOCATE(FIBGM_offsetElem)
@@ -1564,13 +1565,6 @@ MDEALLOCATE(FIBGMToProc)
 MDEALLOCATE(FIBGMToProc_Shared)
 MDEALLOCATE(FIBGMProcs)
 MDEALLOCATE(FIBGMProcs_Shared)
-! Mapping arrays are only allocated if not running on one node
-IF (nComputeNodeProcessors.NE.nProcessors_Global) THEN
-  MDEALLOCATE(CNTotalElem2GlobalElem)
-  MDEALLOCATE(CNTotalElem2GlobalElem_Shared)
-END IF ! nComputeNodeProcessors.NE.nProcessors_Global
-MDEALLOCATE(CNTotalSide2GlobalSide)
-MDEALLOCATE(CNTotalSide2GlobalSide_Shared)
 
 #if USE_MPI
 CALL FinalizeHaloInfo()

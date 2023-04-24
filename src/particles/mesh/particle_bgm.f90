@@ -100,10 +100,6 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBGM_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem
-USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalSide2CNTotalSide
-USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalSide2GlobalSide
-USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalElem2CNTotalElem
-USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalElem2GlobalElem
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
 USE MOD_Particle_TimeDisc_Vars ,ONLY: PreviousTime
@@ -114,6 +110,10 @@ USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
 #if USE_MPI
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_MPI_Vars               ,ONLY: offsetElemMPI
+USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalElem2CNTotalElem
+USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalElem2GlobalElem
+USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalSide2CNTotalSide
+USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalSide2GlobalSide
 USE MOD_Particle_Mesh_Vars     ,ONLY: nComputeNodeElems,offsetComputeNodeElem,nComputeNodeSides,nNonUniqueGlobalSides,nNonUniqueGlobalNodes
 USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared,ElemInfo_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared_Win,ElemToBGM_Shared_Win

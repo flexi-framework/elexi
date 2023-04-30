@@ -1224,6 +1224,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   FIBGMToProcExtent(2,:,:) = -HUGE(1)
 END IF
 CALL BARRIER_AND_SYNC(FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(FIBGMToProcExtent_Shared_Win,MPI_COMM_SHARED)
 
 ! 1.1) Count number of elements on compute node
 DO iElem = offsetElem+1,offsetElem+nElems

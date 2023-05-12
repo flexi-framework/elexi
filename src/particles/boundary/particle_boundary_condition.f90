@@ -256,7 +256,9 @@ REAL                              :: rot_old(1:3)
 locBCID   = SideInfo_Shared(SIDE_BCID,SideID)
 ! Get wall velo and BCID
 WallVelo  = PartBound%WallVelo(1:3,locBCID)
-Symmetry  = MERGE(opt_Symmetry,.FALSE.,PRESENT(opt_Symmetry))
+IF (PRESENT(opt_Symmetry)) THEN; Symmetry  = opt_Symmetry
+ELSE                           ; Symmetry  = .FALSE.
+END IF
 
 ! Rough wall modelling
 IF (PartBound%doRoughWallModelling(locBCID).AND.Species(PartSpecies(PartID))%doRoughWallModelling) THEN

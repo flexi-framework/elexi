@@ -403,7 +403,7 @@ IF(MPIRoot)THEN
   ! Status line or standard output
   IF (PRESENT(doETA)) THEN; tmpString = 'YES'
   ELSE                    ; tmpString = 'NO'
-  ENDIF
+  END IF
 END IF
 
 #if USE_PARTICLES

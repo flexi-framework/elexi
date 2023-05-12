@@ -222,7 +222,9 @@ INTEGER         :: Npois
 REAL            :: Tpois, RandVal1
 !===================================================================================================================================
 
-Flag  = MERGE(Flag_opt,.FALSE.,PRESENT(Flag_opt))
+IF (PRESENT(Flag_opt)) THEN; Flag = Flag_opt
+ELSE                       ; Flag = .FALSE.
+END IF
 Npois = 0
 Tpois = 1.0
 CALL RANDOM_NUMBER(RandVal1)

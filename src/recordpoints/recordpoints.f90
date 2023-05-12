@@ -111,7 +111,9 @@ CALL ReadRPList(RPDefFile)                              ! RP_inUse is set to FAL
 CALL InitRPCommunicator()
 #endif /*USE_MPI*/
 
-nVar_loc = MERGE(nVar,PP_nVar,PRESENT(nVar))
+IF (PRESENT(nVar)) THEN; nVar_loc = nVar
+ELSE                   ; nVar_loc = PP_nVar
+END IF
 
 ! Read parameters on all procs, otherwise output is missing if no RP on MPI root
 RP_maxMemory        = GETINT('RP_MaxMemory')            ! Max buffer (100MB)

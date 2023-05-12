@@ -401,7 +401,9 @@ IF(MPIRoot)THEN
 #endif /*PP_LIMITER*/
 
   ! Status line or standard output
-  tmpString = MERGE('YES','NO ',PRESENT(doETA))
+  IF (PRESENT(doETA)) THEN; tmpString = 'YES'
+  ELSE                    ; tmpString = 'NO'
+  ENDIF
 END IF
 
 #if USE_PARTICLES

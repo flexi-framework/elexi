@@ -940,7 +940,9 @@ REAL,DIMENSION(1:3,1:BezierSampleN,1:BezierSampleN) :: SurfMeshSubSideVec_nOut,S
 REAL,DIMENSION(1:BezierSampleN,1:BezierSampleN) :: Dmax
 !===================================================================================================================================
 
-BezierSurfFluxProjection = MERGE(BezierSurfFluxProjection_opt,.FALSE.,PRESENT(BezierSurfFluxProjection_opt))
+IF (PRESENT(BezierSurfFluxProjection_opt)) THEN; BezierSurfFluxProjection = BezierSurfFluxProjection_opt
+ELSE                                           ; BezierSurfFluxProjection = .FALSE.
+END IF
 CalcDmax = .FALSE.
 
 IF (PRESENT(Dmax_opt)) THEN

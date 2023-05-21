@@ -54,7 +54,7 @@ SUBROUTINE InitSmagorinsky()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_EddyVisc_Vars
-USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
+USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL,GETREALARRAY
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ,Elem_xGP
 USE MOD_EOS_Vars           ,ONLY: mu0
@@ -80,6 +80,9 @@ VanDriest = GETLOGICAL('VanDriest')
 
 ALLOCATE(damp(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 damp = 1.
+
+! Readin custom limits of eddy viscosity
+muSGS_limits(:) = GETREALARRAY('eddyViscLimits',2)
 
 ! Smago: (damp*CS*deltaS)**2 * S_eN * dens
 ! Precompute first term and store in damp
@@ -141,7 +144,7 @@ SUBROUTINE Smagorinsky_Volume()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,         ONLY: nElems
-USE MOD_EddyVisc_Vars,     ONLY: damp, muSGS, maxEddyVisc
+USE MOD_EddyVisc_Vars,     ONLY: damp, muSGS, muSGS_limits
 USE MOD_EOS_Vars,          ONLY: mu0
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
@@ -156,9 +159,8 @@ DO iElem = 1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CALL Smagorinsky_Point(gradUx(:   ,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
                                 U(DENS,i,j,k,iElem),   damp(1,i,j,k,iElem),  muSGS(1,i,j,k,iElem))
-    IF (muSGS(1,i,j,k,iElem) .GT. maxEddyVisc*mu0 .AND. maxEddyVisc .GT. 0.) THEN
-      muSGS(1,i,j,k,iElem) = maxEddyVisc*mu0
-    END IF
+    ! Limit muSGS
+    muSGS(1,i,j,k,iElem) = MIN(MAX(muSGS(1,i,j,k,iElem),mu0*muSGS_limits(1)),mu0*muSGS_limits(2))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE Smagorinsky_Volume

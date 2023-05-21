@@ -223,7 +223,9 @@ IF (PerformLoadBalance) THEN
 ! NOT. PerformLoadBalance
 ELSE
 #endif /*USE_LOADBALANCE*/
-  doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
+  IF (PRESENT(doFlushFiles)) THEN; doFlushFiles_loc = doFlushFiles
+  ELSE                           ; doFlushFiles_loc = .TRUE.
+  END IF
 
   IF (LEN_TRIM(RestartFile).EQ.0) THEN
     ! Delete all files since we are doing a fresh start --> moved from restart.f90 since we need it here

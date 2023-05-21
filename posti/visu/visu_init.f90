@@ -57,6 +57,7 @@ USE MOD_StringTools    ,ONLY: STRICMP
 USE MOD_Restart        ,ONLY: InitRestartFile
 USE MOD_Restart_Vars   ,ONLY: RestartMode
 USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni,nVar_State,IJK_exists
+USE MOD_Visu_Vars      ,ONLY: statefile_old,changedStateFile
 #if USE_PARTICLES
 USE MOD_Posti_Part_Tools  ,ONLY: InitPartState,InitPartStatistics
 USE MOD_Visu_Vars         ,ONLY: PD,PDE,PartNamesAll
@@ -275,6 +276,10 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   IF(ALLOCATED(PDE%VarNamesPart_HDF5)) PartnamesAll(PD%nPartVar_HDF5+1:PD%nPartVar_HDF5+PDE%nPartVar_HDF5)=PDE%VarNamesPart_HDF5
 #endif
 END IF
+
+! check if state changed
+changedStateFile = .NOT.STRICMP(statefile,statefile_old)
+IF (changedStateFile .AND. MPIRoot) WRITE(*,*) "state file old -> new: ", TRIM(statefile_old), " -> ",TRIM(statefile)
 
 END SUBROUTINE visu_getVarNamesAndFileType
 

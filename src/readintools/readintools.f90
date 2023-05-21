@@ -380,12 +380,16 @@ IF (opt%hasDefault) THEN
   CALL opt%parse(value)
 END IF
 
-opt%multiple   = MERGE(multiple,.FALSE.,PRESENT(multiple))
+IF (PRESENT(multiple)) THEN; opt%multiple = multiple
+ELSE                       ; opt%multiple = .FALSE.
+END IF
 IF (opt%multiple .AND. opt%hasDefault) CALL Abort(__STAMP__, &
       "A default value can not be given, when multiple=.TRUE. in creation of option: '"//TRIM(name)//"'")
 
 #if USE_PARTICLES
-opt%numberedmulti = MERGE(numberedmulti,.FALSE.,PRESENT(numberedmulti))
+IF (PRESENT(numberedmulti)) THEN; opt%numberedmulti = numberedmulti
+ELSE                            ; opt%numberedmulti = .FALSE.
+END IF
 ! Remove/Replace $ occurrences in variable name
 IF(opt%numberedmulti)THEN
   aStr = Var_Str(TRIM(name))

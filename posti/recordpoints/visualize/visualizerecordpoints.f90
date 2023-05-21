@@ -440,6 +440,8 @@ END IF
 OutputPoints     =GETLOGICAL('OutputPoints','.TRUE.')
 
 skip = GETINT('SkipSample','1')
+IF (skip.LT.1) &
+  CALL CollectiveStop(__STAMP__,'SkipSample must be a positive integer!')
 
 IF(doTurb.OR.Plane_doBLProps) Mu0=GETREAL('Mu0')
 

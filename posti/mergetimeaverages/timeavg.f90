@@ -286,9 +286,14 @@ DO iFile = 1,nFiles
     nDim            = ref%nDims(   i)
     ! Skip data set if the last dimension is not nElems
     IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+    ! Arrays are allowed to change
+    SELECT CASE(TRIM(ref%DatasetNames(i)))
+      CASE('ElemData','FieldData','ElemTime','PartInt')
+        CYCLE
+    END SELECT
     ! Check if dataset size has changed
-    IF(ANY(ref%nVal(1:nDim,i).NE.loc%nVal(1:nDim,i))) &
-      CALL CollectiveStop(__STAMP__,'Change of polynomial degree and variables not supported! Dataset: '//TRIM(loc%DatasetNames(i)))
+    IF (ANY(ref%nVal(1:nDim,i).NE.loc%nVal(1:nDim,i))) &
+      CALL CollectiveStop(__STAMP__,'Change of polynomial degree and variables not supported! Dataset: '//TRIM(ref%DatasetNames(i)))
   END DO
   ! TODO: check change of FV subcells ?!
 
@@ -332,6 +337,12 @@ DO iFile = 1,nFiles
     ! Skip data set if the last dimension is not nElems
     IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
 
+    ! Arrays are allowed to change
+    SELECT CASE(TRIM(ref%DatasetNames(i)))
+      CASE('ElemData','FieldData','ElemTime','PartInt')
+        CYCLE
+    END SELECT
+
     CALL ReadArray(ArrayName  = TRIM(ref%DatasetNames(i)) &
                   ,Rank       = nDim                      &
                   ,nVal       = locsize(1:nDim)           &
@@ -356,8 +367,15 @@ DO iFile = 1,nFiles
 
     ! Compute total average
     DO i = 1,ref%nDataSets
+      nDim            = ref%nDims(i)
       ! Skip data set if the last dimension is not nElems
       IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+
+      ! Arrays are allowed to change
+      SELECT CASE(TRIM(ref%DatasetNames(i)))
+        CASE('ElemData','FieldData','ElemTime','PartInt')
+          CYCLE
+      END SELECT
 
       avg(i)%AvgData = avg(i)%AvgData/TotalAvgTime
 
@@ -419,6 +437,12 @@ DO iFile = 1,nFiles
         CASE DEFAULT
           ! Skip data set if the last dimension is not nElems
           IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+
+          ! Arrays are allowed to change
+          SELECT CASE(TRIM(ref%DatasetNames(i)))
+            CASE('ElemData','FieldData','ElemTime','PartInt')
+              CYCLE
+          END SELECT
 
           nDim             = ref%nDims(   i)
           locsize( 1:nDim) = ref%nVal(1:nDim,i)

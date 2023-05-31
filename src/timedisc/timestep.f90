@@ -21,6 +21,10 @@ MODULE MOD_TimeStep
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
+INTERFACE SetTimeStep
+  MODULE PROCEDURE SetTimeStep
+END INTERFACE
+
 INTERFACE TimeStepByLSERKW2
   MODULE PROCEDURE TimeStepByLSERKW2
 END INTERFACE
@@ -33,12 +37,68 @@ INTERFACE TimeStepByESDIRK
   MODULE PROCEDURE TimeStepByESDIRK
 END INTERFACE
 
-PUBLIC :: TimeStepByLSERKW2
-PUBLIC :: TimeStepByLSERKK3
-PUBLIC :: TimeStepByESDIRK
+! > Dummy interface for time step function pointer
+ABSTRACT INTERFACE
+  SUBROUTINE TimeIntegrator(t)
+    REAL,INTENT(INOUT) :: t
+  END SUBROUTINE
+END INTERFACE
+
+PROCEDURE(TimeIntegrator),POINTER :: TimeStep !< pointer to timestepping routine, depends on td
+
+PUBLIC :: TimeStep
+PUBLIC :: SetTimeStep
 !==================================================================================================================================
 
 CONTAINS
+
+!===================================================================================================================================
+!> Set the timestep pointer to the specified type of timestep routine
+!===================================================================================================================================
+SUBROUTINE SetTimeStep(TimeDiscType)
+! MODULES
+USE MOD_Globals
+#if USE_PARTICLES
+USE MOD_ReadInTools            ,ONLY: GETLOGICAL,GETSTR,GETREAL
+USE MOD_Particle_TimeDisc_Vars ,ONLY: UseManualTimeStep,ManualTimeStep
+USE MOD_Particle_TimeDisc      ,ONLY: TimeStepSteadyState
+#endif /*USE_PARTICLES*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN) :: TimeDiscType   !< type of timestep required, i.e. number of registers
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+IF (ASSOCIATED(TimeStep)) CALL Abort(__STAMP__, &
+   'TimeStep pointer is already associated! Dereference the pointer before associating it with a new time step routine!')
+
+SELECT CASE(TimeDiscType)
+  CASE('LSERKW2')
+    TimeStep=>TimeStepByLSERKW2
+  CASE('LSERKK3')
+    TimeStep=>TimeStepByLSERKK3
+  CASE('ESDIRK')
+    TimeStep=>TimeStepByESDIRK
+  CASE DEFAULT
+    CALL Abort(__STAMP__, 'Unknown timestep routine!')
+END SELECT
+
+#if USE_PARTICLES
+! Check if we are running a steady state tracking
+LBWRITE(UNIT_stdOut,'(66("-"))')
+!--- Read Manual Time Step
+useManualTimeStep = GETLOGICAL('Part-SteadyState'   )
+ManualTimeStep    = GETREAL   ('Part-ManualTimeStep')
+IF (useManualTimeStep .OR. ManualTimeStep.GT.0.) THEN
+  useManualTimeStep = .TRUE.
+  TimeStep => TimeStepSteadyState
+END IF
+#endif /*USE_PARTICLES*/
+
+END SUBROUTINE SetTimeStep
+
 
 !===================================================================================================================================
 !> Low-Storage Runge-Kutta integration: 2 register version

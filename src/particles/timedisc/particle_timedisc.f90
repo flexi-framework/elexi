@@ -54,6 +54,10 @@ INTERFACE Particle_FinalizeTimeDisk
   MODULE PROCEDURE Particle_FinalizeTimeDisk
 END INTERFACE
 
+INTERFACE TimeStepSteadyState
+  MODULE PROCEDURE TimeStepSteadyState
+END INTERFACE
+
 PROCEDURE(ParticleTimeStepPointer),  POINTER :: ParticleTimeStep     !< Point to the particle time step routine to be used
 PROCEDURE(ParticleTimeStepRKPointer),POINTER :: ParticleTimeStepRK   !< Point to the particle RK time step routine to be used
 
@@ -61,6 +65,7 @@ PUBLIC :: Particle_InitTimeDisc
 PUBLIC :: ParticleTimeRHS
 PUBLIC :: ParticleTimeStep
 PUBLIC :: ParticleTimeStepRK
+PUBLIC :: TimeStepSteadyState
 PUBLIC :: Particle_FinalizeTimeDisk
 
 !===================================================================================================================================
@@ -74,8 +79,8 @@ SUBROUTINE Particle_InitTimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools               ,ONLY: GETLOGICAL,GETSTR,GETREAL
-USE MOD_TimeDisc_Vars             ,ONLY: TimeStep,TimeDiscType
-USE MOD_Particle_TimeDisc_Vars    ,ONLY: ParticleTimeDiscMethod,UseManualTimeStep,ManualTimeStep
+USE MOD_TimeDisc_Vars             ,ONLY: TimeDiscType
+USE MOD_Particle_TimeDisc_Vars    ,ONLY: ParticleTimeDiscMethod
 USE MOD_Particle_Vars             ,ONLY: nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -93,15 +98,6 @@ SELECT CASE(TimeDiscType)
 END SELECT
 
 ParticleTimeDiscMethod = GETSTR('ParticleTimeDiscMethod','Runge-Kutta')
-! Check if we are running a steady state tracking
-LBWRITE(UNIT_stdOut,'(66("-"))')
-!--- Read Manual Time Step
-useManualTimeStep = GETLOGICAL('Part-SteadyState'   )
-ManualTimeStep    = GETREAL   ('Part-ManualTimeStep')
-IF (useManualTimeStep .OR. ManualTimeStep.GT.0.) THEN
-  useManualTimeStep = .TRUE.
-  TimeStep => TimeStepSteadyState
-END IF
 
 ! Select the time disc method
 SELECT CASE (TRIM(ParticleTimeDiscMethod))

@@ -135,7 +135,7 @@ IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem,ElemID,iNode
-REAL                           :: xPos(3),Radius
+REAL                           :: xPos(3),Radius2!,Radius
 INTEGER                        :: firstElem, lastElem
 !================================================================================================================================
 
@@ -171,19 +171,21 @@ lastElem  = nElems
 #endif /*USE_MPI*/
 
 DO iElem = firstElem,lastElem
-  ElemID = GetGlobalElemID(iElem)
-  Radius = 0.
-  xPos   = 0.
+  ElemID  = GetGlobalElemID(iElem)
+  ! Radius  = 0.
+  Radius2 = 0.
+  xPos    = 0.
 
   DO iNode = 1,8
     xPos = xPos + NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)+iNode)
   END DO
   ElemBaryNGeo(:,iElem) = xPos/8.
   DO iNode = 1,8
-    xPos   = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)+iNode) - ElemBaryNGeo(:,iElem)
-    Radius = MAX(Radius,VECNORM(xPos))
+    xPos    = NodeCoords_Shared(1:3,ElemInfo_Shared(ELEM_FIRSTNODEIND,ElemID)+iNode) - ElemBaryNGeo(:,iElem)
+    ! Radius  = MAX(Radius ,VECNORM(xPos))
+    Radius2 = MAX(Radius2,SUM((   xPos)**2.))
   END DO
-  ElemRadius2NGeo(iElem) = Radius*Radius
+  ElemRadius2NGeo(iElem) = Radius2
 END DO ! iElem
 
 #if USE_MPI
@@ -1011,6 +1013,7 @@ SUBROUTINE BuildElementBasisAndRadius()
 ! to an element side
 !================================================================================================================================
 USE MOD_Globals
+USE MOD_Particle_Globals
 USE MOD_Preproc
 USE MOD_Basis                     ,ONLY: LagrangeInterpolationPolys
 USE MOD_Mesh_Vars                 ,ONLY: NGeo
@@ -1045,7 +1048,7 @@ IMPLICIT NONE
 INTEGER                        :: iElem,ElemID,SideID
 INTEGER                        :: i,j,k,ilocSide
 INTEGER                        :: iDir
-REAL                           :: Xi(3,6),xPos(3),Radius
+REAL                           :: Xi(3,6),xPos(3),Radius,Radius2
 REAL                           :: Lag(1:3,0:NGeo)
 INTEGER                        :: firstElem,lastElem
 !================================================================================================================================
@@ -1120,19 +1123,21 @@ DO iElem = firstElem,lastElem
     slenXiEtaZetaBasis(iDir,iElem) = 1.0/DOT_PRODUCT(XiEtaZetaBasis(:,iDir,iElem),XiEtaZetaBasis(:,iDir,iElem))
   END DO ! iDir = 1, 6
 
-  Radius=0.
+  Radius  = 0.
+  Radius2 = 0.
   DO ilocSide=1,6
     SideID = GetGlobalNonUniqueSideID(GetGlobalElemID(iElem),iLocSide)
     IF(SideID.EQ.-1) CYCLE
     DO j=0,NGeo
       DO i=0,NGeo
-        xPos=BezierControlPoints3D(:,i,j,SideID)-ElemBaryNGeo(:,iElem)
-        Radius=MAX(Radius,SQRT(DOT_PRODUCT(xPos,xPos)))
+        xPos    = BezierControlPoints3D(:,i,j,SideID)-ElemBaryNGeo(:,iElem)
+        Radius  = MAX(Radius ,VECNORM(xPos))
+        Radius2 = MAX(Radius2,SUM((   xPos)**2.))
       END DO !i=0,NGeo
     END DO !j=0,NGeo
   END DO ! ilocSide
-  ElemRadiusNGeo (iElem)=Radius
-  ElemRadius2NGeo(iElem)=Radius*Radius
+  ElemRadiusNGeo (iElem) = Radius
+  ElemRadius2NGeo(iElem) = Radius2
 END DO ! iElem
 
 #if USE_MPI

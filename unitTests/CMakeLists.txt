@@ -39,6 +39,7 @@ add_unit_test(ChangeBasis      ./unitTests/ChangeBasis.f90)
 add_unit_test(SurfInt          ./unitTests/SurfInt.f90)
 add_unit_test(ProlongToFace    ./unitTests/ProlongToFace.f90)
 add_unit_test(MatrixInverse    ./unitTests/MatrixInverse.f90)
+add_unit_test(MortarBasis      ./unitTests/MortarBasis.f90)
 
 # Perform unit tests when the last test has been compiled
 ADD_CUSTOM_TARGET( all_tests ALL

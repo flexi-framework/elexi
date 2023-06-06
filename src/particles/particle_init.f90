@@ -620,6 +620,7 @@ PDM%maxParticleNumber    = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(Me
 
 minParticleNumberLocal = PDM%maxParticleNumber
 maxParticleNumberLocal = PDM%maxParticleNumber
+sumParticleNumberLocal = PDM%maxParticleNumber
 #if USE_MPI
 IF (MPIRoot) THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,minParticleNumberLocal,1,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,iERROR)

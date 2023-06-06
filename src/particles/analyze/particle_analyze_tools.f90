@@ -393,7 +393,7 @@ DO iRecord = 1,RecordPart
       CALL WriteAttribute(File_ID,'MagnusForce' ,nSpecies,IntArray=ForceIC(6,:))
 #endif
       CALL CloseDataFile()
-    END IF
+    END IF ! MPIRoot
 
 #if USE_MPI
     CALL DistributedWriteArray(FileName_loc                                       ,&
@@ -403,7 +403,7 @@ DO iRecord = 1,RecordPart
                                nVal         = (/RPP_nVarNames ,locRPP          /) ,&
                                offset       = (/0             ,offsetRPP       /) ,&
                                collective   = .FALSE.                             ,&
-                               offSetDim=2                                        ,&
+                               offSetDim    = 2                                   ,&
                                communicator = MPI_COMM_FLEXI                      ,&
                                RealArray    = RPP_Plane(iRecord)%RPP_Data(1:RPP_nVarNames,1:locRPP))
   !CALL MPI_BARRIER(PartMPI%COMM,iERROR)

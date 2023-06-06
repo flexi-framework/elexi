@@ -102,11 +102,10 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces_Vars ,ONLY: BezierControlPoints3D
-USE MOD_Particle_TimeDisc_Vars ,ONLY: PreviousTime
+USE MOD_Particle_TimeDisc_Vars ,ONLY: PreviousTime,ManualTimeStep
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,Distance,ListDistance
 USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray,PrintOption
 USE MOD_TimeDisc_Vars          ,ONLY: dt,t
-USE MOD_Particle_Timedisc_Vars ,ONLY: ManualTimeStep
 #if USE_MPI
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_MPI_Vars               ,ONLY: offsetElemMPI
@@ -132,6 +131,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: MeshHasPeriodic
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
 USE MOD_Particle_MPI_Shared
 USE MOD_Particle_MPI_Shared_Vars
+USE MOD_Particle_Utils         ,ONLY: InsertionSort
 USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
@@ -186,6 +186,7 @@ INTEGER                        :: iProc,ProcRank,nFIBGMToProc,nFIBGM,MessageSize
 INTEGER                        :: BGMiDelta,BGMjDelta,BGMkDelta
 INTEGER                        :: BGMiglobDelta,BGMjglobDelta,BGMkglobDelta
 INTEGER,ALLOCATABLE            :: FIBGM_LocalProcs(:,:,:,:)
+INTEGER,ALLOCATABLE            :: FIBGM_Sort(:)
 ! Periodic FIBGM
 LOGICAL                        :: PeriodicComponent(1:3)
 INTEGER                        :: iPeriodicVector,iPeriodicComponent
@@ -1030,6 +1031,32 @@ CALL BARRIER_AND_SYNC(FIBGM_Element_Shared_Win,MPI_COMM_SHARED)
 
 ! Abort if FIBGM_Element still contains unfilled entries
 IF (ANY(FIBGM_Element.EQ.-1)) CALL Abort(__STAMP__,'Error while filling FIBGM element array')
+
+! Sort each element in an BGM cell with ascending index
+IF (myComputeNodeRank.EQ.0) THEN
+  ! Temporary array
+  ALLOCATE(FIBGM_Sort(MAXVAL(FIBGM_nElems)))
+
+  DO kBGM = BGMCellZmin,BGMCellZmax
+    DO jBGM = BGMCellYmin,BGMCellYmax
+      DO iBGM = BGMCellXmin,BGMCellXmax
+        IF(FIBGM_nElems(iBGM,jBGM,kBGM).GT.1) THEN
+          ASSOCIATE(FIBGM_ElemLoc => FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+1:&
+                                                   FIBGM_offsetElem(iBGM,jBGM,kBGM)+  &
+                                                   FIBGM_nElems(    iBGM,jBGM,kBGM)))
+
+          FIBGM_Sort(1:FIBGM_nElems(iBGM,jBGM,kBGM)) = FIBGM_ElemLoc
+          CALL InsertionSort(FIBGM_Sort,len=FIBGM_nElems(iBGM,jBGM,kBGM))
+          FIBGM_ElemLoc                              = FIBGM_Sort(1:FIBGM_nElems(iBGM,jBGM,kBGM))
+
+          END ASSOCIATE
+        END IF
+      END DO ! kBGM
+    END DO ! jBGM
+  END DO ! iBGM
+END IF
+
+CALL BARRIER_AND_SYNC(FIBGM_Element_Shared_Win,MPI_COMM_SHARED)
 
 ! Locally sum up Number of all elements on current compute-node (including halo region)
 IF (nComputeNodeProcessors.EQ.nProcessors_Global) THEN

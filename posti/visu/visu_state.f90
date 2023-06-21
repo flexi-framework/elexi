@@ -376,6 +376,11 @@ SELECT CASE(RestartMode)
   ! State file or no CheckRestartFile performed
   CASE(-1,1)
 #endif /* EQNSYSNR!=1 */
+    ! Sanity check
+    CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+    IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(4).NE.PP_NZ+1).OR.(HSize(5).NE.nGlobalElems)) &
+      CALL Abort(__STAMP__,'Dimensions of restart file do not match! Check mesh file and 2D/3D mode!')
+
     CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
     CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
 #if EQNSYSNR!=1
@@ -383,13 +388,17 @@ SELECT CASE(RestartMode)
   CASE(2,3)
     ! PV_PLUGIN with no variable selected will pass nVar_State=1
     IF (nVar_State.EQ.1) THEN
+      ! Sanity check
+      CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+      IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(4).NE.PP_NZ+1).OR.(HSize(5).NE.nGlobalElems)) &
+        CALL Abort(__STAMP__,'Dimensions of restart file do not match! Check mesh file and 2D/3D mode!')
+
       CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
     ELSE
+      ! Sanity check
       CALL GetDataSize(File_ID,'Mean',nDims,HSize)
-
-      ! Sanity check, number of elements
-      IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(5).NE.nGlobalElems)) &
-        CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
+      IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(4).NE.PP_NZ+1).OR.(HSize(5).NE.nGlobalElems)) &
+        CALL Abort(__STAMP__,'Dimensions of restart file do not match! Check mesh file and 2D/3D mode!')
 
       HSize_proc    = INT(HSize)
       HSize_proc(5) = nElems

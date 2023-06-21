@@ -135,7 +135,7 @@ nProcessors_Global = nProcessors
 #else
   ! Check if more nodes than procs are required or
   ! if the resulting split would create unequal procs per node
-  IF((CORE_SPLIT.GE.nProcessors_Global).OR.(MOD(nProcessors_Global,CORE_SPLIT).GT.0))THEN
+  IF((CORE_SPLIT.GT.nProcessors_Global).OR.(MOD(nProcessors_Global,CORE_SPLIT).GT.0))THEN
     SWRITE (UNIT_stdOut,'(A,I0,A,I0,A,F0.2,A)') ' WARNING: Either more nodes than cores selected (nodes: ',CORE_SPLIT,', cores: ',&
         nProcessors_Global,') OR unequal number of cores per node (=',REAL(nProcessors_Global)/REAL(CORE_SPLIT),&
         '). Setting 1 core per node for MPI_COMM_SHARED!'

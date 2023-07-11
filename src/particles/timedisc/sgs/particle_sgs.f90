@@ -111,6 +111,7 @@ SELECT CASE(SGSModel)
     ! Overwrite RHS if necessary
     DO iSpec = 1, nSpecies
       IF (Species(iSpec)%RHSMethod .EQ. RHS_INERTIA) Species(iSpec)%RHSMethod = RHS_SGS1
+      IF (Species(iSpec)%RHSMethod .EQ. RHS_TRACER)  Species(iSpec)%RHSMethod = RHS_SGS1_TRACER
     END DO
 
     ALLOCATE(divTau(1:3,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)       &
@@ -480,7 +481,7 @@ DO iPart = 1,PDM%ParticleVecLength
   ! Calculate the dyn. viscosity
   mu=VISCOSITY_TEMPERATURE(FieldAtParticle(TEMP,iPart))
 
-  second_drift_term(:) = - gradpPart(:)/FieldAtParticle(DENS,iPart)! + mu * divTauPart(:)
+  second_drift_term(:) = - gradpPart(:)/FieldAtParticle(DENS,iPart) + mu * divTauPart(:)/FieldAtParticle(DENS,iPart)
   ! No SGS turbulent kinetic energy, avoid float error
   IF (ALMOSTZERO(kSGSPart)) THEN
     ! We ASSUME that these are the CORRECT matrix indices

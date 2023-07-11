@@ -230,6 +230,12 @@ ELSE
   Fdm = FieldAtParticle(VELV)
 END IF
 
+CASE(RHS_SGS1_TRACER)
+!===================================================================================================================================
+! Passive tracer moving with fluid velocity
+!===================================================================================================================================
+Fdm = FieldAtParticle(VELV)
+
 CASE(RHS_TCONVERGENCE)
 !===================================================================================================================================
 ! Special case, drag force only active in x-direction, fixed differential. Gravity in y-direction. Used for convergence tests
@@ -253,11 +259,7 @@ CASE(RHS_SGS1)
 IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL Abort(__STAMP__,'Tracking of inertial particles requires mu to be set!')
 
 ! In Minier case, TurbPartState it's the FULL  fluid velocity
-IF(ALLOCATED(TurbPartState)) THEN
-  udiff(1:3) = TurbPartState(1:3,PartID) - PartState(PART_VELV,PartID)
-ELSE
-  udiff(1:3) = FieldAtParticle(VELV)     - PartState(PART_VELV,PartID)
-END IF
+udiff(1:3) = TurbPartState(1:3,PartID) - PartState(PART_VELV,PartID)
 
 urel = VECNORM(udiff(1:3))
 Rep  = urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
@@ -310,7 +312,7 @@ IF(ALLOCATED(TurbPartState)) Fdm = Fdm + TurbPartState(:,PartID)
 
 CASE(RHS_INERTIA)
 !===================================================================================================================================
-! Calculation according to Stokes
+! Calculation according to Stokes (NSE)
 !===================================================================================================================================
 IF(ISNAN(mu) .OR. (mu.EQ.0)) CALL Abort(__STAMP__,'Tracking of inertial particles requires mu to be set!')
 
@@ -338,6 +340,38 @@ f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(
 staup    = (18.*mu) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
 
 Fdm      = udiff * staup * f
+
+! Add gravity and bouyancy if required
+IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
+
+CASE(RHS_INERTIA_EULER)
+!===================================================================================================================================
+! Calculation according to Stokes (Euler eq.)
+!===================================================================================================================================
+! Assume spherical particles for now
+IF(ALLOCATED(TurbPartState)) THEN
+  udiff(1:3) = FieldAtParticle(VELV) + TurbPartState(1:3,PartID) - PartState(PART_VELV,PartID)
+ELSE
+  udiff(1:3) = FieldAtParticle(VELV)                             - PartState(PART_VELV,PartID)
+END IF
+#if USE_FAXEN_CORR
+udiff = udiff + (PartState(PART_DIAM,PartID)**2)/6 * GradAtParticle(RHS_LAPLACEVEL,:)
+#endif /* USE_FAXEN_CORR */
+
+urel = VECNORM(udiff(1:3))
+Rep  = 0.
+Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
+
+#if USE_SPHERICITY
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, PartState(PART_SPHE,PartID), Mp)
+#else
+f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, Species(PartSpecies(PartID))%SphericityIC, Mp)
+#endif
+
+! Particle relaxation time
+staup    = (18.) * 1./Species(PartSpecies(PartID))%DensityIC * 1./PartState(PART_DIAM,PartID)**2
+
+Fdm      = 1./24*urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)*udiff*staup
 
 ! Add gravity and bouyancy if required
 IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
@@ -863,7 +897,7 @@ REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
 ! OUTPUT VARIABLES
 REAL                        :: f
 !-----------------------------------------------------------------------------------------------------------------------------------
-! Warn when outside valid range of Naumann model
+! Warn when outside valid range of Stokes model
 IF(Rep.GT.1) THEN
   IF (RepWarn.EQV..FALSE.) THEN
     SWRITE(UNIT_stdOut,*) 'WARNING: Rep',Rep,'> 1, drag coefficient may not be accurate.'

@@ -148,8 +148,10 @@
 #define RHS_TCONVERGENCE   3
 #define RHS_HPCONVERGENCE  4
 #define RHS_INERTIA        5
-#define RHS_SGS1           6
-#define RHS_SGS2           7
+#define RHS_INERTIA_EULER  6
+#define RHS_SGS1           7
+#define RHS_SGS1_TRACER    8
+#define RHS_SGS2           9
 
 ! Drag factor model
 #define DF_PART_STOKES    1

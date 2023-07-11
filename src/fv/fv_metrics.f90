@@ -373,20 +373,26 @@ DO iElem=1,nElems
             ,FV_Path_ETA  => FV_Path_ETA (:,:,:,:,iElem) &
             ,FV_Path_ZETA => FV_Path_ZETA(:,:,:,:,iElem))
 #endif /*USE_PARTICLES*/
+  ASSOCIATE(dXCL_N => dXCL_N(:,:,:,:,:,:))
   DO l=0,PP_N
 #if USE_PARTICLES
-    ASSOCIATE(dXCL_N => dXCL_N(:,:,:,:,:,:) &
-             ,l => l+1)
-#endif /*USE_PARTICLES*/
+    ASSOCIATE(l => l+1)
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(1,:,l,:,:,iElem), FV_Path_XI  (:,l,:,:))
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(2,:,:,l,:,iElem), FV_Path_ETA (:,l,:,:))
 #if (PP_dim == 3)
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(3,:,:,:,l,iElem), FV_Path_ZETA(:,l,:,:))
 #endif
-#if USE_PARTICLES
-    END ASSOCIATE
+#else
+    ASSOCIATE(k => l+1)
+    CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(1,:,l,:,:,iElem), FV_Path_XI  (:,k,:,:))
+    CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(2,:,:,l,:,iElem), FV_Path_ETA (:,k,:,:))
+#if (PP_dim == 3)
+    CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(3,:,:,:,l,iElem), FV_Path_ZETA(:,k,:,:))
+#endif
 #endif /*USE_PARTICLES*/
+    END ASSOCIATE
   END DO ! i=0,PP_N
+  END ASSOCIATE
   DO q=0,PP_NZ; DO p=0,PP_N
 #if USE_PARTICLES
     ASSOCIATE(p => p+1, q => q+1)
@@ -607,14 +613,13 @@ END SUBROUTINE Integrate_Path
 !==================================================================================================================================
 !> Computes the distance between two points along a path given in 1D reference coordinates
 !==================================================================================================================================
-SUBROUTINE Integrate_Path1D(Nloc2,Nloc,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Length)
+SUBROUTINE Integrate_Path1D(Nloc2,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Length)
 ! MODULES
 USE MOD_Basis       ,ONLY: InitializeVandermonde
 USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc2                                     !< degree of path polynomial
-INTEGER,INTENT(IN) :: Nloc                                      !< number of points to compute (Nloc+1)**2
 REAL,INTENT(IN)    :: xGP(  0:Nloc2)                            !< parametric coords
 REAL,INTENT(IN)    :: wGP(  0:Nloc2)                            !< integration weights
 REAL,INTENT(IN)    :: wBary(0:Nloc2)                            !< interpolations weights
@@ -627,7 +632,7 @@ REAL,INTENT(OUT)   :: FV_Length                                 !< distance
 REAL               :: VDM(0:Nloc2,0:Nloc2)
 REAL               :: SubxGP(1,0:Nloc2)
 REAL               :: FV_Path_Cut(3,0:Nloc2)
-INTEGER            :: q,p,l
+INTEGER            :: l
 !===================================================================================================================================
 subxGP(1,:) = x0 + (xGP + 1.)/2. * (xN-x0)
 CALL InitializeVandermonde(Nloc2,Nloc2,wBary,xGP,subxGP(1,:),Vdm)

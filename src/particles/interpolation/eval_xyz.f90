@@ -395,10 +395,10 @@ IF (nVar_out.EQ.PP_nVarPrim) THEN
 END IF
 
 ! Get distance to fv subcell mid point in physical space
-CALL Integrate_Path1D(N_In,N_In,xGP,wGP,wBary,FV_X(IJK(1)),xi(1),FV_Path_XI  (:,:,IJK(2),IJK(3),ElemID),distance(1))
-CALL Integrate_Path1D(N_In,N_In,xGP,wGP,wBary,FV_X(IJK(2)),xi(2),FV_Path_ETA (:,:,IJK(1),IJK(3),ElemID),distance(2))
+CALL Integrate_Path1D(N_In,xGP,wGP,wBary,FV_X(IJK(1)),xi(1),FV_Path_XI  (:,:,IJK(2),IJK(3),ElemID),distance(1))
+CALL Integrate_Path1D(N_In,xGP,wGP,wBary,FV_X(IJK(2)),xi(2),FV_Path_ETA (:,:,IJK(1),IJK(3),ElemID),distance(2))
 #if PP_dim == 3
-CALL Integrate_Path1D(N_In,N_In,xGP,wGP,wBary,FV_X(IJK(3)),xi(3),FV_Path_ZETA(:,:,IJK(1),IJK(2),ElemID),distance(3))
+CALL Integrate_Path1D(N_In,xGP,wGP,wBary,FV_X(IJK(3)),xi(3),FV_Path_ZETA(:,:,IJK(1),IJK(2),ElemID),distance(3))
 #endif /* PP_dim == 3 */
 
 ! Get reconstructed solution at particle position

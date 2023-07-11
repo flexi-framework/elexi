@@ -204,6 +204,7 @@ CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tracer',     
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'tconvergence',    RHS_TCONVERGENCE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'hpconvergence',   RHS_HPCONVERGENCE)
 CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'inertia',         RHS_INERTIA)
+CALL addStrListEntry(               'Part-Species[$]-RHSMethod' , 'inertiaeuler',    RHS_INERTIA_EULER)
 CALL prms%CreateIntFromStringOption('Part-Species[$]-DragFactor', 'Particle model used for calculation of the drag factor.\n'    //&
                                                                   ' - stokes      : Stokes (1851)\n'                             //&
                                                                   ' - schiller    : Schiller and Naumann (1933)\n'               //&
@@ -1109,6 +1110,9 @@ DO iSpec = 1, nSpecies
     CASE (RHS_INERTIA)
       drag_factor                      = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'     )
       CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
+    CASE (RHS_INERTIA_EULER)
+      drag_factor                      = DF_PART_STOKES
+      CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
     CASE DEFAULT
       ! do nothing
   END SELECT
@@ -1118,10 +1122,12 @@ DO iSpec = 1, nSpecies
   IF (Species(iSpec)%RHSMethod .EQ. RHS_TCONVERGENCE) THEN
     IF (Species(iSpec)%StokesIC .EQ. 0) CALL COLLECTIVESTOP(__STAMP__,'Stokes number is zero!')
   ELSEIF (Species(iSpec)%StokesIC .GT. 0.) THEN
+    IF (Species(iSpec)%RHSMethod .EQ. RHS_INERTIA_EULER) &
+      CALL COLLECTIVESTOP(__STAMP__,'Stokes number greater than zero are not allowed with RHS_INERTIA_EULER!')
     ! dyn. viscosity
-    prim=RefStatePrim(:,RefStatePart)
-    mu = VISCOSITY_PRIM(prim)
-    tmp = 18 * mu / (Species(iSpec)%DensityIC) * charactLength
+    prim = RefStatePrim(:,RefStatePart)
+    mu   = VISCOSITY_PRIM(prim)
+    tmp  = 18 * mu / (Species(iSpec)%DensityIC) * charactLength
     !tmp = 18 * mu * charactLength / (Species(iSpec)%DensityIC * NORM2(RefStatePrim(VELV,RefStatePart)))
     Species(iSpec)%DiameterIC = SQRT(Species(iSpec)%StokesIC * tmp)
     LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC

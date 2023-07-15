@@ -373,26 +373,20 @@ DO iElem=1,nElems
             ,FV_Path_ETA  => FV_Path_ETA (:,:,:,:,iElem) &
             ,FV_Path_ZETA => FV_Path_ZETA(:,:,:,:,iElem))
 #endif /*USE_PARTICLES*/
-  ASSOCIATE(dXCL_N => dXCL_N(:,:,:,:,:,:))
   DO l=0,PP_N
 #if USE_PARTICLES
-    ASSOCIATE(l => l+1)
+    ASSOCIATE(dXCL_N => dXCL_N(:,:,:,:,:,:), &
+              l => l+1)
+#endif /*USE_PARTICLES*/
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(1,:,l,:,:,iElem), FV_Path_XI  (:,l,:,:))
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(2,:,:,l,:,iElem), FV_Path_ETA (:,l,:,:))
 #if (PP_dim == 3)
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(3,:,:,:,l,iElem), FV_Path_ZETA(:,l,:,:))
 #endif
-#else
-    ASSOCIATE(k => l+1)
-    CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(1,:,l,:,:,iElem), FV_Path_XI  (:,k,:,:))
-    CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(2,:,:,l,:,iElem), FV_Path_ETA (:,k,:,:))
-#if (PP_dim == 3)
-    CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(3,:,:,:,l,iElem), FV_Path_ZETA(:,k,:,:))
-#endif
-#endif /*USE_PARTICLES*/
+#if USE_PARTICLES
     END ASSOCIATE
+#endif /*USE_PARTICLES*/
   END DO ! i=0,PP_N
-  END ASSOCIATE
   DO q=0,PP_NZ; DO p=0,PP_N
 #if USE_PARTICLES
     ASSOCIATE(p => p+1, q => q+1)

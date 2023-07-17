@@ -106,6 +106,9 @@ PUBLIC :: GetGlobalSideID
 PUBLIC :: GetCNSideID
 PUBLIC :: GetGlobalNonUniqueSideID
 PUBLIC :: GetSideBoundingBoxTria
+PUBLIC :: InitElemNodeIDs
+PUBLIC :: GetCornerNodes
+PUBLIC :: GetCornerNodeMapCGNS
 !===================================================================================================================================
 
 CONTAINS
@@ -481,11 +484,9 @@ END MODULE MOD_Particle_Mesh_Tools
 
 SUBROUTINE InitNodeMap(NGeoLoc)
 !===================================================================================================================================
-!> Initialize the corner node switch and node map, depending on the given NGeo. Routine is called in InitMesh after Ngeo read-in
-!> and potential once more before read-in of NodeCoords, when Ngeo is set to 1 for useCurveds = F
+!> Get the corner nodes, depending on the given NGeo, for high-order elements
 !===================================================================================================================================
 ! MODULES
-USE MOD_Mesh_Vars              ,ONLY: CNS, NodeMap
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -493,28 +494,64 @@ USE MOD_Mesh_Vars              ,ONLY: CNS, NodeMap
 INTEGER,INTENT(IN)             :: NGeoLoc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
+INTEGER                        :: GetCornerNodes(8)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
+GetCornerNodes(1) = 1
+GetCornerNodes(2) = (NgeoLoc+1)
+GetCornerNodes(3) = (NgeoLoc+1)*NgeoLoc+1
+GetCornerNodes(4) = (NgeoLoc+1)**2
+GetCornerNodes(5) = (NgeoLoc+1)**2*NgeoLoc+1
+GetCornerNodes(6) = (NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)
+GetCornerNodes(7) = (NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)*NgeoLoc+1
+GetCornerNodes(8) = (NgeoLoc+1)**3
+
+END FUNCTION GetCornerNodes
+
+
+PPURE SUBROUTINE GetCornerNodeMapCGNS(NgeoLoc,CornerNodesCGNS,NodeMapCGNS)
+!===================================================================================================================================
+!> Get the corner nodes and node map when converting from CGNS format, depending on the given NGeo.
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+ IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)             :: NgeoLoc
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+INTEGER,INTENT(OUT),OPTIONAL   :: CornerNodesCGNS(8), NodeMapCGNS(4,6)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                        :: CNS(8)
+!===================================================================================================================================
+
 ! CornerNodeSwitch: a mapping is required for Ngeo > 1 as the corner nodes are not the first 8 entries of NodeInfo array
-CNS(1)=1
-CNS(2)=(NgeoLoc+1)
-CNS(3)=(NgeoLoc+1)**2
-CNS(4)=(NgeoLoc+1)*NgeoLoc+1
-CNS(5)=(NgeoLoc+1)**2*NgeoLoc+1
-CNS(6)=(NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)
-CNS(7)=(NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)**2
-CNS(8)=(NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)*NgeoLoc+1
+! For NGeo = 1, CNS(3) = 4 and vice versa, and CNS(7) = 8 and vice versa
+CNS(1) = 1
+CNS(2) = (NgeoLoc+1)
+CNS(3) = (NgeoLoc+1)**2
+CNS(4) = (NgeoLoc+1)*NgeoLoc+1
+CNS(5) = (NgeoLoc+1)**2*NgeoLoc+1
+CNS(6) = (NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)
+CNS(7) = (NgeoLoc+1)**3
+CNS(8) = (NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)*NgeoLoc+1
 
-! Set the corresponding mapping for HOPR coordinates in CGNS format
-NodeMap(:,1)=(/CNS(1),CNS(4),CNS(3),CNS(2)/)
-NodeMap(:,2)=(/CNS(1),CNS(2),CNS(6),CNS(5)/)
-NodeMap(:,3)=(/CNS(2),CNS(3),CNS(7),CNS(6)/)
-NodeMap(:,4)=(/CNS(3),CNS(4),CNS(8),CNS(7)/)
-NodeMap(:,5)=(/CNS(1),CNS(5),CNS(8),CNS(4)/)
-NodeMap(:,6)=(/CNS(5),CNS(6),CNS(7),CNS(8)/)
+IF(PRESENT(CornerNodesCGNS)) CornerNodesCGNS = CNS
 
-END SUBROUTINE InitNodeMap
+IF(PRESENT(NodeMapCGNS)) THEN
+  ! Set the corresponding mapping for HOPR coordinates in CGNS format
+  NodeMapCGNS(:,1) = (/CNS(1),CNS(4),CNS(3),CNS(2)/)
+  NodeMapCGNS(:,2) = (/CNS(1),CNS(2),CNS(6),CNS(5)/)
+  NodeMapCGNS(:,3) = (/CNS(2),CNS(3),CNS(7),CNS(6)/)
+  NodeMapCGNS(:,4) = (/CNS(3),CNS(4),CNS(8),CNS(7)/)
+  NodeMapCGNS(:,5) = (/CNS(1),CNS(5),CNS(8),CNS(4)/)
+  NodeMapCGNS(:,6) = (/CNS(5),CNS(6),CNS(7),CNS(8)/)
+END IF
+
+END SUBROUTINE GetCornerNodeMapCGNS
 
 END MODULE MOD_Particle_Mesh_Tools

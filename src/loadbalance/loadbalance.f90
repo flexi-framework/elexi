@@ -469,7 +469,6 @@ USE MOD_LoadBalance_Vars    ,ONLY: ElemTime,PerformLBSample
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeFieldTot,ElemTimeField
 USE MOD_Utils               ,ONLY: ALMOSTZERO
 #if USE_PARTICLES
-USE MOD_LoadBalance_Vars    ,ONLY: PerformPartWeightLB
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartTot,ElemTimePart
 USE MOD_Particle_Tools      ,ONLY: GetOffsetAndGlobalNumberOfParts
 USE MOD_Particle_Output_Vars,ONLY: offsetnPart,locnPart

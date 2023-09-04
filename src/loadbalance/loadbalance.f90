@@ -483,11 +483,7 @@ IMPLICIT NONE
 REAL :: WeightSum_loc
 !===================================================================================================================================
 
-#if USE_PARTICLES
-IF(.NOT.PerformLBSample .AND. .NOT.PerformPartWeightLB) THEN
-#else
 IF(.NOT.PerformLBSample                               ) THEN
-#endif /*USE_PARTICLES*/
   WeightSum        = 0.
   TargetWeight     = 0.
   CurrentImbalance = -1.0

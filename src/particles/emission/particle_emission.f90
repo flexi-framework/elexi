@@ -100,7 +100,7 @@ DO i=1,nSpecies
     SELECT CASE(TRIM(Species(i)%Init(iInit)%SpaceIC))
       CASE('cuboid','cylinder')
 #if USE_MPI
-        insertParticles = insertParticles + INT(REAL(Species(i)%Init(iInit)%initialParticleNumber)/REAL(PartMPI%nProcs))
+        insertParticles = insertParticles + INT(REAL(Species(i)%Init(iInit)%initialParticleNumber)/REAL(nProcessors))
 #else
         insertParticles = insertParticles + INT(     Species(i)%Init(iInit)%initialParticleNumber)
 #endif

@@ -719,7 +719,6 @@ USE MOD_ReadInTools
 USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MPI_Request
 USE MOD_Particle_MPI_Emission      ,ONLY: InitEmissionComm
 USE MOD_Particle_MPI_Halo          ,ONLY: IdentifyPartExchangeProcs
-USE MOD_Particle_MPI_Vars          ,ONLY: PartMPI
 #endif /*USE_MPI*/
 !#if USE_EXTEND_RHS && ANALYZE_RHS
 !USE MOD_Output_Vars                ,ONLY: ProjectName
@@ -829,7 +828,7 @@ CALL InitParticleInterpolation()
 ! Initialize MPI communicator for emmission procs
 #if USE_MPI
 CALL InitEmissionComm()
-CALL MPI_BARRIER(PartMPI%COMM,IERROR)
+CALL MPI_BARRIER(MPI_COMM_FLEXI,IERROR)
 #endif /*MPI*/
 
 !#if USE_EXTEND_RHS && ANALYZE_RHS
@@ -1888,60 +1887,60 @@ ParticlesInitIsDone = .FALSE.
 END SUBROUTINE FinalizeParticles
 
 
-!===================================================================================================================================
-SUBROUTINE rotx(mat,a)
-! MODULES                                                                                                                          !
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-! INPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL, INTENT(OUT), DIMENSION(3,3) :: mat
-REAL, INTENT(IN)                  :: a
-!===================================================================================================================================
-mat(:,1)=(/1.0 , 0.     , 0.  /)
-mat(:,2)=(/0.0 , COS(a) ,-SIN(a)/)
-mat(:,3)=(/0.0 , SIN(a) , COS(a)/)
-END SUBROUTINE
-
-
-!===================================================================================================================================
-SUBROUTINE roty(mat,a)
-! MODULES                                                                                                                          !
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-! INPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL, INTENT(OUT), DIMENSION(3,3) :: mat
-REAL, INTENT(IN)                  :: a
-!===================================================================================================================================
-mat(:,1)=(/ COS(a) , 0., SIN(a)/)
-mat(:,2)=(/ 0.     , 1., 0.  /)
-mat(:,3)=(/-SIN(a) , 0., COS(a)/)
-END SUBROUTINE
-
-
-!===================================================================================================================================
-SUBROUTINE ident(mat)
-! MODULES                                                                                                                          !
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-! INPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL, INTENT(OUT), DIMENSION(3,3) :: mat
-INTEGER                           :: j
-!===================================================================================================================================
-mat                      = 0.
-FORALL(j = 1:3) mat(j,j) = 1.
-END SUBROUTINE
+! !===================================================================================================================================
+! SUBROUTINE rotx(mat,a)
+! ! MODULES                                                                                                                          !
+! ! IMPLICIT VARIABLE HANDLING
+! IMPLICIT NONE
+! ! INPUT VARIABLES
+! !----------------------------------------------------------------------------------------------------------------------------------!
+! ! OUTPUT VARIABLES
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! REAL, INTENT(OUT), DIMENSION(3,3) :: mat
+! REAL, INTENT(IN)                  :: a
+! !===================================================================================================================================
+! mat(:,1)=(/1.0 , 0.     , 0.  /)
+! mat(:,2)=(/0.0 , COS(a) ,-SIN(a)/)
+! mat(:,3)=(/0.0 , SIN(a) , COS(a)/)
+! END SUBROUTINE
+!
+!
+! !===================================================================================================================================
+! SUBROUTINE roty(mat,a)
+! ! MODULES                                                                                                                          !
+! ! IMPLICIT VARIABLE HANDLING
+! IMPLICIT NONE
+! ! INPUT VARIABLES
+! !----------------------------------------------------------------------------------------------------------------------------------!
+! ! OUTPUT VARIABLES
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! REAL, INTENT(OUT), DIMENSION(3,3) :: mat
+! REAL, INTENT(IN)                  :: a
+! !===================================================================================================================================
+! mat(:,1)=(/ COS(a) , 0., SIN(a)/)
+! mat(:,2)=(/ 0.     , 1., 0.  /)
+! mat(:,3)=(/-SIN(a) , 0., COS(a)/)
+! END SUBROUTINE
+!
+!
+! !===================================================================================================================================
+! SUBROUTINE ident(mat)
+! ! MODULES                                                                                                                          !
+! ! IMPLICIT VARIABLE HANDLING
+! IMPLICIT NONE
+! ! INPUT VARIABLES
+! !----------------------------------------------------------------------------------------------------------------------------------!
+! ! OUTPUT VARIABLES
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! REAL, INTENT(OUT), DIMENSION(3,3) :: mat
+! INTEGER                           :: j
+! !===================================================================================================================================
+! mat                      = 0.
+! FORALL(j = 1:3) mat(j,j) = 1.
+! END SUBROUTINE
 
 
 SUBROUTINE InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
@@ -1950,7 +1949,7 @@ SUBROUTINE InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
 !===================================================================================================================================
 ! MODULES
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,     ONLY:PartMPI
+USE MOD_Globals,               ONLY:myRank
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -2003,9 +2002,9 @@ IF(.NOT. uRandomExists) THEN
   DO iSeed = 1, SeedSize
 #if USE_MPI
     IF (nRandomSeeds.EQ.0) THEN
-      AuxilaryClock=AuxilaryClock+PartMPI%MyRank
+      AuxilaryClock=AuxilaryClock+myRank
     ELSE IF(nRandomSeeds.GT.0) THEN
-      AuxilaryClock=AuxilaryClock+(PartMPI%MyRank+1)*INT(Seeds(iSeed),8)*37
+      AuxilaryClock=AuxilaryClock+(myRank+1)*INT(Seeds(iSeed),8)*37
     END IF
 #else
     IF (nRandomSeeds.GT.0) THEN

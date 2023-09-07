@@ -83,9 +83,6 @@ USE MOD_Particle_Interpolation_Vars
 #if USE_RW
 USE MOD_Equation_Vars,          ONLY: nVarTurb
 #endif
-#if USE_MPI
-USE MOD_Particle_MPI_Vars,      ONLY: PartMPI
-#endif
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -117,10 +114,10 @@ IF (InterpolationElemLoop.AND.(PP_nElems.GT.10)) THEN
 END IF
 
 #if USE_MPI
-CALL MPI_REDUCE(LoopDisabled,LoopDisabledGlob,1,MPI_INTEGER, MPI_SUM,0,PartMPI%COMM,iError)
+CALL MPI_REDUCE(LoopDisabled,LoopDisabledGlob,1,MPI_INTEGER, MPI_SUM,0,MPI_COMM_FLEXI,iError)
 IF (MPIRoot.AND.LoopDisabledGlob.GT.0) THEN
   WRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' | InterpolationElemLoop disabled due to high number of elements on ',LoopDisabledGlob, &
-                                     ' of ',PartMPI%nProcs,' procs'
+                                     ' of ',nProcessors,' procs'
 END IF
 #else
 LoopDisabledGlob = LoopDisabled

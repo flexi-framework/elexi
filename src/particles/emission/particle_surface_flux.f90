@@ -120,9 +120,6 @@ USE MOD_Particle_Vars          ,ONLY: DoPoissonRounding,DoTimeDepInflow
 USE MOD_Particle_Vars          ,ONLY: UseCircularInflow
 USE MOD_ReadInTools
 USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
-#if USE_MPI
-USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
-#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -178,8 +175,8 @@ DoSurfaceFlux     = .FALSE.
 CALL ReadInAndPrepareSurfaceFlux(MaxSurfacefluxBCs,nDataBC)
 
 #if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,DoPoissonRounding,1,MPI_LOGICAL,MPI_LAND,PartMPI%COMM,iError) ! set T if this is for all procs
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,DoTimeDepInflow  ,1,MPI_LOGICAL,MPI_LAND,PartMPI%COMM,iError) ! set T if this is for all procs
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,DoPoissonRounding,1,MPI_LOGICAL,MPI_LAND,MPI_COMM_FLEXI,iError) ! set T if this is for all procs
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,DoTimeDepInflow  ,1,MPI_LOGICAL,MPI_LAND,MPI_COMM_FLEXI,iError) ! set T if this is for all procs
 #endif /*USE_MPI*/
 
 !
@@ -304,7 +301,7 @@ END IF
 
 #if USE_MPI
 !set DoSurfaceFlux=T if at least 1 proc have SFs
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,DoSurfaceFlux,1,MPI_LOGICAL,MPI_LOR,PartMPI%COMM,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,DoSurfaceFlux,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
 #endif  /*USE_MPI*/
 
 !-- no SFs defined
@@ -603,9 +600,6 @@ USE MOD_Particle_Surfaces_Vars ,ONLY: SideType
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_Particle_Vars          ,ONLY: UseCircularInflow,Species,DoSurfaceFlux,nSpecies
 USE MOD_ReadInTools
-#if USE_MPI
-USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
-#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -780,7 +774,7 @@ DO iPartBound = 1,nBCs
   areasLoc(iPartBound) = BCdata_auxSF(iPartBound)%LocalArea
 END DO
 
-CALL MPI_ALLREDUCE(areasLoc,areasGlob,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,PartMPI%COMM,IERROR)
+CALL MPI_ALLREDUCE(areasLoc,areasGlob,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,IERROR)
 #endif /*USE_MPI*/
 
 DO iPartBound = 1,nBCs

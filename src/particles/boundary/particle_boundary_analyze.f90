@@ -217,7 +217,6 @@ USE MOD_Particle_Vars          ,ONLY: doPartIndex,doWritePartDiam
 #if USE_MPI
 ! USE MOD_Particle_Boundary_Vars ,ONLY: MPI_COMM_IMPACT
 USE MOD_Particle_HDF5_Output   ,ONLY: DistributedWriteArray
-USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -331,7 +330,7 @@ CALL DistributedWriteArray(FileString                                    ,&
                            offset       = (/0             ,ImpactOffset/),&
                            collective   = .FALSE.                        ,&
                            offSetDim    = 2                              ,&
-                           communicator = PartMPI%COMM                   ,&
+                           communicator = MPI_COMM_FLEXI                 ,&
                            RealArray    = PartStateBoundary(1:ImpactDataSize,1:ImpactnLoc))
 #else
 CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)

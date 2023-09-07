@@ -339,9 +339,6 @@ USE MOD_Preproc
 USE MOD_Particle_Globals
 USE MOD_Particle_Analyze_Vars ,ONLY: nPart,nSpecAnalyze
 USE MOD_Particle_Vars         ,ONLY: nSpecies,PartSpecies,PDM
-#if USE_MPI
-USE MOD_Particle_MPI_Vars     ,ONLY: PartMPI
-#endif /*MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -370,10 +367,10 @@ IF (nSpecAnalyze.GT.1) THEN
 END IF
 
 #if USE_MPI
-IF(PartMPI%MPIRoot)THEN
-  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,nPartMin,1           ,MPI_INTEGER,MPI_MIN,0,PartMPI%COMM,IERROR)
-  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,nPartMax,1           ,MPI_INTEGER,MPI_MAX,0,PartMPI%COMM,IERROR)
-                 CALL MPI_REDUCE(MPI_IN_PLACE,nPart   ,nSpecAnalyze,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM,IERROR)
+IF(MPIRoot)THEN
+  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,nPartMin,1           ,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,IERROR)
+  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,nPartMax,1           ,MPI_INTEGER,MPI_MAX,0,MPI_COMM_FLEXI,IERROR)
+                 CALL MPI_REDUCE(MPI_IN_PLACE,nPart   ,nSpecAnalyze,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
 #endif /*USE_MPI*/
   nGlobalNbrOfParticles(3)   = INT(nPart(nSpecAnalyze),KIND=IK)
   IF (CalcMinMax) THEN
@@ -385,9 +382,9 @@ IF(PartMPI%MPIRoot)THEN
   END IF
 #if USE_MPI
 ELSE
-  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,0       ,1           ,MPI_INTEGER,MPI_MIN,0,PartMPI%COMM,IERROR)
-  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,0       ,1           ,MPI_INTEGER,MPI_MAX,0,PartMPI%COMM,IERROR)
-                 CALL MPI_REDUCE(nPart       ,0       ,nSpecAnalyze,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM,IERROR)
+  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,0       ,1           ,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,IERROR)
+  IF(CalcMinMax) CALL MPI_REDUCE(SUM(nPart)  ,0       ,1           ,MPI_INTEGER,MPI_MAX,0,MPI_COMM_FLEXI,IERROR)
+                 CALL MPI_REDUCE(nPart       ,0       ,nSpecAnalyze,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
 END IF
 #endif /*USE_MPI*/
 
@@ -404,9 +401,6 @@ USE MOD_Preproc
 USE MOD_Particle_Analyze_Tools,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars ,ONLY: PartEkin,nSpecAnalyze
 USE MOD_Particle_Vars         ,ONLY: PartSpecies,PDM
-#if USE_MPI
-USE MOD_Particle_MPI_Vars     ,ONLY: PartMPI
-#endif /*MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -440,10 +434,10 @@ ELSE
 END IF
 
 #if USE_MPI
-IF(PartMPI%MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,PartEkin,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM, IERROR)
+IF(MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,PartEkin,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI, IERROR)
 ELSE
-  CALL MPI_REDUCE(PartEkin    ,0       ,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM, IERROR)
+  CALL MPI_REDUCE(PartEkin    ,0       ,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI, IERROR)
 END IF
 #endif /*MPI*/
 

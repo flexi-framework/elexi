@@ -68,7 +68,6 @@ USE MOD_Particle_Vars,              ONLY: PartInt,PartData,TurbPartData
 USE MOD_Particle_Vars,              ONLY: PartDataSize,TurbPartDataSize
 USE MOD_Particle_Vars,              ONLY: PartPosRef,PartReflCount,doPartIndex,PartIndex
 #if USE_MPI
-USE MOD_Particle_MPI_Vars,          ONLY: PartMPI
 USE MOD_Particle_Tracking_Vars,     ONLY: CountNbrOfLostParts
 #endif /*USE_MPI*/
 ! Particle turbulence models
@@ -108,9 +107,12 @@ REAL                               :: StartT,EndT
 INTEGER,ALLOCATABLE                :: IndexOfFoundParticles(:),CompleteIndexOfFoundParticles(:)
 INTEGER                            :: CompleteNbrOfLost,CompleteNbrOfFound,CompleteNbrOfDuplicate
 REAL,ALLOCATABLE                   :: RecBuff(:,:)
-INTEGER                            :: TotalNbrOfMissingParticles(0:PartMPI%nProcs-1), Displace(0:PartMPI%nProcs-1),CurrentPartNum
-INTEGER                            :: OffsetTotalNbrOfMissingParticles(0:PartMPI%nProcs-1)
-INTEGER                            :: NbrOfFoundParts, RecCount(0:PartMPI%nProcs-1)
+INTEGER                            :: CurrentPartNum
+INTEGER                            :: TotalNbrOfMissingParticles(      0:nProcessors-1)
+INTEGER                            :: OffsetTotalNbrOfMissingParticles(0:nProcessors-1)
+INTEGER                            :: Displace(                        0:nProcessors-1)
+INTEGER                            :: RecCount(                        0:nProcessors-1)
+INTEGER                            :: NbrOfFoundParts
 INTEGER                            :: iProc
 #endif /*USE_MPI*/
 !===================================================================================================================================
@@ -327,20 +329,20 @@ IF(PartIntExists)THEN
     ! Step 2: All particles that are not found within MyProc need to be communicated to the others and located there
     ! Combine number of lost particles of all processes and allocate variables
     ! Note: Particles that are lost on MyProc are also searched for here again
-    CALL MPI_ALLGATHER(NbrOfLostParticles, 1, MPI_INTEGER, TotalNbrOfMissingParticles, 1, MPI_INTEGER, PartMPI%COMM, IERROR)
+    CALL MPI_ALLGATHER(NbrOfLostParticles, 1, MPI_INTEGER, TotalNbrOfMissingParticles, 1, MPI_INTEGER, MPI_COMM_FLEXI, IERROR)
 
     ! Check total number of missing particles and start re-locating them on other procs
     IF (TotalNbrOfMissingParticlesSum.GT.0) THEN
       ! Set offsets
       OffsetTotalNbrOfMissingParticles(0) = 0
-      DO iProc = 1, PartMPI%nProcs-1
+      DO iProc = 1,nProcessors-1
         OffsetTotalNbrOfMissingParticles(iProc) = OffsetTotalNbrOfMissingParticles(iProc-1) + TotalNbrOfMissingParticles(iProc-1)
-      END DO ! iProc = 0, PartMPI%nProcs-1
+      END DO ! iProc = 0,nProcessors-1
 
       ALLOCATE(RecBuff(PartDataSize,1:TotalNbrOfMissingParticlesSum))
 
       ! Fill SendBuffer
-      NbrOfMissingParticles = OffsetTotalNbrOfMissingParticles(PartMPI%MyRank) + 1
+      NbrOfMissingParticles = OffsetTotalNbrOfMissingParticles(myRank) + 1
       DO iPart = 1, PDM%ParticleVecLength
         IF (.NOT.PDM%ParticleInside(iPart)) THEN
           RecBuff(1:PP_nVarPart,NbrOfMissingParticles) = PartState(1:PP_nVarPart,iPart)
@@ -356,11 +358,11 @@ IF(PartIntExists)THEN
       ! Distribute lost particles to all procs
       NbrOfMissingParticles = 0
 
-      DO iProc = 0, PartMPI%nProcs-1
+      DO iProc = 0,nProcessors-1
         RecCount(iProc) = TotalNbrOfMissingParticles(iProc)
         Displace(iProc) = NbrOfMissingParticles
         NbrOfMissingParticles = NbrOfMissingParticles + TotalNbrOfMissingParticles(iProc)
-      END DO ! iProc = 0, PartMPI%nProcs-1
+      END DO ! iProc = 0,nProcessors-1
 
       CALL MPI_ALLGATHERV( MPI_IN_PLACE                                     &
                          , 0                                                &
@@ -369,7 +371,7 @@ IF(PartIntExists)THEN
                          , PartDataSize*TotalNbrOfMissingParticles(:)       &
                          , PartDataSize*OffsetTotalNbrOfMissingParticles(:) &
                          , MPI_DOUBLE_PRECISION                             &
-                         , PartMPI%COMM                                     &
+                         , MPI_COMM_FLEXI                                   &
                          , IERROR)
 
       ! Keep track which particles are found on the current proc
@@ -395,8 +397,8 @@ IF(PartIntExists)THEN
 
         ! Do not search particles twice: Skip my own particles, because these have already been searched for before they are
         ! sent to all other procs
-        ASSOCIATE( myFirst => OffsetTotalNbrOfMissingParticles(PartMPI%MyRank) + 1 ,&
-                   myLast  => OffsetTotalNbrOfMissingParticles(PartMPI%MyRank) + TotalNbrOfMissingParticles(PartMPI%MyRank))
+        ASSOCIATE( myFirst => OffsetTotalNbrOfMissingParticles(myRank) + 1 ,&
+                   myLast  => OffsetTotalNbrOfMissingParticles(myRank) + TotalNbrOfMissingParticles(myRank))
           IF((iPart.GE.myFirst).AND.(iPart.LE.myLast))THEN
             IndexOfFoundParticles(iPart) = 0
             CYCLE
@@ -434,9 +436,9 @@ IF(PartIntExists)THEN
 
       ! Combine number of found particles to make sure none are lost completely or found twice
       IF(MPIRoot)THEN
-        CALL MPI_REDUCE(IndexOfFoundParticles,CompleteIndexOfFoundParticles,TotalNbrOfMissingParticlesSum,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM,IERROR)
+        CALL MPI_REDUCE(IndexOfFoundParticles,CompleteIndexOfFoundParticles,TotalNbrOfMissingParticlesSum,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
       ELSE
-        CALL MPI_REDUCE(IndexOfFoundParticles,0                            ,TotalNbrOfMissingParticlesSum,MPI_INTEGER,MPI_SUM,0,PartMPI%COMM,IERROR)
+        CALL MPI_REDUCE(IndexOfFoundParticles,0                            ,TotalNbrOfMissingParticlesSum,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
       END IF
 
       CompleteNbrOfFound      = 0
@@ -507,7 +509,7 @@ END IF ! PartIntExists
 ! Make sure we update our surface data after reading the sampling data
 #if USE_MPI
 ! Only procs with SurfMesh know about the restart so far. Communicate to all here
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,ImpactRestart,1,MPI_LOGICAL,MPI_LOR,PartMPI%COMM,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,ImpactRestart,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
 #endif
 
 IF (ImpactRestart) CALL CalcSurfaceValues(restart_opt=.TRUE.)
@@ -520,7 +522,7 @@ SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' RESTARTING PARTICLES DONE! [',En
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 !#if USE_MPI
-!CALL MPI_BARRIER(PartMPI%COMM,iError)
+!CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 !#endif /*MPI*/
 
 END SUBROUTINE ParticleRestart

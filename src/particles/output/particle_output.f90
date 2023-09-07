@@ -262,9 +262,6 @@ USE MOD_Particle_Analyze_Vars
 USE MOD_Particle_Vars             ,ONLY: nSpecies
 USE MOD_Restart_Vars              ,ONLY: DoRestart
 USE MOD_TimeDisc_Vars             ,ONLY: t
-#if USE_MPI
-USE MOD_Particle_MPI_Vars         ,ONLY: PartMPI
-#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -345,17 +342,17 @@ END IF
 #if USE_MPI
 IF (MPIRoot) THEN
   IF (CalcPartBalance) THEN
-    CALL MPI_REDUCE(MPI_IN_PLACE,nPartIn    (1:nSpecAnalyze),nSpecAnalyze,MPI_INTEGER         ,MPI_SUM,0,PartMPI%COMM,IERROR)
-    CALL MPI_REDUCE(MPI_IN_PLACE,nPartOut   (1:nSpecAnalyze),nSpecAnalyze,MPI_INTEGER         ,MPI_SUM,0,PartMPI%COMM,IERROR)
-    CALL MPI_REDUCE(MPI_IN_PLACE,PartEkinIn (1:nSpecAnalyze),nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM,IERROR)
-    CALL MPI_REDUCE(MPI_IN_PLACE,PartEkinOut(1:nSpecAnalyze),nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM,IERROR)
+    CALL MPI_REDUCE(MPI_IN_PLACE,nPartIn    (1:nSpecAnalyze),nSpecAnalyze,MPI_INTEGER         ,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+    CALL MPI_REDUCE(MPI_IN_PLACE,nPartOut   (1:nSpecAnalyze),nSpecAnalyze,MPI_INTEGER         ,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+    CALL MPI_REDUCE(MPI_IN_PLACE,PartEkinIn (1:nSpecAnalyze),nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+    CALL MPI_REDUCE(MPI_IN_PLACE,PartEkinOut(1:nSpecAnalyze),nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
   END IF
 ELSE
   IF (CalcPartBalance) THEN
-    CALL MPI_REDUCE(nPartIn    (1:nSpecAnalyze),0           ,nSpecAnalyze,MPI_INTEGER         ,MPI_SUM,0,PartMPI%COMM,IERROR)
-    CALL MPI_REDUCE(nPartOut   (1:nSpecAnalyze),0           ,nSpecAnalyze,MPI_INTEGER         ,MPI_SUM,0,PartMPI%COMM,IERROR)
-    CALL MPI_REDUCE(PartEkinIn (1:nSpecAnalyze),0           ,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM,IERROR)
-    CALL MPI_REDUCE(PartEkinOut(1:nSpecAnalyze),0           ,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,PartMPI%COMM,IERROR)
+    CALL MPI_REDUCE(nPartIn    (1:nSpecAnalyze),0           ,nSpecAnalyze,MPI_INTEGER         ,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+    CALL MPI_REDUCE(nPartOut   (1:nSpecAnalyze),0           ,nSpecAnalyze,MPI_INTEGER         ,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+    CALL MPI_REDUCE(PartEkinIn (1:nSpecAnalyze),0           ,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+    CALL MPI_REDUCE(PartEkinOut(1:nSpecAnalyze),0           ,nSpecAnalyze,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
   END IF
 END IF
 #endif /*USE_MPI*/
@@ -492,9 +489,6 @@ SUBROUTINE GetOffsetAndGlobalNumberOfParts(CallingRoutine,offsetnPart,globnPart,
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Particle_Globals
-#if USE_MPI
-USE MOD_Particle_MPI_Vars ,ONLY: PartMPI
-#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -542,12 +536,12 @@ END IF ! MPIRoot
 SimNumSpecMin = 0
 SimNumSpecMax = 0
 IF(GetMinMaxNbrOfParticles)THEN
-  IF (PartMPI%MPIRoot) THEN
-    CALL MPI_REDUCE(locnPart,SimNumSpecMin,1,MPI_INTEGER_INT_KIND,MPI_MIN,0,PartMPI%COMM,IERROR)
-    CALL MPI_REDUCE(locnPart,SimNumSpecMax,1,MPI_INTEGER_INT_KIND,MPI_MAX,0,PartMPI%COMM,IERROR)
+  IF (MPIRoot) THEN
+    CALL MPI_REDUCE(locnPart,SimNumSpecMin,1,MPI_INTEGER_INT_KIND,MPI_MIN,0,MPI_COMM_FLEXI,IERROR)
+    CALL MPI_REDUCE(locnPart,SimNumSpecMax,1,MPI_INTEGER_INT_KIND,MPI_MAX,0,MPI_COMM_FLEXI,IERROR)
   ELSE
-    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER_INT_KIND,MPI_MIN,0,PartMPI%COMM,IERROR)
-    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER_INT_KIND,MPI_MAX,0,PartMPI%COMM,IERROR)
+    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER_INT_KIND,MPI_MIN,0,MPI_COMM_FLEXI,IERROR)
+    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER_INT_KIND,MPI_MAX,0,MPI_COMM_FLEXI,IERROR)
   END IF
 END IF ! GetMinMaxNbrOfParticles
 

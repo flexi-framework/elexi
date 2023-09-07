@@ -117,18 +117,6 @@ IF(ParticleMPIInitIsDone) CALL Abort(__STAMP__,' Particle MPI already initialize
 #if USE_MPI
 ! Get flag for ignoring the abort if the number of global exchange procs is non-symmetric
 CheckExchangeProcs = GETLOGICAL('CheckExchangeProcs')
-
-! Duplicate particle communicator from MPI_COMM_FLEXI
-CALL MPI_COMM_DUP (MPI_COMM_FLEXI,PartMPI%COMM,iError)
-CALL MPI_COMM_RANK(PartMPI%COMM,PartMPI%myRank,iError)
-CALL MPI_COMM_SIZE(PartMPI%COMM,PartMPI%nProcs,iError)
-
-PartCommSize    = 0
-PartMPI%MPIRoot = MERGE(.TRUE.,.FALSE.,PartMPI%MyRank.EQ.0)
-#else
-PartMPI%myRank  = 0
-PartMPI%nProcs  = 1
-PartMPI%MPIRoot=.TRUE.
 #endif  /*MPI*/
 
 ParticleMPIInitIsDone=.TRUE.
@@ -239,7 +227,7 @@ SUBROUTINE IRecvNbOfParticles()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_MPI_Vars,      ONLY: PartMPI,PartMPIExchange
+USE MOD_Particle_MPI_Vars,      ONLY: PartMPIExchange
 USE MOD_Particle_MPI_Vars,      ONLY: nExchangeProcessors,ExchangeProcToGlobalProc
 USE MOD_Particle_Vars,          ONLY: nSpecies
 ! IMPLICIT VARIABLE HANDLING
@@ -262,7 +250,7 @@ DO iProc=0,nExchangeProcessors-1
                 , MPI_INTEGER                                                &
                 , ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,iProc)         &
                 , 1001                                                       &
-                , PartMPI%COMM                                               &
+                , MPI_COMM_FLEXI                                             &
                 , PartMPIExchange%RecvRequest(1,iProc)                       &
                 , IERROR )
 ! IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__&
@@ -288,7 +276,7 @@ USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Preproc
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared
-USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI,PartMPIExchange,PartTargetProc
+USE MOD_Particle_MPI_Vars      ,ONLY: PartMPIExchange,PartTargetProc
 USE MOD_Particle_MPI_Vars      ,ONLY: nExchangeProcessors,ExchangeProcToGlobalProc,GlobalProcToExchangeProc
 USE MOD_Particle_Vars          ,ONLY: PEM,PDM,nSpecies
 ! IMPLICIT VARIABLE HANDLING
@@ -336,7 +324,7 @@ DO iProc=0,nExchangeProcessors-1
                 , MPI_INTEGER                                                &
                 , ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,iProc)         &
                 , 1001                                                       &
-                , PartMPI%COMM                                               &
+                , MPI_COMM_FLEXI                                             &
                 , PartMPIExchange%SendRequest(1,iProc)                       &
                 , IERROR )
   IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
@@ -364,7 +352,7 @@ SUBROUTINE MPIParticleSend()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack,doParticlePathTrack
-USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,PartCommSize,PartSendBuf,PartRecvBuf,PartTargetProc
+USE MOD_Particle_MPI_Vars,        ONLY:PartMPIExchange,PartCommSize,PartSendBuf,PartRecvBuf,PartTargetProc
 USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors,ExchangeProcToGlobalProc
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex,doPartIndex
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp,nSpecies
@@ -567,7 +555,7 @@ DO iProc=0,nExchangeProcessors-1
                 , MPI_DOUBLE_PRECISION                                       &
                 , ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,iProc)         &
                 , 1002                                                       &
-                , PartMPI%COMM                                               &
+                , MPI_COMM_FLEXI                                             &
                 , PartMPIExchange%RecvRequest(2,iProc)                       &
                 , IERROR )
   IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
@@ -589,7 +577,7 @@ DO iProc=0,nExchangeProcessors-1
                 , MPI_DOUBLE_PRECISION                                       &
                 , ExchangeProcToGlobalProc(EXCHANGE_PROC_RANK,iProc)         &
                 , 1002                                                       &
-                , PartMPI%COMM                                               &
+                , MPI_COMM_FLEXI                                             &
                 , PartMPIExchange%SendRequest(2,iProc)                       &
                 , IERROR )
   IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
@@ -612,7 +600,7 @@ SUBROUTINE MPIParticleRecv()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack,doParticlePathTrack
-USE MOD_Particle_MPI_Vars,        ONLY:PartMPIExchange,PartCommSize,PartRecvBuf,PartSendBuf!,PartMPI
+USE MOD_Particle_MPI_Vars,        ONLY:PartMPIExchange,PartCommSize,PartRecvBuf,PartSendBuf
 USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors
 USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex,doPartIndex
 USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp,nSpecies
@@ -794,7 +782,9 @@ SUBROUTINE FinalizeParticleMPI()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_MPI_Vars
+USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,ParticleMPIInitIsDone
+USE MOD_Particle_MPI_Vars,        ONLY:PartSendBuf,PartRecvBuf
+USE MOD_Particle_MPI_Vars,        ONLY:ExchangeProcToGlobalProc,GlobalProcToExchangeProc,PartTargetProc
 USE MOD_Particle_Vars,            ONLY:Species,nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -818,7 +808,6 @@ IF(nInitRegions.GT.0) THEN
     END IF
   END DO ! iInitRegions
 END IF
-IF(PartMPI%COMM.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(PartMPI%COMM,iERROR)
 
 SDEALLOCATE( PartMPIExchange%nPartsSend)
 SDEALLOCATE( PartMPIExchange%nPartsRecv)

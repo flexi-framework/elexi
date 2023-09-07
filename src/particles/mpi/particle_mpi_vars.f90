@@ -38,16 +38,12 @@ TYPE tPartMPIGROUP
   INTEGER                                :: nProcs                           ! number of MPI processes for particles
   INTEGER                                :: MyRank                           ! MyRank of PartMPIVAR%COMM
   LOGICAL                                :: MPIRoot                          ! Root, MPIRank=0
-  INTEGER,ALLOCATABLE                    :: GroupToComm(:)                   ! list containing the rank in PartMPI%COMM
-  INTEGER,ALLOCATABLE                    :: CommToGroup(:)                   ! list containing the rank in PartMPI%COMM
+  INTEGER,ALLOCATABLE                    :: GroupToComm(:)                   ! list containing the rank in PartMPI%%InitGroup%COMM
+  INTEGER,ALLOCATABLE                    :: CommToGroup(:)                   ! list containing the rank in PartMPI%%InitGroup%COMM
 END TYPE
 
 TYPE tPartMPIVAR
   TYPE(tPartMPIGROUP),ALLOCATABLE        :: InitGroup(:)                     ! small communicator for initialization
-  INTEGER                                :: COMM                             ! MPI communicator for PIC GTS region
-  INTEGER                                :: nProcs                           ! number of MPI processes for particles
-  INTEGER                                :: MyRank                           ! MyRank of PartMPIVAR%COMM
-  LOGICAL                                :: MPIRoot                          ! Root, MPIRank=0
 END TYPE
 
 TYPE (tPartMPIVAR)                       :: PartMPI

@@ -406,7 +406,6 @@ DO iRecord = 1,RecordPart
                                offSetDim    = 2                                   ,&
                                communicator = MPI_COMM_FLEXI                      ,&
                                RealArray    = RPP_Plane(iRecord)%RPP_Data(1:RPP_nVarNames,1:locRPP))
-  !CALL MPI_BARRIER(PartMPI%COMM,iERROR)
 #else
     CALL OpenDataFile(FileName_loc,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
     CALL WriteArray(           DataSetName  = 'RecordData'                        ,&

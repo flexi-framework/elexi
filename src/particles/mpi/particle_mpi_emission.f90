@@ -360,7 +360,7 @@ DO iSpec = 1,nSpecies
     ! set communicator id
     Species(iSpec)%Init(iInit)%InitCOMM = nInitRegions
     ! create new emission communicator for emission communication. Pass MPI_INFO_NULL as rank to follow the original ordering
-    CALL MPI_COMM_SPLIT(PartMPI%COMM,color,MPI_INFO_NULL,PartMPI%InitGroup(nInitRegions)%COMM,iError)
+    CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,MPI_INFO_NULL,PartMPI%InitGroup(nInitRegions)%COMM,iError)
 
     ! Find my rank on the shared communicator, comm size and proc name
     IF (RegionOnProc) THEN
@@ -385,8 +385,8 @@ DO iSpec = 1,nSpecies
       PartMPI%InitGroup(nInitRegions)%MPIRoot = MERGE(.TRUE.,.FALSE.,PartMPI%InitGroup(nInitRegions)%MyRank.EQ.0)
 
       ALLOCATE(PartMPI%InitGroup(nInitRegions)%GroupToComm(0:PartMPI%InitGroup(nInitRegions)%nProcs-1))
-      PartMPI%InitGroup(nInitRegions)%GroupToComm(PartMPI%InitGroup(nInitRegions)%MyRank) = PartMPI%MyRank
-      CALL MPI_ALLGATHER( PartMPI%MyRank                                                                            &
+      PartMPI%InitGroup(nInitRegions)%GroupToComm(PartMPI%InitGroup(nInitRegions)%MyRank) = myRank
+      CALL MPI_ALLGATHER( myRank                                                                                    &
                         , 1                                                                                         &
                         , MPI_INTEGER                                                                               &
                         , PartMPI%InitGroup(nInitRegions)%GroupToComm(0:PartMPI%InitGroup(nInitRegions)%nProcs-1)   &
@@ -396,8 +396,8 @@ DO iSpec = 1,nSpecies
                         , iERROR)
 
       ! reverse mapping
-      ALLOCATE(PartMPI%InitGroup(nInitRegions)%CommToGroup(0:PartMPI%nProcs-1))
-      PartMPI%InitGroup(nInitRegions)%CommToGroup(0:PartMPI%nProcs-1) = -1
+      ALLOCATE(PartMPI%InitGroup(nInitRegions)%CommToGroup(0:nProcessors-1))
+      PartMPI%InitGroup(nInitRegions)%CommToGroup(0:nProcessors-1) = -1
       DO iRank = 0,PartMPI%InitGroup(nInitRegions)%nProcs-1
         PartMPI%InitGroup(nInitRegions)%CommToGroup(PartMPI%InitGroup(nInitRegions)%GroupToComm(iRank)) = iRank
       END DO ! iRank

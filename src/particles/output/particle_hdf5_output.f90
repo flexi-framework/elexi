@@ -77,9 +77,6 @@ USE MOD_Particle_Vars           ,ONLY: nSpecies
 USE MOD_Particle_Vars           ,ONLY: PartInt,PartData,TurbPartData
 USE MOD_Particle_Vars           ,ONLY: PartDataSize,TurbPartDataSize
 USE MOD_Particle_Vars           ,ONLY: doPartIndex,doWritePartDiam
-#if USE_MPI
-USE MOD_Particle_MPI_Vars       ,ONLY: PartMPI
-#endif /*MPI*/
 ! Load balance
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars        ,ONLY: PerformLoadBalance
@@ -188,7 +185,7 @@ ASSOCIATE (&
                             nVal         = (/PartDataSize , locnPart                /)       ,&
                             offset       = (/0            , offsetnPart             /)       ,&
                             collective   = UseCollectiveIO, offSetDim = 2                    ,&
-                            communicator = PartMPI%COMM   , RealArray = PartData)
+                            communicator = MPI_COMM_FLEXI , RealArray = PartData)
 #else
   CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   CALL WriteArray(          DataSetName  = 'PartData'     , rank = 2                         ,&
@@ -208,7 +205,7 @@ ASSOCIATE (&
                                nVal         = (/TurbPartDataSize , locnPart                /),&
                                offset       = (/0                , offsetnPart             /),&
                                collective   = UseCollectiveIO    , offSetDim = 2             ,&
-                               communicator = PartMPI%COMM       , RealArray = TurbPartData)
+                               communicator = MPI_COMM_FLEXI     , RealArray = TurbPartData)
 #else
   IF (ALLOCATED(TurbPartData)) THEN
     CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)

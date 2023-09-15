@@ -1941,6 +1941,7 @@ CLASS(Option),POINTER         :: opt
 INTEGER                       :: i
 LOGICAL                       :: found
 INTEGER                       :: listSize         ! current size of list
+INTEGER                       :: ind
 #if USE_PARTICLES
 CLASS(link),POINTER           :: check
 CLASS(Option),POINTER         :: multi
@@ -1983,7 +1984,7 @@ DO WHILE (ASSOCIATED(current))
         IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
         RETURN
       END IF
-      ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
+      ! If a string has been supplied, check if this string exists in the list and set its integer representation according to the
       ! mapping
       DO i=1,listSize
         IF (STRICMP(opt%strList(i), opt%value)) THEN
@@ -1995,6 +1996,34 @@ DO WHILE (ASSOCIATED(current))
           RETURN
         END IF
       END DO
+#if USE_PARTICLES
+      ! If a string contains a comma, check if the first part of this string exists in the list and set its integer representation
+      ! according to the mapping. This might occur when directly running a regressioncheck file
+      DO i=1,listSize
+        ind = INDEX(opt%value,",")
+        IF (STRICMP(opt%strList(i), opt%value(1:ind-1))) THEN
+          value = opt%intList(i)
+          opt%listIndex = i ! Store index of the mapping
+          ! print option and value to stdout. Custom print, so do it here
+          WRITE(fmtName,*) prms%maxNameLen
+          SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
+          CALL set_formatting("blue")
+          SWRITE(UNIT_stdOut,"(A"//fmtName//")", ADVANCE='NO') TRIM(name)
+          CALL clear_formatting()
+          SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
+          CALL opt%printValue(prms%maxValueLen)
+          SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
+          CALL set_formatting("cyan")
+          SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "*SPLIT"
+          CALL clear_formatting()
+          SWRITE(UNIT_stdOut,"(A3)") ' | '
+          ! CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+          ! remove the option from the linked list of all parameters
+          IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
+          RETURN
+        END IF
+      END DO
+#endif /*USE_PARTICLES*/
       CALL Abort(__STAMP__,"Unknown value for option: "//TRIM(name))
     END SELECT
   END IF
@@ -2077,7 +2106,7 @@ DO WHILE (ASSOCIATED(current))
                     SWRITE(UNIT_stdOut,"(A3)") ' | '
                     RETURN
                   END IF
-                  ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
+                  ! If a string has been supplied, check if this string exists in the list and set its integer representation according to the
                   ! mapping
                   DO i=1,listSize
                     IF (STRICMP(multi%strList(i), multi%value)) THEN

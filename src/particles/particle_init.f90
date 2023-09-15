@@ -95,7 +95,7 @@ CALL prms%CreateIntFromStringOption('TrackingMethod', "Define Method that is use
 CALL addStrListEntry(               'TrackingMethod', 'refmapping'      ,REFMAPPING)
 CALL addStrListEntry(               'TrackingMethod', 'tracing'         ,TRACING)
 CALL addStrListEntry(               'TrackingMethod', 'triatracking'    ,TRIATRACKING)
-CALL addStrListEntry(               'TrackingMethod', 'default'         ,TRIATRACKING)
+CALL addStrListEntry(               'TrackingMethod', 'default'         ,REFMAPPING)
 
 CALL prms%CreateLogicalOption(      'TriaSurfaceFlux'         , 'Using Triangle-aproximation [T] or (bi-)linear and bezier '     //&
                                                                 '(curved) description [F] of sides for surfaceflux.'               &

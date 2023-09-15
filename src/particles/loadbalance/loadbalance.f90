@@ -434,7 +434,8 @@ USE MOD_LoadBalance_Vars    ,ONLY: WeightSum,TargetWeight,CurrentImbalance,MaxWe
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTime,PerformLBSample,PerformPartWeightLB
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeFieldTot,ElemTimeField
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartTot,ElemTimePart
-!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Particle_Output     ,ONLY: GetOffsetAndGlobalNumberOfParts
+USE MOD_Particle_Output_Vars,ONLY: offsetnPart,locnPart
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -449,6 +450,8 @@ IF(.NOT.PerformLBSample .AND. .NOT.PerformPartWeightLB) THEN
   TargetWeight     = 0.
   CurrentImbalance = -1.0
 ELSE
+  ! Collect total number of particles for output
+  CALL GetOffsetAndGlobalNumberOfParts('ComputeImbalance',offsetnPart,nGlobalNbrOfParticles,locnPart,.FALSE.)
 
   ! Collect ElemTime for particles and field separately (only on root process)
   CALL MPI_REDUCE(ElemTimeField,ElemTimeFieldTot,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)

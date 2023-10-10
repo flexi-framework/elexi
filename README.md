@@ -5,9 +5,9 @@
 FLEXI is a high-order numerical framework for solving PDEs, with a focus on Computational Fluid Dynamics. FLEXI is based on the Discontinuous Galerkin Spectral Element Method (DGSEM), which allows for high-order of accuracy and fully unstructured hexahedral meshes.
 The solver is parallelized very efficiently and scales up to hundreds of thousand cores.
 
-For the main development branch, see [flexi-framework/flexi](https://github.com/flexi-framework/flexi). This repository contains an extension of FLEXI towards particle-laden flows. The particle tracking approach operates in physical space and is based on methods from ray-tracing to handle intersections with possibly curved boundaries. Particles are implemented with a Lagrangian point-particle ansatz and can either be one- or two-way coupled to fluid phase. Particle-wall interactions are handled via a hard-sphere approach, where multiple models are available. 
+For the main development branch, see [flexi-framework/flexi](https://github.com/flexi-framework/flexi). This repository contains an extension of FLEXI towards particle-laden flows. The particle tracking approach operates in physical space and is based on methods from ray-tracing to handle intersections with possibly curved boundaries. Particles are implemented with a Lagrangian point-particle ansatz and can either be one- or two-way coupled to the fluid phase. Particle-wall interactions are handled via a hard-sphere approach, where multiple models are available. 
 
-For details on the available models and implementation, see our manuscript on [arxiv](https://arxiv.org/abs/2211.05458).
+For details on the available models and implementation, see our paper in [Computer Physics Communications](https://doi.org/10.1016/j.cpc.2023.108762) or the manuscript on [arxiv](https://arxiv.org/abs/2211.05458).
 
 FLEXI has been developed by the [Numerics Research Group (NRG)][nrg] led by Prof. Claus-Dieter Munz at the Institute of Aerodynamics and Gasdynamics at the University of Stuttgart, Germany.
 
